@@ -82,6 +82,15 @@ func Init() {
 	//	                    service run as its own process from any repo shows
 	//	                    up in Mu without Mu importing it.
 	//
+	// mdns is not a free upgrade, and is not the default for two reasons.
+	// Discovery is symmetric: Mu does not only listen, it announces. Every
+	// service this process hosts — wallet, mail, db — is published on the
+	// local network and reachable by anything on it, and nothing
+	// authenticates an RPC. And every internal call becomes an HTTP round
+	// trip (~400µs) instead of a channel send, several times per page render.
+	// Turn it on for a trusted network where an external service is actually
+	// wanted; leave it off otherwise.
+	//
 	// etcd, consul and nats registries exist in go-micro subpackages and are
 	// deliberately not imported: each drags a substantial dependency tree into
 	// a binary that mostly runs standalone. Add one here when an instance needs
