@@ -77,7 +77,9 @@ func TestCatalog_HasCategories(t *testing.T) {
 	for _, doc := range catalog {
 		categories[doc.Category] = true
 	}
-	expected := []string{"Getting Started", "Features", "Reference", "Developer"}
+	// Two categories now: get connected, then look things up. Features and
+	// Developer went with the docs that were folded into Architecture.
+	expected := []string{"Getting Started", "Reference"}
 	for _, cat := range expected {
 		if !categories[cat] {
 			t.Errorf("expected category %q in catalog", cat)

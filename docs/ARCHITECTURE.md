@@ -1,189 +1,302 @@
 # Architecture
 
-Mu is structured as a set of **services** composed on top of shared **subsystems**.
+Mu is one Go binary. Every capability is a service behind a
+[go-micro](https://go-micro.dev) registry, and that registry is the single
+source of truth — the agent's tools, the MCP catalogue, the REST endpoints, the
+sidebar and the app SDK all derive from it. Register a service and every surface
+picks it up with no further wiring.
 
-## Directory Layout
+## Directory layout
 
 ```
 mu/
-├── main.go                 # Wiring: Load(), route registration, middleware
-├── internal/               # Subsystems (infrastructure, not features)
-│   ├── ai/                 # LLM integration (Anthropic)
-│   ├── api/                # MCP protocol, tool registration, execution
-│   ├── app/                # HTTP utilities, rendering, logging, static assets
-│   ├── auth/               # Sessions, accounts, passkeys, presence
-│   ├── data/               # File persistence, indexing, event pub/sub
-│   └── moderation/         # Content flagging, hiding, auto-moderation
-├── admin/                  # Content moderation, flagging, admin panel
-├── agent/                  # AI agent (plans + executes via MCP tools)
-├── blog/                   # Posts, comments, opinions, ActivityPub federation
-├── chat/                   # Real-time chat rooms with AI
-├── docs/                   # Documentation pages
-├── home/                   # Home screen cards (composition layer)
-├── mail/                   # Email inbox, SMTP server, DKIM, spam filtering
-├── markets/                # Crypto/stock market data
-├── news/                   # RSS feed aggregation
-│   └── digest/             # Daily news digest (composition layer)
-├── places/                 # Map and location search
-├── reminder/               # Daily news reminder/briefing
-├── search/                 # Local index search + Brave web search
-├── social/                 # Social media feed aggregation (X, Truth Social)
-├── user/                   # User profiles, presence tracking
-├── video/                  # YouTube channel aggregation
-├── wallet/                 # Credit system, Stripe payments
-└── weather/                # Weather forecasts
+├── main.go                 # wiring: Load(), routes, middleware
+├── service/                # one directory per service, named for it
+│   ├── apps/
+│   ├── blog/
+│   ├── chat/
+│   ├── db/
+│   ├── events/
+│   ├── images/
+│   ├── index/
+│   ├── islam/
+│   ├── mail/
+│   ├── markets/
+│   ├── news/
+│   ├── places/
+│   ├── search/
+│   ├── social/
+│   ├── stream/
+│   ├── video/
+│   ├── wallet/
+│   ├── weather/
+│   └── web/
+├── internal/               # runtime and infrastructure, not features
+│   ├── a2a/
+│   ├── agents/
+│   ├── ai/
+│   ├── api/
+│   ├── app/
+│   ├── auth/
+│   ├── cli/
+│   ├── data/
+│   ├── env/
+│   ├── event/
+│   ├── flag/
+│   ├── memory/
+│   ├── safefetch/
+│   ├── service/
+│   ├── settings/
+│   ├── setup/
+│   ├── snapshot/
+│   ├── user/
+│   ├── userdb/
+│   └── version/
+├── agent/                  # the agent pipeline and micro-agents
+├── client/                 # discord, telegram, whatsapp
+├── home/                   # landing, home screen, pricing
+├── admin/                  # moderation and admin panel
+└── docs/                   # this folder, served at /docs
 ```
 
-## Subsystems vs Building Blocks
+`internal/service` is the runtime that hosts services — it is not itself
+a service.
 
-### Subsystems (`internal/`)
+## The convention
 
-Subsystems provide **infrastructure** that services depend on. They live in
-`internal/` to enforce at the Go compiler level that only code within this module
-can import them — they are not features, they are plumbing.
+**service name == directory == route == nav label == tool prefix**
 
-| Package           | Purpose                                       | Dependencies          |
-|-------------------|-----------------------------------------------|-----------------------|
-| `internal/data`   | JSON file persistence, full-text indexing, event pub/sub | (none)          |
-| `internal/auth`   | Account CRUD, sessions, tokens, passkeys      | `data`                |
-| `internal/app`    | HTTP response helpers, HTML rendering, logging | `auth`, `data`        |
-| `internal/ai`     | LLM provider abstraction (Anthropic API)      | `app`                 |
-| `internal/api`    | MCP server, tool registry, tool execution     | `app`                 |
-| `internal/flag` | Content flagging, hiding, auto-moderation | `data`                |
+Services live under `service/<name>/`. `internal/service` is the runtime core
+that hosts them — it is not itself a service.
 
-**Layering rule:** Subsystems may only import other subsystems (and only downward:
-`data` ← `auth` ← `app` ← `ai`, `api`). Subsystems must **never** import services.
+The exception is a **headless** service: a capability with no page, so no route
+and no nav entry. `index` and `db` are headless — they exist for the
+agent, for apps and for other services to call.
 
-### Building Blocks (top-level packages)
+Two footnotes. `wallet` has a page that predates its service; both are the same
+capability with two surfaces. And the `web` service is reached at `/search`,
+because "Search" is what a person looks for in the sidebar while `web` is what
+the capability is about. The nav label is for humans; the service name is for
+callers. `/web` still 301s to `/search` for old links.
 
-Services are **features**. Each service:
+**A service is named for a domain, not for an action.** Every one is a noun —
+`news`, `mail`, `places`, `web` — and its methods say what to do with that
+domain. This is not style: tool names are derived as `service_method`, so a
+service named for an action leaves its main method nothing to be called but the
+same word. `search` used to be a service, its one method had to be `Search`, and
+the derived tool name was `search_search`. Web search is now `web.Search`
+alongside `web.Fetch`, matching the `/web/fetch` and `/web/read` routes.
+`TestNoMethodRepeatsItsService` holds the line.
 
-1. Has a `Load()` function called from `main.go` at startup
-2. Has a `Handler(w, r)` function registered as an HTTP route
-3. Imports only subsystems (`internal/*`) and the `wallet` package for quota
-4. Does **not** import other services (with documented exceptions below)
+Methods that return the current set of something are all called `List` —
+`news.List`, `blog.List`, `social.List`, `video.List`, `markets.List`,
+`stream.List`, `events.List`, `db.List` — so the derived names are uniform and
+guessable.
 
-| Package     | Route(s)                 | Subsystems Used                     |
-|-------------|--------------------------|-------------------------------------|
-| `admin`     | `/admin`, `/flag`        | `app`, `auth`                       |
-| `agent`     | `/agent`                 | `ai`, `api`, `app`, `auth`, `data`  |
-| `blog`      | `/blog`, `/post`         | `ai`, `app`, `auth`, `data`, `moderation` |
-| `chat`      | `/chat`                  | `ai`, `app`, `auth`, `data`, `moderation` |
-| `docs`      | `/docs`, `/about`        | `app`                               |
-| `mail`      | `/mail`                  | `app`, `auth`, `data`               |
-| `markets`   | `/markets`               | `app`, `auth`, `data`               |
-| `news`      | `/news`                  | `app`, `auth`, `data`               |
-| `places`    | `/places`                | `app`, `auth`, `data`               |
-| `reminder`  | `/reminder`              | `app`, `auth`, `data`               |
-| `search`    | `/search`, `/web`        | `ai`, `app`, `auth`, `data`         |
-| `social`    | `/social`                | `app`, `auth`, `data`               |
-| `user`      | `/@{username}`           | `app`, `auth`, `data`               |
-| `video`     | `/video`                 | `app`, `auth`, `data`               |
-| `wallet`    | `/wallet`                | `app`, `auth`, `data`               |
-| `weather`   | `/weather`               | `app`, `auth`                       |
+## What is registered
 
-Most services also import `wallet` for quota checking on metered operations.
+| Service | Page | Agent tool | Account-scoped | What it is |
+|---|---|---|---|---|
+| `apps` | /apps | ✅ |  | User apps: build, run, edit |
+| `blog` | /blog | ✅ |  | Microblogging, daily digests, ActivityPub |
+| `chat` | /chat | ✅ |  | Live discussion rooms attached to an item |
+| `db` | — | ✅ | ✅ | Per-user records, for services and apps |
+| `events` | /events | ✅ | ✅ | Scheduled reminders, `.ics` invites |
+| `images` | /images | ✅ | ✅ | Generation, daily image, archive |
+| `index` | — | ✅ | ✅ | Search across the caller's own content |
+| `islam` | /islam | ✅ |  | Daily reminder, prayer times, qibla |
+| `mail` | /mail | ✅ | ✅ | SMTP server, inbox, DKIM |
+| `markets` | /markets | ✅ |  | Crypto, futures, commodities, currencies |
+| `news` | /news | ✅ |  | RSS aggregation, sentiment, search |
+| `places` | /places | ✅ |  | Maps and points of interest |
+| `social` | /social | ✅ |  | Threads, replies, status |
+| `stream` | /stream | ✅ |  | The console: this instance's own timeline |
+| `video` | /video | ✅ |  | Search and playback |
+| `wallet` | /wallet | ✅ | ✅ | Credit check, charge, balance |
+| `weather` | /weather | ✅ |  | Forecast and pollen |
+| `web` | /search | ✅ |  | Search the web; fetch a URL and return readable content |
 
-### Composition Layers
+## Account-scoped
 
-Some packages act as **composition layers** that aggregate content from multiple
-services to render combined views:
+Listed in `internal/service/dynamic.go`. These hold data belonging to one user
+or spend their credits, so a caller with no authenticated account cannot reach
+them **at all** — the whole service is closed to guests.
 
-- **`home/`** — renders home screen cards by importing `blog`, `news`, `markets`,
-  `reminder`, `social`, `video`, `agent`. This is intentional: home is a
-  read-only aggregation view.
+That bluntness is why some services that hold per-user data are not on the
+list. `stream` is readable by anyone (a guest sees the public timeline) while
+posting requires an account, so the check lives in the method rather than on
+the service. Marking it scoped would hide the timeline from visitors entirely.
 
-- **`news/digest/`** — generates a daily news digest by pulling from `news`,
-  `markets`, `video`. This is a scheduled background job that stores its own
-  `digests.json` — it is a news summary, not a blog post.
+Identity comes from the **call context**, never from a request field — see
+`internal/service/identity.go`. Handlers read `service.AccountFrom(ctx)`, and no
+request struct carries an account. There is nothing to forge: `CallDynamic` and
+the agent's `injectAccount` both discard any `account_id` a caller or the model
+supplies, so it cannot reach a handler even by accident.
 
-- **`service/blog/opinion.go`** — generates a daily opinion piece using `news`, `markets`,
-  `reminder`, `search`, `video` as context. The opinion is published as a blog
-  post. The editorial memory system (`opinion_memory.go`) tracks stances,
-  directives, and topic history so the agent evolves its perspective over time.
+## Destructive methods
 
-- **`news` ← `social` (via callback)** — `main.go` wires `news.FetchSocialContext`
-  to `social.FetchContext` so news articles that reference social posts can show
-  the original post inline. No direct import — uses a function callback.
+**Every registered service becomes an agent tool.** That is the point of
+deriving from the registry — register a service and the model can use it.
 
-These cross-building-block imports are documented exceptions. The long-term goal
-is to replace them with the event system (`data.Subscribe`/`data.Publish`).
+The guard is per *method*, not per service (`destructiveTools` in
+`agent/native.go`). Two are withheld:
 
-## Key Patterns
+- **`wallet.charge`** — spending should follow from the user's own action
+- **`db.delete`** — irreversible, and the user can delete from the app
 
-### Initialization
+Everything else on those services is available: the agent can read a balance,
+check a cost, and create, list, get and update records.
 
-Every service defines `Load()` (even if it's a no-op). `main.go` calls
-them in dependency order:
+The reasoning is not that the services are dangerous. The agent reads
+attacker-controlled text — an email body, a page it just fetched — so any tool
+it holds is a tool prompt injection holds. What earns a place on that list is an
+irreversible side effect nobody asked for. Note the agent *already* spends
+credits: generating an image costs 15. Withholding a whole service to protect
+one method would be both too blunt and inconsistent with that.
 
-```go
-data.Load()       // Index system first
-admin.Load()      // Moderation flags
-chat.Load()       // Chat topics
-news.Load()       // RSS feeds
-video.Load()      // YouTube channels
-blog.Load()       // Blog posts + comments
-mail.Load()       // SMTP + DKIM
-places.Load()     // (no-op)
-weather.Load()    // (no-op)
-markets.Load()    // Market data
-reminder.Load()   // Daily briefing
-wallet.Load()     // Credit balances
-apps.Load()       // User apps
-social.Load()     // Social feeds
-home.Load()       // Home screen cards
-agent.Load()      // (no-op)
-digest.Load()     // Digest scheduler
-user.Load()       // Presence tracking
-search.Load()     // (no-op)
-docs.Load()       // (no-op)
+A blocked call is refused before it runs and the model is told why, so it can
+explain rather than retry.
+
+## Adding one
+
+1. Create `service/<name>/`, named for the service — a domain, not an action.
+2. Write `Server` with typed methods and `description` tags.
+3. Declare `var Spec = service.Spec{…}` with an entry for every method, and
+   `service.Register(Spec)` from a `Load()` called in `main.go`.
+4. If it holds per-user data or spends credits, set `Scoped: true`.
+5. If a method is irreversible and should only follow from a user's own action,
+   set `Destructive: true` on it.
+6. Add a row above.
+
+Nothing else is needed. The agent, the picker, the app SDK and the status page
+all read the registry.
+
+One thing that does **not** derive yet: MCP tools are still hand-written in
+`internal/api/mcp.go`, so a new service is an agent tool but not an MCP tool
+until someone adds a stanza. See micro/mu#1445.
+
+## The app SDK
+
+An app is a page plus a JavaScript SDK. It reaches any registered service
+through `mu.service(name, method, args)`, so a new service is available to every
+app the moment it registers.
+
+### Storage — `mu.store` (key/value)
+
+A flat key/value store scoped to this app **and the current user** (max 100 keys,
+64KB per value). Good for preferences and small state.
+
+```javascript
+await mu.store.set('prefs', { theme: 'dark' });
+const prefs = await mu.store.get('prefs');
+await mu.store.del('prefs');
+const keys = await mu.store.keys();
 ```
 
-### Handler Dispatch
+### Database — `mu.db` (collections, private/public)
 
-All handlers follow `func Handler(w http.ResponseWriter, r *http.Request)` and
-are registered in `main.go` via `http.HandleFunc`. Handlers use:
+Named collections of JSON records. Every record has a **server-set owner** (the
+signed-in user) and a **public** flag, so one app can hold each user's private
+data plus a shared public set. This is the building block for real apps — notes,
+lists, posts, trackers — where "mine" and "public" both matter.
 
-- `auth.TrySession(r)` for optional auth (public pages with auth features)
-- `auth.RequireSession(r)` for required auth (write operations)
-- `app.WantsJSON(r)` / `app.RespondJSON()` for JSON API responses
-- `wallet.CheckQuota()` / `wallet.ConsumeQuota()` for metered operations
+```javascript
+// Create — private to me, or shared publicly
+const note   = await mu.db.create('notes', { title: 'Idea', body: '...' });
+const shared = await mu.db.create('notes', { title: 'Public tip' }, { public: true });
 
-### Data Storage
+// List — scope: 'mine' (default), 'public', or 'all' (mine + public)
+const mine   = await mu.db.list('notes');
+const public = await mu.db.list('notes', { scope: 'public', sort: 'title', order: 'asc' });
+const both   = await mu.db.list('notes', { scope: 'all', where: { done: false }, limit: 50 });
 
-Services persist state via `data.LoadFile()` / `data.SaveFile()` using
-JSON files. Each block owns its own files (e.g., `blog.json`).
-
-Searchable content is indexed via `data.Index(id, type, title, content, meta)`.
-
-### MCP Tool Registration
-
-Tools are registered in `main.go` and `internal/api/mcp.go` via `api.RegisterTool()`.
-The agent executes tools through `api.ExecuteTool()` which creates internal HTTP
-requests — it does **not** import services directly.
-
-### Event System
-
-`internal/data` provides `Subscribe(event, callback)` and `Publish(event, payload)`.
-Currently used by `blog` for auto-tagging workflows. Available for future use to
-decouple composition layers from direct imports.
-
-### Wallet Quota
-
-Metered operations (search, AI, web fetch) check credits before executing:
-
-```go
-canProceed, _, cost, _ := wallet.CheckQuota(accountID, wallet.OpSomeAction)
-if !canProceed { /* deny */ }
-// ... do work ...
-wallet.ConsumeQuota(accountID, wallet.OpSomeAction)
+const one = await mu.db.get('notes', id);
+await mu.db.update('notes', id, { title: 'Edited' }, { public: false }); // owner only
+await mu.db.del('notes', id);                                            // owner only
 ```
 
-## Dependency Rules
+Scoping rules (enforced server-side):
+
+- **owner** is always the authenticated account — never taken from the client.
+- **create / update / delete** require a signed-in user and only touch their own
+  records (editing someone else's record is refused).
+- **list / get** may be used by guests too, but a guest only ever sees `public`
+  records; `mine` and `all` need a session.
+- Limits: 2000 records per owner per collection, 64KB per record.
+
+`list` options: `scope` (`mine`|`public`|`all`), `where` (filter on data fields),
+`sort` (a data field), `order` (`asc`|`desc`), `limit`.
+
+The same store is reachable outside apps: agents can use the `db_create` / `db_get`
+/ `db_list` / `db_delete` tools over MCP and REST (see [MCP docs](MCP.md)). Owner
+scoping and the private/public model are identical; an app's data and a user's
+API data live in separate namespaces.
+
+`where` matches a scalar for equality, or an operator object per field —
+`eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `contains` (substring, or array membership),
+`in` (any of a list), `exists` (bool). Multiple operators on a field are ANDed:
+
+```javascript
+mu.db.list('tasks', { where: {
+  done: false,                     // equality
+  priority: { gte: 2 },            // number range
+  title: { contains: 'report' },   // substring
+  tag: { in: ['work', 'urgent'] }, // membership
+} });
+```
+
+### Server-side fetch — `mu.web.fetch`
+
+Fetch an external URL from the server, so you avoid CORS and can keep keys off
+the client. Returns `{ status, body, headers }`.
+
+```javascript
+const res  = await mu.web.fetch('https://api.example.com/data');
+const data = JSON.parse(res.body);
+
+// with method / headers / body
+await mu.web.fetch(url, { method: 'POST', headers: { Authorization: 'Bearer …' }, body: '…' });
+```
+
+Guarded against SSRF: `http`/`https` only, and the destination must resolve to a
+**public** address — loopback, private ranges, link-local (including the
+`169.254.169.254` cloud-metadata endpoint) and multicast are refused, on the
+initial URL and every redirect. Responses are capped (2 MiB, 10s). Requires a
+signed-in user.
+
+For same-origin Mu endpoints, use `mu.get(path)` / `mu.post(path, body)` instead.
+
+### AI and the agent
+
+```javascript
+const answer = await mu.ai('Summarise this', { context: text }); // one-shot
+const result = await mu.agent('What changed in the markets today and why?'); // plans, calls tools, synthesises
+```
+
+### The user
+
+```javascript
+const u = await mu.user();   // { account: 'alice', admin: false, ... } — or { type: 'guest' }
+```
+
+### Services
+
+Every Mu service is a typed wrapper:
+
+```javascript
+mu.weather({ lat, lon });          mu.news();
+mu.markets({ category: 'crypto' }); mu.video();
+mu.social();                        mu.search('query');
+mu.places.search({ ... });          mu.places.nearby({ ... });
+mu.blog.list();  mu.blog.read(id);  mu.blog.create({ ... });
+mu.apps.list();  mu.apps.read(slug);
+```
+
+## Dependency rules
 
 1. **Subsystems never import services** — enforced by `internal/`
 2. **Services import subsystems freely** — that's what they're for
 3. **Services should not import each other** — except documented composition layers
-4. **`wallet` is the one cross-cutting service** — most blocks import it for quota
+4. **`wallet` is the one cross-cutting service** — most services import it for quota
 5. **`admin` imports `mail`** — for spam filter and blocklist management in the
    admin panel. This is an acceptable coupling since admin is a management UI

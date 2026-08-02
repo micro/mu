@@ -121,19 +121,61 @@ server {
 
 Use [Let's Encrypt](https://letsencrypt.org/) for free SSL certificates with Certbot.
 
-## Messaging Setup
+## Mail
 
-To receive and send messages (using SMTP protocol):
+To send and receive as your own domain:
 
-1. **DNS Records** - Add MX record pointing to your server
-2. **Port 25** - Open inbound port 25 (or set `MAIL_PORT=2525` for testing)
-3. **DKIM** - Generate keys for signed messages:
+1. **MX record** pointing at your server.
+2. **Port 25** inbound — or `MAIL_PORT=2525` for testing.
+3. **DKIM keys**, so your mail is signed and not treated as spam:
 
 ```bash
 ./scripts/generate-dkim-keys.sh
 ```
 
-See [Messaging](/docs/messaging) for complete setup.
+That prints a `DKIM_PRIVATE_KEY` for your environment and a TXT record to add at
+`<selector>._domainkey.<your-domain>`, where the selector is `MAIL_SELECTOR`
+(default `default`).
+
+4. **SPF** — a TXT record at your domain authorising your server to send.
+
+Set `MAIL_DOMAIN` to the domain and restart. `mail_send` is account-only: an
+unauthenticated caller can never send, so a paying agent cannot spend your
+domain's reputation.
+
+## Discord
+
+1. Create an application at [discord.com/developers/applications](https://discord.com/developers/applications).
+2. **Bot → Reset Token**, copy it.
+3. Enable **Message Content Intent** under Privileged Gateway Intents.
+4. Paste it at `/admin/env` under `DISCORD_BOT_TOKEN`, or set the env var.
+5. Invite the bot to your server with the OAuth2 URL generator — scopes `bot`
+   and `applications.commands`.
+
+Slash commands: `/agent`, `/news`, `/markets`, `/weather`, `/mail`, `/social`,
+`/blog`, `/video`, `/search`, `/apps`, `/balance`, `/usage`.
+
+## Telegram
+
+1. Message [@BotFather](https://t.me/BotFather), send `/newbot`, follow the
+   prompts and copy the token.
+2. Paste it at `/admin/env` under `TELEGRAM_BOT_TOKEN`, or set the env var.
+
+Commands: `/agent`, `/ask`, `/news`, `/markets`, `/weather`, `/usage`.
+
+## Taking payments
+
+Set `X402_PAY_TO` to your wallet address. Agents calling your instance then pay
+you per request in USDC, wallet to wallet, with no account and no middleman —
+see [MCP](MCP.md).
+
+For card top-ups to prepaid credits, set the `STRIPE_*` keys.
+
+## Federation (optional)
+
+Set `MU_DOMAIN` to your public domain and blog posts federate over ActivityPub —
+remote servers resolve your users at `/.well-known/webfinger` and actor URLs
+under that domain. It must match the domain you actually serve on.
 
 ## Tor Hidden Service (Optional)
 

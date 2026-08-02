@@ -54,4 +54,4 @@ const buildAppsPostContent = "Mu is a set of everyday services you own — news,
 	"## How to build one\n\n- **Describe it** at `/apps/new` and Mu builds a working app.\n- **Ask the agent** — \"build me a reading list\" — it makes the app and gives you a URL.\n- **Write it yourself** — paste HTML at `/apps/new`, or hand-edit any app at `/apps/{slug}/edit`.\n\n" +
 	"Pin the ones you use to the top of your home screen. Keep them private, or make them public for anyone on your instance.\n\n" +
 	"It runs on *your* Mu — your instance, your data, your account. Same idea as the rest of Mu: instead of renting a service from a platform that keeps your data, you own the whole stack, and apps are how you extend it.\n\n" +
-	"Full SDK reference: **/docs/apps**.\n"
+	"Full SDK reference: **/docs/architecture**.\n"

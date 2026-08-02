@@ -66,7 +66,7 @@ go vet ./...            # vet
 - The main branch is `main`
 - One directory per service under `service/`, named for the service. `internal/service`
   is the runtime core that hosts them, not a service itself. See
-  `docs/SERVICE_REGISTRY.md` for what is registered, which are headless, which
+  `docs/ARCHITECTURE.md` for what is registered, which are headless, which
   are account-scoped, and which are deliberately not exposed to the agent
 - A service is named for a **domain** (a noun), never an action. Tool names are
   derived as `service_method`, so an action-named service leaves its main method

@@ -24,31 +24,16 @@ type Document struct {
 
 // docs catalog - maps slugs to document info
 var catalog = []Document{
-	// Getting Started — an agent arrives here, so MCP comes first
+	// An agent's reader arrives wanting to connect and pay, so MCP is second.
 	{Slug: "about", Filename: "ABOUT.md", Title: "About Mu", Description: "Tools for agents — what Mu is and why", Category: "Getting Started"},
 	{Slug: "mcp", Filename: "MCP.md", Title: "MCP Server", Description: "Point an agent at Mu and pay per call", Category: "Getting Started"},
 	{Slug: "cli", Filename: "CLI.md", Title: "CLI", Description: "Every tool as a mu subcommand", Category: "Getting Started"},
 	{Slug: "installation", Filename: "INSTALLATION.md", Title: "Installation", Description: "Run your own instance", Category: "Getting Started"},
-	{Slug: "vision", Filename: "VISION.md", Title: "Vision", Description: "Why Mu exists and the design choices behind it", Category: "Getting Started"},
-	{Slug: "principles", Filename: "PRINCIPLES.md", Title: "Principles", Description: "Guiding principles for AI and technology", Category: "Getting Started"},
 
-	// Features
-	{Slug: "apps", Filename: "APPS.md", Title: "Apps", Description: "Build and launch small web apps", Category: "Features"},
-	{Slug: "activitypub", Filename: "ACTIVITYPUB.md", Title: "ActivityPub", Description: "Federation with Mastodon, Threads, etc.", Category: "Features"},
-	{Slug: "messaging", Filename: "MESSAGING_SYSTEM.md", Title: "Messaging", Description: "Email and messaging setup", Category: "Features"},
-	{Slug: "wallet", Filename: "WALLET_AND_CREDITS.md", Title: "Wallet & Credits", Description: "Credit system for usage", Category: "Features"},
-	{Slug: "discord", Filename: "DISCORD.md", Title: "Discord", Description: "Discord bot setup and usage", Category: "Features"},
-	{Slug: "telegram", Filename: "TELEGRAM.md", Title: "Telegram", Description: "Telegram bot setup and usage", Category: "Features"},
-
-	// Reference
-	{Slug: "environment", Filename: "ENVIRONMENT_VARIABLES.md", Title: "Configuration", Description: "Environment variables", Category: "Reference"},
-	{Slug: "compatibility", Filename: "COMPATIBILITY.md", Title: "Compatibility", Description: "What's stable, and what happens to your data", Category: "Reference"},
+	{Slug: "environment", Filename: "ENVIRONMENT_VARIABLES.md", Title: "Configuration", Description: "Every setting the code reads", Category: "Reference"},
+	{Slug: "architecture", Filename: "ARCHITECTURE.md", Title: "Architecture", Description: "Services, the registry, and adding one", Category: "Reference"},
 	{Slug: "security", Filename: "SECURITY.md", Title: "Security", Description: "Threat model and review checklist", Category: "Reference"},
-	{Slug: "screenshots", Filename: "SCREENSHOTS.md", Title: "Screenshots", Description: "Application screenshots", Category: "Reference"},
-
-	// Developer (accessible but not prominent)
-	{Slug: "system-design", Filename: "SYSTEM_DESIGN.md", Title: "System Design", Description: "Architecture overview", Category: "Developer"},
-	{Slug: "whitepaper", Filename: "WHITEPAPER.md", Title: "Whitepaper", Description: "Full network overview and future direction", Category: "Developer"},
+	{Slug: "principles", Filename: "PRINCIPLES.md", Title: "Principles", Description: "Guiding principles for AI and technology", Category: "Reference"},
 }
 
 // Load initializes the docs building block.

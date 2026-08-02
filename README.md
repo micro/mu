@@ -162,7 +162,7 @@ Discord: `/agent`, `/news`, `/markets`, `/weather`, `/mail`, `/social`, `/blog`,
 `/video`, `/search`, `/apps`, `/balance`, `/usage`.
 Telegram: `/agent`, `/ask`, `/news`, `/markets`, `/weather`, `/usage`.
 
-See [Discord docs](docs/DISCORD.md) and [Telegram docs](docs/TELEGRAM.md).
+Setup for both is in [Installation](docs/INSTALLATION.md).
 
 ## Self-hosting
 
