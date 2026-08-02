@@ -10,21 +10,21 @@ import (
 // RPC endpoints and, through the agent and gateways, as AI tools.
 type Server struct{}
 
-// HeadlinesRequest filters the headline list.
-type HeadlinesRequest struct {
+// ListRequest filters the headline list.
+type ListRequest struct {
 	Topic string `json:"topic" description:"Optional topic/category filter (e.g. tech, world, business)"`
 	Limit int    `json:"limit" description:"Optional max number of headlines (default 30)"`
 }
 
-// HeadlinesResponse is a model-ready list of headlines.
-type HeadlinesResponse struct {
+// ListResponse is a model-ready list of headlines.
+type ListResponse struct {
 	Text string `json:"text" description:"Recent headlines with short summaries, balanced across topics"`
 }
 
-// Headlines returns recent news headlines with short summaries, balanced across
+// List returns recent news headlines with short summaries, balanced across
 // topics (not dominated by one topic like crypto).
 // @example {"topic": "tech"}
-func (Server) Headlines(_ context.Context, req *HeadlinesRequest, rsp *HeadlinesResponse) error {
+func (Server) List(_ context.Context, req *ListRequest, rsp *ListResponse) error {
 	rsp.Text = HeadlinesText(req.Topic, req.Limit)
 	return nil
 }
@@ -68,7 +68,7 @@ func (Server) Search(_ context.Context, req *SearchRequest, rsp *SearchResponse)
 }
 
 var toolDocs = service.Docs{
-	"Headlines": "Read recent news headlines with short summaries, balanced across topics",
-	"Read":      "Read one news article in full by its id or URL",
-	"Search":    "Search indexed and live news for a topic",
+	"List":   "Read recent news headlines with short summaries, balanced across topics",
+	"Read":   "Read one news article in full by its id or URL",
+	"Search": "Search indexed and live news for a topic",
 }

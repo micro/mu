@@ -95,7 +95,7 @@ var agentToolLabels = map[string]string{
 	"social":  "Social",
 	"video":   "Video",
 	"blog":    "Blog",
-	"search":  "Search",
+	"web":     "Search",
 	"places":  "Places",
 	"index":   "Index",
 	"apps":    "Apps",
@@ -103,7 +103,6 @@ var agentToolLabels = map[string]string{
 	"images":  "Images",
 	"islam":   "Islam",
 	"events":  "Events",
-	"web":     "Web",
 	"chat":    "Chat",
 	"stream":  "Stream",
 	"db":      "Storage",
@@ -458,12 +457,15 @@ func nativeToolFormatterName(name string) string {
 			switch method {
 			case "search":
 				return "news_search"
-			case "headlines":
-				return "news_headlines"
+			case "list":
+				return "news_list"
 			default:
 				return "news"
 			}
-		case "search":
+		case "web":
+			if method == "fetch" {
+				return "web_fetch"
+			}
 			return "web_search"
 		}
 	}
@@ -492,7 +494,7 @@ func nativeToolTitle(name string) string {
 		return "video"
 	case "blog":
 		return "blog"
-	case "search":
+	case "web":
 		return "search"
 	case "recall", "index":
 		return "memory"
@@ -531,7 +533,7 @@ func nativeToolLabel(name string) (label string, show bool) {
 		return "📺 Finding videos", true
 	case "blog":
 		return "📝 Reading the blog", true
-	case "search":
+	case "web":
 		return "🔎 Searching the web", true
 	case "recall", "index":
 		return "🧠 Recalling your data", true

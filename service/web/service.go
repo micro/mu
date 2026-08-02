@@ -1,14 +1,18 @@
-// Package web is the read-a-URL capability: fetch a page and return its
-// cleaned, readable content.
+// Package web is the open web as a capability: search it, and read a page from
+// it. Two jobs, one domain — the same way news is Headlines + Read + Search and
+// places is Search + Nearby + Geocode. A service groups by what it is about,
+// not by how many things it does.
 //
-// It is a service in its own right rather than a method on search because the
-// two are different jobs — search queries a paid index, web reads a page you
-// already have the address of — and because everything else about this
-// capability was already called "web": the routes are /web/fetch and
-// /web/preview, and the tool has always carried the web_fetch name. Only the
-// service disagreed.
+// This is where web search lives too, rather than in a service of its own
+// called "search". Every other service is named for a thing — news, mail,
+// markets, places — and "search" was named for an action, which is why its one
+// method had to be called Search: service.Method degenerated to search.Search,
+// and the tool name to search_search. Naming the domain fixes it at the source
+// and gives web_search alongside web_fetch, matching the routes (/web/fetch,
+// /web/read) that already said "web".
 //
-// Headless, like index: a capability with no page of its own.
+// Headless, like index: the /search page is a surface over this service, not a
+// service of its own.
 package web
 
 import (
@@ -22,6 +26,24 @@ import (
 // Server is the service handler. Its methods are exposed as RPC endpoints and,
 // through the agent and gateways, as AI tools.
 type Server struct{}
+
+// SearchRequest is a web search query.
+type SearchRequest struct {
+	Query string `json:"query" description:"Search query"`
+	Limit int    `json:"limit" description:"Optional max number of results"`
+}
+
+// SearchResponse is a model-ready set of results.
+type SearchResponse struct {
+	Text string `json:"text" description:"Search results for the query"`
+}
+
+// Search searches the web for current information and news.
+// @example {"query": "latest AI news"}
+func (Server) Search(_ context.Context, req *SearchRequest, rsp *SearchResponse) error {
+	rsp.Text = search.WebSearchText(req.Query, req.Limit)
+	return nil
+}
 
 // FetchRequest names the page to read.
 type FetchRequest struct {
@@ -60,5 +82,6 @@ func Load() {
 }
 
 var toolDocs = service.Docs{
-	"Fetch": "Fetch a web page by URL and return its readable content",
+	"Search": "Search the web for current information and news",
+	"Fetch":  "Fetch a web page by URL and return its readable content",
 }

@@ -578,9 +578,9 @@ func main() {
 		},
 		Handle: func(args map[string]any) (string, error) {
 			q, _ := args["q"].(string)
-			var rsp search.SearchResponse
-			if err := service.Call(context.Background(), "search", "Server.Search",
-				&search.SearchRequest{Query: q}, &rsp); err != nil {
+			var rsp web.SearchResponse
+			if err := service.Call(context.Background(), "web", "Server.Search",
+				&web.SearchRequest{Query: q}, &rsp); err != nil {
 				return "", err
 			}
 			return rsp.Text, nil
@@ -618,9 +618,9 @@ func main() {
 			case string:
 				fmt.Sscanf(v, "%d", &limit)
 			}
-			var rsp news.HeadlinesResponse
-			if err := service.Call(context.Background(), "news", "Server.Headlines",
-				&news.HeadlinesRequest{Topic: topic, Limit: limit}, &rsp); err != nil {
+			var rsp news.ListResponse
+			if err := service.Call(context.Background(), "news", "Server.List",
+				&news.ListRequest{Topic: topic, Limit: limit}, &rsp); err != nil {
 				return "", err
 			}
 			return rsp.Text, nil
@@ -787,9 +787,9 @@ func main() {
 		},
 		Handle: func(args map[string]any) (string, error) {
 			category, _ := args["category"].(string)
-			var rsp markets.PricesResponse
-			if err := service.Call(context.Background(), "markets", "Server.Prices",
-				&markets.PricesRequest{Category: category}, &rsp); err != nil {
+			var rsp markets.ListResponse
+			if err := service.Call(context.Background(), "markets", "Server.List",
+				&markets.ListRequest{Category: category}, &rsp); err != nil {
 				return "", err
 			}
 			return rsp.Text, nil
@@ -976,9 +976,9 @@ func main() {
 		Aliases:     []string{"social"},
 		Description: "Get the latest social posts from the network.",
 		Handle: func(args map[string]any) (string, error) {
-			var rsp social.FeedResponse
-			if err := service.Call(context.Background(), "social", "Server.Feed",
-				&social.FeedRequest{}, &rsp); err != nil {
+			var rsp social.ListResponse
+			if err := service.Call(context.Background(), "social", "Server.List",
+				&social.ListRequest{}, &rsp); err != nil {
 				return "", err
 			}
 			return rsp.Text, nil
@@ -991,9 +991,9 @@ func main() {
 		Aliases:     []string{"video"},
 		Description: "Get the latest videos from curated channels.",
 		Handle: func(args map[string]any) (string, error) {
-			var rsp video.LatestResponse
-			if err := service.Call(context.Background(), "video", "Server.Latest",
-				&video.LatestRequest{}, &rsp); err != nil {
+			var rsp video.ListResponse
+			if err := service.Call(context.Background(), "video", "Server.List",
+				&video.ListRequest{}, &rsp); err != nil {
 				return "", err
 			}
 			return rsp.Text, nil
@@ -1005,9 +1005,9 @@ func main() {
 		Name:        "blog_list",
 		Description: "Get recent blog posts (titles, snippets and ids; use blog_read for one in full).",
 		Handle: func(args map[string]any) (string, error) {
-			var rsp blog.RecentResponse
-			if err := service.Call(context.Background(), "blog", "Server.Recent",
-				&blog.RecentRequest{}, &rsp); err != nil {
+			var rsp blog.ListResponse
+			if err := service.Call(context.Background(), "blog", "Server.List",
+				&blog.ListRequest{}, &rsp); err != nil {
 				return "", err
 			}
 			return rsp.Text, nil

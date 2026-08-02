@@ -9,23 +9,23 @@ import (
 // Server is the go-micro service handler for social.
 type Server struct{}
 
-// FeedRequest controls how many posts to return.
-type FeedRequest struct {
+// ListRequest controls how many posts to return.
+type ListRequest struct {
 	Limit int `json:"limit" description:"Optional max number of posts (default all recent)"`
 }
 
-// FeedResponse is a model-ready social feed.
-type FeedResponse struct {
+// ListResponse is a model-ready social feed.
+type ListResponse struct {
 	Text string `json:"text" description:"Latest social posts from the network"`
 }
 
-// Feed returns the latest social posts from the network.
+// List returns the latest social posts from the network.
 // @example {}
-func (Server) Feed(_ context.Context, req *FeedRequest, rsp *FeedResponse) error {
+func (Server) List(_ context.Context, req *ListRequest, rsp *ListResponse) error {
 	rsp.Text = FeedText(req.Limit)
 	return nil
 }
 
 var toolDocs = service.Docs{
-	"Feed": "Read the latest social posts from the network",
+	"List": "Read the latest social posts from the network",
 }

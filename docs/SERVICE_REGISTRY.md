@@ -22,12 +22,28 @@ Services live under `service/<name>/`. `internal/service` is the runtime core
 that hosts them — it is not itself a service.
 
 The exception is a **headless** service: a capability with no page, so no route
-and no nav entry. `index`, `web` and `db` are headless — they exist for the
+and no nav entry. `index` and `db` are headless — they exist for the
 agent, for apps and for other services to call.
 
 Two footnotes. `wallet` has a page that predates its service; both are the same
-capability with two surfaces. And `/web` still 301s to `/search` for old links,
-from when fetching lived inside search — the `web` service itself has no page.
+capability with two surfaces. And the `web` service is reached at `/search`,
+because "Search" is what a person looks for in the sidebar while `web` is what
+the capability is about. The nav label is for humans; the service name is for
+callers. `/web` still 301s to `/search` for old links.
+
+**A service is named for a domain, not for an action.** Every one is a noun —
+`news`, `mail`, `places`, `web` — and its methods say what to do with that
+domain. This is not style: tool names are derived as `service_method`, so a
+service named for an action leaves its main method nothing to be called but the
+same word. `search` used to be a service, its one method had to be `Search`, and
+the derived tool name was `search_search`. Web search is now `web.Search`
+alongside `web.Fetch`, matching the `/web/fetch` and `/web/read` routes.
+`TestNoMethodRepeatsItsService` holds the line.
+
+Methods that return the current set of something are all called `List` —
+`news.List`, `blog.List`, `social.List`, `video.List`, `markets.List`,
+`stream.List`, `events.List`, `db.List` — so the derived names are uniform and
+guessable.
 
 ## What is registered
 
@@ -45,13 +61,12 @@ from when fetching lived inside search — the `web` service itself has no page.
 | `markets` | /markets | ✅ |  | Crypto, futures, commodities, currencies |
 | `news` | /news | ✅ |  | RSS aggregation, sentiment, search |
 | `places` | /places | ✅ |  | Maps and points of interest |
-| `search` | /search | ✅ |  | Web search |
 | `social` | /social | ✅ |  | Threads, replies, status |
 | `stream` | /stream | ✅ |  | The console: this instance's own timeline |
 | `video` | /video | ✅ |  | Search and playback |
 | `wallet` | /wallet | ✅ | ✅ | Credit check, charge, balance |
 | `weather` | /weather | ✅ |  | Forecast and pollen |
-| `web` | — | ✅ |  | Fetch a URL, return readable content |
+| `web` | /search | ✅ |  | Search the web; fetch a URL and return readable content |
 
 ## Account-scoped
 
