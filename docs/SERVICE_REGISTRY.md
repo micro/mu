@@ -8,7 +8,7 @@ of registered services: the agent's tools, the `/agent/new` picker, what apps
 can call through the SDK, and the status page. Register a service and those
 surfaces pick it up with no further wiring.
 
-Each service lives in its own top-level directory named after it and registers
+Each service lives in its own directory under `service/`, named after it, and registers
 with `service.Register("name", new(Server))`. The handler is plain typed Go —
 `func (Server) Method(ctx, *Req, *Rsp) error` — and the `description` struct
 tags on request and response fields become the tool schema. There is no
@@ -17,6 +17,9 @@ manifest file; the types are the manifest.
 ## The convention
 
 **service name == directory == route == nav label == tool prefix**
+
+Services live under `service/<name>/`. `internal/service` is the runtime core
+that hosts them — it is not itself a service.
 
 The exception is a **headless** service: a capability with no page, so no route
 and no nav entry. `index`, `web` and `db` are headless. `wallet` has a page that
@@ -81,7 +84,7 @@ explain rather than retry.
 
 ## Adding one
 
-1. Create the directory, named for the service.
+1. Create `service/<name>/`, named for the service.
 2. Write `Server` with typed methods and `description` tags.
 3. `service.Register("name", new(Server))` from a `Load()`, called in `main.go`.
 4. If it holds per-user data or spends credits, add it to `accountScoped`.

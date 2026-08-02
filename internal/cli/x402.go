@@ -3,7 +3,7 @@ package cli
 import (
 	"fmt"
 
-	"mu/wallet"
+	"mu/service/wallet"
 )
 
 // runX402 prints the x402 configuration and, when CDP credentials are present

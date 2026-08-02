@@ -17,7 +17,7 @@ import (
 	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
-	"mu/wallet"
+	"mu/service/wallet"
 )
 
 // Model represents an available LLM model tier for agent queries.

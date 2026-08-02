@@ -10,7 +10,7 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/auth"
-	"mu/mail"
+	"mu/service/mail"
 )
 
 // AdminHandler shows the admin page with user management

@@ -8,7 +8,7 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/auth"
-	"mu/wallet"
+	"mu/service/wallet"
 )
 
 func PricingHandler(w http.ResponseWriter, r *http.Request) {

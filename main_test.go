@@ -4,7 +4,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"mu/wallet"
+	"mu/service/wallet"
 )
 
 func TestIsServerMode(t *testing.T) {

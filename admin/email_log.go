@@ -9,7 +9,7 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/auth"
-	"mu/mail"
+	"mu/service/mail"
 )
 
 // EmailLogHandler shows the email log page

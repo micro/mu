@@ -10,13 +10,13 @@ import (
 	"strings"
 	"time"
 
-	"mu/apps"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
 	"mu/internal/flag"
+	"mu/service/apps"
+	"mu/service/wallet"
 	"mu/user"
-	"mu/wallet"
 )
 
 // InviteHandler serves the admin invite page at /admin/invite.

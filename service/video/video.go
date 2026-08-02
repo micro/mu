@@ -1,0 +1,1216 @@
+package video
+
+import (
+	"context"
+	"embed"
+	"encoding/json"
+	"errors"
+	"fmt"
+	htmlpkg "html"
+	"io/ioutil"
+	"net/http"
+	"os"
+	"regexp"
+	"sort"
+	"strings"
+	"sync"
+	"time"
+
+	"google.golang.org/api/option"
+	"google.golang.org/api/youtube/v3"
+	"mu/internal/app"
+	"mu/internal/auth"
+	"mu/internal/data"
+	"mu/internal/service"
+	"mu/internal/snapshot"
+
+	"mu/service/wallet"
+)
+
+// cardSnap is the go-micro read-plane channel for the video card (store +
+// broker); see internal/snapshot and docs/GO_MICRO_ARCHITECTURE.md.
+var cardSnap *snapshot.Snapshot
+
+//go:embed channels.json
+var f embed.FS
+
+var mutex sync.RWMutex
+
+// category to channel mapping
+var channels = map[string]string{}
+
+// latest videos from channels
+var videos = map[string]Channel{}
+
+// latest video
+var latestHtml string
+
+// saved videos
+var videosHtml string
+
+type Channel struct {
+	Videos []*Result `json:"videos"`
+	Html   string    `json:"html"`
+}
+
+type Result struct {
+	ID          string    `json:"id"`
+	Type        string    `json:"type"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	URL         string    `json:"url"`
+	Html        string    `json:"html"`
+	Published   time.Time `json:"published"`
+	Channel     string    `json:"channel,omitempty"`
+	ChannelID   string    `json:"channel_id,omitempty"`
+	Category    string    `json:"category,omitempty"`
+	PlaylistID  string    `json:"playlist_id,omitempty"`
+	Thumbnail   string    `json:"thumbnail,omitempty"`
+}
+
+var Key = os.Getenv("YOUTUBE_API_KEY")
+
+var Client *youtube.Service
+
+func init() {
+	var err error
+	Client, err = youtube.NewService(context.TODO(), option.WithAPIKey(Key))
+	if err != nil {
+		app.Log("video", "Failed to initialize YouTube client: %v", err)
+	}
+	if Key == "" {
+		app.Log("video", "WARNING: YOUTUBE_API_KEY environment variable not set")
+	}
+}
+
+// Video styles are in mu.css
+
+var recentSearchesScript = `
+<script>
+  const MAX_RECENT_SEARCHES = 10;
+  const STORAGE_KEY = 'mu_recent_video_searches';
+
+  function escapeHTML(text) {
+    return text.replace(/&/g, '&amp;')
+               .replace(/</g, '&lt;')
+               .replace(/>/g, '&gt;')
+               .replace(/"/g, '&quot;')
+               .replace(/'/g, '&#039;');
+  }
+
+  function loadRecentSearches() {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch (e) {
+      console.error('Error loading recent searches:', e);
+      return [];
+    }
+  }
+
+  function saveRecentSearch(query) {
+    if (!query || !query.trim()) return;
+    
+    try {
+      let searches = loadRecentSearches();
+      
+      // Remove if already exists
+      searches = searches.filter(s => s !== query);
+      
+      // Add to beginning
+      searches.unshift(query);
+      
+      // Keep only MAX_RECENT_SEARCHES
+      if (searches.length > MAX_RECENT_SEARCHES) {
+        searches = searches.slice(0, MAX_RECENT_SEARCHES);
+      }
+      
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(searches));
+    } catch (e) {
+      console.error('Error saving recent search:', e);
+    }
+  }
+
+  function displayRecentSearches() {
+    const searches = loadRecentSearches();
+    const container = document.getElementById('recent-searches-container');
+    
+    if (!container) return;
+    
+    if (searches.length === 0) {
+      container.innerHTML = '';
+      return;
+    }
+    
+		// Get current query from input to highlight active search
+		const queryInput = document.getElementById('query');
+		const currentQuery = queryInput ? queryInput.value.trim() : '';
+    
+		let html = '<div class="recent-searches"><h3>Recent Searches</h3><div class="recent-searches-scroll">';
+		searches.forEach(search => {
+			const escaped = escapeHTML(search);
+			const isActive = currentQuery && search === currentQuery;
+			const activeClass = isActive ? ' active' : '';
+			// each item contains a label and a close button
+			html += '<span class="recent-search-item' + activeClass + '" data-query="' + escaped + '">'
+					 + '<span class="recent-search-label">' + escaped + '</span>'
+					 + '<span class="recent-search-close" title="Remove">&times;</span>'
+					 + '</span>';
+		});
+		html += '</div></div>';
+    
+    container.innerHTML = html;
+    
+    // Add click handlers
+		// Clicking the label triggers a search, clicking the close removes it
+		container.querySelectorAll('.recent-search-item').forEach(item => {
+			const label = item.querySelector('.recent-search-label');
+			const close = item.querySelector('.recent-search-close');
+
+			if (label) {
+				label.addEventListener('click', function(e) {
+					e.preventDefault();
+					e.stopPropagation();
+					const query = item.getAttribute('data-query');
+					
+					// Move clicked search to front
+					saveRecentSearch(query);
+					
+					const queryInput = document.getElementById('query');
+					const form = document.getElementById('video-search');
+					if (queryInput && form) {
+						queryInput.value = query;
+						form.submit();
+					}
+				});
+			}
+
+			if (close) {
+				close.addEventListener('click', function(e) {
+					e.preventDefault();
+					e.stopPropagation();
+					const q = item.getAttribute('data-query');
+					removeRecentSearch(q);
+				});
+			}
+		});
+  }
+
+	function removeRecentSearch(query) {
+		try {
+			let searches = loadRecentSearches();
+			searches = searches.filter(s => s !== query);
+			localStorage.setItem(STORAGE_KEY, JSON.stringify(searches));
+			displayRecentSearches();
+		} catch (e) {
+			console.error('Error removing recent search:', e);
+		}
+	}
+
+  // Save search when form is submitted
+  document.addEventListener('DOMContentLoaded', function() {
+    displayRecentSearches();
+    
+    const form = document.querySelector('form[action="/video"]');
+    if (form) {
+      form.addEventListener('submit', function() {
+        const queryInput = document.getElementById('query');
+        if (queryInput && queryInput.value && queryInput.value.trim()) {
+          saveRecentSearch(queryInput.value.trim());
+        }
+      });
+    }
+  });
+</script>
+`
+
+var Results = `<form id="video-search" class="search-bar" action="/video" method="GET">
+  <input name="query" id="query" type="text" value="%s">
+  <button type="submit">Search</button>
+</form>
+<div id="topics">%s</div>
+<div id="recent-searches-container"></div>
+<h1>Results</h1>
+<div id="results">
+%s
+</div>
+` + recentSearchesScript
+
+var PlaylistView = `<form id="video-search" class="search-bar" action="/video" method="GET">
+  <input name="query" id="query" type="text" placeholder="Search...">
+  <button type="submit">Search</button>
+</form>
+<div id="topics">%s</div>
+<div id="recent-searches-container"></div>
+<h1>Playlist</h1>
+<div id="results">
+%s
+</div>
+` + recentSearchesScript
+
+var ChannelView = `<form id="video-search" class="search-bar" action="/video" method="GET">
+  <input name="query" id="query" type="text" placeholder="Search...">
+  <button type="submit">Search</button>
+</form>
+<div id="topics">%s</div>
+<div id="recent-searches-container"></div>
+<h1>Channel</h1>
+%s
+<div id="results">
+%s
+</div>
+` + recentSearchesScript
+
+var Template = `<form id="video-search" class="search-bar" action="/video" method="GET">
+  <input name="query" id="query" type="text" placeholder="Search..." autocomplete="off">
+  <button type="submit">Search</button>
+</form>
+<div id="topics">%s</div>
+<div id="recent-searches-container"></div>
+<div>%s</div>
+` + recentSearchesScript
+
+func loadChannels() {
+	// load the feeds file
+	data, _ := f.ReadFile("channels.json")
+	// unpack into feeds
+	mutex.Lock()
+	if err := json.Unmarshal(data, &channels); err != nil {
+		app.Log("video", "Error parsing channels.json: %v", err)
+	}
+	app.Log("video", "Loaded %d channels from channels.json", len(channels))
+	mutex.Unlock()
+}
+
+// Load videos
+func Load() {
+	if err := service.Register("video", new(Server)); err != nil {
+		app.Log("video", "service register failed: %v", err)
+	}
+
+	// Loaded
+
+	// load channels
+	loadChannels()
+
+	// load saved videos.json
+	b, _ := data.LoadFile("videos.json")
+	json.Unmarshal(b, &videos)
+
+	app.Log("video", "Loaded %d channels from videos.json", len(videos))
+
+	// Regenerate HTML from cached JSON data
+	if len(videos) > 0 {
+		regenerateHTML()
+		app.Log("video", "Regenerated HTML from cached data")
+	} else {
+		// load saved HTML files if no JSON data
+		b, _ = data.LoadFile("latest.html")
+		latestHtml = string(b)
+
+		b, _ = data.LoadFile("videos.html")
+		videosHtml = string(b)
+		app.Log("video", "No cached JSON, loaded HTML files")
+	}
+
+	// Read plane: start the snapshot channel and warm the mirror with the
+	// disk/JSON-primed card so renders are served from the go-micro data plane.
+	cardSnap = snapshot.New("video")
+	mutex.RLock()
+	warm := latestHtml
+	mutex.RUnlock()
+	cardSnap.Publish(warm)
+
+	// load fresh videos
+	go loadVideos()
+}
+
+// regenerateHTML creates HTML from cached video data
+func regenerateHTML() {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	var head string
+	var body strings.Builder
+	var chanNames []string
+
+	var latest []*Result
+
+	// Collect latest from cached data
+	for channel, channelData := range videos {
+		if len(channelData.Videos) > 0 {
+			video := channelData.Videos[0]
+			// Populate Category if missing (for old cached data)
+			if video.Category == "" {
+				video.Category = channel
+			}
+			// Try to get Channel name and ID from indexed metadata if missing
+			if video.Channel == "" || video.ChannelID == "" {
+				if indexed := data.GetByID("video_" + video.ID); indexed != nil {
+					if video.Channel == "" {
+						if ch, ok := indexed.Metadata["channel"].(string); ok {
+							video.Channel = ch
+						}
+					}
+					if video.ChannelID == "" {
+						if chID, ok := indexed.Metadata["channel_id"].(string); ok {
+							video.ChannelID = chID
+						}
+					}
+				}
+			}
+			latest = append(latest, video)
+		}
+		chanNames = append(chanNames, channel)
+	}
+
+	// sort the latest by date
+	sort.Slice(latest, func(i, j int) bool {
+		return latest[i].Published.After(latest[j].Published)
+	})
+
+	// Generate latest HTML
+	if len(latest) > 0 {
+		res := latest[0]
+
+		thumbnailURL := res.Thumbnail
+		if thumbnailURL == "" {
+			thumbnailURL = fmt.Sprintf("https://i.ytimg.com/vi/%s/mqdefault.jpg", res.ID)
+		}
+
+		// Build info section with channel and category
+		var info string
+		if res.Channel != "" {
+			channelLink := res.Channel
+			if res.ChannelID != "" {
+				channelLink = fmt.Sprintf(`<a href="/video?channel=%s">%s</a>`, res.ChannelID, res.Channel)
+			}
+			info = fmt.Sprintf(`%s · <span data-timestamp="%d">%s</span>`, channelLink, res.Published.Unix(), app.TimeAgo(res.Published))
+		} else {
+			info = fmt.Sprintf(`<span data-timestamp="%d">%s</span>`, res.Published.Unix(), app.TimeAgo(res.Published))
+		}
+		if res.Category != "" {
+			info += fmt.Sprintf(` · <a href="/video#%s" class="highlight">%s</a>`, res.Category, res.Category)
+		}
+
+		latestHtml = fmt.Sprintf(`
+	<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a><div class="info">%s</div></div>`,
+			res.URL, thumbnailURL, res.Title, info)
+
+		// add to body
+		for _, res := range latest {
+			body.WriteString(res.Html)
+		}
+	}
+
+	// generate head
+	head = app.Head("video", chanNames)
+
+	// sort channel names
+	sort.Strings(chanNames)
+
+	// create body for channels
+	for _, channel := range chanNames {
+		body.WriteString(`<div class=section>`)
+		body.WriteString(`<hr id="` + channel + `" class="anchor">`)
+		fmt.Fprintf(&body, `<h1>%s</h1>`, channel)
+		body.WriteString(videos[channel].Html)
+		body.WriteString(`</div>`)
+	}
+
+	videosHtml = app.RenderHTML("Video", "Search for videos", fmt.Sprintf(Template, head, body.String()))
+
+	// Publish the rebuilt card snapshot (nil-safe before Load wires cardSnap).
+	cardSnap.Publish(latestHtml)
+}
+
+func loadVideos() {
+	app.Log("video", "Loading videos")
+
+	mutex.RLock()
+	chans := channels
+	mutex.RUnlock()
+
+	vids := make(map[string]Channel)
+
+	// create head
+	var head string
+	var body strings.Builder
+	var chanNames []string
+
+	var latest []*Result
+
+	// get results
+	for channel, handle := range chans {
+		app.Log("video", "Fetching channel: %s (@%s)", channel, handle)
+		html, res, err := getChannel(channel, handle)
+		if err != nil {
+			app.Log("video", "Error getting channel %s (@%s): %v", channel, handle, err)
+			continue
+		}
+		if len(res) == 0 {
+			app.Log("video", "No results for channel %s (@%s)", channel, handle)
+			continue
+		}
+		app.Log("video", "Got %d videos for channel %s", len(res), channel)
+		// latest
+		latest = append(latest, res[0])
+
+		vids[channel] = Channel{
+			Videos: res,
+			Html:   html,
+		}
+	}
+
+	// sort the latest by date
+	sort.Slice(latest, func(i, j int) bool {
+		return latest[i].Published.After(latest[j].Published)
+	})
+
+	// Check if we got any videos
+	if len(latest) == 0 {
+		app.Log("video", "WARNING: No videos loaded from any channel. Check YouTube API key and channel handles.")
+		mutex.Lock()
+		videos = vids
+		mutex.Unlock()
+		time.Sleep(time.Hour)
+		go loadVideos()
+		return
+	}
+
+	// add to body
+	for _, res := range latest {
+		body.WriteString(res.Html)
+	}
+
+	// get chan names and sort
+	for channel, _ := range channels {
+		chanNames = append(chanNames, channel)
+	}
+
+	// generate head
+	head = app.Head("video", chanNames)
+
+	// sort channel names
+	sort.Strings(chanNames)
+
+	// create head for channels
+	for _, channel := range chanNames {
+		body.WriteString(`<div class=section>`)
+		body.WriteString(`<hr id="` + channel + `" class="anchor">`)
+		fmt.Fprintf(&body, `<h1>%s</h1>`, channel)
+		body.WriteString(vids[channel].Html)
+		body.WriteString(`</div>`)
+	}
+
+	vidHtml := app.RenderHTML("Video", "Search for videos", fmt.Sprintf(Template, head, body.String()))
+	b, _ := json.Marshal(vids)
+	vidJson := string(b)
+
+	mutex.Lock()
+	data.SaveFile("videos.html", vidHtml)
+	data.SaveFile("videos.json", vidJson)
+	if len(latest) > 0 {
+		// Generate proper latest HTML with channel and category links
+		res := latest[0]
+		thumbnailURL := res.Thumbnail
+		if thumbnailURL == "" {
+			thumbnailURL = fmt.Sprintf("https://i.ytimg.com/vi/%s/mqdefault.jpg", res.ID)
+		}
+
+		var info string
+		if res.Channel != "" {
+			channelLink := res.Channel
+			if res.ChannelID != "" {
+				channelLink = fmt.Sprintf(`<a href="/video?channel=%s">%s</a>`, res.ChannelID, res.Channel)
+			}
+			info = fmt.Sprintf(`%s · <span data-timestamp="%d">%s</span>`, channelLink, res.Published.Unix(), app.TimeAgo(res.Published))
+		} else {
+			info = fmt.Sprintf(`<span data-timestamp="%d">%s</span>`, res.Published.Unix(), app.TimeAgo(res.Published))
+		}
+		if res.Category != "" {
+			info += fmt.Sprintf(` · <a href="/video#%s" class="highlight">%s</a>`, res.Category, res.Category)
+		}
+
+		latestHtml = fmt.Sprintf(`
+	<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a><div class="info">%s</div></div>`,
+			res.URL, thumbnailURL, res.Title, info)
+		data.SaveFile("latest.html", latestHtml)
+	}
+	videos = vids
+	videosHtml = vidHtml
+	lh := latestHtml
+	mutex.Unlock()
+
+	// Publish the refreshed card snapshot to the go-micro store + broker.
+	cardSnap.Publish(lh)
+
+	time.Sleep(time.Hour)
+	go loadVideos()
+}
+
+func embedVideo(id string) string {
+	return embedVideoWithAutoplay(id, false)
+}
+
+// validVideoID matches a YouTube video ID. IDs reach here straight from
+// ?id= on /video, and the result is interpolated into an iframe src, so
+// anything outside this character set could close the attribute and inject
+// markup. Reject rather than escape: a non-conforming ID is never valid.
+var validVideoID = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,64}$`)
+
+func embedVideoWithAutoplay(id string, autoplay bool) string {
+	if !validVideoID.MatchString(id) {
+		return `<p class="text-muted">Invalid video ID.</p>`
+	}
+	u := "https://www.youtube.com/embed/" + id + "?enablejsapi=1&playsinline=1"
+	if autoplay {
+		u += "&autoplay=1"
+	}
+	style := `style="position: absolute; top: 0; left: 0; right: 0; width: 100%; height: 100%; border: none;"`
+	return `<iframe id="ytplayer" width="560" height="315" ` + style + ` src="` + u + `" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" playsinline allowfullscreen></iframe>`
+}
+
+func getChannel(category, handle string) (string, []*Result, error) {
+	if Client == nil {
+		return "", nil, fmt.Errorf("No client")
+	}
+
+	// Get the channel details using the handle
+	call := Client.Channels.List([]string{"contentDetails"}).ForHandle(handle)
+	response, err := call.Do()
+	if err != nil {
+		return "", nil, err
+	}
+
+	if len(response.Items) == 0 {
+		return "", nil, errors.New("no items")
+	}
+
+	channel := response.Items[0]
+	uploadsPlaylistID := channel.ContentDetails.RelatedPlaylists.Uploads
+	channelID := channel.Id
+
+	app.Log("video", "Channel ID for @%s: %s\n", handle, channelID)
+	app.Log("video", "Uploads Playlist ID: %s\n", uploadsPlaylistID)
+
+	listVideosCall := Client.PlaylistItems.List([]string{"id", "snippet"}).PlaylistId(uploadsPlaylistID).MaxResults(25)
+	resp, err := listVideosCall.Do()
+	if err != nil {
+		return "", nil, err
+	}
+
+	var results []*Result
+	var sb strings.Builder
+
+	for _, item := range resp.Items {
+		var id, url string
+		kind := strings.Split(item.Kind, "#")[1]
+
+		// Parse ISO 8601 timestamp with multiple format attempts
+		var t time.Time
+		var err error
+		if t, err = time.Parse(time.RFC3339, item.Snippet.PublishedAt); err != nil {
+			// Try with milliseconds
+			if t, err = time.Parse("2006-01-02T15:04:05.000Z", item.Snippet.PublishedAt); err != nil {
+				// Try without timezone
+				if t, err = time.Parse("2006-01-02T15:04:05", item.Snippet.PublishedAt); err != nil {
+					app.Log("video", "Failed to parse ISO 8601 timestamp for %s: '%s' - using current time", item.Snippet.Title, item.Snippet.PublishedAt)
+					t = time.Now()
+				}
+			}
+		}
+
+		switch kind {
+		case "playlistItem":
+			id = item.Snippet.ResourceId.VideoId
+			kind = category
+			url = "/video?id=" + id
+		case "video":
+			id = item.Snippet.ResourceId.VideoId
+			url = "/video?id=" + id
+		case "playlist":
+			id = item.Snippet.PlaylistId
+			url = "/video?playlist=" + id
+		case "channel":
+			id = item.Snippet.ChannelId
+			url = "/video?channel=" + id
+		}
+
+		thumbnailURL := ""
+		if item.Snippet.Thumbnails != nil && item.Snippet.Thumbnails.Medium != nil {
+			thumbnailURL = item.Snippet.Thumbnails.Medium.Url
+		}
+
+		res := &Result{
+			ID:          id,
+			Type:        kind,
+			Title:       item.Snippet.Title,
+			Description: item.Snippet.Description,
+			URL:         url,
+			Published:   t,
+			Channel:     item.Snippet.ChannelTitle,
+			ChannelID:   item.Snippet.ChannelId,
+			Category:    category,
+			PlaylistID:  uploadsPlaylistID,
+			Thumbnail:   thumbnailURL,
+		}
+
+		// All links are now internal
+		controls := app.StaticControls("video", id)
+		html := fmt.Sprintf(`
+	<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a><div class="info"><a href="/video?channel=%s">%s</a> · %s · <a href="/video#%s" class="highlight">%s</a>%s</div></div>`,
+			url, thumbnailURL, item.Snippet.Title, item.Snippet.ChannelId, item.Snippet.ChannelTitle, app.TimeAgo(t), category, category, controls)
+		sb.WriteString(html)
+		res.Html = html
+
+		// Append to results
+		results = append(results, res)
+
+		// Index the video for search/RAG
+		data.Index(
+			"video_"+id,
+			"video",
+			item.Snippet.Title,
+			item.Snippet.Description,
+			map[string]interface{}{
+				"url":        url,
+				"category":   category,
+				"channel":    item.Snippet.ChannelTitle,
+				"channel_id": item.Snippet.ChannelId,
+				"published":  t,
+				"thumbnail":  thumbnailURL,
+			},
+		)
+	}
+
+	return sb.String(), results, nil
+}
+
+func getResults(query, channel string) (string, []*Result, error) {
+	if Client == nil {
+		return "", nil, fmt.Errorf("No client")
+	}
+
+	scall := Client.Search.List([]string{"id", "snippet"}).SafeSearch("strict").MaxResults(25)
+
+	if len(channel) > 0 {
+		scall = scall.ChannelId(channel)
+	}
+
+	if len(query) > 0 {
+		scall = scall.Q(query)
+	}
+
+	resp, err := scall.Do()
+	if err != nil {
+		return "", nil, err
+	}
+
+	var results []*Result
+	var sb strings.Builder
+
+	for _, item := range resp.Items {
+		var id, url, desc string
+		kind := strings.Split(item.Id.Kind, "#")[1]
+
+		// Parse ISO 8601 timestamp with multiple format attempts
+		var t time.Time
+		var err error
+		if t, err = time.Parse(time.RFC3339, item.Snippet.PublishedAt); err != nil {
+			// Try with milliseconds
+			if t, err = time.Parse("2006-01-02T15:04:05.000Z", item.Snippet.PublishedAt); err != nil {
+				// Try without timezone
+				if t, err = time.Parse("2006-01-02T15:04:05", item.Snippet.PublishedAt); err != nil {
+					app.Log("video", "Failed to parse ISO 8601 timestamp for %s: '%s' - using current time", item.Snippet.Title, item.Snippet.PublishedAt)
+					t = time.Now()
+				}
+			}
+		}
+
+		switch kind {
+		case "video":
+			id = item.Id.VideoId
+			url = "/video?id=" + id
+			desc = fmt.Sprintf(`%s · <span class="highlight">%s</span>`, app.TimeAgo(t), kind)
+		case "playlist":
+			id = item.Id.PlaylistId
+			url = "/video?playlist=" + id
+			desc = fmt.Sprintf(`%s · <span class="highlight">%s</span>`, app.TimeAgo(t), kind)
+		case "channel":
+			id = item.Id.ChannelId
+			url = "/video?channel=" + id
+			desc = `<span class="highlight">channel</span>`
+		}
+
+		thumbnailURL := ""
+		if item.Snippet.Thumbnails != nil && item.Snippet.Thumbnails.Medium != nil {
+			thumbnailURL = item.Snippet.Thumbnails.Medium.Url
+		}
+
+		res := &Result{
+			ID:        id,
+			Type:      kind,
+			Title:     item.Snippet.Title,
+			URL:       url,
+			Published: t,
+			Channel:   item.Snippet.ChannelTitle,
+			ChannelID: item.Snippet.ChannelId,
+			Thumbnail: thumbnailURL,
+		}
+
+		if kind == "playlist" {
+			res.PlaylistID = id
+		}
+
+		if kind == "channel" {
+			results = append([]*Result{res}, results...)
+		} else {
+			// returning json results
+			results = append(results, res)
+		}
+
+		// All links are now internal
+		html := fmt.Sprintf(`
+			<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a><a href="/video?channel=%s">%s</a> · %s</div>`,
+			url, thumbnailURL, item.Snippet.Title, item.Snippet.ChannelId, item.Snippet.ChannelTitle, desc)
+		sb.WriteString(html)
+		res.Html = html
+	}
+
+	return sb.String(), results, nil
+}
+
+func Latest() string {
+	// Serve the broker-fed snapshot mirror (go-micro read plane); fall back to
+	// the locally-cached HTML if no snapshot has arrived yet.
+	if s := cardSnap.Get(); s != "" {
+		return s
+	}
+	mutex.RLock()
+	defer mutex.RUnlock()
+	return latestHtml
+}
+
+// GetLatestVideos returns up to n most recently published videos across all channels.
+func GetLatestVideos(n int) []*Result {
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	var all []*Result
+	for _, ch := range videos {
+		all = append(all, ch.Videos...)
+	}
+	sort.Slice(all, func(i, j int) bool {
+		return all[i].Published.After(all[j].Published)
+	})
+	if n > 0 && len(all) > n {
+		all = all[:n]
+	}
+	return all
+}
+
+func Handler(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+
+	// Don't let browsers (esp. mobile, which caches HTML heuristically when no
+	// cache headers are sent) hold a stale listing/search page. Older pages
+	// linked videos to YouTube directly; without this they keep serving those
+	// external links and miss the internal /video?id= watch page (audio mode).
+	w.Header().Set("Cache-Control", "no-cache")
+
+	ct := r.Header.Get("Content-Type")
+
+	// create head
+	var chanNames []string
+	for channel, _ := range channels {
+		chanNames = append(chanNames, channel)
+	}
+	sort.Strings(chanNames)
+
+	var headSB strings.Builder
+	for _, channel := range chanNames {
+		fmt.Fprintf(&headSB, `<a href="/video#%s" class="head">%s</a>`, channel, channel)
+	}
+	head := headSB.String()
+
+	// Handle GET with query parameter (search)
+	if r.Method == "GET" {
+		query := r.URL.Query().Get("query")
+		if len(query) > 0 {
+			// Require authentication for search
+			sess, _, err := auth.RequireSession(r)
+			if err != nil {
+				app.Unauthorized(w, r)
+				return
+			}
+
+			// Limit query length to prevent abuse
+			if len(query) > 256 {
+				app.BadRequest(w, r, "Search query must not exceed 256 characters")
+				return
+			}
+
+			// Check quota before search
+			canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, wallet.OpVideoSearch)
+			if !canProceed {
+				content := wallet.QuotaExceededPage(wallet.OpVideoSearch, cost)
+				html := app.RenderHTMLForRequest("Quota Exceeded", "Daily limit reached", content, r)
+				w.Write([]byte(html))
+				return
+			}
+
+			// fetch results from api
+			results, _, err := getResults(query, "")
+			if err != nil {
+				http.Error(w, err.Error(), 500)
+				return
+			}
+
+			// Consume quota after successful search
+			wallet.ConsumeQuota(sess.Account, wallet.OpVideoSearch)
+
+			html := app.RenderHTML("Video", query+" | Results", fmt.Sprintf(Results, htmlpkg.EscapeString(query), head, results))
+			w.Write([]byte(html))
+			return
+		}
+	}
+
+	// if r.Method == "POST" {
+	if r.Method == "POST" {
+		// Require authentication for search
+		sess, _, err := auth.RequireSession(r)
+		if err != nil {
+			app.Unauthorized(w, r)
+			return
+		}
+
+		var query string
+		var channel string
+
+		if ct == "application/json" {
+			var reqData map[string]interface{}
+
+			b, _ := ioutil.ReadAll(r.Body)
+			json.Unmarshal(b, &reqData)
+
+			if v := reqData["query"]; v != nil {
+				query = fmt.Sprintf("%v", v)
+			}
+
+			if v := reqData["channel"]; v != nil {
+				channel = fmt.Sprintf("%v", v)
+			}
+
+			mutex.RLock()
+			chanId := channels[channel]
+			mutex.RUnlock()
+
+			if len(query) == 0 && len(chanId) == 0 {
+				return
+			}
+
+			// Check quota before search (only for actual queries, not channel browsing)
+			if len(query) > 0 {
+				canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, wallet.OpVideoSearch)
+				if !canProceed {
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(402) // Payment Required
+					json.NewEncoder(w).Encode(map[string]interface{}{
+						"error":   "quota_exceeded",
+						"message": "Daily search limit reached. Please top up credits at /wallet",
+						"cost":    cost,
+					})
+					return
+				}
+			}
+
+			// fetch results from api
+			html, results, err := getResults(query, chanId)
+			if err != nil {
+				http.Error(w, err.Error(), 500)
+				return
+			}
+
+			// Consume quota after successful search (only for actual queries)
+			if len(query) > 0 {
+				wallet.ConsumeQuota(sess.Account, wallet.OpVideoSearch)
+			}
+
+			res := map[string]interface{}{
+				"results": results,
+				"html":    html,
+			}
+			b, _ = json.Marshal(res)
+			w.Write(b)
+			return
+		}
+
+		query = r.Form.Get("query")
+		channel = r.Form.Get("channel")
+		mutex.RLock()
+		chanId := channels[channel]
+		mutex.RUnlock()
+
+		if len(query) == 0 && len(chanId) == 0 {
+			return
+		}
+
+		// Check quota before search (only for actual queries, not channel browsing)
+		if len(query) > 0 {
+			canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, wallet.OpVideoSearch)
+			if !canProceed {
+				content := wallet.QuotaExceededPage(wallet.OpVideoSearch, cost)
+				html := app.RenderHTMLForRequest("Quota Exceeded", "Daily limit reached", content, r)
+				w.Write([]byte(html))
+				return
+			}
+		}
+
+		// fetch results from api
+		results, _, err := getResults(query, chanId)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+
+		// Consume quota after successful search (only for actual queries)
+		if len(query) > 0 {
+			wallet.ConsumeQuota(sess.Account, wallet.OpVideoSearch)
+		}
+
+		head = ""
+
+		html := app.RenderHTML("Video", query+" | Results", fmt.Sprintf(Results, htmlpkg.EscapeString(query), head, results))
+		w.Write([]byte(html))
+		return
+	}
+
+	// Watch video
+	id := r.Form.Get("id")
+	playlistID := r.Form.Get("playlist")
+	channelID := r.Form.Get("channel")
+
+	// Handle playlist view
+	if len(playlistID) > 0 {
+		if Client == nil {
+			http.Error(w, "YouTube API not available", 500)
+			return
+		}
+
+		// Get playlist details
+		playlistCall := Client.Playlists.List([]string{"snippet"}).Id(playlistID)
+		playlistResp, err := playlistCall.Do()
+
+		playlistTitle := "Playlist"
+		playlistDesc := ""
+		if err == nil && playlistResp != nil && len(playlistResp.Items) > 0 {
+			playlistTitle = playlistResp.Items[0].Snippet.Title
+			playlistDesc = playlistResp.Items[0].Snippet.Description
+			if len(playlistDesc) > 500 {
+				playlistDesc = playlistDesc[:500] + "..."
+			}
+			if playlistDesc != "" {
+				playlistDesc = "<p>" + playlistDesc + "</p>"
+			}
+		}
+
+		listVideosCall := Client.PlaylistItems.List([]string{"id", "snippet"}).PlaylistId(playlistID).MaxResults(50)
+		resp, err := listVideosCall.Do()
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+
+		var resultsSB strings.Builder
+		for _, item := range resp.Items {
+			if item.Snippet == nil || item.Snippet.ResourceId == nil {
+				continue
+			}
+			videoID := item.Snippet.ResourceId.VideoId
+			if videoID == "" {
+				continue
+			}
+
+			t, _ := time.Parse(time.RFC3339, item.Snippet.PublishedAt)
+			desc := fmt.Sprintf(`<span class="highlight">video</span> · <small>%s</small>`, app.TimeAgo(t))
+			channel := fmt.Sprintf(`<a href="/video?channel=%s">%s</a>`, item.Snippet.ChannelId, item.Snippet.ChannelTitle)
+
+			thumbnailURL := ""
+			if item.Snippet.Thumbnails != nil && item.Snippet.Thumbnails.Medium != nil {
+				thumbnailURL = item.Snippet.Thumbnails.Medium.Url
+			}
+
+			fmt.Fprintf(&resultsSB, `
+		<div class="thumbnail"><a href="/video?id=%s"><img src="%s"><h3>%s</h3></a>%s · %s</div>`,
+				videoID, thumbnailURL, item.Snippet.Title, channel, desc)
+		}
+
+		content := fmt.Sprintf(PlaylistView, head, playlistDesc+resultsSB.String())
+		html := app.RenderHTML("Video", playlistTitle, content)
+		w.Write([]byte(html))
+		return
+	}
+
+	// Handle channel view
+	if len(channelID) > 0 {
+		if Client == nil {
+			http.Error(w, "YouTube API not available", 500)
+			return
+		}
+
+		// Get channel uploads playlist
+		channelCall := Client.Channels.List([]string{"contentDetails", "snippet"}).Id(channelID)
+		channelResp, err := channelCall.Do()
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+
+		if len(channelResp.Items) == 0 {
+			http.Error(w, "Channel not found", 404)
+			return
+		}
+
+		channelTitle := channelResp.Items[0].Snippet.Title
+		channelDesc := channelResp.Items[0].Snippet.Description
+		if len(channelDesc) > 500 {
+			channelDesc = channelDesc[:500] + "..."
+		}
+		channelInfo := ""
+		if channelDesc != "" {
+			channelInfo = "<p>" + channelDesc + "</p>"
+		}
+
+		uploadsPlaylistID := channelResp.Items[0].ContentDetails.RelatedPlaylists.Uploads
+
+		listVideosCall := Client.PlaylistItems.List([]string{"id", "snippet"}).PlaylistId(uploadsPlaylistID).MaxResults(50)
+		resp, err := listVideosCall.Do()
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+
+		var resultsSB strings.Builder
+		for _, item := range resp.Items {
+			if item.Snippet == nil || item.Snippet.ResourceId == nil {
+				continue
+			}
+			videoID := item.Snippet.ResourceId.VideoId
+			if videoID == "" {
+				continue
+			}
+
+			t, _ := time.Parse(time.RFC3339, item.Snippet.PublishedAt)
+			desc := fmt.Sprintf(`<span class="highlight">video</span> · <small>%s</small>`, app.TimeAgo(t))
+			channel := fmt.Sprintf(`<a href="/video?channel=%s">%s</a>`, item.Snippet.ChannelId, item.Snippet.ChannelTitle)
+
+			thumbnailURL := ""
+			if item.Snippet.Thumbnails != nil && item.Snippet.Thumbnails.Medium != nil {
+				thumbnailURL = item.Snippet.Thumbnails.Medium.Url
+			}
+
+			fmt.Fprintf(&resultsSB, `
+		<div class="thumbnail"><a href="/video?id=%s"><img src="%s"><h3>%s</h3></a>%s · %s</div>`,
+				videoID, thumbnailURL, item.Snippet.Title, channel, desc)
+		}
+
+		content := fmt.Sprintf(ChannelView, head, channelInfo, resultsSB.String())
+		html := app.RenderHTML("Video", channelTitle, content)
+		w.Write([]byte(html))
+		return
+	}
+
+	// render watch page
+	if len(id) > 0 {
+		// Check if autoplay is requested
+		autoplay := r.Form.Get("autoplay") == "1"
+
+		// Fullscreen video player page
+		tmpl := `<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Video | Mu</title>
+    <link rel="stylesheet" href="/mu.css?%s">
+  </head>
+  <body class="video-player-body">
+    <div class="video-embed">
+      %s
+      <div class="audio-vis" id="audioVis">
+        <span></span><span></span><span></span><span></span><span></span>
+      </div>
+    </div>
+    <div class="video-bar">
+      <button id="audioBtn" onclick="toggleAudio()">♫ Audio only</button>
+      <span id="audioTime"></span>
+      <button id="playBtn" onclick="togglePlay()" style="display:none">▶</button>
+    </div>
+    <script>
+    var player, apiReady=false, tInt;
+    (function(){
+      var s=document.createElement('script');
+      s.src='https://www.youtube.com/iframe_api';
+      document.head.appendChild(s);
+    })();
+    function onYouTubeIframeAPIReady(){
+      apiReady=true;
+      player=new YT.Player('ytplayer',{events:{'onReady':onReady,'onStateChange':onState}});
+    }
+    function onReady(){}
+    function onState(e){
+      var b=document.getElementById('playBtn');
+      if(b&&b.style.display!=='none') b.textContent=(e.data===1)?'⏸':'▶';
+    }
+    function fmt(s){s=Math.floor(s||0);var m=Math.floor(s/60);var r=s%%60;return m+':'+(r<10?'0':'')+r;}
+    function toggleAudio(){
+      var em=document.querySelector('.video-embed');
+      var vis=document.getElementById('audioVis');
+      var btn=document.getElementById('audioBtn');
+      var pb=document.getElementById('playBtn');
+      var t=document.getElementById('audioTime');
+      var on=em.classList.toggle('audio-only');
+      vis.style.display=on?'flex':'none';
+      btn.textContent=on?'▶ Show video':'♫ Audio only';
+      pb.style.display=on?'inline-flex':'none';
+      if(on){
+        tInt=setInterval(function(){
+          if(!player||!player.getCurrentTime)return;
+          t.textContent=fmt(player.getCurrentTime())+' / '+fmt(player.getDuration());
+          var s=player.getPlayerState();
+          pb.textContent=(s===1)?'⏸':'▶';
+        },500);
+      } else {
+        clearInterval(tInt);t.textContent='';
+      }
+    }
+    function togglePlay(){
+      if(!player||!player.getPlayerState)return;
+      player.getPlayerState()===1?player.pauseVideo():player.playVideo();
+    }
+    </script>
+  </body>
+</html>
+`
+		html := fmt.Sprintf(tmpl, app.Version, embedVideoWithAutoplay(id, autoplay))
+		w.Write([]byte(html))
+
+		return
+	}
+
+	// GET - return video feed
+
+	mutex.RLock()
+	currentVideos := videos
+	currentHtml := videosHtml
+	mutex.RUnlock()
+
+	if app.WantsJSON(r) {
+		app.RespondJSON(w, map[string]interface{}{
+			"channels": currentVideos,
+		})
+		return
+	}
+
+	w.Write([]byte(currentHtml))
+}

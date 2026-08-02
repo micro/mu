@@ -18,7 +18,7 @@ import (
 	"mu/internal/data"
 	"mu/internal/event"
 	"mu/internal/flag"
-	"mu/wallet"
+	"mu/service/wallet"
 )
 
 //go:embed *.json

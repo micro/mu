@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"mu/internal/app"
-	"mu/wallet"
+	"mu/service/wallet"
 )
 
 // MCPHandler handles both GET (HTML page) and POST (JSON-RPC) at /mcp

@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"mu/internal/app"
-	"mu/wallet"
+	"mu/service/wallet"
 )
 
 // APIPageHandler renders the API documentation page with interactive playground

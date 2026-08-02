@@ -5,7 +5,7 @@ A personal home server. News, mail, search, weather, markets, video — the ever
 ## Architecture
 
 - **Single Go binary** — `mu --serve` starts the web server, `mu <command>` runs CLI
-- **Services** — each domain (news, markets, mail, weather, blog, social, video, search, places, reminder) is a package under the top level
+- **Services** — each domain is a package under `service/`, one directory per service
 - **Agents** — `agent/micro/` contains specialised micro-agents per domain, routed by keyword + LLM
 - **Channels** — Discord (`client/discord/`), Telegram (`client/telegram/`), WhatsApp (`client/whatsapp/`)
 - **Protocols** — MCP server at `/mcp`, A2A at `/a2a`, x402 crypto payments
@@ -18,10 +18,10 @@ A personal home server. News, mail, search, weather, markets, video — the ever
 |---------|---------|
 | `agent/` | Main agent pipeline (plan → execute → synthesise) |
 | `agent/micro/` | Multi-agent system — registry, router, executor, orchestrator |
-| `news/` | RSS feed aggregation, sentiment tagging |
-| `markets/` | Crypto, futures, commodities, currencies via CoinGecko/Yahoo |
-| `mail/` | SMTP server, DKIM, inbound filtering |
-| `blog/` | Microblogging with AI-generated daily digests |
+| `service/news/` | RSS feed aggregation, sentiment tagging |
+| `service/markets/` | Crypto, futures, commodities, currencies via CoinGecko/Yahoo |
+| `service/mail/` | SMTP server, DKIM, inbound filtering |
+| `service/blog/` | Microblogging with AI-generated daily digests |
 | `internal/ai/` | LLM abstraction — Anthropic, Atlas Cloud, local models |
 | `internal/api/` | MCP server, tool registry |
 | `internal/app/` | Web UI framework, templates, middleware |
@@ -32,11 +32,11 @@ A personal home server. News, mail, search, weather, markets, video — the ever
 | `client/discord/` | Discord bot with slash commands, embeds, briefings |
 | `client/telegram/` | Telegram bot with commands and groups |
 | `client/whatsapp/` | WhatsApp Business API integration |
-| `wallet/` | Credit system, Stripe, x402 |
-| `search/` | Brave web search, readability reader |
-| `db/` | Per-user records for services and apps (headless) |
-| `web/` | Fetch a URL and return readable content (headless) |
-| `index/` | Search across the caller's own content (headless) |
+| `service/wallet/` | Credit system, Stripe, x402 |
+| `service/search/` | Brave web search, readability reader |
+| `service/db/` | Per-user records for services and apps (headless) |
+| `service/web/` | Fetch a URL and return readable content (headless) |
+| `service/index/` | Search across the caller's own content (headless) |
 | `docs/` | Embedded documentation served at /docs |
 
 ## Development
@@ -49,13 +49,14 @@ go vet ./...            # vet
 
 ## Conventions
 
-- No external dependencies for crypto (secp256k1, RLP, ECDSA implemented in pure Go in `wallet/evm.go`)
+- No external dependencies for crypto (secp256k1, RLP, ECDSA implemented in pure Go in `service/wallet/evm.go`)
 - Settings via `internal/settings/` — reads env vars first, falls back to stored values
 - Background loops use goroutines started in `Load()` or `main.go`
 - Agent tools registered in `internal/api/mcp.go` (static) and `main.go` (dynamic with handlers)
 - All client integrations follow the same pattern: auto-create accounts, conversation history, public/private mode
 - The main branch is `main`
-- One service per top-level directory, named for the service. See
+- One directory per service under `service/`, named for the service. `internal/service`
+  is the runtime core that hosts them, not a service itself. See
   `docs/SERVICE_REGISTRY.md` for what is registered, which are headless, which
   are account-scoped, and which are deliberately not exposed to the agent
 
@@ -95,7 +96,7 @@ facts. The distinction is developer-facing (say it) vs customer-facing (don't).
 A credit is charged when an operation costs us something to run: a model call,
 or a paid third party (Atlas Cloud for inference and images, Brave for web
 search, Google for places). Operations that only touch this instance's own
-storage are free — see the comment on the cost block in `wallet/wallet.go`.
+storage are free — see the comment on the cost block in `service/wallet/wallet.go`.
 
 Abuse control is `auth.CheckPostRate`, not the credit charge. Keep the two jobs
 separate: credits price real cost, rate limits stop bots.

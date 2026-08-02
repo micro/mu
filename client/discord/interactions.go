@@ -9,7 +9,7 @@ import (
 
 	"mu/agent"
 	"mu/internal/app"
-	"mu/wallet"
+	"mu/service/wallet"
 )
 
 type interaction struct {

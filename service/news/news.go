@@ -1,0 +1,2780 @@
+package news
+
+import (
+	"crypto/md5"
+	"embed"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"math"
+	"net/http"
+	"net/url"
+	"path/filepath"
+	"regexp"
+	"runtime/debug"
+	"sort"
+	"strings"
+	"sync"
+	"time"
+	"unicode"
+
+	"github.com/PuerkitoBio/goquery"
+	"github.com/mmcdole/gofeed"
+	"github.com/mrz1836/go-sanitize"
+	nethtml "golang.org/x/net/html"
+	"mu/internal/app"
+	"mu/internal/auth"
+	"mu/internal/data"
+	"mu/internal/event"
+	"mu/internal/service"
+	"mu/internal/snapshot"
+
+	"mu/service/wallet"
+)
+
+// cardSnap is the go-micro read-plane channel for the news card (store +
+// broker); see internal/snapshot and docs/GO_MICRO_ARCHITECTURE.md.
+var cardSnap *snapshot.Snapshot
+
+//go:embed feeds.json
+var f embed.FS
+
+var mutex sync.RWMutex
+
+var feeds = map[string]string{}
+
+var status = map[string]*Feed{}
+
+// Semaphore to limit concurrent metadata fetches (reduces memory spike on startup)
+var metadataFetchSem = make(chan struct{}, 10) // Allow max 10 concurrent fetches
+
+// cached news html
+var html string
+
+// cached news body (without full page wrapper)
+var newsBodyHtml string
+
+// cached headlines
+var headlinesHtml string
+
+// the cached feed
+var feed []*Post
+
+// FetchSocialContext is an optional callback set by main.go to fetch social post
+// context for news articles that reference social media URLs.
+// Returns HTML to embed in the article view, or empty string.
+var FetchSocialContext func(articleURL, articleContent string) string
+
+type Feed struct {
+	Name     string
+	URL      string
+	Error    error
+	Attempts int
+	Backoff  time.Time
+}
+
+type Post struct {
+	ID          string    `json:"id"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	URL         string    `json:"url"`
+	Published   string    `json:"published"`
+	Category    string    `json:"category"`
+	PostedAt    time.Time `json:"posted_at"`
+	Image       string    `json:"image"`
+	Content     string    `json:"content"`
+}
+
+type Metadata struct {
+	Created            int64
+	Title              string
+	Description        string
+	Type               string
+	Image              string
+	Url                string
+	Site               string
+	Content            string
+	Comments           string // Comments/discussion context from any source
+	Summary            string // LLM-generated summary for chat context
+	SummaryRequestedAt int64  // Last time we requested summary generation
+	SummaryAttempts    int    // Number of times we've requested a summary
+}
+
+func canonicalPostKey(post *Post) string {
+	if post == nil {
+		return ""
+	}
+	if post.URL != "" {
+		if u, err := url.Parse(strings.TrimSpace(post.URL)); err == nil {
+			u.Fragment = ""
+			q := u.Query()
+			for _, key := range []string{"utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "fbclid", "gclid"} {
+				q.Del(key)
+			}
+			u.RawQuery = q.Encode()
+			return "url:" + strings.ToLower(strings.TrimRight(u.String(), "/"))
+		}
+		return "url:" + strings.ToLower(strings.TrimRight(strings.TrimSpace(post.URL), "/"))
+	}
+	return "title:" + strings.Join(strings.Fields(strings.ToLower(post.Title)), " ")
+}
+
+func dedupePosts(posts []*Post) []*Post {
+	seen := map[string]*Post{}
+	var deduped []*Post
+	for _, post := range posts {
+		key := canonicalPostKey(post)
+		if key == "" {
+			continue
+		}
+		if existing, ok := seen[key]; ok {
+			if existing.URL == "" && post.URL != "" {
+				existing.URL = post.URL
+			}
+			if existing.ID == "" && post.ID != "" {
+				existing.ID = post.ID
+			}
+			if existing.Description == "" && post.Description != "" {
+				existing.Description = post.Description
+			}
+			if post.PostedAt.After(existing.PostedAt) {
+				existing.PostedAt = post.PostedAt
+				existing.Published = post.Published
+			}
+			continue
+		}
+		copyPost := *post
+		seen[key] = &copyPost
+		deduped = append(deduped, &copyPost)
+	}
+	return deduped
+}
+
+func displayNewsCategory(category string) string {
+	cat := strings.TrimSpace(category)
+	if cat == "" {
+		return ""
+	}
+	switch strings.ToLower(cat) {
+	case "reminder", "reminders", "mail", "email", "calendar", "todo", "task", "tasks":
+		return cat + " · non-news"
+	default:
+		return cat
+	}
+}
+
+// htmlToText converts HTML to plain text with proper spacing
+func htmlToText(html string) string {
+	if html == "" {
+		return ""
+	}
+
+	// Parse HTML
+	doc, err := nethtml.Parse(strings.NewReader(html))
+	if err != nil {
+		// If parsing fails, just strip tags the simple way
+		re := regexp.MustCompile(`<[^>]*>`)
+		text := re.ReplaceAllString(html, " ")
+		// Collapse multiple spaces
+		re2 := regexp.MustCompile(`\s+`)
+		return strings.TrimSpace(re2.ReplaceAllString(text, " "))
+	}
+
+	var sb strings.Builder
+	var extract func(*nethtml.Node)
+	extract = func(n *nethtml.Node) {
+		if n.Type == nethtml.TextNode {
+			sb.WriteString(n.Data)
+		}
+		if n.Type == nethtml.ElementNode {
+			// Preserve <a> tags with their href
+			if n.Data == "a" {
+				var href string
+				for _, attr := range n.Attr {
+					if attr.Key == "href" {
+						href = attr.Val
+						break
+					}
+				}
+				if href != "" {
+					sb.WriteString(`<a href="`)
+					sb.WriteString(href)
+					sb.WriteString(`" target="_blank" rel="noopener noreferrer">`)
+				}
+				// Process children
+				for c := n.FirstChild; c != nil; c = c.NextSibling {
+					extract(c)
+				}
+				if href != "" {
+					sb.WriteString("</a>")
+				}
+				sb.WriteString(" ")
+			} else {
+				// For other elements, process children but don't preserve the tag
+				for c := n.FirstChild; c != nil; c = c.NextSibling {
+					extract(c)
+				}
+				// Add space after block elements
+				switch n.Data {
+				case "br", "p", "div", "li", "tr", "h1", "h2", "h3", "h4", "h5", "h6":
+					sb.WriteString(" ")
+				}
+			}
+		} else {
+			// For non-element nodes, process children
+			for c := n.FirstChild; c != nil; c = c.NextSibling {
+				extract(c)
+			}
+		}
+	}
+	extract(doc)
+
+	// Collapse multiple spaces and trim
+	text := sb.String()
+	re := regexp.MustCompile(`\s+`)
+	return strings.TrimSpace(re.ReplaceAllString(text, " "))
+}
+
+func getDomain(v string) string {
+	var host string
+
+	u, err := url.Parse(v)
+	if err == nil {
+		host = u.Hostname()
+	} else {
+		parts := strings.Split(v, "/")
+		if len(parts) < 3 {
+			return v
+		}
+		host = strings.TrimSpace(parts[2])
+	}
+
+	if strings.Contains(host, "github.io") {
+		return host
+	}
+
+	parts := strings.Split(host, ".")
+	if len(parts) == 2 {
+		return host
+	} else if len(parts) == 3 {
+		return strings.Join(parts[1:3], ".")
+	}
+	return host
+}
+
+var Results = `
+<div id="topics">%s</div>
+<h1 class="mt-0">Results</h1>
+<div id="results">
+%s
+</div>`
+
+func getSummary(post *Post) string {
+	timestamp := ""
+	if !post.PostedAt.IsZero() {
+		timestamp = fmt.Sprintf(`<span data-timestamp="%d">%s</span> · `, post.PostedAt.Unix(), app.TimeAgo(post.PostedAt))
+	}
+	return fmt.Sprintf(`%sSource: <i>%s</i>`, timestamp, getDomain(post.URL))
+}
+
+func getCategoryBadge(post *Post) string {
+	if post.Category == "" {
+		return ""
+	}
+	return fmt.Sprintf(`<a href="/news#%s" class="category">%s</a>`, post.Category, displayNewsCategory(post.Category))
+}
+
+// ContentParser functions clean up feed descriptions
+type ContentParser struct {
+	Name      string
+	FeedNames []string // Apply to these feeds only (empty = all feeds)
+	Parse     func(string) string
+}
+
+var contentParsers = []ContentParser{
+	{
+		Name:      "Strip HackerNews Comments-Only Descriptions",
+		FeedNames: []string{"Dev"},
+		Parse: func(desc string) string {
+			// HN items with no description have: <![CDATA[<a href="...">Comments</a>]]>
+			// Strip CDATA wrapper
+			desc = strings.TrimSpace(desc)
+			desc = strings.TrimPrefix(desc, "<![CDATA[")
+			desc = strings.TrimSuffix(desc, "]]>")
+			desc = strings.TrimSpace(desc)
+
+			// If it's just a link to HN comments with "Comments" text, strip it
+			if strings.HasPrefix(desc, `<a href="https://news.ycombinator.com/item?id=`) &&
+				strings.HasSuffix(desc, `">Comments</a>`) {
+				return ""
+			}
+
+			// Also catch the plain text version
+			if desc == "Comments" {
+				return ""
+			}
+
+			return desc
+		},
+	},
+	{
+		Name: "Strip TechCrunch Copyright",
+		Parse: func(desc string) string {
+			return strings.Replace(desc, "© 2025 TechCrunch. All rights reserved. For personal use only.", "", -1)
+		},
+	},
+	{
+		Name: "Remove Images",
+		Parse: func(desc string) string {
+			return regexp.MustCompile(`<img .*>`).ReplaceAllString(desc, "")
+		},
+	},
+	{
+		Name: "Extract First Paragraph",
+		Parse: func(desc string) string {
+			parts := strings.Split(desc, "</p>")
+			if len(parts) > 0 {
+				return strings.Replace(parts[0], "<p>", "", 1)
+			}
+			return desc
+		},
+	},
+	{
+		Name: "Sanitize HTML",
+		Parse: func(desc string) string {
+			return sanitize.HTML(desc)
+		},
+	},
+}
+
+// applyContentParsers applies all relevant parsers to a description
+func applyContentParsers(desc string, feedName string) string {
+	for _, parser := range contentParsers {
+		// If parser has specific feed names, check if current feed matches
+		if len(parser.FeedNames) > 0 {
+			matched := false
+			for _, name := range parser.FeedNames {
+				if name == feedName {
+					matched = true
+					break
+				}
+			}
+			if !matched {
+				continue
+			}
+		}
+		// Apply the parser
+		desc = parser.Parse(desc)
+	}
+	return desc
+}
+
+func saveHtml(head, content []byte) {
+	if len(content) == 0 {
+		return
+	}
+	searchForm := `<form id="news-search" class="search-bar" action="/news" method="GET">
+  <input id="news-query" name="query" type="text" placeholder="Search...">
+  <button type="submit">Search</button>
+</form>`
+	body := fmt.Sprintf(`%s<div id="topics">%s</div><div>%s</div>`, searchForm, string(head), string(content))
+	newsBodyHtml = body
+	data.SaveFile("news.html", newsBodyHtml)
+	app.Log("news", "Saved news.html (%d bytes)", len(newsBodyHtml))
+}
+
+// generateNewsHtml generates fresh HTML from the feed data with current timestamps
+func generateNewsHtml() string {
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	var content []byte
+	var categories = make(map[string][]*Post)
+
+	// Group canonical posts by category so repeated provider entries collapse on /news.
+	for _, post := range dedupePosts(feed) {
+		categories[post.Category] = append(categories[post.Category], post)
+	}
+
+	// Sort categories
+	var sortedCategories []string
+	for cat := range categories {
+		sortedCategories = append(sortedCategories, cat)
+	}
+	sort.Strings(sortedCategories)
+
+	// Sort posts within each category by timestamp (newest first)
+	for _, posts := range categories {
+		sort.Slice(posts, func(i, j int) bool {
+			return posts[i].PostedAt.After(posts[j].PostedAt)
+		})
+	}
+
+	// Generate HTML for each category
+	for _, cat := range sortedCategories {
+		posts := categories[cat]
+		if len(posts) == 0 {
+			continue
+		}
+
+		content = append(content, []byte(`<div class=section>`)...)
+		content = append(content, []byte(`<hr id="`+cat+`" class="anchor">`)...)
+		content = append(content, []byte(`<h1>`+displayNewsCategory(cat)+`</h1>`)...)
+
+		for _, post := range posts {
+			cleanDescription := strings.TrimSpace(post.Description)
+			if len(cleanDescription) > 300 {
+				cleanDescription = cleanDescription[:300] + "..."
+			}
+
+			link := post.URL
+			if post.ID != "" {
+				link = "/news?id=" + post.ID
+			}
+
+			summary := getSummary(post)
+			summaryLink := ""
+			if post.ID != "" {
+				summaryLink = fmt.Sprintf(` · <a href="/news?id=%s">Read</a>`, post.ID)
+			}
+
+			controls := app.StaticControls("news", post.ID)
+			categoryBadge := ""
+			if post.Category != "" {
+				categoryBadge = fmt.Sprintf(`<div class="category-header"><a href="/news#%s" class="category">%s</a></div>`, post.Category, displayNewsCategory(post.Category))
+			}
+
+			var val string
+			imgTag := `<img class="cover">`
+			if len(post.Image) > 0 {
+				imgTag = fmt.Sprintf(`<img class="cover" src="%s" referrerpolicy="no-referrer" onerror="this.style.display='none'">`, post.Image)
+			}
+			val = fmt.Sprintf(`
+	<div id="%s" class="news">
+	    %s
+	    %s
+	    <div class="blurb">
+	      <a href="%s"><span class="title">%s</span></a>
+	      <span class="description">%s</span>
+	    </div>
+	  <div class="summary">%s%s%s</div>
+				`, post.ID, categoryBadge, imgTag, link, post.Title, cleanDescription, summary, summaryLink, controls)
+
+			val += `</div>`
+			content = append(content, []byte(val)...)
+		}
+
+		content = append(content, []byte(`</div>`)...)
+	}
+
+	searchForm := `<form id="news-search" class="search-bar" action="/news" method="GET">
+  <input id="news-query" name="query" type="text" placeholder="Search...">
+  <button type="submit">Search</button>
+</form>`
+
+	// Get cached headlines
+	mutex.RLock()
+	headlines := headlinesHtml
+	mutex.RUnlock()
+
+	// Get topics header
+	var sortedFeeds []string
+	for name := range feeds {
+		sortedFeeds = append(sortedFeeds, name)
+	}
+	sort.Strings(sortedFeeds)
+	head := app.Head("news", sortedFeeds)
+
+	return fmt.Sprintf(`%s<div id="topics">%s</div><div>%s</div>`, searchForm, head, headlines+string(content))
+}
+
+// generateHeadlinesHtml generates fresh HTML for headlines with current timestamps
+// Deprecated: This function is no longer used. Headlines are now cached.
+func generateHeadlinesHtml() string {
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	// Get first post from each category for headlines
+	seenCategories := make(map[string]bool)
+	var headlines []*Post
+
+	for _, post := range feed {
+		if !seenCategories[post.Category] {
+			headlines = append(headlines, post)
+			seenCategories[post.Category] = true
+		}
+		if len(headlines) >= 10 {
+			break
+		}
+	}
+
+	// Sort by posted date
+	sort.Slice(headlines, func(i, j int) bool {
+		return headlines[i].PostedAt.After(headlines[j].PostedAt)
+	})
+
+	var headline []byte
+	headline = append(headline, []byte(`<div class="headlines">`)...)
+
+	for _, h := range headlines {
+		link := h.URL
+		if h.ID != "" {
+			link = "/news?id=" + h.ID
+		}
+
+		categoryBadge := ""
+		if h.Category != "" {
+			categoryBadge = fmt.Sprintf(`<div class="category-header"><a href="/news#%s" class="category">%s</a></div>`, h.Category, displayNewsCategory(h.Category))
+		}
+		summary := getSummary(h)
+
+		val := fmt.Sprintf(`
+		<div class="headline">
+		   %s
+		   <a href="%s"><span class="title">%s</span></a>
+		 <span class="description">%s</span>
+		 <div class="summary">%s</div>
+		`, categoryBadge, link, h.Title, h.Description, summary)
+
+		val += `</div>`
+		headline = append(headline, []byte(val)...)
+	}
+
+	headline = append(headline, []byte(`</div>`)...)
+	return string(headline)
+}
+
+func loadFeed() {
+	// load the feeds file
+	data, _ := f.ReadFile("feeds.json")
+	// unpack into feeds
+	mutex.Lock()
+	if err := json.Unmarshal(data, &feeds); err != nil {
+		fmt.Println("Error parsing feeds.json", err)
+	}
+	mutex.Unlock()
+}
+
+func getMetadataPath(uri string) string {
+	// Generate stable ID from URL hash
+	itemID := fmt.Sprintf("%x", md5.Sum([]byte(uri)))[:16]
+	return filepath.Join("news", "metadata", itemID+".json")
+}
+
+func loadCachedMetadata(uri string) (*Metadata, bool) {
+	path := getMetadataPath(uri)
+	var md Metadata
+	if err := data.LoadJSON(path, &md); err != nil {
+		return nil, false
+	}
+	return &md, true
+}
+
+// LookupMetadata returns cached OG metadata for a URL if available.
+func LookupMetadata(uri string) (*Metadata, bool) {
+	return loadCachedMetadata(uri)
+}
+
+func saveCachedMetadata(uri string, md *Metadata) {
+	path := getMetadataPath(uri)
+	if err := data.SaveJSON(path, md); err != nil {
+		app.Log("news", "Error saving metadata: %v", err)
+	}
+}
+
+func backoff(attempts int) time.Duration {
+	if attempts > 13 {
+		return time.Hour
+	}
+	return time.Duration(math.Pow(float64(attempts), math.E)) * time.Millisecond * 100
+}
+
+func getMetadata(uri string, publishedAt time.Time) (*Metadata, bool, error) {
+	// Check cache first
+	if cached, exists := loadCachedMetadata(uri); exists {
+		// For HN articles: refresh after 1 hour (for new comments)
+		isHN := strings.Contains(uri, "news.ycombinator.com/item?id=")
+		if isHN {
+			age := time.Since(time.Unix(0, cached.Created))
+			if age < time.Hour {
+				// Summaries generated on-demand when article is viewed.
+				return cached, false, nil // false = from cache
+			}
+			app.Log("news", "HN metadata cache expired for %s (age: %v), refetching comments", uri, age.Round(time.Minute))
+		} else {
+			// For regular articles: check if our cached metadata is older than the published date
+			// This means the article was updated after we cached it
+			cachedTime := time.Unix(0, cached.Created)
+			if !publishedAt.IsZero() && cachedTime.Before(publishedAt) {
+				app.Log("news", "Article updated after cache for %s (cached: %v, published: %v), refetching",
+					uri, cachedTime.Format(time.RFC3339), publishedAt.Format(time.RFC3339))
+			} else {
+				// Cache is still valid
+				// Summaries generated on-demand when article is viewed.
+				return cached, false, nil
+			}
+		}
+	}
+
+	// Acquire semaphore to limit concurrent fetches (prevents memory spike)
+	metadataFetchSem <- struct{}{}
+	defer func() { <-metadataFetchSem }()
+
+	u, err := url.Parse(uri)
+	if err != nil {
+		return nil, false, err
+	}
+
+	// Fetch HTML with proper resource cleanup
+	resp, err := http.Get(u.String())
+	if err != nil {
+		return nil, false, err
+	}
+	defer resp.Body.Close()
+
+	// Parse HTML
+	d, err := goquery.NewDocumentFromReader(resp.Body)
+	if err != nil {
+		return nil, false, err
+	}
+
+	g := &Metadata{
+		Created: time.Now().UnixNano(),
+	}
+
+	check := func(p []string) bool {
+		if len(p) < 2 {
+			return false
+		}
+		if p[0] == "twitter" {
+			return true
+		}
+		if p[0] == "og" {
+			return true
+		}
+
+		return false
+	}
+
+	for _, node := range d.Find("meta").Nodes {
+		if len(node.Attr) < 2 {
+			continue
+		}
+
+		p := strings.Split(node.Attr[0].Val, ":")
+		if !check(p) {
+			p = strings.Split(node.Attr[1].Val, ":")
+			if !check(p) {
+				continue
+			}
+			node.Attr = node.Attr[1:]
+			if len(node.Attr) < 2 {
+				continue
+			}
+		}
+
+		switch p[1] {
+		case "site_name":
+			g.Site = node.Attr[1].Val
+		case "site":
+			if len(g.Site) == 0 {
+				g.Site = node.Attr[1].Val
+			}
+		case "title":
+			g.Title = node.Attr[1].Val
+		case "description":
+			g.Description = node.Attr[1].Val
+		case "card", "type":
+			g.Type = node.Attr[1].Val
+		case "url":
+			g.Url = node.Attr[1].Val
+		case "image":
+			if len(p) > 2 && p[2] == "src" {
+				g.Image = node.Attr[1].Val
+			} else if len(p) > 2 {
+				// skip
+				continue
+			} else if len(g.Image) == 0 {
+				g.Image = node.Attr[1].Val
+			}
+
+			// relative url needs fixing
+			if len(g.Image) > 0 && g.Image[0] == '/' {
+				g.Image = fmt.Sprintf("%s://%s%s", u.Scheme, u.Host, g.Image)
+			}
+		}
+	}
+
+	// attempt to get the content from article body
+	var fn func(*nethtml.Node)
+
+	fn = func(node *nethtml.Node) {
+		if node.Type == nethtml.TextNode {
+			if len(node.Data) < 10 {
+				return // Skip very short text nodes
+			}
+
+			first := node.Data[0]
+			last := node.Data[len(node.Data)-1]
+
+			data := sanitize.HTML(node.Data)
+
+			if unicode.IsUpper(rune(first)) && last == '.' {
+				g.Content += fmt.Sprintf(`<p>%s</p>`, data)
+			} else if first == '"' && last == '"' {
+				g.Content += fmt.Sprintf(`<p>%s</p>`, data)
+			} else {
+				g.Content += fmt.Sprintf(` %s`, data)
+			}
+		}
+
+		if node.FirstChild != nil {
+			for c := node.FirstChild; c != nil; c = c.NextSibling {
+				fn(c)
+			}
+		}
+	}
+
+	// Extract content from common article selectors
+	selectors := []string{
+		".ArticleBody-articleBody", // CNBC
+		"article",                  // Generic
+		".article-body",            // Common
+		".post-content",            // Common
+		".entry-content",           // WordPress
+		"[itemprop='articleBody']", // Schema.org
+		".story-body",              // BBC-style
+		"main article",             // Semantic HTML
+		".content",                 // Generic content class
+		"#content",                 // Generic content ID
+	}
+
+	contentExtracted := false
+	for _, selector := range selectors {
+		nodes := d.Find(selector).Nodes
+		if len(nodes) > 0 {
+			for _, node := range nodes {
+				fn(node)
+			}
+			if len(g.Content) > 200 {
+				contentExtracted = true
+				break
+			}
+		}
+	}
+
+	// If no content extracted and it's not a HackerNews link, try to get paragraphs
+	if !contentExtracted && !strings.Contains(u.Host, "news.ycombinator.com") {
+		for _, node := range d.Find("p").Nodes {
+			if node.Parent != nil {
+				// Skip paragraphs in nav, footer, sidebar
+				parent := node.Parent.Data
+				if parent == "nav" || parent == "footer" || parent == "aside" {
+					continue
+				}
+			}
+			fn(node)
+			if len(g.Content) > 2000 {
+				break // Limit content extraction
+			}
+		}
+	}
+	//if len(g.Type) == 0 || len(g.Image) == 0 || len(g.Title) == 0 || len(g.Url) == 0 {
+	//	fmt.Println("Not returning", u.String())
+	//	return nil
+	//}
+
+	// Fetch discussion/comments based on source
+	if strings.Contains(uri, "news.ycombinator.com/item?id=") {
+		// Extract HackerNews story ID
+		hnID := ""
+		if idx := strings.Index(uri, "id="); idx != -1 {
+			hnID = uri[idx+3:]
+			if idx := strings.IndexAny(hnID, "&?#"); idx != -1 {
+				hnID = hnID[:idx]
+			}
+		}
+		if hnID != "" {
+			comments, err := FetchHNComments(hnID)
+			if err == nil && len(comments) > 0 {
+				g.Comments = comments
+				app.Log("news", "Fetched comments for HN story %s (%d chars)", hnID, len(comments))
+			}
+		}
+	}
+	// Future: Add other comment sources here (Reddit, forums, etc.)
+
+	// Preserve existing summary if we already have one
+	if existing, exists := loadCachedMetadata(uri); exists && existing.Summary != "" {
+		g.Summary = existing.Summary
+		g.SummaryRequestedAt = existing.SummaryRequestedAt
+		g.SummaryAttempts = existing.SummaryAttempts
+	}
+
+	// Cache the metadata
+	saveCachedMetadata(uri, g)
+
+	// Request LLM summary generation via event (non-blocking) only if we don't have one
+	if g.Summary == "" {
+		go requestArticleSummary(uri, g)
+	}
+
+	return g, true, nil // true = freshly fetched
+}
+
+// shouldRequestSummary determines if we should retry requesting a summary
+// Uses exponential backoff: 5min, 30min, 2hr, 6hr, 24hr, then stop
+func shouldRequestSummary(md *Metadata) bool {
+	// Never requested before
+	if md.SummaryRequestedAt == 0 {
+		return true
+	}
+
+	// Stop retrying after 5 attempts
+	if md.SummaryAttempts >= 5 {
+		return false
+	}
+
+	// Calculate backoff duration based on attempts
+	var backoffDuration time.Duration
+	switch md.SummaryAttempts {
+	case 0:
+		backoffDuration = 0 // First attempt, no delay
+	case 1:
+		backoffDuration = 5 * time.Minute
+	case 2:
+		backoffDuration = 30 * time.Minute
+	case 3:
+		backoffDuration = 2 * time.Hour
+	case 4:
+		backoffDuration = 6 * time.Hour
+	default:
+		backoffDuration = 24 * time.Hour
+	}
+
+	timeSinceLastRequest := time.Since(time.Unix(0, md.SummaryRequestedAt))
+	return timeSinceLastRequest >= backoffDuration
+}
+
+// requestArticleSummary publishes a request for LLM summary generation.
+func requestArticleSummary(uri string, md *Metadata) {
+	// Skip if we already have a summary
+	if md.Summary != "" {
+		return
+	}
+
+	// Prepare content for summarization
+	contentToSummarize := md.Title
+	if md.Description != "" {
+		contentToSummarize += "\n\n" + md.Description
+	}
+	if md.Content != "" {
+		// Limit content length to avoid overwhelming the LLM
+		content := htmlToText(md.Content)
+		if len(content) > 2000 {
+			content = content[:2000]
+		}
+		contentToSummarize += "\n\n" + content
+	}
+
+	// Skip if there's not enough content
+	if len(contentToSummarize) < 100 {
+		return
+	}
+
+	// Update request tracking
+	md.SummaryRequestedAt = time.Now().UnixNano()
+	md.SummaryAttempts++
+	saveCachedMetadata(uri, md)
+
+	app.Log("news", "Requesting summary generation for %s (attempt %d)", uri, md.SummaryAttempts)
+
+	// Publish summary generation request
+	event.Publish(event.Event{
+		Type: event.EventGenerateSummary,
+		Data: map[string]interface{}{
+			"uri":     uri,
+			"content": contentToSummarize,
+			"type":    "news",
+		},
+	})
+}
+
+// FetchHNComments fetches top-level comments from a HackerNews story
+func FetchHNComments(storyID string) (string, error) {
+	apiURL := fmt.Sprintf("https://hacker-news.firebaseio.com/v0/item/%s.json", storyID)
+
+	resp, err := http.Get(apiURL)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	var story struct {
+		Comments []int `json:"kids"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&story); err != nil {
+		return "", err
+	}
+
+	// Fetch top 10 comments for context
+	var comments []string
+	maxComments := 10
+	for i, commentID := range story.Comments {
+		if i >= maxComments {
+			break
+		}
+
+		commentURL := fmt.Sprintf("https://hacker-news.firebaseio.com/v0/item/%d.json", commentID)
+		commentResp, err := http.Get(commentURL)
+		if err != nil {
+			continue
+		}
+
+		var comment struct {
+			Text string `json:"text"`
+			By   string `json:"by"`
+		}
+
+		if err := json.NewDecoder(commentResp.Body).Decode(&comment); err != nil {
+			commentResp.Body.Close()
+			continue
+		}
+		commentResp.Body.Close()
+
+		if comment.Text != "" {
+			// Strip HTML tags from comment
+			cleanText := sanitize.HTML(comment.Text)
+			comments = append(comments, fmt.Sprintf("[%s]: %s", comment.By, cleanText))
+		}
+
+		// Rate limit: small delay between requests
+		time.Sleep(50 * time.Millisecond)
+	}
+
+	if len(comments) > 0 {
+		return "Discussion: " + strings.Join(comments, " | "), nil
+	}
+
+	return "", nil
+}
+
+// parseFeedItem processes a single RSS feed item and returns a Post
+func parseFeedItem(item *gofeed.Item, categoryName string) (*Post, error) {
+	// Apply content parsers to clean up description
+	item.Description = applyContentParsers(item.Description, categoryName)
+
+	link := item.Link
+	app.Log("news", "Checking link %s", link)
+
+	if strings.HasPrefix(link, "https://themwl.org/ar/") {
+		link = strings.Replace(link, "themwl.org/ar/", "themwl.org/en/", 1)
+		app.Log("news", "Replacing mwl ar link %s -> %s", item.Link, link)
+	}
+
+	// Parse publish timestamp
+	postedAt := parsePublishTime(item)
+
+	// Get metadata
+	md, _, err := getMetadata(link, postedAt)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing metadata: %w", err)
+	}
+
+	if strings.Contains(link, "themwl.org") {
+		item.Title = md.Title
+	}
+
+	// Use extracted content if available
+	if len(md.Content) > 0 && len(item.Content) == 0 {
+		item.Content = md.Content
+	}
+
+	// Clean and truncate description
+	cleanDescription := cleanAndTruncateDescription(item.Description)
+
+	// Generate stable ID from URL hash
+	itemID := fmt.Sprintf("%x", md5.Sum([]byte(link)))[:16]
+
+	// Use summary as post content if available
+	postContent := item.Content
+	if md.Summary != "" {
+		postContent = md.Summary
+	}
+
+	// Use metadata title if RSS title is empty
+	itemTitle := item.Title
+	if itemTitle == "" && md.Title != "" {
+		itemTitle = md.Title
+		app.Log("news", "Using metadata title for %s: %s", link, itemTitle)
+	}
+
+	// Use metadata description if RSS description is empty
+	finalDescription := cleanDescription
+	if finalDescription == "" && md.Description != "" {
+		finalDescription = md.Description
+		// Truncate to a reasonable length
+		if len(finalDescription) > 250 {
+			truncated := finalDescription[:250]
+			if idx := strings.Index(truncated, ". "); idx > 0 {
+				finalDescription = truncated[:idx+1]
+			} else {
+				finalDescription = truncated[:247] + "..."
+			}
+		}
+		app.Log("news", "Using metadata description for %s", link)
+	}
+
+	post := &Post{
+		ID:          itemID,
+		Title:       itemTitle,
+		Description: finalDescription,
+		URL:         link,
+		Published:   item.Published,
+		PostedAt:    postedAt,
+		Category:    categoryName,
+		Image:       md.Image,
+		Content:     postContent,
+	}
+
+	// Index the article for search/RAG
+	indexArticle(post, item, md)
+
+	return post, nil
+}
+
+// parsePublishTime extracts and parses the publish time from a feed item
+func parsePublishTime(item *gofeed.Item) time.Time {
+	if item.PublishedParsed != nil {
+		return *item.PublishedParsed
+	}
+
+	if item.Published != "" {
+		// Try common date formats
+		formats := []string{time.RFC1123Z, time.RFC3339}
+		for _, format := range formats {
+			if parsed, err := time.Parse(format, item.Published); err == nil {
+				return parsed
+			}
+		}
+		app.Log("news", "Failed to parse timestamp for %s: %s - using current time", item.Link, item.Published)
+	} else {
+		app.Log("news", "No timestamp available for %s - using current time", item.Link)
+	}
+
+	return time.Now()
+}
+
+// cleanAndTruncateDescription cleans HTML and truncates description to first sentence
+func cleanAndTruncateDescription(desc string) string {
+	// Convert plain text newlines to em dashes
+	if !strings.Contains(desc, "<") {
+		desc = strings.ReplaceAll(desc, "\n", " — ")
+		desc = strings.ReplaceAll(desc, "— —", "—")
+		desc = strings.ReplaceAll(desc, "—  —", "—")
+	}
+
+	cleanDescription := htmlToText(desc)
+
+	// Truncate to first sentence (max 250 chars)
+	maxLen := 250
+	if len(cleanDescription) > maxLen {
+		truncated := cleanDescription[:maxLen]
+		if idx := strings.Index(truncated, ". "); idx > 0 {
+			return truncated[:idx+1]
+		}
+		if idx := strings.Index(truncated, ".\n"); idx > 0 {
+			return truncated[:idx+1]
+		}
+		return truncated[:247] + "..."
+	}
+
+	// Look for first sentence break
+	if idx := strings.Index(cleanDescription, ". "); idx > 0 {
+		return cleanDescription[:idx+1]
+	}
+	if idx := strings.Index(cleanDescription, ".\n"); idx > 0 {
+		return cleanDescription[:idx+1]
+	}
+
+	return cleanDescription
+}
+
+// indexArticle indexes an article for search/RAG
+func indexArticle(post *Post, item *gofeed.Item, md *Metadata) {
+	// Use LLM summary if available, otherwise combine description + content
+	fullContent := item.Description + " " + item.Content
+	if md.Summary != "" {
+		fullContent = md.Summary
+	}
+	if len(md.Comments) > 0 {
+		fullContent += " " + md.Comments
+	}
+
+	data.Index(
+		post.ID,
+		"news",
+		post.Title,
+		fullContent,
+		map[string]interface{}{
+			"url":         post.URL,
+			"category":    post.Category,
+			"posted_at":   post.PostedAt,
+			"image":       post.Image,
+			"description": item.Description,
+			"summary":     md.Summary,
+		},
+	)
+}
+
+// formatFeedItemHTML formats a single feed item as HTML
+func formatFeedItemHTML(post *Post, itemGUID string) string {
+	categoryBadge := ""
+	if post.Category != "" {
+		categoryBadge = fmt.Sprintf(`<div class="category-header"><a href="/news#%s" class="category">%s</a></div>`, post.Category, displayNewsCategory(post.Category))
+	}
+	summary := getSummary(post)
+
+	// Add Read Summary link on the right side of source
+	summaryLink := ""
+	if post.ID != "" {
+		summaryLink = fmt.Sprintf(` · <a href="/news?id=%s">Read</a>`, post.ID)
+	}
+
+	if len(post.Image) > 0 {
+		return fmt.Sprintf(`
+	<div id="%s" class="news">
+	  %s
+	  <a href="%s" rel="noopener noreferrer" target="_blank">
+	    <img class="cover" src="%s" referrerpolicy="no-referrer" onerror="this.style.display='none'">
+	    <div class="blurb">
+	      <span class="title">%s</span>
+	      <span class="description">%s</span>
+	    </div>
+	  </a>
+	  <div class="summary">%s%s</div>
+</div>`, itemGUID, categoryBadge, post.URL, post.Image, post.Title, post.Description, summary, summaryLink)
+	}
+
+	return fmt.Sprintf(`
+	<div id="%s" class="news">
+	  %s
+	  <a href="%s" rel="noopener noreferrer" target="_blank">
+	    <img class="cover">
+	    <div class="blurb">
+	      <span class="title">%s</span>
+	      <span class="description">%s</span>
+	    </div>
+	  </a>
+	  <div class="summary">%s%s</div>
+</div>`, itemGUID, categoryBadge, post.URL, post.Title, post.Description, summary, summaryLink)
+}
+
+// processFeedCategory fetches and processes all items from a single feed category
+func processFeedCategory(name, feedURL string, p *gofeed.Parser, stats map[string]Feed) ([]byte, []*Post, *Feed) {
+	stat, ok := stats[name]
+	if !ok {
+		stat = Feed{Name: name, URL: feedURL}
+		mutex.Lock()
+		status[name] = &stat
+		mutex.Unlock()
+	}
+
+	// Check if we should retry based on backoff
+	if stat.Attempts > 0 && time.Until(stat.Backoff) > 0 {
+		return nil, nil, &stat
+	}
+
+	if stat.Attempts > 0 {
+		fmt.Println("Reattempting to pull", feedURL)
+	}
+
+	// Parse the feed
+	f, err := p.ParseURL(feedURL)
+	if err != nil {
+		stat.Attempts++
+		stat.Error = err
+		stat.Backoff = time.Now().Add(backoff(stat.Attempts))
+		fmt.Printf("Error parsing %s: %v, attempt %d backoff until %v\n", feedURL, err, stat.Attempts, stat.Backoff)
+		mutex.Lock()
+		status[name] = &stat
+		mutex.Unlock()
+		return nil, nil, &stat
+	}
+
+	// Successful pull - reset stats
+	stat.Attempts = 0
+	stat.Backoff = time.Time{}
+	stat.Error = nil
+	mutex.Lock()
+	status[name] = &stat
+	mutex.Unlock()
+
+	// Build HTML and collect posts
+	var content []byte
+	var posts []*Post
+
+	content = append(content, []byte(`<div class=section>`)...)
+	content = append(content, []byte(`<hr id="`+name+`" class="anchor">`)...)
+	content = append(content, []byte(`<h1>`+displayNewsCategory(name)+`</h1>`)...)
+
+	for i, item := range f.Items {
+		if i >= 10 {
+			break
+		}
+
+		post, err := parseFeedItem(item, name)
+		if err != nil {
+			app.Log("news", "Error parsing item from %s: %v", feedURL, err)
+			continue
+		}
+
+		posts = append(posts, post)
+		itemHTML := formatFeedItemHTML(post, item.GUID)
+		content = append(content, []byte(itemHTML)...)
+	}
+
+	content = append(content, []byte(`</div>`)...)
+
+	return content, posts, &stat
+}
+
+// generateHeadlinesHTML creates the headlines HTML section
+func generateHeadlinesHTML(headlines []*Post) string {
+	var sb strings.Builder
+	sb.WriteString(`<div class=section>`)
+
+	for _, h := range headlines {
+		link := h.URL
+		if h.ID != "" {
+			link = "/news?id=" + h.ID
+		}
+
+		categoryBadge := ""
+		if h.Category != "" {
+			categoryBadge = fmt.Sprintf(`<div class="category-header"><a href="/news#%s" class="category">%s</a></div>`, h.Category, displayNewsCategory(h.Category))
+		}
+		summary := getSummary(h)
+
+		// Add Read Summary link on the right side of source
+		summaryLink := ""
+		if h.ID != "" {
+			summaryLink = fmt.Sprintf(` · <a href="/news?id=%s">Read</a>`, h.ID)
+		}
+
+		fmt.Fprintf(&sb, `
+			<div class="headline">
+			   %s
+			  <a href="%s">
+			   <span class="title">%s</span>
+			  </a>
+			 <span class="description">%s</span>
+			 <div class="summary">%s%s</div>
+			`, categoryBadge, link, h.Title, h.Description, summary, summaryLink)
+		sb.WriteString(`</div>`)
+	}
+
+	sb.WriteString(`</div>`)
+	return sb.String()
+}
+
+func parseFeed() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("Recovered from panic in feed parser: %v\n", r)
+			debug.PrintStack()
+			fmt.Println("Relaunching feed parser in 1 minute")
+			time.Sleep(time.Minute)
+			go parseFeed()
+		}
+	}()
+
+	fmt.Println("Parsing feed at", time.Now().String())
+	p := gofeed.NewParser()
+	p.UserAgent = "Mu/0.1"
+
+	// Collect feed URLs and stats
+	var sorted []string
+	urls := map[string]string{}
+	stats := map[string]Feed{}
+
+	mutex.RLock()
+	for name, url := range feeds {
+		sorted = append(sorted, name)
+		urls[name] = url
+		if stat, ok := status[name]; ok {
+			stats[name] = *stat
+		}
+	}
+	mutex.RUnlock()
+
+	sort.Strings(sorted)
+
+	// Process all feeds
+	var allContent []byte
+	var allNews []*Post
+	var allHeadlines []*Post
+
+	for _, name := range sorted {
+		feedURL := urls[name]
+		content, headlines, _ := processFeedCategory(name, feedURL, p, stats)
+		if content != nil {
+			allContent = append(allContent, content...)
+		}
+		if headlines != nil {
+			allHeadlines = append(allHeadlines, headlines...)
+			allNews = append(allNews, headlines...)
+		}
+	}
+
+	allNews = dedupePosts(allNews)
+	allHeadlines = dedupePosts(allHeadlines)
+
+	// Generate headlines HTML - filter to one per category (the latest from each)
+	// First, build a map of category -> latest post
+	categoryLatest := make(map[string]*Post)
+	for _, post := range allHeadlines {
+		if existing, ok := categoryLatest[post.Category]; !ok || post.PostedAt.After(existing.PostedAt) {
+			categoryLatest[post.Category] = post
+		}
+	}
+
+	// Convert map to slice
+	var filteredHeadlines []*Post
+	for _, post := range categoryLatest {
+		filteredHeadlines = append(filteredHeadlines, post)
+		if len(filteredHeadlines) >= 10 {
+			break
+		}
+	}
+
+	// Sort filtered headlines by timestamp (newest first)
+	sort.Slice(filteredHeadlines, func(i, j int) bool {
+		return filteredHeadlines[i].PostedAt.After(filteredHeadlines[j].PostedAt)
+	})
+
+	headlineHtml := generateHeadlinesHTML(filteredHeadlines)
+	allContent = append([]byte(headlineHtml), allContent...)
+
+	// Save everything
+	head := []byte(app.Head("news", sorted))
+	mutex.Lock()
+	feed = allNews
+	headlinesHtml = headlineHtml
+	saveHtml(head, allContent)
+	data.SaveFile("headlines.html", headlinesHtml)
+	data.SaveJSON("feed.json", feed)
+	mutex.Unlock()
+
+	// Publish the new snapshot to the go-micro store + broker; Headlines serves
+	// it from a mirror (see internal/snapshot, docs/GO_MICRO_ARCHITECTURE.md).
+	cardSnap.Publish(headlineHtml)
+
+	// Wait an hour and go again
+	time.Sleep(time.Hour)
+	go parseFeed()
+}
+
+func Load() {
+	// Register the go-micro service.
+	if err := service.Register("news", new(Server)); err != nil {
+		app.Log("news", "service register failed: %v", err)
+	}
+
+	// Subscribe to refresh events
+	sub := event.Subscribe(event.EventRefreshHNComments)
+	go func() {
+		for evt := range sub.Chan {
+			if url, ok := evt.Data["url"].(string); ok {
+				app.Log("news", "Received refresh request for: %s", url)
+				RefreshHNMetadata(url)
+			}
+		}
+	}()
+
+	// Subscribe to summary generation responses
+	summarySub := event.Subscribe(event.EventSummaryGenerated)
+	go func() {
+		for evt := range summarySub.Chan {
+			uri, okUri := evt.Data["uri"].(string)
+			summary, okSummary := evt.Data["summary"].(string)
+			eventType, okType := evt.Data["type"].(string)
+
+			if okUri && okSummary && okType && eventType == "news" {
+				app.Log("news", "Received generated summary for: %s", uri)
+
+				// Load existing metadata
+				md, exists := loadCachedMetadata(uri)
+				if exists {
+					// Update with summary
+					md.Summary = summary
+					md.Created = time.Now().UnixNano()
+					saveCachedMetadata(uri, md)
+
+					// Re-index with the new summary
+					// Get the itemID from URI
+					itemID := fmt.Sprintf("%x", md5.Sum([]byte(uri)))[:16]
+
+					// Get existing index entry to preserve metadata
+					existing := data.GetByID(itemID)
+					metadata := map[string]interface{}{
+						"url": uri,
+					}
+					title := md.Title
+					if existing != nil {
+						// Preserve existing metadata fields
+						for k, v := range existing.Metadata {
+							metadata[k] = v
+						}
+						// Preserve existing title if metadata title is empty
+						// RSS feeds often have better titles than scraped metadata
+						if title == "" && existing.Title != "" {
+							title = existing.Title
+							app.Log("news", "Preserving existing RSS title: '%s'", title)
+						}
+					}
+					// Update metadata with summary
+					metadata["summary"] = summary
+
+					// Re-index with summary as content
+					data.Index(
+						itemID,
+						"news",
+						title,
+						summary, // Use summary as content for chat context
+						metadata,
+					)
+
+					app.Log("news", "Updated and re-indexed article with summary: %s", uri)
+				}
+			}
+		}
+	}()
+
+	// load headlines
+	b, _ := data.LoadFile("headlines.html")
+	headlinesHtml = string(b)
+
+	// load cached feed
+	b, _ = data.LoadFile("feed.json")
+	if len(b) > 0 {
+		var cachedFeed []*Post
+		if err := json.Unmarshal(b, &cachedFeed); err == nil {
+			mutex.Lock()
+			feed = cachedFeed
+			mutex.Unlock()
+		}
+	}
+
+	// load news body and html
+	b, _ = data.LoadFile("news.html")
+	html = string(b)
+	// Extract body content from saved HTML for serving
+	// The newsBodyHtml will be rebuilt by parseFeed, but load from file for immediate serving
+	if len(html) > 0 {
+		// Parse out just the body content between the main content divs
+		// For now just set newsBodyHtml from the full html - parseFeed will update it
+		newsBodyHtml = html
+	}
+
+	// load the feeds
+	loadFeed()
+
+	// Read plane: start the snapshot channel, then warm the mirror with the
+	// disk-primed headlines so renders are served from the go-micro data plane.
+	cardSnap = snapshot.New("news")
+	cardSnap.Publish(headlinesHtml)
+
+	go parseFeed()
+}
+
+func Headlines() string {
+	// Serve the broker-fed snapshot mirror (the go-micro read plane); fall back
+	// to the locally-cached HTML if no snapshot has arrived yet.
+	if s := cardSnap.Get(); s != "" {
+		return s
+	}
+	mutex.RLock()
+	defer mutex.RUnlock()
+	return headlinesHtml
+}
+
+// GetFeed returns the current in-memory news feed (most recent first).
+func GetFeed() []*Post {
+	mutex.RLock()
+	defer mutex.RUnlock()
+	result := make([]*Post, len(feed))
+	copy(result, feed)
+	return dedupePosts(result)
+}
+
+func formatSummary(text string) string {
+	// Split by double newlines for paragraphs
+	paragraphs := strings.Split(text, "\n\n")
+	var formatted []string
+
+	for _, para := range paragraphs {
+		para = strings.TrimSpace(para)
+		if para == "" {
+			continue
+		}
+
+		// Check if it's a bullet point list (lines starting with -, *, or •)
+		lines := strings.Split(para, "\n")
+		isList := false
+		for _, line := range lines {
+			trimmed := strings.TrimSpace(line)
+			if strings.HasPrefix(trimmed, "- ") || strings.HasPrefix(trimmed, "* ") || strings.HasPrefix(trimmed, "• ") {
+				isList = true
+				break
+			}
+		}
+
+		if isList {
+			// Format as HTML list
+			formatted = append(formatted, "<ul style=\"margin: 10px 0; padding-left: 20px;\">")
+			for _, line := range lines {
+				trimmed := strings.TrimSpace(line)
+				if trimmed == "" {
+					continue
+				}
+				// Remove bullet markers
+				trimmed = strings.TrimPrefix(trimmed, "- ")
+				trimmed = strings.TrimPrefix(trimmed, "* ")
+				trimmed = strings.TrimPrefix(trimmed, "• ")
+				formatted = append(formatted, fmt.Sprintf("<li>%s</li>", trimmed))
+			}
+			formatted = append(formatted, "</ul>")
+		} else {
+			// Regular paragraph
+			formatted = append(formatted, fmt.Sprintf("<p style=\"margin: 10px 0;\">%s</p>", para))
+		}
+	}
+
+	return strings.Join(formatted, "")
+}
+
+func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string) {
+	// Get article from index
+	entry := data.GetByID(articleID)
+	if entry == nil {
+		http.Error(w, "Article not found", http.StatusNotFound)
+		return
+	}
+
+	// Extract metadata first (needed for both guest and logged-in views)
+	articleURL := ""
+	category := ""
+	image := ""
+	summary := ""
+	description := ""
+	var postedAt time.Time
+
+	if v, ok := entry.Metadata["url"].(string); ok {
+		articleURL = v
+	}
+	if v, ok := entry.Metadata["category"].(string); ok {
+		category = v
+	}
+	if v, ok := entry.Metadata["image"].(string); ok {
+		image = v
+	}
+	if v, ok := entry.Metadata["description"].(string); ok {
+		description = v
+	}
+	if v, ok := entry.Metadata["summary"].(string); ok {
+		summary = v
+	}
+	if v, ok := entry.Metadata["posted_at"].(time.Time); ok {
+		postedAt = v
+	} else if v, ok := entry.Metadata["posted_at"].(string); ok {
+		if parsed, err := time.Parse(time.RFC3339, v); err == nil {
+			postedAt = parsed
+		}
+	}
+
+	title := entry.Title
+
+	// Previously gated AI summaries behind login, but summaries are
+	// pre-generated and cached — no cost to serve. Open to all so
+	// content can be shared and discovered.
+
+	// Debug logging
+	app.Log("news", "Article view: ID=%s, Title='%s', URL='%s'", articleID, title, articleURL)
+
+	// If title or description is empty, try to fetch fresh metadata
+	// But only use metadata values if they're actually better than what we have
+	if (title == "" || description == "") && articleURL != "" {
+		app.Log("news", "Fetching metadata because title='%s' desc='%s'", title, description)
+		md, _, err := getMetadata(articleURL, postedAt)
+		if err == nil {
+			app.Log("news", "Got metadata: Title='%s', Desc='%s'", md.Title, md.Description)
+			// Only use metadata title if our current title is empty AND metadata has one
+			if title == "" && md.Title != "" {
+				title = md.Title
+			}
+			// Only use metadata description if our current description is empty AND metadata has one
+			if description == "" && md.Description != "" {
+				description = md.Description
+			}
+			// Always use metadata image and summary if available (these are enhancements)
+			if image == "" && md.Image != "" {
+				image = md.Image
+			}
+			if summary == "" && md.Summary != "" {
+				summary = md.Summary
+			}
+		} else {
+			app.Log("news", "Error fetching metadata: %v", err)
+		}
+	}
+
+	// On-demand summary generation: if the article has no summary yet,
+	// request one now that someone is actually reading it. Uses Haiku
+	// for cost efficiency. Previously this ran proactively for every
+	// article in the feed.
+	if summary == "" && articleURL != "" {
+		if cached, exists := loadCachedMetadata(articleURL); exists && cached.Summary == "" {
+			if shouldRequestSummary(cached) {
+				go requestArticleSummary(articleURL, cached)
+			}
+		}
+	}
+
+	app.Log("news", "Final title='%s', desc='%s'", title, description)
+
+	// Build the article page
+	imageSection := ""
+	if image != "" {
+		imageSection = fmt.Sprintf(`<img src="%s" class="article-image" referrerpolicy="no-referrer" onerror="this.style.display='none'">`, image)
+	}
+
+	summarySection := ""
+	// Always show summary in its own section when available (clearly labeled as AI-generated)
+	if summary != "" {
+		// Format the summary: split by double newlines into paragraphs, handle bullet points
+		formattedSummary := formatSummary(summary)
+		summarySection = fmt.Sprintf(`
+			<div class="article-summary">
+				<h3>AI Summary</h3>
+				<div>%s</div>
+			</div>`, formattedSummary)
+	}
+
+	categoryBadge := ""
+	if category != "" {
+		categoryBadge = fmt.Sprintf(` · <a href="/news#%s" class="category">%s</a>`, category, category)
+	}
+
+	// Build description section
+	descriptionSection := ""
+	if description != "" {
+		descriptionSection = fmt.Sprintf(`<div class="article-description"><p>%s</p></div>`, description)
+	}
+
+	// Fetch social context if callback is set
+	socialContextHTML := ""
+	if FetchSocialContext != nil && articleURL != "" {
+		socialContextHTML = FetchSocialContext(articleURL, description+" "+summary)
+	}
+
+	articleHtml := fmt.Sprintf(`
+		<div id="news-article">
+			%s
+			<div class="article-meta">
+				<span><span data-timestamp="%d">%s</span> · Source: <i>%s</i>%s</span>
+			</div>
+			%s
+			%s
+			%s
+			<div class="article-actions">
+				<a href="%s" target="_blank" rel="noopener noreferrer">Read Original →</a>
+				<span class="mx-2">·</span>
+				<a href="/chat?id=news_%s">Discuss with AI →</a>
+				<span class="mx-2">·</span>
+				<a href="#" onclick="navigator.share ? navigator.share({title: document.title, url: window.location.href}) : navigator.clipboard.writeText(window.location.href).then(() => alert('Link copied to clipboard!')); return false;">Share →</a>
+			</div>
+			<div class="article-back">
+				<a href="/news">← Back to news</a>
+			</div>
+		</div>
+	`, imageSection, postedAt.Unix(), app.TimeAgo(postedAt), getDomain(articleURL), categoryBadge, descriptionSection, summarySection, socialContextHTML, articleURL, articleID)
+
+	// Use title for browser tab, but empty page title since article already has its own H1
+	pageHTML := app.RenderHTML(title, title, articleHtml)
+	w.Write([]byte(pageHTML))
+}
+
+func Handler(w http.ResponseWriter, r *http.Request) {
+	// Handle viewing individual news article
+	if articleID := r.URL.Query().Get("id"); articleID != "" {
+		handleArticleView(w, r, articleID)
+		return
+	}
+
+	// Handle POST with JSON (API search)
+	if r.Method == "POST" && app.SendsJSON(r) {
+		handleAPISearch(w, r)
+		return
+	}
+
+	// Handle search query (HTML)
+	if query := r.URL.Query().Get("query"); query != "" {
+		// Require authentication for search
+		_, acc := auth.TrySession(r)
+		if acc == nil {
+			app.Unauthorized(w, r)
+			return
+		}
+
+		// Limit query length to prevent abuse
+		if len(query) > 256 {
+			app.BadRequest(w, r, "Search query must not exceed 256 characters")
+			return
+		}
+		handleSearch(w, r, query)
+		return
+	}
+
+	// GET news feed
+	handleGetFeed(w, r)
+}
+
+// handleAPISearch handles POST /news with JSON body for search
+func handleAPISearch(w http.ResponseWriter, r *http.Request) {
+	sess, _, err := auth.RequireSession(r)
+	if err != nil {
+		app.Unauthorized(w, r)
+		return
+	}
+
+	var reqData map[string]interface{}
+	b, _ := ioutil.ReadAll(r.Body)
+	json.Unmarshal(b, &reqData)
+
+	query := ""
+	if v := reqData["query"]; v != nil {
+		query = fmt.Sprintf("%v", v)
+	}
+
+	if query == "" {
+		http.Error(w, "query required", 400)
+		return
+	}
+
+	// Check quota before search
+	canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, wallet.OpNewsSearch)
+	if !canProceed {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(402) // Payment Required
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"error":   "quota_exceeded",
+			"message": "Daily search limit reached. Please top up credits at /wallet",
+			"cost":    cost,
+		})
+		return
+	}
+
+	payload := newsSearchPayload(query, 20)
+
+	// Consume quota after successful search
+	wallet.ConsumeQuota(sess.Account, wallet.OpNewsSearch)
+
+	app.RespondJSON(w, payload)
+}
+
+// SearchToolText returns model-ready JSON for news_search tool calls. It uses
+// the same indexed-plus-live-feed result selection as the authenticated /news
+// API search, but performs no quota mutation itself; callers that expose it over
+// public protocols remain responsible for auth/quota gates.
+func SearchToolText(query string) (string, error) {
+	query = strings.TrimSpace(query)
+	if query == "" {
+		return "", fmt.Errorf("query required")
+	}
+	if len(query) > 256 {
+		return "", fmt.Errorf("search query must not exceed 256 characters")
+	}
+	payload := newsSearchPayload(query, 8)
+	b, err := json.Marshal(payload)
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
+}
+
+func newsSearchPayload(query string, limit int) map[string]interface{} {
+	// Search indexed news articles first, then merge in the live in-memory feed.
+	// The live feed powers /news and is the most truthful fallback when the
+	// search index is cold or stale, which can happen just after startup.
+	results := data.Search(query, limit, data.WithType("news"), data.WithKeywordOnly())
+	articles := newsSearchArticles(query, results, limit)
+	payload := map[string]interface{}{
+		"query":        query,
+		"results":      articles,
+		"count":        len(articles),
+		"presentation": "Write concise source-linked news bullets: link the title or source name, do not expose category/feed metadata, raw URLs, ids, or clipped snippet fragments.",
+	}
+	if freshness := newsSearchFreshnessSummary(query, articles, time.Now().UTC()); freshness != nil {
+		payload["freshness"] = freshness
+	}
+	return payload
+}
+
+func newsSearchArticles(query string, indexed []*data.IndexEntry, limit int) []map[string]interface{} {
+	if limit <= 0 {
+		limit = 20
+	}
+	seen := map[string]bool{}
+	var articles []map[string]interface{}
+	add := func(article map[string]interface{}) {
+		if len(articles) >= limit {
+			return
+		}
+		id := fmt.Sprintf("%v", article["id"])
+		url := fmt.Sprintf("%v", article["url"])
+		key := id
+		if key == "" {
+			key = url
+		}
+		if key != "" {
+			if seen[key] {
+				return
+			}
+			seen[key] = true
+		}
+		articles = append(articles, article)
+	}
+
+	var candidates []map[string]interface{}
+	for _, entry := range indexed {
+		article := map[string]interface{}{
+			"id":          entry.ID,
+			"title":       entry.Title,
+			"description": newsSearchBriefDescription(entry.Content),
+			"url":         cleanNewsArticleURL(entry.Metadata["url"]),
+			"category":    entry.Metadata["category"],
+			"posted_at":   indexedNewsArticlePostedAt(entry),
+		}
+		if articleMatchesNewsQuery(query, article) {
+			candidates = append(candidates, article)
+		}
+	}
+
+	liveLimit := limit
+	if newsQueryWantsFreshness(query) {
+		// Freshness prompts ("today", "latest", "current") need a wider live-feed
+		// candidate pool than the final response size. liveFeedSearch ranks by
+		// textual relevance first, so a same-day story with a narrower term match
+		// can otherwise be trimmed before the final recency sort gets a chance to
+		// promote it above older, broader matches.
+		liveLimit = newsSearchFreshCandidateLimit(limit)
+	}
+	for _, post := range liveFeedSearch(query, liveLimit) {
+		candidates = append(candidates, map[string]interface{}{
+			"id":          post.ID,
+			"title":       post.Title,
+			"description": newsSearchBriefDescription(post.Description),
+			"url":         cleanNewsArticleURL(post.URL),
+			"category":    post.Category,
+			"posted_at":   post.PostedAt,
+		})
+	}
+
+	if newsQueryWantsFreshness(query) {
+		sort.SliceStable(candidates, func(i, j int) bool {
+			left := articlePostedAt(candidates[i])
+			right := articlePostedAt(candidates[j])
+			if left.IsZero() || right.IsZero() {
+				return !left.IsZero() && right.IsZero()
+			}
+			return left.After(right)
+		})
+	}
+
+	for _, article := range candidates {
+		add(article)
+	}
+	return articles
+}
+
+func newsSearchBriefDescription(raw string) string {
+	desc := strings.TrimSpace(htmlToText(raw))
+	if desc == "" {
+		return ""
+	}
+	clipped := false
+	for _, marker := range []string{"...", "…"} {
+		if idx := strings.Index(desc, marker); idx >= 0 {
+			desc = strings.TrimSpace(desc[:idx])
+			clipped = true
+			break
+		}
+	}
+	if clipped && !strings.ContainsAny(desc, ".!?") {
+		return ""
+	}
+	const maxRunes = 180
+	runes := []rune(desc)
+	if len(runes) <= maxRunes {
+		return desc
+	}
+	window := string(runes[:maxRunes])
+	lastSentence := -1
+	for _, mark := range []string{". ", "! ", "? ", ".\n", "!\n", "?\n"} {
+		if idx := strings.LastIndex(window, mark); idx > lastSentence {
+			lastSentence = idx
+		}
+	}
+	if lastSentence > 0 {
+		return strings.TrimSpace(window[:lastSentence+1])
+	}
+	lastSpace := strings.LastIndex(window, " ")
+	if lastSpace > 80 {
+		return strings.TrimSpace(window[:lastSpace])
+	}
+	return strings.TrimSpace(window)
+}
+
+func indexedNewsArticlePostedAt(entry *data.IndexEntry) interface{} {
+	if entry == nil {
+		return nil
+	}
+	if entry.Metadata != nil {
+		if postedAt := entry.Metadata["posted_at"]; postedAt != nil {
+			return postedAt
+		}
+	}
+	if !entry.IndexedAt.IsZero() {
+		return entry.IndexedAt
+	}
+	return nil
+}
+
+func newsSearchFreshCandidateLimit(limit int) int {
+	if limit <= 0 {
+		limit = 20
+	}
+	widened := limit * 4
+	if widened < 50 {
+		widened = 50
+	}
+	return widened
+}
+
+func newsSearchFreshnessSummary(query string, articles []map[string]interface{}, now time.Time) map[string]interface{} {
+	if !newsQueryWantsFreshness(query) {
+		return nil
+	}
+	if now.IsZero() {
+		now = time.Now().UTC()
+	}
+	now = now.UTC()
+	freshest := time.Time{}
+	dated := 0
+	sameDay := 0
+	for _, article := range articles {
+		posted := articlePostedAt(article)
+		if posted.IsZero() {
+			continue
+		}
+		posted = posted.UTC()
+		dated++
+		if posted.Format("2006-01-02") == now.Format("2006-01-02") {
+			sameDay++
+		}
+		if posted.After(freshest) {
+			freshest = posted
+		}
+	}
+	requestedDate := now.Format("2006-01-02")
+	freshness := map[string]interface{}{
+		"requested_date":   requestedDate,
+		"requested_window": "today/current",
+	}
+	if freshest.IsZero() {
+		freshness["status"] = "no_dated_results"
+		freshness["notice"] = fmt.Sprintf("No dated news_search results were available for %s; do not present these results as today's news without that caveat.", requestedDate)
+		return freshness
+	}
+	freshest = freshest.UTC()
+	freshness["freshest_posted_at"] = freshest.Format(time.RFC3339)
+	if freshest.Format("2006-01-02") == requestedDate {
+		freshness["same_day_results"] = sameDay
+		freshness["dated_results"] = dated
+		if dated > 1 && sameDay*2 < dated {
+			freshness["status"] = "mostly_stale"
+			freshness["notice"] = fmt.Sprintf("Only %d of %d dated news_search results are from %s; lead with a freshness caveat before listing older context as today's news.", sameDay, dated, requestedDate)
+			return freshness
+		}
+		freshness["status"] = "current"
+		return freshness
+	}
+	freshness["status"] = "stale"
+	freshness["notice"] = fmt.Sprintf("No same-day news_search results were available for %s; the freshest result is from %s, so lead with a freshness caveat instead of presenting older stories as today's news.", requestedDate, freshest.Format("2006-01-02"))
+	return freshness
+}
+
+func newsQueryWantsFreshness(query string) bool {
+	lower := strings.ToLower(query)
+	for _, token := range []string{"today", "latest", "current", "fresh", "recent"} {
+		if strings.Contains(lower, token) {
+			return true
+		}
+	}
+	return false
+}
+
+func articlePostedAt(article map[string]interface{}) time.Time {
+	switch v := article["posted_at"].(type) {
+	case time.Time:
+		return v
+	case string:
+		return parseNewsArticleTime(v)
+	}
+	return time.Time{}
+}
+
+func parseNewsArticleTime(raw string) time.Time {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return time.Time{}
+	}
+	for _, layout := range []string{
+		time.RFC3339,
+		time.RFC3339Nano,
+		"2006-01-02 15:04:05 -0700 MST",
+		"2006-01-02 15:04:05 -0700",
+		"2006-01-02 15:04:05 MST",
+		"2006-01-02 15:04:05",
+		"2006-01-02 15:04",
+		"2006-01-02",
+		time.RFC1123Z,
+		time.RFC1123,
+		time.RFC822Z,
+		time.RFC822,
+		"2 Jan 2006 15:04 UTC",
+		"2 Jan 2006",
+		"Jan 2, 2006",
+		"January 2, 2006",
+	} {
+		if t, err := time.Parse(layout, raw); err == nil {
+			return t.UTC()
+		}
+	}
+	return time.Time{}
+}
+
+func cleanNewsArticleURL(raw interface{}) string {
+	u := strings.TrimSpace(fmt.Sprintf("%v", raw))
+	if u == "" || strings.EqualFold(u, "<nil>") {
+		return ""
+	}
+	withoutQuery := u
+	if parsed, err := url.Parse(u); err == nil {
+		withoutQuery = parsed.Path
+	}
+	lower := strings.ToLower(withoutQuery)
+	for _, suffix := range []string{".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".avif"} {
+		if strings.HasSuffix(lower, suffix) {
+			return ""
+		}
+	}
+	return u
+}
+
+func liveFeedSearch(query string, limit int) []*Post {
+	terms := meaningfulNewsQueryTerms(query)
+	mutex.RLock()
+	currentFeed := append([]*Post(nil), feed...)
+	mutex.RUnlock()
+	if len(terms) == 0 {
+		sort.SliceStable(currentFeed, func(i, j int) bool {
+			return currentFeed[i].PostedAt.After(currentFeed[j].PostedAt)
+		})
+		if limit > 0 && len(currentFeed) > limit {
+			currentFeed = currentFeed[:limit]
+		}
+		return currentFeed
+	}
+
+	type match struct {
+		post  *Post
+		score int
+	}
+	var matches []match
+	requireAI := newsQueryRequiresArtificialIntelligence(query)
+	for _, post := range currentFeed {
+		haystack := newsSearchHaystack(post.Title, post.Description, post.Content, post.Category)
+		if requireAI {
+			if !newsHaystackHasExplicitAIRelevance(haystack) {
+				continue
+			}
+			if newsAIArticleIsBroadFinance(post.Title, post.Description, post.Content, post.Category) {
+				continue
+			}
+			if newsAIArticleIsWeakAdjacentBackground(post.Title, post.Description, post.Content, post.Category) {
+				continue
+			}
+			if newsAIArticleIsGenericHiringBackground(post.Title, post.Description, post.Content, post.Category) {
+				continue
+			}
+			if newsAIArticleIsNoveltyDemoBackground(post.Title, post.Description, post.Content, post.Category) {
+				continue
+			}
+		}
+		score := 0
+		for _, term := range terms {
+			if newsSearchTermMatches(haystack, term) {
+				score++
+			}
+		}
+		if score > 0 {
+			matches = append(matches, match{post: post, score: score})
+		}
+	}
+	sort.SliceStable(matches, func(i, j int) bool {
+		if matches[i].score != matches[j].score {
+			return matches[i].score > matches[j].score
+		}
+		return matches[i].post.PostedAt.After(matches[j].post.PostedAt)
+	})
+	if limit > 0 && len(matches) > limit {
+		matches = matches[:limit]
+	}
+	out := make([]*Post, 0, len(matches))
+	for _, match := range matches {
+		out = append(out, match.post)
+	}
+	return out
+}
+
+func articleMatchesNewsQuery(query string, article map[string]interface{}) bool {
+	terms := meaningfulNewsQueryTerms(query)
+	if len(terms) == 0 {
+		return true
+	}
+	haystack := newsSearchHaystack(
+		fmt.Sprintf("%v", article["title"]),
+		fmt.Sprintf("%v", article["description"]),
+		fmt.Sprintf("%v", article["category"]),
+	)
+	if newsQueryRequiresArtificialIntelligence(query) {
+		if !newsHaystackHasExplicitAIRelevance(haystack) {
+			return false
+		}
+		if newsAIArticleIsBroadFinance(
+			fmt.Sprintf("%v", article["title"]),
+			fmt.Sprintf("%v", article["description"]),
+			fmt.Sprintf("%v", article["content"]),
+			fmt.Sprintf("%v", article["category"]),
+		) {
+			return false
+		}
+		if newsAIArticleIsWeakAdjacentBackground(
+			fmt.Sprintf("%v", article["title"]),
+			fmt.Sprintf("%v", article["description"]),
+			fmt.Sprintf("%v", article["content"]),
+			fmt.Sprintf("%v", article["category"]),
+		) {
+			return false
+		}
+		if newsAIArticleIsGenericHiringBackground(
+			fmt.Sprintf("%v", article["title"]),
+			fmt.Sprintf("%v", article["description"]),
+			fmt.Sprintf("%v", article["content"]),
+			fmt.Sprintf("%v", article["category"]),
+		) {
+			return false
+		}
+		if newsAIArticleIsNoveltyDemoBackground(
+			fmt.Sprintf("%v", article["title"]),
+			fmt.Sprintf("%v", article["description"]),
+			fmt.Sprintf("%v", article["content"]),
+			fmt.Sprintf("%v", article["category"]),
+		) {
+			return false
+		}
+	}
+	for _, term := range terms {
+		if newsSearchTermMatches(haystack, term) {
+			return true
+		}
+	}
+	return false
+}
+
+func newsSearchHaystack(parts ...string) string {
+	return strings.ToLower(strings.Join(parts, " "))
+}
+
+func newsQueryRequiresArtificialIntelligence(query string) bool {
+	clean := strings.NewReplacer("-", " ", "_", " ", "/", " ", "'", "", "’", "").Replace(strings.ToLower(query))
+	for _, term := range []string{"ai", "artificial intelligence", "machine learning", "llm", "large language model"} {
+		if newsSearchTermMatches(clean, term) {
+			return true
+		}
+	}
+	return false
+}
+
+func newsHaystackHasExplicitAIRelevance(haystack string) bool {
+	for _, term := range []string{
+		"artificial intelligence", "machine learning", "large language model", "generative ai",
+		"openai", "anthropic", "llm", "ai model", "language model", "foundation model",
+		"model-serving", "model serving", "ai agent", "ai assistant", "ai lab", "ai startup",
+		"ai chip", "ai accelerator", "ai infrastructure", "ai data center", "ai datacenter",
+	} {
+		if newsSearchTermMatches(haystack, term) {
+			return true
+		}
+	}
+	if !newsSearchTermMatches(haystack, "ai") {
+		return false
+	}
+	for _, term := range []string{
+		"model", "models", "assistant", "agent", "agents", "lab", "labs", "startup", "developer", "research",
+		"robot", "robotics", "chip", "chips", "semiconductor", "accelerator", "inference", "training",
+		"data center", "datacenter", "gpu", "cloud", "safety", "benchmark", "regulation", "regulator",
+	} {
+		if newsSearchTermMatches(haystack, term) {
+			return true
+		}
+	}
+	return false
+}
+
+func newsAIArticleIsWeakAdjacentBackground(parts ...string) bool {
+	haystack := newsSearchHaystack(parts...)
+	if haystack == "" {
+		return false
+	}
+	weakFrames := []string{
+		"essay", "opinion", "column", "maintainable code", "coding", "programming", "software engineering",
+		"compiler", "jit", "runtime", "windows tool", "utility", "tooling", "developer tool", "browser", "freecad", "gadget", "advertising", "ads", "election", "campaign", "parliament", "politics",
+	}
+	hasWeakFrame := false
+	for _, term := range weakFrames {
+		if newsSearchTermMatches(haystack, term) {
+			hasWeakFrame = true
+			break
+		}
+	}
+	if !hasWeakFrame {
+		return false
+	}
+	strongAITerms := []string{
+		"artificial intelligence", "machine learning", "large language model", "generative ai", "openai", "anthropic",
+		"llm", "ai model", "language model", "foundation model", "model-serving", "model serving",
+		"ai agent", "ai assistant", "ai lab", "ai startup", "ai chip", "ai accelerator", "ai infrastructure",
+		"ai regulation", "ai regulator", "ai policy", "ai safety", "ai research", "ai product", "ai-powered", "ai powered",
+	}
+	for _, term := range strongAITerms {
+		if newsSearchTermMatches(haystack, term) {
+			return false
+		}
+	}
+	return true
+}
+
+func newsAIArticleIsNoveltyDemoBackground(parts ...string) bool {
+	haystack := newsSearchHaystack(parts...)
+	if haystack == "" {
+		return false
+	}
+	noveltyTerms := []string{
+		"font", "fonts", "typeface", "typography", "demo", "demos", "prototype", "showcase",
+		"experiment", "toy", "novelty", "anti ai", "anti-ai", "gimmick", "art project",
+	}
+	hasNoveltyFrame := false
+	for _, term := range noveltyTerms {
+		if newsSearchTermMatches(haystack, term) {
+			hasNoveltyFrame = true
+			break
+		}
+	}
+	if !hasNoveltyFrame {
+		return false
+	}
+
+	// Same-day AI searches should not promote novelty/demo pages as top news just
+	// because they mention AI. Keep them only when the item also reports concrete
+	// product, model, agent, infrastructure, governance, safety, or user-impact
+	// activity.
+	for _, term := range []string{
+		"open source model", "model release", "benchmark", "evaluation",
+		"ai safety", "ai regulation", "ai regulator", "ai governance", "frontier model", "foundation model",
+		"ai model", "language model", "large language model", "llm", "ai agent", "ai assistant",
+		"ai product", "ai platform", "ai infrastructure", "ai chip", "ai accelerator", "training cluster",
+		"inference server", "data center", "datacenter", "deploy", "deployed", "user impact", "customer",
+	} {
+		if newsSearchTermMatches(haystack, term) {
+			return false
+		}
+	}
+	return true
+}
+
+func newsAIArticleIsGenericHiringBackground(parts ...string) bool {
+	haystack := newsSearchHaystack(parts...)
+	if haystack == "" {
+		return false
+	}
+	hiringTerms := []string{
+		"hiring", "hire", "hires", "jobs", "job", "careers", "recruiting", "recruit", "talent",
+		"job market", "job board", "job-board", "layoff", "layoffs", "laid off", "workforce", "headcount",
+		"y combinator", "yc companies", "startup jobs",
+	}
+	hasHiringFrame := false
+	for _, term := range hiringTerms {
+		if newsSearchTermMatches(haystack, term) {
+			hasHiringFrame = true
+			break
+		}
+	}
+	if !hasHiringFrame {
+		return false
+	}
+
+	// Hiring roundups are usually generic company/background posts. Keep them
+	// only when the hiring item is also about a concrete AI release, model,
+	// safety/governance action, infrastructure launch, or user-impact change.
+	for _, term := range []string{
+		"launch", "launches", "launched", "release", "releases", "released", "rollout", "rolls out",
+		"unveil", "unveils", "unveiled", "open source", "model release", "benchmark", "evaluation",
+		"ai safety", "ai regulation", "ai regulator", "ai governance", "frontier model", "foundation model",
+		"ai chip", "ai accelerator", "inference server", "training cluster", "agent workflow", "assistant update",
+	} {
+		if newsSearchTermMatches(haystack, term) {
+			return false
+		}
+	}
+	return true
+}
+
+func newsAIArticleIsBroadFinance(parts ...string) bool {
+	haystack := newsSearchHaystack(parts...)
+	if haystack == "" {
+		return false
+	}
+	financeTerms := []string{
+		"business", "finance", "financial", "market", "markets", "stock", "stocks", "shares", "equities",
+		"mover", "movers", "trading", "trader", "investor", "investors", "wall street", "nasdaq", "dow",
+		"s&p", "rate", "rates", "earnings", "futures", "crypto", "bitcoin", "blockchain", "token",
+		"tokens", "digital asset", "digital assets", "stablecoin", "stablecoins", "ipo", "valuation",
+		"export control", "export controls", "sanctions", "cbdc", "central-bank",
+	}
+	hasFinance := false
+	for _, term := range financeTerms {
+		if newsSearchTermMatches(haystack, term) {
+			hasFinance = true
+			break
+		}
+	}
+	if !hasFinance {
+		return false
+	}
+	if newsAIArticleIsCryptoMarketBackground(haystack) {
+		return true
+	}
+	if newsAIArticleIsGenericFinancePolicyBackground(haystack) {
+		return true
+	}
+
+	// Chip and data-center wording is common in broad market-mover copy
+	// ("AI chip stocks", "data-center shares") that mentions AI only as a
+	// trading theme. Keep those stories only when they describe concrete AI
+	// infrastructure or product activity, not just share-price movement. Generic
+	// phrases such as "artificial intelligence chip sales" are still finance
+	// background unless the item names a launch, deployment, capacity buildout,
+	// accelerator/customer deal, or similar AI-infrastructure action.
+	if newsHaystackHasAIInfrastructureTerm(haystack) {
+		for _, term := range []string{
+			"launch", "launches", "launched", "release", "releases", "released", "unveil", "unveils", "unveiled",
+			"expand", "expands", "expanded", "build", "builds", "built", "capacity", "processor", "accelerator",
+			"gpu", "server", "inference", "training", "model serving", "model-serving", "cloud", "supply deal",
+			"accelerator customer", "accelerator customers", "deployment", "deploy", "deployed",
+		} {
+			if newsSearchTermMatches(haystack, term) {
+				return false
+			}
+		}
+		return true
+	}
+	if newsAIArticleHasConcreteStoryEvidence(haystack) {
+		return false
+	}
+	return true
+}
+
+func newsAIArticleIsGenericFinancePolicyBackground(haystack string) bool {
+	policyTerms := []string{
+		"export control", "export controls", "sanctions", "stablecoin", "stablecoins", "binance",
+		"cbdc", "central-bank", "central bank", "digital asset", "digital assets", "crypto policy",
+	}
+	hasPolicyFrame := false
+	for _, term := range policyTerms {
+		if newsSearchTermMatches(haystack, term) {
+			hasPolicyFrame = true
+			break
+		}
+	}
+	if !hasPolicyFrame {
+		return false
+	}
+
+	// Keep true AI-governance stories, but do not let generic finance, crypto,
+	// or export-control policy pieces lead AI news just because they mention AI
+	// governance in passing. The story needs concrete AI actors, models,
+	// products, safety/evaluation work, or explicit AI-sector controls.
+	for _, term := range []string{
+		"openai", "anthropic", "ai lab", "ai startup", "ai company", "ai companies",
+		"artificial intelligence company", "artificial intelligence companies",
+		"ai model", "language model", "foundation model", "large language model", "llm",
+		"model evaluation", "model-evaluation", "benchmark", "frontier system", "frontier systems",
+		"ai safety", "ai agent", "ai assistant", "ai product", "ai platform",
+		"ai chip export", "ai chips export", "ai export control", "ai export controls",
+	} {
+		if newsSearchTermMatches(haystack, term) {
+			return false
+		}
+	}
+	return true
+}
+
+func newsAIArticleHasConcreteStoryEvidence(haystack string) bool {
+	for _, term := range []string{
+		"artificial intelligence", "machine learning", "large language model", "generative ai", "openai", "anthropic",
+		"ai model", "language model", "foundation model", "model-serving", "model serving",
+		"ai agent", "ai assistant", "ai lab", "ai startup", "ai product", "ai platform", "ai research",
+		"ai regulation", "ai regulator", "ai safety",
+	} {
+		if newsSearchTermMatches(haystack, term) {
+			return true
+		}
+	}
+	if newsSearchTermMatches(haystack, "llm") {
+		for _, term := range []string{"model", "models", "assistant", "agent", "product", "platform", "research", "safety", "benchmark"} {
+			if newsSearchTermMatches(haystack, term) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func newsAIArticleIsCryptoMarketBackground(haystack string) bool {
+	cryptoTerms := []string{
+		"crypto", "bitcoin", "blockchain", "token", "tokens", "digital asset", "digital assets",
+		"ethereum", "ether", "stablecoin", "altcoin", "defi",
+	}
+	hasCrypto := false
+	for _, term := range cryptoTerms {
+		if newsSearchTermMatches(haystack, term) {
+			hasCrypto = true
+			break
+		}
+	}
+	if !hasCrypto {
+		return false
+	}
+
+	marketTerms := []string{
+		"market", "markets", "mover", "movers", "price", "prices", "rally", "climb", "climbs",
+		"drop", "drops", "trading", "trader", "traders", "investor", "investors", "portfolio",
+	}
+	hasMarketFrame := false
+	for _, term := range marketTerms {
+		if newsSearchTermMatches(haystack, term) {
+			hasMarketFrame = true
+			break
+		}
+	}
+	if !hasMarketFrame {
+		return false
+	}
+
+	concreteAITerms := []string{
+		"artificial intelligence", "machine learning", "large language model", "generative ai",
+		"openai", "anthropic", "llm", "ai model", "language model", "foundation model",
+		"ai agent", "ai assistant", "ai lab", "model-serving", "model serving",
+	}
+	for _, term := range concreteAITerms {
+		if newsSearchTermMatches(haystack, term) {
+			return false
+		}
+	}
+	return true
+}
+
+func newsHaystackHasAIInfrastructureTerm(haystack string) bool {
+	for _, term := range []string{"chip", "chips", "semiconductor", "data center", "datacenter"} {
+		if newsSearchTermMatches(haystack, term) {
+			return true
+		}
+	}
+	return false
+}
+
+func newsSearchTermMatches(haystack, term string) bool {
+	term = strings.TrimSpace(strings.ToLower(term))
+	if term == "" {
+		return false
+	}
+	if strings.Contains(term, " ") {
+		return strings.Contains(haystack, term)
+	}
+	for _, token := range strings.FieldsFunc(haystack, func(r rune) bool {
+		return (r < 'a' || r > 'z') && (r < '0' || r > '9')
+	}) {
+		if token == term {
+			return true
+		}
+	}
+	return false
+}
+
+func meaningfulNewsQueryTerms(query string) []string {
+	stop := map[string]bool{
+		"a": true, "an": true, "and": true, "any": true, "for": true, "from": true,
+		"find": true, "give": true, "headline": true, "headlines": true, "latest": true, "me": true,
+		"news": true, "of": true, "on": true, "show": true, "the": true, "today": true, "todays": true,
+		"top": true, "update": true, "updates": true, "what": true, "whats": true,
+	}
+	seen := map[string]bool{}
+	var terms []string
+	add := func(term string) {
+		term = strings.TrimSpace(strings.ToLower(term))
+		if term == "" || stop[term] || seen[term] {
+			return
+		}
+		seen[term] = true
+		terms = append(terms, term)
+	}
+	clean := strings.NewReplacer("-", " ", "_", " ", "/", " ", "'", "", "’", "").Replace(strings.ToLower(query))
+	for _, field := range strings.Fields(clean) {
+		add(strings.Trim(field, `.,:;!?()[]{}"'`))
+	}
+	if strings.Contains(clean, "technology") || strings.Contains(clean, "tech") {
+		for _, term := range []string{"tech", "technology", "ai", "artificial intelligence", "machine learning", "model", "software", "semiconductor", "chip"} {
+			add(term)
+		}
+	}
+	if strings.Contains(clean, "ai") || strings.Contains(clean, "artificial intelligence") {
+		for _, term := range []string{"ai", "artificial intelligence", "machine learning", "llm", "model"} {
+			add(term)
+		}
+	}
+	return terms
+}
+
+func postURL(post *Post) string {
+	if post == nil {
+		return ""
+	}
+	if post.ID != "" {
+		return "/news?id=" + post.ID
+	}
+	return post.URL
+}
+
+// handleGetFeed handles GET /news - returns feed as JSON or HTML
+func handleGetFeed(w http.ResponseWriter, r *http.Request) {
+	mutex.RLock()
+	currentFeed := feed
+	hasContent := len(feed) > 0
+	mutex.RUnlock()
+
+	// JSON response
+	if app.WantsJSON(r) {
+		app.RespondJSON(w, map[string]interface{}{
+			"feed": currentFeed,
+		})
+		return
+	}
+
+	// HTML response
+	body := newsBodyHtml
+	if hasContent {
+		body = generateNewsHtml()
+	}
+	app.Respond(w, r, app.Response{
+		Title:       "News",
+		Description: "Latest news headlines",
+		HTML:        body,
+	})
+}
+
+// formatSearchResult formats a single search result entry as HTML
+func formatSearchResult(entry *data.IndexEntry) string {
+	title := entry.Title
+	description := htmlToText(entry.Content)
+	if len(description) > 300 {
+		description = description[:300] + "..."
+	}
+
+	// Extract metadata
+	url, _ := entry.Metadata["url"].(string)
+	category, _ := entry.Metadata["category"].(string)
+	image, _ := entry.Metadata["image"].(string)
+
+	var postedAt time.Time
+	if v, ok := entry.Metadata["posted_at"].(time.Time); ok {
+		postedAt = v
+	} else if v, ok := entry.Metadata["posted_at"].(string); ok {
+		if parsed, err := time.Parse(time.RFC3339, v); err == nil {
+			postedAt = parsed
+		}
+	}
+
+	// Create a Post struct to use getSummary()
+	post := &Post{
+		ID:       entry.ID,
+		Title:    title,
+		URL:      url,
+		Category: category,
+		PostedAt: postedAt,
+	}
+	summary := getSummary(post)
+
+	categoryBadge := ""
+	if category != "" {
+		categoryBadge = fmt.Sprintf(`<div class="category-header"><span class="category">%s</span></div>`, category)
+	}
+
+	if image != "" {
+		return fmt.Sprintf(`
+<div id="%s" class="news">
+  <a href="%s" rel="noopener noreferrer" target="_blank">
+    <img class="cover" src="%s">
+    <div class="blurb">
+      %s
+      <span class="title">%s</span>
+      <span class="description">%s</span>
+    </div>
+  </a>
+  <div class="summary">%s</div>
+</div>`, entry.ID, url, image, categoryBadge, title, description, summary)
+	}
+
+	return fmt.Sprintf(`
+<div id="%s" class="news">
+  <a href="%s" rel="noopener noreferrer" target="_blank">
+    <img class="cover">
+    <div class="blurb">
+      %s
+      <span class="title">%s</span>
+      <span class="description">%s</span>
+    </div>
+  </a>
+  <div class="summary">%s</div>
+</div>`, entry.ID, url, categoryBadge, title, description, summary)
+}
+
+func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
+	// Check quota before search
+	sess, _, err := auth.RequireSession(r)
+	if err != nil {
+		app.Unauthorized(w, r)
+		return
+	}
+
+	canProceed, _, cost, err := wallet.CheckQuota(sess.Account, wallet.OpNewsSearch)
+	if !canProceed {
+		// Show quota exceeded page
+		content := wallet.QuotaExceededPage(wallet.OpNewsSearch, cost)
+		html := app.RenderHTMLForRequest("Quota Exceeded", "Daily limit reached", content, r)
+		w.Write([]byte(html))
+		return
+	}
+
+	results := data.Search(query, 20, data.WithType("news"), data.WithKeywordOnly())
+
+	// Consume quota after successful search
+	wallet.ConsumeQuota(sess.Account, wallet.OpNewsSearch)
+
+	var searchResults []byte
+	searchResults = append(searchResults, []byte(`<form id="news-search" class="search-bar" action="/news" method="GET">
+  <input name="query" type="text" value="`+query+`" placeholder="Search...">
+  <button type="submit">Search</button>
+  <a href="/news" class="ml-3 text-muted">Clear</a>
+</form>`)...)
+
+	if len(results) == 0 {
+		searchResults = append(searchResults, []byte("<p>No results found</p>")...)
+	} else {
+		searchResults = append(searchResults, []byte("<h2>Results</h2>")...)
+		for _, entry := range results {
+			searchResults = append(searchResults, []byte(formatSearchResult(entry))...)
+		}
+	}
+
+	html := app.RenderHTMLForRequest("News", query, string(searchResults), r)
+	w.Write([]byte(html))
+}
+
+// RefreshHNMetadata forces a refresh of HN article metadata with fresh comments
+// Returns the updated metadata with new comments, or nil if not an HN article
+func RefreshHNMetadata(uri string) (*Metadata, error) {
+	if !strings.Contains(uri, "news.ycombinator.com/item?id=") {
+		return nil, fmt.Errorf("not a HackerNews article")
+	}
+
+	// Extract HN story ID
+	hnID := ""
+	if idx := strings.Index(uri, "id="); idx != -1 {
+		hnID = uri[idx+3:]
+		if idx := strings.IndexAny(hnID, "&?#"); idx != -1 {
+			hnID = hnID[:idx]
+		}
+	}
+
+	if hnID == "" {
+		return nil, fmt.Errorf("could not extract HN story ID from URL")
+	}
+
+	// Fetch fresh comments
+	comments, err := FetchHNComments(hnID)
+	if err != nil {
+		app.Log("news", "Error fetching fresh HN comments: %v", err)
+		// Don't fail the whole request, just return without comments
+	}
+
+	// Load cached metadata
+	md, exists := loadCachedMetadata(uri)
+	if !exists {
+		// If no cache, fetch full metadata (use zero time since we don't have publish date here)
+		md, _, err := getMetadata(uri, time.Time{})
+		return md, err
+	}
+
+	// Update comments and timestamp
+	md.Comments = comments
+	md.Created = time.Now().UnixNano()
+
+	// Save updated metadata
+	saveCachedMetadata(uri, md)
+
+	// Reindex with fresh comments so RAG can find them
+	if exists {
+		fullContent := md.Description + " " + md.Content
+		if len(comments) > 0 {
+			fullContent += " " + comments
+		}
+		data.Index(
+			fmt.Sprintf("%x", md5.Sum([]byte(uri)))[:16],
+			"news",
+			md.Title,
+			fullContent,
+			map[string]interface{}{
+				"url":      uri,
+				"category": "Dev",
+			},
+		)
+		app.Log("news", "Reindexed HN article with fresh comments for RAG: %s", uri)
+	}
+
+	app.Log("news", "Refreshed HN metadata for %s with %d chars of comments", uri, len(comments))
+	return md, nil
+}

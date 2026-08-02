@@ -13,9 +13,9 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/settings"
-	"mu/markets"
-	"mu/news"
-	"mu/news/digest"
+	"mu/service/markets"
+	"mu/service/news"
+	"mu/service/news/digest"
 )
 
 type healthCheck struct {

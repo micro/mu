@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"mu/internal/auth"
-	"mu/wallet"
+	"mu/service/wallet"
 )
 
 // MCP protocol version
