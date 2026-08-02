@@ -127,3 +127,26 @@ func storeThumb(id string, t thumb) {
 	}
 	thumbCache[id] = t
 }
+
+// thumbSrc is the src for a video's thumbnail: Mu's own path when the id is
+// usable, otherwise whatever the API gave us.
+func thumbSrc(id, apiURL string) string {
+	if u := ThumbURL(id); u != "" {
+		return u
+	}
+	return apiURL
+}
+
+// remoteThumb matches a YouTube thumbnail URL of any size.
+var remoteThumb = regexp.MustCompile(`https?://i\.ytimg\.com/vi/([A-Za-z0-9_-]{11})/[a-zA-Z0-9_]+\.jpg`)
+
+// ProxyThumbnails rewrites Google's thumbnail URLs to Mu's own path.
+//
+// Each video's rendered HTML is stored inside videos.json, so markup written
+// before thumbnails moved to this origin survives a restart — a code change
+// alone would not have taken effect until every channel refetched, an hour
+// later. Rewriting on the way out heals a stale cache immediately, and costs
+// nothing once the cache no longer contains any.
+func ProxyThumbnails(html string) string {
+	return remoteThumb.ReplaceAllString(html, "/video/thumb?id=$1")
+}

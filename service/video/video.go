@@ -306,10 +306,10 @@ func Load() {
 	} else {
 		// load saved HTML files if no JSON data
 		b, _ = data.LoadFile("latest.html")
-		latestHtml = string(b)
+		latestHtml = ProxyThumbnails(string(b))
 
 		b, _ = data.LoadFile("videos.html")
-		videosHtml = string(b)
+		videosHtml = ProxyThumbnails(string(b))
 		app.Log("video", "No cached JSON, loaded HTML files")
 	}
 
@@ -419,7 +419,11 @@ func regenerateHTML() {
 		body.WriteString(`</div>`)
 	}
 
-	videosHtml = app.RenderHTML("Video", "Search for videos", fmt.Sprintf(Template, head, body.String()))
+	// videos.json stores each item's rendered HTML, so markup written before
+	// the thumbnails moved to Mu's origin survives a restart. Rewrite it on the
+	// way out rather than waiting an hour for every channel to refetch.
+	videosHtml = ProxyThumbnails(app.RenderHTML("Video", "Search for videos", fmt.Sprintf(Template, head, body.String())))
+	latestHtml = ProxyThumbnails(latestHtml)
 
 	// Publish the rebuilt card snapshot (nil-safe before Load wires cardSnap).
 	cardSnap.Publish(latestHtml)
@@ -661,8 +665,8 @@ func getChannel(category, handle string) (string, []*Result, error) {
 		// All links are now internal
 		controls := app.StaticControls("video", id)
 		html := fmt.Sprintf(`
-	<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a><div class="info"><a href="/video?channel=%s">%s</a> · %s · <a href="/video#%s" class="highlight">%s</a>%s</div></div>`,
-			url, thumbnailURL, item.Snippet.Title, item.Snippet.ChannelId, item.Snippet.ChannelTitle, app.TimeAgo(t), category, category, controls)
+	<div class="thumbnail"><a href="%s"><img src="%s" loading="lazy" alt=""><h3>%s</h3></a><div class="info"><a href="/video?channel=%s">%s</a> · %s · <a href="/video#%s" class="highlight">%s</a>%s</div></div>`,
+			url, thumbSrc(id, thumbnailURL), item.Snippet.Title, item.Snippet.ChannelId, item.Snippet.ChannelTitle, app.TimeAgo(t), category, category, controls)
 		sb.WriteString(html)
 		res.Html = html
 
@@ -774,8 +778,8 @@ func getResults(query, channel string) (string, []*Result, error) {
 
 		// All links are now internal
 		html := fmt.Sprintf(`
-			<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a><a href="/video?channel=%s">%s</a> · %s</div>`,
-			url, thumbnailURL, item.Snippet.Title, item.Snippet.ChannelId, item.Snippet.ChannelTitle, desc)
+			<div class="thumbnail"><a href="%s"><img src="%s" loading="lazy" alt=""><h3>%s</h3></a><a href="/video?channel=%s">%s</a> · %s</div>`,
+			url, thumbSrc(id, thumbnailURL), item.Snippet.Title, item.Snippet.ChannelId, item.Snippet.ChannelTitle, desc)
 		sb.WriteString(html)
 		res.Html = html
 	}
