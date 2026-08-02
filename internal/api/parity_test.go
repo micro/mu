@@ -49,6 +49,31 @@ func TestToolsPageAndMCPPageShowTheSameTools(t *testing.T) {
 	}
 }
 
+// One page owns connecting. /tools has the connect step; /mcp is the reference
+// you read once you are connected. When both explained it, the two explanations
+// were written in different words and had to be kept true in two places — and
+// the reference itself started below a screen of setup.
+func TestMCPPageDoesNotRepeatTheConnectStep(t *testing.T) {
+	rec := httptest.NewRecorder()
+	MCPHandler(rec, httptest.NewRequest("GET", "/mcp", nil))
+	body := rec.Body.String()
+
+	// Cut at the tool reference: a tool's own description may legitimately say
+	// any of these words.
+	if i := strings.Index(body, `<nav class="ep-nav"`); i > 0 {
+		body = body[:i]
+	}
+
+	for _, dupe := range []string{"mcpServers", "YOUR_TOKEN", "Personal access token"} {
+		if strings.Contains(body, dupe) {
+			t.Errorf("/mcp explains connecting again (%q); that step lives on /tools", dupe)
+		}
+	}
+	if !strings.Contains(body, `href="/tools#connect"`) {
+		t.Error("/mcp does not link to the connect step, so a reader who is not set up has nowhere to go")
+	}
+}
+
 func names(pattern, body string) []string {
 	var out []string
 	for _, m := range regexp.MustCompile(pattern).FindAllStringSubmatch(body, -1) {

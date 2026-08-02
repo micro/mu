@@ -37,27 +37,19 @@ func MCPHandler(w http.ResponseWriter, r *http.Request) {
 func mcpPageHandler(w http.ResponseWriter, r *http.Request) {
 	var b strings.Builder
 
+	// One header, then the reference.
+	//
+	// This page used to open with a config block and an authentication section —
+	// which is /tools' connect step, written again in different words. Two pages
+	// explaining how to connect means two places to keep true, and the reader
+	// who has landed here has usually already connected. /tools owns "connect",
+	// this page owns "call". Setup is a link.
 	b.WriteString(`<div class="card">`)
 	b.WriteString(`<h2>Model Context Protocol</h2>`)
-	b.WriteString(`<p class="card-desc">Connect AI clients (e.g. Claude Desktop) to this MCP server.</p>`)
-	b.WriteString(`<p>Endpoint: <code>/mcp</code></p>`)
-	b.WriteString(`</div>`)
-
-	// Authentication. One way in: the MCP authorization spec. A client that
-	// speaks it discovers sign-in from the 401 and keeps the credential itself;
-	// one that doesn't sends a token it was handed. Either way the header on the
-	// wire is the same, so this is one flow with two ways to fill it in — not
-	// two flows.
-	b.WriteString(`<div class="card">`)
-	b.WriteString(`<h3>Authentication</h3>`)
-	b.WriteString(`<p>Calls carry a bearer token:</p>`)
-	b.WriteString(`<pre style="background:#f5f5f5;padding:8px;font-size:12px;overflow-x:auto">Authorization: Bearer YOUR_TOKEN</pre>`)
-	b.WriteString(`<p>Two ways your client gets one:</p>`)
-	b.WriteString(`<ol>`)
-	b.WriteString(`<li><strong>Sign-in from the client</strong> &mdash; call without a token and you get an HTTP <code>401</code> pointing at this instance's authorization server. Clients that speak <a href="https://modelcontextprotocol.io/specification/basic/authorization">MCP authorization</a> (Claude Desktop, Cursor) walk you through sign-in and store the token themselves. Nothing to paste.</li>`)
-	b.WriteString(`<li><strong>Personal access token</strong> &mdash; create one at <a href="/token">/token</a> and put it in your client's config.</li>`)
-	b.WriteString(`</ol>`)
-	b.WriteString(`<p>Tools that only read this instance's own content are free to call. Ones that cost us money draw credits, and a few that touch your account &mdash; wallet, mail, editing your apps &mdash; always need a signed-in session.</p>`)
+	b.WriteString(`<p class="card-desc">Every tool this instance serves, with its parameters and a playground to run it.</p>`)
+	b.WriteString(`<p>Endpoint: <code>POST /mcp</code> &mdash; calls carry <code>Authorization: Bearer</code>.</p>`)
+	b.WriteString(`<p class="card-meta">Not connected yet? <a href="/tools#connect">Connect your agent &rarr;</a> ` +
+		`&middot; <a href="/docs/mcp">Auth and protocol detail</a> &middot; <a href="/pricing">What calls cost</a></p>`)
 	b.WriteString(`</div>`)
 
 	// Interactive playground
@@ -172,12 +164,9 @@ func mcpPageHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`</details>`)
 	b.WriteString(`</div>`)
 
-	// What a call costs. One currency, so this is a sentence rather than a
-	// comparison table.
-	b.WriteString(`<div class="card">`)
-	b.WriteString(`<h3>What calls cost</h3>`)
-	b.WriteString(`<p class="card-desc">A call costs credits when it costs us money to run &mdash; a model call, or a paid third party. Everything that only touches this instance's own storage is included. Prices are shown per tool below, and in full on <a href="/pricing">pricing</a>.</p>`)
-	b.WriteString(`</div>`)
+	// No pricing card. Every tool below carries its own price, and /pricing is
+	// linked from the header — a card restating the rule in prose was a third
+	// place for it to be wrong.
 
 	// Tools list with a sticky endpoint sidebar (desktop).
 	b.WriteString(mcpToolsSection())
