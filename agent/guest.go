@@ -27,14 +27,17 @@ var guestAllowedTools = map[string]bool{
 	"blog_read":        true,
 	"apps_search":      true,
 	"apps_read":        true,
-	"search":           true,
-	"islam":            true,
+	"index_search":     true,
+	"search":           true, // legacy name for index_search
+	"islam_today":      true,
+	"islam":            true, // legacy name for islam_today
 	"islam_prayer":     true,
 	"islam_qibla":      true,
 	"quran":            true,
 	"hadith":           true,
 	"quran_search":     true,
-	"stream":           true,
+	"stream_list":      true,
+	"stream":           true, // legacy name for stream_list
 	"places_search":    true,
 	"places_nearby":    true,
 }

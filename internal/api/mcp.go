@@ -145,18 +145,24 @@ type mcpContent struct {
 
 // Tool defines an MCP tool with its HTTP mapping
 type Tool struct {
-	Name        string                                       `json:"name"`
-	Aliases     []string                                     `json:"-"` // legacy names that still resolve to this tool (not shown in listings)
-	Description string                                       `json:"description"`
-	Title       string                                       `json:"title,omitempty"` // display title for the visual card
-	Icon        string                                       `json:"icon,omitempty"`
-	Method      string                                       `json:"method,omitempty"`
-	Path        string                                       `json:"path,omitempty"`
-	Params      []ToolParam                                  `json:"params,omitempty"`
-	WalletOp    string                                       `json:"walletOp,omitempty"` // Wallet operation for credit gating (empty = included)
-	Handle      func(map[string]any) (string, error)         `json:"-"`                  // Optional direct handler (bypasses HTTP dispatch)
-	HandleAuth  func(map[string]any, string) (string, error) `json:"-"`                  // Like Handle but receives the account ID
-	Card        func() string                                `json:"-"`                  // Optional visual card body, rendered from live data
+	Name        string      `json:"name"`
+	Aliases     []string    `json:"-"` // legacy names that still resolve to this tool (not shown in listings)
+	Description string      `json:"description"`
+	Title       string      `json:"title,omitempty"` // display title for the visual card
+	Icon        string      `json:"icon,omitempty"`
+	Method      string      `json:"method,omitempty"`
+	Path        string      `json:"path,omitempty"`
+	Params      []ToolParam `json:"params,omitempty"`
+	WalletOp    string      `json:"walletOp,omitempty"` // Wallet operation for credit gating (empty = included)
+	// RESTOnly marks an HTTP endpoint that is not an agent tool. REST paths are
+	// resource-shaped (/news, /mail) while tools are service_method
+	// (news_list, mail_inbox); the same capability legitimately appears in both
+	// systems under different names, but it must not appear twice in the tool
+	// list under two names. See restTools and mcpTools.
+	RESTOnly   bool                                         `json:"-"`
+	Handle     func(map[string]any) (string, error)         `json:"-"` // Optional direct handler (bypasses HTTP dispatch)
+	HandleAuth func(map[string]any, string) (string, error) `json:"-"` // Like Handle but receives the account ID
+	Card       func() string                                `json:"-"` // Optional visual card body, rendered from live data
 }
 
 // QuotaCheck is called before executing a metered tool.
@@ -310,6 +316,26 @@ func ToolDescriptions() string {
 // walks that path: it authenticates by holding a token a human issued, or by
 // paying per request over x402, where there is no account to sign up for.
 var tools = []Tool{
+	// REST-only: the resource endpoints behind the /news and /search pages. The
+	// agent reaches the same capabilities as news_list and web_search, so these
+	// are not tools — listing them would be the same thing twice under two names.
+	{
+		Name:        "news",
+		RESTOnly:    true,
+		Description: "Read the latest news feed",
+		Method:      "GET",
+		Path:        "/news",
+	},
+	{
+		Name:        "search",
+		RESTOnly:    true,
+		Description: "Search the web",
+		Method:      "GET",
+		Path:        "/search",
+		Params: []ToolParam{
+			{Name: "q", Type: "string", Description: "Search query", Required: true},
+		},
+	},
 	{
 		Name:        "chat",
 		Description: "Chat with AI assistant",
@@ -319,12 +345,6 @@ var tools = []Tool{
 		Params: []ToolParam{
 			{Name: "prompt", Type: "string", Description: "The message to send to the AI", Required: true},
 		},
-	},
-	{
-		Name:        "news",
-		Description: "Read the latest news feed",
-		Method:      "GET",
-		Path:        "/news",
 	},
 	{
 		Name:        "news_search",
@@ -400,7 +420,8 @@ var tools = []Tool{
 		},
 	},
 	{
-		Name:        "mail_read",
+		Name:        "mail_inbox",
+		Aliases:     []string{"mail_read"},
 		Description: "Read mail inbox",
 		Method:      "GET",
 		Path:        "/mail",
@@ -415,15 +436,6 @@ var tools = []Tool{
 			{Name: "to", Type: "string", Description: "Recipient username or email", Required: true},
 			{Name: "subject", Type: "string", Description: "Message subject", Required: true},
 			{Name: "body", Type: "string", Description: "Message body", Required: true},
-		},
-	},
-	{
-		Name:        "search",
-		Description: "Search across all indexed content (posts, news, videos)",
-		Method:      "GET",
-		Path:        "/search",
-		Params: []ToolParam{
-			{Name: "q", Type: "string", Description: "Search query", Required: true},
 		},
 	},
 	{
@@ -453,7 +465,8 @@ var tools = []Tool{
 	},
 	// Stream (console)
 	{
-		Name:        "stream",
+		Name:        "stream_list",
+		Aliases:     []string{"stream"},
 		Description: "Read the platform event stream — user messages, agent responses, system events (markets, news, reminders)",
 		Method:      "GET",
 		Path:        "/stream",
@@ -555,8 +568,8 @@ var tools = []Tool{
 		},
 	},
 	{
-		Name:        "islam",
-		Aliases:     []string{"reminder"},
+		Name:        "islam_today",
+		Aliases:     []string{"islam", "reminder"},
 		Description: "Get today's daily Islamic reminder with verse, hadith, and name of Allah",
 		Handle: func(args map[string]any) (string, error) {
 			return getReminderAPI("/daily")

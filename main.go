@@ -569,8 +569,8 @@ func main() {
 
 	// web_search — cached Brave web search, returned as model-ready text (AI-first).
 	api.RegisterTool(api.Tool{
-		Name:        "search_web",
-		Aliases:     []string{"web_search"},
+		Name:        "web_search",
+		Aliases:     []string{"search_web"},
 		Description: "Search the web for current information and news",
 		WalletOp:    wallet.OpWebSearch,
 		Params: []api.ToolParam{
@@ -603,7 +603,7 @@ func main() {
 	// news_headlines tool — topic-balanced headlines for scanning before reading
 	api.RegisterTool(api.Tool{
 		Name:        "news_list",
-		Aliases:     []string{"news_headlines"},
+		Aliases:     []string{"news", "news_headlines"},
 		Description: "Get recent news headlines with short summaries balanced across all topics (not dominated by one topic like crypto). Use for general news and briefing requests, then news_read for any article worth expanding.",
 		Params: []api.ToolParam{
 			{Name: "topic", Type: "string", Description: "Optional topic/category filter (e.g. tech, world, business)", Required: false},
@@ -654,8 +654,8 @@ func main() {
 		app.Log("main", "recall service register failed: %v", err)
 	}
 	api.RegisterToolWithAuth(api.Tool{
-		Name:        "index",
-		Aliases:     []string{"recall"},
+		Name:        "index_search",
+		Aliases:     []string{"index", "recall", "search"},
 		Description: "Search across everything mu knows — indexed news, blog, social and video, plus the user's own mail — and return the most relevant items with ids. Use for 'do you remember', 'what did I get about X', 'search my stuff' and cross-source lookups.",
 		Params: []api.ToolParam{
 			{Name: "query", Type: "string", Description: "What to look for", Required: true},
@@ -690,7 +690,8 @@ func main() {
 	// private-public model as the app SDK's mu.db, scoped to the caller's account
 	// under the shared "api" namespace. Owner is bound from the session.
 	api.RegisterToolWithAuth(api.Tool{
-		Name:        "db_set",
+		Name:        "db_create",
+		Aliases:     []string{"db_set"},
 		Description: "Store a record in your database (a named collection). Private by default; set public=true to share it. Pass an id to update a record you own.",
 		Method:      "POST",
 		Path:        "/db",

@@ -17,7 +17,7 @@ func APIPageHandler(w http.ResponseWriter, r *http.Request) {
 
 	b.WriteString(`<div class="card">`)
 	b.WriteString(`<h2>API</h2>`)
-	b.WriteString(`<p class="card-desc">The same services as the <a href="/mcp">MCP server</a>, over plain HTTP. Every tool is callable via <code>POST /mcp</code>; some also have a dedicated REST path. Metered tools show their per-call price below.</p>`)
+	b.WriteString(`<p class="card-desc">The same services as the <a href="/mcp">MCP server</a>, as plain HTTP endpoints — resource-shaped paths like <code>/news</code>, <code>/index</code> and <code>/mail</code>. Agent tools are named differently (<code>news_list</code>, <code>index_search</code>) and live on the <a href="/mcp">MCP page</a>. Metered endpoints show their per-call price below.</p>`)
 	b.WriteString(`<p>Authentication: <code>Authorization: Bearer YOUR_TOKEN</code> &mdash; <a href="/token">Get a token</a>, or pay per call with x402.</p>`)
 	b.WriteString(`</div>`)
 
@@ -223,30 +223,66 @@ func apiEndpointsJSON() string {
 	return string(b)
 }
 
-// apiEndpointsSection renders the reference from the same tool registry as the
-// MCP page, so the two are always the same set of services. Every tool is
-// callable over HTTP — via its dedicated REST path when it has one, otherwise
-// via POST /mcp — and metered tools show their per-call price.
+// restTools returns the tools that are REST endpoints — the ones with a path.
+//
+// A tool without a path is not an HTTP endpoint; it is only callable as an MCP
+// tool over POST /mcp. Listing those here put MCP tools in the REST reference,
+// which are two different naming systems: REST is resource-shaped (/news,
+// /index, /mail) and MCP is service_method (news_list, index_search,
+// mail_inbox). Both derive from the same services; neither belongs in the
+// other's list.
+//
+// Several tools share one path with different verbs (GET/POST/PATCH/DELETE on
+// /blog/post), so the endpoint identity is method+path, not the tool name.
+func restTools() []Tool {
+	seen := map[string]bool{}
+	var out []Tool
+	for _, t := range sortedTools() {
+		if t.Path == "" {
+			continue
+		}
+		if t.Method == "" {
+			t.Method = "GET"
+		}
+		key := t.Method + " " + t.Path
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		out = append(out, t)
+	}
+	return out
+}
+
+// endpointAnchor is the stable id for a REST endpoint on the page.
+func endpointAnchor(t Tool) string {
+	return "api-" + strings.ToLower(t.Method) + strings.ReplaceAll(t.Path, "/", "-")
+}
+
+// apiEndpointsSection renders the REST reference: the endpoints with a real
+// HTTP path, keyed by method and path. Metered endpoints show their per-call
+// price. Everything else lives on the MCP page.
 func apiEndpointsSection() string {
 	var nav strings.Builder
 	nav.WriteString(`<nav class="ep-nav"><div class="ep-nav-title">Endpoints</div>`)
-	for _, t := range sortedTools() {
+	for _, t := range restTools() {
 		price := ""
 		if p := wallet.X402PriceFor(t.WalletOp); p != "" {
 			price = `<span class="ep-price">` + p + `</span>`
 		}
-		nav.WriteString(`<a href="#api-` + html.EscapeString(t.Name) + `"><span class="ep-path">` + html.EscapeString(t.Name) + `</span>` + price + `</a>`)
+		nav.WriteString(`<a href="#` + html.EscapeString(endpointAnchor(t)) + `"><span class="ep-path">` +
+			html.EscapeString(t.Method) + ` ` + html.EscapeString(t.Path) + `</span>` + price + `</a>`)
 	}
 	nav.WriteString(`</nav>`)
 	return `<div class="ep-layout">` + nav.String() + `<div class="ep-main">` + app.List(apiEndpointsHTML()) + `</div></div>`
 }
 
-// apiEndpointsHTML lists every tool as an HTTP endpoint, with its price and a
-// ready-to-run call (REST path if it has one, else the POST /mcp JSON-RPC body).
+// apiEndpointsHTML lists each REST endpoint with its price and a ready-to-run
+// curl.
 func apiEndpointsHTML() string {
 	var b strings.Builder
-	for _, t := range sortedTools() {
-		b.WriteString(`<div class="card" id="api-` + html.EscapeString(t.Name) + `">`)
+	for _, t := range restTools() {
+		b.WriteString(`<div class="card" id="` + html.EscapeString(endpointAnchor(t)) + `">`)
 
 		if p := wallet.X402PriceFor(t.WalletOp); p != "" {
 			b.WriteString(`<span class="tool-price"><b>` + p + `</b> <span>/ call</span></span>`)
@@ -254,16 +290,7 @@ func apiEndpointsHTML() string {
 			b.WriteString(`<span class="tool-price">credits</span>`)
 		}
 
-		// Title: the REST method+path when the tool has one, else the tool name.
-		if t.Path != "" {
-			method := t.Method
-			if method == "" {
-				method = "GET"
-			}
-			b.WriteString(`<span class="card-title"><span class="api-method">` + html.EscapeString(method) + `</span> <code>` + html.EscapeString(t.Path) + `</code></span>`)
-		} else {
-			b.WriteString(`<span class="card-title">` + html.EscapeString(t.Name) + `</span>`)
-		}
+		b.WriteString(`<span class="card-title"><span class="api-method">` + html.EscapeString(t.Method) + `</span> <code>` + html.EscapeString(t.Path) + `</code></span>`)
 		b.WriteString(app.Desc(t.Description))
 
 		if len(t.Params) > 0 {
@@ -281,16 +308,7 @@ func apiEndpointsHTML() string {
 		}
 
 		// Call example.
-		var call string
-		if t.Path != "" {
-			method := t.Method
-			if method == "" {
-				method = "GET"
-			}
-			call = "curl -H 'Authorization: Bearer $TOKEN' -X " + method + " " + t.Path
-		} else {
-			call = "curl -X POST /mcp -H 'Content-Type: application/json' \\\n  -d '" + exampleRequest(t) + "'"
-		}
+		call := "curl -H 'Authorization: Bearer $TOKEN' -X " + t.Method + " " + t.Path
 		esc := html.EscapeString(call)
 		b.WriteString(`<pre style="background:#f5f5f5;padding:8px;font-size:12px;overflow-x:auto;white-space:pre-wrap;word-break:break-word">` + esc + `</pre>`)
 		b.WriteString(`</div>`)

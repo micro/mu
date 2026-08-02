@@ -15,7 +15,7 @@ func init() {
 		Name:         "News Agent",
 		Description:  "News, current events, and headlines",
 		SystemPrompt: `You are the News specialist on Mu. You curate and summarise news from RSS feeds and web searches. Always cite specific headlines and publication dates. Distinguish between breaking news, developing stories, and background context. Be concise — nomads check news on the go.`,
-		Tools:        []string{"news", "news_search", "web_search", "web_fetch"},
+		Tools:        []string{"news_list", "news_search", "web_search", "web_fetch"},
 		MemoryScope:  "news",
 	})
 
@@ -24,7 +24,7 @@ func init() {
 		Name:         "Markets Agent",
 		Description:  "Crypto prices, market data, price analysis",
 		SystemPrompt: `You are the Markets specialist on Mu. You track crypto, futures, commodities, and currencies. Always quote exact prices and 24h changes from tool data. Highlight significant moves. When asked about trends, correlate price action with news. Never speculate without data.`,
-		Tools:        []string{"markets", "wallet"},
+		Tools:        []string{"markets_list", "wallet"},
 		MemoryScope:  "markets",
 	})
 
@@ -33,7 +33,7 @@ func init() {
 		Name:         "Mail Agent",
 		Description:  "Email inbox, sending messages, mail summaries",
 		SystemPrompt: `You are the Mail specialist on Mu. You read and summarise the inbox, draft replies, and send messages. When summarising, lead with urgent/important items. For drafts, match the user's tone from previous messages. Keep summaries brief — one line per message.`,
-		Tools:        []string{"mail_read", "mail_send"},
+		Tools:        []string{"mail_inbox", "mail_send"},
 		MemoryScope:  "mail",
 	})
 
@@ -60,7 +60,7 @@ func init() {
 		Name:         "Social Agent",
 		Description:  "Social feed, blog posts, content creation",
 		SystemPrompt: `You are the Social specialist on Mu. You manage the social feed and blog. Help users write posts, find trending topics, and engage with the community. For blog posts, suggest titles and structure. Keep social posts concise and engaging.`,
-		Tools:        []string{"social", "social_search", "blog_list", "blog_read", "blog_create", "blog_update"},
+		Tools:        []string{"social_list", "social_search", "blog_list", "blog_read", "blog_create", "blog_update"},
 		MemoryScope:  "social",
 	})
 
@@ -69,7 +69,7 @@ func init() {
 		Name:         "Video Agent",
 		Description:  "Video feeds and YouTube search",
 		SystemPrompt: `You are the Video specialist on Mu. You curate videos from followed channels and search YouTube. When recommending videos, include the title, channel, and a one-line description of why it's relevant. Prefer curated channel content over random search results.`,
-		Tools:        []string{"video", "video_search"},
+		Tools:        []string{"video_list", "video_search"},
 		MemoryScope:  "video",
 	})
 
@@ -87,7 +87,7 @@ func init() {
 		Name:         "Faith Agent",
 		Description:  "Islamic reminders, Quran, Hadith",
 		SystemPrompt: `You are the Faith specialist on Mu. You provide daily Islamic reminders, look up Quran verses and Hadith, and answer questions about Islamic teachings. Be respectful and accurate. Always cite the surah/verse or hadith source.`,
-		Tools:        []string{"reminder", "quran", "hadith", "quran_search"},
+		Tools:        []string{"islam_today", "quran", "hadith", "quran_search"},
 		MemoryScope:  "faith",
 	})
 
@@ -96,7 +96,7 @@ func init() {
 		Name:         "Search Agent",
 		Description:  "Web search and content fetching",
 		SystemPrompt: `You are the Search specialist on Mu. You search the web, fetch pages, and extract relevant information. Always cite your sources with URLs. Distinguish between facts and opinions. Summarise clearly — the user wants the answer, not a list of links.`,
-		Tools:        []string{"search", "web_search", "web_fetch"},
+		Tools:        []string{"index_search", "web_search", "web_fetch"},
 		MemoryScope:  "search",
 	})
 }

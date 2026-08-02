@@ -12,18 +12,18 @@ func TestBuildToolsDescFiltersPrivateToolsForGuests(t *testing.T) {
 	}
 
 	privateTools := mail.buildToolsDesc(false)
-	if !strings.Contains(privateTools, "mail_read") {
+	if !strings.Contains(privateTools, "mail_inbox") {
 		t.Fatalf("private mail tools should include mail_read, got %q", privateTools)
 	}
 
 	guestTools := mail.buildToolsDesc(true)
-	if strings.Contains(guestTools, "mail_read") || strings.Contains(guestTools, "mail_send") {
+	if strings.Contains(guestTools, "mail_inbox") || strings.Contains(guestTools, "mail_send") {
 		t.Fatalf("guest mail tools should exclude private mail tools, got %q", guestTools)
 	}
 }
 
 func TestGuestAllowedToolsCoverPublicCoreServices(t *testing.T) {
-	for _, tool := range []string{"weather_forecast", "news_headlines", "markets", "web_search", "search"} {
+	for _, tool := range []string{"weather_forecast", "news_list", "markets_list", "web_search", "index_search"} {
 		t.Run(tool, func(t *testing.T) {
 			if !isGuestAllowedTool(tool) {
 				t.Fatalf("%s should be allowed for guest ask-answer smoke paths", tool)
@@ -31,7 +31,7 @@ func TestGuestAllowedToolsCoverPublicCoreServices(t *testing.T) {
 		})
 	}
 
-	for _, tool := range []string{"mail_read", "mail_send"} {
+	for _, tool := range []string{"mail_inbox", "mail_send"} {
 		t.Run(tool, func(t *testing.T) {
 			if isGuestAllowedTool(tool) {
 				t.Fatalf("%s should stay private for guest ask-answer smoke paths", tool)

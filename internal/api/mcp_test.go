@@ -127,13 +127,15 @@ func TestMCPHandler_ToolsList(t *testing.T) {
 		t.Error("Expected at least one tool")
 	}
 
-	// Verify expected tools exist. Note: blog_list, video, markets, social and
-	// weather_forecast are registered dynamically in main.go (AI-first handlers),
-	// so they are not part of this package's static tool list.
+	// Verify expected tools exist. Note: news_list, index_search, blog_list,
+	// video_list, markets_list, social_list and weather_forecast are registered
+	// dynamically in main.go (AI-first handlers), so they are not part of this
+	// package's static tool list.
 	expectedTools := map[string]bool{
-		"chat": false, "news": false, "news_search": false,
+		"chat": false, "news_search": false,
 		"blog_read": false, "blog_create": false,
-		"video_search": false, "search": false,
+		"video_search": false, "mail_inbox": false,
+		"stream_list": false, "wallet_balance": false,
 	}
 	for _, item := range toolsList {
 		tool, ok := item.(map[string]any)
@@ -585,7 +587,7 @@ func TestMCPHandler_MeteredToolsHaveWalletOp(t *testing.T) {
 	}
 
 	// Verify free tools don't have WalletOp
-	freeTtools := []string{"news", "blog_list", "blog_read", "video_list", "search"}
+	freeTtools := []string{"news_list", "blog_list", "blog_read", "video_list", "index_search"}
 	for _, tool := range tools {
 		for _, free := range freeTtools {
 			if tool.Name == free && tool.WalletOp != "" {

@@ -165,30 +165,37 @@ func (a *Agent) buildToolsDesc(public bool) string {
 }
 
 var guestAllowedTools = map[string]bool{
-	"news":             true,
+	"news_list":        true,
+	"news":             true, // legacy name for news_list
 	"news_headlines":   true,
 	"news_read":        true,
 	"news_search":      true,
-	"recall":           true,
+	"index_search":     true,
+	"recall":           true, // legacy names for index_search
 	"index":            true,
-	"markets":          true,
+	"search":           true,
+	"markets_list":     true,
+	"markets":          true, // legacy name for markets_list
 	"weather_forecast": true,
-	"video":            true,
+	"video_list":       true,
+	"video":            true, // legacy name for video_list
 	"video_search":     true,
 	"web_search":       true,
 	"web_fetch":        true,
-	"social":           true,
+	"social_list":      true,
+	"social":           true, // legacy name for social_list
 	"social_search":    true,
 	"blog_list":        true,
 	"blog_read":        true,
 	"apps_search":      true,
 	"apps_read":        true,
-	"search":           true,
-	"reminder":         true,
+	"islam_today":      true,
+	"reminder":         true, // legacy name for islam_today
 	"quran":            true,
 	"hadith":           true,
 	"quran_search":     true,
-	"stream":           true,
+	"stream_list":      true,
+	"stream":           true, // legacy name for stream_list
 	"places_search":    true,
 	"places_nearby":    true,
 }

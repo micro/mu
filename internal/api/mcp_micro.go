@@ -18,7 +18,7 @@ type mcpReqKey struct{}
 // exposed (no store/broker tools).
 func mcpResolver() gwmcp.Resolver {
 	res := gwmcp.NewManualResolver()
-	st := sortedTools()
+	st := mcpTools()
 	for i := range st {
 		t := st[i]
 		props := map[string]interface{}{}

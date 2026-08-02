@@ -13,6 +13,20 @@ func sortedTools() []Tool {
 	return out
 }
 
+// mcpTools returns the tools the agent surface exposes: everything except the
+// REST-only endpoints, which are HTTP paths rather than tools.
+func mcpTools() []Tool {
+	all := sortedTools()
+	out := make([]Tool, 0, len(all))
+	for _, t := range all {
+		if t.RESTOnly {
+			continue
+		}
+		out = append(out, t)
+	}
+	return out
+}
+
 // sortedEndpoints returns the REST endpoints grouped by path, then method, so a
 // service's endpoints list together and in a stable order on /api.
 func sortedEndpoints() []*Endpoint {

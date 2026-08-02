@@ -68,8 +68,8 @@ Metered tools are priced at **1 credit = $0.01 USD** via x402:
 | `video_search` | $0.02 |
 | `social_search` | $0.01 |
 | `chat` | $0.03 |
-| `search_web` | $0.05 |
-| `search_fetch` | $0.03 |
+| `web_search` | $0.05 |
+| `web_fetch` | $0.03 |
 | `weather_forecast` | $0.01 |
 | `places_search` | $0.05 |
 | `places_nearby` | $0.02 |
@@ -120,7 +120,6 @@ Two ways in, depending on what you are:
 | Tool | Description | Credit Cost |
 |------|-------------|-------------|
 | `chat` | Chat with AI assistant | 5 credits |
-| `news` | Read the raw latest news feed | Included |
 | `news_list` | Recent headlines with summaries, balanced across topics | Included |
 | `news_search` | Search for news articles | 1 credit |
 | `blog_list` | Get all blog posts | Included |
@@ -134,9 +133,9 @@ Two ways in, depending on what you are:
 | `social_search` | Search social posts | 1 credit |
 | `places_search` | Search for places by name or category | 5 credits |
 | `places_nearby` | Find places of interest near a location | 4 credits |
-| `mail_read` | Read mail inbox | Included |
+| `mail_inbox` | Read mail inbox | Included |
 | `mail_send` | Send a mail message | 4 credits |
-| `search` | Search across all content | Included |
+| `index_search` | Search across all content | Included |
 | `wallet_balance` | Get wallet credit balance | Included |
 | `wallet_topup` | Get wallet topup payment methods | Included |
 | `markets_list` | Get live market prices | Included |
@@ -145,8 +144,8 @@ Two ways in, depending on what you are:
 | `hadith` | Look up hadith from Sahih Al Bukhari | Included |
 | `quran_search` | Semantic search across Quran and Hadith | Included |
 | `weather_forecast` | Get the weather forecast for a location | 1 credit |
-| `search_web` | Search the web for current information | 5 credits |
-| `search_fetch` | Fetch a web page and return cleaned readable content | 3 credits |
+| `web_search` | Search the web for current information | 5 credits |
+| `web_fetch` | Fetch a web page and return cleaned readable content | 3 credits |
 | `apps_search` | Search the apps directory | Included |
 | `apps_read` | Read details of a specific app | Included |
 | `apps_create` | Create a new app | Included |
@@ -156,9 +155,9 @@ Two ways in, depending on what you are:
 | `agent` | Ask the AI agent a question — searches news, markets, web, and more | 7 credits |
 | `images_generate` | Generate an image from a text prompt (Atlas Cloud nano-banana) | 15 credits |
 | `images_search` | Search the public image stock pool by description | Included |
-| `stream` | Read the public event stream — system events, user posts, agent responses | Included |
+| `stream_list` | Read the public event stream — system events, user posts, agent responses | Included |
 | `stream_post` | Post a message to the event stream | 1 credit |
-| `db_set` | Store a record in a collection (private, or `public: true`) | 1 credit |
+| `db_create` | Store a record in a collection (private, or `public: true`) | 1 credit |
 | `db_get` | Get one record by id (yours, or public) | Included |
 | `db_list` | List records — `scope`: mine / public / all, with `where` / `sort` / `limit` | Included |
 | `db_delete` | Delete a record you own | Included |
