@@ -1581,6 +1581,7 @@ func main() {
 
 		"/status":                 false, // Public - server health status
 		"/pricing":                false, // Public - pricing page
+		"/privacy":                false, // Public - privacy policy
 		"/docs":                   false, // Public - documentation
 		"/whitepaper":             false, // Public - whitepaper
 		"/mcp":                    false, // Public - MCP tools page
@@ -1737,6 +1738,10 @@ func main() {
 		http.Redirect(w, r, "/agent", http.StatusFound)
 	})
 	http.HandleFunc("/pricing", home.PricingHandler)
+	// Every MCP directory submission asks for a privacy policy URL, and this
+	// instance runs a mail server — so there is real correspondence to account
+	// for, not just a formality.
+	http.HandleFunc("/privacy", home.PrivacyHandler)
 
 	// first-run setup wizard (open only until an admin exists)
 	http.HandleFunc("/setup", setup.Handler)

@@ -5,7 +5,7 @@ Tools for agents
 ## Overview
 
 Mu gives an agent the everyday internet as tools: news, web search, mail,
-markets, weather, video, places, images, storage. 59 of them, behind one
+markets, weather, video, places, images, files, calendar, contacts. 67 of them, behind one
 [MCP](https://modelcontextprotocol.io) endpoint. Connect once and your agent has
 all of them, instead of wiring up a server for each.
 
@@ -61,20 +61,23 @@ protocol detail.
 | **News** | `news_list` · `news_read` · `news_search` — RSS aggregation, full articles |
 | **Markets** | `markets_list` — crypto, futures, commodities, currencies |
 | **Weather** | `weather_forecast` — conditions, forecast, pollen |
-| **Places** | `places_search` · `places_nearby` — points of interest, geocoding |
+| **Places** | `places_search` · `places_nearby` · `places_eta` — points of interest, geocoding, travel time |
 | **Video** | `video_list` · `video_search` — curated channels, no ads or recommendations |
-| **Mail** | `mail_inbox` · `mail_search` · `mail_send` — a real SMTP server with DKIM |
+| **Mail** | `mail_inbox` · `mail_send` · `mail_address` — a real SMTP server with DKIM, and an address per agent |
 | **Storage** | `db_create` · `db_get` · `db_list` · `db_update` · `db_delete` — per-caller records |
+| **Files** | `files_put` · `files_get` · `files_list` · `files_share` — keep a file, get a URL |
+| **Calendar** | `events_create` · `events_free` · `events_list` — schedule, and find when you are free |
+| **Contacts** | `contacts_find` · `contacts_add` · `contacts_list` — turn a name into an address |
 | **Search your own** | `index_search` — everything this instance holds for you |
 | **Images** | `images_generate` · `images_search` |
 | **Writing** | `blog_*` · `social_*` · `stream_*` — publish, read, discuss |
 | **Apps** | `apps_build` · `apps_run` · `apps_edit` — build and run small web tools |
 | **Faith** | `islam_today` · `islam_prayer` · `islam_qibla` · `quran` · `hadith` |
-| **Money** | `wallet_balance` · `wallet_topup` · `pay` — credits, and paying other MCP servers |
+| **Money** | `wallet_balance` — credits, and where to send USDC to top up |
 | **Agent** | `agent` · `chat` — ask the whole thing a question and let it compose |
 
 Every tool is also a `mu` CLI subcommand. Account-scoped tools (mail, storage,
-index, images, events) need a signed-in caller; `mail_send` always does, so an
+index, images, events, files, contacts) need a signed-in caller; `mail_send` always does, so an
 unaccountable caller can't spend a domain's reputation.
 
 ## Why the tools are real

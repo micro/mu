@@ -16,7 +16,7 @@ import (
 // They are one page now, and /about and /agents redirect here.
 func Landing(w http.ResponseWriter, r *http.Request) {
 	host := app.BaseURL(r)
-	body := `<p class="lead">One MCP endpoint, 59 real tools — news, web search, mail, markets,
+	body := `<p class="lead">One MCP endpoint, 67 real tools — news, web search, mail, markets,
 weather, video, storage. Connect an agent once and it has all of them, instead of wiring up
 a server for each.</p>
 

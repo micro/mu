@@ -146,7 +146,10 @@ func (Server) ETA(_ context.Context, req *ETARequest, rsp *ETAResponse) error {
 	rsp.Text = fmt.Sprintf("%s to %s by %s: %s, %s.",
 		from, to, verb, humanDuration(r.Duration), humanDistance(r.Metres))
 	if r.Estimate {
-		rsp.Text += " (Estimated from straight-line distance — this instance has no routing key, so treat it as approximate.)"
+		// Deliberately vague about why: from here it may be a missing key, a key
+		// without the Routes API enabled, or an outage, and none of those is the
+		// caller's problem. The operator gets the real reason in the log.
+		rsp.Text += " (Estimated from straight-line distance — live routing is unavailable on this instance, so treat it as approximate.)"
 	}
 	return nil
 }
