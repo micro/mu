@@ -97,6 +97,7 @@ var Spec = service.Spec{
 	Handler:     new(Server),
 	Description: "Small self-contained web tools, built and run in place",
 	Page:        "/apps",
+	Icon:        "apps.svg",
 	Endpoints: map[string]service.Endpoint{
 		"Build":  {Doc: "Generate a small app (tracker, checklist or counter) from a description", Cost: wallet.OpAppBuild},
 		"Read":   {Doc: "Read the details of one app by its slug"},

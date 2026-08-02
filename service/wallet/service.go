@@ -111,6 +111,7 @@ var Spec = service.Spec{
 	Description: "Credits: check, charge and balance",
 	Page:        "/wallet",
 	Scoped:      true,
+	Icon:        "wallet.png",
 	Endpoints: map[string]service.Endpoint{
 		"Balance": {Doc: "Read the caller's current credit balance"},
 		"Charge":  {Doc: "Deduct the cost of an operation from the caller's credit balance", Destructive: true},

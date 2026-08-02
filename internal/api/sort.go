@@ -26,17 +26,3 @@ func mcpTools() []Tool {
 	}
 	return out
 }
-
-// sortedEndpoints returns the REST endpoints grouped by path, then method, so a
-// service's endpoints list together and in a stable order on /api.
-func sortedEndpoints() []*Endpoint {
-	out := make([]*Endpoint, len(Endpoints))
-	copy(out, Endpoints)
-	sort.SliceStable(out, func(i, j int) bool {
-		if out[i].Path != out[j].Path {
-			return out[i].Path < out[j].Path
-		}
-		return out[i].Method < out[j].Method
-	})
-	return out
-}

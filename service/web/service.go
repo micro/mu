@@ -88,6 +88,7 @@ var Spec = service.Spec{
 	Description: "The open web: search it, read a page from it",
 	Page:        "/search",
 	Label:       "Search",
+	Icon:        "search.svg",
 	Endpoints: map[string]service.Endpoint{
 		"Fetch":  {Doc: "Fetch a web page by URL and return its readable content", Cost: wallet.OpWebFetch},
 		"Search": {Doc: "Search the web for current information and news", Cost: wallet.OpWebSearch},

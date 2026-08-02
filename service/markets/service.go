@@ -33,6 +33,7 @@ var Spec = service.Spec{
 	Handler:     new(Server),
 	Description: "Live crypto, futures, commodity and currency prices",
 	Page:        "/markets",
+	Icon:        "markets.svg",
 	Endpoints: map[string]service.Endpoint{
 		"List": {Doc: "Get live prices for cryptocurrencies, futures, commodities and currencies"},
 	},

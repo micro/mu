@@ -50,6 +50,11 @@ type Spec struct {
 	// service is "Search" in the sidebar, because that is what a person looks
 	// for.
 	Label string
+	// Icon is the sidebar icon file, e.g. "news.png". Defaults to
+	// "<name>.svg". It lives here because it is part of what the service is:
+	// Stream and Chat shared a speech bubble for months because the nav was a
+	// hand-written list and nothing could notice the repeat.
+	Icon string
 	// Scoped marks a service holding one user's data, or spending their
 	// credits. A caller with no authenticated account cannot reach it at all.
 	Scoped bool
@@ -90,8 +95,29 @@ func (s Spec) NavLabel() string {
 	return strings.ToUpper(s.Name[:1]) + s.Name[1:]
 }
 
+// NavIcon is the icon file, defaulting to "<name>.svg".
+func (s Spec) NavIcon() string {
+	if s.Icon != "" {
+		return s.Icon
+	}
+	return s.Name + ".svg"
+}
+
 // Headless reports whether the service has no page of its own.
 func (s Spec) Headless() bool { return s.Page == "" }
+
+// Nav returns the services that appear in the sidebar, ordered by label.
+func Nav() []Spec {
+	out := make([]Spec, 0, len(specs))
+	for _, s := range Specs() {
+		if s.Headless() {
+			continue
+		}
+		out = append(out, s)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].NavLabel() < out[j].NavLabel() })
+	return out
+}
 
 var (
 	specMu sync.RWMutex
@@ -241,4 +267,29 @@ func EndpointDescriptions(name string) map[string]string {
 		}
 	}
 	return out
+}
+
+// GuestAllowedTool reports whether a caller with no account may use a tool,
+// derived from the service behind it.
+//
+// A tool name is service_method (news_search) or the native service.Handler.Method
+// form, so the first segment names the service. A scoped service is closed to
+// guests entirely; anything else is public.
+//
+// This replaced two hand-written allowlists — one in agent, one in agent/micro
+// — that had to be edited in step with each other and with accountScoped, and
+// were not. Tools with no service behind them (quran, blog_read) are not
+// covered here; their callers keep a short explicit list.
+func GuestAllowedTool(name string) bool {
+	parts := strings.FieldsFunc(strings.ToLower(strings.TrimSpace(name)), func(r rune) bool {
+		return r == '.' || r == '_'
+	})
+	if len(parts) == 0 {
+		return false
+	}
+	s, ok := SpecFor(parts[0])
+	if !ok {
+		return false
+	}
+	return !s.Scoped
 }

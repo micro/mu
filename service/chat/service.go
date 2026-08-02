@@ -129,6 +129,7 @@ var Spec = service.Spec{
 	Handler:     new(Server),
 	Description: "Live discussion rooms attached to an item",
 	Page:        "/chat",
+	Icon:        "chat.png",
 	Endpoints: map[string]service.Endpoint{
 		"Messages": {Doc: "Read the recent conversation in a discussion room"},
 		"Rooms":    {Doc: "List discussion rooms that currently have activity"},

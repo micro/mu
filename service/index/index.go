@@ -115,11 +115,16 @@ func stripTags(s string) string {
 }
 
 // ToolDocs describes this service's endpoints for the agent's tool list.
+// Not Scoped, for the same reason stream is not: a guest may search, they just
+// get less. Search adds the caller's mail only when there is a caller, so an
+// unauthenticated search returns public indexed content and nothing else.
+// Marking the service scoped would close it to guests entirely — which is what
+// the agent did, while the micro-agent allowlist let guests through. Two lists,
+// two answers.
 var Spec = service.Spec{
 	Name:        "index",
 	Handler:     Server{},
 	Description: "Search across the caller's own content",
-	Scoped:      true,
 	Endpoints: map[string]service.Endpoint{
 		"Search": {Doc: "Search the caller's own content — indexed news, blog, social, video and saved items"},
 	},

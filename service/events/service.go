@@ -99,6 +99,7 @@ var Spec = service.Spec{
 	Description: "Scheduled reminders and calendar invites",
 	Page:        "/events",
 	Scoped:      true,
+	Icon:        "events.svg",
 	Endpoints: map[string]service.Endpoint{
 		"Create": {Doc: "Schedule a reminder or event to fire at a given time"},
 		"List":   {Doc: "List the caller's upcoming events and reminders"},

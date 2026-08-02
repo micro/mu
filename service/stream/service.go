@@ -100,6 +100,7 @@ var Spec = service.Spec{
 	Handler:     new(Server),
 	Description: "The console: this instance's own event timeline",
 	Page:        "/stream",
+	Icon:        "stream.svg",
 	Endpoints: map[string]service.Endpoint{
 		"List": {Doc: "Read recent events from the console timeline"},
 		"Post": {Doc: "Post an entry to the console timeline", Cost: wallet.OpStreamPost},

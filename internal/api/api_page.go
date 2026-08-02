@@ -29,12 +29,12 @@ func APIPageHandler(w http.ResponseWriter, r *http.Request) {
 	// Endpoint selector
 	b.WriteString(`<select id="api-endpoint" onchange="apiSelectEndpoint()" style="width:100%;padding:8px;font-size:14px;border:1px solid #ddd;border-radius:4px;margin-bottom:12px">`)
 	b.WriteString(`<option value="">Select an endpoint...</option>`)
-	for i, ep := range sortedEndpoints() {
+	for i, ep := range restTools() {
 		b.WriteString(fmt.Sprintf(`<option value="%d">%s %s — %s</option>`,
 			i,
 			html.EscapeString(ep.Method),
 			html.EscapeString(ep.Path),
-			html.EscapeString(ep.Name),
+			html.EscapeString(ep.Description),
 		))
 	}
 	b.WriteString(`</select>`)
@@ -199,15 +199,20 @@ func APIPageHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// apiEndpointsJSON returns endpoint metadata as JSON for the playground JS
+// apiEndpointsJSON returns endpoint metadata as JSON for the playground JS.
+//
+// The playground and the reference below it read the same list. They used to
+// read two: this came from api.Endpoints while the reference came from the tool
+// registry, so the selector offered twenty endpoints and the page documented
+// twenty-five, and neither list knew when the other changed.
 func apiEndpointsJSON() string {
-	var eps []map[string]any
-	for _, ep := range sortedEndpoints() {
+	eps := []map[string]any{}
+	for _, ep := range restTools() {
 		params := []map[string]any{}
 		for _, p := range ep.Params {
 			params = append(params, map[string]any{
 				"name":        p.Name,
-				"type":        p.Value,
+				"type":        p.Type,
 				"description": p.Description,
 			})
 		}

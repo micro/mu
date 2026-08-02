@@ -111,6 +111,7 @@ var Spec = service.Spec{
 	Handler:     new(Server),
 	Description: "Daily reminder, prayer times and qibla",
 	Page:        "/islam",
+	Icon:        "reminder.svg",
 	Endpoints: map[string]service.Endpoint{
 		"Prayer": {Doc: "Get today's prayer times for a location, and which prayer is next"},
 		"Qibla":  {Doc: "Get the compass bearing to face for prayer from a location"},

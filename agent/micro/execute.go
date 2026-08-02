@@ -3,6 +3,7 @@ package micro
 import (
 	"encoding/json"
 	"fmt"
+	"mu/internal/service"
 	"strings"
 	"time"
 
@@ -164,44 +165,21 @@ func (a *Agent) buildToolsDesc(public bool) string {
 	return sb.String()
 }
 
-var guestAllowedTools = map[string]bool{
-	"news_list":        true,
-	"news":             true, // legacy name for news_list
-	"news_headlines":   true,
-	"news_read":        true,
-	"news_search":      true,
-	"index_search":     true,
-	"recall":           true, // legacy names for index_search
-	"index":            true,
-	"search":           true,
-	"markets_list":     true,
-	"markets":          true, // legacy name for markets_list
-	"weather_forecast": true,
-	"video_list":       true,
-	"video":            true, // legacy name for video_list
-	"video_search":     true,
-	"web_search":       true,
-	"web_fetch":        true,
-	"social_list":      true,
-	"social":           true, // legacy name for social_list
-	"social_search":    true,
-	"blog_list":        true,
-	"blog_read":        true,
-	"apps_search":      true,
-	"apps_read":        true,
-	"islam_today":      true,
-	"reminder":         true, // legacy name for islam_today
-	"quran":            true,
-	"hadith":           true,
-	"quran_search":     true,
-	"stream_list":      true,
-	"stream":           true, // legacy name for stream_list
-	"places_search":    true,
-	"places_nearby":    true,
+// guestExtraTools are the guest-usable tools with no service behind them; the
+// rest is derived from whether the service is account-scoped. See
+// service.GuestAllowedTool.
+var guestExtraTools = map[string]bool{
+	"quran":         true,
+	"quran_search":  true,
+	"hadith":        true,
+	"blog_read":     true,
+	"social_search": true,
+	"video_search":  true,
+	"apps_run":      true,
 }
 
 func isGuestAllowedTool(name string) bool {
-	return guestAllowedTools[name]
+	return service.GuestAllowedTool(name) || guestExtraTools[name]
 }
 
 func (a *Agent) hasTool(name string) bool {

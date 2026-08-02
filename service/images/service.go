@@ -41,6 +41,7 @@ var Spec = service.Spec{
 	Description: "Image generation, the daily image and its archive",
 	Page:        "/images",
 	Scoped:      true,
+	Icon:        "images.svg",
 	Endpoints: map[string]service.Endpoint{
 		"Generate": {Doc: "Generate an image from a text prompt and return its URL", Cost: wallet.OpImageGenerate},
 	},

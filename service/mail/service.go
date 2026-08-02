@@ -117,6 +117,7 @@ var Spec = service.Spec{
 	Description: "Private messaging and email, with an SMTP server and DKIM",
 	Page:        "/mail",
 	Scoped:      true,
+	Icon:        "mail.png",
 	Endpoints: map[string]service.Endpoint{
 		"Inbox":  {Doc: "List the account's most recent messages — read my mail, check my inbox"},
 		"Search": {Doc: "Search the account's mail and return matching messages"},

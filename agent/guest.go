@@ -3,47 +3,27 @@ package agent
 import (
 	"sync"
 	"time"
+
+	"mu/internal/service"
 )
 
 const guestDailyLimit = 3
 
-var guestAllowedTools = map[string]bool{
-	"news":             true,
-	"news_headlines":   true,
-	"news_read":        true,
-	"news_search":      true,
-	"recall":           true, // legacy alias of index
-	"index":            true,
-	"markets":          true,
-	"weather_forecast": true,
-	"video":            true,
-	"video_search":     true,
-	"web_search":       true,
-	"search_web":       true, // legacy name for web_search
-	"web_fetch":        true,
-	"social":           true,
-	"social_search":    true,
-	"blog_list":        true,
-	"blog_read":        true,
-	"apps_search":      true,
-	"apps_read":        true,
-	"index_search":     true,
-	"search":           true, // legacy name for index_search
-	"islam_today":      true,
-	"islam":            true, // legacy name for islam_today
-	"islam_prayer":     true,
-	"islam_qibla":      true,
-	"quran":            true,
-	"hadith":           true,
-	"quran_search":     true,
-	"stream_list":      true,
-	"stream":           true, // legacy name for stream_list
-	"places_search":    true,
-	"places_nearby":    true,
+// guestExtraTools are the tools a guest may use that have no service behind
+// them, so service.GuestAllowedTool cannot answer for them. Everything that is
+// service-backed is derived from whether that service is account-scoped.
+var guestExtraTools = map[string]bool{
+	"quran":         true,
+	"quran_search":  true,
+	"hadith":        true,
+	"blog_read":     true,
+	"social_search": true,
+	"video_search":  true,
+	"apps_run":      true,
 }
 
 func isGuestAllowedTool(name string) bool {
-	return guestAllowedTools[name]
+	return service.GuestAllowedTool(name) || guestExtraTools[name]
 }
 
 var (

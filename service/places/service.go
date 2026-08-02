@@ -208,6 +208,7 @@ var Spec = service.Spec{
 	Handler:     new(Server),
 	Description: "Places, points of interest and geocoding",
 	Page:        "/places",
+	Icon:        "places.svg",
 	Endpoints: map[string]service.Endpoint{
 		"Geocode": {Doc: "Resolve a place name or address to coordinates"},
 		"Nearby":  {Doc: "List points of interest near a location", Cost: wallet.OpPlacesNearby},

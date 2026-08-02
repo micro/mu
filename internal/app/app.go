@@ -332,23 +332,7 @@ var Template = `
         <div id="nav">
           <a href="/home"><img src="/home.png?` + Version + `"><span class="label">Home</span></a>
           <a href="/agent"><img src="/agent.svg?` + Version + `"><span class="label">Agent</span></a>
-          <a href="/apps"><img src="/apps.svg?` + Version + `"><span class="label">Apps</span></a>
-          <a href="/blog"><img src="/post.png?` + Version + `"><span class="label">Blog</span></a>
-          <a href="/chat"><img src="/chat.png?` + Version + `"><span class="label">Chat</span></a>
-          <a href="/events"><img src="/events.svg?` + Version + `"><span class="label">Events</span></a>
-          <a href="/images"><img src="/images.svg?` + Version + `"><span class="label">Images</span></a>
-          <a href="/islam"><img src="/reminder.svg?` + Version + `"><span class="label">Islam</span></a>
-          <a id="nav-mail" href="/mail"><img src="/mail.png?` + Version + `"><span class="label">Mail</span><span id="nav-mail-badge"></span></a>
-          <a href="/markets"><img src="/markets.svg?` + Version + `"><span class="label">Markets</span></a>
-          <a href="/news"><img src="/news.png?` + Version + `"><span class="label">News</span></a>
-          <a href="/places"><img src="/places.svg?` + Version + `"><span class="label">Places</span></a>
-          <a href="/search"><img src="/search.svg?` + Version + `"><span class="label">Search</span></a>
-          <a href="/social"><img src="/social.svg?` + Version + `"><span class="label">Social</span></a>
-          <a href="/stream"><img src="/stream.svg?` + Version + `"><span class="label">Stream</span></a>
-          <a href="/video"><img src="/video.png?` + Version + `"><span class="label">Video</span></a>
-          <a id="nav-wallet" href="/wallet"><img src="/wallet.png?` + Version + `"><span class="label">Wallet</span></a>
-          <a href="/weather"><img src="/weather.svg?` + Version + `"><span class="label">Weather</span></a>
-
+<!--mu:nav-->
         </div>
         <div class="nav-bottom">
           %s
@@ -1545,7 +1529,7 @@ func RenderHTMLWithLangAndAuth(title, desc, html, lang string, acc *auth.Account
 		lang = "en"
 	}
 	title, desc = escapeMeta(title), escapeMeta(desc)
-	return fmt.Sprintf(Template, lang, title, desc, "", navAuthHTML(acc), title, html)
+	return withNav(fmt.Sprintf(Template, lang, title, desc, "", navAuthHTML(acc), title, html))
 }
 
 // escapeMeta escapes a page title or description. Handlers pass these through
@@ -1565,7 +1549,7 @@ func RenderHTMLWithLangAndBody(title, desc, html, lang, bodyAttr string, acc *au
 		lang = "en"
 	}
 	title, desc = escapeMeta(title), escapeMeta(desc)
-	return fmt.Sprintf(Template, lang, title, desc, bodyAttr, navAuthHTML(acc), title, html)
+	return withNav(fmt.Sprintf(Template, lang, title, desc, bodyAttr, navAuthHTML(acc), title, html))
 }
 
 // RenderString renders a markdown string as html
@@ -1577,7 +1561,7 @@ func RenderString(v string) string {
 func RenderTemplate(title string, desc, text string) string {
 	body := RenderString(text)
 	title, desc = escapeMeta(title), escapeMeta(desc)
-	return fmt.Sprintf(Template, "en", title, desc, "", navAuthHTML(nil), title, body)
+	return withNav(fmt.Sprintf(Template, "en", title, desc, "", navAuthHTML(nil), title, body))
 }
 
 func ServeHTML(html string) http.Handler {

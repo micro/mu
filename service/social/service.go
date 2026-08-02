@@ -31,6 +31,7 @@ var Spec = service.Spec{
 	Handler:     new(Server),
 	Description: "Public threads, replies and status",
 	Page:        "/social",
+	Icon:        "social.svg",
 	Endpoints: map[string]service.Endpoint{
 		"List": {Doc: "Read the latest social posts from the network"},
 	},

@@ -1,6 +1,13 @@
 package micro
 
 import (
+	"mu/internal/service"
+	"mu/service/index"
+	"mu/service/mail"
+	"mu/service/markets"
+	"mu/service/news"
+	"mu/service/weather"
+	"mu/service/web"
 	"strings"
 	"testing"
 )
@@ -22,7 +29,21 @@ func TestBuildToolsDescFiltersPrivateToolsForGuests(t *testing.T) {
 	}
 }
 
+// The guest rule is derived from each service's Spec, so the services have to
+// be registered for it to answer.
+func registerServices(t *testing.T) {
+	t.Helper()
+	for _, s := range []service.Spec{
+		news.Spec, markets.Spec, weather.Spec, web.Spec, index.Spec, mail.Spec,
+	} {
+		if err := service.Register(s); err != nil {
+			t.Fatalf("register %s: %v", s.Name, err)
+		}
+	}
+}
+
 func TestGuestAllowedToolsCoverPublicCoreServices(t *testing.T) {
+	registerServices(t)
 	for _, tool := range []string{"weather_forecast", "news_list", "markets_list", "web_search", "index_search"} {
 		t.Run(tool, func(t *testing.T) {
 			if !isGuestAllowedTool(tool) {
