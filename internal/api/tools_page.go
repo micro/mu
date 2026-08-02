@@ -173,8 +173,11 @@ const toolsPageCSS = `<style>
 .tool-tile-desc{font-size:13px;color:#666;line-height:1.4}
 .tool-tile-price{font-size:12px;color:#6b7280;font-variant-numeric:tabular-nums;margin-top:2px}
 .tool-tile-price .free{color:#9ca3af}
-.connect-cta{display:inline-block;background:#111;color:#fff;text-decoration:none;padding:9px 18px;
-  border-radius:8px;font-weight:700;font-size:14px}
+/* .card a sets a dark colour and won on specificity, so the label went black on
+   a black button. Scope the rule the same way to outrank it. */
+.card a.connect-cta,.card a.connect-cta:visited{display:inline-block;background:#111;color:#fff;
+  text-decoration:none;padding:9px 18px;border-radius:8px;font-weight:700;font-size:14px}
+.card a.connect-cta:hover{background:#333;color:#fff}
 .connect-note{font-size:13px;color:#888;margin-left:8px}
 .connect-cfg{background:#f5f5f5;padding:10px 12px;font-size:12px;overflow-x:auto;border-radius:6px;margin:12px 0}
 .connect-alt{color:#888;font-size:13px;border-top:1px solid #eee;padding-top:10px;margin-top:12px}

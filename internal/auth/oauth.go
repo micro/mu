@@ -7,8 +7,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"mu/internal/origin"
 	"net/http"
-	"strings"
 	"sync"
 	"time"
 
@@ -177,19 +177,7 @@ func generateRandomString(n int) string {
 	return base64.RawURLEncoding.EncodeToString(b)[:n]
 }
 
-func getIssuer(r *http.Request) string {
-	host := r.Host
-	if fh := r.Header.Get("X-Forwarded-Host"); fh != "" {
-		host = fh
-	}
-	scheme := "https"
-	if fp := r.Header.Get("X-Forwarded-Proto"); fp != "" {
-		scheme = fp
-	} else if r.TLS == nil && !strings.Contains(host, ".") {
-		scheme = "http"
-	}
-	return scheme + "://" + host
-}
+func getIssuer(r *http.Request) string { return origin.URL(r) }
 
 // OAuthMetadataHandler serves /.well-known/oauth-authorization-server
 func OAuthMetadataHandler(w http.ResponseWriter, r *http.Request) {

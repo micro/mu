@@ -685,17 +685,6 @@ function setSession() {
       }
       // Show the wallet link and badge its credit balance for logged-in users.
       document.body.classList.add('signed-in');
-      var headWallet = document.getElementById("head-wallet");
-      if (headWallet) headWallet.style.display = 'inline-block';
-      fetch('/wallet?balance=1', {headers:{'Accept':'application/json'}})
-        .then(res => res.json())
-        .then(data => {
-          var hb = document.getElementById("head-wallet-badge");
-          if (hb && typeof data.balance === 'number') {
-            hb.textContent = data.balance > 9999 ? '9999+' : data.balance;
-          }
-        })
-        .catch(() => {});
       // Fetch unread mail count for badge
       var headMail = document.getElementById("head-mail");
       var headMailBadge = document.getElementById("head-mail-badge");

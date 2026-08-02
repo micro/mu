@@ -476,7 +476,7 @@ td {
 #head-mail {
   display: none;
   position: absolute;
-  right: 15px;
+  right: 16px;
   top: 50%;
   transform: translateY(-50%);
   text-decoration: none;
@@ -524,8 +524,8 @@ td {
 }
 #head-tools:hover { color: #111; }
 
-/* Signed in, the wallet and mail icons take the right edge, so Tools steps in. */
-body.signed-in #head-tools { right: 96px; }
+/* Signed in, the mail icon sits inside it on the right edge. */
+body.signed-in #head-tools { right: 52px; }
 
 #head-wallet {
   display: none;
