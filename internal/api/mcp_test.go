@@ -131,11 +131,13 @@ func TestMCPHandler_ToolsList(t *testing.T) {
 	// video_list, markets_list, social_list and weather_forecast are registered
 	// dynamically in main.go (AI-first handlers), so they are not part of this
 	// package's static tool list.
+	// wallet_balance moved to main.go with the rest of the wallet surface, so
+	// it is no longer static either.
 	expectedTools := map[string]bool{
 		"chat": false, "news_search": false,
 		"blog_read": false, "blog_create": false,
 		"video_search": false, "mail_inbox": false,
-		"stream_list": false, "wallet_balance": false,
+		"stream_list": false,
 	}
 	for _, item := range toolsList {
 		tool, ok := item.(map[string]any)

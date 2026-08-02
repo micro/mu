@@ -466,7 +466,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			if !acc.Admin {
 				canProceed, useFree, cost, err := wallet.CheckQuota(acc.ID, wallet.OpExternalEmail)
 				if err != nil || !canProceed {
-					http.Error(w, fmt.Sprintf("External email requires %d credits. Top up at /wallet", cost), http.StatusPaymentRequired)
+					http.Error(w, fmt.Sprintf("External email requires %d credits. Top up at /wallet/topup", cost), http.StatusPaymentRequired)
 					return
 				}
 				// Consume quota after successful send (deferred below)
@@ -505,7 +505,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			if !acc.Admin {
 				canProceed, _, cost, _ := wallet.CheckQuota(acc.ID, wallet.OpMailSend)
 				if !canProceed {
-					http.Error(w, fmt.Sprintf("Sending mail requires %d credits. Top up at /wallet", cost), http.StatusPaymentRequired)
+					http.Error(w, fmt.Sprintf("Sending mail requires %d credits. Top up at /wallet/topup", cost), http.StatusPaymentRequired)
 					return
 				}
 			}
