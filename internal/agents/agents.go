@@ -23,13 +23,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	base := canonical() // "" => same-origin
 
 	body := `<p style="max-width:560px;text-align:center;color:#555;font-size:16px;line-height:1.6;margin:0 auto 28px">
-Every capability, as a service your agents can call — news, markets, weather, web search,
-video, mail, your own database and more. Reachable over <a href="/mcp" style="color:#111">MCP</a> and REST, paid
-per request with <a href="https://x402.org" style="color:#111">x402</a> stablecoin micropayments.</p>
+Real tools, not wrappers — this instance runs the mail server, the feeds, the search index
+and the wallet it hands you. News, markets, weather, web search, video, mail, your own
+database and more, over <a href="/mcp" style="color:#111">MCP</a> and REST, paid per request
+with <a href="https://x402.org" style="color:#111">x402</a> stablecoin micropayments.</p>
 
 <div class="pcards">
-  <a class="pcard" href="/mcp"><h3>MCP endpoint</h3><p>Point any MCP client here to use every tool. <code>/mcp</code></p></a>
-  <a class="pcard" href="/api"><h3>REST &amp; API docs</h3><p>The same services over plain HTTP, with schemas.</p></a>
+  <a class="pcard" href="/mcp"><h3>MCP endpoint</h3><p>Point any agent here and every tool is available. <code>/mcp</code></p></a>
+  <a class="pcard" href="/api"><h3>REST endpoints</h3><p>The same tools over plain HTTP, with schemas.</p></a>
   <a class="pcard" href="https://x402.org"><h3>Pay per call (x402)</h3><p>Micropayments over HTTP 402. First calls free.</p></a>
 </div>
 
@@ -64,10 +65,10 @@ per request with <a href="https://x402.org" style="color:#111">x402</a> stableco
 </style>`
 
 	page := app.RenderLanding(app.Landing{
-		Title:       "Mu — APIs for agents",
-		Description: "Every Mu capability as an MCP tool and REST API, paid per call over x402.",
+		Title:       "Mu — Tools for Agents",
+		Description: "Every Mu capability as a tool an agent can call, paid per request over x402.",
 		Brand:       "Mu",
-		Tagline:     "APIs for agents",
+		Tagline:     "Tools for Agents",
 		TopRight:    `<a href="` + base + `/login">Sign in →</a>`,
 		Body:        body,
 		Footer:      app.FooterLinks(),

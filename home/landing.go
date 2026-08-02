@@ -46,7 +46,7 @@ no tracking. Use it hosted here, or self-host the single binary — same product
 		Title:       "Mu — a personal home server",
 		Description: "Your personal home server for the everyday internet: news, mail, search, weather, markets and video, handled by one agent. Open source and self-hostable.",
 		Brand:       "Mu",
-		Tagline:     "Building blocks for life",
+		Tagline:     "The everyday internet, yours to run",
 		Body:        body,
 		TopRight:    `<a href="/login">Sign in →</a>`,
 		Footer:      app.FooterLinks(),
