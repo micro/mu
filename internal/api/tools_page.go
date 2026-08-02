@@ -23,13 +23,13 @@ func ToolsPageHandler(w http.ResponseWriter, r *http.Request) {
 	groups := groupTools()
 
 	var b strings.Builder
-	b.WriteString(`<div class="card"><h2>Tools</h2>`)
+	b.WriteString(`<div class="card">`)
 	b.WriteString(`<p class="card-desc">Everything an agent can do here. Point any MCP client at ` +
 		`<code>/mcp</code> and all of it is available — no API key, no account. ` +
 		`Metered tools show the price per call; the rest are included. ` +
 		`Your first 10 calls per wallet are free.</p>`)
 	b.WriteString(`<p class="card-desc"><a href="/mcp">MCP endpoint &amp; playground →</a> &nbsp;·&nbsp; ` +
-		`<a href="/api">REST endpoints →</a> &nbsp;·&nbsp; <a href="/agents">How paying works →</a></p>`)
+		`<a href="/api">REST endpoints →</a> &nbsp;·&nbsp; <a href="/#paying">How paying works →</a></p>`)
 	b.WriteString(`</div>`)
 
 	for _, g := range groups {

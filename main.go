@@ -29,7 +29,6 @@ import (
 	"mu/docs"
 	"mu/home"
 	"mu/internal/a2a"
-	"mu/internal/agents"
 	"mu/internal/ai"
 	"mu/internal/api"
 	"mu/internal/app"
@@ -1457,14 +1456,25 @@ func main() {
 	// home screen is the public face — real cards plus the agent — so a visitor
 	// sees the product rather than a separate marketing page.
 	http.HandleFunc("/home", home.Handler)
-	http.HandleFunc("/about", home.Landing) // the "what is Mu" pitch, no longer the front door
+	// Everything used to be a landing: the logged-out root said nothing, /about
+	// was a pitch and /agents was a second pitch. There is one landing now — the
+	// root — and these two go back to being what their names say.
+	//
+	// /about is the about page, which is the ABOUT doc rather than a second copy
+	// of it. /agents belongs to the user's agents, not to marketing; it points at
+	// the agent surface until the page that shows what your agents are doing
+	// exists to take it.
+	http.HandleFunc("/about", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/docs/about", http.StatusMovedPermanently)
+	})
+	http.HandleFunc("/agents", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/agent", http.StatusFound)
+	})
 	http.HandleFunc("/pricing", home.PricingHandler)
 
 	// first-run setup wizard (open only until an admin exists)
 	http.HandleFunc("/setup", setup.Handler)
 
-	// The API face for agents: MCP + REST, pay-per-call over x402.
-	http.HandleFunc("/agents", agents.Handler)
 	// Redirect the old path so existing links keep working.
 	http.HandleFunc("/developers", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/agents", http.StatusMovedPermanently)
@@ -1737,12 +1747,13 @@ func main() {
 							http.Redirect(w, r, "/home", http.StatusFound)
 						}
 					} else {
-						// Logged out: the live home IS the front door — real cards
-						// plus a working guest agent — so visitors can use Mu
-						// immediately and sign up once they've felt the value,
-						// rather than bouncing off a sign-in wall. The "what is
-						// this" pitch lives at /about.
-						home.Handler(w, r)
+						// Logged out: say what this is. The live home used to be
+						// the front door, which meant a visitor saw cards of news
+						// and prices and no indication that any of it is callable
+						// by an agent. The landing says that, and "See it working"
+						// links straight to the live home for anyone who wants the
+						// cards.
+						home.Landing(w, r)
 					}
 					return
 				}
