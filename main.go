@@ -535,11 +535,6 @@ func main() {
 		api.PaymentRequiredResponse = wallet.WritePaymentRequired
 	}
 
-	// api.ToolGuard is left unset: no tool currently needs a pre-dispatch check.
-	// It existed to rate-limit the MCP signup tool by IP, which is gone —
-	// account creation now happens only at /signup, which has both that rate
-	// limit and a captcha, so the path that bypassed the captcha is closed.
-
 	// Wire email sending for verification mails. Uses the platform's own
 	// SMTP relay so verification mails come from no-reply@<MAIL_DOMAIN>.
 	// Only enabled when MAIL_DOMAIN is configured to a real domain —
@@ -1268,6 +1263,7 @@ func main() {
 
 	authenticated := map[string]bool{
 		"/video":                 false, // Public viewing, auth for interactive features
+		"/video/thumb":           false, // Public — thumbnails for the public feed
 		"/news":                  false, // Public viewing, auth for search
 		"/chat":                  false, // Public viewing, auth for chatting
 		"/home":                  false, // Public viewing
@@ -1338,6 +1334,7 @@ func main() {
 	}
 	// serve video
 	http.HandleFunc("/video", video.Handler)
+	http.HandleFunc("/video/thumb", video.ThumbHandler)
 
 	// serve news
 	http.HandleFunc("/news", news.Handler)

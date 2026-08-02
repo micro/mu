@@ -373,9 +373,10 @@ func regenerateHTML() {
 	if len(latest) > 0 {
 		res := latest[0]
 
-		thumbnailURL := res.Thumbnail
+		// Served from Mu, not linked to Google's CDN — see thumbnail.go.
+		thumbnailURL := ThumbURL(res.ID)
 		if thumbnailURL == "" {
-			thumbnailURL = fmt.Sprintf("https://i.ytimg.com/vi/%s/mqdefault.jpg", res.ID)
+			thumbnailURL = res.Thumbnail
 		}
 
 		// Build info section with channel and category
@@ -394,7 +395,7 @@ func regenerateHTML() {
 		}
 
 		latestHtml = fmt.Sprintf(`
-	<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a><div class="info">%s</div></div>`,
+	<div class="thumbnail"><a href="%s"><img src="%s" loading="lazy" alt=""><h3>%s</h3></a><div class="info">%s</div></div>`,
 			res.URL, thumbnailURL, res.Title, info)
 
 		// add to body
@@ -513,9 +514,10 @@ func loadVideos() {
 	if len(latest) > 0 {
 		// Generate proper latest HTML with channel and category links
 		res := latest[0]
-		thumbnailURL := res.Thumbnail
+		// Served from Mu, not linked to Google's CDN — see thumbnail.go.
+		thumbnailURL := ThumbURL(res.ID)
 		if thumbnailURL == "" {
-			thumbnailURL = fmt.Sprintf("https://i.ytimg.com/vi/%s/mqdefault.jpg", res.ID)
+			thumbnailURL = res.Thumbnail
 		}
 
 		var info string
@@ -533,7 +535,7 @@ func loadVideos() {
 		}
 
 		latestHtml = fmt.Sprintf(`
-	<div class="thumbnail"><a href="%s"><img src="%s"><h3>%s</h3></a><div class="info">%s</div></div>`,
+	<div class="thumbnail"><a href="%s"><img src="%s" loading="lazy" alt=""><h3>%s</h3></a><div class="info">%s</div></div>`,
 			res.URL, thumbnailURL, res.Title, info)
 		data.SaveFile("latest.html", latestHtml)
 	}
