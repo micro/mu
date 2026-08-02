@@ -45,6 +45,7 @@ import (
 	"mu/service/apps"
 	"mu/service/blog"
 	"mu/service/chat"
+	"mu/service/contacts"
 	"mu/service/db"
 	"mu/service/events"
 	"mu/service/files"
@@ -181,6 +182,7 @@ func main() {
 	chat.LoadService()
 	images.Load()
 	files.Load()
+	contacts.Load()
 	events.Load()
 	events.OnFire = func(accountID, title, note string) {
 		// The console is the instance's own timeline: what happened here, in
@@ -586,6 +588,56 @@ func main() {
 			}
 			return rsp.Text, nil
 		},
+	})
+
+	// contacts_* — the address book. mail could send to an address but nothing
+	// could turn a name into one, so "email Sarah about Thursday" was not a
+	// request Mu could act on.
+	api.RegisterToolWithAuth(api.Tool{
+		Name:        "contacts_find",
+		Description: "Look someone up in your address book by name, part of a name, or address. Use this before sending mail to a person named rather than addressed.",
+		Params: []api.ToolParam{
+			{Name: "query", Type: "string", Description: "A name, part of a name, or an address", Required: true},
+		},
+	}, func(args map[string]any, accountID string) (string, error) {
+		return contacts.Render(contacts.Find(accountID, api.QueryArg(args))), nil
+	})
+	api.RegisterToolWithAuth(api.Tool{
+		Name:        "contacts_add",
+		Description: "Save someone to your address book. Adding a name already there updates it rather than making a second card.",
+		Params: []api.ToolParam{
+			{Name: "name", Type: "string", Description: "The person's name", Required: true},
+			{Name: "email", Type: "string", Description: "Their email address", Required: false},
+			{Name: "phone", Type: "string", Description: "Their phone number", Required: false},
+			{Name: "note", Type: "string", Description: "Anything worth remembering about them", Required: false},
+		},
+	}, func(args map[string]any, accountID string) (string, error) {
+		str := func(k string) string { v, _ := args[k].(string); return v }
+		c, err := contacts.Add(accountID, str("name"), str("email"), str("phone"), str("note"))
+		if err != nil {
+			return "", err
+		}
+		b, _ := json.Marshal(c)
+		return string(b), nil
+	})
+	api.RegisterToolWithAuth(api.Tool{
+		Name:        "contacts_list",
+		Description: "List everyone in your address book.",
+	}, func(args map[string]any, accountID string) (string, error) {
+		return contacts.Render(contacts.List(accountID)), nil
+	})
+	api.RegisterToolWithAuth(api.Tool{
+		Name:        "contacts_delete",
+		Description: "Remove someone from your address book.",
+		Params: []api.ToolParam{
+			{Name: "id", Type: "string", Description: "The contact's id", Required: true},
+		},
+	}, func(args map[string]any, accountID string) (string, error) {
+		id, _ := args["id"].(string)
+		if err := contacts.Remove(accountID, id); err != nil {
+			return "", err
+		}
+		return `{"status":"ok"}`, nil
 	})
 
 	// mail_address — an address an agent can be reached at.
