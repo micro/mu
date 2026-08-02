@@ -1875,7 +1875,10 @@ func main() {
 				r.Body.Close()
 				r.Body = io.NopCloser(bytes.NewReader(body))
 				if op := api.MCPWalletOp(body); op != "" {
-					resource := "https://" + r.Host + r.URL.Path
+					// The public origin, not r.Host: behind the proxy r.Host is
+					// the loopback port, and an x402 client checks this field
+					// against what it is calling.
+					resource := app.BaseURL(r) + r.URL.Path
 					if wallet.HasPayment(r) {
 						holder := &wallet.SettleHolder{}
 						ctx := context.WithValue(r.Context(), wallet.X402ContextKey, true)

@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"mu/internal/settings"
 )
 
 // ClientIP returns the originating client IP for a request, honouring
@@ -29,6 +31,47 @@ func ClientIP(r *http.Request) string {
 		return r.RemoteAddr
 	}
 	return host
+}
+
+// BaseURL returns the public origin of this instance — "https://micro.mu" —
+// for anything a caller outside the process will read back: an x402 resource
+// identifier, a Stripe return URL, a link in an email.
+//
+// r.Host cannot be used on its own. Mu runs behind a reverse proxy that
+// forwards to a loopback port, so r.Host is "localhost:8081" and any URL built
+// from it names an address no client can reach. That is how the live x402
+// challenge came to advertise https://localhost:8081/mcp as the resource being
+// paid for.
+//
+// Order: MU_DOMAIN when configured, then the proxy's X-Forwarded-Host, then
+// r.Host. Same shape as ClientIP, and the proxy that sets X-Forwarded-For sets
+// X-Forwarded-Host too.
+//
+// X-Forwarded-Host is only trustworthy because the proxy sets it; a directly
+// exposed instance would be taking it from the client. That is the same
+// assumption ClientIP already makes.
+func BaseURL(r *http.Request) string {
+	if d := strings.TrimSpace(settings.Get("MU_DOMAIN")); d != "" && d != "localhost" {
+		return "https://" + strings.TrimSuffix(trimScheme(d), "/")
+	}
+	if h := strings.TrimSpace(r.Header.Get("X-Forwarded-Host")); h != "" {
+		if i := strings.Index(h, ","); i > 0 {
+			h = strings.TrimSpace(h[:i])
+		}
+		return scheme(r) + "://" + trimScheme(h)
+	}
+	return scheme(r) + "://" + r.Host
+}
+
+func scheme(r *http.Request) string {
+	if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+		return "https"
+	}
+	return "http"
+}
+
+func trimScheme(s string) string {
+	return strings.TrimPrefix(strings.TrimPrefix(s, "https://"), "http://")
 }
 
 func TimeAgo(d time.Time) string {
