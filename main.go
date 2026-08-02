@@ -692,11 +692,14 @@ func main() {
 		},
 	}, func(args map[string]any, accountID string) (string, error) {
 		tag, _ := args["tag"].(string)
-		acc, err := auth.GetAccount(accountID)
-		if err != nil {
+		// The account id, not the display name. Delivery resolves the local
+		// part with auth.GetAccount, which is an exact lookup keyed by id — an
+		// address built from a display name ("Asim+research@") would look right
+		// and silently fail to arrive.
+		if _, err := auth.GetAccount(accountID); err != nil {
 			return "", err
 		}
-		addr := mail.AliasFor(acc.Name, tag)
+		addr := mail.AliasFor(accountID, tag)
 		out := map[string]any{"address": addr}
 		if tag != "" {
 			out["read_with"] = fmt.Sprintf(`mail_inbox {"tag": %q}`, tag)

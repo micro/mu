@@ -2,6 +2,8 @@ package places
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -104,5 +106,53 @@ func TestHumanDistance(t *testing.T) {
 	}
 	if got := humanDistance(24300); got != "24.3 km" {
 		t.Errorf("long distances should be km, got %q", got)
+	}
+}
+
+// A key that reaches Places does not necessarily have Routes enabled. Live
+// testing found exactly that: a 403 saying "Requests to this API ... are
+// blocked", returned verbatim to somebody who asked how long a journey takes.
+// An estimate, labelled as one, is a better answer than an API error.
+func TestRoutingFailureFallsBackToAnEstimate(t *testing.T) {
+	t.Setenv("GOOGLE_API_KEY", "a-key-without-routes-enabled")
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte(`{"error":{"code":403,"message":"blocked"}}`))
+	}))
+	defer srv.Close()
+
+	orig := googleRoutesURL
+	googleRoutesURL = srv.URL
+	defer func() { googleRoutesURL = orig }()
+
+	r, err := computeRoute(51.5308, -0.1238, 51.47, -0.4543, "DRIVE")
+	if err != nil {
+		t.Fatalf("a blocked routing API produced an error instead of an estimate: %v", err)
+	}
+	if !r.Estimate {
+		t.Error("the fallback is not marked as an estimate")
+	}
+	if r.Duration <= 0 || r.Metres <= 0 {
+		t.Errorf("the estimate is empty: %+v", r)
+	}
+}
+
+// A genuinely impossible journey is an answer, not a fallback: estimating a
+// drive to an island would be worse than saying there is no route.
+func TestNoRouteIsReportedRatherThanEstimated(t *testing.T) {
+	t.Setenv("GOOGLE_API_KEY", "a-key")
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"routes":[]}`))
+	}))
+	defer srv.Close()
+
+	orig := googleRoutesURL
+	googleRoutesURL = srv.URL
+	defer func() { googleRoutesURL = orig }()
+
+	if _, err := computeRoute(51.5, -0.1, 40.7, -74.0, "DRIVE"); err == nil {
+		t.Error("an impossible journey was estimated rather than reported")
 	}
 }

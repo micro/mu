@@ -1,6 +1,9 @@
 package mail
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // An address per agent, resolving to one account.
 func TestSplitAlias(t *testing.T) {
@@ -61,5 +64,27 @@ func TestATaggedAddressBelongsToItsAccount(t *testing.T) {
 	}
 	if tag != "research" {
 		t.Errorf("the tag was lost in the round trip: %q", tag)
+	}
+}
+
+// The address handed out must be the one delivery resolves.
+//
+// mail_address first built the address from the account's display name
+// ("Asim+research@"), which looks right and never arrives: delivery resolves
+// the local part with auth.GetAccount, an exact lookup keyed by account id
+// ("asim"). Caught by reading what the live tool actually returned.
+func TestTheAddressHandedOutIsTheOneDeliveryResolves(t *testing.T) {
+	t.Setenv("MAIL_DOMAIN", "micro.mu")
+
+	const accountID = "asim" // what auth.GetAccount is keyed by
+	addr := AliasFor(accountID, "research")
+
+	local := addr[:strings.Index(addr, "@")]
+	resolved, tag := SplitAlias(local)
+	if resolved != accountID {
+		t.Errorf("delivery would look up %q, but the account is %q", resolved, accountID)
+	}
+	if tag != "research" {
+		t.Errorf("the tag did not survive: %q", tag)
 	}
 }

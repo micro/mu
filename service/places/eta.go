@@ -21,9 +21,13 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"mu/internal/app"
 )
 
-const googleRoutesURL = "https://routes.googleapis.com/directions/v2:computeRoutes"
+// googleRoutesURL is a var so a test can point it at a stub; the Routes API is
+// not something to call for real from a test suite.
+var googleRoutesURL = "https://routes.googleapis.com/directions/v2:computeRoutes"
 
 var routesClient = &http.Client{Timeout: 15 * time.Second}
 
@@ -78,12 +82,17 @@ func computeRoute(fromLat, fromLon, toLat, toLon float64, mode string) (route, e
 
 	resp, err := routesClient.Do(req)
 	if err != nil {
-		return route{}, err
+		return estimateRoute(fromLat, fromLon, toLat, toLon, mode), nil
 	}
 	defer resp.Body.Close()
 	raw, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode != http.StatusOK {
-		return route{}, fmt.Errorf("routes api: %s", strings.TrimSpace(string(raw)))
+		// A key that reaches Places does not necessarily have Routes enabled,
+		// which is a 403 that says nothing useful to whoever asked how long the
+		// journey takes. Answer with the estimate and say it is one; the
+		// operator can read the real reason in the log.
+		app.Log("places", "routes api unavailable (%d): %s", resp.StatusCode, strings.TrimSpace(string(raw)))
+		return estimateRoute(fromLat, fromLon, toLat, toLon, mode), nil
 	}
 
 	var parsed struct {
@@ -93,15 +102,17 @@ func computeRoute(fromLat, fromLon, toLat, toLon float64, mode string) (route, e
 		} `json:"routes"`
 	}
 	if err := json.Unmarshal(raw, &parsed); err != nil {
-		return route{}, err
+		return estimateRoute(fromLat, fromLon, toLat, toLon, mode), nil
 	}
 	if len(parsed.Routes) == 0 {
-		return route{}, fmt.Errorf("no route found")
+		// No route between these two points by this mode — an island by car,
+		// say. That is an answer, not a failure of ours.
+		return route{}, fmt.Errorf("no %s route between those places", strings.ToLower(mode))
 	}
 
 	d, err := time.ParseDuration(parsed.Routes[0].Duration)
 	if err != nil {
-		return route{}, fmt.Errorf("unreadable duration %q", parsed.Routes[0].Duration)
+		return estimateRoute(fromLat, fromLon, toLat, toLon, mode), nil
 	}
 	return route{Duration: d, Metres: parsed.Routes[0].DistanceMeters}, nil
 }
