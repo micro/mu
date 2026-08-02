@@ -47,6 +47,7 @@ import (
 	"mu/service/chat"
 	"mu/service/db"
 	"mu/service/events"
+	"mu/service/files"
 	"mu/service/images"
 	"mu/service/index"
 	"mu/service/islam"
@@ -179,6 +180,7 @@ func main() {
 	stream.LoadService()
 	chat.LoadService()
 	images.Load()
+	files.Load()
 	events.Load()
 	events.OnFire = func(accountID, title, note string) {
 		// The console is the instance's own timeline: what happened here, in
@@ -584,6 +586,81 @@ func main() {
 			}
 			return rsp.Text, nil
 		},
+	})
+
+	// files_* — keep a file, get a URL, read it back. db holds JSON records and
+	// images holds pictures; neither holds a file, so an agent that produced a
+	// report had nowhere to leave it and no link to hand over.
+	api.RegisterToolWithAuth(api.Tool{
+		Name:        "files_put",
+		Description: "Store a file and get a URL for it. Use it to keep something you produced — a report, a CSV, a transcript — and hand back a link.",
+		Params: []api.ToolParam{
+			{Name: "name", Type: "string", Description: "File name including its extension, e.g. report.csv", Required: true},
+			{Name: "content", Type: "string", Description: "The file's contents — plain text, or base64 when encoding is base64", Required: true},
+			{Name: "encoding", Type: "string", Description: "\"base64\" for binary files; omit for text", Required: false},
+			{Name: "type", Type: "string", Description: "Optional content type, e.g. text/csv. Guessed from the name when omitted", Required: false},
+		},
+	}, func(args map[string]any, accountID string) (string, error) {
+		str := func(k string) string { v, _ := args[k].(string); return v }
+		f, err := files.Put(accountID, str("name"), str("type"), str("content"), str("encoding"))
+		if err != nil {
+			return "", err
+		}
+		b, _ := json.Marshal(f)
+		return string(b), nil
+	})
+	api.RegisterToolWithAuth(api.Tool{
+		Name:        "files_list",
+		Description: "List your stored files, newest first, with their URLs and ids.",
+	}, func(args map[string]any, accountID string) (string, error) {
+		b, _ := json.Marshal(files.List(accountID))
+		return string(b), nil
+	})
+	api.RegisterToolWithAuth(api.Tool{
+		Name:        "files_get",
+		Description: "Read a stored file back by its id. Text comes back as text, anything else as base64.",
+		Params: []api.ToolParam{
+			{Name: "id", Type: "string", Description: "The file's id", Required: true},
+		},
+	}, func(args map[string]any, accountID string) (string, error) {
+		id, _ := args["id"].(string)
+		var rsp files.GetResponse
+		if err := service.Call(service.WithAccount(context.Background(), accountID),
+			"files", "Server.Get", &files.GetRequest{ID: id}, &rsp); err != nil {
+			return "", err
+		}
+		b, _ := json.Marshal(rsp)
+		return string(b), nil
+	})
+	api.RegisterToolWithAuth(api.Tool{
+		Name:        "files_share",
+		Description: "Make a stored file readable by anyone holding its URL, or private again.",
+		Params: []api.ToolParam{
+			{Name: "id", Type: "string", Description: "The file's id", Required: true},
+			{Name: "public", Type: "boolean", Description: "True to share, false to make private again", Required: true},
+		},
+	}, func(args map[string]any, accountID string) (string, error) {
+		id, _ := args["id"].(string)
+		public, _ := args["public"].(bool)
+		f, err := files.Share(accountID, id, public)
+		if err != nil {
+			return "", err
+		}
+		b, _ := json.Marshal(f)
+		return string(b), nil
+	})
+	api.RegisterToolWithAuth(api.Tool{
+		Name:        "files_delete",
+		Description: "Delete a file you own, and its contents.",
+		Params: []api.ToolParam{
+			{Name: "id", Type: "string", Description: "The file's id", Required: true},
+		},
+	}, func(args map[string]any, accountID string) (string, error) {
+		id, _ := args["id"].(string)
+		if err := files.Delete(accountID, id); err != nil {
+			return "", err
+		}
+		return `{"status":"ok"}`, nil
 	})
 
 	// places_eta — how long a journey takes, by road. Registered here rather
@@ -1530,6 +1607,11 @@ func main() {
 	http.HandleFunc("/images", images.Handler)
 	http.HandleFunc("/images/daily/", images.DailyImageHandler)
 	http.HandleFunc("/events", events.Handler)
+	// /files lists a person's files; /files/<id> serves one. A stored file's URL
+	// has to be fetchable by an ordinary HTTP client, or handing someone a link
+	// to it is worthless.
+	http.HandleFunc("/files", files.Handler)
+	http.HandleFunc("/files/", files.Handler)
 
 	// serve social page
 	http.HandleFunc("/social", social.Handler)

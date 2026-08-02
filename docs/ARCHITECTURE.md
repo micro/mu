@@ -102,13 +102,14 @@ guessable.
 | `chat` | /chat | ✅ |  | Live discussion rooms attached to an item |
 | `db` | — | ✅ | ✅ | Per-user records, for services and apps |
 | `events` | /events | ✅ | ✅ | Scheduled reminders, `.ics` invites |
+| `files` | /files | ✅ | ✅ | Per-user file storage: keep a file, get a URL |
 | `images` | /images | ✅ | ✅ | Generation, daily image, archive |
 | `index` | — | ✅ | ✅ | Search across the caller's own content |
 | `islam` | /islam | ✅ |  | Daily reminder, prayer times, qibla |
 | `mail` | /mail | ✅ | ✅ | SMTP server, inbox, DKIM |
 | `markets` | /markets | ✅ |  | Crypto, futures, commodities, currencies |
 | `news` | /news | ✅ |  | RSS aggregation, sentiment, search |
-| `places` | /places | ✅ |  | Maps and points of interest |
+| `places` | /places | ✅ |  | Maps, points of interest, travel time |
 | `social` | /social | ✅ |  | Threads, replies, status |
 | `stream` | /stream | ✅ |  | The console: this instance's own timeline |
 | `video` | /video | ✅ |  | Search and playback |
