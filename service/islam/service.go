@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"mu/internal/service"
 )
 
 // Server is the go-micro service handler for the daily Islamic reminder. Its
@@ -102,4 +104,10 @@ func (Server) Qibla(_ context.Context, req *QiblaRequest, rsp *QiblaResponse) er
 	rsp.Direction = fmt.Sprintf("Qibla: %.1f° (%s) from true north. Mecca is %.0f km away.",
 		b, CompassPoint(b), DistanceToMeccaKm(req.Lat, req.Lon))
 	return nil
+}
+
+var toolDocs = service.Docs{
+	"Today":  "Get today's Islamic reminder — a Quran verse with its surah and translation",
+	"Prayer": "Get today's prayer times for a location, and which prayer is next",
+	"Qibla":  "Get the compass bearing to face for prayer from a location",
 }

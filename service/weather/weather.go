@@ -14,7 +14,7 @@ import (
 
 // Load initialises the weather package and registers its go-micro service.
 func Load() {
-	if err := service.Register("weather", new(Server)); err != nil {
+	if err := service.Register("weather", new(Server), toolDocs); err != nil {
 		app.Log("weather", "service register failed: %v", err)
 	}
 }

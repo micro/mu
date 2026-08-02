@@ -22,7 +22,7 @@ import (
 
 // Load initializes the search building block.
 func Load() {
-	if err := service.Register("search", new(Server)); err != nil {
+	if err := service.Register("search", new(Server), toolDocs); err != nil {
 		app.Log("search", "service register failed: %v", err)
 	}
 }

@@ -1,6 +1,10 @@
 package images
 
-import "context"
+import (
+	"context"
+
+	"mu/internal/service"
+)
 
 // Server is the go-micro service handler for images. Its methods are exposed as
 // RPC endpoints and, through the agent and gateways, as AI tools.
@@ -29,4 +33,8 @@ func (Server) Generate(_ context.Context, req *GenerateRequest, rsp *GenerateRes
 	}
 	rsp.URL = url
 	return nil
+}
+
+var toolDocs = service.Docs{
+	"Generate": "Generate an image from a text prompt and return its URL",
 }

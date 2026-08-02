@@ -1,6 +1,10 @@
 package weather
 
-import "context"
+import (
+	"context"
+
+	"mu/internal/service"
+)
 
 // Server is the go-micro service handler for weather. Its methods are exposed
 // as RPC endpoints and, through the agent and gateways, as AI tools.
@@ -23,4 +27,8 @@ type ForecastResponse struct {
 func (Server) Forecast(_ context.Context, req *ForecastRequest, rsp *ForecastResponse) error {
 	rsp.Summary = ForecastText(req.Lat, req.Lon)
 	return nil
+}
+
+var toolDocs = service.Docs{
+	"Forecast": "Get the weather forecast for a location — current conditions and the days ahead",
 }

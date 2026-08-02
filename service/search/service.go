@@ -1,6 +1,10 @@
 package search
 
-import "context"
+import (
+	"context"
+
+	"mu/internal/service"
+)
 
 // Server is the go-micro service handler for web search.
 type Server struct{}
@@ -21,4 +25,8 @@ type SearchResponse struct {
 func (Server) Search(_ context.Context, req *SearchRequest, rsp *SearchResponse) error {
 	rsp.Text = WebSearchText(req.Query, req.Limit)
 	return nil
+}
+
+var toolDocs = service.Docs{
+	"Search": "Search the web for current information and news",
 }

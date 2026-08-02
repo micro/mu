@@ -186,8 +186,11 @@ func Store() store.Store { ensure(); return st }
 // of the form func(ctx, *Req, *Rsp) error become RPC endpoints — and, via the
 // agent and gateways, AI tools.
 //
+// An optional Docs argument publishes what each endpoint does, so the agent
+// sees a real description rather than "Call Search on news service".
+//
 // It returns once the service is registered and reachable.
-func Register(name string, handlers ...any) error {
+func Register(name string, handler any, docs ...Docs) error {
 	ensure()
 	svc := gomicro.New(
 		gomicro.Name(name),
@@ -197,10 +200,14 @@ func Register(name string, handlers ...any) error {
 		gomicro.Broker(br),
 		gomicro.Transport(tr),
 	)
-	for _, h := range handlers {
-		if err := svc.Handle(h); err != nil {
-			return err
+	var opts []server.HandlerOption
+	for _, d := range docs {
+		if o := endpointDocs(handler, d); o != nil {
+			opts = append(opts, o)
 		}
+	}
+	if err := svc.Handle(handler, opts...); err != nil {
+		return err
 	}
 	if err := svc.Start(); err != nil {
 		return err

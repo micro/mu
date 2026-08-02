@@ -54,7 +54,11 @@ func (Server) Fetch(_ context.Context, req *FetchRequest, rsp *FetchResponse) er
 
 // Load registers the service.
 func Load() {
-	if err := service.Register("web", new(Server)); err != nil {
+	if err := service.Register("web", new(Server), toolDocs); err != nil {
 		app.Log("web", "service register failed: %v", err)
 	}
+}
+
+var toolDocs = service.Docs{
+	"Fetch": "Fetch a web page by URL and return its readable content",
 }

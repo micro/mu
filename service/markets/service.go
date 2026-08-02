@@ -1,6 +1,10 @@
 package markets
 
-import "context"
+import (
+	"context"
+
+	"mu/internal/service"
+)
 
 // Server is the go-micro service handler for markets. Its methods are exposed
 // as RPC endpoints and, through the agent and gateways, as AI tools.
@@ -22,4 +26,8 @@ type PricesResponse struct {
 func (Server) Prices(_ context.Context, req *PricesRequest, rsp *PricesResponse) error {
 	rsp.Text = MarketsText(req.Category)
 	return nil
+}
+
+var toolDocs = service.Docs{
+	"Prices": "Get live prices for cryptocurrencies, futures, commodities and currencies",
 }

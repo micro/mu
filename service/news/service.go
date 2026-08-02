@@ -1,6 +1,10 @@
 package news
 
-import "context"
+import (
+	"context"
+
+	"mu/internal/service"
+)
 
 // Server is the go-micro service handler for news. Its methods are exposed as
 // RPC endpoints and, through the agent and gateways, as AI tools.
@@ -61,4 +65,10 @@ func (Server) Search(_ context.Context, req *SearchRequest, rsp *SearchResponse)
 	text, err := SearchToolText(req.Query)
 	rsp.Text = text
 	return err
+}
+
+var toolDocs = service.Docs{
+	"Headlines": "Read recent news headlines with short summaries, balanced across topics",
+	"Read":      "Read one news article in full by its id or URL",
+	"Search":    "Search indexed and live news for a topic",
 }

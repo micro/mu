@@ -119,7 +119,12 @@ func (Server) Messages(_ context.Context, req *MessagesRequest, rsp *MessagesRes
 // LoadService registers chat as a service. Separate from Load, which already
 // starts the room machinery.
 func LoadService() {
-	if err := service.Register("chat", new(Server)); err != nil {
+	if err := service.Register("chat", new(Server), toolDocs); err != nil {
 		app.Log("chat", "service register failed: %v", err)
 	}
+}
+
+var toolDocs = service.Docs{
+	"Rooms":    "List discussion rooms that currently have activity",
+	"Messages": "Read the recent conversation in a discussion room",
 }

@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"strings"
+
+	"mu/internal/service"
 )
 
 // Server is the go-micro service handler for apps.
@@ -88,4 +90,10 @@ func (Server) Read(_ context.Context, req *AppReadRequest, rsp *AppReadResponse)
 	}
 	rsp.Text = a.Name + " (" + a.Slug + ") by " + a.Author + "\n" + a.Description + "\nTags: " + a.Tags + "\nOpen: /apps/" + a.Slug
 	return nil
+}
+
+var toolDocs = service.Docs{
+	"Build":  "Generate a small app (tracker, checklist or counter) from a description",
+	"Search": "Search the apps directory for small, useful tools",
+	"Read":   "Read the details of one app by its slug",
 }

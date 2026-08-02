@@ -107,7 +107,7 @@ var httpClient = &http.Client{Timeout: 35 * time.Second}
 // Load initialises the places package
 func Load() {
 	initCities()
-	if err := service.Register("places", new(Server)); err != nil {
+	if err := service.Register("places", new(Server), toolDocs); err != nil {
 		app.Log("places", "service register failed: %v", err)
 	}
 	if googleAPIKey() == "" {

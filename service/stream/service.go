@@ -89,7 +89,12 @@ func (Server) Post(ctx context.Context, req *PostRequest, rsp *PostResponse) err
 // LoadService registers the console as a service. Separate from Load, which
 // already restores the timeline and starts its background work.
 func LoadService() {
-	if err := service.Register("stream", new(Server)); err != nil {
+	if err := service.Register("stream", new(Server), toolDocs); err != nil {
 		app.Log("stream", "service register failed: %v", err)
 	}
+}
+
+var toolDocs = service.Docs{
+	"List": "Read recent events from the console timeline",
+	"Post": "Post an entry to the console timeline",
 }

@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"strings"
+
+	"mu/internal/service"
 )
 
 // Server is the go-micro service handler for mail.
@@ -108,4 +110,9 @@ func clip(s string, n int) string {
 		return string(r[:n]) + "…"
 	}
 	return s
+}
+
+var toolDocs = service.Docs{
+	"Search": "Search the account's mail and return matching messages",
+	"Inbox":  "List the account's most recent messages — read my mail, check my inbox",
 }

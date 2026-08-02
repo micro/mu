@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"mu/internal/data"
+	"mu/internal/service"
 	"mu/service/mail"
 )
 
@@ -112,4 +113,9 @@ func stripTags(s string) string {
 		}
 	}
 	return b.String()
+}
+
+// ToolDocs describes this service's endpoints for the agent's tool list.
+var ToolDocs = service.Docs{
+	"Search": "Search the caller's own content — indexed news, blog, social, video and saved items",
 }

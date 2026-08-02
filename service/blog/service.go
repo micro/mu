@@ -1,6 +1,10 @@
 package blog
 
-import "context"
+import (
+	"context"
+
+	"mu/internal/service"
+)
 
 // Server is the go-micro service handler for blog.
 type Server struct{}
@@ -20,4 +24,8 @@ type RecentResponse struct {
 func (Server) Recent(_ context.Context, req *RecentRequest, rsp *RecentResponse) error {
 	rsp.Text = RecentText(req.Limit)
 	return nil
+}
+
+var toolDocs = service.Docs{
+	"Recent": "Read recent blog posts — titles, snippets and ids",
 }

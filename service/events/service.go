@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"mu/internal/service"
 )
 
 // Server is the go-micro service handler for events. Its methods are exposed as
@@ -93,4 +95,9 @@ func parseWhen(s string) (time.Time, error) {
 		}
 	}
 	return time.Time{}, fmt.Errorf("could not parse time %q; use RFC3339 like 2026-07-22T15:00:00+01:00", s)
+}
+
+var toolDocs = service.Docs{
+	"Create": "Schedule a reminder or event to fire at a given time",
+	"List":   "List the caller's upcoming events and reminders",
 }

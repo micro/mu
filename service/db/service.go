@@ -227,7 +227,15 @@ func (Server) Delete(ctx context.Context, req *DeleteRequest, rsp *DeleteRespons
 
 // Load registers the service.
 func Load() {
-	if err := service.Register("db", new(Server)); err != nil {
+	if err := service.Register("db", new(Server), toolDocs); err != nil {
 		app.Log("db", "service register failed: %v", err)
 	}
+}
+
+var toolDocs = service.Docs{
+	"Create": "Store a new record in one of the caller's collections",
+	"List":   "List records from one of the caller's collections",
+	"Get":    "Read one record by id",
+	"Update": "Replace a record the caller owns",
+	"Delete": "Delete a record the caller owns",
 }

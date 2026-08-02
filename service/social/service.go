@@ -1,6 +1,10 @@
 package social
 
-import "context"
+import (
+	"context"
+
+	"mu/internal/service"
+)
 
 // Server is the go-micro service handler for social.
 type Server struct{}
@@ -20,4 +24,8 @@ type FeedResponse struct {
 func (Server) Feed(_ context.Context, req *FeedRequest, rsp *FeedResponse) error {
 	rsp.Text = FeedText(req.Limit)
 	return nil
+}
+
+var toolDocs = service.Docs{
+	"Feed": "Read the latest social posts from the network",
 }

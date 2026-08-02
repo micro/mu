@@ -1,6 +1,10 @@
 package video
 
-import "context"
+import (
+	"context"
+
+	"mu/internal/service"
+)
 
 // Server is the go-micro service handler for video.
 type Server struct{}
@@ -20,4 +24,8 @@ type LatestResponse struct {
 func (Server) Latest(_ context.Context, req *LatestRequest, rsp *LatestResponse) error {
 	rsp.Text = LatestText(req.Limit)
 	return nil
+}
+
+var toolDocs = service.Docs{
+	"Latest": "Read the latest videos from curated channels",
 }
