@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mu/internal/service"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -215,6 +216,43 @@ func MCPWalletOp(body []byte) string {
 		}
 	}
 	return ""
+}
+
+// MCPToolNeedsAuth reports whether a tools/call in this JSON-RPC body names a
+// tool that requires an authenticated caller.
+//
+// The HTTP layer needs this to answer an unauthenticated call with a 401 and a
+// WWW-Authenticate pointing at the resource metadata, which is how an MCP
+// client discovers that it should start an OAuth flow. Without the challenge
+// the discovery documents are never fetched, so the standard way of connecting
+// silently does not work.
+//
+// Public tools stay anonymous: a challenge on those would make news and weather
+// unreachable without an account, which is the opposite of the point.
+func MCPToolNeedsAuth(body []byte) bool {
+	var req struct {
+		Method string `json:"method"`
+		Params struct {
+			Name string `json:"name"`
+		} `json:"params"`
+	}
+	if err := json.Unmarshal(body, &req); err != nil || req.Method != "tools/call" {
+		return false
+	}
+	for i := range tools {
+		if !toolMatches(tools[i], req.Params.Name) {
+			continue
+		}
+		if tools[i].HandleAuth != nil || tools[i].AccountOnly {
+			return true
+		}
+		// Path-backed tools authenticate inside their own HTTP handler, so
+		// neither flag is set on them — mail_inbox is one. Their service knows,
+		// though: a scoped service is closed to callers with no account, and
+		// that is declared once in the Spec.
+		return service.AccountScoped(serviceOf(tools[i].Name))
+	}
+	return false
 }
 
 // toolMatches reports whether name is the tool's canonical name or one of its
@@ -434,9 +472,9 @@ var tools = []Tool{
 		Description: "Get wallet credit balance",
 		Method:      "GET",
 		Path:        "/wallet",
-		Params: []ToolParam{
-			{Name: "balance", Type: "string", Description: "Set to 1 to get balance", Required: false},
-		},
+		// No params. It carried one — "balance: set to 1 to get balance" —
+		// which made a tool called wallet_balance return the balance only if
+		// the caller guessed a flag, and the whole wallet web page otherwise.
 	},
 	{
 		Name:        "wallet_transfer",

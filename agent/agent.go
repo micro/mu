@@ -731,8 +731,8 @@ const agentToolsDesc = `Available tools (use exact name):
 - apps_edit: Edit an existing app (args: {"slug":"app-slug","html":"<new html>","name":"New Name"})
 - apps_run: Run JavaScript code and return the result (args: {"code":"return 2+2"})
 - wallet_balance: Check your wallet credit balance (no args)
-- wallet: Get your Base wallet address and USDC balance (no args). This wallet pays for metered MCP tools via x402.
-- pay: Call a metered tool on an MCP server and pay from your Base wallet via x402 (args: {"tool":"news_search","server":"self","arguments":{"query":"ai"}})
+- wallet: Get your Base wallet address and USDC balance (no args). Sending USDC there tops up credits.
+- pay: Call a paid tool on ANOTHER MCP server and settle it from your Base wallet (args: {"tool":"news_search","server":"example.com","arguments":{"query":"ai"}}). Tools on this instance are called directly and draw credits — do not use pay for them.
 - stream: Read the public event stream (no args)`
 
 const guestToolsDesc = `Available tools (use exact name):

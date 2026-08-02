@@ -5,9 +5,9 @@ Tools for agents
 ## Overview
 
 Mu gives an agent the everyday internet as tools: news, web search, mail,
-markets, weather, video, places, images, storage. 59 of them, over
-[MCP](https://modelcontextprotocol.io) and REST, paid per request in USDC via
-[x402](https://x402.org) — no API key, no account, no signup.
+markets, weather, video, places, images, storage. 59 of them, behind one
+[MCP](https://modelcontextprotocol.io) endpoint. Connect once and your agent has
+all of them, instead of wiring up a server for each.
 
 **Real tools, not wrappers.** Most things offering an agent tools are a thin
 layer over somebody else's API. Mu runs the mail server (SMTP with DKIM), the
@@ -32,18 +32,22 @@ Use it hosted at [micro.mu](https://micro.mu), or self-host the single Go binary
 }
 ```
 
-That's the whole setup. Your first 10 calls per wallet are free; after that a
-metered tool answers `HTTP 402` with a price, your agent's x402 wallet pays in
-USDC and retries — sub-second, no account, no keys. You pay the operator running
-the instance, wallet to wallet.
+That's the whole setup. There is no key in that config because there is nothing
+to paste: the first call gets a `401` pointing at the instance's authorization
+server, your client walks you through sign-in and keeps the token itself. This is
+the [MCP authorization](https://modelcontextprotocol.io/specification/basic/authorization)
+spec — Claude Desktop and Cursor both speak it.
 
-Prefer prepaid credits and a dashboard? [Create an
-account](https://micro.mu/signup) and use a Personal Access Token instead.
+For a client that doesn't, create a Personal Access Token at
+[/token](https://micro.mu/token) and send it as `Authorization: Bearer`.
 
 ```bash
 curl -X POST https://micro.mu/mcp -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 ```
+
+Reading this instance's own content is included. Calls that cost us money to run
+— a model call, a paid third party — draw credits from your balance.
 
 **Browse what's there:** [micro.mu/tools](https://micro.mu/tools) — every tool,
 grouped by service, with what each call costs. [MCP docs](docs/MCP.md) for the
@@ -69,10 +73,9 @@ protocol detail.
 | **Money** | `wallet_balance` · `wallet_topup` · `pay` — credits, and paying other MCP servers |
 | **Agent** | `agent` · `chat` — ask the whole thing a question and let it compose |
 
-Every tool is also a REST endpoint and a `mu` CLI subcommand. Account-scoped
-tools (mail, storage, index, images, events) need a signed-in caller;
-`mail_send` always does, so an unaccountable caller can't spend a domain's
-reputation.
+Every tool is also a `mu` CLI subcommand. Account-scoped tools (mail, storage,
+index, images, events) need a signed-in caller; `mail_send` always does, so an
+unaccountable caller can't spend a domain's reputation.
 
 ## Why the tools are real
 
@@ -100,7 +103,7 @@ wiring, to:
 - **agents**, over MCP at `/mcp` — for Claude Desktop, Cursor, or your own;
 - **the built-in agent**, as a tool it can call;
 - **custom agents**, in the tool picker at `/agent/new`;
-- **the REST API** and the **CLI**, where each tool is a subcommand;
+- **the CLI**, where each tool is a subcommand;
 - **apps**, through `mu.service(name, method, args)` in the SDK.
 
 So extending Mu is adding an element, not wiring N integrations.
@@ -125,7 +128,7 @@ endpoint — calls the services as tools, composes answers, and keeps per-user
 memory across sessions.
 
 Sign in with a username and password, a **passkey** (WebAuthn), or **Google**.
-For the API and CLI, generate a Personal Access Token at `/token`.
+For the CLI, generate a Personal Access Token at `/token`.
 
 ## CLI
 
@@ -206,8 +209,7 @@ mu --serve
 ```
 
 Once you're admin, every other key (YouTube, Brave search, weather, mail/DKIM,
-Google sign-in…) is configurable from `/admin/env` in the browser. To take x402
-payments, set `X402_PAY_TO` to your wallet address.
+Google sign-in…) is configurable from `/admin/env` in the browser.
 
 See [Installation guide](docs/INSTALLATION.md).
 

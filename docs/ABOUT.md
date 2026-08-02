@@ -5,9 +5,8 @@
 ## What Mu is
 
 Mu gives an agent the everyday internet as tools: news, web search, mail,
-markets, weather, video, places, images, storage. 59 of them, over
-[MCP](https://modelcontextprotocol.io) and REST, paid per request in USDC via
-[x402](https://x402.org) — no API key, no account, no signup.
+markets, weather, video, places, images, storage. 59 of them, behind one
+[MCP](https://modelcontextprotocol.io) endpoint.
 
 Point an MCP client at `/mcp` and everything is available. Browse what's there
 at [/tools](https://micro.mu/tools).
@@ -27,11 +26,12 @@ a proxy to an API somebody else controls.
 
 ## Two doors, one set of tools
 
-Every capability is a service, and a service is reachable however the caller
-prefers. Nothing is built twice.
+Every capability is a service, and a service is reachable through either door.
+Nothing is built twice.
 
-**An agent** calls the MCP endpoint at `/mcp`, or REST, or pays per request over
-x402. It gets a tool list and uses what is there.
+**An agent** calls the MCP endpoint at `/mcp`. It gets a tool list and uses what
+is there. That is the only way in — there is no second protocol to choose
+between, and nothing to integrate per tool.
 
 **A person** signs in and gets the home screen: cards for each service at a
 glance — headlines, prices, weather, unread mail — with the agent inline to act
@@ -50,20 +50,22 @@ churn, competing on price with whoever is cheapest.
 
 An agent does not shop. It is handed a tool list and uses what is there. That
 inverts the funnel: you are not persuading anyone to integrate, you are present
-at the moment of need. And with x402 there is no signup between wanting and
-paying — the agent settles in stablecoin and retries, sub-second.
+at the moment of need.
 
-## How paying works
+## Connecting
 
-1. **No login to call.** Point an agent at an endpoint. Your first 10 calls per
-   wallet are free.
-2. **When payment is due,** the endpoint answers `HTTP 402` with a price. The
-   agent's x402 wallet pays in USDC and retries.
-3. **You pay the operator** running the instance, directly, wallet to wallet. No
-   middleman.
+1. **Add the endpoint** to your MCP client: `https://micro.mu/mcp`. Nothing else
+   goes in the config.
+2. **Sign in when it asks.** The first call returns `401` pointing at this
+   instance's authorization server; a client that speaks
+   [MCP authorization](https://modelcontextprotocol.io/specification/basic/authorization)
+   walks you through sign-in and keeps the token itself. One that doesn't takes a
+   Personal Access Token from `/token`.
+3. **Call anything.** Reading this instance's own content is included. Calls that
+   cost money to run — a model call, a paid third party — draw credits.
 
-Prefer prepaid credits and a dashboard? Create an account and use a Personal
-Access Token. Both reach the same tools.
+It is the same account either way: sign into the app and your agent's calls draw
+on the same balance.
 
 ## What we don't do
 

@@ -1220,10 +1220,11 @@ func main() {
 		return answer, nil
 	})
 
-	// Wallet: the user's x402 Base wallet — address + USDC balance.
+	// Wallet: the user's Base wallet — address + USDC balance. It funds credits;
+	// it is not what calls to this instance are charged against.
 	api.RegisterToolWithAuth(api.Tool{
 		Name:        "wallet",
-		Description: "Get your Base wallet address and USDC balance. This wallet pays for metered MCP tools via x402.",
+		Description: "Get your Base wallet address and USDC balance. Send USDC here to top up your credits.",
 	}, func(args map[string]any, accountID string) (string, error) {
 		bw, err := wallet.GetOrCreateWallet(accountID)
 		if err != nil {
@@ -1234,11 +1235,12 @@ func main() {
 		return string(b), nil
 	})
 
-	// Pay: call a tool on an MCP server (this one or another in the registry)
-	// and settle it from the user's Base wallet via x402.
+	// Pay: call a tool on another MCP server and settle it from the user's Base
+	// wallet. This is outbound — Mu paying somebody else. Calls to this instance
+	// are charged in credits, which is why the description says elsewhere.
 	api.RegisterToolWithAuth(api.Tool{
 		Name:        "pay",
-		Description: "Call a metered tool on an MCP server and pay for it from your Base wallet via x402. Works on this server and any other server in the registry.",
+		Description: "Call a paid tool on another MCP server and settle it from your Base wallet. For tools on this instance, call them directly — they draw credits.",
 		Params: []api.ToolParam{
 			{Name: "tool", Type: "string", Description: "Name of the tool to call", Required: true},
 			{Name: "server", Type: "string", Description: "Server name from the registry, or a base URL (default: self)", Required: false},
@@ -1604,8 +1606,14 @@ func main() {
 		json.NewEncoder(w).Encode(versionInfo())
 	})
 
-	// serve the api doc
-	http.HandleFunc("/api", api.APIPageHandler)
+	// /api used to document a second way in: the same tools over plain REST,
+	// with their own auth story and their own price table. Two documented doors
+	// is a choice the reader has to make before they can start, and MCP is the
+	// one that matters — so this is now a signpost to it, not a page. The REST
+	// paths themselves still answer; they are just not a thing to learn.
+	http.HandleFunc("/api", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/mcp", http.StatusMovedPermanently)
+	})
 
 	// serve the MCP page and server (GET = HTML page, POST = JSON-RPC)
 	http.HandleFunc("/tools", api.ToolsPageHandler)
@@ -1878,6 +1886,29 @@ func main() {
 					return
 				}
 				app.Log("wallet", "Charged %s %d credit(s) for %s %s", sess.Account, wallet.GetOperationCost(op), r.Method, r.URL.Path)
+			}
+
+			// MCP authorization: an unauthenticated call to a tool that needs an
+			// account gets a 401 naming the resource metadata, which is how a
+			// client discovers it should start an OAuth flow. The discovery
+			// documents existed without this and were never fetched, so the
+			// standard way of connecting quietly did not work.
+			//
+			// Only auth-requiring tools challenge. A blanket 401 would make news
+			// and weather unreachable without an account.
+			if r.URL.Path == "/mcp" && r.Method == http.MethodPost {
+				body, _ := io.ReadAll(io.LimitReader(r.Body, 1<<20))
+				r.Body.Close()
+				r.Body = io.NopCloser(bytes.NewReader(body))
+				if api.MCPToolNeedsAuth(body) {
+					if _, err := auth.GetSession(r); err != nil && !wallet.HasPayment(r) {
+						origin := app.BaseURL(r)
+						w.Header().Set("WWW-Authenticate",
+							`Bearer resource_metadata="`+origin+`/.well-known/oauth-protected-resource"`)
+						app.RespondError(w, http.StatusUnauthorized, "authentication required")
+						return
+					}
+				}
 			}
 
 			// x402: gate metered MCP tool calls. /mcp is a public endpoint, so

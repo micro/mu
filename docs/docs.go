@@ -26,7 +26,7 @@ type Document struct {
 var catalog = []Document{
 	// An agent's reader arrives wanting to connect and pay, so MCP is second.
 	{Slug: "about", Filename: "ABOUT.md", Title: "About Mu", Description: "Tools for agents — what Mu is and why", Category: "Getting Started"},
-	{Slug: "mcp", Filename: "MCP.md", Title: "MCP Server", Description: "Point an agent at Mu and pay per call", Category: "Getting Started"},
+	{Slug: "mcp", Filename: "MCP.md", Title: "MCP Server", Description: "The one endpoint an agent connects to", Category: "Getting Started"},
 	{Slug: "cli", Filename: "CLI.md", Title: "CLI", Description: "Every tool as a mu subcommand", Category: "Getting Started"},
 	{Slug: "installation", Filename: "INSTALLATION.md", Title: "Installation", Description: "Run your own instance", Category: "Getting Started"},
 
@@ -72,7 +72,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Render markdown to HTML
-	rendered := app.RenderTrusted(content)
+	rendered := app.RenderTrusted(stripTitle(content))
 
 	// Wrap in navigation
 	html := fmt.Sprintf(`<div class="docs">
@@ -84,6 +84,27 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	page := app.RenderHTMLForRequest(doc.Title, doc.Description, html, r)
 	w.Write([]byte(page))
+}
+
+// stripTitle drops a document's leading H1.
+//
+// Every doc is a standalone markdown file, so it opens with its own title —
+// correct on GitHub, where nothing else supplies one. The page shell already
+// renders doc.Title above the content, so served as a page that heading appears
+// twice ("Installation / Installation"). The catalogue entry is the one title;
+// this removes the other rather than editing the heading out of files that read
+// fine on their own.
+func stripTitle(md []byte) []byte {
+	s := string(md)
+	trimmed := strings.TrimLeft(s, "\n")
+	if !strings.HasPrefix(trimmed, "# ") {
+		return md
+	}
+	_, rest, ok := strings.Cut(trimmed, "\n")
+	if !ok {
+		return nil
+	}
+	return []byte(strings.TrimLeft(rest, "\n"))
 }
 
 // renderIndex shows the documentation index

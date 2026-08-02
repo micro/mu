@@ -165,11 +165,12 @@ Commands: `/agent`, `/ask`, `/news`, `/markets`, `/weather`, `/usage`.
 
 ## Taking payments
 
-Set `X402_PAY_TO` to your wallet address. Agents calling your instance then pay
-you per request in USDC, wallet to wallet, with no account and no middleman —
-see [MCP](MCP.md).
+Callers pay in credits, prepaid against an account. Set the `STRIPE_*` keys to
+let people buy them by card; without those keys your instance runs with no
+metering, which is usually what you want for one you run for yourself.
 
-For card top-ups to prepaid credits, set the `STRIPE_*` keys.
+Costs are per operation and are set in code — see the cost block in
+`service/wallet/wallet.go` for what is charged and why.
 
 ## Federation (optional)
 

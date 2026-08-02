@@ -17,7 +17,7 @@ longer exist.
 | Variable | Default | What it does |
 |---|---|---|
 | `ADMIN` / `MU_ADMIN` | first account | Who is admin — comma-separated ids, usernames or emails |
-| `MU_DOMAIN` | `localhost` | Public domain. Used for x402 resource URLs, Stripe returns, ActivityPub actor URLs and mail. Set this if you run behind a proxy |
+| `MU_DOMAIN` | `localhost` | Public domain. Used for the OAuth issuer an MCP client discovers, Stripe returns, ActivityPub actor URLs and mail. Set this if you run behind a proxy |
 | `MU_ENV_FILE` | `~/.mu/env` | Where stored settings live |
 | `MU_ENCRYPTION_KEY` | — | Encrypts stored settings at rest |
 | `INVITE_ONLY` | off | Require an invite code to sign up |
@@ -78,8 +78,10 @@ DNS records are in [Installation](INSTALLATION.md).
 
 ## Payments
 
-`X402_PAY_TO` is the one that matters: set it to your wallet address and agents
-pay you per call.
+Callers pay in credits. `STRIPE_*` is the one that matters: set those keys and
+people can buy credits by card. The `X402_*` and chain variables configure
+stablecoin settlement, which funds credits and lets the `pay` tool settle calls
+to other servers — the way in is still MCP with a token.
 
 | Variable | What it does |
 |---|---|

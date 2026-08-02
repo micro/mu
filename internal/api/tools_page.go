@@ -4,6 +4,7 @@ import (
 	"html"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 
 	"mu/internal/app"
@@ -52,10 +53,11 @@ func ToolsPageHandler(w http.ResponseWriter, r *http.Request) {
 // agent at this instance.
 //
 // Landing, browsing the catalogue and then having nowhere to go was the gap —
-// someone convinced by "tools for agents" had no next move. Getting a token and
-// pasting one config block is that move, and it leads because it is the one a
-// person signing in will take. Paying per call with no account is the
-// alternative, not the headline.
+// someone convinced by "tools for agents" had no next move. Adding the endpoint
+// is that move, and there is only one of them. A client that speaks the MCP
+// authorization spec is walked through sign-in on its first call and keeps the
+// credential; a client that does not takes a token from /token. Both end up
+// sending the same header, so this shows the config once.
 func connectSection(r *http.Request) string {
 	base := app.BaseURL(r)
 	_, acc := auth.TrySession(r)
@@ -63,8 +65,7 @@ func connectSection(r *http.Request) string {
 	cfg := `{
   "mcpServers": {
     "mu": {
-      "url": "` + base + `/mcp",
-      "headers": { "Authorization": "Bearer YOUR_TOKEN" }
+      "url": "` + base + `/mcp"
     }
   }
 }`
@@ -74,32 +75,42 @@ func connectSection(r *http.Request) string {
 	b.WriteString(`<span class="card-title">Connect your agent</span>`)
 
 	if acc != nil {
-		b.WriteString(`<p class="card-desc">Create a token, paste it into your MCP client, and every tool below is available to it.</p>`)
-		b.WriteString(`<p><a class="connect-cta" href="/token">Create a token →</a></p>`)
+		b.WriteString(`<p class="card-desc">Add the endpoint to your MCP client and every tool below is available to it. The client asks you to sign in on its first call and keeps the credential.</p>`)
+		b.WriteString(`<p><a class="connect-cta" href="/mcp">Open the playground →</a></p>`)
 	} else {
-		b.WriteString(`<p class="card-desc">Create an account and a token, paste it into your MCP client, and every tool below is available to it. Calls are charged to your credits.</p>`)
-		b.WriteString(`<p><a class="connect-cta" href="/signup">Create an account →</a> <span class="connect-note">then get a token at <a href="/token">/token</a></span></p>`)
+		b.WriteString(`<p class="card-desc">Add the endpoint to your MCP client and every tool below is available to it. The client asks you to sign in on its first call and keeps the credential. Calls are charged to your credits.</p>`)
+		b.WriteString(`<p><a class="connect-cta" href="/signup">Create an account →</a> <span class="connect-note">it is the same account you sign into the app with</span></p>`)
 	}
 
 	b.WriteString(`<pre class="connect-cfg">` + html.EscapeString(cfg) + `</pre>`)
 	b.WriteString(`<p class="card-desc">Works with Claude Desktop, Cursor, or anything that speaks ` +
-		`<a href="https://modelcontextprotocol.io">MCP</a>. Try it first in the ` +
-		`<a href="/mcp">playground</a>, or over <a href="/api">plain HTTP</a>.</p>`)
-	b.WriteString(`<p class="card-desc connect-alt">No account? An agent can pay per call in USDC instead — ` +
-		`it sends no token, gets an <code>HTTP 402</code> with a price, pays and retries. ` +
-		`<a href="/#paying">How paying works →</a></p>`)
+		`<a href="https://modelcontextprotocol.io">MCP</a>. Try a call first in the ` +
+		`<a href="/mcp">playground</a>.</p>`)
+	b.WriteString(`<p class="card-desc connect-alt">Client can't sign itself in? Get a token at ` +
+		`<a href="/token">/token</a> and send it as <code>Authorization: Bearer</code>.</p>`)
 	b.WriteString(`</div>`)
 	return b.String()
 }
 
-// priceLabel is what a call costs: a stablecoin price when x402 is configured,
-// otherwise credits, otherwise nothing to pay.
+// priceLabel is what a call costs, in the one currency the product has:
+// credits. A tool that only touches this instance's own storage costs us
+// nothing to run and is included.
 func priceLabel(t Tool) string {
 	if t.WalletOp == "" {
 		return `<span class="free">Included</span>`
 	}
-	if p := wallet.X402PriceFor(t.WalletOp); p != "" {
-		return `<b>` + html.EscapeString(p) + `</b> / call`
+	n := wallet.GetOperationCost(t.WalletOp)
+	if n <= 0 {
+		return `<span class="free">Included</span>`
+	}
+	return `<b>` + strconv.Itoa(n) + `</b> ` + creditWord(n)
+}
+
+// creditWord keeps "1 credit" from reading as "1 credits" wherever a price is
+// rendered.
+func creditWord(n int) string {
+	if n == 1 {
+		return "credit"
 	}
 	return "credits"
 }
