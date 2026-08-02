@@ -573,10 +573,10 @@ func main() {
 		Description: "Search the web for current information and news",
 		WalletOp:    wallet.OpWebSearch,
 		Params: []api.ToolParam{
-			{Name: "q", Type: "string", Description: "Search query", Required: true},
+			{Name: "query", Type: "string", Description: "Search query", Required: true},
 		},
 		Handle: func(args map[string]any) (string, error) {
-			q, _ := args["q"].(string)
+			q := api.QueryArg(args)
 			var rsp web.SearchResponse
 			if err := service.Call(context.Background(), "web", "Server.Search",
 				&web.SearchRequest{Query: q}, &rsp); err != nil {
@@ -924,10 +924,10 @@ func main() {
 		Aliases:     []string{"image_search"},
 		Description: "Search the public image library (community stock) by description. Returns image URLs to reuse.",
 		Params: []api.ToolParam{
-			{Name: "q", Type: "string", Description: "Search text", Required: true},
+			{Name: "query", Type: "string", Description: "Search text", Required: true},
 		},
 		Handle: func(args map[string]any) (string, error) {
-			q, _ := args["q"].(string)
+			q := api.QueryArg(args)
 			recs := images.Search("", q)
 			if len(recs) == 0 {
 				return "No matching images in the stock pool.", nil
@@ -1032,7 +1032,7 @@ func main() {
 		Method:      "GET",
 		Path:        "/apps",
 		Params: []api.ToolParam{
-			{Name: "q", Type: "string", Description: "Search query (name, description, or tag)", Required: false},
+			{Name: "query", Type: "string", Description: "Search query (name, description, or tag)", Required: false},
 			{Name: "tag", Type: "string", Description: "Filter by tag", Required: false},
 		},
 	})

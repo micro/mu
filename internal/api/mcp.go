@@ -361,7 +361,7 @@ var tools = []Tool{
 		Method:      "GET",
 		Path:        "/search",
 		Params: []ToolParam{
-			{Name: "q", Type: "string", Description: "Search query", Required: true},
+			{Name: "query", Type: "string", Description: "Search query", Required: true},
 		},
 	},
 	{
@@ -574,7 +574,7 @@ var tools = []Tool{
 		Path:        "/places/search",
 		WalletOp:    wallet.OpPlacesSearch,
 		Params: []ToolParam{
-			{Name: "q", Type: "string", Description: "Search query (e.g. cafe, pharmacy, Boots)", Required: true},
+			{Name: "query", Type: "string", Description: "Search query (e.g. cafe, pharmacy, Boots)", Required: true},
 			{Name: "near", Type: "string", Description: "Location name or address to search near", Required: false},
 			{Name: "near_lat", Type: "number", Description: "Latitude of the search location", Required: false},
 			{Name: "near_lon", Type: "number", Description: "Longitude of the search location", Required: false},
@@ -642,11 +642,11 @@ var tools = []Tool{
 		Name:        "quran_search",
 		Description: "Search the Quran, Hadith, and names of Allah using semantic search. Ask a question in natural language.",
 		Params: []ToolParam{
-			{Name: "q", Type: "string", Description: "Question or search query", Required: true},
+			{Name: "query", Type: "string", Description: "Question or search query", Required: true},
 		},
 		WalletOp: wallet.OpQuranSearch,
 		Handle: func(args map[string]any) (string, error) {
-			q, _ := args["q"].(string)
+			q := QueryArg(args)
 			if q == "" {
 				return "", fmt.Errorf("query is required")
 			}
@@ -717,6 +717,84 @@ var WalletPayer = func(r *http.Request) string { return "" }
 // forwarding authentication from r. It does NOT check wallet quota — the caller
 // is responsible for quota management.
 // Returns the tool output text, whether the response is an error, and any Go error.
+// queryAliases are the names a search term has been called. The catalogue used
+// both: news_search, index_search, social_search and video_search took "query"
+// while web_search, apps_search, images_search, places_search and quran_search
+// took "q". An agent that learned one from the first tool it called got "No
+// query provided." from the next — which is not a thing a caller can debug from
+// the outside, since both tools advertise a correct schema for themselves.
+//
+// The schemas now all say "query". This accepts the old name so anything
+// already calling with "q" — the CLI, a saved client config — keeps working.
+var queryAliases = []string{"query", "q"}
+
+// QueryArg reads a search term under either name, for handlers that receive
+// args directly rather than through ExecuteTool.
+func QueryArg(args map[string]any) string {
+	for _, k := range queryAliases {
+		if v, ok := args[k]; ok {
+			if s := strings.TrimSpace(fmt.Sprintf("%v", v)); s != "" {
+				return s
+			}
+		}
+	}
+	return ""
+}
+
+// normaliseArgs fills a declared parameter from an equivalent name the caller
+// may have used. It never overwrites a value the caller actually supplied.
+func normaliseArgs(tool Tool, args map[string]any) map[string]any {
+	if args == nil {
+		return args
+	}
+	for _, p := range tool.Params {
+		if !contains(queryAliases, p.Name) {
+			continue
+		}
+		if v, ok := args[p.Name]; ok && fmt.Sprintf("%v", v) != "" {
+			continue
+		}
+		for _, alt := range queryAliases {
+			if alt == p.Name {
+				continue
+			}
+			if v, ok := args[alt]; ok && fmt.Sprintf("%v", v) != "" {
+				args[p.Name] = v
+				break
+			}
+		}
+	}
+	return args
+}
+
+// missingRequired names the first required parameter the caller left out.
+//
+// Without this a tool handler reads an empty string and returns prose — "No
+// query provided." — as a successful result, so a caller cannot tell a bad call
+// from an empty result set. A missing parameter is an error and must arrive as
+// one.
+func missingRequired(tool Tool, args map[string]any) string {
+	for _, p := range tool.Params {
+		if !p.Required {
+			continue
+		}
+		v, ok := args[p.Name]
+		if !ok || strings.TrimSpace(fmt.Sprintf("%v", v)) == "" {
+			return p.Name
+		}
+	}
+	return ""
+}
+
+func contains(list []string, s string) bool {
+	for _, v := range list {
+		if v == s {
+			return true
+		}
+	}
+	return false
+}
+
 func ExecuteTool(r *http.Request, name string, args map[string]any) (string, bool, error) {
 	var tool *Tool
 	for i := range tools {
@@ -727,6 +805,12 @@ func ExecuteTool(r *http.Request, name string, args map[string]any) (string, boo
 	}
 	if tool == nil {
 		return "", true, fmt.Errorf("unknown tool: %s", name)
+	}
+
+	args = normaliseArgs(*tool, args)
+	if missing := missingRequired(*tool, args); missing != "" {
+		return fmt.Sprintf("%s is required", missing), true,
+			fmt.Errorf("%s requires %s", tool.Name, missing)
 	}
 
 	if name == "news_search" && GuestNewsSearch != nil {
