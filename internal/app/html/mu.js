@@ -684,6 +684,7 @@ function setSession() {
         navUsername.style.display = 'block';
       }
       // Show the wallet link and badge its credit balance for logged-in users.
+      document.body.classList.add('signed-in');
       var headWallet = document.getElementById("head-wallet");
       if (headWallet) headWallet.style.display = 'inline-block';
       fetch('/wallet?balance=1', {headers:{'Accept':'application/json'}})

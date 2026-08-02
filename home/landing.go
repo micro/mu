@@ -22,7 +22,7 @@ in USDC. No API key, no account, no signup.</p>
 <div class="lctas">
   <a class="lcta" href="/tools">Browse the tools →</a>
   <a class="lcta lcta-alt" href="/mcp">MCP endpoint</a>
-  <a class="lcta lcta-alt" href="/home">See it working</a>
+  <a class="lcta lcta-alt" href="/agent">See it working</a>
 </div>
 
 <div class="lcards">

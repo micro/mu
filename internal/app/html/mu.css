@@ -508,6 +508,25 @@ td {
 
 /* Header wallet link — mirrors head-mail, sits just to its left. Shown for
    logged-in users by mu.js. */
+/* The way from the app back to the tools — where "Developers" or "API" used to
+   live on a product like this. Signing in for tools for agents and landing on a
+   home screen with no route onward was the gap. */
+#head-tools {
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  text-decoration: none;
+  color: #555;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+#head-tools:hover { color: #111; }
+
+/* Signed in, the wallet and mail icons take the right edge, so Tools steps in. */
+body.signed-in #head-tools { right: 96px; }
+
 #head-wallet {
   display: none;
   position: absolute;

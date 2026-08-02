@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"mu/internal/app"
+	"mu/internal/auth"
 	"mu/internal/service"
 	"mu/service/wallet"
 )
@@ -23,14 +24,7 @@ func ToolsPageHandler(w http.ResponseWriter, r *http.Request) {
 	groups := groupTools()
 
 	var b strings.Builder
-	b.WriteString(`<div class="card">`)
-	b.WriteString(`<p class="card-desc">Everything an agent can do here. Point any MCP client at ` +
-		`<code>/mcp</code> and all of it is available — no API key, no account. ` +
-		`Metered tools show the price per call; the rest are included. ` +
-		`Your first 10 calls per wallet are free.</p>`)
-	b.WriteString(`<p class="card-desc"><a href="/mcp">MCP endpoint &amp; playground →</a> &nbsp;·&nbsp; ` +
-		`<a href="/api">REST endpoints →</a> &nbsp;·&nbsp; <a href="/#paying">How paying works →</a></p>`)
-	b.WriteString(`</div>`)
+	b.WriteString(connectSection(r))
 
 	for _, g := range groups {
 		b.WriteString(`<div class="tool-group">`)
@@ -52,6 +46,50 @@ func ToolsPageHandler(w http.ResponseWriter, r *http.Request) {
 		Description: "Every tool an agent can call on this instance, with what each one costs",
 		HTML:        b.String(),
 	})
+}
+
+// connectSection is the step the page was missing: how to actually point an
+// agent at this instance.
+//
+// Landing, browsing the catalogue and then having nowhere to go was the gap —
+// someone convinced by "tools for agents" had no next move. Getting a token and
+// pasting one config block is that move, and it leads because it is the one a
+// person signing in will take. Paying per call with no account is the
+// alternative, not the headline.
+func connectSection(r *http.Request) string {
+	base := app.BaseURL(r)
+	_, acc := auth.TrySession(r)
+
+	cfg := `{
+  "mcpServers": {
+    "mu": {
+      "url": "` + base + `/mcp",
+      "headers": { "Authorization": "Bearer YOUR_TOKEN" }
+    }
+  }
+}`
+
+	var b strings.Builder
+	b.WriteString(`<div class="card" id="connect">`)
+	b.WriteString(`<span class="card-title">Connect your agent</span>`)
+
+	if acc != nil {
+		b.WriteString(`<p class="card-desc">Create a token, paste it into your MCP client, and every tool below is available to it.</p>`)
+		b.WriteString(`<p><a class="connect-cta" href="/token">Create a token →</a></p>`)
+	} else {
+		b.WriteString(`<p class="card-desc">Create an account and a token, paste it into your MCP client, and every tool below is available to it. Calls are charged to your credits.</p>`)
+		b.WriteString(`<p><a class="connect-cta" href="/signup">Create an account →</a> <span class="connect-note">then get a token at <a href="/token">/token</a></span></p>`)
+	}
+
+	b.WriteString(`<pre class="connect-cfg">` + html.EscapeString(cfg) + `</pre>`)
+	b.WriteString(`<p class="card-desc">Works with Claude Desktop, Cursor, or anything that speaks ` +
+		`<a href="https://modelcontextprotocol.io">MCP</a>. Try it first in the ` +
+		`<a href="/mcp">playground</a>, or over <a href="/api">plain HTTP</a>.</p>`)
+	b.WriteString(`<p class="card-desc connect-alt">No account? An agent can pay per call in USDC instead — ` +
+		`it sends no token, gets an <code>HTTP 402</code> with a price, pays and retries. ` +
+		`<a href="/#paying">How paying works →</a></p>`)
+	b.WriteString(`</div>`)
+	return b.String()
 }
 
 // priceLabel is what a call costs: a stablecoin price when x402 is configured,
@@ -135,5 +173,10 @@ const toolsPageCSS = `<style>
 .tool-tile-desc{font-size:13px;color:#666;line-height:1.4}
 .tool-tile-price{font-size:12px;color:#6b7280;font-variant-numeric:tabular-nums;margin-top:2px}
 .tool-tile-price .free{color:#9ca3af}
+.connect-cta{display:inline-block;background:#111;color:#fff;text-decoration:none;padding:9px 18px;
+  border-radius:8px;font-weight:700;font-size:14px}
+.connect-note{font-size:13px;color:#888;margin-left:8px}
+.connect-cfg{background:#f5f5f5;padding:10px 12px;font-size:12px;overflow-x:auto;border-radius:6px;margin:12px 0}
+.connect-alt{color:#888;font-size:13px;border-top:1px solid #eee;padding-top:10px;margin-top:12px}
 @media only screen and (max-width:600px){.tool-grid{grid-template-columns:1fr}}
 </style>`
