@@ -10,24 +10,24 @@ import (
 // as RPC endpoints and, through the agent and gateways, as AI tools.
 type Server struct{}
 
-// PricesRequest selects a market category.
-type PricesRequest struct {
+// ListRequest selects a market category.
+type ListRequest struct {
 	Category string `json:"category" description:"crypto, futures, commodities or currencies (default crypto)"`
 }
 
-// PricesResponse is a model-ready price summary.
-type PricesResponse struct {
+// ListResponse is a model-ready price summary.
+type ListResponse struct {
 	Text string `json:"text" description:"Live prices for the requested category"`
 }
 
-// Prices returns live market prices for cryptocurrencies, futures, commodities
+// List returns live market prices for cryptocurrencies, futures, commodities
 // and currencies.
 // @example {"category": "crypto"}
-func (Server) Prices(_ context.Context, req *PricesRequest, rsp *PricesResponse) error {
+func (Server) List(_ context.Context, req *ListRequest, rsp *ListResponse) error {
 	rsp.Text = MarketsText(req.Category)
 	return nil
 }
 
 var toolDocs = service.Docs{
-	"Prices": "Get live prices for cryptocurrencies, futures, commodities and currencies",
+	"List": "Get live prices for cryptocurrencies, futures, commodities and currencies",
 }

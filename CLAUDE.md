@@ -33,9 +33,9 @@ A personal home server. News, mail, search, weather, markets, video — the ever
 | `client/telegram/` | Telegram bot with commands and groups |
 | `client/whatsapp/` | WhatsApp Business API integration |
 | `service/wallet/` | Credit system, Stripe, x402 |
-| `service/search/` | Brave web search, readability reader |
+| `service/search/` | Brave provider, readability reader, the /search page (no service of its own) |
 | `service/db/` | Per-user records for services and apps (headless) |
-| `service/web/` | Fetch a URL and return readable content (headless) |
+| `service/web/` | The open web: search it (`web.Search`), fetch a URL (`web.Fetch`) |
 | `service/index/` | Search across the caller's own content (headless) |
 | `service/stream/` | The console — this instance's own event timeline |
 | `service/chat/` | Live discussion rooms attached to an item |
@@ -62,6 +62,11 @@ go vet ./...            # vet
   is the runtime core that hosts them, not a service itself. See
   `docs/SERVICE_REGISTRY.md` for what is registered, which are headless, which
   are account-scoped, and which are deliberately not exposed to the agent
+- A service is named for a **domain** (a noun), never an action. Tool names are
+  derived as `service_method`, so an action-named service leaves its main method
+  nothing to be called but the same word — that is how `search.Search` produced
+  the tool name `search_search`. Methods returning the current set of something
+  are all called `List`. Enforced by `TestNoMethodRepeatsItsService`
 
 ## The go-micro relationship
 

@@ -13,9 +13,9 @@ func TestNewsViaMesh(t *testing.T) {
 	if err := service.Register("news", new(Server)); err != nil {
 		t.Fatalf("register: %v", err)
 	}
-	var rsp HeadlinesResponse
-	if err := service.Call(context.Background(), "news", "Server.Headlines",
-		&HeadlinesRequest{Limit: 5}, &rsp); err != nil {
+	var rsp ListResponse
+	if err := service.Call(context.Background(), "news", "Server.List",
+		&ListRequest{Limit: 5}, &rsp); err != nil {
 		t.Fatalf("call: %v", err)
 	}
 	// Text may be empty without feeds loaded; the round-trip is what matters.

@@ -9,23 +9,23 @@ import (
 // Server is the go-micro service handler for blog.
 type Server struct{}
 
-// RecentRequest controls how many posts to return.
-type RecentRequest struct {
+// ListRequest controls how many posts to return.
+type ListRequest struct {
 	Limit int `json:"limit" description:"Optional max number of posts (default all recent)"`
 }
 
-// RecentResponse is a model-ready list of recent posts.
-type RecentResponse struct {
+// ListResponse is a model-ready list of recent posts.
+type ListResponse struct {
 	Text string `json:"text" description:"Recent blog posts: titles, snippets and ids"`
 }
 
-// Recent returns recent blog posts (titles, snippets and ids).
+// List returns recent blog posts (titles, snippets and ids).
 // @example {}
-func (Server) Recent(_ context.Context, req *RecentRequest, rsp *RecentResponse) error {
+func (Server) List(_ context.Context, req *ListRequest, rsp *ListResponse) error {
 	rsp.Text = RecentText(req.Limit)
 	return nil
 }
 
 var toolDocs = service.Docs{
-	"Recent": "Read recent blog posts — titles, snippets and ids",
+	"List": "Read recent blog posts — titles, snippets and ids",
 }

@@ -16,16 +16,13 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
-	"mu/internal/service"
 	"mu/service/wallet"
 )
 
-// Load initializes the search building block.
-func Load() {
-	if err := service.Register("search", new(Server), toolDocs); err != nil {
-		app.Log("search", "service register failed: %v", err)
-	}
-}
+// Load initializes the search package. It registers no service of its own:
+// the web search capability is web.Search, and this package provides the
+// provider, the reader and the /search page that sit around it.
+func Load() {}
 
 // BraveResult represents a single result from the Brave Search API
 type BraveResult struct {
