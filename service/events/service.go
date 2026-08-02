@@ -25,6 +25,10 @@ type CreateRequest struct {
 	// occupies time, and Free needs to know how much before it can say when
 	// somebody is available.
 	Minutes int `json:"minutes" description:"How long it lasts in minutes (default 30)"`
+	// Repeat and Prompt turn a one-off reminder into a standing instruction:
+	// something that happens again, and does work when it does.
+	Repeat string `json:"repeat" description:"How often it recurs: hourly, daily, weekly or monthly. Omit for once"`
+	Prompt string `json:"prompt" description:"Optional instruction to run through the agent when it fires, e.g. \"brief me on today's news\". The answer is mailed to you"`
 }
 
 // CreateResponse confirms the scheduled event.
@@ -40,9 +44,17 @@ func (Server) Create(ctx context.Context, req *CreateRequest, rsp *CreateRespons
 	if err != nil {
 		return err
 	}
-	e, err := CreateFor(service.AccountFrom(ctx), req.Title, when, req.Note, req.Minutes)
+	e, err := CreateStanding(service.AccountFrom(ctx), req.Title, when, req.Note, req.Minutes, req.Repeat, req.Prompt)
 	if err != nil {
 		return err
+	}
+	if e.Prompt != "" {
+		rsp.Result = fmt.Sprintf("Standing instruction set: %s. The answer will be mailed to you each time.", Describe(e))
+		return nil
+	}
+	if e.Repeat != RepeatNone {
+		rsp.Result = fmt.Sprintf("Scheduled: %s.", Describe(e))
+		return nil
 	}
 	rsp.Result = fmt.Sprintf("Scheduled %q for %s. Add to Google Calendar: %s",
 		e.Title, e.When.Format("Mon 2 Jan 2006 15:04 MST"), GoogleCalendarURL(e.Title, e.When, e.Note))
@@ -160,7 +172,7 @@ var Spec = service.Spec{
 	Scoped:      true,
 	Icon:        "events.svg",
 	Endpoints: map[string]service.Endpoint{
-		"Create": {Doc: "Schedule a reminder or event at a given time, optionally for a given number of minutes"},
+		"Create": {Doc: "Schedule a reminder or event at a given time; optionally repeating, and optionally running a prompt through the agent when it fires"},
 		"Free":   {Doc: "Find when the caller has nothing booked — open slots of a given length, within working hours"},
 		"List":   {Doc: "List the caller's upcoming events and reminders"},
 	},

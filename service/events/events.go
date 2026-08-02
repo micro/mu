@@ -29,7 +29,14 @@ type Event struct {
 	// Minutes is how long the event lasts. Zero means the half hour the .ics
 	// export has always assumed, so events stored before this existed keep the
 	// meaning they were saved with.
-	Minutes int       `json:"minutes,omitempty"`
+	Minutes int `json:"minutes,omitempty"`
+	// Repeat makes this a standing instruction rather than a one-off: see
+	// repeat.go. Empty fires once.
+	Repeat string `json:"repeat,omitempty"`
+	// Prompt turns firing into work. When set, the agent runs it and delivers
+	// the answer — which is what makes "every morning, brief me" possible on a
+	// server that stays up.
+	Prompt  string    `json:"prompt,omitempty"`
 	Created time.Time `json:"created"`
 	Fired   bool      `json:"fired"`
 	FiredAt time.Time `json:"fired_at,omitempty"`
@@ -49,6 +56,10 @@ var (
 // reminder over the user's linked channels; kept as a hook so this package does
 // not import the client packages (and to avoid an import cycle).
 var OnFire func(accountID, title, note string)
+
+// OnFireEvent is called with the whole event when it comes due. main.go sets it
+// to run a standing instruction's prompt through the agent.
+var OnFireEvent func(*Event)
 
 // OnCreate is called when an event is scheduled. main.go sets it to email the
 // owner an .ics calendar invite (if they have a verified email — e.g. from
@@ -95,6 +106,12 @@ func Create(owner, title string, when time.Time, note string) (*Event, error) {
 // CreateFor schedules an event of a given length in minutes. Zero takes the
 // default.
 func CreateFor(owner, title string, when time.Time, note string, minutes int) (*Event, error) {
+	return CreateStanding(owner, title, when, note, minutes, "", "")
+}
+
+// CreateStanding schedules an event that may repeat, and may run a prompt
+// through the agent when it fires.
+func CreateStanding(owner, title string, when time.Time, note string, minutes int, repeat, prompt string) (*Event, error) {
 	owner = strings.TrimSpace(owner)
 	title = strings.TrimSpace(title)
 	if owner == "" {
@@ -113,6 +130,8 @@ func CreateFor(owner, title string, when time.Time, note string, minutes int) (*
 		When:    when.UTC(),
 		Note:    strings.TrimSpace(note),
 		Minutes: minutes,
+		Repeat:  ParseRepeat(repeat),
+		Prompt:  strings.TrimSpace(prompt),
 		Created: time.Now().UTC(),
 	}
 	mu.Lock()
@@ -192,6 +211,9 @@ func fireDue() {
 			cp := *e
 			due = append(due, &cp)
 			changed = true
+			// A standing instruction books its next occurrence immediately, so
+			// the schedule survives a restart between firings.
+			rescheduleLocked(e, now)
 		}
 		// Prune long-fired events to keep the store bounded.
 		if e.Fired && now.Sub(e.FiredAt) > retention {
@@ -207,6 +229,12 @@ func fireDue() {
 	for _, e := range due {
 		if OnFire != nil {
 			OnFire(e.Owner, e.Title, e.Note)
+		}
+		// OnFireEvent sees the whole event, which is how a standing
+		// instruction's prompt reaches the agent. OnFire is kept as it was so
+		// notification does not depend on this.
+		if OnFireEvent != nil {
+			OnFireEvent(e)
 		}
 	}
 }

@@ -198,6 +198,41 @@ func main() {
 		telegram.NotifyUser(accountID, msg)
 		whatsapp.NotifyUser(accountID, msg)
 	}
+	// A standing instruction: when an event carrying a prompt comes due, run it
+	// through the agent and deliver the answer.
+	//
+	// This is the thing a server that stays up can do and a stdio MCP process
+	// cannot — "every morning, brief me and mail it" has nowhere to live in a
+	// process that only exists while a client is attached. Every piece was
+	// already here (a scheduler, an agent, an inbox); nothing joined them.
+	//
+	// It runs in a goroutine because the agent may take tens of seconds and the
+	// scheduler fires every event due in the same pass; one slow briefing must
+	// not hold up the rest.
+	events.OnFireEvent = func(e *events.Event) {
+		if strings.TrimSpace(e.Prompt) == "" {
+			return
+		}
+		go func(e events.Event) {
+			answer, err := agent.Query(e.Owner, e.Prompt)
+			if err != nil {
+				app.Log("events", "standing instruction %q failed for %s: %v", e.Title, e.Owner, err)
+				answer = "This scheduled task failed: " + err.Error()
+			}
+
+			// Mail is the delivery that survives being away from the screen,
+			// and this instance runs the inbox. Tagged so an agent can read
+			// back only its own scheduled results.
+			if acc, err := auth.GetAccount(e.Owner); err == nil {
+				_ = mail.SendMessageTo("Mu", "agent@"+mail.GetConfiguredDomain(),
+					acc.Name, acc.ID, "scheduled", e.Title, answer, "", "", false, 0, nil, "", "")
+			}
+			stream.PostSystem("⏰ "+e.Title, map[string]any{
+				"kind": stream.TypeReminder, "account": e.Owner,
+			})
+		}(*e)
+	}
+
 	// When an event is scheduled, email the owner an .ics invite so it also
 	// lands in their real calendar. Only for users with a verified email (e.g.
 	// via Google sign-in) and only when this instance can send mail.
@@ -1039,21 +1074,26 @@ func main() {
 	// caller's id is bound by the platform, never supplied by the model.
 	api.RegisterToolWithAuth(api.Tool{
 		Name:        "events_create",
-		Description: "Schedule a reminder or event to fire at a given time. Use whenever the user asks to be reminded of something or to schedule an event.",
+		Description: "Schedule a reminder or event. Pass repeat for something recurring, and prompt to have the agent do the work when it fires and mail you the answer — that is how a standing instruction like a morning briefing is set up.",
 		Params: []api.ToolParam{
 			{Name: "title", Type: "string", Description: "What to be reminded about", Required: true},
 			{Name: "when", Type: "string", Description: "When to fire, RFC3339 with timezone offset, e.g. 2026-07-22T15:00:00+01:00", Required: true},
 			{Name: "note", Type: "string", Description: "Optional extra detail"},
 			{Name: "minutes", Type: "number", Description: "How long it lasts in minutes (default 30). What events_free subtracts.", Required: false},
+			{Name: "repeat", Type: "string", Description: "How often it recurs: hourly, daily, weekly or monthly. Omit for once.", Required: false},
+			{Name: "prompt", Type: "string", Description: "Optional instruction to run through the agent when it fires, e.g. \"brief me on today's news\". The answer is mailed to you. This is how you set up something recurring like a morning briefing.", Required: false},
 		},
 	}, func(args map[string]any, accountID string) (string, error) {
 		title, _ := args["title"].(string)
 		when, _ := args["when"].(string)
 		note, _ := args["note"].(string)
 		minutes, _ := args["minutes"].(float64)
+		repeat, _ := args["repeat"].(string)
+		prompt, _ := args["prompt"].(string)
 		var rsp events.CreateResponse
 		if err := service.Call(service.WithAccount(context.Background(), accountID), "events", "Server.Create",
-			&events.CreateRequest{Title: title, When: when, Note: note, Minutes: int(minutes)},
+			&events.CreateRequest{Title: title, When: when, Note: note, Minutes: int(minutes),
+				Repeat: repeat, Prompt: prompt},
 			&rsp); err != nil {
 			return "", err
 		}

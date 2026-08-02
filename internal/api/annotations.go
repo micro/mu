@@ -33,7 +33,8 @@ type mcpAnnotations struct {
 // is of verbs, not tools, so a new service inherits the classification.
 var readVerbs = map[string]bool{
 	"list": true, "get": true, "read": true, "search": true, "inbox": true,
-	"nearby": true, "forecast": true, "balance": true, "today": true,
+	"address": true,
+	"nearby":  true, "forecast": true, "balance": true, "today": true,
 	"prayer": true, "qibla": true, "eta": true, "find": true, "free": true,
 }
 
@@ -41,6 +42,7 @@ var readVerbs = map[string]bool{
 var writeVerbs = map[string]bool{
 	"create": true, "send": true, "post": true, "update": true, "edit": true,
 	"build": true, "generate": true, "run": true, "fork": true, "save": true,
+	"put": true, "share": true,
 	"transfer": true, "topup": true, "add": true, "schedule": true,
 }
 
@@ -53,7 +55,9 @@ var removeVerbs = map[string]bool{
 // wholeTitles are verbs whose label is a complete title on its own, where
 // appending the service name reads worse rather than better.
 var wholeTitles = map[string]string{
-	"eta": "Travel time",
+	"eta":     "Travel time",
+	"free":    "Find free time",
+	"address": "Get an email address",
 }
 
 // verbLabels give a read verb a human phrasing for the title. "list" reads
@@ -63,7 +67,8 @@ var verbLabels = map[string]string{
 	"inbox": "Read", "nearby": "Find nearby", "forecast": "Forecast",
 	"balance": "Check", "create": "Create", "send": "Send", "post": "Post",
 	"update": "Update", "edit": "Edit", "build": "Build", "generate": "Generate",
-	"run": "Run", "delete": "Delete", "fork": "Fork", "eta": "Time to",
+	"run": "Run", "delete": "Delete", "fork": "Fork", "put": "Store",
+	"share":    "Share",
 	"transfer": "Transfer", "today": "Today's", "prayer": "Prayer times for",
 	"qibla": "Qibla for", "free": "Free time in", "find": "Find",
 }
