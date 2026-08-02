@@ -66,7 +66,7 @@ func Load() {
 	}
 	mu.Unlock()
 
-	if err := service.Register("events", new(Server), toolDocs); err != nil {
+	if err := service.Register(Spec); err != nil {
 		app.Log("events", "service register failed: %v", err)
 	}
 	go scheduler()

@@ -100,13 +100,20 @@ func (Credits) Balance(ctx context.Context, _ *BalanceRequest, rsp *BalanceRespo
 // LoadService registers the wallet as a callable service. Named apart from
 // Load, which already initialises the package's own state.
 func LoadService() {
-	if err := service.Register("wallet", new(Credits), toolDocs); err != nil {
+	if err := service.Register(Spec); err != nil {
 		app.Log("wallet", "service register failed: %v", err)
 	}
 }
 
-var toolDocs = service.Docs{
-	"Check":   "Check whether the caller can afford an operation, without charging",
-	"Charge":  "Deduct the cost of an operation from the caller's credit balance",
-	"Balance": "Read the caller's current credit balance",
+var Spec = service.Spec{
+	Name:        "wallet",
+	Handler:     new(Credits),
+	Description: "Credits: check, charge and balance",
+	Page:        "/wallet",
+	Scoped:      true,
+	Endpoints: map[string]service.Endpoint{
+		"Balance": {Doc: "Read the caller's current credit balance"},
+		"Charge":  {Doc: "Deduct the cost of an operation from the caller's credit balance", Destructive: true},
+		"Check":   {Doc: "Check whether the caller can afford an operation, without charging"},
+	},
 }

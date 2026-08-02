@@ -25,7 +25,7 @@ var (
 
 // Load initializes the reminder data
 func Load() {
-	if err := service.Register("islam", new(Server), toolDocs); err != nil {
+	if err := service.Register(Spec); err != nil {
 		app.Log("reminder", "service register failed: %v", err)
 	}
 

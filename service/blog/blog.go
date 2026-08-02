@@ -137,7 +137,7 @@ func parseTags(input string) string {
 
 // Load initializes the blog package and sets up event subscriptions
 func Load() {
-	if err := service.Register("blog", new(Server), toolDocs); err != nil {
+	if err := service.Register(Spec); err != nil {
 		app.Log("blog", "service register failed: %v", err)
 	}
 

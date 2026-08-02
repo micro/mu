@@ -26,6 +26,12 @@ func (Server) List(_ context.Context, req *ListRequest, rsp *ListResponse) error
 	return nil
 }
 
-var toolDocs = service.Docs{
-	"List": "Read the latest social posts from the network",
+var Spec = service.Spec{
+	Name:        "social",
+	Handler:     new(Server),
+	Description: "Public threads, replies and status",
+	Page:        "/social",
+	Endpoints: map[string]service.Endpoint{
+		"List": {Doc: "Read the latest social posts from the network"},
+	},
 }

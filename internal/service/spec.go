@@ -1,0 +1,244 @@
+package service
+
+import (
+	"reflect"
+	"sort"
+	"strings"
+	"sync"
+
+	"go-micro.dev/v6/server"
+)
+
+// Spec is everything Mu knows about a service, declared once, in the service's
+// own package, and read by every surface.
+//
+//	service.Register(service.Spec{
+//		Name:        "web",
+//		Handler:     new(Server),
+//		Description: "The open web: search it, read a page from it",
+//		Page:        "/search",
+//		Label:       "Search",
+//		Endpoints: map[string]service.Endpoint{
+//			"Search": {Doc: "Search the web…", Cost: wallet.OpWebSearch},
+//			"Fetch":  {Doc: "Fetch a web page…", Cost: wallet.OpWebFetch},
+//		},
+//	})
+//
+// Before this there were fourteen places a service was declared — the registry,
+// two MCP tool lists, the REST reference, the nav, two guest allowlists, the
+// agent's labels, the destructive list, the account-scoped list, the pricing
+// ops, the micro-agent tool lists and two documentation tables. Each was
+// correct on its own and none knew about the others, which is how the same
+// capability ended up called search, search_web, index and web_search at once,
+// and how Stream and Chat came to share an icon.
+//
+// The rule is that a surface may read this and derive what it needs. It may not
+// keep its own list. Anything a surface cannot derive belongs here as a field.
+type Spec struct {
+	// Name is the service name — the directory, the route, the tool prefix.
+	Name string
+	// Handler is the go-micro handler whose exported methods become endpoints.
+	Handler any
+	// Description says what the service is, for humans: status, docs, the
+	// service list. Endpoint docs say what each method does, for a model.
+	Description string
+	// Page is the web route, e.g. "/news". Empty means headless: a capability
+	// with no page, reached only by the agent, apps and other services.
+	Page string
+	// Label is the nav label. Defaults to the name, title-cased. It differs
+	// from the name when the human word and the domain word differ — the web
+	// service is "Search" in the sidebar, because that is what a person looks
+	// for.
+	Label string
+	// Scoped marks a service holding one user's data, or spending their
+	// credits. A caller with no authenticated account cannot reach it at all.
+	Scoped bool
+	// Endpoints describes each method, keyed by method name. Every exported
+	// RPC method must appear; TestEveryEndpointIsDescribed enforces it.
+	Endpoints map[string]Endpoint
+}
+
+// Endpoint is one method of a service.
+type Endpoint struct {
+	// Doc is what the method does, written for a model rather than a
+	// developer: it is what the agent reads when choosing a tool.
+	Doc string
+	// Cost is the wallet operation charged per call (wallet.Op…). Empty means
+	// the call is free — it touches only this instance's own storage.
+	Cost string
+	// Destructive withholds the method from the model. The agent reads
+	// attacker-controlled text, so a tool it holds is a tool prompt injection
+	// holds; what earns this flag is an irreversible effect nobody asked for.
+	Destructive bool
+}
+
+// Tool is the derived tool name for a method: service_method, lower-cased.
+// Deriving it is why a service is named for a domain and a method for an
+// action — see TestNoMethodRepeatsItsService.
+func (s Spec) Tool(method string) string {
+	return s.Name + "_" + strings.ToLower(method)
+}
+
+// NavLabel is the label, defaulting to the title-cased name.
+func (s Spec) NavLabel() string {
+	if s.Label != "" {
+		return s.Label
+	}
+	if s.Name == "" {
+		return ""
+	}
+	return strings.ToUpper(s.Name[:1]) + s.Name[1:]
+}
+
+// Headless reports whether the service has no page of its own.
+func (s Spec) Headless() bool { return s.Page == "" }
+
+var (
+	specMu sync.RWMutex
+	specs  = map[string]Spec{}
+)
+
+func recordSpec(s Spec) {
+	specMu.Lock()
+	specs[s.Name] = s
+	specMu.Unlock()
+}
+
+// SpecFor returns a registered service's declaration.
+func SpecFor(name string) (Spec, bool) {
+	specMu.RLock()
+	defer specMu.RUnlock()
+	s, ok := specs[strings.ToLower(strings.TrimSpace(name))]
+	return s, ok
+}
+
+// Specs returns every registered service's declaration, ordered by name.
+func Specs() []Spec {
+	specMu.RLock()
+	defer specMu.RUnlock()
+	out := make([]Spec, 0, len(specs))
+	for _, s := range specs {
+		out = append(out, s)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out
+}
+
+// AccountScoped reports whether a service requires an authenticated caller.
+// Derived from the spec, so the agent and the app SDK cannot drift apart.
+func AccountScoped(name string) bool {
+	s, ok := SpecFor(name)
+	return ok && s.Scoped
+}
+
+// Destructive reports whether a method is withheld from the model. Accepts
+// "service.Method", "service_method" or a bare service and method.
+func Destructive(service, method string) bool {
+	s, ok := SpecFor(service)
+	if !ok {
+		return false
+	}
+	for name, ep := range s.Endpoints {
+		if strings.EqualFold(name, method) {
+			return ep.Destructive
+		}
+	}
+	return false
+}
+
+// CostOf returns the wallet operation a method charges, or "" if it is free.
+func CostOf(service, method string) string {
+	s, ok := SpecFor(service)
+	if !ok {
+		return ""
+	}
+	for name, ep := range s.Endpoints {
+		if strings.EqualFold(name, method) {
+			return ep.Cost
+		}
+	}
+	return ""
+}
+
+// Label returns a service's nav label.
+func Label(name string) string {
+	if s, ok := SpecFor(name); ok {
+		return s.NavLabel()
+	}
+	if name == "" {
+		return name
+	}
+	return strings.ToUpper(name[:1]) + name[1:]
+}
+
+// endpointOptions turns a Spec's endpoint declarations into the go-micro
+// handler option that writes them into the registry, where tool discovery reads
+// them.
+//
+// This exists because go-micro's own documentation cannot reach us. It fills
+// endpoint metadata by locating a method's source file at runtime and parsing
+// the Go doc comment (server/comments.go).
+//
+// That fails unconditionally here: handlers are registered as pointers
+// (new(Server)) while their methods have value receivers, so reflection yields
+// synthesised wrappers whose source file is "<autogenerated>" — the parse never
+// reaches a real file.
+//
+// Fixing the receiver would not be enough either, because the mechanism needs
+// the Go source tree to sit next to the binary at runtime. That happens to hold
+// for the systemd deployment, which builds in place, and does not hold for the
+// container image, which is a multi-stage build carrying only the binary. A
+// tool description should not depend on how the binary was shipped.
+//
+// Without this, every tool the agent sees is described as "Call Search on web
+// service", which is close to no description at all.
+func endpointOptions(s Spec) server.HandlerOption {
+	prefix := handlerName(s.Handler)
+	if prefix == "" || len(s.Endpoints) == 0 {
+		return nil
+	}
+	docs := map[string]server.EndpointDoc{}
+	for method, ep := range s.Endpoints {
+		if method == "" || ep.Doc == "" {
+			continue
+		}
+		docs[prefix+"."+method] = server.EndpointDoc{Description: ep.Doc}
+	}
+	if len(docs) == 0 {
+		return nil
+	}
+	return server.WithEndpointDocs(docs)
+}
+
+// handlerName is the type name go-micro prefixes a handler's endpoints with —
+// "Server" for both Server and *Server.
+func handlerName(h any) string {
+	t := reflect.TypeOf(h)
+	if t == nil {
+		return ""
+	}
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	return t.Name()
+}
+
+// EndpointDescriptions returns each registered endpoint of a service with the
+// description it publishes, read back from the live registry.
+func EndpointDescriptions(name string) map[string]string {
+	ensure()
+	svcs, err := reg.GetService(name)
+	if err != nil || len(svcs) == 0 {
+		return nil
+	}
+	out := map[string]string{}
+	for _, s := range svcs {
+		for _, ep := range s.Endpoints {
+			if ep == nil || ep.Name == "" {
+				continue
+			}
+			out[ep.Name] = ep.Metadata["description"]
+		}
+	}
+	return out
+}

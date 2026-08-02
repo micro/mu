@@ -8,11 +8,35 @@ of registered services: the agent's tools, the `/agent/new` picker, what apps
 can call through the SDK, and the status page. Register a service and those
 surfaces pick it up with no further wiring.
 
-Each service lives in its own directory under `service/`, named after it, and registers
-with `service.Register("name", new(Server))`. The handler is plain typed Go —
-`func (Server) Method(ctx, *Req, *Rsp) error` — and the `description` struct
-tags on request and response fields become the tool schema. There is no
-manifest file; the types are the manifest.
+Each service lives in its own directory under `service/`, named after it, and
+declares itself once, as a `service.Spec`:
+
+```go
+var Spec = service.Spec{
+	Name:        "web",
+	Handler:     new(Server),
+	Description: "The open web: search it, read a page from it",
+	Page:        "/search",   // "" = headless
+	Label:       "Search",    // nav label; defaults to the name
+	Endpoints: map[string]service.Endpoint{
+		"Search": {Doc: "Search the web…", Cost: wallet.OpWebSearch},
+		"Fetch":  {Doc: "Fetch a web page…", Cost: wallet.OpWebFetch},
+	},
+}
+
+service.Register(Spec)
+```
+
+**That declaration is the single source of truth.** A surface may derive what it
+needs from it; a surface may not keep its own list. Account scoping, the
+destructive-method guard, nav labels and the endpoint descriptions the agent
+reads are all derived from it — each of those used to be a hand-maintained map
+in a different package, which is how one capability came to be called `search`,
+`search_web`, `index` and `web_search` at the same time.
+
+The handler is plain typed Go — `func (Server) Method(ctx, *Req, *Rsp) error` —
+and the `description` struct tags on request and response fields become the tool
+schema. There is no manifest file; the types plus the Spec are the manifest.
 
 ## The convention
 
@@ -111,12 +135,13 @@ explain rather than retry.
 
 ## Adding one
 
-1. Create `service/<name>/`, named for the service.
+1. Create `service/<name>/`, named for the service — a domain, not an action.
 2. Write `Server` with typed methods and `description` tags.
-3. `service.Register("name", new(Server))` from a `Load()`, called in `main.go`.
-4. If it holds per-user data or spends credits, add it to `accountScoped`.
-5. If a method is irreversible and should only follow from a user's own
-   action, add it to `destructiveTools` in `agent/native.go`.
+3. Declare `var Spec = service.Spec{…}` with an entry for every method, and
+   `service.Register(Spec)` from a `Load()` called in `main.go`.
+4. If it holds per-user data or spends credits, set `Scoped: true`.
+5. If a method is irreversible and should only follow from a user's own action,
+   set `Destructive: true` on it.
 6. Add a row above.
 
 Nothing else is needed. The agent, the picker, the app SDK and the status page

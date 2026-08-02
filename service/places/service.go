@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"mu/internal/service"
+	"mu/service/wallet"
 )
 
 // Server is the go-micro service handler for places. Its methods are exposed as
@@ -202,8 +203,14 @@ func formatDistance(m float64) string {
 	return fmt.Sprintf("%.1fkm", m/1000)
 }
 
-var toolDocs = service.Docs{
-	"Search":  "Find places by name or category, optionally near a location",
-	"Nearby":  "List points of interest near a location",
-	"Geocode": "Resolve a place name or address to coordinates",
+var Spec = service.Spec{
+	Name:        "places",
+	Handler:     new(Server),
+	Description: "Places, points of interest and geocoding",
+	Page:        "/places",
+	Endpoints: map[string]service.Endpoint{
+		"Geocode": {Doc: "Resolve a place name or address to coordinates"},
+		"Nearby":  {Doc: "List points of interest near a location", Cost: wallet.OpPlacesNearby},
+		"Search":  {Doc: "Find places by name or category, optionally near a location", Cost: wallet.OpPlacesSearch},
+	},
 }

@@ -8,6 +8,7 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/service"
+	"mu/service/wallet"
 )
 
 // Server exposes the console timeline as a service, so the agent and apps can
@@ -89,12 +90,18 @@ func (Server) Post(ctx context.Context, req *PostRequest, rsp *PostResponse) err
 // LoadService registers the console as a service. Separate from Load, which
 // already restores the timeline and starts its background work.
 func LoadService() {
-	if err := service.Register("stream", new(Server), toolDocs); err != nil {
+	if err := service.Register(Spec); err != nil {
 		app.Log("stream", "service register failed: %v", err)
 	}
 }
 
-var toolDocs = service.Docs{
-	"List": "Read recent events from the console timeline",
-	"Post": "Post an entry to the console timeline",
+var Spec = service.Spec{
+	Name:        "stream",
+	Handler:     new(Server),
+	Description: "The console: this instance's own event timeline",
+	Page:        "/stream",
+	Endpoints: map[string]service.Endpoint{
+		"List": {Doc: "Read recent events from the console timeline"},
+		"Post": {Doc: "Post an entry to the console timeline", Cost: wallet.OpStreamPost},
+	},
 }

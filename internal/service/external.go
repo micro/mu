@@ -69,7 +69,7 @@ func RegisterAll(svcs map[string]any) error {
 			errs = append(errs, fmt.Errorf("service %q has no handler", name))
 			continue
 		}
-		if err := Register(name, h); err != nil {
+		if err := Register(Spec{Name: name, Handler: h}); err != nil {
 			errs = append(errs, fmt.Errorf("service %q: %w", name, err))
 		}
 	}

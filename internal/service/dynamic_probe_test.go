@@ -24,7 +24,7 @@ func (SDKProbeHandler) Hello(_ context.Context, req *SDKProbeReq, rsp *SDKProbeR
 // decode into an untyped map response? That is what a generic SDK dispatcher
 // needs: it knows the service and method by name only, never the Go types.
 func TestDynamicMapDispatch(t *testing.T) {
-	if err := Register("sdkprobe", SDKProbeHandler{}); err != nil {
+	if err := Register(Spec{Name: "sdkprobe", Handler: SDKProbeHandler{}}); err != nil {
 		t.Fatalf("register: %v", err)
 	}
 
@@ -41,7 +41,7 @@ func TestDynamicMapDispatch(t *testing.T) {
 // The registry must expose registered services and their endpoints, so the SDK
 // surface can be derived from the registry rather than hardcoded.
 func TestRegistryExposesEndpoints(t *testing.T) {
-	if err := Register("sdkprobe2", SDKProbeHandler{}); err != nil {
+	if err := Register(Spec{Name: "sdkprobe2", Handler: SDKProbeHandler{}}); err != nil {
 		t.Fatalf("register: %v", err)
 	}
 	ensure()

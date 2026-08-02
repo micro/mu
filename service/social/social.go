@@ -77,7 +77,7 @@ func addMessage(p *Message) {
 }
 
 func Load() {
-	if err := service.Register("social", new(Server), toolDocs); err != nil {
+	if err := service.Register(Spec); err != nil {
 		app.Log("social", "service register failed: %v", err)
 	}
 

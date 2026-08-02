@@ -106,8 +106,14 @@ func (Server) Qibla(_ context.Context, req *QiblaRequest, rsp *QiblaResponse) er
 	return nil
 }
 
-var toolDocs = service.Docs{
-	"Today":  "Get today's Islamic reminder — a Quran verse with its surah and translation",
-	"Prayer": "Get today's prayer times for a location, and which prayer is next",
-	"Qibla":  "Get the compass bearing to face for prayer from a location",
+var Spec = service.Spec{
+	Name:        "islam",
+	Handler:     new(Server),
+	Description: "Daily reminder, prayer times and qibla",
+	Page:        "/islam",
+	Endpoints: map[string]service.Endpoint{
+		"Prayer": {Doc: "Get today's prayer times for a location, and which prayer is next"},
+		"Qibla":  {Doc: "Get the compass bearing to face for prayer from a location"},
+		"Today":  {Doc: "Get today's Islamic reminder — a Quran verse with its surah and translation"},
+	},
 }

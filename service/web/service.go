@@ -21,6 +21,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/service"
 	"mu/service/search"
+	"mu/service/wallet"
 )
 
 // Server is the service handler. Its methods are exposed as RPC endpoints and,
@@ -76,12 +77,19 @@ func (Server) Fetch(_ context.Context, req *FetchRequest, rsp *FetchResponse) er
 
 // Load registers the service.
 func Load() {
-	if err := service.Register("web", new(Server), toolDocs); err != nil {
+	if err := service.Register(Spec); err != nil {
 		app.Log("web", "service register failed: %v", err)
 	}
 }
 
-var toolDocs = service.Docs{
-	"Search": "Search the web for current information and news",
-	"Fetch":  "Fetch a web page by URL and return its readable content",
+var Spec = service.Spec{
+	Name:        "web",
+	Handler:     new(Server),
+	Description: "The open web: search it, read a page from it",
+	Page:        "/search",
+	Label:       "Search",
+	Endpoints: map[string]service.Endpoint{
+		"Fetch":  {Doc: "Fetch a web page by URL and return its readable content", Cost: wallet.OpWebFetch},
+		"Search": {Doc: "Search the web for current information and news", Cost: wallet.OpWebSearch},
+	},
 }

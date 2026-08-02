@@ -10,7 +10,7 @@ import (
 
 // TestNewsViaMesh verifies the go-micro RPC round-trip for the news service.
 func TestNewsViaMesh(t *testing.T) {
-	if err := service.Register("news", new(Server)); err != nil {
+	if err := service.Register(service.Spec{Name: "news", Handler: new(Server)}); err != nil {
 		t.Fatalf("register: %v", err)
 	}
 	var rsp ListResponse

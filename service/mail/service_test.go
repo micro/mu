@@ -10,7 +10,7 @@ import (
 
 // TestMailSearchViaMesh verifies the mail service RPC round-trip and endpoint.
 func TestMailSearchViaMesh(t *testing.T) {
-	if err := service.Register("mail", new(Server)); err != nil {
+	if err := service.Register(service.Spec{Name: "mail", Handler: new(Server)}); err != nil {
 		t.Fatalf("register: %v", err)
 	}
 	var rsp SearchResponse

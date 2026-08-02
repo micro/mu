@@ -74,7 +74,7 @@ var futuresKeys = []string{"OIL", "OATS", "COFFEE", "WHEAT", "GOLD"}
 // Load initializes the markets data
 func Load() {
 	// Register the go-micro service.
-	if err := service.Register("markets", new(Server), toolDocs); err != nil {
+	if err := service.Register(Spec); err != nil {
 		app.Log("markets", "service register failed: %v", err)
 	}
 

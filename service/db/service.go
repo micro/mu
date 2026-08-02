@@ -22,6 +22,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/service"
 	"mu/internal/userdb"
+	"mu/service/wallet"
 )
 
 // ns is the storage namespace for records written through this service, kept
@@ -227,15 +228,22 @@ func (Server) Delete(ctx context.Context, req *DeleteRequest, rsp *DeleteRespons
 
 // Load registers the service.
 func Load() {
-	if err := service.Register("db", new(Server), toolDocs); err != nil {
+	if err := service.Register(Spec); err != nil {
 		app.Log("db", "service register failed: %v", err)
 	}
 }
 
-var toolDocs = service.Docs{
-	"Create": "Store a new record in one of the caller's collections",
-	"List":   "List records from one of the caller's collections",
-	"Get":    "Read one record by id",
-	"Update": "Replace a record the caller owns",
-	"Delete": "Delete a record the caller owns",
+var Spec = service.Spec{
+	Name:        "db",
+	Handler:     new(Server),
+	Description: "Per-user records, for services and apps",
+	Label:       "Storage",
+	Scoped:      true,
+	Endpoints: map[string]service.Endpoint{
+		"Create": {Doc: "Store a new record in one of the caller's collections", Cost: wallet.OpDBWrite},
+		"Delete": {Doc: "Delete a record the caller owns", Destructive: true},
+		"Get":    {Doc: "Read one record by id"},
+		"List":   {Doc: "List records from one of the caller's collections"},
+		"Update": {Doc: "Replace a record the caller owns", Cost: wallet.OpDBWrite},
+	},
 }

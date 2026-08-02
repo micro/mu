@@ -284,7 +284,7 @@ func loadChannels() {
 
 // Load videos
 func Load() {
-	if err := service.Register("video", new(Server), toolDocs); err != nil {
+	if err := service.Register(Spec); err != nil {
 		app.Log("video", "service register failed: %v", err)
 	}
 

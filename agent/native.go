@@ -86,39 +86,9 @@ func AllAgentTools() []string {
 	return nativeServices(false)
 }
 
-// agentToolLabels gives human-friendly names for the service ids shown in the
-// /agent/new tool picker. Unlisted ids fall back to a title-cased id.
-var agentToolLabels = map[string]string{
-	"weather": "Weather",
-	"news":    "News",
-	"markets": "Markets",
-	"social":  "Social",
-	"video":   "Video",
-	"blog":    "Blog",
-	"web":     "Search",
-	"places":  "Places",
-	"index":   "Index",
-	"apps":    "Apps",
-	"mail":    "Mail",
-	"images":  "Images",
-	"islam":   "Islam",
-	"events":  "Events",
-	"chat":    "Chat",
-	"stream":  "Stream",
-	"db":      "Storage",
-	"wallet":  "Wallet",
-}
-
-// AgentToolLabel returns a friendly display label for a service tool id.
-func AgentToolLabel(id string) string {
-	if l, ok := agentToolLabels[id]; ok {
-		return l
-	}
-	if id == "" {
-		return id
-	}
-	return strings.ToUpper(id[:1]) + id[1:]
-}
+// AgentToolLabel returns a friendly display label for a service tool id, from
+// the service's own Spec — the same label the sidebar uses.
+func AgentToolLabel(id string) string { return service.Label(id) }
 
 // filterServices intersects the full service set with an agent's allowed tools,
 // preserving order. An empty allow list means all services.
@@ -164,32 +134,22 @@ func injectAccount(accountID string) gmai.ToolWrapper {
 	}
 }
 
-// destructiveTools are the individual service methods the model may not call,
-// keyed "service.method".
+// toolBlocked reports whether a tool call names a method its service declared
+// Destructive. The list lives in each service's Spec, next to what the method
+// does and costs, rather than in a table here that has to be kept in step.
 //
-// Every registered service becomes a tool — that is the point of deriving from
-// the registry, and withholding a whole service to protect one method was both
-// too blunt and inconsistent: the agent already spends credits every time it
-// generates an image. So the guard belongs on the method.
-//
-// What earns a place here is a side effect that is irreversible and that no
-// user asked for. The agent reads attacker-controlled text — an email body, a
-// page it just fetched — so a tool it holds is a tool prompt injection holds.
-// Reading a balance is fine. Spending one, or deleting records, is not.
-var destructiveTools = map[string]bool{
-	"wallet.charge": true, // spending must follow from the user's own action
-	"db.delete":     true, // irreversible; the user can delete from the app
-}
-
-// toolBlocked reports whether a tool call names a destructive method. go-micro
-// builds tool names from "service.Method" but providers sanitise separators
-// differently, so both forms are matched.
+// go-micro builds tool names from "service.Method" and providers sanitise the
+// separator differently, so both forms are matched. The handler type shows up
+// in the middle of a native tool name (news.Server.Search), so the first and
+// last segments are what identify the method.
 func toolBlocked(name string) bool {
-	n := strings.ToLower(strings.TrimSpace(name))
-	if destructiveTools[n] {
-		return true
+	parts := strings.FieldsFunc(strings.ToLower(strings.TrimSpace(name)), func(r rune) bool {
+		return r == '.' || r == '_'
+	})
+	if len(parts) < 2 {
+		return false
 	}
-	return destructiveTools[strings.ReplaceAll(n, "_", ".")]
+	return service.Destructive(parts[0], parts[len(parts)-1])
 }
 
 // blockDestructiveTools refuses those calls before they run, telling the model

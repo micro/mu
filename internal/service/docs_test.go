@@ -42,7 +42,7 @@ func TestEveryEndpointIsDescribed(t *testing.T) {
 		checked++
 		for _, m := range methods {
 			if !documented[m] {
-				t.Errorf("%s: endpoint %q has no entry in the service's Docs map — "+
+				t.Errorf("%s: endpoint %q has no entry in the service's Spec.Endpoints — "+
 					"the agent would see it as \"Call %s on %s service\"",
 					filepath.Base(dir), m, m, filepath.Base(dir))
 			}
@@ -109,7 +109,8 @@ func rpcEndpoint(d *ast.FuncDecl) (string, bool) {
 	return d.Name.Name, true
 }
 
-// collectDocKeys records the method names covered by a service.Docs literal.
+// collectDocKeys records the method names a service.Spec's Endpoints map
+// covers.
 func collectDocKeys(d *ast.GenDecl, into map[string]bool) {
 	if d.Tok != token.VAR {
 		return
@@ -121,17 +122,30 @@ func collectDocKeys(d *ast.GenDecl, into map[string]bool) {
 		}
 		for _, val := range vs.Values {
 			lit, ok := val.(*ast.CompositeLit)
-			if !ok || !isServiceDocs(lit.Type) {
+			if !ok || !isSelector(lit.Type, "service", "Spec") {
 				continue
 			}
-			for _, elt := range lit.Elts {
-				kv, ok := elt.(*ast.KeyValueExpr)
+			for _, field := range lit.Elts {
+				kv, ok := field.(*ast.KeyValueExpr)
 				if !ok {
 					continue
 				}
-				if k, ok := kv.Key.(*ast.BasicLit); ok && k.Kind == token.STRING {
-					if name, err := strconv.Unquote(k.Value); err == nil {
-						into[name] = true
+				if id, ok := kv.Key.(*ast.Ident); !ok || id.Name != "Endpoints" {
+					continue
+				}
+				eps, ok := kv.Value.(*ast.CompositeLit)
+				if !ok {
+					continue
+				}
+				for _, elt := range eps.Elts {
+					ep, ok := elt.(*ast.KeyValueExpr)
+					if !ok {
+						continue
+					}
+					if k, ok := ep.Key.(*ast.BasicLit); ok && k.Kind == token.STRING {
+						if name, err := strconv.Unquote(k.Value); err == nil {
+							into[name] = true
+						}
 					}
 				}
 			}
@@ -139,13 +153,13 @@ func collectDocKeys(d *ast.GenDecl, into map[string]bool) {
 	}
 }
 
-func isServiceDocs(e ast.Expr) bool {
+func isSelector(e ast.Expr, pkg, name string) bool {
 	sel, ok := e.(*ast.SelectorExpr)
 	if !ok {
 		return false
 	}
-	pkg, ok := sel.X.(*ast.Ident)
-	return ok && pkg.Name == "service" && sel.Sel.Name == "Docs"
+	id, ok := sel.X.(*ast.Ident)
+	return ok && id.Name == pkg && sel.Sel.Name == name
 }
 
 func fieldCount(fl *ast.FieldList) int {

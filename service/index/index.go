@@ -115,6 +115,12 @@ func stripTags(s string) string {
 }
 
 // ToolDocs describes this service's endpoints for the agent's tool list.
-var ToolDocs = service.Docs{
-	"Search": "Search the caller's own content — indexed news, blog, social, video and saved items",
+var Spec = service.Spec{
+	Name:        "index",
+	Handler:     Server{},
+	Description: "Search across the caller's own content",
+	Scoped:      true,
+	Endpoints: map[string]service.Endpoint{
+		"Search": {Doc: "Search the caller's own content — indexed news, blog, social, video and saved items"},
+	},
 }

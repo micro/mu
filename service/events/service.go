@@ -93,7 +93,14 @@ func parseWhen(s string) (time.Time, error) {
 	return time.Time{}, fmt.Errorf("could not parse time %q; use RFC3339 like 2026-07-22T15:00:00+01:00", s)
 }
 
-var toolDocs = service.Docs{
-	"Create": "Schedule a reminder or event to fire at a given time",
-	"List":   "List the caller's upcoming events and reminders",
+var Spec = service.Spec{
+	Name:        "events",
+	Handler:     new(Server),
+	Description: "Scheduled reminders and calendar invites",
+	Page:        "/events",
+	Scoped:      true,
+	Endpoints: map[string]service.Endpoint{
+		"Create": {Doc: "Schedule a reminder or event to fire at a given time"},
+		"List":   {Doc: "List the caller's upcoming events and reminders"},
+	},
 }

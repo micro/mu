@@ -45,7 +45,7 @@ func TestRegistrySpecIsCaseInsensitive(t *testing.T) {
 // another process appears without Mu importing it. Locally hosted services are
 // always included even if the registry is unhappy.
 func TestServicesIncludesLocallyHosted(t *testing.T) {
-	if err := Register("disco-probe", new(EchoSrv)); err != nil {
+	if err := Register(Spec{Name: "disco-probe", Handler: new(EchoSrv)}); err != nil {
 		t.Fatalf("register: %v", err)
 	}
 	found := false

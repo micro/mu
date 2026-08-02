@@ -7,23 +7,6 @@ import (
 	"strings"
 )
 
-// accountScoped names the services whose data belongs to a specific user, or
-// that spend the caller's credits. Callers without an authenticated account —
-// a guest agent, an app rendered for a logged-out visitor — must not reach
-// them. This is the single definition; the agent and the app SDK both consult
-// it so the two can never drift apart.
-var accountScoped = map[string]bool{
-	"mail":   true, // the user's own inbox
-	"index":  true, // searches the caller's own mail alongside public content
-	"images": true, // generation is metered against their wallet
-	"events": true, // personal schedule
-	"db":     true, // per-user records
-	"wallet": true, // spends the caller's credits
-}
-
-// AccountScoped reports whether a service requires an authenticated caller.
-func AccountScoped(name string) bool { return accountScoped[strings.ToLower(name)] }
-
 // Endpoints returns the RPC endpoint names a registered service exposes
 // (e.g. "Server.Forecast"), sorted. It reads the live registry, so the set is
 // whatever the service actually registered — never a hardcoded list.

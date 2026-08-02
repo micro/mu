@@ -10,7 +10,7 @@ import (
 // TestForecastViaMesh verifies the go-micro RPC round-trip: register the
 // weather service and call it through the service registry, the same path the agent tool uses.
 func TestForecastViaMesh(t *testing.T) {
-	if err := service.Register("weather", new(Server)); err != nil {
+	if err := service.Register(service.Spec{Name: "weather", Handler: new(Server)}); err != nil {
 		t.Fatalf("register: %v", err)
 	}
 	var rsp ForecastResponse

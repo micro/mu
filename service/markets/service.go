@@ -28,6 +28,12 @@ func (Server) List(_ context.Context, req *ListRequest, rsp *ListResponse) error
 	return nil
 }
 
-var toolDocs = service.Docs{
-	"List": "Get live prices for cryptocurrencies, futures, commodities and currencies",
+var Spec = service.Spec{
+	Name:        "markets",
+	Handler:     new(Server),
+	Description: "Live crypto, futures, commodity and currency prices",
+	Page:        "/markets",
+	Endpoints: map[string]service.Endpoint{
+		"List": {Doc: "Get live prices for cryptocurrencies, futures, commodities and currencies"},
+	},
 }

@@ -26,7 +26,11 @@ func (DocsProbe) Look(_ context.Context, _ *ProbeLookRequest, _ *ProbeLookRespon
 // is handed. Without it the agent is given "Call Look on docsprobe service".
 func TestDocsReachTheAgentToolList(t *testing.T) {
 	const want = "Look something up in the probe"
-	if err := Register("docsprobe", new(DocsProbe), Docs{"Look": want}); err != nil {
+	if err := Register(Spec{
+		Name:      "docsprobe",
+		Handler:   new(DocsProbe),
+		Endpoints: map[string]Endpoint{"Look": {Doc: want}},
+	}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -49,9 +53,9 @@ func TestDocsReachTheAgentToolList(t *testing.T) {
 	t.Fatal("probe tool was not discovered at all")
 }
 
-// TestDocsAreOptional keeps Register usable without them.
+// TestDocsAreOptional keeps Register usable with no endpoint docs.
 func TestDocsAreOptional(t *testing.T) {
-	if err := Register("docsprobe2", new(DocsProbe)); err != nil {
+	if err := Register(Spec{Name: "docsprobe2", Handler: new(DocsProbe)}); err != nil {
 		t.Fatal(err)
 	}
 	if got := EndpointDescriptions("docsprobe2")["DocsProbe.Look"]; got != "" {

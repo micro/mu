@@ -26,6 +26,12 @@ func (Server) List(_ context.Context, req *ListRequest, rsp *ListResponse) error
 	return nil
 }
 
-var toolDocs = service.Docs{
-	"List": "Read the latest videos from curated channels",
+var Spec = service.Spec{
+	Name:        "video",
+	Handler:     new(Server),
+	Description: "Video from curated channels, without ads or recommendations",
+	Page:        "/video",
+	Endpoints: map[string]service.Endpoint{
+		"List": {Doc: "Read the latest videos from curated channels"},
+	},
 }

@@ -70,7 +70,7 @@ type Message struct {
 // Load messages from disk and configure SMTP/DKIM
 func Load() {
 	// Register the go-micro service.
-	if err := service.Register("mail", new(Server), toolDocs); err != nil {
+	if err := service.Register(Spec); err != nil {
 		app.Log("mail", "service register failed: %v", err)
 	}
 

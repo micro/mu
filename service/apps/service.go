@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"mu/internal/service"
+	"mu/service/wallet"
 )
 
 // Server is the go-micro service handler for apps.
@@ -91,8 +92,14 @@ func (Server) Read(_ context.Context, req *AppReadRequest, rsp *AppReadResponse)
 	return nil
 }
 
-var toolDocs = service.Docs{
-	"Build":  "Generate a small app (tracker, checklist or counter) from a description",
-	"Search": "Search the apps directory for small, useful tools",
-	"Read":   "Read the details of one app by its slug",
+var Spec = service.Spec{
+	Name:        "apps",
+	Handler:     new(Server),
+	Description: "Small self-contained web tools, built and run in place",
+	Page:        "/apps",
+	Endpoints: map[string]service.Endpoint{
+		"Build":  {Doc: "Generate a small app (tracker, checklist or counter) from a description", Cost: wallet.OpAppBuild},
+		"Read":   {Doc: "Read the details of one app by its slug"},
+		"Search": {Doc: "Search the apps directory for small, useful tools"},
+	},
 }

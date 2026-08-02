@@ -32,7 +32,7 @@ func TestNewAgentLive(t *testing.T) {
 	if key == "" {
 		t.Skip("set ATLAS_API_KEY to run")
 	}
-	if err := Register("probe", TempProbe{}); err != nil {
+	if err := Register(Spec{Name: "probe", Handler: TempProbe{}}); err != nil {
 		t.Fatalf("register: %v", err)
 	}
 	a := NewAgent("assistant",

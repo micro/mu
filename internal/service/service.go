@@ -13,6 +13,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"sort"
@@ -181,19 +182,25 @@ func Broker() broker.Broker { ensure(); return br }
 // Store returns the shared key-value store.
 func Store() store.Store { ensure(); return st }
 
-// Register stands up an in-process go-micro service of the given name hosting
-// the provided handler structs, and starts it. Each handler's exported methods
-// of the form func(ctx, *Req, *Rsp) error become RPC endpoints — and, via the
-// agent and gateways, AI tools.
+// Register stands up an in-process go-micro service from its Spec and starts
+// it. The handler's exported methods of the form func(ctx, *Req, *Rsp) error
+// become RPC endpoints — and, via the agent and gateways, AI tools.
 //
-// An optional Docs argument publishes what each endpoint does, so the agent
-// sees a real description rather than "Call Search on news service".
+// The Spec is the single declaration of the service: name, handler, what each
+// endpoint does and costs, where it appears, who may reach it. Every surface
+// derives from it rather than keeping its own list. See spec.go.
 //
 // It returns once the service is registered and reachable.
-func Register(name string, handler any, docs ...Docs) error {
+func Register(spec Spec) error {
 	ensure()
+	if spec.Name == "" {
+		return fmt.Errorf("service: Spec.Name is required")
+	}
+	if spec.Handler == nil {
+		return fmt.Errorf("service: %s has no Handler", spec.Name)
+	}
 	svc := gomicro.New(
-		gomicro.Name(name),
+		gomicro.Name(spec.Name),
 		gomicro.Address(advertiseAddress()), // loopback in-process; routable when networked
 		gomicro.Registry(reg),
 		gomicro.Client(cl),
@@ -201,17 +208,16 @@ func Register(name string, handler any, docs ...Docs) error {
 		gomicro.Transport(tr),
 	)
 	var opts []server.HandlerOption
-	for _, d := range docs {
-		if o := endpointDocs(handler, d); o != nil {
-			opts = append(opts, o)
-		}
+	if o := endpointOptions(spec); o != nil {
+		opts = append(opts, o)
 	}
-	if err := svc.Handle(handler, opts...); err != nil {
+	if err := svc.Handle(spec.Handler, opts...); err != nil {
 		return err
 	}
 	if err := svc.Start(); err != nil {
 		return err
 	}
+	recordSpec(spec)
 	mu.Lock()
 	services = append(services, svc)
 	mu.Unlock()

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"mu/internal/service"
+	"mu/service/wallet"
 )
 
 // Server is the go-micro service handler for weather. Its methods are exposed
@@ -29,6 +30,12 @@ func (Server) Forecast(_ context.Context, req *ForecastRequest, rsp *ForecastRes
 	return nil
 }
 
-var toolDocs = service.Docs{
-	"Forecast": "Get the weather forecast for a location — current conditions and the days ahead",
+var Spec = service.Spec{
+	Name:        "weather",
+	Handler:     new(Server),
+	Description: "Forecast, conditions and pollen",
+	Page:        "/weather",
+	Endpoints: map[string]service.Endpoint{
+		"Forecast": {Doc: "Get the weather forecast for a location — current conditions and the days ahead", Cost: wallet.OpWeatherForecast},
+	},
 }

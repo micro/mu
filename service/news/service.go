@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"mu/internal/service"
+	"mu/service/wallet"
 )
 
 // Server is the go-micro service handler for news. Its methods are exposed as
@@ -67,8 +68,14 @@ func (Server) Search(_ context.Context, req *SearchRequest, rsp *SearchResponse)
 	return err
 }
 
-var toolDocs = service.Docs{
-	"List":   "Read recent news headlines with short summaries, balanced across topics",
-	"Read":   "Read one news article in full by its id or URL",
-	"Search": "Search indexed and live news for a topic",
+var Spec = service.Spec{
+	Name:        "news",
+	Handler:     new(Server),
+	Description: "Headlines aggregated from RSS feeds, with search and full articles",
+	Page:        "/news",
+	Endpoints: map[string]service.Endpoint{
+		"List":   {Doc: "Read recent news headlines with short summaries, balanced across topics"},
+		"Read":   {Doc: "Read one news article in full by its id or URL"},
+		"Search": {Doc: "Search indexed and live news for a topic", Cost: wallet.OpNewsSearch},
+	},
 }

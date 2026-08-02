@@ -9,7 +9,7 @@ import (
 
 // TestMarketsViaMesh verifies the go-micro RPC round-trip for the markets service.
 func TestMarketsViaMesh(t *testing.T) {
-	if err := service.Register("markets", new(Server)); err != nil {
+	if err := service.Register(service.Spec{Name: "markets", Handler: new(Server)}); err != nil {
 		t.Fatalf("register: %v", err)
 	}
 	var rsp ListResponse

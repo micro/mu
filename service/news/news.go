@@ -1378,7 +1378,7 @@ func parseFeed() {
 
 func Load() {
 	// Register the go-micro service.
-	if err := service.Register("news", new(Server), toolDocs); err != nil {
+	if err := service.Register(Spec); err != nil {
 		app.Log("news", "service register failed: %v", err)
 	}
 

@@ -26,7 +26,7 @@ func echoDirect(n int) int { return n + 1 }
 
 // BenchmarkServiceCall measures one in-process go-micro Call round-trip.
 func BenchmarkServiceCall(b *testing.B) {
-	if err := Register("benchsvc", BenchSrv{}); err != nil {
+	if err := Register(Spec{Name: "benchsvc", Handler: BenchSrv{}}); err != nil {
 		b.Fatalf("register: %v", err)
 	}
 	ctx := context.Background()

@@ -12,7 +12,7 @@ import (
 // name. Without an AI provider configured, Build returns an AI error — which
 // still proves the request reached the handler (not a transport/endpoint error).
 func TestAppsBuildViaMesh(t *testing.T) {
-	if err := service.Register("apps", new(Server)); err != nil {
+	if err := service.Register(service.Spec{Name: "apps", Handler: new(Server)}); err != nil {
 		t.Fatalf("register: %v", err)
 	}
 	var rsp BuildResponse

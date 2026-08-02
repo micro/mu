@@ -57,7 +57,7 @@ var dailyThemes = []struct {
 
 // Load restores the last daily image and starts the daily generator.
 func Load() {
-	if err := service.Register("images", new(Server), toolDocs); err != nil {
+	if err := service.Register(Spec); err != nil {
 		app.Log("images", "service register failed: %v", err)
 	}
 	loadArchive()

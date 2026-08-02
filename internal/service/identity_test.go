@@ -53,7 +53,7 @@ func (EchoSrv) Echo(ctx context.Context, req *EchoReq, rsp *EchoRsp) error {
 
 func registerEcho(t *testing.T) {
 	t.Helper()
-	if err := Register("echoprobe", new(EchoSrv)); err != nil {
+	if err := Register(Spec{Name: "echoprobe", Handler: new(EchoSrv)}); err != nil {
 		t.Fatalf("register: %v", err)
 	}
 }

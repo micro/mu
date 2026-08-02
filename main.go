@@ -650,7 +650,7 @@ func main() {
 
 	// recall tool — unified search across everything mu knows for the caller:
 	// the public indexed corpus (news, blog, social, video) plus their own mail.
-	if err := service.Register("index", index.Server{}, index.ToolDocs); err != nil {
+	if err := service.Register(index.Spec); err != nil {
 		app.Log("main", "recall service register failed: %v", err)
 	}
 	api.RegisterToolWithAuth(api.Tool{

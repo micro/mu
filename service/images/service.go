@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"mu/internal/service"
+	"mu/service/wallet"
 )
 
 // Server is the go-micro service handler for images. Its methods are exposed as
@@ -34,6 +35,13 @@ func (Server) Generate(ctx context.Context, req *GenerateRequest, rsp *GenerateR
 	return nil
 }
 
-var toolDocs = service.Docs{
-	"Generate": "Generate an image from a text prompt and return its URL",
+var Spec = service.Spec{
+	Name:        "images",
+	Handler:     new(Server),
+	Description: "Image generation, the daily image and its archive",
+	Page:        "/images",
+	Scoped:      true,
+	Endpoints: map[string]service.Endpoint{
+		"Generate": {Doc: "Generate an image from a text prompt and return its URL", Cost: wallet.OpImageGenerate},
+	},
 }

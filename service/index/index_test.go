@@ -10,7 +10,7 @@ import (
 
 // TestRecallViaMesh verifies the recall service RPC round-trip and endpoint name.
 func TestRecallViaMesh(t *testing.T) {
-	if err := service.Register("recall", Server{}); err != nil {
+	if err := service.Register(service.Spec{Name: "recall", Handler: Server{}}); err != nil {
 		t.Fatalf("register: %v", err)
 	}
 	var rsp Response

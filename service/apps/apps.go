@@ -201,7 +201,7 @@ func snapshotVersion(a *App, summary string) {
 
 // Load initialises the apps package and loads cached data.
 func Load() {
-	if err := service.Register("apps", new(Server), toolDocs); err != nil {
+	if err := service.Register(Spec); err != nil {
 		app.Log("apps", "service register failed: %v", err)
 	}
 

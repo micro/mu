@@ -26,6 +26,12 @@ func (Server) List(_ context.Context, req *ListRequest, rsp *ListResponse) error
 	return nil
 }
 
-var toolDocs = service.Docs{
-	"List": "Read recent blog posts — titles, snippets and ids",
+var Spec = service.Spec{
+	Name:        "blog",
+	Handler:     new(Server),
+	Description: "Microblogging with AI-generated daily digests, federated over ActivityPub",
+	Page:        "/blog",
+	Endpoints: map[string]service.Endpoint{
+		"List": {Doc: "Read recent blog posts — titles, snippets and ids"},
+	},
 }

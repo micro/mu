@@ -9,7 +9,7 @@ import (
 )
 
 func TestAppsSearchReadViaMesh(t *testing.T) {
-	if err := service.Register("apps", new(Server)); err != nil {
+	if err := service.Register(service.Spec{Name: "apps", Handler: new(Server)}); err != nil {
 		t.Fatalf("register: %v", err)
 	}
 	var sr AppSearchResponse
