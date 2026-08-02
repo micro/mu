@@ -33,7 +33,7 @@ the UI still works). micro.mu runs on Atlas Cloud.
 ## Web Search Configuration
 
 ```bash
-# Brave Search API key — required for search_web and the /search page
+# Brave Search API key — required for web_search and the /search page
 export BRAVE_API_KEY="your-brave-api-key"
 ```
 
@@ -205,7 +205,7 @@ export MAIL_SELECTOR="default"
 | `ATLAS_API_KEY` | - | Atlas Cloud / DeepSeek API key (alternative AI provider) |
 | `OPENAI_BASE_URL` | - | OpenAI-compatible endpoint (e.g. Ollama at `http://localhost:11434/v1`) |
 | `OPENAI_API_KEY` | - | API key for the OpenAI-compatible endpoint (`ollama` for local Ollama) |
-| `BRAVE_API_KEY` | - | Brave Search API key — required for `search_web` and the `/search` page |
+| `BRAVE_API_KEY` | - | Brave Search API key — required for `web_search` and the `/search` page |
 | `YOUTUBE_API_KEY` | - | YouTube API key for video functionality |
 | `GOOGLE_API_KEY` | - | Google Places API key for enhanced places search |
 | `MAIL_PORT` | `2525` | Port for messaging server (SMTP protocol, use 25 for production) |

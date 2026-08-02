@@ -32,7 +32,7 @@ needs from it; a surface may not keep its own list. Account scoping, the
 destructive-method guard, nav labels and the endpoint descriptions the agent
 reads are all derived from it — each of those used to be a hand-maintained map
 in a different package, which is how one capability came to be called `search`,
-`search_web`, `index` and `web_search` at the same time.
+`web_search`, `index` and `web_search` at the same time.
 
 The handler is plain typed Go — `func (Server) Method(ctx, *Req, *Rsp) error` —
 and the `description` struct tags on request and response fields become the tool

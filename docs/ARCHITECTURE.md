@@ -1,6 +1,6 @@
 # Architecture
 
-Mu is structured as a set of **building blocks** composed on top of shared **subsystems**.
+Mu is structured as a set of **services** composed on top of shared **subsystems**.
 
 ## Directory Layout
 
@@ -38,7 +38,7 @@ mu/
 
 ### Subsystems (`internal/`)
 
-Subsystems provide **infrastructure** that building blocks depend on. They live in
+Subsystems provide **infrastructure** that services depend on. They live in
 `internal/` to enforce at the Go compiler level that only code within this module
 can import them — they are not features, they are plumbing.
 
@@ -52,16 +52,16 @@ can import them — they are not features, they are plumbing.
 | `internal/flag` | Content flagging, hiding, auto-moderation | `data`                |
 
 **Layering rule:** Subsystems may only import other subsystems (and only downward:
-`data` ← `auth` ← `app` ← `ai`, `api`). Subsystems must **never** import building blocks.
+`data` ← `auth` ← `app` ← `ai`, `api`). Subsystems must **never** import services.
 
 ### Building Blocks (top-level packages)
 
-Building blocks are **features**. Each building block:
+Services are **features**. Each service:
 
 1. Has a `Load()` function called from `main.go` at startup
 2. Has a `Handler(w, r)` function registered as an HTTP route
 3. Imports only subsystems (`internal/*`) and the `wallet` package for quota
-4. Does **not** import other building blocks (with documented exceptions below)
+4. Does **not** import other services (with documented exceptions below)
 
 | Package     | Route(s)                 | Subsystems Used                     |
 |-------------|--------------------------|-------------------------------------|
@@ -82,12 +82,12 @@ Building blocks are **features**. Each building block:
 | `wallet`    | `/wallet`                | `app`, `auth`, `data`               |
 | `weather`   | `/weather`               | `app`, `auth`                       |
 
-Most building blocks also import `wallet` for quota checking on metered operations.
+Most services also import `wallet` for quota checking on metered operations.
 
 ### Composition Layers
 
 Some packages act as **composition layers** that aggregate content from multiple
-building blocks to render combined views:
+services to render combined views:
 
 - **`home/`** — renders home screen cards by importing `blog`, `news`, `markets`,
   `reminder`, `social`, `video`, `agent`. This is intentional: home is a
@@ -97,7 +97,7 @@ building blocks to render combined views:
   `markets`, `video`. This is a scheduled background job that stores its own
   `digests.json` — it is a news summary, not a blog post.
 
-- **`blog/opinion.go`** — generates a daily opinion piece using `news`, `markets`,
+- **`service/blog/opinion.go`** — generates a daily opinion piece using `news`, `markets`,
   `reminder`, `search`, `video` as context. The opinion is published as a blog
   post. The editorial memory system (`opinion_memory.go`) tracks stances,
   directives, and topic history so the agent evolves its perspective over time.
@@ -113,7 +113,7 @@ is to replace them with the event system (`data.Subscribe`/`data.Publish`).
 
 ### Initialization
 
-Every building block defines `Load()` (even if it's a no-op). `main.go` calls
+Every service defines `Load()` (even if it's a no-op). `main.go` calls
 them in dependency order:
 
 ```go
@@ -151,7 +151,7 @@ are registered in `main.go` via `http.HandleFunc`. Handlers use:
 
 ### Data Storage
 
-Building blocks persist state via `data.LoadFile()` / `data.SaveFile()` using
+Services persist state via `data.LoadFile()` / `data.SaveFile()` using
 JSON files. Each block owns its own files (e.g., `blog.json`).
 
 Searchable content is indexed via `data.Index(id, type, title, content, meta)`.
@@ -160,7 +160,7 @@ Searchable content is indexed via `data.Index(id, type, title, content, meta)`.
 
 Tools are registered in `main.go` and `internal/api/mcp.go` via `api.RegisterTool()`.
 The agent executes tools through `api.ExecuteTool()` which creates internal HTTP
-requests — it does **not** import building blocks directly.
+requests — it does **not** import services directly.
 
 ### Event System
 
@@ -181,9 +181,9 @@ wallet.ConsumeQuota(accountID, wallet.OpSomeAction)
 
 ## Dependency Rules
 
-1. **Subsystems never import building blocks** — enforced by `internal/`
-2. **Building blocks import subsystems freely** — that's what they're for
-3. **Building blocks should not import each other** — except documented composition layers
-4. **`wallet` is the one cross-cutting building block** — most blocks import it for quota
+1. **Subsystems never import services** — enforced by `internal/`
+2. **Services import subsystems freely** — that's what they're for
+3. **Services should not import each other** — except documented composition layers
+4. **`wallet` is the one cross-cutting service** — most blocks import it for quota
 5. **`admin` imports `mail`** — for spam filter and blocklist management in the
    admin panel. This is an acceptable coupling since admin is a management UI

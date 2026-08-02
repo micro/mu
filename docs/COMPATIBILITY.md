@@ -74,8 +74,8 @@ When something stable has to change:
 
 MCP tool renames are the worked example: `markets` became `markets_list`, and
 `markets` still resolves. Likewise `web_search`/`web_fetch` are now
-`search_web`/`search_fetch`, `image_generate`/`image_search` are
-`images_generate`/`images_search`, `reminder` is `islam`, and `recall` is
+`web_search`/`search_fetch`, `image_generate`/`image_search` are
+`images_generate`/`images_search`, `reminder` is `islam`, and `index_search` is
 `index` — every old name still works. That is the pattern for every rename.
 
 ## Known exceptions

@@ -21,7 +21,7 @@ When x402 is enabled on the server (`X402_PAY_TO` is set), any metered tool call
 ```bash
 curl -X POST https://micro.mu/mcp \
   -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"search_web","arguments":{"query":"latest AI news"}}}'
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"web_search","arguments":{"query":"latest AI news"}}}'
 ```
 
 **2. Server returns 402 with payment requirements:**
@@ -37,7 +37,7 @@ X-PAYMENT-REQUIRED: eyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsi...
     "network": "eip155:8453",
     "maxAmountRequired": "$0.05",
     "resource": "/mcp",
-    "description": "Access to search_web",
+    "description": "Access to web_search",
     "payTo": "0x...",
     "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
   }],
@@ -51,7 +51,7 @@ X-PAYMENT-REQUIRED: eyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsi...
 curl -X POST https://micro.mu/mcp \
   -H "Content-Type: application/json" \
   -H "X-PAYMENT: <base64-encoded-payment-payload>" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"search_web","arguments":{"query":"latest AI news"}}}'
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"web_search","arguments":{"query":"latest AI news"}}}'
 ```
 
 **4. Server verifies, settles, and returns the result.**
@@ -174,7 +174,7 @@ query with a `where` filter (`eq`, `ne`, `gt`/`gte`/`lt`/`lte`, `contains`, `in`
 # Store a private record
 curl -X POST https://micro.mu/mcp \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"db_set","arguments":{"collection":"tasks","data":{"title":"Ship it","done":false}}}}'
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"db_create","arguments":{"collection":"tasks","data":{"title":"Ship it","done":false}}}}'
 
 # List your open tasks
 curl -X POST https://micro.mu/mcp \
@@ -214,7 +214,7 @@ With x402 payment:
 curl -X POST https://micro.mu/mcp \
   -H "Content-Type: application/json" \
   -H "X-PAYMENT: <payment-payload>" \
-  -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"search_web","arguments":{"query":"latest news"}}}'
+  -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"web_search","arguments":{"query":"latest news"}}}'
 ```
 
 With account token:

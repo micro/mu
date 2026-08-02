@@ -171,11 +171,6 @@ type Tool struct {
 // Set by main.go to wire in auth + wallet packages without import cycles.
 var QuotaCheck func(r *http.Request, op string) (bool, int, error)
 
-// ToolGuard is called before executing any tool — used for tool-specific
-// pre-checks (e.g. signup rate limiting per IP). Returning an error blocks
-// the call and the error message is returned to the caller. Set by main.go.
-var ToolGuard func(r *http.Request, toolName string) error
-
 // PaymentRequiredResponse is called when quota check fails to build x402 payment
 // requirements. Returns nil if x402 is not enabled. Set by main.go.
 var PaymentRequiredResponse func(w http.ResponseWriter, op string, resource string)
@@ -193,16 +188,6 @@ type ToolParam struct {
 	Type        string `json:"type"`
 	Description string `json:"description"`
 	Required    bool   `json:"required"`
-}
-
-// Result is the unified value a tool/capability can return: model-ready text
-// for the LLM and chat, an optional rich HTML card for the visual surface, and
-// optional structured data. Tools that have both an explanation and a visual
-// should return this so one handler feeds both the agent and the feed.
-type Result struct {
-	Text string `json:"text,omitempty"`
-	HTML string `json:"html,omitempty"`
-	Data any    `json:"data,omitempty"`
 }
 
 // MCPWalletOp parses a JSON-RPC MCP request body and returns the wallet

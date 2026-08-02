@@ -114,7 +114,6 @@ func stripTags(s string) string {
 	return b.String()
 }
 
-// ToolDocs describes this service's endpoints for the agent's tool list.
 // Not Scoped, for the same reason stream is not: a guest may search, they just
 // get less. Search adds the caller's mail only when there is a caller, so an
 // unauthenticated search returns public indexed content and nothing else.

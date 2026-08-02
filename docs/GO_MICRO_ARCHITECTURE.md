@@ -93,7 +93,7 @@ things that are genuinely Mu-specific.
 
 ## Migration order (incremental, no regression; verify each)
 
-1. ✅ **Reference vertical: markets.** Done — `markets/snapshot.go`: the service
+1. ✅ **Reference vertical: markets.** Done — `service/markets/snapshot.go`: the service
    publishes its rendered card to the go-micro store + broker; `MarketsHTML()`
    serves a broker-fed mirror with a fallback to locally-generated HTML. Render
    stays a memory read.

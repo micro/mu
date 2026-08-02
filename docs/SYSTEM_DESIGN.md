@@ -32,7 +32,7 @@ Mu is built as a **single Go binary** that runs on one server, on top of [Go Mic
 
 ### Layering Model
 
-The system is structured in layers, from fundamental subsystems up through building blocks to agents that compose them.
+The system is structured in layers, from fundamental subsystems up through services to agents that compose them.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -62,12 +62,12 @@ The system is structured in layers, from fundamental subsystems up through build
 **Subsystems** are the fundamental internals — app rendering, API layer, AI integration, data storage,
 authentication, and admin tools. They provide the primitives that everything else is built on.
 
-**Building blocks** are the user-facing features — blog, news, chat, video, mail, markets, wallet,
+**Services** are the user-facing features — blog, news, chat, video, mail, markets, wallet,
 places, weather, search, and home. Each one is composed from the subsystems: it uses `app/` for rendering,
 `api/` for endpoints, `ai/` for intelligence, and `data/` for storage and events.
 
-**Agents** sit on top and compose building blocks autonomously. An agent can read news, check markets,
-generate analysis with AI, and publish to the blog — all by orchestrating the existing building blocks.
+**Agents** sit on top and compose services autonomously. An agent can read news, check markets,
+generate analysis with AI, and publish to the blog — all by orchestrating the existing services.
 No special infrastructure needed; agents are processes that combine what already exists.
 
 ### Directory Structure
@@ -99,7 +99,7 @@ mu/
 ├── home/                 # Home screen cards
 ├── user/                 # User profiles, presence tracking
 │
-│   Agents (compose building blocks)
+│   Agents (compose services)
 ├── agent/                # AI agent with MCP tool access
 │
 ├── docs/                 # Documentation
@@ -110,7 +110,7 @@ mu/
 
 ### App (`app/`)
 
-The rendering and presentation layer. Every building block uses `app/` to serve HTML or JSON responses.
+The rendering and presentation layer. Every service uses `app/` to serve HTML or JSON responses.
 
 - **Server-side templates** - Go HTML templates for all pages
 - **Progressive Web App** - Manifest, icons, mobile install support
@@ -121,7 +121,7 @@ The rendering and presentation layer. Every building block uses `app/` to serve 
 
 The interface layer. Defines REST endpoints and exposes the MCP server for AI agent integration.
 
-- **REST API** - Documented endpoints for all building blocks (see `internal/api/api.go`)
+- **REST API** - Documented endpoints for all services (see `internal/api/api.go`)
 - **MCP Server** - Model Context Protocol at `/mcp` for AI tool integration (see `internal/api/mcp.go`)
   - 30+ tools: signup, login, chat, search, blog CRUD, mail, markets, weather, places, apps, etc.
   - JSON-RPC 2.0 protocol
@@ -130,7 +130,7 @@ The interface layer. Defines REST endpoints and exposes the MCP server for AI ag
 
 ### AI (`ai/`)
 
-The intelligence layer. Provides LLM access to any building block that needs it.
+The intelligence layer. Provides LLM access to any service that needs it.
 
 - **Anthropic Claude** - Primary LLM provider
 - **Model configuration** - Configurable via environment variables
@@ -139,7 +139,7 @@ The intelligence layer. Provides LLM access to any building block that needs it.
 
 ### Data (`data/`)
 
-The storage and communication layer. Every building block stores and retrieves data through this subsystem.
+The storage and communication layer. Every service stores and retrieves data through this subsystem.
 
 - **File storage** - JSON files on disk (default)
 - **SQLite with FTS5** - Full-text search for production (`MU_USE_SQLITE=1`)
@@ -174,7 +174,7 @@ The operations layer. Server management, moderation, and monitoring.
 
 ## Building Blocks
 
-### Blog (`blog/`)
+### Blog (`service/blog/`)
 
 Microblogging with federation support.
 
@@ -184,7 +184,7 @@ Microblogging with federation support.
 - **Author controls** - Edit/delete for post authors
 - **Daily digests** - AI-generated summaries from trending news
 
-### News (`news/`)
+### News (`service/news/`)
 
 RSS feed aggregation with AI enhancement.
 
@@ -194,7 +194,7 @@ RSS feed aggregation with AI enhancement.
 - **AI summaries** - Article summarization via chat module
 - **Full-text search** - Search across all indexed articles
 
-### Chat (`chat/`)
+### Chat (`service/chat/`)
 
 AI-powered conversation with contextual knowledge.
 
@@ -204,7 +204,7 @@ AI-powered conversation with contextual knowledge.
 - **System prompts** - Per-topic personality via `chat/prompts.json`
 - **HN context** - Event-driven comment refresh for active discussions
 
-### Video (`video/`)
+### Video (`service/video/`)
 
 YouTube integration without ads or tracking.
 
@@ -213,7 +213,7 @@ YouTube integration without ads or tracking.
 - **Ad-free playback** - Embedded player
 - **Recent searches** - Client-side history
 
-### Mail (`mail/`)
+### Mail (`service/mail/`)
 
 Private messaging with full email capability.
 
@@ -224,14 +224,14 @@ Private messaging with full email capability.
 - **Spam filtering** - Configurable blocklist
 - **Threading** - Conversation view with replies
 
-### Markets (`markets/`)
+### Markets (`service/markets/`)
 
 Live financial data.
 
 - **Crypto prices** - Via Coinbase with CoinGecko 24h changes
 - **Futures/commodities/currencies** - Yahoo Finance market data
 
-### Wallet (`wallet/`)
+### Wallet (`service/wallet/`)
 
 Credit-based usage metering.
 
@@ -240,7 +240,7 @@ Credit-based usage metering.
 - **Quota enforcement** - Integrated with API and agent
 - **Transaction tracking** - Usage history
 
-### Places (`places/`)
+### Places (`service/places/`)
 
 Location search and discovery.
 
@@ -248,14 +248,14 @@ Location search and discovery.
 - **OpenStreetMap fallback** - Open location data
 - **Saved categories** - Configurable in `places/locations.json`
 
-### Weather (`weather/`)
+### Weather (`service/weather/`)
 
 Weather forecasts.
 
 - **Google Weather API** - Forecast data
 - **Location-based** - Weather by place
 
-### Search (`search/`)
+### Search (`service/search/`)
 
 Web search without tracking.
 
@@ -268,13 +268,13 @@ Web search without tracking.
 Home screen overview.
 
 - **Cards** - Configurable summary widgets via `home/cards.json`
-- **At-a-glance** - Quick access to all building blocks
+- **At-a-glance** - Quick access to all services
 
 ## Agents
 
 ### Agent (`agent/`)
 
-The agent layer composes building blocks to observe, analyze, and act autonomously.
+The agent layer composes services to observe, analyze, and act autonomously.
 
 - **MCP tool access** - Calls the same MCP tools exposed at `/mcp`
 - **Conversational interface** - Natural language queries
@@ -282,10 +282,10 @@ The agent layer composes building blocks to observe, analyze, and act autonomous
 - **Credit metering** - Usage tracked via wallet
 - **Query history** - Tracks recent interactions
 
-An agent doesn't need special infrastructure — it works by composing existing building blocks.
+An agent doesn't need special infrastructure — it works by composing existing services.
 For example, an opinion agent would: read from news (data), check markets (data), generate
-analysis (AI), and publish to the blog (building block). All using the same subsystems and
-building blocks that everything else uses.
+analysis (AI), and publish to the blog (service). All using the same subsystems and
+services that everything else uses.
 
 ## Design Patterns
 
