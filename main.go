@@ -1880,6 +1880,29 @@ func main() {
 				app.Log("wallet", "Charged %s %d credit(s) for %s %s", sess.Account, wallet.GetOperationCost(op), r.Method, r.URL.Path)
 			}
 
+			// MCP authorization: an unauthenticated call to a tool that needs an
+			// account gets a 401 naming the resource metadata, which is how a
+			// client discovers it should start an OAuth flow. The discovery
+			// documents existed without this and were never fetched, so the
+			// standard way of connecting quietly did not work.
+			//
+			// Only auth-requiring tools challenge. A blanket 401 would make news
+			// and weather unreachable without an account.
+			if r.URL.Path == "/mcp" && r.Method == http.MethodPost {
+				body, _ := io.ReadAll(io.LimitReader(r.Body, 1<<20))
+				r.Body.Close()
+				r.Body = io.NopCloser(bytes.NewReader(body))
+				if api.MCPToolNeedsAuth(body) {
+					if _, err := auth.GetSession(r); err != nil && !wallet.HasPayment(r) {
+						origin := app.BaseURL(r)
+						w.Header().Set("WWW-Authenticate",
+							`Bearer resource_metadata="`+origin+`/.well-known/oauth-protected-resource"`)
+						app.RespondError(w, http.StatusUnauthorized, "authentication required")
+						return
+					}
+				}
+			}
+
 			// x402: gate metered MCP tool calls. /mcp is a public endpoint, so
 			// the payment handshake lives here where auth + wallet are in scope.
 			// A metered tools/call with no session gets the standard 402
