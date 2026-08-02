@@ -358,26 +358,6 @@ td {
   flex-direction: column;
 }
 
-#nav-search form {
-  display: flex;
-}
-
-#nav-search input {
-  flex: 1;
-  padding: 7px 10px;
-  border: 1px solid #ddd;
-  border-radius: var(--border-radius);
-  font-size: 13px;
-  font-family: inherit;
-  outline: none;
-  background: #f7f7f7;
-}
-
-#nav-search input:focus {
-  border-color: #aaa;
-  background: #fff;
-}
-
 #nav {
   display: flex;
   flex-direction: column;
@@ -4976,10 +4956,6 @@ a.btn-secondary:hover, .btn-secondary:hover {
   min-width: 0;
 }
 
-.weather-or {
-  color: var(--text-muted);
-}
-
 .table-scroll {
   overflow-x: auto;
   margin-bottom: 20px;
@@ -4993,10 +4969,6 @@ a.btn-secondary:hover, .btn-secondary:hover {
   .weather-controls {
     flex-direction: column;
     align-items: stretch;
-  }
-
-  .weather-or {
-    display: none;
   }
 
   .weather-search-form {

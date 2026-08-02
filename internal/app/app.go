@@ -324,11 +324,6 @@ var Template = `
     <div id="nav-overlay" onclick="toggleMenu()"></div>
     <div id="container">
       <div id="nav-container">
-        <div id="nav-search">
-          <form action="/agent" method="GET" id="nav-assist-form">
-            <input type="text" name="q" placeholder="Talk to Micro..." aria-label="Ask Micro" id="nav-assist-input">
-          </form>
-        </div>
         <div id="nav">
           <a href="/home"><img src="/home.png?` + Version + `"><span class="label">Home</span></a>
           <a href="/agent"><img src="/agent.svg?` + Version + `"><span class="label">Agent</span></a>
