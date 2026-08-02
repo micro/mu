@@ -467,31 +467,22 @@ var tools = []Tool{
 			{Name: "body", Type: "string", Description: "Message body", Required: true},
 		},
 	},
-	{
-		Name:        "wallet_balance",
-		Description: "Get wallet credit balance",
-		Method:      "GET",
-		Path:        "/wallet",
-		// No params. It carried one — "balance: set to 1 to get balance" —
-		// which made a tool called wallet_balance return the balance only if
-		// the caller guessed a flag, and the whole wallet web page otherwise.
-	},
-	{
-		Name:        "wallet_transfer",
-		Description: "Transfer credits to another user by username",
-		Method:      "POST",
-		Path:        "/wallet/transfer",
-		Params: []ToolParam{
-			{Name: "to", Type: "string", Description: "Recipient username", Required: true},
-			{Name: "amount", Type: "number", Description: "Number of credits to transfer", Required: true},
-		},
-	},
-	{
-		Name:        "wallet_topup",
-		Description: "Get available wallet topup payment methods with crypto deposit address and card payment tiers",
-		Method:      "GET",
-		Path:        "/wallet/topup",
-	},
+	// wallet_balance is registered in main.go, where the wallet package is
+	// reachable — it answers credits, deposit address and USDC in one call.
+	//
+	// Three tools used to live here. wallet_transfer moved credits to another
+	// user by username, irreversibly, in a single call with no confirmation.
+	// The same agent holds mail_inbox, news_read, web_fetch and db_list — four
+	// ways to read text somebody else wrote — and nothing downstream could tell
+	// "the user asked" from "the agent read it in an email". Transferring
+	// credits is a thing a person does a handful of times, deliberately, and
+	// /wallet/transfer already does it with a form and a CSRF token. It is not
+	// a capability an agent should be granted, so it is not a tool.
+	//
+	// wallet_topup returned card tiers to a caller that cannot complete a card
+	// purchase. Its only real output was "tell your human where to go", which
+	// belongs in the message you get when a call fails for want of credits, not
+	// in a tool an agent has to know to call.
 	// Stream (console)
 	{
 		Name:        "stream_list",

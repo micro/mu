@@ -559,38 +559,8 @@ func TestFormatWalletBalanceResult_InvalidJSON(t *testing.T) {
 	}
 }
 
-func TestFormatWalletTopupResult_WithMethods(t *testing.T) {
-	result := `{"methods":[{"type":"card","tiers":[{"amount":1000,"credits":1000,"label":"£10"},{"amount":5000,"credits":5000,"label":"£50"}]}]}`
-	got := formatWalletTopupResult(result)
-	if !strings.Contains(got, "/wallet/topup") {
-		t.Errorf("expected topup URL in output, got %q", got)
-	}
-	if !strings.Contains(got, "card payment") && !strings.Contains(got, "card") {
-		t.Errorf("expected card payment label in output, got %q", got)
-	}
-	if !strings.Contains(got, "£10") {
-		t.Errorf("expected tier label in output, got %q", got)
-	}
-	if !strings.Contains(got, "1000 credits") {
-		t.Errorf("expected credits in output, got %q", got)
-	}
-}
 
-func TestFormatWalletTopupResult_NoMethods(t *testing.T) {
-	result := `{"methods":[]}`
-	got := formatWalletTopupResult(result)
-	if !strings.Contains(got, "/wallet/topup") {
-		t.Errorf("expected topup URL in no-methods output, got %q", got)
-	}
-}
 
-func TestFormatWalletTopupResult_InvalidJSON(t *testing.T) {
-	result := `not json`
-	got := formatWalletTopupResult(result)
-	if got != result {
-		t.Errorf("expected original result as fallback, got %q", got)
-	}
-}
 
 func TestFormatNewsResult_WithTimestamps(t *testing.T) {
 	result := `{"feed":[{"title":"Iran crisis","description":"Conflict escalates","category":"world","url":"/news?id=1","posted_at":"2026-03-02T10:00:00Z","published":"Sun, 02 Mar 2026 10:00:00 +0000"},{"title":"Peace talks","description":"Negotiations begin","category":"world","url":"/news?id=2","posted_at":"2026-03-01T08:00:00Z"}]}`
@@ -667,16 +637,17 @@ func TestRenderToolCallRef_Category(t *testing.T) {
 }
 
 func TestFormatToolResult_WalletDispatch(t *testing.T) {
-	balanceResult := `{"balance":500}`
-	got := formatToolResult("wallet_balance", balanceResult, nil)
-	if !strings.Contains(got, "500 credits") {
-		t.Errorf("expected wallet_balance formatter to be called, got %q", got)
+	// One tool answers the whole question: credits, and where to send USDC.
+	got := formatToolResult("wallet_balance", `{"credits":500,"address":"0xabc","usdc":"1.50","network":"base"}`, nil)
+	for _, want := range []string{"500 credits", "0xabc", "/wallet/topup"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("wallet_balance output is missing %q, got %q", want, got)
+		}
 	}
 
-	topupResult := `{"methods":[{"type":"card","tiers":[{"amount":1000,"credits":1000,"label":"£10"}]}]}`
-	got = formatToolResult("wallet_topup", topupResult, nil)
-	if !strings.Contains(got, "topup") {
-		t.Errorf("expected wallet_topup formatter to be called, got %q", got)
+	// An answer built before the merge used "balance" for the same number.
+	if got := formatToolResult("wallet_balance", `{"balance":500}`, nil); !strings.Contains(got, "500 credits") {
+		t.Errorf("the old balance key no longer formats, got %q", got)
 	}
 }
 

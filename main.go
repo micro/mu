@@ -1220,18 +1220,28 @@ func main() {
 		return answer, nil
 	})
 
-	// Wallet: the user's Base wallet — address + USDC balance. It funds credits;
-	// it is not what calls to this instance are charged against.
+	// Wallet: one tool, one answer about your money.
+	//
+	// There were two — wallet_balance for credits and wallet for the Base
+	// address — so "what's in my wallet" had two answers depending on which the
+	// planner picked. Credits are what calls are charged in and USDC is how you
+	// top them up, which makes them two fields of one thing, not two tools. The
+	// old name stays as an alias so "my wallet" still resolves.
+	//
+	// It is also no longer path-backed. Pointing a tool at /wallet meant
+	// scraping the wallet web page for data, which is how it came to return
+	// 20KB of HTML to anyone who didn't pass a magic query flag.
 	api.RegisterToolWithAuth(api.Tool{
-		Name:        "wallet",
-		Description: "Get your Base wallet address and USDC balance. Send USDC here to top up your credits.",
+		Name:        "wallet_balance",
+		Aliases:     []string{"wallet"},
+		Description: "Get your balance: credits (what calls are charged in), plus your Base address and USDC balance for topping up.",
 	}, func(args map[string]any, accountID string) (string, error) {
-		bw, err := wallet.GetOrCreateWallet(accountID)
-		if err != nil {
-			return "", err
+		out := map[string]any{"credits": wallet.GetBalance(accountID)}
+		if bw, err := wallet.GetOrCreateWallet(accountID); err == nil {
+			usdc, _ := wallet.USDCBalance(bw.Address)
+			out["address"], out["network"], out["usdc"] = bw.Address, "base", usdc
 		}
-		usdc, _ := wallet.USDCBalance(bw.Address)
-		b, _ := json.Marshal(map[string]any{"address": bw.Address, "network": "base", "usdc": usdc})
+		b, _ := json.Marshal(out)
 		return string(b), nil
 	})
 
@@ -1813,7 +1823,7 @@ func main() {
 						}
 						canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, op)
 						if !canProceed {
-							http.Error(w, fmt.Sprintf("This costs %d credit(s). Top up at /wallet", cost), http.StatusPaymentRequired)
+							http.Error(w, fmt.Sprintf("This costs %d credit(s). Top up at /wallet/topup", cost), http.StatusPaymentRequired)
 							return
 						}
 						if err := wallet.ConsumeQuota(sess.Account, op); err != nil {
@@ -1873,7 +1883,7 @@ func main() {
 				}
 				canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, op)
 				if !canProceed {
-					http.Error(w, fmt.Sprintf("This costs %d credit(s). Top up at /wallet", cost), http.StatusPaymentRequired)
+					http.Error(w, fmt.Sprintf("This costs %d credit(s). Top up at /wallet/topup", cost), http.StatusPaymentRequired)
 					return
 				}
 				// Charge up-front. The handler runs only if the

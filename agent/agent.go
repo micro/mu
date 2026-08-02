@@ -730,8 +730,7 @@ const agentToolsDesc = `Available tools (use exact name):
 - apps_build: build a small app (a tracker, checklist, or counter) from a description (args: {"prompt":"an expense tracker"})
 - apps_edit: Edit an existing app (args: {"slug":"app-slug","html":"<new html>","name":"New Name"})
 - apps_run: Run JavaScript code and return the result (args: {"code":"return 2+2"})
-- wallet_balance: Check your wallet credit balance (no args)
-- wallet: Get your Base wallet address and USDC balance (no args). Sending USDC there tops up credits.
+- wallet_balance: Check your balance — credits, plus your Base address and USDC for topping up (no args). To add credits, point the user at /wallet/topup; there is no tool for it.
 - pay: Call a paid tool on ANOTHER MCP server and settle it from your Base wallet (args: {"tool":"news_search","server":"example.com","arguments":{"query":"ai"}}). Tools on this instance are called directly and draw credits — do not use pay for them.
 - stream: Read the public event stream (no args)`
 
@@ -808,7 +807,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	if !isGuest && QuotaCheck != nil {
 		canProceed, _, err := QuotaCheck(r, model.WalletOp)
 		if !canProceed {
-			msg := "Insufficient credits for agent query. Top up at /wallet."
+			msg := "Insufficient credits for agent query. Top up at /wallet/topup."
 			if err != nil {
 				msg = err.Error()
 			}
@@ -1245,10 +1244,10 @@ func shortcutToolCalls(prompt string) []shortcutToolCall {
 		"search the web for the latest ai news":         {{Tool: "web_search", Args: map[string]any{"q": "latest AI news"}}},
 		"show me today's islamic reminder":              {{Tool: "islam", Args: map[string]any{}}},
 		// Wallet
-		"my wallet":      {{Tool: "wallet", Args: map[string]any{}}},
-		"wallet":         {{Tool: "wallet", Args: map[string]any{}}},
-		"wallet balance": {{Tool: "wallet", Args: map[string]any{}}},
-		"wallet address": {{Tool: "wallet", Args: map[string]any{}}},
+		"my wallet":      {{Tool: "wallet_balance", Args: map[string]any{}}},
+		"wallet":         {{Tool: "wallet_balance", Args: map[string]any{}}},
+		"wallet balance": {{Tool: "wallet_balance", Args: map[string]any{}}},
+		"wallet address": {{Tool: "wallet_balance", Args: map[string]any{}}},
 	}
 	lower := strings.ToLower(strings.TrimSpace(prompt))
 	if tc, ok := aliases[lower]; ok {
@@ -1534,8 +1533,6 @@ func toolLabel(tool string) string {
 		return "📝 Reading blog posts"
 	case "wallet_balance":
 		return "💳 Checking wallet balance"
-	case "wallet_topup":
-		return "💳 Getting topup options"
 	case "apps_search":
 		return "📱 Searching apps"
 	case "apps_read":
@@ -1878,8 +1875,6 @@ func formatToolResult(toolName, result string, args map[string]any) string {
 		return formatPlacesResult(result, args)
 	case "wallet_balance":
 		return formatWalletBalanceResult(result)
-	case "wallet_topup":
-		return formatWalletTopupResult(result)
 	case "apps_search":
 		return formatAppsSearchResult(result)
 	case "apps_read":
@@ -2394,44 +2389,34 @@ type placeItem struct {
 
 // formatWalletBalanceResult converts a raw JSON wallet balance result into
 // human-readable text for the AI synthesis RAG context.
+//
+// One tool answers the whole question now, so this renders credits and the
+// deposit address together. "balance" is the key the old path-backed tool
+// returned; it is still read so an answer built before this change formats.
 func formatWalletBalanceResult(result string) string {
 	var data struct {
-		Balance int `json:"balance"`
+		Credits *int   `json:"credits"`
+		Balance *int   `json:"balance"`
+		Address string `json:"address"`
+		USDC    string `json:"usdc"`
 	}
 	if err := json.Unmarshal([]byte(result), &data); err != nil {
 		return result
 	}
-	pounds := data.Balance / 100
-	pence := data.Balance % 100
-	return fmt.Sprintf("Wallet balance: %d credits (£%d.%02d). Top up at /wallet/topup.\n", data.Balance, pounds, pence)
-}
+	credits := 0
+	switch {
+	case data.Credits != nil:
+		credits = *data.Credits
+	case data.Balance != nil:
+		credits = *data.Balance
+	default:
+		return result
+	}
 
-// formatWalletTopupResult converts a raw JSON wallet topup methods result into
-// human-readable text for the AI synthesis RAG context.
-func formatWalletTopupResult(result string) string {
-	var data struct {
-		Methods []struct {
-			Type  string `json:"type"`
-			Tiers []struct {
-				Amount  int    `json:"amount"`
-				Credits int    `json:"credits"`
-				Label   string `json:"label"`
-			} `json:"tiers"`
-		} `json:"methods"`
-	}
-	if err := json.Unmarshal([]byte(result), &data); err != nil {
-		return result
-	}
-	if len(data.Methods) == 0 {
-		return "No topup methods available. Visit /wallet/topup to add credits."
-	}
 	var sb strings.Builder
-	sb.WriteString("Wallet topup options (visit /wallet/topup to add credits):\n")
-	for _, m := range data.Methods {
-		sb.WriteString(fmt.Sprintf("%s payment:\n", m.Type))
-		for _, t := range m.Tiers {
-			sb.WriteString(fmt.Sprintf("- %s: %d credits\n", t.Label, t.Credits))
-		}
+	fmt.Fprintf(&sb, "Wallet balance: %d credits (£%d.%02d). Top up at /wallet/topup.\n", credits, credits/100, credits%100)
+	if data.Address != "" {
+		fmt.Fprintf(&sb, "Base address for USDC top-ups: %s (holding $%s USDC).\n", data.Address, data.USDC)
 	}
 	return sb.String()
 }
