@@ -15,9 +15,10 @@ import (
 // this place is took three hops through pages that each looked like a landing.
 // They are one page now, and /about and /agents redirect here.
 func Landing(w http.ResponseWriter, r *http.Request) {
-	body := `<p class="lead">The everyday internet as tools an agent can call — news, web search,
-mail, markets, weather, video, storage. Over <a href="/mcp">MCP</a> and REST, paid per request
-in USDC. No API key, no account, no signup.</p>
+	host := app.BaseURL(r)
+	body := `<p class="lead">One MCP endpoint, 59 real tools — news, web search, mail, markets,
+weather, video, storage. Connect an agent once and it has all of them, instead of wiring up
+a server for each.</p>
 
 <div class="lctas">
   <a class="lcta" href="/tools">Browse the tools →</a>
@@ -27,20 +28,21 @@ in USDC. No API key, no account, no signup.</p>
 
 <div class="lcards">
   <div class="lcard"><h3>Real tools, not wrappers</h3><p>Most things offering an agent tools are a thin layer over somebody else's API. This instance runs the mail server, the feeds, the search index and the sandbox.</p></div>
-  <div class="lcard"><h3>Two doors, one set of tools</h3><p>An agent calls <code>/mcp</code>. A person signs in and gets the home screen. Same services underneath — nothing is built twice.</p></div>
+  <div class="lcard"><h3>One endpoint, not nine</h3><p>News, search, mail and storage for an agent usually means wiring up a server for each. This is one connection and one set of credentials.</p></div>
   <div class="lcard"><h3>Yours to run</h3><p>One Go binary, self-hostable. Run an instance and you are the operator — anyone paying to call your tools pays you.</p></div>
 </div>
 
-<div class="lpay" id="paying">
-  <h2>How paying works</h2>
+<div class="lpay" id="connecting">
+  <h2>Connecting</h2>
   <ol>
-    <li><b>No login to call.</b> Point an agent or MCP client at an endpoint. Your first 10 calls per wallet are free.</li>
-    <li><b>When payment is due,</b> the endpoint answers <code>HTTP 402</code> with a price. Your agent's
-    <a href="https://x402.org">x402</a> wallet pays in stablecoin (USDC) and retries — sub-second, no account, no keys.</li>
-    <li><b>You pay the operator</b> running this instance, directly, wallet to wallet. No middleman.</li>
+    <li><b>Add the endpoint</b> to your MCP client: <code>` + host + `/mcp</code></li>
+    <li><b>Sign in when it asks.</b> The client is walked through sign-in on first call and keeps the
+    credential itself. Prefer a token you paste? Get one at <a href="/token">/token</a>.</li>
+    <li><b>Call anything.</b> Calls draw on your credits — most tools are included, the ones that cost
+    us money are priced on <a href="/pricing">pricing</a>.</li>
   </ol>
-  <p class="lnote">Prefer prepaid credits, a dashboard and the full app?
-  <a href="/signup">Create an account →</a> Both reach the same tools.</p>
+  <p class="lnote">No account yet? <a href="/signup">Create one →</a> It is the same account you sign
+  into the app with.</p>
 </div>
 
 <style>

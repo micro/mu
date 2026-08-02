@@ -274,17 +274,13 @@ func buildStatus() StatusResponse {
 		Status: googleConfigured,
 	})
 
-	// Check Payments (Stripe + x402)
+	// Check Payments. Credits are the one thing a caller pays in, so this
+	// reports whether they can be bought rather than enumerating rails.
 	stripeConfigured := os.Getenv("STRIPE_SECRET_KEY") != "" && os.Getenv("STRIPE_PUBLISHABLE_KEY") != ""
-	x402Configured := os.Getenv("X402_PAY_TO") != ""
-	paymentsConfigured := stripeConfigured || x402Configured
+	paymentsConfigured := stripeConfigured
 	quotaMode := "Unlimited (self-hosted)"
-	if stripeConfigured && x402Configured {
-		quotaMode = "Card + crypto (x402)"
-	} else if stripeConfigured {
-		quotaMode = "Card (Stripe)"
-	} else if x402Configured {
-		quotaMode = "Crypto (x402)"
+	if stripeConfigured {
+		quotaMode = "Credits, topped up by card"
 	}
 	services = append(services, StatusCheck{
 		Name:    "Payments",

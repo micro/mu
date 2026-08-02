@@ -184,7 +184,7 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	sb.WriteString(`<option value="90" selected>90 days</option><option value="365">1 year</option></select></div>`)
 	sb.WriteString(`<button type="submit">Generate Token</button></form>`)
 
-	sb.WriteString(`<p style="margin-top:20px"><a href="/account">← Account</a> · <a href="/api">API Docs</a></p>`)
+	sb.WriteString(`<p style="margin-top:20px"><a href="/account">← Account</a> · <a href="/mcp">MCP endpoint</a></p>`)
 
 	sb.WriteString(`<script>
 async function createToken(e) {

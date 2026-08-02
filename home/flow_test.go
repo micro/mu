@@ -26,3 +26,23 @@ func TestLandingLeadsToTheTools(t *testing.T) {
 		t.Error(`"See it working" points at the home screen, which shows cards rather than tool-calling`)
 	}
 }
+
+// The landing offers one way in. It used to explain a payment protocol before it
+// explained how to connect, which left a reader choosing a rail when all they
+// wanted was the endpoint.
+func TestLandingOffersOneWayIn(t *testing.T) {
+	t.Setenv("MU_DOMAIN", "micro.mu")
+
+	rec := httptest.NewRecorder()
+	Landing(rec, httptest.NewRequest("GET", "/", nil))
+	body := rec.Body.String()
+
+	for _, gone := range []string{"x402", "USDC", "402", "wallet"} {
+		if strings.Contains(body, gone) {
+			t.Errorf("the landing still explains %q instead of how to connect", gone)
+		}
+	}
+	if !strings.Contains(body, "https://micro.mu/mcp") {
+		t.Error("the landing does not name the endpoint to connect to")
+	}
+}

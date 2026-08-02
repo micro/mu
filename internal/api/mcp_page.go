@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"mu/internal/app"
@@ -39,32 +40,24 @@ func mcpPageHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<div class="card">`)
 	b.WriteString(`<h2>Model Context Protocol</h2>`)
 	b.WriteString(`<p class="card-desc">Connect AI clients (e.g. Claude Desktop) to this MCP server.</p>`)
-	b.WriteString(`<p>Endpoint: <code>/mcp</code> &mdash; <a href="/api">API Docs</a></p>`)
+	b.WriteString(`<p>Endpoint: <code>/mcp</code></p>`)
 	b.WriteString(`</div>`)
 
-	// Authentication section. Kept consistent with /developers and /api: when
-	// x402 is enabled there are two ways to call (pay-per-call with no login, or
-	// a token/credits); otherwise it's token-only.
+	// Authentication. One way in: the MCP authorization spec. A client that
+	// speaks it discovers sign-in from the 401 and keeps the credential itself;
+	// one that doesn't sends a token it was handed. Either way the header on the
+	// wire is the same, so this is one flow with two ways to fill it in — not
+	// two flows.
 	b.WriteString(`<div class="card">`)
 	b.WriteString(`<h3>Authentication</h3>`)
-	if wallet.X402Enabled() {
-		b.WriteString(`<p>Two ways to call, the same as the REST API:</p>`)
-		b.WriteString(`<ol>`)
-		b.WriteString(`<li><strong>Pay per call (x402)</strong> &mdash; no login. Call a metered tool with no auth and you get an HTTP <code>402</code> with the price and pay-to address; your x402 wallet pays in USDC and retries. Your first calls per wallet are free.</li>`)
-		b.WriteString(`<li><strong>Token &amp; credits</strong> &mdash; log in and pass a token; metered calls draw from your credit balance:`)
-		b.WriteString(`<pre style="background:#f5f5f5;padding:8px;font-size:12px;overflow-x:auto">Authorization: Bearer YOUR_TOKEN</pre>`)
-		b.WriteString(`Create a <a href="/token">Personal Access Token</a>, or call the <code>signup</code> / <code>login</code> tool to get one programmatically.</li>`)
-		b.WriteString(`</ol>`)
-		b.WriteString(`<p>Non-metered tools are free to call. A few tools that touch your account (wallet, mail, editing your apps) always need a logged-in session.</p>`)
-	} else {
-		b.WriteString(`<p>Pass a token in the <code>Authorization</code> header with each request:</p>`)
-		b.WriteString(`<pre style="background:#f5f5f5;padding:8px;font-size:12px;overflow-x:auto">Authorization: Bearer YOUR_TOKEN</pre>`)
-		b.WriteString(`<p>Two ways to obtain a token:</p>`)
-		b.WriteString(`<ol>`)
-		b.WriteString(`<li><strong>Personal Access Token (PAT)</strong> &mdash; create one at <a href="/token">/token</a> after logging in.</li>`)
-		b.WriteString(`<li><strong>Signup / Login</strong> &mdash; the agent can call the <code>signup</code> or <code>login</code> tool to obtain a session token programmatically.</li>`)
-		b.WriteString(`</ol>`)
-	}
+	b.WriteString(`<p>Calls carry a bearer token:</p>`)
+	b.WriteString(`<pre style="background:#f5f5f5;padding:8px;font-size:12px;overflow-x:auto">Authorization: Bearer YOUR_TOKEN</pre>`)
+	b.WriteString(`<p>Two ways your client gets one:</p>`)
+	b.WriteString(`<ol>`)
+	b.WriteString(`<li><strong>Sign-in from the client</strong> &mdash; call without a token and you get an HTTP <code>401</code> pointing at this instance's authorization server. Clients that speak <a href="https://modelcontextprotocol.io/specification/basic/authorization">MCP authorization</a> (Claude Desktop, Cursor) walk you through sign-in and store the token themselves. Nothing to paste.</li>`)
+	b.WriteString(`<li><strong>Personal access token</strong> &mdash; create one at <a href="/token">/token</a> and put it in your client's config.</li>`)
+	b.WriteString(`</ol>`)
+	b.WriteString(`<p>Tools that only read this instance's own content are free to call. Ones that cost us money draw credits, and a few that touch your account &mdash; wallet, mail, editing your apps &mdash; always need a signed-in session.</p>`)
 	b.WriteString(`</div>`)
 
 	// Interactive playground
@@ -179,18 +172,12 @@ func mcpPageHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`</details>`)
 	b.WriteString(`</div>`)
 
-	// Payments explainer + per-call prices, only when x402 is live.
-	if wallet.X402Enabled() {
-		b.WriteString(`<div class="card">`)
-		b.WriteString(`<h3>Payments</h3>`)
-		b.WriteString(`<p class="card-desc">Metered tools are pay-per-call. Two ways to pay:</p>`)
-		b.WriteString(`<ul style="margin:0;padding-left:20px;font-size:14px">`)
-		b.WriteString(`<li><strong>x402</strong> &mdash; agents pay per call in USDC on Base. Call a metered tool with no auth and you get an HTTP <code>402</code> whose body lists the price and pay-to address; pay and retry. No account needed.</li>`)
-		b.WriteString(`<li><strong>Credits</strong> &mdash; <a href="/token">log in with a token</a> and calls draw from your credit balance instead.</li>`)
-		b.WriteString(`</ul>`)
-		b.WriteString(`<p class="card-meta" style="margin-top:8px">Prices are shown per tool below.</p>`)
-		b.WriteString(`</div>`)
-	}
+	// What a call costs. One currency, so this is a sentence rather than a
+	// comparison table.
+	b.WriteString(`<div class="card">`)
+	b.WriteString(`<h3>What calls cost</h3>`)
+	b.WriteString(`<p class="card-desc">A call costs credits when it costs us money to run &mdash; a model call, or a paid third party. Everything that only touches this instance's own storage is included. Prices are shown per tool below, and in full on <a href="/pricing">pricing</a>.</p>`)
+	b.WriteString(`</div>`)
 
 	// Tools list with a sticky endpoint sidebar (desktop).
 	b.WriteString(mcpToolsSection())
@@ -233,8 +220,8 @@ func mcpToolsSection() string {
 	nav.WriteString(`<nav class="ep-nav"><div class="ep-nav-title">Tools</div>`)
 	for _, t := range mcpTools() {
 		price := ""
-		if p := wallet.X402PriceFor(t.WalletOp); p != "" {
-			price = `<span class="ep-price">` + p + `</span>`
+		if n := wallet.GetOperationCost(t.WalletOp); t.WalletOp != "" && n > 0 {
+			price = `<span class="ep-price">` + strconv.Itoa(n) + `</span>`
 		}
 		nav.WriteString(`<a href="#tool-` + html.EscapeString(t.Name) + `">` + html.EscapeString(t.Name) + price + `</a>`)
 	}
@@ -246,22 +233,18 @@ func mcpToolsSection() string {
 func mcpToolsHTML() string {
 	var b strings.Builder
 	for _, t := range mcpTools() {
-		b.WriteString(`<div class="card" id="tool-` + html.EscapeString(t.Name) + `">`)
+		cost := 0
 		if t.WalletOp != "" {
-			if price := wallet.X402PriceFor(t.WalletOp); price != "" {
-				b.WriteString(`<span class="tool-price"><b>` + price + `</b> <span>/ call</span></span>`)
-			} else {
-				b.WriteString(`<span class="tool-price">credits</span>`)
-			}
+			cost = wallet.GetOperationCost(t.WalletOp)
+		}
+		b.WriteString(`<div class="card" id="tool-` + html.EscapeString(t.Name) + `">`)
+		if cost > 0 {
+			b.WriteString(`<span class="tool-price"><b>` + strconv.Itoa(cost) + `</b> <span>` + creditWord(cost) + `</span></span>`)
 		}
 		b.WriteString(`<span class="card-title">` + html.EscapeString(t.Name) + `</span>`)
 		b.WriteString(app.Desc(t.Description))
-		if t.WalletOp != "" {
-			if price := wallet.X402PriceFor(t.WalletOp); price != "" {
-				b.WriteString(`<p class="card-meta">Pay per call with x402, or use credits when logged in.</p>`)
-			} else {
-				b.WriteString(`<p class="card-meta">Metered &mdash; requires credits</p>`)
-			}
+		if cost > 0 {
+			b.WriteString(`<p class="card-meta">Draws ` + strconv.Itoa(cost) + ` ` + creditWord(cost) + ` from your balance per call.</p>`)
 		}
 		if len(t.Params) > 0 {
 			b.WriteString(`<table style="width:100%;border-collapse:collapse;font-size:13px;margin:8px 0">`)

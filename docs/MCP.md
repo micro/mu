@@ -1,166 +1,124 @@
 # MCP Server
 
-Mu includes an [MCP](https://modelcontextprotocol.io) (Model Context Protocol) server that allows AI assistants and tools to interact with Mu services programmatically.
+Mu speaks [MCP](https://modelcontextprotocol.io) (Model Context Protocol) at a
+single endpoint. That endpoint is the only way an agent talks to this instance —
+there is no second API to choose between, and nothing to integrate per tool.
 
-The MCP server exposes 30+ tools — news, search, video, weather, places, mail, blog, apps, markets — that any MCP-compatible client can use. It implements the [MCP specification](https://spec.modelcontextprotocol.io) using the Streamable HTTP transport at a single endpoint.
+**Endpoint:** `POST /mcp` — Streamable HTTP transport, JSON-RPC 2.0.
 
-**Endpoint:** `POST /mcp`
+## Connect
 
-## Pay with Crypto (x402)
-
-AI agents can pay per-request with stablecoins via the [x402 protocol](https://x402.org). No account, no API key, no signup. Just call and pay.
-
-**Accepted tokens:** USDC and EURC on Base (configurable via `X402_ASSETS`).
-
-When x402 is enabled on the server (`X402_PAY_TO` is set), any metered tool call without sufficient credits returns `HTTP 402` with payment requirements. The agent pays on-chain, retries, and gets the response.
-
-### Example: x402 Payment Flow
-
-**1. Call a tool without payment:**
-
-```bash
-curl -X POST https://micro.mu/mcp \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"web_search","arguments":{"query":"latest AI news"}}}'
-```
-
-**2. Server returns 402 with payment requirements:**
-
-```
-HTTP/1.1 402 Payment Required
-X-PAYMENT-REQUIRED: eyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsi...
-
+```json
 {
-  "error": "Payment required",
-  "x402": [{
-    "scheme": "exact",
-    "network": "eip155:8453",
-    "maxAmountRequired": "$0.05",
-    "resource": "/mcp",
-    "description": "Access to web_search",
-    "payTo": "0x...",
-    "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
-  }],
-  "accepts": ["x402"]
+  "mcpServers": {
+    "mu": {
+      "url": "https://micro.mu/mcp"
+    }
+  }
 }
 ```
 
-**3. Agent pays on-chain and retries with payment proof:**
+There is no key in that config because there is nothing to paste. Works with
+Claude Desktop, Cursor, or anything else that speaks MCP.
 
-```bash
-curl -X POST https://micro.mu/mcp \
-  -H "Content-Type: application/json" \
-  -H "X-PAYMENT: <base64-encoded-payment-payload>" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"web_search","arguments":{"query":"latest AI news"}}}'
+## Authentication
+
+Calls carry a bearer token:
+
+```
+Authorization: Bearer YOUR_TOKEN
 ```
 
-**4. Server verifies, settles, and returns the result.**
+Two ways your client comes to have one.
 
-The `X-PAYMENT-REQUIRED` header contains base64-encoded JSON with all the information a client needs to construct a payment: network, asset, amount, and destination address.
+### Sign-in from the client (recommended)
 
-### Pricing
+Call without a token and you get an `HTTP 401` naming this instance's
+authorization server:
 
-Metered tools are priced at **1 credit = $0.01 USD** via x402:
+```
+HTTP/1.1 401 Unauthorized
+WWW-Authenticate: Bearer resource_metadata="https://micro.mu/.well-known/oauth-protected-resource"
+```
 
-| Tool | x402 Price |
-|------|-----------|
-| `news_search` | $0.01 |
-| `video_search` | $0.02 |
-| `social_search` | $0.01 |
-| `chat` | $0.03 |
-| `web_search` | $0.05 |
-| `web_fetch` | $0.03 |
-| `weather_forecast` | $0.01 |
-| `places_search` | $0.05 |
-| `places_nearby` | $0.02 |
-| `mail_send` | $0.04 |
-| `apps_build` | $0.03 |
-| `apps_run` | $0.03 |
+A client implementing [MCP
+authorization](https://modelcontextprotocol.io/specification/basic/authorization)
+follows that to the metadata, registers itself dynamically, opens a browser for
+you to sign in, and stores the token itself. You paste nothing and the token
+never passes through a config file. Claude Desktop and Cursor both do this.
 
-Included tools (news, blog_list, blog_read, video, markets, social, search, quran, hadith, reminder, etc.) don't require payment.
+The discovery documents are served at:
 
-## Account-Based Authentication
+- `/.well-known/oauth-protected-resource` — what this resource is and who
+  authorizes for it
+- `/.well-known/oauth-authorization-server` — endpoints, grant types, and the
+  dynamic client registration URL
 
-For human users or agents that prefer account-based billing, authenticate with a session token or Personal Access Token:
+### Personal access token
+
+For a client that doesn't speak the authorization spec, or for scripts and the
+CLI: sign in at `/login`, create a token at `/token`, and put it in the config.
 
 ```json
 {
   "mcpServers": {
     "mu": {
       "url": "https://micro.mu/mcp",
-      "headers": {
-        "Authorization": "Bearer YOUR_TOKEN"
-      }
+      "headers": { "Authorization": "Bearer YOUR_TOKEN" }
     }
   }
 }
 ```
 
-Replace `YOUR_TOKEN` with a Personal Access Token created at `/token`, or a
-session token from signing in at `/login`.
-
-### Getting credentials
-
 There is no `signup` or `login` tool, by design. Creating an account and
-exchanging a password for a session are not capabilities a caller can be
-granted — they are how a caller comes to exist, and they happen at the web
-boundary where a human is present.
+exchanging a password for a session are not capabilities a caller can be granted
+— they are how a caller comes to exist, and they happen at the web boundary
+where a person is present.
 
-Two ways in, depending on what you are:
+## What calls cost
 
-- **An agent acting for a person** — that person signs in at `/login`, creates a
-  Personal Access Token at `/token`, and gives it to you. Charges land on their
-  account, which can be topped up by card via Stripe.
-- **An agent acting for itself** — pay per request over
-  [x402](https://x402.org). No account, no token, nothing to sign up for. See
-  [Pay with Crypto (x402)](#pay-with-crypto-x402).
+A call costs credits when it costs the instance money to run: a model call, or a
+paid third party. Everything that only touches this instance's own storage —
+reading news, markets, weather, blogs, videos, your own records — is included.
 
-## Available Tools
+Prices are per tool. The live list, always current, is at
+[/tools](https://micro.mu/tools); each tool's page on
+[/mcp](https://micro.mu/mcp) carries its schema, an example request and a
+playground. There is no table of them here because a copied one goes stale.
 
-| Tool | Description | Credit Cost |
-|------|-------------|-------------|
-| `chat` | Chat with AI assistant | 5 credits |
-| `news_list` | Recent headlines with summaries, balanced across topics | Included |
-| `news_search` | Search for news articles | 1 credit |
-| `blog_list` | Get all blog posts | Included |
-| `blog_read` | Read a specific blog post | Included |
-| `blog_create` | Create a new blog post | 1 credit |
-| `blog_update` | Update a blog post | Included |
-| `blog_delete` | Delete a blog post | Included |
-| `video_list` | Get the latest videos | Included |
-| `video_search` | Search for videos | 2 credits |
-| `social_list` | Read the social feed | Included |
-| `social_search` | Search social posts | 1 credit |
-| `places_search` | Search for places by name or category | 5 credits |
-| `places_nearby` | Find places of interest near a location | 4 credits |
-| `mail_inbox` | Read mail inbox | Included |
-| `mail_send` | Send a mail message | 4 credits |
-| `index_search` | Search across all content | Included |
-| `wallet_balance` | Get wallet credit balance | Included |
-| `wallet_topup` | Get wallet topup payment methods | Included |
-| `markets_list` | Get live market prices | Included |
-| `reminder` | Get the daily Islamic reminder | Included |
-| `quran` | Look up a Quran chapter or verse | Included |
-| `hadith` | Look up hadith from Sahih Al Bukhari | Included |
-| `quran_search` | Semantic search across Quran and Hadith | Included |
-| `weather_forecast` | Get the weather forecast for a location | 1 credit |
-| `web_search` | Search the web for current information | 5 credits |
-| `web_fetch` | Fetch a web page and return cleaned readable content | 3 credits |
-| `apps_search` | Search the apps directory | Included |
-| `apps_read` | Read details of a specific app | Included |
-| `apps_create` | Create a new app | Included |
-| `apps_edit` | Edit an existing app | Included |
-| `apps_build` | Build a small app (tracker, checklist, counter) from a description | 3 credits |
-| `apps_run` | Run JavaScript code in a sandbox | 3 credits |
-| `agent` | Ask the AI agent a question — searches news, markets, web, and more | 7 credits |
-| `images_generate` | Generate an image from a text prompt (Atlas Cloud nano-banana) | 15 credits |
-| `images_search` | Search the public image stock pool by description | Included |
-| `stream_list` | Read the public event stream — system events, user posts, agent responses | Included |
-| `stream_post` | Post a message to the event stream | 1 credit |
-| `db_create` | Store a record in a collection (private, or `public: true`) | 1 credit |
-| `db_get` | Get one record by id (yours, or public) | Included |
-| `db_list` | List records — `scope`: mine / public / all, with `where` / `sort` / `limit` | Included |
-| `db_delete` | Delete a record you own | Included |
+Credits are prepaid against your account and topped up by card. It is the same
+balance whether the call comes from your agent or from you using the app.
+
+A few tools that touch your account — wallet, mail, editing your apps — always
+need a signed-in caller, whatever the price. `mail_send` is the strict case: it
+is account-only, so an unaccountable caller can't spend the domain's reputation.
+
+## Protocol
+
+### Initialize
+
+```bash
+curl -X POST https://micro.mu/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","clientInfo":{"name":"example","version":"1.0"},"capabilities":{}}}'
+```
+
+### List tools
+
+```bash
+curl -X POST https://micro.mu/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
+```
+
+### Call a tool
+
+```bash
+curl -X POST https://micro.mu/mcp \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"web_search","arguments":{"query":"latest AI news"}}}'
+```
 
 ## Your data (`db_*`)
 
@@ -183,62 +141,14 @@ curl -X POST https://micro.mu/mcp \
 ```
 
 The owner is bound from your session, so records are isolated per account —
-another user can't read or change your private records. Data written through the
-`db_*` tools lives in your account's namespace, separate from any app's own data.
+another user can't read or change your private records, and no request carries an
+account field to forge. Data written through the `db_*` tools lives in your
+account's namespace, separate from any app's own data.
 
-## Protocol
+## Self-hosting
 
-The MCP server uses the Streamable HTTP transport. Clients send JSON-RPC 2.0 requests via POST:
-
-### Initialize
-
-```bash
-curl -X POST https://micro.mu/mcp \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","clientInfo":{"name":"example","version":"1.0"},"capabilities":{}}}'
-```
-
-### List Tools
-
-```bash
-curl -X POST https://micro.mu/mcp \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
-```
-
-### Call a Tool
-
-With x402 payment:
-
-```bash
-curl -X POST https://micro.mu/mcp \
-  -H "Content-Type: application/json" \
-  -H "X-PAYMENT: <payment-payload>" \
-  -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"web_search","arguments":{"query":"latest news"}}}'
-```
-
-With account token:
-
-```bash
-curl -X POST https://micro.mu/mcp \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"news","arguments":{}}}'
-```
-
-## Two Ways to Pay
-
-| | x402 (Crypto) | Account (Card) |
-|---|---|---|
-| Setup required | None | Sign up + top up |
-| Auth header | `X-PAYMENT` | `Authorization: Bearer` |
-| Payment model | Per request | Pre-paid credits |
-| Currency | USDC | GBP |
-| Billing | Per request | Pre-paid credits |
-| Best for | Autonomous agents | Human users, MCP clients |
-
-## Self-Hosting
-
-When running your own Mu instance, the MCP server is available automatically at `/mcp` with no additional configuration required.
-
-To enable x402 payments, set `X402_PAY_TO` to your wallet address. USDC and EURC on Base are accepted by default. See [Configuration](ENVIRONMENT_VARIABLES.md) for details.
+The MCP endpoint is available automatically at `/mcp` with no extra
+configuration. Set `MU_DOMAIN` to your public hostname so the authorization
+metadata advertises the right issuer — behind a proxy it is read from
+`X-Forwarded-Host`, and falls back to the request host. See
+[Configuration](ENVIRONMENT_VARIABLES.md).

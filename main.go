@@ -1604,8 +1604,14 @@ func main() {
 		json.NewEncoder(w).Encode(versionInfo())
 	})
 
-	// serve the api doc
-	http.HandleFunc("/api", api.APIPageHandler)
+	// /api used to document a second way in: the same tools over plain REST,
+	// with their own auth story and their own price table. Two documented doors
+	// is a choice the reader has to make before they can start, and MCP is the
+	// one that matters — so this is now a signpost to it, not a page. The REST
+	// paths themselves still answer; they are just not a thing to learn.
+	http.HandleFunc("/api", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/mcp", http.StatusMovedPermanently)
+	})
 
 	// serve the MCP page and server (GET = HTML page, POST = JSON-RPC)
 	http.HandleFunc("/tools", api.ToolsPageHandler)
