@@ -113,6 +113,43 @@ func (c *Client) CallTool(name string, args map[string]any) (string, error) {
 	return text, nil
 }
 
+// Verify checks that the stored token is accepted, by asking the server who
+// the caller is. This is an ordinary HTTP GET rather than a tool call:
+// identity is established at the HTTP boundary, and is not something the tool
+// surface exposes.
+func (c *Client) Verify() error {
+	req, err := http.NewRequest(http.MethodGet, c.URL+"/session", nil)
+	if err != nil {
+		return err
+	}
+	if c.Token != "" {
+		req.Header.Set("Authorization", "Bearer "+c.Token)
+	}
+	req.Header.Set("Accept", "application/json")
+	rsp, err := c.HTTP.Do(req)
+	if err != nil {
+		return err
+	}
+	defer rsp.Body.Close()
+	body, _ := io.ReadAll(io.LimitReader(rsp.Body, 1<<16))
+	if rsp.StatusCode != http.StatusOK {
+		return fmt.Errorf("session check failed: %s", strings.TrimSpace(string(body)))
+	}
+	// An unaccepted token still gets 200, as the guest session {"type":"guest"}
+	// with no account. Only an account means the token was recognised.
+	var out struct {
+		Type    string `json:"type"`
+		Account string `json:"account"`
+	}
+	if err := json.Unmarshal(body, &out); err != nil {
+		return fmt.Errorf("session check: unexpected response from %s/session", c.URL)
+	}
+	if out.Account == "" || out.Type == "guest" {
+		return fmt.Errorf("token was not accepted")
+	}
+	return nil
+}
+
 // Ping checks that the server is reachable and returns the protocol
 // version string.
 func (c *Client) Ping() error {

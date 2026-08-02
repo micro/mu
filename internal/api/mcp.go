@@ -301,14 +301,15 @@ func ToolDescriptions() string {
 	return sb.String()
 }
 
-// tools is the list of MCP tools derived from API endpoints
+// tools is the list of MCP tools derived from API endpoints.
+//
+// Session establishment is deliberately absent. Signing up, logging in and
+// reading back who you are are not capabilities a caller can be granted — they
+// are how a caller comes to exist, and they belong to the HTTP boundary (the
+// login form, /session, a Personal Access Token) and to the CLI. An agent never
+// walks that path: it authenticates by holding a token a human issued, or by
+// paying per request over x402, where there is no account to sign up for.
 var tools = []Tool{
-	{
-		Name:        "me",
-		Description: "Get the current authenticated user's identity, account ID, and admin status",
-		Method:      "GET",
-		Path:        "/session",
-	},
 	{
 		Name:        "chat",
 		Description: "Chat with AI assistant",

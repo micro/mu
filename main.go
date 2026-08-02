@@ -535,18 +535,10 @@ func main() {
 		api.PaymentRequiredResponse = wallet.WritePaymentRequired
 	}
 
-	// Wire tool-specific guards. Currently rate-limits the signup tool by IP
-	// to defend against bulk account creation via MCP.
-	api.ToolGuard = func(r *http.Request, toolName string) error {
-		if toolName == "signup" {
-			ip := app.ClientIP(r)
-			if !app.SignupRateLimit(ip) {
-				app.Log("auth", "MCP signup rate limit hit for IP: %s", ip)
-				return fmt.Errorf("too many sign-ups from your network. Please try again later")
-			}
-		}
-		return nil
-	}
+	// api.ToolGuard is left unset: no tool currently needs a pre-dispatch check.
+	// It existed to rate-limit the MCP signup tool by IP, which is gone —
+	// account creation now happens only at /signup, which has both that rate
+	// limit and a captcha, so the path that bypassed the captcha is closed.
 
 	// Wire email sending for verification mails. Uses the platform's own
 	// SMTP relay so verification mails come from no-reply@<MAIL_DOMAIN>.
@@ -568,73 +560,12 @@ func main() {
 		return app.EmailSender != nil
 	}
 
-	// Register MCP auth tools
-	api.RegisterTool(api.Tool{
-		Name:        "signup",
-		Description: "Create a new account and return a session token. When invite-only mode is enabled, a valid invite code is required.",
-		Params: []api.ToolParam{
-			{Name: "id", Type: "string", Description: "Username (4-24 chars, lowercase, starts with letter)", Required: true},
-			{Name: "secret", Type: "string", Description: "Password (minimum 6 characters)", Required: true},
-			{Name: "name", Type: "string", Description: "Display name (optional, defaults to username)", Required: false},
-			{Name: "invite", Type: "string", Description: "Invite code (required when instance is invite-only)", Required: false},
-		},
-		Handle: func(args map[string]any) (string, error) {
-			id, _ := args["id"].(string)
-			secret, _ := args["secret"].(string)
-			name, _ := args["name"].(string)
-			invite, _ := args["invite"].(string)
-			if id == "" || secret == "" {
-				return "username and password are required", fmt.Errorf("missing fields")
-			}
-			if len(secret) < 6 {
-				return "password must be at least 6 characters", fmt.Errorf("short password")
-			}
-			if reason := auth.ValidateUsername(id); reason != "" {
-				return reason, fmt.Errorf("banned username")
-			}
-			if auth.InviteOnly() {
-				if err := auth.ValidateInvite(invite); err != nil {
-					return err.Error(), err
-				}
-			}
-			if name == "" {
-				name = id
-			}
-			if err := auth.Create(&auth.Account{
-				ID: id, Secret: secret, Name: name, Created: time.Now(),
-			}); err != nil {
-				return err.Error(), err
-			}
-			if invite != "" {
-				auth.ConsumeInvite(invite, id)
-			}
-			sess, err := auth.Login(id, secret)
-			if err != nil {
-				return "account created but login failed", err
-			}
-			return fmt.Sprintf(`{"token":"%s"}`, sess.Token), nil
-		},
-	})
-	api.RegisterTool(api.Tool{
-		Name:        "login",
-		Description: "Log in and return a session token for use in Authorization header",
-		Params: []api.ToolParam{
-			{Name: "id", Type: "string", Description: "Username", Required: true},
-			{Name: "secret", Type: "string", Description: "Password", Required: true},
-		},
-		Handle: func(args map[string]any) (string, error) {
-			id, _ := args["id"].(string)
-			secret, _ := args["secret"].(string)
-			if id == "" || secret == "" {
-				return "username and password are required", fmt.Errorf("missing fields")
-			}
-			sess, err := auth.Login(id, secret)
-			if err != nil {
-				return "invalid username or password", err
-			}
-			return fmt.Sprintf(`{"token":"%s"}`, sess.Token), nil
-		},
-	})
+	// Signup and login are not tools. Creating an account and exchanging
+	// credentials for a session are how a caller comes to exist, not something
+	// an existing caller can be granted — they live on the HTTP boundary (the
+	// login form, /session) and in the CLI. An agent never needs them: it
+	// authenticates with a token a human issued, or pays per request over x402,
+	// where there is no account to create.
 
 	// web_search — cached Brave web search, returned as model-ready text (AI-first).
 	api.RegisterTool(api.Tool{

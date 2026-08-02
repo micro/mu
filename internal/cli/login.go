@@ -67,7 +67,7 @@ func runLogin(args []string, cfg *ResolvedConfig) int {
 	// Verify the token actually works.
 	rc := &ResolvedConfig{URL: url, Token: token}
 	client := NewClient(rc)
-	if _, err := client.CallTool("me", nil); err != nil {
+	if err := client.Verify(); err != nil {
 		fmt.Fprintln(os.Stderr, "warning: token saved but verification failed:", err)
 		return 0
 	}

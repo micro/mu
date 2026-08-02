@@ -96,38 +96,29 @@ For human users or agents that prefer account-based billing, authenticate with a
 }
 ```
 
-Replace `YOUR_TOKEN` with a session token from the `login` tool or a Personal Access Token created at `/token`.
+Replace `YOUR_TOKEN` with a Personal Access Token created at `/token`, or a
+session token from signing in at `/login`.
 
-### Sign Up
+### Getting credentials
 
-```bash
-curl -X POST https://micro.mu/mcp \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"signup","arguments":{"id":"myagent","secret":"password123","name":"My Agent"}}}'
-```
+There is no `signup` or `login` tool, by design. Creating an account and
+exchanging a password for a session are not capabilities a caller can be
+granted — they are how a caller comes to exist, and they happen at the web
+boundary where a human is present.
 
-### Log In
+Two ways in, depending on what you are:
 
-```bash
-curl -X POST https://micro.mu/mcp \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"login","arguments":{"id":"myagent","secret":"password123"}}}'
-```
-
-Both return a session token. Use it in subsequent requests:
-
-```
-Authorization: Bearer SESSION_TOKEN
-```
-
-Accounts can top up credits with a card via Stripe.
+- **An agent acting for a person** — that person signs in at `/login`, creates a
+  Personal Access Token at `/token`, and gives it to you. Charges land on their
+  account, which can be topped up by card via Stripe.
+- **An agent acting for itself** — pay per request over
+  [x402](https://x402.org). No account, no token, nothing to sign up for. See
+  [Pay with Crypto (x402)](#pay-with-crypto-x402).
 
 ## Available Tools
 
 | Tool | Description | Credit Cost |
 |------|-------------|-------------|
-| `login` | Log in and get session token | Included |
-| `signup` | Create account and get session token | Included |
 | `chat` | Chat with AI assistant | 5 credits |
 | `news` | Read the raw latest news feed | Included |
 | `news_list` | Recent headlines with summaries, balanced across topics | Included |
@@ -167,7 +158,6 @@ Accounts can top up credits with a card via Stripe.
 | `images_search` | Search the public image stock pool by description | Included |
 | `stream` | Read the public event stream — system events, user posts, agent responses | Included |
 | `stream_post` | Post a message to the event stream | 1 credit |
-| `me` | Get your account identity and admin status | Included |
 | `db_set` | Store a record in a collection (private, or `public: true`) | 1 credit |
 | `db_get` | Get one record by id (yours, or public) | Included |
 | `db_list` | List records — `scope`: mine / public / all, with `where` / `sort` / `limit` | Included |
