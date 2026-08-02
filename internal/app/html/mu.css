@@ -5237,3 +5237,33 @@ body.display-mode .card h4 {
 }
 /* Keep the card title clear of the top-right price badge on narrow cards. */
 .ep-main .card .card-title { padding-right: 96px; }
+
+
+/* A small marker in a card's top-right corner — the next prayer on the Islam
+   card. .card is already position:relative. Empty until filled, so it takes no
+   space when there is nothing to show. */
+.card-corner {
+  position: absolute; top: 14px; right: 14px; z-index: 1;
+  font-size: 12px; color: #6b7280; font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.card-corner:empty { display: none; }
+
+/* ========================================
+   ISLAM PAGE — reminder main, prayer aside
+   ======================================== */
+/* Prayer times are a short, glanceable table; at full width the rows stretched
+   across the page and the verse — the reason most people open the page — was
+   pushed below the fold. Reminder content leads, prayer times sit beside it.
+   The aside comes first in the DOM so that on a phone, where the columns
+   stack, the times are what you land on. */
+.islam-layout { display: flex; gap: 28px; align-items: flex-start; }
+.islam-main { flex: 1 1 auto; min-width: 0; order: 1; }
+.islam-side { flex: 0 0 300px; order: 2; position: sticky; top: 16px; }
+.islam-side .card { max-width: none; margin-bottom: var(--spacing-md); }
+.islam-side table { font-variant-numeric: tabular-nums; }
+
+@media only screen and (max-width: 900px) {
+  .islam-layout { display: block; }
+  .islam-side { position: static; }
+}

@@ -123,8 +123,34 @@ func stringField(val map[string]interface{}, key string) string {
 func ReminderHTML() string {
 	reminderMutex.RLock()
 	defer reminderMutex.RUnlock()
-	return reminderHTML
+	return nextPrayerMark + reminderHTML
 }
+
+// nextPrayerMark puts the next prayer in the corner of the home card — "Asr
+// 14:25" — so the card answers the time-sensitive question at a glance and the
+// verse stays the body of it.
+//
+// It fills itself in from coordinates the reader has already granted elsewhere
+// (the weather and prayer cards share these keys). It never asks for location
+// itself: the home screen is not the place to prompt, and with nothing cached
+// the mark simply stays empty.
+const nextPrayerMark = `<span id="islam-next" class="card-corner"></span>
+<script>
+(function(){
+  var el=document.getElementById('islam-next');
+  if(!el)return;
+  var la=null,lo=null,m=null;
+  try{la=localStorage.getItem('mu_weather_lat');lo=localStorage.getItem('mu_weather_lon');
+      m=localStorage.getItem('mu_prayer_method');}catch(e){}
+  if(!la||!lo)return;
+  var tz='';try{tz=Intl.DateTimeFormat().resolvedOptions().timeZone||'';}catch(e){}
+  var u='/islam?lat='+encodeURIComponent(la)+'&lon='+encodeURIComponent(lo)+
+        '&tz='+encodeURIComponent(tz)+(m?'&method='+encodeURIComponent(m):'');
+  fetch(u,{headers:{'Accept':'application/json'}}).then(function(r){return r.json();}).then(function(d){
+    if(d&&d.next&&d.next_at){el.textContent=d.next+' '+d.next_at;}
+  }).catch(function(){});
+})();
+</script>`
 
 // ReminderData represents the cached reminder data
 type ReminderData struct {
@@ -174,10 +200,18 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		app.RespondJSON(w, GetReminderData())
 		return
 	}
+	// Prayer times beside the reminder rather than above it: the times are a
+	// short table that does not need the full width, and the verse is what
+	// most readers came for. The aside is first in the DOM so the stacked
+	// phone layout leads with the times.
+	body := `<div class="islam-layout">` +
+		`<aside class="islam-side">` + prayerTimesHTML() + `</aside>` +
+		`<div class="islam-main">` + renderIslamPage(GetReminderData()) + `</div>` +
+		`</div>`
 	app.Respond(w, r, app.Response{
 		Title:       "Islam",
 		Description: "Prayer times, a daily verse, name of Allah, hadith and reflection",
-		HTML:        prayerTimesHTML() + renderIslamPage(GetReminderData()),
+		HTML:        body,
 	})
 }
 
