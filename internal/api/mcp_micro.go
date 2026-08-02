@@ -1,8 +1,14 @@
 package api
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"io"
 	"net/http"
+	"net/http/httptest"
+	"strconv"
+	"strings"
 
 	gwmcp "go-micro.dev/v6/gateway/mcp"
 )
@@ -122,10 +128,53 @@ func itoa(n int) string {
 }
 
 // serveMCP serves a JSON-RPC MCP request through go-micro's gateway/mcp handler.
+//
+// A tools/list is buffered on the way out so Mu can add each tool's title and
+// annotations — see enrichToolsList for why that happens here rather than in
+// the framework's tool type. Only tools/list is buffered: a tools/call may
+// stream, and holding a streamed response in memory to add nothing to it would
+// be a bad trade.
 func serveMCP(w http.ResponseWriter, r *http.Request) {
 	handler := gwmcp.NewHandler(mcpResolver(),
 		gwmcp.WithServerInfo("mu", "1.0.0"),
 		gwmcp.WithProtocolVersion(MCPVersion))
 	ctx := context.WithValue(r.Context(), mcpReqKey{}, r)
-	handler.ServeHTTP(w, r.WithContext(ctx))
+
+	if !isToolsList(r) {
+		handler.ServeHTTP(w, r.WithContext(ctx))
+		return
+	}
+
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, r.WithContext(ctx))
+	body := enrichToolsList(rec.Body.Bytes())
+
+	for k, vals := range rec.Header() {
+		if strings.EqualFold(k, "Content-Length") {
+			continue
+		}
+		for _, v := range vals {
+			w.Header().Add(k, v)
+		}
+	}
+	w.Header().Set("Content-Length", strconv.Itoa(len(body)))
+	w.WriteHeader(rec.Code)
+	w.Write(body)
+}
+
+// isToolsList reports whether this request is a tools/list, reading the body
+// and putting it back so the handler still sees it.
+func isToolsList(r *http.Request) bool {
+	if r.Body == nil {
+		return false
+	}
+	body, err := io.ReadAll(r.Body)
+	r.Body = io.NopCloser(bytes.NewReader(body))
+	if err != nil {
+		return false
+	}
+	var req struct {
+		Method string `json:"method"`
+	}
+	return json.Unmarshal(body, &req) == nil && req.Method == "tools/list"
 }
