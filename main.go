@@ -588,6 +588,36 @@ func main() {
 		},
 	})
 
+	// mail_address — an address an agent can be reached at.
+	//
+	// An agent that can be *sent* mail is a different thing from one that can
+	// only be called: a receipt, a form, a reply or a newsletter can reach it,
+	// and wake it. Mu runs a real SMTP server with DKIM, so it can offer this
+	// where almost nothing else can. It does not make an account per agent —
+	// accounts are people, holding credits and files — it gives the agent a
+	// facet of its owner's address, which is what plus-addressing already means
+	// to anyone who has used Gmail.
+	api.RegisterToolWithAuth(api.Tool{
+		Name:        "mail_address",
+		Description: "Get an email address that reaches you. Pass a tag to get your own address (you+tag@) — give that out, then read only its mail with mail_inbox(tag).",
+		Params: []api.ToolParam{
+			{Name: "tag", Type: "string", Description: "A label for this address, e.g. \"research\" or \"receipts\". Omit for your plain address.", Required: false},
+		},
+	}, func(args map[string]any, accountID string) (string, error) {
+		tag, _ := args["tag"].(string)
+		acc, err := auth.GetAccount(accountID)
+		if err != nil {
+			return "", err
+		}
+		addr := mail.AliasFor(acc.Name, tag)
+		out := map[string]any{"address": addr}
+		if tag != "" {
+			out["read_with"] = fmt.Sprintf(`mail_inbox {"tag": %q}`, tag)
+		}
+		b, _ := json.Marshal(out)
+		return string(b), nil
+	})
+
 	// events_free — the question a calendar is actually asked. events could
 	// schedule a thing and list what was coming, which makes it a reminder
 	// queue; "when am I free on Thursday" is the other half.

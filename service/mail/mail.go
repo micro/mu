@@ -47,23 +47,27 @@ type Thread struct {
 var inboxes map[string]*Inbox
 
 type Message struct {
-	ID          string    `json:"id"`
-	From        string    `json:"from"`    // Sender username
-	FromID      string    `json:"from_id"` // Sender account ID
-	To          string    `json:"to"`      // Recipient username
-	ToID        string    `json:"to_id"`   // Recipient account ID
-	Subject     string    `json:"subject"`
-	Body        string    `json:"body"`
-	Read        bool      `json:"read"`
-	ReplyTo     string    `json:"reply_to"`               // ID of message this is replying to
-	ThreadID    string    `json:"thread_id"`              // Root message ID for O(1) thread grouping
-	MessageID   string    `json:"message_id"`             // Email Message-ID header for threading
-	Spam        bool      `json:"spam,omitempty"`         // Whether this message was flagged as spam
-	SpamScore   int       `json:"spam_score,omitempty"`   // Spam detection score
-	SpamReasons []string  `json:"spam_reasons,omitempty"` // Why it was flagged
-	SenderIP    string    `json:"sender_ip,omitempty"`    // IP address of sending server
-	RawHeaders  string    `json:"raw_headers,omitempty"`  // Original email headers for View Raw
-	CreatedAt   time.Time `json:"created_at"`
+	ID          string   `json:"id"`
+	From        string   `json:"from"`    // Sender username
+	FromID      string   `json:"from_id"` // Sender account ID
+	To          string   `json:"to"`      // Recipient username
+	ToID        string   `json:"to_id"`   // Recipient account ID
+	Subject     string   `json:"subject"`
+	Body        string   `json:"body"`
+	Read        bool     `json:"read"`
+	ReplyTo     string   `json:"reply_to"`               // ID of message this is replying to
+	ThreadID    string   `json:"thread_id"`              // Root message ID for O(1) thread grouping
+	MessageID   string   `json:"message_id"`             // Email Message-ID header for threading
+	Spam        bool     `json:"spam,omitempty"`         // Whether this message was flagged as spam
+	SpamScore   int      `json:"spam_score,omitempty"`   // Spam detection score
+	SpamReasons []string `json:"spam_reasons,omitempty"` // Why it was flagged
+	SenderIP    string   `json:"sender_ip,omitempty"`    // IP address of sending server
+	// Tag is the part after the plus in the address this was sent to:
+	// asim+research@ tags a message "research". It is how an agent asks for
+	// only its own mail without needing an account of its own. See alias.go.
+	Tag        string    `json:"tag,omitempty"`
+	RawHeaders string    `json:"raw_headers,omitempty"` // Original email headers for View Raw
+	CreatedAt  time.Time `json:"created_at"`
 }
 
 // Load messages from disk
@@ -1261,11 +1265,22 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		sort.Slice(threads, func(i, j int) bool {
 			return threads[i].Latest.CreatedAt.After(threads[j].Latest.CreatedAt)
 		})
+		// ?tag= narrows the inbox to mail that arrived on one plus-address, so
+		// an agent given asim+research@ reads its own mail rather than all of
+		// its owner's. Empty means everything, as before.
+		tag := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("tag")))
 		msgs := make([]*Message, 0, len(threads))
 		for _, t := range threads {
+			if tag != "" && !strings.EqualFold(t.Latest.Tag, tag) {
+				continue
+			}
 			msgs = append(msgs, t.Latest)
 		}
-		app.RespondJSON(w, map[string]interface{}{"messages": msgs, "unread": userInbox.UnreadCount})
+		app.RespondJSON(w, map[string]interface{}{
+			"messages": msgs,
+			"unread":   userInbox.UnreadCount,
+			"address":  AliasFor(acc.Name, tag),
+		})
 		return
 	}
 
@@ -1501,6 +1516,12 @@ func SendMessage(from, fromID, to, toID, subject, body, replyTo, messageID strin
 
 // SendMessageTagged creates a message with optional spam and header metadata
 func SendMessageTagged(from, fromID, to, toID, subject, body, replyTo, messageID string, spam bool, spamScore int, spamReasons []string, senderIP, rawHeaders string) error {
+	return SendMessageTo(from, fromID, to, toID, "", subject, body, replyTo, messageID, spam, spamScore, spamReasons, senderIP, rawHeaders)
+}
+
+// SendMessageTo is SendMessageTagged with the plus-address tag the mail arrived
+// on, so an agent reading asim+research@ sees only its own mail.
+func SendMessageTo(from, fromID, to, toID, tag, subject, body, replyTo, messageID string, spam bool, spamScore int, spamReasons []string, senderIP, rawHeaders string) error {
 	msg := &Message{
 		ID:          fmt.Sprintf("%d", time.Now().UnixNano()),
 		From:        from,
@@ -1517,6 +1538,7 @@ func SendMessageTagged(from, fromID, to, toID, subject, body, replyTo, messageID
 		SpamReasons: spamReasons,
 		SenderIP:    senderIP,
 		RawHeaders:  rawHeaders,
+		Tag:         tag,
 		CreatedAt:   time.Now(),
 	}
 

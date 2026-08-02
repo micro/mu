@@ -450,9 +450,12 @@ var tools = []Tool{
 	{
 		Name:        "mail_inbox",
 		Aliases:     []string{"mail_read"},
-		Description: "Read mail inbox",
+		Description: "Read your mail inbox. Pass a tag to read only mail sent to that plus-address (you+tag@), which is how an agent reads its own mail rather than all of yours.",
 		Method:      "GET",
 		Path:        "/mail",
+		Params: []ToolParam{
+			{Name: "tag", Type: "string", Description: "Only mail sent to you+<tag>@ — omit for the whole inbox", Required: false},
+		},
 	},
 	{
 		Name:        "mail_send",

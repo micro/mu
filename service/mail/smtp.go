@@ -213,7 +213,10 @@ func (s *Session) Rcpt(to string, opts *smtpd.RcptOptions) error {
 		}
 	}
 
-	username := parts[0]
+	// asim+research@ is asim's inbox, tagged research — see alias.go. The
+	// account lookup uses the part before the plus; without this, every
+	// plus-address is rejected as a non-existent user.
+	username, _ := SplitAlias(parts[0])
 
 	// If from localhost (trusted internal client), allow any recipient
 	// But still require SMTP AUTH to prevent abuse
@@ -543,7 +546,7 @@ func (s *Session) Data(r io.Reader) error {
 			app.Log("mail", "Invalid recipient address: %s", recipient)
 			continue
 		}
-		toUsername := parts[0]
+		toUsername, toTag := SplitAlias(parts[0])
 		toDomain := parts[1]
 
 		// Check if this is an external recipient
@@ -628,11 +631,12 @@ func (s *Session) Data(r io.Reader) error {
 			}
 		}
 
-		if err := SendMessageTagged(
+		if err := SendMessageTo(
 			senderName,
 			fromAddr.Address, // Use email as sender ID
 			toAcc.Name,
 			toAcc.ID,
+			toTag,
 			subject,
 			body,
 			replyToID,
