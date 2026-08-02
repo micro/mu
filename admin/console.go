@@ -14,9 +14,9 @@ import (
 	"mu/internal/auth"
 	"mu/internal/data"
 	"mu/internal/flag"
+	"mu/internal/user"
 	"mu/service/apps"
 	"mu/service/wallet"
-	"mu/user"
 )
 
 // InviteHandler serves the admin invite page at /admin/invite.

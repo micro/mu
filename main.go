@@ -23,7 +23,6 @@ import (
 	"mu/admin"
 	"mu/agent"
 	"mu/agent/micro"
-	"mu/chat"
 	"mu/client/discord"
 	"mu/client/telegram"
 	"mu/client/whatsapp"
@@ -41,10 +40,12 @@ import (
 	"mu/internal/service"
 	"mu/internal/settings"
 	"mu/internal/setup"
+	"mu/internal/user"
 	"mu/internal/userdb"
 	"mu/internal/version"
 	"mu/service/apps"
 	"mu/service/blog"
+	"mu/service/chat"
 	"mu/service/db"
 	"mu/service/events"
 	"mu/service/images"
@@ -57,12 +58,11 @@ import (
 	"mu/service/places"
 	"mu/service/search"
 	"mu/service/social"
+	"mu/service/stream"
 	"mu/service/video"
 	"mu/service/wallet"
 	"mu/service/weather"
 	"mu/service/web"
-	"mu/stream"
-	"mu/user"
 )
 
 var EnvFlag = flag.String("env", "dev", "Set the environment")
@@ -177,9 +177,16 @@ func main() {
 	islam.Load()
 	web.Load()
 	db.Load()
+	stream.LoadService()
+	chat.LoadService()
 	images.Load()
 	events.Load()
 	events.OnFire = func(accountID, title, note string) {
+		// The console is the instance's own timeline: what happened here, in
+		// order. It had every event type declared and nothing emitting them.
+		stream.PostSystem("⏰ "+title, map[string]any{
+			"kind": stream.TypeReminder, "account": accountID,
+		})
 		msg := "⏰ Event: " + title
 		if note != "" {
 			msg += "\n" + note
@@ -219,6 +226,9 @@ func main() {
 	telegram.Load()
 	whatsapp.Load()
 	mail.OnNewMail = func(accountID, from, subject, body string) {
+		stream.PostSystem("📬 Mail from "+from+" — "+subject, map[string]any{
+			"kind": stream.TypeSystem, "account": accountID,
+		})
 		summary := discord.SummariseEmail(from, subject, body)
 		discord.NotifyNewMail(accountID, from, subject, summary)
 		telegram.NotifyUser(accountID, fmt.Sprintf("📬 *New email from %s*\n%s", from, summary))
