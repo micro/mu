@@ -189,10 +189,16 @@ func mcpPageHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// mcpToolsJSON returns a JSON object keyed by tool name with description and params
+// mcpToolsJSON returns a JSON object keyed by tool name with description and
+// params, for the playground's form builder.
+//
+// It reads mcpTools(), not the raw slice. Reading the raw slice put the two
+// RESTOnly entries in here but not in the selector that indexes into it — two
+// lists over the same data, one filtered and one not, which is the same way the
+// old /api page came to document twenty-five endpoints and offer twenty.
 func mcpToolsJSON() string {
 	m := map[string]any{}
-	for _, t := range tools {
+	for _, t := range mcpTools() {
 		params := []map[string]any{}
 		for _, p := range t.Params {
 			params = append(params, map[string]any{
