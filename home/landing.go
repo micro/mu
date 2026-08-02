@@ -16,17 +16,17 @@ no tracking. Use it hosted here, or self-host the single binary — same product
 
 <div class="lcards">
   <div class="lcard"><h3>One agent, everything</h3><p>Ask for the news, your mail, a price, the forecast. Mu picks the right service and answers — you just talk to it.</p></div>
-  <div class="lcard"><h3>Real services, not widgets</h3><p>News, markets, mail, weather, blog, video and search — each a real service with its own API, not a scraped feed.</p></div>
+  <div class="lcard"><h3>Real tools, not wrappers</h3><p>This instance runs the mail server, the feeds, the search index and the wallet. <a href="/tools">Browse the tools →</a></p></div>
   <div class="lcard"><h3>Yours to run</h3><p>Use the hosted instance, or self-host the single Go binary. Your account, your data — no lock-in either way.</p></div>
 </div>
 
 <div class="lctas">
   <a class="lcta" href="/">Open Mu →</a>
-  <a class="lcta lcta-alt" href="/signup">Create your account</a>
+  <a class="lcta lcta-alt" href="/tools">Browse the tools</a>
 </div>
 
-<p class="lagents">Building agents? Every capability is also an API.
-<a href="/agents">See the agents page →</a></p>
+<p class="lagents">Building agents? Every capability is a tool, over MCP, paid per call.
+<a href="/tools">Browse the tools →</a> · <a href="/agents">How it works →</a></p>
 
 <style>
 .lead{max-width:560px;text-align:center;color:#555;font-size:16px;line-height:1.6;margin:0 auto 30px}

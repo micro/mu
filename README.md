@@ -1,78 +1,26 @@
 # mu
 
-A personal home server
+Tools for agents
 
 ## Overview
 
-A personal home server. One Go binary runs a set of everyday services — news, mail, markets, weather, search, images, video, blog, social, places, events — behind a [Go Micro](https://github.com/micro/go-micro) registry, with an LLM agent that calls them as tools. The same services are reachable as a web app, a REST API, an MCP server, an A2A endpoint, and a CLI.
+Mu gives an agent the everyday internet as tools: news, web search, mail,
+markets, weather, video, places, images, storage. 59 of them, over
+[MCP](https://modelcontextprotocol.io) and REST, paid per request in USDC via
+[x402](https://x402.org) — no API key, no account, no signup.
 
-Use it hosted at [micro.mu](https://micro.mu), or self-host the single binary — same product either way. Open source, AGPL-3.0.
+**Real tools, not wrappers.** Most things offering an agent tools are a thin
+layer over somebody else's API. Mu runs the mail server (SMTP with DKIM), the
+feed aggregator, the search index, the app sandbox and the wallet it hands you.
+`mail_inbox` reads a real inbox. `db_create` writes to real storage. The tools
+aren't a catalogue of other people's products — they're this instance's own
+capabilities, exposed.
 
-## Features
+There is also a web app on the same tools, because the operator is a person too.
+Use it hosted at [micro.mu](https://micro.mu), or self-host the single Go binary
+— same product either way. Open source, AGPL-3.0.
 
-- **All services in one process.** Each domain (news, markets, mail, weather, …) is a Go Micro service with typed handlers, registered in-process behind an in-memory registry. One binary, no external infrastructure; the same handlers can later be split across processes by swapping the registry.
-- **An agent over those services.** An LLM — Claude, Atlas Cloud (DeepSeek), or a local Ollama / OpenAI-compatible endpoint — calls the services as tools, composes answers, and keeps per-user memory across sessions.
-- **A web UI that's a home screen.** Cards render each service at a glance (headlines, prices, weather, unread mail); the agent sits inline to act on what you're looking at. Logged-out visitors get a public version with live public data.
-- **Several front doors to the same services.** A REST API, an MCP server at `/mcp`, an A2A endpoint at `/a2a`, and a CLI where every tool is a subcommand. API and MCP callers can pay per request in USDC via [x402](https://x402.org).
-
-## Services
-
-Each is reachable in the web app and directly over REST, MCP, A2A, or the CLI. The agent calls them as tools; each is also usable on its own.
-
-- **Agent** — Ask anything. It calls news, markets, mail, weather, search and more, then synthesises an answer. Remembers your preferences.
-- **Chat** — Conversational AI with session history
-- **News** — Headlines from RSS feeds, chronological, with AI summaries
-- **Markets** — Live crypto, futures, commodity, and currency prices
-- **Weather** — Forecasts and conditions
-- **Mail** — Private messaging and email (SMTP server with DKIM, inbound filtering)
-- **Social** — Public discussion threads
-- **Blog** — Microblogging with daily AI-generated digests
-- **Video** — YouTube without ads, algorithms, or shorts
-- **Images** — Generate images from a prompt, plus a daily nature / mindful image
-- **Search** — Search the web without tracking, with a clean reader view
-- **Index** — Search everything Mu holds for you: indexed news, blog, social and video, plus your own mail
-- **Places** — Search places and nearby results with configured providers and open-data fallbacks
-- **Islam** — Prayer times and a qibla compass, plus a Quran verse, hadith and reflection
-- **Events** — Schedule reminders by asking the agent; delivered to your channels, with a calendar invite
-- **Apps** — Build and use small, useful tools — pin any app to the top of your home screen. Apps can call every service above through the SDK, so a new service is available to them the moment it registers
-- **Stream** — Public event feed for agents and tools to subscribe to
-
-## Building on it
-
-Every capability is a service behind one registry, and that registry is what
-everything else reads. Register a service and it becomes available, in the same
-moment and with no extra wiring, to:
-
-- **the agent**, as a tool it can call;
-- **custom agents**, in the tool picker at `/agent/new`;
-- **the MCP server**, for Claude Desktop, Cursor or any MCP client;
-- **the REST API** and the **CLI**, where each tool is a subcommand;
-- **apps**, through `mu.service(name, method, args)` in the SDK.
-
-So extending Mu is adding an element, not wiring N integrations. Apps and agents
-are the two things built *on* the services — an agent is a system prompt plus a
-chosen subset of tools; an app is a page with the SDK. Both get new capabilities
-for free as the service set grows.
-
-```js
-// inside an app — any registered service, no SDK change needed
-const { times } = await mu.service('islam', 'prayer', { lat, lon, tz })
-const { summary } = await mu.service('weather', 'forecast', { lat, lon })
-```
-
-Identity is bound server-side: an app never names whose data it wants, and
-account-scoped services (mail, index, images, events) require a signed-in
-caller.
-
-## Accounts & sign-in
-
-Sign in to the web app with a username and password, a **passkey** (WebAuthn), or **Google**. Already have an account? Link Google to it from **Account** settings and use Google sign-in from then on. For the API and CLI, generate a Personal Access Token at `/token`.
-
-Passkeys work out of the box. To enable Google sign-in when self-hosting, set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` (and optionally `GOOGLE_REDIRECT_URI`, which defaults to `<your-origin>/oauth2/callback`) from `/admin/env` or the environment.
-
-## For Agents
-
-Because every capability is a service, it's reachable however you like. Mu exposes a REST API and an [MCP](https://modelcontextprotocol.io) server at `/mcp`, so AI agents and tools can connect directly.
+## Point an agent at it
 
 ```json
 {
@@ -84,28 +32,118 @@ Because every capability is a service, it's reachable however you like. Mu expos
 }
 ```
 
-30+ tools — news, search, weather, places, video, email, markets, images, events — accessible via MCP. AI agents can pay per-request with USDC through the [x402 protocol](https://x402.org). No API keys. No accounts. Just call and pay. First 10 calls per wallet are free.
+That's the whole setup. Your first 10 calls per wallet are free; after that a
+metered tool answers `HTTP 402` with a price, your agent's x402 wallet pays in
+USDC and retries — sub-second, no account, no keys. You pay the operator running
+the instance, wallet to wallet.
 
-See [MCP docs](docs/MCP.md)
+Prefer prepaid credits and a dashboard? [Create an
+account](https://micro.mu/signup) and use a Personal Access Token instead.
+
+```bash
+curl -X POST https://micro.mu/mcp -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+```
+
+**Browse what's there:** [micro.mu/tools](https://micro.mu/tools) — every tool,
+grouped by service, with what each call costs. [MCP docs](docs/MCP.md) for the
+protocol detail.
+
+## The tools
+
+| Area | Tools |
+|---|---|
+| **Web** | `web_search` · `web_fetch` — search the web, read a page as clean text |
+| **News** | `news_list` · `news_read` · `news_search` — RSS aggregation, full articles |
+| **Markets** | `markets_list` — crypto, futures, commodities, currencies |
+| **Weather** | `weather_forecast` — conditions, forecast, pollen |
+| **Places** | `places_search` · `places_nearby` — points of interest, geocoding |
+| **Video** | `video_list` · `video_search` — curated channels, no ads or recommendations |
+| **Mail** | `mail_inbox` · `mail_search` · `mail_send` — a real SMTP server with DKIM |
+| **Storage** | `db_create` · `db_get` · `db_list` · `db_update` · `db_delete` — per-caller records |
+| **Search your own** | `index_search` — everything this instance holds for you |
+| **Images** | `images_generate` · `images_search` |
+| **Writing** | `blog_*` · `social_*` · `stream_*` — publish, read, discuss |
+| **Apps** | `apps_build` · `apps_run` · `apps_edit` — build and run small web tools |
+| **Faith** | `islam_today` · `islam_prayer` · `islam_qibla` · `quran` · `hadith` |
+| **Money** | `wallet_balance` · `wallet_topup` · `pay` — credits, and paying other MCP servers |
+| **Agent** | `agent` · `chat` — ask the whole thing a question and let it compose |
+
+Every tool is also a REST endpoint and a `mu` CLI subcommand. Account-scoped
+tools (mail, storage, index, images, events) need a signed-in caller;
+`mail_send` always does, so an unaccountable caller can't spend a domain's
+reputation.
+
+## Why the tools are real
+
+Each area above is a **service** — a Go package with typed handlers, registered
+in-process behind a [Go Micro](https://github.com/micro/go-micro) registry. One
+binary, no external infrastructure. The registry is the single source of truth:
+a service declares itself once and every surface derives from that declaration.
+
+```go
+var Spec = service.Spec{
+	Name:        "web",
+	Handler:     new(Server),
+	Description: "The open web: search it, read a page from it",
+	Page:        "/search",
+	Endpoints: map[string]service.Endpoint{
+		"Search": {Doc: "Search the web for current information", Cost: wallet.OpWebSearch},
+		"Fetch":  {Doc: "Fetch a web page and return readable content", Cost: wallet.OpWebFetch},
+	},
+}
+```
+
+Register that and it becomes available, in the same moment and with no extra
+wiring, to:
+
+- **agents**, over MCP at `/mcp` — for Claude Desktop, Cursor, or your own;
+- **the built-in agent**, as a tool it can call;
+- **custom agents**, in the tool picker at `/agent/new`;
+- **the REST API** and the **CLI**, where each tool is a subcommand;
+- **apps**, through `mu.service(name, method, args)` in the SDK.
+
+So extending Mu is adding an element, not wiring N integrations.
+
+```js
+// inside an app — any registered service, no SDK change needed
+const { times } = await mu.service('islam', 'prayer', { lat, lon, tz })
+const { summary } = await mu.service('weather', 'forecast', { lat, lon })
+```
+
+Identity is bound server-side from the call context — a caller never names whose
+data it wants, and there is no account field in any request to forge.
+
+## The app
+
+The same tools, for a person. Cards render each service at a glance (headlines,
+prices, weather, unread mail) and the agent sits inline to act on what you're
+looking at. Logged-out visitors get a public version with live data.
+
+An LLM — Claude, Atlas Cloud (DeepSeek), or a local Ollama / OpenAI-compatible
+endpoint — calls the services as tools, composes answers, and keeps per-user
+memory across sessions.
+
+Sign in with a username and password, a **passkey** (WebAuthn), or **Google**.
+For the API and CLI, generate a Personal Access Token at `/token`.
 
 ## CLI
 
-Every MCP tool is also available as a `mu` subcommand. The same binary runs the server (`mu --serve`) and the CLI.
+Every tool is a `mu` subcommand. The same binary runs the server (`mu --serve`)
+and the CLI.
 
 ```bash
-mu news                                 # latest news feed
+mu news_list                            # latest headlines
 mu news_search "ai safety"              # search news
-mu chat "hello"                         # chat with the AI
+mu web_search "claude code"             # search the web
 mu agent "what is the btc price?"       # run the full agent
-mu search_web "claude code"             # search the web
 mu weather_forecast --lat 51.5 --lon -0.12
-mu me                                   # your account
+mu wallet                               # your balance
 mu help                                 # full tool list
 ```
 
-The CLI is registry-driven — every tool added to the MCP server automatically becomes a CLI command.
-
-### Authentication
+The CLI is registry-driven — a tool added to the server automatically becomes a
+CLI command.
 
 ```bash
 mu login                  # opens /token in your browser, paste the PAT back
@@ -113,37 +151,34 @@ mu config set token xxx   # or set it directly
 export MU_TOKEN=xxx       # or use the environment
 ```
 
-See [CLI docs](docs/CLI.md) for more.
+See [CLI docs](docs/CLI.md).
 
 ## Discord & Telegram
 
-Talk to the AI agent from Discord or Telegram. Ask questions, check markets, get news — all from chat.
+Talk to the agent from Discord or Telegram — questions, markets, news, all from
+chat. [Join the Discord](https://discord.gg/WeMU5AGxD)
 
-[Join the Discord](https://discord.gg/WeMU5AGxD)
+Discord: `/agent`, `/news`, `/markets`, `/weather`, `/mail`, `/social`, `/blog`,
+`/video`, `/search`, `/apps`, `/balance`, `/usage`.
+Telegram: `/agent`, `/ask`, `/news`, `/markets`, `/weather`, `/usage`.
 
-Discord slash commands: `/agent`, `/news`, `/markets`, `/weather`, `/mail`, `/social`, `/blog`, `/video`, `/search`, `/apps`, `/balance`, `/usage`.
-Telegram commands: `/agent`, `/ask`, `/news`, `/markets`, `/weather`, `/usage`.
-
-See [Discord docs](docs/DISCORD.md) and [Telegram docs](docs/TELEGRAM.md) for setup.
+See [Discord docs](docs/DISCORD.md) and [Telegram docs](docs/TELEGRAM.md).
 
 ## Self-hosting
 
-### One-command install
+Run your own instance and you are the operator: the tools are yours, and anyone
+paying to call them pays you.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/micro/mu/main/install.sh | sh
 ```
 
-### Docker
-
 ```bash
+# Docker
 git clone https://github.com/micro/mu && cd mu
 docker compose up
-```
 
-### From source
-
-```bash
+# From source
 git clone https://github.com/micro/mu
 cd mu && go install
 mu --serve
@@ -162,7 +197,7 @@ mu setup        # pick a provider, paste a key
 mu --serve      # first account you create becomes admin
 ```
 
-Or set everything by hand if you'd rather:
+Or set everything by hand:
 
 ```bash
 export ADMIN=you@example.com          # who's admin (else: first account)
@@ -171,26 +206,30 @@ mu --serve
 ```
 
 Once you're admin, every other key (YouTube, Brave search, weather, mail/DKIM,
-Google sign-in…) is configurable from `/admin/env` in the browser.
+Google sign-in…) is configurable from `/admin/env` in the browser. To take x402
+payments, set `X402_PAY_TO` to your wallet address.
 
-See [Installation guide](docs/INSTALLATION.md) for full setup.
+See [Installation guide](docs/INSTALLATION.md).
 
 ### Configuration
 
-Customise feeds, prompts, and cards by editing JSON files:
+Customise feeds, prompts and cards by editing JSON files:
 
-- `news/feeds.json` — RSS news feeds
-- `chat/prompts.json` — Chat topics
-- `home/cards.json` — Home screen cards
-- `video/channels.json` — YouTube channels
-- `places/locations.json` — Saved locations
+- `service/news/feeds.json` — RSS news feeds
+- `service/chat/prompts.json` — chat topics
+- `home/cards.json` — home screen cards
+- `service/video/channels.json` — YouTube channels
+- `service/places/locations.json` — saved locations
 
 See [Environment Variables](docs/ENVIRONMENT_VARIABLES.md) for all options.
 
 ## Documentation
 
-Full docs in the [docs](docs/) folder.
+Full docs in the [docs](docs/) folder. Start with [MCP](docs/MCP.md) for agents,
+[Architecture](docs/ARCHITECTURE.md) for the code. The live tool catalogue is at
+[/tools](https://micro.mu/tools).
 
 ## License
 
-[AGPL-3.0](LICENSE) — use, modify, distribute. If you run a modified version as a service, share the source.
+[AGPL-3.0](LICENSE) — use, modify, distribute. If you run a modified version as a
+service, share the source.

@@ -29,6 +29,7 @@ database and more, over <a href="/mcp" style="color:#111">MCP</a> and REST, paid
 with <a href="https://x402.org" style="color:#111">x402</a> stablecoin micropayments.</p>
 
 <div class="pcards">
+  <a class="pcard" href="/tools"><h3>Browse the tools</h3><p>Everything an agent can do here, with what each call costs.</p></a>
   <a class="pcard" href="/mcp"><h3>MCP endpoint</h3><p>Point any agent here and every tool is available. <code>/mcp</code></p></a>
   <a class="pcard" href="/api"><h3>REST endpoints</h3><p>The same tools over plain HTTP, with schemas.</p></a>
   <a class="pcard" href="https://x402.org"><h3>Pay per call (x402)</h3><p>Micropayments over HTTP 402. First calls free.</p></a>
