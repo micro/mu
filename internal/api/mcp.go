@@ -154,6 +154,11 @@ type Tool struct {
 	Path        string      `json:"path,omitempty"`
 	Params      []ToolParam `json:"params,omitempty"`
 	WalletOp    string      `json:"walletOp,omitempty"` // Wallet operation for credit gating (empty = included)
+	// AccountOnly refuses a caller whose only identity is a paid wallet. Paying
+	// proves funds, not accountability — mail_send is the case that matters,
+	// because an anonymous funded wallet sending from this domain spends its
+	// reputation and cannot be held to it.
+	AccountOnly bool `json:"-"`
 	// RESTOnly marks an HTTP endpoint that is not an agent tool. REST paths are
 	// resource-shaped (/news, /mail) while tools are service_method
 	// (news_list, mail_inbox); the same capability legitimately appears in both
@@ -413,6 +418,7 @@ var tools = []Tool{
 	},
 	{
 		Name:        "mail_send",
+		AccountOnly: true, // a funded wallet is not accountable for the domain
 		Description: "Send a mail message",
 		Method:      "POST",
 		Path:        "/mail",
@@ -636,6 +642,41 @@ func ExecuteToolAs(accountID, name string, args map[string]any) (string, bool, e
 	return ExecuteTool(req, name, args)
 }
 
+// walletIdentityPrefix namespaces a wallet address used as an account id.
+// Account ids are usernames, which cannot contain a colon, so a wallet identity
+// can never collide with one — and the prefix means any caller of
+// AccountFrom can tell how the caller authenticated.
+const walletIdentityPrefix = "x402:"
+
+// IsWalletIdentity reports whether an account id is a paid wallet rather than a
+// registered account.
+func IsWalletIdentity(id string) bool {
+	return strings.HasPrefix(id, walletIdentityPrefix)
+}
+
+// callerIdentity resolves who is calling: the signed-in account, or the wallet
+// that paid for this request.
+//
+// The wallet address comes from a settled payment, so it is as authenticated as
+// a session — only the key holder could have produced it. Before this, a paying
+// agent was told "Authentication required" after it had already paid, which
+// made every account-scoped tool unreachable to exactly the callers the MCP
+// endpoint is for.
+func callerIdentity(r *http.Request) (string, error) {
+	if _, acc, err := auth.RequireSession(r); err == nil {
+		return acc.ID, nil
+	}
+	if payer := WalletPayer(r); payer != "" {
+		return walletIdentityPrefix + payer, nil
+	}
+	return "", fmt.Errorf("authentication required")
+}
+
+// WalletPayer is set by main.go to wallet.PayerFrom, which reads the settled
+// payment out of the request context. Wired there to keep this package free of
+// a wallet import.
+var WalletPayer = func(r *http.Request) string { return "" }
+
 // ExecuteTool calls a registered MCP tool with the given name and arguments,
 // forwarding authentication from r. It does NOT check wallet quota — the caller
 // is responsible for quota management.
@@ -663,15 +704,28 @@ func ExecuteTool(r *http.Request, name string, args map[string]any) (string, boo
 		}
 	}
 
+	// Refuse a paid wallet on an account-only tool before any dispatch. This has
+	// to sit above the branches: mail_send is a path-backed tool, so a guard
+	// inside the HandleAuth branch would never have run for it — which is the
+	// one tool the guard exists for.
+	if tool.AccountOnly {
+		if caller, err := callerIdentity(r); err == nil && IsWalletIdentity(caller) {
+			return "This tool requires an account", true,
+				fmt.Errorf("%s requires an account, not a paid wallet", tool.Name)
+		}
+	}
+
 	if tool.HandleAuth != nil {
-		// Auth-bound tools must never run without a server-validated account
-		// binding. Optional auth helpers intentionally return nil for guests,
-		// so use the required session path before invoking the handler.
-		_, acc, err := auth.RequireSession(r)
+		// Auth-bound tools must never run without a server-validated identity.
+		// There are two: a session, and a wallet that has paid for this request.
+		// Both are server-validated — a session by the cookie or token, a wallet
+		// by the facilitator having verified the signature and moved the funds.
+		// Neither is ever taken from an argument or an unauthenticated header.
+		caller, err := callerIdentity(r)
 		if err != nil {
 			return "Authentication required", true, err
 		}
-		text, err := tool.HandleAuth(args, acc.ID)
+		text, err := tool.HandleAuth(args, caller)
 		return text, err != nil, err
 	}
 

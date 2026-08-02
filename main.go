@@ -529,6 +529,11 @@ func main() {
 	// Inline visual cards now come from the capability registry (core), which
 	// each service self-registers into from its Load(). No central wiring here.
 
+	// A paid wallet is an identity: an agent that has settled a payment can
+	// reach account-scoped tools without an account. Read from the settled
+	// payment only — never from the unauthenticated X-Wallet-Address header.
+	api.WalletPayer = func(r *http.Request) string { return wallet.PayerFrom(r.Context()) }
+
 	// Wire x402 payment required response for MCP
 	if wallet.X402Enabled() {
 		api.PaymentRequiredResponse = wallet.WritePaymentRequired

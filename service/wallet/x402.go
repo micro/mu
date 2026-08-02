@@ -2,6 +2,7 @@ package wallet
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -575,4 +576,25 @@ func (s *settleWriter) Write(b []byte) (int, error) {
 		s.WriteHeader(http.StatusOK)
 	}
 	return s.ResponseWriter.Write(b)
+}
+
+// PayerFrom returns the wallet address that paid for this request, or "" if
+// nothing was paid.
+//
+// The address comes from a settled payment — the facilitator verified the
+// signature and moved the funds — so it is authenticated in the way that
+// matters: only the holder of that key could have produced it. That makes it
+// usable as an identity, which is what lets an agent with no account reach a
+// service that holds per-caller data.
+//
+// It is deliberately not read from the X-Wallet-Address header. That header
+// exists for the free-trial counter and is unauthenticated: anyone can claim
+// any address. Using it for identity would let one caller read another's
+// records by typing their address.
+func PayerFrom(ctx context.Context) string {
+	h, ok := ctx.Value(X402SettleKey).(*SettleHolder)
+	if !ok || h == nil || h.Resp == nil {
+		return ""
+	}
+	return strings.ToLower(strings.TrimSpace(h.Resp.Payer))
 }
