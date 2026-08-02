@@ -54,3 +54,13 @@ func TestBareURLIsAutolinked(t *testing.T) {
 		t.Errorf("bare URL was not linked:\n%s", out)
 	}
 }
+
+// The bubble holds rendered HTML, not plain text. white-space:pre-wrap would
+// preserve the markup's own newlines as blank space, so a list came out with a
+// large gap between every item.
+func TestBubbleDoesNotPreserveMarkupWhitespace(t *testing.T) {
+	e := &Event{Type: TypeAgent, Author: "micro", Content: "Plan:\n\n- one\n- two"}
+	if out := renderEvent(e, ""); strings.Contains(out, "pre-wrap") {
+		t.Errorf("bubble sets white-space:pre-wrap over rendered HTML:\n%s", out)
+	}
+}

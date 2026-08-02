@@ -146,7 +146,7 @@ func FragmentHandler(w http.ResponseWriter, r *http.Request) {
 // RenderStreamPage renders the full console page.
 func RenderStreamPage(events []*Event, viewerID string, r *http.Request) string {
 	var sb strings.Builder
-	sb.WriteString(`<div id="console" style="max-width:640px">`)
+	sb.WriteString(`<div id="console">`)
 
 	// Compose box (logged-in only).
 	if viewerID != "" {
@@ -267,7 +267,7 @@ func renderEvent(e *Event, viewerID string) string {
 	return fmt.Sprintf(`<div style="display:flex;gap:8px;padding:8px 0">%s
 <div style="flex:1;min-width:0">
 <div style="display:flex;align-items:baseline;gap:6px">%s<span style="color:#bbb;font-size:11px">%s</span></div>
-<div style="margin-top:3px;padding:8px 10px;background:%s;border-radius:0 12px 12px 12px;font-size:14px;line-height:1.5;white-space:pre-wrap;word-wrap:break-word;overflow-wrap:anywhere">%s</div>
+<div style="margin-top:3px;padding:8px 10px;background:%s;border-radius:0 12px 12px 12px;font-size:14px;line-height:1.5;word-wrap:break-word;overflow-wrap:anywhere">%s</div>
 </div></div>`, avatar, nameLink, app.TimeAgo(e.CreatedAt), bubbleBg, linked)
 }
 
