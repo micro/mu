@@ -2,7 +2,10 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
+
+	"go-micro.dev/v6/ai"
 )
 
 func TestAccountRoundTrip(t *testing.T) {
@@ -56,7 +59,8 @@ func registerEcho(t *testing.T) {
 }
 
 // The whole point of #1443: a caller cannot scope a call to another user by
-// naming them in the arguments.
+// naming them in the arguments. The forged value is dropped rather than
+// corrected, so it never reaches the handler at all.
 func TestCallDynamicIgnoresForgedAccountID(t *testing.T) {
 	registerEcho(t)
 
@@ -68,11 +72,11 @@ func TestCallDynamicIgnoresForgedAccountID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("call: %v", err)
 	}
-	if rsp["saw_account"] != "alice" {
-		t.Errorf("handler saw account %v, want alice — forged id was not overwritten", rsp["saw_account"])
-	}
 	if rsp["saw_meta"] != "alice" {
 		t.Errorf("handler context identity = %v, want alice", rsp["saw_meta"])
+	}
+	if rsp["saw_account"] != "" && rsp["saw_account"] != nil {
+		t.Errorf("forged account_id reached the handler as %v; it must be stripped", rsp["saw_account"])
 	}
 }
 
@@ -86,14 +90,17 @@ func TestCallDynamicGuestCannotClaimAnAccount(t *testing.T) {
 	if err != nil {
 		t.Fatalf("call: %v", err)
 	}
+	if rsp["saw_meta"] != "" && rsp["saw_meta"] != nil {
+		t.Errorf("guest call reached the handler as %v, want no account", rsp["saw_meta"])
+	}
 	if rsp["saw_account"] != "" && rsp["saw_account"] != nil {
-		t.Errorf("guest call reached the handler as %v, want no account", rsp["saw_account"])
+		t.Errorf("supplied account_id reached the handler as %v; it must be stripped", rsp["saw_account"])
 	}
 }
 
 // Identity set at the boundary reaches the handler without the caller passing
 // anything at all.
-func TestCallDynamicStampsIdentityWhenAbsent(t *testing.T) {
+func TestCallDynamicCarriesIdentityWithoutArguments(t *testing.T) {
 	registerEcho(t)
 
 	ctx := WithAccount(context.Background(), "bob")
@@ -101,7 +108,41 @@ func TestCallDynamicStampsIdentityWhenAbsent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("call: %v", err)
 	}
-	if rsp["saw_account"] != "bob" {
-		t.Errorf("handler saw account %v, want bob", rsp["saw_account"])
+	if rsp["saw_meta"] != "bob" {
+		t.Errorf("handler saw account %v, want bob", rsp["saw_meta"])
+	}
+}
+
+// ── the agent's dispatch path ───────────────────────────────────
+
+// TestIdentitySurvivesAgentToolDispatch closes the gap that kept account_id in
+// the request structs. The agent does not call services through CallDynamic —
+// go-micro's tool handler dispatches straight to the service — so identity is
+// only safe to remove from the arguments if it survives that path too. It has
+// to be proved, not assumed: if metadata were dropped here, every
+// account-scoped handler would silently see a guest.
+func TestIdentitySurvivesAgentToolDispatch(t *testing.T) {
+	registerEcho(t)
+
+	handler := ai.NewTools(Registry(), ai.ToolClient(Client())).Handler()
+	ctx := WithAccount(context.Background(), "acct-me")
+
+	res := handler(ctx, ai.ToolCall{
+		Name:  "echoprobe.EchoSrv.Echo",
+		Input: map[string]any{"note": "hello"},
+	})
+
+	var got struct {
+		SawAccount string `json:"saw_account"`
+		SawMeta    string `json:"saw_meta"`
+	}
+	if err := json.Unmarshal([]byte(res.Content), &got); err != nil {
+		t.Fatalf("tool result %q: %v", res.Content, err)
+	}
+	if got.SawMeta != "acct-me" {
+		t.Fatalf("handler saw account %q over the agent's dispatch, want %q", got.SawMeta, "acct-me")
+	}
+	if got.SawAccount != "" {
+		t.Fatalf("request field carried %q; identity must come only from context", got.SawAccount)
 	}
 }

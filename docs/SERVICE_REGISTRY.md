@@ -65,9 +65,10 @@ posting requires an account, so the check lives in the method rather than on
 the service. Marking it scoped would hide the timeline from visitors entirely.
 
 Identity comes from the **call context**, never from a request field — see
-`internal/service/identity.go`. `CallDynamic` discards any `account_id` a caller
-supplies and re-stamps it from the context, so no caller can scope a call to
-someone else by naming them.
+`internal/service/identity.go`. Handlers read `service.AccountFrom(ctx)`, and no
+request struct carries an account. There is nothing to forge: `CallDynamic` and
+the agent's `injectAccount` both discard any `account_id` a caller or the model
+supplies, so it cannot reach a handler even by accident.
 
 ## Destructive methods
 

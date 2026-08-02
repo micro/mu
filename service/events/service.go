@@ -16,9 +16,7 @@ type Server struct{}
 
 // CreateRequest schedules a reminder/event.
 type CreateRequest struct {
-	// AccountID is supplied by the platform (the caller's account), not the model.
-	AccountID string `json:"account_id" description:"Caller account (supplied by the platform)"`
-	Title     string `json:"title" description:"What to be reminded about, e.g. 'Call the dentist'"`
+	Title string `json:"title" description:"What to be reminded about, e.g. 'Call the dentist'"`
 	// When is an RFC3339 timestamp with a timezone offset. Resolve relative
 	// phrases ("tomorrow at 3pm") against the current date before calling.
 	When string `json:"when" description:"When to fire, RFC3339 with timezone offset, e.g. 2026-07-22T15:00:00+01:00"`
@@ -33,12 +31,12 @@ type CreateResponse struct {
 // Create schedules a reminder or event to fire at a given time. Use this
 // whenever the user asks to be reminded of something or to schedule an event.
 // @example {"title": "Call the dentist", "when": "2026-07-22T15:00:00+01:00"}
-func (Server) Create(_ context.Context, req *CreateRequest, rsp *CreateResponse) error {
+func (Server) Create(ctx context.Context, req *CreateRequest, rsp *CreateResponse) error {
 	when, err := parseWhen(req.When)
 	if err != nil {
 		return err
 	}
-	e, err := Create(req.AccountID, req.Title, when, req.Note)
+	e, err := Create(service.AccountFrom(ctx), req.Title, when, req.Note)
 	if err != nil {
 		return err
 	}
@@ -48,9 +46,7 @@ func (Server) Create(_ context.Context, req *CreateRequest, rsp *CreateResponse)
 }
 
 // ListRequest asks for the caller's upcoming events.
-type ListRequest struct {
-	AccountID string `json:"account_id" description:"Caller account (supplied by the platform)"`
-}
+type ListRequest struct{}
 
 // ListResponse is the caller's upcoming events as model-ready text.
 type ListResponse struct {
@@ -59,9 +55,9 @@ type ListResponse struct {
 
 // List returns the caller's upcoming (not-yet-fired) events.
 // @example {}
-func (Server) List(_ context.Context, req *ListRequest, rsp *ListResponse) error {
+func (Server) List(ctx context.Context, _ *ListRequest, rsp *ListResponse) error {
 	var b strings.Builder
-	for _, e := range Upcoming(req.AccountID) {
+	for _, e := range Upcoming(service.AccountFrom(ctx)) {
 		fmt.Fprintf(&b, "- %s — %s", e.When.Format("Mon 2 Jan 15:04 MST"), e.Title)
 		if e.Note != "" {
 			fmt.Fprintf(&b, " (%s)", e.Note)

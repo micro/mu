@@ -24,9 +24,8 @@ type Server struct{}
 
 // Request searches everything mu knows for an account.
 type Request struct {
-	AccountID string `json:"account_id" description:"Account whose mail to include (optional)"`
-	Query     string `json:"query" description:"What to look for"`
-	Limit     int    `json:"limit" description:"Max results (default 12)"`
+	Query string `json:"query" description:"What to look for"`
+	Limit int    `json:"limit" description:"Max results (default 12)"`
 }
 
 // Response is a model-ready list of matches.
@@ -37,12 +36,12 @@ type Response struct {
 // Search searches indexed news, blog, social and video, plus the account's own
 // mail, and returns the most relevant items with ids.
 // @example {"query": "bitcoin"}
-func (Server) Search(_ context.Context, req *Request, rsp *Response) error {
+func (Server) Search(ctx context.Context, req *Request, rsp *Response) error {
 	limit := req.Limit
 	if limit <= 0 {
 		limit = 12
 	}
-	rsp.Text = search(req.AccountID, req.Query, limit)
+	rsp.Text = search(service.AccountFrom(ctx), req.Query, limit)
 	return nil
 }
 

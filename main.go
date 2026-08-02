@@ -748,8 +748,8 @@ func main() {
 			}
 		}
 		var rsp index.Response
-		if err := service.Call(context.Background(), "index", "Server.Search",
-			&index.Request{AccountID: accountID, Query: strings.TrimSpace(query), Limit: limit}, &rsp); err != nil {
+		if err := service.Call(service.WithAccount(context.Background(), accountID), "index", "Server.Search",
+			&index.Request{Query: strings.TrimSpace(query), Limit: limit}, &rsp); err != nil {
 			return "", err
 		}
 		return rsp.Text, nil
@@ -900,8 +900,8 @@ func main() {
 		when, _ := args["when"].(string)
 		note, _ := args["note"].(string)
 		var rsp events.CreateResponse
-		if err := service.Call(context.Background(), "events", "Server.Create",
-			&events.CreateRequest{AccountID: accountID, Title: title, When: when, Note: note},
+		if err := service.Call(service.WithAccount(context.Background(), accountID), "events", "Server.Create",
+			&events.CreateRequest{Title: title, When: when, Note: note},
 			&rsp); err != nil {
 			return "", err
 		}
@@ -913,8 +913,8 @@ func main() {
 		Description: "List your upcoming scheduled events and reminders, soonest first.",
 	}, func(args map[string]any, accountID string) (string, error) {
 		var rsp events.ListResponse
-		if err := service.Call(context.Background(), "events", "Server.List",
-			&events.ListRequest{AccountID: accountID}, &rsp); err != nil {
+		if err := service.Call(service.WithAccount(context.Background(), accountID), "events", "Server.List",
+			&events.ListRequest{}, &rsp); err != nil {
 			return "", err
 		}
 		return rsp.Events, nil
@@ -1190,8 +1190,8 @@ func main() {
 		// Owner is the authenticated caller; the author name is resolved
 		// server-side (see apps.AuthorNameFor), never taken from the model.
 		var rsp apps.BuildResponse
-		if err := service.Call(context.Background(), "apps", "Server.Build",
-			&apps.BuildRequest{Prompt: prompt, AccountID: accountID}, &rsp); err != nil {
+		if err := service.Call(service.WithAccount(context.Background(), accountID), "apps", "Server.Build",
+			&apps.BuildRequest{Prompt: prompt}, &rsp); err != nil {
 			return fmt.Sprintf(`{"error":"%s"}`, err.Error()), err
 		}
 		b, _ := json.Marshal(map[string]string{

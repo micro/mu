@@ -143,31 +143,23 @@ func filterServices(all, allow []string) []string {
 	return out
 }
 
-// injectAccount is a tool wrapper that supplies the caller's account id to
-// account-scoped service methods (recall, mail, …) — the LLM never sees it, so
-// this preserves the auth scoping the hand-rolled tools enforced.
+// injectAccount is a tool wrapper that binds the caller's identity to every
+// tool call the model makes, so account-scoped services (mail, index, images,
+// events) see who is asking without the model ever naming them.
 //
-// Security: the caller's account id is forced unconditionally. We never trust an
-// account_id coming from the model, because it can be steered by prompt
-// injection in tool content (e.g. the body of an email it just read) into
-// scoping a tool to another user's data. For guests (no account) any
-// model-supplied account_id is stripped so they can't scope to anyone either.
+// Security: the identity is forced unconditionally, and it travels on the call
+// context rather than in the arguments. An account_id in the arguments would be
+// steerable by prompt injection in tool content — the body of an email the
+// model just read — into scoping a tool to another user's data. Handlers read
+// service.AccountFrom(ctx) and nothing else, so there is no argument to forge.
+// Any account_id the model invents is stripped rather than passed through, both
+// because it means nothing now and so a handler can never start trusting it.
+// For a guest the identity is empty, which clears any inherited account instead
+// of borrowing the previous caller's.
 func injectAccount(accountID string) gmai.ToolWrapper {
 	return func(next gmai.ToolHandler) gmai.ToolHandler {
 		return func(ctx context.Context, call gmai.ToolCall) gmai.ToolResult {
-			if call.Input == nil {
-				call.Input = map[string]any{}
-			}
-			// Set both. The context is the mechanism handlers should move to,
-			// but the agent's tool calls are dispatched by go-micro straight to
-			// the service — not through CallDynamic — so the request field is
-			// still what today's handlers read. Either way the model's value is
-			// overwritten, never trusted.
-			if accountID != "" {
-				call.Input["account_id"] = accountID
-			} else {
-				delete(call.Input, "account_id")
-			}
+			delete(call.Input, "account_id")
 			return next(service.WithAccount(ctx, accountID), call)
 		}
 	}

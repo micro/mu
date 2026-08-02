@@ -11,12 +11,10 @@ import (
 // Server is the go-micro service handler for apps.
 type Server struct{}
 
-// BuildRequest describes an app to generate. AccountID is the owner and is
-// bound server-side from the authenticated caller (forced by the agent's
-// injectAccount wrapper) — never trust a model-supplied owner/author.
+// BuildRequest describes an app to generate. The owner is the authenticated
+// caller, taken from the call context — never a model-supplied author.
 type BuildRequest struct {
-	Prompt    string `json:"prompt" description:"Description of the app to build"`
-	AccountID string `json:"account_id" description:"Owner account — set by the server, do not fill in"`
+	Prompt string `json:"prompt" description:"Description of the app to build"`
 }
 
 // BuildResponse is the saved app's identity and URLs.
@@ -30,11 +28,12 @@ type BuildResponse struct {
 // Build generates a small app (tracker, checklist or counter) from a natural
 // language description, saves it, and returns its details with URLs.
 // @example {"prompt": "an expense tracker"}
-func (Server) Build(_ context.Context, req *BuildRequest, rsp *BuildResponse) error {
-	if strings.TrimSpace(req.AccountID) == "" {
+func (Server) Build(ctx context.Context, req *BuildRequest, rsp *BuildResponse) error {
+	account := service.AccountFrom(ctx)
+	if strings.TrimSpace(account) == "" {
 		return fmt.Errorf("authentication required to build an app")
 	}
-	a, err := BuildMicroApp(req.Prompt, req.AccountID, AuthorNameFor(req.AccountID))
+	a, err := BuildMicroApp(req.Prompt, account, AuthorNameFor(account))
 	if err != nil {
 		return err
 	}

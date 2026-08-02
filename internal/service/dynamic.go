@@ -96,11 +96,10 @@ func methodNames(eps []string) []string {
 // knowledge of a service — an app using the SDK, the agent dispatching a tool,
 // a service calling another service — still use it.
 //
-// It is also the one place account identity is bound. Whatever the caller put
-// in args["account_id"] is discarded and replaced with the authenticated
-// account from the context, so no dynamic caller can scope a call to someone
-// else by naming them. Callers set identity with WithAccount at the boundary
-// where a session exists; everything downstream inherits it.
+// Identity is never taken from args. It rides on the context, set with
+// WithAccount at the boundary where a session exists, and everything downstream
+// inherits it — so no dynamic caller can scope a call to someone else by naming
+// them in the arguments.
 func CallDynamic(ctx context.Context, svc, method string, args map[string]any) (map[string]any, error) {
 	ep, err := ResolveEndpoint(svc, method)
 	if err != nil {
@@ -110,13 +109,10 @@ func CallDynamic(ctx context.Context, svc, method string, args map[string]any) (
 		args = map[string]any{}
 	}
 
-	// Identity comes from the context, never from the caller's arguments.
-	// Handlers still read account_id off their request struct, so it is stamped
-	// here rather than removed — but the value is Mu's, not the caller's.
+	// Handlers read identity from the context alone, so an account_id in the
+	// arguments is meaningless. Strip it anyway: it must not reach a handler
+	// that might one day be tempted to read it.
 	delete(args, "account_id")
-	if acc := AccountFrom(ctx); acc != "" {
-		args["account_id"] = acc
-	}
 
 	var rsp map[string]any
 	if err := Call(ctx, svc, ep, &args, &rsp); err != nil {

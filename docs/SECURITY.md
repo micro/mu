@@ -26,13 +26,21 @@ It is never read from the model's tool arguments.
 
 Concretely:
 
-1. **Native go-micro service tools** (`agent/native.go` `nativeServices`) — the
-   only identity field a request struct may carry is `account_id`, because the
-   `injectAccount` wrapper (`agent/native.go`) *force-overwrites* it with the
-   authenticated caller and *strips* it for guests. Any OTHER identity-bearing
-   field — `author_id`, `owner`, `user_id`, `from`, `address`, `scope`,
-   `account`, etc. — is model-controlled and is a bug. Identity fields must be
-   named `account_id` and bound by the wrapper, or resolved server-side (e.g.
+1. **Native go-micro service tools** (`agent/native.go` `nativeServices`) — a
+   request struct carries **no identity field at all**. Identity travels on the
+   call context as go-micro metadata (`service.WithAccount` /
+   `service.AccountFrom`, `internal/service/identity.go`), set once at the
+   boundary where a session exists. Handlers read `service.AccountFrom(ctx)`.
+
+   This is stronger than binding an argument: there is no argument to forge. The
+   `injectAccount` wrapper strips any `account_id` the model invents, and
+   `CallDynamic` does the same for apps and other dynamic callers, so the field
+   cannot reach a handler even by accident. A guest binds an empty identity,
+   which *clears* any inherited account rather than borrowing it.
+
+   Any identity-bearing request field — `account_id`, `author_id`, `owner`,
+   `user_id`, `from`, `address`, `scope`, `account` — is model-controlled and is
+   a bug. Identity comes from the context, or is resolved server-side (e.g.
    `apps.AuthorNameFor`).
 
 2. **MCP tools** (`internal/api`, registered in `main.go`) that touch user data
@@ -72,10 +80,12 @@ Concretely:
    `api.Tool{Path:...}` in `internal/api/mcp.go`, and every `service.Register`
    handler's exported methods.
 2. Classify each as PUBLIC data or USER/ACCOUNT/WALLET/OWNED data.
-3. For each non-public tool, confirm identity is session-bound (per the
-   invariant), not read from `args` / a non-`account_id` request field.
-4. Grep native request structs for identity fields other than `account_id`
-   (`author`, `owner`, `user`, `from`, `address`, `scope`, `account`).
+3. For each non-public tool, confirm identity comes from
+   `service.AccountFrom(ctx)` (per the invariant), never from `args` or a
+   request field.
+4. Grep native request structs for **any** identity field (`account_id`,
+   `author`, `owner`, `user`, `from`, `address`, `scope`, `account`). There
+   should be none.
 5. Confirm every mutation checks ownership; confirm money paths are capped and
    allowlisted.
 6. Confirm guests can reach nothing account-scoped.
@@ -86,7 +96,7 @@ Concretely:
 As of the last audit these were verified correct — a finding here means a
 regression:
 
-- `mail` (Search/Inbox), `index` — `account_id` force-bound; guests excluded.
+- `mail` (Search/Inbox), `index`, `images`, `events` — identity read from the call context; guests excluded.
 - `memory` — keyed by session account; scope is a static registry constant.
 - wallet `balance` / `convert` / `topup` — source is `sess.Account`.
 - `wallet_transfer` — source session-bound; £500/call cap. (No daily cap yet —
@@ -96,7 +106,7 @@ regression:
 - blog update/delete — `RequireSession` + author check.
 - `apps_create` — author from session, slug auto-uniquified (never overwrites).
 - `apps_edit` — `RegisterToolWithAuth` + `UpdateAppOwned` ownership check.
-- `apps_build` / native `apps.Build` — owner bound via `account_id`; author name resolved server-side.
+- `apps_build` / native `apps.Build` — owner read from the call context; author name resolved server-side.
 - `apps_fork` — `RegisterToolWithAuth`; fork owner and author name come from the authenticated session.
 - `apps_test` — `RegisterToolWithAuth`; app API test calls run with the authenticated session account.
 

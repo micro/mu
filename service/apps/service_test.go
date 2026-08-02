@@ -16,8 +16,8 @@ func TestAppsBuildViaMesh(t *testing.T) {
 		t.Fatalf("register: %v", err)
 	}
 	var rsp BuildResponse
-	err := service.Call(context.Background(), "apps", "Server.Build",
-		&BuildRequest{Prompt: "a water counter", AccountID: "u1"}, &rsp)
+	err := service.Call(service.WithAccount(context.Background(), "u1"), "apps", "Server.Build",
+		&BuildRequest{Prompt: "a water counter"}, &rsp)
 	if err == nil {
 		return // an AI provider was configured and it built — also fine
 	}

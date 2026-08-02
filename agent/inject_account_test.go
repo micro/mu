@@ -4,51 +4,70 @@ import (
 	"context"
 	"testing"
 
+	"mu/internal/service"
+
 	gmai "go-micro.dev/v6/ai"
 )
 
-// TestInjectAccountForcesCallerAccount is a security regression test: the
-// account id passed to account-scoped tools must always be the authenticated
-// caller's, never a value the model supplied. A model-supplied account_id can
-// be steered by prompt injection in tool content (e.g. an email body), so it
-// must be overwritten, and stripped entirely for guests.
-func TestInjectAccountForcesCallerAccount(t *testing.T) {
-	capture := func() (gmai.ToolHandler, *map[string]any) {
-		var got map[string]any
-		h := func(_ context.Context, call gmai.ToolCall) gmai.ToolResult {
-			got = call.Input
+// TestInjectAccountBindsCallerToContext is a security regression test. The
+// identity account-scoped tools act on must always be the authenticated
+// caller's, and it must travel on the call context — never in the arguments,
+// where prompt injection in tool content (an email body the model just read)
+// could steer it at another user's data.
+func TestInjectAccountBindsCallerToContext(t *testing.T) {
+	capture := func() (gmai.ToolHandler, *map[string]any, *string) {
+		var gotInput map[string]any
+		var gotAccount string
+		h := func(ctx context.Context, call gmai.ToolCall) gmai.ToolResult {
+			gotInput = call.Input
+			gotAccount = service.AccountFrom(ctx)
 			return gmai.ToolResult{}
 		}
-		return h, &got
+		return h, &gotInput, &gotAccount
 	}
 
 	cases := []struct {
-		name    string
-		caller  string
-		input   map[string]any
-		wantAcc any  // expected account_id value
-		present bool // whether account_id should be present at all
+		name   string
+		caller string
+		input  map[string]any
+		want   string
 	}{
-		{"injects when absent", "acct-me", map[string]any{"query": "x"}, "acct-me", true},
-		{"overrides model-supplied", "acct-me", map[string]any{"account_id": "acct-victim"}, "acct-me", true},
-		{"overrides nil input", "acct-me", nil, "acct-me", true},
-		{"guest strips model-supplied", "", map[string]any{"account_id": "acct-victim"}, nil, false},
-		{"guest leaves none", "", map[string]any{"query": "x"}, nil, false},
+		{"binds the caller", "acct-me", map[string]any{"query": "x"}, "acct-me"},
+		{"ignores a model-supplied account", "acct-me", map[string]any{"account_id": "acct-victim"}, "acct-me"},
+		{"binds with no input at all", "acct-me", nil, "acct-me"},
+		{"a guest claims nobody", "", map[string]any{"account_id": "acct-victim"}, ""},
+		{"a guest stays a guest", "", map[string]any{"query": "x"}, ""},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			h, got := capture()
+			h, gotInput, gotAccount := capture()
 			wrapped := injectAccount(tc.caller)(h)
 			wrapped(context.Background(), gmai.ToolCall{Name: "mail.Inbox", Input: tc.input})
 
-			v, ok := (*got)["account_id"]
-			if ok != tc.present {
-				t.Fatalf("account_id present=%v, want %v (input=%v)", ok, tc.present, *got)
+			if *gotAccount != tc.want {
+				t.Fatalf("handler saw account %q, want %q", *gotAccount, tc.want)
 			}
-			if tc.present && v != tc.wantAcc {
-				t.Fatalf("account_id=%v, want %v", v, tc.wantAcc)
+			// The arguments must never carry identity, whatever the model sent.
+			if _, ok := (*gotInput)["account_id"]; ok {
+				t.Fatalf("account_id reached the handler arguments: %v", *gotInput)
 			}
 		})
+	}
+}
+
+// TestInjectAccountClearsInheritedIdentity guards the case where a wrapped call
+// runs under a context that already carries someone else's account: a guest
+// must not inherit it.
+func TestInjectAccountClearsInheritedIdentity(t *testing.T) {
+	var got string
+	h := func(ctx context.Context, _ gmai.ToolCall) gmai.ToolResult {
+		got = service.AccountFrom(ctx)
+		return gmai.ToolResult{}
+	}
+	inherited := service.WithAccount(context.Background(), "acct-someone-else")
+	injectAccount("")(h)(inherited, gmai.ToolCall{Name: "mail.Inbox"})
+	if got != "" {
+		t.Fatalf("guest inherited account %q", got)
 	}
 }

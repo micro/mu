@@ -14,8 +14,8 @@ func TestMailSearchViaMesh(t *testing.T) {
 		t.Fatalf("register: %v", err)
 	}
 	var rsp SearchResponse
-	if err := service.Call(context.Background(), "mail", "Server.Search",
-		&SearchRequest{AccountID: "nobody", Query: "invoice", Limit: 5}, &rsp); err != nil {
+	if err := service.Call(service.WithAccount(context.Background(), "nobody"), "mail", "Server.Search",
+		&SearchRequest{Query: "invoice", Limit: 5}, &rsp); err != nil {
 		t.Fatalf("call (endpoint/transport?): %v", err)
 	}
 	// No mail for an unknown account; the round-trip + formatting is what matters.

@@ -13,9 +13,8 @@ type Server struct{}
 
 // SearchRequest searches an account's mail.
 type SearchRequest struct {
-	AccountID string `json:"account_id" description:"Account whose mail to search"`
-	Query     string `json:"query" description:"What to look for"`
-	Limit     int    `json:"limit" description:"Max results (default 10)"`
+	Query string `json:"query" description:"What to look for"`
+	Limit int    `json:"limit" description:"Max results (default 10)"`
 }
 
 // SearchResponse is a model-ready list of matching messages.
@@ -27,16 +26,17 @@ type SearchResponse struct {
 // empty query it falls back to listing the most recent inbox messages, so a bare
 // "read my mail" still works.
 // @example {"query": "invoice"}
-func (Server) Search(_ context.Context, req *SearchRequest, rsp *SearchResponse) error {
+func (Server) Search(ctx context.Context, req *SearchRequest, rsp *SearchResponse) error {
+	account := service.AccountFrom(ctx)
 	limit := req.Limit
 	if limit <= 0 {
 		limit = 10
 	}
 	if strings.TrimSpace(req.Query) == "" {
-		rsp.Text = renderInbox(ListMessages(req.AccountID, limit))
+		rsp.Text = renderInbox(ListMessages(account, limit))
 		return nil
 	}
-	msgs := Search(req.AccountID, req.Query, limit)
+	msgs := Search(account, req.Query, limit)
 	if len(msgs) == 0 {
 		rsp.Text = fmt.Sprintf("No mail found for %q.", req.Query)
 		return nil
@@ -47,15 +47,14 @@ func (Server) Search(_ context.Context, req *SearchRequest, rsp *SearchResponse)
 
 // InboxRequest lists the account's recent inbox messages.
 type InboxRequest struct {
-	AccountID string `json:"account_id" description:"Account whose inbox to list"`
-	Limit     int    `json:"limit" description:"Max messages (default 10)"`
+	Limit int `json:"limit" description:"Max messages (default 10)"`
 }
 
 // Inbox lists the account's most recent messages without needing a search query.
 // Use this for "read my mail", "check my inbox" or "any new email?".
 // @example {}
-func (Server) Inbox(_ context.Context, req *InboxRequest, rsp *SearchResponse) error {
-	rsp.Text = renderInbox(ListMessages(req.AccountID, req.Limit))
+func (Server) Inbox(ctx context.Context, req *InboxRequest, rsp *SearchResponse) error {
+	rsp.Text = renderInbox(ListMessages(service.AccountFrom(ctx), req.Limit))
 	return nil
 }
 
