@@ -588,6 +588,34 @@ func main() {
 		},
 	})
 
+	// events_free — the question a calendar is actually asked. events could
+	// schedule a thing and list what was coming, which makes it a reminder
+	// queue; "when am I free on Thursday" is the other half.
+	api.RegisterToolWithAuth(api.Tool{
+		Name:        "events_free",
+		Description: "Find when you have nothing booked. Give it how long you need and it returns the open slots, within working hours.",
+		Params: []api.ToolParam{
+			{Name: "from", Type: "string", Description: "Start of the window, RFC3339 (default now)", Required: false},
+			{Name: "to", Type: "string", Description: "End of the window, RFC3339 (default a week later)", Required: false},
+			{Name: "minutes", Type: "number", Description: "How long a slot you need, in minutes (default 30)", Required: false},
+			{Name: "day_start", Type: "number", Description: "Earliest hour to offer, 0-23 (default 9)", Required: false},
+			{Name: "day_end", Type: "number", Description: "Latest hour to offer, 0-23 (default 18)", Required: false},
+		},
+	}, func(args map[string]any, accountID string) (string, error) {
+		num := func(k string) int { v, _ := args[k].(float64); return int(v) }
+		str := func(k string) string { v, _ := args[k].(string); return v }
+		var rsp events.FreeResponse
+		err := service.Call(service.WithAccount(context.Background(), accountID),
+			"events", "Server.Free", &events.FreeRequest{
+				From: str("from"), To: str("to"), Minutes: num("minutes"),
+				DayStart: num("day_start"), DayEnd: num("day_end"),
+			}, &rsp)
+		if err != nil {
+			return "", err
+		}
+		return rsp.Text, nil
+	})
+
 	// files_* — keep a file, get a URL, read it back. db holds JSON records and
 	// images holds pictures; neither holds a file, so an agent that produced a
 	// report had nowhere to leave it and no link to hand over.
@@ -934,14 +962,16 @@ func main() {
 			{Name: "title", Type: "string", Description: "What to be reminded about", Required: true},
 			{Name: "when", Type: "string", Description: "When to fire, RFC3339 with timezone offset, e.g. 2026-07-22T15:00:00+01:00", Required: true},
 			{Name: "note", Type: "string", Description: "Optional extra detail"},
+			{Name: "minutes", Type: "number", Description: "How long it lasts in minutes (default 30). What events_free subtracts.", Required: false},
 		},
 	}, func(args map[string]any, accountID string) (string, error) {
 		title, _ := args["title"].(string)
 		when, _ := args["when"].(string)
 		note, _ := args["note"].(string)
+		minutes, _ := args["minutes"].(float64)
 		var rsp events.CreateResponse
 		if err := service.Call(service.WithAccount(context.Background(), accountID), "events", "Server.Create",
-			&events.CreateRequest{Title: title, When: when, Note: note},
+			&events.CreateRequest{Title: title, When: when, Note: note, Minutes: int(minutes)},
 			&rsp); err != nil {
 			return "", err
 		}

@@ -21,11 +21,15 @@ import (
 
 // Event is a scheduled reminder owned by a single user.
 type Event struct {
-	ID      string    `json:"id"`
-	Owner   string    `json:"owner"`
-	Title   string    `json:"title"`
-	When    time.Time `json:"when"`
-	Note    string    `json:"note,omitempty"`
+	ID    string    `json:"id"`
+	Owner string    `json:"owner"`
+	Title string    `json:"title"`
+	When  time.Time `json:"when"`
+	Note  string    `json:"note,omitempty"`
+	// Minutes is how long the event lasts. Zero means the half hour the .ics
+	// export has always assumed, so events stored before this existed keep the
+	// meaning they were saved with.
+	Minutes int       `json:"minutes,omitempty"`
 	Created time.Time `json:"created"`
 	Fired   bool      `json:"fired"`
 	FiredAt time.Time `json:"fired_at,omitempty"`
@@ -85,6 +89,12 @@ func saveLocked() {
 
 // Create schedules an event for owner at the given time.
 func Create(owner, title string, when time.Time, note string) (*Event, error) {
+	return CreateFor(owner, title, when, note, 0)
+}
+
+// CreateFor schedules an event of a given length in minutes. Zero takes the
+// default.
+func CreateFor(owner, title string, when time.Time, note string, minutes int) (*Event, error) {
 	owner = strings.TrimSpace(owner)
 	title = strings.TrimSpace(title)
 	if owner == "" {
@@ -102,6 +112,7 @@ func Create(owner, title string, when time.Time, note string) (*Event, error) {
 		Title:   title,
 		When:    when.UTC(),
 		Note:    strings.TrimSpace(note),
+		Minutes: minutes,
 		Created: time.Now().UTC(),
 	}
 	mu.Lock()

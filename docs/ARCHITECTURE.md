@@ -101,7 +101,7 @@ guessable.
 | `blog` | /blog | ✅ |  | Microblogging, daily digests, ActivityPub |
 | `chat` | /chat | ✅ |  | Live discussion rooms attached to an item |
 | `db` | — | ✅ | ✅ | Per-user records, for services and apps |
-| `events` | /events | ✅ | ✅ | Scheduled reminders, `.ics` invites |
+| `events` | /events | ✅ | ✅ | Calendar: scheduling, `.ics` invites, and when you are free |
 | `files` | /files | ✅ | ✅ | Per-user file storage: keep a file, get a URL |
 | `images` | /images | ✅ | ✅ | Generation, daily image, archive |
 | `index` | — | ✅ | ✅ | Search across the caller's own content |

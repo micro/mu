@@ -21,6 +21,10 @@ type CreateRequest struct {
 	// phrases ("tomorrow at 3pm") against the current date before calling.
 	When string `json:"when" description:"When to fire, RFC3339 with timezone offset, e.g. 2026-07-22T15:00:00+01:00"`
 	Note string `json:"note" description:"Optional extra detail"`
+	// Minutes makes this a calendar entry rather than a moment: a meeting
+	// occupies time, and Free needs to know how much before it can say when
+	// somebody is available.
+	Minutes int `json:"minutes" description:"How long it lasts in minutes (default 30)"`
 }
 
 // CreateResponse confirms the scheduled event.
@@ -36,7 +40,7 @@ func (Server) Create(ctx context.Context, req *CreateRequest, rsp *CreateRespons
 	if err != nil {
 		return err
 	}
-	e, err := Create(service.AccountFrom(ctx), req.Title, when, req.Note)
+	e, err := CreateFor(service.AccountFrom(ctx), req.Title, when, req.Note, req.Minutes)
 	if err != nil {
 		return err
 	}
@@ -72,6 +76,61 @@ func (Server) List(ctx context.Context, _ *ListRequest, rsp *ListResponse) error
 	return nil
 }
 
+// FreeRequest asks when the caller is free.
+type FreeRequest struct {
+	From     string `json:"from" description:"Start of the window to search, RFC3339, e.g. 2026-08-03T00:00:00+01:00. Defaults to now"`
+	To       string `json:"to" description:"End of the window, RFC3339. Defaults to a week after from"`
+	Minutes  int    `json:"minutes" description:"How long a slot you need, in minutes (default 30)"`
+	DayStart int    `json:"day_start" description:"Earliest hour of the day to offer, 0-23 (default 9)"`
+	DayEnd   int    `json:"day_end" description:"Latest hour of the day to offer, 0-23 (default 18)"`
+}
+
+// FreeResponse is the open slots as model-ready text.
+type FreeResponse struct {
+	Slots []Slot `json:"slots" description:"The open slots, in order"`
+	Text  string `json:"text" description:"The same slots as readable text, grouped by day"`
+}
+
+// Free finds when the caller has nothing booked — the question a calendar is
+// actually asked. Give it how long you need and it returns the stretches that
+// fit, within working hours.
+// @example {"minutes": 60, "from": "2026-08-03T09:00:00+01:00", "to": "2026-08-04T18:00:00+01:00"}
+func (Server) Free(ctx context.Context, req *FreeRequest, rsp *FreeResponse) error {
+	owner := service.AccountFrom(ctx)
+	if owner == "" {
+		return fmt.Errorf("sign in to check your calendar")
+	}
+
+	from := time.Now()
+	if s := strings.TrimSpace(req.From); s != "" {
+		parsed, err := parseWhen(s)
+		if err != nil {
+			return err
+		}
+		from = parsed
+	}
+	to := from.Add(7 * 24 * time.Hour)
+	if s := strings.TrimSpace(req.To); s != "" {
+		parsed, err := parseWhen(s)
+		if err != nil {
+			return err
+		}
+		to = parsed
+	}
+
+	q := FreeQuery{From: from, To: to, Minutes: req.Minutes, DayStart: req.DayStart, DayEnd: req.DayEnd}
+	if req.DayEnd == 0 && req.DayStart == 0 {
+		q.DayStart, q.DayEnd = 9, 18
+	}
+	rsp.Slots = Free(owner, q)
+	want := req.Minutes
+	if want <= 0 {
+		want = 30
+	}
+	rsp.Text = RenderSlots(rsp.Slots, want)
+	return nil
+}
+
 // parseWhen accepts RFC3339 (preferred, carries a timezone) and a few common
 // fallbacks. Timestamps without an offset are interpreted as UTC.
 func parseWhen(s string) (time.Time, error) {
@@ -96,12 +155,13 @@ func parseWhen(s string) (time.Time, error) {
 var Spec = service.Spec{
 	Name:        "events",
 	Handler:     new(Server),
-	Description: "Scheduled reminders and calendar invites",
+	Description: "Calendar: what is scheduled, and when you are free",
 	Page:        "/events",
 	Scoped:      true,
 	Icon:        "events.svg",
 	Endpoints: map[string]service.Endpoint{
-		"Create": {Doc: "Schedule a reminder or event to fire at a given time"},
+		"Create": {Doc: "Schedule a reminder or event at a given time, optionally for a given number of minutes"},
+		"Free":   {Doc: "Find when the caller has nothing booked — open slots of a given length, within working hours"},
 		"List":   {Doc: "List the caller's upcoming events and reminders"},
 	},
 }
