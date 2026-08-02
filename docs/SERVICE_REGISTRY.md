@@ -22,36 +22,47 @@ Services live under `service/<name>/`. `internal/service` is the runtime core
 that hosts them — it is not itself a service.
 
 The exception is a **headless** service: a capability with no page, so no route
-and no nav entry. `index`, `web` and `db` are headless. `wallet` has a page that
-predates its service; both are the same capability with two surfaces.
+and no nav entry. `index`, `web` and `db` are headless — they exist for the
+agent, for apps and for other services to call.
+
+Two footnotes. `wallet` has a page that predates its service; both are the same
+capability with two surfaces. And `/web` still 301s to `/search` for old links,
+from when fetching lived inside search — the `web` service itself has no page.
 
 ## What is registered
 
 | Service | Page | Agent tool | Account-scoped | What it is |
 |---|---|---|---|---|
-| `news` | `/news` | ✅ | | RSS aggregation, sentiment, search |
-| `blog` | `/blog` | ✅ | | Microblogging, daily digests, ActivityPub |
-| `mail` | `/mail` | ✅ | ✅ | SMTP server, inbox, DKIM |
-| `markets` | `/markets` | ✅ | | Crypto, futures, commodities, currencies |
-| `weather` | `/weather` | ✅ | | Forecast and pollen |
-| `places` | `/places` | ✅ | | Maps and points of interest |
-| `video` | `/video` | ✅ | | Search and playback |
-| `social` | `/social` | ✅ | | Threads, replies, status |
-| `search` | `/search` | ✅ | | Web search |
-| `images` | `/images` | ✅ | ✅ | Generation, daily image, archive |
-| `events` | `/events` | ✅ | ✅ | Scheduled reminders, `.ics` invites |
-| `islam` | `/islam` | ✅ | | Daily reminder, prayer times, qibla |
-| `apps` | `/apps` | ✅ | | User apps: build, run, edit |
-| `index` | — | ✅ | ✅ | Search across the caller's own content |
-| `web` | — | ✅ | | Fetch a URL, return readable content |
+| `apps` | /apps | ✅ |  | User apps: build, run, edit |
+| `blog` | /blog | ✅ |  | Microblogging, daily digests, ActivityPub |
+| `chat` | /chat | ✅ |  | Live discussion rooms attached to an item |
 | `db` | — | ✅ | ✅ | Per-user records, for services and apps |
-| `wallet` | `/wallet` | ✅ | ✅ | Credit check, charge, balance |
+| `events` | /events | ✅ | ✅ | Scheduled reminders, `.ics` invites |
+| `images` | /images | ✅ | ✅ | Generation, daily image, archive |
+| `index` | — | ✅ | ✅ | Search across the caller's own content |
+| `islam` | /islam | ✅ |  | Daily reminder, prayer times, qibla |
+| `mail` | /mail | ✅ | ✅ | SMTP server, inbox, DKIM |
+| `markets` | /markets | ✅ |  | Crypto, futures, commodities, currencies |
+| `news` | /news | ✅ |  | RSS aggregation, sentiment, search |
+| `places` | /places | ✅ |  | Maps and points of interest |
+| `search` | /search | ✅ |  | Web search |
+| `social` | /social | ✅ |  | Threads, replies, status |
+| `stream` | /stream | ✅ |  | The console: this instance's own timeline |
+| `video` | /video | ✅ |  | Search and playback |
+| `wallet` | /wallet | ✅ | ✅ | Credit check, charge, balance |
+| `weather` | /weather | ✅ |  | Forecast and pollen |
+| `web` | — | ✅ |  | Fetch a URL, return readable content |
 
 ## Account-scoped
 
 Listed in `internal/service/dynamic.go`. These hold data belonging to one user
 or spend their credits, so a caller with no authenticated account cannot reach
-them at all.
+them **at all** — the whole service is closed to guests.
+
+That bluntness is why some services that hold per-user data are not on the
+list. `stream` is readable by anyone (a guest sees the public timeline) while
+posting requires an account, so the check lives in the method rather than on
+the service. Marking it scoped would hide the timeline from visitors entirely.
 
 Identity comes from the **call context**, never from a request field — see
 `internal/service/identity.go`. `CallDynamic` discards any `account_id` a caller

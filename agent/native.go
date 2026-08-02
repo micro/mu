@@ -104,6 +104,8 @@ var agentToolLabels = map[string]string{
 	"islam":   "Islam",
 	"events":  "Events",
 	"web":     "Web",
+	"chat":    "Chat",
+	"stream":  "Stream",
 	"db":      "Storage",
 	"wallet":  "Wallet",
 }

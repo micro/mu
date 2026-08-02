@@ -37,6 +37,9 @@ A personal home server. News, mail, search, weather, markets, video — the ever
 | `service/db/` | Per-user records for services and apps (headless) |
 | `service/web/` | Fetch a URL and return readable content (headless) |
 | `service/index/` | Search across the caller's own content (headless) |
+| `service/stream/` | The console — this instance's own event timeline |
+| `service/chat/` | Live discussion rooms attached to an item |
+| `internal/user/` | Profiles, status and presence — the public face of an account |
 | `docs/` | Embedded documentation served at /docs |
 
 ## Development
