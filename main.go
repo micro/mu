@@ -1220,10 +1220,11 @@ func main() {
 		return answer, nil
 	})
 
-	// Wallet: the user's x402 Base wallet — address + USDC balance.
+	// Wallet: the user's Base wallet — address + USDC balance. It funds credits;
+	// it is not what calls to this instance are charged against.
 	api.RegisterToolWithAuth(api.Tool{
 		Name:        "wallet",
-		Description: "Get your Base wallet address and USDC balance. This wallet pays for metered MCP tools via x402.",
+		Description: "Get your Base wallet address and USDC balance. Send USDC here to top up your credits.",
 	}, func(args map[string]any, accountID string) (string, error) {
 		bw, err := wallet.GetOrCreateWallet(accountID)
 		if err != nil {
@@ -1234,11 +1235,12 @@ func main() {
 		return string(b), nil
 	})
 
-	// Pay: call a tool on an MCP server (this one or another in the registry)
-	// and settle it from the user's Base wallet via x402.
+	// Pay: call a tool on another MCP server and settle it from the user's Base
+	// wallet. This is outbound — Mu paying somebody else. Calls to this instance
+	// are charged in credits, which is why the description says elsewhere.
 	api.RegisterToolWithAuth(api.Tool{
 		Name:        "pay",
-		Description: "Call a metered tool on an MCP server and pay for it from your Base wallet via x402. Works on this server and any other server in the registry.",
+		Description: "Call a paid tool on another MCP server and settle it from your Base wallet. For tools on this instance, call them directly — they draw credits.",
 		Params: []api.ToolParam{
 			{Name: "tool", Type: "string", Description: "Name of the tool to call", Required: true},
 			{Name: "server", Type: "string", Description: "Server name from the registry, or a base URL (default: self)", Required: false},

@@ -472,9 +472,9 @@ var tools = []Tool{
 		Description: "Get wallet credit balance",
 		Method:      "GET",
 		Path:        "/wallet",
-		Params: []ToolParam{
-			{Name: "balance", Type: "string", Description: "Set to 1 to get balance", Required: false},
-		},
+		// No params. It carried one — "balance: set to 1 to get balance" —
+		// which made a tool called wallet_balance return the balance only if
+		// the caller guessed a flag, and the whole wallet web page otherwise.
 	},
 	{
 		Name:        "wallet_transfer",

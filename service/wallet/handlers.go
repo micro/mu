@@ -14,8 +14,13 @@ import (
 )
 
 // cryptoWalletCard renders the user's Base (USDC) wallet on the /wallet page:
-// balance, a tap-to-copy address, a fund QR, and the pay-with-wallet toggle —
-// so credits and crypto live in one place.
+// balance, a tap-to-copy address and a fund QR.
+//
+// This is a way to top up credits, not a second currency to spend. Everything a
+// caller is charged is in credits; USDC held here converts into them. The card
+// stays on the signed-in page because the balance is real money a user may
+// already hold — removing the UI would strand it — but it is not offered as an
+// alternative anywhere a person is deciding how to pay.
 func cryptoWalletCard(userID string) string {
 	bw, err := GetOrCreateWallet(userID)
 	if err != nil {
@@ -23,8 +28,8 @@ func cryptoWalletCard(userID string) string {
 	}
 	usdc, _ := USDCBalance(bw.Address)
 	return fmt.Sprintf(`<div class="card">
-  <h3>Crypto wallet</h3>
-  <p class="text-sm text-muted">Fund with <b>USDC on Base</b>, then convert it into your credit balance — the other way to top up, alongside a card.</p>
+  <h3>Top up with USDC</h3>
+  <p class="text-sm text-muted">Send <b>USDC on Base</b> to this address and convert it into credits.</p>
   <p style="font-size:24px;margin:6px 0 10px"><b>$%s</b> <span style="color:#999;font-size:14px">USDC</span></p>
   <button type="button" class="cw-convert" onclick="cwConvert(this)">Convert to credits →</button>
   <p class="text-sm text-muted" style="margin:6px 0 12px">Moves your USDC into your credit balance (1 USDC = 100 credits), gas-free.</p>
@@ -90,7 +95,7 @@ func WalletPage(userID string) string {
 	sb.WriteString(`<p><a href="/wallet/topup">Add Credits →</a> · <a href="/wallet/transfer">Transfer →</a></p>`)
 	sb.WriteString(`</div>`)
 
-	// Crypto wallet — the other way to pay (USDC on Base via x402).
+	// USDC on Base — the other way to top up credits, alongside a card.
 	sb.WriteString(cryptoWalletCard(userID))
 
 	// App earnings summary
@@ -215,8 +220,14 @@ func abs(n int) int {
 func Handler(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 
-	// Check for balance JSON endpoint
-	if r.URL.Query().Get("balance") == "1" {
+	// The balance, as data.
+	//
+	// This used to answer only to ?balance=1, so a caller that asked for JSON
+	// and didn't know the flag got the rendered wallet page instead — 20KB of
+	// HTML returned to an agent that called a tool named wallet_balance. The
+	// tool dispatcher sets Accept: application/json on every path-backed call,
+	// so honouring Accept fixes it here and for anything else routed this way.
+	if r.URL.Query().Get("balance") == "1" || app.WantsJSON(r) {
 		sess, _ := auth.TrySession(r)
 		if sess == nil {
 			w.Header().Set("Content-Type", "application/json")
@@ -319,15 +330,9 @@ func PublicWalletPage() string {
 	sb.WriteString(`<p><a href="/login">Login</a> or <a href="/signup">sign up</a> to top up.</p>`)
 	sb.WriteString(`</div>`)
 
-	// Crypto payments note
-	if X402Enabled() {
-		sb.WriteString(`<div class="card">`)
-		sb.WriteString(`<h3>Crypto (x402)</h3>`)
-		sb.WriteString(`<p>AI agents and developers can pay per-request with stablecoins via the <a href="https://x402.org">x402 protocol</a>. No account needed.</p>`)
-		sb.WriteString(`<p>Accepted tokens: <strong>USDC</strong>, <strong>EURC</strong> on Base</p>`)
-		sb.WriteString(`<p>See the <a href="/pricing">pricing</a> or the <a href="/docs/mcp">MCP docs</a> for details.</p>`)
-		sb.WriteString(`</div>`)
-	}
+	// This used to carry a second card offering pay-per-request in stablecoin.
+	// Credits are the one thing a caller pays in — an agent's calls and a
+	// person's draw on the same balance — so there is nothing to compare here.
 
 	// Self-hosting note
 	sb.WriteString(`<div class="card">`)
