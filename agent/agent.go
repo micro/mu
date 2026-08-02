@@ -382,6 +382,19 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	if !guest {
 		chip = `<div id="active-agent-chip" class="agent-chip">Agent: Micro</div>`
 	}
+
+	// A signed-out visitor arrives here from the landing's "See it working",
+	// and used to meet a bare chat box: the same one on any site, with nothing
+	// saying the answers come from tools running on this instance rather than
+	// from a model's memory. That is the whole claim, and the page was letting
+	// it go unsaid. Two sentences and a link close the loop back to /tools.
+	if guest {
+		chip = `<div class="agent-intro">` +
+			`<b>This is the agent, using the tools.</b> Ask it something and it calls them on this ` +
+			`instance — the news feeds, the search index, the markets data — the same tools your own ` +
+			`agent gets over <a href="/mcp">MCP</a>. ` +
+			`<a href="/tools">See what it can reach &rarr;</a></div>`
+	}
 	content := `<div class="chat-layout">` + rail + `<div class="chat-main">` + chip + app.ChatComponent(cfg) + `</div></div>` + chatLayoutCSS
 
 	// Seed the active agent so the panel highlights it and follow-ups continue
@@ -448,6 +461,9 @@ const chatLayoutCSS = `<style>
 .chat-main #mu-chat{max-width:none}
 /* Which agent is answering — always visible above the conversation. */
 .agent-chip{display:inline-block;margin-bottom:10px;padding:3px 10px;border-radius:999px;background:var(--hover-background,#f5f5f5);color:var(--text-primary,#111);font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+.agent-intro{margin:0 0 14px;padding:12px 14px;border:1px solid var(--border-color,#e5e5e5);border-radius:8px;font-size:14px;line-height:1.55;color:var(--text-secondary,#555)}
+.agent-intro b{color:var(--text-primary,#111)}
+.agent-intro a{color:var(--text-primary,#111)}
 .chat-new{width:100%;padding:9px 12px;background:#111;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;font-family:inherit;margin-bottom:12px}
 .chat-sess-list{display:flex;flex-direction:column;gap:2px}
 .chat-sess{display:block;padding:8px 10px;border-radius:6px;color:#444;text-decoration:none;font-size:13px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -731,7 +747,6 @@ const agentToolsDesc = `Available tools (use exact name):
 - apps_edit: Edit an existing app (args: {"slug":"app-slug","html":"<new html>","name":"New Name"})
 - apps_run: Run JavaScript code and return the result (args: {"code":"return 2+2"})
 - wallet_balance: Check your balance — credits, plus your Base address and USDC for topping up (no args). To add credits, point the user at /wallet/topup; there is no tool for it.
-- pay: Call a paid tool on ANOTHER MCP server and settle it from your Base wallet (args: {"tool":"news_search","server":"example.com","arguments":{"query":"ai"}}). Tools on this instance are called directly and draw credits — do not use pay for them.
 - stream: Read the public event stream (no args)`
 
 const guestToolsDesc = `Available tools (use exact name):

@@ -493,10 +493,17 @@ var tools = []Tool{
 	},
 	{
 		Name:        "stream_post",
-		Description: "Post a message to the stream. Mention @micro to get an AI response. Costs 1 credit.",
+		Description: "Post a message to the stream. Mention @micro to get an AI response.",
 		Method:      "POST",
 		Path:        "/stream",
-		WalletOp:    wallet.OpSocialPost,
+		// OpStreamPost, matching what the stream service declares. This said
+		// OpSocialPost, so CREDIT_COST_STREAM_POST did not price the tool named
+		// stream_post — an operator setting it would have seen no effect. The
+		// description also claimed "Costs 1 credit" while both operations
+		// default to 0, so the page rendered "Included" beside a line saying
+		// otherwise. Prices are rendered from the operation; no description
+		// states one.
+		WalletOp: wallet.OpStreamPost,
 		Params: []ToolParam{
 			{Name: "content", Type: "string", Description: "Message text (max 1024 chars). Use @micro to invoke the AI agent.", Required: true},
 		},

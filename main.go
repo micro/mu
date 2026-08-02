@@ -1245,37 +1245,22 @@ func main() {
 		return string(b), nil
 	})
 
-	// Pay: call a tool on another MCP server and settle it from the user's Base
-	// wallet. This is outbound — Mu paying somebody else. Calls to this instance
-	// are charged in credits, which is why the description says elsewhere.
-	api.RegisterToolWithAuth(api.Tool{
-		Name:        "pay",
-		Description: "Call a paid tool on another MCP server and settle it from your Base wallet. For tools on this instance, call them directly — they draw credits.",
-		Params: []api.ToolParam{
-			{Name: "tool", Type: "string", Description: "Name of the tool to call", Required: true},
-			{Name: "server", Type: "string", Description: "Server name from the registry, or a base URL (default: self)", Required: false},
-			{Name: "arguments", Type: "object", Description: "Arguments to pass to the tool", Required: false},
-		},
-	}, func(args map[string]any, accountID string) (string, error) {
-		toolName, _ := args["tool"].(string)
-		if toolName == "" {
-			return "", fmt.Errorf("tool is required")
-		}
-		// Only servers in the operator-configured registry can be paid. We do
-		// NOT let the model supply an arbitrary URL — otherwise a prompt-injected
-		// agent could point payments at an attacker's address.
-		server, _ := args["server"].(string)
-		baseURL := wallet.ServerURL(server)
-		if baseURL == "" {
-			return "", fmt.Errorf("unknown server %q — only servers in the registry can be paid", server)
-		}
-		toolArgs, _ := args["arguments"].(map[string]any)
-		bw, err := wallet.GetOrCreateWallet(accountID)
-		if err != nil {
-			return "", err
-		}
-		return wallet.PayAndCallMCP(context.Background(), accountID, baseURL, toolName, toolArgs, bw)
-	})
+	// There is no `pay` tool.
+	//
+	// It called a paid tool on another MCP server and settled it from the user's
+	// Base wallet. The guardrails were sound — only servers the operator listed
+	// in X402_SERVERS could be paid, so a prompt-injected agent could not name an
+	// attacker's URL, and spendlimit.go capped it at $1 a call and $10 a day.
+	//
+	// What it did not have was a server to call. X402_SERVERS is unset, so the
+	// registry held only "self" — this instance — and calls here are charged in
+	// credits, not settled over the wire. The tool could reach exactly one server
+	// and its own description told the agent not to use it for that one. It
+	// occupied a slot in every tools/list to do nothing.
+	//
+	// wallet.PayAndCallMCP and the spend limits stay: they are what an operator
+	// needs the day there is somewhere worth paying, and the CLI still reaches
+	// them. Bringing the tool back is re-registering it here.
 
 	authenticated := map[string]bool{
 		"/tools":                 false, // Public — the tool catalogue

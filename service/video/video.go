@@ -48,9 +48,11 @@ var latestHtml string
 // saved videos
 var videosHtml string
 
+// Channel is a channel's videos. Html is rendered from Videos and is never
+// persisted — see the note on Result.Html.
 type Channel struct {
 	Videos []*Result `json:"videos"`
-	Html   string    `json:"html"`
+	Html   string    `json:"-"`
 }
 
 type Result struct {
@@ -59,8 +61,16 @@ type Result struct {
 	Title       string    `json:"title"`
 	Description string    `json:"description"`
 	URL         string    `json:"url"`
-	Html        string    `json:"html"`
-	Published   time.Time `json:"published"`
+	// Html is rendered markup, and it is deliberately not persisted.
+	//
+	// videos.json used to carry it. Markup then outlived the code that wrote
+	// it: when thumbnails moved to Mu's own origin, every cached item kept
+	// serving Google's URLs until its channel refetched an hour later, and the
+	// fix had to be a regex rewriting stored HTML on the way out. A field
+	// rendered from the fields beside it should not be a stored field.
+	// renderItem is the one place this markup is written.
+	Html      string    `json:"-"`
+	Published time.Time `json:"published"`
 	Channel     string    `json:"channel,omitempty"`
 	ChannelID   string    `json:"channel_id,omitempty"`
 	Category    string    `json:"category,omitempty"`
@@ -297,6 +307,13 @@ func Load() {
 	b, _ := data.LoadFile("videos.json")
 	json.Unmarshal(b, &videos)
 
+	// videos.json holds the videos, not their markup, so render it now against
+	// whatever the current code produces.
+	for name, ch := range videos {
+		ch.Html = renderChannel(ch)
+		videos[name] = ch
+	}
+
 	app.Log("video", "Loaded %d channels from videos.json", len(videos))
 
 	// Regenerate HTML from cached JSON data
@@ -326,6 +343,39 @@ func Load() {
 }
 
 // regenerateHTML creates HTML from cached video data
+// renderItem is the only place a feed item's markup is written.
+//
+// Everything it needs is already on the Result, which is the point: markup
+// derived from stored fields can be regenerated whenever the code changes,
+// where markup that is itself stored goes stale and needs rewriting in place.
+func renderItem(res *Result) string {
+	channel := res.Channel
+	if res.ChannelID != "" {
+		channel = fmt.Sprintf(`<a href="/video?channel=%s">%s</a>`, res.ChannelID, res.Channel)
+	}
+	category := ""
+	if res.Category != "" {
+		category = fmt.Sprintf(` · <a href="/video#%s" class="highlight">%s</a>`, res.Category, res.Category)
+	}
+	return fmt.Sprintf(`
+	<div class="thumbnail"><a href="%s"><img src="%s" loading="lazy" alt=""><h3>%s</h3></a><div class="info">%s · %s%s%s</div></div>`,
+		res.URL, thumbSrc(res.ID, res.Thumbnail), res.Title, channel,
+		app.TimeAgo(res.Published), category, app.StaticControls("video", res.ID))
+}
+
+// renderChannel rebuilds a channel's markup from its videos, for data loaded
+// from disk where only the videos were kept.
+func renderChannel(ch Channel) string {
+	var b strings.Builder
+	for _, res := range ch.Videos {
+		if res.Html == "" {
+			res.Html = renderItem(res)
+		}
+		b.WriteString(res.Html)
+	}
+	return b.String()
+}
+
 func regenerateHTML() {
 	mutex.Lock()
 	defer mutex.Unlock()
@@ -662,13 +712,8 @@ func getChannel(category, handle string) (string, []*Result, error) {
 			Thumbnail:   thumbnailURL,
 		}
 
-		// All links are now internal
-		controls := app.StaticControls("video", id)
-		html := fmt.Sprintf(`
-	<div class="thumbnail"><a href="%s"><img src="%s" loading="lazy" alt=""><h3>%s</h3></a><div class="info"><a href="/video?channel=%s">%s</a> · %s · <a href="/video#%s" class="highlight">%s</a>%s</div></div>`,
-			url, thumbSrc(id, thumbnailURL), item.Snippet.Title, item.Snippet.ChannelId, item.Snippet.ChannelTitle, app.TimeAgo(t), category, category, controls)
-		sb.WriteString(html)
-		res.Html = html
+		res.Html = renderItem(res)
+		sb.WriteString(res.Html)
 
 		// Append to results
 		results = append(results, res)
