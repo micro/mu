@@ -23,8 +23,6 @@ import (
 	"mu/internal/data"
 	"mu/internal/service"
 	"mu/internal/snapshot"
-
-	"mu/service/wallet"
 )
 
 // cardSnap is the go-micro read-plane channel for the video card (store +
@@ -56,11 +54,11 @@ type Channel struct {
 }
 
 type Result struct {
-	ID          string    `json:"id"`
-	Type        string    `json:"type"`
-	Title       string    `json:"title"`
-	Description string    `json:"description"`
-	URL         string    `json:"url"`
+	ID          string `json:"id"`
+	Type        string `json:"type"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	URL         string `json:"url"`
 	// Html is rendered markup, and it is deliberately not persisted.
 	//
 	// videos.json used to carry it. Markup then outlived the code that wrote
@@ -69,13 +67,13 @@ type Result struct {
 	// fix had to be a regex rewriting stored HTML on the way out. A field
 	// rendered from the fields beside it should not be a stored field.
 	// renderItem is the one place this markup is written.
-	Html      string    `json:"-"`
-	Published time.Time `json:"published"`
-	Channel     string    `json:"channel,omitempty"`
-	ChannelID   string    `json:"channel_id,omitempty"`
-	Category    string    `json:"category,omitempty"`
-	PlaylistID  string    `json:"playlist_id,omitempty"`
-	Thumbnail   string    `json:"thumbnail,omitempty"`
+	Html       string    `json:"-"`
+	Published  time.Time `json:"published"`
+	Channel    string    `json:"channel,omitempty"`
+	ChannelID  string    `json:"channel_id,omitempty"`
+	Category   string    `json:"category,omitempty"`
+	PlaylistID string    `json:"playlist_id,omitempty"`
+	Thumbnail  string    `json:"thumbnail,omitempty"`
 }
 
 var Key = os.Getenv("YOUTUBE_API_KEY")
@@ -902,12 +900,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			// Check quota before search
-			canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, wallet.OpVideoSearch)
-			if !canProceed {
-				content := wallet.QuotaExceededPage(wallet.OpVideoSearch, cost)
-				html := app.RenderHTMLForRequest("Quota Exceeded", "Daily limit reached", content, r)
-				w.Write([]byte(html))
+			// Searching is free; the YouTube quota it spends is not
+			// unlimited. See searchlimit.go.
+			if err := allowSearch(sess.Account); err != nil {
+				app.TooManyRequests(w, r, err.Error())
 				return
 			}
 
@@ -917,9 +913,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, err.Error(), 500)
 				return
 			}
-
-			// Consume quota after successful search
-			wallet.ConsumeQuota(sess.Account, wallet.OpVideoSearch)
 
 			html := app.RenderHTML("Video", query+" | Results", fmt.Sprintf(Results, htmlpkg.EscapeString(query), head, results))
 			w.Write([]byte(html))
@@ -961,16 +954,15 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			// Check quota before search (only for actual queries, not channel browsing)
+			// Rate-limited, not charged: browsing a channel is local, but a
+			// query spends this instance's YouTube quota.
 			if len(query) > 0 {
-				canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, wallet.OpVideoSearch)
-				if !canProceed {
+				if err := allowSearch(sess.Account); err != nil {
 					w.Header().Set("Content-Type", "application/json")
-					w.WriteHeader(402) // Payment Required
+					w.WriteHeader(http.StatusTooManyRequests)
 					json.NewEncoder(w).Encode(map[string]interface{}{
-						"error":   "quota_exceeded",
-						"message": "Daily search limit reached. Please top up credits at /wallet",
-						"cost":    cost,
+						"error":   "rate_limited",
+						"message": err.Error(),
 					})
 					return
 				}
@@ -981,11 +973,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				http.Error(w, err.Error(), 500)
 				return
-			}
-
-			// Consume quota after successful search (only for actual queries)
-			if len(query) > 0 {
-				wallet.ConsumeQuota(sess.Account, wallet.OpVideoSearch)
 			}
 
 			res := map[string]interface{}{
@@ -1007,13 +994,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Check quota before search (only for actual queries, not channel browsing)
+		// Rate-limited, not charged. See searchlimit.go.
 		if len(query) > 0 {
-			canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, wallet.OpVideoSearch)
-			if !canProceed {
-				content := wallet.QuotaExceededPage(wallet.OpVideoSearch, cost)
-				html := app.RenderHTMLForRequest("Quota Exceeded", "Daily limit reached", content, r)
-				w.Write([]byte(html))
+			if err := allowSearch(sess.Account); err != nil {
+				app.TooManyRequests(w, r, err.Error())
 				return
 			}
 		}
@@ -1023,11 +1007,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
-		}
-
-		// Consume quota after successful search (only for actual queries)
-		if len(query) > 0 {
-			wallet.ConsumeQuota(sess.Account, wallet.OpVideoSearch)
 		}
 
 		head = ""

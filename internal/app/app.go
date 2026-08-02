@@ -211,6 +211,16 @@ func BadRequest(w http.ResponseWriter, r *http.Request, message string) {
 	Error(w, r, http.StatusBadRequest, message)
 }
 
+// TooManyRequests writes a 429. Use it where a limit is about how often
+// something may be done rather than what it costs — a price refuses the caller
+// without credits, a rate limit refuses the caller going too fast.
+func TooManyRequests(w http.ResponseWriter, r *http.Request, message string) {
+	if message == "" {
+		message = "Too many requests"
+	}
+	Error(w, r, http.StatusTooManyRequests, message)
+}
+
 // NotFound writes a 404 error response
 func NotFound(w http.ResponseWriter, r *http.Request, message string) {
 	if message == "" {
@@ -317,8 +327,12 @@ var Template = `
       <div id="brand">
         <a href="/">Mu</a>
       </div>
-      <a id="head-tools" href="/tools">Tools</a>
       <a id="head-mail" href="/mail" aria-label="Mail"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="22,7 12,13 2,7"/></svg><span id="head-mail-badge"></span></a>
+      <!-- After the mail icon, not before: both are absolutely positioned so
+           order does not change the layout, but it lets the CSS shift Tools
+           left only when the mail icon is actually there (#head-mail.has-mail ~).
+           A sibling combinator cannot look backwards. -->
+      <a id="head-tools" href="/tools">Tools</a>
     </div>
 
     <div id="nav-overlay" onclick="toggleMenu()"></div>

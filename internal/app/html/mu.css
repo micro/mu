@@ -524,8 +524,12 @@ td {
 }
 #head-tools:hover { color: #111; }
 
-/* Signed in, the mail icon sits inside it on the right edge. */
-body.signed-in #head-tools { right: 52px; }
+/* Shift left only when the mail icon is actually showing.
+   This was keyed on body.signed-in, but the mail icon only appears when there
+   is unread mail — so a signed-in user with an empty inbox saw Tools floating
+   52px from the edge, clearing an icon that was not there. Most obvious on
+   mobile, where the header is tight. */
+#head-mail.has-mail ~ #head-tools { right: 52px; }
 
 #head-wallet {
   display: none;

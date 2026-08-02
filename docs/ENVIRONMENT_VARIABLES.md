@@ -104,6 +104,8 @@ twenty-five rows here.
 |---|---|---|
 | `DAILY_QUOTA` · `FREE_DAILY_QUOTA` | — | Credits granted per day, paid and free tiers |
 | `POST_LIMIT_PER_HOUR` · `NEW_POST_LIMIT_PER_HOUR` | — | Posting rate limit, and the tighter one for new accounts |
+| `VIDEO_SEARCH_PER_HOUR` | 20 | YouTube searches one account may run per hour |
+| `VIDEO_SEARCH_PER_DAY` | 80 | YouTube searches this instance may run per day, kept under the API's own quota |
 | `SIGNUP_MAX_PER_IP` · `SIGNUP_WINDOW_HOURS` | — | Signups allowed per IP, and the window |
 | `STATUS_STREAM_LIMIT` · `STATUS_STREAM_LIMIT_PER_USER` | — | How much of the status stream is kept |
 | `X402_FACILITATOR_URL` | Coinbase | x402 facilitator to settle through |

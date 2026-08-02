@@ -87,15 +87,45 @@ func TestTransactionTypeConstants(t *testing.T) {
 }
 
 func TestDefaultCosts(t *testing.T) {
-	// Verify default cost values are reasonable
-	if CostNewsSearch < 1 {
-		t.Error("news search cost should be >= 1")
+	// A model call always costs something.
+	for name, cost := range map[string]int{
+		"chat":          CostChatQuery,
+		"agent":         CostAgentQuery,
+		"agent premium": CostAgentQueryPremium,
+		"image":         CostImageGenerate,
+		"app build":     CostAppBuild,
+		"app edit":      CostAppEdit,
+	} {
+		if cost < 1 {
+			t.Errorf("%s calls a model, so it cannot be free", name)
+		}
 	}
-	if CostChatQuery < 1 {
-		t.Error("chat query cost should be >= 1")
+
+	// Nothing bills this instance for these, so they are not priced. Searching
+	// news is a local index query; fetching a page is an http.Get and a
+	// readability pass; searching video is a free (quota'd) API rationed by
+	// service/video/searchlimit.go instead.
+	for name, cost := range map[string]int{
+		"news search":  CostNewsSearch,
+		"web fetch":    CostWebFetch,
+		"video search": CostVideoSearch,
+		"quran search": CostQuranSearch,
+	} {
+		if cost != 0 {
+			t.Errorf("%s costs us nothing to run, so charging for it prices something that is not a cost", name)
+		}
 	}
-	if CostAgentQueryPremium <= CostAgentQuery {
-		t.Error("premium agent should cost more than standard")
+
+	// The premium tier routes to a materially more expensive provider, and was
+	// priced 29% above standard for roughly 10-20x the cost.
+	if CostAgentQueryPremium < 2*CostAgentQuery {
+		t.Error("premium agent should cost enough more than standard to cover a different provider")
+	}
+	// An app build is one generation. It was 100 — six times the next most
+	// expensive thing on the menu, and more than an agent run that may make
+	// several model calls.
+	if CostAppBuild > 3*CostAgentQuery {
+		t.Errorf("app build at %d is out of proportion to an agent run at %d", CostAppBuild, CostAgentQuery)
 	}
 	if CostExternalEmail <= CostMailSend {
 		t.Error("external email should cost more than internal mail")
