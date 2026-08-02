@@ -5,7 +5,6 @@ import (
 	"fmt"
 	htmlpkg "html"
 	"net/http"
-	"regexp"
 	"strings"
 	"time"
 
@@ -187,9 +186,6 @@ var avatarColors = []string{
 	"#e06c75", "#c2785c", "#7bab6e", "#9e7db8",
 }
 
-// urlPattern matches URLs in text for linkification and OG embeds.
-var urlPattern = regexp.MustCompile(`https?://[^\s<>"]+`)
-
 // renderEvent produces the chat-bubble HTML for a single event. Every
 // event type uses the same bubble layout (avatar + name + content) so
 // the stream reads like a chat. System events get a compact variant.
@@ -239,13 +235,19 @@ func renderEvent(e *Event, viewerID string) string {
 		bubbleBg = "#fff"
 	}
 
-	// Build content — escape then linkify URLs. Links are inline in the
-	// text, not separate preview cards. The console is conversational,
-	// not a feed — keep it tight.
-	escaped := htmlpkg.EscapeString(e.Content)
-	linked := urlPattern.ReplaceAllStringFunc(escaped, func(u string) string {
-		return fmt.Sprintf(`<a href="%s" target="_blank" rel="noopener" style="color:#06c;word-break:break-all">%s</a>`, u, u)
-	})
+	// Render the content as markdown. The agent answers in markdown, so
+	// without this its replies arrive as literal ** and - characters. app.Render
+	// is the safe renderer — raw HTML is dropped and link schemes are
+	// restricted — which matters because user-typed events go through here too.
+	// It also autolinks bare URLs, so no separate linkify pass is needed.
+	linked := strings.TrimSpace(string(app.Render([]byte(e.Content))))
+
+	// Unwrap a lone paragraph so a one-line message stays tight in its bubble.
+	// The console is conversational, not a feed.
+	if strings.HasPrefix(linked, "<p>") && strings.HasSuffix(linked, "</p>") &&
+		!strings.Contains(linked[3:len(linked)-4], "<p>") {
+		linked = linked[3 : len(linked)-4]
+	}
 
 	// For news/system events with a URL in metadata, append a subtle
 	// link if the URL isn't already in the content text.
