@@ -10,14 +10,14 @@ import (
 // the front door (immediate usage drives signups); this page is for visitors
 // who want the explanation. Viewable signed-in or out.
 func Landing(w http.ResponseWriter, r *http.Request) {
-	body := `<p class="lead">Your personal home server for the everyday internet — news, mail, search,
-weather, markets and video, all handled by one agent you talk to. No feeds to doomscroll, no ads,
-no tracking. Use it hosted here, or self-host the single binary — same product either way.</p>
+	body := `<p class="lead">The everyday internet as tools an agent can call — news, web search,
+mail, markets, weather, video, storage. Over <a href="/mcp" style="color:#111">MCP</a> and REST,
+paid per request in USDC. No API key, no account, no signup.</p>
 
 <div class="lcards">
-  <div class="lcard"><h3>One agent, everything</h3><p>Ask for the news, your mail, a price, the forecast. Mu picks the right service and answers — you just talk to it.</p></div>
-  <div class="lcard"><h3>Real tools, not wrappers</h3><p>This instance runs the mail server, the feeds, the search index and the wallet. <a href="/tools">Browse the tools →</a></p></div>
-  <div class="lcard"><h3>Yours to run</h3><p>Use the hosted instance, or self-host the single Go binary. Your account, your data — no lock-in either way.</p></div>
+  <div class="lcard"><h3>Real tools, not wrappers</h3><p>This instance runs the mail server, the feeds, the search index and the sandbox. <a href="/tools">Browse the tools →</a></p></div>
+  <div class="lcard"><h3>Two doors, one set of tools</h3><p>An agent calls <code>/mcp</code>. A person signs in and gets the home screen. Same services underneath — nothing is built twice.</p></div>
+  <div class="lcard"><h3>Yours to run</h3><p>One Go binary, self-hostable. Run an instance and you are the operator — anyone paying to call your tools pays you.</p></div>
 </div>
 
 <div class="lctas">
@@ -43,8 +43,8 @@ no tracking. Use it hosted here, or self-host the single binary — same product
 </style>`
 
 	page := app.RenderLanding(app.Landing{
-		Title:       "Mu — a personal home server",
-		Description: "Your personal home server for the everyday internet: news, mail, search, weather, markets and video, handled by one agent. Open source and self-hostable.",
+		Title:       "Mu — Tools for Agents",
+		Description: "The everyday internet as tools an agent can call — news, web search, mail, markets, weather, video, storage. Over MCP and REST, paid per request. Open source and self-hostable.",
 		Brand:       "Mu",
 		Tagline:     "The everyday internet, yours to run",
 		Body:        body,

@@ -20,8 +20,8 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Hero
 	b.WriteString(`<div style="text-align:center;padding:24px 0 0">`)
-	b.WriteString(`<h2 style="font-size:1.6rem;margin:0 0 8px">Your personal home server</h2>`)
-	b.WriteString(`<p style="color:#666;font-size:15px;margin:0 0 24px">News, mail, search, weather, markets, video — the everyday internet, handled by one agent you talk to. Use it hosted below, or self-host for free.</p>`)
+	b.WriteString(`<h2 style="font-size:1.6rem;margin:0 0 8px">Tools for agents, and for you</h2>`)
+	b.WriteString(`<p style="color:#666;font-size:15px;margin:0 0 24px">Agents pay per call in USDC over <a href="/agents" style="color:#111">x402</a> — no account needed. People use prepaid credits and the full app. <a href="/tools" style="color:#111">Browse the tools →</a> Or self-host for free.</p>`)
 	b.WriteString(`</div>`)
 
 	// Plans — three tiers: Free, Starter, Pro.

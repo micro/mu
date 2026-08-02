@@ -24,11 +24,13 @@ type Document struct {
 
 // docs catalog - maps slugs to document info
 var catalog = []Document{
-	// Getting Started
-	{Slug: "about", Filename: "ABOUT.md", Title: "About Mu", Description: "What Mu is and why it exists", Category: "Getting Started"},
+	// Getting Started — an agent arrives here, so MCP comes first
+	{Slug: "about", Filename: "ABOUT.md", Title: "About Mu", Description: "Tools for agents — what Mu is and why", Category: "Getting Started"},
+	{Slug: "mcp", Filename: "MCP.md", Title: "MCP Server", Description: "Point an agent at Mu and pay per call", Category: "Getting Started"},
+	{Slug: "cli", Filename: "CLI.md", Title: "CLI", Description: "Every tool as a mu subcommand", Category: "Getting Started"},
+	{Slug: "installation", Filename: "INSTALLATION.md", Title: "Installation", Description: "Run your own instance", Category: "Getting Started"},
 	{Slug: "vision", Filename: "VISION.md", Title: "Vision", Description: "Why Mu exists and the design choices behind it", Category: "Getting Started"},
 	{Slug: "principles", Filename: "PRINCIPLES.md", Title: "Principles", Description: "Guiding principles for AI and technology", Category: "Getting Started"},
-	{Slug: "installation", Filename: "INSTALLATION.md", Title: "Installation", Description: "Self-hosting and deployment guide", Category: "Getting Started"},
 
 	// Features
 	{Slug: "apps", Filename: "APPS.md", Title: "Apps", Description: "Build and launch small web apps", Category: "Features"},
@@ -40,8 +42,6 @@ var catalog = []Document{
 
 	// Reference
 	{Slug: "environment", Filename: "ENVIRONMENT_VARIABLES.md", Title: "Configuration", Description: "Environment variables", Category: "Reference"},
-	{Slug: "mcp", Filename: "MCP.md", Title: "MCP Server", Description: "AI tool integration via MCP", Category: "Reference"},
-	{Slug: "cli", Filename: "CLI.md", Title: "CLI", Description: "Every tool as a mu subcommand", Category: "Reference"},
 	{Slug: "compatibility", Filename: "COMPATIBILITY.md", Title: "Compatibility", Description: "What's stable, and what happens to your data", Category: "Reference"},
 	{Slug: "security", Filename: "SECURITY.md", Title: "Security", Description: "Threat model and review checklist", Category: "Reference"},
 	{Slug: "screenshots", Filename: "SCREENSHOTS.md", Title: "Screenshots", Description: "Application screenshots", Category: "Reference"},
@@ -105,7 +105,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 func renderIndex(w http.ResponseWriter, r *http.Request) {
 	var content strings.Builder
 
-	content.WriteString(`<p style="color:#555;font-size:15px;line-height:1.6;margin-bottom:24px">Learn how to use Mu — your personal home server for the everyday internet: news, mail, markets, weather, search and video, handled by one AI you talk to and run yourself.</p>`)
+	content.WriteString(`<p style="color:#555;font-size:15px;line-height:1.6;margin-bottom:24px">The everyday internet as tools an agent can call — news, mail, markets, weather, search, video and storage, over MCP and REST. Signed in, the same services are a home screen with the agent inline.</p>`)
 
 	// Start here
 	essentials := []string{"about", "installation", "discord", "telegram", "mcp"}

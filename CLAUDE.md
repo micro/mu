@@ -1,6 +1,12 @@
 # Mu
 
-A personal home server. News, mail, search, weather, markets, video — the everyday internet, handled by one agent you talk to and run yourself. The big platforms own a service for everything; Mu is the alternative — one home server across all the everyday things, each a real service, and open/self-hostable so you can run the whole stack yourself. Built on go-micro: every capability is a go-micro service, the assistant is a go-micro agent. Single binary, self-hostable.
+**Tools for agents.** The everyday internet — news, mail, search, weather, markets, video, storage — as tools an agent can call over MCP and REST, paid per request in USDC via x402, with no account in the way.
+
+The claim that matters is *real tools, not wrappers*: Mu runs the things it exposes — a real SMTP server with DKIM, a real feed aggregator, a real search index, a real app sandbox. Most things offering agents tools are a thin layer over somebody else's API.
+
+Two doors onto one set of services. An agent calls `/mcp`; a person signs in and gets the home screen — cards per service, agent inline, apps, wallet. Nothing is built twice, and a new service appears in both at once. **Keep the signed-in app intact** — it is not legacy, it is the proof the tools are real.
+
+Built on go-micro: every capability is a go-micro service, the assistant is a go-micro agent. Single binary, self-hostable — run an instance and anyone paying to call your tools pays you.
 
 ## Architecture
 

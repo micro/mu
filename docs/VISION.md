@@ -1,24 +1,46 @@
 # Vision
 
-**Your personal home server for the everyday internet — not another dashboard.**
+**Tools for agents.**
 
 ## The Problem
 
-The everyday internet runs on services — news, search, email, chat, markets, video — and a handful of platforms own all of them. Google, Apple, Amazon, Meta: each is a service for everything, and each sits at the centre of what you do. They're scattered across dozens of apps, all competing for your time and data. Every one monetises your attention: infinite scroll keeps you hooked, algorithms decide what you see.
+An agent is only as useful as what it can reach. Today that is either a chat box
+with no hands, or a proxy to an API somebody else owns. The tools an agent gets
+handed are mostly thin wrappers — reselling access to a service the wrapper does
+not run, with no margin and nothing to defend.
 
-The internet became addictive, and the services at the core of it belong to someone else. No single place brings them all together without the noise — and without an owner extracting from you.
+Meanwhile the everyday internet — news, search, mail, markets, video — is owned
+by a handful of platforms that monetise attention rather than serve the caller.
+Their APIs are priced and rate-limited for their benefit, and an agent calling
+them is a second-class customer of a product built for someone else.
 
 ## What Mu Is
 
-Mu is the personal alternative to that stack: the same everyday services, owned by you. Instead of renting each one from a different platform, you run them yourself — and instead of browsing separate apps, you ask one AI that operates all of them. It checks your mail, looks up prices, searches the web, reads the news, and gives you a personalised answer.
+Mu is the everyday internet as tools an agent can call, run by whoever operates
+the instance.
 
-The AI remembers what you care about. It surfaces relevant information before you ask. Over time, it learns your preferences and becomes more useful. It isn't a chatbot on a website — it's the interface to a stack of services that are yours.
+It runs the things it exposes. `mail_inbox` reads a real inbox behind an SMTP
+server with DKIM. `web_search` queries an index it maintains. `db_create` writes
+to real storage. Not a catalogue of other people's products — this instance's
+own capabilities, exposed over MCP and REST, paid per request in stablecoin with
+no account in the way.
 
-Technology should serve people — not use them. When you pay for tools, incentives are aligned. We build the tools, you use them. That's it.
+The previous generation of this idea sold APIs to developers, who have to find
+you, choose you, integrate you and keep choosing you. An agent does not shop: it
+is handed a tool list and uses what is there. That inverts the funnel, and x402
+removes the signup between wanting and paying.
+
+There is also an app, because the operator is a person. Signed in, the same
+services render as a home screen — headlines, prices, weather, unread mail —
+with the agent inline. One set of services, two doors. A new service appears in
+both at once, and the tools are used by a human every day before any agent calls
+them.
 
 ## Design Choices
 
-**AI-first.** The home screen is a prompt, not a dashboard. Ask what you need, get an answer. Cards are secondary — browse when you want depth.
+**Tools first.** Every capability is a tool before it is a page. The MCP endpoint is not a side door onto the app — the app is one caller among several.
+
+**AI-first for people.** Signed in, the home screen is a prompt, not a dashboard. Ask what you need, get an answer. Cards are secondary — browse when you want depth.
 
 **Contextual.** The AI knows your state: unread mail, market movements, your preferences. Suggestions are generated from your data, not an algorithm.
 
