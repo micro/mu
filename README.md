@@ -4,23 +4,12 @@ Tools for agents
 
 ## Overview
 
-Mu gives an agent the everyday internet as tools: news, web search, mail,
-markets, weather, video, places, images, files, calendar, contacts. 67 of them, behind one
-[MCP](https://modelcontextprotocol.io) endpoint. Connect once and your agent has
-all of them, instead of wiring up a server for each.
+Mu is an MCP server for agents which provides access to the real world: news, web search, mail,
+markets, weather, video, places, images, files, calendar, contacts and more.
 
-**Real tools, not wrappers.** Most things offering an agent tools are a thin
-layer over somebody else's API. Mu runs the mail server (SMTP with DKIM), the
-feed aggregator, the search index, the app sandbox and the wallet it hands you.
-`mail_inbox` reads a real inbox. `db_create` writes to real storage. The tools
-aren't a catalogue of other people's products — they're this instance's own
-capabilities, exposed.
+Use it live at [micro.mu](https://micro.mu), or self-host.
 
-There is also a web app on the same tools, because the operator is a person too.
-Use it hosted at [micro.mu](https://micro.mu), or self-host the single Go binary
-— same product either way. Open source, AGPL-3.0.
-
-## Point an agent at it
+## Usage
 
 ```json
 {
@@ -32,13 +21,7 @@ Use it hosted at [micro.mu](https://micro.mu), or self-host the single Go binary
 }
 ```
 
-That's the whole setup. There is no key in that config because there is nothing
-to paste: the first call gets a `401` pointing at the instance's authorization
-server, your client walks you through sign-in and keeps the token itself. This is
-the [MCP authorization](https://modelcontextprotocol.io/specification/basic/authorization)
-spec — Claude Desktop and Cursor both speak it.
-
-For a client that doesn't, create a Personal Access Token at
+Create a Personal Access Token at
 [/token](https://micro.mu/token) and send it as `Authorization: Bearer`.
 
 ```bash
@@ -46,10 +29,7 @@ curl -X POST https://micro.mu/mcp -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 ```
 
-Reading this instance's own content is included. Calls that cost us money to run
-— a model call, a paid third party — draw credits from your balance.
-
-**Browse what's there:** [micro.mu/tools](https://micro.mu/tools) — every tool,
+**Browse the tools:** [micro.mu/tools](https://micro.mu/tools) — every tool,
 grouped by service, with what each call costs. [MCP docs](docs/MCP.md) for the
 protocol detail.
 
@@ -76,13 +56,9 @@ protocol detail.
 | **Money** | `wallet_balance` — credits, and where to send USDC to top up |
 | **Agent** | `agent` · `chat` — ask the whole thing a question and let it compose |
 
-Every tool is also a `mu` CLI subcommand. Account-scoped tools (mail, storage,
-index, images, events, files, contacts) need a signed-in caller; `mail_send` always does, so an
-unaccountable caller can't spend a domain's reputation.
+## Services as Tools
 
-## Why the tools are real
-
-Each area above is a **service** — a Go package with typed handlers, registered
+Each tool above is a **service** — a Go package with typed handlers, registered
 in-process behind a [Go Micro](https://github.com/micro/go-micro) registry. One
 binary, no external infrastructure. The registry is the single source of truth:
 a service declares itself once and every surface derives from that declaration.
@@ -100,29 +76,9 @@ var Spec = service.Spec{
 }
 ```
 
-Register that and it becomes available, in the same moment and with no extra
-wiring, to:
-
-- **agents**, over MCP at `/mcp` — for Claude Desktop, Cursor, or your own;
-- **the built-in agent**, as a tool it can call;
-- **custom agents**, in the tool picker at `/agent/new`;
-- **the CLI**, where each tool is a subcommand;
-- **apps**, through `mu.service(name, method, args)` in the SDK.
-
-So extending Mu is adding an element, not wiring N integrations.
-
-```js
-// inside an app — any registered service, no SDK change needed
-const { times } = await mu.service('islam', 'prayer', { lat, lon, tz })
-const { summary } = await mu.service('weather', 'forecast', { lat, lon })
-```
-
-Identity is bound server-side from the call context — a caller never names whose
-data it wants, and there is no account field in any request to forge.
-
 ## The app
 
-The same tools, for a person. Cards render each service at a glance (headlines,
+The server includes a web app with a home screen. Cards render each service at a glance (headlines,
 prices, weather, unread mail) and the agent sits inline to act on what you're
 looking at. Logged-out visitors get a public version with live data.
 
