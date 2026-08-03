@@ -4,7 +4,9 @@ import (
 	"encoding/base64"
 	"fmt"
 	"html"
+	"io"
 	"net/http"
+	neturl "net/url"
 	"strings"
 	"unicode/utf8"
 
@@ -12,19 +14,110 @@ import (
 	"mu/internal/auth"
 )
 
-// Handler serves /files — the list for a signed-in person, and /files/<id> for
-// one file's contents.
+// Handler serves /files — the list for a signed-in person, /files/<id> for one
+// file's contents, and the actions on them.
 //
 // A file's URL has to be fetchable by an ordinary HTTP client for the service
 // to be worth anything: an agent that stores a report and hands someone a link
 // has not helped if the link only opens inside Mu.
+//
+// The page began read-only, which made it a window onto storage rather than
+// storage: an agent could put a file there and a person could look at it, but
+// not add one, remove one or share one. Everything the tools can do, the page
+// now does — the same functions underneath, so the two cannot drift.
 func Handler(w http.ResponseWriter, r *http.Request) {
-	id := strings.Trim(strings.TrimPrefix(r.URL.Path, "/files"), "/")
-	if id == "" {
+	rest := strings.Trim(strings.TrimPrefix(r.URL.Path, "/files"), "/")
+
+	// Uploads post to /files itself; per-file actions to /files/<id>/<action>.
+	if r.Method == http.MethodPost {
+		id, action, _ := strings.Cut(rest, "/")
+		handleAction(w, r, id, action)
+		return
+	}
+
+	if rest == "" {
 		listPage(w, r)
 		return
 	}
-	serveFile(w, r, id)
+	serveFile(w, r, rest)
+}
+
+// handleAction performs an upload, delete or share and returns to the page.
+//
+// Plain form posts rather than fetch: a file list should work without
+// JavaScript, and the browser's own file picker is better than anything worth
+// building here.
+func handleAction(w http.ResponseWriter, r *http.Request, id, action string) {
+	sess, _, err := auth.RequireSession(r)
+	if err != nil {
+		app.RedirectToLogin(w, r)
+		return
+	}
+
+	// Cap the body before anything reads it. It cannot wait for upload(): the
+	// CSRF check reads _csrf, which parses the multipart form itself, so the
+	// first read of the body happens on the line below. A little headroom over
+	// MaxBytes covers the form's own overhead so a file at exactly the limit
+	// still lands.
+	r.Body = http.MaxBytesReader(w, r.Body, MaxBytes+(1<<20))
+
+	if !auth.ValidCSRF(r) {
+		app.Forbidden(w, r, "Invalid CSRF token")
+		return
+	}
+
+	var actErr error
+	switch {
+	case id == "":
+		actErr = upload(r, sess.Account)
+	case action == "delete":
+		actErr = Delete(sess.Account, id)
+	case action == "share":
+		_, actErr = Share(sess.Account, id, r.FormValue("public") == "1")
+	default:
+		app.NotFound(w, r, "Unknown action")
+		return
+	}
+
+	// Errors a person can act on — too big, out of space, wrong sort of file —
+	// belong on the page they came from, not on an error screen they have to
+	// navigate back from.
+	dest := "/files"
+	if actErr != nil {
+		dest += "?error=" + neturl.QueryEscape(actErr.Error())
+	}
+	http.Redirect(w, r, dest, http.StatusSeeOther)
+}
+
+// upload stores a file chosen in the browser.
+func upload(r *http.Request, owner string) error {
+	// Usually a no-op — the CSRF check has already parsed the form — but it is
+	// what surfaces the error when the body ran past handleAction's cap, and it
+	// keeps upload() correct if it is ever called on its own.
+	if err := r.ParseMultipartForm(MaxBytes + (1 << 20)); err != nil {
+		if strings.Contains(err.Error(), "too large") {
+			return fmt.Errorf("that file is larger than the %s limit", human(MaxBytes))
+		}
+		return fmt.Errorf("could not read the upload: %w", err)
+	}
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		return fmt.Errorf("choose a file to upload")
+	}
+	defer file.Close()
+
+	raw, err := io.ReadAll(io.LimitReader(file, MaxBytes+1))
+	if err != nil {
+		return err
+	}
+	// Put checks the limit too; catching it here means the message names the
+	// file rather than describing bytes.
+	if len(raw) > MaxBytes {
+		return fmt.Errorf("%s is larger than the %s limit", header.Filename, human(MaxBytes))
+	}
+
+	_, err = Put(owner, header.Filename, header.Header.Get("Content-Type"), string(raw), "")
+	return err
 }
 
 // serveFile writes a file's bytes. Owner or public only — meta() decides, and a
@@ -64,35 +157,80 @@ func listPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	auth.SetCSRFCookie(w, r)
 	stored := List(sess.Account)
+	csrf := auth.CSRFToken(r)
 
 	var b strings.Builder
 	b.WriteString(`<div class="card">`)
 	b.WriteString(`<h3>Files</h3>`)
 	b.WriteString(`<p class="text-sm text-muted">Anything you or your agent has stored. Using ` +
 		human(UsedBytes(sess.Account)) + ` of ` + human(MaxOwnerBytes) + `.</p>`)
+
+	if msg := r.URL.Query().Get("error"); msg != "" {
+		b.WriteString(`<p class="text-error">` + html.EscapeString(msg) + `</p>`)
+	}
+
+	// Upload. A plain multipart form: the browser's own file picker beats
+	// anything worth building here, and the page keeps working without
+	// JavaScript.
+	fmt.Fprintf(&b, `<form method="POST" action="/files" enctype="multipart/form-data" class="file-upload">
+  <input type="hidden" name="_csrf" value="%s">
+  <input type="file" name="file" required>
+  <button type="submit">Upload</button>
+</form>`, html.EscapeString(csrf))
+	b.WriteString(`<p class="text-sm text-muted">Up to ` + human(MaxBytes) + ` a file.</p>`)
 	b.WriteString(`</div>`)
 
 	if len(stored) == 0 {
 		b.WriteString(`<div class="card"><p class="text-sm text-muted">Nothing stored yet. ` +
-			`An agent connected over <a href="/mcp">MCP</a> can put a file here with <code>files_put</code>.</p></div>`)
+			`Upload something above, or an agent connected over <a href="/mcp">MCP</a> can put a file here with <code>files_put</code>.</p></div>`)
 	} else {
 		b.WriteString(`<div class="card"><table class="data-table">`)
-		b.WriteString(`<tr><th>Name</th><th>Size</th><th>Visibility</th><th>Stored</th></tr>`)
+		b.WriteString(`<tr><th>Name</th><th>Size</th><th>Visibility</th><th>Stored</th><th></th></tr>`)
 		for _, f := range stored {
-			visibility := "Private"
+			visibility, shareTo, shareLabel := "Private", "1", "Share"
 			if f.Public {
-				visibility = "Public"
+				visibility, shareTo, shareLabel = "Public", "0", "Make private"
 			}
-			fmt.Fprintf(&b, `<tr><td><a href="%s">%s</a></td><td>%s</td><td>%s</td><td>%s</td></tr>`,
+			fmt.Fprintf(&b, `<tr><td><a href="%s">%s</a></td><td>%s</td><td>%s</td><td>%s</td><td class="file-actions">`,
 				html.EscapeString(f.URL), html.EscapeString(f.Name),
 				human(f.Size), visibility, f.Created.Format("2 Jan 15:04"))
+
+			fmt.Fprintf(&b, `<form method="POST" action="/files/%s/share">
+  <input type="hidden" name="_csrf" value="%s"><input type="hidden" name="public" value="%s">
+  <button type="submit" class="link-button">%s</button>
+</form>`, html.EscapeString(f.ID), html.EscapeString(csrf), shareTo, shareLabel)
+
+			// Deleting a file destroys its contents, so it asks first. The
+			// confirm is progressive: without JavaScript the form still posts,
+			// which is the right failure — the button is labelled Delete.
+			fmt.Fprintf(&b, `<form method="POST" action="/files/%s/delete" onsubmit="return confirm('Delete %s?')">
+  <input type="hidden" name="_csrf" value="%s">
+  <button type="submit" class="link-button danger">Delete</button>
+</form>`, html.EscapeString(f.ID), html.EscapeString(strings.ReplaceAll(f.Name, "'", "\\'")), html.EscapeString(csrf))
+
+			b.WriteString(`</td></tr>`)
 		}
 		b.WriteString(`</table></div>`)
 	}
 
+	b.WriteString(filesPageCSS)
 	w.Write([]byte(app.RenderHTMLForRequest("Files", "Your stored files", b.String(), r)))
 }
+
+const filesPageCSS = `<style>
+.file-upload{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0 4px}
+.file-upload input[type=file]{font-size:14px}
+.file-actions{white-space:nowrap}
+.file-actions form{display:inline}
+.link-button{background:none;border:0;padding:0 6px;font-size:13px;color:#555;cursor:pointer;font-family:inherit}
+.link-button:hover{color:#111;text-decoration:underline}
+.link-button.danger{color:#b3261e}
+@media only screen and (max-width:600px){
+  .file-upload{flex-direction:column;align-items:stretch}
+}
+</style>`
 
 // quoteName makes a file name safe to put in a header, where a quote or a
 // newline would otherwise let a caller write headers of their own.
