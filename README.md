@@ -110,9 +110,6 @@ Setup for both is in [Installation](docs/INSTALLATION.md).
 
 ## Self-hosting
 
-Run your own instance and you are the operator: the tools are yours, and anyone
-paying to call them pays you.
-
 ```bash
 curl -fsSL https://raw.githubusercontent.com/micro/mu/main/install.sh | sh
 ```
@@ -134,7 +131,7 @@ Open **http://localhost:8080** and Mu walks you through a one-time setup: create
 your admin account and pick an AI provider (Claude, Atlas Cloud, or a local
 Ollama / OpenAI-compatible endpoint). That's enough to have a working agent.
 
-Prefer the terminal? Configure the provider headless, then start the server:
+For terminal setup. Configure the provider headless, then start the server:
 
 ```bash
 mu setup        # pick a provider, paste a key
