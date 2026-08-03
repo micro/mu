@@ -55,10 +55,10 @@ See [MCP docs](docs/MCP.md) for the protocol details.
 | **Faith** | `islam_today` · `islam_prayer` · `islam_qibla` · `quran` · `hadith` |
 | **Index** | `index_search` — everything this instance holds for you |
 | **Images** | `images_generate` · `images_search` |
-| **News** | `news_list` · `news_read` · `news_search` — RSS aggregation, full articles |
-| **Markets** | `markets_list` — crypto, futures, commodities, currencies |
-| **Places** | `places_search` · `places_nearby` · `places_eta` — points of interest, geocoding, travel time |
 | **Mail** | `mail_inbox` · `mail_send` · `mail_address` — a real SMTP server with DKIM, and an address per agent |
+| **Markets** | `markets_list` — crypto, futures, commodities, currencies |
+| **News** | `news_list` · `news_read` · `news_search` — RSS aggregation, full articles |
+| **Places** | `places_search` · `places_nearby` · `places_eta` — points of interest, geocoding, travel time |
 | **Storage** | `db_create` · `db_get` · `db_list` · `db_update` · `db_delete` — per-caller records |
 | **Writing** | `blog_*` · `social_*` · `stream_*` — publish, read, discuss |
 | **Wallet** | `wallet_balance` — credits, and where to send USDC to top up |
