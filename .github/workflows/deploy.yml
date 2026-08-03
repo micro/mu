@@ -3,6 +3,21 @@ name: Deploy
 on:
   push:
     branches: [main]
+    # A push that changes only these cannot change what the running instance
+    # serves, so it does not earn a rebuild and a restart of the live site.
+    #
+    # `docs/**` is deliberately NOT here. Those files are compiled into the
+    # binary (`//go:embed *.md` in docs/docs.go) and served at /docs — ignoring
+    # them would leave the published documentation silently stale. The rule is
+    # "not embedded, not read at runtime", not "ends in .md";
+    # TestDeployIgnoresOnlyUnservedFiles holds the line.
+    paths-ignore:
+      - 'README.md'
+      - 'CLAUDE.md'
+      - 'LICENSE'
+      - '.gitignore'
+      - '.github/**'
+      - 'scripts/README.md'
 
 jobs:
   deploy:
