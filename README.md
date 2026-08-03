@@ -4,7 +4,8 @@ Tools for agents
 
 ## Overview
 
-Mu is an MCP server for agents which provides access to the real world: news, web search, mail,
+Mu is an MCP server and web app for agents and humans. It provides access to the real world through MCP for the agents 
+and let's humans browse or interact with same content in a web app. Access news, web search, mail,
 markets, weather, video, places, images, files, calendar, contacts and more.
 
 Use it live at [micro.mu](https://micro.mu), or self-host.
