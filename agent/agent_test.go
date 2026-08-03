@@ -559,9 +559,6 @@ func TestFormatWalletBalanceResult_InvalidJSON(t *testing.T) {
 	}
 }
 
-
-
-
 func TestFormatNewsResult_WithTimestamps(t *testing.T) {
 	result := `{"feed":[{"title":"Iran crisis","description":"Conflict escalates","category":"world","url":"/news?id=1","posted_at":"2026-03-02T10:00:00Z","published":"Sun, 02 Mar 2026 10:00:00 +0000"},{"title":"Peace talks","description":"Negotiations begin","category":"world","url":"/news?id=2","posted_at":"2026-03-01T08:00:00Z"}]}`
 	got := formatNewsResult(result)
