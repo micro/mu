@@ -18,6 +18,7 @@ import (
 	"mu/internal/data"
 	"mu/internal/event"
 	"mu/internal/flag"
+	"mu/internal/imageproxy"
 	"mu/internal/service"
 	"mu/internal/snapshot"
 	"mu/service/news"
@@ -1118,7 +1119,11 @@ func renderLinkCard(rawURL string) string {
 	sb.WriteString(fmt.Sprintf(`<a href="%s" target="_blank" rel="noopener noreferrer" style="display:block;border:1px solid #e1e1e1;border-radius:12px;overflow:hidden;margin-top:8px;text-decoration:none;color:inherit;">`, htmlpkg.EscapeString(rawURL)))
 
 	if md.Image != "" {
-		sb.WriteString(fmt.Sprintf(`<div style="width:100%%;background:#f5f5f5;"><img src="%s" style="width:100%%;max-height:200px;object-fit:cover;display:block;" loading="lazy" onerror="this.parentElement.style.display='none'"></div>`, htmlpkg.EscapeString(md.Image)))
+		// Through the proxy: the publisher's CDN gets asked once by us rather
+		// than once per reader, and the card stops depending on whether that
+		// CDN, or the reader's blocker, feels like allowing a cross-origin
+		// embed today. See internal/imageproxy.
+		sb.WriteString(fmt.Sprintf(`<div style="width:100%%;background:#f5f5f5;"><img src="%s" style="width:100%%;max-height:200px;object-fit:cover;display:block;" loading="lazy" onerror="this.parentElement.style.display='none'"></div>`, htmlpkg.EscapeString(imageproxy.URL(md.Image))))
 	}
 
 	sb.WriteString(`<div style="padding:10px 12px;">`)

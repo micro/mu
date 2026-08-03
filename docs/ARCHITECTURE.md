@@ -48,6 +48,7 @@ mu/
 │   ├── env/
 │   ├── event/
 │   ├── flag/
+│   ├── imageproxy/
 │   ├── memory/
 │   ├── origin/
 │   ├── safefetch/
@@ -177,6 +178,28 @@ one method would be both too blunt and inconsistent with that.
 
 A blocked call is refused before it runs and the model is told why, so it can
 explain rather than retry.
+
+## Images come from here
+
+Nothing Mu renders points at somebody else's CDN.
+
+A generated image is stored the moment it is made and served from
+`/images/file/<id>`; the daily image the same way, from `/images/daily/<date>`.
+An article's cover image belongs to the publisher, so it is fetched once,
+cached in `internal/blob`, and served from `/img` — `internal/imageproxy`.
+
+The reason is not tidiness. A cross-origin `<img>` hands a third party the
+decision about whether the page renders: a hotlink rule, a resource policy, a
+blocker's filter list, an expiring signed URL or a rate limit against a page
+carrying five hundred of them all end the same way, with a broken image and an
+`onerror` that hides it. It is also a request to an ad-tech CDN made on the
+reader's behalf, from a product whose pitch is that there is no account in the
+way.
+
+`/img` only serves URLs this instance signed, so it is not an open proxy, and it
+falls back to redirecting at the original when a fetch fails — some CDNs refuse
+a datacentre IP and allow a home one, and the fallback is exactly the old
+behaviour, so turning this on can only improve a page, never empty it.
 
 ## Adding one
 

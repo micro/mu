@@ -35,6 +35,7 @@ import (
 	"mu/internal/auth"
 	"mu/internal/cli"
 	"mu/internal/data"
+	"mu/internal/imageproxy"
 	"mu/internal/memory"
 	"mu/internal/service"
 	"mu/internal/settings"
@@ -181,6 +182,9 @@ func main() {
 	stream.LoadService()
 	chat.LoadService()
 	images.Load()
+	// The cache behind /img, which serves article images from here instead of
+	// from four publisher CDNs. See internal/imageproxy.
+	imageproxy.Load()
 	files.Load()
 	contacts.Load()
 	events.Load()
@@ -1546,6 +1550,7 @@ func main() {
 		"/oauth2/google/connect": true,  // Link Google to the current account
 		"/oauth2/callback":       false, // Google sign-in callback (no session yet)
 		"/images":                false, // Public daily image; generation needs login
+		"/img":                   false, // Public — cached article images (a prefix of /images, same answer)
 		"/events":                true,  // Personal scheduled reminders — sign-in required
 		"/social":                false, // Public viewing, auth for search
 		"/social/thread":         false, // Public thread view, auth for messaging
@@ -1770,6 +1775,7 @@ func main() {
 
 	// serve markets page
 	http.HandleFunc("/markets", markets.Handler)
+	http.HandleFunc(imageproxy.Path, imageproxy.Handler)
 	http.HandleFunc("/images", images.Handler)
 	http.HandleFunc("/images/daily/", images.DailyImageHandler)
 	http.HandleFunc("/images/file/", images.GeneratedImageHandler)

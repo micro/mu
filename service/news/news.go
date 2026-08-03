@@ -5,6 +5,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	htmlpkg "html"
 	"io/ioutil"
 	"math"
 	"net/http"
@@ -26,6 +27,7 @@ import (
 	"mu/internal/auth"
 	"mu/internal/data"
 	"mu/internal/event"
+	"mu/internal/imageproxy"
 	"mu/internal/service"
 	"mu/internal/snapshot"
 
@@ -447,7 +449,9 @@ func generateNewsHtml() string {
 			var val string
 			imgTag := `<img class="cover">`
 			if len(post.Image) > 0 {
-				imgTag = fmt.Sprintf(`<img class="cover" src="%s" referrerpolicy="no-referrer" onerror="this.style.display='none'">`, post.Image)
+				// Served from here, not from the publisher's CDN — see
+				// internal/imageproxy for why.
+				imgTag = fmt.Sprintf(`<img class="cover" src="%s" onerror="this.style.display='none'">`, htmlpkg.EscapeString(imageproxy.URL(post.Image)))
 			}
 			val = fmt.Sprintf(`
 	<div id="%s" class="news">
@@ -1147,14 +1151,14 @@ func formatFeedItemHTML(post *Post, itemGUID string) string {
 	<div id="%s" class="news">
 	  %s
 	  <a href="%s" rel="noopener noreferrer" target="_blank">
-	    <img class="cover" src="%s" referrerpolicy="no-referrer" onerror="this.style.display='none'">
+	    <img class="cover" src="%s" onerror="this.style.display='none'">
 	    <div class="blurb">
 	      <span class="title">%s</span>
 	      <span class="description">%s</span>
 	    </div>
 	  </a>
 	  <div class="summary">%s%s</div>
-</div>`, itemGUID, categoryBadge, post.URL, post.Image, post.Title, post.Description, summary, summaryLink)
+</div>`, itemGUID, categoryBadge, post.URL, htmlpkg.EscapeString(imageproxy.URL(post.Image)), post.Title, post.Description, summary, summaryLink)
 	}
 
 	return fmt.Sprintf(`
