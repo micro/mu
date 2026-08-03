@@ -30,6 +30,14 @@ curl -X POST https://micro.mu/mcp -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 ```
 
+Don't want all of it? Scope the connection to the services you need:
+
+```
+https://micro.mu/mcp?tools=news,web,mail
+```
+
+That's what gets listed to your agent. Everything else is still callable.
+
 **Browse the tools:** [micro.mu/tools](https://micro.mu/tools) — every tool,
 grouped by service, with what each call costs. 
 

@@ -88,7 +88,48 @@ func connectSection(r *http.Request) string {
 		`<a href="/mcp">playground</a>.</p>`)
 	b.WriteString(`<p class="card-desc connect-alt">Client can't sign itself in? Get a token at ` +
 		`<a href="/token">/token</a> and send it as <code>Authorization: Bearer</code>.</p>`)
+	b.WriteString(scopePicker(base))
 	b.WriteString(`</div>`)
+	return b.String()
+}
+
+// scopePicker builds a scoped endpoint URL.
+//
+// Every tool on one endpoint is right for the server and wrong for a session:
+// the definitions are sent to the model on every turn whether or not any of
+// them could help. Picking a few services here produces a URL that lists only
+// those, which is the difference between an agent weighing sixty tools and
+// weighing six.
+//
+// The checkboxes are built from the registry, so a new service appears here the
+// moment it registers.
+func scopePicker(base string) string {
+	services := ScopeServices()
+	if len(services) == 0 {
+		return ""
+	}
+	sort.Strings(services)
+
+	var b strings.Builder
+	b.WriteString(`<details class="scope"><summary>Only want some of it?</summary>`)
+	b.WriteString(`<p class="card-desc">Pick the services this connection should see. ` +
+		`Everything else stays callable, it just isn't in the list your agent reads every turn.</p>`)
+	b.WriteString(`<div class="scope-grid">`)
+	for _, s := range services {
+		label := service.Label(s)
+		b.WriteString(`<label class="scope-item"><input type="checkbox" value="` +
+			html.EscapeString(s) + `" onchange="muScope()"> ` + html.EscapeString(label) + `</label>`)
+	}
+	b.WriteString(`</div>`)
+	b.WriteString(`<pre class="connect-cfg" id="scope-url">` + html.EscapeString(base) + `/mcp</pre>`)
+	b.WriteString(`<script>
+function muScope(){
+  var picked=[].slice.call(document.querySelectorAll('.scope-item input:checked')).map(function(i){return i.value});
+  var out=document.getElementById('scope-url');
+  out.textContent=` + "`" + html.EscapeString(base) + `/mcp` + "`" + `+(picked.length?'?tools='+picked.join(','):'');
+}
+</script>`)
+	b.WriteString(`</details>`)
 	return b.String()
 }
 
@@ -192,5 +233,9 @@ const toolsPageCSS = `<style>
 .connect-note{font-size:13px;color:#888;margin-left:8px}
 .connect-cfg{background:#f5f5f5;padding:10px 12px;font-size:12px;overflow-x:auto;border-radius:6px;margin:12px 0}
 .connect-alt{color:#888;font-size:13px;border-top:1px solid #eee;padding-top:10px;margin-top:12px}
+.scope{margin-top:12px;border-top:1px solid #eee;padding-top:10px}
+.scope summary{cursor:pointer;font-size:13px;font-weight:600;color:#555}
+.scope-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:4px 12px;margin:10px 0}
+.scope-item{font-size:13px;color:#444;display:flex;align-items:center;gap:6px}
 @media only screen and (max-width:600px){.tool-grid{grid-template-columns:1fr}}
 </style>`

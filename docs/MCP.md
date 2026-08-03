@@ -21,6 +21,32 @@ there is no second API to choose between, and nothing to integrate per tool.
 There is no key in that config because there is nothing to paste. Works with
 Claude Desktop, Cursor, or anything else that speaks MCP.
 
+## Scoping a connection
+
+One endpoint carrying every tool is right for the server and wrong for a
+session: the definitions go to the model on every turn whether or not any of
+them could help, and a client connected for news does not need a qibla compass
+in the list. Name the services you want:
+
+```
+https://micro.mu/mcp?tools=news,web,mail
+```
+
+`tools` takes service names (`news`), individual tool names (`web_search`), or
+what the sidebar calls a service (`search` for `web`), comma-separated. An
+unrecognised name is ignored rather than refused — a scope is a preference, and
+failing the whole connection because somebody wrote `email` for `mail` would be
+worse than giving them the rest.
+
+Scoping changes what is **listed**, not what may be **called**. A tool left out
+is still reachable by name, and the guards that matter — account, credits, rate
+limits — are unchanged. This is about what an agent is asked to consider, which
+is a context problem rather than a permission one; if you need a caller to be
+unable to do something, that is what an account-scoped service and a token are
+for.
+
+There is a picker on [/tools](https://micro.mu/tools) that builds the URL.
+
 ## Authentication
 
 Calls carry a bearer token:

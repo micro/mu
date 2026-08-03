@@ -83,6 +83,43 @@ func mcpResolver() gwmcp.Resolver {
 	return aliasResolver{inner: res, aliases: aliases}
 }
 
+// scoped narrows what a connection lists without narrowing what it may call.
+//
+// The resolver is built once with every tool, and the filter sits in front of
+// List alone. That is deliberate: a scope answers "what should this agent
+// consider", which is a context problem. Permission is a separate question with
+// separate answers — account, credits, rate limits — and none of them should
+// start depending on a query parameter the caller chose.
+func scoped(inner gwmcp.Resolver, scope []string) gwmcp.Resolver {
+	if len(scope) == 0 {
+		return inner
+	}
+	return scopedResolver{inner: inner, scope: scope}
+}
+
+type scopedResolver struct {
+	inner gwmcp.Resolver
+	scope []string
+}
+
+func (s scopedResolver) List(ctx context.Context) ([]gwmcp.Tool, error) {
+	all, err := s.inner.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]gwmcp.Tool, 0, len(all))
+	for _, t := range all {
+		if inScope(Tool{Name: t.Name}, s.scope) {
+			out = append(out, t)
+		}
+	}
+	return out, nil
+}
+
+func (s scopedResolver) Call(ctx context.Context, name string, args map[string]any) (*gwmcp.CallResult, error) {
+	return s.inner.Call(ctx, name, args)
+}
+
 // aliasResolver keeps renamed tools callable by their old names without showing
 // those names in the catalogue.
 type aliasResolver struct {
@@ -135,7 +172,7 @@ func itoa(n int) string {
 // stream, and holding a streamed response in memory to add nothing to it would
 // be a bad trade.
 func serveMCP(w http.ResponseWriter, r *http.Request) {
-	handler := gwmcp.NewHandler(mcpResolver(),
+	handler := gwmcp.NewHandler(scoped(mcpResolver(), scopeFrom(r)),
 		gwmcp.WithServerInfo("mu", "1.0.0"),
 		gwmcp.WithProtocolVersion(MCPVersion))
 	ctx := context.WithValue(r.Context(), mcpReqKey{}, r)
