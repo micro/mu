@@ -1,7 +1,7 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "mu.micro/mu",
-  "description": "The everyday internet as tools an agent can call: news, web search, mail with a real SMTP server, markets, weather, places and travel time, video, files, calendar, contacts and per-user storage. 67 tools behind one endpoint.",
+  "description": "News, web search, mail, markets, weather, places, files, calendar, contacts. 67 tools, one endpoint.",
   "repository": {
     "url": "https://github.com/micro/mu",
     "source": "github"
