@@ -7,8 +7,10 @@ import (
 	"mu/service/apps"
 	"mu/service/blog"
 	"mu/service/chat"
+	"mu/service/contacts"
 	"mu/service/db"
 	"mu/service/events"
+	"mu/service/files"
 	"mu/service/images"
 	"mu/service/index"
 	"mu/service/islam"
@@ -24,15 +26,22 @@ import (
 	"mu/service/web"
 )
 
+// allSpecs is every service main() registers. Keep it complete: a Spec missing
+// here is a service the policy and documentation tests never see.
+func allSpecs() []service.Spec {
+	return []service.Spec{
+		apps.Spec, blog.Spec, chat.Spec, contacts.Spec, db.Spec, events.Spec,
+		files.Spec, images.Spec, index.Spec, islam.Spec, mail.Spec, markets.Spec,
+		news.Spec, places.Spec, social.Spec, stream.Spec, video.Spec, wallet.Spec,
+		weather.Spec, web.Spec,
+	}
+}
+
 // registerAll stands up every service from its own Spec — the same
 // declarations main() registers.
 func registerAll(t *testing.T) {
 	t.Helper()
-	for _, s := range []service.Spec{
-		apps.Spec, blog.Spec, chat.Spec, db.Spec, events.Spec, images.Spec,
-		index.Spec, islam.Spec, mail.Spec, markets.Spec, news.Spec, places.Spec,
-		social.Spec, stream.Spec, video.Spec, wallet.Spec, weather.Spec, web.Spec,
-	} {
+	for _, s := range allSpecs() {
 		if err := service.Register(s); err != nil {
 			t.Fatalf("register %s: %v", s.Name, err)
 		}
@@ -117,12 +126,22 @@ func TestNavCoversEveryPagedServiceExactlyOnce(t *testing.T) {
 	}
 
 	// Headless services must not appear.
-	for _, name := range []string{"index", "db"} {
+	for _, name := range []string{"index", "db", "contacts"} {
 		if _, ok := routes["/"+name]; ok {
 			t.Errorf("%s is headless and must not be in the sidebar", name)
 		}
 	}
-	if len(nav) != 16 {
-		t.Errorf("sidebar has %d entries, want 16 — %v", len(nav), routes)
+
+	// Counted from the Specs rather than written down: a hard-coded total goes
+	// stale the moment a service is added, and the number it was checking was
+	// the size of registerAll, not the size of the product.
+	want := 0
+	for _, s := range allSpecs() {
+		if s.Page != "" {
+			want++
+		}
+	}
+	if len(nav) != want {
+		t.Errorf("sidebar has %d entries, want %d — %v", len(nav), want, routes)
 	}
 }

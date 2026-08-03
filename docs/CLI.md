@@ -27,7 +27,7 @@ mu agent "summarise today's markets"    # run the full agent
 mu web_search "claude code"
 mu weather_forecast --lat 51.5 --lon -0.12
 mu apps_search "pomodoro"
-mu me                                   # your account (requires login)
+mu wallet_balance                       # your credits (requires a token)
 ```
 
 The first positional argument is always the tool name. The rest are flags that map directly to the tool's parameters.
@@ -58,7 +58,7 @@ For CI, scripts, or ad-hoc use:
 
 ```bash
 export MU_TOKEN=<TOKEN>
-mu me
+mu wallet_balance
 ```
 
 ### Logout
@@ -98,9 +98,13 @@ For a small set of well-known tools, a single positional argument is treated as 
 ```bash
 mu chat "hello"                  # same as --prompt "hello"
 mu news_search "bitcoin"         # same as --query "bitcoin"
-mu web_search "claude code"      # same as --q "claude code"
+mu web_search "claude code"      # same as --query "claude code"
 mu apps_build "a pomodoro timer" # same as --prompt "..."
+mu apps_read hello-world         # same as --slug hello-world
 ```
+
+`mu help <tool>` prints the parameters a tool actually takes, which is the
+authority — the list above is only the shortcuts.
 
 ### Types
 
@@ -121,23 +125,28 @@ mu apps_create --name "Timer" --slug timer --html "..." --public
 
 ## Output
 
+Most tools return **model-ready text** — headlines, prices, a forecast — written
+to be read by a model or a person, not parsed. The `db_*`, `files_*` and
+`apps_read` tools return JSON, and that is where the JSON formatting below
+applies.
+
 ### Automatic format
 
-- **Terminal** (default) — pretty-printed, lightly coloured JSON
-- **Pipe** — compact JSON, one object per line, so it plays nicely with `jq`
+- **Terminal** (default) — pretty-printed, lightly coloured
+- **Pipe** — compact, one object per line, so JSON results play nicely with `jq`
 
 ```bash
-mu news                        # pretty JSON
-mu news | jq '.feed[0].title'  # compact JSON, pipeable
-mu news > feed.json            # compact JSON, file-friendly
+mu news                              # headlines as text
+mu db_list --collection notes        # JSON
+mu db_list --collection notes | jq '.[0].data.title'
 ```
 
 ### Forcing a format
 
 ```bash
-mu --pretty news | less         # force pretty even when piped
-mu --raw news                   # force raw even in a terminal
-mu --table news_search --query "ai"  # render as a text table
+mu --pretty news | less                      # force pretty even when piped
+mu --raw news                                # force raw even in a terminal
+mu --table db_list --collection notes        # render a list as a text table
 ```
 
 `--table` renders list-shaped results as aligned columns, skipping long content fields (`html`, `body`, `content`) to keep the layout readable.
@@ -173,10 +182,10 @@ These aren't MCP tools — they're CLI-local commands:
 
 ## Common recipes
 
-### Scripted news digest
+### Today, in one place
 
 ```bash
-mu news | jq -r '.feed[] | "\(.title)\n  \(.description)\n"'
+mu news; mu markets_list --category stocks; mu weather_forecast --lat 51.5 --lon -0.12
 ```
 
 ### Weather for a postcode
@@ -199,17 +208,16 @@ mu apps_build --prompt "an expense tracker"
 mu agent "find me three interesting AI papers from the last week and summarise them"
 ```
 
-### Search then tail the first result
+### Search, then read a result
 
 ```bash
-mu web_search "open source self-hosted email" --raw \
-  | jq -r '.results[0].url' \
-  | xargs -I {} mu search_fetch --url {}
+mu web_search "open source self-hosted email"
+mu web_fetch https://example.com/the-one-you-want   # the page as clean text
 ```
 
 ## How it works
 
-The CLI is a standalone package (`mu/cli`) with no dependencies on the rest of the Mu codebase. Every invocation:
+The CLI is a self-contained package (`internal/cli`) that talks to an instance over HTTP and never touches server state. Every invocation:
 
 1. Loads `~/.config/mu/config.json`, applies environment overrides, then flag overrides.
 2. Parses the positional arguments as a tool name + `--flag value` pairs.

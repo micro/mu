@@ -45,26 +45,32 @@ See [MCP docs](docs/MCP.md) for the protocol details.
 
 ## The tools
 
+Grouped the way [/tools](https://micro.mu/tools) and the sidebar group them —
+one row per service, named for it.
+
 | Area | Tools |
 |---|---|
-| **Agent** | `agent` · `chat` — ask the whole thing a question and let it compose |
-| **Apps** | `apps_build` · `apps_run` · `apps_edit` — build and run small web tools |
-| **Calendar** | `events_create` · `events_free` · `events_list` — schedule, and find when you are free |
-| **Contacts** | `contacts_find` · `contacts_add` · `contacts_list` — turn a name into an address |
-| **Files** | `files_put` · `files_get` · `files_list` · `files_share` — keep a file, get a URL |
-| **Faith** | `islam_today` · `islam_prayer` · `islam_qibla` · `quran` · `hadith` |
-| **Index** | `index_search` — everything this instance holds for you |
+| **Apps** | `apps_build` · `apps_create` · `apps_edit` · `apps_fork` · `apps_read` · `apps_run` · `apps_search` · `apps_test` — build and run small web tools |
+| **Blog** | `blog_create` · `blog_read` · `blog_list` · `blog_update` · `blog_delete` — publish, with AI-generated daily digests |
+| **Chat** | `chat` — one question, one answer |
+| **Contacts** | `contacts_add` · `contacts_find` · `contacts_list` · `contacts_delete` — turn a name into an address |
+| **Events** | `events_create` · `events_free` · `events_list` — schedule, and find when you are free |
+| **Files** | `files_put` · `files_get` · `files_list` · `files_share` · `files_delete` — keep a file, get a URL |
 | **Images** | `images_generate` · `images_search` |
+| **Index** | `index_search` — everything this instance holds for you |
+| **Islam** | `islam_today` · `islam_prayer` · `islam_qibla` — daily reminder, prayer times, qibla |
 | **Mail** | `mail_inbox` · `mail_send` · `mail_address` — a real SMTP server with DKIM, and an address per agent |
 | **Markets** | `markets_list` — stocks, crypto, futures, commodities, currencies |
 | **News** | `news_list` · `news_read` · `news_search` — RSS aggregation, full articles |
 | **Places** | `places_search` · `places_nearby` · `places_eta` — points of interest, geocoding, travel time |
-| **Storage** | `db_create` · `db_get` · `db_list` · `db_update` · `db_delete` — per-caller records |
-| **Writing** | `blog_*` · `social_*` · `stream_*` — publish, read, discuss |
+| **Search** | `web_search` · `web_fetch` — search the web, read a page as clean text |
+| **Social** | `social_list` · `social_search` — public threads and replies |
+| **Storage** | `db_create` · `db_get` · `db_list` · `db_delete` — per-caller records (`db_create` with an `id` updates) |
+| **Stream** | `stream_list` · `stream_post` — this instance's own timeline |
+| **Video** | `video_list` · `video_search` — curated channels, no ads or recommendations |
 | **Wallet** | `wallet_balance` — credits, and where to send USDC to top up |
 | **Weather** | `weather_forecast` — conditions, forecast, pollen |
-| **Web** | `web_search` · `web_fetch` — search the web, read a page as clean text |
-| **Video** | `video_list` · `video_search` — curated channels, no ads or recommendations |
+| **Platform** | `agent` — ask the whole thing a question and let it compose. Also `quran` · `quran_search` · `hadith`, `save` · `unsave` · `saved_list`, and `flag` · `dismiss` · `block_user` · `unblock_user` |
 
 ## Request a tool
 

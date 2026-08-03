@@ -4,9 +4,9 @@ Self-hosting Mu gives you complete control over your data and platform.
 
 ## Requirements
 
-- **Go 1.21+** - [golang.org/dl](https://golang.org/dl/)
-- **Linux/macOS** - Windows via WSL2
-- A server with a public IP (for messaging)
+- **Go 1.25+** — [golang.org/dl](https://golang.org/dl/)
+- **Linux/macOS** — Windows via WSL2
+- A server with a public IP, if you want inbound mail
 
 ## Quick Start
 
@@ -15,34 +15,49 @@ Self-hosting Mu gives you complete control over your data and platform.
 git clone https://github.com/micro/mu.git
 cd mu
 
-# Build and run
+# Build and run the server
 go build -o mu .
-./mu
+./mu --serve
 ```
 
-Mu runs on **port 8080** by default. Visit `http://localhost:8080` to access your instance.
+`--serve` is the switch between the two things the binary is: with it you get
+the server, without it the same binary is the CLI (`mu news_list`, `mu agent
+"..."` — see [CLI](/docs/cli)). Forget it and you get `--serve not set`.
+
+Mu runs on **port 8080** by default. Visit `http://localhost:8080`, create the
+first account — it becomes admin — and pick an AI provider.
 
 ## Configuration
 
-Mu uses environment variables for configuration. Create a `.env` file or export them directly:
+Nothing is required to start. Each key below switches on the feature next to it,
+and every one of them can also be set at `/admin/env` in the browser once you are
+admin, so the environment is for the things you want fixed at deploy time.
 
 ```bash
-# Required for chat/AI features
-export ANTHROPIC_API_KEY="your-key"  # Get from console.anthropic.com
+# An AI provider — one of these, for the agent, chat and summaries
+export ANTHROPIC_API_KEY="your-key"   # Claude, from console.anthropic.com
+# export ATLAS_API_KEY="your-key"     # Atlas Cloud (DeepSeek, Qwen), also images
+# export OPENAI_BASE_URL="http://localhost:11434/v1"  # Ollama or any compatible endpoint
 
-# Required for video features
-export YOUTUBE_API_KEY="your-key"  # Get from Google Cloud Console
+# Video
+export YOUTUBE_API_KEY="your-key"  # Google Cloud Console
 
-# Optional for Places (falls back to OpenStreetMap without it)
-export GOOGLE_API_KEY="your-key"   # Enable Places API (New) in Google Cloud Console
+# Places — falls back to OpenStreetMap without it
+export GOOGLE_API_KEY="your-key"   # enable Places API (New) and the Routes API
 
-# Optional for card payments
+# Web search
+export BRAVE_API_KEY="your-key"
+
+# Card top-ups for credits
 # export STRIPE_SECRET_KEY="sk_live_..."
 # export STRIPE_PUBLISHABLE_KEY="pk_live_..."
 # export STRIPE_WEBHOOK_SECRET="whsec_..."
 ```
 
-See [Environment Variables](/docs/environment) for the complete list.
+Mu also reads a dotenv file at startup: `$MU_ENV_FILE`, then `~/.env`, then
+`~/.mu/.env` — the first that exists wins.
+
+See [Configuration](/docs/environment) for the complete list.
 
 ## Production Deployment
 
@@ -59,7 +74,7 @@ After=network.target
 Type=simple
 User=mu
 WorkingDirectory=/home/mu
-ExecStart=/home/mu/mu
+ExecStart=/home/mu/mu --serve
 Restart=always
 RestartSec=5
 EnvironmentFile=/home/mu/.env
@@ -78,25 +93,24 @@ sudo systemctl start mu
 
 ### Using Docker
 
-```dockerfile
-FROM golang:1.21-alpine AS builder
-WORKDIR /app
-COPY . .
-RUN go build -o mu .
+The repository ships a `Dockerfile` and a `docker-compose.yml`, so there is
+nothing to write:
 
-FROM alpine:latest
-RUN apk --no-cache add ca-certificates
-WORKDIR /app
-COPY --from=builder /app/mu .
-EXPOSE 8080
-CMD ["./mu"]
+```bash
+git clone https://github.com/micro/mu && cd mu
+docker compose up
 ```
 
-Build and run:
+The compose file mounts a named volume at `/data` and sets `HOME=/data`, which
+is where everything under `~/.mu` lands — keep that volume and you keep your
+instance. Uncomment the provider you want in `docker-compose.yml`, or pass keys
+with `--env-file`.
+
+By hand, without compose:
 
 ```bash
 docker build -t mu .
-docker run -p 8080:8080 --env-file .env mu
+docker run -p 8080:8080 -v mu-data:/data --env-file .env mu
 ```
 
 ### Reverse Proxy (nginx)
@@ -161,7 +175,8 @@ Slash commands: `/agent`, `/news`, `/markets`, `/weather`, `/mail`, `/social`,
    prompts and copy the token.
 2. Paste it at `/admin/env` under `TELEGRAM_BOT_TOKEN`, or set the env var.
 
-Commands: `/agent`, `/ask`, `/news`, `/markets`, `/weather`, `/usage`.
+Commands: `/start`, `/agent` (also `/ask`, `/mu`), `/news`, `/markets`,
+`/weather`, `/usage`.
 
 ## Taking payments
 
@@ -238,17 +253,24 @@ No TLS needed — Tor provides end-to-end encryption for .onion addresses.
 
 ## Data Storage
 
-All data is stored in `~/.mu/`:
+Everything is under `~/.mu/`:
 
 ```
 ~/.mu/
-├── data.db          # SQLite database
-├── keys/
-│   └── dkim.key     # DKIM private key
-└── uploads/         # User uploads
+├── data/            # accounts, sessions, posts, feeds, the search index,
+│   │                # settings.json, cached cards — one file per thing
+│   └── files/       # bytes stored by the files service
+├── store/           # internal service state
+├── keys/            # encryption key, DKIM key, the CLI's wallet seed
+└── .env             # optional dotenv, read at startup
 ```
 
-Back up this directory to preserve all user data.
+Back up that directory and you have backed up the instance. It is plain JSON on
+disk, so it is greppable and diffable; `MU_USE_SQLITE=1` moves just the search
+index into `~/.mu/data/index.db`, and setting `S3_*` moves stored file bytes to
+an object store (see [Configuration](/docs/environment)).
+
+In Docker, `HOME` is `/data`, so this tree is `/data/.mu` on the mounted volume.
 
 ## Updating
 
@@ -272,7 +294,7 @@ lsof -i :8080
 journalctl -u mu -f
 ```
 
-**Test without building:**
+**Run without building:**
 ```bash
-go run main.go
+go run . --serve
 ```

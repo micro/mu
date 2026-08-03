@@ -1,10 +1,13 @@
 # Architecture
 
 Mu is one Go binary. Every capability is a service behind a
-[go-micro](https://go-micro.dev) registry, and that registry is the single
-source of truth — the agent's tools, the MCP catalogue, the REST endpoints, the
-sidebar and the app SDK all derive from it. Register a service and every surface
-picks it up with no further wiring.
+[go-micro](https://go-micro.dev) registry, and that registry is the source of
+truth — the agent's tools, the sidebar, the app SDK and the status page all
+derive from it. Register a service and those surfaces pick it up with no further
+wiring.
+
+One surface does not yet derive: the MCP tool list. See
+[Deriving MCP tools](#deriving-mcp-tools) at the end.
 
 ## Directory layout
 
@@ -15,8 +18,10 @@ mu/
 │   ├── apps/
 │   ├── blog/
 │   ├── chat/
+│   ├── contacts/
 │   ├── db/
 │   ├── events/
+│   ├── files/
 │   ├── images/
 │   ├── index/
 │   ├── islam/
@@ -24,7 +29,7 @@ mu/
 │   ├── markets/
 │   ├── news/
 │   ├── places/
-│   ├── search/
+│   ├── search/            # the /search page and its providers, not a service
 │   ├── social/
 │   ├── stream/
 │   ├── video/
@@ -33,17 +38,18 @@ mu/
 │   └── web/
 ├── internal/               # runtime and infrastructure, not features
 │   ├── a2a/
-│   ├── agents/
 │   ├── ai/
 │   ├── api/
 │   ├── app/
 │   ├── auth/
+│   ├── blob/
 │   ├── cli/
 │   ├── data/
 │   ├── env/
 │   ├── event/
 │   ├── flag/
 │   ├── memory/
+│   ├── origin/
 │   ├── safefetch/
 │   ├── service/
 │   ├── settings/
@@ -56,8 +62,13 @@ mu/
 ├── client/                 # discord, telegram, whatsapp
 ├── home/                   # landing, home screen, pricing
 ├── admin/                  # moderation and admin panel
+├── scripts/                # deploy, DKIM keys, git hooks, tor
 └── docs/                   # this folder, served at /docs
 ```
+
+`service/search` is the exception to "one directory per service": it holds the
+`/search` page and its providers — Brave, the readability reader — while the
+capability itself is the `web` service.
 
 `internal/service` is the runtime that hosts services — it is not itself
 a service.
@@ -105,7 +116,7 @@ guessable.
 | `events` | /events | ✅ | ✅ | Calendar: scheduling, `.ics` invites, and when you are free |
 | `files` | /files | ✅ | ✅ | Per-user file storage: keep a file, get a URL |
 | `images` | /images | ✅ | ✅ | Generation, daily image, archive |
-| `index` | — | ✅ | ✅ | Search across the caller's own content |
+| `index` | — | ✅ |  | Search across the caller's own content |
 | `islam` | /islam | ✅ |  | Daily reminder, prayer times, qibla |
 | `mail` | /mail | ✅ | ✅ | SMTP server, inbox, DKIM |
 | `markets` | /markets | ✅ |  | Crypto, stocks, futures, commodities, currencies |
@@ -113,21 +124,25 @@ guessable.
 | `places` | /places | ✅ |  | Maps, points of interest, travel time |
 | `social` | /social | ✅ |  | Threads, replies, status |
 | `stream` | /stream | ✅ |  | The console: this instance's own timeline |
-| `video` | /video | ✅ |  | Search and playback |
+| `video` | /video | ✅ |  | Curated channels, without ads or recommendations |
 | `wallet` | /wallet | ✅ | ✅ | Credit check, charge, balance |
 | `weather` | /weather | ✅ |  | Forecast and pollen |
 | `web` | /search | ✅ |  | Search the web; fetch a URL and return readable content |
 
 ## Account-scoped
 
-Listed in `internal/service/dynamic.go`. These hold data belonging to one user
-or spend their credits, so a caller with no authenticated account cannot reach
-them **at all** — the whole service is closed to guests.
+`Scoped: true` on the Spec, read back through `service.AccountScoped`
+(`internal/service/spec.go`). These hold data belonging to one user or spend
+their credits, so a caller with no authenticated account cannot reach them
+**at all** — the whole service is closed to guests.
 
-That bluntness is why some services that hold per-user data are not on the
-list. `stream` is readable by anyone (a guest sees the public timeline) while
-posting requires an account, so the check lives in the method rather than on
-the service. Marking it scoped would hide the timeline from visitors entirely.
+That bluntness is why some services that hold per-user data are not scoped.
+`stream` is readable by anyone (a guest sees the public timeline) while posting
+requires an account, so the check lives in the method rather than on the
+service. Marking it scoped would hide the timeline from visitors entirely.
+`index` is the same shape: a guest search returns public indexed content and
+nothing else, because the caller's own mail is added only when there is a
+caller.
 
 Identity comes from the **call context**, never from a request field — see
 `internal/service/identity.go`. Handlers read `service.AccountFrom(ctx)`, and no
@@ -140,14 +155,18 @@ supplies, so it cannot reach a handler even by accident.
 **Every registered service becomes an agent tool.** That is the point of
 deriving from the registry — register a service and the model can use it.
 
-The guard is per *method*, not per service (`destructiveTools` in
-`agent/native.go`). Two are withheld:
+The guard is per *method*, not per service: `Destructive: true` on the endpoint
+in the service's own Spec, read back through `service.Destructive`. Four are
+withheld:
 
-- **`wallet.charge`** — spending should follow from the user's own action
-- **`db.delete`** — irreversible, and the user can delete from the app
+- **`wallet.Charge`** — spending should follow from the user's own action
+- **`db.Delete`** — irreversible, and the user can delete from the app
+- **`files.Delete`** — the same, for stored bytes
+- **`contacts.Delete`** — the same, for the address book
 
 Everything else on those services is available: the agent can read a balance,
-check a cost, and create, list, get and update records.
+check a cost, create, list, get and update records, store and share a file, and
+add and look up a contact.
 
 The reasoning is not that the services are dangerous. The agent reads
 attacker-controlled text — an email body, a page it just fetched — so any tool
@@ -173,15 +192,36 @@ explain rather than retry.
 Nothing else is needed. The agent, the picker, the app SDK and the status page
 all read the registry.
 
-One thing that does **not** derive yet: MCP tools are still hand-written in
-`internal/api/mcp.go`, so a new service is an agent tool but not an MCP tool
-until someone adds a stanza. See micro/mu#1445.
+## Deriving MCP tools
+
+MCP is the exception. Its tools come from a second, hand-written registry —
+`var tools` in `internal/api/mcp.go` plus `api.RegisterTool` calls in `main.go` —
+so a newly registered service is an agent tool, an app SDK call and a nav entry
+straight away, but **not** an MCP tool until someone adds a stanza.
+
+The awkward part is price. An `api.Tool` carries `WalletOp`, so a naive
+derivation would produce tools with no operation and therefore no charge — an
+unmetered path to a paid third party. Half of that is now solved: a Spec's
+endpoints can declare `Cost` (`db.Create` does), so the cost is already
+declarable in the place the derivation would read it.
+
+Tracked in [micro/mu#1445](https://github.com/micro/mu/issues/1445).
 
 ## The app SDK
 
 An app is a page plus a JavaScript SDK. It reaches any registered service
 through `mu.service(name, method, args)`, so a new service is available to every
-app the moment it registers.
+app the moment it registers — no SDK change, no wrapper to write.
+
+```javascript
+const prices = await mu.service('markets', 'List', { category: 'stocks' });
+const all    = await mu.services();  // what this app may call, and each one's methods
+```
+
+The call dispatches through the live registry. Account-scoped services need a
+signed-in visitor, the account is bound from the session, and any `account_id`
+the app sends is discarded — the same identity rules as every other surface.
+The typed wrappers below are shortcuts over this, not a separate path.
 
 ### Storage — `mu.store` (key/value)
 
@@ -286,9 +326,10 @@ const u = await mu.user();   // { account: 'alice', admin: false, ... } — or {
 Every Mu service is a typed wrapper:
 
 ```javascript
-mu.weather({ lat, lon });          mu.news();
+mu.weather({ lat, lon });           mu.news();
 mu.markets({ category: 'crypto' }); mu.video();
 mu.social();                        mu.search('query');
+mu.chat('a question');
 mu.places.search({ ... });          mu.places.nearby({ ... });
 mu.blog.list();  mu.blog.read(id);  mu.blog.create({ ... });
 mu.apps.list();  mu.apps.read(slug);
@@ -296,9 +337,16 @@ mu.apps.list();  mu.apps.read(slug);
 
 ## Dependency rules
 
-1. **Subsystems never import services** — enforced by `internal/`
+1. **Subsystems should not import services** — `internal/` is the runtime, not
+   the features. The one exception is `wallet`, which `internal/api` and
+   `internal/cli` import to price a call; see rule 4
 2. **Services import subsystems freely** — that's what they're for
 3. **Services should not import each other** — except documented composition layers
 4. **`wallet` is the one cross-cutting service** — most services import it for quota
-5. **`admin` imports `mail`** — for spam filter and blocklist management in the
-   admin panel. This is an acceptable coupling since admin is a management UI
+5. **`admin` imports services** — `mail` for the spam filter and blocklists,
+   `wallet` for credits and transactions, plus `apps`, `news` and `markets` for
+   the panel's own views. An acceptable coupling: admin is a management UI over
+   the services, and nothing imports admin
+
+These are conventions, not compiler-enforced boundaries — the import graph is
+worth a look before adding an edge to it.

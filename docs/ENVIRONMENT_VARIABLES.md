@@ -18,7 +18,7 @@ longer exist.
 |---|---|---|
 | `ADMIN` / `MU_ADMIN` | first account | Who is admin — comma-separated ids, usernames or emails |
 | `MU_DOMAIN` | `localhost` | Public domain. Used for the OAuth issuer an MCP client discovers, Stripe returns, ActivityPub actor URLs and mail. Set this if you run behind a proxy |
-| `MU_ENV_FILE` | `~/.mu/env` | Where stored settings live |
+| `MU_ENV_FILE` | `~/.env`, then `~/.mu/.env` | A dotenv file read at startup; the first that exists wins. Settings saved at `/admin/env` go to `~/.mu/data/settings.json` instead |
 | `MCP_REGISTRY_PROOF` | — | Domain-ownership proof served at `/.well-known/mcp-registry-auth` when publishing to the MCP registry — see [Listing](LISTING.md) |
 | `MU_ENCRYPTION_KEY` | — | Encrypts stored settings at rest |
 | `INVITE_ONLY` | off | Require an invite code to sign up |
