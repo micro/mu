@@ -129,7 +129,9 @@ func TestUnknownScopeNamesAreIgnored(t *testing.T) {
 // credits and rate limits, and none of them should start depending on a query
 // parameter the caller chose.
 func TestScopingDoesNotBlockCalls(t *testing.T) {
-	body := `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"islam_qibla","arguments":{"lat":51.5,"lon":-0.12}}}`
+	// blog_read is registered statically in this package. islam_qibla is not —
+	// it comes from main.go, so naming it here tested nothing but its absence.
+	body := `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"blog_read","arguments":{"id":"nope"}}}`
 	rec := httptest.NewRecorder()
 	MCPHandler(rec, httptest.NewRequest("POST", "/mcp?tools=news", strings.NewReader(body)))
 
