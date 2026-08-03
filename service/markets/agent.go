@@ -9,12 +9,14 @@ import (
 )
 
 // MarketsText returns a compact, model-ready snapshot of live prices for the
-// given category (crypto, futures, commodities or currencies; default crypto).
+// given category (crypto, stocks, futures, commodities or currencies; default
+// crypto).
 // It is the AI-first accessor behind the markets agent tool — no HTML, no
 // HTTP round-trip.
 func MarketsText(category string) string {
 	category = strings.ToLower(strings.TrimSpace(category))
-	if category != CategoryFutures && category != CategoryCommodities && category != CategoryCurrencies {
+	if category != CategoryFutures && category != CategoryCommodities &&
+		category != CategoryCurrencies && category != CategoryStocks {
 		category = CategoryCrypto
 	}
 
@@ -50,10 +52,14 @@ func MarketsText(category string) string {
 	}
 	fmt.Fprintf(&sb, "Top %s movers by 24h change:\n", category)
 	for _, item := range movers[:limit] {
+		label := item.symbol
+		if name, ok := stockNames[item.symbol]; ok {
+			label = item.symbol + " (" + name + ")"
+		}
 		if item.change != 0 {
-			fmt.Fprintf(&sb, "%s: $%s (%+.2f%% 24h)\n", item.symbol, marketsPriceStr(item.price), item.change)
+			fmt.Fprintf(&sb, "%s: $%s (%+.2f%% 24h)\n", label, marketsPriceStr(item.price), item.change)
 		} else {
-			fmt.Fprintf(&sb, "%s: $%s (24h change unavailable)\n", item.symbol, marketsPriceStr(item.price))
+			fmt.Fprintf(&sb, "%s: $%s (24h change unavailable)\n", label, marketsPriceStr(item.price))
 		}
 	}
 	if len(movers) > limit {

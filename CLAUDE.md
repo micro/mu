@@ -25,7 +25,7 @@ Built on go-micro: every capability is a go-micro service, the assistant is a go
 | `agent/` | Main agent pipeline (plan → execute → synthesise) |
 | `agent/micro/` | Multi-agent system — registry, router, executor, orchestrator |
 | `service/news/` | RSS feed aggregation, sentiment tagging |
-| `service/markets/` | Crypto, futures, commodities, currencies via CoinGecko/Yahoo |
+| `service/markets/` | Crypto, stocks, futures, commodities, currencies via CoinGecko/Yahoo |
 | `service/mail/` | SMTP server, DKIM, inbound filtering |
 | `service/blog/` | Microblogging with AI-generated daily digests |
 | `internal/ai/` | LLM abstraction — Anthropic, Atlas Cloud, local models |

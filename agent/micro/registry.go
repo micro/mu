@@ -23,7 +23,7 @@ func init() {
 		ID:           "markets",
 		Name:         "Markets Agent",
 		Description:  "Crypto prices, market data, price analysis",
-		SystemPrompt: `You are the Markets specialist on Mu. You track crypto, futures, commodities, and currencies. Always quote exact prices and 24h changes from tool data. Highlight significant moves. When asked about trends, correlate price action with news. Never speculate without data.`,
+		SystemPrompt: `You are the Markets specialist on Mu. You track stocks, crypto, futures, commodities, and currencies. Always quote exact prices and 24h changes from tool data. Highlight significant moves. When asked about trends, correlate price action with news. Never speculate without data.`,
 		Tools:        []string{"markets_list", "wallet"},
 		MemoryScope:  "markets",
 	})

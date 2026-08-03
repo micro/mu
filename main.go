@@ -1038,9 +1038,9 @@ func main() {
 	api.RegisterTool(api.Tool{
 		Name:        "markets_list",
 		Aliases:     []string{"markets"},
-		Description: "Get live market prices for cryptocurrencies, futures, commodities and currencies.",
+		Description: "Get live market prices for cryptocurrencies, stocks, futures, commodities and currencies.",
 		Params: []api.ToolParam{
-			{Name: "category", Type: "string", Description: "crypto, futures, commodities or currencies (default crypto)", Required: false},
+			{Name: "category", Type: "string", Description: "crypto, stocks, futures, commodities or currencies (default crypto)", Required: false},
 		},
 		Handle: func(args map[string]any) (string, error) {
 			category, _ := args["category"].(string)

@@ -56,6 +56,7 @@ func TestGetAssetsForCategory(t *testing.T) {
 		{CategoryFutures, "OIL"},
 		{CategoryCommodities, "COFFEE"},
 		{CategoryCurrencies, "EUR"},
+		{CategoryStocks, "TSLA"},
 		{"invalid", "BTC"}, // defaults to crypto
 	}
 	for _, tt := range tests {
@@ -252,5 +253,77 @@ func TestCategoryConstants(t *testing.T) {
 	}
 	if CategoryCurrencies != "currencies" {
 		t.Error("unexpected currencies constant")
+	}
+	if CategoryStocks != "stocks" {
+		t.Error("unexpected stocks constant")
+	}
+}
+
+// Every tracked stock needs a name, a chart and something fetching it. A row
+// that says only "AVGO" with no price and no chart is worse than no row: the
+// three lists are separate, so nothing but a test keeps them together.
+func TestEveryStockIsCompletelyDescribed(t *testing.T) {
+	if len(stockSymbols) == 0 {
+		t.Fatal("no stocks tracked")
+	}
+	for _, symbol := range stockSymbols {
+		if stockNames[symbol] == "" {
+			t.Errorf("%s has no company name", symbol)
+		}
+		if chartLinks[symbol] == "" {
+			t.Errorf("%s has no chart link", symbol)
+		}
+	}
+	if len(stockAssets) != len(stockSymbols) {
+		t.Errorf("the page shows %d stocks but only %d are fetched", len(stockAssets), len(stockSymbols))
+	}
+}
+
+// A ticker only reads as a company to someone who already knows it.
+func TestStockRowNamesTheCompany(t *testing.T) {
+	row := generateMarketRow("TSLA", 412.5, -1.2)
+	if !strings.Contains(row, "TSLA") {
+		t.Error("expected the ticker")
+	}
+	if !strings.Contains(row, "Tesla") {
+		t.Errorf("expected the company name alongside the ticker, got %q", row)
+	}
+
+	// Symbols that are their own name stay bare.
+	if got := generateMarketRow("BTC", 97000, 0); strings.Contains(got, "markets-name") {
+		t.Errorf("BTC should not carry a company name, got %q", got)
+	}
+}
+
+// Stocks are only reachable if the page offers them.
+func TestMarketsPageOffersStocks(t *testing.T) {
+	html := generateMarketsPage(map[string]PriceData{
+		"AAPL": {Price: 230.10, Change24h: 0.8, UpdatedAt: time.Now().UTC()},
+	}, CategoryStocks)
+
+	if !strings.Contains(html, `href="/markets?category=stocks"`) {
+		t.Error("expected a Stocks tab")
+	}
+	if !strings.Contains(html, "Apple") {
+		t.Error("expected the stocks category to render its rows")
+	}
+}
+
+// The tool has to accept what the page accepts, or an agent asked for stock
+// prices quietly gets crypto instead.
+func TestMarketsTextAcceptsStocks(t *testing.T) {
+	marketsMutex.Lock()
+	cachedPriceData = map[string]PriceData{
+		"TSLA": {Price: 412.5, Change24h: -1.2, UpdatedAt: time.Now().UTC(), Source: "Yahoo Finance"},
+	}
+	cachedPrices = nil
+	marketsMutex.Unlock()
+
+	got := MarketsText(CategoryStocks)
+	if !strings.Contains(got, "TSLA (Tesla)") {
+		t.Errorf("expected the labelled stock line, got %q", got)
+	}
+	if strings.Contains(got, "BTC") {
+		t.Errorf("asking for stocks returned crypto: %q", got)
 	}
 }

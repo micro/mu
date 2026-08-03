@@ -71,6 +71,35 @@ var futuresSymbols = map[string]string{
 
 var futuresKeys = []string{"OIL", "OATS", "COFFEE", "WHEAT", "GOLD"}
 
+// stockSymbols are the companies most people mean when they ask about "the
+// market" — the ones that turn up in a news headline and then in a question
+// about whether the headline moved anything.
+//
+// The ticker is the key and the Yahoo symbol, because for ordinary US equities
+// they are the same string; futures and forex need a mapping only because their
+// symbols carry suffixes. Kept to ten: a card people read at a glance beats a
+// table nobody finishes, and anything not here is one web_search away.
+var stockSymbols = []string{
+	"AAPL",  // Apple
+	"MSFT",  // Microsoft
+	"NVDA",  // Nvidia
+	"GOOGL", // Alphabet
+	"AMZN",  // Amazon
+	"META",  // Meta
+	"TSLA",  // Tesla
+	"AVGO",  // Broadcom
+	"NFLX",  // Netflix
+	"AMD",   // AMD
+}
+
+// stockNames give a ticker the name a person would say, for the card and for
+// what the agent reads back.
+var stockNames = map[string]string{
+	"AAPL": "Apple", "MSFT": "Microsoft", "NVDA": "Nvidia",
+	"GOOGL": "Alphabet", "AMZN": "Amazon", "META": "Meta",
+	"TSLA": "Tesla", "AVGO": "Broadcom", "NFLX": "Netflix", "AMD": "AMD",
+}
+
 // Load initializes the markets data
 func Load() {
 	// Register the go-micro service.
@@ -257,6 +286,38 @@ func fetchPrices() (map[string]float64, map[string]PriceData) {
 				priceData[key] = PriceData{
 					Price:     price,
 					Change24h: f.Quote.RegularMarketChangePercent,
+					UpdatedAt: time.Now().UTC(),
+					Source:    "Yahoo Finance",
+				}
+			}
+		}()
+	}
+
+	// Get stock prices. Same Yahoo quote endpoint as forex — an ordinary equity
+	// ticker is its own symbol.
+	app.Log("markets", "Fetching stock prices")
+	for _, symbol := range stockSymbols {
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					app.Log("markets", "Panic getting stock %s: %v", symbol, r)
+				}
+			}()
+
+			q, err := quote.Get(symbol)
+			if err != nil {
+				app.Log("markets", "Failed to get stock %s: %v", symbol, err)
+				return
+			}
+			if q == nil {
+				return
+			}
+			price := q.RegularMarketPrice
+			if price > 0 {
+				prices[symbol] = price
+				priceData[symbol] = PriceData{
+					Price:     price,
+					Change24h: q.RegularMarketChangePercent,
 					UpdatedAt: time.Now().UTC(),
 					Source:    "Yahoo Finance",
 				}
@@ -500,6 +561,7 @@ const (
 	CategoryFutures     = "futures"
 	CategoryCommodities = "commodities"
 	CategoryCurrencies  = "currencies"
+	CategoryStocks      = "stocks"
 )
 
 // Crypto assets to display
@@ -508,6 +570,10 @@ var cryptoAssets = []string{"BTC", "ETH", "UNI", "PAXG", "SOL", "ADA", "DOT", "L
 // Futures/Commodities to display
 var futuresAssets = []string{"OIL", "GOLD", "SILVER", "COPPER"}
 var commoditiesAssets = []string{"COFFEE", "WHEAT", "CORN", "SOYBEANS", "OATS"}
+
+// Stocks to display. Same list the fetch uses, so the page cannot show a
+// ticker nothing is fetching.
+var stockAssets = stockSymbols
 
 // Currency assets to display (priced in USD)
 var currencyAssets = []string{"EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "CNY", "INR"}
@@ -547,6 +613,17 @@ var chartLinks = map[string]string{
 	"CORN":     "https://finance.yahoo.com/chart/ZC%3DF",
 	"SOYBEANS": "https://finance.yahoo.com/chart/ZS%3DF",
 	"OATS":     "https://finance.yahoo.com/chart/ZO%3DF",
+	// Stocks → Yahoo Finance charts, keyed by the ticker itself
+	"AAPL":  "https://finance.yahoo.com/chart/AAPL",
+	"MSFT":  "https://finance.yahoo.com/chart/MSFT",
+	"NVDA":  "https://finance.yahoo.com/chart/NVDA",
+	"GOOGL": "https://finance.yahoo.com/chart/GOOGL",
+	"AMZN":  "https://finance.yahoo.com/chart/AMZN",
+	"META":  "https://finance.yahoo.com/chart/META",
+	"TSLA":  "https://finance.yahoo.com/chart/TSLA",
+	"AVGO":  "https://finance.yahoo.com/chart/AVGO",
+	"NFLX":  "https://finance.yahoo.com/chart/NFLX",
+	"AMD":   "https://finance.yahoo.com/chart/AMD",
 	// Currencies → Yahoo Finance forex charts
 	"EUR": "https://finance.yahoo.com/chart/EURUSD%3DX",
 	"GBP": "https://finance.yahoo.com/chart/GBPUSD%3DX",
@@ -577,7 +654,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate category
-	if category != CategoryCrypto && category != CategoryFutures && category != CategoryCommodities && category != CategoryCurrencies {
+	if category != CategoryCrypto && category != CategoryFutures && category != CategoryCommodities &&
+		category != CategoryCurrencies && category != CategoryStocks {
 		category = CategoryCrypto
 	}
 
@@ -639,7 +717,7 @@ func handleHTML(w http.ResponseWriter, r *http.Request, category string) {
 
 	app.Respond(w, r, app.Response{
 		Title:       "Markets",
-		Description: "Live cryptocurrency, futures, commodity, and currency market prices",
+		Description: "Live cryptocurrency, stock, futures, commodity, and currency market prices",
 		HTML:        body,
 	})
 }
@@ -653,6 +731,8 @@ func getAssetsForCategory(category string) []string {
 		return commoditiesAssets
 	case CategoryCurrencies:
 		return currencyAssets
+	case CategoryStocks:
+		return stockAssets
 	default:
 		return cryptoAssets
 	}
@@ -664,11 +744,12 @@ func generateMarketsPage(priceData map[string]PriceData, activeCategory string) 
 
 	// Page header
 	sb.WriteString(`<div class="markets-page">`)
-	sb.WriteString(`<p class="description">Live market data for cryptocurrencies, futures, commodities, and currencies</p>`)
+	sb.WriteString(`<p class="description">Live market data for stocks, cryptocurrencies, futures, commodities, and currencies</p>`)
 
 	// Category tabs
 	sb.WriteString(`<div class="markets-tabs">`)
 	sb.WriteString(generateTab("Crypto", CategoryCrypto, activeCategory))
+	sb.WriteString(generateTab("Stocks", CategoryStocks, activeCategory))
 	sb.WriteString(generateTab("Futures", CategoryFutures, activeCategory))
 	sb.WriteString(generateTab("Commodities", CategoryCommodities, activeCategory))
 	sb.WriteString(generateTab("Currencies", CategoryCurrencies, activeCategory))
@@ -724,12 +805,19 @@ func generateMarketRow(symbol string, price, change24h float64) string {
 		chartHTML = fmt.Sprintf(`<a href="%s" target="_blank" rel="noopener noreferrer" class="markets-chart-link">Chart ↗</a>`, chartLink)
 	}
 
+	// BTC and GOLD say what they are; AVGO does not. A ticker only reads as a
+	// company to someone who already knows it, so the ones with a name carry it.
+	label := symbol
+	if name, ok := stockNames[symbol]; ok {
+		label = symbol + ` <span class="markets-name">` + name + `</span>`
+	}
+
 	return fmt.Sprintf(`<tr>
 		<td class="markets-symbol">%s</td>
 		<td class="markets-price">%s</td>
 		<td class="markets-change %s">%s</td>
 		<td>%s</td>
-	</tr>`, symbol, priceStr, changeClass, changeStr, chartHTML)
+	</tr>`, label, priceStr, changeClass, changeStr, chartHTML)
 }
 
 // formatPrice formats a price value for display

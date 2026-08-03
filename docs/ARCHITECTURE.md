@@ -108,7 +108,7 @@ guessable.
 | `index` | — | ✅ | ✅ | Search across the caller's own content |
 | `islam` | /islam | ✅ |  | Daily reminder, prayer times, qibla |
 | `mail` | /mail | ✅ | ✅ | SMTP server, inbox, DKIM |
-| `markets` | /markets | ✅ |  | Crypto, futures, commodities, currencies |
+| `markets` | /markets | ✅ |  | Crypto, stocks, futures, commodities, currencies |
 | `news` | /news | ✅ |  | RSS aggregation, sentiment, search |
 | `places` | /places | ✅ |  | Maps, points of interest, travel time |
 | `social` | /social | ✅ |  | Threads, replies, status |

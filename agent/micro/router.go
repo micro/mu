@@ -132,7 +132,7 @@ func keywordRoute(prompt string) []string {
 	// Multi-signal detection
 	hasWeather := containsAnyRouteTerm(lower, "weather", "forecast", "temperature")
 	hasNews := containsAnyRouteTerm(lower, "news", "headline", "happening")
-	hasMarkets := containsAnyRouteTerm(lower, "price", "market", "btc", "eth", "crypto")
+	hasMarkets := containsAnyRouteTerm(lower, "price", "market", "btc", "eth", "crypto", "stock", "shares")
 	hasVideo := containsAnyRouteTerm(lower, "video", "watch", "youtube")
 	hasSearch := containsAnyRouteTerm(lower, "search", "look up", "find out")
 	hasApps := containsAnyRouteTerm(lower, "build me", "build an app", "create an app")

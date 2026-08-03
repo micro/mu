@@ -4658,6 +4658,15 @@ a.btn-secondary:hover, .btn-secondary:hover {
   letter-spacing: 0.05em;
 }
 
+/* The company behind a ticker, where there is one. Secondary to the symbol —
+   it explains the row, it is not the row. */
+.markets-name {
+  font-weight: var(--font-weight-normal);
+  letter-spacing: normal;
+  color: var(--text-muted);
+  font-size: 0.85em;
+}
+
 .markets-price {
   font-weight: var(--font-weight-semibold);
 }

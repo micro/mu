@@ -56,7 +56,7 @@ See [MCP docs](docs/MCP.md) for the protocol details.
 | **Index** | `index_search` — everything this instance holds for you |
 | **Images** | `images_generate` · `images_search` |
 | **Mail** | `mail_inbox` · `mail_send` · `mail_address` — a real SMTP server with DKIM, and an address per agent |
-| **Markets** | `markets_list` — crypto, futures, commodities, currencies |
+| **Markets** | `markets_list` — stocks, crypto, futures, commodities, currencies |
 | **News** | `news_list` · `news_read` · `news_search` — RSS aggregation, full articles |
 | **Places** | `places_search` · `places_nearby` · `places_eta` — points of interest, geocoding, travel time |
 | **Storage** | `db_create` · `db_get` · `db_list` · `db_update` · `db_delete` — per-caller records |

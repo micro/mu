@@ -12,7 +12,7 @@ type Server struct{}
 
 // ListRequest selects a market category.
 type ListRequest struct {
-	Category string `json:"category" description:"crypto, futures, commodities or currencies (default crypto)"`
+	Category string `json:"category" description:"crypto, stocks, futures, commodities or currencies (default crypto)"`
 }
 
 // ListResponse is a model-ready price summary.
@@ -20,8 +20,8 @@ type ListResponse struct {
 	Text string `json:"text" description:"Live prices for the requested category"`
 }
 
-// List returns live market prices for cryptocurrencies, futures, commodities
-// and currencies.
+// List returns live market prices for cryptocurrencies, stocks, futures,
+// commodities and currencies.
 // @example {"category": "crypto"}
 func (Server) List(_ context.Context, req *ListRequest, rsp *ListResponse) error {
 	rsp.Text = MarketsText(req.Category)
@@ -31,10 +31,10 @@ func (Server) List(_ context.Context, req *ListRequest, rsp *ListResponse) error
 var Spec = service.Spec{
 	Name:        "markets",
 	Handler:     new(Server),
-	Description: "Live crypto, futures, commodity and currency prices",
+	Description: "Live crypto, stock, futures, commodity and currency prices",
 	Page:        "/markets",
 	Icon:        "markets.svg",
 	Endpoints: map[string]service.Endpoint{
-		"List": {Doc: "Get live prices for cryptocurrencies, futures, commodities and currencies"},
+		"List": {Doc: "Get live prices for cryptocurrencies, stocks, futures, commodities and currencies"},
 	},
 }
