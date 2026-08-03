@@ -44,10 +44,34 @@ mcp-publisher login dns --domain micro.mu   # or: login github
 mcp-publisher publish
 ```
 
-The namespace in `server.json` is `mu.micro/mu`, which is a DNS namespace: it
-requires proving ownership of the domain with a TXT record rather than a GitHub
-account. That is the right choice for a self-hostable server — the name should
-belong to whoever runs the instance, not to whoever holds the repository.
+The namespace in `server.json` is `mu.micro/mu` — the reverse-DNS form of
+`micro.mu`. A domain namespace means proving you own the domain, rather than
+proving you own a GitHub account, which is the right shape for a server anyone
+can self-host: the name should belong to whoever runs the instance.
+
+Ownership is proved either way round, and Mu serves the easier one.
+
+**By file (no DNS access needed).** Set `MCP_REGISTRY_PROOF` to the proof string
+and Mu serves it at `/.well-known/mcp-registry-auth`:
+
+```bash
+openssl genpkey -algorithm Ed25519 -out key.pem
+PUBLIC_KEY="$(openssl pkey -in key.pem -pubout -outform DER | tail -c 32 | base64)"
+echo "v=MCPv1; k=ed25519; p=${PUBLIC_KEY}"      # -> MCP_REGISTRY_PROOF
+```
+
+Then `mcp-publisher login http --domain micro.mu --private-key <hex>`.
+
+**By DNS.** The same proof string as a TXT record on the apex:
+
+```
+micro.mu.  IN TXT  "v=MCPv1; k=ed25519; p=<public key>"
+```
+
+Then `mcp-publisher login dns --domain micro.mu --private-key <hex>`.
+
+Keep `key.pem`. The public half is safe to publish anywhere — it is useless
+without the private half, which is what actually signs a release.
 
 A fork publishing its own instance should change `name`, `websiteUrl` and the
 `remotes[0].url` to its own domain, and verify that domain. Publishing a fork

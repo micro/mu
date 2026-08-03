@@ -19,6 +19,7 @@ longer exist.
 | `ADMIN` / `MU_ADMIN` | first account | Who is admin — comma-separated ids, usernames or emails |
 | `MU_DOMAIN` | `localhost` | Public domain. Used for the OAuth issuer an MCP client discovers, Stripe returns, ActivityPub actor URLs and mail. Set this if you run behind a proxy |
 | `MU_ENV_FILE` | `~/.mu/env` | Where stored settings live |
+| `MCP_REGISTRY_PROOF` | — | Domain-ownership proof served at `/.well-known/mcp-registry-auth` when publishing to the MCP registry — see [Listing](LISTING.md) |
 | `MU_ENCRYPTION_KEY` | — | Encrypts stored settings at rest |
 | `INVITE_ONLY` | off | Require an invite code to sign up |
 | `CAPTCHA_SECRET` | — | Signing key for the signup captcha |
@@ -47,7 +48,7 @@ still work.
 |---|---|
 | `BRAVE_API_KEY` | `web_search` |
 | `YOUTUBE_API_KEY` | `video_list`, `video_search` |
-| `GOOGLE_API_KEY` | `places_search`, `places_nearby` — open-data fallback without it |
+| `GOOGLE_API_KEY` | `places_search`, `places_nearby`, `places_eta` — open-data fallback without it. `places_eta` also needs the **Routes API** enabled on the key, not just Places |
 
 ## Mail
 
@@ -80,14 +81,14 @@ DNS records are in [Installation](INSTALLATION.md).
 
 Callers pay in credits. `STRIPE_*` is the one that matters: set those keys and
 people can buy credits by card. The `X402_*` and chain variables configure
-stablecoin settlement, which funds credits and lets the `pay` tool settle calls
-to other servers — the way in is still MCP with a token.
+stablecoin settlement, which funds credits — the way in is still MCP with a
+token.
 
 | Variable | What it does |
 |---|---|
 | `X402_PAY_TO` | Your wallet address — receives x402 payments |
 | `X402_NETWORK` · `X402_ASSETS` | Chain and accepted tokens |
-| `X402_SERVERS` | Other MCP servers the `pay` tool may call |
+| `X402_SERVERS` | Other MCP servers this instance may pay, as `name=url` — read by the outbound client, which no tool currently exposes |
 | `CDP_API_KEY_ID` · `CDP_API_KEY_SECRET` | Coinbase facilitator credentials |
 | `STRIPE_SECRET_KEY` · `STRIPE_PUBLISHABLE_KEY` · `STRIPE_WEBHOOK_SECRET` | Card top-ups for credits |
 | `BASE_RPC_URL` · `TRADE_CHAIN` · `TRADE_RPC_URL` | On-chain reads |

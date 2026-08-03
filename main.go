@@ -1579,19 +1579,20 @@ func main() {
 		"/web/fetch": false, // Public page, auth checked in handler (paid web fetch)
 		"/web/read":  false, // Public page, auth checked in handler (proxied reader)
 
-		"/status":                 false, // Public - server health status
-		"/pricing":                false, // Public - pricing page
-		"/privacy":                false, // Public - privacy policy
-		"/docs":                   false, // Public - documentation
-		"/whitepaper":             false, // Public - whitepaper
-		"/mcp":                    false, // Public - MCP tools page
-		"/whatsapp/webhook":       false, // Public - WhatsApp webhook
-		"/.well-known/agent.json": false, // Public - A2A agent card
-		"/a2a":                    false, // Public - A2A protocol
-		"/agent":                  false, // Public page, auth checked in handler
-		"/setup":                  false, // First-run setup (open only until an admin exists)
-		"/agents":                 false, // API face for agents (public)
-		"/developers":             false, // Legacy alias → /agents (public)
+		"/status":                        false, // Public - server health status
+		"/pricing":                       false, // Public - pricing page
+		"/privacy":                       false, // Public - privacy policy
+		"/docs":                          false, // Public - documentation
+		"/whitepaper":                    false, // Public - whitepaper
+		"/mcp":                           false, // Public - MCP tools page
+		"/whatsapp/webhook":              false, // Public - WhatsApp webhook
+		"/.well-known/agent.json":        false, // Public - A2A agent card
+		"/.well-known/mcp-registry-auth": false, // Public - registry domain proof
+		"/a2a":                           false, // Public - A2A protocol
+		"/agent":                         false, // Public page, auth checked in handler
+		"/setup":                         false, // First-run setup (open only until an admin exists)
+		"/agents":                        false, // API face for agents (public)
+		"/developers":                    false, // Legacy alias → /agents (public)
 	}
 
 	// Static assets should not require authentication
@@ -1822,6 +1823,24 @@ func main() {
 	// OAuth 2.1 for MCP authentication
 	http.HandleFunc("/.well-known/oauth-authorization-server", auth.OAuthMetadataHandler)
 	http.HandleFunc("/.well-known/oauth-protected-resource", auth.OAuthResourceHandler)
+
+	// Proof of domain ownership for the MCP registry, which accepts either a
+	// DNS TXT record or this file. Serving it is the easier half: it ships with
+	// the binary, so an operator publishing their own instance needs no DNS
+	// access and nothing to remember to keep in sync.
+	//
+	// The value is a public key. It is safe to serve and useless without the
+	// private half, which stays with whoever publishes. MCP_REGISTRY_PROOF holds
+	// it; unset, this 404s like any other absent file.
+	http.HandleFunc("/.well-known/mcp-registry-auth", func(w http.ResponseWriter, r *http.Request) {
+		proof := strings.TrimSpace(settings.Get("MCP_REGISTRY_PROOF"))
+		if proof == "" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.Write([]byte(proof + "\n"))
+	})
 	// Google sign-in (Mu as an OAuth client of Google).
 	http.HandleFunc("/oauth2/google", app.GoogleLogin)
 	http.HandleFunc("/oauth2/google/connect", app.GoogleConnect)
