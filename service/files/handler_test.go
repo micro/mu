@@ -222,6 +222,41 @@ func TestListPageOffersTheActions(t *testing.T) {
 	}
 }
 
+// The phone layout is CSS, but it hangs off the markup: without a thead to
+// hide and classed cells to restack, a narrow screen gets a five-column table
+// and scrolls sideways. Nothing else would catch that.
+func TestListPageMarkupSupportsTheMobileLayout(t *testing.T) {
+	cookie := session(t, "phone")
+	f := uploadAs(t, cookie, "phone", "onphone.txt", "small")
+	defer Delete("phone", f.ID)
+
+	r := httptest.NewRequest("GET", "/files", nil)
+	r.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	Handler(rec, r)
+
+	body := rec.Body.String()
+	for _, want := range []string{
+		`class="data-table files-table"`,
+		"<thead>", // hidden below 600px
+		"<tbody>",
+		`class="file-name"`,
+		`class="file-meta"`,
+		`class="file-actions"`,
+		".files-table thead{display:none}",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the files page is missing %q, which the phone layout needs", want)
+		}
+	}
+
+	// The card must not repeat the page title — on a phone that is a whole line
+	// of screen spent saying Files twice.
+	if strings.Contains(body, "<h3>Files</h3>") {
+		t.Error("the card repeats the page heading")
+	}
+}
+
 // An upload past the limit is a mistake a person can fix, so it comes back as a
 // message on the page rather than an error screen.
 func TestOversizeUploadReturnsToThePageWithAMessage(t *testing.T) {

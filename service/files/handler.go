@@ -162,8 +162,9 @@ func listPage(w http.ResponseWriter, r *http.Request) {
 	csrf := auth.CSRFToken(r)
 
 	var b strings.Builder
+	// No heading here: the page is already titled Files by the shell, and a
+	// card that repeats the page title just costs a phone a line of screen.
 	b.WriteString(`<div class="card">`)
-	b.WriteString(`<h3>Files</h3>`)
 	b.WriteString(`<p class="text-sm text-muted">Anything you or your agent has stored. Using ` +
 		human(UsedBytes(sess.Account)) + ` of ` + human(MaxOwnerBytes) + `.</p>`)
 
@@ -186,14 +187,21 @@ func listPage(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`<div class="card"><p class="text-sm text-muted">Nothing stored yet. ` +
 			`Upload something above, or an agent connected over <a href="/mcp">MCP</a> can put a file here with <code>files_put</code>.</p></div>`)
 	} else {
-		b.WriteString(`<div class="card"><table class="data-table">`)
-		b.WriteString(`<tr><th>Name</th><th>Size</th><th>Visibility</th><th>Stored</th><th></th></tr>`)
+		b.WriteString(`<div class="card"><table class="data-table files-table">`)
+		b.WriteString(`<thead><tr><th>Name</th><th>Size</th><th>Visibility</th><th>Stored</th><th></th></tr></thead><tbody>`)
 		for _, f := range stored {
 			visibility, shareTo, shareLabel := "Private", "1", "Share"
 			if f.Public {
 				visibility, shareTo, shareLabel = "Public", "0", "Make private"
 			}
-			fmt.Fprintf(&b, `<tr><td><a href="%s">%s</a></td><td>%s</td><td>%s</td><td>%s</td><td class="file-actions">`,
+			// The cells are classed rather than positional because a phone does
+			// not render this as a table: the header goes, the row becomes a
+			// block, and size/visibility/date collapse onto one line under the
+			// name. Five columns at 375px would either overflow the screen or
+			// squeeze the name to nothing.
+			fmt.Fprintf(&b, `<tr><td class="file-name"><a href="%s">%s</a></td>`+
+				`<td class="file-meta">%s</td><td class="file-meta">%s</td><td class="file-meta">%s</td>`+
+				`<td class="file-actions">`,
 				html.EscapeString(f.URL), html.EscapeString(f.Name),
 				human(f.Size), visibility, f.Created.Format("2 Jan 15:04"))
 
@@ -212,23 +220,51 @@ func listPage(w http.ResponseWriter, r *http.Request) {
 
 			b.WriteString(`</td></tr>`)
 		}
-		b.WriteString(`</table></div>`)
+		b.WriteString(`</tbody></table></div>`)
 	}
 
 	b.WriteString(filesPageCSS)
 	w.Write([]byte(app.RenderHTMLForRequest("Files", "Your stored files", b.String(), r)))
 }
 
+// filesPageCSS styles the page, and on a narrow screen unmakes the table.
+//
+// Phones are most of the traffic and a five-column table is not a phone
+// layout: it either scrolls sideways or crushes the file name, which is the one
+// column that matters. Below 600px the header row goes, each row becomes a
+// block — name, then size · visibility · date on one muted line, then the
+// actions — and the buttons grow to something a thumb can hit.
 const filesPageCSS = `<style>
 .file-upload{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0 4px}
-.file-upload input[type=file]{font-size:14px}
+.file-upload input[type=file]{font-size:14px;max-width:100%;flex:1 1 auto;min-width:0}
+/* The card already provides the spacing data-table adds for a bare page. */
+.files-table{margin-bottom:0}
+.files-table .file-name{word-break:break-word}
 .file-actions{white-space:nowrap}
 .file-actions form{display:inline}
-.link-button{background:none;border:0;padding:0 6px;font-size:13px;color:#555;cursor:pointer;font-family:inherit}
-.link-button:hover{color:#111;text-decoration:underline}
-.link-button.danger{color:#b3261e}
+.link-button{background:none;border:0;padding:0 6px;font-size:13px;color:var(--text-secondary);cursor:pointer;font-family:inherit}
+.link-button:hover{color:var(--text-primary);text-decoration:underline}
+.link-button.danger{color:var(--btn-danger)}
+
 @media only screen and (max-width:600px){
   .file-upload{flex-direction:column;align-items:stretch}
+  .file-upload button{width:100%}
+
+  .files-table,.files-table tbody,.files-table tr,.files-table td{display:block;width:auto}
+  .files-table thead{display:none}
+  .files-table tr{padding:12px 0;border-bottom:1px solid var(--divider)}
+  .files-table tbody tr:last-child{border-bottom:none}
+  .files-table td{padding:0;border:none;text-align:left}
+  .files-table .file-name{font-weight:var(--font-weight-medium);margin-bottom:2px}
+  /* The three facts read as one sentence rather than three stacked lines. */
+  .files-table .file-meta{display:inline;color:var(--text-muted);font-size:13px}
+  .files-table .file-meta + .file-meta::before{content:" · "}
+  /* td.file-actions, not .file-actions: .data-table td:last-child aligns
+     right, and on a block row the buttons belong under the file. */
+  .files-table td.file-actions{margin-top:6px;text-align:left}
+  .files-table .file-actions .link-button{padding:6px 14px 6px 0;font-size:14px}
+  /* Striping reads as noise once the rows are blocks. */
+  .files-table tbody tr:nth-child(odd){background:none}
 }
 </style>`
 
