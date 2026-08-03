@@ -18,6 +18,7 @@ import (
 	"mu/internal/blob"
 	"mu/internal/data"
 	"mu/internal/service"
+	"mu/internal/settings"
 	"mu/internal/userdb"
 	"mu/service/wallet"
 )
@@ -124,7 +125,7 @@ func generateDaily() {
 	d := Daily{URL: url, Prompt: theme.prompt, Theme: theme.name, Date: today()}
 	// Take our own copy of the bytes. The provider URL can expire, and without
 	// this the archive would fill up with links that stop resolving.
-	d.File = storeImage(url, d.Date)
+	d.File = storeImage(url, dailyPrefix(d.Date))
 
 	dailyMu.Lock()
 	daily = d
@@ -180,15 +181,57 @@ func Generate(owner, prompt string) (string, error) {
 		return "", err
 	}
 
-	if _, err := userdb.Create(ns, owner, collection, map[string]interface{}{
+	rec, err := userdb.Create(ns, owner, collection, map[string]interface{}{
 		"prompt": prompt,
 		"url":    url,
-	}, false); err != nil {
+	}, false)
+	if err != nil {
 		// The image exists and was paid for; a storage hiccup shouldn't fail
-		// the call — just log and return the URL.
+		// the call — just log and return the provider's URL.
 		app.Log("images", "failed to save generation for %s: %v", owner, err)
+		return url, nil
 	}
-	return url, nil
+
+	// Take our own copy of the bytes, exactly as the daily image does. Someone
+	// who has paid 15 credits owns a picture, not a link to somebody's CDN: the
+	// provider URL expires, and until it does it is a cross-origin embed that
+	// any content blocker, hotlink rule or resource policy can refuse — which
+	// renders as a broken image on a page that has just charged for it.
+	if key := storeImage(url, genPrefix(rec.ID)); key != "" {
+		rec.Data["file"] = key
+		if _, err := userdb.Update(ns, owner, collection, rec.ID, rec.Data, rec.Public); err != nil {
+			app.Log("images", "failed to record stored image for %s: %v", owner, err)
+		}
+	}
+	return DisplayURL(rec.ID), nil
+}
+
+// DisplayURL is where an image is rendered from: this instance, always. The
+// handler behind it serves our stored copy, or fetches it on first sight for an
+// image generated before they were stored.
+func DisplayURL(id string) string { return "/images/file/" + id }
+
+// AbsoluteURL is DisplayURL with this instance's public origin in front, for
+// callers outside a browser on this site: an agent handed "/images/file/abc"
+// has nowhere to send it.
+func AbsoluteURL(id string) string {
+	if base := app.PublicURL(); base != "" {
+		return base + DisplayURL(id)
+	}
+	if d := strings.TrimSpace(settings.Get("MU_DOMAIN")); d != "" && d != "localhost" {
+		return "https://" + d + DisplayURL(id)
+	}
+	return DisplayURL(id)
+}
+
+// hasImage reports whether a record has an image to show — our own copy, or a
+// provider URL the handler can still fall back to.
+func hasImage(rec userdb.Record) bool {
+	if file, _ := rec.Data["file"].(string); file != "" {
+		return true
+	}
+	url, _ := rec.Data["url"].(string)
+	return url != ""
 }
 
 // gallery returns a user's recent generations, newest first.
@@ -317,7 +360,13 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 		app.RespondJSON(w, map[string]string{"error": err.Error()})
 		return
 	}
-	app.RespondJSON(w, map[string]string{"url": url, "prompt": strings.TrimSpace(req.Prompt)})
+	// id lets the page show the new image with its share button without
+	// reloading — the reload is what used to throw the result away.
+	app.RespondJSON(w, map[string]string{
+		"url":    url,
+		"id":     strings.TrimPrefix(url, "/images/file/"),
+		"prompt": strings.TrimSpace(req.Prompt),
+	})
 }
 
 // imageGrid renders a responsive grid of image records (link to full image,
@@ -326,11 +375,11 @@ func imageGrid(recs []userdb.Record) string {
 	var b strings.Builder
 	b.WriteString(`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:8px">`)
 	for _, rec := range recs {
-		url, _ := rec.Data["url"].(string)
 		prompt, _ := rec.Data["prompt"].(string)
-		if url == "" {
+		if !hasImage(rec) {
 			continue
 		}
+		url := DisplayURL(rec.ID)
 		b.WriteString(`<a href="` + html.EscapeString(url) + `" target="_blank" title="` + html.EscapeString(prompt) + `"><img src="` + html.EscapeString(url) + `" alt="" style="width:100%;border-radius:8px;display:block" loading="lazy"></a>`)
 	}
 	b.WriteString(`</div>`)
@@ -422,11 +471,11 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 			b.WriteString(`<p style="color:#888;font-size:14px;grid-column:1/-1" id="img-empty">Nothing yet — generate your first image above.</p>`)
 		}
 		for _, rec := range recs {
-			url, _ := rec.Data["url"].(string)
 			prompt, _ := rec.Data["prompt"].(string)
-			if url == "" {
+			if !hasImage(rec) {
 				continue
 			}
+			url := DisplayURL(rec.ID)
 			label, next := "Share", "true"
 			if rec.Public {
 				label, next = "Shared ✓", "false"
@@ -456,16 +505,30 @@ function imgGenerate(){
  var p=document.getElementById('img-prompt').value.trim();
  if(!p){return;}
  var btn=document.getElementById('img-go'),st=document.getElementById('img-status');
- btn.disabled=true;st.textContent='Generating…';
+ btn.disabled=true;st.textContent='Generating… this takes up to a minute.';
  fetch('/images',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':imgCookie('csrf_token')},credentials:'same-origin',body:JSON.stringify({prompt:p})})
  .then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j}})})
  .then(function(res){
   btn.disabled=false;
   if(!res.ok||res.j.error){st.textContent=res.j.error||'Failed';return;}
   st.textContent='';
+  // Show it here, where the person is looking. This used to render the
+  // image and then immediately reload the page, so nobody ever saw it —
+  // you landed back on /images and had to scroll to find your own picture.
+  var r=document.getElementById('img-result');
+  r.innerHTML='<a href="'+res.j.url+'" target="_blank"><img src="'+res.j.url+'" alt="" style="width:100%;border-radius:10px;display:block"></a>'+
+              '<p style="font-size:13px;color:#888;margin:6px 0 0">'+
+              '<button data-id="'+res.j.id+'" data-next="true" onclick="imgShare(this)" style="font-size:12px;padding:3px 10px;margin-right:8px">Share</button>'+
+              'Saved to your images.</p>';
+  r.scrollIntoView({block:'nearest'});
+  // Add it to the gallery too, so the page matches what a reload would show.
   var g=document.getElementById('img-gallery'),e=document.getElementById('img-empty');if(e)e.remove();
-  document.getElementById('img-result').innerHTML='<img src="'+res.j.url+'" style="width:100%;border-radius:10px;display:block">';
-  if(g){location.reload();}
+  if(g){
+   var d=document.createElement('div');d.style.position='relative';
+   d.innerHTML='<a href="'+res.j.url+'" target="_blank"><img src="'+res.j.url+'" alt="" style="width:100%;border-radius:8px;display:block"></a>';
+   g.insertBefore(d,g.firstChild);
+  }
+  document.getElementById('img-prompt').value='';
  }).catch(function(err){btn.disabled=false;st.textContent='Error: '+err;});
 }
 function imgShare(btn){

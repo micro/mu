@@ -22,8 +22,10 @@ import (
 	"time"
 
 	"mu/internal/app"
+	"mu/internal/auth"
 	"mu/internal/blob"
 	"mu/internal/data"
+	"mu/internal/userdb"
 )
 
 const (
@@ -64,7 +66,7 @@ func backfill(d Daily) {
 		}
 	}
 	if d.File == "" {
-		d.File = storeImage(d.URL, d.Date)
+		d.File = storeImage(d.URL, dailyPrefix(d.Date))
 	}
 	archiveDaily(d)
 
@@ -134,10 +136,20 @@ func archiveDaily(d Daily) (dropped []Daily) {
 	return dropped
 }
 
-// storeImage downloads url and saves the bytes under images/daily/<date>.<ext>,
-// returning the key. An empty key means the image could not be stored and the
-// caller should keep using the remote URL.
-func storeImage(url, date string) string {
+// dailyPrefix and genPrefix are where the two kinds of image live. Both are
+// downloaded and stored here rather than linked: see the note at the top of
+// this file, which applied to a generated image every bit as much as to a
+// daily one.
+func dailyPrefix(date string) string { return "images/daily/" + date }
+func genPrefix(id string) string     { return "images/gen/" + id }
+
+// storeImage downloads an image and stores it under prefix, returning the
+// storage key (prefix plus the extension the bytes turn out to need), or "" if
+// anything went wrong. Callers treat "" as "we do not hold this one".
+func storeImage(url, prefix string) string {
+	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
+		return ""
+	}
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return ""
@@ -146,29 +158,29 @@ func storeImage(url, date string) string {
 	defer cancel()
 	resp, err := http.DefaultClient.Do(req.WithContext(ctx))
 	if err != nil {
-		app.Log("images", "daily image download failed: %v", err)
+		app.Log("images", "image download failed (%s): %v", prefix, err)
 		return ""
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		app.Log("images", "daily image download returned %s", resp.Status)
+		app.Log("images", "image download returned %s (%s)", resp.Status, prefix)
 		return ""
 	}
 
 	b, err := io.ReadAll(io.LimitReader(resp.Body, maxImageBytes+1))
 	if err != nil {
-		app.Log("images", "daily image read failed: %v", err)
+		app.Log("images", "image read failed (%s): %v", prefix, err)
 		return ""
 	}
 	if len(b) == 0 || len(b) > maxImageBytes {
-		app.Log("images", "daily image rejected: %d bytes", len(b))
+		app.Log("images", "image rejected (%s): %d bytes", prefix, len(b))
 		return ""
 	}
 
 	ext := imageExt(resp.Header.Get("Content-Type"), url)
-	key := "images/daily/" + date + ext
+	key := prefix + ext
 	if err := blob.Put(key, b, contentTypeFor(key)); err != nil {
-		app.Log("images", "failed to store daily image: %v", err)
+		app.Log("images", "failed to store image (%s): %v", prefix, err)
 		return ""
 	}
 	return key
@@ -212,6 +224,72 @@ func contentTypeFor(key string) string {
 	default:
 		return "image/png"
 	}
+}
+
+// GeneratedImageHandler serves a generated image at /images/file/<id>.
+//
+// Access is userdb's: the owner, or anyone if the image has been shared to the
+// stock pool. A caller who may not see it gets 404 rather than 403, so the URL
+// does not confirm that the image exists.
+func GeneratedImageHandler(w http.ResponseWriter, r *http.Request) {
+	caller := ""
+	if _, acc := auth.TrySession(r); acc != nil {
+		caller = acc.ID
+	}
+	serveGenerated(caller, w, r)
+}
+
+// serveGenerated is the handler with the caller already resolved, so the access
+// rules can be tested without standing up a session.
+func serveGenerated(caller string, w http.ResponseWriter, r *http.Request) {
+	id := strings.Trim(strings.TrimPrefix(r.URL.Path, "/images/file"), "/")
+	if id == "" || strings.Contains(id, "/") {
+		http.NotFound(w, r)
+		return
+	}
+
+	rec, err := userdb.Get(ns, caller, collection, id)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	key, _ := rec.Data["file"].(string)
+	if key == "" {
+		// Generated before images were stored. Fetch it now, while the provider
+		// URL still resolves, so it stops being borrowed from that moment on.
+		url, _ := rec.Data["url"].(string)
+		if key = storeImage(url, genPrefix(rec.ID)); key != "" {
+			rec.Data["file"] = key
+			if _, err := userdb.Update(ns, rec.Owner, collection, rec.ID, rec.Data, rec.Public); err != nil {
+				app.Log("images", "failed to record backfilled image %s: %v", rec.ID, err)
+			}
+		} else if strings.HasPrefix(url, "https://") {
+			// The copy failed and the provider link is all there is. Send the
+			// caller there rather than showing them nothing. https only: this
+			// is a redirect built from a stored value, and an http one would
+			// also be refused by the page's own image policy.
+			http.Redirect(w, r, url, http.StatusFound)
+			return
+		}
+	}
+
+	b, err := blob.Get(key)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	w.Header().Set("Content-Type", contentTypeFor(key))
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(b)))
+	// An image never changes once generated, but a private one must not be
+	// cached anywhere but the browser that is allowed to see it.
+	if rec.Public {
+		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+	} else {
+		w.Header().Set("Cache-Control", "private, max-age=31536000, immutable")
+	}
+	w.Write(b)
 }
 
 // validDate matches the YYYY-MM-DD date that names an archived image. The date

@@ -1070,6 +1070,10 @@ func main() {
 		if err != nil {
 			return "", err
 		}
+		// Absolute, because a caller outside this site cannot open a path.
+		if id, ok := strings.CutPrefix(url, "/images/file/"); ok {
+			url = images.AbsoluteURL(id)
+		}
 		return fmt.Sprintf("Generated image: %s\n\n![image](%s)", url, url), nil
 	})
 
@@ -1201,9 +1205,10 @@ func main() {
 				if i >= 20 {
 					break
 				}
-				url, _ := rec.Data["url"].(string)
 				prompt, _ := rec.Data["prompt"].(string)
-				sb.WriteString(fmt.Sprintf("- %s\n  %s\n", prompt, url))
+				// Our copy, not the provider's link: the caller is being handed
+				// a URL to keep, and the provider's expires.
+				sb.WriteString(fmt.Sprintf("- %s\n  %s\n", prompt, images.AbsoluteURL(rec.ID)))
 			}
 			return sb.String(), nil
 		},
@@ -1767,6 +1772,7 @@ func main() {
 	http.HandleFunc("/markets", markets.Handler)
 	http.HandleFunc("/images", images.Handler)
 	http.HandleFunc("/images/daily/", images.DailyImageHandler)
+	http.HandleFunc("/images/file/", images.GeneratedImageHandler)
 	http.HandleFunc("/events", events.Handler)
 	// /files lists a person's files; /files/<id> serves one. A stored file's URL
 	// has to be fetchable by an ordinary HTTP client, or handing someone a link
