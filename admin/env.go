@@ -62,7 +62,6 @@ var settingGroups = []settingGroup{
 	}},
 	{"Platform", []string{
 		"MU_DOMAIN",
-		"DATA_DIR",
 		"PASSKEY_ORIGIN",
 		"PASSKEY_RP_ID",
 	}},

@@ -125,6 +125,10 @@ func TestDefaultArgKey(t *testing.T) {
 		"places_search": "q",
 		"web_fetch":     "url",
 		"blog_read":     "id",
+		"apps_search":   "query",
+		// An app is addressed by slug. This said "id", and every documented
+		// `mu apps_read <slug>` failed with "apps_read requires slug".
+		"apps_read": "slug",
 	}
 	for tool, want := range cases {
 		got, ok := defaultArgKey(tool)

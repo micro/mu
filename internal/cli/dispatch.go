@@ -228,14 +228,19 @@ func defaultArgKey(tool string) (string, bool) {
 	switch tool {
 	case "chat", "agent", "apps_build":
 		return "prompt", true
-	case "news_search", "video_search", "social_search", "quran_search":
+	case "news_search", "video_search", "social_search", "quran_search", "apps_search":
 		return "query", true
 	case "web_search", "search", "places_search":
 		return "q", true
 	case "web_fetch":
 		return "url", true
-	case "blog_read", "apps_read":
+	case "blog_read":
 		return "id", true
+	case "apps_read":
+		// An app is addressed by slug, not id. Mapped to "id" this failed with
+		// "apps_read requires slug" for anyone following the documented
+		// `mu apps_read <slug>`.
+		return "slug", true
 	}
 	return "", false
 }

@@ -1151,6 +1151,15 @@ func handleRun(w http.ResponseWriter, r *http.Request, slug string) {
   function sdk(op,body){return post('/apps/'+slug+'/sdk/'+op,body)}
 
   window.mu={
+    // Any registered service, by name — the general case the typed wrappers
+    // below are shortcuts for. /sdk/service dispatches through the live
+    // registry and binds the caller server-side, so a service registered today
+    // is callable from every app without an SDK change.
+    //   mu.service('markets', 'List', {category: 'stocks'})
+    service:function(name,method,args){return sdk('service',{service:name,method:method,args:args||{}})},
+    // The catalogue behind it: which services an app may call, and their methods.
+    services:function(){return get('/apps/'+slug+'/sdk/services')},
+
     // Platform APIs — typed wrappers for every building block
     weather:function(o){return get('/weather?lat='+o.lat+'&lon='+o.lon+(o.pollen?'&pollen=1':''))},
     news:function(){return get('/news')},
