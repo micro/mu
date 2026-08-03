@@ -31,8 +31,9 @@ curl -X POST https://micro.mu/mcp -H 'Content-Type: application/json' \
 ```
 
 **Browse the tools:** [micro.mu/tools](https://micro.mu/tools) — every tool,
-grouped by service, with what each call costs. [MCP docs](docs/MCP.md) for the
-protocol detail.
+grouped by service, with what each call costs. 
+
+See [MCP docs](docs/MCP.md) for the protocol details.
 
 ## The tools
 
