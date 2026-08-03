@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"mu/internal/data"
+	"mu/internal/blob"
 	"mu/internal/service"
 )
 
@@ -157,13 +157,13 @@ func TestDeleteRemovesTheBytes(t *testing.T) {
 		t.Fatal(err)
 	}
 	key := blobKey("alice", f.ID)
-	if _, err := data.LoadFile(key); err != nil {
+	if _, err := blob.Get(key); err != nil {
 		t.Fatalf("the file was never written: %v", err)
 	}
 	if err := Delete("alice", f.ID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := data.LoadFile(key); err == nil {
+	if _, err := blob.Get(key); err == nil {
 		t.Error("the bytes are still on disk after delete")
 	}
 }

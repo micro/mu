@@ -7,9 +7,14 @@
 // fills, and it is the ordinary shape of the request: "keep this and give me a
 // link".
 //
-// Bytes live on disk under a per-owner key; the metadata lives in userdb beside
+// Bytes go to internal/blob — the local disk, or S3-compatible object storage
+// when the instance is configured for it. The metadata lives in userdb beside
 // every other per-user record, so listing, ownership and the private/public
 // model are the ones the rest of Mu already uses rather than a second set.
+//
+// Bytes are never served straight from the bucket. A private file is private
+// because Mu checks who is asking, and a public object URL would route around
+// that check; the handler streams instead.
 //
 // The caller is never named in a request. Identity comes from the call context,
 // as everywhere else — see internal/service/identity.go.
@@ -26,7 +31,7 @@ import (
 	"strings"
 	"time"
 
-	"mu/internal/data"
+	"mu/internal/blob"
 	"mu/internal/userdb"
 )
 
@@ -110,7 +115,7 @@ func Put(owner, name, contentType, content, encoding string) (*File, error) {
 	// Bytes are written after the record so a failed write leaves metadata
 	// pointing at nothing rather than bytes nothing points at — the first is
 	// visible and fixable, the second is a leak.
-	if err := data.SaveFile(blobKey(owner, rec.ID), string(raw)); err != nil {
+	if err := blob.Put(blobKey(owner, rec.ID), raw, contentType); err != nil {
 		_ = userdb.Delete(ns, owner, collection, rec.ID)
 		return nil, err
 	}
@@ -124,7 +129,7 @@ func Get(caller, id string) (*File, []byte, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	raw, err := data.LoadFile(blobKey(f.Owner, f.ID))
+	raw, err := blob.Get(blobKey(f.Owner, f.ID))
 	if err != nil {
 		return nil, nil, fmt.Errorf("file %s is missing its contents", id)
 	}
@@ -159,7 +164,7 @@ func Delete(owner, id string) error {
 	// A missing blob is not an error here: the record is gone, which is what
 	// was asked for, and a file whose bytes already vanished should still be
 	// removable rather than permanently stuck.
-	_ = data.DeleteFile(blobKey(owner, id))
+	_ = blob.Delete(blobKey(owner, id))
 	return nil
 }
 

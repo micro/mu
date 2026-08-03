@@ -15,6 +15,7 @@ import (
 	"mu/internal/ai"
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/blob"
 	"mu/internal/data"
 	"mu/internal/service"
 	"mu/internal/userdb"
@@ -133,7 +134,7 @@ func generateDaily() {
 	}
 	for _, old := range archiveDaily(d) {
 		if old.File != "" {
-			data.DeleteFile(old.File) //nolint:errcheck
+			blob.Delete(old.File) //nolint:errcheck
 		}
 	}
 	app.Log("images", "generated daily %s image", theme.name)

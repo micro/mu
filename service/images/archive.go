@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"mu/internal/app"
+	"mu/internal/blob"
 	"mu/internal/data"
 )
 
@@ -166,7 +167,7 @@ func storeImage(url, date string) string {
 
 	ext := imageExt(resp.Header.Get("Content-Type"), url)
 	key := "images/daily/" + date + ext
-	if err := data.SaveFile(key, string(b)); err != nil {
+	if err := blob.Put(key, b, contentTypeFor(key)); err != nil {
 		app.Log("images", "failed to store daily image: %v", err)
 		return ""
 	}
@@ -245,7 +246,7 @@ func DailyImageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	b, err := data.LoadFile(key)
+	b, err := blob.Get(key)
 	if err != nil {
 		http.NotFound(w, r)
 		return

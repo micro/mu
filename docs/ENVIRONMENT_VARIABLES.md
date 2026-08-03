@@ -50,6 +50,34 @@ still work.
 | `YOUTUBE_API_KEY` | `video_list`, `video_search` |
 | `GOOGLE_API_KEY` | `places_search`, `places_nearby`, `places_eta` — open-data fallback without it. `places_eta` also needs the **Routes API** enabled on the key, not just Places |
 
+## File storage
+
+Uploaded files and archived images go to the local disk by default, under
+`~/.mu/data`. On a hosted instance that is usually the wrong place: the volume
+is small, is not replicated, and goes when the machine does. Set these and they
+go to any S3-compatible bucket instead — DigitalOcean Spaces, Cloudflare R2,
+Backblaze B2, MinIO, S3.
+
+| Variable | Default | What it does |
+|---|---|---|
+| `S3_ENDPOINT` | — | Bucket endpoint, e.g. `https://lon1.digitaloceanspaces.com`. Unset means the local disk |
+| `S3_BUCKET` | — | Bucket name |
+| `S3_ACCESS_KEY` · `S3_SECRET_KEY` | — | Credentials |
+| `S3_REGION` | `us-east-1` | Region for the signature. DigitalOcean uses the datacentre slug, e.g. `lon1` |
+
+`S3_ENDPOINT` and `S3_BUCKET` must both be set, with both credentials. Anything
+less is a misconfiguration: it is logged and the instance keeps using the disk
+rather than failing.
+
+Switching an instance that already holds files is safe. New writes go to the
+bucket, and a read that misses there falls back to the disk, so files stored
+before the change keep working with no migration. Copy them across at your
+leisure; the fallback stops mattering once you have.
+
+Keep the bucket **private**. Files are served through Mu, which checks who is
+asking — a public bucket would let anyone holding an object URL route around
+that.
+
 ## Mail
 
 | Variable | Default | What it does |
