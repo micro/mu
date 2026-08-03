@@ -58,26 +58,6 @@ See [MCP docs](docs/MCP.md) for the protocol details.
 | **Money** | `wallet_balance` — credits, and where to send USDC to top up |
 | **Agent** | `agent` · `chat` — ask the whole thing a question and let it compose |
 
-## Services as Tools
-
-Each tool above is a **service** — a Go package with typed handlers, registered
-in-process behind a [Go Micro](https://github.com/micro/go-micro) registry. One
-binary, no external infrastructure. The registry is the single source of truth:
-a service declares itself once and every surface derives from that declaration.
-
-```go
-var Spec = service.Spec{
-	Name:        "web",
-	Handler:     new(Server),
-	Description: "The open web: search it, read a page from it",
-	Page:        "/search",
-	Endpoints: map[string]service.Endpoint{
-		"Search": {Doc: "Search the web for current information", Cost: wallet.OpWebSearch},
-		"Fetch":  {Doc: "Fetch a web page and return readable content", Cost: wallet.OpWebFetch},
-	},
-}
-```
-
 ## The app
 
 The server includes a web app with a home screen. Cards render each service at a glance (headlines,
