@@ -30,7 +30,7 @@ curl -X POST https://micro.mu/mcp -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 ```
 
-Don't want all of it? Scope the connection to the services you need:
+Scope the connection to the services you need:
 
 ```
 https://micro.mu/mcp?tools=news,web,mail
@@ -68,7 +68,7 @@ See [MCP docs](docs/MCP.md) for the protocol details.
 
 ## Request a tool
 
-Missing something? [Open an issue](https://github.com/micro/mu/issues/new?labels=enhancement&title=Tool%20request%3A%20&body=What%20should%20it%20do%3F%0A%0AWhat%20would%20you%20use%20it%20for%3F%0A) and say what it should do.
+[Open an issue](https://github.com/micro/mu/issues/new?labels=enhancement&title=Tool%20request%3A%20&body=What%20should%20it%20do%3F%0A%0AWhat%20would%20you%20use%20it%20for%3F%0A) and say what it should do.
 
 ## The app
 
