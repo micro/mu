@@ -32,6 +32,7 @@ mu/
 │   ├── search/            # the /search page and its providers, not a service
 │   ├── social/
 │   ├── stream/
+│   ├── tasks/
 │   ├── video/
 │   ├── wallet/
 │   ├── weather/
@@ -126,6 +127,7 @@ guessable.
 | `places` | /places | ✅ |  | Maps, points of interest, travel time |
 | `social` | /social | ✅ |  | Threads, replies, status |
 | `stream` | /stream | ✅ |  | The console: this instance's own timeline |
+| `tasks` | /tasks | ✅ | ✅ | What is to be done, and work handed to the agent |
 | `video` | /video | ✅ |  | Curated channels, without ads or recommendations |
 | `wallet` | /wallet | ✅ | ✅ | Credit check, charge, balance |
 | `weather` | /weather | ✅ |  | Forecast and pollen |

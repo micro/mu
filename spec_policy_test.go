@@ -20,6 +20,7 @@ import (
 	"mu/service/places"
 	"mu/service/social"
 	"mu/service/stream"
+	"mu/service/tasks"
 	"mu/service/video"
 	"mu/service/wallet"
 	"mu/service/weather"
@@ -32,8 +33,8 @@ func allSpecs() []service.Spec {
 	return []service.Spec{
 		apps.Spec, blog.Spec, chat.Spec, contacts.Spec, db.Spec, events.Spec,
 		files.Spec, images.Spec, index.Spec, islam.Spec, mail.Spec, markets.Spec,
-		news.Spec, places.Spec, social.Spec, stream.Spec, video.Spec, wallet.Spec,
-		weather.Spec, web.Spec,
+		news.Spec, places.Spec, social.Spec, stream.Spec, tasks.Spec, video.Spec,
+		wallet.Spec, weather.Spec, web.Spec,
 	}
 }
 
@@ -42,6 +43,12 @@ func allSpecs() []service.Spec {
 func registerAll(t *testing.T) {
 	t.Helper()
 	for _, s := range allSpecs() {
+		// Registering starts a server, and two tests in one binary both calling
+		// this raced for the port — "already listening on 127.0.0.1:11361",
+		// which reads like a bug in the thing under test and is not one.
+		if _, already := service.SpecFor(s.Name); already {
+			continue
+		}
 		if err := service.Register(s); err != nil {
 			t.Fatalf("register %s: %v", s.Name, err)
 		}

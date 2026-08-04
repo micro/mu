@@ -67,6 +67,7 @@ one row per service, named for it.
 | **Social** | `social_list` · `social_search` — public threads and replies |
 | **Storage** | `db_create` · `db_get` · `db_list` · `db_delete` — per-caller records (`db_create` with an `id` updates) |
 | **Stream** | `stream_list` · `stream_post` — this instance's own timeline |
+| **Tasks** | `tasks_create` · `tasks_list` · `tasks_next` · `tasks_update` · `tasks_delete` — what is to be done, and work you can hand to the agent |
 | **Video** | `video_list` · `video_search` — curated channels, no ads or recommendations |
 | **Wallet** | `wallet_balance` — credits, and where to send USDC to top up |
 | **Weather** | `weather_forecast` — conditions, forecast, pollen |

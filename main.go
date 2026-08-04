@@ -48,6 +48,7 @@ import (
 	"mu/service/blog"
 	"mu/service/chat"
 	"mu/service/contacts"
+	"mu/service/tasks"
 	"mu/service/db"
 	"mu/service/events"
 	"mu/service/files"
@@ -190,6 +191,7 @@ func main() {
 	usage.Load()
 	files.Load()
 	contacts.Load()
+	tasks.Load()
 	events.Load()
 	events.OnFire = func(accountID, title, note string) {
 		// The console is the instance's own timeline: what happened here, in
@@ -216,6 +218,12 @@ func main() {
 	// It runs in a goroutine because the agent may take tens of seconds and the
 	// scheduler fires every event due in the same pass; one slow briefing must
 	// not hold up the rest.
+	// A task handed to the agent reaches it the same way a standing instruction
+	// does: through a hook, so tasks does not import the agent.
+	tasks.RunAgent = func(accountID, prompt string) (string, error) {
+		return agent.Query(accountID, prompt)
+	}
+
 	events.OnFireEvent = func(e *events.Event) {
 		if strings.TrimSpace(e.Prompt) == "" {
 			return
@@ -677,6 +685,89 @@ func main() {
 	}, func(args map[string]any, accountID string) (string, error) {
 		id, _ := args["id"].(string)
 		if err := contacts.Remove(accountID, id); err != nil {
+			return "", err
+		}
+		return `{"status":"ok"}`, nil
+	})
+
+	// tasks_* — what is to be done. Everything else here answers a question the
+	// moment it is asked; a task outlives the conversation, which is what turns
+	// an agent that answers into an agent you can give a job to.
+	api.RegisterToolWithAuth(api.Tool{
+		Name:        "tasks_create",
+		Description: "Add a task to your list. Set assignee to \"agent\" for work the agent should pick up itself.",
+		Params: []api.ToolParam{
+			{Name: "title", Type: "string", Description: "What is to be done", Required: true},
+			{Name: "detail", Type: "string", Description: "Context the doer needs: links, constraints, what good looks like"},
+			{Name: "assignee", Type: "string", Description: "me (default) or agent"},
+			{Name: "due", Type: "string", Description: "Optional deadline, e.g. 2026-08-09 09:00"},
+		},
+	}, func(args map[string]any, accountID string) (string, error) {
+		title, _ := args["title"].(string)
+		detail, _ := args["detail"].(string)
+		assignee, _ := args["assignee"].(string)
+		dueStr, _ := args["due"].(string)
+		due, err := tasks.ParseDue(dueStr)
+		if err != nil {
+			return "", err
+		}
+		t, err := tasks.Create(accountID, title, detail, assignee, due)
+		if err != nil {
+			return "", err
+		}
+		return tasks.Render([]*tasks.Task{t}), nil
+	})
+	api.RegisterToolWithAuth(api.Tool{
+		Name:        "tasks_list",
+		Description: "List your tasks, open ones first. Filter by state to see only what is outstanding.",
+		Params: []api.ToolParam{
+			{Name: "status", Type: "string", Description: "Optional: todo, doing or done"},
+		},
+	}, func(args map[string]any, accountID string) (string, error) {
+		status, _ := args["status"].(string)
+		return tasks.Render(tasks.List(accountID, status)), nil
+	})
+	api.RegisterToolWithAuth(api.Tool{
+		Name:        "tasks_next",
+		Description: "The next task assigned to the agent — what to work on now. Returns nothing when there is nothing assigned.",
+	}, func(args map[string]any, accountID string) (string, error) {
+		t := tasks.Next(accountID)
+		if t == nil {
+			return "Nothing assigned to the agent.", nil
+		}
+		return tasks.Render([]*tasks.Task{t}), nil
+	})
+	api.RegisterToolWithAuth(api.Tool{
+		Name:        "tasks_update",
+		Description: "Change a task: mark it doing or done, and record what came of it. Record the result — a task with no result is work nobody can check.",
+		Params: []api.ToolParam{
+			{Name: "id", Type: "string", Description: "The task's id", Required: true},
+			{Name: "status", Type: "string", Description: "todo, doing or done"},
+			{Name: "result", Type: "string", Description: "What came of it: the answer, the outcome, what was found"},
+			{Name: "title", Type: "string", Description: "New title"},
+			{Name: "detail", Type: "string", Description: "New detail"},
+		},
+	}, func(args map[string]any, accountID string) (string, error) {
+		id, _ := args["id"].(string)
+		status, _ := args["status"].(string)
+		result, _ := args["result"].(string)
+		title, _ := args["title"].(string)
+		detail, _ := args["detail"].(string)
+		t, err := tasks.Update(accountID, id, title, detail, status, "", result)
+		if err != nil {
+			return "", err
+		}
+		return tasks.Render([]*tasks.Task{t}), nil
+	})
+	api.RegisterToolWithAuth(api.Tool{
+		Name:        "tasks_delete",
+		Description: "Remove a task from your list.",
+		Params: []api.ToolParam{
+			{Name: "id", Type: "string", Description: "The task's id", Required: true},
+		},
+	}, func(args map[string]any, accountID string) (string, error) {
+		id, _ := args["id"].(string)
+		if err := tasks.Remove(accountID, id); err != nil {
 			return "", err
 		}
 		return `{"status":"ok"}`, nil
@@ -1561,6 +1652,7 @@ func main() {
 		"/img":                   false, // Public — cached article images (a prefix of /images, same answer)
 		"/events":                true,  // Personal scheduled reminders — sign-in required
 		"/contacts":              true,  // Your address book — sign-in required
+		"/tasks":                 true,  // Your task list — sign-in required
 		"/social":                false, // Public viewing, auth for search
 		"/social/thread":         false, // Public thread view, auth for messaging
 		"/places":                false, // Public map, auth for search
@@ -1788,6 +1880,8 @@ func main() {
 	http.HandleFunc(imageproxy.Path, imageproxy.Handler)
 	http.HandleFunc("/contacts", contacts.Handler)
 	http.HandleFunc("/contacts/", contacts.Handler)
+	http.HandleFunc("/tasks", tasks.Handler)
+	http.HandleFunc("/tasks/", tasks.Handler)
 	http.HandleFunc("/images", images.Handler)
 	http.HandleFunc("/images/daily/", images.DailyImageHandler)
 	http.HandleFunc("/images/file/", images.GeneratedImageHandler)
