@@ -24,10 +24,11 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
 
 	users := auth.GetAllAccounts()
 
+	// Alphabetical. There is no ranking to express here, and a list that is
+	// sorted is one nobody has to scan twice.
 	content := `<div class="admin-links">
-		<a href="/admin/traffic">Traffic</a>
-		<a href="/admin/usage">API Spend</a>
 		<a href="/admin/api">API Log</a>
+		<a href="/admin/usage">API Spend</a>
 		<a href="/admin/blocklist">Blocklist</a>
 		<a href="/admin/console">Console</a>
 		<a href="/admin/env">Environment</a>
@@ -37,6 +38,7 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
 		<a href="/admin/server">Server</a>
 		<a href="/admin/spam">Spam Filter</a>
 		<a href="/admin/log">System Log</a>
+		<a href="/admin/traffic">Traffic</a>
 		<a href="/admin/users">Users <span class="count">` + fmt.Sprintf("%d", len(users)) + `</span></a>
 	</div>`
 
