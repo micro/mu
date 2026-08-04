@@ -77,6 +77,7 @@ func TestForecastTextInvalidCoordinatesDoesNotFetch(t *testing.T) {
 }
 
 func TestForecastTextProviderUnavailableIsClear(t *testing.T) {
+	resetCache()
 	t.Setenv("GOOGLE_API_KEY", "")
 	server := httptest.NewServer(http.NotFoundHandler())
 	t.Cleanup(server.Close)
@@ -89,6 +90,7 @@ func TestForecastTextProviderUnavailableIsClear(t *testing.T) {
 }
 
 func TestForecastTextUsesNWSFallbackWithoutGoogleKey(t *testing.T) {
+	resetCache()
 	t.Setenv("GOOGLE_API_KEY", "")
 
 	mux := http.NewServeMux()
@@ -154,6 +156,7 @@ func restoreNWSBaseURL(t *testing.T, value string) {
 }
 
 func TestCardHTMLShowsWeatherUnavailableOnFetchFailure(t *testing.T) {
+	resetCache()
 	got := CardHTML()
 	if !strings.Contains(got, "Weather unavailable") {
 		t.Fatalf("CardHTML should show a clear unavailable state on fetch failure, got %q", got)

@@ -204,6 +204,18 @@ type googlePollenTypeInfo struct {
 // FetchWeather retrieves weather forecast from the Google Weather API.
 // Returns an error when GOOGLE_API_KEY is not set.
 func FetchWeather(lat, lon float64) (*WeatherForecast, error) {
+	// Paid call. Reuse a recent one for the same place first — see cache.go.
+	if f, ok := cachedForecast(lat, lon); ok {
+		return f, nil
+	}
+	f, err := fetchWeather(lat, lon)
+	if err == nil {
+		storeForecast(lat, lon, f)
+	}
+	return f, err
+}
+
+func fetchWeather(lat, lon float64) (*WeatherForecast, error) {
 	key := googleAPIKey()
 	if key == "" {
 		return fetchNWSWeather(lat, lon)
@@ -446,6 +458,17 @@ func parseNWSWindKph(wind string) float64 {
 // FetchPollen retrieves pollen forecast from the Google Pollen API.
 // Returns an error when GOOGLE_API_KEY is not set.
 func FetchPollen(lat, lon float64) ([]PollenForecast, error) {
+	if p, ok := cachedPollen(lat, lon); ok {
+		return p, nil
+	}
+	p, err := fetchPollen(lat, lon)
+	if err == nil {
+		storePollen(lat, lon, p)
+	}
+	return p, err
+}
+
+func fetchPollen(lat, lon float64) ([]PollenForecast, error) {
 	key := googleAPIKey()
 	if key == "" {
 		return nil, fmt.Errorf("GOOGLE_API_KEY not configured")
