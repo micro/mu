@@ -212,6 +212,9 @@ func (c *Client) call(method string, params any, out any) error {
 		return fmt.Errorf("parse response: %w (body: %s)", err, trunc(string(respBody), 200))
 	}
 	if rpcResp.Error != nil {
+		if rpcResp.Error.Code == codeUnknownTool {
+			return &UnknownToolError{Message: rpcResp.Error.Message}
+		}
 		return fmt.Errorf("%s", rpcResp.Error.Message)
 	}
 	if out != nil && len(rpcResp.Result) > 0 {
@@ -221,6 +224,18 @@ func (c *Client) call(method string, params any, out any) error {
 	}
 	return nil
 }
+
+// codeUnknownTool is the JSON-RPC code the server answers a tools/call for a
+// name it does not have (invalid params).
+const codeUnknownTool = -32602
+
+// UnknownToolError says the server has no such tool. It is a distinct type
+// because the dispatcher guesses at a name — "mu news list" could be the tool
+// news_list or the tool news with an argument — and needs to tell "that guess
+// was wrong" apart from "the tool ran and failed".
+type UnknownToolError struct{ Message string }
+
+func (e *UnknownToolError) Error() string { return e.Message }
 
 func trunc(s string, n int) string {
 	if len(s) <= n {

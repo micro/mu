@@ -95,14 +95,19 @@ Every tool is a `mu` subcommand. The same binary runs the server (`mu --serve`)
 and the CLI.
 
 ```bash
-mu news_list                            # latest headlines
-mu news_search "ai safety"              # search news
-mu web_search "claude code"             # search the web
+mu news list                            # latest headlines
+mu news search "ai safety"              # search news
+mu web search "claude code"             # search the web
+mu markets list --category stocks       # live prices
 mu agent "what is the btc price?"       # run the full agent
-mu weather_forecast --lat 51.5 --lon -0.12
+mu weather forecast --lat 51.5 --lon -0.12
 mu wallet                               # your balance
 mu help                                 # full tool list
 ```
+
+Every tool in the table above is a command: the service, then the method. The
+underscore form works too, so `mu news list` and `mu news_list` are the same
+call.
 
 The CLI is registry-driven — a tool added to the server automatically becomes a
 CLI command.
@@ -120,9 +125,11 @@ See [CLI docs](docs/CLI.md).
 Talk to the agent from Discord or Telegram — questions, markets, news, all from
 chat. [Join the Discord](https://discord.gg/WeMU5AGxD)
 
-Discord: `/agent`, `/news`, `/markets`, `/weather`, `/mail`, `/social`, `/blog`,
-`/video`, `/search`, `/apps`, `/balance`, `/usage`.
-Telegram: `/agent`, `/ask`, `/news`, `/markets`, `/weather`, `/usage`.
+Every tool is a command on both, in the same two-word shape as the CLI:
+`/news list`, `/markets list category:stocks`, `/islam prayer`. Discord gets one
+slash command per service with the methods as subcommands; on Telegram you type
+`/news list`. Both also take `/agent <question>` for anything that needs
+composing, and `/usage` for your own stats.
 
 Setup for both is in [Installation](docs/INSTALLATION.md).
 

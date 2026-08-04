@@ -20,17 +20,24 @@ Or grab a prebuilt binary from the [releases page](https://github.com/micro/mu/r
 ```bash
 mu                                      # show help
 mu help                                 # live list of all available tools
-mu news                                 # latest news feed
-mu news_search "ai safety"              # search news
+mu news list                            # latest headlines
+mu news search "ai safety"              # search news
 mu chat "hello, what's up?"             # chat with the AI
 mu agent "summarise today's markets"    # run the full agent
-mu web_search "claude code"
-mu weather_forecast --lat 51.5 --lon -0.12
-mu apps_search "pomodoro"
-mu wallet_balance                       # your credits (requires a token)
+mu web search "claude code"
+mu markets list --category stocks
+mu weather forecast --lat 51.5 --lon -0.12
+mu apps search "pomodoro"
+mu wallet balance                       # your credits (requires a token)
 ```
 
-The first positional argument is always the tool name. The rest are flags that map directly to the tool's parameters.
+A tool is named `service_method` over the wire and typed as two words: the
+service, then what to do with it. The underscore form still works — `mu news
+list` and `mu news_list` are the same call — so nothing written before this
+stops working.
+
+Everything after the tool name is flags that map directly to the tool's
+parameters.
 
 ## Authentication
 
@@ -58,7 +65,7 @@ For CI, scripts, or ad-hoc use:
 
 ```bash
 export MU_TOKEN=<TOKEN>
-mu wallet_balance
+mu wallet balance
 ```
 
 ### Logout
@@ -78,7 +85,7 @@ By default the CLI talks to `https://micro.mu`. To point at your own self-hosted
 mu config set url https://mu.example.com
 
 # Per-invocation
-mu --url https://mu.example.com news
+mu --url https://mu.example.com news list
 
 # Environment
 export MU_URL=https://mu.example.com
@@ -89,18 +96,18 @@ export MU_URL=https://mu.example.com
 Flags map one-to-one with the tool's parameters. Both forms are accepted:
 
 ```bash
-mu news_search --query "bitcoin"
-mu news_search --query=bitcoin
+mu news search --query "bitcoin"
+mu news search --query=bitcoin
 ```
 
 For a small set of well-known tools, a single positional argument is treated as the most obvious required parameter, so you can skip the flag name:
 
 ```bash
 mu chat "hello"                  # same as --prompt "hello"
-mu news_search "bitcoin"         # same as --query "bitcoin"
-mu web_search "claude code"      # same as --query "claude code"
-mu apps_build "a pomodoro timer" # same as --prompt "..."
-mu apps_read hello-world         # same as --slug hello-world
+mu news search "bitcoin"         # same as --query "bitcoin"
+mu web search "claude code"      # same as --query "claude code"
+mu apps build "a pomodoro timer" # same as --prompt "..."
+mu apps read hello-world         # same as --slug hello-world
 ```
 
 `mu help <tool>` prints the parameters a tool actually takes, which is the
@@ -120,7 +127,7 @@ The CLI infers parameter types from the value:
 If you need to send a string that looks numeric, use `--id=123`. Bare flags (no value) are treated as booleans set to `true`:
 
 ```bash
-mu apps_create --name "Timer" --slug timer --html "..." --public
+mu apps create --name "Timer" --slug timer --html "..." --public
 ```
 
 ## Output
@@ -136,15 +143,15 @@ applies.
 - **Pipe** — compact, one object per line, so JSON results play nicely with `jq`
 
 ```bash
-mu news                              # headlines as text
-mu db_list --collection notes        # JSON
-mu db_list --collection notes | jq '.[0].data.title'
+mu news list                         # headlines as text
+mu db list --collection notes        # JSON
+mu db list --collection notes | jq '.[0].data.title'
 ```
 
 ### Forcing a format
 
 ```bash
-mu --pretty news | less                      # force pretty even when piped
+mu --pretty news list | less                      # force pretty even when piped
 mu --raw news                                # force raw even in a terminal
 mu --table db_list --collection notes        # render a list as a text table
 ```
@@ -185,20 +192,20 @@ These aren't MCP tools — they're CLI-local commands:
 ### Today, in one place
 
 ```bash
-mu news; mu markets_list --category stocks; mu weather_forecast --lat 51.5 --lon -0.12
+mu news list; mu markets list --category stocks; mu weather forecast --lat 51.5 --lon -0.12
 ```
 
 ### Weather for a postcode
 
 ```bash
-mu places_search "EC1A 1BB"    # get lat/lon
-mu weather_forecast --lat 51.52 --lon -0.10
+mu places search "EC1A 1BB"    # get lat/lon
+mu weather forecast --lat 51.52 --lon -0.10
 ```
 
 ### Build an app from a prompt
 
 ```bash
-mu apps_build --prompt "an expense tracker"
+mu apps build --prompt "an expense tracker"
 # → returns slug + URL you can open in a browser
 ```
 
@@ -211,8 +218,8 @@ mu agent "find me three interesting AI papers from the last week and summarise t
 ### Search, then read a result
 
 ```bash
-mu web_search "open source self-hosted email"
-mu web_fetch https://example.com/the-one-you-want   # the page as clean text
+mu web search "open source self-hosted email"
+mu web fetch https://example.com/the-one-you-want   # the page as clean text
 ```
 
 ## How it works

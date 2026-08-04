@@ -14,18 +14,18 @@ const shortHelp = `mu — command line for the Mu platform
 
 USAGE
   mu <command> [flags]
-  mu <tool>    [--arg value ...]
+  mu <service> <method> [--arg value ...]
 
 COMMON COMMANDS
   mu news                        Latest news feed
-  mu news_search "ai safety"     Search news
-  mu blog_list                   List blog posts
+  mu news search "ai safety"     Search news
+  mu blog list                   List blog posts
   mu chat "hello"                Chat with the AI
   mu agent "what is the btc price?"
-  mu web_search "claude code"    Search the web
-  mu weather_forecast --lat 51.5 --lon -0.12
-  mu apps_search "pomodoro"      Search the apps directory
-  mu me                          Show your account
+  mu web search "claude code"    Search the web
+  mu weather forecast --lat 51.5 --lon -0.12
+  mu apps search "pomodoro"      Search the apps directory
+  mu wallet                      Your credit balance
 
 MANAGEMENT
   mu login                       Log in by pasting a token from /token
@@ -47,10 +47,13 @@ CONFIG
   Command-line flags override both.
 
 EXAMPLES
-  mu news | jq '.feed[0]'
-  mu news_search --query "bitcoin" --table
-  mu blog_create --title "Hi" --content "..."
-  mu apps_build --prompt "an expense tracker"
+  mu markets list --category stocks
+  mu news search --query "bitcoin" --table
+  mu blog create --title "Hi" --content "..."
+  mu apps build --prompt "an expense tracker"
+
+Tool names are two words: the service, then what to do with it. The
+underscore form works too, so mu news list and mu news_list are the same call.
 `
 
 // printShortHelp prints the summary help text.
@@ -63,7 +66,14 @@ func runHelp(args []string, rc *ResolvedConfig) int {
 	if len(args) == 0 {
 		return runToolList(rc)
 	}
-	return runToolHelp(args[0], rc)
+	// `mu help news list` names one tool in two words.
+	return runToolHelp(strings.Join(args, " "), rc)
+}
+
+// commandName is how a tool is typed: the service, a space, then the method.
+// news_list is an identifier; "news list" is how a person says it.
+func commandName(tool string) string {
+	return strings.Replace(tool, "_", " ", 1)
 }
 
 // runToolList fetches tools/list and prints a grouped summary.
@@ -108,11 +118,12 @@ func runToolList(rc *ResolvedConfig) int {
 			if len(desc) > 72 {
 				desc = desc[:69] + "..."
 			}
-			fmt.Printf("  %-28s  %s\n", t.Name, desc)
+			fmt.Printf("  mu %-25s  %s\n", commandName(t.Name), desc)
 		}
 		fmt.Println()
 	}
-	fmt.Println("Run `mu help <tool>` for parameter details.")
+	fmt.Println("Run `mu help <tool>` for parameter details. The underscore form")
+	fmt.Println("works too: mu news list and mu news_list are the same call.")
 	return 0
 }
 
@@ -128,9 +139,12 @@ func runToolHelp(name string, rc *ResolvedConfig) int {
 		fmt.Fprintln(os.Stderr, "failed to fetch tools:", err)
 		return 1
 	}
+	// "mu help news list" arrives here as "news list" — the same tool as
+	// "news_list", so match either spelling.
+	wanted := strings.ReplaceAll(strings.TrimSpace(name), " ", "_")
 	var tool *Tool
 	for i := range tools {
-		if tools[i].Name == name {
+		if tools[i].Name == wanted {
 			tool = &tools[i]
 			break
 		}
@@ -140,7 +154,7 @@ func runToolHelp(name string, rc *ResolvedConfig) int {
 		return 1
 	}
 
-	fmt.Printf("%s — %s\n\n", tool.Name, tool.Description)
+	fmt.Printf("mu %s — %s\n\n", commandName(tool.Name), tool.Description)
 
 	required := map[string]bool{}
 	for _, k := range tool.InputSchema.Required {
@@ -168,7 +182,7 @@ func runToolHelp(name string, rc *ResolvedConfig) int {
 		fmt.Printf("  --%-16s %-8s %s%s\n", n, f.Type, f.Description, req)
 	}
 	fmt.Println()
-	fmt.Printf("EXAMPLE\n  mu %s", tool.Name)
+	fmt.Printf("EXAMPLE\n  mu %s", commandName(tool.Name))
 	for _, n := range names {
 		if required[n] {
 			fmt.Printf(` --%s "..."`, n)

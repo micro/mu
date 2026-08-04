@@ -144,3 +144,48 @@ func TestDefaultArgKey(t *testing.T) {
 		t.Error("defaultArgKey(mail_send) should return false")
 	}
 }
+
+// A tool name is two words in a shell — "mu news list" — and one identifier
+// over the wire. The split has to be unambiguous about which words are a name
+// and which are an argument.
+func TestSplitCommand(t *testing.T) {
+	cases := []struct {
+		command string
+		rest    []string
+		want    string
+		wantOK  bool
+	}{
+		{"news", []string{"list"}, "news_list", true},
+		{"web", []string{"search", "claude code"}, "web_search", true},
+		{"markets", []string{"list", "--category", "stocks"}, "markets_list", true},
+		{"news", nil, "", false},                                 // one word is a whole name
+		{"agent", []string{"what is the btc price?"}, "", false}, // a sentence is an argument
+		{"blog", []string{"--id", "7"}, "", false},               // a flag is not a method
+		{"apps", []string{"my-app"}, "", false},                  // a dash makes it a value
+	}
+	for _, tc := range cases {
+		got, _, ok := splitCommand(tc.command, tc.rest)
+		if ok != tc.wantOK || got != tc.want {
+			t.Errorf("splitCommand(%q, %v) = %q,%v; want %q,%v",
+				tc.command, tc.rest, got, ok, tc.want, tc.wantOK)
+		}
+	}
+}
+
+// The words after a tool are only worth retrying as arguments if they could be
+// arguments — otherwise "mu news nope" complains about an unexpected argument
+// when the real mistake is a tool that does not exist.
+func TestCanTakeArgs(t *testing.T) {
+	if !canTakeArgs("news_list", []string{"--limit", "5"}) {
+		t.Error("flags are always acceptable")
+	}
+	if !canTakeArgs("chat", []string{"hello"}) {
+		t.Error("chat takes one positional prompt")
+	}
+	if canTakeArgs("news", []string{"nope"}) {
+		t.Error("news has no positional argument, so nope cannot be one")
+	}
+	if canTakeArgs("chat", []string{"one", "two"}) {
+		t.Error("two bare words are not one positional argument")
+	}
+}
