@@ -65,13 +65,12 @@ one row per service, named for it.
 | **Places** | `places_search` · `places_nearby` · `places_eta` — points of interest, geocoding, travel time |
 | **Search** | `web_search` · `web_fetch` — search the web, read a page as clean text |
 | **Social** | `social_list` · `social_search` — public threads and replies |
-| **Storage** | `db_create` · `db_get` · `db_list` · `db_delete` — per-caller records (`db_create` with an `id` updates) |
 | **Stream** | `stream_list` · `stream_post` — this instance's own timeline |
 | **Tasks** | `tasks_create` · `tasks_list` · `tasks_next` · `tasks_update` · `tasks_delete` — what is to be done, and work you can hand to the agent |
 | **Video** | `video_list` · `video_search` — curated channels, no ads or recommendations |
 | **Wallet** | `wallet_balance` — credits, and where to send USDC to top up |
 | **Weather** | `weather_forecast` — conditions, forecast, pollen |
-| **Platform** | `agent` — ask the whole thing a question and let it compose. Also `quran` · `quran_search` · `hadith`, `save` · `unsave` · `saved_list`, and `flag` · `dismiss` · `block_user` · `unblock_user` |
+| **Platform** | `agent` — ask the whole thing a question and let it compose. `db_create` · `db_get` · `db_list` · `db_delete` — the store apps write to, so an agent and an app can share records (`db_create` with an `id` updates). Also `quran` · `quran_search` · `hadith`, `save` · `unsave` · `saved_list`, and `flag` · `dismiss` · `block_user` · `unblock_user` |
 
 ## Request a tool
 

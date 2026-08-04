@@ -48,8 +48,6 @@ import (
 	"mu/service/blog"
 	"mu/service/chat"
 	"mu/service/contacts"
-	"mu/service/tasks"
-	"mu/service/db"
 	"mu/service/events"
 	"mu/service/files"
 	"mu/service/images"
@@ -63,6 +61,7 @@ import (
 	"mu/service/search"
 	"mu/service/social"
 	"mu/service/stream"
+	"mu/service/tasks"
 	"mu/service/video"
 	"mu/service/wallet"
 	"mu/service/weather"
@@ -180,7 +179,6 @@ func main() {
 	markets.Load()
 	islam.Load()
 	web.Load()
-	db.Load()
 	stream.LoadService()
 	chat.LoadService()
 	images.Load()
@@ -1040,9 +1038,15 @@ func main() {
 		return rsp.Text, nil
 	})
 
-	// db_* — a personal database over MCP/REST: the same collections + owner /
-	// private-public model as the app SDK's mu.db, scoped to the caller's account
-	// under the shared "api" namespace. Owner is bound from the session.
+	// db_* — the app SDK's storage, reachable over MCP/REST. It is literally the
+	// same records mu.db reads and writes: same collections, same owner and
+	// private-public model, same "api" namespace, owner bound from the session.
+	// So an agent can put something where an app will find it, and vice versa.
+	//
+	// This is storage, not a service. It has no Spec and no place in the service
+	// list — a house has a mailbox, a calendar and a shelf of files; it does not
+	// have a database. There was a service/db wrapping the same store under its
+	// own namespace, with a page-less Spec and no caller anywhere; it is gone.
 	api.RegisterToolWithAuth(api.Tool{
 		Name:        "db_create",
 		Aliases:     []string{"db_set"},

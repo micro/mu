@@ -19,7 +19,6 @@ mu/
 │   ├── blog/
 │   ├── chat/
 │   ├── contacts/
-│   ├── db/
 │   ├── events/
 │   ├── files/
 │   ├── images/
@@ -84,8 +83,8 @@ Services live under `service/<name>/`. `internal/service` is the runtime core
 that hosts them — it is not itself a service.
 
 The exception is a **headless** service: a capability with no page, so no route
-and no nav entry. `index` and `db` are headless — they exist for the
-agent, for apps and for other services to call.
+and no nav entry. `index` is headless — it exists for the agent, for apps and
+for other services to call.
 
 Two footnotes. `wallet` has a page that predates its service; both are the same
 capability with two surfaces. And the `web` service is reached at `/search`,
@@ -104,7 +103,7 @@ alongside `web.Fetch`, matching the `/web/fetch` and `/web/read` routes.
 
 Methods that return the current set of something are all called `List` —
 `news.List`, `blog.List`, `social.List`, `video.List`, `markets.List`,
-`stream.List`, `events.List`, `db.List` — so the derived names are uniform and
+`stream.List`, `events.List`, `tasks.List` — so the derived names are uniform and
 guessable.
 
 ## What is registered
@@ -115,7 +114,6 @@ guessable.
 | `blog` | /blog | ✅ |  | Microblogging, daily digests, ActivityPub |
 | `chat` | /chat | ✅ |  | Live discussion rooms attached to an item |
 | `contacts` | /contacts | ✅ | ✅ | The caller's address book: turn a name into an address |
-| `db` | — | ✅ | ✅ | Per-user records, for services and apps |
 | `events` | /events | ✅ | ✅ | Calendar: scheduling, `.ics` invites, and when you are free |
 | `files` | /files | ✅ | ✅ | Per-user file storage: keep a file, get a URL |
 | `images` | /images | ✅ | ✅ | Generation, daily image, archive |
@@ -164,7 +162,7 @@ in the service's own Spec, read back through `service.Destructive`. Four are
 withheld:
 
 - **`wallet.Charge`** — spending should follow from the user's own action
-- **`db.Delete`** — irreversible, and the user can delete from the app
+- **`tasks.Delete`** — irreversible, and the user can delete from the page
 - **`files.Delete`** — the same, for stored bytes
 - **`contacts.Delete`** — the same, for the address book
 
@@ -228,7 +226,7 @@ straight away, but **not** an MCP tool until someone adds a stanza.
 The awkward part is price. An `api.Tool` carries `WalletOp`, so a naive
 derivation would produce tools with no operation and therefore no charge — an
 unmetered path to a paid third party. Half of that is now solved: a Spec's
-endpoints can declare `Cost` (`db.Create` does), so the cost is already
+endpoints can declare `Cost` (`web.Search` does), so the cost is already
 declarable in the place the derivation would read it.
 
 Tracked in [micro/mu#1445](https://github.com/micro/mu/issues/1445).

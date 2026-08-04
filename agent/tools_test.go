@@ -7,7 +7,7 @@ import (
 	gmai "go-micro.dev/v6/ai"
 
 	"mu/internal/service"
-	"mu/service/db"
+	"mu/service/tasks"
 	"mu/service/wallet"
 )
 
@@ -16,7 +16,7 @@ import (
 // here, so the test has to exercise the real ones.
 func registerGuarded(t *testing.T) {
 	t.Helper()
-	for _, s := range []service.Spec{wallet.Spec, db.Spec} {
+	for _, s := range []service.Spec{wallet.Spec, tasks.Spec} {
 		if err := service.Register(s); err != nil {
 			t.Fatalf("register %s: %v", s.Name, err)
 		}
@@ -29,7 +29,7 @@ func TestDestructiveMethodsAreBlocked(t *testing.T) {
 	registerGuarded(t)
 	blocked := []string{
 		"wallet.charge", "Wallet.Charge", "wallet_charge", "WALLET_CHARGE",
-		"db.delete", "db_delete", "DB.Delete",
+		"tasks.delete", "tasks_delete", "TASKS.Delete",
 	}
 	for _, n := range blocked {
 		if !toolBlocked(n) {
@@ -44,7 +44,7 @@ func TestReadsAndOrdinaryToolsAreAllowed(t *testing.T) {
 	registerGuarded(t)
 	allowed := []string{
 		"wallet.balance", "wallet_balance", "wallet.check",
-		"db.create", "db.list", "db.get", "db_update",
+		"tasks.create", "tasks.list", "tasks.next", "tasks_update",
 		"news.headlines", "web.fetch", "mail.inbox", "images.generate",
 	}
 	for _, n := range allowed {

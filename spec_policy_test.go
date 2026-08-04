@@ -8,7 +8,6 @@ import (
 	"mu/service/blog"
 	"mu/service/chat"
 	"mu/service/contacts"
-	"mu/service/db"
 	"mu/service/events"
 	"mu/service/files"
 	"mu/service/images"
@@ -31,7 +30,7 @@ import (
 // here is a service the policy and documentation tests never see.
 func allSpecs() []service.Spec {
 	return []service.Spec{
-		apps.Spec, blog.Spec, chat.Spec, contacts.Spec, db.Spec, events.Spec,
+		apps.Spec, blog.Spec, chat.Spec, contacts.Spec, events.Spec,
 		files.Spec, images.Spec, index.Spec, islam.Spec, mail.Spec, markets.Spec,
 		news.Spec, places.Spec, social.Spec, stream.Spec, tasks.Spec, video.Spec,
 		wallet.Spec, weather.Spec, web.Spec,
@@ -57,13 +56,13 @@ func registerAll(t *testing.T) {
 
 // The real specs must reproduce the policy the deleted hand-written maps held.
 func TestSpecsReproduceTheOldPolicy(t *testing.T) {
-	for _, s := range []service.Spec{mail.Spec, index.Spec, db.Spec, wallet.Spec, web.Spec} {
+	for _, s := range []service.Spec{mail.Spec, index.Spec, tasks.Spec, wallet.Spec, web.Spec} {
 		if err := service.Register(s); err != nil {
 			t.Fatalf("register %s: %v", s.Name, err)
 		}
 	}
 	// accountScoped, deleted from internal/service/dynamic.go
-	for _, n := range []string{"mail", "db", "wallet"} {
+	for _, n := range []string{"mail", "tasks", "wallet"} {
 		if !service.AccountScoped(n) {
 			t.Errorf("%s lost its account scoping", n)
 		}
@@ -85,24 +84,21 @@ func TestSpecsReproduceTheOldPolicy(t *testing.T) {
 	if !service.GuestAllowedTool("index_search") {
 		t.Error("a guest must be able to search public indexed content")
 	}
-	for _, tool := range []string{"mail_inbox", "db_get", "wallet_balance"} {
+	for _, tool := range []string{"mail_inbox", "tasks_list", "wallet_balance"} {
 		if service.GuestAllowedTool(tool) {
 			t.Errorf("%s must stay closed to guests", tool)
 		}
 	}
 	// destructiveTools, deleted from agent/native.go
-	if !service.Destructive("wallet", "Charge") || !service.Destructive("db", "Delete") {
+	if !service.Destructive("wallet", "Charge") || !service.Destructive("tasks", "Delete") {
 		t.Error("a destructive method lost its guard")
 	}
-	if service.Destructive("wallet", "Balance") || service.Destructive("db", "Get") {
+	if service.Destructive("wallet", "Balance") || service.Destructive("tasks", "List") {
 		t.Error("a read was marked destructive")
 	}
 	// agentToolLabels, deleted from agent/native.go
 	if got := service.Label("web"); got != "Search" {
 		t.Errorf("web label = %q, want Search", got)
-	}
-	if got := service.Label("db"); got != "Storage" {
-		t.Errorf("db label = %q, want Storage", got)
 	}
 	if got := service.Label("mail"); got != "Mail" {
 		t.Errorf("mail label = %q, want Mail", got)
@@ -133,7 +129,7 @@ func TestNavCoversEveryPagedServiceExactlyOnce(t *testing.T) {
 	}
 
 	// Headless services must not appear.
-	for _, name := range []string{"index", "db"} {
+	for _, name := range []string{"index"} {
 		if _, ok := routes["/"+name]; ok {
 			t.Errorf("%s is headless and must not be in the sidebar", name)
 		}
