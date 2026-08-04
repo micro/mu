@@ -55,24 +55,40 @@ func Balance(r *http.Request) (int, bool) {
 	return BalanceFunc(acc.ID)
 }
 
-// balanceState returns the balance, whether to show it at all, and the class
-// that colours it. Empty and low are coloured because a balance rendered like
-// every other number is a number nobody reads.
-func balanceState(acc *auth.Account) (int, bool, string) {
-	if BalanceFunc == nil || acc == nil || acc.Admin {
-		return 0, false, ""
+// creditView is what the viewer should be told about their credits.
+type creditView struct {
+	Show      bool   // render an indicator at all
+	Unlimited bool   // this viewer is never charged
+	Balance   int    // meaningless when Unlimited
+	State     string // "", " low", " empty" — the class that colours it
+}
+
+// creditsFor decides what to show. Empty and low are coloured because a balance
+// rendered like every other number is a number nobody reads.
+//
+// Admins are never charged, so they are shown "Unlimited" rather than nothing.
+// Hiding it was worse than it sounds: the operator of an instance is an admin,
+// so the one person who needs to check that the payment UI works was the one
+// person who could not see it, and an empty top bar reads as a broken deploy.
+// A balance of "0" would be a lie, so the indicator says the true thing.
+func creditsFor(acc *auth.Account) creditView {
+	if BalanceFunc == nil || acc == nil {
+		return creditView{}
 	}
 	balance, charging := BalanceFunc(acc.ID)
 	if !charging {
-		return 0, false, ""
+		return creditView{}
+	}
+	if acc.Admin {
+		return creditView{Show: true, Unlimited: true}
 	}
 	switch {
 	case balance <= 0:
-		return balance, true, " empty"
+		return creditView{Show: true, Balance: balance, State: " empty"}
 	case balance <= LowBalance:
-		return balance, true, " low"
+		return creditView{Show: true, Balance: balance, State: " low"}
 	}
-	return balance, true, ""
+	return creditView{Show: true, Balance: balance}
 }
 
 // navBalance renders the balance at the top of the sidebar, above Home.
@@ -83,28 +99,36 @@ func balanceState(acc *auth.Account) (int, bool, string) {
 // gestures away. First in the list is the one position that needs no scrolling
 // on any viewport.
 func navBalance(acc *auth.Account) string {
-	balance, show, state := balanceState(acc)
-	if !show {
+	v := creditsFor(acc)
+	if !v.Show {
 		return ""
 	}
+	label := formatCredits(v.Balance) + " credits"
+	if v.Unlimited {
+		label = "Unlimited"
+	}
 	return fmt.Sprintf(`<a id="nav-credits" class="nav-credits%s" href="/wallet">`+
-		`<img src="/wallet.png?%s"><span class="label">%s credits</span></a>`,
-		state, Version, formatCredits(balance))
+		`<img src="/wallet.png?%s"><span class="label">%s</span></a>`,
+		v.State, Version, label)
 }
 
 // headBalance renders the balance in the top bar, where it is readable without
 // opening the sidebar at all. Shown on mobile only: on a desktop the sidebar is
 // always open and the same number is already in it.
 func headBalance(acc *auth.Account) string {
-	balance, show, state := balanceState(acc)
-	if !show {
+	v := creditsFor(acc)
+	if !v.Show {
 		return ""
+	}
+	badge := formatCredits(v.Balance)
+	if v.Unlimited {
+		badge = "∞"
 	}
 	return fmt.Sprintf(`<a id="head-wallet" class="head-wallet%s" href="/wallet" aria-label="Credits">`+
 		`<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" `+
 		`stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>`+
 		`<path d="M16 12h.01"/></svg><span id="head-wallet-badge">%s</span></a>`,
-		state, formatCredits(balance))
+		v.State, badge)
 }
 
 // formatCredits groups thousands, so 1200 reads as 1,200.
@@ -145,13 +169,13 @@ func CreditsBanner(r *http.Request) string {
 // path may be empty when the caller does not know it; it only suppresses the
 // banner on the page it would point at.
 func creditsBannerFor(acc *auth.Account, path string) string {
-	if BalanceFunc == nil || acc == nil || acc.Admin {
+	v := creditsFor(acc)
+	// Unlimited cannot run out, so a top-up prompt would be a lie even though
+	// the indicator is shown.
+	if !v.Show || v.Unlimited || v.Balance > LowBalance {
 		return ""
 	}
-	balance, charging := BalanceFunc(acc.ID)
-	if !charging || balance > LowBalance {
-		return ""
-	}
+	balance := v.Balance
 	// Not on the wallet pages: the top-up options are already there, and a
 	// banner above them pointing at them reads as a fault.
 	if strings.HasPrefix(path, "/wallet") {

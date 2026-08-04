@@ -64,17 +64,25 @@ func TestAnInstanceThatDoesNotChargeNeverAsks(t *testing.T) {
 	}
 }
 
-// Admins are never charged, so a balance beside their name means nothing and a
-// top-up prompt is actively wrong.
-func TestAdminsAreNotAskedToTopUp(t *testing.T) {
+// An admin is never charged. They are told that — not shown "0 credits", which
+// is false, and not shown nothing, which is how the operator of an instance
+// ends up unable to see whether their own payment UI works at all.
+func TestAdminsSeeUnlimitedAndAreNeverAskedToTopUp(t *testing.T) {
 	withBalance(t, 0, true)
-
 	admin := &auth.Account{ID: "boss", Admin: true}
+
 	if got := creditsBannerFor(admin, "/home"); got != "" {
 		t.Errorf("an admin was asked to top up: %q", got)
 	}
-	if got := navBalance(admin); got != "" {
-		t.Errorf("an admin was shown a balance: %q", got)
+	nav := navBalance(admin)
+	if !strings.Contains(nav, "Unlimited") {
+		t.Errorf("an admin's nav balance was %q, want Unlimited", nav)
+	}
+	if strings.Contains(nav, "0 credits") || strings.Contains(nav, "empty") {
+		t.Errorf("an admin was shown an empty balance: %q", nav)
+	}
+	if head := headBalance(admin); head == "" || strings.Contains(head, "empty") {
+		t.Errorf("an admin's head balance was %q", head)
 	}
 }
 
@@ -174,9 +182,6 @@ func TestTheHeadBalanceMirrorsTheNav(t *testing.T) {
 		t.Errorf("a free instance showed a head balance: %q", got)
 	}
 	withBalance(t, 0, true)
-	if got := headBalance(&auth.Account{ID: "boss", Admin: true}); got != "" {
-		t.Errorf("an admin saw a head balance: %q", got)
-	}
 	if got := headBalance(nil); got != "" {
 		t.Errorf("a signed-out visitor saw a head balance: %q", got)
 	}
