@@ -3031,6 +3031,28 @@ a.highlight {
   background: var(--hover-background);
 }
 
+/* A button that reads as a link. For a row action — Share, Remove, Delete —
+   where a filled button would shout, and where the thing being acted on is the
+   row rather than the page. */
+.link-button {
+  background: none;
+  border: 0;
+  padding: 0 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.link-button:hover {
+  color: var(--text-primary);
+  text-decoration: underline;
+}
+
+.link-button.danger {
+  color: var(--btn-danger);
+}
+
 /* Button styles */
 /* Button variants */
 a.btn-primary, .btn-primary {

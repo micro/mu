@@ -1560,6 +1560,7 @@ func main() {
 		"/images":                false, // Public daily image; generation needs login
 		"/img":                   false, // Public — cached article images (a prefix of /images, same answer)
 		"/events":                true,  // Personal scheduled reminders — sign-in required
+		"/contacts":              true,  // Your address book — sign-in required
 		"/social":                false, // Public viewing, auth for search
 		"/social/thread":         false, // Public thread view, auth for messaging
 		"/places":                false, // Public map, auth for search
@@ -1785,6 +1786,8 @@ func main() {
 	// serve markets page
 	http.HandleFunc("/markets", markets.Handler)
 	http.HandleFunc(imageproxy.Path, imageproxy.Handler)
+	http.HandleFunc("/contacts", contacts.Handler)
+	http.HandleFunc("/contacts/", contacts.Handler)
 	http.HandleFunc("/images", images.Handler)
 	http.HandleFunc("/images/daily/", images.DailyImageHandler)
 	http.HandleFunc("/images/file/", images.GeneratedImageHandler)

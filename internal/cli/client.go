@@ -203,8 +203,21 @@ func (c *Client) call(method string, params any, out any) error {
 	if resp.StatusCode == http.StatusPaymentRequired {
 		return fmt.Errorf("payment required (HTTP 402): insufficient credits. Top up at %s/wallet", c.URL)
 	}
-	if resp.StatusCode >= 400 && len(respBody) == 0 {
-		return fmt.Errorf("HTTP %d from %s", resp.StatusCode, endpoint)
+	if resp.StatusCode >= 400 {
+		// An HTTP-level refusal is not JSON-RPC. The MCP authorization spec
+		// answers an unauthenticated call at the HTTP layer — 401 plus a
+		// WWW-Authenticate header — so parsing this as JSON-RPC produced
+		// "cannot unmarshal string into jsonrpcError" for every account-scoped
+		// tool called without a token, which told nobody anything.
+		if msg := httpErrorMessage(respBody); msg != "" {
+			if resp.StatusCode == http.StatusUnauthorized {
+				return fmt.Errorf("%s — run `mu login` or set MU_TOKEN", msg)
+			}
+			return fmt.Errorf("%s", msg)
+		}
+		if len(respBody) == 0 {
+			return fmt.Errorf("HTTP %d from %s", resp.StatusCode, endpoint)
+		}
 	}
 
 	var rpcResp jsonrpcResponse
@@ -236,6 +249,19 @@ const codeUnknownTool = -32602
 type UnknownToolError struct{ Message string }
 
 func (e *UnknownToolError) Error() string { return e.Message }
+
+// httpErrorMessage pulls the message out of a plain {"error":"..."} body, which
+// is what the HTTP layer answers with when it refuses a request before the
+// JSON-RPC layer sees it.
+func httpErrorMessage(body []byte) string {
+	var out struct {
+		Error string `json:"error"`
+	}
+	if err := json.Unmarshal(body, &out); err != nil {
+		return ""
+	}
+	return strings.TrimSpace(out.Error)
+}
 
 func trunc(s string, n int) string {
 	if len(s) <= n {

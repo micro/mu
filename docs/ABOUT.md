@@ -5,7 +5,7 @@
 ## What Mu is
 
 Mu gives an agent the everyday internet as tools: news, web search, mail,
-markets, weather, video, places, images, files, calendar, contacts. 67 of them, behind one
+markets, weather, video, places, images, files, events, contacts. 67 of them, behind one
 [MCP](https://modelcontextprotocol.io) endpoint.
 
 Point an MCP client at `/mcp` and everything is available. Browse what's there

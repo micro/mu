@@ -242,9 +242,6 @@ const filesPageCSS = `<style>
 .files-table .file-name{word-break:break-word}
 .file-actions{white-space:nowrap}
 .file-actions form{display:inline}
-.link-button{background:none;border:0;padding:0 6px;font-size:13px;color:var(--text-secondary);cursor:pointer;font-family:inherit}
-.link-button:hover{color:var(--text-primary);text-decoration:underline}
-.link-button.danger{color:var(--btn-danger)}
 
 @media only screen and (max-width:600px){
   .file-upload{flex-direction:column;align-items:stretch}

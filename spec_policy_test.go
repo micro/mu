@@ -126,7 +126,7 @@ func TestNavCoversEveryPagedServiceExactlyOnce(t *testing.T) {
 	}
 
 	// Headless services must not appear.
-	for _, name := range []string{"index", "db", "contacts"} {
+	for _, name := range []string{"index", "db"} {
 		if _, ok := routes["/"+name]; ok {
 			t.Errorf("%s is headless and must not be in the sidebar", name)
 		}

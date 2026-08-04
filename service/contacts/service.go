@@ -132,6 +132,8 @@ var Spec = service.Spec{
 	Name:        "contacts",
 	Handler:     new(Server),
 	Description: "The caller's own address book: turn a name into an address",
+	Page:        "/contacts",
+	Icon:        "contacts.svg",
 	Scoped:      true,
 	Endpoints: map[string]service.Endpoint{
 		"Add":    {Doc: "Save someone to the address book, or update them if already there"},

@@ -113,7 +113,7 @@ guessable.
 | `apps` | /apps | ✅ |  | User apps: build, run, edit |
 | `blog` | /blog | ✅ |  | Microblogging, daily digests, ActivityPub |
 | `chat` | /chat | ✅ |  | Live discussion rooms attached to an item |
-| `contacts` | — | ✅ | ✅ | The caller's address book: turn a name into an address |
+| `contacts` | /contacts | ✅ | ✅ | The caller's address book: turn a name into an address |
 | `db` | — | ✅ | ✅ | Per-user records, for services and apps |
 | `events` | /events | ✅ | ✅ | Calendar: scheduling, `.ics` invites, and when you are free |
 | `files` | /files | ✅ | ✅ | Per-user file storage: keep a file, get a URL |
