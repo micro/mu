@@ -1492,6 +1492,9 @@ func RenderHTMLForRequest(title, desc, html string, r *http.Request) string {
 	if banner := VerifyBanner(r); banner != "" {
 		html = banner + html
 	}
+	if banner := CreditsBanner(r); banner != "" {
+		html = banner + html
+	}
 	_, acc := auth.TrySession(r)
 	out := RenderHTMLWithLangAndAuth(title, desc, html, lang, acc)
 	return out
@@ -1527,6 +1530,7 @@ func navAuthHTML(acc *auth.Account) string {
 	}
 	username := htmlpkg.EscapeString(acc.ID)
 	return `<div id="nav-username">Signed in as @` + username + `</div>
+          ` + navBalance(acc) + `
           <a id="nav-account" href="/account"><img src="/account.png?` + Version + `"><span class="label">Account</span></a>
           <a id="nav-logout" href="/logout"><img src="/logout.png?` + Version + `"><span class="label">Logout</span></a>
           <a id="nav-login" href="/login" style="display: none;"><img src="/account.png?` + Version + `"><span class="label">Login</span></a>`
@@ -1562,6 +1566,9 @@ func RenderHTMLWithLangAndBody(title, desc, html, lang, bodyAttr string, acc *au
 		lang = "en"
 	}
 	title, desc = escapeMeta(title), escapeMeta(desc)
+	if banner := creditsBannerFor(acc, ""); banner != "" {
+		html = banner + html
+	}
 	return withNav(fmt.Sprintf(Template, lang, title, desc, bodyAttr, navAuthHTML(acc), title, html))
 }
 

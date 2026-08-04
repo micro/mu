@@ -57,6 +57,12 @@ func registerAll(t *testing.T) {
 // The real specs must reproduce the policy the deleted hand-written maps held.
 func TestSpecsReproduceTheOldPolicy(t *testing.T) {
 	for _, s := range []service.Spec{mail.Spec, index.Spec, tasks.Spec, wallet.Spec, web.Spec} {
+		// Idempotent for the same reason registerAll is: another test in this
+		// binary may have registered these already, and registering twice
+		// races for the port.
+		if _, already := service.SpecFor(s.Name); already {
+			continue
+		}
 		if err := service.Register(s); err != nil {
 			t.Fatalf("register %s: %v", s.Name, err)
 		}

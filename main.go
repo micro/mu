@@ -273,6 +273,15 @@ func main() {
 	wallet.Load()
 	wallet.LoadService()
 	app.LinkCodeFunc = auth.GenerateLinkCode
+
+	// The balance beside your name and the top-up banner. A hook because
+	// wallet imports app — see internal/app/credits.go.
+	app.BalanceFunc = func(accountID string) (int, bool) {
+		if !wallet.PaymentsEnabled() {
+			return 0, false
+		}
+		return wallet.GetBalance(accountID), true
+	}
 	discord.Load()
 	telegram.Load()
 	whatsapp.Load()

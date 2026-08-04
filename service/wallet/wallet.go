@@ -611,8 +611,12 @@ func CheckQuota(userID string, operation string) (bool, bool, int, error) {
 		return true, false, cost, nil
 	}
 
-	// User needs to top up
-	return false, false, cost, errors.New("insufficient credits")
+	// User needs to top up. The message says what it costs, what they have and
+	// where to go: this string is what a person reads when a tool refuses and
+	// what an agent reads when it has to explain itself, and "insufficient
+	// credits" told neither of them what to do next.
+	return false, false, cost, fmt.Errorf(
+		"this costs %d credits and your balance is %d — top up at /wallet", cost, balance)
 }
 
 // RecordUsage records a zero-cost usage transaction (for admins and quota tracking)

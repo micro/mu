@@ -453,6 +453,48 @@ td {
   font-size: 0.75em;
 }
 
+/* Credit balance, pinned above the account links so the number is in view on
+   every page. Empty and low are coloured because "0 credits" in the same grey
+   as everything else is a number nobody reads. */
+#nav-credits .label {
+  font-variant-numeric: tabular-nums;
+}
+#nav-credits.low .label {
+  color: #a86400;
+}
+#nav-credits.empty .label {
+  color: #b3261e;
+  font-weight: var(--font-weight-medium);
+}
+
+/* Top-up prompt. Same shape as .verify-banner — one row on a desktop, wrapping
+   to stacked lines on a phone, with the action last. */
+.credits-banner {
+  background: #fff8e1;
+  border: 1px solid #f1d68c;
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin: 0 0 14px;
+  font-size: 14px;
+  color: #5b4a00;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.credits-banner a {
+  margin-left: auto;
+  background: #000;
+  color: #fff;
+  text-decoration: none;
+  padding: 6px 14px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+@media only screen and (max-width: 600px) {
+  .credits-banner a { margin-left: 0; }
+}
+
 #nav-mail-badge {
   background: #555;
   color: white;
