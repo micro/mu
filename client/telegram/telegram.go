@@ -6,7 +6,7 @@
 //  2. Set TELEGRAM_BOT_TOKEN via /admin/env or env var
 //
 // Users are auto-created on first message (like Discord). Existing
-// users can link with "link <username> <password>".
+// users can link with "link <code>".
 package telegram
 
 import (
@@ -246,21 +246,22 @@ func handleMessage(token string, userID int64, username, firstName string, chatI
 		return
 	}
 
-	// Handle link command (DM only)
+	// Handle link command (DM only). A one-time code only — see
+	// internal/auth/link.go for why a password must never be typed into a chat
+	// window.
 	if strings.HasPrefix(strings.ToLower(text), "link ") && isDM {
 		parts := strings.Fields(text[5:])
-		if len(parts) >= 2 {
-			uname := parts[0]
-			pass := strings.Join(parts[1:], " ")
-			if _, err := auth.Login(uname, pass); err != nil {
-				sendTelegram(token, chatID, "Invalid username or password.")
+		if len(parts) == 1 {
+			account, ok := auth.RedeemLinkCode(parts[0])
+			if !ok {
+				sendTelegram(token, chatID, "That code is invalid or has expired. Get a fresh one from your account page on Mu.")
 				return
 			}
-			linkAccount(telegramID, uname)
-			sendTelegram(token, chatID, fmt.Sprintf("Linked to *%s*.", uname))
+			linkAccount(telegramID, account)
+			sendTelegram(token, chatID, fmt.Sprintf("Linked to *%s*.", account))
 			return
 		}
-		sendTelegram(token, chatID, "Usage: `link <username> <password>`")
+		sendTelegram(token, chatID, "Usage: `link <code>` — get your code from your account page on Mu.")
 		return
 	}
 

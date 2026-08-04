@@ -8,7 +8,7 @@
 //  4. Invite the bot to your server with the Messages scope
 //
 // Users link their Discord account to their Mu account by sending
-// "link <username>" as their first message.
+// "link <code>" as their first message.
 package discord
 
 import (
@@ -315,33 +315,21 @@ func handleMessage(m discordMessage) {
 		return
 	}
 
-	// Handle link command — one-time code or username+password
+	// Handle link command. A one-time code only — see internal/auth/link.go for
+	// why a password must never be typed into a chat window.
 	if strings.HasPrefix(strings.ToLower(content), "link ") {
 		parts := strings.Fields(content[5:])
 		if len(parts) == 1 {
-			// One-time code
-			code := strings.TrimSpace(parts[0])
-			accountID, ok := redeemCode(code)
+			accountID, ok := auth.RedeemLinkCode(parts[0])
 			if !ok {
-				sendMessage(m.ChannelID, "Invalid or expired code. Try `link <username> <password>` instead.")
+				sendMessage(m.ChannelID, "That code is invalid or has expired. Get a fresh one from your account page on Mu.")
 				return
 			}
 			LinkAccount(m.Author.ID, accountID)
 			sendMessage(m.ChannelID, fmt.Sprintf("Linked to **%s**.", accountID))
 			return
-		} else if len(parts) >= 2 && isDM {
-			// Username + password (DMs only for security)
-			username := parts[0]
-			password := strings.Join(parts[1:], " ")
-			if _, err := auth.Login(username, password); err != nil {
-				sendMessage(m.ChannelID, "Invalid username or password.")
-				return
-			}
-			LinkAccount(m.Author.ID, username)
-			sendMessage(m.ChannelID, fmt.Sprintf("Linked to **%s**.", username))
-			return
 		}
-		sendMessage(m.ChannelID, "Usage: `link <code>` or DM me `link <username> <password>`")
+		sendMessage(m.ChannelID, "Usage: `link <code>` — get your code from your account page on Mu.")
 		return
 	}
 

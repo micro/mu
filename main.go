@@ -272,7 +272,7 @@ func main() {
 	}
 	wallet.Load()
 	wallet.LoadService()
-	app.DiscordLinkCodeFunc = discord.GenerateLinkCode
+	app.LinkCodeFunc = auth.GenerateLinkCode
 	discord.Load()
 	telegram.Load()
 	whatsapp.Load()

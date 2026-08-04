@@ -10,7 +10,7 @@
 //     https://your-domain.com/whatsapp/webhook
 //
 // Users are auto-created on first message. Existing users can link
-// with "link <username> <password>".
+// with "link <code>", using a code from their account page.
 package whatsapp
 
 import (
@@ -199,21 +199,23 @@ func handleMessage(from, text string, isGroup bool, replyTo string) {
 		}
 	}
 
-	// Handle link command (DMs only)
+	// Handle link command (DMs only). A one-time code only — see
+	// internal/auth/link.go for why a password must never be typed into a chat
+	// window, and least of all this one: WhatsApp keeps the message on the
+	// sender's phone, the recipient's, and Meta's servers.
 	if !isGroup && strings.HasPrefix(strings.ToLower(text), "link ") {
 		parts := strings.Fields(text[5:])
-		if len(parts) >= 2 {
-			username := parts[0]
-			password := strings.Join(parts[1:], " ")
-			if _, err := auth.Login(username, password); err != nil {
-				sendMessage(from, "Invalid username or password.")
+		if len(parts) == 1 {
+			account, ok := auth.RedeemLinkCode(parts[0])
+			if !ok {
+				sendMessage(from, "That code is invalid or has expired. Get a fresh one from your account page on Mu.")
 				return
 			}
-			linkAccount(from, username)
-			sendMessage(from, fmt.Sprintf("Linked to *%s*.", username))
+			linkAccount(from, account)
+			sendMessage(from, fmt.Sprintf("Linked to *%s*.", account))
 			return
 		}
-		sendMessage(from, "Usage: link <username> <password>")
+		sendMessage(from, "Usage: link <code> — get your code from your account page on Mu.")
 		return
 	}
 

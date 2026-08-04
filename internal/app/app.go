@@ -678,9 +678,13 @@ func RequestInvite(w http.ResponseWriter, r *http.Request) {
 // If nil, email verification is unavailable on this instance.
 var EmailSender func(to, subject, bodyPlain, bodyHTML string) error
 
-// DiscordLinkCodeFunc generates a one-time code for linking a Discord
-// account. Set by the discord package at startup.
-var DiscordLinkCodeFunc func(accountID string) string
+// LinkCodeFunc issues a one-time code for attaching a chat channel to an
+// account. Set by main() to auth.GenerateLinkCode.
+//
+// One code, any channel: the code proves who the caller is, and which chat app
+// they carry it to is their business. It replaced a per-channel "link <username>
+// <password>", which asked people to type a password into a chat window.
+var LinkCodeFunc func(accountID string) string
 
 // PublicURL returns the externally-reachable base URL for the instance.
 // Falls back to relative paths when not configured.
@@ -985,11 +989,11 @@ func Account(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Discord link code generation
-		if r.Form.Get("discord_link") != "" {
-			if DiscordLinkCodeFunc != nil {
-				code := DiscordLinkCodeFunc(acc.ID)
-				http.Redirect(w, r, "/account?discord_code="+code, http.StatusSeeOther)
+		// Chat channel link code generation
+		if r.Form.Get("channel_link") != "" {
+			if LinkCodeFunc != nil {
+				code := LinkCodeFunc(acc.ID)
+				http.Redirect(w, r, "/account?link_code="+code, http.StatusSeeOther)
 			} else {
 				http.Redirect(w, r, "/account", http.StatusSeeOther)
 			}
@@ -1060,22 +1064,22 @@ func Account(w http.ResponseWriter, r *http.Request) {
 </form>
 </div>`, cardsCheckboxes)
 
-	// Discord link card
+	// Chat channel link card. One code works on any of them.
 	discordCard := ""
-	if DiscordLinkCodeFunc != nil {
-		code := r.URL.Query().Get("discord_code")
+	if LinkCodeFunc != nil {
+		code := r.URL.Query().Get("link_code")
 		if code != "" {
 			discordCard = fmt.Sprintf(`<div class="card">
-<h4>Discord</h4>
+<h4>Chat</h4>
 <p>Your link code: <code style="font-size:18px;font-weight:bold;background:#f0f0f0;padding:4px 12px;border-radius:4px">%s</code></p>
-<p class="text-sm text-muted" style="margin-top:4px">Send <code>link %s</code> to the Mu bot on Discord. Expires in 5 minutes.</p>
+<p class="text-sm text-muted" style="margin-top:4px">Send <code>link %s</code> to the Mu bot on Discord, Telegram or WhatsApp. Expires in 5 minutes, and works once.</p>
 </div>`, code, code)
 		} else {
 			discordCard = `<div class="card">
-<h4>Discord</h4>
-<p class="text-sm text-muted">Link your Discord account to use the AI agent from Discord.</p>
+<h4>Chat</h4>
+<p class="text-sm text-muted">Use the agent from Discord, Telegram or WhatsApp. Generate a code, then send <code>link &lt;code&gt;</code> to the bot. Never send your password to a chat app.</p>
 <form action="/account" method="POST" style="margin-top:8px">
-<input type="hidden" name="discord_link" value="1">
+<input type="hidden" name="channel_link" value="1">
 <button type="submit">Generate Link Code</button>
 </form>
 </div>`
