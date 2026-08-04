@@ -223,17 +223,17 @@ func main() {
 	tasks.RunAgent = func(accountID, prompt string) (string, error) {
 		return agent.Query(accountID, prompt)
 	}
+	events.RunAgent = tasks.RunAgent
 
 	events.OnFireEvent = func(e *events.Event) {
 		if strings.TrimSpace(e.Prompt) == "" {
 			return
 		}
 		go func(e events.Event) {
-			answer, err := agent.Query(e.Owner, e.Prompt)
-			if err != nil {
-				app.Log("events", "standing instruction %q failed for %s: %v", e.Title, e.Owner, err)
-				answer = "This scheduled task failed: " + err.Error()
-			}
+			// Charged like any other agent run — see service/events/run.go.
+			// Always returns something to deliver, including the reason when it
+			// could not run at all.
+			answer := events.RunPrompt(&e)
 
 			// Mail is the delivery that survives being away from the screen,
 			// and this instance runs the inbox. Tagged so an agent can read
