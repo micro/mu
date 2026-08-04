@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"mu/internal/auth"
+	"mu/internal/usage"
 	"mu/service/wallet"
 )
 
@@ -798,6 +799,29 @@ func contains(list []string, s string) bool {
 	return false
 }
 
+// toolSurface tells an operator where a tool call came from: an agent
+// connected over MCP, or Mu's own agent running a tool on someone's behalf.
+// Both land here, and they are different kinds of load.
+func toolSurface(r *http.Request) string {
+	if r != nil && r.URL != nil && r.URL.Path == "/mcp" {
+		return "mcp"
+	}
+	return "agent"
+}
+
+// toolCaller is who to count the call against, empty for an unauthenticated
+// one. A failure to identify is not an error here — it means guest.
+func toolCaller(r *http.Request) string {
+	if r == nil {
+		return ""
+	}
+	caller, err := callerIdentity(r)
+	if err != nil {
+		return ""
+	}
+	return caller
+}
+
 func ExecuteTool(r *http.Request, name string, args map[string]any) (string, bool, error) {
 	var tool *Tool
 	for i := range tools {
@@ -809,6 +833,12 @@ func ExecuteTool(r *http.Request, name string, args map[string]any) (string, boo
 	if tool == nil {
 		return "", true, fmt.Errorf("unknown tool: %s", name)
 	}
+
+	// Count the call by tool name. Every MCP request is a POST to /mcp, so the
+	// HTTP layer sees one endpoint for the whole protocol and can say nothing
+	// about which tool is busy. Recorded under the canonical name, so an alias
+	// does not look like a separate tool. See internal/usage.
+	usage.Record(toolSurface(r), tool.Name, toolCaller(r))
 
 	args = normaliseArgs(*tool, args)
 	if missing := missingRequired(*tool, args); missing != "" {

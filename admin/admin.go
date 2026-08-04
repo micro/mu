@@ -25,7 +25,8 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
 	users := auth.GetAllAccounts()
 
 	content := `<div class="admin-links">
-		<a href="/admin/usage">API Usage</a>
+		<a href="/admin/traffic">Traffic</a>
+		<a href="/admin/usage">API Spend</a>
 		<a href="/admin/api">API Log</a>
 		<a href="/admin/blocklist">Blocklist</a>
 		<a href="/admin/console">Console</a>

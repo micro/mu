@@ -40,6 +40,7 @@ import (
 	"mu/internal/service"
 	"mu/internal/settings"
 	"mu/internal/setup"
+	"mu/internal/usage"
 	"mu/internal/user"
 	"mu/internal/userdb"
 	"mu/internal/version"
@@ -185,6 +186,8 @@ func main() {
 	// The cache behind /img, which serves article images from here instead of
 	// from four publisher CDNs. See internal/imageproxy.
 	imageproxy.Load()
+	// Counters behind /admin/traffic: what this instance is being asked to do.
+	usage.Load()
 	files.Load()
 	contacts.Load()
 	events.Load()
@@ -1685,6 +1688,7 @@ func main() {
 
 	// AI usage tracking
 	http.HandleFunc("/admin/usage", admin.AIUsageHandler)
+	http.HandleFunc("/admin/traffic", admin.TrafficHandler)
 
 	// admin delete (any content type)
 	http.HandleFunc("/admin/delete", admin.DeleteHandler)
@@ -1974,6 +1978,17 @@ func main() {
 					http.DefaultServeMux.ServeHTTP(w, r)
 					return
 				}
+			}
+
+			// Count the request. /mcp is counted per tool instead (every call
+			// is a POST to the same path, so the path says nothing), and assets
+			// and polling endpoints are noise — see internal/usage.
+			if r.URL.Path != "/mcp" && !usage.Skip(r.URL.Path) {
+				account := ""
+				if _, acc := auth.TrySession(r); acc != nil {
+					account = acc.ID
+				}
+				usage.Record("web", usage.Endpoint(r.URL.Path), account)
 			}
 
 			var token string
@@ -2288,6 +2303,11 @@ func main() {
 	// Wait for interrupt signal
 	<-quit
 	app.Log("main", "Shutting down server...")
+
+	// Flush the usage counters. They are saved on a slow cadence to keep the
+	// request path cheap, so without this a deploy — which is a restart every
+	// time — would drop the last minute of counts on every push.
+	usage.Save()
 
 	// Create shutdown context with timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
