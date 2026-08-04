@@ -6,7 +6,9 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
+	"mu/internal/api"
 	"mu/internal/app"
 )
 
@@ -109,6 +111,9 @@ type SlashCommandOption struct {
 	Type        int                  `json:"type"`
 	Required    bool                 `json:"required,omitempty"`
 	Choices     []SlashCommandChoice `json:"choices,omitempty"`
+	// Options nests: a subcommand carries its own parameters here, which is how
+	// /news list gets the parameters of the news_list tool.
+	Options []SlashCommandOption `json:"options,omitempty"`
 }
 
 type SlashCommandChoice struct {
@@ -121,7 +126,10 @@ const (
 	OptionNumber = 10
 )
 
-var slashCommands = []SlashCommand{
+// platformCommands are the ones that are not tools: the agent itself, and the
+// two account views. Everything else is generated from the tool registry — see
+// commands.go.
+var platformCommands = []SlashCommand{
 	{
 		Name:        "agent",
 		Description: "Ask the AI agent anything",
@@ -130,63 +138,8 @@ var slashCommands = []SlashCommand{
 		},
 	},
 	{
-		Name:        "news",
-		Description: "Get the latest news headlines",
-	},
-	{
-		Name:        "markets",
-		Description: "Get live market prices",
-		Options: []SlashCommandOption{
-			{Name: "category", Description: "Market category", Type: OptionString, Choices: []SlashCommandChoice{
-				{Name: "Crypto", Value: "crypto"},
-				{Name: "Futures", Value: "futures"},
-				{Name: "Commodities", Value: "commodities"},
-			}},
-		},
-	},
-	{
-		Name:        "weather",
-		Description: "Get the weather forecast",
-		Options: []SlashCommandOption{
-			{Name: "location", Description: "City or place name", Type: OptionString},
-		},
-	},
-	{
-		Name:        "mail",
-		Description: "Check your inbox",
-	},
-	{
 		Name:        "balance",
 		Description: "Check your Base wallet USDC balance",
-	},
-	{
-		Name:        "apps",
-		Description: "Search or browse apps",
-		Options: []SlashCommandOption{
-			{Name: "query", Description: "Search term", Type: OptionString},
-		},
-	},
-	{
-		Name:        "social",
-		Description: "View the social feed",
-	},
-	{
-		Name:        "video",
-		Description: "Search for videos",
-		Options: []SlashCommandOption{
-			{Name: "query", Description: "Search term", Type: OptionString, Required: true},
-		},
-	},
-	{
-		Name:        "blog",
-		Description: "View latest blog posts",
-	},
-	{
-		Name:        "search",
-		Description: "Search across all content",
-		Options: []SlashCommandOption{
-			{Name: "query", Description: "Search term", Type: OptionString, Required: true},
-		},
 	},
 	{
 		Name:        "usage",
@@ -195,7 +148,12 @@ var slashCommands = []SlashCommand{
 }
 
 func registerSlashCommands(appID string) {
-	body, _ := json.Marshal(slashCommands)
+	// Tools finish registering after the bot connects, and a command set built
+	// from a half-filled registry is missing services with no way to tell.
+	api.WaitForTools(30 * time.Second)
+
+	commands := toolCommands()
+	body, _ := json.Marshal(commands)
 	url := fmt.Sprintf("https://discord.com/api/v10/applications/%s/commands", appID)
 	req, _ := http.NewRequest("PUT", url, strings.NewReader(string(body)))
 	req.Header.Set("Authorization", "Bot "+botToken)
@@ -210,7 +168,7 @@ func registerSlashCommands(appID string) {
 	if resp.StatusCode >= 400 {
 		app.Log("discord", "Slash command registration failed (%d): %.200s", resp.StatusCode, string(respBody))
 	} else {
-		app.Log("discord", "Registered %d slash commands", len(slashCommands))
+		app.Log("discord", "Registered %d slash commands", len(commands))
 	}
 }
 

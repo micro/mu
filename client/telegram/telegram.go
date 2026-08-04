@@ -16,11 +16,14 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
+	"sort"
 	"strings"
 	"sync"
 	"time"
 
 	"mu/agent"
+	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
@@ -62,13 +65,36 @@ func run() {
 
 var httpClient = &http.Client{Timeout: 35 * time.Second}
 
+// registerCommands fills Telegram's command menu from the tool registry, so a
+// tool added to the server shows up in the bot without anyone editing a list.
+// One entry per service — the method is the first word after it, "/news list" —
+// because Telegram commands are single words and twenty is a menu while seventy
+// is a wall.
 func registerCommands(token string) {
+	// Wait for the registry: tools finish registering after the bot starts, and
+	// a menu built too early is missing services.
+	api.WaitForTools(30 * time.Second)
+
 	commands := []map[string]string{
 		{"command": "ask", "description": "Ask the AI agent anything"},
-		{"command": "news", "description": "Latest news headlines"},
-		{"command": "markets", "description": "Live market prices"},
-		{"command": "weather", "description": "Weather forecast"},
 		{"command": "usage", "description": "Your usage stats"},
+	}
+
+	services := api.Services()
+	names := make([]string, 0, len(services))
+	for name := range services {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	for _, name := range names {
+		if !telegramCommand.MatchString(name) {
+			continue
+		}
+		commands = append(commands, map[string]string{
+			"command":     name,
+			"description": serviceMenuText(name, services[name]),
+		})
 	}
 	body, _ := json.Marshal(map[string]any{"commands": commands})
 	url := "https://api.telegram.org/bot" + token + "/setMyCommands"
@@ -82,7 +108,7 @@ func registerCommands(token string) {
 }
 
 func poll(token string) {
-	registerCommands(token)
+	go registerCommands(token)
 	baseURL := "https://api.telegram.org/bot" + token
 	offset := 0
 
@@ -157,10 +183,20 @@ func handleMessage(token string, userID int64, username, firstName string, chatI
 	telegramID := fmt.Sprintf("%d", userID)
 	isDM := chatType == "private"
 
+	// A tool named as a command runs as a command. Every tool is reachable
+	// this way — "/news list", "/markets list --category stocks",
+	// "/islam prayer" — with no model call and no guessing, which is the
+	// difference between a bot with five commands and a bot with all of them.
+	var tool *api.Tool
+	var toolArgs map[string]any
+
 	// Strip bot commands: /ask@botname query → query
 	if strings.HasPrefix(text, "/") {
 		parts := strings.SplitN(text, " ", 2)
 		cmd := strings.Split(parts[0], "@")[0] // remove @botname
+		if t, args, ok := resolveTool(cmd, parts); ok {
+			tool, toolArgs = t, args
+		}
 		switch cmd {
 		case "/start":
 			sendTelegram(token, chatID, "Hi! I'm Micro — your agent across news, mail, markets, weather, search and more. Ask me anything.\n\nIn groups, use /ask followed by your question.")
@@ -256,6 +292,22 @@ func handleMessage(token string, userID int64, username, firstName string, chatI
 
 	// Send typing indicator
 	sendAction(token, chatID, "typing")
+
+	// A tool command answers directly.
+	if tool != nil {
+		out, isErr, err := api.ExecuteToolAs(accountID, tool.Name, toolArgs)
+		if err != nil && out == "" {
+			out = "That didn't work: " + err.Error()
+		}
+		if strings.TrimSpace(out) == "" {
+			out = "No result."
+		}
+		if isErr {
+			app.Log("telegram", "Tool %s failed for %s: %v", tool.Name, accountID, err)
+		}
+		sendTelegram(token, chatID, out)
+		return
+	}
 
 	// Run agent with conversation context
 	// Channel messages are public — no private data
@@ -467,4 +519,59 @@ func min(a, b int) int {
 		return a
 	}
 	return b
+}
+
+// resolveTool reads a slash command as a tool call: "/news list --limit 3".
+//
+// It answers false for anything the agent should handle instead — a command
+// that is not a tool, words with nowhere to go, or a tool missing a required
+// argument. "/weather" is the case that matters: it names a real tool that
+// wants a latitude and a longitude, and someone typing it wants a forecast,
+// not an error.
+func resolveTool(cmd string, parts []string) (*api.Tool, map[string]any, bool) {
+	words := []string{strings.TrimPrefix(cmd, "/")}
+	if len(parts) > 1 {
+		words = append(words, strings.Fields(parts[1])...)
+	}
+
+	t, rest, ok := api.Resolve(words)
+	if !ok {
+		return nil, nil, false
+	}
+	args, ok := api.Args(t, rest)
+	if !ok || !api.Ready(t, args) {
+		return nil, nil, false
+	}
+	return &t, args, true
+}
+
+// telegramCommand is what Telegram accepts as a command name: lowercase
+// letters, digits and underscores, up to 32 characters.
+var telegramCommand = regexp.MustCompile(`^[a-z0-9_]{1,32}$`)
+
+// serviceMenuText is the one line Telegram shows beside a command. It lists the
+// methods, since that is what the person has to type next, and Telegram cuts
+// anything past 256 characters.
+func serviceMenuText(service string, tools []api.Tool) string {
+	var methods []string
+	for _, t := range tools {
+		if m := api.Method(t.Name); m != "" {
+			methods = append(methods, m)
+		}
+	}
+	if len(methods) == 0 {
+		// A one-word tool: its own description says it better than a list.
+		if len(tools) > 0 {
+			return truncateText(tools[0].Description, 250)
+		}
+		return service
+	}
+	return truncateText(strings.Join(methods, ", "), 250)
+}
+
+func truncateText(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n-1] + "…"
 }

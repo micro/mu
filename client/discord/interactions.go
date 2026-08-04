@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"mu/agent"
+	"mu/internal/api"
 	"mu/internal/app"
 	"mu/service/wallet"
 )
@@ -29,12 +30,18 @@ type interaction struct {
 		Username string `json:"username"`
 	} `json:"user"`
 	Data struct {
-		Name    string `json:"name"`
-		Options []struct {
-			Name  string `json:"name"`
-			Value any    `json:"value"`
-		} `json:"options"`
+		Name    string        `json:"name"`
+		Options []optionValue `json:"options"`
 	} `json:"data"`
+}
+
+// optionValue is one option Discord sends back. A subcommand arrives as an
+// option of type 1 whose own Options are the tool's parameters, so this nests.
+type optionValue struct {
+	Name    string        `json:"name"`
+	Type    int           `json:"type"`
+	Value   any           `json:"value"`
+	Options []optionValue `json:"options"`
 }
 
 func (i *interaction) userID() string {
@@ -175,6 +182,23 @@ func handleInteraction(raw json.RawMessage) {
 		editResponseEmbed(inter.Token, embed)
 		return
 	default:
+		// Every other command is a tool: /news list is news_list, and its
+		// options are that tool's parameters. Run it directly — no model call
+		// to work out what the person meant when they already said it.
+		if name, args, ok := inter.tool(); ok {
+			out, isErr, err := api.ExecuteToolAs(accountID, name, args)
+			if err != nil && out == "" {
+				out = "That didn't work: " + err.Error()
+			}
+			if strings.TrimSpace(out) == "" {
+				out = "No result."
+			}
+			if isErr {
+				app.Log("discord", "Tool %s failed for %s: %v", name, accountID, err)
+			}
+			editResponse(inter.Token, out)
+			return
+		}
 		prompt = inter.Data.Name
 	}
 
@@ -253,4 +277,39 @@ func editResponseEmbed(interactionToken string, embed Embed) {
 	}
 	io.Copy(io.Discard, resp.Body)
 	resp.Body.Close()
+}
+
+// tool reads an interaction as a tool call: the command is the service, the
+// subcommand is the method, and the options are the arguments.
+//
+// It answers false when the command names no tool, so the caller can fall back
+// to the agent — which is the right answer for a command like /weather, where
+// turning "London" into a latitude is work the model does and the tool does
+// not.
+func (i *interaction) tool() (string, map[string]any, bool) {
+	name := i.Data.Name
+	opts := i.Data.Options
+
+	// A subcommand is an option of type 1 carrying its own options.
+	if len(opts) == 1 && opts[0].Type == optionSubcmd {
+		name += "_" + opts[0].Name
+		opts = opts[0].Options
+	}
+
+	t, ok := api.Lookup(name)
+	if !ok {
+		return "", nil, false
+	}
+
+	args := map[string]any{}
+	for _, o := range opts {
+		if o.Value == nil {
+			continue
+		}
+		args[o.Name] = o.Value
+	}
+	if !api.Ready(t, args) {
+		return "", nil, false
+	}
+	return t.Name, args, true
 }

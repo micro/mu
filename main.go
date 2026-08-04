@@ -1538,6 +1538,11 @@ func main() {
 	// needs the day there is somewhere worth paying, and the CLI still reaches
 	// them. Bringing the tool back is re-registering it here.
 
+	// Every tool is registered. Surfaces that publish a command set built from
+	// the registry — the Discord slash commands, the Telegram menu — are waiting
+	// on this; without it they race the wiring above and publish a partial one.
+	api.ToolsRegistered()
+
 	authenticated := map[string]bool{
 		"/tools":                 false, // Public — the tool catalogue
 		"/video":                 false, // Public viewing, auth for interactive features
