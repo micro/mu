@@ -327,18 +327,24 @@ var Template = `
       <div id="brand">
         <a href="/">Mu</a>
       </div>
-      <a id="head-mail" href="/mail" aria-label="Mail"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="22,7 12,13 2,7"/></svg><span id="head-mail-badge"></span></a>
-      <!-- After the mail icon, not before: both are absolutely positioned so
-           order does not change the layout, but it lets the CSS shift Tools
-           left only when the mail icon is actually there (#head-mail.has-mail ~).
-           A sibling combinator cannot look backwards. -->
-      <a id="head-tools" href="/tools">Tools</a>
+      <!-- One flex cluster, so the items sit next to each other by measuring
+           themselves. They used to be three absolutely positioned elements
+           nudged apart by hand with sibling combinators, which could not look
+           backwards and could not survive a fourth item — the balance is that
+           fourth item. Hidden children take no space, so mail appearing and
+           disappearing still costs nothing. -->
+      <div id="head-right">
+        <a id="head-mail" href="/mail" aria-label="Mail"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="22,7 12,13 2,7"/></svg><span id="head-mail-badge"></span></a>
+        %s
+        <a id="head-tools" href="/tools">Tools</a>
+      </div>
     </div>
 
     <div id="nav-overlay" onclick="toggleMenu()"></div>
     <div id="container">
       <div id="nav-container">
         <div id="nav">
+          %s
           <a href="/home"><img src="/home.png?` + Version + `"><span class="label">Home</span></a>
           <a href="/agent"><img src="/agent.svg?` + Version + `"><span class="label">Agent</span></a>
 <!--mu:nav-->
@@ -1530,7 +1536,6 @@ func navAuthHTML(acc *auth.Account) string {
 	}
 	username := htmlpkg.EscapeString(acc.ID)
 	return `<div id="nav-username">Signed in as @` + username + `</div>
-          ` + navBalance(acc) + `
           <a id="nav-account" href="/account"><img src="/account.png?` + Version + `"><span class="label">Account</span></a>
           <a id="nav-logout" href="/logout"><img src="/logout.png?` + Version + `"><span class="label">Logout</span></a>
           <a id="nav-login" href="/login" style="display: none;"><img src="/account.png?` + Version + `"><span class="label">Login</span></a>`
@@ -1546,7 +1551,7 @@ func RenderHTMLWithLangAndAuth(title, desc, html, lang string, acc *auth.Account
 		lang = "en"
 	}
 	title, desc = escapeMeta(title), escapeMeta(desc)
-	return withNav(fmt.Sprintf(Template, lang, title, desc, "", navAuthHTML(acc), title, html))
+	return withNav(fmt.Sprintf(Template, lang, title, desc, "", headBalance(acc), navBalance(acc), navAuthHTML(acc), title, html))
 }
 
 // escapeMeta escapes a page title or description. Handlers pass these through
@@ -1569,7 +1574,7 @@ func RenderHTMLWithLangAndBody(title, desc, html, lang, bodyAttr string, acc *au
 	if banner := creditsBannerFor(acc, ""); banner != "" {
 		html = banner + html
 	}
-	return withNav(fmt.Sprintf(Template, lang, title, desc, bodyAttr, navAuthHTML(acc), title, html))
+	return withNav(fmt.Sprintf(Template, lang, title, desc, bodyAttr, headBalance(acc), navBalance(acc), navAuthHTML(acc), title, html))
 }
 
 // RenderString renders a markdown string as html
@@ -1581,7 +1586,7 @@ func RenderString(v string) string {
 func RenderTemplate(title string, desc, text string) string {
 	body := RenderString(text)
 	title, desc = escapeMeta(title), escapeMeta(desc)
-	return withNav(fmt.Sprintf(Template, "en", title, desc, "", navAuthHTML(nil), title, body))
+	return withNav(fmt.Sprintf(Template, "en", title, desc, "", headBalance(nil), navBalance(nil), navAuthHTML(nil), title, body))
 }
 
 func ServeHTML(html string) http.Handler {

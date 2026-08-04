@@ -466,6 +466,13 @@ td {
   color: #b3261e;
   font-weight: var(--font-weight-medium);
 }
+/* Separated from the pages below it: it is a status line, not a destination
+   like Home or News, and reading as one more nav item made it disappear. */
+#nav > #nav-credits {
+  border-bottom: 1px solid var(--divider, #f0f0f0);
+  margin-bottom: 6px;
+  padding-bottom: 8px;
+}
 
 /* Top-up prompt. Same shape as .verify-banner — one row on a desktop, wrapping
    to stacked lines on a phone, with the action last. */
@@ -514,13 +521,24 @@ td {
   display: inline-block;
 }
 
+/* The right-hand cluster: mail, credit balance, Tools. One flex row so the
+   items measure themselves instead of being nudged apart by hand — the old
+   absolute offsets needed a new magic number per item and could not look
+   backwards to know what was showing. */
+#head-right {
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
 /* Header mail indicator — hidden on desktop, visible on mobile */
 #head-mail {
   display: none;
-  position: absolute;
-  right: 16px;
-  top: 50%;
-  transform: translateY(-50%);
+  position: relative;
   text-decoration: none;
   color: #555;
   line-height: 0;
@@ -548,16 +566,10 @@ td {
   font-weight: 600;
 }
 
-/* Header wallet link — mirrors head-mail, sits just to its left. Shown for
-   logged-in users by mu.js. */
 /* The way from the app back to the tools — where "Developers" or "API" used to
    live on a product like this. Signing in for tools for agents and landing on a
    home screen with no route onward was the gap. */
 #head-tools {
-  position: absolute;
-  right: 15px;
-  top: 50%;
-  transform: translateY(-50%);
   text-decoration: none;
   color: #555;
   font-size: 13px;
@@ -566,30 +578,18 @@ td {
 }
 #head-tools:hover { color: #111; }
 
-/* Shift left only when the mail icon is actually showing.
-   This was keyed on body.signed-in, but the mail icon only appears when there
-   is unread mail — so a signed-in user with an empty inbox saw Tools floating
-   52px from the edge, clearing an icon that was not there. Most obvious on
-   mobile, where the header is tight. */
-#head-mail.has-mail ~ #head-tools { right: 52px; }
-
+/* Credit balance in the top bar. Hidden on desktop, where the sidebar is always
+   open and already shows it; on a phone the sidebar is behind a tap and this is
+   the only place the number is readable at a glance. */
 #head-wallet {
   display: none;
-  position: absolute;
-  right: 15px;
-  top: 50%;
-  transform: translateY(-50%);
+  align-items: center;
   text-decoration: none;
   color: #555;
   line-height: 1;
   white-space: nowrap;
 }
-/* When the mail icon is actually showing, shift the wallet left to clear it. */
-#head-mail.has-mail ~ #head-wallet {
-  right: 46px;
-}
 #head-wallet svg { vertical-align: middle; }
-/* Credit balance shown inline next to the wallet icon. */
 #head-wallet-badge {
   margin-left: 5px;
   font-size: 13px;
@@ -598,6 +598,8 @@ td {
   vertical-align: middle;
   font-variant-numeric: tabular-nums;
 }
+#head-wallet.low, #head-wallet.low #head-wallet-badge { color: #a86400; }
+#head-wallet.empty, #head-wallet.empty #head-wallet-badge { color: #b3261e; }
 
 #nav-logged-out {
   display: flex;
@@ -2367,6 +2369,10 @@ a.highlight {
 
   #head-mail.has-mail {
     display: block;
+  }
+
+  #head-wallet {
+    display: flex;
   }
   
   #brand a {

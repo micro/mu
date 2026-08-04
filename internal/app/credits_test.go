@@ -154,6 +154,34 @@ func TestTheNavBalanceMarksEmptyAndLow(t *testing.T) {
 	}
 }
 
+// The top bar is the only place the number is readable on a phone without
+// opening the sidebar, so it must carry the same states.
+func TestTheHeadBalanceMirrorsTheNav(t *testing.T) {
+	withBalance(t, 0, true)
+	got := headBalance(&auth.Account{ID: "x"})
+	if !strings.Contains(got, "head-wallet empty") || !strings.Contains(got, `href="/wallet"`) {
+		t.Errorf("empty head balance rendered %q", got)
+	}
+
+	withBalance(t, 1200, true)
+	if got := headBalance(&auth.Account{ID: "x"}); !strings.Contains(got, ">1,200<") {
+		t.Errorf("head balance rendered %q", got)
+	}
+
+	// Same suppressions as everywhere else.
+	withBalance(t, 0, false)
+	if got := headBalance(&auth.Account{ID: "x"}); got != "" {
+		t.Errorf("a free instance showed a head balance: %q", got)
+	}
+	withBalance(t, 0, true)
+	if got := headBalance(&auth.Account{ID: "boss", Admin: true}); got != "" {
+		t.Errorf("an admin saw a head balance: %q", got)
+	}
+	if got := headBalance(nil); got != "" {
+		t.Errorf("a signed-out visitor saw a head balance: %q", got)
+	}
+}
+
 func TestFormatCredits(t *testing.T) {
 	for in, want := range map[int]string{0: "0", 7: "7", 999: "999", 1000: "1,000", 1200: "1,200", 1234567: "1,234,567", -5: "0"} {
 		if got := formatCredits(in); got != want {

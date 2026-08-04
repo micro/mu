@@ -55,25 +55,56 @@ func Balance(r *http.Request) (int, bool) {
 	return BalanceFunc(acc.ID)
 }
 
-// navBalance renders the balance line pinned above the account links, so the
-// number is in view on every page rather than only on /wallet.
-func navBalance(acc *auth.Account) string {
+// balanceState returns the balance, whether to show it at all, and the class
+// that colours it. Empty and low are coloured because a balance rendered like
+// every other number is a number nobody reads.
+func balanceState(acc *auth.Account) (int, bool, string) {
 	if BalanceFunc == nil || acc == nil || acc.Admin {
-		return ""
+		return 0, false, ""
 	}
 	balance, charging := BalanceFunc(acc.ID)
 	if !charging {
+		return 0, false, ""
+	}
+	switch {
+	case balance <= 0:
+		return balance, true, " empty"
+	case balance <= LowBalance:
+		return balance, true, " low"
+	}
+	return balance, true, ""
+}
+
+// navBalance renders the balance at the top of the sidebar, above Home.
+//
+// It was below, with Account and Logout. On a phone the whole sidebar scrolls
+// and there are twenty-odd services above the fold, so anything pinned under
+// them is not on the screen — the number you are meant to glance at was two
+// gestures away. First in the list is the one position that needs no scrolling
+// on any viewport.
+func navBalance(acc *auth.Account) string {
+	balance, show, state := balanceState(acc)
+	if !show {
 		return ""
 	}
-	class := "nav-credits"
-	if balance <= 0 {
-		class += " empty"
-	} else if balance <= LowBalance {
-		class += " low"
-	}
-	return fmt.Sprintf(`<a id="nav-credits" class="%s" href="/wallet">`+
+	return fmt.Sprintf(`<a id="nav-credits" class="nav-credits%s" href="/wallet">`+
 		`<img src="/wallet.png?%s"><span class="label">%s credits</span></a>`,
-		class, Version, formatCredits(balance))
+		state, Version, formatCredits(balance))
+}
+
+// headBalance renders the balance in the top bar, where it is readable without
+// opening the sidebar at all. Shown on mobile only: on a desktop the sidebar is
+// always open and the same number is already in it.
+func headBalance(acc *auth.Account) string {
+	balance, show, state := balanceState(acc)
+	if !show {
+		return ""
+	}
+	return fmt.Sprintf(`<a id="head-wallet" class="head-wallet%s" href="/wallet" aria-label="Credits">`+
+		`<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" `+
+		`stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>`+
+		`<path d="M16 12h.01"/></svg><span id="head-wallet-badge">%s</span></a>`,
+		state, formatCredits(balance))
 }
 
 // formatCredits groups thousands, so 1200 reads as 1,200.
