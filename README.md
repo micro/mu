@@ -62,7 +62,7 @@ one row per service, named for it.
 | **Markets** | `markets_list` — stocks, crypto, futures, commodities, currencies |
 | **News** | `news_list` · `news_read` · `news_search` — RSS aggregation, full articles |
 | **Places** | `places_search` · `places_nearby` · `places_eta` — points of interest, geocoding, travel time |
-| **Prayer** | `prayer_times` · `prayer_qibla` · `prayer_reflection` — Islamic prayer times, qibla, and a daily verse and hadith |
+| **Prayer** | `prayer_times` · `prayer_qibla` · `prayer_reflection` — Islamic prayer times, qibla, and a daily verse, saying and name |
 | **Search** | `web_search` · `web_fetch` — search the web, read a page as clean text |
 | **Social** | `social_list` · `social_search` — public threads and replies |
 | **Stream** | `stream_list` · `stream_post` — this instance's own timeline |

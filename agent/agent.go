@@ -737,7 +737,9 @@ const agentToolsDesc = `Available tools (use exact name):
 - web_fetch: Fetch a web page and get its cleaned readable content (args: {"url":"https://example.com/page"})
 - places_search: Search for places (args: {"q":"search name","near":"location"})
 - places_nearby: Find places near a location (args: {"address":"location","radius":number})
-- reminder: Get today's daily Islamic reminder with verse, hadith, and name of Allah (no args) — response includes a "date" field, always mention it
+- prayer_reflection: Get today's Islamic reflection — a verse of the Quran, a saying of the Prophet, and a name of Allah (no args) — response includes a "date" field, always mention it
+- prayer_times: Today's Islamic prayer times for a location, and which prayer is next (args: {"lat":51.5,"lon":-0.12,"tz":"Europe/London"})
+- prayer_qibla: The qibla — the compass bearing to face for prayer (args: {"lat":51.5,"lon":-0.12})
 - quran: Look up a Quran chapter or verse (args: {"chapter":1,"verse":1} — verse is optional)
 - hadith: Look up hadith from Sahih Al Bukhari (args: {"book":1} — optional book number)
 - quran_search: Semantic search across the Quran, Hadith, and names of Allah (args: {"q":"what does the quran say about patience"})
@@ -765,7 +767,8 @@ const guestToolsDesc = `Available tools (use exact name):
 - weather_forecast: Get weather forecast (args: {"lat":number,"lon":number})
 - places_search: Search for places (args: {"q":"search name","near":"location"})
 - places_nearby: Find places near a location (args: {"address":"location","radius":number})
-- reminder: Get today's daily Islamic reminder (no args)
+- prayer_reflection: Get today's Islamic reflection (no args)
+- prayer_times: Today's Islamic prayer times for a location (args: {"lat":51.5,"lon":-0.12})
 - quran: Look up a Quran chapter or verse (args: {"chapter":1,"verse":1})
 - hadith: Look up hadith from Sahih Al Bukhari (args: {"book":1})
 - quran_search: Search the Quran and Hadith (args: {"q":"search term"})
@@ -2219,7 +2222,7 @@ func formatVideoResult(result string) string {
 	return sb.String()
 }
 
-// formatReminderResult converts a raw JSON reminder result into
+// formatReminderResult converts a raw JSON reflection payload into
 // human-readable text for the AI synthesis RAG context.
 func formatReminderResult(result string) string {
 	var data struct {
@@ -2232,21 +2235,23 @@ func formatReminderResult(result string) string {
 		return result
 	}
 	if data.Verse == "" && data.Hadith == "" && data.Message == "" {
-		return "Reminder data unavailable."
+		return "No reflection is available right now."
 	}
+	// Verse, Saying, Name, Reflection — the same four labels the /prayer page
+	// and the prayer_reflection tool use.
 	var sb strings.Builder
-	sb.WriteString("Daily Islamic reminder:\n")
-	if data.Name != "" {
-		sb.WriteString(fmt.Sprintf("Name of Allah: %s\n", data.Name))
-	}
+	sb.WriteString("Today's Islamic reflection:\n")
 	if data.Verse != "" {
 		sb.WriteString(fmt.Sprintf("Verse: %s\n", data.Verse))
 	}
 	if data.Hadith != "" {
-		sb.WriteString(fmt.Sprintf("Hadith: %s\n", data.Hadith))
+		sb.WriteString(fmt.Sprintf("Saying: %s\n", data.Hadith))
+	}
+	if data.Name != "" {
+		sb.WriteString(fmt.Sprintf("Name: %s\n", data.Name))
 	}
 	if data.Message != "" {
-		sb.WriteString(fmt.Sprintf("Message: %s\n", data.Message))
+		sb.WriteString(fmt.Sprintf("Reflection: %s\n", data.Message))
 	}
 	return sb.String()
 }

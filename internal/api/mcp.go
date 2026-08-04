@@ -601,7 +601,7 @@ var tools = []Tool{
 	{
 		Name:        "prayer_reflection",
 		Aliases:     []string{"prayer_today", "islam_today", "islam", "reminder"},
-		Description: "Get today's Islamic reflection: a Quran verse, a hadith, and a name of Allah",
+		Description: "Get today's Islamic reflection: a verse of the Quran, a saying of the Prophet, and a name of Allah",
 		Handle: func(args map[string]any) (string, error) {
 			return getReminderAPI("/daily")
 		},

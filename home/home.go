@@ -606,7 +606,7 @@ function fetchW(la,lo){
 		"blog":    "Microblog posts with daily AI-generated digests",
 		"news":    "Headlines from RSS feeds, sorted by time",
 		"markets": "Live crypto, futures, and commodity prices",
-		"prayer":  "Islamic prayer times, and a daily verse and hadith",
+		"prayer":  "Islamic prayer times, and a daily verse, saying and name",
 		"social":  "Public discussion threads",
 		"video":   "Latest videos from curated channels",
 	}

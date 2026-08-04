@@ -192,11 +192,17 @@ func TestFormatVideoResult_Empty(t *testing.T) {
 func TestFormatReminderResult_WithData(t *testing.T) {
 	result := `{"verse":"In the name of Allah","name":"Al-Rahman","hadith":"Narrated Abu Hurairah","message":"Be mindful of Allah"}`
 	got := formatReminderResult(result)
-	if !strings.Contains(got, "Daily Islamic reminder") {
+	if !strings.Contains(got, "Today's Islamic reflection") {
 		t.Errorf("expected header, got %q", got)
 	}
+	// Verse, Saying, Name, Reflection — the plain labels the /prayer page uses.
+	for _, label := range []string{"Verse:", "Saying:", "Name:", "Reflection:"} {
+		if !strings.Contains(got, label) {
+			t.Errorf("expected a %q label, got %q", label, got)
+		}
+	}
 	if !strings.Contains(got, "Al-Rahman") {
-		t.Errorf("expected name of Allah, got %q", got)
+		t.Errorf("expected the name, got %q", got)
 	}
 	if !strings.Contains(got, "In the name of Allah") {
 		t.Errorf("expected verse, got %q", got)
@@ -209,8 +215,8 @@ func TestFormatReminderResult_WithData(t *testing.T) {
 func TestFormatReminderResult_Empty(t *testing.T) {
 	result := `{"verse":"","name":"","hadith":"","message":""}`
 	got := formatReminderResult(result)
-	if got != "Reminder data unavailable." {
-		t.Errorf("expected 'Reminder data unavailable.', got %q", got)
+	if got != "No reflection is available right now." {
+		t.Errorf("expected the no-reflection message, got %q", got)
 	}
 }
 

@@ -15,7 +15,7 @@ import (
 //
 // The service is named for what it does rather than for the tradition it serves.
 // Everything here is Islamic — the times are the five salah, the qibla is the
-// bearing to the Kaaba, the reflection is a Quran verse — and the page and the
+// bearing to the Kaaba, the reflection is a verse of the Quran — and the page and the
 // tool descriptions say so. But a sidebar is a door, and "Prayer" is a word
 // anyone can walk through; the specificity belongs inside, where it is
 // information, not at the entrance, where it is a filter.
@@ -26,11 +26,17 @@ type ReflectionRequest struct{}
 
 // ReflectionResponse is today's reflection as model-ready text.
 type ReflectionResponse struct {
-	Reminder string `json:"reminder" description:"Today's Islamic reflection: Quran verse with reference, a hadith, and a short message"`
+	Reminder string `json:"reminder" description:"Today's Islamic reflection: a verse of the Quran with its reference, a saying of the Prophet, a name of Allah, and a short message"`
 }
 
-// Reflection returns today's Islamic reflection — a Quran verse with its surah
-// reference, a hadith, and a short message.
+// Reflection returns today's Islamic reflection — a verse of the Quran with its
+// surah reference, a saying of the Prophet, a name of Allah, and a short
+// message.
+//
+// Labelled Verse, Saying, Name and Reflection, the same four words the page
+// uses. The sources are named in the descriptions and on the page; the labels
+// themselves are the plain English, so nothing has to be known before it can be
+// read.
 // @example {}
 func (Server) Reflection(_ context.Context, _ *ReflectionRequest, rsp *ReflectionResponse) error {
 	d := GetDailyReminderData()
@@ -39,14 +45,14 @@ func (Server) Reflection(_ context.Context, _ *ReflectionRequest, rsp *Reflectio
 		return nil
 	}
 	var b strings.Builder
-	if d.Name != "" {
-		b.WriteString(d.Name + "\n")
-	}
 	if d.Verse != "" {
-		b.WriteString(d.Verse + "\n")
+		b.WriteString("Verse: " + d.Verse + "\n")
 	}
 	if d.Hadith != "" {
-		b.WriteString("\nHadith: " + d.Hadith + "\n")
+		b.WriteString("\nSaying: " + d.Hadith + "\n")
+	}
+	if d.Name != "" {
+		b.WriteString("\nName: " + d.Name + "\n")
 	}
 	if d.Message != "" {
 		b.WriteString("\nReflection: " + d.Message)
@@ -125,6 +131,6 @@ var Spec = service.Spec{
 	Endpoints: map[string]service.Endpoint{
 		"Times":      {Doc: "Get today's Islamic prayer times (salah) for a location, and which prayer is next"},
 		"Qibla":      {Doc: "Get the qibla — the compass bearing to face for Islamic prayer from a location"},
-		"Reflection": {Doc: "Get today's Islamic reflection — a Quran verse with its surah and translation"},
+		"Reflection": {Doc: "Get today's Islamic reflection — a verse of the Quran with its surah, a saying of the Prophet, and a name of Allah"},
 	},
 }

@@ -87,7 +87,7 @@ func fetchReminder() {
 	message := stringField(val, "message")
 	updated := stringField(val, "updated")
 
-	// Index with just the message summary. The full content (verse, hadith, name)
+	// Index with just the message summary. The full content (verse, saying, name)
 	// contains markdown that doesn't render well in chat threads, and it changes
 	// hourly so embedding it causes stale content.
 	summary := message
@@ -162,8 +162,8 @@ type ReminderData struct {
 	Links   map[string]interface{} `json:"links"`
 }
 
-// Handler serves /prayer in-app: today's full reminder — verse, name of Allah,
-// hadith and reflection — rather than bouncing out to reminder.dev. JSON on
+// Handler serves /prayer in-app: today's full reflection — verse, saying, name
+// and message — rather than bouncing out to reminder.dev. JSON on
 // request returns the complete payload.
 func Handler(w http.ResponseWriter, r *http.Request) {
 	// Prayer times need a location, which only the browser knows. ?lat&lon
@@ -210,7 +210,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		`</div>`
 	app.Respond(w, r, app.Response{
 		Title:       "Prayer",
-		Description: "Islamic prayer times, the qibla, and a daily verse, name of Allah, hadith and reflection",
+		Description: "Islamic prayer times, the qibla, and a daily verse, saying, name and reflection",
 		HTML:        body,
 	})
 }
@@ -411,8 +411,13 @@ func splitTitleBody(s string) (string, string) {
 	return "", strings.TrimSpace(s)
 }
 
-// renderReflectionPage renders the whole reminder payload: verse, name of Allah,
-// hadith and reflection, each with a link to its source on reminder.dev.
+// renderReflectionPage renders the whole payload: Verse, Saying, Name and
+// Reflection, each with a link to its source on reminder.dev.
+//
+// The headings are the plain words rather than Quran, hadith and name of Allah.
+// The content is unchanged and the links say where each one comes from — a
+// reader who knows the tradition loses nothing, and one who does not is not
+// asked to know it before they can read a line.
 func renderReflectionPage(rd *ReminderData) string {
 	if rd == nil {
 		return `<div class="card"><p class="text-muted">Today's reminder is loading — check back shortly.</p></div>`
@@ -435,13 +440,13 @@ func renderReflectionPage(rd *ReminderData) string {
 		}
 		b.WriteString(`</div>`)
 	}
-	section("Quran", rd.Verse, "verse", "Read in the Quran")
-	section("Name of Allah", rd.Name, "name", "The 99 names")
-	section("Hadith", rd.Hadith, "hadith", "Read the hadith")
+	section("Verse", rd.Verse, "verse", "Read in the Quran")
+	section("Saying", rd.Hadith, "hadith", "Read the hadith")
+	section("Name", rd.Name, "name", "The 99 names of Allah")
 	if strings.TrimSpace(rd.Message) != "" {
 		b.WriteString(`<div class="card"><h3>Reflection</h3><p style="margin:0;line-height:1.6">` + html.EscapeString(rd.Message) + `</p></div>`)
 	}
-	b.WriteString(`<p style="font-size:12px;color:#999">Daily verse, name of Allah, and hadith via <a href="https://reminder.dev">reminder.dev</a>. Ask the agent to look up any Quran verse or hadith.</p>`)
+	b.WriteString(`<p style="font-size:12px;color:#999">A daily verse of the Quran, a hadith and a name of Allah, via <a href="https://reminder.dev">reminder.dev</a>. Ask the agent to look up any verse or hadith.</p>`)
 	return b.String()
 }
 
