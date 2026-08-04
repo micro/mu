@@ -48,10 +48,11 @@ func TestToolNamesAndAliasesAreUnique(t *testing.T) {
 // once the process has registered them.
 func TestRenamedToolsKeepTheirOldNames(t *testing.T) {
 	for old, want := range map[string]string{
-		"mail_read": "mail_inbox",
-		"islam":     "islam_today",
-		"reminder":  "islam_today",
-		"stream":    "stream_list",
+		"mail_read":   "mail_inbox",
+		"islam":       "prayer_reflection",
+		"islam_today": "prayer_reflection",
+		"reminder":    "prayer_reflection",
+		"stream":      "stream_list",
 	} {
 		found := ""
 		for _, tool := range sortedTools() {

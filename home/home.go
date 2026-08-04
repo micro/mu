@@ -18,10 +18,10 @@ import (
 	"mu/service/apps"
 	"mu/service/blog"
 	"mu/service/images"
-	"mu/service/islam"
 	"mu/service/mail"
 	"mu/service/markets"
 	"mu/service/news"
+	"mu/service/prayer"
 	"mu/service/social"
 	"mu/service/video"
 	"mu/service/weather"
@@ -124,7 +124,7 @@ func Load() {
 		"chat":    ChatCard,
 		"news":    newsCard,
 		"markets": markets.MarketsHTML,
-		"islam":   islam.ReminderHTML,
+		"prayer":  prayer.ReminderHTML,
 		"video":   video.Latest,
 		"apps":    apps.Preview,
 		"social":  social.CardHTML,
@@ -509,7 +509,7 @@ function fetchW(la,lo){
 	// Inline card preferences panel
 	if viewerAcc != nil {
 		allCardDefs := []struct{ id, label string }{
-			{"islam", "Islam"}, {"blog", "Blog"}, {"news", "News"},
+			{"prayer", "Prayer"}, {"blog", "Blog"}, {"news", "News"},
 			{"markets", "Markets"}, {"social", "Social"}, {"video", "Video"},
 			{"images", "Images"}, {"mail", "Mail"}, {"web", "Search"},
 		}
@@ -606,7 +606,7 @@ function fetchW(la,lo){
 		"blog":    "Microblog posts with daily AI-generated digests",
 		"news":    "Headlines from RSS feeds, sorted by time",
 		"markets": "Live crypto, futures, and commodity prices",
-		"islam":   "Daily Islamic reminder with verse and hadith",
+		"prayer":  "Islamic prayer times, and a daily verse and hadith",
 		"social":  "Public discussion threads",
 		"video":   "Latest videos from curated channels",
 	}

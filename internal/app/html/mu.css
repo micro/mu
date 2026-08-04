@@ -2059,7 +2059,7 @@ body:has(#messages) #chat-back-link {
 }
 
 /* Legacy markets card styles (for /markets page) */
-#markets, #islam, #video {
+#markets, #prayer, #video {
   max-width: 100%;
   float: none;
   margin-right: 0;
@@ -2511,7 +2511,7 @@ a.highlight {
   .post-show {
     margin-top: 10px;
   }
-  .card, #islam, #video {
+  .card, #prayer, #video {
     float: none;
     display: block;
     width: 100%;
@@ -2557,10 +2557,11 @@ a.highlight {
 
   /* Card order on mobile. Every card needs an explicit order: one with none
      defaults to order:0 and jumps ahead of everything — which is what happened
-     when Images was added, and again when the reminder card became #islam and
-     this selector stopped matching. Keep these ids in step with cards.json. */
+     when Images was added, and again each time the reminder card was renamed —
+     first to #islam, then to #prayer — and this selector stopped matching.
+     Keep these ids in step with cards.json. */
   #blog { order: 1; }
-  #islam { order: 2; }
+  #prayer { order: 2; }
   #markets { order: 3; }
   #news { order: 4; }
   #images { order: 5; }
@@ -5265,7 +5266,7 @@ body.display-mode .card h4 {
 .ep-main .card .card-title { padding-right: 96px; }
 
 
-/* A small marker in a card's top-right corner — the next prayer on the Islam
+/* A small marker in a card's top-right corner — the next prayer on the Prayer
    card. .card is already position:relative. Empty until filled, so it takes no
    space when there is nothing to show. */
 .card-corner {
@@ -5276,20 +5277,20 @@ body.display-mode .card h4 {
 .card-corner:empty { display: none; }
 
 /* ========================================
-   ISLAM PAGE — reminder main, prayer aside
+   PRAYER PAGE — reflection main, prayer times aside
    ======================================== */
 /* Prayer times are a short, glanceable table; at full width the rows stretched
    across the page and the verse — the reason most people open the page — was
    pushed below the fold. Reminder content leads, prayer times sit beside it.
    The aside comes first in the DOM so that on a phone, where the columns
    stack, the times are what you land on. */
-.islam-layout { display: flex; gap: 28px; align-items: flex-start; }
-.islam-main { flex: 1 1 auto; min-width: 0; order: 1; }
-.islam-side { flex: 0 0 300px; order: 2; position: sticky; top: 16px; }
-.islam-side .card { max-width: none; margin-bottom: var(--spacing-md); }
-.islam-side table { font-variant-numeric: tabular-nums; }
+.prayer-layout { display: flex; gap: 28px; align-items: flex-start; }
+.prayer-main { flex: 1 1 auto; min-width: 0; order: 1; }
+.prayer-side { flex: 0 0 300px; order: 2; position: sticky; top: 16px; }
+.prayer-side .card { max-width: none; margin-bottom: var(--spacing-md); }
+.prayer-side table { font-variant-numeric: tabular-nums; }
 
 @media only screen and (max-width: 900px) {
-  .islam-layout { display: block; }
-  .islam-side { position: static; }
+  .prayer-layout { display: block; }
+  .prayer-side { position: static; }
 }

@@ -50,7 +50,7 @@ type Account struct {
 // card introduced afterwards (images, and future cards) defaults to visible
 // instead of being silently hidden by the HomeCards allowlist.
 var preHomeCardsSeen = map[string]bool{
-	"blog": true, "news": true, "markets": true, "islam": true,
+	"blog": true, "news": true, "markets": true, "prayer": true,
 	"social": true, "video": true, "mail": true, "web": true,
 }
 
@@ -59,7 +59,8 @@ var preHomeCardsSeen = map[string]bool{
 // upgrade never loses a preference — so stored ids are canonicalised on read
 // rather than migrated on disk.
 var legacyCardIDs = map[string]string{
-	"reminder": "islam",
+	"reminder": "prayer",
+	"islam":    "prayer",
 }
 
 // canonicalCardID resolves a stored card id to its current name.

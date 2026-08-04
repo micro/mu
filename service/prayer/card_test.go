@@ -1,4 +1,4 @@
-package islam
+package prayer
 
 import (
 	"strings"
@@ -10,7 +10,7 @@ import (
 // page and scroll to find out when the next prayer was.
 func TestHomeCardCarriesTheNextPrayer(t *testing.T) {
 	html := ReminderHTML()
-	if !strings.Contains(html, `id="islam-next"`) {
+	if !strings.Contains(html, `id="prayer-next"`) {
 		t.Error("home card has no slot for the next prayer")
 	}
 	if !strings.Contains(html, "card-corner") {

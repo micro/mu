@@ -12,11 +12,11 @@ import (
 	"mu/service/files"
 	"mu/service/images"
 	"mu/service/index"
-	"mu/service/islam"
 	"mu/service/mail"
 	"mu/service/markets"
 	"mu/service/news"
 	"mu/service/places"
+	"mu/service/prayer"
 	"mu/service/social"
 	"mu/service/stream"
 	"mu/service/tasks"
@@ -31,9 +31,9 @@ import (
 func allSpecs() []service.Spec {
 	return []service.Spec{
 		apps.Spec, blog.Spec, chat.Spec, contacts.Spec, events.Spec,
-		files.Spec, images.Spec, index.Spec, islam.Spec, mail.Spec, markets.Spec,
-		news.Spec, places.Spec, social.Spec, stream.Spec, tasks.Spec, video.Spec,
-		wallet.Spec, weather.Spec, web.Spec,
+		files.Spec, images.Spec, index.Spec, mail.Spec, markets.Spec,
+		news.Spec, places.Spec, prayer.Spec, social.Spec, stream.Spec,
+		tasks.Spec, video.Spec, wallet.Spec, weather.Spec, web.Spec,
 	}
 }
 

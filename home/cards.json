@@ -9,12 +9,12 @@
       "icon": "/post.png"
     },
     {
-      "id": "islam",
-      "title": "Islam",
-      "type": "islam",
+      "id": "prayer",
+      "title": "Prayer",
+      "type": "prayer",
       "position": 1,
-      "link": "/islam",
-      "icon": "/reminder.svg"
+      "link": "/prayer",
+      "icon": "/prayer.svg"
     },
     {
       "id": "news",

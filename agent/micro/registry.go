@@ -85,9 +85,9 @@ func init() {
 	Register(&Agent{
 		ID:           "faith",
 		Name:         "Faith Agent",
-		Description:  "Islamic reminders, Quran, Hadith",
-		SystemPrompt: `You are the Faith specialist on Mu. You provide daily Islamic reminders, look up Quran verses and Hadith, and answer questions about Islamic teachings. Be respectful and accurate. Always cite the surah/verse or hadith source.`,
-		Tools:        []string{"islam_today", "quran", "hadith", "quran_search"},
+		Description:  "Islamic prayer times, qibla, reflections, Quran, Hadith",
+		SystemPrompt: `You are the Faith specialist on Mu. You give today's Islamic reflection, prayer times and the qibla, look up Quran verses and Hadith, and answer questions about Islamic teachings. Be respectful and accurate. Always cite the surah/verse or hadith source.`,
+		Tools:        []string{"prayer_reflection", "prayer_times", "prayer_qibla", "quran", "hadith", "quran_search"},
 		MemoryScope:  "faith",
 	})
 

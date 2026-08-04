@@ -1,4 +1,4 @@
-package islam
+package prayer
 
 import (
 	"context"
@@ -9,26 +9,33 @@ import (
 	"mu/internal/service"
 )
 
-// Server is the go-micro service handler for the daily Islamic reminder. Its
-// methods are exposed as RPC endpoints and, through the agent and gateways, as
-// AI tools.
+// Server is the go-micro service handler for prayer times, qibla and the daily
+// reflection. Its methods are exposed as RPC endpoints and, through the agent
+// and gateways, as AI tools.
+//
+// The service is named for what it does rather than for the tradition it serves.
+// Everything here is Islamic — the times are the five salah, the qibla is the
+// bearing to the Kaaba, the reflection is a Quran verse — and the page and the
+// tool descriptions say so. But a sidebar is a door, and "Prayer" is a word
+// anyone can walk through; the specificity belongs inside, where it is
+// information, not at the entrance, where it is a filter.
 type Server struct{}
 
-// TodayRequest takes no input.
-type TodayRequest struct{}
+// ReflectionRequest takes no input.
+type ReflectionRequest struct{}
 
-// TodayResponse is today's reminder as model-ready text.
-type TodayResponse struct {
-	Reminder string `json:"reminder" description:"Today's Islamic reminder: Quran verse with reference, a hadith, and a short reflection"`
+// ReflectionResponse is today's reflection as model-ready text.
+type ReflectionResponse struct {
+	Reminder string `json:"reminder" description:"Today's Islamic reflection: Quran verse with reference, a hadith, and a short message"`
 }
 
-// Today returns today's Islamic reminder — a Quran verse with its surah
-// reference, a hadith, and a short reflection.
+// Reflection returns today's Islamic reflection — a Quran verse with its surah
+// reference, a hadith, and a short message.
 // @example {}
-func (Server) Today(_ context.Context, _ *TodayRequest, rsp *TodayResponse) error {
+func (Server) Reflection(_ context.Context, _ *ReflectionRequest, rsp *ReflectionResponse) error {
 	d := GetDailyReminderData()
 	if d == nil {
-		rsp.Reminder = "No reminder is available right now."
+		rsp.Reminder = "No reflection is available right now."
 		return nil
 	}
 	var b strings.Builder
@@ -48,23 +55,27 @@ func (Server) Today(_ context.Context, _ *TodayRequest, rsp *TodayResponse) erro
 	return nil
 }
 
-// PrayerRequest asks for prayer times at a location.
-type PrayerRequest struct {
+// TimesRequest asks for prayer times at a location.
+type TimesRequest struct {
 	Lat    float64 `json:"lat" description:"Latitude of the location"`
 	Lon    float64 `json:"lon" description:"Longitude of the location"`
 	TZ     string  `json:"tz" description:"IANA timezone of the location, e.g. Europe/London (defaults to UTC)"`
 	Method string  `json:"method" description:"Calculation convention: isna, mwl, egypt, karachi, gulf, diyanet, muis or jakim (defaults to isna)"`
 }
 
-// PrayerResponse is the day's prayer schedule as model-ready text.
-type PrayerResponse struct {
+// TimesResponse is the day's prayer schedule as model-ready text.
+type TimesResponse struct {
 	Times string `json:"times" description:"Today's prayer times, and which prayer is next"`
 }
 
-// Prayer returns today's prayer times for a location (Fajr, Dhuhr, Asr,
-// Maghrib and Isha, plus sunrise), and which prayer comes next.
+// Times returns today's prayer times for a location (Fajr, Dhuhr, Asr, Maghrib
+// and Isha, plus sunrise), and which prayer comes next.
+//
+// Named Times rather than Prayer because the tool name is derived as
+// service_method, and prayer.Prayer would produce prayer_prayer — the same trap
+// search.Search fell into. See TestNoMethodRepeatsItsService.
 // @example {"lat": 51.5074, "lon": -0.1278}
-func (Server) Prayer(_ context.Context, req *PrayerRequest, rsp *PrayerResponse) error {
+func (Server) Times(_ context.Context, req *TimesRequest, rsp *TimesResponse) error {
 	pt, err := GetPrayerTimes(req.Lat, req.Lon, req.TZ, req.Method)
 	if err != nil {
 		return err
@@ -107,14 +118,13 @@ func (Server) Qibla(_ context.Context, req *QiblaRequest, rsp *QiblaResponse) er
 }
 
 var Spec = service.Spec{
-	Name:        "islam",
+	Name:        "prayer",
 	Handler:     new(Server),
-	Description: "Daily reminder, prayer times and qibla",
-	Page:        "/islam",
-	Icon:        "reminder.svg",
+	Description: "Islamic prayer times, qibla and a daily reflection",
+	Page:        "/prayer",
 	Endpoints: map[string]service.Endpoint{
-		"Prayer": {Doc: "Get today's prayer times for a location, and which prayer is next"},
-		"Qibla":  {Doc: "Get the compass bearing to face for prayer from a location"},
-		"Today":  {Doc: "Get today's Islamic reminder — a Quran verse with its surah and translation"},
+		"Times":      {Doc: "Get today's Islamic prayer times (salah) for a location, and which prayer is next"},
+		"Qibla":      {Doc: "Get the qibla — the compass bearing to face for Islamic prayer from a location"},
+		"Reflection": {Doc: "Get today's Islamic reflection — a Quran verse with its surah and translation"},
 	},
 }

@@ -10,7 +10,8 @@ func TestShowHomeCard(t *testing.T) {
 		want bool
 	}{
 		{"fresh account shows every default", Account{}, "images", true},
-		{"fresh account shows islam", Account{}, "reminder", true},
+		{"fresh account shows prayer under its oldest id", Account{}, "reminder", true},
+		{"fresh account shows prayer under its middle id", Account{}, "islam", true},
 		{"legacy set (no seen) shows new card images",
 			Account{HomeCards: []string{"blog", "news", "markets", "reminder", "social", "video"}}, "images", true},
 		{"legacy set keeps a chosen card",
@@ -40,26 +41,28 @@ func TestHomeCardActiveOptIn(t *testing.T) {
 	}
 }
 
-// A card id that was renamed must keep resolving from stored preferences: an
-// account that saved "reminder" before the rename still sees the Islam card,
-// and a deliberate hide still sticks.
+// A card id that was renamed must keep resolving from stored preferences. This
+// card has been renamed twice — "reminder", then "islam", now "prayer" — so
+// both old ids have to canonicalise, and a deliberate hide still sticks.
 func TestLegacyCardIDStillResolves(t *testing.T) {
-	seenOld := []string{"blog", "news", "markets", "reminder", "social", "video", "images", "mail", "web"}
+	for _, old := range []string{"reminder", "islam"} {
+		seenOld := []string{"blog", "news", "markets", old, "social", "video", "images", "mail", "web"}
 
-	selected := Account{HomeCards: []string{"blog", "reminder"}, HomeCardsSeen: seenOld}
-	if !selected.ShowHomeCard("islam") {
-		t.Error("stored \"reminder\" selection should show the islam card")
+		selected := Account{HomeCards: []string{"blog", old}, HomeCardsSeen: seenOld}
+		if !selected.ShowHomeCard("prayer") {
+			t.Errorf("a stored %q selection should show the prayer card", old)
+		}
+
+		hidden := Account{HomeCards: []string{"blog"}, HomeCardsSeen: seenOld}
+		if hidden.ShowHomeCard("prayer") {
+			t.Errorf("prayer was offered as %q and not selected — should stay hidden", old)
+		}
 	}
 
-	hidden := Account{HomeCards: []string{"blog"}, HomeCardsSeen: seenOld}
-	if hidden.ShowHomeCard("islam") {
-		t.Error("islam was offered as \"reminder\" and not selected — should stay hidden")
-	}
-
-	// Legacy account with no seen-set: islam is not a new card, so a
+	// Legacy account with no seen-set: prayer is not a new card, so a
 	// customised account that dropped it must not have it reappear.
 	legacy := Account{HomeCards: []string{"blog", "news"}}
-	if legacy.ShowHomeCard("islam") {
-		t.Error("islam predates seen-tracking; should not resurface for a customised legacy account")
+	if legacy.ShowHomeCard("prayer") {
+		t.Error("prayer predates seen-tracking; should not resurface for a customised legacy account")
 	}
 }

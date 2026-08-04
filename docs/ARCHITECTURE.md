@@ -23,11 +23,11 @@ mu/
 │   ├── files/
 │   ├── images/
 │   ├── index/
-│   ├── islam/
 │   ├── mail/
 │   ├── markets/
 │   ├── news/
 │   ├── places/
+│   ├── prayer/
 │   ├── search/            # the /search page and its providers, not a service
 │   ├── social/
 │   ├── stream/
@@ -118,11 +118,11 @@ guessable.
 | `files` | /files | ✅ | ✅ | Per-user file storage: keep a file, get a URL |
 | `images` | /images | ✅ | ✅ | Generation, daily image, archive |
 | `index` | — | ✅ |  | Search across the caller's own content |
-| `islam` | /islam | ✅ |  | Daily reminder, prayer times, qibla |
 | `mail` | /mail | ✅ | ✅ | SMTP server, inbox, DKIM |
 | `markets` | /markets | ✅ |  | Crypto, stocks, futures, commodities, currencies |
 | `news` | /news | ✅ |  | RSS aggregation, sentiment, search |
 | `places` | /places | ✅ |  | Maps, points of interest, travel time |
+| `prayer` | /prayer | ✅ |  | Islamic prayer times, qibla, and a daily reflection |
 | `social` | /social | ✅ |  | Threads, replies, status |
 | `stream` | /stream | ✅ |  | The console: this instance's own timeline |
 | `tasks` | /tasks | ✅ | ✅ | What is to be done, and work handed to the agent |

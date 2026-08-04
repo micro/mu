@@ -52,12 +52,12 @@ import (
 	"mu/service/files"
 	"mu/service/images"
 	"mu/service/index"
-	"mu/service/islam"
 	"mu/service/mail"
 	"mu/service/markets"
 	"mu/service/news"
 	"mu/service/news/digest"
 	"mu/service/places"
+	"mu/service/prayer"
 	"mu/service/search"
 	"mu/service/social"
 	"mu/service/stream"
@@ -177,7 +177,7 @@ func main() {
 
 	// load markets, reminder, wallet
 	markets.Load()
-	islam.Load()
+	prayer.Load()
 	web.Load()
 	stream.LoadService()
 	chat.LoadService()
@@ -1221,10 +1221,11 @@ func main() {
 		return rsp.Events, nil
 	})
 
-	// islam_prayer — today's prayer times for a location. Public: no account
+	// prayer_times — today's prayer times for a location. Public: no account
 	// data involved, same as weather.
 	api.RegisterTool(api.Tool{
-		Name:        "islam_prayer",
+		Name:        "prayer_times",
+		Aliases:     []string{"islam_prayer"},
 		Description: "Get today's Islamic prayer times (Fajr, Dhuhr, Asr, Maghrib, Isha) for a location, and which prayer is next.",
 		Params: []api.ToolParam{
 			{Name: "lat", Type: "number", Description: "Latitude of the location", Required: true},
@@ -1238,18 +1239,19 @@ func main() {
 				return "Provide lat and lon for the location.", fmt.Errorf("missing coordinates")
 			}
 			tz, _ := args["tz"].(string)
-			var rsp islam.PrayerResponse
-			if err := service.Call(context.Background(), "islam", "Server.Prayer",
-				&islam.PrayerRequest{Lat: lat, Lon: lon, TZ: tz}, &rsp); err != nil {
+			var rsp prayer.TimesResponse
+			if err := service.Call(context.Background(), "prayer", "Server.Times",
+				&prayer.TimesRequest{Lat: lat, Lon: lon, TZ: tz}, &rsp); err != nil {
 				return "", err
 			}
 			return rsp.Times, nil
 		},
 	})
 
-	// islam_qibla — direction to face for prayer. Pure computation, public.
+	// prayer_qibla — direction to face for prayer. Pure computation, public.
 	api.RegisterTool(api.Tool{
-		Name:        "islam_qibla",
+		Name:        "prayer_qibla",
+		Aliases:     []string{"islam_qibla"},
 		Description: "Get the qibla direction (compass bearing to the Kaaba in Mecca) for a location, and the distance to Mecca.",
 		Params: []api.ToolParam{
 			{Name: "lat", Type: "number", Description: "Latitude of the location", Required: true},
@@ -1261,9 +1263,9 @@ func main() {
 			if lat == 0 && lon == 0 {
 				return "Provide lat and lon for the location.", fmt.Errorf("missing coordinates")
 			}
-			var rsp islam.QiblaResponse
-			if err := service.Call(context.Background(), "islam", "Server.Qibla",
-				&islam.QiblaRequest{Lat: lat, Lon: lon}, &rsp); err != nil {
+			var rsp prayer.QiblaResponse
+			if err := service.Call(context.Background(), "prayer", "Server.Qibla",
+				&prayer.QiblaRequest{Lat: lat, Lon: lon}, &rsp); err != nil {
 				return "", err
 			}
 			return rsp.Direction, nil
@@ -1394,7 +1396,7 @@ func main() {
 	api.SetCard("social_list", "Social", social.CardHTML)
 	api.SetCard("video_list", "Videos", video.Latest)
 	api.SetCard("blog_list", "Blog", blog.Preview)
-	api.SetCard("reminder", "Reminder", islam.ReminderHTML)
+	api.SetCard("prayer", "Prayer", prayer.ReminderHTML)
 
 	// Register apps MCP tools
 	api.RegisterTool(api.Tool{
@@ -1647,7 +1649,7 @@ func main() {
 		"/home":                  false, // Public viewing
 		"/blog":                  false, // Public viewing, auth for posting
 		"/markets":               false, // Public viewing
-		"/islam":                 false, // Public daily verse, hadith and names
+		"/prayer":                false, // Public prayer times, daily verse and hadith
 		"/about":                 false, // Public "what is Mu" pitch
 		"/oauth2/google":         false, // Google sign-in start (no session yet)
 		"/oauth2/google/connect": true,  // Link Google to the current account
@@ -1906,12 +1908,14 @@ func main() {
 	http.HandleFunc("/stream", stream.Handler)
 	http.HandleFunc("/stream/fragment", stream.FragmentHandler)
 
-	// redirect /reminder to reminder.dev
-	http.HandleFunc("/islam", islam.Handler)
-	// Back-compat: the page used to live at /reminder.
-	http.HandleFunc("/reminder", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/islam", http.StatusMovedPermanently)
-	})
+	http.HandleFunc("/prayer", prayer.Handler)
+	// Back-compat: the page lived at /reminder, then at /islam. Both are still
+	// in bookmarks and in other people's links, so both keep working.
+	for _, old := range []string{"/reminder", "/islam"} {
+		http.HandleFunc(old, func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, "/prayer", http.StatusMovedPermanently)
+		})
+	}
 
 	// serve places page
 	http.HandleFunc("/places", places.Handler)
@@ -2609,7 +2613,7 @@ func runHealthChecks() []app.ServiceHealth {
 		"markets": func() bool { return len(markets.GetAllPrices()) > 0 },
 		"social":  func() bool { return len(social.GetThreads()) > 0 },
 		"mail":    func() bool { return mail.GetConfiguredDomain() != "" },
-		"islam":   func() bool { return islam.GetReminderData() != nil },
+		"prayer":  func() bool { return prayer.GetReminderData() != nil },
 		"search":  func() bool { return settings.Get("BRAVE_API_KEY") != "" },
 	}
 	// Services with no page of their own.

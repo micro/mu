@@ -304,7 +304,7 @@ var Template = `
     <link rel="preload" href="/video.png?` + Version + `" as="image">
     <link rel="preload" href="/account.png?` + Version + `" as="image">
     <link rel="preload" href="/weather.png?` + Version + `" as="image">
-    <link rel="preload" href="/reminder.svg?` + Version + `" as="image">
+    <link rel="preload" href="/prayer.svg?` + Version + `" as="image">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&display=swap" rel="stylesheet">
@@ -385,7 +385,7 @@ var Template = `
 // introduced later can default to visible instead of being hidden by the
 // HomeCards allowlist. Keep in sync with the panels and home/cards.json.
 var homeCardUniverse = []string{
-	"blog", "news", "markets", "islam", "social", "video", "images", "mail", "web",
+	"blog", "news", "markets", "prayer", "social", "video", "images", "mail", "web",
 }
 
 var CardTemplate = `
@@ -1029,7 +1029,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 
 	// Home card preferences
 	allCards := []struct{ id, label string }{
-		{"islam", "Islam"}, {"blog", "Blog"}, {"news", "News"},
+		{"prayer", "Prayer"}, {"blog", "Blog"}, {"news", "News"},
 		{"markets", "Markets"}, {"social", "Social"}, {"video", "Video"},
 		{"images", "Images"}, {"mail", "Mail"}, {"web", "Search"},
 	}

@@ -1219,7 +1219,7 @@ func shortcutToolCalls(prompt string) []shortcutToolCall {
 		"videos":        {{Tool: "video", Args: map[string]any{}}},
 		"latest videos": {{Tool: "video", Args: map[string]any{}}},
 		"latest video":  {{Tool: "video", Args: map[string]any{}}},
-		"reminder":      {{Tool: "islam", Args: map[string]any{}}},
+		"reminder":      {{Tool: "prayer_reflection", Args: map[string]any{}}},
 		"apps":          {{Tool: "apps_search", Args: map[string]any{}}},
 		"mail":          {{Tool: "mail_read", Args: map[string]any{}}},
 		// Personal queries
@@ -1257,7 +1257,7 @@ func shortcutToolCalls(prompt string) []shortcutToolCall {
 		"what are the latest crypto and market prices?": {{Tool: "markets", Args: map[string]any{}}},
 		"find me the latest tech videos":                {{Tool: "video_search", Args: map[string]any{"query": "tech"}}},
 		"search the web for the latest ai news":         {{Tool: "web_search", Args: map[string]any{"q": "latest AI news"}}},
-		"show me today's islamic reminder":              {{Tool: "islam", Args: map[string]any{}}},
+		"show me today's islamic reminder":              {{Tool: "prayer_reflection", Args: map[string]any{}}},
 		// Wallet
 		"my wallet":      {{Tool: "wallet_balance", Args: map[string]any{}}},
 		"wallet":         {{Tool: "wallet_balance", Args: map[string]any{}}},
@@ -1540,8 +1540,8 @@ func toolLabel(tool string) string {
 		return "📍 Searching places"
 	case "places_nearby":
 		return "📍 Finding nearby places"
-	case "islam":
-		return "📿 Getting daily reminder"
+	case "prayer_reflection", "islam_today", "islam":
+		return "📿 Getting today's reflection"
 	case "search":
 		return "Searching Mu"
 	case "blog_list":
@@ -1876,7 +1876,7 @@ func formatToolResult(toolName, result string, args map[string]any) string {
 		return withCurrentDateContext(result)
 	case "video_search":
 		return formatVideoResult(result)
-	case "islam":
+	case "prayer_reflection", "islam_today", "islam":
 		return formatReminderResult(result)
 	case "search":
 		return withCurrentDateContext(formatSearchResult(result))

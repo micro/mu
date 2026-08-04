@@ -1,4 +1,4 @@
-package islam
+package prayer
 
 import (
 	"testing"

@@ -1,4 +1,4 @@
-package islam
+package prayer
 
 import (
 	"encoding/json"
@@ -74,7 +74,7 @@ func fetchReminder() {
 	// e.g. "Muhammad - Muhammad - 47:1" → "Muhammad - 47:1"
 	verseText = deduplicateVerseName(verseText)
 	// Card body is just the verse; the home card framework appends its own
-	// "More" link to /islam, so a second link here would be redundant.
+	// "More" link to /prayer, so a second link here would be redundant.
 	html := fmt.Sprintf(`<div class="item"><div class="verse">%s</div></div>`, verseText)
 
 	reminderMutex.Lock()
@@ -134,17 +134,17 @@ func ReminderHTML() string {
 // (the weather and prayer cards share these keys). It never asks for location
 // itself: the home screen is not the place to prompt, and with nothing cached
 // the mark simply stays empty.
-const nextPrayerMark = `<span id="islam-next" class="card-corner"></span>
+const nextPrayerMark = `<span id="prayer-next" class="card-corner"></span>
 <script>
 (function(){
-  var el=document.getElementById('islam-next');
+  var el=document.getElementById('prayer-next');
   if(!el)return;
   var la=null,lo=null,m=null;
   try{la=localStorage.getItem('mu_weather_lat');lo=localStorage.getItem('mu_weather_lon');
       m=localStorage.getItem('mu_prayer_method');}catch(e){}
   if(!la||!lo)return;
   var tz='';try{tz=Intl.DateTimeFormat().resolvedOptions().timeZone||'';}catch(e){}
-  var u='/islam?lat='+encodeURIComponent(la)+'&lon='+encodeURIComponent(lo)+
+  var u='/prayer?lat='+encodeURIComponent(la)+'&lon='+encodeURIComponent(lo)+
         '&tz='+encodeURIComponent(tz)+(m?'&method='+encodeURIComponent(m):'');
   fetch(u,{headers:{'Accept':'application/json'}}).then(function(r){return r.json();}).then(function(d){
     if(d&&d.next&&d.next_at){el.textContent=d.next+' '+d.next_at;}
@@ -162,7 +162,7 @@ type ReminderData struct {
 	Links   map[string]interface{} `json:"links"`
 }
 
-// Handler serves /islam in-app: today's full reminder — verse, name of Allah,
+// Handler serves /prayer in-app: today's full reminder — verse, name of Allah,
 // hadith and reflection — rather than bouncing out to reminder.dev. JSON on
 // request returns the complete payload.
 func Handler(w http.ResponseWriter, r *http.Request) {
@@ -204,13 +204,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// short table that does not need the full width, and the verse is what
 	// most readers came for. The aside is first in the DOM so the stacked
 	// phone layout leads with the times.
-	body := `<div class="islam-layout">` +
-		`<aside class="islam-side">` + prayerTimesHTML() + `</aside>` +
-		`<div class="islam-main">` + renderIslamPage(GetReminderData()) + `</div>` +
+	body := `<div class="prayer-layout">` +
+		`<aside class="prayer-side">` + prayerTimesHTML() + `</aside>` +
+		`<div class="prayer-main">` + renderReflectionPage(GetReminderData()) + `</div>` +
 		`</div>`
 	app.Respond(w, r, app.Response{
-		Title:       "Islam",
-		Description: "Prayer times, a daily verse, name of Allah, hadith and reflection",
+		Title:       "Prayer",
+		Description: "Islamic prayer times, the qibla, and a daily verse, name of Allah, hadith and reflection",
 		HTML:        body,
 	})
 }
@@ -378,7 +378,7 @@ func prayerTimesHTML() string {
     listen();
   }
   function load(lat,lon){
-    fetch('/islam?lat='+lat+'&lon='+lon+'&tz='+encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone||'')+'&method='+encodeURIComponent(method()),{headers:{'Accept':'application/json'},credentials:'same-origin'})
+    fetch('/prayer?lat='+lat+'&lon='+lon+'&tz='+encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone||'')+'&method='+encodeURIComponent(method()),{headers:{'Accept':'application/json'},credentials:'same-origin'})
       .then(function(r){return r.ok?r.json():null})
       .then(function(d){ if(d&&(d.times||d.qibla)){render(d)} else {body.innerHTML='<p class="text-muted" style="margin:0;font-size:14px">Prayer times unavailable right now.</p>'} })
       .catch(function(){body.innerHTML='<p class="text-muted" style="margin:0;font-size:14px">Prayer times unavailable right now.</p>'});
@@ -411,9 +411,9 @@ func splitTitleBody(s string) (string, string) {
 	return "", strings.TrimSpace(s)
 }
 
-// renderIslamPage renders the whole reminder payload: verse, name of Allah,
+// renderReflectionPage renders the whole reminder payload: verse, name of Allah,
 // hadith and reflection, each with a link to its source on reminder.dev.
-func renderIslamPage(rd *ReminderData) string {
+func renderReflectionPage(rd *ReminderData) string {
 	if rd == nil {
 		return `<div class="card"><p class="text-muted">Today's reminder is loading — check back shortly.</p></div>`
 	}

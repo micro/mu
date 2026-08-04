@@ -58,11 +58,11 @@ one row per service, named for it.
 | **Files** | `files_put` · `files_get` · `files_list` · `files_share` · `files_delete` — keep a file, get a URL |
 | **Images** | `images_generate` · `images_search` |
 | **Index** | `index_search` — everything this instance holds for you |
-| **Islam** | `islam_today` · `islam_prayer` · `islam_qibla` — daily reminder, prayer times, qibla |
 | **Mail** | `mail_inbox` · `mail_send` · `mail_address` — a real SMTP server with DKIM, and an address per agent |
 | **Markets** | `markets_list` — stocks, crypto, futures, commodities, currencies |
 | **News** | `news_list` · `news_read` · `news_search` — RSS aggregation, full articles |
 | **Places** | `places_search` · `places_nearby` · `places_eta` — points of interest, geocoding, travel time |
+| **Prayer** | `prayer_times` · `prayer_qibla` · `prayer_reflection` — Islamic prayer times, qibla, and a daily verse and hadith |
 | **Search** | `web_search` · `web_fetch` — search the web, read a page as clean text |
 | **Social** | `social_list` · `social_search` — public threads and replies |
 | **Stream** | `stream_list` · `stream_post` — this instance's own timeline |
@@ -126,7 +126,7 @@ Talk to the agent from Discord or Telegram — questions, markets, news, all fro
 chat. [Join the Discord](https://discord.gg/WeMU5AGxD)
 
 Every tool is a command on both, in the same two-word shape as the CLI:
-`/news list`, `/markets list category:stocks`, `/islam prayer`. Discord gets one
+`/news list`, `/markets list category:stocks`, `/prayer times`. Discord gets one
 slash command per service with the methods as subcommands; on Telegram you type
 `/news list`. Both also take `/agent <question>` for anything that needs
 composing, and `/usage` for your own stats.

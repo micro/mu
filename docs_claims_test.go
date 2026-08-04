@@ -112,8 +112,8 @@ func TestArchitectureTableMatchesTheRegistry(t *testing.T) {
 
 // The README's tool table is grouped by service, and the group names have to be
 // the names those services go by everywhere else — the sidebar, /tools, the
-// tool prefix. They drifted once already: Calendar for events, Faith for islam,
-// Web for a service the sidebar calls Search.
+// tool prefix. They drifted once already: Calendar for events, Faith for what
+// is now prayer, Web for a service the sidebar calls Search.
 func TestReadmeToolTableUsesServiceNames(t *testing.T) {
 	registerAll(t)
 

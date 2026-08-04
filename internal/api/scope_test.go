@@ -43,7 +43,7 @@ func TestScopeMatchesServicesToolsAndLabels(t *testing.T) {
 		{"agent", "news", false},
 		{"agent", "agent", true},
 		// No scope is everything.
-		{"islam_qibla", "", true},
+		{"prayer_qibla", "", true},
 	} {
 		got := inScope(Tool{Name: tc.tool}, parseScope(tc.scope))
 		if got != tc.want {
@@ -129,7 +129,7 @@ func TestUnknownScopeNamesAreIgnored(t *testing.T) {
 // credits and rate limits, and none of them should start depending on a query
 // parameter the caller chose.
 func TestScopingDoesNotBlockCalls(t *testing.T) {
-	// blog_read is registered statically in this package. islam_qibla is not —
+	// blog_read is registered statically in this package. prayer_qibla is not —
 	// it comes from main.go, so naming it here tested nothing but its absence.
 	body := `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"blog_read","arguments":{"id":"nope"}}}`
 	rec := httptest.NewRecorder()

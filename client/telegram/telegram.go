@@ -185,7 +185,7 @@ func handleMessage(token string, userID int64, username, firstName string, chatI
 
 	// A tool named as a command runs as a command. Every tool is reachable
 	// this way — "/news list", "/markets list --category stocks",
-	// "/islam prayer" — with no model call and no guessing, which is the
+	// "/prayer times" — with no model call and no guessing, which is the
 	// difference between a bot with five commands and a bot with all of them.
 	var tool *api.Tool
 	var toolArgs map[string]any
