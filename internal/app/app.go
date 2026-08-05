@@ -336,7 +336,6 @@ var Template = `
       <div id="head-right">
         <a id="head-mail" href="/mail" aria-label="Mail"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="22,7 12,13 2,7"/></svg><span id="head-mail-badge"></span></a>
         %s
-        <a id="head-tools" href="/tools">Tools</a>
       </div>
     </div>
 
@@ -344,16 +343,14 @@ var Template = `
     <div id="container">
       <div id="nav-container">
         <div id="nav">
-          <!-- Two groups, not one list. The first is you and your agent —
-               where you work, what it can call, what it used, what that cost.
-               The second is what this instance can do, derived from the
-               service Specs.
+          <!-- Where you work, what your agent can call, what it used, what
+               that cost — then the few services worth keeping in view, and the
+               way to the rest.
 
-               They were one alphabetical list, which put Wallet eighteenth of
-               nineteen between Video and Weather and left Tools and Usage out
-               of the sidebar altogether. Alphabetical is not an ordering, it
-               is the absence of one: it says every service matters equally,
-               and to someone here to connect an agent they do not. -->
+               This was one alphabetical list of nineteen services, which put
+               Wallet eighteenth between Video and Weather and left Tools and
+               Usage out of the sidebar altogether. Alphabetical is not an
+               ordering, it is the absence of one. -->
           <a href="/home"><img src="/home.png?` + Version + `"><span class="label">Home</span></a>
           <a href="/agent"><img src="/agent.svg?` + Version + `"><span class="label">Agent</span></a>
           <a href="/tools"><img src="/tools.svg?` + Version + `"><span class="label">Tools</span></a>

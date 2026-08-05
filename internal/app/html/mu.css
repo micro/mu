@@ -556,18 +556,6 @@ td {
   font-weight: 600;
 }
 
-/* The way from the app back to the tools — where "Developers" or "API" used to
-   live on a product like this. Signing in for tools for agents and landing on a
-   home screen with no route onward was the gap. */
-#head-tools {
-  text-decoration: none;
-  color: #555;
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-#head-tools:hover { color: #111; }
-
 /* Credit balance in the top bar, beside Tools. The only place it appears: it
    was in the sidebar too for a moment, and the same number twice on one screen
    reads as a mistake. The top bar is fixed, always visible, and the same on
@@ -2436,10 +2424,16 @@ a.highlight {
     padding: 5px 12px;
   }
 
+  /* Follows the nav rather than being pinned to the bottom of the drawer.
+     margin-top:auto was right when the sidebar held nineteen services and
+     filled the screen; with eight entries it strands Account and Logout below
+     a 280px hole, which is what made the open menu look broken rather than
+     short. The border still separates them, and the container scrolls when a
+     viewport is small enough to need it. */
   .nav-bottom {
     border-top: 1px solid var(--divider, #f0f0f0);
     padding-top: 10px;
-    margin-top: auto;
+    margin-top: 10px;
     gap: 1px;
   }
 

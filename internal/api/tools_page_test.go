@@ -40,11 +40,11 @@ func TestTheCatalogueHasBothLenses(t *testing.T) {
 	if !strings.Contains(svc, ">Cat Paged<") || !strings.Contains(svc, "A service with a page") {
 		t.Error("a service tile dropped its declared label or description")
 	}
-	// Headless services still appear. One with no page is still something this
-	// instance runs, and leaving it out would understate the answer to "is any
-	// of this real" — which is what the catalogue exists to answer.
-	if !strings.Contains(svc, ">Cat Hidden<") || !strings.Contains(svc, "agents and apps only") {
-		t.Error("the services lens hid the headless services")
+	// Headless services are not in this lens. A tile you cannot open, in a lens
+	// whose promise is "what you can open", is not proof of anything — and it
+	// has no icon to draw, because a service with no page never needed one.
+	if strings.Contains(svc, ">Cat Hidden<") {
+		t.Errorf("a headless service appeared in the services lens:\n%s", svc)
 	}
 
 	if !strings.Contains(lensTabs(true), `class="lens-tab active" href="/services"`) {

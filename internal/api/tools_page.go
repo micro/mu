@@ -73,13 +73,19 @@ func lensTabs(services bool) string {
 		`</div>`
 }
 
-// serviceGrid is the person's lens: one tile per service this instance runs.
+// serviceGrid is the person's lens: one tile per service you can open.
 //
-// A grid rather than the list this replaced in the sidebar. Nineteen tiles are
-// scanned in a look; nineteen list rows are read one at a time, and stop being
-// read. It includes the headless ones — a service with no page is still
-// something this instance runs, and leaving it out would understate the answer
-// to "is any of this real".
+// A grid rather than the list this replaced in the sidebar. Twenty tiles are
+// scanned in a look; twenty list rows are read one at a time, and stop being
+// read.
+//
+// Headless services are not here. They were briefly, on the argument that a
+// service with no page is still something this instance runs — but a tile you
+// cannot open, in a lens whose promise is "what you can open", is not proof of
+// anything. Index had no icon either, because a service with no page never
+// needed one, and it linked to /mcp, which is not what a tile that looks like
+// the others should do. They are in the Tools lens, where index_search is a
+// thing an agent can actually call.
 func serviceGrid() string {
 	counts := map[string]int{}
 	for _, g := range groupTools() {
@@ -88,12 +94,8 @@ func serviceGrid() string {
 
 	var b strings.Builder
 	b.WriteString(`<div class="tool-grid service-grid">`)
-	for _, s := range service.Specs() {
-		href, cls := s.Page, "tool-tile service-tile"
-		if s.Headless() {
-			href, cls = "/mcp", cls+" headless"
-		}
-		b.WriteString(`<a class="` + cls + `" href="` + html.EscapeString(href) + `">`)
+	for _, s := range service.Nav() {
+		b.WriteString(`<a class="tool-tile service-tile" href="` + html.EscapeString(s.Page) + `">`)
 		b.WriteString(`<span class="service-tile-head">` +
 			`<img src="/` + html.EscapeString(s.NavIcon()) + `?` + app.Version + `" alt="">` +
 			`<span class="tool-tile-name">` + html.EscapeString(s.NavLabel()) + `</span></span>`)
@@ -105,12 +107,6 @@ func serviceGrid() string {
 			if n != 1 {
 				meta += "s"
 			}
-		}
-		if s.Headless() {
-			if meta != "" {
-				meta += " · "
-			}
-			meta += "agents and apps only"
 		}
 		b.WriteString(`<span class="tool-tile-price">` + html.EscapeString(meta) + `</span>`)
 		b.WriteString(`</a>`)
@@ -310,7 +306,6 @@ const toolsPageCSS = `<style>
 .lens-hint{font-size:12px;font-weight:400;color:var(--text-muted)}
 .service-tile-head{display:flex;align-items:center;gap:8px}
 .service-tile-head img{width:18px;height:18px}
-.service-tile.headless{opacity:.75}
 @media only screen and (max-width:600px){.lens-hint{display:none}}
 .tool-group{margin:0 0 26px}
 .tool-group-title{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#999;margin:0 0 10px}
