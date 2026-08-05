@@ -534,7 +534,7 @@ var SignupTemplate = `<html lang="en">
     </div>
     <div id="container">
       <div id="content">
-	<form id="signup" action="/signup" method="POST">
+	<form id="signup" action="/signup%s" method="POST">
 	  <h1>Signup</h1>
 	  %s
 	  <input id="id" name="id" placeholder="Username (4-24 chars, lowercase)" required>
@@ -558,13 +558,20 @@ var currentInviteCode string
 
 // renderSignup renders the signup template with a fresh captcha challenge
 // and the given error HTML (or empty string).
-func renderSignup(errHTML string) string {
+func renderSignup(errHTML string) string { return renderSignupTo(errHTML, "") }
+
+// renderSignupTo threads a redirect through the form action. Without it the
+// POST goes to a bare /signup and the destination is lost between showing the
+// form and submitting it — which is how someone sent here by a client's OAuth
+// flow would create an account and then land on /home, with the client still
+// waiting.
+func renderSignupTo(errHTML, redirectParam string) string {
 	c := NewCaptchaChallenge()
 	inviteField := ""
 	if currentInviteCode != "" {
 		inviteField = fmt.Sprintf(`<input type="hidden" name="invite" value="%s">`, currentInviteCode)
 	}
-	html := fmt.Sprintf(SignupTemplate, errHTML, CaptchaHTML(c), inviteField)
+	html := fmt.Sprintf(SignupTemplate, redirectParam, errHTML, CaptchaHTML(c), inviteField)
 	if btn := googleButtonHTML("Continue with Google"); btn != "" {
 		html = strings.Replace(html, `<h1>Signup</h1>`, `<h1>Signup</h1>`+btn, 1)
 	}
@@ -806,12 +813,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 			SameSite: http.SameSiteLaxMode,
 		})
 
-		// Check for redirect parameter, default to home
-		redirectTo := r.URL.Query().Get("redirect")
-		if redirectTo == "" || redirectTo[0] != '/' || strings.HasPrefix(redirectTo, "//") {
-			redirectTo = "/home"
-		}
-		http.Redirect(w, r, redirectTo, 302)
+		http.Redirect(w, r, safeRedirect(r), 302)
 		return
 	}
 }
@@ -827,6 +829,12 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 	}
 	currentInviteCode = invCode
 
+	// Carried through every render so the POST keeps it — see renderSignupTo.
+	redirectParam := ""
+	if to := safeRedirect(r); to != "/home" {
+		redirectParam = "?redirect=" + url.QueryEscape(to)
+	}
+
 	// Invite codes are optional — if one is provided (referral link),
 	// it's consumed after signup for tracking. Signup works without one.
 	// When INVITE_ONLY=true, a valid code IS required.
@@ -836,13 +844,13 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 	}
 	if auth.InviteOnly() && invCode != "" {
 		if err := auth.ValidateInvite(invCode); err != nil {
-			w.Write([]byte(renderSignup(fmt.Sprintf(`<p class="text-error">%s</p>`, err.Error()))))
+			w.Write([]byte(renderSignupTo(fmt.Sprintf(`<p class="text-error">%s</p>`, err.Error()), redirectParam)))
 			return
 		}
 	}
 
 	if r.Method == "GET" {
-		w.Write([]byte(renderSignup("")))
+		w.Write([]byte(renderSignupTo("", redirectParam)))
 		return
 	}
 
@@ -852,7 +860,7 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 		// Captcha is checked before the IP rate limit so that a failed
 		// captcha doesn't burn an attempt against the IP bucket.
 		if err := VerifyCaptchaRequest(r); err != nil {
-			w.Write([]byte(renderSignup(fmt.Sprintf(`<p class="text-error">%s</p>`, err.Error()))))
+			w.Write([]byte(renderSignupTo(fmt.Sprintf(`<p class="text-error">%s</p>`, err.Error()), redirectParam)))
 			return
 		}
 
@@ -860,7 +868,7 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 		ip := ClientIP(r)
 		if !SignupRateLimit(ip) {
 			Log("auth", "Signup rate limit hit for IP: %s", ip)
-			w.Write([]byte(renderSignup(`<p class="text-error">Too many sign-ups from your network. Please try again later.</p>`)))
+			w.Write([]byte(renderSignupTo(`<p class="text-error">Too many sign-ups from your network. Please try again later.</p>`, redirectParam)))
 			return
 		}
 
@@ -873,27 +881,27 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 		usernameRegex := regexp.MustCompile(usernamePattern)
 
 		if len(id) == 0 {
-			w.Write([]byte(renderSignup(`<p class="text-error">Username is required</p>`)))
+			w.Write([]byte(renderSignupTo(`<p class="text-error">Username is required</p>`, redirectParam)))
 			return
 		}
 
 		if !usernameRegex.MatchString(id) {
-			w.Write([]byte(renderSignup(`<p class="text-error">Invalid username format. Must start with a letter, be 4-24 characters, and contain only lowercase letters, numbers, and underscores</p>`)))
+			w.Write([]byte(renderSignupTo(`<p class="text-error">Invalid username format. Must start with a letter, be 4-24 characters, and contain only lowercase letters, numbers, and underscores</p>`, redirectParam)))
 			return
 		}
 
 		if reason := auth.ValidateUsername(id); reason != "" {
-			w.Write([]byte(renderSignup(fmt.Sprintf(`<p class="text-error">%s</p>`, reason))))
+			w.Write([]byte(renderSignupTo(fmt.Sprintf(`<p class="text-error">%s</p>`, reason), redirectParam)))
 			return
 		}
 
 		if len(secret) == 0 {
-			w.Write([]byte(renderSignup(`<p class="text-error">Password is required</p>`)))
+			w.Write([]byte(renderSignupTo(`<p class="text-error">Password is required</p>`, redirectParam)))
 			return
 		}
 
 		if len(secret) < 6 {
-			w.Write([]byte(renderSignup(`<p class="text-error">Password must be at least 6 characters</p>`)))
+			w.Write([]byte(renderSignupTo(`<p class="text-error">Password must be at least 6 characters</p>`, redirectParam)))
 			return
 		}
 
@@ -908,7 +916,7 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 			Name:    name,
 			Created: time.Now(),
 		}); err != nil {
-			w.Write([]byte(renderSignup(fmt.Sprintf(`<p class="text-error">%s</p>`, err.Error()))))
+			w.Write([]byte(renderSignupTo(fmt.Sprintf(`<p class="text-error">%s</p>`, err.Error()), redirectParam)))
 			return
 		}
 
@@ -920,7 +928,7 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 		// login
 		sess, err := auth.Login(id, secret)
 		if err != nil {
-			w.Write([]byte(renderSignup(`<p class="text-error">Account created but login failed. Please try logging in.</p>`)))
+			w.Write([]byte(renderSignupTo(`<p class="text-error">Account created but login failed. Please try logging in.</p>`, redirectParam)))
 			return
 		}
 
@@ -941,10 +949,26 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 			SameSite: http.SameSiteLaxMode,
 		})
 
-		// return to home
-		http.Redirect(w, r, "/home", 302)
+		// Back to wherever they were sent from, which for someone arriving
+		// through a client's OAuth flow is /oauth/authorize — they now have a
+		// session, so it issues the code without asking anything twice.
+		http.Redirect(w, r, safeRedirect(r), 302)
 		return
 	}
+}
+
+// safeRedirect is where to send someone after they sign in or sign up.
+//
+// Same-site only: a path starting with a single slash. Anything else — an
+// absolute URL, or "//evil.example" which a browser reads as one — falls back
+// to /home. An open redirect on a login page is a phishing primitive, and this
+// one is reachable from a link an OAuth client hands to a user.
+func safeRedirect(r *http.Request) string {
+	to := r.URL.Query().Get("redirect")
+	if to == "" || to[0] != '/' || strings.HasPrefix(to, "//") {
+		return "/home"
+	}
+	return to
 }
 
 func Account(w http.ResponseWriter, r *http.Request) {

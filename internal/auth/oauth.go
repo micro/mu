@@ -6,9 +6,10 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"fmt"
+	"html"
 	"mu/internal/origin"
 	"net/http"
+	"net/url"
 	"sync"
 	"time"
 
@@ -247,6 +248,66 @@ func OAuthRegisterHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // OAuthAuthorizeHandler handles GET /oauth/authorize — shows login form or redirects.
+// authorizePage is the sign-in screen a client sends someone to.
+//
+// It carries a way to create an account, which it did not. A client following
+// the MCP authorization spec — Claude Desktop's custom connectors are the
+// common case — registers itself, opens a browser, and lands the user here.
+// Someone arriving for the first time met a username and password field, no
+// signup link, and no way forward: the flow could authenticate an account but
+// could not enrol one, so a new user's only route in was to guess that the app
+// existed and go and sign up somewhere else first.
+//
+// The signup link carries the whole authorize request back as a redirect, so
+// after creating an account they land here again, now with a session, and
+// OAuthAuthorizeHandler issues the code without asking anything twice.
+//
+// Rendered for both GET and the failed POST so the two cannot drift; errMsg is
+// empty on the first showing.
+func authorizePage(clientID, redirectURI, state, codeChallenge, codeChallengeMethod, username, errMsg string) string {
+	back := "/oauth/authorize?" + url.Values{
+		"client_id":             {clientID},
+		"redirect_uri":          {redirectURI},
+		"state":                 {state},
+		"code_challenge":        {codeChallenge},
+		"code_challenge_method": {codeChallengeMethod},
+	}.Encode()
+
+	errHTML := ""
+	if errMsg != "" {
+		errHTML = `<p class="error">` + html.EscapeString(errMsg) + `</p>`
+	}
+
+	e := html.EscapeString
+	return `<!DOCTYPE html>
+<html><head><title>Authorize</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body{font-family:'Nunito Sans',sans-serif;max-width:400px;margin:50px auto;padding:0 20px}
+h2{margin-bottom:4px}
+p{color:#666;font-size:14px}
+input{width:100%;padding:10px;margin:6px 0;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box;font-family:inherit}
+button{width:100%;padding:10px;background:#000;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer;font-family:inherit;margin-top:8px}
+.error{color:#c00;font-size:13px}
+.alt{margin-top:14px;font-size:13px;text-align:center}
+.alt a{color:#111}
+</style></head><body>
+<h2>Authorize</h2>
+<p>Sign in to grant access to your account.</p>` + errHTML + `
+<form method="POST" action="/oauth/authorize">
+<input type="hidden" name="client_id" value="` + e(clientID) + `">
+<input type="hidden" name="redirect_uri" value="` + e(redirectURI) + `">
+<input type="hidden" name="state" value="` + e(state) + `">
+<input type="hidden" name="code_challenge" value="` + e(codeChallenge) + `">
+<input type="hidden" name="code_challenge_method" value="` + e(codeChallengeMethod) + `">
+<input type="text" name="username" placeholder="Username" value="` + e(username) + `" required autofocus>
+<input type="password" name="password" placeholder="Password" required>
+<button type="submit">Sign In &amp; Authorize</button>
+</form>
+<p class="alt">No account? <a href="/signup?redirect=` + e(url.QueryEscape(back)) + `">Create one</a>.</p>
+</body></html>`
+}
+
 func OAuthAuthorizeHandler(w http.ResponseWriter, r *http.Request) {
 	clientID := r.URL.Query().Get("client_id")
 	redirectURI := r.URL.Query().Get("redirect_uri")
@@ -274,31 +335,7 @@ func OAuthAuthorizeHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Show login form
 	w.Header().Set("Content-Type", "text/html")
-	fmt.Fprintf(w, `<!DOCTYPE html>
-<html><head><title>Authorize</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>
-body{font-family:'Nunito Sans',sans-serif;max-width:400px;margin:50px auto;padding:0 20px}
-h2{margin-bottom:4px}
-p{color:#666;font-size:14px}
-input{width:100%%;padding:10px;margin:6px 0;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box;font-family:inherit}
-button{width:100%%;padding:10px;background:#000;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer;font-family:inherit;margin-top:8px}
-.error{color:#c00;font-size:13px}
-</style></head><body>
-<h2>Authorize</h2>
-<p>Sign in to grant access to your account.</p>
-<form method="POST" action="/oauth/authorize">
-<input type="hidden" name="client_id" value="%s">
-<input type="hidden" name="redirect_uri" value="%s">
-<input type="hidden" name="state" value="%s">
-<input type="hidden" name="code_challenge" value="%s">
-<input type="hidden" name="code_challenge_method" value="%s">
-<input type="text" name="username" placeholder="Username" required autofocus>
-<input type="password" name="password" placeholder="Password" required>
-<button type="submit">Sign In & Authorize</button>
-</form>
-</body></html>`,
-		clientID, redirectURI, state, codeChallenge, codeChallengeMethod)
+	w.Write([]byte(authorizePage(clientID, redirectURI, state, codeChallenge, codeChallengeMethod, "", "")))
 }
 
 // OAuthAuthorizePostHandler handles POST /oauth/authorize — validates credentials and redirects.
@@ -321,29 +358,8 @@ func OAuthAuthorizePostHandler(w http.ResponseWriter, r *http.Request) {
 	_, err := Login(username, password)
 	if err != nil {
 		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprintf(w, `<!DOCTYPE html>
-<html><head><title>Authorize</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>
-body{font-family:'Nunito Sans',sans-serif;max-width:400px;margin:50px auto;padding:0 20px}
-input{width:100%%;padding:10px;margin:6px 0;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box;font-family:inherit}
-button{width:100%%;padding:10px;background:#000;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer;font-family:inherit;margin-top:8px}
-.error{color:#c00;font-size:13px}
-</style></head><body>
-<h2>Authorize</h2>
-<p class="error">Invalid username or password.</p>
-<form method="POST" action="/oauth/authorize">
-<input type="hidden" name="client_id" value="%s">
-<input type="hidden" name="redirect_uri" value="%s">
-<input type="hidden" name="state" value="%s">
-<input type="hidden" name="code_challenge" value="%s">
-<input type="hidden" name="code_challenge_method" value="%s">
-<input type="text" name="username" placeholder="Username" value="%s" required autofocus>
-<input type="password" name="password" placeholder="Password" required>
-<button type="submit">Sign In & Authorize</button>
-</form>
-</body></html>`,
-			clientID, redirectURI, state, codeChallenge, codeChallengeMethod, username)
+		w.Write([]byte(authorizePage(clientID, redirectURI, state, codeChallenge, codeChallengeMethod,
+			username, "Invalid username or password.")))
 		return
 	}
 
