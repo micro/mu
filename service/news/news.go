@@ -1706,7 +1706,7 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 	`, imageSection, postedAt.Unix(), app.TimeAgo(postedAt), getDomain(articleURL), categoryBadge, descriptionSection, summarySection, socialContextHTML, articleURL, articleID)
 
 	// Use title for browser tab, but empty page title since article already has its own H1
-	pageHTML := app.RenderHTML(title, title, articleHtml)
+	pageHTML := app.RenderHTMLForRequest(title, title, articleHtml, r)
 	w.Write([]byte(pageHTML))
 }
 

@@ -44,6 +44,13 @@ var videos = map[string]Channel{}
 var latestHtml string
 
 // saved videos
+// videosHtml is the video page's body, not a whole page.
+//
+// It used to be the whole page, chrome included, rendered once at startup with
+// no request and therefore no account — so every visitor got a signed-out
+// sidebar and no credit balance no matter who they were. The body is the part
+// that is expensive and shared; the chrome is cheap and personal, so it is
+// built per request in Handler.
 var videosHtml string
 
 // Channel is a channel's videos. Html is rendered from Videos and is never
@@ -324,7 +331,12 @@ func Load() {
 		latestHtml = ProxyThumbnails(string(b))
 
 		b, _ = data.LoadFile("videos.html")
-		videosHtml = ProxyThumbnails(string(b))
+		// Builds before the body/chrome split saved a whole page here. Nesting
+		// that inside a fresh page would render two navs, so drop it and let
+		// the next refresh write a body.
+		if saved := string(b); !strings.Contains(saved, "<html") {
+			videosHtml = ProxyThumbnails(saved)
+		}
 		app.Log("video", "No cached JSON, loaded HTML files")
 	}
 
@@ -470,7 +482,7 @@ func regenerateHTML() {
 	// videos.json stores each item's rendered HTML, so markup written before
 	// the thumbnails moved to Mu's origin survives a restart. Rewrite it on the
 	// way out rather than waiting an hour for every channel to refetch.
-	videosHtml = ProxyThumbnails(app.RenderHTML("Video", "Search for videos", fmt.Sprintf(Template, head, body.String())))
+	videosHtml = ProxyThumbnails(fmt.Sprintf(Template, head, body.String()))
 	latestHtml = ProxyThumbnails(latestHtml)
 
 	// Publish the rebuilt card snapshot (nil-safe before Load wires cardSnap).
@@ -556,7 +568,7 @@ func loadVideos() {
 		body.WriteString(`</div>`)
 	}
 
-	vidHtml := app.RenderHTML("Video", "Search for videos", fmt.Sprintf(Template, head, body.String()))
+	vidHtml := fmt.Sprintf(Template, head, body.String())
 	b, _ := json.Marshal(vids)
 	vidJson := string(b)
 
@@ -914,7 +926,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			html := app.RenderHTML("Video", query+" | Results", fmt.Sprintf(Results, htmlpkg.EscapeString(query), head, results))
+			html := app.RenderHTMLForRequest("Video", query+" | Results", fmt.Sprintf(Results, htmlpkg.EscapeString(query), head, results), r)
 			w.Write([]byte(html))
 			return
 		}
@@ -1011,7 +1023,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		head = ""
 
-		html := app.RenderHTML("Video", query+" | Results", fmt.Sprintf(Results, htmlpkg.EscapeString(query), head, results))
+		html := app.RenderHTMLForRequest("Video", query+" | Results", fmt.Sprintf(Results, htmlpkg.EscapeString(query), head, results), r)
 		w.Write([]byte(html))
 		return
 	}
@@ -1077,7 +1089,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		content := fmt.Sprintf(PlaylistView, head, playlistDesc+resultsSB.String())
-		html := app.RenderHTML("Video", playlistTitle, content)
+		html := app.RenderHTMLForRequest("Video", playlistTitle, content, r)
 		w.Write([]byte(html))
 		return
 	}
@@ -1146,7 +1158,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		content := fmt.Sprintf(ChannelView, head, channelInfo, resultsSB.String())
-		html := app.RenderHTML("Video", channelTitle, content)
+		html := app.RenderHTMLForRequest("Video", channelTitle, content, r)
 		w.Write([]byte(html))
 		return
 	}
@@ -1242,5 +1254,5 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Write([]byte(currentHtml))
+	w.Write([]byte(app.RenderHTMLForRequest("Video", "Search for videos", currentHtml, r)))
 }

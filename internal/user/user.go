@@ -813,7 +813,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 </div>`, acc.ID, verifiedBadge, acc.Created.Format("January 2006"), statusSection, statusEditForm, messageLink, appsSection, postCount, userPosts)
 
 	// Use name as page title
-	html := app.RenderHTML(acc.Name, fmt.Sprintf("Profile of %s", acc.Name), content)
+	html := app.RenderHTMLForRequest(acc.Name, fmt.Sprintf("Profile of %s", acc.Name), content, r)
 	w.Write([]byte(html))
 }
 

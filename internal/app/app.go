@@ -1136,7 +1136,10 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		adminLinks,
 	)
 
-	html := RenderHTML("Account", "Account", content)
+	// RenderHTMLForRequest, not RenderHTML: the latter hard-codes a nil account,
+	// so every part of the chrome that depends on knowing who is signed in went
+	// missing on the one page you reach by being signed in.
+	html := RenderHTMLForRequest("Account", "Account", content, r)
 	w.Write([]byte(html))
 }
 
@@ -1236,7 +1239,7 @@ func Verify(w http.ResponseWriter, r *http.Request) {
 <p>Thanks, <strong>%s</strong>. Your email is verified and you can now post.</p>
 <p><a href="/home" class="btn">Go home</a> &nbsp; <a href="/account">Account →</a></p>
 </div>`, htmlpkg.EscapeString(acc.Name))
-	html := RenderHTML("Verified", "Email verified", body)
+	html := RenderHTMLForRequest("Verified", "Email verified", body, r)
 	w.Write([]byte(html))
 }
 

@@ -72,7 +72,7 @@ func InviteHandler(w http.ResponseWriter, r *http.Request) {
 %s
 <p><a href="/admin/invite">Back to invites →</a></p>
 </div>`, email, link, link, emailedMsg)
-		w.Write([]byte(app.RenderHTML("Invite Sent", "Invite sent", content)))
+		w.Write([]byte(app.RenderHTMLForRequest("Invite Sent", "Invite sent", content, r)))
 		return
 	}
 
@@ -126,7 +126,7 @@ func InviteHandler(w http.ResponseWriter, r *http.Request) {
 </form>
 </div>`)
 
-	w.Write([]byte(app.RenderHTML("Invites", "Invite requests and send invites", sb.String())))
+	w.Write([]byte(app.RenderHTMLForRequest("Invites", "Invite requests and send invites", sb.String(), r)))
 }
 
 // ConsoleHandler provides an admin console.
