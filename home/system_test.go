@@ -1,6 +1,7 @@
 package home
 
 import (
+	"html"
 	"os"
 	"strings"
 	"testing"
@@ -86,5 +87,32 @@ func TestRunningWorkIsCalledOut(t *testing.T) {
 
 	if got := systemStrip(acc); !strings.Contains(got, "1 working") {
 		t.Errorf("a task with the agent was not called out:\n%s", got)
+	}
+}
+
+// The chips carry their question in a data attribute, never in an onclick.
+//
+// They used to be `onclick="…muChatAsk(" + JSString(s) + ")"`, and JSString
+// returns a JSON string — double-quoted. Inside a double-quoted attribute the
+// attribute ended at that quote, so the browser got the handler
+// `window.muChatAsk&&window.muChatAsk(` and threw "Unexpected end of input".
+// Every chip was dead, and the `&&` guard made a broken handler look
+// indistinguishable from a missing one.
+func TestChipsDoNotPutCodeInAnAttribute(t *testing.T) {
+	for _, q := range []string{`What's happening?`, `Today's news`, `He said "hi"`, `a & b`} {
+		markup := chipMarkup(q)
+
+		if strings.Contains(markup, "onclick") {
+			t.Errorf("a chip put code in an attribute: %s", markup)
+		}
+		// The attribute must survive the quotes in the question.
+		if strings.Count(markup, `data-ask="`) != 1 {
+			t.Errorf("the question broke its own attribute: %s", markup)
+		}
+		attr := markup[strings.Index(markup, `data-ask="`)+len(`data-ask="`):]
+		attr = attr[:strings.Index(attr, `"`)]
+		if html.UnescapeString(attr) != q {
+			t.Errorf("the question did not survive escaping: %q -> %q", q, html.UnescapeString(attr))
+		}
 	}
 }

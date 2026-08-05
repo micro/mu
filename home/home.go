@@ -478,9 +478,41 @@ function fetchW(la,lo){
 		}
 		suggestions = append(suggestions, "Today's news", "What's happening?")
 
+		// The question is carried in a data attribute and read by a listener,
+		// not written into an onclick.
+		//
+		// It was `onclick="…muChatAsk(` + JSString(s) + `)"`, and JSString
+		// returns a JSON string — double-quoted. Dropped into a double-quoted
+		// attribute, the attribute ended at that first quote, so the browser
+		// received the handler `window.muChatAsk&&window.muChatAsk(` and threw
+		// "Unexpected end of input". Every chip was dead, silently, because the
+		// `&&` guard made a broken handler look like a missing one.
+		//
+		// Escaping the literal would have fixed it. Not putting code in an
+		// attribute fixes the whole category, and survives a stricter CSP.
 		var chips string
 		for _, s := range suggestions {
-			chips += fmt.Sprintf(`<button type="button" class="console-suggest" onclick="window.muChatAsk&&window.muChatAsk(%s)" style="padding:6px 12px;border:1px solid #e0e0e0;border-radius:6px;background:#fff;font-size:13px;color:#555;cursor:pointer;white-space:nowrap;font-family:inherit">%s</button>`, app.JSString(s), htmlEsc(s))
+			chips += chipMarkup(s)
+		}
+		if chips != "" {
+			chips += `<script>
+(function(){
+  document.querySelectorAll('.console-suggest[data-ask]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var q = btn.getAttribute('data-ask');
+      if (window.muChatAsk) { window.muChatAsk(q); return; }
+      // The chat component has not finished wiring itself up yet; wait for it
+      // rather than dropping the click on the floor.
+      var tries = 0;
+      var again = function(){
+        if (window.muChatAsk) { window.muChatAsk(q); return; }
+        if (++tries < 40) setTimeout(again, 50);
+      };
+      again();
+    });
+  });
+})();
+</script>`
 		}
 
 		b.WriteString(`<div id="home-agent" style="margin:0 0 20px">`)
@@ -862,3 +894,13 @@ const statusCardScript = `<script>
   });
 })();
 </script>`
+
+// chipMarkup renders one starter chip. The question rides in a data attribute,
+// escaped once — see the comment where these are built for what putting it in
+// an onclick cost.
+func chipMarkup(q string) string {
+	return fmt.Sprintf(`<button type="button" class="console-suggest" data-ask="%s" `+
+		`style="padding:6px 12px;border:1px solid #e0e0e0;border-radius:6px;background:#fff;`+
+		`font-size:13px;color:#555;cursor:pointer;white-space:nowrap;font-family:inherit">%s</button>`,
+		htmlEsc(q), htmlEsc(q))
+}
