@@ -32,6 +32,7 @@ var Spec = service.Spec{
 	Description: "Public threads, replies and status",
 	Page:        "/social",
 	Icon:        "social.svg",
+	Card:        CardHTML,
 	Endpoints: map[string]service.Endpoint{
 		"List": {Doc: "Read the latest social posts from the network"},
 	},

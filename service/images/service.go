@@ -42,6 +42,7 @@ var Spec = service.Spec{
 	Page:        "/images",
 	Scoped:      true,
 	Icon:        "images.svg",
+	Card:        CardHTML,
 	Endpoints: map[string]service.Endpoint{
 		"Generate": {Doc: "Generate an image from a text prompt and return its URL", Cost: wallet.OpImageGenerate},
 	},

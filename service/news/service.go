@@ -74,6 +74,7 @@ var Spec = service.Spec{
 	Description: "Headlines aggregated from RSS feeds, with search and full articles",
 	Page:        "/news",
 	Icon:        "news.png",
+	Card:        Headlines,
 	Endpoints: map[string]service.Endpoint{
 		"List":   {Doc: "Read recent news headlines with short summaries, balanced across topics"},
 		"Read":   {Doc: "Read one news article in full by its id or URL"},

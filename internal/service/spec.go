@@ -71,6 +71,20 @@ type Spec struct {
 	// Endpoints describes each method, keyed by method name. Every exported
 	// RPC method must appear; TestEveryEndpointIsDescribed enforces it.
 	Endpoints map[string]Endpoint
+	// Card renders this service at a glance: the markets table, today's
+	// headlines, the forecast. Nil means the service has nothing to show.
+	//
+	// These renderers already existed and were reachable from exactly one
+	// place — the home screen, through a map of names kept by hand beside the
+	// services it named. Declared here they are derivable, which is what lets
+	// anything else use them: a page, an app, an agent answering "what are
+	// markets doing" with the card instead of a paragraph.
+	//
+	// A card is a view, not a widget. It renders and it links; it does not
+	// hold state or take input. Anything that does belongs in an app, which
+	// already has a sandbox and a security boundary — there is no reason for a
+	// second one.
+	Card func() string
 }
 
 // Endpoint is one method of a service.
@@ -115,6 +129,28 @@ func (s Spec) NavIcon() string {
 
 // Headless reports whether the service has no page of its own.
 func (s Spec) Headless() bool { return s.Page == "" }
+
+// Cards returns the services that can render themselves at a glance, ordered
+// by label.
+func Cards() []Spec {
+	out := make([]Spec, 0, 8)
+	for _, s := range Specs() {
+		if s.Card != nil {
+			out = append(out, s)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].NavLabel() < out[j].NavLabel() })
+	return out
+}
+
+// CardFor renders one service's card, or "" if it has none.
+func CardFor(name string) string {
+	s, ok := SpecFor(name)
+	if !ok || s.Card == nil {
+		return ""
+	}
+	return s.Card()
+}
 
 // Pinned returns the services kept in the sidebar, ordered by label. A pinned
 // service must have a page — there is nowhere for a headless one to go.

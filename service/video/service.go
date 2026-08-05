@@ -32,6 +32,7 @@ var Spec = service.Spec{
 	Description: "Video from curated channels, without ads or recommendations",
 	Page:        "/video",
 	Icon:        "video.png",
+	Card:        Latest,
 	Endpoints: map[string]service.Endpoint{
 		"List": {Doc: "Read the latest videos from curated channels"},
 	},

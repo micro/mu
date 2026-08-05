@@ -34,6 +34,7 @@ var Spec = service.Spec{
 	Description: "Live crypto, stock, futures, commodity and currency prices",
 	Page:        "/markets",
 	Icon:        "markets.svg",
+	Card:        MarketsHTML,
 	Endpoints: map[string]service.Endpoint{
 		"List": {Doc: "Get live prices for cryptocurrencies, stocks, futures, commodities and currencies"},
 	},

@@ -15,16 +15,11 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/event"
+	"mu/internal/service"
 	"mu/service/apps"
-	"mu/service/blog"
-	"mu/service/images"
 	"mu/service/mail"
 	"mu/service/markets"
 	"mu/service/news"
-	"mu/service/prayer"
-	"mu/service/social"
-	"mu/service/video"
-	"mu/service/weather"
 )
 
 //go:embed cards.json
@@ -117,20 +112,22 @@ func Load() {
 		return
 	}
 
-	// Map of card types to their content functions
-	cardFunctions := map[string]func() string{
-		"agent":   AgentCard,
-		"blog":    blog.Preview,
-		"chat":    ChatCard,
-		"news":    newsCard,
-		"markets": markets.MarketsHTML,
-		"prayer":  prayer.ReminderHTML,
-		"video":   video.Latest,
-		"apps":    apps.Preview,
-		"social":  social.CardHTML,
-		"weather": weather.CardHTML,
-		"images":  images.CardHTML,
+	// Card renderers, derived from the Specs that declare them.
+	//
+	// This was a map of names kept by hand next to the services it named, so a
+	// service could grow a card and never appear here, and a renamed one would
+	// silently render nothing. Agent, Chat and News stay written out: they are
+	// this package's own cards, not a service's view of itself.
+	cardFunctions := map[string]func() string{}
+	for _, sp := range service.Cards() {
+		cardFunctions[sp.Name] = sp.Card
 	}
+	// Set after the derived ones so they win. Agent and Chat are this package's
+	// own cards, and news has two renderers — the service's headline list, and
+	// this one, built for the home screen.
+	cardFunctions["agent"] = AgentCard
+	cardFunctions["chat"] = ChatCard
+	cardFunctions["news"] = newsCard
 
 	// Build Cards array from config
 	Cards = []Card{}

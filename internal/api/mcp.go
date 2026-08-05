@@ -150,7 +150,7 @@ type Tool struct {
 	Name        string      `json:"name"`
 	Aliases     []string    `json:"-"` // legacy names that still resolve to this tool (not shown in listings)
 	Description string      `json:"description"`
-	Title       string      `json:"title,omitempty"` // display title for the visual card
+	Title       string      `json:"title,omitempty"` // display title, if a caller sets one
 	Icon        string      `json:"icon,omitempty"`
 	Method      string      `json:"method,omitempty"`
 	Path        string      `json:"path,omitempty"`
@@ -169,7 +169,6 @@ type Tool struct {
 	RESTOnly   bool                                         `json:"-"`
 	Handle     func(map[string]any) (string, error)         `json:"-"` // Optional direct handler (bypasses HTTP dispatch)
 	HandleAuth func(map[string]any, string) (string, error) `json:"-"` // Like Handle but receives the account ID
-	Card       func() string                                `json:"-"` // Optional visual card body, rendered from live data
 }
 
 // QuotaCheck is called before executing a metered tool.

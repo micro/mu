@@ -36,6 +36,7 @@ var Spec = service.Spec{
 	Description: "Forecast, conditions and pollen",
 	Page:        "/weather",
 	Icon:        "weather.svg",
+	Card:        CardHTML,
 	Endpoints: map[string]service.Endpoint{
 		"Forecast": {Doc: "Get the weather forecast for a location — current conditions and the days ahead", Cost: wallet.OpWeatherForecast},
 	},

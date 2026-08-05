@@ -134,9 +134,8 @@ func splitTool(name string) (svc, verb string) {
 //
 // It is built from the verb and the service's own nav label, so a tool says the
 // same word a person sees in the sidebar and there is no second name to
-// maintain. Tool.Title is deliberately not consulted: that field is the card
-// heading SetCard writes, a noun for a dashboard panel ("News"), where this
-// wants the verb phrase that names an action.
+// maintain. Tool.Title is deliberately not consulted: it is a caller-supplied
+// noun where this wants the verb phrase that names an action.
 func toolTitle(t Tool, svc, verb string) string {
 	if svc == "" {
 		// Bare names (agent, hadith) title from themselves; a two-part name with

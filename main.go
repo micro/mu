@@ -1411,16 +1411,10 @@ func main() {
 		},
 	})
 
-	// Attach visual cards to the tools that have a dashboard-style renderer, so
-	// an agent answer (and the daily brief) can carry both text and the same
-	// card the home screen shows. Cards render from each service's live data;
-	// wiring them here keeps internal/api free of service imports.
-	api.SetCard("markets_list", "Markets", markets.MarketsHTML)
-	api.SetCard("news_list", "News", news.Headlines)
-	api.SetCard("social_list", "Social", social.CardHTML)
-	api.SetCard("video_list", "Videos", video.Latest)
-	api.SetCard("blog_list", "Blog", blog.Preview)
-	api.SetCard("prayer", "Prayer", prayer.ReminderHTML)
+	// Cards used to be attached here, tool by tool, in six lines that had to be
+	// kept in step with the tool names they referenced. They are declared on
+	// each service's Spec now and derived wherever one is wanted — see
+	// internal/api/card.go.
 
 	// Register apps MCP tools
 	api.RegisterTool(api.Tool{
@@ -1673,6 +1667,7 @@ func main() {
 	authenticated := map[string]bool{
 		"/tools":                 false, // Public — the catalogue, agent lens
 		"/services":              false, // Public — the catalogue, person lens
+		"/card/":                 false, // Public — a service rendered at a glance
 		"/usage":                 true,  // Your own calls and spend
 		"/video":                 false, // Public viewing, auth for interactive features
 		"/video/thumb":           false, // Public — thumbnails for the public feed
@@ -2065,6 +2060,9 @@ func main() {
 	// One catalogue, two lenses — see internal/api/tools_page.go.
 	http.HandleFunc("/tools", api.ToolsPageHandler)
 	http.HandleFunc("/services", api.ToolsPageHandler)
+	// A service rendered at a glance — see internal/api/card.go.
+	http.HandleFunc("/card", api.CardHandler)
+	http.HandleFunc("/card/", api.CardHandler)
 	// Your own usage — the caller-facing half of /admin/traffic.
 	http.HandleFunc("/usage", home.UsageHandler)
 	http.HandleFunc("/mcp", api.MCPHandler)
