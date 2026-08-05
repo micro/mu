@@ -344,7 +344,6 @@ var Template = `
     <div id="container">
       <div id="nav-container">
         <div id="nav">
-          %s
           <a href="/home"><img src="/home.png?` + Version + `"><span class="label">Home</span></a>
           <a href="/agent"><img src="/agent.svg?` + Version + `"><span class="label">Agent</span></a>
 <!--mu:nav-->
@@ -1551,7 +1550,7 @@ func RenderHTMLWithLangAndAuth(title, desc, html, lang string, acc *auth.Account
 		lang = "en"
 	}
 	title, desc = escapeMeta(title), escapeMeta(desc)
-	return withNav(fmt.Sprintf(Template, lang, title, desc, "", headBalance(acc), navBalance(acc), navAuthHTML(acc), title, html))
+	return withNav(fmt.Sprintf(Template, lang, title, desc, "", headBalance(acc), navAuthHTML(acc), title, html))
 }
 
 // escapeMeta escapes a page title or description. Handlers pass these through
@@ -1574,7 +1573,7 @@ func RenderHTMLWithLangAndBody(title, desc, html, lang, bodyAttr string, acc *au
 	if banner := creditsBannerFor(acc, ""); banner != "" {
 		html = banner + html
 	}
-	return withNav(fmt.Sprintf(Template, lang, title, desc, bodyAttr, headBalance(acc), navBalance(acc), navAuthHTML(acc), title, html))
+	return withNav(fmt.Sprintf(Template, lang, title, desc, bodyAttr, headBalance(acc), navAuthHTML(acc), title, html))
 }
 
 // RenderString renders a markdown string as html
@@ -1586,7 +1585,7 @@ func RenderString(v string) string {
 func RenderTemplate(title string, desc, text string) string {
 	body := RenderString(text)
 	title, desc = escapeMeta(title), escapeMeta(desc)
-	return withNav(fmt.Sprintf(Template, "en", title, desc, "", headBalance(nil), navBalance(nil), navAuthHTML(nil), title, body))
+	return withNav(fmt.Sprintf(Template, "en", title, desc, "", headBalance(nil), navAuthHTML(nil), title, body))
 }
 
 func ServeHTML(html string) http.Handler {

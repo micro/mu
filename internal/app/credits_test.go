@@ -59,7 +59,7 @@ func TestAnInstanceThatDoesNotChargeNeverAsks(t *testing.T) {
 	if got := creditsBannerFor(&auth.Account{ID: "selfhost"}, "/home"); got != "" {
 		t.Errorf("a free instance asked for a top-up: %q", got)
 	}
-	if got := navBalance(&auth.Account{ID: "selfhost"}); got != "" {
+	if got := headBalance(&auth.Account{ID: "selfhost"}); got != "" {
 		t.Errorf("a free instance showed a balance: %q", got)
 	}
 }
@@ -74,15 +74,12 @@ func TestAdminsSeeUnlimitedAndAreNeverAskedToTopUp(t *testing.T) {
 	if got := creditsBannerFor(admin, "/home"); got != "" {
 		t.Errorf("an admin was asked to top up: %q", got)
 	}
-	nav := navBalance(admin)
-	if !strings.Contains(nav, "Unlimited") {
-		t.Errorf("an admin's nav balance was %q, want Unlimited", nav)
+	head := headBalance(admin)
+	if !strings.Contains(head, "∞") {
+		t.Errorf("an admin's balance was %q, want the unlimited mark", head)
 	}
-	if strings.Contains(nav, "0 credits") || strings.Contains(nav, "empty") {
-		t.Errorf("an admin was shown an empty balance: %q", nav)
-	}
-	if head := headBalance(admin); head == "" || strings.Contains(head, "empty") {
-		t.Errorf("an admin's head balance was %q", head)
+	if strings.Contains(head, "empty") || strings.Contains(head, ">0<") {
+		t.Errorf("an admin was shown an empty balance: %q", head)
 	}
 }
 
@@ -109,7 +106,7 @@ func TestSignedOutSeesNothing(t *testing.T) {
 	if got := creditsBannerFor(nil, "/home"); got != "" {
 		t.Errorf("a signed-out visitor was shown %q", got)
 	}
-	if got := navBalance(nil); got != "" {
+	if got := headBalance(nil); got != "" {
 		t.Errorf("a signed-out visitor was shown a balance: %q", got)
 	}
 }
@@ -124,56 +121,34 @@ func TestNoWalletMeansNoCreditsUI(t *testing.T) {
 	if got := creditsBannerFor(acc, "/home"); got != "" {
 		t.Errorf("banner without a wallet: %q", got)
 	}
-	if got := navBalance(acc); got != "" {
+	if got := headBalance(acc); got != "" {
 		t.Errorf("balance without a wallet: %q", got)
 	}
 }
 
-// The number beside your name is the thing you glance at, so it has to read
-// like a number.
-func TestTheNavBalanceIsReadable(t *testing.T) {
-	withBalance(t, 1200, true)
-
-	got := navBalance(&auth.Account{ID: "funded"})
-	if !strings.Contains(got, "1,200 credits") {
-		t.Errorf("nav balance rendered as %q", got)
-	}
-	if !strings.Contains(got, `href="/wallet"`) {
-		t.Error("the nav balance is not a link to the wallet")
-	}
-}
-
-// Empty and low are coloured, because "0" in the same grey as everything else
-// is a number nobody reads.
-func TestTheNavBalanceMarksEmptyAndLow(t *testing.T) {
-	cases := []struct {
+// The top bar is the only place the balance appears, so it carries every state.
+func TestTheHeadBalanceShowsEveryState(t *testing.T) {
+	for _, c := range []struct {
 		balance int
 		want    string
 	}{
-		{0, "nav-credits empty"},
-		{LowBalance, "nav-credits low"},
-		{LowBalance + 1, `class="nav-credits"`},
-	}
-	for _, c := range cases {
+		{0, "head-wallet empty"},
+		{LowBalance, "head-wallet low"},
+		{LowBalance + 1, `class="head-wallet"`},
+	} {
 		withBalance(t, c.balance, true)
-		if got := navBalance(&auth.Account{ID: "x"}); !strings.Contains(got, c.want) {
+		if got := headBalance(&auth.Account{ID: "x"}); !strings.Contains(got, c.want) {
 			t.Errorf("balance %d rendered %q, want %q", c.balance, got, c.want)
 		}
 	}
-}
-
-// The top bar is the only place the number is readable on a phone without
-// opening the sidebar, so it must carry the same states.
-func TestTheHeadBalanceMirrorsTheNav(t *testing.T) {
-	withBalance(t, 0, true)
-	got := headBalance(&auth.Account{ID: "x"})
-	if !strings.Contains(got, "head-wallet empty") || !strings.Contains(got, `href="/wallet"`) {
-		t.Errorf("empty head balance rendered %q", got)
-	}
 
 	withBalance(t, 1200, true)
-	if got := headBalance(&auth.Account{ID: "x"}); !strings.Contains(got, ">1,200<") {
+	got := headBalance(&auth.Account{ID: "x"})
+	if !strings.Contains(got, ">1,200<") {
 		t.Errorf("head balance rendered %q", got)
+	}
+	if !strings.Contains(got, `href="/wallet"`) {
+		t.Error("the balance is not a link to the wallet")
 	}
 
 	// Same suppressions as everywhere else.

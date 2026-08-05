@@ -456,24 +456,6 @@ td {
 /* Credit balance, pinned above the account links so the number is in view on
    every page. Empty and low are coloured because "0 credits" in the same grey
    as everything else is a number nobody reads. */
-#nav-credits .label {
-  font-variant-numeric: tabular-nums;
-}
-#nav-credits.low .label {
-  color: #a86400;
-}
-#nav-credits.empty .label {
-  color: #b3261e;
-  font-weight: var(--font-weight-medium);
-}
-/* Separated from the pages below it: it is a status line, not a destination
-   like Home or News, and reading as one more nav item made it disappear. */
-#nav > #nav-credits {
-  border-bottom: 1px solid var(--divider, #f0f0f0);
-  margin-bottom: 6px;
-  padding-bottom: 8px;
-}
-
 /* Top-up prompt. Same shape as .verify-banner — one row on a desktop, wrapping
    to stacked lines on a phone, with the action last. */
 .credits-banner {
@@ -578,11 +560,12 @@ td {
 }
 #head-tools:hover { color: #111; }
 
-/* Credit balance in the top bar. Hidden on desktop, where the sidebar is always
-   open and already shows it; on a phone the sidebar is behind a tap and this is
-   the only place the number is readable at a glance. */
+/* Credit balance in the top bar, beside Tools. The only place it appears: it
+   was in the sidebar too for a moment, and the same number twice on one screen
+   reads as a mistake. The top bar is fixed, always visible, and the same on
+   every viewport. */
 #head-wallet {
-  display: none;
+  display: flex;
   align-items: center;
   text-decoration: none;
   color: #555;
@@ -2369,10 +2352,6 @@ a.highlight {
 
   #head-mail.has-mail {
     display: block;
-  }
-
-  #head-wallet {
-    display: flex;
   }
   
   #brand a {

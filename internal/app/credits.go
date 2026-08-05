@@ -91,30 +91,13 @@ func creditsFor(acc *auth.Account) creditView {
 	return creditView{Show: true, Balance: balance}
 }
 
-// navBalance renders the balance at the top of the sidebar, above Home.
+// headBalance renders the balance in the top bar, beside Tools.
 //
-// It was below, with Account and Logout. On a phone the whole sidebar scrolls
-// and there are twenty-odd services above the fold, so anything pinned under
-// them is not on the screen — the number you are meant to glance at was two
-// gestures away. First in the list is the one position that needs no scrolling
-// on any viewport.
-func navBalance(acc *auth.Account) string {
-	v := creditsFor(acc)
-	if !v.Show {
-		return ""
-	}
-	label := formatCredits(v.Balance) + " credits"
-	if v.Unlimited {
-		label = "Unlimited"
-	}
-	return fmt.Sprintf(`<a id="nav-credits" class="nav-credits%s" href="/wallet">`+
-		`<img src="/wallet.png?%s"><span class="label">%s</span></a>`,
-		v.State, Version, label)
-}
-
-// headBalance renders the balance in the top bar, where it is readable without
-// opening the sidebar at all. Shown on mobile only: on a desktop the sidebar is
-// always open and the same number is already in it.
+// One place, not two. It was briefly in the sidebar as well — top bar on a
+// phone, sidebar on a desktop — and seeing the same number twice on one screen
+// reads as a mistake rather than as thoroughness. The top bar is the one spot
+// that is fixed, always visible, and identical on every viewport, so it is the
+// spot that keeps it.
 func headBalance(acc *auth.Account) string {
 	v := creditsFor(acc)
 	if !v.Show {
