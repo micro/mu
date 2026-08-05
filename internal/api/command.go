@@ -189,3 +189,10 @@ func WaitForTools(timeout time.Duration) {
 	case <-time.After(timeout):
 	}
 }
+
+// ToolCount is how many tools this instance exposes.
+//
+// The landing said "67 real tools" as a literal, which was wrong the moment
+// anyone added one — it was 72 by the time somebody counted. A number that
+// describes the registry should come from the registry.
+func ToolCount() int { return len(tools) }

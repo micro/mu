@@ -233,14 +233,23 @@ func BuildPaymentRequirements(operation, resource string) []PaymentRequirements 
 // WritePaymentRequired sends the standard x402 402 challenge: an HTTP 402 whose
 // JSON body carries the accepted payment requirements. No custom headers — the
 // body is the contract, as every x402 client expects.
+//
+// The error string used to be "X-PAYMENT header required", which is true and
+// useless. It is the first thing a developer sees when they try a metered tool
+// against the endpoint, and it named a header they have never heard of, in the
+// vocabulary of a payment rail this instance does not lead with. An x402 client
+// reads accepts and ignores this line; a person reads this line and nothing
+// else, so it should tell them what they can actually do.
 func WritePaymentRequired(w http.ResponseWriter, operation, resource string) {
 	reqs := BuildPaymentRequirements(operation, resource)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusPaymentRequired)
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"x402Version": x402Version,
-		"error":       "X-PAYMENT header required",
-		"accepts":     reqs,
+		"error": "This tool costs credits. Sign in, or send a token from /token as " +
+			"'Authorization: Bearer' — see /tools. Machine callers can pay per call " +
+			"with an X-PAYMENT header instead; see accepts.",
+		"accepts": reqs,
 	})
 }
 

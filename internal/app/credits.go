@@ -152,6 +152,12 @@ func CreditsBanner(r *http.Request) string {
 // path may be empty when the caller does not know it; it only suppresses the
 // banner on the page it would point at.
 func creditsBannerFor(acc *auth.Account, path string) string {
+	// Suppressed while there is nothing connected — ConnectBanner is showing,
+	// and "top up" is the wrong first instruction for someone who has not made
+	// a call yet.
+	if acc != nil && !connected(acc) {
+		return ""
+	}
 	v := creditsFor(acc)
 	// Unlimited cannot run out, so a top-up prompt would be a lie even though
 	// the indicator is shown.
@@ -177,5 +183,59 @@ func creditsBannerFor(acc *auth.Account, path string) string {
 <strong>` + headline + `</strong>
 <span>` + detail + `</span>
 <a href="/wallet">Top up →</a>
+</div>`
+}
+
+// ToolCountFunc reports how many tools this instance exposes. Set by main() —
+// internal/api imports this package, so this cannot import it back.
+var ToolCountFunc func() int
+
+// ConnectBanner invites someone who has not connected an agent yet to do it.
+//
+// This is the step the funnel was missing. The landing promises tools for
+// agents; you sign up; and you arrive on a home screen of news and markets
+// cards with no mention of the thing you came for. The only route onward was
+// noticing "Tools" in the sidebar.
+//
+// Worse, the one thing that did speak to a new arrival was the credits banner,
+// which says "Top up to get started" — so the first instruction anyone got
+// after signing up was pay, before they had connected anything or seen a single
+// call work. That is why this takes priority over that one: you cannot usefully
+// spend credits until something is connected.
+//
+// A missing token is the signal, because a token is the credential you can
+// paste. Someone who connected Claude Desktop over OAuth has no token and will
+// see this too — it reads as an invitation rather than a claim about them, and
+// following it tells them they are already done.
+func ConnectBanner(r *http.Request) string {
+	_, acc := auth.TrySession(r)
+	return connectBannerFor(acc, r.URL.Path)
+}
+
+// connected reports whether an account has a credential it could hand an agent.
+func connected(acc *auth.Account) bool {
+	return acc != nil && len(auth.ListTokens(acc.ID)) > 0
+}
+
+func connectBannerFor(acc *auth.Account, path string) string {
+	if acc == nil || connected(acc) {
+		return ""
+	}
+	// Not on the pages that answer it.
+	switch {
+	case strings.HasPrefix(path, "/tools"),
+		strings.HasPrefix(path, "/token"),
+		strings.HasPrefix(path, "/mcp"):
+		return ""
+	}
+
+	tools := ""
+	if ToolCountFunc != nil {
+		tools = fmt.Sprintf(" All %d of them, on one endpoint.", ToolCountFunc())
+	}
+	return `<div class="credits-banner connect-banner">
+<strong>Connect your agent.</strong>
+<span>This is the app; the tools are the other half.` + tools + `</span>
+<a href="/tools">Connect →</a>
 </div>`
 }

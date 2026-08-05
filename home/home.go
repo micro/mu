@@ -703,7 +703,10 @@ function fetchW(la,lo){
 	}
 
 	lang := app.GetUserLanguage(r)
-	html := app.RenderHTMLWithLangAndBody("Home", "The home screen", b.String(), lang, bodyClass, viewerAcc)
+	// The home screen is where someone lands after signing up, so it is the one
+	// page that must carry the invitation to connect an agent.
+	body := app.ConnectBanner(r) + b.String()
+	html := app.RenderHTMLWithLangAndBody("Home", "The home screen", body, lang, bodyClass, viewerAcc)
 	w.Write([]byte(html))
 }
 

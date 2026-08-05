@@ -479,6 +479,12 @@ td {
   gap: 10px;
   flex-wrap: wrap;
 }
+.connect-banner {
+  background: #f4f8ff;
+  border-color: #c9dcf5;
+  color: #1c3d63;
+}
+
 .credits-banner a {
   margin-left: auto;
   background: #000;
@@ -489,7 +495,13 @@ td {
   white-space: nowrap;
 }
 @media only screen and (max-width: 600px) {
-  .credits-banner a { margin-left: 0; }
+  .connect-banner {
+  background: #f4f8ff;
+  border-color: #c9dcf5;
+  color: #1c3d63;
+}
+
+.credits-banner a { margin-left: 0; }
 }
 
 #nav-mail-badge {

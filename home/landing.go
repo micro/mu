@@ -2,7 +2,9 @@ package home
 
 import (
 	"net/http"
+	"strconv"
 
+	"mu/internal/api"
 	"mu/internal/app"
 )
 
@@ -16,7 +18,9 @@ import (
 // They are one page now, and /about and /agents redirect here.
 func Landing(w http.ResponseWriter, r *http.Request) {
 	host := app.BaseURL(r)
-	body := `<p class="lead">One MCP endpoint, 67 real tools — news, web search, mail, markets,
+	// Counted, not claimed. This said "67 real tools" as a literal and the
+	// endpoint was serving 72 by the time anyone checked.
+	body := `<p class="lead">One MCP endpoint, ` + strconv.Itoa(api.ToolCount()) + ` real tools — news, web search, mail, markets,
 weather, video, storage. Connect an agent once and it has all of them, instead of wiring up
 a server for each.</p>
 
@@ -34,15 +38,19 @@ a server for each.</p>
 
 <div class="lpay" id="connecting">
   <h2>Connecting</h2>
+  <p class="lnote">Two ways in, depending on what your client reads. Both need an account —
+  the same one you sign into the app with.</p>
   <ol>
-    <li><b>Add the endpoint</b> to your MCP client: <code>` + host + `/mcp</code></li>
-    <li><b>Sign in when it asks.</b> The client is walked through sign-in on first call and keeps the
-    credential itself. Prefer a token you paste? Get one at <a href="/token">/token</a>.</li>
-    <li><b>Call anything.</b> Calls draw on your credits — most tools are included, the ones that cost
-    us money are priced on <a href="/pricing">pricing</a>.</li>
+    <li><b>Cursor, and clients with a config file.</b> Create a token at <a href="/token">/token</a>
+    and point them at <code>` + host + `/mcp</code> with an
+    <code>Authorization: Bearer</code> header.</li>
+    <li><b>Claude Desktop.</b> Settings → Connectors → Add custom connector, and paste
+    <code>` + host + `/mcp</code>. It opens a browser and asks you to sign in — no token needed.</li>
+    <li><b>Then call anything.</b> Calls draw on your credits — most tools are included, the ones
+    that cost us money are priced on <a href="/pricing">pricing</a>.</li>
   </ol>
-  <p class="lnote">No account yet? <a href="/signup">Create one →</a> It is the same account you sign
-  into the app with.</p>
+  <p class="lnote">No account yet? <a href="/signup">Create one →</a> Full setup on
+  <a href="/tools">Tools</a>.</p>
 </div>
 
 <style>

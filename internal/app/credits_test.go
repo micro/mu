@@ -3,9 +3,23 @@ package app
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"mu/internal/auth"
 )
+
+// withToken returns an account that has connected something, because the
+// credits banner stays quiet until then — "top up" is the wrong first
+// instruction for someone who has not made a call yet.
+func withToken(t *testing.T, id string) *auth.Account {
+	t.Helper()
+	acc := &auth.Account{ID: id, Name: id, Secret: "test-secret"}
+	auth.Create(acc)
+	if _, _, err := auth.CreateToken(id, "test", nil, time.Time{}); err != nil {
+		t.Fatalf("create token: %v", err)
+	}
+	return acc
+}
 
 // withBalance installs a balance hook for one test.
 func withBalance(t *testing.T, balance int, charging bool) {
@@ -20,7 +34,7 @@ func withBalance(t *testing.T, balance int, charging bool) {
 func TestAnEmptyBalanceSaysHowToStart(t *testing.T) {
 	withBalance(t, 0, true)
 
-	got := creditsBannerFor(&auth.Account{ID: "newcomer"}, "/home")
+	got := creditsBannerFor(withToken(t, "newcomer"), "/home")
 	if !strings.Contains(got, "Top up to get started") {
 		t.Errorf("an empty balance produced %q", got)
 	}
@@ -33,7 +47,7 @@ func TestAnEmptyBalanceSaysHowToStart(t *testing.T) {
 func TestALowBalanceWarnsBeforeItRunsOut(t *testing.T) {
 	withBalance(t, 5, true)
 
-	got := creditsBannerFor(&auth.Account{ID: "nearly"}, "/home")
+	got := creditsBannerFor(withToken(t, "nearly"), "/home")
 	if !strings.Contains(got, "low on credits") {
 		t.Errorf("a low balance produced %q", got)
 	}
@@ -46,7 +60,7 @@ func TestALowBalanceWarnsBeforeItRunsOut(t *testing.T) {
 func TestAHealthyBalanceShowsNoBanner(t *testing.T) {
 	withBalance(t, LowBalance+1, true)
 
-	if got := creditsBannerFor(&auth.Account{ID: "funded"}, "/home"); got != "" {
+	if got := creditsBannerFor(withToken(t, "funded"), "/home"); got != "" {
 		t.Errorf("a funded account was shown %q", got)
 	}
 }
@@ -56,7 +70,7 @@ func TestAHealthyBalanceShowsNoBanner(t *testing.T) {
 func TestAnInstanceThatDoesNotChargeNeverAsks(t *testing.T) {
 	withBalance(t, 0, false)
 
-	if got := creditsBannerFor(&auth.Account{ID: "selfhost"}, "/home"); got != "" {
+	if got := creditsBannerFor(withToken(t, "selfhost"), "/home"); got != "" {
 		t.Errorf("a free instance asked for a top-up: %q", got)
 	}
 	if got := headBalance(&auth.Account{ID: "selfhost"}); got != "" {
@@ -69,7 +83,8 @@ func TestAnInstanceThatDoesNotChargeNeverAsks(t *testing.T) {
 // ends up unable to see whether their own payment UI works at all.
 func TestAdminsSeeUnlimitedAndAreNeverAskedToTopUp(t *testing.T) {
 	withBalance(t, 0, true)
-	admin := &auth.Account{ID: "boss", Admin: true}
+	admin := withToken(t, "boss")
+	admin.Admin = true
 
 	if got := creditsBannerFor(admin, "/home"); got != "" {
 		t.Errorf("an admin was asked to top up: %q", got)
@@ -87,7 +102,7 @@ func TestAdminsSeeUnlimitedAndAreNeverAskedToTopUp(t *testing.T) {
 func TestTheBannerIsNotShownOnThePageItPointsAt(t *testing.T) {
 	withBalance(t, 0, true)
 
-	acc := &auth.Account{ID: "newcomer"}
+	acc := withToken(t, "newcomer2")
 	for _, path := range []string{"/wallet", "/wallet/add", "/wallet/transfer"} {
 		if got := creditsBannerFor(acc, path); got != "" {
 			t.Errorf("the banner appeared on %s", path)
@@ -167,5 +182,63 @@ func TestFormatCredits(t *testing.T) {
 		if got := formatCredits(in); got != want {
 			t.Errorf("formatCredits(%d) = %q, want %q", in, got, want)
 		}
+	}
+}
+
+// Connect comes before top up. The landing promises tools for agents; you sign
+// up; and the first thing the product used to say was "Top up to get started",
+// before you had connected anything or seen a call work.
+func TestConnectingComesBeforeToppingUp(t *testing.T) {
+	withBalance(t, 0, true)
+
+	fresh := &auth.Account{ID: "unconnected", Name: "unconnected", Secret: "s"}
+	auth.Create(fresh)
+
+	if got := creditsBannerFor(fresh, "/home"); got != "" {
+		t.Errorf("someone with nothing connected was asked to top up: %q", got)
+	}
+
+	// …and once something is connected, the credits banner has the floor again.
+	if got := creditsBannerFor(withToken(t, "nowconnected"), "/home"); got == "" {
+		t.Error("a connected account with no credits was told nothing")
+	}
+}
+
+// The invitation is for someone who has not connected anything, and it does not
+// appear on the pages that answer it.
+func TestConnectBannerInvitesAndThenGetsOutOfTheWay(t *testing.T) {
+	prev := ToolCountFunc
+	ToolCountFunc = func() int { return 72 }
+	t.Cleanup(func() { ToolCountFunc = prev })
+
+	fresh := &auth.Account{ID: "invitee", Name: "invitee", Secret: "s"}
+	auth.Create(fresh)
+
+	got := connectBannerFor(fresh, "/home")
+	if !strings.Contains(got, "Connect your agent") || !strings.Contains(got, `href="/tools"`) {
+		t.Errorf("no invitation on the home screen: %q", got)
+	}
+	if !strings.Contains(got, "All 72 of them") {
+		t.Errorf("the tool count is not counted: %q", got)
+	}
+
+	// Not on the pages that answer it.
+	for _, path := range []string{"/tools", "/token", "/mcp"} {
+		if b := connectBannerFor(fresh, path); b != "" {
+			t.Errorf("the invitation appeared on %s", path)
+		}
+	}
+
+	// Gone once there is a token to paste.
+	if _, _, err := auth.CreateToken(fresh.ID, "t", nil, time.Time{}); err != nil {
+		t.Fatal(err)
+	}
+	if b := connectBannerFor(fresh, "/home"); b != "" {
+		t.Errorf("still inviting after connecting: %q", b)
+	}
+
+	// And never to a signed-out visitor.
+	if b := connectBannerFor(nil, "/home"); b != "" {
+		t.Errorf("a signed-out visitor was invited: %q", b)
 	}
 }

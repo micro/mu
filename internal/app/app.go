@@ -1537,6 +1537,9 @@ func RenderHTMLForRequest(title, desc, html string, r *http.Request) string {
 	if banner := CreditsBanner(r); banner != "" {
 		html = banner + html
 	}
+	if banner := ConnectBanner(r); banner != "" {
+		html = banner + html
+	}
 	_, acc := auth.TrySession(r)
 	out := RenderHTMLWithLangAndAuth(title, desc, html, lang, acc)
 	return out

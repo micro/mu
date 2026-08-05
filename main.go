@@ -288,6 +288,7 @@ func main() {
 	wallet.Load()
 	wallet.LoadService()
 	app.LinkCodeFunc = auth.GenerateLinkCode
+	app.ToolCountFunc = api.ToolCount
 
 	// The balance beside your name and the top-up banner. A hook because
 	// wallet imports app — see internal/app/credits.go.

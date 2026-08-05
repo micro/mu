@@ -12,18 +12,29 @@ Use it live at [micro.mu](https://micro.mu), or self-host.
 
 ## Usage
 
+Two ways in, depending on what your client reads. Both need an account — the
+same one you sign into the app with.
+
+**Cursor, and clients with a config file.** Create a token at
+[/token](https://micro.mu/token) and add this to `~/.cursor/mcp.json`:
+
 ```json
 {
   "mcpServers": {
     "mu": {
-      "url": "https://micro.mu/mcp"
+      "url": "https://micro.mu/mcp",
+      "headers": {
+        "Authorization": "Bearer ${env:MU_TOKEN}"
+      }
     }
   }
 }
 ```
 
-Create a Personal Access Token at
-[/token](https://micro.mu/token) and send it as `Authorization: Bearer`.
+**Claude Desktop.** Settings → Connectors → Add custom connector, and paste
+`https://micro.mu/mcp`. It registers itself, opens a browser and asks you to
+sign in — no token needed. Pasting the URL into `claude_desktop_config.json`
+will not work: that file only takes local command-line servers.
 
 ```bash
 curl -X POST https://micro.mu/mcp -H 'Content-Type: application/json' \
