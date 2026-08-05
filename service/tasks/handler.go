@@ -150,10 +150,23 @@ func listPage(w http.ResponseWriter, r *http.Request) {
 			`or an agent connected over <a href="/mcp">MCP</a> can with <code>tasks_create</code>.</p>`)
 	}
 
+	running := 0
 	for _, t := range list {
+		if Running(t.ID) {
+			running++
+		}
 		b.WriteString(taskRow(t, csrf))
 	}
 	b.WriteString(`</div>`)
+
+	// A run takes seconds to a minute and the page was static, so the only way
+	// to find out it had finished was to reload and guess. While anything is
+	// with the agent, watch for it to land and refresh once it does — polling
+	// the list this page already serves as JSON rather than reloading on a
+	// timer, so nothing is thrown away mid-typing.
+	if running > 0 {
+		b.WriteString(taskPollJS)
+	}
 
 	b.WriteString(tasksPageCSS)
 	w.Write([]byte(app.RenderHTMLForRequest("Tasks", "What is to be done", b.String(), r)))
@@ -190,7 +203,7 @@ func taskRow(t *Task, csrf string) string {
 		meta = append(meta, "due "+html.EscapeString(t.Due.Local().Format("2 Jan 15:04")))
 	}
 	if Running(t.ID) {
-		meta = append(meta, "running now")
+		meta = append(meta, `<span class="task-running">working…</span>`)
 	}
 	fmt.Fprintf(&b, `<div class="task-meta">%s</div>`, strings.Join(meta, " · "))
 
@@ -198,8 +211,14 @@ func taskRow(t *Task, csrf string) string {
 		fmt.Fprintf(&b, `<div class="task-detail">%s</div>`, html.EscapeString(t.Detail))
 	}
 	if t.Result != "" {
-		// The agent's answer, kept where the work was asked for.
-		fmt.Fprintf(&b, `<div class="task-result">%s</div>`, html.EscapeString(t.Result))
+		// The agent's answer, kept where the work was asked for, and rendered:
+		// a model writes markdown, and a list of findings shown as raw asterisks
+		// and hashes reads as a bug in the thing that produced it.
+		//
+		// app.Render, not RenderTrusted — this text came out of a model that had
+		// just read news articles and web pages, so any HTML in it is HTML
+		// somebody else wrote.
+		fmt.Fprintf(&b, `<div class="task-result">%s</div>`, app.Render([]byte(t.Result)))
 	}
 
 	b.WriteString(`<div class="task-actions">`)
@@ -230,6 +249,25 @@ func button(b *strings.Builder, id, action, csrf, label, extra string) {
 </form>`, html.EscapeString(id), action, html.EscapeString(csrf), extra, html.EscapeString(label))
 }
 
+// taskPollJS reloads the page when the agent finishes something.
+const taskPollJS = `<script>
+(function(){
+  var tries = 0;
+  function check(){
+    if (++tries > 120) return; // ten minutes, then stop asking
+    fetch('/tasks', {headers:{'Accept':'application/json'}, credentials:'same-origin'})
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var busy = (d.tasks||[]).some(function(t){ return t.status === 'doing'; });
+        if (!busy) { location.reload(); return; }
+        setTimeout(check, 3000);
+      })
+      .catch(function(){ setTimeout(check, 5000); });
+  }
+  setTimeout(check, 3000);
+})();
+</script>`
+
 const tasksPageCSS = `<style>
 .task-add{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;align-items:center;margin:10px 0 4px}
 .task-add input[type=text],.task-add input:not([type]){min-width:0}
@@ -243,7 +281,13 @@ const tasksPageCSS = `<style>
 .task-done .task-title{text-decoration:line-through;color:var(--text-muted)}
 .task-meta{font-size:12px;color:var(--text-muted);margin-top:2px}
 .task-detail{font-size:14px;margin-top:6px;color:var(--text-secondary)}
-.task-result{font-size:14px;margin-top:8px;padding:8px 10px;background:var(--hover-background);border-radius:6px;white-space:pre-wrap}
+.task-result{font-size:14px;margin-top:8px;padding:2px 12px;background:var(--hover-background);border-radius:6px}
+.task-result > :first-child{margin-top:10px}
+.task-result > :last-child{margin-bottom:10px}
+.task-result pre{overflow-x:auto}
+.task-running{color:#a86400;font-weight:600}
+.task-running::after{content:"";animation:taskdots 1.2s steps(4,end) infinite}
+@keyframes taskdots{0%{content:""}25%{content:"."}50%{content:".."}75%{content:"..."}}
 .task-actions{margin-top:8px}
 .task-actions form{display:inline}
 @media only screen and (max-width:600px){
