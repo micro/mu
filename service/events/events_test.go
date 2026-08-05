@@ -104,3 +104,51 @@ func TestGoogleCalendarURL(t *testing.T) {
 		}
 	}
 }
+
+// Scheduling something you cannot unschedule is not safe to use for anything
+// real: a standing instruction set to run every morning could not be stopped by
+// the person paying for each run.
+func TestAnEventCanBeCancelled(t *testing.T) {
+	at := time.Now().Add(24 * time.Hour)
+	e, err := Create("canceller", "Dentist", at, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := Remove("canceller", e.ID); err != nil {
+		t.Fatalf("cancel: %v", err)
+	}
+	for _, left := range List("canceller") {
+		if left.ID == e.ID {
+			t.Error("the event survived being cancelled")
+		}
+	}
+}
+
+// One person's calendar. Nobody else cancels anything in it, and an attempt
+// cannot be used to find out whether an id exists.
+func TestOnlyTheOwnerCanCancel(t *testing.T) {
+	at := time.Now().Add(24 * time.Hour)
+	e, _ := Create("owner1", "Mine", at, "")
+
+	mine := Remove("stranger", e.ID)
+	missing := Remove("stranger", "no-such-id")
+	if mine == nil {
+		t.Fatal("a stranger cancelled somebody else's event")
+	}
+	if mine.Error() != missing.Error() {
+		t.Errorf("a stranger can tell an existing event from a missing one: %q vs %q",
+			mine, missing)
+	}
+	if len(List("owner1")) != 1 {
+		t.Error("the owner's event was removed anyway")
+	}
+}
+
+func TestCancelRefusesNonsense(t *testing.T) {
+	if Remove("", "x") == nil {
+		t.Error("a signed-out caller cancelled an event")
+	}
+	if Remove("someone", "  ") == nil {
+		t.Error("an empty id was accepted")
+	}
+}

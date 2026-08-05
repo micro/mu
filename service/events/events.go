@@ -238,3 +238,33 @@ func fireDue() {
 		}
 	}
 }
+
+// Remove cancels an event the caller owns.
+//
+// Scheduling something you cannot unschedule is not safe to use for anything
+// real: an agent could set a standing instruction to run every morning and
+// nobody — including the person paying for each run — had a way to stop it.
+// Create, Free and List were the whole surface.
+func Remove(owner, id string) error {
+	owner = strings.TrimSpace(owner)
+	id = strings.TrimSpace(id)
+	if owner == "" {
+		return fmt.Errorf("sign in to change events")
+	}
+	if id == "" {
+		return fmt.Errorf("which event?")
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	e, ok := events[id]
+	// Owner checked inside the lock and reported the same way as a missing one,
+	// so this cannot be used to find out whether an id exists.
+	if !ok || e.Owner != owner {
+		return fmt.Errorf("no such event")
+	}
+	delete(events, id)
+	saveLocked()
+	return nil
+}

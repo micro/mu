@@ -72,12 +72,18 @@ type ListResponse struct {
 // List returns the caller's upcoming (not-yet-fired) events.
 // @example {}
 func (Server) List(ctx context.Context, _ *ListRequest, rsp *ListResponse) error {
+	// The id is on every line because nothing can be cancelled without one, and
+	// this is the only place an agent learns it.
 	var b strings.Builder
 	for _, e := range Upcoming(service.AccountFrom(ctx)) {
 		fmt.Fprintf(&b, "- %s — %s", e.When.Format("Mon 2 Jan 15:04 MST"), e.Title)
 		if e.Note != "" {
 			fmt.Fprintf(&b, " (%s)", e.Note)
 		}
+		if e.Repeat != "" {
+			fmt.Fprintf(&b, " [repeats %s]", e.Repeat)
+		}
+		fmt.Fprintf(&b, " (id: %s)", e.ID)
 		b.WriteByte('\n')
 	}
 	if b.Len() == 0 {
@@ -85,6 +91,30 @@ func (Server) List(ctx context.Context, _ *ListRequest, rsp *ListResponse) error
 	} else {
 		rsp.Events = strings.TrimSpace(b.String())
 	}
+	return nil
+}
+
+// DeleteRequest cancels one event.
+type DeleteRequest struct {
+	ID string `json:"id" description:"The event's id, as given by events_list"`
+}
+
+// DeleteResponse confirms the cancellation.
+type DeleteResponse struct {
+	Status string `json:"status" description:"What happened"`
+}
+
+// Delete cancels an event the caller owns.
+//
+// Create, Free and List were the whole surface, which made scheduling a
+// one-way door: a standing instruction set to run every morning could not be
+// stopped by the person paying for each run.
+// @example {"id": "a1b2c3d4"}
+func (Server) Delete(ctx context.Context, req *DeleteRequest, rsp *DeleteResponse) error {
+	if err := Remove(service.AccountFrom(ctx), strings.TrimSpace(req.ID)); err != nil {
+		return err
+	}
+	rsp.Status = "Cancelled."
 	return nil
 }
 
@@ -174,6 +204,7 @@ var Spec = service.Spec{
 	Endpoints: map[string]service.Endpoint{
 		"Create": {Doc: "Schedule a reminder or event at a given time; optionally repeating, and optionally running a prompt through the agent when it fires"},
 		"Free":   {Doc: "Find when the caller has nothing booked — open slots of a given length, within working hours"},
-		"List":   {Doc: "List the caller's upcoming events and reminders"},
+		"List":   {Doc: "List the caller's upcoming events and reminders, each with its id"},
+		"Delete": {Doc: "Cancel an event by id", Destructive: true},
 	},
 }

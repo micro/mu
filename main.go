@@ -1246,6 +1246,26 @@ func main() {
 		return rsp.Events, nil
 	})
 
+	// events_delete — the other half of scheduling. Without it an agent could
+	// set a standing instruction to run every morning and nobody, including
+	// whoever pays for each run, had a way to stop it. The id comes from
+	// events_list, which is why that now prints one on every line.
+	api.RegisterToolWithAuth(api.Tool{
+		Name:        "events_delete",
+		Description: "Cancel a scheduled event or reminder by id. Use events_list to find the id.",
+		Params: []api.ToolParam{
+			{Name: "id", Type: "string", Description: "The event's id, as given by events_list", Required: true},
+		},
+	}, func(args map[string]any, accountID string) (string, error) {
+		id, _ := args["id"].(string)
+		var rsp events.DeleteResponse
+		if err := service.Call(service.WithAccount(context.Background(), accountID), "events", "Server.Delete",
+			&events.DeleteRequest{ID: id}, &rsp); err != nil {
+			return "", err
+		}
+		return rsp.Status, nil
+	})
+
 	// prayer_times — today's prayer times for a location. Public: no account
 	// data involved, same as weather.
 	api.RegisterTool(api.Tool{
