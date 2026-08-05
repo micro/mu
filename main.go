@@ -1616,12 +1616,18 @@ func main() {
 	api.RegisterToolWithAuth(api.Tool{
 		Name:        "wallet_balance",
 		Aliases:     []string{"wallet"},
-		Description: "Get your balance: credits (what calls are charged in), plus your Base address and USDC balance for topping up.",
+		Description: "Get your credit balance — credits are what calls are charged in.",
 	}, func(args map[string]any, accountID string) (string, error) {
 		out := map[string]any{"credits": wallet.GetBalance(accountID)}
+		// The Base address only when this instance offers crypto top-up, or
+		// when the caller already holds USDC there — the same rule the /wallet
+		// page follows, so an agent is not told about a way to pay that a
+		// person is not offered, and money already held is never hidden.
 		if bw, err := wallet.GetOrCreateWallet(accountID); err == nil {
-			usdc, _ := wallet.USDCBalance(bw.Address)
-			out["address"], out["network"], out["usdc"] = bw.Address, "base", usdc
+			usdc, raw := wallet.USDCBalance(bw.Address)
+			if wallet.CryptoTopupEnabled() || (raw != nil && raw.Sign() > 0) {
+				out["address"], out["network"], out["usdc"] = bw.Address, "base", usdc
+			}
 		}
 		b, _ := json.Marshal(out)
 		return string(b), nil

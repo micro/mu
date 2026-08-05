@@ -17,19 +17,36 @@ import (
 // balance, a tap-to-copy address and a fund QR.
 //
 // This is a way to top up credits, not a second currency to spend. Everything a
-// caller is charged is in credits; USDC held here converts into them. The card
-// stays on the signed-in page because the balance is real money a user may
-// already hold — removing the UI would strand it — but it is not offered as an
-// alternative anywhere a person is deciding how to pay.
+// caller is charged is in credits; USDC held here converts into them.
+//
+// Offered only when CryptoTopupEnabled. Paying in crypto is a thing to explain
+// before a card is, and an instance not pursuing it should not put that in
+// front of someone deciding how to pay.
+//
+// The one exception is a user who already holds USDC here. That is real money
+// at a real address, and hiding the only screen that can move it would strand
+// it — so they still get the card, worded as a way out rather than an
+// invitation in.
 func cryptoWalletCard(userID string) string {
 	bw, err := GetOrCreateWallet(userID)
 	if err != nil {
 		return ""
 	}
-	usdc, _ := USDCBalance(bw.Address)
+	usdc, raw := USDCBalance(bw.Address)
+	holding := raw != nil && raw.Sign() > 0
+	if !CryptoTopupEnabled() && !holding {
+		return ""
+	}
+
+	heading, blurb := "Top up with USDC", `Send <b>USDC on Base</b> to this address and convert it into credits.`
+	if !CryptoTopupEnabled() {
+		heading = "Your USDC balance"
+		blurb = `This instance tops up by card. You hold USDC at the address below — convert it into credits, or move it out.`
+	}
+
 	return fmt.Sprintf(`<div class="card">
-  <h3>Top up with USDC</h3>
-  <p class="text-sm text-muted">Send <b>USDC on Base</b> to this address and convert it into credits.</p>
+  <h3>`+heading+`</h3>
+  <p class="text-sm text-muted">`+blurb+`</p>
   <p style="font-size:24px;margin:6px 0 10px"><b>$%s</b> <span style="color:#999;font-size:14px">USDC</span></p>
   <button type="button" class="cw-convert" onclick="cwConvert(this)">Convert to credits →</button>
   <p class="text-sm text-muted" style="margin:6px 0 12px">Moves your USDC into your credit balance (1 USDC = 100 credits), gas-free.</p>
@@ -95,7 +112,8 @@ func WalletPage(userID string) string {
 	sb.WriteString(`<p><a href="/wallet/topup">Add Credits →</a> · <a href="/wallet/transfer">Transfer →</a></p>`)
 	sb.WriteString(`</div>`)
 
-	// USDC on Base — the other way to top up credits, alongside a card.
+	// USDC on Base. Only when this instance offers crypto top-up, or when the
+	// user already holds some — see cryptoWalletCard.
 	sb.WriteString(cryptoWalletCard(userID))
 
 	// App earnings summary

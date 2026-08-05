@@ -13,6 +13,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"mu/internal/settings"
 	"time"
 
 	"mu/internal/app"
@@ -120,6 +122,21 @@ func acceptedAssets() []x402Asset {
 
 // X402Enabled reports whether x402 payments are configured.
 func X402Enabled() bool { return x402PayTo != "" }
+
+// CryptoTopupEnabled reports whether this instance offers paying in crypto —
+// the USDC card on /wallet, and the USDC line in what wallet_balance tells an
+// agent.
+//
+// Off unless CRYPTO_TOPUP is set. Accepting x402 payments is a separate
+// question and is not affected: an instance can settle machine payments over
+// x402 while telling people to use a card, and most should. What this hides is
+// the *offer*, which is the part that has to be explained before it can be
+// used.
+//
+// Live-reloadable, so turning it on does not need a restart.
+func CryptoTopupEnabled() bool {
+	return strings.EqualFold(strings.TrimSpace(settings.Get("CRYPTO_TOPUP")), "true")
+}
 
 // x402 free trial — first N calls per wallet address are free. Tracked in
 // memory (resets on restart, which is acceptable for a trial).

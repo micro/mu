@@ -115,6 +115,7 @@ token.
 | Variable | What it does |
 |---|---|
 | `X402_PAY_TO` | Your wallet address — receives x402 payments |
+| `CRYPTO_TOPUP` | `true` to offer paying in crypto: the USDC card on /wallet and the address in `wallet_balance`. Off by default — accepting x402 payments is separate and unaffected |
 | `X402_NETWORK` · `X402_ASSETS` | Chain and accepted tokens |
 | `X402_SERVERS` | Other MCP servers this instance may pay, as `name=url` — read by the outbound client, which no tool currently exposes |
 | `CDP_API_KEY_ID` · `CDP_API_KEY_SECRET` | Coinbase facilitator credentials |
