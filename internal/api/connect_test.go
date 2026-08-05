@@ -21,11 +21,39 @@ func TestToolsPageTellsYouHowToConnect(t *testing.T) {
 		"Connect your agent",   // and says what it is
 		"mcpServers",           // a config to paste
 		"https://micro.mu/mcp", // with this instance's real URL, not a placeholder
-		`href="/token"`,        // and a fallback for clients that can't sign in
+		"Authorization",        // and the header filled in, because a token is
+		"Bearer YOUR_TOKEN",    // what an agent actually holds
+		`href="/signup"`,       // a visitor with no account starts there
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the connect step is missing %q", want)
 		}
+	}
+}
+
+// An agent has no account to sign into — somebody issues it a credential. The
+// page led with a token for that reason, and then described the OAuth
+// alternative as the client "signing itself in", which is not what happens: the
+// thing signing in is the person, in a browser the client opens.
+//
+// So if OAuth is mentioned it has to be called OAuth and it has to say what
+// occurs, and the token has to be the path with the config next to it.
+func TestConnectNamesOAuthAndLeadsWithTheToken(t *testing.T) {
+	connect := connectSection(httptest.NewRequest("GET", "/tools", nil))
+
+	if strings.Contains(connect, "sign itself in") || strings.Contains(connect, "signs itself in") {
+		t.Error("the page still says a client signs itself in; the person signs in")
+	}
+	if !strings.Contains(connect, "OAuth") {
+		t.Error("the second way in is not named")
+	}
+	if !strings.Contains(connect, "open a browser") {
+		t.Error("the OAuth line does not say what actually happens")
+	}
+	// The token is the documented path, so its header is in the config block
+	// rather than described in prose underneath it.
+	if strings.Index(connect, "Bearer YOUR_TOKEN") > strings.Index(connect, "OAuth") {
+		t.Error("OAuth is presented before the token")
 	}
 }
 

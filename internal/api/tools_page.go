@@ -127,11 +127,18 @@ func toolGrid() string {
 // agent at this instance.
 //
 // Landing, browsing the catalogue and then having nowhere to go was the gap —
-// someone convinced by "tools for agents" had no next move. Adding the endpoint
-// is that move, and there is only one of them. A client that speaks the MCP
-// authorization spec is walked through sign-in on its first call and keeps the
-// credential; a client that does not takes a token from /token. Both end up
-// sending the same header, so this shows the config once.
+// someone convinced by "tools for agents" had no next move.
+//
+// The token leads, because that is what an agent actually holds: an agent has no
+// account to sign into, somebody issues it a credential. So the config block
+// carries the header, filled in, ready to paste.
+//
+// OAuth is second and named. A client implementing the MCP authorization spec
+// gets a 401 pointing at /.well-known/oauth-protected-resource, registers
+// itself, and opens a browser for the *user* to sign in. That is a real path and
+// it still works — but it was described here as the client "signing itself in",
+// which is not what happens and read as nonsense, because the thing signing in
+// is the person. Say OAuth, name the clients that do it, say a browser opens.
 func connectSection(r *http.Request) string {
 	base := app.BaseURL(r)
 	_, acc := auth.TrySession(r)
@@ -139,7 +146,10 @@ func connectSection(r *http.Request) string {
 	cfg := `{
   "mcpServers": {
     "mu": {
-      "url": "` + base + `/mcp"
+      "url": "` + base + `/mcp",
+      "headers": {
+        "Authorization": "Bearer YOUR_TOKEN"
+      }
     }
   }
 }`
@@ -149,19 +159,24 @@ func connectSection(r *http.Request) string {
 	b.WriteString(`<span class="card-title">Connect your agent</span>`)
 
 	if acc != nil {
-		b.WriteString(`<p class="card-desc">Add the endpoint to your MCP client and every tool below is available to it. The client asks you to sign in on its first call and keeps the credential.</p>`)
-		b.WriteString(`<p><a class="connect-cta" href="/mcp">Open the playground →</a></p>`)
+		b.WriteString(`<p class="card-desc">Create a token, then add this to your MCP client. ` +
+			`Every tool below is available to it, and calls are charged to your credits.</p>`)
+		b.WriteString(`<p><a class="connect-cta" href="/token">Create a token →</a></p>`)
 	} else {
-		b.WriteString(`<p class="card-desc">Add the endpoint to your MCP client and every tool below is available to it. The client asks you to sign in on its first call and keeps the credential. Calls are charged to your credits.</p>`)
-		b.WriteString(`<p><a class="connect-cta" href="/signup">Create an account →</a> <span class="connect-note">it is the same account you sign into the app with</span></p>`)
+		b.WriteString(`<p class="card-desc">Create an account, then a token, and add this to your ` +
+			`MCP client. Every tool below is available to it, and calls are charged to your credits.</p>`)
+		b.WriteString(`<p><a class="connect-cta" href="/signup">Create an account →</a> ` +
+			`<span class="connect-note">it is the same account you sign into the app with</span></p>`)
 	}
 
 	b.WriteString(`<pre class="connect-cfg">` + html.EscapeString(cfg) + `</pre>`)
 	b.WriteString(`<p class="card-desc">Works with Claude Desktop, Cursor, or anything that speaks ` +
 		`<a href="https://modelcontextprotocol.io">MCP</a>. Try a call first in the ` +
 		`<a href="/mcp">playground</a>.</p>`)
-	b.WriteString(`<p class="card-desc connect-alt">Client can't sign itself in? Get a token at ` +
-		`<a href="/token">/token</a> and send it as <code>Authorization: Bearer</code>.</p>`)
+	b.WriteString(`<p class="card-desc connect-alt"><b>Or use OAuth.</b> Claude Desktop and Cursor ` +
+		`can take the endpoint on its own, with no <code>headers</code> block: they open a browser ` +
+		`the first time they connect and ask you to sign in to Mu. You need an account either way — ` +
+		`the token is just the version you can paste into anything.</p>`)
 	b.WriteString(scopePicker(base))
 	b.WriteString(`</div>`)
 	return b.String()
