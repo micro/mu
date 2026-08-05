@@ -1657,6 +1657,7 @@ func main() {
 
 	authenticated := map[string]bool{
 		"/tools":                 false, // Public — the tool catalogue
+		"/usage":                 true,  // Your own calls and spend
 		"/video":                 false, // Public viewing, auth for interactive features
 		"/video/thumb":           false, // Public — thumbnails for the public feed
 		"/news":                  false, // Public viewing, auth for search
@@ -2046,6 +2047,8 @@ func main() {
 
 	// serve the MCP page and server (GET = HTML page, POST = JSON-RPC)
 	http.HandleFunc("/tools", api.ToolsPageHandler)
+	// Your own usage — the caller-facing half of /admin/traffic.
+	http.HandleFunc("/usage", home.UsageHandler)
 	http.HandleFunc("/mcp", api.MCPHandler)
 
 	// serve the app

@@ -446,6 +446,14 @@ td {
   width: 20px;
 }
 
+/* Divides the operating group — you and your agent — from the services this
+   instance runs. */
+.nav-divider {
+  height: 1px;
+  background: var(--divider, #f0f0f0);
+  margin: 8px 14px;
+}
+
 #nav-username {
   font-weight: 400;
   color: #999;

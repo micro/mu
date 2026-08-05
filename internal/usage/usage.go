@@ -346,3 +346,35 @@ func Save() {
 
 	data.SaveJSON(storeKey, snapshot) //nolint:errcheck — counters are not worth failing a request over
 }
+
+// SeriesFor is one account's calls over the last n buckets, in the same shape
+// as Series so the same chart draws it.
+//
+// Only Total is filled. The breakdown maps are left nil deliberately: this
+// bucket's Names and Surfaces are the whole instance's, and copying them onto
+// one account's series would attribute everyone's calls to that account.
+//
+// Which tools *this* account called is not answerable from these counters, and
+// is not made answerable here — that needs a name-per-user key, which is the
+// cardinality explosion the package comment refuses. The wallet's ledger
+// already answers it for everything that costs money.
+func SeriesFor(account string, res Resolution, n int) []Bucket {
+	if account == "" {
+		return nil
+	}
+	out := Series(res, n)
+	for i := range out {
+		out[i].Total = out[i].Users[account]
+		out[i].Names, out[i].Users, out[i].Surfaces = nil, nil, nil
+	}
+	return out
+}
+
+// TotalForOver sums one account's calls over the last n buckets.
+func TotalForOver(account string, res Resolution, n int) int {
+	sum := 0
+	for _, b := range SeriesFor(account, res, n) {
+		sum += b.Total
+	}
+	return sum
+}

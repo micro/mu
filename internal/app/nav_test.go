@@ -74,3 +74,34 @@ func TestNavIsSubstitutedAtRenderTime(t *testing.T) {
 		t.Error("withNav left the placeholder in the page")
 	}
 }
+
+// Wallet is pinned in the top group, so it must not also be derived into the
+// service list below — the same entry twice reads as a mistake, and is what
+// happened the first time the group was added.
+type PinProbe struct{}
+
+func (PinProbe) Look(_ context.Context, _ *NavReq, _ *NavRsp) error { return nil }
+
+func TestPinnedServicesAreNotDerivedTwice(t *testing.T) {
+	// A pinned name and an ordinary one, both registered the same way, so the
+	// only difference between them is the pin.
+	for _, spec := range []service.Spec{
+		{Name: "wallet", Handler: new(PinProbe), Page: "/wallet", Icon: "wallet.png"},
+		{Name: "pinprobe", Handler: new(PinProbe), Page: "/pinprobe", Icon: "pinprobe.svg"},
+	} {
+		if _, already := service.SpecFor(spec.Name); already {
+			continue
+		}
+		if err := service.Register(spec); err != nil {
+			t.Fatalf("register %s: %v", spec.Name, err)
+		}
+	}
+
+	links := navLinks()
+	if strings.Contains(links, `href="/wallet"`) {
+		t.Error("wallet was derived into the service list as well as pinned")
+	}
+	if !strings.Contains(links, `href="/pinprobe"`) {
+		t.Error("an unpinned service went missing from the sidebar")
+	}
+}

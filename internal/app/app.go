@@ -344,8 +344,21 @@ var Template = `
     <div id="container">
       <div id="nav-container">
         <div id="nav">
+          <!-- Two groups, not one list. The first is you and your agent —
+               where you work, what it can call, what it used, what that cost.
+               The second is what this instance can do, derived from the
+               service Specs.
+
+               They were one alphabetical list, which put Wallet eighteenth of
+               nineteen between Video and Weather and left Tools and Usage out
+               of the sidebar altogether. Alphabetical is not an ordering, it
+               is the absence of one: it says every service matters equally,
+               and to someone here to connect an agent they do not. -->
           <a href="/home"><img src="/home.png?` + Version + `"><span class="label">Home</span></a>
           <a href="/agent"><img src="/agent.svg?` + Version + `"><span class="label">Agent</span></a>
+          <a href="/tools"><img src="/tools.svg?` + Version + `"><span class="label">Tools</span></a>
+          %s
+          <div class="nav-divider"></div>
 <!--mu:nav-->
         </div>
         <div class="nav-bottom">
@@ -1532,6 +1545,23 @@ func VerifyBanner(r *http.Request) string {
 </div>`
 }
 
+// navOperate renders the rest of the top group: what you used, and what you
+// have left.
+//
+// Usage needs a session to mean anything and its page redirects without one, so
+// it is only drawn for a signed-in viewer. Wallet is always drawn — a
+// signed-out visitor still needs the way to it, and mu.js rewrites this
+// anchor's href to the login redirect, which is why the id lives here now
+// rather than on the derived entry.
+func navOperate(acc *auth.Account) string {
+	out := ""
+	if acc != nil {
+		out = `<a href="/usage"><img src="/usage.svg?` + Version + `"><span class="label">Usage</span></a>
+          `
+	}
+	return out + `<a id="nav-wallet" href="/wallet"><img src="/wallet.png?` + Version + `"><span class="label">Wallet</span></a>`
+}
+
 func navAuthHTML(acc *auth.Account) string {
 	if acc == nil {
 		return `<a id="nav-login" href="/login"><img src="/account.png?` + Version + `"><span class="label">Login</span></a>`
@@ -1553,7 +1583,7 @@ func RenderHTMLWithLangAndAuth(title, desc, html, lang string, acc *auth.Account
 		lang = "en"
 	}
 	title, desc = escapeMeta(title), escapeMeta(desc)
-	return withNav(fmt.Sprintf(Template, lang, title, desc, "", headBalance(acc), navAuthHTML(acc), title, html))
+	return withNav(fmt.Sprintf(Template, lang, title, desc, "", headBalance(acc), navOperate(acc), navAuthHTML(acc), title, html))
 }
 
 // escapeMeta escapes a page title or description. Handlers pass these through
@@ -1576,7 +1606,7 @@ func RenderHTMLWithLangAndBody(title, desc, html, lang, bodyAttr string, acc *au
 	if banner := creditsBannerFor(acc, ""); banner != "" {
 		html = banner + html
 	}
-	return withNav(fmt.Sprintf(Template, lang, title, desc, bodyAttr, headBalance(acc), navAuthHTML(acc), title, html))
+	return withNav(fmt.Sprintf(Template, lang, title, desc, bodyAttr, headBalance(acc), navOperate(acc), navAuthHTML(acc), title, html))
 }
 
 // RenderString renders a markdown string as html
@@ -1588,7 +1618,7 @@ func RenderString(v string) string {
 func RenderTemplate(title string, desc, text string) string {
 	body := RenderString(text)
 	title, desc = escapeMeta(title), escapeMeta(desc)
-	return withNav(fmt.Sprintf(Template, "en", title, desc, "", headBalance(nil), navAuthHTML(nil), title, body))
+	return withNav(fmt.Sprintf(Template, "en", title, desc, "", headBalance(nil), navOperate(nil), navAuthHTML(nil), title, body))
 }
 
 func ServeHTML(html string) http.Handler {

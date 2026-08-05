@@ -251,3 +251,35 @@ func TestSkipsNoise(t *testing.T) {
 		}
 	}
 }
+
+// A caller's own usage is their bucket's count for their account, and nobody
+// else's.
+func TestSeriesForIsOneAccountsCallsOnly(t *testing.T) {
+	blank()
+	clock(t, time.Date(2026, 8, 5, 10, 0, 0, 0, time.UTC))
+
+	Record("mcp", "news_list", "alice")
+	Record("mcp", "news_list", "alice")
+	Record("web", "mail", "bob")
+
+	got := SeriesFor("alice", Minute, 1)
+	if len(got) != 1 || got[0].Total != 2 {
+		t.Fatalf("alice's series = %+v, want one bucket of 2", got)
+	}
+	// The instance-wide breakdowns must not be copied onto one account's
+	// series: they are everyone's calls, and showing them here would credit
+	// bob's traffic to alice.
+	if got[0].Names != nil || got[0].Users != nil || got[0].Surfaces != nil {
+		t.Errorf("a per-account bucket carried instance-wide breakdowns: %+v", got[0])
+	}
+
+	if n := TotalForOver("bob", Minute, 1); n != 1 {
+		t.Errorf("bob's total = %d, want 1", n)
+	}
+	if n := TotalForOver("nobody", Minute, 1); n != 0 {
+		t.Errorf("an account with no calls totalled %d", n)
+	}
+	if got := SeriesFor("", Minute, 1); got != nil {
+		t.Errorf("a signed-out caller got a series: %+v", got)
+	}
+}

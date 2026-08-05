@@ -29,15 +29,25 @@ func withNav(page string) string {
 // icon — Stream and Chat both showed a speech bubble for months, because no
 // list can notice a repeat in itself.
 //
-// Home and Agent are not services; they stay written out at the call site.
+// Home, Agent and Tools are not services; they stay written out at the call
+// site, in the top group with Usage and Wallet.
+//
+// Wallet is a service with a page, so it would be derived into this list as
+// well and appear twice — once pinned, once filed under W. Pinned wins: it is
+// part of operating the instance rather than one more thing the instance can
+// do, which is the whole reason for the two groups.
+var pinned = map[string]bool{"wallet": true}
+
 func navLinks() string {
 	var b strings.Builder
 	for _, s := range service.Nav() {
+		if pinned[s.Name] {
+			continue
+		}
 		id := ""
-		// Mail and Wallet carry ids the client JS updates (unread badge,
-		// balance). They are anchors on the element, not extra nav entries.
-		switch s.Name {
-		case "mail", "wallet":
+		// Mail carries an id the client JS updates (unread badge). It is an
+		// anchor on the element, not an extra nav entry.
+		if s.Name == "mail" {
 			id = fmt.Sprintf(` id="nav-%s"`, s.Name)
 		}
 		extra := ""

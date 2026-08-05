@@ -380,7 +380,16 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 
 	chip := ""
 	if !guest {
-		chip = `<div id="active-agent-chip" class="agent-chip">Agent: Micro</div>`
+		// The chip alone said "Agent: Micro" and nothing else, which leaves the
+		// obvious question unanswered — what is this, and is it the same thing
+		// as the agent I came here to connect? It is not: this one is Mu's,
+		// running on the tools. Yours reaches the same tools over MCP, and the
+		// page now says where to set that up instead of leaving it to be
+		// guessed at.
+		chip = `<div class="agent-bar">` +
+			`<div id="active-agent-chip" class="agent-chip">Agent: Micro</div>` +
+			`<a class="agent-connect" href="/tools">Connect your own agent &rarr;</a>` +
+			`</div>`
 	}
 
 	// A signed-out visitor arrives here from the landing's "See it working",
@@ -460,7 +469,11 @@ const chatLayoutCSS = `<style>
    applies to the chat embedded on the landing/home page). */
 .chat-main #mu-chat{max-width:none}
 /* Which agent is answering — always visible above the conversation. */
-.agent-chip{display:inline-block;margin-bottom:10px;padding:3px 10px;border-radius:999px;background:var(--hover-background,#f5f5f5);color:var(--text-primary,#111);font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+.agent-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.agent-connect{margin-left:auto;font-size:13px;color:var(--text-muted,#666);text-decoration:none;white-space:nowrap}
+.agent-connect:hover{color:var(--text-primary,#111)}
+@media only screen and (max-width:600px){.agent-connect{margin-left:0}}
+.agent-chip{display:inline-block;padding:3px 10px;border-radius:999px;background:var(--hover-background,#f5f5f5);color:var(--text-primary,#111);font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
 .agent-intro{margin:0 0 14px;padding:12px 14px;border:1px solid var(--border-color,#e5e5e5);border-radius:8px;font-size:14px;line-height:1.55;color:var(--text-secondary,#555)}
 .agent-intro b{color:var(--text-primary,#111)}
 .agent-intro a{color:var(--text-primary,#111)}
