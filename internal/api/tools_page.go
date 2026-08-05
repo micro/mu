@@ -13,8 +13,17 @@ import (
 	"mu/service/wallet"
 )
 
-// ToolsPageHandler renders the tool catalogue: everything an agent pointed at
-// this instance can do, grouped by service, with what each call costs.
+// ToolsPageHandler renders the catalogue of what this instance runs, through
+// one of two lenses.
+//
+// One catalogue, not two pages. /services is what a person can open, /tools is
+// what an agent can call — the same Specs at two granularities, nineteen
+// services against sixty-odd tools. Built as separate pages they would be two
+// shop windows onto one inventory, and they would drift. Built as one page with
+// a lens they cannot.
+//
+// The lens follows the door you came through, so neither audience has to pick
+// a view before knowing what the views are.
 //
 // This is the browse, not the reference. An agent never reads it — it calls
 // tools/list and gets the schemas. The reader is a person deciding whether to
@@ -22,12 +31,98 @@ import (
 // does it cost", not parameter types. Each card links through to its entry on
 // /mcp, which already carries the schema, an example request and a playground.
 func ToolsPageHandler(w http.ResponseWriter, r *http.Request) {
-	groups := groupTools()
+	services := strings.HasPrefix(r.URL.Path, "/services")
+	if v := r.URL.Query().Get("view"); v != "" {
+		services = v == "services"
+	}
+
+	// Whatever the lens is about goes first. Someone on /services came to see
+	// what this instance runs, and leading with an MCP config pushed the answer
+	// below the fold; someone on /tools came to connect, and leading with a
+	// grid of sixty makes them scroll back up for the endpoint.
+	var b strings.Builder
+	b.WriteString(lensTabs(services))
+	if services {
+		b.WriteString(serviceGrid())
+		b.WriteString(connectSection(r))
+	} else {
+		b.WriteString(connectSection(r))
+		b.WriteString(toolGrid())
+	}
+
+	b.WriteString(toolsPageCSS)
+
+	title, desc := "Tools", "Every tool an agent can call on this instance, with what each one costs"
+	if services {
+		title, desc = "Services", "Everything this instance runs, and what each one is"
+	}
+	app.Respond(w, r, app.Response{Title: title, Description: desc, HTML: b.String()})
+}
+
+// lensTabs switches between the two readings of the same catalogue.
+func lensTabs(services bool) string {
+	sc, tc := "lens-tab", "lens-tab"
+	if services {
+		sc += " active"
+	} else {
+		tc += " active"
+	}
+	return `<div class="lens-tabs">` +
+		`<a class="` + sc + `" href="/services">Services <span class="lens-hint">what you can open</span></a>` +
+		`<a class="` + tc + `" href="/tools">Tools <span class="lens-hint">what an agent can call</span></a>` +
+		`</div>`
+}
+
+// serviceGrid is the person's lens: one tile per service this instance runs.
+//
+// A grid rather than the list this replaced in the sidebar. Nineteen tiles are
+// scanned in a look; nineteen list rows are read one at a time, and stop being
+// read. It includes the headless ones — a service with no page is still
+// something this instance runs, and leaving it out would understate the answer
+// to "is any of this real".
+func serviceGrid() string {
+	counts := map[string]int{}
+	for _, g := range groupTools() {
+		counts[strings.ToLower(g.Label)] += len(g.Tools)
+	}
 
 	var b strings.Builder
-	b.WriteString(connectSection(r))
+	b.WriteString(`<div class="tool-grid service-grid">`)
+	for _, s := range service.Specs() {
+		href, cls := s.Page, "tool-tile service-tile"
+		if s.Headless() {
+			href, cls = "/mcp", cls+" headless"
+		}
+		b.WriteString(`<a class="` + cls + `" href="` + html.EscapeString(href) + `">`)
+		b.WriteString(`<span class="service-tile-head">` +
+			`<img src="/` + html.EscapeString(s.NavIcon()) + `?` + app.Version + `" alt="">` +
+			`<span class="tool-tile-name">` + html.EscapeString(s.NavLabel()) + `</span></span>`)
+		b.WriteString(`<span class="tool-tile-desc">` + html.EscapeString(s.Description) + `</span>`)
 
-	for _, g := range groups {
+		meta := ""
+		if n := counts[strings.ToLower(s.NavLabel())]; n > 0 {
+			meta = strconv.Itoa(n) + " tool"
+			if n != 1 {
+				meta += "s"
+			}
+		}
+		if s.Headless() {
+			if meta != "" {
+				meta += " · "
+			}
+			meta += "agents and apps only"
+		}
+		b.WriteString(`<span class="tool-tile-price">` + html.EscapeString(meta) + `</span>`)
+		b.WriteString(`</a>`)
+	}
+	b.WriteString(`</div>`)
+	return b.String()
+}
+
+// toolGrid is the agent's lens: every callable tool, grouped by service, priced.
+func toolGrid() string {
+	var b strings.Builder
+	for _, g := range groupTools() {
 		b.WriteString(`<div class="tool-group">`)
 		b.WriteString(`<h3 class="tool-group-title">` + html.EscapeString(g.Label) + `</h3>`)
 		b.WriteString(`<div class="tool-grid">`)
@@ -40,13 +135,7 @@ func ToolsPageHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		b.WriteString(`</div></div>`)
 	}
-
-	b.WriteString(toolsPageCSS)
-	app.Respond(w, r, app.Response{
-		Title:       "Tools",
-		Description: "Every tool an agent can call on this instance, with what each one costs",
-		HTML:        b.String(),
-	})
+	return b.String()
 }
 
 // connectSection is the step the page was missing: how to actually point an
@@ -215,6 +304,14 @@ func serviceOf(tool string) string {
 }
 
 const toolsPageCSS = `<style>
+.lens-tabs{display:flex;gap:18px;flex-wrap:wrap;margin:0 0 14px}
+.lens-tab{font-size:15px;font-weight:600;color:var(--text-muted);text-decoration:none;display:flex;align-items:baseline;gap:7px}
+.lens-tab.active{color:var(--text-primary)}
+.lens-hint{font-size:12px;font-weight:400;color:var(--text-muted)}
+.service-tile-head{display:flex;align-items:center;gap:8px}
+.service-tile-head img{width:18px;height:18px}
+.service-tile.headless{opacity:.75}
+@media only screen and (max-width:600px){.lens-hint{display:none}}
 .tool-group{margin:0 0 26px}
 .tool-group-title{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#999;margin:0 0 10px}
 .tool-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}

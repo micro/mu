@@ -111,9 +111,13 @@ func TestSpecsReproduceTheOldPolicy(t *testing.T) {
 	}
 }
 
-// The sidebar is derived from the Specs, so the set it renders has to be
-// checked against every registered service — not against the eighteen anchors
-// that used to be written out by hand.
+// The catalogue at /services is derived from the Specs, so the set it renders
+// has to be checked against every registered service — not against the eighteen
+// anchors that used to be written out by hand.
+//
+// service.Nav() backs the catalogue now rather than the sidebar; the sidebar
+// shows service.Pinned(). The checks are the same either way: no two services
+// may share an icon, a route or a label.
 func TestNavCoversEveryPagedServiceExactlyOnce(t *testing.T) {
 	registerAll(t)
 

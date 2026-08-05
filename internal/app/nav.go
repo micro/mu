@@ -20,42 +20,32 @@ func withNav(page string) string {
 	return strings.Replace(page, navPlaceholder, navLinks(), 1)
 }
 
-// navLinks renders the sidebar entries for every service that has a page,
-// derived from the service Specs.
+// navLinks renders the lower half of the sidebar: the services kept in view,
+// then the way to all the rest.
 //
-// This was a hand-written list of eighteen anchors. Nothing connected an entry
-// to the service behind it, so a service could be added and never appear, a
-// route could move and the link rot, and two services could quietly share an
-// icon — Stream and Chat both showed a speech bubble for months, because no
-// list can notice a repeat in itself.
+// This was every service with a page — nineteen of them, alphabetical. A grid
+// of nineteen is browsable; a list of nineteen is a menu, and a menu of
+// nineteen is a failure to choose. Same items, opposite affordance, which is
+// why the old home-screen-of-apps never felt confusing and the sidebar did.
 //
-// Home, Agent and Tools are not services; they stay written out at the call
-// site, in the top group with Usage and Wallet.
-//
-// Wallet is a service with a page, so it would be derived into this list as
-// well and appear twice — once pinned, once filed under W. Pinned wins: it is
-// part of operating the instance rather than one more thing the instance can
-// do, which is the whole reason for the two groups.
-var pinned = map[string]bool{"wallet": true}
-
+// So the full set moved to the catalogue at /services, which is derived from
+// the same Specs and is also the shop window — a visitor who never sees that
+// this instance runs a real mail server has not seen the product. What stays
+// here is what changes without you: unread mail, a task the agent finished.
+// Declared on the Spec as Pinned, so it is still derived rather than a list
+// kept by hand next to the services it names.
 func navLinks() string {
 	var b strings.Builder
-	for _, s := range service.Nav() {
-		if pinned[s.Name] {
-			continue
-		}
-		id := ""
-		// Mail carries an id the client JS updates (unread badge). It is an
-		// anchor on the element, not an extra nav entry.
+	for _, s := range service.Pinned() {
+		id, extra := "", ""
+		// Mail carries an id and a badge the client JS updates.
 		if s.Name == "mail" {
-			id = fmt.Sprintf(` id="nav-%s"`, s.Name)
-		}
-		extra := ""
-		if s.Name == "mail" {
-			extra = `<span id="nav-mail-badge"></span>`
+			id, extra = ` id="nav-mail"`, `<span id="nav-mail-badge"></span>`
 		}
 		fmt.Fprintf(&b, "          <a%s href=\"%s\"><img src=\"/%s?%s\"><span class=\"label\">%s</span>%s</a>\n",
 			id, s.Page, s.NavIcon(), Version, s.NavLabel(), extra)
 	}
-	return strings.TrimRight(b.String(), "\n")
+	fmt.Fprintf(&b, "          <a href=\"/services\"><img src=\"/services.svg?%s\"><span class=\"label\">Services</span></a>",
+		Version)
+	return b.String()
 }

@@ -140,6 +140,7 @@ var Spec = service.Spec{
 	Page:        "/tasks",
 	Icon:        "tasks.svg",
 	Scoped:      true,
+	Pinned:      true,
 	Endpoints: map[string]service.Endpoint{
 		"Create": {Doc: "Add a task. Assign it to the agent and it can pick the task up itself"},
 		"List":   {Doc: "List the caller's tasks, open ones first; optionally filtered by state"},

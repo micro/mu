@@ -1656,7 +1656,8 @@ func main() {
 	api.ToolsRegistered()
 
 	authenticated := map[string]bool{
-		"/tools":                 false, // Public — the tool catalogue
+		"/tools":                 false, // Public — the catalogue, agent lens
+		"/services":              false, // Public — the catalogue, person lens
 		"/usage":                 true,  // Your own calls and spend
 		"/video":                 false, // Public viewing, auth for interactive features
 		"/video/thumb":           false, // Public — thumbnails for the public feed
@@ -2046,7 +2047,9 @@ func main() {
 	})
 
 	// serve the MCP page and server (GET = HTML page, POST = JSON-RPC)
+	// One catalogue, two lenses — see internal/api/tools_page.go.
 	http.HandleFunc("/tools", api.ToolsPageHandler)
+	http.HandleFunc("/services", api.ToolsPageHandler)
 	// Your own usage — the caller-facing half of /admin/traffic.
 	http.HandleFunc("/usage", home.UsageHandler)
 	http.HandleFunc("/mcp", api.MCPHandler)
