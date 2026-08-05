@@ -129,16 +129,27 @@ func toolGrid() string {
 // Landing, browsing the catalogue and then having nowhere to go was the gap —
 // someone convinced by "tools for agents" had no next move.
 //
-// The token leads, because that is what an agent actually holds: an agent has no
-// account to sign into, somebody issues it a credential. So the config block
-// carries the header, filled in, ready to paste.
+// Two paths, split by client rather than by preference, because that is how the
+// world actually divides:
 //
-// OAuth is second and named. A client implementing the MCP authorization spec
-// gets a 401 pointing at /.well-known/oauth-protected-resource, registers
-// itself, and opens a browser for the *user* to sign in. That is a real path and
-// it still works — but it was described here as the client "signing itself in",
-// which is not what happens and read as nonsense, because the thing signing in
-// is the person. Say OAuth, name the clients that do it, say a browser opens.
+//   - Cursor and other config-file clients read a url and headers out of
+//     mcp.json, so they take a token. That is the shape an agent credential
+//     really has: an agent has no account to sign into, somebody issues it one.
+//   - Claude Desktop does not. Its claude_desktop_config.json only validates
+//     stdio servers — command and args — so a url pasted there silently does
+//     nothing. Remote servers go in through Settings > Connectors, which runs
+//     OAuth: the client registers itself against /oauth/register, opens a
+//     browser, and the *person* signs in. There is nowhere to put a token.
+//
+// This page used to show the config alone and call OAuth the fallback for a
+// client that "can't sign itself in". Both halves were wrong. Nothing signs
+// itself in — a browser opens and you do — and for the client most likely to
+// arrive here, OAuth is not the fallback, it is the only way in. Someone
+// following the old copy would have edited a JSON file and watched it do
+// nothing.
+//
+// The env reference in the token example is deliberate: mcp.json gets committed,
+// and Cursor's own documentation warns against inlining a live credential.
 func connectSection(r *http.Request) string {
 	base := app.BaseURL(r)
 	_, acc := auth.TrySession(r)
@@ -148,7 +159,7 @@ func connectSection(r *http.Request) string {
     "mu": {
       "url": "` + base + `/mcp",
       "headers": {
-        "Authorization": "Bearer YOUR_TOKEN"
+        "Authorization": "Bearer ${env:MU_TOKEN}"
       }
     }
   }
@@ -158,25 +169,40 @@ func connectSection(r *http.Request) string {
 	b.WriteString(`<div class="card" id="connect">`)
 	b.WriteString(`<span class="card-title">Connect your agent</span>`)
 
-	if acc != nil {
-		b.WriteString(`<p class="card-desc">Create a token, then add this to your MCP client. ` +
-			`Every tool below is available to it, and calls are charged to your credits.</p>`)
-		b.WriteString(`<p><a class="connect-cta" href="/token">Create a token →</a></p>`)
-	} else {
-		b.WriteString(`<p class="card-desc">Create an account, then a token, and add this to your ` +
-			`MCP client. Every tool below is available to it, and calls are charged to your credits.</p>`)
+	if acc == nil {
+		b.WriteString(`<p class="card-desc">Every tool below becomes available to your agent, ` +
+			`and calls are charged to your credits. You need an account either way.</p>`)
 		b.WriteString(`<p><a class="connect-cta" href="/signup">Create an account →</a> ` +
 			`<span class="connect-note">it is the same account you sign into the app with</span></p>`)
+	} else {
+		b.WriteString(`<p class="card-desc">Every tool below becomes available to your agent, ` +
+			`and calls are charged to your credits. Pick the way your client connects.</p>`)
 	}
 
+	// Cursor and anything else that reads a config file.
+	b.WriteString(`<div class="connect-way">`)
+	b.WriteString(`<h4>Cursor, and clients with a config file</h4>`)
+	b.WriteString(`<p class="card-desc">Add this to <code>~/.cursor/mcp.json</code>, ` +
+		`with your token in <code>MU_TOKEN</code>.</p>`)
 	b.WriteString(`<pre class="connect-cfg">` + html.EscapeString(cfg) + `</pre>`)
-	b.WriteString(`<p class="card-desc">Works with Claude Desktop, Cursor, or anything that speaks ` +
-		`<a href="https://modelcontextprotocol.io">MCP</a>. Try a call first in the ` +
-		`<a href="/mcp">playground</a>.</p>`)
-	b.WriteString(`<p class="card-desc connect-alt"><b>Or use OAuth.</b> Claude Desktop and Cursor ` +
-		`can take the endpoint on its own, with no <code>headers</code> block: they open a browser ` +
-		`the first time they connect and ask you to sign in to Mu. You need an account either way — ` +
-		`the token is just the version you can paste into anything.</p>`)
+	if acc != nil {
+		b.WriteString(`<p><a class="connect-cta" href="/token">Create a token →</a></p>`)
+	}
+	b.WriteString(`</div>`)
+
+	// Claude Desktop, where the config file is not the way in.
+	b.WriteString(`<div class="connect-way">`)
+	b.WriteString(`<h4>Claude Desktop</h4>`)
+	b.WriteString(`<p class="card-desc">Settings &rarr; Connectors &rarr; Add custom connector, ` +
+		`and paste <code>` + html.EscapeString(base) + `/mcp</code>. It opens a browser and asks you ` +
+		`to sign in to Mu — no token needed. Pasting the URL into ` +
+		`<code>claude_desktop_config.json</code> will not work: that file only takes local ` +
+		`command-line servers.</p>`)
+	b.WriteString(`</div>`)
+
+	b.WriteString(`<p class="card-desc">Anything else that speaks ` +
+		`<a href="https://modelcontextprotocol.io">MCP</a> takes one or the other. Try a call ` +
+		`first in the <a href="/mcp">playground</a>.</p>`)
 	b.WriteString(scopePicker(base))
 	b.WriteString(`</div>`)
 	return b.String()
@@ -324,7 +350,8 @@ const toolsPageCSS = `<style>
 .card a.connect-cta:hover{background:#333;color:#fff}
 .connect-note{font-size:13px;color:#888;margin-left:8px}
 .connect-cfg{background:#f5f5f5;padding:10px 12px;font-size:12px;overflow-x:auto;border-radius:6px;margin:12px 0}
-.connect-alt{color:#888;font-size:13px;border-top:1px solid #eee;padding-top:10px;margin-top:12px}
+.connect-way{border-top:1px solid #eee;padding-top:12px;margin-top:14px}
+.connect-way h4{margin:0 0 6px;font-size:14px}
 .scope{margin-top:12px;border-top:1px solid #eee;padding-top:10px}
 .scope summary{cursor:pointer;font-size:13px;font-weight:600;color:#555}
 .scope-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:4px 12px;margin:10px 0}
