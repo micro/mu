@@ -34,9 +34,9 @@ func TestNavIsDerivedAndIconsAreDistinct(t *testing.T) {
 	}
 }
 
-// The sidebar shows pinned services and nothing else. Everything with a page
-// is still reachable — through the catalogue at /services, which is what the
-// Services link goes to.
+// Below the nouns, the sidebar shows pinned services and nothing else —
+// the ones that change without you. Everything else with a page is reachable
+// through the catalogue, which is a noun in the nav.
 type NavProbe struct{}
 
 type NavReq struct{ X string }
@@ -44,7 +44,7 @@ type NavRsp struct{ Y string }
 
 func (NavProbe) Look(_ context.Context, _ *NavReq, _ *NavRsp) error { return nil }
 
-func TestSidebarShowsPinnedServicesAndTheCatalogue(t *testing.T) {
+func TestSidebarShowsPinnedServices(t *testing.T) {
 	for _, spec := range []service.Spec{
 		{Name: "navpinned", Handler: new(NavProbe), Page: "/navpinned",
 			Label: "Nav Pinned", Icon: "navpinned.svg", Pinned: true},
@@ -71,9 +71,32 @@ func TestSidebarShowsPinnedServicesAndTheCatalogue(t *testing.T) {
 	if strings.Contains(html, `href="/navprobe"`) {
 		t.Errorf("an unpinned service was listed in the sidebar:\n%s", html)
 	}
-	// …and there is always a way to the rest.
-	if !strings.Contains(html, `href="/services"`) {
-		t.Errorf("the sidebar has no link to the catalogue:\n%s", html)
+}
+
+// The nouns are written into the nav itself: an agent does the work, tasks tell
+// it what to do, apps are what you build, tools are what an agent can call,
+// services are what this instance runs.
+//
+// Apps was not there at all — it was one tile among nineteen inside the
+// services catalogue, which is a strange place for half the product.
+func TestTheNavCarriesTheNouns(t *testing.T) {
+	for _, want := range []string{
+		`href="/agent"`, `href="/tasks"`, `href="/apps"`,
+		`href="/tools"`, `href="/services"`,
+	} {
+		if !strings.Contains(Template, want) {
+			t.Errorf("the nav is missing %q", want)
+		}
+	}
+	// In that order, because the order is the argument.
+	order := []string{`href="/agent"`, `href="/tasks"`, `href="/apps"`, `href="/tools"`, `href="/services"`}
+	at := -1
+	for _, noun := range order {
+		i := strings.Index(Template, noun)
+		if i < at {
+			t.Errorf("%s is out of order in the nav", noun)
+		}
+		at = i
 	}
 }
 

@@ -343,20 +343,25 @@ var Template = `
     <div id="container">
       <div id="nav-container">
         <div id="nav">
-          <!-- Where you work, what your agent can call, what it used, what
-               that cost — then the few services worth keeping in view, and the
-               way to the rest.
+          <!-- The nouns, in the order they relate to each other: an agent does
+               the work, tasks tell it what to do, apps are what you build,
+               tools are what an agent can call, services are what this
+               instance runs.
 
-               This was one alphabetical list of nineteen services, which put
-               Wallet eighteenth between Video and Weather and left Tools and
-               Usage out of the sidebar altogether. Alphabetical is not an
-               ordering, it is the absence of one. -->
+               Apps was not here at all — it was one tile among nineteen inside
+               the services catalogue, which is a strange place for half the
+               product. Before that this was one alphabetical list of nineteen
+               services that put Wallet eighteenth, between Video and Weather.
+               Alphabetical is not an ordering, it is the absence of one. -->
           <a href="/home"><img src="/home.png?` + Version + `"><span class="label">Home</span></a>
           <a href="/agent"><img src="/agent.svg?` + Version + `"><span class="label">Agent</span></a>
+          <a href="/tasks"><img src="/tasks.svg?` + Version + `"><span class="label">Tasks</span></a>
+          <a href="/apps"><img src="/apps.svg?` + Version + `"><span class="label">Apps</span></a>
           <a href="/tools"><img src="/tools.svg?` + Version + `"><span class="label">Tools</span></a>
-          %s
+          <a href="/services"><img src="/services.svg?` + Version + `"><span class="label">Services</span></a>
           <div class="nav-divider"></div>
 <!--mu:nav-->
+          %s
         </div>
         <div class="nav-bottom">
           %s

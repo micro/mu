@@ -62,11 +62,13 @@ type Spec struct {
 	// at /services.
 	//
 	// The test is not importance, which is unanswerable, but whether the thing
-	// changes without you in a way you need to notice: unread mail, a task the
-	// agent finished while you were away. News and markets change constantly,
-	// which is the same as not at all — the home cards are the right surface
-	// for those, and the sidebar listing all nineteen made it a menu nobody
-	// could read.
+	// changes without you in a way you need to notice: unread mail arriving
+	// while you were elsewhere. News and markets change constantly, which is
+	// the same as not at all — the home cards are the right surface for those.
+	//
+	// Tasks and Apps are in the sidebar too and are not pinned: they are there
+	// as nouns of the product rather than because they change, so they are
+	// written into the nav beside Agent, Tools and Services.
 	Pinned bool
 	// Endpoints describes each method, keyed by method name. Every exported
 	// RPC method must appear; TestEveryEndpointIsDescribed enforces it.

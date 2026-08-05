@@ -455,6 +455,10 @@ function fetchW(la,lo){
 	// Date + invite/settings above the input
 	b.WriteString(dateHTML)
 
+	// What is yours and what is in flight, before the world's content — see
+	// home/system.go.
+	systemHTML := systemStrip(viewerAcc)
+
 	// Inline agent — Home answers here rather than navigating away, and it renders
 	// for everyone: logged out, this is the public face of the product. Signed-in
 	// users get personalised chips; guests get generic starters and the guest chat.
@@ -489,6 +493,9 @@ function fetchW(la,lo){
 
 	// Pinned apps — a quick-launch strip at the top, just below the suggestion
 	// chips. Selected in the preferences panel; opens the app on click.
+	// Ask first, then what is yours, then the world's content.
+	b.WriteString(systemHTML)
+
 	if viewerAcc != nil && len(viewerAcc.Widgets) > 0 {
 		var tiles string
 		for _, slug := range viewerAcc.Widgets {
