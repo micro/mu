@@ -251,7 +251,7 @@ func handleSendMessage(w http.ResponseWriter, req rpcRequest) {
 
 	// Execute agent
 	// Use a generic account for A2A requests (no user session)
-	answer, err := micro.Orchestrate("a2a", prompt, agentIDs, true)
+	answer, err := micro.Orchestrate("a2a", prompt, agentIDs, true, nil)
 	if err != nil {
 		task.Status = TaskStatus{
 			State:     "TASK_STATE_FAILED",

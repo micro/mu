@@ -27,7 +27,12 @@ type QueryOpts struct {
 }
 
 // Execute runs a specialised agent: plan → execute tools → synthesise.
-func (a *Agent) Execute(accountID, prompt string, public bool) (string, error) {
+// Execute runs one specialist agent.
+//
+// onStep, when set, is called once per tool. It may be called from more than
+// one goroutine — Orchestrate runs specialists in parallel — so a collector
+// behind it has to be safe for concurrent use.
+func (a *Agent) Execute(accountID, prompt string, public bool, onStep func(string, map[string]any, bool, time.Duration)) (string, error) {
 	app.Log("micro", "Agent %s handling: %.80s", a.ID, prompt)
 
 	// Build tool list description for planning
@@ -91,7 +96,11 @@ func (a *Agent) Execute(accountID, prompt string, public bool) (string, error) {
 		if public && !isGuestAllowedTool(tc.Tool) {
 			continue
 		}
+		startedAt := time.Now()
 		text, isErr, execErr := api.ExecuteToolAs(accountID, tc.Tool, tc.Args)
+		if onStep != nil {
+			onStep(tc.Tool, tc.Args, execErr == nil && !isErr, time.Since(startedAt))
+		}
 		if execErr != nil || isErr {
 			continue
 		}
@@ -204,13 +213,19 @@ func extractJSONArray(text string) string {
 }
 
 // Orchestrate runs one or more agents and merges their answers.
-func Orchestrate(accountID, prompt string, agentIDs []string, public bool) (string, error) {
+// Orchestrate runs one or more specialist agents over a prompt.
+//
+// onStep, when set, is called once per tool run. Most prompts route here rather
+// than through the agent's own pipeline, so a caller that wants to know what
+// was actually done — a task run, which happens while nobody is watching — has
+// to be told from here or it learns nothing.
+func Orchestrate(accountID, prompt string, agentIDs []string, public bool, onStep func(string, map[string]any, bool, time.Duration)) (string, error) {
 	if len(agentIDs) == 1 {
 		a := resolve(accountID, agentIDs[0])
 		if a == nil {
 			a = Get("micro")
 		}
-		return a.Execute(accountID, prompt, public)
+		return a.Execute(accountID, prompt, public, onStep)
 	}
 
 	// Run agents in parallel
@@ -226,7 +241,7 @@ func Orchestrate(accountID, prompt string, agentIDs []string, public bool) (stri
 			if a == nil {
 				a = Get("micro")
 			}
-			ans, err := a.Execute(accountID, prompt, public)
+			ans, err := a.Execute(accountID, prompt, public, onStep)
 			ch <- result{agentID, ans, err}
 		}(id)
 	}
@@ -244,7 +259,7 @@ func Orchestrate(accountID, prompt string, agentIDs []string, public bool) (stri
 	}
 
 	if len(parts) == 0 {
-		return Get("micro").Execute(accountID, prompt, public)
+		return Get("micro").Execute(accountID, prompt, public, onStep)
 	}
 	if len(parts) == 1 {
 		// Strip the header if only one agent responded

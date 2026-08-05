@@ -78,6 +78,37 @@ type QueryOpts struct {
 	Public  bool     // if true, skip private context (mail, wallet, etc.)
 	System  string   // optional custom system prompt (user-defined agent)
 	Tools   []string // optional tool allow-list (user-defined agent); empty = all
+	// OnStep is called once per tool the agent runs, if set.
+	//
+	// The pipeline discarded this: a caller got a final string and no way to
+	// know what produced it. That is tolerable for a chat reply, where the
+	// answer arrives while you are watching, and useless for a task run, which
+	// happens while you are not — "it did something and here is a paragraph"
+	// is not something anyone can check.
+	//
+	// A callback rather than a return value or a package-level hook: it needs
+	// to work for the micro path too, and two runs by the same account at the
+	// same time must not interleave into one list.
+	OnStep func(Step)
+}
+
+// microStepper adapts OnStep for the micro path, which cannot import this
+// package.
+func microStepper(opts QueryOpts) func(string, map[string]any, bool, time.Duration) {
+	if opts.OnStep == nil {
+		return nil
+	}
+	return func(tool string, args map[string]any, ok bool, took time.Duration) {
+		opts.OnStep(Step{Tool: tool, Args: args, OK: ok, Took: took})
+	}
+}
+
+// Step is one tool the agent ran.
+type Step struct {
+	Tool string         `json:"tool"`
+	Args map[string]any `json:"args,omitempty"`
+	OK   bool           `json:"ok"`
+	Took time.Duration  `json:"took"`
 }
 
 // Query runs the agent pipeline synchronously for MCP and bot callers.
@@ -91,7 +122,7 @@ func QueryWithOpts(accountID, prompt string, opts QueryOpts) (string, error) {
 	// Check for direct agent addressing
 	if agentID := micro.MatchDirectAddress(prompt); agentID != "" {
 		cleanPrompt := micro.StripAddress(prompt)
-		return normalizeQueryAnswer(micro.Orchestrate(accountID, cleanPrompt, []string{agentID}, opts.Public))
+		return normalizeQueryAnswer(micro.Orchestrate(accountID, cleanPrompt, []string{agentID}, opts.Public, microStepper(opts)))
 	}
 
 	// Route to specialist agent(s)
@@ -99,7 +130,7 @@ func QueryWithOpts(accountID, prompt string, opts QueryOpts) (string, error) {
 
 	// If router picks specialist(s), use the multi-agent system
 	if len(agentIDs) > 0 && agentIDs[0] != "micro" {
-		return normalizeQueryAnswer(micro.Orchestrate(accountID, prompt, agentIDs, opts.Public))
+		return normalizeQueryAnswer(micro.Orchestrate(accountID, prompt, agentIDs, opts.Public, microStepper(opts)))
 	}
 
 	// Native go-micro agent path (default for this agent platform; set
@@ -212,7 +243,11 @@ func QueryWithOpts(accountID, prompt string, opts QueryOpts) (string, error) {
 		if opts.Public && !isGuestAllowedTool(tc.Tool) {
 			continue
 		}
+		startedAt := time.Now()
 		text, isErr, execErr := api.ExecuteToolAs(accountID, tc.Tool, tc.Args)
+		if opts.OnStep != nil {
+			opts.OnStep(Step{Tool: tc.Tool, Args: tc.Args, OK: execErr == nil && !isErr, Took: time.Since(startedAt)})
+		}
 		if execErr != nil || isErr {
 			unavailableTools = append(unavailableTools, tc.Tool)
 			if fallback, ok := fallbackNewsSearchToolCall(prompt, tc.Tool, tc.Args); ok {

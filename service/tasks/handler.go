@@ -210,6 +210,27 @@ func taskRow(t *Task, csrf string) string {
 	if t.Detail != "" {
 		fmt.Fprintf(&b, `<div class="task-detail">%s</div>`, html.EscapeString(t.Detail))
 	}
+	// What the agent did, before what it concluded. A paragraph on its own
+	// gives no way to tell research from invention; a list of the tools it ran
+	// does, and it is the first thing to look at when an answer seems wrong.
+	if len(t.Steps) > 0 {
+		b.WriteString(`<details class="task-steps"><summary>` +
+			fmt.Sprintf("%d step%s", len(t.Steps), plural(len(t.Steps))) + `</summary><ol>`)
+		for _, st := range t.Steps {
+			cls := "task-step"
+			if !st.OK {
+				cls += " failed"
+			}
+			line := html.EscapeString(st.Tool)
+			if st.Detail != "" {
+				line += ` <span class="task-step-detail">` + html.EscapeString(st.Detail) + `</span>`
+			}
+			fmt.Fprintf(&b, `<li class="%s">%s <span class="task-step-took">%.1fs</span></li>`,
+				cls, line, st.Seconds)
+		}
+		b.WriteString(`</ol></details>`)
+	}
+
 	if t.Result != "" {
 		// The agent's answer, kept where the work was asked for, and rendered:
 		// a model writes markdown, and a list of findings shown as raw asterisks
@@ -285,6 +306,13 @@ const tasksPageCSS = `<style>
 .task-result > :first-child{margin-top:10px}
 .task-result > :last-child{margin-bottom:10px}
 .task-result pre{overflow-x:auto}
+.task-steps{margin-top:8px;font-size:13px}
+.task-steps summary{cursor:pointer;color:var(--text-muted)}
+.task-steps ol{margin:6px 0 0;padding-left:20px}
+.task-step{margin:2px 0;font-variant-numeric:tabular-nums}
+.task-step.failed{color:#b3261e;text-decoration:line-through}
+.task-step-detail{color:var(--text-secondary)}
+.task-step-took{color:var(--text-muted);font-size:12px}
 .task-running{color:#a86400;font-weight:600}
 .task-running::after{content:"";animation:taskdots 1.2s steps(4,end) infinite}
 @keyframes taskdots{0%{content:""}25%{content:"."}50%{content:".."}75%{content:"..."}}
@@ -296,3 +324,10 @@ const tasksPageCSS = `<style>
   .task-actions .link-button{padding:6px 14px 6px 0;font-size:14px}
 }
 </style>`
+
+func plural(n int) string {
+	if n == 1 {
+		return ""
+	}
+	return "s"
+}

@@ -17,6 +17,7 @@
 package tasks
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -46,6 +47,14 @@ const (
 )
 
 // Task is one piece of work.
+// Step is one tool the agent ran while working on a task.
+type Step struct {
+	Tool    string  `json:"tool"`
+	Detail  string  `json:"detail,omitempty"` // the argument worth showing, if any
+	OK      bool    `json:"ok"`
+	Seconds float64 `json:"seconds"`
+}
+
 type Task struct {
 	ID       string    `json:"id"`
 	Title    string    `json:"title"`
@@ -57,6 +66,10 @@ type Task struct {
 	Created  time.Time `json:"created"`
 	Updated  time.Time `json:"updated"`
 	Owner    string    `json:"owner"`
+	// Steps is what the agent did, in order — the tools it ran and whether
+	// each worked. Without it a finished task is a paragraph with no way to
+	// tell whether it was researched or invented.
+	Steps []Step `json:"steps,omitempty"`
 }
 
 // Open reports whether the task is still to be done.
@@ -152,7 +165,10 @@ func Next(owner string) *Task {
 // Update changes a task. Empty strings leave a field as it was, so an agent
 // finishing a task sends a status and a result without having to restate the
 // title it was given.
-func Update(owner, id, title, detail, status, assignee, result string) (*Task, error) {
+// Update edits a task. runSteps is variadic so a run can record what the agent
+// did without every other caller having to pass an empty slice for something
+// only a run produces.
+func Update(owner, id, title, detail, status, assignee, result string, runSteps ...[]Step) (*Task, error) {
 	existing, err := Get(owner, id)
 	if err != nil {
 		return nil, err
@@ -180,6 +196,13 @@ func Update(owner, id, title, detail, status, assignee, result string) (*Task, e
 	}
 	if !existing.Due.IsZero() {
 		fields["due"] = stamp(existing.Due)
+	}
+	// Carried forward: an edit is not a reason to forget what the agent did.
+	if enc := encodeSteps(existing.Steps); enc != "" {
+		fields["steps"] = enc
+	}
+	if len(runSteps) > 0 {
+		fields["steps"] = encodeSteps(runSteps[0])
 	}
 
 	rec, err := userdb.Update(ns, owner, collection, existing.ID, fields, false)
@@ -271,8 +294,56 @@ func toTask(id, owner string, d map[string]any) *Task {
 		Status: status, Assignee: normaliseAssignee(str("assignee")),
 		Result: str("result"), Due: when("due"),
 		Created: when("created"), Updated: when("updated"), Owner: owner,
+		Steps: decodeSteps(str("steps")),
 	}
+}
+
+// Steps are stored as JSON text. Handing a []Step to the store as a
+// map[string]any value means reading back []interface{} of
+// map[string]interface{}, and decoding that by hand is how a field quietly
+// turns into a list of zeroes.
+func decodeSteps(raw string) []Step {
+	if strings.TrimSpace(raw) == "" {
+		return nil
+	}
+	var out []Step
+	if err := json.Unmarshal([]byte(raw), &out); err != nil {
+		return nil
+	}
+	return out
+}
+
+func encodeSteps(steps []Step) string {
+	if len(steps) == 0 {
+		return ""
+	}
+	b, err := json.Marshal(steps)
+	if err != nil {
+		return ""
+	}
+	return string(b)
 }
 
 // now is overridable so ordering can be tested without waiting.
 var now = time.Now
+
+// StepDetail picks the one argument worth showing beside a tool name.
+//
+// "web_search" says less than "web_search · latest AI news", and the argument
+// that carries the meaning is almost always the query. Everything else — ids,
+// coordinates, limits — is noise in a line meant to be read at a glance, and
+// some of it is the caller's own data, which does not belong in a summary.
+func StepDetail(args map[string]any) string {
+	for _, key := range []string{"query", "q", "prompt", "collection", "to", "title", "category", "slug"} {
+		if v, ok := args[key]; ok {
+			if s := strings.TrimSpace(fmt.Sprintf("%v", v)); s != "" {
+				r := []rune(s)
+				if len(r) > 60 {
+					return string(r[:60]) + "…"
+				}
+				return s
+			}
+		}
+	}
+	return ""
+}

@@ -225,7 +225,7 @@ func TestRunHandsTheTaskToTheAgent(t *testing.T) {
 	defer clear("alice")
 
 	done := make(chan string, 1)
-	RunAgent = func(accountID, prompt string) (string, error) {
+	RunAgent = func(accountID, prompt string, onStep func(Step)) (string, error) {
 		done <- prompt
 		return "Here is the summary.", nil
 	}
@@ -267,7 +267,7 @@ func TestAFailedRunReopensTheTask(t *testing.T) {
 	clear("alice")
 	defer clear("alice")
 
-	RunAgent = func(accountID, prompt string) (string, error) {
+	RunAgent = func(accountID, prompt string, onStep func(Step)) (string, error) {
 		return "", fmt.Errorf("the model is unavailable")
 	}
 	defer func() { RunAgent = nil }()
@@ -295,7 +295,7 @@ func TestRunRefusesWhatCannotBeRun(t *testing.T) {
 	clear("alice")
 	defer clear("alice")
 
-	RunAgent = func(string, string) (string, error) { return "ok", nil }
+	RunAgent = func(string, string, func(Step)) (string, error) { return "ok", nil }
 	defer func() { RunAgent = nil }()
 
 	task, _ := Create("alice", "Already done", "", "agent", time.Time{})

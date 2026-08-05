@@ -20,7 +20,7 @@ import (
 )
 
 // RunAgent is set by main() to run a prompt through the agent as an account.
-var RunAgent func(accountID, prompt string) (string, error)
+var RunAgent func(accountID, prompt string, onStep func(Step)) (string, error)
 
 // running tracks the tasks currently with the agent, so a second Run on the
 // same task does not start a second agent.
@@ -87,18 +87,32 @@ func Run(owner, id string) error {
 			runMu.Unlock()
 		}()
 
-		answer, err := RunAgent(t.Owner, prompt(t))
+		// Collected under a lock: Orchestrate runs specialists in parallel, so
+		// two tools can finish at once.
+		var stepMu sync.Mutex
+		var steps []Step
+		record := func(s Step) {
+			stepMu.Lock()
+			steps = append(steps, s)
+			stepMu.Unlock()
+		}
+
+		answer, err := RunAgent(t.Owner, prompt(t), record)
+		stepMu.Lock()
+		done := append([]Step(nil), steps...)
+		stepMu.Unlock()
+
 		if err != nil {
 			// The task stays open: a failed run is work still to do, not work
 			// finished badly, and the reason belongs where someone will see it.
 			app.Log("tasks", "task %q failed for %s: %v", t.Title, t.Owner, err)
-			Update(t.Owner, t.ID, "", "", StatusTodo, "", "Last run failed: "+err.Error()) //nolint:errcheck
+			Update(t.Owner, t.ID, "", "", StatusTodo, "", "Last run failed: "+err.Error(), done) //nolint:errcheck
 			return
 		}
 		if err := wallet.ConsumeQuota(t.Owner, wallet.OpAgentQuery); err != nil {
 			app.Log("tasks", "could not charge task run for %s: %v", t.Owner, err)
 		}
-		Update(t.Owner, t.ID, "", "", StatusDone, "", strings.TrimSpace(answer)) //nolint:errcheck
+		Update(t.Owner, t.ID, "", "", StatusDone, "", strings.TrimSpace(answer), done) //nolint:errcheck
 	}(*t)
 
 	return nil

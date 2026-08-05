@@ -218,10 +218,25 @@ func main() {
 	// not hold up the rest.
 	// A task handed to the agent reaches it the same way a standing instruction
 	// does: through a hook, so tasks does not import the agent.
-	tasks.RunAgent = func(accountID, prompt string) (string, error) {
+	// A task run reports what it did; a scheduled one does not need to, and
+	// keeps the simpler hook.
+	tasks.RunAgent = func(accountID, prompt string, onStep func(tasks.Step)) (string, error) {
+		opts := agent.QueryOpts{}
+		if onStep != nil {
+			opts.OnStep = func(s agent.Step) {
+				onStep(tasks.Step{
+					Tool:    s.Tool,
+					Detail:  tasks.StepDetail(s.Args),
+					OK:      s.OK,
+					Seconds: s.Took.Seconds(),
+				})
+			}
+		}
+		return agent.QueryWithOpts(accountID, prompt, opts)
+	}
+	events.RunAgent = func(accountID, prompt string) (string, error) {
 		return agent.Query(accountID, prompt)
 	}
-	events.RunAgent = tasks.RunAgent
 
 	events.OnFireEvent = func(e *events.Event) {
 		if strings.TrimSpace(e.Prompt) == "" {

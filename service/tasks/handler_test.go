@@ -55,7 +55,7 @@ func TestARunningTaskSaysSoAndThePageWatchesForIt(t *testing.T) {
 
 	release := make(chan struct{})
 	started := make(chan struct{})
-	RunAgent = func(string, string) (string, error) {
+	RunAgent = func(string, string, func(Step)) (string, error) {
 		close(started)
 		<-release
 		return "done", nil
@@ -85,4 +85,82 @@ func TestARunningTaskSaysSoAndThePageWatchesForIt(t *testing.T) {
 	}
 
 	close(release)
+}
+
+// A finished task shows what the agent did, not only what it concluded. A
+// paragraph on its own gives no way to tell research from invention.
+func TestARunRecordsAndShowsItsSteps(t *testing.T) {
+	account(t, "steps")
+	clear("steps")
+	defer clear("steps")
+
+	RunAgent = func(_, _ string, onStep func(Step)) (string, error) {
+		onStep(Step{Tool: "web_search", Detail: "latest AI news", OK: true, Seconds: 1.2})
+		onStep(Step{Tool: "mail_send", OK: false, Seconds: 0.3})
+		return "Here is the summary.", nil
+	}
+	defer func() { RunAgent = nil }()
+
+	task, _ := Create("steps", "Summarise", "", "agent", time.Time{})
+	if err := Run("steps", task.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	var got *Task
+	for i := 0; i < 100; i++ {
+		got = mustGet(t, "steps", task.ID)
+		if got.Status == StatusDone {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if len(got.Steps) != 2 {
+		t.Fatalf("recorded %d steps, want 2: %+v", len(got.Steps), got.Steps)
+	}
+	if got.Steps[0].Tool != "web_search" || got.Steps[0].Detail != "latest AI news" {
+		t.Errorf("the first step lost its detail: %+v", got.Steps[0])
+	}
+	if got.Steps[1].OK {
+		t.Error("a failed tool was recorded as having worked")
+	}
+
+	row := taskRow(got, "csrf")
+	for _, want := range []string{"2 steps", "web_search", "latest AI news", "task-step failed"} {
+		if !strings.Contains(row, want) {
+			t.Errorf("the steps list is missing %q:\n%s", want, row)
+		}
+	}
+}
+
+// An ordinary edit is not a reason to forget what the agent did.
+func TestEditingATaskKeepsItsSteps(t *testing.T) {
+	clear("keep")
+	defer clear("keep")
+
+	task, _ := Create("keep", "Thing", "", "agent", time.Time{})
+	Update("keep", task.ID, "", "", StatusDone, "", "answer",
+		[]Step{{Tool: "news_list", OK: true, Seconds: 0.4}})
+
+	after, err := Update("keep", task.ID, "", "", StatusTodo, "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(after.Steps) != 1 || after.Steps[0].Tool != "news_list" {
+		t.Errorf("reopening the task dropped its steps: %+v", after.Steps)
+	}
+}
+
+// The detail beside a tool name is the argument that carries meaning, and only
+// that — a summary line is not a place to spill the caller's data.
+func TestStepDetailPicksTheQuery(t *testing.T) {
+	if got := StepDetail(map[string]any{"lat": 51.5, "query": "AI news"}); got != "AI news" {
+		t.Errorf("StepDetail = %q, want the query", got)
+	}
+	if got := StepDetail(map[string]any{"lat": 51.5, "lon": -0.12}); got != "" {
+		t.Errorf("StepDetail = %q, want nothing worth showing", got)
+	}
+	long := strings.Repeat("x", 200)
+	if got := StepDetail(map[string]any{"q": long}); len([]rune(got)) > 61 {
+		t.Errorf("StepDetail returned %d runes; a glance line must stay short", len([]rune(got)))
+	}
 }
