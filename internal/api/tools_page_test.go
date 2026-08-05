@@ -47,10 +47,9 @@ func TestTheCatalogueHasBothLenses(t *testing.T) {
 		t.Errorf("a headless service appeared in the services lens:\n%s", svc)
 	}
 
-	if !strings.Contains(lensTabs(true), `class="lens-tab active" href="/services"`) {
-		t.Error("the services lens does not mark itself active")
-	}
-	if !strings.Contains(lensTabs(false), `class="lens-tab active" href="/tools"`) {
-		t.Error("the tools lens does not mark itself active")
+	// The two lenses are reached from the sidebar, so neither renders a switch
+	// of its own — the tools lens lists tools and nothing else.
+	if strings.Contains(toolGrid(), "service-tile") {
+		t.Error("the tools lens rendered service tiles")
 	}
 }

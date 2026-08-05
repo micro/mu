@@ -40,8 +40,11 @@ func ToolsPageHandler(w http.ResponseWriter, r *http.Request) {
 	// what this instance runs, and leading with an MCP config pushed the answer
 	// below the fold; someone on /tools came to connect, and leading with a
 	// grid of sixty makes them scroll back up for the endpoint.
+	//
+	// No tabs between the two: the sidebar already links both, and a switch on
+	// the page that duplicates the navigation beside it is one more thing to
+	// read and one more place for the two to disagree.
 	var b strings.Builder
-	b.WriteString(lensTabs(services))
 	if services {
 		b.WriteString(serviceGrid())
 		b.WriteString(connectSection(r))
@@ -57,20 +60,6 @@ func ToolsPageHandler(w http.ResponseWriter, r *http.Request) {
 		title, desc = "Services", "Everything this instance runs, and what each one is"
 	}
 	app.Respond(w, r, app.Response{Title: title, Description: desc, HTML: b.String()})
-}
-
-// lensTabs switches between the two readings of the same catalogue.
-func lensTabs(services bool) string {
-	sc, tc := "lens-tab", "lens-tab"
-	if services {
-		sc += " active"
-	} else {
-		tc += " active"
-	}
-	return `<div class="lens-tabs">` +
-		`<a class="` + sc + `" href="/services">Services <span class="lens-hint">what you can open</span></a>` +
-		`<a class="` + tc + `" href="/tools">Tools <span class="lens-hint">what an agent can call</span></a>` +
-		`</div>`
 }
 
 // serviceGrid is the person's lens: one tile per service you can open.
@@ -300,13 +289,9 @@ func serviceOf(tool string) string {
 }
 
 const toolsPageCSS = `<style>
-.lens-tabs{display:flex;gap:18px;flex-wrap:wrap;margin:0 0 14px}
-.lens-tab{font-size:15px;font-weight:600;color:var(--text-muted);text-decoration:none;display:flex;align-items:baseline;gap:7px}
-.lens-tab.active{color:var(--text-primary)}
-.lens-hint{font-size:12px;font-weight:400;color:var(--text-muted)}
 .service-tile-head{display:flex;align-items:center;gap:8px}
 .service-tile-head img{width:18px;height:18px}
-@media only screen and (max-width:600px){.lens-hint{display:none}}
+
 .tool-group{margin:0 0 26px}
 .tool-group-title{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#999;margin:0 0 10px}
 .tool-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
