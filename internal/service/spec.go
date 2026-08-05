@@ -296,6 +296,11 @@ func endpointOptions(s Spec) server.HandlerOption {
 	return server.WithEndpointDocs(docs)
 }
 
+// HandlerName is the type name go-micro prefixes a handler's endpoints with —
+// "Server" for both Server and *Server. Exported because deriving a tool from
+// an endpoint needs the same "Server.Method" string the registry uses.
+func HandlerName(h any) string { return handlerName(h) }
+
 // handlerName is the type name go-micro prefixes a handler's endpoints with —
 // "Server" for both Server and *Server.
 func handlerName(h any) string {

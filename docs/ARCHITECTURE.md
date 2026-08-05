@@ -218,18 +218,24 @@ all read the registry.
 
 ## Deriving MCP tools
 
-MCP is the exception. Its tools come from a second, hand-written registry —
-`var tools` in `internal/api/mcp.go` plus `api.RegisterTool` calls in `main.go` —
-so a newly registered service is an agent tool, an app SDK call and a nav entry
-straight away, but **not** an MCP tool until someone adds a stanza.
+MCP tools used to be a second, hand-written registry — `var tools` in
+`internal/api/mcp.go` plus `api.RegisterTool` calls in `main.go` — so a newly
+registered service became an agent tool, an app SDK call and a nav entry
+straight away, but **not** an MCP tool until someone added a stanza.
 
-The awkward part is price. An `api.Tool` carries `WalletOp`, so a naive
-derivation would produce tools with no operation and therefore no charge — an
-unmetered path to a paid third party. Half of that is now solved: a Spec's
-endpoints can declare `Cost` (`web.Search` does), so the cost is already
-declarable in the place the derivation would read it.
+`api.DeriveTools` runs after the hand-written registrations and adds a
+tool for every Spec endpoint that has none — name, description, parameters and
+price all from the Spec. A written registration always wins: those carry docs
+written for a model, and often return one field of a response rather than the
+whole struct.
 
-Tracked in [micro/mu#1445](https://github.com/micro/mu/issues/1445).
+Price was what kept it open, because a derived tool with no operation would be
+an unmetered path to a paid service. An `Endpoint` declares its `Cost`, so a
+derived tool is charged exactly like a written one.
+
+Six endpoints had already drifted out of reach this way — `mail_search`,
+`places_geocode`, `chat_rooms`, `chat_messages`, `wallet_check`,
+`wallet_charge` — and none was withheld on purpose.
 
 ## The app SDK
 

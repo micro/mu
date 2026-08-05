@@ -63,23 +63,23 @@ one row per service, named for it.
 |---|---|
 | **Apps** | `apps_build` · `apps_create` · `apps_edit` · `apps_fork` · `apps_read` · `apps_run` · `apps_search` · `apps_test` — build and run small web tools |
 | **Blog** | `blog_create` · `blog_read` · `blog_list` · `blog_update` · `blog_delete` — publish, with AI-generated daily digests |
-| **Chat** | `chat` — one question, one answer |
+| **Chat** | `chat` · `chat_rooms` · `chat_messages` — one question one answer, and the live rooms |
 | **Contacts** | `contacts_add` · `contacts_find` · `contacts_list` · `contacts_delete` — turn a name into an address |
 | **Events** | `events_create` · `events_list` · `events_delete` · `events_free` — schedule, cancel, and find when you are free |
 | **Files** | `files_put` · `files_get` · `files_list` · `files_share` · `files_delete` — keep a file, get a URL |
 | **Images** | `images_generate` · `images_search` |
 | **Index** | `index_search` — everything this instance holds for you |
-| **Mail** | `mail_inbox` · `mail_send` · `mail_address` — a real SMTP server with DKIM, and an address per agent |
+| **Mail** | `mail_inbox` · `mail_send` · `mail_search` · `mail_address` — a real SMTP server with DKIM, and an address per agent |
 | **Markets** | `markets_list` — stocks, crypto, futures, commodities, currencies |
 | **News** | `news_list` · `news_read` · `news_search` — RSS aggregation, full articles |
-| **Places** | `places_search` · `places_nearby` · `places_eta` — points of interest, geocoding, travel time |
+| **Places** | `places_search` · `places_nearby` · `places_eta` · `places_geocode` — points of interest, geocoding, travel time |
 | **Prayer** | `prayer_times` · `prayer_qibla` · `prayer_reflection` — Islamic prayer times, qibla, and a daily verse, saying and name |
 | **Search** | `web_search` · `web_fetch` — search the web, read a page as clean text |
 | **Social** | `social_list` · `social_search` — public threads and replies |
 | **Stream** | `stream_list` · `stream_post` — this instance's own timeline |
 | **Tasks** | `tasks_create` · `tasks_list` · `tasks_next` · `tasks_update` · `tasks_delete` — what is to be done, and work you can hand to the agent |
 | **Video** | `video_list` · `video_search` — curated channels, no ads or recommendations |
-| **Wallet** | `wallet_balance` — credits, which is what calls are charged in |
+| **Wallet** | `wallet_balance` · `wallet_check` — credits, which is what calls are charged in |
 | **Weather** | `weather_forecast` — conditions, forecast, pollen |
 | **Platform** | `agent` — ask the whole thing a question and let it compose. `db_create` · `db_get` · `db_list` · `db_delete` — the store apps write to, so an agent and an app can share records (`db_create` with an `id` updates). Also `quran` · `quran_search` · `hadith`, `save` · `unsave` · `saved_list`, and `flag` · `dismiss` · `block_user` · `unblock_user` |
 

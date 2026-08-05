@@ -3,6 +3,7 @@ package main
 import (
 	"testing"
 
+	"mu/internal/api"
 	"mu/internal/service"
 	"mu/service/apps"
 	"mu/service/blog"
@@ -156,5 +157,29 @@ func TestNavCoversEveryPagedServiceExactlyOnce(t *testing.T) {
 	}
 	if len(nav) != want {
 		t.Errorf("sidebar has %d entries, want %d — %v", len(nav), want, routes)
+	}
+}
+
+// Every endpoint a service declares is reachable over MCP.
+//
+// Tools were registered by hand in main() while the agent's tools derived from
+// the Specs, so adding an endpoint gave the agent something to call and an MCP
+// client nothing. Six had drifted out of reach that way — mail_search,
+// places_geocode, chat_rooms, chat_messages, wallet_check, wallet_charge — and
+// not one of them was withheld on purpose.
+//
+// api.DeriveTools closes the gap at startup. This checks it stays closed, so a
+// new endpoint cannot go missing between the Spec and the client again.
+func TestEveryEndpointIsReachableOverMCP(t *testing.T) {
+	registerAll(t)
+	api.DeriveTools()
+
+	for _, s := range allSpecs() {
+		for method := range s.Endpoints {
+			name := s.Tool(method)
+			if !api.HasTool(name) {
+				t.Errorf("%s.%s is declared but no client can call %s", s.Name, method, name)
+			}
+		}
 	}
 }

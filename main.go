@@ -1680,6 +1680,12 @@ func main() {
 	// needs the day there is somewhere worth paying, and the CLI still reaches
 	// them. Bringing the tool back is re-registering it here.
 
+	// Anything declared on a Spec but never written out above becomes a tool
+	// here. Six endpoints had drifted out of reach this way — see
+	// internal/api/derive.go. Registrations above win; this only fills gaps, so
+	// it has to run after all of them.
+	api.DeriveTools()
+
 	// Every tool is registered. Surfaces that publish a command set built from
 	// the registry — the Discord slash commands, the Telegram menu — are waiting
 	// on this; without it they race the wiring above and publish a partial one.
