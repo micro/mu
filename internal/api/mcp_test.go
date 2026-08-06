@@ -134,7 +134,9 @@ func TestMCPHandler_ToolsList(t *testing.T) {
 	// wallet_balance moved to main.go with the rest of the wallet surface, so
 	// it is no longer static either.
 	expectedTools := map[string]bool{
-		"chat": false, "news_search": false,
+		// chat became agent_ask when the tool surface was namespaced; the old
+		// name still resolves as an alias but is no longer listed.
+		"chat_ask": false, "news_search": false,
 		"blog_read": false, "blog_create": false,
 		"video_search": false, "mail_inbox": false,
 		"stream_list": false,

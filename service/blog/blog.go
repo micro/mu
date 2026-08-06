@@ -1203,6 +1203,19 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		id = r.URL.Query().Get("id")
 	}
 
+	// A title is as good as an id for reading or deleting one post. Without
+	// this an agent asked about "the post on the migration" had to list
+	// everything, scan for a name and copy a uuid — two model calls for a
+	// thing somebody says in one sentence. Ambiguity resolves to nothing, so a
+	// vague title fails rather than deleting a plausible neighbour.
+	if id == "" {
+		if title := strings.TrimSpace(r.URL.Query().Get("title")); title != "" {
+			if p := ByTitle(title); p != nil {
+				id = p.ID
+			}
+		}
+	}
+
 	// Handle POST to create new post (no id required)
 	if r.Method == "POST" && id == "" {
 		var title, content, tags string

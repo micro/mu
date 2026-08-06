@@ -365,8 +365,9 @@ var tools = []Tool{
 		},
 	},
 	{
-		Name:        "chat",
-		Description: "Chat with AI assistant",
+		Name:        "chat_ask",
+		Aliases:     []string{"chat"},
+		Description: "Ask a question answered from what this instance has already indexed — its news, blog posts and saved content — in one grounded model call. It calls no tools, so it is cheap and fast but can only answer from what is here already; for anything needing live lookups or several steps, use agent_ask.",
 		Method:      "POST",
 		Path:        "/chat",
 		WalletOp:    wallet.OpChatQuery,
@@ -376,7 +377,7 @@ var tools = []Tool{
 	},
 	{
 		Name:        "news_search",
-		Description: "Search for news articles",
+		Description: "Search aggregated news headlines by keyword and return matching articles with source and time. Use when the question is about a specific topic; use news_list for what is happening generally, and news_read for the full text " + "of one article.",
 		Method:      "POST",
 		Path:        "/news",
 		WalletOp:    wallet.OpNewsSearch,
@@ -389,16 +390,17 @@ var tools = []Tool{
 	// not as page-backed entries here.
 	{
 		Name:        "blog_read",
-		Description: "Read a specific blog post by ID",
+		Description: "Read one blog post in full, by id or by title. Use after blog_list or blog_search has found a candidate and the summary is not enough. Returns the whole body, the author and when it was published.",
 		Method:      "GET",
 		Path:        "/blog/post",
 		Params: []ToolParam{
-			{Name: "id", Type: "string", Description: "The blog post ID", Required: true},
+			{Name: "id", Type: "string", Description: "The post's id, as given by blog_list"},
+			{Name: "title", Type: "string", Description: "The post's title, or enough of it to be unambiguous — use this when you have a name rather than an id"},
 		},
 	},
 	{
 		Name:        "blog_create",
-		Description: "Create a new blog post",
+		Description: "Publish a post to the caller's blog. Use for anything meant to be read later by other people — notes, write-ups, announcements. Returns the post and its URL. For a private note to yourself, prefer files or memory.",
 		Method:      "POST",
 		Path:        "/blog/post",
 		WalletOp:    wallet.OpBlogCreate,
@@ -420,16 +422,17 @@ var tools = []Tool{
 	},
 	{
 		Name:        "blog_delete",
-		Description: "Delete a blog post (author only)",
+		Description: "Delete one of the caller's own blog posts, by id or title. Refuses posts written by anyone else. Irreversible, so confirm with the user first.",
 		Method:      "DELETE",
 		Path:        "/blog/post",
 		Params: []ToolParam{
-			{Name: "id", Type: "string", Description: "The blog post ID to delete", Required: true},
+			{Name: "id", Type: "string", Description: "The post's id, as given by blog_list"},
+			{Name: "title", Type: "string", Description: "The post's title, or enough of it to be unambiguous. An ambiguous title is refused rather than guessed — deleting the wrong post is not recoverable"},
 		},
 	},
 	{
 		Name:        "social_search",
-		Description: "Search social media posts",
+		Description: "Search public posts on this instance by keyword. Returns matching posts with their author and time. This is the instance's own social feed, not " + "the wider internet — use web_search for that.",
 		Method:      "POST",
 		Path:        "/social",
 		WalletOp:    wallet.OpSocialSearch,
@@ -439,7 +442,7 @@ var tools = []Tool{
 	},
 	{
 		Name:        "video_search",
-		Description: "Search for videos",
+		Description: "Search videos from the channels this instance curates, by keyword. Returns titles, channels and links. A curated set rather than all of YouTube, so a miss means it is not followed here, not that it does not exist.",
 		Method:      "POST",
 		Path:        "/video",
 		WalletOp:    wallet.OpVideoSearch,
@@ -460,7 +463,7 @@ var tools = []Tool{
 	{
 		Name:        "mail_send",
 		AccountOnly: true, // a funded wallet is not accountable for the domain
-		Description: "Send a mail message",
+		Description: "Send an email from the caller's own address on this instance. Takes a recipient address, a subject and a body; resolve a name to an address with contacts_find first. Requires an account, and the mail really is delivered " + "— there is no draft state to undo from.",
 		Method:      "POST",
 		Path:        "/mail",
 		WalletOp:    wallet.OpExternalEmail,
@@ -513,8 +516,9 @@ var tools = []Tool{
 	},
 	// Content controls
 	{
-		Name:        "flag",
-		Description: "Flag content for moderation",
+		Name:        "content_flag",
+		Aliases:     []string{"flag"},
+		Description: "Report a post, comment or message for a human moderator to look at. Takes the item id and a reason. Does not remove anything itself — use dismiss to hide something from your own view.",
 		Method:      "POST",
 		Path:        "/app/flag",
 		Params: []ToolParam{
@@ -523,8 +527,9 @@ var tools = []Tool{
 		},
 	},
 	{
-		Name:        "save",
-		Description: "Bookmark content for later",
+		Name:        "content_save",
+		Aliases:     []string{"save"},
+		Description: "Save an item to the caller's bookmarks so it can be found again. Takes the item id. Private to the caller, and reversible with unsave.",
 		Method:      "POST",
 		Path:        "/app/save",
 		Params: []ToolParam{
@@ -533,8 +538,9 @@ var tools = []Tool{
 		},
 	},
 	{
-		Name:        "unsave",
-		Description: "Remove a saved bookmark",
+		Name:        "content_unsave",
+		Aliases:     []string{"unsave"},
+		Description: "Remove an item from the caller's bookmarks, by id. Leaves the item itself untouched — this only forgets that it was saved.",
 		Method:      "POST",
 		Path:        "/app/unsave",
 		Params: []ToolParam{
@@ -543,8 +549,9 @@ var tools = []Tool{
 		},
 	},
 	{
-		Name:        "dismiss",
-		Description: "Hide content from your view",
+		Name:        "content_hide",
+		Aliases:     []string{"dismiss"},
+		Description: "Hide an item so the caller stops seeing it, by id. Affects only this account's view; use flag to report something to a moderator instead.",
 		Method:      "POST",
 		Path:        "/app/dismiss",
 		Params: []ToolParam{
@@ -563,7 +570,7 @@ var tools = []Tool{
 	},
 	{
 		Name:        "unblock_user",
-		Description: "Unblock a previously blocked user",
+		Description: "Stop blocking another account, so their posts and messages reach the caller again. Takes their username. Reverses block_user.",
 		Method:      "POST",
 		Path:        "/app/unblock",
 		Params: []ToolParam{
@@ -606,7 +613,8 @@ var tools = []Tool{
 		},
 	},
 	{
-		Name:        "quran",
+		Name:        "prayer_verse",
+		Aliases:     []string{"quran"},
 		Description: "Look up a Quran chapter or verse. Pass chapter number (1-114) and optionally a verse number.",
 		Params: []ToolParam{
 			{Name: "chapter", Type: "number", Description: "Chapter number (1-114)", Required: true},
@@ -628,7 +636,8 @@ var tools = []Tool{
 		},
 	},
 	{
-		Name:        "hadith",
+		Name:        "prayer_saying",
+		Aliases:     []string{"hadith"},
 		Description: "Look up hadith from Sahih Al Bukhari. Pass a book number to get hadiths from that book.",
 		Params: []ToolParam{
 			{Name: "book", Type: "number", Description: "Book number", Required: false},
