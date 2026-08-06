@@ -43,7 +43,7 @@ func AgentsHandler(w http.ResponseWriter, r *http.Request) {
 			_ = json.NewEncoder(w).Encode(spec)
 			return
 		case "delete":
-			micro.DeleteUserAgentFor(acc.ID, r.FormValue("id"))
+			_ = RemoveAgent(acc.ID, r.FormValue("id"))
 			_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
 			return
 		default: // save
@@ -54,15 +54,23 @@ func AgentsHandler(w http.ResponseWriter, r *http.Request) {
 				_ = json.NewEncoder(w).Encode(map[string]any{"error": "name and prompt are required"})
 				return
 			}
-			saved := micro.SaveUserAgent(acc.ID, &micro.Agent{
-				ID:           r.FormValue("id"),
-				Name:         name,
-				Description:  strings.TrimSpace(r.FormValue("description")),
-				SystemPrompt: prompt,
-				Tools:        r.Form["tools"], // empty = all tools
-				ForkedFrom:   r.FormValue("fork"),
-			})
-			_ = json.NewEncoder(w).Encode(saved)
+			// Into the roster, the one store. An agent made here is hosted —
+			// you built it to talk to — and gets no token until asked for one
+			// on /agents, because nothing here needs to authenticate.
+			desc := strings.TrimSpace(r.FormValue("description"))
+			var saved *Agent
+			var err error
+			if id := r.FormValue("id"); id != "" && AgentFor(acc.ID, id) != nil {
+				saved, err = UpdateAgent(acc.ID, id, name, prompt, desc, r.Form["tools"])
+			} else {
+				saved, _, err = CreateAgent(acc.ID, name, Hosted, prompt, desc, r.Form["tools"], false)
+			}
+			if err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				_ = json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
+				return
+			}
+			_ = json.NewEncoder(w).Encode(saved.AsMicro())
 			return
 		}
 	}
@@ -75,18 +83,13 @@ func AgentsHandler(w http.ResponseWriter, r *http.Request) {
 		Prompt      string   `json:"prompt,omitempty"`
 		Tools       []string `json:"tools,omitempty"`
 	}
+	// One list, one store. This used to read agent/micro's own store while
+	// /agents wrote to the roster, so "my agents" depended on which page you
+	// asked — and an agent made here had no scope and no token.
 	var mine []lite
-	for _, a := range micro.UserAgentsFor(acc.ID) {
-		mine = append(mine, lite{a.ID, a.Name, a.Description, a.SystemPrompt, a.Tools})
-	}
-	// Agents created on /agents are the same list. They are stored there
-	// because they also carry a scope and a token, which an agent you only
-	// ever talk to does not need — but "my agents" has to be one list, or the
-	// word means two things depending on which page you are looking at.
-	if HostedAgents != nil {
-		for _, a := range HostedAgents(acc.ID) {
-			mine = append(mine, lite{a.ID, a.Name, a.Description, a.SystemPrompt, a.Tools})
-		}
+	for _, a := range Agents(acc.ID) {
+		m := a.AsMicro()
+		mine = append(mine, lite{m.ID, m.Name, m.Description, m.SystemPrompt, m.Tools})
 	}
 	_ = json.NewEncoder(w).Encode(map[string]any{"agents": mine, "tools": AllAgentTools()})
 }
@@ -197,12 +200,12 @@ func NewAgentHandler(w http.ResponseWriter, r *http.Request) {
 	editID := ""
 	forkFrom := ""
 	if id := r.URL.Query().Get("id"); id != "" {
-		if a := micro.GetUserAgentFor(acc.ID, id); a != nil {
-			cur, editID = a, id
+		if a := AgentFor(acc.ID, id); a != nil {
+			cur, editID = a.AsMicro(), id
 		}
 	} else if fid := r.URL.Query().Get("fork"); fid != "" {
-		if a := micro.GetUserAgentFor(acc.ID, fid); a != nil {
-			cur, forkFrom = a, fid
+		if a := AgentFor(acc.ID, fid); a != nil {
+			cur, forkFrom = a.AsMicro(), fid
 		}
 	}
 
@@ -303,8 +306,3 @@ function bSave(e){e.preventDefault();
 
 	app.Respond(w, r, app.Response{Title: title, Description: "Build a custom agent", HTML: b})
 }
-
-// HostedAgents lists the account's agents that run on this instance, as micro
-// agents the chat can talk to. Set by main.go from service/agents, which owns
-// the record — kept as a hook so this package does not import a service.
-var HostedAgents func(accountID string) []*micro.Agent

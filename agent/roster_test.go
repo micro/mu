@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"mu/agent/micro"
 	"mu/internal/auth"
 	"mu/internal/service"
 )
@@ -60,7 +61,7 @@ func TestAnAgentsScopeIsWrittenIntoItsToken(t *testing.T) {
 	probes(t)
 	id := owner(t, "agentowner")
 
-	a, secret, err := CreateAgent(id, "Reader", External, "reads things", []string{"probealpha"})
+	a, secret, err := CreateAgent(id, "Reader", External, "reads things", "", []string{"probealpha"}, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +87,7 @@ func TestAScopeCannotNameAServiceThatDoesNotExist(t *testing.T) {
 	probes(t)
 	id := owner(t, "agentowner2")
 
-	a, _, err := CreateAgent(id, "Confused", External, "", []string{"probealpha", "nosuchservice"})
+	a, _, err := CreateAgent(id, "Confused", External, "", "", []string{"probealpha", "nosuchservice"}, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,7 +101,7 @@ func TestAScopeCannotNameAServiceThatDoesNotExist(t *testing.T) {
 func TestAnAgentWithNoScopeChosenIsUnscoped(t *testing.T) {
 	id := owner(t, "agentowner3")
 
-	a, _, err := CreateAgent(id, "Everything", External, "", nil)
+	a, _, err := CreateAgent(id, "Everything", External, "", "", nil, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,7 +123,7 @@ func TestRemovingAnAgentRevokesItsToken(t *testing.T) {
 	probes(t)
 	id := owner(t, "agentowner4")
 
-	a, _, err := CreateAgent(id, "Temporary", External, "", []string{"probealpha"})
+	a, _, err := CreateAgent(id, "Temporary", External, "", "", []string{"probealpha"}, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -143,7 +144,7 @@ func TestAgentsAreOwnedByOneAccount(t *testing.T) {
 	mine := owner(t, "agentmine")
 	theirs := owner(t, "agenttheirs")
 
-	a, _, err := CreateAgent(mine, "Mine", External, "", []string{"probealpha"})
+	a, _, err := CreateAgent(mine, "Mine", External, "", "", []string{"probealpha"}, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -164,7 +165,7 @@ func TestTheEndpointCarriesTheScope(t *testing.T) {
 	probes(t)
 	id := owner(t, "agentowner5")
 
-	scoped, _, err := CreateAgent(id, "Narrow", External, "", []string{"probealpha"})
+	scoped, _, err := CreateAgent(id, "Narrow", External, "", "", []string{"probealpha"}, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -172,11 +173,90 @@ func TestTheEndpointCarriesTheScope(t *testing.T) {
 		t.Errorf("endpoint is %q, want the scope in it", got)
 	}
 
-	wide, _, err := CreateAgent(id, "Wide", External, "", nil)
+	wide, _, err := CreateAgent(id, "Wide", External, "", "", nil, true)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got := wide.Endpoint("https://example.test"); strings.Contains(got, "?tools=") {
 		t.Errorf("an unscoped agent got a scoped endpoint: %q", got)
+	}
+}
+
+// One store, one list. Agents made in the chat used to live in agent/micro's
+// own file while /agents wrote here, so "my agents" depended on which page you
+// asked. Existing ones are imported — keeping their name, prompt and tools, and
+// getting no token, because nobody asked for a credential and minting one on
+// somebody's behalf is a decision rather than an import.
+func TestImportingTheOldStoreKeepsAgentsAndMintsNoTokens(t *testing.T) {
+	probes(t)
+	id := owner(t, "importer")
+
+	n := ImportUserAgents(map[string][]*micro.Agent{
+		id: {{ID: "u_old", Name: "Legacy", Description: "an old one",
+			SystemPrompt: "be helpful", Tools: []string{"probealpha"}}},
+	})
+	if n != 1 {
+		t.Fatalf("imported %d, want 1", n)
+	}
+
+	var found *Agent
+	for _, a := range Agents(id) {
+		if a.Name == "Legacy" {
+			found = a
+		}
+	}
+	if found == nil {
+		t.Fatal("the imported agent is not in the roster")
+	}
+	if found.Prompt != "be helpful" || found.Description != "an old one" {
+		t.Errorf("import lost detail: %+v", found)
+	}
+	if found.TokenID != "" {
+		t.Error("import minted a credential nobody asked for")
+	}
+	if len(found.Services) != 1 || found.Services[0] != "probealpha" {
+		t.Errorf("import lost the tool set: %v", found.Services)
+	}
+
+	// Running twice must not double the list.
+	if again := ImportUserAgents(map[string][]*micro.Agent{
+		id: {{ID: "u_old", Name: "Legacy", SystemPrompt: "be helpful"}},
+	}); again != 0 {
+		t.Errorf("a second import added %d more", again)
+	}
+}
+
+// An agent without a credential can be given one later, because an agent you
+// only talked to may need to run somewhere else.
+func TestATokenlessAgentCanBeIssuedOne(t *testing.T) {
+	probes(t)
+	id := owner(t, "issuer")
+
+	a, secret, err := CreateAgent(id, "Quiet", Hosted, "think", "", []string{"probealpha"}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if secret != "" || a.TokenID != "" {
+		t.Fatal("an agent created without a token got one")
+	}
+
+	issued, err := IssueToken(id, a.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if issued == "" {
+		t.Error("no secret was returned")
+	}
+	got := AgentFor(id, a.ID)
+	if got.TokenID == "" {
+		t.Error("the issued token was not recorded")
+	}
+	tok, err := auth.GetTokenByID(got.TokenID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The scope travels with the credential, exactly as it does at creation.
+	if !tok.AllowsService("probealpha") || tok.AllowsService("probebeta") {
+		t.Errorf("the issued token allows %v", tok.Services())
 	}
 }

@@ -101,3 +101,19 @@ func DeleteUserAgents(accountID string) {
 		data.SaveJSON(uaFile, userAgents)
 	}
 }
+
+// AllUserAgents returns every account's agents, for the one-time import into
+// the roster. Nothing else should reach for this: agents are per account, and a
+// caller that wants one account's should say which.
+func AllUserAgents() map[string][]*Agent {
+	loadUserAgents()
+	uaMu.RLock()
+	defer uaMu.RUnlock()
+	out := map[string][]*Agent{}
+	for account, m := range userAgents {
+		for _, a := range m {
+			out[account] = append(out[account], a)
+		}
+	}
+	return out
+}

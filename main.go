@@ -2117,23 +2117,17 @@ func main() {
 	// "runs here" can be talked to, with its own instructions and confined to
 	// its own services. Without this, that option on the create form stored a
 	// field nothing read.
-	agent.HostedAgents = func(accountID string) []*micro.Agent {
-		var out []*micro.Agent
-		for _, a := range agent.Agents(accountID) {
-			if a.Kind != agent.Hosted {
-				continue
-			}
-			out = append(out, hostedAsMicro(accountID, a))
-		}
-		return out
+	// One store. Agents made in the chat used to live in agent/micro's own
+	// file while /agents wrote to the roster, so "my agents" depended on which
+	// page you asked and an agent made in the chat had no scope and no token.
+	// Existing ones are imported once, without minting credentials nobody asked
+	// for; the old file is left alone so this is reversible.
+	if n := agent.ImportUserAgents(micro.AllUserAgents()); n > 0 {
+		app.Log("agents", "imported %d agent(s) into the roster", n)
 	}
-	prevUserAgent := micro.UserAgentResolver
 	micro.UserAgentResolver = func(accountID, id string) *micro.Agent {
-		if a := agent.AgentFor(accountID, id); a != nil && a.Kind == agent.Hosted {
-			return hostedAsMicro(accountID, a)
-		}
-		if prevUserAgent != nil {
-			return prevUserAgent(accountID, id)
+		if a := agent.AgentFor(accountID, id); a != nil {
+			return a.AsMicro()
 		}
 		return nil
 	}
@@ -2855,26 +2849,4 @@ func runHealthChecks() []app.ServiceHealth {
 	}
 
 	return results
-}
-
-// hostedAsMicro presents an agent from /agents as one the chat can run.
-//
-// Services becomes Tools because that is what the native path matches on: it
-// filters the available services by this list, so an agent scoped to news and
-// weather is offered those and nothing else. The same scope is enforced against
-// its token at the MCP boundary, so talking to it here and calling it from
-// outside confine it the same way.
-func hostedAsMicro(accountID string, a *agent.Agent) *micro.Agent {
-	desc := a.Prompt
-	if desc == "" {
-		desc = "Your agent"
-	}
-	return &micro.Agent{
-		ID:             a.ID,
-		Name:           a.Name,
-		Description:    desc,
-		SystemPrompt:   a.Prompt,
-		Tools:          a.Services,
-		OwnerAccountID: accountID,
-	}
 }

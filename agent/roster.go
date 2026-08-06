@@ -31,6 +31,7 @@ import (
 	"strings"
 	"time"
 
+	"mu/agent/micro"
 	"mu/internal/auth"
 	"mu/internal/service"
 	"mu/internal/userdb"
@@ -61,10 +62,19 @@ type Agent struct {
 	// can reach, which is the old behaviour of a bare token and is deliberately
 	// possible to choose — but it is a choice, not a default.
 	Services []string `json:"services,omitempty"`
-	// Prompt is the standing instruction for a hosted agent: what it is for.
+	// Prompt is the standing instruction: what this agent is for. It is the
+	// system prompt when you talk to it.
 	Prompt string `json:"prompt,omitempty"`
+	// Description is the one-line the router reads when deciding which agent
+	// should answer.
+	Description string `json:"description,omitempty"`
 	// TokenID identifies the credential without holding it. The secret is shown
-	// once at creation and never stored in readable form.
+	// once and never stored in readable form.
+	//
+	// Empty is a real state: agents created in the chat, and those imported from
+	// the store that predates this, have no credential because nobody asked for
+	// one. Minting tokens for them at import would have handed out credentials
+	// on their owner's behalf.
 	TokenID  string    `json:"token_id,omitempty"`
 	Created  time.Time `json:"created"`
 	LastUsed time.Time `json:"last_used,omitempty"`
@@ -80,7 +90,7 @@ func (a *Agent) Unscoped() bool { return len(a.Services) == 0 }
 // the confinement travels with the credential rather than being re-derived at
 // each call site. A caller that never reads this package still cannot escape
 // the scope, because the check lives at the MCP boundary.
-func CreateAgent(owner, name, kind, prompt string, services []string) (*Agent, string, error) {
+func CreateAgent(owner, name, kind, prompt, description string, services []string, withToken bool) (*Agent, string, error) {
 	if owner == "" {
 		return nil, "", fmt.Errorf("sign in to create an agent")
 	}
@@ -98,26 +108,36 @@ func CreateAgent(owner, name, kind, prompt string, services []string) (*Agent, s
 	services = validServices(services)
 
 	a := &Agent{
-		Owner:    owner,
-		Name:     name,
-		Kind:     kind,
-		Services: services,
-		Prompt:   strings.TrimSpace(prompt),
-		Created:  time.Now(),
+		Owner:       owner,
+		Name:        name,
+		Kind:        kind,
+		Services:    services,
+		Prompt:      strings.TrimSpace(prompt),
+		Description: strings.TrimSpace(description),
+		Created:     time.Now(),
 	}
 
 	// One token per agent, named for it, so the token page and any audit shows
 	// which agent a credential belongs to rather than a row called "token 3".
-	tok, secret, err := auth.CreateToken(owner, "agent: "+name, auth.ScopeFor(services), time.Time{})
-	if err != nil {
-		return nil, "", fmt.Errorf("could not issue a token for this agent: %w", err)
+	//
+	// Not every agent gets one. An agent you only talk to here has nothing to
+	// authenticate, and issuing a credential nobody asked for is how a product
+	// ends up with live tokens its owner cannot account for.
+	secret := ""
+	if withToken {
+		tok, s, err := auth.CreateToken(owner, "agent: "+name, auth.ScopeFor(services), time.Time{})
+		if err != nil {
+			return nil, "", fmt.Errorf("could not issue a token for this agent: %w", err)
+		}
+		a.TokenID, secret = tok.ID, s
 	}
-	a.TokenID = tok.ID
 
 	rec, err := userdb.Create(ns, owner, collection, fields(a), false)
 	if err != nil {
 		// Do not leave a live credential behind an agent that was not stored.
-		_ = auth.DeleteToken(tok.ID, owner)
+		if a.TokenID != "" {
+			_ = auth.DeleteToken(a.TokenID, owner)
+		}
 		return nil, "", err
 	}
 	a.ID = rec.ID
@@ -147,7 +167,8 @@ func validServices(in []string) []string {
 func fields(a *Agent) map[string]any {
 	return map[string]any{
 		"name": a.Name, "kind": a.Kind, "prompt": a.Prompt,
-		"token_id": a.TokenID, "services": strings.Join(a.Services, ","),
+		"description": a.Description,
+		"token_id":    a.TokenID, "services": strings.Join(a.Services, ","),
 		"created": a.Created.Format(time.RFC3339),
 	}
 }
@@ -211,7 +232,7 @@ func fromRecord(owner string, rec userdb.Record) *Agent {
 	}
 	a := &Agent{
 		ID: rec.ID, Owner: owner, Name: str("name"), Kind: str("kind"),
-		Prompt: str("prompt"), TokenID: str("token_id"),
+		Prompt: str("prompt"), Description: str("description"), TokenID: str("token_id"),
 	}
 	if a.Kind != Hosted {
 		a.Kind = External
@@ -241,4 +262,91 @@ func (a *Agent) Endpoint(base string) string {
 		return base + "/mcp"
 	}
 	return base + "/mcp?tools=" + strings.Join(a.Services, ",")
+}
+
+// UpdateAgent rewrites an agent the owner owns, keeping its id and token.
+func UpdateAgent(owner, id, name, prompt, description string, services []string) (*Agent, error) {
+	a := AgentFor(owner, id)
+	if a == nil {
+		return nil, fmt.Errorf("no such agent")
+	}
+	if n := strings.TrimSpace(name); n != "" {
+		a.Name = n
+	}
+	a.Prompt = strings.TrimSpace(prompt)
+	a.Description = strings.TrimSpace(description)
+	a.Services = validServices(services)
+	if _, err := userdb.Update(ns, owner, collection, id, fields(a), false); err != nil {
+		return nil, err
+	}
+	return a, nil
+}
+
+// IssueToken gives an agent a credential, replacing any it had.
+//
+// Separate from creation because an agent you only talked to may later need to
+// run somewhere else, and because the secret can only be shown once — so it has
+// to be an action somebody takes deliberately rather than a side effect.
+func IssueToken(owner, id string) (string, error) {
+	a := AgentFor(owner, id)
+	if a == nil {
+		return "", fmt.Errorf("no such agent")
+	}
+	if a.TokenID != "" {
+		_ = auth.DeleteToken(a.TokenID, owner)
+	}
+	tok, secret, err := auth.CreateToken(owner, "agent: "+a.Name, auth.ScopeFor(a.Services), time.Time{})
+	if err != nil {
+		return "", err
+	}
+	a.TokenID = tok.ID
+	if _, err := userdb.Update(ns, owner, collection, id, fields(a), false); err != nil {
+		return "", err
+	}
+	return secret, nil
+}
+
+// ImportUserAgents moves agents from the store that predates the roster.
+//
+// There were two stores: this one, and agent/micro's, which the chat wrote to.
+// Two creation paths writing to different places meant "my agents" depended on
+// which page you asked. Imported agents keep their name, prompt, description and
+// tool set, and get no token — nobody asked for a credential, and minting one on
+// somebody's behalf is not an import, it is a decision.
+//
+// Idempotent by name: running twice does not double anybody's list.
+func ImportUserAgents(all map[string][]*micro.Agent) int {
+	imported := 0
+	for owner, list := range all {
+		have := map[string]bool{}
+		for _, a := range Agents(owner) {
+			have[strings.ToLower(a.Name)] = true
+		}
+		for _, ua := range list {
+			if ua == nil || have[strings.ToLower(ua.Name)] {
+				continue
+			}
+			if _, _, err := CreateAgent(owner, ua.Name, Hosted, ua.SystemPrompt,
+				ua.Description, ua.Tools, false); err != nil {
+				continue
+			}
+			have[strings.ToLower(ua.Name)] = true
+			imported++
+		}
+	}
+	return imported
+}
+
+// AsMicro presents a roster agent as one the chat can run: its prompt becomes
+// the system prompt, and its scope becomes the tool set, which is what the
+// native path filters services by.
+func (a *Agent) AsMicro() *micro.Agent {
+	desc := a.Description
+	if desc == "" {
+		desc = a.Prompt
+	}
+	return &micro.Agent{
+		ID: a.ID, Name: a.Name, Description: desc,
+		SystemPrompt: a.Prompt, Tools: a.Services, OwnerAccountID: a.Owner,
+	}
 }

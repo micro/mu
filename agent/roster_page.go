@@ -36,8 +36,10 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		switch r.FormValue("action") {
 		case "create":
+			// An agent created here gets a token: this page is where you come
+			// to hand one out. One made in the chat does not, until asked.
 			a, secret, err := CreateAgent(owner, r.FormValue("name"), r.FormValue("kind"),
-				r.FormValue("prompt"), r.Form["services"])
+				r.FormValue("prompt"), "", r.Form["services"], true)
 			if err != nil {
 				http.Redirect(w, r, "/agents?error="+urlSafe(err.Error()), http.StatusSeeOther)
 				return
@@ -50,6 +52,14 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 		case "delete":
 			_ = RemoveAgent(owner, r.FormValue("id"))
 			http.Redirect(w, r, "/agents?removed=1", http.StatusSeeOther)
+			return
+		case "token":
+			secret, err := IssueToken(owner, r.FormValue("id"))
+			if err != nil {
+				http.Redirect(w, r, "/agents?error="+urlSafe(err.Error()), http.StatusSeeOther)
+				return
+			}
+			http.Redirect(w, r, "/agents?created="+r.FormValue("id")+"&secret="+urlSafe(secret), http.StatusSeeOther)
 			return
 		}
 		http.Redirect(w, r, "/agents", http.StatusSeeOther)
@@ -132,12 +142,22 @@ func agentRow(a *Agent, csrf, base string) string {
 		kind = "hosted here"
 	}
 
+	token := ""
+	if a.TokenID == "" {
+		token = fmt.Sprintf(`<form method="POST" action="/agents" style="margin:0">
+    <input type="hidden" name="_csrf" value="%s"><input type="hidden" name="action" value="token">
+    <input type="hidden" name="id" value="%s">
+    <button type="submit" class="agent-remove" style="color:#666">Issue token</button>
+  </form>`, html.EscapeString(csrf), html.EscapeString(a.ID))
+	}
+
 	return fmt.Sprintf(`<div class="agent-row">
   <div style="flex:1;min-width:0">
     <div style="font-weight:600;font-size:14px">%s <span class="agent-kind">%s</span></div>
     <div class="%s">%s</div>
     <div class="agent-meta">%s · <code>%s</code></div>
   </div>
+  %s
   <form method="POST" action="/agents" style="margin:0" onsubmit="return confirm('Remove this agent and revoke its token?')">
     <input type="hidden" name="_csrf" value="%s">
     <input type="hidden" name="action" value="delete">
@@ -147,7 +167,7 @@ func agentRow(a *Agent, csrf, base string) string {
 </div>`,
 		html.EscapeString(a.Name), html.EscapeString(kind),
 		cls, html.EscapeString(scope),
-		html.EscapeString(used), html.EscapeString(a.Endpoint(base)),
+		html.EscapeString(used), html.EscapeString(a.Endpoint(base)), token,
 		html.EscapeString(csrf), html.EscapeString(a.ID))
 }
 
