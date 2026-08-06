@@ -177,7 +177,7 @@ func calendarCard(owner, status, csrf string) string {
 	case "connected":
 		note = `<p style="font-size:13px;color:#0a7d33;margin:0 0 8px">Connected. Your calendar is now included in what's scheduled and when you're free.</p>`
 	case "disconnected":
-		note = `<p style="font-size:13px;color:#888;margin:0 0 8px">Disconnected. Mu has forgotten the token; you can also revoke it in your Google account.</p>`
+		note = `<p style="font-size:13px;color:#888;margin:0 0 8px">Disconnected. The access was revoked at Google and forgotten here — Mu is off your account's app list.</p>`
 	case "declined":
 		note = `<p style="font-size:13px;color:#888;margin:0 0 8px">No calendar access granted — nothing changed.</p>`
 	case "failed":

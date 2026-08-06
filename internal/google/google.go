@@ -132,15 +132,69 @@ func Store(accountID, email, refreshToken string, scopes []string) {
 	save()
 }
 
-// Disconnect forgets an account's grant. Revoking at Google's end is the
-// person's own business (myaccount.google.com), but Mu must stop holding the
-// credential the moment they say so.
+// Disconnect withdraws an account's grant: revoked at Google, then forgotten
+// here.
+//
+// Both halves, because "disconnect" has to mean disconnected. Forgetting the
+// token locally would leave Mu listed in the person's Google account as an app
+// with standing access to their calendar — access it can no longer use, but
+// which they would have to go and remove themselves to be rid of. A product
+// that keeps its name on that list after you pressed Disconnect is lying by
+// omission.
+//
+// The revoke is best-effort and the local forget is not: if Google is
+// unreachable, Mu still drops the credential. Holding somebody's token because
+// a third party timed out is the one outcome that must not happen.
 func Disconnect(accountID string) {
+	mu.Lock()
+	token := ""
+	if c, ok := conns[accountID]; ok {
+		token = c.RefreshToken
+	}
+	delete(conns, accountID)
+	delete(access, accountID)
+	save()
+	mu.Unlock()
+
+	// An instance with no Google credentials cannot have obtained this grant
+	// through a live flow, so there is nothing at Google's end to tell. This
+	// also keeps tests off the network.
+	if token != "" && Configured() {
+		revoke(token)
+	}
+}
+
+// forget drops a grant locally without calling Google — for the case where the
+// grant is already dead at Google's end, so revoking it would be a round trip
+// to be told what Mu just learned.
+func forget(accountID string) {
 	mu.Lock()
 	defer mu.Unlock()
 	delete(conns, accountID)
 	delete(access, accountID)
 	save()
+}
+
+// revokeEndpoint is Google's, and a variable so a test can watch what is sent
+// to it without reaching the internet.
+var revokeEndpoint = "https://oauth2.googleapis.com/revoke"
+
+// revoke tells Google the grant is over. Revoking a refresh token takes the
+// whole grant with it.
+func revoke(refreshToken string) {
+	form := url.Values{}
+	form.Set("token", refreshToken)
+	req, err := http.NewRequest(http.MethodPost, revokeEndpoint,
+		strings.NewReader(form.Encode()))
+	if err != nil {
+		return
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return
+	}
+	resp.Body.Close()
 }
 
 func clientID() string     { return strings.TrimSpace(settings.Get("GOOGLE_CLIENT_ID")) }
@@ -197,7 +251,7 @@ func accessToken(accountID string) (string, error) {
 		// grant expired. Holding a dead credential helps nobody, and keeping it
 		// would leave the UI claiming a connection that cannot answer.
 		if t.Error == "invalid_grant" {
-			Disconnect(accountID)
+			forget(accountID)
 			return "", ErrNotConnected
 		}
 		return "", fmt.Errorf("could not refresh google access (%s)", t.Error)
@@ -226,8 +280,13 @@ type Period struct {
 	End   time.Time
 }
 
-// Busy returns the account's booked periods in a window, from every calendar
-// they have marked as showing in their list.
+// Busy returns the account's booked periods in a window, from their primary
+// calendar.
+//
+// Primary only, which is a real limit worth naming: somebody keeping work and
+// personal calendars separate will get an answer computed from one of them, and
+// "you are free" is exactly the answer that must not be over-confident. Widening
+// this means listing calendarList and passing every id here.
 //
 // freeBusy rather than events.list, because "when am I free" needs only the
 // shape of the week. It returns times and no titles, so the narrower question

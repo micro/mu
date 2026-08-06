@@ -1,6 +1,8 @@
 package google
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
@@ -99,5 +101,59 @@ func TestGrantsSurviveARestart(t *testing.T) {
 	Load()
 	if !Connected("persist") {
 		t.Error("a stored grant did not survive a restart")
+	}
+}
+
+// Disconnect has to mean disconnected. Forgetting the token locally would leave
+// Mu listed in the person's Google account as an app with standing access to
+// their calendar — access it could no longer use, but which they would have to
+// go and remove themselves. Pressing Disconnect must do that for them.
+func TestDisconnectRevokesAtGoogleAndNotJustHere(t *testing.T) {
+	reset()
+
+	var got string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = r.ParseForm()
+		got = r.Form.Get("token")
+	}))
+	defer srv.Close()
+
+	prev := revokeEndpoint
+	revokeEndpoint = srv.URL
+	t.Setenv("GOOGLE_CLIENT_ID", "test-id")
+	t.Setenv("GOOGLE_CLIENT_SECRET", "test-secret")
+	t.Cleanup(func() { revokeEndpoint = prev })
+
+	Store("leaver", "them@example.com", "refresh-to-revoke", []string{CalendarScope})
+	Disconnect("leaver")
+
+	if got != "refresh-to-revoke" {
+		t.Errorf("the grant was not revoked at Google (endpoint saw %q)", got)
+	}
+	if Connected("leaver") {
+		t.Error("the grant was revoked but still held locally")
+	}
+}
+
+// Google being unreachable must never leave Mu holding somebody's credential.
+func TestDisconnectDropsTheTokenEvenIfGoogleIsDown(t *testing.T) {
+	reset()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "nope", http.StatusInternalServerError)
+	}))
+	srv.Close() // closed: connecting to it fails outright
+
+	prev := revokeEndpoint
+	revokeEndpoint = srv.URL
+	t.Setenv("GOOGLE_CLIENT_ID", "test-id")
+	t.Setenv("GOOGLE_CLIENT_SECRET", "test-secret")
+	t.Cleanup(func() { revokeEndpoint = prev })
+
+	Store("stranded", "them@example.com", "refresh-abc", []string{CalendarScope})
+	Disconnect("stranded")
+
+	if Connected("stranded") {
+		t.Error("a failed revoke left Mu holding the token")
 	}
 }
