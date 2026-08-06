@@ -26,6 +26,11 @@ type ChatConfig struct {
 	// HideSuggestions suppresses the component's built-in suggestion pills — used
 	// where the host page supplies its own (e.g. Home's personalised chips).
 	HideSuggestions bool
+	// OfferCardContext shows the "use my cards" toggle. Only Home sets it: the
+	// cards are the summary shown on that page, so it is the one place where
+	// "answer from what I am already looking at" is a sentence that means
+	// something.
+	OfferCardContext bool
 	// StorageNS namespaces the component's sessionStorage keys so different
 	// surfaces (Home, /agent) keep separate in-tab conversations and never show
 	// each other's. When empty the component is ephemeral: it neither restores
@@ -46,6 +51,14 @@ func ChatComponent(cfg ChatConfig) string {
 	if cfg.Guest {
 		guestJS = "true"
 	}
+	// Opt-in per message rather than a setting, because context is tokens on
+	// every turn and most questions have nothing to do with the cards. The
+	// choice is remembered locally so it is not a decision you make twice.
+	cardToggle := ""
+	if cfg.OfferCardContext {
+		cardToggle = `<label id="mu-chat-ctx" title="Include the summary from your home cards, so the answer comes from what you are already looking at">` +
+			`<input type="checkbox" id="mu-chat-ctx-on"> use my cards</label>`
+	}
 	initialConv := ""
 	if cfg.InitialConvHTML != "" {
 		initialConv = cfg.InitialConvHTML
@@ -58,6 +71,7 @@ func ChatComponent(cfg ChatConfig) string {
       oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,140)+'px'"></textarea>
     <button type="submit" aria-label="Send">&#x2192;</button>
   </form>
+  ` + cardToggle + `
   <div id="mu-chat-suggest"></div>
   <div id="mu-chat-hint"></div>
   <div id="mu-chat-conv">` + initialConv + `</div>
@@ -67,6 +81,8 @@ func ChatComponent(cfg ChatConfig) string {
 #mu-chat{max-width:760px;margin:0 auto;width:100%}
 #mu-chat-form{display:flex;align-items:center;gap:0;border:1px solid #ddd;border-radius:6px;background:#fff;padding:4px 4px 4px 12px;transition:border-color .2s;position:sticky;top:8px;z-index:5}
 #mu-chat-form:focus-within{border-color:#999}
+#mu-chat-ctx{display:flex;align-items:center;gap:6px;font-size:12px;color:#999;margin:6px 0 0;cursor:pointer;user-select:none}
+#mu-chat-ctx input{width:14px;height:14px;cursor:pointer}
 #mu-chat-input{flex:1;padding:10px 0;border:none;font-size:16px;font-family:inherit;resize:none;line-height:1.4;overflow:hidden;background:transparent;outline:none}
 #mu-chat-form button{flex-shrink:0;width:36px;height:36px;background:#111;color:#fff;border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px}
 #mu-chat-suggest{margin-top:16px}
@@ -202,7 +218,8 @@ function ask(q){
   u.scrollIntoView({behavior:'smooth',block:'start'});
   var streamText='';
   var streaming=false;
-  var body=JSON.stringify({prompt:q,model:'standard',history:history.slice(-6),context_id:contextId||'',agent:(window.muActiveAgent||'')});
+  var ctxEl=document.getElementById('mu-chat-ctx-on');
+  var body=JSON.stringify({prompt:q,model:'standard',history:history.slice(-6),context_id:contextId||'',agent:(window.muActiveAgent||''),cards:!!(ctxEl&&ctxEl.checked)});
   fetch('/agent',{method:'POST',headers:{'Content-Type':'application/json'},body:body,credentials:'same-origin'})
   .then(function(resp){
     if(resp.status===401){
@@ -280,6 +297,14 @@ window.muChatNew=function(){
   showSuggestions();input.focus();
 };
 // Exposed so server-rendered prefill (?q= / ?prompt=) can auto-submit.
+(function(){
+  var c=document.getElementById('mu-chat-ctx-on');
+  if(!c) return;
+  try{ c.checked = localStorage.getItem('mu_chat_cards')==='1'; }catch(e){}
+  c.addEventListener('change',function(){
+    try{ localStorage.setItem('mu_chat_cards', c.checked?'1':'0'); }catch(e){}
+  });
+})();
 window.muChatAsk=ask;
 })();
 </script>`

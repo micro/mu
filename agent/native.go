@@ -238,6 +238,12 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 			sys += "\n\nUser context:\n" + uc
 		}
 	}
+	// After the System branch, which replaces sys outright: a user-defined
+	// agent has its own instructions, and asking for context should still get
+	// context rather than have it silently dropped.
+	if strings.TrimSpace(opts.Extra) != "" {
+		sys += "\n\n" + opts.Extra
+	}
 
 	question = prompt
 	if len(opts.History) > 0 {

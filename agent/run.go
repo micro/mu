@@ -69,6 +69,11 @@ Examples:
 // synthesis prompt.
 var UserContextFunc func(accountID string) string
 
+// CardContextFunc returns the reader's home cards as text, when they ask for
+// them. Set by main.go from the home package — a hook because home renders the
+// cards and this package must not import it.
+var CardContextFunc func(accountID string) string
+
 type RunRequest struct {
 	Prompt    string `json:"prompt"`
 	Model     string `json:"model"`

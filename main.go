@@ -444,6 +444,16 @@ func main() {
 		return strings.Join(parts, "\n")
 	}
 	agent.UserContextFunc = userCtxFunc
+	// The home cards, as something an agent can read. Asked for per message
+	// rather than always on: context costs tokens on every turn, and most
+	// questions have nothing to do with what somebody watches.
+	agent.CardContextFunc = func(accountID string) string {
+		acc, err := auth.GetAccount(accountID)
+		if err != nil || acc == nil {
+			return ""
+		}
+		return home.CardContext(acc)
+	}
 	micro.UserContextFunc = userCtxFunc
 
 	// Wire digest → blog callbacks (digest publishes as blog post)

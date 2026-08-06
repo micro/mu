@@ -75,9 +75,14 @@ type QueryMessage struct {
 // QueryOpts controls what context is included in agent queries.
 type QueryOpts struct {
 	History []QueryMessage
-	Public  bool     // if true, skip private context (mail, wallet, etc.)
-	System  string   // optional custom system prompt (user-defined agent)
-	Tools   []string // optional tool allow-list (user-defined agent); empty = all
+	Public  bool   // if true, skip private context (mail, wallet, etc.)
+	System  string // optional custom system prompt (user-defined agent)
+	// Extra is context for this call only — today, the summary of the cards
+	// the reader watches, passed when they ask for it. Per-call rather than a
+	// package hook because it is a choice made per message: context costs
+	// tokens on every turn and most questions have nothing to do with it.
+	Extra string
+	Tools []string // optional tool allow-list (user-defined agent); empty = all
 	// OnStep is called once per tool the agent runs, if set.
 	//
 	// The pipeline discarded this: a caller got a final string and no way to
@@ -186,6 +191,9 @@ func QueryWithOpts(accountID, prompt string, opts QueryOpts) (string, error) {
 		userCtx := ""
 		if !opts.Public && UserContextFunc != nil {
 			userCtx = UserContextFunc(accountID)
+		}
+		if opts.Extra != "" {
+			userCtx = strings.TrimSpace(userCtx + "\n\n" + opts.Extra)
 		}
 		toolsDesc := agentToolsDesc
 		if opts.Public {
@@ -832,6 +840,10 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		Model     string `json:"model"`
 		Agent     string `json:"agent"`      // optional: user-defined agent id to answer as
 		ContextID string `json:"context_id"` // optional: prior flow to continue from
+		// Cards asks for the reader's home cards to be included as context, so
+		// a question about what they watch is answered from what is already
+		// known rather than fetched again.
+		Cards bool `json:"cards"`
 		// History is an optional client-supplied conversation thread used by
 		// the inline chat (landing + assistant). It gives multi-turn context
 		// without server-side persistence, so guests get follow-up memory too.
@@ -953,6 +965,9 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	preferPlanner := isGuest && (len(shortcutToolCalls(req.Prompt)) > 0 || isSimpleWeatherPrompt(req.Prompt))
 	if nativeStreamEnabled() && !preferPlanner {
 		nopts := QueryOpts{Public: isGuest}
+		if req.Cards && !isGuest && CardContextFunc != nil {
+			nopts.Extra = CardContextFunc(accountID)
+		}
 		if !isGuest && req.Agent != "" {
 			if ua := micro.GetUserAgentFor(accountID, req.Agent); ua != nil {
 				nopts.System = ua.SystemPrompt

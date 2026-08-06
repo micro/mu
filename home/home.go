@@ -522,7 +522,7 @@ function fetchW(la,lo){
 		}
 
 		b.WriteString(`<div id="home-agent" style="margin:0 0 20px">`)
-		b.WriteString(app.ChatComponent(app.ChatConfig{Guest: viewerID == "", HideSuggestions: true}))
+		b.WriteString(app.ChatComponent(app.ChatConfig{Guest: viewerID == "", HideSuggestions: true, OfferCardContext: viewerID != ""}))
 		if chips != "" {
 			b.WriteString(fmt.Sprintf(`<div class="home-chips">%s</div>`, chips))
 		}
