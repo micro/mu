@@ -72,10 +72,12 @@ type ListResponse struct {
 // List returns the caller's upcoming (not-yet-fired) events.
 // @example {}
 func (Server) List(ctx context.Context, _ *ListRequest, rsp *ListResponse) error {
+	owner := service.AccountFrom(ctx)
+
 	// The id is on every line because nothing can be cancelled without one, and
 	// this is the only place an agent learns it.
 	var b strings.Builder
-	for _, e := range Upcoming(service.AccountFrom(ctx)) {
+	for _, e := range Upcoming(owner) {
 		fmt.Fprintf(&b, "- %s — %s", e.When.Format("Mon 2 Jan 15:04 MST"), e.Title)
 		if e.Note != "" {
 			fmt.Fprintf(&b, " (%s)", e.Note)
@@ -86,11 +88,25 @@ func (Server) List(ctx context.Context, _ *ListRequest, rsp *ListResponse) error
 		fmt.Fprintf(&b, " (id: %s)", e.ID)
 		b.WriteByte('\n')
 	}
+
+	// The attached calendar's entries carry no id, and say where they came
+	// from. Both facts are the same fact: Mu did not schedule these and cannot
+	// cancel them, so offering an id would be offering something that fails.
+	now := time.Now()
+	for _, x := range externalEntries(owner, now, now.Add(14*24*time.Hour)) {
+		fmt.Fprintf(&b, "- %s — %s", x.Start.Format("Mon 2 Jan 15:04 MST"), x.Title)
+		if x.Location != "" {
+			fmt.Fprintf(&b, " (%s)", x.Location)
+		}
+		fmt.Fprintf(&b, " [%s]\n", ExternalName)
+	}
+
 	if b.Len() == 0 {
 		rsp.Events = "No upcoming events."
 	} else {
 		rsp.Events = strings.TrimSpace(b.String())
 	}
+	rsp.Events += connectHint(owner)
 	return nil
 }
 
@@ -170,7 +186,25 @@ func (Server) Free(ctx context.Context, req *FreeRequest, rsp *FreeResponse) err
 		want = 30
 	}
 	rsp.Text = RenderSlots(rsp.Slots, want)
+	rsp.Text += connectHint(owner)
 	return nil
+}
+
+// connectHint tells the caller when the answer was computed from one calendar
+// while the person keeps another.
+//
+// This is the ask, placed where it is earned. Nobody is asked to hand over
+// their calendar at signup; they are told, at the moment they get a thinner
+// answer than they wanted, exactly what would make it a complete one. It goes
+// in the text because the agent is usually the one reading this — it is how
+// "you're free Thursday at 2" becomes "you're free Thursday at 2 as far as I
+// can see, and I can see more if you connect your calendar".
+func connectHint(owner string) string {
+	if !CanConnectExternal() || HasExternal(owner) {
+		return ""
+	}
+	return "\n\n(Only events scheduled here were checked. Connect your " +
+		ExternalName + " at /events to include everything else.)"
 }
 
 // parseWhen accepts RFC3339 (preferred, carries a timezone) and a few common

@@ -35,6 +35,7 @@ import (
 	"mu/internal/auth"
 	"mu/internal/cli"
 	"mu/internal/data"
+	"mu/internal/google"
 	"mu/internal/imageproxy"
 	"mu/internal/memory"
 	"mu/internal/service"
@@ -191,6 +192,51 @@ func main() {
 	contacts.Load()
 	tasks.Load()
 	events.Load()
+
+	// Attach the calendar somebody already keeps. events owns scheduling and
+	// knows nothing about Google; this is the only place the two meet, and it
+	// stays unset on an instance with no Google credentials — one calendar
+	// instead of two, rather than a broken second one.
+	google.Load()
+	if google.Configured() {
+		events.ExternalConnected = google.Connected
+		events.ExternalAccount = google.ConnectedEmail
+		events.ExternalBusy = func(owner string, from, to time.Time) []events.Slot {
+			periods, err := google.Busy(owner, from, to)
+			if err != nil {
+				// A calendar that cannot be read must not make "when am I
+				// free" fail. The answer narrows to what Mu knows, which is
+				// what it was before this was wired at all.
+				if err != google.ErrNotConnected {
+					app.Log("events", "google busy for %s: %v", owner, err)
+				}
+				return nil
+			}
+			slots := make([]events.Slot, 0, len(periods))
+			for _, p := range periods {
+				slots = append(slots, events.Slot{Start: p.Start, End: p.End})
+			}
+			return slots
+		}
+		events.ExternalEntries = func(owner string, from, to time.Time) []events.External {
+			entries, err := google.Events(owner, from, to, 25)
+			if err != nil {
+				if err != google.ErrNotConnected {
+					app.Log("events", "google events for %s: %v", owner, err)
+				}
+				return nil
+			}
+			out := make([]events.External, 0, len(entries))
+			for _, e := range entries {
+				out = append(out, events.External{
+					Title: e.Title, Start: e.Start, End: e.End,
+					Location: e.Location, AllDay: e.AllDay, Source: events.ExternalName,
+				})
+			}
+			return out
+		}
+	}
+
 	events.OnFire = func(accountID, title, note string) {
 		// The console is the instance's own timeline: what happened here, in
 		// order. It had every event type declared and nothing emitting them.
@@ -1692,56 +1738,57 @@ func main() {
 	api.ToolsRegistered()
 
 	authenticated := map[string]bool{
-		"/tools":                 false, // Public — the catalogue, agent lens
-		"/services":              false, // Public — the catalogue, person lens
-		"/card/":                 false, // Public — a service rendered at a glance
-		"/usage":                 true,  // Your own calls and spend
-		"/video":                 false, // Public viewing, auth for interactive features
-		"/video/thumb":           false, // Public — thumbnails for the public feed
-		"/news":                  false, // Public viewing, auth for search
-		"/chat":                  false, // Public viewing, auth for chatting
-		"/home":                  false, // Public viewing
-		"/blog":                  false, // Public viewing, auth for posting
-		"/markets":               false, // Public viewing
-		"/prayer":                false, // Public prayer times, daily verse and hadith
-		"/about":                 false, // Public "what is Mu" pitch
-		"/oauth2/google":         false, // Google sign-in start (no session yet)
-		"/oauth2/google/connect": true,  // Link Google to the current account
-		"/oauth2/callback":       false, // Google sign-in callback (no session yet)
-		"/images":                false, // Public daily image; generation needs login
-		"/img":                   false, // Public — cached article images (a prefix of /images, same answer)
-		"/events":                true,  // Personal scheduled reminders — sign-in required
-		"/contacts":              true,  // Your address book — sign-in required
-		"/tasks":                 true,  // Your task list — sign-in required
-		"/social":                false, // Public viewing, auth for search
-		"/social/thread":         false, // Public thread view, auth for messaging
-		"/places":                false, // Public map, auth for search
-		"/weather":               false, // Public page, auth for forecast lookup
-		"/mail":                  true,  // Require auth for inbox
-		"/logout":                true,
-		"/account":               true,
-		"/verify":                false, // Public — token in URL is the credential
-		"/token":                 true,  // PAT token management
-		"/passkey":               false, // Passkey login/register (auth checked in handler)
-		"/session":               false, // Public - used to check auth status
-		"/api":                   false, // Public - API documentation
-		"/admin/flag":            true,
-		"/admin":                 true,
-		"/admin/users":           true,
-		"/admin/moderate":        true,
-		"/admin/blocklist":       true,
-		"/admin/spam":            true,
-		"/admin/email":           true,
-		"/admin/api":             true,
-		"/admin/log":             true,
-		"/admin/env":             true,
-		"/admin/server":          true,
-		"/admin/usage":           true,
-		"/admin/delete":          true,
-		"/admin/console":         true,
-		"/admin/diagnostics":     true,
-		"/admin/invite":          true,
-		"/wallet":                false, // Public - shows wallet info; auth checked in handler
+		"/tools":                  false, // Public — the catalogue, agent lens
+		"/services":               false, // Public — the catalogue, person lens
+		"/card/":                  false, // Public — a service rendered at a glance
+		"/usage":                  true,  // Your own calls and spend
+		"/video":                  false, // Public viewing, auth for interactive features
+		"/video/thumb":            false, // Public — thumbnails for the public feed
+		"/news":                   false, // Public viewing, auth for search
+		"/chat":                   false, // Public viewing, auth for chatting
+		"/home":                   false, // Public viewing
+		"/blog":                   false, // Public viewing, auth for posting
+		"/markets":                false, // Public viewing
+		"/prayer":                 false, // Public prayer times, daily verse and hadith
+		"/about":                  false, // Public "what is Mu" pitch
+		"/oauth2/google":          false, // Google sign-in start (no session yet)
+		"/oauth2/google/connect":  true,  // Link Google to the current account
+		"/oauth2/google/calendar": true,  // Grant calendar access to the current account
+		"/oauth2/callback":        false, // Google sign-in callback (no session yet)
+		"/images":                 false, // Public daily image; generation needs login
+		"/img":                    false, // Public — cached article images (a prefix of /images, same answer)
+		"/events":                 true,  // Personal scheduled reminders — sign-in required
+		"/contacts":               true,  // Your address book — sign-in required
+		"/tasks":                  true,  // Your task list — sign-in required
+		"/social":                 false, // Public viewing, auth for search
+		"/social/thread":          false, // Public thread view, auth for messaging
+		"/places":                 false, // Public map, auth for search
+		"/weather":                false, // Public page, auth for forecast lookup
+		"/mail":                   true,  // Require auth for inbox
+		"/logout":                 true,
+		"/account":                true,
+		"/verify":                 false, // Public — token in URL is the credential
+		"/token":                  true,  // PAT token management
+		"/passkey":                false, // Passkey login/register (auth checked in handler)
+		"/session":                false, // Public - used to check auth status
+		"/api":                    false, // Public - API documentation
+		"/admin/flag":             true,
+		"/admin":                  true,
+		"/admin/users":            true,
+		"/admin/moderate":         true,
+		"/admin/blocklist":        true,
+		"/admin/spam":             true,
+		"/admin/email":            true,
+		"/admin/api":              true,
+		"/admin/log":              true,
+		"/admin/env":              true,
+		"/admin/server":           true,
+		"/admin/usage":            true,
+		"/admin/delete":           true,
+		"/admin/console":          true,
+		"/admin/diagnostics":      true,
+		"/admin/invite":           true,
+		"/wallet":                 false, // Public - shows wallet info; auth checked in handler
 
 		"/apps":      false, // Public - apps directory; auth checked in handler for create/edit
 		"/work":      false, // Public - task bounties; auth checked in handler for post/claim
@@ -2025,6 +2072,10 @@ func main() {
 	http.HandleFunc("/oauth2/google", app.GoogleLogin)
 	http.HandleFunc("/oauth2/google/connect", app.GoogleConnect)
 	http.HandleFunc("/oauth2/callback", app.GoogleCallback)
+	// Reading a calendar is a separate grant, asked for separately — see
+	// internal/app/google_calendar.go.
+	http.HandleFunc("/oauth2/google/calendar", app.GoogleCalendarConnect)
+	http.HandleFunc("/oauth2/google/calendar/disconnect", app.GoogleCalendarDisconnect)
 
 	http.HandleFunc("/oauth/register", auth.OAuthRegisterHandler)
 	http.HandleFunc("/oauth/authorize", auth.OAuthAuthorizePostHandler)

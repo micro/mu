@@ -101,8 +101,19 @@ DNS records are in [Installation](INSTALLATION.md).
 
 | Variable | What it does |
 |---|---|
-| `GOOGLE_CLIENT_ID` · `GOOGLE_CLIENT_SECRET` | Google sign-in |
+| `GOOGLE_CLIENT_ID` · `GOOGLE_CLIENT_SECRET` | Google sign-in, and the calendar connection below |
 | `GOOGLE_REDIRECT_URI` | Defaults to `<your-origin>/oauth2/callback` |
+
+The same credentials let a signed-in person attach their Google Calendar, so
+`events_free` counts the week they actually have rather than only what Mu
+scheduled. Nobody is asked at signup — the ask appears on `/events`, and in the
+agent's reply when it had to answer from one calendar.
+
+Two things must be true in the Google Cloud project for it to work: the
+**Google Calendar API** enabled, and `.../auth/calendar.readonly` listed on the
+OAuth consent screen. That scope is *sensitive*, so a public app needs Google's
+verification before anyone outside your test users can grant it. Read-only is
+deliberate — Mu never writes to a calendar it does not own.
 | `PASSKEY_ORIGIN` · `PASSKEY_RP_ID` · `PASSKEY_EXTRA_ORIGINS` | WebAuthn — derived from the request when unset |
 
 ## Payments

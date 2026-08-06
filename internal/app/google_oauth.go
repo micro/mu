@@ -109,6 +109,20 @@ func GoogleCallback(w http.ResponseWriter, r *http.Request) {
 	}
 	http.SetCookie(w, &http.Cookie{Name: "g_state", Value: "", Path: "/", MaxAge: -1})
 
+	// A calendar grant comes back through the same redirect URI — Google
+	// requires every one to be registered, and one route with a mode cookie is
+	// less to keep in sync than two. Checked before the error branch below so a
+	// declined calendar returns to the calendar, not to a login page.
+	if c, cerr := r.Cookie("g_cal"); cerr == nil && c.Value == "1" {
+		http.SetCookie(w, &http.Cookie{Name: "g_cal", Value: "", Path: "/", MaxAge: -1})
+		if r.URL.Query().Get("error") != "" || r.URL.Query().Get("code") == "" {
+			http.Redirect(w, r, "/events?calendar=declined", http.StatusSeeOther)
+			return
+		}
+		finishGoogleCalendar(w, r, r.URL.Query().Get("code"))
+		return
+	}
+
 	if r.URL.Query().Get("error") != "" || r.URL.Query().Get("code") == "" {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return

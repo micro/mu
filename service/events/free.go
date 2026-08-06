@@ -99,6 +99,11 @@ func freeWithin(open, close time.Time, busy []Slot, want time.Duration) []Slot {
 
 // booked is the owner's events in the window as busy periods, merged so
 // overlapping events do not each subtract separately.
+//
+// Both calendars, when a second one is attached. Merging is what makes the
+// answer usable: a meeting that exists in Google and a reminder that exists
+// here overlap in the person's actual day, and two lists would have made the
+// caller reconcile them.
 func booked(owner string, from, to time.Time) []Slot {
 	var busy []Slot
 	for _, e := range List(owner) {
@@ -108,6 +113,12 @@ func booked(owner string, from, to time.Time) []Slot {
 			continue
 		}
 		busy = append(busy, Slot{Start: start, End: end})
+	}
+	for _, s := range externalBusy(owner, from, to) {
+		if !s.End.After(from) || !s.Start.Before(to) {
+			continue
+		}
+		busy = append(busy, s)
 	}
 	sort.Slice(busy, func(i, j int) bool { return busy[i].Start.Before(busy[j].Start) })
 

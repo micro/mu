@@ -17,6 +17,15 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 	os.Setenv("HOME", dir)
+
+	// Absorb the admin bootstrap. auth.Create promotes the first account on a
+	// fresh instance to admin, and admins are shown "unlimited" rather than a
+	// credit count — so whichever test happened to run first got an account
+	// that silently behaved differently from the one it was written about.
+	// Claiming it here makes every test below an ordinary user, whatever order
+	// they run in.
+	auth.Create(&auth.Account{ID: "bootstrap", Name: "bootstrap", Secret: "s"})
+
 	code := m.Run()
 	os.RemoveAll(dir)
 	os.Exit(code)

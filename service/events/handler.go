@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -61,16 +62,25 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`</form>`)
 
 	up := Upcoming(owner)
-	if len(up) == 0 {
+	now := time.Now()
+	ext := externalEntries(owner, now, now.Add(30*24*time.Hour))
+
+	if len(up) == 0 && len(ext) == 0 {
 		b.WriteString(`<p style="color:#888;font-size:14px">Nothing scheduled. Add a reminder above, or just ask the agent: <em>"remind me to call the dentist tomorrow at 3pm"</em>.</p>`)
 	} else {
 		b.WriteString(`<h3 style="font-size:15px;margin:0 0 10px">Upcoming</h3>`)
 		b.WriteString(`<div style="display:flex;flex-direction:column;gap:8px">`)
-		for _, e := range up {
-			b.WriteString(eventRow(e, csrf))
+		for _, row := range mergedRows(up, ext) {
+			if row.Event != nil {
+				b.WriteString(eventRow(row.Event, csrf))
+			} else {
+				b.WriteString(externalRow(row.External))
+			}
 		}
 		b.WriteString(`</div>`)
 	}
+
+	b.WriteString(calendarCard(owner, r.URL.Query().Get("calendar"), csrf))
 	b.WriteString(`</div>`)
 
 	w.Write([]byte(app.RenderHTMLForRequest("Events", "Your scheduled reminders and events", b.String(), r)))
@@ -102,6 +112,105 @@ func eventRow(e *Event, csrf string) string {
 		html.EscapeString(csrf),
 		html.EscapeString(e.ID),
 	)
+}
+
+// row is one line of the upcoming list, from either calendar.
+type row struct {
+	When     time.Time
+	Event    *Event
+	External External
+}
+
+// mergedRows interleaves both calendars in time order, which is the only order
+// a day happens in. Two separate lists would have left the reader doing the
+// merge, and the merge is the whole point of attaching one.
+func mergedRows(up []*Event, ext []External) []row {
+	rows := make([]row, 0, len(up)+len(ext))
+	for _, e := range up {
+		rows = append(rows, row{When: e.When, Event: e})
+	}
+	for _, x := range ext {
+		rows = append(rows, row{When: x.Start, External: x})
+	}
+	sort.Slice(rows, func(i, j int) bool { return rows[i].When.Before(rows[j].When) })
+	return rows
+}
+
+// externalRow renders an entry Mu does not own: no cancel button, because Mu
+// cannot cancel it, and a source label so nobody reads it as something Mu
+// scheduled.
+func externalRow(x External) string {
+	when := x.Start.Local().Format("Mon 2 Jan, 15:04")
+	if x.AllDay {
+		when = x.Start.Local().Format("Mon 2 Jan") + ", all day"
+	}
+	where := ""
+	if x.Location != "" {
+		where = `<div style="font-size:12px;color:#888">` + html.EscapeString(x.Location) + `</div>`
+	}
+	source := x.Source
+	if source == "" {
+		source = ExternalName
+	}
+	return fmt.Sprintf(`<div style="display:flex;align-items:center;gap:12px;border:1px solid #eee;border-radius:8px;padding:10px 14px;background:#fafafa">
+<div style="flex:1">
+  <div style="font-weight:600;font-size:14px">%s</div>
+  <div style="font-size:13px;color:var(--link,#0066cc)">%s</div>
+  %s
+</div>
+<span style="font-size:11px;color:#aaa;white-space:nowrap">%s</span>
+</div>`, html.EscapeString(x.Title), html.EscapeString(when), where, html.EscapeString(source))
+}
+
+// calendarCard is the ask, and afterwards the receipt.
+//
+// It sits below the list rather than above it, because someone arriving at
+// /events came to see their events. An empty page that leads with a permission
+// request is a product asking before it has done anything.
+func calendarCard(owner, status, csrf string) string {
+	if !CanConnectExternal() {
+		return ""
+	}
+
+	note := ""
+	switch status {
+	case "connected":
+		note = `<p style="font-size:13px;color:#0a7d33;margin:0 0 8px">Connected. Your calendar is now included in what's scheduled and when you're free.</p>`
+	case "disconnected":
+		note = `<p style="font-size:13px;color:#888;margin:0 0 8px">Disconnected. Mu has forgotten the token; you can also revoke it in your Google account.</p>`
+	case "declined":
+		note = `<p style="font-size:13px;color:#888;margin:0 0 8px">No calendar access granted — nothing changed.</p>`
+	case "failed":
+		note = `<p style="font-size:13px;color:#b00;margin:0 0 8px">That didn't complete. Try again.</p>`
+	}
+
+	var b strings.Builder
+	b.WriteString(`<div class="card" style="margin-top:24px">`)
+	b.WriteString(note)
+
+	if HasExternal(owner) {
+		who := ""
+		if ExternalAccount != nil {
+			if e := ExternalAccount(owner); e != "" {
+				who = " (" + html.EscapeString(e) + ")"
+			}
+		}
+		b.WriteString(`<h4 style="margin:0 0 6px;font-size:14px">` + html.EscapeString(ExternalName) + who + `</h4>`)
+		b.WriteString(`<p style="font-size:13px;color:#666;margin:0 0 10px">Read-only. Mu can see what's on it, and cannot change it.</p>`)
+		// A POST, not a link. Dropping somebody's calendar connection is a
+		// state change, and a state change behind a GET is one an attacker's
+		// page can make on their behalf with an <img> tag.
+		b.WriteString(`<form method="POST" action="/oauth2/google/calendar/disconnect" style="margin:0">` +
+			`<input type="hidden" name="_csrf" value="` + html.EscapeString(csrf) + `">` +
+			`<button type="submit" style="background:none;border:0;padding:0;font-size:13px;color:#888;cursor:pointer;text-decoration:underline">Disconnect</button>` +
+			`</form>`)
+	} else {
+		b.WriteString(`<h4 style="margin:0 0 6px;font-size:14px">Connect your ` + html.EscapeString(ExternalName) + `</h4>`)
+		b.WriteString(`<p style="font-size:13px;color:#666;margin:0 0 10px">Right now "when am I free" only counts what you scheduled here. Connect your calendar and it counts everything. Read-only — Mu can see what's on it, and cannot change it.</p>`)
+		b.WriteString(`<a href="/oauth2/google/calendar" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:8px 16px;border-radius:8px;font-weight:600;font-size:13px">Connect ` + html.EscapeString(ExternalName) + `</a>`)
+	}
+	b.WriteString(`</div>`)
+	return b.String()
 }
 
 // CardHTMLFor renders the events card for a specific viewer: the next few
