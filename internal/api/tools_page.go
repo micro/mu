@@ -36,18 +36,21 @@ func ToolsPageHandler(w http.ResponseWriter, r *http.Request) {
 		services = v == "services"
 	}
 
-	// Whatever the lens is about goes first. Someone on /services came to see
-	// what this instance runs, and leading with an MCP config pushed the answer
-	// below the fold; someone on /tools came to connect, and leading with a
-	// grid of sixty makes them scroll back up for the endpoint.
+	// Connecting belongs to the tools lens only, and it leads there: someone on
+	// /tools came to point an agent at this instance, and a grid of sixty above
+	// the endpoint makes them scroll back up for it.
 	//
-	// No tabs between the two: the sidebar already links both, and a switch on
-	// the page that duplicates the navigation beside it is one more thing to
-	// read and one more place for the two to disagree.
+	// /services answers a different question — what does this thing run — and it
+	// answers it in full with the grid. An MCP config underneath was the tools
+	// page's call to action wearing the services page as a second home; the
+	// sidebar already links Tools for anyone who came to connect.
+	//
+	// No tabs between the two either, for the same reason: the sidebar links
+	// both, and a switch that duplicates the navigation beside it is one more
+	// thing to read and one more place for the two to disagree.
 	var b strings.Builder
 	if services {
 		b.WriteString(serviceGrid())
-		b.WriteString(connectSection(r))
 	} else {
 		b.WriteString(connectSection(r))
 		b.WriteString(toolGrid())

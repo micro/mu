@@ -31,6 +31,24 @@ func TestToolsPageTellsYouHowToConnect(t *testing.T) {
 	}
 }
 
+// …and only there. /services answers "what does this instance run", and the
+// grid answers it; the connect card underneath was the tools page's call to
+// action wearing a second page, repeated below a fold nobody scrolled to.
+func TestServicesPageDoesNotRepeatTheConnectCard(t *testing.T) {
+	rec := httptest.NewRecorder()
+	ToolsPageHandler(rec, httptest.NewRequest("GET", "/services", nil))
+	body := rec.Body.String()
+
+	for _, gone := range []string{`id="connect"`, "Connect your agent", "mcpServers"} {
+		if strings.Contains(body, gone) {
+			t.Errorf("the services lens still carries %q", gone)
+		}
+	}
+	if !strings.Contains(body, "service-grid") {
+		t.Error("the services lens lost the thing it is for")
+	}
+}
+
 // The two ways in are split by client, because that is how the world divides.
 //
 // Cursor reads a url and headers out of mcp.json, so it takes a token. Claude
