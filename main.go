@@ -258,9 +258,17 @@ func main() {
 
 	events.OnFire = func(accountID, title, note string) {
 		// The console is the instance's own timeline: what happened here, in
-		// order. It had every event type declared and nothing emitting them.
-		stream.PostSystem("⏰ "+title, map[string]any{
-			"kind": stream.TypeReminder, "account": accountID,
+		// order — and nothing about whose it was or what it said.
+		//
+		// It used to post the reminder's title and the owner's account id. The
+		// console is public: /stream serves it with no session, and stream_list
+		// answers an unauthenticated MCP caller. So a reminder called "Dentist
+		// about the biopsy results" was published to the open internet the
+		// moment it fired, by the person who had written it down privately.
+		// Anything carrying a title, a subject, a sender or an account id is
+		// somebody's content and does not belong on a public timeline.
+		stream.PostSystem("⏰ A reminder fired", map[string]any{
+			"kind": stream.TypeReminder,
 		})
 		msg := "⏰ Event: " + title
 		if note != "" {
@@ -320,8 +328,10 @@ func main() {
 				_ = mail.SendMessageTo("Mu", "agent@"+mail.GetConfiguredDomain(),
 					acc.Name, acc.ID, "scheduled", e.Title, answer, "", "", false, 0, nil, "", "")
 			}
-			stream.PostSystem("⏰ "+e.Title, map[string]any{
-				"kind": stream.TypeReminder, "account": e.Owner,
+			// Contentless, for the reason on events.OnFire above: the title
+			// of a standing instruction is as private as the reminder.
+			stream.PostSystem("⏰ A scheduled instruction ran", map[string]any{
+				"kind": stream.TypeReminder,
 			})
 		}(*e)
 	}
@@ -367,8 +377,12 @@ func main() {
 	telegram.Load()
 	whatsapp.Load()
 	mail.OnNewMail = func(accountID, from, subject, body string) {
-		stream.PostSystem("📬 Mail from "+from+" — "+subject, map[string]any{
-			"kind": stream.TypeSystem, "account": accountID,
+		// The worst of the three: this published who wrote to somebody and
+		// what about, to a timeline anybody can read without signing in. The
+		// notifications below go to the owner's own linked channels, which is
+		// where a sender and a subject belong.
+		stream.PostSystem("📬 Mail arrived", map[string]any{
+			"kind": stream.TypeSystem,
 		})
 		summary := discord.SummariseEmail(from, subject, body)
 		discord.NotifyNewMail(accountID, from, subject, summary)

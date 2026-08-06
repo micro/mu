@@ -164,3 +164,22 @@ func TestStepDetailPicksTheQuery(t *testing.T) {
 		t.Errorf("StepDetail returned %d runes; a glance line must stay short", len([]rune(got)))
 	}
 }
+
+// A deadline typed as text had no timezone, so ParseDue read it as UTC and
+// somebody in London typing 09:00 got a task due at 10:00 their time. Silently
+// wrong by an hour is the worst kind of wrong for a deadline: nothing looks
+// broken until you miss something. The picker posts an instant instead.
+func TestTheDueFieldPostsAnInstantNotLocalText(t *testing.T) {
+	page := addForm("csrf-token")
+
+	if !strings.Contains(page, `type="datetime-local"`) {
+		t.Error("the due field is still free text, so its timezone is a guess")
+	}
+	if !strings.Contains(page, "toISOString") {
+		t.Error("the local time is not converted to an instant on submit")
+	}
+	// ParseDue accepts what the form now sends.
+	if _, err := ParseDue("2026-08-09T08:00:00.000Z"); err != nil {
+		t.Errorf("ParseDue rejects what the form posts: %v", err)
+	}
+}

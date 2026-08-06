@@ -116,14 +116,7 @@ func listPage(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`<p class="text-error">` + html.EscapeString(msg) + `</p>`)
 	}
 
-	fmt.Fprintf(&b, `<form method="POST" action="/tasks" class="task-add">
-  <input type="hidden" name="_csrf" value="%s">
-  <input name="title" placeholder="What needs doing?" required>
-  <input name="detail" placeholder="Detail (optional)">
-  <input name="due" placeholder="Due (optional, e.g. 2026-08-09 09:00)">
-  <label class="task-assign"><input type="checkbox" name="assign" value="agent"> Give it to the agent</label>
-  <button type="submit">Add</button>
-</form>`, html.EscapeString(csrf))
+	b.WriteString(addForm(csrf))
 	b.WriteString(`</div>`)
 
 	// Filters. Counted, because "3 open" is the thing you want to know before
@@ -292,6 +285,8 @@ const taskPollJS = `<script>
 const tasksPageCSS = `<style>
 .task-add{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;align-items:center;margin:10px 0 4px}
 .task-add input[type=text],.task-add input:not([type]){min-width:0}
+.task-due{font-size:13px;color:var(--text-muted);display:flex;align-items:center;gap:6px;white-space:nowrap}
+.task-due input{font-family:inherit;font-size:13px;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px}
 .task-assign{font-size:13px;color:var(--text-muted);display:flex;align-items:center;justify-content:flex-start;gap:6px;white-space:nowrap}
 .task-tabs{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px}
 .task-tab{font-size:13px;color:var(--text-muted);text-decoration:none}
@@ -330,4 +325,30 @@ func plural(n int) string {
 		return ""
 	}
 	return "s"
+}
+
+// addForm is the "what needs doing" form.
+//
+// Extracted so the due field can be tested without standing up a session: the
+// bug it fixes was invisible in the markup and only showed up an hour later in
+// somebody's day.
+//
+// The due field is a picker, and the value posted is an instant. It used to be
+// a free-text box hinting "2026-08-09 09:00", which ParseDue read with no
+// timezone — so Go parsed it as UTC and somebody in London typing 09:00 got a
+// task due at 10:00 their time. Silently wrong by an hour is the worst kind of
+// wrong for a deadline: nothing looks broken until you miss something. The
+// datetime-local value is the browser's local time, and the script converts it
+// to an RFC3339 instant on submit, which ParseDue already accepts. Same shape
+// as the events form, because it is the same problem.
+func addForm(csrf string) string {
+	return fmt.Sprintf(`<form method="POST" action="/tasks" class="task-add" onsubmit="var d=this.duelocal.value;this.due.value=d?new Date(d).toISOString():''">
+  <input type="hidden" name="_csrf" value="%s">
+  <input type="hidden" name="due" value="">
+  <input name="title" placeholder="What needs doing?" required>
+  <input name="detail" placeholder="Detail (optional)">
+  <label class="task-due">Due <input type="datetime-local" name="duelocal"></label>
+  <label class="task-assign"><input type="checkbox" name="assign" value="agent"> Give it to the agent</label>
+  <button type="submit">Add</button>
+</form>`, html.EscapeString(csrf))
 }

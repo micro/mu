@@ -71,9 +71,52 @@ func init() {
 	var loaded []*Event
 	if json.Unmarshal(b, &loaded) == nil {
 		mu.Lock()
-		events = loaded
+		events = purgePrivate(loaded)
 		mu.Unlock()
+		save()
 	}
+}
+
+// purgePrivate drops system events that published somebody's private content
+// to this public timeline.
+//
+// Three call sites used to post one: a fired reminder posted its title, a
+// standing instruction posted its title, and inbound mail posted the sender and
+// the subject — each tagged with the owner's account id. The console is served
+// to anyone with no session, and stream_list answers unauthenticated MCP
+// callers, so those were publications.
+//
+// Fixing the call sites stops new ones. It does not unpublish the old ones,
+// which sit in this file and are still being served, so they are removed on the
+// way in. Identified by the account key in their metadata: no legitimate public
+// timeline entry names whose it was, which is exactly why that key marks the
+// ones that should never have been here.
+//
+// Deleting rather than redacting, because a console entry stripped of its
+// content says nothing worth keeping, and a half-scrubbed record is the kind of
+// thing that gets un-scrubbed later by somebody restoring a field.
+func purgePrivate(loaded []*Event) []*Event {
+	kept := make([]*Event, 0, len(loaded))
+	for _, e := range loaded {
+		if e != nil && e.Type != TypeUser && e.Type != TypeAgent && namesAnAccount(e.Metadata) {
+			continue
+		}
+		kept = append(kept, e)
+	}
+	return kept
+}
+
+// namesAnAccount reports whether metadata identifies whose event this was.
+func namesAnAccount(meta map[string]any) bool {
+	for k, v := range meta {
+		switch strings.ToLower(k) {
+		case "account", "account_id", "accountid", "owner", "user", "user_id":
+			if s, ok := v.(string); ok && strings.TrimSpace(s) != "" {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // Load initialises the stream package.
