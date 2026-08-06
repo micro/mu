@@ -357,6 +357,7 @@ var Template = `
           <a href="/agents"><img src="/agent.svg?` + Version + `"><span class="label">Agents</span></a>
           <a href="/tools"><img src="/tools.svg?` + Version + `"><span class="label">Tools</span></a>
           <a href="/services"><img src="/services.svg?` + Version + `"><span class="label">Services</span></a>
+          %s
         </div>
         <div class="nav-bottom">
           %s
@@ -1572,30 +1573,43 @@ func VerifyBanner(r *http.Request) string {
 </div>`
 }
 
-// navBottom is one row: who you are, and the way in to everything about being
-// you here.
+// navOperate closes the top group with what you have used and what you have
+// left.
 //
-// It was five rows — Account, Usage, Wallet, Logout and a "signed in as" label
-// — which made the bottom of the sidebar as long as the top and put the product
-// on equal footing with its own billing. The mistake was surfacing the contents
-// of the account page in the navigation: Usage and Wallet are pages *within*
-// your account and Logout is an action on it, so /account already links all
-// three. Nothing moved further away; it stopped being listed twice.
+// These sit with the product rather than under it. They are not services — you
+// do not use the wallet to do something, you use it to manage your use of
+// everything else — but they are things you open and read, which is what the
+// top of the sidebar is for. The bottom is the account itself: who you are, and
+// getting in and out of it.
 //
-// The balance keeps its own place in the header, which is where it was put
-// precisely so it would not also be in the sidebar.
+// Usage needs a session to mean anything and its page redirects without one, so
+// it is drawn only for a signed-in viewer. Wallet is always drawn — a signed-out
+// visitor still needs the way to it, and mu.js rewrites this anchor's href to
+// the login redirect, which is why the id lives here.
+func navOperate(acc *auth.Account) string {
+	out := ""
+	if acc != nil {
+		out = `<a href="/usage"><img src="/usage.svg?` + Version + `"><span class="label">Usage</span></a>
+          `
+	}
+	return out + `<a id="nav-wallet" href="/wallet"><img src="/wallet.png?` + Version + `"><span class="label">Wallet</span></a>`
+}
+
+// navBottom is the account: who you are, the page about you, and the way out.
 //
-// nav-username stays as the label so mu.js can correct it: a page cached for
-// one viewer and served to another would otherwise greet them by the wrong
-// name.
+// Kept as its own group rather than folded into the account page, because
+// signing out is something you reach for directly and a logout that takes two
+// clicks is a logout people hunt for. nav-username is a label mu.js corrects
+// from the session: a page cached for one viewer and served to another would
+// otherwise greet them by the wrong name.
 func navBottom(acc *auth.Account) string {
-	login := `<a id="nav-login" href="/login"><img src="/account.png?` + Version + `"><span class="label">Login</span></a>`
 	if acc == nil {
-		return login
+		return `<a id="nav-login" href="/login"><img src="/account.png?` + Version + `"><span class="label">Login</span></a>`
 	}
 	username := htmlpkg.EscapeString(acc.ID)
-	return `<a id="nav-account" href="/account"><img src="/account.png?` + Version +
-		`"><span class="label" id="nav-username">@` + username + `</span></a>
+	return `<div id="nav-username">Signed in as @` + username + `</div>
+          <a id="nav-account" href="/account"><img src="/account.png?` + Version + `"><span class="label">Account</span></a>
+          <a id="nav-logout" href="/logout"><img src="/logout.png?` + Version + `"><span class="label">Logout</span></a>
           <a id="nav-login" href="/login" style="display: none;"><img src="/account.png?` + Version + `"><span class="label">Login</span></a>`
 }
 
@@ -1609,7 +1623,7 @@ func RenderHTMLWithLangAndAuth(title, desc, html, lang string, acc *auth.Account
 		lang = "en"
 	}
 	title, desc = escapeMeta(title), escapeMeta(desc)
-	return (fmt.Sprintf(Template, lang, title, desc, "", headBalance(acc), navBottom(acc), title, html))
+	return (fmt.Sprintf(Template, lang, title, desc, "", headBalance(acc), navOperate(acc), navBottom(acc), title, html))
 }
 
 // escapeMeta escapes a page title or description. Handlers pass these through
@@ -1632,7 +1646,7 @@ func RenderHTMLWithLangAndBody(title, desc, html, lang, bodyAttr string, acc *au
 	if banner := creditsBannerFor(acc, ""); banner != "" {
 		html = banner + html
 	}
-	return (fmt.Sprintf(Template, lang, title, desc, bodyAttr, headBalance(acc), navBottom(acc), title, html))
+	return (fmt.Sprintf(Template, lang, title, desc, bodyAttr, headBalance(acc), navOperate(acc), navBottom(acc), title, html))
 }
 
 // RenderString renders a markdown string as html
@@ -1644,7 +1658,7 @@ func RenderString(v string) string {
 func RenderTemplate(title string, desc, text string) string {
 	body := RenderString(text)
 	title, desc = escapeMeta(title), escapeMeta(desc)
-	return (fmt.Sprintf(Template, "en", title, desc, "", headBalance(nil), navBottom(nil), title, body))
+	return (fmt.Sprintf(Template, "en", title, desc, "", headBalance(nil), navOperate(nil), navBottom(nil), title, body))
 }
 
 func ServeHTML(html string) http.Handler {

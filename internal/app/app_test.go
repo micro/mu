@@ -237,27 +237,28 @@ func TestRenderHTMLGuestNavHidesSignedInActions(t *testing.T) {
 
 func TestRenderHTMLWithAuthNavShowsSignedInActions(t *testing.T) {
 	result := RenderHTMLWithLangAndAuth("Test", "A test page", "<p>content</p>", "en", &auth.Account{ID: "alice"})
-	for _, want := range []string{`id="nav-account"`, `@alice`} {
+	for _, want := range []string{`id="nav-account"`, `id="nav-logout"`, `Signed in as @alice`} {
 		if !strings.Contains(result, want) {
 			t.Fatalf("signed-in nav missing %q", want)
 		}
 	}
 }
 
-// The account group is one row, not five.
-//
-// It was Account, Usage, Wallet, Logout and a "signed in as" label, which made
-// the bottom of the sidebar as long as the top and listed the contents of the
-// account page in the navigation beside it. Usage and Wallet are pages within
-// your account and Logout is an action on it — /account links all three — so
-// listing them here was showing the same things twice.
-func TestTheAccountGroupIsOneRow(t *testing.T) {
+// The bottom group is the account itself: who you are, the page about you, and
+// the way out. Usage and Wallet are not there — they close the top group, since
+// they are things you open and read rather than part of signing in and out.
+func TestTheBottomGroupIsTheAccount(t *testing.T) {
 	result := RenderHTMLWithLangAndAuth("Test", "d", "<p>c</p>", "en", &auth.Account{ID: "alice"})
 
-	for _, gone := range []string{`id="nav-logout"`, `href="/usage"`, `id="nav-wallet"`} {
-		if strings.Contains(result, gone) {
-			t.Errorf("the account page's contents are still listed in the nav: %s", gone)
+	for _, want := range []string{`id="nav-account"`, `id="nav-logout"`, `href="/usage"`, `id="nav-wallet"`} {
+		if !strings.Contains(result, want) {
+			t.Errorf("the sidebar is missing %s", want)
 		}
+	}
+	// Signing out is reached for directly; a logout behind another page is one
+	// people hunt for.
+	if !strings.Contains(result, `href="/logout"`) {
+		t.Error("logout is not a direct link")
 	}
 }
 
