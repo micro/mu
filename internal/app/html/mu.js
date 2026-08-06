@@ -680,8 +680,9 @@ function setSession() {
       if (navLogout) navLogout.style.display = 'flex';
       if (navLogin) navLogin.style.display = 'none';
       if (navUsername && sess.account) {
-        navUsername.textContent = 'Signed in as @' + sess.account;
-        navUsername.style.display = 'block';
+        // The label sits inside the account link now, so it is the handle
+        // rather than a sentence.
+        navUsername.textContent = '@' + sess.account;
       }
       // Show the wallet link and badge its credit balance for logged-in users.
       document.body.classList.add('signed-in');

@@ -237,9 +237,45 @@ func TestRenderHTMLGuestNavHidesSignedInActions(t *testing.T) {
 
 func TestRenderHTMLWithAuthNavShowsSignedInActions(t *testing.T) {
 	result := RenderHTMLWithLangAndAuth("Test", "A test page", "<p>content</p>", "en", &auth.Account{ID: "alice"})
-	for _, want := range []string{`id="nav-account"`, `id="nav-logout"`, `Signed in as @alice`} {
+	for _, want := range []string{`id="nav-account"`, `@alice`} {
 		if !strings.Contains(result, want) {
 			t.Fatalf("signed-in nav missing %q", want)
+		}
+	}
+}
+
+// The account group is one row, not five.
+//
+// It was Account, Usage, Wallet, Logout and a "signed in as" label, which made
+// the bottom of the sidebar as long as the top and listed the contents of the
+// account page in the navigation beside it. Usage and Wallet are pages within
+// your account and Logout is an action on it — /account links all three — so
+// listing them here was showing the same things twice.
+func TestTheAccountGroupIsOneRow(t *testing.T) {
+	result := RenderHTMLWithLangAndAuth("Test", "d", "<p>c</p>", "en", &auth.Account{ID: "alice"})
+
+	for _, gone := range []string{`id="nav-logout"`, `href="/usage"`, `id="nav-wallet"`} {
+		if strings.Contains(result, gone) {
+			t.Errorf("the account page's contents are still listed in the nav: %s", gone)
+		}
+	}
+}
+
+// The sidebar above the divider is the product, and it is short on purpose.
+// Every service lives in the catalogue; a nav that named four of nineteen
+// implied the other fifteen did not exist.
+func TestTheSidebarIsTheFourNouns(t *testing.T) {
+	result := RenderHTMLWithLangAndAuth("Test", "d", "<p>c</p>", "en", &auth.Account{ID: "alice"})
+
+	for _, want := range []string{`href="/home"`, `href="/agents"`, `href="/tools"`, `href="/services"`} {
+		if !strings.Contains(result, want) {
+			t.Errorf("the sidebar is missing %s", want)
+		}
+	}
+	// Services belong to the catalogue, not the nav.
+	for _, gone := range []string{`href="/tasks"`, `href="/apps"`, `href="/events"`, `class="nav-divider"`} {
+		if strings.Contains(result, gone) {
+			t.Errorf("%s is back in the sidebar", gone)
 		}
 	}
 }

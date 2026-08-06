@@ -1572,30 +1572,30 @@ func VerifyBanner(r *http.Request) string {
 </div>`
 }
 
-// navBottom is the account group: everything about your relationship with this
-// instance, rather than anything it does.
+// navBottom is one row: who you are, and the way in to everything about being
+// you here.
 //
-// Account, Usage, Wallet and Logout are one kind of thing. You do not use the
-// wallet to do something — you use it to manage your use of everything else,
-// and the same is true of usage. Login and logout are the boundary of the
-// account itself. Grouping them is what lets the top of the sidebar be only the
-// product: Home, Agents, Tools, Services.
+// It was five rows — Account, Usage, Wallet, Logout and a "signed in as" label
+// — which made the bottom of the sidebar as long as the top and put the product
+// on equal footing with its own billing. The mistake was surfacing the contents
+// of the account page in the navigation: Usage and Wallet are pages *within*
+// your account and Logout is an action on it, so /account already links all
+// three. Nothing moved further away; it stopped being listed twice.
 //
-// Usage needs a session to mean anything and its page redirects without one, so
-// it is drawn only for a signed-in viewer. Wallet is always drawn — a signed-out
-// visitor still needs the way to it, and mu.js rewrites this anchor's href to
-// the login redirect, which is why the id lives here.
+// The balance keeps its own place in the header, which is where it was put
+// precisely so it would not also be in the sidebar.
+//
+// nav-username stays as the label so mu.js can correct it: a page cached for
+// one viewer and served to another would otherwise greet them by the wrong
+// name.
 func navBottom(acc *auth.Account) string {
+	login := `<a id="nav-login" href="/login"><img src="/account.png?` + Version + `"><span class="label">Login</span></a>`
 	if acc == nil {
-		return `<a id="nav-login" href="/login"><img src="/account.png?` + Version + `"><span class="label">Login</span></a>
-          <a id="nav-wallet" href="/wallet"><img src="/wallet.png?` + Version + `"><span class="label">Wallet</span></a>`
+		return login
 	}
 	username := htmlpkg.EscapeString(acc.ID)
-	return `<div id="nav-username">Signed in as @` + username + `</div>
-          <a id="nav-account" href="/account"><img src="/account.png?` + Version + `"><span class="label">Account</span></a>
-          <a href="/usage"><img src="/usage.svg?` + Version + `"><span class="label">Usage</span></a>
-          <a id="nav-wallet" href="/wallet"><img src="/wallet.png?` + Version + `"><span class="label">Wallet</span></a>
-          <a id="nav-logout" href="/logout"><img src="/logout.png?` + Version + `"><span class="label">Logout</span></a>
+	return `<a id="nav-account" href="/account"><img src="/account.png?` + Version +
+		`"><span class="label" id="nav-username">@` + username + `</span></a>
           <a id="nav-login" href="/login" style="display: none;"><img src="/account.png?` + Version + `"><span class="label">Login</span></a>`
 }
 
