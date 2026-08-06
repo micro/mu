@@ -355,6 +355,7 @@ var Template = `
                Alphabetical is not an ordering, it is the absence of one. -->
           <a href="/home"><img src="/home.png?` + Version + `"><span class="label">Home</span></a>
           <a href="/agent"><img src="/agent.svg?` + Version + `"><span class="label">Agent</span></a>
+          <a href="/agents"><img src="/agent.svg?` + Version + `"><span class="label">Agents</span></a>
           <a href="/tasks"><img src="/tasks.svg?` + Version + `"><span class="label">Tasks</span></a>
           <a href="/apps"><img src="/apps.svg?` + Version + `"><span class="label">Apps</span></a>
           <a href="/tools"><img src="/tools.svg?` + Version + `"><span class="label">Tools</span></a>

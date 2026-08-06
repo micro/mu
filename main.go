@@ -45,6 +45,7 @@ import (
 	"mu/internal/user"
 	"mu/internal/userdb"
 	"mu/internal/version"
+	"mu/service/agents"
 	"mu/service/apps"
 	"mu/service/blog"
 	"mu/service/chat"
@@ -1786,6 +1787,7 @@ func main() {
 		"/about":                  false, // Public "what is Mu" pitch
 		"/oauth2/google":          false, // Google sign-in start (no session yet)
 		"/oauth2/google/connect":  true,  // Link Google to the current account
+		"/agents":                 true,  // Your agents and their tokens — sign-in required
 		"/oauth2/google/calendar": true,  // Grant calendar access to the current account
 		"/oauth2/google/contacts": true,  // Grant contacts access to the current account
 		"/oauth2/callback":        false, // Google sign-in callback (no session yet)
@@ -1843,8 +1845,7 @@ func main() {
 		"/a2a":                           false, // Public - A2A protocol
 		"/agent":                         false, // Public page, auth checked in handler
 		"/setup":                         false, // First-run setup (open only until an admin exists)
-		"/agents":                        false, // API face for agents (public)
-		"/developers":                    false, // Legacy alias → /agents (public)
+		"/developers":                    false, // Legacy alias → /tools (public)
 	}
 
 	// Static assets should not require authentication
@@ -1988,9 +1989,6 @@ func main() {
 	http.HandleFunc("/about", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/docs/about", http.StatusMovedPermanently)
 	})
-	http.HandleFunc("/agents", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/agent", http.StatusFound)
-	})
 	http.HandleFunc("/pricing", home.PricingHandler)
 	// Every MCP directory submission asks for a privacy policy URL, and this
 	// instance runs a mail server — so there is real correspondence to account
@@ -2000,9 +1998,13 @@ func main() {
 	// first-run setup wizard (open only until an admin exists)
 	http.HandleFunc("/setup", setup.Handler)
 
-	// Redirect the old path so existing links keep working.
+	// Redirect the old path so existing links keep working. It used to point at
+	// /agents back when that was a public redirect to /agent; /agents is now the
+	// signed-in page where you create and scope agents, so a developer following
+	// this link would hit a login wall instead of the thing they came for. /tools
+	// is that thing: the endpoint, the config and the token.
 	http.HandleFunc("/developers", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/agents", http.StatusMovedPermanently)
+		http.Redirect(w, r, "/tools", http.StatusMovedPermanently)
 	})
 
 	// serve the agent
@@ -2103,6 +2105,12 @@ func main() {
 		w.Write([]byte(proof + "\n"))
 	})
 	// Google sign-in (Mu as an OAuth client of Google).
+	// /agents is a page, not a service, and deliberately has no RPC surface.
+	// A tool that created agents would let a scoped agent mint an unscoped one,
+	// which is privilege escalation dressed as a feature. Agents are created by
+	// a person in a browser or not at all.
+	http.HandleFunc("/agents", agents.Handler)
+
 	http.HandleFunc("/oauth2/google", app.GoogleLogin)
 	http.HandleFunc("/oauth2/google/connect", app.GoogleConnect)
 	http.HandleFunc("/oauth2/callback", app.GoogleCallback)

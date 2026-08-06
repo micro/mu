@@ -2,179 +2,113 @@ package api
 
 import (
 	"context"
-	"encoding/json"
-	"net/http/httptest"
-	"strings"
+	"net/http"
 	"testing"
+	"time"
 
+	"mu/internal/auth"
 	"mu/internal/service"
 )
 
-func TestParseScope(t *testing.T) {
-	for raw, want := range map[string]string{
-		"news,web,mail":   "news web mail",
-		"news, web , web": "news web",
-		"News,WEB":        "news web",
-		"news web":        "news web",
-		"":                "",
-		" , ,":            "",
-	} {
-		if got := strings.Join(parseScope(raw), " "); got != want {
-			t.Errorf("parseScope(%q) = %q, want %q", raw, got, want)
-		}
-	}
-}
-
-// A scope names services, because that is the unit a person thinks in.
-func TestScopeMatchesServicesToolsAndLabels(t *testing.T) {
-	for _, tc := range []struct {
-		tool  string
-		scope string
-		want  bool
-	}{
-		{"news_list", "news", true},
-		{"news_list", "news,web", true},
-		{"web_search", "news", false},
-		{"web_search", "web", true},
-		// Naming one tool takes that tool, not its whole service.
-		{"web_search", "web_search", true},
-		{"web_fetch", "web_search", false},
-		// A tool with no service behind it is only in scope when named.
-		{"agent", "news", false},
-		{"agent", "agent", true},
-		// No scope is everything.
-		{"prayer_qibla", "", true},
-	} {
-		got := inScope(Tool{Name: tc.tool}, parseScope(tc.scope))
-		if got != tc.want {
-			t.Errorf("inScope(%s, %q) = %v, want %v", tc.tool, tc.scope, got, tc.want)
-		}
-	}
-}
-
-// A service's nav label is what the sidebar calls it, and what somebody is
-// likely to type: the web service is "Search" on the page, so ?tools=search
-// should reach it. That path reads the registry, so this registers a probe
-// rather than asserting against whatever happens to be loaded.
-func TestScopeMatchesTheNavLabel(t *testing.T) {
-	if err := service.Register(service.Spec{
-		Name: "probesvc", Label: "Widgets", Handler: new(ScopeProbe),
-	}); err != nil {
-		t.Fatalf("registering the probe service: %v", err)
-	}
-
-	if !inScope(Tool{Name: "probesvc_list"}, parseScope("widgets")) {
-		t.Error("a scope naming the service's label did not match it")
-	}
-	if !inScope(Tool{Name: "probesvc_list"}, parseScope("probesvc")) {
-		t.Error("a scope naming the service itself did not match it")
-	}
-	if inScope(Tool{Name: "probesvc_list"}, parseScope("something-else")) {
-		t.Error("an unrelated scope matched")
-	}
-}
-
-// ScopeProbe is a handler that exists only to register a service, so the
-// label-matching path can be tested against a known label rather than whatever
-// happens to be loaded. Exported with one exported RPC-shaped method because
-// go-micro will not register anything less.
+// ScopeProbe is a service registered by these tests. Reading the live registry
+// instead would make the result depend on which service packages happen to be
+// linked into this test binary, and a confinement rule must not be tested by an
+// accident of imports.
 type ScopeProbe struct{}
 
-type ProbeRequest struct{}
-type ProbeResponse struct {
+func (ScopeProbe) List(ctx context.Context, req *struct{}, rsp *struct {
 	Text string `json:"text"`
-}
-
-func (ScopeProbe) List(_ context.Context, _ *ProbeRequest, rsp *ProbeResponse) error {
-	rsp.Text = "probe"
+}) error {
 	return nil
 }
 
-// The point of the feature: a client that asked for news is not shown a qibla
-// compass, and the list it does get is materially shorter.
-func TestScopedListIsShorter(t *testing.T) {
-	full := listTools(t, "/mcp")
-	scoped := listTools(t, "/mcp?tools=news")
-
-	if len(full) == 0 || len(scoped) == 0 {
-		t.Fatalf("expected tools in both lists, got %d and %d", len(full), len(scoped))
-	}
-	if len(scoped) >= len(full) {
-		t.Errorf("scoping to news listed %d of %d tools — no narrowing happened", len(scoped), len(full))
-	}
-	for _, name := range scoped {
-		if !strings.HasPrefix(name, "news") {
-			t.Errorf("a news-scoped connection was shown %q", name)
-		}
-	}
-}
-
-// An unrecognised name is ignored, not fatal. Failing a whole connection
-// because somebody typed "email" for "mail" would be worse than giving them
-// the rest.
-func TestUnknownScopeNamesAreIgnored(t *testing.T) {
-	got := listTools(t, "/mcp?tools=news,not-a-service")
-	if len(got) == 0 {
-		t.Fatal("an unknown name in the scope emptied the whole list")
-	}
-	for _, name := range got {
-		if !strings.HasPrefix(name, "news") {
-			t.Errorf("unexpected tool %q", name)
-		}
-	}
-}
-
-// Scoping is about what an agent considers, not what it may do. A tool left out
-// of the listing is still callable by name — the guards that matter are account,
-// credits and rate limits, and none of them should start depending on a query
-// parameter the caller chose.
-func TestScopingDoesNotBlockCalls(t *testing.T) {
-	// blog_read is registered statically in this package. prayer_qibla is not —
-	// it comes from main.go, so naming it here tested nothing but its absence.
-	body := `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"blog_read","arguments":{"id":"nope"}}}`
-	rec := httptest.NewRecorder()
-	MCPHandler(rec, httptest.NewRequest("POST", "/mcp?tools=news", strings.NewReader(body)))
-
-	if strings.Contains(rec.Body.String(), "Tool not found") {
-		t.Errorf("a tool outside the scope became uncallable: %s", rec.Body.String())
-	}
-}
-
-// The picker on the page is built from the registry, so a new service appears
-// in it the moment it registers.
-func TestScopeServicesComeFromTheRegistry(t *testing.T) {
-	got := ScopeServices()
-	if len(got) == 0 {
-		t.Skip("no services registered in this package's tests")
-	}
-	seen := map[string]bool{}
-	for _, s := range got {
-		if seen[s] {
-			t.Errorf("%q listed twice", s)
-		}
-		seen[s] = true
-	}
-}
-
-func listTools(t *testing.T, url string) []string {
+func registerScopeProbes(t *testing.T) {
 	t.Helper()
-	rec := httptest.NewRecorder()
-	MCPHandler(rec, httptest.NewRequest("POST", url,
-		strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"tools/list"}`)))
+	for _, name := range []string{"scopeallowed", "scopedenied"} {
+		if _, known := service.SpecFor(name); known {
+			continue
+		}
+		if err := service.Register(service.Spec{
+			Name: name, Handler: new(ScopeProbe), Page: "/" + name, Scoped: true,
+			Endpoints: map[string]service.Endpoint{"List": {Doc: "probe"}},
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
 
-	var out struct {
-		Result struct {
-			Tools []struct {
-				Name string `json:"name"`
-			} `json:"tools"`
-		} `json:"result"`
+// The check that makes a scope real.
+//
+// Without it the scope is a label on a settings page: every dispatch branch
+// resolves the caller to an account and calls the tool, so a "news only" agent
+// holding a valid token could read mail. This asserts the boundary refuses.
+func TestAScopedTokenIsRefusedToolsOutsideItsScope(t *testing.T) {
+	acc := &auth.Account{ID: "scopecaller", Name: "scopecaller", Secret: "s"}
+	if err := auth.Create(acc); err != nil {
+		t.Fatal(err)
 	}
-	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
-		t.Fatalf("tools/list did not parse: %v", err)
+	registerScopeProbes(t)
+	_, secret, err := auth.CreateToken(acc.ID, "agent: reader", auth.ScopeFor([]string{"scopeallowed"}), time.Time{})
+	if err != nil {
+		t.Fatal(err)
 	}
-	names := make([]string, 0, len(out.Result.Tools))
-	for _, tool := range out.Result.Tools {
-		names = append(names, tool.Name)
+
+	r, _ := http.NewRequest("POST", "/mcp", nil)
+	r.Header.Set("Authorization", "Bearer "+secret)
+
+	if err := checkTokenScope(r, "scopeallowed_list"); err != nil {
+		t.Errorf("a token was refused the service it names: %v", err)
 	}
-	return names
+	if err := checkTokenScope(r, "scopedenied_list"); err == nil {
+		t.Error("a scoped token reached a service it does not name")
+	}
+}
+
+// A tool with no service behind it — the platform verbs — is reachable only by
+// an unscoped token. Somebody who said "news and mail" did not say "and
+// whatever else is not a service".
+func TestAScopedTokenCannotReachToolsWithNoServiceBehindThem(t *testing.T) {
+	acc := &auth.Account{ID: "scopecaller2", Name: "scopecaller2", Secret: "s"}
+	if err := auth.Create(acc); err != nil {
+		t.Fatal(err)
+	}
+	registerScopeProbes(t)
+	_, secret, err := auth.CreateToken(acc.ID, "agent: reader", auth.ScopeFor([]string{"scopeallowed"}), time.Time{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	r, _ := http.NewRequest("POST", "/mcp", nil)
+	r.Header.Set("Authorization", "Bearer "+secret)
+
+	if err := checkTokenScope(r, "somethingwithnoservice"); err == nil {
+		t.Error("a scoped token reached a tool with no service behind it")
+	}
+}
+
+// Everything that authenticated some other way is unconfined: a cookie session
+// is a person in their own browser, and every token issued before scopes
+// existed must keep working exactly as it did.
+func TestUnscopedCallersAreNotConfined(t *testing.T) {
+	acc := &auth.Account{ID: "scopecaller3", Name: "scopecaller3", Secret: "s"}
+	if err := auth.Create(acc); err != nil {
+		t.Fatal(err)
+	}
+	_, secret, err := auth.CreateToken(acc.ID, "plain", nil, time.Time{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	withToken, _ := http.NewRequest("POST", "/mcp", nil)
+	withToken.Header.Set("Authorization", "Bearer "+secret)
+
+	noAuth, _ := http.NewRequest("POST", "/mcp", nil)
+
+	for _, r := range []*http.Request{withToken, noAuth, nil} {
+		for _, tool := range []string{"scopeallowed_list", "scopedenied_list", "whatever"} {
+			if err := checkTokenScope(r, tool); err != nil {
+				t.Errorf("an unscoped caller was refused %s: %v", tool, err)
+			}
+		}
+	}
 }

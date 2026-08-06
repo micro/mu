@@ -830,6 +830,33 @@ func ValidatePAT(rawToken string) (string, error) {
 	return "", errors.New("invalid token")
 }
 
+// ValidatePATToken is ValidatePAT returning the token's id rather than its
+// account, so a caller that needs the token record — to read its scope — can
+// find it without a second comparison pass over every bcrypt hash.
+func ValidatePATToken(rawToken string) (string, error) {
+	rawToken = strings.TrimRight(rawToken, "=")
+
+	mutex.Lock()
+	defer mutex.Unlock()
+	for _, token := range tokens {
+		err := bcrypt.CompareHashAndPassword([]byte(token.Token), []byte(rawToken))
+		if err != nil {
+			padded := rawToken
+			if m := len(padded) % 4; m != 0 {
+				padded += strings.Repeat("=", 4-m)
+			}
+			err = bcrypt.CompareHashAndPassword([]byte(token.Token), []byte(padded))
+		}
+		if err == nil {
+			if !token.ExpiresAt.IsZero() && time.Now().After(token.ExpiresAt) {
+				return "", errors.New("token expired")
+			}
+			return token.ID, nil
+		}
+	}
+	return "", errors.New("invalid token")
+}
+
 // ListTokens returns all PAT tokens for an account (with hashed values)
 func ListTokens(accountID string) []*Token {
 	mutex.Lock()

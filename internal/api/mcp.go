@@ -856,6 +856,20 @@ func ExecuteTool(r *http.Request, name string, args map[string]any) (string, boo
 		}
 	}
 
+	// A scoped token reaches only the services it names.
+	//
+	// This is what makes an agent an agent rather than a copy of you: you hand
+	// a program a credential, and the credential is smaller than your account.
+	// Without the check here the scope would be a label on a settings page and
+	// nothing else, since every branch below dispatches on the account alone.
+	//
+	// Placed above every branch for the same reason as the wallet guard below:
+	// tools reach dispatch by three different routes, and a check inside one of
+	// them silently exempts the other two.
+	if err := checkTokenScope(r, tool.Name); err != nil {
+		return err.Error(), true, err
+	}
+
 	// Refuse a paid wallet on an account-only tool before any dispatch. This has
 	// to sit above the branches: mail_send is a path-backed tool, so a guard
 	// inside the HandleAuth branch would never have run for it — which is the
@@ -941,4 +955,29 @@ func writeError(w http.ResponseWriter, id any, code int, message string) {
 		ID:      id,
 		Error:   &rpcError{Code: code, Message: message},
 	})
+}
+
+// checkTokenScope refuses a tool outside the presented token's scope.
+//
+// Nil token means the caller authenticated some other way — a cookie session,
+// or a settled payment — and is not confined. Unscoped tokens, which is every
+// token issued before scopes existed, reach everything exactly as before.
+//
+// A tool with no service behind it (the platform verbs) is only reachable by an
+// unscoped token. That is the conservative reading of a whitelist: somebody who
+// said "this agent may use news and mail" did not say "and whatever else is not
+// a service".
+func checkTokenScope(r *http.Request, toolName string) error {
+	if r == nil {
+		return nil
+	}
+	tok := auth.TokenFromRequest(r)
+	if tok == nil || !tok.Scoped() {
+		return nil
+	}
+	svc := serviceOf(toolName)
+	if svc == "" || !tok.AllowsService(svc) {
+		return fmt.Errorf("this token is not scoped for %s", toolName)
+	}
+	return nil
 }
