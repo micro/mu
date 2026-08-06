@@ -15,7 +15,15 @@
 // holds a credential to call in.
 //
 // The scope is the point. Everything else is bookkeeping around it.
-package agents
+//
+// Under agent/ rather than service/, because an agent is not a service. The
+// repo has always composed it that way — agent/ sits beside service/ at the top
+// level — and the product says the same: you create agents, they call tools,
+// and tools are derived from the services underneath. Three levels, and only
+// the bottom one belongs in service/. This package spent one day in the wrong
+// directory, where the path claimed it was a service while the code registered
+// no Spec and the catalogue never listed it.
+package agent
 
 import (
 	"fmt"
@@ -72,7 +80,7 @@ func (a *Agent) Unscoped() bool { return len(a.Services) == 0 }
 // the confinement travels with the credential rather than being re-derived at
 // each call site. A caller that never reads this package still cannot escape
 // the scope, because the check lives at the MCP boundary.
-func Create(owner, name, kind, prompt string, services []string) (*Agent, string, error) {
+func CreateAgent(owner, name, kind, prompt string, services []string) (*Agent, string, error) {
 	if owner == "" {
 		return nil, "", fmt.Errorf("sign in to create an agent")
 	}
@@ -145,7 +153,7 @@ func fields(a *Agent) map[string]any {
 }
 
 // List returns an owner's agents, newest first.
-func List(owner string) []*Agent {
+func Agents(owner string) []*Agent {
 	if owner == "" {
 		return nil
 	}
@@ -164,8 +172,8 @@ func List(owner string) []*Agent {
 }
 
 // Get returns one agent the owner owns, or nil.
-func Get(owner, id string) *Agent {
-	for _, a := range List(owner) {
+func AgentFor(owner, id string) *Agent {
+	for _, a := range Agents(owner) {
 		if a.ID == id {
 			return a
 		}
@@ -178,8 +186,8 @@ func Get(owner, id string) *Agent {
 // Both, always. An agent removed from the list while its credential kept
 // working would be the worst of both: gone from the page that would have told
 // you it existed, and still able to call.
-func Remove(owner, id string) error {
-	a := Get(owner, id)
+func RemoveAgent(owner, id string) error {
+	a := AgentFor(owner, id)
 	if a == nil {
 		return fmt.Errorf("no such agent")
 	}

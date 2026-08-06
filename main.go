@@ -45,7 +45,6 @@ import (
 	"mu/internal/user"
 	"mu/internal/userdb"
 	"mu/internal/version"
-	"mu/service/agents"
 	"mu/service/apps"
 	"mu/service/blog"
 	"mu/service/chat"
@@ -2120,8 +2119,8 @@ func main() {
 	// field nothing read.
 	agent.HostedAgents = func(accountID string) []*micro.Agent {
 		var out []*micro.Agent
-		for _, a := range agents.List(accountID) {
-			if a.Kind != agents.Hosted {
+		for _, a := range agent.Agents(accountID) {
+			if a.Kind != agent.Hosted {
 				continue
 			}
 			out = append(out, hostedAsMicro(accountID, a))
@@ -2130,7 +2129,7 @@ func main() {
 	}
 	prevUserAgent := micro.UserAgentResolver
 	micro.UserAgentResolver = func(accountID, id string) *micro.Agent {
-		if a := agents.Get(accountID, id); a != nil && a.Kind == agents.Hosted {
+		if a := agent.AgentFor(accountID, id); a != nil && a.Kind == agent.Hosted {
 			return hostedAsMicro(accountID, a)
 		}
 		if prevUserAgent != nil {
@@ -2143,7 +2142,7 @@ func main() {
 	// A tool that created agents would let a scoped agent mint an unscoped one,
 	// which is privilege escalation dressed as a feature. Agents are created by
 	// a person in a browser or not at all.
-	http.HandleFunc("/agents", agents.Handler)
+	http.HandleFunc("/agents", agent.RosterHandler)
 
 	http.HandleFunc("/oauth2/google", app.GoogleLogin)
 	http.HandleFunc("/oauth2/google/connect", app.GoogleConnect)
@@ -2865,7 +2864,7 @@ func runHealthChecks() []app.ServiceHealth {
 // weather is offered those and nothing else. The same scope is enforced against
 // its token at the MCP boundary, so talking to it here and calling it from
 // outside confine it the same way.
-func hostedAsMicro(accountID string, a *agents.Agent) *micro.Agent {
+func hostedAsMicro(accountID string, a *agent.Agent) *micro.Agent {
 	desc := a.Prompt
 	if desc == "" {
 		desc = "Your agent"

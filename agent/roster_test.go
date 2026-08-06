@@ -1,4 +1,4 @@
-package agents
+package agent
 
 import (
 	"context"
@@ -60,7 +60,7 @@ func TestAnAgentsScopeIsWrittenIntoItsToken(t *testing.T) {
 	probes(t)
 	id := owner(t, "agentowner")
 
-	a, secret, err := Create(id, "Reader", External, "reads things", []string{"probealpha"})
+	a, secret, err := CreateAgent(id, "Reader", External, "reads things", []string{"probealpha"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +86,7 @@ func TestAScopeCannotNameAServiceThatDoesNotExist(t *testing.T) {
 	probes(t)
 	id := owner(t, "agentowner2")
 
-	a, _, err := Create(id, "Confused", External, "", []string{"probealpha", "nosuchservice"})
+	a, _, err := CreateAgent(id, "Confused", External, "", []string{"probealpha", "nosuchservice"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,7 +100,7 @@ func TestAScopeCannotNameAServiceThatDoesNotExist(t *testing.T) {
 func TestAnAgentWithNoScopeChosenIsUnscoped(t *testing.T) {
 	id := owner(t, "agentowner3")
 
-	a, _, err := Create(id, "Everything", External, "", nil)
+	a, _, err := CreateAgent(id, "Everything", External, "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,14 +122,14 @@ func TestRemovingAnAgentRevokesItsToken(t *testing.T) {
 	probes(t)
 	id := owner(t, "agentowner4")
 
-	a, _, err := Create(id, "Temporary", External, "", []string{"probealpha"})
+	a, _, err := CreateAgent(id, "Temporary", External, "", []string{"probealpha"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := Remove(id, a.ID); err != nil {
+	if err := RemoveAgent(id, a.ID); err != nil {
 		t.Fatal(err)
 	}
-	if Get(id, a.ID) != nil {
+	if AgentFor(id, a.ID) != nil {
 		t.Error("the agent survived removal")
 	}
 	if _, err := auth.GetTokenByID(a.TokenID); err == nil {
@@ -143,17 +143,17 @@ func TestAgentsAreOwnedByOneAccount(t *testing.T) {
 	mine := owner(t, "agentmine")
 	theirs := owner(t, "agenttheirs")
 
-	a, _, err := Create(mine, "Mine", External, "", []string{"probealpha"})
+	a, _, err := CreateAgent(mine, "Mine", External, "", []string{"probealpha"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if Get(theirs, a.ID) != nil {
+	if AgentFor(theirs, a.ID) != nil {
 		t.Error("another account could read my agent")
 	}
-	if err := Remove(theirs, a.ID); err == nil {
+	if err := RemoveAgent(theirs, a.ID); err == nil {
 		t.Error("another account could delete my agent")
 	}
-	if Get(mine, a.ID) == nil {
+	if AgentFor(mine, a.ID) == nil {
 		t.Error("the owner lost their own agent")
 	}
 }
@@ -164,7 +164,7 @@ func TestTheEndpointCarriesTheScope(t *testing.T) {
 	probes(t)
 	id := owner(t, "agentowner5")
 
-	scoped, _, err := Create(id, "Narrow", External, "", []string{"probealpha"})
+	scoped, _, err := CreateAgent(id, "Narrow", External, "", []string{"probealpha"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -172,7 +172,7 @@ func TestTheEndpointCarriesTheScope(t *testing.T) {
 		t.Errorf("endpoint is %q, want the scope in it", got)
 	}
 
-	wide, _, err := Create(id, "Wide", External, "", nil)
+	wide, _, err := CreateAgent(id, "Wide", External, "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}

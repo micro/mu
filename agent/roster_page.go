@@ -1,4 +1,4 @@
-package agents
+package agent
 
 // The agents page: what acts for you, and what each one may touch.
 //
@@ -25,7 +25,7 @@ import (
 )
 
 // Handler serves /agents.
-func Handler(w http.ResponseWriter, r *http.Request) {
+func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	sess, _, err := auth.RequireSession(r)
 	if err != nil {
 		app.RedirectToLogin(w, r)
@@ -36,7 +36,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		switch r.FormValue("action") {
 		case "create":
-			a, secret, err := Create(owner, r.FormValue("name"), r.FormValue("kind"),
+			a, secret, err := CreateAgent(owner, r.FormValue("name"), r.FormValue("kind"),
 				r.FormValue("prompt"), r.Form["services"])
 			if err != nil {
 				http.Redirect(w, r, "/agents?error="+urlSafe(err.Error()), http.StatusSeeOther)
@@ -48,7 +48,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/agents?created="+a.ID+"&secret="+urlSafe(secret), http.StatusSeeOther)
 			return
 		case "delete":
-			_ = Remove(owner, r.FormValue("id"))
+			_ = RemoveAgent(owner, r.FormValue("id"))
 			http.Redirect(w, r, "/agents?removed=1", http.StatusSeeOther)
 			return
 		}
@@ -57,7 +57,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if app.WantsJSON(r) {
-		app.RespondJSON(w, List(owner))
+		app.RespondJSON(w, Agents(owner))
 		return
 	}
 
@@ -72,17 +72,17 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`<p class="text-sm" style="color:#666">Agent removed and its token revoked.</p>`)
 	}
 	if secret := r.URL.Query().Get("secret"); secret != "" {
-		b.WriteString(secretPanel(secret, Get(owner, r.URL.Query().Get("created")), app.BaseURL(r)))
+		b.WriteString(secretPanel(secret, AgentFor(owner, r.URL.Query().Get("created")), app.BaseURL(r)))
 	}
 
-	agents := List(owner)
-	if len(agents) == 0 {
+	roster := Agents(owner)
+	if len(roster) == 0 {
 		b.WriteString(`<p style="color:#888;font-size:14px">No agents yet. An agent is a name, a scope, ` +
 			`and a token — so what you hand a credential to reaches the services you chose and no others.</p>`)
 	} else {
 		b.WriteString(`<h3 style="font-size:15px;margin:0 0 10px">Your agents</h3>`)
 		b.WriteString(`<div style="display:flex;flex-direction:column;gap:8px;margin:0 0 24px">`)
-		for _, a := range agents {
+		for _, a := range roster {
 			b.WriteString(agentRow(a, csrf, app.BaseURL(r)))
 		}
 		b.WriteString(`</div>`)
