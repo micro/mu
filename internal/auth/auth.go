@@ -75,6 +75,46 @@ func canonicalCardID(id string) string {
 // should render for this account. A card the user explicitly selected shows; a
 // card they deselected (present in their seen set but not their allowlist)
 // hides; a card newer than anything they've been offered defaults to visible.
+// HomeCardOrder is the cards this account shows, in the order it wants them.
+//
+// The order is the slice's order. It used to be a set — the layout came from
+// cards.json, and mail and search were appended after everything else, so they
+// could only ever land at the bottom of the right column no matter what anyone
+// preferred. Storing the choice as a sequence makes "put mail at the top" a
+// thing the product can express at all.
+//
+// Empty means nothing chosen yet, which is a real answer rather than a
+// shorthand for "everything": a signed-in person composes their own console,
+// and the default set is written when the account is created.
+func (a *Account) HomeCardOrder() []string {
+	out := make([]string, 0, len(a.HomeCards))
+	seen := map[string]bool{}
+	for _, c := range a.HomeCards {
+		id := canonicalCardID(c)
+		if id == "" || seen[id] {
+			continue
+		}
+		seen[id] = true
+		out = append(out, id)
+	}
+	return out
+}
+
+// SetHomeCards records both the selection and the order.
+func (a *Account) SetHomeCards(ids []string) {
+	out := make([]string, 0, len(ids))
+	seen := map[string]bool{}
+	for _, c := range ids {
+		id := canonicalCardID(strings.TrimSpace(c))
+		if id == "" || seen[id] {
+			continue
+		}
+		seen[id] = true
+		out = append(out, id)
+	}
+	a.HomeCards = out
+}
+
 func (a *Account) ShowHomeCard(id string) bool {
 	if len(a.HomeCards) == 0 {
 		return true // no customization yet → all defaults show
