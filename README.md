@@ -65,7 +65,7 @@ one row per service, named for it.
 | **Blog** | `blog_create` · `blog_read` · `blog_list` · `blog_update` · `blog_delete` — publish, with AI-generated daily digests |
 | **Chat** | `chat` · `chat_rooms` · `chat_messages` — one question one answer, and the live rooms |
 | **Contacts** | `contacts_add` · `contacts_find` · `contacts_list` · `contacts_delete` — turn a name into an address |
-| **Events** | `events_create` · `events_list` · `events_delete` · `events_free` — schedule, cancel, and find when you are free |
+| **Events** | `events_create` · `events_list` · `events_delete` · `events_free` — schedule, cancel, and find when you are free, counting the Google Calendar you already keep |
 | **Files** | `files_put` · `files_get` · `files_list` · `files_share` · `files_delete` — keep a file, get a URL |
 | **Images** | `images_generate` · `images_search` |
 | **Index** | `index_search` — everything this instance holds for you |
