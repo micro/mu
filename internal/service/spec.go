@@ -58,18 +58,6 @@ type Spec struct {
 	// Scoped marks a service holding one user's data, or spending their
 	// credits. A caller with no authenticated account cannot reach it at all.
 	Scoped bool
-	// Pinned keeps a service in the sidebar rather than only in the catalogue
-	// at /services.
-	//
-	// The test is not importance, which is unanswerable, but whether the thing
-	// changes without you in a way you need to notice: unread mail arriving
-	// while you were elsewhere. News and markets change constantly, which is
-	// the same as not at all — the home cards are the right surface for those.
-	//
-	// Tasks and Apps are in the sidebar too and are not pinned: they are there
-	// as nouns of the product rather than because they change, so they are
-	// written into the nav beside Agent, Tools and Services.
-	Pinned bool
 	// Endpoints describes each method, keyed by method name. Every exported
 	// RPC method must appear; TestEveryEndpointIsDescribed enforces it.
 	Endpoints map[string]Endpoint
@@ -152,19 +140,6 @@ func CardFor(name string) string {
 		return ""
 	}
 	return s.Card()
-}
-
-// Pinned returns the services kept in the sidebar, ordered by label. A pinned
-// service must have a page — there is nowhere for a headless one to go.
-func Pinned() []Spec {
-	out := make([]Spec, 0, 4)
-	for _, s := range Specs() {
-		if s.Pinned && !s.Headless() {
-			out = append(out, s)
-		}
-	}
-	sort.Slice(out, func(i, j int) bool { return out[i].NavLabel() < out[j].NavLabel() })
-	return out
 }
 
 // Nav returns every service with a page, ordered by label. This is the

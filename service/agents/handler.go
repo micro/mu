@@ -162,9 +162,17 @@ func createForm(csrf string) string {
 	b.WriteString(`<input type="hidden" name="action" value="create">`)
 	b.WriteString(`<input name="name" placeholder="What is it called? e.g. Morning briefer" required maxlength="60" class="agent-input">`)
 
-	b.WriteString(`<div class="agent-kinds">`)
-	b.WriteString(`<label><input type="radio" name="kind" value="external" checked> Runs elsewhere — Claude, Cursor, your own program, calling in with its token</label>`)
-	b.WriteString(`<label><input type="radio" name="kind" value="hosted"> Runs here — give it standing instructions and this instance executes them</label>`)
+	// A segmented control rather than two radios. An inline <input> next to
+	// text never lines up: the box sits on the text baseline, its height is the
+	// browser's rather than the line's, and every fix is a different magic
+	// number per browser. Hiding the input and styling its label removes the
+	// alignment problem instead of tuning it — there is nothing inline left to
+	// align, and the whole row is the hit target.
+	b.WriteString(`<div class="pick-row">`)
+	b.WriteString(`<label class="pick"><input type="radio" name="kind" value="external" checked>` +
+		`<span><strong>Runs elsewhere</strong>Claude, Cursor, or your own program, calling in with its token</span></label>`)
+	b.WriteString(`<label class="pick"><input type="radio" name="kind" value="hosted">` +
+		`<span><strong>Runs here</strong>Give it standing instructions and this instance executes them</span></label>`)
 	b.WriteString(`</div>`)
 
 	b.WriteString(`<input name="prompt" placeholder="What is it for? (optional)" maxlength="500" class="agent-input">`)
@@ -173,8 +181,8 @@ func createForm(csrf string) string {
 	b.WriteString(`<p class="text-sm text-muted" style="margin:2px 0 8px">Choose nothing and it reaches everything you can — which is what a plain token does, and rarely what you meant.</p>`)
 	b.WriteString(`<div class="agent-services">`)
 	for _, s := range scopeChoices() {
-		b.WriteString(`<label><input type="checkbox" name="services" value="` +
-			html.EscapeString(s.Name) + `"> ` + html.EscapeString(s.NavLabel()) + `</label>`)
+		b.WriteString(`<label class="chip"><input type="checkbox" name="services" value="` +
+			html.EscapeString(s.Name) + `"><span>` + html.EscapeString(s.NavLabel()) + `</span></label>`)
 	}
 	b.WriteString(`</div></div>`)
 
@@ -201,10 +209,24 @@ const agentsCSS = `<style>
 .agent-remove:hover{color:#b00}
 .agent-secret{background:#f5f5f5;padding:10px 12px;font-size:12px;overflow-x:auto;border-radius:6px;margin:0;word-break:break-all}
 .agent-input{display:block;width:100%;padding:9px 11px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;font-family:inherit;margin:0 0 10px}
-.agent-kinds{display:flex;flex-direction:column;gap:6px;margin:0 0 12px}
-.agent-kinds label{font-size:13px;color:#444;display:flex;gap:8px;align-items:flex-start}
+/* The input is hidden and its label carries the state. Nothing is inline, so
+   nothing can be misaligned; :checked styles the sibling span. */
+.pick input,.chip input{position:absolute;opacity:0;width:0;height:0}
+.pick input:focus-visible+span,.chip input:focus-visible+span{outline:2px solid #111;outline-offset:2px}
+
+.pick-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 14px}
+.pick span{display:block;height:100%;border:1px solid #ddd;border-radius:8px;padding:10px 12px;
+  cursor:pointer;font-size:12px;color:#666;line-height:1.4}
+.pick strong{display:block;font-size:13px;color:#111;margin:0 0 2px}
+.pick span:hover{border-color:#bbb}
+.pick input:checked+span{border-color:#111;background:#fafafa}
+.pick input:checked+span strong::after{content:" ✓";color:#0a7d33}
+
 .agent-scope-pick{border-top:1px solid #eee;padding-top:12px;margin:0 0 14px}
-.agent-services{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:4px 12px}
-.agent-services label{font-size:13px;color:#444;display:flex;align-items:center;gap:6px}
-@media only screen and (max-width:600px){.agent-services{grid-template-columns:1fr 1fr}}
+.agent-services{display:flex;flex-wrap:wrap;gap:6px}
+.chip span{display:block;border:1px solid #ddd;border-radius:999px;padding:6px 12px;
+  cursor:pointer;font-size:13px;color:#444;white-space:nowrap}
+.chip span:hover{border-color:#bbb}
+.chip input:checked+span{background:#111;border-color:#111;color:#fff}
+@media only screen and (max-width:600px){.pick-row{grid-template-columns:1fr}}
 </style>`

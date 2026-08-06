@@ -234,14 +234,7 @@ var Spec = service.Spec{
 	Description: "Calendar: what is scheduled, and when you are free",
 	Page:        "/events",
 	Scoped:      true,
-	// Pinned once a real calendar could flow through it. The test on this field
-	// is whether the thing changes without you in a way you need to notice, and
-	// until events could read the calendar somebody already keeps it held only
-	// what they had put there — it never changed without them. Now a meeting
-	// someone else moves into your Thursday appears here unbidden, which is the
-	// same case as mail arriving while you were elsewhere.
-	Pinned: true,
-	Icon:   "events.svg",
+	Icon:        "events.svg",
 	Endpoints: map[string]service.Endpoint{
 		"Create": {Doc: "Schedule a reminder or event at a given time; optionally repeating, and optionally running a prompt through the agent when it fires"},
 		"Free":   {Doc: "Find when the caller has nothing booked — open slots of a given length, within working hours"},
