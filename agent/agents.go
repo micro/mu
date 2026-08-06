@@ -12,7 +12,12 @@ import (
 	"mu/internal/auth"
 )
 
-// AgentsHandler is the CRUD API for user-defined agents at /agent/agents.
+// AgentsHandler is the JSON API behind the chat's agent picker, at /agents/data.
+//
+// It was /agent/agents, which nested agents under agent and read as two
+// different words that are the same word. /agents is the page where agents are
+// created and scoped; this is the data behind the picker on the chat, so it
+// belongs under that path rather than under the thing doing the talking.
 //
 //	GET  → { agents: [user agents], builtins: [{id,name,description}] }
 //	POST action=save   (name, prompt, description, id?, fork?) → saved agent
@@ -73,6 +78,15 @@ func AgentsHandler(w http.ResponseWriter, r *http.Request) {
 	var mine []lite
 	for _, a := range micro.UserAgentsFor(acc.ID) {
 		mine = append(mine, lite{a.ID, a.Name, a.Description, a.SystemPrompt, a.Tools})
+	}
+	// Agents created on /agents are the same list. They are stored there
+	// because they also carry a scope and a token, which an agent you only
+	// ever talk to does not need — but "my agents" has to be one list, or the
+	// word means two things depending on which page you are looking at.
+	if HostedAgents != nil {
+		for _, a := range HostedAgents(acc.ID) {
+			mine = append(mine, lite{a.ID, a.Name, a.Description, a.SystemPrompt, a.Tools})
+		}
 	}
 	_ = json.NewEncoder(w).Encode(map[string]any{"agents": mine, "tools": AllAgentTools()})
 }
@@ -153,10 +167,10 @@ window.muSeedAgent=function(id){window.muActiveAgent=id||'';try{sessionStorage.s
 function muAgentEsc(s){return (s||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function muAgentDelete(id,ev){ev.stopPropagation();ev.preventDefault();if(!confirm('Delete this agent?'))return;
   var b=new URLSearchParams();b.append('action','delete');b.append('id',id);
-  fetch('/agent/agents',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','X-CSRF-Token':muAgentCsrf()},body:b.toString()})
+  fetch('/agents/data',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','X-CSRF-Token':muAgentCsrf()},body:b.toString()})
     .then(function(){if(window.muActiveAgent===id)muAgentPick('');muAgentsLoad();}).catch(function(){});}
 function muAgentsLoad(){
-  fetch('/agent/agents',{headers:{'Accept':'application/json'}}).then(function(r){return r.json();}).then(function(d){
+  fetch('/agents/data',{headers:{'Accept':'application/json'}}).then(function(r){return r.json();}).then(function(d){
     var list=document.getElementById('agents-list');if(!list)return;
     var h='<div class="'+(window.muActiveAgent?'':'on')+'" data-id="" onclick="muAgentPick(\'\')">Micro <span class="agents-def">default</span></div>';
     (d.agents||[]).forEach(function(a){var id=muAgentEsc(a.id);
@@ -266,7 +280,7 @@ function bCsrf(){var m=document.cookie.match(/(?:^|; )csrf_token=([^;]+)/);retur
 function bGen(){var brief=document.getElementById('b-brief').value.trim();if(!brief)return;
   var btn=document.getElementById('b-genbtn');btn.disabled=true;btn.textContent='Generating…';
   var b=new URLSearchParams();b.append('action','generate');b.append('brief',brief);
-  fetch('/agent/agents',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','X-CSRF-Token':bCsrf()},body:b.toString()})
+  fetch('/agents/data',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','X-CSRF-Token':bCsrf()},body:b.toString()})
     .then(function(r){return r.json();}).then(function(d){btn.disabled=false;btn.textContent='✨ Generate';
       if(d.error){alert(d.error);return;}
       if(d.name)document.getElementById('b-name').value=d.name;
@@ -281,7 +295,7 @@ function bSave(e){e.preventDefault();
   b.append('description',document.getElementById('b-desc').value);
   b.append('prompt',document.getElementById('b-prompt').value);
   document.querySelectorAll('.b-tools input:checked').forEach(function(el){b.append('tools',el.value);});
-  fetch('/agent/agents',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','X-CSRF-Token':bCsrf()},body:b.toString()})
+  fetch('/agents/data',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','X-CSRF-Token':bCsrf()},body:b.toString()})
     .then(function(r){return r.json();}).then(function(a){if(a.error){alert(a.error);return;}
       location.href='/agent'+(a.id?('?agent='+encodeURIComponent(a.id)):'');}).catch(function(){});
   return false;}
@@ -289,3 +303,8 @@ function bSave(e){e.preventDefault();
 
 	app.Respond(w, r, app.Response{Title: title, Description: "Build a custom agent", HTML: b})
 }
+
+// HostedAgents lists the account's agents that run on this instance, as micro
+// agents the chat can talk to. Set by main.go from service/agents, which owns
+// the record — kept as a hook so this package does not import a service.
+var HostedAgents func(accountID string) []*micro.Agent

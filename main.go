@@ -1788,6 +1788,7 @@ func main() {
 		"/oauth2/google":          false, // Google sign-in start (no session yet)
 		"/oauth2/google/connect":  true,  // Link Google to the current account
 		"/agents":                 true,  // Your agents and their tokens — sign-in required
+		"/agents/data":            true,  // JSON behind the chat's agent picker
 		"/oauth2/google/calendar": true,  // Grant calendar access to the current account
 		"/oauth2/google/contacts": true,  // Grant contacts access to the current account
 		"/oauth2/callback":        false, // Google sign-in callback (no session yet)
@@ -2010,6 +2011,8 @@ func main() {
 	// serve the agent
 	http.HandleFunc("/agent", agent.Handler)
 	http.HandleFunc("/agent/", agent.Handler)
+	http.HandleFunc("/agents/data", agent.AgentsHandler)
+	// The old path, so a page cached with the previous script keeps working.
 	http.HandleFunc("/agent/agents", agent.AgentsHandler)
 	http.HandleFunc("/agent/new", agent.NewAgentHandler)
 	http.HandleFunc("/agent/run", agent.RunHandler)
@@ -2105,6 +2108,37 @@ func main() {
 		w.Write([]byte(proof + "\n"))
 	})
 	// Google sign-in (Mu as an OAuth client of Google).
+	// One list of agents, whichever page you found it on.
+	//
+	// The chat at /agent already had user-defined agents — a name, a prompt and
+	// an allowed set of services — stored by agent/micro. /agents adds the two
+	// things those lacked: a scope that is enforced against a credential, and a
+	// token to hand out. Rather than a second concept wearing the same word,
+	// the record on /agents resolves as one of those agents, so an agent marked
+	// "runs here" can be talked to, with its own instructions and confined to
+	// its own services. Without this, that option on the create form stored a
+	// field nothing read.
+	agent.HostedAgents = func(accountID string) []*micro.Agent {
+		var out []*micro.Agent
+		for _, a := range agents.List(accountID) {
+			if a.Kind != agents.Hosted {
+				continue
+			}
+			out = append(out, hostedAsMicro(accountID, a))
+		}
+		return out
+	}
+	prevUserAgent := micro.UserAgentResolver
+	micro.UserAgentResolver = func(accountID, id string) *micro.Agent {
+		if a := agents.Get(accountID, id); a != nil && a.Kind == agents.Hosted {
+			return hostedAsMicro(accountID, a)
+		}
+		if prevUserAgent != nil {
+			return prevUserAgent(accountID, id)
+		}
+		return nil
+	}
+
 	// /agents is a page, not a service, and deliberately has no RPC surface.
 	// A tool that created agents would let a scoped agent mint an unscoped one,
 	// which is privilege escalation dressed as a feature. Agents are created by
@@ -2822,4 +2856,26 @@ func runHealthChecks() []app.ServiceHealth {
 	}
 
 	return results
+}
+
+// hostedAsMicro presents an agent from /agents as one the chat can run.
+//
+// Services becomes Tools because that is what the native path matches on: it
+// filters the available services by this list, so an agent scoped to news and
+// weather is offered those and nothing else. The same scope is enforced against
+// its token at the MCP boundary, so talking to it here and calling it from
+// outside confine it the same way.
+func hostedAsMicro(accountID string, a *agents.Agent) *micro.Agent {
+	desc := a.Prompt
+	if desc == "" {
+		desc = "Your agent"
+	}
+	return &micro.Agent{
+		ID:             a.ID,
+		Name:           a.Name,
+		Description:    desc,
+		SystemPrompt:   a.Prompt,
+		Tools:          a.Services,
+		OwnerAccountID: accountID,
+	}
 }

@@ -18,7 +18,6 @@ import (
 	"mu/internal/service"
 	"mu/service/apps"
 	"mu/service/mail"
-	"mu/service/markets"
 	"mu/service/news"
 )
 
@@ -473,10 +472,17 @@ function fetchW(la,lo){
 				}
 			}
 		}
-		if movers := markets.TopMovers(2); movers != "" {
-			suggestions = append(suggestions, movers)
-		}
-		suggestions = append(suggestions, "Today's news", "What's happening?")
+		// No chips for things the cards below already show.
+		//
+		// There were three: top movers, "Today's news" and "What's happening?".
+		// Every one of them asked the agent to fetch something already on the
+		// screen — the markets card has the prices, the news card has the
+		// headlines, the blog digest is what's happening. A chip that spends a
+		// model call to re-fetch what you can already see is a worse version of
+		// scrolling down.
+		//
+		// What is left is the one suggestion the cards cannot answer: unread
+		// mail, which needs your inbox opened and read rather than displayed.
 
 		// The question is carried in a data attribute and read by a listener,
 		// not written into an onclick.
