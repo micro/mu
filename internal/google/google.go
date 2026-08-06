@@ -93,12 +93,98 @@ func save() {
 	_ = data.SaveJSON(storeKey, list)
 }
 
-// Connected reports whether an account has granted calendar access.
+// Connected reports whether an account has granted anything at all.
 func Connected(accountID string) bool {
 	mu.RLock()
 	defer mu.RUnlock()
 	c, ok := conns[accountID]
 	return ok && c.RefreshToken != ""
+}
+
+// HasScope reports whether an account's grant covers one particular thing.
+//
+// Per-scope rather than per-account, because these are separate decisions made
+// at separate moments: somebody who attached a calendar has not thereby agreed
+// to hand over their address book, and a UI that treats one grant as permission
+// for the next is the pattern this whole flow exists to avoid.
+func HasScope(accountID, scope string) bool {
+	mu.RLock()
+	defer mu.RUnlock()
+	c, ok := conns[accountID]
+	if !ok || c.RefreshToken == "" {
+		return false
+	}
+	for _, s := range c.Scopes {
+		if s == scope {
+			return true
+		}
+	}
+	return false
+}
+
+// dropScope forgets one capability without dropping the whole grant — for when
+// Google answers 403, meaning the person withdrew that scope at their end.
+// Continuing to show them as connected to something that answers nothing is the
+// one state worse than being disconnected.
+func dropScope(accountID, scope string) {
+	mu.Lock()
+	defer mu.Unlock()
+	c, ok := conns[accountID]
+	if !ok {
+		return
+	}
+	kept := c.Scopes[:0]
+	for _, s := range c.Scopes {
+		if s != scope {
+			kept = append(kept, s)
+		}
+	}
+	c.Scopes = kept
+	save()
+}
+
+// Grant is one capability an account has handed over, for showing them the
+// whole list in one place.
+type Grant struct {
+	Scope string
+	Email string
+}
+
+// Grants is everything this account has granted, so there can be a single
+// screen answering "what does Mu have access to". A permission that can only be
+// found on the page that happens to use it is a permission nobody audits.
+func Grants(accountID string) []Grant {
+	mu.RLock()
+	defer mu.RUnlock()
+	c, ok := conns[accountID]
+	if !ok || c.RefreshToken == "" {
+		return nil
+	}
+	out := make([]Grant, 0, len(c.Scopes))
+	for _, s := range c.Scopes {
+		// openid and email come along with every grant as the price of knowing
+		// which Google account it is. They are not capabilities anybody chose,
+		// so listing them as such would pad the audit with noise.
+		if s == "openid" || s == "email" || s == "profile" ||
+			strings.HasSuffix(s, "auth/userinfo.email") || strings.HasSuffix(s, "auth/userinfo.profile") {
+			continue
+		}
+		out = append(out, Grant{Scope: s, Email: c.Email})
+	}
+	return out
+}
+
+// Label names a scope the way a person would, for the account page. Unknown
+// scopes fall back to the raw string rather than being hidden — an audit screen
+// that silently omits what it does not recognise is worse than an ugly one.
+func Label(scope string) string {
+	switch scope {
+	case CalendarScope:
+		return "Google Calendar (read-only)"
+	case ContactsScope:
+		return "Google Contacts (read-only)"
+	}
+	return scope
 }
 
 // ConnectedEmail is the Google address behind the grant, for showing someone

@@ -199,7 +199,9 @@ func main() {
 	// instead of two, rather than a broken second one.
 	google.Load()
 	if google.Configured() {
-		events.ExternalConnected = google.Connected
+		events.ExternalConnected = func(owner string) bool {
+			return google.HasScope(owner, google.CalendarScope)
+		}
 		events.ExternalAccount = google.ConnectedEmail
 		events.ExternalBusy = func(owner string, from, to time.Time) []events.Slot {
 			periods, err := google.Busy(owner, from, to)
@@ -217,6 +219,23 @@ func main() {
 				slots = append(slots, events.Slot{Start: p.Start, End: p.End})
 			}
 			return slots
+		}
+		contacts.ExternalConnected = func(owner string) bool {
+			return google.HasScope(owner, google.ContactsScope)
+		}
+		contacts.ExternalFind = func(owner, query string) []contacts.External {
+			people, err := google.SearchContacts(owner, query, 10)
+			if err != nil {
+				if err != google.ErrNotConnected {
+					app.Log("contacts", "google contacts for %s: %v", owner, err)
+				}
+				return nil
+			}
+			out := make([]contacts.External, 0, len(people))
+			for _, p := range people {
+				out = append(out, contacts.External{Name: p.Name, Email: p.Email, Phone: p.Phone})
+			}
+			return out
 		}
 		events.ExternalEntries = func(owner string, from, to time.Time) []events.External {
 			entries, err := google.Events(owner, from, to, 25)
@@ -1754,6 +1773,7 @@ func main() {
 		"/oauth2/google":          false, // Google sign-in start (no session yet)
 		"/oauth2/google/connect":  true,  // Link Google to the current account
 		"/oauth2/google/calendar": true,  // Grant calendar access to the current account
+		"/oauth2/google/contacts": true,  // Grant contacts access to the current account
 		"/oauth2/callback":        false, // Google sign-in callback (no session yet)
 		"/images":                 false, // Public daily image; generation needs login
 		"/img":                    false, // Public — cached article images (a prefix of /images, same answer)
@@ -2074,8 +2094,9 @@ func main() {
 	http.HandleFunc("/oauth2/callback", app.GoogleCallback)
 	// Reading a calendar is a separate grant, asked for separately — see
 	// internal/app/google_calendar.go.
-	http.HandleFunc("/oauth2/google/calendar", app.GoogleCalendarConnect)
-	http.HandleFunc("/oauth2/google/calendar/disconnect", app.GoogleCalendarDisconnect)
+	http.HandleFunc("/oauth2/google/calendar", app.GoogleGrantConnect)
+	http.HandleFunc("/oauth2/google/contacts", app.GoogleGrantConnect)
+	http.HandleFunc("/oauth2/google/disconnect", app.GoogleGrantDisconnect)
 
 	http.HandleFunc("/oauth/register", auth.OAuthRegisterHandler)
 	http.HandleFunc("/oauth/authorize", auth.OAuthAuthorizePostHandler)

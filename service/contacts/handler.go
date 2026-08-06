@@ -162,6 +162,7 @@ func listPage(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`</tbody></table></div>`)
 	}
 
+	b.WriteString(connectCard(sess.Account, r.URL.Query().Get("connection")))
 	b.WriteString(contactsPageCSS)
 	w.Write([]byte(app.RenderHTMLForRequest("Contacts", "Your address book", b.String(), r)))
 }
@@ -202,3 +203,45 @@ const contactsPageCSS = `<style>
   .contacts-table tbody tr:nth-child(odd){background:none}
 }
 </style>`
+
+// connectCard is the ask, placed under the address book rather than over it:
+// somebody arriving at /contacts came to see their contacts, and a page that
+// opens with a permission request is a product asking before it has done
+// anything.
+//
+// There is no disconnect here. Withdrawing access is one action covering
+// everything granted — Google revokes the whole grant at once — so it belongs
+// on /account with the rest of the inventory, not repeated on each page that
+// happens to use it.
+func connectCard(owner, status string) string {
+	if !CanConnectExternal() {
+		return ""
+	}
+
+	note := ""
+	switch status {
+	case "connected":
+		note = `<p style="font-size:13px;color:#0a7d33;margin:0 0 8px">Connected. Names are now resolved against ` + html.EscapeString(ExternalName) + ` too.</p>`
+	case "declined":
+		note = `<p style="font-size:13px;color:#888;margin:0 0 8px">No access granted — nothing changed.</p>`
+	case "failed":
+		note = `<p style="font-size:13px;color:#b00;margin:0 0 8px">That didn't complete. Try again.</p>`
+	}
+
+	var b strings.Builder
+	b.WriteString(`<div class="card" style="margin-top:24px">`)
+	b.WriteString(note)
+	if HasExternal(owner) {
+		b.WriteString(`<h4 style="margin:0 0 6px;font-size:14px">` + html.EscapeString(ExternalName) + `</h4>`)
+		b.WriteString(`<p style="font-size:13px;color:#666;margin:0">Attached and read-only. Names are looked up when you ask; ` +
+			`nothing from it is copied here. Manage it in <a href="/account">your account</a>.</p>`)
+	} else {
+		b.WriteString(`<h4 style="margin:0 0 6px;font-size:14px">Connect your ` + html.EscapeString(ExternalName) + `</h4>`)
+		b.WriteString(`<p style="font-size:13px;color:#666;margin:0 0 10px">Right now a name only resolves if you typed it in above. ` +
+			`Connect your address book and "email Sarah about Thursday" works without teaching Mu who Sarah is. ` +
+			`Read-only, and nothing is copied — names are looked up when you ask.</p>`)
+		b.WriteString(`<a href="/oauth2/google/contacts" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:8px 16px;border-radius:8px;font-weight:600;font-size:13px">Connect ` + html.EscapeString(ExternalName) + `</a>`)
+	}
+	b.WriteString(`</div>`)
+	return b.String()
+}

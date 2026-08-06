@@ -154,15 +154,18 @@ func TestTheCalendarCardOnlyAppearsWhenItCanWork(t *testing.T) {
 
 	withExternal(t, true, nil, nil)
 	connected := calendarCard("someone", "connected", "csrf-token")
-	if !strings.Contains(connected, "Disconnect") {
-		t.Errorf("a connected calendar cannot be disconnected:\n%s", connected)
-	}
-	// Dropping the connection is a state change, so it must not be reachable
-	// by a GET an attacker's page could make on the person's behalf.
-	if !strings.Contains(connected, `method="POST"`) || !strings.Contains(connected, "csrf-token") {
-		t.Errorf("disconnect is not a guarded POST:\n%s", connected)
-	}
 	if !strings.Contains(connected, "someone@example.com") {
 		t.Errorf("the card does not say which calendar is attached:\n%s", connected)
+	}
+	// Withdrawing access is one action covering everything granted — Google
+	// revokes the whole grant at once — so it lives with the rest of the
+	// inventory rather than being repeated on each page that uses a piece of
+	// it. A per-page button would either lie about its scope or duplicate a
+	// decision somebody should make while looking at the whole list.
+	if strings.Contains(connected, "Disconnect") {
+		t.Errorf("withdrawing access was duplicated onto the events page:\n%s", connected)
+	}
+	if !strings.Contains(connected, `href="/account"`) {
+		t.Errorf("the card does not say where to manage it:\n%s", connected)
 	}
 }

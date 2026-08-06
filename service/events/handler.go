@@ -177,7 +177,7 @@ func calendarCard(owner, status, csrf string) string {
 	case "connected":
 		note = `<p style="font-size:13px;color:#0a7d33;margin:0 0 8px">Connected. Your calendar is now included in what's scheduled and when you're free.</p>`
 	case "disconnected":
-		note = `<p style="font-size:13px;color:#888;margin:0 0 8px">Disconnected. The access was revoked at Google and forgotten here — Mu is off your account's app list.</p>`
+		note = `<p style="font-size:13px;color:#888;margin:0 0 8px">Disconnected. The access was revoked at Google and forgotten here.</p>`
 	case "declined":
 		note = `<p style="font-size:13px;color:#888;margin:0 0 8px">No calendar access granted — nothing changed.</p>`
 	case "failed":
@@ -197,13 +197,12 @@ func calendarCard(owner, status, csrf string) string {
 		}
 		b.WriteString(`<h4 style="margin:0 0 6px;font-size:14px">` + html.EscapeString(ExternalName) + who + `</h4>`)
 		b.WriteString(`<p style="font-size:13px;color:#666;margin:0 0 10px">Read-only. Mu can see what's on it, and cannot change it.</p>`)
-		// A POST, not a link. Dropping somebody's calendar connection is a
-		// state change, and a state change behind a GET is one an attacker's
-		// page can make on their behalf with an <img> tag.
-		b.WriteString(`<form method="POST" action="/oauth2/google/calendar/disconnect" style="margin:0">` +
-			`<input type="hidden" name="_csrf" value="` + html.EscapeString(csrf) + `">` +
-			`<button type="submit" style="background:none;border:0;padding:0;font-size:13px;color:#888;cursor:pointer;text-decoration:underline">Disconnect</button>` +
-			`</form>`)
+		// No disconnect here. Withdrawing access is one action covering
+		// everything granted — Google revokes the whole grant at once — so it
+		// belongs with the rest of the inventory rather than repeated on every
+		// page that happens to use a piece of it.
+		b.WriteString(`<p style="font-size:13px;color:#888;margin:0">Manage it in ` +
+			`<a href="/account">your account</a>.</p>`)
 	} else {
 		b.WriteString(`<h4 style="margin:0 0 6px;font-size:14px">Connect your ` + html.EscapeString(ExternalName) + `</h4>`)
 		b.WriteString(`<p style="font-size:13px;color:#666;margin:0 0 10px">Right now "when am I free" only counts what you scheduled here. Connect your calendar and it counts everything. Read-only — Mu can see what's on it, and cannot change it.</p>`)

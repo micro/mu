@@ -157,3 +157,70 @@ func TestDisconnectDropsTheTokenEvenIfGoogleIsDown(t *testing.T) {
 		t.Error("a failed revoke left Mu holding the token")
 	}
 }
+
+// Grants are per-scope, because they are separate decisions made at separate
+// moments. Somebody who attached a calendar has not thereby agreed to hand over
+// their address book, and a UI that treats one grant as permission for the next
+// is the pattern this whole flow exists to avoid.
+func TestGrantsAreCheckedPerScope(t *testing.T) {
+	reset()
+
+	Store("partial", "them@example.com", "refresh-abc", []string{CalendarScope})
+
+	if !HasScope("partial", CalendarScope) {
+		t.Error("the granted scope reads as missing")
+	}
+	if HasScope("partial", ContactsScope) {
+		t.Error("granting a calendar was treated as granting an address book")
+	}
+	if HasScope("stranger", CalendarScope) {
+		t.Error("an account with no grant at all reads as having one")
+	}
+}
+
+// The audit screen lists what was actually chosen. openid/email ride along with
+// every grant as the price of knowing which Google account it is, so listing
+// them as capabilities would pad the list with things nobody decided.
+func TestTheGrantListIsWhatSomebodyActuallyChose(t *testing.T) {
+	reset()
+
+	Store("auditor", "them@example.com", "refresh-abc",
+		[]string{"openid", "email", CalendarScope, ContactsScope})
+
+	list := Grants("auditor")
+	if len(list) != 2 {
+		t.Fatalf("the audit list is %+v, want just the two real capabilities", list)
+	}
+	for _, g := range list {
+		if g.Scope == "openid" || g.Scope == "email" {
+			t.Errorf("sign-in scope listed as a capability: %+v", g)
+		}
+		if Label(g.Scope) == g.Scope {
+			t.Errorf("scope %q has no human label", g.Scope)
+		}
+	}
+
+	if got := Grants("stranger"); len(got) != 0 {
+		t.Errorf("an account with no grant listed %+v", got)
+	}
+}
+
+// When Google answers 403 the person withdrew that scope at their end. Showing
+// them as still connected to something that answers nothing is the one state
+// worse than being disconnected.
+func TestALostScopeIsForgottenWithoutDroppingTheRest(t *testing.T) {
+	reset()
+
+	Store("shrinking", "them@example.com", "refresh-abc", []string{CalendarScope, ContactsScope})
+	dropScope("shrinking", ContactsScope)
+
+	if HasScope("shrinking", ContactsScope) {
+		t.Error("a withdrawn scope is still claimed")
+	}
+	if !HasScope("shrinking", CalendarScope) {
+		t.Error("losing one scope dropped another")
+	}
+	if !Connected("shrinking") {
+		t.Error("losing one scope dropped the whole grant")
+	}
+}

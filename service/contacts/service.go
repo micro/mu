@@ -71,8 +71,20 @@ func (Server) Find(ctx context.Context, req *FindRequest, rsp *FindResponse) err
 	if err != nil {
 		return err
 	}
-	rsp.Contacts = Find(owner, req.Query)
-	rsp.Text = Render(rsp.Contacts)
+	own, ext := FindEverywhere(owner, req.Query)
+	rsp.Contacts = own
+
+	// Both books in one answer. Two lists would leave the agent choosing
+	// between them, and the caller asked "who is Sarah", not "which store".
+	rsp.Text = Render(own)
+	if len(ext) > 0 {
+		if len(own) == 0 {
+			rsp.Text = RenderExternal(ext)
+		} else {
+			rsp.Text += "\n" + RenderExternal(ext)
+		}
+	}
+	rsp.Text += connectHint(owner)
 	return nil
 }
 
@@ -94,6 +106,12 @@ func (Server) List(ctx context.Context, _ *ListRequest, rsp *ListResponse) error
 	}
 	rsp.Contacts = List(owner)
 	rsp.Text = Render(rsp.Contacts)
+	// Deliberately not a dump of the attached book: those run to thousands of
+	// entries, most of them auto-collected from mail. It is a place to look
+	// names up, not a list to page through.
+	if HasExternal(owner) {
+		rsp.Text += "\n\n(Your " + ExternalName + " is attached too — ask for a name and it will be searched.)"
+	}
 	return nil
 }
 

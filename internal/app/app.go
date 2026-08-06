@@ -1074,6 +1074,9 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Query().Get("linked") == "google" {
 		googleCard = `<div class="card" style="border-color:#1a7f37"><p style="margin:0;color:#1a7f37">✓ Google connected. You can now sign in with Google.</p></div>` + googleCard
 	}
+	// What this account has handed over, in one place. The asks live on the
+	// pages that earn them; the audit belongs where somebody goes to check.
+	googleCard += renderConnectionsCard(r, acc, r.URL.Query().Get("connection"))
 
 	// Home card preferences
 	allCards := []struct{ id, label string }{
