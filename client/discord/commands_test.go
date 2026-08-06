@@ -1,10 +1,12 @@
 package discord
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 
 	"mu/internal/api"
+	"mu/internal/service"
 )
 
 // registerProbes stands up tools shaped like the real ones. The generated
@@ -170,4 +172,54 @@ func TestCommandsMarshalToDiscordShape(t *testing.T) {
 			t.Errorf("a command lost a required field: %v", c)
 		}
 	}
+}
+
+// A slash command in a guild channel answers into that channel, where everyone
+// can read it. Scoped services hold one person's data, so none of them may
+// answer there.
+//
+// This used to be a hand-written list of two — /mail and /balance each carried
+// their own guard — and the service commands are generated from the registry,
+// so /events and /contacts arrived without one. "/events list" in a shared
+// channel printed the caller's calendar to the channel.
+//
+// Registers its own services rather than reading the live registry: which
+// service packages are linked into this test binary is an accident of imports,
+// and a privacy rule must not be tested by an accident.
+func TestScopedCommandsRefuseToAnswerInAChannel(t *testing.T) {
+	if err := service.Register(service.Spec{
+		Name: "privateprobe", Handler: new(ProbeHandler), Page: "/privateprobe", Scoped: true,
+		Endpoints: map[string]service.Endpoint{"List": {Doc: "probe"}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := service.Register(service.Spec{
+		Name: "publicprobe", Handler: new(ProbeHandler), Page: "/publicprobe",
+		Endpoints: map[string]service.Endpoint{"List": {Doc: "probe"}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	if !channelPrivate("privateprobe", true) {
+		t.Error("a scoped command answered into a channel")
+	}
+	if channelPrivate("privateprobe", false) {
+		t.Error("a scoped command was refused in a DM, where it is the whole point")
+	}
+	if channelPrivate("publicprobe", true) {
+		t.Error("a public command was refused in a channel")
+	}
+	// An unknown name must not be treated as private-and-refused, or a typo
+	// would silently become a permission error.
+	if channelPrivate("nosuchservice", true) {
+		t.Error("an unregistered command was refused as private")
+	}
+}
+
+type ProbeHandler struct{}
+
+func (ProbeHandler) List(ctx context.Context, req *struct{}, rsp *struct {
+	Text string `json:"text"`
+}) error {
+	return nil
 }

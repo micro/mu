@@ -10,6 +10,7 @@ import (
 	"mu/agent"
 	"mu/internal/api"
 	"mu/internal/app"
+	"mu/internal/service"
 	"mu/service/wallet"
 )
 
@@ -97,6 +98,25 @@ func handleInteraction(raw json.RawMessage) {
 		return
 	}
 
+	// Anything scoped is private, and a slash command in a guild channel
+	// answers into that channel where everyone can read it.
+	//
+	// Two commands used to say this for themselves — /mail and /balance each
+	// carried their own isChannelCmd guard. That is a hand-written list of the
+	// private things somebody remembered, and it did not include /events or
+	// /contacts, which are generated from the registry like every other
+	// service command. So "/events list" in a shared channel printed the
+	// caller's calendar to the channel.
+	//
+	// Derived from the Spec instead: Scoped already means "holds one person's
+	// data", and it is the same flag that makes the MCP tool refuse an
+	// unauthenticated call. A service that becomes scoped later is covered
+	// without anybody remembering this file exists.
+	if channelPrivate(inter.Data.Name, isChannelCmd) {
+		editResponse(inter.Token, "That's private — use this command in a DM.")
+		return
+	}
+
 	app.Log("discord", "Slash /%s from %s (%s)", inter.Data.Name, inter.username(), accountID)
 	trackQuery(accountID)
 
@@ -121,10 +141,8 @@ func handleInteraction(raw json.RawMessage) {
 			prompt = "weather forecast"
 		}
 	case "mail":
-		if isChannelCmd {
-			editResponse(inter.Token, "Mail is private — use this command in a DM.")
-			return
-		}
+		// The generic guard above already refused this in a channel; mail is a
+		// scoped service. Kept as a case only for its prompt.
 		prompt = "read my email"
 	case "apps":
 		q := inter.getOption("query")
@@ -312,4 +330,10 @@ func (i *interaction) tool() (string, map[string]any, bool) {
 		return "", nil, false
 	}
 	return t.Name, args, true
+}
+
+// channelPrivate reports whether a command must refuse to answer here because
+// the answer would be readable by everyone in the channel.
+func channelPrivate(commandName string, inChannel bool) bool {
+	return inChannel && service.AccountScoped(commandName)
 }
