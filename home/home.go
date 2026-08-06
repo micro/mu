@@ -555,23 +555,49 @@ function fetchW(la,lo){
 			{"markets", "Markets"}, {"social", "Social"}, {"video", "Video"},
 			{"images", "Images"}, {"mail", "Mail"}, {"web", "Search"},
 		}
-		optIn := map[string]bool{"mail": true, "web": true}
-		activeSet := map[string]bool{}
+		// Selected cards first, in the order they render; then the rest.
+		//
+		// The panel posts its rows in DOM order, so dragging a row is the whole
+		// mechanism — no separate "save order" step, and no way for the shown
+		// order and the stored order to disagree.
+		chosen := viewerAcc.HomeCardOrder()
+		inOrder := make([]struct {
+			id, label string
+			on        bool
+		}, 0, len(allCardDefs))
+		seen := map[string]bool{}
+		labelOf := map[string]string{}
 		for _, c := range allCardDefs {
-			if optIn[c.id] {
-				activeSet[c.id] = viewerAcc.HomeCardActive(c.id)
-			} else {
-				activeSet[c.id] = viewerAcc.ShowHomeCard(c.id)
+			labelOf[c.id] = c.label
+		}
+		for _, id := range chosen {
+			if label, ok := labelOf[id]; ok && !seen[id] {
+				seen[id] = true
+				inOrder = append(inOrder, struct {
+					id, label string
+					on        bool
+				}{id, label, true})
 			}
 		}
-		var checkboxes string
 		for _, c := range allCardDefs {
+			if !seen[c.id] {
+				inOrder = append(inOrder, struct {
+					id, label string
+					on        bool
+				}{c.id, c.label, false})
+			}
+		}
+
+		var checkboxes string
+		for _, c := range inOrder {
 			checked := ""
-			if activeSet[c.id] {
+			if c.on {
 				checked = " checked"
 			}
-			checkboxes += fmt.Sprintf(`<label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:14px;border-bottom:1px solid #f0f0f0"><input type="checkbox" name="cards" value="%s"%s style="width:18px;height:18px"> %s</label>`, c.id, checked, c.label)
+			checkboxes += fmt.Sprintf(`<label class="card-pref" draggable="true" data-id="%s"><span class="card-grip" title="Drag to reorder">⠿</span><input type="checkbox" name="cards" value="%s"%s> %s</label>`,
+				htmlEsc(c.id), htmlEsc(c.id), checked, htmlEsc(c.label))
 		}
+
 		// App widget checkboxes — any public app can be pinned as a card.
 		var widgetCheckboxes string
 		activeWidgets := map[string]bool{}
@@ -594,7 +620,13 @@ function fetchW(la,lo){
 		b.WriteString(fmt.Sprintf(`<div id="home-card-prefs" style="display:none;padding:12px 16px;margin-bottom:12px;background:#f9f9f9;border-radius:8px;border:1px solid #eee">
 <p style="font-weight:600;font-size:14px;margin:0 0 4px">Customise home screen</p>
 <p style="font-size:12px;color:#999;margin:0 0 8px">Choose what your agent keeps an eye on.</p>
-<div id="card-checkboxes">%s</div>`, checkboxes))
+<div id="card-checkboxes">%s</div>
+<style>
+.card-pref{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:14px;border-bottom:1px solid #f0f0f0;cursor:grab;background:#f9f9f9}
+.card-pref input{width:18px;height:18px}
+.card-pref.dragging{opacity:.4}
+.card-grip{color:#bbb;font-size:13px;cursor:grab;user-select:none}
+</style>`, checkboxes))
 		if widgetCheckboxes != "" {
 			b.WriteString(fmt.Sprintf(`<p style="font-weight:600;font-size:13px;margin:10px 0 4px">Apps</p>
 <p style="font-size:12px;color:#999;margin:0 0 6px">Pin apps to the top of your home screen.</p>
@@ -613,6 +645,36 @@ function fetchW(la,lo){
     fetch('/account',{method:'POST',credentials:'same-origin',headers:h,body:body.toString()})
     .then(function(){location.reload()});
   }
+  // Drag to reorder. The rows post in DOM order, so moving one is the whole
+  // change — there is no separate order to keep in step, and therefore no way
+  // for the list you see and the list that renders to disagree.
+  //
+  // Native HTML5 drag rather than a library: this is one list of nine rows.
+  (function(){
+    var list=document.getElementById('card-checkboxes');
+    if(!list) return;
+    var dragging=null;
+    list.addEventListener('dragstart',function(e){
+      dragging=e.target.closest('.card-pref');
+      if(dragging) dragging.classList.add('dragging');
+    });
+    list.addEventListener('dragend',function(){
+      if(!dragging) return;
+      dragging.classList.remove('dragging');
+      dragging=null;
+      savePrefs('cards','card-checkboxes');
+    });
+    list.addEventListener('dragover',function(e){
+      e.preventDefault();
+      if(!dragging) return;
+      var row=e.target.closest('.card-pref');
+      if(!row||row===dragging) return;
+      var box=row.getBoundingClientRect();
+      var after=(e.clientY-box.top)/box.height>0.5;
+      list.insertBefore(dragging,after?row.nextSibling:row);
+    });
+  })();
+
   // Delay listener attachment so browser form-restore doesn't
   // trigger an immediate save+reload loop.
   setTimeout(function(){
@@ -631,18 +693,6 @@ function fetchW(la,lo){
 	// deselected them; cards added after the user last customised default to
 	// visible (see auth.Account.ShowHomeCard). Order and column come from
 	// cards.json. mail/web are opt-in and off unless explicitly enabled.
-	showDefault := func(id string) bool {
-		if viewerAcc == nil {
-			return true // logged out → every default card shows
-		}
-		return viewerAcc.ShowHomeCard(id)
-	}
-	isCardEnabled := func(id string) bool {
-		if viewerAcc == nil {
-			return false // mail/web are opt-in, never in the default set
-		}
-		return viewerAcc.HomeCardActive(id)
-	}
 
 	tooltips := map[string]string{
 		"blog":    "Microblog posts with daily AI-generated digests",
@@ -653,40 +703,93 @@ function fetchW(la,lo){
 		"video":   "Latest videos from curated channels",
 	}
 
-	var leftHTML, rightHTML []string
-	for _, card := range Cards {
-		if !showDefault(card.ID) {
-			continue
+	// One ordered list, and mail and search are in it like everything else.
+	//
+	// They used to be appended after the loop, so they could only ever land at
+	// the bottom of the right column however anybody felt about it. And the
+	// order came from cards.json, which is the instance's opinion rather than
+	// the reader's. Now the account stores the order and this renders it.
+	//
+	// Service cards are off unless chosen. Someone who signed up because the
+	// landing said tools for agents should not land on a magazine; someone who
+	// wants one composes it in the panel below, and their order is kept.
+	type rendered struct{ id, html string }
+	build := func(id string) string {
+		switch id {
+		case "mail":
+			if viewerID == "" {
+				return ""
+			}
+			return mail.GetRecentThreadsPreview(viewerID, 3) + app.Link("More", "/mail")
+		case "web":
+			if viewerID == "" {
+				return ""
+			}
+			return `<form method="GET" action="/web"><input type="text" name="q" placeholder="Search the web..." style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box"></form>`
 		}
-		content := card.CachedHTML
+		for _, card := range Cards {
+			if card.ID != id {
+				continue
+			}
+			content := card.CachedHTML
+			if strings.TrimSpace(content) == "" {
+				return ""
+			}
+			if card.Link != "" {
+				content += app.Link("More", card.Link)
+			}
+			return content
+		}
+		return ""
+	}
+	titleOf := func(id string) string {
+		switch id {
+		case "mail":
+			return "Mail"
+		case "web":
+			return "Search"
+		}
+		for _, card := range Cards {
+			if card.ID == id {
+				return card.Title
+			}
+		}
+		return id
+	}
+
+	// Signed out, the home screen is a showcase: the instance's own default
+	// order, because a visitor has expressed no preference to honour.
+	order := []string{}
+	if viewerAcc == nil {
+		for _, card := range Cards {
+			order = append(order, card.ID)
+		}
+	} else {
+		order = viewerAcc.HomeCardOrder()
+	}
+
+	var shown []rendered
+	for _, id := range order {
+		content := build(id)
 		if strings.TrimSpace(content) == "" {
 			continue
 		}
-		if card.Link != "" {
-			content += app.Link("More", card.Link)
-		}
-		title := card.Title
-		if tip, ok := tooltips[card.ID]; ok {
+		title := titleOf(id)
+		if tip, ok := tooltips[id]; ok {
 			title += fmt.Sprintf(` <span class="card-tooltip" data-tip="%s" onclick="event.stopPropagation();document.querySelectorAll('.card-tooltip.show').forEach(function(e){e.classList.remove('show')});this.classList.toggle('show')">?</span>`, htmlEsc(tip))
 		}
-		html := fmt.Sprintf(app.CardTemplate, card.ID, card.ID, title, content)
-		if card.Column == "left" {
-			leftHTML = append(leftHTML, html)
-		} else {
-			rightHTML = append(rightHTML, html)
-		}
+		shown = append(shown, rendered{id, fmt.Sprintf(app.CardTemplate, id, id, title, content)})
 	}
 
-	// Per-user cards (opt-in): mail and web search.
-	if viewerID != "" {
-		if isCardEnabled("mail") {
-			mailContent := mail.GetRecentThreadsPreview(viewerID, 3)
-			mailContent += app.Link("More", "/mail")
-			rightHTML = append(rightHTML, fmt.Sprintf(app.CardTemplate, "mail", "mail", "Mail", mailContent))
-		}
-		if isCardEnabled("web") {
-			webContent := `<form method="GET" action="/web"><input type="text" name="q" placeholder="Search the web..." style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box"></form>`
-			rightHTML = append(rightHTML, fmt.Sprintf(app.CardTemplate, "web", "web", "Search", webContent))
+	// Two columns, filled alternately, so first means top-left and second means
+	// top-right. Any other distribution would make the stored order unreadable
+	// on the page that displays it.
+	var leftHTML, rightHTML []string
+	for i, c := range shown {
+		if i%2 == 0 {
+			leftHTML = append(leftHTML, c.html)
+		} else {
+			rightHTML = append(rightHTML, c.html)
 		}
 	}
 

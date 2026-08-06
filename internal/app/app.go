@@ -1001,8 +1001,10 @@ func Account(w http.ResponseWriter, r *http.Request) {
 
 		// Home card preferences
 		if r.Form.Get("home_cards") != "" || r.Form.Get("save_cards") != "" {
-			selected := r.Form["cards"]
-			acc.HomeCards = selected
+			// Order matters: the panel posts its rows in the order they are
+			// shown, so dragging one changes where it renders. Set through the
+			// account so the ids are canonicalised and de-duplicated once.
+			acc.SetHomeCards(r.Form["cards"])
 			// Record the full set the panel offered so cards added later can
 			// default to visible rather than being hidden by this allowlist.
 			acc.HomeCardsSeen = append([]string(nil), homeCardUniverse...)
