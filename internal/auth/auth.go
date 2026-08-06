@@ -75,6 +75,57 @@ func canonicalCardID(id string) string {
 // should render for this account. A card the user explicitly selected shows; a
 // card they deselected (present in their seen set but not their allowlist)
 // hides; a card newer than anything they've been offered defaults to visible.
+// ResetHomeCardsOnce clears every account's card selection, once.
+//
+// Service cards became opt-in: somebody who signed up because the landing said
+// tools for agents should not land on a magazine. But "off by default" only
+// reaches accounts that never chose, and anybody who had opened the customise
+// panel carried a stored selection that kept showing exactly what it always
+// had — so the change was invisible to the people most likely to notice it.
+//
+// Clearing is the only honest way to make the new default apply to everybody.
+// It costs one round of re-picking and it is recorded, so it happens once and
+// never surprises anyone twice.
+func ResetHomeCardsOnce(marker string) int {
+	mutex.Lock()
+	defer mutex.Unlock()
+	if settingsFlag(marker) {
+		return 0
+	}
+	n := 0
+	for _, acc := range accounts {
+		if len(acc.HomeCards) > 0 || len(acc.HomeCardsSeen) > 0 {
+			acc.HomeCards = nil
+			acc.HomeCardsSeen = nil
+			n++
+		}
+	}
+	if n > 0 {
+		data.SaveJSON("accounts.json", accounts)
+	}
+	setSettingsFlag(marker)
+	return n
+}
+
+// settingsFlag / setSettingsFlag record that a one-time migration has run.
+func settingsFlag(name string) bool {
+	var flags map[string]bool
+	if err := data.LoadJSON("migrations.json", &flags); err != nil {
+		return false
+	}
+	return flags[name]
+}
+
+func setSettingsFlag(name string) {
+	var flags map[string]bool
+	_ = data.LoadJSON("migrations.json", &flags)
+	if flags == nil {
+		flags = map[string]bool{}
+	}
+	flags[name] = true
+	_ = data.SaveJSON("migrations.json", flags)
+}
+
 // HomeCardOrder is the cards this account shows, in the order it wants them.
 //
 // The order is the slice's order. It used to be a set — the layout came from

@@ -443,6 +443,14 @@ func main() {
 		}
 		return strings.Join(parts, "\n")
 	}
+	// Service cards are opt-in now. Clearing stored selections once is what
+	// makes that true for accounts that had already customised — otherwise the
+	// new default reaches only people who never chose, which is nobody who
+	// would notice.
+	if n := auth.ResetHomeCardsOnce("home_cards_optin_2026_08"); n > 0 {
+		app.Log("home", "cleared %d card selection(s); cards are opt-in now", n)
+	}
+
 	agent.UserContextFunc = userCtxFunc
 	// The home cards, as something an agent can read. Asked for per message
 	// rather than always on: context costs tokens on every turn, and most

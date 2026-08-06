@@ -793,6 +793,15 @@ function fetchW(la,lo){
 		}
 	}
 
+	// A console with nothing on it has to say so, and say where the switch is.
+	if len(shown) == 0 && viewerAcc != nil {
+		b.WriteString(`<p style="color:#888;font-size:14px;margin:8px 0 0">` +
+			`No cards yet. <a href="#" onclick="var p=document.getElementById('home-card-prefs');` +
+			`if(p)p.style.display='block';return false">Choose what to keep an eye on</a> — ` +
+			`news, markets, mail, whatever you watch. They also become context you can hand ` +
+			`the agent with <em>use my cards</em>.</p>`)
+	}
+
 	if len(leftHTML) > 0 || len(rightHTML) > 0 {
 		b.WriteString(fmt.Sprintf(Template, strings.Join(leftHTML, "\n"), strings.Join(rightHTML, "\n")))
 	}
