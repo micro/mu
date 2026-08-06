@@ -120,6 +120,18 @@ func secretPanel(secret string, a *Agent, base string) string {
 		`</div>`
 }
 
+// agentRow shows an agent the way it is actually used.
+//
+// It used to show every agent the same: an MCP endpoint, "never used", and an
+// "Issue token" button with no hint whether one was needed. For an agent you
+// only talk to here that is three kinds of wrong at once — the endpoint cannot
+// be called without a token, "never used" describes a token that does not
+// exist, and the button reads like a required step. The first question anybody
+// asked was "do I need to issue a token?", which is the page's fault.
+//
+// So it branches on whether there is a credential, not on the declared kind:
+// what matters is whether this thing can be called from outside, and a token is
+// exactly what decides that.
 func agentRow(a *Agent, csrf, base string) string {
 	scope := "everything you can reach"
 	cls := "agent-scope wide"
@@ -132,42 +144,41 @@ func agentRow(a *Agent, csrf, base string) string {
 		cls = "agent-scope"
 	}
 
-	used := "never used"
-	if !a.LastUsed.IsZero() {
-		used = "last used " + a.LastUsed.Local().Format("2 Jan 15:04")
-	}
-
-	kind := "external"
-	if a.Kind == Hosted {
-		kind = "hosted here"
-	}
-
-	token := ""
+	// What this agent is, in terms of what you can do with it.
+	meta, action := "", ""
 	if a.TokenID == "" {
-		token = fmt.Sprintf(`<form method="POST" action="/agents" style="margin:0">
+		meta = `Talk to it in <a href="/agent?agent=` + html.EscapeString(a.ID) + `">the agent</a>. ` +
+			`No token, so nothing outside this instance can call it.`
+		action = fmt.Sprintf(`<form method="POST" action="/agents" style="margin:0">
     <input type="hidden" name="_csrf" value="%s"><input type="hidden" name="action" value="token">
     <input type="hidden" name="id" value="%s">
-    <button type="submit" class="agent-remove" style="color:#666">Issue token</button>
+    <button type="submit" class="agent-remove" style="color:#666" title="Only needed to call it from outside">Issue token</button>
   </form>`, html.EscapeString(csrf), html.EscapeString(a.ID))
+	} else {
+		used := "not called yet"
+		if !a.LastUsed.IsZero() {
+			used = "last called " + a.LastUsed.Local().Format("2 Jan 15:04")
+		}
+		meta = html.EscapeString(used) + ` · <code>` + html.EscapeString(a.Endpoint(base)) + `</code>`
 	}
 
 	return fmt.Sprintf(`<div class="agent-row">
   <div style="flex:1;min-width:0">
-    <div style="font-weight:600;font-size:14px">%s <span class="agent-kind">%s</span></div>
+    <div style="font-weight:600;font-size:14px">%s</div>
     <div class="%s">%s</div>
-    <div class="agent-meta">%s · <code>%s</code></div>
+    <div class="agent-meta">%s</div>
   </div>
   %s
-  <form method="POST" action="/agents" style="margin:0" onsubmit="return confirm('Remove this agent and revoke its token?')">
+  <form method="POST" action="/agents" style="margin:0" onsubmit="return confirm('Remove this agent?')">
     <input type="hidden" name="_csrf" value="%s">
     <input type="hidden" name="action" value="delete">
     <input type="hidden" name="id" value="%s">
     <button type="submit" class="agent-remove">Remove</button>
   </form>
 </div>`,
-		html.EscapeString(a.Name), html.EscapeString(kind),
+		html.EscapeString(a.Name),
 		cls, html.EscapeString(scope),
-		html.EscapeString(used), html.EscapeString(a.Endpoint(base)), token,
+		meta, action,
 		html.EscapeString(csrf), html.EscapeString(a.ID))
 }
 
