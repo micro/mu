@@ -225,85 +225,15 @@ document.addEventListener('keydown', function(e) {
 // ============================================
 
 // Constants
-const CHAT_TOPIC_SELECTOR = '#topic-selector .head';
 const TOPICS_SELECTOR = '#topics .head';
 const CHAT_PATH = '/chat';
 
 var isAuthenticated = false;
-var context = [];
 var topic = '';
 
 
-function summaryMetaText() {
-  if (typeof summaryMeta === 'undefined' || !summaryMeta) return 'Topic summaries unavailable: no freshness metadata was provided.';
-  if (summaryMeta.status === 'unavailable') return 'Topic summaries unavailable: no fresh generated summaries are available yet.';
-  const parts = [];
-  if (summaryMeta.generated_at) {
-    const d = new Date(summaryMeta.generated_at);
-    if (!isNaN(d.getTime())) parts.push('Generated ' + d.toLocaleString());
-  }
-  if (summaryMeta.source) parts.push('Sources: ' + summaryMeta.source);
-  if (summaryMeta.status === 'cached') parts.push('cached from a previous run');
-  return parts.join(' · ') || 'Freshness metadata unavailable.';
-}
-
-// Show all topic summaries with join links (landing page)
-function showTopicSummariesOverlay() {
-  const messages = document.getElementById('messages');
-  if (!messages || typeof summaries === 'undefined') return;
-  
-  // Don't add if already exists
-  if (messages.querySelector('.summary-card')) return;
-  
-  const topics = Object.keys(summaries).sort();
-  if (topics.length === 0) {
-    messages.innerHTML = '<div class="message summary-card"><strong>Today\'s Topics</strong><p class="summary-meta">' + summaryMetaText() + '</p></div>';
-    return;
-  }
-  
-  // Build summaries content using existing CSS classes
-  let summariesHtml = '';
-  topics.forEach(t => {
-    if (summaries[t]) {
-      summariesHtml += `<div class="summary-item">
-        <span class="category">${t}</span>
-        <p>${summaries[t]}</p>
-        <a href="/chat?id=chat_${encodeURIComponent(t)}" class="link">Join discussion →</a>
-      </div>`;
-    }
-  });
-  
-  // Create collapsible card using existing CSS classes (collapsed by default)
-  const card = document.createElement('div');
-  card.className = 'message summary-card';
-  card.innerHTML = `
-    <div class="summary-header" onclick="toggleAllSummaries()">
-      <strong>Today's Topics</strong>
-      <span class="summary-meta">${summaryMetaText()}</span>
-      <span id="summary-toggle-icon">▶</span>
-    </div>
-    <div id="all-summaries" class="all-summaries" style="display: none;">
-      ${summariesHtml}
-    </div>
-  `;
-  messages.insertBefore(card, messages.firstChild);
-}
-
-// Toggle all summaries visibility
-function toggleAllSummaries() {
-  const content = document.getElementById('all-summaries');
-  const icon = document.getElementById('summary-toggle-icon');
-  if (!content) return;
-  if (content.style.display === 'none') {
-    content.style.display = 'block';
-    icon.textContent = '▼';
-  } else {
-    content.style.display = 'none';
-    icon.textContent = '▶';
-  }
-}
-
 // Toggle summary visibility (legacy, for individual topic pages)
+
 function toggleSummary(summaryId) {
   const summary = document.getElementById(summaryId);
   const toggle = summary.previousElementSibling;
@@ -316,286 +246,70 @@ function toggleSummary(summaryId) {
   }
 }
 
-// Show topic context without connecting to WebSocket
+// showTopicContext names the room at the top of the conversation. Topic rooms
+// are named for their topic, so the id is enough — there is no tab strip to
+// highlight any more, and no summary injected into the page: the summaries
+// live on the rooms list at /chat, which is where you chose this room.
 function showTopicContext(t) {
   topic = t;
-  
-  // Update hidden input
+
   const topicInput = document.getElementById('topic');
   if (topicInput) {
     topicInput.value = t;
   }
-  
-  // Update active tab
-  document.querySelectorAll('#topic-selector .head').forEach(tab => {
-    if (tab.textContent === t) {
-      tab.classList.add('active');
-    } else {
-      tab.classList.remove('active');
-    }
-  });
-  
-  // Show context message with summary displayed directly
+
   const messages = document.getElementById('messages');
   if (messages) {
     messages.innerHTML = '';
     const contextMsg = document.createElement('div');
     contextMsg.className = 'context-message';
-    let summaryHtml = '';
-    if (typeof summaries !== 'undefined' && summaries[t]) {
-      summaryHtml = `<p class="topic-summary">${summaries[t]}</p><p class="summary-meta">${summaryMetaText()}</p>`;
-    }
-    contextMsg.innerHTML = '<strong>' + t + '</strong>' + summaryHtml;
+    contextMsg.innerHTML = '<strong>' + escapeHtml(t) + '</strong>';
     messages.appendChild(contextMsg);
   }
-  
-  // Update URL
-  const roomId = 'chat_' + t;
-  history.replaceState(null, null, '/chat?id=' + roomId);
 }
 
-function switchTopic(t) {
-  // Show context first
-  showTopicContext(t);
-  
-  // Connect to WebSocket if authenticated
-  const roomId = 'chat_' + t;
-  if (isAuthenticated) {
-    connectRoomWebSocket(roomId);
+// loadChat joins the room named in the URL. Without one, /chat is the rooms
+// list — a server-rendered page with nothing to connect to, so there is
+// nothing for this to do.
+//
+// It used to also drive a topic picker and a question box that posted to the
+// server for a model answer. Both are gone: chat is people talking to each
+// other, and a question for a model goes to /agent.
+function loadChat() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const roomId = urlParams.get('id');
+  if (!roomId) {
+    return;
   }
-  
-  // Override form to use room messaging
+
+  // A topic room is named for its topic, so the heading can come from the id.
+  if (roomId.startsWith('chat_')) {
+    showTopicContext(roomId.replace('chat_', ''));
+  }
+
+  // Sending needs an account, so the box reflects that before we connect.
+  updateChatFormState();
+
+  // Connect after the auth check completes — sending needs an account.
+  setTimeout(() => {
+    if (isAuthenticated) {
+      connectRoomWebSocket(roomId);
+      bindRoomForm();
+    }
+  }, 500);
+}
+
+// bindRoomForm points the message box at the websocket. The form has no action
+// of its own, so until this runs it does nothing rather than posting somewhere.
+function bindRoomForm() {
   const chatForm = document.getElementById('chat-form');
   if (chatForm) {
     chatForm.onsubmit = function(e) {
       e.preventDefault();
-      if (!isAuthenticated) {
-        showToast('Please login to chat', 'error');
-        return false;
-      }
       sendRoomMessage(this);
       return false;
     };
   }
-}
-
-function loadContext() {
-  // Use localStorage for persistence across sessions
-  const ctx = localStorage.getItem('mu_chat_context');
-  if (ctx == null || ctx == undefined || ctx == "") {
-    context = [];
-    return;
-  }
-  context = JSON.parse(ctx);
-}
-
-function setContext() {
-  // Use localStorage for persistence across sessions
-  localStorage.setItem('mu_chat_context', JSON.stringify(context));
-}
-
-function clearChatHistory() {
-  if (!confirm('Clear chat history?')) return;
-  
-  // Clear local context (general chat)
-  context = [];
-  localStorage.removeItem('mu_chat_context');
-  
-  // Clear local room storage if in a room
-  if (currentRoomId) {
-    localStorage.removeItem(getRoomStorageKey(currentRoomId));
-  }
-  
-  // Clear display but keep context message
-  const messages = document.getElementById('messages');
-  if (messages) {
-    const ctx = messages.querySelector('.context-message');
-    messages.innerHTML = '';
-    if (ctx) messages.appendChild(ctx);
-  }
-}
-
-function loadMessages() {
-  console.log("loading messages, context length:", context.length);
-
-  var d = document.getElementById("messages");
-  if (!d) return;
-  
-  // Clear and rebuild from context
-  d.innerHTML = '';
-  
-  context.forEach(function(data) {
-    d.innerHTML += `<div class="message"><span class="you">you</span><p>${data["prompt"]}</p></div>`;
-    d.innerHTML += `<div class="message"><span class="micro">micro</span>${data["answer"]}</div>`;
-  });
-
-  d.scrollTop = d.scrollHeight;
-}
-
-function askLLM(el) {
-  // Check authentication first
-  if (!isAuthenticated) {
-    showToast('Please login to chat', 'error');
-    return false;
-  }
-
-  var d = document.getElementById('messages');
-
-  const formData = new FormData(el);
-  const data = {};
-
-  // Iterate over formData and populate the data object
-  for (let [key, value] of formData.entries()) {
-    data[key] = value;
-  }
-  
-  // Add current topic for enhanced RAG
-  data["topic"] = topic;
-
-  var p = document.getElementById("prompt");
-
-  if (p.value == "") {
-    return false;
-  }
-
-  // Handle /clear command
-  if (p.value.trim() === '/clear') {
-    p.value = '';
-    clearChatHistory();
-    return false;
-  }
-
-  // reset prompt
-  p.value = '';
-
-  console.log("sending", data);
-  d.innerHTML += `<div class="message"><span class="you">you</span><p>${data["prompt"]}</p></div>`;
-  
-  // Create placeholder for AI response with loading dots
-  const responseDiv = document.createElement('div');
-  responseDiv.className = 'message';
-  responseDiv.innerHTML = `<span class="micro">micro</span><div class="ai-response"><span class="loading-dots">...</span></div>`;
-  d.appendChild(responseDiv);
-  const responseContent = responseDiv.querySelector('.ai-response');
-  
-  d.scrollTop = d.scrollHeight;
-
-  var prompt = data["prompt"];
-
-  data["context"] = context;
-
-  fetch("/chat", {
-    method: "POST",
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(data)
-  }).then(response => {
-    if (response.status === 401) {
-      throw new Error('Authentication required');
-    }
-    return response.json();
-  })
-  .then(result => {
-    console.log('Success:', result);
-    
-    // Display the full response immediately
-    responseContent.innerHTML = result.answer;
-    d.scrollTop = d.scrollHeight;
-    
-    // Save context after response is displayed
-    context.push({answer: result.answer, prompt: prompt});
-    setContext();
-  })
-  .catch(error => {
-    console.error('Error:', error);
-    if (error.message === 'Authentication required') {
-      const redirectUrl = encodeURIComponent(window.location.pathname + window.location.search);
-      responseContent.innerHTML = 'Please <a href="/login?redirect=' + redirectUrl + '">login</a> to chat';
-    } else {
-      responseContent.innerHTML = 'Error: Failed to get response';
-    }
-  });
-
-  return false;
-}
-
-function loadChat() {
-  // Get topics from the page
-  const topicLinks = document.querySelectorAll(CHAT_TOPIC_SELECTOR);
-  
-  // Guard against empty topic list
-  if (topicLinks.length === 0) {
-    console.warn('No topics available in chat');
-    return;
-  }
-  
-  // Check if we're already in a specific room (from URL)
-  const urlParams = new URLSearchParams(window.location.search);
-  const roomId = urlParams.get('id');
-  const autoPrompt = urlParams.get('prompt');
-  
-  // If we have a chat room ID from URL, join that room
-  if (roomId && roomId.startsWith('chat_')) {
-    const topicName = roomId.replace('chat_', '');
-    // Highlight the active tab
-    document.querySelectorAll('#topic-selector .head').forEach(tab => {
-      if (tab.textContent === topicName) {
-        tab.classList.add('active');
-      } else {
-        tab.classList.remove('active');
-      }
-    });
-    // Show context and connect if authenticated
-    showTopicContext(topicName);
-    // Connect after auth check completes
-    setTimeout(() => {
-      if (isAuthenticated) {
-        connectRoomWebSocket(roomId);
-        // Override form for room messaging
-        const chatForm = document.getElementById('chat-form');
-        if (chatForm) {
-          chatForm.onsubmit = function(e) {
-            e.preventDefault();
-            sendRoomMessage(this);
-            return false;
-          };
-        }
-      }
-    }, 500);
-  } else if (!roomId && !autoPrompt) {
-    // No room specified - this is the general chat
-    // Load any previous conversation from localStorage
-    loadContext();
-    loadMessages();
-    // Show topic summaries overlay
-    showTopicSummariesOverlay();
-  }
-  
-  // Auto-submit prompt if provided (legacy support)
-  if (autoPrompt) {
-    loadContext();
-    loadMessages();
-    const promptInput = document.getElementById('prompt');
-    const form = document.getElementById('chat-form');
-    if (promptInput && form) {
-      promptInput.value = autoPrompt;
-      const newUrl = window.location.pathname + window.location.hash;
-      window.history.replaceState({}, document.title, newUrl);
-      setTimeout(function() { askLLM(form); }, 100);
-    }
-  }
-
-  // scroll to bottom of prompt
-  const prompt = document.getElementById('prompt');
-  const messages = document.getElementById('messages');
-  const container = document.getElementById('container');
-  const content = document.getElementById('content');
-
-
-  
-  // Update chat form state based on authentication
-  updateChatFormState();
 }
 
 // ============================================
@@ -756,7 +470,7 @@ function updateChatFormState() {
   
   if (chatPrompt && chatButton) {
     if (isAuthenticated) {
-      chatPrompt.placeholder = 'Ask a question';
+      chatPrompt.placeholder = 'Say something';
       chatPrompt.disabled = false;
       chatButton.disabled = false;
       chatPrompt.style.cursor = '';
@@ -764,7 +478,7 @@ function updateChatFormState() {
       chatPrompt.onclick = null;
       chatButton.onclick = null;
     } else {
-      chatPrompt.placeholder = 'Login to chat';
+      chatPrompt.placeholder = 'Log in to join the discussion';
       chatPrompt.disabled = true;
       chatButton.disabled = true;
       chatPrompt.style.cursor = 'pointer';
@@ -836,7 +550,7 @@ function updateSearchFormsState() {
 
 function highlightTopic(topicName) {
   // Specific selectors for topic elements
-  const selectors = [CHAT_TOPIC_SELECTOR, TOPICS_SELECTOR];
+  const selectors = [TOPICS_SELECTOR];
   
   // Cache all matching elements to avoid multiple DOM queries
   const allTopicLinks = [];
@@ -862,18 +576,6 @@ function highlightTopic(topicName) {
   });
 }
 
-function switchToTopicIfExists(hash) {
-  // Check if the topic exists in the selector
-  const topicLinks = document.querySelectorAll(CHAT_TOPIC_SELECTOR);
-  for (const link of topicLinks) {
-    if (link.textContent === hash) {
-      switchTopic(hash);
-      return true;
-    }
-  }
-  return false;
-}
-
 function handleHashChange() {
   if (!window.location.hash) return;
   
@@ -882,11 +584,6 @@ function handleHashChange() {
   
   // Highlight the matching topic/tag
   highlightTopic(hash);
-  
-  // For chat page, switch to the topic if it exists
-  if (window.location.pathname === CHAT_PATH) {
-    switchToTopicIfExists(hash);
-  }
 }
 
 self.addEventListener("hashchange", handleHashChange);
@@ -944,20 +641,6 @@ self.addEventListener('DOMContentLoaded', function() {
   // load chat
   if (window.location.pathname == CHAT_PATH) {
     loadChat();
-    
-    // Add click handlers for chat topics - always switch rooms
-    document.querySelectorAll(CHAT_TOPIC_SELECTOR).forEach(link => {
-      link.addEventListener('click', function(e) {
-        const topicName = this.textContent;
-        // "All" link should navigate to /chat (main chat), not create a room
-        if (topicName === 'All') {
-          // Let the default navigation happen
-          return;
-        }
-        e.preventDefault();
-        switchTopic(topicName);
-      });
-    });
   }
   
   // Handle hash on page load for topic highlighting (non-chat pages)

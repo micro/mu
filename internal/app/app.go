@@ -401,7 +401,7 @@ var Template = `
 // introduced later can default to visible instead of being hidden by the
 // HomeCards allowlist. Keep in sync with the panels and home/cards.json.
 var homeCardUniverse = []string{
-	"blog", "news", "markets", "prayer", "social", "video", "images", "mail", "web",
+	"blog", "news", "markets", "prayer", "social", "video", "images", "mail", "web", "chat",
 }
 
 var CardTemplate = `

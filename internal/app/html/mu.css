@@ -1153,14 +1153,58 @@ body:has(#messages) #chat-back-link {
   color: #555;
 }
 
+/* The conversation fills whatever the room page has left after the sign-in
+   notice and the message box. It used to be a fixed calc() that budgeted for a
+   topic bar above it; that bar is gone, so growing into the flex column is
+   both simpler and correct whatever else is on the page. */
 #messages {
-  height: calc(100dvh - 240px);
-  min-height: 300px;
+  flex: 1 1 0;
+  min-height: 200px;
   border: 1px solid #ddd;
   border-radius: 5px;
   padding: 15px;
   text-align: left;
   overflow-y: auto;
+}
+
+/* A notice sits in the same flex column as the conversation, so it has to be
+   told not to stretch or shrink — otherwise it is sized by the flex algorithm
+   and spills out of the content area. */
+.notice {
+  flex: 0 0 auto;
+  border: 1px solid #e0e0e0;
+  border-radius: 5px;
+  padding: 12px 15px;
+  margin-bottom: 12px;
+  background: #fafafa;
+}
+
+.notice p {
+  margin: 6px 0 0 0;
+  font-size: 14px;
+  color: #555;
+}
+
+/* .link is display:block globally, which is right for a card's one call to
+   action but wrong for a sentence of them separated by middots. */
+.notice .link,
+.rooms .row .link {
+  display: inline;
+  margin-top: 0;
+}
+
+.rooms h3 {
+  margin: 24px 0 8px;
+}
+
+.rooms .row {
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.rooms .row .muted {
+  color: #888;
+  font-size: 13px;
 }
 #messages p {
   margin-top: 8px;

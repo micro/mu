@@ -134,10 +134,11 @@ func TestMCPHandler_ToolsList(t *testing.T) {
 	// wallet_balance moved to main.go with the rest of the wallet surface, so
 	// it is no longer static either.
 	expectedTools := map[string]bool{
-		// chat became agent_ask when the tool surface was namespaced; the old
-		// name still resolves as an alias but is no longer listed.
-		"chat_ask": false, "news_search": false,
-		"blog_read": false, "blog_create": false,
+		// There is no chat tool: it asked a model one question with no tool
+		// use, which is agent_ask minus the ability to act. The chat service
+		// still ships chat_rooms and chat_messages, derived from its Spec.
+		"news_search": false,
+		"blog_read":   false, "blog_create": false,
 		"video_search": false, "mail_inbox": false,
 		"stream_list": false,
 	}
@@ -308,19 +309,19 @@ func TestToolInputSchemaRequired(t *testing.T) {
 			}
 		}
 
-		// Tools like "chat" should have required params
-		if tool.Name == "chat" {
+		// A tool that cannot work without an argument must say so.
+		if tool.Name == "news_search" {
 			if len(required) == 0 {
 				t.Errorf("Tool %q should have required params", tool.Name)
 			}
 			found := false
 			for _, r := range required {
-				if r == "prompt" {
+				if r == "query" {
 					found = true
 				}
 			}
 			if !found {
-				t.Error("Chat tool should require 'prompt' param")
+				t.Error("news_search should require the 'query' param")
 			}
 		}
 	}
@@ -334,7 +335,7 @@ func TestMCPHandler_QuotaCheckBlocks(t *testing.T) {
 	}
 	defer func() { QuotaCheck = origQuotaCheck }()
 
-	body := `{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"chat","arguments":{"prompt":"hello"}}}`
+	body := `{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"news_search","arguments":{"query":"hello"}}}`
 	req := httptest.NewRequest("POST", "/mcp", strings.NewReader(body))
 	w := httptest.NewRecorder()
 
@@ -577,7 +578,6 @@ func TestMCPHandler_AuthHandlerRequiresSession(t *testing.T) {
 func TestMCPHandler_MeteredToolsHaveWalletOp(t *testing.T) {
 	// Verify that metered tools have WalletOp set
 	expected := map[string]string{
-		"chat":         "chat_query",
 		"news_search":  "news_search",
 		"video_search": "video_search",
 		"mail_send":    "external_email",

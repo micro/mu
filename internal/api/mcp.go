@@ -364,17 +364,12 @@ var tools = []Tool{
 			{Name: "query", Type: "string", Description: "Search query", Required: true},
 		},
 	},
-	{
-		Name:        "chat_ask",
-		Aliases:     []string{"chat"},
-		Description: "Ask a question answered from what this instance has already indexed — its news, blog posts and saved content — in one grounded model call. It calls no tools, so it is cheap and fast but can only answer from what is here already; for anything needing live lookups or several steps, use agent_ask.",
-		Method:      "POST",
-		Path:        "/chat",
-		WalletOp:    wallet.OpChatQuery,
-		Params: []ToolParam{
-			{Name: "prompt", Type: "string", Description: "The message to send to the AI", Required: true},
-		},
-	},
+	// There is no chat_ask. It pointed at POST /chat, which asked a model one
+	// question grounded in the index and called no tools — agent_ask minus the
+	// ability to act, offered to a caller who already has agent_ask. The chat
+	// service's own tools, chat_rooms and chat_messages, are derived from its
+	// Spec and are the part a caller genuinely cannot bring: what people here
+	// are discussing right now.
 	{
 		Name:        "news_search",
 		Description: "Search aggregated news headlines by keyword and return matching articles with source and time. Use when the question is about a specific topic; use news_list for what is happening generally, and news_read for the full text " + "of one article.",

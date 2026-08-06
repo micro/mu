@@ -4,8 +4,9 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	htmlpkg "html"
 	"net/http"
+	"net/url"
 	"sort"
 	"strings"
 	"sync"
@@ -18,22 +19,28 @@ import (
 	"mu/internal/data"
 	"mu/internal/event"
 	"mu/internal/flag"
-	"mu/service/wallet"
 )
 
 //go:embed *.json
 var f embed.FS
 
+// Template is the room itself: the conversation, and a box to say something
+// into it. The form has no action — mu.js binds it to the websocket once the
+// room connects, so a message goes to the people present rather than to a
+// model.
+//
+// There used to be a second thing on this page: a topic picker and a question
+// box that asked an LLM, answered from the index, and had no other participant
+// in it. That was the assistant, from before there was an /agent to be the
+// assistant. Two boxes, one of which quietly meant something else, is the
+// confusion this page is now free of — chat is where people talk to each
+// other, /agent is where you talk to something that acts.
 var Template = `
-<div id="topic-selector">
-  <div class="topic-tabs">%s</div>
-</div>
-<div id="messages"></div>
 %s
-<form id="chat-form" onsubmit="event.preventDefault(); askLLM(this);">
-<input id="context" name="context" type="hidden">
+<div id="messages"></div>
+<form id="chat-form" onsubmit="return false;">
 <input id="topic" name="topic" type="hidden">
-<input id="prompt" name="prompt" type="text" placeholder="Ask a question or type /clear" autocomplete=off>
+<input id="prompt" name="prompt" type="text" placeholder="Say something" autocomplete=off>
 <button>Send</button>
 </form>`
 
@@ -1304,10 +1311,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
 		handleGetChat(w, r, roomID)
-	case "POST":
-		handlePostChat(w, r)
 	case "DELETE":
 		handleClearChat(w, r, roomID)
+	default:
+		// Saying something into a room is a websocket frame, not a POST. The
+		// POST that used to be here asked a model a question, which is what
+		// /agent is for.
+		http.Error(w, "Messages are sent over the room websocket; ask the agent at /agent", http.StatusMethodNotAllowed)
 	}
 }
 
@@ -1376,43 +1386,122 @@ func handleGetChat(w http.ResponseWriter, r *http.Request, roomID string) {
 		}
 	}
 
-	// Now acquire mutex only for reading chat config
-	mutex.RLock()
-	topicsData := topics
-	summariesData := summaries
-	summaryMetaData := currentSummaryMeta()
-	mutex.RUnlock()
-
-	// Return JSON if requested
-	if app.WantsJSON(r) {
-		response := map[string]interface{}{
-			"topics":       topicsData,
-			"summaries":    summariesData,
-			"summary_meta": summaryMetaData,
-		}
-		if len(roomData) > 0 {
-			response["room"] = roomData
-		}
-		app.RespondJSON(w, response)
+	// Without a room id there is nothing to say and nobody to say it to, so
+	// the page answers the only question left: what is being discussed.
+	if roomID == "" {
+		listRooms(w, r)
 		return
 	}
 
-	// Return HTML
-	topicTabs := app.Head("chat", topicsData)
-	summariesJSON, _ := json.Marshal(summariesData)
-	summaryMetaJSON, _ := json.Marshal(summaryMetaData)
-	roomJSON, _ := json.Marshal(roomData)
+	if app.WantsJSON(r) {
+		app.RespondJSON(w, map[string]interface{}{"room": roomData})
+		return
+	}
 
 	guestNotice := ""
 	if _, acc := auth.TrySession(r); acc == nil {
 		guestNotice = guestChatAuthNotice()
 	}
 
-	tmpl := app.RenderHTMLForRequest("Chat", "Chat with AI", fmt.Sprintf(Template, topicTabs, guestNotice), r)
+	roomJSON, _ := json.Marshal(roomData)
+	title := "Chat"
+	if t, ok := roomData["title"].(string); ok && t != "" {
+		title = t
+	}
 
-	tmpl = strings.Replace(tmpl, "</body>", fmt.Sprintf(`<script>var summaries = %s; var summaryMeta = %s; var roomData = %s;</script></body>`, summariesJSON, summaryMetaJSON, roomJSON), 1)
+	tmpl := app.RenderHTMLForRequest(title, "Live discussion", fmt.Sprintf(Template, guestNotice), r)
+	tmpl = strings.Replace(tmpl, "</body>", fmt.Sprintf(`<script>var roomData = %s;</script></body>`, roomJSON), 1)
 
 	w.Write([]byte(tmpl))
+}
+
+// listRooms renders what is being discussed right now.
+//
+// Two kinds of room appear. Topic rooms are permanent — one per entry in
+// prompts.json — and carry the generated summary of what is current in them,
+// which is what makes an empty room worth walking into. Item rooms are
+// ephemeral, created when someone opens a discussion on a post, a news story
+// or a video, and are only listed while they have messages or people in them.
+func listRooms(w http.ResponseWriter, r *http.Request) {
+	mutex.RLock()
+	topicsData := append([]string(nil), topics...)
+	summariesData := make(map[string]string, len(summaries))
+	for k, v := range summaries {
+		summariesData[k] = v
+	}
+	meta := currentSummaryMeta()
+	mutex.RUnlock()
+
+	var live []RoomInfo
+	roomsMutex.RLock()
+	for _, room := range rooms {
+		room.mutex.RLock()
+		// A topic room is already listed below under its own name.
+		if !strings.HasPrefix(room.ID, "chat_") && (len(room.Messages) > 0 || len(room.Clients) > 0) {
+			live = append(live, RoomInfo{
+				ID: room.ID, Type: room.Type, Title: room.Title,
+				Participants: len(room.Clients), LastActivity: room.LastActivity,
+			})
+		}
+		room.mutex.RUnlock()
+	}
+	roomsMutex.RUnlock()
+	sort.Slice(live, func(i, j int) bool { return live[i].LastActivity.After(live[j].LastActivity) })
+
+	if app.WantsJSON(r) {
+		app.RespondJSON(w, map[string]interface{}{
+			"topics":       topicsData,
+			"summaries":    summariesData,
+			"summary_meta": meta,
+			"rooms":        live,
+		})
+		return
+	}
+
+	var b strings.Builder
+	b.WriteString(`<div class="rooms">`)
+
+	if len(live) > 0 {
+		b.WriteString(`<h3>Happening now</h3>`)
+		for _, room := range live {
+			b.WriteString(`<div class="summary-item"><a class="link" href="/chat?id=` +
+				htmlpkg.EscapeString(room.ID) + `"><strong>` + htmlpkg.EscapeString(room.Title) + `</strong></a>`)
+			b.WriteString(`<p class="summary-meta">` + describeRoom(room) + `</p></div>`)
+		}
+	}
+
+	b.WriteString(`<h3>Topics</h3>`)
+	for _, topic := range topicsData {
+		b.WriteString(`<div class="summary-item"><span class="category">` + htmlpkg.EscapeString(topic) + `</span>`)
+		if s := summariesData[topic]; s != "" {
+			b.WriteString(`<p>` + htmlpkg.EscapeString(s) + `</p>`)
+		}
+		b.WriteString(`<a class="link" href="/chat?id=chat_` + url.QueryEscape(topic) + `">Join discussion →</a></div>`)
+	}
+	if len(summariesData) > 0 {
+		b.WriteString(`<p class="summary-meta">Summaries: ` + htmlpkg.EscapeString(meta.Source) + ` · ` + htmlpkg.EscapeString(meta.Status) + `</p>`)
+	}
+	b.WriteString(`</div>`)
+
+	w.Write([]byte(app.RenderHTMLForRequest("Chat", "Live discussion rooms", b.String(), r)))
+}
+
+// describeRoom says who is there and when it last moved, which is the whole
+// basis for deciding whether to walk in.
+func describeRoom(room RoomInfo) string {
+	var parts []string
+	switch room.Participants {
+	case 0:
+		parts = append(parts, "nobody here now")
+	case 1:
+		parts = append(parts, "1 person here")
+	default:
+		parts = append(parts, fmt.Sprintf("%d people here", room.Participants))
+	}
+	if !room.LastActivity.IsZero() {
+		parts = append(parts, "last message "+app.TimeAgo(room.LastActivity))
+	}
+	return strings.Join(parts, " · ")
 }
 
 func guestChatAuthNotice() string {
@@ -1421,224 +1510,6 @@ func guestChatAuthNotice() string {
   <p>This room keeps conversation history for your account, so sending here needs a login. You can still try Mu without an account in the public agent.</p>
   <p><a class="link" href="/agent">Try Mu without an account</a> · <a class="link" href="/login?redirect=/chat">Log in</a> · <a class="link" href="/signup?redirect=/chat">Sign up</a></p>
 </div>`
-}
-
-// handlePostChat handles POST /chat - send a chat message
-func handlePostChat(w http.ResponseWriter, r *http.Request) {
-	// Require authentication to send messages
-	sess, _, err := auth.RequireSession(r)
-	if err != nil {
-		app.Unauthorized(w, r)
-		return
-	}
-
-	form := make(map[string]interface{})
-
-	if app.SendsJSON(r) {
-		b, _ := ioutil.ReadAll(r.Body)
-		if len(b) == 0 {
-			return
-		}
-
-		json.Unmarshal(b, &form)
-
-		if form["prompt"] == nil {
-			return
-		}
-	} else {
-		// save the response
-		r.ParseForm()
-
-		// get the message
-		ctx := r.Form.Get("context")
-		msg := r.Form.Get("prompt")
-
-		if len(msg) == 0 {
-			return
-		}
-
-		// Limit prompt length to prevent abuse
-		if len(msg) > 4000 {
-			http.Error(w, "Prompt must not exceed 4000 characters", http.StatusBadRequest)
-			return
-		}
-
-		var ictx interface{}
-		json.Unmarshal([]byte(ctx), &ictx)
-		form["context"] = ictx
-		form["prompt"] = msg
-	}
-
-	var context ai.History
-
-	if vals := form["context"]; vals != nil {
-		cvals := vals.([]interface{})
-		// Keep recent conversation history for context
-		startIdx := 0
-		if len(cvals) > 10 {
-			startIdx = len(cvals) - 10
-		}
-		for _, val := range cvals[startIdx:] {
-			msg := val.(map[string]interface{})
-			prompt := fmt.Sprintf("%v", msg["prompt"])
-			answer := fmt.Sprintf("%v", msg["answer"])
-			context = append(context, ai.Message{Prompt: prompt, Answer: answer})
-		}
-	}
-
-	q := fmt.Sprintf("%v", form["prompt"])
-
-	// Check quota before LLM query
-	canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, wallet.OpChatQuery)
-	if !canProceed {
-		// Return quota exceeded response
-		if app.SendsJSON(r) {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(402) // Payment Required
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"error":   "quota_exceeded",
-				"message": "Daily chat limit reached. Please top up credits at /wallet",
-				"cost":    cost,
-			})
-			return
-		}
-		// HTML response
-		content := wallet.QuotaExceededPage(wallet.OpChatQuery, cost)
-		html := app.RenderHTMLForRequest("Quota Exceeded", "Daily limit reached", content, r)
-		w.Write([]byte(html))
-		return
-	}
-
-	// Get topic for enhanced RAG
-	topic := ""
-	if t := form["topic"]; t != nil {
-		topic = fmt.Sprintf("%v", t)
-	}
-
-	// Check if this is a follow-up query with pronouns
-	var ragContext []string
-	qLower := strings.ToLower(q)
-	pronouns := []string{" him", " her", " them", " they", " it ", " this", " that", " he ", " she "}
-	isFollowUp := false
-	for _, p := range pronouns {
-		if strings.Contains(qLower, p) {
-			isFollowUp = true
-			break
-		}
-	}
-
-	// For follow-up queries, extract entity from conversation and search for that
-	searchQuery := q
-	if isFollowUp && len(context) > 0 {
-		// Extract named entities from the most recent exchange
-		var entities []string
-		lastMsg := context[len(context)-1]
-		// Check both prompt and answer for entities
-		for _, text := range []string{lastMsg.Prompt, lastMsg.Answer} {
-			words := strings.Fields(text)
-			for _, word := range words {
-				cleanWord := strings.Trim(word, ".,!?;:'\"()<>")
-				if len(cleanWord) > 2 && cleanWord[0] >= 'A' && cleanWord[0] <= 'Z' {
-					lower := strings.ToLower(cleanWord)
-					if lower != "the" && lower != "this" && lower != "that" && lower != "and" && lower != "who" && lower != "what" {
-						entities = append(entities, cleanWord)
-						if len(entities) >= 3 {
-							break
-						}
-					}
-				}
-			}
-			if len(entities) >= 3 {
-				break
-			}
-		}
-		if len(entities) > 0 {
-			searchQuery = strings.Join(entities, " ") + " news"
-			app.Log("chat", "[POST] Follow-up query: resolved to search '%s'", searchQuery)
-		}
-	}
-
-	// Search the index for relevant context (RAG)
-	ragEntries := data.Search(searchQuery, 8)
-	for _, entry := range ragEntries {
-		contextStr := fmt.Sprintf("%s: %s", entry.Title, entry.Content)
-		if len(contextStr) > 2000 {
-			contextStr = contextStr[:2000] + "..."
-		}
-		if url, ok := entry.Metadata["url"].(string); ok && len(url) > 0 {
-			contextStr += fmt.Sprintf(" (Source: %s)", url)
-		}
-		ragContext = append(ragContext, contextStr)
-	}
-
-	// If RAG results are thin and query suggests need for current info, do web search
-	if len(ragEntries) < 3 && ai.ShouldWebSearch(q) {
-		app.Log("chat", "[WebSearch] RAG thin (%d results), searching web for: %s", len(ragEntries), searchQuery)
-		if webResults, err := ai.WebSearch(searchQuery); err == nil && len(webResults) > 0 {
-			ragContext = append(ragContext, ai.FormatSearchResults(webResults)...)
-			app.Log("chat", "[WebSearch] Added %d web results", len(webResults))
-		}
-	}
-
-	// Debug: Log what we found
-	if len(ragEntries) > 0 {
-		app.Log("chat", "[RAG] Query: %s, Search: %s", q, searchQuery)
-		app.Log("chat", "[RAG] Found %d entries:", len(ragEntries))
-		for i, entry := range ragEntries {
-			app.Log("chat", "  %d. [%s] %s", i+1, entry.Type, entry.Title)
-		}
-	}
-
-	// Debug: Log conversation context being passed
-	app.Log("chat", "[POST] Conversation history has %d messages", len(context))
-	for i, msg := range context {
-		app.Log("chat", "[POST] History[%d] Q: %.50s... A: %.50s...", i, msg.Prompt, msg.Answer)
-	}
-
-	prompt := &ai.Prompt{
-		Topic:    topic,
-		Rag:      ragContext,
-		Context:  context,
-		Question: q,
-	}
-
-	// query the llm
-	resp, err := askLLM(prompt)
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
-
-	if len(resp) == 0 {
-		return
-	}
-
-	// Consume quota after successful LLM response
-	wallet.ConsumeQuota(sess.Account, wallet.OpChatQuery)
-
-	// save the response
-	html := app.Render([]byte(resp))
-	form["answer"] = string(html)
-
-	// if JSON request then respond with json
-	if app.SendsJSON(r) {
-		app.RespondJSON(w, form)
-		return
-	}
-
-	// Format a HTML response
-	messages := fmt.Sprintf(`<div class="message"><span class="you">you</span><p>%v</p></div>`, form["prompt"])
-	messages += fmt.Sprintf(`<div class="message"><span class="micro">micro</span><p>%v</p></div>`, form["answer"])
-
-	mutex.RLock()
-	topicTabs := app.Head("chat", topics)
-	mutex.RUnlock()
-
-	output := fmt.Sprintf(Template, topicTabs)
-	renderHTML := app.RenderHTMLForRequest("Chat", "Chat with AI", output, r)
-	renderHTML = strings.Replace(renderHTML, `<div id="messages"></div>`, fmt.Sprintf(`<div id="messages">%s</div>`, messages), 1)
-
-	w.Write([]byte(renderHTML))
 }
 
 // llmAnalyzer implements the flag.LLMAnalyzer interface

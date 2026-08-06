@@ -3,6 +3,7 @@ package chat
 import (
 	"context"
 	"fmt"
+	htmlpkg "html"
 	"sort"
 	"strings"
 	"time"
@@ -124,12 +125,42 @@ func LoadService() {
 	}
 }
 
+// Card shows what is being discussed. It used to be a question box on the home
+// screen that posted to /chat and was answered by a model — a second agent
+// input sitting next to the real one. What belongs on a card is the thing only
+// this instance knows: who is talking, and about what.
+func Card() string {
+	var rsp RoomsResponse
+	if err := (Server{}).Rooms(context.Background(), &RoomsRequest{Limit: 5}, &rsp); err != nil {
+		return ""
+	}
+
+	var live []RoomInfo
+	for _, r := range rsp.Rooms {
+		if r.Participants > 0 || !r.LastActivity.IsZero() {
+			live = append(live, r)
+		}
+	}
+	if len(live) == 0 {
+		return `<p class="muted">No discussions going on right now. <a class="link" href="/chat">Browse topics →</a></p>`
+	}
+
+	var b strings.Builder
+	for _, r := range live {
+		b.WriteString(`<div class="row"><a class="link" href="/chat?id=` +
+			htmlpkg.EscapeString(r.ID) + `">` + htmlpkg.EscapeString(r.Title) + `</a> `)
+		b.WriteString(`<span class="muted">` + describeRoom(r) + `</span></div>`)
+	}
+	return b.String()
+}
+
 var Spec = service.Spec{
 	Name:        "chat",
 	Handler:     new(Server),
 	Description: "Live discussion rooms attached to an item",
 	Page:        "/chat",
 	Icon:        "chat.png",
+	Card:        Card,
 	Endpoints: map[string]service.Endpoint{
 		"Messages": {Doc: "Read the recent conversation in a discussion room"},
 		"Rooms":    {Doc: "List discussion rooms that currently have activity"},

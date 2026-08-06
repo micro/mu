@@ -35,15 +35,6 @@ func newsCard() string {
 	return news.Headlines()
 }
 
-func ChatCard() string {
-	return `<div id="home-chat">
-		<form id="home-chat-form" action="/chat" method="GET">
-			<input type="text" name="prompt" placeholder="Ask a question" required>
-			<button type="submit">Ask</button>
-		</form>
-	</div>`
-}
-
 func AgentCard() string {
 	return `<div id="home-agent">
 		<form id="home-agent-form" action="/agent" method="GET">
@@ -121,11 +112,15 @@ func Load() {
 	for _, sp := range service.Cards() {
 		cardFunctions[sp.Name] = sp.Card
 	}
-	// Set after the derived ones so they win. Agent and Chat are this package's
-	// own cards, and news has two renderers — the service's headline list, and
-	// this one, built for the home screen.
+	// Set after the derived ones so they win. Agent is this package's own card,
+	// and news has two renderers — the service's headline list, and this one,
+	// built for the home screen.
+	//
+	// Chat is no longer among them: its card was a second question box that
+	// posted to /chat, which meant home had two prompts, only one of which
+	// reached the agent. Chat's own Spec renders it now, as what is being
+	// discussed.
 	cardFunctions["agent"] = AgentCard
-	cardFunctions["chat"] = ChatCard
 	cardFunctions["news"] = newsCard
 
 	// Build Cards array from config
@@ -554,6 +549,7 @@ function fetchW(la,lo){
 			{"prayer", "Prayer"}, {"blog", "Blog"}, {"news", "News"},
 			{"markets", "Markets"}, {"social", "Social"}, {"video", "Video"},
 			{"images", "Images"}, {"mail", "Mail"}, {"web", "Search"},
+			{"chat", "Chat"},
 		}
 		// Selected cards first, in the order they render; then the rest.
 		//
@@ -701,6 +697,7 @@ function fetchW(la,lo){
 		"prayer":  "Islamic prayer times, and a daily verse, saying and name",
 		"social":  "Public discussion threads",
 		"video":   "Latest videos from curated channels",
+		"chat":    "Discussions happening on this instance right now",
 	}
 
 	// One ordered list, and mail and search are in it like everything else.
