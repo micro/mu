@@ -15,6 +15,11 @@ func withToken(t *testing.T, id string) *auth.Account {
 	t.Helper()
 	acc := &auth.Account{ID: id, Name: id, Secret: "test-secret"}
 	auth.Create(acc)
+	// Not an admin: they are never charged, so they are shown no balance and no
+	// top-up banner. Stated here rather than assumed, because auth.Create makes
+	// the first account on an empty instance an admin and these tests are about
+	// somebody ordinary.
+	acc.Admin = false
 	if _, _, err := auth.CreateToken(id, "test", nil, time.Time{}); err != nil {
 		t.Fatalf("create token: %v", err)
 	}
