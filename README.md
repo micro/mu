@@ -91,7 +91,7 @@ one row per service, named for it.
 
 The server includes a web app with a home screen. Cards render each service at a glance (headlines,
 prices, weather, unread mail) and the agent sits inline to act on what you're
-looking at. Logged-out visitors get a public version with live data.
+looking at.
 
 An LLM — Claude, Atlas Cloud (DeepSeek), or a local Ollama / OpenAI-compatible
 endpoint — calls the services as tools, composes answers, and keeps per-user
