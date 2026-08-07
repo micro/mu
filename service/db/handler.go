@@ -9,14 +9,26 @@ package db
 // database an agent writes to and nobody can read is indistinguishable from one
 // that is silently dropping writes.
 //
-// It is a viewer, not an editor. Records are written by an agent or an app, and
-// a form here would be a fourth way to do the same thing.
+// It was a viewer only, on the argument that records are written by an agent or
+// an app and a form here would be a fourth way to do the same thing. That was
+// wrong twice over. Two doors onto one service is the shape of the whole
+// product — an agent calls the tool, a person opens the page — so a form here is
+// the second door, not a fourth way. And a store you cannot fix by hand is one
+// you cannot use: when an agent writes the wrong thing, the owner's only remedy
+// was to write an agent to undo it.
+//
+// So the four verbs the tools have, the page has: create, read, list, delete.
+// Nothing here does anything db_* cannot, and the query controls are db_list's
+// own arguments under their own names — the page shows you the call it just
+// made, so browsing your data teaches the tool that reads it.
 
 import (
 	"encoding/json"
 	"fmt"
 	"html"
 	"net/http"
+	"sort"
+	"strconv"
 	"strings"
 
 	"mu/internal/app"
@@ -33,6 +45,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	owner := sess.Account
 
+	if r.Method == http.MethodPost {
+		handlePost(w, r, owner)
+		return
+	}
+
 	if name := strings.TrimSpace(r.URL.Query().Get("collection")); name != "" {
 		renderCollection(w, r, owner, name)
 		return
@@ -40,7 +57,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	cols, err := userdb.Collections(namespace, owner)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		app.Error(w, r, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -49,15 +66,19 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	csrf := auth.CSRFToken(r)
 	var b strings.Builder
 	b.WriteString(`<p class="card-desc">Named collections of records, private unless you publish them. ` +
 		`This is what your agents store through <code>db_create</code> — apps keep their own ` +
 		`separate store under <code>mu.db</code>.</p>`)
 
+	if msg := r.URL.Query().Get("error"); msg != "" {
+		b.WriteString(`<div class="notice"><p>` + html.EscapeString(msg) + `</p></div>`)
+	}
+
 	if len(cols) == 0 {
 		b.WriteString(`<p class="text-muted">Nothing stored yet. A collection is made the first time ` +
-			`something writes to it — there is no schema to declare:</p>` +
-			`<pre class="db-code">db_create {"collection": "notes", "data": {"text": "remember this"}}</pre>`)
+			`something writes to it — there is no schema to declare.</p>`)
 	} else {
 		b.WriteString(`<div class="db-cols">`)
 		for _, c := range cols {
@@ -70,14 +91,110 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`</div>`)
 	}
 
+	// A collection is made by its first record, so "new collection" and "new
+	// record" are the same form with the name typed in rather than chosen.
+	b.WriteString(`<details class="db-new"` + openIf(len(cols) == 0) + `>`)
+	b.WriteString(`<summary>New collection</summary>`)
+	b.WriteString(recordForm(csrf, "", "", nil, false))
+	b.WriteString(`</details>`)
+
 	b.WriteString(dbCSS)
 	w.Write([]byte(app.RenderHTMLForRequest("Database", "Your own records", b.String(), r)))
 }
 
+// handlePost is the write half: store a record, or delete one.
+//
+// Both go through userdb with the session's account as the owner, which is the
+// same call and the same ownership check the tools make. The page cannot reach
+// anything an agent holding your token could not.
+func handlePost(w http.ResponseWriter, r *http.Request, owner string) {
+	collection := strings.TrimSpace(r.FormValue("collection"))
+	back := "/db"
+	if collection != "" {
+		back = "/db?collection=" + urlArg(collection)
+	}
+	fail := func(msg string) {
+		http.Redirect(w, r, back+joiner(back)+"error="+urlArg(msg), http.StatusSeeOther)
+	}
+
+	switch r.FormValue("action") {
+	case "delete":
+		if err := userdb.Delete(namespace, owner, collection, r.FormValue("id")); err != nil {
+			fail(err.Error())
+			return
+		}
+	case "save":
+		if collection == "" {
+			fail("name the collection")
+			return
+		}
+		var data map[string]any
+		body := strings.TrimSpace(r.FormValue("data"))
+		if body == "" {
+			fail("a record needs some data")
+			return
+		}
+		if err := json.Unmarshal([]byte(body), &data); err != nil {
+			// The most common mistake by a distance, and json's own message for
+			// it ("invalid character 'x' looking for beginning of object key
+			// string") does not say it.
+			fail("that is not valid JSON: " + err.Error())
+			return
+		}
+		public := r.FormValue("public") != ""
+		if id := strings.TrimSpace(r.FormValue("id")); id != "" {
+			if _, err := userdb.Update(namespace, owner, collection, id, data, public); err != nil {
+				fail(err.Error())
+				return
+			}
+		} else if _, err := userdb.Create(namespace, owner, collection, data, public); err != nil {
+			fail(err.Error())
+			return
+		}
+	default:
+		fail("unknown action")
+		return
+	}
+	http.Redirect(w, r, back, http.StatusSeeOther)
+}
+
+// query is db_list's arguments, read off the URL. Same names, same defaults, so
+// the controls on the page and the tool an agent calls are one thing.
+type query struct {
+	Scope string
+	Where map[string]any
+	Sort  string
+	Order string
+	Limit int
+	Raw   string // the where box as typed, so a bad filter survives the round trip
+	Err   string
+}
+
+func queryFrom(r *http.Request) query {
+	q := query{
+		Scope: r.URL.Query().Get("scope"),
+		Sort:  strings.TrimSpace(r.URL.Query().Get("sort")),
+		Order: r.URL.Query().Get("order"),
+		Raw:   strings.TrimSpace(r.URL.Query().Get("where")),
+	}
+	if n, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil {
+		q.Limit = n
+	}
+	if q.Raw != "" {
+		if err := json.Unmarshal([]byte(q.Raw), &q.Where); err != nil {
+			// Show every record and say why the filter was ignored, rather than
+			// showing nothing and letting it read as an empty collection.
+			q.Where, q.Err = nil, "filter ignored — not valid JSON: "+err.Error()
+		}
+	}
+	return q
+}
+
 func renderCollection(w http.ResponseWriter, r *http.Request, owner, name string) {
-	recs, err := userdb.List(namespace, owner, name, "mine", nil, "", "", 0)
+	q := queryFrom(r)
+	recs, err := userdb.List(namespace, owner, name, q.Scope, q.Where, q.Sort, q.Order, q.Limit)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		app.Error(w, r, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -86,15 +203,39 @@ func renderCollection(w http.ResponseWriter, r *http.Request, owner, name string
 		return
 	}
 
+	csrf := auth.CSRFToken(r)
 	var b strings.Builder
 	b.WriteString(`<p><a class="link" href="/db">← All collections</a></p>`)
+
+	if msg := r.URL.Query().Get("error"); msg != "" {
+		b.WriteString(`<div class="notice"><p>` + html.EscapeString(msg) + `</p></div>`)
+	}
+	if q.Err != "" {
+		b.WriteString(`<div class="notice"><p>` + html.EscapeString(q.Err) + `</p></div>`)
+	}
+
+	b.WriteString(queryForm(name, q))
 	b.WriteString(`<p class="card-desc">` + plural(len(recs), "record") + ` in <strong>` +
-		html.EscapeString(name) + `</strong>.</p>`)
+		html.EscapeString(name) + `</strong> — the same question as ` +
+		`<code>` + html.EscapeString(listCall(name, q)) + `</code></p>`)
+
+	// Open when there is nothing to look at. A collapsed form on an empty page
+	// is the whole complaint that got this written: the page said the store was
+	// empty and offered no way to put anything in it.
+	b.WriteString(`<details class="db-new"` + openIf(len(recs) == 0 && q.Where == nil) + `>`)
+	b.WriteString(`<summary>New record</summary>`)
+	b.WriteString(recordForm(csrf, name, "", nil, false))
+	b.WriteString(`</details>`)
 
 	if len(recs) == 0 {
-		b.WriteString(`<p class="text-muted">This collection is empty.</p>`)
+		if q.Where != nil {
+			b.WriteString(`<p class="text-muted">Nothing matches that filter.</p>`)
+		} else {
+			b.WriteString(`<p class="text-muted">This collection is empty.</p>`)
+		}
 	}
-	for _, rec := range recs {
+	for i := range recs {
+		rec := recs[i]
 		pretty, _ := json.MarshalIndent(rec.Data, "", "  ")
 		vis := "private"
 		if rec.Public {
@@ -102,13 +243,165 @@ func renderCollection(w http.ResponseWriter, r *http.Request, owner, name string
 		}
 		b.WriteString(`<div class="db-rec">`)
 		b.WriteString(`<div class="db-rec-meta"><code>` + html.EscapeString(rec.ID) + `</code> · ` +
-			vis + ` · ` + html.EscapeString(app.TimeAgo(rec.Updated)) + `</div>`)
+			vis + ` · ` + html.EscapeString(app.TimeAgo(rec.Updated)))
+		// Delete is a form, not a link: it changes something, and a link that
+		// changes something is followed by every crawler and prefetcher there is.
+		b.WriteString(`<form method="POST" action="/db" class="db-del" onsubmit="return confirm('Delete this record?')">` +
+			`<input type="hidden" name="_csrf" value="` + html.EscapeString(csrf) + `">` +
+			`<input type="hidden" name="action" value="delete">` +
+			`<input type="hidden" name="collection" value="` + html.EscapeString(name) + `">` +
+			`<input type="hidden" name="id" value="` + html.EscapeString(rec.ID) + `">` +
+			`<button type="submit" class="db-act db-remove">Delete</button></form>`)
+		b.WriteString(`</div>`)
+		b.WriteString(`<details class="db-edit"><summary class="db-act">Edit</summary>`)
+		b.WriteString(recordForm(csrf, name, rec.ID, pretty, rec.Public))
+		b.WriteString(`</details>`)
 		b.WriteString(`<pre class="db-code">` + html.EscapeString(string(pretty)) + `</pre>`)
 		b.WriteString(`</div>`)
 	}
 
 	b.WriteString(dbCSS)
 	w.Write([]byte(app.RenderHTMLForRequest(name, "Records in "+name, b.String(), r)))
+}
+
+// recordForm writes and rewrites a record. Given an id it overwrites that one,
+// which is exactly what db_create does with an id — one code path, one meaning.
+func recordForm(csrf, collection, id string, data []byte, public bool) string {
+	var b strings.Builder
+	b.WriteString(`<form method="POST" action="/db" class="db-form">`)
+	b.WriteString(`<input type="hidden" name="_csrf" value="` + html.EscapeString(csrf) + `">`)
+	b.WriteString(`<input type="hidden" name="action" value="save">`)
+	if id != "" {
+		b.WriteString(`<input type="hidden" name="id" value="` + html.EscapeString(id) + `">`)
+	}
+	if collection == "" {
+		b.WriteString(`<label class="db-label">Collection</label>`)
+		b.WriteString(`<input name="collection" required maxlength="60" placeholder="notes" class="db-input">`)
+	} else {
+		b.WriteString(`<input type="hidden" name="collection" value="` + html.EscapeString(collection) + `">`)
+	}
+	body := `{"text": "remember this"}`
+	if len(data) > 0 {
+		body = string(data)
+	}
+	b.WriteString(`<label class="db-label">Data <span class="db-hint">— a JSON object; the fields are yours to choose</span></label>`)
+	b.WriteString(`<textarea name="data" rows="6" required class="db-input db-mono">` +
+		html.EscapeString(body) + `</textarea>`)
+	checked := ""
+	if public {
+		checked = " checked"
+	}
+	b.WriteString(`<label class="db-check"><input type="checkbox" name="public" value="1"` + checked +
+		`> Public <span class="db-hint">— readable by anyone with the id</span></label>`)
+	b.WriteString(`<button type="submit" class="db-save">Save record</button>`)
+	b.WriteString(`</form>`)
+	return b.String()
+}
+
+// queryForm is db_list's arguments as controls. A GET form, so the query lives
+// in the URL and a useful view can be bookmarked or sent to somebody.
+func queryForm(collection string, q query) string {
+	sel := func(name, val string, opts [][2]string) string {
+		var s strings.Builder
+		s.WriteString(`<select name="` + name + `" class="db-input db-narrow">`)
+		for _, o := range opts {
+			on := ""
+			if o[0] == val {
+				on = " selected"
+			}
+			s.WriteString(`<option value="` + o[0] + `"` + on + `>` + o[1] + `</option>`)
+		}
+		s.WriteString(`</select>`)
+		return s.String()
+	}
+	limit := ""
+	if q.Limit > 0 {
+		limit = strconv.Itoa(q.Limit)
+	}
+	var b strings.Builder
+	b.WriteString(`<form method="GET" action="/db" class="db-query">`)
+	b.WriteString(`<input type="hidden" name="collection" value="` + html.EscapeString(collection) + `">`)
+	b.WriteString(`<input name="where" class="db-input db-mono" placeholder='where, e.g. {"done": false}' value="` +
+		html.EscapeString(q.Raw) + `">`)
+	b.WriteString(`<div class="db-query-row">`)
+	b.WriteString(sel("scope", q.Scope, [][2]string{{"", "Mine"}, {"public", "Public"}, {"all", "All"}}))
+	b.WriteString(`<input name="sort" class="db-input db-narrow" placeholder="sort by field" value="` +
+		html.EscapeString(q.Sort) + `">`)
+	b.WriteString(sel("order", q.Order, [][2]string{{"", "Newest"}, {"asc", "Ascending"}}))
+	b.WriteString(`<input name="limit" type="number" min="1" max="200" class="db-input db-narrow" placeholder="limit" value="` +
+		html.EscapeString(limit) + `">`)
+	b.WriteString(`<button type="submit" class="db-run">Run</button>`)
+	if q.Raw != "" || q.Sort != "" || q.Scope != "" || q.Limit > 0 {
+		b.WriteString(`<a class="link" href="/db?collection=` + urlArg(collection) + `">Clear</a>`)
+	}
+	b.WriteString(`</div></form>`)
+	return b.String()
+}
+
+// listCall renders the query as the db_list call that would ask the same thing,
+// so the page teaches the tool rather than being an alternative to it.
+func listCall(collection string, q query) string {
+	args := map[string]any{"collection": collection}
+	if q.Where != nil {
+		args["where"] = q.Where
+	}
+	if q.Scope != "" {
+		args["scope"] = q.Scope
+	}
+	if q.Sort != "" {
+		args["sort"] = q.Sort
+	}
+	if q.Order != "" {
+		args["order"] = q.Order
+	}
+	if q.Limit > 0 {
+		args["limit"] = q.Limit
+	}
+	// Marshalled through an ordered slice: map order is random in Go, and a
+	// snippet that reshuffles itself on every reload reads as a bug.
+	keys := make([]string, 0, len(args))
+	for k := range args {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	parts := make([]string, 0, len(keys))
+	for _, k := range keys {
+		v, _ := json.Marshal(args[k])
+		parts = append(parts, fmt.Sprintf("%q: %s", k, v))
+	}
+	return "db_list {" + strings.Join(parts, ", ") + "}"
+}
+
+func openIf(b bool) string {
+	if b {
+		return " open"
+	}
+	return ""
+}
+
+func joiner(u string) string {
+	if strings.Contains(u, "?") {
+		return "&"
+	}
+	return "?"
+}
+
+// urlArg escapes a value for a query string. Kept local rather than reaching for
+// url.QueryEscape on a whole URL, because these are single values.
+func urlArg(s string) string {
+	var b strings.Builder
+	for _, c := range []byte(s) {
+		switch {
+		case c >= 'a' && c <= 'z', c >= 'A' && c <= 'Z', c >= '0' && c <= '9',
+			c == '-', c == '_', c == '.', c == '~':
+			b.WriteByte(c)
+		case c == ' ':
+			b.WriteByte('+')
+		default:
+			b.WriteString(fmt.Sprintf("%%%02X", c))
+		}
+	}
+	return b.String()
 }
 
 func plural(n int, word string) string {
@@ -125,9 +418,33 @@ const dbCSS = `<style>
 .db-col:hover{border-color:#bbb}
 .db-col-name{font-weight:600;font-size:14px}
 .db-col-meta{font-size:12px;color:#999}
-.db-rec{margin-bottom:12px}
-.db-rec-meta{font-size:12px;color:#999;margin-bottom:4px}
+.db-rec{margin-bottom:16px}
+.db-rec-meta{display:flex;align-items:center;gap:8px;font-size:12px;color:#999;margin-bottom:4px}
 .db-rec-meta code{font-size:11px}
 .db-code{background:#f7f7f7;border:1px solid #eee;border-radius:6px;padding:10px 12px;
   font-size:12px;overflow-x:auto;margin:0}
+.db-form{max-width:640px;margin:10px 0 4px}
+.db-label{display:block;font-size:13px;font-weight:600;color:#374151;margin:10px 0 5px}
+.db-hint{font-weight:400;color:#9ca3af}
+.db-input{width:100%;box-sizing:border-box;padding:8px 10px;font-size:14px;
+  border:1px solid #d1d5db;border-radius:6px;font-family:inherit}
+.db-mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px}
+.db-narrow{width:auto;flex:0 1 150px}
+/* A checkbox next to text never lines up on its own baseline; the row owns the
+   alignment so the label and the box agree about where the middle is. */
+.db-check{display:flex;align-items:center;gap:7px;font-size:13px;color:#444;margin:10px 0}
+.db-check input{width:auto;flex:none;margin:0}
+.db-save,.db-run{padding:8px 18px;font-size:14px;font-weight:600;border:0;
+  border-radius:var(--border-radius,6px);background:var(--btn-primary,#000);color:#fff;cursor:pointer}
+.db-save{margin-top:4px}
+.db-query{max-width:640px;margin:14px 0 6px}
+.db-query-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px}
+.db-new{max-width:640px;margin:16px 0}
+.db-new>summary,.db-edit>summary{cursor:pointer;font-size:13px;color:#666}
+.db-new>summary:hover,.db-edit>summary:hover{color:#111}
+.db-edit{margin:0 0 6px}
+.db-del{display:inline;margin:0}
+.db-act{background:none;border:0;color:#666;font-size:12px;cursor:pointer;padding:0}
+.db-act:hover{color:#111;text-decoration:underline}
+.db-remove:hover{color:#b00}
 </style>`
