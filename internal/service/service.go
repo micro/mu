@@ -199,22 +199,8 @@ func Register(spec Spec) error {
 	if spec.Handler == nil {
 		return fmt.Errorf("service: %s has no Handler", spec.Name)
 	}
-	svc := gomicro.New(
-		gomicro.Name(spec.Name),
-		gomicro.Address(advertiseAddress()), // loopback in-process; routable when networked
-		gomicro.Registry(reg),
-		gomicro.Client(cl),
-		gomicro.Broker(br),
-		gomicro.Transport(tr),
-	)
-	var opts []server.HandlerOption
-	if o := endpointOptions(spec); o != nil {
-		opts = append(opts, o)
-	}
-	if err := svc.Handle(spec.Handler, opts...); err != nil {
-		return err
-	}
-	if err := svc.Start(); err != nil {
+	svc, err := startService(spec)
+	if err != nil {
 		return err
 	}
 	recordSpec(spec)
@@ -222,6 +208,60 @@ func Register(spec Spec) error {
 	services = append(services, svc)
 	mu.Unlock()
 	return nil
+}
+
+// startAttempts is how many times Register will re-pick an address.
+//
+// The in-process transport does not bind a socket; it invents an address and
+// keeps a map of them, so two services can be handed the same one and the
+// second fails with "already listening on 127.0.0.1:15804". It is a collision
+// between random numbers, not a port in use, which is why the fix is to try
+// again rather than to wait.
+//
+// Rare, and rare is the problem: an instance registers around twenty-five
+// services at boot, so the odds are small per service and not small across a
+// fleet of restarts — and the failure is a service that silently is not there.
+// It surfaced first as a flaky test, which is the cheap way to find out.
+const startAttempts = 5
+
+func startService(spec Spec) (gomicro.Service, error) {
+	var lastErr error
+	for attempt := 0; attempt < startAttempts; attempt++ {
+		// A fresh Service each time: the address is chosen here, so retrying
+		// the same instance would retry the same collision.
+		svc := gomicro.New(
+			gomicro.Name(spec.Name),
+			gomicro.Address(advertiseAddress()), // loopback in-process; routable when networked
+			gomicro.Registry(reg),
+			gomicro.Client(cl),
+			gomicro.Broker(br),
+			gomicro.Transport(tr),
+		)
+		var opts []server.HandlerOption
+		if o := endpointOptions(spec); o != nil {
+			opts = append(opts, o)
+		}
+		if err := svc.Handle(spec.Handler, opts...); err != nil {
+			return nil, err
+		}
+		if err := svc.Start(); err != nil {
+			lastErr = err
+			if isAddressTaken(err) {
+				continue
+			}
+			return nil, err
+		}
+		return svc, nil
+	}
+	return nil, fmt.Errorf("service: %s could not get a free address in %d attempts: %w",
+		spec.Name, startAttempts, lastErr)
+}
+
+// isAddressTaken reports whether an error is the transport's address collision
+// rather than a real failure to start. Matched on the message because the
+// transport returns a bare error with nothing else to match on.
+func isAddressTaken(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "already listening")
 }
 
 // HandlerOpts registers handlers with go-micro server options (e.g. endpoint
