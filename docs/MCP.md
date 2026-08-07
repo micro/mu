@@ -21,6 +21,24 @@ there is no second API to choose between, and nothing to integrate per tool.
 There is no key in that config because there is nothing to paste. Works with
 Claude Desktop, Cursor, or anything else that speaks MCP.
 
+## Teaching your agent to use this
+
+Tool definitions say what each tool does. They cannot say how the tools compose,
+which need an account, which cost money, or that a caller can have its own email
+address and a store that outlives the session.
+
+That layer ships as an [Agent
+Skill](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills)
+in [`skills/mu`](https://github.com/micro/mu/tree/main/skills/mu). Drop it where
+your agent reads skills from:
+
+```bash
+mkdir -p ~/.claude/skills && cp -r skills/mu ~/.claude/skills/
+```
+
+It is checked against the registry by tests, so it cannot quietly drift from
+what this instance actually does.
+
 ## Scoping a connection
 
 One endpoint carrying every tool is right for the server and wrong for a

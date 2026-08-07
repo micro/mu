@@ -1711,7 +1711,7 @@ func main() {
 	api.RegisterToolWithAuth(api.Tool{
 		Name:        "agent_ask",
 		Aliases:     []string{"agent"},
-		Description: "Ask this instance's agent a question in natural language and get a written answer. It has every tool you do and will use several to answer, so reach for it to delegate a whole task — for one fact call that tool directly, and for a question about content this instance already holds use chat_ask, which answers from the index without tool calls.",
+		Description: "Ask this instance's agent a question in natural language and get a written answer. It has every tool you do and will use several to answer, so reach for it to delegate a whole task — for one fact call that tool directly, and to find content this instance already holds use index_search, which costs nothing.",
 		Method:      "POST",
 		Path:        "/agent/run",
 		WalletOp:    wallet.OpAgentQuery,

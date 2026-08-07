@@ -385,7 +385,7 @@ var tools = []Tool{
 	// not as page-backed entries here.
 	{
 		Name:        "blog_read",
-		Description: "Read one blog post in full, by id or by title. Use after blog_list or blog_search has found a candidate and the summary is not enough. Returns the whole body, the author and when it was published.",
+		Description: "Read one blog post in full, by id or by title. Use after blog_list or index_search has found a candidate and the summary is not enough. Returns the whole body, the author and when it was published.",
 		Method:      "GET",
 		Path:        "/blog/post",
 		Params: []ToolParam{
