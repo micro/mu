@@ -747,6 +747,16 @@ func main() {
 		return app.EmailSender != nil
 	}
 
+	// Money is a trust signal, so auth needs to be able to see it. Wired as a
+	// hook because the wallet imports auth and cannot be imported back.
+	auth.HasCredit = func(accountID string) bool {
+		return wallet.GetBalance(accountID) > 0
+	}
+
+	// The status page asks the AI package what the model is doing rather than
+	// guessing from one env var.
+	app.LLMStatus = ai.Status
+
 	// Signup and login are not tools. Creating an account and exchanging
 	// credentials for a session are how a caller comes to exist, not something
 	// an existing caller can be granted — they live on the HTTP boundary (the
@@ -2362,24 +2372,25 @@ func main() {
 						op := wallet.OpSocialPost
 						sess, err := auth.GetSession(r)
 						if err != nil {
-							http.Error(w, "authentication required", http.StatusUnauthorized)
+							app.Unauthorized(w, r)
 							return
 						}
 						if !auth.CanPost(sess.Account) {
-							http.Error(w, auth.PostBlockReason(sess.Account), http.StatusForbidden)
+							app.Forbidden(w, r, auth.PostBlockReason(sess.Account))
 							return
 						}
 						if err := auth.CheckPostRate(sess.Account); err != nil {
-							http.Error(w, err.Error(), http.StatusTooManyRequests)
+							app.TooManyRequests(w, r, err.Error())
 							return
 						}
 						canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, op)
 						if !canProceed {
-							http.Error(w, fmt.Sprintf("This costs %d credit(s). Top up at /wallet/topup", cost), http.StatusPaymentRequired)
+							app.Error(w, r, http.StatusPaymentRequired,
+								fmt.Sprintf("This costs %d credit(s). Top up at /wallet/topup", cost))
 							return
 						}
 						if err := wallet.ConsumeQuota(sess.Account, op); err != nil {
-							http.Error(w, err.Error(), http.StatusPaymentRequired)
+							app.Error(w, r, http.StatusPaymentRequired, err.Error())
 							return
 						}
 						app.Log("wallet", "Charged %s %d credit(s) for POST /@%s status", sess.Account, wallet.GetOperationCost(op), rest)
@@ -2419,23 +2430,27 @@ func main() {
 			// NOT call CheckQuota/ConsumeQuota — the middleware does
 			// it so nothing can be forgotten.
 			if op := chargedWriteOp(r); op != "" {
+				// Refusals go through app.Error, not http.Error: this is a
+				// person who just pressed a button in a browser, and a bare
+				// white page carrying one line of text is the worst possible
+				// way to tell them what was refused and what to do about it.
 				sess, err := auth.GetSession(r)
 				if err != nil {
-					http.Error(w, "authentication required", http.StatusUnauthorized)
+					app.Unauthorized(w, r)
 					return
 				}
 				if !auth.CanPost(sess.Account) {
-					msg := auth.PostBlockReason(sess.Account)
-					http.Error(w, msg, http.StatusForbidden)
+					app.Forbidden(w, r, auth.PostBlockReason(sess.Account))
 					return
 				}
 				if err := auth.CheckPostRate(sess.Account); err != nil {
-					http.Error(w, err.Error(), http.StatusTooManyRequests)
+					app.TooManyRequests(w, r, err.Error())
 					return
 				}
 				canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, op)
 				if !canProceed {
-					http.Error(w, fmt.Sprintf("This costs %d credit(s). Top up at /wallet/topup", cost), http.StatusPaymentRequired)
+					app.Error(w, r, http.StatusPaymentRequired,
+						fmt.Sprintf("This costs %d credit(s). Top up at /wallet/topup", cost))
 					return
 				}
 				// Charge up-front. The handler runs only if the
@@ -2444,7 +2459,7 @@ func main() {
 				// acceptable — and it's the only way to guarantee
 				// we never forget to charge.
 				if err := wallet.ConsumeQuota(sess.Account, op); err != nil {
-					http.Error(w, err.Error(), http.StatusPaymentRequired)
+					app.Error(w, r, http.StatusPaymentRequired, err.Error())
 					return
 				}
 				app.Log("wallet", "Charged %s %d credit(s) for %s %s", sess.Account, wallet.GetOperationCost(op), r.Method, r.URL.Path)
@@ -2776,13 +2791,15 @@ func runHealthChecks() []app.ServiceHealth {
 		if fn == nil {
 			fn = func() bool { return true } // registered and serving
 		}
-		checks = append(checks,
-			check{name: strings.ToUpper(name[:1]) + name[1:], path: path, fn: fn})
+		// The service's own label, not a capitalised id — otherwise /status is
+		// the one page in the product that calls the database "Db".
+		checks = append(checks, check{name: service.Label(name), path: path, fn: fn})
 	}
 
 	// Cross-cutting checks that aren't domain services.
 	checks = append(checks,
-		check{"Agent", "/agent", func() bool { return ai.Configured() }},
+		// Whether it answers, not whether a key is set. See internal/ai/health.go.
+		check{"Agent", "/agent", func() bool { ok, _ := ai.Healthy(); return ok }},
 		// Named for what the reader is being told, not for the library behind
 		// it — /status is linked from every page footer.
 		check{"runtime", "/version", func() bool { return len(service.Services()) > 0 }},

@@ -54,23 +54,33 @@ func AgentsHandler(w http.ResponseWriter, r *http.Request) {
 				_ = json.NewEncoder(w).Encode(map[string]any{"error": "name and prompt are required"})
 				return
 			}
-			// Into the roster, the one store. An agent made here is hosted —
-			// you built it to talk to — and gets no token until asked for one
-			// on /agents, because nothing here needs to authenticate.
+			// Into the roster, the one store — and this is now the only place
+			// an agent is made. The kind rides along because it is the one
+			// question the form this replaced asked and the builder did not:
+			// where does it run, and therefore does it need a credential.
 			desc := strings.TrimSpace(r.FormValue("description"))
+			kind := r.FormValue("kind")
 			var saved *Agent
+			var secret string
 			var err error
 			if id := r.FormValue("id"); id != "" && AgentFor(acc.ID, id) != nil {
 				saved, err = UpdateAgent(acc.ID, id, name, prompt, desc, r.Form["tools"])
 			} else {
-				saved, _, err = CreateAgent(acc.ID, name, Hosted, prompt, desc, r.Form["tools"], false)
+				saved, secret, err = CreateAgent(acc.ID, name, kind, prompt, desc, r.Form["tools"], issuesToken(kind))
 			}
 			if err != nil {
 				w.WriteHeader(http.StatusBadRequest)
 				_ = json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
 				return
 			}
-			_ = json.NewEncoder(w).Encode(saved.AsMicro())
+			out := map[string]any{"id": saved.ID, "name": saved.Name, "kind": saved.Kind}
+			// The secret goes back exactly once, and only far enough to reach
+			// the page that shows it. It is stored hashed and cannot be read
+			// again — the same one-shot handoff /agents already did.
+			if secret != "" {
+				out["secret"] = secret
+			}
+			_ = json.NewEncoder(w).Encode(out)
 			return
 		}
 	}
@@ -89,9 +99,30 @@ func AgentsHandler(w http.ResponseWriter, r *http.Request) {
 	var mine []lite
 	for _, a := range Agents(acc.ID) {
 		m := a.AsMicro()
-		mine = append(mine, lite{m.ID, m.Name, m.Description, m.SystemPrompt, m.Tools})
+		// AsMicro falls back to the system prompt when there is no description,
+		// which is right for the router — it needs a sentence to route on — and
+		// wrong here, where this becomes a tooltip and a subtitle. A nine-line
+		// prompt rendered as an agent's one-line description is not a
+		// description, it is the whole agent spilled onto the list.
+		mine = append(mine, lite{m.ID, m.Name, firstLine(a.Description, m.Description), m.SystemPrompt, m.Tools})
 	}
 	_ = json.NewEncoder(w).Encode(map[string]any{"agents": mine, "tools": AllAgentTools()})
+}
+
+// firstLine returns the stored description if there is one, otherwise the
+// opening line of the fallback, trimmed to something that fits on a row.
+func firstLine(stored, fallback string) string {
+	if s := strings.TrimSpace(stored); s != "" {
+		return s
+	}
+	s := strings.TrimSpace(fallback)
+	if i := strings.IndexAny(s, ".\n"); i > 0 {
+		s = s[:i+1]
+	}
+	if len(s) > 140 {
+		s = strings.TrimSpace(s[:140]) + "…"
+	}
+	return s
 }
 
 // generateAgentSpec turns a one-line brief into a full agent spec (name,
@@ -236,8 +267,20 @@ func NewAgentHandler(w http.ResponseWriter, r *http.Request) {
 			`><span>` + html.EscapeString(AgentToolLabel(t)) + `</span></label>`)
 	}
 
+	// Where it runs is only asked when there is something to decide. Editing an
+	// existing agent does not move it, and changing the answer under someone
+	// would either revoke a live token or mint one they did not ask for.
+	kindHTML := ""
+	if editID == "" {
+		kindHTML = `<label class="b-label">Where does it run?</label>
+    <div class="pick-row">
+      <label class="pick"><input type="radio" name="kind" value="hosted" checked><span><strong>Here</strong>Give it standing instructions and this instance executes them</span></label>
+      <label class="pick"><input type="radio" name="kind" value="external"><span><strong>Elsewhere</strong>Claude, Cursor, or your own program, calling in with its token</span></label>
+    </div>`
+	}
+
 	b := `<div class="builder">
-  <p class="builder-sub">Describe an agent and Mu will draft it, or write the system prompt yourself. Pick which tools it may use.</p>
+  <p class="builder-sub">Describe an agent and Mu will draft it, or write the system prompt yourself. Pick what it may reach — it will be refused everything else, even though it is your account behind it.</p>
   <form id="bform" onsubmit="return bSave(event)">
     <input type="hidden" id="b-id" value="` + html.EscapeString(editID) + `">
     <input type="hidden" id="b-fork" value="` + html.EscapeString(forkFrom) + `">
@@ -252,11 +295,12 @@ func NewAgentHandler(w http.ResponseWriter, r *http.Request) {
     <input id="b-desc" maxlength="140" value="` + html.EscapeString(desc) + `">
     <label class="b-label">System prompt</label>
     <textarea id="b-prompt" rows="9" required>` + html.EscapeString(prompt) + `</textarea>
-    <label class="b-label">Tools <span class="b-hint">— none selected means all tools</span></label>
+    ` + kindHTML + `
+    <label class="b-label">What may it reach? <span class="b-hint">— none selected means everything you can</span></label>
     <div class="b-tools">` + toolsHTML.String() + `</div>
     <div class="b-actions">
       <button type="submit" class="b-save">Save agent</button>
-      <a class="b-cancel" href="/agent">Cancel</a>
+      <a class="b-cancel" href="/agents">Cancel</a>
     </div>
   </form>
 </div>
@@ -297,10 +341,16 @@ function bSave(e){e.preventDefault();
   b.append('name',document.getElementById('b-name').value);
   b.append('description',document.getElementById('b-desc').value);
   b.append('prompt',document.getElementById('b-prompt').value);
+  var k=document.querySelector('input[name="kind"]:checked');if(k)b.append('kind',k.value);
   document.querySelectorAll('.b-tools input:checked').forEach(function(el){b.append('tools',el.value);});
   fetch('/agents/data',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','X-CSRF-Token':bCsrf()},body:b.toString()})
     .then(function(r){return r.json();}).then(function(a){if(a.error){alert(a.error);return;}
-      location.href='/agent'+(a.id?('?agent='+encodeURIComponent(a.id)):'');}).catch(function(){});
+      if(!a.id){location.href='/agents';return;}
+      // One that runs elsewhere has a secret to hand over, and /agents is the
+      // page that shows it once. One that runs here has nothing to copy, so go
+      // straight to the thing you just built and talk to it.
+      if(a.secret){location.href='/agents?created='+encodeURIComponent(a.id)+'&secret='+encodeURIComponent(a.secret);return;}
+      location.href='/agent?id='+encodeURIComponent(a.id);}).catch(function(){});
   return false;}
 </script>`
 

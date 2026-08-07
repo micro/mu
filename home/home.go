@@ -759,13 +759,25 @@ function fetchW(la,lo){
 
 	// Signed out, the home screen is a showcase: the instance's own default
 	// order, because a visitor has expressed no preference to honour.
+	//
+	// A brand-new account is in exactly the same position, and used to get the
+	// opposite treatment: HomeCardOrder is empty until you save preferences, so
+	// signing up turned the showcase into a blank page and asked you to go and
+	// pick cards before anything would happen. auth.ShowHomeCard already says
+	// "no customization yet → all defaults show"; this is the same rule applied
+	// to the order, so the two stop disagreeing.
+	defaultOrder := func() []string {
+		ids := make([]string, 0, len(Cards))
+		for _, card := range Cards {
+			ids = append(ids, card.ID)
+		}
+		return ids
+	}
 	order := []string{}
 	if viewerAcc == nil {
-		for _, card := range Cards {
-			order = append(order, card.ID)
-		}
-	} else {
-		order = viewerAcc.HomeCardOrder()
+		order = defaultOrder()
+	} else if order = viewerAcc.HomeCardOrder(); len(order) == 0 {
+		order = defaultOrder()
 	}
 
 	var shown []rendered

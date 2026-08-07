@@ -29,19 +29,47 @@ import (
 	"net/http"
 	"strings"
 
+	"mu/internal/auth"
 	"mu/internal/service"
 )
 
 // scopeParam is the query parameter naming the services a connection wants.
 const scopeParam = "tools"
 
-// scopeFrom reads the requested services from a request. An empty result means
-// no scope: everything is listed, which is what an unscoped URL has always done.
+// scopeFrom reads the services this connection should see: the ?tools= list if
+// the caller named one, otherwise the scope carried by the token they presented.
+// An empty result means no scope — everything is listed, which is what an
+// unscoped URL with an unscoped token has always done.
+//
+// The token fallback is the important half. A scoped token was already refused
+// at dispatch, but tools/list ignored it, so an agent you had deliberately
+// confined to news and weather was handed all seventy-eight tool definitions and
+// discovered by trial and error that seventy-six of them were refused. The
+// listing now says what the credential actually permits, which is both the
+// honest answer and much the smaller one.
+//
+// A ?tools= list still wins where it is given, because it can only narrow: it
+// filters the listing, and every name in it is still checked against the token
+// when called.
 func scopeFrom(r *http.Request) []string {
 	if r == nil {
 		return nil
 	}
-	return parseScope(r.URL.Query().Get(scopeParam))
+	if s := parseScope(r.URL.Query().Get(scopeParam)); len(s) > 0 {
+		return s
+	}
+	return tokenScope(r)
+}
+
+// tokenScope returns the services a presented token is confined to, or nil for
+// a caller who is not confined — a cookie session, a settled payment, or one of
+// the unscoped tokens issued before scopes existed.
+func tokenScope(r *http.Request) []string {
+	tok := auth.TokenFromRequest(r)
+	if tok == nil || !tok.Scoped() {
+		return nil
+	}
+	return tok.Services()
 }
 
 // parseScope splits a scope string. Commas or spaces, any case.

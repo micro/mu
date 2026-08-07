@@ -5,6 +5,7 @@ package agent
 import (
 	"encoding/json"
 	"fmt"
+	htmlpkg "html"
 	"net/http"
 	"net/url"
 	"os"
@@ -1240,6 +1241,34 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		updateFlow(flow.ID, func(f *Flow) { f.Status = "error"; f.Error = err.Error() })
+		// The tools have already run and their results are in hand. Discarding
+		// them because the model could not write the prose around them gets the
+		// trade backwards: calling the tools is the expensive, fallible half and
+		// it succeeded — the user asked for the weather and we have the weather.
+		// So say the summary failed and show what came back.
+		var raw strings.Builder
+		for _, res := range results {
+			if card := renderResultCard(res.Name, res.Result, res.Args); card != "" {
+				raw.WriteString(card)
+				continue
+			}
+			text := res.Formatted
+			if strings.TrimSpace(text) == "" {
+				text = res.Result
+			}
+			if strings.TrimSpace(text) == "" {
+				continue
+			}
+			raw.WriteString(`<div class="card"><h4>` + htmlpkg.EscapeString(strings.ReplaceAll(res.Name, "_", " ")) +
+				`</h4><pre style="white-space:pre-wrap;margin:0">` + htmlpkg.EscapeString(text) + `</pre></div>`)
+		}
+		if raw.Len() > 0 {
+			sse(w, map[string]any{"type": "error",
+				"message": "Could not write a summary (" + err.Error() + "). Here is what the tools returned."})
+			sse(w, map[string]any{"type": "response", "flow_id": flow.ID, "html": raw.String()})
+			sse(w, map[string]any{"type": "done"})
+			return
+		}
 		sse(w, map[string]any{"type": "error", "message": "Could not generate response: " + err.Error()})
 		sse(w, map[string]any{"type": "done"})
 		return

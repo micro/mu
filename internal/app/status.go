@@ -383,15 +383,16 @@ func formatDKIMDetails(enabled bool, domain, selector string) string {
 	return fmt.Sprintf("%s (selector: %s)", domain, selector)
 }
 
+// LLMStatus is set by main.go to internal/ai's own view of the model: which
+// provider a question would go to, and whether it is answering. A hook because
+// internal/ai imports this package, so the dependency cannot run the other way.
+var LLMStatus func() (string, bool)
+
 func checkLLMConfig() (provider string, configured bool) {
-	if os.Getenv("ANTHROPIC_API_KEY") == "" {
-		return "Not configured", false
+	if LLMStatus != nil {
+		return LLMStatus()
 	}
-	model := os.Getenv("ANTHROPIC_MODEL")
-	if model == "" {
-		model = "claude-sonnet-4-6"
-	}
-	return fmt.Sprintf("Anthropic/%s", model), true
+	return "Not configured", false
 }
 
 // getDiskUsage returns disk usage for the data directory

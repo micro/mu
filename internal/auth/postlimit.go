@@ -35,9 +35,15 @@ var (
 // During the first 24 hours after signup an account is on a tight cap;
 // after that it gets a generous hourly cap that still throttles abuse.
 // Admins and approved accounts are unlimited.
-func postLimitFor(acc *Account) (int, time.Duration) {
+func postLimitFor(acc Account) (int, time.Duration) {
 	if acc.Admin || acc.Approved {
 		return 1<<31 - 1, time.Hour
+	}
+	// A verified address or a funded wallet clears the new-account cap for the
+	// same reason it clears the 24-hour wait in CanPost: it is the signal the
+	// cap was standing in for. Still capped, just at the established rate.
+	if trusted(acc) {
+		return envIntAuth("POST_LIMIT_PER_HOUR", 60), time.Hour
 	}
 	if time.Since(acc.Created) < 24*time.Hour {
 		// New account: 10 actions per hour by default, so a 240 ceiling over
@@ -53,9 +59,7 @@ func postLimitFor(acc *Account) (int, time.Duration) {
 // This is a sliding-bucket limiter: the count resets after the window
 // elapses from the first action in the bucket.
 func CheckPostRate(accountID string) error {
-	mutex.Lock()
-	acc, exists := accounts[accountID]
-	mutex.Unlock()
+	acc, exists := snapshot(accountID)
 	if !exists {
 		return errors.New("account not found")
 	}
