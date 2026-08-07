@@ -182,13 +182,86 @@ func RespondError(w http.ResponseWriter, status int, message string) {
 	json.NewEncoder(w).Encode(map[string]string{"error": message})
 }
 
-// Error writes an error response, using JSON if the client expects it, otherwise plain text
+// Error writes an error response: JSON if the client expects it, otherwise a
+// rendered page.
+//
+// The page matters. This is the single exit for every Forbidden, Unauthorized
+// and BadRequest in the product, and it used to be http.Error — so a person
+// who hit any of them was dropped onto a white screen with one line of text,
+// no nav, and no way back except the browser's own button. The refusal is
+// often the most important thing we ever say to a new user ("verify your
+// email and you can post"), and it was the one thing said worst.
 func Error(w http.ResponseWriter, r *http.Request, status int, message string) {
-	if WantsJSON(r) || SendsJSON(r) {
+	if WantsJSON(r) || SendsJSON(r) || isFetch(r) {
 		RespondError(w, status, message)
 		return
 	}
-	http.Error(w, message, status)
+	if message == "" {
+		message = http.StatusText(status)
+	}
+	body := `<div class="notice"><p>` + htmlpkg.EscapeString(message) + `</p></div>` +
+		`<p><a class="link" href="` + htmlpkg.EscapeString(errorBackTo(r)) + `">Back</a></p>`
+	// Rendered without the standing banners. They exist to interrupt an ordinary
+	// page with something you should know; here the something-you-should-know is
+	// the page, and a banner repeating the message word for word above it just
+	// says the same thing twice.
+	_, acc := auth.TrySession(r)
+	page := RenderHTMLWithLangAndAuth(errorTitle(status), message, body, GetUserLanguage(r), acc)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(status)
+	w.Write([]byte(page))
+}
+
+// isFetch reports whether this request came from script rather than from the
+// address bar or a form submit.
+//
+// Only a navigation can display a page, and a fetch() that asks for one gets
+// several kilobytes of markup where it expected a sentence — which is exactly
+// what happened the first time the console's compose box showed a refusal: it
+// printed the <head> of an error page into the notice area. Browsers label the
+// difference themselves in Sec-Fetch-Mode ("navigate" for a page load or form
+// post, "cors"/"same-origin" for fetch and XHR), so nothing has to be guessed
+// and no call site has to remember to set a header. Absent header — curl, an
+// old browser — is treated as a navigation, which is the safe assumption for a
+// human-readable response.
+func isFetch(r *http.Request) bool {
+	mode := r.Header.Get("Sec-Fetch-Mode")
+	return mode != "" && mode != "navigate"
+}
+
+// errorTitle heads the page with what happened in plain words. The HTTP status
+// text is written for a proxy log — "Forbidden" over a sentence explaining how
+// to start posting reads as a scolding rather than an answer.
+func errorTitle(status int) string {
+	switch status {
+	case http.StatusUnauthorized:
+		return "Sign in"
+	case http.StatusForbidden:
+		return "Not yet"
+	case http.StatusPaymentRequired:
+		return "Needs credit"
+	case http.StatusTooManyRequests:
+		return "Slow down"
+	case http.StatusNotFound:
+		return "Not found"
+	case http.StatusBadRequest:
+		return "That did not work"
+	}
+	return http.StatusText(status)
+}
+
+// errorBackTo picks where "Back" goes: the page the request came from when it
+// is one of ours, otherwise home. A refused POST has no useful URL of its own —
+// the form lives at the referer.
+func errorBackTo(r *http.Request) string {
+	ref := r.Referer()
+	if strings.HasPrefix(ref, "/") && !strings.HasPrefix(ref, "//") {
+		return ref
+	}
+	if u, err := url.Parse(ref); err == nil && u.Path != "" && u.Host == r.Host {
+		return u.Path
+	}
+	return "/"
 }
 
 // Unauthorized writes a 401 error response
@@ -1576,27 +1649,39 @@ func RenderHTMLForRequest(title, desc, html string, r *http.Request) string {
 	return out
 }
 
-// VerifyBanner returns banner HTML inviting the user to verify their
-// email address, or an empty string if the banner doesn't apply (no
-// session, admin, already verified, or verification not required on
-// this instance).
+// VerifyBanner says, before you write anything, that you cannot post yet and
+// what to do about it. Empty for anyone who can.
+//
+// It asks auth.CanPost rather than re-deriving the rule, because it used to
+// carry its own copy — verification only, and only on instances with mail
+// configured — while the actual gate also blocked every account under 24 hours
+// old, on every instance. The two disagreed in the worst direction: the block
+// was wider than the warning, so a new user met it for the first time as a
+// rejected POST after writing a post, creating an app, or filling in a form.
+// Anything the gate refuses, this now announces.
 func VerifyBanner(r *http.Request) string {
-	if EmailSender == nil {
-		return ""
-	}
 	_, acc := auth.TrySession(r)
-	if acc == nil || acc.Admin || acc.Approved || acc.EmailVerified {
+	if acc == nil {
 		return ""
 	}
-	// Don't show the banner on the account page itself — the verify
-	// form is right there.
-	if r.URL.Path == "/account" || r.URL.Path == "/verify" {
+	reason := auth.PostBlockReason(acc.ID)
+	if reason == "" {
 		return ""
+	}
+	// Not on the pages that are the way out of it — the form is right there.
+	switch r.URL.Path {
+	case "/account", "/verify", "/wallet", "/wallet/topup":
+		return ""
+	}
+	action, href := "Verify →", "/account"
+	if auth.VerificationRequired == nil || !auth.VerificationRequired() {
+		// No mail on this instance, so verifying is not on offer: credit is.
+		action, href = "Add credit →", "/wallet"
 	}
 	return `<div class="verify-banner" style="background:#fff8e1;border:1px solid #f1d68c;border-radius:6px;padding:10px 14px;margin:0 0 14px;font-size:14px;color:#5b4a00;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-<strong>Verify your email to post.</strong>
-<span>Add and confirm an email on your account to unlock status updates, replies, comments and posts.</span>
-<a href="/account" style="margin-left:auto;background:#000;color:#fff;text-decoration:none;padding:6px 14px;border-radius:6px">Verify →</a>
+<strong>You cannot post yet.</strong>
+<span>` + htmlpkg.EscapeString(reason) + `</span>
+<a href="` + href + `" style="margin-left:auto;background:#000;color:#fff;text-decoration:none;padding:6px 14px;border-radius:6px">` + action + `</a>
 </div>`
 }
 

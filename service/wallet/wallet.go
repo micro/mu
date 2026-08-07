@@ -662,8 +662,19 @@ func ConsumeQuota(userID string, operation string) error {
 		return nil
 	}
 
-	// Deduct credits
+	// A free operation is free: record it and stop. Handing a zero to
+	// DeductCredits gets "amount must be positive" back, which the write gate
+	// turns into a 402 — so every blog post, comment, reply, status, console
+	// note and app, all of which are deliberately priced at zero because they
+	// only touch this instance's own storage, was refused for want of credit
+	// nobody was being asked for. Admins skip the charge entirely and new
+	// accounts were stopped by the post gate first, so the one group who hit it
+	// was ordinary established users, on every single write.
 	cost := GetOperationCost(operation)
+	if cost <= 0 {
+		RecordUsage(userID, operation)
+		return nil
+	}
 	return DeductCredits(userID, cost, operation, nil)
 }
 

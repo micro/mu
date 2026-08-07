@@ -47,7 +47,10 @@ func resolveProvider(model string) (provider, apiKey, baseURL string, err error)
 //
 // maxTok caps the response length (via go-micro's WithMaxTokens). Cheap
 // background callers get a tighter cap to reduce latency and cost.
-func generateViaMicro(model, systemPrompt string, messages []map[string]string, caller string, maxTok int) (string, error) {
+func generateViaMicro(model, systemPrompt string, messages []map[string]string, caller string, maxTok int) (reply string, err error) {
+	// Every exit from this function is a verdict on whether the model answers.
+	defer func() { recordHealth(err) }()
+
 	provider, apiKey, baseURL, err := resolveProvider(model)
 	if err != nil {
 		return "", err
@@ -112,7 +115,9 @@ func generateViaMicro(model, systemPrompt string, messages []map[string]string, 
 // for each content chunk and returning the full text. If the provider does not
 // support streaming, it falls back to a single Generate call and emits the
 // whole reply at once — so every caller works regardless of provider.
-func streamViaMicro(model, systemPrompt string, messages []map[string]string, caller string, maxTok int, onToken func(string)) (string, error) {
+func streamViaMicro(model, systemPrompt string, messages []map[string]string, caller string, maxTok int, onToken func(string)) (reply string, err error) {
+	defer func() { recordHealth(err) }()
+
 	provider, apiKey, baseURL, err := resolveProvider(model)
 	if err != nil {
 		return "", err

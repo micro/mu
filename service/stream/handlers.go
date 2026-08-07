@@ -285,6 +285,17 @@ const streamScript = `<script>
     return m ? decodeURIComponent(m[1]) : '';
   }
 
+  function showStreamError(msg) {
+    var el = document.getElementById('stream-error');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'stream-error';
+      el.className = 'notice';
+      formEl.parentNode.insertBefore(el, formEl.nextSibling);
+    }
+    el.textContent = String(msg).trim();
+  }
+
   function refresh(clear) {
     if (inflight) return;
     inflight = true;
@@ -318,8 +329,21 @@ const streamScript = `<script>
         credentials: 'same-origin',
         headers: headers,
         body: body.toString()
-      }).then(function(){ refresh(true); })
-        .catch(function(){ formEl.submit(); });
+      }).then(function(r){
+        // A refusal is a response, not a network error, so the old .then(ok)
+        // swallowed it: the post was rejected, the box had already been
+        // cleared, and the page redrew as if nothing had happened. Whatever
+        // the server said is the most useful thing on the screen at that
+        // moment — and the text goes back in the box so it is not lost.
+        if (!r.ok) {
+          return r.text().then(function(msg){
+            input.value = text;
+            try { var j = JSON.parse(msg); if (j && j.error) msg = j.error; } catch (e) {}
+            showStreamError(msg || ('Could not post (' + r.status + ')'));
+          });
+        }
+        refresh(true);
+      }).catch(function(){ input.value = text; formEl.submit(); });
     });
   }
 

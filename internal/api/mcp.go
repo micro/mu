@@ -847,6 +847,21 @@ func ExecuteTool(r *http.Request, name string, args map[string]any) (string, boo
 		return "", true, fmt.Errorf("unknown tool: %s", name)
 	}
 
+	// A scoped token reaches only the services it names.
+	//
+	// This is what makes an agent an agent rather than a copy of you: you hand
+	// a program a credential, and the credential is smaller than your account.
+	// Without the check here the scope would be a label on a settings page and
+	// nothing else, since every branch below dispatches on the account alone.
+	//
+	// First, before the usage counter and before the argument check. A caller
+	// who may not use a tool should learn that and nothing else — otherwise the
+	// refusal doubles as a schema oracle ("db_list requires collection"), and a
+	// call that never happened is counted as if it had.
+	if err := checkTokenScope(r, tool.Name); err != nil {
+		return err.Error(), true, err
+	}
+
 	// Count the call by tool name. Every MCP request is a POST to /mcp, so the
 	// HTTP layer sees one endpoint for the whole protocol and can say nothing
 	// about which tool is busy. Recorded under the canonical name, so an alias
@@ -868,20 +883,6 @@ func ExecuteTool(r *http.Request, name string, args map[string]any) (string, boo
 			text, err := GuestNewsSearch(query)
 			return text, err != nil, err
 		}
-	}
-
-	// A scoped token reaches only the services it names.
-	//
-	// This is what makes an agent an agent rather than a copy of you: you hand
-	// a program a credential, and the credential is smaller than your account.
-	// Without the check here the scope would be a label on a settings page and
-	// nothing else, since every branch below dispatches on the account alone.
-	//
-	// Placed above every branch for the same reason as the wallet guard below:
-	// tools reach dispatch by three different routes, and a check inside one of
-	// them silently exempts the other two.
-	if err := checkTokenScope(r, tool.Name); err != nil {
-		return err.Error(), true, err
 	}
 
 	// Refuse a paid wallet on an account-only tool before any dispatch. This has

@@ -702,22 +702,61 @@ func GetOnlineUsers() []string {
 // so self-hosters without mail aren't accidentally locked out.
 var VerificationRequired func() bool
 
-// CanPost checks if an account is allowed to create content.
-// Rules:
-//   - Admins and approved accounts can always post.
-//   - If verification is not required on this instance (no mail
-//     configured), any account can post.
-//   - Otherwise the account must have a verified email address.
-func CanPost(accountID string) bool {
+// HasCredit is set by main.go and reports whether an account has a positive
+// credit balance. Kept as a hook because the wallet imports auth, not the
+// other way round.
+var HasCredit func(accountID string) bool
+
+// trusted reports whether an account has shown it is a person rather than a
+// signup script. Three things count, and any one of them is enough:
+//
+//   - an admin said so (Admin, Approved),
+//   - a verified email address,
+//   - money in the wallet.
+//
+// The 24-hour wait is not a fourth signal, it is what we fall back on when we
+// have none of these. Waiting proves nothing about a bot — it costs a script
+// nothing and costs a new user their whole first session — so anything that
+// does carry signal has to be able to skip it.
+//
+// Takes a copy, not the live account, because it calls out to HasCredit and
+// must not do that under auth's mutex: the wallet reads accounts, so holding
+// the lock across the call would deadlock the first time someone checked a
+// balance. Callers snapshot under the lock and evaluate after releasing it.
+func trusted(acc Account) bool {
+	if acc.Admin || acc.Approved || acc.EmailVerified {
+		return true
+	}
+	return HasCredit != nil && HasCredit(acc.ID)
+}
+
+// snapshot returns a copy of an account, or false if there is no such account.
+// The copy is what the trust rules below run against, so they can call out to
+// the wallet without holding the lock.
+func snapshot(accountID string) (Account, bool) {
 	mutex.Lock()
 	defer mutex.Unlock()
-
 	acc, exists := accounts[accountID]
+	if !exists {
+		return Account{}, false
+	}
+	return *acc, true
+}
+
+// CanPost checks if an account is allowed to create content.
+// Rules:
+//   - A trusted account (see above) can always post.
+//   - Otherwise it waits out its first 24 hours.
+//   - After that, if this instance requires verification, it still needs a
+//     verified address — which trusted() already covers, so reaching here
+//     unverified on such an instance means no.
+func CanPost(accountID string) bool {
+	acc, exists := snapshot(accountID)
 	if !exists {
 		return false
 	}
 
-	if acc.Admin || acc.Approved {
+	if trusted(acc) {
 		return true
 	}
 
@@ -726,51 +765,52 @@ func CanPost(accountID string) bool {
 		return false
 	}
 
-	if VerificationRequired == nil || !VerificationRequired() {
-		return true
-	}
-
-	return acc.EmailVerified
+	return VerificationRequired == nil || !VerificationRequired()
 }
 
 // PostBlockReason returns a human-readable reason an account cannot post,
 // or an empty string if it can. Used by handlers to render helpful errors.
 func PostBlockReason(accountID string) string {
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	acc, exists := accounts[accountID]
+	acc, exists := snapshot(accountID)
 	if !exists {
 		return "Account not found"
 	}
-	if acc.Admin || acc.Approved {
+	if trusted(acc) {
 		return ""
 	}
+	// Lead with the way out. The wait is the fallback, not the instruction —
+	// a reason that only says "come back tomorrow" reads as a dead end when
+	// two doors are open right now.
 	if time.Since(acc.Created) < 24*time.Hour {
 		remaining := (24*time.Hour - time.Since(acc.Created)).Round(time.Minute)
-		return fmt.Sprintf("New accounts must wait 24 hours before posting. %s remaining.", remaining)
+		return fmt.Sprintf("Verify your email address on /account, or add credit on /wallet, and you can post straight away. Otherwise a new account waits 24 hours — %s remaining.", remaining)
 	}
-	if VerificationRequired != nil && VerificationRequired() && !acc.EmailVerified {
-		return "Verify your email at /account before posting."
+	if VerificationRequired != nil && VerificationRequired() {
+		return "Verify your email address on /account before posting."
 	}
 	return ""
 }
 
-// IsNewAccount checks if account is less than 24 hours old
+// IsNewAccount reports whether we still know nothing about this account.
+//
+// The blog hides posts by a new account from its lists, which is the right
+// instinct — a spam run should not reach the front page — but it has to mean
+// the same thing as CanPost or the product contradicts itself: the post is
+// accepted, charged, indexed, the author is redirected to the list, and the
+// post is not on it. Nothing says why, because from the writer's side nothing
+// went wrong.
+//
+// So "new" is the same question as "untrusted", asked once. An account that has
+// verified an address or put money in its wallet is not new to us, whatever the
+// clock says.
 func IsNewAccount(accountID string) bool {
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	acc, exists := accounts[accountID]
+	acc, exists := snapshot(accountID)
 	if !exists {
 		return false
 	}
-
-	// Admins and approved accounts are never considered "new"
-	if acc.Admin || acc.Approved {
+	if trusted(acc) {
 		return false
 	}
-
 	return time.Since(acc.Created) < 24*time.Hour
 }
 
