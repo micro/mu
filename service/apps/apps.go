@@ -433,9 +433,16 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 	// Building one is the point of the page, so it is a button at the top
 	// rather than a line of text under however many apps happen to be listed —
 	// which on a full catalogue meant scrolling past everything to find it.
-	sb.WriteString(`<p style="margin:0 0 16px"><a class="apps-new" href="/apps/new">+ New app</a></p>
-<style>.apps-new{display:inline-block;background:#111;color:#fff;text-decoration:none;font-size:14px;padding:9px 16px;border-radius:6px}
-.apps-new:hover{background:#333;color:#fff}</style>`)
+	// app.ActionLink, not a hand-rolled anchor: it is what renders "+ Compose"
+	// on mail and every other page's primary action, so this matches them by
+	// construction rather than by copying their colours.
+	//
+	// The hand-rolled one set color:#fff and lost anyway — a.btn carries
+	// !important for exactly that reason, because the link colour rules in this
+	// stylesheet outrank a plain class and turn a white label on a black button
+	// black on black. There is a comment about it on connect-cta too. Third
+	// time; hence using the shared thing.
+	sb.WriteString(`<p style="margin:0 0 16px">` + app.ActionLink("/apps/new", "+ New app") + `</p>`)
 
 	// Pricing filter
 	pricing := r.URL.Query().Get("pricing")
