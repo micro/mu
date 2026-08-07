@@ -108,6 +108,7 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 			`to talk to it here — it has no token, so nothing outside this instance can call it.</p>`)
 	}
 
+	EnsureTags(owner)
 	roster := Agents(owner)
 	if len(roster) == 0 {
 		b.WriteString(`<p style="color:#888;font-size:14px">No agents yet. An agent is a name, a scope, ` +
@@ -198,11 +199,21 @@ func agentRow(a *Agent, csrf, base string) string {
 		meta = html.EscapeString(used) + ` · <code>` + html.EscapeString(a.Endpoint(base)) + `</code>`
 	}
 
+	// The address is on the row because it is the thing you have to copy
+	// somewhere else — into a form, a signup, a person's contacts. An agent that
+	// can be written to is most of what makes it more than a preset, and it was
+	// previously reachable only by knowing the plus-address convention.
+	addr := ""
+	if a.Address() != "" {
+		addr = `<div class="agent-mail">Write to it at <code>` + html.EscapeString(a.Address()) + `</code></div>`
+	}
+
 	return fmt.Sprintf(`<div class="agent-row">
   <div style="flex:1;min-width:0">
     <a class="agent-name" href="/agent?id=%s">%s</a>
     <div class="%s">%s</div>
     <div class="agent-meta">%s</div>
+    %s
   </div>
   %s
   <form method="POST" action="/agents" style="margin:0" onsubmit="return confirm('Remove this agent?')">
@@ -214,7 +225,7 @@ func agentRow(a *Agent, csrf, base string) string {
 </div>`,
 		html.EscapeString(a.ID), html.EscapeString(a.Name),
 		cls, html.EscapeString(scope),
-		meta, action,
+		meta, addr, action,
 		html.EscapeString(csrf), html.EscapeString(a.ID))
 }
 
@@ -273,6 +284,8 @@ const agentsCSS = `<style>
 .agent-scope.wide{color:#a86400}
 .agent-meta{font-size:12px;color:#999;margin-top:2px;overflow:hidden;text-overflow:ellipsis}
 .agent-meta code{font-size:11px}
+.agent-mail{font-size:12px;color:#666;margin-top:3px}
+.agent-mail code{font-size:11px;background:#f5f5f5;border-radius:3px;padding:1px 5px}
 /* The agent's name is the way into it, so it looks like body text until you
    are over it rather than like one more small grey control. */
 .agent-name{display:inline-block;font-weight:600;font-size:14px;color:var(--text-primary,#111);text-decoration:none}

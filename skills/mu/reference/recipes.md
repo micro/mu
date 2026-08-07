@@ -8,6 +8,10 @@ ones where reaching for the wrong tool costs money or gets the wrong answer.
 This is the capability most agents never find, and it changes what an agent can
 be: something that can be *written to* rather than only called.
 
+An agent created on `/agents` is given one from its name — "Morning Briefer"
+becomes `owner+morningbriefer@instance` — and it is shown on the agent's row.
+Any caller can also mint one on demand:
+
 ```
 mail_address {"tag": "research"}   → owner+research@instance
 ```

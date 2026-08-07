@@ -10,8 +10,10 @@ import (
 	"html"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -1287,6 +1289,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Render threads from pre-organized inbox
 	var items []string
 	unreadCount := userInbox.UnreadCount // Use cached count instead of recalculating
+	// ?tag= narrows the inbox to one plus-address. The JSON view has honoured
+	// this for a while and the page did not, so an agent could read only its own
+	// mail and the person who owned it could not.
+	viewTag := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("tag")))
 	if view == "inbox" {
 		app.Log("mail", "Rendering inbox with %d threads for user %s", len(userInbox.Threads), acc.Name)
 
@@ -1312,6 +1318,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 			if userInThread {
+				if viewTag != "" && !strings.EqualFold(thread.Latest.Tag, viewTag) {
+					continue
+				}
 				// Inbox message - show latest preview, link to root
 				items = append(items, renderThreadPreview(thread.Root.ID, thread.Latest, acc.ID, thread.HasUnread))
 			}
@@ -1468,10 +1477,61 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		Action:  "/mail?compose=true",
 		Label:   "+ Compose",
 		Filters: tabs,
-		Content: addressPanel(acc.ID) + searchBar + `<div id="mailbox">` + content + `</div>`,
+		Content: addressPanel(acc.ID) + tagFilter(userInbox, acc.ID, viewTag) + searchBar +
+			`<div id="mailbox">` + content + `</div>`,
 	})
 
 	w.Write([]byte(app.RenderHTMLForRequest(title, "Your messages", pageHTML, r)))
+}
+
+// tagFilter is the row of plus-addresses that have actually received mail.
+//
+// Only the ones with mail in them: a list of every tag you have ever handed out
+// would be a list of addresses, and the useful question is "what came in for
+// whom". Nothing is drawn when no tagged mail has arrived, which is the normal
+// case until somebody gives an agent's address out.
+func tagFilter(inbox *Inbox, accountID, active string) string {
+	if inbox == nil {
+		return ""
+	}
+	counts := map[string]int{}
+	for _, t := range inbox.Threads {
+		if t.Latest != nil && t.Latest.Tag != "" && t.Latest.ToID == accountID {
+			counts[strings.ToLower(t.Latest.Tag)]++
+		}
+	}
+	if len(counts) == 0 {
+		return ""
+	}
+	tags := make([]string, 0, len(counts))
+	for tag := range counts {
+		tags = append(tags, tag)
+	}
+	sort.Strings(tags)
+
+	cls := func(on bool) string {
+		if on {
+			return "mail-tag on"
+		}
+		return "mail-tag"
+	}
+	var b strings.Builder
+	b.WriteString(`<div class="mail-tags"><a class="` + cls(active == "") + `" href="/mail">All</a>`)
+	for _, tag := range tags {
+		b.WriteString(`<a class="` + cls(active == tag) + `" href="/mail?tag=` + url.QueryEscape(tag) + `">+` +
+			html.EscapeString(tag) + ` <span>` + strconv.Itoa(counts[tag]) + `</span></a>`)
+	}
+	b.WriteString(`</div>
+<style>
+.mail-tags{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+.mail-tag{border:1px solid #e5e5e5;border-radius:999px;padding:4px 11px;font-size:12px;
+  color:#555;text-decoration:none;background:#fff}
+.mail-tag:hover{border-color:#bbb}
+.mail-tag.on{background:#111;border-color:#111;color:#fff}
+.mail-tag span{color:#999;font-variant-numeric:tabular-nums}
+.mail-tag.on span{color:#ccc}
+</style>`)
+	return b.String()
 }
 
 // addressPanel answers the three questions this page never answered.

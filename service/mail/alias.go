@@ -50,6 +50,10 @@ func AliasFor(account, tag string) string {
 	return account + "+" + tag + "@" + GetConfiguredDomain()
 }
 
+// CleanTag makes a tag safe to put in an address, so a caller with a name
+// rather than a tag — an agent called "Morning Briefer" — can be given one.
+func CleanTag(tag string) string { return cleanTag(tag) }
+
 // cleanTag keeps a tag to characters that survive a round trip through every
 // mail server between here and the sender. Anything else is dropped rather than
 // escaped, because an address that needs quoting is an address that will be

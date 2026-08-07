@@ -31,10 +31,13 @@ import (
 	"strings"
 	"time"
 
+	"strconv"
+
 	"mu/agent/micro"
 	"mu/internal/auth"
 	"mu/internal/service"
 	"mu/internal/userdb"
+	"mu/service/mail"
 )
 
 const (
@@ -75,9 +78,53 @@ type Agent struct {
 	// the store that predates this, have no credential because nobody asked for
 	// one. Minting tokens for them at import would have handed out credentials
 	// on their owner's behalf.
-	TokenID  string    `json:"token_id,omitempty"`
+	TokenID string `json:"token_id,omitempty"`
+	// Tag is this agent's own mail address, as the part after the plus in
+	// owner+tag@instance.
+	//
+	// Assigned at creation from the name, because an address you have to think
+	// to construct is one nobody constructs. Mu runs a real SMTP server, so an
+	// agent here can be written to as well as called — sent a receipt, a form, a
+	// reply, a person saying "go ahead" — and that was reachable only by knowing
+	// the plus-address convention and inventing a tag by hand.
+	//
+	// Unique per owner, so two agents cannot read each other's mail.
+	Tag      string    `json:"tag,omitempty"`
 	Created  time.Time `json:"created"`
 	LastUsed time.Time `json:"last_used,omitempty"`
+}
+
+// Address is the mail address this agent can be written at, or "" if it has no
+// tag — agents created before tags existed, which keep working without one.
+func (a *Agent) Address() string {
+	if a == nil || a.Tag == "" {
+		return ""
+	}
+	return mail.AliasFor(a.Owner, a.Tag)
+}
+
+// tagFor makes a mail tag from an agent's name, unique among this owner's
+// agents. "Morning Briefer" becomes morningbriefer; a second one becomes
+// morningbriefer2, because two agents sharing a tag would share an inbox.
+func tagFor(owner, name string, existing []*Agent) string {
+	base := mail.CleanTag(strings.ToLower(strings.ReplaceAll(name, " ", "")))
+	if base == "" {
+		base = "agent"
+	}
+	if len(base) > 24 {
+		base = base[:24]
+	}
+	taken := map[string]bool{}
+	for _, a := range existing {
+		if a.Tag != "" {
+			taken[a.Tag] = true
+		}
+	}
+	tag := base
+	for n := 2; taken[tag]; n++ {
+		tag = base + strconv.Itoa(n)
+	}
+	return tag
 }
 
 // Unscoped reports whether this agent can reach everything its owner can.
@@ -114,6 +161,7 @@ func CreateAgent(owner, name, kind, prompt, description string, services []strin
 		Services:    services,
 		Prompt:      strings.TrimSpace(prompt),
 		Description: strings.TrimSpace(description),
+		Tag:         tagFor(owner, name, Agents(owner)),
 		Created:     time.Now(),
 	}
 
@@ -169,7 +217,34 @@ func fields(a *Agent) map[string]any {
 		"name": a.Name, "kind": a.Kind, "prompt": a.Prompt,
 		"description": a.Description,
 		"token_id":    a.TokenID, "services": strings.Join(a.Services, ","),
+		"tag":     a.Tag,
 		"created": a.Created.Format(time.RFC3339),
+	}
+}
+
+// EnsureTags gives an address to any agent made before agents had one.
+//
+// Called when the roster is shown rather than on every read: it writes, and a
+// write on a read path is a surprise. One visit to /agents fixes an account, and
+// an agent nobody looks at does not need an address yet.
+//
+// Tags are assigned oldest first so the shortest name wins the unadorned tag,
+// rather than whichever agent happened to be loaded first.
+func EnsureTags(owner string) {
+	all := Agents(owner)
+	var missing []*Agent
+	for _, a := range all {
+		if a.Tag == "" {
+			missing = append(missing, a)
+		}
+	}
+	if len(missing) == 0 {
+		return
+	}
+	sort.Slice(missing, func(i, j int) bool { return missing[i].Created.Before(missing[j].Created) })
+	for _, a := range missing {
+		a.Tag = tagFor(owner, a.Name, all)
+		_, _ = userdb.Update(ns, owner, collection, a.ID, fields(a), false)
 	}
 }
 
@@ -233,6 +308,7 @@ func fromRecord(owner string, rec userdb.Record) *Agent {
 	a := &Agent{
 		ID: rec.ID, Owner: owner, Name: str("name"), Kind: str("kind"),
 		Prompt: str("prompt"), Description: str("description"), TokenID: str("token_id"),
+		Tag: str("tag"),
 	}
 	if a.Kind != Hosted {
 		a.Kind = External
