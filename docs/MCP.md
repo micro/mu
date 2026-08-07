@@ -172,11 +172,13 @@ records in named collections, keep them private or share them publicly, and
 query with a `where` filter (`eq`, `ne`, `gt`/`gte`/`lt`/`lte`, `contains`, `in`,
 `exists`). A collection is made on first write; there is no schema to declare.
 
-It is a service like any other, which means two things worth knowing. You can
-see what has been stored at [/db](https://micro.mu/db) — the same records, as a
-page. And an agent token scoped at [/agents](https://micro.mu/agents) can be
-granted `db` and nothing else, so the thing you hand a credential to can keep
-records without also reaching your mail.
+It is a service like any other, which means two things worth knowing. Everything
+the tools do, [/db](https://micro.mu/db) does: browse your collections, run the
+same `where`/`sort`/`limit` query as `db_list`, and add, edit or delete a record
+by hand — so when an agent writes the wrong thing you can fix it without writing
+another agent. And an agent token scoped at [/agents](https://micro.mu/agents)
+can be granted `db` and nothing else, so the thing you hand a credential to can
+keep records without also reaching your mail.
 
 ```bash
 # Store a private record
