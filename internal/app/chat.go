@@ -26,10 +26,10 @@ type ChatConfig struct {
 	// HideSuggestions suppresses the component's built-in suggestion pills — used
 	// where the host page supplies its own (e.g. Home's personalised chips).
 	HideSuggestions bool
-	// OfferCardContext shows the "use my cards" toggle. Only Home sets it: the
-	// cards are the summary shown on that page, so it is the one place where
-	// "answer from what I am already looking at" is a sentence that means
-	// something.
+	// OfferCardContext shows the "use live context" toggle. Only Home sets it,
+	// and only when the reader actually has cards: the cards are the summary
+	// shown on that page, so it is the one place where "answer from what I am
+	// already looking at" is a sentence that means something.
 	OfferCardContext bool
 	// StorageNS namespaces the component's sessionStorage keys so different
 	// surfaces (Home, /agent) keep separate in-tab conversations and never show
@@ -54,10 +54,15 @@ func ChatComponent(cfg ChatConfig) string {
 	// Opt-in per message rather than a setting, because context is tokens on
 	// every turn and most questions have nothing to do with the cards. The
 	// choice is remembered locally so it is not a decision you make twice.
+	// "use my cards" named the widget rather than the thing. A card is one
+	// rendering of what this instance currently knows about something you
+	// watch; what the toggle actually hands the agent is that content, as of
+	// now. "live context" is what it is, and it is also the word an agent
+	// developer already has for it.
 	cardToggle := ""
 	if cfg.OfferCardContext {
-		cardToggle = `<label id="mu-chat-ctx" title="Include the summary from your home cards, so the answer comes from what you are already looking at">` +
-			`<input type="checkbox" id="mu-chat-ctx-on"> use my cards</label>`
+		cardToggle = `<label id="mu-chat-ctx" title="Send what your cards are showing right now — headlines, prices, what is on today — so the answer comes from what you are already looking at instead of being fetched again">` +
+			`<input type="checkbox" id="mu-chat-ctx-on"> use live context</label>`
 	}
 	initialConv := ""
 	if cfg.InitialConvHTML != "" {

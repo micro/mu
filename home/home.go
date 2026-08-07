@@ -517,7 +517,12 @@ function fetchW(la,lo){
 		}
 
 		b.WriteString(`<div id="home-agent" style="margin:0 0 20px">`)
-		b.WriteString(app.ChatComponent(app.ChatConfig{Guest: viewerID == "", HideSuggestions: true, OfferCardContext: viewerID != ""}))
+		// The toggle is only offered when there is context behind it. Cards are
+		// off until somebody chooses some, so offering it to everyone meant
+		// most people saw a switch that sent nothing — the worst kind, because
+		// nothing appears to happen and there is no way to tell why.
+		hasCards := viewerAcc != nil && len(viewerAcc.HomeCardOrder()) > 0
+		b.WriteString(app.ChatComponent(app.ChatConfig{Guest: viewerID == "", HideSuggestions: true, OfferCardContext: hasCards}))
 		if chips != "" {
 			b.WriteString(fmt.Sprintf(`<div class="home-chips">%s</div>`, chips))
 		}
@@ -545,12 +550,9 @@ function fetchW(la,lo){
 
 	// Inline card preferences panel
 	if viewerAcc != nil {
-		allCardDefs := []struct{ id, label string }{
-			{"prayer", "Prayer"}, {"blog", "Blog"}, {"news", "News"},
-			{"markets", "Markets"}, {"social", "Social"}, {"video", "Video"},
-			{"images", "Images"}, {"mail", "Mail"}, {"web", "Search"},
-			{"chat", "Chat"},
-		}
+		// One list, shared with /account — the two panels edit the same setting
+		// and must not disagree about what can be edited.
+		allCardDefs := app.HomeCards
 		// Selected cards first, in the order they render; then the rest.
 		//
 		// The panel posts its rows in DOM order, so dragging a row is the whole
@@ -564,7 +566,7 @@ function fetchW(la,lo){
 		seen := map[string]bool{}
 		labelOf := map[string]string{}
 		for _, c := range allCardDefs {
-			labelOf[c.id] = c.label
+			labelOf[c.ID] = c.Label
 		}
 		for _, id := range chosen {
 			if label, ok := labelOf[id]; ok && !seen[id] {
@@ -576,11 +578,11 @@ function fetchW(la,lo){
 			}
 		}
 		for _, c := range allCardDefs {
-			if !seen[c.id] {
+			if !seen[c.ID] {
 				inOrder = append(inOrder, struct {
 					id, label string
 					on        bool
-				}{c.id, c.label, false})
+				}{c.ID, c.Label, false})
 			}
 		}
 
@@ -795,8 +797,8 @@ function fetchW(la,lo){
 		b.WriteString(`<p style="color:#888;font-size:14px;margin:8px 0 0">` +
 			`No cards yet. <a href="#" onclick="var p=document.getElementById('home-card-prefs');` +
 			`if(p)p.style.display='block';return false">Choose what to keep an eye on</a> — ` +
-			`news, markets, mail, whatever you watch. They also become context you can hand ` +
-			`the agent with <em>use my cards</em>.</p>`)
+			`news, markets, mail, whatever you watch. They also become the live context you ` +
+			`can hand the agent with a single toggle above the input.</p>`)
 	}
 
 	if len(leftHTML) > 0 || len(rightHTML) > 0 {

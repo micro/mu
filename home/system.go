@@ -50,21 +50,27 @@ func systemStrip(acc *auth.Account) string {
 		taskNote = fmt.Sprintf("%d working", running)
 	}
 
+	// A count with a one-word label is only legible to somebody who already
+	// knows what the noun means here. "Apps" could be apps you use; "Unread"
+	// could be anything with a number next to it. Each tile now says whose
+	// thing it is and what happens if you open it — a line small enough to
+	// ignore once you have learned it, and the only thing on the strip that
+	// answers "why am I looking at this".
 	var b strings.Builder
 	b.WriteString(`<div id="home-system">`)
-	stat(&b, "/tasks", "Tasks", open, taskNote)
-	stat(&b, "/mail", "Unread", mail.GetUnreadCount(acc.ID), "")
-	stat(&b, "/apps", "Apps", len(apps.GetAppsByAuthor(acc.ID)), "")
+	stat(&b, "/tasks", "Tasks", open, taskNote, "yours to do, or the agent's")
+	stat(&b, "/mail", "Unread", mail.GetUnreadCount(acc.ID), "", "in your inbox here")
+	stat(&b, "/apps", "Apps", len(apps.GetAppsByAuthor(acc.ID)), "", "you have built")
 	// Admins are never charged, so a number here would be meaningless — the
 	// same reason the top bar shows them ∞ rather than a balance.
 	if !acc.Admin {
-		stat(&b, "/wallet", "Credits", wallet.GetBalance(acc.ID), "")
+		stat(&b, "/wallet", "Credits", wallet.GetBalance(acc.ID), "", "left to spend on calls")
 	}
 	b.WriteString(`</div>` + systemCSS)
 	return b.String()
 }
 
-func stat(b *strings.Builder, href, label string, n int, note string) {
+func stat(b *strings.Builder, href, label string, n int, note, hint string) {
 	cls := "home-stat"
 	if n == 0 {
 		cls += " zero"
@@ -73,19 +79,23 @@ func stat(b *strings.Builder, href, label string, n int, note string) {
 	if note != "" {
 		extra = `<span class="home-stat-note">` + note + `</span>`
 	}
+	if hint != "" {
+		extra += `<span class="home-stat-h">` + hint + `</span>`
+	}
 	fmt.Fprintf(b, `<a class="%s" href="%s"><span class="home-stat-n">%d</span>`+
 		`<span class="home-stat-l">%s</span>%s</a>`, cls, href, n, label, extra)
 }
 
 const systemCSS = `<style>
 #home-system{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 16px}
-#home-system a{flex:1 1 92px;min-width:92px;text-decoration:none;color:var(--text-primary);
+#home-system a{flex:1 1 140px;min-width:140px;text-decoration:none;color:var(--text-primary);
   border:1px solid var(--border-color,#e5e5e5);border-radius:10px;padding:10px 12px;
   display:flex;flex-direction:column;gap:1px;background:#fff}
 #home-system a:hover{border-color:#bbb}
 .home-stat-n{font-size:22px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.15}
 .home-stat-l{font-size:12px;color:var(--text-muted)}
 .home-stat-note{font-size:11px;color:#a86400;font-weight:600}
+.home-stat-h{font-size:11px;color:#aaa;line-height:1.3;margin-top:2px}
 #home-system a.zero .home-stat-n{color:var(--text-muted);font-weight:500}
 @media only screen and (max-width:600px){
   #home-system a{flex:1 1 calc(50% - 5px);min-width:0}

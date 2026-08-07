@@ -260,3 +260,24 @@ func TestATokenlessAgentCanBeIssuedOne(t *testing.T) {
 		t.Errorf("the issued token allows %v", tok.Services())
 	}
 }
+
+// Which kind gets a credential is the whole difference between the two options
+// on the create form. Both used to get one, which made the choice cosmetic: you
+// could say "runs here" and still be handed a token and an MCP endpoint for
+// something nothing outside was ever going to call, and the row's "Issue token"
+// action — written for exactly that case — could never appear.
+func TestOnlyAnAgentThatRunsElsewhereIsGivenAToken(t *testing.T) {
+	for _, tc := range []struct {
+		kind string
+		want bool
+		why  string
+	}{
+		{External, true, "it cannot be called without one"},
+		{Hosted, false, "nothing outside it needs to call it"},
+		{"", true, "the form defaults to external, and an agent that cannot be called is the worse failure"},
+	} {
+		if got := issuesToken(tc.kind); got != tc.want {
+			t.Errorf("issuesToken(%q) = %v, want %v — %s", tc.kind, got, tc.want, tc.why)
+		}
+	}
+}

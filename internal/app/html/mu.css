@@ -218,6 +218,26 @@ input {
   box-sizing: border-box;
 }
 
+/* A checkbox is not a text field. The rule above is written for one — full
+   width, 10px of padding, a border — and a checkbox inherited all three, so it
+   rendered as a box tens of pixels wide with its tick floating somewhere in the
+   middle and its label stranded far to the right. Every page that wanted one
+   worked around it instead of fixing it: the agents page replaced its
+   checkboxes with styled chips, and the tasks form still shows a gap wide
+   enough to read as a layout bug.
+
+   Sizing them here fixes it everywhere at once, and lets a plain
+   <label><input type=checkbox> text</label> line up the way it should. */
+input[type="checkbox"],
+input[type="radio"] {
+  width: auto;
+  flex: none;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  vertical-align: middle;
+}
+
 select {
   padding: 5px;
   border-radius: 5px;

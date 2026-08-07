@@ -283,11 +283,13 @@ const taskPollJS = `<script>
 </script>`
 
 const tasksPageCSS = `<style>
-.task-add{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;align-items:center;margin:10px 0 4px}
+.task-add{display:flex;flex-direction:column;gap:8px;margin:10px 0 4px}
 .task-add input[type=text],.task-add input:not([type]){min-width:0}
-.task-due{font-size:13px;color:var(--text-muted);display:flex;align-items:center;gap:6px;white-space:nowrap}
-.task-due input{font-family:inherit;font-size:13px;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px}
-.task-assign{font-size:13px;color:var(--text-muted);display:flex;align-items:center;justify-content:flex-start;gap:6px;white-space:nowrap}
+.task-add-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.task-add-row button{flex:0 0 auto}
+.task-due{font-size:13px;color:var(--text-muted);display:flex;align-items:center;gap:6px;flex:1;min-width:200px}
+.task-due input{flex:1;min-width:0;font-family:inherit;font-size:14px;padding:9px 11px;border:1px solid #d1d5db;border-radius:6px}
+.task-assign{font-size:13px;color:var(--text-muted);display:flex;align-items:center;gap:8px;cursor:pointer}
 .task-tabs{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px}
 .task-tab{font-size:13px;color:var(--text-muted);text-decoration:none}
 .task-tab.active{color:var(--text-primary);font-weight:600}
@@ -341,14 +343,24 @@ func plural(n int) string {
 // datetime-local value is the browser's local time, and the script converts it
 // to an RFC3339 instant on submit, which ParseDue already accepts. Same shape
 // as the events form, because it is the same problem.
+// The form is a column, not a row of equal columns.
+//
+// It used to be one auto-fit grid, so the title, the detail, the due picker,
+// the assign checkbox and the button all competed for the same track width.
+// The due picker ended up too narrow to read the date it was showing, and the
+// checkbox — which the global input rule was sizing like a text field — sat a
+// long way from the words it belonged to. Giving each its own line costs
+// nothing and removes both problems.
 func addForm(csrf string) string {
 	return fmt.Sprintf(`<form method="POST" action="/tasks" class="task-add" onsubmit="var d=this.duelocal.value;this.due.value=d?new Date(d).toISOString():''">
   <input type="hidden" name="_csrf" value="%s">
   <input type="hidden" name="due" value="">
   <input name="title" placeholder="What needs doing?" required>
   <input name="detail" placeholder="Detail (optional)">
-  <label class="task-due">Due <input type="datetime-local" name="duelocal"></label>
-  <label class="task-assign"><input type="checkbox" name="assign" value="agent"> Give it to the agent</label>
-  <button type="submit">Add</button>
+  <div class="task-add-row">
+    <label class="task-due">Due <input type="datetime-local" name="duelocal"></label>
+    <button type="submit">Add</button>
+  </div>
+  <label class="task-assign"><input type="checkbox" name="assign" value="agent"> <span>Give it to the agent — it starts working on this now</span></label>
 </form>`, html.EscapeString(csrf))
 }

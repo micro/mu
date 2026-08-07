@@ -36,10 +36,23 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		switch r.FormValue("action") {
 		case "create":
-			// An agent created here gets a token: this page is where you come
-			// to hand one out. One made in the chat does not, until asked.
-			a, secret, err := CreateAgent(owner, r.FormValue("name"), r.FormValue("kind"),
-				r.FormValue("prompt"), "", r.Form["services"], true)
+			// The kind decides whether a credential is issued, because the kind
+			// is a statement about where the agent runs.
+			//
+			// "Runs elsewhere" is Claude or your own program calling in, and a
+			// token is the only way it can: withholding one would ship
+			// something that cannot work. "Runs here" is standing instructions
+			// this instance executes — nothing outside needs to call it, so
+			// minting a credential and printing an MCP endpoint answers a
+			// question nobody asked and leaves a live secret lying around.
+			//
+			// Both options used to get a token anyway, which made the choice
+			// cosmetic and made "Issue token" on the row unreachable. Now it is
+			// there for the case it was written for: a local agent you later
+			// decide to call from outside.
+			kind := r.FormValue("kind")
+			a, secret, err := CreateAgent(owner, r.FormValue("name"), kind,
+				r.FormValue("prompt"), "", r.Form["services"], issuesToken(kind))
 			if err != nil {
 				http.Redirect(w, r, "/agents?error="+urlSafe(err.Error()), http.StatusSeeOther)
 				return
@@ -81,8 +94,18 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Query().Get("removed") != "" {
 		b.WriteString(`<p class="text-sm" style="color:#666">Agent removed and its token revoked.</p>`)
 	}
+	created := r.URL.Query().Get("created")
 	if secret := r.URL.Query().Get("secret"); secret != "" {
-		b.WriteString(secretPanel(secret, AgentFor(owner, r.URL.Query().Get("created")), app.BaseURL(r)))
+		b.WriteString(secretPanel(secret, AgentFor(owner, created), app.BaseURL(r)))
+	} else if created != "" {
+		// An agent that runs here has no secret to show, so say what happened
+		// and what it is now for — otherwise the page just silently grows a row.
+		name := "It"
+		if a := AgentFor(owner, created); a != nil {
+			name = html.EscapeString(a.Name)
+		}
+		b.WriteString(`<p class="text-sm" style="color:#666">` + name + ` is ready. Open its name below ` +
+			`to talk to it here — it has no token, so nothing outside this instance can call it.</p>`)
 	}
 
 	roster := Agents(owner)
@@ -104,6 +127,18 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func urlSafe(s string) string { return strings.ReplaceAll(html.EscapeString(s), " ", "%20") }
+
+// issuesToken says whether creating an agent of this kind should mint a
+// credential.
+//
+// A token is what lets something outside this instance call in, so the answer
+// is exactly "does this agent run outside". One that runs here is reached
+// through the agent page and needs nothing; one that runs elsewhere cannot work
+// without a token, so withholding it would ship something broken.
+//
+// Anything unrecognised is treated as external, because that is what the form
+// defaults to and an agent that cannot be called is the more confusing failure.
+func issuesToken(kind string) bool { return kind != Hosted }
 
 // secretPanel shows the token once. There is no second chance by design: it is
 // stored hashed, so this page could not show it again if it wanted to.
@@ -147,12 +182,13 @@ func agentRow(a *Agent, csrf, base string) string {
 	// What this agent is, in terms of what you can do with it.
 	meta, action := "", ""
 	if a.TokenID == "" {
-		meta = `Talk to it in <a href="/agent?agent=` + html.EscapeString(a.ID) + `">the agent</a>. ` +
-			`No token, so nothing outside this instance can call it.`
+		// The name above is the link now, so this says what is true rather than
+		// repeating where to click.
+		meta = `Open its name to talk to it here. No token, so nothing outside this instance can call it.`
 		action = fmt.Sprintf(`<form method="POST" action="/agents" style="margin:0">
     <input type="hidden" name="_csrf" value="%s"><input type="hidden" name="action" value="token">
     <input type="hidden" name="id" value="%s">
-    <button type="submit" class="agent-remove" style="color:#666" title="Only needed to call it from outside">Issue token</button>
+    <button type="submit" class="agent-act" title="Only needed to call it from outside">Issue token</button>
   </form>`, html.EscapeString(csrf), html.EscapeString(a.ID))
 	} else {
 		used := "not called yet"
@@ -164,7 +200,7 @@ func agentRow(a *Agent, csrf, base string) string {
 
 	return fmt.Sprintf(`<div class="agent-row">
   <div style="flex:1;min-width:0">
-    <div style="font-weight:600;font-size:14px">%s</div>
+    <a class="agent-name" href="/agent?agent=%s">%s</a>
     <div class="%s">%s</div>
     <div class="agent-meta">%s</div>
   </div>
@@ -176,7 +212,7 @@ func agentRow(a *Agent, csrf, base string) string {
     <button type="submit" class="agent-remove">Remove</button>
   </form>
 </div>`,
-		html.EscapeString(a.Name),
+		html.EscapeString(a.ID), html.EscapeString(a.Name),
 		cls, html.EscapeString(scope),
 		meta, action,
 		html.EscapeString(csrf), html.EscapeString(a.ID))
@@ -186,8 +222,9 @@ func agentRow(a *Agent, csrf, base string) string {
 func createForm(csrf string) string {
 	var b strings.Builder
 	b.WriteString(`<div class="card"><h4 style="margin:0 0 4px;font-size:14px">New agent</h4>`)
-	b.WriteString(`<p class="text-sm text-muted" style="margin:0 0 12px">It gets its own token. ` +
-		`Pick what it may reach — it will be refused everything else, even though it is your account behind it.</p>`)
+	b.WriteString(`<p class="text-sm text-muted" style="margin:0 0 12px">One that runs elsewhere gets its own ` +
+		`token; one that runs here does not need one. Either way, pick what it may reach — it will be refused ` +
+		`everything else, even though it is your account behind it.</p>`)
 	b.WriteString(`<form method="POST" action="/agents">`)
 	b.WriteString(`<input type="hidden" name="_csrf" value="` + html.EscapeString(csrf) + `">`)
 	b.WriteString(`<input type="hidden" name="action" value="create">`)
@@ -236,8 +273,18 @@ const agentsCSS = `<style>
 .agent-scope.wide{color:#a86400}
 .agent-meta{font-size:12px;color:#999;margin-top:2px;overflow:hidden;text-overflow:ellipsis}
 .agent-meta code{font-size:11px}
-.agent-remove{background:none;border:0;color:#bbb;font-size:13px;cursor:pointer}
-.agent-remove:hover{color:#b00}
+/* The agent's name is the way into it, so it looks like body text until you
+   are over it rather than like one more small grey control. */
+.agent-name{display:inline-block;font-weight:600;font-size:14px;color:var(--text-primary,#111);text-decoration:none}
+.agent-name:hover{text-decoration:underline}
+/* Two buttons that did the same thing to the eye and different things to the
+   account. Both were #bbb — barely visible — and both took the same red hover,
+   which said "destructive" about issuing a token. Now issuing reads as an
+   ordinary action and only Remove goes red, which is the one that is. */
+.agent-act{background:none;border:0;color:#666;font-size:13px;cursor:pointer;padding:0}
+.agent-act:hover{color:#111;text-decoration:underline}
+.agent-remove{background:none;border:0;color:#999;font-size:13px;cursor:pointer;padding:0}
+.agent-remove:hover{color:#b00;text-decoration:underline}
 .agent-secret{background:#f5f5f5;padding:10px 12px;font-size:12px;overflow-x:auto;border-radius:6px;margin:0;word-break:break-all}
 .agent-input{display:block;width:100%;padding:9px 11px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;font-family:inherit;margin:0 0 10px}
 /* The input is hidden and its label carries the state. Nothing is inline, so

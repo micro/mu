@@ -1468,10 +1468,47 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		Action:  "/mail?compose=true",
 		Label:   "+ Compose",
 		Filters: tabs,
-		Content: searchBar + `<div id="mailbox">` + content + `</div>`,
+		Content: addressPanel(acc.ID) + searchBar + `<div id="mailbox">` + content + `</div>`,
 	})
 
 	w.Write([]byte(app.RenderHTMLForRequest(title, "Your messages", pageHTML, r)))
+}
+
+// addressPanel answers the three questions this page never answered.
+//
+// It is a real SMTP server with DKIM, which is most of the reason mail is here
+// at all — and none of it was visible. The inbox showed messages and a compose
+// button, so somebody could use it for a while without ever learning they had
+// an address, let alone what it was. Worse, they could give it out and watch
+// mail vanish, because inbound is deliberately strict and the page said
+// nothing about that either.
+//
+// Three facts, once, at the top:
+//
+//   - the address, so it can be copied;
+//   - the plus-address convention, because an agent with its own address is
+//     the thing this service can do that a wrapper cannot, and nobody guesses
+//     it unamed;
+//   - what actually gets delivered, because a filter nobody knows about is
+//     indistinguishable from mail being broken.
+func addressPanel(accountID string) string {
+	addr := AliasFor(accountID, "")
+	agentAddr := AliasFor(accountID, "research")
+
+	return `<div class="mail-addr">` +
+		`<div class="mail-addr-line">Your address <code>` + html.EscapeString(addr) + `</code></div>` +
+		`<p>Give an agent its own by adding a tag: <code>` + html.EscapeString(agentAddr) + `</code> ` +
+		`lands in this inbox, marked so that agent can ask for only its own mail. No second account needed.</p>` +
+		`<p><strong>What gets delivered.</strong> Replies to mail you sent, anything from an address you have ` +
+		`written to, and known product domains. Everything else is refused at the door — so a newsletter you ` +
+		`never signed up for will not arrive, and neither will a first message from someone you have not mailed.</p>` +
+		`</div>
+<style>
+.mail-addr{border:1px solid #e5e5e5;border-radius:8px;padding:12px 14px;margin-bottom:12px;background:#fafafa}
+.mail-addr-line{font-size:14px;margin-bottom:6px}
+.mail-addr code{background:#fff;border:1px solid #e5e5e5;border-radius:4px;padding:1px 6px;font-size:13px}
+.mail-addr p{margin:6px 0 0;font-size:13px;color:#666;line-height:1.5}
+</style>`
 }
 
 // renderThreadPreview renders a thread preview showing the latest message but linking to root

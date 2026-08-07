@@ -396,13 +396,40 @@ var Template = `
 </html>
 `
 
-// homeCardUniverse lists every card the customise panels can toggle. It is
-// saved into an account's HomeCardsSeen when preferences are saved, so cards
-// introduced later can default to visible instead of being hidden by the
-// HomeCards allowlist. Keep in sync with the panels and home/cards.json.
-var homeCardUniverse = []string{
-	"blog", "news", "markets", "prayer", "social", "video", "images", "mail", "web", "chat",
+// HomeCard is one card the customise panels can toggle.
+type HomeCard struct {
+	ID    string
+	Label string
 }
+
+// HomeCards is every card a reader can choose, and the only list of them.
+//
+// There were four: this one as bare ids, the checkbox list on /account, the
+// inline panel on /home, and home/cards.json. Adding a card meant editing all
+// four and nothing complained if you missed one — which is exactly what
+// happened when chat was added and appeared on /home but not /account, so the
+// two panels for the same setting disagreed about what the setting was.
+//
+// cards.json still exists and still carries what this cannot: which column a
+// card starts in, its icon, its link. What it must not also carry is the
+// question of whether a card exists at all.
+var HomeCards = []HomeCard{
+	{"prayer", "Prayer"}, {"blog", "Blog"}, {"news", "News"},
+	{"markets", "Markets"}, {"social", "Social"}, {"video", "Video"},
+	{"images", "Images"}, {"mail", "Mail"}, {"web", "Search"},
+	{"chat", "Chat"},
+}
+
+// homeCardUniverse is the ids, saved into an account's HomeCardsSeen when
+// preferences are saved so cards introduced later default to visible rather
+// than being hidden by the HomeCards allowlist.
+var homeCardUniverse = func() []string {
+	ids := make([]string, 0, len(HomeCards))
+	for _, c := range HomeCards {
+		ids = append(ids, c.ID)
+	}
+	return ids
+}()
 
 var CardTemplate = `
 <!-- %s -->
@@ -1077,27 +1104,23 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	googleCard += renderConnectionsCard(r, acc, r.URL.Query().Get("connection"))
 
 	// Home card preferences
-	allCards := []struct{ id, label string }{
-		{"prayer", "Prayer"}, {"blog", "Blog"}, {"news", "News"},
-		{"markets", "Markets"}, {"social", "Social"}, {"video", "Video"},
-		{"images", "Images"}, {"mail", "Mail"}, {"web", "Search"},
-	}
+	allCards := HomeCards
 	optInCards := map[string]bool{"mail": true, "web": true}
 	activeCards := map[string]bool{}
 	for _, c := range allCards {
-		if optInCards[c.id] {
-			activeCards[c.id] = acc.HomeCardActive(c.id)
+		if optInCards[c.ID] {
+			activeCards[c.ID] = acc.HomeCardActive(c.ID)
 		} else {
-			activeCards[c.id] = acc.ShowHomeCard(c.id)
+			activeCards[c.ID] = acc.ShowHomeCard(c.ID)
 		}
 	}
 	var cardsCheckboxes string
 	for _, c := range allCards {
 		checked := ""
-		if activeCards[c.id] {
+		if activeCards[c.ID] {
 			checked = " checked"
 		}
-		cardsCheckboxes += fmt.Sprintf(`<label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:14px;border-bottom:1px solid #f0f0f0"><input type="checkbox" name="cards" value="%s"%s style="width:18px;height:18px"> %s</label>`, c.id, checked, c.label)
+		cardsCheckboxes += fmt.Sprintf(`<label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:14px;border-bottom:1px solid #f0f0f0"><input type="checkbox" name="cards" value="%s"%s style="width:18px;height:18px"> %s</label>`, c.ID, checked, c.Label)
 	}
 	homeCardsCard := fmt.Sprintf(`<div class="card">
 <h4>Home Screen</h4>
