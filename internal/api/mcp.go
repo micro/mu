@@ -169,6 +169,13 @@ type Tool struct {
 	RESTOnly   bool                                         `json:"-"`
 	Handle     func(map[string]any) (string, error)         `json:"-"` // Optional direct handler (bypasses HTTP dispatch)
 	HandleAuth func(map[string]any, string) (string, error) `json:"-"` // Like Handle but receives the account ID
+	// OptionalAuth runs HandleAuth with an empty account rather than refusing
+	// when there is no caller. For a tool that answers anyone but answers a
+	// signed-in caller with more — index_search returns public content to a
+	// guest and the caller's own on top of it. Without this the choice was
+	// between refusing guests and never learning who is asking, and refusing
+	// guests is what shipped, against the service's own declared design.
+	OptionalAuth bool `json:"-"`
 }
 
 // QuotaCheck is called before executing a metered tool.
@@ -242,6 +249,9 @@ func MCPToolNeedsAuth(body []byte) bool {
 	for i := range tools {
 		if !toolMatches(tools[i], req.Params.Name) {
 			continue
+		}
+		if tools[i].OptionalAuth {
+			return false // answers a guest, so must not send them to sign in
 		}
 		if tools[i].HandleAuth != nil || tools[i].AccountOnly {
 			return true
@@ -893,7 +903,10 @@ func ExecuteTool(r *http.Request, name string, args map[string]any) (string, boo
 		// Neither is ever taken from an argument or an unauthenticated header.
 		caller, err := callerIdentity(r)
 		if err != nil {
-			return "Authentication required", true, err
+			if !tool.OptionalAuth {
+				return "Authentication required", true, err
+			}
+			caller = "" // answer as a guest
 		}
 		text, err := tool.HandleAuth(args, caller)
 		return text, err != nil, err

@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -33,7 +34,7 @@ func TestTheCatalogueHasBothLenses(t *testing.T) {
 		}
 	}
 
-	svc := serviceGrid()
+	svc := serviceGrid(httptest.NewRequest("GET", "/services", nil))
 	if !strings.Contains(svc, `href="/catpaged"`) {
 		t.Errorf("the services lens is missing a paged service:\n%s", svc)
 	}

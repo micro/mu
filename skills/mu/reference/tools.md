@@ -51,14 +51,17 @@ Apps keep a separate store each, reached through `mu.db` in the app SDK. Records
 written here are not visible to an app and vice versa, unless published with
 `public: true`.
 
-**index** — `index_search(query, limit)` searches across the caller's own
-content: their posts, notes, saved things. Reach for it before `web_search` when
-the answer might already be theirs.
-
 **wallet** — `wallet_balance`, `wallet_check(operation)`, `wallet_charge(operation)`.
 
 **saved / content** — `saved_list`, and `content_save`, `content_unsave`,
 `content_hide`, `content_flag`, each taking `(type, id)`.
+
+## Both — more when it knows who is asking
+
+**index** — `index_search(query, limit)` searches what this instance holds. A
+guest gets the public corpus; a caller with an account gets their own entries and
+their own mail on top. So it answers either way, and answers better with a token.
+Reach for it before `web_search` when what you want might already be here. Free.
 
 ## The world — works anonymously
 

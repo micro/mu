@@ -46,7 +46,18 @@ func (Server) Search(ctx context.Context, req *Request, rsp *Response) error {
 }
 
 func search(accountID, query string, limit int) string {
-	pub := data.Search(query, limit)
+	// WithOwner adds this account's private entries; without it the index
+	// returns public content only, which is the safe default and was also the
+	// only thing this ever returned. So "search across the caller's own
+	// content" found everybody's public content and none of the caller's own —
+	// the one thing its name promises — and the omission was invisible, because
+	// an empty result from a search reads as "nothing matched".
+	var opts []data.SearchOption
+	if accountID != "" {
+		opts = append(opts, data.WithOwner(accountID))
+	}
+	pub := data.Search(query, limit, opts...)
+
 	var mails []*mail.Message
 	if accountID != "" {
 		mails = mail.Search(accountID, query, 6)
@@ -114,12 +125,15 @@ func stripTags(s string) string {
 	return b.String()
 }
 
-// Not Scoped, for the same reason stream is not: a guest may search, they just
-// get less. Search adds the caller's mail only when there is a caller, so an
-// unauthenticated search returns public indexed content and nothing else.
-// Marking the service scoped would close it to guests entirely — which is what
-// the agent did, while the micro-agent allowlist let guests through. Two lists,
-// two answers.
+// Not Scoped: a guest may search, they just get less. Search adds the caller's
+// own entries and their mail only when there is a caller, so an unauthenticated
+// search returns public indexed content and nothing else.
+//
+// This was true of the service and false of the tool for a long time.
+// index_search was registered with RegisterToolWithAuth, which refuses anyone
+// without an account, so guests were closed out — the "two lists, two answers"
+// this comment warned about, happening to the comment. The tool takes optional
+// auth now, which is one mechanism giving both answers.
 var Spec = service.Spec{
 	Name:        "index",
 	Handler:     Server{},

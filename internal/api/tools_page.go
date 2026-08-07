@@ -31,6 +31,14 @@ import (
 // does it cost", not parameter types. Each card links through to its entry on
 // /mcp, which already carries the schema, an example request and a playground.
 func ToolsPageHandler(w http.ResponseWriter, r *http.Request) {
+	// Pinning happens here because this is where you are when you find out a
+	// service exists. A separate settings page for it would mean discovering
+	// something and then going somewhere else to keep it.
+	if r.Method == http.MethodPost {
+		togglePin(w, r)
+		return
+	}
+
 	services := strings.HasPrefix(r.URL.Path, "/services")
 	if v := r.URL.Query().Get("view"); v != "" {
 		services = v == "services"
@@ -50,7 +58,7 @@ func ToolsPageHandler(w http.ResponseWriter, r *http.Request) {
 	// thing to read and one more place for the two to disagree.
 	var b strings.Builder
 	if services {
-		b.WriteString(serviceGrid())
+		b.WriteString(serviceGrid(r))
 	} else {
 		b.WriteString(connectSection(r))
 		b.WriteString(toolGrid())
@@ -63,6 +71,42 @@ func ToolsPageHandler(w http.ResponseWriter, r *http.Request) {
 		title, desc = "Services", "Everything this instance runs, and what each one is"
 	}
 	app.Respond(w, r, app.Response{Title: title, Description: desc, HTML: b.String()})
+}
+
+// togglePin adds or removes a service from the caller's sidebar and returns
+// them to where they were. Signed-out callers are sent to sign in: a pin is a
+// preference and there is nowhere to keep one without an account.
+func togglePin(w http.ResponseWriter, r *http.Request) {
+	if _, acc, err := auth.RequireSession(r); err == nil && acc != nil {
+		name := strings.ToLower(strings.TrimSpace(r.FormValue("pin")))
+		if _, ok := service.SpecFor(name); ok {
+			acc.TogglePin(name)
+			auth.UpdateAccount(acc)
+		}
+		http.Redirect(w, r, "/services", http.StatusSeeOther)
+		return
+	}
+	http.Redirect(w, r, "/login?redirect=/services", http.StatusSeeOther)
+}
+
+// pinControl is the star on a tile. It sits outside the tile's anchor because
+// an interactive control inside a link is a control you cannot click without
+// also following the link.
+func pinControl(r *http.Request, name string, pinned bool) string {
+	if _, acc := auth.TrySession(r); acc == nil {
+		return ""
+	}
+	label, cls := "Pin to sidebar", "pin-btn"
+	if pinned {
+		label, cls = "Unpin from sidebar", "pin-btn pinned"
+	}
+	return `<form method="POST" action="/services" class="pin-form">` +
+		`<input type="hidden" name="_csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `">` +
+		`<input type="hidden" name="pin" value="` + html.EscapeString(name) + `">` +
+		`<button type="submit" class="` + cls + `" title="` + label + `" aria-label="` + label + `">` +
+		`<svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" ` +
+		`stroke-linejoin="round"><polygon points="12,3 14.6,9 21,9.5 16.2,13.8 17.6,20 12,16.8 6.4,20 7.8,13.8 3,9.5 9.4,9"/></svg>` +
+		`</button></form>`
 }
 
 // serviceGrid is the person's lens: one tile per service you can open.
@@ -78,15 +122,26 @@ func ToolsPageHandler(w http.ResponseWriter, r *http.Request) {
 // needed one, and it linked to /mcp, which is not what a tile that looks like
 // the others should do. They are in the Tools lens, where index_search is a
 // thing an agent can actually call.
-func serviceGrid() string {
+//
+// Each tile carries a pin, which is how a service gets into the sidebar. The
+// sidebar shows what you chose; this shows everything there is to choose.
+func serviceGrid(r *http.Request) string {
 	counts := map[string]int{}
 	for _, g := range groupTools() {
 		counts[strings.ToLower(g.Label)] += len(g.Tools)
 	}
 
+	isPinned := map[string]bool{}
+	if _, acc := auth.TrySession(r); acc != nil {
+		for _, n := range acc.PinnedServices() {
+			isPinned[n] = true
+		}
+	}
+
 	var b strings.Builder
 	b.WriteString(`<div class="tool-grid service-grid">`)
 	for _, s := range service.Nav() {
+		b.WriteString(`<div class="service-tile-wrap">`)
 		b.WriteString(`<a class="tool-tile service-tile" href="` + html.EscapeString(s.Page) + `">`)
 		b.WriteString(`<span class="service-tile-head">` +
 			`<img src="/` + html.EscapeString(s.NavIcon()) + `?` + app.Version + `" alt="">` +
@@ -102,6 +157,8 @@ func serviceGrid() string {
 		}
 		b.WriteString(`<span class="tool-tile-price">` + html.EscapeString(meta) + `</span>`)
 		b.WriteString(`</a>`)
+		b.WriteString(pinControl(r, s.Name, isPinned[s.Name]))
+		b.WriteString(`</div>`)
 	}
 	b.WriteString(`</div>`)
 	return b.String()
@@ -335,6 +392,20 @@ func serviceOf(tool string) string {
 const toolsPageCSS = `<style>
 .service-tile-head{display:flex;align-items:center;gap:8px}
 .service-tile-head img{width:18px;height:18px}
+/* The wrapper exists so the pin can sit on the tile without sitting inside the
+   link — a button inside an anchor cannot be pressed without also following it.
+   The tile still fills the cell, so the whole card remains the hit target for
+   opening the service. */
+.service-tile-wrap{position:relative;display:flex}
+.service-tile-wrap>.tool-tile{flex:1;padding-right:34px}
+.pin-form{position:absolute;top:6px;right:6px;margin:0}
+.pin-btn{background:none;border:0;padding:4px;width:auto;cursor:pointer;color:#d0d0d0;
+  display:flex;align-items:center;border-radius:6px}
+.pin-btn svg{fill:none}
+.pin-btn:hover{color:#888;background:#f5f5f5}
+.pin-btn.pinned{color:#c79a2e}
+.pin-btn.pinned svg{fill:currentColor}
+.pin-btn.pinned:hover{color:#a87f1f}
 
 .tool-group{margin:0 0 26px}
 .tool-group-title{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#999;margin:0 0 10px}

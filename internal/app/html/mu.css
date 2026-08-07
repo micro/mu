@@ -434,6 +434,28 @@ td {
   /* nav-bottom is now direct child of nav-container */
 }
 
+/* A pinned group inside the scrolling part of the nav. The divider above it
+   separates what the product is (agents, tools, services) from what this
+   reader uses, which are different kinds of thing and were previously the same
+   undifferentiated list. */
+.nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  border-top: 1px solid var(--divider, #f0f0f0);
+  margin-top: 10px;
+  padding-top: 10px;
+}
+
+.nav-heading {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-muted, #999);
+  padding: 0 14px 2px;
+}
+
 .nav-bottom {
   display: flex;
   flex-direction: column;

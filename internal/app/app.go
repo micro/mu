@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"mu/internal/auth"
+	"mu/internal/service"
 
 	"github.com/gomarkdown/markdown"
 	"github.com/gomarkdown/markdown/ast"
@@ -1620,6 +1621,42 @@ func navOperate(acc *auth.Account) string {
 	return out + `<a id="nav-wallet" href="/wallet"><img src="/wallet.png?` + Version + `"><span class="label">Wallet</span></a>`
 }
 
+// navPinned is the reader's own services, under a heading of their own.
+//
+// The sidebar went from nineteen alphabetical services — which put Wallet
+// eighteenth, between Video and Weather — to none of them, because the three
+// levels are what the product is and a list of nineteen buried them. That was
+// right for arriving and wrong for using: somebody who wanted Video reached for
+// the sidebar, found nothing, and had to go to the catalogue and hunt.
+//
+// The way back is not the old list. This one is chosen, so it is short, it is
+// ordered by the person who made it, and it is empty until somebody pins
+// something — which means the view a developer arrives at is unchanged. The
+// group scrolls if it grows; the account group below it does not move, because
+// signing out is not something to scroll for.
+//
+// Nothing is drawn at all when nothing is pinned. An empty heading over an
+// empty list is a worse answer than no heading.
+func navPinned(acc *auth.Account) string {
+	if acc == nil {
+		return ""
+	}
+	pinned := service.Pinned(acc.PinnedServices())
+	if len(pinned) == 0 {
+		return ""
+	}
+
+	var b strings.Builder
+	b.WriteString(`<div class="nav-group"><div class="nav-heading">Services</div>`)
+	for _, s := range pinned {
+		b.WriteString(`<a href="` + htmlpkg.EscapeString(s.Page) + `">` +
+			`<img src="/` + htmlpkg.EscapeString(s.NavIcon()) + `?` + Version + `">` +
+			`<span class="label">` + htmlpkg.EscapeString(s.NavLabel()) + `</span></a>`)
+	}
+	b.WriteString(`</div>`)
+	return b.String()
+}
+
 // navBottom is the account: who you are, the page about you, and the way out.
 //
 // Kept as its own group rather than folded into the account page, because
@@ -1648,7 +1685,7 @@ func RenderHTMLWithLangAndAuth(title, desc, html, lang string, acc *auth.Account
 		lang = "en"
 	}
 	title, desc = escapeMeta(title), escapeMeta(desc)
-	return (fmt.Sprintf(Template, lang, title, desc, "", headBalance(acc), navOperate(acc), navBottom(acc), title, html))
+	return (fmt.Sprintf(Template, lang, title, desc, "", headBalance(acc), navOperate(acc)+navPinned(acc), navBottom(acc), title, html))
 }
 
 // escapeMeta escapes a page title or description. Handlers pass these through
@@ -1671,7 +1708,7 @@ func RenderHTMLWithLangAndBody(title, desc, html, lang, bodyAttr string, acc *au
 	if banner := creditsBannerFor(acc, ""); banner != "" {
 		html = banner + html
 	}
-	return (fmt.Sprintf(Template, lang, title, desc, bodyAttr, headBalance(acc), navOperate(acc), navBottom(acc), title, html))
+	return (fmt.Sprintf(Template, lang, title, desc, bodyAttr, headBalance(acc), navOperate(acc)+navPinned(acc), navBottom(acc), title, html))
 }
 
 // RenderString renders a markdown string as html

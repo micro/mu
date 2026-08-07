@@ -666,7 +666,13 @@ func main() {
 		}
 		sess, err := auth.GetSession(r)
 		if err != nil {
-			return false, 0, fmt.Errorf("authentication required")
+			// Not "authentication required", which is what an account-scoped
+			// tool answers with a 401 and a WWW-Authenticate header telling a
+			// client where to sign in. This is a different condition wearing
+			// the same words: the call is metered, and there is nobody to
+			// charge. Signing in is one answer; paying is the other, and a
+			// client told to authenticate would never find the second.
+			return false, 0, fmt.Errorf("this call is metered: sign in so it can be charged to your credits, or send an x402 payment")
 		}
 		canProceed, _, cost, err := wallet.CheckQuota(sess.Account, op)
 		return canProceed, cost, err
@@ -684,7 +690,13 @@ func main() {
 		}
 		sess, err := auth.GetSession(r)
 		if err != nil {
-			return false, 0, fmt.Errorf("authentication required")
+			// Not "authentication required", which is what an account-scoped
+			// tool answers with a 401 and a WWW-Authenticate header telling a
+			// client where to sign in. This is a different condition wearing
+			// the same words: the call is metered, and there is nobody to
+			// charge. Signing in is one answer; paying is the other, and a
+			// client told to authenticate would never find the second.
+			return false, 0, fmt.Errorf("this call is metered: sign in so it can be charged to your credits, or send an x402 payment")
 		}
 		canProceed, _, cost, err := wallet.CheckQuota(sess.Account, op)
 		return canProceed, cost, err
@@ -1129,9 +1141,10 @@ func main() {
 		app.Log("main", "recall service register failed: %v", err)
 	}
 	api.RegisterToolWithAuth(api.Tool{
-		Name:        "index_search",
-		Aliases:     []string{"index", "recall", "search"},
-		Description: "Search across everything mu knows — indexed news, blog, social and video, plus the user's own mail — and return the most relevant items with ids. Use for 'do you remember', 'what did I get about X', 'search my stuff' and cross-source lookups.",
+		Name:         "index_search",
+		Aliases:      []string{"index", "recall", "search"},
+		OptionalAuth: true,
+		Description:  "Search across everything mu knows — indexed news, blog, social and video, plus the user's own mail — and return the most relevant items with ids. Use for 'do you remember', 'what did I get about X', 'search my stuff' and cross-source lookups.",
 		Params: []api.ToolParam{
 			{Name: "query", Type: "string", Description: "What to look for", Required: true},
 			{Name: "limit", Type: "string", Description: "Optional max results (default 12)", Required: false},

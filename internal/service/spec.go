@@ -156,6 +156,34 @@ func Nav() []Spec {
 	return out
 }
 
+// Pinned returns the services named, in the order given, skipping any that are
+// not registered or have no page to open.
+//
+// The order is the reader's and is preserved exactly — this is a list somebody
+// arranged, not one to sort. A name that no longer resolves is dropped rather
+// than rendered as a dead link, so removing a service from an instance quietly
+// removes it from everyone's sidebar instead of breaking it.
+//
+// Two comments have described the sidebar as showing this since before it
+// existed. It did not, which is why reaching for a service you use meant going
+// to the catalogue and hunting for it.
+func Pinned(names []string) []Spec {
+	out := make([]Spec, 0, len(names))
+	seen := map[string]bool{}
+	for _, name := range names {
+		if seen[name] {
+			continue
+		}
+		seen[name] = true
+		s, ok := SpecFor(name)
+		if !ok || s.Headless() {
+			continue
+		}
+		out = append(out, s)
+	}
+	return out
+}
+
 var (
 	specMu sync.RWMutex
 	specs  = map[string]Spec{}

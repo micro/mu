@@ -79,24 +79,35 @@ it needs a scoped token, not a filtered URL.
 
 ## Recognising a refusal
 
-Account-scoped tools called without a token answer with a plain body:
+Two different refusals, and they mean different things.
 
-```json
+**No account, on a tool that needs one.** `HTTP 401`, with the header that tells
+a client where to sign in:
+
+```
+HTTP/1.1 401 Unauthorized
+WWW-Authenticate: Bearer resource_metadata="https://micro.mu/.well-known/oauth-protected-resource"
 {"error":"authentication required"}
 ```
 
-This is **not** a JSON-RPC `error` object. A client that only checks for `error`
-at the envelope level will treat it as a successful result whose content happens
-to be that JSON. Inspect the content.
+This is the MCP authorization handshake, not an error to report to the user — a
+client that implements it should follow the metadata and get a token. The body
+is a plain object rather than a JSON-RPC `error`, because the refusal happens
+before the JSON-RPC layer is reached.
 
-Metered tools that need an account — `web_search` is one — do return a JSON-RPC
-error, so both shapes occur. Handle both.
+**No account, on a metered tool.** `HTTP 200` with a JSON-RPC `error`, saying
+the call is metered and there is nobody to charge. Do **not** start an OAuth
+flow on this one: signing in is only one of the two answers, and the other is to
+send an x402 payment.
+
+So: check the status code first. 401 means get a credential; a JSON-RPC error
+means read what it says.
 
 ## What needs an account
 
 Refuse anonymous callers outright:
 
-`mail_*`, `contacts_*`, `events_*`, `tasks_*`, `files_*`, `db_*`, `index_search`,
+`mail_*`, `contacts_*`, `events_*`, `tasks_*`, `files_*`, `db_*`,
 `wallet_*`, `saved_list`, `content_*`, and editing your own `apps_*` or `blog_*`.
 
 Work anonymously:
@@ -104,6 +115,11 @@ Work anonymously:
 `news_*`, `markets_list`, `weather_forecast`, `video_*`, `blog_list`,
 `blog_read`, `stream_list`, `chat_rooms`, `chat_messages`, `apps_search`,
 `apps_read`, `social_*`, `prayer_*`, `quran_search`, `images_search`.
+
+`index_search` is the one that does both: anyone may call it and gets the
+instance's public content; a caller with an account gets their own entries and
+their own mail on top. So it is worth calling even unauthenticated, and worth
+calling again once you have a token.
 
 `mail_send` is the strict case: account-only whatever the price, so an
 unaccountable caller cannot spend the instance's domain reputation.

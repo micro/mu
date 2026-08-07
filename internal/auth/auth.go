@@ -37,6 +37,7 @@ type Account struct {
 	Widgets         []string  `json:"widgets,omitempty"`         // App IDs to show as home widgets
 	HomeCards       []string  `json:"home_cards,omitempty"`      // Card IDs the user has chosen to show (empty = all defaults)
 	HomeCardsSeen   []string  `json:"home_cards_seen,omitempty"` // Card IDs the customise panel has offered this user; anything newer defaults to visible
+	Pinned          []string  `json:"pinned,omitempty"`          // Service names pinned to the sidebar, in the order shown
 	Approved        bool      `json:"approved,omitempty"`        // Admin-approved, bypasses new account restrictions
 	Email           string    `json:"email,omitempty"`
 	EmailVerified   bool      `json:"email_verified,omitempty"`
@@ -1004,4 +1005,65 @@ func (t *Token) HasPermission(perm string) bool {
 		}
 	}
 	return false
+}
+
+// PinnedServices is the services this account keeps in its sidebar, in order.
+//
+// Empty is the default and the common case. The sidebar teaches three levels —
+// agents, tools, services — and a reader who has pinned nothing sees exactly
+// those, which is what somebody arriving from a landing page that says tools
+// for agents should see.
+//
+// It stops being the right thing the moment you use one of the services. The
+// nav went from nineteen alphabetical entries to none, and reaching for Video
+// meant going to the catalogue and hunting; the answer to both is a list that
+// is yours rather than the instance's opinion.
+func (a *Account) PinnedServices() []string {
+	if a == nil {
+		return nil
+	}
+	out := make([]string, 0, len(a.Pinned))
+	seen := map[string]bool{}
+	for _, name := range a.Pinned {
+		name = strings.ToLower(strings.TrimSpace(name))
+		if name == "" || seen[name] {
+			continue
+		}
+		seen[name] = true
+		out = append(out, name)
+	}
+	return out
+}
+
+// SetPinned records the selection and its order.
+func (a *Account) SetPinned(names []string) {
+	out := make([]string, 0, len(names))
+	seen := map[string]bool{}
+	for _, name := range names {
+		name = strings.ToLower(strings.TrimSpace(name))
+		if name == "" || seen[name] {
+			continue
+		}
+		seen[name] = true
+		out = append(out, name)
+	}
+	a.Pinned = out
+}
+
+// TogglePin adds a service if absent, removes it if present, and reports
+// whether it is pinned afterwards.
+func (a *Account) TogglePin(name string) bool {
+	name = strings.ToLower(strings.TrimSpace(name))
+	if name == "" {
+		return false
+	}
+	for i, p := range a.PinnedServices() {
+		if p == name {
+			cur := a.PinnedServices()
+			a.SetPinned(append(cur[:i:i], cur[i+1:]...))
+			return false
+		}
+	}
+	a.SetPinned(append(a.PinnedServices(), name))
+	return true
 }
