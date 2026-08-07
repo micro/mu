@@ -17,6 +17,7 @@ import (
 	"strings"
 	"testing"
 
+	"mu/internal/api"
 	"mu/internal/service"
 )
 
@@ -164,6 +165,85 @@ func TestReadmeToolTableUsesServiceNames(t *testing.T) {
 	for _, s := range allSpecs() {
 		if s.Page != "" && !seen[s.Name] {
 			t.Errorf("%s has a page at %s but no tools in the README table", s.Name, s.Page)
+		}
+	}
+}
+
+// The README table names tools, and a name that no longer exists reads exactly
+// like one that does. This is the same rot toolrefs_test.go catches in shipped
+// descriptions, in the one document most people read first: the table went on
+// listing `chat` after it was removed, and `hadith`, `save` and `dismiss` for a
+// commit after they were namespaced.
+//
+// Aliases count. Keeping the old name working is a deliberate kindness to
+// anything already calling it; printing the old name in the table is different,
+// because it teaches the alias instead of the tool.
+func TestReadmeToolTableNamesToolsThatExist(t *testing.T) {
+	registerAll(t)
+	api.DeriveTools()
+
+	real := map[string]bool{}
+	for _, tool := range api.Commands() {
+		real[tool.Name] = true
+	}
+	// Tools main() registers rather than deriving from a Spec.
+	src, err := os.ReadFile("main.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, m := range regexp.MustCompile(`Name:\s*"([a-z][a-z0-9_]*)"`).FindAllStringSubmatch(string(src), -1) {
+		real[m[1]] = true
+	}
+
+	var gone []string
+	for _, cells := range tableRows(t, "README.md", "## The tools") {
+		if len(cells) < 2 {
+			continue
+		}
+		for _, m := range backticked.FindAllStringSubmatch(cells[1], -1) {
+			name := m[1]
+			// Only things shaped like a tool; the cells also contain prose in
+			// backticks, like `mu.db` and `id`.
+			if !strings.Contains(name, "_") || strings.Contains(name, ".") {
+				continue
+			}
+			if !real[name] {
+				gone = append(gone, name+" (under "+strings.Trim(cells[0], "*")+")")
+			}
+		}
+	}
+	if len(gone) > 0 {
+		t.Errorf("the README lists %d tool(s) that do not exist:\n  %s",
+			len(gone), strings.Join(gone, "\n  "))
+	}
+}
+
+// The tool table is alphabetical, and a new row appended to the bottom looks
+// fine in a diff and wrong on the page. Database went in below Video, between
+// V and W, because appending is what you do to a list you are not looking at.
+//
+// Platform is last on purpose: it is the tools with no service in front of the
+// underscore, so it is a remainder rather than a name to sort.
+func TestReadmeToolTableIsAlphabetical(t *testing.T) {
+	var labels []string
+	for _, cells := range tableRows(t, "README.md", "## The tools") {
+		if len(cells) < 2 {
+			continue
+		}
+		labels = append(labels, strings.Trim(cells[0], "*"))
+	}
+	if len(labels) < 2 {
+		t.Fatalf("found %d rows in the tool table", len(labels))
+	}
+
+	if last := labels[len(labels)-1]; last != "Platform" {
+		t.Errorf("the last row is %q; Platform is the remainder and belongs at the end", last)
+	}
+	named := labels[:len(labels)-1]
+
+	for i := 1; i < len(named); i++ {
+		if strings.ToLower(named[i]) < strings.ToLower(named[i-1]) {
+			t.Errorf("%q comes after %q in the table but before it alphabetically", named[i], named[i-1])
 		}
 	}
 }

@@ -19,6 +19,7 @@ mu/
 │   ├── blog/
 │   ├── chat/
 │   ├── contacts/
+│   ├── db/
 │   ├── events/
 │   ├── files/
 │   ├── images/
@@ -272,6 +273,11 @@ Named collections of JSON records. Every record has a **server-set owner** (the
 signed-in user) and a **public** flag, so one app can hold each user's private
 data plus a shared public set. This is the building block for real apps — notes,
 lists, posts, trackers — where "mine" and "public" both matter.
+
+An agent gets the same shape through the `db_*` tools and the `/db` page, in a
+separate store: each app has its own namespace, so what an app writes here is
+not what `db_create` writes and the other way round. A record published with
+`public: true` is the only thing both sides see.
 
 ```javascript
 // Create — private to me, or shared publicly

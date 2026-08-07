@@ -6,7 +6,8 @@ Tools for agents
 
 Mu is an MCP server and web app for agents and humans. It provides access to the real world through MCP for the agents 
 and let's humans browse or interact with same content in a web app. Access news, web search, mail,
-markets, weather, video, places, images, files, events, contacts and more.
+markets, weather, video, places, images, files, events, contacts, and a database
+your agents can keep records in.
 
 Use it live at [micro.mu](https://micro.mu), or self-host.
 
@@ -63,8 +64,9 @@ one row per service, named for it.
 |---|---|
 | **Apps** | `apps_build` · `apps_create` · `apps_edit` · `apps_fork` · `apps_read` · `apps_run` · `apps_search` · `apps_test` — build and run small web tools |
 | **Blog** | `blog_create` · `blog_read` · `blog_list` · `blog_update` · `blog_delete` — publish, with AI-generated daily digests |
-| **Chat** | `chat` · `chat_rooms` · `chat_messages` — one question one answer, and the live rooms |
+| **Chat** | `chat_rooms` · `chat_messages` — the live discussion rooms attached to an item |
 | **Contacts** | `contacts_add` · `contacts_find` · `contacts_list` · `contacts_delete` — turn a name into an address |
+| **Database** | `db_create` · `db_get` · `db_list` · `db_delete` — named collections of your own records, private by default, that outlive a conversation (`db_create` with an `id` overwrites). Apps get their own separate store through `mu.db` |
 | **Events** | `events_create` · `events_list` · `events_delete` · `events_free` — schedule, cancel, and find when you are free, counting the Google Calendar you already keep |
 | **Files** | `files_put` · `files_get` · `files_list` · `files_share` · `files_delete` — keep a file, get a URL |
 | **Images** | `images_generate` · `images_search` |
@@ -73,16 +75,15 @@ one row per service, named for it.
 | **Markets** | `markets_list` — stocks, crypto, futures, commodities, currencies |
 | **News** | `news_list` · `news_read` · `news_search` — RSS aggregation, full articles |
 | **Places** | `places_search` · `places_nearby` · `places_eta` · `places_geocode` — points of interest, geocoding, travel time |
-| **Prayer** | `prayer_times` · `prayer_qibla` · `prayer_reflection` — Islamic prayer times, qibla, and a daily verse, saying and name |
+| **Prayer** | `prayer_times` · `prayer_qibla` · `prayer_verse` · `prayer_saying` · `prayer_reflection` — Islamic prayer times, qibla, and a daily verse, saying and name |
 | **Search** | `web_search` · `web_fetch` — search the web, read a page as clean text |
 | **Social** | `social_list` · `social_search` — public threads and replies |
 | **Stream** | `stream_list` · `stream_post` — this instance's own timeline |
 | **Tasks** | `tasks_create` · `tasks_list` · `tasks_next` · `tasks_update` · `tasks_delete` — what is to be done, and work you can hand to the agent |
 | **Video** | `video_list` · `video_search` — curated channels, no ads or recommendations |
-| **Database** | `db_create` · `db_get` · `db_list` · `db_delete` — named collections of your own records, private by default, that outlive a conversation (`db_create` with an `id` overwrites). Apps get their own separate store through `mu.db` |
 | **Wallet** | `wallet_balance` · `wallet_check` — credits, which is what calls are charged in |
 | **Weather** | `weather_forecast` — conditions, forecast, pollen |
-| **Platform** | `agent` — ask the whole thing a question and let it compose. Also `quran` · `quran_search` · `hadith`, `save` · `unsave` · `saved_list`, and `flag` · `dismiss` · `block_user` · `unblock_user` |
+| **Platform** | `agent_ask` — ask the whole thing a question and let it compose. Also `quran_search`, `content_save` · `content_unsave` · `saved_list`, and `content_flag` · `content_hide` · `block_user` · `unblock_user` |
 
 ## Request a tool
 
@@ -113,6 +114,7 @@ mu web search "claude code"             # search the web
 mu markets list --category stocks       # live prices
 mu agent "what is the btc price?"       # run the full agent
 mu weather forecast --lat 51.5 --lon -0.12
+mu db list --collection notes           # your own records
 mu wallet                               # your balance
 mu help                                 # full tool list
 ```

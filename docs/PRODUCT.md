@@ -37,9 +37,23 @@ Two consequences worth holding:
 
 - **An agent is not a service.** It consumes them. `agent/` sits beside
   `service/` in the repo and always has.
-- **A service is a domain noun**, never an action and never a substrate.
-  Storage, databases and model access are not domains — they are how other
-  things work. That is why `db` is `internal/userdb` and not `service/db`.
+- **A service is a domain noun**, never an action and never a substrate. The
+  substrate is how other things work: `internal/userdb` is the store that
+  `tasks`, `files`, `contacts`, `images` and the agent roster all sit on, and it
+  is not a service and never will be.
+
+  But *the caller's own records* are a domain, the same way their files are.
+  That distinction was got wrong once, in this document, which said storage was
+  not a domain and therefore `db` could not be a service. Two things followed.
+  Token scoping arrived afterwards and works per service, so a tool with no
+  service behind it could be granted to nobody — `db_*` was unreachable by every
+  scoped agent and had no box to tick on `/agents`. And the catalogue is derived
+  from Specs, so the storage the docs told agents to rely on appeared nowhere a
+  person could see it.
+
+  The rule survives; the reading of it was too literal. `internal/userdb` is the
+  substrate and stays internal. `service/db` is "your database" — a noun you can
+  look at, grant, and scope.
 
 ### What earns a place in the sidebar
 
