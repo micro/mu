@@ -450,10 +450,19 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	content := `<div class="chat-layout">` + rail + `<div class="chat-main">` + chip + app.ChatComponent(cfg) + `</div></div>` + chatLayoutCSS
 
 	// Seed the active agent so the panel highlights it and follow-ups continue
-	// with it: an explicit ?agent= selection (deep link) wins; otherwise a
-	// reopened session restores the agent it was using (blank resets to default,
+	// with it: an explicit ?id= selection (deep link) wins; otherwise a reopened
+	// session restores the agent it was using (blank resets to default,
 	// overriding any stale in-tab selection).
-	if sel := r.URL.Query().Get("agent"); sel != "" && !guest {
+	//
+	// ?id= because that is what /agent/new and /agents already call an agent's
+	// id, and the same object should not have two names depending on which page
+	// links to it. ?agent= still works: links to it exist, and breaking a URL to
+	// tidy a parameter is a bad trade.
+	sel := r.URL.Query().Get("id")
+	if sel == "" {
+		sel = r.URL.Query().Get("agent")
+	}
+	if sel != "" && !guest {
 		content += `<script>window.muSeedAgent(` + app.JSString(sel) + `);history.replaceState(null,'','/agent');</script>`
 	} else if reopened {
 		content += `<script>window.muSeedAgent(` + app.JSString(reopenAgent) + `);</script>`

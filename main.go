@@ -10,6 +10,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"runtime"
@@ -1737,6 +1738,7 @@ func main() {
 		"/img":                    false, // Public — cached article images (a prefix of /images, same answer)
 		"/events":                 true,  // Personal scheduled reminders — sign-in required
 		"/contacts":               true,  // Your address book — sign-in required
+		"/db":                     true,  // Your own records — sign-in required
 		"/tasks":                  true,  // Your task list — sign-in required
 		"/social":                 false, // Public viewing, auth for search
 		"/social/thread":          false, // Public thread view, auth for messaging
@@ -2288,7 +2290,17 @@ func main() {
 							w.Write([]byte(`{"error":"Authentication required"}`))
 							return
 						} else {
-							http.Redirect(w, r, "/", 302)
+							// To the sign-in page, carrying where they were
+							// going — not to the landing page, which is the
+							// pitch for a product they have already bought and
+							// which loses the destination. Signing in should
+							// finish the thing you were doing.
+							//
+							// RequestURI is path and query, always relative, so
+							// this cannot be turned into an open redirect; the
+							// login side re-checks with safeRedirect anyway.
+							http.Redirect(w, r, "/login?redirect="+url.QueryEscape(r.URL.RequestURI()),
+								http.StatusSeeOther)
 							return
 						}
 					}

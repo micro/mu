@@ -200,7 +200,7 @@ func agentRow(a *Agent, csrf, base string) string {
 
 	return fmt.Sprintf(`<div class="agent-row">
   <div style="flex:1;min-width:0">
-    <a class="agent-name" href="/agent?agent=%s">%s</a>
+    <a class="agent-name" href="/agent?id=%s">%s</a>
     <div class="%s">%s</div>
     <div class="agent-meta">%s</div>
   </div>
@@ -287,11 +287,6 @@ const agentsCSS = `<style>
 .agent-remove:hover{color:#b00;text-decoration:underline}
 .agent-secret{background:#f5f5f5;padding:10px 12px;font-size:12px;overflow-x:auto;border-radius:6px;margin:0;word-break:break-all}
 .agent-input{display:block;width:100%;padding:9px 11px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;font-family:inherit;margin:0 0 10px}
-/* The input is hidden and its label carries the state. Nothing is inline, so
-   nothing can be misaligned; :checked styles the sibling span. */
-.pick input,.chip input{position:absolute;opacity:0;width:0;height:0}
-.pick input:focus-visible+span,.chip input:focus-visible+span{outline:2px solid #111;outline-offset:2px}
-
 .pick-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 14px}
 .pick span{display:block;height:100%;border:1px solid #ddd;border-radius:8px;padding:10px 12px;
   cursor:pointer;font-size:12px;color:#666;line-height:1.4}
@@ -301,10 +296,26 @@ const agentsCSS = `<style>
 .pick input:checked+span strong::after{content:" ✓";color:#0a7d33}
 
 .agent-scope-pick{border-top:1px solid #eee;padding-top:12px;margin:0 0 14px}
+@media only screen and (max-width:600px){.pick-row{grid-template-columns:1fr}}
+</style>` + chipCSS
+
+// chipCSS is the selection control both agent pages use.
+//
+// An <input type=checkbox> next to text never lines up: the box sits on the
+// text baseline, its height is the browser's rather than the line's, and every
+// fix is a different magic number per browser. Hiding the input and styling its
+// label removes the alignment problem instead of tuning it — there is nothing
+// inline left to misalign.
+//
+// Shared because /agents was built this way and /agent/new was not, so the same
+// choice — which services or tools may this agent reach — was a row of neat
+// chips on one page and a column of drifting checkboxes on the other.
+const chipCSS = `<style>
+.pick input,.chip input{position:absolute;opacity:0;width:0;height:0}
+.pick input:focus-visible+span,.chip input:focus-visible+span{outline:2px solid #111;outline-offset:2px}
 .agent-services{display:flex;flex-wrap:wrap;gap:6px}
 .chip span{display:block;border:1px solid #ddd;border-radius:999px;padding:6px 12px;
   cursor:pointer;font-size:13px;color:#444;white-space:nowrap}
 .chip span:hover{border-color:#bbb}
 .chip input:checked+span{background:#111;border-color:#111;color:#fff}
-@media only screen and (max-width:600px){.pick-row{grid-template-columns:1fr}}
 </style>`

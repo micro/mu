@@ -232,7 +232,8 @@ func NewAgentHandler(w http.ResponseWriter, r *http.Request) {
 		if selected[t] {
 			chk = " checked"
 		}
-		toolsHTML.WriteString(`<label><input type="checkbox" name="tool" value="` + t + `"` + chk + `> ` + html.EscapeString(AgentToolLabel(t)) + `</label>`)
+		toolsHTML.WriteString(`<label class="chip"><input type="checkbox" name="tool" value="` + t + `"` + chk +
+			`><span>` + html.EscapeString(AgentToolLabel(t)) + `</span></label>`)
 	}
 
 	b := `<div class="builder">
@@ -270,14 +271,13 @@ func NewAgentHandler(w http.ResponseWriter, r *http.Request) {
 .b-gen input{flex:1}
 .b-gen button{white-space:nowrap;padding:9px 14px;font-size:14px;border:1px solid var(--border-color,#ddd);border-radius:var(--border-radius,6px);cursor:pointer;background:#fff;color:var(--text-primary,#111);font-weight:500}
 .b-gen button[disabled]{opacity:.6;cursor:default}
-.b-tools{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:2px}
-.b-tools label{display:flex;align-items:center;gap:6px;font-size:13px;color:#374151;cursor:pointer}
+.b-tools{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
 .b-actions{display:flex;align-items:center;gap:12px;margin-top:22px}
 .b-save{padding:10px 22px;font-size:14px;font-weight:600;border:0;border-radius:var(--border-radius,6px);background:var(--btn-primary,#000);color:#fff;cursor:pointer}
 .b-save:hover{background:var(--btn-primary-hover,#333)}
 .b-cancel{color:#6b7280;text-decoration:none;font-size:14px}
 .b-cancel:hover{color:#111}
-</style>
+</style>` + chipCSS + `
 <script>
 function bCsrf(){var m=document.cookie.match(/(?:^|; )csrf_token=([^;]+)/);return m?decodeURIComponent(m[1]):'';}
 function bGen(){var brief=document.getElementById('b-brief').value.trim();if(!brief)return;
