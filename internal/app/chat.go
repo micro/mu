@@ -31,6 +31,16 @@ type ChatConfig struct {
 	// shown on that page, so it is the one place where "answer from what I am
 	// already looking at" is a sentence that means something.
 	OfferCardContext bool
+	// OfferAgentPicker shows which agent is answering, and lets the reader
+	// change it.
+	//
+	// The component has always sent window.muActiveAgent, and the server has
+	// always honoured it — but the only thing that could set it was the rail on
+	// /agent. So somebody could create an agent, go to the input on Home, and
+	// have no way to reach it: the agent existed and could not be talked to
+	// from the place you would naturally talk to it. That is most of why a new
+	// agent reads as a toy.
+	OfferAgentPicker bool
 	// StorageNS namespaces the component's sessionStorage keys so different
 	// surfaces (Home, /agent) keep separate in-tab conversations and never show
 	// each other's. When empty the component is ephemeral: it neither restores
@@ -64,6 +74,15 @@ func ChatComponent(cfg ChatConfig) string {
 		cardToggle = `<label id="mu-chat-ctx" title="Send what your cards are showing right now — headlines, prices, what is on today — so the answer comes from what you are already looking at instead of being fetched again">` +
 			`<input type="checkbox" id="mu-chat-ctx-on"> use live context</label>`
 	}
+	// The same sessionStorage key the rail on /agent uses, so a choice made in
+	// one place holds in the other. Two pickers disagreeing about who is
+	// answering would be worse than one picker.
+	agentPicker := ""
+	if cfg.OfferAgentPicker {
+		agentPicker = `<label id="mu-chat-agent" title="Which of your agents answers. Each has its own instructions and its own scope">` +
+			`answering as <select id="mu-chat-agent-pick"><option value="">Micro (default)</option></select></label>`
+	}
+
 	initialConv := ""
 	if cfg.InitialConvHTML != "" {
 		initialConv = cfg.InitialConvHTML
@@ -76,7 +95,7 @@ func ChatComponent(cfg ChatConfig) string {
       oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,140)+'px'"></textarea>
     <button type="submit" aria-label="Send">&#x2192;</button>
   </form>
-  ` + cardToggle + `
+  <div id="mu-chat-opts">` + agentPicker + cardToggle + `</div>
   <div id="mu-chat-suggest"></div>
   <div id="mu-chat-hint"></div>
   <div id="mu-chat-conv">` + initialConv + `</div>
@@ -86,7 +105,11 @@ func ChatComponent(cfg ChatConfig) string {
 #mu-chat{max-width:760px;margin:0 auto;width:100%}
 #mu-chat-form{display:flex;align-items:center;gap:0;border:1px solid #ddd;border-radius:6px;background:#fff;padding:4px 4px 4px 12px;transition:border-color .2s;position:sticky;top:8px;z-index:5}
 #mu-chat-form:focus-within{border-color:#999}
-#mu-chat-ctx{display:flex;align-items:center;gap:6px;font-size:12px;color:#999;margin:6px 0 0;cursor:pointer;user-select:none}
+#mu-chat-opts{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:6px 0 0}
+#mu-chat-opts:empty{margin:0}
+#mu-chat-agent{display:flex;align-items:center;gap:6px;font-size:12px;color:#999;cursor:pointer;user-select:none}
+#mu-chat-agent select{width:auto;padding:2px 4px;font-size:12px;font-family:inherit;color:#555;border:1px solid #e0e0e0;border-radius:4px;background:#fff}
+#mu-chat-ctx{display:flex;align-items:center;gap:6px;font-size:12px;color:#999;cursor:pointer;user-select:none}
 #mu-chat-ctx input{width:14px;height:14px;cursor:pointer}
 #mu-chat-input{flex:1;padding:10px 0;border:none;font-size:16px;font-family:inherit;resize:none;line-height:1.4;overflow:hidden;background:transparent;outline:none}
 #mu-chat-form button{flex-shrink:0;width:36px;height:36px;background:#111;color:#fff;border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px}
@@ -309,6 +332,45 @@ window.muChatNew=function(){
   c.addEventListener('change',function(){
     try{ localStorage.setItem('mu_chat_cards', c.checked?'1':'0'); }catch(e){}
   });
+})();
+
+// Which agent answers. The component has always sent window.muActiveAgent and
+// the server has always honoured it; until now the only thing that could set it
+// was the rail on /agent, so an agent created on /agents could not be reached
+// from the input on Home.
+//
+// Same sessionStorage key as that rail, so the choice holds across both.
+(function(){
+  var sel=document.getElementById('mu-chat-agent-pick');
+  if(!sel) return;
+  var KEY='mu_active_agent';
+  try{ window.muActiveAgent=window.muActiveAgent||sessionStorage.getItem(KEY)||''; }catch(e){}
+
+  sel.addEventListener('change',function(){
+    window.muActiveAgent=sel.value;
+    try{ sessionStorage.setItem(KEY, sel.value); }catch(e){}
+  });
+
+  fetch('/agents/data',{headers:{'Accept':'application/json'}})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      var list=(d&&d.agents)||[];
+      // No agents, nothing to choose between: a picker with one option is a
+      // control that only takes up room.
+      if(!list.length){ var l=document.getElementById('mu-chat-agent'); if(l) l.remove(); return; }
+      list.forEach(function(a){
+        var o=document.createElement('option');
+        o.value=a.id; o.textContent=a.name;
+        if(a.description) o.title=a.description;
+        sel.appendChild(o);
+      });
+      // Restore the choice, unless that agent has since been removed.
+      if(window.muActiveAgent){
+        sel.value=window.muActiveAgent;
+        if(sel.value!==window.muActiveAgent){ window.muActiveAgent=''; sel.value=''; }
+      }
+    })
+    .catch(function(){ var l=document.getElementById('mu-chat-agent'); if(l) l.remove(); });
 })();
 window.muChatAsk=ask;
 })();

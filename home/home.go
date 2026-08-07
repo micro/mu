@@ -522,7 +522,8 @@ function fetchW(la,lo){
 		// most people saw a switch that sent nothing — the worst kind, because
 		// nothing appears to happen and there is no way to tell why.
 		hasCards := viewerAcc != nil && len(viewerAcc.HomeCardOrder()) > 0
-		b.WriteString(app.ChatComponent(app.ChatConfig{Guest: viewerID == "", HideSuggestions: true, OfferCardContext: hasCards}))
+		b.WriteString(app.ChatComponent(app.ChatConfig{Guest: viewerID == "", HideSuggestions: true,
+			OfferCardContext: hasCards, OfferAgentPicker: viewerID != ""}))
 		if chips != "" {
 			b.WriteString(fmt.Sprintf(`<div class="home-chips">%s</div>`, chips))
 		}
