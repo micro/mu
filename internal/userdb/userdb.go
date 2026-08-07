@@ -389,3 +389,54 @@ func toStr(v interface{}) string {
 	b, _ := json.Marshal(v)
 	return string(b)
 }
+
+// Collections lists the collections a caller has records in, with how many of
+// them are theirs.
+//
+// There is no index of collections: a collection is a file, made on first write
+// and named by the caller, which is what lets an agent invent one without
+// declaring a schema. So this reads the directory. That is fine for a page
+// showing somebody their own data and wrong for anything on a hot path — there
+// is deliberately no tool for it, because an agent that knows what it stored
+// does not need to ask.
+func Collections(ns, caller string) ([]Collection, error) {
+	if caller == "" {
+		return nil, ErrAuth
+	}
+	if !safeSegment.MatchString(ns) || strings.Contains(ns, "..") {
+		return nil, ErrBadNamespace
+	}
+
+	names, err := data.ListKeys(ns + "/db")
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]Collection, 0, len(names))
+	for _, name := range names {
+		name = strings.TrimSuffix(name, ".json")
+		if !collectionRe.MatchString(name) {
+			continue
+		}
+		recs, err := List(ns, caller, name, "mine", nil, "", "", MaxListLimit)
+		if err != nil || len(recs) == 0 {
+			continue
+		}
+		newest := recs[0].Updated
+		for _, r := range recs {
+			if r.Updated.After(newest) {
+				newest = r.Updated
+			}
+		}
+		out = append(out, Collection{Name: name, Records: len(recs), Updated: newest})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Updated.After(out[j].Updated) })
+	return out, nil
+}
+
+// Collection is one named collection and what the caller has in it.
+type Collection struct {
+	Name    string    `json:"name"`
+	Records int       `json:"records"`
+	Updated time.Time `json:"updated"`
+}

@@ -131,6 +131,34 @@ func LoadFile(key string) ([]byte, error) {
 	return os.ReadFile(file)
 }
 
+// ListKeys returns the file names directly under a key prefix, without their
+// directories. Missing means empty rather than an error: a store nobody has
+// written to yet has no directory, and that is not a failure.
+//
+// Confined by dataPath like every other key, so a prefix cannot escape the data
+// directory.
+func ListKeys(prefix string) ([]string, error) {
+	dir, err := dataPath(prefix)
+	if err != nil {
+		return nil, err
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	out := make([]string, 0, len(entries))
+	for _, e := range entries {
+		if !e.IsDir() {
+			out = append(out, e.Name())
+		}
+	}
+	sort.Strings(out)
+	return out, nil
+}
+
 func DeleteFile(key string) error {
 	file, err := dataPath(key)
 	if err != nil {

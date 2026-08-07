@@ -9,6 +9,7 @@ import (
 	"mu/service/blog"
 	"mu/service/chat"
 	"mu/service/contacts"
+	"mu/service/db"
 	"mu/service/events"
 	"mu/service/files"
 	"mu/service/images"
@@ -31,7 +32,7 @@ import (
 // here is a service the policy and documentation tests never see.
 func allSpecs() []service.Spec {
 	return []service.Spec{
-		apps.Spec, blog.Spec, chat.Spec, contacts.Spec, events.Spec,
+		apps.Spec, blog.Spec, chat.Spec, contacts.Spec, db.Spec, events.Spec,
 		files.Spec, images.Spec, index.Spec, mail.Spec, markets.Spec,
 		news.Spec, places.Spec, prayer.Spec, social.Spec, stream.Spec,
 		tasks.Spec, video.Spec, wallet.Spec, weather.Spec, web.Spec,

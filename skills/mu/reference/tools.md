@@ -41,9 +41,15 @@ status, result, ...)`, `tasks_list(status)`, `tasks_delete(id)`.
 **files** — bytes with a URL. `files_put(name, content, type, encoding)`,
 `files_get(id)`, `files_list`, `files_share(id, public)`, `files_delete(id)`.
 
-**db** — per-account records in named collections. `db_create(collection, data,
-id, public)`, `db_get`, `db_list(collection, where, sort, order, limit, scope)`,
-`db_delete`. This is the durable scratchpad; see `recipes.md`.
+**db** — "Database" in the UI — per-account records in named collections.
+`db_create(collection, data, id, public)`, `db_get`,
+`db_list(collection, where, sort, order, limit, scope)`, `db_delete`. A
+collection is made on first write; there is no schema to declare. This is the
+durable scratchpad; see `recipes.md`.
+
+Apps keep a separate store each, reached through `mu.db` in the app SDK. Records
+written here are not visible to an app and vice versa, unless published with
+`public: true`.
 
 **index** — `index_search(query, limit)` searches across the caller's own
 content: their posts, notes, saved things. Reach for it before `web_search` when

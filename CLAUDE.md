@@ -40,7 +40,7 @@ Built on go-micro: every capability is a go-micro service, the assistant is a go
 | `client/whatsapp/` | WhatsApp Business API integration |
 | `service/wallet/` | Credit system, Stripe, x402 |
 | `service/search/` | Brave provider, readability reader, the /search page (no service of its own) |
-| `service/db/` | Per-user records for services and apps (headless) |
+| `service/db/` | The caller's own records — named collections that outlive a conversation. Apps keep a separate store each |
 | `service/files/` | Per-user file storage — keep a file, get a URL, read it back |
 | `service/contacts/` | The caller's address book, so a name resolves to an address (headless) |
 | `service/web/` | The open web: search it (`web.Search`), fetch a URL (`web.Fetch`) |

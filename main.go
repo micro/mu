@@ -43,12 +43,12 @@ import (
 	"mu/internal/setup"
 	"mu/internal/usage"
 	"mu/internal/user"
-	"mu/internal/userdb"
 	"mu/internal/version"
 	"mu/service/apps"
 	"mu/service/blog"
 	"mu/service/chat"
 	"mu/service/contacts"
+	"mu/service/db"
 	"mu/service/events"
 	"mu/service/files"
 	"mu/service/images"
@@ -182,6 +182,7 @@ func main() {
 	web.Load()
 	stream.LoadService()
 	chat.LoadService()
+	db.LoadService()
 	images.Load()
 	// The cache behind /img, which serves article images from here instead of
 	// from four publisher CDNs. See internal/imageproxy.
@@ -1160,103 +1161,12 @@ func main() {
 		return rsp.Text, nil
 	})
 
-	// db_* — the app SDK's storage, reachable over MCP/REST. It is literally the
-	// same records mu.db reads and writes: same collections, same owner and
-	// private-public model, same "api" namespace, owner bound from the session.
-	// So an agent can put something where an app will find it, and vice versa.
+	// db_* is derived from service/db's Spec now, not hand-registered here.
 	//
-	// This is storage, not a service. It has no Spec and no place in the service
-	// list — a house has a mailbox, a calendar and a shelf of files; it does not
-	// have a database. There was a service/db wrapping the same store under its
-	// own namespace, with a page-less Spec and no caller anywhere; it is gone.
-	api.RegisterToolWithAuth(api.Tool{
-		Name:        "db_create",
-		Aliases:     []string{"db_set"},
-		Description: "Store a record in your database (a named collection). Private by default; set public=true to share it. Pass an id to update a record you own.",
-		Method:      "POST",
-		Path:        "/db",
-		WalletOp:    wallet.OpDBWrite,
-		Params: []api.ToolParam{
-			{Name: "collection", Type: "string", Description: "Collection name (e.g. notes, tasks)", Required: true},
-			{Name: "data", Type: "object", Description: "The record's fields as a JSON object", Required: true},
-			{Name: "public", Type: "boolean", Description: "Share the record publicly (default false)", Required: false},
-			{Name: "id", Type: "string", Description: "Existing record id to update (optional)", Required: false},
-		},
-	}, func(args map[string]any, accountID string) (string, error) {
-		coll, _ := args["collection"].(string)
-		dataObj, _ := args["data"].(map[string]any)
-		public, _ := args["public"].(bool)
-		id, _ := args["id"].(string)
-		var rec *userdb.Record
-		var err error
-		if strings.TrimSpace(id) != "" {
-			rec, err = userdb.Update("api", accountID, coll, id, dataObj, public)
-		} else {
-			rec, err = userdb.Create("api", accountID, coll, dataObj, public)
-		}
-		if err != nil {
-			return "", err
-		}
-		b, _ := json.Marshal(rec)
-		return string(b), nil
-	})
-	api.RegisterToolWithAuth(api.Tool{
-		Name:        "db_get",
-		Description: "Get one record by id from a collection (must be yours, or public).",
-		Params: []api.ToolParam{
-			{Name: "collection", Type: "string", Description: "Collection name", Required: true},
-			{Name: "id", Type: "string", Description: "Record id", Required: true},
-		},
-	}, func(args map[string]any, accountID string) (string, error) {
-		coll, _ := args["collection"].(string)
-		id, _ := args["id"].(string)
-		rec, err := userdb.Get("api", accountID, coll, id)
-		if err != nil {
-			return "", err
-		}
-		b, _ := json.Marshal(rec)
-		return string(b), nil
-	})
-	api.RegisterToolWithAuth(api.Tool{
-		Name:        "db_list",
-		Description: "List records in a collection. scope: 'mine' (default), 'public', or 'all' (mine + public). Optional where filter, sort field and limit.",
-		Params: []api.ToolParam{
-			{Name: "collection", Type: "string", Description: "Collection name", Required: true},
-			{Name: "scope", Type: "string", Description: "mine | public | all (default mine)", Required: false},
-			{Name: "where", Type: "object", Description: "Filter on data fields, e.g. {\"done\":false,\"priority\":{\"gte\":2}}", Required: false},
-			{Name: "sort", Type: "string", Description: "Data field to sort by", Required: false},
-			{Name: "order", Type: "string", Description: "asc | desc (default desc)", Required: false},
-			{Name: "limit", Type: "number", Description: "Max records (default 50, max 200)", Required: false},
-		},
-	}, func(args map[string]any, accountID string) (string, error) {
-		coll, _ := args["collection"].(string)
-		scope, _ := args["scope"].(string)
-		where, _ := args["where"].(map[string]any)
-		sortField, _ := args["sort"].(string)
-		order, _ := args["order"].(string)
-		limit := int(argFloat(args["limit"]))
-		recs, err := userdb.List("api", accountID, coll, scope, where, sortField, order, limit)
-		if err != nil {
-			return "", err
-		}
-		b, _ := json.Marshal(recs)
-		return string(b), nil
-	})
-	api.RegisterToolWithAuth(api.Tool{
-		Name:        "db_delete",
-		Description: "Delete a record you own by id.",
-		Params: []api.ToolParam{
-			{Name: "collection", Type: "string", Description: "Collection name", Required: true},
-			{Name: "id", Type: "string", Description: "Record id", Required: true},
-		},
-	}, func(args map[string]any, accountID string) (string, error) {
-		coll, _ := args["collection"].(string)
-		id, _ := args["id"].(string)
-		if err := userdb.Delete("api", accountID, coll, id); err != nil {
-			return "", err
-		}
-		return `{"status":"ok"}`, nil
-	})
+	// It was written out because db was held to be storage rather than a
+	// service — but a tool with no service behind it sits outside the scoping
+	// model, so no scoped agent token could reach it and there was no box on
+	// /agents to grant it. See the package comment in service/db.
 
 	// markets — live prices, returned as model-ready text (AI-first).
 	api.RegisterTool(api.Tool{
@@ -2043,6 +1953,7 @@ func main() {
 	http.HandleFunc("/markets", markets.Handler)
 	http.HandleFunc(imageproxy.Path, imageproxy.Handler)
 	http.HandleFunc("/contacts", contacts.Handler)
+	http.HandleFunc("/db", db.Handler)
 	http.HandleFunc("/contacts/", contacts.Handler)
 	http.HandleFunc("/tasks", tasks.Handler)
 	http.HandleFunc("/tasks/", tasks.Handler)

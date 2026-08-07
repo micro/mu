@@ -79,9 +79,10 @@ one row per service, named for it.
 | **Stream** | `stream_list` · `stream_post` — this instance's own timeline |
 | **Tasks** | `tasks_create` · `tasks_list` · `tasks_next` · `tasks_update` · `tasks_delete` — what is to be done, and work you can hand to the agent |
 | **Video** | `video_list` · `video_search` — curated channels, no ads or recommendations |
+| **Database** | `db_create` · `db_get` · `db_list` · `db_delete` — named collections of your own records, private by default, that outlive a conversation (`db_create` with an `id` overwrites). Apps get their own separate store through `mu.db` |
 | **Wallet** | `wallet_balance` · `wallet_check` — credits, which is what calls are charged in |
 | **Weather** | `weather_forecast` — conditions, forecast, pollen |
-| **Platform** | `agent` — ask the whole thing a question and let it compose. `db_create` · `db_get` · `db_list` · `db_delete` — the store apps write to, so an agent and an app can share records (`db_create` with an `id` updates). Also `quran` · `quran_search` · `hadith`, `save` · `unsave` · `saved_list`, and `flag` · `dismiss` · `block_user` · `unblock_user` |
+| **Platform** | `agent` — ask the whole thing a question and let it compose. Also `quran` · `quran_search` · `hadith`, `save` · `unsave` · `saved_list`, and `flag` · `dismiss` · `block_user` · `unblock_user` |
 
 ## Request a tool
 
