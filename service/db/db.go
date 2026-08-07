@@ -192,7 +192,11 @@ var Spec = service.Spec{
 	Icon:        "db.svg",
 	Scoped:      true,
 	Endpoints: map[string]service.Endpoint{
-		"Create": {Doc: "Store a record in one of your collections, or overwrite one you own by passing its id. Private unless you set public"},
+		// db_set was db_create's alias before db was derived from this Spec.
+		// Derivation carried no aliases, so anything already calling it got
+		// "Tool not found" for a rename nobody asked for.
+		"Create": {Doc: "Store a record in one of your collections, or overwrite one you own by passing its id. Private unless you set public",
+			Aliases: []string{"db_set"}},
 		"Get":    {Doc: "Read one record by id — yours, or one somebody published"},
 		"List":   {Doc: "List records in a collection, with an optional filter, sort and limit. Use this to find an id before reading or deleting"},
 		"Delete": {Doc: "Delete a record you own, by id", Destructive: false},

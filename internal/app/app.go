@@ -349,13 +349,14 @@ var Template = `
                tools are what an agent can call, services are what this
                instance runs.
 
-               Apps was not here at all — it was one tile among nineteen inside
-               the services catalogue, which is a strange place for half the
-               product. Before that this was one alphabetical list of nineteen
+               Apps is here because it is half the product and was one tile
+               among nineteen inside the services catalogue, which is a strange
+               place for it. The comment saying so shipped before the fix did. Before that this was one alphabetical list of nineteen
                services that put Wallet eighteenth, between Video and Weather.
                Alphabetical is not an ordering, it is the absence of one. -->
           <a href="/home"><img src="/home.png?` + Version + `"><span class="label">Home</span></a>
           <a href="/agents"><img src="/agent.svg?` + Version + `"><span class="label">Agents</span></a>
+          <a href="/apps"><img src="/apps.svg?` + Version + `"><span class="label">Apps</span></a>
           <a href="/tools"><img src="/tools.svg?` + Version + `"><span class="label">Tools</span></a>
           <a href="/services"><img src="/services.svg?` + Version + `"><span class="label">Services</span></a>
           %s

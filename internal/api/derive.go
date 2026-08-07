@@ -124,6 +124,7 @@ func registerDerived(spec service.Spec, method string, ep service.Endpoint, name
 
 	tool := Tool{
 		Name:        name,
+		Aliases:     ep.Aliases,
 		Description: ep.Doc,
 		WalletOp:    ep.Cost,
 		Params:      params(reqType),

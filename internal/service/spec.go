@@ -89,6 +89,14 @@ type Endpoint struct {
 	// attacker-controlled text, so a tool it holds is a tool prompt injection
 	// holds; what earns this flag is an irreversible effect nobody asked for.
 	Destructive bool
+	// Aliases are retired names that must keep resolving to this method. They
+	// are not listed — the point of retiring a name is to stop teaching it —
+	// but anything already calling one keeps working.
+	//
+	// Needed because a hand-registered tool can carry aliases and a derived one
+	// could not, so moving a tool onto a Spec silently dropped them. db_set went
+	// that way when db became a service.
+	Aliases []string
 }
 
 // Tool is the derived tool name for a method: service_method, lower-cased.

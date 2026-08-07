@@ -8,9 +8,10 @@ package home
 // headlines — pleasant, and no evidence that anything belonged to you or that
 // anything was happening.
 //
-// This is the other half: what you have and what is in flight. Tasks the agent
-// is working on, mail that arrived while you were elsewhere, apps you built,
-// credits left. Four counts, each a link to the noun behind it.
+// This is the other half: what you have and what is in flight. Agents that act
+// for you and what they are working on, mail that arrived while you were
+// elsewhere, apps you built, credits left. Four counts, each a link to the noun
+// behind it.
 //
 // Zeroes are shown rather than hidden. A new account with nothing in it is
 // still a shape — these are the things you have — and a strip that appears only
@@ -20,6 +21,7 @@ import (
 	"fmt"
 	"strings"
 
+	"mu/agent"
 	"mu/internal/auth"
 	"mu/service/apps"
 	"mu/service/mail"
@@ -34,20 +36,28 @@ func systemStrip(acc *auth.Account) string {
 		return ""
 	}
 
-	open, running := 0, 0
+	// Work the agent is doing, which is what the first tile is really about.
+	//
+	// Tasks led this strip because the strip was built for a personal home
+	// server, where a to-do list is the thing you keep. For a product whose
+	// first sentence is tools for agents it is the wrong noun to lead with, and
+	// it was leading with a number that stays at zero because nobody assigns
+	// themselves tasks here.
+	//
+	// Agents is the right noun, and it does not lose the task signal: a task
+	// with the agent as its assignee *is* an agent working, so that count
+	// belongs on the agents tile rather than in a tile of its own. Zero agents
+	// is worth showing too — it is the one number on this strip that says what
+	// to do next.
+	running := 0
 	for _, t := range tasks.List(acc.ID, "") {
-		switch {
-		case t.Status == tasks.StatusDoing:
+		if t.Status == tasks.StatusDoing && t.Assignee == tasks.Agent {
 			running++
-			open++
-		case t.Status == tasks.StatusTodo:
-			open++
 		}
 	}
-
-	taskNote := ""
+	agentNote := ""
 	if running > 0 {
-		taskNote = fmt.Sprintf("%d working", running)
+		agentNote = fmt.Sprintf("%d working", running)
 	}
 
 	// A count with a one-word label is only legible to somebody who already
@@ -58,7 +68,7 @@ func systemStrip(acc *auth.Account) string {
 	// answers "why am I looking at this".
 	var b strings.Builder
 	b.WriteString(`<div id="home-system">`)
-	stat(&b, "/tasks", "Tasks", open, taskNote, "yours to do, or the agent's")
+	stat(&b, "/agents", "Agents", agentCount(acc.ID), agentNote, "scoped, and yours to name")
 	stat(&b, "/mail", "Unread", mail.GetUnreadCount(acc.ID), "", "in your inbox here")
 	stat(&b, "/apps", "Apps", len(apps.GetAppsByAuthor(acc.ID)), "", "you have built")
 	// Admins are never charged, so a number here would be meaningless — the
@@ -102,3 +112,8 @@ const systemCSS = `<style>
   .home-stat-n{font-size:19px}
 }
 </style>`
+
+// agentCount is how many agents this account has. Kept here rather than inlined
+// so the tile reads as one thing, and so the count has one definition if
+// anything else ever wants it.
+func agentCount(owner string) int { return len(agent.Agents(owner)) }

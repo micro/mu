@@ -37,18 +37,65 @@ func TestTheStripShowsYourOwnSystem(t *testing.T) {
 	acc := &auth.Account{ID: "striper", Name: "striper", Secret: "s"}
 	auth.Create(acc)
 
-	tasks.Create(acc.ID, "Something to do", "", "", time.Time{})
-
 	got := systemStrip(acc)
-	for _, want := range []string{`href="/tasks"`, "Tasks", `href="/mail"`, "Unread",
+	for _, want := range []string{`href="/agents"`, "Agents", `href="/mail"`, "Unread",
 		`href="/apps"`, "Apps", `href="/wallet"`, "Credits"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("the strip is missing %q", want)
 		}
 	}
-	// The task just created is counted.
-	if !strings.Contains(got, `<span class="home-stat-n">1</span>`) {
-		t.Errorf("an open task was not counted:\n%s", got)
+}
+
+// Agents leads the strip, not Tasks.
+//
+// Tasks led it because the strip was written for a personal home server, where
+// a to-do list is what you keep. For tools for agents it is the wrong noun, and
+// it was a number that stayed at zero because nobody assigns themselves tasks
+// here — the least useful thing that can lead a dashboard.
+func TestTheStripLeadsWithAgentsNotTasks(t *testing.T) {
+	acc := &auth.Account{ID: "leader", Name: "leader", Secret: "s"}
+	auth.Create(acc)
+
+	got := systemStrip(acc)
+	if i, j := strings.Index(got, "Agents"), strings.Index(got, "Unread"); i < 0 || i > j {
+		t.Errorf("Agents is not the first tile:\n%s", got)
+	}
+	if strings.Contains(got, `href="/tasks"`) {
+		t.Error("Tasks is still on the strip; its signal belongs on the agents tile")
+	}
+}
+
+// A task assigned to the agent is an agent working, and that is what the note
+// on the agents tile reports. A task you kept for yourself is not.
+func TestOnlyTheAgentsOwnWorkIsReportedAsWorking(t *testing.T) {
+	acc := &auth.Account{ID: "worker", Name: "worker", Secret: "s"}
+	auth.Create(acc)
+
+	mine, err := tasks.Create(acc.ID, "Mine to do", "", "", time.Time{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	theirs, err := tasks.Create(acc.ID, "For the agent", "", tasks.Agent, time.Time{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if strings.Contains(systemStrip(acc), "working") {
+		t.Error("nothing is running yet, but the strip says something is working")
+	}
+
+	if _, err := tasks.Update(acc.ID, mine.ID, "", "", tasks.StatusDoing, "", ""); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(systemStrip(acc), "working") {
+		t.Error("a task you kept for yourself was reported as the agent working")
+	}
+
+	if _, err := tasks.Update(acc.ID, theirs.ID, "", "", tasks.StatusDoing, "", ""); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(systemStrip(acc), "1 working") {
+		t.Errorf("the agent's own running task was not reported:\n%s", systemStrip(acc))
 	}
 }
 

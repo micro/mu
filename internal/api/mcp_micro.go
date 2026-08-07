@@ -65,7 +65,7 @@ func mcpResolver() gwmcp.Resolver {
 				if err != nil {
 					return &gwmcp.CallResult{Text: err.Error(), IsError: true}, nil
 				}
-				return &gwmcp.CallResult{Text: text, IsError: isErr}, nil
+				return &gwmcp.CallResult{Text: bounded(text), IsError: isErr}, nil
 			})
 	}
 	// Retired names must keep resolving. The gateway dispatches against the
@@ -214,4 +214,34 @@ func isToolsList(r *http.Request) bool {
 		Method string `json:"method"`
 	}
 	return json.Unmarshal(body, &req) == nil && req.Method == "tools/list"
+}
+
+// maxResultBytes bounds what one tool call can put into a model's context.
+//
+// Deliberately generous. This is a backstop against the pathological case — a
+// list that grows with use until one call costs more than the conversation it
+// was meant to help — not a routine trim, and a caller who hits it should be
+// surprised.
+//
+// It sits here rather than as a limit parameter on each list tool because there
+// is one place every result passes through and about twenty tools that could
+// grow. Twenty new parameters would be twenty things to document, to get right,
+// and to forget on the twenty-first tool; this cannot be forgotten and covers
+// tools that do not exist yet.
+const maxResultBytes = 24000
+
+// bounded truncates on a line boundary, so a list loses whole entries rather
+// than ending mid-record, and says plainly that it did. A silent truncation
+// would be read as the whole answer.
+func bounded(text string) string {
+	if len(text) <= maxResultBytes {
+		return text
+	}
+	cut := text[:maxResultBytes]
+	if i := strings.LastIndexByte(cut, '\n'); i > maxResultBytes/2 {
+		cut = cut[:i]
+	}
+	return cut + "\n\n[truncated: this result exceeded " +
+		strconv.Itoa(maxResultBytes) + " bytes. Narrow the request — most list tools take a limit, " +
+		"and search tools take a more specific query.]"
 }

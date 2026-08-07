@@ -262,22 +262,36 @@ func TestTheBottomGroupIsTheAccount(t *testing.T) {
 	}
 }
 
-// The sidebar above the divider is the product, and it is short on purpose.
-// Every service lives in the catalogue; a nav that named four of nineteen
-// implied the other fifteen did not exist.
-func TestTheSidebarIsTheFourNouns(t *testing.T) {
+// The spine of the sidebar is the product, and it is short on purpose. Every
+// service lives in the catalogue; a nav that named four of twenty implied the
+// other sixteen did not exist.
+//
+// Apps is in the spine rather than the catalogue because it is half the product
+// — the comment above the sidebar said so for a long time while Apps was one
+// tile among twenty inside the services grid.
+func TestTheSidebarIsTheProductsNouns(t *testing.T) {
 	result := RenderHTMLWithLangAndAuth("Test", "d", "<p>c</p>", "en", &auth.Account{ID: "alice"})
 
-	for _, want := range []string{`href="/home"`, `href="/agents"`, `href="/tools"`, `href="/services"`} {
+	for _, want := range []string{`href="/home"`, `href="/agents"`, `href="/apps"`,
+		`href="/tools"`, `href="/services"`} {
 		if !strings.Contains(result, want) {
 			t.Errorf("the sidebar is missing %s", want)
 		}
 	}
-	// Services belong to the catalogue, not the nav.
-	for _, gone := range []string{`href="/tasks"`, `href="/apps"`, `href="/events"`, `class="nav-divider"`} {
+	// A service reaches the sidebar by being pinned, never by being a service.
+	for _, gone := range []string{`href="/tasks"`, `href="/events"`, `href="/news"`} {
 		if strings.Contains(result, gone) {
-			t.Errorf("%s is back in the sidebar", gone)
+			t.Errorf("%s is in the sidebar of an account that pinned nothing", gone)
 		}
+	}
+}
+
+// Nothing pinned draws no group at all. An empty heading over an empty list is
+// a worse answer than no heading, and it is what every new account would see.
+func TestPinningNothingDrawsNoGroup(t *testing.T) {
+	result := RenderHTMLWithLangAndAuth("Test", "d", "<p>c</p>", "en", &auth.Account{ID: "alice"})
+	if strings.Contains(result, "nav-group") || strings.Contains(result, "nav-heading") {
+		t.Error("an account that pinned nothing was given a Services group")
 	}
 }
 
