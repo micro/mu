@@ -135,10 +135,19 @@ func generateAgentSpec(brief string) (map[string]string, error) {
 	if !ai.Configured() {
 		return nil, errNoAI
 	}
-	sys := `You design AI agent personas for Mu, a personal assistant with tools for news, markets, weather, mail, web search, places, video, and social. Given a brief, output ONLY minified JSON with exactly these keys:
+	// The tool list comes from the registry, so a generated agent can only be
+	// scoped to services that exist. Naming them in the prompt by hand is how
+	// you get an agent told to "lean on social" on an instance where social is
+	// not registered — which then reports that source unavailable on every
+	// answer.
+	available := strings.Join(AllAgentTools(), ", ")
+	sys := `You design AI agent personas for Mu, a personal assistant whose tools are grouped by service. The services available on this instance are: ` + available + `.
+
+Given a brief, output ONLY minified JSON with exactly these keys:
 "name": a short label, <=40 chars, no emoji;
-"description": one line, <=120 chars;
-"prompt": a system prompt of 2-4 sentences in second person ("You are ...") defining the persona, tone, priorities, and which kinds of tools/data to lean on.
+"description": one line, <=120 chars, saying what it does for the user — not a list of the data it reads;
+"prompt": a system prompt of 2-4 sentences in second person ("You are ...") defining the persona, tone and priorities. Say what to do with the data, not which tools to call: the tools are chosen for it and naming them adds nothing. Never instruct it to "lean on" a source;
+"tools": an array of service names taken ONLY from the list above — the smallest set the brief actually needs. Omit anything it would not use. An empty array means every tool, so avoid it unless the brief is genuinely general.
 No markdown, no code fences, no commentary — just the JSON object.`
 	out, err := ai.Ask(&ai.Prompt{System: sys, Question: "Brief: " + brief, Caller: "agent_builder", MaxTokens: 500})
 	if err != nil {
@@ -149,12 +158,24 @@ No markdown, no code fences, no commentary — just the JSON object.`
 	out = strings.TrimPrefix(out, "```")
 	out = strings.TrimSuffix(out, "```")
 	out = strings.TrimSpace(out)
-	var m map[string]string
-	if err := json.Unmarshal([]byte(out), &m); err != nil || strings.TrimSpace(m["prompt"]) == "" {
+	var raw struct {
+		Name        string   `json:"name"`
+		Description string   `json:"description"`
+		Prompt      string   `json:"prompt"`
+		Tools       []string `json:"tools"`
+	}
+	if err := json.Unmarshal([]byte(out), &raw); err != nil || strings.TrimSpace(raw.Prompt) == "" {
 		// Model didn't return clean JSON — fall back to using the text as the prompt.
 		return map[string]string{"name": "", "description": "", "prompt": out}, nil
 	}
-	return m, nil
+	// validServices drops anything the model invented, so a hallucinated
+	// service name cannot end up as a scope that matches nothing.
+	return map[string]string{
+		"name":        raw.Name,
+		"description": raw.Description,
+		"prompt":      raw.Prompt,
+		"tools":       strings.Join(validServices(raw.Tools), ","),
+	}, nil
 }
 
 var (
@@ -333,6 +354,13 @@ function bGen(){var brief=document.getElementById('b-brief').value.trim();if(!br
       if(d.name)document.getElementById('b-name').value=d.name;
       if(d.description)document.getElementById('b-desc').value=d.description;
       if(d.prompt)document.getElementById('b-prompt').value=d.prompt;
+      // Tick the scope it chose. Picking the tools by hand was the one step the
+      // generator left to you, and it is the step you have least information
+      // for: you have not read the prompt it just wrote.
+      if(typeof d.tools==='string'){
+        var want={};d.tools.split(',').forEach(function(t){if(t)want[t]=true;});
+        document.querySelectorAll('.b-tools input[name="tool"]').forEach(function(c){c.checked=!!want[c.value];});
+      }
     }).catch(function(){btn.disabled=false;btn.textContent='✨ Generate';});}
 function bSave(e){e.preventDefault();
   var b=new URLSearchParams();b.append('action','save');

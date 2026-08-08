@@ -1259,9 +1259,11 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	// named agent at all: it recorded the id on the flow and then composed as
 	// Micro, so an agent whose whole point is a voice or a standing instruction
 	// lost both the moment a question needed a tool.
+	customAgent := false
 	if ua := resolveAgent(accountID, req.Agent, isGuest); ua != nil &&
 		strings.TrimSpace(ua.SystemPrompt) != "" {
 		synthSystem = strings.TrimSpace(ua.SystemPrompt) + "\n\n" + synthSystem
+		customAgent = true
 	}
 
 	synthPrompt := &ai.Prompt{
@@ -1315,7 +1317,9 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	answer = app.NormalizeAnswerMarkdown(app.StripLatexDollars(answer))
-	answer = completeToolAnswer(answer, ragParts)
+	// Told whether a named agent wrote this, so the freshness guard does not
+	// replace its answer with a list of the raw results.
+	answer = completeToolAnswerFor(answer, ragParts, customAgent)
 	answer = app.NormalizeAnswerMarkdown(answer)
 
 	rendered := app.RenderString(answer)

@@ -21,8 +21,40 @@ func unavailableToolMessage(tool string) string {
 // in that case, synthesize a compact answer directly from the collected results
 // so the user still gets useful output and unavailable slices are explicit.
 func completeToolAnswer(answer string, ragParts []string) string {
+	return completeToolAnswerFor(answer, ragParts, false)
+}
+
+// completeToolAnswerFor is completeToolAnswer, told whether the answer came
+// from an agent with its own system prompt.
+//
+// The freshness guard below replaces a whole answer with a synthesised list of
+// the tool results whenever the news looks stale. For the default assistant
+// that is a reasonable trade: the answer is generic, and presenting month-old
+// stories as today's is the worse failure.
+//
+// For a named agent it destroys the product. The agent's answer *is* the thing
+// the person built — a sentiment agent asked "what's happening" did the
+// analysis and had it deleted, returning headlines and prices as bullets with
+// "Unavailable right now: blog" underneath. Freshness is a caveat about the
+// inputs, not a verdict on the answer, so a custom agent keeps its answer and
+// gets the caveat in front of it.
+func completeToolAnswerFor(answer string, ragParts []string, custom bool) string {
 	trimmed := strings.TrimSpace(answer)
 	if len(ragParts) == 0 {
+		return answer
+	}
+	// A custom agent with something substantive to say keeps it.
+	if custom && trimmed != "" && !isProgressOnlyAnswer(trimmed) && !isRawToolPayloadAnswer(trimmed) {
+		if caveat := staleNewsFreshnessCaveat(ragParts); caveat != "" {
+			guarded := labelStaleNewsAnswerStories(trimmed)
+			if guarded == "" {
+				guarded = trimmed
+			}
+			if answerLeadsWithFreshnessCaveat(trimmed) {
+				return guarded
+			}
+			return userFacingNewsFreshnessSummary(caveat) + "\n\n" + guarded
+		}
 		return answer
 	}
 	if caveat := staleNewsFreshnessCaveat(ragParts); caveat != "" {
