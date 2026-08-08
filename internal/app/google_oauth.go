@@ -355,12 +355,10 @@ func renderGoogleCard(acc *auth.Account) string {
 </div>`
 }
 
-// loginPage renders the login template with the Google button injected above
-// the form (when configured). Mirrors the fmt.Sprintf(LoginTemplate, ...) shape.
+// loginPage renders the login template with the Google button above the form,
+// when Google sign-in is configured.
 func loginPage(redirectParam, errHTML string) string {
-	html := fmt.Sprintf(LoginTemplate, redirectParam, errHTML)
-	if btn := googleButtonHTML("Continue with Google"); btn != "" {
-		html = strings.Replace(html, `<h1>Login</h1>`, `<h1>Login</h1>`+btn, 1)
-	}
-	return html
+	// A template slot, not a replace on the heading — see renderSignupTo.
+	return fmt.Sprintf(LoginTemplate, redirectParam,
+		googleButtonHTML("Continue with Google"), errHTML)
 }

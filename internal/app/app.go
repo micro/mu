@@ -512,6 +512,7 @@ var LoginTemplate = `<html lang="en">
 	  <h1>Log in</h1>
 	  <p class="auth-lede">Your agents, your tools, and the app they share.</p>
 	  %s
+	  %s
 	  <input id="id" name="id" placeholder="Username" required>
 	  <input id="secret" name="secret" type="password" placeholder="Password" required>
 	  <br>
@@ -621,6 +622,7 @@ var SignupTemplate = `<html lang="en">
 	  instance &mdash; news, web search, mail, markets, weather, storage &mdash;
 	  over a single MCP endpoint. Free to start.</p>
 	  %s
+	  %s
 	  <input id="id" name="id" placeholder="Username (4-24 chars, lowercase)" required>
 	  <input id="name" name="name" placeholder="Name (optional)">
   	  <input id="secret" name="secret" type="password" placeholder="Password (min 6 chars)" required>
@@ -656,11 +658,15 @@ func renderSignupTo(errHTML, redirectParam string) string {
 	if currentInviteCode != "" {
 		inviteField = fmt.Sprintf(`<input type="hidden" name="invite" value="%s">`, currentInviteCode)
 	}
-	html := fmt.Sprintf(SignupTemplate, redirectParam, errHTML, CaptchaHTML(c), inviteField)
-	if btn := googleButtonHTML("Continue with Google"); btn != "" {
-		html = strings.Replace(html, `<h1>Signup</h1>`, `<h1>Signup</h1>`+btn, 1)
-	}
-	return html
+	// The button is a template slot, not a search-and-replace on the heading.
+	//
+	// It used to be injected by replacing the literal `<h1>Signup</h1>`, so
+	// rewriting that heading — which happened when these pages were given the
+	// landing's copy — silently deleted Sign up with Google from the page. No
+	// error, no test, nothing in a diff to notice: the replace simply matched
+	// nothing and returned the string unchanged. A slot cannot miss.
+	return fmt.Sprintf(SignupTemplate, redirectParam,
+		googleButtonHTML("Sign up with Google"), errHTML, CaptchaHTML(c), inviteField)
 }
 
 // renderRequestInvitePage shows the "request an invite" form that
