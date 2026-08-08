@@ -13,9 +13,6 @@ Use it live at [micro.mu](https://micro.mu), or self-host.
 
 ## Usage
 
-Two ways in, depending on what your client reads. Both need an account — the
-same one you sign into the app with.
-
 **Cursor, and clients with a config file.** Create a token at
 [/token](https://micro.mu/token) and add this to `~/.cursor/mcp.json`:
 
@@ -57,10 +54,9 @@ See [MCP docs](docs/MCP.md) for the protocol details.
 
 ## The tools
 
-Here are the tools. One row per service, named the way
-[/tools](https://micro.mu/tools) and the sidebar name it.
+Here are the tools
 
-| Area | Tools |
+| Service | Tools |
 |---|---|
 | **Apps** | `apps_build` · `apps_create` · `apps_edit` · `apps_fork` · `apps_read` · `apps_run` · `apps_search` · `apps_test` — build and run small web tools |
 | **Blog** | `blog_create` · `blog_read` · `blog_list` · `blog_update` · `blog_delete` — publish, with AI-generated daily digests |
