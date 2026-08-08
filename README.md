@@ -60,7 +60,7 @@ Here are the tools
 |---|---|
 | **Apps** | `apps_build` · `apps_create` · `apps_edit` · `apps_fork` · `apps_read` · `apps_run` · `apps_search` · `apps_test` — build and run small web tools |
 | **Blog** | `blog_create` · `blog_read` · `blog_list` · `blog_update` · `blog_delete` — publish, with AI-generated daily digests |
-| **Chat** | `chat_rooms` · `chat_messages` — the live discussion rooms attached to an item |
+| **Chat** | `chat_rooms` · `chat_messages` · `chat_send` — the live discussion rooms attached to an item, and saying something in one |
 | **Contacts** | `contacts_add` · `contacts_find` · `contacts_list` · `contacts_delete` — turn a name into an address |
 | **Database** | `db_create` · `db_get` · `db_list` · `db_delete` — named collections of your own records, private by default, that outlive a conversation (`db_create` with an `id` overwrites). Apps get their own separate store through `mu.db` |
 | **Events** | `events_create` · `events_list` · `events_delete` · `events_free` — schedule, cancel, and find when you are free, counting the Google Calendar you already keep |

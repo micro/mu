@@ -12,13 +12,18 @@ import (
 	"mu/internal/service"
 )
 
-// Server exposes live discussion as a service. Rooms are ephemeral and attached
-// to an item — a post, a news story, a video — so the useful questions are
-// "what is being discussed" and "what was said", which is what this answers.
+// Server exposes live discussion as a service. Rooms are attached to an item —
+// a post, a news story, a video — so the useful questions are "what is being
+// discussed", "what was said", and "say this".
 //
-// Posting is deliberately absent: a room is a websocket conversation between
-// people who are present, and injecting a message from outside that session
-// would appear from nobody.
+// Posting was deliberately absent on the argument that a room is a websocket
+// conversation between people who are present, so a message from outside that
+// session would appear from nobody. That is not right: every message already
+// carries the account that sent it, and a call arrives with an account behind
+// it exactly like the websocket does. What it produced instead was a service an
+// agent could read and not answer — it could see a discussion about a post it
+// wrote and had no way to reply. stream and social both post; this is the one
+// that could only listen.
 type Server struct{}
 
 // RoomInfo describes an active discussion.
@@ -117,6 +122,54 @@ func (Server) Messages(_ context.Context, req *MessagesRequest, rsp *MessagesRes
 	return nil
 }
 
+// ── Send ────────────────────────────────────────────────────────
+
+type SendRequest struct {
+	Room    string `json:"room" required:"true" description:"Room id, as returned by chat_rooms"`
+	Content string `json:"content" required:"true" description:"What to say"`
+}
+
+type SendResponse struct {
+	Result string `json:"result"`
+}
+
+// Send posts a message to a room as the caller.
+//
+// Only into a room that exists: rooms are attached to an item and created when
+// somebody opens the discussion on it, so conjuring one from a tool call would
+// invent a conversation about nothing. chat_rooms is how you find the id.
+//
+// It goes through the room's broadcast channel rather than appending directly,
+// which is what everyone connected sees, what gets persisted, and what moves
+// LastActivity — three things that would otherwise each need doing by hand and
+// drift apart the first time one of them changed.
+// @example {"room":"news_456","content":"Worth reading the primary source on this."}
+func (Server) Send(ctx context.Context, req *SendRequest, rsp *SendResponse) error {
+	who := service.AccountFrom(ctx)
+	if who == "" {
+		return fmt.Errorf("sign in to post to a discussion")
+	}
+	id := strings.TrimSpace(req.Room)
+	content := strings.TrimSpace(req.Content)
+	if id == "" {
+		return fmt.Errorf("room is required — chat_rooms lists them")
+	}
+	if content == "" {
+		return fmt.Errorf("content is required")
+	}
+
+	mutex.RLock()
+	room, ok := rooms[id]
+	mutex.RUnlock()
+	if !ok {
+		return fmt.Errorf("no live discussion called %q — chat_rooms lists the ones there are", id)
+	}
+
+	room.Broadcast <- RoomMessage{UserID: who, Content: content, Timestamp: time.Now()}
+	rsp.Result = "sent"
+	return nil
+}
+
 // LoadService registers chat as a service. Separate from Load, which already
 // starts the room machinery.
 func LoadService() {
@@ -167,6 +220,7 @@ var Spec = service.Spec{
 	Card:        Card,
 	Endpoints: map[string]service.Endpoint{
 		"Messages": {Doc: "Read the recent conversation in a discussion room"},
+		"Send":     {Doc: "Say something in a discussion room, as the caller. Use chat_rooms to find the room id"},
 		"Rooms":    {Doc: "List discussion rooms that currently have activity"},
 	},
 }
