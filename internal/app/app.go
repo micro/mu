@@ -417,23 +417,30 @@ var Template = `
     <div id="container">
       <div id="nav-container">
         <div id="nav">
-          <!-- The nouns, in the order they relate to each other: an agent does
-               the work, tools are what it can call, services are what this
-               instance runs. Before this was an ordering it was one
-               alphabetical list of nineteen services that put Wallet
-               eighteenth, between Video and Weather — alphabetical is not an
-               ordering, it is the absence of one.
+          <!-- The nouns, in the order they relate to each other, and they make
+               a sentence: an agent acts for you, context is what it knows,
+               tools are what it can call, services are what backs all of it.
+               Before this was an ordering it was one alphabetical list of
+               nineteen services that put Wallet eighteenth, between Video and
+               Weather — alphabetical is not an ordering, it is the absence of
+               one.
 
-               Apps was here too, on the argument that it is half the product.
+               Context earns a place here precisely because it is not a
+               service. It is not a folder of relocated services either — it is
+               what the agent remembers about you, what you have put in front
+               of it, and what it will go and fetch. An actor with knowledge and
+               capabilities is two different things, and this is the first one.
+
+               Apps was here once, on the argument that it is half the product.
                It is a service like the other nineteen, it has a Spec like the
                other nineteen, and it appears in the catalogue like the other
                nineteen — so a second permanent entry above the fold was the
                spine claiming something the rest of the product does not agree
-               with. The spine is what everything else hangs off: what acts for
-               you, what it can call, what is running. Anyone who lives in Apps
-               can pin it and it comes back, which is what pinning is for. -->
+               with. Anyone who lives in Apps can pin it and it comes back,
+               which is what pinning is for. -->
           <a href="/home"><img src="/home.png?` + Version + `"><span class="label">Home</span></a>
           <a href="/agents"><img src="/agent.svg?` + Version + `"><span class="label">Agents</span></a>
+          <a href="/context"><img src="/context.svg?` + Version + `"><span class="label">Context</span></a>
           <a href="/tools"><img src="/tools.svg?` + Version + `"><span class="label">Tools</span></a>
           <a href="/services"><img src="/services.svg?` + Version + `"><span class="label">Services</span></a>
           %s

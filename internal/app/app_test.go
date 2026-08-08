@@ -276,8 +276,10 @@ func TestTheBottomGroupIsTheAccount(t *testing.T) {
 func TestTheSidebarIsTheProductsNouns(t *testing.T) {
 	result := RenderHTMLWithLangAndAuth("Test", "d", "<p>c</p>", "en", &auth.Account{ID: "alice"})
 
+	// They make a sentence in this order: an agent acts for you, context is what
+	// it knows, tools are what it can call, services are what backs all of it.
 	for _, want := range []string{`href="/home"`, `href="/agents"`,
-		`href="/tools"`, `href="/services"`} {
+		`href="/context"`, `href="/tools"`, `href="/services"`} {
 		if !strings.Contains(result, want) {
 			t.Errorf("the sidebar is missing %s", want)
 		}
