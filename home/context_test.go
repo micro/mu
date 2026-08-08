@@ -3,6 +3,7 @@ package home
 import (
 	"encoding/json"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -165,65 +166,58 @@ func TestTheCardGridHoldsNothingPersonal(t *testing.T) {
 	}
 }
 
-// An empty inbox renders no card, so the row beside the last run is just the
-// run — same contract as every other card.
-func TestTheMailCardIsAbsentWhenThereIsNoMail(t *testing.T) {
-	if got := mailCardHTML(""); got != "" {
-		t.Errorf("a guest got a mail card: %s", got)
-	}
-	if got := mailCardHTML("nobody-with-mail"); got != "" {
-		t.Errorf("an empty inbox rendered a card: %s", got)
-	}
-}
-
-// The search box is not a card, signed in or out. Home has one input and it is
-// the agent's; a second one that can only do web search is the worse half of
-// what is already at the top of the page.
-func TestSearchIsNotACard(t *testing.T) {
-	prev := Cards
-	Cards = []Card{{ID: "news", Title: "News", CachedHTML: `<p>Rates held</p>`}}
-	t.Cleanup(func() { Cards = prev })
-
-	for _, acc := range []*auth.Account{nil, {ID: "reader"}} {
-		got := CardsHTML(httptest.NewRequest("GET", "/home", nil), acc)
-		if strings.Contains(got, "Search the web...") || strings.Contains(got, `id="web"`) {
-			t.Errorf("the search card is back (account %v)", acc)
-		}
-	}
-}
-
-// A card with nothing to show is not rendered.
+// The grid renders each card in the column cards.json puts it in.
 //
-// This is the contract every card renderer has to honour, and four of them
-// were not: chat said "No discussions going on right now", mail said "No
-// messages", images said "Today's image is on its way", blog said "No posts
-// yet". On a brand-new account that is most of the home screen reporting that
-// nothing is happening — in boxes the same size as the real ones, on the page
-// whose whole job is to be evidence that the tools work.
-//
-// A card is that evidence. One that says there is nothing to show is evidence
-// of the opposite, so it should not be there at all.
-func TestACardWithNothingToShowIsNotRendered(t *testing.T) {
+// It used to deal them out alternately — left, right, left, right — so the
+// configured columns were decoration, and skipping an empty card reshuffled
+// everything after it. The page moved depending on whether the daily image had
+// landed yet.
+func TestEachCardRendersInItsConfiguredColumn(t *testing.T) {
 	prev := Cards
 	Cards = []Card{
-		{ID: "news", Title: "News", Link: "/news", CachedHTML: `<p>Rates held</p>`},
-		{ID: "chat", Title: "Chat", Link: "/chat", CachedHTML: ``},
-		{ID: "images", Title: "Images", Link: "/images", CachedHTML: `   `},
+		{ID: "blog", Title: "Blog", Column: "left", CachedHTML: `<p>a post</p>`},
+		{ID: "prayer", Title: "Prayer", Column: "left", CachedHTML: `<p>fajr</p>`},
+		{ID: "markets", Title: "Markets", Column: "right", CachedHTML: `<p>BTC</p>`},
+		{ID: "images", Title: "Images", Column: "right", CachedHTML: ``}, // nothing today
+		{ID: "video", Title: "Video", Column: "right", CachedHTML: `<p>a clip</p>`},
 	}
 	t.Cleanup(func() { Cards = prev })
 
 	got := CardsHTML(httptest.NewRequest("GET", "/home", nil), &auth.Account{ID: "reader"})
-	if !strings.Contains(got, "Rates held") {
-		t.Error("the card with something to show did not render")
-	}
-	for _, empty := range []string{`id="chat"`, `id="images"`} {
-		if strings.Contains(got, empty) {
-			t.Errorf("an empty card rendered anyway: %s", empty)
+	left := got[strings.Index(got, `class="home-left"`):strings.Index(got, `class="home-right"`)]
+	right := got[strings.Index(got, `class="home-right"`):]
+
+	for _, id := range []string{"blog", "prayer"} {
+		if !strings.Contains(left, `id="`+id+`"`) {
+			t.Errorf("%s is configured left and did not render there", id)
 		}
 	}
-	// Not even the "More" link on its own — a box containing only a way out of
-	// itself is the empty card by another route.
-	if strings.Contains(got, `href="/chat"`) {
-		t.Error("an empty card rendered as just its More link")
+	for _, id := range []string{"markets", "video"} {
+		if !strings.Contains(right, `id="`+id+`"`) {
+			t.Errorf("%s is configured right and did not render there", id)
+		}
+	}
+	// The empty one is skipped without moving the ones after it.
+	if strings.Contains(got, `id="images"`) {
+		t.Error("a card with nothing in it rendered")
+	}
+	if strings.Index(right, `id="markets"`) > strings.Index(right, `id="video"`) {
+		t.Error("skipping the empty card reordered the column")
+	}
+}
+
+// Home carries the world's content and nothing that belongs on a page of its
+// own. Runs and mail were both here — a single receipt for something you just
+// watched happen, and three subject lines beside a Mail page one click away.
+func TestHomeDoesNotCarryRunsOrMail(t *testing.T) {
+	src, err := os.ReadFile("home.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := string(src)
+	for _, gone := range []string{"RecentRuns(", "mailCardHTML(", "firstRunCTA("} {
+		if strings.Contains(body, gone) {
+			t.Errorf("home still renders %s", gone)
+		}
 	}
 }

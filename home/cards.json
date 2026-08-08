@@ -35,18 +35,10 @@
       "icon": "/markets.svg"
     },
     {
-      "id": "images",
-      "title": "Images",
-      "type": "images",
-      "position": 1,
-      "link": "/images",
-      "icon": "/images.svg"
-    },
-    {
       "id": "social",
       "title": "Social",
       "type": "social",
-      "position": 2,
+      "position": 1,
       "link": "/social",
       "icon": ""
     },
@@ -54,17 +46,17 @@
       "id": "video",
       "title": "Video",
       "type": "video",
-      "position": 3,
+      "position": 2,
       "link": "/video",
       "icon": "/video.png"
     },
     {
-      "id": "chat",
-      "title": "Chat",
-      "type": "chat",
-      "position": 4,
-      "link": "/chat",
-      "icon": "/chat.png"
+      "id": "images",
+      "title": "Images",
+      "type": "images",
+      "position": 3,
+      "link": "/images",
+      "icon": "/images.svg"
     }
   ]
 }

@@ -80,38 +80,8 @@ func RunsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(app.RenderHTMLForRequest("Runs", "What your agents did, and whether it worked", b.String(), r)))
 }
 
-// RecentRuns renders the last few runs for the home console, or "" when there
-// are none. Exported because home draws it; the flows live here.
-func RecentRuns(accountID string, limit int) string {
-	runs := ListFlows(accountID)
-	if len(runs) == 0 {
-		return ""
-	}
-	if len(runs) > limit {
-		runs = runs[:limit]
-	}
-	// Worded for what is actually shown. Home asks for one, so "Recent" over a
-	// single row read like a section that had lost the rest of itself.
-	sub := "what your agents did, and whether it worked"
-	if len(runs) == 1 {
-		sub = "the last thing your agents did, and whether it worked"
-	}
-	var b strings.Builder
-	b.WriteString(`<div class="cards-head"><span>Recent</span>` +
-		`<span class="cards-sub">` + sub + `</span></div>`)
-	b.WriteString(`<div class="runs">`)
-	for _, f := range runs {
-		b.WriteString(runRow(f, ""))
-	}
-	// Space below, not just above. "Every run" sat 8px off the last row and
-	// nothing off the block underneath, so on a phone — where the cards stack
-	// into one column directly under this — the link touched the top card.
-	b.WriteString(`</div><p style="margin:8px 0 24px">` + app.Link("Every run", "/runs") + `</p>`)
-	return b.String() + runsCSS
-}
-
-// runRow is one run. csrf empty means no delete control — the home console is
-// a summary, and a destructive button on a summary is a misclick waiting.
+// runRow is one run. csrf empty means no delete control, for anywhere this is
+// rendered as a summary rather than as the page you came to manage runs on.
 func runRow(f *Flow, csrf string) string {
 	status, cls := "done", "run-ok"
 	switch f.Status {

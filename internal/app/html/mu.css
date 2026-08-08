@@ -5424,9 +5424,9 @@ body.display-mode .card h4 {
   .prayer-side { position: static; }
 }
 
-/* The cards have a name now. Unlabelled they read as decoration — a wall of
-   widgets under an agent input — when they are the thing the toggle above the
-   input hands to the agent. */
+/* A section heading with a subtitle beside it. /runs uses it; Home used to,
+   over the cards and over a recent-runs block, and no longer has sections to
+   label. */
 .cards-head {
   display: flex;
   align-items: baseline;
