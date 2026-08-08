@@ -761,6 +761,14 @@ func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts Query
 		f.Answer = answer
 		f.HTML = html
 		f.Status = "done"
+		// What it ran. The native path streamed tool_start and tool_done to the
+		// browser and then dropped both on the floor, so a finished run recorded
+		// an answer and no account of how it got there — and this is the default
+		// path, so that was almost every run. The names are what this path
+		// knows; the payloads stay with the planner path, which keeps them.
+		for _, name := range nativeTools {
+			f.Steps = append(f.Steps, FlowStep{Tool: name})
+		}
 	})
 	sse(w, map[string]any{"type": "response", "html": html, "flow_id": flow.ID})
 	sse(w, map[string]any{"type": "done"})

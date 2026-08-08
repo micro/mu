@@ -27,11 +27,25 @@ is taught:
 | Level | What it is | Where |
 |---|---|---|
 | **Agents** | What acts for you. Named, scoped, each with its own token. | `/agents` |
+| **Context** | What they know: what is remembered, and what is live right now. | `/context` |
 | **Tools** | What an agent can call. Derived from services, never hand-written. | `/tools` |
 | **Services** | The building blocks. One domain each; the things Mu actually runs. | `/services` |
 
-Agents call tools. Tools are derived from services. Only the bottom level lives
-in `service/`.
+An agent acts for you, context is what it knows, tools are what it can call,
+services are what backs all of it. Tools are derived from services. Only the
+bottom level lives in `service/`.
+
+Context was argued against as a sidebar row on the grounds that it is a
+property most services have rather than a kind of thing, which would make it a
+drawer for anything account-shaped. That objection describes a page that
+gathers services under a new heading, and it is not this one: an actor with
+knowledge and an actor with capabilities are two different things, and the
+sidebar had only the second. Context not being a service is the argument for
+the row, not against it.
+
+It is nonetheless reachable programmatically, because a primitive an agent
+cannot call is a dashboard. `context_get` returns both halves, and `memory_*`
+writes the durable one — see below.
 
 Two consequences worth holding:
 
@@ -57,8 +71,10 @@ Two consequences worth holding:
 
 ### What earns a place in the sidebar
 
-Only the three levels above, plus Home, plus the account group. Everything else
-is a service and lives in the catalogue.
+Only the levels above, plus Home, plus the account group. Everything else is a
+service and lives in the catalogue — including Apps, which sat in the spine for
+a while on the argument that it is half the product, and which has a Spec and a
+catalogue tile like the other nineteen. Anyone who lives in a service pins it.
 
 A sidebar that named four of nineteen services implied the other fifteen did not
 exist. `/services` lists them all, and Home answers the at-a-glance question —
@@ -88,14 +104,19 @@ list** — a step marked partial or missing is work, not aspiration.
 | 3 | Creates an account | ✅ password, passkey, or Google |
 | 4 | Connects their own agent — config file, or OAuth for Claude Desktop | ✅ both paths on `/tools` |
 | 5 | Gets a credential scoped to what that agent should reach | ✅ `/agents` |
-| 6 | Tests a call and sees it work | ⚠️ playground exists at `/mcp`; nothing confirms "your agent called us" |
+| 6 | Tests a call and sees it work | ⚠️ playground at `/mcp`; `/runs` now shows what ran, but nothing pushes "your agent called us" |
 | 7 | Tops up so calls keep working | ✅ wallet, with a banner before it runs out |
 | 8 | Discovers Mu can run agents too, and tries one | ⚠️ possible, but nothing on the connect path mentions it |
-| 9 | Comes back because something happened while they were away | ⚠️ Home shows counts; no notification of a first successful call |
+| 9 | Comes back because something happened while they were away | ✅ `/runs`, and Recent on Home |
 
-Steps 6, 8 and 9 are the current holes. They share a shape: **the product does
-not tell you when something worked.** A first call that succeeds is the moment
-somebody decides this is real, and right now it passes in silence.
+Step 9 is closed. Every question already produced a Flow — the prompt, the
+agent, each tool it ran, the answer, the error — persisted per account, and
+`ListFlows` was served by nothing: the record of every run was written and never
+shown. It is `/runs` now, with the last few on Home.
+
+6 and 8 remain, and share the old shape: **the product does not tell you when
+something worked.** A first call that succeeds is the moment somebody decides
+this is real, and it still passes without a word.
 
 ## What Home is
 
@@ -117,30 +138,70 @@ headlines.
 
 ### So what are the cards?
 
-Not context for the model — the agent fetches what it needs through tools, and
-nothing on the screen is fed to it. The cards are each **a service
-demonstrating itself**, which is real value in the right place and filler in the
-wrong one:
+Two things at once, and the second was discovered later.
 
-- On the **landing** and on **`/services`**, a live card is evidence. It is the
-  difference between claiming a news aggregator and showing one running.
-- On **Home**, it is the world's content where your own should be. Every card is
-  somebody else's day.
+They are each **a service demonstrating itself** — on the landing and on
+`/services`, a live card is evidence, the difference between claiming a news
+aggregator and showing one running. On Home it was the world's content where
+your own should be: every card somebody else's day.
 
-So the rule: **cards prove the tools are real, and belong where somebody is
-deciding whether they are. Home is for your own instance working.**
+And they are **the live half of context**. Each card is a materialised view over
+a service, refreshed on a timer; rendered as text they are the RAG payload an
+agent wants before it starts guessing which tool to call. This document used to
+say "not context for the model — nothing on the screen is fed to it", and that
+was true when it was written and is not now.
+
+So the rule has two halves:
+
+- **Cards prove the tools are real** and belong where somebody is deciding
+  whether they are. **Home is for your own instance working.**
+- **Cards are context**, so they live on `/context`, which is where the toggle
+  that feeds them to an agent points, and where `context_get` reads them from.
+
+A card fed to a model and a card shown to a person must be the same card. The
+switch beside the input asks `CardContext` whether there is anything to send
+rather than counting stored choices — a toggle and a screen that disagree make
+the toggle look broken.
 
 What Home should carry, in order:
 
-1. **In flight** — tasks running, agents working now.
-2. **Waiting** — unread mail, events today, results you have not read.
-3. **Recent** — what your agents actually did, and whether it worked. This is
-   the missing piece and the one that closes funnel step 9.
-4. **Cost** — what it is running you, with the way to top up.
-5. **The agent input**, because asking it something is a thing you do from here.
+1. **In flight** — tasks running, agents working now. ⚠️ counts only.
+2. **Waiting** — unread mail, events today, results you have not read. ⚠️ counts only.
+3. **Recent** — what your agents actually did, and whether it worked. ✅ `/runs`,
+   last five inline.
+4. **Cost** — what it is running you, with the way to top up. ✅
+5. **The agent input**, because asking it something is a thing you do from here. ✅
+
+The cards are no longer among them; they moved to `/context`. Home showing the
+world's news under a tools-for-agents banner was the single longest-standing
+contradiction between this document and the product.
 
 `/usage` is the ledger — calls and spend over time. Home is the front page of
 your instance, not its accounts.
+
+## What context is, exactly
+
+Two halves, and both are readable by anything holding a token.
+
+- **Live** — the cards, as text. Materialised views over the services, refreshed
+  on a timer. This is what the toggle beside the input sends, and what
+  `context_get` returns.
+- **Remembered** — durable notes about the caller, kept across conversations.
+  `memory_set`, `memory_list`, `memory_delete`, and the list on `/context` with
+  a Forget button on every row.
+
+The rule that took longest to see: **a primitive an agent cannot call is a
+dashboard.** "Live context" was a checkbox next to this instance's own chat for
+weeks — the one audience the product is not named for. An agent connecting over
+MCP could not reach a word of it. Both halves are services now: headless, so
+they get tools and scoping without claiming a domain they do not run, and
+`/context` is the page a person reads them on.
+
+Memory in particular was invisible from both sides. Facts were extracted from
+conversations by a background model call and injected into every prompt, and
+there was no way for a person to see one or an agent to write one. An agent that
+cannot say "remember this" gets told the same thing every session, which is the
+exact failure persistent memory exists to prevent.
 
 ## The two doors
 

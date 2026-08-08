@@ -50,6 +50,7 @@ import (
 	"mu/service/chat"
 	"mu/service/contacts"
 	"mu/service/db"
+	ctxsvc "mu/service/context"
 	memsvc "mu/service/memory"
 	"mu/service/events"
 	"mu/service/files"
@@ -186,6 +187,7 @@ func main() {
 	chat.LoadService()
 	db.LoadService()
 	memsvc.LoadService()
+	ctxsvc.LoadService()
 	images.Load()
 	// The cache behind /img, which serves article images from here instead of
 	// from four publisher CDNs. See internal/imageproxy.
@@ -466,6 +468,10 @@ func main() {
 		}
 		return home.CardContext(acc)
 	}
+	// The same aggregate, for anything calling in over MCP. It was reachable
+	// only from a checkbox beside this instance's own chat, which is the one
+	// audience the product is not named for.
+	ctxsvc.Live = agent.CardContextFunc
 	micro.UserContextFunc = userCtxFunc
 
 	// Wire digest → blog callbacks (digest publishes as blog post)
@@ -1752,6 +1758,7 @@ func main() {
 		"/contacts":               true,  // Your address book — sign-in required
 		"/db":                     true,  // Your own records — sign-in required
 		"/context":                true,  // What your agents know about you
+		"/runs":                   true,  // What your agents did
 		"/tasks":                  true,  // Your task list — sign-in required
 		"/social":                 false, // Public viewing, auth for search
 		"/social/thread":          false, // Public thread view, auth for messaging
@@ -2169,6 +2176,8 @@ func main() {
 	// What your agents know about you. Memory in particular was written by the
 	// agent and read into every prompt with no way to see or delete it.
 	http.HandleFunc("/context", home.ContextHandler)
+	// What your agents did. Flows were recorded and never served.
+	http.HandleFunc("/runs", agent.RunsHandler)
 	// A service rendered at a glance — see internal/api/card.go.
 	http.HandleFunc("/card", api.CardHandler)
 	http.HandleFunc("/card/", api.CardHandler)

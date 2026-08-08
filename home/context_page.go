@@ -93,26 +93,18 @@ func ContextHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// ── What it watches ─────────────────────────────────────────
+	// ── What it watches ─────────────────────────────────────────
+	//
+	// The cards themselves, not a list of their names. They were on Home, which
+	// docs/PRODUCT.md calls "the world's content where your own should be" —
+	// Home is the console, this is the context. And a page about what an agent
+	// reads should show what it would read, not chips naming it.
 	b.WriteString(`<h3 class="ctx-head">What it watches</h3>`)
-	b.WriteString(`<p class="ctx-sub">The cards on your home screen. These are not read ` +
-		`automatically — they go in only when you turn on live context above the input, because ` +
-		`context costs tokens on every turn and most questions have nothing to do with them.</p>`)
-	watched := watchedCardTitles(acc)
-	// Both links point at the thing, not at where its setting is stored. The
-	// cards live on home and the picker is on home; /account merely also has a
-	// copy of the checkboxes, which is a reason to go there for nothing.
-	if len(watched) == 0 {
-		b.WriteString(`<p class="ctx-empty">No cards chosen, so the default set is shown. ` +
-			app.Link("Pick what to watch", "/home?cards=1") + `</p>`)
-	} else {
-		b.WriteString(`<div class="ctx-chips">`)
-		for _, t := range watched {
-			b.WriteString(`<span class="ctx-chip">` + html.EscapeString(t) + `</span>`)
-		}
-		b.WriteString(`</div>`)
-		b.WriteString(`<p class="ctx-sub" style="margin-top:8px">` +
-			app.Link("Change what you watch", "/home?cards=1") + `</p>`)
-	}
+	b.WriteString(`<p class="ctx-sub">Live from the services you keep an eye on. These are not ` +
+		`read automatically — they go in only when you turn on live context above the agent ` +
+		`input, because context costs tokens on every turn and most questions have nothing to ` +
+		`do with them. ` + app.Link("Choose what to watch", "/home?cards=1") + `</p>`)
+	b.WriteString(CardsHTML(r, acc))
 
 	// ── What it can look up ─────────────────────────────────────
 	//
@@ -134,28 +126,6 @@ func ContextHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`</div>` + contextCSS)
 	w.Write([]byte(app.RenderHTMLForRequest("Context",
 		"What your agents know about you, and what they can look up", b.String(), r)))
-}
-
-// watchedCardTitles is the cards this account has chosen, by their display
-// title. Empty means they have chosen nothing and are seeing the default set.
-func watchedCardTitles(acc *auth.Account) []string {
-	ids := acc.HomeCardOrder()
-	if len(ids) == 0 {
-		return nil
-	}
-	title := map[string]string{}
-	for _, c := range Cards {
-		title[c.ID] = c.Title
-	}
-	out := make([]string, 0, len(ids))
-	for _, id := range ids {
-		if t := title[id]; t != "" {
-			out = append(out, t)
-			continue
-		}
-		out = append(out, id)
-	}
-	return out
 }
 
 const contextCSS = `<style>

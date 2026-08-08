@@ -88,12 +88,16 @@ func TestTheToggleIsOnlyWorthOfferingWhenThereIsContext(t *testing.T) {
 	Cards = []Card{{ID: "news", Title: "News", CachedHTML: `<p>Rates held</p>`}}
 	t.Cleanup(func() { Cards = prev })
 
+	// Choosing nothing is not the same as having nothing. An account that never
+	// opened the picker sees the default cards on the page, so it must have the
+	// same thing to send — otherwise the switch and the screen disagree, and
+	// the switch is the one that looks broken.
 	empty := &auth.Account{ID: "nocards"}
 	if len(empty.HomeCardOrder()) != 0 {
 		t.Fatal("an account that chose nothing reports cards")
 	}
-	if CardContext(empty) != "" {
-		t.Error("an account with no cards would send context, so the toggle should have been offered")
+	if CardContext(empty) == "" {
+		t.Error("an account that chose nothing sends no context, so the toggle would be a dead switch")
 	}
 
 	chose := &auth.Account{ID: "reader"}
@@ -103,6 +107,12 @@ func TestTheToggleIsOnlyWorthOfferingWhenThereIsContext(t *testing.T) {
 	}
 	if CardContext(chose) == "" {
 		t.Error("an account with a card sends nothing, so the toggle would be a dead switch")
+	}
+
+	// The genuine no-context case: nothing to render at all.
+	Cards = nil
+	if CardContext(chose) != "" {
+		t.Error("context was sent with no cards to render it from")
 	}
 }
 

@@ -517,11 +517,15 @@ function fetchW(la,lo){
 		}
 
 		b.WriteString(`<div id="home-agent" style="margin:0 0 20px">`)
-		// The toggle is only offered when there is context behind it. Cards are
-		// off until somebody chooses some, so offering it to everyone meant
-		// most people saw a switch that sent nothing — the worst kind, because
-		// nothing appears to happen and there is no way to tell why.
-		hasCards := viewerAcc != nil && len(viewerAcc.HomeCardOrder()) > 0
+		// The toggle is only offered when there is context behind it — a switch
+		// that sends nothing is the worst kind, because nothing appears to
+		// happen and there is no way to tell why.
+		//
+		// Choosing nothing is not the same as having nothing: an account that
+		// never opened the picker gets the default set, the same set the cards
+		// on /context show. This asks CardContext rather than counting stored
+		// choices, so the switch and what it sends can no longer disagree.
+		hasCards := viewerAcc != nil && CardContext(viewerAcc) != ""
 		b.WriteString(app.ChatComponent(app.ChatConfig{Guest: viewerID == "", HideSuggestions: true,
 			OfferCardContext: hasCards, OfferAgentPicker: viewerID != ""}))
 		if chips != "" {
@@ -534,6 +538,14 @@ function fetchW(la,lo){
 	// chips. Selected in the preferences panel; opens the app on click.
 	// Ask first, then what is yours, then the world's content.
 	b.WriteString(systemHTML)
+
+	// What your agents actually did. docs/PRODUCT.md puts this third on the
+	// console — after what is in flight and what is waiting — and called it the
+	// missing piece: a run that happened while you were elsewhere was recorded
+	// and never shown, so the product never told you when something worked.
+	if viewerAcc != nil {
+		b.WriteString(agent.RecentRuns(viewerAcc.ID, 5))
+	}
 
 	if viewerAcc != nil && len(viewerAcc.Widgets) > 0 {
 		var tiles string
@@ -694,141 +706,7 @@ function fetchW(la,lo){
 </script></div>`)
 	}
 
-	// Which cards to show. Default cards (cards.json) show unless the user has
-	// deselected them; cards added after the user last customised default to
-	// visible (see auth.Account.ShowHomeCard). Order and column come from
-	// cards.json. mail/web are opt-in and off unless explicitly enabled.
-
-	tooltips := map[string]string{
-		"blog":    "Microblog posts with daily AI-generated digests",
-		"news":    "Headlines from RSS feeds, sorted by time",
-		"markets": "Live crypto, futures, and commodity prices",
-		"prayer":  "Islamic prayer times, and a daily verse, saying and name",
-		"social":  "Public discussion threads",
-		"video":   "Latest videos from curated channels",
-		"chat":    "Discussions happening on this instance right now",
-	}
-
-	// One ordered list, and mail and search are in it like everything else.
-	//
-	// They used to be appended after the loop, so they could only ever land at
-	// the bottom of the right column however anybody felt about it. And the
-	// order came from cards.json, which is the instance's opinion rather than
-	// the reader's. Now the account stores the order and this renders it.
-	//
-	// Service cards are off unless chosen. Someone who signed up because the
-	// landing said tools for agents should not land on a magazine; someone who
-	// wants one composes it in the panel below, and their order is kept.
-	type rendered struct{ id, html string }
-	build := func(id string) string {
-		switch id {
-		case "mail":
-			if viewerID == "" {
-				return ""
-			}
-			return mail.GetRecentThreadsPreview(viewerID, 3) + app.Link("More", "/mail")
-		case "web":
-			if viewerID == "" {
-				return ""
-			}
-			return `<form method="GET" action="/web"><input type="text" name="q" placeholder="Search the web..." style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box"></form>`
-		}
-		for _, card := range Cards {
-			if card.ID != id {
-				continue
-			}
-			content := card.CachedHTML
-			if strings.TrimSpace(content) == "" {
-				return ""
-			}
-			if card.Link != "" {
-				content += app.Link("More", card.Link)
-			}
-			return content
-		}
-		return ""
-	}
-	titleOf := func(id string) string {
-		switch id {
-		case "mail":
-			return "Mail"
-		case "web":
-			return "Search"
-		}
-		for _, card := range Cards {
-			if card.ID == id {
-				return card.Title
-			}
-		}
-		return id
-	}
-
-	// Signed out, the home screen is a showcase: the instance's own default
-	// order, because a visitor has expressed no preference to honour.
-	//
-	// A brand-new account is in exactly the same position, and used to get the
-	// opposite treatment: HomeCardOrder is empty until you save preferences, so
-	// signing up turned the showcase into a blank page and asked you to go and
-	// pick cards before anything would happen. auth.ShowHomeCard already says
-	// "no customization yet → all defaults show"; this is the same rule applied
-	// to the order, so the two stop disagreeing.
-	defaultOrder := func() []string {
-		ids := make([]string, 0, len(Cards))
-		for _, card := range Cards {
-			ids = append(ids, card.ID)
-		}
-		return ids
-	}
-	order := []string{}
-	if viewerAcc == nil {
-		order = defaultOrder()
-	} else if order = viewerAcc.HomeCardOrder(); len(order) == 0 {
-		order = defaultOrder()
-	}
-
-	var shown []rendered
-	for _, id := range order {
-		content := build(id)
-		if strings.TrimSpace(content) == "" {
-			continue
-		}
-		title := titleOf(id)
-		if tip, ok := tooltips[id]; ok {
-			title += fmt.Sprintf(` <span class="card-tooltip" data-tip="%s" onclick="event.stopPropagation();document.querySelectorAll('.card-tooltip.show').forEach(function(e){e.classList.remove('show')});this.classList.toggle('show')">?</span>`, htmlEsc(tip))
-		}
-		shown = append(shown, rendered{id, fmt.Sprintf(app.CardTemplate, id, id, title, content)})
-	}
-
-	// Two columns, filled alternately, so first means top-left and second means
-	// top-right. Any other distribution would make the stored order unreadable
-	// on the page that displays it.
-	var leftHTML, rightHTML []string
-	for i, c := range shown {
-		if i%2 == 0 {
-			leftHTML = append(leftHTML, c.html)
-		} else {
-			rightHTML = append(rightHTML, c.html)
-		}
-	}
-
-	// A console with nothing on it has to say so, and say where the switch is.
-	if len(shown) == 0 && viewerAcc != nil {
-		b.WriteString(`<p style="color:#888;font-size:14px;margin:8px 0 0">` +
-			`No cards yet. <a href="#" onclick="var p=document.getElementById('home-card-prefs');` +
-			`if(p)p.style.display='block';return false">Choose what to keep an eye on</a> — ` +
-			`news, markets, mail, whatever you watch. They also become the live context you ` +
-			`can hand the agent with a single toggle above the input.</p>`)
-	}
-
-	if len(leftHTML) > 0 || len(rightHTML) > 0 {
-		// The cards need a name. Unlabelled they read as decoration — a wall of
-		// widgets under an agent input — when they are the thing the toggle
-		// above the input hands to the agent. Saying so once, here, is what
-		// makes "use live context" mean anything.
-		b.WriteString(`<div class="cards-head"><span>Live context</span>` +
-			`<span class="cards-sub">what you watch, and what the agent reads when you ask it to</span></div>`)
-		b.WriteString(fmt.Sprintf(Template, strings.Join(leftHTML, "\n"), strings.Join(rightHTML, "\n")))
-	}
+	// Home is the console. The cards moved to /context — see CardsHTML.
 
 	b.WriteString(`</div>`) // close #home-cards
 
@@ -1045,4 +923,158 @@ func chipMarkup(q string) string {
 		`style="padding:6px 12px;border:1px solid #e0e0e0;border-radius:6px;background:#fff;`+
 		`font-size:13px;color:#555;cursor:pointer;white-space:nowrap;font-family:inherit">%s</button>`,
 		htmlEsc(q), htmlEsc(q))
+}
+
+
+// CardsHTML renders the cards a reader watches: the live view of each
+// service they chose to keep an eye on.
+//
+// Extracted so one renderer serves both places they belong. They were built
+// inline on Home and existed nowhere else, which is the wrong way round twice:
+// docs/PRODUCT.md says a live card is evidence on the pages where somebody is
+// deciding whether the tools are real, and is "the world's content where your
+// own should be" on the console. Home is now the console; the cards are on
+// /context, which is where the toggle that feeds them to an agent points.
+func CardsHTML(r *http.Request, viewerAcc *auth.Account) string {
+	var b strings.Builder
+	viewerID := ""
+	if viewerAcc != nil {
+		viewerID = viewerAcc.ID
+	}
+	// Which cards to show. Default cards (cards.json) show unless the user has
+	// deselected them; cards added after the user last customised default to
+	// visible (see auth.Account.ShowHomeCard). Order and column come from
+	// cards.json. mail/web are opt-in and off unless explicitly enabled.
+
+	tooltips := map[string]string{
+		"blog":    "Microblog posts with daily AI-generated digests",
+		"news":    "Headlines from RSS feeds, sorted by time",
+		"markets": "Live crypto, futures, and commodity prices",
+		"prayer":  "Islamic prayer times, and a daily verse, saying and name",
+		"social":  "Public discussion threads",
+		"video":   "Latest videos from curated channels",
+		"chat":    "Discussions happening on this instance right now",
+	}
+
+	// One ordered list, and mail and search are in it like everything else.
+	//
+	// They used to be appended after the loop, so they could only ever land at
+	// the bottom of the right column however anybody felt about it. And the
+	// order came from cards.json, which is the instance's opinion rather than
+	// the reader's. Now the account stores the order and this renders it.
+	//
+	// Service cards are off unless chosen. Someone who signed up because the
+	// landing said tools for agents should not land on a magazine; someone who
+	// wants one composes it in the panel below, and their order is kept.
+	type rendered struct{ id, html string }
+	build := func(id string) string {
+		switch id {
+		case "mail":
+			if viewerID == "" {
+				return ""
+			}
+			return mail.GetRecentThreadsPreview(viewerID, 3) + app.Link("More", "/mail")
+		case "web":
+			if viewerID == "" {
+				return ""
+			}
+			return `<form method="GET" action="/web"><input type="text" name="q" placeholder="Search the web..." style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box"></form>`
+		}
+		for _, card := range Cards {
+			if card.ID != id {
+				continue
+			}
+			content := card.CachedHTML
+			if strings.TrimSpace(content) == "" {
+				return ""
+			}
+			if card.Link != "" {
+				content += app.Link("More", card.Link)
+			}
+			return content
+		}
+		return ""
+	}
+	titleOf := func(id string) string {
+		switch id {
+		case "mail":
+			return "Mail"
+		case "web":
+			return "Search"
+		}
+		for _, card := range Cards {
+			if card.ID == id {
+				return card.Title
+			}
+		}
+		return id
+	}
+
+	// Signed out, the home screen is a showcase: the instance's own default
+	// order, because a visitor has expressed no preference to honour.
+	//
+	// A brand-new account is in exactly the same position, and used to get the
+	// opposite treatment: HomeCardOrder is empty until you save preferences, so
+	// signing up turned the showcase into a blank page and asked you to go and
+	// pick cards before anything would happen. auth.ShowHomeCard already says
+	// "no customization yet → all defaults show"; this is the same rule applied
+	// to the order, so the two stop disagreeing.
+	defaultOrder := func() []string {
+		ids := make([]string, 0, len(Cards))
+		for _, card := range Cards {
+			ids = append(ids, card.ID)
+		}
+		return ids
+	}
+	order := []string{}
+	if viewerAcc == nil {
+		order = defaultOrder()
+	} else if order = viewerAcc.HomeCardOrder(); len(order) == 0 {
+		order = defaultOrder()
+	}
+
+	var shown []rendered
+	for _, id := range order {
+		content := build(id)
+		if strings.TrimSpace(content) == "" {
+			continue
+		}
+		title := titleOf(id)
+		if tip, ok := tooltips[id]; ok {
+			title += fmt.Sprintf(` <span class="card-tooltip" data-tip="%s" onclick="event.stopPropagation();document.querySelectorAll('.card-tooltip.show').forEach(function(e){e.classList.remove('show')});this.classList.toggle('show')">?</span>`, htmlEsc(tip))
+		}
+		shown = append(shown, rendered{id, fmt.Sprintf(app.CardTemplate, id, id, title, content)})
+	}
+
+	// Two columns, filled alternately, so first means top-left and second means
+	// top-right. Any other distribution would make the stored order unreadable
+	// on the page that displays it.
+	var leftHTML, rightHTML []string
+	for i, c := range shown {
+		if i%2 == 0 {
+			leftHTML = append(leftHTML, c.html)
+		} else {
+			rightHTML = append(rightHTML, c.html)
+		}
+	}
+
+	// A console with nothing on it has to say so, and say where the switch is.
+	if len(shown) == 0 && viewerAcc != nil {
+		b.WriteString(`<p style="color:#888;font-size:14px;margin:8px 0 0">` +
+			`No cards yet. <a href="#" onclick="var p=document.getElementById('home-card-prefs');` +
+			`if(p)p.style.display='block';return false">Choose what to keep an eye on</a> — ` +
+			`news, markets, mail, whatever you watch. They also become the live context you ` +
+			`can hand the agent with a single toggle above the input.</p>`)
+	}
+
+	if len(leftHTML) > 0 || len(rightHTML) > 0 {
+		// The cards need a name. Unlabelled they read as decoration — a wall of
+		// widgets under an agent input — when they are the thing the toggle
+		// above the input hands to the agent. Saying so once, here, is what
+		// makes "use live context" mean anything.
+		b.WriteString(`<div class="cards-head"><span>Live context</span>` +
+			`<span class="cards-sub">what you watch, and what the agent reads when you ask it to</span></div>`)
+		b.WriteString(fmt.Sprintf(Template, strings.Join(leftHTML, "\n"), strings.Join(rightHTML, "\n")))
+	}
+	return b.String()
 }

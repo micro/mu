@@ -45,8 +45,19 @@ func CardContext(acc *auth.Account) string {
 	if acc == nil {
 		return ""
 	}
+	// The default set when nothing has been chosen, matching what the page
+	// shows. HomeCardOrder is empty until you customise, so without this an
+	// account that never opened the picker had no live context to offer and the
+	// toggle silently did nothing — the same disagreement the home screen had.
+	order := acc.HomeCardOrder()
+	if len(order) == 0 {
+		for _, c := range Cards {
+			order = append(order, c.ID)
+		}
+	}
+
 	var b strings.Builder
-	for _, id := range acc.HomeCardOrder() {
+	for _, id := range order {
 		body := textOf(cardBody(id))
 		if body == "" {
 			continue
