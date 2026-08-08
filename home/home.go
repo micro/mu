@@ -386,9 +386,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// used it, offer a clear free sign-up (primary) plus log in.
 		inviteHTML = `<span id="home-date-actions"><a href="/signup" style="color:#111;text-decoration:none;font-weight:700">Sign up free</a> <a href="/login" style="color:#888;text-decoration:none;margin-left:10px">Log in</a></span>`
 	}
-	// No cog. It toggled the card picker, and the picker went to /context with
-	// the cards — so it had become a control that opened a panel for things not
-	// on the page, which is worse than absent: it looks like it does nothing.
+	// No cog. It toggled a card picker, and there is no card selection to pick
+	// any more — the instance chooses the cards and everybody gets the same
+	// ones, so there is nothing here for a settings control to open.
 	gearHTML := ""
 	dateLine.WriteString(fmt.Sprintf(`<div id="home-date"><span id="home-date-text">%s</span><span id="home-date-weather"></span>%s%s</div>`, now.Format("Monday, 2 January 2006"), inviteHTML, gearHTML))
 	// Inline weather: reads cached summary, and refreshes it in the
@@ -515,17 +515,8 @@ function fetchW(la,lo){
 		}
 
 		b.WriteString(`<div id="home-agent" style="margin:0 0 20px">`)
-		// The toggle is only offered when there is context behind it — a switch
-		// that sends nothing is the worst kind, because nothing appears to
-		// happen and there is no way to tell why.
-		//
-		// Choosing nothing is not the same as having nothing: an account that
-		// never opened the picker gets the default set, the same set the cards
-		// on /context show. This asks CardContext rather than counting stored
-		// choices, so the switch and what it sends can no longer disagree.
-		hasCards := viewerAcc != nil && CardContext(viewerAcc) != ""
 		b.WriteString(app.ChatComponent(app.ChatConfig{Guest: viewerID == "", HideSuggestions: true,
-			OfferCardContext: hasCards, OfferAgentPicker: viewerID != ""}))
+			OfferAgentPicker: viewerID != ""}))
 		if chips != "" {
 			b.WriteString(fmt.Sprintf(`<div class="home-chips">%s</div>`, chips))
 		}
@@ -567,10 +558,15 @@ function fetchW(la,lo){
 		}
 	}
 
-	// The card picker travels with the cards — it is inside CardsHTML now, so
-	// it renders on /context where ticking a box changes something you can see.
-
-	// Home is the console. The cards moved to /context — see CardsHTML.
+	// The cards, on Home, where they were.
+	//
+	// They were moved to a /context page on the argument that Home is a console
+	// and the cards are context. That gave the product two home screens, a
+	// sidebar entry for a page nobody asked for, and a card picker to justify
+	// the page — and it left /account describing a home screen that no longer
+	// had any cards on it. Home shows what this instance knows right now, which
+	// is the whole demonstration that the tools are real.
+	b.WriteString(CardsHTML(r, viewerAcc))
 
 	b.WriteString(`</div>`) // close #home-cards
 
@@ -793,12 +789,11 @@ func chipMarkup(q string) string {
 // CardsHTML renders the cards a reader watches: the live view of each
 // service they chose to keep an eye on.
 //
-// Extracted so one renderer serves both places they belong. They were built
-// inline on Home and existed nowhere else, which is the wrong way round twice:
-// docs/PRODUCT.md says a live card is evidence on the pages where somebody is
-// deciding whether the tools are real, and is "the world's content where your
-// own should be" on the console. Home is now the console; the cards are on
-// /context, which is where the toggle that feeds them to an agent points.
+// They live on Home, and there is no setting for which ones. There was: a
+// picker, in three places, over a per-account allowlist and a stored order —
+// a composition step in front of a page whose job is to show you something the
+// moment you arrive. Nobody arrives wanting to choose cards. The instance
+// picks them, in cards.json, and everybody gets the same ones.
 func CardsHTML(r *http.Request, viewerAcc *auth.Account) string {
 	var b strings.Builder
 	viewerID := ""
@@ -806,122 +801,6 @@ func CardsHTML(r *http.Request, viewerAcc *auth.Account) string {
 		viewerID = viewerAcc.ID
 	}
 
-	// Inline card preferences panel
-	if viewerAcc != nil {
-		// One list, shared with /account — the two panels edit the same setting
-		// and must not disagree about what can be edited.
-		allCardDefs := app.HomeCards
-		// Selected cards first, in the order they render; then the rest.
-		//
-		// The panel posts its rows in DOM order, so dragging a row is the whole
-		// mechanism — no separate "save order" step, and no way for the shown
-		// order and the stored order to disagree.
-		chosen := viewerAcc.HomeCardOrder()
-		inOrder := make([]struct {
-			id, label string
-			on        bool
-		}, 0, len(allCardDefs))
-		seen := map[string]bool{}
-		labelOf := map[string]string{}
-		for _, c := range allCardDefs {
-			labelOf[c.ID] = c.Label
-		}
-		for _, id := range chosen {
-			if label, ok := labelOf[id]; ok && !seen[id] {
-				seen[id] = true
-				inOrder = append(inOrder, struct {
-					id, label string
-					on        bool
-				}{id, label, true})
-			}
-		}
-		for _, c := range allCardDefs {
-			if !seen[c.ID] {
-				inOrder = append(inOrder, struct {
-					id, label string
-					on        bool
-				}{c.ID, c.Label, false})
-			}
-		}
-
-		var checkboxes string
-		for _, c := range inOrder {
-			checked := ""
-			if c.on {
-				checked = " checked"
-			}
-			checkboxes += fmt.Sprintf(`<label class="card-pref" draggable="true" data-id="%s"><span class="card-grip" title="Drag to reorder">⠿</span><input type="checkbox" name="cards" value="%s"%s> %s</label>`,
-				htmlEsc(c.id), htmlEsc(c.id), checked, htmlEsc(c.label))
-		}
-
-		// Pinning an app used to be here too, as a second list headed "Apps —
-		// pin apps to the top of your home screen", inside a panel about what
-		// an agent watches. Two different settings for two different pages,
-		// sharing a box because both are checkbox lists. Pinning now lives on
-		// /apps, next to the app you are deciding about — see apps.handleList.
-
-		// ?cards=1 lands with the picker already open, so a link from elsewhere
-		// can point at the thing rather than at the page it happens to sit on.
-		prefsDisplay := "none"
-		if r.URL.Query().Get("cards") != "" {
-			prefsDisplay = "block"
-		}
-
-		// A form with a Save button, not a set of switches that each save
-		// themselves.
-		//
-		// Every tick used to POST and then reload the whole page, so composing
-		// a set of six cards cost six round trips and six reloads — each one
-		// scrolling back to the top of the list you were part way down, and
-		// each one re-rendering every card behind the panel. Choosing what to
-		// watch is one decision expressed as several ticks, and it should cost
-		// one save. Reordering rides along: the rows post in DOM order, so a
-		// drag and a tick are the same submission and cannot disagree.
-		b.WriteString(fmt.Sprintf(`<form id="home-card-prefs" method="POST" action="/account" style="display:%s;padding:12px 16px;margin-bottom:12px;background:#f9f9f9;border-radius:8px;border:1px solid #eee">
-<input type="hidden" name="_csrf" value="%s">
-<input type="hidden" name="save_cards" value="1">
-<input type="hidden" name="return" value="%s">
-<p style="font-weight:600;font-size:14px;margin:0 0 4px">Choose what to watch</p>
-<p style="font-size:12px;color:#999;margin:0 0 8px">Tick what your agent keeps an eye on, drag to reorder, then save.</p>
-<div id="card-checkboxes">%s</div>
-<button type="submit" style="margin-top:10px">Save</button>
-<style>
-.card-pref{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:14px;border-bottom:1px solid #f0f0f0;cursor:grab;background:#f9f9f9}
-.card-pref input{width:18px;height:18px}
-.card-pref.dragging{opacity:.4}
-.card-grip{color:#bbb;font-size:13px;cursor:grab;user-select:none}
-</style>
-<script>
-// Drag to reorder. The rows post in DOM order, so moving one is the whole
-// change — there is no separate order to keep in step, and therefore no way
-// for the list you see and the list that saves to disagree.
-//
-// Native HTML5 drag rather than a library: this is one list of nine rows.
-(function(){
-  var list=document.getElementById('card-checkboxes');
-  if(!list) return;
-  var dragging=null;
-  list.addEventListener('dragstart',function(e){
-    dragging=e.target.closest('.card-pref');
-    if(dragging) dragging.classList.add('dragging');
-  });
-  list.addEventListener('dragend',function(){
-    if(!dragging) return;
-    dragging.classList.remove('dragging');
-    dragging=null;
-  });
-  list.addEventListener('dragover',function(e){
-    e.preventDefault();
-    if(!dragging) return;
-    var row=e.target.closest('.card-pref');
-    if(!row||row===dragging) return;
-    var box=row.getBoundingClientRect();
-    var after=(e.clientY-box.top)/box.height>0.5;
-    list.insertBefore(dragging,after?row.nextSibling:row);
-  });
-})();
-</script></form>`, prefsDisplay, htmlEsc(auth.CSRFToken(r)), htmlEsc(r.URL.Path), checkboxes))
-	}
 	// Which cards to show. Default cards (cards.json) show unless the user has
 	// deselected them; cards added after the user last customised default to
 	// visible (see auth.Account.ShowHomeCard). Order and column come from
@@ -940,13 +819,7 @@ func CardsHTML(r *http.Request, viewerAcc *auth.Account) string {
 	// One ordered list, and mail and search are in it like everything else.
 	//
 	// They used to be appended after the loop, so they could only ever land at
-	// the bottom of the right column however anybody felt about it. And the
-	// order came from cards.json, which is the instance's opinion rather than
-	// the reader's. Now the account stores the order and this renders it.
-	//
-	// Service cards are off unless chosen. Someone who signed up because the
-	// landing said tools for agents should not land on a magazine; someone who
-	// wants one composes it in the panel below, and their order is kept.
+	// the bottom of the right column however anybody felt about it.
 	type rendered struct{ id, html string }
 	build := func(id string) string {
 		switch id {
@@ -991,27 +864,15 @@ func CardsHTML(r *http.Request, viewerAcc *auth.Account) string {
 		return id
 	}
 
-	// Signed out, the home screen is a showcase: the instance's own default
-	// order, because a visitor has expressed no preference to honour.
-	//
-	// A brand-new account is in exactly the same position, and used to get the
-	// opposite treatment: HomeCardOrder is empty until you save preferences, so
-	// signing up turned the showcase into a blank page and asked you to go and
-	// pick cards before anything would happen. auth.ShowHomeCard already says
-	// "no customization yet → all defaults show"; this is the same rule applied
-	// to the order, so the two stop disagreeing.
-	defaultOrder := func() []string {
-		ids := make([]string, 0, len(Cards))
-		for _, card := range Cards {
-			ids = append(ids, card.ID)
-		}
-		return ids
+	// The instance's order, from cards.json, for everybody. Mail and search are
+	// appended because they need a session to render at all — a guest gets the
+	// rest and no empty boxes where their inbox would be.
+	order := make([]string, 0, len(Cards)+2)
+	for _, card := range Cards {
+		order = append(order, card.ID)
 	}
-	order := []string{}
-	if viewerAcc == nil {
-		order = defaultOrder()
-	} else if order = viewerAcc.HomeCardOrder(); len(order) == 0 {
-		order = defaultOrder()
+	if viewerID != "" {
+		order = append(order, "mail", "web")
 	}
 
 	var shown []rendered
@@ -1039,22 +900,7 @@ func CardsHTML(r *http.Request, viewerAcc *auth.Account) string {
 		}
 	}
 
-	// A console with nothing on it has to say so, and say where the switch is.
-	if len(shown) == 0 && viewerAcc != nil {
-		b.WriteString(`<p style="color:#888;font-size:14px;margin:8px 0 0">` +
-			`No cards yet. <a href="#" onclick="var p=document.getElementById('home-card-prefs');` +
-			`if(p)p.style.display='block';return false">Choose what to keep an eye on</a> — ` +
-			`news, markets, mail, whatever you watch. They also become the live context you ` +
-			`can hand the agent with a single toggle above the input.</p>`)
-	}
-
 	if len(leftHTML) > 0 || len(rightHTML) > 0 {
-		// The cards need a name. Unlabelled they read as decoration — a wall of
-		// widgets under an agent input — when they are the thing the toggle
-		// above the input hands to the agent. Saying so once, here, is what
-		// makes "use live context" mean anything.
-		b.WriteString(`<div class="cards-head"><span>Live context</span>` +
-			`<span class="cards-sub">what you watch, and what the agent reads when you ask it to</span></div>`)
 		b.WriteString(fmt.Sprintf(Template, strings.Join(leftHTML, "\n"), strings.Join(rightHTML, "\n")))
 	}
 	return b.String()

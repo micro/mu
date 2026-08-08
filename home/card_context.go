@@ -2,20 +2,15 @@ package home
 
 // The cards, as something an agent can read.
 //
-// The home screen is a summary of the services somebody chose to watch — news
-// headlines, market movers, what is on today. That is exactly the context a
-// question about any of it would otherwise be answered by fetching, one tool
-// call at a time, after the model has worked out which tool to call.
+// The home screen shows what this instance knows right now — headlines, market
+// movers, what is on today. That is exactly what a question about any of it
+// would otherwise be answered by fetching, one tool call at a time, after the
+// model has worked out which tool to call. So the cards go with the question.
 //
-// So the cards are offered to the agent as text. Somebody who has already
-// decided "these are the things I care about" has done the work of saying what
-// their assistant should know, and the same choice drives both. Ask "anything I
-// should know today" with context on, and the answer is composed rather than
-// researched.
-//
-// Opt-in per message, not always on. Context is not free — it is tokens on
-// every turn, and most questions have nothing to do with the cards. The toggle
-// makes it a thing somebody reaches for when the summary is the point.
+// Always, not on a toggle. It was opt-in behind a "use live context" checkbox
+// on the argument that context costs tokens — which is true and is not the
+// reader's problem to solve. They are looking at the cards; an answer that
+// ignores what is on the screen in front of them is the wrong answer.
 //
 // Text, not HTML, and capped. This is read by a model, and the cap is what
 // stops a long news day from crowding out the actual question.
@@ -39,21 +34,17 @@ var (
 	spaceRe = regexp.MustCompile(`[ \t]*\n[ \t\n]*`)
 )
 
-// CardContext renders an account's chosen cards as plain text for the agent.
-// Empty when nothing is chosen, which is the normal case.
+// CardContext renders the home cards as plain text for the agent. The same
+// cards, in the same order, that the reader is looking at — there is no
+// per-account selection to consult, which is why the two can no longer
+// disagree about what "what I am looking at" means.
 func CardContext(acc *auth.Account) string {
 	if acc == nil {
 		return ""
 	}
-	// The default set when nothing has been chosen, matching what the page
-	// shows. HomeCardOrder is empty until you customise, so without this an
-	// account that never opened the picker had no live context to offer and the
-	// toggle silently did nothing — the same disagreement the home screen had.
-	order := acc.HomeCardOrder()
-	if len(order) == 0 {
-		for _, c := range Cards {
-			order = append(order, c.ID)
-		}
+	order := make([]string, 0, len(Cards))
+	for _, c := range Cards {
+		order = append(order, c.ID)
 	}
 
 	var b strings.Builder
@@ -74,7 +65,7 @@ func CardContext(acc *auth.Account) string {
 	if b.Len() == 0 {
 		return ""
 	}
-	return "The reader watches these on their home screen. Use them to answer " +
+	return "This is what the reader's home screen is showing right now. Use it to answer " +
 		"directly rather than fetching the same thing again:\n\n" + strings.TrimSpace(b.String())
 }
 

@@ -1,7 +1,7 @@
 // Package memory is what an agent knows about you between conversations.
 //
 // The store already existed, in internal/memory, and it was invisible from both
-// sides. A person could not see it — that was the /context page. An agent could
+// sides. A person could not see it — that is the Memory card on /account. An agent could
 // not use it: facts were extracted from what you said by a background model
 // call and written behind everyone's back, and there was no tool to remember
 // something on purpose, no tool to ask what was already known, and no tool to
@@ -13,7 +13,7 @@
 // holding a model, and does not arrive holding what you told it last Tuesday.
 // That is worth running.
 //
-// Headless, like index. The store is one thing; /context is a lens over it that
+// Headless, like index. The store is one thing; the card on /account is a lens over it that
 // also shows what you have put in front of your agents and what they can go and
 // fetch, and a second page listing the same notes would be a second place for
 // the same truth.
@@ -131,8 +131,8 @@ var Spec = service.Spec{
 	Name:        "memory",
 	Handler:     new(Server),
 	Description: "What an agent knows about you between conversations",
-	// Headless. /context is the lens over this, and it shows more than the
-	// notes — what you watch, and what an agent can go and fetch.
+	// Headless. The Memory card on /account is where a person reads and edits
+	// this; the service is how an agent does.
 	Scoped: true,
 	Endpoints: map[string]service.Endpoint{
 		"Set":    {Doc: "Remember something about the caller across conversations. Use it when they say to remember something, or state a durable preference or fact"},

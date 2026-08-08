@@ -35,24 +35,12 @@ type Account struct {
 	Admin           bool      `json:"admin"`
 	Language        string    `json:"language"`
 	Widgets         []string  `json:"widgets,omitempty"`         // App IDs to show as home widgets
-	HomeCards       []string  `json:"home_cards,omitempty"`      // Card IDs the user has chosen to show (empty = all defaults)
-	HomeCardsSeen   []string  `json:"home_cards_seen,omitempty"` // Card IDs the customise panel has offered this user; anything newer defaults to visible
 	Pinned          []string  `json:"pinned,omitempty"`          // Service names pinned to the sidebar, in the order shown
 	Approved        bool      `json:"approved,omitempty"`        // Admin-approved, bypasses new account restrictions
 	Email           string    `json:"email,omitempty"`
 	EmailVerified   bool      `json:"email_verified,omitempty"`
 	EmailVerifiedAt time.Time `json:"email_verified_at,omitempty"`
 	Banned          bool      `json:"banned,omitempty"` // Silently hidden from everyone except themselves
-}
-
-// preHomeCardsSeen is the set of home cards that existed before per-user
-// "seen" tracking was added. Accounts saved earlier have an empty
-// HomeCardsSeen; we treat them as having been offered exactly these, so any
-// card introduced afterwards (images, and future cards) defaults to visible
-// instead of being silently hidden by the HomeCards allowlist.
-var preHomeCardsSeen = map[string]bool{
-	"blog": true, "news": true, "markets": true, "prayer": true,
-	"social": true, "video": true, "mail": true, "web": true,
 }
 
 // legacyCardIDs maps retired card ids to their current name. Accounts saved
@@ -72,42 +60,6 @@ func canonicalCardID(id string) string {
 	return id
 }
 
-// ShowHomeCard reports whether a default home card (one defined in cards.json)
-// should render for this account. A card the user explicitly selected shows; a
-// card they deselected (present in their seen set but not their allowlist)
-// hides; a card newer than anything they've been offered defaults to visible.
-// ResetHomeCardsOnce clears every account's card selection, once.
-//
-// Service cards became opt-in: somebody who signed up because the landing said
-// tools for agents should not land on a magazine. But "off by default" only
-// reaches accounts that never chose, and anybody who had opened the customise
-// panel carried a stored selection that kept showing exactly what it always
-// had — so the change was invisible to the people most likely to notice it.
-//
-// Clearing is the only honest way to make the new default apply to everybody.
-// It costs one round of re-picking and it is recorded, so it happens once and
-// never surprises anyone twice.
-func ResetHomeCardsOnce(marker string) int {
-	mutex.Lock()
-	defer mutex.Unlock()
-	if settingsFlag(marker) {
-		return 0
-	}
-	n := 0
-	for _, acc := range accounts {
-		if len(acc.HomeCards) > 0 || len(acc.HomeCardsSeen) > 0 {
-			acc.HomeCards = nil
-			acc.HomeCardsSeen = nil
-			n++
-		}
-	}
-	if n > 0 {
-		data.SaveJSON("accounts.json", accounts)
-	}
-	setSettingsFlag(marker)
-	return n
-}
-
 // settingsFlag / setSettingsFlag record that a one-time migration has run.
 func settingsFlag(name string) bool {
 	var flags map[string]bool
@@ -125,80 +77,6 @@ func setSettingsFlag(name string) {
 	}
 	flags[name] = true
 	_ = data.SaveJSON("migrations.json", flags)
-}
-
-// HomeCardOrder is the cards this account shows, in the order it wants them.
-//
-// The order is the slice's order. It used to be a set — the layout came from
-// cards.json, and mail and search were appended after everything else, so they
-// could only ever land at the bottom of the right column no matter what anyone
-// preferred. Storing the choice as a sequence makes "put mail at the top" a
-// thing the product can express at all.
-//
-// Empty means nothing chosen yet, which is a real answer rather than a
-// shorthand for "everything": a signed-in person composes their own console,
-// and the default set is written when the account is created.
-func (a *Account) HomeCardOrder() []string {
-	out := make([]string, 0, len(a.HomeCards))
-	seen := map[string]bool{}
-	for _, c := range a.HomeCards {
-		id := canonicalCardID(c)
-		if id == "" || seen[id] {
-			continue
-		}
-		seen[id] = true
-		out = append(out, id)
-	}
-	return out
-}
-
-// SetHomeCards records both the selection and the order.
-func (a *Account) SetHomeCards(ids []string) {
-	out := make([]string, 0, len(ids))
-	seen := map[string]bool{}
-	for _, c := range ids {
-		id := canonicalCardID(strings.TrimSpace(c))
-		if id == "" || seen[id] {
-			continue
-		}
-		seen[id] = true
-		out = append(out, id)
-	}
-	a.HomeCards = out
-}
-
-func (a *Account) ShowHomeCard(id string) bool {
-	if len(a.HomeCards) == 0 {
-		return true // no customization yet → all defaults show
-	}
-	id = canonicalCardID(id)
-	for _, c := range a.HomeCards {
-		if canonicalCardID(c) == id {
-			return true
-		}
-	}
-	seen := a.HomeCardsSeen
-	if len(seen) == 0 {
-		return !preHomeCardsSeen[id] // legacy account → only genuinely new cards
-	}
-	for _, c := range seen {
-		if canonicalCardID(c) == id {
-			return false // offered before and not selected → deliberately hidden
-		}
-	}
-	return true // never offered → new card, default on
-}
-
-// HomeCardActive reports whether an opt-in card (mail, web) is explicitly
-// enabled. Unlike default cards these are off unless the user turns them on.
-func (a *Account) HomeCardActive(id string) bool {
-	id = canonicalCardID(id)
-	for _, c := range a.HomeCards {
-		if canonicalCardID(c) == id {
-			return true
-		}
-	}
-	return false
 }
 
 type Session struct {

@@ -50,7 +50,6 @@ import (
 	"mu/service/chat"
 	"mu/service/contacts"
 	"mu/service/db"
-	ctxsvc "mu/service/context"
 	memsvc "mu/service/memory"
 	"mu/service/events"
 	"mu/service/files"
@@ -187,7 +186,6 @@ func main() {
 	chat.LoadService()
 	db.LoadService()
 	memsvc.LoadService()
-	ctxsvc.LoadService()
 	images.Load()
 	// The cache behind /img, which serves article images from here instead of
 	// from four publisher CDNs. See internal/imageproxy.
@@ -449,18 +447,9 @@ func main() {
 		}
 		return strings.Join(parts, "\n")
 	}
-	// Service cards are opt-in now. Clearing stored selections once is what
-	// makes that true for accounts that had already customised — otherwise the
-	// new default reaches only people who never chose, which is nobody who
-	// would notice.
-	if n := auth.ResetHomeCardsOnce("home_cards_optin_2026_08"); n > 0 {
-		app.Log("home", "cleared %d card selection(s); cards are opt-in now", n)
-	}
-
 	agent.UserContextFunc = userCtxFunc
-	// The home cards, as something an agent can read. Asked for per message
-	// rather than always on: context costs tokens on every turn, and most
-	// questions have nothing to do with what somebody watches.
+	// The home cards, as something an agent can read — sent with every question,
+	// because they are what the reader is looking at.
 	agent.CardContextFunc = func(accountID string) string {
 		acc, err := auth.GetAccount(accountID)
 		if err != nil || acc == nil {
@@ -468,10 +457,6 @@ func main() {
 		}
 		return home.CardContext(acc)
 	}
-	// The same aggregate, for anything calling in over MCP. It was reachable
-	// only from a checkbox beside this instance's own chat, which is the one
-	// audience the product is not named for.
-	ctxsvc.Live = agent.CardContextFunc
 	micro.UserContextFunc = userCtxFunc
 
 	// Wire digest → blog callbacks (digest publishes as blog post)
@@ -1783,7 +1768,6 @@ func main() {
 		"/events":                 true,  // Personal scheduled reminders — sign-in required
 		"/contacts":               true,  // Your address book — sign-in required
 		"/db":                     true,  // Your own records — sign-in required
-		"/context":                true,  // What your agents know about you
 		"/runs":                   true,  // What your agents did
 		"/tasks":                  true,  // Your task list — sign-in required
 		"/social":                 false, // Public viewing, auth for search
@@ -2199,9 +2183,6 @@ func main() {
 	// One catalogue, two lenses — see internal/api/tools_page.go.
 	http.HandleFunc("/tools", api.ToolsPageHandler)
 	http.HandleFunc("/services", api.ToolsPageHandler)
-	// What your agents know about you. Memory in particular was written by the
-	// agent and read into every prompt with no way to see or delete it.
-	http.HandleFunc("/context", home.ContextHandler)
 	// What your agents did. Flows were recorded and never served.
 	http.HandleFunc("/runs", agent.RunsHandler)
 	// A service rendered at a glance — see internal/api/card.go.

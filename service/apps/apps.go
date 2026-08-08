@@ -376,12 +376,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 // pinControl is the "pin this app to the top of home" switch, on the row of
 // the app it pins.
 //
-// It used to be a checkbox list inside the "choose what to watch" panel on
-// /context, under a heading that said "Apps — pin apps to the top of your home
-// screen": a setting about Home, edited on Context, in a panel about neither.
-// It was there because it is also a list of checkboxes, which is a resemblance
-// and not a reason. Here you are already looking at the app and deciding about
-// it, and there is no second list of app names to keep in step with this one.
+// It used to be a checkbox list of every public app, inside a card-picker
+// panel, under a heading that said "Apps — pin apps to the top of your home
+// screen". It was there because it is also a list of checkboxes, which is a
+// resemblance and not a reason. Here you are already looking at the app and
+// deciding about it, and there is no second list of app names to keep in step
+// with this one.
 //
 // It posts to /account because that is where the account is written; `return`
 // carries the page back. See app.prefsReturnTo.

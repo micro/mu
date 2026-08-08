@@ -276,13 +276,19 @@ func TestTheBottomGroupIsTheAccount(t *testing.T) {
 func TestTheSidebarIsTheProductsNouns(t *testing.T) {
 	result := RenderHTMLWithLangAndAuth("Test", "d", "<p>c</p>", "en", &auth.Account{ID: "alice"})
 
-	// They make a sentence in this order: an agent acts for you, context is what
-	// it knows, tools are what it can call, services are what backs all of it.
+	// They make a sentence in this order: an agent acts for you, tools are what
+	// it can call, services are what backs all of it.
 	for _, want := range []string{`href="/home"`, `href="/agents"`,
-		`href="/context"`, `href="/tools"`, `href="/services"`} {
+		`href="/tools"`, `href="/services"`} {
 		if !strings.Contains(result, want) {
 			t.Errorf("the sidebar is missing %s", want)
 		}
+	}
+	// Context was a fifth row: a page holding what an agent remembers and what
+	// it is watching. It became a second home screen with a card picker on it,
+	// and it is gone. Memory, the half that was real, is a card on /account.
+	if strings.Contains(result, `href="/context"`) {
+		t.Error("Context is back in the sidebar")
 	}
 	// A service reaches the sidebar by being pinned, never by being a service —
 	// and apps is a service.

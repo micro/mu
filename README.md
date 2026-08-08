@@ -60,18 +60,17 @@ See [MCP docs](docs/MCP.md) for the protocol details.
 One row per service, named the way [/tools](https://micro.mu/tools) and the
 sidebar name it, alphabetical within each group.
 
-The groups are the point. A flat list of twenty-three services claims they all
+The groups are the point. A flat list of twenty-two services claims they all
 matter the same amount, and they do not — the first group is what an agent
 should read before it fetches anything, and the rest is fetching.
 
 ### What it already knows
 
-Ask these first. Everything below this is a call out to something; this is what
-is already true about the person asking.
+Ask this first. Everything below is a call out to something; this is what is
+already true about the person asking.
 
 | Area | Tools |
 |---|---|
-| **Context** | `context_get` — what the caller watches, live, and what has been remembered about them, in one call. Cheaper than guessing which of the others to try |
 | **Memory** | `memory_set` · `memory_list` · `memory_delete` — durable facts about the caller, read back into every question they ask |
 
 ### What is yours

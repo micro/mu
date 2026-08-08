@@ -515,8 +515,8 @@ func nativeToolLabel(name string) (label string, show bool) {
 }
 
 // NativeToolName turns go-micro's handler name into the tool name a caller
-// would use. The framework reports "context_Server_Get"; the tool is
-// "context_get", which is what /tools lists, what an agent calls, and therefore
+// would use. The framework reports "memory_Server_List"; the tool is
+// "memory_list", which is what /tools lists, what an agent calls, and therefore
 // the only form worth writing into a run record — a trace naming something no
 // other page names is a trace you cannot look up.
 func NativeToolName(name string) string {

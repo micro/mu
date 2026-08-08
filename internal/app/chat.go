@@ -26,11 +26,6 @@ type ChatConfig struct {
 	// HideSuggestions suppresses the component's built-in suggestion pills — used
 	// where the host page supplies its own (e.g. Home's personalised chips).
 	HideSuggestions bool
-	// OfferCardContext shows the "use live context" toggle. Only Home sets it,
-	// and only when the reader actually has cards: the cards are the summary
-	// shown on that page, so it is the one place where "answer from what I am
-	// already looking at" is a sentence that means something.
-	OfferCardContext bool
 	// OfferAgentPicker shows which agent is answering, and lets the reader
 	// change it.
 	//
@@ -61,19 +56,14 @@ func ChatComponent(cfg ChatConfig) string {
 	if cfg.Guest {
 		guestJS = "true"
 	}
-	// Opt-in per message rather than a setting, because context is tokens on
-	// every turn and most questions have nothing to do with the cards. The
-	// choice is remembered locally so it is not a decision you make twice.
-	// "use my cards" named the widget rather than the thing. A card is one
-	// rendering of what this instance currently knows about something you
-	// watch; what the toggle actually hands the agent is that content, as of
-	// now. "live context" is what it is, and it is also the word an agent
-	// developer already has for it.
-	cardToggle := ""
-	if cfg.OfferCardContext {
-		cardToggle = `<label id="mu-chat-ctx" title="Send what your cards are showing right now — headlines, prices, what is on today — so the answer comes from what you are already looking at instead of being fetched again">` +
-			`<input type="checkbox" id="mu-chat-ctx-on"> use live context</label>`
-	}
+	// The cards go with the question, always.
+	//
+	// This was a checkbox — "use live context" — off by default, remembered in
+	// localStorage. Asking somebody to opt in to the product working properly
+	// is asking a question they have no way to answer: the cost is tokens they
+	// cannot see and the benefit is an answer they have not read yet. On Home
+	// the cards are on the screen, so an answer that ignores them is the wrong
+	// answer, and there is nothing to decide.
 	// The same sessionStorage key the rail on /agent uses, so a choice made in
 	// one place holds in the other. Two pickers disagreeing about who is
 	// answering would be worse than one picker.
@@ -95,7 +85,7 @@ func ChatComponent(cfg ChatConfig) string {
       oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,140)+'px'"></textarea>
     <button type="submit" aria-label="Send">&#x2192;</button>
   </form>
-  <div id="mu-chat-opts">` + agentPicker + cardToggle + `</div>
+  <div id="mu-chat-opts">` + agentPicker + `</div>
   <div id="mu-chat-suggest"></div>
   <div id="mu-chat-hint"></div>
   <div id="mu-chat-conv">` + initialConv + `</div>
@@ -109,8 +99,6 @@ func ChatComponent(cfg ChatConfig) string {
 #mu-chat-opts:empty{margin:0}
 #mu-chat-agent{display:flex;align-items:center;gap:6px;font-size:12px;color:#999;cursor:pointer;user-select:none}
 #mu-chat-agent select{width:auto;padding:2px 4px;font-size:12px;font-family:inherit;color:#555;border:1px solid #e0e0e0;border-radius:4px;background:#fff}
-#mu-chat-ctx{display:flex;align-items:center;gap:6px;font-size:12px;color:#999;cursor:pointer;user-select:none}
-#mu-chat-ctx input{width:14px;height:14px;cursor:pointer}
 #mu-chat-input{flex:1;padding:10px 0;border:none;font-size:16px;font-family:inherit;resize:none;line-height:1.4;overflow:hidden;background:transparent;outline:none}
 #mu-chat-form button{flex-shrink:0;width:36px;height:36px;background:#111;color:#fff;border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px}
 #mu-chat-suggest{margin-top:16px}
@@ -246,8 +234,7 @@ function ask(q){
   u.scrollIntoView({behavior:'smooth',block:'start'});
   var streamText='';
   var streaming=false;
-  var ctxEl=document.getElementById('mu-chat-ctx-on');
-  var body=JSON.stringify({prompt:q,model:'standard',history:history.slice(-6),context_id:contextId||'',agent:(window.muActiveAgent||''),cards:!!(ctxEl&&ctxEl.checked)});
+  var body=JSON.stringify({prompt:q,model:'standard',history:history.slice(-6),context_id:contextId||'',agent:(window.muActiveAgent||''),cards:true});
   fetch('/agent',{method:'POST',headers:{'Content-Type':'application/json'},body:body,credentials:'same-origin'})
   .then(function(resp){
     if(resp.status===401){
@@ -325,14 +312,6 @@ window.muChatNew=function(){
   showSuggestions();input.focus();
 };
 // Exposed so server-rendered prefill (?q= / ?prompt=) can auto-submit.
-(function(){
-  var c=document.getElementById('mu-chat-ctx-on');
-  if(!c) return;
-  try{ c.checked = localStorage.getItem('mu_chat_cards')==='1'; }catch(e){}
-  c.addEventListener('change',function(){
-    try{ localStorage.setItem('mu_chat_cards', c.checked?'1':'0'); }catch(e){}
-  });
-})();
 
 // Which agent answers. The component has always sent window.muActiveAgent and
 // the server has always honoured it; until now the only thing that could set it

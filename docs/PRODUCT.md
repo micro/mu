@@ -27,25 +27,28 @@ is taught:
 | Level | What it is | Where |
 |---|---|---|
 | **Agents** | What acts for you. Named, scoped, each with its own token. | `/agents` |
-| **Context** | What they know: what is remembered, and what is live right now. | `/context` |
 | **Tools** | What an agent can call. Derived from services, never hand-written. | `/tools` |
 | **Services** | The building blocks. One domain each; the things Mu actually runs. | `/services` |
 
-An agent acts for you, context is what it knows, tools are what it can call,
-services are what backs all of it. Tools are derived from services. Only the
-bottom level lives in `service/`.
+An agent acts for you, tools are what it can call, services are what backs all
+of it. Tools are derived from services. Only the bottom level lives in
+`service/`.
 
-Context was argued against as a sidebar row on the grounds that it is a
-property most services have rather than a kind of thing, which would make it a
-drawer for anything account-shaped. That objection describes a page that
-gathers services under a new heading, and it is not this one: an actor with
-knowledge and an actor with capabilities are two different things, and the
-sidebar had only the second. Context not being a service is the argument for
-the row, not against it.
+Context was a fourth row for a while — a `/context` page holding what an agent
+remembers and what it is watching right now. It is gone, and the reason is
+worth keeping: it was argued against at the time on the grounds that context is
+a property most services have rather than a kind of thing, which makes the page
+a drawer for anything account-shaped. That is what it became. It grew a second
+copy of the home screen, a card picker to justify the second copy, and a
+checkbox asking the reader to opt in to the product working properly.
 
-It is nonetheless reachable programmatically, because a primitive an agent
-cannot call is a dashboard. `context_get` returns both halves, and `memory_*`
-writes the durable one — see below.
+The half that was real is memory, and memory is a service. `memory_*` is how an
+agent reads and writes it; the Memory card on `/account` is how a person does.
+What an agent should know about right now is simply sent with the question —
+see **Cards** below.
+
+A feature that is interesting but not done well is worth removing rather than
+keeping half-built. Three levels, each of which earns its row.
 
 Two consequences worth holding:
 
@@ -145,23 +148,20 @@ They are each **a service demonstrating itself** — on the landing and on
 aggregator and showing one running. On Home it was the world's content where
 your own should be: every card somebody else's day.
 
-And they are **the live half of context**. Each card is a materialised view over
-a service, refreshed on a timer; rendered as text they are the RAG payload an
-agent wants before it starts guessing which tool to call. This document used to
-say "not context for the model — nothing on the screen is fed to it", and that
-was true when it was written and is not now.
+And they are **context for the model**. Each card is a materialised view over a
+service, refreshed on a timer; rendered as text they are the payload an agent
+wants before it starts guessing which tool to call. This document used to say
+"not context for the model — nothing on the screen is fed to it", and that was
+true when it was written and is not now.
 
-So the rule has two halves:
+So the rule is one sentence: **cards prove the tools are real, they live on
+Home, and they go with the question.**
 
-- **Cards prove the tools are real** and belong where somebody is deciding
-  whether they are. **Home is for your own instance working.**
-- **Cards are context**, so they live on `/context`, which is where the toggle
-  that feeds them to an agent points, and where `context_get` reads them from.
-
-A card fed to a model and a card shown to a person must be the same card. The
-switch beside the input asks `CardContext` whether there is anything to send
-rather than counting stored choices — a toggle and a screen that disagree make
-the toggle look broken.
+A card fed to a model and a card shown to a person must be the same card, and
+the only way to guarantee that is for there to be one list. There is: the
+instance's, in `cards.json`. No per-account selection, no picker, no toggle —
+each of those was a way for the screen and the payload to disagree, and each of
+them did.
 
 What Home should carry, in order:
 
@@ -171,37 +171,30 @@ What Home should carry, in order:
    last five inline.
 4. **Cost** — what it is running you, with the way to top up. ✅
 5. **The agent input**, because asking it something is a thing you do from here. ✅
+6. **The cards**, last, because they are the evidence rather than the point.
 
-The cards are no longer among them; they moved to `/context`. Home showing the
-world's news under a tools-for-agents banner was the single longest-standing
-contradiction between this document and the product.
+Ordering them this way is what answers the old objection — Home showing the
+world's news under a tools-for-agents banner. The answer was never to move the
+cards off Home; it was to put what is yours above them.
 
 `/usage` is the ledger — calls and spend over time. Home is the front page of
 your instance, not its accounts.
 
-## What context is, exactly
+## Memory
 
-Two halves, and both are readable by anything holding a token.
+Durable notes about the caller, kept across conversations. `memory_set`,
+`memory_list` and `memory_delete` for an agent; the Memory card on `/account`
+for a person, with a Forget button on every row.
 
-- **Live** — the cards, as text. Materialised views over the services, refreshed
-  on a timer. This is what the toggle beside the input sends, and what
-  `context_get` returns.
-- **Remembered** — durable notes about the caller, kept across conversations.
-  `memory_set`, `memory_list`, `memory_delete`, and the list on `/context` with
-  a Forget button on every row.
+It was invisible from both sides. Facts were extracted from conversations by a
+background model call and injected into every prompt, and there was no way for
+a person to see one or an agent to write one. An agent that cannot say
+"remember this" gets told the same thing every session, which is the exact
+failure persistent memory exists to prevent.
 
 The rule that took longest to see: **a primitive an agent cannot call is a
-dashboard.** "Live context" was a checkbox next to this instance's own chat for
-weeks — the one audience the product is not named for. An agent connecting over
-MCP could not reach a word of it. Both halves are services now: headless, so
-they get tools and scoping without claiming a domain they do not run, and
-`/context` is the page a person reads them on.
-
-Memory in particular was invisible from both sides. Facts were extracted from
-conversations by a background model call and injected into every prompt, and
-there was no way for a person to see one or an agent to write one. An agent that
-cannot say "remember this" gets told the same thing every session, which is the
-exact failure persistent memory exists to prevent.
+dashboard.** Memory is a service for that reason — headless, so it gets tools
+and scoping without claiming a domain it does not run.
 
 ## The two doors
 

@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"mu/internal/auth"
+	"mu/internal/memory"
 	"mu/internal/service"
 
 	"github.com/gomarkdown/markdown"
@@ -440,7 +441,6 @@ var Template = `
                which is what pinning is for. -->
           <a href="/home"><img src="/home.png?` + Version + `"><span class="label">Home</span></a>
           <a href="/agents"><img src="/agent.svg?` + Version + `"><span class="label">Agents</span></a>
-          <a href="/context"><img src="/context.svg?` + Version + `"><span class="label">Context</span></a>
           <a href="/tools"><img src="/tools.svg?` + Version + `"><span class="label">Tools</span></a>
           <a href="/services"><img src="/services.svg?` + Version + `"><span class="label">Services</span></a>
           %s
@@ -481,41 +481,6 @@ var Template = `
   </body>
 </html>
 `
-
-// HomeCard is one card the customise panels can toggle.
-type HomeCard struct {
-	ID    string
-	Label string
-}
-
-// HomeCards is every card a reader can choose, and the only list of them.
-//
-// There were four: this one as bare ids, the checkbox list on /account, the
-// inline panel on /home, and home/cards.json. Adding a card meant editing all
-// four and nothing complained if you missed one — which is exactly what
-// happened when chat was added and appeared on /home but not /account, so the
-// two panels for the same setting disagreed about what the setting was.
-//
-// cards.json still exists and still carries what this cannot: which column a
-// card starts in, its icon, its link. What it must not also carry is the
-// question of whether a card exists at all.
-var HomeCards = []HomeCard{
-	{"prayer", "Prayer"}, {"blog", "Blog"}, {"news", "News"},
-	{"markets", "Markets"}, {"social", "Social"}, {"video", "Video"},
-	{"images", "Images"}, {"mail", "Mail"}, {"web", "Search"},
-	{"chat", "Chat"},
-}
-
-// homeCardUniverse is the ids, saved into an account's HomeCardsSeen when
-// preferences are saved so cards introduced later default to visible rather
-// than being hidden by the HomeCards allowlist.
-var homeCardUniverse = func() []string {
-	ids := make([]string, 0, len(HomeCards))
-	for _, c := range HomeCards {
-		ids = append(ids, c.ID)
-	}
-	return ids
-}()
 
 var CardTemplate = `
 <!-- %s -->
@@ -1149,17 +1114,21 @@ func Account(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Home card preferences
-		if r.Form.Get("home_cards") != "" || r.Form.Get("save_cards") != "" {
-			// Order matters: the panel posts its rows in the order they are
-			// shown, so dragging one changes where it renders. Set through the
-			// account so the ids are canonicalised and de-duplicated once.
-			acc.SetHomeCards(r.Form["cards"])
-			// Record the full set the panel offered so cards added later can
-			// default to visible rather than being hidden by this allowlist.
-			acc.HomeCardsSeen = append([]string(nil), homeCardUniverse...)
-			auth.UpdateAccount(acc)
-			http.Redirect(w, r, prefsReturnTo(r), http.StatusSeeOther)
+		// Memory: add one, forget one, forget the lot. Posted from the card on
+		// this page — see memory_card.go for why the list lives here.
+		if r.Form.Get("remember") != "" {
+			memory.Set(acc.ID, r.Form.Get("key"), r.Form.Get("value"))
+			http.Redirect(w, r, "/account", http.StatusSeeOther)
+			return
+		}
+		if key := r.Form.Get("forget"); key != "" {
+			memory.Delete(acc.ID, key)
+			http.Redirect(w, r, "/account", http.StatusSeeOther)
+			return
+		}
+		if r.Form.Get("forget_all") != "" {
+			memory.Clear(acc.ID)
+			http.Redirect(w, r, "/account", http.StatusSeeOther)
 			return
 		}
 
@@ -1231,21 +1200,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	// pages that earn them; the audit belongs where somebody goes to check.
 	googleCard += renderConnectionsCard(r, acc, r.URL.Query().Get("connection"))
 
-	// Which cards you watch is edited on /context, next to the cards, so this
-	// page links there instead of carrying its own copy of the list.
-	//
-	// It had one: the same checkboxes, over the same HomeCards, posting the
-	// same save_cards — a third editor for one setting, and the only one of the
-	// three that could not show you what a tick would do, because the cards it
-	// governs are not on this page. Two copies of a picker do not stay in step
-	// by luck; this one had already lost drag-to-reorder and rendered the list
-	// in the instance's order rather than the reader's, so the same account
-	// looked differently ordered depending on which screen you opened.
-	homeCardsCard := `<div class="card">
-<h4>Home Screen</h4>
-<p class="text-sm text-muted">The cards you watch, and the live context your agent reads when you ask it to.</p>
-<p><a href="/context?cards=1">Choose what to watch →</a></p>
-</div>`
+	memCard := memoryCard(r, acc)
 
 	// Chat channel link card. One code works on any of them.
 	discordCard := ""
@@ -1308,7 +1263,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		emailCard,
 		googleCard,
 		languageOptions,
-		homeCardsCard,
+		memCard,
 		PasskeyListHTML(acc.ID),
 		discordCard,
 		adminLinks,

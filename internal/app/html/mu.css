@@ -136,7 +136,6 @@ button:hover {
    separately, so it is fixed once, in one place. */
 .agent-act,
 .agent-remove,
-.ctx-forget,
 .run-del,
 .db-act,
 .db-remove {
@@ -149,7 +148,6 @@ button:hover {
 
 .agent-act:hover,
 .agent-remove:hover,
-.ctx-forget:hover,
 .run-del:hover,
 .db-act:hover,
 .db-remove:hover {
