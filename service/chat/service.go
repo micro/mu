@@ -141,8 +141,12 @@ func Card() string {
 			live = append(live, r)
 		}
 	}
+	// Nothing live means no card. A card is evidence that a service is doing
+	// something; one that says nothing is happening is evidence of the
+	// opposite, and it costs a reader the same space as a real one. Home skips
+	// a card whose renderer returns empty — that is the contract.
 	if len(live) == 0 {
-		return `<p class="muted">No discussions going on right now. <a class="link" href="/chat">Browse topics →</a></p>`
+		return ""
 	}
 
 	var b strings.Builder

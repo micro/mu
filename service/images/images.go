@@ -280,8 +280,10 @@ func SetPublic(owner, id string, public bool) error {
 // CardHTML renders the home card: today's ambient image with its theme.
 func CardHTML() string {
 	d := getDaily()
+	// No image, no card. See the comment on chat.Card: a card that reports
+	// nothing to report is worse than absent.
 	if d.URL == "" {
-		return `<p style="color:#888;font-size:14px;margin:0">Today's image is on its way.</p>`
+		return ""
 	}
 	theme := html.EscapeString(strings.Title(d.Theme))
 	return `<a href="/images" style="text-decoration:none;color:inherit">

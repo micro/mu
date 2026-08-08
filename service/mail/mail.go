@@ -1875,8 +1875,11 @@ func GetRecentThreadsPreview(userID string, limit int) string {
 	defer mutex.RUnlock()
 
 	inbox := inboxes[userID]
+	// An empty inbox renders no card at all. This is a preview for the home
+	// screen, and "No messages" in a box the same size as a real one is a
+	// worse answer than the box not being there.
 	if inbox == nil || len(inbox.Threads) == 0 {
-		return `<p class="text-muted">No messages</p>`
+		return ""
 	}
 
 	// Get threads and sort by latest
@@ -1892,7 +1895,7 @@ func GetRecentThreadsPreview(userID string, limit int) string {
 	}
 
 	if len(threads) == 0 {
-		return `<p class="text-muted">No messages</p>`
+		return ""
 	}
 
 	sort.Slice(threads, func(i, j int) bool {

@@ -633,7 +633,7 @@ func Preview() string {
 // Deprecated: Use Preview() instead which now uses cache
 func previewUncached() string {
 	if len(posts) == 0 {
-		return "<p>No posts yet. Be the first to share a thought!</p>"
+		return "" // no posts, no card — see chat.Card
 	}
 
 	// Get latest 1 post (exclude flagged and new accounts)
@@ -706,7 +706,7 @@ func previewUncached() string {
 	}
 
 	if len(preview) == 0 {
-		return "<p>No posts yet. Be the first to share a thought!</p>"
+		return "" // no posts, no card — see chat.Card
 	}
 	return strings.Join(preview, "\n")
 }

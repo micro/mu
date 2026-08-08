@@ -3153,6 +3153,26 @@ a.highlight {
 .pin-btn.pinned svg { fill: currentColor; }
 .pin-btn.pinned:hover { color: #a87f1f; }
 
+/* The line under the heading on /login and /signup.
+   The landing makes a specific promise — one endpoint, every tool — and the
+   forms used to be a username, a password and the word "Signup", which could
+   belong to any product. Someone who came for tools for agents should still be
+   able to see what they are signing up for at the moment they do it. */
+.auth-lede {
+  max-width: 30rem;
+  margin: 0 auto 18px;
+  text-align: center;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-secondary, #666);
+}
+
+.auth-foot {
+  text-align: center;
+  margin-top: 6px;
+  font-size: 13px;
+}
+
 .link-button.danger {
   color: var(--btn-danger);
 }

@@ -87,10 +87,18 @@ func TestARoomPageSendsOverTheWebsocketNotAForm(t *testing.T) {
 	}
 }
 
-// The card is what the home screen shows. Its job is the thing only this
-// instance knows, so on a quiet instance it says so rather than rendering an
-// empty list.
-func TestTheCardSaysWhenNothingIsHappening(t *testing.T) {
+// The card is what the home screen shows, and on a quiet instance it shows
+// nothing at all.
+//
+// It used to say "No discussions going on right now" — which is a card whose
+// content is the absence of content, taking the same space as a real one. A
+// card is evidence that a service is doing something; one that reports nothing
+// to report is evidence of the opposite. On a fresh account four of the ten
+// cards read like this, and Home looked broken rather than new.
+//
+// Home skips a card whose renderer returns empty. That is the contract, and
+// this is chat honouring it.
+func TestAQuietInstanceRendersNoChatCard(t *testing.T) {
 	roomsMutex.Lock()
 	saved := rooms
 	rooms = map[string]*Room{}
@@ -101,11 +109,7 @@ func TestTheCardSaysWhenNothingIsHappening(t *testing.T) {
 		roomsMutex.Unlock()
 	}()
 
-	got := Card()
-	if !strings.Contains(got, "No discussions") {
-		t.Errorf("card on a quiet instance = %q, want it to say nothing is happening", got)
-	}
-	if !strings.Contains(got, "/chat") {
-		t.Error("the card should still offer a way in")
+	if got := Card(); got != "" {
+		t.Errorf("card on a quiet instance = %q, want nothing rendered", got)
 	}
 }

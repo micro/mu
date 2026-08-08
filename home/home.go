@@ -237,6 +237,10 @@ func CardHandler(w http.ResponseWriter, r *http.Request) {
 		switch id {
 		case "mail":
 			content := mail.GetRecentThreadsPreview(viewerID, 3)
+			if strings.TrimSpace(content) == "" {
+				w.WriteHeader(204)
+				return
+			}
 			content += app.Link("More", "/mail")
 			w.Header().Set("Content-Type", "text/html")
 			fmt.Fprintf(w, app.CardTemplate, "mail", "mail", "Mail", content)
@@ -667,7 +671,14 @@ func CardsHTML(r *http.Request, viewerAcc *auth.Account) string {
 			if viewerID == "" {
 				return ""
 			}
-			return mail.GetRecentThreadsPreview(viewerID, 3) + app.Link("More", "/mail")
+			// Guard before appending "More": an empty inbox renders nothing,
+			// and a card containing only a link to an empty inbox is the
+			// empty card by another route.
+			preview := mail.GetRecentThreadsPreview(viewerID, 3)
+			if strings.TrimSpace(preview) == "" {
+				return ""
+			}
+			return preview + app.Link("More", "/mail")
 		case "web":
 			if viewerID == "" {
 				return ""

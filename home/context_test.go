@@ -157,3 +157,39 @@ func TestAGuestGetsNoPersonalCards(t *testing.T) {
 		t.Error("a guest was shown a card that needs a session")
 	}
 }
+
+// A card with nothing to show is not rendered.
+//
+// This is the contract every card renderer has to honour, and four of them
+// were not: chat said "No discussions going on right now", mail said "No
+// messages", images said "Today's image is on its way", blog said "No posts
+// yet". On a brand-new account that is most of the home screen reporting that
+// nothing is happening — in boxes the same size as the real ones, on the page
+// whose whole job is to be evidence that the tools work.
+//
+// A card is that evidence. One that says there is nothing to show is evidence
+// of the opposite, so it should not be there at all.
+func TestACardWithNothingToShowIsNotRendered(t *testing.T) {
+	prev := Cards
+	Cards = []Card{
+		{ID: "news", Title: "News", Link: "/news", CachedHTML: `<p>Rates held</p>`},
+		{ID: "chat", Title: "Chat", Link: "/chat", CachedHTML: ``},
+		{ID: "images", Title: "Images", Link: "/images", CachedHTML: `   `},
+	}
+	t.Cleanup(func() { Cards = prev })
+
+	got := CardsHTML(httptest.NewRequest("GET", "/home", nil), &auth.Account{ID: "reader"})
+	if !strings.Contains(got, "Rates held") {
+		t.Error("the card with something to show did not render")
+	}
+	for _, empty := range []string{`id="chat"`, `id="images"`} {
+		if strings.Contains(got, empty) {
+			t.Errorf("an empty card rendered anyway: %s", empty)
+		}
+	}
+	// Not even the "More" link on its own — a box containing only a way out of
+	// itself is the empty card by another route.
+	if strings.Contains(got, `href="/chat"`) {
+		t.Error("an empty card rendered as just its More link")
+	}
+}
