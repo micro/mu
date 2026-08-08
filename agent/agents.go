@@ -265,11 +265,12 @@ func NewAgentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var cur *micro.Agent
+	var editing *Agent // the stored record, for the things AsMicro drops
 	editID := ""
 	forkFrom := ""
 	if id := r.URL.Query().Get("id"); id != "" {
 		if a := AgentFor(acc.ID, id); a != nil {
-			cur, editID = a.AsMicro(), id
+			cur, editing, editID = a.AsMicro(), a, id
 		}
 	} else if fid := r.URL.Query().Get("fork"); fid != "" {
 		if a := AgentFor(acc.ID, fid); a != nil {
@@ -304,16 +305,44 @@ func NewAgentHandler(w http.ResponseWriter, r *http.Request) {
 			`><span>` + html.EscapeString(AgentToolLabel(t)) + `</span></label>`)
 	}
 
-	// Where it runs is only asked when there is something to decide. Editing an
-	// existing agent does not move it, and changing the answer under someone
-	// would either revoke a live token or mint one they did not ask for.
+	// Where it runs is only *asked* when there is something to decide: editing
+	// does not move an agent, and changing the answer under somebody would
+	// either revoke a live token or mint one they did not ask for.
+	//
+	// But not asking is not the same as not saying. Editing an agent showed no
+	// trace of the choice made when it was created, so an agent built to run
+	// elsewhere — the whole reason it has a token — looked identical to one
+	// that runs here. The answer you gave is shown back to you, with the token
+	// state beside it, and /agents is where the token is actually managed.
 	kindHTML := ""
-	if editID == "" {
+	switch {
+	case editID == "":
 		kindHTML = `<label class="b-label">Where does it run?</label>
     <div class="pick-row">
       <label class="pick"><input type="radio" name="kind" value="hosted" checked><span><strong>Here</strong>Give it standing instructions and this instance executes them</span></label>
       <label class="pick"><input type="radio" name="kind" value="external"><span><strong>Elsewhere</strong>Claude, Cursor, or your own program, calling in with its token</span></label>
     </div>`
+	case editing != nil && editing.Kind == External:
+		token := "no token yet"
+		if editing.TokenID != "" {
+			token = "token issued"
+		}
+		kindHTML = `<label class="b-label">Where it runs</label>
+    <p class="b-state"><strong>Elsewhere</strong> — Claude, Cursor or your own program, calling in with its token · ` +
+			token + `. <a href="/agents">Manage its token</a></p>`
+	case editing != nil:
+		kindHTML = `<label class="b-label">Where it runs</label>
+    <p class="b-state"><strong>Here</strong> — this instance executes its standing instructions. ` +
+			`<a href="/agents">Give it a token</a> to point an outside program at it instead.</p>`
+	}
+
+	// What it has actually done. An agent is a scope — a name, a system prompt
+	// and the tools it may reach — and the page where you set that scope said
+	// nothing about whether any of it worked. Its runs are the only evidence
+	// the scope is right, and they were a page away with no filter to get here.
+	runsHTML := ""
+	if editID != "" {
+		runsHTML = agentRunsSummary(acc.ID, editID)
 	}
 
 	b := `<div class="builder">
@@ -335,6 +364,7 @@ func NewAgentHandler(w http.ResponseWriter, r *http.Request) {
     ` + kindHTML + `
     <label class="b-label">What may it reach? <span class="b-hint">— none selected means everything you can</span></label>
     <div class="b-tools">` + toolsHTML.String() + `</div>
+    ` + runsHTML + `
     <div class="b-actions">
       <button type="submit" class="b-save">Save agent</button>
       <a class="b-cancel" href="/agents">Cancel</a>
@@ -345,6 +375,8 @@ func NewAgentHandler(w http.ResponseWriter, r *http.Request) {
 .builder{max-width:720px}
 .builder-sub{color:#666;margin:0 0 18px}
 .b-label{display:block;font-size:13px;font-weight:600;color:#374151;margin:14px 0 6px}
+.b-state{font-size:13px;color:#666;line-height:1.5;margin:0 0 4px}
+.b-state strong{color:var(--text-primary,#111)}
 .b-hint{font-weight:400;color:#9ca3af}
 #bform input,#bform textarea{width:100%;box-sizing:border-box;padding:9px 11px;font-size:14px;border:1px solid #d1d5db;border-radius:6px;font-family:inherit}
 #bform textarea{line-height:1.5;resize:vertical}

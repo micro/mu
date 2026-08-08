@@ -29,6 +29,7 @@ import (
 	"fmt"
 	"html"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"mu/internal/app"
@@ -52,6 +53,25 @@ func RunsHandler(w http.ResponseWriter, r *http.Request) {
 
 	runs := ListFlows(owner)
 
+	// One agent's runs. The builder links here so "what has this agent done"
+	// has an answer past the three it shows inline, and an agent you drive over
+	// MCP is the case with no other way to see it at all.
+	only := strings.TrimSpace(r.URL.Query().Get("agent"))
+	onlyName := ""
+	if only != "" {
+		var mine []*Flow
+		for _, f := range runs {
+			if f.Agent == only {
+				mine = append(mine, f)
+			}
+		}
+		runs = mine
+		onlyName = only
+		if a := AgentFor(owner, only); a != nil {
+			onlyName = a.Name
+		}
+	}
+
 	if app.WantsJSON(r) {
 		app.RespondJSON(w, map[string]any{"runs": runs})
 		return
@@ -64,6 +84,11 @@ func RunsHandler(w http.ResponseWriter, r *http.Request) {
 		`a task, a schedule, or an agent calling in over MCP land here too — those are the ones ` +
 		`nobody watched. Open one to see the answer and its sources. ` +
 		`What it all cost is on ` + app.Link("Usage", "/usage") + `</p>`)
+
+	if onlyName != "" {
+		b.WriteString(`<p class="lens-lead" style="margin-top:-8px">Showing only <strong>` +
+			html.EscapeString(onlyName) + `</strong>. ` + app.Link("Every agent", "/runs") + `</p>`)
+	}
 
 	if len(runs) == 0 {
 		b.WriteString(`<p style="color:#888;font-size:14px">Nothing yet. Ask an agent something and ` +
@@ -235,4 +260,47 @@ func ListForCaller(accountID string) (string, error) {
 	}
 	b, err := json.Marshal(map[string]any{"agents": out})
 	return string(b), err
+}
+
+// agentRunsSummary is what one agent has actually done, for the page where you
+// scope it.
+//
+// An agent is a name, a standing instruction and a set of tools it may reach —
+// a scope. The page where you set that scope said nothing about whether any of
+// it worked: no runs, no errors, no sign the tools you picked were the tools it
+// needed. The evidence existed, on /runs, mixed in with every other agent's and
+// with no way to ask for one agent's.
+//
+// The last few here, and a link to the rest filtered to this agent.
+func agentRunsSummary(accountID, agentID string) string {
+	var mine []*Flow
+	for _, f := range ListFlows(accountID) {
+		if f.Agent == agentID {
+			mine = append(mine, f)
+		}
+	}
+
+	var b strings.Builder
+	b.WriteString(`<label class="b-label">What it has done</label>`)
+	if len(mine) == 0 {
+		b.WriteString(`<p class="b-state">Nothing yet. Ask it something and its runs — the tools ` +
+			`it called and whether they worked — show up here.</p>` + runsCSS)
+		return b.String()
+	}
+
+	shown := mine
+	if len(shown) > 3 {
+		shown = shown[:3]
+	}
+	b.WriteString(`<div class="runs">`)
+	for _, f := range shown {
+		b.WriteString(runRow(f, ""))
+	}
+	b.WriteString(`</div>`)
+	if len(mine) > len(shown) {
+		b.WriteString(`<p class="b-state">` +
+			app.Link(fmt.Sprintf("All %d runs by this agent", len(mine)),
+				"/runs?agent="+url.QueryEscape(agentID)) + `</p>`)
+	}
+	return b.String() + runsCSS
 }
