@@ -31,6 +31,17 @@ var Template = `<div id="home">
   <div class="home-right">%s</div>
 </div>`
 
+// RowTemplate is the same two columns, for the row above the grid that holds
+// what is yours — the last run on the left, your mail on the right.
+//
+// A class, not the id, because Template is rendered once per page by
+// definition and this is a second instance of the same layout. Rendering
+// Template twice put two elements with id="home" on the page.
+var RowTemplate = `<div class="home-row">
+  <div class="home-left">%s</div>
+  <div class="home-right">%s</div>
+</div>`
+
 func newsCard() string {
 	return news.Headlines()
 }
@@ -504,20 +515,27 @@ function fetchW(la,lo){
 	// away. What actually belongs above the world's content is what your agents
 	// did — which is the next block, and which says something a count cannot.
 
-	// What your agents actually did. docs/PRODUCT.md puts this third on the
-	// console — after what is in flight and what is waiting — and called it the
-	// missing piece: a run that happened while you were elsewhere was recorded
-	// and never shown, so the product never told you when something worked.
+	// What is yours, in a row of its own above the world's content: the last
+	// thing your agents did on the left, your mail on the right.
+	//
+	// One run, not five. Home answers "did the last thing work" — five rows is
+	// a log and there is a page for the log, linked right underneath. One row
+	// also does not need the whole width, which is what put mail beside it:
+	// mail was down in the card grid among the news and the markets, and it is
+	// not the world's content, it is yours.
+	//
+	// Both use the two-column container the cards use, so they sit side by side
+	// on a desktop and stack in the same order on a phone.
 	if viewerAcc != nil {
-		if runs := agent.RecentRuns(viewerAcc.ID, 5); runs != "" {
-			b.WriteString(runs)
-		} else {
+		yours := agent.RecentRuns(viewerAcc.ID, 1)
+		if yours == "" {
 			// Nothing has run yet, which is every brand-new account and every
 			// fresh instance. The console was three zeros and half a page of
 			// white — the first thing the person who just installed this sees.
 			// A screen with nothing on it has to say what to do next.
-			b.WriteString(firstRunCTA())
+			yours = firstRunCTA()
 		}
+		b.WriteString(fmt.Sprintf(RowTemplate, yours, mailCardHTML(viewerID)))
 	}
 
 	if viewerAcc != nil && len(viewerAcc.Widgets) > 0 {
@@ -636,10 +654,6 @@ func chipMarkup(q string) string {
 // picks them, in cards.json, and everybody gets the same ones.
 func CardsHTML(r *http.Request, viewerAcc *auth.Account) string {
 	var b strings.Builder
-	viewerID := ""
-	if viewerAcc != nil {
-		viewerID = viewerAcc.ID
-	}
 
 	// Order and column come from cards.json.
 
@@ -659,20 +673,6 @@ func CardsHTML(r *http.Request, viewerAcc *auth.Account) string {
 	// the bottom of the right column however anybody felt about it.
 	type rendered struct{ id, html string }
 	build := func(id string) string {
-		switch id {
-		case "mail":
-			if viewerID == "" {
-				return ""
-			}
-			// Guard before appending "More": an empty inbox renders nothing,
-			// and a card containing only a link to an empty inbox is the
-			// empty card by another route.
-			preview := mail.GetRecentThreadsPreview(viewerID, 3)
-			if strings.TrimSpace(preview) == "" {
-				return ""
-			}
-			return preview + app.Link("More", "/mail")
-		}
 		for _, card := range Cards {
 			if card.ID != id {
 				continue
@@ -689,9 +689,6 @@ func CardsHTML(r *http.Request, viewerAcc *auth.Account) string {
 		return ""
 	}
 	titleOf := func(id string) string {
-		if id == "mail" {
-			return "Mail"
-		}
 		for _, card := range Cards {
 			if card.ID == id {
 				return card.Title
@@ -700,21 +697,21 @@ func CardsHTML(r *http.Request, viewerAcc *auth.Account) string {
 		return id
 	}
 
-	// The instance's order, from cards.json, for everybody. Mail is appended
-	// because it needs a session to render at all — a guest gets the rest and
-	// no empty box where their inbox would be.
+	// The instance's order, from cards.json, for everybody.
+	//
+	// Mail is not in here any more. It was appended after the configured cards,
+	// so your inbox rendered at the bottom of the right column among the news
+	// and the markets — your own thing, ranked below the world's. It sits in
+	// the row above the grid now, beside the last run. See mailCardHTML.
 	//
 	// Search was appended here too, as a card containing a search box. Every
 	// other card shows you something; that one asked you to type, on a page
 	// that already has the agent input at the top of it and a Search page in
 	// the catalogue. Two inputs, and the smaller one could only do the thing
 	// the bigger one does better.
-	order := make([]string, 0, len(Cards)+1)
+	order := make([]string, 0, len(Cards))
 	for _, card := range Cards {
 		order = append(order, card.ID)
-	}
-	if viewerID != "" {
-		order = append(order, "mail")
 	}
 
 	var shown []rendered
@@ -775,4 +772,24 @@ func firstRunCTA() string {
 .cta-card span{display:block;font-size:13px;color:#666;line-height:1.45}
 @media only screen and (max-width:600px){.cta-row{grid-template-columns:1fr}}
 </style>`
+}
+
+// mailCardHTML is the inbox card, rendered beside the last run rather than in
+// the card grid below.
+//
+// Mail used to be appended after the configured cards, which put your inbox at
+// the bottom of the right column underneath the news and the markets — your
+// own thing ranked below the world's, on a page whose first job is to show you
+// what is yours. Empty inbox renders nothing at all, same contract as every
+// other card.
+func mailCardHTML(viewerID string) string {
+	if viewerID == "" {
+		return ""
+	}
+	preview := mail.GetRecentThreadsPreview(viewerID, 3)
+	if strings.TrimSpace(preview) == "" {
+		return ""
+	}
+	return fmt.Sprintf(app.CardTemplate, "mail", "mail", "Mail",
+		preview+app.Link("More", "/mail"))
 }

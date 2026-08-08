@@ -1,4 +1,4 @@
-package main
+package test
 
 // The skill under skills/mu is read by agents that have not tried anything yet.
 // It is loaded before the first call and treated as authoritative, so a wrong
@@ -23,7 +23,7 @@ import (
 	"mu/internal/service"
 )
 
-const skillDir = "skills/mu"
+var skillDir = at("skills", "mu")
 
 // skillText returns every markdown file in the skill, concatenated.
 func skillText(t *testing.T) string {
@@ -105,7 +105,7 @@ func TestEveryToolTheSkillNamesIsReal(t *testing.T) {
 	// Tools registered by main() rather than derived from a Spec are not in
 	// this test binary's registry, so check them against the source that
 	// registers them. Both are real registrations; neither can drift silently.
-	mainGo, err := os.ReadFile("main.go")
+	mainGo, err := os.ReadFile(at("main.go"))
 	if err != nil {
 		t.Fatal(err)
 	}

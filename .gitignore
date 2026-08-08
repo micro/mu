@@ -38,3 +38,13 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
+
+# Debris from poking at a running instance by hand. Cookie jars written by
+# curl -c, one-off Playwright scripts, and the screenshots they take all got
+# committed at the repo root at some point: j7.txt, jc.txt, mob.js,
+# mob-sidebar.png. None of them was referenced by anything.
+cookies*.txt
+*-cookies.txt
+mob.js
+*-sidebar.png
+screenshot*.png

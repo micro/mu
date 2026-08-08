@@ -1,4 +1,4 @@
-package main
+package test
 
 // The deploy workflow skips a push that only touches files the running instance
 // cannot serve. That list is a loaded gun: docs/*.md look like documentation and
@@ -21,7 +21,7 @@ func embeddedFiles(t *testing.T) []string {
 	t.Helper()
 
 	var out []string
-	err := filepath.Walk(".", func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(repo, func(path string, info os.FileInfo, err error) error {
 		if err != nil || info.IsDir() || !strings.HasSuffix(path, ".go") {
 			return err
 		}
@@ -66,7 +66,7 @@ func embeddedFiles(t *testing.T) []string {
 func ignoredPaths(t *testing.T) []string {
 	t.Helper()
 
-	b, err := os.ReadFile(".github/workflows/deploy.yml")
+	b, err := os.ReadFile(at(".github/workflows/deploy.yml"))
 	if err != nil {
 		t.Fatalf("read deploy.yml: %v", err)
 	}

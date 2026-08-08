@@ -90,9 +90,15 @@ func RecentRuns(accountID string, limit int) string {
 	if len(runs) > limit {
 		runs = runs[:limit]
 	}
+	// Worded for what is actually shown. Home asks for one, so "Recent" over a
+	// single row read like a section that had lost the rest of itself.
+	sub := "what your agents did, and whether it worked"
+	if len(runs) == 1 {
+		sub = "the last thing your agents did, and whether it worked"
+	}
 	var b strings.Builder
 	b.WriteString(`<div class="cards-head"><span>Recent</span>` +
-		`<span class="cards-sub">what your agents did, and whether it worked</span></div>`)
+		`<span class="cards-sub">` + sub + `</span></div>`)
 	b.WriteString(`<div class="runs">`)
 	for _, f := range runs {
 		b.WriteString(runRow(f, ""))

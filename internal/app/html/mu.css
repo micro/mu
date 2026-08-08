@@ -768,10 +768,17 @@ body.page-home #page-title ~ #customize-link {
   font-size: 13px;
 }
 
-#home {
+/* The two-column container. Home uses it twice: once for the row that holds
+   what is yours — the last run, and your mail beside it — and once for the
+   card grid below. A class rather than an id for exactly that reason; it was
+   an id, and rendering it twice put two elements with id="home" on the page. */
+#home, .home-row {
   margin-bottom: 25px;
   display: flex;
   gap: 20px;
+}
+
+#home {
   height: 100%;
 }
 
@@ -934,7 +941,7 @@ body.page-home #page-title ~ #customize-link {
 
 /* Switch to a single column when there's not enough room for two + sidebar */
 @media only screen and (max-width: 1100px) {
-  #home {
+  #home, .home-row {
     flex-direction: column;
   }
 
@@ -2593,7 +2600,7 @@ a.highlight {
   }
   
   /* Home page layout — flatten columns on mobile for unified card ordering */
-  #home {
+  #home, .home-row {
     display: flex;
     flex-direction: column;
     gap: 8px;

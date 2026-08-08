@@ -1,4 +1,4 @@
-package main
+package test
 
 // Tool descriptions point at other tools — "use news_list for what is happening
 // generally", "call index_search instead". That cross-referencing is most of
@@ -52,7 +52,7 @@ func TestNoToolDescriptionPointsAtAToolThatIsGone(t *testing.T) {
 	}
 	// Tools main() registers are not in this binary's registry; the source that
 	// registers them is the other half of the truth.
-	src, err := os.ReadFile("main.go")
+	src, err := os.ReadFile(at("main.go"))
 	if err != nil {
 		t.Fatal(err)
 	}

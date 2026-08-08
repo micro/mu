@@ -1,4 +1,4 @@
-package main
+package test
 
 // The documentation makes checkable claims about the registry: which services
 // exist, where each one lives, which are closed to guests, and what the tools
@@ -21,25 +21,9 @@ import (
 	"mu/internal/service"
 )
 
-// tableGroup is one sub-heading of a section and the table rows under it. A
-// section with no sub-headings is a single group with an empty title.
-type tableGroup struct {
-	title string
-	rows  [][]string
-}
-
-// tableGroups returns the markdown tables in the section that starts at
-// heading and ends at the next heading of the same level, split by the `###`
-// sub-headings between them. Each row is split into trimmed cells.
-//
-// A section used to be one table, and reading stopped at the first blank line.
-// The README's tool table is now several, because one alphabetical list of
-// twenty-three services asserts they are equally important — so the reader
-// supplies a ranking from position, and Contacts outranks Context by being
-// spelled with an S. Grouping is the fix, and it has to be a group of tables:
-// prose bullets would take those services out of the table these tests read,
-// which is the same as removing them from the checks.
-func tableGroups(t *testing.T, file, heading string) []tableGroup {
+// tableRows returns the rows of the markdown table after heading, each split
+// into trimmed cells.
+func tableRows(t *testing.T, file, heading string) [][]string {
 	t.Helper()
 
 	b, err := os.ReadFile(file)
@@ -53,19 +37,17 @@ func tableGroups(t *testing.T, file, heading string) []tableGroup {
 		t.Fatalf("%s has no %q section", file, heading)
 	}
 
-	groups := []tableGroup{{}}
-	for n, line := range strings.Split(body[i:], "\n") {
+	var rows [][]string
+	started := false
+	for _, line := range strings.Split(body[i:], "\n") {
 		line = strings.TrimSpace(line)
-		if n > 0 && strings.HasPrefix(line, "## ") {
-			break // the section ended
-		}
-		if strings.HasPrefix(line, "### ") {
-			groups = append(groups, tableGroup{title: strings.TrimSpace(line[4:])})
-			continue
-		}
 		if !strings.HasPrefix(line, "|") {
+			if started {
+				break // the table ended
+			}
 			continue
 		}
+		started = true
 		cells := strings.Split(strings.Trim(line, "|"), "|")
 		for j := range cells {
 			cells[j] = strings.TrimSpace(cells[j])
@@ -74,29 +56,10 @@ func tableGroups(t *testing.T, file, heading string) []tableGroup {
 		if strings.HasPrefix(cells[0], "---") || cells[0] == "Service" || cells[0] == "Area" {
 			continue
 		}
-		g := &groups[len(groups)-1]
-		g.rows = append(g.rows, cells)
+		rows = append(rows, cells)
 	}
-
-	var out []tableGroup
-	for _, g := range groups {
-		if len(g.rows) > 0 {
-			out = append(out, g)
-		}
-	}
-	if len(out) == 0 {
+	if len(rows) == 0 {
 		t.Fatalf("%s: found no table rows under %q", file, heading)
-	}
-	return out
-}
-
-// tableRows is every row in the section, in the order it is read, ignoring
-// which group it fell in.
-func tableRows(t *testing.T, file, heading string) [][]string {
-	t.Helper()
-	var rows [][]string
-	for _, g := range tableGroups(t, file, heading) {
-		rows = append(rows, g.rows...)
 	}
 	return rows
 }
@@ -111,7 +74,7 @@ func TestArchitectureTableMatchesTheRegistry(t *testing.T) {
 	registerAll(t)
 
 	documented := map[string]bool{}
-	for _, cells := range tableRows(t, "docs/ARCHITECTURE.md", "## What is registered") {
+	for _, cells := range tableRows(t, at("docs/ARCHITECTURE.md"), "## What is registered") {
 		if len(cells) < 4 {
 			t.Errorf("malformed row: %v", cells)
 			continue
@@ -156,7 +119,7 @@ func TestReadmeToolTableUsesServiceNames(t *testing.T) {
 	registerAll(t)
 
 	seen := map[string]bool{}
-	for _, cells := range tableRows(t, "README.md", "## The tools") {
+	for _, cells := range tableRows(t, at("README.md"), "## The tools") {
 		if len(cells) < 2 {
 			t.Errorf("malformed row: %v", cells)
 			continue
@@ -228,7 +191,7 @@ func TestReadmeToolTableNamesToolsThatExist(t *testing.T) {
 		real[tool.Name] = true
 	}
 	// Tools main() registers rather than deriving from a Spec.
-	src, err := os.ReadFile("main.go")
+	src, err := os.ReadFile(at("main.go"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -237,7 +200,7 @@ func TestReadmeToolTableNamesToolsThatExist(t *testing.T) {
 	}
 
 	var gone []string
-	for _, cells := range tableRows(t, "README.md", "## The tools") {
+	for _, cells := range tableRows(t, at("README.md"), "## The tools") {
 		if len(cells) < 2 {
 			continue
 		}
@@ -263,42 +226,28 @@ func TestReadmeToolTableNamesToolsThatExist(t *testing.T) {
 // fine in a diff and wrong on the page. Database went in below Video, between
 // V and W, because appending is what you do to a list you are not looking at.
 //
-// Alphabetical *within a group*, since the groups carry the ranking now. Across
-// them it is meaningless — Context leads because it is what an agent should
-// read first, not because C sorts early.
-//
 // Platform is last on purpose: it is the tools with no service in front of the
 // underscore, so it is a remainder rather than a name to sort.
 func TestReadmeToolTableIsAlphabetical(t *testing.T) {
-	groups := tableGroups(t, "README.md", "## The tools")
-
-	var all []string
-	for _, g := range groups {
-		var labels []string
-		for _, cells := range g.rows {
-			if len(cells) < 2 {
-				continue
-			}
-			labels = append(labels, strings.Trim(cells[0], "*"))
+	var labels []string
+	for _, cells := range tableRows(t, at("README.md"), "## The tools") {
+		if len(cells) < 2 {
+			continue
 		}
-		all = append(all, labels...)
-
-		// Platform sorts nowhere, so it is excluded wherever it appears.
-		if n := len(labels); n > 0 && labels[n-1] == "Platform" {
-			labels = labels[:n-1]
-		}
-		for i := 1; i < len(labels); i++ {
-			if strings.ToLower(labels[i]) < strings.ToLower(labels[i-1]) {
-				t.Errorf("under %q, %q comes after %q in the table but before it alphabetically",
-					g.title, labels[i], labels[i-1])
-			}
-		}
+		labels = append(labels, strings.Trim(cells[0], "*"))
+	}
+	if len(labels) < 2 {
+		t.Fatalf("found %d rows in the tool table", len(labels))
 	}
 
-	if len(all) < 2 {
-		t.Fatalf("found %d rows in the tool table", len(all))
-	}
-	if last := all[len(all)-1]; last != "Platform" {
+	if last := labels[len(labels)-1]; last != "Platform" {
 		t.Errorf("the last row is %q; Platform is the remainder and belongs at the end", last)
+	}
+	named := labels[:len(labels)-1]
+
+	for i := 1; i < len(named); i++ {
+		if strings.ToLower(named[i]) < strings.ToLower(named[i-1]) {
+			t.Errorf("%q comes after %q in the table but before it alphabetically", named[i], named[i-1])
+		}
 	}
 }

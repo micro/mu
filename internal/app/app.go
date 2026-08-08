@@ -418,30 +418,32 @@ var Template = `
     <div id="container">
       <div id="nav-container">
         <div id="nav">
-          <!-- The nouns, in the order they relate to each other, and they make
-               a sentence: an agent acts for you, context is what it knows,
-               tools are what it can call, services are what backs all of it.
-               Before this was an ordering it was one alphabetical list of
-               nineteen services that put Wallet eighteenth, between Video and
-               Weather — alphabetical is not an ordering, it is the absence of
-               one.
+          <!-- The nouns, in the order somebody meets them. Tools is what the
+               product is named for and what carries the connect instructions,
+               so it comes first; Agents is the showcase — what you can build on
+               top of the tools once you have them — and Services is the back
+               end, the answer to "what does this actually run".
 
-               Context earns a place here precisely because it is not a
-               service. It is not a folder of relocated services either — it is
-               what the agent remembers about you, what you have put in front
-               of it, and what it will go and fetch. An actor with knowledge and
-               capabilities is two different things, and this is the first one.
+               Agents used to be second and Tools third, which put the demo in
+               front of the thing being demonstrated. Before any of this it was
+               one alphabetical list of nineteen services that put Wallet
+               eighteenth, between Video and Weather — alphabetical is not an
+               ordering, it is the absence of one.
+
+               Context was a fifth row: a page for what an agent remembers and
+               what it is watching. It became a second home screen with a card
+               picker on it and was removed. Memory, the half that was real, is
+               a card on /account.
 
                Apps was here once, on the argument that it is half the product.
-               It is a service like the other nineteen, it has a Spec like the
-               other nineteen, and it appears in the catalogue like the other
-               nineteen — so a second permanent entry above the fold was the
-               spine claiming something the rest of the product does not agree
-               with. Anyone who lives in Apps can pin it and it comes back,
-               which is what pinning is for. -->
+               It is a service with a Spec and a tile in the catalogue like the
+               others, so a permanent entry above the fold was the spine
+               claiming something the rest of the product does not agree with.
+               Anyone who lives in Apps can pin it and it comes back, which is
+               what pinning is for. -->
           <a href="/home"><img src="/home.png?` + Version + `"><span class="label">Home</span></a>
-          <a href="/agents"><img src="/agent.svg?` + Version + `"><span class="label">Agents</span></a>
           <a href="/tools"><img src="/tools.svg?` + Version + `"><span class="label">Tools</span></a>
+          <a href="/agents"><img src="/agent.svg?` + Version + `"><span class="label">Agents</span></a>
           <a href="/services"><img src="/services.svg?` + Version + `"><span class="label">Services</span></a>
           %s
         </div>

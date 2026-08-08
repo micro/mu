@@ -1,4 +1,4 @@
-package main
+package test
 
 // Every function that builds markup must close what it opens.
 //
@@ -37,7 +37,7 @@ var unbalancedByDesign = map[string]bool{}
 
 func TestMarkupBuildersCloseTheirTags(t *testing.T) {
 	var checked int
-	err := filepath.Walk(".", func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(repo, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return nil
 		}

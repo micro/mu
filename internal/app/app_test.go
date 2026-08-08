@@ -276,13 +276,22 @@ func TestTheBottomGroupIsTheAccount(t *testing.T) {
 func TestTheSidebarIsTheProductsNouns(t *testing.T) {
 	result := RenderHTMLWithLangAndAuth("Test", "d", "<p>c</p>", "en", &auth.Account{ID: "alice"})
 
-	// They make a sentence in this order: an agent acts for you, tools are what
-	// it can call, services are what backs all of it.
-	for _, want := range []string{`href="/home"`, `href="/agents"`,
-		`href="/tools"`, `href="/services"`} {
-		if !strings.Contains(result, want) {
-			t.Errorf("the sidebar is missing %s", want)
+	// The order somebody meets them in: Tools is what the product is named for
+	// and where you connect, Agents is what you build on top, Services is the
+	// back end. Agents used to sit above Tools, which put the demo in front of
+	// the thing being demonstrated.
+	want := []string{`href="/home"`, `href="/tools"`, `href="/agents"`, `href="/services"`}
+	at := -1
+	for _, w := range want {
+		i := strings.Index(result, w)
+		if i < 0 {
+			t.Errorf("the sidebar is missing %s", w)
+			continue
 		}
+		if i < at {
+			t.Errorf("%s is out of order in the sidebar", w)
+		}
+		at = i
 	}
 	// Context was a fifth row: a page holding what an agent remembers and what
 	// it is watching. It became a second home screen with a card picker on it,

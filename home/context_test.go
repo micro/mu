@@ -108,12 +108,12 @@ func TestEveryConfiguredCardHasAPlace(t *testing.T) {
 	if n == 0 {
 		t.Fatal("cards.json configures no cards, so Home has nothing on it")
 	}
-	// mail is rendered by CardsHTML rather than from cards.json, because it
-	// needs the viewer's session to render at all. It must not also be
-	// configured, or it would render twice.
+	// mail is rendered above the grid, beside the last run, because it is
+	// yours rather than the world's. It must not also be configured here, or it
+	// would render twice.
 	if side, dup := seen["mail"]; dup {
-		t.Errorf("mail is in cards.json (%s) and is also appended for signed-in "+
-			"readers, so it would render twice", side)
+		t.Errorf("mail is in cards.json (%s) and is also rendered beside the last "+
+			"run, so it would appear twice", side)
 	}
 	// Search is not a card at all. Every other card shows you something; that
 	// one asked you to type, on a page that already has the agent input above
@@ -147,19 +147,32 @@ func TestThereIsNoCardPicker(t *testing.T) {
 	}
 }
 
-// A guest gets the instance's cards and no empty box where their inbox would
-// be: mail needs a session to render at all.
-func TestAGuestGetsNoPersonalCards(t *testing.T) {
+// The card grid is the world's content. What is yours — the last run, your
+// mail — sits in a row above it, so neither belongs here.
+func TestTheCardGridHoldsNothingPersonal(t *testing.T) {
 	prev := Cards
 	Cards = []Card{{ID: "news", Title: "News", CachedHTML: `<p>Rates held</p>`}}
 	t.Cleanup(func() { Cards = prev })
 
-	got := CardsHTML(httptest.NewRequest("GET", "/home", nil), nil)
-	if !strings.Contains(got, "Rates held") {
-		t.Error("a signed-out visitor gets no cards, so Home proves nothing")
+	for _, acc := range []*auth.Account{nil, {ID: "reader"}} {
+		got := CardsHTML(httptest.NewRequest("GET", "/home", nil), acc)
+		if !strings.Contains(got, "Rates held") {
+			t.Errorf("the cards did not render (account %v)", acc)
+		}
+		if strings.Contains(got, `id="mail"`) {
+			t.Errorf("mail rendered in the grid as well as beside the run (account %v)", acc)
+		}
 	}
-	if strings.Contains(got, `id="mail"`) {
-		t.Error("a guest was shown a card that needs a session")
+}
+
+// An empty inbox renders no card, so the row beside the last run is just the
+// run — same contract as every other card.
+func TestTheMailCardIsAbsentWhenThereIsNoMail(t *testing.T) {
+	if got := mailCardHTML(""); got != "" {
+		t.Errorf("a guest got a mail card: %s", got)
+	}
+	if got := mailCardHTML("nobody-with-mail"); got != "" {
+		t.Errorf("an empty inbox rendered a card: %s", got)
 	}
 }
 
