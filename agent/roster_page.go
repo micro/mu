@@ -45,21 +45,6 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			http.Redirect(w, r, "/agents?created="+r.FormValue("id")+"&secret="+urlSafe(secret), http.StatusSeeOther)
 			return
-		case "publish":
-			if err := Publish(owner, r.FormValue("id"), r.FormValue("public") != ""); err != nil {
-				http.Redirect(w, r, "/agents?error="+urlSafe(err.Error()), http.StatusSeeOther)
-				return
-			}
-			http.Redirect(w, r, "/agents", http.StatusSeeOther)
-			return
-		case "fork":
-			a, err := Fork(owner, r.FormValue("id"))
-			if err != nil {
-				http.Redirect(w, r, "/agents?error="+urlSafe(err.Error()), http.StatusSeeOther)
-				return
-			}
-			http.Redirect(w, r, "/agent/new?id="+a.ID, http.StatusSeeOther)
-			return
 		}
 		http.Redirect(w, r, "/agents", http.StatusSeeOther)
 		return
@@ -119,7 +104,6 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	// and issued nothing, and neither linked to the other. The builder took the
 	// missing question ("where does it run?") so this could become a link.
 	b.WriteString(app.ActionLink("/agent/new", "+ New agent"))
-	b.WriteString(sharedSection(owner, csrf))
 	// Close the column this page opened. Without it the footer was swallowed
 	// into a 720px div and rendered halfway up the page: #content is a flex
 	// child sized to hold the footer at the bottom, and an unclosed div puts
@@ -183,16 +167,24 @@ func agentRow(a *Agent, csrf, base string) string {
 	}
 
 	// What this agent is, in terms of what you can do with it.
+	//
+	// An agent that runs here is offered no token. It was offered one because
+	// the button branched on whether a credential existed rather than on whether
+	// one could be used, so "runs here" — the option whose whole meaning is that
+	// nothing outside calls it — got a button inviting you to make that untrue.
+	// Changing where an agent runs is editing it, and editing is /agent/new.
 	meta, action := "", ""
 	if a.TokenID == "" {
 		// The name above is the link now, so this says what is true rather than
 		// repeating where to click.
 		meta = `Open its name to talk to it here. No token, so nothing outside this instance can call it.`
-		action = fmt.Sprintf(`<form method="POST" action="/agents" style="margin:0">
+		if a.Kind != Hosted {
+			action = fmt.Sprintf(`<form method="POST" action="/agents" style="margin:0">
     <input type="hidden" name="_csrf" value="%s"><input type="hidden" name="action" value="token">
     <input type="hidden" name="id" value="%s">
-    <button type="submit" class="agent-act" title="Only needed to call it from outside">Issue token</button>
+    <button type="submit" class="agent-act" title="It runs elsewhere, so it needs a credential to call in">Issue token</button>
   </form>`, html.EscapeString(csrf), html.EscapeString(a.ID))
+		}
 	} else {
 		used := "not called yet"
 		if !a.LastUsed.IsZero() {
@@ -210,20 +202,11 @@ func agentRow(a *Agent, csrf, base string) string {
 		addr = `<div class="agent-mail">Write to it at <code>` + html.EscapeString(a.Address()) + `</code></div>`
 	}
 
-	// What other people have done with it, once anybody has. Shown only then: a
-	// zero on every private agent is noise, and reads as a nag to publish.
-	earned := ""
-	if a.Public && a.Runs > 0 {
-		earned = fmt.Sprintf(`<div class="agent-meta">used %d times by other people</div>`, a.Runs)
-	}
-
 	return fmt.Sprintf(`<div class="agent-row">
   <div style="flex:1;min-width:0">
     <a class="agent-name" href="/agent?id=%s">%s</a>
     <div class="%s">%s</div>
     <div class="agent-meta">%s</div>
-    %s
-    %s
     %s
   </div>
   %s
@@ -236,7 +219,7 @@ func agentRow(a *Agent, csrf, base string) string {
 </div>`,
 		html.EscapeString(a.ID), html.EscapeString(a.Name),
 		cls, html.EscapeString(scope),
-		meta, addr, earned, publishForm(a, csrf), action,
+		meta, addr, action,
 		html.EscapeString(csrf), html.EscapeString(a.ID))
 }
 
@@ -305,89 +288,3 @@ const chipCSS = `<style>
 @media only screen and (max-width:600px){.pick-row{grid-template-columns:1fr}}
 </style>`
 
-// sharedSection is what other people have published.
-//
-// It is the answer to "how do I offer my agent to other people", and it is a
-// list rather than a marketplace on purpose: a name, what it is for, what it may
-// reach, what it costs, and how many times it has actually been used. The last
-// of those is the only one that is evidence.
-func sharedSection(viewer, csrf string) string {
-	shared := PublicAgents(viewer)
-	var b strings.Builder
-	b.WriteString(`<h3 style="font-size:15px;margin:28px 0 4px">Shared agents</h3>`)
-	b.WriteString(`<p class="text-sm text-muted" style="margin:0 0 10px">Agents other people have published. ` +
-		`One runs on <em>your</em> account when you ask it — your credits, your scope, your mail — ` +
-		`using its author's instructions. Publish your own with the checkbox on its row above.</p>`)
-	if len(shared) == 0 {
-		b.WriteString(`<p style="color:#888;font-size:14px">Nothing published yet.</p>`)
-		return b.String()
-	}
-	b.WriteString(`<div style="display:flex;flex-direction:column;gap:8px;margin:0 0 24px">`)
-	for _, a := range shared {
-		b.WriteString(sharedRow(a, viewer, csrf))
-	}
-	b.WriteString(`</div>`)
-	return b.String()
-}
-
-func sharedRow(a *Agent, viewer, csrf string) string {
-	scope := "everything you can reach"
-	if !a.Unscoped() {
-		labels := make([]string, 0, len(a.Services))
-		for _, s := range a.Services {
-			labels = append(labels, service.Label(s))
-		}
-		scope = strings.Join(labels, ", ")
-	}
-	used := "not used yet"
-	if a.Runs == 1 {
-		used = "used once"
-	} else if a.Runs > 1 {
-		used = fmt.Sprintf("used %d times", a.Runs)
-	}
-	desc := a.Description
-	if strings.TrimSpace(desc) == "" {
-		desc = firstLine("", a.Prompt)
-	}
-
-	// Yours is shown for completeness but offers neither action: running your
-	// own is what the row above it is for, and copying it would be a copy of
-	// something you already have.
-	action := ""
-	if a.Owner != viewer {
-		action = fmt.Sprintf(`<a class="agent-act" href="/agent?id=%s">Ask it</a>`+
-			`<form method="POST" action="/agents" style="margin:0;display:inline">
-    <input type="hidden" name="_csrf" value="%s"><input type="hidden" name="action" value="fork">
-    <input type="hidden" name="id" value="%s">
-    <button type="submit" class="agent-act" title="Copy it into your agents so you can change it">Copy</button>
-  </form>`, html.EscapeString(a.ID), html.EscapeString(csrf), html.EscapeString(a.ID))
-	} else {
-		action = `<span class="agent-mine">yours</span>`
-	}
-
-	return fmt.Sprintf(`<div class="agent-row">
-  <div style="flex:1;min-width:0">
-    <a class="agent-name" href="/agent?id=%s">%s</a> <span class="agent-by">by @%s</span>
-    <div class="agent-meta">%s</div>
-    <div class="agent-meta"><span class="agent-scope">%s</span> · %s</div>
-  </div>
-  <div style="display:flex;align-items:center;gap:10px">%s</div>
-</div>`,
-		html.EscapeString(a.ID), html.EscapeString(a.Name), html.EscapeString(a.Owner),
-		html.EscapeString(desc), html.EscapeString(scope), html.EscapeString(used), action)
-}
-
-// publishForm is the control that turns an agent into something other people
-// can use. Inline on the row rather than behind an edit page, because
-// publishing is a decision about this agent and nothing else.
-func publishForm(a *Agent, csrf string) string {
-	label, checked := "Publish", ""
-	if a.Public {
-		label, checked = "Published", " checked"
-	}
-	return fmt.Sprintf(`<form method="POST" action="/agents" class="agent-publish">
-  <input type="hidden" name="_csrf" value="%s"><input type="hidden" name="action" value="publish">
-  <input type="hidden" name="id" value="%s">
-  <label class="agent-pub"><input type="checkbox" name="public" value="1"%s onchange="this.form.submit()"><span>%s</span></label>
-</form>`, html.EscapeString(csrf), html.EscapeString(a.ID), checked, label)
-}

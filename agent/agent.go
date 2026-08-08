@@ -432,9 +432,35 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 		prefill = r.URL.Query().Get("q")
 	}
 
+	// Which agent this page is for. Clicking an agent's name on /agents means
+	// "talk to that one", so it selects the agent, opens its most recent
+	// conversation, and shows only that agent's conversations in the rail —
+	// which is what a chat with one agent means. Before, it selected the agent
+	// and then dropped you into whichever conversation happened to be newest,
+	// listing every agent's history beside it.
+	selAgent := r.URL.Query().Get("id")
+	if selAgent == "" {
+		selAgent = r.URL.Query().Get("agent")
+	}
+	if reopened {
+		// A reopened conversation decides its own agent; the rail filters to it.
+		selAgent = reopenAgent
+	} else if selAgent != "" && !guest && prefill == "" {
+		// Land in the last conversation with this agent, if there is one.
+		if last := latestSessionFor(accountID, selAgent); last != "" {
+			if turns := sessionChain(accountID, last); len(turns) > 0 {
+				head := turns[len(turns)-1]
+				cfg.ContextID = head.ID
+				cfg.InitialConvHTML = renderSessionTurns(turns)
+				activeRoot = turns[0].ID
+			}
+		}
+	}
+
 	rail := ""
 	if !guest {
-		rail = `<div class="chat-side">` + renderAgentsPanel() + renderSessionsRail(accountID, activeRoot) + `</div>`
+		rail = `<div class="chat-side">` + renderAgentsPanel() +
+			renderSessionsRail(accountID, activeRoot, selAgent) + `</div>`
 	}
 
 	chip := ""
@@ -474,12 +500,12 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	// id, and the same object should not have two names depending on which page
 	// links to it. ?agent= still works: links to it exist, and breaking a URL to
 	// tidy a parameter is a bad trade.
-	sel := r.URL.Query().Get("id")
-	if sel == "" {
-		sel = r.URL.Query().Get("agent")
-	}
-	if sel != "" && !guest {
-		content += `<script>window.muSeedAgent(` + app.JSString(sel) + `);history.replaceState(null,'','/agent');</script>`
+	// The id stays in the URL. It used to be stripped straight back out with
+	// replaceState, which made the address bar disagree with the page and a
+	// reload forget which agent you were talking to — the redirect looked
+	// wasteful because it was.
+	if selAgent != "" && !guest {
+		content += `<script>window.muSeedAgent(` + app.JSString(selAgent) + `);</script>`
 	} else if reopened {
 		content += `<script>window.muSeedAgent(` + app.JSString(reopenAgent) + `);</script>`
 	}
@@ -502,8 +528,20 @@ func renderSessionTurns(turns []*Flow) string {
 }
 
 // renderSessionsRail renders the list of past conversations.
-func renderSessionsRail(accountID, currentID string) string {
+func renderSessionsRail(accountID, currentID, agentID string) string {
 	sessions := ListSessions(accountID)
+	// One agent's conversations, when a page is about one agent. The rail listed
+	// every conversation on the account regardless, so a brand-new agent opened
+	// showing somebody else's history and looked like it had already been used.
+	if agentID != "" {
+		var mine []Session
+		for _, s := range sessions {
+			if s.Agent == agentID {
+				mine = append(mine, s)
+			}
+		}
+		sessions = mine
+	}
 	var b strings.Builder
 	b.WriteString(`<aside class="chat-rail"><button class="chat-new" onclick="if(window.muChatNew){muChatNew();history.replaceState(null,'','/agent');document.querySelectorAll('.chat-sess.active').forEach(function(e){e.classList.remove('active')});}">+ New chat</button><div class="chat-sess-list">`)
 	if len(sessions) == 0 {

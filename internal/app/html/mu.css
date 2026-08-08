@@ -125,6 +125,39 @@ button:hover {
   border-color: var(--btn-primary-hover);
 }
 
+/* Buttons that are controls rather than buttons: a word you click, no fill.
+   These exist because a destructive or secondary action in a list row should
+   not look like a call to action.
+
+   They have to neutralise the background here and not only the colour. The rule
+   above sets a dark fill on every button:hover, and a class that declares only
+   `color` inherits it — so "Issue token" and "Remove" went dark text on a dark
+   background the moment you pointed at them. Every one of these got it wrong
+   separately, so it is fixed once, in one place. */
+.agent-act,
+.agent-remove,
+.ctx-forget,
+.run-del,
+.db-act,
+.db-remove {
+  background: none;
+  border: 0;
+  padding: 0;
+  font-size: 13px;
+  line-height: inherit;
+}
+
+.agent-act:hover,
+.agent-remove:hover,
+.ctx-forget:hover,
+.run-del:hover,
+.db-act:hover,
+.db-remove:hover {
+  background: none;
+  border-color: transparent;
+  text-decoration: underline;
+}
+
 /* .btn class for links styled as buttons */
 a.btn {
   display: inline-flex;

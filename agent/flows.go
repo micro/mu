@@ -342,3 +342,14 @@ func DeleteSession(accountID, anyID string) error {
 	}
 	return nil
 }
+
+// latestSessionFor returns the root id of the most recent conversation with an
+// agent, or "" when there has not been one. Empty agentID means the default.
+func latestSessionFor(accountID, agentID string) string {
+	for _, s := range ListSessions(accountID) { // newest first
+		if s.Agent == agentID {
+			return s.RootID
+		}
+	}
+	return ""
+}

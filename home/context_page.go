@@ -41,6 +41,8 @@ func ContextHandler(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == http.MethodPost {
 		switch r.FormValue("action") {
+		case "remember":
+			memory.Set(owner, r.FormValue("key"), r.FormValue("value"))
 		case "forget":
 			memory.Delete(owner, r.FormValue("key"))
 		case "forget-all":
@@ -96,6 +98,16 @@ func ContextHandler(w http.ResponseWriter, r *http.Request) {
 			`<button type="submit" class="ctx-forget">Forget everything</button></form>`)
 	}
 
+	// Write one directly. Extraction is a convenience, not the only door: an
+	// agent can call memory_set, so a person looking at the same list should be
+	// able to add to it too.
+	b.WriteString(`<form method="POST" action="/context" class="ctx-add">` +
+		`<input type="hidden" name="_csrf" value="` + html.EscapeString(csrf) + `">` +
+		`<input type="hidden" name="action" value="remember">` +
+		`<input name="key" required maxlength="40" placeholder="location" class="ctx-in">` +
+		`<input name="value" required maxlength="300" placeholder="London" class="ctx-in ctx-in-wide">` +
+		`<button type="submit">Remember</button></form>`)
+
 	// ── What it watches ─────────────────────────────────────────
 	//
 	// The cards themselves, not a list of their names. They were on Home, which
@@ -106,7 +118,9 @@ func ContextHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<p class="ctx-sub">Live from the services you keep an eye on. These are not ` +
 		`read automatically — they go in only when you turn on live context above the agent ` +
 		`input, because context costs tokens on every turn and most questions have nothing to ` +
-		`do with them. ` + app.Link("Choose what to watch", "/home?cards=1") + `</p>`)
+		`do with them. <a class="link" href="#" onclick="var p=document.getElementById('home-card-prefs');` +
+		`if(p){p.style.display=p.style.display==='none'?'block':'none';p.scrollIntoView({block:'nearest'})}` +
+		`return false">Choose what to watch &rarr;</a></p>`)
 	b.WriteString(`</div>`) // out of the narrow column — the cards get the page
 	b.WriteString(CardsHTML(r, acc))
 	b.WriteString(`<div class="ctx-narrow">`)
@@ -146,6 +160,9 @@ const contextCSS = `<style>
 .ctx-when{font-size:12px;color:#999;margin-top:3px}
 .ctx-forget{background:none;border:0;color:#999;font-size:13px;cursor:pointer;padding:0}
 .ctx-forget:hover{color:#b00;text-decoration:underline}
+.ctx-add{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0 0;max-width:640px}
+.ctx-in{padding:7px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;font-family:inherit;flex:0 1 150px}
+.ctx-in-wide{flex:1 1 260px}
 .ctx-chips{display:flex;flex-wrap:wrap;gap:6px}
 .ctx-chip{display:block;border:1px solid #ddd;border-radius:999px;padding:5px 12px;font-size:13px;color:#444}
 </style>`

@@ -15,9 +15,14 @@ package agent
 // the product never told you when something worked.
 //
 // The list is deliberately thin — when, what was asked, who answered, what it
-// ran, and whether it finished. The detail already exists at /agent/flow/<id>,
-// which renders the answer, the typed cards and the references, so this links
-// there rather than growing a second reader.
+// ran, and whether it finished. A run opens as what it is: a turn in a
+// conversation, in the chat, with that agent selected and its other
+// conversations beside it.
+//
+// It links at /agent?session= directly. /agent/flow/<id> still exists and
+// redirects there — flows became conversations — so linking at the old path
+// meant every click took two requests to land somewhere the first one already
+// knew about.
 
 import (
 	"encoding/json"
@@ -54,9 +59,11 @@ func RunsHandler(w http.ResponseWriter, r *http.Request) {
 
 	var b strings.Builder
 	b.WriteString(`<div style="max-width:820px">`)
-	b.WriteString(`<p class="lens-lead">Every question your agents have answered, what each one ran ` +
-		`to answer it, and whether it finished. Runs started by a task, a schedule or an agent ` +
-		`calling in over MCP land here too — those are the ones nobody watched.</p>`)
+	b.WriteString(`<p class="lens-lead">A trace of every question your agents have answered: what was ` +
+		`asked, which agent took it, which tools it called, and whether it finished. Runs started by ` +
+		`a task, a schedule, or an agent calling in over MCP land here too — those are the ones ` +
+		`nobody watched. Open one to see the answer and its sources. ` +
+		`What it all cost is on ` + app.Link("Usage", "/usage") + `</p>`)
 
 	if len(runs) == 0 {
 		b.WriteString(`<p style="color:#888;font-size:14px">Nothing yet. Ask an agent something and ` +
@@ -156,7 +163,7 @@ func runRow(f *Flow, csrf string) string {
 
 	return fmt.Sprintf(`<div class="run-row">
   <div style="flex:1;min-width:0">
-    <a class="run-prompt" href="/agent/flow/%s">%s</a>
+    <a class="run-prompt" href="/agent?session=%s">%s</a>
     <div class="run-meta"><span class="%s">%s</span> · as %s · %s</div>
     <div class="run-tools">%s</div>
     %s
