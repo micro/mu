@@ -815,6 +815,12 @@ function fetchW(la,lo){
 	}
 
 	if len(leftHTML) > 0 || len(rightHTML) > 0 {
+		// The cards need a name. Unlabelled they read as decoration — a wall of
+		// widgets under an agent input — when they are the thing the toggle
+		// above the input hands to the agent. Saying so once, here, is what
+		// makes "use live context" mean anything.
+		b.WriteString(`<div class="cards-head"><span>Live context</span>` +
+			`<span class="cards-sub">what you watch, and what the agent reads when you ask it to</span></div>`)
 		b.WriteString(fmt.Sprintf(Template, strings.Join(leftHTML, "\n"), strings.Join(rightHTML, "\n")))
 	}
 

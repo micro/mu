@@ -56,10 +56,21 @@ func ToolsPageHandler(w http.ResponseWriter, r *http.Request) {
 	// No tabs between the two either, for the same reason: the sidebar links
 	// both, and a switch that duplicates the navigation beside it is one more
 	// thing to read and one more place for the two to disagree.
+	// Each page says its part in one sentence, because the three of them are
+	// one sentence: an agent acts for you, tools are what it can call, services
+	// are what runs behind them. Read cold, "Services" beside "Tools" looks like
+	// two names for the same list — the difference is which side of the call you
+	// are standing on, and nothing on either page said so.
 	var b strings.Builder
 	if services {
+		b.WriteString(`<p class="lens-lead">The back end for your agents. Every capability this ` +
+			`instance runs — the thing behind each tool, with a page you can open and use yourself. ` +
+			`Pin the ones you want in the sidebar.</p>`)
 		b.WriteString(serviceGrid(r))
 	} else {
+		b.WriteString(`<p class="lens-lead">What an agent can call. Point one at this instance, ` +
+			`give it a token, and these are the tools it gets — priced per call, no account needed ` +
+			`if it pays.</p>`)
 		b.WriteString(connectSection(r))
 		b.WriteString(toolGrid())
 	}
@@ -390,6 +401,7 @@ func serviceOf(tool string) string {
 }
 
 const toolsPageCSS = `<style>
+.lens-lead{color:#666;font-size:14px;margin:0 0 18px;max-width:640px}
 .service-tile-head{display:flex;align-items:center;gap:8px}
 .service-tile-head img{width:18px;height:18px}
 /* The wrapper exists so the pin can sit on the tile without sitting inside the

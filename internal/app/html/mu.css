@@ -5421,3 +5421,23 @@ body.display-mode .card h4 {
   .prayer-layout { display: block; }
   .prayer-side { position: static; }
 }
+
+/* The cards have a name now. Unlabelled they read as decoration — a wall of
+   widgets under an agent input — when they are the thing the toggle above the
+   input hands to the agent. */
+.cards-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 18px 0 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #111);
+}
+
+.cards-sub {
+  font-weight: 400;
+  font-size: 13px;
+  color: #999;
+}

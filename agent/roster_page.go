@@ -78,6 +78,11 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	csrf := auth.CSRFToken(r)
 	var b strings.Builder
 	b.WriteString(`<div style="max-width:720px">`)
+	// The first line of the same three-page sentence: an agent acts for you,
+	// tools are what it can call, services are what runs behind them.
+	b.WriteString(`<p class="lens-lead">What acts for you. Give one a standing instruction and ` +
+		`the services it may reach, then talk to it here or hand it a token and run it from ` +
+		`Claude, Cursor or your own program.</p>`)
 
 	if msg := r.URL.Query().Get("error"); msg != "" {
 		b.WriteString(`<p class="text-error">` + html.EscapeString(msg) + `</p>`)
@@ -236,6 +241,7 @@ func agentRow(a *Agent, csrf, base string) string {
 }
 
 const agentsCSS = `<style>
+.lens-lead{color:#666;font-size:14px;margin:0 0 18px;max-width:640px}
 .agent-row{display:flex;align-items:center;gap:12px;border:1px solid #eee;border-radius:8px;padding:10px 14px}
 .agent-kind{font-size:11px;color:#999;font-weight:400;margin-left:4px}
 .agent-scope{font-size:13px;color:#0a7d33}
