@@ -117,7 +117,7 @@ between a tool and a wrapper.
 | **Chat** | `chat_rooms` · `chat_messages` — the live discussion rooms attached to an item |
 | **Social** | `social_list` · `social_search` — public threads and replies |
 | **Stream** | `stream_list` · `stream_post` — this instance's own timeline |
-| **Platform** | `agent_ask` — ask the whole thing a question and let it compose. Also `quran_search`, `content_save` · `content_unsave` · `saved_list`, and `content_flag` · `content_hide` · `block_user` · `unblock_user` |
+| **Platform** | `agent_ask` · `agent_list` — ask the whole thing a question and let it compose, or ask one of your own agents by name. Also `quran_search`, `content_save` · `content_unsave` · `saved_list`, and `content_flag` · `content_hide` · `block_user` · `unblock_user` |
 
 ## Request a tool
 
