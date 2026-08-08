@@ -504,10 +504,16 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	// replaceState, which made the address bar disagree with the page and a
 	// reload forget which agent you were talking to — the redirect looked
 	// wasteful because it was.
-	if selAgent != "" && !guest {
+	//
+	// Seeded unconditionally, including the empty default. selAgent is what the
+	// rail was filtered by and what the conversation was loaded for, so it is
+	// the page's answer to "which agent is this" and the chip has to give the
+	// same one. Seeding only when it was non-empty left the tab's remembered
+	// selection in charge on a bare /agent: the rail listed every agent's
+	// conversations while the chip named one of them, and the next message went
+	// to the agent the chip named. The URL is the state.
+	if !guest {
 		content += `<script>window.muSeedAgent(` + app.JSString(selAgent) + `);</script>`
-	} else if reopened {
-		content += `<script>window.muSeedAgent(` + app.JSString(reopenAgent) + `);</script>`
 	}
 	if prefill != "" {
 		content += `<script>(function(){var i=document.getElementById('mu-chat-input');if(i&&window.muChatAsk){i.value=` + app.JSString(prefill) + `;window.muChatAsk(i.value);}history.replaceState(null,'','/agent');})()</script>`
@@ -542,10 +548,23 @@ func renderSessionsRail(accountID, currentID, agentID string) string {
 		}
 		sessions = mine
 	}
+	// A new chat with the agent whose rail this is. It used to rewrite the URL
+	// to a bare /agent, which dropped the agent out of the address bar while
+	// the page went on talking to it — so a reload landed you on the default
+	// and the rail silently widened to every conversation on the account.
+	newURL := "/agent"
+	if agentID != "" {
+		newURL += "?id=" + url.QueryEscape(agentID)
+	}
 	var b strings.Builder
-	b.WriteString(`<aside class="chat-rail"><button class="chat-new" onclick="if(window.muChatNew){muChatNew();history.replaceState(null,'','/agent');document.querySelectorAll('.chat-sess.active').forEach(function(e){e.classList.remove('active')});}">+ New chat</button><div class="chat-sess-list">`)
+	b.WriteString(`<aside class="chat-rail"><button class="chat-new" onclick="if(window.muChatNew){muChatNew();history.replaceState(null,''` +
+		`,` + app.JSString(newURL) + `);document.querySelectorAll('.chat-sess.active').forEach(function(e){e.classList.remove('active')});}">+ New chat</button><div class="chat-sess-list">`)
 	if len(sessions) == 0 {
-		b.WriteString(`<div class="chat-sess-empty">No conversations yet.</div>`)
+		if agentID != "" {
+			b.WriteString(`<div class="chat-sess-empty">No conversations with this agent yet.</div>`)
+		} else {
+			b.WriteString(`<div class="chat-sess-empty">No conversations yet.</div>`)
+		}
 	}
 	for _, s := range sessions {
 		cls := "chat-sess"

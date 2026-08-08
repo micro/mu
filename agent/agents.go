@@ -215,7 +215,23 @@ function muAgentCsrf(){var m=document.cookie.match(/(?:^|; )csrf_token=([^;]+)/)
 // Resolve an agent id to its display name from the loaded list ('' = default).
 function muAgentName(id){if(!id)return 'Micro';var d=document.querySelector('#agents-list>div[data-id="'+id+'"]');if(d){var s=d.querySelector('span');if(s&&s.textContent)return s.textContent;}return 'Micro';}
 function muAgentChip(){var c=document.getElementById('active-agent-chip');if(c)c.textContent='Agent: '+muAgentName(window.muActiveAgent);}
-function muAgentPick(id){window.muActiveAgent=id;document.querySelectorAll('#agents-list>div').forEach(function(d){d.classList.toggle('on',d.getAttribute('data-id')===id);});try{sessionStorage.setItem(MUAKEY,id);}catch(e){}muAgentChip();}
+// Picking an agent is a navigation, not a highlight.
+//
+// It used to set a variable, move the highlight and update the chip, and stop
+// there. Everything else on the page — the conversation in the middle and the
+// rail of past conversations beside it — is rendered by the server for one
+// agent, so switching left you looking at the previous agent's history with a
+// chip claiming you were talking to the new one. Worse for a brand-new agent:
+// the rail should be empty and instead showed somebody else's conversations,
+// so an agent that had never been used looked well used.
+//
+// The id goes in the URL, which is the same thing clicking an agent on /agents
+// does. One door, one behaviour, and a reload keeps the agent.
+function muAgentPick(id){
+  var to=id?'/agent?id='+encodeURIComponent(id):'/agent';
+  if(window.location.pathname+window.location.search===to){return;}
+  window.location=to;
+}
 // Set the active agent from the server (session reopen / deep link) and persist
 // it; the list highlight + chip refresh once the agents finish loading.
 window.muSeedAgent=function(id){window.muActiveAgent=id||'';try{sessionStorage.setItem(MUAKEY,window.muActiveAgent);}catch(e){}document.querySelectorAll('#agents-list>div').forEach(function(d){d.classList.toggle('on',d.getAttribute('data-id')===window.muActiveAgent);});muAgentChip();};
