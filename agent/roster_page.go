@@ -215,10 +215,19 @@ func agentRow(a *Agent, csrf, base string) string {
 		kind = `<span class="agent-kind away">Runs elsewhere</span>`
 	}
 
-	// And what it has done. An agent is a scope; its runs are the only evidence
-	// the scope is right, and this is the page you come to to look at an agent.
-	runs := fmt.Sprintf(`<a class="agent-runs" href="/agent/runs?agent=%s">Runs &rarr;</a>`,
-		html.EscapeString(a.ID))
+	// The two things you come to this page to do to an agent that are not
+	// talking to it: change it, and see what it did.
+	//
+	// Edit was missing entirely. The rail on /agent has had a pencil on every
+	// row for a while, so the builder was reachable — from the chat, in a
+	// 250px column, behind an icon — while the page whose whole job is managing
+	// agents offered no way to change one. You could make an agent here, name
+	// it, scope it, delete it, and not edit it.
+	links := fmt.Sprintf(`<div class="agent-links">`+
+		`<a href="/agent/new?id=%s">Edit</a>`+
+		`<a href="/agent/new?fork=%s">Fork</a>`+
+		`<a href="/agent/runs?agent=%s">Runs &rarr;</a></div>`,
+		html.EscapeString(a.ID), html.EscapeString(a.ID), html.EscapeString(a.ID))
 
 	return fmt.Sprintf(`<div class="agent-row">
   <div style="flex:1;min-width:0">
@@ -226,7 +235,7 @@ func agentRow(a *Agent, csrf, base string) string {
     <div class="%s">%s</div>
     <div class="agent-meta">%s</div>
     %s
-    `+runs+`
+    `+links+`
   </div>
   %s
   <form method="POST" action="/agents" style="margin:0" onsubmit="return confirm('Remove this agent?')">
@@ -249,8 +258,9 @@ const agentsCSS = `<style>
   padding:1px 7px;border-radius:999px;vertical-align:middle}
 .agent-kind.here{color:#0a7d33;background:#eaf6ee}
 .agent-kind.away{color:#a86400;background:#fdf3e3}
-.agent-runs{display:inline-block;font-size:12px;color:#666;text-decoration:none;margin-top:5px}
-.agent-runs:hover{color:var(--text-primary,#111);text-decoration:underline}
+.agent-links{display:flex;flex-wrap:wrap;gap:12px;margin-top:6px}
+.agent-links a{font-size:12px;color:#666;text-decoration:none}
+.agent-links a:hover{color:var(--text-primary,#111);text-decoration:underline}
 .agent-scope{font-size:13px;color:#0a7d33}
 .agent-scope.wide{color:#a86400}
 .agent-meta{font-size:12px;color:#999;margin-top:2px;overflow:hidden;text-overflow:ellipsis}
