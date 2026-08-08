@@ -12,6 +12,7 @@ package apps
 
 import (
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 )
@@ -46,12 +47,30 @@ func TestPinningIsNotOfferedToAGuest(t *testing.T) {
 	}
 }
 
-// The control reads as a word you click, not as a call to action competing
-// with Launch. .link-button is the shared class for exactly that, and using it
-// is what keeps this row looking like the rows on /files and /tasks.
-func TestThePinReadsAsARowAction(t *testing.T) {
+// Pinning a service to the sidebar on /services is the same gesture with the
+// same meaning, and it is a star you fill in. Two pins that look different are
+// two features to a reader, so this is the same control — .pin-btn, which is
+// in mu.css rather than either page's own style block for that reason.
+func TestBothPinsAreTheSamePin(t *testing.T) {
 	r := httptest.NewRequest("GET", "/apps", nil)
-	if got := pinControl(r, "reader", "pomodoro", false); !strings.Contains(got, `class="link-button"`) {
-		t.Errorf("the pin rolled its own button styling:\n%s", got)
+
+	got := pinControl(r, "reader", "pomodoro", false)
+	if !strings.Contains(got, `class="pin-btn"`) {
+		t.Errorf("the app pin rolled its own styling:\n%s", got)
+	}
+	if !strings.Contains(got, "<polygon") {
+		t.Errorf("the app pin is not the star /services uses:\n%s", got)
+	}
+	if pinned := pinControl(r, "reader", "pomodoro", true); !strings.Contains(pinned, `class="pin-btn pinned"`) {
+		t.Errorf("a pinned app does not render as filled in:\n%s", pinned)
+	}
+
+	css, err := os.ReadFile("../../internal/app/html/mu.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(css), ".pin-btn {") {
+		t.Error("the shared pin styling is not shared — it is back in one page's style block, " +
+			"where the other page cannot see it")
 	}
 }

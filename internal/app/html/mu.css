@@ -3217,6 +3217,34 @@ a.highlight {
   text-decoration: underline;
 }
 
+/* The pin: a star you fill in. One control for "keep this where I can reach
+   it" — a service in the sidebar on /services, an app at the top of home on
+   /apps. It lived in the /services page's own style block until the second
+   page needed it, which is the moment a control stops belonging to a page. */
+.pin-btn {
+  background: none;
+  border: 0;
+  padding: 4px;
+  width: auto;
+  cursor: pointer;
+  color: #d0d0d0;
+  display: flex;
+  align-items: center;
+  border-radius: 6px;
+}
+
+.pin-btn svg { fill: none; }
+
+.pin-btn:hover {
+  color: #888;
+  background: #f5f5f5;
+  border-color: transparent;
+}
+
+.pin-btn.pinned { color: #c79a2e; }
+.pin-btn.pinned svg { fill: currentColor; }
+.pin-btn.pinned:hover { color: #a87f1f; }
+
 .link-button.danger {
   color: var(--btn-danger);
 }

@@ -410,14 +410,10 @@ const toolsPageCSS = `<style>
    opening the service. */
 .service-tile-wrap{position:relative;display:flex}
 .service-tile-wrap>.tool-tile{flex:1;padding-right:34px}
+/* The pin sits on the tile here; .pin-btn itself is in mu.css, because /apps
+   pins an app to home with the same control and a shared control cannot live
+   in one page's style block. */
 .pin-form{position:absolute;top:6px;right:6px;margin:0}
-.pin-btn{background:none;border:0;padding:4px;width:auto;cursor:pointer;color:#d0d0d0;
-  display:flex;align-items:center;border-radius:6px}
-.pin-btn svg{fill:none}
-.pin-btn:hover{color:#888;background:#f5f5f5}
-.pin-btn.pinned{color:#c79a2e}
-.pin-btn.pinned svg{fill:currentColor}
-.pin-btn.pinned:hover{color:#a87f1f}
 
 .tool-group{margin:0 0 26px}
 .tool-group-title{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#999;margin:0 0 10px}

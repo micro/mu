@@ -385,24 +385,30 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 //
 // It posts to /account because that is where the account is written; `return`
 // carries the page back. See app.prefsReturnTo.
+// The star and the .pin-btn class are the ones /services uses to pin a service
+// to the sidebar. Same gesture, same meaning, so it has to be the same control
+// — two pins that look different are two features to a reader.
 func pinControl(r *http.Request, userID, slug string, isPinned bool) string {
 	if userID == "" {
 		return ""
 	}
-	action, label := "pin", "Pin to home"
+	action, label, cls := "pin", "Pin to home", "pin-btn"
 	if isPinned {
-		action, label = "unpin", "Unpin"
+		action, label, cls = "unpin", "Unpin from home", "pin-btn pinned"
 	}
-	return fmt.Sprintf(` · <form method="POST" action="/account" style="display:inline">`+
+	return fmt.Sprintf(`<form method="POST" action="/account" style="display:inline-block;vertical-align:middle;margin:0">`+
 		`<input type="hidden" name="_csrf" value="%s">`+
 		`<input type="hidden" name="%s" value="%s">`+
 		`<input type="hidden" name="return" value="%s">`+
-		`<button type="submit" class="link-button">%s</button></form>`,
+		`<button type="submit" class="%s" title="%s" aria-label="%s">`+
+		`<svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" `+
+		`stroke-linejoin="round"><polygon points="12,3 14.6,9 21,9.5 16.2,13.8 17.6,20 12,16.8 6.4,20 7.8,13.8 3,9.5 9.4,9"/></svg>`+
+		`</button></form>`,
 		htmlpkg.EscapeString(auth.CSRFToken(r)),
 		action,
 		htmlpkg.EscapeString(slug),
 		htmlpkg.EscapeString(r.URL.RequestURI()),
-		label,
+		cls, label, label,
 	)
 }
 
