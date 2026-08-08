@@ -97,7 +97,10 @@ func RecentRuns(accountID string, limit int) string {
 	for _, f := range runs {
 		b.WriteString(runRow(f, ""))
 	}
-	b.WriteString(`</div><p style="margin:8px 0 0">` + app.Link("Every run", "/runs") + `</p>`)
+	// Space below, not just above. "Every run" sat 8px off the last row and
+	// nothing off the block underneath, so on a phone — where the cards stack
+	// into one column directly under this — the link touched the top card.
+	b.WriteString(`</div><p style="margin:8px 0 24px">` + app.Link("Every run", "/runs") + `</p>`)
 	return b.String() + runsCSS
 }
 

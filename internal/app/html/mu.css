@@ -977,6 +977,13 @@ body.page-home #page-title ~ #customize-link {
   box-sizing: border-box;
   display: block;
   position: relative;
+  /* A card holds content this instance did not write — a subject line, a mail
+     preview, a headline. One unbroken token with no space in it (a URL, a
+     hash, fifty characters of base64 from a DMARC report) has nowhere to wrap
+     and pushes the card past the viewport, which on a phone drags the whole
+     page sideways. Break inside the word rather than let it out of the box. */
+  overflow-wrap: anywhere;
+  min-width: 0;
   border: var(--border-width) solid var(--card-border);
   border-radius: var(--border-radius);
   padding: var(--item-padding);

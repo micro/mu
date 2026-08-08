@@ -510,13 +510,15 @@ func (s *Session) Data(r io.Reader) error {
 			}
 		}
 
-		// Store the decoded content
+		// Store the decoded content. Binary gets described rather than
+		// encoded, for the same reason as the multipart path above: the body
+		// is what the inbox previews, what the index searches and what an
+		// agent reads, and a wall of base64 corrupts all three.
 		if isValidUTF8Text(bodyBytes) {
 			body = string(bodyBytes)
 		} else {
-			// Binary content - base64 encode for safe storage
-			body = base64.StdEncoding.EncodeToString(bodyBytes)
-			app.Log("mail", "Base64 encoded binary body for safe storage (%d bytes)", len(bodyBytes))
+			body = describeAttachment(partFilename("", contentType), contentType, len(bodyBytes))
+			app.Log("mail", "Binary body (%d bytes, %s) described rather than inlined", len(bodyBytes), contentType)
 		}
 
 		// Additional check: if the body looks entirely like base64 (no header specified),
@@ -674,7 +676,7 @@ func parseMultipartRecursive(body io.Reader, boundary string, depth int) string 
 	mr := multipart.NewReader(body, boundary)
 	var textPlain, textHTML string
 	var attachmentBody []byte
-	var attachmentContentType string
+	var attachmentContentType, attachmentName string
 	var allParts []string // Store all parts to avoid data loss
 
 	for {
@@ -762,6 +764,7 @@ func parseMultipartRecursive(body io.Reader, boundary string, depth int) string 
 			// Store attachment info (we'll only use it if there's no text body)
 			attachmentBody = partBody
 			attachmentContentType = contentType
+			attachmentName = partFilename(part.Header.Get("Content-Disposition"), contentType)
 			app.Log("mail", "Found attachment: %s (%d bytes)", contentType, len(partBody))
 		} else {
 			// Unknown part type - skip binary content, preserve text-like parts only
@@ -783,12 +786,22 @@ func parseMultipartRecursive(body io.Reader, boundary string, depth int) string 
 	} else if textPlain != "" {
 		result = strings.TrimSpace(textPlain)
 	} else if len(attachmentBody) > 0 {
-		// If no text body but there's an attachment (like DMARC reports), return the attachment
-		// For gzip attachments, store as base64 for safe storage
-		if strings.Contains(attachmentContentType, "gzip") || strings.Contains(attachmentContentType, "zip") {
-			result = base64.StdEncoding.EncodeToString(attachmentBody)
-		} else {
+		// A message whose only part is an attachment — a DMARC report is the
+		// common one, and it is a zip.
+		//
+		// This used to base64-encode the bytes into the body. The body is what
+		// the inbox list previews, what the message view renders, what the
+		// index searches and what an agent reads when it calls mail_inbox, so
+		// one DMARC report put "UEsDBAoAAAAIAOlI/VyKomDL8AEAAMUEAAAt…" — the
+		// zip's own PK header — into every one of them. It scrolled off the
+		// side of the home card because fifty characters of base64 contain no
+		// space to break at.
+		//
+		// If we cannot render it, we do not paste it in. Say what arrived.
+		if utf8.Valid(attachmentBody) && !isBinaryish(attachmentContentType) {
 			result = string(attachmentBody)
+		} else {
+			result = describeAttachment(attachmentName, attachmentContentType, len(attachmentBody))
 		}
 	}
 
@@ -1046,5 +1059,71 @@ func cleanupRateLimits() {
 
 		app.Log("mail", "Cleaned up rate limit entries (IPs: %d, Senders: %d)",
 			ipCount, senderCount)
+	}
+}
+
+// partFilename is the attachment's name, from Content-Disposition if it has
+// one and from the Content-Type name parameter otherwise. Empty when neither
+// says — plenty of senders do not.
+func partFilename(disposition, contentType string) string {
+	for _, h := range []string{disposition, contentType} {
+		if h == "" {
+			continue
+		}
+		if _, params, err := mime.ParseMediaType(h); err == nil {
+			for _, k := range []string{"filename", "name"} {
+				if v := strings.TrimSpace(params[k]); v != "" {
+					return v
+				}
+			}
+		}
+	}
+	return ""
+}
+
+// isBinaryish reports whether a content type is one we should never inline,
+// even if its bytes happen to be valid UTF-8. A small zip can be.
+func isBinaryish(contentType string) bool {
+	ct := strings.ToLower(contentType)
+	for _, prefix := range []string{"image/", "audio/", "video/", "font/"} {
+		if strings.HasPrefix(ct, prefix) {
+			return true
+		}
+	}
+	for _, frag := range []string{"zip", "gzip", "octet-stream", "pdf", "msword",
+		"spreadsheet", "presentation", "x-tar", "x-7z", "x-rar"} {
+		if strings.Contains(ct, frag) {
+			return true
+		}
+	}
+	return false
+}
+
+// describeAttachment is what the body says when the only thing in the message
+// is something we cannot show. One line, readable in a preview, and truthful
+// about the fact that the content is not here.
+func describeAttachment(name, contentType string, size int) string {
+	if name == "" {
+		name = "attachment"
+	}
+	kind, _, err := mime.ParseMediaType(contentType)
+	if err != nil || kind == "" {
+		kind = strings.TrimSpace(contentType)
+	}
+	desc := name
+	if kind != "" {
+		desc += " (" + kind + ")"
+	}
+	return "[" + desc + ", " + humanSize(size) + " — not shown]"
+}
+
+func humanSize(n int) string {
+	switch {
+	case n >= 1<<20:
+		return fmt.Sprintf("%.1f MB", float64(n)/(1<<20))
+	case n >= 1<<10:
+		return fmt.Sprintf("%.0f KB", float64(n)/(1<<10))
+	default:
+		return fmt.Sprintf("%d bytes", n)
 	}
 }
