@@ -320,6 +320,21 @@ func QueryWithOpts(accountID, prompt string, opts QueryOpts) (string, error) {
 		}
 	}
 
+	// The agent you asked writes the answer, not the house assistant.
+	//
+	// QueryOpts.System is documented as "optional custom system prompt
+	// (user-defined agent)" and was read in exactly one place — the native
+	// path — so every caller that came through here composed as Micro no matter
+	// which agent it was for. That is every task run and every scheduled run,
+	// which are precisely the ones nobody is watching.
+	//
+	// It goes in front of the composition rules rather than replacing them: the
+	// rules are about not inventing prices and dates from stale training data,
+	// which is not an agent's to override.
+	if sys := strings.TrimSpace(opts.System); sys != "" {
+		synthSystem = sys + "\n\n" + synthSystem
+	}
+
 	synthPrompt := &ai.Prompt{
 		System:   synthSystem,
 		Rag:      ragParts,
@@ -978,11 +993,9 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		if req.Cards && !isGuest && CardContextFunc != nil {
 			nopts.Extra = CardContextFunc(accountID)
 		}
-		if !isGuest && req.Agent != "" {
-			if ua := micro.GetUserAgentFor(accountID, req.Agent); ua != nil {
-				nopts.System = ua.SystemPrompt
-				nopts.Tools = ua.Tools
-			}
+		if ua := resolveAgent(accountID, req.Agent, isGuest); ua != nil {
+			nopts.System = ua.SystemPrompt
+			nopts.Tools = ua.Tools
 		}
 		for _, f := range conversationHistory {
 			if strings.TrimSpace(f.Prompt) == "" {
@@ -1221,6 +1234,16 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 			"Use markdown formatting. Summarise key information from any news articles, weather data, market prices or other structured data. " +
 			"Do not answer with progress narration like 'let me check' or 'I'll pull the data'; the tools have already run, so provide the final answer or say exactly what is unavailable.\n\n" +
 			"IMPORTANT: Use plain dollar signs for currency (e.g. $69,811). Do NOT use LaTeX math delimiters like \\( or \\)."
+	}
+
+	// And the same in the streaming fallback. This branch runs whenever the
+	// native path is off or gave up before producing output, and it applied no
+	// named agent at all: it recorded the id on the flow and then composed as
+	// Micro, so an agent whose whole point is a voice or a standing instruction
+	// lost both the moment a question needed a tool.
+	if ua := resolveAgent(accountID, req.Agent, isGuest); ua != nil &&
+		strings.TrimSpace(ua.SystemPrompt) != "" {
+		synthSystem = strings.TrimSpace(ua.SystemPrompt) + "\n\n" + synthSystem
 	}
 
 	synthPrompt := &ai.Prompt{
@@ -1692,6 +1715,29 @@ func renderToolCallRef(name string, args map[string]any, formattedResult string)
 
 // renderResultCard returns an HTML card to attach after the AI answer, or "" if
 // the tool has no visual card.
+// resolveAgent finds the agent a question is being asked as.
+//
+// It reads the roster first, which is where every agent made since /agents
+// existed lives. The ask path used to read only agent/micro's user store — the
+// store the roster replaced — so an agent you built, named and gave a system
+// prompt was found by nothing when you asked it something: the lookup returned
+// nil, the prompt and the tool scope were dropped, and the default assistant
+// answered in its place. Nothing said so. That is the whole of "it is not clear
+// whether a new agent is a real thing or a play thing": it was not a real
+// thing, because the one place it had to be read was reading somewhere else.
+//
+// The old store is still consulted second, for anything the one-way import has
+// not carried over.
+func resolveAgent(accountID, id string, isGuest bool) *micro.Agent {
+	if isGuest || accountID == "" || id == "" {
+		return nil
+	}
+	if a := AgentFor(accountID, id); a != nil {
+		return a.AsMicro()
+	}
+	return micro.GetUserAgentFor(accountID, id)
+}
+
 func renderResultCard(toolName, result string, args map[string]any) string {
 	switch toolName {
 	case "news", "news_search":

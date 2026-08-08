@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -8,6 +9,7 @@ import (
 	"testing"
 
 	"mu/internal/auth"
+	"mu/internal/service"
 )
 
 func TestWantsJSON(t *testing.T) {
@@ -266,24 +268,62 @@ func TestTheBottomGroupIsTheAccount(t *testing.T) {
 // service lives in the catalogue; a nav that named four of twenty implied the
 // other sixteen did not exist.
 //
-// Apps is in the spine rather than the catalogue because it is half the product
-// — the comment above the sidebar said so for a long time while Apps was one
-// tile among twenty inside the services grid.
+// Apps is not in it. It was, on the argument that it is half the product — but
+// it is a service with a Spec and a tile in the catalogue like the other
+// nineteen, so a permanent second entry above the fold was the spine claiming
+// something the rest of the product does not agree with. Anyone who lives in
+// Apps pins it, which is what pinning is for.
 func TestTheSidebarIsTheProductsNouns(t *testing.T) {
 	result := RenderHTMLWithLangAndAuth("Test", "d", "<p>c</p>", "en", &auth.Account{ID: "alice"})
 
-	for _, want := range []string{`href="/home"`, `href="/agents"`, `href="/apps"`,
+	for _, want := range []string{`href="/home"`, `href="/agents"`,
 		`href="/tools"`, `href="/services"`} {
 		if !strings.Contains(result, want) {
 			t.Errorf("the sidebar is missing %s", want)
 		}
 	}
-	// A service reaches the sidebar by being pinned, never by being a service.
-	for _, gone := range []string{`href="/tasks"`, `href="/events"`, `href="/news"`} {
+	// A service reaches the sidebar by being pinned, never by being a service —
+	// and apps is a service.
+	for _, gone := range []string{`href="/apps"`, `href="/tasks"`, `href="/events"`, `href="/news"`} {
 		if strings.Contains(result, gone) {
 			t.Errorf("%s is in the sidebar of an account that pinned nothing", gone)
 		}
 	}
+}
+
+// A pinned service comes back into the sidebar. Demoting anything out of the
+// spine — apps, most recently — is only defensible if the way back is the
+// ordinary one that every other service already uses.
+//
+// Asserted with a service registered here rather than by naming apps: Pinned
+// resolves through the registry, so naming a real service would make this pass
+// or fail on whether that service's package happens to be linked into this test
+// binary, which is not what is being tested.
+func TestAPinnedServiceReturnsToTheSidebar(t *testing.T) {
+	const name = "pinprobe"
+	if _, known := service.SpecFor(name); !known {
+		if err := service.Register(service.Spec{
+			Name: name, Handler: new(PinProbe), Page: "/" + name,
+			Endpoints: map[string]service.Endpoint{"List": {Doc: "probe"}},
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	acc := &auth.Account{ID: "alice"}
+	acc.SetPinned([]string{name})
+	result := RenderHTMLWithLangAndAuth("Test", "d", "<p>c</p>", "en", acc)
+	if !strings.Contains(result, `href="/`+name+`"`) {
+		t.Error("a pinned service did not appear in the sidebar")
+	}
+}
+
+// PinProbe is the service the test above registers.
+type PinProbe struct{}
+
+func (PinProbe) List(ctx context.Context, req *struct{}, rsp *struct {
+	Text string `json:"text"`
+}) error {
+	return nil
 }
 
 // Nothing pinned draws no group at all. An empty heading over an empty list is

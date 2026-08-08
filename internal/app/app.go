@@ -418,18 +418,22 @@ var Template = `
       <div id="nav-container">
         <div id="nav">
           <!-- The nouns, in the order they relate to each other: an agent does
-               the work, tasks tell it what to do, apps are what you build,
-               tools are what an agent can call, services are what this
-               instance runs.
+               the work, tools are what it can call, services are what this
+               instance runs. Before this was an ordering it was one
+               alphabetical list of nineteen services that put Wallet
+               eighteenth, between Video and Weather — alphabetical is not an
+               ordering, it is the absence of one.
 
-               Apps is here because it is half the product and was one tile
-               among nineteen inside the services catalogue, which is a strange
-               place for it. The comment saying so shipped before the fix did. Before that this was one alphabetical list of nineteen
-               services that put Wallet eighteenth, between Video and Weather.
-               Alphabetical is not an ordering, it is the absence of one. -->
+               Apps was here too, on the argument that it is half the product.
+               It is a service like the other nineteen, it has a Spec like the
+               other nineteen, and it appears in the catalogue like the other
+               nineteen — so a second permanent entry above the fold was the
+               spine claiming something the rest of the product does not agree
+               with. The spine is what everything else hangs off: what acts for
+               you, what it can call, what is running. Anyone who lives in Apps
+               can pin it and it comes back, which is what pinning is for. -->
           <a href="/home"><img src="/home.png?` + Version + `"><span class="label">Home</span></a>
           <a href="/agents"><img src="/agent.svg?` + Version + `"><span class="label">Agents</span></a>
-          <a href="/apps"><img src="/apps.svg?` + Version + `"><span class="label">Apps</span></a>
           <a href="/tools"><img src="/tools.svg?` + Version + `"><span class="label">Tools</span></a>
           <a href="/services"><img src="/services.svg?` + Version + `"><span class="label">Services</span></a>
           %s
