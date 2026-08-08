@@ -373,6 +373,39 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// pinControl is the "pin this app to the top of home" switch, on the row of
+// the app it pins.
+//
+// It used to be a checkbox list inside the "choose what to watch" panel on
+// /context, under a heading that said "Apps — pin apps to the top of your home
+// screen": a setting about Home, edited on Context, in a panel about neither.
+// It was there because it is also a list of checkboxes, which is a resemblance
+// and not a reason. Here you are already looking at the app and deciding about
+// it, and there is no second list of app names to keep in step with this one.
+//
+// It posts to /account because that is where the account is written; `return`
+// carries the page back. See app.prefsReturnTo.
+func pinControl(r *http.Request, userID, slug string, isPinned bool) string {
+	if userID == "" {
+		return ""
+	}
+	action, label := "pin", "Pin to home"
+	if isPinned {
+		action, label = "unpin", "Unpin"
+	}
+	return fmt.Sprintf(` · <form method="POST" action="/account" style="display:inline">`+
+		`<input type="hidden" name="_csrf" value="%s">`+
+		`<input type="hidden" name="%s" value="%s">`+
+		`<input type="hidden" name="return" value="%s">`+
+		`<button type="submit" class="link-button">%s</button></form>`,
+		htmlpkg.EscapeString(auth.CSRFToken(r)),
+		action,
+		htmlpkg.EscapeString(slug),
+		htmlpkg.EscapeString(r.URL.RequestURI()),
+		label,
+	)
+}
+
 // handleList shows all public apps.
 func handleList(w http.ResponseWriter, r *http.Request) {
 	mutex.RLock()
@@ -421,9 +454,13 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 	sess, acc := auth.TrySession(r)
 	var userID string
 	var isAdmin bool
+	pinned := map[string]bool{}
 	if sess != nil {
 		userID = sess.Account
 		isAdmin = acc.Admin
+		for _, w := range acc.Widgets {
+			pinned[w] = true
+		}
 	}
 
 	// HTML
@@ -543,7 +580,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 <div>
 <h3 style="margin:0 0 4px 0;"><a href="/apps/%s">%s</a></h3>
 <p style="margin:0 0 4px 0;color:#666;">%s</p>
-<p style="margin:0;font-size:13px;color:#999;">by %s%s%s · %d launches · <a href="/apps/%s">Launch</a> · <a href="/apps/%s/fork">Fork</a>%s</p>
+<p style="margin:0;font-size:13px;color:#999;">by %s%s%s · %d launches · <a href="/apps/%s">Launch</a> · <a href="/apps/%s/fork">Fork</a>%s%s</p>
 </div>
 </div>`,
 				htmlpkg.EscapeString(a.Slug),
@@ -556,6 +593,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 				a.Installs,
 				htmlpkg.EscapeString(a.Slug),
 				htmlpkg.EscapeString(a.Slug),
+				pinControl(r, userID, a.Slug, pinned[a.Slug]),
 				controls,
 			))
 		}

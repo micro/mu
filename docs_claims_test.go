@@ -21,9 +21,25 @@ import (
 	"mu/internal/service"
 )
 
-// tableRows returns the rows of the first markdown table after heading, each
-// split into trimmed cells.
-func tableRows(t *testing.T, file, heading string) [][]string {
+// tableGroup is one sub-heading of a section and the table rows under it. A
+// section with no sub-headings is a single group with an empty title.
+type tableGroup struct {
+	title string
+	rows  [][]string
+}
+
+// tableGroups returns the markdown tables in the section that starts at
+// heading and ends at the next heading of the same level, split by the `###`
+// sub-headings between them. Each row is split into trimmed cells.
+//
+// A section used to be one table, and reading stopped at the first blank line.
+// The README's tool table is now several, because one alphabetical list of
+// twenty-three services asserts they are equally important — so the reader
+// supplies a ranking from position, and Contacts outranks Context by being
+// spelled with an S. Grouping is the fix, and it has to be a group of tables:
+// prose bullets would take those services out of the table these tests read,
+// which is the same as removing them from the checks.
+func tableGroups(t *testing.T, file, heading string) []tableGroup {
 	t.Helper()
 
 	b, err := os.ReadFile(file)
@@ -37,17 +53,19 @@ func tableRows(t *testing.T, file, heading string) [][]string {
 		t.Fatalf("%s has no %q section", file, heading)
 	}
 
-	var rows [][]string
-	started := false
-	for _, line := range strings.Split(body[i:], "\n") {
+	groups := []tableGroup{{}}
+	for n, line := range strings.Split(body[i:], "\n") {
 		line = strings.TrimSpace(line)
-		if !strings.HasPrefix(line, "|") {
-			if started {
-				break // the table ended
-			}
+		if n > 0 && strings.HasPrefix(line, "## ") {
+			break // the section ended
+		}
+		if strings.HasPrefix(line, "### ") {
+			groups = append(groups, tableGroup{title: strings.TrimSpace(line[4:])})
 			continue
 		}
-		started = true
+		if !strings.HasPrefix(line, "|") {
+			continue
+		}
 		cells := strings.Split(strings.Trim(line, "|"), "|")
 		for j := range cells {
 			cells[j] = strings.TrimSpace(cells[j])
@@ -56,10 +74,29 @@ func tableRows(t *testing.T, file, heading string) [][]string {
 		if strings.HasPrefix(cells[0], "---") || cells[0] == "Service" || cells[0] == "Area" {
 			continue
 		}
-		rows = append(rows, cells)
+		g := &groups[len(groups)-1]
+		g.rows = append(g.rows, cells)
 	}
-	if len(rows) == 0 {
+
+	var out []tableGroup
+	for _, g := range groups {
+		if len(g.rows) > 0 {
+			out = append(out, g)
+		}
+	}
+	if len(out) == 0 {
 		t.Fatalf("%s: found no table rows under %q", file, heading)
+	}
+	return out
+}
+
+// tableRows is every row in the section, in the order it is read, ignoring
+// which group it fell in.
+func tableRows(t *testing.T, file, heading string) [][]string {
+	t.Helper()
+	var rows [][]string
+	for _, g := range tableGroups(t, file, heading) {
+		rows = append(rows, g.rows...)
 	}
 	return rows
 }
@@ -161,10 +198,14 @@ func TestReadmeToolTableUsesServiceNames(t *testing.T) {
 		}
 	}
 
-	// Every service a person can see should be findable in the table.
+	// Every registered service should be findable in the table, page or no
+	// page. It used to be only the ones with a page, which let the headless
+	// ones go undocumented without anything failing: context and memory —
+	// four tools, the first thing an agent should call — were missing from the
+	// README entirely and this test was satisfied.
 	for _, s := range allSpecs() {
-		if s.Page != "" && !seen[s.Name] {
-			t.Errorf("%s has a page at %s but no tools in the README table", s.Name, s.Page)
+		if !seen[s.Name] {
+			t.Errorf("%s is registered but has no tools in the README table", s.Name)
 		}
 	}
 }
@@ -222,28 +263,42 @@ func TestReadmeToolTableNamesToolsThatExist(t *testing.T) {
 // fine in a diff and wrong on the page. Database went in below Video, between
 // V and W, because appending is what you do to a list you are not looking at.
 //
+// Alphabetical *within a group*, since the groups carry the ranking now. Across
+// them it is meaningless — Context leads because it is what an agent should
+// read first, not because C sorts early.
+//
 // Platform is last on purpose: it is the tools with no service in front of the
 // underscore, so it is a remainder rather than a name to sort.
 func TestReadmeToolTableIsAlphabetical(t *testing.T) {
-	var labels []string
-	for _, cells := range tableRows(t, "README.md", "## The tools") {
-		if len(cells) < 2 {
-			continue
+	groups := tableGroups(t, "README.md", "## The tools")
+
+	var all []string
+	for _, g := range groups {
+		var labels []string
+		for _, cells := range g.rows {
+			if len(cells) < 2 {
+				continue
+			}
+			labels = append(labels, strings.Trim(cells[0], "*"))
 		}
-		labels = append(labels, strings.Trim(cells[0], "*"))
-	}
-	if len(labels) < 2 {
-		t.Fatalf("found %d rows in the tool table", len(labels))
+		all = append(all, labels...)
+
+		// Platform sorts nowhere, so it is excluded wherever it appears.
+		if n := len(labels); n > 0 && labels[n-1] == "Platform" {
+			labels = labels[:n-1]
+		}
+		for i := 1; i < len(labels); i++ {
+			if strings.ToLower(labels[i]) < strings.ToLower(labels[i-1]) {
+				t.Errorf("under %q, %q comes after %q in the table but before it alphabetically",
+					g.title, labels[i], labels[i-1])
+			}
+		}
 	}
 
-	if last := labels[len(labels)-1]; last != "Platform" {
+	if len(all) < 2 {
+		t.Fatalf("found %d rows in the tool table", len(all))
+	}
+	if last := all[len(all)-1]; last != "Platform" {
 		t.Errorf("the last row is %q; Platform is the remainder and belongs at the end", last)
-	}
-	named := labels[:len(labels)-1]
-
-	for i := 1; i < len(named); i++ {
-		if strings.ToLower(named[i]) < strings.ToLower(named[i-1]) {
-			t.Errorf("%q comes after %q in the table but before it alphabetically", named[i], named[i-1])
-		}
 	}
 }

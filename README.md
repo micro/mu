@@ -57,32 +57,66 @@ See [MCP docs](docs/MCP.md) for the protocol details.
 
 ## The tools
 
-Grouped the way [/tools](https://micro.mu/tools) and the sidebar group them —
-one row per service, named for it.
+One row per service, named the way [/tools](https://micro.mu/tools) and the
+sidebar name it, alphabetical within each group.
+
+The groups are the point. A flat list of twenty-three services claims they all
+matter the same amount, and they do not — the first group is what an agent
+should read before it fetches anything, and the rest is fetching.
+
+### What it already knows
+
+Ask these first. Everything below this is a call out to something; this is what
+is already true about the person asking.
+
+| Area | Tools |
+|---|---|
+| **Context** | `context_get` — what the caller watches, live, and what has been remembered about them, in one call. Cheaper than guessing which of the others to try |
+| **Memory** | `memory_set` · `memory_list` · `memory_delete` — durable facts about the caller, read back into every question they ask |
+
+### What is yours
+
+Your own things. Private by default, and closed entirely to a caller with no
+account.
+
+| Area | Tools |
+|---|---|
+| **Contacts** | `contacts_add` · `contacts_find` · `contacts_list` · `contacts_delete` — turns a name into an address, which is what "email Sam" needs before any mail can be sent |
+| **Database** | `db_create` · `db_get` · `db_list` · `db_delete` — named collections of your own records, private by default, that outlive a conversation (`db_create` with an `id` overwrites). Apps get their own separate store through `mu.db` |
+| **Events** | `events_create` · `events_list` · `events_delete` · `events_free` — schedule, cancel, and find when you are free, counting the Google Calendar you already keep |
+| **Files** | `files_put` · `files_get` · `files_list` · `files_share` · `files_delete` — keep a file, get a URL |
+| **Index** | `index_search` — everything this instance holds for you |
+| **Mail** | `mail_inbox` · `mail_send` · `mail_search` · `mail_address` — a real SMTP server with DKIM, and an address per agent |
+| **Tasks** | `tasks_create` · `tasks_list` · `tasks_next` · `tasks_update` · `tasks_delete` — what is to be done, and work you can hand to the agent |
+| **Wallet** | `wallet_balance` · `wallet_check` — credits, which is what calls are charged in |
+
+### The world outside the model
+
+What an agent cannot know and has to go and get.
+
+| Area | Tools |
+|---|---|
+| **Images** | `images_generate` · `images_search` |
+| **Markets** | `markets_list` — stocks, crypto, futures, commodities, currencies |
+| **News** | `news_list` · `news_read` · `news_search` — RSS aggregation, full articles |
+| **Places** | `places_search` · `places_nearby` · `places_eta` · `places_geocode` — points of interest, geocoding, travel time |
+| **Prayer** | `prayer_times` · `prayer_qibla` · `prayer_verse` · `prayer_saying` · `prayer_reflection` — Islamic prayer times, qibla, and a daily verse, saying and name |
+| **Search** | `web_search` · `web_fetch` — search the web, read a page as clean text |
+| **Video** | `video_list` · `video_search` — curated channels, no ads or recommendations |
+| **Weather** | `weather_forecast` — conditions, forecast, pollen |
+
+### What runs here
+
+This instance hosts these rather than fetching them, which is the difference
+between a tool and a wrapper.
 
 | Area | Tools |
 |---|---|
 | **Apps** | `apps_build` · `apps_create` · `apps_edit` · `apps_fork` · `apps_read` · `apps_run` · `apps_search` · `apps_test` — build and run small web tools |
 | **Blog** | `blog_create` · `blog_read` · `blog_list` · `blog_update` · `blog_delete` — publish, with AI-generated daily digests |
 | **Chat** | `chat_rooms` · `chat_messages` — the live discussion rooms attached to an item |
-| **Contacts** | `contacts_add` · `contacts_find` · `contacts_list` · `contacts_delete` — turn a name into an address |
-| **Database** | `db_create` · `db_get` · `db_list` · `db_delete` — named collections of your own records, private by default, that outlive a conversation (`db_create` with an `id` overwrites). Apps get their own separate store through `mu.db` |
-| **Events** | `events_create` · `events_list` · `events_delete` · `events_free` — schedule, cancel, and find when you are free, counting the Google Calendar you already keep |
-| **Files** | `files_put` · `files_get` · `files_list` · `files_share` · `files_delete` — keep a file, get a URL |
-| **Images** | `images_generate` · `images_search` |
-| **Index** | `index_search` — everything this instance holds for you |
-| **Mail** | `mail_inbox` · `mail_send` · `mail_search` · `mail_address` — a real SMTP server with DKIM, and an address per agent |
-| **Markets** | `markets_list` — stocks, crypto, futures, commodities, currencies |
-| **News** | `news_list` · `news_read` · `news_search` — RSS aggregation, full articles |
-| **Places** | `places_search` · `places_nearby` · `places_eta` · `places_geocode` — points of interest, geocoding, travel time |
-| **Prayer** | `prayer_times` · `prayer_qibla` · `prayer_verse` · `prayer_saying` · `prayer_reflection` — Islamic prayer times, qibla, and a daily verse, saying and name |
-| **Search** | `web_search` · `web_fetch` — search the web, read a page as clean text |
 | **Social** | `social_list` · `social_search` — public threads and replies |
 | **Stream** | `stream_list` · `stream_post` — this instance's own timeline |
-| **Tasks** | `tasks_create` · `tasks_list` · `tasks_next` · `tasks_update` · `tasks_delete` — what is to be done, and work you can hand to the agent |
-| **Video** | `video_list` · `video_search` — curated channels, no ads or recommendations |
-| **Wallet** | `wallet_balance` · `wallet_check` — credits, which is what calls are charged in |
-| **Weather** | `weather_forecast` — conditions, forecast, pollen |
 | **Platform** | `agent_ask` — ask the whole thing a question and let it compose. Also `quran_search`, `content_save` · `content_unsave` · `saved_list`, and `content_flag` · `content_hide` · `block_user` · `unblock_user` |
 
 ## Request a tool

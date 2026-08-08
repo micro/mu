@@ -1085,6 +1085,43 @@ func safeRedirect(r *http.Request) string {
 	return to
 }
 
+// prefsReturnTo is where to send someone after they save a preference that is
+// edited from somewhere other than /account.
+//
+// The card picker is on /context and pinning is on /apps, but both post here,
+// because this is where the account is written. Sending them to /account
+// afterwards would answer a click on /context by navigating away from the
+// thing they were looking at. The form says where it was; the guard is
+// safeRedirect's, since a `return` field is as forgeable as a query parameter.
+func prefsReturnTo(r *http.Request) string {
+	to := r.Form.Get("return")
+	if to == "" || to[0] != '/' || strings.HasPrefix(to, "//") {
+		return "/account"
+	}
+	return to
+}
+
+// addWidget and removeWidget edit the pinned-app list by name. Order is the
+// order they were pinned in, which is the order they render.
+func addWidget(have []string, slug string) []string {
+	for _, w := range have {
+		if w == slug {
+			return have
+		}
+	}
+	return append(have, slug)
+}
+
+func removeWidget(have []string, slug string) []string {
+	out := make([]string, 0, len(have))
+	for _, w := range have {
+		if w != slug {
+			out = append(out, w)
+		}
+	}
+	return out
+}
+
 func Account(w http.ResponseWriter, r *http.Request) {
 	_, acc, err := auth.RequireSession(r)
 	if err != nil {
@@ -1122,25 +1159,30 @@ func Account(w http.ResponseWriter, r *http.Request) {
 			// default to visible rather than being hidden by this allowlist.
 			acc.HomeCardsSeen = append([]string(nil), homeCardUniverse...)
 			auth.UpdateAccount(acc)
-			ref := r.Header.Get("Referer")
-			if ref != "" && (strings.Contains(ref, "/home") || strings.HasSuffix(ref, "/")) {
-				http.Redirect(w, r, "/home", http.StatusSeeOther)
-			} else {
-				http.Redirect(w, r, "/account", http.StatusSeeOther)
-			}
+			http.Redirect(w, r, prefsReturnTo(r), http.StatusSeeOther)
 			return
 		}
 
-		// App widget preferences
+		// App widget preferences — which apps are pinned to the top of home.
+		// Posted one app at a time from /apps, where the pin sits next to the
+		// app it pins; `pin` and `unpin` name the app rather than restating the
+		// whole set, so two tabs cannot silently undo each other.
+		if slug := r.Form.Get("pin"); slug != "" {
+			acc.Widgets = addWidget(acc.Widgets, slug)
+			auth.UpdateAccount(acc)
+			http.Redirect(w, r, prefsReturnTo(r), http.StatusSeeOther)
+			return
+		}
+		if slug := r.Form.Get("unpin"); slug != "" {
+			acc.Widgets = removeWidget(acc.Widgets, slug)
+			auth.UpdateAccount(acc)
+			http.Redirect(w, r, prefsReturnTo(r), http.StatusSeeOther)
+			return
+		}
 		if r.Form.Get("save_widgets") != "" {
 			acc.Widgets = r.Form["widgets"]
 			auth.UpdateAccount(acc)
-			ref := r.Header.Get("Referer")
-			if ref != "" && (strings.Contains(ref, "/home") || strings.HasSuffix(ref, "/")) {
-				http.Redirect(w, r, "/home", http.StatusSeeOther)
-			} else {
-				http.Redirect(w, r, "/account", http.StatusSeeOther)
-			}
+			http.Redirect(w, r, prefsReturnTo(r), http.StatusSeeOther)
 			return
 		}
 
@@ -1189,34 +1231,21 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	// pages that earn them; the audit belongs where somebody goes to check.
 	googleCard += renderConnectionsCard(r, acc, r.URL.Query().Get("connection"))
 
-	// Home card preferences
-	allCards := HomeCards
-	optInCards := map[string]bool{"mail": true, "web": true}
-	activeCards := map[string]bool{}
-	for _, c := range allCards {
-		if optInCards[c.ID] {
-			activeCards[c.ID] = acc.HomeCardActive(c.ID)
-		} else {
-			activeCards[c.ID] = acc.ShowHomeCard(c.ID)
-		}
-	}
-	var cardsCheckboxes string
-	for _, c := range allCards {
-		checked := ""
-		if activeCards[c.ID] {
-			checked = " checked"
-		}
-		cardsCheckboxes += fmt.Sprintf(`<label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:14px;border-bottom:1px solid #f0f0f0"><input type="checkbox" name="cards" value="%s"%s style="width:18px;height:18px"> %s</label>`, c.ID, checked, c.Label)
-	}
-	homeCardsCard := fmt.Sprintf(`<div class="card">
+	// Which cards you watch is edited on /context, next to the cards, so this
+	// page links there instead of carrying its own copy of the list.
+	//
+	// It had one: the same checkboxes, over the same HomeCards, posting the
+	// same save_cards — a third editor for one setting, and the only one of the
+	// three that could not show you what a tick would do, because the cards it
+	// governs are not on this page. Two copies of a picker do not stay in step
+	// by luck; this one had already lost drag-to-reorder and rendered the list
+	// in the instance's order rather than the reader's, so the same account
+	// looked differently ordered depending on which screen you opened.
+	homeCardsCard := `<div class="card">
 <h4>Home Screen</h4>
-<p class="text-sm text-muted">Choose which cards to show on your home screen.</p>
-<form action="/account" method="POST" style="margin-top:8px">
-<input type="hidden" name="save_cards" value="1">
-%s
-<button type="submit" class="mt-2">Save</button>
-</form>
-</div>`, cardsCheckboxes)
+<p class="text-sm text-muted">The cards you watch, and the live context your agent reads when you ask it to.</p>
+<p><a href="/context?cards=1">Choose what to watch →</a></p>
+</div>`
 
 	// Chat channel link card. One code works on any of them.
 	discordCard := ""

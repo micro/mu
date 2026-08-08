@@ -154,3 +154,49 @@ func TestEveryOfferedCardCanActuallyRender(t *testing.T) {
 		}
 	}
 }
+
+// Choosing what to watch is one decision, and it costs one save.
+//
+// The panel used to POST and reload the page on every `change`, so a reader
+// composing a set of six cards paid six round trips and six full reloads, each
+// one throwing away their scroll position part way down the list they were
+// still reading. It is a form now, and the only thing that writes is Save.
+func TestThePickerSavesOnceRatherThanOnEveryTick(t *testing.T) {
+	acc := &auth.Account{ID: "picker-reader"}
+	got := CardsHTML(ctxRequest(t, "picker-reader", "GET", "/context?cards=1", nil), acc)
+
+	if !strings.Contains(got, `<form id="home-card-prefs"`) {
+		t.Error("the picker is not a form, so there is nothing for a Save button to submit")
+	}
+	if !strings.Contains(got, `name="save_cards"`) || !strings.Contains(got, `type="submit"`) {
+		t.Error("the picker has no Save")
+	}
+	if strings.Contains(got, "addEventListener('change'") {
+		t.Error("a tick still saves by itself")
+	}
+	if strings.Contains(got, "location.reload()") {
+		t.Error("the picker still reloads the page behind it")
+	}
+	// It posts to /account, which would otherwise answer by navigating there.
+	if !strings.Contains(got, `name="return" value="/context"`) {
+		t.Error("saving would leave the page the reader was on")
+	}
+	if !strings.Contains(got, `name="_csrf"`) {
+		t.Error("a plain form post needs the CSRF field the fetch used to send as a header")
+	}
+}
+
+// Pinning an app is a setting about Home, and it was being edited inside the
+// panel that chooses what an agent watches — under its own "Apps" heading,
+// next to cards, because both happen to be lists of checkboxes. It belongs on
+// /apps, beside the app it pins.
+func TestTheWatchPickerDoesNotAlsoPinApps(t *testing.T) {
+	acc := &auth.Account{ID: "picker-reader"}
+	got := CardsHTML(ctxRequest(t, "picker-reader", "GET", "/context?cards=1", nil), acc)
+
+	for _, unwanted := range []string{`name="widgets"`, "widget-checkboxes", "pin apps to the top"} {
+		if strings.Contains(got, unwanted) {
+			t.Errorf("the watch picker still carries the app pinner: found %q", unwanted)
+		}
+	}
+}

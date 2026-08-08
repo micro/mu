@@ -3206,6 +3206,13 @@ a.highlight {
 }
 
 .link-button:hover {
+  /* background and border, not only colour: `button:hover` above is a more
+     specific selector than `.link-button`, so the dark fill it sets outranks
+     the `background: none` here and every Delete, Remove and Share in a table
+     row went dark-on-dark under the pointer. Same trap the .agent-act group
+     documents; this class was the one that got missed. */
+  background: none;
+  border-color: transparent;
   color: var(--text-primary);
   text-decoration: underline;
 }

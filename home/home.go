@@ -854,24 +854,11 @@ func CardsHTML(r *http.Request, viewerAcc *auth.Account) string {
 				htmlEsc(c.id), htmlEsc(c.id), checked, htmlEsc(c.label))
 		}
 
-		// App widget checkboxes — any public app can be pinned as a card.
-		var widgetCheckboxes string
-		activeWidgets := map[string]bool{}
-		if viewerAcc != nil {
-			for _, w := range viewerAcc.Widgets {
-				activeWidgets[w] = true
-			}
-		}
-		publicApps := apps.GetPublicApps()
-		if len(publicApps) > 0 {
-			for _, a := range publicApps {
-				checked := ""
-				if activeWidgets[a.Slug] {
-					checked = " checked"
-				}
-				widgetCheckboxes += fmt.Sprintf(`<label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:14px;border-bottom:1px solid #f0f0f0"><input type="checkbox" name="widgets" value="%s"%s style="width:18px;height:18px"> %s</label>`, htmlEsc(a.Slug), checked, htmlEsc(a.Name))
-			}
-		}
+		// Pinning an app used to be here too, as a second list headed "Apps —
+		// pin apps to the top of your home screen", inside a panel about what
+		// an agent watches. Two different settings for two different pages,
+		// sharing a box because both are checkbox lists. Pinning now lives on
+		// /apps, next to the app you are deciding about — see apps.handleList.
 
 		// ?cards=1 lands with the picker already open, so a link from elsewhere
 		// can point at the thing rather than at the page it happens to sit on.
@@ -879,76 +866,61 @@ func CardsHTML(r *http.Request, viewerAcc *auth.Account) string {
 		if r.URL.Query().Get("cards") != "" {
 			prefsDisplay = "block"
 		}
-		b.WriteString(fmt.Sprintf(`<div id="home-card-prefs" style="display:%s;padding:12px 16px;margin-bottom:12px;background:#f9f9f9;border-radius:8px;border:1px solid #eee">
-<p style="font-weight:600;font-size:14px;margin:0 0 4px">Customise home screen</p>
-<p style="font-size:12px;color:#999;margin:0 0 8px">Choose what your agent keeps an eye on.</p>
+
+		// A form with a Save button, not a set of switches that each save
+		// themselves.
+		//
+		// Every tick used to POST and then reload the whole page, so composing
+		// a set of six cards cost six round trips and six reloads — each one
+		// scrolling back to the top of the list you were part way down, and
+		// each one re-rendering every card behind the panel. Choosing what to
+		// watch is one decision expressed as several ticks, and it should cost
+		// one save. Reordering rides along: the rows post in DOM order, so a
+		// drag and a tick are the same submission and cannot disagree.
+		b.WriteString(fmt.Sprintf(`<form id="home-card-prefs" method="POST" action="/account" style="display:%s;padding:12px 16px;margin-bottom:12px;background:#f9f9f9;border-radius:8px;border:1px solid #eee">
+<input type="hidden" name="_csrf" value="%s">
+<input type="hidden" name="save_cards" value="1">
+<input type="hidden" name="return" value="%s">
+<p style="font-weight:600;font-size:14px;margin:0 0 4px">Choose what to watch</p>
+<p style="font-size:12px;color:#999;margin:0 0 8px">Tick what your agent keeps an eye on, drag to reorder, then save.</p>
 <div id="card-checkboxes">%s</div>
+<button type="submit" style="margin-top:10px">Save</button>
 <style>
 .card-pref{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:14px;border-bottom:1px solid #f0f0f0;cursor:grab;background:#f9f9f9}
 .card-pref input{width:18px;height:18px}
 .card-pref.dragging{opacity:.4}
 .card-grip{color:#bbb;font-size:13px;cursor:grab;user-select:none}
-</style>`, prefsDisplay, checkboxes))
-		if widgetCheckboxes != "" {
-			b.WriteString(fmt.Sprintf(`<p style="font-weight:600;font-size:13px;margin:10px 0 4px">Apps</p>
-<p style="font-size:12px;color:#999;margin:0 0 6px">Pin apps to the top of your home screen.</p>
-<div id="widget-checkboxes">%s</div>`, widgetCheckboxes))
-		}
-		b.WriteString(`<script>
+</style>
+<script>
+// Drag to reorder. The rows post in DOM order, so moving one is the whole
+// change — there is no separate order to keep in step, and therefore no way
+// for the list you see and the list that saves to disagree.
+//
+// Native HTML5 drag rather than a library: this is one list of nine rows.
 (function(){
-  function csrfToken(){var m=document.cookie.match(/(?:^|; )csrf_token=([^;]+)/);return m?decodeURIComponent(m[1]):'';}
-  function savePrefs(type,containerId){
-    var checks=document.querySelectorAll('#'+containerId+' input[type=checkbox]');
-    var body=new URLSearchParams();
-    body.set(type==='cards'?'save_cards':'save_widgets','1');
-    checks.forEach(function(c){if(c.checked)body.append(type==='cards'?'cards':'widgets',c.value)});
-    var h={'Content-Type':'application/x-www-form-urlencoded'};
-    var tok=csrfToken();if(tok)h['X-CSRF-Token']=tok;
-    fetch('/account',{method:'POST',credentials:'same-origin',headers:h,body:body.toString()})
-    .then(function(){location.reload()});
-  }
-  // Drag to reorder. The rows post in DOM order, so moving one is the whole
-  // change — there is no separate order to keep in step, and therefore no way
-  // for the list you see and the list that renders to disagree.
-  //
-  // Native HTML5 drag rather than a library: this is one list of nine rows.
-  (function(){
-    var list=document.getElementById('card-checkboxes');
-    if(!list) return;
-    var dragging=null;
-    list.addEventListener('dragstart',function(e){
-      dragging=e.target.closest('.card-pref');
-      if(dragging) dragging.classList.add('dragging');
-    });
-    list.addEventListener('dragend',function(){
-      if(!dragging) return;
-      dragging.classList.remove('dragging');
-      dragging=null;
-      savePrefs('cards','card-checkboxes');
-    });
-    list.addEventListener('dragover',function(e){
-      e.preventDefault();
-      if(!dragging) return;
-      var row=e.target.closest('.card-pref');
-      if(!row||row===dragging) return;
-      var box=row.getBoundingClientRect();
-      var after=(e.clientY-box.top)/box.height>0.5;
-      list.insertBefore(dragging,after?row.nextSibling:row);
-    });
-  })();
-
-  // Delay listener attachment so browser form-restore doesn't
-  // trigger an immediate save+reload loop.
-  setTimeout(function(){
-    document.querySelectorAll('#card-checkboxes input').forEach(function(c){
-      c.addEventListener('change',function(){savePrefs('cards','card-checkboxes')});
-    });
-    document.querySelectorAll('#widget-checkboxes input').forEach(function(c){
-      c.addEventListener('change',function(){savePrefs('widgets','widget-checkboxes')});
-    });
-  }, 500);
+  var list=document.getElementById('card-checkboxes');
+  if(!list) return;
+  var dragging=null;
+  list.addEventListener('dragstart',function(e){
+    dragging=e.target.closest('.card-pref');
+    if(dragging) dragging.classList.add('dragging');
+  });
+  list.addEventListener('dragend',function(){
+    if(!dragging) return;
+    dragging.classList.remove('dragging');
+    dragging=null;
+  });
+  list.addEventListener('dragover',function(e){
+    e.preventDefault();
+    if(!dragging) return;
+    var row=e.target.closest('.card-pref');
+    if(!row||row===dragging) return;
+    var box=row.getBoundingClientRect();
+    var after=(e.clientY-box.top)/box.height>0.5;
+    list.insertBefore(dragging,after?row.nextSibling:row);
+  });
 })();
-</script></div>`)
+</script></form>`, prefsDisplay, htmlEsc(auth.CSRFToken(r)), htmlEsc(r.URL.Path), checkboxes))
 	}
 	// Which cards to show. Default cards (cards.json) show unless the user has
 	// deselected them; cards added after the user last customised default to

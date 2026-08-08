@@ -9,6 +9,7 @@ import (
 	"mu/service/blog"
 	"mu/service/chat"
 	"mu/service/contacts"
+	contextsvc "mu/service/context"
 	"mu/service/db"
 	"mu/service/events"
 	"mu/service/files"
@@ -16,6 +17,7 @@ import (
 	"mu/service/index"
 	"mu/service/mail"
 	"mu/service/markets"
+	"mu/service/memory"
 	"mu/service/news"
 	"mu/service/places"
 	"mu/service/prayer"
@@ -30,12 +32,20 @@ import (
 
 // allSpecs is every service main() registers. Keep it complete: a Spec missing
 // here is a service the policy and documentation tests never see.
+//
+// context and memory were missing for exactly that long. Both are headless, so
+// nothing on a page pointed at the gap, and the documentation tests concluded
+// there was nothing to document — the four tools we call the top-level
+// primitive were absent from the README and from the architecture table and no
+// test could say so. A service left out of this list is invisible to the very
+// checks that exist to notice that.
 func allSpecs() []service.Spec {
 	return []service.Spec{
-		apps.Spec, blog.Spec, chat.Spec, contacts.Spec, db.Spec, events.Spec,
-		files.Spec, images.Spec, index.Spec, mail.Spec, markets.Spec,
-		news.Spec, places.Spec, prayer.Spec, social.Spec, stream.Spec,
-		tasks.Spec, video.Spec, wallet.Spec, weather.Spec, web.Spec,
+		apps.Spec, blog.Spec, chat.Spec, contacts.Spec, contextsvc.Spec,
+		db.Spec, events.Spec, files.Spec, images.Spec, index.Spec, mail.Spec,
+		markets.Spec, memory.Spec, news.Spec, places.Spec, prayer.Spec,
+		social.Spec, stream.Spec, tasks.Spec, video.Spec, wallet.Spec,
+		weather.Spec, web.Spec,
 	}
 }
 
