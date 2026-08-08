@@ -1755,6 +1755,7 @@ func main() {
 		"/events":                 true,  // Personal scheduled reminders — sign-in required
 		"/contacts":               true,  // Your address book — sign-in required
 		"/db":                     true,  // Your own records — sign-in required
+		"/context":                true,  // What your agents know about you
 		"/tasks":                  true,  // Your task list — sign-in required
 		"/social":                 false, // Public viewing, auth for search
 		"/social/thread":          false, // Public thread view, auth for messaging
@@ -2169,6 +2170,9 @@ func main() {
 	// One catalogue, two lenses — see internal/api/tools_page.go.
 	http.HandleFunc("/tools", api.ToolsPageHandler)
 	http.HandleFunc("/services", api.ToolsPageHandler)
+	// What your agents know about you. Memory in particular was written by the
+	// agent and read into every prompt with no way to see or delete it.
+	http.HandleFunc("/context", home.ContextHandler)
 	// A service rendered at a glance — see internal/api/card.go.
 	http.HandleFunc("/card", api.CardHandler)
 	http.HandleFunc("/card/", api.CardHandler)

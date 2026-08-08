@@ -966,6 +966,13 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		if err := saveFlow(flow); err != nil {
 			app.Log("agent", "Failed to create flow: %v", err)
 		}
+		// Notice anything worth remembering. This ran only on /agent/run — the
+		// REST and MCP path — so an agent remembered what a program told it and
+		// forgot everything a person did, which is backwards: the chat is where
+		// somebody says "I'm in London, keep it short". Cheap: one background
+		// model call, off the response path, and it stores nothing when the
+		// message holds no fact.
+		go extractMemory(accountID, req.Prompt)
 	}
 
 	// Start SSE stream
