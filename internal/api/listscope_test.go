@@ -79,3 +79,26 @@ func scopedTokenFor(t *testing.T, account string, services ...string) string {
 	}
 	return secret
 }
+
+// The number on the front page has to be the number an agent gets.
+//
+// It was len(tools) — every registered entry, including the RESTOnly ones that
+// are HTTP endpoints and not tools — so the landing advertised 84 while
+// tools/list served 82. That is the first claim anybody checks and it is
+// checkable in one curl.
+func TestToolCountIsWhatAnAgentIsOffered(t *testing.T) {
+	if got, want := ToolCount(), len(mcpTools()); got != want {
+		t.Fatalf("the landing would claim %d tools, an agent is offered %d", got, want)
+	}
+	// And that is not simply every registered entry, or the check above is
+	// tautological the moment RESTOnly stops being filtered.
+	rest := 0
+	for _, tl := range tools {
+		if tl.RESTOnly {
+			rest++
+		}
+	}
+	if rest > 0 && ToolCount() == len(tools) {
+		t.Fatalf("%d REST-only endpoints are being counted as tools", rest)
+	}
+}

@@ -1,7 +1,9 @@
 package agent
 
 import (
+	"errors"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -15,6 +17,9 @@ type Flow struct {
 	ID        string     `json:"id"`
 	AccountID string     `json:"account_id"`
 	Prompt    string     `json:"prompt"`
+	// Title is a name given to the conversation this flow starts, replacing the
+	// first prompt in the rail. Only ever set on a root flow.
+	Title     string     `json:"title,omitempty"`
 	Steps     []FlowStep `json:"steps"`
 	Answer    string     `json:"answer"`    // markdown answer text
 	HTML      string     `json:"html"`      // rendered HTML (set on completion)
@@ -165,6 +170,7 @@ type Session struct {
 	RootID    string // stable id of the conversation's first turn
 	HeadID    string // latest turn in the chain
 	Title     string // the conversation's first prompt
+	Agent     string // which agent it was with ("" = the default)
 	UpdatedAt time.Time
 	Turns     int
 }
@@ -199,10 +205,14 @@ func ListSessions(accountID string) []Session {
 			}
 			turns++
 			title = cur.Prompt // ends at the root's prompt
-			rootID = cur.ID    // ends at the root's id
+			if cur.Title != "" {
+				title = cur.Title // a name somebody gave it wins
+			}
+			rootID = cur.ID // ends at the root's id
 			id = cur.ParentID
 		}
-		sessions = append(sessions, Session{RootID: rootID, HeadID: f.ID, Title: title, UpdatedAt: f.CreatedAt, Turns: turns})
+		sessions = append(sessions, Session{RootID: rootID, HeadID: f.ID, Title: title,
+			Agent: f.Agent, UpdatedAt: f.CreatedAt, Turns: turns})
 	}
 	return sessions
 }
@@ -292,4 +302,43 @@ func persistFlows() error {
 		flows = append(flows, f)
 	}
 	return data.SaveJSON("agent_flows.json", flows)
+}
+
+// RenameSession retitles a conversation by rewriting the prompt shown for it.
+//
+// The rail titled each conversation with its first prompt, which is a good
+// default and a bad permanent name: the first thing you type is rarely what the
+// conversation turns out to be about, and there was no way to change it.
+func RenameSession(accountID, rootID, title string) error {
+	title = strings.TrimSpace(title)
+	if title == "" {
+		return errors.New("give it a name")
+	}
+	if len(title) > 120 {
+		title = title[:120]
+	}
+	f := getFlow(rootID)
+	if f == nil || f.AccountID != accountID {
+		return errors.New("no such conversation")
+	}
+	updateFlow(rootID, func(fl *Flow) { fl.Title = title })
+	return nil
+}
+
+// DeleteSession removes a whole conversation, not just one turn.
+//
+// deleteFlow existed and removed a single flow, which for a ten-turn chat left
+// nine orphans that the rail then listed as nine separate conversations. A
+// conversation is what a person thinks they are deleting.
+func DeleteSession(accountID, anyID string) error {
+	chain := sessionChain(accountID, anyID)
+	if len(chain) == 0 {
+		return errors.New("no such conversation")
+	}
+	for _, f := range chain {
+		if err := deleteFlow(accountID, f.ID); err != nil {
+			return err
+		}
+	}
+	return nil
 }

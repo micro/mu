@@ -190,9 +190,15 @@ func WaitForTools(timeout time.Duration) {
 	}
 }
 
-// ToolCount is how many tools this instance exposes.
+// ToolCount is how many tools an agent connecting here would be offered.
 //
 // The landing said "67 real tools" as a literal, which was wrong the moment
 // anyone added one — it was 72 by the time somebody counted. A number that
 // describes the registry should come from the registry.
-func ToolCount() int { return len(tools) }
+//
+// It then came from the wrong part of it: len(tools) is every registered
+// entry, including the RESTOnly ones that are HTTP endpoints and not tools, so
+// the landing advertised 84 while tools/list served 82. The number on the front
+// page is the first claim anybody checks, and it is checkable in one curl.
+// mcpTools is the list an agent actually gets, so it is the list to count.
+func ToolCount() int { return len(mcpTools()) }

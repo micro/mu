@@ -1269,7 +1269,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 %s
 <p><a href="/token">API Credentials →</a></p>
 <p><a href="/app/blocked">Blocked Users →</a></p>
-<p><a href="/app/saved">Saved →</a></p>
+%s<p><a href="/app/saved">Saved →</a></p>
 <p style="margin-top:12px"><a href="/logout" class="text-error">Logout</a></p>
 </div>`,
 		acc.ID,
@@ -1283,6 +1283,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		PasskeyListHTML(acc.ID),
 		discordCard,
 		adminLinks,
+		inviteLink(acc),
 	)
 
 	// RenderHTMLForRequest, not RenderHTML: the latter hard-codes a nil account,
@@ -1658,6 +1659,19 @@ func RenderHTMLForRequest(title, desc, html string, r *http.Request) string {
 	_, acc := auth.TrySession(r)
 	out := RenderHTMLWithLangAndAuth(title, desc, html, lang, acc)
 	return out
+}
+
+// inviteLink offers to invite somebody, for the people who can.
+//
+// It used to sit at the top of Home, beside the date, on every account — an
+// errand almost nobody runs, in the most valuable space on the console. Only an
+// operator hands out invitations, so it belongs with the other things only an
+// operator does.
+func inviteLink(acc *auth.Account) string {
+	if acc == nil || !acc.Admin {
+		return ""
+	}
+	return `<p><a href="/admin/invite">Invites →</a></p>`
 }
 
 // VerifyBanner says, before you write anything, that you cannot post yet and

@@ -1,6 +1,7 @@
 package search
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 	"strings"
@@ -19,7 +20,15 @@ func WebSearchText(query string, limit int) string {
 	}
 	results, err := SearchBraveCached(query, limit)
 	if err != nil {
-		return "Web search is unavailable right now."
+		// Say which of the two it is. Web search is named in the first sentence
+		// of the landing page, so every self-hoster without a key hits this and
+		// "unavailable right now" tells them to wait for something that is never
+		// coming.
+		if errors.Is(err, ErrNotConfigured) {
+			return "Web search is not configured on this instance. The operator needs to set a " +
+				"Brave Search API key — it is one field on /admin/env."
+		}
+		return "Web search failed just now. Try again, or ask for something else."
 	}
 	if len(results) == 0 {
 		return fmt.Sprintf("No web results for %q.", query)

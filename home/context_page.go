@@ -59,7 +59,11 @@ func ContextHandler(w http.ResponseWriter, r *http.Request) {
 
 	csrf := auth.CSRFToken(r)
 	var b strings.Builder
-	b.WriteString(`<div style="max-width:720px">`)
+	// Prose is capped for readability; the cards are not. They were inside the
+	// same 720px column, which squeezed a two-column card grid into two 340px
+	// slivers — a card is a rendering of a service and it needs the width the
+	// service's own page gets.
+	b.WriteString(`<div class="ctx-narrow">`)
 	b.WriteString(`<p class="lens-lead">What your agents know. Some of it they remember on their ` +
 		`own, some of it you put in front of them, and the rest they go and look up when a ` +
 		`question needs it.</p>`)
@@ -93,7 +97,6 @@ func ContextHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// ── What it watches ─────────────────────────────────────────
-	// ── What it watches ─────────────────────────────────────────
 	//
 	// The cards themselves, not a list of their names. They were on Home, which
 	// docs/PRODUCT.md calls "the world's content where your own should be" —
@@ -104,7 +107,9 @@ func ContextHandler(w http.ResponseWriter, r *http.Request) {
 		`read automatically — they go in only when you turn on live context above the agent ` +
 		`input, because context costs tokens on every turn and most questions have nothing to ` +
 		`do with them. ` + app.Link("Choose what to watch", "/home?cards=1") + `</p>`)
+	b.WriteString(`</div>`) // out of the narrow column — the cards get the page
 	b.WriteString(CardsHTML(r, acc))
+	b.WriteString(`<div class="ctx-narrow">`)
 
 	// ── What it can look up ─────────────────────────────────────
 	//
@@ -129,6 +134,7 @@ func ContextHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 const contextCSS = `<style>
+.ctx-narrow{max-width:720px}
 .lens-lead{color:#666;font-size:14px;margin:0 0 18px;max-width:640px}
 .ctx-head{font-size:15px;margin:26px 0 4px}
 .ctx-sub{color:#666;font-size:13px;margin:0 0 10px;max-width:640px}

@@ -1003,6 +1003,21 @@ func isFallbackMetadataLine(line string) bool {
 		"current request date:",
 		"grounding rule:",
 		"provider timestamp:",
+		// Scaffolding written for a model, not a reader.
+		//
+		// Tool results carry instructions — "summarise a spread of topics",
+		// "use news_read with an id" — because a model is normally the one
+		// reading them. The guest fast path answers simple weather, market and
+		// news questions with no model call at all, and printed those lines
+		// straight to the person. That path is what "See it working" on the
+		// landing page runs, so the product's own demo was showing its prompt
+		// scaffolding to the first visitor it ever gets.
+		"dated daily forecast",
+		"latest headlines —",
+		"summarise a spread",
+		"use news_read",
+		"use web_fetch",
+		"do not label today",
 	}
 	if strings.HasPrefix(lower, "observation:") && !strings.Contains(lower, "°") {
 		return true

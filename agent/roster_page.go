@@ -120,6 +120,11 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	// missing question ("where does it run?") so this could become a link.
 	b.WriteString(app.ActionLink("/agent/new", "+ New agent"))
 	b.WriteString(sharedSection(owner, csrf))
+	// Close the column this page opened. Without it the footer was swallowed
+	// into a 720px div and rendered halfway up the page: #content is a flex
+	// child sized to hold the footer at the bottom, and an unclosed div puts
+	// the footer inside the content instead of after it.
+	b.WriteString(`</div>`)
 	b.WriteString(agentsCSS)
 	w.Write([]byte(app.RenderHTMLForRequest("Agents", "The agents that act for you, and what each one may reach", b.String(), r)))
 }

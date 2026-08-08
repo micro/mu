@@ -31,7 +31,7 @@ a server for each.</p>
 </div>
 
 <div class="lcards">
-  <div class="lcard"><h3>Real tools, not wrappers</h3><p>Most things offering an agent tools are a thin layer over somebody else's API. This instance runs the mail server, the feeds, the search index and the sandbox.</p></div>
+  <div class="lcard"><h3>Real world access</h3><p>The news, the markets, the weather, the web, your mail — the things happening outside a model's training data. And run here, not proxied: this instance is the mail server, the feed aggregator, the search index and the sandbox.</p></div>
   <div class="lcard"><h3>One endpoint, not nine</h3><p>News, search, mail and storage for an agent usually means wiring up a server for each. This is one connection and one set of credentials.</p></div>
   <div class="lcard"><h3>Yours to run</h3><p>One Go binary, self-hostable. Run an instance and you are the operator — anyone paying to call your tools pays you.</p></div>
 </div>

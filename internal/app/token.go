@@ -3,13 +3,16 @@ package app
 import (
 	"encoding/json"
 	"fmt"
+	htmlpkg "html"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"mu/internal/auth"
+	"mu/internal/service"
 )
 
 // Flash storage — one-time values shown after redirect, then deleted.
@@ -182,7 +185,26 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	sb.WriteString(`<div style="margin-bottom:10px"><select name="expires_in">`)
 	sb.WriteString(`<option value="0">Never</option><option value="7">7 days</option><option value="30">30 days</option>`)
 	sb.WriteString(`<option value="90" selected>90 days</option><option value="365">1 year</option></select></div>`)
+
+	// What it may reach, on the page that hands out the credential.
+	//
+	// This page had a name and an expiry and nothing else, so every token
+	// created here carried the whole account: eighty-odd tools, the mail, the
+	// wallet. The scoped path existed on /agents and the README pointed here —
+	// so the documented road was the unsafe one and the safe one was
+	// undocumented. Same control, same meaning, on both pages now.
+	sb.WriteString(`<div id="tok-scope"><p class="tok-scope-head">What may it reach?</p>`)
+	sb.WriteString(`<p class="tok-scope-sub">Choose nothing and it reaches everything you can — ` +
+		`which is rarely what you meant for a credential you are about to paste somewhere.</p>`)
+	sb.WriteString(`<div class="tok-chips">`)
+	for _, sp := range tokenScopeChoices() {
+		sb.WriteString(`<label class="tok-chip"><input type="checkbox" name="services" value="` +
+			htmlpkg.EscapeString(sp.Name) + `"><span>` + htmlpkg.EscapeString(sp.NavLabel()) + `</span></label>`)
+	}
+	sb.WriteString(`</div></div>`)
+
 	sb.WriteString(`<button type="submit">Generate Token</button></form>`)
+	sb.WriteString(tokenScopeCSS)
 
 	sb.WriteString(`<p style="margin-top:20px"><a href="/account">← Account</a> · <a href="/mcp">MCP endpoint</a></p>`)
 
@@ -193,7 +215,9 @@ async function createToken(e) {
 	var res = await fetch('/token', {
 		method: 'POST',
 		headers: {'Content-Type': 'application/json'},
-		body: JSON.stringify({name: form.name.value, expires_in: parseInt(form.expires_in.value), permissions: ['read', 'write']})
+		body: JSON.stringify({name: form.name.value, expires_in: parseInt(form.expires_in.value),
+			permissions: ['read', 'write'],
+			services: Array.from(form.querySelectorAll('input[name="services"]:checked')).map(function(c){return c.value})})
 	});
 	var result = await res.json();
 	if (result.success) {
@@ -280,11 +304,13 @@ func parseTokenExpiresIn(exp string) int {
 func handleCreateToken(w http.ResponseWriter, r *http.Request, accountID string) {
 	var name string
 	var permissions []string
+	var scope []string
 	var expiresIn int // days
 
 	if SendsJSON(r) {
 		var req struct {
 			Name        string   `json:"name"`
+			Services    []string `json:"services"`
 			Permissions []string `json:"permissions"`
 			ExpiresIn   int      `json:"expires_in"` // days, 0 = never
 		}
@@ -295,6 +321,7 @@ func handleCreateToken(w http.ResponseWriter, r *http.Request, accountID string)
 		name = strings.TrimSpace(req.Name)
 		permissions = req.Permissions
 		expiresIn = req.ExpiresIn
+		scope = req.Services
 	} else {
 		if err := r.ParseForm(); err != nil {
 			http.Error(w, "Failed to parse form", http.StatusBadRequest)
@@ -303,6 +330,7 @@ func handleCreateToken(w http.ResponseWriter, r *http.Request, accountID string)
 		name = strings.TrimSpace(r.FormValue("name"))
 		permissions = parseTokenPermissions(r.FormValue("permissions"))
 		expiresIn = parseTokenExpiresIn(r.FormValue("expires_in"))
+		scope = r.Form["services"]
 	}
 
 	// Validate
@@ -314,6 +342,14 @@ func handleCreateToken(w http.ResponseWriter, r *http.Request, accountID string)
 	// Default permissions if none provided
 	if len(permissions) == 0 {
 		permissions = []string{"read", "write"}
+	}
+
+	// The scope, if one was chosen. Written into the token's permissions as
+	// service:<name>, which is the one form the MCP boundary enforces — so a
+	// token made here is confined exactly as one made on /agents is, and the
+	// tools/list it reads is its own rather than the whole instance.
+	if named := auth.ScopeFor(validScopeNames(scope)); len(named) > 0 {
+		permissions = append(permissions, named...)
 	}
 
 	// Calculate expiration
@@ -372,3 +408,42 @@ func handleDeleteToken(w http.ResponseWriter, r *http.Request, accountID string)
 		http.Redirect(w, r, "/token", http.StatusSeeOther)
 	}
 }
+
+// tokenScopeChoices is every service a token can be confined to, by label.
+func tokenScopeChoices() []service.Spec {
+	specs := service.Specs()
+	sort.Slice(specs, func(i, j int) bool { return specs[i].NavLabel() < specs[j].NavLabel() })
+	return specs
+}
+
+// validScopeNames drops anything that is not a registered service, so a stray
+// value cannot widen a scope or create an entry that matches nothing.
+func validScopeNames(in []string) []string {
+	var out []string
+	seen := map[string]bool{}
+	for _, n := range in {
+		n = strings.ToLower(strings.TrimSpace(n))
+		if n == "" || seen[n] {
+			continue
+		}
+		if _, known := service.SpecFor(n); !known {
+			continue
+		}
+		seen[n] = true
+		out = append(out, n)
+	}
+	return out
+}
+
+const tokenScopeCSS = `<style>
+#tok-scope{border-top:1px solid #eee;padding-top:12px;margin:14px 0}
+.tok-scope-head{font-size:13px;font-weight:600;margin:0 0 2px}
+.tok-scope-sub{font-size:12px;color:#999;margin:0 0 8px;max-width:520px}
+.tok-chips{display:flex;flex-wrap:wrap;gap:6px}
+.tok-chip input{position:absolute;opacity:0;width:0;height:0}
+.tok-chip span{display:block;border:1px solid #ddd;border-radius:999px;padding:5px 12px;
+  cursor:pointer;font-size:13px;color:#444;white-space:nowrap}
+.tok-chip span:hover{border-color:#bbb}
+.tok-chip input:checked+span{background:#111;border-color:#111;color:#fff}
+.tok-chip input:focus-visible+span{outline:2px solid #111;outline-offset:2px}
+</style>`

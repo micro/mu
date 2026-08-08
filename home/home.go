@@ -377,21 +377,19 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	var dateLine strings.Builder
 	inviteHTML := ""
 	if viewerAcc != nil {
-		label := "+ Invite"
-		link := "/invite"
-		if viewerAcc.Admin {
-			link = "/admin/invite"
-		}
-		inviteHTML = fmt.Sprintf(`<span id="home-date-actions"><a href="%s" style="color:#555;text-decoration:none">%s</a></span>`, link, label)
+		// Nothing. Inviting people is an operator's job, so it moved to the
+		// account page next to the other things only an admin does — it was
+		// sitting at the top of everybody's console, which put an errand nobody
+		// runs beside the date.
 	} else {
 		// Logged out: the home screen IS the landing, so once a visitor has
 		// used it, offer a clear free sign-up (primary) plus log in.
 		inviteHTML = `<span id="home-date-actions"><a href="/signup" style="color:#111;text-decoration:none;font-weight:700">Sign up free</a> <a href="/login" style="color:#888;text-decoration:none;margin-left:10px">Log in</a></span>`
 	}
+	// No cog. It toggled the card picker, and the picker went to /context with
+	// the cards — so it had become a control that opened a panel for things not
+	// on the page, which is worse than absent: it looks like it does nothing.
 	gearHTML := ""
-	if viewerAcc != nil {
-		gearHTML = ` <a href="#" onclick="var p=document.getElementById('home-card-prefs');if(p)p.style.display=p.style.display==='none'?'block':'none';return false" style="color:#ccc;text-decoration:none;font-size:14px" title="Customise">⚙</a>`
-	}
 	dateLine.WriteString(fmt.Sprintf(`<div id="home-date"><span id="home-date-text">%s</span><span id="home-date-weather"></span>%s%s</div>`, now.Format("Monday, 2 January 2006"), inviteHTML, gearHTML))
 	// Inline weather: reads cached summary, and refreshes it in the
 	// background if stale (>1 hour). This runs independently of the
@@ -544,7 +542,15 @@ function fetchW(la,lo){
 	// missing piece: a run that happened while you were elsewhere was recorded
 	// and never shown, so the product never told you when something worked.
 	if viewerAcc != nil {
-		b.WriteString(agent.RecentRuns(viewerAcc.ID, 5))
+		if runs := agent.RecentRuns(viewerAcc.ID, 5); runs != "" {
+			b.WriteString(runs)
+		} else {
+			// Nothing has run yet, which is every brand-new account and every
+			// fresh instance. The console was three zeros and half a page of
+			// white — the first thing the person who just installed this sees.
+			// A screen with nothing on it has to say what to do next.
+			b.WriteString(firstRunCTA())
+		}
 	}
 
 	if viewerAcc != nil && len(viewerAcc.Widgets) > 0 {
@@ -561,150 +567,8 @@ function fetchW(la,lo){
 		}
 	}
 
-	// Inline card preferences panel
-	if viewerAcc != nil {
-		// One list, shared with /account — the two panels edit the same setting
-		// and must not disagree about what can be edited.
-		allCardDefs := app.HomeCards
-		// Selected cards first, in the order they render; then the rest.
-		//
-		// The panel posts its rows in DOM order, so dragging a row is the whole
-		// mechanism — no separate "save order" step, and no way for the shown
-		// order and the stored order to disagree.
-		chosen := viewerAcc.HomeCardOrder()
-		inOrder := make([]struct {
-			id, label string
-			on        bool
-		}, 0, len(allCardDefs))
-		seen := map[string]bool{}
-		labelOf := map[string]string{}
-		for _, c := range allCardDefs {
-			labelOf[c.ID] = c.Label
-		}
-		for _, id := range chosen {
-			if label, ok := labelOf[id]; ok && !seen[id] {
-				seen[id] = true
-				inOrder = append(inOrder, struct {
-					id, label string
-					on        bool
-				}{id, label, true})
-			}
-		}
-		for _, c := range allCardDefs {
-			if !seen[c.ID] {
-				inOrder = append(inOrder, struct {
-					id, label string
-					on        bool
-				}{c.ID, c.Label, false})
-			}
-		}
-
-		var checkboxes string
-		for _, c := range inOrder {
-			checked := ""
-			if c.on {
-				checked = " checked"
-			}
-			checkboxes += fmt.Sprintf(`<label class="card-pref" draggable="true" data-id="%s"><span class="card-grip" title="Drag to reorder">⠿</span><input type="checkbox" name="cards" value="%s"%s> %s</label>`,
-				htmlEsc(c.id), htmlEsc(c.id), checked, htmlEsc(c.label))
-		}
-
-		// App widget checkboxes — any public app can be pinned as a card.
-		var widgetCheckboxes string
-		activeWidgets := map[string]bool{}
-		if viewerAcc != nil {
-			for _, w := range viewerAcc.Widgets {
-				activeWidgets[w] = true
-			}
-		}
-		publicApps := apps.GetPublicApps()
-		if len(publicApps) > 0 {
-			for _, a := range publicApps {
-				checked := ""
-				if activeWidgets[a.Slug] {
-					checked = " checked"
-				}
-				widgetCheckboxes += fmt.Sprintf(`<label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:14px;border-bottom:1px solid #f0f0f0"><input type="checkbox" name="widgets" value="%s"%s style="width:18px;height:18px"> %s</label>`, htmlEsc(a.Slug), checked, htmlEsc(a.Name))
-			}
-		}
-
-		// ?cards=1 lands with the picker already open, so a link from elsewhere
-		// can point at the thing rather than at the page it happens to sit on.
-		prefsDisplay := "none"
-		if r.URL.Query().Get("cards") != "" {
-			prefsDisplay = "block"
-		}
-		b.WriteString(fmt.Sprintf(`<div id="home-card-prefs" style="display:%s;padding:12px 16px;margin-bottom:12px;background:#f9f9f9;border-radius:8px;border:1px solid #eee">
-<p style="font-weight:600;font-size:14px;margin:0 0 4px">Customise home screen</p>
-<p style="font-size:12px;color:#999;margin:0 0 8px">Choose what your agent keeps an eye on.</p>
-<div id="card-checkboxes">%s</div>
-<style>
-.card-pref{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:14px;border-bottom:1px solid #f0f0f0;cursor:grab;background:#f9f9f9}
-.card-pref input{width:18px;height:18px}
-.card-pref.dragging{opacity:.4}
-.card-grip{color:#bbb;font-size:13px;cursor:grab;user-select:none}
-</style>`, prefsDisplay, checkboxes))
-		if widgetCheckboxes != "" {
-			b.WriteString(fmt.Sprintf(`<p style="font-weight:600;font-size:13px;margin:10px 0 4px">Apps</p>
-<p style="font-size:12px;color:#999;margin:0 0 6px">Pin apps to the top of your home screen.</p>
-<div id="widget-checkboxes">%s</div>`, widgetCheckboxes))
-		}
-		b.WriteString(`<script>
-(function(){
-  function csrfToken(){var m=document.cookie.match(/(?:^|; )csrf_token=([^;]+)/);return m?decodeURIComponent(m[1]):'';}
-  function savePrefs(type,containerId){
-    var checks=document.querySelectorAll('#'+containerId+' input[type=checkbox]');
-    var body=new URLSearchParams();
-    body.set(type==='cards'?'save_cards':'save_widgets','1');
-    checks.forEach(function(c){if(c.checked)body.append(type==='cards'?'cards':'widgets',c.value)});
-    var h={'Content-Type':'application/x-www-form-urlencoded'};
-    var tok=csrfToken();if(tok)h['X-CSRF-Token']=tok;
-    fetch('/account',{method:'POST',credentials:'same-origin',headers:h,body:body.toString()})
-    .then(function(){location.reload()});
-  }
-  // Drag to reorder. The rows post in DOM order, so moving one is the whole
-  // change — there is no separate order to keep in step, and therefore no way
-  // for the list you see and the list that renders to disagree.
-  //
-  // Native HTML5 drag rather than a library: this is one list of nine rows.
-  (function(){
-    var list=document.getElementById('card-checkboxes');
-    if(!list) return;
-    var dragging=null;
-    list.addEventListener('dragstart',function(e){
-      dragging=e.target.closest('.card-pref');
-      if(dragging) dragging.classList.add('dragging');
-    });
-    list.addEventListener('dragend',function(){
-      if(!dragging) return;
-      dragging.classList.remove('dragging');
-      dragging=null;
-      savePrefs('cards','card-checkboxes');
-    });
-    list.addEventListener('dragover',function(e){
-      e.preventDefault();
-      if(!dragging) return;
-      var row=e.target.closest('.card-pref');
-      if(!row||row===dragging) return;
-      var box=row.getBoundingClientRect();
-      var after=(e.clientY-box.top)/box.height>0.5;
-      list.insertBefore(dragging,after?row.nextSibling:row);
-    });
-  })();
-
-  // Delay listener attachment so browser form-restore doesn't
-  // trigger an immediate save+reload loop.
-  setTimeout(function(){
-    document.querySelectorAll('#card-checkboxes input').forEach(function(c){
-      c.addEventListener('change',function(){savePrefs('cards','card-checkboxes')});
-    });
-    document.querySelectorAll('#widget-checkboxes input').forEach(function(c){
-      c.addEventListener('change',function(){savePrefs('widgets','widget-checkboxes')});
-    });
-  }, 500);
-})();
-</script></div>`)
-	}
+	// The card picker travels with the cards — it is inside CardsHTML now, so
+	// it renders on /context where ticking a box changes something you can see.
 
 	// Home is the console. The cards moved to /context — see CardsHTML.
 
@@ -941,6 +805,151 @@ func CardsHTML(r *http.Request, viewerAcc *auth.Account) string {
 	if viewerAcc != nil {
 		viewerID = viewerAcc.ID
 	}
+
+	// Inline card preferences panel
+	if viewerAcc != nil {
+		// One list, shared with /account — the two panels edit the same setting
+		// and must not disagree about what can be edited.
+		allCardDefs := app.HomeCards
+		// Selected cards first, in the order they render; then the rest.
+		//
+		// The panel posts its rows in DOM order, so dragging a row is the whole
+		// mechanism — no separate "save order" step, and no way for the shown
+		// order and the stored order to disagree.
+		chosen := viewerAcc.HomeCardOrder()
+		inOrder := make([]struct {
+			id, label string
+			on        bool
+		}, 0, len(allCardDefs))
+		seen := map[string]bool{}
+		labelOf := map[string]string{}
+		for _, c := range allCardDefs {
+			labelOf[c.ID] = c.Label
+		}
+		for _, id := range chosen {
+			if label, ok := labelOf[id]; ok && !seen[id] {
+				seen[id] = true
+				inOrder = append(inOrder, struct {
+					id, label string
+					on        bool
+				}{id, label, true})
+			}
+		}
+		for _, c := range allCardDefs {
+			if !seen[c.ID] {
+				inOrder = append(inOrder, struct {
+					id, label string
+					on        bool
+				}{c.ID, c.Label, false})
+			}
+		}
+
+		var checkboxes string
+		for _, c := range inOrder {
+			checked := ""
+			if c.on {
+				checked = " checked"
+			}
+			checkboxes += fmt.Sprintf(`<label class="card-pref" draggable="true" data-id="%s"><span class="card-grip" title="Drag to reorder">⠿</span><input type="checkbox" name="cards" value="%s"%s> %s</label>`,
+				htmlEsc(c.id), htmlEsc(c.id), checked, htmlEsc(c.label))
+		}
+
+		// App widget checkboxes — any public app can be pinned as a card.
+		var widgetCheckboxes string
+		activeWidgets := map[string]bool{}
+		if viewerAcc != nil {
+			for _, w := range viewerAcc.Widgets {
+				activeWidgets[w] = true
+			}
+		}
+		publicApps := apps.GetPublicApps()
+		if len(publicApps) > 0 {
+			for _, a := range publicApps {
+				checked := ""
+				if activeWidgets[a.Slug] {
+					checked = " checked"
+				}
+				widgetCheckboxes += fmt.Sprintf(`<label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:14px;border-bottom:1px solid #f0f0f0"><input type="checkbox" name="widgets" value="%s"%s style="width:18px;height:18px"> %s</label>`, htmlEsc(a.Slug), checked, htmlEsc(a.Name))
+			}
+		}
+
+		// ?cards=1 lands with the picker already open, so a link from elsewhere
+		// can point at the thing rather than at the page it happens to sit on.
+		prefsDisplay := "none"
+		if r.URL.Query().Get("cards") != "" {
+			prefsDisplay = "block"
+		}
+		b.WriteString(fmt.Sprintf(`<div id="home-card-prefs" style="display:%s;padding:12px 16px;margin-bottom:12px;background:#f9f9f9;border-radius:8px;border:1px solid #eee">
+<p style="font-weight:600;font-size:14px;margin:0 0 4px">Customise home screen</p>
+<p style="font-size:12px;color:#999;margin:0 0 8px">Choose what your agent keeps an eye on.</p>
+<div id="card-checkboxes">%s</div>
+<style>
+.card-pref{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:14px;border-bottom:1px solid #f0f0f0;cursor:grab;background:#f9f9f9}
+.card-pref input{width:18px;height:18px}
+.card-pref.dragging{opacity:.4}
+.card-grip{color:#bbb;font-size:13px;cursor:grab;user-select:none}
+</style>`, prefsDisplay, checkboxes))
+		if widgetCheckboxes != "" {
+			b.WriteString(fmt.Sprintf(`<p style="font-weight:600;font-size:13px;margin:10px 0 4px">Apps</p>
+<p style="font-size:12px;color:#999;margin:0 0 6px">Pin apps to the top of your home screen.</p>
+<div id="widget-checkboxes">%s</div>`, widgetCheckboxes))
+		}
+		b.WriteString(`<script>
+(function(){
+  function csrfToken(){var m=document.cookie.match(/(?:^|; )csrf_token=([^;]+)/);return m?decodeURIComponent(m[1]):'';}
+  function savePrefs(type,containerId){
+    var checks=document.querySelectorAll('#'+containerId+' input[type=checkbox]');
+    var body=new URLSearchParams();
+    body.set(type==='cards'?'save_cards':'save_widgets','1');
+    checks.forEach(function(c){if(c.checked)body.append(type==='cards'?'cards':'widgets',c.value)});
+    var h={'Content-Type':'application/x-www-form-urlencoded'};
+    var tok=csrfToken();if(tok)h['X-CSRF-Token']=tok;
+    fetch('/account',{method:'POST',credentials:'same-origin',headers:h,body:body.toString()})
+    .then(function(){location.reload()});
+  }
+  // Drag to reorder. The rows post in DOM order, so moving one is the whole
+  // change — there is no separate order to keep in step, and therefore no way
+  // for the list you see and the list that renders to disagree.
+  //
+  // Native HTML5 drag rather than a library: this is one list of nine rows.
+  (function(){
+    var list=document.getElementById('card-checkboxes');
+    if(!list) return;
+    var dragging=null;
+    list.addEventListener('dragstart',function(e){
+      dragging=e.target.closest('.card-pref');
+      if(dragging) dragging.classList.add('dragging');
+    });
+    list.addEventListener('dragend',function(){
+      if(!dragging) return;
+      dragging.classList.remove('dragging');
+      dragging=null;
+      savePrefs('cards','card-checkboxes');
+    });
+    list.addEventListener('dragover',function(e){
+      e.preventDefault();
+      if(!dragging) return;
+      var row=e.target.closest('.card-pref');
+      if(!row||row===dragging) return;
+      var box=row.getBoundingClientRect();
+      var after=(e.clientY-box.top)/box.height>0.5;
+      list.insertBefore(dragging,after?row.nextSibling:row);
+    });
+  })();
+
+  // Delay listener attachment so browser form-restore doesn't
+  // trigger an immediate save+reload loop.
+  setTimeout(function(){
+    document.querySelectorAll('#card-checkboxes input').forEach(function(c){
+      c.addEventListener('change',function(){savePrefs('cards','card-checkboxes')});
+    });
+    document.querySelectorAll('#widget-checkboxes input').forEach(function(c){
+      c.addEventListener('change',function(){savePrefs('widgets','widget-checkboxes')});
+    });
+  }, 500);
+})();
+</script></div>`)
+	}
 	// Which cards to show. Default cards (cards.json) show unless the user has
 	// deselected them; cards added after the user last customised default to
 	// visible (see auth.Account.ShowHomeCard). Order and column come from
@@ -1077,4 +1086,33 @@ func CardsHTML(r *http.Request, viewerAcc *auth.Account) string {
 		b.WriteString(fmt.Sprintf(Template, strings.Join(leftHTML, "\n"), strings.Join(rightHTML, "\n")))
 	}
 	return b.String()
+}
+
+// firstRunCTA is what a console shows before anything has happened on it.
+//
+// Two doors, in the order the product cares about: point an agent you already
+// have at this instance, or build one here. Both are one click, and the copy
+// says what you get rather than what to press.
+func firstRunCTA() string {
+	return `<div class="cards-head"><span>Get started</span>` +
+		`<span class="cards-sub">nothing has run yet</span></div>
+<div class="cta-row">
+  <a class="cta-card" href="/tools#connect">
+    <strong>Connect an agent you have</strong>
+    <span>Claude, Cursor, or your own program. One endpoint, one token, every tool.</span>
+  </a>
+  <a class="cta-card" href="/agent/new">
+    <strong>Build one here</strong>
+    <span>Give it a standing instruction and the services it may reach, then talk to it.</span>
+  </a>
+</div>
+<style>
+.cta-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cta-card{display:block;border:1px solid #e8e8e8;border-radius:8px;padding:14px 16px;
+  text-decoration:none;color:inherit;background:var(--card-background,#fff)}
+.cta-card:hover{border-color:#bbb}
+.cta-card strong{display:block;font-size:14px;margin:0 0 4px;color:var(--text-primary,#111)}
+.cta-card span{display:block;font-size:13px;color:#666;line-height:1.45}
+@media only screen and (max-width:600px){.cta-row{grid-template-columns:1fr}}
+</style>`
 }

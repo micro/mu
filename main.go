@@ -1653,23 +1653,49 @@ func main() {
 	api.RegisterToolWithAuth(api.Tool{
 		Name:        "agent_ask",
 		Aliases:     []string{"agent"},
-		Description: "Ask this instance's agent a question in natural language and get a written answer. It has every tool you do and will use several to answer, so reach for it to delegate a whole task — for one fact call that tool directly, and to find content this instance already holds use index_search, which costs nothing.",
+		Description: "Ask an agent on this instance a question in natural language and get a written answer. It has every tool you do and will use several to answer, so reach for it to delegate a whole task — for one fact call that tool directly, and to find content this instance already holds use index_search, which costs nothing. Pass agent to ask one of your own by name instead of the default; agent_list names them.",
 		Method:      "POST",
 		Path:        "/agent/run",
 		WalletOp:    wallet.OpAgentQuery,
 		Params: []api.ToolParam{
 			{Name: "prompt", Type: "string", Description: "Your question or request", Required: true},
+			{Name: "agent", Type: "string", Description: "Name or id of one of your agents. Omit for the default", Required: false},
 		},
 	}, func(args map[string]any, accountID string) (string, error) {
 		prompt, _ := args["prompt"].(string)
 		if prompt == "" {
 			return `{"error":"prompt is required"}`, fmt.Errorf("missing prompt")
 		}
-		answer, err := agent.Query(accountID, prompt)
+		// Which agent. Without this, agents were reachable only from this
+		// instance's own web chat: every client — MCP, Discord, Telegram, the
+		// CLI, anything calling agent_ask — got the default assistant no matter
+		// how many you had built. An agent you cannot invoke from outside is a
+		// preset on a settings page, not something you can use.
+		//
+		// By name as well as id, because a caller writing this by hand knows
+		// what they called it and does not know its uuid.
+		opts, err := agent.AskAs(accountID, argString(args, "agent"))
+		if err != nil {
+			return fmt.Sprintf(`{"error":"%s"}`, err.Error()), err
+		}
+		answer, err := agent.QueryWithOpts(accountID, prompt, opts)
 		if err != nil {
 			return fmt.Sprintf(`{"error":"%s"}`, err.Error()), err
 		}
 		return answer, nil
+	})
+
+	// agent_list — what you can ask for by name.
+	//
+	// agent_ask grew an agent parameter, and a parameter naming a thing needs a
+	// way to find out what the things are called. Otherwise the only route to
+	// your own agent's name is opening the web app, which is the thing an MCP
+	// caller is trying not to do.
+	api.RegisterToolWithAuth(api.Tool{
+		Name:        "agent_list",
+		Description: "List the agents on your account, with what each one is for. Use the name with agent_ask.",
+	}, func(args map[string]any, accountID string) (string, error) {
+		return agent.ListForCaller(accountID)
 	})
 
 	// Wallet: one tool, one answer about your money.
@@ -2836,4 +2862,10 @@ func runHealthChecks() []app.ServiceHealth {
 	}
 
 	return results
+}
+
+// argString reads an optional string argument from a tool call.
+func argString(args map[string]any, key string) string {
+	v, _ := args[key].(string)
+	return v
 }
