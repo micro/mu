@@ -15,7 +15,6 @@ import (
 	"fmt"
 	"html"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"mu/internal/app"
@@ -47,11 +46,7 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/agents?created="+r.FormValue("id")+"&secret="+urlSafe(secret), http.StatusSeeOther)
 			return
 		case "publish":
-			price := 0
-			if n, err := strconv.Atoi(strings.TrimSpace(r.FormValue("price"))); err == nil {
-				price = n
-			}
-			if err := Publish(owner, r.FormValue("id"), r.FormValue("public") != "", price); err != nil {
+			if err := Publish(owner, r.FormValue("id"), r.FormValue("public") != ""); err != nil {
 				http.Redirect(w, r, "/agents?error="+urlSafe(err.Error()), http.StatusSeeOther)
 				return
 			}
@@ -210,11 +205,11 @@ func agentRow(a *Agent, csrf, base string) string {
 		addr = `<div class="agent-mail">Write to it at <code>` + html.EscapeString(a.Address()) + `</code></div>`
 	}
 
-	// What it has earned, once it has earned anything. Shown only then: a row
-	// of zeroes on every private agent is noise, and reads as a nag to publish.
+	// What other people have done with it, once anybody has. Shown only then: a
+	// zero on every private agent is noise, and reads as a nag to publish.
 	earned := ""
 	if a.Public && a.Runs > 0 {
-		earned = fmt.Sprintf(`<div class="agent-meta">used %d times · earned %d credits</div>`, a.Runs, a.Earnings)
+		earned = fmt.Sprintf(`<div class="agent-meta">used %d times by other people</div>`, a.Runs)
 	}
 
 	return fmt.Sprintf(`<div class="agent-row">
@@ -264,12 +259,9 @@ const agentsCSS = `<style>
 .agent-remove:hover{color:#b00;text-decoration:underline}
 .agent-by{font-size:12px;color:#999}
 .agent-mine{font-size:12px;color:#999}
-.agent-free{color:#0a7d33}
-.agent-price{color:#a86400}
 .agent-publish{display:flex;align-items:center;gap:8px;margin:6px 0 0}
 .agent-pub{display:flex;align-items:center;gap:6px;font-size:12px;color:#666;cursor:pointer}
 .agent-pub input{width:auto;flex:none;margin:0}
-.agent-pricebox{width:70px;padding:3px 6px;font-size:12px;border:1px solid #ddd;border-radius:4px}
 .agent-secret{background:#f5f5f5;padding:10px 12px;font-size:12px;overflow-x:auto;border-radius:6px;margin:0;word-break:break-all}
 .agent-input{display:block;width:100%;padding:9px 11px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;font-family:inherit;margin:0 0 10px}
 .agent-scope-pick{border-top:1px solid #eee;padding-top:12px;margin:0 0 14px}
@@ -320,7 +312,7 @@ func sharedSection(viewer, csrf string) string {
 	b.WriteString(`<h3 style="font-size:15px;margin:28px 0 4px">Shared agents</h3>`)
 	b.WriteString(`<p class="text-sm text-muted" style="margin:0 0 10px">Agents other people have published. ` +
 		`One runs on <em>your</em> account when you ask it — your credits, your scope, your mail — ` +
-		`using its author's instructions. Publish your own from the row above and earn 90% of every question.</p>`)
+		`using its author's instructions. Publish your own with the checkbox on its row above.</p>`)
 	if len(shared) == 0 {
 		b.WriteString(`<p style="color:#888;font-size:14px">Nothing published yet.</p>`)
 		return b.String()
@@ -342,10 +334,6 @@ func sharedRow(a *Agent, viewer, csrf string) string {
 		}
 		scope = strings.Join(labels, ", ")
 	}
-	price := `<span class="agent-free">Free</span>`
-	if a.Price > 0 {
-		price = fmt.Sprintf(`<span class="agent-price">%d credits a question</span>`, a.Price)
-	}
 	used := "not used yet"
 	if a.Runs == 1 {
 		used = "used once"
@@ -358,18 +346,16 @@ func sharedRow(a *Agent, viewer, csrf string) string {
 	}
 
 	// Yours is shown for completeness but offers neither action: running your
-	// own is what the row above it is for, and forking it would be a copy of
+	// own is what the row above it is for, and copying it would be a copy of
 	// something you already have.
 	action := ""
 	if a.Owner != viewer {
-		action = fmt.Sprintf(`<a class="agent-act" href="/agent?id=%s">Ask it</a>`, html.EscapeString(a.ID))
-		if a.Price == 0 {
-			action += fmt.Sprintf(`<form method="POST" action="/agents" style="margin:0;display:inline">
+		action = fmt.Sprintf(`<a class="agent-act" href="/agent?id=%s">Ask it</a>`+
+			`<form method="POST" action="/agents" style="margin:0;display:inline">
     <input type="hidden" name="_csrf" value="%s"><input type="hidden" name="action" value="fork">
     <input type="hidden" name="id" value="%s">
     <button type="submit" class="agent-act" title="Copy it into your agents so you can change it">Copy</button>
-  </form>`, html.EscapeString(csrf), html.EscapeString(a.ID))
-		}
+  </form>`, html.EscapeString(a.ID), html.EscapeString(csrf), html.EscapeString(a.ID))
 	} else {
 		action = `<span class="agent-mine">yours</span>`
 	}
@@ -378,12 +364,12 @@ func sharedRow(a *Agent, viewer, csrf string) string {
   <div style="flex:1;min-width:0">
     <a class="agent-name" href="/agent?id=%s">%s</a> <span class="agent-by">by @%s</span>
     <div class="agent-meta">%s</div>
-    <div class="agent-meta"><span class="agent-scope">%s</span> · %s · %s</div>
+    <div class="agent-meta"><span class="agent-scope">%s</span> · %s</div>
   </div>
   <div style="display:flex;align-items:center;gap:10px">%s</div>
 </div>`,
 		html.EscapeString(a.ID), html.EscapeString(a.Name), html.EscapeString(a.Owner),
-		html.EscapeString(desc), html.EscapeString(scope), price, html.EscapeString(used), action)
+		html.EscapeString(desc), html.EscapeString(scope), html.EscapeString(used), action)
 }
 
 // publishForm is the control that turns an agent into something other people
@@ -394,15 +380,9 @@ func publishForm(a *Agent, csrf string) string {
 	if a.Public {
 		label, checked = "Published", " checked"
 	}
-	price := ""
-	if a.Price > 0 {
-		price = strconv.Itoa(a.Price)
-	}
 	return fmt.Sprintf(`<form method="POST" action="/agents" class="agent-publish">
   <input type="hidden" name="_csrf" value="%s"><input type="hidden" name="action" value="publish">
   <input type="hidden" name="id" value="%s">
   <label class="agent-pub"><input type="checkbox" name="public" value="1"%s onchange="this.form.submit()"><span>%s</span></label>
-  <input name="price" type="number" min="0" max="1000" value="%s" placeholder="0" title="Credits a question, 0 for free" class="agent-pricebox">
-  <button type="submit" class="agent-act">Set price</button>
-</form>`, html.EscapeString(csrf), html.EscapeString(a.ID), checked, label, html.EscapeString(price))
+</form>`, html.EscapeString(csrf), html.EscapeString(a.ID), checked, label)
 }

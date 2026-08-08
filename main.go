@@ -757,12 +757,6 @@ func main() {
 	// guessing from one env var.
 	app.LLMStatus = ai.Status
 
-	// Running somebody's published agent pays them, on the same 90/10 split an
-	// app earns on — it is the same transaction, so it is the same code.
-	agent.ChargeForRun = func(asker, author string, price int) error {
-		return wallet.ChargeAppUse(asker, author, "agent", price)
-	}
-
 	// Signup and login are not tools. Creating an account and exchanging
 	// credentials for a session are how a caller comes to exist, not something
 	// an existing caller can be granted — they live on the HTTP boundary (the

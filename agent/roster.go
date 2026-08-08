@@ -95,15 +95,17 @@ type Agent struct {
 	// never the owner's account: somebody running your agent runs it on their
 	// own account, with their own credits, confined to their own scope. Your
 	// standing instruction is the product; their account is where it executes.
+	//
+	// Free, always. Publishing carried a price per question for a while, and a
+	// price is a second question on top of an idea people had not yet met — a
+	// shared agent already asks you to hold "it runs on my account with their
+	// instructions", and "and it costs 5 a go, plus the ordinary query cost"
+	// on top of that is where it stopped being explicable. Sharing something
+	// useful is the thing worth having first.
 	Public bool `json:"public,omitempty"`
-	// Price is credits per question, 0 for free. Charged to the asker and paid
-	// to the owner on the same 90/10 split an app earns on, and never charged
-	// to the owner for their own agent.
-	Price int `json:"price,omitempty"`
-	// Runs and Earnings are what this agent has actually done for other people.
-	// A directory with no usage on it is a list of claims.
+	// Runs is what this agent has actually done for other people. A directory
+	// with no usage on it is a list of claims.
 	Runs     int       `json:"runs,omitempty"`
-	Earnings int       `json:"earnings,omitempty"`
 	ForkedOf string    `json:"forked_of,omitempty"`
 	Created  time.Time `json:"created"`
 	LastUsed time.Time `json:"last_used,omitempty"`
@@ -236,9 +238,7 @@ func fields(a *Agent) map[string]any {
 		"description": a.Description,
 		"token_id":    a.TokenID, "services": strings.Join(a.Services, ","),
 		"tag":       a.Tag,
-		"price":     a.Price,
 		"runs":      a.Runs,
-		"earnings":  a.Earnings,
 		"forked_of": a.ForkedOf,
 		"created":   a.Created.Format(time.RFC3339),
 	}
@@ -347,8 +347,8 @@ func fromRecord(owner string, rec userdb.Record) *Agent {
 	a := &Agent{
 		ID: rec.ID, Owner: owner, Name: str("name"), Kind: str("kind"),
 		Prompt: str("prompt"), Description: str("description"), TokenID: str("token_id"),
-		Tag: str("tag"), Public: rec.Public, Price: num("price"),
-		Runs: num("runs"), Earnings: num("earnings"), ForkedOf: str("forked_of"),
+		Tag: str("tag"), Public: rec.Public,
+		Runs: num("runs"), ForkedOf: str("forked_of"),
 	}
 	if a.Kind != Hosted {
 		a.Kind = External
@@ -481,9 +481,12 @@ func (a *Agent) AsMicro() *micro.Agent {
 // tool list — the part that took thought. Nothing else crosses, and in
 // particular the author's token never does.
 //
-// That is also why price is per question rather than per copy: the author is
-// being paid for the recipe each time it is used, exactly as an app author is,
-// on the same 90/10 split.
+// It is free, deliberately. Publishing carried a price per question for a
+// while, and a price is a second unfamiliar idea stacked on the first: a shared
+// agent already asks you to hold "it runs on my account, with their
+// instructions", and "and it costs 5 a go, on top of the ordinary query cost"
+// is where that stopped being explicable. Sharing something useful is worth
+// having on its own; charging for it is a separate question for a later day.
 
 // PublicAgents returns every agent published on this instance, most used first.
 // Naming it a directory would overstate it: it is one collection, read with the
@@ -518,12 +521,12 @@ func PublicAgent(viewer, id string) *Agent {
 	return nil
 }
 
-// Publish offers an agent to everybody, or withdraws it, and sets its price.
+// Publish offers an agent to everybody, or withdraws it.
 //
 // An agent with no standing instruction has nothing to offer — the recipe is
 // the prompt, so publishing an empty one puts a name in a list and gives
 // whoever runs it the default assistant.
-func Publish(owner, id string, public bool, price int) error {
+func Publish(owner, id string, public bool) error {
 	a := AgentFor(owner, id)
 	if a == nil {
 		return fmt.Errorf("no such agent")
@@ -531,21 +534,11 @@ func Publish(owner, id string, public bool, price int) error {
 	if public && strings.TrimSpace(a.Prompt) == "" {
 		return fmt.Errorf("give it a system prompt first — that is what you are sharing")
 	}
-	if price < 0 {
-		price = 0
-	}
-	if price > 1000 {
-		return fmt.Errorf("that price is too high")
-	}
-	a.Public, a.Price = public, price
+	a.Public = public
 	return a.save()
 }
 
 // Fork copies a published agent into your own roster, so you can change it.
-//
-// Free agents only. The prompt is the entire product, so a fork button on a
-// priced agent is a way around the price rather than a feature — you can run a
-// paid agent as often as you like, you just cannot take the recipe.
 func Fork(viewer, id string) (*Agent, error) {
 	src := PublicAgent(viewer, id)
 	if src == nil {
@@ -553,9 +546,6 @@ func Fork(viewer, id string) (*Agent, error) {
 	}
 	if src.Owner == viewer {
 		return nil, fmt.Errorf("that one is already yours")
-	}
-	if src.Price > 0 {
-		return nil, fmt.Errorf("this agent is not free to copy — you can run it instead")
 	}
 	name := src.Name
 	have := map[string]bool{}
@@ -576,13 +566,8 @@ func Fork(viewer, id string) (*Agent, error) {
 	return a, nil
 }
 
-// ChargeForRun is set by main.go: pay the author for one question, on the same
-// split an app earns on. A hook because the wallet imports nothing from here
-// and this package must not import the wallet.
-var ChargeForRun func(asker, author string, price int) error
-
-// RunPublic resolves a published agent for somebody who does not own it,
-// charging its price and counting the run.
+// RunPublic resolves a published agent for somebody who does not own it, and
+// counts the run.
 //
 // Returns nil for an agent that is not published, which is what makes an id
 // alone useless: knowing the id of a private agent gets you the default
@@ -591,15 +576,6 @@ func RunPublic(asker, id string) *Agent {
 	a := PublicAgent(asker, id)
 	if a == nil || a.Owner == asker {
 		return nil
-	}
-	if a.Price > 0 {
-		if ChargeForRun == nil {
-			return nil
-		}
-		if err := ChargeForRun(asker, a.Owner, a.Price); err != nil {
-			return nil
-		}
-		a.Earnings += a.Price
 	}
 	a.Runs++
 	_ = a.save()

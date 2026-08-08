@@ -12,14 +12,14 @@ import (
 	"testing"
 )
 
-func publish(t *testing.T, owner, name, prompt string, price int) *Agent {
+func publish(t *testing.T, owner, name, prompt string) *Agent {
 	t.Helper()
 	a, _, err := CreateAgent(owner, name, Hosted, prompt, "", nil, false)
 	if err != nil {
 		t.Skipf("cannot create an agent in this environment: %v", err)
 	}
 	t.Cleanup(func() { _ = RemoveAgent(owner, a.ID) })
-	if err := Publish(owner, a.ID, true, price); err != nil {
+	if err := Publish(owner, a.ID, true); err != nil {
 		t.Fatalf("publishing: %v", err)
 	}
 	return a
@@ -29,7 +29,7 @@ func publish(t *testing.T, owner, name, prompt string, price int) *Agent {
 // own voice.
 func TestAPublishedAgentAnswersForSomebodyElse(t *testing.T) {
 	const author, stranger = "share-author", "share-stranger"
-	a := publish(t, author, "Pirate", "You are a pirate. Always open with AHOY.", 0)
+	a := publish(t, author, "Pirate", "You are a pirate. Always open with AHOY.")
 
 	found := false
 	for _, p := range PublicAgents(stranger) {
@@ -70,13 +70,13 @@ func TestAPrivateAgentIsNotReachableById(t *testing.T) {
 	}
 
 	// Withdrawing works the same way round.
-	if err := Publish(owner, a.ID, true, 0); err != nil {
+	if err := Publish(owner, a.ID, true); err != nil {
 		t.Fatal(err)
 	}
 	if resolveAgent(stranger, a.ID, false) == nil {
 		t.Fatal("publishing did not make it reachable")
 	}
-	if err := Publish(owner, a.ID, false, 0); err != nil {
+	if err := Publish(owner, a.ID, false); err != nil {
 		t.Fatal(err)
 	}
 	if got := resolveAgent(stranger, a.ID, false); got != nil {
@@ -84,54 +84,10 @@ func TestAPrivateAgentIsNotReachableById(t *testing.T) {
 	}
 }
 
-// The asker pays the author, and the author does not pay themselves.
-func TestRunningAPaidAgentPaysItsAuthor(t *testing.T) {
-	const author, asker = "share-seller", "share-buyer"
-	a := publish(t, author, "Priced", "You are expensive.", 5)
-
-	var paidBy, paidTo string
-	var paid int
-	ChargeForRun = func(from, to string, price int) error {
-		paidBy, paidTo, paid = from, to, price
-		return nil
-	}
-	t.Cleanup(func() { ChargeForRun = nil })
-
-	if got := resolveAgent(asker, a.ID, false); got == nil {
-		t.Fatal("a paid agent could not be run")
-	}
-	if paidBy != asker || paidTo != author || paid != 5 {
-		t.Fatalf("wrong charge: %s paid %s %d credits", paidBy, paidTo, paid)
-	}
-
-	// The author running their own is not a sale.
-	paidBy, paidTo, paid = "", "", 0
-	if got := resolveAgent(author, a.ID, false); got == nil {
-		t.Fatal("the author could not run their own agent")
-	}
-	if paid != 0 {
-		t.Fatalf("the author was charged %d credits for their own agent", paid)
-	}
-
-	// A refused payment refuses the run, rather than running it for free.
-	ChargeForRun = func(string, string, int) error { return errTestBroke }
-	if got := resolveAgent(asker, a.ID, false); got != nil {
-		t.Fatal("a paid agent ran without being paid for")
-	}
-}
-
-var errTestBroke = testErr("insufficient credits")
-
-type testErr string
-
-func (e testErr) Error() string { return string(e) }
-
-// Free agents can be copied; paid ones cannot, because the prompt is the whole
-// product and a copy button would be a way around the price.
-func TestOnlyFreeAgentsCanBeCopied(t *testing.T) {
+// A published agent can be copied into your own roster and changed.
+func TestAPublishedAgentCanBeCopied(t *testing.T) {
 	const author, copier = "share-giver", "share-copier"
-	free := publish(t, author, "Freebie", "You are free to copy.", 0)
-	paid := publish(t, author, "Costly", "You are not.", 3)
+	free := publish(t, author, "Freebie", "You are free to copy.")
 
 	got, err := Fork(copier, free.ID)
 	if err != nil {
@@ -155,9 +111,6 @@ func TestOnlyFreeAgentsCanBeCopied(t *testing.T) {
 		t.Fatal("copying minted a credential nobody asked for")
 	}
 
-	if _, err := Fork(copier, paid.ID); err == nil {
-		t.Fatal("a paid agent was copied, which is a way around its price")
-	}
 	if _, err := Fork(author, free.ID); err == nil {
 		t.Fatal("an author copied their own agent")
 	}
@@ -172,7 +125,7 @@ func TestAnEmptyAgentCannotBePublished(t *testing.T) {
 		t.Skipf("cannot create an agent in this environment: %v", err)
 	}
 	t.Cleanup(func() { _ = RemoveAgent(owner, a.ID) })
-	if err := Publish(owner, a.ID, true, 0); err == nil {
+	if err := Publish(owner, a.ID, true); err == nil {
 		t.Fatal("an agent with no system prompt was published")
 	}
 }
