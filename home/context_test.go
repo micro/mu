@@ -108,14 +108,19 @@ func TestEveryConfiguredCardHasAPlace(t *testing.T) {
 	if n == 0 {
 		t.Fatal("cards.json configures no cards, so Home has nothing on it")
 	}
-	// mail and web are rendered by CardsHTML rather than from cards.json,
-	// because they need the viewer's session to render at all. They must not
-	// also be configured, or they would render twice.
-	for _, id := range []string{"mail", "web"} {
-		if side, dup := seen[id]; dup {
-			t.Errorf("%s is in cards.json (%s) and is also appended for signed-in "+
-				"readers, so it would render twice", id, side)
-		}
+	// mail is rendered by CardsHTML rather than from cards.json, because it
+	// needs the viewer's session to render at all. It must not also be
+	// configured, or it would render twice.
+	if side, dup := seen["mail"]; dup {
+		t.Errorf("mail is in cards.json (%s) and is also appended for signed-in "+
+			"readers, so it would render twice", side)
+	}
+	// Search is not a card at all. Every other card shows you something; that
+	// one asked you to type, on a page that already has the agent input above
+	// it — two inputs, the smaller of which could only do the thing the bigger
+	// one does better.
+	if side, dup := seen["web"]; dup {
+		t.Errorf("the search box is back as a card, in cards.json (%s)", side)
 	}
 }
 
@@ -142,8 +147,8 @@ func TestThereIsNoCardPicker(t *testing.T) {
 	}
 }
 
-// A guest gets the instance's cards and no empty boxes where their own things
-// would be: mail and search need a session to render at all.
+// A guest gets the instance's cards and no empty box where their inbox would
+// be: mail needs a session to render at all.
 func TestAGuestGetsNoPersonalCards(t *testing.T) {
 	prev := Cards
 	Cards = []Card{{ID: "news", Title: "News", CachedHTML: `<p>Rates held</p>`}}
@@ -153,8 +158,24 @@ func TestAGuestGetsNoPersonalCards(t *testing.T) {
 	if !strings.Contains(got, "Rates held") {
 		t.Error("a signed-out visitor gets no cards, so Home proves nothing")
 	}
-	if strings.Contains(got, "Search the web...") {
+	if strings.Contains(got, `id="mail"`) {
 		t.Error("a guest was shown a card that needs a session")
+	}
+}
+
+// The search box is not a card, signed in or out. Home has one input and it is
+// the agent's; a second one that can only do web search is the worse half of
+// what is already at the top of the page.
+func TestSearchIsNotACard(t *testing.T) {
+	prev := Cards
+	Cards = []Card{{ID: "news", Title: "News", CachedHTML: `<p>Rates held</p>`}}
+	t.Cleanup(func() { Cards = prev })
+
+	for _, acc := range []*auth.Account{nil, {ID: "reader"}} {
+		got := CardsHTML(httptest.NewRequest("GET", "/home", nil), acc)
+		if strings.Contains(got, "Search the web...") || strings.Contains(got, `id="web"`) {
+			t.Errorf("the search card is back (account %v)", acc)
+		}
 	}
 }
 

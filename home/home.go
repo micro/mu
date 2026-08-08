@@ -224,31 +224,24 @@ func CardHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// User-specific cards that need session context.
-	if id == "mail" || id == "web" {
+	// Mail needs a session to render at all, so it is built here rather than
+	// coming from the cached set.
+	if id == "mail" {
 		viewerID := ""
 		if sess, _ := auth.TrySession(r); sess != nil {
 			viewerID = sess.Account
 		}
-		if viewerID == "" {
+		content := ""
+		if viewerID != "" {
+			content = mail.GetRecentThreadsPreview(viewerID, 3)
+		}
+		if strings.TrimSpace(content) == "" {
 			w.WriteHeader(204)
 			return
 		}
-		switch id {
-		case "mail":
-			content := mail.GetRecentThreadsPreview(viewerID, 3)
-			if strings.TrimSpace(content) == "" {
-				w.WriteHeader(204)
-				return
-			}
-			content += app.Link("More", "/mail")
-			w.Header().Set("Content-Type", "text/html")
-			fmt.Fprintf(w, app.CardTemplate, "mail", "mail", "Mail", content)
-		case "web":
-			content := `<form method="GET" action="/web"><input type="text" name="q" placeholder="Search the web..." style="width:100%%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box"></form>`
-			w.Header().Set("Content-Type", "text/html")
-			fmt.Fprintf(w, app.CardTemplate, "web", "web", "Search", content)
-		}
+		content += app.Link("More", "/mail")
+		w.Header().Set("Content-Type", "text/html")
+		fmt.Fprintf(w, app.CardTemplate, "mail", "mail", "Mail", content)
 		return
 	}
 
@@ -679,11 +672,6 @@ func CardsHTML(r *http.Request, viewerAcc *auth.Account) string {
 				return ""
 			}
 			return preview + app.Link("More", "/mail")
-		case "web":
-			if viewerID == "" {
-				return ""
-			}
-			return `<form method="GET" action="/web"><input type="text" name="q" placeholder="Search the web..." style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box"></form>`
 		}
 		for _, card := range Cards {
 			if card.ID != id {
@@ -701,11 +689,8 @@ func CardsHTML(r *http.Request, viewerAcc *auth.Account) string {
 		return ""
 	}
 	titleOf := func(id string) string {
-		switch id {
-		case "mail":
+		if id == "mail" {
 			return "Mail"
-		case "web":
-			return "Search"
 		}
 		for _, card := range Cards {
 			if card.ID == id {
@@ -715,15 +700,21 @@ func CardsHTML(r *http.Request, viewerAcc *auth.Account) string {
 		return id
 	}
 
-	// The instance's order, from cards.json, for everybody. Mail and search are
-	// appended because they need a session to render at all — a guest gets the
-	// rest and no empty boxes where their inbox would be.
-	order := make([]string, 0, len(Cards)+2)
+	// The instance's order, from cards.json, for everybody. Mail is appended
+	// because it needs a session to render at all — a guest gets the rest and
+	// no empty box where their inbox would be.
+	//
+	// Search was appended here too, as a card containing a search box. Every
+	// other card shows you something; that one asked you to type, on a page
+	// that already has the agent input at the top of it and a Search page in
+	// the catalogue. Two inputs, and the smaller one could only do the thing
+	// the bigger one does better.
+	order := make([]string, 0, len(Cards)+1)
 	for _, card := range Cards {
 		order = append(order, card.ID)
 	}
 	if viewerID != "" {
-		order = append(order, "mail", "web")
+		order = append(order, "mail")
 	}
 
 	var shown []rendered
