@@ -14,7 +14,6 @@ import (
 	"mu/internal/auth"
 	"mu/internal/data"
 	"mu/internal/flag"
-	"mu/internal/user"
 	"mu/service/apps"
 	"mu/service/wallet"
 )
@@ -370,17 +369,6 @@ func runCommand(cmd string) string {
 			return "unban failed: " + err.Error()
 		}
 		return fmt.Sprintf("Unbanned %s", arg(1))
-
-	case "clear-status":
-		if arg(1) == "" {
-			return "usage: clear-status <user_id|all>  (clears status + full history)"
-		}
-		if arg(1) == "all" {
-			user.ClearAllStatuses()
-			return "Cleared all status history for all users"
-		}
-		user.ClearStatusHistory(arg(1))
-		return fmt.Sprintf("Cleared all status history for %s", arg(1))
 
 	case "invite":
 		if arg(1) == "" {

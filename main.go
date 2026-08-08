@@ -531,42 +531,10 @@ func main() {
 	}
 	user.LinkifyContent = blog.Linkify
 
-	// Wire @micro mention handling in the status stream. When a user
-	// posts a status containing "@micro ...", run the agent against
-	// the sender's wallet and post the reply as a status from the
-	// system user. Runs async so the POST /user/status handler returns
-	// immediately. We never fire this for the system user itself.
-	user.AIReplyHook = func(askerID, prompt string) {
-		if askerID == app.SystemUserID {
-			return
-		}
-		// If the asker is already banned, don't spend AI credits.
-		if auth.IsBanned(askerID) {
-			return
-		}
-		answer, err := agent.Query(askerID, prompt)
-		if err != nil {
-			app.Log("status", "@micro agent error for %s: %v", askerID, err)
-			_ = user.PostSystemStatus("I couldn't answer that one — try again in a moment.")
-			return
-		}
-		answer = strings.TrimSpace(answer)
-		if answer == "" {
-			return
-		}
-		// Moderate the AI response before posting — if the question
-		// tricked the AI into producing harmful content, the asker
-		// is banned and the response is silently dropped.
-		if !user.ModerateAIResponse(askerID, answer) {
-			app.Log("status", "AI response for %s blocked by moderation", askerID)
-			return
-		}
-		if err := user.PostSystemStatus(answer); err != nil {
-			app.Log("status", "failed to post @micro reply: %v", err)
-		}
-	}
-	// Wire stream @micro replies — same agent, posts into the stream
-	// instead of the status profile.
+	// Wire @micro replies in the stream: run the agent against the sender's
+	// wallet and post the answer back into the timeline. Async, so the POST
+	// returns immediately. The same hook existed for statuses; the stream is
+	// the timeline that survived.
 	stream.AIReplyHook = func(askerID, prompt string) {
 		if auth.IsBanned(askerID) {
 			return
@@ -612,7 +580,6 @@ func main() {
 		social.DeleteByAuthor,
 		apps.DeleteAppsByAuthor,
 		stream.ClearByAuthor,
-		user.ClearStatusHistory,
 		mail.DeleteInbox,
 		func(id string) { wallet.DeleteWallet(id) },
 		func(id string) { wallet.DeleteBaseWallet(id) },
@@ -2015,8 +1982,6 @@ func main() {
 	// serve social page
 	http.HandleFunc("/social", social.Handler)
 	http.HandleFunc("/social/thread", social.ThreadHandler)
-	http.HandleFunc("/user/status", user.StatusHandler)
-	http.HandleFunc("/user/status/stream", user.StatusStreamHandler)
 
 	// Stream (console) routes
 	http.HandleFunc("/stream", stream.Handler)
@@ -2646,11 +2611,9 @@ func updatesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if since.IsZero() {
-		result["status"] = 0
 		result["social"] = 0
 		result["stream"] = 0
 	} else {
-		result["status"] = user.StatusCountSince(since, viewerID)
 		result["social"] = social.CountSince(since)
 		result["stream"] = stream.CountSince(since)
 	}

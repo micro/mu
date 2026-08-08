@@ -768,103 +768,6 @@ body.page-home #page-title ~ #customize-link {
   font-size: 13px;
 }
 
-#home-status-form {
-  margin-bottom: 12px;
-}
-#home-status-input {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 8px 10px;
-  font-family: inherit;
-  font-size: 14px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  color: #333;
-}
-#home-status-input::placeholder {
-  color: #aaa;
-}
-#home-status-wrap {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-#home-statuses {
-  margin: 0;
-  /* Stream is scrollable. Capped at ~55vh on mobile (so the card never
-     takes the whole screen) and 420px on desktop. Overflowing entries
-     scroll inside the card rather than expanding the layout. */
-  max-height: min(55vh, 420px);
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  padding-right: 4px;
-}
-.home-status-entry {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 8px 0;
-  border-bottom: 1px solid #f0f0f0;
-}
-.home-status-entry:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-.home-status-entry:first-child {
-  padding-top: 0;
-}
-.home-status-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  font-weight: 600;
-  flex-shrink: 0;
-}
-.home-status-body {
-  flex: 1;
-  min-width: 0;
-}
-.home-status-header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.home-status-name {
-  font-weight: 600;
-  color: #333;
-  text-decoration: none;
-}
-.home-status-name:hover {
-  text-decoration: underline;
-}
-.home-status-time {
-  color: #bbb;
-  font-size: 12px;
-  margin-left: auto;
-  white-space: nowrap;
-}
-.home-status-text {
-  color: #555;
-  margin-top: 2px;
-  /* Wrap long lines naturally and break any ultra-long unbroken
-     strings (URLs, code) so nothing can widen the card. */
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  overflow-wrap: anywhere;
-  line-height: 1.4;
-}
-.home-status-system .home-status-name {
-  color: #1f7a4a;
-}
-.home-status-system .home-status-avatar {
-  background: #1f7a4a !important;
-}
-
 #home {
   margin-bottom: 25px;
   display: flex;
@@ -5327,7 +5230,6 @@ body.display-mode #nav-overlay,
 body.display-mode #footer,
 body.display-mode #menu-toggle,
 body.display-mode #page-title,
-body.display-mode #home-status-form,
 body.display-mode #head-mail {
   display: none !important;
 }
