@@ -515,8 +515,8 @@ func main() {
 	}
 
 	// Wire user → blog callback (avoids direct import between building blocks)
-	user.GetUserPosts = func(authorName string) []user.UserPost {
-		posts := blog.GetPostsByAuthor(authorName)
+	user.GetUserPosts = func(authorID, authorName string) []user.UserPost {
+		posts := blog.GetPostsByAuthorID(authorID, authorName)
 		result := make([]user.UserPost, len(posts))
 		for i, p := range posts {
 			result[i] = user.UserPost{

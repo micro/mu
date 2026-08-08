@@ -25,8 +25,13 @@ type UserPost struct {
 	Private   bool
 }
 
-// GetUserPosts returns posts by author name. Wired from main.go.
-var GetUserPosts func(authorName string) []UserPost
+// GetUserPosts returns an account's posts. Wired from main.go.
+//
+// By id and name, not name alone: the blog links an author at /@<id> and shows
+// their display name, so matching posts on the name only worked when the two
+// agreed. They did not for the system user — posts signed "Mu", id "micro" —
+// so every digest linked to a profile with no posts on it.
+var GetUserPosts func(authorID, authorName string) []UserPost
 
 // UserApp is a simplified app representation for profile rendering.
 type UserApp struct {
@@ -257,7 +262,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	var userPosts string
 	var postCount int
 	if GetUserPosts != nil {
-		posts := GetUserPosts(acc.Name)
+		posts := GetUserPosts(acc.ID, acc.Name)
 
 		// Check if viewer is admin
 		_, viewerAcc := auth.TrySession(r)

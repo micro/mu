@@ -1170,6 +1170,37 @@ func GetPostsByAuthor(authorName string) []*Post {
 	return userPosts
 }
 
+// GetPostsByAuthorID returns an account's posts, matched on the id the post
+// was written with rather than on the name it was displayed under.
+//
+// The profile page used the name, and the blog links an author at /@<id> while
+// displaying their <name> — so the two only agreed when an account's display
+// name happened to equal the string stored on the post. It did not for the
+// system user, whose posts say "Mu" and whose id is "micro": every digest
+// linked to a profile that then showed no posts at all. It also broke for
+// anybody who had renamed themselves since writing something.
+//
+// Posts written before AuthorID existed have none, so those still match on
+// name. Dropping them would make old posts vanish from a profile to fix a
+// join.
+func GetPostsByAuthorID(authorID, authorName string) []*Post {
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	var userPosts []*Post
+	for _, post := range posts {
+		switch {
+		case post.AuthorID != "":
+			if post.AuthorID == authorID {
+				userPosts = append(userPosts, post)
+			}
+		case authorName != "" && post.Author == authorName:
+			userPosts = append(userPosts, post)
+		}
+	}
+	return userPosts
+}
+
 // FindTodayDigest returns today's digest post if one exists, or nil.
 // It looks for a post tagged "digest" by the system user created today.
 func FindTodayDigest() *Post {
