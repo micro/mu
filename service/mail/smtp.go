@@ -615,8 +615,21 @@ func (s *Session) Data(r io.Reader) error {
 			app.Log("mail", "⚠ Failed to thread message - will appear as new conversation")
 		}
 
-		// Run spam detection on inbound external mail
-		spamResult := CheckSpam(fromAddr.Address, subject, body, s.remoteIP, s.spfPass, dkimPass)
+		// Run spam detection on inbound external mail — unless the sender is
+		// the recipient's own verified address.
+		//
+		// Mailing your own agent is the first thing anyone does with an agent
+		// that has an address, and asim@aslam.me → asim+foobar@micro.mu landed
+		// in Filtered. The score does not care who you are: an address the
+		// account holder proved they own scores the same as a stranger, so a
+		// short message with a link in it from your own inbox reads as spam.
+		//
+		// Verifying an email is the strongest signal this instance has about a
+		// person. Spending it on nothing was the bug.
+		spamResult := SpamResult{}
+		if !isOwnVerifiedAddress(toAcc, fromAddr.Address) {
+			spamResult = CheckSpam(fromAddr.Address, subject, body, s.remoteIP, s.spfPass, dkimPass)
+		}
 		if spamResult.IsSpam {
 			app.Log("mail", "Spam detected (score=%d) from %s: %v", spamResult.Score, fromAddr.Address, spamResult.Reasons)
 

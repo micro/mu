@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 
+	"mu/internal/auth"
 	"mu/internal/data"
 )
 
@@ -238,6 +239,17 @@ func CheckInboundAllowed(fromAddr, inReplyTo, references string) (string, bool) 
 		return "", true
 	}
 
+	// 4. Is the sender a verified email on an account here?
+	//
+	// Somebody who clicked a link in a mailbox to prove they own it is not a
+	// stranger, and their own address should not need an operator to whitelist
+	// its domain by hand. Without this, writing to your own agent from a
+	// personal address only worked if that domain happened to be on a list
+	// written for company mail.
+	if VerifiedAccountAddress(fromAddr) {
+		return "", true
+	}
+
 	return "sender not in whitelist and message is not a reply", false
 }
 
@@ -247,4 +259,37 @@ func SaveSentIDs() {
 	defer sentMu.RUnlock()
 	data.SaveJSON("mail_sent_ids.json", sentMsgIDs)
 	data.SaveJSON("mail_sent_to.json", sentToAddr)
+}
+
+// isOwnVerifiedAddress reports whether an inbound sender is the recipient's
+// own verified email — you, writing to your own address or to one of your
+// agents' aliases.
+//
+// This is the one relationship the instance can be certain about: the account
+// holder proved they control that mailbox by clicking a link in it. Mail from
+// it to themselves is never spam and never needs whitelisting, and treating it
+// like any other stranger is what made "email your agent" — the first thing
+// anyone tries — fail silently into a folder.
+func isOwnVerifiedAddress(acc *auth.Account, fromAddr string) bool {
+	if acc == nil || !acc.EmailVerified || acc.Email == "" {
+		return false
+	}
+	return strings.EqualFold(strings.TrimSpace(acc.Email), strings.TrimSpace(fromAddr))
+}
+
+// VerifiedAccountAddress reports whether an address is the verified email of
+// any account on this instance. Used by the inbound whitelist: somebody who
+// proved they own a mailbox is not a stranger, so their mail should reach this
+// instance without an operator adding their domain by hand.
+func VerifiedAccountAddress(fromAddr string) bool {
+	fromAddr = strings.ToLower(strings.TrimSpace(fromAddr))
+	if fromAddr == "" {
+		return false
+	}
+	for _, acc := range auth.GetAllAccounts() {
+		if acc.EmailVerified && strings.EqualFold(acc.Email, fromAddr) {
+			return true
+		}
+	}
+	return false
 }
