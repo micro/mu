@@ -89,7 +89,22 @@ type Agent struct {
 	// the plus-address convention and inventing a tag by hand.
 	//
 	// Unique per owner, so two agents cannot read each other's mail.
-	Tag      string    `json:"tag,omitempty"`
+	Tag string `json:"tag,omitempty"`
+	// Public offers this agent to everybody on the instance. What is offered is
+	// the recipe — name, description, prompt, tool scope — never the token and
+	// never the owner's account: somebody running your agent runs it on their
+	// own account, with their own credits, confined to their own scope. Your
+	// standing instruction is the product; their account is where it executes.
+	Public bool `json:"public,omitempty"`
+	// Price is credits per question, 0 for free. Charged to the asker and paid
+	// to the owner on the same 90/10 split an app earns on, and never charged
+	// to the owner for their own agent.
+	Price int `json:"price,omitempty"`
+	// Runs and Earnings are what this agent has actually done for other people.
+	// A directory with no usage on it is a list of claims.
+	Runs     int       `json:"runs,omitempty"`
+	Earnings int       `json:"earnings,omitempty"`
+	ForkedOf string    `json:"forked_of,omitempty"`
 	Created  time.Time `json:"created"`
 	LastUsed time.Time `json:"last_used,omitempty"`
 }
@@ -212,14 +227,29 @@ func validServices(in []string) []string {
 	return out
 }
 
+// fields is the record a roster agent is stored as. It is hand-built, which
+// means every field has to be added here and read back in fromRecord — miss
+// either half and the value silently does not persist.
 func fields(a *Agent) map[string]any {
 	return map[string]any{
 		"name": a.Name, "kind": a.Kind, "prompt": a.Prompt,
 		"description": a.Description,
 		"token_id":    a.TokenID, "services": strings.Join(a.Services, ","),
-		"tag":     a.Tag,
-		"created": a.Created.Format(time.RFC3339),
+		"tag":       a.Tag,
+		"price":     a.Price,
+		"runs":      a.Runs,
+		"earnings":  a.Earnings,
+		"forked_of": a.ForkedOf,
+		"created":   a.Created.Format(time.RFC3339),
 	}
+}
+
+// save writes an agent back, carrying its published state. The store's own
+// public flag is what makes the directory work: every account's agents live in
+// one collection, so a published agent is simply one a stranger's read can see.
+func (a *Agent) save() error {
+	_, err := userdb.Update(ns, a.Owner, collection, a.ID, fields(a), a.Public)
+	return err
 }
 
 // EnsureTags gives an address to any agent made before agents had one.
@@ -244,7 +274,7 @@ func EnsureTags(owner string) {
 	sort.Slice(missing, func(i, j int) bool { return missing[i].Created.Before(missing[j].Created) })
 	for _, a := range missing {
 		a.Tag = tagFor(owner, a.Name, all)
-		_, _ = userdb.Update(ns, owner, collection, a.ID, fields(a), false)
+		_ = a.save()
 	}
 }
 
@@ -305,10 +335,20 @@ func fromRecord(owner string, rec userdb.Record) *Agent {
 	if rec.ID == "" || str("name") == "" {
 		return nil
 	}
+	num := func(k string) int {
+		switch v := rec.Data[k].(type) {
+		case float64:
+			return int(v)
+		case int:
+			return v
+		}
+		return 0
+	}
 	a := &Agent{
 		ID: rec.ID, Owner: owner, Name: str("name"), Kind: str("kind"),
 		Prompt: str("prompt"), Description: str("description"), TokenID: str("token_id"),
-		Tag: str("tag"),
+		Tag: str("tag"), Public: rec.Public, Price: num("price"),
+		Runs: num("runs"), Earnings: num("earnings"), ForkedOf: str("forked_of"),
 	}
 	if a.Kind != Hosted {
 		a.Kind = External
@@ -352,7 +392,9 @@ func UpdateAgent(owner, id, name, prompt, description string, services []string)
 	a.Prompt = strings.TrimSpace(prompt)
 	a.Description = strings.TrimSpace(description)
 	a.Services = validServices(services)
-	if _, err := userdb.Update(ns, owner, collection, id, fields(a), false); err != nil {
+	// a.save(), not a bare Update with public:false — editing an agent must not
+	// silently unpublish it.
+	if err := a.save(); err != nil {
 		return nil, err
 	}
 	return a, nil
@@ -376,7 +418,7 @@ func IssueToken(owner, id string) (string, error) {
 		return "", err
 	}
 	a.TokenID = tok.ID
-	if _, err := userdb.Update(ns, owner, collection, id, fields(a), false); err != nil {
+	if err := a.save(); err != nil {
 		return "", err
 	}
 	return secret, nil
@@ -425,4 +467,141 @@ func (a *Agent) AsMicro() *micro.Agent {
 		ID: a.ID, Name: a.Name, Description: desc,
 		SystemPrompt: a.Prompt, Tools: a.Services, OwnerAccountID: a.Owner,
 	}
+}
+
+// ── Sharing ─────────────────────────────────────────────────────
+//
+// What is shared is the recipe, never the account.
+//
+// An app is inert HTML, so running somebody's app is just rendering it. An
+// agent calls tools, and whose tools it calls is the whole question. So a
+// published agent runs on the *asker's* account: their credits pay for the
+// model and the tool calls, their scope bounds it, their mail is what mail
+// tools reach. What comes from the author is the standing instruction and the
+// tool list — the part that took thought. Nothing else crosses, and in
+// particular the author's token never does.
+//
+// That is also why price is per question rather than per copy: the author is
+// being paid for the recipe each time it is used, exactly as an app author is,
+// on the same 90/10 split.
+
+// PublicAgents returns every agent published on this instance, most used first.
+// Naming it a directory would overstate it: it is one collection, read with the
+// store's own public scope.
+func PublicAgents(viewer string) []*Agent {
+	records, err := userdb.List(ns, viewer, collection, "public", nil, "", "", 200)
+	if err != nil {
+		return nil
+	}
+	var out []*Agent
+	for i := range records {
+		if a := fromRecord(records[i].Owner, records[i]); a != nil && a.Public {
+			out = append(out, a)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Runs != out[j].Runs {
+			return out[i].Runs > out[j].Runs
+		}
+		return out[i].Name < out[j].Name
+	})
+	return out
+}
+
+// PublicAgent returns one published agent by id, whoever owns it.
+func PublicAgent(viewer, id string) *Agent {
+	for _, a := range PublicAgents(viewer) {
+		if a.ID == id {
+			return a
+		}
+	}
+	return nil
+}
+
+// Publish offers an agent to everybody, or withdraws it, and sets its price.
+//
+// An agent with no standing instruction has nothing to offer — the recipe is
+// the prompt, so publishing an empty one puts a name in a list and gives
+// whoever runs it the default assistant.
+func Publish(owner, id string, public bool, price int) error {
+	a := AgentFor(owner, id)
+	if a == nil {
+		return fmt.Errorf("no such agent")
+	}
+	if public && strings.TrimSpace(a.Prompt) == "" {
+		return fmt.Errorf("give it a system prompt first — that is what you are sharing")
+	}
+	if price < 0 {
+		price = 0
+	}
+	if price > 1000 {
+		return fmt.Errorf("that price is too high")
+	}
+	a.Public, a.Price = public, price
+	return a.save()
+}
+
+// Fork copies a published agent into your own roster, so you can change it.
+//
+// Free agents only. The prompt is the entire product, so a fork button on a
+// priced agent is a way around the price rather than a feature — you can run a
+// paid agent as often as you like, you just cannot take the recipe.
+func Fork(viewer, id string) (*Agent, error) {
+	src := PublicAgent(viewer, id)
+	if src == nil {
+		return nil, fmt.Errorf("no such agent")
+	}
+	if src.Owner == viewer {
+		return nil, fmt.Errorf("that one is already yours")
+	}
+	if src.Price > 0 {
+		return nil, fmt.Errorf("this agent is not free to copy — you can run it instead")
+	}
+	name := src.Name
+	have := map[string]bool{}
+	for _, a := range Agents(viewer) {
+		have[strings.ToLower(a.Name)] = true
+	}
+	for i := 2; have[strings.ToLower(name)]; i++ {
+		name = fmt.Sprintf("%s %d", src.Name, i)
+	}
+	// Hosted and tokenless: a copy is something you talk to until you decide
+	// otherwise, and minting a credential on somebody's behalf is a decision.
+	a, _, err := CreateAgent(viewer, name, Hosted, src.Prompt, src.Description, src.Services, false)
+	if err != nil {
+		return nil, err
+	}
+	a.ForkedOf = src.ID
+	_ = a.save()
+	return a, nil
+}
+
+// ChargeForRun is set by main.go: pay the author for one question, on the same
+// split an app earns on. A hook because the wallet imports nothing from here
+// and this package must not import the wallet.
+var ChargeForRun func(asker, author string, price int) error
+
+// RunPublic resolves a published agent for somebody who does not own it,
+// charging its price and counting the run.
+//
+// Returns nil for an agent that is not published, which is what makes an id
+// alone useless: knowing the id of a private agent gets you the default
+// assistant, the same as knowing nothing.
+func RunPublic(asker, id string) *Agent {
+	a := PublicAgent(asker, id)
+	if a == nil || a.Owner == asker {
+		return nil
+	}
+	if a.Price > 0 {
+		if ChargeForRun == nil {
+			return nil
+		}
+		if err := ChargeForRun(asker, a.Owner, a.Price); err != nil {
+			return nil
+		}
+		a.Earnings += a.Price
+	}
+	a.Runs++
+	_ = a.save()
+	return a
 }
