@@ -489,7 +489,14 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 			`agent gets over <a href="/mcp">MCP</a>. ` +
 			`<a href="/tools">See what it can reach &rarr;</a></div>`
 	}
-	content := `<div class="chat-layout">` + rail + `<div class="chat-main">` + chip + app.ChatComponent(cfg) + `</div></div>` + chatLayoutCSS
+	// Tabs above the conversation for anyone signed in: talking to an agent and
+	// seeing what it has done are the same question asked twice, and runs used
+	// to be a top-level page as if they were a peer of the agent itself.
+	tabs := ""
+	if !guest {
+		tabs = agentTabs("chat", selAgent)
+	}
+	content := `<div class="chat-layout">` + rail + `<div class="chat-main">` + tabs + chip + app.ChatComponent(cfg) + `</div></div>` + chatLayoutCSS
 
 	// Seed the active agent so the panel highlights it and follow-ups continue
 	// with it: an explicit ?id= selection (deep link) wins; otherwise a reopened

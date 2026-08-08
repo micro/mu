@@ -1735,7 +1735,8 @@ func main() {
 		"/events":                 true,  // Personal scheduled reminders — sign-in required
 		"/contacts":               true,  // Your address book — sign-in required
 		"/db":                     true,  // Your own records — sign-in required
-		"/runs":                   true,  // What your agents did
+		"/runs":                   true,  // What your agents did (redirects to /agent/runs)
+		"/agent/runs":             true,  // What your agents did
 		"/tasks":                  true,  // Your task list — sign-in required
 		"/social":                 false, // Public viewing, auth for search
 		"/social/thread":          false, // Public thread view, auth for messaging
@@ -2149,7 +2150,16 @@ func main() {
 	http.HandleFunc("/tools", api.ToolsPageHandler)
 	http.HandleFunc("/services", api.ToolsPageHandler)
 	// What your agents did. Flows were recorded and never served.
-	http.HandleFunc("/runs", agent.RunsHandler)
+	// Runs belong to the agent, so they live under it and the agent surface
+	// tabs between them. /runs still works — links to it exist.
+	http.HandleFunc("/agent/runs", agent.RunsHandler)
+	http.HandleFunc("/runs", func(w http.ResponseWriter, r *http.Request) {
+		to := "/agent/runs"
+		if q := r.URL.RawQuery; q != "" {
+			to += "?" + q
+		}
+		http.Redirect(w, r, to, http.StatusMovedPermanently)
+	})
 	// A service rendered at a glance — see internal/api/card.go.
 	http.HandleFunc("/card", api.CardHandler)
 	http.HandleFunc("/card/", api.CardHandler)

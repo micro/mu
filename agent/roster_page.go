@@ -202,12 +202,31 @@ func agentRow(a *Agent, csrf, base string) string {
 		addr = `<div class="agent-mail">Write to it at <code>` + html.EscapeString(a.Address()) + `</code></div>`
 	}
 
+	// Where it runs, on the row, in a word.
+	//
+	// It was only ever asked at creation and never shown again — not here, not
+	// in the editor — so once an agent existed there was nowhere in the product
+	// that told you whether it ran on this instance or somewhere else calling
+	// in. That is the difference between a thing you talk to and a thing you
+	// point Claude Desktop at, and it was inferable at best from whether a
+	// token happened to be mentioned further down the row.
+	kind := `<span class="agent-kind here">Runs here</span>`
+	if a.Kind != Hosted {
+		kind = `<span class="agent-kind away">Runs elsewhere</span>`
+	}
+
+	// And what it has done. An agent is a scope; its runs are the only evidence
+	// the scope is right, and this is the page you come to to look at an agent.
+	runs := fmt.Sprintf(`<a class="agent-runs" href="/agent/runs?agent=%s">Runs &rarr;</a>`,
+		html.EscapeString(a.ID))
+
 	return fmt.Sprintf(`<div class="agent-row">
   <div style="flex:1;min-width:0">
-    <a class="agent-name" href="/agent?id=%s">%s</a>
+    <a class="agent-name" href="/agent?id=%s">%s</a>`+kind+`
     <div class="%s">%s</div>
     <div class="agent-meta">%s</div>
     %s
+    `+runs+`
   </div>
   %s
   <form method="POST" action="/agents" style="margin:0" onsubmit="return confirm('Remove this agent?')">
@@ -226,7 +245,12 @@ func agentRow(a *Agent, csrf, base string) string {
 const agentsCSS = `<style>
 .lens-lead{color:#666;font-size:14px;margin:0 0 18px;max-width:640px}
 .agent-row{display:flex;align-items:center;gap:12px;border:1px solid #eee;border-radius:8px;padding:10px 14px}
-.agent-kind{font-size:11px;color:#999;font-weight:400;margin-left:4px}
+.agent-kind{display:inline-block;font-size:11px;font-weight:600;margin-left:8px;
+  padding:1px 7px;border-radius:999px;vertical-align:middle}
+.agent-kind.here{color:#0a7d33;background:#eaf6ee}
+.agent-kind.away{color:#a86400;background:#fdf3e3}
+.agent-runs{display:inline-block;font-size:12px;color:#666;text-decoration:none;margin-top:5px}
+.agent-runs:hover{color:var(--text-primary,#111);text-decoration:underline}
 .agent-scope{font-size:13px;color:#0a7d33}
 .agent-scope.wide{color:#a86400}
 .agent-meta{font-size:12px;color:#999;margin-top:2px;overflow:hidden;text-overflow:ellipsis}

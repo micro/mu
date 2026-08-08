@@ -36,7 +36,7 @@ import (
 	"mu/internal/auth"
 )
 
-// RunsHandler serves /runs.
+// RunsHandler serves /agent/runs.
 func RunsHandler(w http.ResponseWriter, r *http.Request) {
 	sess, _, err := auth.RequireSession(r)
 	if err != nil {
@@ -47,7 +47,7 @@ func RunsHandler(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == http.MethodPost && r.FormValue("action") == "delete" {
 		_ = deleteFlow(owner, r.FormValue("id"))
-		http.Redirect(w, r, "/runs", http.StatusSeeOther)
+		http.Redirect(w, r, "/agent/runs", http.StatusSeeOther)
 		return
 	}
 
@@ -79,6 +79,7 @@ func RunsHandler(w http.ResponseWriter, r *http.Request) {
 
 	var b strings.Builder
 	b.WriteString(`<div style="max-width:820px">`)
+	b.WriteString(agentTabs("runs", only))
 	b.WriteString(`<p class="lens-lead">A trace of every question your agents have answered: what was ` +
 		`asked, which agent took it, which tools it called, and whether it finished. Runs started by ` +
 		`a task, a schedule, or an agent calling in over MCP land here too — those are the ones ` +
@@ -87,7 +88,7 @@ func RunsHandler(w http.ResponseWriter, r *http.Request) {
 
 	if onlyName != "" {
 		b.WriteString(`<p class="lens-lead" style="margin-top:-8px">Showing only <strong>` +
-			html.EscapeString(onlyName) + `</strong>. ` + app.Link("Every agent", "/runs") + `</p>`)
+			html.EscapeString(onlyName) + `</strong>. ` + app.Link("Every agent", "/agent/runs") + `</p>`)
 	}
 
 	if len(runs) == 0 {
@@ -153,7 +154,7 @@ func runRow(f *Flow, csrf string) string {
 
 	del := ""
 	if csrf != "" {
-		del = fmt.Sprintf(`<form method="POST" action="/runs" style="margin:0" onsubmit="return confirm('Delete this run?')">
+		del = fmt.Sprintf(`<form method="POST" action="/agent/runs" style="margin:0" onsubmit="return confirm('Delete this run?')">
     <input type="hidden" name="_csrf" value="%s"><input type="hidden" name="action" value="delete">
     <input type="hidden" name="id" value="%s">
     <button type="submit" class="run-del">Delete</button></form>`,
@@ -300,7 +301,46 @@ func agentRunsSummary(accountID, agentID string) string {
 	if len(mine) > len(shown) {
 		b.WriteString(`<p class="b-state">` +
 			app.Link(fmt.Sprintf("All %d runs by this agent", len(mine)),
-				"/runs?agent="+url.QueryEscape(agentID)) + `</p>`)
+				"/agent/runs?agent="+url.QueryEscape(agentID)) + `</p>`)
 	}
 	return b.String() + runsCSS
 }
+
+// agentTabs is the strip that switches between talking to an agent and seeing
+// what it has done.
+//
+// Runs used to be /runs, a top-level page beside Home and Tools, which put the
+// record of what your agents did at the same level as the things themselves. It
+// is not a peer of the agent; it is the other half of one. So it lives under
+// /agent and the two tab between each other, carrying the selected agent across
+// so "chat to this one" and "what has this one done" are the same question
+// asked twice.
+func agentTabs(active, agentID string) string {
+	q := ""
+	if agentID != "" {
+		q = "?" + url.Values{"id": {agentID}}.Encode()
+	}
+	runsQ := ""
+	if agentID != "" {
+		runsQ = "?" + url.Values{"agent": {agentID}}.Encode()
+	}
+	tab := func(label, href, key string) string {
+		cls := "agent-tab"
+		if key == active {
+			cls += " on"
+		}
+		return `<a class="` + cls + `" href="` + href + `">` + label + `</a>`
+	}
+	return `<div class="agent-tabs">` +
+		tab("Chat", "/agent"+q, "chat") +
+		tab("Runs", "/agent/runs"+runsQ, "runs") +
+		`</div>` + agentTabsCSS
+}
+
+const agentTabsCSS = `<style>
+.agent-tabs{display:flex;gap:2px;margin:0 0 16px;border-bottom:1px solid var(--border-color,#e5e5e5)}
+.agent-tab{padding:7px 14px;font-size:14px;color:var(--text-muted,#666);text-decoration:none;
+  border-bottom:2px solid transparent;margin-bottom:-1px}
+.agent-tab:hover{color:var(--text-primary,#111)}
+.agent-tab.on{color:var(--text-primary,#111);font-weight:600;border-bottom-color:var(--text-primary,#111)}
+</style>`
