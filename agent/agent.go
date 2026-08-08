@@ -692,20 +692,23 @@ func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts Query
 	emitted := false
 	var captured strings.Builder
 	var nativeTools []string
+	// The tool names behind those labels, for the run record.
+	var nativeToolNames []string
 	startedTools := map[string]bool{}
 	endedTools := map[string]bool{}
 
 	answer, handled, err := streamNative(accountID, prompt, opts, StreamHooks{
-		ToolStart: func(label string) {
+		ToolStart: func(label, name string) {
 			if startedTools[label] {
 				return
 			}
 			startedTools[label] = true
 			emitted = true
 			nativeTools = append(nativeTools, label)
+			nativeToolNames = append(nativeToolNames, NativeToolName(name))
 			sse(w, map[string]any{"type": "tool_start", "name": label, "message": label})
 		},
-		ToolEnd: func(label string) {
+		ToolEnd: func(label, name string) {
 			if endedTools[label] {
 				return
 			}
@@ -766,7 +769,7 @@ func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts Query
 		// an answer and no account of how it got there — and this is the default
 		// path, so that was almost every run. The names are what this path
 		// knows; the payloads stay with the planner path, which keeps them.
-		for _, name := range nativeTools {
+		for _, name := range nativeToolNames {
 			f.Steps = append(f.Steps, FlowStep{Tool: name})
 		}
 	})

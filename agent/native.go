@@ -301,8 +301,11 @@ func queryNative(accountID, prompt string, opts QueryOpts) (string, bool, error)
 // StreamHooks receives streaming events from the native agent: tool lifecycle
 // (with a friendly label) and answer tokens as they arrive.
 type StreamHooks struct {
-	ToolStart func(label string)
-	ToolEnd   func(label string)
+	// label is for the reader, name is the tool. The run record needs the
+	// name — "⚙️ Working" is what a person watching wants and is worthless as
+	// a trace, which is exactly what /runs was showing before this.
+	ToolStart func(label, name string)
+	ToolEnd   func(label, name string)
 	Token     func(tok string)
 }
 
@@ -339,11 +342,11 @@ func streamNative(accountID, prompt string, opts QueryOpts, hooks StreamHooks) (
 		switch ev.Type {
 		case gmagent.StreamEventToolStart:
 			if label, show := nativeToolLabel(ev.ToolCall.Name); show && hooks.ToolStart != nil {
-				hooks.ToolStart(label)
+				hooks.ToolStart(label, ev.ToolCall.Name)
 			}
 		case gmagent.StreamEventToolEnd:
 			if label, show := nativeToolLabel(ev.ToolCall.Name); show && hooks.ToolEnd != nil {
-				hooks.ToolEnd(label)
+				hooks.ToolEnd(label, ev.ToolCall.Name)
 			}
 		case gmagent.StreamEventToken:
 			reply.WriteString(ev.Token)
@@ -509,6 +512,27 @@ func nativeToolLabel(name string) (label string, show bool) {
 		return "📬 Checking your mail", true
 	}
 	return "⚙️ Working", true
+}
+
+// NativeToolName turns go-micro's handler name into the tool name a caller
+// would use. The framework reports "context_Server_Get"; the tool is
+// "context_get", which is what /tools lists, what an agent calls, and therefore
+// the only form worth writing into a run record — a trace naming something no
+// other page names is a trace you cannot look up.
+func NativeToolName(name string) string {
+	parts := nativeToolNameParts(name)
+	// Drop the handler type, which is an implementation detail of the server.
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if p == "server" || p == "handler" {
+			continue
+		}
+		out = append(out, p)
+	}
+	if len(out) == 0 {
+		return strings.ToLower(strings.TrimSpace(name))
+	}
+	return strings.Join(out, "_")
 }
 
 func nativeToolNameParts(name string) []string {
