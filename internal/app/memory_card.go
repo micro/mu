@@ -39,8 +39,9 @@ func memoryCard(r *http.Request, acc *auth.Account) string {
 		// Extraction only fires when a message happens to contain a durable
 		// fact, so for most accounts this is the state, and "nothing yet" on
 		// its own reads as broken. Say what makes something appear.
-		b.WriteString(`<p class="text-sm text-muted" style="color:#888">Nothing yet. Tell an agent ` +
-			`something worth keeping — "remember that I'm in London" — or add one below.</p>`)
+		b.WriteString(`<p class="text-sm text-muted" style="color:#888">Nothing yet. Say ` +
+			`"remember that I'm in London" to an agent and it will show up here, or write ` +
+			`one yourself.</p>`)
 	} else {
 		b.WriteString(`<div class="mem-list">`)
 		for _, e := range entries {
@@ -58,12 +59,22 @@ func memoryCard(r *http.Request, acc *auth.Account) string {
 
 	// Written by hand as well as extracted. An agent can call memory_set, so
 	// somebody looking at the same list should be able to add to it.
+	//
+	// Written as a sentence, because the storage shape is a key and a value and
+	// nobody is thinking in key-value pairs on this page. Two bare boxes reading
+	// "location" and "London" are a puzzle: they are the same width, they have
+	// no labels, and nothing says which one is the name of the thing and which
+	// one is the thing. Wrapping them in "Remember that my … is …" says it
+	// without a single word of explanation, and it matches the sentence the
+	// empty state just told you to say to an agent.
 	b.WriteString(`<form method="POST" action="/account" class="mem-add">` +
 		`<input type="hidden" name="_csrf" value="` + csrf + `">` +
 		`<input type="hidden" name="remember" value="1">` +
-		`<input name="key" required maxlength="40" placeholder="location" class="mem-in">` +
-		`<input name="value" required maxlength="300" placeholder="London" class="mem-in mem-in-wide">` +
-		`<button type="submit">Remember</button></form>`)
+		`<span class="mem-word">Remember that my</span>` +
+		`<input name="key" required maxlength="40" placeholder="location" class="mem-in" aria-label="What to remember about you">` +
+		`<span class="mem-word">is</span>` +
+		`<input name="value" required maxlength="300" placeholder="London" class="mem-in mem-in-wide" aria-label="What it is">` +
+		`<button type="submit">Add</button></form>`)
 
 	if len(entries) > 0 {
 		b.WriteString(`<form method="POST" action="/account" style="margin:10px 0 0" ` +
@@ -84,6 +95,7 @@ const memoryCardCSS = `<style>
 .mem-val{font-size:14px;margin-top:2px}
 .mem-when{font-size:12px;color:var(--text-muted,#999);margin-top:3px}
 .mem-add{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0 0}
-.mem-in{padding:7px 10px;border:1px solid var(--border-color,#d1d5db);border-radius:6px;font-size:14px;font-family:inherit;flex:0 1 150px}
-.mem-in-wide{flex:1 1 240px}
+.mem-word{font-size:14px;color:var(--text-muted,#666);white-space:nowrap}
+.mem-in{padding:7px 10px;border:1px solid var(--border-color,#d1d5db);border-radius:6px;font-size:14px;font-family:inherit;flex:0 1 130px;min-width:0}
+.mem-in-wide{flex:1 1 200px}
 </style>`

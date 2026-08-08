@@ -35,25 +35,6 @@ func newsCard() string {
 	return news.Headlines()
 }
 
-func AgentCard() string {
-	return `<div id="home-agent">
-		<form id="home-agent-form" action="/agent" method="GET">
-			<div style="display:flex;gap:8px;">
-				<input type="text" name="prompt" placeholder="Tell the agent what to do..." required style="flex:1;padding:8px;font-family:inherit;font-size:14px;border:1px solid #ddd;border-radius:4px;">
-				<button type="submit" style="padding:8px 16px;font-family:inherit;font-size:14px;border:1px solid #ddd;border-radius:4px;cursor:pointer;">Do</button>
-			</div>
-			<div style="display:flex;gap:8px;margin-top:6px;align-items:center;">
-				<select name="model" style="padding:4px 8px;font-family:inherit;font-size:13px;border:1px solid #ddd;border-radius:4px;">
-					<option value="standard">Fast</option>
-					<option value="premium">Best</option>
-				</select>
-				<span style="flex:1;"></span>
-				` + agent.ToolsDropdownHTML() + `
-			</div>
-		</form>
-	</div>`
-}
-
 type Card struct {
 	ID          string
 	Title       string
@@ -106,21 +87,22 @@ func Load() {
 	//
 	// This was a map of names kept by hand next to the services it named, so a
 	// service could grow a card and never appear here, and a renamed one would
-	// silently render nothing. Agent, Chat and News stay written out: they are
-	// this package's own cards, not a service's view of itself.
+	// silently render nothing. News stays written out: it is this package's own
+	// card, not the service's view of itself.
 	cardFunctions := map[string]func() string{}
 	for _, sp := range service.Cards() {
 		cardFunctions[sp.Name] = sp.Card
 	}
-	// Set after the derived ones so they win. Agent is this package's own card,
-	// and news has two renderers — the service's headline list, and this one,
-	// built for the home screen.
+	// Set after the derived ones so they win: news has two renderers — the
+	// service's headline list, and this one, built for the home screen.
 	//
-	// Chat is no longer among them: its card was a second question box that
-	// posted to /chat, which meant home had two prompts, only one of which
-	// reached the agent. Chat's own Spec renders it now, as what is being
-	// discussed.
-	cardFunctions["agent"] = AgentCard
+	// Two cards used to be here and are not. Chat's was a second question box
+	// posting to /chat, so home had two prompts and only one reached the agent.
+	// Agent's was a whole second agent form — a prompt box, a Fast/Best model
+	// select /agent never read, and a hand-written dropdown still naming tools
+	// called Reminder, Topup and Code Run. It was from when the agent was a
+	// service with a card like any other; it is not, and cards.json had already
+	// stopped asking for it, so it rendered nowhere while it rotted.
 	cardFunctions["news"] = newsCard
 
 	// Build Cards array from config
@@ -447,10 +429,6 @@ function fetchW(la,lo){
 	// Date + invite/settings above the input
 	b.WriteString(dateHTML)
 
-	// What is yours and what is in flight, before the world's content — see
-	// home/system.go.
-	systemHTML := systemStrip(viewerAcc)
-
 	// Inline agent — Home answers here rather than navigating away, and it renders
 	// for everyone: logged out, this is the public face of the product. Signed-in
 	// users get personalised chips; guests get generic starters and the guest chat.
@@ -523,10 +501,11 @@ function fetchW(la,lo){
 		b.WriteString(`</div>`)
 	}
 
-	// Pinned apps — a quick-launch strip at the top, just below the suggestion
-	// chips. Selected in the preferences panel; opens the app on click.
-	// Ask first, then what is yours, then the world's content.
-	b.WriteString(systemHTML)
+	// No counts strip. Four tiles reading Agents 0, Unread 0, Apps 0, Credits
+	// 100 is a dashboard of numbers rather than a thing you can act on, and
+	// every one of them duplicates a sidebar row that is already one click
+	// away. What actually belongs above the world's content is what your agents
+	// did — which is the next block, and which says something a count cannot.
 
 	// What your agents actually did. docs/PRODUCT.md puts this third on the
 	// console — after what is in flight and what is waiting — and called it the

@@ -835,34 +835,6 @@ func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts Query
 	return true
 }
 
-// ToolsDropdownHTML returns an inline clickable dropdown listing the agent's available tools.
-func ToolsDropdownHTML() string {
-	return `<details class="agent-tools-dropdown" style="display:inline-block;position:relative;">
-<summary style="cursor:pointer;padding:4px 8px;font-family:inherit;font-size:13px;border:1px solid #ddd;border-radius:4px;list-style:none;user-select:none;">Tools ▾</summary>
-<div style="position:absolute;right:0;top:100%;margin-top:4px;background:#fff;border:1px solid #ddd;border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,0.1);padding:8px 0;z-index:100;min-width:220px;font-size:13px;">
-<div style="padding:4px 12px;color:#555;font-weight:600;border-bottom:1px solid #eee;margin-bottom:4px;">Available Tools</div>
-<div style="padding:3px 12px;">📰 News</div>
-<div style="padding:3px 12px;">News Search</div>
-<div style="padding:3px 12px;">🌐 Web Search</div>
-<div style="padding:3px 12px;">Web Fetch</div>
-<div style="padding:3px 12px;">🎬 Video Search</div>
-<div style="padding:3px 12px;">📈 Markets</div>
-<div style="padding:3px 12px;">🌤 Weather</div>
-<div style="padding:3px 12px;">📍 Places Search</div>
-<div style="padding:3px 12px;">📍 Places Nearby</div>
-<div style="padding:3px 12px;">🕌 Reminder</div>
-<div style="padding:3px 12px;">🔎 Search</div>
-<div style="padding:3px 12px;">📝 Blog</div>
-<div style="padding:3px 12px;">💰 Wallet</div>
-<div style="padding:3px 12px;">💳 Topup</div>
-<div style="padding:3px 12px;">📱 Apps Search</div>
-<div style="padding:3px 12px;">📱 Apps Read</div>
-<div style="padding:3px 12px;">🔨 Apps Build</div>
-<div style="padding:3px 12px;">⚡ Code Run</div>
-</div>
-</details>`
-}
-
 // agentToolsDesc is the tool catalogue shown to the AI planner.
 const agentToolsDesc = `Available tools (use exact name):
 - news_headlines: Get recent news headlines + short summaries balanced across ALL topics (args optional: {"topic":"tech","limit":30}). PREFER this for general news, "what's happening" and morning-briefing requests so coverage isn't dominated by one topic like crypto. Then use news_read for any article worth expanding.
