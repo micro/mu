@@ -98,9 +98,12 @@ func ContextHandler(w http.ResponseWriter, r *http.Request) {
 		`automatically — they go in only when you turn on live context above the input, because ` +
 		`context costs tokens on every turn and most questions have nothing to do with them.</p>`)
 	watched := watchedCardTitles(acc)
+	// Both links point at the thing, not at where its setting is stored. The
+	// cards live on home and the picker is on home; /account merely also has a
+	// copy of the checkboxes, which is a reason to go there for nothing.
 	if len(watched) == 0 {
 		b.WriteString(`<p class="ctx-empty">No cards chosen, so the default set is shown. ` +
-			app.Link("Pick what to watch", "/account") + `</p>`)
+			app.Link("Pick what to watch", "/home?cards=1") + `</p>`)
 	} else {
 		b.WriteString(`<div class="ctx-chips">`)
 		for _, t := range watched {
@@ -108,20 +111,25 @@ func ContextHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		b.WriteString(`</div>`)
 		b.WriteString(`<p class="ctx-sub" style="margin-top:8px">` +
-			app.Link("Change what you watch", "/account") + `</p>`)
+			app.Link("Change what you watch", "/home?cards=1") + `</p>`)
 	}
 
 	// ── What it can look up ─────────────────────────────────────
 	//
 	// Linked rather than listed. Naming a curated handful here would be a
-	// second list of services to keep in step with the real one, and the
-	// boundary it implies is not real: mail is something an agent looks up and
-	// also something you open and read yourself.
+	// second list to keep in step with the real one, and the boundary it
+	// implies is not real: mail is something an agent looks up and also
+	// something you open and read yourself.
+	//
+	// It points at Tools, not Services. Looking something up is a call, and a
+	// call is a tool; Services is the same capabilities seen from the other
+	// side, as things this instance runs and you can open. Sending someone to
+	// the back end to find out what their agent can fetch is one hop wrong.
 	b.WriteString(`<h3 class="ctx-head">What it can look up</h3>`)
 	b.WriteString(`<p class="ctx-sub">Everything an agent may reach it fetches when a question ` +
 		`needs it, not before — your mail, your records, your files, the news, the web. What any ` +
 		`one agent may reach is the scope you gave it. ` +
-		app.Link("See the services", "/services") + `</p>`)
+		app.Link("See every tool", "/tools") + `</p>`)
 
 	b.WriteString(`</div>` + contextCSS)
 	w.Write([]byte(app.RenderHTMLForRequest("Context",

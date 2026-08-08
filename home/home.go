@@ -616,7 +616,13 @@ function fetchW(la,lo){
 			}
 		}
 
-		b.WriteString(fmt.Sprintf(`<div id="home-card-prefs" style="display:none;padding:12px 16px;margin-bottom:12px;background:#f9f9f9;border-radius:8px;border:1px solid #eee">
+		// ?cards=1 lands with the picker already open, so a link from elsewhere
+		// can point at the thing rather than at the page it happens to sit on.
+		prefsDisplay := "none"
+		if r.URL.Query().Get("cards") != "" {
+			prefsDisplay = "block"
+		}
+		b.WriteString(fmt.Sprintf(`<div id="home-card-prefs" style="display:%s;padding:12px 16px;margin-bottom:12px;background:#f9f9f9;border-radius:8px;border:1px solid #eee">
 <p style="font-weight:600;font-size:14px;margin:0 0 4px">Customise home screen</p>
 <p style="font-size:12px;color:#999;margin:0 0 8px">Choose what your agent keeps an eye on.</p>
 <div id="card-checkboxes">%s</div>
@@ -625,7 +631,7 @@ function fetchW(la,lo){
 .card-pref input{width:18px;height:18px}
 .card-pref.dragging{opacity:.4}
 .card-grip{color:#bbb;font-size:13px;cursor:grab;user-select:none}
-</style>`, checkboxes))
+</style>`, prefsDisplay, checkboxes))
 		if widgetCheckboxes != "" {
 			b.WriteString(fmt.Sprintf(`<p style="font-weight:600;font-size:13px;margin:10px 0 4px">Apps</p>
 <p style="font-size:12px;color:#999;margin:0 0 6px">Pin apps to the top of your home screen.</p>
