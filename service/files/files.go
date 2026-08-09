@@ -31,6 +31,7 @@ import (
 	"strings"
 	"time"
 
+	"mu/internal/app"
 	"mu/internal/blob"
 	"mu/internal/userdb"
 )
@@ -285,4 +286,21 @@ func human(n int) string {
 		return fmt.Sprintf("%.0f KB", float64(n)/(1<<10))
 	}
 	return fmt.Sprintf("%d bytes", n)
+}
+
+// DeleteAll removes everything files holds for an owner.
+//
+// Called when the account is deleted (internal/server/hooks.go). Without it
+// the records outlived the account that made them: there was no way to ask
+// this store for everything one owner had, so the deletion hooks had nothing
+// to call and their uploaded files was simply left behind.
+func DeleteAll(owner string) {
+	if owner == "" {
+		return
+	}
+	if n, err := userdb.DeleteOwner(ns, owner); err != nil {
+		app.Log("files", "deleting %s's records: %v", owner, err)
+	} else if n > 0 {
+		app.Log("files", "deleted %d records for %s", n, owner)
+	}
 }

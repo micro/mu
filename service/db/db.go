@@ -202,3 +202,20 @@ var Spec = service.Spec{
 		"Delete": {Doc: "Delete a record you own, by id", Destructive: false},
 	},
 }
+
+// DeleteAll removes everything db holds for an owner.
+//
+// Called when the account is deleted (internal/server/hooks.go). Without it
+// the records outlived the account that made them: there was no way to ask
+// this store for everything one owner had, so the deletion hooks had nothing
+// to call and their own records was simply left behind.
+func DeleteAll(owner string) {
+	if owner == "" {
+		return
+	}
+	if n, err := userdb.DeleteOwner(namespace, owner); err != nil {
+		app.Log("db", "deleting %s's records: %v", owner, err)
+	} else if n > 0 {
+		app.Log("db", "deleted %d records for %s", n, owner)
+	}
+}

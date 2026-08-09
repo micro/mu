@@ -16,6 +16,7 @@ import (
 	"sort"
 	"strings"
 
+	"mu/internal/app"
 	"mu/internal/userdb"
 )
 
@@ -197,4 +198,21 @@ func Render(cs []*Contact) string {
 		fmt.Fprintf(&b, " [id: %s]\n", c.ID)
 	}
 	return strings.TrimSpace(b.String())
+}
+
+// DeleteAll removes everything contacts holds for an owner.
+//
+// Called when the account is deleted (internal/server/hooks.go). Without it
+// the records outlived the account that made them: there was no way to ask
+// this store for everything one owner had, so the deletion hooks had nothing
+// to call and their address book was simply left behind.
+func DeleteAll(owner string) {
+	if owner == "" {
+		return
+	}
+	if n, err := userdb.DeleteOwner(ns, owner); err != nil {
+		app.Log("contacts", "deleting %s's records: %v", owner, err)
+	} else if n > 0 {
+		app.Log("contacts", "deleted %d records for %s", n, owner)
+	}
 }

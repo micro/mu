@@ -38,7 +38,10 @@ import (
 	"mu/service/apps"
 	"mu/service/blog"
 	"mu/service/contacts"
+	"mu/service/db"
 	"mu/service/events"
+	"mu/service/files"
+	"mu/service/images"
 	"mu/service/mail"
 	"mu/service/markets"
 	"mu/service/news"
@@ -536,6 +539,19 @@ func wireHooks() {
 		func(id string) { whatsapp.DeleteLinks(id) },
 		func(id string) { app.ClearUserPrefs(id) },
 		memory.Clear,
+
+		// Everything the caller stored themselves. These six were missing, so
+		// deleting an account left behind its files, address book, calendar,
+		// tasks, records and generated images — all of them account-scoped, all
+		// of them still on disk under an owner who no longer existed. Nothing
+		// noticed because nothing could ask: userdb had no delete-by-owner, so
+		// there was no function for a hook to call.
+		files.DeleteAll,
+		contacts.DeleteAll,
+		tasks.DeleteAll,
+		events.DeleteAll,
+		images.DeleteAll,
+		db.DeleteAll,
 	)
 
 	// Enable indexing after all content is loaded

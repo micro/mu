@@ -440,3 +440,59 @@ type Collection struct {
 	Records int       `json:"records"`
 	Updated time.Time `json:"updated"`
 }
+
+// DeleteOwner removes every record an owner has in a namespace, across all
+// collections, and reports how many went.
+//
+// Deleting an account has to delete what the account stored. Every service
+// built on this store — files, contacts, tasks, events, images, db — kept its
+// records after its owner was gone, because there was no way to ask for them
+// all: Delete takes one id, and the account-deletion hooks in
+// internal/server/hooks.go had nothing to call. Somebody's address book and
+// uploaded files outlived their account.
+//
+// Unlike Delete, this takes no caller to authorise against. It is not a caller
+// operation: it runs from account deletion, where the account is already gone
+// and there is nobody left to check against. Its safety comes from being
+// owner-exact — it never touches a record belonging to anyone else.
+func DeleteOwner(ns, owner string) (int, error) {
+	if owner == "" {
+		return 0, ErrAuth
+	}
+	if !safeSegment.MatchString(ns) || strings.Contains(ns, "..") {
+		return 0, ErrBadNamespace
+	}
+
+	names, err := data.ListKeys(ns + "/db")
+	if err != nil {
+		return 0, err
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	removed := 0
+	for _, name := range names {
+		name = strings.TrimSuffix(name, ".json")
+		if !collectionRe.MatchString(name) {
+			continue
+		}
+		k, err := key(ns, name)
+		if err != nil {
+			continue
+		}
+		recs := load(k)
+		kept := make([]Record, 0, len(recs))
+		for _, rec := range recs {
+			if rec.Owner == owner {
+				removed++
+				continue
+			}
+			kept = append(kept, rec)
+		}
+		if len(kept) != len(recs) {
+			data.SaveJSON(k, kept)
+		}
+	}
+	return removed, nil
+}

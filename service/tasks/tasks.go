@@ -23,6 +23,7 @@ import (
 	"strings"
 	"time"
 
+	"mu/internal/app"
 	"mu/internal/userdb"
 )
 
@@ -346,4 +347,21 @@ func StepDetail(args map[string]any) string {
 		}
 	}
 	return ""
+}
+
+// DeleteAll removes everything tasks holds for an owner.
+//
+// Called when the account is deleted (internal/server/hooks.go). Without it
+// the records outlived the account that made them: there was no way to ask
+// this store for everything one owner had, so the deletion hooks had nothing
+// to call and their task list was simply left behind.
+func DeleteAll(owner string) {
+	if owner == "" {
+		return
+	}
+	if n, err := userdb.DeleteOwner(ns, owner); err != nil {
+		app.Log("tasks", "deleting %s's records: %v", owner, err)
+	} else if n > 0 {
+		app.Log("tasks", "deleted %d records for %s", n, owner)
+	}
 }

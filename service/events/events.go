@@ -268,3 +268,28 @@ func Remove(owner, id string) error {
 	saveLocked()
 	return nil
 }
+
+// DeleteAll removes every event an owner has scheduled.
+//
+// Called when the account is deleted (internal/server/hooks.go). Events lived
+// on after their owner: the scheduler would keep firing a standing instruction
+// for an account that no longer exists, and a deleted person's calendar stayed
+// on disk.
+func DeleteAll(owner string) {
+	if owner == "" {
+		return
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	removed := 0
+	for id, e := range events {
+		if e != nil && e.Owner == owner {
+			delete(events, id)
+			removed++
+		}
+	}
+	if removed > 0 {
+		saveLocked()
+		app.Log("events", "deleted %d events for %s", removed, owner)
+	}
+}
