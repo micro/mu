@@ -2709,9 +2709,6 @@ func chargedWriteOp(r *http.Request) string {
 	}
 	path := r.URL.Path
 	switch {
-	// Status updates
-	case path == "/user/status":
-		return wallet.OpSocialPost
 	// Social threads and replies
 	case path == "/social":
 		return wallet.OpSocialPost

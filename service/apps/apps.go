@@ -384,7 +384,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 // with this one.
 //
 // It posts to /account because that is where the account is written; `return`
-// carries the page back. See app.prefsReturnTo.
+// carries the page back. See app.ReturnTo.
 // The star and the .pin-btn class are the ones /services uses to pin a service
 // to the sidebar. Same gesture, same meaning, so it has to be the same control
 // — two pins that look different are two features to a reader.

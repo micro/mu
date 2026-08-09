@@ -1064,18 +1064,18 @@ func safeRedirect(r *http.Request) string {
 	return to
 }
 
-// prefsReturnTo is where to send someone after they save a preference that is
-// edited from somewhere other than /account.
+// ReturnTo is where to send someone after a control that writes the account is
+// used from a page other than the one that owns the write.
 //
 // The card picker is on /context and pinning is on /apps, but both post here,
 // because this is where the account is written. Sending them to /account
 // afterwards would answer a click on /context by navigating away from the
 // thing they were looking at. The form says where it was; the guard is
 // safeRedirect's, since a `return` field is as forgeable as a query parameter.
-func prefsReturnTo(r *http.Request) string {
+func ReturnTo(r *http.Request, fallback string) string {
 	to := r.Form.Get("return")
 	if to == "" || to[0] != '/' || strings.HasPrefix(to, "//") {
-		return "/account"
+		return fallback
 	}
 	return to
 }
@@ -1153,19 +1153,19 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		if slug := r.Form.Get("pin"); slug != "" {
 			acc.Widgets = addWidget(acc.Widgets, slug)
 			auth.UpdateAccount(acc)
-			http.Redirect(w, r, prefsReturnTo(r), http.StatusSeeOther)
+			http.Redirect(w, r, ReturnTo(r, "/account"), http.StatusSeeOther)
 			return
 		}
 		if slug := r.Form.Get("unpin"); slug != "" {
 			acc.Widgets = removeWidget(acc.Widgets, slug)
 			auth.UpdateAccount(acc)
-			http.Redirect(w, r, prefsReturnTo(r), http.StatusSeeOther)
+			http.Redirect(w, r, ReturnTo(r, "/account"), http.StatusSeeOther)
 			return
 		}
 		if r.Form.Get("save_widgets") != "" {
 			acc.Widgets = r.Form["widgets"]
 			auth.UpdateAccount(acc)
-			http.Redirect(w, r, prefsReturnTo(r), http.StatusSeeOther)
+			http.Redirect(w, r, ReturnTo(r, "/account"), http.StatusSeeOther)
 			return
 		}
 

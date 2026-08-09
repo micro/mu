@@ -48,7 +48,7 @@ func TestSavingAPreferenceReturnsToThePageItWasEditedOn(t *testing.T) {
 		r := httptest.NewRequest("POST", "/account", strings.NewReader(url.Values{"return": {v}}.Encode()))
 		r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		r.ParseForm()
-		return prefsReturnTo(r)
+		return ReturnTo(r, "/account")
 	}
 
 	if got := returnTo("/home"); got != "/home" {

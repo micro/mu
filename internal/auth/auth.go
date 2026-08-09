@@ -968,6 +968,42 @@ func (a *Account) SetPinned(names []string) {
 	a.Pinned = out
 }
 
+// Pin and Unpin say which they mean.
+//
+// The only control used to be TogglePin, so the request carried "flip this"
+// rather than "make it pinned". Two tabs showing the same page then disagreed:
+// pin from one, pin from the other, and the second flip unpins what the first
+// just pinned — the reader pressed pin twice and ended with it off. Naming the
+// outcome makes the request idempotent, which is what a control that can be
+// pressed from two places has to be.
+func (a *Account) Pin(name string) {
+	name = strings.ToLower(strings.TrimSpace(name))
+	if name == "" {
+		return
+	}
+	for _, p := range a.PinnedServices() {
+		if p == name {
+			return
+		}
+	}
+	a.SetPinned(append(a.PinnedServices(), name))
+}
+
+func (a *Account) Unpin(name string) {
+	name = strings.ToLower(strings.TrimSpace(name))
+	if name == "" {
+		return
+	}
+	cur := a.PinnedServices()
+	out := make([]string, 0, len(cur))
+	for _, p := range cur {
+		if p != name {
+			out = append(out, p)
+		}
+	}
+	a.SetPinned(out)
+}
+
 // TogglePin adds a service if absent, removes it if present, and reports
 // whether it is pinned afterwards.
 func (a *Account) TogglePin(name string) bool {

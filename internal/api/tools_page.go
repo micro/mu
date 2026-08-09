@@ -3,6 +3,7 @@ package api
 import (
 	"html"
 	"net/http"
+	"net/url"
 	"sort"
 	"strconv"
 	"strings"
@@ -87,17 +88,31 @@ func ToolsPageHandler(w http.ResponseWriter, r *http.Request) {
 // togglePin adds or removes a service from the caller's sidebar and returns
 // them to where they were. Signed-out callers are sent to sign in: a pin is a
 // preference and there is nowhere to keep one without an account.
+//
+// Two things it used to get wrong. It sent everyone to /services however they
+// arrived, so pinning from /tools?view=services moved you to a different URL
+// mid-task. And it posted one field meaning "flip this", so two tabs on the
+// same page disagreed: pin from each and the second flip undoes the first, and
+// you have pressed pin twice and ended with it off. It says which it means now,
+// and comes back to the page you pressed it on.
 func togglePin(w http.ResponseWriter, r *http.Request) {
-	if _, acc, err := auth.RequireSession(r); err == nil && acc != nil {
-		name := strings.ToLower(strings.TrimSpace(r.FormValue("pin")))
-		if _, ok := service.SpecFor(name); ok {
-			acc.TogglePin(name)
-			auth.UpdateAccount(acc)
-		}
-		http.Redirect(w, r, "/services", http.StatusSeeOther)
+	_, acc, err := auth.RequireSession(r)
+	if err != nil || acc == nil {
+		http.Redirect(w, r, "/login?redirect="+url.QueryEscape(app.ReturnTo(r, "/services")),
+			http.StatusSeeOther)
 		return
 	}
-	http.Redirect(w, r, "/login?redirect=/services", http.StatusSeeOther)
+	pin, unpin := r.FormValue("pin"), r.FormValue("unpin")
+	name := strings.ToLower(strings.TrimSpace(pin + unpin))
+	if _, ok := service.SpecFor(name); ok {
+		if unpin != "" {
+			acc.Unpin(name)
+		} else {
+			acc.Pin(name)
+		}
+		auth.UpdateAccount(acc)
+	}
+	http.Redirect(w, r, app.ReturnTo(r, "/services"), http.StatusSeeOther)
 }
 
 // pinControl is the star on a tile. It sits outside the tile's anchor because
@@ -107,13 +122,14 @@ func pinControl(r *http.Request, name string, pinned bool) string {
 	if _, acc := auth.TrySession(r); acc == nil {
 		return ""
 	}
-	label, cls := "Pin to sidebar", "pin-btn"
+	label, cls, field := "Pin to sidebar", "pin-btn", "pin"
 	if pinned {
-		label, cls = "Unpin from sidebar", "pin-btn pinned"
+		label, cls, field = "Unpin from sidebar", "pin-btn pinned", "unpin"
 	}
 	return `<form method="POST" action="/services" class="pin-form">` +
 		`<input type="hidden" name="_csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `">` +
-		`<input type="hidden" name="pin" value="` + html.EscapeString(name) + `">` +
+		`<input type="hidden" name="return" value="` + html.EscapeString(r.URL.RequestURI()) + `">` +
+		`<input type="hidden" name="` + field + `" value="` + html.EscapeString(name) + `">` +
 		`<button type="submit" class="` + cls + `" title="` + label + `" aria-label="` + label + `">` +
 		`<svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" ` +
 		`stroke-linejoin="round"><polygon points="12,3 14.6,9 21,9.5 16.2,13.8 17.6,20 12,16.8 6.4,20 7.8,13.8 3,9.5 9.4,9"/></svg>` +

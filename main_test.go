@@ -38,7 +38,9 @@ func TestChargedWriteOp(t *testing.T) {
 		want   string
 	}{
 		{name: "reads are free", method: "GET", path: "/social", want: ""},
-		{name: "status post", method: "POST", path: "/user/status", want: wallet.OpSocialPost},
+		// /user/status went with statuses. A charge for a route that no longer
+		// exists is a line nobody can reach and a price nobody can be quoted.
+		{name: "a route that is gone", method: "POST", path: "/user/status", want: ""},
 		{name: "social thread", method: "POST", path: "/social", want: wallet.OpSocialPost},
 		{name: "social reply", method: "POST", path: "/social/thread", want: wallet.OpSocialReply},
 		{name: "new blog post", method: "POST", path: "/blog", want: wallet.OpBlogCreate},
