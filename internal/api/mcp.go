@@ -443,10 +443,18 @@ var tools = []Tool{
 	},
 	{
 		Name:        "video_search",
-		Description: "Search videos from the channels this instance curates, by keyword. Returns titles, channels and links. A curated set rather than all of YouTube, so a miss means it is not followed here, not that it does not exist.",
+		Description: "Search videos from the channels this instance curates, by keyword. Returns titles, channels and links. A curated set rather than all of YouTube, so a miss means it is not followed here, not that it does not exist. Needs an account.",
 		Method:      "POST",
 		Path:        "/video",
 		WalletOp:    wallet.OpVideoSearch,
+		// Priced at zero but not open: the YouTube quota is 10,000 units a day
+		// across everyone and a search costs 100, so this is rationed by
+		// videoSearchLimit per account. There is nothing to ration an
+		// anonymous caller by. Saying so here refuses them at the MCP layer
+		// with a 401 pointing at sign-in, rather than letting them through to
+		// a handler refusal — or, before this, offering them a payment that
+		// would not have unlocked anything.
+		AccountOnly: true,
 		Params: []ToolParam{
 			{Name: "query", Type: "string", Description: "Video search query", Required: true},
 		},

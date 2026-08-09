@@ -18,6 +18,26 @@ import (
 	"testing"
 )
 
+// Free and open are different questions.
+//
+// web_fetch and video_search cost nothing and are still not for strangers:
+// fetching any URL a caller names is a request this server makes on their
+// behalf, and the YouTube quota is a shared 10,000 units a day. Both are
+// rationed per account, and an anonymous caller cannot be rationed. They are
+// marked AccountOnly, which refuses them at the MCP layer with a 401 rather
+// than offering a payment that would unlock nothing — the price was never what
+// was standing in the way.
+//
+// So "priced at zero" must not be read as "open", anywhere.
+func TestFreeDoesNotMeanOpen(t *testing.T) {
+	for _, gated := range []string{OpWebFetch, OpVideoSearch} {
+		if Metered(gated) {
+			t.Errorf("%s is metered, so an anonymous caller is asked to pay for "+
+				"something paying does not unlock", gated)
+		}
+	}
+}
+
 func TestAFreeOperationIsNotMetered(t *testing.T) {
 	for _, free := range []string{OpNewsSearch, OpWebFetch, OpQuranSearch} {
 		if GetOperationCost(free) != 0 {

@@ -67,3 +67,35 @@ func TestTheVerifyBannerStaysOffTheWalletPages(t *testing.T) {
 			"tells someone moving their own credit that they cannot post")
 	}
 }
+
+// Free and open are different questions, and the tools that are one but not
+// the other have to say so where a client can see it.
+//
+// web_fetch makes a request to any URL a caller names, on this server's behalf.
+// video_search spends a YouTube quota shared across everyone. Both cost us
+// nothing, so the price gate lets them through — and both were then refused one
+// layer later by their own handler, having been advertised as available. They
+// are marked AccountOnly so the refusal happens at the MCP layer, as a 401
+// pointing at sign-in.
+func TestFreeButAccountableToolsSaySoAtTheMCPLayer(t *testing.T) {
+	for _, c := range []struct{ file, tool string }{
+		{"../internal/api/mcp.go", "video_search"},
+		{"../main.go", "web_fetch"},
+	} {
+		src, err := os.ReadFile(c.file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		i := strings.Index(string(src), `Name:        "`+c.tool+`"`)
+		if i < 0 {
+			t.Fatalf("%s is no longer registered in %s", c.tool, c.file)
+		}
+		// The flag has to be inside this tool's own block, not somewhere else
+		// in the file.
+		block := string(src)[i:min(i+1400, len(string(src)))]
+		if !strings.Contains(block, "AccountOnly: true") {
+			t.Errorf("%s is offered to anonymous callers and then refused by its "+
+				"own handler one layer later", c.tool)
+		}
+	}
+}

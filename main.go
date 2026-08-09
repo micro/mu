@@ -1167,10 +1167,18 @@ func main() {
 	api.RegisterTool(api.Tool{
 		Name:        "web_fetch",
 		Aliases:     []string{"search_fetch"},
-		Description: "Fetch a web page and return its cleaned readable content (strips ads, popups, navigation)",
+		Description: "Fetch a web page and return its cleaned readable content (strips ads, popups, navigation). Needs an account.",
 		Method:      "GET",
 		Path:        "/web/fetch",
 		WalletOp:    wallet.OpWebFetch,
+		// Costs us nothing — it is an http.Get and a readability pass in this
+		// process — but "fetch any URL you name" pointed at an anonymous
+		// caller is a request this server makes on their behalf, to wherever
+		// they say. That wants somebody accountable behind it, which is a
+		// different question from what it costs. Its handler already required
+		// an account; this says so at the MCP layer instead of advertising the
+		// tool and refusing it one call later.
+		AccountOnly: true,
 		Params: []api.ToolParam{
 			{Name: "url", Type: "string", Description: "The URL to fetch", Required: true},
 		},
