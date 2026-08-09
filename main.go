@@ -700,6 +700,10 @@ func main() {
 	// Wire guest agent news search directly to the live feed-backed provider path.
 	api.GuestNewsSearch = news.SearchToolText
 
+	// What a tool costs, so api.PolicyFor can answer for the whole registry in
+	// one place. See internal/api/policy.go for why that matters.
+	api.PriceOf = wallet.GetOperationCost
+
 	// Wire MCP quota checking using wallet credit system
 	api.QuotaCheck = func(r *http.Request, op string) (bool, int, error) {
 		// Nothing to charge, nobody to charge it to. A free tool has no

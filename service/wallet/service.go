@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"mu/internal/app"
+	"mu/internal/auth"
 	"mu/internal/service"
 )
 
@@ -41,10 +42,23 @@ func (Credits) Check(ctx context.Context, req *CheckRequest, rsp *CheckResponse)
 	if req.Operation == "" {
 		return fmt.Errorf("operation is required")
 	}
-	ok, _, cost, err := CheckQuota(who, req.Operation)
-	if err != nil {
-		return err
+	// "No" is an answer, not a failure.
+	//
+	// CheckQuota returns an error when the caller cannot afford the operation,
+	// which is the right shape for a gate about to refuse a call and the wrong
+	// one here: this tool exists to be asked *before* spending, and returning
+	// that error made it fail with "this costs 2 credits and your balance is
+	// 0". So the one caller who most needs to know a price — somebody with no
+	// credits, deciding whether to top up — was the one caller who could not
+	// ask. Affordability is what the answer is about; it cannot also be the
+	// reason there is no answer.
+	// The account has to exist; that is the only genuine failure here. Both of
+	// CheckQuota's error cases return false, so they cannot be told apart by
+	// its result — ask the question this one is about separately.
+	if _, err := auth.GetAccount(who); err != nil {
+		return fmt.Errorf("account not found")
 	}
+	ok, _, cost, _ := CheckQuota(who, req.Operation)
 	// Two different questions, and one number was answering both.
 	//
 	// Cost is what this caller pays, which CheckQuota returns as zero for an
