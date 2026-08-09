@@ -92,6 +92,11 @@ func AgentsHandler(w http.ResponseWriter, r *http.Request) {
 		Description string   `json:"description"`
 		Prompt      string   `json:"prompt,omitempty"`
 		Tools       []string `json:"tools,omitempty"`
+
+		// Where it runs. The management list wants every agent; the chat
+		// picker wants only the ones that can actually answer here, and could
+		// not tell them apart without this.
+		Kind string `json:"kind,omitempty"`
 	}
 	// One list, one store. This used to read agent/micro's own store while
 	// /agents wrote to the roster, so "my agents" depended on which page you
@@ -104,7 +109,8 @@ func AgentsHandler(w http.ResponseWriter, r *http.Request) {
 		// wrong here, where this becomes a tooltip and a subtitle. A nine-line
 		// prompt rendered as an agent's one-line description is not a
 		// description, it is the whole agent spilled onto the list.
-		mine = append(mine, lite{m.ID, m.Name, firstLine(a.Description, m.Description), m.SystemPrompt, m.Tools})
+		mine = append(mine, lite{m.ID, m.Name, firstLine(a.Description, m.Description),
+			m.SystemPrompt, m.Tools, a.Kind})
 	}
 	_ = json.NewEncoder(w).Encode(map[string]any{"agents": mine, "tools": AllAgentTools()})
 }
@@ -232,6 +238,13 @@ function muAgentPick(id){
   if(window.location.pathname+window.location.search===to){return;}
   window.location=to;
 }
+// An agent that runs elsewhere cannot be talked to here: it is a credential and
+// a scope for something that calls in, and nothing on this side can hand it a
+// question. Clicking one opens how to reach it, which is what /agents does too.
+function muAgentOpen(id,external){
+  if(external){window.location='/agent/connect?id='+encodeURIComponent(id);return;}
+  muAgentPick(id);
+}
 // Set the active agent from the server (session reopen / deep link) and persist
 // it; the list highlight + chip refresh once the agents finish loading.
 window.muSeedAgent=function(id){window.muActiveAgent=id||'';try{sessionStorage.setItem(MUAKEY,window.muActiveAgent);}catch(e){}document.querySelectorAll('#agents-list>div').forEach(function(d){d.classList.toggle('on',d.getAttribute('data-id')===window.muActiveAgent);});muAgentChip();};
@@ -244,8 +257,8 @@ function muAgentsLoad(){
   fetch('/agents/data',{headers:{'Accept':'application/json'}}).then(function(r){return r.json();}).then(function(d){
     var list=document.getElementById('agents-list');if(!list)return;
     var h='<div class="'+(window.muActiveAgent?'':'on')+'" data-id="" onclick="muAgentPick(\'\')">Micro <span class="agents-def">default</span></div>';
-    (d.agents||[]).forEach(function(a){var id=muAgentEsc(a.id);
-      h+='<div class="'+(window.muActiveAgent===a.id?'on':'')+'" data-id="'+id+'" onclick="muAgentPick(\''+id+'\')" title="'+muAgentEsc(a.description||'')+'"><span>'+muAgentEsc(a.name)+'</span><span class="agents-actions"><a title="Edit" href="/agent/new?id='+id+'" onclick="event.stopPropagation()">✎</a><a title="Fork" href="/agent/new?fork='+id+'" onclick="event.stopPropagation()">⑂</a><button type="button" title="Delete" onclick="muAgentDelete(\''+id+'\',event)">✕</button></span></div>';
+    (d.agents||[]).forEach(function(a){var id=muAgentEsc(a.id);var ext=a.kind==='external';
+      h+='<div class="'+(window.muActiveAgent===a.id?'on':'')+'" data-id="'+id+'" onclick="muAgentOpen(\''+id+'\','+(ext?'true':'false')+')" title="'+muAgentEsc(a.description||(ext?'Runs elsewhere — opens how to reach it':''))+'"><span>'+muAgentEsc(a.name)+'</span>'+(ext?'<span class="agents-def">elsewhere</span>':'')+'<span class="agents-actions"><a title="Edit" href="/agent/new?id='+id+'" onclick="event.stopPropagation()">✎</a><a title="Fork" href="/agent/new?fork='+id+'" onclick="event.stopPropagation()">⑂</a><button type="button" title="Delete" onclick="muAgentDelete(\''+id+'\',event)">✕</button></span></div>';
     });
     list.innerHTML=h;
     muAgentChip();
