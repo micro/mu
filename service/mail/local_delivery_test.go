@@ -14,6 +14,8 @@ package mail
 
 import (
 	"os"
+	"regexp"
+	"strings"
 	"testing"
 )
 
@@ -59,6 +61,29 @@ func TestALocalAddressResolvesToItsAccount(t *testing.T) {
 	} {
 		if got := LocalRecipient(c.in); got != c.want {
 			t.Errorf("LocalRecipient(%q) = %q, want %q", c.in, got, c.want)
+		}
+	}
+}
+
+// Every send path resolves the recipient, not just the one that got fixed.
+//
+// There are two: a form post from the page, and a JSON body from mail_send.
+// LocalRecipient went into the form path only, the unit tests above passed,
+// and the tool the bug was reported against still answered "recipient not
+// found" — because auth.GetAccount takes a username and the caller had been
+// handed an address. A resolver helps nobody on the paths that skip it.
+func TestNoSendPathLooksUpARecipientWithoutResolvingItFirst(t *testing.T) {
+	src, err := os.ReadFile("mail.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw := regexp.MustCompile(`auth\.GetAccount\((?:to|req\.To|recipient)\)`)
+	for i, line := range strings.Split(string(src), "\n") {
+		if raw.MatchString(line) {
+			t.Errorf("mail.go:%d resolves a recipient with the raw address — "+
+				"a caller writing to the address mail_address gave them gets "+
+				"\"recipient not found\". Wrap it in LocalRecipient:\n\t%s",
+				i+1, strings.TrimSpace(line))
 		}
 	}
 }

@@ -375,7 +375,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 						return
 					}
 				}
-				toAcc, err := auth.GetAccount(to)
+				// The address the product handed out, in the form it handed it
+				// out in. mail_address returns asim@micro.mu; GetAccount takes a
+				// username, so writing to what you were told to write to came
+				// back "recipient not found".
+				toAcc, err := auth.GetAccount(LocalRecipient(to))
 				if err != nil {
 					app.RespondError(w, http.StatusNotFound, "recipient not found")
 					return
