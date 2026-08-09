@@ -184,10 +184,6 @@ type Tool struct {
 // Set by main.go to wire in auth + wallet packages without import cycles.
 var QuotaCheck func(r *http.Request, op string) (bool, int, error)
 
-// PaymentRequiredResponse is called when quota check fails to build x402 payment
-// requirements. Returns nil if x402 is not enabled. Set by main.go.
-var PaymentRequiredResponse func(w http.ResponseWriter, op string, resource string)
-
 // GuestNewsSearch handles agent-initiated guest news_search calls without
 // routing through the authenticated HTML/API search endpoint. It is wired by
 // main.go to the news package so guest core-loop prompts can use the same live

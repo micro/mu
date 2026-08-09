@@ -702,6 +702,28 @@ func main() {
 
 	// Wire MCP quota checking using wallet credit system
 	api.QuotaCheck = func(r *http.Request, op string) (bool, int, error) {
+		// Nothing to charge, nobody to charge it to. A free tool has no
+		// business asking who is calling: news, web fetch, quran and video
+		// search are priced at zero because nothing bills us for them, and an
+		// anonymous caller was being turned away from all four with "this call
+		// is metered". It is not.
+		//
+		// This is the same mistake as the x402 gate in the HTTP layer, made
+		// independently here, which is why fixing that one alone left free
+		// tools unreachable. Both now ask what it costs before asking who you
+		// are.
+		if !wallet.Metered(op) {
+			// Open, not unguarded. Credits price what a call costs us and rate
+			// limits stop bots — see the cost block in wallet.go. A free call
+			// is charged nothing, so the limit is the only one of the two
+			// doing any work here, and it applies to guests because a
+			// signed-in caller is already accountable.
+			if _, err := auth.GetSession(r); err != nil && !app.GuestCallAllowed(app.ClientIP(r)) {
+				return false, 0, fmt.Errorf("too many free calls from this address — " +
+					"sign in at /token to keep going, or wait a few minutes")
+			}
+			return true, 0, nil
+		}
 		// Check for x402 payment (bypasses auth + credits).
 		// Free trial: first 10 calls per wallet address are free —
 		// no payment header needed if within the trial.
@@ -733,6 +755,11 @@ func main() {
 
 	// Wire agent quota checking (same wallet credit system)
 	agent.QuotaCheck = func(r *http.Request, op string) (bool, int, error) {
+		// Free is free here too — the third copy of this decision. See the
+		// note on api.QuotaCheck above.
+		if !wallet.Metered(op) {
+			return true, 0, nil
+		}
 		// Check for x402 payment (bypasses auth + credits)
 		if r.Context().Value(wallet.X402ContextKey) != nil {
 			_, err := wallet.VerifyAndSettle(r, op, r.URL.Path)
@@ -776,7 +803,6 @@ func main() {
 
 	// Wire x402 payment required response for MCP
 	if wallet.X402Enabled() {
-		api.PaymentRequiredResponse = wallet.WritePaymentRequired
 	}
 
 	// Wire email sending for verification mails. Uses the platform's own
@@ -2588,7 +2614,13 @@ func main() {
 				body, _ := io.ReadAll(io.LimitReader(r.Body, 1<<20))
 				r.Body.Close()
 				r.Body = io.NopCloser(bytes.NewReader(body))
-				if op := api.MCPWalletOp(body); op != "" {
+				// Metered, not merely priced. A tool having a wallet operation
+				// is not the same as it costing anything: news, web fetch,
+				// quran and video search are zero on purpose. Gating on "has an
+				// operation" charged an anonymous caller for all four, so the
+				// free tier was unreachable and an agent that found this
+				// endpoint mid-task met a demand for USDC on its first call.
+				if op := api.MCPWalletOp(body); op != "" && wallet.Metered(op) {
 					// The public origin, not r.Host: behind the proxy r.Host is
 					// the loopback port, and an x402 client checks this field
 					// against what it is calling.
@@ -2600,8 +2632,21 @@ func main() {
 						r = r.WithContext(ctx)
 						w = wallet.NewSettleWriter(w, holder)
 					} else if err := auth.ValidateToken(token); err != nil {
-						wallet.WritePaymentRequired(w, op, resource)
-						return
+						if wallet.WritePaymentRequired(w, op, resource) {
+							// Count the refusal. Calls are recorded inside the
+							// dispatcher, which this returns before reaching,
+							// so every call turned away at the door was absent
+							// from the usage figures — including the free ones
+							// this gate should never have been refusing. The
+							// number that would have shown the mistake could
+							// not see it.
+							usage.Record("mcp-refused", op, "guest")
+							return
+						}
+						// Nothing to charge: let it through rather than
+						// inventing a price. Belt and braces with Metered
+						// above, so neither check alone can paywall a free
+						// tool again.
 					}
 				}
 			}

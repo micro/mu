@@ -148,6 +148,7 @@ twenty-five rows here.
 | `VIDEO_SEARCH_PER_HOUR` | 20 | YouTube searches one account may run per hour |
 | `VIDEO_SEARCH_PER_DAY` | 80 | YouTube searches this instance may run per day, kept under the API's own quota |
 | `SIGNUP_MAX_PER_IP` · `SIGNUP_WINDOW_HOURS` | — | Signups allowed per IP, and the window |
+| `GUEST_MAX_PER_IP` · `GUEST_WINDOW_MINUTES` | 120 · 60 | Free tool calls an unauthenticated caller may make per IP. Credits price what a call costs; this is what stops a loop, since a free call is charged nothing |
 | `X402_FACILITATOR_URL` | Coinbase | x402 facilitator to settle through |
 
 ## Runtime

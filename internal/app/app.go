@@ -1697,9 +1697,19 @@ func VerifyBanner(r *http.Request) string {
 	if reason == "" {
 		return ""
 	}
-	// Not on the pages that are the way out of it — the form is right there.
-	switch r.URL.Path {
-	case "/account", "/verify", "/wallet", "/wallet/topup":
+	// Not on the pages that are the way out of it — the form is right there —
+	// and not on money at all.
+	//
+	// This was a list of four exact paths, so /wallet/transfer was not on it,
+	// and moving your own credit between accounts was met with "You cannot post
+	// yet. Verify your email address before posting." Nothing on that page is a
+	// post, so the banner read as a refusal of the transfer. A prefix rather
+	// than a fifth path, because the next page under /wallet would have been
+	// wrong in the same way.
+	switch p := r.URL.Path; {
+	case p == "/account" || p == "/verify":
+		return ""
+	case p == "/wallet" || strings.HasPrefix(p, "/wallet/"):
 		return ""
 	}
 	action, href := "Verify →", "/account"

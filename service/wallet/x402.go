@@ -205,12 +205,27 @@ func creditsToAtomic(credits, decimals int) string {
 	return strconv.Itoa(credits * mult)
 }
 
+// Metered reports whether an operation costs anything on this instance.
+//
+// The distinction the payment gate turned out not to be making. A tool with a
+// wallet operation is not the same as a tool that costs money: news, web fetch,
+// quran and video search are all priced at zero on purpose, because nothing
+// bills us for them — see the cost block in wallet.go.
+func Metered(operation string) bool { return GetOperationCost(operation) > 0 }
+
 // BuildPaymentRequirements creates the accepted-payment list for an operation —
-// one entry per accepted asset; the paying agent picks one.
+// one entry per accepted asset; the paying agent picks one. Nil for a free
+// operation: there is nothing to charge, so there is nothing to accept.
+//
+// This used to floor the cost at one credit, which quietly turned every free
+// tool into a paid one at the door. The four tools deliberately priced at zero
+// answered an anonymous caller with a demand for USDC on Base — so the free
+// tier existed in the price list and was unreachable in practice, which is the
+// opposite of what /mcp being a public endpoint is for.
 func BuildPaymentRequirements(operation, resource string) []PaymentRequirements {
 	cost := GetOperationCost(operation)
 	if cost < 1 {
-		cost = 1
+		return nil
 	}
 	var reqs []PaymentRequirements
 	for _, a := range acceptedAssets() {
@@ -240,8 +255,16 @@ func BuildPaymentRequirements(operation, resource string) []PaymentRequirements 
 // vocabulary of a payment rail this instance does not lead with. An x402 client
 // reads accepts and ignores this line; a person reads this line and nothing
 // else, so it should tell them what they can actually do.
-func WritePaymentRequired(w http.ResponseWriter, operation, resource string) {
+//
+// Returns false when the operation is free, having written nothing: the caller
+// must then let the request through rather than block it. A gate that cannot
+// say "there is nothing to pay" can only say "pay", which is how free tools
+// came to be paywalled.
+func WritePaymentRequired(w http.ResponseWriter, operation, resource string) bool {
 	reqs := BuildPaymentRequirements(operation, resource)
+	if len(reqs) == 0 {
+		return false
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusPaymentRequired)
 	_ = json.NewEncoder(w).Encode(map[string]any{
@@ -251,6 +274,7 @@ func WritePaymentRequired(w http.ResponseWriter, operation, resource string) {
 			"with an X-PAYMENT header instead; see accepts.",
 		"accepts": reqs,
 	})
+	return true
 }
 
 // HasPayment reports whether a request carries an x402 payment header.
