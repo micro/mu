@@ -10,7 +10,6 @@ package test
 // went on telling agents to use it for a whole commit.
 
 import (
-	"os"
 	"regexp"
 	"sort"
 	"strings"
@@ -50,12 +49,9 @@ func TestNoToolDescriptionPointsAtAToolThatIsGone(t *testing.T) {
 			real[a] = true
 		}
 	}
-	// Tools main() registers are not in this binary's registry; the source that
+	// Hand-registered tools are not in this binary's registry; the source that
 	// registers them is the other half of the truth.
-	src, err := os.ReadFile(at("main.go"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	src := []byte(registrationSource(t))
 	for _, m := range regexp.MustCompile(`Name:\s*"([a-z][a-z0-9_]*)"`).FindAllStringSubmatch(string(src), -1) {
 		real[m[1]] = true
 	}

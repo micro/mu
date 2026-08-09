@@ -24,11 +24,7 @@ import (
 )
 
 func TestThePaymentGateAsksWhetherTheToolCostsAnything(t *testing.T) {
-	src, err := os.ReadFile("../main.go")
-	if err != nil {
-		t.Fatal(err)
-	}
-	body := string(src)
+	body := registrationSource(t)
 
 	if !strings.Contains(body, `op != "" && wallet.Metered(op)`) {
 		t.Error("the x402 gate no longer asks whether the tool costs anything, " +
@@ -45,11 +41,7 @@ func TestThePaymentGateAsksWhetherTheToolCostsAnything(t *testing.T) {
 // which the gate returns before reaching, so every refusal was missing from the
 // figures — including the free ones being refused by mistake.
 func TestRefusedCallsAreCounted(t *testing.T) {
-	src, err := os.ReadFile("../main.go")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(src), `usage.Record("mcp-refused"`) {
+	if !strings.Contains(registrationSource(t), `usage.Record("mcp-refused"`) {
 		t.Error("calls turned away at the payment gate are invisible in usage, " +
 			"so a gate refusing the wrong things cannot be seen doing it")
 	}
@@ -78,24 +70,18 @@ func TestTheVerifyBannerStaysOffTheWalletPages(t *testing.T) {
 // are marked AccountOnly so the refusal happens at the MCP layer, as a 401
 // pointing at sign-in.
 func TestFreeButAccountableToolsSaySoAtTheMCPLayer(t *testing.T) {
-	for _, c := range []struct{ file, tool string }{
-		{"../internal/api/mcp.go", "video_search"},
-		{"../main.go", "web_fetch"},
-	} {
-		src, err := os.ReadFile(c.file)
-		if err != nil {
-			t.Fatal(err)
-		}
-		i := strings.Index(string(src), `Name:        "`+c.tool+`"`)
+	src := registrationSource(t)
+	for _, tool := range []string{"video_search", "web_fetch"} {
+		i := strings.Index(src, `Name:        "`+tool+`"`)
 		if i < 0 {
-			t.Fatalf("%s is no longer registered in %s", c.tool, c.file)
+			t.Fatalf("%s is no longer registered anywhere", tool)
 		}
 		// The flag has to be inside this tool's own block, not somewhere else
 		// in the file.
-		block := string(src)[i:min(i+1400, len(string(src)))]
+		block := src[i:min(i+1400, len(src))]
 		if !strings.Contains(block, "AccountOnly: true") {
 			t.Errorf("%s is offered to anonymous callers and then refused by its "+
-				"own handler one layer later", c.tool)
+				"own handler one layer later", tool)
 		}
 	}
 }

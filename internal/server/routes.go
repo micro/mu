@@ -1,0 +1,523 @@
+package server
+
+// Every HTTP path this instance answers, and whether it needs a caller.
+//
+// The map is the authority on what is public: a path missing from it is
+// treated as public, so a new page is open until somebody says otherwise, and
+// the entry is the place to say it.
+
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"strings"
+
+	"mu/admin"
+	"mu/agent"
+	"mu/agent/micro"
+	"mu/client/whatsapp"
+	"mu/docs"
+	"mu/home"
+	"mu/internal/a2a"
+	"mu/internal/api"
+	"mu/internal/app"
+	"mu/internal/auth"
+	"mu/internal/imageproxy"
+	"mu/internal/settings"
+	"mu/internal/setup"
+	"mu/internal/user"
+	"mu/service/apps"
+	"mu/service/blog"
+	"mu/service/chat"
+	"mu/service/contacts"
+	"mu/service/db"
+	"mu/service/events"
+	"mu/service/files"
+	"mu/service/images"
+	"mu/service/mail"
+	"mu/service/markets"
+	"mu/service/news"
+	"mu/service/news/digest"
+	"mu/service/places"
+	"mu/service/prayer"
+	"mu/service/search"
+	"mu/service/social"
+	"mu/service/stream"
+	"mu/service/tasks"
+	"mu/service/video"
+	"mu/service/wallet"
+	"mu/service/weather"
+)
+
+// authRequired reports, per path, whether a caller must be signed in.
+func authRequired() map[string]bool {
+	authenticated := map[string]bool{
+		"/tools":                  false, // Public — the catalogue, agent lens
+		"/services":               false, // Public — the catalogue, person lens
+		"/card/":                  false, // Public — a service rendered at a glance
+		"/usage":                  true,  // Your own calls and spend
+		"/video":                  false, // Public viewing, auth for interactive features
+		"/video/thumb":            false, // Public — thumbnails for the public feed
+		"/news":                   false, // Public viewing, auth for search
+		"/chat":                   false, // Public viewing, auth for chatting
+		"/home":                   false, // Public viewing
+		"/blog":                   false, // Public viewing, auth for posting
+		"/markets":                false, // Public viewing
+		"/prayer":                 false, // Public prayer times, daily verse and hadith
+		"/about":                  false, // Public "what is Mu" pitch
+		"/oauth2/google":          false, // Google sign-in start (no session yet)
+		"/oauth2/google/connect":  true,  // Link Google to the current account
+		"/agents":                 true,  // Your agents and their tokens — sign-in required
+		"/agents/data":            true,  // JSON behind the chat's agent picker
+		"/oauth2/google/calendar": true,  // Grant calendar access to the current account
+		"/oauth2/google/contacts": true,  // Grant contacts access to the current account
+		"/oauth2/callback":        false, // Google sign-in callback (no session yet)
+		"/images":                 false, // Public daily image; generation needs login
+		"/img":                    false, // Public — cached article images (a prefix of /images, same answer)
+		"/events":                 true,  // Personal scheduled reminders — sign-in required
+		"/contacts":               true,  // Your address book — sign-in required
+		"/db":                     true,  // Your own records — sign-in required
+		"/runs":                   true,  // What your agents did (redirects to /agent/runs)
+		"/agent/runs":             true,  // What your agents did
+		"/agent/connect":          true,  // How to reach one agent
+		"/tasks":                  true,  // Your task list — sign-in required
+		"/social":                 false, // Public viewing, auth for search
+		"/social/thread":          false, // Public thread view, auth for messaging
+		"/places":                 false, // Public map, auth for search
+		"/weather":                false, // Public page, auth for forecast lookup
+		"/mail":                   true,  // Require auth for inbox
+		"/logout":                 true,
+		"/account":                true,
+		"/verify":                 false, // Public — token in URL is the credential
+		"/token":                  true,  // PAT token management
+		"/passkey":                false, // Passkey login/register (auth checked in handler)
+		"/session":                false, // Public - used to check auth status
+		"/api":                    false, // Public - API documentation
+		"/admin/flag":             true,
+		"/admin":                  true,
+		"/admin/users":            true,
+		"/admin/moderate":         true,
+		"/admin/blocklist":        true,
+		"/admin/spam":             true,
+		"/admin/email":            true,
+		"/admin/api":              true,
+		"/admin/log":              true,
+		"/admin/env":              true,
+		"/admin/server":           true,
+		"/admin/usage":            true,
+		"/admin/delete":           true,
+		"/admin/console":          true,
+		"/admin/diagnostics":      true,
+		"/admin/invite":           true,
+		"/wallet":                 false, // Public - shows wallet info; auth checked in handler
+
+		"/apps":      false, // Public - apps directory; auth checked in handler for create/edit
+		"/work":      false, // Public - task bounties; auth checked in handler for post/claim
+		"/search":    false, // Public - web search
+		"/web":       false, // Redirect to /search
+		"/web/fetch": false, // Public page, auth checked in handler (paid web fetch)
+		"/web/read":  false, // Public page, auth checked in handler (proxied reader)
+
+		"/status":                        false, // Public - server health status
+		"/pricing":                       false, // Public - pricing page
+		"/privacy":                       false, // Public - privacy policy
+		"/docs":                          false, // Public - documentation
+		"/whitepaper":                    false, // Public - whitepaper
+		"/mcp":                           false, // Public - MCP tools page
+		"/whatsapp/webhook":              false, // Public - WhatsApp webhook
+		"/.well-known/agent.json":        false, // Public - A2A agent card
+		"/.well-known/mcp-registry-auth": false, // Public - registry domain proof
+		"/a2a":                           false, // Public - A2A protocol
+		"/agent":                         false, // Public page, auth checked in handler
+		"/setup":                         false, // First-run setup (open only until an admin exists)
+		"/developers":                    false, // Legacy alias → /tools (public)
+	}
+	return authenticated
+}
+
+// staticSuffixes never require authentication.
+func staticSuffixes() []string {
+	return []string{
+		".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".svg",
+		".ico", ".webmanifest", ".json",
+	}
+}
+
+// registerRoutes attaches every handler to the default mux.
+func registerRoutes() {
+	// serve video
+	http.HandleFunc("/video", video.Handler)
+	http.HandleFunc("/video/thumb", video.ThumbHandler)
+
+	// serve news
+	http.HandleFunc("/news", news.Handler)
+	// serve chat
+	http.HandleFunc("/chat", chat.Handler)
+
+	// serve blog (full list)
+	http.HandleFunc("/blog", blog.Handler)
+
+	// serve individual blog post (public, no auth)
+	// Serves ActivityPub JSON-LD when requested via Accept header
+	http.HandleFunc("/blog/post", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "GET" && blog.WantsActivityPub(r) {
+			blog.PostObjectHandler(w, r)
+			return
+		}
+		blog.PostHandler(w, r)
+	})
+
+	// handle comments on posts /blog/post/{id}/comment
+	http.HandleFunc("/blog/post/", blog.CommentHandler)
+
+	// Legacy redirects for old URL structure (301 so browsers/crawlers update)
+	legacyRedirect := func(oldPrefix, newPrefix string) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			target := newPrefix + r.URL.Path[len(oldPrefix):]
+			if r.URL.RawQuery != "" {
+				target += "?" + r.URL.RawQuery
+			}
+			http.Redirect(w, r, target, http.StatusMovedPermanently)
+		}
+	}
+	http.HandleFunc("/post/", legacyRedirect("/post/", "/blog/post/"))
+	http.HandleFunc("/post", legacyRedirect("/post", "/blog/post"))
+	http.HandleFunc("/fetch", legacyRedirect("/fetch", "/web/fetch"))
+	http.HandleFunc("/read", legacyRedirect("/read", "/web/read"))
+
+	// flag content
+	http.HandleFunc("/admin/flag", admin.FlagHandler)
+
+	// admin dashboard
+	http.HandleFunc("/admin", admin.AdminHandler)
+
+	// admin user management
+	http.HandleFunc("/admin/users", admin.UsersHandler)
+
+	// moderation queue
+	http.HandleFunc("/admin/moderate", admin.ModerateHandler)
+
+	// mail blocklist management
+	http.HandleFunc("/admin/blocklist", admin.BlocklistHandler)
+
+	// spam filter management
+	http.HandleFunc("/admin/spam", admin.SpamFilterHandler)
+
+	// email log
+	http.HandleFunc("/admin/email", admin.EmailLogHandler)
+
+	// external API call log
+	http.HandleFunc("/admin/api", admin.APILogHandler)
+
+	// system log
+	http.HandleFunc("/admin/log", admin.SysLogHandler)
+
+	// environment variables status
+	http.HandleFunc("/admin/env", admin.EnvHandler)
+
+	// server update and restart
+	http.HandleFunc("/admin/server", admin.UpdateHandler)
+
+	// AI usage tracking
+	http.HandleFunc("/admin/usage", admin.AIUsageHandler)
+	http.HandleFunc("/admin/traffic", admin.TrafficHandler)
+
+	// admin delete (any content type)
+	http.HandleFunc("/admin/delete", admin.DeleteHandler)
+
+	// admin console
+	http.HandleFunc("/admin/console", admin.ConsoleHandler)
+	http.HandleFunc("/admin/diagnostics", admin.DiagnosticsHandler)
+	http.HandleFunc("/admin/invite", admin.InviteHandler)
+
+	// wallet - credits and payments
+	http.HandleFunc("/wallet", wallet.Handler)
+	http.HandleFunc("/wallet/", wallet.Handler) // Handle sub-routes like /wallet/topup
+
+	// serve whatsapp webhook
+	http.HandleFunc("/whatsapp/webhook", whatsapp.Handler)
+
+	// A2A protocol endpoints
+	domain := settings.Get("MU_DOMAIN")
+	if domain == "" {
+		domain = "localhost:8080"
+	}
+	if !strings.HasPrefix(domain, "http") {
+		domain = "https://" + domain
+	}
+	a2a.BaseURL = domain
+	http.HandleFunc("/.well-known/agent.json", a2a.AgentCardHandler)
+	http.HandleFunc("/a2a", a2a.Handler)
+
+	// serve search page (local + Brave web search)
+	// serve search page
+	http.HandleFunc("/search", search.WebHandler)
+	http.HandleFunc("/web", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/search?"+r.URL.RawQuery, http.StatusMovedPermanently)
+	})
+	http.HandleFunc("/web/preview", search.PreviewHandler)
+
+	// serve web fetch page (fetch and clean a URL)
+	http.HandleFunc("/web/fetch", search.FetchHandler)
+
+	// serve clean reader page for web results
+	http.HandleFunc("/web/read", search.ReadHandler)
+
+	// serve fact-check page and API
+
+	// The dashboard lives at the named URL /home, consistent with every other
+	// section (/news, /mail, /agent …). It renders for everyone: logged out, the
+	// home screen is the public face — real cards plus the agent — so a visitor
+	// sees the product rather than a separate marketing page.
+	http.HandleFunc("/home", home.Handler)
+	// Everything used to be a landing: the logged-out root said nothing, /about
+	// was a pitch and /agents was a second pitch. There is one landing now — the
+	// root — and these two go back to being what their names say.
+	//
+	// /about is the about page, which is the ABOUT doc rather than a second copy
+	// of it. /agents belongs to the user's agents, not to marketing; it points at
+	// the agent surface until the page that shows what your agents are doing
+	// exists to take it.
+	http.HandleFunc("/about", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/docs/about", http.StatusMovedPermanently)
+	})
+	http.HandleFunc("/pricing", home.PricingHandler)
+	// Every MCP directory submission asks for a privacy policy URL, and this
+	// instance runs a mail server — so there is real correspondence to account
+	// for, not just a formality.
+	http.HandleFunc("/privacy", home.PrivacyHandler)
+
+	// first-run setup wizard (open only until an admin exists)
+	http.HandleFunc("/setup", setup.Handler)
+
+	// Redirect the old path so existing links keep working. It used to point at
+	// /agents back when that was a public redirect to /agent; /agents is now the
+	// signed-in page where you create and scope agents, so a developer following
+	// this link would hit a login wall instead of the thing they came for. /tools
+	// is that thing: the endpoint, the config and the token.
+	http.HandleFunc("/developers", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/tools", http.StatusMovedPermanently)
+	})
+
+	// serve the agent
+	http.HandleFunc("/agent", agent.Handler)
+	http.HandleFunc("/agent/", agent.Handler)
+	http.HandleFunc("/agents/data", agent.AgentsHandler)
+	// The old path, so a page cached with the previous script keeps working.
+	http.HandleFunc("/agent/agents", agent.AgentsHandler)
+	http.HandleFunc("/agent/new", agent.NewAgentHandler)
+	http.HandleFunc("/agent/run", agent.RunHandler)
+	http.HandleFunc("/agent/exec", agent.ExecResultHandler)
+
+	// serve mail inbox
+	http.HandleFunc("/mail", mail.Handler)
+
+	// serve markets page
+	http.HandleFunc("/markets", markets.Handler)
+	http.HandleFunc(imageproxy.Path, imageproxy.Handler)
+	http.HandleFunc("/contacts", contacts.Handler)
+	http.HandleFunc("/db", db.Handler)
+	http.HandleFunc("/contacts/", contacts.Handler)
+	http.HandleFunc("/tasks", tasks.Handler)
+	http.HandleFunc("/tasks/", tasks.Handler)
+	http.HandleFunc("/images", images.Handler)
+	http.HandleFunc("/images/daily/", images.DailyImageHandler)
+	http.HandleFunc("/images/file/", images.GeneratedImageHandler)
+	http.HandleFunc("/events", events.Handler)
+	// /files lists a person's files; /files/<id> serves one. A stored file's URL
+	// has to be fetchable by an ordinary HTTP client, or handing someone a link
+	// to it is worthless.
+	http.HandleFunc("/files", files.Handler)
+	http.HandleFunc("/files/", files.Handler)
+
+	// serve social page
+	http.HandleFunc("/social", social.Handler)
+	http.HandleFunc("/social/thread", social.ThreadHandler)
+
+	// Stream (console) routes
+	http.HandleFunc("/stream", stream.Handler)
+	http.HandleFunc("/stream/fragment", stream.FragmentHandler)
+
+	http.HandleFunc("/prayer", prayer.Handler)
+	// Back-compat: the page lived at /reminder, then at /islam. Both are still
+	// in bookmarks and in other people's links, so both keep working.
+	for _, old := range []string{"/reminder", "/islam"} {
+		http.HandleFunc(old, func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, "/prayer", http.StatusMovedPermanently)
+		})
+	}
+
+	// serve places page
+	http.HandleFunc("/places", places.Handler)
+	http.HandleFunc("/places/", places.Handler)
+
+	// serve weather page
+	http.HandleFunc("/weather", weather.Handler)
+
+	// serve apps
+	http.HandleFunc("/apps", apps.Handler)
+	http.HandleFunc("/apps/", apps.Handler)
+
+	// serve work (task bounties)
+
+	// content controls (flag, save, dismiss, block, share)
+	http.HandleFunc("/app/", app.ControlsHandler)
+
+	// auth
+	http.HandleFunc("/login", app.Login)
+	http.HandleFunc("/logout", app.Logout)
+	http.HandleFunc("/signup", app.Signup)
+	http.HandleFunc("/request-invite", app.RequestInvite)
+	http.HandleFunc("/invite", app.InviteHandler)
+	http.HandleFunc("/account", app.Account)
+	http.HandleFunc("/verify", app.Verify)
+	http.HandleFunc("/session", app.Session)
+	http.HandleFunc("/updates", updatesHandler)
+	http.HandleFunc("/token", app.TokenHandler)
+	http.HandleFunc("/passkey/", app.PasskeyHandler)
+
+	// OAuth 2.1 for MCP authentication
+	http.HandleFunc("/.well-known/oauth-authorization-server", auth.OAuthMetadataHandler)
+	http.HandleFunc("/.well-known/oauth-protected-resource", auth.OAuthResourceHandler)
+
+	// Proof of domain ownership for the MCP registry, which accepts either a
+	// DNS TXT record or this file. Serving it is the easier half: it ships with
+	// the binary, so an operator publishing their own instance needs no DNS
+	// access and nothing to remember to keep in sync.
+	//
+	// The value is a public key. It is safe to serve and useless without the
+	// private half, which stays with whoever publishes. MCP_REGISTRY_PROOF holds
+	// it; unset, this 404s like any other absent file.
+	http.HandleFunc("/.well-known/mcp-registry-auth", func(w http.ResponseWriter, r *http.Request) {
+		proof := strings.TrimSpace(settings.Get("MCP_REGISTRY_PROOF"))
+		if proof == "" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.Write([]byte(proof + "\n"))
+	})
+	// Google sign-in (Mu as an OAuth client of Google).
+	// One list of agents, whichever page you found it on.
+	//
+	// The chat at /agent already had user-defined agents — a name, a prompt and
+	// an allowed set of services — stored by agent/micro. /agents adds the two
+	// things those lacked: a scope that is enforced against a credential, and a
+	// token to hand out. Rather than a second concept wearing the same word,
+	// the record on /agents resolves as one of those agents, so an agent marked
+	// "runs here" can be talked to, with its own instructions and confined to
+	// its own services. Without this, that option on the create form stored a
+	// field nothing read.
+	// One store. Agents made in the chat used to live in agent/micro's own
+	// file while /agents wrote to the roster, so "my agents" depended on which
+	// page you asked and an agent made in the chat had no scope and no token.
+	// Existing ones are imported once, without minting credentials nobody asked
+	// for; the old file is left alone so this is reversible.
+	if n := agent.ImportUserAgents(micro.AllUserAgents()); n > 0 {
+		app.Log("agents", "imported %d agent(s) into the roster", n)
+	}
+	micro.UserAgentResolver = func(accountID, id string) *micro.Agent {
+		if a := agent.AgentFor(accountID, id); a != nil {
+			return a.AsMicro()
+		}
+		return nil
+	}
+
+	// /agents is a page, not a service, and deliberately has no RPC surface.
+	// A tool that created agents would let a scoped agent mint an unscoped one,
+	// which is privilege escalation dressed as a feature. Agents are created by
+	// a person in a browser or not at all.
+	http.HandleFunc("/agents", agent.RosterHandler)
+
+	http.HandleFunc("/oauth2/google", app.GoogleLogin)
+	http.HandleFunc("/oauth2/google/connect", app.GoogleConnect)
+	http.HandleFunc("/oauth2/callback", app.GoogleCallback)
+	// Reading a calendar is a separate grant, asked for separately — see
+	// internal/app/google_calendar.go.
+	http.HandleFunc("/oauth2/google/calendar", app.GoogleGrantConnect)
+	http.HandleFunc("/oauth2/google/contacts", app.GoogleGrantConnect)
+	http.HandleFunc("/oauth2/google/disconnect", app.GoogleGrantDisconnect)
+
+	http.HandleFunc("/oauth/register", auth.OAuthRegisterHandler)
+	http.HandleFunc("/oauth/authorize", auth.OAuthAuthorizePostHandler)
+	http.HandleFunc("/oauth/token", auth.OAuthTokenHandler)
+
+	// internal status (injected into admin server page)
+	app.DKIMStatusFunc = mail.DKIMStatus
+	app.DigestStatusFunc = digest.Status
+	admin.GenerateDigestFunc = digest.Generate
+
+	// public status page - service health checks
+	app.HealthCheckFunc = runHealthChecks
+	http.HandleFunc("/status", app.StatusHandler)
+
+	// whitepaper
+	http.HandleFunc("/whitepaper", docs.WhitepaperHandler)
+	http.HandleFunc("/whitepaper.pdf", docs.WhitepaperHandler)
+
+	// documentation
+	http.HandleFunc("/docs", docs.Handler)
+	http.HandleFunc("/docs/", docs.Handler)
+
+	// ActivityPub: WebFinger discovery
+	http.HandleFunc("/.well-known/webfinger", blog.WebFingerHandler)
+
+	// presence WebSocket endpoint
+	http.HandleFunc("/presence", user.PresenceHandler)
+
+	// presence ping endpoint
+	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
+		_, acc, err := auth.RequireSession(r)
+		if err != nil {
+			app.Unauthorized(w, r)
+			return
+		}
+
+		auth.UpdatePresence(acc.ID)
+
+		w.Header().Set("Content-Type", "application/json")
+		onlineCount := auth.GetOnlineCount()
+		w.Write([]byte(fmt.Sprintf(`{"status":"ok","online":%d}`, onlineCount)))
+	})
+
+	// /version — what's deployed and how it's wired, for verifying releases.
+	http.HandleFunc("/version", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(versionInfo())
+	})
+
+	// /api used to document a second way in: the same tools over plain REST,
+	// with their own auth story and their own price table. Two documented doors
+	// is a choice the reader has to make before they can start, and MCP is the
+	// one that matters — so this is now a signpost to it, not a page. The REST
+	// paths themselves still answer; they are just not a thing to learn.
+	http.HandleFunc("/api", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/mcp", http.StatusMovedPermanently)
+	})
+
+	// serve the MCP page and server (GET = HTML page, POST = JSON-RPC)
+	// One catalogue, two lenses — see internal/api/tools_page.go.
+	http.HandleFunc("/tools", api.ToolsPageHandler)
+	http.HandleFunc("/services", api.ToolsPageHandler)
+	// What your agents did. Flows were recorded and never served.
+	// Runs belong to the agent, so they live under it and the agent surface
+	// tabs between them. /runs still works — links to it exist.
+	http.HandleFunc("/agent/runs", agent.RunsHandler)
+	http.HandleFunc("/agent/connect", agent.ConnectHandler)
+	http.HandleFunc("/runs", func(w http.ResponseWriter, r *http.Request) {
+		to := "/agent/runs"
+		if q := r.URL.RawQuery; q != "" {
+			to += "?" + q
+		}
+		http.Redirect(w, r, to, http.StatusMovedPermanently)
+	})
+	// A service rendered at a glance — see internal/api/card.go.
+	http.HandleFunc("/card", api.CardHandler)
+	http.HandleFunc("/card/", api.CardHandler)
+	// Your own usage — the caller-facing half of /admin/traffic.
+	http.HandleFunc("/usage", home.UsageHandler)
+	http.HandleFunc("/mcp", api.MCPHandler)
+
+	// serve the app
+	http.Handle("/", app.Serve())
+}

@@ -190,11 +190,8 @@ func TestReadmeToolTableNamesToolsThatExist(t *testing.T) {
 	for _, tool := range api.Commands() {
 		real[tool.Name] = true
 	}
-	// Tools main() registers rather than deriving from a Spec.
-	src, err := os.ReadFile(at("main.go"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	// Tools registered by hand rather than derived from a Spec.
+	src := []byte(registrationSource(t))
 	for _, m := range regexp.MustCompile(`Name:\s*"([a-z][a-z0-9_]*)"`).FindAllStringSubmatch(string(src), -1) {
 		real[m[1]] = true
 	}

@@ -102,13 +102,10 @@ func TestEveryToolTheSkillNamesIsReal(t *testing.T) {
 			real[a] = true
 		}
 	}
-	// Tools registered by main() rather than derived from a Spec are not in
+	// Tools registered by hand rather than derived from a Spec are not in
 	// this test binary's registry, so check them against the source that
 	// registers them. Both are real registrations; neither can drift silently.
-	mainGo, err := os.ReadFile(at("main.go"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	mainGo := []byte(registrationSource(t))
 	for _, m := range regexp.MustCompile(`Name:\s*"([a-z][a-z0-9_]*)"`).FindAllStringSubmatch(string(mainGo), -1) {
 		real[m[1]] = true
 	}

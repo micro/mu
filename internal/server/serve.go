@@ -1,0 +1,470 @@
+package server
+
+// The request path every call goes through, and the lifecycle around it.
+//
+// Security headers, CSRF, the central write gate and the x402 payment gate all
+// live here rather than in individual handlers, so none of them can be
+// forgotten by a new page — the reason they were centralised in the first
+// place.
+
+import (
+	"bytes"
+	"context"
+	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"os"
+	"os/signal"
+	"runtime"
+	"strings"
+	"syscall"
+	"time"
+
+	"mu/home"
+	"mu/internal/api"
+	"mu/internal/app"
+	"mu/internal/auth"
+	"mu/internal/setup"
+	"mu/internal/usage"
+	"mu/internal/user"
+	"mu/service/blog"
+	"mu/service/mail"
+	"mu/service/wallet"
+)
+
+// serve builds the handler and runs the server until interrupted.
+func serve(addr string) {
+	// Resolved once rather than per request: the auth map and the static
+	// suffixes are fixed for the life of the process.
+	authenticated := authRequired()
+	staticPaths := staticSuffixes()
+
+	// Create server with handler
+	server := &http.Server{
+		Addr: addr,
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Block known bot paths silently
+			if strings.HasPrefix(r.URL.Path, "/audio/") {
+				http.NotFound(w, r)
+				return
+			}
+
+			setSecurityHeaders(w)
+
+			// Set Onion-Location header for Tor Browser discovery
+			if onion := os.Getenv("TOR_ONION"); onion != "" {
+				w.Header().Set("Onion-Location", "http://"+onion+r.URL.RequestURI())
+			}
+
+			// Request logging (Apache-style)
+			start := time.Now()
+			defer func() {
+				// Skip logging for static assets and frequent endpoints
+				if !strings.HasSuffix(r.URL.Path, ".css") &&
+					!strings.HasSuffix(r.URL.Path, ".js") &&
+					!strings.HasSuffix(r.URL.Path, ".png") &&
+					!strings.HasSuffix(r.URL.Path, ".ico") &&
+					!strings.HasPrefix(r.URL.Path, "/chat/ws") {
+					app.Log("http", "%s %s %s %v", r.Method, r.URL.Path, r.RemoteAddr, time.Since(start))
+				}
+			}()
+
+			if Env == "dev" {
+				w.Header().Set("Access-Control-Allow-Origin", "*")
+				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+				w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+				w.Header().Set("Access-Control-Allow-Credentials", "true")
+
+				if r.Method == "OPTIONS" {
+					w.WriteHeader(http.StatusOK)
+					return
+				}
+			}
+
+			if v := len(r.URL.Path); v > 1 && strings.HasSuffix(r.URL.Path, "/") {
+				r.URL.Path = r.URL.Path[:v-1]
+			}
+
+			// Fast path for static assets - skip all middleware
+			for _, ext := range staticPaths {
+				if strings.HasSuffix(r.URL.Path, ext) {
+					http.DefaultServeMux.ServeHTTP(w, r)
+					return
+				}
+			}
+
+			// Count the request. /mcp is counted per tool instead (every call
+			// is a POST to the same path, so the path says nothing), and assets
+			// and polling endpoints are noise — see internal/usage.
+			if r.URL.Path != "/mcp" && !usage.Skip(r.URL.Path) {
+				account := ""
+				if _, acc := auth.TrySession(r); acc != nil {
+					account = acc.ID
+				}
+				usage.Record("web", usage.Endpoint(r.URL.Path), account)
+			}
+
+			var token string
+
+			// set via session cookie
+			if c, err := r.Cookie("session"); err == nil && c != nil {
+				token = c.Value
+			}
+
+			// Try Authorization header (Bearer token or PAT)
+			if token == "" {
+				authHeader := r.Header.Get("Authorization")
+				if authHeader != "" {
+					// Support both "Bearer <token>" and just "<token>"
+					if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+						token = authHeader[7:]
+					} else {
+						token = authHeader
+					}
+				}
+			}
+
+			// Try X-Micro-Token header (legacy support)
+			if token == "" {
+				token = r.Header.Get("X-Micro-Token")
+			}
+
+			// Check if static asset - skip authentication entirely
+			isStaticAsset := false
+			for _, ext := range staticPaths {
+				if strings.HasSuffix(r.URL.Path, ext) {
+					isStaticAsset = true
+					break
+				}
+			}
+
+			// Skip auth check for static assets
+			if !isStaticAsset {
+				var isAuthed bool
+
+				// Check if path requires authentication
+				{
+					for url, authed := range authenticated {
+						if strings.HasPrefix(r.URL.Path, url) {
+							isAuthed = authed
+							break
+						}
+					}
+				}
+
+				// check token
+				if isAuthed {
+					// deny access if invalid
+					if err := auth.ValidateToken(token); err != nil {
+						// Allow x402 payment as alternative to auth for API requests
+						if wallet.X402Enabled() && wallet.HasPayment(r) && (app.SendsJSON(r) || app.WantsJSON(r)) {
+							r = r.WithContext(context.WithValue(r.Context(), wallet.X402ContextKey, true))
+						} else if app.SendsJSON(r) || app.WantsJSON(r) {
+							// Return JSON 401 for API-style requests
+							w.Header().Set("Content-Type", "application/json")
+							w.WriteHeader(http.StatusUnauthorized)
+							w.Write([]byte(`{"error":"Authentication required"}`))
+							return
+						} else {
+							// To the sign-in page, carrying where they were
+							// going — not to the landing page, which is the
+							// pitch for a product they have already bought and
+							// which loses the destination. Signing in should
+							// finish the thing you were doing.
+							//
+							// RequestURI is path and query, always relative, so
+							// this cannot be turned into an open redirect; the
+							// login side re-checks with safeRedirect anyway.
+							http.Redirect(w, r, "/login?redirect="+url.QueryEscape(r.URL.RequestURI()),
+								http.StatusSeeOther)
+							return
+						}
+					}
+				} else if r.URL.Path == "/" {
+					// Fresh instance with no admin yet → guide the operator
+					// through the one-time setup wizard.
+					if setup.Needed() {
+						http.Redirect(w, r, "/setup", http.StatusSeeOther)
+						return
+					}
+					if _, acc := auth.TrySession(r); acc != nil {
+						// Every section has a named URL: the dashboard is /home and a
+						// query goes to the agent (/agent). The root just funnels
+						// logged-in users to the right named place.
+						q := r.URL.Query()
+						if q.Get("q") != "" || q.Get("prompt") != "" {
+							http.Redirect(w, r, "/agent?"+r.URL.RawQuery, http.StatusFound)
+						} else {
+							http.Redirect(w, r, "/home", http.StatusFound)
+						}
+					} else {
+						// Logged out: say what this is. The live home used to be
+						// the front door, which meant a visitor saw cards of news
+						// and prices and no indication that any of it is callable
+						// by an agent. The landing says that, and "See it working"
+						// links straight to the live home for anyone who wants the
+						// cards.
+						home.Landing(w, r)
+					}
+					return
+				}
+			}
+
+			// Check if this is a user profile request (/@username)
+			if strings.HasPrefix(r.URL.Path, "/@") {
+				rest := r.URL.Path[2:]
+
+				// Handle ActivityPub sub-endpoints: /@username/outbox, /@username/inbox
+				if strings.HasSuffix(rest, "/outbox") {
+					blog.OutboxHandler(w, r)
+					return
+				}
+				if strings.HasSuffix(rest, "/inbox") {
+					blog.InboxHandler(w, r)
+					return
+				}
+
+				// Serve ActivityPub actor JSON if requested
+				if !strings.Contains(rest, "/") && blog.WantsActivityPub(r) {
+					blog.ActorHandler(w, r)
+					return
+				}
+
+				// Otherwise serve the HTML profile page.
+				// POST /@username updates status — run through the
+				// same write gate as every other content path.
+				if !strings.Contains(rest, "/") {
+					if r.Method == "POST" {
+						op := wallet.OpSocialPost
+						sess, err := auth.GetSession(r)
+						if err != nil {
+							app.Unauthorized(w, r)
+							return
+						}
+						if !auth.CanPost(sess.Account) {
+							app.Forbidden(w, r, auth.PostBlockReason(sess.Account))
+							return
+						}
+						if err := auth.CheckPostRate(sess.Account); err != nil {
+							app.TooManyRequests(w, r, err.Error())
+							return
+						}
+						canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, op)
+						if !canProceed {
+							app.Error(w, r, http.StatusPaymentRequired,
+								fmt.Sprintf("This costs %d credit(s). Top up at /wallet/topup", cost))
+							return
+						}
+						if err := wallet.ConsumeQuota(sess.Account, op); err != nil {
+							app.Error(w, r, http.StatusPaymentRequired, err.Error())
+							return
+						}
+						app.Log("wallet", "Charged %s %d credit(s) for POST /@%s status", sess.Account, wallet.GetOperationCost(op), rest)
+					}
+					user.Handler(w, r)
+					return
+				}
+			}
+
+			// CSRF protection: set token cookie on every response,
+			// validate on state-changing requests.
+			auth.SetCSRFCookie(w, r)
+			if r.Method != "GET" && r.Method != "HEAD" && r.Method != "OPTIONS" {
+				// Skip CSRF for API endpoints using Bearer/PAT auth (not cookie-based)
+				isBearerAuth := r.Header.Get("Authorization") != "" || r.Header.Get("X-Micro-Token") != ""
+				// Skip CSRF for MCP endpoint (uses its own auth)
+				isMCP := r.URL.Path == "/mcp"
+				// Skip CSRF for Stripe webhooks
+				isWebhook := r.URL.Path == "/wallet/stripe/webhook"
+				// Skip CSRF for login/signup (no session yet)
+				isAuth := r.URL.Path == "/login" || r.URL.Path == "/signup" ||
+					r.URL.Path == "/request-invite" ||
+					strings.HasPrefix(r.URL.Path, "/passkey/") ||
+					strings.HasPrefix(r.URL.Path, "/oauth/")
+				// Skip CSRF for SMTP/ActivityPub inbound
+				isInbound := strings.HasSuffix(r.URL.Path, "/inbox")
+
+				if !isBearerAuth && !isMCP && !isWebhook && !isAuth && !isInbound && !auth.ValidCSRF(r) {
+					http.Error(w, `{"error":"invalid CSRF token"}`, http.StatusForbidden)
+					return
+				}
+			}
+
+			// ── Centralised write gate ──────────────────────────────
+			// Every content-creating POST is charged, rate-limited,
+			// and moderated from ONE place. Individual handlers do
+			// NOT call CheckQuota/ConsumeQuota — the middleware does
+			// it so nothing can be forgotten.
+			if op := chargedWriteOp(r); op != "" {
+				// Refusals go through app.Error, not http.Error: this is a
+				// person who just pressed a button in a browser, and a bare
+				// white page carrying one line of text is the worst possible
+				// way to tell them what was refused and what to do about it.
+				sess, err := auth.GetSession(r)
+				if err != nil {
+					app.Unauthorized(w, r)
+					return
+				}
+				if !auth.CanPost(sess.Account) {
+					app.Forbidden(w, r, auth.PostBlockReason(sess.Account))
+					return
+				}
+				if err := auth.CheckPostRate(sess.Account); err != nil {
+					app.TooManyRequests(w, r, err.Error())
+					return
+				}
+				canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, op)
+				if !canProceed {
+					app.Error(w, r, http.StatusPaymentRequired,
+						fmt.Sprintf("This costs %d credit(s). Top up at /wallet/topup", cost))
+					return
+				}
+				// Charge up-front. The handler runs only if the
+				// user can afford it. Failed handler calls (panics,
+				// 5xx) are rare enough that the lost credit is
+				// acceptable — and it's the only way to guarantee
+				// we never forget to charge.
+				if err := wallet.ConsumeQuota(sess.Account, op); err != nil {
+					app.Error(w, r, http.StatusPaymentRequired, err.Error())
+					return
+				}
+				app.Log("wallet", "Charged %s %d credit(s) for %s %s", sess.Account, wallet.GetOperationCost(op), r.Method, r.URL.Path)
+			}
+
+			// MCP authorization: an unauthenticated call to a tool that needs an
+			// account gets a 401 naming the resource metadata, which is how a
+			// client discovers it should start an OAuth flow. The discovery
+			// documents existed without this and were never fetched, so the
+			// standard way of connecting quietly did not work.
+			//
+			// Only auth-requiring tools challenge. A blanket 401 would make news
+			// and weather unreachable without an account.
+			if r.URL.Path == "/mcp" && r.Method == http.MethodPost {
+				body, _ := io.ReadAll(io.LimitReader(r.Body, 1<<20))
+				r.Body.Close()
+				r.Body = io.NopCloser(bytes.NewReader(body))
+				if api.MCPToolNeedsAuth(body) {
+					if _, err := auth.GetSession(r); err != nil && !wallet.HasPayment(r) {
+						origin := app.BaseURL(r)
+						w.Header().Set("WWW-Authenticate",
+							`Bearer resource_metadata="`+origin+`/.well-known/oauth-protected-resource"`)
+						app.RespondError(w, http.StatusUnauthorized, "authentication required")
+						return
+					}
+				}
+			}
+
+			// x402: gate metered MCP tool calls. /mcp is a public endpoint, so
+			// the payment handshake lives here where auth + wallet are in scope.
+			// A metered tools/call with no session gets the standard 402
+			// challenge; one bearing a payment header is routed to the
+			// facilitator for verify+settle by the tool's QuotaCheck.
+			if r.URL.Path == "/mcp" && r.Method == http.MethodPost && wallet.X402Enabled() {
+				body, _ := io.ReadAll(io.LimitReader(r.Body, 1<<20))
+				r.Body.Close()
+				r.Body = io.NopCloser(bytes.NewReader(body))
+				// Metered, not merely priced. A tool having a wallet operation
+				// is not the same as it costing anything: news, web fetch,
+				// quran and video search are zero on purpose. Gating on "has an
+				// operation" charged an anonymous caller for all four, so the
+				// free tier was unreachable and an agent that found this
+				// endpoint mid-task met a demand for USDC on its first call.
+				if op := api.MCPWalletOp(body); op != "" && wallet.Metered(op) {
+					// The public origin, not r.Host: behind the proxy r.Host is
+					// the loopback port, and an x402 client checks this field
+					// against what it is calling.
+					resource := app.BaseURL(r) + r.URL.Path
+					if wallet.HasPayment(r) {
+						holder := &wallet.SettleHolder{}
+						ctx := context.WithValue(r.Context(), wallet.X402ContextKey, true)
+						ctx = context.WithValue(ctx, wallet.X402SettleKey, holder)
+						r = r.WithContext(ctx)
+						w = wallet.NewSettleWriter(w, holder)
+					} else if err := auth.ValidateToken(token); err != nil {
+						if wallet.WritePaymentRequired(w, op, resource) {
+							// Count the refusal. Calls are recorded inside the
+							// dispatcher, which this returns before reaching,
+							// so every call turned away at the door was absent
+							// from the usage figures — including the free ones
+							// this gate should never have been refusing. The
+							// number that would have shown the mistake could
+							// not see it.
+							usage.Record("mcp-refused", op, "guest")
+							return
+						}
+						// Nothing to charge: let it through rather than
+						// inventing a price. Belt and braces with Metered
+						// above, so neither check alone can paywall a free
+						// tool again.
+					}
+				}
+			}
+
+			http.DefaultServeMux.ServeHTTP(w, r)
+		}),
+	}
+
+	// Channel to listen for interrupt signals
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	// Start SMTP server if enabled (disabled by default)
+	mail.StartSMTPServerIfEnabled()
+
+	// Log initial memory usage
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	app.Log("main", "Startup complete. Memory: Alloc=%dMB Sys=%dMB NumGC=%d", m.Alloc/1024/1024, m.Sys/1024/1024, m.NumGC)
+
+	// Start memory monitoring goroutine
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		for range ticker.C {
+			var m runtime.MemStats
+			runtime.ReadMemStats(&m)
+			app.Log("main", "Memory: Alloc=%dMB Sys=%dMB NumGC=%d Goroutines=%d",
+				m.Alloc/1024/1024, m.Sys/1024/1024, m.NumGC, runtime.NumGoroutine())
+		}
+	}()
+
+	// Start server in a goroutine, preferring a systemd-activated socket so
+	// redeploys don't drop the listener (see serveListener).
+	go func() {
+		ln, activated, err := serveListener(addr)
+		if err != nil {
+			app.Log("main", "Listen error on %s: %v", addr, err)
+			quit <- syscall.SIGTERM
+			return
+		}
+		if activated {
+			app.Log("main", "Serving on systemd-activated socket (restarts queue, no 502)")
+		} else {
+			app.Log("main", "Starting server on %s", addr)
+		}
+		if err := server.Serve(ln); err != nil && err != http.ErrServerClosed {
+			app.Log("main", "Server error: %v", err)
+		}
+	}()
+
+	// Wait for interrupt signal
+	<-quit
+	app.Log("main", "Shutting down server...")
+
+	// Flush the usage counters. They are saved on a slow cadence to keep the
+	// request path cheap, so without this a deploy — which is a restart every
+	// time — would drop the last minute of counts on every push.
+	usage.Save()
+
+	// Create shutdown context with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Attempt graceful shutdown
+	if err := server.Shutdown(ctx); err != nil {
+		app.Log("main", "Server forced to shutdown: %v", err)
+	}
+
+	app.Log("main", "Server stopped")
+}
