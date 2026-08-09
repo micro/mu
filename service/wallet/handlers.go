@@ -169,14 +169,27 @@ func WalletPage(userID string) string {
 			} else if tx.Type == TxTopup {
 				typeLabel = "Deposit"
 			} else if tx.Type == TxTransfer {
+				// Prefer the name recorded with the transfer, then the name of
+				// the id it went to, then the bare id. Receipts written before
+				// names were recorded still resolve, and one whose account has
+				// since gone still says something.
+				who := func(nameKey, idKey string) string {
+					if n, ok := tx.Metadata[nameKey].(string); ok && n != "" {
+						return n
+					}
+					if id, ok := tx.Metadata[idKey].(string); ok && id != "" {
+						return accountLabel(id)
+					}
+					return ""
+				}
 				if tx.Amount > 0 {
-					if from, ok := tx.Metadata["from"].(string); ok {
+					if from := who("from_name", "from"); from != "" {
 						typeLabel = "Transfer from " + from
 					} else {
 						typeLabel = "Transfer in"
 					}
 				} else {
-					if to, ok := tx.Metadata["to"].(string); ok {
+					if to := who("to_name", "to"); to != "" {
 						typeLabel = "Transfer to " + to
 					} else {
 						typeLabel = "Transfer out"
@@ -781,15 +794,20 @@ func PricingTableHTML() string {
 
 	var sb strings.Builder
 	sb.WriteString(`<table class="stats-table">`)
-	sb.WriteString(`<tr><td>Reading news, blogs, videos, markets, weather</td><td>included</td></tr>`)
+	// The price column never wraps. The first column holds a joined list of
+	// every free operation, which is long enough to squeeze this one until the
+	// browser broke the word — the costs table read "include" on one line and
+	// "d" on the next.
+	const price = `<td style="white-space:nowrap">`
+	sb.WriteString(`<tr><td>Reading news, blogs, videos, markets, weather</td>` + price + `included</td></tr>`)
 	// Zero-cost operations are listed as included rather than as "0p" rows —
 	// a price of zero is not a price.
 	if len(free) > 0 {
-		sb.WriteString(fmt.Sprintf(`<tr><td>%s</td><td>included</td></tr>`,
+		sb.WriteString(fmt.Sprintf(`<tr><td>%s</td>`+price+`included</td></tr>`,
 			htmlEsc(strings.Join(free, ", "))))
 	}
 	for _, it := range charged {
-		sb.WriteString(fmt.Sprintf(`<tr><td>%s</td><td>%dp</td></tr>`,
+		sb.WriteString(fmt.Sprintf(`<tr><td>%s</td>`+price+`%dp</td></tr>`,
 			htmlEsc(it.Description), it.Cost))
 	}
 	// Paid apps are charged per request at a price the app's author sets, so

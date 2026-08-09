@@ -250,11 +250,43 @@ func GetAccountByName(name string) (*Account, error) {
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	nameLower := strings.ToLower(name)
+	nameLower := strings.ToLower(strings.TrimSpace(name))
+	if nameLower == "" {
+		return nil, errors.New("account not found")
+	}
+
+	// Deterministic, and refuses to guess.
+	//
+	// This matched name-or-id in one pass over a map and returned the first
+	// hit. Go randomises map order, so when one account's id and another's
+	// name were the same word, the answer changed between identical calls —
+	// and this is what a credit transfer resolves its recipient with. Money
+	// went to whichever account the runtime happened to reach first, and the
+	// receipt named an opaque id, so it did not even look wrong.
+	//
+	// An id is unique and a name need not be, so they are collected
+	// separately. Two different accounts answering to one word is a question
+	// for the person, not something to settle by picking one.
+	var byID, byName *Account
+	names := 0
 	for _, acc := range accounts {
-		if strings.ToLower(acc.Name) == nameLower || strings.ToLower(acc.ID) == nameLower {
-			return acc, nil
+		if strings.ToLower(acc.ID) == nameLower {
+			byID = acc
 		}
+		if strings.ToLower(acc.Name) == nameLower {
+			byName = acc
+			names++
+		}
+	}
+	switch {
+	case byID != nil && byName != nil && byID.ID != byName.ID:
+		return nil, fmt.Errorf("%q is one account's id and another's name — use the exact id", name)
+	case names > 1:
+		return nil, fmt.Errorf("more than one account is called %q — use the exact id", name)
+	case byID != nil:
+		return byID, nil
+	case byName != nil:
+		return byName, nil
 	}
 	return nil, errors.New("account not found")
 }

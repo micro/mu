@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -407,7 +408,13 @@ func TransferCredits(fromUserID, toUserID string, amount int) error {
 		Amount:    -amount,
 		Balance:   sender.Balance,
 		Operation: OpTransfer,
-		Metadata:  map[string]interface{}{"to": toUserID},
+		// Both, because they answer different questions. The id is what was
+		// actually credited and the only thing that can be reconciled; the
+		// name is what the person typed and the only thing they can recognise.
+		// Recording the id alone produced receipts reading "Transfer to 3834",
+		// which is unreadable and — when the recipient was resolved wrongly —
+		// indistinguishable from a correct one.
+		Metadata:  map[string]interface{}{"to": toUserID, "to_name": accountLabel(toUserID)},
 		CreatedAt: now,
 	}
 	transactions[fromUserID] = append(transactions[fromUserID], senderTx)
@@ -420,7 +427,7 @@ func TransferCredits(fromUserID, toUserID string, amount int) error {
 		Amount:    amount,
 		Balance:   receiver.Balance,
 		Operation: OpTransfer,
-		Metadata:  map[string]interface{}{"from": fromUserID},
+		Metadata:  map[string]interface{}{"from": fromUserID, "from_name": accountLabel(fromUserID)},
 		CreatedAt: now,
 	}
 	transactions[toUserID] = append(transactions[toUserID], receiverTx)
@@ -430,6 +437,16 @@ func TransferCredits(fromUserID, toUserID string, amount int) error {
 	data.SaveJSON("transactions.json", transactions)
 
 	return nil
+}
+
+// accountLabel is the name to show for an account id, falling back to the id
+// when there is no account to ask — a deleted one, or a wallet that outlived
+// it. Never empty, so a receipt always says something.
+func accountLabel(id string) string {
+	if acc, err := auth.GetAccount(id); err == nil && strings.TrimSpace(acc.Name) != "" {
+		return acc.Name
+	}
+	return id
 }
 
 // GetTransactions returns transaction history for a user
