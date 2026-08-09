@@ -665,6 +665,30 @@ func (s *Session) Data(r io.Reader) error {
 			app.Log("mail", "Error saving message: %v", err)
 			continue
 		}
+
+		// Mail addressed to an agent wakes it.
+		//
+		// Every agent already had an address — you+name@ — and writing to one
+		// put a message in the owner's inbox and did nothing else. An agent
+		// with an address that cannot answer is a mailbox with a name on it,
+		// and "email your agent" is the first thing anyone tries.
+		//
+		// Not for spam, and not for mail this instance sent: an agent replying
+		// to its own reply is a loop that costs a model call per turn. The
+		// hook resolves the tag to an agent and returns quietly when it is not
+		// one, so plain tagged mail — you+receipts@ — still just files.
+		if InboundAgent != nil && toTag != "" && !spamResult.IsSpam &&
+			!strings.EqualFold(fromAddr.Address, "agent@"+GetConfiguredDomain()) {
+			InboundAgent(InboundMail{
+				Owner:     toAcc.ID,
+				Tag:       toTag,
+				From:      fromAddr.Address,
+				FromName:  senderName,
+				Subject:   subject,
+				Body:      body,
+				MessageID: messageID,
+			})
+		}
 	}
 
 	app.Log("mail", "Email processed successfully")
@@ -1140,3 +1164,23 @@ func humanSize(n int) string {
 		return fmt.Sprintf("%d bytes", n)
 	}
 }
+
+
+// InboundMail is a message that arrived for a tagged address.
+type InboundMail struct {
+	Owner     string // account the address belongs to
+	Tag       string // the part after the plus: you+<tag>@
+	From      string // who wrote in
+	FromName  string
+	Subject   string
+	Body      string
+	MessageID string // for threading the reply
+}
+
+// InboundAgent is called when mail arrives at a tagged address, so an agent
+// with that tag can answer it. Wired in main.go, which is where the agent and
+// the roster are in scope; nil on an instance with no agent configured.
+//
+// Called after the message is stored, so the mail is in the inbox whether or
+// not an agent picks it up, and a failure to answer never loses the mail.
+var InboundAgent func(InboundMail)

@@ -14,6 +14,7 @@ package mail
 // nothing was the bug.
 
 import (
+	"os"
 	"testing"
 
 	"mu/internal/auth"
@@ -78,4 +79,15 @@ func TestAVerifiedSenderPassesTheInboundFilter(t *testing.T) {
 	if _, ok := CheckInboundAllowed("nobody@aslam.me", "", ""); ok {
 		t.Error("verifying one address opened the whole domain")
 	}
+}
+
+// readSource reads a file from this package for the tests that check a rule is
+// still expressed in the code rather than only in a comment.
+func readSource(t *testing.T, name string) string {
+	t.Helper()
+	b, err := os.ReadFile(name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
 }

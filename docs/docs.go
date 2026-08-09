@@ -26,6 +26,7 @@ type Document struct {
 var catalog = []Document{
 	// An agent's reader arrives wanting to connect and pay, so MCP is second.
 	{Slug: "about", Filename: "ABOUT.md", Title: "About Mu", Description: "Tools for agents — what Mu is and why", Category: "Getting Started"},
+	{Slug: "usecases", Filename: "USECASES.md", Title: "What you can build", Description: "The agents this instance can run, and what wakes them", Category: "Getting Started"},
 	{Slug: "mcp", Filename: "MCP.md", Title: "MCP Server", Description: "The one endpoint an agent connects to", Category: "Getting Started"},
 	{Slug: "cli", Filename: "CLI.md", Title: "CLI", Description: "Every tool as a mu subcommand", Category: "Getting Started"},
 	{Slug: "installation", Filename: "INSTALLATION.md", Title: "Installation", Description: "Run your own instance", Category: "Getting Started"},

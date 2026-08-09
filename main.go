@@ -340,6 +340,72 @@ func main() {
 		}(*e)
 	}
 
+	// Mail addressed to an agent wakes it, and it answers in the thread.
+	//
+	// Every agent already had an address. Writing to one filed a message in the
+	// owner's inbox and nothing else — an agent with an address that cannot
+	// answer is a mailbox with a name on it, and emailing your agent is the
+	// first thing anyone tries with one.
+	//
+	// It answers as that agent: its standing instruction and its scope, so a
+	// research agent you emailed cannot read your mail unless you gave it mail.
+	// Charged like any other agent run, checked before the model is asked so a
+	// run that cannot be paid for does not spend one first — and the sender is
+	// told, because silence is what this looked like before.
+	mail.InboundAgent = func(m mail.InboundMail) {
+		a := agent.AgentForTag(m.Owner, m.Tag)
+		if a == nil {
+			return // a tag that is not an agent: ordinary tagged mail
+		}
+		go func() {
+			domain := mail.GetConfiguredDomain()
+			from := "agent@" + domain
+			reply := func(body string) {
+				if domain == "" || domain == "localhost" {
+					return
+				}
+				subject := m.Subject
+				if !strings.HasPrefix(strings.ToLower(subject), "re:") {
+					subject = "Re: " + subject
+				}
+				if _, err := mail.SendExternalEmail(a.Name, from, m.From, subject, body, "", m.MessageID); err != nil {
+					app.Log("mail", "agent %s could not reply to %s: %v", a.Name, m.From, err)
+				}
+			}
+
+			canProceed, _, cost, err := wallet.CheckQuota(m.Owner, wallet.OpAgentQuery)
+			if err != nil || !canProceed {
+				reply(fmt.Sprintf("I could not run this one: it costs %d credits and the account is short. "+
+					"Top up at %s/wallet and send it again.", cost, app.PublicURL()))
+				return
+			}
+
+			opts, err := agent.AskAs(m.Owner, a.ID)
+			if err != nil {
+				app.Log("mail", "agent %s could not be resolved: %v", a.Name, err)
+				return
+			}
+			prompt := m.Subject
+			if body := strings.TrimSpace(m.Body); body != "" {
+				if prompt != "" {
+					prompt += "\n\n"
+				}
+				prompt += body
+			}
+			if strings.TrimSpace(prompt) == "" {
+				return
+			}
+
+			answer, err := agent.QueryWithOpts(m.Owner, prompt, opts)
+			if err != nil {
+				app.Log("mail", "agent %s failed on mail from %s: %v", a.Name, m.From, err)
+				reply("I could not answer that one. Try again, or ask a different way.")
+				return
+			}
+			reply(answer)
+		}()
+	}
+
 	// When an event is scheduled, email the owner an .ics invite so it also
 	// lands in their real calendar. Only for users with a verified email (e.g.
 	// via Google sign-in) and only when this instance can send mail.

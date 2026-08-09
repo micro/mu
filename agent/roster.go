@@ -581,3 +581,20 @@ func RunPublic(asker, id string) *Agent {
 	_ = a.save()
 	return a
 }
+
+// AgentForTag finds an agent by the mail tag it answers on: the part after the
+// plus in you+<tag>@. Empty tag, unknown tag, or an agent made before tags
+// existed all return nil, so mail to a tag that is not an agent — you+receipts@
+// — just files in the inbox like any other tagged mail.
+func AgentForTag(owner, tag string) *Agent {
+	tag = strings.ToLower(strings.TrimSpace(tag))
+	if owner == "" || tag == "" {
+		return nil
+	}
+	for _, a := range Agents(owner) {
+		if strings.EqualFold(a.Tag, tag) {
+			return a
+		}
+	}
+	return nil
+}
