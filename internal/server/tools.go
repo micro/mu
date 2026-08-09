@@ -414,6 +414,11 @@ func registerTools() {
 		Description: "Read one news article in full (title, source, summary and body) by its id from news_headlines, or by article URL.",
 		Params: []api.ToolParam{
 			{Name: "id", Type: "string", Description: "Article id (from news_headlines) or article URL", Required: true},
+			// Declared because it is accepted. The handler has always taken
+			// url as an alias for id — an agent holding a link reaches for the
+			// obvious name — but it was not in the schema, so the leniency
+			// only helped a caller who guessed it was there.
+			{Name: "url", Type: "string", Description: "Article URL, if you have the link rather than the id", Required: false},
 		},
 		Handle: func(args map[string]any) (string, error) {
 			id, _ := args["id"].(string)
