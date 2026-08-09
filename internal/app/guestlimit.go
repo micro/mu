@@ -68,3 +68,21 @@ func GuestCallAllowed(ip string) bool {
 	}
 	return true
 }
+
+// resetGuestCalls and expireGuestBucket exist for the tests, which have to be
+// able to start from nothing and to make a window elapse without waiting an
+// hour. Kept beside the thing they manipulate rather than reaching into it
+// from the test file, so the coupling is visible from here.
+func resetGuestCalls() {
+	guestMu.Lock()
+	defer guestMu.Unlock()
+	guestCalls = map[string]*guestBucket{}
+}
+
+func expireGuestBucket(ip string) {
+	guestMu.Lock()
+	defer guestMu.Unlock()
+	if b, ok := guestCalls[ip]; ok {
+		b.resetAt = time.Now().Add(-time.Minute)
+	}
+}
