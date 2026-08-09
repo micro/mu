@@ -1,6 +1,7 @@
 package mail
 
-// The guards on waking an agent from inbound mail.
+// The guards on waking an agent from inbound mail, and the address that needs
+// nothing remembered.
 //
 // The hook itself needs the agent and the roster, so it is wired in main.go.
 // What lives here is the decision to call it at all, and the cases where
@@ -14,16 +15,15 @@ package mail
 // rule now lives in inbound_agent.go and this tests that.
 
 import (
-	"os"
 	"strings"
 	"testing"
 
 	"mu/internal/auth"
 )
 
-// wake stands the world up around shouldWakeAgent: a hook to call, a domain to
-// compare against, and an owner whose verified address is asim@aslam.me.
-func wake(t *testing.T, from string, isSpam, authenticated bool, known ...string) bool {
+// req builds a wake request against a world where the domain is micro.mu and
+// wakeowner's verified address is asim@aslam.me.
+func req(t *testing.T, r wakeRequest, known ...string) bool {
 	t.Helper()
 	withDomain(t, "micro.mu")
 
@@ -39,7 +39,22 @@ func wake(t *testing.T, from string, isSpam, authenticated bool, known ...string
 	}
 	t.Cleanup(func() { InboundAgent, KnownSender = prevHook, prevKnown })
 
-	return shouldWakeAgent("wakeowner", "research", from, isSpam, authenticated)
+	if r.Owner == "" {
+		r.Owner = "wakeowner"
+	}
+	return shouldWakeAgent(r)
+}
+
+// tagged is mail to one agent's own address, authenticated, not spam.
+func tagged(from string) wakeRequest {
+	return wakeRequest{Owner: "wakeowner", Tag: "research", From: from,
+		To: "asim+research@micro.mu", Authenticated: true}
+}
+
+// shared is mail to agent@micro.mu — no tag, the default agent answers.
+func shared(from string) wakeRequest {
+	return wakeRequest{Owner: "wakeowner", Shared: true, From: from,
+		To: "agent@micro.mu", Authenticated: true}
 }
 
 func wakeOwner(t *testing.T) {
@@ -61,48 +76,83 @@ func TestWhenInboundMailWakesAnAgent(t *testing.T) {
 
 	// The owner, writing to their own agent. The case the whole feature exists
 	// for, and it has to keep working.
-	if !wake(t, "asim@aslam.me", false, true) {
+	if !req(t, tagged("asim@aslam.me")) {
 		t.Error("the account holder cannot wake their own agent from their own verified address")
 	}
 	// Somebody in the address book. Deliberate: you decided they could reach
 	// you, and an agent answering your contacts is the point of giving it an
 	// address at all.
-	if !wake(t, "colleague@example.com", false, true, "colleague@example.com") {
+	if !req(t, tagged("colleague@example.com"), "colleague@example.com") {
 		t.Error("a contact cannot reach an agent, so the address is only useful to its owner")
 	}
 
 	// A stranger who knows the address. This is the hole: the tag was the only
 	// thing standing between anyone and an agent holding the owner's tools.
-	if wake(t, "stranger@example.com", false, true) {
+	if req(t, tagged("stranger@example.com")) {
 		t.Error("a stranger who guessed the tag can drive the agent and spend the owner's credits")
 	}
 	// A known address on unauthenticated mail. From headers are free to write,
 	// so without SPF or DKIM "from your contact" means nothing.
-	if wake(t, "colleague@example.com", false, false, "colleague@example.com") {
+	unauth := tagged("colleague@example.com")
+	unauth.Authenticated = false
+	if req(t, unauth, "colleague@example.com") {
 		t.Error("an unauthenticated From header is enough to impersonate a contact")
 	}
-	if wake(t, "asim@aslam.me", false, false) {
+	forged := tagged("asim@aslam.me")
+	forged.Authenticated = false
+	if req(t, forged) {
 		t.Error("the owner's address can be forged into a wake-up")
 	}
 
 	// The guards that were already here.
-	if wake(t, "asim@aslam.me", true, true) {
+	spam := tagged("asim@aslam.me")
+	spam.IsSpam = true
+	if req(t, spam) {
 		t.Error("spam wakes an agent")
 	}
-	if wake(t, "agent@micro.mu", false, true) {
+	if req(t, tagged("agent@micro.mu")) {
 		t.Error("our own reply wakes an agent, which is an unbounded exchange with ourselves")
 	}
-	if wake(t, "Agent@Micro.MU", false, true) {
+	if req(t, tagged("Agent@Micro.MU")) {
 		t.Error("the loop guard is case-sensitive, so a differently-cased reply loops")
+	}
+	// An agent now answers from its own address, so that address writing to
+	// itself is the same loop wearing a different name.
+	if req(t, tagged("asim+research@micro.mu")) {
+		t.Error("an agent's own address can wake it, which is a loop per model call")
+	}
+
+	// Untagged mail to your own address is just mail. Every newsletter in the
+	// inbox would otherwise start a run.
+	plain := wakeRequest{From: "asim@aslam.me", To: "asim@micro.mu", Authenticated: true}
+	if req(t, plain) {
+		t.Error("untagged mail wakes an agent")
 	}
 }
 
-// Either signal is enough. Requiring both would drop more real mail than it
-// stops; requiring neither is where this started.
-func TestSPFAloneAndDKIMAloneBothCount(t *testing.T) {
+// agent@<domain> takes nothing remembered: no plus convention, no recalling
+// what you named the agent. It is answered by the same rules.
+func TestTheSharedAddressAnswersTheAccountItResolvedFrom(t *testing.T) {
 	wakeOwner(t)
-	if !wake(t, "asim@aslam.me", false, true) {
-		t.Error("a single passing signal is not accepted")
+
+	if !req(t, shared("asim@aslam.me")) {
+		t.Error("the owner cannot reach their default agent at the address that needs no remembering")
+	}
+	if !req(t, shared("colleague@example.com"), "colleague@example.com") {
+		t.Error("a contact cannot use the shared address")
+	}
+	if req(t, shared("stranger@example.com")) {
+		t.Error("the shared address answers strangers, which is an open agent for anyone who writes in")
+	}
+	unauth := shared("asim@aslam.me")
+	unauth.Authenticated = false
+	if req(t, unauth) {
+		t.Error("the shared address takes an unauthenticated From header")
+	}
+	// Its own replies must not re-enter, and this is the address they come
+	// from when no named agent answered.
+	if req(t, shared("agent@micro.mu")) {
+		t.Error("the shared address answers itself")
 	}
 }
 
@@ -117,28 +167,42 @@ func TestWithNoAddressBookOnlyTheOwnerGetsThrough(t *testing.T) {
 	KnownSender = nil
 	defer func() { InboundAgent, KnownSender = prevHook, prevKnown }()
 
-	if !shouldWakeAgent("wakeowner", "research", "asim@aslam.me", false, true) {
+	if !shouldWakeAgent(tagged("asim@aslam.me")) {
 		t.Error("the owner cannot reach their agent when no address book is wired")
 	}
-	if shouldWakeAgent("wakeowner", "research", "stranger@example.com", false, true) {
+	if shouldWakeAgent(tagged("stranger@example.com")) {
 		t.Error("an unwired address book lets everybody in")
 	}
 }
 
-func TestNoTagAndNoHookNeverWake(t *testing.T) {
+func TestAnInstanceWithNoAgentNeverWakesOne(t *testing.T) {
 	wakeOwner(t)
 	withDomain(t, "micro.mu")
 
 	prev := InboundAgent
-	InboundAgent = func(InboundMail) {}
+	InboundAgent = nil
 	defer func() { InboundAgent = prev }()
 
-	if shouldWakeAgent("wakeowner", "", "asim@aslam.me", false, true) {
-		t.Error("untagged mail wakes an agent, so every newsletter in the inbox starts a run")
-	}
-	InboundAgent = nil
-	if shouldWakeAgent("wakeowner", "research", "asim@aslam.me", false, true) {
+	if shouldWakeAgent(tagged("asim@aslam.me")) {
 		t.Error("an instance with no agent configured still tries to wake one")
+	}
+}
+
+// The shared mailbox has no owner in its own name, so whose mail it is comes
+// from who sent it. Only a proved address counts.
+func TestTheSharedMailboxResolvesItsOwnerFromTheSender(t *testing.T) {
+	wakeOwner(t)
+
+	if acc := AccountForVerifiedEmail("asim@aslam.me"); acc == nil || acc.ID != "wakeowner" {
+		t.Errorf("a verified address did not resolve to its account: %+v", acc)
+	}
+	if acc := AccountForVerifiedEmail("  ASIM@Aslam.me "); acc == nil {
+		t.Error("case and whitespace from a mail header defeat the lookup")
+	}
+	for _, nobody := range []string{"stranger@example.com", ""} {
+		if acc := AccountForVerifiedEmail(nobody); acc != nil {
+			t.Errorf("%q resolved to account %s", nobody, acc.ID)
+		}
 	}
 }
 
@@ -146,9 +210,14 @@ func TestNoTagAndNoHookNeverWake(t *testing.T) {
 // the message first, so a failure to answer never loses mail.
 func TestTheGuardIsStillInThePath(t *testing.T) {
 	src := readSource(t, "smtp.go")
-	if !strings.Contains(src, "if shouldWakeAgent(toAcc.ID, toTag, fromAddr.Address, spamResult.IsSpam, dkimPass || s.spfPass)") {
-		t.Error("the inbound-agent guard is no longer the one in inbound_agent.go, " +
-			"or has stopped being given the authentication result")
+	for _, want := range []string{
+		"if shouldWakeAgent(wakeRequest{",
+		"Authenticated: dkimPass || s.spfPass,",
+		"Shared:        sharedAgentMail,",
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("the inbound-agent guard lost %q", want)
+		}
 	}
 
 	store := strings.Index(src, "if err := SendMessageTo(")
@@ -157,15 +226,16 @@ func TestTheGuardIsStillInThePath(t *testing.T) {
 		t.Error("the agent is woken before the message is stored, so a panic there loses the mail")
 	}
 
-	// SPF and DKIM are computed for the spam score. If either stops being
-	// worked out, the argument above is a constant and the gate is off.
 	rule := readSource(t, "inbound_agent.go")
-	for _, want := range []string{"authenticated", "senderKnownTo", "SenderIsAccountOwner"} {
+	for _, want := range []string{"Authenticated", "senderKnownTo", "SenderIsAccountOwner"} {
 		if !strings.Contains(rule, want) {
 			t.Errorf("the rule lost %q", want)
 		}
 	}
-	if _, err := os.Stat("inbound_agent.go"); err != nil {
-		t.Fatal(err)
+
+	// The shared mailbox resolves by sender, and drops rather than bounces
+	// when nobody owns the address.
+	if !strings.Contains(src, "AccountForVerifiedEmail(fromAddr.Address)") {
+		t.Error("agent@<domain> no longer works out whose mail it is from who sent it")
 	}
 }

@@ -1,6 +1,6 @@
 package mail
 
-// Who is allowed to wake an agent by writing to it.
+// Who is allowed to wake an agent by writing to it, and where they can write.
 //
 // An agent's address was protected by nothing but being hard to guess. The
 // guard on the trigger asked three questions — is there a tag, is it spam, is
@@ -17,8 +17,29 @@ package mail
 // Unknown senders are dropped silently, never bounced. The message is stored
 // before any of this runs, so the mail is in the inbox either way; a bounce
 // would only confirm the address exists to whoever probed it.
+//
+// There is also one address nobody has to remember. you+research@ requires
+// knowing the plus convention and which agent you named what, from a phone,
+// while driving. agent@<domain> takes neither: it works out whose it is from
+// who sent it, and answers with that account's default agent. It is the
+// address agents already reply *from*, so it is also what makes replying to
+// your agent continue the conversation rather than bounce.
 
 import "strings"
+
+// AgentMailbox is the local part of the shared address: agent@<domain>. A
+// username of the same name is reserved (internal/auth/username.go) so nobody
+// can take delivery of it.
+const AgentMailbox = "agent"
+
+// SharedAgentAddress is the address itself, for display and comparison.
+func SharedAgentAddress() string {
+	domain := GetConfiguredDomain()
+	if domain == "" {
+		return ""
+	}
+	return AgentMailbox + "@" + domain
+}
 
 // KnownSender reports whether an address is one this account corresponds with.
 // Wired in main.go to the address book, because contacts is a different domain
@@ -27,25 +48,46 @@ import "strings"
 // fail.
 var KnownSender func(owner, addr string) bool
 
+// wakeRequest is everything the rule needs. A struct rather than six
+// positional arguments, three of which would be bools in a row.
+type wakeRequest struct {
+	Owner  string // account the mail is for
+	Tag    string // the part after the plus; empty on the shared address
+	Shared bool   // arrived at agent@<domain>, so use the default agent
+	From   string
+	To     string
+	IsSpam bool
+
+	// Authenticated is SPF or DKIM having passed. Either is enough: plenty of
+	// legitimate mail has only one, and requiring both would drop more real
+	// mail than it stops.
+	Authenticated bool
+}
+
 // shouldWakeAgent is the whole rule, in one place, so it can be read and tested
 // without standing up an SMTP session.
-//
-// authenticated is SPF or DKIM having passed. Either is enough: plenty of
-// legitimate mail has only one, and requiring both would drop more real mail
-// than it stops.
-func shouldWakeAgent(owner, tag, from string, isSpam, authenticated bool) bool {
-	if InboundAgent == nil || tag == "" || isSpam {
+func shouldWakeAgent(r wakeRequest) bool {
+	if InboundAgent == nil || r.IsSpam {
+		return false
+	}
+	// Either a named agent's address or the shared one. Untagged mail to your
+	// own address is just mail — every newsletter would otherwise start a run.
+	if r.Tag == "" && !r.Shared {
 		return false
 	}
 	// Our own reply coming back. An agent answering its own answer is a model
-	// call per turn, forever.
-	if strings.EqualFold(from, "agent@"+GetConfiguredDomain()) {
+	// call per turn, forever. Two forms: the shared address an agent replies
+	// from, and any address writing to itself.
+	if strings.EqualFold(r.From, SharedAgentAddress()) {
 		return false
 	}
-	if !authenticated {
+	if r.To != "" && strings.EqualFold(r.From, r.To) {
 		return false
 	}
-	return senderKnownTo(owner, from)
+	if !r.Authenticated {
+		return false
+	}
+	return senderKnownTo(r.Owner, r.From)
 }
 
 // senderKnownTo: the account's own verified address, or somebody it has in its

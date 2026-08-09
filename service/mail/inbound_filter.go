@@ -296,6 +296,25 @@ func SenderIsAccountOwner(ownerID, fromAddr string) bool {
 	return isOwnVerifiedAddress(acc, fromAddr)
 }
 
+// AccountForVerifiedEmail finds the account that proved it owns an address.
+//
+// The shared agent mailbox has no owner in its own name — agent@<domain>
+// belongs to the instance — so whose mail it is has to come from who sent it.
+// A verified email is the only claim strong enough to answer that: the person
+// clicked a link in the mailbox. Nil when nobody has proved it.
+func AccountForVerifiedEmail(fromAddr string) *auth.Account {
+	fromAddr = strings.ToLower(strings.TrimSpace(fromAddr))
+	if fromAddr == "" {
+		return nil
+	}
+	for _, acc := range auth.GetAllAccounts() {
+		if acc.EmailVerified && strings.EqualFold(acc.Email, fromAddr) {
+			return acc
+		}
+	}
+	return nil
+}
+
 // VerifiedAccountAddress reports whether an address is the verified email of
 // any account on this instance. Used by the inbound whitelist: somebody who
 // proved they own a mailbox is not a stranger, so their mail should reach this

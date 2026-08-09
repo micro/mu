@@ -565,11 +565,33 @@ func (s *Session) Data(r io.Reader) error {
 			continue
 		}
 
-		// Look up the recipient account (local user)
-		toAcc, err := auth.GetAccount(toUsername)
-		if err != nil {
-			app.Log("mail", "Recipient not found: %s", toUsername)
-			continue
+		// Look up the recipient account (local user).
+		//
+		// agent@<domain> is the exception: it belongs to the instance rather
+		// than to a person, so whose mail it is comes from who sent it. That
+		// address needs nothing remembered — no plus convention, no recalling
+		// which agent you named what — and it is the address agent replies
+		// already come from, so it is what makes replying to your agent
+		// continue the conversation instead of bouncing.
+		var toAcc *auth.Account
+		sharedAgentMail := !isExternal && toTag == "" &&
+			strings.EqualFold(toUsername, AgentMailbox)
+		if sharedAgentMail {
+			if toAcc = AccountForVerifiedEmail(fromAddr.Address); toAcc == nil {
+				// Not a verified address on this instance, so there is no
+				// account to attribute it to and nothing to answer with.
+				// Silent: a bounce tells whoever probed that the address is
+				// live.
+				app.Log("mail", "Shared agent mail from unknown sender %s: dropped", fromAddr.Address)
+				continue
+			}
+			app.Log("mail", "Shared agent mail from %s resolved to account %s", fromAddr.Address, toAcc.ID)
+		} else {
+			var err error
+			if toAcc, err = auth.GetAccount(toUsername); err != nil {
+				app.Log("mail", "Recipient not found: %s", toUsername)
+				continue
+			}
 		}
 
 		// Create and save the message
@@ -679,10 +701,19 @@ func (s *Session) Data(r io.Reader) error {
 		// to be protected by nothing but being hard to guess. The hook resolves
 		// the tag to an agent and returns quietly when it is not one, so plain
 		// tagged mail — you+receipts@ — still just files.
-		if shouldWakeAgent(toAcc.ID, toTag, fromAddr.Address, spamResult.IsSpam, dkimPass || s.spfPass) {
+		if shouldWakeAgent(wakeRequest{
+			Owner:         toAcc.ID,
+			Tag:           toTag,
+			Shared:        sharedAgentMail,
+			From:          fromAddr.Address,
+			To:            toAddr.Address,
+			IsSpam:        spamResult.IsSpam,
+			Authenticated: dkimPass || s.spfPass,
+		}) {
 			InboundAgent(InboundMail{
 				Owner:     toAcc.ID,
 				Tag:       toTag,
+				Shared:    sharedAgentMail,
 				From:      fromAddr.Address,
 				FromName:  senderName,
 				Subject:   subject,
@@ -1169,8 +1200,15 @@ func humanSize(n int) string {
 
 // InboundMail is a message that arrived for a tagged address.
 type InboundMail struct {
-	Owner     string // account the address belongs to
-	Tag       string // the part after the plus: you+<tag>@
+	Owner string // account the address belongs to
+	Tag   string // the part after the plus: you+<tag>@; empty when Shared
+
+	// Shared marks mail that arrived at agent@<domain> rather than at one
+	// agent's own address. There is no tag to resolve, so it is the account's
+	// default agent that answers.
+	Shared bool
+
+
 	From      string // who wrote in
 	FromName  string
 	Subject   string

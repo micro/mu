@@ -361,23 +361,41 @@ func main() {
 	}
 
 	mail.InboundAgent = func(m mail.InboundMail) {
-		a := agent.AgentForTag(m.Owner, m.Tag)
-		if a == nil {
-			return // a tag that is not an agent: ordinary tagged mail
+		// Which agent answers. A tag names one; the shared address names none,
+		// so the account's default assistant takes it — the thing you get when
+		// you have not made an agent yet, which is most people writing to
+		// agent@ for the first time.
+		var a *agent.Agent
+		if !m.Shared {
+			if a = agent.AgentForTag(m.Owner, m.Tag); a == nil {
+				return // a tag that is not an agent: ordinary tagged mail
+			}
+		}
+		name, ref := "Micro", ""
+		if a != nil {
+			name, ref = a.Name, a.ID
 		}
 		go func() {
 			domain := mail.GetConfiguredDomain()
-			from := "agent@" + domain
+			// Reply from the address that reaches this agent again, so hitting
+			// reply continues the conversation. It used to answer from
+			// agent@<domain> whoever had written to, which was a dead letter
+			// until that address started resolving, and still loses which
+			// agent you were talking to.
+			from := mail.SharedAgentAddress()
+			if a != nil && a.Address() != "" {
+				from = a.Address()
+			}
 			reply := func(body string) {
-				if domain == "" || domain == "localhost" {
+				if domain == "" || domain == "localhost" || from == "" {
 					return
 				}
 				subject := m.Subject
 				if !strings.HasPrefix(strings.ToLower(subject), "re:") {
 					subject = "Re: " + subject
 				}
-				if _, err := mail.SendExternalEmail(a.Name, from, m.From, subject, body, "", m.MessageID); err != nil {
-					app.Log("mail", "agent %s could not reply to %s: %v", a.Name, m.From, err)
+				if _, err := mail.SendExternalEmail(name, from, m.From, subject, body, "", m.MessageID); err != nil {
+					app.Log("mail", "agent %s could not reply to %s: %v", name, m.From, err)
 				}
 			}
 
@@ -388,9 +406,9 @@ func main() {
 				return
 			}
 
-			opts, err := agent.AskAs(m.Owner, a.ID)
+			opts, err := agent.AskAs(m.Owner, ref)
 			if err != nil {
-				app.Log("mail", "agent %s could not be resolved: %v", a.Name, err)
+				app.Log("mail", "agent %s could not be resolved: %v", name, err)
 				return
 			}
 			prompt := m.Subject
@@ -406,7 +424,7 @@ func main() {
 
 			answer, err := agent.QueryWithOpts(m.Owner, prompt, opts)
 			if err != nil {
-				app.Log("mail", "agent %s failed on mail from %s: %v", a.Name, m.From, err)
+				app.Log("mail", "agent %s failed on mail from %s: %v", name, m.From, err)
 				reply("I could not answer that one. Try again, or ask a different way.")
 				return
 			}

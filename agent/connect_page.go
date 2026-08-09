@@ -23,6 +23,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/service"
+	"mu/service/mail"
 )
 
 // ConnectHandler serves /agent/connect: how to reach one agent.
@@ -96,12 +97,22 @@ func connectPanel(a *Agent, base, csrf string) string {
 	// The address, and who it listens to. Knowing the address is not permission
 	// to use it — mail from anyone else is filed and ignored — and a reader who
 	// does not know that reports the silence as a bug.
+	//
+	// The shared address goes here too. Nobody remembers a plus-address from a
+	// phone; the point of agent@ is that there is nothing to remember, and an
+	// address nobody is told about is an address nobody uses.
 	if addr := a.Address(); addr != "" {
+		shared := ""
+		if s := mail.SharedAgentAddress(); s != "" {
+			shared = `<br><span class="conn-sub">Or <code>` + html.EscapeString(s) +
+				`</code> from your verified address, which reaches your default agent ` +
+				`and needs nothing remembered.</span>`
+		}
 		b.WriteString(`<div class="conn-row"><span class="conn-k">Write to it</span>` +
 			`<span class="conn-v"><code>` + html.EscapeString(addr) + `</code><br>` +
 			`<span class="conn-sub">Answers your own verified address and people in ` +
 			app.Link("your contacts", "/contacts") + `. Other mail is filed, not answered.</span>` +
-			`</span></div>`)
+			shared + `</span></div>`)
 	}
 
 	// The token. A secret is shown once and never again, so this reports state
