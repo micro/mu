@@ -1803,6 +1803,7 @@ func main() {
 		"/db":                     true,  // Your own records — sign-in required
 		"/runs":                   true,  // What your agents did (redirects to /agent/runs)
 		"/agent/runs":             true,  // What your agents did
+		"/agent/connect":          true,  // How to reach one agent
 		"/tasks":                  true,  // Your task list — sign-in required
 		"/social":                 false, // Public viewing, auth for search
 		"/social/thread":          false, // Public thread view, auth for messaging
@@ -2219,6 +2220,7 @@ func main() {
 	// Runs belong to the agent, so they live under it and the agent surface
 	// tabs between them. /runs still works — links to it exist.
 	http.HandleFunc("/agent/runs", agent.RunsHandler)
+	http.HandleFunc("/agent/connect", agent.ConnectHandler)
 	http.HandleFunc("/runs", func(w http.ResponseWriter, r *http.Request) {
 		to := "/agent/runs"
 		if q := r.URL.RawQuery; q != "" {

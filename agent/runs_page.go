@@ -331,10 +331,13 @@ func agentTabs(active, agentID string) string {
 		}
 		return `<a class="` + cls + `" href="` + href + `">` + label + `</a>`
 	}
-	return `<div class="agent-tabs">` +
-		tab("Chat", "/agent"+q, "chat") +
-		tab("Runs", "/agent/runs"+runsQ, "runs") +
-		`</div>` + agentTabsCSS
+	out := `<div class="agent-tabs">` + tab("Chat", "/agent"+q, "chat")
+	// Connect is only a tab when there is an agent to connect to. The default
+	// assistant has no token, no scope and no address of its own.
+	if agentID != "" {
+		out += tab("Connect", "/agent/connect"+q, "connect")
+	}
+	return out + tab("Runs", "/agent/runs"+runsQ, "runs") + `</div>` + agentTabsCSS
 }
 
 const agentTabsCSS = `<style>

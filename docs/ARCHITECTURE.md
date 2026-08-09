@@ -161,8 +161,16 @@ supplies, so it cannot reach a handler even by accident.
 deriving from the registry — register a service and the model can use it.
 
 The guard is per *method*, not per service: `Destructive: true` on the endpoint
-in the service's own Spec, read back through `service.Destructive`. Four are
-withheld:
+in the service's own Spec, read back through `service.Destructive`.
+
+**Withheld from the model, not from the caller.** The check runs in
+`blockDestructiveTools` (`agent/native.go`), which wraps the tool loop the model
+drives — so the model cannot reach these, and an MCP client holding a token
+can. That is the intended boundary: the risk is prompt injection steering the
+model, not a person deleting their own file. An unscoped token is the whole
+account, deletes included; scope an agent if that is not what you want.
+
+Four are withheld from the model:
 
 - **`wallet.Charge`** — spending should follow from the user's own action
 - **`tasks.Delete`** — irreversible, and the user can delete from the page

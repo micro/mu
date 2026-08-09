@@ -26,7 +26,8 @@ type CheckRequest struct {
 
 type CheckResponse struct {
 	Allowed bool `json:"allowed" description:"True when the caller can afford this operation"`
-	Cost    int  `json:"cost" description:"Credits the operation costs"`
+	Cost    int  `json:"cost" description:"Credits this caller will be charged — zero for an admin, or when payments are off"`
+	Price   int  `json:"price" description:"What the operation is priced at on this instance, whoever is calling"`
 	Balance int  `json:"balance" description:"The caller's current balance"`
 }
 
@@ -44,7 +45,14 @@ func (Credits) Check(ctx context.Context, req *CheckRequest, rsp *CheckResponse)
 	if err != nil {
 		return err
 	}
+	// Two different questions, and one number was answering both.
+	//
+	// Cost is what this caller pays, which CheckQuota returns as zero for an
+	// admin and on an instance with payments off. Price is what the operation
+	// is priced at. An agent asking "what does web_search cost" was told zero
+	// and could not tell the difference between free and free-for-you.
 	rsp.Allowed, rsp.Cost, rsp.Balance = ok, cost, GetBalance(who)
+	rsp.Price = GetOperationCost(req.Operation)
 	return nil
 }
 

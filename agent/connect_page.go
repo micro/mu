@@ -1,0 +1,161 @@
+package agent
+
+// What an agent is, for the person who made one.
+//
+// Clicking an agent opened a chat with it. For one that runs here that is the
+// right thing. For one you built to run elsewhere — the whole point of which is
+// that something outside calls in with its token — a chat box is the least
+// useful half of the page, and the endpoint, the scope and the token were
+// nowhere on it. The page even carried a generic "Connect your agent" link
+// that pointed at /tools rather than at this agent.
+//
+// So the agent surface has three tabs and the first one depends on what the
+// agent is: an external agent opens on how to reach it, a hosted one opens on
+// talking to it. Same page, same tabs, different emphasis — which is what the
+// difference between the two kinds actually amounts to.
+
+import (
+	"fmt"
+	"html"
+	"net/http"
+	"strings"
+
+	"mu/internal/app"
+	"mu/internal/auth"
+	"mu/internal/service"
+)
+
+// ConnectHandler serves /agent/connect: how to reach one agent.
+func ConnectHandler(w http.ResponseWriter, r *http.Request) {
+	sess, _, err := auth.RequireSession(r)
+	if err != nil {
+		app.RedirectToLogin(w, r)
+		return
+	}
+	owner := sess.Account
+
+	id := strings.TrimSpace(r.URL.Query().Get("id"))
+	a := AgentFor(owner, id)
+
+	// Built as one string and wrapped once, so every path opens and closes the
+	// column exactly once. An early return that closes a div its caller opened
+	// ends the page layout early — see TestMarkupBuildersCloseTheirTags.
+	title, desc := "Connect", "How to reach this agent"
+	body := `<p class="lens-lead">Pick an agent to see how to reach it. ` +
+		app.Link("Your agents", "/agents") + `</p>`
+	if a != nil {
+		title, desc = "Connect "+a.Name, "How to reach "+a.Name
+		body = connectPanel(a, app.BaseURL(r), auth.CSRFToken(r))
+	}
+
+	var b strings.Builder
+	b.WriteString(`<div style="max-width:820px">`)
+	b.WriteString(agentTabs("connect", id))
+	b.WriteString(body)
+	b.WriteString(`</div>`)
+	b.WriteString(connectCSS)
+	w.Write([]byte(app.RenderHTMLForRequest(title, desc, b.String(), r)))
+}
+
+// connectPanel is everything you need to point something at this agent: what it
+// may reach, where to send it, what to write to, and whether it has a
+// credential.
+func connectPanel(a *Agent, base, csrf string) string {
+	var b strings.Builder
+
+	// What it may reach, first. The scope is the thing that makes handing out a
+	// token safe, so it goes above the token rather than below it.
+	scope := "everything you can reach"
+	cls := "conn-scope wide"
+	if !a.Unscoped() {
+		labels := make([]string, 0, len(a.Services))
+		for _, s := range a.Services {
+			labels = append(labels, service.Label(s))
+		}
+		scope = strings.Join(labels, ", ")
+		cls = "conn-scope"
+	}
+	kind := "Runs here"
+	kindNote := "This instance executes its standing instruction. It needs no credential " +
+		"unless you want to reach it from outside."
+	if a.Kind != Hosted {
+		kind = "Runs elsewhere"
+		kindNote = "Claude, Cursor or your own program calls in with its token."
+	}
+	b.WriteString(`<p class="lens-lead"><strong>` + html.EscapeString(a.Name) + `</strong> — ` +
+		html.EscapeString(kind) + `. ` + html.EscapeString(kindNote) + `</p>`)
+
+	b.WriteString(`<div class="conn-row"><span class="conn-k">May reach</span>` +
+		`<span class="` + cls + `">` + html.EscapeString(scope) + `</span></div>`)
+
+	// The endpoint carries the scope in the query string, so pointing a client
+	// at it lists exactly what this agent may call.
+	b.WriteString(`<div class="conn-row"><span class="conn-k">Endpoint</span>` +
+		`<code class="conn-v">` + html.EscapeString(a.Endpoint(base)) + `</code></div>`)
+
+	if addr := a.Address(); addr != "" {
+		b.WriteString(`<div class="conn-row"><span class="conn-k">Write to it</span>` +
+			`<code class="conn-v">` + html.EscapeString(addr) + `</code></div>`)
+	}
+
+	// The token. A secret is shown once and never again, so this reports state
+	// rather than pretending it can show you one.
+	if a.TokenID == "" {
+		b.WriteString(`<div class="conn-row"><span class="conn-k">Token</span>` +
+			`<span class="conn-v">None yet. ` +
+			fmt.Sprintf(`<form method="POST" action="/agents" style="display:inline">`+
+				`<input type="hidden" name="_csrf" value="%s">`+
+				`<input type="hidden" name="action" value="token">`+
+				`<input type="hidden" name="id" value="%s">`+
+				`<button type="submit" class="link-button">Issue one</button></form>`,
+				html.EscapeString(csrf), html.EscapeString(a.ID)) +
+			`</span></div>`)
+	} else {
+		used := "not called yet"
+		if !a.LastUsed.IsZero() {
+			used = "last called " + a.LastUsed.Local().Format("2 Jan 15:04")
+		}
+		b.WriteString(`<div class="conn-row"><span class="conn-k">Token</span>` +
+			`<span class="conn-v">Issued · ` + html.EscapeString(used) +
+			`. The secret was shown once and is stored hashed — ` +
+			fmt.Sprintf(`<form method="POST" action="/agents" style="display:inline" `+
+				`onsubmit="return confirm('Replace this token? Anything using the old one stops working.')">`+
+				`<input type="hidden" name="_csrf" value="%s">`+
+				`<input type="hidden" name="action" value="token">`+
+				`<input type="hidden" name="id" value="%s">`+
+				`<button type="submit" class="link-button">replace it</button></form>`,
+				html.EscapeString(csrf), html.EscapeString(a.ID)) +
+			` to get a new one.</span></div>`)
+	}
+
+	// How to actually wire it up, with this agent's own endpoint in it rather
+	// than the generic one /tools shows.
+	b.WriteString(`<h3 class="conn-head">Point a client at it</h3>`)
+	b.WriteString(`<pre class="conn-pre">` + html.EscapeString(`{
+  "mcpServers": {
+    "`+strings.ToLower(a.Name)+`": {
+      "url": "`+a.Endpoint(base)+`",
+      "headers": { "Authorization": "Bearer YOUR_TOKEN" }
+    }
+  }
+}`) + `</pre>`)
+	b.WriteString(`<p class="conn-note">Claude Desktop takes the URL on its own — Settings → ` +
+		`Connectors → Add custom connector — and signs you in instead of using a token. ` +
+		app.Link("Full setup", "/tools") + `</p>`)
+
+	return b.String()
+}
+
+const connectCSS = `<style>
+.conn-row{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:baseline;padding:9px 0;
+  border-bottom:1px solid var(--border-color,#eee)}
+.conn-k{flex:0 0 110px;font-size:12px;color:var(--text-muted,#999)}
+.conn-v{flex:1 1 300px;min-width:0;font-size:13px;overflow-wrap:anywhere}
+code.conn-v{background:var(--hover-background,#f5f5f5);border-radius:4px;padding:2px 7px}
+.conn-scope{flex:1 1 300px;font-size:13px;color:#0a7d33}
+.conn-scope.wide{color:#a86400}
+.conn-head{font-size:15px;margin:22px 0 8px}
+.conn-pre{background:var(--hover-background,#f5f5f5);border-radius:8px;padding:12px 14px;
+  font-size:12px;overflow-x:auto;margin:0}
+.conn-note{font-size:13px;color:var(--text-muted,#666);margin:10px 0 0}
+</style>`

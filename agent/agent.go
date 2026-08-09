@@ -468,13 +468,20 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 		// The chip alone said "Agent: Micro" and nothing else, which leaves the
 		// obvious question unanswered — what is this, and is it the same thing
 		// as the agent I came here to connect? It is not: this one is Mu's,
-		// running on the tools. Yours reaches the same tools over MCP, and the
-		// page now says where to set that up instead of leaving it to be
-		// guessed at.
+		// running on the tools. Yours reaches the same tools over MCP.
+		//
+		// The link beside it used to be a generic "Connect your own agent"
+		// pointing at /tools, on a page that already knows which agent you are
+		// looking at. When it knows, it points at that one's endpoint, scope and
+		// token rather than at the catalogue.
+		connect := `<a class="agent-connect" href="/tools">Connect your own agent &rarr;</a>`
+		if selAgent != "" {
+			connect = `<a class="agent-connect" href="/agent/connect?id=` +
+				url.QueryEscape(selAgent) + `">How to reach this one &rarr;</a>`
+		}
 		chip = `<div class="agent-bar">` +
 			`<div id="active-agent-chip" class="agent-chip">Agent: Micro</div>` +
-			`<a class="agent-connect" href="/tools">Connect your own agent &rarr;</a>` +
-			`</div>`
+			connect + `</div>`
 	}
 
 	// A signed-out visitor arrives here from the landing's "See it working",

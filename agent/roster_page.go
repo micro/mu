@@ -224,14 +224,25 @@ func agentRow(a *Agent, csrf, base string) string {
 	// agents offered no way to change one. You could make an agent here, name
 	// it, scope it, delete it, and not edit it.
 	links := fmt.Sprintf(`<div class="agent-links">`+
+		`<a href="/agent/connect?id=%s">Connect</a>`+
 		`<a href="/agent/new?id=%s">Edit</a>`+
 		`<a href="/agent/new?fork=%s">Fork</a>`+
 		`<a href="/agent/runs?agent=%s">Runs &rarr;</a></div>`,
-		html.EscapeString(a.ID), html.EscapeString(a.ID), html.EscapeString(a.ID))
+		html.EscapeString(a.ID), html.EscapeString(a.ID),
+		html.EscapeString(a.ID), html.EscapeString(a.ID))
+
+	// Where the name goes depends on what the agent is for. One that runs here
+	// opens on talking to it; one that runs elsewhere opens on how to reach it,
+	// because a chat box is the least useful half of that page and the endpoint,
+	// the scope and the token were nowhere on it.
+	open := "/agent?id=%s"
+	if a.Kind != Hosted {
+		open = "/agent/connect?id=%s"
+	}
 
 	return fmt.Sprintf(`<div class="agent-row">
   <div style="flex:1;min-width:0">
-    <a class="agent-name" href="/agent?id=%s">%s</a>`+kind+`
+    <a class="agent-name" href="`+open+`">%s</a>`+kind+`
     <div class="%s">%s</div>
     <div class="agent-meta">%s</div>
     %s
