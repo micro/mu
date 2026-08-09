@@ -15,7 +15,7 @@ func TestAScheduledRunCharges(t *testing.T) {
 	auth.Create(&auth.Account{ID: "runner", Name: "runner", Secret: "test-secret"})
 
 	asked := ""
-	RunAgent = func(accountID, agentID, prompt string) (string, error) {
+	RunAgent = func(accountID, prompt string) (string, error) {
 		asked = prompt
 		return "Here is your briefing.", nil
 	}
@@ -32,7 +32,7 @@ func TestAScheduledRunCharges(t *testing.T) {
 
 // Nothing to run is not an error, it is a plain reminder.
 func TestAnEventWithNoPromptRunsNothing(t *testing.T) {
-	RunAgent = func(string, string, string) (string, error) {
+	RunAgent = func(string, string) (string, error) {
 		t.Error("the agent was called for a plain reminder")
 		return "", nil
 	}
@@ -48,7 +48,7 @@ func TestAnEventWithNoPromptRunsNothing(t *testing.T) {
 func TestAFailedRunSaysSoAndIsNotCharged(t *testing.T) {
 	auth.Create(&auth.Account{ID: "runner2", Name: "runner2", Secret: "test-secret"})
 
-	RunAgent = func(string, string, string) (string, error) {
+	RunAgent = func(string, string) (string, error) {
 		return "", fmt.Errorf("the model is unavailable")
 	}
 	defer func() { RunAgent = nil }()
@@ -62,7 +62,7 @@ func TestAFailedRunSaysSoAndIsNotCharged(t *testing.T) {
 // An unknown account cannot be charged, so it cannot run — and says why rather
 // than silently doing nothing.
 func TestAnUnchargeableRunSaysWhy(t *testing.T) {
-	RunAgent = func(string, string, string) (string, error) {
+	RunAgent = func(string, string) (string, error) {
 		t.Error("the agent ran for an account that cannot be charged")
 		return "", nil
 	}

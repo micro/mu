@@ -37,11 +37,6 @@ type Event struct {
 	// the answer — which is what makes "every morning, brief me" possible on a
 	// server that stays up.
 	Prompt  string    `json:"prompt,omitempty"`
-	// Agent is which of the owner's agents runs the prompt. Empty is the
-	// default assistant, which is what every standing instruction used before
-	// one could be named — a schedule that ignored the agent you built for the
-	// job and asked the general one instead.
-	Agent   string    `json:"agent,omitempty"`
 	Created time.Time `json:"created"`
 	Fired   bool      `json:"fired"`
 	FiredAt time.Time `json:"fired_at,omitempty"`
@@ -117,12 +112,6 @@ func CreateFor(owner, title string, when time.Time, note string, minutes int) (*
 // CreateStanding schedules an event that may repeat, and may run a prompt
 // through the agent when it fires.
 func CreateStanding(owner, title string, when time.Time, note string, minutes int, repeat, prompt string) (*Event, error) {
-	return CreateStandingAs(owner, title, when, note, minutes, repeat, prompt, "")
-}
-
-// CreateStandingAs is the same, run as one of the owner's agents. An empty
-// agent means the default assistant.
-func CreateStandingAs(owner, title string, when time.Time, note string, minutes int, repeat, prompt, agentID string) (*Event, error) {
 	owner = strings.TrimSpace(owner)
 	title = strings.TrimSpace(title)
 	if owner == "" {
@@ -143,7 +132,6 @@ func CreateStandingAs(owner, title string, when time.Time, note string, minutes 
 		Minutes: minutes,
 		Repeat:  ParseRepeat(repeat),
 		Prompt:  strings.TrimSpace(prompt),
-		Agent:   strings.TrimSpace(agentID),
 		Created: time.Now().UTC(),
 	}
 	mu.Lock()

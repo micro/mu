@@ -311,18 +311,8 @@ func main() {
 		}
 		return agent.QueryWithOpts(accountID, prompt, opts)
 	}
-	// A standing instruction runs as the agent it was scheduled with. It used
-	// to always run as the default assistant, so an agent you built and scoped
-	// for a job was ignored by the schedule that was supposed to run it.
-	events.RunAgent = func(accountID, agentID, prompt string) (string, error) {
-		if strings.TrimSpace(agentID) == "" {
-			return agent.Query(accountID, prompt)
-		}
-		opts, err := agent.AskAs(accountID, agentID)
-		if err != nil {
-			return "", err
-		}
-		return agent.QueryWithOpts(accountID, prompt, opts)
+	events.RunAgent = func(accountID, prompt string) (string, error) {
+		return agent.Query(accountID, prompt)
 	}
 
 	events.OnFireEvent = func(e *events.Event) {

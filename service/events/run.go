@@ -19,9 +19,8 @@ import (
 	"mu/service/wallet"
 )
 
-// RunAgent is set by main() to run a prompt as an account, as one of its
-// agents. An empty agent means the default assistant.
-var RunAgent func(accountID, agentID, prompt string) (string, error)
+// RunAgent is set by main() to run a prompt through the agent as an account.
+var RunAgent func(accountID, prompt string) (string, error)
 
 // RunPrompt runs a fired event's standing instruction and returns the text to
 // deliver to its owner.
@@ -51,7 +50,7 @@ func RunPrompt(e *Event) string {
 			"Top up at /wallet and it will run at its next time.", cost)
 	}
 
-	answer, err := RunAgent(e.Owner, e.Agent, prompt)
+	answer, err := RunAgent(e.Owner, prompt)
 	if err != nil {
 		// Not charged: nothing was produced.
 		app.Log("events", "standing instruction %q failed for %s: %v", e.Title, e.Owner, err)
