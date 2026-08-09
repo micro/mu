@@ -245,48 +245,36 @@ func GetAccountByEmail(email string) (*Account, error) {
 	return nil, errors.New("account not found")
 }
 
-// GetAccountByName finds an account by username (case-insensitive)
-func GetAccountByName(name string) (*Account, error) {
+// AccountByUsername finds an account by its username, case-insensitively.
+//
+// The username is the ID: unique, enforced unique at signup, validated by
+// ValidateUsername, and the thing the product shows everywhere — @handle, the
+// mail local part, author_id. Name is a *display* name. It is free text, it is
+// not unique, it is not validated, and at Google sign-in it is whatever the
+// Google profile says.
+//
+// This replaces GetAccountByName, which matched either and returned the first
+// hit from a map — so "pay asim" could credit the account whose username is
+// asim, or a different account that had simply typed "asim" into its display
+// name, depending on Go's randomised iteration order that call. Money moved on
+// a coin flip.
+//
+// Matching a display name was the error underneath the coin flip. A display
+// name is not an identifier and must never resolve one: anyone can set theirs
+// to a popular username, and if that could receive a transfer it would be a way
+// to harvest other people's money rather than a bug.
+func AccountByUsername(username string) (*Account, error) {
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	nameLower := strings.ToLower(strings.TrimSpace(name))
-	if nameLower == "" {
+	want := strings.ToLower(strings.TrimSpace(username))
+	if want == "" {
 		return nil, errors.New("account not found")
 	}
-
-	// Deterministic, and refuses to guess.
-	//
-	// This matched name-or-id in one pass over a map and returned the first
-	// hit. Go randomises map order, so when one account's id and another's
-	// name were the same word, the answer changed between identical calls —
-	// and this is what a credit transfer resolves its recipient with. Money
-	// went to whichever account the runtime happened to reach first, and the
-	// receipt named an opaque id, so it did not even look wrong.
-	//
-	// An id is unique and a name need not be, so they are collected
-	// separately. Two different accounts answering to one word is a question
-	// for the person, not something to settle by picking one.
-	var byID, byName *Account
-	names := 0
 	for _, acc := range accounts {
-		if strings.ToLower(acc.ID) == nameLower {
-			byID = acc
+		if strings.ToLower(acc.ID) == want {
+			return acc, nil
 		}
-		if strings.ToLower(acc.Name) == nameLower {
-			byName = acc
-			names++
-		}
-	}
-	switch {
-	case byID != nil && byName != nil && byID.ID != byName.ID:
-		return nil, fmt.Errorf("%q is one account's id and another's name — use the exact id", name)
-	case names > 1:
-		return nil, fmt.Errorf("more than one account is called %q — use the exact id", name)
-	case byID != nil:
-		return byID, nil
-	case byName != nil:
-		return byName, nil
 	}
 	return nil, errors.New("account not found")
 }

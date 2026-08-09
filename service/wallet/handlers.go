@@ -471,14 +471,25 @@ func handleTransferPage(w http.ResponseWriter, r *http.Request) {
 		remaining = 0
 	}
 	sb.WriteString(fmt.Sprintf(`<p class="text-sm text-muted">Daily transfer limit: %d credits. Remaining today: %d credits.</p>`, DailyTransferCap, remaining))
-	// Build datalist of usernames for autocomplete
+	// Autocomplete offers usernames, because that is what the transfer resolves
+	// and what the field asks for. It offered display names, which are free
+	// text and not unique — so picking a suggestion could fill in a word that
+	// belonged to somebody else's account, which is how 100 credits went to a
+	// stranger who happened to have typed the recipient's handle into their
+	// profile. The display name rides along as the label, since that is how you
+	// recognise a person.
 	allAccounts := auth.GetAllAccounts()
 	sb.WriteString(`<datalist id="user-list">`)
 	for _, a := range allAccounts {
 		if a.ID == sess.Account {
 			continue
 		}
-		sb.WriteString(fmt.Sprintf(`<option value="%s">`, a.Name))
+		label := a.ID
+		if n := strings.TrimSpace(a.Name); n != "" && !strings.EqualFold(n, a.ID) {
+			label = a.ID + " — " + n
+		}
+		sb.WriteString(fmt.Sprintf(`<option value="%s">%s</option>`,
+			htmlEsc(a.ID), htmlEsc(label)))
 	}
 	sb.WriteString(`</datalist>`)
 
@@ -557,10 +568,13 @@ func handleTransfer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Look up recipient by username
-	recipient, err := auth.GetAccountByName(to)
+	// By username, which is the account id — never by display name. A display
+	// name is free text and not unique, so resolving one would let anybody
+	// receive a transfer meant for somebody else by typing their handle into a
+	// profile field.
+	recipient, err := auth.AccountByUsername(to)
 	if err != nil {
-		respondTransferError(w, r, "User not found")
+		respondTransferError(w, r, "No account with the username "+to)
 		return
 	}
 
