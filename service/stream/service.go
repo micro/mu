@@ -103,6 +103,10 @@ var Spec = service.Spec{
 	Icon:        "stream.svg",
 	Endpoints: map[string]service.Endpoint{
 		"List": {Doc: "Read recent events from the console timeline"},
-		"Post": {Doc: "Post an entry to the console timeline", Cost: wallet.OpStreamPost},
+		// Account, because posting needs a caller while reading does not. The
+		// hand-written stream_post in internal/api/mcp.go currently overrides
+		// this one and forwards the session; declaring it here means the derived
+		// tool works on its own if that registration ever goes.
+		"Post": {Doc: "Post an entry to the console timeline", Cost: wallet.OpStreamPost, Account: true},
 	},
 }

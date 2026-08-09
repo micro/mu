@@ -153,7 +153,12 @@ func registerDerived(spec service.Spec, method string, ep service.Endpoint, name
 	// Scoped services need the caller bound from the session; public ones can
 	// be called by anybody, and registering them as auth-only would put an
 	// account behind news and weather.
-	if spec.Scoped {
+	//
+	// A single method on an open service can still need a caller — posting to a
+	// discussion anyone may read — and that is Endpoint.Account. Without it the
+	// tool was registered with a hard-coded empty account, so the handler read
+	// no caller and refused its own call.
+	if spec.Scoped || ep.Account {
 		RegisterToolWithAuth(tool, call)
 		return
 	}

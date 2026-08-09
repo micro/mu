@@ -89,6 +89,21 @@ type Endpoint struct {
 	// attacker-controlled text, so a tool it holds is a tool prompt injection
 	// holds; what earns this flag is an irreversible effect nobody asked for.
 	Destructive bool
+	// Account marks a method that cannot run without a caller, on a service
+	// that is otherwise open.
+	//
+	// Scoped is per service and answers "is any of this private". Some open
+	// services have one method that still needs to know who is asking: chat is
+	// readable by a guest and posting to it is not, and the same is true of the
+	// console. A derived tool on an unscoped service was always dispatched with
+	// an empty account, so such a method could never work over MCP — it read
+	// no caller and refused itself. chat_send did exactly that from the day it
+	// shipped; stream_post only escaped because a hand-written registration
+	// happened to override the derived one.
+	//
+	// Per method rather than per service for the same reason Destructive is:
+	// the property belongs to the operation, not to the domain.
+	Account bool
 	// Aliases are retired names that must keep resolving to this method. They
 	// are not listed — the point of retiring a name is to stop teaching it —
 	// but anything already calling one keeps working.

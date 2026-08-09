@@ -414,7 +414,14 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 
 	formValue := parseRequestParams(r)
 
-	query := strings.TrimSpace(formValue("q"))
+	// "query" first, "q" second. The tool declares "query" — every search tool
+	// does, and internal/api/mcp.go says so — and this handler read only "q",
+	// so places_search over MCP always answered "Search query required" no
+	// matter what was sent. The web form posts "q", hence both.
+	query := strings.TrimSpace(formValue("query"))
+	if query == "" {
+		query = strings.TrimSpace(formValue("q"))
+	}
 	if query == "" {
 		app.BadRequest(w, r, "Search query required")
 		return
