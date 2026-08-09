@@ -289,7 +289,7 @@ func SendCalendarInvite(displayName, from, to, subject, bodyHTML, ics string) (s
 
 // IsExternalEmail checks if an email address is external (contains @domain)
 func IsExternalEmail(email string) bool {
-	return strings.Contains(email, "@")
+	return IsExternalAddress(strings.TrimSpace(email))
 }
 
 // GetEmailForUser generates an email address for a local user

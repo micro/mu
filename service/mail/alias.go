@@ -71,3 +71,17 @@ func cleanTag(tag string) string {
 	}
 	return b.String()
 }
+
+// LocalRecipient turns anything that names a mailbox here into the account it
+// belongs to: a bare username, a full address, or either with a +tag.
+//
+// mail_address hands out the full form — asim@micro.mu, asim+claude@micro.mu —
+// so a caller writing to what the product told them to write to has to resolve.
+func LocalRecipient(to string) string {
+	to = strings.ToLower(strings.TrimSpace(to))
+	if i := strings.Index(to, "@"); i >= 0 {
+		to = to[:i]
+	}
+	account, _ := SplitAlias(to)
+	return account
+}

@@ -515,7 +515,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 			}
-			toAcc, err := auth.GetAccount(to)
+			// The recipient may be a bare username or a full local address,
+			// with or without a +tag: asim, asim@micro.mu, asim+claude@micro.mu
+			// all reach the same inbox. Only the bare form resolved before, so
+			// a caller who wrote the address the product shows them —
+			// mail_address returns the full one — got "Recipient not found".
+			toAcc, err := auth.GetAccount(LocalRecipient(to))
 			if err != nil {
 				http.Error(w, "Recipient not found", http.StatusNotFound)
 				return
@@ -2046,10 +2051,25 @@ func DeleteThread(msgID, userID string) error {
 	return save()
 }
 
-// GetAllMessages returns all messages (for admin use)
-// IsExternalAddress checks if an address is external (contains @)
+// IsExternalAddress reports whether an address is somewhere other than here.
+//
+// An @ is not enough. asim@micro.mu on the instance that serves micro.mu is a
+// local mailbox, and IsExternalEmail used to say otherwise — it tested only for
+// an @ — so mail written to a full local address was relayed out through SMTP,
+// arrived back at our own MX, and was refused by the anti-spoofing check with
+// "Sender address rejected: not authorized to send from this domain". Writing
+// to yourself on your own server failed, and so did writing to one of your own
+// agents at you+name@, which is the address the product hands out.
+//
+// Two functions three lines apart, near-identical names, one right and one
+// wrong, and the send path used the wrong one. There is one definition now.
 func IsExternalAddress(addr string) bool {
-	return strings.Contains(addr, "@") && !strings.HasSuffix(addr, "@"+GetConfiguredDomain())
+	addr = strings.ToLower(strings.TrimSpace(addr))
+	domain := strings.ToLower(GetConfiguredDomain())
+	if !strings.Contains(addr, "@") {
+		return false
+	}
+	return domain == "" || !strings.HasSuffix(addr, "@"+domain)
 }
 
 // EmailStats holds pre-computed email statistics
