@@ -5,6 +5,7 @@ package agent
 import (
 	"encoding/json"
 	"fmt"
+	"html"
 	htmlpkg "html"
 	"net/http"
 	"net/url"
@@ -2801,10 +2802,12 @@ func truncate(s string, maxLen int) string {
 	return s[:maxLen] + "…"
 }
 
-func htmlEsc(s string) string {
-	s = strings.ReplaceAll(s, "&", "&amp;")
-	s = strings.ReplaceAll(s, "<", "&lt;")
-	s = strings.ReplaceAll(s, ">", "&gt;")
-	s = strings.ReplaceAll(s, `"`, "&#34;")
-	return s
-}
+// htmlEsc escapes text for HTML.
+//
+// It delegates rather than reimplementing, because this package had its own
+// version and it escaped one character fewer than the others: & < > and the
+// double quote, but not the single quote. Nothing here puts output in a
+// single-quoted attribute today, so it was a hazard rather than a hole — and
+// the next single-quoted attribute would have made it one, with nothing to say
+// the escaper was weaker than it looked.
+func htmlEsc(s string) string { return html.EscapeString(s) }

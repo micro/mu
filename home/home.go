@@ -5,6 +5,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"html"
 	"net/http"
 	"sort"
 	"strings"
@@ -493,15 +494,15 @@ function fetchW(la,lo){
 	w.Write([]byte(html))
 }
 
-// htmlEsc escapes HTML special characters.
-func htmlEsc(s string) string {
-	s = strings.ReplaceAll(s, "&", "&amp;")
-	s = strings.ReplaceAll(s, "<", "&lt;")
-	s = strings.ReplaceAll(s, ">", "&gt;")
-	s = strings.ReplaceAll(s, `"`, "&#34;")
-	s = strings.ReplaceAll(s, "'", "&#39;")
-	return s
-}
+// htmlEsc escapes text for HTML.
+//
+// It delegates rather than reimplementing, because this package had its own
+// version and it escaped one character fewer than the others: & < > and the
+// double quote, but not the single quote. Nothing here puts output in a
+// single-quoted attribute today, so it was a hazard rather than a hole — and
+// the next single-quoted attribute would have made it one, with nothing to say
+// the escaper was weaker than it looked.
+func htmlEsc(s string) string { return html.EscapeString(s) }
 
 // chipMarkup renders one starter chip. The question rides in a data attribute,
 // escaped once — see the comment where these are built for what putting it in

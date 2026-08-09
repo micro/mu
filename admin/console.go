@@ -3,6 +3,7 @@ package admin
 import (
 	"encoding/json"
 	"fmt"
+	"html"
 	"net/http"
 	"net/url"
 	"os"
@@ -552,10 +553,11 @@ delete an account to recover its credits — deleting one deletes its wallet.`
 	}
 }
 
-func esc(s string) string {
-	s = strings.ReplaceAll(s, "&", "&amp;")
-	s = strings.ReplaceAll(s, "<", "&lt;")
-	s = strings.ReplaceAll(s, ">", "&gt;")
-	s = strings.ReplaceAll(s, `"`, "&quot;")
-	return s
-}
+// esc escapes text for HTML.
+//
+// Delegated rather than hand-rolled: this one escaped & < > and the double
+// quote but not the single quote, which is one character short of what the
+// standard library does and of what the name promises. It renders
+// user-supplied strings — usernames, app slugs, search results — into the
+// admin console.
+func esc(s string) string { return html.EscapeString(s) }

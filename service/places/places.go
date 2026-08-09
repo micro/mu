@@ -3,6 +3,7 @@ package places
 import (
 	"encoding/json"
 	"fmt"
+	"html"
 	"io"
 	"math"
 	"net/http"
@@ -1217,12 +1218,8 @@ func jsonStr(s string) string {
 	return string(b)
 }
 
-// escapeHTML escapes HTML special characters
-func escapeHTML(s string) string {
-	s = strings.ReplaceAll(s, "&", "&amp;")
-	s = strings.ReplaceAll(s, "<", "&lt;")
-	s = strings.ReplaceAll(s, ">", "&gt;")
-	s = strings.ReplaceAll(s, `"`, "&#34;")
-	s = strings.ReplaceAll(s, "'", "&#39;")
-	return s
-}
+// escapeHTML escapes text for HTML.
+//
+// Delegated rather than hand-rolled. This one was correct; being correct in
+// five separate copies is how the sixth comes to be wrong.
+func escapeHTML(s string) string { return html.EscapeString(s) }

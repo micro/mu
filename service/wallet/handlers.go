@@ -3,6 +3,7 @@ package wallet
 import (
 	"encoding/json"
 	"fmt"
+	"html"
 	"net/http"
 	neturl "net/url"
 	"sort"
@@ -80,10 +81,15 @@ function cwConvert(el){el.disabled=true;var t=el.textContent;el.textContent='Con
 </script>`, usdc, htmlEsc(bw.Address), htmlEsc(bw.Address))
 }
 
-func htmlEsc(s string) string {
-	r := strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;", `"`, "&quot;", "'", "&#39;")
-	return r.Replace(s)
-}
+// htmlEsc escapes text for HTML.
+//
+// It delegates rather than reimplementing, because this package had its own
+// version and it escaped one character fewer than the others: & < > and the
+// double quote, but not the single quote. Nothing here puts output in a
+// single-quoted attribute today, so it was a hazard rather than a hole — and
+// the next single-quoted attribute would have made it one, with nothing to say
+// the escaper was weaker than it looked.
+func htmlEsc(s string) string { return html.EscapeString(s) }
 
 // WalletPage renders the wallet page HTML
 func WalletPage(userID string) string {
