@@ -2,9 +2,11 @@
 
 **Tools for agents.** The everyday internet — news, mail, search, weather, markets, video, storage — as tools an agent can call over MCP and REST, paid per request in USDC via x402, with no account in the way.
 
-The claim that matters is *real tools, not wrappers*: Mu runs the things it exposes — a real SMTP server with DKIM, a real feed aggregator, a real search index, a real app sandbox. Most things offering agents tools are a thin layer over somebody else's API.
+The claim that matters is *one account instead of a hundred*. An agent that wants news, mail, search, weather, markets, places and somewhere to keep records otherwise needs six or seven providers: six signups, six cards on file, six tokens to rotate. Mu is one balance and one protocol, and for an agent paying per request over x402, no signup at all. **Removing the barrier is the product.** Sometimes that means running the thing ourselves — the SMTP server with DKIM is real, because a sending domain is not something you can casually acquire. Sometimes it means paying a provider so the caller doesn't have to hold that relationship. Both are legitimate; the test is whether the caller is spared an account, not whether we wrote the backend.
 
-Two doors onto one set of services. An agent calls `/mcp`; a person signs in and gets the home screen — cards per service, agent inline, apps, wallet. Nothing is built twice, and a new service appears in both at once. **Keep the signed-in app intact** — it is not legacy, it is the proof the tools are real.
+This replaces an earlier line — *real tools, not wrappers* — which was wrong in a way that cost us. It made "did we build the backend" the measure, which caps breadth at what one team can operate, and breadth concentrated behind one account is the whole value. Depth still matters where depth is what removes the barrier. It is not the point on its own.
+
+Two doors onto one set of services. An agent calls `/mcp`; a person signs in and gets the home screen — cards per service, agent inline, apps, wallet. Nothing is built twice, and a new service appears in both at once. **Keep the signed-in app intact** — it is not legacy, it is the proof the tools work.
 
 Built on go-micro: every capability is a go-micro service, the assistant is a go-micro agent. Single binary, self-hostable — run an instance and anyone paying to call your tools pays you.
 

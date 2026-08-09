@@ -14,10 +14,28 @@ answer to "what is this and who arrives how".
 weather, markets, places, storage — as tools an agent can call over MCP, paid per
 request, with no account in the way.**
 
-The claim that matters is *real tools, not wrappers*. Mu runs the things it
-exposes: a real SMTP server with DKIM, a real feed aggregator, a real search
-index, a real app sandbox. Most things offering agents tools are a thin layer
-over somebody else's API.
+The claim that matters is *one account instead of a hundred*.
+
+An agent that wants news, mail, search, weather, markets, places and somewhere
+to keep records needs six or seven providers to get there: six signups, six
+cards on file, six tokens to rotate, six sets of terms. Mu is one balance and
+one protocol, and for an agent paying per request over x402, no signup at all.
+Removing that barrier is the product.
+
+Sometimes removing it means running the thing ourselves. The SMTP server with
+DKIM is real, and it has to be, because a sending domain with deliverability is
+not something a caller can casually acquire — building it *is* the barrier
+coming down. Sometimes it means paying a provider so the caller never holds
+that relationship. Both count. The test is whether the caller is spared an
+account, not whether we wrote the backend.
+
+**On the line this replaces.** For a long time this said *real tools, not
+wrappers*, and treated "we built the backend" as the thing that made Mu worth
+using. That was wrong, and it was expensive: it made the wrong quality the
+measure, and it caps the catalogue at whatever one team can operate. Breadth
+concentrated behind a single account is not the cheap part of this product. It
+is the valuable part. Depth is what you reach for when depth is what removes
+the barrier.
 
 ## The three levels
 

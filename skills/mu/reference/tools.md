@@ -10,7 +10,8 @@ something is always `List`. If you can guess the service, you can guess the tool
 
 These hold one person's data. An anonymous caller is refused.
 
-**mail** — a real SMTP server with DKIM, not a wrapper.
+**mail** — a real SMTP server with DKIM, so you get a sending address without
+owning a domain or a mail provider.
 `mail_address(tag)` returns the address to hand out; with a tag it is a
 plus-address (`owner+tag@instance`) that lands in the same inbox marked for that
 tag. `mail_inbox(tag)` reads it back, filtered to that tag if given.
