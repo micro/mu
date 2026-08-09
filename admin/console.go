@@ -433,6 +433,43 @@ func runCommand(cmd string) string {
 		wallet.AddCredits(arg(1), amount, "admin_grant", nil)
 		return fmt.Sprintf("Added %d credits to %s", amount, arg(1))
 
+	// move — the one an operator actually reaches for, and the one that was
+	// missing.
+	//
+	// credit only adds, so putting credits back where they belong meant
+	// granting a second lot and leaving the first stranded: the balances come
+	// out right and the ledger no longer adds up. Deleting the account they
+	// landed in is worse — wallet.DeleteWallet is an account-delete hook, so it
+	// destroys the credits rather than releasing them.
+	//
+	// This goes through TransferCredits, so both sides are written and the
+	// books stay balanced. By username, like every other way of naming an
+	// account here.
+	case "move":
+		if arg(1) == "" || arg(2) == "" || arg(3) == "" {
+			return "usage: move <from_username> <to_username> <amount>"
+		}
+		var moveAmount int
+		fmt.Sscanf(arg(3), "%d", &moveAmount)
+		if moveAmount <= 0 {
+			return "Amount must be positive"
+		}
+		from, err := auth.AccountByUsername(arg(1))
+		if err != nil {
+			return "No account with the username " + arg(1)
+		}
+		to, err := auth.AccountByUsername(arg(2))
+		if err != nil {
+			return "No account with the username " + arg(2)
+		}
+		if err := wallet.TransferCredits(from.ID, to.ID, moveAmount); err != nil {
+			return "Could not move: " + err.Error()
+		}
+		return fmt.Sprintf("Moved %d credits from %s (%s) to %s (%s)\n%s: %d · %s: %d",
+			moveAmount, from.ID, from.Name, to.ID, to.Name,
+			from.ID, wallet.GetWallet(from.ID).Balance,
+			to.ID, wallet.GetWallet(to.ID).Balance)
+
 	// --- Apps ---
 	case "apps":
 		allApps := apps.GetPublicApps()
@@ -502,10 +539,13 @@ func runCommand(cmd string) string {
 
 	case "help":
 		return `Users:    users · user <id> · credit <id> <amount>
-Wallet:   wallet <id>
+Wallet:   wallet <id> · move <from> <to> <amount>
 Apps:     apps · app <slug>
 Content:  search <query> · delete <type> <id> · flags
-System:   stats · types · help`
+System:   stats · types · help
+
+move goes through the normal transfer, so both ledgers are written. Do not
+delete an account to recover its credits — deleting one deletes its wallet.`
 
 	default:
 		return fmt.Sprintf("Unknown: %s. Type help.", parts[0])
