@@ -30,8 +30,15 @@ func ValidateUsername(username string) string {
 		}
 	}
 	// Block impersonation of system accounts.
-	if lower == "admin" || lower == "system" || lower == "root" ||
-		lower == "moderator" || lower == "support" {
+	//
+	// "agent" and "no-reply" are here because they are addresses this instance
+	// already sends from: an agent answers mail as agent@<domain>, and event
+	// invites come from no-reply@<domain>. A username becomes a mailbox, so
+	// registering one of those would take delivery of replies meant for the
+	// instance — including everything anyone sends back to their own agent.
+	switch lower {
+	case "admin", "system", "root", "moderator", "support",
+		"agent", "noreply", "no_reply", "mailer", "postmaster", "abuse":
 		return "That username is reserved."
 	}
 	return ""

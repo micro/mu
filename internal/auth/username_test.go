@@ -40,6 +40,18 @@ func TestValidateUsernameReservedAndBlockedNames(t *testing.T) {
 	}{
 		{name: "reserved", username: "admin", want: "That username is reserved."},
 		{name: "blocked substring", username: "pornbot", want: "That username is not allowed."},
+
+		// A username becomes a mailbox, and these are addresses the instance
+		// already sends from. An agent answers mail as agent@<domain> and
+		// event invites come from no-reply@<domain>, so whoever held one of
+		// these names would take delivery of replies meant for the instance —
+		// starting with everything anyone sends back to their own agent.
+		{name: "the address agents reply from", username: "agent",
+			want: "That username is reserved."},
+		{name: "the address invites come from", username: "noreply",
+			want: "That username is reserved."},
+		{name: "postmaster", username: "postmaster",
+			want: "That username is reserved."},
 	}
 
 	for _, tt := range tests {
