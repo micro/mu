@@ -320,7 +320,30 @@ func RemoveAgent(owner, id string) error {
 	if a.TokenID != "" {
 		_ = auth.DeleteToken(a.TokenID, owner)
 	}
+	// Also from the store this one replaced, matched the way the importer
+	// matches: by name.
+	//
+	// Deleting an agent did not stick. The roster record went, and the copy in
+	// agent/micro's store stayed, and ImportUserAgents ran on every startup —
+	// so the agent came back at the next restart, and the next, and the next.
+	// Removing it from both is what makes a deletion a deletion; the ids differ
+	// because importing minted a new one, so the name is the only handle there
+	// has ever been.
+	forgetLegacyAgent(owner, a.Name)
 	return userdb.Delete(ns, owner, collection, id)
+}
+
+// forgetLegacyAgent drops any pre-roster record of this name.
+func forgetLegacyAgent(owner, name string) {
+	want := strings.ToLower(strings.TrimSpace(name))
+	if owner == "" || want == "" {
+		return
+	}
+	for _, ua := range micro.UserAgentsFor(owner) {
+		if ua != nil && strings.ToLower(ua.Name) == want {
+			micro.DeleteUserAgentFor(owner, ua.ID)
+		}
+	}
 }
 
 func fromRecord(owner string, rec userdb.Record) *Agent {
@@ -432,7 +455,15 @@ func IssueToken(owner, id string) (string, error) {
 // tool set, and get no token — nobody asked for a credential, and minting one on
 // somebody's behalf is not an import, it is a decision.
 //
-// Idempotent by name: running twice does not double anybody's list.
+// It moves rather than copies: every agent it reads is removed from the old
+// store, whether it was imported or skipped for already being in the roster.
+//
+// This ran on every startup and only copied, so the old store stayed full
+// forever and the import was not a migration, it was a sync from a deprecated
+// source. That made deletion impossible: remove an agent and the next restart
+// imported it straight back from the copy nobody could see. Draining the source
+// is what makes the migration a migration — after one pass there is nothing
+// left to resurrect anything from.
 func ImportUserAgents(all map[string][]*micro.Agent) int {
 	imported := 0
 	for owner, list := range all {
@@ -441,14 +472,22 @@ func ImportUserAgents(all map[string][]*micro.Agent) int {
 			have[strings.ToLower(a.Name)] = true
 		}
 		for _, ua := range list {
-			if ua == nil || have[strings.ToLower(ua.Name)] {
+			if ua == nil {
+				continue
+			}
+			name := strings.ToLower(ua.Name)
+			if have[name] {
+				// Already in the roster: it was imported on an earlier pass, so
+				// the old copy is the stale one.
+				micro.DeleteUserAgentFor(owner, ua.ID)
 				continue
 			}
 			if _, _, err := CreateAgent(owner, ua.Name, Hosted, ua.SystemPrompt,
 				ua.Description, ua.Tools, false); err != nil {
-				continue
+				continue // left in place, so the next run tries again
 			}
-			have[strings.ToLower(ua.Name)] = true
+			micro.DeleteUserAgentFor(owner, ua.ID)
+			have[name] = true
 			imported++
 		}
 	}
