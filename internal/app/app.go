@@ -1216,19 +1216,25 @@ func Account(w http.ResponseWriter, r *http.Request) {
 
 	memCard := memoryCard(r, acc)
 
-	// Chat channel link card. One code works on any of them.
-	discordCard := ""
+	// The clients that reach the agent from somewhere else — Discord, Telegram,
+	// WhatsApp, which is what client/ holds. One code works on any of them.
+	//
+	// This card was headed "Chat", which is a different thing on this instance:
+	// chat is the service behind /chat, the live discussion rooms attached to an
+	// item. Two unrelated things under one word, and the one on /account was not
+	// the one with a page.
+	clientsCard := ""
 	if LinkCodeFunc != nil {
 		code := r.URL.Query().Get("link_code")
 		if code != "" {
-			discordCard = fmt.Sprintf(`<div class="card">
-<h4>Chat</h4>
+			clientsCard = fmt.Sprintf(`<div class="card">
+<h4>Clients</h4>
 <p>Your link code: <code style="font-size:18px;font-weight:bold;background:#f0f0f0;padding:4px 12px;border-radius:4px">%s</code></p>
 <p class="text-sm text-muted" style="margin-top:4px">Send <code>link %s</code> to the Mu bot on Discord, Telegram or WhatsApp. Expires in 5 minutes, and works once.</p>
 </div>`, code, code)
 		} else {
-			discordCard = `<div class="card">
-<h4>Chat</h4>
+			clientsCard = `<div class="card">
+<h4>Clients</h4>
 <p class="text-sm text-muted">Use the agent from Discord, Telegram or WhatsApp. Generate a code, then send <code>link &lt;code&gt;</code> to the bot. Never send your password to a chat app.</p>
 <form action="/account" method="POST" style="margin-top:8px">
 <input type="hidden" name="channel_link" value="1">
@@ -1279,7 +1285,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		languageOptions,
 		memCard,
 		PasskeyListHTML(acc.ID),
-		discordCard,
+		clientsCard,
 		adminLinks,
 		inviteLink(acc),
 	)
