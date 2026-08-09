@@ -10,7 +10,6 @@ package stream
 import (
 	"encoding/json"
 	"fmt"
-	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -307,18 +306,6 @@ func ClearByAuthor(authorID string) {
 	events = filtered
 	save()
 	mu.Unlock()
-}
-
-// All returns a sorted copy of all events (for admin/export).
-func All() []*Event {
-	mu.RLock()
-	defer mu.RUnlock()
-	result := make([]*Event, len(events))
-	copy(result, events)
-	sort.Slice(result, func(i, j int) bool {
-		return result[i].CreatedAt.After(result[j].CreatedAt)
-	})
-	return result
 }
 
 // MicroMention is the trigger token for AI responses in the stream.

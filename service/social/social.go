@@ -1165,25 +1165,6 @@ func extractFirstURL(text string) string {
 	return strings.ReplaceAll(match, "&amp;", "&")
 }
 
-// firstSentences extracts the first n sentences from text
-func firstSentences(text string, n int) string {
-	text = strings.TrimSpace(text)
-	count := 0
-	for i, r := range text {
-		if r == '.' || r == '!' || r == '?' {
-			count++
-			if count >= n {
-				return strings.TrimSpace(text[:i+1])
-			}
-		}
-	}
-	// If fewer sentences than n, return the whole text
-	if len(text) > 280 {
-		return text[:277] + "..."
-	}
-	return text
-}
-
 // stripHTML removes HTML tags from a string
 func stripHTML(s string) string {
 	re := regexp.MustCompile(`<[^>]*>`)

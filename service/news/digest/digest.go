@@ -107,11 +107,6 @@ func GetTodayDigest() *DigestPost {
 	return FindTodayBlogDigest()
 }
 
-// GetLatestDigest returns whether a digest exists (for status checks).
-func GetLatestDigest() bool {
-	return !lastDigest.IsZero()
-}
-
 // TestGenerate runs the digest pipeline synchronously and returns the
 // result or error. Used by diagnostics to test without publishing.
 func TestGenerate() (string, error) {
@@ -205,36 +200,6 @@ func createDigest() {
 
 	setSuccess()
 	app.Log("digest", "Daily digest published as blog post: %s", title)
-}
-
-func updateDigest(existing *DigestPost) {
-	app.Log("digest", "Updating digest %s with latest data", existing.ID)
-
-	context, refs := gatherContext()
-	if context == "" {
-		app.Log("digest", "No content available for update")
-		setSuccess()
-		return
-	}
-
-	response, err := generateDigestContent(context)
-	if err != nil {
-		setError(err.Error())
-		app.Log("digest", "AI generation failed: %v", err)
-		return
-	}
-
-	response += buildReferences(refs)
-
-	err = UpdateBlogPost(existing.ID, existing.Title, response, "digest")
-	if err != nil {
-		setError(err.Error())
-		app.Log("digest", "Failed to update digest blog post: %v", err)
-		return
-	}
-
-	setSuccess()
-	app.Log("digest", "Digest %s updated with latest data", existing.ID)
 }
 
 func generateDigestContent(context string) (string, error) {

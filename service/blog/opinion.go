@@ -161,15 +161,6 @@ func publishCategoryOpinion(category string) {
 	app.Log("opinion", "Opinion published [%s]: %s", category, title)
 }
 
-// FindTodayOpinion returns the first opinion post from today (for backwards compat).
-func FindTodayOpinion() *Post {
-	opinions := FindTodayOpinions()
-	if len(opinions) == 0 {
-		return nil
-	}
-	return opinions[0]
-}
-
 // FindTodayOpinions returns all opinion posts from today, newest first.
 func FindTodayOpinions() []*Post {
 	mutex.RLock()

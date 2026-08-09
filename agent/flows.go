@@ -1,9 +1,7 @@
 package agent
 
 import (
-	"errors"
 	"sort"
-	"strings"
 	"sync"
 	"time"
 
@@ -14,9 +12,9 @@ import (
 
 // Flow represents a saved agent query with tool calls and rendered response.
 type Flow struct {
-	ID        string     `json:"id"`
-	AccountID string     `json:"account_id"`
-	Prompt    string     `json:"prompt"`
+	ID        string `json:"id"`
+	AccountID string `json:"account_id"`
+	Prompt    string `json:"prompt"`
 	// Title is a name given to the conversation this flow starts, replacing the
 	// first prompt in the rail. Only ever set on a root flow.
 	Title     string     `json:"title,omitempty"`
@@ -114,21 +112,6 @@ func updateFlow(id string, fn func(f *Flow)) {
 	}
 	fn(f)
 	persistFlows() //nolint:errcheck
-}
-
-// getLatestRunningFlow returns the most recent "running" flow for an account, or nil.
-func getLatestRunningFlow(accountID string) *Flow {
-	flowMu.RLock()
-	defer flowMu.RUnlock()
-	var latest *Flow
-	for _, f := range flowStore {
-		if f.AccountID == accountID && f.Status == "running" {
-			if latest == nil || f.CreatedAt.After(latest.CreatedAt) {
-				latest = f
-			}
-		}
-	}
-	return latest
 }
 
 // ListFlows returns all flows belonging to accountID, newest first.
@@ -264,12 +247,6 @@ func sessionChain(accountID, anyID string) []*Flow {
 	return chain
 }
 
-// SessionTurns returns a conversation's turns (oldest first) given any flow ID
-// in the chain (typically the head).
-func SessionTurns(flowID string) []*Flow {
-	return getConversationHistory(flowID, 50)
-}
-
 // getConversationHistory walks the parent chain from a flow and returns
 // up to maxTurns prior turns in chronological order (oldest first).
 func getConversationHistory(flowID string, maxTurns int) []*Flow {
@@ -302,45 +279,6 @@ func persistFlows() error {
 		flows = append(flows, f)
 	}
 	return data.SaveJSON("agent_flows.json", flows)
-}
-
-// RenameSession retitles a conversation by rewriting the prompt shown for it.
-//
-// The rail titled each conversation with its first prompt, which is a good
-// default and a bad permanent name: the first thing you type is rarely what the
-// conversation turns out to be about, and there was no way to change it.
-func RenameSession(accountID, rootID, title string) error {
-	title = strings.TrimSpace(title)
-	if title == "" {
-		return errors.New("give it a name")
-	}
-	if len(title) > 120 {
-		title = title[:120]
-	}
-	f := getFlow(rootID)
-	if f == nil || f.AccountID != accountID {
-		return errors.New("no such conversation")
-	}
-	updateFlow(rootID, func(fl *Flow) { fl.Title = title })
-	return nil
-}
-
-// DeleteSession removes a whole conversation, not just one turn.
-//
-// deleteFlow existed and removed a single flow, which for a ten-turn chat left
-// nine orphans that the rail then listed as nine separate conversations. A
-// conversation is what a person thinks they are deleting.
-func DeleteSession(accountID, anyID string) error {
-	chain := sessionChain(accountID, anyID)
-	if len(chain) == 0 {
-		return errors.New("no such conversation")
-	}
-	for _, f := range chain {
-		if err := deleteFlow(accountID, f.ID); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // latestSessionFor returns the root id of the most recent conversation with an

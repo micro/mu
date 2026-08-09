@@ -27,6 +27,11 @@ type Server struct {
 
 // Servers returns the configured MCP servers: always "self" (this instance),
 // plus any in X402_SERVERS as "name=url,name2=url2".
+//
+// Unreachable today, and kept on purpose along with the rest of the payer —
+// see the note on the absent `pay` tool in main.go. Deleting only the registry
+// would leave PayAndCallMCP unable to name a server, which is worse than
+// either keeping the payer whole or removing it whole.
 func Servers() []Server {
 	out := []Server{{Name: "self", URL: strings.TrimRight(settings.Get("APP_URL"), "/")}}
 	for _, entry := range strings.Split(settings.Get("X402_SERVERS"), ",") {

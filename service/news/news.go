@@ -279,13 +279,6 @@ func getSummary(post *Post) string {
 	return fmt.Sprintf(`%sSource: <i>%s</i>`, timestamp, getDomain(post.URL))
 }
 
-func getCategoryBadge(post *Post) string {
-	if post.Category == "" {
-		return ""
-	}
-	return fmt.Sprintf(`<a href="/news#%s" class="category">%s</a>`, post.Category, displayNewsCategory(post.Category))
-}
-
 // ContentParser functions clean up feed descriptions
 type ContentParser struct {
 	Name      string
@@ -490,62 +483,6 @@ func generateNewsHtml() string {
 	head := app.Head("news", sortedFeeds)
 
 	return fmt.Sprintf(`%s<div id="topics">%s</div><div>%s</div>`, searchForm, head, headlines+string(content))
-}
-
-// generateHeadlinesHtml generates fresh HTML for headlines with current timestamps
-// Deprecated: This function is no longer used. Headlines are now cached.
-func generateHeadlinesHtml() string {
-	mutex.RLock()
-	defer mutex.RUnlock()
-
-	// Get first post from each category for headlines
-	seenCategories := make(map[string]bool)
-	var headlines []*Post
-
-	for _, post := range feed {
-		if !seenCategories[post.Category] {
-			headlines = append(headlines, post)
-			seenCategories[post.Category] = true
-		}
-		if len(headlines) >= 10 {
-			break
-		}
-	}
-
-	// Sort by posted date
-	sort.Slice(headlines, func(i, j int) bool {
-		return headlines[i].PostedAt.After(headlines[j].PostedAt)
-	})
-
-	var headline []byte
-	headline = append(headline, []byte(`<div class="headlines">`)...)
-
-	for _, h := range headlines {
-		link := h.URL
-		if h.ID != "" {
-			link = "/news?id=" + h.ID
-		}
-
-		categoryBadge := ""
-		if h.Category != "" {
-			categoryBadge = fmt.Sprintf(`<div class="category-header"><a href="/news#%s" class="category">%s</a></div>`, h.Category, displayNewsCategory(h.Category))
-		}
-		summary := getSummary(h)
-
-		val := fmt.Sprintf(`
-		<div class="headline">
-		   %s
-		   <a href="%s"><span class="title">%s</span></a>
-		 <span class="description">%s</span>
-		 <div class="summary">%s</div>
-		`, categoryBadge, link, h.Title, h.Description, summary)
-
-		val += `</div>`
-		headline = append(headline, []byte(val)...)
-	}
-
-	headline = append(headline, []byte(`</div>`)...)
-	return string(headline)
 }
 
 func loadFeed() {
@@ -2571,16 +2508,6 @@ func meaningfulNewsQueryTerms(query string) []string {
 		}
 	}
 	return terms
-}
-
-func postURL(post *Post) string {
-	if post == nil {
-		return ""
-	}
-	if post.ID != "" {
-		return "/news?id=" + post.ID
-	}
-	return post.URL
 }
 
 // handleGetFeed handles GET /news - returns feed as JSON or HTML

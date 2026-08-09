@@ -26,12 +26,12 @@ func TestNativeToolCallKeyDedupesEquivalentInputs(t *testing.T) {
 // trace you cannot look up.
 func TestNativeToolNameMatchesTheToolCallersUse(t *testing.T) {
 	for raw, want := range map[string]string{
-		"context_Server_Get": "context_get",
-		"memory_Server_Set":  "memory_set",
-		"news_Server_List":   "news_list",
+		"context_Server_Get":      "context_get",
+		"memory_Server_Set":       "memory_set",
+		"news_Server_List":        "news_list",
 		"weather.Server.Forecast": "weather_forecast",
-		"db_Handler_Create":  "db_create",
-		"already_fine":       "already_fine",
+		"db_Handler_Create":       "db_create",
+		"already_fine":            "already_fine",
 	} {
 		if got := NativeToolName(raw); got != want {
 			t.Errorf("NativeToolName(%q) = %q, want %q", raw, got, want)

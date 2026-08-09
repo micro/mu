@@ -15,7 +15,6 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/auth"
-	"mu/internal/data"
 	"mu/internal/settings"
 	"mu/service/wallet"
 )
@@ -187,62 +186,6 @@ func searchBrave(query string, limit int) ([]BraveResult, error) {
 	return braveResp.Web.Results, nil
 }
 
-// Handler serves the /search page (local data index only, free, no auth required).
-func Handler(w http.ResponseWriter, r *http.Request) {
-	query := strings.TrimSpace(r.URL.Query().Get("q"))
-
-	// Render search bar
-	searchBar := `<form class="search-bar" action="/search" method="GET">` +
-		`<input type="text" name="q" placeholder="Search..." value="` +
-		html.EscapeString(query) + `" autofocus>` +
-		`<button type="submit">Search</button>` +
-		`</form>`
-
-	if query == "" {
-		content := searchBar + `<p class="empty">Enter a query above to search.</p>`
-		w.Write([]byte(app.RenderHTMLForRequest("Search", "Search", content, r)))
-		return
-	}
-
-	// Limit query length to prevent abuse
-	if len(query) > 256 {
-		app.BadRequest(w, r, "Search query must not exceed 256 characters")
-		return
-	}
-
-	localResults := data.Search(query, 10)
-
-	var b strings.Builder
-	b.WriteString(searchBar)
-
-	if len(localResults) == 0 {
-		b.WriteString(`<p class="empty">No results found.</p>`)
-	} else {
-		for _, entry := range localResults {
-			link := entryLink(entry)
-			b.WriteString(`<div class="card" style="margin-bottom:12px;">`)
-			b.WriteString(`<div><a href="` + html.EscapeString(link) + `" class="card-title">` +
-				html.EscapeString(entry.Title) + `</a>`)
-			b.WriteString(` <span class="category" style="font-size:13px;">` +
-				html.EscapeString(entry.Type) + `</span>`)
-			if !entry.IndexedAt.IsZero() {
-				b.WriteString(` <span style="font-size:13px;color:#888;margin-left:4px;">` +
-					html.EscapeString(app.TimeAgo(entry.IndexedAt)) + `</span>`)
-			}
-			b.WriteString(`</div>`)
-			if entry.Content != "" {
-				snippet := truncate(entry.Content, 160)
-				b.WriteString(`<p class="card-desc" style="margin:4px 0 0;">` +
-					html.EscapeString(snippet) + `</p>`)
-			}
-			b.WriteString(`</div>`)
-		}
-	}
-
-	pageHTML := app.RenderHTMLForRequest("Search: "+query, "Search results for "+query, b.String(), r)
-	w.Write([]byte(pageHTML))
-}
-
 // WebHandler serves the /web page (Brave web search, paid, auth required).
 func WebHandler(w http.ResponseWriter, r *http.Request) {
 	query := strings.TrimSpace(r.URL.Query().Get("q"))
@@ -378,23 +321,6 @@ func PreviewHandler(w http.ResponseWriter, r *http.Request) {
 	app.RespondJSON(w, map[string]interface{}{"results": results})
 }
 
-// entryLink returns the URL for a local search result entry.
-func entryLink(entry *data.IndexEntry) string {
-	switch entry.Type {
-	case "news":
-		return "/news?id=" + url.QueryEscape(entry.ID)
-	case "video":
-		if u, ok := entry.Metadata["url"].(string); ok && u != "" {
-			return u
-		}
-		return "/video"
-	case "blog", "post":
-		return "/blog/post?id=" + url.QueryEscape(entry.ID)
-	default:
-		return "/" + entry.Type
-	}
-}
-
 // htmlTagRe matches any HTML tag.
 var htmlTagRe = regexp.MustCompile(`<[^>]*>`)
 
@@ -490,12 +416,3 @@ var webRecentSearchesScript = `
   });
 </script>
 `
-
-// truncate shortens s to at most max runes, appending "…" if truncated.
-func truncate(s string, max int) string {
-	runes := []rune(s)
-	if len(runes) <= max {
-		return s
-	}
-	return string(runes[:max]) + "…"
-}

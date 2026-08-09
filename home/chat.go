@@ -9,7 +9,3 @@ import "mu/internal/app"
 func chatComponent(guest bool) string {
 	return app.ChatComponent(app.ChatConfig{Guest: guest})
 }
-
-func jsString(s string) string {
-	return app.JSString(s)
-}

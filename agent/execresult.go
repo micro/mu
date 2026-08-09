@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"sync"
-	"time"
 
 	"mu/internal/app"
 )
@@ -22,28 +21,6 @@ var (
 	execMu    sync.Mutex
 	execStore = map[string]chan *ExecResult{}
 )
-
-// waitForExecResult waits for the browser to send back the result of an exec.
-func waitForExecResult(sessionID string, timeout time.Duration) *ExecResult {
-	ch := make(chan *ExecResult, 1)
-
-	execMu.Lock()
-	execStore[sessionID] = ch
-	execMu.Unlock()
-
-	defer func() {
-		execMu.Lock()
-		delete(execStore, sessionID)
-		execMu.Unlock()
-	}()
-
-	select {
-	case r := <-ch:
-		return r
-	case <-time.After(timeout):
-		return nil
-	}
-}
 
 // ExecResultHandler receives POST /agent/exec/result from the browser.
 func ExecResultHandler(w http.ResponseWriter, r *http.Request) {

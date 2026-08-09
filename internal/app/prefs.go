@@ -62,18 +62,6 @@ func UnsaveItem(userID, contentType, contentID string) {
 	savePrefs()
 }
 
-// IsSaved checks if the user has saved this item
-func IsSaved(userID, contentType, contentID string) bool {
-	prefsMu.RLock()
-	defer prefsMu.RUnlock()
-	p, ok := prefs[userID]
-	if !ok {
-		return false
-	}
-	_, saved := p.Saved[contentType+":"+contentID]
-	return saved
-}
-
 // DismissItem hides a content item from the user's view
 func DismissItem(userID, contentType, contentID string) {
 	prefsMu.Lock()

@@ -24,24 +24,6 @@ var (
 	sentimentTTL   = 30 * time.Minute
 )
 
-// GetSentiment returns cached sentiment for an article URL.
-func GetSentiment(url string) *Sentiment {
-	sentimentMu.RLock()
-	defer sentimentMu.RUnlock()
-	return sentimentCache[url]
-}
-
-// GetAllSentiments returns all cached sentiments.
-func GetAllSentiments() map[string]*Sentiment {
-	sentimentMu.RLock()
-	defer sentimentMu.RUnlock()
-	result := make(map[string]*Sentiment, len(sentimentCache))
-	for k, v := range sentimentCache {
-		result[k] = v
-	}
-	return result
-}
-
 // StartSentimentLoop runs sentiment tagging every 15 minutes.
 func StartSentimentLoop() {
 	go func() {

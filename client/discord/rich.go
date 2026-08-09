@@ -57,38 +57,11 @@ func sendEmbed(channelID string, embed Embed) {
 	resp.Body.Close()
 }
 
-func sendMessageWithButtons(channelID, content string, buttons []Button) {
-	msg := map[string]any{
-		"content": content,
-		"components": []map[string]any{
-			{
-				"type":       1, // ACTION_ROW
-				"components": buttons,
-			},
-		},
-	}
-	body, _ := json.Marshal(msg)
-	req, _ := http.NewRequest("POST", "https://discord.com/api/v10/channels/"+channelID+"/messages", strings.NewReader(string(body)))
-	req.Header.Set("Authorization", "Bot "+botToken)
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		app.Log("discord", "Send buttons error: %v", err)
-		return
-	}
-	io.Copy(io.Discard, resp.Body)
-	resp.Body.Close()
-}
-
 type Button struct {
 	Type     int    `json:"type"`
 	Style    int    `json:"style"`
 	Label    string `json:"label"`
 	CustomID string `json:"custom_id"`
-}
-
-func NewButton(label, customID string, style int) Button {
-	return Button{Type: 2, Style: style, Label: label, CustomID: customID}
 }
 
 const (
@@ -195,29 +168,6 @@ func NotifyUser(muAccountID, message string) {
 		return
 	}
 	sendMessage(channelID, message)
-}
-
-// NotifyEmbed sends a rich embed DM to a user's linked Discord account.
-func NotifyEmbed(muAccountID string, embed Embed) {
-	linkMu.RLock()
-	var discordID string
-	for did, mid := range links {
-		if mid == muAccountID {
-			discordID = did
-			break
-		}
-	}
-	linkMu.RUnlock()
-
-	if discordID == "" {
-		return
-	}
-
-	channelID := getDMChannel(discordID)
-	if channelID == "" {
-		return
-	}
-	sendEmbed(channelID, embed)
 }
 
 func getDMChannel(userID string) string {

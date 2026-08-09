@@ -2808,31 +2808,3 @@ func htmlEsc(s string) string {
 	s = strings.ReplaceAll(s, `"`, "&#34;")
 	return s
 }
-
-func formatPrice(price float64) string {
-	if price >= 1000 {
-		return fmt.Sprintf("$%s", formatLargeNum(price))
-	}
-	if price >= 1 {
-		return fmt.Sprintf("$%.2f", price)
-	}
-	return fmt.Sprintf("$%.4f", price)
-}
-
-func formatLargeNum(n float64) string {
-	// Simple comma-formatted integer
-	i := int64(n)
-	s := fmt.Sprintf("%d", i)
-	if len(s) <= 3 {
-		return s
-	}
-	var parts []string
-	for len(s) > 3 {
-		parts = append([]string{s[len(s)-3:]}, parts...)
-		s = s[:len(s)-3]
-	}
-	if s != "" {
-		parts = append([]string{s}, parts...)
-	}
-	return strings.Join(parts, ",")
-}

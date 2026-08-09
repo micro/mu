@@ -50,13 +50,6 @@ func Configured() bool {
 	return detectOllama() != ""
 }
 
-func getAtlasBaseURL() string {
-	if v := settings.Get("OPENAI_BASE_URL"); v != "" {
-		return strings.TrimRight(v, "/")
-	}
-	return "https://api.atlascloud.ai/v1"
-}
-
 // Atlas Cloud model aliases — used to route requests to Atlas Cloud
 // instead of Anthropic. Any model string starting with "deepseek" or
 // "qwen" is routed to Atlas Cloud automatically.

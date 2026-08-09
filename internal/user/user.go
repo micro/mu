@@ -195,30 +195,6 @@ func PresenceHandler(w http.ResponseWriter, r *http.Request) {
 	}()
 }
 
-// GetProfile retrieves a user's profile, creating a default one if it doesn't exist
-func GetProfile(userID string) *Profile {
-	profileMutex.RLock()
-	profile, exists := profiles[userID]
-	profileMutex.RUnlock()
-
-	if !exists {
-		profile = &Profile{UserID: userID, UpdatedAt: time.Now()}
-	}
-
-	return profile
-}
-
-func UpdateProfile(profile *Profile) error {
-	profileMutex.Lock()
-	defer profileMutex.Unlock()
-
-	profile.UpdatedAt = time.Now()
-	profiles[profile.UserID] = profile
-	data.SaveJSON("profiles.json", profiles)
-
-	return nil
-}
-
 // ModerateAIResponse checks an AI-generated response BEFORE it is posted.
 // Returns true if the response is safe to post. If the content is flagged, the
 // requesting user is banned (admins are exempt).

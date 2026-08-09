@@ -159,33 +159,6 @@ var (
 	customWhitelist   = map[string]bool{}
 )
 
-// WhitelistDomain adds a domain to the custom whitelist.
-func WhitelistDomain(domain string) {
-	customWhitelistMu.Lock()
-	defer customWhitelistMu.Unlock()
-	customWhitelist[strings.ToLower(domain)] = true
-	data.SaveJSON("mail_whitelist.json", customWhitelist)
-}
-
-// UnwhitelistDomain removes a domain from the custom whitelist.
-func UnwhitelistDomain(domain string) {
-	customWhitelistMu.Lock()
-	defer customWhitelistMu.Unlock()
-	delete(customWhitelist, strings.ToLower(domain))
-	data.SaveJSON("mail_whitelist.json", customWhitelist)
-}
-
-// ListWhitelistedDomains returns all custom-whitelisted domains.
-func ListWhitelistedDomains() []string {
-	customWhitelistMu.RLock()
-	defer customWhitelistMu.RUnlock()
-	var result []string
-	for d := range customWhitelist {
-		result = append(result, d)
-	}
-	return result
-}
-
 // isWhitelistedDomain checks both built-in and custom whitelists.
 // Returns false for consumer email domains (gmail, outlook, etc.)
 // even if they're in the map — those are explicitly set to false.
@@ -251,14 +224,6 @@ func CheckInboundAllowed(fromAddr, inReplyTo, references string) (string, bool) 
 	}
 
 	return "sender not in whitelist and message is not a reply", false
-}
-
-// SaveSentIDs is a no-op helper to force a save (called on graceful shutdown).
-func SaveSentIDs() {
-	sentMu.RLock()
-	defer sentMu.RUnlock()
-	data.SaveJSON("mail_sent_ids.json", sentMsgIDs)
-	data.SaveJSON("mail_sent_to.json", sentToAddr)
 }
 
 // isOwnVerifiedAddress reports whether an inbound sender is the recipient's

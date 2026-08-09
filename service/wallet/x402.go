@@ -145,17 +145,6 @@ var (
 	x402TrialUsage = map[string]int{}
 )
 
-// X402TrialRemaining returns how many free calls the address has left.
-func X402TrialRemaining(walletAddr string) int {
-	if walletAddr == "" {
-		return 0
-	}
-	if r := x402TrialLimit - x402TrialUsage[walletAddr]; r > 0 {
-		return r
-	}
-	return 0
-}
-
 // X402UseTrialCall records a free trial call, returning false when exhausted.
 func X402UseTrialCall(walletAddr string) bool {
 	if walletAddr == "" || x402TrialUsage[walletAddr] >= x402TrialLimit {
@@ -498,21 +487,6 @@ func facilitatorPost(path string, body map[string]any) ([]byte, error) {
 		return nil, fmt.Errorf("facilitator %s returned %d: %s", path, resp.StatusCode, strings.TrimSpace(string(data)))
 	}
 	return data, nil
-}
-
-// X402PriceFor returns the per-call price to invoke an operation via x402
-// (e.g. "$0.05"), or "" when x402 is disabled or the operation is free. Mu
-// treats 1 credit ≈ 1 US cent, so the agent price and the credit cost are the
-// same number shown two ways. Used to advertise per-endpoint pricing.
-func X402PriceFor(operation string) string {
-	if !X402Enabled() {
-		return ""
-	}
-	cost := GetOperationCost(operation)
-	if cost < 1 {
-		return ""
-	}
-	return fmt.Sprintf("$%d.%02d", cost/100, cost%100)
 }
 
 // X402Status returns a human-readable diagnostic of the x402 configuration

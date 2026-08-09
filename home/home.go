@@ -213,107 +213,6 @@ func ForceRefresh() {
 	RefreshCards()
 }
 
-// CardHandler serves individual card HTML fragments at /home/card/{id}.
-// Each card loads independently so one slow/broken card can't block
-// the entire home page.
-func CardHandler(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, "/home/card/")
-	if id == "" {
-		http.NotFound(w, r)
-		return
-	}
-
-	// Mail needs a session to render at all, so it is built here rather than
-	// coming from the cached set.
-	if id == "mail" {
-		viewerID := ""
-		if sess, _ := auth.TrySession(r); sess != nil {
-			viewerID = sess.Account
-		}
-		content := ""
-		if viewerID != "" {
-			content = mail.GetRecentThreadsPreview(viewerID, 3)
-		}
-		if strings.TrimSpace(content) == "" {
-			w.WriteHeader(204)
-			return
-		}
-		content += app.Link("More", "/mail")
-		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprintf(w, app.CardTemplate, "mail", "mail", "Mail", content)
-		return
-	}
-
-	// App widget cards.
-	if strings.HasPrefix(id, "app-") {
-		slug := strings.TrimPrefix(id, "app-")
-		a := apps.GetApp(slug)
-		if a == nil {
-			http.NotFound(w, r)
-			return
-		}
-		content := fmt.Sprintf(`<iframe src="/apps/%s" style="width:100%%;height:300px;border:none;border-radius:6px" sandbox="allow-scripts allow-same-origin" loading="lazy"></iframe>`, slug)
-		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprintf(w, app.CardTemplate, id, id, a.Name, content)
-		return
-	}
-
-	// Standard cached cards — serve with a 3-second timeout to prevent
-	// deadlocks from blocking the response.
-	done := make(chan string, 1)
-	go func() {
-		RefreshCards()
-		cacheMutex.RLock()
-		defer cacheMutex.RUnlock()
-		for _, card := range Cards {
-			if card.ID == id {
-				content := card.CachedHTML
-				if strings.TrimSpace(content) == "" {
-					done <- ""
-					return
-				}
-				if card.Link != "" {
-					content += app.Link("More", card.Link)
-				}
-				done <- fmt.Sprintf(app.CardTemplate, card.ID, card.ID, card.Title, content)
-				return
-			}
-		}
-		done <- ""
-	}()
-
-	select {
-	case html := <-done:
-		if html == "" {
-			w.WriteHeader(204)
-			return
-		}
-		w.Header().Set("Content-Type", "text/html")
-		w.Header().Set("Cache-Control", "no-store")
-		w.Write([]byte(html))
-	case <-time.After(3 * time.Second):
-		app.Log("home", "Card %s timed out", id)
-		w.WriteHeader(204)
-	}
-}
-
-// RefreshHandler clears the last_visit cookie to show all cards again
-func RefreshHandler(w http.ResponseWriter, r *http.Request) {
-	// Clear the cookie
-	cookie := &http.Cookie{
-		Name:     "last_visit",
-		Value:    "",
-		Path:     "/",
-		MaxAge:   -1, // Delete cookie
-		HttpOnly: true,
-		SameSite: http.SameSiteStrictMode,
-	}
-	http.SetCookie(w, cookie)
-
-	// Redirect back to home
-	http.Redirect(w, r, "/home", http.StatusSeeOther)
-}
-
 func Handler(w http.ResponseWriter, r *http.Request) {
 	// JSON endpoint for auto-refresh polling
 	if app.WantsJSON(r) {
@@ -613,7 +512,6 @@ func chipMarkup(q string) string {
 		`font-size:13px;color:#555;cursor:pointer;white-space:nowrap;font-family:inherit">%s</button>`,
 		htmlEsc(q), htmlEsc(q))
 }
-
 
 // CardsHTML renders the cards a reader watches: the live view of each
 // service they chose to keep an eye on.

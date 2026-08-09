@@ -1197,7 +1197,6 @@ func humanSize(n int) string {
 	}
 }
 
-
 // InboundMail is a message that arrived for a tagged address.
 type InboundMail struct {
 	Owner string // account the address belongs to
@@ -1207,7 +1206,6 @@ type InboundMail struct {
 	// agent's own address. There is no tag to resolve, so it is the account's
 	// default agent that answers.
 	Shared bool
-
 
 	From      string // who wrote in
 	FromName  string

@@ -35,11 +35,6 @@ func ItemControls(userID string, isAdmin bool, contentType, contentID, authorID,
 	return renderMenu(actions)
 }
 
-// ExternalControls is a no-op — external content doesn't need per-item controls.
-func ExternalControls(userID, contentType, contentID string) string {
-	return ""
-}
-
 // StaticControls is a no-op — cached content (news, video, blog listings)
 // shouldn't have per-item dropdown menus. They add noise.
 func StaticControls(contentType, contentID string) string {

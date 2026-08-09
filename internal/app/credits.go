@@ -38,23 +38,6 @@ var BalanceFunc func(accountID string) (balance int, charging bool)
 // that the banner becomes wallpaper.
 const LowBalance = 20
 
-// Balance returns the viewer's balance and whether this instance charges.
-func Balance(r *http.Request) (int, bool) {
-	if BalanceFunc == nil {
-		return 0, false
-	}
-	_, acc := auth.TrySession(r)
-	if acc == nil {
-		return 0, false
-	}
-	// Admins are never charged, so a balance beside their name would be
-	// meaningless and a top-up banner actively wrong.
-	if acc.Admin {
-		return 0, false
-	}
-	return BalanceFunc(acc.ID)
-}
-
 // creditView is what the viewer should be told about their credits.
 type creditView struct {
 	Show      bool   // render an indicator at all

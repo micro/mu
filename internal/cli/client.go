@@ -150,13 +150,6 @@ func (c *Client) Verify() error {
 	return nil
 }
 
-// Ping checks that the server is reachable and returns the protocol
-// version string.
-func (c *Client) Ping() error {
-	var out json.RawMessage
-	return c.call("ping", nil, &out)
-}
-
 // call is the low-level JSON-RPC sender.
 func (c *Client) call(method string, params any, out any) error {
 	var rawParams json.RawMessage

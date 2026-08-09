@@ -287,36 +287,6 @@ func RegisterToolWithAuth(t Tool, handler func(map[string]any, string) (string, 
 	tools = append(tools, t)
 }
 
-// ToolDocs returns a formatted string documenting all registered tools
-// and their parameters. Used by the app builder to give the AI accurate API info.
-func ToolDocs() string {
-	var sb strings.Builder
-	sb.WriteString("Available platform APIs (accessed via mu.api.get/mu.api.post):\n\n")
-	for _, t := range tools {
-		if t.Path == "" && t.Handle == nil && t.HandleAuth == nil {
-			continue
-		}
-		method := t.Method
-		if method == "" {
-			if t.Handle != nil || t.HandleAuth != nil {
-				method = "TOOL"
-			}
-		}
-		sb.WriteString(fmt.Sprintf("- %s (%s): %s\n", t.Name, method, t.Description))
-		if len(t.Params) > 0 {
-			sb.WriteString("  Parameters:\n")
-			for _, p := range t.Params {
-				req := ""
-				if p.Required {
-					req = " (required)"
-				}
-				sb.WriteString(fmt.Sprintf("    - %s (%s): %s%s\n", p.Name, p.Type, p.Description, req))
-			}
-		}
-	}
-	return sb.String()
-}
-
 // ToolDescriptions returns a simple "- name: description" list of all tools,
 // suitable for agent planning prompts.
 func ToolDescriptions() string {
@@ -961,22 +931,6 @@ func ExecuteTool(r *http.Request, name string, args map[string]any) (string, boo
 
 	isError := recorder.Code >= 400
 	return recorder.Body.String(), isError, nil
-}
-
-func writeResult(w http.ResponseWriter, id any, result any) {
-	json.NewEncoder(w).Encode(jsonrpcResponse{
-		JSONRPC: "2.0",
-		ID:      id,
-		Result:  result,
-	})
-}
-
-func writeError(w http.ResponseWriter, id any, code int, message string) {
-	json.NewEncoder(w).Encode(jsonrpcResponse{
-		JSONRPC: "2.0",
-		ID:      id,
-		Error:   &rpcError{Code: code, Message: message},
-	})
 }
 
 // checkTokenScope refuses a tool outside the presented token's scope.

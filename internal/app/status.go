@@ -172,34 +172,6 @@ document.querySelectorAll('.status-item[data-path]').forEach(function(el) {
 	return sb.String()
 }
 
-// InternalStatusHandler handles the old /status endpoint (now at /admin/server)
-func InternalStatusHandler(w http.ResponseWriter, r *http.Request) {
-	// Quick health check endpoint
-	if r.URL.Query().Get("quick") == "1" {
-		w.Header().Set("Content-Type", "application/json")
-		status := buildStatus()
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"healthy": status.Healthy,
-			"online":  status.OnlineUsers,
-		})
-		return
-	}
-
-	// Build status response
-	status := buildStatus()
-
-	// Check format
-	if r.URL.Query().Get("format") == "json" || WantsJSON(r) {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(status)
-		return
-	}
-
-	// Render HTML
-	html := renderStatusHTML(status)
-	w.Write([]byte(RenderHTML("Status", "Server status and health checks", html)))
-}
-
 // RenderInternalStatusHTML returns the internal status HTML for embedding in the admin server page
 func RenderInternalStatusHTML() string {
 	status := buildStatus()
@@ -458,11 +430,6 @@ func formatUptime(d time.Duration) string {
 		return fmt.Sprintf("%dh %dm", hours, minutes)
 	}
 	return fmt.Sprintf("%dm", minutes)
-}
-
-func fileExists(path string) bool {
-	_, err := os.Stat(path)
-	return err == nil
 }
 
 func renderStatusHTML(status StatusResponse) string {

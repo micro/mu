@@ -47,19 +47,6 @@ func trackQuery(accountID string) {
 	data.SaveJSON("discord_usage.json", usage)
 }
 
-// GetUsageStats returns usage stats for the admin dashboard.
-func GetUsageStats() map[string]*UserUsage {
-	usageMu.Lock()
-	defer usageMu.Unlock()
-
-	result := make(map[string]*UserUsage, len(usage))
-	for k, v := range usage {
-		copy := *v
-		result[k] = &copy
-	}
-	return result
-}
-
 // GetUserUsage returns usage for a specific user.
 func GetUserUsage(accountID string) *UserUsage {
 	usageMu.Lock()

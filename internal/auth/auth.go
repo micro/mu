@@ -34,9 +34,9 @@ type Account struct {
 	Created         time.Time `json:"created"`
 	Admin           bool      `json:"admin"`
 	Language        string    `json:"language"`
-	Widgets         []string  `json:"widgets,omitempty"`         // App IDs to show as home widgets
-	Pinned          []string  `json:"pinned,omitempty"`          // Service names pinned to the sidebar, in the order shown
-	Approved        bool      `json:"approved,omitempty"`        // Admin-approved, bypasses new account restrictions
+	Widgets         []string  `json:"widgets,omitempty"`  // App IDs to show as home widgets
+	Pinned          []string  `json:"pinned,omitempty"`   // Service names pinned to the sidebar, in the order shown
+	Approved        bool      `json:"approved,omitempty"` // Admin-approved, bypasses new account restrictions
 	Email           string    `json:"email,omitempty"`
 	EmailVerified   bool      `json:"email_verified,omitempty"`
 	EmailVerifiedAt time.Time `json:"email_verified_at,omitempty"`
@@ -50,33 +50,6 @@ type Account struct {
 var legacyCardIDs = map[string]string{
 	"reminder": "prayer",
 	"islam":    "prayer",
-}
-
-// canonicalCardID resolves a stored card id to its current name.
-func canonicalCardID(id string) string {
-	if cur, ok := legacyCardIDs[id]; ok {
-		return cur
-	}
-	return id
-}
-
-// settingsFlag / setSettingsFlag record that a one-time migration has run.
-func settingsFlag(name string) bool {
-	var flags map[string]bool
-	if err := data.LoadJSON("migrations.json", &flags); err != nil {
-		return false
-	}
-	return flags[name]
-}
-
-func setSettingsFlag(name string) {
-	var flags map[string]bool
-	_ = data.LoadJSON("migrations.json", &flags)
-	if flags == nil {
-		flags = map[string]bool{}
-	}
-	flags[name] = true
-	_ = data.SaveJSON("migrations.json", flags)
 }
 
 type Session struct {
@@ -162,20 +135,6 @@ func shouldBootstrapAdmin(acc *Account, isFirst bool) bool {
 		}
 	}
 	return false // ADMIN set but this account isn't on the list
-}
-
-func Delete(acc *Account) error {
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	if _, ok := accounts[acc.ID]; !ok {
-		return errors.New("account does not exist")
-	}
-
-	delete(accounts, acc.ID)
-	data.SaveJSON("accounts.json", accounts)
-
-	return nil
 }
 
 func GetAccount(id string) (*Account, error) {
@@ -528,11 +487,6 @@ func ParseToken(tk string) (*Session, error) {
 	return sess, nil
 }
 
-func GenerateToken() string {
-	id := uuid.New().String()
-	return base64.StdEncoding.EncodeToString([]byte(id))
-}
-
 func ValidateToken(tk string) error {
 	if len(tk) == 0 {
 		return errors.New("invalid token")
@@ -561,19 +515,6 @@ func UpdatePresence(username string) {
 	presenceMutex.Lock()
 	defer presenceMutex.Unlock()
 	userPresence[username] = time.Now()
-}
-
-// IsOnline checks if a user is online (seen within last 3 minutes)
-func IsOnline(username string) bool {
-	presenceMutex.RLock()
-	defer presenceMutex.RUnlock()
-
-	lastSeen, exists := userPresence[username]
-	if !exists {
-		return false
-	}
-
-	return time.Since(lastSeen) < 3*time.Minute
 }
 
 // GetOnlineUsers returns a list of currently online usernames

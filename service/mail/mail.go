@@ -1620,11 +1620,6 @@ func SendMessage(from, fromID, to, toID, subject, body, replyTo, messageID strin
 	return err
 }
 
-// SendMessageTagged creates a message with optional spam and header metadata
-func SendMessageTagged(from, fromID, to, toID, subject, body, replyTo, messageID string, spam bool, spamScore int, spamReasons []string, senderIP, rawHeaders string) error {
-	return SendMessageTo(from, fromID, to, toID, "", subject, body, replyTo, messageID, spam, spamScore, spamReasons, senderIP, rawHeaders)
-}
-
 // SendMessageTo is SendMessageTagged with the plus-address tag the mail arrived
 // on, so an agent reading asim+research@ sees only its own mail.
 func SendMessageTo(from, fromID, to, toID, tag, subject, body, replyTo, messageID string, spam bool, spamScore int, spamReasons []string, senderIP, rawHeaders string) error {

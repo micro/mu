@@ -211,30 +211,3 @@ func calendarCard(owner, status, csrf string) string {
 	b.WriteString(`</div>`)
 	return b.String()
 }
-
-// CardHTMLFor renders the events card for a specific viewer: the next few
-// upcoming events, or a prompt to schedule one.
-func CardHTMLFor(owner string) string {
-	if owner == "" {
-		return ""
-	}
-	up := Upcoming(owner)
-	if len(up) == 0 {
-		return `<p style="font-size:13px;color:#888;margin:0">Nothing scheduled. Ask the agent to remind you about something.</p>`
-	}
-	var b strings.Builder
-	now := time.Now()
-	limit := 4
-	for i, e := range up {
-		if i >= limit {
-			break
-		}
-		when := e.When.Local().Format("Mon 15:04")
-		if e.When.Local().YearDay() == now.YearDay() && e.When.Local().Year() == now.Year() {
-			when = "Today " + e.When.Local().Format("15:04")
-		}
-		fmt.Fprintf(&b, `<div style="display:flex;justify-content:space-between;gap:10px;padding:4px 0;font-size:13px"><span>%s</span><span style="color:#888;white-space:nowrap">%s</span></div>`,
-			html.EscapeString(e.Title), when)
-	}
-	return b.String()
-}

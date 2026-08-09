@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"html"
 	"strings"
-	"time"
 )
 
 // UI layout helpers for consistent rendering.
@@ -234,28 +233,6 @@ func ReplyForm(action, placeholder, parentName, parentValue string) string {
 	return b.String()
 }
 
-// InlineReplyForm renders a small reply form that starts hidden.
-// Toggle visibility by ID: "rf-{id}".
-func InlineReplyForm(id, action, parentName, parentValue string) string {
-	var b strings.Builder
-	b.WriteString(fmt.Sprintf(`<form id="rf-%s" method="POST" action="%s" style="display:none;margin-top:8px;">`,
-		html.EscapeString(id), html.EscapeString(action)))
-	if parentName != "" && parentValue != "" {
-		b.WriteString(fmt.Sprintf(`<input type="hidden" name="%s" value="%s">`,
-			html.EscapeString(parentName), html.EscapeString(parentValue)))
-	}
-	b.WriteString(`<textarea name="content" rows="2" placeholder="Reply..." required style="width:100%;font-size:13px;"></textarea>`)
-	b.WriteString(`<button type="submit" style="margin-top:4px;font-size:12px;">Reply</button>`)
-	b.WriteString(`</form>`)
-	return b.String()
-}
-
-// ReplyLink renders a "Reply" link that toggles an InlineReplyForm visible.
-func ReplyLink(formID string) string {
-	return fmt.Sprintf(`<a href="#" class="text-muted" onclick="document.getElementById('rf-%s').style.display='block';this.style.display='none';return false;">Reply</a>`,
-		html.EscapeString(formID))
-}
-
 // Section renders a section header.
 func Section(title string) string {
 	return `<h3 style="margin-top:20px;">` + html.EscapeString(title) + `</h3>`
@@ -265,11 +242,6 @@ func Section(title string) string {
 func LoginPrompt(action, redirectTo string) string {
 	return fmt.Sprintf(`<p class="text-muted mt-5"><a href="/login?redirect=%s">Login</a> to %s</p>`,
 		html.EscapeString(redirectTo), html.EscapeString(action))
-}
-
-// Timestamp renders a time as "X ago" text.
-func Timestamp(t time.Time) string {
-	return TimeAgo(t)
 }
 
 // BackLink renders a "← Back to X" navigation link.

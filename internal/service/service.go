@@ -264,23 +264,6 @@ func isAddressTaken(err error) bool {
 	return err != nil && strings.Contains(err.Error(), "already listening")
 }
 
-// HandlerOpts registers handlers with go-micro server options (e.g. endpoint
-// metadata). Most callers want Register.
-func HandlerOpts(name string, h any, opts ...server.HandlerOption) error {
-	ensure()
-	svc := gomicro.New(gomicro.Name(name), gomicro.Registry(reg), gomicro.Client(cl), gomicro.Broker(br), gomicro.Transport(tr))
-	if err := svc.Handle(h, opts...); err != nil {
-		return err
-	}
-	if err := svc.Start(); err != nil {
-		return err
-	}
-	mu.Lock()
-	services = append(services, svc)
-	mu.Unlock()
-	return nil
-}
-
 // Call invokes a service endpoint with typed request/response values.
 //
 //	var rsp weather.ForecastResponse
@@ -349,14 +332,4 @@ func Services() []string {
 
 	sort.Strings(out)
 	return out
-}
-
-// Stop shuts down all hosted services. Used on graceful shutdown.
-func Stop() {
-	mu.Lock()
-	defer mu.Unlock()
-	for _, s := range services {
-		_ = s.Stop()
-	}
-	services = nil
 }

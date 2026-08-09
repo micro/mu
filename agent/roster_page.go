@@ -332,4 +332,3 @@ const chipCSS = `<style>
 .pick input:checked+span strong::after{content:" ✓";color:#0a7d33}
 @media only screen and (max-width:600px){.pick-row{grid-template-columns:1fr}}
 </style>`
-

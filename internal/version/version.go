@@ -48,9 +48,6 @@ func String() string {
 	return resolved
 }
 
-// Release reports whether this binary was built from a version tag.
-func Release() bool { return Version != "dev" }
-
 func vcsInfo() (revision string, dirty bool) {
 	bi, ok := debug.ReadBuildInfo()
 	if !ok {
