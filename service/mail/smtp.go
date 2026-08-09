@@ -666,19 +666,20 @@ func (s *Session) Data(r io.Reader) error {
 			continue
 		}
 
-		// Mail addressed to an agent wakes it.
+		// Mail addressed to an agent wakes it, if the sender is entitled to.
 		//
 		// Every agent already had an address — you+name@ — and writing to one
 		// put a message in the owner's inbox and did nothing else. An agent
 		// with an address that cannot answer is a mailbox with a name on it,
 		// and "email your agent" is the first thing anyone tries.
 		//
-		// Not for spam, and not for mail this instance sent: an agent replying
-		// to its own reply is a loop that costs a model call per turn. The
-		// hook resolves the tag to an agent and returns quietly when it is not
-		// one, so plain tagged mail — you+receipts@ — still just files.
-		if InboundAgent != nil && toTag != "" && !spamResult.IsSpam &&
-			!strings.EqualFold(fromAddr.Address, "agent@"+GetConfiguredDomain()) {
+		// The whole rule is shouldWakeAgent, in inbound_agent.go: not spam, not
+		// our own reply coming back, the sender authenticated by SPF or DKIM,
+		// and known to this account. Those last two are new — the address used
+		// to be protected by nothing but being hard to guess. The hook resolves
+		// the tag to an agent and returns quietly when it is not one, so plain
+		// tagged mail — you+receipts@ — still just files.
+		if shouldWakeAgent(toAcc.ID, toTag, fromAddr.Address, spamResult.IsSpam, dkimPass || s.spfPass) {
 			InboundAgent(InboundMail{
 				Owner:     toAcc.ID,
 				Tag:       toTag,

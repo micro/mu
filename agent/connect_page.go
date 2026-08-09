@@ -93,9 +93,15 @@ func connectPanel(a *Agent, base, csrf string) string {
 	b.WriteString(`<div class="conn-row"><span class="conn-k">Endpoint</span>` +
 		`<code class="conn-v">` + html.EscapeString(a.Endpoint(base)) + `</code></div>`)
 
+	// The address, and who it listens to. Knowing the address is not permission
+	// to use it — mail from anyone else is filed and ignored — and a reader who
+	// does not know that reports the silence as a bug.
 	if addr := a.Address(); addr != "" {
 		b.WriteString(`<div class="conn-row"><span class="conn-k">Write to it</span>` +
-			`<code class="conn-v">` + html.EscapeString(addr) + `</code></div>`)
+			`<span class="conn-v"><code>` + html.EscapeString(addr) + `</code><br>` +
+			`<span class="conn-sub">Answers your own verified address and people in ` +
+			app.Link("your contacts", "/contacts") + `. Other mail is filed, not answered.</span>` +
+			`</span></div>`)
 	}
 
 	// The token. A secret is shown once and never again, so this reports state
@@ -152,6 +158,7 @@ const connectCSS = `<style>
 .conn-k{flex:0 0 110px;font-size:12px;color:var(--text-muted,#999)}
 .conn-v{flex:1 1 300px;min-width:0;font-size:13px;overflow-wrap:anywhere}
 code.conn-v{background:var(--hover-background,#f5f5f5);border-radius:4px;padding:2px 7px}
+.conn-sub{display:inline-block;margin-top:4px;font-size:12px;color:var(--text-muted,#888)}
 .conn-scope{flex:1 1 300px;font-size:13px;color:#0a7d33}
 .conn-scope.wide{color:#a86400}
 .conn-head{font-size:15px;margin:22px 0 8px}

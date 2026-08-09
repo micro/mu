@@ -277,6 +277,25 @@ func isOwnVerifiedAddress(acc *auth.Account, fromAddr string) bool {
 	return strings.EqualFold(strings.TrimSpace(acc.Email), strings.TrimSpace(fromAddr))
 }
 
+// SenderIsAccountOwner reports whether an address is the verified email of one
+// particular account — the same question as isOwnVerifiedAddress, asked by
+// account id rather than by record.
+//
+// Distinct from VerifiedAccountAddress below, which asks whether an address
+// belongs to *anybody* here. That is the right question for letting mail in
+// and the wrong one for letting a sender drive an agent: every account holder
+// on the instance would qualify.
+func SenderIsAccountOwner(ownerID, fromAddr string) bool {
+	if ownerID == "" {
+		return false
+	}
+	acc, err := auth.GetAccount(ownerID)
+	if err != nil {
+		return false
+	}
+	return isOwnVerifiedAddress(acc, fromAddr)
+}
+
 // VerifiedAccountAddress reports whether an address is the verified email of
 // any account on this instance. Used by the inbound whitelist: somebody who
 // proved they own a mailbox is not a stranger, so their mail should reach this

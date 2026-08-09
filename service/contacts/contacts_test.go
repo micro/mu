@@ -51,6 +51,38 @@ func TestFindTurnsANameIntoAnAddress(t *testing.T) {
 	}
 }
 
+// HasEmail decides something, so it is exact where Find is generous.
+//
+// Find matches substrings, which is right for looking a person up by part of a
+// name and wrong for "may this sender wake my agent": a contact's address
+// contains its own suffixes, so a stranger at sim@example.com would pass as
+// asim@example.com.
+func TestHasEmailIsExactWhereFindIsNot(t *testing.T) {
+	clear("alice")
+	defer clear("alice")
+
+	if _, err := Add("alice", "Asim", "asim@example.com", "", ""); err != nil {
+		t.Fatal(err)
+	}
+
+	if !HasEmail("alice", "asim@example.com") {
+		t.Error("a contact's own address is not recognised")
+	}
+	if !HasEmail("alice", "  ASIM@Example.com ") {
+		t.Error("case and whitespace from a mail header defeat the lookup")
+	}
+
+	for _, impostor := range []string{"sim@example.com", "asim@example.com.evil.net", "example.com", ""} {
+		if HasEmail("alice", impostor) {
+			t.Errorf("%q passed as a known contact", impostor)
+		}
+	}
+	// Somebody else's book is not yours.
+	if HasEmail("bob", "asim@example.com") {
+		t.Error("a contact in one account's book counts as known in another's")
+	}
+}
+
 // An ambiguous name is a question for the person, not something to resolve by
 // picking one and sending mail to it.
 func TestFindReturnsEveryMatch(t *testing.T) {

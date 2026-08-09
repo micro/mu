@@ -112,6 +112,26 @@ func Find(owner, query string) []*Contact {
 	return out
 }
 
+// HasEmail reports whether an address belongs to somebody in this book.
+//
+// Exact, unlike Find, which matches on substrings so a person can be looked up
+// by part of a name. Asked of an address that decides something — may this
+// sender wake an agent — a substring match is a hole: "sim@aslam.me" is
+// contained in "asim@aslam.me", so a stranger picking a suffix of a contact's
+// address would pass.
+func HasEmail(owner, email string) bool {
+	email = strings.ToLower(strings.TrimSpace(email))
+	if owner == "" || email == "" {
+		return false
+	}
+	for _, c := range List(owner) {
+		if strings.EqualFold(strings.TrimSpace(c.Email), email) {
+			return true
+		}
+	}
+	return false
+}
+
 // List returns the caller's contacts, by name.
 func List(owner string) []*Contact {
 	if owner == "" {

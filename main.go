@@ -352,6 +352,14 @@ func main() {
 	// Charged like any other agent run, checked before the model is asked so a
 	// run that cannot be paid for does not spend one first — and the sender is
 	// told, because silence is what this looked like before.
+	// Who may wake one. The sender has to pass SPF or DKIM and be somebody this
+	// account knows — its own verified address, checked inside mail, or a name
+	// in its address book, which is this hook because contacts is a different
+	// domain and mail should not import it.
+	mail.KnownSender = func(owner, addr string) bool {
+		return contacts.HasEmail(owner, addr)
+	}
+
 	mail.InboundAgent = func(m mail.InboundMail) {
 		a := agent.AgentForTag(m.Owner, m.Tag)
 		if a == nil {
