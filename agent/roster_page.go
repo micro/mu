@@ -20,6 +20,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/service"
+	"mu/service/events"
 )
 
 // Handler serves /agents.
@@ -36,6 +37,19 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 		case "delete":
 			_ = RemoveAgent(owner, r.FormValue("id"))
 			http.Redirect(w, r, "/agents?removed=1", http.StatusSeeOther)
+			return
+		case "standing":
+			if err := CreateStanding(owner, r.FormValue("template"), r.FormValue("agent")); err != nil {
+				http.Redirect(w, r, "/agents?error="+urlSafe(err.Error()), http.StatusSeeOther)
+				return
+			}
+			http.Redirect(w, r, "/agents?scheduled=1", http.StatusSeeOther)
+			return
+		case "unschedule":
+			// Handled here rather than posted to /events, so stopping a
+			// standing instruction leaves you on the page you stopped it from.
+			events.Cancel(owner, r.FormValue("id"))
+			http.Redirect(w, r, "/agents", http.StatusSeeOther)
 			return
 		case "token":
 			secret, err := IssueToken(owner, r.FormValue("id"))
@@ -67,6 +81,10 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	if msg := r.URL.Query().Get("error"); msg != "" {
 		b.WriteString(`<p class="text-error">` + html.EscapeString(msg) + `</p>`)
 	}
+	if r.URL.Query().Get("scheduled") != "" {
+		b.WriteString(`<p class="text-sm" style="color:#666">Scheduled. It will run on its own ` +
+			`and mail you the answer — stop it any time below.</p>`)
+	}
 	if r.URL.Query().Get("removed") != "" {
 		b.WriteString(`<p class="text-sm" style="color:#666">Agent removed and its token revoked.</p>`)
 	}
@@ -97,6 +115,8 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		b.WriteString(`</div>`)
 	}
+
+	b.WriteString(standingSection(owner, csrf))
 
 	// One way to make an agent. This page used to carry its own create form
 	// alongside the builder at /agent/new, and the two disagreed: one asked for
@@ -321,4 +341,3 @@ const chipCSS = `<style>
 .pick input:checked+span strong::after{content:" ✓";color:#0a7d33}
 @media only screen and (max-width:600px){.pick-row{grid-template-columns:1fr}}
 </style>`
-
