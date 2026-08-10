@@ -3,8 +3,8 @@ package images
 import (
 	"context"
 
+	"mu/internal/quota"
 	"mu/internal/service"
-	"mu/service/wallet"
 )
 
 // Server is the go-micro service handler for images. Its methods are exposed as
@@ -44,6 +44,6 @@ var Spec = service.Spec{
 	Icon:        "images.svg",
 	Card:        CardHTML,
 	Endpoints: map[string]service.Endpoint{
-		"Generate": {Doc: "Generate an image from a text prompt and return its URL", Cost: wallet.OpImageGenerate},
+		"Generate": {Doc: "Generate an image from a text prompt and return its URL", Cost: quota.OpImageGenerate},
 	},
 }

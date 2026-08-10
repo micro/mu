@@ -21,7 +21,14 @@ var systemVars = map[string]bool{
 // Config is read directly and through a handful of small typed helpers. Each
 // of those wraps os.Getenv, so scanning only for os.Getenv missed the settings
 // they read — X402_NETWORK among them.
-var configRead = regexp.MustCompile(`(?:settings\.Get|os\.Getenv|os\.LookupEnv|envOr|envInt|envIntAuth|getEnvInt)\("([A-Z][A-Z0-9_]*)"`)
+var configRead = regexp.MustCompile(`(?:settings\.Get|os\.Getenv|os\.LookupEnv|envOr|envInt|envIntAuth|getEnvInt|envOverride)\("([A-Z][A-Z0-9_]*)"`)
+
+// Prices are data now, so the variables that override them are named in
+// quota.json rather than in any Go source. The loader reads
+// os.Getenv(key) with key from the file, which no scan of the code can see —
+// so the file is scanned too, and a price override is documented on the same
+// terms as everything else.
+var configInJSON = regexp.MustCompile(`"env"\s*:\s*"([A-Z][A-Z0-9_]*)"`)
 
 // TestEveryConfigVarIsDocumented keeps the configuration page honest in both
 // directions: a setting the code reads must be documented, and a setting the
@@ -41,14 +48,22 @@ func TestEveryConfigVarIsDocumented(t *testing.T) {
 
 	read := map[string]bool{}
 	err = filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-		if err != nil || info.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+		if err != nil || info.IsDir() || strings.HasSuffix(path, "_test.go") {
+			return nil
+		}
+		isGo := strings.HasSuffix(path, ".go")
+		if !isGo && filepath.Base(path) != "quota.json" {
 			return nil
 		}
 		b, err := os.ReadFile(path)
 		if err != nil {
 			return nil
 		}
-		for _, m := range configRead.FindAllStringSubmatch(string(b), -1) {
+		scan := configRead
+		if !isGo {
+			scan = configInJSON
+		}
+		for _, m := range scan.FindAllStringSubmatch(string(b), -1) {
 			if !systemVars[m[1]] {
 				read[m[1]] = true
 			}
@@ -62,13 +77,16 @@ func TestEveryConfigVarIsDocumented(t *testing.T) {
 		t.Fatalf("only found %d config reads; the scan is broken", len(read))
 	}
 
-	// CREDIT_COST_<OP> is a family, one per priced operation. The page
-	// documents the pattern and points at /pricing, which is generated from the
-	// same catalogue the charges come from — twenty-five rows here would be a
-	// second copy of a list that is already derived.
+	// CREDIT_COST_<OP> is a family, one per priced operation, named in
+	// quota.json rather than listed here — twenty-six rows on
+	// this page would be a second copy of a file already in the repo. What the
+	// page owes the reader is where that file is and how it is overridden.
 	family := func(v string) bool { return strings.HasPrefix(v, "CREDIT_COST_") }
-	if !strings.Contains(string(doc), "CREDIT_COST_<OPERATION>") {
-		t.Error("the CREDIT_COST_ override pattern is no longer documented")
+	for _, want := range []string{"quota.json", "CREDIT_COST_"} {
+		if !strings.Contains(string(doc), want) {
+			t.Errorf("the price configuration no longer mentions %q, so an operator "+
+				"cannot find out where prices are set", want)
+		}
 	}
 
 	for v := range read {

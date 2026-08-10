@@ -16,6 +16,7 @@ import (
 	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/quota"
 	"mu/internal/service"
 	"mu/service/apps"
 	"mu/service/blog"
@@ -32,9 +33,9 @@ import (
 	"mu/service/social"
 	"mu/service/tasks"
 	"mu/service/video"
-	"mu/service/wallet"
 	"mu/service/weather"
 	"mu/service/web"
+	"mu/wallet"
 )
 
 // registerTools declares the hand-written half of the tool registry.
@@ -44,7 +45,7 @@ func registerTools() {
 		Name:        "web_search",
 		Aliases:     []string{"search_web"},
 		Description: "Search the web for current information and news",
-		WalletOp:    wallet.OpWebSearch,
+		WalletOp:    quota.OpWebSearch,
 		Params: []api.ToolParam{
 			{Name: "query", Type: "string", Description: "Search query", Required: true},
 		},
@@ -334,7 +335,7 @@ func registerTools() {
 	api.RegisterTool(api.Tool{
 		Name:        "places_eta",
 		Description: "How long it takes to travel between two places, by road rather than as the crow flies. Use it to answer whether somewhere is worth going to, or when to leave.",
-		WalletOp:    wallet.OpPlacesETA,
+		WalletOp:    quota.OpPlacesETA,
 		Params: []api.ToolParam{
 			{Name: "from", Type: "string", Description: "Where the journey starts, e.g. \"King's Cross, London\"", Required: false},
 			{Name: "to", Type: "string", Description: "Where the journey ends, e.g. \"Heathrow Airport\"", Required: false},
@@ -367,7 +368,7 @@ func registerTools() {
 		Description: "Fetch a web page and return its cleaned readable content (strips ads, popups, navigation). Needs an account.",
 		Method:      "GET",
 		Path:        "/web/fetch",
-		WalletOp:    wallet.OpWebFetch,
+		WalletOp:    quota.OpWebFetch,
 		// Costs us nothing — it is an http.Get and a readability pass in this
 		// process — but "fetch any URL you name" pointed at an anonymous
 		// caller is a request this server makes on their behalf, to wherever
@@ -506,7 +507,7 @@ func registerTools() {
 		Name:        "images_generate",
 		Aliases:     []string{"image_generate"},
 		Description: "Generate an image from a text prompt. Returns a URL to the generated image.",
-		WalletOp:    wallet.OpImageGenerate,
+		WalletOp:    quota.OpImageGenerate,
 		Params: []api.ToolParam{
 			{Name: "prompt", Type: "string", Description: "Describe the image to generate", Required: true},
 		},
@@ -686,7 +687,7 @@ func registerTools() {
 	api.RegisterTool(api.Tool{
 		Name:        "weather_forecast",
 		Description: "Get the weather forecast for a location (current conditions plus the next few days).",
-		WalletOp:    wallet.OpWeatherForecast,
+		WalletOp:    quota.OpWeatherForecast,
 		Params: []api.ToolParam{
 			{Name: "lat", Type: "number", Description: "Latitude of the location", Required: true},
 			{Name: "lon", Type: "number", Description: "Longitude of the location", Required: true},
@@ -840,7 +841,7 @@ func registerTools() {
 	api.RegisterToolWithAuth(api.Tool{
 		Name:        "apps_build",
 		Description: "Build a small app from a natural language description, save it, and return the app details with URL. Apps are one of: a tracker (a list you add entries to, optionally totalling a number), a checklist, or a counter.",
-		WalletOp:    wallet.OpAppBuild,
+		WalletOp:    quota.OpAppBuild,
 		Params: []api.ToolParam{
 			{Name: "prompt", Type: "string", Description: "Description of the app to build (e.g. 'an expense tracker', 'a packing checklist', 'a water intake counter')", Required: true},
 		},
@@ -910,7 +911,7 @@ func registerTools() {
 			"whatever the code returns is displayed there. Use it to show something working — a " +
 			"chart, a converter, a small interactive page. It cannot compute a value and hand it " +
 			"back, so do not use it for arithmetic or data processing you need the result of.",
-		WalletOp: wallet.OpAgentQuery,
+		WalletOp: quota.OpAgentQuery,
 		Params: []api.ToolParam{
 			// The old text promised mu.ai(), mu.web.fetch(), mu.db and mu.store.
 			// Two of those do not exist in this page's shim, and the ones that do
@@ -957,7 +958,7 @@ func registerTools() {
 		Description: "Ask an agent on this instance a question in natural language and get a written answer. It has every tool you do and will use several to answer, so reach for it to delegate a whole task — for one fact call that tool directly, and to find content this instance already holds use index_search, which costs nothing. Pass agent to ask one of your own by name instead of the default; agent_list names them.",
 		Method:      "POST",
 		Path:        "/agent/run",
-		WalletOp:    wallet.OpAgentQuery,
+		WalletOp:    quota.OpAgentQuery,
 		Params: []api.ToolParam{
 			{Name: "prompt", Type: "string", Description: "Your question or request", Required: true},
 			{Name: "agent", Type: "string", Description: "Name or id of one of your agents. Omit for the default", Required: false},

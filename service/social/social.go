@@ -19,10 +19,10 @@ import (
 	"mu/internal/event"
 	"mu/internal/flag"
 	"mu/internal/imageproxy"
+	"mu/internal/quota"
 	"mu/internal/service"
 	"mu/internal/snapshot"
 	"mu/service/news"
-	"mu/service/wallet"
 )
 
 // cardSnap is the go-micro read-plane channel for the social card (store +
@@ -778,7 +778,7 @@ func handleAPISearch(w http.ResponseWriter, r *http.Request, query string) {
 		return
 	}
 
-	canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, wallet.OpSocialSearch)
+	canProceed, _, cost, _ := quota.CheckQuota(sess.Account, quota.OpSocialSearch)
 	if !canProceed {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
@@ -788,7 +788,7 @@ func handleAPISearch(w http.ResponseWriter, r *http.Request, query string) {
 		return
 	}
 
-	wallet.ConsumeQuota(sess.Account, wallet.OpSocialSearch)
+	quota.ConsumeQuota(sess.Account, quota.OpSocialSearch)
 
 	results := data.Search(query, 50)
 	var socialResults []map[string]interface{}
@@ -815,9 +815,9 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 		return
 	}
 
-	canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, wallet.OpSocialSearch)
+	canProceed, _, cost, _ := quota.CheckQuota(sess.Account, quota.OpSocialSearch)
 	if !canProceed {
-		content := wallet.QuotaExceededPage(wallet.OpSocialSearch, cost)
+		content := quota.ExceededPage(cost)
 		app.Respond(w, r, app.Response{
 			Title: "Social - Search",
 			HTML:  content,
@@ -825,7 +825,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 		return
 	}
 
-	wallet.ConsumeQuota(sess.Account, wallet.OpSocialSearch)
+	quota.ConsumeQuota(sess.Account, quota.OpSocialSearch)
 
 	results := data.Search(query, 50)
 	var sb strings.Builder

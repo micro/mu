@@ -16,7 +16,7 @@ import (
 	"sync"
 
 	"mu/internal/app"
-	"mu/service/wallet"
+	"mu/internal/quota"
 )
 
 // RunAgent is set by main() to run a prompt through the agent as an account.
@@ -65,7 +65,7 @@ func Run(owner, id string) error {
 	// An agent run is a model call, which is the one thing here that costs
 	// real money. Check before starting rather than after: a task that cannot
 	// be paid for should not move to "doing".
-	canProceed, _, cost, err := wallet.CheckQuota(owner, wallet.OpAgentQuery)
+	canProceed, _, cost, err := quota.CheckQuota(owner, quota.OpAgentQuery)
 	if err != nil || !canProceed {
 		runMu.Lock()
 		delete(running, t.ID)
@@ -109,7 +109,7 @@ func Run(owner, id string) error {
 			Update(t.Owner, t.ID, "", "", StatusTodo, "", "Last run failed: "+err.Error(), done) //nolint:errcheck
 			return
 		}
-		if err := wallet.ConsumeQuota(t.Owner, wallet.OpAgentQuery); err != nil {
+		if err := quota.ConsumeQuota(t.Owner, quota.OpAgentQuery); err != nil {
 			app.Log("tasks", "could not charge task run for %s: %v", t.Owner, err)
 		}
 		Update(t.Owner, t.ID, "", "", StatusDone, "", strings.TrimSpace(answer), done) //nolint:errcheck

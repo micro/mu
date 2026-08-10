@@ -16,8 +16,8 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/quota"
 	"mu/internal/service"
-	"mu/service/wallet"
 )
 
 var mutex sync.RWMutex
@@ -389,7 +389,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Public data needs no account when nothing is being charged for it.
-	caller, ok := billableCaller(w, r, wallet.OpPlacesSearch)
+	caller, ok := billableCaller(w, r, quota.OpPlacesSearch)
 	if !ok {
 		return
 	}
@@ -459,9 +459,8 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 	sortPlaces(results, sortBy)
 
 	// Charge, if there is anything to charge and anyone to charge it to.
-	if caller != "" && wallet.Metered(wallet.OpPlacesSearch) {
-		wallet.DeductCredits(caller, wallet.GetOperationCost(wallet.OpPlacesSearch),
-			wallet.OpPlacesSearch, map[string]interface{}{"query": query})
+	if caller != "" && quota.Metered(quota.OpPlacesSearch) {
+		quota.ConsumeWith(caller, quota.OpPlacesSearch, map[string]interface{}{"query": query})
 	}
 
 	if app.WantsJSON(r) {
@@ -498,7 +497,7 @@ func handleNearby(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Public data needs no account when nothing is being charged for it.
-	caller, ok := billableCaller(w, r, wallet.OpPlacesNearby)
+	caller, ok := billableCaller(w, r, quota.OpPlacesNearby)
 	if !ok {
 		return
 	}
@@ -559,8 +558,8 @@ func handleNearby(w http.ResponseWriter, r *http.Request) {
 	sortPlaces(results, sortBy)
 
 	// Deduct credits
-	if caller != "" && wallet.Metered(wallet.OpPlacesNearby) {
-		wallet.DeductCredits(caller, wallet.GetOperationCost(wallet.OpPlacesNearby), wallet.OpPlacesNearby, map[string]interface{}{
+	if caller != "" && quota.Metered(quota.OpPlacesNearby) {
+		quota.ConsumeWith(caller, quota.OpPlacesNearby, map[string]interface{}{
 			"lat": lat, "lon": lon, "radius": radius,
 		})
 	}
@@ -1214,7 +1213,7 @@ func billableCaller(w http.ResponseWriter, r *http.Request, op string) (id strin
 		id = acc.ID
 	}
 	// Nothing is charged here, so there is nobody who has to be named.
-	if !wallet.Metered(op) {
+	if !quota.Metered(op) {
 		return id, true
 	}
 	if id == "" {
@@ -1225,7 +1224,7 @@ func billableCaller(w http.ResponseWriter, r *http.Request, op string) (id strin
 		}
 		return "", false
 	}
-	canProceed, _, cost, _ := wallet.CheckQuota(id, op)
+	canProceed, _, cost, _ := quota.CheckQuota(id, op)
 	if !canProceed {
 		if app.WantsJSON(r) {
 			app.RespondError(w, http.StatusPaymentRequired, "Insufficient credits. Top up your wallet to continue.")

@@ -4,16 +4,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"mu/internal/service"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
 	"time"
 
+	"mu/internal/service"
+
 	"mu/internal/auth"
+	"mu/internal/quota"
 	"mu/internal/usage"
-	"mu/service/wallet"
 )
 
 // MCP protocol version
@@ -200,9 +201,21 @@ type ToolParam struct {
 }
 
 // MCPWalletOp parses a JSON-RPC MCP request body and returns the wallet
-// operation for a tools/call to a metered tool, or "" if the call is free or is
-// not a tools/call. Lets the HTTP layer gate x402 payments before dispatch,
-// where auth and wallet packages are in scope.
+// operation for a tools/call the caller can unlock by paying, or "" if the call
+// is free, cannot be unlocked by paying, or is not a tools/call. Lets the HTTP
+// layer gate x402 payments before dispatch, where auth and wallet are in scope.
+//
+// An account-only tool returns "" however it is priced, because a payment
+// cannot buy the thing standing in the way. mail_send is the case: it is
+// AccountOnly on purpose — a funded wallet is not accountable for this sending
+// domain — and it is charged for external delivery, so the gate offered an
+// anonymous caller a 402, took USDC on Base for it, and then refused the call
+// for having no account. Money for nothing, and nowhere to complain, since the
+// payer has no account to complain from.
+//
+// The charge still happens: service/mail checks and consumes external_email
+// itself once it knows who is sending. What is dropped is only the offer to
+// sell entry to somebody who will be turned away at the door.
 func MCPWalletOp(body []byte) string {
 	var req struct {
 		Method string `json:"method"`
@@ -215,6 +228,9 @@ func MCPWalletOp(body []byte) string {
 	}
 	for i := range tools {
 		if toolMatches(tools[i], req.Params.Name) {
+			if policyOf(tools[i]).NeedsAccount {
+				return ""
+			}
 			return tools[i].WalletOp
 		}
 	}
@@ -351,7 +367,7 @@ var tools = []Tool{
 		Description: "Search aggregated news headlines by keyword and return matching articles with source and time. Use when the question is about a specific topic; use news_list for what is happening generally, and news_read for the full text " + "of one article.",
 		Method:      "POST",
 		Path:        "/news",
-		WalletOp:    wallet.OpNewsSearch,
+		WalletOp:    quota.OpNewsSearch,
 		Params: []ToolParam{
 			{Name: "query", Type: "string", Description: "News search query", Required: true},
 		},
@@ -374,7 +390,7 @@ var tools = []Tool{
 		Description: "Publish a post to the caller's blog. Use for anything meant to be read later by other people — notes, write-ups, announcements. Returns the post and its URL. For a private note to yourself, prefer files or memory.",
 		Method:      "POST",
 		Path:        "/blog/post",
-		WalletOp:    wallet.OpBlogCreate,
+		WalletOp:    quota.OpBlogCreate,
 		Params: []ToolParam{
 			{Name: "title", Type: "string", Description: "Post title", Required: false},
 			{Name: "content", Type: "string", Description: "Post content (minimum 50 characters)", Required: true},
@@ -406,7 +422,7 @@ var tools = []Tool{
 		Description: "Search public posts on this instance by keyword. Returns matching posts with their author and time. This is the instance's own social feed, not " + "the wider internet — use web_search for that.",
 		Method:      "POST",
 		Path:        "/social",
-		WalletOp:    wallet.OpSocialSearch,
+		WalletOp:    quota.OpSocialSearch,
 		Params: []ToolParam{
 			{Name: "query", Type: "string", Description: "Search query for social posts", Required: true},
 		},
@@ -416,7 +432,7 @@ var tools = []Tool{
 		Description: "Search videos from the channels this instance curates, by keyword. Returns titles, channels and links. A curated set rather than all of YouTube, so a miss means it is not followed here, not that it does not exist. Needs an account.",
 		Method:      "POST",
 		Path:        "/video",
-		WalletOp:    wallet.OpVideoSearch,
+		WalletOp:    quota.OpVideoSearch,
 		// Priced at zero but not open: the YouTube quota is 10,000 units a day
 		// across everyone and a search costs 100, so this is rationed by
 		// videoSearchLimit per account. There is nothing to ration an
@@ -445,7 +461,7 @@ var tools = []Tool{
 		Description: "Send an email from the caller's own address on this instance. Takes a recipient address, a subject and a body; resolve a name to an address with contacts_find first. Requires an account, and the mail really is delivered " + "— there is no draft state to undo from.",
 		Method:      "POST",
 		Path:        "/mail",
-		WalletOp:    wallet.OpExternalEmail,
+		WalletOp:    quota.OpExternalEmail,
 		Params: []ToolParam{
 			{Name: "to", Type: "string", Description: "Recipient username or email", Required: true},
 			{Name: "subject", Type: "string", Description: "Message subject", Required: true},
@@ -488,7 +504,7 @@ var tools = []Tool{
 		// default to 0, so the page rendered "Included" beside a line saying
 		// otherwise. Prices are rendered from the operation; no description
 		// states one.
-		WalletOp: wallet.OpStreamPost,
+		WalletOp: quota.OpStreamPost,
 		Params: []ToolParam{
 			{Name: "content", Type: "string", Description: "Message text (max 1024 chars). Use @micro to invoke the AI agent.", Required: true},
 		},
@@ -561,7 +577,7 @@ var tools = []Tool{
 		Description: "Search for places by name or category, optionally near a location",
 		Method:      "POST",
 		Path:        "/places/search",
-		WalletOp:    wallet.OpPlacesSearch,
+		WalletOp:    quota.OpPlacesSearch,
 		Params: []ToolParam{
 			{Name: "query", Type: "string", Description: "Search query (e.g. cafe, pharmacy, Boots)", Required: true},
 			{Name: "near", Type: "string", Description: "Location name or address to search near", Required: false},
@@ -575,7 +591,7 @@ var tools = []Tool{
 		Description: "Find all places of interest near a given location",
 		Method:      "POST",
 		Path:        "/places/nearby",
-		WalletOp:    wallet.OpPlacesNearby,
+		WalletOp:    quota.OpPlacesNearby,
 		Params: []ToolParam{
 			{Name: "address", Type: "string", Description: "Address or postcode to search near", Required: false},
 			{Name: "lat", Type: "number", Description: "Latitude of the search location", Required: false},
@@ -635,7 +651,7 @@ var tools = []Tool{
 		Params: []ToolParam{
 			{Name: "query", Type: "string", Description: "Question or search query", Required: true},
 		},
-		WalletOp: wallet.OpQuranSearch,
+		WalletOp: quota.OpQuranSearch,
 		Handle: func(args map[string]any) (string, error) {
 			q := QueryArg(args)
 			if q == "" {
@@ -699,7 +715,7 @@ func callerIdentity(r *http.Request) (string, error) {
 	return "", fmt.Errorf("authentication required")
 }
 
-// WalletPayer is set by main.go to wallet.PayerFrom, which reads the settled
+// WalletPayer is set by main.go to billing.PayerFrom, which reads the settled
 // payment out of the request context. Wired there to keep this package free of
 // a wallet import.
 var WalletPayer = func(r *http.Request) string { return "" }

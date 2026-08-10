@@ -18,9 +18,9 @@ import (
 	"mu/internal/data"
 	"mu/internal/event"
 	"mu/internal/flag"
+	"mu/internal/quota"
 	"mu/internal/service"
 	"mu/service/apps/micro"
-	"mu/service/wallet"
 
 	"github.com/google/uuid"
 )
@@ -107,6 +107,23 @@ var QuotaCheck func(r *http.Request, op string) (bool, int, error)
 // — not the app's owner — is deliberate: an app author never pays for other
 // people's usage, so universal apps scale.
 var ChargeQuota func(r *http.Request, op string)
+
+// ChargeUse is set by main.go to bill a paid app's price to whoever opened it
+// and pay the author their share.
+//
+// A hook rather than a call into the wallet, for the same reason a service does
+// not import the wallet to ask what something costs: this is money moving
+// between two accounts, which is the wallet's business, and a service reaching
+// sideways into it is what put a leaf of service/ underneath everything else.
+// An instance with no wallet linked in simply has no paid apps.
+var ChargeUse func(payer, author, slug string, price int) error
+
+func chargeAppUse(payer, author, slug string, price int) error {
+	if ChargeUse == nil {
+		return fmt.Errorf("this instance cannot take payment for apps")
+	}
+	return ChargeUse(payer, author, slug, price)
+}
 
 var (
 	mutex sync.RWMutex
@@ -1180,7 +1197,7 @@ func handleRun(w http.ResponseWriter, r *http.Request, slug string) {
 					app.Error(w, r, http.StatusUnauthorized, fmt.Sprintf("This app costs %d credits per use. Sign in to continue.", a.Price))
 					return
 				}
-				if err := wallet.ChargeAppUse(acc.ID, a.AuthorID, a.Slug, a.Price); err != nil {
+				if err := chargeAppUse(acc.ID, a.AuthorID, a.Slug, a.Price); err != nil {
 					app.Error(w, r, http.StatusPaymentRequired, fmt.Sprintf("This app costs %d credits per use. Please top up your wallet.", a.Price))
 					return
 				}
@@ -1506,7 +1523,7 @@ func handleSDKAI(w http.ResponseWriter, r *http.Request, slug string) {
 
 	// Check quota — uses chat query credits
 	if QuotaCheck != nil {
-		canProceed, _, err := QuotaCheck(r, wallet.OpChatQuery)
+		canProceed, _, err := QuotaCheck(r, quota.OpChatQuery)
 		if !canProceed {
 			msg := "Insufficient credits"
 			if err != nil {

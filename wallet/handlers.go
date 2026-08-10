@@ -6,9 +6,10 @@ import (
 	"html"
 	"net/http"
 	neturl "net/url"
-	"sort"
 	"strings"
 	"time"
+
+	"mu/internal/quota"
 
 	"mu/internal/app"
 	"mu/internal/auth"
@@ -125,7 +126,7 @@ func WalletPage(userID string) string {
 	// App earnings summary
 	var totalEarnings int
 	for _, tx := range transactions {
-		if tx.Operation == OpAppRevenue {
+		if tx.Operation == quota.OpAppRevenue {
 			totalEarnings += tx.Amount
 		}
 	}
@@ -160,13 +161,13 @@ func WalletPage(userID string) string {
 
 		for _, tx := range transactions {
 			typeLabel := tx.Operation
-			if tx.Operation == OpAppUse {
+			if tx.Operation == quota.OpAppUse {
 				if appSlug, ok := tx.Metadata["app"].(string); ok {
 					typeLabel = "App: " + appSlug
 				} else {
 					typeLabel = "App usage"
 				}
-			} else if tx.Operation == OpAppRevenue {
+			} else if tx.Operation == quota.OpAppRevenue {
 				if appSlug, ok := tx.Metadata["app"].(string); ok {
 					typeLabel = "Earned: " + appSlug
 				} else {
@@ -184,7 +185,7 @@ func WalletPage(userID string) string {
 						return n
 					}
 					if id, ok := tx.Metadata[idKey].(string); ok && id != "" {
-						return accountLabel(id)
+						return AccountLabel(id)
 					}
 					return ""
 				}
@@ -226,19 +227,6 @@ func WalletPage(userID string) string {
 }
 
 // QuotaExceededPage renders the quota exceeded message
-func QuotaExceededPage(operation string, cost int) string {
-	var sb strings.Builder
-
-	sb.WriteString(`<div class="card center-card-md">`)
-	sb.WriteString(`<h2>Credits Required</h2>`)
-	sb.WriteString(fmt.Sprintf(`<p>This costs %d credit%s. `, cost, pluralize(cost)))
-	sb.WriteString(`<a href="/wallet/topup">Add credits</a> to continue.</p>`)
-	sb.WriteString(`<p class="text-sm text-muted">1 credit = 1p · <a href="/wallet">View wallet</a></p>`)
-	sb.WriteString(`</div>`)
-
-	return sb.String()
-}
-
 func pluralize(n int) string {
 	if n == 1 {
 		return ""
@@ -758,42 +746,25 @@ type pricingItem = PricingItem
 // four tables omitted it entirely.
 //
 // Anything added to the Cost* vars belongs here too.
+// Pricing is what this instance charges, for the cost tables on /wallet, the
+// signed-out wallet page, the pricing API and /pricing.
+//
+// It reads internal/quota's list rather than keeping its own. There used to be
+// two: a switch of thirty constants in one package and a hand-written table of
+// labels in this one, in different orders, and they drifted — image generation,
+// the most expensive thing a user could trigger short of building an app, was
+// missing from three of the four tables that rendered from here.
 func Pricing() []PricingItem {
-	items := []PricingItem{
-		{OpNewsSearch, "News search", CostNewsSearch, "credits"},
-		{OpQuranSearch, "Quran and hadith search", CostQuranSearch, "credits"},
-		{OpVideoSearch, "Video search", CostVideoSearch, "credits"},
-		{OpSocialSearch, "Social search", CostSocialSearch, "credits"},
-		{OpSocialPost, "Post or status update", CostSocialPost, "credits"},
-		{OpSocialReply, "Reply to a post", CostSocialReply, "credits"},
-		{OpAppCreate, "Create an app", CostAppCreate, "credits"},
-		{OpStreamPost, "Console post", CostStreamPost, "credits"},
-		{OpBlogCreate, "Blog post", CostBlogCreate, "credits"},
-		{OpBlogComment, "Blog comment", CostBlogComment, "credits"},
-		{OpChatQuery, "Chat query", CostChatQuery, "credits"},
-		{OpAgentQuery, "Agent (standard)", CostAgentQuery, "credits"},
-		{OpAgentQueryPremium, "Agent (premium)", CostAgentQueryPremium, "credits"},
-		{OpWeatherForecast, "Weather forecast", CostWeatherForecast, "credits"},
-		{OpWeatherPollen, "Weather pollen", CostWeatherPollen, "credits"},
-		{OpPlacesSearch, "Places search", CostPlacesSearch, "credits"},
-		{OpPlacesNearby, "Places nearby", CostPlacesNearby, "credits"},
-		{OpPlacesETA, "Travel time between two places", CostPlacesETA, "credits"},
-		// "Message" not "mail": this is user-to-user on the platform and is
-		// free. Sending a real email leaves the instance over SMTP and is
-		// charged separately as "External email".
-		{OpMailSend, "Send message", CostMailSend, "credits"},
-		{OpExternalEmail, "External email", CostExternalEmail, "credits"},
-		{OpWebSearch, "Web search", CostWebSearch, "credits"},
-		{OpWebFetch, "Web fetch", CostWebFetch, "credits"},
-		{OpImageGenerate, "Image generation", CostImageGenerate, "credits"},
-		{OpDBWrite, "App data storage", CostDBWrite, "credits"},
-		{OpAppBuild, "App build (AI)", CostAppBuild, "credits"},
-		// Charged again now that /apps/<slug>/ai-edit exists. Plain manual
-		// editing at /apps/<slug>/edit remains free — only the model call costs.
-		{OpAppEdit, "App edit (AI)", CostAppEdit, "credits"},
+	out := make([]PricingItem, 0)
+	for _, p := range quota.Prices() {
+		out = append(out, PricingItem{
+			Operation:   p.Op,
+			Description: p.Label,
+			Cost:        p.Cost,
+			Unit:        "credits",
+		})
 	}
-	sort.SliceStable(items, func(i, j int) bool { return items[i].Cost < items[j].Cost })
-	return items
+	return out
 }
 
 func getPricingData() []PricingItem { return Pricing() }

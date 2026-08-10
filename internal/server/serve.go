@@ -25,12 +25,13 @@ import (
 	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/quota"
 	"mu/internal/setup"
 	"mu/internal/usage"
 	"mu/internal/user"
 	"mu/service/blog"
 	"mu/service/mail"
-	"mu/service/wallet"
+	"mu/wallet"
 )
 
 // serve builds the handler and runs the server until interrupted.
@@ -236,7 +237,7 @@ func serve(addr string) {
 				// same write gate as every other content path.
 				if !strings.Contains(rest, "/") {
 					if r.Method == "POST" {
-						op := wallet.OpSocialPost
+						op := quota.OpSocialPost
 						sess, err := auth.GetSession(r)
 						if err != nil {
 							app.Unauthorized(w, r)
@@ -250,17 +251,17 @@ func serve(addr string) {
 							app.TooManyRequests(w, r, err.Error())
 							return
 						}
-						canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, op)
+						canProceed, _, cost, _ := quota.CheckQuota(sess.Account, op)
 						if !canProceed {
 							app.Error(w, r, http.StatusPaymentRequired,
 								fmt.Sprintf("This costs %d credit(s). Top up at /wallet/topup", cost))
 							return
 						}
-						if err := wallet.ConsumeQuota(sess.Account, op); err != nil {
+						if err := quota.ConsumeQuota(sess.Account, op); err != nil {
 							app.Error(w, r, http.StatusPaymentRequired, err.Error())
 							return
 						}
-						app.Log("wallet", "Charged %s %d credit(s) for POST /@%s status", sess.Account, wallet.GetOperationCost(op), rest)
+						app.Log("wallet", "Charged %s %d credit(s) for POST /@%s status", sess.Account, quota.GetOperationCost(op), rest)
 					}
 					user.Handler(w, r)
 					return
@@ -314,7 +315,7 @@ func serve(addr string) {
 					app.TooManyRequests(w, r, err.Error())
 					return
 				}
-				canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, op)
+				canProceed, _, cost, _ := quota.CheckQuota(sess.Account, op)
 				if !canProceed {
 					app.Error(w, r, http.StatusPaymentRequired,
 						fmt.Sprintf("This costs %d credit(s). Top up at /wallet/topup", cost))
@@ -325,11 +326,11 @@ func serve(addr string) {
 				// 5xx) are rare enough that the lost credit is
 				// acceptable — and it's the only way to guarantee
 				// we never forget to charge.
-				if err := wallet.ConsumeQuota(sess.Account, op); err != nil {
+				if err := quota.ConsumeQuota(sess.Account, op); err != nil {
 					app.Error(w, r, http.StatusPaymentRequired, err.Error())
 					return
 				}
-				app.Log("wallet", "Charged %s %d credit(s) for %s %s", sess.Account, wallet.GetOperationCost(op), r.Method, r.URL.Path)
+				app.Log("wallet", "Charged %s %d credit(s) for %s %s", sess.Account, quota.GetOperationCost(op), r.Method, r.URL.Path)
 			}
 
 			// MCP authorization: an unauthenticated call to a tool that needs an
@@ -370,7 +371,7 @@ func serve(addr string) {
 				// operation" charged an anonymous caller for all four, so the
 				// free tier was unreachable and an agent that found this
 				// endpoint mid-task met a demand for USDC on its first call.
-				if op := api.MCPWalletOp(body); op != "" && wallet.Metered(op) {
+				if op := api.MCPWalletOp(body); op != "" && quota.Metered(op) {
 					// The public origin, not r.Host: behind the proxy r.Host is
 					// the loopback port, and an x402 client checks this field
 					// against what it is calling.

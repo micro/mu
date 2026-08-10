@@ -1,0 +1,195 @@
+{
+  "_comment": [
+    "What each operation costs, in credits. One credit is one penny.",
+    "",
+    "An operation is charged when it costs this instance something to run: a",
+    "model call, or a third party we are billed for per request. Anything that",
+    "only touches this instance's own storage is 0, because it has no marginal",
+    "cost and charging for it taxed exactly the behaviour the product wants",
+    "more of. Abuse control for those is auth.CheckPostRate, not the price.",
+    "",
+    "This is an operator's file. Edit it, or drop a pricing.json in the data",
+    "directory to override without rebuilding, or set the env var named on any",
+    "line to override that one. Env wins, then the data directory, then this.",
+    "",
+    "label is what the cost table on /pricing and /wallet says. An operation",
+    "with no entry here is not published and charges 1 credit, which a test",
+    "catches — see TestEveryChargedOperationIsPublished."
+  ],
+  "daily_quota": {
+    "value": 100,
+    "env": "DAILY_QUOTA"
+  },
+  "operations": [
+    {
+      "op": "places_search",
+      "cost": 5,
+      "label": "Places search",
+      "env": "CREDIT_COST_PLACES_SEARCH",
+      "note": "Google Places text search, ~2.5p"
+    },
+    {
+      "op": "places_nearby",
+      "cost": 4,
+      "label": "Places nearby",
+      "env": "CREDIT_COST_PLACES_NEARBY",
+      "note": "Google Places nearby, ~2.5p"
+    },
+    {
+      "op": "places_eta",
+      "cost": 3,
+      "label": "Travel time between two places",
+      "env": "CREDIT_COST_PLACES_ETA",
+      "note": "Google Routes, ~0.5p"
+    },
+    {
+      "op": "weather_forecast",
+      "cost": 1,
+      "label": "Weather forecast",
+      "env": "CREDIT_COST_WEATHER",
+      "note": "Google Weather"
+    },
+    {
+      "op": "weather_pollen",
+      "cost": 1,
+      "label": "Weather pollen",
+      "env": "CREDIT_COST_WEATHER_POLLEN"
+    },
+    {
+      "op": "web_search",
+      "cost": 2,
+      "label": "Web search",
+      "env": "CREDIT_COST_SEARCH",
+      "note": "Brave, ~0.4p — was 5, a 12x markup"
+    },
+
+    {
+      "op": "chat_query",
+      "cost": 5,
+      "label": "Chat query",
+      "env": "CREDIT_COST_CHAT"
+    },
+    {
+      "op": "agent_query",
+      "cost": 7,
+      "label": "Agent (standard)",
+      "env": "CREDIT_COST_AGENT",
+      "note": "An agent run may fan out across tools, so it costs more than a chat turn"
+    },
+    {
+      "op": "agent_query_premium",
+      "cost": 20,
+      "label": "Agent (premium)",
+      "env": "CREDIT_COST_AGENT_PREMIUM",
+      "note": "Routes to Anthropic where the rest use the default provider, an order of magnitude more per token. At 9 it was priced 29% above standard for 10-20x the cost"
+    },
+    {
+      "op": "image_generate",
+      "cost": 15,
+      "label": "Image generation",
+      "env": "CREDIT_COST_IMAGE"
+    },
+    {
+      "op": "app_build",
+      "cost": 15,
+      "label": "App build (AI)",
+      "env": "CREDIT_COST_APP_BUILD",
+      "note": "Was 100 — a pound, six times the next most expensive thing on the menu, for less model than an agent run"
+    },
+    {
+      "op": "app_edit",
+      "cost": 8,
+      "label": "App edit (AI)",
+      "env": "CREDIT_COST_APP_EDIT",
+      "note": "The model call only. Manual editing at /apps/<slug>/edit is free"
+    },
+
+    {
+      "op": "external_email",
+      "cost": 4,
+      "label": "External email",
+      "env": "CREDIT_COST_EMAIL",
+      "note": "Leaves the instance over SMTP"
+    },
+
+    {
+      "op": "news_search",
+      "cost": 0,
+      "label": "News search",
+      "env": "CREDIT_COST_NEWS"
+    },
+    {
+      "op": "quran_search",
+      "cost": 0,
+      "label": "Quran and hadith search",
+      "env": "CREDIT_COST_QURAN_SEARCH"
+    },
+    {
+      "op": "video_search",
+      "cost": 0,
+      "label": "Video search",
+      "env": "CREDIT_COST_VIDEO"
+    },
+    {
+      "op": "web_fetch",
+      "cost": 0,
+      "label": "Web fetch",
+      "env": "CREDIT_COST_FETCH"
+    },
+    {
+      "op": "social_search",
+      "cost": 0,
+      "label": "Social search",
+      "env": "CREDIT_COST_SOCIAL"
+    },
+    {
+      "op": "social_post",
+      "cost": 0,
+      "label": "Post or status update",
+      "env": "CREDIT_COST_SOCIAL_POST"
+    },
+    {
+      "op": "social_reply",
+      "cost": 0,
+      "label": "Reply to a post",
+      "env": "CREDIT_COST_SOCIAL_REPLY"
+    },
+    {
+      "op": "blog_create",
+      "cost": 0,
+      "label": "Blog post",
+      "env": "CREDIT_COST_BLOG_CREATE"
+    },
+    {
+      "op": "blog_comment",
+      "cost": 0,
+      "label": "Blog comment",
+      "env": "CREDIT_COST_BLOG_COMMENT"
+    },
+    {
+      "op": "app_create",
+      "cost": 0,
+      "label": "Create an app",
+      "env": "CREDIT_COST_APP_CREATE"
+    },
+    {
+      "op": "stream_post",
+      "cost": 0,
+      "label": "Console post",
+      "env": "CREDIT_COST_STREAM_POST"
+    },
+    {
+      "op": "mail_send",
+      "cost": 0,
+      "label": "Send message",
+      "env": "CREDIT_COST_MAIL",
+      "note": "Local user to local user. \"Message\" not \"mail\": sending a real email is charged as external_email"
+    },
+    {
+      "op": "db_write",
+      "cost": 0,
+      "label": "App data storage",
+      "env": "CREDIT_COST_DB_WRITE"
+    }
+  ]
+}

@@ -50,6 +50,7 @@ func forEachService(t *testing.T, fn func(service string, methods []string)) {
 	t.Helper()
 	root := repoRoot(t)
 	dirs, err := filepath.Glob(filepath.Join(root, "service", "*"))
+	dirs = append(dirs, serviceStaples(root)...)
 	if err != nil {
 		t.Fatalf("glob: %v", err)
 	}
@@ -65,4 +66,17 @@ func forEachService(t *testing.T, fn func(service string, methods []string)) {
 	if checked < 15 {
 		t.Fatalf("only scanned %d services; the scan is not finding them", checked)
 	}
+}
+
+// serviceStaples are the packages that register a Spec without living under
+// service/.
+//
+// There is one: wallet. It is a staple — money, at the top level beside home,
+// agent, client and admin — and it also exposes three tools, so it is a service
+// by every test in here and by none of the globs. Naming it explicitly is the
+// price of that, and a short list is better than a glob loose enough to sweep
+// up internal/ and home/ as well. Anything added here must satisfy the same
+// rules as the rest.
+func serviceStaples(root string) []string {
+	return []string{filepath.Join(root, "wallet")}
 }

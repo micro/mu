@@ -16,37 +16,55 @@ import (
 	"testing"
 )
 
-func withPrices(t *testing.T, prices map[string]int) {
-	t.Helper()
-	prev := PriceOf
-	PriceOf = func(op string) int { return prices[op] }
-	t.Cleanup(func() { PriceOf = prev })
+// Nothing is sold that paying cannot buy.
+//
+// A tool that is both priced and account-only would offer an anonymous caller a
+// payment challenge, take the money — settlement happens in the quota check,
+// before the handler runs — and then refuse the call because they still have no
+// account. That is the shape web_fetch and video_search had: priced at zero,
+// floored to one credit by the challenge builder, and gated by their own
+// handler.
+//
+// Priced *and* account-only is allowed, because it is an honest thing to be:
+// mail_send costs credits and needs an account, and a funded wallet is
+// deliberately not accountable for this sending domain. What is not allowed is
+// offering that tool for sale. Both gates are checked, because they are decided
+// in different places and only one of them used to ask.
+func TestNothingIsSoldThatPayingCannotBuy(t *testing.T) {
+	for _, p := range Policies() {
+		if p.Payable && p.NeedsAccount {
+			t.Errorf("%s is marked payable but needs an account: %s", p.Tool, p.Describe())
+		}
+	}
 }
 
-// Nothing may be both priced and account-only.
-//
-// Such a tool offers an anonymous caller a payment challenge, takes the money
-// when they pay — settlement happens in the quota check, before the handler
-// runs — and then refuses the call because they still have no account. That is
-// the shape web_fetch and video_search had: priced at zero, floored to one
-// credit by the challenge builder, and gated by their own handler.
-func TestNothingChargesForSomethingPayingCannotUnlock(t *testing.T) {
-	for _, p := range Policies() {
-		if p.NeedsAccount && p.Price > 0 {
-			t.Errorf("%s takes a payment and then refuses the caller for not "+
-				"having an account: %s", p.Tool, p.Describe())
+// The x402 gate in front of /mcp decides this a second time, from the request
+// body rather than the policy, and it used to decide it differently: it read
+// the tool's price and ignored its account requirement, so mail_send — priced,
+// account-only, and the one tool where a funded wallet is explicitly not enough
+// — was offered a 402 to a caller who would then be turned away.
+func TestTheGateDoesNotOfferWhatItWillRefuse(t *testing.T) {
+	checked := 0
+	for i := range tools {
+		p := policyOf(tools[i])
+		if !p.NeedsAccount || p.Price == 0 {
+			continue
 		}
-		if p.Payable && p.NeedsAccount {
-			t.Errorf("%s is marked payable but needs an account", p.Tool)
+		checked++
+		body := []byte(`{"method":"tools/call","params":{"name":"` + tools[i].Name + `"}}`)
+		if op := MCPWalletOp(body); op != "" {
+			t.Errorf("the gate offers to charge %s for %s, which needs an account "+
+				"that paying does not provide", op, tools[i].Name)
 		}
+	}
+	if checked == 0 {
+		t.Skip("no priced account-only tool in this binary")
 	}
 }
 
 // A price of zero means nothing is charged, and that is the only thing it
 // means. Whether a stranger may call it is a separate flag.
 func TestFreeAndOpenAreSeparateAnswers(t *testing.T) {
-	withPrices(t, map[string]int{"web_search": 2})
-
 	free := Policy{Tool: "t", Operation: "", Price: 0}
 	if !free.Open() || free.Metered() {
 		t.Error("a free tool with no account requirement is not reading as open")

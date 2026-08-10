@@ -26,7 +26,7 @@ import (
 func TestThePaymentGateAsksWhetherTheToolCostsAnything(t *testing.T) {
 	body := registrationSource(t)
 
-	if !strings.Contains(body, `op != "" && wallet.Metered(op)`) {
+	if !strings.Contains(body, `op != "" && quota.Metered(op)`) {
 		t.Error("the x402 gate no longer asks whether the tool costs anything, " +
 			"so free tools are paywalled to anonymous callers again")
 	}

@@ -40,7 +40,8 @@ Built on go-micro: every capability is a go-micro service, the assistant is a go
 | `client/discord/` | Discord bot with slash commands, embeds, briefings |
 | `client/telegram/` | Telegram bot with commands and groups |
 | `client/whatsapp/` | WhatsApp Business API integration |
-| `service/wallet/` | Credit system, Stripe, x402 |
+| `wallet/` | Money, at the top level: the credit ledger, Stripe, x402, the /wallet page and the `wallet_*` tools. A staple, not a service directory |
+| `internal/quota/` | What things cost and who may do them. The only thing a service knows about money — it holds prices, not balances. Prices are `quota.json` at the top level, not Go |
 | `service/search/` | Brave provider, readability reader, the /search page (no service of its own) |
 | `service/db/` | The caller's own records — named collections that outlive a conversation. Apps keep a separate store each |
 | `service/files/` | Per-user file storage — keep a file, get a URL, read it back |
@@ -60,9 +61,36 @@ go test ./... -short    # test
 go vet ./...            # vet
 ```
 
+## Layering
+
+The top level is the product — `home/`, `agent/`, `service/`, `client/`,
+`admin/`, `wallet/`. Each is a staple: it owns something nothing else owns, and
+a user can name it. Underneath is `internal/`, which is everything with no name
+a user would recognise.
+
+**The product may import `internal/`. `internal/` may never import the product.**
+The two exceptions are the programs: `internal/server` and `internal/cli`
+assemble everything, so they import everything. Enforced by
+`test/layering_test.go`.
+
+A nav item is a *view* of a staple, and a staple can have more than one — Tools
+and Services are both `service/`, Wallet and Usage are both money. A view owns
+nothing, which is why Tools has no directory and should not get one.
+
+When two packages genuinely need each other, the cycle is broken with a function
+variable filled in by `internal/server/hooks.go`. That file is the ledger of
+this layering debt: every entry is a cycle somebody could not avoid. Prefer a
+plain downward import; when you cannot have one, add the hook and know it cost
+something.
+
+A service never imports `wallet/`. What a service needs to know about money is
+`internal/quota` — what an operation costs and whether this caller may do it.
+Quota holds prices and does not know what a balance is; the wallet fills in the
+half quota cannot answer, from its own `init`, because quota sits underneath it.
+
 ## Conventions
 
-- No external dependencies for crypto (secp256k1, RLP, ECDSA implemented in pure Go in `service/wallet/evm.go`)
+- No external dependencies for crypto (secp256k1, RLP, ECDSA implemented in pure Go in `wallet/evm.go`)
 - Settings via `internal/settings/` — reads env vars first, falls back to stored values
 - Background loops use goroutines started in `Load()` or `main.go`
 - Agent tools registered in `internal/api/mcp.go` (static) and `main.go` (dynamic with handlers)
@@ -114,7 +142,12 @@ facts. The distinction is developer-facing (say it) vs customer-facing (don't).
 A credit is charged when an operation costs us something to run: a model call,
 or a paid third party (Atlas Cloud for inference and images, Brave for web
 search, Google for places). Operations that only touch this instance's own
-storage are free — see the comment on the cost block in `service/wallet/wallet.go`.
+storage are free — see `quota.json` at the top of the repo, which is the one
+price list: the gate reads it and every cost table renders from it. `main.go`
+embeds it and calls `quota.Load`; the package that answers what something costs
+does not decide where the answer comes from. A service says *which* operation
+it charges (`Cost: quota.OpWebSearch` on its Endpoint); what that operation
+costs is an operator's decision, so it is data.
 
 Abuse control is `auth.CheckPostRate`, not the credit charge. Keep the two jobs
 separate: credits price real cost, rate limits stop bots.

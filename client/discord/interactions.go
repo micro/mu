@@ -11,7 +11,7 @@ import (
 	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/service"
-	"mu/service/wallet"
+	"mu/wallet"
 )
 
 type interaction struct {

@@ -19,9 +19,9 @@ import (
 	"context"
 
 	"mu/internal/app"
+	"mu/internal/quota"
 	"mu/internal/service"
 	"mu/service/search"
-	"mu/service/wallet"
 )
 
 // Server is the service handler. Its methods are exposed as RPC endpoints and,
@@ -90,7 +90,7 @@ var Spec = service.Spec{
 	Label:       "Search",
 	Icon:        "search.svg",
 	Endpoints: map[string]service.Endpoint{
-		"Fetch":  {Doc: "Fetch a web page by URL and return its readable content", Cost: wallet.OpWebFetch},
-		"Search": {Doc: "Search the web for current information and news", Cost: wallet.OpWebSearch},
+		"Fetch":  {Doc: "Fetch a web page by URL and return its readable content", Cost: quota.OpWebFetch},
+		"Search": {Doc: "Search the web for current information and news", Cost: quota.OpWebSearch},
 	},
 }

@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"mu/service/wallet"
+	"mu/wallet"
 )
 
 // runWallet audits which address a stored key controls and whether it matches

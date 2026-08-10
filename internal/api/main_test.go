@@ -3,6 +3,8 @@ package api
 import (
 	"os"
 	"testing"
+
+	"mu/internal/quota"
 )
 
 // TestMain points HOME at a temporary directory so tests that create accounts
@@ -14,6 +16,14 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 	os.Setenv("HOME", dir)
+
+	// Prices reach internal/quota from main, which no test binary has. Without
+	// this every tool reads as costing the 1-credit fallback, and the policy
+	// tests below — which are about what is priced and what is not — would be
+	// asserting over a flat list.
+	if err := quota.LoadFromTree(); err != nil {
+		panic("api tests need quota.json: " + err.Error())
+	}
 
 	// Snapshot the real tool surface before any test body runs.
 	//

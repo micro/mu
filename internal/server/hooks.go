@@ -32,6 +32,7 @@ import (
 	"mu/internal/data"
 	"mu/internal/google"
 	"mu/internal/memory"
+	"mu/internal/quota"
 	"mu/internal/service"
 	"mu/internal/settings"
 	"mu/internal/user"
@@ -50,7 +51,7 @@ import (
 	"mu/service/social"
 	"mu/service/stream"
 	"mu/service/tasks"
-	"mu/service/wallet"
+	"mu/wallet"
 )
 
 // wireHooks connects the building blocks to each other.
@@ -257,7 +258,7 @@ func wireHooks() {
 				}
 			}
 
-			canProceed, _, cost, err := wallet.CheckQuota(m.Owner, wallet.OpAgentQuery)
+			canProceed, _, cost, err := quota.CheckQuota(m.Owner, quota.OpAgentQuery)
 			if err != nil || !canProceed {
 				reply(fmt.Sprintf("I could not run this one: it costs %d credits and the account is short. "+
 					"Top up at %s/wallet and send it again.", cost, app.PublicURL()))
@@ -319,14 +320,6 @@ func wireHooks() {
 	app.LinkCodeFunc = auth.GenerateLinkCode
 	app.ToolCountFunc = api.ToolCount
 
-	// The balance beside your name and the top-up banner. A hook because
-	// wallet imports app — see internal/app/credits.go.
-	app.BalanceFunc = func(accountID string) (int, bool) {
-		if !wallet.PaymentsEnabled() {
-			return 0, false
-		}
-		return wallet.GetBalance(accountID), true
-	}
 	discord.Load()
 	telegram.Load()
 	whatsapp.Load()
@@ -571,10 +564,6 @@ func wireHooks() {
 	// Wire guest agent news search directly to the live feed-backed provider path.
 	api.GuestNewsSearch = news.SearchToolText
 
-	// What a tool costs, so api.PolicyFor can answer for the whole registry in
-	// one place. See internal/api/policy.go for why that matters.
-	api.PriceOf = wallet.GetOperationCost
-
 	// Wire MCP quota checking using wallet credit system
 	api.QuotaCheck = func(r *http.Request, op string) (bool, int, error) {
 		// Nothing to charge, nobody to charge it to. A free tool has no
@@ -587,9 +576,9 @@ func wireHooks() {
 		// independently here, which is why fixing that one alone left free
 		// tools unreachable. Both now ask what it costs before asking who you
 		// are.
-		if !wallet.Metered(op) {
+		if !quota.Metered(op) {
 			// Open, not unguarded. Credits price what a call costs us and rate
-			// limits stop bots — see the cost block in wallet.go. A free call
+			// limits stop bots — see the cost block in internal/quota. A free call
 			// is charged nothing, so the limit is the only one of the two
 			// doing any work here, and it applies to guests because a
 			// signed-in caller is already accountable.
@@ -624,7 +613,7 @@ func wireHooks() {
 			// client told to authenticate would never find the second.
 			return false, 0, fmt.Errorf("this call is metered: sign in so it can be charged to your credits, or send an x402 payment")
 		}
-		canProceed, _, cost, err := wallet.CheckQuota(sess.Account, op)
+		canProceed, _, cost, err := quota.CheckQuota(sess.Account, op)
 		return canProceed, cost, err
 	}
 
@@ -632,7 +621,7 @@ func wireHooks() {
 	agent.QuotaCheck = func(r *http.Request, op string) (bool, int, error) {
 		// Free is free here too — the third copy of this decision. See the
 		// note on api.QuotaCheck above.
-		if !wallet.Metered(op) {
+		if !quota.Metered(op) {
 			return true, 0, nil
 		}
 		// Check for x402 payment (bypasses auth + credits)
@@ -653,7 +642,7 @@ func wireHooks() {
 			// client told to authenticate would never find the second.
 			return false, 0, fmt.Errorf("this call is metered: sign in so it can be charged to your credits, or send an x402 payment")
 		}
-		canProceed, _, cost, err := wallet.CheckQuota(sess.Account, op)
+		canProceed, _, cost, err := quota.CheckQuota(sess.Account, op)
 		return canProceed, cost, err
 	}
 
@@ -662,10 +651,11 @@ func wireHooks() {
 	// Deduct credits from the acting user for a metered call (SDK or the agent).
 	chargeUser := func(r *http.Request, op string) {
 		if sess, err := auth.GetSession(r); err == nil {
-			_ = wallet.ConsumeQuota(sess.Account, op)
+			_ = quota.ConsumeQuota(sess.Account, op)
 		}
 	}
 	apps.ChargeQuota = chargeUser
+	apps.ChargeUse = wallet.ChargeAppUse
 	agent.ChargeQuota = chargeUser
 
 	// Inline visual cards now come from the capability registry (core), which

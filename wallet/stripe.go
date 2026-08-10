@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"mu/internal/quota"
+
 	"mu/internal/app"
 	"mu/internal/settings"
 )
@@ -337,7 +339,7 @@ func HandleStripeWebhook(w http.ResponseWriter, r *http.Request) {
 			fmt.Sscanf(session.Metadata.Credits, "%d", &credits)
 
 			if userID != "" && credits > 0 {
-				err := AddCredits(userID, credits, OpTopup, map[string]interface{}{
+				err := AddCredits(userID, credits, quota.OpTopup, map[string]interface{}{
 					"source":     "stripe",
 					"session_id": session.ID,
 					"amount":     session.AmountTotal,
@@ -386,7 +388,7 @@ func HandleStripeWebhook(w http.ResponseWriter, r *http.Request) {
 			processedSessions[invoice.ID] = true
 			mutex.Unlock()
 
-			err := AddCredits(userID, credits, OpTopup, map[string]interface{}{
+			err := AddCredits(userID, credits, quota.OpTopup, map[string]interface{}{
 				"source":       "stripe_subscription",
 				"invoice_id":   invoice.ID,
 				"subscription": invoice.Subscription,

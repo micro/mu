@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"mu/internal/quota"
+
 	"mu/internal/auth"
 )
 
@@ -29,9 +31,10 @@ func withToken(t *testing.T, id string) *auth.Account {
 // withBalance installs a balance hook for one test.
 func withBalance(t *testing.T, balance int, charging bool) {
 	t.Helper()
-	prev := BalanceFunc
-	BalanceFunc = func(string) (int, bool) { return balance, charging }
-	t.Cleanup(func() { BalanceFunc = prev })
+	prevEnabled, prevBalance := quota.Enabled, quota.Balance
+	quota.Enabled = func() bool { return charging }
+	quota.Balance = func(string) int { return balance }
+	t.Cleanup(func() { quota.Enabled, quota.Balance = prevEnabled, prevBalance })
 }
 
 // The case the whole thing exists for: a new account has nothing, and until it
@@ -133,9 +136,9 @@ func TestSignedOutSeesNothing(t *testing.T) {
 
 // With no wallet wired at all, every surface stays quiet.
 func TestNoWalletMeansNoCreditsUI(t *testing.T) {
-	prev := BalanceFunc
-	BalanceFunc = nil
-	t.Cleanup(func() { BalanceFunc = prev })
+	prev := quota.Enabled
+	quota.Enabled = nil
+	t.Cleanup(func() { quota.Enabled = prev })
 
 	acc := &auth.Account{ID: "someone"}
 	if got := creditsBannerFor(acc, "/home"); got != "" {

@@ -6,69 +6,47 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"mu/internal/quota"
 )
 
-// Every billable operation must appear in Pricing(). The cost tables on the
-// wallet page, the signed-out wallet page, the pricing API and the public
-// pricing page all render from that one list, so an operation missing from it
-// is a charge the user is never shown. Each of those tables used to be
-// hardcoded separately and they drifted — image generation, the most expensive
-// thing a user could trigger short of building an app, was absent from three.
-func TestPricingCoversEveryBillableOperation(t *testing.T) {
-	billable := []struct {
-		op   string
-		cost int
-	}{
-		{OpNewsSearch, CostNewsSearch},
-		{OpQuranSearch, CostQuranSearch},
-		{OpVideoSearch, CostVideoSearch},
-		{OpChatQuery, CostChatQuery},
-		{OpBlogCreate, CostBlogCreate},
-		{OpBlogComment, CostBlogComment},
-		{OpMailSend, CostMailSend},
-		{OpExternalEmail, CostExternalEmail},
-		{OpPlacesSearch, CostPlacesSearch},
-		{OpPlacesNearby, CostPlacesNearby},
-		{OpPlacesETA, CostPlacesETA},
-		{OpWeatherForecast, CostWeatherForecast},
-		{OpWeatherPollen, CostWeatherPollen},
-		{OpWebSearch, CostWebSearch},
-		{OpWebFetch, CostWebFetch},
-		{OpDBWrite, CostDBWrite},
-		{OpAgentQuery, CostAgentQuery},
-		{OpAgentQueryPremium, CostAgentQueryPremium},
-		{OpSocialSearch, CostSocialSearch},
-		{OpSocialPost, CostSocialPost},
-		{OpSocialReply, CostSocialReply},
-		{OpAppCreate, CostAppCreate},
-		{OpStreamPost, CostStreamPost},
-		{OpImageGenerate, CostImageGenerate},
-		{OpAppBuild, CostAppBuild},
-		{OpAppEdit, CostAppEdit},
+// Every billable operation must appear in the published list. The cost tables
+// on the wallet page, the signed-out wallet page, the pricing API and the
+// public pricing page all render from it, so an operation missing from it is a
+// charge the user is never shown. Each of those tables used to be hardcoded
+// separately and they drifted — image generation, the most expensive thing a
+// user could trigger short of building an app, was absent from three.
+//
+// The list is quota.json now and this only checks that the
+// wallet renders all of it, which is the half that lives here. Whether the file
+// covers every operation the code charges is asserted where the operations are
+// declared, in internal/quota.
+func TestPricingRendersTheWholeList(t *testing.T) {
+	published := quota.Prices()
+	if len(published) < 20 {
+		t.Fatalf("only %d priced operations — the price list is not loading", len(published))
 	}
 
 	listed := map[string]PricingItem{}
 	for _, it := range Pricing() {
 		listed[it.Operation] = it
 	}
-
-	for _, b := range billable {
-		it, ok := listed[b.op]
+	for _, p := range published {
+		it, ok := listed[p.Op]
 		if !ok {
-			t.Errorf("operation %q is charged but not listed in Pricing()", b.op)
+			t.Errorf("operation %q is priced but the wallet does not show it", p.Op)
 			continue
 		}
-		if it.Cost != b.cost {
-			t.Errorf("Pricing() lists %q at %d, actual cost is %d", b.op, it.Cost, b.cost)
+		if it.Cost != p.Cost {
+			t.Errorf("the wallet shows %q at %d, the price list says %d", p.Op, it.Cost, p.Cost)
 		}
 		if strings.TrimSpace(it.Description) == "" {
-			t.Errorf("operation %q has no description", b.op)
+			t.Errorf("operation %q has no label to show", p.Op)
 		}
 	}
-
-	if len(listed) != len(billable) {
-		t.Errorf("Pricing() has %d entries, expected %d — an operation was added or duplicated",
-			len(listed), len(billable))
+	if len(listed) != len(published) {
+		t.Errorf("the wallet shows %d operations, the price list has %d",
+			len(listed), len(published))
 	}
 }
 
@@ -129,9 +107,9 @@ func TestEveryChargedOperationIsPublished(t *testing.T) {
 	}
 
 	// Constant name -> operation string, read from the source of truth.
-	src, err := os.ReadFile("wallet.go")
+	src, err := os.ReadFile("../internal/quota/quota.go")
 	if err != nil {
-		t.Fatalf("read wallet.go: %v", err)
+		t.Fatalf("read quota.go: %v", err)
 	}
 	opValue := map[string]string{}
 	for _, m := range regexp.MustCompile(`(Op[A-Za-z]+)\s*=\s*"([a-z_]+)"`).FindAllStringSubmatch(string(src), -1) {
@@ -147,14 +125,14 @@ func TestEveryChargedOperationIsPublished(t *testing.T) {
 	}
 
 	// Both forms: the constant (current) and a bare string (a regression).
-	site := regexp.MustCompile(`(?:WalletOp:\s*|QuotaCheck\([^,]+,\s*)(?:wallet\.(Op[A-Za-z]+)|"([a-z_]+)")`)
+	site := regexp.MustCompile(`(?:WalletOp:\s*|QuotaCheck\([^,]+,\s*)(?:quota\.(Op[A-Za-z]+)|"([a-z_]+)")`)
 
 	found := 0
 	err = filepath.Walk(repoRoot(t), func(path string, info os.FileInfo, err error) error {
 		if err != nil || info.IsDir() || !strings.HasSuffix(path, ".go") {
 			return nil
 		}
-		if strings.HasSuffix(path, "_test.go") || strings.Contains(path, "/wallet/") {
+		if strings.HasSuffix(path, "_test.go") || strings.Contains(path, "/wallet/") || strings.Contains(path, "/quota/") {
 			return nil
 		}
 		b, err := os.ReadFile(path)
@@ -167,7 +145,7 @@ func TestEveryChargedOperationIsPublished(t *testing.T) {
 				var ok bool
 				op, ok = opValue[m[1]]
 				if !ok {
-					t.Errorf("%s charges wallet.%s, which is not a declared operation", path, m[1])
+					t.Errorf("%s charges quota.%s, which is not a declared operation", path, m[1])
 					continue
 				}
 			}

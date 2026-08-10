@@ -29,7 +29,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/usage"
-	"mu/service/wallet"
+	"mu/wallet"
 )
 
 // UsageHandler serves /usage: one caller's own activity.

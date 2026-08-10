@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"

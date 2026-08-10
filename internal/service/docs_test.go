@@ -22,6 +22,7 @@ import (
 func TestEveryEndpointIsDescribed(t *testing.T) {
 	root := repoRoot(t)
 	dirs, err := filepath.Glob(filepath.Join(root, "service", "*"))
+	dirs = append(dirs, serviceStaples(root)...)
 	if err != nil {
 		t.Fatalf("glob: %v", err)
 	}

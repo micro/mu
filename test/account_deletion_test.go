@@ -29,15 +29,21 @@ import (
 func scopedServices(t *testing.T) []string {
 	t.Helper()
 	var out []string
+	// service/*, plus the one package that registers a Spec from the top level:
+	// wallet is a staple and a service at the same time, and it is the one
+	// holding money, so dropping out of this scan is the last thing it should do.
+	dirs := [][]string{{"wallet"}}
 	entries, err := os.ReadDir(at("service"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, e := range entries {
-		if !e.IsDir() {
-			continue
+		if e.IsDir() {
+			dirs = append(dirs, []string{"service", e.Name()})
 		}
-		files, err := os.ReadDir(at("service", e.Name()))
+	}
+	for _, dir := range dirs {
+		files, err := os.ReadDir(at(dir...))
 		if err != nil {
 			continue
 		}
@@ -46,12 +52,12 @@ func scopedServices(t *testing.T) []string {
 				strings.HasSuffix(f.Name(), "_test.go") {
 				continue
 			}
-			src, err := os.ReadFile(at("service", e.Name(), f.Name()))
+			src, err := os.ReadFile(at(append(append([]string{}, dir...), f.Name())...))
 			if err != nil {
 				continue
 			}
 			if regexp.MustCompile(`Scoped:\s*true`).Match(src) {
-				out = append(out, e.Name())
+				out = append(out, dir[len(dir)-1])
 				break
 			}
 		}
@@ -80,9 +86,9 @@ func TestEveryScopedServiceCleansUpWhenAnAccountIsDeleted(t *testing.T) {
 	}
 	block := src[i : i+j]
 
-	// wallet registers two hooks under its own name; mail's is DeleteInbox.
-	// What matters is that the package appears, not what its function is
-	// called.
+	// A service's name is its package name, which is what makes this test
+	// indifferent to what the hook is actually called — mail's is DeleteInbox,
+	// wallet registers two.
 	for _, svc := range scopedServices(t) {
 		if !strings.Contains(block, svc+".") {
 			t.Errorf("%s stores per-caller data and nothing deletes it when the "+

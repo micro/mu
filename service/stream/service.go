@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"mu/internal/app"
+	"mu/internal/quota"
 	"mu/internal/service"
-	"mu/service/wallet"
 )
 
 // Server exposes the console timeline as a service, so the agent and apps can
@@ -107,6 +107,6 @@ var Spec = service.Spec{
 		// hand-written stream_post in internal/api/mcp.go currently overrides
 		// this one and forwards the session; declaring it here means the derived
 		// tool works on its own if that registration ever goes.
-		"Post": {Doc: "Post an entry to the console timeline", Cost: wallet.OpStreamPost, Account: true},
+		"Post": {Doc: "Post an entry to the console timeline", Cost: quota.OpStreamPost, Account: true},
 	},
 }

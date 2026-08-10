@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"golang.org/x/sync/semaphore"
+
 	"mu/internal/app"
 	"mu/internal/settings"
 )

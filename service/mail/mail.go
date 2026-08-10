@@ -23,7 +23,7 @@ import (
 	"mu/internal/data"
 	"mu/internal/service"
 
-	"mu/service/wallet"
+	"mu/internal/quota"
 )
 
 var mutex sync.RWMutex
@@ -374,7 +374,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			}
 			if IsExternalEmail(to) {
 				if !acc.Admin {
-					canProceed, _, cost, err := wallet.CheckQuota(acc.ID, wallet.OpExternalEmail)
+					canProceed, _, cost, err := quota.CheckQuota(acc.ID, quota.OpExternalEmail)
 					if err != nil || !canProceed {
 						app.RespondError(w, http.StatusPaymentRequired, fmt.Sprintf("external email requires %d credits", cost))
 						return
@@ -388,13 +388,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 				if !acc.Admin {
-					wallet.ConsumeQuota(acc.ID, wallet.OpExternalEmail) //nolint:errcheck
+					quota.ConsumeQuota(acc.ID, quota.OpExternalEmail) //nolint:errcheck
 				}
 				SendMessage(acc.Name, acc.ID, to, to, subject, body, replyTo, messageID) //nolint:errcheck
 			} else {
 				// Internal mail costs credits
 				if !acc.Admin {
-					canProceed, _, cost, _ := wallet.CheckQuota(acc.ID, wallet.OpMailSend)
+					canProceed, _, cost, _ := quota.CheckQuota(acc.ID, quota.OpMailSend)
 					if !canProceed {
 						app.RespondError(w, http.StatusPaymentRequired, fmt.Sprintf("sending mail requires %d credits", cost))
 						return
@@ -414,7 +414,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 				if !acc.Admin {
-					wallet.ConsumeQuota(acc.ID, wallet.OpMailSend) //nolint:errcheck
+					quota.ConsumeQuota(acc.ID, quota.OpMailSend) //nolint:errcheck
 				}
 			}
 			app.RespondJSON(w, map[string]bool{"success": true})
@@ -499,7 +499,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		if IsExternalEmail(to) {
 			// External email costs credits (unless admin)
 			if !acc.Admin {
-				canProceed, useFree, cost, err := wallet.CheckQuota(acc.ID, wallet.OpExternalEmail)
+				canProceed, useFree, cost, err := quota.CheckQuota(acc.ID, quota.OpExternalEmail)
 				if err != nil || !canProceed {
 					http.Error(w, fmt.Sprintf("External email requires %d credits. Top up at /wallet/topup", cost), http.StatusPaymentRequired)
 					return
@@ -526,7 +526,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 			// Consume quota for external email (after successful send)
 			if !acc.Admin {
-				if err := wallet.ConsumeQuota(acc.ID, wallet.OpExternalEmail); err != nil {
+				if err := quota.ConsumeQuota(acc.ID, quota.OpExternalEmail); err != nil {
 					app.Log("mail", "Warning: Failed to consume quota for external email: %v", err)
 				}
 			}
@@ -538,7 +538,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		} else {
 			// Internal message - store plain text, render at display time
 			if !acc.Admin {
-				canProceed, _, cost, _ := wallet.CheckQuota(acc.ID, wallet.OpMailSend)
+				canProceed, _, cost, _ := quota.CheckQuota(acc.ID, quota.OpMailSend)
 				if !canProceed {
 					http.Error(w, fmt.Sprintf("Sending mail requires %d credits. Top up at /wallet/topup", cost), http.StatusPaymentRequired)
 					return
@@ -561,7 +561,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			if !acc.Admin {
-				wallet.ConsumeQuota(acc.ID, wallet.OpMailSend) //nolint:errcheck
+				quota.ConsumeQuota(acc.ID, quota.OpMailSend) //nolint:errcheck
 			}
 		}
 
@@ -733,7 +733,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		displayBody := msg.Body
 		isAttachment := false
 		attachmentName := ""
-
 
 		// First, check if body contains raw MIME content with headers
 		if strings.Contains(displayBody, "Content-Type:") || strings.Contains(displayBody, "content-type:") {

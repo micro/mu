@@ -17,10 +17,10 @@ import (
 	"mu/internal/auth"
 	"mu/internal/blob"
 	"mu/internal/data"
+	"mu/internal/quota"
 	"mu/internal/service"
 	"mu/internal/settings"
 	"mu/internal/userdb"
-	"mu/service/wallet"
 )
 
 const (
@@ -163,7 +163,7 @@ func Generate(owner, prompt string) (string, error) {
 		return "", fmt.Errorf("sign in to generate images")
 	}
 	// Affordability check before spending time on the model.
-	canProceed, _, cost, err := wallet.CheckQuota(owner, wallet.OpImageGenerate)
+	canProceed, _, cost, err := quota.CheckQuota(owner, quota.OpImageGenerate)
 	if err != nil {
 		return "", err
 	}
@@ -177,7 +177,7 @@ func Generate(owner, prompt string) (string, error) {
 	}
 
 	// Only charge once we actually have an image.
-	if err := wallet.ConsumeQuota(owner, wallet.OpImageGenerate); err != nil {
+	if err := quota.ConsumeQuota(owner, quota.OpImageGenerate); err != nil {
 		return "", err
 	}
 
@@ -394,7 +394,7 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 	if acc != nil {
 		caller = acc.ID
 	}
-	price := wallet.CostImageGenerate
+	price := quota.GetOperationCost(quota.OpImageGenerate)
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
 
 	var b strings.Builder

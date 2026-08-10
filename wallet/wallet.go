@@ -1,102 +1,38 @@
+// Package wallet is money: what this instance charges, and how it gets paid.
+//
+// It is a staple rather than a service, which is why it sits at the top level
+// beside home, agent, client and admin instead of under service/. It was under
+// service/ and that put it in the wrong place twice over — as one entry in the
+// catalogue of what this instance offers, and as a leaf that internal/api,
+// internal/server and fifteen sibling services all had to import in order to
+// ask what something cost.
+//
+// They do not ask here any more. The price list and the gate in front of it are
+// internal/quota, which knows what things cost and deliberately does not know
+// what a balance is; this package fills in the half quota cannot answer, from
+// its own init, because quota sits underneath it and there is no cycle to
+// break. A service imports quota. Nothing but the server, the two aggregating
+// surfaces and this package's own page imports the wallet.
+//
+// The name is the caller's word, not an accountant's. On the x402 path there is
+// no account, no credit balance and no invoice — a wallet signs, and that is
+// the whole of it. Credits are the other rail into the same meter.
 package wallet
 
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 	"sync"
 	"time"
+
+	"mu/internal/quota"
 
 	"mu/internal/auth"
 	"mu/internal/data"
 
 	"github.com/google/uuid"
-)
-
-// Credit costs per operation (in credits/pennies).
-//
-// A credit is charged when an operation costs us something to run: a model
-// call, or a third-party API we pay for (Atlas Cloud for inference and images,
-// Brave for web search, Google for places). Everything else is free.
-//
-// Actions that only touch this instance's own storage — writing a post, a
-// comment, a status update, internal mail between two local users — are 0.
-// They have no marginal cost, so charging for them was friction on exactly the
-// behaviour the product wants more of.
-//
-// Abuse control for those does not depend on the charge: auth.CheckPostRate
-// runs ahead of the quota check on every write in the central gate, and caps
-// new accounts at 10 actions/hour and established ones at 60. That limit was
-// always the real defence; the credit was a second, weaker one that also
-// taxed ordinary use.
-var (
-	// Charged — a model call, or a paid third party. The price is the cost
-	// with a margin on it, and the margin should be visible in the number
-	// rather than a mystery: a model-backed operation costs more than a
-	// vendor API call, and a big generation costs more than a small one.
-
-	// Vendor APIs we are billed for per request.
-	CostPlacesSearch    = getEnvInt("CREDIT_COST_PLACES_SEARCH", 5) // Google Places text search, ~2.5p
-	CostPlacesNearby    = getEnvInt("CREDIT_COST_PLACES_NEARBY", 4) // Google Places nearby, ~2.5p
-	CostPlacesETA       = getEnvInt("CREDIT_COST_PLACES_ETA", 3)    // Google Routes, ~0.5p
-	CostWeatherForecast = getEnvInt("CREDIT_COST_WEATHER", 1)       // Google Weather
-	CostWeatherPollen   = getEnvInt("CREDIT_COST_WEATHER_POLLEN", 1)
-	CostWebSearch       = getEnvInt("CREDIT_COST_SEARCH", 2) // Brave, ~0.4p — was 5, a 12x markup
-
-	// Model calls. Ordered by how much model each one actually spends:
-	// a chat turn, an agent run that may fan out across tools, and a
-	// generation that writes a whole app.
-	CostChatQuery  = getEnvInt("CREDIT_COST_CHAT", 5)
-	CostAgentQuery = getEnvInt("CREDIT_COST_AGENT", 7)
-	// The premium tier routes to Anthropic where the rest use the default
-	// provider, which is an order of magnitude more per token. At 9 it was
-	// priced 29% above standard for roughly 10-20x the cost — the one place
-	// this instance was plausibly underwater.
-	CostAgentQueryPremium = getEnvInt("CREDIT_COST_AGENT_PREMIUM", 20)
-	CostImageGenerate     = getEnvInt("CREDIT_COST_IMAGE", 15)
-	// One generation each. app_build was 100 — a pound, six times the next
-	// most expensive thing on the menu, for less model than an agent run
-	// costing 7.
-	CostAppBuild = getEnvInt("CREDIT_COST_APP_BUILD", 15)
-	CostAppEdit  = getEnvInt("CREDIT_COST_APP_EDIT", 8)
-
-	// Sending mail to an external host is the deliberate exception: no
-	// invoice arrives for it, because we run the SMTP server. What it spends
-	// is the domain's reputation, which is real, not ours to get back, and
-	// not something a rate limit prices. mail_send is account-only for the
-	// same reason.
-	CostExternalEmail = getEnvInt("CREDIT_COST_EMAIL", 4)
-
-	// Free — nothing outside this instance is billed for these. Abuse is a
-	// rate limit's job, not a price's. Still overridable by env for operators
-	// who want a charge back.
-	CostBlogCreate   = getEnvInt("CREDIT_COST_BLOG_CREATE", 0)
-	CostBlogComment  = getEnvInt("CREDIT_COST_BLOG_COMMENT", 0)
-	CostSocialPost   = getEnvInt("CREDIT_COST_SOCIAL_POST", 0)
-	CostSocialReply  = getEnvInt("CREDIT_COST_SOCIAL_REPLY", 0)
-	CostAppCreate    = getEnvInt("CREDIT_COST_APP_CREATE", 0)
-	CostStreamPost   = getEnvInt("CREDIT_COST_STREAM_POST", 0)
-	CostSocialSearch = getEnvInt("CREDIT_COST_SOCIAL", 0)
-	CostMailSend     = getEnvInt("CREDIT_COST_MAIL", 0) // local user to local user
-	CostDBWrite      = getEnvInt("CREDIT_COST_DB_WRITE", 0)
-
-	// These four were charged for work nothing bills us for.
-	//
-	// news_search is data.Search against the local index. web_fetch is an
-	// http.Get and a readability pass in this process. quran_search calls
-	// reminder.dev, which is ours. video_search calls the YouTube Data API,
-	// which is free — but quota'd at 10,000 units a day against a search
-	// costing 100, so roughly 100 searches a day across every user. That is
-	// scarcity, not cost, and rationing it with a price charged the wrong
-	// people: see videoSearchLimit.
-	CostNewsSearch  = getEnvInt("CREDIT_COST_NEWS", 0)
-	CostWebFetch    = getEnvInt("CREDIT_COST_FETCH", 0)
-	CostQuranSearch = getEnvInt("CREDIT_COST_QURAN_SEARCH", 0)
-	CostVideoSearch = getEnvInt("CREDIT_COST_VIDEO", 0)
-
-	DailyQuota = getEnvInt("DAILY_QUOTA", getEnvInt("FREE_DAILY_QUOTA", 100))
 )
 
 const DailyTransferCap = 10000
@@ -106,44 +42,6 @@ const DailyTransferCap = 10000
 func PaymentsEnabled() bool {
 	return StripeEnabled() || X402Enabled()
 }
-
-// Operation types
-const (
-	OpNewsSearch        = "news_search"
-	OpQuranSearch       = "quran_search"
-	OpVideoSearch       = "video_search"
-	OpChatQuery         = "chat_query"
-	OpBlogCreate        = "blog_create"
-	OpMailSend          = "mail_send"
-	OpExternalEmail     = "external_email"
-	OpPlacesSearch      = "places_search"
-	OpPlacesNearby      = "places_nearby"
-	OpPlacesETA         = "places_eta"
-	OpWeatherForecast   = "weather_forecast"
-	OpWeatherPollen     = "weather_pollen"
-	OpWebSearch         = "web_search"
-	OpWebFetch          = "web_fetch"
-	OpDBWrite           = "db_write"
-	OpImageGenerate     = "image_generate"
-	OpAgentQuery        = "agent_query"
-	OpAgentQueryPremium = "agent_query_premium"
-	OpSocialSearch      = "social_search"
-	OpSocialPost        = "social_post"
-	OpSocialReply       = "social_reply"
-	OpAppCreate         = "app_create"
-	OpStreamPost        = "stream_post"
-	OpBlogComment       = "blog_comment"
-	OpAppBuild          = "app_build"
-	OpAppEdit           = "app_edit"
-	OpAppUse            = "app_use"
-	OpAppRevenue        = "app_revenue"
-	OpTopup             = "topup"
-	OpRefund            = "refund"
-	OpTransfer          = "transfer"
-	OpEscrowHold        = "escrow_hold"
-	OpEscrowRelease     = "escrow_release"
-	OpEscrowRefund      = "escrow_refund"
-)
 
 // Transaction types
 const (
@@ -188,6 +86,22 @@ type DailyUsage struct {
 }
 
 func init() {
+	// The gate in front of every priced call is internal/quota, which knows what
+	// things cost and deliberately does not know what a balance is. This is the
+	// half it cannot answer.
+	//
+	// Installed here rather than by the server because this is a plain downward
+	// import — quota sits underneath the wallet and cannot see it — so there is
+	// no cycle to break and nothing for main to arbitrate. It also means any
+	// build that links the wallet has a working meter, rather than one that
+	// lets everything through because a hook stayed nil.
+	quota.Enabled = PaymentsEnabled
+	quota.Balance = GetBalance
+	quota.Record = RecordUsage
+	quota.Deduct = func(account, operation string, amount int, meta map[string]interface{}) error {
+		return DeductCredits(account, amount, operation, meta)
+	}
+
 	// Load wallets from disk
 	b, _ := data.LoadFile("wallets.json")
 	json.Unmarshal(b, &wallets)
@@ -204,18 +118,6 @@ func init() {
 // Load initializes wallet
 func Load() {
 	// Wallet loaded
-}
-
-// getEnvInt gets an environment variable as int with default
-func getEnvInt(key string, defaultVal int) int {
-	if v := os.Getenv(key); v != "" {
-		var i int
-		fmt.Sscanf(v, "%d", &i)
-		if i > 0 {
-			return i
-		}
-	}
-	return defaultVal
 }
 
 // GetWallet retrieves or creates a wallet for a user
@@ -334,7 +236,7 @@ func DailyTransferTotal(userID string, day time.Time) int {
 
 	total := 0
 	for _, tx := range transactions[userID] {
-		if tx == nil || tx.Type != TxTransfer || tx.Operation != OpTransfer || tx.Amount >= 0 {
+		if tx == nil || tx.Type != TxTransfer || tx.Operation != quota.OpTransfer || tx.Amount >= 0 {
 			continue
 		}
 		if tx.CreatedAt.UTC().Format("2006-01-02") != date {
@@ -361,7 +263,7 @@ func TransferCredits(fromUserID, toUserID string, amount int) error {
 	today := time.Now().UTC().Format("2006-01-02")
 	dailyTotal := 0
 	for _, tx := range transactions[fromUserID] {
-		if tx == nil || tx.Type != TxTransfer || tx.Operation != OpTransfer || tx.Amount >= 0 {
+		if tx == nil || tx.Type != TxTransfer || tx.Operation != quota.OpTransfer || tx.Amount >= 0 {
 			continue
 		}
 		if tx.CreatedAt.UTC().Format("2006-01-02") == today {
@@ -407,14 +309,14 @@ func TransferCredits(fromUserID, toUserID string, amount int) error {
 		Type:      TxTransfer,
 		Amount:    -amount,
 		Balance:   sender.Balance,
-		Operation: OpTransfer,
+		Operation: quota.OpTransfer,
 		// Both, because they answer different questions. The id is what was
 		// actually credited and the only thing that can be reconciled; the
 		// name is what the person typed and the only thing they can recognise.
 		// Recording the id alone produced receipts reading "Transfer to 3834",
 		// which is unreadable and — when the recipient was resolved wrongly —
 		// indistinguishable from a correct one.
-		Metadata:  map[string]interface{}{"to": toUserID, "to_name": accountLabel(toUserID)},
+		Metadata:  map[string]interface{}{"to": toUserID, "to_name": AccountLabel(toUserID)},
 		CreatedAt: now,
 	}
 	transactions[fromUserID] = append(transactions[fromUserID], senderTx)
@@ -426,8 +328,8 @@ func TransferCredits(fromUserID, toUserID string, amount int) error {
 		Type:      TxTransfer,
 		Amount:    amount,
 		Balance:   receiver.Balance,
-		Operation: OpTransfer,
-		Metadata:  map[string]interface{}{"from": fromUserID, "from_name": accountLabel(fromUserID)},
+		Operation: quota.OpTransfer,
+		Metadata:  map[string]interface{}{"from": fromUserID, "from_name": AccountLabel(fromUserID)},
 		CreatedAt: now,
 	}
 	transactions[toUserID] = append(transactions[toUserID], receiverTx)
@@ -439,10 +341,10 @@ func TransferCredits(fromUserID, toUserID string, amount int) error {
 	return nil
 }
 
-// accountLabel is the name to show for an account id, falling back to the id
+// AccountLabel is the name to show for an account id, falling back to the id
 // when there is no account to ask — a deleted one, or a wallet that outlived
 // it. Never empty, so a receipt always says something.
-func accountLabel(id string) string {
+func AccountLabel(id string) string {
 	if acc, err := auth.GetAccount(id); err == nil && strings.TrimSpace(acc.Name) != "" {
 		return acc.Name
 	}
@@ -465,101 +367,6 @@ func GetTransactions(userID string, limit int) []*Transaction {
 		result = append(result, txs[i])
 	}
 	return result
-}
-
-// GetOperationCost returns the credit cost for an operation
-func GetOperationCost(operation string) int {
-	switch operation {
-	case OpNewsSearch:
-		return CostNewsSearch
-	case OpVideoSearch:
-		return CostVideoSearch
-	case OpChatQuery:
-		return CostChatQuery
-	case OpBlogCreate:
-		return CostBlogCreate
-	case OpMailSend:
-		return CostMailSend
-	case OpExternalEmail:
-		return CostExternalEmail
-	case OpPlacesSearch:
-		return CostPlacesSearch
-	case OpPlacesNearby:
-		return CostPlacesNearby
-	case OpPlacesETA:
-		return CostPlacesETA
-	case OpWeatherForecast:
-		return CostWeatherForecast
-	case OpWeatherPollen:
-		return CostWeatherPollen
-	case OpQuranSearch:
-		return CostQuranSearch
-	case OpWebSearch:
-		return CostWebSearch
-	case OpWebFetch:
-		return CostWebFetch
-	case OpDBWrite:
-		return CostDBWrite
-	case OpImageGenerate:
-		return CostImageGenerate
-	case OpAgentQuery:
-		return CostAgentQuery
-	case OpAgentQueryPremium:
-		return CostAgentQueryPremium
-	case OpSocialSearch:
-		return CostSocialSearch
-	case OpSocialPost:
-		return CostSocialPost
-	case OpSocialReply:
-		return CostSocialReply
-	case OpAppCreate:
-		return CostAppCreate
-	case OpStreamPost:
-		return CostStreamPost
-	case OpBlogComment:
-		return CostBlogComment
-	case OpAppBuild:
-		return CostAppBuild
-	case OpAppEdit:
-		return CostAppEdit
-	default:
-		return 1
-	}
-}
-
-// CheckQuota checks if a user can perform an operation
-// Returns: canProceed, useQuota (always false now), creditCost, error
-func CheckQuota(userID string, operation string) (bool, bool, int, error) {
-	// Get account to check admin status
-	acc, err := auth.GetAccount(userID)
-	if err != nil {
-		return false, false, 0, errors.New("account not found")
-	}
-
-	// Admins have unlimited access
-	if acc.Admin {
-		return true, false, 0, nil
-	}
-
-	// If payments not configured, no quotas (self-hosted instance)
-	if !PaymentsEnabled() {
-		return true, false, 0, nil
-	}
-
-	cost := GetOperationCost(operation)
-
-	// Check if user has sufficient credits
-	balance := GetBalance(userID)
-	if balance >= cost {
-		return true, false, cost, nil
-	}
-
-	// User needs to top up. The message says what it costs, what they have and
-	// where to go: this string is what a person reads when a tool refuses and
-	// what an agent reads when it has to explain itself, and "insufficient
-	// credits" told neither of them what to do next.
-	return false, false, cost, fmt.Errorf(
-		"this costs %d credits and your balance is %d — top up at /wallet", cost, balance)
 }
 
 // RecordUsage records a zero-cost usage transaction (for admins and quota tracking)
@@ -589,36 +396,6 @@ func RecordUsage(userID string, operation string) {
 	}
 	transactions[userID] = append(transactions[userID], tx)
 	data.SaveJSON("transactions.json", transactions)
-}
-
-// ConsumeQuota consumes quota for an operation (call after successful operation)
-func ConsumeQuota(userID string, operation string) error {
-	// Get account to check admin status
-	acc, err := auth.GetAccount(userID)
-	if err != nil {
-		return errors.New("account not found")
-	}
-
-	// Admins get unlimited access but usage is tracked
-	if acc.Admin {
-		RecordUsage(userID, operation)
-		return nil
-	}
-
-	// A free operation is free: record it and stop. Handing a zero to
-	// DeductCredits gets "amount must be positive" back, which the write gate
-	// turns into a 402 — so every blog post, comment, reply, status, console
-	// note and app, all of which are deliberately priced at zero because they
-	// only touch this instance's own storage, was refused for want of credit
-	// nobody was being asked for. Admins skip the charge entirely and new
-	// accounts were stopped by the post gate first, so the one group who hit it
-	// was ordinary established users, on every single write.
-	cost := GetOperationCost(operation)
-	if cost <= 0 {
-		RecordUsage(userID, operation)
-		return nil
-	}
-	return DeductCredits(userID, cost, operation, nil)
 }
 
 // ChargeAppUse charges a user for using a paid app and pays the author.
@@ -674,7 +451,7 @@ func ChargeAppUse(userID, authorID, appSlug string, price int) error {
 		Type:      TxSpend,
 		Amount:    -price,
 		Balance:   user.Balance,
-		Operation: OpAppUse,
+		Operation: quota.OpAppUse,
 		Metadata:  map[string]interface{}{"app": appSlug, "author": authorID},
 		CreatedAt: now,
 	}
@@ -687,7 +464,7 @@ func ChargeAppUse(userID, authorID, appSlug string, price int) error {
 		Type:      TxTopup,
 		Amount:    authorShare,
 		Balance:   author.Balance,
-		Operation: OpAppRevenue,
+		Operation: quota.OpAppRevenue,
 		Metadata:  map[string]interface{}{"app": appSlug, "from": userID, "price": price},
 		CreatedAt: now,
 	}

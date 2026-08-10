@@ -19,6 +19,8 @@ import (
 	"os"
 	"testing"
 
+	"mu/internal/quota"
+
 	"mu/internal/auth"
 	"mu/internal/service"
 )
@@ -161,34 +163,13 @@ func TestTransfersRefuseNonsense(t *testing.T) {
 	}
 }
 
-// Asking the price is not spending. This failed with "this costs 2 credits and
-// your balance is 0" — so the one caller who most needs a price, somebody
-// deciding whether to top up, was the one who could not ask.
-func TestYouCanAskThePriceWithNoCredits(t *testing.T) {
-	moneyHome(t)
-	account(t, "broke", "Broke")
-
-	var rsp CheckResponse
-	if err := (Credits{}).Check(withAccount(t, "broke"), &CheckRequest{Operation: OpWebSearch}, &rsp); err != nil {
-		t.Fatalf("asking the price of a tool failed: %v", err)
-	}
-	if rsp.Price != GetOperationCost(OpWebSearch) {
-		t.Errorf("price is %d, want %d", rsp.Price, GetOperationCost(OpWebSearch))
-	}
-	if rsp.Balance != 0 {
-		t.Errorf("balance is %d, want 0", rsp.Balance)
-	}
-	// Allowed may be true on an instance with payments off; what must not
-	// happen is the call failing.
-}
-
 // A free operation is free at every layer that could charge for it.
 func TestNothingChargesForAFreeOperation(t *testing.T) {
-	for _, free := range []string{OpNewsSearch, OpQuranSearch, OpWebFetch, OpVideoSearch} {
-		if c := GetOperationCost(free); c != 0 {
+	for _, free := range []string{quota.OpNewsSearch, quota.OpQuranSearch, quota.OpWebFetch, quota.OpVideoSearch} {
+		if c := quota.GetOperationCost(free); c != 0 {
 			t.Errorf("%s costs %d — this test is about the ones priced at zero", free, c)
 		}
-		if Metered(free) {
+		if quota.Metered(free) {
 			t.Errorf("%s reads as metered", free)
 		}
 		if reqs := BuildPaymentRequirements(free, "https://x.test/mcp"); len(reqs) != 0 {

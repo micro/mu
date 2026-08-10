@@ -23,15 +23,8 @@ import (
 	"strings"
 
 	"mu/internal/auth"
+	"mu/internal/quota"
 )
-
-// BalanceFunc reports an account's credit balance and whether this instance
-// charges at all. Set by main() to the wallet's own lookup.
-//
-// A hook rather than an import because wallet imports this package — the same
-// reason EmailSender and LinkCodeFunc are hooks. Nil means no wallet is wired,
-// and everything here goes quiet.
-var BalanceFunc func(accountID string) (balance int, charging bool)
 
 // LowBalance is the balance at or below which the banner warns. A handful of
 // agent queries: enough warning to top up before anything breaks, not so much
@@ -55,13 +48,15 @@ type creditView struct {
 // person who could not see it, and an empty top bar reads as a broken deploy.
 // A balance of "0" would be a lie, so the indicator says the true thing.
 func creditsFor(acc *auth.Account) creditView {
-	if BalanceFunc == nil || acc == nil {
+	// Asked of internal/quota rather than the wallet, which this package cannot
+	// see and does not need to: whether anybody is charged here, and what this
+	// viewer has left. On a build with no wallet linked in, quota answers "not
+	// charging" and the indicator goes quiet, which was the point of the hook
+	// this replaced.
+	if acc == nil || !quota.Charging() {
 		return creditView{}
 	}
-	balance, charging := BalanceFunc(acc.ID)
-	if !charging {
-		return creditView{}
-	}
+	balance := quota.BalanceOf(acc.ID)
 	if acc.Admin {
 		return creditView{Show: true, Unlimited: true}
 	}

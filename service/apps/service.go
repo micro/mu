@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"mu/internal/quota"
 	"mu/internal/service"
-	"mu/service/wallet"
 )
 
 // Server is the go-micro service handler for apps.
@@ -100,7 +100,7 @@ var Spec = service.Spec{
 	Icon:        "apps.svg",
 	Card:        Preview,
 	Endpoints: map[string]service.Endpoint{
-		"Build":  {Doc: "Generate a small app (tracker, checklist or counter) from a description", Cost: wallet.OpAppBuild},
+		"Build":  {Doc: "Generate a small app (tracker, checklist or counter) from a description", Cost: quota.OpAppBuild},
 		"Read":   {Doc: "Read the details of one app by its slug"},
 		"Search": {Doc: "Search the apps directory for small, useful tools"},
 	},

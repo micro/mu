@@ -24,9 +24,9 @@ import (
 	"mu/service/stream"
 	"mu/service/tasks"
 	"mu/service/video"
-	"mu/service/wallet"
 	"mu/service/weather"
 	"mu/service/web"
+	"mu/wallet"
 )
 
 // allSpecs is every service main() registers. Keep it complete: a Spec missing

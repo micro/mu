@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"mu/internal/app"
-	"mu/service/wallet"
+	"mu/internal/quota"
 )
 
 // MCPHandler handles both GET (HTML page) and POST (JSON-RPC) at /mcp
@@ -215,7 +215,7 @@ func mcpToolsSection() string {
 	nav.WriteString(`<nav class="ep-nav"><div class="ep-nav-title">Tools</div>`)
 	for _, t := range mcpTools() {
 		price := ""
-		if n := wallet.GetOperationCost(t.WalletOp); t.WalletOp != "" && n > 0 {
+		if n := quota.GetOperationCost(t.WalletOp); t.WalletOp != "" && n > 0 {
 			price = `<span class="ep-price">` + strconv.Itoa(n) + `</span>`
 		}
 		nav.WriteString(`<a href="#tool-` + html.EscapeString(t.Name) + `">` + html.EscapeString(t.Name) + price + `</a>`)
@@ -230,7 +230,7 @@ func mcpToolsHTML() string {
 	for _, t := range mcpTools() {
 		cost := 0
 		if t.WalletOp != "" {
-			cost = wallet.GetOperationCost(t.WalletOp)
+			cost = quota.GetOperationCost(t.WalletOp)
 		}
 		b.WriteString(`<div class="card" id="tool-` + html.EscapeString(t.Name) + `">`)
 		if cost > 0 {
