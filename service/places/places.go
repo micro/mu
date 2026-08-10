@@ -388,28 +388,9 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Require auth for search (charged operation)
-	_, acc, err := auth.RequireSession(r)
-	if err != nil {
-		if app.WantsJSON(r) {
-			app.Unauthorized(w, r)
-		} else {
-			app.RedirectToLogin(w, r)
-		}
-		return
-	}
-
-	// Check quota
-	canProceed, _, cost, _ := wallet.CheckQuota(acc.ID, wallet.OpPlacesSearch)
-	if !canProceed {
-		if app.WantsJSON(r) {
-			app.RespondError(w, http.StatusPaymentRequired, "Insufficient credits. Top up your wallet to continue.")
-		} else {
-			app.Respond(w, r, app.Response{
-				Title: "Places",
-				HTML:  `<p class="text-error">Insufficient credits. <a href="/wallet/topup">Top up your wallet</a> to search places.</p>` + renderPlacesPage(r),
-			})
-		}
+	// Public data needs no account when nothing is being charged for it.
+	caller, ok := billableCaller(w, r, wallet.OpPlacesSearch)
+	if !ok {
 		return
 	}
 
@@ -461,6 +442,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 	// Perform search: use keyword search near the given location when provided,
 	// otherwise fall back to a global Nominatim search.
 	var results []*Place
+	var err error
 	if hasNearLoc {
 		results, err = searchNearbyKeyword(query, nearLat, nearLon, radiusM)
 	} else {
@@ -476,9 +458,10 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 	sortBy := formValue("sort")
 	sortPlaces(results, sortBy)
 
-	// Deduct credits
-	if cost > 0 {
-		wallet.DeductCredits(acc.ID, cost, wallet.OpPlacesSearch, map[string]interface{}{"query": query})
+	// Charge, if there is anything to charge and anyone to charge it to.
+	if caller != "" && wallet.Metered(wallet.OpPlacesSearch) {
+		wallet.DeductCredits(caller, wallet.GetOperationCost(wallet.OpPlacesSearch),
+			wallet.OpPlacesSearch, map[string]interface{}{"query": query})
 	}
 
 	if app.WantsJSON(r) {
@@ -514,30 +497,12 @@ func handleNearby(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Require auth for nearby search (charged operation)
-	_, acc, err := auth.RequireSession(r)
-	if err != nil {
-		if app.WantsJSON(r) {
-			app.Unauthorized(w, r)
-		} else {
-			app.RedirectToLogin(w, r)
-		}
+	// Public data needs no account when nothing is being charged for it.
+	caller, ok := billableCaller(w, r, wallet.OpPlacesNearby)
+	if !ok {
 		return
 	}
-
-	// Check quota
-	canProceed, _, cost, _ := wallet.CheckQuota(acc.ID, wallet.OpPlacesNearby)
-	if !canProceed {
-		if app.WantsJSON(r) {
-			app.RespondError(w, http.StatusPaymentRequired, "Insufficient credits. Top up your wallet to continue.")
-		} else {
-			app.Respond(w, r, app.Response{
-				Title: "Places",
-				HTML:  `<p class="text-error">Insufficient credits. <a href="/wallet/topup">Top up your wallet</a> to search nearby places.</p>` + renderPlacesPage(r),
-			})
-		}
-		return
-	}
+	var err error
 
 	formValue := parseRequestParams(r)
 
@@ -594,8 +559,8 @@ func handleNearby(w http.ResponseWriter, r *http.Request) {
 	sortPlaces(results, sortBy)
 
 	// Deduct credits
-	if cost > 0 {
-		wallet.DeductCredits(acc.ID, cost, wallet.OpPlacesNearby, map[string]interface{}{
+	if caller != "" && wallet.Metered(wallet.OpPlacesNearby) {
+		wallet.DeductCredits(caller, wallet.GetOperationCost(wallet.OpPlacesNearby), wallet.OpPlacesNearby, map[string]interface{}{
 			"lat": lat, "lon": lon, "radius": radius,
 		})
 	}
@@ -1223,3 +1188,56 @@ func jsonStr(s string) string {
 // Delegated rather than hand-rolled. This one was correct; being correct in
 // five separate copies is how the sixth comes to be wrong.
 func escapeHTML(s string) string { return html.EscapeString(s) }
+
+// billableCaller resolves who to charge for a places lookup, or reports that
+// nobody needs to be.
+//
+// These handlers required a session with the comment "charged operation",
+// which is the right reason and the wrong condition. Without a Google key the
+// data comes from OpenStreetMap and Overpass, and costs nobody anything — so a
+// self-hoster was being asked to sign in before their own server would tell
+// them where the nearest coffee is.
+//
+// The condition that matters is whether the *provider* costs money, not
+// whether this instance can bill for it. A Google key means every lookup is
+// spending the operator's money, and that wants somebody named even on an
+// instance with no payments configured, because "we cannot charge you" is not
+// a reason to let strangers spend it. No key means Overpass, which is free, and
+// then an account is ceremony.
+//
+// Charging is the separate question, and wallet.Metered answers it: an
+// instance with no Stripe and no x402 charges nothing to anybody. Guests on the
+// free path are held by the per-address rate limit, like every other free call.
+func billableCaller(w http.ResponseWriter, r *http.Request, op string) (id string, ok bool) {
+	_, acc, err := auth.RequireSession(r)
+	if err == nil && acc != nil {
+		id = acc.ID
+	}
+	// Free provider, nothing to spend and nothing to bill: answer anyone.
+	if googleAPIKey() == "" && !wallet.Metered(op) {
+		return id, true
+	}
+	if id == "" {
+		if app.WantsJSON(r) {
+			app.Unauthorized(w, r)
+		} else {
+			app.RedirectToLogin(w, r)
+		}
+		return "", false
+	}
+	canProceed, _, cost, _ := wallet.CheckQuota(id, op)
+	if !canProceed {
+		if app.WantsJSON(r) {
+			app.RespondError(w, http.StatusPaymentRequired, "Insufficient credits. Top up your wallet to continue.")
+		} else {
+			app.Respond(w, r, app.Response{
+				Title: "Places",
+				HTML: `<p class="text-error">Insufficient credits. <a href="/wallet/topup">Top up your wallet</a> to continue.</p>` +
+					renderPlacesPage(r),
+			})
+		}
+		_ = cost
+		return "", false
+	}
+	return id, true
+}
