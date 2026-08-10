@@ -139,10 +139,13 @@ func TestNavCoversEveryPagedServiceExactlyOnce(t *testing.T) {
 			t.Errorf("%s and %s share the icon %q", prev, s.Name, s.NavIcon())
 		}
 		icons[s.NavIcon()] = s.Name
-		if prev, dup := routes[s.Page]; dup {
-			t.Errorf("%s and %s share the route %q", prev, s.Name, s.Page)
+		// Headless services all have the empty route, which is not a clash.
+		if s.Page != "" {
+			if prev, dup := routes[s.Page]; dup {
+				t.Errorf("%s and %s share the route %q", prev, s.Name, s.Page)
+			}
+			routes[s.Page] = s.Name
 		}
-		routes[s.Page] = s.Name
 		if prev, dup := labels[s.NavLabel()]; dup {
 			t.Errorf("%s and %s share the label %q", prev, s.Name, s.NavLabel())
 		}
@@ -159,14 +162,11 @@ func TestNavCoversEveryPagedServiceExactlyOnce(t *testing.T) {
 	// Counted from the Specs rather than written down: a hard-coded total goes
 	// stale the moment a service is added, and the number it was checking was
 	// the size of registerAll, not the size of the product.
-	want := 0
-	for _, s := range allSpecs() {
-		if s.Page != "" {
-			want++
-		}
-	}
-	if len(nav) != want {
-		t.Errorf("sidebar has %d entries, want %d — %v", len(nav), want, routes)
+	// Every service, headless or not: the catalogue is what this instance runs,
+	// and having a page is a fact about a service's UI rather than about
+	// whether it exists.
+	if len(nav) != len(allSpecs()) {
+		t.Errorf("the catalogue has %d entries, want %d — %v", len(nav), len(allSpecs()), routes)
 	}
 }
 

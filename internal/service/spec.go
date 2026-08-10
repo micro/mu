@@ -184,14 +184,19 @@ func CardFor(name string) string {
 	return s.Card()
 }
 
-// Nav returns every service with a page, ordered by label. This is the
-// catalogue at /services; the sidebar shows Pinned.
+// Nav returns every service, ordered by label. This is the catalogue at
+// /services; the sidebar shows Pinned.
+//
+// Headless ones are included. A service with no page of its own is still a
+// service — index, memory and the caller's own content controls are three —
+// and leaving them out meant the page called Services under-reported what this
+// instance runs. That was the same instinct that produced a boolean called
+// Staple: a thing is in the catalogue or it is not a service, and hiding it is
+// not a third option. The tile renders without a link, because there is
+// nowhere to go, which is the honest way to say so.
 func Nav() []Spec {
 	out := make([]Spec, 0, len(specs))
 	for _, s := range Specs() {
-		if s.Headless() {
-			continue
-		}
 		out = append(out, s)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].NavLabel() < out[j].NavLabel() })

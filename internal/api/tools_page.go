@@ -169,7 +169,14 @@ func serviceGrid(r *http.Request) string {
 	b.WriteString(`<div class="tool-grid service-grid">`)
 	for _, s := range service.Nav() {
 		b.WriteString(`<div class="service-tile-wrap">`)
-		b.WriteString(`<a class="tool-tile service-tile" href="` + html.EscapeString(s.Page) + `">`)
+		// A headless service has no page to open, so its tile is not a link.
+		// It is still listed: the catalogue is what this instance runs.
+		open, close := `<div class="tool-tile service-tile">`, `</div>`
+		if s.Page != "" {
+			open = `<a class="tool-tile service-tile" href="` + html.EscapeString(s.Page) + `">`
+			close = `</a>`
+		}
+		b.WriteString(open)
 		b.WriteString(`<span class="service-tile-head">` +
 			`<img src="/` + html.EscapeString(s.NavIcon()) + `?` + app.Version + `" alt="">` +
 			`<span class="tool-tile-name">` + html.EscapeString(s.NavLabel()) + `</span></span>`)
@@ -183,8 +190,11 @@ func serviceGrid(r *http.Request) string {
 			}
 		}
 		b.WriteString(`<span class="tool-tile-price">` + html.EscapeString(meta) + `</span>`)
-		b.WriteString(`</a>`)
-		b.WriteString(pinControl(r, s.Name, isPinned[s.Name]))
+		b.WriteString(close)
+		// Nothing to pin without a page — the sidebar is a list of places.
+		if s.Page != "" {
+			b.WriteString(pinControl(r, s.Name, isPinned[s.Name]))
+		}
 		b.WriteString(`</div>`)
 	}
 	b.WriteString(`</div>`)
