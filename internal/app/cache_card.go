@@ -21,12 +21,12 @@ import (
 	"strings"
 
 	"mu/internal/auth"
-	"mu/internal/memory"
+	"mu/internal/cache"
 )
 
 // memoryCard renders the Memory card for /account.
 func memoryCard(r *http.Request, acc *auth.Account) string {
-	entries := memory.All(acc.ID)
+	entries := cache.All(acc.ID)
 	csrf := htmlpkg.EscapeString(auth.CSRFToken(r))
 
 	var b strings.Builder

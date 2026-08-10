@@ -1,7 +1,7 @@
 // Package memory provides persistent per-user memory for the AI agent.
 // The agent remembers preferences, interests, and facts about the user
 // across sessions. Memory is stored as simple key-value notes.
-package memory
+package cache
 
 import (
 	"strings"

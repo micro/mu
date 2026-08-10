@@ -18,7 +18,7 @@ import (
 	"mu/service/index"
 	"mu/service/mail"
 	"mu/service/markets"
-	"mu/service/memory"
+	"mu/service/cache"
 	"mu/service/news"
 	"mu/service/places"
 	"mu/service/prayer"
@@ -43,7 +43,7 @@ func allSpecs() []service.Spec {
 	return []service.Spec{
 		apps.Spec, blog.Spec, chat.Spec, contacts.Spec, db.Spec, events.Spec,
 		files.Spec, images.Spec, index.Spec, mail.Spec, markets.Spec,
-		memory.Spec, news.Spec, places.Spec, prayer.Spec, social.Spec,
+		cache.Spec, news.Spec, places.Spec, prayer.Spec, social.Spec,
 		stream.Spec, tasks.Spec, user.Spec, video.Spec, weather.Spec, web.Spec,
 	}
 }

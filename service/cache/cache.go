@@ -1,6 +1,12 @@
-// Package memory is what an agent knows about you between conversations.
+// Package cache is what an agent knows about you between conversations.
 //
-// The store already existed, in internal/memory, and it was invisible from both
+// Named for its shape rather than its lifetime, and the distinction is worth
+// stating because the name invites the wrong reading: nothing here expires and
+// nothing is evicted. It is a key and a value, set and read and deleted by
+// name, which is what separates it from db — named collections of records that
+// are queried. Both are durable; one is addressed and one is searched.
+//
+// The store already existed, in internal/cache, and it was invisible from both
 // sides. A person could not see it — that is the Memory card on /account. An agent could
 // not use it: facts were extracted from what you said by a background model
 // call and written behind everyone's back, and there was no tool to remember
@@ -17,14 +23,14 @@
 // also shows what you have put in front of your agents and what they can go and
 // fetch, and a second page listing the same notes would be a second place for
 // the same truth.
-package memory
+package cache
 
 import (
 	"context"
 	"fmt"
 
 	"mu/internal/app"
-	"mu/internal/memory"
+	"mu/internal/cache"
 	"mu/internal/service"
 )
 
@@ -64,7 +70,7 @@ func (Server) Set(ctx context.Context, req *SetRequest, rsp *SetResponse) error 
 	if req.Key == "" || req.Value == "" {
 		return fmt.Errorf("a memory needs a key and a value")
 	}
-	memory.Set(owner, req.Key, req.Value)
+	cache.Set(owner, req.Key, req.Value)
 	rsp.Result = "remembered"
 	return nil
 }
@@ -89,7 +95,7 @@ func (Server) List(ctx context.Context, req *ListRequest, rsp *ListResponse) err
 	if err != nil {
 		return err
 	}
-	for _, e := range memory.All(owner) {
+	for _, e := range cache.All(owner) {
 		rsp.Notes = append(rsp.Notes, Note{Key: e.Key, Value: e.Value})
 	}
 	return nil
@@ -115,7 +121,7 @@ func (Server) Delete(ctx context.Context, req *DeleteRequest, rsp *DeleteRespons
 	if req.Key == "" {
 		return fmt.Errorf("say which key to forget")
 	}
-	memory.Delete(owner, req.Key)
+	cache.Delete(owner, req.Key)
 	rsp.Result = "forgotten"
 	return nil
 }
@@ -128,15 +134,15 @@ func LoadService() {
 }
 
 var Spec = service.Spec{
-	Name:        "memory",
+	Name:        "cache",
 	Handler:     new(Server),
 	Description: "What an agent knows about you between conversations",
 	// Headless. The Memory card on /account is where a person reads and edits
 	// this; the service is how an agent does.
 	Scoped: true,
 	Endpoints: map[string]service.Endpoint{
-		"Set":    {Doc: "Remember something about the caller across conversations. Use it when they say to remember something, or state a durable preference or fact"},
-		"List":   {Doc: "Read everything remembered about the caller. Use it before asking them something they may already have said"},
-		"Delete": {Doc: "Forget one thing, by its key", Destructive: true},
+		"Set":    {Aliases: []string{"memory_set"}, Doc: "Remember something about the caller across conversations. Use it when they say to remember something, or state a durable preference or fact"},
+		"List":   {Aliases: []string{"memory_list"}, Doc: "Read everything remembered about the caller. Use it before asking them something they may already have said"},
+		"Delete": {Aliases: []string{"memory_delete"}, Doc: "Forget one thing, by its key", Destructive: true},
 	},
 }

@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"mu/internal/auth"
-	"mu/internal/memory"
+	"mu/internal/cache"
 	"mu/internal/service"
 
 	"github.com/gomarkdown/markdown"
@@ -1131,17 +1131,17 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		// Memory: add one, forget one, forget the lot. Posted from the card on
 		// this page — see memory_card.go for why the list lives here.
 		if r.Form.Get("remember") != "" {
-			memory.Set(acc.ID, r.Form.Get("key"), r.Form.Get("value"))
+			cache.Set(acc.ID, r.Form.Get("key"), r.Form.Get("value"))
 			http.Redirect(w, r, "/account", http.StatusSeeOther)
 			return
 		}
 		if key := r.Form.Get("forget"); key != "" {
-			memory.Delete(acc.ID, key)
+			cache.Delete(acc.ID, key)
 			http.Redirect(w, r, "/account", http.StatusSeeOther)
 			return
 		}
 		if r.Form.Get("forget_all") != "" {
-			memory.Clear(acc.ID)
+			cache.Clear(acc.ID)
 			http.Redirect(w, r, "/account", http.StatusSeeOther)
 			return
 		}

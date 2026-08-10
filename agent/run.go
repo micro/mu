@@ -11,7 +11,7 @@ import (
 	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
-	"mu/internal/memory"
+	"mu/internal/cache"
 )
 
 // extractMemory checks if the user's prompt contains something to
@@ -58,7 +58,7 @@ Examples:
 		return
 	}
 	if extracted.Key != "" && extracted.Value != "" {
-		memory.Set(accountID, extracted.Key, extracted.Value)
+		cache.Set(accountID, extracted.Key, extracted.Value)
 		app.Log("memory", "Saved for %s: %s = %s", accountID, extracted.Key, extracted.Value)
 	}
 }
