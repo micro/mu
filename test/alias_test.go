@@ -45,10 +45,21 @@ var legacy = map[string]string{
 	"video":          "video_list",
 	"stream":         "stream_list",
 	"mail_read":      "mail_inbox",
-	// memory became cache: a key and a value, named for its shape.
-	"memory_set":    "cache_set",
-	"memory_list":   "cache_list",
-	"memory_delete": "cache_delete",
+	// memory became cache, which described the machinery rather than the thing,
+	// and both became notes. Every name a client ever called still resolves.
+	"memory_set":    "notes_add",
+	"memory_list":   "notes_list",
+	"memory_delete": "notes_delete",
+	"cache_set":     "notes_add",
+	"cache_get":     "notes_get",
+	"cache_list":    "notes_list",
+	"cache_delete":  "notes_delete",
+	// db became docs: named collections of documents, not a database.
+	"db_create": "docs_create",
+	"db_set":    "docs_create",
+	"db_get":    "docs_get",
+	"db_list":   "docs_list",
+	"db_delete": "docs_delete",
 	"reminder":      "prayer_reflection",
 	// The content verbs became a service — user.Save, user.Hide and the rest —
 	// and the names clients were already calling by have to survive that.

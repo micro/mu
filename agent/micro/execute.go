@@ -11,7 +11,7 @@ import (
 	"mu/internal/ai"
 	"mu/internal/api"
 	"mu/internal/app"
-	"mu/internal/cache"
+	"mu/internal/notes"
 )
 
 // UserContextFunc is set by main.go. Returns user context string.
@@ -48,7 +48,7 @@ func (a *Agent) Execute(accountID, prompt string, public bool, onStep func(strin
 	// Agent-scoped memory
 	agentMemory := ""
 	if a.MemoryScope != "" && !public {
-		agentMemory = cache.ForScopedContext(accountID, a.MemoryScope)
+		agentMemory = notes.ForScopedContext(accountID, a.MemoryScope)
 	}
 
 	// Plan

@@ -34,7 +34,7 @@ Built on go-micro: every capability is a go-micro service, the assistant is a go
 | `internal/api/` | MCP server, tool registry |
 | `internal/app/` | Web UI framework, templates, middleware |
 | `internal/auth/` | Account system, sessions, passkeys |
-| `internal/cache/` | Per-user key-value store with scoped namespaces — durable, despite the name; nothing expires |
+| `internal/notes/` | The store behind `service/notes` — a title, its text, and nothing that expires |
 | `internal/settings/` | Live-reloadable configuration |
 | `home/` | Landing page, assistant, home dashboard, summary |
 | `client/discord/` | Discord bot with slash commands, embeds, briefings |

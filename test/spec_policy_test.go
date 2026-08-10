@@ -9,7 +9,7 @@ import (
 	"mu/internal/service"
 	"mu/service/apps"
 	"mu/service/blog"
-	"mu/service/cache"
+	"mu/service/notes"
 	"mu/service/chat"
 	"mu/service/contacts"
 	"mu/service/docs"
@@ -43,7 +43,7 @@ func allSpecs() []service.Spec {
 	return []service.Spec{
 		apps.Spec, blog.Spec, chat.Spec, contacts.Spec, docs.Spec, events.Spec,
 		files.Spec, images.Spec, index.Spec, mail.Spec, markets.Spec,
-		cache.Spec, news.Spec, places.Spec, prayer.Spec, social.Spec,
+		notes.Spec, news.Spec, places.Spec, prayer.Spec, social.Spec,
 		stream.Spec, tasks.Spec, user.Spec, video.Spec, weather.Spec, web.Spec,
 	}
 }

@@ -29,9 +29,9 @@ import (
 	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
-	"mu/internal/cache"
 	"mu/internal/data"
 	"mu/internal/google"
+	"mu/internal/notes"
 	"mu/internal/profile"
 	"mu/internal/quota"
 	"mu/internal/service"
@@ -375,7 +375,7 @@ func wireHooks() {
 			parts = append(parts, "- Markets: "+prices)
 		}
 		// Persistent memory — things the user has told you to remember.
-		if mem := cache.ForContext(accountID); mem != "" {
+		if mem := notes.ForContext(accountID); mem != "" {
 			parts = append(parts, "User preferences/notes:\n"+mem)
 		}
 		if len(parts) == 0 {
@@ -524,7 +524,7 @@ func wireHooks() {
 		func(id string) { telegram.DeleteLinks(id) },
 		func(id string) { whatsapp.DeleteLinks(id) },
 		func(id string) { user.Delete(id) },
-		cache.Clear,
+		notes.Clear,
 
 		// Everything the caller stored themselves. These six were missing, so
 		// deleting an account left behind its files, address book, calendar,

@@ -40,6 +40,7 @@ import (
 	"mu/service/markets"
 	"mu/service/news"
 	"mu/service/news/digest"
+	"mu/service/notes"
 	"mu/service/places"
 	"mu/service/prayer"
 	"mu/service/search"
@@ -79,6 +80,7 @@ func authRequired() map[string]bool {
 		"/img":                    false, // Public — cached article images (a prefix of /images, same answer)
 		"/events":                 true,  // Personal scheduled reminders — sign-in required
 		"/contacts":               true,  // Your address book — sign-in required
+		"/notes":                  true,  // What you and your agents wrote down — sign-in required
 		// Your own documents. Sign-in required, but checked in the handler
 		// rather than here: the map is matched by prefix, and /docs/<slug> is
 		// still a public redirect to the documentation that used to live there.
@@ -325,6 +327,7 @@ func registerRoutes() {
 	http.HandleFunc(imageproxy.Path, imageproxy.Handler)
 	http.HandleFunc("/contacts", contacts.Handler)
 	http.HandleFunc("/docs", docs.Handler)
+	http.HandleFunc("/notes", notes.Handler)
 	http.HandleFunc("/contacts/", contacts.Handler)
 	http.HandleFunc("/tasks", tasks.Handler)
 	http.HandleFunc("/tasks/", tasks.Handler)

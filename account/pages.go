@@ -26,7 +26,6 @@ import (
 	"mu/internal/app"
 
 	"mu/internal/auth"
-	"mu/internal/cache"
 )
 
 // SignupRateLimit returns true if the IP is allowed to sign up.
@@ -584,24 +583,6 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		// Email verification request
 		if email := strings.TrimSpace(r.Form.Get("email")); email != "" {
 			handleVerifyStart(w, r, acc, email)
-			return
-		}
-
-		// Memory: add one, forget one, forget the lot. Posted from the card on
-		// this page — see memory_card.go for why the list lives here.
-		if r.Form.Get("remember") != "" {
-			cache.Set(acc.ID, r.Form.Get("key"), r.Form.Get("value"))
-			http.Redirect(w, r, "/account", http.StatusSeeOther)
-			return
-		}
-		if key := r.Form.Get("forget"); key != "" {
-			cache.Delete(acc.ID, key)
-			http.Redirect(w, r, "/account", http.StatusSeeOther)
-			return
-		}
-		if r.Form.Get("forget_all") != "" {
-			cache.Clear(acc.ID)
-			http.Redirect(w, r, "/account", http.StatusSeeOther)
 			return
 		}
 

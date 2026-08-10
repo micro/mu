@@ -138,12 +138,12 @@ func TestEveryOperationTheShimUsesIsGranted(t *testing.T) {
 // went straight past both: it dispatches through the live registry with the
 // viewer bound as the caller server-side, and allowed every registered service
 // except "apps". So an app could call wallet.Charge and spend the person's
-// credits, mail.Inbox and read their mail, db and read their own records — as
+// credits, mail.Inbox and read their mail, docs and read their own documents — as
 // them, on one click, from a public list. Sandboxing the code and leaving this
 // open would have been theatre.
 func TestAnAppCannotReachTheViewersOwnServices(t *testing.T) {
 	for _, personal := range []string{
-		"wallet", "mail", "contacts", "files", "events", "tasks", "db", "images", "memory",
+		"wallet", "mail", "contacts", "files", "events", "tasks", "docs", "images", "notes",
 	} {
 		if sdkServiceAllowed(personal) {
 			t.Errorf("an app can call the %s service as whoever opened it", personal)

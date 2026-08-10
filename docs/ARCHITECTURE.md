@@ -50,7 +50,7 @@ mu/
 │   ├── event/
 │   ├── flag/
 │   ├── imageproxy/
-│   ├── cache/
+│   ├── notes/
 │   ├── origin/
 │   ├── safefetch/
 │   ├── service/
@@ -123,7 +123,7 @@ guessable.
 | `index` | — | ✅ |  | Search across the caller's own content |
 | `mail` | /mail | ✅ | ✅ | SMTP server, inbox, DKIM |
 | `markets` | /markets | ✅ |  | Crypto, stocks, futures, commodities, currencies |
-| `cache` | — | ✅ | ✅ | A key and a value that survive the conversation. Addressed by label, where docs holds collections you query |
+| `notes` | /notes | ✅ | ✅ | A title and what is under it, kept between conversations. Addressed by title, where docs holds collections you query |
 | `news` | /news | ✅ |  | RSS aggregation, sentiment, search |
 | `places` | /places | ✅ |  | Maps, points of interest, travel time |
 | `prayer` | /prayer | ✅ |  | Islamic prayer times, qibla, and a daily reflection |
