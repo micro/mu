@@ -7,7 +7,7 @@ package app
 // standing invitation to anyone with a loop, and the credit charge is no
 // defence because the charge is zero — that is what free means.
 //
-// So the two jobs stay separate, the way the cost block in wallet.go says they
+// So the two jobs stay separate, the way the cost block in internal/quota says they
 // should: credits price what a call costs us, and a rate limit stops a bot.
 // This is the second one, for callers we cannot name. A signed-in caller is
 // already accountable — they have a balance, and CheckPostRate governs what
