@@ -88,11 +88,37 @@ func handleSDKService(w http.ResponseWriter, r *http.Request, slug string) {
 	app.RespondJSON(w, rsp)
 }
 
-// sdkServiceAllowed reports whether apps may call a registered service. "apps"
-// itself is excluded: app management is not something a sandboxed app should
-// drive, and exposing it would let an app rewrite or run other apps.
+// sdkServiceAllowed reports whether apps may call a registered service.
+//
+// Apps are public, forkable and one click to open, and this dispatches with the
+// viewer bound as the caller. So "any registered service" meant an app could
+// call wallet.Charge and spend the person's credits, mail.Inbox and read their
+// mail, db and read the records they keep for themselves — all as them, all
+// without asking. Moving app code into a sandbox closed the raw-fetch door and
+// left this one open, which made the rest of it theatre.
+//
+// The line is one that already exists: Scoped on a service's Spec declares that
+// it holds one person's own things. contacts, db, events, files, images, mail,
+// memory, tasks and wallet say so; news, markets, weather, blog, places,
+// prayer, social, stream, video and web do not. An app gets the instance's
+// data and not the viewer's.
+//
+// An app is not left without storage. mu.store and mu.db go through /sdk/store
+// and /sdk/db, which are namespaced per app — its own records, not the
+// account's — and those are unaffected.
+//
+// What this cannot yet express is an app that legitimately wants your tasks,
+// with you agreeing to it. That needs a permission model and a prompt, and
+// until there is one the default has to be no: an app you opened once should
+// not be able to read your mail because nobody thought to stop it.
+//
+// "apps" is excluded on top, because app management is not something a
+// sandboxed app should drive — it would let one rewrite or run another.
 func sdkServiceAllowed(name string) bool {
 	if name == "apps" {
+		return false
+	}
+	if service.AccountScoped(name) {
 		return false
 	}
 	for _, s := range service.Services() {

@@ -14,6 +14,8 @@ package apps
 import (
 	"strings"
 	"testing"
+
+	"mu/internal/service"
 )
 
 // The app's own document must be an opaque origin, so its scripts have no
@@ -127,5 +129,56 @@ func TestEveryOperationTheShimUsesIsGranted(t *testing.T) {
 		if !strings.Contains(appShimJS, "'"+op+"'") {
 			t.Errorf("%q is granted but the shim never asks for it", op)
 		}
+	}
+}
+
+// An app reaches the instance's data, not the viewer's.
+//
+// The bridge and the CSP stop an app fetching what it likes, and mu.service
+// went straight past both: it dispatches through the live registry with the
+// viewer bound as the caller server-side, and allowed every registered service
+// except "apps". So an app could call wallet.Charge and spend the person's
+// credits, mail.Inbox and read their mail, db and read their own records — as
+// them, on one click, from a public list. Sandboxing the code and leaving this
+// open would have been theatre.
+func TestAnAppCannotReachTheViewersOwnServices(t *testing.T) {
+	for _, personal := range []string{
+		"wallet", "mail", "contacts", "files", "events", "tasks", "db", "images", "memory",
+	} {
+		if sdkServiceAllowed(personal) {
+			t.Errorf("an app can call the %s service as whoever opened it", personal)
+		}
+	}
+}
+
+// And still reaches everything that is the instance's to give.
+func TestAnAppStillReachesThePublicServices(t *testing.T) {
+	registered := map[string]bool{}
+	for _, s := range service.Services() {
+		registered[s] = true
+	}
+	checked := 0
+	for _, public := range []string{
+		"news", "markets", "weather", "blog", "places", "prayer",
+		"social", "stream", "video", "web", "chat",
+	} {
+		if !registered[public] {
+			continue // not linked into this test binary
+		}
+		checked++
+		if !sdkServiceAllowed(public) {
+			t.Errorf("an app can no longer read %s, which is this instance's "+
+				"data and not anybody's in particular", public)
+		}
+	}
+	if checked == 0 {
+		t.Skip("no public services registered in this binary")
+	}
+}
+
+// App management is not an app capability, whatever else changes.
+func TestAnAppCannotDriveApps(t *testing.T) {
+	if sdkServiceAllowed("apps") {
+		t.Error("an app can rewrite or run other apps")
 	}
 }
