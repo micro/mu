@@ -1198,128 +1198,34 @@ func handleRun(w http.ResponseWriter, r *http.Request, slug string) {
 
 	// Serve app as full page — no iframe, no sandbox
 	// The SDK is injected and uses direct fetch() (same origin, authenticated)
-	nativeSDK := fmt.Sprintf(`<script>
-(function(){
-  var slug=%q;
-  var j='application/json';
-  function get(p){return fetch(p,{headers:{Accept:j}}).then(function(r){return r.json()})}
-  function post(p,b){return fetch(p,{method:'POST',headers:{'Content-Type':j,Accept:j},body:JSON.stringify(b)}).then(function(r){return r.json()})}
-  function sdk(op,body){return post('/apps/'+slug+'/sdk/'+op,body)}
+	// The old same-origin SDK stood here: 100 lines of window.mu built on
+	// fetch() with the viewer's cookies, including raw get/post helpers
+	// documented as taking "any Mu endpoint". It is appShimJS + appBridgeJS in
+	// sandbox.go now, split across the boundary it should always have had.
 
-  window.mu={
-    // Any registered service, by name — the general case the typed wrappers
-    // below are shortcuts for. /sdk/service dispatches through the live
-    // registry and binds the caller server-side, so a service registered today
-    // is callable from every app without an SDK change.
-    //   mu.service('markets', 'List', {category: 'stocks'})
-    service:function(name,method,args){return sdk('service',{service:name,method:method,args:args||{}})},
-    // The catalogue behind it: which services an app may call, and their methods.
-    services:function(){return get('/apps/'+slug+'/sdk/services')},
-
-    // Platform APIs — typed wrappers for every building block
-    weather:function(o){return get('/weather?lat='+o.lat+'&lon='+o.lon+(o.pollen?'&pollen=1':''))},
-    news:function(){return get('/news')},
-    markets:function(o){return get('/markets'+(o&&o.category?'?category='+o.category:''))},
-    video:function(){return get('/video')},
-    blog:{
-      list:function(){return get('/blog')},
-      read:function(id){return get('/blog/post?id='+id)},
-      create:function(o){return post('/blog',o)},
-    },
-    social:function(){return get('/social')},
-    places:{
-      search:function(o){return post('/places/search',o)},
-      nearby:function(o){return post('/places/nearby',o)},
-    },
-    chat:function(prompt){return post('/chat',{prompt:prompt})},
-    search:function(q){return get('/search?q='+encodeURIComponent(q))},
-    apps:{
-      list:function(){return get('/apps')},
-      read:function(s){return get('/apps/'+s)},
-    },
-
-    // AI — simple one-shot question
-    ai:function(prompt,opts){return sdk('ai',{prompt:prompt,options:opts||{}}).then(function(j){return j.result||j})},
-    // Agent — plans tools, executes, synthesises (for complex multi-source queries)
-    agent:function(prompt){return post('/agent/run',{prompt:prompt}).then(function(j){return j.answer||j})},
-
-    // User
-    user:function(){return get('/session')},
-
-    // Storage (namespaced per app) — flat key/value scoped to the current user.
-    store:{
-      set:function(k,v){return sdk('store',{op:'set',key:k,value:v})},
-      get:function(k){return sdk('store',{op:'get',key:k}).then(function(j){return j.result})},
-      del:function(k){return sdk('store',{op:'del',key:k})},
-      keys:function(){return sdk('store',{op:'keys'}).then(function(j){return j.result})},
-    },
-
-    // Database (namespaced per app) — collections of records with an owner and a
-    // private/public flag. create/update/del act on the current user's records;
-    // list scopes to 'mine' (default), 'public', or 'all' (mine + public).
-    //   mu.db.create('notes', {title:'x', body:'y'})            // private to me
-    //   mu.db.create('notes', {title:'x'}, {public:true})       // shared publicly
-    //   mu.db.list('notes')                                     // my notes
-    //   mu.db.list('notes', {scope:'public', sort:'title', order:'asc'})
-    db:{
-      create:function(c,d,o){return sdk('db',{op:'create',collection:c,data:d,public:!!(o&&o.public)}).then(function(j){return j.record})},
-      get:function(c,id){return sdk('db',{op:'get',collection:c,id:id}).then(function(j){return j.record})},
-      list:function(c,o){o=o||{};return sdk('db',{op:'list',collection:c,scope:o.scope||'mine',where:o.where||null,sort:o.sort||'',order:o.order||'desc',limit:o.limit||0}).then(function(j){return j.records||[]})},
-      update:function(c,id,d,o){var b={op:'update',collection:c,id:id,data:d,public:!!(o&&o.public)};return sdk('db',b).then(function(j){return j.record})},
-      del:function(c,id){return sdk('db',{op:'delete',collection:c,id:id})},
-    },
-
-    // Raw fetch helpers (for any Mu endpoint, same origin)
-    get:function(p){return get(p)},
-    post:function(p,b){return post(p,b)},
-
-    // Server-side fetch of external URLs — no CORS, keys stay server-side.
-    // SSRF-guarded (public hosts only) and requires a signed-in user.
-    //   mu.web.fetch('https://api.example.com/x').then(function(r){
-    //     return JSON.parse(r.body); // r = {status, body, headers}
-    //   })
-    web:{
-      fetch:function(url,opts){opts=opts||{};return sdk('fetch',{url:url,method:opts.method||'GET',headers:opts.headers||null,body:opts.body||''})},
-    },
-
-    // Error capture — agent can read these to see what went wrong
-    errors:[],
-
-    // REPL — eval code in this page's context, return result
-    eval:function(code){
-      try{var r=eval(code);return{ok:true,result:String(r)}}
-      catch(e){return{ok:false,error:e.message}}
-    },
-  };
-
-  // Capture runtime errors
-  window.onerror=function(msg,src,line){mu.errors.push({type:'error',message:msg,source:src,line:line});};
-  window.onunhandledrejection=function(e){mu.errors.push({type:'promise',message:String(e.reason)});};
-})();
-</script>`, a.Slug)
-
+	// The app's own document, in an opaque origin.
+	//
+	// raw=1 is what the iframe loads, and what the editor preview has always
+	// used. It carries the sandbox CSP so that opening this URL directly is no
+	// weaker than opening it in the frame — an app is untrusted code either
+	// way. window.mu here is the shim that asks the parent; it cannot fetch.
 	if r.URL.Query().Get("raw") == "1" {
-		// Serve raw HTML — used by edit page preview
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("Content-Security-Policy", sandboxCSP)
+		w.Header().Set("X-Frame-Options", "SAMEORIGIN")
 		rawHTML := a.RenderHTML()
 		rawHTML = strings.ReplaceAll(rawHTML, `<script src="/apps/sdk.js"></script>`, "")
 		rawHTML = strings.ReplaceAll(rawHTML, `<script src='/apps/sdk.js'></script>`, "")
-		rawHTML = injectSDK(rawHTML, nativeSDK)
+		rawHTML = injectSDK(rawHTML, appShimJS)
+		rawHTML = injectSDK(rawHTML, `<meta name="viewport" content="width=device-width, initial-scale=1">`)
 		w.Write([]byte(rawHTML))
 		return
 	}
 
-	// Full page run — inject SDK, serve with nav bar
-	html := a.RenderHTML()
-	html = strings.ReplaceAll(html, `<script src="/apps/sdk.js"></script>`, "")
-	html = strings.ReplaceAll(html, `<script src='/apps/sdk.js'></script>`, "")
-	html = injectSDK(html, nativeSDK)
-
-	// Just inject viewport meta — no top bar, apps run full screen
-	html = injectSDK(html, `<meta name="viewport" content="width=device-width, initial-scale=1">`)
-
+	// The frame around it, on this origin, holding the bridge. This page is
+	// ours; the app cannot reach into it.
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Write([]byte(html))
+	w.Write([]byte(sandboxPage(a.Slug, a.Name)))
 }
 
 // injectSDK injects a script/HTML block after <head> or at the top of the document.
