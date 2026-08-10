@@ -1,4 +1,4 @@
-package app
+package account
 
 // Granting Mu access to something in a Google account.
 //
@@ -30,6 +30,8 @@ import (
 	"net/url"
 	"strings"
 
+	"mu/internal/app"
+
 	"mu/internal/auth"
 	"mu/internal/google"
 )
@@ -53,11 +55,11 @@ func GoogleGrantConnect(w http.ResponseWriter, r *http.Request) {
 	what := strings.Trim(strings.TrimPrefix(r.URL.Path, "/oauth2/google/"), "/")
 	g, ok := grants[what]
 	if !ok {
-		NotFound(w, r, "No such connection")
+		app.NotFound(w, r, "No such connection")
 		return
 	}
 	if _, _, err := auth.RequireSession(r); err != nil {
-		RedirectToLogin(w, r)
+		app.RedirectToLogin(w, r)
 		return
 	}
 	if !GoogleConfigured() {
@@ -113,7 +115,7 @@ func GoogleGrantDisconnect(w http.ResponseWriter, r *http.Request) {
 	}
 	_, acc, err := auth.RequireSession(r)
 	if err != nil {
-		RedirectToLogin(w, r)
+		app.RedirectToLogin(w, r)
 		return
 	}
 	google.Disconnect(acc.ID)
@@ -134,13 +136,13 @@ func finishGoogleGrant(w http.ResponseWriter, r *http.Request, what, code string
 	}
 	_, acc, err := auth.RequireSession(r)
 	if err != nil {
-		RedirectToLogin(w, r)
+		app.RedirectToLogin(w, r)
 		return
 	}
 
 	tok, err := googleExchangeFull(code, googleRedirectURI(r))
 	if err != nil {
-		Log("auth", "google %s exchange failed for %s: %v", g.verb, acc.ID, err)
+		app.Log("auth", "google %s exchange failed for %s: %v", g.verb, acc.ID, err)
 		http.Redirect(w, r, g.ret+"?connection=failed", http.StatusSeeOther)
 		return
 	}
@@ -152,7 +154,7 @@ func finishGoogleGrant(w http.ResponseWriter, r *http.Request, what, code string
 		return
 	}
 	if tok.RefreshToken == "" {
-		Log("auth", "google %s grant for %s carried no refresh token", g.verb, acc.ID)
+		app.Log("auth", "google %s grant for %s carried no refresh token", g.verb, acc.ID)
 		http.Redirect(w, r, g.ret+"?connection=failed", http.StatusSeeOther)
 		return
 	}

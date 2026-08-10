@@ -15,7 +15,7 @@ import (
 )
 
 func TestTheChannelCardIsCalledClientsNotChat(t *testing.T) {
-	src, err := os.ReadFile("app.go")
+	src, err := os.ReadFile("../../account/pages.go")
 	if err != nil {
 		t.Fatal(err)
 	}

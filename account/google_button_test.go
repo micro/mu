@@ -1,4 +1,4 @@
-package app
+package account
 
 // Sign in with Google is on the pages you sign in from.
 //

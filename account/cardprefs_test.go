@@ -1,4 +1,4 @@
-package app
+package account
 
 // Which cards you see is not a setting at all any more.
 //
@@ -15,10 +15,12 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"mu/internal/app"
 )
 
 func TestTheAccountPageDoesNotCarryACardPicker(t *testing.T) {
-	src, err := os.ReadFile("app.go")
+	src, err := os.ReadFile("pages.go")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,7 +36,7 @@ func TestTheAccountPageDoesNotCarryACardPicker(t *testing.T) {
 	}
 	// What replaced it is the one part of /context worth keeping: the notes the
 	// agent reads back into every prompt, with a way to delete them.
-	if !strings.Contains(body, "memoryCard(r, acc)") {
+	if !strings.Contains(body, "app.CacheCard(r, acc)") {
 		t.Error("/account does not show what the agent remembers, so the notes " +
 			"it reads into every prompt are invisible again")
 	}
@@ -48,7 +50,7 @@ func TestSavingAPreferenceReturnsToThePageItWasEditedOn(t *testing.T) {
 		r := httptest.NewRequest("POST", "/account", strings.NewReader(url.Values{"return": {v}}.Encode()))
 		r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		r.ParseForm()
-		return ReturnTo(r, "/account")
+		return app.ReturnTo(r, "/account")
 	}
 
 	if got := returnTo("/home"); got != "/home" {

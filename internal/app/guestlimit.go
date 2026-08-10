@@ -14,6 +14,8 @@ package app
 // they write — so the limit is only for guests.
 
 import (
+	"fmt"
+	"os"
 	"sync"
 	"time"
 )
@@ -41,8 +43,8 @@ func GuestCallAllowed(ip string) bool {
 	if ip == "" || ip == "127.0.0.1" || ip == "::1" {
 		return true // never rate-limit localhost (self-hosted, dev)
 	}
-	maxPerIP := envInt("GUEST_MAX_PER_IP", 120)
-	window := time.Duration(envInt("GUEST_WINDOW_MINUTES", 60)) * time.Minute
+	maxPerIP := EnvInt("GUEST_MAX_PER_IP", 120)
+	window := time.Duration(EnvInt("GUEST_WINDOW_MINUTES", 60)) * time.Minute
 
 	guestMu.Lock()
 	defer guestMu.Unlock()
@@ -85,4 +87,14 @@ func expireGuestBucket(ip string) {
 	if b, ok := guestCalls[ip]; ok {
 		b.resetAt = time.Now().Add(-time.Minute)
 	}
+}
+
+func EnvInt(key string, def int) int {
+	if v := os.Getenv(key); v != "" {
+		var n int
+		if _, err := fmt.Sscanf(v, "%d", &n); err == nil && n > 0 {
+			return n
+		}
+	}
+	return def
 }

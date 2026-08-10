@@ -61,7 +61,7 @@ func TestSignedOutGetsNoAdminLink(t *testing.T) {
 // guards against is somebody adding the next one, and it should be caught where
 // it is written.
 func TestTheAccountPageHoldsNoOperatorErrands(t *testing.T) {
-	src, err := os.ReadFile("app.go")
+	src, err := os.ReadFile("../../account/pages.go")
 	if err != nil {
 		t.Fatal(err)
 	}

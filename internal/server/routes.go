@@ -12,6 +12,8 @@ import (
 	"net/http"
 	"strings"
 
+	"mu/account"
+
 	"mu/admin"
 	"mu/agent"
 	"mu/agent/micro"
@@ -367,19 +369,19 @@ func registerRoutes() {
 	http.HandleFunc("/app/", app.ControlsHandler)
 
 	// auth
-	http.HandleFunc("/login", app.Login)
-	http.HandleFunc("/logout", app.Logout)
-	http.HandleFunc("/signup", app.Signup)
-	http.HandleFunc("/request-invite", app.RequestInvite)
-	http.HandleFunc("/invite", app.InviteHandler)
+	http.HandleFunc("/login", account.Login)
+	http.HandleFunc("/logout", account.Logout)
+	http.HandleFunc("/signup", account.Signup)
+	http.HandleFunc("/request-invite", account.RequestInvite)
+	http.HandleFunc("/invite", account.InviteHandler)
 	http.HandleFunc("/user", user.Handler)
 	http.HandleFunc("/user/", user.UndoHandler)
-	http.HandleFunc("/account", app.Account)
-	http.HandleFunc("/verify", app.Verify)
-	http.HandleFunc("/session", app.Session)
+	http.HandleFunc("/account", account.Account)
+	http.HandleFunc("/verify", account.Verify)
+	http.HandleFunc("/session", account.Session)
 	http.HandleFunc("/updates", updatesHandler)
-	http.HandleFunc("/token", app.TokenHandler)
-	http.HandleFunc("/passkey/", app.PasskeyHandler)
+	http.HandleFunc("/token", account.TokenHandler)
+	http.HandleFunc("/passkey/", account.PasskeyHandler)
 
 	// OAuth 2.1 for MCP authentication
 	http.HandleFunc("/.well-known/oauth-authorization-server", auth.OAuthMetadataHandler)
@@ -434,14 +436,14 @@ func registerRoutes() {
 	// a person in a browser or not at all.
 	http.HandleFunc("/agents", agent.RosterHandler)
 
-	http.HandleFunc("/oauth2/google", app.GoogleLogin)
-	http.HandleFunc("/oauth2/google/connect", app.GoogleConnect)
-	http.HandleFunc("/oauth2/callback", app.GoogleCallback)
+	http.HandleFunc("/oauth2/google", account.GoogleLogin)
+	http.HandleFunc("/oauth2/google/connect", account.GoogleConnect)
+	http.HandleFunc("/oauth2/callback", account.GoogleCallback)
 	// Reading a calendar is a separate grant, asked for separately — see
 	// internal/app/google_calendar.go.
-	http.HandleFunc("/oauth2/google/calendar", app.GoogleGrantConnect)
-	http.HandleFunc("/oauth2/google/contacts", app.GoogleGrantConnect)
-	http.HandleFunc("/oauth2/google/disconnect", app.GoogleGrantDisconnect)
+	http.HandleFunc("/oauth2/google/calendar", account.GoogleGrantConnect)
+	http.HandleFunc("/oauth2/google/contacts", account.GoogleGrantConnect)
+	http.HandleFunc("/oauth2/google/disconnect", account.GoogleGrantDisconnect)
 
 	http.HandleFunc("/oauth/register", auth.OAuthRegisterHandler)
 	http.HandleFunc("/oauth/authorize", auth.OAuthAuthorizePostHandler)
