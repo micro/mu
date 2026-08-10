@@ -201,9 +201,21 @@ type ToolParam struct {
 }
 
 // MCPWalletOp parses a JSON-RPC MCP request body and returns the wallet
-// operation for a tools/call to a metered tool, or "" if the call is free or is
-// not a tools/call. Lets the HTTP layer gate x402 payments before dispatch,
-// where auth and wallet packages are in scope.
+// operation for a tools/call the caller can unlock by paying, or "" if the call
+// is free, cannot be unlocked by paying, or is not a tools/call. Lets the HTTP
+// layer gate x402 payments before dispatch, where auth and wallet are in scope.
+//
+// An account-only tool returns "" however it is priced, because a payment
+// cannot buy the thing standing in the way. mail_send is the case: it is
+// AccountOnly on purpose — a funded wallet is not accountable for this sending
+// domain — and it is charged for external delivery, so the gate offered an
+// anonymous caller a 402, took USDC on Base for it, and then refused the call
+// for having no account. Money for nothing, and nowhere to complain, since the
+// payer has no account to complain from.
+//
+// The charge still happens: service/mail checks and consumes external_email
+// itself once it knows who is sending. What is dropped is only the offer to
+// sell entry to somebody who will be turned away at the door.
 func MCPWalletOp(body []byte) string {
 	var req struct {
 		Method string `json:"method"`
@@ -216,6 +228,9 @@ func MCPWalletOp(body []byte) string {
 	}
 	for i := range tools {
 		if toolMatches(tools[i], req.Params.Name) {
+			if policyOf(tools[i]).NeedsAccount {
+				return ""
+			}
 			return tools[i].WalletOp
 		}
 	}

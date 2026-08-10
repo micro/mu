@@ -320,14 +320,6 @@ func wireHooks() {
 	app.LinkCodeFunc = auth.GenerateLinkCode
 	app.ToolCountFunc = api.ToolCount
 
-	// The balance beside your name and the top-up banner. A hook because
-	// wallet imports app — see internal/app/credits.go.
-	app.BalanceFunc = func(accountID string) (int, bool) {
-		if !wallet.PaymentsEnabled() {
-			return 0, false
-		}
-		return wallet.GetBalance(accountID), true
-	}
 	discord.Load()
 	telegram.Load()
 	whatsapp.Load()
@@ -572,10 +564,6 @@ func wireHooks() {
 	// Wire guest agent news search directly to the live feed-backed provider path.
 	api.GuestNewsSearch = news.SearchToolText
 
-	// What a tool costs, so api.PolicyFor can answer for the whole registry in
-	// one place. See internal/api/policy.go for why that matters.
-	api.PriceOf = quota.GetOperationCost
-
 	// Wire MCP quota checking using wallet credit system
 	api.QuotaCheck = func(r *http.Request, op string) (bool, int, error) {
 		// Nothing to charge, nobody to charge it to. A free tool has no
@@ -590,7 +578,7 @@ func wireHooks() {
 		// are.
 		if !quota.Metered(op) {
 			// Open, not unguarded. Credits price what a call costs us and rate
-			// limits stop bots — see the cost block in wallet.go. A free call
+			// limits stop bots — see the cost block in internal/quota. A free call
 			// is charged nothing, so the limit is the only one of the two
 			// doing any work here, and it applies to guests because a
 			// signed-in caller is already accountable.

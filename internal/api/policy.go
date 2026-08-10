@@ -27,6 +27,7 @@ package api
 import (
 	"strings"
 
+	"mu/internal/quota"
 	"mu/internal/service"
 )
 
@@ -53,10 +54,6 @@ type Policy struct {
 	Payable bool
 }
 
-// PriceOf is set by main.go to wallet.GetOperationCost. Nil on a build with no
-// wallet wired, where everything reads as free.
-var PriceOf func(operation string) int
-
 // PolicyFor answers for one tool by name. Zero Policy for a name that is not a
 // tool.
 func PolicyFor(name string) Policy {
@@ -71,8 +68,11 @@ func PolicyFor(name string) Policy {
 
 func policyOf(t Tool) Policy {
 	p := Policy{Tool: t.Name, Operation: t.WalletOp}
-	if t.WalletOp != "" && PriceOf != nil {
-		p.Price = PriceOf(t.WalletOp)
+	if t.WalletOp != "" {
+		// Asked of quota directly. This was a hook set by main.go to the
+		// wallet's lookup, back when the price list lived inside the wallet
+		// and this package could not import it. It does not any more.
+		p.Price = quota.GetOperationCost(t.WalletOp)
 	}
 	// Three ways a tool comes to need a caller, and the policy has to know all
 	// of them or it reports tools as open that are not. Declared on the tool;

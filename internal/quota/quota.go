@@ -43,7 +43,10 @@ var (
 	Record func(account, operation string)
 )
 
-func charging() bool { return Enabled != nil && Enabled() }
+// Charging reports whether this instance can bill anybody for anything. False
+// on a self-hosted install with no Stripe and no x402: there is no meter, no
+// price and nobody to send it to.
+func Charging() bool { return Enabled != nil && Enabled() }
 
 func deduct(account, operation string, amount int, meta map[string]interface{}) error {
 	if Deduct == nil {
@@ -52,7 +55,9 @@ func deduct(account, operation string, amount int, meta map[string]interface{}) 
 	return Deduct(account, operation, amount, meta)
 }
 
-func balanceOf(account string) int {
+// BalanceOf is what the caller has to spend, or zero on a build with no wallet
+// linked in.
+func BalanceOf(account string) int {
 	if Balance == nil {
 		return 0
 	}
@@ -268,7 +273,7 @@ func GetOperationCost(operation string) int {
 // refused anonymous callers with "this call is metered" for weather, which is
 // the first thing anybody tries.
 func Metered(operation string) bool {
-	if !charging() {
+	if !Charging() {
 		return false
 	}
 	return GetOperationCost(operation) > 0
@@ -289,14 +294,14 @@ func CheckQuota(userID string, operation string) (bool, bool, int, error) {
 	}
 
 	// If nothing can be charged, nothing is metered (self-hosted instance)
-	if !charging() {
+	if !Charging() {
 		return true, false, 0, nil
 	}
 
 	cost := GetOperationCost(operation)
 
 	// Check if user has sufficient credits
-	balance := balanceOf(userID)
+	balance := BalanceOf(userID)
 	if balance >= cost {
 		return true, false, cost, nil
 	}
