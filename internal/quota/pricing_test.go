@@ -1,6 +1,6 @@
 package quota
 
-// pricing.json and the operation constants have to describe the same world.
+// quota.json and the operation constants have to describe the same world.
 //
 // Moving prices out of Go bought an operator the ability to change one without
 // a rebuild, and cost the compiler its ability to catch a typo. `"op":
@@ -42,7 +42,7 @@ func TestEveryPricedOperationIsARealOne(t *testing.T) {
 	declared := declaredOps(t)
 	for _, p := range Prices() {
 		if !declared[p.Op] {
-			t.Errorf("pricing.json prices %q, which is not a declared operation — "+
+			t.Errorf("quota.json prices %q, which is not a declared operation — "+
 				"a misspelling here is silent, and the operation it meant to name "+
 				"falls back to charging 1 credit", p.Op)
 		}
@@ -109,14 +109,14 @@ func TestAnOverrideReplacesOneEntryNotTheList(t *testing.T) {
 		t.Fatal(err)
 	}
 	partial := `{"operations":[{"op":"web_search","cost":9}]}`
-	if err := os.WriteFile(filepath.Join(dir, ".mu", "data", "pricing.json"), []byte(partial), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, ".mu", "data", "quota.json"), []byte(partial), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(ReloadPrices)
 	ReloadPrices()
 
 	if got := GetOperationCost(OpWebSearch); got != 9 {
-		t.Fatalf("an operator's pricing.json was ignored: web_search is %d, want 9", got)
+		t.Fatalf("an operator's quota.json was ignored: web_search is %d, want 9", got)
 	}
 	if after := len(Prices()); after != before {
 		t.Errorf("a one-line override left %d prices, was %d — the rest were dropped",
@@ -149,17 +149,21 @@ func TestTheNamedEnvVarOverridesAPrice(t *testing.T) {
 	}
 }
 
-// The embedded file has to parse, or the binary panics at init on a machine
-// that has never been near a data directory.
-func TestTheEmbeddedFileParses(t *testing.T) {
+// quota.json has to parse, because main embeds it and refuses to start on a
+// file it cannot read — a broken one is a deploy that does not come up.
+func TestTheShippedFileParses(t *testing.T) {
+	priceMu.RLock()
+	b := defaults
+	priceMu.RUnlock()
+
 	var f priceFile
-	if err := json.Unmarshal(defaultPricing, &f); err != nil {
-		t.Fatalf("embedded pricing.json: %v", err)
+	if err := json.Unmarshal(b, &f); err != nil {
+		t.Fatalf("quota.json: %v", err)
 	}
 	if len(f.Operations) == 0 {
-		t.Fatal("the embedded price list is empty")
+		t.Fatal("the price list is empty")
 	}
 	if f.DailyQuota.Value <= 0 {
-		t.Error("the embedded file sets no daily quota")
+		t.Error("quota.json sets no daily quota")
 	}
 }

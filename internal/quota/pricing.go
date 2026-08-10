@@ -13,15 +13,23 @@ package quota
 // One file now. The gate reads it and the published cost table reads it, so
 // there is nothing left for them to disagree about.
 //
-// Three layers, in this order: the embedded default below, then a pricing.json
-// in the data directory if an operator has dropped one there, then the env var
-// named on each entry. Env last because that is how a container overrides one
-// price without shipping a file.
+// Three layers, in this order: the defaults main hands over at startup, then a
+// quota.json in the data directory if an operator has dropped one there, then
+// the env var named on each entry. Env last because that is how a container
+// overrides one price without shipping a file.
+//
+// This package does not embed the file and does not go looking for it. quota.json
+// sits at the top level beside main.go, which embeds it and calls Load — the
+// same arrangement as everything else here, where the question lives in this
+// package and the answer is supplied from above. A package underneath the
+// product deciding for itself where on disk its configuration lives is how you
+// end up unable to run two instances from one tree.
 
 import (
-	_ "embed"
 	"encoding/json"
+	"errors"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -29,9 +37,6 @@ import (
 
 	"mu/internal/data"
 )
-
-//go:embed pricing.json
-var defaultPricing []byte
 
 // Price is one operation as an operator set it.
 type Price struct {
@@ -60,24 +65,47 @@ var (
 	DailyQuota = 100
 )
 
-func init() { loadPrices() }
+// defaults are the bytes of quota.json as main handed them over. Kept so
+// ReloadPrices can re-apply the data directory and the environment on top of
+// them without main having to be involved again.
+var defaults []byte
 
-// ReloadPrices re-reads the price list. Exported for tests and for an operator
-// changing pricing.json without a restart.
-func ReloadPrices() { loadPrices() }
-
-func loadPrices() {
+// Load takes the contents of quota.json and makes it this instance's price
+// list. Called once by main with the file embedded in the binary.
+//
+// Until it is called there are no prices, and an operation with no price costs
+// the 1-credit default — which is the safe direction to be wrong in, but it is
+// wrong, so a build that forgets this charges a flat penny for everything.
+func Load(quotaJSON []byte) error {
 	var f priceFile
-	if err := json.Unmarshal(defaultPricing, &f); err != nil {
-		// The embedded file is compiled in, so this is a build that shipped
-		// broken JSON rather than anything an operator did.
-		panic("quota: embedded pricing.json is not valid JSON: " + err.Error())
+	if err := json.Unmarshal(quotaJSON, &f); err != nil {
+		return err
 	}
+	priceMu.Lock()
+	defaults = quotaJSON
+	priceMu.Unlock()
+	apply(f)
+	return nil
+}
+
+// ReloadPrices re-applies the data directory and the environment over the
+// defaults, for an operator changing quota.json without a restart.
+func ReloadPrices() {
+	priceMu.RLock()
+	b := defaults
+	priceMu.RUnlock()
+	if len(b) == 0 {
+		return
+	}
+	_ = Load(b)
+}
+
+func apply(f priceFile) {
 
 	// An operator's own file replaces any entry it names and leaves the rest.
 	// Replacing entry by entry rather than wholesale means a file listing one
 	// price does not silently zero the other twenty-five.
-	if b, err := data.LoadFile("pricing.json"); err == nil && len(b) > 0 {
+	if b, err := data.LoadFile("quota.json"); err == nil && len(b) > 0 {
 		var override priceFile
 		if err := json.Unmarshal(b, &override); err == nil {
 			if override.DailyQuota.Value > 0 {
@@ -175,4 +203,30 @@ func Published(operation string) bool {
 	defer priceMu.RUnlock()
 	_, ok := prices[operation]
 	return ok
+}
+
+// LoadFromTree finds quota.json by walking up from the working directory and
+// loads it.
+//
+// The command embeds the file, so nothing in production comes through here.
+// Test binaries are the case: they run in a package directory inside the source
+// tree, nobody has called Load, and every operation would fall back to the
+// 1-credit default — which does not fail, it just quietly makes any test about
+// prices agree with itself about nothing.
+func LoadFromTree() error {
+	dir, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	for {
+		path := filepath.Join(dir, "quota.json")
+		if b, err := os.ReadFile(path); err == nil {
+			return Load(b)
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return errors.New("no quota.json above " + dir)
+		}
+		dir = parent
+	}
 }

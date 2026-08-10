@@ -24,7 +24,7 @@ var systemVars = map[string]bool{
 var configRead = regexp.MustCompile(`(?:settings\.Get|os\.Getenv|os\.LookupEnv|envOr|envInt|envIntAuth|getEnvInt|envOverride)\("([A-Z][A-Z0-9_]*)"`)
 
 // Prices are data now, so the variables that override them are named in
-// internal/quota/pricing.json rather than in any Go source. The loader reads
+// quota.json rather than in any Go source. The loader reads
 // os.Getenv(key) with key from the file, which no scan of the code can see —
 // so the file is scanned too, and a price override is documented on the same
 // terms as everything else.
@@ -52,7 +52,7 @@ func TestEveryConfigVarIsDocumented(t *testing.T) {
 			return nil
 		}
 		isGo := strings.HasSuffix(path, ".go")
-		if !isGo && filepath.Base(path) != "pricing.json" {
+		if !isGo && filepath.Base(path) != "quota.json" {
 			return nil
 		}
 		b, err := os.ReadFile(path)
@@ -78,11 +78,11 @@ func TestEveryConfigVarIsDocumented(t *testing.T) {
 	}
 
 	// CREDIT_COST_<OP> is a family, one per priced operation, named in
-	// internal/quota/pricing.json rather than listed here — twenty-six rows on
+	// quota.json rather than listed here — twenty-six rows on
 	// this page would be a second copy of a file already in the repo. What the
 	// page owes the reader is where that file is and how it is overridden.
 	family := func(v string) bool { return strings.HasPrefix(v, "CREDIT_COST_") }
-	for _, want := range []string{"pricing.json", "CREDIT_COST_"} {
+	for _, want := range []string{"quota.json", "CREDIT_COST_"} {
 		if !strings.Contains(string(doc), want) {
 			t.Errorf("the price configuration no longer mentions %q, so an operator "+
 				"cannot find out where prices are set", want)

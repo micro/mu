@@ -135,17 +135,17 @@ token.
 
 ## Prices and limits
 
-Prices are data, not code. They live in `internal/quota/pricing.json`, which is
-embedded in the binary and readable in the repo: one entry per operation, with
-its cost in credits, the label the cost tables show, and the environment
-variable that overrides it.
+Prices are data, not code. They live in `quota.json` at the top of the repo,
+embedded into the binary by `main.go`: one entry per operation, with its cost in
+credits, the label the cost tables show, and the environment variable that
+overrides it.
 
 Three ways to change one, in increasing order of precedence:
 
-1. Edit `internal/quota/pricing.json` and rebuild.
-2. Drop a `pricing.json` in the data directory (`~/.mu/data/pricing.json`). It
-   is merged entry by entry, so a file naming one operation changes that one
-   and leaves the rest alone — no restart needed if you call the reload.
+1. Edit `quota.json` and rebuild.
+2. Drop a `quota.json` in the data directory (`~/.mu/data/quota.json`). It is
+   merged entry by entry, so a file naming one operation changes that one and
+   leaves the rest alone — no restart needed if you call the reload.
 3. Set the variable named on the entry — `CREDIT_COST_SEARCH=2`,
    `CREDIT_COST_IMAGE=20`. This is the container-friendly one.
 

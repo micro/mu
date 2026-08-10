@@ -17,7 +17,7 @@ import (
 // separately and they drifted — image generation, the most expensive thing a
 // user could trigger short of building an app, was absent from three.
 //
-// The list is internal/quota/pricing.json now and this only checks that the
+// The list is quota.json now and this only checks that the
 // wallet renders all of it, which is the half that lives here. Whether the file
 // covers every operation the code charges is asserted where the operations are
 // declared, in internal/quota.
