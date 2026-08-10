@@ -150,9 +150,12 @@ func TestForecastTextUsesNWSFallbackWithoutGoogleKey(t *testing.T) {
 
 func restoreNWSBaseURL(t *testing.T, value string) {
 	t.Helper()
-	old := nwsBaseURL
+	oldNWS, oldOM := nwsBaseURL, openMeteoBaseURL
 	nwsBaseURL = value
-	t.Cleanup(func() { nwsBaseURL = old })
+	// Open-Meteo is the keyless provider now, and NWS sits behind it. A test
+	// pointing only at the NWS stub would reach the real Open-Meteo.
+	openMeteoBaseURL = value
+	t.Cleanup(func() { nwsBaseURL, openMeteoBaseURL = oldNWS, oldOM })
 }
 
 func TestCardHTMLShowsWeatherUnavailableOnFetchFailure(t *testing.T) {

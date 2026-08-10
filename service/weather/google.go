@@ -218,7 +218,11 @@ func FetchWeather(lat, lon float64) (*WeatherForecast, error) {
 func fetchWeather(lat, lon float64) (*WeatherForecast, error) {
 	key := googleAPIKey()
 	if key == "" {
-		return fetchNWSWeather(lat, lon)
+		// No key is the normal state of a fresh instance, not an error. This
+		// used to go to the US National Weather Service, which answers for the
+		// United States and nowhere else — so an unconfigured instance in
+		// London had a weather service that could not tell you the weather.
+		return fetchOpenMeteoWeather(lat, lon)
 	}
 
 	// Fetch daily forecast (10 days)

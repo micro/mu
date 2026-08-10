@@ -21,6 +21,11 @@ func nwsProvider(t *testing.T) *int {
 	server := httptest.NewServer(mux)
 	t.Cleanup(func() { server.Close(); resetCache() })
 	restoreNWSBaseURL(t, server.URL+"/points")
+	// These tests count provider calls, and Open-Meteo is tried before NWS
+	// now. Point it at a dead address of its own so it fails fast without
+	// touching this server's counter — what is being measured is the cache,
+	// not which provider answered.
+	deadOpenMeteo(t)
 
 	// One handler for every coordinate: the count is the point, not the place.
 	mux.HandleFunc("/points/", func(w http.ResponseWriter, r *http.Request) {
@@ -108,6 +113,11 @@ func TestFailuresAreNotCached(t *testing.T) {
 	server := httptest.NewServer(mux)
 	t.Cleanup(func() { server.Close(); resetCache() })
 	restoreNWSBaseURL(t, server.URL+"/points")
+	// These tests count provider calls, and Open-Meteo is tried before NWS
+	// now. Point it at a dead address of its own so it fails fast without
+	// touching this server's counter — what is being measured is the cache,
+	// not which provider answered.
+	deadOpenMeteo(t)
 
 	mux.HandleFunc("/points/", func(w http.ResponseWriter, r *http.Request) {
 		calls++
@@ -158,4 +168,17 @@ func TestTheCacheIsBounded(t *testing.T) {
 	if n > maxCacheEntries {
 		t.Errorf("the cache holds %d entries, want at most %d", n, maxCacheEntries)
 	}
+}
+
+// deadOpenMeteo makes the keyless provider fail immediately, so a test that
+// wants NWS gets NWS.
+func deadOpenMeteo(t *testing.T) {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	t.Cleanup(srv.Close)
+	old := openMeteoBaseURL
+	openMeteoBaseURL = srv.URL
+	t.Cleanup(func() { openMeteoBaseURL = old })
 }
