@@ -137,7 +137,6 @@ func TestMCPHandler_ToolsList(t *testing.T) {
 	// checks the ones still declared in this file and stops asserting over
 	// somebody else's list.
 	expectedTools := map[string]bool{
-		"blog_read": false, "blog_create": false,
 		"video_search": false, "mail_send": false,
 	}
 	for _, item := range toolsList {

@@ -334,51 +334,6 @@ var tools = []Tool{
 			{Name: "query", Type: "string", Description: "Search query", Required: true},
 		},
 	},
-	// blog_list, social, video, weather_forecast and markets are registered in
-	// main.go as AI-first tools (clean Go handlers returning model-ready text),
-	// not as page-backed entries here.
-	{
-		Name:        "blog_read",
-		Description: "Read one blog post in full, by id or by title. Use after blog_list or index_search has found a candidate and the summary is not enough. Returns the whole body, the author and when it was published.",
-		Method:      "GET",
-		Path:        "/blog/post",
-		Params: []ToolParam{
-			{Name: "id", Type: "string", Description: "The post's id, as given by blog_list"},
-			{Name: "title", Type: "string", Description: "The post's title, or enough of it to be unambiguous — use this when you have a name rather than an id"},
-		},
-	},
-	{
-		Name:        "blog_create",
-		Description: "Publish a post to the caller's blog. Use for anything meant to be read later by other people — notes, write-ups, announcements. Returns the post and its URL. For a private note to yourself, prefer files or memory.",
-		Method:      "POST",
-		Path:        "/blog/post",
-		WalletOp:    quota.OpBlogCreate,
-		Params: []ToolParam{
-			{Name: "title", Type: "string", Description: "Post title", Required: false},
-			{Name: "content", Type: "string", Description: "Post content (minimum 50 characters)", Required: true},
-		},
-	},
-	{
-		Name:        "blog_update",
-		Description: "Update an existing blog post (author only)",
-		Method:      "PATCH",
-		Path:        "/blog/post",
-		Params: []ToolParam{
-			{Name: "id", Type: "string", Description: "The blog post ID to update", Required: true},
-			{Name: "title", Type: "string", Description: "New post title", Required: false},
-			{Name: "content", Type: "string", Description: "New post content (minimum 50 characters)", Required: false},
-		},
-	},
-	{
-		Name:        "blog_delete",
-		Description: "Delete one of the caller's own blog posts, by id or title. Refuses posts written by anyone else. Irreversible, so confirm with the user first.",
-		Method:      "DELETE",
-		Path:        "/blog/post",
-		Params: []ToolParam{
-			{Name: "id", Type: "string", Description: "The post's id, as given by blog_list"},
-			{Name: "title", Type: "string", Description: "The post's title, or enough of it to be unambiguous. An ambiguous title is refused rather than guessed — deleting the wrong post is not recoverable"},
-		},
-	},
 	{
 		Name:        "social_search",
 		Description: "Search public posts on this instance by keyword. Returns matching posts with their author and time. This is the instance's own social feed, not " + "the wider internet — use web_search for that.",
