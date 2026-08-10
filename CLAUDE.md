@@ -50,7 +50,7 @@ Built on go-micro: every capability is a go-micro service, the assistant is a go
 | `service/index/` | Search across the caller's own content (headless) |
 | `service/stream/` | The console — this instance's own event timeline |
 | `service/chat/` | Live discussion rooms attached to an item |
-| `internal/user/` | Profiles, status and presence — the public face of an account |
+| `internal/profile/` | The public face of an account: the page at /@username, and who is online |
 | `docs/` | Embedded documentation served at /docs. `PRODUCT.md` is the one-pager: what Mu is, who arrives, and what Home is for. Check changes against it |
 
 ## Development
