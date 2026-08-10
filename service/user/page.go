@@ -23,6 +23,7 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/flag"
 )
 
 // Handler serves /user.
@@ -133,7 +134,7 @@ func split(key string) (string, string) {
 	return parts[0], parts[1]
 }
 
-// UndoHandler serves the three undo routes under /user/.
+// UndoHandler serves the write and undo routes under /user/.
 //
 // POST only. These change state, and a GET that changes state is one a browser
 // prefetch or a link scanner can fire on somebody's behalf.
@@ -151,6 +152,19 @@ func UndoHandler(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
 	switch strings.TrimPrefix(r.URL.Path, "/user/") {
+	case "save":
+		app.SaveItem(who, q.Get("type"), q.Get("id"))
+	case "hide":
+		app.DismissItem(who, q.Get("type"), q.Get("id"))
+	case "flag":
+		if _, _, err := flag.Add(q.Get("type"), q.Get("id"), who); err != nil {
+			app.RespondError(w, http.StatusInternalServerError, "could not report that")
+			return
+		}
+	case "block":
+		if u := q.Get("user"); u != "" && u != who {
+			app.BlockUser(who, u)
+		}
 	case "unsave":
 		app.UnsaveItem(who, q.Get("type"), q.Get("id"))
 	case "unhide":

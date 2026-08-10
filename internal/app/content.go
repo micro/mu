@@ -17,17 +17,43 @@ type Action struct {
 
 // ItemControls renders a ⋯ dropdown with all applicable controls for a content item.
 func ItemControls(userID string, isAdmin bool, contentType, contentID, authorID, editURL, deleteURL string) string {
-	isOwner := userID == authorID
-	if !isOwner && !isAdmin {
+	if userID == "" {
 		return ""
 	}
+	isOwner := userID == authorID
 
 	var actions []Action
-	if editURL != "" {
-		actions = append(actions, Action{Label: "Edit", URL: editURL})
+
+	// What anybody signed in can do with somebody else's item.
+	//
+	// These existed as tools and as a page listing what you had saved, hidden
+	// and blocked, and nothing in the interface ever wrote any of it — so the
+	// lists were empty by construction and /user was a room with nothing in it.
+	// The menu is where the item is, which is the only place a decision about
+	// an item gets made.
+	actions = append(actions,
+		Action{Label: "Save", URL: "/user/save?type=" + contentType + "&id=" + contentID},
+		Action{Label: "Hide", URL: "/user/hide?type=" + contentType + "&id=" + contentID})
+	if !isOwner {
+		actions = append(actions,
+			Action{Label: "Report", URL: "/user/flag?type=" + contentType + "&id=" + contentID,
+				Confirm: "Report this for a moderator to look at?"})
+		if authorID != "" {
+			actions = append(actions, Action{Label: "Block author",
+				URL:     "/user/block?user=" + authorID,
+				Confirm: "Block this account? You will stop seeing everything they post.",
+				Class:   "text-error"})
+		}
 	}
-	if deleteURL != "" {
-		actions = append(actions, Action{Label: "Delete", URL: deleteURL, Confirm: "Delete this?", Class: "text-error"})
+
+	// And what only its owner, or an operator, can.
+	if isOwner || isAdmin {
+		if editURL != "" {
+			actions = append(actions, Action{Label: "Edit", URL: editURL})
+		}
+		if deleteURL != "" {
+			actions = append(actions, Action{Label: "Delete", URL: deleteURL, Confirm: "Delete this?", Class: "text-error"})
+		}
 	}
 	if len(actions) == 0 {
 		return ""
