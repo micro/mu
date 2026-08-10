@@ -2,24 +2,35 @@ package notes
 
 // The page for what you and your agents have written down.
 //
-// This service had no page at all. It was listed in the catalogue like
-// everything else, and its tile was dead — the only place a person could read
-// their own notes was a card on /account, and the one thing that read them back
-// into every conversation was invisible from the service that owned them.
+// This service had no page at all. Its tile in the catalogue was dead and
+// /cache was a 404, while the only place a person could read their own notes
+// was a card on /account — the wrong home for the thing an agent writes to.
 //
-// So: a list, a delete beside each note, and a box to write one. The same three
-// controls the tools give an agent, which is the point — a person and an agent
-// are looking at the same notes.
+// The first version of this page was that card moved across: a row per note and
+// a one-line form reading "Remember that my … is …". That is a memory widget,
+// not notes. A note has a body you write into, you open one to read it, and you
+// change it and save. So: a list you click into, an editor with a textarea, and
+// a New note button — the same three things every notes app has ever had.
 
 import (
 	"html"
 	"net/http"
+	"net/url"
+	"strconv"
 	"strings"
 
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/notes"
 )
+
+// maxText is as long as one note may be.
+//
+// Notes are read back into the system prompt of every question the owner asks,
+// so their total length is a real cost paid on every turn — fifty notes of
+// unbounded size is a prompt nobody can afford. Long enough to write in, short
+// enough that fifty of them still fit.
+const maxText = 2000
 
 // Handler serves /notes.
 func Handler(w http.ResponseWriter, r *http.Request) {
@@ -42,60 +53,105 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	csrf := html.EscapeString(auth.CSRFToken(r))
-
-	var b strings.Builder
-	b.WriteString(`<p class="text-sm text-muted">Notes you keep, and notes your agents keep for you. ` +
-		`Every one of them is read back into the questions you ask, so delete anything wrong.</p>`)
-
-	b.WriteString(`<div class="card">`)
-	if len(entries) == 0 {
-		// Most accounts land here, because a note only gets written when a
-		// conversation happens to contain something durable. "Nothing yet" on
-		// its own reads as broken, so say what makes one appear.
-		b.WriteString(`<p class="text-sm text-muted">No notes yet. Say "remember that I'm in London" ` +
-			`to an agent and it will show up here, or write one below.</p>`)
-	} else {
-		b.WriteString(`<div class="note-list">`)
-		for _, e := range entries {
-			b.WriteString(`<div class="note-row"><div style="flex:1;min-width:0">` +
-				`<span class="note-title">` + html.EscapeString(e.Title) + `</span>` +
-				`<div class="note-text">` + html.EscapeString(e.Text) + `</div>` +
-				`<div class="note-when">written ` + html.EscapeString(app.TimeAgo(e.CreatedAt)) + `</div></div>` +
-				`<form method="POST" action="/notes" style="margin:0">` +
-				`<input type="hidden" name="_csrf" value="` + csrf + `">` +
-				`<input type="hidden" name="delete" value="` + html.EscapeString(e.Title) + `">` +
-				`<button type="submit" class="link-button danger">Delete</button></form></div>`)
+	q := r.URL.Query()
+	if title := strings.TrimSpace(q.Get("note")); title != "" {
+		if text := notes.Get(who, title); text != "" {
+			render(w, r, "Notes", editor(r, title, text))
+			return
 		}
-		b.WriteString(`</div>`)
+		// A note that is not there any more — deleted in another tab, or a
+		// guessed URL. The list is a better answer than an error.
+		http.Redirect(w, r, "/notes", http.StatusSeeOther)
+		return
+	}
+	if q.Get("new") != "" {
+		render(w, r, "New note", editor(r, "", ""))
+		return
 	}
 
-	// Written as a sentence. The stored shape is a title and some text, and two
-	// bare boxes of the same width say nothing about which is which; "Remember
-	// that my … is …" says it without a word of explanation, and it matches the
-	// sentence the empty state just told you to say to an agent.
-	b.WriteString(`<form method="POST" action="/notes" class="note-add">` +
-		`<input type="hidden" name="_csrf" value="` + csrf + `">` +
-		`<input type="hidden" name="add" value="1">` +
-		`<span class="note-word">Remember that my</span>` +
-		`<input name="title" required maxlength="40" placeholder="location" class="note-in" aria-label="What the note is called">` +
-		`<span class="note-word">is</span>` +
-		`<input name="text" required maxlength="300" placeholder="London" class="note-in note-in-wide" aria-label="What it says">` +
-		`<button type="submit">Add</button></form>`)
-
-	if len(entries) > 0 {
-		b.WriteString(`<form method="POST" action="/notes" style="margin:10px 0 0" ` +
-			`onsubmit="return confirm('Delete every note?')">` +
-			`<input type="hidden" name="_csrf" value="` + csrf + `">` +
-			`<input type="hidden" name="delete_all" value="1">` +
-			`<button type="submit" class="link-button danger">Delete everything</button></form>`)
-	}
-	b.WriteString(`</div>` + pageCSS)
-
-	w.Write([]byte(app.RenderHTMLForRequest("Notes", "What you and your agents have written down", b.String(), r)))
+	render(w, r, "Notes", list(entries))
 }
 
-// handlePost writes, deletes one, or deletes the lot.
+// list is every note, newest change first, each one a link into the editor.
+func list(entries []*notes.Entry) string {
+	var b strings.Builder
+	b.WriteString(`<div class="note-head">` +
+		`<p class="text-sm text-muted" style="margin:0">Notes you keep, and notes your agents keep ` +
+		`for you. All of them are read back into the questions you ask.</p>` +
+		`<a class="note-new" href="/notes?new=1">New note</a></div>`)
+
+	if len(entries) == 0 {
+		// Most accounts land here, because an agent only writes a note when a
+		// conversation happens to contain something durable. "Nothing yet" on
+		// its own reads as broken, so say what makes one appear.
+		b.WriteString(`<div class="card"><p class="text-sm text-muted">No notes yet. Say ` +
+			`"remember that I'm in London" to an agent and it will show up here, or write one ` +
+			`yourself.</p></div>` + pageCSS)
+		return b.String()
+	}
+
+	// Newest change first: the note you touched last is the one you are most
+	// likely to want again, and the store keeps them in the order they were
+	// first written.
+	ordered := make([]*notes.Entry, len(entries))
+	copy(ordered, entries)
+	for i, j := 0, len(ordered)-1; i < j; i, j = i+1, j-1 {
+		ordered[i], ordered[j] = ordered[j], ordered[i]
+	}
+
+	b.WriteString(`<div class="note-grid">`)
+	for _, e := range ordered {
+		when := e.UpdatedAt
+		if when.IsZero() {
+			when = e.CreatedAt
+		}
+		b.WriteString(`<a class="note-card" href="/notes?note=` + html.EscapeString(urlArg(e.Title)) + `">` +
+			`<span class="note-card-title">` + html.EscapeString(e.Title) + `</span>` +
+			`<span class="note-card-body">` + html.EscapeString(preview(e.Text)) + `</span>` +
+			`<span class="note-card-when">` + html.EscapeString(app.TimeAgo(when)) + `</span></a>`)
+	}
+	b.WriteString(`</div>` + pageCSS)
+	return b.String()
+}
+
+// editor writes one note. An empty title means a new one.
+func editor(r *http.Request, title, text string) string {
+	csrf := html.EscapeString(auth.CSRFToken(r))
+
+	titleField := `<input name="title" class="note-title-in" required maxlength="40" ` +
+		`placeholder="Title" autofocus value="` + html.EscapeString(title) + `">`
+	if title != "" {
+		// The title is the note's address — rewriting it would leave the old
+		// note behind and make a second one. Renaming means delete and write,
+		// and it is not worth a control that looks like an edit and is not.
+		titleField = `<input class="note-title-in" value="` + html.EscapeString(title) +
+			`" readonly aria-label="Title">` +
+			`<input type="hidden" name="title" value="` + html.EscapeString(title) + `">`
+	}
+
+	var b strings.Builder
+	b.WriteString(`<div class="note-head">` +
+		`<a class="link" href="/notes">← All notes</a></div>`)
+	b.WriteString(`<div class="card"><form method="POST" action="/notes" class="note-editor">` +
+		`<input type="hidden" name="_csrf" value="` + csrf + `">` +
+		`<input type="hidden" name="save" value="1">` +
+		titleField +
+		`<textarea name="text" class="note-body-in" rows="14" required maxlength="` +
+		strconv.Itoa(maxText) + `" placeholder="Write it down">` + html.EscapeString(text) + `</textarea>` +
+		`<div class="note-actions"><button type="submit">Save</button></div></form>`)
+
+	if title != "" {
+		b.WriteString(`<form method="POST" action="/notes" class="note-delete" ` +
+			`onsubmit="return confirm('Delete this note?')">` +
+			`<input type="hidden" name="_csrf" value="` + csrf + `">` +
+			`<input type="hidden" name="delete" value="` + html.EscapeString(title) + `">` +
+			`<button type="submit" class="link-button danger">Delete</button></form>`)
+	}
+	b.WriteString(`</div>` + pageCSS)
+	return b.String()
+}
+
+// handlePost saves one note or deletes one.
 func handlePost(w http.ResponseWriter, r *http.Request, who string) {
 	if err := r.ParseForm(); err != nil {
 		app.Error(w, r, http.StatusBadRequest, "could not read that form")
@@ -106,24 +162,60 @@ func handlePost(w http.ResponseWriter, r *http.Request, who string) {
 		return
 	}
 	switch {
-	case r.Form.Get("add") != "":
-		notes.Add(who, r.Form.Get("title"), r.Form.Get("text"))
+	case r.Form.Get("save") != "":
+		title := strings.TrimSpace(r.Form.Get("title"))
+		text := strings.TrimSpace(r.Form.Get("text"))
+		if len(text) > maxText {
+			text = text[:maxText]
+		}
+		notes.Add(who, title, text)
+		http.Redirect(w, r, "/notes?note="+urlArg(title), http.StatusSeeOther)
+		return
 	case r.Form.Get("delete") != "":
 		notes.Delete(who, r.Form.Get("delete"))
-	case r.Form.Get("delete_all") != "":
-		notes.Clear(who)
 	}
 	http.Redirect(w, r, "/notes", http.StatusSeeOther)
 }
 
+// render wraps a body in the page shell.
+func render(w http.ResponseWriter, r *http.Request, title, body string) {
+	w.Write([]byte(app.RenderHTMLForRequest(title,
+		"What you and your agents have written down", body, r)))
+}
+
+// preview is the first line or so of a note, for the card that opens it.
+func preview(text string) string {
+	text = strings.TrimSpace(strings.ReplaceAll(text, "\n", " "))
+	if len(text) <= 120 {
+		return text
+	}
+	cut := text[:120]
+	if i := strings.LastIndex(cut, " "); i > 60 {
+		cut = cut[:i]
+	}
+	return cut + "…"
+}
+
+func urlArg(s string) string { return url.QueryEscape(s) }
+
 const pageCSS = `<style>
-.note-list{display:flex;flex-direction:column;gap:8px;margin:10px 0 0}
-.note-row{display:flex;align-items:center;gap:12px;border:1px solid var(--border-color,#eee);border-radius:8px;padding:10px 14px}
-.note-title{font-weight:600;font-size:14px}
-.note-text{font-size:14px;margin-top:2px}
-.note-when{font-size:12px;color:var(--text-muted,#999);margin-top:3px}
-.note-add{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0 0}
-.note-word{font-size:14px;color:var(--text-muted,#666);white-space:nowrap}
-.note-in{padding:7px 10px;border:1px solid var(--border-color,#d1d5db);border-radius:6px;font-size:14px;font-family:inherit;flex:0 1 130px;min-width:0}
-.note-in-wide{flex:1 1 200px}
+.note-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 14px}
+.note-new{display:inline-block;background:#111;color:#fff;text-decoration:none;padding:7px 14px;
+  border-radius:8px;font-size:13px;font-weight:600;white-space:nowrap}
+.note-new:hover{background:#333;color:#fff}
+.note-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+.note-card{display:flex;flex-direction:column;gap:5px;padding:14px;border:1px solid var(--border-color,#e5e5e5);
+  border-radius:10px;text-decoration:none;min-height:110px}
+.note-card:hover{border-color:#bbb}
+.note-card-title{font-size:14px;font-weight:600;color:var(--text-color,#111)}
+.note-card-body{font-size:13px;color:var(--text-muted,#666);line-height:1.45;flex:1}
+.note-card-when{font-size:12px;color:var(--text-muted,#999)}
+.note-editor{display:flex;flex-direction:column;gap:10px}
+.note-title-in{padding:9px 12px;border:1px solid var(--border-color,#d1d5db);border-radius:8px;
+  font-size:15px;font-weight:600;font-family:inherit;width:100%}
+.note-title-in[readonly]{background:transparent;border-color:transparent;padding-left:0;font-size:19px}
+.note-body-in{padding:11px 12px;border:1px solid var(--border-color,#d1d5db);border-radius:8px;
+  font-size:14px;font-family:inherit;line-height:1.55;resize:vertical;width:100%}
+.note-actions{display:flex;gap:10px;align-items:center}
+.note-delete{margin:12px 0 0}
 </style>`
