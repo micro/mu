@@ -220,7 +220,7 @@ var htmlFiles embed.FS
 // FooterLinks is the site footer, shared by the app shell and the sidebar-less
 // landing shell (/about, /agents) so every page shows the same links.
 func FooterLinks() string {
-	return `<a href="/tools">Tools</a> · <a href="/pricing">Pricing</a> · <a href="/mcp">MCP</a> · <a href="/help">Help</a> · <a href="/privacy">Privacy</a> · <a href="/status">Status</a> · <a href="https://github.com/micro/mu">Source</a>` + torFooterLink()
+	return `<a href="/about">About</a> · <a href="/tools">Tools</a> · <a href="/pricing">Pricing</a> · <a href="/help">Help</a> · <a href="/privacy">Privacy</a> · <a href="/status">Status</a>` + torFooterLink()
 }
 
 func torFooterLink() string {

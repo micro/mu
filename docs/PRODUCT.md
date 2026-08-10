@@ -87,7 +87,7 @@ Two consequences worth holding:
   person could see it.
 
   The rule survives; the reading of it was too literal. `internal/userdb` is the
-  substrate and stays internal. `service/db` is "your database" — a noun you can
+  substrate and stays internal. `service/docs` is "your documents" — a noun you can
   look at, grant, and scope.
 
 ### What earns a place in the sidebar

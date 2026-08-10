@@ -7,126 +7,73 @@ import (
 	"testing"
 )
 
-func TestDocument_Structure(t *testing.T) {
-	doc := Document{
-		Slug:        "test-doc",
-		Filename:    "TEST.md",
-		Title:       "Test Document",
-		Description: "A test doc",
-		Category:    "Testing",
+// Three pages, and each one is a file that exists.
+//
+// There were nine, behind a categorised index. The index was the tell: a set of
+// documents large enough to need navigating is a manual, and the product was
+// meant to explain itself — the tools are at /tools, the protocol is a URL, and
+// the price list is a page.
+func TestEveryPageServes(t *testing.T) {
+	if len(pages) != 3 {
+		t.Fatalf("%d pages — three is the whole site's documentation: about, help, install", len(pages))
 	}
-	if doc.Slug != "test-doc" {
-		t.Error("expected slug")
-	}
-	if doc.Filename != "TEST.md" {
-		t.Error("expected filename")
-	}
-}
-
-func TestCatalog_NotEmpty(t *testing.T) {
-	if len(catalog) == 0 {
-		t.Error("catalog should not be empty")
-	}
-}
-
-func TestCatalog_UniqueSlugs(t *testing.T) {
-	seen := make(map[string]bool)
-	for _, doc := range catalog {
-		if seen[doc.Slug] {
-			t.Errorf("duplicate slug: %q", doc.Slug)
+	for i, p := range pages {
+		if _, err := docsFS.ReadFile(p.Filename); err != nil {
+			t.Errorf("%s: %v", p.Path, err)
+			continue
 		}
-		seen[doc.Slug] = true
-	}
-}
-
-func TestCatalog_AllFieldsPopulated(t *testing.T) {
-	for _, doc := range catalog {
-		if doc.Slug == "" {
-			t.Errorf("doc %q has empty slug", doc.Title)
-		}
-		if doc.Filename == "" {
-			t.Errorf("doc %q has empty filename", doc.Slug)
-		}
-		if doc.Title == "" {
-			t.Errorf("doc %q has empty title", doc.Slug)
-		}
-		if doc.Description == "" {
-			t.Errorf("doc %q has empty description", doc.Slug)
-		}
-		if doc.Category == "" {
-			t.Errorf("doc %q has empty category", doc.Slug)
-		}
-	}
-}
-
-func TestCatalog_HasAboutDoc(t *testing.T) {
-	found := false
-	for _, doc := range catalog {
-		if doc.Slug == "about" {
-			found = true
-			if doc.Filename != "ABOUT.md" {
-				t.Errorf("about doc filename should be ABOUT.md, got %q", doc.Filename)
-			}
-			break
-		}
-	}
-	if !found {
-		t.Error("catalog should contain 'about' document")
-	}
-}
-
-// The markdown files open with their own H1 because they are read on GitHub
-// too. The page shell renders doc.Title above the content, so a served doc that
-// keeps its H1 shows its name twice — which is exactly what /help/about,
-// /help/installation and /help/mcp did.
-func TestServedDocDoesNotRepeatItsTitle(t *testing.T) {
-	for _, doc := range catalog {
-		req := httptest.NewRequest(http.MethodGet, "/help/"+doc.Slug, nil)
 		w := httptest.NewRecorder()
-		Handler(w, req)
-
+		serve(w, httptest.NewRequest(http.MethodGet, p.Path, nil), pages[i])
 		if w.Code != http.StatusOK {
-			t.Errorf("%s: status %d", doc.Slug, w.Code)
-			continue
+			t.Errorf("%s: status %d", p.Path, w.Code)
 		}
+		if !strings.Contains(w.Body.String(), "docs-content") {
+			t.Errorf("%s: rendered nothing", p.Path)
+		}
+	}
+}
+
+// A doc opens with its own title, because it is a file first. The page shell
+// renders the title above the content, so served as a page the heading appears
+// twice ("Install / Install").
+func TestServedPageDoesNotRepeatItsTitle(t *testing.T) {
+	for i, p := range pages {
+		w := httptest.NewRecorder()
+		serve(w, httptest.NewRequest(http.MethodGet, p.Path, nil), pages[i])
 		body := w.Body.String()
-		i := strings.Index(body, `<div class="docs-content">`)
-		if i < 0 {
-			t.Errorf("%s: no docs-content block", doc.Slug)
-			continue
+		if n := strings.Count(body, "<h1"); n > 1 {
+			t.Errorf("%s: %d h1s, the title is rendered twice", p.Path, n)
 		}
-		if strings.Contains(body[i:], "<h1>") {
-			t.Errorf("%s: content starts with an H1, repeating the page title %q", doc.Slug, doc.Title)
+	}
+}
+
+// Every address the old nine answered on still goes somewhere.
+func TestOldAddressesLand(t *testing.T) {
+	known := map[string]bool{}
+	for _, p := range pages {
+		known[p.Path] = true
+	}
+	for from, to := range Redirects {
+		if !known[to] {
+			t.Errorf("%s redirects to %s, which is not a page", from, to)
+		}
+		if !strings.HasPrefix(from, "/docs") && !strings.HasPrefix(from, "/help") {
+			t.Errorf("%s is not an address the documentation ever had", from)
+		}
+	}
+	for _, want := range []string{"/docs/mcp", "/docs/installation", "/docs/about"} {
+		if Redirects[want] == "" {
+			t.Errorf("%s has nowhere to go", want)
 		}
 	}
 }
 
 func TestStripTitle(t *testing.T) {
-	for _, tc := range []struct{ name, in, want string }{
-		{"leading h1", "# Installation\n\nBody\n", "Body\n"},
-		{"blank lines first", "\n\n# CLI\nBody\n", "Body\n"},
-		{"no h1", "Body only\n", "Body only\n"},
-		{"h1 later stays", "Intro\n\n# Not the title\n", "Intro\n\n# Not the title\n"},
-		{"bold opener untouched", "**Guiding principles**\n\nBody\n", "**Guiding principles**\n\nBody\n"},
-		{"h1 only", "# Alone", ""},
-	} {
-		if got := string(stripTitle([]byte(tc.in))); got != tc.want {
-			t.Errorf("%s: got %q want %q", tc.name, got, tc.want)
-		}
+	got := string(stripTitle([]byte("# Install\n\nRun your own.\n")))
+	if want := "Run your own.\n"; got != want {
+		t.Errorf("stripTitle = %q, want %q", got, want)
 	}
-}
-
-func TestCatalog_HasCategories(t *testing.T) {
-	categories := make(map[string]bool)
-	for _, doc := range catalog {
-		categories[doc.Category] = true
-	}
-	// Two categories now: get connected, then look things up. Features and
-	// Developer went with the docs that were folded into Architecture.
-	expected := []string{"Getting Started", "Reference"}
-	for _, cat := range expected {
-		if !categories[cat] {
-			t.Errorf("expected category %q in catalog", cat)
-		}
+	if got := string(stripTitle([]byte("No heading here.\n"))); got != "No heading here.\n" {
+		t.Errorf("a document with no H1 should be left alone, got %q", got)
 	}
 }

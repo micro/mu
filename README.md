@@ -1,7 +1,7 @@
 # mu
 
 **Tools for agents.** News, mail, search, weather, markets, video, places,
-files, contacts, calendar and a database, as tools an agent can call over MCP
+files, contacts, calendar and your own documents, as tools an agent can call over MCP
 and REST — behind one account instead of one per provider.
 
 The same services render as a web app: a home screen with a card per service
@@ -20,7 +20,7 @@ Open **http://localhost:8080**. The first account you create is the admin.
 
 It runs with no configuration. On a fresh install, with no keys, these
 answer: **news, markets, weather, prayer times, quran, mail, files, contacts,
-calendar, tasks, the database, and search over your own content.** Weather
+calendar, tasks, your own documents, and search over your own content.** Weather
 comes from Open-Meteo; places and geocoding from OpenStreetMap. No account, no
 card, no signup.
 
@@ -56,7 +56,7 @@ cd mu && go install
 mu --serve
 ```
 
-See the [installation guide](docs/INSTALLATION.md).
+See the [installation guide](docs/INSTALL.md).
 
 ## Connect an agent
 
@@ -97,7 +97,7 @@ https://micro.mu/mcp?tools=news,web,mail
 That is what gets listed to your agent. Everything else is still callable.
 
 [micro.mu/tools](https://micro.mu/tools) lists every tool with what each call
-costs. See [MCP docs](docs/MCP.md) for the protocol.
+costs. See [Help](docs/HELP.md) for the protocol.
 
 ## The tools
 
@@ -162,7 +162,7 @@ mu config set token xxx   # or set it directly
 export MU_TOKEN=xxx       # or use the environment
 ```
 
-See [CLI docs](docs/CLI.md).
+Run `mu --help` for the list — it reads the same catalogue the agent does.
 
 ## Discord & Telegram
 
@@ -175,7 +175,7 @@ slash command per service with the methods as subcommands; on Telegram you type
 `/news list`. Both also take `/agent <question>` for anything that needs
 composing, and `/usage` for your own stats.
 
-Setup for both is in [Installation](docs/INSTALLATION.md).
+Setup for both is in [Install](docs/INSTALL.md).
 
 ## The app
 
@@ -196,12 +196,16 @@ Customise feeds, prompts and cards by editing JSON files:
 - `service/video/channels.json` — YouTube channels
 - `service/places/locations.json` — saved locations
 
-See [Environment Variables](docs/ENVIRONMENT_VARIABLES.md) for all options.
+See [Install](docs/INSTALL.md) for every setting the code reads.
 
 ## Documentation
 
-Full docs in the [docs](docs/) folder. Start with [MCP](docs/MCP.md) for agents,
-[Architecture](docs/ARCHITECTURE.md) for the code. The live tool catalogue is at
-[/tools](https://micro.mu/tools).
+Three pages, and they are the site's: [About](https://micro.mu/about),
+[Help](https://micro.mu/help) for connecting an agent, and
+[Install](https://micro.mu/install) for running your own. The live tool
+catalogue is at [/tools](https://micro.mu/tools) — it is generated from what
+the instance runs, so it cannot go stale.
+
+For the code, [Architecture](docs/ARCHITECTURE.md).
 
 ## License

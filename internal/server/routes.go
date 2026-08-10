@@ -131,7 +131,8 @@ func authRequired() map[string]bool {
 		"/status":                        false, // Public - server health status
 		"/pricing":                       false, // Public - pricing page
 		"/privacy":                       false, // Public - privacy policy
-		"/help":                          false, // Public - documentation
+		"/help":                          false, // Public - how to connect an agent
+		"/install":                       false, // Public - run your own instance
 		"/whitepaper":                    false, // Public - whitepaper
 		"/mcp":                           false, // Public - MCP tools page
 		"/whatsapp/webhook":              false, // Public - WhatsApp webhook
@@ -285,12 +286,10 @@ func registerRoutes() {
 	// root — and these two go back to being what their names say.
 	//
 	// /about is the about page, which is the ABOUT doc rather than a second copy
-	// of it. /agents belongs to the user's agents, not to marketing; it points at
-	// the agent surface until the page that shows what your agents are doing
-	// exists to take it.
-	http.HandleFunc("/about", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/help/about", http.StatusMovedPermanently)
-	})
+	// of it — registered with the other documentation pages below. /agents
+	// belongs to the user's agents, not to marketing; it points at the agent
+	// surface until the page that shows what your agents are doing exists to
+	// take it.
 	http.HandleFunc("/pricing", home.PricingHandler)
 	// Every MCP directory submission asks for a privacy policy URL, and this
 	// instance runs a mail server — so there is real correspondence to account
@@ -468,16 +467,20 @@ func registerRoutes() {
 	http.HandleFunc("/whitepaper", help.WhitepaperHandler)
 	http.HandleFunc("/whitepaper.pdf", help.WhitepaperHandler)
 
-	// Documentation. It was at /docs until Docs became the name of the service
-	// that holds your own documents, and a route cannot mean two things. The old
-	// links still work: every doc keeps a redirect at its old address, and an
-	// exact path outranks the service's /docs in the mux.
+	// Documentation. Two pages: how to point an agent at this instance, and
+	// how to run your own. Every address the old nine answered on redirects to
+	// whichever of the two replaced it — an exact pattern outranks the /docs
+	// the service owns now.
+	http.HandleFunc("/about", help.AboutHandler)
 	http.HandleFunc("/help", help.Handler)
-	http.HandleFunc("/help/", help.Handler)
-	for _, slug := range help.Slugs() {
-		to := "/help/" + slug
-		http.HandleFunc("/docs/"+slug, func(w http.ResponseWriter, r *http.Request) {
-			http.Redirect(w, r, to, http.StatusMovedPermanently)
+	http.HandleFunc("/install", help.InstallHandler)
+	for from, to := range help.Redirects {
+		if from == "/docs" {
+			continue // the service's page, not a redirect
+		}
+		target := to
+		http.HandleFunc(from, func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, target, http.StatusMovedPermanently)
 		})
 	}
 

@@ -37,7 +37,7 @@ var configInJSON = regexp.MustCompile(`"env"\s*:\s*"([A-Z][A-Z0-9_]*)"`)
 // and TELEGRAM_BOT_TOKEN entirely.
 func TestEveryConfigVarIsDocumented(t *testing.T) {
 	root := repoRoot(t)
-	doc, err := os.ReadFile(filepath.Join(root, "docs", "ENVIRONMENT_VARIABLES.md"))
+	doc, err := os.ReadFile(filepath.Join(root, "docs", "INSTALL.md"))
 	if err != nil {
 		t.Fatalf("read config doc: %v", err)
 	}
@@ -94,7 +94,7 @@ func TestEveryConfigVarIsDocumented(t *testing.T) {
 			continue
 		}
 		if !documented[v] {
-			t.Errorf("%s is read by the code but not in ENVIRONMENT_VARIABLES.md", v)
+			t.Errorf("%s is read by the code but not in INSTALL.md", v)
 		}
 	}
 	for v := range documented {

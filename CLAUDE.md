@@ -51,7 +51,7 @@ Built on go-micro: every capability is a go-micro service, the assistant is a go
 | `service/stream/` | The console — this instance's own event timeline |
 | `service/chat/` | Live discussion rooms attached to an item |
 | `internal/profile/` | The public face of an account: the page at /@username, and who is online |
-| `docs/` | Embedded documentation served at /help (the /docs route is the Docs service). `PRODUCT.md` is the one-pager: what Mu is, who arrives, and what Home is for. Check changes against it |
+| `docs/` | Three embedded pages — /about, /help, /install — plus the markdown the repository keeps for itself (`ARCHITECTURE.md`, `PRODUCT.md`, `SECURITY.md`, `PRINCIPLES.md`, `USECASES.md`, `LISTING.md`), which is not served. `PRODUCT.md` is the one-pager: what Mu is, who arrives, and what Home is for. Check changes against it. The /docs route is the Docs service |
 
 ## Development
 
