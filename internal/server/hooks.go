@@ -23,7 +23,7 @@ import (
 	"mu/client/discord"
 	"mu/client/telegram"
 	"mu/client/whatsapp"
-	"mu/docs"
+	help "mu/docs"
 	"mu/home"
 	"mu/internal/ai"
 	"mu/internal/api"
@@ -39,7 +39,7 @@ import (
 	"mu/service/apps"
 	"mu/service/blog"
 	"mu/service/contacts"
-	"mu/service/db"
+	"mu/service/docs"
 	"mu/service/events"
 	"mu/service/files"
 	"mu/service/images"
@@ -430,7 +430,7 @@ func wireHooks() {
 	search.Load()
 
 	// load docs
-	docs.Load()
+	help.Load()
 
 	// load user presence tracking
 	profile.Load()
@@ -537,7 +537,7 @@ func wireHooks() {
 		tasks.DeleteAll,
 		events.DeleteAll,
 		images.DeleteAll,
-		db.DeleteAll,
+		docs.DeleteAll,
 	)
 
 	// Enable indexing after all content is loaded

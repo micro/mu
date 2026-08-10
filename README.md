@@ -110,7 +110,7 @@ Here are the tools
 | **Cache** | `cache_get` · `cache_set` · `cache_list` · `cache_delete` — a key and a value that survive the conversation |
 | **Chat** | `chat_rooms` · `chat_messages` · `chat_send` — the live discussion rooms attached to an item, and saying something in one |
 | **Contacts** | `contacts_add` · `contacts_find` · `contacts_list` · `contacts_delete` — turn a name into an address |
-| **Database** | `db_create` · `db_get` · `db_list` · `db_delete` — named collections of your own records, private by default, that outlive a conversation (`db_create` with an `id` overwrites). Apps get their own separate store through `mu.db` |
+| **Docs** | `docs_create` · `docs_get` · `docs_list` · `docs_delete` — named collections of your own documents, private by default, that outlive a conversation (`docs_create` with an `id` overwrites). Apps get their own separate store through `mu.db` |
 | **Events** | `events_create` · `events_list` · `events_delete` · `events_free` — schedule, cancel, and find when you are free, counting the Google Calendar you already keep |
 | **Files** | `files_put` · `files_get` · `files_list` · `files_share` · `files_delete` — keep a file, get a URL |
 | **Images** | `images_generate` · `images_search` |
@@ -144,7 +144,7 @@ mu web search "claude code"             # search the web
 mu markets list --category stocks       # live prices
 mu agent "what is the btc price?"       # run the full agent
 mu weather forecast --lat 51.5 --lon -0.12
-mu db list --collection notes           # your own records
+mu docs list --collection notes         # your own documents
 mu wallet                               # your balance
 mu help                                 # full tool list
 ```

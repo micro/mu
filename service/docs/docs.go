@@ -1,5 +1,5 @@
-// Package db is the caller's own database: named collections of JSON records,
-// private by default, that outlive any one conversation.
+// Package docs is the caller's own documents: named collections of JSON
+// records, private by default, that outlive any one conversation.
 //
 // It was deliberately not a service once. The reasoning was a house — a house
 // has a mailbox, a calendar and a shelf of files, and it does not have a
@@ -11,8 +11,8 @@
 //
 // Two things made the old arrangement cost something real rather than reading
 // oddly. Tools with no service behind them are outside the scoping model, so
-// db_* was unreachable by every scoped agent token and there was no box to tick
-// on /agents to grant it — the storage the docs told agents to rely on could
+// docs_* was unreachable by every scoped agent token and there was no box to tick
+// on /agents to grant it — the storage the documentation told agents to rely on could
 // not be granted to one. And the service list is derived from Specs, so a
 // capability with no Spec is absent from the catalogue, the sidebar and every
 // count, while its tools sit in the surface with nothing to explain them.
@@ -25,7 +25,7 @@
 // isolated from every other app's; this surface uses "api". Same machinery, same
 // guarantees, separate stores — and the only bridge between them is a record
 // published with public:true, which either side can read.
-package db
+package docs
 
 import (
 	"context"
@@ -41,7 +41,7 @@ import (
 // "api", scoped per owner.
 const namespace = "api"
 
-// Server is the go-micro handler. Its exported methods become the db_* tools.
+// Server is the go-micro handler. Its exported methods become the docs_* tools.
 type Server struct{}
 
 // caller resolves the authenticated account from call metadata. There is no
@@ -50,7 +50,7 @@ type Server struct{}
 func caller(ctx context.Context) (string, error) {
 	id := service.AccountFrom(ctx)
 	if id == "" {
-		return "", fmt.Errorf("sign in to use your database")
+		return "", fmt.Errorf("sign in to use your docs")
 	}
 	return id, nil
 }
@@ -95,7 +95,7 @@ func (Server) Create(ctx context.Context, req *CreateRequest, rsp *CreateRespons
 
 type GetRequest struct {
 	Collection string `json:"collection" required:"true" description:"Collection name"`
-	ID         string `json:"id" required:"true" description:"Record id, as returned by db_create or db_list"`
+	ID         string `json:"id" required:"true" description:"Record id, as returned by docs_create or docs_list"`
 }
 
 type GetResponse struct {
@@ -172,38 +172,39 @@ func (Server) Delete(ctx context.Context, req *DeleteRequest, rsp *DeleteRespons
 	return nil
 }
 
-// LoadService registers db as a service.
+// LoadService registers docs as a service.
 func LoadService() {
 	if err := service.Register(Spec); err != nil {
-		app.Log("db", "service register failed: %v", err)
+		app.Log("docs", "service register failed: %v", err)
 	}
 }
 
 var Spec = service.Spec{
-	Name:    "db",
+	Name:    "docs",
 	Handler: new(Server),
-	// "Database" in the nav, "db" as the name, for the same reason the web
-	// service is "Search" in the sidebar: the tool prefix is a domain word and
-	// the label is the word a person looks for. Renaming the service outright
-	// would rename every tool and break mu.db in every app already written.
-	Label:       "Database",
-	Description: "Your own records — named collections that outlive the conversation",
-	Page:        "/db",
-	Icon:        "db.svg",
+	// It was "db", labelled "Database", and the two words were the problem. A
+	// person reading the catalogue sees Contacts, Events, Mail, News — things
+	// they own — and then an implementation detail. What it holds are documents
+	// kept in named collections, so that is what it is called, and the old tool
+	// names stay as aliases because agents already call them.
+	Label:       "Docs",
+	Description: "Your own documents — named collections that outlive the conversation",
+	Page:        "/docs",
+	Icon:        "docs.svg",
 	Scoped:      true,
 	Endpoints: map[string]service.Endpoint{
-		// db_set was db_create's alias before db was derived from this Spec.
-		// Derivation carried no aliases, so anything already calling it got
-		// "Tool not found" for a rename nobody asked for.
-		"Create": {Doc: "Store a record in one of your collections, or overwrite one you own by passing its id. Private unless you set public",
-			Aliases: []string{"db_set"}},
-		"Get":    {Doc: "Read one record by id — yours, or one somebody published"},
-		"List":   {Doc: "List records in a collection, with an optional filter, sort and limit. Use this to find an id before reading or deleting"},
-		"Delete": {Doc: "Delete a record you own, by id", Destructive: false},
+		// db_set was db_create's alias, and both are aliases now: nothing that
+		// already calls this store should have to be rewritten for a rename it
+		// did not ask for.
+		"Create": {Doc: "Store a document in one of your collections, or overwrite one you own by passing its id. Private unless you set public",
+			Aliases: []string{"db_create", "db_set"}},
+		"Get":    {Doc: "Read one document by id — yours, or one somebody published", Aliases: []string{"db_get"}},
+		"List":   {Doc: "List documents in a collection, with an optional filter, sort and limit. Use this to find an id before reading or deleting", Aliases: []string{"db_list"}},
+		"Delete": {Doc: "Delete a document you own, by id", Destructive: false, Aliases: []string{"db_delete"}},
 	},
 }
 
-// DeleteAll removes everything db holds for an owner.
+// DeleteAll removes everything docs holds for an owner.
 //
 // Called when the account is deleted (internal/server/hooks.go). Without it
 // the records outlived the account that made them: there was no way to ask
@@ -214,8 +215,8 @@ func DeleteAll(owner string) {
 		return
 	}
 	if n, err := userdb.DeleteOwner(namespace, owner); err != nil {
-		app.Log("db", "deleting %s's records: %v", owner, err)
+		app.Log("docs", "deleting %s's records: %v", owner, err)
 	} else if n > 0 {
-		app.Log("db", "deleted %d records for %s", n, owner)
+		app.Log("docs", "deleted %d records for %s", n, owner)
 	}
 }

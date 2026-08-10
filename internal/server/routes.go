@@ -18,7 +18,7 @@ import (
 	"mu/agent"
 	"mu/agent/micro"
 	"mu/client/whatsapp"
-	"mu/docs"
+	help "mu/docs"
 	"mu/home"
 	"mu/internal/a2a"
 	"mu/internal/api"
@@ -32,7 +32,7 @@ import (
 	"mu/service/blog"
 	"mu/service/chat"
 	"mu/service/contacts"
-	"mu/service/db"
+	"mu/service/docs"
 	"mu/service/events"
 	"mu/service/files"
 	"mu/service/images"
@@ -79,42 +79,45 @@ func authRequired() map[string]bool {
 		"/img":                    false, // Public — cached article images (a prefix of /images, same answer)
 		"/events":                 true,  // Personal scheduled reminders — sign-in required
 		"/contacts":               true,  // Your address book — sign-in required
-		"/db":                     true,  // Your own records — sign-in required
-		"/runs":                   true,  // What your agents did (redirects to /agent/runs)
-		"/agent/runs":             true,  // What your agents did
-		"/agent/connect":          true,  // How to reach one agent
-		"/tasks":                  true,  // Your task list — sign-in required
-		"/social":                 false, // Public viewing, auth for search
-		"/social/thread":          false, // Public thread view, auth for messaging
-		"/places":                 false, // Public map, auth for search
-		"/weather":                false, // Public page, auth for forecast lookup
-		"/mail":                   true,  // Require auth for inbox
-		"/logout":                 true,
-		"/account":                true,
-		"/user":                   true, // Your own saved, hidden and blocked
-		"/user/":                  true,
-		"/verify":                 false, // Public — token in URL is the credential
-		"/token":                  true,  // PAT token management
-		"/passkey":                false, // Passkey login/register (auth checked in handler)
-		"/session":                false, // Public - used to check auth status
-		"/api":                    false, // Public - API documentation
-		"/admin/flag":             true,
-		"/admin":                  true,
-		"/admin/users":            true,
-		"/admin/moderate":         true,
-		"/admin/blocklist":        true,
-		"/admin/spam":             true,
-		"/admin/email":            true,
-		"/admin/api":              true,
-		"/admin/log":              true,
-		"/admin/env":              true,
-		"/admin/server":           true,
-		"/admin/usage":            true,
-		"/admin/delete":           true,
-		"/admin/console":          true,
-		"/admin/diagnostics":      true,
-		"/admin/invite":           true,
-		"/wallet":                 false, // Public - shows wallet info; auth checked in handler
+		// Your own documents. Sign-in required, but checked in the handler
+		// rather than here: the map is matched by prefix, and /docs/<slug> is
+		// still a public redirect to the documentation that used to live there.
+		"/docs":              false,
+		"/runs":              true,  // What your agents did (redirects to /agent/runs)
+		"/agent/runs":        true,  // What your agents did
+		"/agent/connect":     true,  // How to reach one agent
+		"/tasks":             true,  // Your task list — sign-in required
+		"/social":            false, // Public viewing, auth for search
+		"/social/thread":     false, // Public thread view, auth for messaging
+		"/places":            false, // Public map, auth for search
+		"/weather":           false, // Public page, auth for forecast lookup
+		"/mail":              true,  // Require auth for inbox
+		"/logout":            true,
+		"/account":           true,
+		"/user":              true, // Your own saved, hidden and blocked
+		"/user/":             true,
+		"/verify":            false, // Public — token in URL is the credential
+		"/token":             true,  // PAT token management
+		"/passkey":           false, // Passkey login/register (auth checked in handler)
+		"/session":           false, // Public - used to check auth status
+		"/api":               false, // Public - API documentation
+		"/admin/flag":        true,
+		"/admin":             true,
+		"/admin/users":       true,
+		"/admin/moderate":    true,
+		"/admin/blocklist":   true,
+		"/admin/spam":        true,
+		"/admin/email":       true,
+		"/admin/api":         true,
+		"/admin/log":         true,
+		"/admin/env":         true,
+		"/admin/server":      true,
+		"/admin/usage":       true,
+		"/admin/delete":      true,
+		"/admin/console":     true,
+		"/admin/diagnostics": true,
+		"/admin/invite":      true,
+		"/wallet":            false, // Public - shows wallet info; auth checked in handler
 
 		"/apps":      false, // Public - apps directory; auth checked in handler for create/edit
 		"/work":      false, // Public - task bounties; auth checked in handler for post/claim
@@ -126,7 +129,7 @@ func authRequired() map[string]bool {
 		"/status":                        false, // Public - server health status
 		"/pricing":                       false, // Public - pricing page
 		"/privacy":                       false, // Public - privacy policy
-		"/docs":                          false, // Public - documentation
+		"/help":                          false, // Public - documentation
 		"/whitepaper":                    false, // Public - whitepaper
 		"/mcp":                           false, // Public - MCP tools page
 		"/whatsapp/webhook":              false, // Public - WhatsApp webhook
@@ -284,7 +287,7 @@ func registerRoutes() {
 	// the agent surface until the page that shows what your agents are doing
 	// exists to take it.
 	http.HandleFunc("/about", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/docs/about", http.StatusMovedPermanently)
+		http.Redirect(w, r, "/help/about", http.StatusMovedPermanently)
 	})
 	http.HandleFunc("/pricing", home.PricingHandler)
 	// Every MCP directory submission asks for a privacy policy URL, and this
@@ -321,7 +324,7 @@ func registerRoutes() {
 	http.HandleFunc("/markets", markets.Handler)
 	http.HandleFunc(imageproxy.Path, imageproxy.Handler)
 	http.HandleFunc("/contacts", contacts.Handler)
-	http.HandleFunc("/db", db.Handler)
+	http.HandleFunc("/docs", docs.Handler)
 	http.HandleFunc("/contacts/", contacts.Handler)
 	http.HandleFunc("/tasks", tasks.Handler)
 	http.HandleFunc("/tasks/", tasks.Handler)
@@ -459,12 +462,21 @@ func registerRoutes() {
 	http.HandleFunc("/status", app.StatusHandler)
 
 	// whitepaper
-	http.HandleFunc("/whitepaper", docs.WhitepaperHandler)
-	http.HandleFunc("/whitepaper.pdf", docs.WhitepaperHandler)
+	http.HandleFunc("/whitepaper", help.WhitepaperHandler)
+	http.HandleFunc("/whitepaper.pdf", help.WhitepaperHandler)
 
-	// documentation
-	http.HandleFunc("/docs", docs.Handler)
-	http.HandleFunc("/docs/", docs.Handler)
+	// Documentation. It was at /docs until Docs became the name of the service
+	// that holds your own documents, and a route cannot mean two things. The old
+	// links still work: every doc keeps a redirect at its old address, and an
+	// exact path outranks the service's /docs in the mux.
+	http.HandleFunc("/help", help.Handler)
+	http.HandleFunc("/help/", help.Handler)
+	for _, slug := range help.Slugs() {
+		to := "/help/" + slug
+		http.HandleFunc("/docs/"+slug, func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, to, http.StatusMovedPermanently)
+		})
+	}
 
 	// ActivityPub: WebFinger discovery
 	http.HandleFunc("/.well-known/webfinger", blog.WebFingerHandler)

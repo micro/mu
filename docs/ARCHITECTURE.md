@@ -66,7 +66,7 @@ mu/
 ├── home/                   # landing, home screen, pricing
 ├── admin/                  # moderation and admin panel
 ├── scripts/                # deploy, DKIM keys, git hooks, tor
-└── docs/                   # this folder, served at /docs
+└── docs/                   # this folder, served at /help
 ```
 
 `service/search` is the exception to "one directory per service": it holds the
@@ -116,14 +116,14 @@ guessable.
 | `chat` | /chat | ✅ |  | Live discussion rooms attached to an item |
 | `contacts` | /contacts | ✅ | ✅ | The caller's address book: turn a name into an address |
 | `user` | /user | ✅ | ✅ | What an account does about other people's content: save, hide, flag, block. One page listing what you have saved, hidden and blocked, each with an undo |
-| `db` | /db | ✅ | ✅ | The caller's own records: named collections that outlive a conversation. Apps keep a separate store each through `mu.db` |
+| `docs` | /docs | ✅ | ✅ | The caller's own documents: named collections that outlive a conversation. Apps keep a separate store each through `mu.db` |
 | `events` | /events | ✅ | ✅ | Calendar: scheduling, `.ics` invites, and when you are free — optionally counting an attached Google Calendar |
 | `files` | /files | ✅ | ✅ | Per-user file storage: keep a file, get a URL |
 | `images` | /images | ✅ | ✅ | Generation, daily image, archive |
 | `index` | — | ✅ |  | Search across the caller's own content |
 | `mail` | /mail | ✅ | ✅ | SMTP server, inbox, DKIM |
 | `markets` | /markets | ✅ |  | Crypto, stocks, futures, commodities, currencies |
-| `cache` | — | ✅ | ✅ | A key and a value that survive the conversation. Addressed by label, where db holds collections you query |
+| `cache` | — | ✅ | ✅ | A key and a value that survive the conversation. Addressed by label, where docs holds collections you query |
 | `news` | /news | ✅ |  | RSS aggregation, sentiment, search |
 | `places` | /places | ✅ |  | Maps, points of interest, travel time |
 | `prayer` | /prayer | ✅ |  | Islamic prayer times, qibla, and a daily reflection |
@@ -276,16 +276,16 @@ await mu.store.del('prefs');
 const keys = await mu.store.keys();
 ```
 
-### Database — `mu.db` (collections, private/public)
+### Docs — `mu.db` (collections, private/public)
 
 Named collections of JSON records. Every record has a **server-set owner** (the
 signed-in user) and a **public** flag, so one app can hold each user's private
 data plus a shared public set. This is the building block for real apps — notes,
 lists, posts, trackers — where "mine" and "public" both matter.
 
-An agent gets the same shape through the `db_*` tools and the `/db` page, in a
+An agent gets the same shape through the `docs_*` tools and the `/docs` page, in a
 separate store: each app has its own namespace, so what an app writes here is
-not what `db_create` writes and the other way round. A record published with
+not what `docs_create` writes and the other way round. A record published with
 `public: true` is the only thing both sides see.
 
 ```javascript
@@ -315,8 +315,8 @@ Scoping rules (enforced server-side):
 `list` options: `scope` (`mine`|`public`|`all`), `where` (filter on data fields),
 `sort` (a data field), `order` (`asc`|`desc`), `limit`.
 
-The same store is reachable outside apps: agents can use the `db_create` / `db_get`
-/ `db_list` / `db_delete` tools over MCP and REST (see [MCP docs](MCP.md)). Owner
+The same store is reachable outside apps: agents can use the `docs_create` / `docs_get`
+/ `docs_list` / `docs_delete` tools over MCP and REST (see [MCP docs](MCP.md)). Owner
 scoping and the private/public model are identical; an app's data and a user's
 API data live in separate namespaces.
 

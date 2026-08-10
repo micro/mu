@@ -43,7 +43,7 @@ Built on go-micro: every capability is a go-micro service, the assistant is a go
 | `wallet/` | How an account pays: the credit ledger, Stripe, x402 and the /wallet pages. Account furniture, not a service — no Spec and no tools |
 | `internal/quota/` | What things cost and who may do them. The only thing a service knows about money — it holds prices, not balances. Prices are `quota.json` at the top level, not Go |
 | `service/search/` | Brave provider, readability reader, the /search page (no service of its own) |
-| `service/db/` | The caller's own records — named collections that outlive a conversation. Apps keep a separate store each |
+| `service/docs/` | The caller's own documents — named collections that outlive a conversation. Apps keep a separate store each |
 | `service/files/` | Per-user file storage — keep a file, get a URL, read it back |
 | `service/contacts/` | The caller's address book, so a name resolves to an address (headless) |
 | `service/web/` | The open web: search it (`web.Search`), fetch a URL (`web.Fetch`) |
@@ -51,7 +51,7 @@ Built on go-micro: every capability is a go-micro service, the assistant is a go
 | `service/stream/` | The console — this instance's own event timeline |
 | `service/chat/` | Live discussion rooms attached to an item |
 | `internal/profile/` | The public face of an account: the page at /@username, and who is online |
-| `docs/` | Embedded documentation served at /docs. `PRODUCT.md` is the one-pager: what Mu is, who arrives, and what Home is for. Check changes against it |
+| `docs/` | Embedded documentation served at /help (the /docs route is the Docs service). `PRODUCT.md` is the one-pager: what Mu is, who arrives, and what Home is for. Check changes against it |
 
 ## Development
 

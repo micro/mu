@@ -20,7 +20,7 @@ The submission forms converge on the same questions. Mu answers all of them:
 | Every tool has a human-readable title | Derived — `internal/api/annotations.go` |
 | Annotations present, reads and writes separated | Derived from each endpoint's `Spec` and its verb |
 | Tool names ≤ 64 characters | Enforced by `TestToolsListCarriesTitlesAndAnnotations` |
-| Documentation URL | <https://micro.mu/docs> |
+| Documentation URL | <https://micro.mu/help> |
 | Privacy policy URL | <https://micro.mu/privacy> |
 
 Check the first four against a running instance before submitting anywhere:

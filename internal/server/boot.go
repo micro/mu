@@ -17,7 +17,7 @@ import (
 	memsvc "mu/service/cache"
 	"mu/service/chat"
 	"mu/service/contacts"
-	"mu/service/db"
+	"mu/service/docs"
 	"mu/service/events"
 	"mu/service/files"
 	"mu/service/images"
@@ -77,7 +77,7 @@ func boot() {
 	web.Load()
 	stream.LoadService()
 	chat.LoadService()
-	db.LoadService()
+	docs.LoadService()
 	memsvc.LoadService()
 	images.Load()
 	// The cache behind /img, which serves article images from here instead of

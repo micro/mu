@@ -22,7 +22,7 @@ go build -o mu .
 
 `--serve` is the switch between the two things the binary is: with it you get
 the server, without it the same binary is the CLI (`mu news_list`, `mu agent
-"..."` — see [CLI](/docs/cli)). Forget it and you get `--serve not set`.
+"..."` — see [CLI](/help/cli)). Forget it and you get `--serve not set`.
 
 Mu runs on **port 8080** by default. Visit `http://localhost:8080`, create the
 first account — it becomes admin — and pick an AI provider.
@@ -57,7 +57,7 @@ export BRAVE_API_KEY="your-key"
 Mu also reads a dotenv file at startup: `$MU_ENV_FILE`, then `~/.env`, then
 `~/.mu/.env` — the first that exists wins.
 
-See [Configuration](/docs/environment) for the complete list.
+See [Configuration](/help/environment) for the complete list.
 
 ## Production Deployment
 
@@ -268,7 +268,7 @@ Everything is under `~/.mu/`:
 Back up that directory and you have backed up the instance. It is plain JSON on
 disk, so it is greppable and diffable; `MU_USE_SQLITE=1` moves just the search
 index into `~/.mu/data/index.db`, and setting `S3_*` moves stored file bytes to
-an object store (see [Configuration](/docs/environment)).
+an object store (see [Configuration](/help/environment)).
 
 In Docker, `HOME` is `/data`, so this tree is `/data/.mu` on the mounted volume.
 

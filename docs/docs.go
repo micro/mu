@@ -40,9 +40,22 @@ var catalog = []Document{
 // Load initializes the docs building block.
 func Load() {}
 
-// Handler serves the /docs endpoint
+// Slugs returns every document's address, in catalogue order.
+//
+// The router needs them one at a time: these pages were at /docs/<slug> before
+// Docs became the name of a service, and each old address keeps a redirect that
+// an exact mux pattern serves ahead of the service's /docs.
+func Slugs() []string {
+	out := make([]string, 0, len(catalog))
+	for _, d := range catalog {
+		out = append(out, d.Slug)
+	}
+	return out
+}
+
+// Handler serves the /help endpoint
 func Handler(w http.ResponseWriter, r *http.Request) {
-	path := strings.TrimPrefix(r.URL.Path, "/docs")
+	path := strings.TrimPrefix(r.URL.Path, "/help")
 	path = strings.TrimPrefix(path, "/")
 
 	// If no specific doc requested, show index
@@ -78,7 +91,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Wrap in navigation
 	html := fmt.Sprintf(`<div class="docs">
 <div class="docs-nav">
-<a href="/docs">← All Docs</a>
+<a href="/help">← All Help</a>
 </div>
 <div class="docs-content">%s</div>
 </div>`, string(rendered))
@@ -121,7 +134,7 @@ func renderIndex(w http.ResponseWriter, r *http.Request) {
 	for _, slug := range essentials {
 		for _, doc := range catalog {
 			if doc.Slug == slug {
-				content.WriteString(fmt.Sprintf(`<div style="margin-bottom:12px"><a href="/docs/%s" style="font-weight:600;font-size:15px">%s</a><br><span style="color:#666;font-size:13px">%s</span></div>`, doc.Slug, doc.Title, doc.Description))
+				content.WriteString(fmt.Sprintf(`<div style="margin-bottom:12px"><a href="/help/%s" style="font-weight:600;font-size:15px">%s</a><br><span style="color:#666;font-size:13px">%s</span></div>`, doc.Slug, doc.Title, doc.Description))
 			}
 		}
 	}
@@ -153,7 +166,7 @@ func renderIndex(w http.ResponseWriter, r *http.Request) {
 
 		content.WriteString(fmt.Sprintf(`<h3 style="margin:24px 0 8px">%s</h3>`, cat))
 		for _, doc := range docs {
-			content.WriteString(fmt.Sprintf(`<div style="margin-bottom:8px"><a href="/docs/%s" style="font-size:14px">%s</a> <span style="color:#888;font-size:13px">— %s</span></div>`, doc.Slug, doc.Title, doc.Description))
+			content.WriteString(fmt.Sprintf(`<div style="margin-bottom:8px"><a href="/help/%s" style="font-size:14px">%s</a> <span style="color:#888;font-size:13px">— %s</span></div>`, doc.Slug, doc.Title, doc.Description))
 		}
 	}
 

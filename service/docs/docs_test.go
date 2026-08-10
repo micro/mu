@@ -1,9 +1,9 @@
-package db
+package docs
 
 // The store an agent writes to and the store an app writes to are separate.
 //
-// This was documented the other way round for as long as db_* existed: the
-// comment said mu.db and db_* were "literally the same records", so an agent
+// This was documented the other way round for as long as docs_* existed: the
+// comment said mu.db and docs_* were "literally the same records", so an agent
 // could "put something where an app will find it". They are namespaced apart —
 // apps get "apps/<slug>" each, this surface gets "api" — and anybody who built
 // on the claim would have found their records simply absent, with nothing
@@ -17,7 +17,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	dir, err := os.MkdirTemp("", "mu-db-test")
+	dir, err := os.MkdirTemp("", "mu-docs-test")
 	if err != nil {
 		panic(err)
 	}

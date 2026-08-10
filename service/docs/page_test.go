@@ -1,4 +1,4 @@
-package db
+package docs
 
 // The page can do what the tools can do.
 //
@@ -49,7 +49,7 @@ func signedIn(t *testing.T, owner, method, target string, form url.Values) *http
 func post(t *testing.T, owner string, form url.Values) string {
 	t.Helper()
 	w := httptest.NewRecorder()
-	Handler(w, signedIn(t, owner, "POST", "/db", form))
+	Handler(w, signedIn(t, owner, "POST", "/docs", form))
 	if w.Code != http.StatusSeeOther {
 		t.Fatalf("expected a redirect after a write, got %d: %s", w.Code, w.Body.String())
 	}
@@ -60,7 +60,7 @@ func post(t *testing.T, owner string, form url.Values) string {
 // asserts what a reader would actually be shown rather than what the store holds.
 func records(t *testing.T, owner, collection string) []userdb.Record {
 	t.Helper()
-	r := signedIn(t, owner, "GET", "/db?collection="+collection, nil)
+	r := signedIn(t, owner, "GET", "/docs?collection="+collection, nil)
 	r.Header.Set("Accept", "application/json")
 	w := httptest.NewRecorder()
 	Handler(w, r)
@@ -80,7 +80,7 @@ func TestThePageCreatesReadsEditsAndDeletes(t *testing.T) {
 	if loc := post(t, owner, url.Values{
 		"action": {"save"}, "collection": {"leads"},
 		"data": {`{"name":"Sam","stage":"contacted"}`},
-	}); loc != "/db?collection=leads" {
+	}); loc != "/docs?collection=leads" {
 		t.Fatalf("expected to land on the collection, got %q", loc)
 	}
 
@@ -90,7 +90,7 @@ func TestThePageCreatesReadsEditsAndDeletes(t *testing.T) {
 	}
 	id := got[0].ID
 
-	// Edit — the same form with an id, which is what db_create does with an id.
+	// Edit — the same form with an id, which is what docs_create does with an id.
 	post(t, owner, url.Values{
 		"action": {"save"}, "collection": {"leads"}, "id": {id},
 		"data": {`{"name":"Sam","stage":"closed"}`}, "public": {"1"},
@@ -110,7 +110,7 @@ func TestThePageCreatesReadsEditsAndDeletes(t *testing.T) {
 	}
 }
 
-// The query controls are db_list's arguments, so they have to behave like them.
+// The query controls are docs_list's arguments, so they have to behave like them.
 func TestThePageQueriesLikeDbList(t *testing.T) {
 	const owner = "page-query"
 	for _, rec := range []string{
@@ -122,7 +122,7 @@ func TestThePageQueriesLikeDbList(t *testing.T) {
 	}
 
 	ask := func(qs string) []userdb.Record {
-		r := signedIn(t, owner, "GET", "/db?collection=q&"+qs, nil)
+		r := signedIn(t, owner, "GET", "/docs?collection=q&"+qs, nil)
 		r.Header.Set("Accept", "application/json")
 		w := httptest.NewRecorder()
 		Handler(w, r)
@@ -163,7 +163,7 @@ func TestThePageCannotTouchSomebodyElsesRecords(t *testing.T) {
 	id := records(t, mine, "private")[0].ID
 
 	w := httptest.NewRecorder()
-	Handler(w, signedIn(t, theirs, "POST", "/db",
+	Handler(w, signedIn(t, theirs, "POST", "/docs",
 		url.Values{"action": {"delete"}, "collection": {"private"}, "id": {id}}))
 	if loc := w.Header().Get("Location"); !strings.Contains(loc, "error=") {
 		t.Fatalf("a stranger's delete was not refused, redirected to %q", loc)
@@ -180,7 +180,7 @@ func TestThePageCannotTouchSomebodyElsesRecords(t *testing.T) {
 // silently seeing an empty database.
 func TestThePageRefusesAGuest(t *testing.T) {
 	w := httptest.NewRecorder()
-	Handler(w, httptest.NewRequest("GET", "/db", nil))
+	Handler(w, httptest.NewRequest("GET", "/docs", nil))
 	if w.Code != http.StatusUnauthorized {
 		t.Fatalf("expected a guest to be refused, got %d", w.Code)
 	}

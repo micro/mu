@@ -77,11 +77,11 @@ func TestCatalog_HasAboutDoc(t *testing.T) {
 
 // The markdown files open with their own H1 because they are read on GitHub
 // too. The page shell renders doc.Title above the content, so a served doc that
-// keeps its H1 shows its name twice — which is exactly what /docs/about,
-// /docs/installation and /docs/mcp did.
+// keeps its H1 shows its name twice — which is exactly what /help/about,
+// /help/installation and /help/mcp did.
 func TestServedDocDoesNotRepeatItsTitle(t *testing.T) {
 	for _, doc := range catalog {
-		req := httptest.NewRequest(http.MethodGet, "/docs/"+doc.Slug, nil)
+		req := httptest.NewRequest(http.MethodGet, "/help/"+doc.Slug, nil)
 		w := httptest.NewRecorder()
 		Handler(w, req)
 
