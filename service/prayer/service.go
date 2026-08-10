@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"mu/internal/quota"
 	"mu/internal/service"
 )
 
@@ -133,5 +134,11 @@ var Spec = service.Spec{
 		"Times":      {Aliases: []string{"islam_prayer"}, Doc: "Get today's Islamic prayer times (salah) for a location, and which prayer is next"},
 		"Qibla":      {Aliases: []string{"islam_qibla"}, Doc: "Get the qibla — the compass bearing to face for Islamic prayer from a location"},
 		"Reflection": {Aliases: []string{"prayer_today", "islam_today", "islam", "reminder"}, Doc: "Get today's Islamic reflection — a verse of the Quran with its surah, a saying of the Prophet, and a name of Allah"},
+
+		// Looking something up in the sources, rather than being told today's.
+		// Implemented in scripture.go.
+		"Verse":  {Aliases: []string{"quran"}, Doc: "Look up a chapter of the Quran, or one verse within it, by number. Use prayer_search to ask a question instead of naming a reference"},
+		"Saying": {Aliases: []string{"hadith"}, Doc: "Look up a hadith from Sahih al-Bukhari, optionally from a given book"},
+		"Search": {Aliases: []string{"quran_search"}, Doc: "Search the Quran, the hadith and the names of Allah by meaning — ask a question in plain language rather than naming a reference", Cost: quota.OpQuranSearch},
 	},
 }

@@ -119,7 +119,7 @@ Here are the tools
 | **Memory** | `memory_set` · `memory_list` · `memory_delete` — what an agent keeps about you between conversations |
 | **News** | `news_list` · `news_read` · `news_search` — RSS aggregation, full articles |
 | **Places** | `places_search` · `places_nearby` · `places_eta` · `places_geocode` — points of interest, geocoding, travel time |
-| **Prayer** | `prayer_times` · `prayer_qibla` · `prayer_verse` · `prayer_saying` · `prayer_reflection` — Islamic prayer times, qibla, and a daily verse, saying and name |
+| **Prayer** | `prayer_times` · `prayer_qibla` · `prayer_reflection` · `prayer_verse` · `prayer_saying` · `prayer_search` — Islamic prayer times, qibla, a daily verse and saying, and the sources by reference or by question |
 | **Search** | `web_search` · `web_fetch` — search the web, read a page as clean text |
 | **Social** | `social_list` · `social_search` — public threads and replies |
 | **Stream** | `stream_list` · `stream_post` — this instance's own timeline |
@@ -128,7 +128,7 @@ Here are the tools
 | **Video** | `video_list` · `video_search` — curated channels, no ads or recommendations |
 | **Wallet** | `wallet_balance` · `wallet_check` — credits, which is what calls are charged in |
 | **Weather** | `weather_forecast` — conditions, forecast, pollen |
-| **Platform** | `agent_ask` · `agent_list` — ask the whole thing a question and let it compose, or ask one of your own agents by name. Also `quran_search` and `saved_list` |
+| **Platform** | `agent_ask` · `agent_list` — ask the whole thing a question and let it compose, or ask one of your own agents by name. Also `saved_list` |
 
 ## Request a tool
 
