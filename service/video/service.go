@@ -34,6 +34,6 @@ var Spec = service.Spec{
 	Icon:        "video.png",
 	Card:        Latest,
 	Endpoints: map[string]service.Endpoint{
-		"List": {Doc: "Read the latest videos from curated channels"},
+		"List": {Aliases: []string{"video"}, Doc: "Read the latest videos from curated channels"},
 	},
 }

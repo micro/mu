@@ -138,7 +138,7 @@ var Spec = service.Spec{
 	Staple:      true,
 	Icon:        "wallet.png",
 	Endpoints: map[string]service.Endpoint{
-		"Balance": {Doc: "Read the caller's current credit balance"},
+		"Balance": {Aliases: []string{"wallet"}, Doc: "Read the caller's current credit balance"},
 		"Charge":  {Doc: "Deduct the cost of an operation from the caller's credit balance", Destructive: true},
 		"Check":   {Doc: "Check whether the caller can afford an operation, without charging"},
 	},

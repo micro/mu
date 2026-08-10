@@ -15,7 +15,7 @@ type Server struct{}
 // Generation is metered against the caller's wallet; the account comes from
 // the call context, never from the model.
 type GenerateRequest struct {
-	Prompt string `json:"prompt" description:"What the image should depict"`
+	Prompt string `json:"prompt" required:"true" description:"What the image should depict"`
 }
 
 // GenerateResponse is the created image.
@@ -44,6 +44,6 @@ var Spec = service.Spec{
 	Icon:        "images.svg",
 	Card:        CardHTML,
 	Endpoints: map[string]service.Endpoint{
-		"Generate": {Doc: "Generate an image from a text prompt and return its URL", Cost: quota.OpImageGenerate},
+		"Generate": {Aliases: []string{"image_generate"}, Doc: "Generate an image from a text prompt and return its URL", Cost: quota.OpImageGenerate},
 	},
 }

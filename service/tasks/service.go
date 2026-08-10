@@ -14,7 +14,7 @@ type Server struct{}
 
 // CreateRequest adds a task.
 type CreateRequest struct {
-	Title    string `json:"title" description:"What is to be done"`
+	Title    string `json:"title" required:"true" description:"What is to be done"`
 	Detail   string `json:"detail" description:"Anything the doer needs to know: context, links, constraints"`
 	Assignee string `json:"assignee" description:"me (default) or agent — assign to the agent and it can pick the task up"`
 	Due      string `json:"due" description:"Optional deadline, RFC3339 or 2006-01-02 15:04"`

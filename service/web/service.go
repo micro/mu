@@ -30,7 +30,7 @@ type Server struct{}
 
 // SearchRequest is a web search query.
 type SearchRequest struct {
-	Query string `json:"query" description:"Search query"`
+	Query string `json:"query" required:"true" description:"Search query"`
 	Limit int    `json:"limit" description:"Optional max number of results"`
 }
 
@@ -48,7 +48,7 @@ func (Server) Search(_ context.Context, req *SearchRequest, rsp *SearchResponse)
 
 // FetchRequest names the page to read.
 type FetchRequest struct {
-	URL string `json:"url" description:"The URL to fetch"`
+	URL string `json:"url" required:"true" description:"The URL to fetch"`
 }
 
 // FetchResponse is the cleaned readable page content.
@@ -90,7 +90,18 @@ var Spec = service.Spec{
 	Label:       "Search",
 	Icon:        "search.svg",
 	Endpoints: map[string]service.Endpoint{
-		"Fetch":  {Doc: "Fetch a web page by URL and return its readable content", Cost: quota.OpWebFetch},
-		"Search": {Doc: "Search the web for current information and news", Cost: quota.OpWebSearch},
+		"Fetch": {
+			Aliases: []string{"search_fetch"},
+			Doc: "Fetch a web page by URL and return its cleaned readable content, " +
+				"stripping ads, popups and navigation. Needs an account",
+			Cost: quota.OpWebFetch,
+			// Costs nothing to run — an http.Get and a readability pass in
+			// this process — but fetching any URL a caller names is a request
+			// this server makes on their behalf, to wherever they say. That
+			// wants somebody accountable behind it, which is a different
+			// question from what it costs.
+			AccountOnly: true,
+		},
+		"Search": {Aliases: []string{"search_web"}, Doc: "Search the web for current information and news", Cost: quota.OpWebSearch},
 	},
 }

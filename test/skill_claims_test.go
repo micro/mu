@@ -101,6 +101,15 @@ func TestEveryToolTheSkillNamesIsReal(t *testing.T) {
 		for _, a := range tool.Aliases {
 			real[a] = true
 		}
+		// An argument written in backticks looks exactly like a tool name to
+		// the pattern below — `day_start`, `day_end` on events_free. They are
+		// real things the skill is right to name; they are just not tools.
+		// This used to pass by accident, because the hand-written registrations
+		// declared their parameters as Name: "day_start" and the source scan
+		// swept those up with the tool names.
+		for _, p := range tool.Params {
+			real[p.Name] = true
+		}
 	}
 	// Tools registered by hand rather than derived from a Spec are not in
 	// this test binary's registry, so check them against the source that

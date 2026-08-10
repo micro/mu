@@ -88,9 +88,21 @@ func TestHandWrittenToolsReadTheParametersTheyDeclare(t *testing.T) {
 		}
 	}
 
-	if checked < 5 {
-		t.Errorf("only %d tools were compared; the patterns have stopped matching "+
-			"and this test is passing without checking anything", checked)
+	// The population this test has anything to say about is shrinking on
+	// purpose. A derived tool cannot drift this way — its schema is generated
+	// from the request struct its handler is handed, so declaring a parameter
+	// and never reading it is not expressible. Only tools written out by hand,
+	// which declare a schema in one place and pull arguments out of a map in
+	// another, can disagree with themselves.
+	//
+	// Thirty-odd of those became derived. The floor is what is left rather than
+	// a number chosen to pass: it still catches the patterns silently ceasing
+	// to match, and when it reaches zero this test has no subject and should be
+	// deleted rather than propped up.
+	if checked < 2 {
+		t.Errorf("only %d tools were compared; either the patterns have stopped "+
+			"matching, or the last hand-written tools with readable argument "+
+			"handling are gone and this test should go with them", checked)
 	}
 	t.Logf("compared declared and read parameters for %d hand-written tools", checked)
 }

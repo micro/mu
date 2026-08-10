@@ -151,6 +151,11 @@ func derivedTool(spec service.Spec, ep service.Endpoint, name string, reqType re
 		Aliases:     ep.Aliases,
 		Description: ep.Doc,
 		WalletOp:    ep.Cost,
+		// A method where paying cannot stand in for having an account says so
+		// here, or the tool is advertised to an anonymous caller and refused
+		// one call later — and, for web_fetch, is a request this server makes
+		// to wherever a stranger names.
+		AccountOnly: ep.AccountOnly,
 		Params:      params(reqType),
 	}
 }

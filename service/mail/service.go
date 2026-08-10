@@ -119,7 +119,7 @@ var Spec = service.Spec{
 	Scoped:      true,
 	Icon:        "mail.png",
 	Endpoints: map[string]service.Endpoint{
-		"Inbox":  {Doc: "List the account's most recent messages — read my mail, check my inbox"},
+		"Inbox":  {Aliases: []string{"mail_read"}, Doc: "List the account's most recent messages — read my mail, check my inbox"},
 		"Search": {Doc: "Search the account's mail and return matching messages"},
 	},
 }

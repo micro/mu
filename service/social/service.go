@@ -34,6 +34,6 @@ var Spec = service.Spec{
 	Icon:        "social.svg",
 	Card:        CardHTML,
 	Endpoints: map[string]service.Endpoint{
-		"List": {Doc: "Read the latest social posts from the network"},
+		"List": {Aliases: []string{"social"}, Doc: "Read the latest social posts from the network"},
 	},
 }

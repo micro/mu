@@ -28,8 +28,8 @@ func caller(ctx context.Context) (string, error) {
 // ── Put ─────────────────────────────────────────────────────────
 
 type PutRequest struct {
-	Name     string `json:"name" description:"File name including its extension, e.g. \"report.csv\""`
-	Content  string `json:"content" description:"The file's contents — plain text, or base64 when encoding is \"base64\""`
+	Name     string `json:"name" required:"true" description:"File name including its extension, e.g. \"report.csv\""`
+	Content  string `json:"content" required:"true" description:"The file's contents — plain text, or base64 when encoding is \"base64\""`
 	Encoding string `json:"encoding,omitempty" description:"\"base64\" for binary files; omit for text"`
 	Type     string `json:"type,omitempty" description:"Optional content type, e.g. \"text/csv\". Guessed from the name when omitted"`
 }
@@ -59,7 +59,7 @@ func (Server) Put(ctx context.Context, req *PutRequest, rsp *PutResponse) error 
 // ── Get ─────────────────────────────────────────────────────────
 
 type GetRequest struct {
-	ID string `json:"id" description:"The file's id, as returned by files_put or files_list"`
+	ID string `json:"id" required:"true" description:"The file's id, as returned by files_put or files_list"`
 }
 
 type GetResponse struct {
@@ -120,7 +120,7 @@ func (Server) List(ctx context.Context, _ *ListRequest, rsp *ListResponse) error
 // ── Delete ──────────────────────────────────────────────────────
 
 type DeleteRequest struct {
-	ID string `json:"id" description:"The file's id"`
+	ID string `json:"id" required:"true" description:"The file's id"`
 }
 
 type DeleteResponse struct {
@@ -144,8 +144,8 @@ func (Server) Delete(ctx context.Context, req *DeleteRequest, rsp *DeleteRespons
 // ── Share ───────────────────────────────────────────────────────
 
 type ShareRequest struct {
-	ID     string `json:"id" description:"The file's id"`
-	Public bool   `json:"public" description:"True to let anyone with the URL read it, false to make it private again"`
+	ID     string `json:"id" required:"true" description:"The file's id"`
+	Public bool   `json:"public" required:"true" description:"True to let anyone with the URL read it, false to make it private again"`
 }
 
 type ShareResponse struct {

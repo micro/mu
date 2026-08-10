@@ -61,7 +61,7 @@ func (Server) List(ctx context.Context, req *ListRequest, rsp *ListResponse) err
 // ── Post ────────────────────────────────────────────────────────
 
 type PostRequest struct {
-	Content string `json:"content" description:"What to post to the console"`
+	Content string `json:"content" required:"true" description:"What to post to the console"`
 }
 
 type PostResponse struct {
@@ -102,7 +102,7 @@ var Spec = service.Spec{
 	Page:        "/stream",
 	Icon:        "stream.svg",
 	Endpoints: map[string]service.Endpoint{
-		"List": {Doc: "Read recent events from the console timeline"},
+		"List": {Aliases: []string{"stream"}, Doc: "Read recent events from the console timeline"},
 		// Account, because posting needs a caller while reading does not. The
 		// hand-written stream_post in internal/api/mcp.go currently overrides
 		// this one and forwards the session; declaring it here means the derived

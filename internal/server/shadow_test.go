@@ -89,6 +89,21 @@ func diffTool(hand, derived api.Tool) string {
 	if strings.Join(hand.Aliases, ",") != strings.Join(derived.Aliases, ",") {
 		b.WriteString(fmt.Sprintf("  aliases: hand %v, derived %v\n", hand.Aliases, derived.Aliases))
 	}
+	// The field this diff was written without, which is how web_fetch — free,
+	// and account-only because fetching any URL a stranger names is a request
+	// this server makes on their behalf — was deleted and silently opened to
+	// anonymous callers. A comparison is only as good as the fields it knows
+	// about, so every field that changes what a caller may do belongs here.
+	if hand.AccountOnly != derived.AccountOnly {
+		b.WriteString(fmt.Sprintf("  account-only: hand %v, derived %v\n", hand.AccountOnly, derived.AccountOnly))
+	}
+	if hand.OptionalAuth != derived.OptionalAuth {
+		b.WriteString(fmt.Sprintf("  optional-auth: hand %v, derived %v\n", hand.OptionalAuth, derived.OptionalAuth))
+	}
+	if hand.Method+hand.Path != derived.Method+derived.Path {
+		b.WriteString(fmt.Sprintf("  rest: hand %q %q, derived %q %q\n",
+			hand.Method, hand.Path, derived.Method, derived.Path))
+	}
 	if d := diffParams(hand.Params, derived.Params); d != "" {
 		b.WriteString("  params\n" + d)
 	}

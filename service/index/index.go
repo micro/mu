@@ -24,7 +24,7 @@ type Server struct{}
 
 // Request searches everything mu knows for an account.
 type Request struct {
-	Query string `json:"query" description:"What to look for"`
+	Query string `json:"query" required:"true" description:"What to look for"`
 	Limit int    `json:"limit" description:"Max results (default 12)"`
 }
 
@@ -139,6 +139,6 @@ var Spec = service.Spec{
 	Handler:     Server{},
 	Description: "Search across the caller's own content",
 	Endpoints: map[string]service.Endpoint{
-		"Search": {Doc: "Search the caller's own content — indexed news, blog, social, video and saved items"},
+		"Search": {Aliases: []string{"index", "recall", "search"}, Doc: "Search the caller's own content — indexed news, blog, social, video and saved items"},
 	},
 }

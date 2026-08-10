@@ -16,7 +16,7 @@ type Server struct{}
 
 // SearchRequest looks for places by name or category, optionally near a place.
 type SearchRequest struct {
-	Query  string  `json:"query" description:"What to look for, e.g. 'ramen', 'pharmacy', 'Blue Bottle Coffee'"`
+	Query  string  `json:"query" required:"true" description:"What to look for, e.g. 'ramen', 'pharmacy', 'Blue Bottle Coffee'"`
 	Near   string  `json:"near" description:"Optional place to search near, e.g. 'Shoreditch, London' or 'SF'"`
 	Lat    float64 `json:"lat" description:"Optional latitude, if the location is already known"`
 	Lon    float64 `json:"lon" description:"Optional longitude, if the location is already known"`

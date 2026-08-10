@@ -32,7 +32,7 @@ func (Server) List(_ context.Context, req *ListRequest, rsp *ListResponse) error
 
 // ReadRequest selects one article.
 type ReadRequest struct {
-	ID string `json:"id" description:"Article id (from Headlines) or article URL"`
+	ID string `json:"id" required:"true" description:"Article id (from Headlines) or article URL"`
 }
 
 // ReadResponse is the full article text.
@@ -42,7 +42,7 @@ type ReadResponse struct {
 
 // SearchRequest searches indexed and live news for a user topic.
 type SearchRequest struct {
-	Query string `json:"query" description:"Search terms, e.g. latest AI news"`
+	Query string `json:"query" required:"true" description:"Search terms, e.g. latest AI news"`
 }
 
 // SearchResponse is model-ready news_search JSON, including freshness metadata
@@ -76,7 +76,7 @@ var Spec = service.Spec{
 	Icon:        "news.png",
 	Card:        Headlines,
 	Endpoints: map[string]service.Endpoint{
-		"List":   {Doc: "Read recent news headlines with short summaries, balanced across topics"},
+		"List":   {Aliases: []string{"news", "news_headlines"}, Doc: "Read recent news headlines with short summaries, balanced across topics"},
 		"Read":   {Doc: "Read one news article in full by its id or URL"},
 		"Search": {Doc: "Search indexed and live news for a topic", Cost: quota.OpNewsSearch},
 	},

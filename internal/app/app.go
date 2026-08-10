@@ -1656,7 +1656,6 @@ func RenderHTMLForRequest(title, desc, html string, r *http.Request) string {
 	return out
 }
 
-
 // VerifyBanner says, before you write anything, that you cannot post yet and
 // what to do about it. Empty for anyone who can.
 //
