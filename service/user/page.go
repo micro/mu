@@ -36,7 +36,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	who := sess.Account
 
 	saved := app.GetSavedList(who)
-	hidden := sortedKeys(app.GetHiddenItems(who))
+	hidden := app.GetHiddenList(who)
 	blocked := sortedKeys(app.GetBlockedUsers(who))
 
 	if app.WantsJSON(r) {
@@ -53,12 +53,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			html.EscapeString(it.Type)+" · "+it.SavedAt.Format("2 Jan 15:04"),
 			"remove", "/user/unsave?type="+html.EscapeString(it.Type)+"&id="+html.EscapeString(it.ID)))
 	}
-	for _, e := range hidden {
-		kind, id := split(e.key)
+	for _, it := range hidden {
 		hideRows.WriteString(row(
-			html.EscapeString(kind+" "+id),
-			e.at.Format("2 Jan 15:04"),
-			"show again", "/user/unhide?type="+html.EscapeString(kind)+"&id="+html.EscapeString(id)))
+			`<a href="`+html.EscapeString(it.URL)+`">`+html.EscapeString(it.Title)+`</a>`,
+			html.EscapeString(it.Type)+" · "+it.SavedAt.Format("2 Jan 15:04"),
+			"show again", "/user/unhide?type="+html.EscapeString(it.Type)+"&id="+html.EscapeString(it.ID)))
 	}
 	for _, e := range blocked {
 		blockRows.WriteString(row(

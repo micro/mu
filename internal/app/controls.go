@@ -176,6 +176,31 @@ func GetSavedList(userID string) []SavedEntry {
 	return out
 }
 
+// GetHiddenList is GetSavedList for the things a caller has hidden: same
+// resolution to a title and a permalink.
+//
+// Without it the hidden list rendered its storage key — "post
+// 1771579274882357473" — which names the row in the file rather than the thing
+// it refers to. Nobody can act on that: you cannot tell what you hid, and the
+// undo beside it is a guess.
+func GetHiddenList(userID string) []SavedEntry {
+	var out []SavedEntry
+	for key, t := range GetHiddenItems(userID) {
+		parts := strings.SplitN(key, ":", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		ct, cid := parts[0], parts[1]
+		u := contentURL(ct, cid)
+		if u == "" {
+			u = "#"
+		}
+		out = append(out, SavedEntry{Type: ct, ID: cid, URL: u, Title: savedTitle(ct, cid), SavedAt: t})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].SavedAt.After(out[j].SavedAt) })
+	return out
+}
+
 // savedTitle resolves a human title for a saved item from the content index,
 // falling back to the decoded URL (web) or the content-type label.
 func savedTitle(ct, cid string) string {
