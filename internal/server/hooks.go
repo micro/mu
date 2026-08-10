@@ -35,7 +35,7 @@ import (
 	"mu/internal/quota"
 	"mu/internal/service"
 	"mu/internal/settings"
-	"mu/internal/user"
+	profile "mu/internal/user"
 	"mu/service/apps"
 	"mu/service/blog"
 	"mu/service/contacts"
@@ -51,6 +51,7 @@ import (
 	"mu/service/social"
 	"mu/service/stream"
 	"mu/service/tasks"
+	"mu/service/user"
 	"mu/wallet"
 )
 
@@ -440,7 +441,7 @@ func wireHooks() {
 	docs.Load()
 
 	// load user presence tracking
-	user.Load()
+	profile.Load()
 
 	// Load the stream (platform event timeline).
 	stream.Load()
@@ -458,11 +459,11 @@ func wireHooks() {
 	}
 
 	// Wire user → blog callback (avoids direct import between building blocks)
-	user.GetUserPosts = func(authorID, authorName string) []user.UserPost {
+	profile.GetUserPosts = func(authorID, authorName string) []profile.UserPost {
 		posts := blog.GetPostsByAuthorID(authorID, authorName)
-		result := make([]user.UserPost, len(posts))
+		result := make([]profile.UserPost, len(posts))
 		for i, p := range posts {
-			result[i] = user.UserPost{
+			result[i] = profile.UserPost{
 				ID:        p.ID,
 				Title:     p.Title,
 				Content:   p.Content,
@@ -472,7 +473,7 @@ func wireHooks() {
 		}
 		return result
 	}
-	user.LinkifyContent = blog.Linkify
+	profile.LinkifyContent = blog.Linkify
 
 	// Wire @micro replies in the stream: run the agent against the sender's
 	// wallet and post the answer back into the timeline. Async, so the POST
@@ -492,18 +493,18 @@ func wireHooks() {
 		if answer == "" {
 			return
 		}
-		if !user.ModerateAIResponse(askerID, answer) {
+		if !profile.ModerateAIResponse(askerID, answer) {
 			app.Log("stream", "AI response for %s blocked by moderation", askerID)
 			return
 		}
 		stream.PostAgent(answer)
 	}
 
-	user.GetUserApps = func(authorID string) []user.UserApp {
+	profile.GetUserApps = func(authorID string) []profile.UserApp {
 		appList := apps.GetAppsByAuthor(authorID)
-		result := make([]user.UserApp, len(appList))
+		result := make([]profile.UserApp, len(appList))
 		for i, a := range appList {
-			result[i] = user.UserApp{
+			result[i] = profile.UserApp{
 				Slug:        a.Slug,
 				Name:        a.Name,
 				Description: a.Description,
@@ -530,7 +531,7 @@ func wireHooks() {
 		func(id string) { discord.DeleteLinks(id) },
 		func(id string) { telegram.DeleteLinks(id) },
 		func(id string) { whatsapp.DeleteLinks(id) },
-		func(id string) { app.ClearUserPrefs(id) },
+		func(id string) { user.Delete(id) },
 		memory.Clear,
 
 		// Everything the caller stored themselves. These six were missing, so

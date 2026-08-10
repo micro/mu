@@ -462,69 +462,6 @@ var tools = []Tool{
 			{Name: "body", Type: "string", Description: "Message body", Required: true},
 		},
 	},
-	// Content controls
-	{
-		Name:        "content_flag",
-		Aliases:     []string{"flag"},
-		Description: "Report a post, comment or message for a human moderator to look at. Takes the item id and a reason. Does not remove anything itself — use dismiss to hide something from your own view.",
-		Method:      "POST",
-		Path:        "/app/flag",
-		Params: []ToolParam{
-			{Name: "type", Type: "string", Description: "Content type (e.g. post, work, app)", Required: true},
-			{Name: "id", Type: "string", Description: "Content ID", Required: true},
-		},
-	},
-	{
-		Name:        "content_save",
-		Aliases:     []string{"save"},
-		Description: "Save an item to the caller's bookmarks so it can be found again. Takes the item id. Private to the caller, and reversible with unsave.",
-		Method:      "POST",
-		Path:        "/app/save",
-		Params: []ToolParam{
-			{Name: "type", Type: "string", Description: "Content type (e.g. post, work, app)", Required: true},
-			{Name: "id", Type: "string", Description: "Content ID", Required: true},
-		},
-	},
-	{
-		Name:        "content_unsave",
-		Aliases:     []string{"unsave"},
-		Description: "Remove an item from the caller's bookmarks, by id. Leaves the item itself untouched — this only forgets that it was saved.",
-		Method:      "POST",
-		Path:        "/app/unsave",
-		Params: []ToolParam{
-			{Name: "type", Type: "string", Description: "Content type", Required: true},
-			{Name: "id", Type: "string", Description: "Content ID", Required: true},
-		},
-	},
-	{
-		Name:        "content_hide",
-		Aliases:     []string{"dismiss"},
-		Description: "Hide an item so the caller stops seeing it, by id. Affects only this account's view; use flag to report something to a moderator instead.",
-		Method:      "POST",
-		Path:        "/app/dismiss",
-		Params: []ToolParam{
-			{Name: "type", Type: "string", Description: "Content type", Required: true},
-			{Name: "id", Type: "string", Description: "Content ID", Required: true},
-		},
-	},
-	{
-		Name:        "block_user",
-		Description: "Block a user — hides all their content from your view",
-		Method:      "POST",
-		Path:        "/app/block",
-		Params: []ToolParam{
-			{Name: "user", Type: "string", Description: "User ID to block", Required: true},
-		},
-	},
-	{
-		Name:        "unblock_user",
-		Description: "Stop blocking another account, so their posts and messages reach the caller again. Takes their username. Reverses block_user.",
-		Method:      "POST",
-		Path:        "/app/unblock",
-		Params: []ToolParam{
-			{Name: "user", Type: "string", Description: "User ID to unblock", Required: true},
-		},
-	},
 	{
 		Name:        "prayer_reflection",
 		Aliases:     []string{"prayer_today", "islam_today", "islam", "reminder"},

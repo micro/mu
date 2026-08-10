@@ -27,6 +27,7 @@ import (
 	"mu/service/prayer"
 	"mu/service/stream"
 	"mu/service/tasks"
+	user "mu/service/user"
 	"mu/service/video"
 	"mu/service/weather"
 	"mu/service/web"
@@ -83,6 +84,7 @@ func boot() {
 	usage.Load()
 	files.Load()
 	contacts.Load()
+	user.Load()
 	tasks.Load()
 	events.Load()
 }

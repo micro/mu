@@ -48,6 +48,18 @@ var legacy = map[string]string{
 	"stream":         "stream_list",
 	"mail_read":      "mail_inbox",
 	"reminder":       "prayer_reflection",
+	// The content verbs became a service — user.Save, user.Hide and the rest —
+	// and the names clients were already calling by have to survive that.
+	"content_save":   "user_save",
+	"save":           "user_save",
+	"content_unsave": "user_unsave",
+	"unsave":         "user_unsave",
+	"content_hide":   "user_hide",
+	"dismiss":        "user_hide",
+	"content_flag":   "user_flag",
+	"flag":           "user_flag",
+	"block_user":     "user_block",
+	"unblock_user":   "user_unblock",
 }
 
 func TestEveryRetiredNameStillResolves(t *testing.T) {

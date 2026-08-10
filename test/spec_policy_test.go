@@ -25,6 +25,7 @@ import (
 	"mu/service/social"
 	"mu/service/stream"
 	"mu/service/tasks"
+	user "mu/service/user"
 	"mu/service/video"
 	"mu/service/weather"
 	"mu/service/web"
@@ -44,8 +45,8 @@ func allSpecs() []service.Spec {
 		apps.Spec, blog.Spec, chat.Spec, contacts.Spec, db.Spec, events.Spec,
 		files.Spec, images.Spec, index.Spec, mail.Spec, markets.Spec,
 		memory.Spec, news.Spec, places.Spec, prayer.Spec, social.Spec,
-		stream.Spec, tasks.Spec, video.Spec, wallet.Spec, weather.Spec,
-		web.Spec,
+		stream.Spec, tasks.Spec, user.Spec, video.Spec, wallet.Spec,
+		weather.Spec, web.Spec,
 	}
 }
 

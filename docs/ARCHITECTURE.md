@@ -115,6 +115,7 @@ guessable.
 | `blog` | /blog | ✅ |  | Microblogging, daily digests, ActivityPub |
 | `chat` | /chat | ✅ |  | Live discussion rooms attached to an item |
 | `contacts` | /contacts | ✅ | ✅ | The caller's address book: turn a name into an address |
+| `user` | — | ✅ | ✅ | What an account does about other people's content: save, hide, flag, block. Headless — the lists it writes are read at /app/saved and /app/blocked |
 | `db` | /db | ✅ | ✅ | The caller's own records: named collections that outlive a conversation. Apps keep a separate store each through `mu.db` |
 | `events` | /events | ✅ | ✅ | Calendar: scheduling, `.ics` invites, and when you are free — optionally counting an attached Google Calendar |
 | `files` | /files | ✅ | ✅ | Per-user file storage: keep a file, get a URL |

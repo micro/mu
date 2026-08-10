@@ -142,3 +142,4 @@ func ClearUserPrefs(userID string) {
 	delete(prefs, userID)
 	savePrefs()
 }
+
