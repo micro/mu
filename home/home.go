@@ -541,8 +541,8 @@ func CardsHTML(r *http.Request, viewerAcc *auth.Account) string {
 	//
 	// It used to flatten every card into one list and deal them out
 	// alternately — left, right, left, right — which threw the configuration
-	// away. The file said blog, prayer, news on the left and markets, social,
-	// video, images on the right; the page rendered blog, news, social on the
+	// away. The file said blog, prayer, news on the left and markets, images,
+	// social, video on the right; the page rendered blog, news, social on the
 	// left and prayer, markets, video on the right. Nobody could set the
 	// layout, because the only code that read the layout was ignoring it.
 	//
