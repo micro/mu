@@ -893,11 +893,32 @@ func registerTools() {
 		return string(b), nil
 	})
 	api.RegisterTool(api.Tool{
-		Name:        "apps_run",
-		Description: "Run JavaScript code in a sandboxed environment and return the result. Use for calculations, data processing, or any computation the user needs.",
-		WalletOp:    wallet.OpAgentQuery,
+		Name: "apps_run",
+		// What this does, rather than what it sounded like it did.
+		//
+		// It said "Run JavaScript code in a sandboxed environment and return
+		// the result", and it does not return the result — it cannot. Nothing
+		// executes here: the code is stored and a URL comes back, and the code
+		// runs later, in the browser of whoever opens that URL. An agent
+		// calling this for "what is 17% of 4,318" gets a link and no answer,
+		// and then has to explain a link to somebody who asked a question.
+		//
+		// It is a good tool for "show me this working" — a chart, a converter,
+		// a small interactive page — and the description now says that instead.
+		Description: "Publish a snippet of JavaScript and get back a URL that runs it in a browser. " +
+			"Returns a link, not an answer: nothing executes until somebody opens the page, and " +
+			"whatever the code returns is displayed there. Use it to show something working — a " +
+			"chart, a converter, a small interactive page. It cannot compute a value and hand it " +
+			"back, so do not use it for arithmetic or data processing you need the result of.",
+		WalletOp: wallet.OpAgentQuery,
 		Params: []api.ToolParam{
-			{Name: "code", Type: "string", Description: "JavaScript code to execute. The code runs as a function body — use 'return' to output a value. Has access to mu.ai(), mu.web.fetch(), mu.db and mu.store for platform features.", Required: true},
+			// The old text promised mu.ai(), mu.web.fetch(), mu.db and mu.store.
+			// Two of those do not exist in this page's shim, and the ones that do
+			// post messages to a parent window that has no listener, so they
+			// never resolve. Advertising them sent agents down a path that hangs.
+			{Name: "code", Type: "string", Description: "JavaScript to run in the page. It runs as a " +
+				"function body — return a value and it is displayed. Sandboxed in an opaque origin: no " +
+				"cookies, no account, no access to this instance's tools.", Required: true},
 		},
 		Handle: func(args map[string]any) (string, error) {
 			code, _ := args["code"].(string)

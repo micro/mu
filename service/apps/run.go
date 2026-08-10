@@ -163,6 +163,18 @@ func handleCodeRunCreate(w http.ResponseWriter, r *http.Request) {
 
 // wrapCodeAsHTML wraps JavaScript code in a minimal HTML page that executes it
 // and sends the result back via mu.run().
+//
+// The window.mu helpers below — ai, fetch, user, store — post messages to
+// window.parent and wait for a reply. Nothing replies: the page that frames
+// this one is an iframe in a card with no message listener, so every one of
+// those promises hangs until the tab is closed. They are left in place rather
+// than removed because an app copied from elsewhere may reference them and a
+// missing function is a clearer failure than a silent one, but nothing should
+// advertise them until something answers. The tool's parameter description used
+// to, and agents followed it.
+//
+// Making them work means a bridge on the parent, the way saved apps got one in
+// sandbox.go. That is a change to what this does, not to what it says.
 func wrapCodeAsHTML(code string) string {
 	// Escape the code for embedding in a script tag
 	escaped, _ := json.Marshal(code)

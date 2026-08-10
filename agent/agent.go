@@ -883,7 +883,7 @@ const agentToolsDesc = `Available tools (use exact name):
 - apps_read: Read details of a specific app (args: {"slug":"app-slug"})
 - apps_build: build a small app (a tracker, checklist, or counter) from a description (args: {"prompt":"an expense tracker"})
 - apps_edit: Edit an existing app (args: {"slug":"app-slug","html":"<new html>","name":"New Name"})
-- apps_run: Run JavaScript code and return the result (args: {"code":"return 2+2"})
+- apps_run: publish a snippet of JavaScript and get a URL that runs it in a browser. Returns a link, not an answer — not for calculations (args: {"code":"return \u003ch1\u003ehello\u003c/h1\u003e"})
 - wallet_balance: Check your balance — credits, plus your Base address and USDC for topping up (no args). To add credits, point the user at /wallet/topup; there is no tool for it.
 - stream: Read the public event stream (no args)`
 
