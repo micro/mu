@@ -30,6 +30,7 @@ import (
 //
 // So "priced at zero" must not be read as "open", anywhere.
 func TestFreeDoesNotMeanOpen(t *testing.T) {
+	withPayments(t) // so "not metered" means priced at zero, not payments off
 	for _, gated := range []string{OpWebFetch, OpVideoSearch} {
 		if Metered(gated) {
 			t.Errorf("%s is metered, so an anonymous caller is asked to pay for "+
@@ -39,6 +40,7 @@ func TestFreeDoesNotMeanOpen(t *testing.T) {
 }
 
 func TestAFreeOperationIsNotMetered(t *testing.T) {
+	withPayments(t) // the question is the price, not whether payments exist
 	for _, free := range []string{OpNewsSearch, OpWebFetch, OpQuranSearch} {
 		if GetOperationCost(free) != 0 {
 			t.Fatalf("%s is no longer priced at zero — this test is about the ones that are", free)
@@ -53,8 +55,39 @@ func TestAFreeOperationIsNotMetered(t *testing.T) {
 	}
 }
 
+// withPayments turns this instance into one that can charge, which is what
+// "metered" is relative to.
+func withPayments(t *testing.T) {
+	t.Helper()
+	t.Setenv("STRIPE_SECRET_KEY", "sk_test_x")
+	t.Setenv("STRIPE_PUBLISHABLE_KEY", "pk_test_x")
+	if !PaymentsEnabled() {
+		t.Skip("payments cannot be enabled in this environment")
+	}
+}
+
+// Nothing is metered where nothing can be charged.
+//
+// A self-hosted instance with no Stripe and no x402 has no meter, no price and
+// nobody to bill — CheckQuota has always said so. The gates in front of it did
+// not ask, so a fresh install refused an anonymous caller with "this call is
+// metered" for weather, which is the first thing anybody tries.
+func TestWithoutPaymentsNothingIsMetered(t *testing.T) {
+	t.Setenv("STRIPE_SECRET_KEY", "")
+	t.Setenv("STRIPE_PUBLISHABLE_KEY", "")
+	if PaymentsEnabled() {
+		t.Skip("this instance is configured to take payments")
+	}
+	for _, op := range []string{OpWebSearch, OpImageGenerate, OpAgentQuery} {
+		if Metered(op) {
+			t.Errorf("%s reads as metered on an instance that cannot charge", op)
+		}
+	}
+}
+
 // And a paid one still asks, in the amount it costs rather than a floor.
 func TestAPaidOperationStillChallenges(t *testing.T) {
+	withPayments(t)
 	if !Metered(OpWebSearch) {
 		t.Fatal("web search stopped being metered, so nobody is charged for Brave")
 	}

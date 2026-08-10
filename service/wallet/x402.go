@@ -200,7 +200,20 @@ func creditsToAtomic(credits, decimals int) string {
 // wallet operation is not the same as a tool that costs money: news, web fetch,
 // quran and video search are all priced at zero on purpose, because nothing
 // bills us for them — see the cost block in wallet.go.
-func Metered(operation string) bool { return GetOperationCost(operation) > 0 }
+func Metered(operation string) bool {
+	// Nothing is metered on an instance that cannot charge.
+	//
+	// CheckQuota has always said so — "If payments not configured, no quotas
+	// (self-hosted instance)" — but the gates in front of it did not ask, so a
+	// self-hosted instance with no Stripe and no x402 still refused anonymous
+	// callers with "this call is metered". It was not: there was no meter, no
+	// price and nobody to bill. A fresh install could not answer
+	// weather_forecast, which is the first thing anybody tries.
+	if !PaymentsEnabled() {
+		return false
+	}
+	return GetOperationCost(operation) > 0
+}
 
 // BuildPaymentRequirements creates the accepted-payment list for an operation —
 // one entry per accepted asset; the paying agent picks one. Nil for a free

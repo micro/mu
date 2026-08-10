@@ -1,20 +1,71 @@
 # mu
 
-Tools for agents
+**Tools for agents.** News, mail, search, weather, markets, video, places,
+files, contacts, calendar and a database, as tools an agent can call over MCP
+and REST — behind one account instead of one per provider.
 
-## Overview
+An agent that wants those things otherwise needs six or seven signups, six
+cards on file and six tokens to rotate. Mu is one balance and one protocol, and
+for an agent paying per request over x402, no signup at all.
 
-Mu is an MCP server and web app for agents and humans. It provides access to the real world through MCP for the agents 
-and let's humans browse or interact with same content in a web app. Access news, web search, mail,
-markets, weather, video, places, images, files, events, contacts, and a database
-your agents can keep records in.
+The same services render as a web app: a home screen with a card per service
+and the agent inline. Nothing is built twice.
 
-Use it live at [micro.mu](https://micro.mu), or self-host.
+Use it live at [micro.mu](https://micro.mu), or run your own.
 
-## Usage
+## Run your own
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/micro/mu/main/install.sh | sh
+mu --serve
+```
+
+Open **http://localhost:8080**. The first account you create is the admin.
+
+It runs with no configuration. On a fresh install, with no keys at all, these
+answer: **news, markets, weather, prayer times, quran, mail, files, contacts,
+calendar, tasks, the database, and search over your own content.** Weather
+comes from Open-Meteo; places and geocoding from OpenStreetMap. No account, no
+card, no signup.
+
+Three things need a key, because there is no free provider worth wiring in:
+
+| For | Set | Notes |
+|---|---|---|
+| The agent, and anything that composes an answer | `ANTHROPIC_API_KEY`, `ATLAS_API_KEY`, or `OPENAI_BASE_URL` | free if you run Ollama locally |
+| Web search | `BRAVE_API_KEY` | Brave has a free tier |
+| Video | `YOUTUBE_API_KEY` | free quota |
+
+Without them those tools say so plainly rather than failing oddly. Everything
+else keeps working.
+
+```bash
+mu setup        # pick an AI provider, paste a key
+mu --serve
+```
+
+Everything else — mail and DKIM, Google sign-in, Stripe, x402 — is optional,
+and configurable from `/admin/env` once you are signed in as admin.
+
+Other ways to run it:
+
+```bash
+# Docker
+git clone https://github.com/micro/mu && cd mu
+docker compose up
+
+# From source
+git clone https://github.com/micro/mu
+cd mu && go install
+mu --serve
+```
+
+See the [installation guide](docs/INSTALLATION.md).
+
+## Connect an agent
 
 **Cursor, and clients with a config file.** Create a token at
-[/token](https://micro.mu/token) and add this to `~/.cursor/mcp.json`:
+[/token](https://micro.mu/token):
 
 ```json
 {
@@ -34,6 +85,8 @@ Use it live at [micro.mu](https://micro.mu), or self-host.
 sign in — no token needed. Pasting the URL into `claude_desktop_config.json`
 will not work: that file only takes local command-line servers.
 
+**Anything else.** It is JSON-RPC over HTTP POST:
+
 ```bash
 curl -X POST https://micro.mu/mcp -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
@@ -45,12 +98,10 @@ Scope the connection to the services you need:
 https://micro.mu/mcp?tools=news,web,mail
 ```
 
-That's what gets listed to your agent. Everything else is still callable.
+That is what gets listed to your agent. Everything else is still callable.
 
-**Browse the tools:** [micro.mu/tools](https://micro.mu/tools) — every tool,
-grouped by service, with what each call costs. 
-
-See [MCP docs](docs/MCP.md) for the protocol details.
+[micro.mu/tools](https://micro.mu/tools) lists every tool with what each call
+costs. See [MCP docs](docs/MCP.md) for the protocol.
 
 ## The tools
 
@@ -85,19 +136,6 @@ Here are the tools
 ## Request a tool
 
 [Open an issue](https://github.com/micro/mu/issues/new?labels=enhancement&title=Tool%20request%3A%20&body=What%20should%20it%20do%3F%0A%0AWhat%20would%20you%20use%20it%20for%3F%0A) and say what it should do.
-
-## The app
-
-The server includes a web app with a home screen. Cards render each service at a glance (headlines,
-prices, weather, unread mail) and the agent sits inline to act on what you're
-looking at.
-
-An LLM — Claude, Atlas Cloud (DeepSeek), or a local Ollama / OpenAI-compatible
-endpoint — calls the services as tools, composes answers, and keeps per-user
-memory across sessions.
-
-Sign in with a username and password, a **passkey** (WebAuthn), or **Google**.
-For the CLI, generate a Personal Access Token at `/token`.
 
 ## CLI
 
@@ -144,50 +182,16 @@ composing, and `/usage` for your own stats.
 
 Setup for both is in [Installation](docs/INSTALLATION.md).
 
-## Self-hosting
+## The app
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/micro/mu/main/install.sh | sh
-```
+The server includes a web app. A home screen renders each service at a glance —
+headlines, prices, weather, unread mail — and the agent sits inline to act on
+what you are looking at. Apps run sandboxed, in an opaque origin, and reach the
+platform through a fixed set of operations rather than your session.
 
-```bash
-# Docker
-git clone https://github.com/micro/mu && cd mu
-docker compose up
+Sign in with a username and password, a passkey (WebAuthn), or Google.
 
-# From source
-git clone https://github.com/micro/mu
-cd mu && go install
-mu --serve
-```
-
-### First-run setup
-
-Open **http://localhost:8080** and Mu walks you through a one-time setup: create
-your admin account and pick an AI provider (Claude, Atlas Cloud, or a local
-Ollama / OpenAI-compatible endpoint). That's enough to have a working agent.
-
-For terminal setup. Configure the provider headless, then start the server:
-
-```bash
-mu setup        # pick a provider, paste a key
-mu --serve      # first account you create becomes admin
-```
-
-Or set everything by hand:
-
-```bash
-export ADMIN=you@example.com          # who's admin (else: first account)
-export ATLAS_API_KEY=xxx              # or ANTHROPIC_API_KEY, or OPENAI_BASE_URL
-mu --serve
-```
-
-Once you're admin, every other key (YouTube, Brave search, weather, mail/DKIM,
-Google sign-in…) is configurable from `/admin/env` in the browser.
-
-See [Installation guide](docs/INSTALLATION.md).
-
-### Configuration
+## Configuration
 
 Customise feeds, prompts and cards by editing JSON files:
 
@@ -206,6 +210,3 @@ Full docs in the [docs](docs/) folder. Start with [MCP](docs/MCP.md) for agents,
 [/tools](https://micro.mu/tools).
 
 ## License
-
-[AGPL-3.0](LICENSE) — use, modify, distribute. If you run a modified version as a
-service, share the source.
