@@ -1,8 +1,6 @@
-package wallet
+package billing
 
 import (
-	"net/http"
-	"net/http/httptest"
 	"testing"
 	"time"
 )
@@ -395,20 +393,5 @@ func TestGetTransactions_EmptyUser(t *testing.T) {
 	}
 	if len(txs) != 0 {
 		t.Errorf("expected 0 transactions, got %d", len(txs))
-	}
-}
-
-func TestRespondTransferErrorEscapesRedirectMessage(t *testing.T) {
-	req := httptest.NewRequest("POST", "/wallet/transfer", nil)
-	rr := httptest.NewRecorder()
-
-	respondTransferError(rr, req, "insufficient balance & retry")
-
-	if rr.Code != http.StatusSeeOther {
-		t.Fatalf("status = %d, want %d", rr.Code, http.StatusSeeOther)
-	}
-	loc := rr.Header().Get("Location")
-	if loc != "/wallet/transfer?error=insufficient+balance+%26+retry" {
-		t.Fatalf("Location = %q", loc)
 	}
 }

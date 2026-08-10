@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strings"
 
+	"mu/billing"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/service/wallet"
@@ -52,13 +53,13 @@ func ReadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check quota (same as web_fetch)
-	canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, wallet.OpWebFetch)
+	canProceed, _, cost, _ := billing.CheckQuota(sess.Account, billing.OpWebFetch)
 	if !canProceed {
 		if app.WantsJSON(r) {
 			app.RespondError(w, http.StatusPaymentRequired, fmt.Sprintf("reading pages requires %d credits", cost))
 			return
 		}
-		content := wallet.QuotaExceededPage(wallet.OpWebFetch, cost)
+		content := wallet.QuotaExceededPage(billing.OpWebFetch, cost)
 		w.Write([]byte(app.RenderHTMLForRequest("Read", "Read Page", content, r)))
 		return
 	}
@@ -67,7 +68,7 @@ func ReadHandler(w http.ResponseWriter, r *http.Request) {
 	title, body, fetchErr := FetchAndExtractHTMLProxied(rawURL)
 
 	if fetchErr == nil {
-		wallet.ConsumeQuota(sess.Account, wallet.OpWebFetch)
+		billing.ConsumeQuota(sess.Account, billing.OpWebFetch)
 	}
 
 	// JSON response for API callers

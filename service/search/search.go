@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"mu/billing"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/settings"
@@ -238,13 +239,13 @@ func WebHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check quota (5p per search)
-	canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, wallet.OpWebSearch)
+	canProceed, _, cost, _ := billing.CheckQuota(sess.Account, billing.OpWebSearch)
 	if !canProceed {
 		if app.WantsJSON(r) {
 			app.RespondError(w, http.StatusPaymentRequired, fmt.Sprintf("web search requires %d credits", cost))
 			return
 		}
-		content := searchBar + wallet.QuotaExceededPage(wallet.OpWebSearch, cost)
+		content := searchBar + wallet.QuotaExceededPage(billing.OpWebSearch, cost)
 		w.Write([]byte(app.RenderHTMLForRequest("Search", "Search the web", content, r)))
 		return
 	}
@@ -253,7 +254,7 @@ func WebHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Only consume quota on success to avoid charging for failed API calls
 	if braveErr == nil {
-		wallet.ConsumeQuota(sess.Account, wallet.OpWebSearch)
+		billing.ConsumeQuota(sess.Account, billing.OpWebSearch)
 	}
 
 	// JSON response for API/MCP callers

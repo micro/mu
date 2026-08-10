@@ -1,4 +1,4 @@
-package wallet
+package billing
 
 import (
 	"bytes"
@@ -14,8 +14,9 @@ import (
 	"strconv"
 	"strings"
 
-	"mu/internal/settings"
 	"time"
+
+	"mu/internal/settings"
 
 	"mu/internal/app"
 	_ "mu/internal/env" // load ~/.env before x402 config is read at init

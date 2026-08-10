@@ -21,6 +21,7 @@ import (
 	"syscall"
 	"time"
 
+	"mu/billing"
 	"mu/home"
 	"mu/internal/api"
 	"mu/internal/app"
@@ -30,7 +31,6 @@ import (
 	"mu/internal/user"
 	"mu/service/blog"
 	"mu/service/mail"
-	"mu/service/wallet"
 )
 
 // serve builds the handler and runs the server until interrupted.
@@ -158,8 +158,8 @@ func serve(addr string) {
 					// deny access if invalid
 					if err := auth.ValidateToken(token); err != nil {
 						// Allow x402 payment as alternative to auth for API requests
-						if wallet.X402Enabled() && wallet.HasPayment(r) && (app.SendsJSON(r) || app.WantsJSON(r)) {
-							r = r.WithContext(context.WithValue(r.Context(), wallet.X402ContextKey, true))
+						if billing.X402Enabled() && billing.HasPayment(r) && (app.SendsJSON(r) || app.WantsJSON(r)) {
+							r = r.WithContext(context.WithValue(r.Context(), billing.X402ContextKey, true))
 						} else if app.SendsJSON(r) || app.WantsJSON(r) {
 							// Return JSON 401 for API-style requests
 							w.Header().Set("Content-Type", "application/json")
@@ -236,7 +236,7 @@ func serve(addr string) {
 				// same write gate as every other content path.
 				if !strings.Contains(rest, "/") {
 					if r.Method == "POST" {
-						op := wallet.OpSocialPost
+						op := billing.OpSocialPost
 						sess, err := auth.GetSession(r)
 						if err != nil {
 							app.Unauthorized(w, r)
@@ -250,17 +250,17 @@ func serve(addr string) {
 							app.TooManyRequests(w, r, err.Error())
 							return
 						}
-						canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, op)
+						canProceed, _, cost, _ := billing.CheckQuota(sess.Account, op)
 						if !canProceed {
 							app.Error(w, r, http.StatusPaymentRequired,
 								fmt.Sprintf("This costs %d credit(s). Top up at /wallet/topup", cost))
 							return
 						}
-						if err := wallet.ConsumeQuota(sess.Account, op); err != nil {
+						if err := billing.ConsumeQuota(sess.Account, op); err != nil {
 							app.Error(w, r, http.StatusPaymentRequired, err.Error())
 							return
 						}
-						app.Log("wallet", "Charged %s %d credit(s) for POST /@%s status", sess.Account, wallet.GetOperationCost(op), rest)
+						app.Log("wallet", "Charged %s %d credit(s) for POST /@%s status", sess.Account, billing.GetOperationCost(op), rest)
 					}
 					user.Handler(w, r)
 					return
@@ -314,7 +314,7 @@ func serve(addr string) {
 					app.TooManyRequests(w, r, err.Error())
 					return
 				}
-				canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, op)
+				canProceed, _, cost, _ := billing.CheckQuota(sess.Account, op)
 				if !canProceed {
 					app.Error(w, r, http.StatusPaymentRequired,
 						fmt.Sprintf("This costs %d credit(s). Top up at /wallet/topup", cost))
@@ -325,11 +325,11 @@ func serve(addr string) {
 				// 5xx) are rare enough that the lost credit is
 				// acceptable — and it's the only way to guarantee
 				// we never forget to charge.
-				if err := wallet.ConsumeQuota(sess.Account, op); err != nil {
+				if err := billing.ConsumeQuota(sess.Account, op); err != nil {
 					app.Error(w, r, http.StatusPaymentRequired, err.Error())
 					return
 				}
-				app.Log("wallet", "Charged %s %d credit(s) for %s %s", sess.Account, wallet.GetOperationCost(op), r.Method, r.URL.Path)
+				app.Log("wallet", "Charged %s %d credit(s) for %s %s", sess.Account, billing.GetOperationCost(op), r.Method, r.URL.Path)
 			}
 
 			// MCP authorization: an unauthenticated call to a tool that needs an
@@ -345,7 +345,7 @@ func serve(addr string) {
 				r.Body.Close()
 				r.Body = io.NopCloser(bytes.NewReader(body))
 				if api.MCPToolNeedsAuth(body) {
-					if _, err := auth.GetSession(r); err != nil && !wallet.HasPayment(r) {
+					if _, err := auth.GetSession(r); err != nil && !billing.HasPayment(r) {
 						origin := app.BaseURL(r)
 						w.Header().Set("WWW-Authenticate",
 							`Bearer resource_metadata="`+origin+`/.well-known/oauth-protected-resource"`)
@@ -360,7 +360,7 @@ func serve(addr string) {
 			// A metered tools/call with no session gets the standard 402
 			// challenge; one bearing a payment header is routed to the
 			// facilitator for verify+settle by the tool's QuotaCheck.
-			if r.URL.Path == "/mcp" && r.Method == http.MethodPost && wallet.X402Enabled() {
+			if r.URL.Path == "/mcp" && r.Method == http.MethodPost && billing.X402Enabled() {
 				body, _ := io.ReadAll(io.LimitReader(r.Body, 1<<20))
 				r.Body.Close()
 				r.Body = io.NopCloser(bytes.NewReader(body))
@@ -370,19 +370,19 @@ func serve(addr string) {
 				// operation" charged an anonymous caller for all four, so the
 				// free tier was unreachable and an agent that found this
 				// endpoint mid-task met a demand for USDC on its first call.
-				if op := api.MCPWalletOp(body); op != "" && wallet.Metered(op) {
+				if op := api.MCPWalletOp(body); op != "" && billing.Metered(op) {
 					// The public origin, not r.Host: behind the proxy r.Host is
 					// the loopback port, and an x402 client checks this field
 					// against what it is calling.
 					resource := app.BaseURL(r) + r.URL.Path
-					if wallet.HasPayment(r) {
-						holder := &wallet.SettleHolder{}
-						ctx := context.WithValue(r.Context(), wallet.X402ContextKey, true)
-						ctx = context.WithValue(ctx, wallet.X402SettleKey, holder)
+					if billing.HasPayment(r) {
+						holder := &billing.SettleHolder{}
+						ctx := context.WithValue(r.Context(), billing.X402ContextKey, true)
+						ctx = context.WithValue(ctx, billing.X402SettleKey, holder)
 						r = r.WithContext(ctx)
-						w = wallet.NewSettleWriter(w, holder)
+						w = billing.NewSettleWriter(w, holder)
 					} else if err := auth.ValidateToken(token); err != nil {
-						if wallet.WritePaymentRequired(w, op, resource) {
+						if billing.WritePaymentRequired(w, op, resource) {
 							// Count the refusal. Calls are recorded inside the
 							// dispatcher, which this returns before reaching,
 							// so every call turned away at the door was absent

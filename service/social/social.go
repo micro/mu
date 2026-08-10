@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"mu/billing"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
@@ -778,7 +779,7 @@ func handleAPISearch(w http.ResponseWriter, r *http.Request, query string) {
 		return
 	}
 
-	canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, wallet.OpSocialSearch)
+	canProceed, _, cost, _ := billing.CheckQuota(sess.Account, billing.OpSocialSearch)
 	if !canProceed {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
@@ -788,7 +789,7 @@ func handleAPISearch(w http.ResponseWriter, r *http.Request, query string) {
 		return
 	}
 
-	wallet.ConsumeQuota(sess.Account, wallet.OpSocialSearch)
+	billing.ConsumeQuota(sess.Account, billing.OpSocialSearch)
 
 	results := data.Search(query, 50)
 	var socialResults []map[string]interface{}
@@ -815,9 +816,9 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 		return
 	}
 
-	canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, wallet.OpSocialSearch)
+	canProceed, _, cost, _ := billing.CheckQuota(sess.Account, billing.OpSocialSearch)
 	if !canProceed {
-		content := wallet.QuotaExceededPage(wallet.OpSocialSearch, cost)
+		content := wallet.QuotaExceededPage(billing.OpSocialSearch, cost)
 		app.Respond(w, r, app.Response{
 			Title: "Social - Search",
 			HTML:  content,
@@ -825,7 +826,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 		return
 	}
 
-	wallet.ConsumeQuota(sess.Account, wallet.OpSocialSearch)
+	billing.ConsumeQuota(sess.Account, billing.OpSocialSearch)
 
 	results := data.Search(query, 50)
 	var sb strings.Builder

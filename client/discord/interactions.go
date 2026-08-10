@@ -8,10 +8,10 @@ import (
 	"strings"
 
 	"mu/agent"
+	"mu/billing"
 	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/service"
-	"mu/service/wallet"
 )
 
 type interaction struct {
@@ -166,12 +166,12 @@ func handleInteraction(raw json.RawMessage) {
 			editResponse(inter.Token, "Wallet balance is private — use this command in a DM.")
 			return
 		}
-		bw, err := wallet.GetOrCreateWallet(accountID)
+		bw, err := billing.GetOrCreateWallet(accountID)
 		if err != nil {
 			editResponse(inter.Token, "Wallet error: "+err.Error())
 			return
 		}
-		usdc, _ := wallet.USDCBalance(bw.Address)
+		usdc, _ := billing.USDCBalance(bw.Address)
 		embed := Embed{
 			Title:  "Your Base Wallet",
 			Color:  ColorGreen,

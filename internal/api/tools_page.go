@@ -8,10 +8,10 @@ import (
 	"strconv"
 	"strings"
 
+	"mu/billing"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/service"
-	"mu/service/wallet"
 )
 
 // ToolsPageHandler renders the catalogue of what this instance runs, through
@@ -342,7 +342,7 @@ func priceLabel(t Tool) string {
 	if t.WalletOp == "" {
 		return `<span class="free">Included</span>`
 	}
-	n := wallet.GetOperationCost(t.WalletOp)
+	n := billing.GetOperationCost(t.WalletOp)
 	if n <= 0 {
 		return `<span class="free">Included</span>`
 	}

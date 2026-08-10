@@ -23,6 +23,7 @@ import (
 	"github.com/mmcdole/gofeed"
 	"github.com/mrz1836/go-sanitize"
 	nethtml "golang.org/x/net/html"
+
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
@@ -31,6 +32,7 @@ import (
 	"mu/internal/service"
 	"mu/internal/snapshot"
 
+	"mu/billing"
 	"mu/service/wallet"
 )
 
@@ -1705,7 +1707,7 @@ func handleAPISearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check quota before search
-	canProceed, _, cost, _ := wallet.CheckQuota(sess.Account, wallet.OpNewsSearch)
+	canProceed, _, cost, _ := billing.CheckQuota(sess.Account, billing.OpNewsSearch)
 	if !canProceed {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(402) // Payment Required
@@ -1720,7 +1722,7 @@ func handleAPISearch(w http.ResponseWriter, r *http.Request) {
 	payload := newsSearchPayload(query, 20)
 
 	// Consume quota after successful search
-	wallet.ConsumeQuota(sess.Account, wallet.OpNewsSearch)
+	billing.ConsumeQuota(sess.Account, billing.OpNewsSearch)
 
 	app.RespondJSON(w, payload)
 }
@@ -2611,10 +2613,10 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 		return
 	}
 
-	canProceed, _, cost, err := wallet.CheckQuota(sess.Account, wallet.OpNewsSearch)
+	canProceed, _, cost, err := billing.CheckQuota(sess.Account, billing.OpNewsSearch)
 	if !canProceed {
 		// Show quota exceeded page
-		content := wallet.QuotaExceededPage(wallet.OpNewsSearch, cost)
+		content := wallet.QuotaExceededPage(billing.OpNewsSearch, cost)
 		html := app.RenderHTMLForRequest("Quota Exceeded", "Daily limit reached", content, r)
 		w.Write([]byte(html))
 		return
@@ -2623,7 +2625,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 	results := data.Search(query, 20, data.WithType("news"), data.WithKeywordOnly())
 
 	// Consume quota after successful search
-	wallet.ConsumeQuota(sess.Account, wallet.OpNewsSearch)
+	billing.ConsumeQuota(sess.Account, billing.OpNewsSearch)
 
 	var searchResults []byte
 	searchResults = append(searchResults, []byte(`<form id="news-search" class="search-bar" action="/news" method="GET">

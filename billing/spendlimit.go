@@ -1,4 +1,4 @@
-package wallet
+package billing
 
 // Spend limits for agent-initiated x402 payments. The agent spends the user's
 // wallet on their behalf, so — even though the source account is always bound

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"mu/billing"
 	"mu/internal/service"
-	"mu/service/wallet"
 )
 
 // Server is the go-micro service handler for places. Its methods are exposed as
@@ -266,9 +266,9 @@ var Spec = service.Spec{
 	Page:        "/places",
 	Icon:        "places.svg",
 	Endpoints: map[string]service.Endpoint{
-		"ETA":     {Doc: "How long it takes to travel between two places, by road rather than as the crow flies", Cost: wallet.OpPlacesETA},
+		"ETA":     {Doc: "How long it takes to travel between two places, by road rather than as the crow flies", Cost: billing.OpPlacesETA},
 		"Geocode": {Doc: "Resolve a place name or address to coordinates"},
-		"Nearby":  {Doc: "List points of interest near a location", Cost: wallet.OpPlacesNearby},
-		"Search":  {Doc: "Find places by name or category, optionally near a location", Cost: wallet.OpPlacesSearch},
+		"Nearby":  {Doc: "List points of interest near a location", Cost: billing.OpPlacesNearby},
+		"Search":  {Doc: "Find places by name or category, optionally near a location", Cost: billing.OpPlacesSearch},
 	},
 }

@@ -1,4 +1,4 @@
-package wallet
+package billing
 
 // x402 payer client: call a tool on any MCP server and, if it answers 402,
 // pay from the user's Base wallet and retry. Works against this instance and

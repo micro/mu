@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"mu/service/wallet"
+	"mu/billing"
 )
 
 // runWallet audits which address a stored key controls and whether it matches
@@ -46,7 +46,7 @@ func runWallet(args []string) int {
 
 	switch {
 	case len(compact) == 64 && isHexStr(compact):
-		addr, ok := wallet.AddressFromPrivateKeyHex(seed)
+		addr, ok := billing.AddressFromPrivateKeyHex(seed)
 		if !ok {
 			fmt.Println("seed: not a valid private key")
 			return 1

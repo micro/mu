@@ -80,11 +80,19 @@ func TestEveryScopedServiceCleansUpWhenAnAccountIsDeleted(t *testing.T) {
 	}
 	block := src[i : i+j]
 
-	// wallet registers two hooks under its own name; mail's is DeleteInbox.
-	// What matters is that the package appears, not what its function is
-	// called.
+	// A service's name is usually its package name, and matching on the package
+	// is what makes this test indifferent to what the hook is called — mail's is
+	// DeleteInbox, wallet's are two. Where the two names diverge, say so here
+	// rather than loosening the match: the wallet service is a page and three
+	// tools over the ledger in billing, so billing is what has records to drop.
+	storedBy := map[string]string{"wallet": "billing"}
+
 	for _, svc := range scopedServices(t) {
-		if !strings.Contains(block, svc+".") {
+		pkg := svc
+		if alt, ok := storedBy[svc]; ok {
+			pkg = alt
+		}
+		if !strings.Contains(block, pkg+".") {
 			t.Errorf("%s stores per-caller data and nothing deletes it when the "+
 				"account goes — its records outlive their owner", svc)
 		}

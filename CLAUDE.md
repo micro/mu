@@ -40,7 +40,8 @@ Built on go-micro: every capability is a go-micro service, the assistant is a go
 | `client/discord/` | Discord bot with slash commands, embeds, briefings |
 | `client/telegram/` | Telegram bot with commands and groups |
 | `client/whatsapp/` | WhatsApp Business API integration |
-| `service/wallet/` | Credit system, Stripe, x402 |
+| `billing/` | What this instance charges for and how it gets paid — prices, quota, Stripe, x402. Under everything; imports no service |
+| `service/wallet/` | The caller's side of the money: balance, top up, transfer, the /wallet page and the `wallet_*` tools — a service over `billing/` |
 | `service/search/` | Brave provider, readability reader, the /search page (no service of its own) |
 | `service/db/` | The caller's own records — named collections that outlive a conversation. Apps keep a separate store each |
 | `service/files/` | Per-user file storage — keep a file, get a URL, read it back |
@@ -62,7 +63,7 @@ go vet ./...            # vet
 
 ## Conventions
 
-- No external dependencies for crypto (secp256k1, RLP, ECDSA implemented in pure Go in `service/wallet/evm.go`)
+- No external dependencies for crypto (secp256k1, RLP, ECDSA implemented in pure Go in `billing/evm.go`)
 - Settings via `internal/settings/` — reads env vars first, falls back to stored values
 - Background loops use goroutines started in `Load()` or `main.go`
 - Agent tools registered in `internal/api/mcp.go` (static) and `main.go` (dynamic with handlers)
@@ -114,7 +115,7 @@ facts. The distinction is developer-facing (say it) vs customer-facing (don't).
 A credit is charged when an operation costs us something to run: a model call,
 or a paid third party (Atlas Cloud for inference and images, Brave for web
 search, Google for places). Operations that only touch this instance's own
-storage are free — see the comment on the cost block in `service/wallet/wallet.go`.
+storage are free — see the comment on the cost block in `billing/billing.go`.
 
 Abuse control is `auth.CheckPostRate`, not the credit charge. Keep the two jobs
 separate: credits price real cost, rate limits stop bots.

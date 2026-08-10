@@ -18,14 +18,14 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"mu/service/wallet"
+	"mu/billing"
 )
 
 func selfHosted(t *testing.T) {
 	t.Helper()
 	t.Setenv("STRIPE_SECRET_KEY", "")
 	t.Setenv("STRIPE_PUBLISHABLE_KEY", "")
-	if wallet.PaymentsEnabled() {
+	if billing.PaymentsEnabled() {
 		t.Skip("this instance is configured to take payments")
 	}
 }
@@ -40,7 +40,7 @@ func TestASelfHostedLookupNeedsNoAccount(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("POST", "/places/search", nil)
-		id, ok := billableCaller(w, r, wallet.OpPlacesSearch)
+		id, ok := billableCaller(w, r, billing.OpPlacesSearch)
 		if !ok {
 			t.Errorf("GOOGLE_API_KEY=%q: an anonymous caller was refused on an "+
 				"instance that charges nothing", key)
@@ -55,10 +55,10 @@ func TestASelfHostedLookupNeedsNoAccount(t *testing.T) {
 func TestWhereTheInstanceChargesALookupNeedsACaller(t *testing.T) {
 	t.Setenv("STRIPE_SECRET_KEY", "sk_test_x")
 	t.Setenv("STRIPE_PUBLISHABLE_KEY", "pk_test_x")
-	if !wallet.PaymentsEnabled() {
+	if !billing.PaymentsEnabled() {
 		t.Skip("payments cannot be enabled in this environment")
 	}
-	if !wallet.Metered(wallet.OpPlacesSearch) {
+	if !billing.Metered(billing.OpPlacesSearch) {
 		t.Skip("places search is not priced on this instance")
 	}
 
@@ -66,7 +66,7 @@ func TestWhereTheInstanceChargesALookupNeedsACaller(t *testing.T) {
 	r := httptest.NewRequest("POST", "/places/search", nil)
 	r.Header.Set("Accept", "application/json")
 
-	if _, ok := billableCaller(w, r, wallet.OpPlacesSearch); ok {
+	if _, ok := billableCaller(w, r, billing.OpPlacesSearch); ok {
 		t.Error("a charged lookup went through with nobody to charge")
 	}
 	if w.Code != 401 {

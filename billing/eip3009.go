@@ -1,4 +1,4 @@
-package wallet
+package billing
 
 // x402 "exact" scheme payer: sign an EIP-3009 TransferWithAuthorization so the
 // user's Base wallet can pay for a resource without the payer submitting a

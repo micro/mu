@@ -6,6 +6,8 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"mu/billing"
 )
 
 // Every billable operation must appear in Pricing(). The cost tables on the
@@ -19,32 +21,32 @@ func TestPricingCoversEveryBillableOperation(t *testing.T) {
 		op   string
 		cost int
 	}{
-		{OpNewsSearch, CostNewsSearch},
-		{OpQuranSearch, CostQuranSearch},
-		{OpVideoSearch, CostVideoSearch},
-		{OpChatQuery, CostChatQuery},
-		{OpBlogCreate, CostBlogCreate},
-		{OpBlogComment, CostBlogComment},
-		{OpMailSend, CostMailSend},
-		{OpExternalEmail, CostExternalEmail},
-		{OpPlacesSearch, CostPlacesSearch},
-		{OpPlacesNearby, CostPlacesNearby},
-		{OpPlacesETA, CostPlacesETA},
-		{OpWeatherForecast, CostWeatherForecast},
-		{OpWeatherPollen, CostWeatherPollen},
-		{OpWebSearch, CostWebSearch},
-		{OpWebFetch, CostWebFetch},
-		{OpDBWrite, CostDBWrite},
-		{OpAgentQuery, CostAgentQuery},
-		{OpAgentQueryPremium, CostAgentQueryPremium},
-		{OpSocialSearch, CostSocialSearch},
-		{OpSocialPost, CostSocialPost},
-		{OpSocialReply, CostSocialReply},
-		{OpAppCreate, CostAppCreate},
-		{OpStreamPost, CostStreamPost},
-		{OpImageGenerate, CostImageGenerate},
-		{OpAppBuild, CostAppBuild},
-		{OpAppEdit, CostAppEdit},
+		{billing.OpNewsSearch, billing.CostNewsSearch},
+		{billing.OpQuranSearch, billing.CostQuranSearch},
+		{billing.OpVideoSearch, billing.CostVideoSearch},
+		{billing.OpChatQuery, billing.CostChatQuery},
+		{billing.OpBlogCreate, billing.CostBlogCreate},
+		{billing.OpBlogComment, billing.CostBlogComment},
+		{billing.OpMailSend, billing.CostMailSend},
+		{billing.OpExternalEmail, billing.CostExternalEmail},
+		{billing.OpPlacesSearch, billing.CostPlacesSearch},
+		{billing.OpPlacesNearby, billing.CostPlacesNearby},
+		{billing.OpPlacesETA, billing.CostPlacesETA},
+		{billing.OpWeatherForecast, billing.CostWeatherForecast},
+		{billing.OpWeatherPollen, billing.CostWeatherPollen},
+		{billing.OpWebSearch, billing.CostWebSearch},
+		{billing.OpWebFetch, billing.CostWebFetch},
+		{billing.OpDBWrite, billing.CostDBWrite},
+		{billing.OpAgentQuery, billing.CostAgentQuery},
+		{billing.OpAgentQueryPremium, billing.CostAgentQueryPremium},
+		{billing.OpSocialSearch, billing.CostSocialSearch},
+		{billing.OpSocialPost, billing.CostSocialPost},
+		{billing.OpSocialReply, billing.CostSocialReply},
+		{billing.OpAppCreate, billing.CostAppCreate},
+		{billing.OpStreamPost, billing.CostStreamPost},
+		{billing.OpImageGenerate, billing.CostImageGenerate},
+		{billing.OpAppBuild, billing.CostAppBuild},
+		{billing.OpAppEdit, billing.CostAppEdit},
 	}
 
 	listed := map[string]PricingItem{}
@@ -129,9 +131,9 @@ func TestEveryChargedOperationIsPublished(t *testing.T) {
 	}
 
 	// Constant name -> operation string, read from the source of truth.
-	src, err := os.ReadFile("wallet.go")
+	src, err := os.ReadFile("../../billing/billing.go")
 	if err != nil {
-		t.Fatalf("read wallet.go: %v", err)
+		t.Fatalf("read billing.go: %v", err)
 	}
 	opValue := map[string]string{}
 	for _, m := range regexp.MustCompile(`(Op[A-Za-z]+)\s*=\s*"([a-z_]+)"`).FindAllStringSubmatch(string(src), -1) {
@@ -147,7 +149,7 @@ func TestEveryChargedOperationIsPublished(t *testing.T) {
 	}
 
 	// Both forms: the constant (current) and a bare string (a regression).
-	site := regexp.MustCompile(`(?:WalletOp:\s*|QuotaCheck\([^,]+,\s*)(?:wallet\.(Op[A-Za-z]+)|"([a-z_]+)")`)
+	site := regexp.MustCompile(`(?:WalletOp:\s*|QuotaCheck\([^,]+,\s*)(?:billing\.(Op[A-Za-z]+)|"([a-z_]+)")`)
 
 	found := 0
 	err = filepath.Walk(repoRoot(t), func(path string, info os.FileInfo, err error) error {
@@ -167,7 +169,7 @@ func TestEveryChargedOperationIsPublished(t *testing.T) {
 				var ok bool
 				op, ok = opValue[m[1]]
 				if !ok {
-					t.Errorf("%s charges wallet.%s, which is not a declared operation", path, m[1])
+					t.Errorf("%s charges billing.%s, which is not a declared operation", path, m[1])
 					continue
 				}
 			}

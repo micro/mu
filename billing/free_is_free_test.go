@@ -1,4 +1,4 @@
-package wallet
+package billing
 
 // A tool priced at zero must not ask anyone for money.
 //

@@ -6,7 +6,7 @@ import (
 	htmlpkg "html"
 	"strings"
 
-	"mu/service/wallet"
+	"mu/billing"
 )
 
 // slugify turns a name into a URL-safe slug.
@@ -49,7 +49,7 @@ func editPageHTML(a *App) string {
     <button type="submit">Apply</button>
   </div>
   <p class="ai-edit-note">%d credits. Your current version is saved first — undo any change from <a href="/apps/%s/versions">versions</a>.</p>
-</form>`, htmlpkg.EscapeString(a.Slug), wallet.CostAppEdit, htmlpkg.EscapeString(a.Slug))
+</form>`, htmlpkg.EscapeString(a.Slug), billing.CostAppEdit, htmlpkg.EscapeString(a.Slug))
 
 	if a.Spec == nil {
 		aiPanel = `<div class="ai-edit"><p class="ai-edit-note">This app was built before AI edits were supported, so there is no spec to change. Fork it to get an editable copy, or edit the code directly below.</p></div>`

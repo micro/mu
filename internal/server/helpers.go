@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"mu/agent"
+	"mu/billing"
 	"mu/internal/ai"
 	"mu/internal/app"
 	"mu/internal/auth"
@@ -30,7 +31,6 @@ import (
 	"mu/service/social"
 	"mu/service/stream"
 	"mu/service/video"
-	"mu/service/wallet"
 )
 
 func argFloat(v any) float64 {
@@ -146,24 +146,24 @@ func chargedWriteOp(r *http.Request) string {
 	switch {
 	// Social threads and replies
 	case path == "/social":
-		return wallet.OpSocialPost
+		return billing.OpSocialPost
 	case path == "/social/thread":
-		return wallet.OpSocialReply
+		return billing.OpSocialReply
 	// Blog — only CREATE is charged (no id param). Updates are free.
 	case path == "/blog" && r.URL.Query().Get("id") == "":
-		return wallet.OpBlogCreate
+		return billing.OpBlogCreate
 	case strings.HasPrefix(path, "/blog/post/") && strings.HasSuffix(path, "/comment"):
-		return wallet.OpBlogComment
+		return billing.OpBlogComment
 	// Apps
 	case path == "/apps/new":
-		return wallet.OpAppCreate
+		return billing.OpAppCreate
 	case path == "/apps/generate":
-		return wallet.OpAppBuild
+		return billing.OpAppBuild
 	case strings.HasPrefix(path, "/apps/") && strings.HasSuffix(path, "/ai-edit"):
-		return wallet.OpAppEdit
+		return billing.OpAppEdit
 	// Stream (console)
 	case path == "/stream":
-		return wallet.OpStreamPost
+		return billing.OpStreamPost
 	}
 	return ""
 }

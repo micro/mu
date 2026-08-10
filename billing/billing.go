@@ -1,4 +1,19 @@
-package wallet
+// Package billing is what an instance charges for and how it gets paid.
+//
+// It sits under everything rather than beside it. Twenty packages ask it two
+// questions — is this metered, can this caller afford it — and none of them
+// want a wallet; they want the meter. While the meter lived inside the wallet
+// service, service/wallet was a leaf that internal/api, internal/server and
+// fifteen sibling services all imported, so service/ could not be read as the
+// catalogue of what this instance offers: one entry in it was load-bearing for
+// the core.
+//
+// So the concern lives here and the wallet is a page and three tools over it.
+// Most of what is here was never wallet-shaped anyway — Stripe checkout,
+// subscription plans, the price table, quota accounting, app-author revenue
+// share. A wallet is one instrument; this is the thing both rails hit, credits
+// with an account and x402 without one.
+package billing
 
 import (
 	"encoding/json"
@@ -414,7 +429,7 @@ func TransferCredits(fromUserID, toUserID string, amount int) error {
 		// Recording the id alone produced receipts reading "Transfer to 3834",
 		// which is unreadable and — when the recipient was resolved wrongly —
 		// indistinguishable from a correct one.
-		Metadata:  map[string]interface{}{"to": toUserID, "to_name": accountLabel(toUserID)},
+		Metadata:  map[string]interface{}{"to": toUserID, "to_name": AccountLabel(toUserID)},
 		CreatedAt: now,
 	}
 	transactions[fromUserID] = append(transactions[fromUserID], senderTx)
@@ -427,7 +442,7 @@ func TransferCredits(fromUserID, toUserID string, amount int) error {
 		Amount:    amount,
 		Balance:   receiver.Balance,
 		Operation: OpTransfer,
-		Metadata:  map[string]interface{}{"from": fromUserID, "from_name": accountLabel(fromUserID)},
+		Metadata:  map[string]interface{}{"from": fromUserID, "from_name": AccountLabel(fromUserID)},
 		CreatedAt: now,
 	}
 	transactions[toUserID] = append(transactions[toUserID], receiverTx)
@@ -439,10 +454,10 @@ func TransferCredits(fromUserID, toUserID string, amount int) error {
 	return nil
 }
 
-// accountLabel is the name to show for an account id, falling back to the id
+// AccountLabel is the name to show for an account id, falling back to the id
 // when there is no account to ask — a deleted one, or a wallet that outlived
 // it. Never empty, so a receipt always says something.
-func accountLabel(id string) string {
+func AccountLabel(id string) string {
 	if acc, err := auth.GetAccount(id); err == nil && strings.TrimSpace(acc.Name) != "" {
 		return acc.Name
 	}

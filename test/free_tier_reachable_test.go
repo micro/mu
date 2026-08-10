@@ -26,13 +26,13 @@ import (
 func TestThePaymentGateAsksWhetherTheToolCostsAnything(t *testing.T) {
 	body := registrationSource(t)
 
-	if !strings.Contains(body, `op != "" && wallet.Metered(op)`) {
+	if !strings.Contains(body, `op != "" && billing.Metered(op)`) {
 		t.Error("the x402 gate no longer asks whether the tool costs anything, " +
 			"so free tools are paywalled to anonymous callers again")
 	}
 	// And when the challenge declines to be written, the request continues
 	// rather than being refused with an empty 402.
-	if !strings.Contains(body, "if wallet.WritePaymentRequired(w, op, resource) {") {
+	if !strings.Contains(body, "if billing.WritePaymentRequired(w, op, resource) {") {
 		t.Error("the gate ignores whether a challenge was actually written")
 	}
 }

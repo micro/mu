@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"mu/billing"
 	"mu/internal/ai"
 	"mu/internal/app"
 	"mu/internal/auth"
@@ -20,7 +21,6 @@ import (
 	"mu/internal/flag"
 	"mu/internal/service"
 	"mu/service/apps/micro"
-	"mu/service/wallet"
 
 	"github.com/google/uuid"
 )
@@ -1180,7 +1180,7 @@ func handleRun(w http.ResponseWriter, r *http.Request, slug string) {
 					app.Error(w, r, http.StatusUnauthorized, fmt.Sprintf("This app costs %d credits per use. Sign in to continue.", a.Price))
 					return
 				}
-				if err := wallet.ChargeAppUse(acc.ID, a.AuthorID, a.Slug, a.Price); err != nil {
+				if err := billing.ChargeAppUse(acc.ID, a.AuthorID, a.Slug, a.Price); err != nil {
 					app.Error(w, r, http.StatusPaymentRequired, fmt.Sprintf("This app costs %d credits per use. Please top up your wallet.", a.Price))
 					return
 				}
@@ -1506,7 +1506,7 @@ func handleSDKAI(w http.ResponseWriter, r *http.Request, slug string) {
 
 	// Check quota — uses chat query credits
 	if QuotaCheck != nil {
-		canProceed, _, err := QuotaCheck(r, wallet.OpChatQuery)
+		canProceed, _, err := QuotaCheck(r, billing.OpChatQuery)
 		if !canProceed {
 			msg := "Insufficient credits"
 			if err != nil {
