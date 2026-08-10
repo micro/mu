@@ -667,8 +667,6 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	// pages that earn them; the audit belongs where somebody goes to check.
 	googleCard += renderConnectionsCard(r, acc, r.URL.Query().Get("connection"))
 
-	memCard := app.CacheCard(r, acc)
-
 	// The clients that reach the agent from somewhere else — Discord, Telegram,
 	// WhatsApp, which is what client/ holds. One code works on any of them.
 	//
@@ -699,8 +697,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 
 	content := fmt.Sprintf(`<div class="card">
 <h4>Profile</h4>
-<p><strong>%s</strong> · %s · Joined %s</p>
-<p><a href="/@%s">Public profile →</a></p>
+<p><strong><a href="/@%s">%s</a></strong> · %s · Joined %s</p>
 </div>
 
 %s
@@ -719,8 +716,6 @@ func Account(w http.ResponseWriter, r *http.Request) {
 
 %s
 
-%s
-
 <div class="card">
 <h4>Settings</h4>
 <p><a href="/token">API Credentials →</a></p>
@@ -728,13 +723,12 @@ func Account(w http.ResponseWriter, r *http.Request) {
 <p style="margin-top:12px"><a href="/logout" class="text-error">Logout</a></p>
 </div>`,
 		acc.ID,
+		acc.ID,
 		acc.Name,
 		acc.Created.Format("January 2, 2006"),
-		acc.ID,
 		emailCard,
 		googleCard,
 		languageOptions,
-		memCard,
 		PasskeyListHTML(acc.ID),
 		clientsCard,
 	)

@@ -123,7 +123,7 @@ guessable.
 | `index` | — | ✅ |  | Search across the caller's own content |
 | `mail` | /mail | ✅ | ✅ | SMTP server, inbox, DKIM |
 | `markets` | /markets | ✅ |  | Crypto, stocks, futures, commodities, currencies |
-| `cache` | — | ✅ | ✅ | A key and a value an agent keeps about the caller between conversations. The Memory card on `/account` is the lens over it |
+| `cache` | — | ✅ | ✅ | A key and a value that survive the conversation. Addressed by label, where db holds collections you query |
 | `news` | /news | ✅ |  | RSS aggregation, sentiment, search |
 | `places` | /places | ✅ |  | Maps, points of interest, travel time |
 | `prayer` | /prayer | ✅ |  | Islamic prayer times, qibla, and a daily reflection |

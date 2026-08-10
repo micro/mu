@@ -136,6 +136,7 @@ func stripTags(s string) string {
 // auth now, which is one mechanism giving both answers.
 var Spec = service.Spec{
 	Name:        "index",
+	Icon:        "index.svg",
 	Handler:     Server{},
 	Description: "Search across the caller's own content",
 	Endpoints: map[string]service.Endpoint{

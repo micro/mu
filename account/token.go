@@ -231,7 +231,11 @@ async function createToken(e) {
 }
 </script>`)
 
-	html := app.RenderHTML("API Credentials", "Manage API credentials", sb.String())
+	// ForRequest, not RenderHTML: the latter hard-codes a nil account, so every
+	// part of the chrome that depends on knowing who is signed in — the nav,
+	// the account menu, the balance — went missing on a page you can only
+	// reach by being signed in. Same bug /account had.
+	html := app.RenderHTMLForRequest("API Credentials", "Manage API credentials", sb.String(), r)
 	w.Write([]byte(html))
 }
 

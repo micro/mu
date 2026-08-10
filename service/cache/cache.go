@@ -1,4 +1,4 @@
-// Package cache is what an agent knows about you between conversations.
+// Package cache is a key and a value that survive the conversation.
 //
 // Named for its shape rather than its lifetime, and the distinction is worth
 // stating because the name invites the wrong reading: nothing here expires and
@@ -6,28 +6,21 @@
 // name, which is what separates it from db — named collections of records that
 // are queried. Both are durable; one is addressed and one is searched.
 //
-// The store already existed, in internal/cache, and it was invisible from both
-// sides. A person could not see it — that is the Memory card on /account. An agent could
-// not use it: facts were extracted from what you said by a background model
-// call and written behind everyone's back, and there was no tool to remember
-// something on purpose, no tool to ask what was already known, and no tool to
-// correct a wrong note. An agent that cannot say "remember this" has to be told
-// the same thing every session, which is the exact failure persistent memory
-// exists to prevent.
+// It is a store, not a dossier. Whatever a caller puts under a label comes back
+// under that label — a place, a tone, a project id, an API's page cursor. It
+// was described as "what an agent knows about you", which is one thing people
+// use it for and not what it is, and a description that names one use narrows
+// what anybody else tries.
 //
-// So it is a service, and it passes the test the others pass: an agent arrives
-// holding a model, and does not arrive holding what you told it last Tuesday.
-// That is worth running.
-//
-// Headless, like index. The store is one thing; the card on /account is a lens over it that
-// also shows what you have put in front of your agents and what they can go and
-// fetch, and a second page listing the same notes would be a second place for
-// the same truth.
+// Nothing expires and nothing is evicted, despite the name. What separates it
+// from db is shape: this is addressed by key, db holds named collections you
+// query. Both are durable.
 package cache
 
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"mu/internal/app"
 	"mu/internal/cache"
@@ -133,16 +126,55 @@ func LoadService() {
 	}
 }
 
+// ── Get ─────────────────────────────────────────────────────────
+
+// GetRequest reads one label.
+type GetRequest struct {
+	Key string `json:"key" required:"true" description:"The label to read, as given to cache_set"`
+}
+
+// GetResponse is the stored value.
+type GetResponse struct {
+	Value string `json:"value" description:"What is stored under that label, or empty if nothing is"`
+	Text  string `json:"text" description:"The label and its value, or a note that nothing is stored under it"`
+}
+
+// Get reads one label.
+//
+// It was missing: a caller could write a label and then only read the whole
+// list back to find it, which is the wrong shape for a key-value store and gets
+// worse the more labels there are.
+// @example {"key": "location"}
+func (Server) Get(ctx context.Context, req *GetRequest, rsp *GetResponse) error {
+	who := service.AccountFrom(ctx)
+	if who == "" {
+		return fmt.Errorf("sign in to use the cache")
+	}
+	key := strings.TrimSpace(req.Key)
+	if key == "" {
+		return fmt.Errorf("key is required")
+	}
+	rsp.Value = cache.Get(who, key)
+	if rsp.Value == "" {
+		rsp.Text = "Nothing stored under " + key + "."
+		return nil
+	}
+	rsp.Text = key + ": " + rsp.Value
+	return nil
+}
+
 var Spec = service.Spec{
 	Name:        "cache",
+	Icon:        "cache.svg",
 	Handler:     new(Server),
 	Description: "What an agent knows about you between conversations",
 	// Headless. The Memory card on /account is where a person reads and edits
 	// this; the service is how an agent does.
 	Scoped: true,
 	Endpoints: map[string]service.Endpoint{
-		"Set":    {Aliases: []string{"memory_set"}, Doc: "Remember something about the caller across conversations. Use it when they say to remember something, or state a durable preference or fact"},
-		"List":   {Aliases: []string{"memory_list"}, Doc: "Read everything remembered about the caller. Use it before asking them something they may already have said"},
-		"Delete": {Aliases: []string{"memory_delete"}, Doc: "Forget one thing, by its key", Destructive: true},
+		"Get":    {Doc: "Read one label's value. Use it when you know the label; cache_list when you do not"},
+		"Set":    {Aliases: []string{"memory_set"}, Doc: "Store a value under a label, so it is there next conversation. Writing to a label that exists replaces it"},
+		"List":   {Aliases: []string{"memory_list"}, Doc: "List every label the caller has stored, with its value"},
+		"Delete": {Aliases: []string{"memory_delete"}, Doc: "Delete one label and its value", Destructive: true},
 	},
 }

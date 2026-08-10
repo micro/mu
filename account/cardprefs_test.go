@@ -34,11 +34,12 @@ func TestTheAccountPageDoesNotCarryACardPicker(t *testing.T) {
 			t.Errorf("the account page still carries card-picker plumbing: %q", gone)
 		}
 	}
-	// What replaced it is the one part of /context worth keeping: the notes the
-	// agent reads back into every prompt, with a way to delete them.
-	if !strings.Contains(body, "app.CacheCard(r, acc)") {
-		t.Error("/account does not show what the agent remembers, so the notes " +
-			"it reads into every prompt are invisible again")
+	// The cache card went too. It was here as "what the agent remembers", which
+	// is one use of a key-value store and not what the store is; /account is
+	// for the account, and a list of arbitrary labels somebody's agent wrote is
+	// not a setting.
+	if strings.Contains(body, "CacheCard") {
+		t.Error("/account is showing the cache again")
 	}
 }
 
