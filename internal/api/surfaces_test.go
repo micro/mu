@@ -1,7 +1,6 @@
 package api
 
 import (
-	"strings"
 	"testing"
 )
 
@@ -36,35 +35,6 @@ func TestToolNamesAndAliasesAreUnique(t *testing.T) {
 		claim(tool.Name, tool.Name, t)
 		for _, a := range tool.Aliases {
 			claim(a, tool.Name+" (alias)", t)
-		}
-	}
-}
-
-// The old names have to keep resolving after the rename to service_method.
-//
-// Only the statically-registered tools are visible here; the ones main.go
-// registers (web_search, index_search, db_create, news_list) carry their legacy
-// names through the same Aliases field, checked by TestToolNamesAndAliasesAreUnique
-// once the process has registered them.
-func TestRenamedToolsKeepTheirOldNames(t *testing.T) {
-	for old, want := range map[string]string{
-		"mail_read":   "mail_inbox",
-		"islam":       "prayer_reflection",
-		"islam_today": "prayer_reflection",
-		"reminder":    "prayer_reflection",
-		"stream":      "stream_list",
-	} {
-		found := ""
-		for _, tool := range sortedTools() {
-			if toolMatches(tool, old) {
-				found = tool.Name
-				break
-			}
-		}
-		if found == "" {
-			t.Errorf("legacy name %q no longer resolves to anything", old)
-		} else if found != want && !strings.EqualFold(found, want) {
-			t.Errorf("legacy name %q resolves to %q, want %q", old, found, want)
 		}
 	}
 }

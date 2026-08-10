@@ -47,6 +47,7 @@ var legacy = map[string]string{
 	"wallet":         "wallet_balance",
 	"stream":         "stream_list",
 	"mail_read":      "mail_inbox",
+	"reminder":       "prayer_reflection",
 }
 
 func TestEveryRetiredNameStillResolves(t *testing.T) {

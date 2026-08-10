@@ -376,22 +376,6 @@ var tools = []Tool{
 			{Name: "query", Type: "string", Description: "Search query", Required: true},
 		},
 	},
-	// There is no chat_ask. It pointed at POST /chat, which asked a model one
-	// question grounded in the index and called no tools — agent_ask minus the
-	// ability to act, offered to a caller who already has agent_ask. The chat
-	// service's own tools, chat_rooms and chat_messages, are derived from its
-	// Spec and are the part a caller genuinely cannot bring: what people here
-	// are discussing right now.
-	{
-		Name:        "news_search",
-		Description: "Search aggregated news headlines by keyword and return matching articles with source and time. Use when the question is about a specific topic; use news_list for what is happening generally, and news_read for the full text " + "of one article.",
-		Method:      "POST",
-		Path:        "/news",
-		WalletOp:    quota.OpNewsSearch,
-		Params: []ToolParam{
-			{Name: "query", Type: "string", Description: "News search query", Required: true},
-		},
-	},
 	// blog_list, social, video, weather_forecast and markets are registered in
 	// main.go as AI-first tools (clean Go handlers returning model-ready text),
 	// not as page-backed entries here.
@@ -466,16 +450,6 @@ var tools = []Tool{
 		},
 	},
 	{
-		Name:        "mail_inbox",
-		Aliases:     []string{"mail_read"},
-		Description: "Read your mail inbox. Pass a tag to read only mail sent to that plus-address (you+tag@), which is how an agent reads its own mail rather than all of yours.",
-		Method:      "GET",
-		Path:        "/mail",
-		Params: []ToolParam{
-			{Name: "tag", Type: "string", Description: "Only mail sent to you+<tag>@ — omit for the whole inbox", Required: false},
-		},
-	},
-	{
 		Name:        "mail_send",
 		AccountOnly: true, // a funded wallet is not accountable for the domain
 		Description: "Send an email from the caller's own address on this instance. Takes a recipient address, a subject and a body; resolve a name to an address with contacts_find first. Requires an account, and the mail really is delivered " + "— there is no draft state to undo from.",
@@ -486,47 +460,6 @@ var tools = []Tool{
 			{Name: "to", Type: "string", Description: "Recipient username or email", Required: true},
 			{Name: "subject", Type: "string", Description: "Message subject", Required: true},
 			{Name: "body", Type: "string", Description: "Message body", Required: true},
-		},
-	},
-	// wallet_balance is registered in main.go, where the wallet package is
-	// reachable — it answers credits, deposit address and USDC in one call.
-	//
-	// Three tools used to live here. wallet_transfer moved credits to another
-	// user by username, irreversibly, in a single call with no confirmation.
-	// The same agent holds mail_inbox, news_read, web_fetch and db_list — four
-	// ways to read text somebody else wrote — and nothing downstream could tell
-	// "the user asked" from "the agent read it in an email". Transferring
-	// credits is a thing a person does a handful of times, deliberately, and
-	// /wallet/transfer already does it with a form and a CSRF token. It is not
-	// a capability an agent should be granted, so it is not a tool.
-	//
-	// wallet_topup returned card tiers to a caller that cannot complete a card
-	// purchase. Its only real output was "tell your human where to go", which
-	// belongs in the message you get when a call fails for want of credits, not
-	// in a tool an agent has to know to call.
-	// Stream (console)
-	{
-		Name:        "stream_list",
-		Aliases:     []string{"stream"},
-		Description: "Read the platform event stream — user messages, agent responses, system events (markets, news, reminders)",
-		Method:      "GET",
-		Path:        "/stream",
-	},
-	{
-		Name:        "stream_post",
-		Description: "Post a message to the stream. Mention @micro to get an AI response.",
-		Method:      "POST",
-		Path:        "/stream",
-		// OpStreamPost, matching what the stream service declares. This said
-		// OpSocialPost, so CREDIT_COST_STREAM_POST did not price the tool named
-		// stream_post — an operator setting it would have seen no effect. The
-		// description also claimed "Costs 1 credit" while both operations
-		// default to 0, so the page rendered "Included" beside a line saying
-		// otherwise. Prices are rendered from the operation; no description
-		// states one.
-		WalletOp: quota.OpStreamPost,
-		Params: []ToolParam{
-			{Name: "content", Type: "string", Description: "Message text (max 1024 chars). Use @micro to invoke the AI agent.", Required: true},
 		},
 	},
 	// Content controls
@@ -590,33 +523,6 @@ var tools = []Tool{
 		Path:        "/app/unblock",
 		Params: []ToolParam{
 			{Name: "user", Type: "string", Description: "User ID to unblock", Required: true},
-		},
-	},
-	{
-		Name:        "places_search",
-		Description: "Search for places by name or category, optionally near a location",
-		Method:      "POST",
-		Path:        "/places/search",
-		WalletOp:    quota.OpPlacesSearch,
-		Params: []ToolParam{
-			{Name: "query", Type: "string", Description: "Search query (e.g. cafe, pharmacy, Boots)", Required: true},
-			{Name: "near", Type: "string", Description: "Location name or address to search near", Required: false},
-			{Name: "near_lat", Type: "number", Description: "Latitude of the search location", Required: false},
-			{Name: "near_lon", Type: "number", Description: "Longitude of the search location", Required: false},
-			{Name: "radius", Type: "number", Description: "Search radius in metres, 100–5000 (default 1000)", Required: false},
-		},
-	},
-	{
-		Name:        "places_nearby",
-		Description: "Find all places of interest near a given location",
-		Method:      "POST",
-		Path:        "/places/nearby",
-		WalletOp:    quota.OpPlacesNearby,
-		Params: []ToolParam{
-			{Name: "address", Type: "string", Description: "Address or postcode to search near", Required: false},
-			{Name: "lat", Type: "number", Description: "Latitude of the search location", Required: false},
-			{Name: "lon", Type: "number", Description: "Longitude of the search location", Required: false},
-			{Name: "radius", Type: "number", Description: "Search radius in metres, 100–5000 (default 500)", Required: false},
 		},
 	},
 	{

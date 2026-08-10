@@ -1,8 +1,10 @@
-package api
+package tool
 
 import (
 	"context"
 	"testing"
+
+	"mu/internal/api"
 
 	"mu/internal/service"
 )
@@ -23,6 +25,13 @@ func registerScopedMail(t *testing.T) {
 	}
 	if err := service.Register(service.Spec{
 		Name: "mail", Handler: new(MailProbe), Scoped: true,
+		// The tool exists because the Endpoint does. A Spec with no endpoints
+		// derives nothing, which is what made this test read as "mail_inbox
+		// does not challenge" when the real answer was that there was no
+		// mail_inbox.
+		Endpoints: map[string]service.Endpoint{
+			"Inbox": {Doc: "List the account's most recent messages"},
+		},
 	}); err != nil {
 		t.Fatalf("register mail: %v", err)
 	}
@@ -33,6 +42,9 @@ func registerScopedMail(t *testing.T) {
 // auth, which is what this answers.
 func TestMCPToolNeedsAuthIdentifiesScopedTools(t *testing.T) {
 	registerScopedMail(t)
+	// The tools come from the Spec, so they have to be derived before the
+	// protocol can be asked anything about them.
+	DeriveTools()
 
 	call := func(name string) []byte {
 		return []byte(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"` + name + `"}}`)
@@ -40,13 +52,13 @@ func TestMCPToolNeedsAuthIdentifiesScopedTools(t *testing.T) {
 
 	// Auth-bound and account-only tools must challenge.
 	for _, name := range []string{"mail_inbox", "mail_send"} {
-		if !MCPToolNeedsAuth(call(name)) {
+		if !api.MCPToolNeedsAuth(call(name)) {
 			t.Errorf("%s does not challenge; a client would never discover OAuth", name)
 		}
 	}
 	// Public tools must not — a challenge here would put news behind an account.
 	for _, name := range []string{"news_search", "quran", "blog_read"} {
-		if MCPToolNeedsAuth(call(name)) {
+		if api.MCPToolNeedsAuth(call(name)) {
 			t.Errorf("%s challenges; public tools must stay anonymous", name)
 		}
 	}
@@ -56,7 +68,7 @@ func TestMCPToolNeedsAuthIdentifiesScopedTools(t *testing.T) {
 		`{"jsonrpc":"2.0","id":1,"method":"initialize"}`,
 		`not json`,
 	} {
-		if MCPToolNeedsAuth([]byte(body)) {
+		if api.MCPToolNeedsAuth([]byte(body)) {
 			t.Errorf("%q challenged and should not have", body)
 		}
 	}
