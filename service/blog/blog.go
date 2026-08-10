@@ -44,6 +44,22 @@ var postsPreviewHtml string
 // cached HTML for full blog page
 var postsList string
 
+// listItem is one rendered post, kept beside its ids.
+//
+// The blog page is one HTML blob built when posts change and handed to every
+// visitor, which is why hiding a post did nothing here: by the time a request
+// arrives there is no post left to skip, only a string. Keeping the id and the
+// author next to each item costs nothing and lets a viewer who has hidden or
+// blocked something get a list without it.
+type listItem struct {
+	ID       string
+	AuthorID string
+	HTML     string
+}
+
+// postsItems is postsList, unjoined.
+var postsItems []listItem
+
 // Valid topics/categories for posts
 var topics []string
 
@@ -510,6 +526,7 @@ func updateCacheUnlocked() {
 
 	// Generate full list for blog page (exclude flagged posts)
 	var fullList []string
+	var items []listItem
 	for _, post := range posts {
 		// Skip flagged posts
 		if flag.IsHidden("post", post.ID) || auth.IsBanned(post.AuthorID) {
@@ -605,8 +622,10 @@ func updateCacheUnlocked() {
 			%s
 		</div>`, tagsHtml, post.ID, title, listTime.Unix(), listTimeLabel, authorLink, replyLink, controls, content, keepReading)
 		fullList = append(fullList, item)
+		items = append(items, listItem{ID: post.ID, AuthorID: post.AuthorID, HTML: item})
 	}
 
+	postsItems = items
 	if len(fullList) == 0 {
 		postsList = "<p>No blog posts yet. Write something below!</p>"
 	} else {
@@ -616,6 +635,31 @@ func updateCacheUnlocked() {
 	// Publish the rebuilt preview snapshot to the go-micro store + broker; runs
 	// under the caller's lock (nil-safe before Load wires cardSnap).
 	cardSnap.Publish(postsPreviewHtml)
+}
+
+// visibleTo drops the posts this viewer has hidden, and the posts by accounts
+// they have blocked. Nothing to drop means the shared list, untouched.
+func visibleTo(viewer string, items []listItem, all string) string {
+	if viewer == "" || len(items) == 0 {
+		return all
+	}
+	kept := make([]string, 0, len(items))
+	for _, it := range items {
+		if app.IsDismissed(viewer, "post", it.ID) {
+			continue
+		}
+		if it.AuthorID != "" && app.IsBlocked(viewer, it.AuthorID) {
+			continue
+		}
+		kept = append(kept, it.HTML)
+	}
+	if len(kept) == len(items) {
+		return all
+	}
+	if len(kept) == 0 {
+		return "<p>Nothing to show — you have hidden everything here.</p>"
+	}
+	return strings.Join(kept, "\n")
 }
 
 // Preview returns HTML preview of latest posts for home page
@@ -651,11 +695,21 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 		isAdmin := acc != nil && acc.Admin
 
 		// Filter out flagged posts and private posts (unless admin)
+		viewer := ""
+		if acc != nil {
+			viewer = acc.ID
+		}
 		var visiblePosts []*Post
 		for _, post := range posts {
 			if !flag.IsHidden("post", post.ID) || auth.IsBanned(post.AuthorID) {
 				// Skip private posts for non-admins
 				if post.Private && !isAdmin {
+					continue
+				}
+				// And what this caller has hidden or blocked, the same as the
+				// HTML list: one answer, two encodings.
+				if viewer != "" && (app.IsDismissed(viewer, "post", post.ID) ||
+					(post.AuthorID != "" && app.IsBlocked(viewer, post.AuthorID))) {
 					continue
 				}
 				visiblePosts = append(visiblePosts, post)
@@ -669,7 +723,14 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 
 	mutex.RLock()
 	list := postsList
+	items := postsItems
 	mutex.RUnlock()
+
+	// What this viewer has hidden or blocked comes out of the list. Everyone
+	// else gets the blob that was built when the posts last changed.
+	if _, acc := auth.TrySession(r); acc != nil {
+		list = visibleTo(acc.ID, items, list)
+	}
 
 	// Check if write mode is requested
 	showWriteForm := r.URL.Query().Get("write") == "true"
