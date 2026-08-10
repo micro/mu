@@ -58,6 +58,20 @@ type Spec struct {
 	// Scoped marks a service holding one user's data, or spending their
 	// credits. A caller with no authenticated account cannot reach it at all.
 	Scoped bool
+	// Staple marks a part of the product that also happens to expose a service,
+	// and keeps it out of the catalogue at /services.
+	//
+	// There is one: the wallet. /services is what this instance offers you —
+	// the things you go and look at because you might start using them. Your
+	// own balance is not on offer, it is furniture: it has a permanent place in
+	// the sidebar for exactly that reason, and listing it in the catalogue put
+	// it between Video and Weather as though it were a feature to discover.
+	//
+	// It changes nothing else. The page, the card, the wallet_* tools and the
+	// account-scoped rules all stay — an agent asking what it can afford is
+	// asking a real service a real question. This is only about which list a
+	// person browses.
+	Staple bool
 	// Endpoints describes each method, keyed by method name. Every exported
 	// RPC method must appear; TestEveryEndpointIsDescribed enforces it.
 	Endpoints map[string]Endpoint
@@ -167,10 +181,13 @@ func CardFor(name string) string {
 
 // Nav returns every service with a page, ordered by label. This is the
 // catalogue at /services; the sidebar shows Pinned.
+//
+// Staples are left out — see Spec.Staple. They have a page and they have tools;
+// they are just not on offer.
 func Nav() []Spec {
 	out := make([]Spec, 0, len(specs))
 	for _, s := range Specs() {
-		if s.Headless() {
+		if s.Headless() || s.Staple {
 			continue
 		}
 		out = append(out, s)
@@ -199,7 +216,7 @@ func Pinned(names []string) []Spec {
 		}
 		seen[name] = true
 		s, ok := SpecFor(name)
-		if !ok || s.Headless() {
+		if !ok || s.Headless() || s.Staple {
 			continue
 		}
 		out = append(out, s)

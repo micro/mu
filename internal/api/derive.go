@@ -118,17 +118,48 @@ func jsonType(t reflect.Type) string {
 	return "string"
 }
 
-func registerDerived(spec service.Spec, method string, ep service.Endpoint, name string, reqType reflect.Type) {
-	endpoint := service.HandlerName(spec.Handler) + "." + method
-	svc := spec.Name
+// PreviewDerived is the tool every Spec endpoint would produce, whether or not
+// one is already registered under that name.
+//
+// Nothing in the running server calls it. It exists so a hand-written
+// registration can be held next to the one its Spec would give, which is the
+// only way to answer the question that decides whether the hand-written one is
+// still earning its place: what would be lost by deleting it. Descriptions and
+// parameter docs written for a model usually beat reflection — but only usually,
+// and after enough endpoints have grown Doc strings and description tags of
+// their own, some of the hand-written ones are carrying nothing.
+func PreviewDerived() []Tool {
+	var out []Tool
+	for _, spec := range service.Specs() {
+		if spec.Handler == nil {
+			continue
+		}
+		for method, ep := range spec.Endpoints {
+			reqType, ok := requestType(spec.Handler, method)
+			if !ok {
+				continue
+			}
+			out = append(out, derivedTool(spec, ep, spec.Tool(method), reqType))
+		}
+	}
+	return out
+}
 
-	tool := Tool{
+func derivedTool(spec service.Spec, ep service.Endpoint, name string, reqType reflect.Type) Tool {
+	return Tool{
 		Name:        name,
 		Aliases:     ep.Aliases,
 		Description: ep.Doc,
 		WalletOp:    ep.Cost,
 		Params:      params(reqType),
 	}
+}
+
+func registerDerived(spec service.Spec, method string, ep service.Endpoint, name string, reqType reflect.Type) {
+	endpoint := service.HandlerName(spec.Handler) + "." + method
+	svc := spec.Name
+
+	tool := derivedTool(spec, ep, name, reqType)
 
 	call := func(args map[string]any, accountID string) (string, error) {
 		// Through JSON so the argument map lands in the request struct by the

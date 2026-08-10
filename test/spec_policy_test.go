@@ -155,12 +155,28 @@ func TestNavCoversEveryPagedServiceExactlyOnce(t *testing.T) {
 		}
 	}
 
+	// A staple has a page and is deliberately not in the catalogue: /services is
+	// what this instance offers you, and your own balance is furniture rather
+	// than something to discover. It keeps its permanent place in the sidebar.
+	staples := 0
+	for _, s := range allSpecs() {
+		if s.Staple {
+			staples++
+			if routes[s.Page] != "" {
+				t.Errorf("%s is a staple and is listed in the catalogue at /services", s.Name)
+			}
+		}
+	}
+	if staples == 0 {
+		t.Error("no service is marked Staple, so the exclusion above checks nothing")
+	}
+
 	// Counted from the Specs rather than written down: a hard-coded total goes
 	// stale the moment a service is added, and the number it was checking was
 	// the size of registerAll, not the size of the product.
 	want := 0
 	for _, s := range allSpecs() {
-		if s.Page != "" {
+		if s.Page != "" && !s.Staple {
 			want++
 		}
 	}
@@ -190,5 +206,44 @@ func TestEveryEndpointIsReachableOverMCP(t *testing.T) {
 				t.Errorf("%s.%s is declared but no client can call %s", s.Name, method, name)
 			}
 		}
+	}
+}
+
+// A staple stays out of the catalogue and keeps its tools.
+//
+// The two lenses answer different questions. /services is what this instance
+// offers a person — things you go and look at because you might start using
+// them — and your own balance is not one of them; it is furniture, with a
+// permanent place in the sidebar already. /tools is what an agent can call, and
+// "how many credits do I have" and "can I afford this" are real questions with
+// real answers.
+//
+// So the flag has to do exactly one of those two things. It would be easy to
+// write it as "hide the wallet", and that would take wallet_balance and
+// wallet_check away from every agent with a budget.
+func TestAStapleLeavesTheCatalogueAndKeepsItsTools(t *testing.T) {
+	registerAll(t)
+	api.DeriveTools()
+
+	staples := 0
+	for _, s := range allSpecs() {
+		if !s.Staple {
+			continue
+		}
+		staples++
+		for _, listed := range service.Nav() {
+			if listed.Name == s.Name {
+				t.Errorf("%s is a staple and is on offer at /services", s.Name)
+			}
+		}
+		for method := range s.Endpoints {
+			if !api.HasTool(s.Tool(method)) {
+				t.Errorf("%s is a staple and lost %s — an agent can no longer ask",
+					s.Name, s.Tool(method))
+			}
+		}
+	}
+	if staples == 0 {
+		t.Fatal("no service is marked Staple, so this test asserts nothing")
 	}
 }
