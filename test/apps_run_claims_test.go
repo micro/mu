@@ -17,18 +17,19 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"mu/service/apps"
 )
 
 func TestAppsRunDoesNotClaimToReturnAResult(t *testing.T) {
-	src := registrationSource(t)
-	i := strings.Index(src, `Name: "apps_run"`)
-	if i < 0 {
-		i = strings.Index(src, `Name:        "apps_run"`)
+	// Read from the Spec, because that is where the tool is declared now. It
+	// used to be a hand-written registration in the assembly; the claim it must
+	// not make is the same either way.
+	ep, ok := apps.Spec.Endpoints["Run"]
+	if !ok {
+		t.Fatal("the apps service no longer declares Run")
 	}
-	if i < 0 {
-		t.Fatal("apps_run is no longer registered")
-	}
-	block := src[i:min(i+2600, len(src))]
+	block := ep.Doc
 
 	// Only the strings a caller sees. The comments above the registration
 	// quote the old wording to explain why it changed, and a check that cannot

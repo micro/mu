@@ -13,8 +13,8 @@ type Server struct{}
 
 // ForecastRequest is the input for a forecast lookup.
 type ForecastRequest struct {
-	Lat float64 `json:"lat" description:"Latitude of the location"`
-	Lon float64 `json:"lon" description:"Longitude of the location"`
+	Lat float64 `json:"lat" required:"true" description:"Latitude of the location"`
+	Lon float64 `json:"lon" required:"true" description:"Longitude of the location"`
 }
 
 // ForecastResponse is a model-ready weather summary.

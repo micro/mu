@@ -16,10 +16,10 @@ type Server struct{}
 
 // CreateRequest schedules a reminder/event.
 type CreateRequest struct {
-	Title string `json:"title" description:"What to be reminded about, e.g. 'Call the dentist'"`
+	Title string `json:"title" required:"true" description:"What to be reminded about, e.g. 'Call the dentist'"`
 	// When is an RFC3339 timestamp with a timezone offset. Resolve relative
 	// phrases ("tomorrow at 3pm") against the current date before calling.
-	When string `json:"when" description:"When to fire, RFC3339 with timezone offset, e.g. 2026-07-22T15:00:00+01:00"`
+	When string `json:"when" required:"true" description:"When to fire, RFC3339 with timezone offset, e.g. 2026-07-22T15:00:00+01:00"`
 	Note string `json:"note" description:"Optional extra detail"`
 	// Minutes makes this a calendar entry rather than a moment: a meeting
 	// occupies time, and Free needs to know how much before it can say when
@@ -112,7 +112,7 @@ func (Server) List(ctx context.Context, _ *ListRequest, rsp *ListResponse) error
 
 // DeleteRequest cancels one event.
 type DeleteRequest struct {
-	ID string `json:"id" description:"The event's id, as given by events_list"`
+	ID string `json:"id" required:"true" description:"The event's id, as given by events_list"`
 }
 
 // DeleteResponse confirms the cancellation.

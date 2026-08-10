@@ -36,6 +36,6 @@ var Spec = service.Spec{
 	Icon:        "markets.svg",
 	Card:        MarketsHTML,
 	Endpoints: map[string]service.Endpoint{
-		"List": {Doc: "Get live prices for cryptocurrencies, stocks, futures, commodities and currencies"},
+		"List": {Aliases: []string{"markets"}, Doc: "Get live prices for cryptocurrencies, stocks, futures, commodities and currencies"},
 	},
 }

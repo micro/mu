@@ -21,6 +21,10 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"mu/tool"
+
+	"mu/internal/api"
 )
 
 func TestThePaymentGateAsksWhetherTheToolCostsAnything(t *testing.T) {
@@ -69,19 +73,25 @@ func TestTheVerifyBannerStaysOffTheWalletPages(t *testing.T) {
 // layer later by their own handler, having been advertised as available. They
 // are marked AccountOnly so the refusal happens at the MCP layer, as a 401
 // pointing at sign-in.
+// Asked of the registry rather than the source, because where a tool is
+// written down keeps changing and what it answers must not. web_fetch was a
+// hand-written registration carrying this flag and is now derived from the web
+// Spec, which is exactly the move that could have dropped it — a source scan
+// for "AccountOnly: true" would have gone on passing right up until it could
+// not find the tool at all.
 func TestFreeButAccountableToolsSaySoAtTheMCPLayer(t *testing.T) {
-	src := registrationSource(t)
+	registerAll(t)
+	tool.DeriveTools()
+
 	for _, tool := range []string{"video_search", "web_fetch"} {
-		i := strings.Index(src, `Name:        "`+tool+`"`)
-		if i < 0 {
-			t.Fatalf("%s is no longer registered anywhere", tool)
+		p := api.PolicyFor(tool)
+		if p.Tool == "" {
+			t.Errorf("%s is no longer registered anywhere", tool)
+			continue
 		}
-		// The flag has to be inside this tool's own block, not somewhere else
-		// in the file.
-		block := src[i:min(i+1400, len(src))]
-		if !strings.Contains(block, "AccountOnly: true") {
+		if !p.NeedsAccount {
 			t.Errorf("%s is offered to anonymous callers and then refused by its "+
-				"own handler one layer later", tool)
+				"own handler one layer later: %s", tool, p.Describe())
 		}
 	}
 }

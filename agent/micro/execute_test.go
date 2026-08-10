@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	"mu/tool"
+
 	"mu/internal/service"
 	"mu/service/index"
 	"mu/service/mail"
@@ -14,6 +16,13 @@ import (
 )
 
 func TestBuildToolsDescFiltersPrivateToolsForGuests(t *testing.T) {
+	// The tools come from the Specs, and the catalogue is what turns one into
+	// the other. Registering the services is not enough on its own — without
+	// this the list is empty and "guests cannot see mail_inbox" passes because
+	// nobody can.
+	registerServices(t)
+	tool.DeriveTools()
+
 	mail := Get("mail")
 	if mail == nil {
 		t.Fatal("mail agent is not registered")

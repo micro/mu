@@ -12,6 +12,7 @@ import (
 	"mu/internal/service"
 	"mu/internal/settings"
 	"mu/internal/usage"
+	"mu/service/apps"
 	"mu/service/blog"
 	"mu/service/chat"
 	"mu/service/contacts"
@@ -25,11 +26,14 @@ import (
 	"mu/service/news"
 	"mu/service/places"
 	"mu/service/prayer"
+	"mu/service/social"
 	"mu/service/stream"
 	"mu/service/tasks"
+	user "mu/service/user"
 	"mu/service/video"
 	"mu/service/weather"
 	"mu/service/web"
+	"mu/wallet"
 )
 
 // boot starts the runtime core and loads every service.
@@ -83,6 +87,16 @@ func boot() {
 	usage.Load()
 	files.Load()
 	contacts.Load()
+	user.Load()
+
+	// These three loaded from wireHooks, which is for breaking cycles rather
+	// than for standing services up. Nothing about them needed a hook first —
+	// they were simply written where somebody was working — and the cost was
+	// invisible until a test asked which Specs exist after boot and got an
+	// answer three short. Loading is boot's job.
+	apps.Load()
+	social.Load()
+	wallet.Load()
 	tasks.Load()
 	events.Load()
 }

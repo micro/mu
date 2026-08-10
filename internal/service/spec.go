@@ -89,6 +89,25 @@ type Endpoint struct {
 	// attacker-controlled text, so a tool it holds is a tool prompt injection
 	// holds; what earns this flag is an irreversible effect nobody asked for.
 	Destructive bool
+	// OptionalAuth runs the method with an empty caller rather than refusing
+	// when there is nobody signed in.
+	//
+	// For a method that answers anyone and answers a signed-in caller with
+	// more: index.Search returns this instance's public content to a guest and
+	// the caller's own on top of it. Without this the choice is between
+	// refusing guests and never learning who is asking, and refusing guests is
+	// what a scoped service does — against the design this one declares.
+	OptionalAuth bool
+	// AccountOnly refuses a caller whose only identity is a paid wallet.
+	//
+	// Different from Account, which asks whether there is a caller at all.
+	// This asks whether paying can stand in for one, and says no. What earns
+	// it is a method where the cost is not what is in the way: web.Fetch is
+	// free — an http.Get and a readability pass in this process — but "fetch
+	// any URL you name" is a request this server makes on somebody's behalf,
+	// to wherever they say, and that wants an account behind it rather than a
+	// funded wallet. Rationing needs somebody to ration.
+	AccountOnly bool
 	// Account marks a method that cannot run without a caller, on a service
 	// that is otherwise open.
 	//

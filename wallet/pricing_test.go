@@ -124,8 +124,12 @@ func TestEveryChargedOperationIsPublished(t *testing.T) {
 		published[it.Operation] = true
 	}
 
-	// Both forms: the constant (current) and a bare string (a regression).
-	site := regexp.MustCompile(`(?:WalletOp:\s*|QuotaCheck\([^,]+,\s*)(?:quota\.(Op[A-Za-z]+)|"([a-z_]+)")`)
+	// Three forms. WalletOp on a hand-written tool and QuotaCheck at a call
+	// site were the original two; Cost on a service Endpoint is where most
+	// charges live now that tools derive from Specs, and a scan that did not
+	// know about it went from thirty-odd charge sites to twelve without
+	// noticing that the ones it lost were the ones that moved.
+	site := regexp.MustCompile(`(?:WalletOp:\s*|Cost:\s*|QuotaCheck\([^,]+,\s*)(?:quota\.(Op[A-Za-z]+)|"([a-z_]+)")`)
 
 	found := 0
 	err = filepath.Walk(repoRoot(t), func(path string, info os.FileInfo, err error) error {

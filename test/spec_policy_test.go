@@ -3,6 +3,8 @@ package test
 import (
 	"testing"
 
+	"mu/tool"
+
 	"mu/internal/api"
 	"mu/internal/service"
 	"mu/service/apps"
@@ -23,10 +25,10 @@ import (
 	"mu/service/social"
 	"mu/service/stream"
 	"mu/service/tasks"
+	user "mu/service/user"
 	"mu/service/video"
 	"mu/service/weather"
 	"mu/service/web"
-	"mu/wallet"
 )
 
 // allSpecs is every service main() registers. Keep it complete: a Spec missing
@@ -42,8 +44,7 @@ func allSpecs() []service.Spec {
 		apps.Spec, blog.Spec, chat.Spec, contacts.Spec, db.Spec, events.Spec,
 		files.Spec, images.Spec, index.Spec, mail.Spec, markets.Spec,
 		memory.Spec, news.Spec, places.Spec, prayer.Spec, social.Spec,
-		stream.Spec, tasks.Spec, video.Spec, wallet.Spec, weather.Spec,
-		web.Spec,
+		stream.Spec, tasks.Spec, user.Spec, video.Spec, weather.Spec, web.Spec,
 	}
 }
 
@@ -66,7 +67,7 @@ func registerAll(t *testing.T) {
 
 // The real specs must reproduce the policy the deleted hand-written maps held.
 func TestSpecsReproduceTheOldPolicy(t *testing.T) {
-	for _, s := range []service.Spec{mail.Spec, index.Spec, tasks.Spec, wallet.Spec, web.Spec} {
+	for _, s := range []service.Spec{mail.Spec, index.Spec, tasks.Spec, web.Spec, blog.Spec, user.Spec} {
 		// Idempotent for the same reason registerAll is: another test in this
 		// binary may have registered these already, and registering twice
 		// races for the port.
@@ -78,7 +79,7 @@ func TestSpecsReproduceTheOldPolicy(t *testing.T) {
 		}
 	}
 	// accountScoped, deleted from internal/service/dynamic.go
-	for _, n := range []string{"mail", "tasks", "wallet"} {
+	for _, n := range []string{"mail", "tasks", "user"} {
 		if !service.AccountScoped(n) {
 			t.Errorf("%s lost its account scoping", n)
 		}
@@ -100,16 +101,16 @@ func TestSpecsReproduceTheOldPolicy(t *testing.T) {
 	if !service.GuestAllowedTool("index_search") {
 		t.Error("a guest must be able to search public indexed content")
 	}
-	for _, tool := range []string{"mail_inbox", "tasks_list", "wallet_balance"} {
+	for _, tool := range []string{"mail_inbox", "tasks_list", "user_saved"} {
 		if service.GuestAllowedTool(tool) {
 			t.Errorf("%s must stay closed to guests", tool)
 		}
 	}
 	// destructiveTools, deleted from agent/native.go
-	if !service.Destructive("wallet", "Charge") || !service.Destructive("tasks", "Delete") {
+	if !service.Destructive("blog", "Delete") || !service.Destructive("tasks", "Delete") {
 		t.Error("a destructive method lost its guard")
 	}
-	if service.Destructive("wallet", "Balance") || service.Destructive("tasks", "List") {
+	if service.Destructive("blog", "Read") || service.Destructive("tasks", "List") {
 		t.Error("a read was marked destructive")
 	}
 	// agentToolLabels, deleted from agent/native.go
@@ -181,7 +182,7 @@ func TestNavCoversEveryPagedServiceExactlyOnce(t *testing.T) {
 // new endpoint cannot go missing between the Spec and the client again.
 func TestEveryEndpointIsReachableOverMCP(t *testing.T) {
 	registerAll(t)
-	api.DeriveTools()
+	tool.DeriveTools()
 
 	for _, s := range allSpecs() {
 		for method := range s.Endpoints {
@@ -190,5 +191,26 @@ func TestEveryEndpointIsReachableOverMCP(t *testing.T) {
 				t.Errorf("%s.%s is declared but no client can call %s", s.Name, method, name)
 			}
 		}
+	}
+}
+
+// A funded wallet is not accountable for this sending domain.
+//
+// mail_send was a hand-written registration carrying AccountOnly; it derives
+// from the mail Spec now, so the flag has to be on the Endpoint or an anonymous
+// payer can send mail from this instance's domain and there is nobody to hold
+// to it. Checked against the real Spec rather than a probe, because a probe can
+// only prove the mechanism works.
+func TestSendingMailNeedsAnAccountNotAWallet(t *testing.T) {
+	ep, ok := mail.Spec.Endpoints["Send"]
+	if !ok {
+		t.Fatal("the mail service no longer declares Send")
+	}
+	if !ep.AccountOnly {
+		t.Error("mail.Send is not account-only — a settled payment would be " +
+			"identity enough to send from this domain")
+	}
+	if ep.Cost == "" {
+		t.Error("mail.Send charges nothing, so external delivery is free")
 	}
 }

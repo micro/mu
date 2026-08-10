@@ -15,7 +15,7 @@ type Server struct{}
 // BuildRequest describes an app to generate. The owner is the authenticated
 // caller, taken from the call context — never a model-supplied author.
 type BuildRequest struct {
-	Prompt string `json:"prompt" description:"Description of the app to build"`
+	Prompt string `json:"prompt" required:"true" description:"Description of the app to build, e.g. 'an expense tracker', 'a packing checklist', 'a water intake counter'"`
 }
 
 // BuildResponse is the saved app's identity and URLs.
@@ -47,7 +47,8 @@ func (Server) Build(ctx context.Context, req *BuildRequest, rsp *BuildResponse) 
 
 // AppSearchRequest searches the apps directory.
 type AppSearchRequest struct {
-	Query string `json:"query" description:"Search query (name, description or tag)"`
+	Query string `json:"query" description:"Search query — name, description or tag"`
+	Tag   string `json:"tag" description:"Filter to apps carrying this tag"`
 }
 
 // AppSearchResponse is a model-ready list of matching apps.
@@ -59,8 +60,29 @@ type AppSearchResponse struct {
 // @example {"query": "tracker"}
 func (Server) Search(_ context.Context, req *AppSearchRequest, rsp *AppSearchResponse) error {
 	results := SearchApps(req.Query)
+
+	// A tag narrows the result rather than being a second kind of search: an
+	// empty query with a tag lists everything carrying it, which is what
+	// "show me the trackers" means.
+	if tag := strings.ToLower(strings.TrimSpace(req.Tag)); tag != "" {
+		var kept []*App
+		for _, a := range results {
+			for _, t := range strings.Split(a.Tags, ",") {
+				if strings.ToLower(strings.TrimSpace(t)) == tag {
+					kept = append(kept, a)
+					break
+				}
+			}
+		}
+		results = kept
+	}
+
 	if len(results) == 0 {
-		rsp.Text = "No apps found for \"" + req.Query + "\"."
+		what := req.Query
+		if what == "" {
+			what = req.Tag
+		}
+		rsp.Text = "No apps found for \"" + what + "\"."
 		return nil
 	}
 	var b strings.Builder
@@ -73,7 +95,7 @@ func (Server) Search(_ context.Context, req *AppSearchRequest, rsp *AppSearchRes
 
 // AppReadRequest reads one app by slug.
 type AppReadRequest struct {
-	Slug string `json:"slug" description:"App slug"`
+	Slug string `json:"slug" required:"true" description:"The app's URL slug, e.g. pomodoro-timer"`
 }
 
 // AppReadResponse is a model-ready description of an app.
@@ -100,8 +122,19 @@ var Spec = service.Spec{
 	Icon:        "apps.svg",
 	Card:        Preview,
 	Endpoints: map[string]service.Endpoint{
-		"Build":  {Doc: "Generate a small app (tracker, checklist or counter) from a description", Cost: quota.OpAppBuild},
+		"Build": {Doc: "Build a small app from a description, save it, and return its details and URL. An app is a single page — a tracker, a checklist, a counter — that keeps its own store and runs in the browser",
+			Cost: quota.OpAppBuild, Account: true},
 		"Read":   {Doc: "Read the details of one app by its slug"},
-		"Search": {Doc: "Search the apps directory for small, useful tools"},
+		"Search": {Doc: "Search the apps directory for small, useful tools, by name, description or tag"},
+
+		// Where an app comes from. Implemented in authoring.go.
+		"Create": {Doc: "Create an app — a small, self-contained HTML tool hosted here. Takes the HTML; apps_build writes it for you from a description",
+			Cost: quota.OpAppCreate, Account: true},
+		"Edit": {Doc: "Edit an app you own — its name, description, tags, icon, HTML or price. Fields left out keep their value",
+			Cost: quota.OpAppEdit, Account: true},
+		"Fork": {Doc: "Fork an app into your own account, to change independently of the original", Account: true},
+		"Run": {Doc: "Publish a snippet of JavaScript and get back a URL that runs it in a browser. It returns a link rather than output — the code runs in a sandbox when somebody opens it, not here",
+			Cost: quota.OpAgentQuery, Account: true},
+		"Test": {Doc: "Test an app by checking its HTML and running its mu.api calls server-side, so an author finds out what is broken without opening it", Account: true},
 	},
 }

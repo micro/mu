@@ -1,9 +1,11 @@
-package api
+package tool
 
 import (
 	"context"
 	"strings"
 	"testing"
+
+	"mu/internal/api"
 
 	"mu/internal/service"
 )
@@ -43,10 +45,11 @@ func TestEveryEndpointBecomesATool(t *testing.T) {
 	}
 	DeriveTools()
 
-	var got *Tool
-	for i := range tools {
-		if tools[i].Name == "derivable_find" {
-			got = &tools[i]
+	var got *api.Tool
+	for _, reg := range api.Tools() {
+		if reg.Name == "derivable_find" {
+			found := reg
+			got = &found
 		}
 	}
 	if got == nil {
@@ -79,7 +82,7 @@ func TestEveryEndpointBecomesATool(t *testing.T) {
 // parameter docs written for a model, and often return one field of a response
 // rather than the whole struct. Derivation is for what nobody remembered.
 func TestAWrittenToolIsNotOverwritten(t *testing.T) {
-	RegisterTool(Tool{Name: "written_thing", Description: "By hand"})
+	api.RegisterTool(api.Tool{Name: "written_thing", Description: "By hand"})
 	if _, already := service.SpecFor("written"); !already {
 		if err := service.Register(service.Spec{
 			Name: "written", Handler: new(DeriveProbe), Page: "/written",
@@ -92,11 +95,11 @@ func TestAWrittenToolIsNotOverwritten(t *testing.T) {
 	DeriveTools()
 
 	seen := 0
-	for i := range tools {
-		if tools[i].Name == "written_thing" {
+	for _, reg := range api.Tools() {
+		if reg.Name == "written_thing" {
 			seen++
-			if tools[i].Description != "By hand" {
-				t.Errorf("derivation overwrote a written tool: %q", tools[i].Description)
+			if reg.Description != "By hand" {
+				t.Errorf("derivation overwrote a written tool: %q", reg.Description)
 			}
 		}
 	}
@@ -109,10 +112,10 @@ func TestAWrittenToolIsNotOverwritten(t *testing.T) {
 // second call is exactly the mistake that would go unnoticed.
 func TestDerivingTwiceChangesNothing(t *testing.T) {
 	DeriveTools()
-	before := len(tools)
+	before := len(api.Tools())
 	DeriveTools()
-	if len(tools) != before {
-		t.Errorf("a second derivation added %d tools", len(tools)-before)
+	if after := len(api.Tools()); after != before {
+		t.Errorf("a second derivation added %d tools", after-before)
 	}
 }
 

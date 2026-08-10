@@ -3,6 +3,7 @@ package blog
 import (
 	"context"
 
+	"mu/internal/quota"
 	"mu/internal/service"
 )
 
@@ -35,5 +36,16 @@ var Spec = service.Spec{
 	Card:        Preview,
 	Endpoints: map[string]service.Endpoint{
 		"List": {Doc: "Read recent blog posts — titles, snippets and ids"},
+
+		// One post at a time. Implemented in posts.go.
+		"Read": {Doc: "Read one blog post in full, by id or by title. Use after blog_list or index_search has found a candidate and the summary is not enough"},
+		"Create": {Doc: "Publish a post to the caller's blog. For anything meant to be read later by other people — notes, write-ups, announcements. For a private note to yourself, prefer files or memory",
+			Cost: quota.OpBlogCreate, Account: true},
+		"Update": {Doc: "Edit one of the caller's own posts. Fields left out keep their current value", Account: true},
+		"Delete": {Doc: "Delete one of the caller's own blog posts, by id or title. Refuses posts written by anyone else, and refuses an ambiguous title rather than guessing. Irreversible, so confirm with the user first",
+			Destructive: true, Account: true},
 	},
+	// Create, Update and Delete write the caller's own posts; Read and List are
+	// public. Scoped is per service, so it stays false and the three that need
+	// a caller get one from the context — see Endpoint.Account.
 }

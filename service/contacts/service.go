@@ -24,7 +24,7 @@ func caller(ctx context.Context) (string, error) {
 // ── Add ─────────────────────────────────────────────────────────
 
 type AddRequest struct {
-	Name  string `json:"name" description:"The person's name, e.g. \"Sarah Chen\""`
+	Name  string `json:"name" required:"true" description:"The person's name, e.g. \"Sarah Chen\""`
 	Email string `json:"email,omitempty" description:"Their email address"`
 	Phone string `json:"phone,omitempty" description:"Their phone number"`
 	Note  string `json:"note,omitempty" description:"Anything worth remembering about them"`
@@ -55,7 +55,7 @@ func (Server) Add(ctx context.Context, req *AddRequest, rsp *AddResponse) error 
 // ── Find ────────────────────────────────────────────────────────
 
 type FindRequest struct {
-	Query string `json:"query" description:"A name, part of a name, or an address"`
+	Query string `json:"query" required:"true" description:"A name, part of a name, or an address"`
 }
 
 type FindResponse struct {
@@ -118,7 +118,7 @@ func (Server) List(ctx context.Context, _ *ListRequest, rsp *ListResponse) error
 // ── Delete ──────────────────────────────────────────────────────
 
 type DeleteRequest struct {
-	ID string `json:"id" description:"The contact's id, from contacts_find or contacts_list"`
+	ID string `json:"id" required:"true" description:"The contact's id, from contacts_find or contacts_list"`
 }
 
 type DeleteResponse struct {
@@ -154,9 +154,10 @@ var Spec = service.Spec{
 	Icon:        "contacts.svg",
 	Scoped:      true,
 	Endpoints: map[string]service.Endpoint{
-		"Add":    {Doc: "Save someone to the address book, or update them if already there"},
-		"Find":   {Doc: "Look someone up by name, part of a name, or address"},
-		"List":   {Doc: "List the caller's contacts"},
+		"Add": {Doc: "Save someone to the address book. Adding a name already there updates it rather than making a second card"},
+		"Find": {Doc: "Look someone up in the address book by name, part of a name, or address. " +
+			"Use this before sending mail to a person named rather than addressed"},
+		"List":   {Doc: "List everyone in the caller's address book"},
 		"Delete": {Doc: "Remove someone from the address book", Destructive: true},
 	},
 }

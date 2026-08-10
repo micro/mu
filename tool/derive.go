@@ -1,4 +1,25 @@
-package api
+package tool
+
+// Package tool builds the catalogue an agent calls.
+//
+// It sits at the top level because it is a staple: Tools is one of the two
+// doors onto the services, and the thing behind that door has to be somewhere a
+// person can find. It used to be built inside internal/api, which is the MCP
+// protocol server — JSON-RPC framing, the /mcp endpoint, the payment gate — and
+// that had a consequence nobody chose.
+//
+// internal/ may not import the product. So a tool registered there could not
+// call a service; it could only name a URL, and calling it synthesised an HTTP
+// request and pushed it through http.DefaultServeMux to reach the web handler
+// for that route. Twenty-one tools worked that way. An agent asking for places
+// went through the places *page* — its form parsing, its content negotiation,
+// its own second auth check — and got back whatever that page renders for
+// Accept: application/json. Nobody designed that. It was the only shape
+// available to a package that is not allowed to import what it is describing.
+//
+// Building the catalogue up here removes the constraint rather than working
+// around it. main calls Load with the registered Specs; what comes out is
+// handed to internal/api, which serves it and no longer builds it.
 
 // Every service endpoint is a tool, without anyone writing it down twice.
 //
@@ -27,8 +48,20 @@ import (
 	"reflect"
 	"strings"
 
+	"mu/internal/api"
 	"mu/internal/service"
 )
+
+// Load builds the catalogue from the Specs registered so far and hands it to
+// the protocol server.
+//
+// Called by main once the services are up. Anything written out by hand is
+// registered before this and wins the name, so this only fills gaps — see
+// DeriveTools.
+func Load(specs []service.Spec) {
+	DeriveTools()
+	api.ToolsRegistered()
+}
 
 // DeriveTools registers a tool for every Spec endpoint that has none.
 //
@@ -40,7 +73,7 @@ func DeriveTools() {
 		}
 		for method, ep := range spec.Endpoints {
 			name := spec.Tool(method)
-			if toolExists(name) {
+			if api.HasTool(name) {
 				continue
 			}
 			reqType, ok := requestType(spec.Handler, method)
@@ -50,15 +83,6 @@ func DeriveTools() {
 			registerDerived(spec, method, ep, name, reqType)
 		}
 	}
-}
-
-func toolExists(name string) bool {
-	for i := range tools {
-		if toolMatches(tools[i], name) {
-			return true
-		}
-	}
-	return false
 }
 
 // requestType finds the request struct of an endpoint: go-micro handlers are
@@ -77,8 +101,8 @@ func requestType(handler any, method string) (reflect.Type, bool) {
 
 // params reads a request struct's fields the way the rest of the codebase
 // documents them: a json name and a description tag.
-func params(t reflect.Type) []ToolParam {
-	var out []ToolParam
+func params(t reflect.Type) []api.ToolParam {
+	var out []api.ToolParam
 	for i := 0; i < t.NumField(); i++ {
 		f := t.Field(i)
 		if f.PkgPath != "" {
@@ -92,7 +116,7 @@ func params(t reflect.Type) []ToolParam {
 		// said every field was optional, so a model could omit the one the
 		// method cannot work without and find out from an error. Opt-in by tag,
 		// so a service that says nothing keeps exactly the schema it had.
-		out = append(out, ToolParam{
+		out = append(out, api.ToolParam{
 			Name:        name,
 			Type:        jsonType(f.Type),
 			Description: f.Tag.Get("description"),
@@ -118,17 +142,56 @@ func jsonType(t reflect.Type) string {
 	return "string"
 }
 
-func registerDerived(spec service.Spec, method string, ep service.Endpoint, name string, reqType reflect.Type) {
-	endpoint := service.HandlerName(spec.Handler) + "." + method
-	svc := spec.Name
+// PreviewDerived is the tool every Spec endpoint would produce, whether or not
+// one is already registered under that name.
+//
+// Nothing in the running server calls it. It exists so a hand-written
+// registration can be held next to the one its Spec would give, which is the
+// only way to answer the question that decides whether the hand-written one is
+// still earning its place: what would be lost by deleting it. Descriptions and
+// parameter docs written for a model usually beat reflection — but only usually,
+// and after enough endpoints have grown Doc strings and description tags of
+// their own, some of the hand-written ones are carrying nothing.
+func PreviewDerived() []api.Tool {
+	var out []api.Tool
+	for _, spec := range service.Specs() {
+		if spec.Handler == nil {
+			continue
+		}
+		for method, ep := range spec.Endpoints {
+			reqType, ok := requestType(spec.Handler, method)
+			if !ok {
+				continue
+			}
+			out = append(out, derivedTool(spec, ep, spec.Tool(method), reqType))
+		}
+	}
+	return out
+}
 
-	tool := Tool{
+func derivedTool(spec service.Spec, ep service.Endpoint, name string, reqType reflect.Type) api.Tool {
+	return api.Tool{
 		Name:        name,
 		Aliases:     ep.Aliases,
 		Description: ep.Doc,
 		WalletOp:    ep.Cost,
-		Params:      params(reqType),
+		// A method where paying cannot stand in for having an account says so
+		// here, or the tool is advertised to an anonymous caller and refused
+		// one call later — and, for web_fetch, is a request this server makes
+		// to wherever a stranger names.
+		AccountOnly: ep.AccountOnly,
+		// A method that answers a guest and answers a caller with more says so
+		// here, or it is registered auth-only and the guest half never runs.
+		OptionalAuth: ep.OptionalAuth,
+		Params:       params(reqType),
 	}
+}
+
+func registerDerived(spec service.Spec, method string, ep service.Endpoint, name string, reqType reflect.Type) {
+	endpoint := service.HandlerName(spec.Handler) + "." + method
+	svc := spec.Name
+
+	t := derivedTool(spec, ep, name, reqType)
 
 	call := func(args map[string]any, accountID string) (string, error) {
 		// Through JSON so the argument map lands in the request struct by the
@@ -158,12 +221,12 @@ func registerDerived(spec service.Spec, method string, ep service.Endpoint, name
 	// discussion anyone may read — and that is Endpoint.Account. Without it the
 	// tool was registered with a hard-coded empty account, so the handler read
 	// no caller and refused its own call.
-	if spec.Scoped || ep.Account {
-		RegisterToolWithAuth(tool, call)
+	if spec.Scoped || ep.Account || ep.OptionalAuth {
+		api.RegisterToolWithAuth(t, call)
 		return
 	}
-	tool.Handle = func(args map[string]any) (string, error) { return call(args, "") }
-	RegisterTool(tool)
+	t.Handle = func(args map[string]any) (string, error) { return call(args, "") }
+	api.RegisterTool(t)
 }
 
 // renderResponse prefers the one text field a response carries, because that is
@@ -188,6 +251,3 @@ func renderResponse(rsp map[string]any) string {
 	}
 	return string(b)
 }
-
-// HasTool reports whether a tool of that name (or alias) is registered.
-func HasTool(name string) bool { return toolExists(name) }

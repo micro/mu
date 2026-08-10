@@ -127,20 +127,17 @@ func TestMCPHandler_ToolsList(t *testing.T) {
 		t.Error("Expected at least one tool")
 	}
 
-	// Verify expected tools exist. Note: news_list, index_search, blog_list,
-	// video_list, markets_list, social_list and weather_forecast are registered
-	// dynamically in main.go (AI-first handlers), so they are not part of this
-	// package's static tool list.
-	// wallet_balance moved to main.go with the rest of the wallet surface, so
-	// it is no longer static either.
+	// Named tools this package still registers itself.
+	//
+	// It used to list news_search, mail_inbox, stream_list and the rest, which
+	// made a protocol test fail whenever the catalogue moved — and the
+	// catalogue has moved: it is built in tool/ from the service Specs and
+	// handed here. What this test is about is whether tools/list answers with
+	// well-formed entries, not which tools an instance happens to offer, so it
+	// checks the ones still declared in this file and stops asserting over
+	// somebody else's list.
 	expectedTools := map[string]bool{
-		// There is no chat tool: it asked a model one question with no tool
-		// use, which is agent_ask minus the ability to act. The chat service
-		// still ships chat_rooms and chat_messages, derived from its Spec.
-		"news_search": false,
-		"blog_read":   false, "blog_create": false,
-		"video_search": false, "mail_inbox": false,
-		"stream_list": false,
+		"probe_free": false, "probe_paid": false,
 	}
 	for _, item := range toolsList {
 		tool, ok := item.(map[string]any)
@@ -335,7 +332,7 @@ func TestMCPHandler_QuotaCheckBlocks(t *testing.T) {
 	}
 	defer func() { QuotaCheck = origQuotaCheck }()
 
-	body := `{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"news_search","arguments":{"query":"hello"}}}`
+	body := `{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"probe_paid","arguments":{"query":"hello"}}}`
 	req := httptest.NewRequest("POST", "/mcp", strings.NewReader(body))
 	w := httptest.NewRecorder()
 
@@ -625,66 +622,6 @@ func TestRegisterTool(t *testing.T) {
 	}
 	if !found {
 		t.Error("Registered tool not found in tools list")
-	}
-}
-
-func TestReminderAPIHelpersRejectNonSuccessStatus(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/daily" {
-			t.Fatalf("unexpected path: %s", r.URL.Path)
-		}
-		http.Error(w, "upstream unavailable", http.StatusBadGateway)
-	}))
-	defer server.Close()
-
-	origBase := reminderAPIBase
-	origClient := reminderHTTPClient
-	reminderAPIBase = server.URL + "/"
-	reminderHTTPClient = server.Client()
-	defer func() {
-		reminderAPIBase = origBase
-		reminderHTTPClient = origClient
-	}()
-
-	_, err := getReminderAPI("/daily")
-	if err == nil {
-		t.Fatal("expected non-success status to return an error")
-	}
-	if !strings.Contains(err.Error(), "status 502") {
-		t.Fatalf("expected status code in error, got %v", err)
-	}
-}
-
-func TestReminderAPIHelpersUseConfiguredBaseAndClient(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			t.Fatalf("unexpected method: %s", r.Method)
-		}
-		if r.URL.Path != "/api/search" {
-			t.Fatalf("unexpected path: %s", r.URL.Path)
-		}
-		if got := r.Header.Get("Content-Type"); got != "application/json" {
-			t.Fatalf("unexpected content type: %s", got)
-		}
-		w.Write([]byte(`{"ok":true}`))
-	}))
-	defer server.Close()
-
-	origBase := reminderAPIBase
-	origClient := reminderHTTPClient
-	reminderAPIBase = server.URL + "/api/"
-	reminderHTTPClient = server.Client()
-	defer func() {
-		reminderAPIBase = origBase
-		reminderHTTPClient = origClient
-	}()
-
-	got, err := postReminderAPI("/search", "application/json", `{"q":"test"}`)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if got != `{"ok":true}` {
-		t.Fatalf("unexpected body: %s", got)
 	}
 }
 

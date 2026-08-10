@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"mu/internal/quota"
 	"mu/internal/service"
 )
 
@@ -63,8 +64,8 @@ func (Server) Reflection(_ context.Context, _ *ReflectionRequest, rsp *Reflectio
 
 // TimesRequest asks for prayer times at a location.
 type TimesRequest struct {
-	Lat    float64 `json:"lat" description:"Latitude of the location"`
-	Lon    float64 `json:"lon" description:"Longitude of the location"`
+	Lat    float64 `json:"lat" required:"true" description:"Latitude of the location"`
+	Lon    float64 `json:"lon" required:"true" description:"Longitude of the location"`
 	TZ     string  `json:"tz" description:"IANA timezone of the location, e.g. Europe/London (defaults to UTC)"`
 	Method string  `json:"method" description:"Calculation convention: isna, mwl, egypt, karachi, gulf, diyanet, muis or jakim (defaults to isna)"`
 }
@@ -104,8 +105,8 @@ func (Server) Times(_ context.Context, req *TimesRequest, rsp *TimesResponse) er
 
 // QiblaRequest asks for the qibla direction at a location.
 type QiblaRequest struct {
-	Lat float64 `json:"lat" description:"Latitude of the location"`
-	Lon float64 `json:"lon" description:"Longitude of the location"`
+	Lat float64 `json:"lat" required:"true" description:"Latitude of the location"`
+	Lon float64 `json:"lon" required:"true" description:"Longitude of the location"`
 }
 
 // QiblaResponse is the direction to face for prayer.
@@ -130,8 +131,14 @@ var Spec = service.Spec{
 	Page:        "/prayer",
 	Card:        ReminderHTML,
 	Endpoints: map[string]service.Endpoint{
-		"Times":      {Doc: "Get today's Islamic prayer times (salah) for a location, and which prayer is next"},
-		"Qibla":      {Doc: "Get the qibla — the compass bearing to face for Islamic prayer from a location"},
-		"Reflection": {Doc: "Get today's Islamic reflection — a verse of the Quran with its surah, a saying of the Prophet, and a name of Allah"},
+		"Times":      {Aliases: []string{"islam_prayer"}, Doc: "Get today's Islamic prayer times (salah) for a location, and which prayer is next"},
+		"Qibla":      {Aliases: []string{"islam_qibla"}, Doc: "Get the qibla — the compass bearing to face for Islamic prayer from a location"},
+		"Reflection": {Aliases: []string{"prayer_today", "islam_today", "islam", "reminder"}, Doc: "Get today's Islamic reflection — a verse of the Quran with its surah, a saying of the Prophet, and a name of Allah"},
+
+		// Looking something up in the sources, rather than being told today's.
+		// Implemented in scripture.go.
+		"Verse":  {Aliases: []string{"quran"}, Doc: "Look up a chapter of the Quran, or one verse within it, by number. Use prayer_search to ask a question instead of naming a reference"},
+		"Saying": {Aliases: []string{"hadith"}, Doc: "Look up a hadith from Sahih al-Bukhari, optionally from a given book"},
+		"Search": {Aliases: []string{"quran_search"}, Doc: "Search the Quran, the hadith and the names of Allah by meaning — ask a question in plain language rather than naming a reference", Cost: quota.OpQuranSearch},
 	},
 }

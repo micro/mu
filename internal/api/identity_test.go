@@ -3,7 +3,6 @@ package api
 import (
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 )
 
@@ -53,34 +52,6 @@ func TestWalletAndAccountIdentitiesAreDistinguishable(t *testing.T) {
 	// namespaces cannot collide.
 	if IsWalletIdentity("x402") {
 		t.Error("a username-shaped id was treated as a wallet")
-	}
-}
-
-// mail_send stays account-only: paying proves funds, not accountability, and an
-// anonymous funded wallet sending from this domain spends its reputation.
-func TestMailSendRefusesAPaidWallet(t *testing.T) {
-	withPayer(t, "0xdeadbeef00000000000000000000000000001234")
-
-	var mailSend *Tool
-	for i := range tools {
-		if tools[i].Name == "mail_send" {
-			mailSend = &tools[i]
-		}
-	}
-	if mailSend == nil {
-		t.Fatal("mail_send is gone; the guard needs rechecking")
-	}
-	if !mailSend.AccountOnly {
-		t.Fatal("mail_send is no longer account-only — a funded wallet could send from this domain")
-	}
-
-	text, isErr, err := ExecuteTool(httptest.NewRequest("POST", "/mcp", nil), "mail_send",
-		map[string]any{"to": "someone@example.com", "subject": "x", "body": "y"})
-	if err == nil || !isErr {
-		t.Fatalf("a paid wallet was allowed to send mail: %q", text)
-	}
-	if !strings.Contains(text, "requires an account") {
-		t.Errorf("refused for the wrong reason: %q", text)
 	}
 }
 
