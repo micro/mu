@@ -188,7 +188,7 @@ func wireHooks() {
 			// back only its own scheduled results.
 			if acc, err := auth.GetAccount(e.Owner); err == nil {
 				_ = mail.SendMessageTo("Mu", "agent@"+mail.GetConfiguredDomain(),
-					acc.Name, acc.ID, "scheduled", e.Title, answer, "", "", false, 0, nil, "", "")
+					acc.Name, acc.ID, "scheduled", e.Title, answer, "", "", false, 0, nil, "", "", nil)
 			}
 			// Contentless, for the reason on events.OnFire above: the title
 			// of a standing instruction is as private as the reminder.

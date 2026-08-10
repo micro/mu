@@ -471,13 +471,16 @@ func (s *Session) Data(r io.Reader) error {
 
 	// Parse body based on content type
 	var body string
+	// What the message carried besides its text, kept out of body and stored
+	// beside it so the message view can still render a DMARC report.
+	var inboundAttachment *Attachment
 	if strings.Contains(contentType, "multipart/") {
 		// Parse multipart message
 		mediaType, params, err := mime.ParseMediaType(contentType)
 		if err == nil && strings.HasPrefix(mediaType, "multipart/") {
 			boundary := params["boundary"]
 			if boundary != "" {
-				body = parseMultipart(msg.Body, boundary)
+				body, inboundAttachment = parseMultipart(msg.Body, boundary)
 			} else {
 				// Fallback to reading raw body
 				bodyBytes, _ := io.ReadAll(msg.Body)
@@ -683,6 +686,7 @@ func (s *Session) Data(r io.Reader) error {
 			spamResult.Reasons,
 			s.remoteIP,
 			rawHeaderStr,
+			inboundAttachment,
 		); err != nil {
 			app.Log("mail", "Error saving message: %v", err)
 			continue
@@ -730,16 +734,16 @@ func (s *Session) Data(r io.Reader) error {
 // parseMultipart extracts text content from a multipart MIME message
 // If there's only one attachment and no text body, returns the attachment content
 // Recursively handles nested multipart content (e.g., multipart/related containing multipart/alternative)
-func parseMultipart(body io.Reader, boundary string) string {
+func parseMultipart(body io.Reader, boundary string) (string, *Attachment) {
 	return parseMultipartRecursive(body, boundary, 0)
 }
 
 // parseMultipartRecursive handles nested multipart with depth tracking to prevent infinite loops
-func parseMultipartRecursive(body io.Reader, boundary string, depth int) string {
+func parseMultipartRecursive(body io.Reader, boundary string, depth int) (string, *Attachment) {
 	// Prevent infinite recursion
 	if depth > 5 {
 		app.Log("mail", "Maximum multipart nesting depth reached")
-		return ""
+		return "", nil
 	}
 
 	mr := multipart.NewReader(body, boundary)
@@ -772,7 +776,12 @@ func parseMultipartRecursive(body io.Reader, boundary string, depth int) string 
 				nestedBoundary := params["boundary"]
 				if nestedBoundary != "" {
 					app.Log("mail", "Recursively parsing nested %s (boundary: %s)", mediaType, nestedBoundary)
-					nestedContent := parseMultipartRecursive(part, nestedBoundary, depth+1)
+					nestedContent, nestedAtt := parseMultipartRecursive(part, nestedBoundary, depth+1)
+					if nestedAtt != nil && len(attachmentBody) == 0 {
+						attachmentBody = nestedAtt.Content
+						attachmentContentType = nestedAtt.Type
+						attachmentName = nestedAtt.Name
+					}
 					if nestedContent != "" {
 						// If we got HTML from nested content, treat it as HTML
 						if strings.Contains(nestedContent, "<") && strings.Contains(nestedContent, ">") {
@@ -879,7 +888,15 @@ func parseMultipartRecursive(body io.Reader, boundary string, depth int) string 
 		result += part
 	}
 
-	return result
+	// Hand the bytes back rather than dropping them. Keeping them out of the
+	// body was right; losing them was not — the message view renders a DMARC
+	// report from exactly these, and describing the attachment instead left it
+	// with nothing to render.
+	var att *Attachment
+	if len(attachmentBody) > 0 {
+		att = &Attachment{Name: attachmentName, Type: attachmentContentType, Content: attachmentBody}
+	}
+	return result, att
 }
 
 // Reset is called when the RSET command is received

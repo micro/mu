@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"compress/gzip"
+	"encoding/base64"
 	"encoding/xml"
 	"fmt"
 	"io"
@@ -314,4 +315,46 @@ func renderDMARCReport(xmlData string) string {
 	result := html.String()
 	app.Log("mail", "renderDMARCReport returning %d bytes of HTML", len(result))
 	return result
+}
+
+// renderStoredAttachment turns the bytes kept beside a message into something
+// worth looking at, or returns "" when it cannot.
+//
+// Only DMARC reports get a rendering, because that is the attachment this
+// instance receives constantly and the one worth reading as a table. Anything
+// else keeps the description the body already carries — a line saying what
+// arrived — which is more honest than a page of decoded noise.
+//
+// Handles the three shapes a report arrives in: a zip, a gzip, and bare XML.
+func renderStoredAttachment(msg *Message) (html string, name string) {
+	if msg == nil || msg.Attachment == "" {
+		return "", ""
+	}
+	raw, err := base64.StdEncoding.DecodeString(msg.Attachment)
+	if err != nil || len(raw) == 0 {
+		return "", ""
+	}
+
+	var xml string
+	switch {
+	case len(raw) >= 2 && raw[0] == 'P' && raw[1] == 'K':
+		xml = extractZipContents(raw, msg.FromID)
+	case len(raw) >= 2 && raw[0] == 0x1f && raw[1] == 0x8b:
+		r, err := gzip.NewReader(bytes.NewReader(raw))
+		if err != nil {
+			return "", ""
+		}
+		defer r.Close()
+		out, err := io.ReadAll(r)
+		if err != nil {
+			return "", ""
+		}
+		xml = string(out)
+	case isValidUTF8Text(raw):
+		xml = string(raw)
+	}
+	if strings.TrimSpace(xml) == "" {
+		return "", ""
+	}
+	return renderDMARCReport(xml), msg.AttachmentName
 }

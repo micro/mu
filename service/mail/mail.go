@@ -70,6 +70,31 @@ type Message struct {
 	Tag        string    `json:"tag,omitempty"`
 	RawHeaders string    `json:"raw_headers,omitempty"` // Original email headers for View Raw
 	CreatedAt  time.Time `json:"created_at"`
+
+	// Attachment is the one attachment a message carried, base64-encoded,
+	// kept apart from Body.
+	//
+	// It used to be *in* Body: a DMARC report arrives as a multipart message
+	// whose only part is a zipped XML attachment, and the parser base64'd
+	// those bytes into the body. The message view decoded them and rendered
+	// the report as a table. But Body is also what the inbox previews, what
+	// the index searches and what an agent reads from mail_inbox, so a report
+	// put a wall of base64 into all four.
+	//
+	// Removing it from Body fixed those and took the table with it — the view
+	// had nothing left to decode. Both wanted different things from one field.
+	// The description stays in Body for everything that reads text; the bytes
+	// live here for the one surface that can render them.
+	Attachment     string `json:"attachment,omitempty"`
+	AttachmentType string `json:"attachment_type,omitempty"`
+	AttachmentName string `json:"attachment_name,omitempty"`
+}
+
+// Attachment is what a message carried besides its text.
+type Attachment struct {
+	Name    string
+	Type    string
+	Content []byte
 }
 
 // Load messages from disk
@@ -709,6 +734,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		isAttachment := false
 		attachmentName := ""
 
+
 		// First, check if body contains raw MIME content with headers
 		if strings.Contains(displayBody, "Content-Type:") || strings.Contains(displayBody, "content-type:") {
 			if extracted := extractMIMEBody(displayBody); extracted != displayBody {
@@ -861,6 +887,25 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 
 	skipBodyProcessing:
+		// An attachment stored beside the body wins, because it is the thing
+		// the body could not show.
+		//
+		// A DMARC report is a zipped XML attachment with no text part. Its
+		// bytes used to be base64'd into the body and decoded again here to
+		// draw the table — which also put a wall of base64 into the inbox
+		// preview, the index and mail_inbox. Taking it out of the body fixed
+		// those three and broke this one: the view had nothing left to decode,
+		// so a report that used to render as a table showed only "[zip
+		// attachment]". The bytes are kept beside the body now, and this is
+		// where they are read.
+		if rendered, name := renderStoredAttachment(msg); rendered != "" {
+			displayBody = rendered
+			isAttachment = true // already HTML — do not linkify it
+			if attachmentName == "" {
+				attachmentName = name
+			}
+		}
+
 		// Process email body - renders markdown if detected, otherwise linkifies URLs
 		displayBody = renderEmailBody(displayBody, isAttachment)
 
@@ -1622,7 +1667,10 @@ func SendMessage(from, fromID, to, toID, subject, body, replyTo, messageID strin
 
 // SendMessageTo is SendMessageTagged with the plus-address tag the mail arrived
 // on, so an agent reading asim+research@ sees only its own mail.
-func SendMessageTo(from, fromID, to, toID, tag, subject, body, replyTo, messageID string, spam bool, spamScore int, spamReasons []string, senderIP, rawHeaders string) error {
+// SendMessageTo files an inbound message. att is what the message carried
+// besides its text, or nil — kept out of body so a binary attachment does not
+// end up in previews, the index and mail_inbox. See Message.Attachment.
+func SendMessageTo(from, fromID, to, toID, tag, subject, body, replyTo, messageID string, spam bool, spamScore int, spamReasons []string, senderIP, rawHeaders string, att *Attachment) error {
 	msg := &Message{
 		ID:          fmt.Sprintf("%d", time.Now().UnixNano()),
 		From:        from,
@@ -1641,6 +1689,11 @@ func SendMessageTo(from, fromID, to, toID, tag, subject, body, replyTo, messageI
 		RawHeaders:  rawHeaders,
 		Tag:         tag,
 		CreatedAt:   time.Now(),
+	}
+	if att != nil && len(att.Content) > 0 {
+		msg.Attachment = base64.StdEncoding.EncodeToString(att.Content)
+		msg.AttachmentType = att.Type
+		msg.AttachmentName = att.Name
 	}
 
 	// Compute ThreadID
