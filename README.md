@@ -4,16 +4,12 @@
 files, contacts, calendar and a database, as tools an agent can call over MCP
 and REST — behind one account instead of one per provider.
 
-An agent that wants those things otherwise needs six or seven signups, six
-cards on file and six tokens to rotate. Mu is one balance and one protocol, and
-for an agent paying per request over x402, no signup at all.
-
 The same services render as a web app: a home screen with a card per service
-and the agent inline. Nothing is built twice.
+and the agent inline.
 
 Use it live at [micro.mu](https://micro.mu), or run your own.
 
-## Run your own
+## Install
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/micro/mu/main/install.sh | sh
@@ -22,7 +18,7 @@ mu --serve
 
 Open **http://localhost:8080**. The first account you create is the admin.
 
-It runs with no configuration. On a fresh install, with no keys at all, these
+It runs with no configuration. On a fresh install, with no keys, these
 answer: **news, markets, weather, prayer times, quran, mail, files, contacts,
 calendar, tasks, the database, and search over your own content.** Weather
 comes from Open-Meteo; places and geocoding from OpenStreetMap. No account, no
