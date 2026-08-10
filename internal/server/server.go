@@ -20,13 +20,17 @@ import (
 // Run brings the instance up and serves until interrupted.
 //
 // The order is the one thing here that is not arbitrary. Services load first so
-// they are registered before anything asks for them; hooks are wired before
-// tools, because a tool may be handed a hook at registration; routes come after
-// tools, since a route can serve a page built from the registry.
+// they are registered before anything asks for them; hooks are wired next,
+// because a service may be handed one before it is asked anything; the
+// catalogue is built from the Specs after that; routes come last, since a route
+// can serve a page built from the catalogue.
+//
+// There is no step that registers tools by hand. There was, and it was a
+// thousand lines: every tool that could not be derived because its capability
+// was not declared on a service. They all are now.
 func Run(addr string) {
 	boot()
 	wireHooks()
-	registerTools()
 
 	// The catalogue: everything declared on a Spec that was not written out by
 	// hand above. Six endpoints had drifted out of reach before this existed —

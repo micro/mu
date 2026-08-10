@@ -97,7 +97,6 @@ func boot() {
 	apps.Load()
 	social.Load()
 	wallet.Load()
-	wallet.LoadService()
 	tasks.Load()
 	events.Load()
 }

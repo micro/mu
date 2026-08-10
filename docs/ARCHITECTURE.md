@@ -131,7 +131,6 @@ guessable.
 | `stream` | /stream | ✅ |  | The console: this instance's own timeline |
 | `tasks` | /tasks | ✅ | ✅ | What is to be done, and work handed to the agent |
 | `video` | /video | ✅ |  | Curated channels, without ads or recommendations |
-| `wallet` | /wallet | ✅ | ✅ | Credit check, charge, balance |
 | `weather` | /weather | ✅ |  | Forecast and pollen |
 | `web` | /search | ✅ |  | Search the web; fetch a URL and return readable content |
 

@@ -43,8 +43,6 @@ var legacy = map[string]string{
 	"prayer_today":   "prayer_reflection",
 	"social":         "social_list",
 	"video":          "video_list",
-	"agent":          "agent_ask",
-	"wallet":         "wallet_balance",
 	"stream":         "stream_list",
 	"mail_read":      "mail_inbox",
 	"reminder":       "prayer_reflection",

@@ -7,8 +7,8 @@ import (
 	gmai "go-micro.dev/v6/ai"
 
 	"mu/internal/service"
+	"mu/service/blog"
 	"mu/service/tasks"
-	"mu/wallet"
 )
 
 // registerGuarded stands up the services whose Specs declare the destructive
@@ -16,7 +16,7 @@ import (
 // here, so the test has to exercise the real ones.
 func registerGuarded(t *testing.T) {
 	t.Helper()
-	for _, s := range []service.Spec{wallet.Spec, tasks.Spec} {
+	for _, s := range []service.Spec{tasks.Spec, blog.Spec} {
 		if err := service.Register(s); err != nil {
 			t.Fatalf("register %s: %v", s.Name, err)
 		}
@@ -27,8 +27,12 @@ func registerGuarded(t *testing.T) {
 // withheld is an irreversible side effect nobody asked for, not a capability.
 func TestDestructiveMethodsAreBlocked(t *testing.T) {
 	registerGuarded(t)
+	// Named in every casing and separator a model might produce. The guard
+	// used to be checked against wallet.charge; the wallet is not a service any
+	// more, so this exercises two that are, which is the point — the guard is
+	// per-method and derived, not a list of names somebody remembered.
 	blocked := []string{
-		"wallet.charge", "Wallet.Charge", "wallet_charge", "WALLET_CHARGE",
+		"blog.delete", "Blog.Delete", "blog_delete", "BLOG_DELETE",
 		"tasks.delete", "tasks_delete", "TASKS.Delete",
 	}
 	for _, n := range blocked {
@@ -63,7 +67,7 @@ func TestBlockedCallIsRefusedNotExecuted(t *testing.T) {
 		ran = true
 		return gmai.ToolResult{Content: "executed"}
 	})
-	res := h(context.Background(), gmai.ToolCall{ID: "1", Name: "wallet.charge"})
+	res := h(context.Background(), gmai.ToolCall{ID: "1", Name: "blog.delete"})
 	if ran {
 		t.Fatal("the blocked tool executed")
 	}

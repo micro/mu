@@ -126,9 +126,7 @@ Here are the tools
 | **Tasks** | `tasks_create` · `tasks_list` · `tasks_next` · `tasks_update` · `tasks_delete` — what is to be done, and work you can hand to the agent |
 | **User** | `user_saved` · `user_save` · `user_unsave` · `user_hide` · `user_flag` · `user_block` · `user_unblock` — what you do about other people's posts: keep one, stop seeing one, report one, or stop hearing from an account |
 | **Video** | `video_list` · `video_search` — curated channels, no ads or recommendations |
-| **Wallet** | `wallet_balance` · `wallet_check` — credits, which is what calls are charged in |
 | **Weather** | `weather_forecast` — conditions, forecast, pollen |
-| **Platform** | `agent_ask` · `agent_list` — ask the whole thing a question and let it compose, or ask one of your own agents by name. |
 
 ## Request a tool
 

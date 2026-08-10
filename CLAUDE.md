@@ -40,7 +40,7 @@ Built on go-micro: every capability is a go-micro service, the assistant is a go
 | `client/discord/` | Discord bot with slash commands, embeds, briefings |
 | `client/telegram/` | Telegram bot with commands and groups |
 | `client/whatsapp/` | WhatsApp Business API integration |
-| `wallet/` | Money, at the top level: the credit ledger, Stripe, x402, the /wallet page and the `wallet_*` tools. A staple, not a service directory |
+| `wallet/` | How an account pays: the credit ledger, Stripe, x402 and the /wallet pages. Account furniture, not a service — no Spec and no tools |
 | `internal/quota/` | What things cost and who may do them. The only thing a service knows about money — it holds prices, not balances. Prices are `quota.json` at the top level, not Go |
 | `service/search/` | Brave provider, readability reader, the /search page (no service of its own) |
 | `service/db/` | The caller's own records — named collections that outlive a conversation. Apps keep a separate store each |
@@ -60,6 +60,41 @@ go build ./...          # build
 go test ./... -short    # test
 go vet ./...            # vet
 ```
+
+## What a service is
+
+Three sentences, and most of the arguments this repo has had with itself follow
+from them:
+
+**Services are the fundamental building block. Tools are derived from services.
+Agents use tools.**
+
+A service answers a question about state: request in, response out,
+deterministic given the data, callable by anything. That shape is exactly what
+makes a tool derivable from it. An agent takes a goal and decides which
+questions to ask — it consumes the catalogue, so it cannot be in it.
+
+- Every `service.Spec` lives under `service/`. One exception would be one too
+  many: the moment a Spec lives elsewhere, "what is a service" stops being
+  checkable and starts being something you have to remember.
+- Nothing that consumes tools declares a Spec — not `agent/`, not `wallet/`,
+  not `home/`, `client/` or `admin/`.
+- Nothing registers a tool by hand. A tool with nowhere to come from is a
+  service that has not been written yet.
+
+Enforced by `test/services_test.go`.
+
+**The wallet is not a service.** It is how an account pays — the same shelf as
+changing your email or rotating a token — so it has pages under Account and no
+Spec, no tools and no entry in the catalogue. It was in `/services` once, and
+the fix was a boolean called `Staple` meaning "is a service, but hide it": that
+flag was the error made legible, and deleting it was the actual fix. What a
+service needs to know about money is still `internal/quota`.
+
+**The agent is not a service** either, for the same reason stated the other way
+round: it is the thing that reads the catalogue. `agent_ask` and `agent_list`
+were tools; an MCP client calling `agent_ask` already holds every tool this
+agent holds, and listing your agents is a page, which exists.
 
 ## Layering
 
@@ -96,8 +131,9 @@ half quota cannot answer, from its own `init`, because quota sits underneath it.
 - Agent tools registered in `internal/api/mcp.go` (static) and `main.go` (dynamic with handlers)
 - All client integrations follow the same pattern: auto-create accounts, conversation history, public/private mode
 - The main branch is `main`
-- One directory per service under `service/`, named for the service. `internal/service`
-  is the runtime core that hosts them, not a service itself. See
+- One directory per service under `service/`, named for the service — see
+  "What a service is" above. `internal/service` is the runtime core that hosts
+  them, not a service itself. See
   `docs/ARCHITECTURE.md` for what is registered, which are headless, which
   are account-scoped, and which are deliberately not exposed to the agent
 - A service is named for a **domain** (a noun), never an action. Tool names are

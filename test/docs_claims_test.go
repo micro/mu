@@ -239,10 +239,16 @@ func TestReadmeToolTableIsAlphabetical(t *testing.T) {
 		t.Fatalf("found %d rows in the tool table", len(labels))
 	}
 
-	if last := labels[len(labels)-1]; last != "Platform" {
-		t.Errorf("the last row is %q; Platform is the remainder and belongs at the end", last)
+	// There used to be a Platform row at the end, holding the tools that came
+	// from no service: agent_ask, quran_search, the content verbs. There are
+	// none — every tool is derived from a service now — so the table is one
+	// alphabetical list with no remainder, and a Platform row reappearing means
+	// a tool has been written somewhere other than a service.
+	if last := labels[len(labels)-1]; last == "Platform" {
+		t.Error("a Platform row is back; a tool that belongs to no service is a " +
+			"service that has not been written yet")
 	}
-	named := labels[:len(labels)-1]
+	named := labels
 
 	for i := 1; i < len(named); i++ {
 		if strings.ToLower(named[i]) < strings.ToLower(named[i-1]) {
