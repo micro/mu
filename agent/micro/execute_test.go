@@ -1,6 +1,9 @@
 package micro
 
 import (
+	"strings"
+	"testing"
+
 	"mu/internal/service"
 	"mu/service/index"
 	"mu/service/mail"
@@ -8,8 +11,6 @@ import (
 	"mu/service/news"
 	"mu/service/weather"
 	"mu/service/web"
-	"strings"
-	"testing"
 )
 
 func TestBuildToolsDescFiltersPrivateToolsForGuests(t *testing.T) {

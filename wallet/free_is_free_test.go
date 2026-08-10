@@ -1,4 +1,4 @@
-package billing
+package wallet
 
 // A tool priced at zero must not ask anyone for money.
 //
@@ -16,6 +16,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"mu/internal/quota"
 )
 
 // Free and open are different questions.
@@ -31,8 +33,8 @@ import (
 // So "priced at zero" must not be read as "open", anywhere.
 func TestFreeDoesNotMeanOpen(t *testing.T) {
 	withPayments(t) // so "not metered" means priced at zero, not payments off
-	for _, gated := range []string{OpWebFetch, OpVideoSearch} {
-		if Metered(gated) {
+	for _, gated := range []string{quota.OpWebFetch, quota.OpVideoSearch} {
+		if quota.Metered(gated) {
 			t.Errorf("%s is metered, so an anonymous caller is asked to pay for "+
 				"something paying does not unlock", gated)
 		}
@@ -41,11 +43,11 @@ func TestFreeDoesNotMeanOpen(t *testing.T) {
 
 func TestAFreeOperationIsNotMetered(t *testing.T) {
 	withPayments(t) // the question is the price, not whether payments exist
-	for _, free := range []string{OpNewsSearch, OpWebFetch, OpQuranSearch} {
-		if GetOperationCost(free) != 0 {
+	for _, free := range []string{quota.OpNewsSearch, quota.OpWebFetch, quota.OpQuranSearch} {
+		if quota.GetOperationCost(free) != 0 {
 			t.Fatalf("%s is no longer priced at zero — this test is about the ones that are", free)
 		}
-		if Metered(free) {
+		if quota.Metered(free) {
 			t.Errorf("%s reads as metered, so the gate will charge for it", free)
 		}
 		if reqs := BuildPaymentRequirements(free, "https://example.test/mcp"); len(reqs) != 0 {
@@ -69,7 +71,7 @@ func withPayments(t *testing.T) {
 // Nothing is metered where nothing can be charged.
 //
 // A self-hosted instance with no Stripe and no x402 has no meter, no price and
-// nobody to bill — CheckQuota has always said so. The gates in front of it did
+// nobody to bill — quota.CheckQuota has always said so. The gates in front of it did
 // not ask, so a fresh install refused an anonymous caller with "this call is
 // metered" for weather, which is the first thing anybody tries.
 func TestWithoutPaymentsNothingIsMetered(t *testing.T) {
@@ -78,8 +80,8 @@ func TestWithoutPaymentsNothingIsMetered(t *testing.T) {
 	if PaymentsEnabled() {
 		t.Skip("this instance is configured to take payments")
 	}
-	for _, op := range []string{OpWebSearch, OpImageGenerate, OpAgentQuery} {
-		if Metered(op) {
+	for _, op := range []string{quota.OpWebSearch, quota.OpImageGenerate, quota.OpAgentQuery} {
+		if quota.Metered(op) {
 			t.Errorf("%s reads as metered on an instance that cannot charge", op)
 		}
 	}
@@ -88,10 +90,10 @@ func TestWithoutPaymentsNothingIsMetered(t *testing.T) {
 // And a paid one still asks, in the amount it costs rather than a floor.
 func TestAPaidOperationStillChallenges(t *testing.T) {
 	withPayments(t)
-	if !Metered(OpWebSearch) {
+	if !quota.Metered(quota.OpWebSearch) {
 		t.Fatal("web search stopped being metered, so nobody is charged for Brave")
 	}
-	reqs := BuildPaymentRequirements(OpWebSearch, "https://example.test/mcp")
+	reqs := BuildPaymentRequirements(quota.OpWebSearch, "https://example.test/mcp")
 	if len(reqs) == 0 {
 		t.Skip("no payment assets configured on this instance")
 	}
@@ -104,7 +106,7 @@ func TestAPaidOperationStillChallenges(t *testing.T) {
 // say "pay" is how a free tool ends up behind a paywall.
 func TestTheChallengeReportsWhetherItWroteOne(t *testing.T) {
 	w := httptest.NewRecorder()
-	if WritePaymentRequired(w, OpNewsSearch, "https://example.test/mcp") {
+	if WritePaymentRequired(w, quota.OpNewsSearch, "https://example.test/mcp") {
 		t.Error("a free operation produced a 402 challenge")
 	}
 	if w.Code != 200 || strings.Contains(w.Body.String(), "x402Version") {
@@ -112,7 +114,7 @@ func TestTheChallengeReportsWhetherItWroteOne(t *testing.T) {
 	}
 
 	paid := httptest.NewRecorder()
-	if !WritePaymentRequired(paid, OpWebSearch, "https://example.test/mcp") {
+	if !WritePaymentRequired(paid, quota.OpWebSearch, "https://example.test/mcp") {
 		if X402Enabled() {
 			t.Error("a paid operation wrote no challenge on an x402 instance")
 		}

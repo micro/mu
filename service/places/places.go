@@ -14,9 +14,9 @@ import (
 	"sync"
 	"time"
 
-	"mu/billing"
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/quota"
 	"mu/internal/service"
 )
 
@@ -389,7 +389,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Public data needs no account when nothing is being charged for it.
-	caller, ok := billableCaller(w, r, billing.OpPlacesSearch)
+	caller, ok := billableCaller(w, r, quota.OpPlacesSearch)
 	if !ok {
 		return
 	}
@@ -459,9 +459,8 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 	sortPlaces(results, sortBy)
 
 	// Charge, if there is anything to charge and anyone to charge it to.
-	if caller != "" && billing.Metered(billing.OpPlacesSearch) {
-		billing.DeductCredits(caller, billing.GetOperationCost(billing.OpPlacesSearch),
-			billing.OpPlacesSearch, map[string]interface{}{"query": query})
+	if caller != "" && quota.Metered(quota.OpPlacesSearch) {
+		quota.ConsumeWith(caller, quota.OpPlacesSearch, map[string]interface{}{"query": query})
 	}
 
 	if app.WantsJSON(r) {
@@ -498,7 +497,7 @@ func handleNearby(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Public data needs no account when nothing is being charged for it.
-	caller, ok := billableCaller(w, r, billing.OpPlacesNearby)
+	caller, ok := billableCaller(w, r, quota.OpPlacesNearby)
 	if !ok {
 		return
 	}
@@ -559,8 +558,8 @@ func handleNearby(w http.ResponseWriter, r *http.Request) {
 	sortPlaces(results, sortBy)
 
 	// Deduct credits
-	if caller != "" && billing.Metered(billing.OpPlacesNearby) {
-		billing.DeductCredits(caller, billing.GetOperationCost(billing.OpPlacesNearby), billing.OpPlacesNearby, map[string]interface{}{
+	if caller != "" && quota.Metered(quota.OpPlacesNearby) {
+		quota.ConsumeWith(caller, quota.OpPlacesNearby, map[string]interface{}{
 			"lat": lat, "lon": lon, "radius": radius,
 		})
 	}
@@ -1214,7 +1213,7 @@ func billableCaller(w http.ResponseWriter, r *http.Request, op string) (id strin
 		id = acc.ID
 	}
 	// Nothing is charged here, so there is nobody who has to be named.
-	if !billing.Metered(op) {
+	if !quota.Metered(op) {
 		return id, true
 	}
 	if id == "" {
@@ -1225,7 +1224,7 @@ func billableCaller(w http.ResponseWriter, r *http.Request, op string) (id strin
 		}
 		return "", false
 	}
-	canProceed, _, cost, _ := billing.CheckQuota(id, op)
+	canProceed, _, cost, _ := quota.CheckQuota(id, op)
 	if !canProceed {
 		if app.WantsJSON(r) {
 			app.RespondError(w, http.StatusPaymentRequired, "Insufficient credits. Top up your wallet to continue.")

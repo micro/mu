@@ -3,7 +3,7 @@ package news
 import (
 	"context"
 
-	"mu/billing"
+	"mu/internal/quota"
 	"mu/internal/service"
 )
 
@@ -78,6 +78,6 @@ var Spec = service.Spec{
 	Endpoints: map[string]service.Endpoint{
 		"List":   {Doc: "Read recent news headlines with short summaries, balanced across topics"},
 		"Read":   {Doc: "Read one news article in full by its id or URL"},
-		"Search": {Doc: "Search indexed and live news for a topic", Cost: billing.OpNewsSearch},
+		"Search": {Doc: "Search indexed and live news for a topic", Cost: quota.OpNewsSearch},
 	},
 }

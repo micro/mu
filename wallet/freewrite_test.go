@@ -1,8 +1,10 @@
-package billing
+package wallet
 
 import (
 	"testing"
 	"time"
+
+	"mu/internal/quota"
 
 	"mu/internal/auth"
 )
@@ -11,7 +13,7 @@ import (
 //
 // Every content write — blog post, comment, reply, status, console note, app —
 // is deliberately priced at zero, because it only touches this instance's own
-// storage. ConsumeQuota passed that zero to DeductCredits, which rejects any
+// storage. quota.ConsumeQuota passed that zero to DeductCredits, which rejects any
 // non-positive amount, and the centralised write gate turned the rejection into
 // a 402 Payment Required. So the whole free half of the product was refused for
 // want of credit nobody was being asked for.
@@ -40,22 +42,22 @@ func TestFreeOperationsAreNotRefused(t *testing.T) {
 	}
 
 	free := []string{
-		OpBlogCreate, OpBlogComment, OpSocialPost,
-		OpSocialReply, OpAppCreate, OpStreamPost,
+		quota.OpBlogCreate, quota.OpBlogComment, quota.OpSocialPost,
+		quota.OpSocialReply, quota.OpAppCreate, quota.OpStreamPost,
 	}
 	for _, op := range free {
-		if cost := GetOperationCost(op); cost != 0 {
+		if cost := quota.GetOperationCost(op); cost != 0 {
 			t.Fatalf("%s is priced at %d, not free — update this test or the price", op, cost)
 		}
-		if err := ConsumeQuota(id, op); err != nil {
+		if err := quota.ConsumeQuota(id, op); err != nil {
 			t.Fatalf("charging a free operation failed: %s: %v", op, err)
 		}
 	}
 
 	// Free must not have become a bypass: a priced operation on an empty wallet
 	// is still refused.
-	if GetOperationCost(OpImageGenerate) > 0 {
-		if err := ConsumeQuota(id, OpImageGenerate); err == nil {
+	if quota.GetOperationCost(quota.OpImageGenerate) > 0 {
+		if err := quota.ConsumeQuota(id, quota.OpImageGenerate); err == nil {
 			t.Fatal("a priced operation was allowed through on an empty wallet")
 		}
 	}

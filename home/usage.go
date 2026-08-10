@@ -26,10 +26,10 @@ import (
 	"sort"
 	"strings"
 
-	"mu/billing"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/usage"
+	"mu/wallet"
 )
 
 // UsageHandler serves /usage: one caller's own activity.
@@ -72,7 +72,7 @@ func spendSection(account string, admin bool) string {
 
 	// 500 is enough to cover a heavy month and short enough to stay quick; the
 	// ledger on /wallet is the full record.
-	txs := billing.GetTransactions(account, 500)
+	txs := wallet.GetTransactions(account, 500)
 
 	spentBy := map[string]int{}
 	spent, topped := 0, 0
@@ -98,7 +98,7 @@ func spendSection(account string, admin bool) string {
 	})
 
 	sb.WriteString(`<div class="card"><div class="traffic-stats">`)
-	usage.Stat(&sb, "Credits now", billing.GetBalance(account))
+	usage.Stat(&sb, "Credits now", wallet.GetBalance(account))
 	usage.Stat(&sb, "Credits spent", spent)
 	usage.Stat(&sb, "Credits added", topped)
 	sb.WriteString(`</div>`)

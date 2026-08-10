@@ -185,7 +185,7 @@ let people buy them by card; without those keys your instance runs with no
 metering, which is usually what you want for one you run for yourself.
 
 Costs are per operation and are set in code — see the cost block in
-`billing/billing.go` for what is charged and why.
+`internal/quota/quota.go` for what is charged and why.
 
 ## Federation (optional)
 

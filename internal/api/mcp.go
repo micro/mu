@@ -12,8 +12,8 @@ import (
 
 	"mu/internal/service"
 
-	"mu/billing"
 	"mu/internal/auth"
+	"mu/internal/quota"
 	"mu/internal/usage"
 )
 
@@ -352,7 +352,7 @@ var tools = []Tool{
 		Description: "Search aggregated news headlines by keyword and return matching articles with source and time. Use when the question is about a specific topic; use news_list for what is happening generally, and news_read for the full text " + "of one article.",
 		Method:      "POST",
 		Path:        "/news",
-		WalletOp:    billing.OpNewsSearch,
+		WalletOp:    quota.OpNewsSearch,
 		Params: []ToolParam{
 			{Name: "query", Type: "string", Description: "News search query", Required: true},
 		},
@@ -375,7 +375,7 @@ var tools = []Tool{
 		Description: "Publish a post to the caller's blog. Use for anything meant to be read later by other people — notes, write-ups, announcements. Returns the post and its URL. For a private note to yourself, prefer files or memory.",
 		Method:      "POST",
 		Path:        "/blog/post",
-		WalletOp:    billing.OpBlogCreate,
+		WalletOp:    quota.OpBlogCreate,
 		Params: []ToolParam{
 			{Name: "title", Type: "string", Description: "Post title", Required: false},
 			{Name: "content", Type: "string", Description: "Post content (minimum 50 characters)", Required: true},
@@ -407,7 +407,7 @@ var tools = []Tool{
 		Description: "Search public posts on this instance by keyword. Returns matching posts with their author and time. This is the instance's own social feed, not " + "the wider internet — use web_search for that.",
 		Method:      "POST",
 		Path:        "/social",
-		WalletOp:    billing.OpSocialSearch,
+		WalletOp:    quota.OpSocialSearch,
 		Params: []ToolParam{
 			{Name: "query", Type: "string", Description: "Search query for social posts", Required: true},
 		},
@@ -417,7 +417,7 @@ var tools = []Tool{
 		Description: "Search videos from the channels this instance curates, by keyword. Returns titles, channels and links. A curated set rather than all of YouTube, so a miss means it is not followed here, not that it does not exist. Needs an account.",
 		Method:      "POST",
 		Path:        "/video",
-		WalletOp:    billing.OpVideoSearch,
+		WalletOp:    quota.OpVideoSearch,
 		// Priced at zero but not open: the YouTube quota is 10,000 units a day
 		// across everyone and a search costs 100, so this is rationed by
 		// videoSearchLimit per account. There is nothing to ration an
@@ -446,7 +446,7 @@ var tools = []Tool{
 		Description: "Send an email from the caller's own address on this instance. Takes a recipient address, a subject and a body; resolve a name to an address with contacts_find first. Requires an account, and the mail really is delivered " + "— there is no draft state to undo from.",
 		Method:      "POST",
 		Path:        "/mail",
-		WalletOp:    billing.OpExternalEmail,
+		WalletOp:    quota.OpExternalEmail,
 		Params: []ToolParam{
 			{Name: "to", Type: "string", Description: "Recipient username or email", Required: true},
 			{Name: "subject", Type: "string", Description: "Message subject", Required: true},
@@ -489,7 +489,7 @@ var tools = []Tool{
 		// default to 0, so the page rendered "Included" beside a line saying
 		// otherwise. Prices are rendered from the operation; no description
 		// states one.
-		WalletOp: billing.OpStreamPost,
+		WalletOp: quota.OpStreamPost,
 		Params: []ToolParam{
 			{Name: "content", Type: "string", Description: "Message text (max 1024 chars). Use @micro to invoke the AI agent.", Required: true},
 		},
@@ -562,7 +562,7 @@ var tools = []Tool{
 		Description: "Search for places by name or category, optionally near a location",
 		Method:      "POST",
 		Path:        "/places/search",
-		WalletOp:    billing.OpPlacesSearch,
+		WalletOp:    quota.OpPlacesSearch,
 		Params: []ToolParam{
 			{Name: "query", Type: "string", Description: "Search query (e.g. cafe, pharmacy, Boots)", Required: true},
 			{Name: "near", Type: "string", Description: "Location name or address to search near", Required: false},
@@ -576,7 +576,7 @@ var tools = []Tool{
 		Description: "Find all places of interest near a given location",
 		Method:      "POST",
 		Path:        "/places/nearby",
-		WalletOp:    billing.OpPlacesNearby,
+		WalletOp:    quota.OpPlacesNearby,
 		Params: []ToolParam{
 			{Name: "address", Type: "string", Description: "Address or postcode to search near", Required: false},
 			{Name: "lat", Type: "number", Description: "Latitude of the search location", Required: false},
@@ -636,7 +636,7 @@ var tools = []Tool{
 		Params: []ToolParam{
 			{Name: "query", Type: "string", Description: "Question or search query", Required: true},
 		},
-		WalletOp: billing.OpQuranSearch,
+		WalletOp: quota.OpQuranSearch,
 		Handle: func(args map[string]any) (string, error) {
 			q := QueryArg(args)
 			if q == "" {

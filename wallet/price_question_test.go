@@ -9,7 +9,8 @@ import (
 	"os"
 	"testing"
 
-	"mu/billing"
+	"mu/internal/quota"
+
 	"mu/internal/auth"
 	"mu/internal/service"
 )
@@ -30,11 +31,11 @@ func TestYouCanAskThePriceWithNoCredits(t *testing.T) {
 
 	var rsp CheckResponse
 	ctx := service.WithAccount(context.Background(), "broke")
-	if err := (Credits{}).Check(ctx, &CheckRequest{Operation: billing.OpWebSearch}, &rsp); err != nil {
+	if err := (Credits{}).Check(ctx, &CheckRequest{Operation: quota.OpWebSearch}, &rsp); err != nil {
 		t.Fatalf("asking the price of a tool failed: %v", err)
 	}
-	if rsp.Price != billing.GetOperationCost(billing.OpWebSearch) {
-		t.Errorf("price is %d, want %d", rsp.Price, billing.GetOperationCost(billing.OpWebSearch))
+	if rsp.Price != quota.GetOperationCost(quota.OpWebSearch) {
+		t.Errorf("price is %d, want %d", rsp.Price, quota.GetOperationCost(quota.OpWebSearch))
 	}
 	// Allowed may be true on an instance with payments off; what must not
 	// happen is the call failing.

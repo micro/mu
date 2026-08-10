@@ -15,8 +15,8 @@ import (
 	"fmt"
 	"strings"
 
-	"mu/billing"
 	"mu/internal/app"
+	"mu/internal/quota"
 )
 
 // RunAgent is set by main() to run a prompt through the agent as an account.
@@ -40,7 +40,7 @@ func RunPrompt(e *Event) string {
 
 	// Charged before the model is asked, so a run that cannot be paid for does
 	// not spend one first.
-	canProceed, _, cost, err := billing.CheckQuota(e.Owner, billing.OpAgentQuery)
+	canProceed, _, cost, err := quota.CheckQuota(e.Owner, quota.OpAgentQuery)
 	if err != nil {
 		app.Log("events", "standing instruction %q could not be checked for %s: %v", e.Title, e.Owner, err)
 		return "This scheduled task did not run: " + err.Error()
@@ -57,7 +57,7 @@ func RunPrompt(e *Event) string {
 		return "This scheduled task failed: " + err.Error()
 	}
 
-	if err := billing.ConsumeQuota(e.Owner, billing.OpAgentQuery); err != nil {
+	if err := quota.ConsumeQuota(e.Owner, quota.OpAgentQuery); err != nil {
 		app.Log("events", "could not charge a scheduled run for %s: %v", e.Owner, err)
 	}
 	return answer

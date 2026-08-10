@@ -12,12 +12,12 @@ import (
 	"sync"
 	"time"
 
-	"mu/billing"
 	"mu/internal/ai"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/blob"
 	"mu/internal/data"
+	"mu/internal/quota"
 	"mu/internal/service"
 	"mu/internal/settings"
 	"mu/internal/userdb"
@@ -163,7 +163,7 @@ func Generate(owner, prompt string) (string, error) {
 		return "", fmt.Errorf("sign in to generate images")
 	}
 	// Affordability check before spending time on the model.
-	canProceed, _, cost, err := billing.CheckQuota(owner, billing.OpImageGenerate)
+	canProceed, _, cost, err := quota.CheckQuota(owner, quota.OpImageGenerate)
 	if err != nil {
 		return "", err
 	}
@@ -177,7 +177,7 @@ func Generate(owner, prompt string) (string, error) {
 	}
 
 	// Only charge once we actually have an image.
-	if err := billing.ConsumeQuota(owner, billing.OpImageGenerate); err != nil {
+	if err := quota.ConsumeQuota(owner, quota.OpImageGenerate); err != nil {
 		return "", err
 	}
 
@@ -394,7 +394,7 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 	if acc != nil {
 		caller = acc.ID
 	}
-	price := billing.CostImageGenerate
+	price := quota.CostImageGenerate
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
 
 	var b strings.Builder

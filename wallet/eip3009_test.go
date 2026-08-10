@@ -1,4 +1,4 @@
-package billing
+package wallet
 
 import (
 	"encoding/base64"

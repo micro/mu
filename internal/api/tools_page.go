@@ -8,9 +8,9 @@ import (
 	"strconv"
 	"strings"
 
-	"mu/billing"
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/quota"
 	"mu/internal/service"
 )
 
@@ -342,7 +342,7 @@ func priceLabel(t Tool) string {
 	if t.WalletOp == "" {
 		return `<span class="free">Included</span>`
 	}
-	n := billing.GetOperationCost(t.WalletOp)
+	n := quota.GetOperationCost(t.WalletOp)
 	if n <= 0 {
 		return `<span class="free">Included</span>`
 	}

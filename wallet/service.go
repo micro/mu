@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"mu/billing"
+	"mu/internal/quota"
 
 	"mu/internal/app"
 	"mu/internal/auth"
@@ -46,7 +46,7 @@ func (Credits) Check(ctx context.Context, req *CheckRequest, rsp *CheckResponse)
 	}
 	// "No" is an answer, not a failure.
 	//
-	// billing.CheckQuota returns an error when the caller cannot afford the operation,
+	// quota.CheckQuota returns an error when the caller cannot afford the operation,
 	// which is the right shape for a gate about to refuse a call and the wrong
 	// one here: this tool exists to be asked *before* spending, and returning
 	// that error made it fail with "this costs 2 credits and your balance is
@@ -55,20 +55,20 @@ func (Credits) Check(ctx context.Context, req *CheckRequest, rsp *CheckResponse)
 	// ask. Affordability is what the answer is about; it cannot also be the
 	// reason there is no answer.
 	// The account has to exist; that is the only genuine failure here. Both of
-	// billing.CheckQuota's error cases return false, so they cannot be told apart by
+	// quota.CheckQuota's error cases return false, so they cannot be told apart by
 	// its result — ask the question this one is about separately.
 	if _, err := auth.GetAccount(who); err != nil {
 		return fmt.Errorf("account not found")
 	}
-	ok, _, cost, _ := billing.CheckQuota(who, req.Operation)
+	ok, _, cost, _ := quota.CheckQuota(who, req.Operation)
 	// Two different questions, and one number was answering both.
 	//
-	// Cost is what this caller pays, which billing.CheckQuota returns as zero for an
+	// Cost is what this caller pays, which quota.CheckQuota returns as zero for an
 	// admin and on an instance with payments off. Price is what the operation
 	// is priced at. An agent asking "what does web_search cost" was told zero
 	// and could not tell the difference between free and free-for-you.
-	rsp.Allowed, rsp.Cost, rsp.Balance = ok, cost, billing.GetBalance(who)
-	rsp.Price = billing.GetOperationCost(req.Operation)
+	rsp.Allowed, rsp.Cost, rsp.Balance = ok, cost, GetBalance(who)
+	rsp.Price = quota.GetOperationCost(req.Operation)
 	return nil
 }
 
@@ -94,11 +94,11 @@ func (Credits) Charge(ctx context.Context, req *ChargeRequest, rsp *ChargeRespon
 	if req.Operation == "" {
 		return fmt.Errorf("operation is required")
 	}
-	cost := billing.GetOperationCost(req.Operation)
-	if err := billing.ConsumeQuota(who, req.Operation); err != nil {
+	cost := quota.GetOperationCost(req.Operation)
+	if err := quota.ConsumeQuota(who, req.Operation); err != nil {
 		return err
 	}
-	rsp.Charged, rsp.Balance = cost, billing.GetBalance(who)
+	rsp.Charged, rsp.Balance = cost, GetBalance(who)
 	return nil
 }
 
@@ -117,12 +117,12 @@ func (Credits) Balance(ctx context.Context, _ *BalanceRequest, rsp *BalanceRespo
 	if who == "" {
 		return fmt.Errorf("sign in to use credits")
 	}
-	rsp.Balance = billing.GetBalance(who)
+	rsp.Balance = GetBalance(who)
 	return nil
 }
 
 // LoadService registers the wallet as a callable service. Named apart from
-// billing.Load, which initialises the ledger this page and these tools read.
+// Load, which initialises the ledger this page and these tools read.
 func LoadService() {
 	if err := service.Register(Spec); err != nil {
 		app.Log("wallet", "service register failed: %v", err)

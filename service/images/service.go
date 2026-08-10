@@ -3,7 +3,7 @@ package images
 import (
 	"context"
 
-	"mu/billing"
+	"mu/internal/quota"
 	"mu/internal/service"
 )
 
@@ -44,6 +44,6 @@ var Spec = service.Spec{
 	Icon:        "images.svg",
 	Card:        CardHTML,
 	Endpoints: map[string]service.Endpoint{
-		"Generate": {Doc: "Generate an image from a text prompt and return its URL", Cost: billing.OpImageGenerate},
+		"Generate": {Doc: "Generate an image from a text prompt and return its URL", Cost: quota.OpImageGenerate},
 	},
 }

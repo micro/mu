@@ -11,12 +11,12 @@ import (
 	"strings"
 	"time"
 
-	"mu/billing"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
 	"mu/internal/flag"
 	"mu/service/apps"
+	"mu/wallet"
 )
 
 // InviteHandler serves the admin invite page at /admin/invite.
@@ -287,7 +287,7 @@ func runCommand(cmd string) string {
 		if err != nil {
 			return "User not found"
 		}
-		w := billing.GetWallet(acc.ID)
+		w := wallet.GetWallet(acc.ID)
 		emailLine := "Email: (not set)"
 		if acc.Email != "" {
 			verified := "unverified"
@@ -410,8 +410,8 @@ func runCommand(cmd string) string {
 		if arg(1) == "" {
 			return "usage: wallet <user_id>"
 		}
-		w := billing.GetWallet(arg(1))
-		txns := billing.GetTransactions(arg(1), 10)
+		w := wallet.GetWallet(arg(1))
+		txns := wallet.GetTransactions(arg(1), 10)
 		var sb strings.Builder
 		sb.WriteString(fmt.Sprintf("Balance: %d credits\n", w.Balance))
 		if len(txns) > 0 {
@@ -431,7 +431,7 @@ func runCommand(cmd string) string {
 		if amount <= 0 {
 			return "Amount must be positive"
 		}
-		billing.AddCredits(arg(1), amount, "admin_grant", nil)
+		wallet.AddCredits(arg(1), amount, "admin_grant", nil)
 		return fmt.Sprintf("Added %d credits to %s", amount, arg(1))
 
 	// move — the one an operator actually reaches for, and the one that was
@@ -440,7 +440,7 @@ func runCommand(cmd string) string {
 	// credit only adds, so putting credits back where they belong meant
 	// granting a second lot and leaving the first stranded: the balances come
 	// out right and the ledger no longer adds up. Deleting the account they
-	// landed in is worse — billing.DeleteWallet is an account-delete hook, so it
+	// landed in is worse — wallet.DeleteWallet is an account-delete hook, so it
 	// destroys the credits rather than releasing them.
 	//
 	// This goes through TransferCredits, so both sides are written and the
@@ -463,13 +463,13 @@ func runCommand(cmd string) string {
 		if err != nil {
 			return "No account with the username " + arg(2)
 		}
-		if err := billing.TransferCredits(from.ID, to.ID, moveAmount); err != nil {
+		if err := wallet.TransferCredits(from.ID, to.ID, moveAmount); err != nil {
 			return "Could not move: " + err.Error()
 		}
 		return fmt.Sprintf("Moved %d credits from %s (%s) to %s (%s)\n%s: %d · %s: %d",
 			moveAmount, from.ID, from.Name, to.ID, to.Name,
-			from.ID, billing.GetWallet(from.ID).Balance,
-			to.ID, billing.GetWallet(to.ID).Balance)
+			from.ID, wallet.GetWallet(from.ID).Balance,
+			to.ID, wallet.GetWallet(to.ID).Balance)
 
 	// --- Apps ---
 	case "apps":

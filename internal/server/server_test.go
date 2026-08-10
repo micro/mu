@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"mu/billing"
+	"mu/internal/quota"
 )
 
 func TestChargedWriteOp(t *testing.T) {
@@ -21,12 +21,12 @@ func TestChargedWriteOp(t *testing.T) {
 		// /user/status went with statuses. A charge for a route that no longer
 		// exists is a line nobody can reach and a price nobody can be quoted.
 		{name: "a route that is gone", method: "POST", path: "/user/status", want: ""},
-		{name: "social thread", method: "POST", path: "/social", want: billing.OpSocialPost},
-		{name: "social reply", method: "POST", path: "/social/thread", want: billing.OpSocialReply},
-		{name: "new blog post", method: "POST", path: "/blog", want: billing.OpBlogCreate},
+		{name: "social thread", method: "POST", path: "/social", want: quota.OpSocialPost},
+		{name: "social reply", method: "POST", path: "/social/thread", want: quota.OpSocialReply},
+		{name: "new blog post", method: "POST", path: "/blog", want: quota.OpBlogCreate},
 		{name: "blog update free", method: "POST", path: "/blog?id=post-1", want: ""},
-		{name: "blog comment", method: "POST", path: "/blog/post/post-1/comment", want: billing.OpBlogComment},
-		{name: "app generation", method: "POST", path: "/apps/generate", want: billing.OpAppBuild},
+		{name: "blog comment", method: "POST", path: "/blog/post/post-1/comment", want: quota.OpBlogComment},
+		{name: "app generation", method: "POST", path: "/apps/generate", want: quota.OpAppBuild},
 		{name: "uncharged post", method: "POST", path: "/mail", want: ""},
 	}
 

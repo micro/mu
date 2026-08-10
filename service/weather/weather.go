@@ -6,9 +6,9 @@ import (
 	"strconv"
 	"strings"
 
-	"mu/billing"
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/quota"
 	"mu/internal/service"
 )
 
@@ -144,7 +144,7 @@ func handleJSON(w http.ResponseWriter, r *http.Request) {
 	includePollen := r.URL.Query().Get("pollen") == "1"
 
 	// Check credits
-	canProceed, _, cost, _ := billing.CheckQuota(acc.ID, billing.OpWeatherForecast)
+	canProceed, _, cost, _ := quota.CheckQuota(acc.ID, quota.OpWeatherForecast)
 	if !canProceed {
 		app.RespondError(w, http.StatusPaymentRequired, "Insufficient credits. Top up your wallet to continue.")
 		return
@@ -159,7 +159,7 @@ func handleJSON(w http.ResponseWriter, r *http.Request) {
 
 	// Deduct credits
 	if cost > 0 {
-		billing.DeductCredits(acc.ID, cost, billing.OpWeatherForecast, nil)
+		quota.ConsumeQuota(acc.ID, quota.OpWeatherForecast)
 	}
 
 	result := map[string]interface{}{
@@ -168,13 +168,13 @@ func handleJSON(w http.ResponseWriter, r *http.Request) {
 
 	// Fetch pollen if requested and quota allows
 	if includePollen {
-		canPollenProceed, _, pollenCost, _ := billing.CheckQuota(acc.ID, billing.OpWeatherPollen)
+		canPollenProceed, _, pollenCost, _ := quota.CheckQuota(acc.ID, quota.OpWeatherPollen)
 		if canPollenProceed {
 			pollen, pollenErr := FetchPollen(lat, lon)
 			if pollenErr == nil {
 				result["pollen"] = pollen
 				if pollenCost > 0 {
-					billing.DeductCredits(acc.ID, pollenCost, billing.OpWeatherPollen, nil)
+					quota.ConsumeQuota(acc.ID, quota.OpWeatherPollen)
 				}
 			}
 		}
@@ -226,7 +226,7 @@ func renderWeatherPage(r *http.Request) string {
   <div class="weather-options">
     <label style="gap:6px;cursor:pointer;">
       <input type="checkbox" id="toggle-pollen" onchange="weatherTogglePollen()" style="display: inline; width: auto;">
-      <span>Include pollen forecast (+` + fmt.Sprintf("%dp", billing.CostWeatherPollen) + `)</span>
+      <span>Include pollen forecast (+` + fmt.Sprintf("%dp", quota.CostWeatherPollen) + `)</span>
     </label>
   </div>
 

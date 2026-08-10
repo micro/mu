@@ -3,7 +3,7 @@ package weather
 import (
 	"context"
 
-	"mu/billing"
+	"mu/internal/quota"
 	"mu/internal/service"
 )
 
@@ -38,6 +38,6 @@ var Spec = service.Spec{
 	Icon:        "weather.svg",
 	Card:        CardHTML,
 	Endpoints: map[string]service.Endpoint{
-		"Forecast": {Doc: "Get the weather forecast for a location — current conditions and the days ahead", Cost: billing.OpWeatherForecast},
+		"Forecast": {Doc: "Get the weather forecast for a location — current conditions and the days ahead", Cost: quota.OpWeatherForecast},
 	},
 }

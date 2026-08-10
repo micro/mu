@@ -1,4 +1,4 @@
-package billing
+package wallet
 
 // The invariants that hold when money moves.
 //
@@ -18,6 +18,8 @@ import (
 	"context"
 	"os"
 	"testing"
+
+	"mu/internal/quota"
 
 	"mu/internal/auth"
 	"mu/internal/service"
@@ -163,11 +165,11 @@ func TestTransfersRefuseNonsense(t *testing.T) {
 
 // A free operation is free at every layer that could charge for it.
 func TestNothingChargesForAFreeOperation(t *testing.T) {
-	for _, free := range []string{OpNewsSearch, OpQuranSearch, OpWebFetch, OpVideoSearch} {
-		if c := GetOperationCost(free); c != 0 {
+	for _, free := range []string{quota.OpNewsSearch, quota.OpQuranSearch, quota.OpWebFetch, quota.OpVideoSearch} {
+		if c := quota.GetOperationCost(free); c != 0 {
 			t.Errorf("%s costs %d — this test is about the ones priced at zero", free, c)
 		}
-		if Metered(free) {
+		if quota.Metered(free) {
 			t.Errorf("%s reads as metered", free)
 		}
 		if reqs := BuildPaymentRequirements(free, "https://x.test/mcp"); len(reqs) != 0 {

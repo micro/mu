@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"mu/billing"
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/quota"
 	"mu/internal/safefetch"
 )
 
@@ -41,7 +41,7 @@ func handleSDKFetch(w http.ResponseWriter, r *http.Request, slug string) {
 
 	// Metered: an external fetch has a real cost, so gate on the user's balance.
 	if QuotaCheck != nil {
-		canProceed, cost, qerr := QuotaCheck(r, billing.OpWebFetch)
+		canProceed, cost, qerr := QuotaCheck(r, quota.OpWebFetch)
 		if !canProceed {
 			msg := "Insufficient credits"
 			if qerr != nil {

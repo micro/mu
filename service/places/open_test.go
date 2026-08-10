@@ -18,16 +18,25 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"mu/billing"
+	"mu/internal/quota"
 )
+
+// charging says whether this instance can bill anybody, which is the only thing
+// about money a service is allowed to know. Setting it directly rather than
+// setting Stripe keys and importing the wallet keeps the test deterministic —
+// it used to skip itself in either direction depending on the environment — and
+// keeps a service test from depending on money, which is the arrangement it is
+// checking.
+func charging(t *testing.T, on bool) {
+	t.Helper()
+	prev := quota.Enabled
+	quota.Enabled = func() bool { return on }
+	t.Cleanup(func() { quota.Enabled = prev })
+}
 
 func selfHosted(t *testing.T) {
 	t.Helper()
-	t.Setenv("STRIPE_SECRET_KEY", "")
-	t.Setenv("STRIPE_PUBLISHABLE_KEY", "")
-	if billing.PaymentsEnabled() {
-		t.Skip("this instance is configured to take payments")
-	}
+	charging(t, false)
 }
 
 func TestASelfHostedLookupNeedsNoAccount(t *testing.T) {
@@ -40,7 +49,7 @@ func TestASelfHostedLookupNeedsNoAccount(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("POST", "/places/search", nil)
-		id, ok := billableCaller(w, r, billing.OpPlacesSearch)
+		id, ok := billableCaller(w, r, quota.OpPlacesSearch)
 		if !ok {
 			t.Errorf("GOOGLE_API_KEY=%q: an anonymous caller was refused on an "+
 				"instance that charges nothing", key)
@@ -53,12 +62,8 @@ func TestASelfHostedLookupNeedsNoAccount(t *testing.T) {
 
 // Where the instance does charge, a charged call needs somebody to charge.
 func TestWhereTheInstanceChargesALookupNeedsACaller(t *testing.T) {
-	t.Setenv("STRIPE_SECRET_KEY", "sk_test_x")
-	t.Setenv("STRIPE_PUBLISHABLE_KEY", "pk_test_x")
-	if !billing.PaymentsEnabled() {
-		t.Skip("payments cannot be enabled in this environment")
-	}
-	if !billing.Metered(billing.OpPlacesSearch) {
+	charging(t, true)
+	if !quota.Metered(quota.OpPlacesSearch) {
 		t.Skip("places search is not priced on this instance")
 	}
 
@@ -66,7 +71,7 @@ func TestWhereTheInstanceChargesALookupNeedsACaller(t *testing.T) {
 	r := httptest.NewRequest("POST", "/places/search", nil)
 	r.Header.Set("Accept", "application/json")
 
-	if _, ok := billableCaller(w, r, billing.OpPlacesSearch); ok {
+	if _, ok := billableCaller(w, r, quota.OpPlacesSearch); ok {
 		t.Error("a charged lookup went through with nobody to charge")
 	}
 	if w.Code != 401 {

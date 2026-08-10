@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"mu/billing"
+	"mu/internal/quota"
 	"mu/internal/service"
 )
 
@@ -100,7 +100,7 @@ var Spec = service.Spec{
 	Icon:        "apps.svg",
 	Card:        Preview,
 	Endpoints: map[string]service.Endpoint{
-		"Build":  {Doc: "Generate a small app (tracker, checklist or counter) from a description", Cost: billing.OpAppBuild},
+		"Build":  {Doc: "Generate a small app (tracker, checklist or counter) from a description", Cost: quota.OpAppBuild},
 		"Read":   {Doc: "Read the details of one app by its slug"},
 		"Search": {Doc: "Search the apps directory for small, useful tools"},
 	},

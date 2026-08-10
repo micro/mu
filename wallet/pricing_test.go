@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"mu/billing"
+	"mu/internal/quota"
 )
 
 // Every billable operation must appear in Pricing(). The cost tables on the
@@ -21,32 +21,32 @@ func TestPricingCoversEveryBillableOperation(t *testing.T) {
 		op   string
 		cost int
 	}{
-		{billing.OpNewsSearch, billing.CostNewsSearch},
-		{billing.OpQuranSearch, billing.CostQuranSearch},
-		{billing.OpVideoSearch, billing.CostVideoSearch},
-		{billing.OpChatQuery, billing.CostChatQuery},
-		{billing.OpBlogCreate, billing.CostBlogCreate},
-		{billing.OpBlogComment, billing.CostBlogComment},
-		{billing.OpMailSend, billing.CostMailSend},
-		{billing.OpExternalEmail, billing.CostExternalEmail},
-		{billing.OpPlacesSearch, billing.CostPlacesSearch},
-		{billing.OpPlacesNearby, billing.CostPlacesNearby},
-		{billing.OpPlacesETA, billing.CostPlacesETA},
-		{billing.OpWeatherForecast, billing.CostWeatherForecast},
-		{billing.OpWeatherPollen, billing.CostWeatherPollen},
-		{billing.OpWebSearch, billing.CostWebSearch},
-		{billing.OpWebFetch, billing.CostWebFetch},
-		{billing.OpDBWrite, billing.CostDBWrite},
-		{billing.OpAgentQuery, billing.CostAgentQuery},
-		{billing.OpAgentQueryPremium, billing.CostAgentQueryPremium},
-		{billing.OpSocialSearch, billing.CostSocialSearch},
-		{billing.OpSocialPost, billing.CostSocialPost},
-		{billing.OpSocialReply, billing.CostSocialReply},
-		{billing.OpAppCreate, billing.CostAppCreate},
-		{billing.OpStreamPost, billing.CostStreamPost},
-		{billing.OpImageGenerate, billing.CostImageGenerate},
-		{billing.OpAppBuild, billing.CostAppBuild},
-		{billing.OpAppEdit, billing.CostAppEdit},
+		{quota.OpNewsSearch, quota.CostNewsSearch},
+		{quota.OpQuranSearch, quota.CostQuranSearch},
+		{quota.OpVideoSearch, quota.CostVideoSearch},
+		{quota.OpChatQuery, quota.CostChatQuery},
+		{quota.OpBlogCreate, quota.CostBlogCreate},
+		{quota.OpBlogComment, quota.CostBlogComment},
+		{quota.OpMailSend, quota.CostMailSend},
+		{quota.OpExternalEmail, quota.CostExternalEmail},
+		{quota.OpPlacesSearch, quota.CostPlacesSearch},
+		{quota.OpPlacesNearby, quota.CostPlacesNearby},
+		{quota.OpPlacesETA, quota.CostPlacesETA},
+		{quota.OpWeatherForecast, quota.CostWeatherForecast},
+		{quota.OpWeatherPollen, quota.CostWeatherPollen},
+		{quota.OpWebSearch, quota.CostWebSearch},
+		{quota.OpWebFetch, quota.CostWebFetch},
+		{quota.OpDBWrite, quota.CostDBWrite},
+		{quota.OpAgentQuery, quota.CostAgentQuery},
+		{quota.OpAgentQueryPremium, quota.CostAgentQueryPremium},
+		{quota.OpSocialSearch, quota.CostSocialSearch},
+		{quota.OpSocialPost, quota.CostSocialPost},
+		{quota.OpSocialReply, quota.CostSocialReply},
+		{quota.OpAppCreate, quota.CostAppCreate},
+		{quota.OpStreamPost, quota.CostStreamPost},
+		{quota.OpImageGenerate, quota.CostImageGenerate},
+		{quota.OpAppBuild, quota.CostAppBuild},
+		{quota.OpAppEdit, quota.CostAppEdit},
 	}
 
 	listed := map[string]PricingItem{}
@@ -131,9 +131,9 @@ func TestEveryChargedOperationIsPublished(t *testing.T) {
 	}
 
 	// Constant name -> operation string, read from the source of truth.
-	src, err := os.ReadFile("../../billing/billing.go")
+	src, err := os.ReadFile("../internal/quota/quota.go")
 	if err != nil {
-		t.Fatalf("read billing.go: %v", err)
+		t.Fatalf("read quota.go: %v", err)
 	}
 	opValue := map[string]string{}
 	for _, m := range regexp.MustCompile(`(Op[A-Za-z]+)\s*=\s*"([a-z_]+)"`).FindAllStringSubmatch(string(src), -1) {
@@ -149,14 +149,14 @@ func TestEveryChargedOperationIsPublished(t *testing.T) {
 	}
 
 	// Both forms: the constant (current) and a bare string (a regression).
-	site := regexp.MustCompile(`(?:WalletOp:\s*|QuotaCheck\([^,]+,\s*)(?:billing\.(Op[A-Za-z]+)|"([a-z_]+)")`)
+	site := regexp.MustCompile(`(?:WalletOp:\s*|QuotaCheck\([^,]+,\s*)(?:quota\.(Op[A-Za-z]+)|"([a-z_]+)")`)
 
 	found := 0
 	err = filepath.Walk(repoRoot(t), func(path string, info os.FileInfo, err error) error {
 		if err != nil || info.IsDir() || !strings.HasSuffix(path, ".go") {
 			return nil
 		}
-		if strings.HasSuffix(path, "_test.go") || strings.Contains(path, "/wallet/") {
+		if strings.HasSuffix(path, "_test.go") || strings.Contains(path, "/wallet/") || strings.Contains(path, "/quota/") {
 			return nil
 		}
 		b, err := os.ReadFile(path)
@@ -169,7 +169,7 @@ func TestEveryChargedOperationIsPublished(t *testing.T) {
 				var ok bool
 				op, ok = opValue[m[1]]
 				if !ok {
-					t.Errorf("%s charges billing.%s, which is not a declared operation", path, m[1])
+					t.Errorf("%s charges quota.%s, which is not a declared operation", path, m[1])
 					continue
 				}
 			}

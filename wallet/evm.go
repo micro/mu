@@ -1,4 +1,4 @@
-package billing
+package wallet
 
 // Pure-Go EVM key + signing primitives for the per-user Base wallet: secp256k1
 // (no external crypto dependency), Keccak-256, deterministic ECDSA (RFC 6979),

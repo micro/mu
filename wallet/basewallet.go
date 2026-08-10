@@ -1,4 +1,4 @@
-package billing
+package wallet
 
 // Per-user Base (Ethereum L2) wallet: every account gets a secp256k1 keypair
 // used to pay for MCP/x402 calls. This owns key storage, balance reads, and the

@@ -3,9 +3,10 @@ package micro
 import (
 	"encoding/json"
 	"fmt"
-	"mu/internal/service"
 	"strings"
 	"time"
+
+	"mu/internal/service"
 
 	"mu/internal/ai"
 	"mu/internal/api"

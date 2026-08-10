@@ -8,7 +8,7 @@ import (
 
 	"mu/internal/service"
 	"mu/service/tasks"
-	"mu/service/wallet"
+	"mu/wallet"
 )
 
 // registerGuarded stands up the services whose Specs declare the destructive

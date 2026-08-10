@@ -16,10 +16,10 @@ import (
 	"time"
 
 	"mu/agent"
-	"mu/billing"
 	"mu/internal/ai"
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/quota"
 	"mu/internal/service"
 	"mu/internal/settings"
 	"mu/internal/version"
@@ -146,24 +146,24 @@ func chargedWriteOp(r *http.Request) string {
 	switch {
 	// Social threads and replies
 	case path == "/social":
-		return billing.OpSocialPost
+		return quota.OpSocialPost
 	case path == "/social/thread":
-		return billing.OpSocialReply
+		return quota.OpSocialReply
 	// Blog — only CREATE is charged (no id param). Updates are free.
 	case path == "/blog" && r.URL.Query().Get("id") == "":
-		return billing.OpBlogCreate
+		return quota.OpBlogCreate
 	case strings.HasPrefix(path, "/blog/post/") && strings.HasSuffix(path, "/comment"):
-		return billing.OpBlogComment
+		return quota.OpBlogComment
 	// Apps
 	case path == "/apps/new":
-		return billing.OpAppCreate
+		return quota.OpAppCreate
 	case path == "/apps/generate":
-		return billing.OpAppBuild
+		return quota.OpAppBuild
 	case strings.HasPrefix(path, "/apps/") && strings.HasSuffix(path, "/ai-edit"):
-		return billing.OpAppEdit
+		return quota.OpAppEdit
 	// Stream (console)
 	case path == "/stream":
-		return billing.OpStreamPost
+		return quota.OpStreamPost
 	}
 	return ""
 }

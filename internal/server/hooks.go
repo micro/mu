@@ -20,7 +20,6 @@ import (
 	"mu/admin"
 	"mu/agent"
 	"mu/agent/micro"
-	"mu/billing"
 	"mu/client/discord"
 	"mu/client/telegram"
 	"mu/client/whatsapp"
@@ -33,6 +32,7 @@ import (
 	"mu/internal/data"
 	"mu/internal/google"
 	"mu/internal/memory"
+	"mu/internal/quota"
 	"mu/internal/service"
 	"mu/internal/settings"
 	"mu/internal/user"
@@ -51,7 +51,7 @@ import (
 	"mu/service/social"
 	"mu/service/stream"
 	"mu/service/tasks"
-	"mu/service/wallet"
+	"mu/wallet"
 )
 
 // wireHooks connects the building blocks to each other.
@@ -258,7 +258,7 @@ func wireHooks() {
 				}
 			}
 
-			canProceed, _, cost, err := billing.CheckQuota(m.Owner, billing.OpAgentQuery)
+			canProceed, _, cost, err := quota.CheckQuota(m.Owner, quota.OpAgentQuery)
 			if err != nil || !canProceed {
 				reply(fmt.Sprintf("I could not run this one: it costs %d credits and the account is short. "+
 					"Top up at %s/wallet and send it again.", cost, app.PublicURL()))
@@ -315,7 +315,7 @@ func wireHooks() {
 			app.Log("events", "calendar invite to %s failed: %v", acc.Email, err)
 		}
 	}
-	billing.Load()
+	wallet.Load()
 	wallet.LoadService()
 	app.LinkCodeFunc = auth.GenerateLinkCode
 	app.ToolCountFunc = api.ToolCount
@@ -323,10 +323,10 @@ func wireHooks() {
 	// The balance beside your name and the top-up banner. A hook because
 	// wallet imports app — see internal/app/credits.go.
 	app.BalanceFunc = func(accountID string) (int, bool) {
-		if !billing.PaymentsEnabled() {
+		if !wallet.PaymentsEnabled() {
 			return 0, false
 		}
-		return billing.GetBalance(accountID), true
+		return wallet.GetBalance(accountID), true
 	}
 	discord.Load()
 	telegram.Load()
@@ -381,7 +381,7 @@ func wireHooks() {
 			parts = append(parts, fmt.Sprintf("- %d unread email(s)", unread))
 		}
 		// Wallet balance.
-		bal := billing.GetBalance(accountID)
+		bal := wallet.GetBalance(accountID)
 		if bal > 0 {
 			parts = append(parts, fmt.Sprintf("- Wallet: %d credits", bal))
 		}
@@ -532,8 +532,8 @@ func wireHooks() {
 		apps.DeleteAppsByAuthor,
 		stream.ClearByAuthor,
 		mail.DeleteInbox,
-		func(id string) { billing.DeleteWallet(id) },
-		func(id string) { billing.DeleteBaseWallet(id) },
+		func(id string) { wallet.DeleteWallet(id) },
+		func(id string) { wallet.DeleteBaseWallet(id) },
 		func(id string) { micro.DeleteUserAgents(id) },
 		func(id string) { discord.DeleteLinks(id) },
 		func(id string) { telegram.DeleteLinks(id) },
@@ -574,7 +574,7 @@ func wireHooks() {
 
 	// What a tool costs, so api.PolicyFor can answer for the whole registry in
 	// one place. See internal/api/policy.go for why that matters.
-	api.PriceOf = billing.GetOperationCost
+	api.PriceOf = quota.GetOperationCost
 
 	// Wire MCP quota checking using wallet credit system
 	api.QuotaCheck = func(r *http.Request, op string) (bool, int, error) {
@@ -588,9 +588,9 @@ func wireHooks() {
 		// independently here, which is why fixing that one alone left free
 		// tools unreachable. Both now ask what it costs before asking who you
 		// are.
-		if !billing.Metered(op) {
+		if !quota.Metered(op) {
 			// Open, not unguarded. Credits price what a call costs us and rate
-			// limits stop bots — see the cost block in billing.go. A free call
+			// limits stop bots — see the cost block in wallet.go. A free call
 			// is charged nothing, so the limit is the only one of the two
 			// doing any work here, and it applies to guests because a
 			// signed-in caller is already accountable.
@@ -603,13 +603,13 @@ func wireHooks() {
 		// Check for x402 payment (bypasses auth + credits).
 		// Free trial: first 10 calls per wallet address are free —
 		// no payment header needed if within the trial.
-		if r.Context().Value(billing.X402ContextKey) != nil {
+		if r.Context().Value(wallet.X402ContextKey) != nil {
 			// Try free trial first (by wallet address from payment header).
 			payAddr := r.Header.Get("X-Wallet-Address")
-			if payAddr != "" && billing.X402UseTrialCall(payAddr) {
+			if payAddr != "" && wallet.X402UseTrialCall(payAddr) {
 				return true, 0, nil
 			}
-			_, err := billing.VerifyAndSettle(r, op, r.URL.Path)
+			_, err := wallet.VerifyAndSettle(r, op, r.URL.Path)
 			if err != nil {
 				return false, 0, fmt.Errorf("x402 payment failed: %w", err)
 			}
@@ -625,7 +625,7 @@ func wireHooks() {
 			// client told to authenticate would never find the second.
 			return false, 0, fmt.Errorf("this call is metered: sign in so it can be charged to your credits, or send an x402 payment")
 		}
-		canProceed, _, cost, err := billing.CheckQuota(sess.Account, op)
+		canProceed, _, cost, err := quota.CheckQuota(sess.Account, op)
 		return canProceed, cost, err
 	}
 
@@ -633,12 +633,12 @@ func wireHooks() {
 	agent.QuotaCheck = func(r *http.Request, op string) (bool, int, error) {
 		// Free is free here too — the third copy of this decision. See the
 		// note on api.QuotaCheck above.
-		if !billing.Metered(op) {
+		if !quota.Metered(op) {
 			return true, 0, nil
 		}
 		// Check for x402 payment (bypasses auth + credits)
-		if r.Context().Value(billing.X402ContextKey) != nil {
-			_, err := billing.VerifyAndSettle(r, op, r.URL.Path)
+		if r.Context().Value(wallet.X402ContextKey) != nil {
+			_, err := wallet.VerifyAndSettle(r, op, r.URL.Path)
 			if err != nil {
 				return false, 0, fmt.Errorf("x402 payment failed: %w", err)
 			}
@@ -654,7 +654,7 @@ func wireHooks() {
 			// client told to authenticate would never find the second.
 			return false, 0, fmt.Errorf("this call is metered: sign in so it can be charged to your credits, or send an x402 payment")
 		}
-		canProceed, _, cost, err := billing.CheckQuota(sess.Account, op)
+		canProceed, _, cost, err := quota.CheckQuota(sess.Account, op)
 		return canProceed, cost, err
 	}
 
@@ -663,10 +663,11 @@ func wireHooks() {
 	// Deduct credits from the acting user for a metered call (SDK or the agent).
 	chargeUser := func(r *http.Request, op string) {
 		if sess, err := auth.GetSession(r); err == nil {
-			_ = billing.ConsumeQuota(sess.Account, op)
+			_ = quota.ConsumeQuota(sess.Account, op)
 		}
 	}
 	apps.ChargeQuota = chargeUser
+	apps.ChargeUse = wallet.ChargeAppUse
 	agent.ChargeQuota = chargeUser
 
 	// Inline visual cards now come from the capability registry (core), which
@@ -675,10 +676,10 @@ func wireHooks() {
 	// A paid wallet is an identity: an agent that has settled a payment can
 	// reach account-scoped tools without an account. Read from the settled
 	// payment only — never from the unauthenticated X-Wallet-Address header.
-	api.WalletPayer = func(r *http.Request) string { return billing.PayerFrom(r.Context()) }
+	api.WalletPayer = func(r *http.Request) string { return wallet.PayerFrom(r.Context()) }
 
 	// Wire x402 payment required response for MCP
-	if billing.X402Enabled() {
+	if wallet.X402Enabled() {
 	}
 
 	// Wire email sending for verification mails. Uses the platform's own
@@ -704,7 +705,7 @@ func wireHooks() {
 	// Money is a trust signal, so auth needs to be able to see it. Wired as a
 	// hook because the wallet imports auth and cannot be imported back.
 	auth.HasCredit = func(accountID string) bool {
-		return billing.GetBalance(accountID) > 0
+		return wallet.GetBalance(accountID) > 0
 	}
 
 	// The status page asks the AI package what the model is doing rather than

@@ -45,8 +45,8 @@ import (
 	"mu/service/stream"
 	"mu/service/tasks"
 	"mu/service/video"
-	"mu/service/wallet"
 	"mu/service/weather"
+	"mu/wallet"
 )
 
 // authRequired reports, per path, whether a caller must be signed in.

@@ -15,11 +15,11 @@ import (
 	"time"
 
 	"mu/agent/micro"
-	"mu/billing"
 	"mu/internal/ai"
 	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/quota"
 )
 
 // Model represents an available LLM model tier for agent queries.
@@ -44,13 +44,13 @@ var Models = []Model{
 	{
 		ID:       "standard",
 		Name:     "Fast",
-		WalletOp: billing.OpAgentQuery,
+		WalletOp: quota.OpAgentQuery,
 		Provider: ai.ProviderDefault,
 	},
 	{
 		ID:       "premium",
 		Name:     "Best",
-		WalletOp: billing.OpAgentQueryPremium,
+		WalletOp: quota.OpAgentQueryPremium,
 		Provider: ai.ProviderAnthropic,
 		Model:    defaultPremiumModel,
 	},

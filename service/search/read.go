@@ -7,10 +7,9 @@ import (
 	"net/url"
 	"strings"
 
-	"mu/billing"
 	"mu/internal/app"
 	"mu/internal/auth"
-	"mu/service/wallet"
+	"mu/internal/quota"
 )
 
 // ReadHandler serves /read — a clean reader view for any web page.
@@ -53,13 +52,13 @@ func ReadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check quota (same as web_fetch)
-	canProceed, _, cost, _ := billing.CheckQuota(sess.Account, billing.OpWebFetch)
+	canProceed, _, cost, _ := quota.CheckQuota(sess.Account, quota.OpWebFetch)
 	if !canProceed {
 		if app.WantsJSON(r) {
 			app.RespondError(w, http.StatusPaymentRequired, fmt.Sprintf("reading pages requires %d credits", cost))
 			return
 		}
-		content := wallet.QuotaExceededPage(billing.OpWebFetch, cost)
+		content := quota.ExceededPage(cost)
 		w.Write([]byte(app.RenderHTMLForRequest("Read", "Read Page", content, r)))
 		return
 	}
@@ -68,7 +67,7 @@ func ReadHandler(w http.ResponseWriter, r *http.Request) {
 	title, body, fetchErr := FetchAndExtractHTMLProxied(rawURL)
 
 	if fetchErr == nil {
-		billing.ConsumeQuota(sess.Account, billing.OpWebFetch)
+		quota.ConsumeQuota(sess.Account, quota.OpWebFetch)
 	}
 
 	// JSON response for API callers

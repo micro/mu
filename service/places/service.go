@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"mu/billing"
+	"mu/internal/quota"
 	"mu/internal/service"
 )
 
@@ -266,9 +266,9 @@ var Spec = service.Spec{
 	Page:        "/places",
 	Icon:        "places.svg",
 	Endpoints: map[string]service.Endpoint{
-		"ETA":     {Doc: "How long it takes to travel between two places, by road rather than as the crow flies", Cost: billing.OpPlacesETA},
+		"ETA":     {Doc: "How long it takes to travel between two places, by road rather than as the crow flies", Cost: quota.OpPlacesETA},
 		"Geocode": {Doc: "Resolve a place name or address to coordinates"},
-		"Nearby":  {Doc: "List points of interest near a location", Cost: billing.OpPlacesNearby},
-		"Search":  {Doc: "Find places by name or category, optionally near a location", Cost: billing.OpPlacesSearch},
+		"Nearby":  {Doc: "List points of interest near a location", Cost: quota.OpPlacesNearby},
+		"Search":  {Doc: "Find places by name or category, optionally near a location", Cost: quota.OpPlacesSearch},
 	},
 }

@@ -3,7 +3,7 @@ package cli
 import (
 	"fmt"
 
-	"mu/billing"
+	"mu/wallet"
 )
 
 // runX402 prints the x402 configuration and, when CDP credentials are present
@@ -13,6 +13,6 @@ import (
 //
 //	mu x402
 func runX402(args []string) int {
-	fmt.Print(billing.X402Status())
+	fmt.Print(wallet.X402Status())
 	return 0
 }

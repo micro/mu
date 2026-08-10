@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"mu/billing"
+	"mu/internal/quota"
 
 	"mu/internal/app"
 	"mu/internal/auth"
@@ -22,7 +22,7 @@ import (
 // This is a way to top up credits, not a second currency to spend. Everything a
 // caller is charged is in credits; USDC held here converts into them.
 //
-// Offered only when billing.CryptoTopupEnabled. Paying in crypto is a thing to explain
+// Offered only when CryptoTopupEnabled. Paying in crypto is a thing to explain
 // before a card is, and an instance not pursuing it should not put that in
 // front of someone deciding how to pay.
 //
@@ -31,18 +31,18 @@ import (
 // it — so they still get the card, worded as a way out rather than an
 // invitation in.
 func cryptoWalletCard(userID string) string {
-	bw, err := billing.GetOrCreateWallet(userID)
+	bw, err := GetOrCreateWallet(userID)
 	if err != nil {
 		return ""
 	}
-	usdc, raw := billing.USDCBalance(bw.Address)
+	usdc, raw := USDCBalance(bw.Address)
 	holding := raw != nil && raw.Sign() > 0
-	if !billing.CryptoTopupEnabled() && !holding {
+	if !CryptoTopupEnabled() && !holding {
 		return ""
 	}
 
 	heading, blurb := "Top up with USDC", `Send <b>USDC on Base</b> to this address and convert it into credits.`
-	if !billing.CryptoTopupEnabled() {
+	if !CryptoTopupEnabled() {
 		heading = "Your USDC balance"
 		blurb = `This instance tops up by card. You hold USDC at the address below — convert it into credits, or move it out.`
 	}
@@ -95,8 +95,8 @@ func htmlEsc(s string) string { return html.EscapeString(s) }
 
 // WalletPage renders the wallet page HTML
 func WalletPage(userID string) string {
-	wallet := billing.GetWallet(userID)
-	transactions := billing.GetTransactions(userID, 20)
+	wallet := GetWallet(userID)
+	transactions := GetTransactions(userID, 20)
 
 	// Check if user is admin
 	isAdmin := false
@@ -127,7 +127,7 @@ func WalletPage(userID string) string {
 	// App earnings summary
 	var totalEarnings int
 	for _, tx := range transactions {
-		if tx.Operation == billing.OpAppRevenue {
+		if tx.Operation == quota.OpAppRevenue {
 			totalEarnings += tx.Amount
 		}
 	}
@@ -162,21 +162,21 @@ func WalletPage(userID string) string {
 
 		for _, tx := range transactions {
 			typeLabel := tx.Operation
-			if tx.Operation == billing.OpAppUse {
+			if tx.Operation == quota.OpAppUse {
 				if appSlug, ok := tx.Metadata["app"].(string); ok {
 					typeLabel = "App: " + appSlug
 				} else {
 					typeLabel = "App usage"
 				}
-			} else if tx.Operation == billing.OpAppRevenue {
+			} else if tx.Operation == quota.OpAppRevenue {
 				if appSlug, ok := tx.Metadata["app"].(string); ok {
 					typeLabel = "Earned: " + appSlug
 				} else {
 					typeLabel = "App revenue"
 				}
-			} else if tx.Type == billing.TxTopup {
+			} else if tx.Type == TxTopup {
 				typeLabel = "Deposit"
-			} else if tx.Type == billing.TxTransfer {
+			} else if tx.Type == TxTransfer {
 				// Prefer the name recorded with the transfer, then the name of
 				// the id it went to, then the bare id. Receipts written before
 				// names were recorded still resolve, and one whose account has
@@ -186,7 +186,7 @@ func WalletPage(userID string) string {
 						return n
 					}
 					if id, ok := tx.Metadata[idKey].(string); ok && id != "" {
-						return billing.AccountLabel(id)
+						return AccountLabel(id)
 					}
 					return ""
 				}
@@ -228,19 +228,6 @@ func WalletPage(userID string) string {
 }
 
 // QuotaExceededPage renders the quota exceeded message
-func QuotaExceededPage(operation string, cost int) string {
-	var sb strings.Builder
-
-	sb.WriteString(`<div class="card center-card-md">`)
-	sb.WriteString(`<h2>Credits Required</h2>`)
-	sb.WriteString(fmt.Sprintf(`<p>This costs %d credit%s. `, cost, pluralize(cost)))
-	sb.WriteString(`<a href="/wallet/topup">Add credits</a> to continue.</p>`)
-	sb.WriteString(`<p class="text-sm text-muted">1 credit = 1p · <a href="/wallet">View wallet</a></p>`)
-	sb.WriteString(`</div>`)
-
-	return sb.String()
-}
-
 func pluralize(n int) string {
 	if n == 1 {
 		return ""
@@ -274,7 +261,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(`{"error":"authentication required"}`))
 			return
 		}
-		balance := billing.GetBalance(sess.Account)
+		balance := GetBalance(sess.Account)
 		app.RespondJSON(w, map[string]int{"balance": balance})
 		return
 	}
@@ -293,7 +280,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	case path == "/wallet/stripe/success" && r.Method == "GET":
 		handleStripeSuccess(w, r)
 	case path == "/wallet/stripe/webhook" && r.Method == "POST":
-		billing.HandleStripeWebhook(w, r)
+		HandleStripeWebhook(w, r)
 	case path == "/wallet/convert" && r.Method == "POST":
 		handleConvert(w, r)
 	case path == "/wallet/transfer" && r.Method == "POST":
@@ -317,13 +304,13 @@ func handleConvert(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"error":"login required"}`))
 		return
 	}
-	credited, err := billing.ConvertUSDCToCredits(sess.Account)
+	credited, err := ConvertUSDCToCredits(sess.Account)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		_ = json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
 		return
 	}
-	_ = json.NewEncoder(w).Encode(map[string]any{"credited": credited, "balance": billing.GetBalance(sess.Account)})
+	_ = json.NewEncoder(w).Encode(map[string]any{"credited": credited, "balance": GetBalance(sess.Account)})
 }
 
 func handleWalletPage(w http.ResponseWriter, r *http.Request) {
@@ -362,7 +349,7 @@ func PublicWalletPage() string {
 	sb.WriteString(`<h3>Top Up</h3>`)
 	sb.WriteString(`<p>Add credits to your account via card:</p>`)
 	sb.WriteString(`<ul>`)
-	if billing.StripeEnabled() {
+	if StripeEnabled() {
 		sb.WriteString(`<li><strong>Card</strong> — secure payment via Stripe</li>`)
 	}
 	sb.WriteString(`</ul>`)
@@ -391,7 +378,7 @@ func handleDepositPage(w http.ResponseWriter, r *http.Request) {
 
 	var sb strings.Builder
 
-	if billing.StripeEnabled() {
+	if StripeEnabled() {
 		sb.WriteString(renderStripeDeposit(sess.Account, r.URL.Query().Get("error")))
 	} else {
 		sb.WriteString(`<div class="card"><p class="text-error">No payment methods available.</p></div>`)
@@ -412,7 +399,7 @@ func renderStripeDeposit(userID, errMsg string) string {
 	sb.WriteString(`<h4>Monthly Plan</h4>`)
 	sb.WriteString(`<p class="text-sm text-muted mb-2">Subscribe for monthly credits — auto-renews via Stripe.</p>`)
 	sb.WriteString(`<div class="d-flex gap-2 mb-3">`)
-	for _, plan := range billing.SubscriptionPlans {
+	for _, plan := range SubscriptionPlans {
 		sb.WriteString(fmt.Sprintf(
 			`<form method="POST" action="/wallet/stripe/subscribe" style="display:inline"><input type="hidden" name="plan" value="%s"><button type="submit" class="btn">%s</button></form>`,
 			plan.ID, plan.Label))
@@ -425,7 +412,7 @@ func renderStripeDeposit(userID, errMsg string) string {
 
 	// Preset quick-select buttons
 	sb.WriteString(`<div class="d-flex gap-2 mb-3 mt-2">`)
-	for _, tier := range billing.StripeTopupTiers {
+	for _, tier := range StripeTopupTiers {
 		sb.WriteString(fmt.Sprintf(
 			`<button type="button" class="btn btn-secondary" onclick="document.getElementById('topup-amount').value='%d'">%s</button>`,
 			tier.Amount/100, tier.Label))
@@ -459,7 +446,7 @@ func handleTransferPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	balance := billing.GetBalance(sess.Account)
+	balance := GetBalance(sess.Account)
 	errMsg := r.URL.Query().Get("error")
 	successMsg := r.URL.Query().Get("success")
 
@@ -474,11 +461,11 @@ func handleTransferPage(w http.ResponseWriter, r *http.Request) {
 		sb.WriteString(fmt.Sprintf(`<p class="text-success">%s</p>`, successMsg))
 	}
 	sb.WriteString(fmt.Sprintf(`<p>Your balance: <strong>%d credits</strong></p>`, balance))
-	remaining := billing.DailyTransferCap - billing.DailyTransferTotal(sess.Account, time.Now())
+	remaining := DailyTransferCap - DailyTransferTotal(sess.Account, time.Now())
 	if remaining < 0 {
 		remaining = 0
 	}
-	sb.WriteString(fmt.Sprintf(`<p class="text-sm text-muted">Daily transfer limit: %d credits. Remaining today: %d credits.</p>`, billing.DailyTransferCap, remaining))
+	sb.WriteString(fmt.Sprintf(`<p class="text-sm text-muted">Daily transfer limit: %d credits. Remaining today: %d credits.</p>`, DailyTransferCap, remaining))
 	// Autocomplete offers usernames, because that is what the transfer resolves
 	// and what the field asks for. It offered display names, which are free
 	// text and not unique — so picking a suggestion could fill in a word that
@@ -515,7 +502,7 @@ func handleTransferPage(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`</div>`)
 
 	sb.WriteString(`<div class="card">`)
-	sb.WriteString(fmt.Sprintf(`<p class="text-sm text-muted">1 credit = 1p. Transfers are instant and non-reversible. Daily transfer limit: %d credits.</p>`, billing.DailyTransferCap))
+	sb.WriteString(fmt.Sprintf(`<p class="text-sm text-muted">1 credit = 1p. Transfers are instant and non-reversible. Daily transfer limit: %d credits.</p>`, DailyTransferCap))
 	sb.WriteString(`</div>`)
 
 	html := app.RenderHTMLForRequest("Transfer Credits", "Send credits to another user", sb.String(), r)
@@ -592,13 +579,13 @@ func handleTransfer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Perform the transfer
-	if err := billing.TransferCredits(sess.Account, recipient.ID, amount); err != nil {
+	if err := TransferCredits(sess.Account, recipient.ID, amount); err != nil {
 		respondTransferError(w, r, err.Error())
 		return
 	}
 
 	if app.WantsJSON(r) || app.SendsJSON(r) {
-		newBalance := billing.GetBalance(sess.Account)
+		newBalance := GetBalance(sess.Account)
 		app.RespondJSON(w, map[string]interface{}{
 			"status":  "ok",
 			"to":      recipient.Name,
@@ -624,8 +611,8 @@ func respondTransferError(w http.ResponseWriter, r *http.Request, msg string) {
 const maxTopupPounds = 500
 
 type TopupMethod struct {
-	Type  string                    `json:"type"`            // "card"
-	Tiers []billing.StripeTopupTier `json:"tiers,omitempty"` // For card/Stripe
+	Type  string            `json:"type"`            // "card"
+	Tiers []StripeTopupTier `json:"tiers,omitempty"` // For card/Stripe
 }
 
 func handleTopupJSON(w http.ResponseWriter, r *http.Request) {
@@ -637,10 +624,10 @@ func handleTopupJSON(w http.ResponseWriter, r *http.Request) {
 
 	var methods []TopupMethod
 
-	if billing.StripeEnabled() {
+	if StripeEnabled() {
 		methods = append(methods, TopupMethod{
 			Type:  "card",
-			Tiers: billing.StripeTopupTiers,
+			Tiers: StripeTopupTiers,
 		})
 	}
 
@@ -666,7 +653,7 @@ func handleStripeSubscribe(w http.ResponseWriter, r *http.Request) {
 		scheme = "http"
 	}
 	base := scheme + "://" + r.Host
-	url, err := billing.CreateSubscriptionSession(
+	url, err := CreateSubscriptionSession(
 		sess.Account,
 		planID,
 		base+"/wallet?success=subscribed",
@@ -715,7 +702,7 @@ func handleStripeCheckout(w http.ResponseWriter, r *http.Request) {
 	cancelURL := baseURL + "/wallet/topup"
 
 	// Create checkout session
-	checkoutURL, err := billing.CreateCheckoutSession(sess.Account, amount, successURL, cancelURL)
+	checkoutURL, err := CreateCheckoutSession(sess.Account, amount, successURL, cancelURL)
 	if err != nil {
 		app.Log("stripe", "checkout error: %v", err)
 		content := `<div class="card"><h2>Payment Error</h2><p>Failed to create checkout session. Please try again.</p><p><a href="/wallet/topup" class="btn">Back</a></p></div>`
@@ -734,7 +721,7 @@ func handleStripeSuccess(w http.ResponseWriter, r *http.Request) {
 	content := `<div class="card">
 		<h2>Payment Successful</h2>
 		<p>Your credits will be added to your account shortly.</p>
-		<p><a href="/wallet" class="btn">View billing.Wallet</a></p>
+		<p><a href="/wallet" class="btn">View Wallet</a></p>
 	</div>`
 	html := app.RenderHTMLForRequest("Payment Complete", "Credits added", content, r)
 	w.Write([]byte(html))
@@ -762,37 +749,37 @@ type pricingItem = PricingItem
 // Anything added to the Cost* vars belongs here too.
 func Pricing() []PricingItem {
 	items := []PricingItem{
-		{billing.OpNewsSearch, "News search", billing.CostNewsSearch, "credits"},
-		{billing.OpQuranSearch, "Quran and hadith search", billing.CostQuranSearch, "credits"},
-		{billing.OpVideoSearch, "Video search", billing.CostVideoSearch, "credits"},
-		{billing.OpSocialSearch, "Social search", billing.CostSocialSearch, "credits"},
-		{billing.OpSocialPost, "Post or status update", billing.CostSocialPost, "credits"},
-		{billing.OpSocialReply, "Reply to a post", billing.CostSocialReply, "credits"},
-		{billing.OpAppCreate, "Create an app", billing.CostAppCreate, "credits"},
-		{billing.OpStreamPost, "Console post", billing.CostStreamPost, "credits"},
-		{billing.OpBlogCreate, "Blog post", billing.CostBlogCreate, "credits"},
-		{billing.OpBlogComment, "Blog comment", billing.CostBlogComment, "credits"},
-		{billing.OpChatQuery, "Chat query", billing.CostChatQuery, "credits"},
-		{billing.OpAgentQuery, "Agent (standard)", billing.CostAgentQuery, "credits"},
-		{billing.OpAgentQueryPremium, "Agent (premium)", billing.CostAgentQueryPremium, "credits"},
-		{billing.OpWeatherForecast, "Weather forecast", billing.CostWeatherForecast, "credits"},
-		{billing.OpWeatherPollen, "Weather pollen", billing.CostWeatherPollen, "credits"},
-		{billing.OpPlacesSearch, "Places search", billing.CostPlacesSearch, "credits"},
-		{billing.OpPlacesNearby, "Places nearby", billing.CostPlacesNearby, "credits"},
-		{billing.OpPlacesETA, "Travel time between two places", billing.CostPlacesETA, "credits"},
+		{quota.OpNewsSearch, "News search", quota.CostNewsSearch, "credits"},
+		{quota.OpQuranSearch, "Quran and hadith search", quota.CostQuranSearch, "credits"},
+		{quota.OpVideoSearch, "Video search", quota.CostVideoSearch, "credits"},
+		{quota.OpSocialSearch, "Social search", quota.CostSocialSearch, "credits"},
+		{quota.OpSocialPost, "Post or status update", quota.CostSocialPost, "credits"},
+		{quota.OpSocialReply, "Reply to a post", quota.CostSocialReply, "credits"},
+		{quota.OpAppCreate, "Create an app", quota.CostAppCreate, "credits"},
+		{quota.OpStreamPost, "Console post", quota.CostStreamPost, "credits"},
+		{quota.OpBlogCreate, "Blog post", quota.CostBlogCreate, "credits"},
+		{quota.OpBlogComment, "Blog comment", quota.CostBlogComment, "credits"},
+		{quota.OpChatQuery, "Chat query", quota.CostChatQuery, "credits"},
+		{quota.OpAgentQuery, "Agent (standard)", quota.CostAgentQuery, "credits"},
+		{quota.OpAgentQueryPremium, "Agent (premium)", quota.CostAgentQueryPremium, "credits"},
+		{quota.OpWeatherForecast, "Weather forecast", quota.CostWeatherForecast, "credits"},
+		{quota.OpWeatherPollen, "Weather pollen", quota.CostWeatherPollen, "credits"},
+		{quota.OpPlacesSearch, "Places search", quota.CostPlacesSearch, "credits"},
+		{quota.OpPlacesNearby, "Places nearby", quota.CostPlacesNearby, "credits"},
+		{quota.OpPlacesETA, "Travel time between two places", quota.CostPlacesETA, "credits"},
 		// "Message" not "mail": this is user-to-user on the platform and is
 		// free. Sending a real email leaves the instance over SMTP and is
 		// charged separately as "External email".
-		{billing.OpMailSend, "Send message", billing.CostMailSend, "credits"},
-		{billing.OpExternalEmail, "External email", billing.CostExternalEmail, "credits"},
-		{billing.OpWebSearch, "Web search", billing.CostWebSearch, "credits"},
-		{billing.OpWebFetch, "Web fetch", billing.CostWebFetch, "credits"},
-		{billing.OpImageGenerate, "Image generation", billing.CostImageGenerate, "credits"},
-		{billing.OpDBWrite, "App data storage", billing.CostDBWrite, "credits"},
-		{billing.OpAppBuild, "App build (AI)", billing.CostAppBuild, "credits"},
+		{quota.OpMailSend, "Send message", quota.CostMailSend, "credits"},
+		{quota.OpExternalEmail, "External email", quota.CostExternalEmail, "credits"},
+		{quota.OpWebSearch, "Web search", quota.CostWebSearch, "credits"},
+		{quota.OpWebFetch, "Web fetch", quota.CostWebFetch, "credits"},
+		{quota.OpImageGenerate, "Image generation", quota.CostImageGenerate, "credits"},
+		{quota.OpDBWrite, "App data storage", quota.CostDBWrite, "credits"},
+		{quota.OpAppBuild, "App build (AI)", quota.CostAppBuild, "credits"},
 		// Charged again now that /apps/<slug>/ai-edit exists. Plain manual
 		// editing at /apps/<slug>/edit remains free — only the model call costs.
-		{billing.OpAppEdit, "App edit (AI)", billing.CostAppEdit, "credits"},
+		{quota.OpAppEdit, "App edit (AI)", quota.CostAppEdit, "credits"},
 	}
 	sort.SliceStable(items, func(i, j int) bool { return items[i].Cost < items[j].Cost })
 	return items
@@ -834,7 +821,7 @@ func PricingTableHTML() string {
 	}
 	// Paid apps are charged per request at a price the app's author sets, so
 	// there is no fixed figure to list — but the mechanism exists (see
-	// billing.ChargeAppUse) and a cost table that omits it is not the source of truth
+	// ChargeAppUse) and a cost table that omits it is not the source of truth
 	// it claims to be.
 	sb.WriteString(`<tr><td>Using a paid app</td><td>set by its author</td></tr>`)
 	sb.WriteString(`</table>`)
