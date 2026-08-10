@@ -700,7 +700,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 <div class="card">
 <h4>Settings</h4>
 <p><a href="/token">API Credentials →</a></p>
-<p><a href="/user">Saved, hidden and blocked →</a></p>
+<p><a href="/user">User prefs →</a></p>
 <p style="margin-top:12px"><a href="/logout" class="text-error">Logout</a></p>
 </div>`,
 		acc.ID,

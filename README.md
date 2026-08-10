@@ -124,7 +124,7 @@ Here are the tools
 | **Social** | `social_list` · `social_search` — public threads and replies |
 | **Stream** | `stream_list` · `stream_post` — this instance's own timeline |
 | **Tasks** | `tasks_create` · `tasks_list` · `tasks_next` · `tasks_update` · `tasks_delete` — what is to be done, and work you can hand to the agent |
-| **User** | `user_saved` · `user_save` · `user_unsave` · `user_hide` · `user_flag` · `user_block` · `user_unblock` — what you do about other people's posts: keep one, stop seeing one, report one, or stop hearing from an account |
+| **User Prefs** | `user_saved` · `user_save` · `user_unsave` · `user_hide` · `user_flag` · `user_block` · `user_unblock` — what you do about other people's posts: keep one, stop seeing one, report one, or stop hearing from an account |
 | **Video** | `video_list` · `video_search` — curated channels, no ads or recommendations |
 | **Weather** | `weather_forecast` — conditions, forecast, pollen |
 

@@ -182,15 +182,21 @@ func serviceGrid(r *http.Request) string {
 			`<span class="tool-tile-name">` + html.EscapeString(s.NavLabel()) + `</span></span>`)
 		b.WriteString(`<span class="tool-tile-desc">` + html.EscapeString(s.Description) + `</span>`)
 
-		meta := ""
-		if n := counts[strings.ToLower(s.NavLabel())]; n > 0 {
-			meta = strconv.Itoa(n) + " tool"
-			if n != 1 {
-				meta += "s"
-			}
-		}
-		b.WriteString(`<span class="tool-tile-price">` + html.EscapeString(meta) + `</span>`)
 		b.WriteString(close)
+
+		// The count was a dead line of text inside the tile: it told you a
+		// service had four tools and then took you to the service when you
+		// clicked, with no way from here to the four. It is a link now, to that
+		// service's group in the Tools lens — which is the only reason anybody
+		// reads a tool count in the first place.
+		if n := counts[strings.ToLower(s.NavLabel())]; n > 0 {
+			label := strconv.Itoa(n) + " tool"
+			if n != 1 {
+				label += "s"
+			}
+			b.WriteString(`<a class="service-tile-tools" href="/tools#svc-` +
+				html.EscapeString(groupAnchor(s.NavLabel())) + `">` + label + `</a>`)
+		}
 		// Nothing to pin without a page — the sidebar is a list of places.
 		if s.Page != "" {
 			b.WriteString(pinControl(r, s.Name, isPinned[s.Name]))
@@ -201,11 +207,17 @@ func serviceGrid(r *http.Request) string {
 	return b.String()
 }
 
+// groupAnchor is a service label as a URL fragment, so the count on a service
+// tile can point at that service's group in the Tools lens.
+func groupAnchor(label string) string {
+	return strings.ReplaceAll(strings.ToLower(strings.TrimSpace(label)), " ", "-")
+}
+
 // toolGrid is the agent's lens: every callable tool, grouped by service, priced.
 func toolGrid() string {
 	var b strings.Builder
 	for _, g := range groupTools() {
-		b.WriteString(`<div class="tool-group">`)
+		b.WriteString(`<div class="tool-group" id="svc-` + html.EscapeString(groupAnchor(g.Label)) + `">`)
 		b.WriteString(`<h3 class="tool-group-title">` + html.EscapeString(g.Label) + `</h3>`)
 		b.WriteString(`<div class="tool-grid">`)
 		for _, t := range g.Tools {
@@ -435,7 +447,13 @@ const toolsPageCSS = `<style>
    The tile still fills the cell, so the whole card remains the hit target for
    opening the service. */
 .service-tile-wrap{position:relative;display:flex}
-.service-tile-wrap>.tool-tile{flex:1;padding-right:34px}
+.service-tile-wrap>.tool-tile{flex:1;padding-right:34px;padding-bottom:28px}
+/* The tool count, over the bottom of the tile it counts. It cannot sit inside
+   the tile: the tile is a link to the service, and this is a link to the
+   tools. */
+.service-tile-tools{position:absolute;left:14px;bottom:10px;font-size:12px;color:#6b7280;
+  text-decoration:none;font-variant-numeric:tabular-nums}
+.service-tile-tools:hover{color:#111;text-decoration:underline}
 /* The pin sits on the tile here; .pin-btn itself is in mu.css, because /apps
    pins an app to home with the same control and a shared control cannot live
    in one page's style block. */

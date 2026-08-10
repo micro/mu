@@ -72,7 +72,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(card("Hidden", hideRows.String(), "Nothing hidden. Hiding an item removes it from your view and nobody else's."))
 	b.WriteString(card("Blocked", blockRows.String(), "Nobody blocked."))
 	b.WriteString(undoScript)
-	w.Write([]byte(app.RenderHTMLForRequest("User", "What you have saved, hidden and blocked", b.String(), r)))
+	w.Write([]byte(app.RenderHTMLForRequest("User Prefs", "What you have saved, hidden and blocked", b.String(), r)))
 }
 
 // undoScript posts the undo and reloads.

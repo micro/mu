@@ -227,8 +227,12 @@ func Load() {
 }
 
 var Spec = service.Spec{
-	Name:        "user",
-	Handler:     new(Server),
+	Name:    "user",
+	Handler: new(Server),
+	// "User Prefs" rather than "User": what this holds is the set of decisions
+	// one account has made about everybody else's content, and "User" on its own
+	// reads like a directory of people, which it is not.
+	Label:       "User Prefs",
 	Description: "What you keep, hide and block — your own view of everybody else's content",
 	Page:        "/user",
 	Icon:        "account.png",
