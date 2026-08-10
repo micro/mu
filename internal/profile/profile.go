@@ -1,4 +1,13 @@
-package user
+// Package profile is the public face of an account: the page at /@username,
+// and who is online.
+//
+// It was internal/user, which collided by name with service/user and described
+// neither of them. This is not the account — that is internal/auth, which holds
+// identity and credentials — and it is not a service: the Profile type carries
+// a user id and a timestamp, and the page it renders is assembled from
+// auth.Account plus posts and apps fetched through hooks. A Spec over it would
+// be a Spec over a view.
+package profile
 
 import (
 	"encoding/json"

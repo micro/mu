@@ -1,4 +1,4 @@
-package app
+package account
 
 import (
 	"encoding/json"
@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"mu/internal/app"
 
 	"mu/internal/auth"
 
@@ -54,7 +56,7 @@ func getWebAuthn(r *http.Request) *webauthn.WebAuthn {
 			},
 		})
 		if err != nil {
-			Log("auth", "WebAuthn init error: %v", err)
+			app.Log("auth", "WebAuthn init error: %v", err)
 		}
 	})
 	return webAuthn
@@ -109,13 +111,13 @@ func PasskeyHandler(w http.ResponseWriter, r *http.Request) {
 func passkeyRegisterBegin(w http.ResponseWriter, r *http.Request) {
 	_, acc, err := auth.RequireSession(r)
 	if err != nil {
-		RespondError(w, http.StatusUnauthorized, "authentication required")
+		app.RespondError(w, http.StatusUnauthorized, "authentication required")
 		return
 	}
 
 	wan := getWebAuthn(r)
 	if wan == nil {
-		RespondError(w, http.StatusInternalServerError, "WebAuthn not configured")
+		app.RespondError(w, http.StatusInternalServerError, "WebAuthn not configured")
 		return
 	}
 
@@ -123,7 +125,7 @@ func passkeyRegisterBegin(w http.ResponseWriter, r *http.Request) {
 
 	options, session, err := wan.BeginRegistration(user)
 	if err != nil {
-		RespondError(w, http.StatusInternalServerError, "failed to begin registration")
+		app.RespondError(w, http.StatusInternalServerError, "failed to begin registration")
 		return
 	}
 
@@ -136,19 +138,19 @@ func passkeyRegisterBegin(w http.ResponseWriter, r *http.Request) {
 func passkeyRegisterFinish(w http.ResponseWriter, r *http.Request) {
 	_, acc, err := auth.RequireSession(r)
 	if err != nil {
-		RespondError(w, http.StatusUnauthorized, "authentication required")
+		app.RespondError(w, http.StatusUnauthorized, "authentication required")
 		return
 	}
 
 	wan := getWebAuthn(r)
 	if wan == nil {
-		RespondError(w, http.StatusInternalServerError, "WebAuthn not configured")
+		app.RespondError(w, http.StatusInternalServerError, "WebAuthn not configured")
 		return
 	}
 
 	session, ok := getSession(acc.ID + ":register")
 	if !ok {
-		RespondError(w, http.StatusBadRequest, "no registration in progress")
+		app.RespondError(w, http.StatusBadRequest, "no registration in progress")
 		return
 	}
 
@@ -156,7 +158,7 @@ func passkeyRegisterFinish(w http.ResponseWriter, r *http.Request) {
 
 	credential, err := wan.FinishRegistration(user, *session, r)
 	if err != nil {
-		RespondError(w, http.StatusBadRequest, "registration failed: "+err.Error())
+		app.RespondError(w, http.StatusBadRequest, "registration failed: "+err.Error())
 		return
 	}
 
@@ -170,11 +172,11 @@ func passkeyRegisterFinish(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := auth.SavePasskey(pk); err != nil {
-		RespondError(w, http.StatusInternalServerError, "failed to save passkey")
+		app.RespondError(w, http.StatusInternalServerError, "failed to save passkey")
 		return
 	}
 
-	RespondJSON(w, map[string]interface{}{
+	app.RespondJSON(w, map[string]interface{}{
 		"success": true,
 		"id":      pk.ID,
 		"name":    pk.Name,
@@ -184,13 +186,13 @@ func passkeyRegisterFinish(w http.ResponseWriter, r *http.Request) {
 func passkeyLoginBegin(w http.ResponseWriter, r *http.Request) {
 	wan := getWebAuthn(r)
 	if wan == nil {
-		RespondError(w, http.StatusInternalServerError, "WebAuthn not configured")
+		app.RespondError(w, http.StatusInternalServerError, "WebAuthn not configured")
 		return
 	}
 
 	options, session, err := wan.BeginDiscoverableLogin()
 	if err != nil {
-		RespondError(w, http.StatusInternalServerError, "failed to begin login")
+		app.RespondError(w, http.StatusInternalServerError, "failed to begin login")
 		return
 	}
 
@@ -219,20 +221,20 @@ func passkeyLoginBegin(w http.ResponseWriter, r *http.Request) {
 func passkeyLoginFinish(w http.ResponseWriter, r *http.Request) {
 	wan := getWebAuthn(r)
 	if wan == nil {
-		RespondError(w, http.StatusInternalServerError, "WebAuthn not configured")
+		app.RespondError(w, http.StatusInternalServerError, "WebAuthn not configured")
 		return
 	}
 
 	// Get the challenge from cookie
 	cookie, err := r.Cookie("passkey_challenge")
 	if err != nil {
-		RespondError(w, http.StatusBadRequest, "no login in progress")
+		app.RespondError(w, http.StatusBadRequest, "no login in progress")
 		return
 	}
 
 	session, ok := getSession(cookie.Value)
 	if !ok {
-		RespondError(w, http.StatusBadRequest, "login session expired")
+		app.RespondError(w, http.StatusBadRequest, "login session expired")
 		return
 	}
 
@@ -258,7 +260,7 @@ func passkeyLoginFinish(w http.ResponseWriter, r *http.Request) {
 
 	user, credential, err := wan.FinishPasskeyLogin(handler, *session, r)
 	if err != nil {
-		RespondError(w, http.StatusUnauthorized, "login failed")
+		app.RespondError(w, http.StatusUnauthorized, "login failed")
 		return
 	}
 
@@ -270,7 +272,7 @@ func passkeyLoginFinish(w http.ResponseWriter, r *http.Request) {
 
 	sess, err := auth.CreateSession(accountID)
 	if err != nil {
-		RespondError(w, http.StatusInternalServerError, "failed to create session")
+		app.RespondError(w, http.StatusInternalServerError, "failed to create session")
 		return
 	}
 
@@ -284,7 +286,7 @@ func passkeyLoginFinish(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteLaxMode,
 	})
 
-	RespondJSON(w, map[string]interface{}{
+	app.RespondJSON(w, map[string]interface{}{
 		"success":  true,
 		"redirect": "/home",
 	})
@@ -293,25 +295,25 @@ func passkeyLoginFinish(w http.ResponseWriter, r *http.Request) {
 func passkeyDelete(w http.ResponseWriter, r *http.Request) {
 	_, acc, err := auth.RequireSession(r)
 	if err != nil {
-		RespondError(w, http.StatusUnauthorized, "authentication required")
+		app.RespondError(w, http.StatusUnauthorized, "authentication required")
 		return
 	}
 
 	r.ParseForm()
 	passkeyID := r.FormValue("id")
 	if passkeyID == "" {
-		RespondError(w, http.StatusBadRequest, "passkey ID required")
+		app.RespondError(w, http.StatusBadRequest, "passkey ID required")
 		return
 	}
 
 	if err := auth.DeletePasskey(passkeyID, acc.ID); err != nil {
-		RespondError(w, http.StatusForbidden, err.Error())
+		app.RespondError(w, http.StatusForbidden, err.Error())
 		return
 	}
 
 	// If JSON request, respond with JSON
-	if WantsJSON(r) || SendsJSON(r) {
-		RespondJSON(w, map[string]interface{}{"success": true})
+	if app.WantsJSON(r) || app.SendsJSON(r) {
+		app.RespondJSON(w, map[string]interface{}{"success": true})
 		return
 	}
 
@@ -327,7 +329,7 @@ func PasskeyListHTML(accountID string) string {
 		created := pk.Created.Format("Jan 2, 2006")
 		lastUsed := "Never"
 		if !pk.LastUsed.IsZero() {
-			lastUsed = TimeAgo(pk.LastUsed)
+			lastUsed = app.TimeAgo(pk.LastUsed)
 		}
 		rows += fmt.Sprintf(`<tr>
 <td>%s</td>

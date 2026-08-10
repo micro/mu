@@ -1,4 +1,4 @@
-package app
+package account
 
 import (
 	"encoding/json"
@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/service"
 )
@@ -44,13 +45,13 @@ func TokenHandler(w http.ResponseWriter, r *http.Request) {
 	// Must be authenticated via session (not PAT)
 	sess, acc, err := auth.RequireSession(r)
 	if err != nil {
-		Unauthorized(w, r)
+		app.Unauthorized(w, r)
 		return
 	}
 
 	// PAT tokens can't manage other PAT tokens (must use session)
 	if sess.Type != "account" {
-		Forbidden(w, r, "PAT tokens cannot manage other tokens. Please use session authentication.")
+		app.Forbidden(w, r, "PAT tokens cannot manage other tokens. Please use session authentication.")
 		return
 	}
 
@@ -166,11 +167,11 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	for _, token := range tokens {
 		expires := "Never"
 		if !token.ExpiresAt.IsZero() {
-			expires = TimeAgo(token.ExpiresAt)
+			expires = app.TimeAgo(token.ExpiresAt)
 		}
 		lastUsed := "Never"
 		if !token.LastUsed.IsZero() {
-			lastUsed = TimeAgo(token.LastUsed)
+			lastUsed = app.TimeAgo(token.LastUsed)
 		}
 		sb.WriteString(fmt.Sprintf(`<tr><td data-label="Name">%s</td><td data-label="Permissions">%s</td><td data-label="Last Used">%s</td><td data-label="Expires">%s</td><td>
 			<form method="POST" action="/token?id=%s" style="display:inline" onsubmit="return confirm('Delete?')">
@@ -230,7 +231,7 @@ async function createToken(e) {
 }
 </script>`)
 
-	html := RenderHTML("API Credentials", "Manage API credentials", sb.String())
+	html := app.RenderHTML("API Credentials", "Manage API credentials", sb.String())
 	w.Write([]byte(html))
 }
 
@@ -307,15 +308,15 @@ func handleCreateToken(w http.ResponseWriter, r *http.Request, accountID string)
 	var scope []string
 	var expiresIn int // days
 
-	if SendsJSON(r) {
+	if app.SendsJSON(r) {
 		var req struct {
 			Name        string   `json:"name"`
 			Services    []string `json:"services"`
 			Permissions []string `json:"permissions"`
 			ExpiresIn   int      `json:"expires_in"` // days, 0 = never
 		}
-		if err := DecodeJSON(r, &req); err != nil {
-			RespondError(w, http.StatusBadRequest, "invalid json")
+		if err := app.DecodeJSON(r, &req); err != nil {
+			app.RespondError(w, http.StatusBadRequest, "invalid json")
 			return
 		}
 		name = strings.TrimSpace(req.Name)

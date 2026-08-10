@@ -13,11 +13,9 @@ import (
 	"regexp"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	"mu/internal/auth"
-	"mu/internal/memory"
 	"mu/internal/service"
 
 	"github.com/gomarkdown/markdown"
@@ -25,63 +23,6 @@ import (
 	"github.com/gomarkdown/markdown/html"
 	"github.com/gomarkdown/markdown/parser"
 )
-
-// Signup rate limiting per IP — defends against bulk account creation.
-// Configurable via SIGNUP_MAX_PER_IP and SIGNUP_WINDOW_HOURS env vars.
-var (
-	signupMu       sync.Mutex
-	signupAttempts = map[string]*signupBucket{}
-)
-
-type signupBucket struct {
-	count   int
-	resetAt time.Time
-}
-
-// SignupRateLimit returns true if the IP is allowed to sign up.
-// It also records the attempt against the bucket on success.
-// Configurable via SIGNUP_MAX_PER_IP (default 3) and SIGNUP_WINDOW_HOURS (default 24).
-func SignupRateLimit(ip string) bool {
-	if ip == "" || ip == "127.0.0.1" || ip == "::1" {
-		return true // never rate-limit localhost (self-hosted, dev)
-	}
-	maxPerIP := envInt("SIGNUP_MAX_PER_IP", 3)
-	window := time.Duration(envInt("SIGNUP_WINDOW_HOURS", 24)) * time.Hour
-
-	signupMu.Lock()
-	defer signupMu.Unlock()
-
-	now := time.Now()
-	b, ok := signupAttempts[ip]
-	if !ok || now.After(b.resetAt) {
-		b = &signupBucket{count: 0, resetAt: now.Add(window)}
-		signupAttempts[ip] = b
-	}
-	if b.count >= maxPerIP {
-		return false
-	}
-	b.count++
-
-	// Opportunistic GC to avoid unbounded growth.
-	if len(signupAttempts) > 10000 {
-		for k, v := range signupAttempts {
-			if now.After(v.resetAt) {
-				delete(signupAttempts, k)
-			}
-		}
-	}
-	return true
-}
-
-func envInt(key string, def int) int {
-	if v := os.Getenv(key); v != "" {
-		var n int
-		if _, err := fmt.Sscanf(v, "%d", &n); err == nil && n > 0 {
-			return n
-		}
-	}
-	return def
-}
 
 // Version for cache busting static assets (generated at startup)
 var Version = fmt.Sprintf("%d", time.Now().Unix())
@@ -127,21 +68,6 @@ func init() {
 	cliMode = !server
 }
 
-// Log prints a formatted log message with a colored package prefix
-// and stores it in the in-memory system log ring buffer.
-func Log(pkg string, format string, args ...interface{}) {
-	color := pkgColors[pkg]
-	if color == "" {
-		color = colorWhite
-	}
-	timestamp := time.Now().Format("15:04:05")
-	prefix := fmt.Sprintf("%s[%s %s]%s ", color, timestamp, pkg, colorReset)
-	if !cliMode {
-		fmt.Printf(prefix+format+"\n", args...)
-	}
-	appendSysLog(pkg, format, args...)
-}
-
 // Response holds data for responding in either JSON or HTML format
 type Response struct {
 	Data        interface{} // Data to serialize as JSON or pass to HTML renderer
@@ -181,36 +107,6 @@ func RespondError(w http.ResponseWriter, status int, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(map[string]string{"error": message})
-}
-
-// Error writes an error response: JSON if the client expects it, otherwise a
-// rendered page.
-//
-// The page matters. This is the single exit for every Forbidden, Unauthorized
-// and BadRequest in the product, and it used to be http.Error — so a person
-// who hit any of them was dropped onto a white screen with one line of text,
-// no nav, and no way back except the browser's own button. The refusal is
-// often the most important thing we ever say to a new user ("verify your
-// email and you can post"), and it was the one thing said worst.
-func Error(w http.ResponseWriter, r *http.Request, status int, message string) {
-	if WantsJSON(r) || SendsJSON(r) || isFetch(r) {
-		RespondError(w, status, message)
-		return
-	}
-	if message == "" {
-		message = http.StatusText(status)
-	}
-	body := `<div class="notice"><p>` + htmlpkg.EscapeString(message) + `</p></div>` +
-		`<p><a class="link" href="` + htmlpkg.EscapeString(errorBackTo(r)) + `">Back</a></p>`
-	// Rendered without the standing banners. They exist to interrupt an ordinary
-	// page with something you should know; here the something-you-should-know is
-	// the page, and a banner repeating the message word for word above it just
-	// says the same thing twice.
-	_, acc := auth.TrySession(r)
-	page := RenderHTMLWithLangAndAuth(errorTitle(status), message, body, GetUserLanguage(r), acc)
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(status)
-	w.Write([]byte(page))
 }
 
 // isFetch reports whether this request came from script rather than from the
@@ -270,22 +166,6 @@ func Unauthorized(w http.ResponseWriter, r *http.Request) {
 	Error(w, r, http.StatusUnauthorized, "Authentication required")
 }
 
-// Forbidden writes a 403 error response
-func Forbidden(w http.ResponseWriter, r *http.Request, message string) {
-	if message == "" {
-		message = "Forbidden"
-	}
-	Error(w, r, http.StatusForbidden, message)
-}
-
-// BadRequest writes a 400 error response
-func BadRequest(w http.ResponseWriter, r *http.Request, message string) {
-	if message == "" {
-		message = "Bad request"
-	}
-	Error(w, r, http.StatusBadRequest, message)
-}
-
 // TooManyRequests writes a 429. Use it where a limit is about how often
 // something may be done rather than what it costs — a price refuses the caller
 // without credits, a rate limit refuses the caller going too fast.
@@ -302,14 +182,6 @@ func NotFound(w http.ResponseWriter, r *http.Request, message string) {
 		message = "Not found"
 	}
 	Error(w, r, http.StatusNotFound, message)
-}
-
-// ServerError writes a 500 error response
-func ServerError(w http.ResponseWriter, r *http.Request, message string) {
-	if message == "" {
-		message = "Internal server error"
-	}
-	Error(w, r, http.StatusInternalServerError, message)
 }
 
 // RedirectToLogin redirects to login page with optional redirect back URL
@@ -492,307 +364,6 @@ var CardTemplate = `
 </div>
 `
 
-var LoginTemplate = `<html lang="en">
-  <head>
-    <title>Login | Mu</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content, viewport-fit=cover" />
-    <meta name="referrer" content="no-referrer"/>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/mu.css?` + Version + `">
-  </head>
-  <body>
-    <div id="head">
-      <div id="brand">
-        <a href="/">Mu</a>
-      </div>
-    </div>
-    <div id="container">
-      <div id="content">
-	<form id="login" action="/login%s" method="POST">
-	  <h1>Log in</h1>
-	  <p class="auth-lede">Your agents, your tools, and the app they share.</p>
-	  %s
-	  %s
-	  <input id="id" name="id" placeholder="Username" required>
-	  <input id="secret" name="secret" type="password" placeholder="Password" required>
-	  <br>
-	  <button>Login</button>
-	</form>
-	<div id="passkey-login" style="display:none; text-align:center; margin-top:20px;">
-	  <p class="text-muted">or</p>
-	  <button onclick="loginWithPasskey()">Login with Passkey</button>
-	</div>
-	<p class="text-center mt-5"><a href="/signup">Sign up</a> if you don't have an account</p>
-	<p class="auth-foot"><a href="/tools">See the tools first &rarr;</a></p>
-	<script>
-	if (window.PublicKeyCredential) {
-	  PublicKeyCredential.isConditionalMediationAvailable && PublicKeyCredential.isConditionalMediationAvailable().then(function(){});
-	  document.getElementById('passkey-login').style.display = 'block';
-	}
-
-	function base64urlToBuffer(b64) {
-	  var pad = b64.length %% 4;
-	  if (pad) b64 += '='.repeat(4 - pad);
-	  var str = atob(b64.replace(/-/g, '+').replace(/_/g, '/'));
-	  var buf = new Uint8Array(str.length);
-	  for (var i = 0; i < str.length; i++) buf[i] = str.charCodeAt(i);
-	  return buf.buffer;
-	}
-
-	function bufferToBase64url(buf) {
-	  var bytes = new Uint8Array(buf);
-	  var str = '';
-	  for (var i = 0; i < bytes.length; i++) str += String.fromCharCode(bytes[i]);
-	  return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
-	}
-
-	async function loginWithPasskey() {
-	  try {
-	    var beginRes = await fetch('/passkey/login/begin', {method: 'POST'});
-	    if (!beginRes.ok) { alert('Passkey login not available'); return; }
-	    var options = await beginRes.json();
-
-	    options.publicKey.challenge = base64urlToBuffer(options.publicKey.challenge);
-	    if (options.publicKey.allowCredentials) {
-	      options.publicKey.allowCredentials = options.publicKey.allowCredentials.map(function(c) {
-	        return Object.assign({}, c, {id: base64urlToBuffer(c.id)});
-	      });
-	    }
-
-	    var assertion = await navigator.credentials.get(options);
-
-	    var body = {
-	      id: assertion.id,
-	      rawId: bufferToBase64url(assertion.rawId),
-	      type: assertion.type,
-	      response: {
-	        authenticatorData: bufferToBase64url(assertion.response.authenticatorData),
-	        clientDataJSON: bufferToBase64url(assertion.response.clientDataJSON),
-	        signature: bufferToBase64url(assertion.response.signature),
-	        userHandle: bufferToBase64url(assertion.response.userHandle)
-	      }
-	    };
-	    if (assertion.authenticatorAttachment) {
-	      body.authenticatorAttachment = assertion.authenticatorAttachment;
-	    }
-
-	    var finishRes = await fetch('/passkey/login/finish', {
-	      method: 'POST',
-	      headers: {'Content-Type': 'application/json'},
-	      body: JSON.stringify(body)
-	    });
-	    var result = await finishRes.json();
-	    if (result.success) {
-	      window.location.href = result.redirect || '/home';
-	    } else {
-	      alert('Login failed');
-	    }
-	  } catch (e) {
-	    if (e.name !== 'NotAllowedError') alert('Error: ' + e.message);
-	  }
-	}
-	</script>
-      </div>
-    </div>
-  </body>
-</html>
-`
-
-var SignupTemplate = `<html lang="en">
-  <head>
-    <title>Signup | Mu</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content, viewport-fit=cover" />
-    <meta name="referrer" content="no-referrer"/>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/mu.css?` + Version + `">
-  </head>
-  <body>
-    <div id="head">
-      <div id="brand">
-        <a href="/">Mu</a>
-      </div>
-    </div>
-    <div id="container">
-      <div id="content">
-	<form id="signup" action="/signup%s" method="POST">
-	  <h1>Create your account</h1>
-	  <p class="auth-lede">One account, and your agents get every tool on this
-	  instance &mdash; news, web search, mail, markets, weather, storage &mdash;
-	  over a single MCP endpoint. Free to start.</p>
-	  %s
-	  %s
-	  <input id="id" name="id" placeholder="Username (4-24 chars, lowercase)" required>
-	  <input id="name" name="name" placeholder="Name (optional)">
-  	  <input id="secret" name="secret" type="password" placeholder="Password (min 6 chars)" required>
-	  %s
-	  %s
-	  <br>
-	  <button>Signup</button>
-	</form>
-	<p class="text-center mt-5"><a href="/login">Log in</a> if you have an account</p>
-	<p class="auth-foot"><a href="/tools">See the tools first &rarr;</a></p>
-      </div>
-    </div>
-  </body>
-</html>
-`
-
-// inviteCode is a package-level var used to thread the invite code
-// through signup renders without changing every call site.
-var currentInviteCode string
-
-// renderSignup renders the signup template with a fresh captcha challenge
-// and the given error HTML (or empty string).
-func renderSignup(errHTML string) string { return renderSignupTo(errHTML, "") }
-
-// renderSignupTo threads a redirect through the form action. Without it the
-// POST goes to a bare /signup and the destination is lost between showing the
-// form and submitting it — which is how someone sent here by a client's OAuth
-// flow would create an account and then land on /home, with the client still
-// waiting.
-func renderSignupTo(errHTML, redirectParam string) string {
-	c := NewCaptchaChallenge()
-	inviteField := ""
-	if currentInviteCode != "" {
-		inviteField = fmt.Sprintf(`<input type="hidden" name="invite" value="%s">`, currentInviteCode)
-	}
-	// The button is a template slot, not a search-and-replace on the heading.
-	//
-	// It used to be injected by replacing the literal `<h1>Signup</h1>`, so
-	// rewriting that heading — which happened when these pages were given the
-	// landing's copy — silently deleted Sign up with Google from the page. No
-	// error, no test, nothing in a diff to notice: the replace simply matched
-	// nothing and returned the string unchanged. A slot cannot miss.
-	return fmt.Sprintf(SignupTemplate, redirectParam,
-		googleButtonHTML("Sign up with Google"), errHTML, CaptchaHTML(c), inviteField)
-}
-
-// renderRequestInvitePage shows the "request an invite" form that
-// replaces the dead-end "invite only" page. Captcha-protected and
-// rate-limited by IP so it can't be flooded.
-func renderRequestInvitePage(w http.ResponseWriter, r *http.Request, message string) {
-	c := NewCaptchaChallenge()
-	msg := message
-	if msg == "" {
-		msg = `<p>Mu is currently invite-only. Leave your email and we'll send you an invite when we open up more seats.</p>`
-	}
-	body := fmt.Sprintf(`<div class="card" style="max-width:440px;margin:0 auto">
-<h3>Request an invite</h3>
-%s
-<form method="POST" action="/request-invite" style="margin-top:12px">
-  <input type="email" name="email" placeholder="your@email.com" required style="width:100%%;margin-bottom:8px">
-  <input type="text" name="reason" placeholder="Why you'd like to join (optional)" maxlength="500" style="width:100%%;margin-bottom:8px">
-  %s
-  <button type="submit">Request invite</button>
-</form>
-<p class="text-muted text-sm mt-3">Already have an invite? <a href="/login">Log in</a> or paste your link.</p>
-</div>`, msg, CaptchaHTML(c))
-	w.Write([]byte(RenderHTML("Request an Invite", "Request an invite to Mu", body)))
-}
-
-// InviteHandler lets any logged-in user invite someone by email.
-func InviteHandler(w http.ResponseWriter, r *http.Request) {
-	_, acc, err := auth.RequireSession(r)
-	if err != nil {
-		RedirectToLogin(w, r)
-		return
-	}
-
-	if r.Method == "POST" {
-		r.ParseForm()
-		email := strings.TrimSpace(r.FormValue("email"))
-		if email == "" {
-			BadRequest(w, r, "Email is required")
-			return
-		}
-		code, err := auth.CreateInvite(email, acc.ID)
-		if err != nil {
-			ServerError(w, r, "Failed to create invite: "+err.Error())
-			return
-		}
-		link := PublicURL() + "/signup?invite=" + code
-		if EmailSender != nil {
-			plain := fmt.Sprintf("%s invited you to join Mu.\n\nSign up here: %s", acc.Name, link)
-			html := fmt.Sprintf(`<p>%s invited you to join Mu.</p><p><a href="%s">Sign up here</a></p>`, htmlpkg.EscapeString(acc.Name), link)
-			EmailSender(email, acc.Name+" invited you to Mu", plain, html)
-		}
-		body := fmt.Sprintf(`<div class="card">
-<h4>Invite sent</h4>
-<p>Invite sent to <strong>%s</strong></p>
-<p><a href="/invite">Invite another</a> · <a href="/home">Home</a></p>
-</div>`, htmlpkg.EscapeString(email))
-		w.Write([]byte(RenderHTML("Invite Sent", "Invite sent", body)))
-		return
-	}
-
-	body := `<p><a href="/home">← Home</a></p>
-<div class="card">
-<h4>Invite someone to Mu</h4>
-<p class="text-sm">Enter their email — they'll get a signup link.</p>
-<form method="POST" action="/invite" style="margin-top:8px">
-	<input type="email" name="email" placeholder="friend@example.com" required class="form-input" style="width:100%">
-	<button type="submit" class="mt-2">Send invite</button>
-</form>
-</div>`
-	w.Write([]byte(RenderHTML("Invite", "Invite someone to Mu", body)))
-}
-
-// RequestInvite handles POST /request-invite — someone is asking to
-// join. Validates captcha + rate limit, stores the request for admin
-// review.
-func RequestInvite(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
-		renderRequestInvitePage(w, r, "")
-		return
-	}
-	if r.Method != "POST" {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	r.ParseForm()
-
-	if err := VerifyCaptchaRequest(r); err != nil {
-		renderRequestInvitePage(w, r, fmt.Sprintf(`<p class="text-error">%s</p>`, err.Error()))
-		return
-	}
-
-	// Per-IP rate limit reuses the signup bucket — same spam concern.
-	ip := ClientIP(r)
-	if !SignupRateLimit(ip) {
-		renderRequestInvitePage(w, r, `<p class="text-error">Too many requests from your network. Please try again later.</p>`)
-		return
-	}
-
-	email := strings.TrimSpace(r.FormValue("email"))
-	reason := strings.TrimSpace(r.FormValue("reason"))
-	if email == "" || !strings.Contains(email, "@") {
-		renderRequestInvitePage(w, r, `<p class="text-error">Please enter a valid email address.</p>`)
-		return
-	}
-
-	if err := auth.CreateInviteRequest(email, reason, ip); err != nil {
-		renderRequestInvitePage(w, r, fmt.Sprintf(`<p class="text-error">%s</p>`, err.Error()))
-		return
-	}
-	Log("auth", "Invite request from %s (%s)", email, ip)
-
-	body := fmt.Sprintf(`<div class="card" style="max-width:440px;margin:0 auto">
-<h3>Thanks — we got your request</h3>
-<p>We'll email <strong>%s</strong> if we have a seat for you.</p>
-<p class="mt-3"><a href="/">← Back</a></p>
-</div>`, htmlpkg.EscapeString(email))
-	w.Write([]byte(RenderHTML("Request Received", "Invite request received", body)))
-}
-
-// EmailSender is set by main.go and called to deliver verification
-// emails. It's a callback to avoid an import cycle (mail imports app).
-// If nil, email verification is unavailable on this instance.
-var EmailSender func(to, subject, bodyPlain, bodyHTML string) error
-
 // LinkCodeFunc issues a one-time code for attaching a chat channel to an
 // account. Set by main() to auth.GenerateLinkCode.
 //
@@ -800,18 +371,6 @@ var EmailSender func(to, subject, bodyPlain, bodyHTML string) error
 // they carry it to is their business. It replaced a per-channel "link <username>
 // <password>", which asked people to type a password into a chat window.
 var LinkCodeFunc func(accountID string) string
-
-// PublicURL returns the externally-reachable base URL for the instance.
-// Falls back to relative paths when not configured.
-func PublicURL() string {
-	if v := os.Getenv("PUBLIC_URL"); v != "" {
-		return strings.TrimRight(v, "/")
-	}
-	if v := os.Getenv("MAIL_DOMAIN"); v != "" {
-		return "https://" + v
-	}
-	return ""
-}
 
 func Link(name, ref string) string {
 	return fmt.Sprintf(`<a href="%s" class="link">%s →</a>`, ref, name)
@@ -848,620 +407,6 @@ func CardWithIcon(id, title, icon, content string) string {
 	}
 	titleHTML := `<img src="` + htmlpkg.EscapeString(icon) + `" style="width:24px;height:24px;vertical-align:bottom;margin-right:6px;">` + htmlpkg.EscapeString(title)
 	return fmt.Sprintf(CardTemplate, id, id, titleHTML, content)
-}
-
-// Login handler
-func Login(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
-		// Preserve redirect parameter in form action
-		redirectParam := ""
-		if redirect := r.URL.Query().Get("redirect"); redirect != "" {
-			redirectParam = "?redirect=" + url.QueryEscape(redirect)
-		}
-		w.Write([]byte(loginPage(redirectParam, "")))
-		return
-	}
-
-	if r.Method == "POST" {
-		r.ParseForm()
-
-		id := r.Form.Get("id")
-		secret := r.Form.Get("secret")
-
-		// Preserve redirect parameter for error messages
-		redirectParam := ""
-		if redirect := r.URL.Query().Get("redirect"); redirect != "" {
-			redirectParam = "?redirect=" + url.QueryEscape(redirect)
-		}
-
-		if len(id) == 0 {
-			w.Write([]byte(loginPage(redirectParam, `<p class="text-error">Username is required</p>`)))
-			return
-		}
-		if len(secret) == 0 {
-			w.Write([]byte(loginPage(redirectParam, `<p class="text-error">Password is required</p>`)))
-			return
-		}
-
-		sess, err := auth.Login(id, secret)
-		if err != nil {
-			w.Write([]byte(loginPage(redirectParam, `<p class="text-error">Invalid username or password</p>`)))
-			return
-		}
-
-		var secure bool
-
-		if h := r.Header.Get("X-Forwarded-Proto"); h == "https" {
-			secure = true
-		}
-
-		// set a new token
-		http.SetCookie(w, &http.Cookie{
-			Name:     "session",
-			Value:    sess.Token,
-			Path:     "/",
-			MaxAge:   2592000,
-			Secure:   secure,
-			HttpOnly: true,
-			SameSite: http.SameSiteLaxMode,
-		})
-
-		http.Redirect(w, r, safeRedirect(r), 302)
-		return
-	}
-}
-
-// Signup handler
-func Signup(w http.ResponseWriter, r *http.Request) {
-	// Thread the invite code through renders so the hidden field persists.
-	invCode := r.URL.Query().Get("invite")
-	if r.Method == "POST" {
-		if v := r.FormValue("invite"); v != "" {
-			invCode = v
-		}
-	}
-	currentInviteCode = invCode
-
-	// Carried through every render so the POST keeps it — see renderSignupTo.
-	redirectParam := ""
-	if to := safeRedirect(r); to != "/home" {
-		redirectParam = "?redirect=" + url.QueryEscape(to)
-	}
-
-	// Invite codes are optional — if one is provided (referral link),
-	// it's consumed after signup for tracking. Signup works without one.
-	// When INVITE_ONLY=true, a valid code IS required.
-	if auth.InviteOnly() && invCode == "" {
-		renderRequestInvitePage(w, r, "")
-		return
-	}
-	if auth.InviteOnly() && invCode != "" {
-		if err := auth.ValidateInvite(invCode); err != nil {
-			w.Write([]byte(renderSignupTo(fmt.Sprintf(`<p class="text-error">%s</p>`, err.Error()), redirectParam)))
-			return
-		}
-	}
-
-	if r.Method == "GET" {
-		w.Write([]byte(renderSignupTo("", redirectParam)))
-		return
-	}
-
-	if r.Method == "POST" {
-		r.ParseForm()
-
-		// Captcha is checked before the IP rate limit so that a failed
-		// captcha doesn't burn an attempt against the IP bucket.
-		if err := VerifyCaptchaRequest(r); err != nil {
-			w.Write([]byte(renderSignupTo(fmt.Sprintf(`<p class="text-error">%s</p>`, err.Error()), redirectParam)))
-			return
-		}
-
-		// Per-IP signup rate limit (defends against bulk account creation).
-		ip := ClientIP(r)
-		if !SignupRateLimit(ip) {
-			Log("auth", "Signup rate limit hit for IP: %s", ip)
-			w.Write([]byte(renderSignupTo(`<p class="text-error">Too many sign-ups from your network. Please try again later.</p>`, redirectParam)))
-			return
-		}
-
-		id := r.Form.Get("id")
-		name := r.Form.Get("name")
-		secret := r.Form.Get("secret")
-
-		const usernamePattern = "^[a-z][a-z0-9_]{3,23}$"
-
-		usernameRegex := regexp.MustCompile(usernamePattern)
-
-		if len(id) == 0 {
-			w.Write([]byte(renderSignupTo(`<p class="text-error">Username is required</p>`, redirectParam)))
-			return
-		}
-
-		if !usernameRegex.MatchString(id) {
-			w.Write([]byte(renderSignupTo(`<p class="text-error">Invalid username format. Must start with a letter, be 4-24 characters, and contain only lowercase letters, numbers, and underscores</p>`, redirectParam)))
-			return
-		}
-
-		if reason := auth.ValidateUsername(id); reason != "" {
-			w.Write([]byte(renderSignupTo(fmt.Sprintf(`<p class="text-error">%s</p>`, reason), redirectParam)))
-			return
-		}
-
-		if len(secret) == 0 {
-			w.Write([]byte(renderSignupTo(`<p class="text-error">Password is required</p>`, redirectParam)))
-			return
-		}
-
-		if len(secret) < 6 {
-			w.Write([]byte(renderSignupTo(`<p class="text-error">Password must be at least 6 characters</p>`, redirectParam)))
-			return
-		}
-
-		// Use username as name if name is not provided
-		if len(name) == 0 {
-			name = id
-		}
-
-		if err := auth.Create(&auth.Account{
-			ID:      id,
-			Secret:  secret,
-			Name:    name,
-			Created: time.Now(),
-		}); err != nil {
-			w.Write([]byte(renderSignupTo(fmt.Sprintf(`<p class="text-error">%s</p>`, err.Error()), redirectParam)))
-			return
-		}
-
-		// Consume invite code if present (marks it as used).
-		if invCode != "" {
-			auth.ConsumeInvite(invCode, id)
-		}
-
-		// login
-		sess, err := auth.Login(id, secret)
-		if err != nil {
-			w.Write([]byte(renderSignupTo(`<p class="text-error">Account created but login failed. Please try logging in.</p>`, redirectParam)))
-			return
-		}
-
-		var secure bool
-
-		if h := r.Header.Get("X-Forwarded-Proto"); h == "https" {
-			secure = true
-		}
-
-		// set a new token
-		http.SetCookie(w, &http.Cookie{
-			Name:     "session",
-			Value:    sess.Token,
-			Path:     "/",
-			MaxAge:   2592000,
-			Secure:   secure,
-			HttpOnly: true,
-			SameSite: http.SameSiteLaxMode,
-		})
-
-		// Back to wherever they were sent from, which for someone arriving
-		// through a client's OAuth flow is /oauth/authorize — they now have a
-		// session, so it issues the code without asking anything twice.
-		http.Redirect(w, r, safeRedirect(r), 302)
-		return
-	}
-}
-
-// safeRedirect is where to send someone after they sign in or sign up.
-//
-// Same-site only: a path starting with a single slash. Anything else — an
-// absolute URL, or "//evil.example" which a browser reads as one — falls back
-// to /home. An open redirect on a login page is a phishing primitive, and this
-// one is reachable from a link an OAuth client hands to a user.
-func safeRedirect(r *http.Request) string {
-	to := r.URL.Query().Get("redirect")
-	if to == "" || to[0] != '/' || strings.HasPrefix(to, "//") {
-		return "/home"
-	}
-	return to
-}
-
-// ReturnTo is where to send someone after a control that writes the account is
-// used from a page other than the one that owns the write.
-//
-// The card picker is on /context and pinning is on /apps, but both post here,
-// because this is where the account is written. Sending them to /account
-// afterwards would answer a click on /context by navigating away from the
-// thing they were looking at. The form says where it was; the guard is
-// safeRedirect's, since a `return` field is as forgeable as a query parameter.
-func ReturnTo(r *http.Request, fallback string) string {
-	to := r.Form.Get("return")
-	if to == "" || to[0] != '/' || strings.HasPrefix(to, "//") {
-		return fallback
-	}
-	return to
-}
-
-// addWidget and removeWidget edit the pinned-app list by name. Order is the
-// order they were pinned in, which is the order they render.
-func addWidget(have []string, slug string) []string {
-	for _, w := range have {
-		if w == slug {
-			return have
-		}
-	}
-	return append(have, slug)
-}
-
-func removeWidget(have []string, slug string) []string {
-	out := make([]string, 0, len(have))
-	for _, w := range have {
-		if w != slug {
-			out = append(out, w)
-		}
-	}
-	return out
-}
-
-func Account(w http.ResponseWriter, r *http.Request) {
-	_, acc, err := auth.RequireSession(r)
-	if err != nil {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
-		return
-	}
-
-	// Handle POST to update language or request email verification
-	if r.Method == "POST" {
-		r.ParseForm()
-
-		// Language update
-		if newLang := r.Form.Get("language"); newLang != "" {
-			if _, ok := SupportedLanguages[newLang]; ok {
-				acc.Language = newLang
-				auth.UpdateAccount(acc)
-			}
-			http.Redirect(w, r, "/account", http.StatusSeeOther)
-			return
-		}
-
-		// Email verification request
-		if email := strings.TrimSpace(r.Form.Get("email")); email != "" {
-			handleVerifyStart(w, r, acc, email)
-			return
-		}
-
-		// Memory: add one, forget one, forget the lot. Posted from the card on
-		// this page — see memory_card.go for why the list lives here.
-		if r.Form.Get("remember") != "" {
-			memory.Set(acc.ID, r.Form.Get("key"), r.Form.Get("value"))
-			http.Redirect(w, r, "/account", http.StatusSeeOther)
-			return
-		}
-		if key := r.Form.Get("forget"); key != "" {
-			memory.Delete(acc.ID, key)
-			http.Redirect(w, r, "/account", http.StatusSeeOther)
-			return
-		}
-		if r.Form.Get("forget_all") != "" {
-			memory.Clear(acc.ID)
-			http.Redirect(w, r, "/account", http.StatusSeeOther)
-			return
-		}
-
-		// App widget preferences — which apps are pinned to the top of home.
-		// Posted one app at a time from /apps, where the pin sits next to the
-		// app it pins; `pin` and `unpin` name the app rather than restating the
-		// whole set, so two tabs cannot silently undo each other.
-		if slug := r.Form.Get("pin"); slug != "" {
-			acc.Widgets = addWidget(acc.Widgets, slug)
-			auth.UpdateAccount(acc)
-			http.Redirect(w, r, ReturnTo(r, "/account"), http.StatusSeeOther)
-			return
-		}
-		if slug := r.Form.Get("unpin"); slug != "" {
-			acc.Widgets = removeWidget(acc.Widgets, slug)
-			auth.UpdateAccount(acc)
-			http.Redirect(w, r, ReturnTo(r, "/account"), http.StatusSeeOther)
-			return
-		}
-		if r.Form.Get("save_widgets") != "" {
-			acc.Widgets = r.Form["widgets"]
-			auth.UpdateAccount(acc)
-			http.Redirect(w, r, ReturnTo(r, "/account"), http.StatusSeeOther)
-			return
-		}
-
-		// Chat channel link code generation
-		if r.Form.Get("channel_link") != "" {
-			if LinkCodeFunc != nil {
-				code := LinkCodeFunc(acc.ID)
-				http.Redirect(w, r, "/account?link_code="+code, http.StatusSeeOther)
-			} else {
-				http.Redirect(w, r, "/account", http.StatusSeeOther)
-			}
-			return
-		}
-
-		http.Redirect(w, r, "/account", http.StatusSeeOther)
-		return
-	}
-
-	// Build language options
-	currentLang := acc.Language
-	if currentLang == "" {
-		currentLang = "en"
-	}
-	languageOptions := ""
-	for code, name := range SupportedLanguages {
-		selected := ""
-		if code == currentLang {
-			selected = " selected"
-		}
-		languageOptions += fmt.Sprintf(`<option value="%s"%s>%s</option>`, code, selected, name)
-	}
-
-	// Email verification card + Google connect card
-	emailCard := renderEmailCard(acc)
-	googleCard := renderGoogleCard(acc)
-	if r.URL.Query().Get("linked") == "google" {
-		googleCard = `<div class="card" style="border-color:#1a7f37"><p style="margin:0;color:#1a7f37">✓ Google connected. You can now sign in with Google.</p></div>` + googleCard
-	}
-	// What this account has handed over, in one place. The asks live on the
-	// pages that earn them; the audit belongs where somebody goes to check.
-	googleCard += renderConnectionsCard(r, acc, r.URL.Query().Get("connection"))
-
-	memCard := memoryCard(r, acc)
-
-	// The clients that reach the agent from somewhere else — Discord, Telegram,
-	// WhatsApp, which is what client/ holds. One code works on any of them.
-	//
-	// This card was headed "Chat", which is a different thing on this instance:
-	// chat is the service behind /chat, the live discussion rooms attached to an
-	// item. Two unrelated things under one word, and the one on /account was not
-	// the one with a page.
-	clientsCard := ""
-	if LinkCodeFunc != nil {
-		code := r.URL.Query().Get("link_code")
-		if code != "" {
-			clientsCard = fmt.Sprintf(`<div class="card">
-<h4>Clients</h4>
-<p>Your link code: <code style="font-size:18px;font-weight:bold;background:#f0f0f0;padding:4px 12px;border-radius:4px">%s</code></p>
-<p class="text-sm text-muted" style="margin-top:4px">Send <code>link %s</code> to the Mu bot on Discord, Telegram or WhatsApp. Expires in 5 minutes, and works once.</p>
-</div>`, code, code)
-		} else {
-			clientsCard = `<div class="card">
-<h4>Clients</h4>
-<p class="text-sm text-muted">Use the agent from Discord, Telegram or WhatsApp. Generate a code, then send <code>link &lt;code&gt;</code> to the bot. Never send your password to a chat app.</p>
-<form action="/account" method="POST" style="margin-top:8px">
-<input type="hidden" name="channel_link" value="1">
-<button type="submit">Generate Link Code</button>
-</form>
-</div>`
-		}
-	}
-
-	content := fmt.Sprintf(`<div class="card">
-<h4>Profile</h4>
-<p><strong>%s</strong> · %s · Joined %s</p>
-<p><a href="/@%s">Public profile →</a></p>
-</div>
-
-%s
-
-%s
-
-<div class="card">
-<h4>Language</h4>
-<form action="/account" method="POST" class="d-flex items-center gap-3">
-	<select name="language" class="form-select text-sm">%s</select>
-	<button type="submit">Save</button>
-</form>
-</div>
-
-%s
-
-%s
-
-%s
-
-<div class="card">
-<h4>Settings</h4>
-<p><a href="/token">API Credentials →</a></p>
-<p><a href="/app/blocked">Blocked Users →</a></p>
-<p><a href="/app/saved">Saved →</a></p>
-<p style="margin-top:12px"><a href="/logout" class="text-error">Logout</a></p>
-</div>`,
-		acc.ID,
-		acc.Name,
-		acc.Created.Format("January 2, 2006"),
-		acc.ID,
-		emailCard,
-		googleCard,
-		languageOptions,
-		memCard,
-		PasskeyListHTML(acc.ID),
-		clientsCard,
-	)
-
-	// RenderHTMLForRequest, not RenderHTML: the latter hard-codes a nil account,
-	// so every part of the chrome that depends on knowing who is signed in went
-	// missing on the one page you reach by being signed in.
-	html := RenderHTMLForRequest("Account", "Account", content, r)
-	w.Write([]byte(html))
-}
-
-// renderEmailCard renders the email verification card on the account
-// page. The card looks different depending on whether the email is set,
-// pending, or verified — and whether email sending is configured at all.
-func renderEmailCard(acc *auth.Account) string {
-	if acc.Admin || acc.Approved {
-		// Admins/approved users don't need verification.
-		if acc.EmailVerified {
-			return fmt.Sprintf(`<div class="card"><h4>Email</h4><p>%s — verified</p></div>`, htmlpkg.EscapeString(acc.Email))
-		}
-		return ""
-	}
-
-	if EmailSender == nil {
-		return `<div class="card"><h4>Email</h4><p class="text-muted">Email verification is not configured on this instance.</p></div>`
-	}
-
-	if acc.EmailVerified {
-		return fmt.Sprintf(`<div class="card">
-<h4>Email</h4>
-<p><strong>%s</strong> — verified ✓</p>
-</div>`, htmlpkg.EscapeString(acc.Email))
-	}
-
-	pending := ""
-	if acc.Email != "" {
-		pending = fmt.Sprintf(`<p class="text-muted text-sm">A verification link was sent to <strong>%s</strong>. Click it to unlock posting. Submit again to resend.</p>`, htmlpkg.EscapeString(acc.Email))
-	}
-
-	return fmt.Sprintf(`<div class="card">
-<h4>Verify your email to post</h4>
-<p class="text-sm">Verifying your email unlocks status updates, replies, comments and blog posts. We do not share or sell your address.</p>
-%s
-<form action="/account" method="POST" class="d-flex items-center gap-3" style="margin-top:8px">
-	<input type="email" name="email" placeholder="you@example.com" value="%s" required>
-	<button type="submit">Send verification</button>
-</form>
-</div>`, pending, htmlpkg.EscapeString(acc.Email))
-}
-
-// handleVerifyStart processes the email submission on /account, generates
-// a verification token, and sends an email containing the verify link.
-func handleVerifyStart(w http.ResponseWriter, r *http.Request, acc *auth.Account, email string) {
-	if EmailSender == nil {
-		Forbidden(w, r, "Email verification is not configured on this instance.")
-		return
-	}
-	if !validEmail(email) {
-		BadRequest(w, r, "Please enter a valid email address.")
-		return
-	}
-
-	// Persist the pending email so the UI can show it.
-	if err := auth.SetAccountEmail(acc.ID, email); err != nil {
-		ServerError(w, r, "Failed to save email")
-		return
-	}
-
-	tok, err := auth.CreateEmailVerificationToken(acc.ID, email)
-	if err != nil {
-		ServerError(w, r, "Failed to create verification token")
-		return
-	}
-
-	link := PublicURL() + "/verify?token=" + tok
-	plain := fmt.Sprintf("Hi %s,\n\nClick the link below to verify your email and unlock posting on Mu:\n\n%s\n\nThis link expires in 24 hours. If you didn't request this, you can ignore this email.\n\n— Mu", acc.Name, link)
-	html := fmt.Sprintf(`<p>Hi %s,</p><p>Click the link below to verify your email and unlock posting on Mu:</p><p><a href="%s">%s</a></p><p>This link expires in 24 hours. If you didn't request this, you can ignore this email.</p><p>— Mu</p>`, htmlpkg.EscapeString(acc.Name), link, link)
-
-	if err := EmailSender(email, "Verify your Mu account", plain, html); err != nil {
-		Log("auth", "Failed to send verification email to %s: %v", email, err)
-		ServerError(w, r, "Failed to send verification email. Please try again.")
-		return
-	}
-	Log("auth", "Sent verification email to %s for account %s", email, acc.ID)
-	http.Redirect(w, r, "/account", http.StatusSeeOther)
-}
-
-// Verify handles GET /verify?token=XXX — consumes a verification token
-// and marks the account as verified.
-func Verify(w http.ResponseWriter, r *http.Request) {
-	token := strings.TrimSpace(r.URL.Query().Get("token"))
-	if token == "" {
-		BadRequest(w, r, "Missing verification token")
-		return
-	}
-	acc, err := auth.ConsumeEmailVerificationToken(token)
-	if err != nil {
-		BadRequest(w, r, err.Error())
-		return
-	}
-	Log("auth", "Email verified for account %s (%s)", acc.ID, acc.Email)
-
-	body := fmt.Sprintf(`<div class="card">
-<h4>Email verified ✓</h4>
-<p>Thanks, <strong>%s</strong>. Your email is verified and you can now post.</p>
-<p><a href="/home" class="btn">Go home</a> &nbsp; <a href="/account">Account →</a></p>
-</div>`, htmlpkg.EscapeString(acc.Name))
-	html := RenderHTMLForRequest("Verified", "Email verified", body, r)
-	w.Write([]byte(html))
-}
-
-// validEmail performs minimal sanity checking — the real check is whether
-// the verification email actually arrives and is clicked.
-func validEmail(s string) bool {
-	if len(s) < 5 || len(s) > 254 {
-		return false
-	}
-	at := strings.Index(s, "@")
-	if at < 1 || at == len(s)-1 {
-		return false
-	}
-	if strings.Contains(s, " ") {
-		return false
-	}
-	if !strings.Contains(s[at+1:], ".") {
-		return false
-	}
-	return true
-}
-
-func Logout(w http.ResponseWriter, r *http.Request) {
-	sess, _, err := auth.RequireSession(r)
-	if err != nil {
-		http.Redirect(w, r, "/", 302)
-		return
-	}
-
-	var secure bool
-
-	if h := r.Header.Get("X-Forwarded-Proto"); h == "https" {
-		secure = true
-	}
-	// delete the session cookie
-	http.SetCookie(w, &http.Cookie{
-		Name:     "session",
-		Value:    "",
-		Path:     "/",
-		MaxAge:   -1,
-		Secure:   secure,
-		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
-	})
-	auth.Logout(sess.Token)
-	http.Redirect(w, r, "/", 302)
-}
-
-// Session handler
-func Session(w http.ResponseWriter, r *http.Request) {
-	sess, acc := auth.TrySession(r)
-	if sess == nil {
-		// Return guest session instead of error
-		guestSess := map[string]interface{}{
-			"type": "guest",
-		}
-		b, _ := json.Marshal(guestSess)
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(b)
-		return
-	}
-
-	// Build response with account info
-	response := map[string]interface{}{
-		"id":      sess.ID,
-		"type":    sess.Type,
-		"account": sess.Account,
-		"created": sess.Created,
-	}
-
-	if acc != nil {
-		response["admin"] = acc.Admin
-	}
-
-	b, _ := json.Marshal(response)
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(b)
 }
 
 // Render converts untrusted markdown to HTML. Use this for anything a user or
@@ -1872,4 +817,125 @@ func Serve() http.Handler {
 		}
 		fileServer.ServeHTTP(w, r)
 	})
+}
+
+// ReturnTo is where to send someone after a control that writes the account is
+// used from a page other than the one that owns the write.
+//
+// The card picker is on /context and pinning is on /apps, but both post here,
+// because this is where the account is written. Sending them to /account
+// afterwards would answer a click on /context by navigating away from the
+// thing they were looking at. The form says where it was; the guard is
+// safeRedirect's, since a `return` field is as forgeable as a query parameter.
+func ReturnTo(r *http.Request, fallback string) string {
+	to := r.Form.Get("return")
+	if to == "" || to[0] != '/' || strings.HasPrefix(to, "//") {
+		return fallback
+	}
+	return to
+}
+
+// Forbidden writes a 403 error response
+func Forbidden(w http.ResponseWriter, r *http.Request, message string) {
+	if message == "" {
+		message = "Forbidden"
+	}
+	Error(w, r, http.StatusForbidden, message)
+}
+
+// Log prints a formatted log message with a colored package prefix
+// and stores it in the in-memory system log ring buffer.
+func Log(pkg string, format string, args ...interface{}) {
+	color := pkgColors[pkg]
+	if color == "" {
+		color = colorWhite
+	}
+	timestamp := time.Now().Format("15:04:05")
+	prefix := fmt.Sprintf("%s[%s %s]%s ", color, timestamp, pkg, colorReset)
+	if !cliMode {
+		fmt.Printf(prefix+format+"\n", args...)
+	}
+	appendSysLog(pkg, format, args...)
+}
+
+// Error writes an error response: JSON if the client expects it, otherwise a
+// rendered page.
+//
+// The page matters. This is the single exit for every Forbidden, Unauthorized
+// and BadRequest in the product, and it used to be http.Error — so a person
+// who hit any of them was dropped onto a white screen with one line of text,
+// no nav, and no way back except the browser's own button. The refusal is
+// often the most important thing we ever say to a new user ("verify your
+// email and you can post"), and it was the one thing said worst.
+func Error(w http.ResponseWriter, r *http.Request, status int, message string) {
+	if WantsJSON(r) || SendsJSON(r) || isFetch(r) {
+		RespondError(w, status, message)
+		return
+	}
+	if message == "" {
+		message = http.StatusText(status)
+	}
+	body := `<div class="notice"><p>` + htmlpkg.EscapeString(message) + `</p></div>` +
+		`<p><a class="link" href="` + htmlpkg.EscapeString(errorBackTo(r)) + `">Back</a></p>`
+	// Rendered without the standing banners. They exist to interrupt an ordinary
+	// page with something you should know; here the something-you-should-know is
+	// the page, and a banner repeating the message word for word above it just
+	// says the same thing twice.
+	_, acc := auth.TrySession(r)
+	page := RenderHTMLWithLangAndAuth(errorTitle(status), message, body, GetUserLanguage(r), acc)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(status)
+	w.Write([]byte(page))
+}
+
+// BadRequest writes a 400 error response
+func BadRequest(w http.ResponseWriter, r *http.Request, message string) {
+	if message == "" {
+		message = "Bad request"
+	}
+	Error(w, r, http.StatusBadRequest, message)
+}
+
+// ServerError writes a 500 error response
+func ServerError(w http.ResponseWriter, r *http.Request, message string) {
+	if message == "" {
+		message = "Internal server error"
+	}
+	Error(w, r, http.StatusInternalServerError, message)
+}
+
+// EmailSender is set by main.go and called to deliver verification
+// emails. It's a callback to avoid an import cycle (mail imports app).
+// If nil, email verification is unavailable on this instance.
+var EmailSender func(to, subject, bodyPlain, bodyHTML string) error
+
+// PublicURL returns the externally-reachable base URL for the instance.
+// Falls back to relative paths when not configured.
+func PublicURL() string {
+	if v := os.Getenv("PUBLIC_URL"); v != "" {
+		return strings.TrimRight(v, "/")
+	}
+	if v := os.Getenv("MAIL_DOMAIN"); v != "" {
+		return "https://" + v
+	}
+	return ""
+}
+
+// validEmail performs minimal sanity checking — the real check is whether
+// the verification email actually arrives and is clicked.
+func ValidEmail(s string) bool {
+	if len(s) < 5 || len(s) > 254 {
+		return false
+	}
+	at := strings.Index(s, "@")
+	if at < 1 || at == len(s)-1 {
+		return false
+	}
+	if strings.Contains(s, " ") {
+		return false
+	}
+	if !strings.Contains(s[at+1:], ".") {
+		return false
+	}
+	return true
 }

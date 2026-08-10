@@ -41,11 +41,15 @@ func TestTheCatalogueHasBothLenses(t *testing.T) {
 	if !strings.Contains(svc, ">Cat Paged<") || !strings.Contains(svc, "A service with a page") {
 		t.Error("a service tile dropped its declared label or description")
 	}
-	// Headless services are not in this lens. A tile you cannot open, in a lens
-	// whose promise is "what you can open", is not proof of anything — and it
-	// has no icon to draw, because a service with no page never needed one.
-	if strings.Contains(svc, ">Cat Hidden<") {
-		t.Errorf("a headless service appeared in the services lens:\n%s", svc)
+	// A headless service is listed and is not a link. It used to be left out,
+	// on the reading that this lens promises "what you can open" — which meant
+	// the page called Services under-reported what the instance runs, and hid
+	// three real services behind a property of their UI.
+	if !strings.Contains(svc, ">Cat Hidden<") {
+		t.Errorf("a headless service is missing from the services lens:\n%s", svc)
+	}
+	if strings.Contains(svc, `href=""`) {
+		t.Error("a headless service was rendered as a link to nowhere")
 	}
 
 	// The two lenses are reached from the sidebar, so neither renders a switch

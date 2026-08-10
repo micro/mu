@@ -50,7 +50,7 @@ mu/
 │   ├── event/
 │   ├── flag/
 │   ├── imageproxy/
-│   ├── memory/
+│   ├── cache/
 │   ├── origin/
 │   ├── safefetch/
 │   ├── service/
@@ -115,7 +115,7 @@ guessable.
 | `blog` | /blog | ✅ |  | Microblogging, daily digests, ActivityPub |
 | `chat` | /chat | ✅ |  | Live discussion rooms attached to an item |
 | `contacts` | /contacts | ✅ | ✅ | The caller's address book: turn a name into an address |
-| `user` | — | ✅ | ✅ | What an account does about other people's content: save, hide, flag, block. Headless — the lists it writes are read at /app/saved and /app/blocked |
+| `user` | /user | ✅ | ✅ | What an account does about other people's content: save, hide, flag, block. One page listing what you have saved, hidden and blocked, each with an undo |
 | `db` | /db | ✅ | ✅ | The caller's own records: named collections that outlive a conversation. Apps keep a separate store each through `mu.db` |
 | `events` | /events | ✅ | ✅ | Calendar: scheduling, `.ics` invites, and when you are free — optionally counting an attached Google Calendar |
 | `files` | /files | ✅ | ✅ | Per-user file storage: keep a file, get a URL |
@@ -123,7 +123,7 @@ guessable.
 | `index` | — | ✅ |  | Search across the caller's own content |
 | `mail` | /mail | ✅ | ✅ | SMTP server, inbox, DKIM |
 | `markets` | /markets | ✅ |  | Crypto, stocks, futures, commodities, currencies |
-| `memory` | — | ✅ | ✅ | What an agent knows about the caller between conversations. The Memory card on `/account` is the lens over it |
+| `cache` | — | ✅ | ✅ | A key and a value an agent keeps about the caller between conversations. The Memory card on `/account` is the lens over it |
 | `news` | /news | ✅ |  | RSS aggregation, sentiment, search |
 | `places` | /places | ✅ |  | Maps, points of interest, travel time |
 | `prayer` | /prayer | ✅ |  | Islamic prayer times, qibla, and a daily reflection |

@@ -45,7 +45,11 @@ var legacy = map[string]string{
 	"video":          "video_list",
 	"stream":         "stream_list",
 	"mail_read":      "mail_inbox",
-	"reminder":       "prayer_reflection",
+	// memory became cache: a key and a value, named for its shape.
+	"memory_set":    "cache_set",
+	"memory_list":   "cache_list",
+	"memory_delete": "cache_delete",
+	"reminder":      "prayer_reflection",
 	// The content verbs became a service — user.Save, user.Hide and the rest —
 	// and the names clients were already calling by have to survive that.
 	"content_save":   "user_save",

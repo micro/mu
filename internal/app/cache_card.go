@@ -21,12 +21,17 @@ import (
 	"strings"
 
 	"mu/internal/auth"
-	"mu/internal/memory"
+	"mu/internal/cache"
 )
 
 // memoryCard renders the Memory card for /account.
-func memoryCard(r *http.Request, acc *auth.Account) string {
-	entries := memory.All(acc.ID)
+// CacheCard is the caller's remembered facts, rendered for /account.
+//
+// Exported because the account page moved out of this package: it is a lens the
+// framework draws and the page places, which is the same relationship the
+// credits chip has.
+func CacheCard(r *http.Request, acc *auth.Account) string {
+	entries := cache.All(acc.ID)
 	csrf := htmlpkg.EscapeString(auth.CSRFToken(r))
 
 	var b strings.Builder

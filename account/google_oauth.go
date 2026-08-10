@@ -1,4 +1,4 @@
-package app
+package account
 
 import (
 	crand "crypto/rand"
@@ -10,6 +10,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"mu/internal/app"
 
 	"mu/internal/auth"
 	"mu/internal/settings"
@@ -55,7 +57,7 @@ func GoogleLogin(w http.ResponseWriter, r *http.Request) { startGoogle(w, r, fal
 // sign in with Google afterwards. Requires a session.
 func GoogleConnect(w http.ResponseWriter, r *http.Request) {
 	if _, _, err := auth.RequireSession(r); err != nil {
-		RedirectToLogin(w, r)
+		app.RedirectToLogin(w, r)
 		return
 	}
 	startGoogle(w, r, true)
@@ -135,13 +137,13 @@ func GoogleCallback(w http.ResponseWriter, r *http.Request) {
 
 	token, err := googleExchange(r.URL.Query().Get("code"), googleRedirectURI(r))
 	if err != nil {
-		Log("auth", "google token exchange failed: %v", err)
+		app.Log("auth", "google token exchange failed: %v", err)
 		http.Error(w, "Google sign-in failed, please try again", http.StatusBadGateway)
 		return
 	}
 	info, err := googleUserInfo(token)
 	if err != nil || info.Email == "" {
-		Log("auth", "google userinfo failed: %v", err)
+		app.Log("auth", "google userinfo failed: %v", err)
 		http.Error(w, "Google sign-in failed, please try again", http.StatusBadGateway)
 		return
 	}
@@ -252,7 +254,7 @@ func findOrCreateGoogleAccount(info *googleUser) *auth.Account {
 		Created:         time.Now(),
 	})
 	if err != nil {
-		Log("auth", "google account create failed: %v", err)
+		app.Log("auth", "google account create failed: %v", err)
 		return nil
 	}
 	acc, _ := auth.GetAccount(id)
@@ -306,7 +308,7 @@ func uniqueUsernameFromEmail(email string) string {
 func linkGoogleToCurrentAccount(w http.ResponseWriter, r *http.Request, info *googleUser) {
 	_, acc, err := auth.RequireSession(r)
 	if err != nil {
-		RedirectToLogin(w, r)
+		app.RedirectToLogin(w, r)
 		return
 	}
 	email := strings.ToLower(strings.TrimSpace(info.Email))
@@ -318,7 +320,7 @@ func linkGoogleToCurrentAccount(w http.ResponseWriter, r *http.Request, info *go
 	acc.EmailVerified = true
 	acc.EmailVerifiedAt = time.Now()
 	if err := auth.UpdateAccount(acc); err != nil {
-		Log("auth", "google link failed for %s: %v", acc.ID, err)
+		app.Log("auth", "google link failed for %s: %v", acc.ID, err)
 		http.Error(w, "Could not link your Google account, please try again", http.StatusInternalServerError)
 		return
 	}
