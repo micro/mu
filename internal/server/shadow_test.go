@@ -21,6 +21,8 @@ import (
 	"strings"
 	"testing"
 
+	"mu/tool"
+
 	"mu/internal/api"
 	"mu/internal/service"
 )
@@ -36,7 +38,7 @@ func shadows(t *testing.T) []shadow {
 	registerTools()
 
 	derived := map[string]api.Tool{}
-	for _, d := range api.PreviewDerived() {
+	for _, d := range tool.PreviewDerived() {
 		derived[d.Name] = d
 	}
 	if len(derived) < 20 {

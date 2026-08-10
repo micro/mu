@@ -1,6 +1,9 @@
 package server
 
-import "mu/internal/api"
+import (
+	"mu/internal/service"
+	"mu/tool"
+)
 
 // The server half of the binary.
 //
@@ -25,17 +28,16 @@ func Run(addr string) {
 	wireHooks()
 	registerTools()
 
-	// Anything declared on a Spec but not written out by hand becomes a tool
-	// here. Six endpoints had drifted out of reach this way — see
-	// internal/api/derive.go. Hand-written registrations win, so this only
-	// fills gaps and has to run after all of them.
-	api.DeriveTools()
-
-	// Every tool is registered. Surfaces that publish a command set built from
-	// the registry — the Discord slash commands, the Telegram menu — are
-	// waiting on this; without it they race the wiring and publish a partial
-	// one.
-	api.ToolsRegistered()
+	// The catalogue: everything declared on a Spec that was not written out by
+	// hand above. Six endpoints had drifted out of reach before this existed —
+	// see tool/derive.go. Hand-written registrations win, so this fills gaps and
+	// has to run after all of them.
+	//
+	// It also announces that the registry is complete. Surfaces that publish a
+	// command set built from it — the Discord slash commands, the Telegram menu
+	// — are waiting on that; without it they race the wiring and publish a
+	// partial one.
+	tool.Load(service.Specs())
 
 	registerRoutes()
 	serve(addr)

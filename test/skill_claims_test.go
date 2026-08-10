@@ -19,6 +19,8 @@ import (
 	"strings"
 	"testing"
 
+	"mu/tool"
+
 	"mu/internal/api"
 	"mu/internal/service"
 )
@@ -93,7 +95,7 @@ func TestEveryToolTheSkillNamesIsReal(t *testing.T) {
 	registerAll(t)
 	// Registering a Spec does not by itself add its tools to the agent
 	// surface; main() derives them in a second step, and so must this.
-	api.DeriveTools()
+	tool.DeriveTools()
 
 	real := map[string]bool{}
 	for _, tool := range api.Commands() {

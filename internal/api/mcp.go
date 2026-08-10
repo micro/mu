@@ -293,6 +293,17 @@ func toolMatches(t Tool, name string) bool {
 }
 
 // RegisterTool adds a tool to the MCP server.
+// HasTool reports whether a tool of that name, or one of its aliases, is
+// registered.
+func HasTool(name string) bool {
+	for i := range tools {
+		if toolMatches(tools[i], name) {
+			return true
+		}
+	}
+	return false
+}
+
 // Tools is the registry as it stands: every tool a client can call, in
 // registration order. The handlers come with them, so this is the registry
 // itself and not a description of it — treat the result as read-only.

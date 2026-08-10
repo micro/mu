@@ -3,6 +3,8 @@ package test
 import (
 	"testing"
 
+	"mu/tool"
+
 	"mu/internal/api"
 	"mu/internal/service"
 	"mu/service/apps"
@@ -197,7 +199,7 @@ func TestNavCoversEveryPagedServiceExactlyOnce(t *testing.T) {
 // new endpoint cannot go missing between the Spec and the client again.
 func TestEveryEndpointIsReachableOverMCP(t *testing.T) {
 	registerAll(t)
-	api.DeriveTools()
+	tool.DeriveTools()
 
 	for _, s := range allSpecs() {
 		for method := range s.Endpoints {
@@ -223,7 +225,7 @@ func TestEveryEndpointIsReachableOverMCP(t *testing.T) {
 // wallet_check away from every agent with a budget.
 func TestAStapleLeavesTheCatalogueAndKeepsItsTools(t *testing.T) {
 	registerAll(t)
-	api.DeriveTools()
+	tool.DeriveTools()
 
 	staples := 0
 	for _, s := range allSpecs() {

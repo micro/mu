@@ -15,6 +15,8 @@ import (
 	"strings"
 	"testing"
 
+	"mu/tool"
+
 	"mu/internal/api"
 )
 
@@ -40,7 +42,7 @@ var notTools = map[string]bool{
 
 func TestNoToolDescriptionPointsAtAToolThatIsGone(t *testing.T) {
 	registerAll(t)
-	api.DeriveTools()
+	tool.DeriveTools()
 
 	real := map[string]bool{}
 	for _, tool := range api.Commands() {

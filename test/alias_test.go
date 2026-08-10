@@ -18,6 +18,8 @@ package test
 import (
 	"testing"
 
+	"mu/tool"
+
 	"mu/internal/api"
 )
 
@@ -49,7 +51,7 @@ var legacy = map[string]string{
 
 func TestEveryRetiredNameStillResolves(t *testing.T) {
 	registerAll(t)
-	api.DeriveTools()
+	tool.DeriveTools()
 
 	for old, current := range legacy {
 		// Only check aliases whose tool is linked into this binary: the
@@ -69,7 +71,7 @@ func TestEveryRetiredNameStillResolves(t *testing.T) {
 // exist, or it is asserting over things that were deleted years ago.
 func TestTheRetiredNamesPointAtRealTools(t *testing.T) {
 	registerAll(t)
-	api.DeriveTools()
+	tool.DeriveTools()
 
 	live := 0
 	for _, current := range legacy {

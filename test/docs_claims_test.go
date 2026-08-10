@@ -17,6 +17,8 @@ import (
 	"strings"
 	"testing"
 
+	"mu/tool"
+
 	"mu/internal/api"
 	"mu/internal/service"
 )
@@ -184,7 +186,7 @@ func TestReadmeToolTableUsesServiceNames(t *testing.T) {
 // because it teaches the alias instead of the tool.
 func TestReadmeToolTableNamesToolsThatExist(t *testing.T) {
 	registerAll(t)
-	api.DeriveTools()
+	tool.DeriveTools()
 
 	real := map[string]bool{}
 	for _, tool := range api.Commands() {

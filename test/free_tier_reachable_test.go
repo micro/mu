@@ -22,6 +22,8 @@ import (
 	"strings"
 	"testing"
 
+	"mu/tool"
+
 	"mu/internal/api"
 )
 
@@ -79,7 +81,7 @@ func TestTheVerifyBannerStaysOffTheWalletPages(t *testing.T) {
 // not find the tool at all.
 func TestFreeButAccountableToolsSaySoAtTheMCPLayer(t *testing.T) {
 	registerAll(t)
-	api.DeriveTools()
+	tool.DeriveTools()
 
 	for _, tool := range []string{"video_search", "web_fetch"} {
 		p := api.PolicyFor(tool)

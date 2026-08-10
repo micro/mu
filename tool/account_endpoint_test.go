@@ -1,4 +1,4 @@
-package api
+package tool
 
 // A method that needs a caller gets one, even on a service that does not.
 //
@@ -17,6 +17,8 @@ import (
 	"context"
 	"testing"
 
+	"mu/internal/api"
+
 	"mu/internal/service"
 )
 
@@ -33,13 +35,13 @@ func (OpenProbe) List(_ context.Context, _ *OpenReq, rsp *OpenRsp) error { retur
 func (OpenProbe) Post(_ context.Context, _ *OpenReq, rsp *OpenRsp) error { return nil }
 
 // toolNamed finds a registered tool.
-func toolNamed(name string) (Tool, bool) {
-	for i := range tools {
-		if tools[i].Name == name {
-			return tools[i], true
+func toolNamed(name string) (api.Tool, bool) {
+	for _, t := range api.Tools() {
+		if t.Name == name {
+			return t, true
 		}
 	}
-	return Tool{}, false
+	return api.Tool{}, false
 }
 
 func TestAnAccountEndpointOnAnOpenServiceIsBoundToItsCaller(t *testing.T) {
