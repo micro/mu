@@ -10,67 +10,43 @@ import (
 	"mu/internal/quota"
 )
 
-// Every billable operation must appear in Pricing(). The cost tables on the
-// wallet page, the signed-out wallet page, the pricing API and the public
-// pricing page all render from that one list, so an operation missing from it
-// is a charge the user is never shown. Each of those tables used to be
-// hardcoded separately and they drifted — image generation, the most expensive
-// thing a user could trigger short of building an app, was absent from three.
-func TestPricingCoversEveryBillableOperation(t *testing.T) {
-	billable := []struct {
-		op   string
-		cost int
-	}{
-		{quota.OpNewsSearch, quota.CostNewsSearch},
-		{quota.OpQuranSearch, quota.CostQuranSearch},
-		{quota.OpVideoSearch, quota.CostVideoSearch},
-		{quota.OpChatQuery, quota.CostChatQuery},
-		{quota.OpBlogCreate, quota.CostBlogCreate},
-		{quota.OpBlogComment, quota.CostBlogComment},
-		{quota.OpMailSend, quota.CostMailSend},
-		{quota.OpExternalEmail, quota.CostExternalEmail},
-		{quota.OpPlacesSearch, quota.CostPlacesSearch},
-		{quota.OpPlacesNearby, quota.CostPlacesNearby},
-		{quota.OpPlacesETA, quota.CostPlacesETA},
-		{quota.OpWeatherForecast, quota.CostWeatherForecast},
-		{quota.OpWeatherPollen, quota.CostWeatherPollen},
-		{quota.OpWebSearch, quota.CostWebSearch},
-		{quota.OpWebFetch, quota.CostWebFetch},
-		{quota.OpDBWrite, quota.CostDBWrite},
-		{quota.OpAgentQuery, quota.CostAgentQuery},
-		{quota.OpAgentQueryPremium, quota.CostAgentQueryPremium},
-		{quota.OpSocialSearch, quota.CostSocialSearch},
-		{quota.OpSocialPost, quota.CostSocialPost},
-		{quota.OpSocialReply, quota.CostSocialReply},
-		{quota.OpAppCreate, quota.CostAppCreate},
-		{quota.OpStreamPost, quota.CostStreamPost},
-		{quota.OpImageGenerate, quota.CostImageGenerate},
-		{quota.OpAppBuild, quota.CostAppBuild},
-		{quota.OpAppEdit, quota.CostAppEdit},
+// Every billable operation must appear in the published list. The cost tables
+// on the wallet page, the signed-out wallet page, the pricing API and the
+// public pricing page all render from it, so an operation missing from it is a
+// charge the user is never shown. Each of those tables used to be hardcoded
+// separately and they drifted — image generation, the most expensive thing a
+// user could trigger short of building an app, was absent from three.
+//
+// The list is internal/quota/pricing.json now and this only checks that the
+// wallet renders all of it, which is the half that lives here. Whether the file
+// covers every operation the code charges is asserted where the operations are
+// declared, in internal/quota.
+func TestPricingRendersTheWholeList(t *testing.T) {
+	published := quota.Prices()
+	if len(published) < 20 {
+		t.Fatalf("only %d priced operations — the price list is not loading", len(published))
 	}
 
 	listed := map[string]PricingItem{}
 	for _, it := range Pricing() {
 		listed[it.Operation] = it
 	}
-
-	for _, b := range billable {
-		it, ok := listed[b.op]
+	for _, p := range published {
+		it, ok := listed[p.Op]
 		if !ok {
-			t.Errorf("operation %q is charged but not listed in Pricing()", b.op)
+			t.Errorf("operation %q is priced but the wallet does not show it", p.Op)
 			continue
 		}
-		if it.Cost != b.cost {
-			t.Errorf("Pricing() lists %q at %d, actual cost is %d", b.op, it.Cost, b.cost)
+		if it.Cost != p.Cost {
+			t.Errorf("the wallet shows %q at %d, the price list says %d", p.Op, it.Cost, p.Cost)
 		}
 		if strings.TrimSpace(it.Description) == "" {
-			t.Errorf("operation %q has no description", b.op)
+			t.Errorf("operation %q has no label to show", p.Op)
 		}
 	}
-
-	if len(listed) != len(billable) {
-		t.Errorf("Pricing() has %d entries, expected %d — an operation was added or duplicated",
-			len(listed), len(billable))
+	if len(listed) != len(published) {
+		t.Errorf("the wallet shows %d operations, the price list has %d",
+			len(listed), len(published))
 	}
 }
 

@@ -41,7 +41,7 @@ Built on go-micro: every capability is a go-micro service, the assistant is a go
 | `client/telegram/` | Telegram bot with commands and groups |
 | `client/whatsapp/` | WhatsApp Business API integration |
 | `wallet/` | Money, at the top level: the credit ledger, Stripe, x402, the /wallet page and the `wallet_*` tools. A staple, not a service directory |
-| `internal/quota/` | What things cost and who may do them. The only thing a service knows about money — it holds prices, not balances |
+| `internal/quota/` | What things cost and who may do them. The only thing a service knows about money — it holds prices, not balances. Prices are `internal/quota/pricing.json`, not Go |
 | `service/search/` | Brave provider, readability reader, the /search page (no service of its own) |
 | `service/db/` | The caller's own records — named collections that outlive a conversation. Apps keep a separate store each |
 | `service/files/` | Per-user file storage — keep a file, get a URL, read it back |
@@ -142,7 +142,10 @@ facts. The distinction is developer-facing (say it) vs customer-facing (don't).
 A credit is charged when an operation costs us something to run: a model call,
 or a paid third party (Atlas Cloud for inference and images, Brave for web
 search, Google for places). Operations that only touch this instance's own
-storage are free — see the comment on the cost block in `internal/quota/quota.go`.
+storage are free — see `internal/quota/pricing.json`, which is the one price
+list: the gate reads it and every cost table renders from it. A service says
+*which* operation it charges (`Cost: quota.OpWebSearch` on its Endpoint); what
+that operation costs is an operator's decision, so it is data.
 
 Abuse control is `auth.CheckPostRate`, not the credit charge. Keep the two jobs
 separate: credits price real cost, rate limits stop bots.

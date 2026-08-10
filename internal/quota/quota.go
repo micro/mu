@@ -18,7 +18,6 @@ package quota
 import (
 	"errors"
 	"fmt"
-	"os"
 
 	"mu/internal/auth"
 )
@@ -70,90 +69,6 @@ func record(account, operation string) {
 	}
 }
 
-// Credit costs per operation (in credits/pennies).
-//
-// A credit is charged when an operation costs us something to run: a model
-// call, or a third-party API we pay for (Atlas Cloud for inference and images,
-// Brave for web search, Google for places). Everything else is free.
-//
-// Actions that only touch this instance's own storage — writing a post, a
-// comment, a status update, internal mail between two local users — are 0.
-// They have no marginal cost, so charging for them was friction on exactly the
-// behaviour the product wants more of.
-//
-// Abuse control for those does not depend on the charge: auth.CheckPostRate
-// runs ahead of the quota check on every write in the central gate, and caps
-// new accounts at 10 actions/hour and established ones at 60. That limit was
-// always the real defence; the credit was a second, weaker one that also
-// taxed ordinary use.
-var (
-	// Charged — a model call, or a paid third party. The price is the cost
-	// with a margin on it, and the margin should be visible in the number
-	// rather than a mystery: a model-backed operation costs more than a
-	// vendor API call, and a big generation costs more than a small one.
-
-	// Vendor APIs we are billed for per request.
-	CostPlacesSearch    = getEnvInt("CREDIT_COST_PLACES_SEARCH", 5) // Google Places text search, ~2.5p
-	CostPlacesNearby    = getEnvInt("CREDIT_COST_PLACES_NEARBY", 4) // Google Places nearby, ~2.5p
-	CostPlacesETA       = getEnvInt("CREDIT_COST_PLACES_ETA", 3)    // Google Routes, ~0.5p
-	CostWeatherForecast = getEnvInt("CREDIT_COST_WEATHER", 1)       // Google Weather
-	CostWeatherPollen   = getEnvInt("CREDIT_COST_WEATHER_POLLEN", 1)
-	CostWebSearch       = getEnvInt("CREDIT_COST_SEARCH", 2) // Brave, ~0.4p — was 5, a 12x markup
-
-	// Model calls. Ordered by how much model each one actually spends:
-	// a chat turn, an agent run that may fan out across tools, and a
-	// generation that writes a whole app.
-	CostChatQuery  = getEnvInt("CREDIT_COST_CHAT", 5)
-	CostAgentQuery = getEnvInt("CREDIT_COST_AGENT", 7)
-	// The premium tier routes to Anthropic where the rest use the default
-	// provider, which is an order of magnitude more per token. At 9 it was
-	// priced 29% above standard for roughly 10-20x the cost — the one place
-	// this instance was plausibly underwater.
-	CostAgentQueryPremium = getEnvInt("CREDIT_COST_AGENT_PREMIUM", 20)
-	CostImageGenerate     = getEnvInt("CREDIT_COST_IMAGE", 15)
-	// One generation each. app_build was 100 — a pound, six times the next
-	// most expensive thing on the menu, for less model than an agent run
-	// costing 7.
-	CostAppBuild = getEnvInt("CREDIT_COST_APP_BUILD", 15)
-	CostAppEdit  = getEnvInt("CREDIT_COST_APP_EDIT", 8)
-
-	// Sending mail to an external host is the deliberate exception: no
-	// invoice arrives for it, because we run the SMTP server. What it spends
-	// is the domain's reputation, which is real, not ours to get back, and
-	// not something a rate limit prices. mail_send is account-only for the
-	// same reason.
-	CostExternalEmail = getEnvInt("CREDIT_COST_EMAIL", 4)
-
-	// Free — nothing outside this instance is billed for these. Abuse is a
-	// rate limit's job, not a price's. Still overridable by env for operators
-	// who want a charge back.
-	CostBlogCreate   = getEnvInt("CREDIT_COST_BLOG_CREATE", 0)
-	CostBlogComment  = getEnvInt("CREDIT_COST_BLOG_COMMENT", 0)
-	CostSocialPost   = getEnvInt("CREDIT_COST_SOCIAL_POST", 0)
-	CostSocialReply  = getEnvInt("CREDIT_COST_SOCIAL_REPLY", 0)
-	CostAppCreate    = getEnvInt("CREDIT_COST_APP_CREATE", 0)
-	CostStreamPost   = getEnvInt("CREDIT_COST_STREAM_POST", 0)
-	CostSocialSearch = getEnvInt("CREDIT_COST_SOCIAL", 0)
-	CostMailSend     = getEnvInt("CREDIT_COST_MAIL", 0) // local user to local user
-	CostDBWrite      = getEnvInt("CREDIT_COST_DB_WRITE", 0)
-
-	// These four were charged for work nothing bills us for.
-	//
-	// news_search is data.Search against the local index. web_fetch is an
-	// http.Get and a readability pass in this process. quran_search calls
-	// reminder.dev, which is ours. video_search calls the YouTube Data API,
-	// which is free — but quota'd at 10,000 units a day against a search
-	// costing 100, so roughly 100 searches a day across every user. That is
-	// scarcity, not cost, and rationing it with a price charged the wrong
-	// people: see videoSearchLimit.
-	CostNewsSearch  = getEnvInt("CREDIT_COST_NEWS", 0)
-	CostWebFetch    = getEnvInt("CREDIT_COST_FETCH", 0)
-	CostQuranSearch = getEnvInt("CREDIT_COST_QURAN_SEARCH", 0)
-	CostVideoSearch = getEnvInt("CREDIT_COST_VIDEO", 0)
-
-	DailyQuota = getEnvInt("DAILY_QUOTA", getEnvInt("FREE_DAILY_QUOTA", 100))
-)
-
 // Operation types
 const (
 	OpNewsSearch        = "news_search"
@@ -191,78 +106,6 @@ const (
 	OpEscrowRelease     = "escrow_release"
 	OpEscrowRefund      = "escrow_refund"
 )
-
-// getEnvInt gets an environment variable as int with default
-func getEnvInt(key string, defaultVal int) int {
-	if v := os.Getenv(key); v != "" {
-		var i int
-		fmt.Sscanf(v, "%d", &i)
-		if i > 0 {
-			return i
-		}
-	}
-	return defaultVal
-}
-
-// GetOperationCost returns the credit cost for an operation
-func GetOperationCost(operation string) int {
-	switch operation {
-	case OpNewsSearch:
-		return CostNewsSearch
-	case OpVideoSearch:
-		return CostVideoSearch
-	case OpChatQuery:
-		return CostChatQuery
-	case OpBlogCreate:
-		return CostBlogCreate
-	case OpMailSend:
-		return CostMailSend
-	case OpExternalEmail:
-		return CostExternalEmail
-	case OpPlacesSearch:
-		return CostPlacesSearch
-	case OpPlacesNearby:
-		return CostPlacesNearby
-	case OpPlacesETA:
-		return CostPlacesETA
-	case OpWeatherForecast:
-		return CostWeatherForecast
-	case OpWeatherPollen:
-		return CostWeatherPollen
-	case OpQuranSearch:
-		return CostQuranSearch
-	case OpWebSearch:
-		return CostWebSearch
-	case OpWebFetch:
-		return CostWebFetch
-	case OpDBWrite:
-		return CostDBWrite
-	case OpImageGenerate:
-		return CostImageGenerate
-	case OpAgentQuery:
-		return CostAgentQuery
-	case OpAgentQueryPremium:
-		return CostAgentQueryPremium
-	case OpSocialSearch:
-		return CostSocialSearch
-	case OpSocialPost:
-		return CostSocialPost
-	case OpSocialReply:
-		return CostSocialReply
-	case OpAppCreate:
-		return CostAppCreate
-	case OpStreamPost:
-		return CostStreamPost
-	case OpBlogComment:
-		return CostBlogComment
-	case OpAppBuild:
-		return CostAppBuild
-	case OpAppEdit:
-		return CostAppEdit
-	default:
-		return 1
-	}
-}
 
 // Metered reports whether this operation costs the caller anything here.
 //

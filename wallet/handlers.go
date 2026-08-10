@@ -6,7 +6,6 @@ import (
 	"html"
 	"net/http"
 	neturl "net/url"
-	"sort"
 	"strings"
 	"time"
 
@@ -747,42 +746,25 @@ type pricingItem = PricingItem
 // four tables omitted it entirely.
 //
 // Anything added to the Cost* vars belongs here too.
+// Pricing is what this instance charges, for the cost tables on /wallet, the
+// signed-out wallet page, the pricing API and /pricing.
+//
+// It reads internal/quota's list rather than keeping its own. There used to be
+// two: a switch of thirty constants in one package and a hand-written table of
+// labels in this one, in different orders, and they drifted — image generation,
+// the most expensive thing a user could trigger short of building an app, was
+// missing from three of the four tables that rendered from here.
 func Pricing() []PricingItem {
-	items := []PricingItem{
-		{quota.OpNewsSearch, "News search", quota.CostNewsSearch, "credits"},
-		{quota.OpQuranSearch, "Quran and hadith search", quota.CostQuranSearch, "credits"},
-		{quota.OpVideoSearch, "Video search", quota.CostVideoSearch, "credits"},
-		{quota.OpSocialSearch, "Social search", quota.CostSocialSearch, "credits"},
-		{quota.OpSocialPost, "Post or status update", quota.CostSocialPost, "credits"},
-		{quota.OpSocialReply, "Reply to a post", quota.CostSocialReply, "credits"},
-		{quota.OpAppCreate, "Create an app", quota.CostAppCreate, "credits"},
-		{quota.OpStreamPost, "Console post", quota.CostStreamPost, "credits"},
-		{quota.OpBlogCreate, "Blog post", quota.CostBlogCreate, "credits"},
-		{quota.OpBlogComment, "Blog comment", quota.CostBlogComment, "credits"},
-		{quota.OpChatQuery, "Chat query", quota.CostChatQuery, "credits"},
-		{quota.OpAgentQuery, "Agent (standard)", quota.CostAgentQuery, "credits"},
-		{quota.OpAgentQueryPremium, "Agent (premium)", quota.CostAgentQueryPremium, "credits"},
-		{quota.OpWeatherForecast, "Weather forecast", quota.CostWeatherForecast, "credits"},
-		{quota.OpWeatherPollen, "Weather pollen", quota.CostWeatherPollen, "credits"},
-		{quota.OpPlacesSearch, "Places search", quota.CostPlacesSearch, "credits"},
-		{quota.OpPlacesNearby, "Places nearby", quota.CostPlacesNearby, "credits"},
-		{quota.OpPlacesETA, "Travel time between two places", quota.CostPlacesETA, "credits"},
-		// "Message" not "mail": this is user-to-user on the platform and is
-		// free. Sending a real email leaves the instance over SMTP and is
-		// charged separately as "External email".
-		{quota.OpMailSend, "Send message", quota.CostMailSend, "credits"},
-		{quota.OpExternalEmail, "External email", quota.CostExternalEmail, "credits"},
-		{quota.OpWebSearch, "Web search", quota.CostWebSearch, "credits"},
-		{quota.OpWebFetch, "Web fetch", quota.CostWebFetch, "credits"},
-		{quota.OpImageGenerate, "Image generation", quota.CostImageGenerate, "credits"},
-		{quota.OpDBWrite, "App data storage", quota.CostDBWrite, "credits"},
-		{quota.OpAppBuild, "App build (AI)", quota.CostAppBuild, "credits"},
-		// Charged again now that /apps/<slug>/ai-edit exists. Plain manual
-		// editing at /apps/<slug>/edit remains free — only the model call costs.
-		{quota.OpAppEdit, "App edit (AI)", quota.CostAppEdit, "credits"},
+	out := make([]PricingItem, 0)
+	for _, p := range quota.Prices() {
+		out = append(out, PricingItem{
+			Operation:   p.Op,
+			Description: p.Label,
+			Cost:        p.Cost,
+			Unit:        "credits",
+		})
 	}
-	sort.SliceStable(items, func(i, j int) bool { return items[i].Cost < items[j].Cost })
-	return items
+	return out
 }
 
 func getPricingData() []PricingItem { return Pricing() }

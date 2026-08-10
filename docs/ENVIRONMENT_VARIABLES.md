@@ -135,11 +135,26 @@ token.
 
 ## Prices and limits
 
-Every published price can be overridden with `CREDIT_COST_<OPERATION>` — for
-example `CREDIT_COST_SEARCH=2` or `CREDIT_COST_IMAGE=20`. The operation names
-are the ones on [/pricing](https://micro.mu/pricing), which is generated from
-the same catalogue the charges come from, so that page is the list rather than
-twenty-five rows here.
+Prices are data, not code. They live in `internal/quota/pricing.json`, which is
+embedded in the binary and readable in the repo: one entry per operation, with
+its cost in credits, the label the cost tables show, and the environment
+variable that overrides it.
+
+Three ways to change one, in increasing order of precedence:
+
+1. Edit `internal/quota/pricing.json` and rebuild.
+2. Drop a `pricing.json` in the data directory (`~/.mu/data/pricing.json`). It
+   is merged entry by entry, so a file naming one operation changes that one
+   and leaves the rest alone — no restart needed if you call the reload.
+3. Set the variable named on the entry — `CREDIT_COST_SEARCH=2`,
+   `CREDIT_COST_IMAGE=20`. This is the container-friendly one.
+
+An override of `0` is ignored, because an unset variable and one set to `"0"`
+look the same to a container and a price silently dropping to free is the wrong
+way to fail. Make something free in the file.
+
+The full list is on [/pricing](https://micro.mu/pricing), which renders from
+that same file, so this page does not repeat twenty-six rows.
 
 | Variable | Default | What it does |
 |---|---|---|
