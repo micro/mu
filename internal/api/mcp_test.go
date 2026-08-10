@@ -137,7 +137,7 @@ func TestMCPHandler_ToolsList(t *testing.T) {
 	// checks the ones still declared in this file and stops asserting over
 	// somebody else's list.
 	expectedTools := map[string]bool{
-		"video_search": false, "mail_send": false,
+		"probe_free": false, "probe_paid": false,
 	}
 	for _, item := range toolsList {
 		tool, ok := item.(map[string]any)
@@ -332,9 +332,7 @@ func TestMCPHandler_QuotaCheckBlocks(t *testing.T) {
 	}
 	defer func() { QuotaCheck = origQuotaCheck }()
 
-	// video_search is metered and still registered here. Any priced tool does;
-	// what is being tested is the gate, not the tool.
-	body := `{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"video_search","arguments":{"query":"hello"}}}`
+	body := `{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"probe_paid","arguments":{"query":"hello"}}}`
 	req := httptest.NewRequest("POST", "/mcp", strings.NewReader(body))
 	w := httptest.NewRecorder()
 

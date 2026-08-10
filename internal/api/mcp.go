@@ -12,7 +12,6 @@ import (
 	"mu/internal/service"
 
 	"mu/internal/auth"
-	"mu/internal/quota"
 	"mu/internal/usage"
 )
 
@@ -332,47 +331,6 @@ var tools = []Tool{
 		Path:        "/search",
 		Params: []ToolParam{
 			{Name: "query", Type: "string", Description: "Search query", Required: true},
-		},
-	},
-	{
-		Name:        "social_search",
-		Description: "Search public posts on this instance by keyword. Returns matching posts with their author and time. This is the instance's own social feed, not " + "the wider internet — use web_search for that.",
-		Method:      "POST",
-		Path:        "/social",
-		WalletOp:    quota.OpSocialSearch,
-		Params: []ToolParam{
-			{Name: "query", Type: "string", Description: "Search query for social posts", Required: true},
-		},
-	},
-	{
-		Name:        "video_search",
-		Description: "Search videos from the channels this instance curates, by keyword. Returns titles, channels and links. A curated set rather than all of YouTube, so a miss means it is not followed here, not that it does not exist. Needs an account.",
-		Method:      "POST",
-		Path:        "/video",
-		WalletOp:    quota.OpVideoSearch,
-		// Priced at zero but not open: the YouTube quota is 10,000 units a day
-		// across everyone and a search costs 100, so this is rationed by
-		// videoSearchLimit per account. There is nothing to ration an
-		// anonymous caller by. Saying so here refuses them at the MCP layer
-		// with a 401 pointing at sign-in, rather than letting them through to
-		// a handler refusal — or, before this, offering them a payment that
-		// would not have unlocked anything.
-		AccountOnly: true,
-		Params: []ToolParam{
-			{Name: "query", Type: "string", Description: "Video search query", Required: true},
-		},
-	},
-	{
-		Name:        "mail_send",
-		AccountOnly: true, // a funded wallet is not accountable for the domain
-		Description: "Send an email from the caller's own address on this instance. Takes a recipient address, a subject and a body; resolve a name to an address with contacts_find first. Requires an account, and the mail really is delivered " + "— there is no draft state to undo from.",
-		Method:      "POST",
-		Path:        "/mail",
-		WalletOp:    quota.OpExternalEmail,
-		Params: []ToolParam{
-			{Name: "to", Type: "string", Description: "Recipient username or email", Required: true},
-			{Name: "subject", Type: "string", Description: "Message subject", Required: true},
-			{Name: "body", Type: "string", Description: "Message body", Required: true},
 		},
 	},
 }

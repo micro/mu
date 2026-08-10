@@ -250,3 +250,24 @@ func TestAStapleLeavesTheCatalogueAndKeepsItsTools(t *testing.T) {
 		t.Fatal("no service is marked Staple, so this test asserts nothing")
 	}
 }
+
+// A funded wallet is not accountable for this sending domain.
+//
+// mail_send was a hand-written registration carrying AccountOnly; it derives
+// from the mail Spec now, so the flag has to be on the Endpoint or an anonymous
+// payer can send mail from this instance's domain and there is nobody to hold
+// to it. Checked against the real Spec rather than a probe, because a probe can
+// only prove the mechanism works.
+func TestSendingMailNeedsAnAccountNotAWallet(t *testing.T) {
+	ep, ok := mail.Spec.Endpoints["Send"]
+	if !ok {
+		t.Fatal("the mail service no longer declares Send")
+	}
+	if !ep.AccountOnly {
+		t.Error("mail.Send is not account-only — a settled payment would be " +
+			"identity enough to send from this domain")
+	}
+	if ep.Cost == "" {
+		t.Error("mail.Send charges nothing, so external delivery is free")
+	}
+}

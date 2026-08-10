@@ -17,6 +17,7 @@ type MailReq struct{ X string }
 type MailRsp struct{ Y string }
 
 func (MailProbe) Inbox(_ context.Context, _ *MailReq, _ *MailRsp) error { return nil }
+func (MailProbe) Send(_ context.Context, _ *MailReq, _ *MailRsp) error  { return nil }
 
 func registerScopedMail(t *testing.T) {
 	t.Helper()
@@ -31,6 +32,11 @@ func registerScopedMail(t *testing.T) {
 		// mail_inbox.
 		Endpoints: map[string]service.Endpoint{
 			"Inbox": {Doc: "List the account's most recent messages"},
+			// Mirrors the real mail Spec. That a funded wallet is not enough is
+			// a property of the declaration, checked against the real one in
+			// test/spec_policy_test.go; what is checked here is that the
+			// property survives derivation and reaches the protocol.
+			"Send": {Doc: "Send an email from the caller's own address", AccountOnly: true},
 		},
 	}); err != nil {
 		t.Fatalf("register mail: %v", err)

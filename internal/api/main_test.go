@@ -25,6 +25,34 @@ func TestMain(m *testing.M) {
 		panic("api tests need quota.json: " + err.Error())
 	}
 
+	// A fixture, because this package no longer ships tools of its own.
+	//
+	// It used to declare twenty-five, and the tests below asserted over them —
+	// which is how a protocol test came to fail whenever the catalogue moved.
+	// The catalogue is built in tool/ from the service Specs now and handed
+	// here, so what is left to test is the protocol: does tools/list answer
+	// with well-formed entries, does a metered call reach the quota gate. Both
+	// need a tool; neither needs a particular one.
+	RegisterTool(Tool{
+		Name:        "probe_free",
+		Title:       "Probe",
+		Description: "A tool that exists so the protocol has something to answer about",
+		Params: []ToolParam{
+			{Name: "query", Type: "string", Description: "Anything", Required: true},
+		},
+		Handle: func(map[string]any) (string, error) { return "ok", nil },
+	})
+	RegisterTool(Tool{
+		Name:        "probe_paid",
+		Title:       "Paid probe",
+		Description: "A priced tool, so the quota gate has something to refuse",
+		WalletOp:    quota.OpWebSearch,
+		Params: []ToolParam{
+			{Name: "query", Type: "string", Description: "Anything", Required: true},
+		},
+		Handle: func(map[string]any) (string, error) { return "ok", nil },
+	})
+
 	// Snapshot the real tool surface before any test body runs.
 	//
 	// Several tests register probe services to exercise derivation, and those
