@@ -28,9 +28,9 @@ import (
 	"mu/internal/quota"
 	"mu/internal/setup"
 	"mu/internal/usage"
-	"mu/internal/user"
 	"mu/service/blog"
 	"mu/service/mail"
+	user "mu/service/user"
 	"mu/wallet"
 )
 
