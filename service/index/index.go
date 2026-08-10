@@ -139,6 +139,14 @@ var Spec = service.Spec{
 	Handler:     Server{},
 	Description: "Search across the caller's own content",
 	Endpoints: map[string]service.Endpoint{
-		"Search": {Aliases: []string{"index", "recall", "search"}, Doc: "Search the caller's own content — indexed news, blog, social, video and saved items"},
+		"Search": {
+			Aliases: []string{"index", "recall", "search"},
+			Doc: "Search across everything this instance knows — indexed news, blog, social and video, plus the caller's own mail — and return what matches. " +
+				"Free, and the first thing to reach for before searching the web",
+			// Answers a guest with the public half and a signed-in caller with
+			// their own content on top. Refusing guests would be the easy
+			// reading and the wrong one.
+			OptionalAuth: true,
+		},
 	},
 }

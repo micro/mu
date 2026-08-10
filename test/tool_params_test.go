@@ -88,6 +88,12 @@ func TestHandWrittenToolsReadTheParametersTheyDeclare(t *testing.T) {
 		}
 	}
 
+	// This scan sees one of the ten hand-written tools that are left, and that
+	// is worth stating rather than hiding behind a threshold: the other nine
+	// read their arguments in ways the patterns below cannot follow, so a
+	// pass here is not coverage of the hand-written surface. It is coverage of
+	// whichever tools happen to be written in the shape it can read.
+	//
 	// The population this test has anything to say about is shrinking on
 	// purpose. A derived tool cannot drift this way — its schema is generated
 	// from the request struct its handler is handed, so declaring a parameter
@@ -99,7 +105,7 @@ func TestHandWrittenToolsReadTheParametersTheyDeclare(t *testing.T) {
 	// a number chosen to pass: it still catches the patterns silently ceasing
 	// to match, and when it reaches zero this test has no subject and should be
 	// deleted rather than propped up.
-	if checked < 2 {
+	if checked < 1 {
 		t.Errorf("only %d tools were compared; either the patterns have stopped "+
 			"matching, or the last hand-written tools with readable argument "+
 			"handling are gone and this test should go with them", checked)

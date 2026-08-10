@@ -316,8 +316,6 @@ func wireHooks() {
 			app.Log("events", "calendar invite to %s failed: %v", acc.Email, err)
 		}
 	}
-	wallet.Load()
-	wallet.LoadService()
 	app.LinkCodeFunc = auth.GenerateLinkCode
 	app.ToolCountFunc = api.ToolCount
 
@@ -338,9 +336,6 @@ func wireHooks() {
 		whatsapp.NotifyUser(accountID, fmt.Sprintf("📬 *New email from %s*\n%s", from, summary))
 	}
 
-	// load apps
-	apps.Load()
-
 	// Resolve app author display names server-side from the authenticated
 	// account, so the native apps.Build service never trusts a model-supplied
 	// author name.
@@ -350,9 +345,6 @@ func wireHooks() {
 		}
 		return accountID
 	}
-
-	// load social
-	social.Load()
 
 	// Wire social context into news article views
 	news.FetchSocialContext = func(articleURL, articleContent string) string {

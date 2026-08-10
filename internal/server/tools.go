@@ -7,7 +7,6 @@ package server
 // map onto something other than a single service method.
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -22,8 +21,6 @@ import (
 	"mu/service/images"
 	"mu/service/index"
 	"mu/service/mail"
-	"mu/service/social"
-	"mu/wallet"
 )
 
 // registerTools declares the hand-written half of the tool registry.
@@ -67,39 +64,6 @@ func registerTools() {
 	if err := service.Register(index.Spec); err != nil {
 		app.Log("main", "recall service register failed: %v", err)
 	}
-	api.RegisterToolWithAuth(api.Tool{
-		Name:         "index_search",
-		Aliases:      []string{"index", "recall", "search"},
-		OptionalAuth: true,
-		Description:  "Search across everything mu knows — indexed news, blog, social and video, plus the user's own mail — and return the most relevant items with ids. Use for 'do you remember', 'what did I get about X', 'search my stuff' and cross-source lookups.",
-		Params: []api.ToolParam{
-			{Name: "query", Type: "string", Description: "What to look for", Required: true},
-			{Name: "limit", Type: "string", Description: "Optional max results (default 12)", Required: false},
-		},
-	}, func(args map[string]any, accountID string) (string, error) {
-		query, _ := args["query"].(string)
-		if strings.TrimSpace(query) == "" {
-			return "query is required", fmt.Errorf("missing query")
-		}
-		limit := 12
-		switch v := args["limit"].(type) {
-		case float64:
-			if int(v) > 0 {
-				limit = int(v)
-			}
-		case string:
-			var n int
-			if _, e := fmt.Sscanf(v, "%d", &n); e == nil && n > 0 {
-				limit = n
-			}
-		}
-		var rsp index.Response
-		if err := service.Call(service.WithAccount(context.Background(), accountID), "index", "Server.Search",
-			&index.Request{Query: strings.TrimSpace(query), Limit: limit}, &rsp); err != nil {
-			return "", err
-		}
-		return rsp.Text, nil
-	})
 
 	// db_* is derived from service/db's Spec now, not hand-registered here.
 	//
@@ -154,58 +118,11 @@ func registerTools() {
 		},
 	})
 
-	// social — latest social feed (AI-first).
-	api.RegisterTool(api.Tool{
-		Name:        "social_list",
-		Aliases:     []string{"social"},
-		Description: "Get the latest social posts from the network.",
-		Handle: func(args map[string]any) (string, error) {
-			var rsp social.ListResponse
-			if err := service.Call(context.Background(), "social", "Server.List",
-				&social.ListRequest{}, &rsp); err != nil {
-				return "", err
-			}
-			return rsp.Text, nil
-		},
-	})
-
 	// Cards used to be attached here, tool by tool, in six lines that had to be
 	// kept in step with the tool names they referenced. They are declared on
 	// each service's Spec now and derived wherever one is wanted — see
 	// internal/api/card.go.
 
-	// Register apps MCP tools
-	api.RegisterTool(api.Tool{
-		Name:        "apps_search",
-		Description: "Search the apps directory for small, useful tools",
-		Method:      "GET",
-		Path:        "/apps",
-		Params: []api.ToolParam{
-			{Name: "query", Type: "string", Description: "Search query (name, description, or tag)", Required: false},
-			{Name: "tag", Type: "string", Description: "Filter by tag", Required: false},
-		},
-	})
-	api.RegisterTool(api.Tool{
-		Name:        "apps_read",
-		Description: "Read details of a specific app by its slug",
-		Method:      "GET",
-		Path:        "/apps",
-		Params: []api.ToolParam{
-			{Name: "slug", Type: "string", Description: "The app's URL slug (e.g. pomodoro-timer)", Required: true},
-		},
-		Handle: func(args map[string]any) (string, error) {
-			slug, _ := args["slug"].(string)
-			if slug == "" {
-				return `{"error":"slug is required"}`, fmt.Errorf("missing slug")
-			}
-			a := apps.GetApp(slug)
-			if a == nil {
-				return `{"error":"app not found"}`, fmt.Errorf("not found")
-			}
-			b, _ := json.Marshal(a)
-			return string(b), nil
-		},
-	})
 	api.RegisterTool(api.Tool{
 		Name:        "apps_create",
 		Description: "Create a new app — a small, self-contained HTML tool hosted on Mu",
@@ -253,33 +170,6 @@ func registerTools() {
 			return fmt.Sprintf(`{"error":"%s"}`, err.Error()), err
 		}
 		b, _ := json.Marshal(a)
-		return string(b), nil
-	})
-	api.RegisterToolWithAuth(api.Tool{
-		Name:        "apps_build",
-		Description: "Build a small app from a natural language description, save it, and return the app details with URL. Apps are one of: a tracker (a list you add entries to, optionally totalling a number), a checklist, or a counter.",
-		WalletOp:    quota.OpAppBuild,
-		Params: []api.ToolParam{
-			{Name: "prompt", Type: "string", Description: "Description of the app to build (e.g. 'an expense tracker', 'a packing checklist', 'a water intake counter')", Required: true},
-		},
-	}, func(args map[string]any, accountID string) (string, error) {
-		prompt, _ := args["prompt"].(string)
-		if prompt == "" {
-			return `{"error":"prompt is required"}`, fmt.Errorf("missing prompt")
-		}
-		// Owner is the authenticated caller; the author name is resolved
-		// server-side (see apps.AuthorNameFor), never taken from the model.
-		var rsp apps.BuildResponse
-		if err := service.Call(service.WithAccount(context.Background(), accountID), "apps", "Server.Build",
-			&apps.BuildRequest{Prompt: prompt}, &rsp); err != nil {
-			return fmt.Sprintf(`{"error":"%s"}`, err.Error()), err
-		}
-		b, _ := json.Marshal(map[string]string{
-			"name": rsp.Name,
-			"slug": rsp.Slug,
-			"url":  rsp.URL,
-			"run":  rsp.Run,
-		})
 		return string(b), nil
 	})
 	api.RegisterToolWithAuth(api.Tool{
@@ -415,37 +305,6 @@ func registerTools() {
 		Description: "List the agents on your account, with what each one is for. Use the name with agent_ask.",
 	}, func(args map[string]any, accountID string) (string, error) {
 		return agent.ListForCaller(accountID)
-	})
-
-	// Wallet: one tool, one answer about your money.
-	//
-	// There were two — wallet_balance for credits and wallet for the Base
-	// address — so "what's in my wallet" had two answers depending on which the
-	// planner picked. Credits are what calls are charged in and USDC is how you
-	// top them up, which makes them two fields of one thing, not two tools. The
-	// old name stays as an alias so "my wallet" still resolves.
-	//
-	// It is also no longer path-backed. Pointing a tool at /wallet meant
-	// scraping the wallet web page for data, which is how it came to return
-	// 20KB of HTML to anyone who didn't pass a magic query flag.
-	api.RegisterToolWithAuth(api.Tool{
-		Name:        "wallet_balance",
-		Aliases:     []string{"wallet"},
-		Description: "Get your credit balance — credits are what calls are charged in.",
-	}, func(args map[string]any, accountID string) (string, error) {
-		out := map[string]any{"credits": wallet.GetBalance(accountID)}
-		// The Base address only when this instance offers crypto top-up, or
-		// when the caller already holds USDC there — the same rule the /wallet
-		// page follows, so an agent is not told about a way to pay that a
-		// person is not offered, and money already held is never hidden.
-		if bw, err := wallet.GetOrCreateWallet(accountID); err == nil {
-			usdc, raw := wallet.USDCBalance(bw.Address)
-			if wallet.CryptoTopupEnabled() || (raw != nil && raw.Sign() > 0) {
-				out["address"], out["network"], out["usdc"] = bw.Address, "base", usdc
-			}
-		}
-		b, _ := json.Marshal(out)
-		return string(b), nil
 	})
 
 	// There is no `pay` tool.

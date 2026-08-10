@@ -103,6 +103,15 @@ type Endpoint struct {
 	// attacker-controlled text, so a tool it holds is a tool prompt injection
 	// holds; what earns this flag is an irreversible effect nobody asked for.
 	Destructive bool
+	// OptionalAuth runs the method with an empty caller rather than refusing
+	// when there is nobody signed in.
+	//
+	// For a method that answers anyone and answers a signed-in caller with
+	// more: index.Search returns this instance's public content to a guest and
+	// the caller's own on top of it. Without this the choice is between
+	// refusing guests and never learning who is asking, and refusing guests is
+	// what a scoped service does — against the design this one declares.
+	OptionalAuth bool
 	// AccountOnly refuses a caller whose only identity is a paid wallet.
 	//
 	// Different from Account, which asks whether there is a caller at all.

@@ -180,7 +180,10 @@ func derivedTool(spec service.Spec, ep service.Endpoint, name string, reqType re
 		// one call later — and, for web_fetch, is a request this server makes
 		// to wherever a stranger names.
 		AccountOnly: ep.AccountOnly,
-		Params:      params(reqType),
+		// A method that answers a guest and answers a caller with more says so
+		// here, or it is registered auth-only and the guest half never runs.
+		OptionalAuth: ep.OptionalAuth,
+		Params:       params(reqType),
 	}
 }
 
@@ -218,7 +221,7 @@ func registerDerived(spec service.Spec, method string, ep service.Endpoint, name
 	// discussion anyone may read — and that is Endpoint.Account. Without it the
 	// tool was registered with a hard-coded empty account, so the handler read
 	// no caller and refused its own call.
-	if spec.Scoped || ep.Account {
+	if spec.Scoped || ep.Account || ep.OptionalAuth {
 		api.RegisterToolWithAuth(t, call)
 		return
 	}
