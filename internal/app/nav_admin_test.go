@@ -12,6 +12,7 @@ package app
 // everybody; admin is a role, and roles sit with identity.
 
 import (
+	"os"
 	"strings"
 	"testing"
 
@@ -45,5 +46,44 @@ func TestAnOrdinaryAccountIsNotShownTheDoor(t *testing.T) {
 func TestSignedOutGetsNoAdminLink(t *testing.T) {
 	if strings.Contains(navBottom(nil), "/admin") {
 		t.Error("a signed-out visitor is offered the admin dashboard")
+	}
+}
+
+// And the account page carries nothing that only an operator can use.
+//
+// /account had two: "Admin Dashboard →" and "Invites →", both drawn only for
+// admins, both duplicating an entry on the admin dashboard itself. They were
+// there because there was nowhere else to put them — the sidebar had no Admin
+// link, so operator errands accumulated on the settings page, three clicks from
+// anywhere and mixed in with changing your language.
+//
+// Read from the source rather than a rendered page, because the failure this
+// guards against is somebody adding the next one, and it should be caught where
+// it is written.
+func TestTheAccountPageHoldsNoOperatorErrands(t *testing.T) {
+	src, err := os.ReadFile("app.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := string(src)
+	i := strings.Index(body, "func Account(")
+	if i < 0 {
+		t.Fatal("the account handler has moved; this test needs repointing")
+	}
+	j := strings.Index(body[i:], "\nfunc ")
+	if j < 0 {
+		t.Fatal("could not find the end of the account handler")
+	}
+	page := body[i : i+j]
+
+	if strings.Contains(page, `href="/admin`) {
+		t.Error("the account page links into /admin — operator errands belong " +
+			"behind the Admin entry in the sidebar, not on the page you open to " +
+			"change your language")
+	}
+	// Not vacuous: the handler is still building the page it is supposed to.
+	if !strings.Contains(page, `href="/token"`) {
+		t.Error("the account page no longer offers API credentials, so this scan " +
+			"is reading the wrong function")
 	}
 }
