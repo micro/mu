@@ -1048,14 +1048,10 @@ func registerTools() {
 	// needs the day there is somewhere worth paying, and the CLI still reaches
 	// them. Bringing the tool back is re-registering it here.
 
-	// Anything declared on a Spec but never written out above becomes a tool
-	// here. Six endpoints had drifted out of reach this way — see
-	// internal/api/derive.go. Registrations above win; this only fills gaps, so
-	// it has to run after all of them.
-	api.DeriveTools()
-
-	// Every tool is registered. Surfaces that publish a command set built from
-	// the registry — the Discord slash commands, the Telegram menu — are waiting
-	// on this; without it they race the wiring above and publish a partial one.
-	api.ToolsRegistered()
+	// Deriving from the Specs, and the announcement that the registry is
+	// complete, are steps of their own in Run. They used to be the last two
+	// lines of this function, which made the hand-written half and the derived
+	// half indistinguishable to anything looking at the result — including a
+	// test asking which hand-written registrations have become copies of what
+	// their Spec already says.
 }

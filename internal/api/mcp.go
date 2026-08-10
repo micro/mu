@@ -293,6 +293,15 @@ func toolMatches(t Tool, name string) bool {
 }
 
 // RegisterTool adds a tool to the MCP server.
+// Tools is the registry as it stands: every tool a client can call, in
+// registration order. The handlers come with them, so this is the registry
+// itself and not a description of it — treat the result as read-only.
+func Tools() []Tool {
+	out := make([]Tool, len(tools))
+	copy(out, tools)
+	return out
+}
+
 func RegisterTool(t Tool) {
 	tools = append(tools, t)
 }

@@ -1,5 +1,7 @@
 package server
 
+import "mu/internal/api"
+
 // The server half of the binary.
 //
 // main.go was 2,973 lines, nearly all of it one function: every service load,
@@ -22,6 +24,19 @@ func Run(addr string) {
 	boot()
 	wireHooks()
 	registerTools()
+
+	// Anything declared on a Spec but not written out by hand becomes a tool
+	// here. Six endpoints had drifted out of reach this way — see
+	// internal/api/derive.go. Hand-written registrations win, so this only
+	// fills gaps and has to run after all of them.
+	api.DeriveTools()
+
+	// Every tool is registered. Surfaces that publish a command set built from
+	// the registry — the Discord slash commands, the Telegram menu — are
+	// waiting on this; without it they race the wiring and publish a partial
+	// one.
+	api.ToolsRegistered()
+
 	registerRoutes()
 	serve(addr)
 }
