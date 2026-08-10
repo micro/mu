@@ -26,6 +26,7 @@ package user
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"mu/internal/app"
 	"mu/internal/flag"
@@ -235,6 +236,7 @@ var Spec = service.Spec{
 	Description: "What an account does about other people's content: save, hide, flag, block",
 	Scoped:      true,
 	Endpoints: map[string]service.Endpoint{
+		"Saved":   {Aliases: []string{"saved_list"}, Doc: "List the items the caller has saved for later, with their links"},
 		"Save":    {Aliases: []string{"content_save", "save"}, Doc: "Save an item to the caller's bookmarks so it can be found again. Private to the caller, and reversible with user_unsave"},
 		"Unsave":  {Aliases: []string{"content_unsave", "unsave"}, Doc: "Remove an item from the caller's bookmarks. Leaves the item itself untouched — this only forgets that it was saved", Destructive: true},
 		"Hide":    {Aliases: []string{"content_hide", "dismiss"}, Doc: "Hide an item so the caller stops seeing it. Affects only this account's view; use user_flag to report something to a moderator instead"},
@@ -251,3 +253,48 @@ var Spec = service.Spec{
 // there was a service that owned the data, at which point a deletion routed
 // around its owner is a second place to remember.
 func Delete(owner string) { app.ClearUserPrefs(owner) }
+
+// ── Saved ───────────────────────────────────────────────────────
+
+// Listing what you saved was a tool with no service behind it, while saving
+// and unsaving were pointed at pages. All three are here now, which is the
+// point: a caller that can save something can ask what it saved.
+
+type SavedRequest struct {
+	Limit int `json:"limit" description:"Max results (default 50)"`
+}
+
+type SavedResponse struct {
+	Text string `json:"text" description:"Saved items: what each is, and a link"`
+}
+
+// Saved lists the items the caller bookmarked, newest first.
+// @example {}
+func (Server) Saved(ctx context.Context, req *SavedRequest, rsp *SavedResponse) error {
+	who, err := caller(ctx)
+	if err != nil {
+		return err
+	}
+	limit := req.Limit
+	if limit <= 0 || limit > 200 {
+		limit = 50
+	}
+	entries := app.GetSavedList(who)
+	if len(entries) == 0 {
+		rsp.Text = "You have not saved anything yet."
+		return nil
+	}
+	var b strings.Builder
+	for i, e := range entries {
+		if i >= limit {
+			break
+		}
+		title := e.Title
+		if title == "" {
+			title = e.Type + " " + e.ID
+		}
+		b.WriteString("- " + title + "\n  " + e.URL + "\n")
+	}
+	rsp.Text = b.String()
+	return nil
+}

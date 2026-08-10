@@ -165,7 +165,11 @@ func TestTheHarnessSeesBothHalves(t *testing.T) {
 	if n := len(service.Specs()); n < 15 {
 		t.Fatalf("%d specs registered — the services did not load", n)
 	}
-	if n := len(api.Tools()); n < 30 {
+	// Two: agent_ask and agent_list. Everything else that was written out by
+	// hand is declared on a Spec now, and these two are here because the agent
+	// is not a service — there is no Spec to derive them from. When that
+	// changes, this file has no subject and goes.
+	if n := len(api.Tools()); n < 2 {
 		t.Fatalf("%d tools registered by hand — tools.go did not run", n)
 	}
 }

@@ -122,8 +122,9 @@ var Spec = service.Spec{
 	Scoped:      true,
 	Icon:        "mail.png",
 	Endpoints: map[string]service.Endpoint{
-		"Inbox":  {Aliases: []string{"mail_read"}, Doc: "List the account's most recent messages — read my mail, check my inbox"},
-		"Search": {Doc: "Search the account's mail and return matching messages"},
+		"Inbox":   {Aliases: []string{"mail_read"}, Doc: "List the account's most recent messages — read my mail, check my inbox"},
+		"Search":  {Doc: "Search the account's mail and return matching messages"},
+		"Address": {Aliases: []string{"mail_address"}, Doc: "Get an email address that reaches the caller. Pass a tag for a plus-address (you+tag@) — give that out, then read only its mail with mail_inbox(tag)"},
 		"Send": {
 			Doc: "Send an email from the caller's own address on this instance. Takes a recipient address, a subject and a body; resolve a name to an address with contacts_find first. The mail really is delivered — there is no draft state to undo from",
 			// A funded wallet is not accountable for this sending domain, so
@@ -221,5 +222,50 @@ func (Server) Send(ctx context.Context, req *SendRequest, rsp *SendResponse) err
 		_ = quota.ConsumeQuota(acc.ID, quota.OpMailSend)
 	}
 	rsp.Result = "Sent to " + toAcc.Name + " on this instance."
+	return nil
+}
+
+// ── Address ─────────────────────────────────────────────────────
+
+// What your own address is, which the mail service could not answer.
+//
+// It had Inbox, Search and Send, and no way to ask where mail reaches you —
+// so an agent could read and write mail but not tell anyone where to write
+// back. It was a tool in the assembly instead.
+
+type AddressRequest struct {
+	Tag string `json:"tag" description:"A label for this address, e.g. \"research\" or \"receipts\". Omit for the plain one"`
+}
+
+type AddressResponse struct {
+	Address string `json:"address" description:"An email address that reaches the caller"`
+	Text    string `json:"text" description:"The address, with what to do with it"`
+}
+
+// Address returns an email address that reaches the caller.
+//
+// With a tag it returns a plus-address — you+tag@ — which is the whole point:
+// give one out per correspondent or per purpose, and mail_inbox(tag) reads only
+// that stream. Nothing has to be configured first; the address works because
+// the account exists.
+// @example {"tag": "receipts"}
+func (Server) Address(ctx context.Context, req *AddressRequest, rsp *AddressResponse) error {
+	who := service.AccountFrom(ctx)
+	if who == "" {
+		return fmt.Errorf("sign in to have an address")
+	}
+	if _, err := auth.GetAccount(who); err != nil {
+		return fmt.Errorf("account not found")
+	}
+	addr := AliasFor(who, strings.TrimSpace(req.Tag))
+	if addr == "" {
+		return fmt.Errorf("this instance has no mail domain configured")
+	}
+	rsp.Address = addr
+	if req.Tag == "" {
+		rsp.Text = addr + " — mail sent here reaches you. Pass a tag for a separate address you can read on its own."
+		return nil
+	}
+	rsp.Text = addr + " — give this out, then read only its mail with mail_inbox(tag: \"" + req.Tag + "\")."
 	return nil
 }
