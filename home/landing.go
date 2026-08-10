@@ -8,26 +8,45 @@ import (
 	"mu/internal/app"
 )
 
-// Landing is the front door for anyone not signed in: what this is, what an
-// agent gets, and what a call costs.
+// Landing is the front door for anyone not signed in: something to try, then
+// what this is and how to connect to it.
 //
 // It used to be three pages. The live home was the front door and said nothing
 // about what Mu is; /about carried the pitch; /agents carried a second pitch
 // plus the payment explanation, and /tools linked to it — so finding out what
 // this place is took three hops through pages that each looked like a landing.
 // They are one page now, and /about and /agents redirect here.
+//
+// And then it was one page that only described things. Three buttons, three
+// cards and a setup guide: everything about the tools, nothing you could do
+// with them. "See it working" was a link, which is a promise rather than a
+// demonstration.
+//
+// The model to copy is ollama. Its product is running models locally, and what
+// makes that land is `ollama run llama3` putting you in a conversation on the
+// first command — because nobody wants a model, they want to use one. Nobody
+// wants tools either. So the tools are used here, on arrival, by anyone: a
+// guest gets three agent queries a day (agent/guest.go) against every service
+// that is not somebody's private data, which is enough to watch it read the
+// news, check a market and answer.
+//
+// The description still follows. It reads better as a caption than as a pitch.
 func Landing(w http.ResponseWriter, r *http.Request) {
 	host := app.BaseURL(r)
 	// Counted, not claimed. This said "67 real tools" as a literal and the
 	// endpoint was serving 72 by the time anyone checked.
-	body := `<p class="lead">One MCP endpoint, ` + strconv.Itoa(api.ToolCount()) + ` real tools — news, web search, mail, markets,
-weather, video, storage. Connect an agent once and it has all of them, instead of wiring up
-a server for each.</p>
+	body := `<p class="lead">` + strconv.Itoa(api.ToolCount()) + ` tools an agent can call — news, web search, mail,
+markets, weather, places, storage — behind one account instead of one per provider.
+Ask something and watch it use them.</p>
+
+<div class="ltry">` + chatComponent(true) + `</div>
+
+<p class="ltrynote">Three questions a day without an account. <a href="/signup">Sign up</a> for
+your own agent, an email address it answers on, and the endpoint your own client can call.</p>
 
 <div class="lctas">
   <a class="lcta" href="/tools">Browse the tools →</a>
   <a class="lcta lcta-alt" href="/mcp">MCP endpoint</a>
-  <a class="lcta lcta-alt" href="/agent">See it working</a>
 </div>
 
 <div class="lcards">
@@ -54,7 +73,10 @@ a server for each.</p>
 </div>
 
 <style>
-.lead{max-width:600px;text-align:center;color:#555;font-size:16px;line-height:1.6;margin:0 auto 26px}
+.lead{max-width:600px;text-align:center;color:#555;font-size:16px;line-height:1.6;margin:0 auto 22px}
+.ltry{max-width:660px;margin:0 auto 10px;text-align:left}
+.ltrynote{max-width:660px;margin:0 auto 26px;text-align:center;font-size:13px;color:#888}
+.ltrynote a{color:#111}
 .lead a{color:#111}
 .lcards{display:flex;flex-wrap:wrap;gap:14px;max-width:760px;justify-content:center;margin:34px auto 0}
 .lcard{flex:1 1 220px;min-width:220px;max-width:240px;border:1px solid #e5e5e5;border-radius:10px;padding:16px 18px;background:#fff;text-align:left}
