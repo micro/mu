@@ -1193,28 +1193,28 @@ func escapeHTML(s string) string { return html.EscapeString(s) }
 // nobody needs to be.
 //
 // These handlers required a session with the comment "charged operation",
-// which is the right reason and the wrong condition. Without a Google key the
-// data comes from OpenStreetMap and Overpass, and costs nobody anything — so a
-// self-hoster was being asked to sign in before their own server would tell
-// them where the nearest coffee is.
+// which is the right reason and the wrong condition. Metering exists because
+// micro.mu is run as a product: there is a price list, a balance and a card on
+// file, so a charged call needs somebody to charge. None of that is true of an
+// instance somebody runs for themselves.
 //
-// The condition that matters is whether the *provider* costs money, not
-// whether this instance can bill for it. A Google key means every lookup is
-// spending the operator's money, and that wants somebody named even on an
-// instance with no payments configured, because "we cannot charge you" is not
-// a reason to let strangers spend it. No key means Overpass, which is free, and
-// then an account is ceremony.
+// A self-hoster who has configured their own Google key expects to use it. They
+// paid for it. Refusing them until they sign in, on their own server, to spend
+// their own quota, is the product's business model leaking into somebody else's
+// deployment — and an earlier version of this function did exactly that, gating
+// on whether a key was set rather than on whether this instance charges.
 //
-// Charging is the separate question, and wallet.Metered answers it: an
-// instance with no Stripe and no x402 charges nothing to anybody. Guests on the
-// free path are held by the per-address rate limit, like every other free call.
+// Who may reach an exposed instance is a real question, and a different one:
+// it is answered by who can sign up and what the instance is open to, not by
+// pretending a lookup costs money where nothing is billed. Guests on the free
+// path are held by the per-address rate limit like every other free call.
 func billableCaller(w http.ResponseWriter, r *http.Request, op string) (id string, ok bool) {
 	_, acc, err := auth.RequireSession(r)
 	if err == nil && acc != nil {
 		id = acc.ID
 	}
-	// Free provider, nothing to spend and nothing to bill: answer anyone.
-	if googleAPIKey() == "" && !wallet.Metered(op) {
+	// Nothing is charged here, so there is nobody who has to be named.
+	if !wallet.Metered(op) {
 		return id, true
 	}
 	if id == "" {
