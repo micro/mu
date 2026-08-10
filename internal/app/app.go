@@ -1198,12 +1198,6 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		languageOptions += fmt.Sprintf(`<option value="%s"%s>%s</option>`, code, selected, name)
 	}
 
-	// Admin link
-	adminLinks := ""
-	if acc.Admin {
-		adminLinks = `<p><a href="/admin">Admin Dashboard →</a></p>`
-	}
-
 	// Email verification card + Google connect card
 	emailCard := renderEmailCard(acc)
 	googleCard := renderGoogleCard(acc)
@@ -1273,7 +1267,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 %s
 <p><a href="/token">API Credentials →</a></p>
 <p><a href="/app/blocked">Blocked Users →</a></p>
-%s<p><a href="/app/saved">Saved →</a></p>
+<p><a href="/app/saved">Saved →</a></p>
 <p style="margin-top:12px"><a href="/logout" class="text-error">Logout</a></p>
 </div>`,
 		acc.ID,
@@ -1286,7 +1280,6 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		memCard,
 		PasskeyListHTML(acc.ID),
 		clientsCard,
-		adminLinks,
 		inviteLink(acc),
 	)
 
@@ -1782,20 +1775,38 @@ func navPinned(acc *auth.Account) string {
 	return b.String()
 }
 
-// navBottom is the account: who you are, the page about you, and the way out.
+// navBottom is the account: who you are, the page about you, running the place,
+// and the way out.
 //
 // Kept as its own group rather than folded into the account page, because
 // signing out is something you reach for directly and a logout that takes two
 // clicks is a logout people hunt for. nav-username is a label mu.js corrects
 // from the session: a page cached for one viewer and served to another would
 // otherwise greet them by the wrong name.
+//
+// Admin belongs here and not in the top group. The top group is what the
+// product is — Home, Tools, Agents, Services, Clients — and it should look the
+// same to everybody, in a screenshot, in the docs, on somebody else's instance.
+// Admin is a role, and a role sits with identity. It was reachable only as a
+// line of text on /account, three clicks from anywhere, which is not where you
+// put the page an operator opens most.
+//
+// It is rendered for an admin and hidden by mu.js for anyone else, so the link
+// survives a page with no JavaScript and does not survive a page cached for an
+// admin and served to a stranger. /admin checks the session itself either way;
+// this is about not showing a door that is not yours.
 func navBottom(acc *auth.Account) string {
 	if acc == nil {
 		return `<a id="nav-login" href="/login"><img src="/account.png?` + Version + `"><span class="label">Login</span></a>`
 	}
 	username := htmlpkg.EscapeString(acc.ID)
+	admin := `<a id="nav-admin" href="/admin" style="display: none;"><img src="/admin.svg?` + Version + `"><span class="label">Admin</span></a>`
+	if acc.Admin {
+		admin = `<a id="nav-admin" href="/admin"><img src="/admin.svg?` + Version + `"><span class="label">Admin</span></a>`
+	}
 	return `<div id="nav-username">Signed in as @` + username + `</div>
           <a id="nav-account" href="/account"><img src="/account.png?` + Version + `"><span class="label">Account</span></a>
+          ` + admin + `
           <a id="nav-logout" href="/logout"><img src="/logout.png?` + Version + `"><span class="label">Logout</span></a>
           <a id="nav-login" href="/login" style="display: none;"><img src="/account.png?` + Version + `"><span class="label">Login</span></a>`
 }

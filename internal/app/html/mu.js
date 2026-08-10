@@ -386,7 +386,8 @@ function setSession() {
     var navLogin = document.getElementById("nav-login");
     var navMailBadge = document.getElementById("nav-mail-badge");
     var navUsername = document.getElementById("nav-username");
-    
+    var navAdmin = document.getElementById("nav-admin");
+
     if (sess.type == "account") {
       isAuthenticated = true;
       // Show authenticated nav items
@@ -397,6 +398,10 @@ function setSession() {
         navUsername.textContent = 'Signed in as @' + sess.account;
         navUsername.style.display = 'block';
       }
+      // Rendered server-side for an admin so the link works without JS, and
+      // corrected here for the same reason nav-username is: a page cached for
+      // one viewer must not hand the next one a door that is not theirs.
+      if (navAdmin) navAdmin.style.display = sess.admin ? 'flex' : 'none';
       // Show the wallet link and badge its credit balance for logged-in users.
       document.body.classList.add('signed-in');
       // Fetch unread mail count for badge
@@ -419,6 +424,7 @@ function setSession() {
       }
     } else {
       isAuthenticated = false;
+      if (navAdmin) navAdmin.style.display = 'none';
       // Redirect mail/wallet to login when not authenticated
       if (navMail) navMail.href = '/login?redirect=' + encodeURIComponent('/mail');
       if (navWallet) navWallet.href = '/login?redirect=' + encodeURIComponent('/wallet');
@@ -445,6 +451,8 @@ function setSession() {
     var navAccount = document.getElementById("nav-account");
     var navLogout = document.getElementById("nav-logout");
     var navLogin = document.getElementById("nav-login");
+    var navAdmin = document.getElementById("nav-admin");
+    if (navAdmin) navAdmin.style.display = 'none';
     // Redirect mail/wallet to login when not authenticated
     if (navMail) navMail.href = '/login?redirect=' + encodeURIComponent('/mail');
     if (navWallet) navWallet.href = '/login?redirect=' + encodeURIComponent('/wallet');
