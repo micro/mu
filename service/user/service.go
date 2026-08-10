@@ -226,14 +226,12 @@ func Load() {
 	}
 }
 
-// Headless on purpose: there is no page called "user". Saved items are on
-// /app/saved and blocked accounts on /app/blocked, both reached from the
-// account page, and a seventh nav entry for six verbs would be a directory of
-// buttons nobody opens.
 var Spec = service.Spec{
 	Name:        "user",
 	Handler:     new(Server),
-	Description: "What an account does about other people's content: save, hide, flag, block",
+	Description: "What you keep, hide and block — your own view of everybody else's content",
+	Page:        "/user",
+	Icon:        "account.png",
 	Scoped:      true,
 	Endpoints: map[string]service.Endpoint{
 		"Saved":   {Aliases: []string{"saved_list"}, Doc: "List the items the caller has saved for later, with their links"},

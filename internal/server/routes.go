@@ -25,7 +25,7 @@ import (
 	"mu/internal/imageproxy"
 	"mu/internal/settings"
 	"mu/internal/setup"
-	"mu/internal/user"
+	profile "mu/internal/user"
 	"mu/service/apps"
 	"mu/service/blog"
 	"mu/service/chat"
@@ -44,6 +44,7 @@ import (
 	"mu/service/social"
 	"mu/service/stream"
 	"mu/service/tasks"
+	"mu/service/user"
 	"mu/service/video"
 	"mu/service/weather"
 	"mu/wallet"
@@ -88,6 +89,8 @@ func authRequired() map[string]bool {
 		"/mail":                   true,  // Require auth for inbox
 		"/logout":                 true,
 		"/account":                true,
+		"/user":                   true, // Your own saved, hidden and blocked
+		"/user/":                  true,
 		"/verify":                 false, // Public — token in URL is the credential
 		"/token":                  true,  // PAT token management
 		"/passkey":                false, // Passkey login/register (auth checked in handler)
@@ -369,6 +372,8 @@ func registerRoutes() {
 	http.HandleFunc("/signup", app.Signup)
 	http.HandleFunc("/request-invite", app.RequestInvite)
 	http.HandleFunc("/invite", app.InviteHandler)
+	http.HandleFunc("/user", user.Handler)
+	http.HandleFunc("/user/", user.UndoHandler)
 	http.HandleFunc("/account", app.Account)
 	http.HandleFunc("/verify", app.Verify)
 	http.HandleFunc("/session", app.Session)
@@ -463,7 +468,7 @@ func registerRoutes() {
 	http.HandleFunc("/.well-known/webfinger", blog.WebFingerHandler)
 
 	// presence WebSocket endpoint
-	http.HandleFunc("/presence", user.PresenceHandler)
+	http.HandleFunc("/presence", profile.PresenceHandler)
 
 	// presence ping endpoint
 	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {

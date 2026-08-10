@@ -142,3 +142,33 @@ func ClearUserPrefs(userID string) {
 	delete(prefs, userID)
 	savePrefs()
 }
+
+// GetHiddenItems returns what this account has hidden from its own view,
+// keyed "type:id".
+//
+// There was no getter: hiding was write-only, so an item could be dismissed and
+// never found again — no page listed them and nothing could undo one. IsDismissed
+// answered about a single item you already had in your hand, which is the wrong
+// shape for "what did I hide".
+func GetHiddenItems(userID string) map[string]time.Time {
+	prefsMu.RLock()
+	defer prefsMu.RUnlock()
+	out := map[string]time.Time{}
+	p, ok := prefs[userID]
+	if !ok {
+		return out
+	}
+	for k, t := range p.Dismissed {
+		out[k] = t
+	}
+	return out
+}
+
+// Unhide puts a hidden item back in the caller's view.
+func Unhide(userID, contentType, contentID string) {
+	prefsMu.Lock()
+	defer prefsMu.Unlock()
+	p := getUserPrefs(userID)
+	delete(p.Dismissed, contentType+":"+contentID)
+	savePrefs()
+}
