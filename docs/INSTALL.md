@@ -360,6 +360,7 @@ says so; nothing else is affected.
 | `SMS_DAILY_LIMIT` | `20` | Messages one account may send in a day, on top of the per-message price. **Set it to `0` to stop sending entirely** — that is the kill switch, and it is the same setting rather than a second one because an operator reaching for it is in a hurry |
 | `SMS_NEW_ACCOUNT_LIMIT` | `3` | The same cap for an account less than a day old. Signing up is free and takes a minute, so this is the only thing between a script and the full allowance |
 | `SMS_KNOWN_ONLY` | off | Restrict sending to numbers the caller already knows — someone in their contacts, a number they verified as their own, or one that texted them first. Off, because `contacts_add` takes any number and defeats it in one call, and because it stopped an agent doing the ordinary thing. On, it is a real brake for an instance that wants one |
+| `SMS_VERIFY_INBOUND` | on | Require an arriving message to carry a valid Twilio signature. Turn it **off** if this instance authenticates with an API key, because then there is no account auth token and nothing a signature can be checked against — the cost is that anybody who knows the webhook URL can write into somebody's message history and opt numbers out |
 | `SMS_DEFAULT_COUNTRY` | — | Country code assumed for a number written without one. Unset, a number with no `+` is refused rather than guessed |
 
 Senders have to be registered before they will deliver. In the **US**, an

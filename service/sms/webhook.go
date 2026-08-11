@@ -28,6 +28,17 @@ import (
 )
 
 // WebhookHandler receives an inbound message from Twilio.
+// verifyInbound reports whether an arriving message must prove it is genuine.
+//
+// On by default, because unverified this endpoint lets anybody who knows the
+// URL write into a person's message history and opt any number out of ever
+// hearing from this instance. Off is a real choice with a real cost, and it
+// belongs to whoever runs the instance rather than to whoever wrote this.
+func verifyInbound() bool {
+	v := strings.ToLower(strings.TrimSpace(settings.Get("SMS_VERIFY_INBOUND")))
+	return v != "0" && v != "false" && v != "off" && v != "no"
+}
+
 func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		app.MethodNotAllowed(w, r)
@@ -37,7 +48,15 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad form", http.StatusBadRequest)
 		return
 	}
-	if !validSignature(r, signedURLs(r), r.PostForm) {
+	// Verification is right and it is not worth losing every message over. An
+	// instance authenticating with an API key has no account auth token, so
+	// there is nothing a signature can be checked against — and rejecting is
+	// then a choice to receive nothing at all, made on the operator's behalf
+	// without asking. They can say otherwise.
+	if !verifyInbound() {
+		app.Log("sms", "accepting an unverified inbound message: SMS_VERIFY_INBOUND is off, "+
+			"so anybody who knows this URL can put a message in somebody's history")
+	} else if !validSignature(r, signedURLs(r), r.PostForm) {
 		// Terse to the caller — anything more is a hint to whoever is probing —
 		// and loud in the log, because the two reasons this happens look
 		// identical from outside. Either somebody is poking at the endpoint, or
