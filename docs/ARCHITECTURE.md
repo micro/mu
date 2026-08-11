@@ -127,6 +127,7 @@ guessable.
 | `news` | /news | ✅ |  | RSS aggregation, sentiment, search |
 | `places` | /places | ✅ |  | Maps, points of interest, travel time |
 | `prayer` | /prayer | ✅ |  | Islamic prayer times, qibla, and a daily reflection |
+| `sms` | /sms | ✅ | ✅ | A phone number: text somebody, read what they text back. Twilio. Account-only even when paid, and you may only text a number you already know |
 | `social` | /social | ✅ |  | Threads, replies, status |
 | `stream` | /stream | ✅ |  | The console: this instance's own timeline |
 | `tasks` | /tasks | ✅ | ✅ | What is to be done, and work handed to the agent |

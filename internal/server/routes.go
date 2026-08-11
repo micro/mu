@@ -44,6 +44,7 @@ import (
 	"mu/service/places"
 	"mu/service/prayer"
 	"mu/service/search"
+	"mu/service/sms"
 	"mu/service/social"
 	"mu/service/stream"
 	"mu/service/tasks"
@@ -84,7 +85,11 @@ func authRequired() map[string]bool {
 		// Your own documents. Sign-in required, but checked in the handler
 		// rather than here: the map is matched by prefix, and /docs/<slug> is
 		// still a public redirect to the documentation that used to live there.
-		"/docs":              false,
+		"/docs": false,
+		// Your texts. Sign-in is required and the handler requires it — not
+		// stated here, because this map is matched by prefix and /sms/webhook
+		// is the provider posting an inbound message with no session at all.
+		"/sms":               false,
 		"/runs":              true,  // What your agents did (redirects to /agent/runs)
 		"/agent/runs":        true,  // What your agents did
 		"/agent/connect":     true,  // How to reach one agent
@@ -136,6 +141,7 @@ func authRequired() map[string]bool {
 		"/whitepaper":                    false, // Public - whitepaper
 		"/mcp":                           false, // Public - MCP tools page
 		"/whatsapp/webhook":              false, // Public - WhatsApp webhook
+		"/sms/webhook":                   false, // Public - inbound SMS; the provider's signature is the credential
 		"/.well-known/agent.json":        false, // Public - A2A agent card
 		"/.well-known/mcp-registry-auth": false, // Public - registry domain proof
 		"/a2a":                           false, // Public - A2A protocol
@@ -327,6 +333,8 @@ func registerRoutes() {
 	http.HandleFunc("/contacts", contacts.Handler)
 	http.HandleFunc("/docs", docs.Handler)
 	http.HandleFunc("/notes", notes.Handler)
+	http.HandleFunc("/sms", sms.Handler)
+	http.HandleFunc("/sms/webhook", sms.WebhookHandler)
 	http.HandleFunc("/contacts/", contacts.Handler)
 	http.HandleFunc("/tasks", tasks.Handler)
 	http.HandleFunc("/tasks/", tasks.Handler)

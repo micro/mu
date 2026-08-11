@@ -121,6 +121,7 @@ Here are the tools
 | **Places** | `places_search` · `places_nearby` · `places_eta` · `places_geocode` — points of interest, geocoding, travel time |
 | **Prayer** | `prayer_times` · `prayer_qibla` · `prayer_reflection` · `prayer_verse` · `prayer_saying` · `prayer_search` — Islamic prayer times, qibla, a daily verse and saying, and the sources by reference or by question |
 | **Search** | `web_search` · `web_fetch` — search the web, read a page as clean text |
+| **SMS** | `sms_send` · `sms_inbox` · `sms_number` · `sms_verify` — text somebody and read what they text back, from a real number. Only to numbers you already know: a contact, a number you verified as yours, or one that texted you first |
 | **Social** | `social_list` · `social_search` — public threads and replies |
 | **Stream** | `stream_list` · `stream_post` — this instance's own timeline |
 | **Tasks** | `tasks_create` · `tasks_list` · `tasks_next` · `tasks_update` · `tasks_delete` — what is to be done, and work you can hand to the agent |

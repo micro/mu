@@ -111,6 +111,13 @@
       "env": "CREDIT_COST_EMAIL",
       "note": "Leaves the instance over SMTP"
     },
+    {
+      "op": "sms_send",
+      "cost": 10,
+      "label": "Text message (per segment)",
+      "env": "CREDIT_COST_SMS",
+      "note": "Twilio: under a penny to a US mobile, ~4p to a UK one, and charged per 160-character segment. A markup that would be silly on a search is the point here — a text cannot be unsent, and the number's reputation is shared by everybody on the instance. Ten pence makes a spam run cost real money before any of the other limits are reached"
+    },
 
     {
       "op": "news_search",

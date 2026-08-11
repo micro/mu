@@ -46,6 +46,7 @@ Built on go-micro: every capability is a go-micro service, the assistant is a go
 | `service/docs/` | The caller's own documents — named collections that outlive a conversation. Apps keep a separate store each |
 | `service/files/` | Per-user file storage — keep a file, get a URL, read it back |
 | `service/contacts/` | The caller's address book, so a name resolves to an address (headless) |
+| `service/sms/` | A phone number: text somebody, read what they text back. Twilio. The rules about who you may text are the service, not decoration — see the package comment |
 | `service/web/` | The open web: search it (`web.Search`), fetch a URL (`web.Fetch`) |
 | `service/index/` | Search across the caller's own content (headless) |
 | `service/stream/` | The console — this instance's own event timeline |

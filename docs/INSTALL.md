@@ -344,6 +344,24 @@ still work.
 | `YOUTUBE_API_KEY` | `video_list`, `video_search` |
 | `GOOGLE_API_KEY` | `places_search`, `places_nearby`, `places_eta` — open-data fallback without it. `places_eta` also needs the **Routes API** enabled on the key, not just Places |
 
+### Texts
+
+An SMS number, from Twilio. Without these the `sms_*` tools refuse and `/sms`
+says so; nothing else is affected.
+
+| Variable | Default | What it does |
+|---|---|---|
+| `TWILIO_ACCOUNT_SID` · `TWILIO_AUTH_TOKEN` | — | Twilio credentials. The auth token also verifies inbound webhooks, so an instance without it cannot receive |
+| `TWILIO_FROM` | — | The number texts are sent from and received on, in E.164 (`+447700900123`) |
+| `SMS_COUNTRIES` | `1,44,353,33,49,34,39,31` | Country codes this instance will text, comma-separated. An allowlist rather than a blocklist: a text to a premium range can cost fifty times what one to a mobile does, and those ranges are where revenue-share fraud lives |
+| `SMS_DAILY_LIMIT` | `20` | Messages one account may send in a day, on top of the per-message price |
+| `SMS_DEFAULT_COUNTRY` | — | Country code assumed for a number written without one. Unset, a number with no `+` is refused rather than guessed |
+
+Point the number's inbound webhook at `https://<your domain>/sms/webhook`. The
+request is verified against `TWILIO_AUTH_TOKEN`, so nothing else needs opening
+up, and `MU_DOMAIN` has to match what Twilio calls or the signature will not
+check out.
+
 ### File storage
 
 Uploaded files and archived images go to the local disk by default, under

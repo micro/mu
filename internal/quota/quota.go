@@ -78,6 +78,7 @@ const (
 	OpBlogCreate        = "blog_create"
 	OpMailSend          = "mail_send"
 	OpExternalEmail     = "external_email"
+	OpSMSSend           = "sms_send"
 	OpPlacesSearch      = "places_search"
 	OpPlacesNearby      = "places_nearby"
 	OpPlacesETA         = "places_eta"

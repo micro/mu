@@ -48,6 +48,7 @@ import (
 	"mu/service/news"
 	"mu/service/news/digest"
 	"mu/service/search"
+	"mu/service/sms"
 	"mu/service/social"
 	"mu/service/stream"
 	"mu/service/tasks"
@@ -538,6 +539,7 @@ func wireHooks() {
 		events.DeleteAll,
 		images.DeleteAll,
 		docs.DeleteAll,
+		sms.DeleteAll,
 	)
 
 	// Enable indexing after all content is loaded
