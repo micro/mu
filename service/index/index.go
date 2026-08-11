@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"strings"
 
+	"mu/internal/app"
 	"mu/internal/data"
 	"mu/internal/service"
 	"mu/service/mail"
@@ -150,4 +151,16 @@ var Spec = service.Spec{
 			OptionalAuth: true,
 		},
 	},
+}
+
+// LoadService registers index as a service.
+//
+// It had no such function, and nothing imported this package. index_search was
+// hand-registered in internal/server/tools.go, so when that file went the tool
+// went with it — the Spec here was left describing a service that was not
+// standing up, which is the same as not existing.
+func LoadService() {
+	if err := service.Register(Spec); err != nil {
+		app.Log("index", "service register failed: %v", err)
+	}
 }

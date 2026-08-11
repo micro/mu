@@ -20,12 +20,14 @@ import (
 	"mu/service/events"
 	"mu/service/files"
 	"mu/service/images"
+	"mu/service/index"
 	"mu/service/mail"
 	"mu/service/markets"
 	"mu/service/news"
-	memsvc "mu/service/notes"
+	"mu/service/notes"
 	"mu/service/places"
 	"mu/service/prayer"
+	"mu/service/sms"
 	"mu/service/social"
 	"mu/service/stream"
 	"mu/service/tasks"
@@ -78,7 +80,9 @@ func boot() {
 	stream.LoadService()
 	chat.LoadService()
 	docs.LoadService()
-	memsvc.LoadService()
+	index.LoadService()
+	notes.LoadService()
+	sms.LoadService()
 	images.Load()
 	// The cache behind /img, which serves article images from here instead of
 	// from four publisher CDNs. See internal/imageproxy.
