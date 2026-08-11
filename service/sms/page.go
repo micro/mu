@@ -45,10 +45,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	var b strings.Builder
 	b.WriteString(notice(r))
 	if !Configured() {
-		b.WriteString(`<div class="card"><h3>No number</h3>` +
-			`<p class="text-sm text-muted">This instance has no phone number configured, so it ` +
-			`cannot send or receive texts. An operator sets <code>TWILIO_ACCOUNT_SID</code>, ` +
-			`<code>TWILIO_AUTH_TOKEN</code> and <code>TWILIO_FROM</code>.</p></div>`)
+		b.WriteString(`<div class="card"><h3>Not set up</h3>` +
+			`<p class="text-sm text-muted">This instance cannot send or receive texts yet. ` +
+			`An operator sets these at <a href="/admin/env">/admin/env</a>:</p><ul class="text-sm">`)
+		for _, m := range Missing() {
+			b.WriteString(`<li><code>` + html.EscapeString(m) + `</code></li>`)
+		}
+		b.WriteString(`</ul></div>`)
 		w.Write([]byte(app.RenderHTMLForRequest("SMS", "Text somebody, and read what they text back", b.String(), r)))
 		return
 	}

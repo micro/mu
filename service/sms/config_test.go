@@ -1,6 +1,9 @@
 package sms
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // An API key sends and cannot receive, and nothing said so.
 //
@@ -80,5 +83,29 @@ func TestAKeyInTheAccountSlotStillSends(t *testing.T) {
 	}
 	if !Configured() || CanReceive() == "" {
 		t.Error("this setup sends and cannot receive, and should say exactly that")
+	}
+}
+
+// The page said "no phone number configured" whatever was missing, which sent
+// an operator to look at the number when the number was fine.
+func TestMissingNamesWhatIsMissing(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("TWILIO_ACCOUNT_SID", "AC00000000000000000000000000000000")
+	t.Setenv("TWILIO_FROM", "+447700900000")
+	t.Setenv("TWILIO_AUTH_TOKEN", "")
+
+	got := Missing()
+	if len(got) != 1 || !strings.Contains(got[0], "TWILIO_AUTH_TOKEN") {
+		t.Errorf("Missing = %v, want just the auth token — the number is set", got)
+	}
+
+	t.Setenv("TWILIO_AUTH_TOKEN", "token")
+	if got := Missing(); len(got) != 0 {
+		t.Errorf("Missing = %v on a complete setup", got)
+	}
+
+	t.Setenv("TWILIO_FROM", "")
+	if got := Missing(); len(got) != 1 || !strings.Contains(got[0], "TWILIO_FROM") {
+		t.Errorf("Missing = %v, want the number", got)
 	}
 }

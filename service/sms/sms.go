@@ -164,6 +164,27 @@ func Configured() bool {
 	return messagingService() != "" || len(Senders()) > 0
 }
 
+// Missing names what is not configured, one thing at a time.
+//
+// The page said "no phone number configured" for every kind of absence, which
+// sent an operator to look at the number when the number was fine and the
+// credential beside it was empty. Four separate settings have to line up and
+// only one of them is a phone number.
+func Missing() []string {
+	var out []string
+	if strings.TrimSpace(settings.Get("TWILIO_ACCOUNT_SID")) == "" {
+		out = append(out, "TWILIO_ACCOUNT_SID — the account, which starts with A then C")
+	}
+	if _, pass := credentials(); pass == "" {
+		out = append(out, "TWILIO_AUTH_TOKEN — the account's auth token, or an "+
+			"API key in TWILIO_API_KEY and TWILIO_API_SECRET to send with")
+	}
+	if messagingService() == "" && len(Senders()) == 0 {
+		out = append(out, "TWILIO_FROM — a number to send from, one per country served")
+	}
+	return out
+}
+
 // CanReceive reports whether an inbound message can be verified as genuine,
 // which is the difference between receiving texts and refusing all of them.
 //
