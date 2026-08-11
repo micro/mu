@@ -59,7 +59,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Sending and receiving take different credentials, and an instance can be
 	// perfectly able to do the first while refusing every reply. Said here
 	// because the alternative is finding out from the provider's error log.
-	if problem := CanReceive(); problem != "" {
+	if problem := CanReceive(); problem != "" && verifyInbound() {
 		b.WriteString(`<div class="card"><h3>Replies are being refused</h3>` +
 			`<p class="text-sm text-muted">Texts go out, and every reply is rejected because it ` +
 			`cannot be checked as genuine: ` + html.EscapeString(problem) + `.</p></div>`)
