@@ -370,3 +370,73 @@ func TestTheCacheSparesTheProvider(t *testing.T) {
 		t.Errorf("three identical questions made %d requests, want 1", calls)
 	}
 }
+
+// TestScopePutsAircraftWhereTheyAre — the display is only worth having if the
+// geometry is right, and a bearing drawn the wrong way round still looks
+// plausible.
+func TestScopePutsAircraftWhereTheyAre(t *testing.T) {
+	if scope("nowhere", 30, nil) != "" {
+		t.Error("an empty sky drew a scope")
+	}
+
+	// Due north at the full radius, due east at the full radius.
+	svg := scope("here", 30, []Aircraft{
+		{Callsign: "NORTH", Distance: 30, Bearing: 0, Altitude: 30000},
+		{Callsign: "EAST", Distance: 30, Bearing: 90, Altitude: 30000},
+	})
+	const c, r = scopeSize / 2, scopeSize/2 - 34
+	for _, want := range []string{
+		fmt.Sprintf("translate(%.1f,%.1f)", float64(c), float64(c-r)), // north is up
+		fmt.Sprintf("translate(%.1f,%.1f)", float64(c+r), float64(c)), // east is right
+	} {
+		if !strings.Contains(svg, want) {
+			t.Errorf("scope is missing a mark at %s", want)
+		}
+	}
+}
+
+func TestScopeDrawsGroundTrafficWithoutAHeading(t *testing.T) {
+	svg := scope("here", 30, []Aircraft{{Callsign: "PARKED", Distance: 1, OnGround: true, Track: 240}})
+	if !strings.Contains(svg, "fl-ground") {
+		t.Error("an aircraft on the ground was drawn as if flying")
+	}
+	if strings.Contains(svg, "rotate(240") {
+		t.Error("a parked aeroplane was given a heading, which is noise")
+	}
+}
+
+// TestScopeLabelsDoNotPileUp — labelling the nearest fourteen put seven
+// callsigns inside the innermost ring on top of one another, which hid the
+// marks they were meant to name.
+func TestScopeLabelsDoNotPileUp(t *testing.T) {
+	var crowd []Aircraft
+	for i := 0; i < 12; i++ {
+		crowd = append(crowd, Aircraft{
+			Callsign: fmt.Sprintf("TEST%03d", i),
+			Distance: 1 + float64(i)/20, Bearing: float64(i) * 3, Altitude: 5000,
+		})
+	}
+	svg := scope("here", 30, crowd)
+	labels := strings.Count(svg, `class="fl-tag"`)
+	if labels == 0 {
+		t.Fatal("a crowd of aircraft got no labels at all")
+	}
+	if labels > 3 {
+		t.Errorf("%d labels drawn in one square mile — they cannot all be readable", labels)
+	}
+}
+
+// TestScopeIgnoresWhatIsOutOfRange keeps the picture honest: a mark outside the
+// outer ring would be drawn beyond the range it claims to show.
+func TestScopeIgnoresWhatIsOutOfRange(t *testing.T) {
+	svg := scope("here", 30, []Aircraft{
+		{Callsign: "INSIDE", Distance: 10, Bearing: 0, Altitude: 9000},
+		{Callsign: "OUTSIDE", Distance: 45, Bearing: 0, Altitude: 9000},
+	})
+	if strings.Contains(svg, "OUTSIDE") {
+		t.Error("an aircraft beyond the outer ring was drawn inside it")
+	}
+	if !strings.Contains(svg, "INSIDE") {
+		t.Error("an aircraft within range was dropped")
+	}
+}

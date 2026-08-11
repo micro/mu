@@ -41,7 +41,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	case q != "":
 		b.WriteString(trackCard(q))
 	case near != "" || lat != 0 || lon != 0:
-		b.WriteString(overheadCard(near, lat, lon))
+		b.WriteString(overheadCard(near, lat, lon, radiusOr(r.URL.Query().Get("radius"))))
 	default:
 		b.WriteString(`<div class="card"><p class="text-sm text-muted">` +
 			`Positions come from ADS-B: aircraft broadcast where they are, volunteer ` +
@@ -112,24 +112,39 @@ location.href='/flights?lat='+p.coords.latitude.toFixed(4)+'&lon='+p.coords.long
 </script>`
 }
 
-// overheadCard is the sky near a place.
-func overheadCard(near string, lat, lon float64) string {
+// radiusOr reads the radius from the query string, defaulting to thirty
+// nautical miles and refusing anything the provider will not serve.
+func radiusOr(s string) int {
+	n, _ := strconv.Atoi(s)
+	if n <= 0 {
+		return 30
+	}
+	if n > maxRadiusNM {
+		return maxRadiusNM
+	}
+	return n
+}
+
+// overheadCard is the sky near a place: the scope, then the same aircraft as a
+// table. The picture answers where, the table answers what.
+func overheadCard(near string, lat, lon float64, radius int) string {
 	rlat, rlon, label, ok := resolve(near, lat, lon)
 	if !ok {
 		return notice("Couldn't find " + html.EscapeString(near) + ". Try an airport code, or a town and country.")
 	}
-	found, err := Near(rlat, rlon, 30)
+	found, err := Near(rlat, rlon, radius)
 	if err != nil {
 		return notice(problem(err))
 	}
 	if len(found) == 0 {
-		return notice("Nothing in the air within 30 nm of " + html.EscapeString(label) + " right now.")
+		return notice(fmt.Sprintf("Nothing in the air within %d nm of %s right now.", radius, html.EscapeString(label)))
 	}
 	sort.Slice(found, func(i, j int) bool { return found[i].Distance < found[j].Distance })
 
 	var b strings.Builder
 	b.WriteString(`<div class="card"><h3>` + html.EscapeString(label) + `</h3>`)
-	fmt.Fprintf(&b, `<p class="text-sm text-muted">%d aircraft within 30 nm, nearest first.</p>`, len(found))
+	b.WriteString(scope(label, radius, found))
+	fmt.Fprintf(&b, `<p class="text-sm text-muted">%d aircraft within %d nm, nearest first.</p>`, len(found), radius)
 	b.WriteString(`<table class="fl-table"><thead><tr><th>Flight</th><th>Aircraft</th>` +
 		`<th class="fl-num">Altitude</th><th class="fl-num">Speed</th><th class="fl-num">Distance</th></tr></thead><tbody>`)
 	for i, a := range found {
@@ -205,7 +220,7 @@ const pageCSS = `<style>
 .fl-table td{padding:6px 8px;border-bottom:1px solid #f4f4f4}
 .fl-num{text-align:right;white-space:nowrap}
 .fl-line{font-size:14px}
-</style>`
+` + scopeCSS + `</style>`
 
 // CardHTML renders the flights card for the home screen.
 //
