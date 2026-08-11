@@ -35,13 +35,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var b strings.Builder
-	b.WriteString(forms(q, near))
+	radius := radiusOr(r.URL.Query().Get("radius"))
+	b.WriteString(forms(q, near, radius))
 
 	switch {
 	case q != "":
 		b.WriteString(trackCard(q))
 	case near != "" || lat != 0 || lon != 0:
-		b.WriteString(overheadCard(near, lat, lon, radiusOr(r.URL.Query().Get("radius"))))
+		b.WriteString(overheadCard(near, lat, lon, radius))
 	default:
 		b.WriteString(`<div class="card"><p class="text-sm text-muted">` +
 			`Positions come from ADS-B: aircraft broadcast where they are, volunteer ` +
@@ -54,7 +55,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleJSON(w http.ResponseWriter, r *http.Request, q, near string, lat, lon float64) {
-	radius, _ := strconv.Atoi(r.URL.Query().Get("radius"))
+	radius := radiusOr(r.URL.Query().Get("radius"))
 	if q != "" {
 		found, err := Lookup(q)
 		if err != nil {
@@ -69,9 +70,6 @@ func handleJSON(w http.ResponseWriter, r *http.Request, q, near string, lat, lon
 		app.RespondError(w, http.StatusBadRequest, "give near, or lat and lon, or q for one flight")
 		return
 	}
-	if radius <= 0 {
-		radius = 30
-	}
 	found, err := Near(rlat, rlon, radius)
 	if err != nil {
 		app.RespondError(w, http.StatusServiceUnavailable, problem(err))
@@ -84,12 +82,13 @@ func handleJSON(w http.ResponseWriter, r *http.Request, q, near string, lat, lon
 }
 
 // forms are the two questions the page answers.
-func forms(q, near string) string {
+func forms(q, near string, radius int) string {
 	return `<div class="card fl-forms">
 <form method="GET" action="/flights" class="fl-form">
 <label class="fl-label" for="fl-near">What's overhead</label>
 <div class="fl-row">
 <input id="fl-near" type="text" name="near" value="` + html.EscapeString(near) + `" placeholder="A place or airport — Camden, London or LHR" autocomplete="off">
+<select name="radius" aria-label="Range in nautical miles" class="fl-range">` + ranges(radius) + `</select>
 <button type="submit">Look</button>
 </div>
 <a href="#" class="fl-here" onclick="muFlightsHere();return false">Use my location</a>
@@ -214,6 +213,7 @@ const pageCSS = `<style>
 .fl-label{display:block;font-size:12px;color:#888;margin-bottom:6px}
 .fl-row{display:flex;gap:8px}
 .fl-row input{flex:1;min-width:0}
+.fl-range{flex:0 0 auto}
 .fl-here{font-size:12px;color:#888;display:inline-block;margin-top:6px}
 .fl-table{width:100%;border-collapse:collapse;font-size:13px}
 .fl-table th{text-align:left;font-weight:normal;color:#888;padding:6px 8px;border-bottom:1px solid #eee}
@@ -256,4 +256,22 @@ var la=p.coords.latitude.toFixed(4),lo=p.coords.longitude.toFixed(4);
 localStorage.setItem(KEY,la);localStorage.setItem(KEY2,lo);show(la,lo)},function(){},{timeout:8000})};
 })();
 </script></div>`
+}
+
+// ranges are the distances the scope offers.
+//
+// The scope draws to whatever radius it is given, and until this existed the
+// only way to change it was to edit the URL. Five steps rather than a free
+// number: thirty miles is a town, a hundred is a region, and the provider stops
+// at 250 — a box that accepts 47 invites a precision the picture does not have.
+func ranges(selected int) string {
+	var b strings.Builder
+	for _, nm := range []int{10, 30, 60, 100, 250} {
+		sel := ""
+		if nm == selected {
+			sel = " selected"
+		}
+		fmt.Fprintf(&b, `<option value="%d"%s>%d nm</option>`, nm, sel, nm)
+	}
+	return b.String()
 }
