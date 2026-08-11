@@ -41,10 +41,20 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 		// identical from outside. Either somebody is poking at the endpoint, or
 		// the URL Twilio signed is not the one reconstructed here, and the
 		// second is a misconfiguration that silently drops every message.
-		app.Log("sms", "webhook signature did not match. Tried %s. Set TWILIO_WEBHOOK_URL "+
-			"to the address configured on the number if none of those is it",
-			strings.Join(signedURLs(r), ", "))
-		http.Error(w, "forbidden", http.StatusForbidden)
+		// The reason goes in the body as well as the log, because the log is
+		// on a machine and the body is in the provider's own request
+		// inspector — which is where somebody debugging a webhook already is.
+		// Nothing here is a secret: these are this instance's own public
+		// addresses, and a signature is not reversible without the token.
+		why := "signature did not match. tried: " + strings.Join(signedURLs(r), " ")
+		if r.Header.Get("X-Twilio-Signature") == "" {
+			why = "no X-Twilio-Signature header on the request"
+		}
+		if strings.TrimSpace(settings.Get("TWILIO_AUTH_TOKEN")) == "" {
+			why = "no TWILIO_AUTH_TOKEN configured, so nothing can be verified"
+		}
+		app.Log("sms", "webhook rejected: %s", why)
+		http.Error(w, "forbidden: "+why, http.StatusForbidden)
 		return
 	}
 
