@@ -50,3 +50,59 @@ func TestVerificationIsTwoSteps(t *testing.T) {
 		t.Error("the step you are on is hidden behind a closed triangle")
 	}
 }
+
+// A verified number is visible as a verified number.
+//
+// It succeeded silently: the page redirected, said nothing, and the only place
+// a verified number appeared was a line inside the recipient autocomplete. So a
+// verification that worked and one that failed looked the same, and the way to
+// find out was to try again and be told it was already yours.
+func TestAVerifiedNumberIsVisible(t *testing.T) {
+	setup(t)
+	const me, mine = "acct-1", "+447700900123"
+	r := httptest.NewRequest(http.MethodGet, "/sms", nil)
+
+	if got := verifier(r, me, "csrf"); strings.Contains(got, "Yours:") {
+		t.Error("a number is listed as verified before anything was verified")
+	}
+
+	if err := Verify(me, mine); err != nil {
+		t.Fatal(err)
+	}
+
+	got := verifier(r, me, "csrf")
+	if !strings.Contains(got, "Yours:") || !strings.Contains(got, mine) {
+		t.Errorf("the page does not say the number is yours: %s", got)
+	}
+	if !strings.Contains(got, "remove") {
+		t.Error("no way to give a number back — phones change hands")
+	}
+
+	Forget(me, mine)
+	if Verified(me, mine) {
+		t.Error("removing a number left it verified")
+	}
+}
+
+// And an action says it happened.
+func TestNoticeSaysWhatHappened(t *testing.T) {
+	for q, want := range map[string]string{
+		"verified": "yours now",
+		"code":     "Code sent",
+		"sent":     "Sent.",
+		"":         "",
+		"nonsense": "",
+	} {
+		r := httptest.NewRequest(http.MethodGet, "/sms?ok="+q, nil)
+		got := notice(r)
+		if want == "" {
+			if got != "" {
+				t.Errorf("ok=%q produced %q, want nothing", q, got)
+			}
+			continue
+		}
+		if !strings.Contains(got, want) {
+			t.Errorf("ok=%q = %q, want something about %q", q, got, want)
+		}
+	}
+}

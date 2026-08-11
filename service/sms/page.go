@@ -43,6 +43,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var b strings.Builder
+	b.WriteString(notice(r))
 	if !Configured() {
 		b.WriteString(`<div class="card"><h3>No number</h3>` +
 			`<p class="text-sm text-muted">This instance has no phone number configured, so it ` +
@@ -63,6 +64,29 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(pageCSS)
 
 	w.Write([]byte(app.RenderHTMLForRequest("SMS", "Text somebody, and read what they text back", b.String(), r)))
+}
+
+// notice says what just happened.
+//
+// Everything here redirected to /sms and said nothing, so a verification that
+// worked and one that failed looked identical: the page came back, the section
+// collapsed, and nowhere on it said which numbers were yours. Somebody who had
+// just verified a number could only find out by trying again and being told it
+// was already theirs.
+//
+// Keyed rather than free text — the message is ours, so the URL cannot put
+// words in the page's mouth.
+func notice(r *http.Request) string {
+	msg := map[string]string{
+		"sent":     "Sent.",
+		"code":     "Code sent. Type it in below.",
+		"verified": "That number is yours now.",
+		"forgot":   "That number is no longer yours.",
+	}[r.URL.Query().Get("ok")]
+	if msg == "" {
+		return ""
+	}
+	return `<div class="notice"><p>` + html.EscapeString(msg) + `</p></div>`
 }
 
 // allowance says what is left, in a sentence rather than a meter.
@@ -169,9 +193,29 @@ func verifier(r *http.Request, who, csrf string) string {
 			`<input type="hidden" name="start" value="` + html.EscapeString(number) + `">` +
 			`<button type="submit" class="link-button">Send another code</button></form>`)
 	} else {
+		// What is already yours, said out loud. It was only ever visible as a
+		// line in the recipient autocomplete, which is not a place anybody
+		// looks to answer "did that work".
+		if mine := Numbers(who); len(mine) > 0 {
+			b.WriteString(`<p class="text-sm">Yours: `)
+			for i, n := range mine {
+				if i > 0 {
+					b.WriteString(` · `)
+				}
+				b.WriteString(`<strong>` + html.EscapeString(n) + `</strong> ` +
+					`<a href="#" onclick="document.getElementById('forget-` +
+					html.EscapeString(n) + `').submit();return false;" class="link">remove</a>`)
+			}
+			b.WriteString(`</p>`)
+			for _, n := range mine {
+				b.WriteString(`<form method="POST" action="/sms" id="forget-` +
+					html.EscapeString(n) + `" style="display:none">` +
+					`<input type="hidden" name="_csrf" value="` + csrf + `">` +
+					`<input type="hidden" name="forget" value="` + html.EscapeString(n) + `"></form>`)
+			}
+		}
 		b.WriteString(`<form method="POST" action="/sms" class="sms-verify-form">` +
 			`<input type="hidden" name="_csrf" value="` + csrf + `">` +
-			`<input type="hidden" name="step" value="start">` +
 			`<input name="start" required placeholder="+447700900123" class="sms-in" ` +
 			`autocomplete="tel" aria-label="Your number">` +
 			`<button type="submit">Send code</button></form>` +
@@ -234,19 +278,26 @@ func handlePost(w http.ResponseWriter, r *http.Request, who string) {
 	}
 
 	var err error
+	done := ""
 	switch {
 	case r.Form.Get("send") != "":
 		_, err = Send(who, r.Form.Get("to"), r.Form.Get("text"))
+		done = "sent"
 	case strings.TrimSpace(r.Form.Get("start")) != "":
 		err = StartVerify(who, e164(r.Form.Get("start")))
+		done = "code"
 	case strings.TrimSpace(r.Form.Get("confirm")) != "":
 		err = Confirm(who, e164(r.Form.Get("confirm")), r.Form.Get("code"))
+		done = "verified"
+	case strings.TrimSpace(r.Form.Get("forget")) != "":
+		Forget(who, r.Form.Get("forget"))
+		done = "forgot"
 	}
 	if err != nil {
 		app.Error(w, r, http.StatusBadRequest, err.Error())
 		return
 	}
-	http.Redirect(w, r, "/sms", http.StatusSeeOther)
+	http.Redirect(w, r, "/sms?ok="+done, http.StatusSeeOther)
 }
 
 func itoa(n int) string {

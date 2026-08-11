@@ -321,6 +321,23 @@ func Verified(owner, number string) bool {
 	return err == nil && len(recs) > 0
 }
 
+// Forget drops a number this owner had verified.
+//
+// Verifying is reversible, because a number is not yours forever: phones change
+// hands, and a person who gave one up should be able to say so without an
+// argument.
+func Forget(owner, number string) {
+	number = e164(number)
+	recs, err := userdb.List(ns, owner, numbers, "mine",
+		map[string]interface{}{"number": number}, "", "", 10)
+	if err != nil {
+		return
+	}
+	for _, r := range recs {
+		userdb.Delete(ns, owner, numbers, r.ID) //nolint:errcheck
+	}
+}
+
 // Numbers lists what this owner has verified as theirs.
 func Numbers(owner string) []string {
 	recs, err := userdb.List(ns, owner, numbers, "mine", nil, "", "", 50)
