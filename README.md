@@ -4,9 +4,6 @@
 files, contacts, calendar and your own documents, as tools an agent can call over MCP
 and REST — behind one account instead of one per provider.
 
-The same services render as a web app: a home screen with a card per service
-and the agent inline.
-
 Use it live at [micro.mu](https://micro.mu), or run your own.
 
 ## Install
@@ -18,22 +15,16 @@ mu --serve
 
 Open **http://localhost:8080**. The first account you create is the admin.
 
-It runs with no configuration. On a fresh install, with no keys, these
-answer: **news, markets, weather, prayer times, quran, mail, files, contacts,
-calendar, tasks, your own documents, and search over your own content.** Weather
-comes from Open-Meteo; places and geocoding from OpenStreetMap. No account, no
-card, no signup.
+It runs with no configuration. A few things need an API key.
 
-Three things need a key, because there is no free provider worth wiring in:
 
 | For | Set | Notes |
 |---|---|---|
-| The agent, and anything that composes an answer | `ANTHROPIC_API_KEY`, `ATLAS_API_KEY`, or `OPENAI_BASE_URL` | free if you run Ollama locally |
+| AI features | `ANTHROPIC_API_KEY`, `ATLAS_API_KEY`, or `OPENAI_BASE_URL` | free if you run Ollama locally |
 | Web search | `BRAVE_API_KEY` | Brave has a free tier |
 | Video | `YOUTUBE_API_KEY` | free quota |
 
-Without them those tools say so plainly rather than failing oddly. Everything
-else keeps working.
+Follow setup in CLI
 
 ```bash
 mu setup        # pick an AI provider, paste a key
@@ -94,10 +85,7 @@ Scope the connection to the services you need:
 https://micro.mu/mcp?tools=news,web,mail
 ```
 
-That is what gets listed to your agent. Everything else is still callable.
-
-[micro.mu/tools](https://micro.mu/tools) lists every tool with what each call
-costs. See [Help](docs/HELP.md) for the protocol.
+See [micro.mu/tools](https://micro.mu/tools) for all the tools. See [Help](docs/HELP.md) for the protocol.
 
 ## The tools
 
