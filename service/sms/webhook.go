@@ -36,7 +36,14 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !validSignature(r, publicURL(r), r.PostForm) {
-		// Deliberately terse. Anything more is a hint to whoever is probing.
+		// Terse to the caller — anything more is a hint to whoever is probing —
+		// and loud in the log, because the two reasons this happens look
+		// identical from outside. Either somebody is poking at the endpoint, or
+		// the URL Twilio signed is not the one reconstructed here, and the
+		// second is a misconfiguration that silently drops every message.
+		app.Log("sms", "webhook signature did not match for %s — if messages are "+
+			"being lost, check that the number's webhook URL is exactly %s",
+			publicURL(r), publicURL(r))
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
