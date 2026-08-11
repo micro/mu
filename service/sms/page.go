@@ -133,18 +133,60 @@ func composer(r *http.Request, who string) string {
 		`" placeholder="Say it in 160 characters and it costs one message"></textarea>` +
 		`<div><button type="submit">Send</button></div></form>`)
 
-	// Verifying your own number, folded in rather than given a page: it is done
-	// once and never thought about again.
-	b.WriteString(`<details class="sms-verify"><summary>Verify a number as your own</summary>` +
-		`<form method="POST" action="/sms" class="sms-verify-form">` +
-		`<input type="hidden" name="_csrf" value="` + csrf + `">` +
-		`<input name="verify" placeholder="+447700900123" class="sms-in" aria-label="Your number">` +
-		`<input name="code" placeholder="code, if you have one" class="sms-in" aria-label="The code that was texted to you">` +
-		`<button type="submit">Send code</button></form>` +
-		`<p class="text-sm text-muted">A code is texted there and charged like any other message. ` +
-		`Send the number on its own first, then the number and the code together.</p></details>`)
+	b.WriteString(verifier(r, who, csrf))
 	b.WriteString(`</div>`)
 	return b.String()
+}
+
+// verifier is claiming a number as your own, in two steps that are two forms.
+//
+// It was one form — a box for the number, a box for a code, one button — and
+// which thing it did depended on whether the second box was empty. Enter a
+// number, press "Send code", and if anything at all had found its way into the
+// code field you were told to "ask for a code first", about the step you were
+// trying to take. A form should not have a mode.
+func verifier(r *http.Request, who, csrf string) string {
+	number, waiting := Pending(who)
+
+	// Open when there is a code to type in, and open when this account has not
+	// verified anything yet — a disclosure triangle is for a thing you are done
+	// with, and until one number is yours this is a step, not a footnote.
+	var b strings.Builder
+	b.WriteString(`<details class="sms-verify"` + openIf(waiting || len(Numbers(who)) == 0) + `>` +
+		`<summary>Verify a number as your own</summary>`)
+
+	if waiting {
+		b.WriteString(`<p class="text-sm">A code went to <strong>` + html.EscapeString(number) +
+			`</strong>. It is good for ten minutes.</p>` +
+			`<form method="POST" action="/sms" class="sms-verify-form">` +
+			`<input type="hidden" name="_csrf" value="` + csrf + `">` +
+			`<input type="hidden" name="confirm" value="` + html.EscapeString(number) + `">` +
+			`<input name="code" inputmode="numeric" autocomplete="one-time-code" required ` +
+			`placeholder="123456" class="sms-in" aria-label="The code that was texted to you">` +
+			`<button type="submit">Confirm</button></form>` +
+			`<form method="POST" action="/sms" style="margin:8px 0 0">` +
+			`<input type="hidden" name="_csrf" value="` + csrf + `">` +
+			`<input type="hidden" name="start" value="` + html.EscapeString(number) + `">` +
+			`<button type="submit" class="link-button">Send another code</button></form>`)
+	} else {
+		b.WriteString(`<form method="POST" action="/sms" class="sms-verify-form">` +
+			`<input type="hidden" name="_csrf" value="` + csrf + `">` +
+			`<input type="hidden" name="step" value="start">` +
+			`<input name="start" required placeholder="+447700900123" class="sms-in" ` +
+			`autocomplete="tel" aria-label="Your number">` +
+			`<button type="submit">Send code</button></form>` +
+			`<p class="text-sm text-muted">We text a code there, charged like any other message. ` +
+			`Type it back here and the number is yours — which is what lets a reply to it reach you.</p>`)
+	}
+	b.WriteString(`</details>`)
+	return b.String()
+}
+
+func openIf(b bool) string {
+	if b {
+		return " open"
+	}
+	return ""
 }
 
 // threads is the history, grouped by the other end.
@@ -195,13 +237,10 @@ func handlePost(w http.ResponseWriter, r *http.Request, who string) {
 	switch {
 	case r.Form.Get("send") != "":
 		_, err = Send(who, r.Form.Get("to"), r.Form.Get("text"))
-	case strings.TrimSpace(r.Form.Get("verify")) != "":
-		number := r.Form.Get("verify")
-		if code := strings.TrimSpace(r.Form.Get("code")); code != "" {
-			err = Confirm(who, e164(number), code)
-		} else {
-			err = StartVerify(who, e164(number))
-		}
+	case strings.TrimSpace(r.Form.Get("start")) != "":
+		err = StartVerify(who, e164(r.Form.Get("start")))
+	case strings.TrimSpace(r.Form.Get("confirm")) != "":
+		err = Confirm(who, e164(r.Form.Get("confirm")), r.Form.Get("code"))
 	}
 	if err != nil {
 		app.Error(w, r, http.StatusBadRequest, err.Error())

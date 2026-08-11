@@ -24,8 +24,16 @@ import (
 	"mu/internal/settings"
 )
 
-// send hands one message to Twilio and returns its id.
-func send(to, body string) (string, error) {
+// send hands one message to the provider and returns its id.
+//
+// A variable so a test can stand in front of it. Everything interesting about
+// this service is what happens either side of the provider call — the refusals
+// before it and the bookkeeping after — and none of that was reachable by a
+// test while the only way to get past this line was a live account.
+var send = deliver
+
+// deliver is the real thing.
+func deliver(to, body string) (string, error) {
 	sid := strings.TrimSpace(settings.Get("TWILIO_ACCOUNT_SID"))
 	token := strings.TrimSpace(settings.Get("TWILIO_AUTH_TOKEN"))
 	if sid == "" || token == "" {

@@ -131,6 +131,31 @@ func Confirm(owner, number, code string) error {
 	return Verify(owner, number)
 }
 
+// Pending returns the number this owner has a live code for, if any.
+//
+// The page needs it to know which of the two steps to show. Without it the
+// form had to be one box for a number, one for a code and a single button that
+// guessed which you meant from whether the second was empty — so a browser
+// autofilling a field called "code" sent you to "ask for a code first", which
+// is a sentence about a step you were trying to take.
+func Pending(owner string) (string, bool) {
+	recs, err := userdb.List(ns, owner, codes, "mine", nil, "", "", 5)
+	if err != nil {
+		return "", false
+	}
+	for _, r := range recs {
+		at, _ := r.Data["at"].(string)
+		when, err := time.Parse(time.RFC3339, at)
+		if err != nil || time.Since(when) > codeMaxAge {
+			continue
+		}
+		if n, _ := r.Data["number"].(string); n != "" {
+			return n, true
+		}
+	}
+	return "", false
+}
+
 func clearCodes(owner, number string) {
 	recs, err := userdb.List(ns, owner, codes, "mine",
 		map[string]interface{}{"number": number}, "", "", 10)
