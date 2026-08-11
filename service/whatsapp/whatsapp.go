@@ -189,11 +189,14 @@ func OwnerOf(num string) string {
 	}
 	recs, err := userdb.List(ns, instance, routes, "mine",
 		map[string]interface{}{"number": num}, "", "", 1)
-	if err != nil || len(recs) == 0 {
-		return ""
+	if err == nil && len(recs) > 0 {
+		if owner, _ := recs[0].Data["owner"].(string); owner != "" {
+			return owner
+		}
 	}
-	owner, _ := recs[0].Data["owner"].(string)
-	return owner
+	// Whoever runs the instance owns its number, so an unclaimed message is
+	// theirs to see. Dropping it was tidier and lost messages.
+	return sms.Fallback()
 }
 
 // DeleteAll removes everything whatsapp holds for an owner.

@@ -69,8 +69,16 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	if from == "" {
 		from = "a number Twilio picks"
 	}
+	// Which numbers are yours, on the page rather than inside the fold. It was
+	// only visible with the verification section open, so somebody who had
+	// verified a number and closed it had no way to see that they had, and no
+	// way to tell why a message from that number went somewhere else.
+	yours := ""
+	if mine := Numbers(who); len(mine) > 0 {
+		yours = " Yours: " + strings.Join(mine, ", ") + "."
+	}
 	b.WriteString(`<p class="text-sm text-muted">Sent from <strong>` + html.EscapeString(from) +
-		`</strong>. ` + html.EscapeString(allowance(who)) + `</p>`)
+		`</strong>. ` + html.EscapeString(allowance(who)+yours) + `</p>`)
 	b.WriteString(composer(r, who))
 	b.WriteString(threads(history))
 	b.WriteString(pageCSS)

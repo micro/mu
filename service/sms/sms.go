@@ -420,14 +420,44 @@ func unclaim(owner, number string) {
 }
 
 // claimant is the account that proved this number is theirs, if any.
+//
+// Falls back to looking, and writes what it finds. Numbers verified before
+// there was a claim to write have none, and the symptom of that is a message
+// arriving from a number its owner had proved was theirs and going nowhere —
+// so rather than a migration that has to be remembered, the miss repairs
+// itself the first time it matters.
 func claimant(number string) string {
 	recs, err := userdb.List(ns, instance, claims, "mine",
 		map[string]interface{}{"number": number}, "", "", 1)
-	if err != nil || len(recs) == 0 {
-		return ""
+	if err == nil && len(recs) > 0 {
+		if owner, _ := recs[0].Data["owner"].(string); owner != "" {
+			return owner
+		}
 	}
-	owner, _ := recs[0].Data["owner"].(string)
-	return owner
+	for _, acc := range auth.GetAllAccounts() {
+		if acc != nil && Verified(acc.ID, number) {
+			claim(acc.ID, number)
+			return acc.ID
+		}
+	}
+	return ""
+}
+
+// Fallback is who an arriving message goes to when nobody has a claim on the
+// number it came from.
+//
+// The instance's number belongs to whoever runs the instance, so an unsolicited
+// message is theirs to see. This was a drop, on the reasoning that a stranger's
+// message is not evidence about any account — true, and it made the failure a
+// black hole: the message was gone and nobody was told. Somebody reading it who
+// did not expect it is a smaller harm than a message nobody ever sees.
+func Fallback() string {
+	for _, acc := range auth.GetAllAccounts() {
+		if acc != nil && acc.Admin {
+			return acc.ID
+		}
+	}
+	return ""
 }
 
 // Verified reports whether this number belongs to this owner.
@@ -691,11 +721,12 @@ func OwnerOf(number string) string {
 	}
 	recs, err := userdb.List(ns, instance, routes, "mine",
 		map[string]interface{}{"number": number}, "", "", 1)
-	if err != nil || len(recs) == 0 {
-		return ""
+	if err == nil && len(recs) > 0 {
+		if owner, _ := recs[0].Data["owner"].(string); owner != "" {
+			return owner
+		}
 	}
-	owner, _ := recs[0].Data["owner"].(string)
-	return owner
+	return Fallback()
 }
 
 // DeleteAll removes everything sms holds for an owner (account deletion).

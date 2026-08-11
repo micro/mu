@@ -187,8 +187,11 @@ func TestWebhookRefusesUnsignedRequests(t *testing.T) {
 // all if this instance never did.
 func TestInboundGoesToTheConversationItAnswers(t *testing.T) {
 	setup(t)
-	if OwnerOf("+447700900123") != "" {
-		t.Error("a number nobody has texted belongs to somebody")
+	// Nobody has a claim or a conversation, so it goes to whoever runs the
+	// instance — a message nobody sees is worse than one somebody unexpected
+	// does. With no admin there is nobody to give it to.
+	if got := OwnerOf("+447700900123"); got != Fallback() {
+		t.Errorf("OwnerOf = %q with no claim and no conversation, want the fallback %q", got, Fallback())
 	}
 	Record("acct-1", "out", "+447700900123", "hello", 1)
 	if got := OwnerOf("+447700900123"); got != "acct-1" {

@@ -106,8 +106,8 @@ func TestVerifyingClaimsWhatComesFromTheNumber(t *testing.T) {
 	setup(t)
 	const me, other, mine = "acct-1", "acct-2", "+447700900123"
 
-	if OwnerOf(mine) != "" {
-		t.Fatal("a number nobody has claimed belongs to somebody")
+	if got := OwnerOf(mine); got != Fallback() {
+		t.Fatalf("OwnerOf = %q before anybody claimed it, want the fallback %q", got, Fallback())
 	}
 
 	if err := Verify(me, mine); err != nil {
