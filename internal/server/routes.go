@@ -340,8 +340,28 @@ func registerRoutes() {
 	http.HandleFunc("/notes", notes.Handler)
 	http.HandleFunc("/sms", sms.Handler)
 	http.HandleFunc("/whatsapp", whatsappsvc.Handler)
-	http.HandleFunc("/whatsapp/twilio", whatsappsvc.WebhookHandler)
-	http.HandleFunc("/sms/webhook", sms.WebhookHandler)
+
+	// One inbound endpoint for both, because Twilio uses one.
+	//
+	// A Messaging Service carries a phone number and a WhatsApp sender
+	// together and posts everything that arrives to the one webhook on it, so
+	// a WhatsApp message turned up at /sms/webhook and was refused there for
+	// not being a phone number. Two paths were registered on the belief that
+	// one endpoint would mean guessing which channel had called, and the
+	// payload settles it without guessing: WhatsApp addresses carry a
+	// whatsapp: prefix. Both paths still answer, so whichever is configured
+	// works.
+	inbound := func(w http.ResponseWriter, r *http.Request) {
+		r.ParseForm() //nolint:errcheck — the handlers parse again and report it
+		if strings.HasPrefix(r.PostForm.Get("From"), "whatsapp:") ||
+			strings.HasPrefix(r.PostForm.Get("To"), "whatsapp:") {
+			whatsappsvc.WebhookHandler(w, r)
+			return
+		}
+		sms.WebhookHandler(w, r)
+	}
+	http.HandleFunc("/whatsapp/twilio", inbound)
+	http.HandleFunc("/sms/webhook", inbound)
 	http.HandleFunc("/contacts/", contacts.Handler)
 	http.HandleFunc("/tasks", tasks.Handler)
 	http.HandleFunc("/tasks/", tasks.Handler)
