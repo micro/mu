@@ -125,9 +125,11 @@ type VerifyResponse struct {
 // Verify claims a number as the caller's own, in two steps.
 //
 // Called without a code it texts one to that number; called with the code it
-// records the number. Proving it is yours is what makes the first message to it
-// legal — otherwise "verify" would be a way to text any stranger once, and the
-// rule about only texting numbers you know would be decoration.
+// records the number. What that buys is routing: this instance has one number
+// for everybody, so a message arriving on it has to be given to an account, and
+// having proved a number is yours is the only claim strong enough to decide
+// that. Without it an inbound message goes to whoever last texted that number
+// from here, which is a guess.
 // @example {"number": "+447700900123"}
 func (Server) Verify(ctx context.Context, req *VerifyRequest, rsp *VerifyResponse) error {
 	owner, err := caller(ctx)
@@ -181,6 +183,6 @@ var Spec = service.Spec{
 		"Number": {AccountOnly: true,
 			Doc: "The number texts are sent from, which numbers are verified as yours, and how many messages are left today"},
 		"Verify": {AccountOnly: true,
-			Doc: "Claim a number as your own. Call it with just the number to have a code texted there, then again with the code"},
+			Doc: "Claim a number as your own, so texts arriving from it reach this account. Call it with just the number to have a code texted there, then again with the code"},
 	},
 }

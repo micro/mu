@@ -94,3 +94,39 @@ func codeIn(t *testing.T, body string) string {
 	}
 	return got[:6]
 }
+
+// Verifying a number is what makes a message from it yours.
+//
+// This was the whole point and it did not happen: an inbound message went to
+// whoever last texted that number from here, so texting the instance from your
+// own phone reached nobody unless you had texted yourself first. "Verified"
+// meant a label in an autocomplete, and the page said it was what let a reply
+// reach you, which was not true.
+func TestVerifyingClaimsWhatComesFromTheNumber(t *testing.T) {
+	setup(t)
+	const me, other, mine = "acct-1", "acct-2", "+447700900123"
+
+	if OwnerOf(mine) != "" {
+		t.Fatal("a number nobody has claimed belongs to somebody")
+	}
+
+	if err := Verify(me, mine); err != nil {
+		t.Fatal(err)
+	}
+	if got := OwnerOf(mine); got != me {
+		t.Errorf("OwnerOf = %q, want %q — verifying a number should route it", got, me)
+	}
+
+	// Somebody else texting that phone from here does not take it over. They
+	// have shown they know the number, not that it is theirs.
+	Record(other, "out", mine, "hello", 1)
+	if got := OwnerOf(mine); got != me {
+		t.Errorf("OwnerOf = %q after somebody else texted it, want %q", got, me)
+	}
+
+	// Giving it up hands it back to the last conversation.
+	Forget(me, mine)
+	if got := OwnerOf(mine); got != other {
+		t.Errorf("OwnerOf = %q after the owner gave it up, want the last conversation %q", got, other)
+	}
+}

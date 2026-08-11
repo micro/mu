@@ -1,6 +1,13 @@
 package sms
 
-// Claiming a number as your own.
+// Claiming a number as your own, and what that is worth.
+//
+// It is what decides who an inbound message belongs to. This instance has one
+// number for everybody, so a text arriving on it has to be given to an account,
+// and "I proved this number is mine" is the only claim strong enough to decide
+// that. Everything else is a guess — the fallback is whoever last texted that
+// number from here, which is right often enough to be worth having and wrong
+// whenever two accounts know the same person.
 //
 // This is the one place a message goes to a number the sender does not already
 // know, because it is what makes knowing one possible. That makes it the

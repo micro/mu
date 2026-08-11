@@ -15,6 +15,8 @@
 // sent them. So the rules below are not defensive programming, they are the
 // service:
 //
+//   - Verifying a number is what routes it: prove a number is yours and texts
+//     arriving from it reach your account rather than whoever last texted it.
 //   - Only to countries the operator allows, because a text to a premium
 //     destination costs fifty times what one to a mobile does, and those ranges
 //     are where revenue-share fraud lives.
@@ -62,6 +64,7 @@ const (
 	numbers  = "numbers"  // numbers this account has verified as its own
 	optouts  = "optouts"  // numbers that said STOP — instance-wide
 	routes   = "routes"   // number → the account an inbound reply belongs to
+	claims   = "claims"   // number → the account that proved the number is theirs
 	instance = "instance" // what the instance owns rather than any account
 
 	maxBody     = 480 // as long as one call may be
@@ -309,9 +312,60 @@ func Verify(owner, number string) error {
 	if Verified(owner, number) {
 		return nil
 	}
-	_, err := userdb.Create(ns, owner, numbers,
-		map[string]interface{}{"number": number, "at": time.Now().Format(time.RFC3339)}, false)
-	return err
+	if _, err := userdb.Create(ns, owner, numbers,
+		map[string]interface{}{"number": number, "at": time.Now().Format(time.RFC3339)}, false); err != nil {
+		return err
+	}
+	claim(owner, number)
+	return nil
+}
+
+// claim records, instance-wide, that this number belongs to this account.
+//
+// This is what verifying is for. Without it "verified" meant a label in an
+// autocomplete: an inbound message was given to whoever last texted that number
+// from here, so texting the instance from your own phone reached nobody unless
+// you had texted yourself first. Proving a number is yours is the one claim
+// strong enough to route on, and it beats the last-conversation guess, because
+// somebody who texted your phone from here has not shown it is theirs.
+//
+// Instance-owned, like the opt-out list, because one account cannot read
+// another's records and the router has to be able to ask.
+func claim(owner, number string) {
+	recs, err := userdb.List(ns, instance, claims, "mine",
+		map[string]interface{}{"number": number}, "", "", 1)
+	data := map[string]interface{}{
+		"number": number, "owner": owner, "at": time.Now().Format(time.RFC3339),
+	}
+	if err == nil && len(recs) == 1 {
+		// A phone changes hands, so the most recent proof wins.
+		userdb.Update(ns, instance, claims, recs[0].ID, data, false) //nolint:errcheck
+		return
+	}
+	userdb.Create(ns, instance, claims, data, false) //nolint:errcheck
+}
+
+// unclaim drops the claim, but only if it is this owner's to drop.
+func unclaim(owner, number string) {
+	recs, err := userdb.List(ns, instance, claims, "mine",
+		map[string]interface{}{"number": number, "owner": owner}, "", "", 5)
+	if err != nil {
+		return
+	}
+	for _, r := range recs {
+		userdb.Delete(ns, instance, claims, r.ID) //nolint:errcheck
+	}
+}
+
+// claimant is the account that proved this number is theirs, if any.
+func claimant(number string) string {
+	recs, err := userdb.List(ns, instance, claims, "mine",
+		map[string]interface{}{"number": number}, "", "", 1)
+	if err != nil || len(recs) == 0 {
+		return ""
+	}
+	owner, _ := recs[0].Data["owner"].(string)
+	return owner
 }
 
 // Verified reports whether this number belongs to this owner.
@@ -336,6 +390,7 @@ func Forget(owner, number string) {
 	for _, r := range recs {
 		userdb.Delete(ns, owner, numbers, r.ID) //nolint:errcheck
 	}
+	unclaim(owner, number)
 }
 
 // Numbers lists what this owner has verified as theirs.
@@ -566,6 +621,11 @@ func OwnerOf(number string) string {
 	number = e164(number)
 	if number == "" {
 		return ""
+	}
+	// Somebody who proved this number is theirs owns what comes from it,
+	// whoever happened to text it last.
+	if owner := claimant(number); owner != "" {
+		return owner
 	}
 	recs, err := userdb.List(ns, instance, routes, "mine",
 		map[string]interface{}{"number": number}, "", "", 1)
