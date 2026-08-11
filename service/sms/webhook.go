@@ -17,8 +17,10 @@ package sms
 // is a duplicate in somebody's history.
 
 import (
+	"fmt"
 	"html"
 	"net/http"
+	"sort"
 	"strings"
 
 	"mu/internal/app"
@@ -46,7 +48,16 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 		// inspector — which is where somebody debugging a webhook already is.
 		// Nothing here is a secret: these are this instance's own public
 		// addresses, and a signature is not reversible without the token.
-		why := "signature did not match. tried: " + strings.Join(signedURLs(r), " ")
+		// The parameter names matter as much as the URL: the signature covers
+		// them, and a body that did not survive the proxy signs as nothing at
+		// all while looking from here like a request that simply did not match.
+		names := make([]string, 0, len(r.PostForm))
+		for k := range r.PostForm {
+			names = append(names, k)
+		}
+		sort.Strings(names)
+		why := fmt.Sprintf("signature did not match. tried: %s. %d params: %s",
+			strings.Join(signedURLs(r), " "), len(names), strings.Join(names, ","))
 		if r.Header.Get("X-Twilio-Signature") == "" {
 			why = "no X-Twilio-Signature header on the request"
 		}
