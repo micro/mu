@@ -47,6 +47,30 @@ func resolveProvider(model string) (provider, apiKey, baseURL string, err error)
 	return "", "", "", fmt.Errorf("no AI provider configured — set ANTHROPIC_API_KEY, ATLAS_API_KEY, OPENROUTER_API_KEY or OPENAI_BASE_URL (Ollama)")
 }
 
+// modelFor is the model id the resolved provider will actually accept.
+//
+// The provider and the model are chosen by separate rules, so a model can
+// arrive somewhere that has never heard of it. An OpenAI-compatible local
+// server already had this handled below; OpenRouter needs the same, because two
+// ordinary configurations send it a Claude id it answers with a 400:
+// ANTHROPIC_MODEL left set from a previous provider, which DefaultModel returns
+// before it considers OpenRouter at all, and any caller still holding a
+// hard-coded default. Both mean the same thing — this is not a slug OpenRouter
+// knows — and the answer to both is the configured slug.
+func modelFor(provider, model string) string {
+	if provider != "openrouter" {
+		return model
+	}
+	// isOpenRouterModel only asks whether it looks like provider/model, and an
+	// Atlas slug looks the same. Atlas is claimed first wherever both could
+	// match, so reaching here with one means there was no Atlas key and it is
+	// not a slug OpenRouter has either.
+	if !isOpenRouterModel(model) || isAtlasModel(model) {
+		return OpenRouterModel()
+	}
+	return model
+}
+
 // generateViaMicro routes an LLM request through go-micro's ai package — the
 // framework is the spine for every model call. The system prompt is sent
 // separately, prior turns become conversation history, and the final user
@@ -68,7 +92,7 @@ func generateViaMicro(model, systemPrompt string, messages []map[string]string, 
 		maxTok = 512
 	}
 
-	useModel := model
+	useModel := modelFor(provider, model)
 	if provider == "openai" && strings.HasPrefix(model, "claude") {
 		useModel = detectLocalModel(baseURL, apiKey)
 		if useModel == "" {
@@ -134,7 +158,7 @@ func streamViaMicro(model, systemPrompt string, messages []map[string]string, ca
 		maxTok = 512
 	}
 
-	useModel := model
+	useModel := modelFor(provider, model)
 	if provider == "openai" && strings.HasPrefix(model, "claude") {
 		useModel = detectLocalModel(baseURL, apiKey)
 		if useModel == "" {
