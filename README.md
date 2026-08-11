@@ -2,7 +2,7 @@
 
 **Tools for agents.** News, mail, search, weather, markets, video, places,
 files, contacts, calendar and your own documents, as tools an agent can call over MCP
-and REST — behind one account instead of one per provider.
+and REST — behind one account instead of many providers.
 
 Use it live at [micro.mu](https://micro.mu), or run your own.
 
