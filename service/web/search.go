@@ -1,4 +1,4 @@
-package search
+package web
 
 import (
 	"encoding/json"
@@ -21,8 +21,6 @@ import (
 // Load initializes the search package. It registers no service of its own:
 // the web search capability is web.Search, and this package provides the
 // provider, the reader and the /search page that sit around it.
-func Load() {}
-
 // BraveResult represents a single result from the Brave Search API
 type BraveResult struct {
 	Title       string `json:"title"`

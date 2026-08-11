@@ -44,13 +44,12 @@ Built on go-micro: every capability is a go-micro service, the assistant is a go
 | `internal/phone/` | Who a phone number belongs to: normalising it, and the proof that an account owns it. Shared by `service/sms` and `service/whatsapp`, because a number is a number whichever message it carries |
 | `internal/twilio/` | The provider under `service/sms` and `service/whatsapp`: credentials, the send, and the webhook signature. It holds no opinion about what may be sent |
 | `internal/quota/` | What things cost and who may do them. The only thing a service knows about money — it holds prices, not balances. Prices are `quota.json` at the top level, not Go |
-| `service/search/` | Brave provider, readability reader, the /search page (no service of its own) |
 | `service/docs/` | The caller's own documents — named collections that outlive a conversation. Apps keep a separate store each |
 | `service/files/` | Per-user file storage — keep a file, get a URL, read it back |
 | `service/contacts/` | The caller's address book, so a name resolves to an address (headless) |
 | `service/whatsapp/` | Reply to people on WhatsApp, through Twilio. Bounded by Meta's 24-hour window, so it answers rather than initiates. The Meta bot in `client/whatsapp/` is the other half — a door, not a capability |
 | `service/sms/` | A phone number: text somebody, read what they text back. Twilio. The rules about who you may text are the service, not decoration — see the package comment |
-| `service/web/` | The open web: search it (`web.Search`), fetch a URL (`web.Fetch`) |
+| `service/web/` | The open web: search it (`web.Search`), fetch a URL (`web.Fetch`). The Brave provider, the readability reader and the /search page live here too — they were `service/search`, a directory under `service/` that was not a service |
 | `service/stream/` | The console — this instance's own event timeline |
 | `service/chat/` | Live discussion rooms attached to an item |
 | `internal/profile/` | The public face of an account: the page at /@username, and who is online |

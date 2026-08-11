@@ -132,3 +132,47 @@ func TestTheServerRegistersNoToolsByHand(t *testing.T) {
 		}
 	}
 }
+
+// TestEveryDirectoryUnderServiceIsAService is the other half of "every Spec
+// lives under service/".
+//
+// One exception was one too many. service/search held the /search page and its
+// providers while the capability itself was the web service, and it cost twice:
+// a directory under service/ that answered to no entry in the catalogue, and a
+// sideways import from web to reach its own provider. The rule only means
+// anything while it is true of every directory, and until this test existed
+// nothing could notice a new one that was not a service.
+//
+// A subdirectory is fine — service/news/digest is part of news, not a service
+// beside it. This checks the top level only.
+func TestEveryDirectoryUnderServiceIsAService(t *testing.T) {
+	spec := regexp.MustCompile(`Spec = service\.Spec\{`)
+
+	dirs, err := os.ReadDir(at("service"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := 0
+	for _, d := range dirs {
+		if !d.IsDir() {
+			continue
+		}
+		found++
+		files, _ := filepath.Glob(filepath.Join(at("service", d.Name()), "*.go"))
+		declares := false
+		for _, f := range files {
+			b, err := os.ReadFile(f)
+			if err == nil && spec.Match(b) {
+				declares = true
+				break
+			}
+		}
+		if !declares {
+			t.Errorf("service/%s declares no Spec — a directory here is a service, "+
+				"and shared code belongs in internal/", d.Name())
+		}
+	}
+	if found < 15 {
+		t.Fatalf("only found %d directories — the scan is broken, not the code", found)
+	}
+}

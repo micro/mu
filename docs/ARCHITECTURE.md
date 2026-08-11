@@ -30,7 +30,6 @@ mu/
 │   ├── notes/
 │   ├── places/
 │   ├── prayer/
-│   ├── search/            # the /search page and its providers, not a service
 │   ├── sms/
 │   ├── social/
 │   ├── stream/
@@ -72,9 +71,11 @@ mu/
 └── docs/                   # this folder, served at /help
 ```
 
-`service/search` is the exception to "one directory per service": it holds the
-`/search` page and its providers — Brave, the readability reader — while the
-capability itself is the `web` service.
+There is no exception to "one directory per service". There was one —
+`service/search` held the `/search` page and its providers while the capability
+itself was the `web` service — and it cost twice: a directory under `service/`
+that was not a service, and a sideways import from `web` to reach its own
+provider. Both went away when the two halves became one directory.
 
 `internal/service` is the runtime that hosts services — it is not itself
 a service.

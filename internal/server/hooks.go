@@ -47,12 +47,12 @@ import (
 	"mu/service/markets"
 	"mu/service/news"
 	"mu/service/news/digest"
-	"mu/service/search"
 	"mu/service/sms"
 	"mu/service/social"
 	"mu/service/stream"
 	"mu/service/tasks"
 	"mu/service/user"
+	"mu/service/web"
 	whatsappsvc "mu/service/whatsapp"
 	"mu/wallet"
 )
@@ -429,7 +429,7 @@ func wireHooks() {
 	digest.Load()
 
 	// load search
-	search.Load()
+	web.Load()
 
 	// load docs
 	help.Load()
@@ -549,7 +549,7 @@ func wireHooks() {
 	data.StartIndexing()
 
 	// Start web search topics (loads cache from disk, generates in background)
-	search.StartTopics()
+	web.StartTopics()
 
 	// Start daily opinion generation (publishes as blog post)
 	blog.StartOpinion()

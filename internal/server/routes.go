@@ -44,7 +44,6 @@ import (
 	"mu/service/notes"
 	"mu/service/places"
 	"mu/service/prayer"
-	"mu/service/search"
 	"mu/service/sms"
 	"mu/service/social"
 	"mu/service/stream"
@@ -52,6 +51,7 @@ import (
 	"mu/service/user"
 	"mu/service/video"
 	"mu/service/weather"
+	"mu/service/web"
 	whatsappsvc "mu/service/whatsapp"
 	"mu/wallet"
 )
@@ -275,17 +275,17 @@ func registerRoutes() {
 
 	// serve search page (local + Brave web search)
 	// serve search page
-	http.HandleFunc("/search", search.WebHandler)
+	http.HandleFunc("/search", web.WebHandler)
 	http.HandleFunc("/web", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/search?"+r.URL.RawQuery, http.StatusMovedPermanently)
 	})
-	http.HandleFunc("/web/preview", search.PreviewHandler)
+	http.HandleFunc("/web/preview", web.PreviewHandler)
 
 	// serve web fetch page (fetch and clean a URL)
-	http.HandleFunc("/web/fetch", search.FetchHandler)
+	http.HandleFunc("/web/fetch", web.FetchHandler)
 
 	// serve clean reader page for web results
-	http.HandleFunc("/web/read", search.ReadHandler)
+	http.HandleFunc("/web/read", web.ReadHandler)
 
 	// serve fact-check page and API
 

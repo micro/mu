@@ -21,7 +21,6 @@ import (
 	"mu/internal/app"
 	"mu/internal/quota"
 	"mu/internal/service"
-	"mu/service/search"
 )
 
 // Server is the service handler. Its methods are exposed as RPC endpoints and,
@@ -42,7 +41,7 @@ type SearchResponse struct {
 // Search searches the web for current information and news.
 // @example {"query": "latest AI news"}
 func (Server) Search(_ context.Context, req *SearchRequest, rsp *SearchResponse) error {
-	rsp.Text = search.WebSearchText(req.Query, req.Limit)
+	rsp.Text = WebSearchText(req.Query, req.Limit)
 	return nil
 }
 
@@ -66,7 +65,7 @@ type FetchResponse struct {
 //
 // @example {"url": "https://example.com"}
 func (Server) Fetch(_ context.Context, req *FetchRequest, rsp *FetchResponse) error {
-	title, content, err := search.FetchAndExtract(req.URL)
+	title, content, err := FetchAndExtract(req.URL)
 	if err != nil {
 		return err
 	}

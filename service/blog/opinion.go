@@ -12,8 +12,8 @@ import (
 	"mu/service/markets"
 	"mu/service/news"
 	"mu/service/prayer"
-	"mu/service/search"
 	"mu/service/video"
+	"mu/service/web"
 )
 
 // opinionTag is the tag used for daily opinion posts.
@@ -432,7 +432,7 @@ func researchCategoryStories(category string) string {
 			query = query[:120]
 		}
 
-		results, err := search.SearchBraveCached(query, 5)
+		results, err := web.SearchBraveCached(query, 5)
 		if err != nil || len(results) == 0 {
 			continue
 		}
@@ -462,7 +462,7 @@ func researchCategoryStories(category string) string {
 }
 
 func fetchArticleContent(rawURL string) string {
-	_, body, err := search.FetchAndExtract(rawURL)
+	_, body, err := web.FetchAndExtract(rawURL)
 	if err != nil {
 		app.Log("opinion", "Failed to fetch %s: %v", rawURL, err)
 		return ""
