@@ -39,6 +39,36 @@ func verifyInbound() bool {
 	return v != "0" && v != "false" && v != "off" && v != "no"
 }
 
+// implausible says why an unverified message does not add up, or "" if it does.
+//
+// Correlation rather than proof. The message names the account it came from and
+// the number it was sent to, and this instance knows both — so a message for
+// somebody else's number, or from an account this instance has nothing to do
+// with, can be refused without any cryptography. It raises the bar from "anyone
+// who knows this URL" to "anyone who knows this URL and our numbers and our
+// account", which is not security but is not nothing, and it is what is
+// available when there is no auth token to check a signature against.
+func implausible(r *http.Request) string {
+	to := e164(r.PostForm.Get("To"))
+	if to == "" {
+		return "no To on the message"
+	}
+	if !Ours(to) {
+		return to + " is not a number this instance sends from"
+	}
+	if want := AccountSID(); want != "" {
+		if got := r.PostForm.Get("AccountSid"); got != "" && got != want {
+			return "account " + got + " is not this instance's account"
+		}
+	}
+	if want := messagingService(); want != "" {
+		if got := r.PostForm.Get("MessagingServiceSid"); got != "" && got != want {
+			return "messaging service " + got + " is not this instance's"
+		}
+	}
+	return ""
+}
+
 func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		app.MethodNotAllowed(w, r)
@@ -54,8 +84,16 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 	// then a choice to receive nothing at all, made on the operator's behalf
 	// without asking. They can say otherwise.
 	if !verifyInbound() {
-		app.Log("sms", "accepting an unverified inbound message: SMS_VERIFY_INBOUND is off, "+
-			"so anybody who knows this URL can put a message in somebody's history")
+		// No signature to check, so check what the message says about itself.
+		// None of it is proof — every field is forgeable by whoever knows the
+		// URL — but a message claiming to be for a number this instance does
+		// not own, or from an account it does not use, is not worth the benefit
+		// of any doubt.
+		if why := implausible(r); why != "" {
+			app.Log("sms", "unverified inbound message refused: %s", why)
+			http.Error(w, "forbidden: "+why, http.StatusForbidden)
+			return
+		}
 	} else if !validSignature(r, signedURLs(r), r.PostForm) {
 		// Terse to the caller — anything more is a hint to whoever is probing —
 		// and loud in the log, because the two reasons this happens look
