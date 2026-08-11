@@ -20,6 +20,8 @@ var settingGroups = []settingGroup{
 		"ANTHROPIC_API_KEY",
 		"ANTHROPIC_MODEL",
 		"ATLAS_API_KEY",
+		"OPENROUTER_API_KEY",
+		"OPENROUTER_MODEL",
 		"OPENAI_BASE_URL",
 		"OPENAI_API_KEY",
 	}},

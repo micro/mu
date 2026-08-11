@@ -58,6 +58,9 @@ func providerName(model string) string {
 		strings.Contains(model, "kimi") {
 		return "atlas"
 	}
+	if strings.Contains(model, "/") {
+		return "openrouter"
+	}
 	return "claude"
 }
 

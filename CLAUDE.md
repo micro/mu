@@ -17,7 +17,7 @@ Built on go-micro: every capability is a go-micro service, the assistant is a go
 - **Agents** — `agent/micro/` contains specialised micro-agents per domain, routed by keyword + LLM
 - **Channels** — Discord (`client/discord/`), Telegram (`client/telegram/`), WhatsApp (`client/whatsapp/`)
 - **Protocols** — MCP server at `/mcp`, A2A at `/a2a`, x402 crypto payments
-- **AI** — `internal/ai/` supports Anthropic Claude, Atlas Cloud (DeepSeek), and local models (Ollama)
+- **AI** — `internal/ai/` supports Anthropic Claude, Atlas Cloud (DeepSeek), OpenRouter, and local models (Ollama)
 - **Config** — `internal/settings/` for live-reloadable settings, admin UI at `/admin/env`
 
 ## Key Packages
@@ -30,7 +30,7 @@ Built on go-micro: every capability is a go-micro service, the assistant is a go
 | `service/markets/` | Crypto, stocks, futures, commodities, currencies via CoinGecko/Yahoo |
 | `service/mail/` | SMTP server, DKIM, inbound filtering |
 | `service/blog/` | Microblogging with AI-generated daily digests |
-| `internal/ai/` | LLM abstraction — Anthropic, Atlas Cloud, local models |
+| `internal/ai/` | LLM abstraction — Anthropic, Atlas Cloud, OpenRouter, local models |
 | `internal/api/` | MCP server, tool registry |
 | `internal/app/` | Web UI framework, templates, middleware |
 | `internal/auth/` | Account system, sessions, passkeys |

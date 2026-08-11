@@ -37,6 +37,7 @@ admin, so the environment is for the things you want fixed at deploy time.
 # An AI provider — one of these, for the agent, chat and summaries
 export ANTHROPIC_API_KEY="your-key"   # Claude, from console.anthropic.com
 # export ATLAS_API_KEY="your-key"     # Atlas Cloud (DeepSeek, Qwen), also images
+# export OPENROUTER_API_KEY="your-key" # OpenRouter (one key, many models)
 # export OPENAI_BASE_URL="http://localhost:11434/v1"  # Ollama or any compatible endpoint
 
 # Video
@@ -328,6 +329,8 @@ one, the agent, chat and AI summaries are off and everything else works.
 | `ANTHROPIC_API_KEY` | Claude |
 | `ANTHROPIC_MODEL` · `ANTHROPIC_PREMIUM_MODEL` | Override the default models |
 | `ATLAS_API_KEY` | Atlas Cloud (DeepSeek, Qwen) — also image generation |
+| `OPENROUTER_API_KEY` | OpenRouter — one key for Claude, GPT, Gemini and the rest of their catalogue |
+| `OPENROUTER_MODEL` | Override the OpenRouter slug (default `openai/gpt-4o-mini`) |
 | `IMAGE_MODEL` | Override the image model |
 | `OPENAI_BASE_URL` · `OPENAI_API_KEY` | Any OpenAI-compatible endpoint — Ollama, vLLM, llama.cpp |
 | `AGENT_NATIVE` | `off` falls back to the hand-rolled planner |

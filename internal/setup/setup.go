@@ -5,6 +5,7 @@
 package setup
 
 import (
+	"errors"
 	"html"
 	"net/http"
 	"strings"
@@ -56,28 +57,8 @@ func applySetup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Resolve the AI provider into the settings keys the runtime reads.
-	switch provider {
-	case "claude":
-		if key == "" {
-			w.Write([]byte(render("Enter your Anthropic API key, or pick another provider.")))
-			return
-		}
-		settings.Set("ANTHROPIC_API_KEY", key)
-	case "atlas":
-		if key == "" {
-			w.Write([]byte(render("Enter your Atlas Cloud API key, or pick another provider.")))
-			return
-		}
-		settings.Set("ATLAS_API_KEY", key)
-	case "ollama":
-		if baseURL == "" {
-			baseURL = "http://localhost:11434/v1"
-		}
-		settings.Set("OPENAI_BASE_URL", baseURL)
-		settings.Set("OPENAI_API_KEY", "ollama")
-	default:
-		w.Write([]byte(render("Pick an AI provider.")))
+	if err := ApplyProvider(provider, key, baseURL); err != nil {
+		w.Write([]byte(render(err.Error())))
 		return
 	}
 
@@ -105,6 +86,37 @@ func applySetup(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/home", http.StatusSeeOther)
 }
 
+// ApplyProvider writes the chosen AI provider into the settings keys the
+// runtime reads. Shared by the web wizard and `mu setup`.
+func ApplyProvider(provider, key, baseURL string) error {
+	switch provider {
+	case "claude":
+		if key == "" {
+			return errors.New("Enter your Anthropic API key, or pick another provider.")
+		}
+		settings.Set("ANTHROPIC_API_KEY", key)
+	case "atlas":
+		if key == "" {
+			return errors.New("Enter your Atlas Cloud API key, or pick another provider.")
+		}
+		settings.Set("ATLAS_API_KEY", key)
+	case "openrouter":
+		if key == "" {
+			return errors.New("Enter your OpenRouter API key, or pick another provider.")
+		}
+		settings.Set("OPENROUTER_API_KEY", key)
+	case "ollama":
+		if baseURL == "" {
+			baseURL = "http://localhost:11434/v1"
+		}
+		settings.Set("OPENAI_BASE_URL", baseURL)
+		settings.Set("OPENAI_API_KEY", "ollama")
+	default:
+		return errors.New("Pick an AI provider.")
+	}
+	return nil
+}
+
 func render(errMsg string) string {
 	errHTML := ""
 	if errMsg != "" {
@@ -124,8 +136,9 @@ func render(errMsg string) string {
     <h3 style="margin:0 0 8px;font-size:1em">2 · AI provider</h3>
     <label style="display:block;margin:0 0 6px"><input type="radio" name="provider" value="claude" checked> Anthropic Claude</label>
     <label style="display:block;margin:0 0 6px"><input type="radio" name="provider" value="atlas"> Atlas Cloud / DeepSeek</label>
+    <label style="display:block;margin:0 0 6px"><input type="radio" name="provider" value="openrouter"> OpenRouter</label>
     <label style="display:block;margin:0 0 12px"><input type="radio" name="provider" value="ollama"> Ollama / OpenAI-compatible (local)</label>
-    <input name="key" placeholder="API key (Claude or Atlas)"
+    <input name="key" placeholder="API key (Claude, Atlas or OpenRouter)"
       style="width:100%;padding:10px;margin:0 0 8px;border:1px solid #ddd;border-radius:6px;font-size:15px">
     <input name="base_url" placeholder="Ollama base URL (default http://localhost:11434/v1)"
       style="width:100%;padding:10px;margin:0 0 20px;border:1px solid #ddd;border-radius:6px;font-size:15px">

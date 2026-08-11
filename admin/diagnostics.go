@@ -134,25 +134,27 @@ func runHealthChecks() []healthCheck {
 }
 
 func checkAI() healthCheck {
-	key := settings.Get("ANTHROPIC_API_KEY")
-	localURL := settings.Get("OPENAI_BASE_URL")
-
-	if key == "" && localURL == "" && !ai.LocalModelAvailable() {
+	if !ai.Configured() {
 		return healthCheck{
 			Name:   "AI Provider",
 			Status: "error",
 			Detail: "No AI provider configured",
-			Fix:    "Set ANTHROPIC_API_KEY or OPENAI_BASE_URL in /admin/env, or install Ollama",
+			Fix:    "Set ANTHROPIC_API_KEY, ATLAS_API_KEY, OPENROUTER_API_KEY or OPENAI_BASE_URL in /admin/env, or install Ollama",
 		}
 	}
 
 	provider := "Anthropic Claude"
-	if key == "" {
-		if localURL != "" {
-			provider = "Local model (" + localURL + ")"
-		} else {
-			provider = "Ollama (auto-detected)"
-		}
+	switch {
+	case settings.Get("ANTHROPIC_API_KEY") != "":
+		provider = "Anthropic Claude"
+	case settings.Get("ATLAS_API_KEY") != "":
+		provider = "Atlas Cloud"
+	case settings.Get("OPENROUTER_API_KEY") != "":
+		provider = "OpenRouter"
+	case settings.Get("OPENAI_BASE_URL") != "":
+		provider = "Local model (" + settings.Get("OPENAI_BASE_URL") + ")"
+	default:
+		provider = "Ollama (auto-detected)"
 	}
 
 	return healthCheck{

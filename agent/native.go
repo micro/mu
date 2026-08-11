@@ -206,8 +206,8 @@ func nativeToolCallKey(call gmai.ToolCall) string {
 // prompt) shared by queryNative and streamNative. ok is false when no native
 // provider is configured, signalling the caller to fall back.
 func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai.ToolWrapper) (a gmagent.Agent, question string, ok bool) {
-	key := settings.Get("ATLAS_API_KEY")
-	if key == "" {
+	provider, key, model, ok := nativeLLM()
+	if !ok {
 		return nil, "", false
 	}
 
@@ -264,11 +264,25 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 	// per-agent conversation state keyed by name, so reusing a stable "assistant"
 	// name can leak prior independent prompts into fresh guest requests.
 	toolWrappers := append([]gmai.ToolWrapper{blockDestructiveTools(), injectAccount(accountID), dedupeNativeToolCalls()}, wrappers...)
-	a = service.NewAgent(nativeAgentInstanceName(), sys, "atlascloud", key, filterServices(nativeServices(opts.Public), opts.Tools),
-		gmagent.Model(ai.ModelDeepSeekPro),
+	a = service.NewAgent(nativeAgentInstanceName(), sys, provider, key, filterServices(nativeServices(opts.Public), opts.Tools),
+		gmagent.Model(model),
 		gmagent.MaxSteps(6),
 		gmagent.WrapTool(toolWrappers...))
 	return a, question, true
+}
+
+// nativeLLM picks the go-micro provider the native agent talks to. Atlas
+// stays first — that is today's hosted default. OpenRouter is the other
+// first-class cloud option. Local Ollama is not wired here: the go-micro
+// agent cannot set a BaseURL, so a local server would hit api.openai.com.
+func nativeLLM() (provider, key, model string, ok bool) {
+	if key := settings.Get("ATLAS_API_KEY"); key != "" {
+		return "atlascloud", key, ai.ModelDeepSeekPro, true
+	}
+	if key := ai.OpenRouterKey(); key != "" {
+		return "openrouter", key, ai.OpenRouterModel(), true
+	}
+	return "", "", "", false
 }
 
 func nativeAgentInstanceName() string {
