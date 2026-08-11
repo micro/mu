@@ -79,6 +79,7 @@ const (
 	OpMailSend          = "mail_send"
 	OpExternalEmail     = "external_email"
 	OpSMSSend           = "sms_send"
+	OpWhatsAppSend      = "whatsapp_send"
 	OpPlacesSearch      = "places_search"
 	OpPlacesNearby      = "places_nearby"
 	OpPlacesETA         = "places_eta"

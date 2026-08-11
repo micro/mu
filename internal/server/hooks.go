@@ -53,6 +53,7 @@ import (
 	"mu/service/stream"
 	"mu/service/tasks"
 	"mu/service/user"
+	whatsappsvc "mu/service/whatsapp"
 	"mu/wallet"
 )
 
@@ -540,6 +541,7 @@ func wireHooks() {
 		images.DeleteAll,
 		docs.DeleteAll,
 		sms.DeleteAll,
+		whatsappsvc.DeleteAll,
 	)
 
 	// Enable indexing after all content is loaded

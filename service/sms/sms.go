@@ -214,22 +214,6 @@ func CanReceive() string {
 	return ""
 }
 
-// looksLikeAuthToken reports whether a value has the shape of an account auth
-// token: thirty-two characters, hexadecimal, no more.
-func looksLikeAuthToken(t string) bool {
-	if len(t) != 32 {
-		return false
-	}
-	for _, r := range t {
-		switch {
-		case r >= '0' && r <= '9', r >= 'a' && r <= 'f', r >= 'A' && r <= 'F':
-		default:
-			return false
-		}
-	}
-	return true
-}
-
 // e164 normalises a number to +<digits>.
 //
 // Everything downstream — the allowlist, the opt-out list, matching an inbound
@@ -265,6 +249,18 @@ func e164(s string) string {
 	}
 	return n
 }
+
+// Normalise is e164 for anything outside this package. A phone number is a
+// phone number whether it is carrying a text or a WhatsApp message, and two
+// spellings of one number are two numbers to every lookup there is.
+func Normalise(s string) string { return e164(s) }
+
+// NumberOwner is the account that proved this number is theirs, if any.
+//
+// Exported because the proof is about the number rather than about texts:
+// WhatsApp arriving from a number somebody has verified belongs to them too,
+// and asking them to prove the same phone twice would be ceremony.
+func NumberOwner(num string) string { return claimant(e164(num)) }
 
 // allowedCountries is the set of country codes this instance will text.
 //

@@ -34,6 +34,7 @@ import (
 	"mu/service/video"
 	"mu/service/weather"
 	"mu/service/web"
+	whatsappsvc "mu/service/whatsapp"
 	"mu/wallet"
 )
 
@@ -81,6 +82,7 @@ func boot() {
 	docs.LoadService()
 	notes.LoadService()
 	sms.LoadService()
+	whatsappsvc.LoadService()
 	images.Load()
 	// The cache behind /img, which serves article images from here instead of
 	// from four publisher CDNs. See internal/imageproxy.

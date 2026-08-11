@@ -28,17 +28,6 @@ import (
 )
 
 // WebhookHandler receives an inbound message from Twilio.
-// verifyInbound reports whether an arriving message must prove it is genuine.
-//
-// On by default, because unverified this endpoint lets anybody who knows the
-// URL write into a person's message history and opt any number out of ever
-// hearing from this instance. Off is a real choice with a real cost, and it
-// belongs to whoever runs the instance rather than to whoever wrote this.
-func verifyInbound() bool {
-	v := strings.ToLower(strings.TrimSpace(settings.Get("SMS_VERIFY_INBOUND")))
-	return v != "0" && v != "false" && v != "off" && v != "no"
-}
-
 // implausible says why an unverified message does not add up, or "" if it does.
 //
 // Correlation rather than proof. The message names the account it came from and
@@ -170,43 +159,6 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 
 	Record(owner, "in", from, body, Segments(body))
 	twiml(w, "")
-}
-
-// signedURLs is every address this request might have been signed as.
-//
-// The signature covers the URL as Twilio called it, and this process cannot see
-// that: behind a proxy the scheme is https outside and http in here, and the
-// host is the proxy's. Guessing once and rejecting on a miss is what turned a
-// configuration detail into every inbound message vanishing, so guess several
-// times and let the operator end the argument with TWILIO_WEBHOOK_URL.
-func signedURLs(r *http.Request) []string {
-	path := r.URL.RequestURI()
-
-	var out []string
-	add := func(u string) {
-		for _, seen := range out {
-			if seen == u {
-				return
-			}
-		}
-		out = append(out, u)
-	}
-
-	// What the operator says it is, which ends any disagreement.
-	if u := strings.TrimSpace(settings.Get("TWILIO_WEBHOOK_URL")); u != "" {
-		add(strings.TrimSuffix(u, "/"))
-	}
-	if d := strings.TrimSpace(settings.Get("MU_DOMAIN")); d != "" && d != "localhost" {
-		d = strings.TrimSuffix(strings.TrimPrefix(strings.TrimPrefix(d, "https://"), "http://"), "/")
-		add("https://" + d + path)
-		add("http://" + d + path)
-		add("https://www." + d + path)
-	}
-	if r.Host != "" {
-		add("https://" + r.Host + path)
-		add("http://" + r.Host + path)
-	}
-	return out
 }
 
 func instanceName() string {

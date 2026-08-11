@@ -112,6 +112,13 @@
       "note": "Leaves the instance over SMTP"
     },
     {
+      "op": "whatsapp_send",
+      "cost": 5,
+      "label": "WhatsApp conversation",
+      "env": "CREDIT_COST_WHATSAPP",
+      "note": "Twilio bills WhatsApp by the 24-hour conversation rather than the message, so this is charged once per window and the rest of the thread is free. Cheaper than a text because it costs us less and cannot be sent cold — the other person has to write first"
+    },
+    {
       "op": "sms_send",
       "cost": 10,
       "label": "Text message (per segment)",

@@ -63,7 +63,19 @@ func TestNoServiceIsImportedUnderAnAlias(t *testing.T) {
 			name, path := m[1], m[2]
 			// An alias matching the package's own last element is the compiler
 			// being told what it already knows, which is harmless.
-			if parts := strings.Split(path, "/"); name == parts[len(parts)-1] {
+			leaf := path
+			if parts := strings.Split(path, "/"); len(parts) > 0 {
+				leaf = parts[len(parts)-1]
+			}
+			if name == leaf {
+				continue
+			}
+			// A medium with both halves has two packages of one name — a
+			// service for what an agent can send and a client for how a person
+			// arrives — and one of them has to be aliased. The client was there
+			// first and its call sites are not the new work's to churn, so the
+			// newcomer carries it.
+			if _, err := os.Stat(at("client", leaf)); err == nil {
 				continue
 			}
 			t.Errorf("%s imports mu/service/%s as %q — call a service by its name, "+

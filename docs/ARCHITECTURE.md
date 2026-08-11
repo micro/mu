@@ -126,6 +126,7 @@ guessable.
 | `places` | /places | ✅ |  | Maps, points of interest, travel time |
 | `prayer` | /prayer | ✅ |  | Islamic prayer times, qibla, and a daily reflection |
 | `sms` | /sms | ✅ | ✅ | A phone number: text somebody, read what they text back. Twilio. Account-only even when paid: what an anonymous sender spends is the number's reputation |
+| `whatsapp` | /whatsapp | ✅ | ✅ | Reply to people on WhatsApp, through Twilio. Sending is bounded by Meta's 24-hour window, so it answers rather than initiates |
 | `social` | /social | ✅ |  | Threads, replies, status |
 | `stream` | /stream | ✅ |  | The console: this instance's own timeline |
 | `tasks` | /tasks | ✅ | ✅ | What is to be done, and work handed to the agent |

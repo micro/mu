@@ -51,6 +51,7 @@ import (
 	"mu/service/user"
 	"mu/service/video"
 	"mu/service/weather"
+	whatsappsvc "mu/service/whatsapp"
 	"mu/wallet"
 )
 
@@ -89,7 +90,11 @@ func authRequired() map[string]bool {
 		// Your texts. Sign-in is required and the handler requires it — not
 		// stated here, because this map is matched by prefix and /sms/webhook
 		// is the provider posting an inbound message with no session at all.
-		"/sms":               false,
+		"/sms": false,
+		// Your WhatsApp threads. Sign-in checked in the handler, for the same
+		// reason as /sms: this map is matched by prefix and /whatsapp/twilio is
+		// the provider posting an inbound message with no session at all.
+		"/whatsapp":          false,
 		"/runs":              true,  // What your agents did (redirects to /agent/runs)
 		"/agent/runs":        true,  // What your agents did
 		"/agent/connect":     true,  // How to reach one agent
@@ -334,6 +339,8 @@ func registerRoutes() {
 	http.HandleFunc("/docs", docs.Handler)
 	http.HandleFunc("/notes", notes.Handler)
 	http.HandleFunc("/sms", sms.Handler)
+	http.HandleFunc("/whatsapp", whatsappsvc.Handler)
+	http.HandleFunc("/whatsapp/twilio", whatsappsvc.WebhookHandler)
 	http.HandleFunc("/sms/webhook", sms.WebhookHandler)
 	http.HandleFunc("/contacts/", contacts.Handler)
 	http.HandleFunc("/tasks", tasks.Handler)
