@@ -37,7 +37,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	if app.WantsJSON(r) {
 		app.RespondJSON(w, map[string]any{
-			"number": From(), "messages": history, "yours": Numbers(who),
+			"from": Senders(), "messages": history, "yours": Numbers(who),
 		})
 		return
 	}
@@ -52,7 +52,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	b.WriteString(`<p class="text-sm text-muted">Sent from <strong>` + html.EscapeString(From()) +
+	from := strings.Join(Senders(), " · ")
+	if from == "" {
+		from = "a number Twilio picks"
+	}
+	b.WriteString(`<p class="text-sm text-muted">Sent from <strong>` + html.EscapeString(from) +
 		`</strong>. ` + html.EscapeString(allowance(who)) + `</p>`)
 	b.WriteString(composer(r, who))
 	b.WriteString(threads(history))

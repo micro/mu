@@ -28,12 +28,22 @@ import (
 func send(to, body string) (string, error) {
 	sid := strings.TrimSpace(settings.Get("TWILIO_ACCOUNT_SID"))
 	token := strings.TrimSpace(settings.Get("TWILIO_AUTH_TOKEN"))
-	from := From()
-	if sid == "" || token == "" || from == "" {
-		return "", fmt.Errorf("this instance cannot send texts — no number is configured")
+	if sid == "" || token == "" {
+		return "", fmt.Errorf("this instance cannot send texts — no provider is configured")
 	}
 
-	form := url.Values{"To": {to}, "From": {from}, "Body": {body}}
+	form := url.Values{"To": {to}, "Body": {body}}
+	if svc := messagingService(); svc != "" {
+		// The sender pool picks the number, which is what it is for: with
+		// Geomatch on it sends from the one in the handset's own country, and
+		// it knows which of them are registered for what.
+		form.Set("MessagingServiceSid", svc)
+	} else if from := FromFor(to); from != "" {
+		form.Set("From", from)
+	} else {
+		return "", fmt.Errorf("no number is configured for that country — this instance sends from %s",
+			strings.Join(Senders(), ", "))
+	}
 	req, err := http.NewRequest(http.MethodPost,
 		"https://api.twilio.com/2010-04-01/Accounts/"+url.PathEscape(sid)+"/Messages.json",
 		strings.NewReader(form.Encode()))
@@ -55,10 +65,18 @@ func send(to, body string) (string, error) {
 		SID     string `json:"sid"`
 		Message string `json:"message"`
 		Status  string `json:"status"`
+		Code    int    `json:"code"`
 	}
 	json.Unmarshal(b, &out) //nolint:errcheck
 
 	if rsp.StatusCode < 200 || rsp.StatusCode >= 300 {
+		// 21610 is Twilio's own opt-out list saying no. A Messaging Service
+		// with Advanced Opt-Out answers STOP itself, so that message never
+		// reaches our webhook and our list never learns — this is where it
+		// finds out, and after this the refusal costs nothing.
+		if out.Code == 21610 {
+			OptOut(to)
+		}
 		// Twilio's own message is the useful one ("The 'To' number is not a
 		// valid mobile number"), and it is safe to pass on: it describes the
 		// request the caller just made.

@@ -33,7 +33,7 @@ func Send(owner, to, text string) (*Message, error) {
 	if number == "" {
 		return nil, fmt.Errorf("%q is not a phone number in international format — use +447700900123", to)
 	}
-	if number == From() {
+	if Ours(number) {
 		return nil, fmt.Errorf("that is this instance's own number")
 	}
 
@@ -61,6 +61,11 @@ func Send(owner, to, text string) (*Message, error) {
 	if !Known(owner, number) {
 		return nil, fmt.Errorf("you can only text a number you already know: add %s to your contacts first, "+
 			"or verify it as your own", number)
+	}
+	// After the caller's own mistakes, because this one is the operator's: a
+	// country with no number here is not something the caller did wrong.
+	if messagingService() == "" && FromFor(number) == "" {
+		return nil, fmt.Errorf("this instance has no number in that country to text %s from", number)
 	}
 	if n := SentToday(owner); n >= DailyLimit() {
 		return nil, fmt.Errorf("that is %d texts in a day, which is the limit here", n)

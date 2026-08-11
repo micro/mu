@@ -65,13 +65,85 @@ type Message struct {
 
 // ── Numbers ─────────────────────────────────────────────────────
 
-// From is the number this instance sends from, or "" if none is configured.
-func From() string { return e164(settings.Get("TWILIO_FROM")) }
+// Senders are the numbers this instance can send from, in the order configured.
+//
+// More than one, because one number does not serve two countries. A US long
+// code texting a UK handset is filtered or dropped by UK carriers, and a UK
+// number texting a US handset is blocked outright unless it is registered
+// American traffic — so "send from our number" is only a sentence in a country
+// that has a number. TWILIO_FROM takes a list, and the one matching the
+// destination is used.
+func Senders() []string {
+	var out []string
+	for _, part := range strings.Split(settings.Get("TWILIO_FROM"), ",") {
+		if n := e164(part); n != "" {
+			out = append(out, n)
+		}
+	}
+	return out
+}
+
+// From is the first configured number — what the page shows and what an agent
+// is told to expect a reply on. FromFor is what actually sends.
+func From() string {
+	if s := Senders(); len(s) > 0 {
+		return s[0]
+	}
+	return ""
+}
+
+// FromFor picks the number to text a destination from: the one in the same
+// country, or nothing.
+//
+// Nothing, rather than falling back to whichever number is first. A message
+// sent from the wrong country is charged at the international rate, arrives
+// looking like a foreign stranger if it arrives at all, and cannot be replied
+// to — a clear refusal is worth more than a delivery receipt for a message
+// nobody read.
+func FromFor(to string) string {
+	digits := strings.TrimPrefix(e164(to), "+")
+	best, bestLen := "", 0
+	for _, cc := range allowedCountries() {
+		if !strings.HasPrefix(digits, cc) {
+			continue
+		}
+		for _, s := range Senders() {
+			if strings.HasPrefix(strings.TrimPrefix(s, "+"), cc) && len(cc) > bestLen {
+				best, bestLen = s, len(cc)
+			}
+		}
+	}
+	return best
+}
+
+// Ours reports whether a number is one this instance sends from.
+func Ours(number string) bool {
+	n := e164(number)
+	for _, s := range Senders() {
+		if s == n {
+			return true
+		}
+	}
+	return false
+}
+
+// messagingService is Twilio's own sender pool, if the operator uses one.
+//
+// It is the better answer for more than one country: Twilio holds the numbers,
+// and with Geomatch on it picks the one whose country matches the handset —
+// the same rule as FromFor, applied by the party that knows which of your
+// numbers are registered for what. Set it and the numbers below are only used
+// to say what a reply will come from.
+func messagingService() string {
+	return strings.TrimSpace(settings.Get("TWILIO_MESSAGING_SERVICE_SID"))
+}
 
 // Configured reports whether this instance can send at all.
 func Configured() bool {
-	return From() != "" && settings.Get("TWILIO_ACCOUNT_SID") != "" &&
-		settings.Get("TWILIO_AUTH_TOKEN") != ""
+	if settings.Get("TWILIO_ACCOUNT_SID") == "" || settings.Get("TWILIO_AUTH_TOKEN") == "" {
+		return false
+	}
+	return messagingService() != "" || len(Senders()) > 0
 }
 
 // e164 normalises a number to +<digits>.

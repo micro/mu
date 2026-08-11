@@ -22,7 +22,8 @@ func setup(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("TWILIO_ACCOUNT_SID", "AC-test")
 	t.Setenv("TWILIO_AUTH_TOKEN", "token-test")
-	t.Setenv("TWILIO_FROM", "+15550000000")
+	// A US number and a UK one, which is what two countries takes.
+	t.Setenv("TWILIO_FROM", "+15550000000,+447700900000")
 }
 
 func TestNumbersAreOneNumberHoweverTheyAreWritten(t *testing.T) {
@@ -142,7 +143,8 @@ func TestSendRefusesBeforeItCosts(t *testing.T) {
 
 	for _, c := range []struct{ name, to, text, want string }{
 		{"not a number", "hello", "hi", "international format"},
-		{"our own number", "+15550000000", "hi", "own number"},
+		{"our own US number", "+15550000000", "hi", "own number"},
+		{"our own UK number", "+447700900000", "hi", "own number"},
 		{"nothing to say", "+447700900123", "   ", "nothing to send"},
 		{"a stranger", "+447700900123", "hi", "only text a number you already know"},
 		{"a country we do not send to", "+8801700000000", "hi", "does not send to"},
@@ -246,5 +248,48 @@ func TestWebhookAcceptsASignedRequest(t *testing.T) {
 	got := History("acct-1", 10)
 	if len(got) == 0 || got[0].Text != "on my way" || got[0].Direction != "in" {
 		t.Errorf("the message did not land: %+v", got)
+	}
+}
+
+// One number does not serve two countries: a US long code texting a UK handset
+// is filtered by UK carriers, and a UK number texting a US handset is blocked
+// outright. So the sender is chosen by where the message is going, and a
+// country with no number of its own is refused rather than sent from whichever
+// number happened to be first.
+func TestTheSenderMatchesTheDestination(t *testing.T) {
+	setup(t)
+
+	if got := FromFor("+447700900123"); got != "+447700900000" {
+		t.Errorf("a UK destination should send from the UK number, got %q", got)
+	}
+	if got := FromFor("+15550109999"); got != "+15550000000" {
+		t.Errorf("a US destination should send from the US number, got %q", got)
+	}
+
+	t.Setenv("TWILIO_FROM", "+15550000000")
+	if got := FromFor("+447700900123"); got != "" {
+		t.Errorf("with no UK number, a UK destination should have no sender, got %q", got)
+	}
+
+	const me = "acct-1"
+	if _, err := contacts.Add(me, "Sam", "", "+447700900123", ""); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Send(me, "+447700900123", "hi"); err == nil ||
+		!strings.Contains(err.Error(), "no number in that country") {
+		t.Errorf("sending where there is no local number: %v", err)
+	}
+}
+
+// Both of the instance's own numbers are its own, not just the first.
+func TestOurs(t *testing.T) {
+	setup(t)
+	for _, n := range []string{"+15550000000", "+44 7700 900000"} {
+		if !Ours(n) {
+			t.Errorf("%s is one of ours and was not recognised", n)
+		}
+	}
+	if Ours("+447700900123") {
+		t.Error("somebody else's number was taken for ours")
 	}
 }

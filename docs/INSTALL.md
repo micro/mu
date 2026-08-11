@@ -352,12 +352,22 @@ says so; nothing else is affected.
 | Variable | Default | What it does |
 |---|---|---|
 | `TWILIO_ACCOUNT_SID` · `TWILIO_AUTH_TOKEN` | — | Twilio credentials. The auth token also verifies inbound webhooks, so an instance without it cannot receive |
-| `TWILIO_FROM` | — | The number texts are sent from and received on, in E.164 (`+447700900123`) |
+| `TWILIO_FROM` | — | The numbers texts are sent from and received on, in E.164 (`+447700900123`), comma-separated. **One per country you serve.** The sender is chosen to match the destination — a US long code texting a UK handset is filtered by UK carriers, and a UK number texting a US handset is blocked outright, so a country with no number of its own is refused rather than sent from the wrong one |
+| `TWILIO_MESSAGING_SERVICE_SID` | — | A Twilio Messaging Service to send through instead of picking a number here. With **Geomatch** enabled it chooses the sender whose country matches the handset, which is the same rule applied by the party that knows which of your numbers are registered for what. Set `TWILIO_FROM` as well so the page can say what a reply will come from |
 | `SMS_COUNTRIES` | `1,44,353,33,49,34,39,31` | Country codes this instance will text, comma-separated. An allowlist rather than a blocklist: a text to a premium range can cost fifty times what one to a mobile does, and those ranges are where revenue-share fraud lives |
 | `SMS_DAILY_LIMIT` | `20` | Messages one account may send in a day, on top of the per-message price |
 | `SMS_DEFAULT_COUNTRY` | — | Country code assumed for a number written without one. Unset, a number with no `+` is refused rather than guessed |
 
-Point the number's inbound webhook at `https://<your domain>/sms/webhook`. The
+Senders have to be registered before they will deliver. In the **US**, an
+unregistered long code is blocked by every major carrier: either a toll-free
+number with toll-free verification (free, reviewed in days, two-way, the
+shortest path for low volume) or a 10DLC long code with a brand and campaign
+registered through The Campaign Registry. In the **UK**, use a virtual mobile
+number (`+447…`) rather than an alphanumeric sender ID — an alphanumeric sender
+cannot receive, which means no replies and no way for anyone to text STOP, and
+US carriers reject alphanumeric senders outright.
+
+Point each number's inbound webhook at `https://<your domain>/sms/webhook`. The
 request is verified against `TWILIO_AUTH_TOKEN`, so nothing else needs opening
 up, and `MU_DOMAIN` has to match what Twilio calls or the signature will not
 check out.

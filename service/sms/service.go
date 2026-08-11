@@ -60,6 +60,7 @@ type InboxRequest struct {
 type InboxResponse struct {
 	Messages []Message `json:"messages" description:"Texts sent and received, newest first"`
 	Number   string    `json:"number" description:"The number these were sent from and received on"`
+	Numbers  []string  `json:"numbers" description:"Every number this instance sends from — one per country it serves"`
 }
 
 // Inbox returns the caller's texts, sent and received.
@@ -71,6 +72,7 @@ func (Server) Inbox(ctx context.Context, req *InboxRequest, rsp *InboxResponse) 
 	}
 	rsp.Messages = History(owner, req.Limit)
 	rsp.Number = From()
+	rsp.Numbers = Senders()
 	return nil
 }
 
@@ -79,7 +81,8 @@ func (Server) Inbox(ctx context.Context, req *InboxRequest, rsp *InboxResponse) 
 type NumberRequest struct{}
 
 type NumberResponse struct {
-	From      string   `json:"from" description:"The number this instance sends from and receives on"`
+	From      string   `json:"from" description:"The number this instance sends from and receives on. Where it has more than one, the first — the sender is picked to match the country being texted"`
+	Sending   []string `json:"sending" description:"Every number this instance can send from, one per country it serves"`
 	Yours     []string `json:"yours" description:"Numbers this account has verified as its own"`
 	SentToday int      `json:"sent_today" description:"How many messages this account has sent in the last day"`
 	Limit     int      `json:"limit" description:"How many it may send in a day"`
@@ -94,6 +97,7 @@ func (Server) Number(ctx context.Context, req *NumberRequest, rsp *NumberRespons
 		return err
 	}
 	rsp.From = From()
+	rsp.Sending = Senders()
 	rsp.Yours = Numbers(owner)
 	rsp.SentToday = SentToday(owner)
 	rsp.Limit = DailyLimit()
