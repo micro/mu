@@ -41,9 +41,16 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 	} else if to := number(r.PostForm.Get("To")); to == "" || to != From() {
 		// Nothing to verify against, so correlate instead: a message claiming
 		// to be for a number this instance does not answer on is not worth the
-		// benefit of any doubt.
-		app.Log("whatsapp", "unverified inbound refused: %q is not this instance's WhatsApp number", to)
-		http.Error(w, "forbidden: not this instance's WhatsApp number", http.StatusForbidden)
+		// benefit of any doubt. Both numbers named, because "not this
+		// instance's number" without saying which one is expected is a sentence
+		// nobody can act on — and the answer is usually that
+		// TWILIO_WHATSAPP_FROM is unset.
+		why := "addressed to " + to + ", and this instance answers WhatsApp on " + From()
+		if From() == "" {
+			why = "TWILIO_WHATSAPP_FROM is not set, so this instance has no WhatsApp number to be addressed on"
+		}
+		app.Log("whatsapp", "unverified inbound refused: %s", why)
+		http.Error(w, "forbidden: "+why, http.StatusForbidden)
 		return
 	}
 
@@ -56,12 +63,19 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 
 	owner := OwnerOf(from)
 	if owner == "" {
-		// Nobody here has a claim on that number. Logged rather than stored: a
-		// message from a stranger is not evidence about any account, and filing
-		// it under one would be a way to put words in somebody's inbox.
-		app.Log("whatsapp", "message from %s belongs to no account, dropped — "+
-			"verify that number under /sms to claim it", from)
-		blank(w)
+		// Nobody here has a claim on that number, so it goes nowhere: a message
+		// from a stranger is not evidence about any account, and filing it under
+		// one would be a way to put words in somebody's inbox.
+		//
+		// Said out loud in the response as well as the log. Two hundred and a
+		// silent drop is indistinguishable from delivery at the provider's end,
+		// and a message that vanishes without anybody being told is the worst
+		// of the outcomes available. Still a 200, because it is not the
+		// provider's fault and a retry would change nothing.
+		why := from + " is not linked to any account here — verify that number at /sms to claim it"
+		app.Log("whatsapp", "inbound dropped: %s", why)
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.Write([]byte("accepted, not delivered: " + why + "\n"))
 		return
 	}
 
