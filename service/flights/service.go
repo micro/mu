@@ -7,8 +7,8 @@ import (
 	"sort"
 	"strings"
 
+	"mu/internal/geo"
 	"mu/internal/service"
-	"mu/service/places"
 )
 
 // Server is the go-micro service handler for flights. Its methods are exposed as
@@ -268,7 +268,7 @@ func resolve(near string, lat, lon float64) (float64, float64, string, bool) {
 	if ap := FindAirport(n); ap != nil {
 		return ap.Lat, ap.Lon, ap.Label(), true
 	}
-	if glat, glon, err := places.Geocode(n); err == nil {
+	if glat, glon, err := geo.Geocode(n); err == nil {
 		return glat, glon, n, true
 	}
 	return 0, 0, "", false

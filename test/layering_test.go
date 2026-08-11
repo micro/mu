@@ -113,3 +113,69 @@ func importsFrom(t *testing.T, root string, want *regexp.Regexp) map[string]stri
 	}
 	return out
 }
+
+// TestServicesDoNotImportEachOther holds the horizontal rule, the one the
+// vertical layering test cannot see.
+//
+// Product may import internal/; internal/ may never import product. That is
+// enforced elsewhere and it says nothing at all about one service importing
+// another, which is how flights came to import places for a geocoder and
+// whatsapp to import sms for phone-number routing.
+//
+// A sideways import makes two services one unit: they have to be read together,
+// changed together and moved together, and the catalogue stops being a list of
+// independent things. Shared functionality belongs underneath both of them, in
+// internal/ — and not in a non-service directory under service/, because
+// "one directory per service" is only checkable while it is true.
+//
+// The ledger below is debt, not permission. Every line is a pair somebody
+// coupled before this test existed, and the fix for each is the same: find what
+// is actually shared and move it down. Adding a line is not how this test is
+// meant to be passed.
+func TestServicesDoNotImportEachOther(t *testing.T) {
+	allowed := map[string]string{
+		"blog -> markets": "the daily digest composes other services' output; wants a reader interface underneath",
+		"blog -> news":    "as above",
+		"blog -> prayer":  "as above",
+		"blog -> search":  "as above",
+		"blog -> video":   "as above",
+		"social -> news":  "the feed reads indexed news; the index is the shared thing",
+		"web -> search":   "web is the service, search is its page and providers — one thing in two directories",
+		"sms -> contacts": "resolving a name to a number; an address book lookup belongs below both",
+		"whatsapp -> sms": "phone-number ownership and routing, shared by two Twilio-backed services",
+	}
+
+	imports := regexp.MustCompile(`"mu/service/([a-z0-9]+)"`)
+	dirs, err := os.ReadDir(at("service"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, d := range dirs {
+		if !d.IsDir() {
+			continue
+		}
+		from := d.Name()
+		files, _ := filepath.Glob(filepath.Join(at("service", from), "*.go"))
+		for _, file := range files {
+			if strings.HasSuffix(file, "_test.go") {
+				continue
+			}
+			b, err := os.ReadFile(file)
+			if err != nil {
+				continue
+			}
+			for _, m := range imports.FindAllStringSubmatch(string(b), -1) {
+				to := m[1]
+				if to == from {
+					continue
+				}
+				edge := from + " -> " + to
+				if _, ok := allowed[edge]; ok {
+					continue
+				}
+				t.Errorf("%s imports mu/service/%s — services must not import each "+
+					"other. Whatever they share goes in internal/", edge, to)
+			}
+		}
+	}
+}

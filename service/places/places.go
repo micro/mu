@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"html"
 	"io"
-	"math"
 	"net/http"
 	"net/url"
 	"sort"
@@ -16,6 +15,7 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/geo"
 	"mu/internal/quota"
 	"mu/internal/service"
 )
@@ -282,35 +282,21 @@ func findNearbyPlaces(lat, lon float64, radiusM int) ([]*Place, error) {
 	return queryLocal(lat, lon, radiusM), nil
 }
 
-// Geocode resolves an address, postcode or place name to lat/lon.
+// geocode resolves an address, postcode or place name to lat/lon.
 //
-// Exported because places is where this instance keeps its one geocoder, and a
-// second service needing coordinates should not stand up a second Nominatim
-// client with its own idea of rate limiting and its own User-Agent. Nominatim is
-// free and asks for restraint in return; that is easier to honour from one
-// place. It costs nothing, so a caller does not have to charge for it.
-func Geocode(address string) (float64, float64, error) {
-	return geocode(address)
-}
-
-// geocode resolves an address/postcode to lat/lon using Nominatim
+// The geocoder itself is internal/geo, because more than one service needs a
+// name turned into a point and the one that needed it second should not have to
+// import the one that needed it first. This kept its own for a while, and
+// flights imported places to reach it.
 func geocode(address string) (float64, float64, error) {
-	results, err := searchNominatim(address)
-	if err != nil || len(results) == 0 {
-		return 0, 0, fmt.Errorf("could not geocode address: %s", address)
-	}
-	return results[0].Lat, results[0].Lon, nil
+	return geo.Geocode(address)
 }
 
-// haversine returns the great-circle distance in metres between two lat/lon points.
+// haversine returns the great-circle distance in metres between two lat/lon
+// points. The formula is internal/geo's; flights had written it out again in
+// nautical miles.
 func haversine(lat1, lon1, lat2, lon2 float64) float64 {
-	const R = 6371000 // Earth radius in metres
-	φ1 := lat1 * math.Pi / 180
-	φ2 := lat2 * math.Pi / 180
-	Δφ := (lat2 - lat1) * math.Pi / 180
-	Δλ := (lon2 - lon1) * math.Pi / 180
-	a := math.Sin(Δφ/2)*math.Sin(Δφ/2) + math.Cos(φ1)*math.Cos(φ2)*math.Sin(Δλ/2)*math.Sin(Δλ/2)
-	return R * 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
+	return geo.DistanceM(lat1, lon1, lat2, lon2)
 }
 
 // buildAddress constructs a short address string from a nominatim result

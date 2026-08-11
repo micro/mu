@@ -120,6 +120,16 @@ this layering debt: every entry is a cycle somebody could not avoid. Prefer a
 plain downward import; when you cannot have one, add the hook and know it cost
 something.
 
+**Services never import each other.** Product may import `internal/`, and that
+says nothing about sideways: `flights` imported `places` for a geocoder,
+`whatsapp` imports `sms` for phone-number routing. A sideways import makes two
+services one unit — read together, changed together, moved together — and the
+catalogue stops being a list of independent things. Whatever they share goes in
+`internal/`, never in a non-service directory under `service/`, because "one
+directory per service" is only checkable while it is true. Enforced by
+`TestServicesDoNotImportEachOther`, whose allowlist is a debt ledger and not
+permission.
+
 A service never imports `wallet/`. What a service needs to know about money is
 `internal/quota` — what an operation costs and whether this caller may do it.
 Quota holds prices and does not know what a balance is; the wallet fills in the

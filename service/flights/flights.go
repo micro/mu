@@ -28,6 +28,7 @@ import (
 	"strings"
 
 	"mu/internal/app"
+	"mu/internal/geo"
 	"mu/internal/service"
 )
 
@@ -169,21 +170,13 @@ func comma(n int) string {
 	return s
 }
 
-// distanceNM is the great-circle distance in nautical miles.
+// The great-circle maths lives in internal/geo. It was written here in nautical
+// miles and in service/places in metres, which is the same formula twice and a
+// third service away from being three times.
 func distanceNM(lat1, lon1, lat2, lon2 float64) float64 {
-	const r = 3440.065 // Earth radius in nautical miles
-	p1, p2 := lat1*math.Pi/180, lat2*math.Pi/180
-	dp := (lat2 - lat1) * math.Pi / 180
-	dl := (lon2 - lon1) * math.Pi / 180
-	a := math.Sin(dp/2)*math.Sin(dp/2) + math.Cos(p1)*math.Cos(p2)*math.Sin(dl/2)*math.Sin(dl/2)
-	return r * 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
+	return geo.DistanceNM(lat1, lon1, lat2, lon2)
 }
 
-// bearingTo is the initial great-circle bearing from one point to another.
 func bearingTo(lat1, lon1, lat2, lon2 float64) float64 {
-	p1, p2 := lat1*math.Pi/180, lat2*math.Pi/180
-	dl := (lon2 - lon1) * math.Pi / 180
-	y := math.Sin(dl) * math.Cos(p2)
-	x := math.Cos(p1)*math.Sin(p2) - math.Sin(p1)*math.Cos(p2)*math.Cos(dl)
-	return math.Mod(math.Atan2(y, x)*180/math.Pi+360, 360)
+	return geo.Bearing(lat1, lon1, lat2, lon2)
 }
