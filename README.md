@@ -101,7 +101,6 @@ Here are the tools
 | **Events** | `events_create` · `events_list` · `events_delete` · `events_free` — schedule, cancel, and find when you are free, counting the Google Calendar you already keep |
 | **Files** | `files_put` · `files_get` · `files_list` · `files_share` · `files_delete` — keep a file, get a URL |
 | **Images** | `images_generate` · `images_search` |
-| **Index** | `index_search` — everything this instance holds for you |
 | **Mail** | `mail_inbox` · `mail_send` · `mail_search` · `mail_address` — a real SMTP server with DKIM, and an address per agent. Write to `you+name@` and that agent answers in the thread |
 | **Markets** | `markets_list` — stocks, crypto, futures, commodities, currencies |
 | **News** | `news_list` · `news_read` · `news_search` — RSS aggregation, full articles |
