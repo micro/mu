@@ -282,6 +282,17 @@ func findNearbyPlaces(lat, lon float64, radiusM int) ([]*Place, error) {
 	return queryLocal(lat, lon, radiusM), nil
 }
 
+// Geocode resolves an address, postcode or place name to lat/lon.
+//
+// Exported because places is where this instance keeps its one geocoder, and a
+// second service needing coordinates should not stand up a second Nominatim
+// client with its own idea of rate limiting and its own User-Agent. Nominatim is
+// free and asks for restraint in return; that is easier to honour from one
+// place. It costs nothing, so a caller does not have to charge for it.
+func Geocode(address string) (float64, float64, error) {
+	return geocode(address)
+}
+
 // geocode resolves an address/postcode to lat/lon using Nominatim
 func geocode(address string) (float64, float64, error) {
 	results, err := searchNominatim(address)

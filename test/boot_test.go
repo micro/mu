@@ -133,3 +133,44 @@ func packagesWithSpecs(t *testing.T) []string {
 	}
 	return out
 }
+
+// TestEveryServiceIsInThePolicyList closes the same gap one level up.
+//
+// allSpecs in spec_policy_test.go is hand-written, and it is what the policy and
+// documentation tests see. A service missing from it is not merely undocumented:
+// it is invisible to every check that exists to notice it is undocumented. The
+// comment on that list already records notes going missing for exactly that
+// reason, which is a comment doing a test's job.
+func TestEveryServiceIsInThePolicyList(t *testing.T) {
+	b, err := os.ReadFile(at("test", "spec_policy_test.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	list := string(b)
+
+	// The name a Spec is reached by is the import alias where there is one:
+	// whatsapp is imported as whatsappsvc, because client/whatsapp already
+	// holds the plain name.
+	imported := regexp.MustCompile(`(?m)^\s*(?:([a-z][a-zA-Z0-9_]*)\s+)?"mu/service/([a-z/]+)"`)
+	name := map[string]string{}
+	for _, m := range imported.FindAllStringSubmatch(list, -1) {
+		alias, path := m[1], m[2]
+		leaf := path
+		if parts := strings.Split(path, "/"); len(parts) > 0 {
+			leaf = parts[len(parts)-1]
+		}
+		if alias == "" {
+			alias = leaf
+		}
+		name[leaf] = alias
+	}
+
+	for _, pkg := range packagesWithSpecs(t) {
+		ident, ok := name[pkg]
+		if ok && regexp.MustCompile(`\b`+regexp.QuoteMeta(ident)+`\.Spec\b`).MatchString(list) {
+			continue
+		}
+		t.Errorf("service/%s declares a Spec and allSpecs does not list it — "+
+			"the documentation tests cannot see a service they were not handed", pkg)
+	}
+}

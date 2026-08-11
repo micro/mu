@@ -19,6 +19,7 @@ import (
 	"mu/service/docs"
 	"mu/service/events"
 	"mu/service/files"
+	"mu/service/flights"
 	"mu/service/images"
 	"mu/service/mail"
 	"mu/service/markets"
@@ -90,6 +91,9 @@ func boot() {
 	// Counters behind /admin/traffic: what this instance is being asked to do.
 	usage.Load()
 	files.Load()
+
+	// load flights
+	flights.Load()
 	contacts.Load()
 	user.Load()
 

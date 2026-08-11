@@ -100,6 +100,7 @@ Here are the tools
 | **Docs** | `docs_create` · `docs_get` · `docs_list` · `docs_delete` — named collections of your own documents, private by default, that outlive a conversation (`docs_create` with an `id` overwrites). Apps get their own separate store through `mu.db` |
 | **Events** | `events_create` · `events_list` · `events_delete` · `events_free` — schedule, cancel, and find when you are free, counting the Google Calendar you already keep |
 | **Files** | `files_put` · `files_get` · `files_list` · `files_share` · `files_delete` — keep a file, get a URL |
+| **Flights** | `flights_overhead` · `flights_track` · `flights_airport` — where aircraft are, live from the positions they broadcast themselves. No schedule behind it, so it says where an aeroplane is and never why it is late |
 | **Images** | `images_generate` · `images_search` |
 | **Mail** | `mail_inbox` · `mail_send` · `mail_search` · `mail_address` — a real SMTP server with DKIM, and an address per agent. Write to `you+name@` and that agent answers in the thread |
 | **Markets** | `markets_list` — stocks, crypto, futures, commodities, currencies |

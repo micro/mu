@@ -35,6 +35,7 @@ import (
 	"mu/service/docs"
 	"mu/service/events"
 	"mu/service/files"
+	"mu/service/flights"
 	"mu/service/images"
 	"mu/service/mail"
 	"mu/service/markets"
@@ -103,6 +104,7 @@ func authRequired() map[string]bool {
 		"/social/thread":     false, // Public thread view, auth for messaging
 		"/places":            false, // Public map, auth for search
 		"/weather":           false, // Public page, auth for forecast lookup
+		"/flights":           false, // Public — aircraft broadcast their positions in clear
 		"/mail":              true,  // Require auth for inbox
 		"/logout":            true,
 		"/account":           true,
@@ -398,6 +400,9 @@ func registerRoutes() {
 
 	// serve weather page
 	http.HandleFunc("/weather", weather.Handler)
+
+	// serve flights page
+	http.HandleFunc("/flights", flights.Handler)
 
 	// serve apps
 	http.HandleFunc("/apps", apps.Handler)

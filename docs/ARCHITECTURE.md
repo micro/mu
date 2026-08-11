@@ -19,23 +19,27 @@ mu/
 │   ├── blog/
 │   ├── chat/
 │   ├── contacts/
-│   ├── db/
+│   ├── docs/
 │   ├── events/
 │   ├── files/
+│   ├── flights/
 │   ├── images/
 │   ├── mail/
 │   ├── markets/
 │   ├── news/
+│   ├── notes/
 │   ├── places/
 │   ├── prayer/
 │   ├── search/            # the /search page and its providers, not a service
+│   ├── sms/
 │   ├── social/
 │   ├── stream/
 │   ├── tasks/
+│   ├── user/
 │   ├── video/
-│   ├── wallet/
 │   ├── weather/
-│   └── web/
+│   ├── web/
+│   └── whatsapp/
 ├── internal/               # runtime and infrastructure, not features
 │   ├── a2a/
 │   ├── ai/
@@ -123,6 +127,7 @@ guessable.
 | `markets` | /markets | ✅ |  | Crypto, stocks, futures, commodities, currencies |
 | `notes` | /notes | ✅ | ✅ | A title and what is under it, kept between conversations. Addressed by title, where docs holds collections you query |
 | `news` | /news | ✅ |  | RSS aggregation, sentiment, search |
+| `flights` | /flights | ✅ |  | Where aircraft are, live from ADS-B. No schedule behind it: it reports positions aeroplanes broadcast, never a departure time |
 | `places` | /places | ✅ |  | Maps, points of interest, travel time |
 | `prayer` | /prayer | ✅ |  | Islamic prayer times, qibla, and a daily reflection |
 | `sms` | /sms | ✅ | ✅ | A phone number: text somebody, read what they text back. Twilio. Account-only even when paid: what an anonymous sender spends is the number's reputation |
