@@ -64,6 +64,17 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 		if strings.TrimSpace(settings.Get("TWILIO_AUTH_TOKEN")) == "" {
 			why = "no TWILIO_AUTH_TOKEN configured, so nothing can be verified"
 		}
+		// The single likeliest misconfiguration, and checkable without holding
+		// any secret: Twilio signs with the auth token of the account that owns
+		// the message, so a number living on a different account — or a
+		// subaccount, or a token rotated since — cannot verify however right
+		// the URL is. The request says which account it came from.
+		if got := r.PostForm.Get("AccountSid"); got != "" {
+			if want := strings.TrimSpace(settings.Get("TWILIO_ACCOUNT_SID")); want != "" && got != want {
+				why = "this message is from account " + got + " and TWILIO_ACCOUNT_SID is " +
+					want + " — the signature is made with the owning account's auth token"
+			}
+		}
 		app.Log("sms", "webhook rejected: %s", why)
 		http.Error(w, "forbidden: "+why, http.StatusForbidden)
 		return
