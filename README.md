@@ -106,7 +106,7 @@ Here are the tools
 | **Markets** | `markets_list` — stocks, crypto, futures, commodities, currencies |
 | **News** | `news_list` · `news_read` · `news_search` — RSS aggregation, full articles |
 | **Notes** | `notes_add` · `notes_get` · `notes_list` · `notes_delete` — a title and what is under it, kept between conversations and read back into every one |
-| **Places** | `places_search` · `places_nearby` · `places_eta` · `places_geocode` — points of interest, geocoding, travel time |
+| **Places** | `places_search` · `places_nearby` · `places_eta` · `places_geocode` · `places_elevation` — points of interest, geocoding, travel time, height above sea level |
 | **Prayer** | `prayer_times` · `prayer_qibla` · `prayer_reflection` · `prayer_verse` · `prayer_saying` · `prayer_search` — Islamic prayer times, qibla, a daily verse and saying, and the sources by reference or by question |
 | **Search** | `web_search` · `web_fetch` — search the web, read a page as clean text |
 | **SMS** | `sms_send` · `sms_history` · `sms_number` · `sms_verify` — text somebody and read what they text back, from a real number. Priced per segment, capped per day, and STOP is honoured |

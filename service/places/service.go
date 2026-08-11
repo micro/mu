@@ -189,6 +189,39 @@ func (Server) Geocode(_ context.Context, req *GeocodeRequest, rsp *GeocodeRespon
 	return nil
 }
 
+// ElevationRequest asks how high somewhere is.
+type ElevationRequest struct {
+	Place string  `json:"place" description:"A place name or address, e.g. 'Denver' or 'Ben Nevis'"`
+	Lat   float64 `json:"lat" description:"Optional latitude, if the location is already known"`
+	Lon   float64 `json:"lon" description:"Optional longitude, if the location is already known"`
+}
+
+// ElevationResponse is the height above sea level.
+type ElevationResponse struct {
+	Text string `json:"text" description:"Height above sea level in metres and feet, with the coordinates it was measured at"`
+}
+
+// Elevation returns how high a place is above sea level.
+// @example {"place": "Denver, Colorado"}
+func (Server) Elevation(_ context.Context, req *ElevationRequest, rsp *ElevationResponse) error {
+	lat, lon, ok := resolveLocation(req.Place, req.Lat, req.Lon)
+	if !ok {
+		if strings.TrimSpace(req.Place) == "" {
+			rsp.Text = "Please give a place, or a latitude and longitude."
+		} else {
+			rsp.Text = fmt.Sprintf("Couldn't find a location for %q.", strings.TrimSpace(req.Place))
+		}
+		return nil
+	}
+	metres, err := Elevation(lat, lon)
+	if err != nil {
+		rsp.Text = "Elevation data is unavailable right now."
+		return nil
+	}
+	rsp.Text = describeElevation(locationLabel(req.Place, lat, lon), lat, lon, metres)
+	return nil
+}
+
 // resolveLocation turns a `near` name or explicit lat/lon into coordinates.
 // Explicit coordinates win; otherwise the name is geocoded.
 func resolveLocation(near string, lat, lon float64) (float64, float64, bool) {
@@ -266,9 +299,10 @@ var Spec = service.Spec{
 	Page:        "/places",
 	Icon:        "places.svg",
 	Endpoints: map[string]service.Endpoint{
-		"ETA":     {Doc: "How long it takes to travel between two places, by road rather than as the crow flies", Cost: quota.OpPlacesETA},
-		"Geocode": {Doc: "Resolve a place name or address to coordinates"},
-		"Nearby":  {Doc: "List points of interest near a location", Cost: quota.OpPlacesNearby},
-		"Search":  {Doc: "Find places by name or category, optionally near a location", Cost: quota.OpPlacesSearch},
+		"ETA":       {Doc: "How long it takes to travel between two places, by road rather than as the crow flies", Cost: quota.OpPlacesETA},
+		"Elevation": {Doc: "How high a place is above sea level, in metres and feet. Sampled from a 90-metre global elevation model, so a summit reads a little under its surveyed height"},
+		"Geocode":   {Doc: "Resolve a place name or address to coordinates"},
+		"Nearby":    {Doc: "List points of interest near a location", Cost: quota.OpPlacesNearby},
+		"Search":    {Doc: "Find places by name or category, optionally near a location", Cost: quota.OpPlacesSearch},
 	},
 }
