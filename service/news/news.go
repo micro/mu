@@ -25,7 +25,6 @@ import (
 	nethtml "golang.org/x/net/html"
 
 	"mu/internal/app"
-	"mu/internal/auth"
 	"mu/internal/data"
 	"mu/internal/event"
 	"mu/internal/imageproxy"
@@ -1663,13 +1662,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	// Handle search query (HTML)
 	if query := r.URL.Query().Get("query"); query != "" {
-		// Require authentication for search
-		_, acc := auth.TrySession(r)
-		if acc == nil {
-			app.Unauthorized(w, r)
-			return
-		}
-
+		// No session check here. Who pays, if anybody does, is handleSearch's
+		// question — and it was asked twice, once here with TrySession and once
+		// below with RequireSession, so fixing the lower one alone left this
+		// still refusing guests.
+		//
 		// Limit query length to prevent abuse
 		if len(query) > 256 {
 			app.BadRequest(w, r, "Search query must not exceed 256 characters")
@@ -1685,12 +1682,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 // handleAPISearch handles POST /news with JSON body for search
 func handleAPISearch(w http.ResponseWriter, r *http.Request) {
-	sess, _, err := auth.RequireSession(r)
-	if err != nil {
-		app.Unauthorized(w, r)
-		return
-	}
-
 	var reqData map[string]interface{}
 	b, _ := ioutil.ReadAll(r.Body)
 	json.Unmarshal(b, &reqData)
@@ -1705,23 +1696,16 @@ func handleAPISearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check quota before search
-	canProceed, _, cost, _ := quota.CheckQuota(sess.Account, quota.OpNewsSearch)
-	if !canProceed {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(402) // Payment Required
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"error":   "quota_exceeded",
-			"message": "Daily search limit reached. Please top up credits at /wallet",
-			"cost":    cost,
-		})
+	// Searching news reads this instance's own index, so it is priced at zero
+	// and answers anybody. The gate is still here because a price is an
+	// operator's decision and one of them may set it.
+	caller, ok := app.BillableCaller(w, r, quota.OpNewsSearch)
+	if !ok {
 		return
 	}
 
 	payload := newsSearchPayload(query, 20)
-
-	// Consume quota after successful search
-	quota.ConsumeQuota(sess.Account, quota.OpNewsSearch)
+	app.Charge(caller, quota.OpNewsSearch)
 
 	app.RespondJSON(w, payload)
 }
@@ -2605,26 +2589,13 @@ func formatSearchResult(entry *data.IndexEntry) string {
 }
 
 func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
-	// Check quota before search
-	sess, _, err := auth.RequireSession(r)
-	if err != nil {
-		app.Unauthorized(w, r)
-		return
-	}
-
-	canProceed, _, cost, err := quota.CheckQuota(sess.Account, quota.OpNewsSearch)
-	if !canProceed {
-		// Show quota exceeded page
-		content := quota.ExceededPage(cost)
-		html := app.RenderHTMLForRequest("Quota Exceeded", "Daily limit reached", content, r)
-		w.Write([]byte(html))
+	caller, ok := app.BillableCaller(w, r, quota.OpNewsSearch)
+	if !ok {
 		return
 	}
 
 	results := data.Search(query, 20, data.WithType("news"), data.WithKeywordOnly())
-
-	// Consume quota after successful search
-	quota.ConsumeQuota(sess.Account, quota.OpNewsSearch)
+	app.Charge(caller, quota.OpNewsSearch)
 
 	var searchResults []byte
 	searchResults = append(searchResults, []byte(`<form id="news-search" class="search-bar" action="/news" method="GET">

@@ -14,7 +14,6 @@ import (
 	"unicode/utf8"
 
 	"mu/internal/app"
-	"mu/internal/auth"
 	"mu/internal/quota"
 )
 
@@ -77,26 +76,11 @@ func FetchHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Require authentication
-	sess, _, err := auth.RequireSession(r)
-	if err != nil {
-		if app.WantsJSON(r) {
-			app.RespondError(w, http.StatusUnauthorized, "authentication required")
-			return
-		}
-		app.Unauthorized(w, r)
-		return
-	}
-
-	// Check quota
-	canProceed, _, cost, _ := quota.CheckQuota(sess.Account, quota.OpWebFetch)
-	if !canProceed {
-		if app.WantsJSON(r) {
-			app.RespondError(w, http.StatusPaymentRequired, fmt.Sprintf("web fetch requires %d credits", cost))
-			return
-		}
-		content := inputForm + quota.ExceededPage(cost)
-		w.Write([]byte(app.RenderHTMLForRequest("Fetch", "Web Fetch", content, r)))
+	// Fetching a page is priced at zero: it costs this instance bandwidth and
+	// nothing else. So this asks for a session only where an operator has given
+	// it a price, and answers a guest everywhere else.
+	caller, ok := app.BillableCaller(w, r, quota.OpWebFetch)
+	if !ok {
 		return
 	}
 
@@ -105,7 +89,7 @@ func FetchHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Only charge on success
 	if fetchErr == nil {
-		quota.ConsumeQuota(sess.Account, quota.OpWebFetch)
+		app.Charge(caller, quota.OpWebFetch)
 	}
 
 	// JSON response for API/MCP callers

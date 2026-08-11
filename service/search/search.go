@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"mu/internal/app"
-	"mu/internal/auth"
 	"mu/internal/quota"
 	"mu/internal/settings"
 )
@@ -226,34 +225,19 @@ func WebHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Require authentication to charge for the search
-	sess, _, err := auth.RequireSession(r)
-	if err != nil {
-		if app.WantsJSON(r) {
-			app.RespondError(w, http.StatusUnauthorized, "authentication required")
-			return
-		}
-		app.Unauthorized(w, r)
-		return
-	}
-
-	// Check quota (5p per search)
-	canProceed, _, cost, _ := quota.CheckQuota(sess.Account, quota.OpWebSearch)
-	if !canProceed {
-		if app.WantsJSON(r) {
-			app.RespondError(w, http.StatusPaymentRequired, fmt.Sprintf("web search requires %d credits", cost))
-			return
-		}
-		content := searchBar + quota.ExceededPage(cost)
-		w.Write([]byte(app.RenderHTMLForRequest("Search", "Search the web", content, r)))
+	// Who pays, if anybody does. A search is metered where Brave is being paid
+	// for and free where it is not, and the gate asks which before it asks who.
+	caller, ok := app.BillableCaller(w, r, quota.OpWebSearch)
+	if !ok {
 		return
 	}
 
 	braveResults, braveErr := SearchBraveCached(query, 10)
 
-	// Only consume quota on success to avoid charging for failed API calls
+	// Only charge on success, so a provider outage is not something the caller
+	// pays for.
 	if braveErr == nil {
-		quota.ConsumeQuota(sess.Account, quota.OpWebSearch)
+		app.Charge(caller, quota.OpWebSearch)
 	}
 
 	// JSON response for API/MCP callers

@@ -174,3 +174,50 @@ func TestEveryServiceIsInThePolicyList(t *testing.T) {
 			"the documentation tests cannot see a service they were not handed", pkg)
 	}
 }
+
+// TestPublicServicesUseTheSharedGate keeps the auth rule from drifting apart
+// again.
+//
+// The rule is that an operation costing this instance money needs somebody to
+// bill, and one costing nothing needs nobody. It lived in service/places and
+// nowhere else, so weather, news search, web search, web fetch and article
+// reading each grew their own gate that demanded a session first and asked
+// about credits second. On a self-hosted instance that refuses a guest for a
+// call nobody could be charged for.
+//
+// A handler on a service whose page is public may still require a session — for
+// posting, for anything account-scoped. What it must not do is pair
+// RequireSession with CheckQuota, which is the shape of deciding metering by
+// hand instead of asking app.BillableCaller.
+func TestPublicServicesUseTheSharedGate(t *testing.T) {
+	// Services answering questions about public data, where a guest on a free
+	// instance should get an answer.
+	public := []string{"weather", "news", "search", "places", "flights", "markets", "video"}
+
+	for _, name := range public {
+		dir := at("service", name)
+		files, err := filepath.Glob(filepath.Join(dir, "*.go"))
+		if err != nil || len(files) == 0 {
+			continue
+		}
+		for _, file := range files {
+			if strings.HasSuffix(file, "_test.go") {
+				continue
+			}
+			b, err := os.ReadFile(file)
+			if err != nil {
+				continue
+			}
+			src := string(b)
+			if !strings.Contains(src, "quota.CheckQuota") {
+				continue
+			}
+			if strings.Contains(src, "auth.RequireSession") {
+				t.Errorf("%s pairs auth.RequireSession with quota.CheckQuota — that is "+
+					"the hand-rolled gate. Use app.BillableCaller, which refuses a guest "+
+					"only where this instance can actually charge for the call",
+					strings.TrimPrefix(file, at("")))
+			}
+		}
+	}
+}

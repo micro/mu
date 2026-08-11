@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"mu/internal/app"
-	"mu/internal/auth"
 	"mu/internal/quota"
 )
 
@@ -40,26 +39,9 @@ func ReadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Require authentication
-	sess, _, err := auth.RequireSession(r)
-	if err != nil {
-		if app.WantsJSON(r) {
-			app.RespondError(w, http.StatusUnauthorized, "authentication required")
-			return
-		}
-		app.Unauthorized(w, r)
-		return
-	}
-
-	// Check quota (same as web_fetch)
-	canProceed, _, cost, _ := quota.CheckQuota(sess.Account, quota.OpWebFetch)
-	if !canProceed {
-		if app.WantsJSON(r) {
-			app.RespondError(w, http.StatusPaymentRequired, fmt.Sprintf("reading pages requires %d credits", cost))
-			return
-		}
-		content := quota.ExceededPage(cost)
-		w.Write([]byte(app.RenderHTMLForRequest("Read", "Read Page", content, r)))
+	// Same gate as web fetch, because it is the same operation with the HTML kept.
+	caller, ok := app.BillableCaller(w, r, quota.OpWebFetch)
+	if !ok {
 		return
 	}
 
@@ -67,7 +49,7 @@ func ReadHandler(w http.ResponseWriter, r *http.Request) {
 	title, body, fetchErr := FetchAndExtractHTMLProxied(rawURL)
 
 	if fetchErr == nil {
-		quota.ConsumeQuota(sess.Account, quota.OpWebFetch)
+		app.Charge(caller, quota.OpWebFetch)
 	}
 
 	// JSON response for API callers

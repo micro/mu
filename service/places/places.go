@@ -1199,55 +1199,14 @@ func jsonStr(s string) string {
 // five separate copies is how the sixth comes to be wrong.
 func escapeHTML(s string) string { return html.EscapeString(s) }
 
-// billableCaller resolves who to charge for a places lookup, or reports that
-// nobody needs to be.
+// billableCaller names who to charge for a places lookup, or reports that the
+// request has already been refused.
 //
-// These handlers required a session with the comment "charged operation",
-// which is the right reason and the wrong condition. Metering exists because
-// micro.mu is run as a product: there is a price list, a balance and a card on
-// file, so a charged call needs somebody to charge. None of that is true of an
-// instance somebody runs for themselves.
-//
-// A self-hoster who has configured their own Google key expects to use it. They
-// paid for it. Refusing them until they sign in, on their own server, to spend
-// their own quota, is the product's business model leaking into somebody else's
-// deployment — and an earlier version of this function did exactly that, gating
-// on whether a key was set rather than on whether this instance charges.
-//
-// Who may reach an exposed instance is a real question, and a different one:
-// it is answered by who can sign up and what the instance is open to, not by
-// pretending a lookup costs money where nothing is billed. Guests on the free
-// path are held by the per-address rate limit like every other free call.
-func billableCaller(w http.ResponseWriter, r *http.Request, op string) (id string, ok bool) {
-	_, acc, err := auth.RequireSession(r)
-	if err == nil && acc != nil {
-		id = acc.ID
-	}
-	// Nothing is charged here, so there is nobody who has to be named.
-	if !quota.Metered(op) {
-		return id, true
-	}
-	if id == "" {
-		if app.WantsJSON(r) {
-			app.Unauthorized(w, r)
-		} else {
-			app.RedirectToLogin(w, r)
-		}
-		return "", false
-	}
-	canProceed, _, cost, _ := quota.CheckQuota(id, op)
-	if !canProceed {
-		if app.WantsJSON(r) {
-			app.RespondError(w, http.StatusPaymentRequired, "Insufficient credits. Top up your wallet to continue.")
-		} else {
-			app.Respond(w, r, app.Response{
-				Title: "Places",
-				HTML: `<p class="text-error">Insufficient credits. <a href="/wallet/topup">Top up your wallet</a> to continue.</p>` +
-					renderPlacesPage(r),
-			})
-		}
-		_ = cost
-		return "", false
-	}
-	return id, true
+// The rule it used to hold is now app.BillableCaller, which is where the rest
+// of the instance reads it from. It lived here alone for a while, and every
+// handler that did not know about it — weather, news search, web search, web
+// fetch, article reading — demanded a session for calls that cost nobody
+// anything.
+func billableCaller(w http.ResponseWriter, r *http.Request, op string) (string, bool) {
+	return app.BillableCaller(w, r, op)
 }

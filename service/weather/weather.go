@@ -113,12 +113,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 // handleJSON handles JSON API requests for weather data.
 func handleJSON(w http.ResponseWriter, r *http.Request) {
-	_, acc, err := auth.RequireSession(r)
-	if err != nil {
-		app.Unauthorized(w, r)
-		return
-	}
-
 	latStr := r.URL.Query().Get("lat")
 	lonStr := r.URL.Query().Get("lon")
 	if latStr == "" || lonStr == "" {
@@ -143,10 +137,10 @@ func handleJSON(w http.ResponseWriter, r *http.Request) {
 
 	includePollen := r.URL.Query().Get("pollen") == "1"
 
-	// Check credits
-	canProceed, _, cost, _ := quota.CheckQuota(acc.ID, quota.OpWeatherForecast)
-	if !canProceed {
-		app.RespondError(w, http.StatusPaymentRequired, "Insufficient credits. Top up your wallet to continue.")
+	// Who pays, if anybody does. A forecast is free on an instance that cannot
+	// charge, so a guest gets one rather than a sign-in page.
+	caller, ok := app.BillableCaller(w, r, quota.OpWeatherForecast)
+	if !ok {
 		return
 	}
 
@@ -157,25 +151,23 @@ func handleJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Deduct credits
-	if cost > 0 {
-		quota.ConsumeQuota(acc.ID, quota.OpWeatherForecast)
-	}
+	app.Charge(caller, quota.OpWeatherForecast)
 
 	result := map[string]interface{}{
 		"forecast": forecast,
 	}
 
-	// Fetch pollen if requested and quota allows
+	// Pollen is a second charge and a second question, asked only if the first
+	// one was answered. A caller who cannot afford it still keeps the forecast.
 	if includePollen {
-		canPollenProceed, _, pollenCost, _ := quota.CheckQuota(acc.ID, quota.OpWeatherPollen)
-		if canPollenProceed {
-			pollen, pollenErr := FetchPollen(lat, lon)
-			if pollenErr == nil {
+		affordable := caller == "" || !quota.Metered(quota.OpWeatherPollen)
+		if !affordable {
+			affordable, _, _, _ = quota.CheckQuota(caller, quota.OpWeatherPollen)
+		}
+		if affordable {
+			if pollen, err := FetchPollen(lat, lon); err == nil {
 				result["pollen"] = pollen
-				if pollenCost > 0 {
-					quota.ConsumeQuota(acc.ID, quota.OpWeatherPollen)
-				}
+				app.Charge(caller, quota.OpWeatherPollen)
 			}
 		}
 	}
