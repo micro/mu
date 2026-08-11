@@ -35,15 +35,15 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad form", http.StatusBadRequest)
 		return
 	}
-	if !validSignature(r, publicURL(r), r.PostForm) {
+	if !validSignature(r, signedURLs(r), r.PostForm) {
 		// Terse to the caller — anything more is a hint to whoever is probing —
 		// and loud in the log, because the two reasons this happens look
 		// identical from outside. Either somebody is poking at the endpoint, or
 		// the URL Twilio signed is not the one reconstructed here, and the
 		// second is a misconfiguration that silently drops every message.
-		app.Log("sms", "webhook signature did not match for %s — if messages are "+
-			"being lost, check that the number's webhook URL is exactly %s",
-			publicURL(r), publicURL(r))
+		app.Log("sms", "webhook signature did not match. Tried %s. Set TWILIO_WEBHOOK_URL "+
+			"to the address configured on the number if none of those is it",
+			strings.Join(signedURLs(r), ", "))
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
@@ -86,22 +86,41 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 	twiml(w, "")
 }
 
-// publicURL rebuilds the address Twilio signed.
+// signedURLs is every address this request might have been signed as.
 //
-// The signature covers the URL as Twilio called it, which behind a proxy is not
-// the URL this process sees: the scheme is https out there and http in here,
-// and the host is the proxy's. MU_DOMAIN is the configured public name, so it
-// is the authority when it is set.
-func publicURL(r *http.Request) string {
+// The signature covers the URL as Twilio called it, and this process cannot see
+// that: behind a proxy the scheme is https outside and http in here, and the
+// host is the proxy's. Guessing once and rejecting on a miss is what turned a
+// configuration detail into every inbound message vanishing, so guess several
+// times and let the operator end the argument with TWILIO_WEBHOOK_URL.
+func signedURLs(r *http.Request) []string {
+	path := r.URL.RequestURI()
+
+	var out []string
+	add := func(u string) {
+		for _, seen := range out {
+			if seen == u {
+				return
+			}
+		}
+		out = append(out, u)
+	}
+
+	// What the operator says it is, which ends any disagreement.
+	if u := strings.TrimSpace(settings.Get("TWILIO_WEBHOOK_URL")); u != "" {
+		add(strings.TrimSuffix(u, "/"))
+	}
 	if d := strings.TrimSpace(settings.Get("MU_DOMAIN")); d != "" && d != "localhost" {
 		d = strings.TrimSuffix(strings.TrimPrefix(strings.TrimPrefix(d, "https://"), "http://"), "/")
-		return "https://" + d + r.URL.RequestURI()
+		add("https://" + d + path)
+		add("http://" + d + path)
+		add("https://www." + d + path)
 	}
-	scheme := "http"
-	if r.TLS != nil || strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https") {
-		scheme = "https"
+	if r.Host != "" {
+		add("https://" + r.Host + path)
+		add("http://" + r.Host + path)
 	}
-	return scheme + "://" + r.Host + r.URL.RequestURI()
+	return out
 }
 
 func instanceName() string {

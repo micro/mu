@@ -96,7 +96,16 @@ func deliver(to, body string) (string, error) {
 	return out.SID, nil
 }
 
-// validSignature reports whether a webhook really came from Twilio.
+// validSignature reports whether a webhook really came from Twilio, against
+// every address the request might have been signed as.
+//
+// A list rather than one URL, because the signature covers the URL as Twilio
+// called it and this process cannot see that. Behind a proxy the scheme is
+// https out there and http in here, the host is the proxy's, and a
+// configured address may or may not carry the www. Twilio's own helper
+// libraries take the URL as an argument for exactly this reason — the
+// reconstruction is the part that goes wrong, and it fails closed and silently,
+// which looks from the outside like the endpoint being down.
 //
 // Without this the inbound endpoint is a public form that will write messages
 // into anybody's history and, because STOP is honoured on arrival, let a
@@ -107,7 +116,7 @@ func deliver(to, body string) (string, error) {
 // The URL has to be the one Twilio built the signature from, which is the
 // public one — behind a proxy the request's own scheme and host are the
 // proxy's, so MU_DOMAIN is what gets used when it is set.
-func validSignature(r *http.Request, publicURL string, form url.Values) bool {
+func validSignature(r *http.Request, candidates []string, form url.Values) bool {
 	token := strings.TrimSpace(settings.Get("TWILIO_AUTH_TOKEN"))
 	got := r.Header.Get("X-Twilio-Signature")
 	if token == "" || got == "" {
@@ -120,15 +129,19 @@ func validSignature(r *http.Request, publicURL string, form url.Values) bool {
 	}
 	sort.Strings(keys)
 
-	var b strings.Builder
-	b.WriteString(publicURL)
+	var params strings.Builder
 	for _, k := range keys {
-		b.WriteString(k)
-		b.WriteString(form.Get(k))
+		params.WriteString(k)
+		params.WriteString(form.Get(k))
 	}
 
-	mac := hmac.New(sha1.New, []byte(token))
-	mac.Write([]byte(b.String()))
-	want := base64.StdEncoding.EncodeToString(mac.Sum(nil))
-	return hmac.Equal([]byte(want), []byte(got))
+	for _, url := range candidates {
+		mac := hmac.New(sha1.New, []byte(token))
+		mac.Write([]byte(url + params.String()))
+		want := base64.StdEncoding.EncodeToString(mac.Sum(nil))
+		if hmac.Equal([]byte(want), []byte(got)) {
+			return true
+		}
+	}
+	return false
 }

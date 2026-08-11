@@ -369,6 +369,8 @@ number (`+447…`) rather than an alphanumeric sender ID — an alphanumeric sen
 cannot receive, which means no replies and no way for anyone to text STOP, and
 US carriers reject alphanumeric senders outright.
 
+| `TWILIO_WEBHOOK_URL` | — | The inbound webhook address exactly as configured on the number. Only needed if the signature check is failing: it covers the URL Twilio called, which behind a proxy is not the URL this process sees, and a mismatch drops every inbound message while Twilio reports it as 11200 |
+
 Point each number's inbound webhook at `https://<your domain>/sms/webhook`. The
 request is verified against `TWILIO_AUTH_TOKEN`, so nothing else needs opening
 up, and `MU_DOMAIN` has to match what Twilio calls or the signature will not
