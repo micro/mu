@@ -27,10 +27,11 @@ import (
 	"time"
 
 	"mu/internal/app"
+	"mu/internal/auth"
+	"mu/internal/phone"
 	"mu/internal/settings"
 	"mu/internal/twilio"
 	"mu/internal/userdb"
-	"mu/service/sms"
 )
 
 const (
@@ -56,7 +57,7 @@ type Message struct {
 }
 
 // From is the WhatsApp sender this instance uses, in plain E.164.
-func From() string { return sms.Normalise(settings.Get("TWILIO_WHATSAPP_FROM")) }
+func From() string { return phone.Normalise(settings.Get("TWILIO_WHATSAPP_FROM")) }
 
 // Configured reports whether this instance can send WhatsApp at all.
 func Configured() bool {
@@ -71,7 +72,7 @@ func address(number string) string { return "whatsapp:" + number }
 
 // number strips the prefix off one.
 func number(address string) string {
-	return sms.Normalise(strings.TrimPrefix(strings.TrimSpace(address), "whatsapp:"))
+	return phone.Normalise(strings.TrimPrefix(strings.TrimSpace(address), "whatsapp:"))
 }
 
 // ── The window ──────────────────────────────────────────────────
@@ -184,7 +185,7 @@ func route(owner, num string) {
 // number. Failing that, the last conversation. Failing that, nobody, and the
 // message is dropped rather than handed to whoever happens to be first.
 func OwnerOf(num string) string {
-	if owner := sms.NumberOwner(num); owner != "" {
+	if owner := phone.Owner(num); owner != "" {
 		return owner
 	}
 	recs, err := userdb.List(ns, instance, routes, "mine",
@@ -196,7 +197,7 @@ func OwnerOf(num string) string {
 	}
 	// Whoever runs the instance owns its number, so an unclaimed message is
 	// theirs to see. Dropping it was tidier and lost messages.
-	return sms.Fallback()
+	return auth.Operator()
 }
 
 // DeleteAll removes everything whatsapp holds for an owner.

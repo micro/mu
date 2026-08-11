@@ -1,9 +1,9 @@
 package whatsapp
 
 import (
+	"mu/internal/auth"
 	"strings"
 
-	"mu/service/sms"
 	"testing"
 	"time"
 )
@@ -73,8 +73,8 @@ func TestInboundGoesToWhoeverOwnsTheNumber(t *testing.T) {
 
 	// With no claim and no conversation it goes to whoever runs the instance,
 	// because a message nobody ever sees is the worst of the outcomes.
-	if got := OwnerOf(them); got != sms.Fallback() {
-		t.Errorf("OwnerOf = %q for a stranger, want the fallback %q", got, sms.Fallback())
+	if got := OwnerOf(them); got != auth.Operator() {
+		t.Errorf("OwnerOf = %q for a stranger, want the fallback %q", got, auth.Operator())
 	}
 
 	Record("acct-2", "out", them, "hello")

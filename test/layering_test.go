@@ -142,7 +142,6 @@ func TestServicesDoNotImportEachOther(t *testing.T) {
 		"social -> news":  "the feed reads indexed news; the index is the shared thing",
 		"web -> search":   "web is the service, search is its page and providers — one thing in two directories",
 		"sms -> contacts": "resolving a name to a number; an address book lookup belongs below both",
-		"whatsapp -> sms": "phone-number ownership and routing, shared by two Twilio-backed services",
 	}
 
 	imports := regexp.MustCompile(`"mu/service/([a-z0-9]+)"`)

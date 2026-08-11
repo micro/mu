@@ -41,6 +41,7 @@ Built on go-micro: every capability is a go-micro service, the assistant is a go
 | `client/telegram/` | Telegram bot with commands and groups |
 | `client/whatsapp/` | WhatsApp Business API integration |
 | `wallet/` | How an account pays: the credit ledger, Stripe, x402 and the /wallet pages. Account furniture, not a service — no Spec and no tools |
+| `internal/phone/` | Who a phone number belongs to: normalising it, and the proof that an account owns it. Shared by `service/sms` and `service/whatsapp`, because a number is a number whichever message it carries |
 | `internal/twilio/` | The provider under `service/sms` and `service/whatsapp`: credentials, the send, and the webhook signature. It holds no opinion about what may be sent |
 | `internal/quota/` | What things cost and who may do them. The only thing a service knows about money — it holds prices, not balances. Prices are `quota.json` at the top level, not Go |
 | `service/search/` | Brave provider, readability reader, the /search page (no service of its own) |
@@ -122,7 +123,7 @@ something.
 
 **Services never import each other.** Product may import `internal/`, and that
 says nothing about sideways: `flights` imported `places` for a geocoder,
-`whatsapp` imports `sms` for phone-number routing. A sideways import makes two
+`whatsapp` imported `sms` for phone-number ownership. A sideways import makes two
 services one unit — read together, changed together, moved together — and the
 catalogue stops being a list of independent things. Whatever they share goes in
 `internal/`, never in a non-service directory under `service/`, because "one

@@ -44,7 +44,6 @@
 package sms
 
 import (
-	"fmt"
 	"sort"
 	"strconv"
 	"strings"
@@ -52,6 +51,7 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/phone"
 	"mu/internal/settings"
 	"mu/internal/userdb"
 	"mu/service/contacts"
@@ -220,47 +220,16 @@ func CanReceive() string {
 // message to a contact — compares numbers as strings, so they have to be the
 // same string. "+1 (555) 010-9999", "+15550109999" and "+1-555-010-9999" are
 // one number and would otherwise be three.
-func e164(s string) string {
-	var b strings.Builder
-	for i, r := range strings.TrimSpace(s) {
-		switch {
-		case r >= '0' && r <= '9':
-			b.WriteRune(r)
-		case r == '+' && i == 0:
-			b.WriteRune(r)
-		}
-	}
-	n := b.String()
-	if n == "" || n == "+" {
-		return ""
-	}
-	if !strings.HasPrefix(n, "+") {
-		// A number with no country code is ambiguous, and guessing one is how
-		// you text a stranger in another country. Only the instance's own
-		// default rescues it.
-		if cc := strings.TrimSpace(settings.Get("SMS_DEFAULT_COUNTRY")); cc != "" {
-			n = "+" + strings.TrimPrefix(cc, "+") + strings.TrimPrefix(n, "0")
-		} else {
-			return ""
-		}
-	}
-	if len(n) < 8 || len(n) > 16 {
-		return ""
-	}
-	return n
-}
+// e164 is internal/phone's, and so is everything below about who a number
+// belongs to. A phone number is a phone number whether it is carrying a text or
+// a WhatsApp message, and service/whatsapp had to import this package to say so.
+func e164(s string) string { return phone.Normalise(s) }
 
-// Normalise is e164 for anything outside this package. A phone number is a
-// phone number whether it is carrying a text or a WhatsApp message, and two
-// spellings of one number are two numbers to every lookup there is.
-func Normalise(s string) string { return e164(s) }
+// Normalise is e164 for anything outside this package.
+func Normalise(s string) string { return phone.Normalise(s) }
 
 // NumberOwner is the account that proved this number is theirs, if any.
-//
-// Exported because the proof is about the number rather than about texts:
-// WhatsApp arriving from a number somebody has verified belongs to them too,
-// and asking them to prove the same phone twice would be ceremony.
-func NumberOwner(num string) string { return claimant(e164(num)) }
+func NumberOwner(num string) string { return phone.Owner(num) }
 
 // allowedCountries is the set of country codes this instance will text.
 //
@@ -366,139 +335,22 @@ func Known(owner, number string) bool {
 }
 
 // Verify marks a number as the owner's own.
-func Verify(owner, number string) error {
-	number = e164(number)
-	if number == "" {
-		return fmt.Errorf("that does not look like a phone number in international format, e.g. +447700900123")
-	}
-	if Verified(owner, number) {
-		return nil
-	}
-	if _, err := userdb.Create(ns, owner, numbers,
-		map[string]interface{}{"number": number, "at": time.Now().Format(time.RFC3339)}, false); err != nil {
-		return err
-	}
-	claim(owner, number)
-	return nil
-}
-
-// claim records, instance-wide, that this number belongs to this account.
-//
-// This is what verifying is for. Without it "verified" meant a label in an
-// autocomplete: an inbound message was given to whoever last texted that number
-// from here, so texting the instance from your own phone reached nobody unless
-// you had texted yourself first. Proving a number is yours is the one claim
-// strong enough to route on, and it beats the last-conversation guess, because
-// somebody who texted your phone from here has not shown it is theirs.
-//
-// Instance-owned, like the opt-out list, because one account cannot read
-// another's records and the router has to be able to ask.
-func claim(owner, number string) {
-	recs, err := userdb.List(ns, instance, claims, "mine",
-		map[string]interface{}{"number": number}, "", "", 1)
-	data := map[string]interface{}{
-		"number": number, "owner": owner, "at": time.Now().Format(time.RFC3339),
-	}
-	if err == nil && len(recs) == 1 {
-		// A phone changes hands, so the most recent proof wins.
-		userdb.Update(ns, instance, claims, recs[0].ID, data, false) //nolint:errcheck
-		return
-	}
-	userdb.Create(ns, instance, claims, data, false) //nolint:errcheck
-}
-
-// unclaim drops the claim, but only if it is this owner's to drop.
-func unclaim(owner, number string) {
-	recs, err := userdb.List(ns, instance, claims, "mine",
-		map[string]interface{}{"number": number, "owner": owner}, "", "", 5)
-	if err != nil {
-		return
-	}
-	for _, r := range recs {
-		userdb.Delete(ns, instance, claims, r.ID) //nolint:errcheck
-	}
-}
-
-// claimant is the account that proved this number is theirs, if any.
-//
-// Falls back to looking, and writes what it finds. Numbers verified before
-// there was a claim to write have none, and the symptom of that is a message
-// arriving from a number its owner had proved was theirs and going nowhere —
-// so rather than a migration that has to be remembered, the miss repairs
-// itself the first time it matters.
-func claimant(number string) string {
-	recs, err := userdb.List(ns, instance, claims, "mine",
-		map[string]interface{}{"number": number}, "", "", 1)
-	if err == nil && len(recs) > 0 {
-		if owner, _ := recs[0].Data["owner"].(string); owner != "" {
-			return owner
-		}
-	}
-	for _, acc := range auth.GetAllAccounts() {
-		if acc != nil && Verified(acc.ID, number) {
-			claim(acc.ID, number)
-			return acc.ID
-		}
-	}
-	return ""
-}
+func Verify(owner, number string) error { return phone.Verify(owner, number) }
 
 // Fallback is who an arriving message goes to when nobody has a claim on the
-// number it came from.
-//
-// The instance's number belongs to whoever runs the instance, so an unsolicited
-// message is theirs to see. This was a drop, on the reasoning that a stranger's
-// message is not evidence about any account — true, and it made the failure a
-// black hole: the message was gone and nobody was told. Somebody reading it who
-// did not expect it is a smaller harm than a message nobody ever sees.
-func Fallback() string {
-	for _, acc := range auth.GetAllAccounts() {
-		if acc != nil && acc.Admin {
-			return acc.ID
-		}
-	}
-	return ""
-}
+// number it came from: whoever runs this instance. That is auth.Operator now,
+// because it says nothing about phones and service/whatsapp needed the same
+// answer.
+func Fallback() string { return auth.Operator() }
 
 // Verified reports whether this number belongs to this owner.
-func Verified(owner, number string) bool {
-	recs, err := userdb.List(ns, owner, numbers, "mine",
-		map[string]interface{}{"number": e164(number)}, "", "", 1)
-	return err == nil && len(recs) > 0
-}
+func Verified(owner, number string) bool { return phone.Verified(owner, number) }
 
 // Forget drops a number this owner had verified.
-//
-// Verifying is reversible, because a number is not yours forever: phones change
-// hands, and a person who gave one up should be able to say so without an
-// argument.
-func Forget(owner, number string) {
-	number = e164(number)
-	recs, err := userdb.List(ns, owner, numbers, "mine",
-		map[string]interface{}{"number": number}, "", "", 10)
-	if err != nil {
-		return
-	}
-	for _, r := range recs {
-		userdb.Delete(ns, owner, numbers, r.ID) //nolint:errcheck
-	}
-	unclaim(owner, number)
-}
+func Forget(owner, number string) { phone.Forget(owner, number) }
 
 // Numbers lists what this owner has verified as theirs.
-func Numbers(owner string) []string {
-	recs, err := userdb.List(ns, owner, numbers, "mine", nil, "", "", 50)
-	if err != nil {
-		return nil
-	}
-	var out []string
-	for _, r := range recs {
-		if n, _ := r.Data["number"].(string); n != "" {
-			out = append(out, n)
-		}
-	}
-	return out
-}
+func Numbers(owner string) []string { return phone.Numbers(owner) }
 
 // ── The daily cap ───────────────────────────────────────────────
 
@@ -716,7 +568,7 @@ func OwnerOf(number string) string {
 	}
 	// Somebody who proved this number is theirs owns what comes from it,
 	// whoever happened to text it last.
-	if owner := claimant(number); owner != "" {
+	if owner := phone.Owner(number); owner != "" {
 		return owner
 	}
 	recs, err := userdb.List(ns, instance, routes, "mine",
