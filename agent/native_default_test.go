@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"mu/internal/ai"
 	"mu/internal/settings"
 )
 
@@ -24,6 +25,40 @@ func TestNativeEnabledDefault(t *testing.T) {
 	settings.Set("AGENT_NATIVE", "on")
 	if !nativeEnabled() {
 		t.Fatal("AGENT_NATIVE=on should keep it enabled")
+	}
+}
+
+func TestNativeLLM_OpenRouter(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	for _, k := range []string{"ATLAS_API_KEY", "OPENROUTER_API_KEY", "OPENROUTER_MODEL", "ANTHROPIC_API_KEY", "ANTHROPIC_MODEL"} {
+		t.Setenv(k, "")
+	}
+	prevAtlas := settings.Get("ATLAS_API_KEY")
+	prevOR := settings.Get("OPENROUTER_API_KEY")
+	prevModel := settings.Get("OPENROUTER_MODEL")
+	t.Cleanup(func() {
+		settings.Set("ATLAS_API_KEY", prevAtlas)
+		settings.Set("OPENROUTER_API_KEY", prevOR)
+		settings.Set("OPENROUTER_MODEL", prevModel)
+	})
+	settings.Set("ATLAS_API_KEY", "")
+	settings.Set("OPENROUTER_API_KEY", "")
+	settings.Set("OPENROUTER_MODEL", "")
+
+	if _, _, _, ok := nativeLLM(); ok {
+		t.Fatal("no cloud key: nativeLLM should be off")
+	}
+
+	settings.Set("OPENROUTER_API_KEY", "sk-or-test")
+	provider, key, model, ok := nativeLLM()
+	if !ok || provider != "openrouter" || key != "sk-or-test" || model != ai.ModelOpenRouter {
+		t.Fatalf("openrouter: provider=%q key=%q model=%q ok=%v", provider, key, model, ok)
+	}
+
+	settings.Set("ATLAS_API_KEY", "atlas-test")
+	provider, key, model, ok = nativeLLM()
+	if !ok || provider != "atlascloud" || key != "atlas-test" || model != ai.ModelDeepSeekPro {
+		t.Fatalf("atlas still wins: provider=%q key=%q model=%q ok=%v", provider, key, model, ok)
 	}
 }
 

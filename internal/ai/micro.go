@@ -17,14 +17,21 @@ import (
 )
 
 // resolveProvider picks the go-micro ai provider and credentials for a model,
-// mirroring mu's existing routing: Atlas Cloud for its models, then Anthropic
-// if a key is set, otherwise a local OpenAI-compatible server (Ollama).
+// mirroring mu's existing routing: Atlas Cloud for its models, OpenRouter
+// for provider/model slugs, then Anthropic if a key is set, then OpenRouter
+// as the remaining cloud option, otherwise a local OpenAI-compatible server.
 func resolveProvider(model string) (provider, apiKey, baseURL string, err error) {
 	if isAtlasModel(model) && getAtlasAPIKey() != "" {
 		return "atlascloud", getAtlasAPIKey(), "", nil
 	}
+	if isOpenRouterModel(model) && getOpenRouterAPIKey() != "" {
+		return "openrouter", getOpenRouterAPIKey(), openRouterBaseURL, nil
+	}
 	if key := settings.Get("ANTHROPIC_API_KEY"); key != "" {
 		return "anthropic", key, "", nil
+	}
+	if key := getOpenRouterAPIKey(); key != "" {
+		return "openrouter", key, openRouterBaseURL, nil
 	}
 	localURL := settings.Get("OPENAI_BASE_URL")
 	localKey := settings.Get("OPENAI_API_KEY")
@@ -37,7 +44,7 @@ func resolveProvider(model string) (provider, apiKey, baseURL string, err error)
 		}
 		return "openai", localKey, localURL, nil
 	}
-	return "", "", "", fmt.Errorf("no AI provider configured — set ANTHROPIC_API_KEY, ATLAS_API_KEY or OPENAI_BASE_URL (Ollama)")
+	return "", "", "", fmt.Errorf("no AI provider configured — set ANTHROPIC_API_KEY, ATLAS_API_KEY, OPENROUTER_API_KEY or OPENAI_BASE_URL (Ollama)")
 }
 
 // generateViaMicro routes an LLM request through go-micro's ai package — the

@@ -45,6 +45,9 @@ func Configured() bool {
 	if getAtlasAPIKey() != "" {
 		return true
 	}
+	if getOpenRouterAPIKey() != "" {
+		return true
+	}
 	if settings.Get("OPENAI_BASE_URL") != "" {
 		return true
 	}
@@ -61,11 +64,15 @@ const (
 )
 
 // DefaultModel is the model used for interactive queries (chat, agent).
-// Always uses Anthropic for speed — Atlas Cloud is for background only.
+// Anthropic wins when its key is set. OpenRouter is the interactive
+// default only when it is the cloud provider in play — its slugs are
+// provider/model, and a bare Claude id would 400.
 func DefaultModel() string {
-	m := settings.Get("ANTHROPIC_MODEL")
-	if m != "" {
+	if m := settings.Get("ANTHROPIC_MODEL"); m != "" {
 		return m
+	}
+	if getOpenRouterAPIKey() != "" && settings.Get("ANTHROPIC_API_KEY") == "" {
+		return OpenRouterModel()
 	}
 	return "claude-sonnet-4-6"
 }
@@ -75,6 +82,9 @@ func DefaultModel() string {
 func BackgroundModel() string {
 	if getAtlasAPIKey() != "" {
 		return ModelDeepSeekFlash
+	}
+	if getOpenRouterAPIKey() != "" {
+		return OpenRouterModel()
 	}
 	return "claude-haiku-4-5-20251001"
 }

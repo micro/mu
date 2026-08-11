@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"mu/internal/settings"
+	"mu/internal/setup"
 )
 
 // runSetup is the `mu setup` wizard: a headless-friendly companion to the web
@@ -21,31 +22,29 @@ func runSetup(_ []string) int {
 	fmt.Println()
 	fmt.Println("  1) Anthropic Claude")
 	fmt.Println("  2) Atlas Cloud / DeepSeek")
-	fmt.Println("  3) Ollama / OpenAI-compatible (local)")
-	choice := prompt(in, "Provider [1-3]: ")
+	fmt.Println("  3) OpenRouter")
+	fmt.Println("  4) Ollama / OpenAI-compatible (local)")
+	choice := prompt(in, "Provider [1-4]: ")
 
+	var provider, key, baseURL string
 	switch choice {
 	case "1":
-		key := prompt(in, "Anthropic API key: ")
-		if key == "" {
-			return setupErr("no key entered")
-		}
-		settings.Set("ANTHROPIC_API_KEY", key)
+		provider = "claude"
+		key = prompt(in, "Anthropic API key: ")
 	case "2":
-		key := prompt(in, "Atlas Cloud API key: ")
-		if key == "" {
-			return setupErr("no key entered")
-		}
-		settings.Set("ATLAS_API_KEY", key)
+		provider = "atlas"
+		key = prompt(in, "Atlas Cloud API key: ")
 	case "3":
-		url := prompt(in, "Base URL [http://localhost:11434/v1]: ")
-		if url == "" {
-			url = "http://localhost:11434/v1"
-		}
-		settings.Set("OPENAI_BASE_URL", url)
-		settings.Set("OPENAI_API_KEY", "ollama")
+		provider = "openrouter"
+		key = prompt(in, "OpenRouter API key: ")
+	case "4":
+		provider = "ollama"
+		baseURL = prompt(in, "Base URL [http://localhost:11434/v1]: ")
 	default:
-		return setupErr("pick 1, 2 or 3")
+		return setupErr("pick 1, 2, 3 or 4")
+	}
+	if err := setup.ApplyProvider(provider, key, baseURL); err != nil {
+		return setupErr(err.Error())
 	}
 
 	fmt.Println()
