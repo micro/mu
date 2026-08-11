@@ -351,7 +351,9 @@ says so; nothing else is affected.
 
 | Variable | Default | What it does |
 |---|---|---|
-| `TWILIO_ACCOUNT_SID` · `TWILIO_AUTH_TOKEN` | — | Twilio credentials. The auth token also verifies inbound webhooks, so an instance without it cannot receive |
+| `TWILIO_ACCOUNT_SID` | — | The **account** SID, which starts with A-C. An API key SID (S-K…) is a credential, not an account: Twilio accepts one for sending, so a key in this slot works and looks configured, and then inbound is refused forever because a webhook signature can only be checked against the account's own auth token |
+| `TWILIO_AUTH_TOKEN` | — | The account's auth token. Used to send when there is no API key, and **always** used to verify inbound webhooks. An API key secret will not do |
+| `TWILIO_API_KEY` · `TWILIO_API_SECRET` | — | An API key to send with, so the account auth token is not spent on outbound calls. Optional, and it does not replace `TWILIO_AUTH_TOKEN` — signatures still need that |
 | `TWILIO_FROM` | — | The numbers texts are sent from and received on, in E.164 (`+447700900123`), comma-separated. **One per country you serve.** The sender is chosen to match the destination — a US long code texting a UK handset is filtered by UK carriers, and a UK number texting a US handset is blocked outright, so a country with no number of its own is refused rather than sent from the wrong one |
 | `TWILIO_MESSAGING_SERVICE_SID` | — | A Twilio Messaging Service to send through instead of picking a number here. With **Geomatch** enabled it chooses the sender whose country matches the handset, which is the same rule applied by the party that knows which of your numbers are registered for what. Set `TWILIO_FROM` as well so the page can say what a reply will come from |
 | `SMS_COUNTRIES` | `1,44,353,33,49,34,39,31` | Country codes this instance will text, comma-separated. An allowlist rather than a blocklist: a text to a premium range can cost fifty times what one to a mobile does, and those ranges are where revenue-share fraud lives |

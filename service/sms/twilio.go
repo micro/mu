@@ -34,9 +34,9 @@ var send = deliver
 
 // deliver is the real thing.
 func deliver(to, body string) (string, error) {
-	sid := strings.TrimSpace(settings.Get("TWILIO_ACCOUNT_SID"))
-	token := strings.TrimSpace(settings.Get("TWILIO_AUTH_TOKEN"))
-	if sid == "" || token == "" {
+	sid := AccountSID()
+	user, pass := credentials()
+	if sid == "" || user == "" || pass == "" {
 		return "", fmt.Errorf("this instance cannot send texts — no provider is configured")
 	}
 
@@ -58,7 +58,7 @@ func deliver(to, body string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	req.SetBasicAuth(sid, token)
+	req.SetBasicAuth(user, pass)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	client := &http.Client{Timeout: 20 * time.Second}
@@ -96,6 +96,54 @@ func deliver(to, body string) (string, error) {
 	return out.SID, nil
 }
 
+// AccountSID is the account that owns the numbers, always an AC.
+//
+// An API Key SID starts SK and is a credential, not an account. Twilio accepts
+// one for sending, so putting a key here works and looks configured — and then
+// the webhook signature, which is made with the account's own auth token,
+// cannot be checked against anything. Outbound fine, inbound refused, and no
+// obvious connection between the two. So a key is treated as a key.
+func AccountSID() string {
+	sid := strings.TrimSpace(settings.Get("TWILIO_ACCOUNT_SID"))
+	if strings.HasPrefix(sid, "AC") {
+		return sid
+	}
+	return ""
+}
+
+// credentials are what the API call authenticates with: an API key and secret
+// where there is one, and the account and its auth token otherwise.
+func credentials() (string, string) {
+	key := strings.TrimSpace(settings.Get("TWILIO_API_KEY"))
+	secret := strings.TrimSpace(settings.Get("TWILIO_API_SECRET"))
+
+	// A key left in TWILIO_ACCOUNT_SID is still a key. Read it as one rather
+	// than fail, and say so elsewhere — the alternative is refusing to send for
+	// a setup that was sending a minute ago.
+	if key == "" {
+		if sid := strings.TrimSpace(settings.Get("TWILIO_ACCOUNT_SID")); strings.HasPrefix(sid, "SK") {
+			key, secret = sid, strings.TrimSpace(settings.Get("TWILIO_AUTH_TOKEN"))
+		}
+	}
+	if key != "" && secret != "" {
+		return key, secret
+	}
+	return AccountSID(), authToken()
+}
+
+// authToken is the account's auth token, which is the only thing a webhook
+// signature is ever made with — an API key secret will not do.
+//
+// Empty when TWILIO_ACCOUNT_SID holds a key, because then the token beside it
+// is that key's secret and using it would only produce a signature that never
+// matches, which is the failure this whole detour was.
+func authToken() string {
+	if strings.HasPrefix(strings.TrimSpace(settings.Get("TWILIO_ACCOUNT_SID")), "SK") {
+		return ""
+	}
+	return strings.TrimSpace(settings.Get("TWILIO_AUTH_TOKEN"))
+}
+
 // validSignature reports whether a webhook really came from Twilio, against
 // every address the request might have been signed as.
 //
@@ -117,7 +165,7 @@ func deliver(to, body string) (string, error) {
 // public one — behind a proxy the request's own scheme and host are the
 // proxy's, so MU_DOMAIN is what gets used when it is set.
 func validSignature(r *http.Request, candidates []string, form url.Values) bool {
-	token := strings.TrimSpace(settings.Get("TWILIO_AUTH_TOKEN"))
+	token := authToken()
 	got := r.Header.Get("X-Twilio-Signature")
 	if token == "" || got == "" {
 		return false

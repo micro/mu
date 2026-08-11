@@ -158,10 +158,29 @@ func messagingService() string {
 
 // Configured reports whether this instance can send at all.
 func Configured() bool {
-	if settings.Get("TWILIO_ACCOUNT_SID") == "" || settings.Get("TWILIO_AUTH_TOKEN") == "" {
+	if user, pass := credentials(); user == "" || pass == "" {
 		return false
 	}
 	return messagingService() != "" || len(Senders()) > 0
+}
+
+// CanReceive reports whether an inbound message can be verified as genuine,
+// which is the difference between receiving texts and refusing all of them.
+//
+// Separate from Configured because the two need different credentials and the
+// gap between them is invisible: sending takes an API key, a signature takes
+// the account's own auth token, and a setup with only the first sends happily
+// while every reply is rejected.
+func CanReceive() string {
+	if AccountSID() == "" {
+		return "TWILIO_ACCOUNT_SID is not an account — an API key (SK…) belongs in " +
+			"TWILIO_API_KEY and TWILIO_API_SECRET, and this wants the AC… account it belongs to"
+	}
+	if authToken() == "" {
+		return "TWILIO_AUTH_TOKEN is not set to the account's auth token, which is the only " +
+			"thing a webhook signature can be checked against"
+	}
+	return ""
 }
 
 // e164 normalises a number to +<digits>.
