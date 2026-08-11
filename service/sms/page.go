@@ -67,7 +67,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 // allowance says what is left, in a sentence rather than a meter.
 func allowance(who string) string {
-	sent, limit := SentToday(who), DailyLimit()
+	sent, limit := SentToday(who), LimitFor(who)
 	left := limit - sent
 	if left < 0 {
 		left = 0
@@ -112,28 +112,26 @@ func composer(r *http.Request, who string) string {
 	}
 	sort.Slice(opts, func(i, j int) bool { return opts[i].label < opts[j].label })
 
+	// A box you type into, with a datalist of the people you already know
+	// beside it. The list was a select, which meant the page could only send
+	// where the rules happened to allow — a UI enforcing a rule the service no
+	// longer has. Numbers you know are a convenience now, not a gate.
 	var b strings.Builder
 	b.WriteString(`<div class="card">`)
-	if len(opts) == 0 {
-		// The empty state is the rule stated plainly, which is better than
-		// letting somebody type a number and be refused.
-		b.WriteString(`<p class="text-sm text-muted">There is nobody to text yet. You can text ` +
-			`someone with a number in <a href="/contacts">your contacts</a>, a number you have ` +
-			`verified as your own, or anyone who texts this number first.</p>`)
-	} else {
-		b.WriteString(`<form method="POST" action="/sms" class="sms-send">` +
-			`<input type="hidden" name="_csrf" value="` + csrf + `">` +
-			`<input type="hidden" name="send" value="1">` +
-			`<select name="to" class="sms-to" aria-label="Who to text">`)
-		for _, o := range opts {
-			b.WriteString(`<option value="` + html.EscapeString(o.number) + `">` +
-				html.EscapeString(o.label) + `</option>`)
-		}
-		b.WriteString(`</select>` +
-			`<textarea name="text" class="sms-text" rows="3" required maxlength="` + itoa(maxBody) +
-			`" placeholder="Say it in 160 characters and it costs one message"></textarea>` +
-			`<div><button type="submit">Send</button></div></form>`)
+	b.WriteString(`<form method="POST" action="/sms" class="sms-send">` +
+		`<input type="hidden" name="_csrf" value="` + csrf + `">` +
+		`<input type="hidden" name="send" value="1">` +
+		`<input name="to" class="sms-to" required list="sms-known" autocomplete="off" ` +
+		`placeholder="+447700900123" aria-label="Who to text">` +
+		`<datalist id="sms-known">`)
+	for _, o := range opts {
+		b.WriteString(`<option value="` + html.EscapeString(o.number) + `">` +
+			html.EscapeString(o.label) + `</option>`)
 	}
+	b.WriteString(`</datalist>` +
+		`<textarea name="text" class="sms-text" rows="3" required maxlength="` + itoa(maxBody) +
+		`" placeholder="Say it in 160 characters and it costs one message"></textarea>` +
+		`<div><button type="submit">Send</button></div></form>`)
 
 	// Verifying your own number, folded in rather than given a page: it is done
 	// once and never thought about again.

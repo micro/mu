@@ -44,6 +44,9 @@ func StartVerify(owner, number string) error {
 	if !countryAllowed(number) {
 		return fmt.Errorf("this instance does not send to %s", number)
 	}
+	if DailyLimit() == 0 {
+		return fmt.Errorf("this instance is not sending texts at the moment")
+	}
 	if startsToday(owner) >= verifyCap {
 		return fmt.Errorf("that is %d verification texts today, which is the limit", verifyCap)
 	}

@@ -15,16 +15,28 @@
 // sent them. So the rules below are not defensive programming, they are the
 // service:
 //
-//   - You may only text a number you already know: someone in your contacts,
-//     your own verified number, or somebody who texted you first. An agent
-//     cannot pick a number out of the air.
 //   - Only to countries the operator allows, because a text to a premium
-//     destination costs fifty times what one to a mobile does.
-//   - A daily cap per account, on top of the price.
+//     destination costs fifty times what one to a mobile does, and those ranges
+//     are where revenue-share fraud lives.
+//   - A daily cap per account, tighter for an account nobody has vouched for
+//     yet. Zero turns sending off instance-wide.
+//   - The same message to the same number twice in a row is refused. A price
+//     stops somebody who has to pay; it does nothing about a loop.
 //   - STOP is honoured forever, per number, without asking anybody.
 //   - Signed in only. An anonymous caller paying per message over x402 is still
 //     a spammer, and the number's reputation is not something a payment can
 //     make whole.
+//
+// There was one more, and it is gone: you could only text a number already in
+// your contacts, verified as yours, or one that texted you first. It sounded
+// careful and bought nothing — contacts_add takes a number and a name, so two
+// calls defeated it, and meanwhile it made "text this person" a thing an agent
+// could not do. It was also stricter than Twilio itself, which sits underneath
+// and lets a funded account text anyone. A rule an attacker steps over and a
+// user trips on is not a control.
+//
+// What replaces it is what actually holds: money, rate, consent and a ban
+// button. SMS_KNOWN_ONLY brings it back for an operator who wants it.
 //
 // The price does the rest of the work; see quota.json.
 package sms
@@ -35,7 +47,10 @@ import (
 	"strings"
 	"time"
 
+	"strconv"
+
 	"mu/internal/app"
+	"mu/internal/auth"
 	"mu/internal/settings"
 	"mu/internal/userdb"
 	"mu/service/contacts"
@@ -329,7 +344,77 @@ func Numbers(owner string) []string {
 // differently: a price stops somebody who has to pay, a cap stops a loop that
 // found a way not to. A runaway agent with a funded balance is the case that
 // costs real money, and it is not a hypothetical.
-func DailyLimit() int { return app.EnvInt("SMS_DAILY_LIMIT", 20) }
+//
+// Set it to zero and nobody sends anything. That is the kill switch, and it is
+// the same setting rather than a second one, because an operator reaching for
+// it is in a hurry.
+func DailyLimit() int { return limitSetting("SMS_DAILY_LIMIT", 20) }
+
+// limitSetting reads a cap, and unlike app.EnvInt it believes a zero.
+//
+// EnvInt treats 0 as "not set" and hands back the default, which is right for
+// a size and wrong for a limit: an operator typing zero into /admin/env to stop
+// the texts would have been told twenty.
+func limitSetting(key string, def int) int {
+	v := strings.TrimSpace(settings.Get(key))
+	if v == "" {
+		return def
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil || n < 0 {
+		return def
+	}
+	return n
+}
+
+// LimitFor is the cap for one account.
+//
+// An account made in the last day gets a much smaller one. Signing up is free
+// and takes a minute, so the cap on a fresh account is the only thing between
+// a script and twenty texts an hour — and somebody genuinely texting a friend
+// on their first day is not sending fifty.
+func LimitFor(owner string) int {
+	limit := DailyLimit()
+	if limit == 0 {
+		return 0
+	}
+	if auth.IsNewAccount(owner) {
+		if n := limitSetting("SMS_NEW_ACCOUNT_LIMIT", 3); n < limit {
+			return n
+		}
+	}
+	return limit
+}
+
+// KnownOnly reports whether sending is restricted to numbers the caller already
+// has a relationship with. Off by default — see the package comment.
+func KnownOnly() bool {
+	v := strings.ToLower(strings.TrimSpace(settings.Get("SMS_KNOWN_ONLY")))
+	return v == "1" || v == "true" || v == "yes"
+}
+
+// Repeated reports whether this exact message went to this exact number a
+// moment ago.
+//
+// The loop is the failure that costs money without anybody deciding to spend
+// it: an agent that retries on a timeout, or one told to "keep them posted",
+// sends the same sentence forty times and every one of them is charged and
+// delivered. A person who genuinely wants to say the same thing twice can wait
+// a few minutes or change a word.
+func Repeated(owner, number, text string) bool {
+	cutoff := time.Now().Add(-repeatWindow)
+	for _, m := range History(owner, 20) {
+		if m.At.Before(cutoff) {
+			break
+		}
+		if m.Direction == "out" && m.Number == number && m.Text == text {
+			return true
+		}
+	}
+	return false
+}
+
+const repeatWindow = 5 * time.Minute
 
 // SentToday counts what this owner has sent since midnight.
 func SentToday(owner string) int {

@@ -24,7 +24,7 @@ func caller(ctx context.Context) (string, error) {
 // ── Send ────────────────────────────────────────────────────────
 
 type SendRequest struct {
-	To   string `json:"to" required:"true" description:"The number to text, in international format, e.g. +447700900123. Must be someone in your contacts, a number you have verified as your own, or a number that texted you first"`
+	To   string `json:"to" required:"true" description:"The number to text, in international format, e.g. +447700900123. Use contacts_find to turn a name into one"`
 	Text string `json:"text" required:"true" description:"What to say. Charged per 160-character segment, so brevity is not only good manners"`
 }
 
@@ -105,7 +105,7 @@ func (Server) Number(ctx context.Context, req *NumberRequest, rsp *NumberRespons
 	rsp.Sending = Senders()
 	rsp.Yours = Numbers(owner)
 	rsp.SentToday = SentToday(owner)
-	rsp.Limit = DailyLimit()
+	rsp.Limit = LimitFor(owner)
 	rsp.Countries = allowedCountries()
 	return nil
 }
@@ -175,7 +175,7 @@ var Spec = service.Spec{
 		// still a spammer, and what they spend is the number's reputation,
 		// which belongs to everybody on this instance and cannot be topped up.
 		"Send": {Cost: quota.OpSMSSend, AccountOnly: true, Destructive: true,
-			Doc: "Text somebody. Only works for a number already in your contacts, verified as your own, or one that texted you first — an agent cannot text a stranger. Charged per 160-character segment"},
+			Doc: "Text somebody, from this instance's number. Charged per 160-character segment, capped per day, and the recipient can stop it with STOP"},
 		"History": {AccountOnly: true, Aliases: []string{"sms_inbox"},
 			Doc: "Read the texts this account has sent and received, newest first. Both directions, which is why it is not called an inbox"},
 		"Number": {AccountOnly: true,

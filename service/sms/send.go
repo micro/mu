@@ -58,17 +58,24 @@ func Send(owner, to, text string) (*Message, error) {
 	if !countryAllowed(number) {
 		return nil, fmt.Errorf("this instance does not send to %s — ask the operator to allow that country code", number)
 	}
-	if !Known(owner, number) {
-		return nil, fmt.Errorf("you can only text a number you already know: add %s to your contacts first, "+
-			"or verify it as your own", number)
+	if KnownOnly() && !Known(owner, number) {
+		return nil, fmt.Errorf("this instance only sends to numbers you already know: add %s to your "+
+			"contacts first, or verify it as your own", number)
+	}
+	if Repeated(owner, number, text) {
+		return nil, fmt.Errorf("that exact message went to %s a moment ago", number)
 	}
 	// After the caller's own mistakes, because this one is the operator's: a
 	// country with no number here is not something the caller did wrong.
 	if messagingService() == "" && FromFor(number) == "" {
 		return nil, fmt.Errorf("this instance has no number in that country to text %s from", number)
 	}
-	if n := SentToday(owner); n >= DailyLimit() {
-		return nil, fmt.Errorf("that is %d texts in a day, which is the limit here", n)
+	limit := LimitFor(owner)
+	if limit == 0 {
+		return nil, fmt.Errorf("this instance is not sending texts at the moment")
+	}
+	if n := SentToday(owner); n >= limit {
+		return nil, fmt.Errorf("that is %d texts in a day, which is the limit for this account", n)
 	}
 
 	// Priced per segment, because that is how it is billed to us. A caller who

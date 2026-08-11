@@ -60,9 +60,9 @@ func TestOnlyAllowedCountries(t *testing.T) {
 	}
 }
 
-// Texting a stranger is the whole of the abuse, so knowing somebody has to come
-// from something that already happened.
-func TestYouCanOnlyTextANumberYouKnow(t *testing.T) {
+// Known is no longer a condition of sending, but it still decides what the page
+// offers and what SMS_KNOWN_ONLY restricts to, so it has to be right.
+func TestKnown(t *testing.T) {
 	setup(t)
 	const me = "acct-1"
 
@@ -146,7 +146,6 @@ func TestSendRefusesBeforeItCosts(t *testing.T) {
 		{"our own US number", "+15550000000", "hi", "own number"},
 		{"our own UK number", "+447700900000", "hi", "own number"},
 		{"nothing to say", "+447700900123", "   ", "nothing to send"},
-		{"a stranger", "+447700900123", "hi", "only text a number you already know"},
 		{"a country we do not send to", "+8801700000000", "hi", "does not send to"},
 	} {
 		if _, err := Send(me, c.to, c.text); err == nil || !strings.Contains(err.Error(), c.want) {
@@ -291,5 +290,68 @@ func TestOurs(t *testing.T) {
 	}
 	if Ours("+447700900123") {
 		t.Error("somebody else's number was taken for ours")
+	}
+}
+
+// The rule that a caller may only text somebody they already know is off by
+// default, because contacts_add takes any number and defeated it in one call.
+// An operator can still ask for it.
+func TestKnownOnlyIsOptIn(t *testing.T) {
+	setup(t)
+	if KnownOnly() {
+		t.Error("sending is restricted to known numbers by default")
+	}
+	t.Setenv("SMS_KNOWN_ONLY", "true")
+	if !KnownOnly() {
+		t.Error("an operator asked for the restriction and did not get it")
+	}
+	if _, err := Send("acct-1", "+447700900123", "hi"); err == nil ||
+		!strings.Contains(err.Error(), "numbers you already know") {
+		t.Errorf("with the restriction on, a stranger should be refused: %v", err)
+	}
+}
+
+// A loop is the failure that spends money without anybody deciding to. An agent
+// that retries on a timeout sends the same sentence forty times, and every one
+// of them is charged and delivered.
+func TestTheSameMessageTwiceIsRefused(t *testing.T) {
+	setup(t)
+	const me, them = "acct-1", "+447700900123"
+
+	Record(me, "out", them, "on my way", 1)
+	if !Repeated(me, them, "on my way") {
+		t.Fatal("a repeat was not recognised")
+	}
+	if _, err := Send(me, them, "on my way"); err == nil ||
+		!strings.Contains(err.Error(), "a moment ago") {
+		t.Errorf("resending the same message: %v", err)
+	}
+	// A different message to the same number is a conversation, not a loop.
+	if Repeated(me, them, "actually, ten minutes") {
+		t.Error("a different message was taken for a repeat")
+	}
+	// And the same message to somebody else is not a loop either.
+	if Repeated(me, "+447700900999", "on my way") {
+		t.Error("a different number was taken for a repeat")
+	}
+}
+
+// Signing up is free and takes a minute, so a fresh account gets a much smaller
+// cap — it is the only thing between a script and the daily allowance.
+func TestNewAccountsGetASmallerAllowance(t *testing.T) {
+	setup(t)
+	if got := LimitFor("nobody-in-particular"); got != DailyLimit() {
+		t.Errorf("LimitFor = %d, want the full %d for an established account", got, DailyLimit())
+	}
+
+	// Zero is the kill switch, and it is the same setting rather than a second
+	// one, because an operator reaching for it is in a hurry.
+	t.Setenv("SMS_DAILY_LIMIT", "0")
+	if got := LimitFor("nobody-in-particular"); got != 0 {
+		t.Errorf("LimitFor = %d with sending off, want 0", got)
+	}
+	if _, err := Send("acct-1", "+447700900123", "hi"); err == nil ||
+		!strings.Contains(err.Error(), "not sending texts") {
+		t.Errorf("with sending off: %v", err)
 	}
 }
