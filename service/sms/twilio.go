@@ -34,7 +34,7 @@ var send = deliver
 
 // deliver is the real thing.
 func deliver(to, body string) (string, error) {
-	sid := AccountSID()
+	sid := pathSID()
 	user, pass := credentials()
 	if sid == "" || user == "" || pass == "" {
 		return "", fmt.Errorf("this instance cannot send texts — no provider is configured")
@@ -109,6 +109,20 @@ func AccountSID() string {
 		return sid
 	}
 	return ""
+}
+
+// pathSID is the SID the send URL is built from.
+//
+// AccountSID is empty when the account slot holds a key, which is the right
+// answer for "can a signature be verified" and the wrong one here: Twilio
+// resolves a key in that position and the instance was sending happily with one
+// there. Reading it strictly for both stopped every outbound message — the
+// second outage the strictness was supposed to prevent, caused by it.
+func pathSID() string {
+	if sid := AccountSID(); sid != "" {
+		return sid
+	}
+	return strings.TrimSpace(settings.Get("TWILIO_ACCOUNT_SID"))
 }
 
 // credentials are what the API call authenticates with: an API key and secret

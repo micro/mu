@@ -59,3 +59,26 @@ func TestAccountAndKeyTogether(t *testing.T) {
 		t.Error("an API key must not become the thing signatures are checked against")
 	}
 }
+
+// A key in the account slot cannot verify a signature and must still send.
+//
+// Reading that slot strictly for both questions stopped every outbound message
+// on an instance that had been sending fine — the exact second outage the
+// strictness was meant to prevent, caused by it. The two questions have two
+// answers.
+func TestAKeyInTheAccountSlotStillSends(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("TWILIO_ACCOUNT_SID", "SK00000000000000000000000000000000")
+	t.Setenv("TWILIO_AUTH_TOKEN", "the-key-secret")
+	t.Setenv("TWILIO_FROM", "+447700900000")
+
+	if pathSID() != "SK00000000000000000000000000000000" {
+		t.Errorf("pathSID = %q — the send URL needs whatever is configured", pathSID())
+	}
+	if AccountSID() != "" {
+		t.Error("a key was read as an account, which is the question about signatures")
+	}
+	if !Configured() || CanReceive() == "" {
+		t.Error("this setup sends and cannot receive, and should say exactly that")
+	}
+}
