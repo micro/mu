@@ -38,7 +38,7 @@ var Spec = service.Spec{
 		"List": {Doc: "Read recent blog posts — titles, snippets and ids"},
 
 		// One post at a time. Implemented in posts.go.
-		"Read": {Doc: "Read one blog post in full, by id or by title. Use after blog_list or index_search has found a candidate and the summary is not enough"},
+		"Read": {Doc: "Read one blog post in full, by id or by title. Use after blog_list has found a candidate and the summary is not enough"},
 		"Create": {Doc: "Publish a post to the caller's blog. For anything meant to be read later by other people — notes, write-ups, announcements. For a private note to yourself, prefer files or memory",
 			Cost: quota.OpBlogCreate, Account: true},
 		"Update": {Doc: "Edit one of the caller's own posts. Fields left out keep their current value", Account: true},

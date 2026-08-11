@@ -23,7 +23,6 @@ mu/
 │   ├── events/
 │   ├── files/
 │   ├── images/
-│   ├── index/
 │   ├── mail/
 │   ├── markets/
 │   ├── news/
@@ -84,8 +83,8 @@ Services live under `service/<name>/`. `internal/service` is the runtime core
 that hosts them — it is not itself a service.
 
 The exception is a **headless** service: a capability with no page, so no route
-and no nav entry. `index` is headless — it exists for the agent, for apps and
-for other services to call.
+and no nav entry — it exists for the agent, for apps and for other services to
+call. `contacts` is one.
 
 Two footnotes. `wallet` has a page that predates its service; both are the same
 capability with two surfaces. And the `web` service is reached at `/search`,
@@ -120,7 +119,6 @@ guessable.
 | `events` | /events | ✅ | ✅ | Calendar: scheduling, `.ics` invites, and when you are free — optionally counting an attached Google Calendar |
 | `files` | /files | ✅ | ✅ | Per-user file storage: keep a file, get a URL |
 | `images` | /images | ✅ | ✅ | Generation, daily image, archive |
-| `index` | — | ✅ |  | Search across the caller's own content |
 | `mail` | /mail | ✅ | ✅ | SMTP server, inbox, DKIM |
 | `markets` | /markets | ✅ |  | Crypto, stocks, futures, commodities, currencies |
 | `notes` | /notes | ✅ | ✅ | A title and what is under it, kept between conversations. Addressed by title, where docs holds collections you query |
@@ -146,9 +144,9 @@ That bluntness is why some services that hold per-user data are not scoped.
 `stream` is readable by anyone (a guest sees the public timeline) while posting
 requires an account, so the check lives in the method rather than on the
 service. Marking it scoped would hide the timeline from visitors entirely.
-`index` is the same shape: a guest search returns public indexed content and
-nothing else, because the caller's own mail is added only when there is a
-caller.
+`sms` is the reverse shape: every method is account-only even though sending is
+priced, because what an anonymous sender spends is the number's reputation and
+that belongs to everybody on the instance.
 
 Identity comes from the **call context**, never from a request field — see
 `internal/service/identity.go`. Handlers read `service.AccountFrom(ctx)`, and no

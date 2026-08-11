@@ -96,7 +96,7 @@ func init() {
 		Name:         "Search Agent",
 		Description:  "Web search and content fetching",
 		SystemPrompt: `You are the Search specialist on Mu. You search the web, fetch pages, and extract relevant information. Always cite your sources with URLs. Distinguish between facts and opinions. Summarise clearly — the user wants the answer, not a list of links.`,
-		Tools:        []string{"index_search", "web_search", "web_fetch"},
+		Tools:        []string{"web_search", "web_fetch"},
 		MemoryScope:  "search",
 	})
 }

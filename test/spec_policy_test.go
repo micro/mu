@@ -9,17 +9,16 @@ import (
 	"mu/internal/service"
 	"mu/service/apps"
 	"mu/service/blog"
-	"mu/service/notes"
 	"mu/service/chat"
 	"mu/service/contacts"
 	"mu/service/docs"
 	"mu/service/events"
 	"mu/service/files"
 	"mu/service/images"
-	"mu/service/index"
 	"mu/service/mail"
 	"mu/service/markets"
 	"mu/service/news"
+	"mu/service/notes"
 	"mu/service/places"
 	"mu/service/prayer"
 	"mu/service/sms"
@@ -43,7 +42,7 @@ import (
 func allSpecs() []service.Spec {
 	return []service.Spec{
 		apps.Spec, blog.Spec, chat.Spec, contacts.Spec, docs.Spec, events.Spec,
-		files.Spec, images.Spec, index.Spec, mail.Spec, markets.Spec,
+		files.Spec, images.Spec, mail.Spec, markets.Spec,
 		notes.Spec, news.Spec, places.Spec, prayer.Spec, sms.Spec, social.Spec,
 		stream.Spec, tasks.Spec, user.Spec, video.Spec, weather.Spec, web.Spec,
 	}
@@ -68,7 +67,7 @@ func registerAll(t *testing.T) {
 
 // The real specs must reproduce the policy the deleted hand-written maps held.
 func TestSpecsReproduceTheOldPolicy(t *testing.T) {
-	for _, s := range []service.Spec{mail.Spec, index.Spec, tasks.Spec, web.Spec, blog.Spec, user.Spec} {
+	for _, s := range []service.Spec{mail.Spec, tasks.Spec, web.Spec, blog.Spec, user.Spec} {
 		// Idempotent for the same reason registerAll is: another test in this
 		// binary may have registered these already, and registering twice
 		// races for the port.
@@ -93,15 +92,6 @@ func TestSpecsReproduceTheOldPolicy(t *testing.T) {
 	// index is deliberately not scoped, and this is a change. The old
 	// accountScoped map marked it scoped, which closed it to guests in the
 	// agent — while the micro-agent's own allowlist let guests use it. Two
-	// lists, two answers. Search adds the caller's mail only when there is a
-	// caller, so a guest search returns public indexed content and nothing
-	// else; open is the answer that matches what the code does.
-	if service.AccountScoped("index") {
-		t.Error("index must stay open to guests, who get public content only")
-	}
-	if !service.GuestAllowedTool("index_search") {
-		t.Error("a guest must be able to search public indexed content")
-	}
 	for _, tool := range []string{"mail_inbox", "tasks_list", "user_saved"} {
 		if service.GuestAllowedTool(tool) {
 			t.Errorf("%s must stay closed to guests", tool)

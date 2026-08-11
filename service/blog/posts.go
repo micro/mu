@@ -92,7 +92,7 @@ type ReadResponse struct {
 }
 
 // Read returns one post in full, by id or by title. Use it after blog_list or
-// index_search has found a candidate and the summary is not enough.
+// blog_list has found a candidate and the summary is not enough.
 // @example {"title": "on writing"}
 func (Server) Read(_ context.Context, req *ReadRequest, rsp *ReadResponse) error {
 	p, err := find(req.ID, req.Title)

@@ -31,9 +31,6 @@ var legacy = map[string]string{
 	"search_fetch":   "web_fetch",
 	"news":           "news_list",
 	"news_headlines": "news_list",
-	"index":          "index_search",
-	"recall":         "index_search",
-	"search":         "index_search",
 	"markets":        "markets_list",
 	"image_generate": "images_generate",
 	"image_search":   "images_search",
@@ -60,7 +57,7 @@ var legacy = map[string]string{
 	"db_get":    "docs_get",
 	"db_list":   "docs_list",
 	"db_delete": "docs_delete",
-	"reminder":      "prayer_reflection",
+	"reminder":  "prayer_reflection",
 	// sms_inbox returned both directions, which is not what an inbox is.
 	"sms_inbox": "sms_history",
 	// The content verbs became a service — user.Save, user.Hide and the rest —

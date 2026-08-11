@@ -7,7 +7,6 @@ import (
 	"mu/tool"
 
 	"mu/internal/service"
-	"mu/service/index"
 	"mu/service/mail"
 	"mu/service/markets"
 	"mu/service/news"
@@ -44,7 +43,7 @@ func TestBuildToolsDescFiltersPrivateToolsForGuests(t *testing.T) {
 func registerServices(t *testing.T) {
 	t.Helper()
 	for _, s := range []service.Spec{
-		news.Spec, markets.Spec, weather.Spec, web.Spec, index.Spec, mail.Spec,
+		news.Spec, markets.Spec, weather.Spec, web.Spec, mail.Spec,
 	} {
 		if err := service.Register(s); err != nil {
 			t.Fatalf("register %s: %v", s.Name, err)
@@ -54,7 +53,7 @@ func registerServices(t *testing.T) {
 
 func TestGuestAllowedToolsCoverPublicCoreServices(t *testing.T) {
 	registerServices(t)
-	for _, tool := range []string{"weather_forecast", "news_list", "markets_list", "web_search", "index_search"} {
+	for _, tool := range []string{"weather_forecast", "news_list", "markets_list", "web_search"} {
 		t.Run(tool, func(t *testing.T) {
 			if !isGuestAllowedTool(tool) {
 				t.Fatalf("%s should be allowed for guest ask-answer smoke paths", tool)

@@ -20,7 +20,6 @@ import (
 	"mu/service/events"
 	"mu/service/files"
 	"mu/service/images"
-	"mu/service/index"
 	"mu/service/mail"
 	"mu/service/markets"
 	"mu/service/news"
@@ -80,7 +79,6 @@ func boot() {
 	stream.LoadService()
 	chat.LoadService()
 	docs.LoadService()
-	index.LoadService()
 	notes.LoadService()
 	sms.LoadService()
 	images.Load()
