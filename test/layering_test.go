@@ -134,12 +134,7 @@ func importsFrom(t *testing.T, root string, want *regexp.Regexp) map[string]stri
 // meant to be passed.
 func TestServicesDoNotImportEachOther(t *testing.T) {
 	allowed := map[string]string{
-		"blog -> markets": "the daily digest composes other services' output; wants a reader interface underneath",
-		"blog -> news":    "as above",
-		"blog -> prayer":  "as above",
-		"blog -> web":     "as above",
-		"blog -> video":   "as above",
-		"social -> news":  "the feed reads indexed news; the index is the shared thing",
+		"social -> news":  "all that is left is LookupMetadata, a link-preview cache — shared infrastructure that belongs in internal/, and 47 uses of the Metadata type inside news plus a live on-disk path make it its own change",
 		"sms -> contacts": "resolving a name to a number; an address book lookup belongs below both",
 	}
 

@@ -1,7 +1,21 @@
+// Package blog is the agent that writes.
+//
+// It was inside service/blog, which made the blog service import markets, news,
+// prayer, video and web — five services, reached sideways, because the thing
+// choosing what to write about lived in the thing that stores what was written.
+// Those five imports were not dependencies, they were editorial policy compiled
+// in: flights shipped and the daily opinion could not mention it until somebody
+// edited this file.
+//
+// Services answer questions about state. Agents decide which questions to ask.
+// The blog service holds posts; this decides what is worth saying today and
+// calls CreatePost like any other caller. An agent is allowed to read the
+// catalogue — that is what an agent is for — so the imports below are here
+// rather than gone, and here is where they cost nothing: nobody has to
+// understand this file to understand what a blog post is.
 package blog
 
 import (
-	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -14,6 +28,8 @@ import (
 	"mu/service/prayer"
 	"mu/service/video"
 	"mu/service/web"
+
+	blogsvc "mu/service/blog"
 )
 
 // opinionTag is the tag used for daily opinion posts.
@@ -53,17 +69,13 @@ Your measure of success:
 - Did you connect information in a way that benefits their understanding?
 - A single piece that leaves someone better informed and more thoughtful is worth more than ten that merely provoke.`
 
-// opinionCategories returns the list of categories from topics.json.
-// Uses topicsJSON which is embedded in blog.go.
-func opinionCategories() []string {
-	var cats []string
-	json.Unmarshal(topicsJSON, &cats)
-	return cats
-}
+// opinionCategories is what the blog says it is about. Asked of the service
+// rather than read from its embedded file, because reaching into another
+// package's data is how this whole arrangement started.
+func opinionCategories() []string { return blogsvc.GetTopics() }
 
-// StartOpinion begins the background opinion generation and engagement loops.
-// Called from main.go after all building blocks are loaded.
-func StartOpinion() {
+// Start begins the background opinion generation loop.
+func Start() {
 	memory = loadMemory()
 	go opinionLoop()
 	go opinionEngageLoop()
@@ -151,7 +163,7 @@ func publishCategoryOpinion(category string) {
 	}
 
 	tags := opinionTag + "," + strings.ToLower(category)
-	err = CreatePost(title, body, app.SystemUserName, app.SystemUserID, tags, false)
+	err = blogsvc.CreatePost(title, body, app.SystemUserName, app.SystemUserID, tags, false)
 	if err != nil {
 		app.Log("opinion", "Failed to create opinion post [%s]: %v", category, err)
 		return
@@ -162,17 +174,15 @@ func publishCategoryOpinion(category string) {
 }
 
 // FindTodayOpinions returns all opinion posts from today, newest first.
-func FindTodayOpinions() []*Post {
-	mutex.RLock()
-	defer mutex.RUnlock()
-
+//
+// Through the service's public API rather than its posts slice and its mutex,
+// which is what moving out of the package cost and what it was worth: this can
+// no longer reach into blog's internals by accident.
+func FindTodayOpinions() []*blogsvc.Post {
 	now := time.Now()
 	y, m, d := now.Date()
-	var result []*Post
-	for _, post := range posts {
-		if post.AuthorID != app.SystemUserID {
-			continue
-		}
+	var result []*blogsvc.Post
+	for _, post := range blogsvc.GetPostsByAuthorID(app.SystemUserID, app.SystemUserName) {
 		if !strings.Contains(post.Tags, opinionTag) {
 			continue
 		}

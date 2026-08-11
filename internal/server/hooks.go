@@ -19,7 +19,9 @@ import (
 
 	"mu/admin"
 	"mu/agent"
+	agentblog "mu/agent/blog"
 	"mu/agent/micro"
+	agentsocial "mu/agent/social"
 	"mu/client/discord"
 	"mu/client/telegram"
 	"mu/client/whatsapp"
@@ -552,7 +554,10 @@ func wireHooks() {
 	web.StartTopics()
 
 	// Start daily opinion generation (publishes as blog post)
-	blog.StartOpinion()
+	agentblog.Start()
+
+	// Start surfacing breaking stories into social
+	agentsocial.Start()
 
 	// Start the notes loop — Mu's own story, posted to its own blog as the
 	// system account (low cadence; disable with NOTES=off).
