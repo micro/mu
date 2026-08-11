@@ -51,21 +51,26 @@ func (Server) Send(ctx context.Context, req *SendRequest, rsp *SendResponse) err
 	return nil
 }
 
-// ── Inbox ───────────────────────────────────────────────────────
+// ── History ─────────────────────────────────────────────────────
 
-type InboxRequest struct {
+type HistoryRequest struct {
 	Limit int `json:"limit,omitempty" description:"How many messages to return, newest first (default 50, max 200)"`
 }
 
-type InboxResponse struct {
+type HistoryResponse struct {
 	Messages []Message `json:"messages" description:"Texts sent and received, newest first"`
 	Number   string    `json:"number" description:"The number these were sent from and received on"`
 	Numbers  []string  `json:"numbers" description:"Every number this instance sends from — one per country it serves"`
 }
 
-// Inbox returns the caller's texts, sent and received.
+// History returns the caller's texts, sent and received.
+//
+// Not Inbox, which is what this was called and what mail calls the equivalent.
+// An inbox is what arrived; this is both halves of every conversation in one
+// list, and calling it an inbox meant an agent asking "what did they say back"
+// got its own outgoing messages mixed in with no warning.
 // @example {"limit": 20}
-func (Server) Inbox(ctx context.Context, req *InboxRequest, rsp *InboxResponse) error {
+func (Server) History(ctx context.Context, req *HistoryRequest, rsp *HistoryResponse) error {
 	owner, err := caller(ctx)
 	if err != nil {
 		return err
@@ -171,8 +176,8 @@ var Spec = service.Spec{
 		// which belongs to everybody on this instance and cannot be topped up.
 		"Send": {Cost: quota.OpSMSSend, AccountOnly: true, Destructive: true,
 			Doc: "Text somebody. Only works for a number already in your contacts, verified as your own, or one that texted you first — an agent cannot text a stranger. Charged per 160-character segment"},
-		"Inbox": {AccountOnly: true,
-			Doc: "Read the texts this account has sent and received, newest first"},
+		"History": {AccountOnly: true, Aliases: []string{"sms_inbox"},
+			Doc: "Read the texts this account has sent and received, newest first. Both directions, which is why it is not called an inbox"},
 		"Number": {AccountOnly: true,
 			Doc: "The number texts are sent from, which numbers are verified as yours, and how many messages are left today"},
 		"Verify": {AccountOnly: true,

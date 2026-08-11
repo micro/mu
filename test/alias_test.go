@@ -61,6 +61,8 @@ var legacy = map[string]string{
 	"db_list":   "docs_list",
 	"db_delete": "docs_delete",
 	"reminder":      "prayer_reflection",
+	// sms_inbox returned both directions, which is not what an inbox is.
+	"sms_inbox": "sms_history",
 	// The content verbs became a service — user.Save, user.Hide and the rest —
 	// and the names clients were already calling by have to survive that.
 	"content_save":   "user_save",
