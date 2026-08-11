@@ -46,10 +46,9 @@ package sms
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
-
-	"strconv"
 
 	"mu/internal/app"
 	"mu/internal/auth"
@@ -197,11 +196,38 @@ func CanReceive() string {
 		return "TWILIO_ACCOUNT_SID is not an account — an API key (SK…) belongs in " +
 			"TWILIO_API_KEY and TWILIO_API_SECRET, and this wants the AC… account it belongs to"
 	}
-	if authToken() == "" {
+	t := authToken()
+	if t == "" {
 		return "TWILIO_AUTH_TOKEN is not set to the account's auth token, which is the only " +
 			"thing a webhook signature can be checked against"
 	}
+	// An account auth token is thirty-two hexadecimal characters. An API key
+	// secret is the same length and is not hex, which is the whole of the
+	// confusion this service has already been through once — and the two are
+	// indistinguishable by eye in a settings form. Checking the shape says so
+	// without printing a secret or having anybody read one out.
+	if !looksLikeAuthToken(t) {
+		return "TWILIO_AUTH_TOKEN is not shaped like an account auth token — those are 32 " +
+			"hexadecimal characters, and this is " + strconv.Itoa(len(t)) +
+			" characters with others in it, which is what an API key secret looks like"
+	}
 	return ""
+}
+
+// looksLikeAuthToken reports whether a value has the shape of an account auth
+// token: thirty-two characters, hexadecimal, no more.
+func looksLikeAuthToken(t string) bool {
+	if len(t) != 32 {
+		return false
+	}
+	for _, r := range t {
+		switch {
+		case r >= '0' && r <= '9', r >= 'a' && r <= 'f', r >= 'A' && r <= 'F':
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 // e164 normalises a number to +<digits>.

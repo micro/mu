@@ -40,13 +40,13 @@ func TestAnAPIKeyIsNotAnAccount(t *testing.T) {
 func TestAccountAndKeyTogether(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("TWILIO_ACCOUNT_SID", "AC00000000000000000000000000000000")
-	t.Setenv("TWILIO_AUTH_TOKEN", "the-account-auth-token")
+	t.Setenv("TWILIO_AUTH_TOKEN", "0123456789abcdef0123456789abcdef")
 	t.Setenv("TWILIO_FROM", "+447700900000")
 
 	if CanReceive() != "" {
 		t.Errorf("a correctly configured instance reports a problem: %s", CanReceive())
 	}
-	if authToken() != "the-account-auth-token" {
+	if authToken() != "0123456789abcdef0123456789abcdef" {
 		t.Error("the signature would not be checked against the account's auth token")
 	}
 	if user, _ := credentials(); user != "AC00000000000000000000000000000000" {
@@ -58,7 +58,7 @@ func TestAccountAndKeyTogether(t *testing.T) {
 	if user, pass := credentials(); user != "SKkey" || pass != "secret" {
 		t.Error("an API key should be preferred for sending")
 	}
-	if authToken() != "the-account-auth-token" {
+	if authToken() != "0123456789abcdef0123456789abcdef" {
 		t.Error("an API key must not become the thing signatures are checked against")
 	}
 }
@@ -99,7 +99,7 @@ func TestMissingNamesWhatIsMissing(t *testing.T) {
 		t.Errorf("Missing = %v, want just the auth token — the number is set", got)
 	}
 
-	t.Setenv("TWILIO_AUTH_TOKEN", "token")
+	t.Setenv("TWILIO_AUTH_TOKEN", "0123456789abcdef0123456789abcdef")
 	if got := Missing(); len(got) != 0 {
 		t.Errorf("Missing = %v on a complete setup", got)
 	}
@@ -107,5 +107,24 @@ func TestMissingNamesWhatIsMissing(t *testing.T) {
 	t.Setenv("TWILIO_FROM", "")
 	if got := Missing(); len(got) != 1 || !strings.Contains(got[0], "TWILIO_FROM") {
 		t.Errorf("Missing = %v, want the number", got)
+	}
+}
+
+// An account auth token is 32 hex characters. An API key secret is the same
+// length and is not hex — indistinguishable by eye in a settings form, and the
+// difference between receiving texts and refusing all of them.
+func TestTheTokenShapeIsChecked(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("TWILIO_ACCOUNT_SID", "AC00000000000000000000000000000000")
+	t.Setenv("TWILIO_FROM", "+447700900000")
+
+	t.Setenv("TWILIO_AUTH_TOKEN", "0123456789abcdef0123456789abcdef")
+	if CanReceive() != "" {
+		t.Errorf("a real-shaped auth token was rejected: %s", CanReceive())
+	}
+
+	t.Setenv("TWILIO_AUTH_TOKEN", "Zx9QwErTyUiOpAsDfGhJkLzXcVbNm012")
+	if CanReceive() == "" {
+		t.Error("an API-key-shaped secret was accepted as an auth token")
 	}
 }
