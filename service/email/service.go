@@ -94,7 +94,7 @@ func (Server) Send(ctx context.Context, req *SendRequest, rsp *SendResponse) err
 		return err
 	}
 	rsp.Result = fmt.Sprintf("Sent to %s from %s. Replies come back to %s. %s.",
-		msg.To, SenderFor(who), ReplyFor(who), Allowance(who))
+		msg.To, SenderFor(who), Answers(who), Allowance(who))
 	return nil
 }
 
@@ -153,7 +153,7 @@ func (Server) Sender(ctx context.Context, _ *SenderRequest, rsp *SenderResponse)
 	if !Configured() {
 		return fmt.Errorf("this instance has no sending domain configured")
 	}
-	rsp.From, rsp.ReplyTo = SenderFor(who), ReplyFor(who)
+	rsp.From, rsp.ReplyTo = SenderFor(who), Answers(who)
 	rsp.Left, _ = LeftToday(who)
 	rsp.Text = fmt.Sprintf("Email is sent from %s and replies arrive at %s. %s.",
 		rsp.From, rsp.ReplyTo, Allowance(who))

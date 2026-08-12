@@ -72,7 +72,17 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<p style="font-size:15px;margin:0 0 4px"><code>` +
 		html.EscapeString(SenderFor(acc.ID)) + `</code></p>`)
 	b.WriteString(`<p style="font-size:14px;color:#666;margin:0 0 12px">Replies arrive at <code>` +
-		html.EscapeString(ReplyFor(acc.ID)) + `</code>, which is your inbox here — the sending domain carries no mail in.</p>`)
+		html.EscapeString(Answers(acc.ID)) + `</code>`)
+	if Answers(acc.ID) == SenderFor(acc.ID) {
+		// Twilio carries no Reply-To, so the From is the only address a reply
+		// can go to — which makes an MX record on the sending domain the
+		// difference between a conversation and a bounce.
+		b.WriteString(` — the carrier cannot redirect replies, so <code>` +
+			html.EscapeString(Domain()) + `</code> needs an MX record pointing here or answers will bounce.`)
+	} else {
+		b.WriteString(`, which is your inbox here.`)
+	}
+	b.WriteString(`</p>`)
 	b.WriteString(`<p style="font-size:14px;color:#666;margin:0">` +
 		html.EscapeString(strings.ToUpper(Allowance(acc.ID)[:1])+Allowance(acc.ID)[1:]) + `.</p>`)
 	b.WriteString(`</div>`)

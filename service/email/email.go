@@ -45,8 +45,8 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/quota"
-	"mu/internal/twilio"
 	"mu/internal/settings"
+	"mu/internal/twilio"
 	"mu/internal/userdb"
 )
 
@@ -138,6 +138,24 @@ func SenderFor(owner string) string {
 		return ""
 	}
 	return localPart(owner) + "@" + Domain()
+}
+
+// Answers is where a reply to this account's mail will actually arrive.
+//
+// Not the same question as ReplyFor, and the difference is the carrier's.
+// Twilio will not carry a Reply-To — there is no field for it and the header is
+// refused — so a message sent that way is answered at its From address and
+// nowhere else. Over this instance's own SMTP the header is ours to set, and
+// answers go to the mailbox at the mail domain.
+//
+// Said out loud because a service that quietly sends from an address nobody can
+// reply to is worse than one that cannot send: the sender believes they have
+// started a conversation.
+func Answers(owner string) string {
+	if twilio.EmailConfigured() {
+		return SenderFor(owner)
+	}
+	return ReplyFor(owner)
 }
 
 // ReplyFor is where answers to that account should go, or "" when this instance

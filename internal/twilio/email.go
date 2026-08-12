@@ -34,10 +34,18 @@ const emailEndpoint = "https://comms.twilio.com/v1/Emails"
 type Email struct {
 	From     string
 	FromName string
-	// ReplyTo is where answers should go, which is not always where the message
-	// came from: mail sent from a domain set up only for sending has no inbox
-	// behind it, and a reply to that address bounces. Carried as a header,
-	// which is what the API offers for it.
+	// ReplyTo is where answers should go, and Twilio cannot carry it.
+	//
+	// There is no reply_to field on the Mail Send resource, and setting the
+	// header is refused outright: "The header 'Reply-To' is restricted and
+	// cannot be overridden." So a message sent this way is answered at its From
+	// address and nowhere else, and the consequence is a DNS one rather than a
+	// code one — the sending domain needs an MX record, or replies to it bounce
+	// and the sender never learns they were answered.
+	//
+	// Kept on the struct because the SMTP path can set it and does, and because
+	// a caller should not have to know which carrier is underneath to describe
+	// what it wants. Twilio drops it; see Send.
 	ReplyTo string
 	To      string
 	ToName  string
@@ -80,9 +88,9 @@ func SendEmail(m Email) (string, error) {
 	if m.HTML != "" {
 		content["html"] = m.HTML
 	}
-	if r := strings.TrimSpace(m.ReplyTo); r != "" {
-		content["headers"] = map[string]string{"Reply-To": r}
-	}
+	// Deliberately not sent. See Email.ReplyTo: Twilio refuses the header with a
+	// 400, so passing it through would fail every message rather than degrade
+	// one.
 
 	raw, err := json.Marshal(map[string]any{
 		"from":    from,
@@ -122,11 +130,27 @@ func SendEmail(m Email) (string, error) {
 // reads "the from domain is not verified" rather than "400".
 func emailError(body []byte, status string) string {
 	var e struct {
+		// The shape a refusal actually arrives in — an array. Reading only the
+		// top level put the whole JSON blob in front of an operator, with the
+		// one sentence that explained it buried in the middle.
+		Errors []struct {
+			Message string `json:"message"`
+			Code    int    `json:"code"`
+		} `json:"errors"`
 		Message string `json:"message"`
 		Detail  string `json:"detail"`
 		Title   string `json:"title"`
 	}
 	if json.Unmarshal(body, &e) == nil {
+		var parts []string
+		for _, x := range e.Errors {
+			if strings.TrimSpace(x.Message) != "" {
+				parts = append(parts, x.Message)
+			}
+		}
+		if len(parts) > 0 {
+			return strings.Join(parts, "; ")
+		}
 		for _, s := range []string{e.Message, e.Detail, e.Title} {
 			if strings.TrimSpace(s) != "" {
 				return s
