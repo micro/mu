@@ -49,12 +49,18 @@ type SubscriptionPlan struct {
 	// these are the difference between them — and they are numbers rather than
 	// words because something has to read them.
 	//
-	// Agents is how many the account may keep; PostsPerHour is its write rate
-	// limit. Both were prose on a card and nothing else: "5 agents" and "higher
-	// rate limits" were advertised with no plan field to read, no cap anywhere
-	// that counted agents, and a rate limit that varied by whether an account
-	// was an admin, approved, or under a day old — never by what it paid.
-	Agents       int `json:"agents"`
+	// Agents is how many the account may keep. It is on the card.
+	Agents int `json:"agents"`
+
+	// PostsPerHour is the write rate limit, and it is deliberately not on the
+	// card. A plan raises it, because somebody paying monthly is more
+	// accountable than somebody who signed up a minute ago, but it is an abuse
+	// control on writing to the social side rather than something anybody
+	// buys. This is an MCP server: what a buyer means by a rate limit is how
+	// hard their agent may call tools, and that is not this number.
+	//
+	// A limit is not a feature. Selling one is how a card ends up answering a
+	// question nobody asked.
 	PostsPerHour int `json:"posts_per_hour"`
 
 	// Nothing about the channels — external email, SMS, WhatsApp — is here on

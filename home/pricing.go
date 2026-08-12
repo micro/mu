@@ -106,15 +106,19 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 		for _, f := range p.Features {
 			b.WriteString(`<li>&#10003; ` + html.EscapeString(f) + `</li>`)
 		}
-		// The lines that used to be prose. "5 agents" and "Higher rate limits"
-		// were typed into this list while nothing in the product read a plan,
-		// so they were claims rather than facts for as long as the page existed.
-		// Written from the same fields the limits are enforced from, which is
-		// the only arrangement where the card cannot be wrong.
+		// Written from the field the limit is enforced from, which is the only
+		// arrangement where the card cannot be wrong.
+		//
+		// The post rate is not here, though a plan does raise it. It is an
+		// abuse control on writing to the social side — the defence against a
+		// runaway bot filling the timeline — and this is an MCP server, where
+		// what a buyer means by a rate limit is how hard their agent may call
+		// tools. Advertising "300 posts an hour" answers a question nobody
+		// asked and implies we are metering something we are not. A limit and
+		// a feature are different things, and only one of them belongs on a
+		// price card.
 		b.WriteString(`<li>&#10003; ` + html.EscapeString(
 			fmt.Sprintf("%d agent%s", p.Agents, plural(p.Agents))) + `</li>`)
-		b.WriteString(`<li>&#10003; ` + html.EscapeString(
-			fmt.Sprintf("%s posts an hour", thousands(p.PostsPerHour))) + `</li>`)
 		b.WriteString(`</ul>`)
 		b.WriteString(`<a href="/signup" class="btn" style="display:block;text-align:center">Get ` +
 			html.EscapeString(p.Name) + `</a>`)

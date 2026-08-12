@@ -253,18 +253,32 @@ may hit it, and whether the real-world channels are open to them. Those cost us
 in ways credits do not: an agent is a token to keep, a rate limit to hold, a
 share of a phone number's reputation.
 
-| | Free | Pro — £20/mo | Scale — £100/mo |
+| | Personal — £10/mo | Pro — £20/mo | Premium — £100/mo |
 |---|---|---|---|
-| Credits included | 100/month | £20 of credits, at face value | £100 of credits, at face value |
-| To get started | 500 once | — | — |
+| Credits included | 1,000, at face value | 2,000, at face value | 10,000, at face value |
 | Agents | 1 | 5 | 25 |
-| Mail out, SMS, WhatsApp | no | yes | yes |
-| Rate limit | modest | higher | highest |
-| Card needed | no | yes | yes |
+
+That is the whole table, and **it is too thin to sell Premium.** £100 for
+10,000 credits and twenty-four more agents is not an offer somebody reasons
+their way into. The axes below are what it is missing; this section is what
+they get measured against.
 
 Everything above what a tier includes is bought at the same 1p. There is no
 tier at which a credit is cheaper, and the pricing page should say so — it is
 the sentence that stops anybody wondering whether they are on the wrong plan.
+
+### What a rate limit is not
+
+The table used to say "modest / higher / highest" against **Rate limit**, and
+what shipped behind it was `POST_LIMIT_PER_HOUR` — the abuse control on writing
+to the social side, the defence against a runaway bot filling the timeline.
+
+Nobody buying an MCP server means that. What they mean is how hard their agent
+may call tools, and that is a different number that does not exist yet. A plan
+still raises the post rate, because somebody paying monthly is more accountable
+than somebody who signed up a minute ago — but it is a limit, not a feature,
+and it is off the card. Selling a limit is how a price card ends up answering a
+question nobody asked.
 
 Plus the two that are not tiers and should stay: **top up any amount** with no
 subscription, and **x402**, per-call payment in USDC with no account at all —
@@ -284,6 +298,107 @@ Why these shapes:
   feature gate.
 - **Agents, not seats.** The unit somebody scales is how many agents they run,
   which is also the unit that costs us.
+
+## What actually scales
+
+A tier axis has to pass three tests, and most candidates fail one of them.
+
+1. **It costs us more as it goes up.** Otherwise the top tier is rent.
+2. **Somebody can tell in advance which side of it they are on.** "Higher rate
+   limits" fails this: nobody knows whether they need it until they are stopped.
+3. **It grows with success rather than with signup.** A limit somebody meets in
+   week one is a paywall; one they meet in month six is a reason to upgrade.
+
+**Agents already passes 2 and 3 and only half-passes 1.** An agent is a row and
+a scoped token; twenty-five of them cost us nothing at rest. What costs money is
+what agents *do*, and that is credits, which are already metered. So the agent
+count is a proxy, and it stays a weak one **until agents can act without being
+typed at**. Which is the first item below, and the reason it is first.
+
+### The one that changes the product
+
+**Scheduled runs — how many standing instructions may fire, and how often.**
+
+Mu is tools for agents, and today an agent runs when somebody talks to it. That
+is a chat box with good tools. An agent that wakes at seven, reads the overnight
+news, checks the markets and mails a briefing is a different product, and it is
+the one the roster page already describes — every agent has a standing
+instruction and nothing fires it.
+
+As a tier axis it passes all three tests better than anything else here:
+
+- **Cost.** A schedule is a direct multiplier on our provider spend, and the
+  only one that runs while nobody is watching. Hourly versus daily is a 24×
+  difference in what an account costs us.
+- **Legibility.** "Three schedules, hourly" versus "twenty-five, every minute"
+  is a sentence somebody can hold against what they are trying to build.
+- **Growth.** Nobody needs twenty schedules on day one, and anybody running
+  this seriously needs more than three.
+
+It also makes the agent count mean something, because an agent that can fire on
+its own is worth having several of.
+
+Priced as well as tiered: each firing spends credits at the ordinary rate, so a
+schedule that does real work bills for it. The tier sells *how many* may exist
+and *how often*, not the work itself.
+
+**This does not exist.** It is the largest build on this page and the one worth
+doing first.
+
+### The cheap ones worth having
+
+**Concurrency — in-flight tool calls per account.** This is the honest version
+of what "rate limit" was reaching for, in the units an MCP client thinks in. An
+agent fanning out over twenty tools at once is a different load from one asking
+a question a minute, and it is exactly the shape a paying customer generates. It
+belongs in `internal/service/gateway.go`, which every call already passes
+through — a semaphore keyed by account, next to the charge. Small build.
+
+**Storage — one number in GB, across files, docs, images and app data.**
+`files.MaxOwnerBytes` is already a flat 200 MiB constant per account; making it
+a plan field is close to a one-line change. Real disk cost, universally
+understood, and nobody hits it in week one.
+
+**A phone number of your own.** SMS shares one instance number capped at 20 a
+day (`sms.DailyLimit`). A dedicated number is about a pound a month of real
+cost, it removes a shared reputation, and it is the clearest premium line here —
+somebody either needs their own number or does not, and they know which.
+
+**Retention.** How far back mail, usage, stream and chat go. Cheap to build,
+real storage cost, and it is the standard axis in every product of this shape,
+which means nobody has to have it explained.
+
+### What not to tier
+
+**Never the tools themselves.** The claim is one account instead of a hundred;
+a tier that withholds routes or markets makes it one account instead of a
+hundred, *unless you want the good ones*. That is the pitch destroyed to sell a
+tier, and it is the single most tempting mistake available here because it is
+so easy to implement.
+
+**Not the model.** `agent_query` and `agent_query_premium` are priced 7 and 20
+because they cost different amounts. Gating the premium one behind a plan
+charges twice for the same difference.
+
+**Not seats, yet.** Team accounts are a real axis and a large build touching
+auth, ownership and billing, and there is no evidence anybody has asked. Later.
+
+### Where that leaves the table
+
+With scheduling, concurrency and storage, the tiers have something to say:
+
+| | Personal | Pro | Premium |
+|---|---|---|---|
+| Credits included | 1,000 | 2,000 | 10,000 |
+| Agents | 1 | 5 | 25 |
+| Schedules | 1, daily | 5, hourly | 25, every 15 min |
+| Concurrent calls | 2 | 8 | 32 |
+| Storage | 1 GB | 10 GB | 100 GB |
+| Own phone number | — | — | yes |
+
+Every row is something that costs us more as it goes up, that somebody can
+place themselves on before paying, and that they grow into. None of it is a
+tool withheld.
 
 ## Getting off the ground
 
