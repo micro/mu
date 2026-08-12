@@ -17,9 +17,28 @@ type ListRequest struct {
 	Limit int    `json:"limit" description:"Optional max number of headlines (default 30)"`
 }
 
-// ListResponse is a model-ready list of headlines.
+// Headline is one story, for a caller that has to do something with it rather
+// than read it.
+type Headline struct {
+	Title       string `json:"title"`
+	URL         string `json:"url"`
+	Category    string `json:"category"`
+	Description string `json:"description,omitempty"`
+}
+
+// ListResponse is a model-ready list of headlines, and the same headlines as
+// data.
+//
+// Both, because there are two kinds of caller and they want different things. A
+// model reads Text — prose is cheaper than JSON and needs no schema explained.
+// A program wants the fields: agent/blog picks the top stories of a category to
+// research, and parsing them back out of prose it had just formatted was how it
+// came to import this package instead of calling it.
+//
+// Text stays first and stays the answer. Items is what it is made of.
 type ListResponse struct {
-	Text string `json:"text" description:"Recent headlines with short summaries, balanced across topics"`
+	Text  string     `json:"text" description:"Recent headlines with short summaries, balanced across topics"`
+	Items []Headline `json:"items" description:"The same headlines as data: title, url, category, description"`
 }
 
 // List returns recent news headlines with short summaries, balanced across
@@ -27,6 +46,7 @@ type ListResponse struct {
 // @example {"topic": "tech"}
 func (Server) List(_ context.Context, req *ListRequest, rsp *ListResponse) error {
 	rsp.Text = HeadlinesText(req.Topic, req.Limit)
+	rsp.Items = HeadlineItems(req.Topic, req.Limit)
 	return nil
 }
 

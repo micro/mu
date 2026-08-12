@@ -16,17 +16,14 @@
 package blog
 
 import (
+	"context"
 	"fmt"
-	"sort"
 	"strings"
 	"time"
 
 	"mu/internal/ai"
 	"mu/internal/app"
-	"mu/service/markets"
-	"mu/service/news"
-	"mu/service/prayer"
-	"mu/service/video"
+	"mu/internal/service"
 	"mu/service/web"
 
 	blogsvc "mu/service/blog"
@@ -222,14 +219,14 @@ func latestTodayOpinionTime() time.Time {
 // cross-references with web search for deeper context, and uses AI to
 // produce an opinion piece. Returns the title and the body content.
 func generateOpinion(category string) (string, string, error) {
-	context := gatherCategoryContext(category)
-	if context == "" {
+	material := gatherFromCatalogue(category)
+	if material == "" {
 		return "", "", fmt.Errorf("no content available for %s", category)
 	}
 
 	webResearch := researchCategoryStories(category)
 
-	fullContext := context
+	fullContext := material
 	if webResearch != "" {
 		fullContext += "\n\n## Web Research & Cross-References\n\n" + webResearch
 	}
@@ -306,138 +303,39 @@ Rules:
 	return title, body, nil
 }
 
-// gatherCategoryContext builds context focused on a specific category,
-// with supporting market data and Islamic reminder.
-func gatherCategoryContext(category string) string {
-	var sb strings.Builder
-
-	feed := news.GetFeed()
-	if len(feed) > 0 {
-		// Primary: news for this category
-		var categoryItems []*news.Post
-		for _, item := range feed {
-			if strings.EqualFold(item.Category, category) {
-				categoryItems = append(categoryItems, item)
-			}
-		}
-		if len(categoryItems) > 0 {
-			sb.WriteString(fmt.Sprintf("## %s News (Primary Focus)\n\n", category))
-			count := 8
-			if len(categoryItems) < count {
-				count = len(categoryItems)
-			}
-			for _, item := range categoryItems[:count] {
-				sb.WriteString(fmt.Sprintf("- %s: %s\n", item.Title, item.Description))
-			}
-			sb.WriteString("\n")
-		}
-
-		// Brief context from other categories
-		byCategory := make(map[string][]*news.Post)
-		for _, item := range feed {
-			if !strings.EqualFold(item.Category, category) {
-				byCategory[item.Category] = append(byCategory[item.Category], item)
-			}
-		}
-		if len(byCategory) > 0 {
-			sb.WriteString("## Other Headlines (for context)\n\n")
-			cats := make([]string, 0, len(byCategory))
-			for c := range byCategory {
-				cats = append(cats, c)
-			}
-			sort.Strings(cats)
-			for _, c := range cats {
-				items := byCategory[c]
-				count := 2
-				if len(items) < count {
-					count = len(items)
-				}
-				for _, item := range items[:count] {
-					sb.WriteString(fmt.Sprintf("- [%s] %s\n", c, item.Title))
-				}
-			}
-			sb.WriteString("\n")
-		}
-	}
-
-	// Market data — always useful context
-	priceData := markets.GetAllPriceData()
-	if len(priceData) > 0 {
-		sb.WriteString("## Market Data\n\n")
-		categories := []struct {
-			name   string
-			assets []string
-		}{
-			{"Crypto", []string{"BTC", "ETH", "SOL", "PAXG"}},
-			{"Futures", []string{"OIL", "GOLD", "SILVER", "COPPER"}},
-			{"Commodities", []string{"COFFEE", "WHEAT", "CORN"}},
-			{"Currencies", []string{"EUR", "GBP", "JPY", "CNY"}},
-		}
-		for _, cat := range categories {
-			for _, symbol := range cat.assets {
-				if pd, ok := priceData[symbol]; ok && pd.Price > 0 {
-					change := ""
-					if pd.Change24h != 0 {
-						change = fmt.Sprintf(" %+.1f%%", pd.Change24h)
-					}
-					sb.WriteString(fmt.Sprintf("- %s: %.2f USD%s\n", symbol, pd.Price, change))
-				}
-			}
-		}
-		sb.WriteString("\n")
-	}
-
-	videos := video.GetLatestVideos(5)
-	if len(videos) > 0 {
-		sb.WriteString("## Videos\n\n")
-		for _, v := range videos {
-			sb.WriteString(fmt.Sprintf("- %s by %s\n", v.Title, v.Channel))
-		}
-		sb.WriteString("\n")
-	}
-
-	rd := prayer.GetReminderData()
-	if rd != nil {
-		sb.WriteString("## Today's Islamic Reminder\n\n")
-		if rd.Message != "" {
-			sb.WriteString(rd.Message + "\n\n")
-		}
-		if rd.Verse != "" {
-			sb.WriteString("Verse: " + rd.Verse + "\n\n")
-		}
-		if rd.Hadith != "" {
-			sb.WriteString("Hadith: " + rd.Hadith + "\n\n")
-		}
-	}
-
-	return sb.String()
-}
-
 // researchCategoryStories does web research on the top stories for a category.
+//
+// The headlines come from the news service as data — the structured half of
+// news_list, added for exactly this — rather than by parsing them back out of
+// the prose the same service had just formatted. Web search is a paid call and
+// stays a direct one: it is the only place this agent spends money, and that is
+// worth being able to see.
 func researchCategoryStories(category string) string {
-	feed := news.GetFeed()
-	if len(feed) == 0 {
+	ctx, cancel := context.WithTimeout(context.Background(), gatherTimeout)
+	defer cancel()
+
+	rsp, err := service.CallDynamic(ctx, "news", "List", map[string]any{
+		"topic": category, "limit": researchStories,
+	})
+	if err != nil {
 		return ""
 	}
-
-	var categoryItems []*news.Post
-	for _, item := range feed {
-		if strings.EqualFold(item.Category, category) {
-			categoryItems = append(categoryItems, item)
-		}
-	}
-	if len(categoryItems) == 0 {
+	items, _ := rsp["items"].([]any)
+	if len(items) == 0 {
 		return ""
-	}
-
-	limit := 3
-	if len(categoryItems) < limit {
-		limit = len(categoryItems)
 	}
 
 	var sb strings.Builder
-	for _, item := range categoryItems[:limit] {
-		query := item.Title
+	for i, raw := range items {
+		if i >= researchStories {
+			break
+		}
+		item, _ := raw.(map[string]any)
+		title, _ := item["title"].(string)
+		if strings.TrimSpace(title) == "" {
+			continue
+		}
+		query := title
 		if len(query) > 120 {
 			query = query[:120]
 		}
@@ -447,29 +345,26 @@ func researchCategoryStories(category string) string {
 			continue
 		}
 
-		sb.WriteString(fmt.Sprintf("### Research: %s\n", item.Title))
-
+		fmt.Fprintf(&sb, "### Research: %s\n", title)
 		for _, r := range results {
 			desc := r.Description
 			if len(desc) > 300 {
 				desc = desc[:300] + "..."
 			}
-			sb.WriteString(fmt.Sprintf("- [%s] %s (Source: %s)\n", r.Title, desc, r.URL))
+			fmt.Fprintf(&sb, "- [%s] %s (Source: %s)\n", r.Title, desc, r.URL)
 		}
-
-		if len(results) > 0 {
-			fullContent := fetchArticleContent(results[0].URL)
-			if fullContent != "" {
-				sb.WriteString(fmt.Sprintf("\nFull article from %s:\n%s\n", results[0].URL, fullContent))
-			}
+		if full := fetchArticleContent(results[0].URL); full != "" {
+			fmt.Fprintf(&sb, "\nFull article from %s:\n%s\n", results[0].URL, full)
 		}
-
 		sb.WriteString("\n")
 		time.Sleep(500 * time.Millisecond)
 	}
-
 	return sb.String()
 }
+
+// researchStories is how many of a category's top stories get the web-research
+// treatment. Each one is a paid search plus a fetch, so this is a budget.
+const researchStories = 3
 
 func fetchArticleContent(rawURL string) string {
 	_, body, err := web.FetchAndExtract(rawURL)

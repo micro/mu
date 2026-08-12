@@ -265,3 +265,37 @@ func metaTime(v interface{}) time.Time {
 	}
 	return time.Time{}
 }
+
+// HeadlineItems is HeadlinesText's material, before it became prose.
+//
+// The same selection — topic filter, newest first, the same limit — returned as
+// data for a caller that has to act on a story rather than read about it.
+// agent/blog researches the top few of a category, and getting the titles back
+// out of the formatted text it had just been handed is what made it import this
+// package instead of calling it.
+func HeadlineItems(topic string, limit int) []Headline {
+	if limit <= 0 || limit > 100 {
+		limit = 30
+	}
+	topic = strings.TrimSpace(strings.ToLower(topic))
+
+	var out []Headline
+	for _, p := range GetFeed() {
+		if p == nil || strings.TrimSpace(p.Title) == "" {
+			continue
+		}
+		if topic != "" && !postMatchesNewsTopic(p, topic) {
+			continue
+		}
+		out = append(out, Headline{
+			Title:       p.Title,
+			URL:         p.URL,
+			Category:    p.Category,
+			Description: p.Description,
+		})
+		if len(out) >= limit {
+			break
+		}
+	}
+	return out
+}

@@ -14,7 +14,7 @@ Built on go-micro: every capability is a go-micro service, the assistant is a go
 
 - **Single Go binary** — `mu --serve` starts the web server, `mu <command>` runs CLI
 - **Services** — each domain is a package under `service/`, one directory per service
-- **Agents** — `agent/micro/` contains specialised micro-agents per domain, routed by keyword + LLM. `agent/<name>/` is an agent that writes into the service of the same name: `agent/blog` composes the daily opinion, `agent/social` surfaces breaking stories. The service stores; the agent decides what is worth storing
+- **Agents** — `agent/micro/` contains specialised micro-agents per domain, routed by keyword + LLM. `agent/<name>/` is an agent that writes into the service of the same name: `agent/blog` composes the daily opinion by asking the registry what exists rather than naming services in code, `agent/social` surfaces breaking stories. The service stores; the agent decides what is worth storing
 - **Channels** — Discord (`client/discord/`), Telegram (`client/telegram/`), WhatsApp (`client/whatsapp/`)
 - **Protocols** — MCP server at `/mcp`, A2A at `/a2a`, x402 crypto payments
 - **AI** — `internal/ai/` supports Anthropic Claude, Atlas Cloud (DeepSeek), OpenRouter, and local models (Ollama)
