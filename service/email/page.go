@@ -104,11 +104,30 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`<p style="font-size:14px;color:#888;margin:0">Nothing yet. An agent with the <code>email_send</code> tool can send on your behalf.</p>`)
 	} else {
 		b.WriteString(`<table class="stats-table" style="font-size:14px">`)
-		b.WriteString(`<tr><th style="text-align:left">To</th><th style="text-align:left">Subject</th><th style="text-align:right">When</th></tr>`)
+		b.WriteString(`<tr><th style="text-align:left">To</th><th style="text-align:left">Subject</th><th style="text-align:left">Result</th><th style="text-align:right">When</th></tr>`)
 		for _, m := range msgs {
+			// The outcome, in the row. Without it the table answers "what did I
+			// try to send" and the question anybody actually has after wiring up
+			// a sending domain is whether it went.
+			result := `<span style="color:#27ae60">sent</span>`
+			if !m.OK() {
+				result = `<span style="color:#c00" title="` + html.EscapeString(m.Error) + `">failed</span>`
+			}
 			b.WriteString(`<tr><td>` + html.EscapeString(m.To) + `</td><td>` +
-				html.EscapeString(clip(m.Subject, 60)) + `</td><td style="text-align:right;color:#888">` +
+				html.EscapeString(clip(m.Subject, 50)) + `</td><td>` + result +
+				`</td><td style="text-align:right;color:#888">` +
 				m.Sent.Format("2 Jan 15:04") + `</td></tr>`)
+		}
+		// The reason, under the table, for anything that failed — a title
+		// attribute is not something you find unless you already know it is
+		// there.
+		for _, m := range msgs {
+			if !m.OK() {
+				b.WriteString(`<p style="font-size:13px;color:#c00;margin:8px 0 0">` +
+					html.EscapeString(m.Sent.Format("2 Jan 15:04")) + ` — ` +
+					html.EscapeString(m.Error) + `</p>`)
+				break
+			}
 		}
 		b.WriteString(`</table>`)
 	}

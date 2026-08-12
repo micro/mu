@@ -63,7 +63,8 @@ var Spec = service.Spec{
 		},
 		"History": {
 			AccountOnly: true,
-			Doc:         "The emails this account has sent, newest first",
+			Doc: "The emails this account has sent, newest first, and whether each one " +
+				"was accepted — a refused send is listed with the reason",
 		},
 		"Sender": {
 			AccountOnly: true,
@@ -93,8 +94,8 @@ func (Server) Send(ctx context.Context, req *SendRequest, rsp *SendResponse) err
 	if err != nil {
 		return err
 	}
-	rsp.Result = fmt.Sprintf("Sent to %s from %s. Replies come back to %s. %s.",
-		msg.To, SenderFor(who), Answers(who), Allowance(who))
+	rsp.Result = fmt.Sprintf("Sent to %s from %s, carried by %s. %s.",
+		msg.To, SenderFor(who), Provider(), Allowance(who))
 	return nil
 }
 
@@ -105,7 +106,7 @@ type HistoryRequest struct {
 }
 
 type HistoryResponse struct {
-	Text string `json:"text" description:"What has been sent: recipient, subject and when"`
+	Text string `json:"text" description:"What has been sent: recipient, subject, whether it was accepted, and when"`
 }
 
 // History lists what this account has sent.
@@ -120,8 +121,12 @@ func (Server) History(ctx context.Context, req *HistoryRequest, rsp *HistoryResp
 	var b strings.Builder
 	fmt.Fprintf(&b, "Sent (%d):\n", len(msgs))
 	for _, m := range msgs {
-		fmt.Fprintf(&b, "- %s — %s (%s)\n", m.To, clip(m.Subject, 80),
-			m.Sent.Format("2 Jan 15:04"))
+		fmt.Fprintf(&b, "- %s — %s — %s (%s)", m.To, clip(m.Subject, 80),
+			m.Status(), m.Sent.Format("2 Jan 15:04"))
+		if !m.OK() {
+			fmt.Fprintf(&b, ": %s", m.Error)
+		}
+		b.WriteString("\n")
 	}
 	rsp.Text = b.String()
 	return nil

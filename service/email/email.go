@@ -65,6 +65,25 @@ type Sent struct {
 	// Provider is the id the provider gave it, which is the handle for asking
 	// what happened to it afterwards.
 	Provider string `json:"provider,omitempty"`
+	// Error is what went wrong, empty when the carrier accepted it.
+	//
+	// A failed send used to leave no trace at all: the error went back to
+	// whoever called and the history showed only what worked, so the page could
+	// not answer the first question anybody has after setting a sending domain
+	// up — did it go? A send that was refused is the part of the history worth
+	// keeping, because it is the part you act on.
+	Error string `json:"error,omitempty"`
+}
+
+// OK reports whether the carrier took it.
+func (s *Sent) OK() bool { return s != nil && s.Error == "" }
+
+// Status is the outcome in a word or two, for a page or a tool.
+func (s *Sent) Status() string {
+	if s.OK() {
+		return "sent"
+	}
+	return "failed"
 }
 
 // SendVia is this instance's own SMTP sender, filled in by
@@ -295,22 +314,40 @@ func Send(owner, to, subject, body string) (*Sent, error) {
 		providerID, err = SendVia(acc.Name, SenderFor(owner), ReplyFor(owner),
 			to, subject, body, asHTML(body))
 	}
+
+	// Recorded either way, and before the error is returned. What went wrong is
+	// the half of the history worth having: a message that was refused is the
+	// one you have to do something about, and it used to disappear.
+	failed := ""
+	if err != nil {
+		failed = err.Error()
+	}
+	rec := record(owner, to, subject, body, providerID, failed)
 	if err != nil {
 		return nil, err
 	}
+	return rec, nil
+}
 
-	rec, err := userdb.Create(ns, owner, sent, map[string]interface{}{
+// record files one attempt.
+func record(owner, to, subject, body, providerID, failed string) *Sent {
+	fields := map[string]interface{}{
 		"to": to, "subject": subject, "body": body,
 		"provider": providerID,
 		"sent":     time.Now().Format(time.RFC3339),
-	}, false)
+	}
+	if failed != "" {
+		fields["error"] = failed
+	}
+	rec, err := userdb.Create(ns, owner, sent, fields, false)
 	if err != nil {
-		// It has gone. Failing the call now would tell the caller to send it
+		// It may already have gone. Failing now would tell the caller to send it
 		// again, which is the one outcome worse than losing the record.
 		app.Log("email", "sent for %s but not recorded: %v", owner, err)
-		return &Sent{To: to, Subject: subject, Body: body, Sent: time.Now(), Provider: providerID}, nil
+		return &Sent{To: to, Subject: subject, Body: body, Sent: time.Now(),
+			Provider: providerID, Error: failed}
 	}
-	return fromRecord(*rec), nil
+	return fromRecord(*rec)
 }
 
 // History is what this account has sent, newest first.
@@ -347,6 +384,7 @@ func fromRecord(rec userdb.Record) *Sent {
 		Subject:  str("subject"),
 		Body:     str("body"),
 		Provider: str("provider"),
+		Error:    str("error"),
 	}
 	if t, err := time.Parse(time.RFC3339, str("sent")); err == nil {
 		m.Sent = t

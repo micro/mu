@@ -8,11 +8,13 @@ package email
 // they are worth holding down the way sms holds its own.
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"mu/internal/auth"
 	"mu/internal/quota"
 	"mu/internal/settings"
 )
@@ -275,3 +277,58 @@ func TestAnUncappedAccountIsNotToldMinusOne(t *testing.T) {
 		t.Errorf("a capped account is told %q", got)
 	}
 }
+
+// TestAFailedSendIsInTheHistory — the first question after wiring a sending
+// domain up is whether it went, and a refusal used to leave no trace: the error
+// went back to the caller and the history listed only what worked.
+func TestAFailedSendIsInTheHistory(t *testing.T) {
+	withSettings(t, map[string]string{"EMAIL_DOMAIN": "email.micro.mu"})
+	orig := SendVia
+	t.Cleanup(func() { SendVia = orig })
+
+	const owner = "email-history-outcome"
+	if _, err := auth.GetAccount(owner); err != nil {
+		if err := auth.Create(&auth.Account{ID: owner, Name: owner}); err != nil {
+			t.Skipf("cannot create an account here: %v", err)
+		}
+		t.Cleanup(func() { auth.DeleteAccount(owner) }) //nolint:errcheck
+	}
+	before := len(History(owner, 100))
+
+	SendVia = func(_, _, _, _, _, _, _ string) (string, error) {
+		return "", errFake
+	}
+	if _, err := Send(owner, "someone@example.com", "Will fail", "body"); err == nil {
+		t.Fatal("the send was supposed to fail")
+	}
+
+	got := History(owner, 100)
+	if len(got) != before+1 {
+		t.Fatalf("a failed send left %d records, want one more than %d", len(got), before)
+	}
+	m := got[0]
+	if m.OK() {
+		t.Error("a send that failed is recorded as having worked")
+	}
+	if m.Status() != "failed" {
+		t.Errorf("its status reads %q", m.Status())
+	}
+	if !strings.Contains(m.Error, "refused") {
+		t.Errorf("the record does not say why: %q", m.Error)
+	}
+
+	// And a successful one is recorded as such.
+	SendVia = func(_, _, _, _, _, _, _ string) (string, error) { return "op-123", nil }
+	if _, err := Send(owner, "someone@example.com", "Will work", "body"); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+	ok := History(owner, 100)[0]
+	if !ok.OK() || ok.Status() != "sent" {
+		t.Errorf("a successful send reads as %q with error %q", ok.Status(), ok.Error)
+	}
+	if ok.Provider != "op-123" {
+		t.Errorf("the carrier's id was not kept: %q", ok.Provider)
+	}
+}
+
+var errFake = fmt.Errorf("the carrier refused it: pretend failure")
