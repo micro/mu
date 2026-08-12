@@ -15,6 +15,8 @@ package test
 // decision made by the same person.
 
 import (
+	"os"
+	"strings"
 	"testing"
 
 	"mu/internal/quota"
@@ -132,5 +134,78 @@ func TestACountedCallIsCountedOnce(t *testing.T) {
 	quota.ResetAllowances()
 	if n := quota.UsedToday(who, op); n != 0 {
 		t.Errorf("after a reset the counter reads %d", n)
+	}
+}
+
+// TestEveryDeclaredLimitIsEnforcedSomewhere — a number in quota.json that
+// nothing reads is the same defect as a price nothing charges, which is the
+// failure this whole billing effort started from.
+//
+// Each of the three has a different enforcement point, and that is not
+// sloppiness: only external_email declares a Cost, so only it passes the
+// gateway where the gate can ask. sms and whatsapp price themselves — per
+// segment, per 24-hour conversation — so they check their own. What matters is
+// that each one checks, and reads the number from the same file.
+func TestEveryDeclaredLimitIsEnforcedSomewhere(t *testing.T) {
+	loadPrices(t)
+
+	// Where each limited operation is enforced, and the call that does it.
+	enforced := map[string]struct{ file, call string }{
+		quota.OpExternalEmail: {"internal/server/hooks.go", "quota.OverLimit"},
+		quota.OpSMSSend:       {"service/sms/send.go", "LimitFor"},
+		quota.OpWhatsAppSend:  {"service/whatsapp/service.go", "quota.OverLimit"},
+	}
+
+	for _, p := range quotaPrices(t) {
+		if quota.DailyLimit(p.op) == quota.NoLimit {
+			continue
+		}
+		where, ok := enforced[p.op]
+		if !ok {
+			t.Errorf("%s is capped at %d a day in quota.json and this test does not "+
+				"know what enforces it — either wire it up or it is a number in a file",
+				p.op, quota.DailyLimit(p.op))
+			continue
+		}
+		b, err := os.ReadFile(at(where.file))
+		if err != nil {
+			t.Errorf("%s should be enforced in %s, which is not there: %v", p.op, where.file, err)
+			continue
+		}
+		if !strings.Contains(string(b), where.call) {
+			t.Errorf("%s should be enforced in %s by %s and is not — its cap is "+
+				"advertised on the pricing page", p.op, where.file, where.call)
+		}
+	}
+}
+
+// TestTheCapIsCheckedBeforeTheCreditsAreSpent — the two controls fail
+// differently, and the one that stops a loop has to run first: charging and
+// then refusing spends money on a call that was never going to happen.
+func TestTheCapIsCheckedBeforeTheCreditsAreSpent(t *testing.T) {
+	b, err := os.ReadFile(at("internal", "server", "hooks.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Inside Gate.Allow only. hooks.go wires several other things that ask
+	// quota about a balance, and comparing positions across the whole file
+	// measures where they happen to be written rather than what runs first.
+	src := string(b)
+	i := strings.Index(src, "service.Gate.Allow = func(")
+	if i < 0 {
+		t.Fatal("the gate is no longer wired here")
+	}
+	gate := src[i:]
+	if end := strings.Index(gate, "\n\tservice.Gate.Charge"); end > 0 {
+		gate = gate[:end]
+	}
+	limit := strings.Index(gate, "quota.OverLimit")
+	charge := strings.Index(gate, "quota.CheckQuota")
+	if limit < 0 || charge < 0 {
+		t.Fatalf("the gate no longer checks both a limit and a balance (limit=%d balance=%d)", limit, charge)
+	}
+	if limit > charge {
+		t.Error("the balance is checked before the daily cap, so a call the cap was " +
+			"always going to refuse is priced first")
 	}
 }

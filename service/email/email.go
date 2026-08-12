@@ -150,12 +150,14 @@ func ReplyFor(owner string) string {
 }
 
 // localPart makes an address-safe name from an account.
+//
+// The account's own id, which is its username — asim becomes
+// asim@<sending domain>, and asim@<mail domain> is where replies go. It used to
+// prefer the display name, so an account called "Asim Aslam" sent as
+// asimaslam@ and was answered at asimaslam@, which is not a mailbox. mail keys
+// every address on the id for the same reason.
 func localPart(owner string) string {
-	acc, err := auth.GetAccount(owner)
 	name := owner
-	if err == nil && acc.Name != "" {
-		name = acc.Name
-	}
 	var b strings.Builder
 	for _, r := range strings.ToLower(name) {
 		switch {
@@ -189,10 +191,25 @@ func LimitFor(owner string) int { return quota.LimitFor(owner, quota.OpExternalE
 // SentToday is how many it has sent.
 func SentToday(owner string) int { return quota.UsedToday(owner, quota.OpExternalEmail) }
 
-// LeftToday is how many more it may send.
-func LeftToday(owner string) int {
-	left, _ := quota.LeftToday(owner, quota.OpExternalEmail)
-	return left
+// Allowance says how many more this account may send today, in words, because
+// the two states a caller must not confuse — none left, and no limit — read the
+// same if either is printed as a number.
+func Allowance(owner string) string {
+	left, capped := LeftToday(owner)
+	if !capped {
+		return "no daily limit"
+	}
+	return fmt.Sprintf("%d of %d left today", left, LimitFor(owner))
+}
+
+// LeftToday is how many more it may send, and whether there is a cap at all.
+//
+// The second return is not decoration. An admin, and the instance's own agent,
+// are uncapped — LimitFor answers quota.NoLimit for them, which is -1, and a
+// page that printed it read "0 of -1 left today". A caller that cannot tell
+// "none left" from "no limit" will always render one of them as the other.
+func LeftToday(owner string) (int, bool) {
+	return quota.LeftToday(owner, quota.OpExternalEmail)
 }
 
 // ── Sending ─────────────────────────────────────────────────────

@@ -235,3 +235,43 @@ func grepTree(t *testing.T, root, s string) bool {
 	})
 	return found
 }
+
+// TestTheAddressIsTheUsername — asim sends as asim@<sending domain> and is
+// answered at asim@<mail domain>, which is a mailbox that exists.
+//
+// It used to prefer the display name, so an account called "Asim Aslam" sent as
+// asimaslam@ and pointed replies at asimaslam@, which is nobody. mail keys
+// every address on the account id for exactly this reason.
+func TestTheAddressIsTheUsername(t *testing.T) {
+	withSettings(t, map[string]string{
+		"EMAIL_DOMAIN": "email.micro.mu",
+		"MAIL_DOMAIN":  "micro.mu",
+	})
+	if got := SenderFor("asim"); got != "asim@email.micro.mu" {
+		t.Errorf("SenderFor(asim) = %q, want asim@email.micro.mu", got)
+	}
+	if got := ReplyFor("asim"); got != "asim@micro.mu" {
+		t.Errorf("ReplyFor(asim) = %q, want asim@micro.mu — the inbox that exists", got)
+	}
+}
+
+// TestAnUncappedAccountIsNotToldMinusOne — an admin has no daily limit, which
+// LimitFor answers as quota.NoLimit, and a page that printed it read
+// "0 of -1 left today".
+func TestAnUncappedAccountIsNotToldMinusOne(t *testing.T) {
+	orig := quota.PlanLimit
+	t.Cleanup(func() { quota.PlanLimit = orig })
+	quota.PlanLimit = func(string, string) (int, bool) { return quota.NoLimit, true }
+
+	if got := Allowance("someone"); !strings.Contains(got, "no daily limit") {
+		t.Errorf("an uncapped account is told %q", got)
+	}
+	if strings.Contains(Allowance("someone"), "-1") {
+		t.Errorf("the allowance renders a sentinel as a number: %q", Allowance("someone"))
+	}
+
+	quota.PlanLimit = func(string, string) (int, bool) { return 10, true }
+	if got := Allowance("someone"); !strings.Contains(got, "of 10") {
+		t.Errorf("a capped account is told %q", got)
+	}
+}

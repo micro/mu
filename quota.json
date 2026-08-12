@@ -137,7 +137,7 @@
     {
       "op": "external_email",
       "cost": 4,
-      "limit": 50,
+      "limit": 10,
       "limit_env": "EMAIL_DAILY_LIMIT",
       "label": "External email",
       "env": "CREDIT_COST_EMAIL",

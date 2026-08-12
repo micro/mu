@@ -60,7 +60,7 @@ func thousands(n int) string {
 // Meta's 24-hour window means this instance answers people who wrote first and
 // cannot start a conversation — so a number reads as reach it does not have.
 // A line that has to be explained is worse than no line.
-func rows(p wallet.SubscriptionPlan, lead string, tail ...string) string {
+func rows(p wallet.SubscriptionPlan, lead string) string {
 	var b strings.Builder
 	b.WriteString(`<ul style="text-align:left;list-style:none;padding:0;margin:0 0 16px;font-size:14px;line-height:2">`)
 	item := func(s string) {
@@ -86,13 +86,6 @@ func rows(p wallet.SubscriptionPlan, lead string, tail ...string) string {
 			continue
 		}
 		item(fmt.Sprintf("%s %s a day", thousands(n), l.noun))
-	}
-	// Anything a card adds of its own goes last, so the rows above line up
-	// across every column. It was second on one card and the agent count
-	// slipped to third there and stayed second everywhere else, which is the
-	// one thing a price table must not do: it is read across.
-	for _, t := range tail {
-		item(t)
 	}
 	b.WriteString(`</ul>`)
 	return b.String()
@@ -165,7 +158,7 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<p style="font-size:2rem;font-weight:700;margin:8px 0">1p` +
 		`<span style="font-size:14px;font-weight:400;color:#888">/credit</span></p>`)
 	b.WriteString(`<p style="color:#666;font-size:14px;margin:0 0 16px">Top up any amount</p>`)
-	b.WriteString(rows(wallet.PlanByID(""), "Every tool", "Web app included"))
+	b.WriteString(rows(wallet.PlanByID(""), "Every tool"))
 	b.WriteString(`<a href="/signup" class="btn" style="display:block;text-align:center">Start</a>`)
 	b.WriteString(`</div>`)
 

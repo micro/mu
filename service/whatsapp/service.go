@@ -76,6 +76,21 @@ func Send(owner, to, text string) (*Message, error) {
 	// way: the message that opens a window costs, the rest of the thread does
 	// not, because we are not billed for it either.
 	fresh := Fresh(owner, num)
+
+	// The daily cap, which quota.json declares and nothing here read.
+	//
+	// It was a number in a file: whatsapp_send carries a limit like the other
+	// two things that leave this instance, and the only check on this path was
+	// whether the account could afford the credits. A price stops somebody who
+	// has to pay and does nothing about a loop, which is the whole reason a
+	// limit exists beside a price. Counted per conversation opened, because
+	// that is what Twilio bills and what this charges.
+	if fresh {
+		if over, why := quota.OverLimit(owner, quota.OpWhatsAppSend); over {
+			return nil, fmt.Errorf("%s", why)
+		}
+	}
+
 	if fresh && quota.Metered(quota.OpWhatsAppSend) {
 		ok, _, cost, err := quota.CheckQuota(owner, quota.OpWhatsAppSend)
 		if err != nil {
@@ -93,6 +108,9 @@ func Send(owner, to, text string) (*Message, error) {
 		if err := quota.ConsumeWith(owner, quota.OpWhatsAppSend, map[string]interface{}{"to": num}); err != nil {
 			app.Log("whatsapp", "charging %s for a sent message: %v", owner, err)
 		}
+		// Counted against the cap only once it has actually gone, so a refusal
+		// upstream does not spend somebody's day.
+		quota.Done(owner, quota.OpWhatsAppSend)
 	}
 	return Record(owner, "out", num, text), nil
 }

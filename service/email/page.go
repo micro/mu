@@ -1,9 +1,9 @@
 package email
 
 import (
-	"fmt"
 	"html"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"mu/internal/app"
@@ -19,17 +19,33 @@ func Load() {
 	http.HandleFunc("/email", Handler)
 }
 
-// Handler is /email: what you send as, what is left today, and what has gone.
+// Handler is /email: what you send as, what is left today, what has gone, and a
+// box to send one.
 //
-// No compose form. Sending from a page is what mail already offers and this is
-// not a second mailbox — the page exists to answer the two questions somebody
-// has before they let an agent send on their behalf: where does it come from,
-// and what has it done so far. A form would invite using this as a mail client,
-// which it is not.
+// The box was left out on the argument that this is not a second mailbox and a
+// form would invite treating it as one. That was wrong in the ordinary way: a
+// service with a page and no way to do the thing it is for cannot be tried. An
+// operator setting up a sending domain needs to send one message to know
+// whether it works, and telling them to go and write an MCP call for that is
+// telling them to debug two things at once.
 func Handler(w http.ResponseWriter, r *http.Request) {
 	_, acc, err := auth.RequireSession(r)
 	if err != nil {
 		http.Redirect(w, r, "/login?next=/email", http.StatusSeeOther)
+		return
+	}
+
+	// Sending goes through the same Send the tool calls, so the page cannot
+	// take a different route past the caps or the charge — the mistake this
+	// whole billing effort was about.
+	if r.Method == "POST" {
+		r.ParseForm() //nolint:errcheck
+		_, err := Send(acc.ID, r.FormValue("to"), r.FormValue("subject"), r.FormValue("body"))
+		if err != nil {
+			http.Redirect(w, r, "/email?error="+url.QueryEscape(err.Error()), http.StatusSeeOther)
+			return
+		}
+		http.Redirect(w, r, "/email?sent=1", http.StatusSeeOther)
 		return
 	}
 
@@ -57,9 +73,26 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		html.EscapeString(SenderFor(acc.ID)) + `</code></p>`)
 	b.WriteString(`<p style="font-size:14px;color:#666;margin:0 0 12px">Replies arrive at <code>` +
 		html.EscapeString(ReplyFor(acc.ID)) + `</code>, which is your inbox here — the sending domain carries no mail in.</p>`)
-	b.WriteString(fmt.Sprintf(`<p style="font-size:14px;color:#666;margin:0">%d of %d left today.</p>`,
-		LeftToday(acc.ID), LimitFor(acc.ID)))
+	b.WriteString(`<p style="font-size:14px;color:#666;margin:0">` +
+		html.EscapeString(strings.ToUpper(Allowance(acc.ID)[:1])+Allowance(acc.ID)[1:]) + `.</p>`)
 	b.WriteString(`</div>`)
+
+	if r.URL.Query().Get("sent") == "1" {
+		b.WriteString(`<div class="card" style="background:#f0fff0;border-color:#a3d9a5;margin-top:16px"><p style="color:#27ae60;margin:0">Sent.</p></div>`)
+	}
+	if msg := r.URL.Query().Get("error"); msg != "" {
+		b.WriteString(`<div class="card" style="border-color:#e0a3a3;margin-top:16px"><p style="color:#c00;margin:0">` +
+			html.EscapeString(msg) + `</p></div>`)
+	}
+
+	// One message, to see that it works.
+	b.WriteString(`<div class="card" style="margin-top:16px"><h3>Send one</h3>`)
+	b.WriteString(`<form method="POST" action="/email">`)
+	b.WriteString(`<input name="to" type="email" required placeholder="to@example.com" style="width:100%;padding:8px;margin:0 0 8px;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box">`)
+	b.WriteString(`<input name="subject" required placeholder="Subject" style="width:100%;padding:8px;margin:0 0 8px;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box">`)
+	b.WriteString(`<textarea name="body" required rows="6" placeholder="Message" style="width:100%;padding:8px;margin:0 0 8px;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box;font-family:inherit"></textarea>`)
+	b.WriteString(`<button type="submit" class="btn">Send</button>`)
+	b.WriteString(`</form></div>`)
 
 	b.WriteString(`<div class="card" style="margin-top:16px">`)
 	b.WriteString(`<h3>Sent</h3>`)

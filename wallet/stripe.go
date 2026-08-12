@@ -116,7 +116,7 @@ var SubscriptionPlans = []SubscriptionPlan{
 		Agents:       5,
 		PostsPerHour: 300,
 		Limits: map[string]int{
-			quota.OpExternalEmail: 200,
+			quota.OpExternalEmail: 100,
 			quota.OpSMSSend:       25,
 			quota.OpWhatsAppSend:  50,
 		},
