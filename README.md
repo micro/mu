@@ -221,3 +221,5 @@ the instance runs, so it cannot go stale.
 For the code, [Architecture](docs/ARCHITECTURE.md).
 
 ## License
+
+AGPL 3.0
