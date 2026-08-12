@@ -382,7 +382,14 @@ var Template = `
           }
           if (doc.title) document.title = doc.title;
           if (push) history.pushState({mu:1}, '', url);
-          window.scrollTo(0, 0);
+          // A hash is a destination, not decoration. The browser scrolls to one
+          // by itself on a real page load and never on a soft one, so a link to
+          // /news#Tech swapped the content in and then scrolled to the top —
+          // the anchor still existed and nothing went to it.
+          var hash = '';
+          try { hash = new URL(url, location.href).hash; } catch (e) {}
+          var target = hash.length > 1 ? document.getElementById(decodeURIComponent(hash.slice(1))) : null;
+          if (target && target.scrollIntoView) { target.scrollIntoView(); } else { window.scrollTo(0, 0); }
           // Anything the new content wired up on load has to be re-wired.
           document.dispatchEvent(new CustomEvent('mu:navigated'));
         }
@@ -408,6 +415,10 @@ var Template = `
           if (u.origin !== location.origin) return;
           // Downloads, media and anything that is not a page.
           if (/\.(png|jpe?g|gif|svg|ico|css|js|json|pdf|zip|webmanifest)$/i.test(u.pathname)) return;
+          // Only the hash differs, so this is a jump within the page we are
+          // already on. The browser does that natively, and doing it here
+          // instead meant re-fetching the page to land back where we started.
+          if (u.pathname === location.pathname && u.search === location.search && u.hash) return;
           e.preventDefault();
           if (u.href === location.href) return;
           go(u.href, true);
