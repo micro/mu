@@ -44,6 +44,22 @@ func resolveProvider(model string) (provider, apiKey, baseURL string, err error)
 		}
 		return "openai", localKey, localURL, nil
 	}
+	// Atlas as the remaining option, whatever the model was.
+	//
+	// Above, Atlas is only claimed for models whose names say Atlas — so an
+	// instance whose only credential is ATLAS_API_KEY fell through every branch
+	// and got "no AI provider configured". Configured() says that instance is
+	// set up, because a key is a key; the agent is gated on and every foreground
+	// request fails. Background ones did not, because BackgroundModel already
+	// returns an Atlas model when there is an Atlas key, so the same instance
+	// summarised articles happily and could not answer a question.
+	//
+	// Last, so a local server still wins: getAtlasAPIKey falls back to
+	// OPENAI_API_KEY, and somebody running Ollama with a key set should not be
+	// routed to a paid cloud on the strength of it.
+	if key := getAtlasAPIKey(); key != "" {
+		return "atlascloud", key, "", nil
+	}
 	return "", "", "", fmt.Errorf("no AI provider configured — set ANTHROPIC_API_KEY, ATLAS_API_KEY, OPENROUTER_API_KEY or OPENAI_BASE_URL (Ollama)")
 }
 
@@ -58,6 +74,16 @@ func resolveProvider(model string) (provider, apiKey, baseURL string, err error)
 // hard-coded default. Both mean the same thing — this is not a slug OpenRouter
 // knows — and the answer to both is the configured slug.
 func modelFor(provider, model string) string {
+	// Atlas is reached either because the model named it, or as the last
+	// remaining provider — and in the second case the model is whatever
+	// DefaultModel returned, which with no Anthropic key is a Claude id Atlas
+	// has never heard of. Same failure as OpenRouter's below, same answer.
+	if provider == "atlascloud" {
+		if isAtlasModel(model) {
+			return model
+		}
+		return AtlasModel()
+	}
 	if provider != "openrouter" {
 		return model
 	}

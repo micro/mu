@@ -25,6 +25,7 @@ package social
 // is theirs to make rather than ours to assume.
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -36,7 +37,6 @@ import (
 	"github.com/gorilla/websocket"
 
 	"mu/internal/app"
-	"mu/internal/data"
 	"mu/internal/settings"
 )
 
@@ -46,15 +46,26 @@ import (
 var jetstreamHost = "wss://jetstream1.us-east.bsky.network/subscribe"
 
 const (
-	// cursorFile remembers where the stream got to. Jetstream replays from a
-	// microsecond timestamp, so a restart neither loses the gap nor repeats a
-	// day — both of which are visible to a reader as either silence or déjà vu.
-	cursorFile = "social_atproto_cursor.json"
-
 	// reviewEvery is how often the collected candidates are judged. Long enough
 	// that there is a batch to choose the best of; short enough that "breaking"
 	// still means something.
 	reviewEvery = 15 * time.Minute
+
+	// sampleFor is how long the connection stays open inside that window.
+	//
+	// This is the whole cost story. Measured on the live firehose: 2172 messages
+	// and 1.8 MB a minute, which held open is 2.6 GB a day — to find eleven
+	// candidates a minute, of which three are published every fifteen. Holding
+	// the connection open the other thirteen and a half minutes buys nothing but
+	// a bigger buffer to throw away.
+	//
+	// Bluesky's own levers were measured and rejected. compress=true is real
+	// — 58% fewer bytes — but the stream needs their custom zstd dictionary, a
+	// binary blob to vendor and keep in step with theirs. maxMessageSizeBytes
+	// works and saves between 1% and 7%, and every threshold that saved anything
+	// also dropped a candidate. Neither is worth having next to a 90% cut that
+	// costs nothing and is kinder to somebody giving this away free.
+	sampleFor = 90 * time.Second
 
 	// surfacePerReview caps what one review can post. The filters below pass
 	// something like a post a minute; without this, social would become a wall
@@ -98,62 +109,94 @@ var (
 	surfaced   = map[string]bool{}
 )
 
-// Watch connects to the firehose and keeps it connected.
+// Watch samples the network on a schedule: listen for a window, hang up, decide
+// what is worth publishing, wait.
+//
+// There is no cursor. A cursor exists to close the gap a restart leaves, and
+// this deliberately leaves a gap thirteen minutes wide — the point is not to
+// see everything the network says, it is to find three things worth reading,
+// and those are abundant. Asking Jetstream to replay what we skipped would undo
+// the only saving that matters.
 func Watch() {
 	if !Enabled() {
 		app.Log("social", "atproto: off (set SOCIAL_ATPROTO=true to watch the network)")
 		return
 	}
-	go reviewLoop()
-
-	backoff := time.Second
 	for {
-		if err := stream(); err != nil {
-			app.Log("social", "atproto: %v (retrying in %s)", err, backoff)
+		if _, _, err := sample(); err != nil {
+			// No backoff ladder: the next window is already minutes away, which
+			// is a politer retry than any ladder would pick.
+			app.Log("social", "atproto: %v", err)
 		}
-		time.Sleep(backoff)
-		// Back off to a minute and stay there. A firehose that reconnects hard
-		// after an outage is a thundering herd of one, and the operator on the
-		// other end is giving this away.
-		if backoff < time.Minute {
-			backoff *= 2
-		}
+		review()
+		time.Sleep(reviewEvery - sampleFor)
 	}
 }
 
-// stream reads until the connection drops.
-func stream() error {
-	u := jetstreamHost + "?wantedCollections=app.bsky.feed.post"
-	if c := loadCursor(); c > 0 {
-		// Resume a little behind where we stopped: overlapping is harmless
-		// because surfacing dedupes, and a gap is not recoverable.
-		u += fmt.Sprintf("&cursor=%d", c-int64(5*time.Second/time.Microsecond))
-	}
-
-	conn, _, err := websocket.DefaultDialer.Dial(u, nil)
+// sample listens for one window and returns how much went past and how much
+// was kept.
+func sample() (seen, kept int, err error) {
+	conn, _, err := websocket.DefaultDialer.Dial(
+		jetstreamHost+"?wantedCollections=app.bsky.feed.post", nil)
 	if err != nil {
-		return fmt.Errorf("dial: %w", err)
+		return 0, 0, fmt.Errorf("dial: %w", err)
 	}
 	defer conn.Close()
-	app.Log("social", "atproto: watching the network")
 
+	conn.SetReadDeadline(time.Now().Add(sampleFor)) //nolint:errcheck
 	for {
 		_, msg, err := conn.ReadMessage()
 		if err != nil {
-			return err
+			break // the read deadline, normally: the window is over
+		}
+		seen++
+		if !worthParsing(msg) {
+			continue
 		}
 		var ev event
 		if json.Unmarshal(msg, &ev) != nil {
 			continue
 		}
-		if watched != nil {
-			watched(ev)
-		}
 		if c := consider(ev); c != nil {
 			keep(c)
+			kept++
 		}
-		saveCursor(ev.TimeUS)
 	}
+	app.Log("social", "atproto: %d posts in %s, %d kept", seen, sampleFor, kept)
+	return seen, kept, nil
+}
+
+// ── Refusing before parsing ─────────────────────────────────────
+
+var (
+	markCreate = []byte(`"operation":"create"`)
+	markReply  = []byte(`"reply":{`)
+	markLangs  = []byte(`"langs":[`)
+)
+
+// worthParsing is the same refusal as the first three tests in consider, read
+// off the raw bytes so the common case never reaches the JSON decoder.
+//
+// Measured over 2172 live messages: 134 were not creates, 1237 were not in
+// English and 449 were replies — 84% of everything, decided by three fields.
+// Unmarshalling all of that into a struct in order to throw it away is the
+// CPU this loop was actually spending.
+//
+// It has to agree with consider or it is a silent filter nobody wrote:
+// TestTheFastPathAgreesWithTheSlowOne holds them together.
+func worthParsing(msg []byte) bool {
+	if !bytes.Contains(msg, markCreate) || bytes.Contains(msg, markReply) {
+		return false
+	}
+	i := bytes.Index(msg, markLangs)
+	if i < 0 {
+		return false // no language tag at all, so not one we can read
+	}
+	rest := msg[i+len(markLangs):]
+	if end := bytes.IndexByte(rest, ']'); end >= 0 {
+		rest = rest[:end]
+	}
+	return bytes.Contains(rest, []byte(`"en`))
 }
 
 // ── The event ───────────────────────────────────────────────────
@@ -532,18 +575,13 @@ func keep(c *candidate) {
 	}
 }
 
-// reviewLoop surfaces the best of each batch.
-func reviewLoop() {
-	// The first batch needs time to fill; reviewing an empty buffer publishes
-	// nothing and wastes a cycle saying so.
-	time.Sleep(2 * time.Minute)
-	for {
-		review()
-		time.Sleep(reviewEvery)
-	}
-}
-
-// review picks the best few and surfaces them.
+// review decides what the window was worth and publishes it.
+//
+// Two stages, and the split is the point. Arithmetic narrows a batch to a
+// shortlist — that has to be cheap, because it runs against everything. Then a
+// model reads the shortlist and picks, which is the judgement the arithmetic
+// cannot make: a scorer can tell a long post with a link from a short one
+// without, and cannot tell an interesting story from a dull one.
 func review() {
 	mu.Lock()
 	batch := candidates
@@ -553,38 +591,22 @@ func review() {
 	if len(batch) == 0 {
 		return
 	}
-	sort.Slice(batch, func(i, j int) bool { return batch[i].Score > batch[j].Score })
+	short := shortlist(batch)
+	chosen := judge(short)
+	if len(chosen) == 0 {
+		// No model, or it had nothing to say. The arithmetic order is what this
+		// did before there was a judge, and it is a reasonable answer.
+		chosen = short
+	}
 
-	// One per category per review. Without it a busy hour in one category —
-	// which is exactly what a busy hour looks like — takes the whole batch.
-	//
-	// And one per author, because the accounts that post most are the ones
-	// posting automatically. The live run surfaced a games-industry earnings
-	// story from a mirror that ends every post "[Original post on …]"; a bot
-	// that reposts a feed clears every mechanical filter here by construction,
-	// and the thing it cannot do is be one voice among several.
-	seenCat, seenWho := map[string]bool{}, map[string]bool{}
 	posted := 0
-	for _, c := range batch {
+	for _, c := range chosen {
 		if posted >= surfacePerReview {
 			break
 		}
-		if seenCat[c.Category] || (c.DID != "" && seenWho[c.DID]) {
+		if !claim(c) {
 			continue
 		}
-		mu.Lock()
-		already := c.Link != "" && surfaced[c.Link]
-		if !already && c.Link != "" {
-			surfaced[c.Link] = true
-			if len(surfaced) > 5000 {
-				surfaced = map[string]bool{c.Link: true}
-			}
-		}
-		mu.Unlock()
-		if already {
-			continue
-		}
-		seenCat[c.Category], seenWho[c.DID] = true, true
 		posted++
 		Surface(c)
 	}
@@ -593,14 +615,45 @@ func review() {
 	}
 }
 
-// Surface is what the agent decided, handed to the service to store. Assigned
-// at boot so this package can be tested without standing up social.
-var Surface = func(c *candidate) {}
+// shortlist is the arithmetic pass: the best-scoring candidates, one per
+// category and one per author, ordered.
+//
+// One per category, because a busy hour in one category is exactly what a busy
+// hour looks like, and without the cap it takes the whole batch. One per
+// author, because the accounts that post most are the ones posting
+// automatically — a mirror that reposts a feed clears every mechanical filter
+// by construction, and the thing it cannot do is be several people.
+func shortlist(batch []*candidate) []*candidate {
+	sort.SliceStable(batch, func(i, j int) bool { return batch[i].Score > batch[j].Score })
+	seenCat, seenWho := map[string]bool{}, map[string]bool{}
+	var out []*candidate
+	for _, c := range batch {
+		if seenCat[c.Category] || (c.DID != "" && seenWho[c.DID]) {
+			continue
+		}
+		seenCat[c.Category], seenWho[c.DID] = true, true
+		out = append(out, c)
+	}
+	return out
+}
 
-// watched is a probe point for the live test, which needs to count what came
-// past to say anything useful about what the filters removed. Nil in normal
-// operation and costs a nil check per event.
-var watched func(event)
+// claim records that a link has been surfaced, and reports whether this call is
+// the one that got there first. A story doing the rounds is one story.
+func claim(c *candidate) bool {
+	if c.Link == "" {
+		return true
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if surfaced[c.Link] {
+		return false
+	}
+	surfaced[c.Link] = true
+	if len(surfaced) > 5000 {
+		surfaced = map[string]bool{c.Link: true}
+	}
+	return true
+}
 
 // display is the text as a reader should see it: the post, and where it points.
 func (c *candidate) display() string {
@@ -626,48 +679,6 @@ func hostOf(link string) string {
 	return strings.ToLower(strings.TrimPrefix(u.Host, "www."))
 }
 
-// ── The cursor ──────────────────────────────────────────────────
-
-type cursorState struct {
-	TimeUS int64 `json:"time_us"`
-}
-
-var (
-	cursorMu   sync.Mutex
-	lastCursor int64
-	lastSaved  time.Time
-)
-
-// saveCursor remembers where the stream got to, at most once a few seconds.
-// Writing on every event would be a disk write forty times a second to record
-// something only a restart ever reads.
-func saveCursor(us int64) {
-	if us == 0 {
-		return
-	}
-	cursorMu.Lock()
-	defer cursorMu.Unlock()
-	lastCursor = us
-	if time.Since(lastSaved) < 5*time.Second {
-		return
-	}
-	lastSaved = time.Now()
-	data.SaveJSON(cursorFile, cursorState{TimeUS: us}) //nolint:errcheck
-}
-
-func loadCursor() int64 {
-	b, err := data.LoadFile(cursorFile)
-	if err != nil {
-		return 0
-	}
-	var s cursorState
-	if json.Unmarshal(b, &s) != nil {
-		return 0
-	}
-	// A cursor older than a day is not worth replaying: the reader wants what
-	// is happening, and Jetstream's backfill window is not infinite anyway.
-	if s.TimeUS < time.Now().Add(-24*time.Hour).UnixMicro() {
-		return 0
-	}
-	return s.TimeUS
-}
+// Surface is what the agent decided, handed to the service to store. Assigned
+// at boot so this package can be tested without standing up social.
+var Surface = func(c *candidate) {}

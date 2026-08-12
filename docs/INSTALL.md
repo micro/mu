@@ -329,6 +329,7 @@ one, the agent, chat and AI summaries are off and everything else works.
 | `ANTHROPIC_API_KEY` | Claude |
 | `ANTHROPIC_MODEL` · `ANTHROPIC_PREMIUM_MODEL` | Override the default models |
 | `ATLAS_API_KEY` | Atlas Cloud (DeepSeek, Qwen) — also image generation |
+| `ATLAS_MODEL` | Override the Atlas model used when the caller did not name one (default `deepseek-ai/deepseek-v4-pro`) |
 | `OPENROUTER_API_KEY` | OpenRouter — one key for Claude, GPT, Gemini and the rest of their catalogue |
 | `OPENROUTER_MODEL` | Override the OpenRouter slug (default `openai/gpt-4o-mini`) |
 | `IMAGE_MODEL` | Override the image model |
@@ -436,8 +437,20 @@ No key and no account: the firehose is public JSON over a websocket. What
 arrives is about three million posts a day, so almost all of the work is
 refusing them — English, not a reply, long enough to stand alone, pointing at
 something, in one of the categories the news is already sorted by, and not an
-advert or a repost bot. Three are surfaced every fifteen minutes, one per
-category and one per author.
+advert or a repost bot. What survives is scored, cut to one per category and
+one per author, and then read by your model, which picks at most three. It is
+allowed to pick none.
+
+**It does not hold the connection open.** Ninety seconds every fifteen minutes
+is enough to find far more than three worth publishing, and holding it open the
+rest of the time costs 2.6 GB a day to fill a buffer that gets thrown away.
+Four fifths of what does arrive is refused on the raw bytes, before it reaches
+a JSON parser. Budget roughly 150 MB a day and one model call every fifteen
+minutes.
+
+Without a model configured the shortlist is published in score order, which
+works but is noticeably worse — the arithmetic cannot tell a news story from a
+press release, and both look identical to it.
 
 ### Channels
 

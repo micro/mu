@@ -77,6 +77,17 @@ func DefaultModel() string {
 	return "claude-sonnet-4-6"
 }
 
+// AtlasModel is the model to send Atlas Cloud when the caller did not name one
+// of theirs — the counterpart of OpenRouterModel, and for the same reason: a
+// provider chosen as the last one available still has to be sent a model id it
+// recognises.
+func AtlasModel() string {
+	if m := settings.Get("ATLAS_MODEL"); m != "" {
+		return m
+	}
+	return ModelDeepSeekPro
+}
+
 // BackgroundModel is the model used for cheap background tasks
 // (summaries, tags, moderation, topics).
 func BackgroundModel() string {
