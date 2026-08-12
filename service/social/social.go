@@ -19,10 +19,10 @@ import (
 	"mu/internal/event"
 	"mu/internal/flag"
 	"mu/internal/imageproxy"
+	"mu/internal/linkmeta"
 	"mu/internal/quota"
 	"mu/internal/service"
 	"mu/internal/snapshot"
-	"mu/service/news"
 )
 
 // cardSnap is the go-micro read-plane channel for the social card (store +
@@ -999,7 +999,7 @@ func linkifyURLs(escaped string) string {
 
 // renderLinkCard renders a Twitter-style embed card for a URL using cached OG metadata
 func renderLinkCard(rawURL string) string {
-	md, ok := news.LookupMetadata(rawURL)
+	md, ok := linkmeta.Lookup(rawURL)
 	if !ok || (md.Title == "" && md.Description == "") {
 		// Fallback: simple domain card
 		parsed, err := url.Parse(rawURL)

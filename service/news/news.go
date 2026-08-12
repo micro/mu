@@ -10,7 +10,6 @@ import (
 	"math"
 	"net/http"
 	"net/url"
-	"path/filepath"
 	"regexp"
 	"runtime/debug"
 	"sort"
@@ -28,6 +27,7 @@ import (
 	"mu/internal/data"
 	"mu/internal/event"
 	"mu/internal/imageproxy"
+	"mu/internal/linkmeta"
 	"mu/internal/service"
 	"mu/internal/snapshot"
 
@@ -87,20 +87,14 @@ type Post struct {
 	Content     string    `json:"content"`
 }
 
-type Metadata struct {
-	Created            int64
-	Title              string
-	Description        string
-	Type               string
-	Image              string
-	Url                string
-	Site               string
-	Content            string
-	Comments           string // Comments/discussion context from any source
-	Summary            string // LLM-generated summary for chat context
-	SummaryRequestedAt int64  // Last time we requested summary generation
-	SummaryAttempts    int    // Number of times we've requested a summary
-}
+// Metadata is an alias for internal/linkmeta's. It is about links rather than
+// about news, and service/social imported this package for one function that
+// read it — which made two services one unit over a link preview.
+//
+// An alias rather than a rename: identical to linkmeta.Metadata, so the forty-odd
+// uses in this package go on saying Metadata and nothing had to be churned to
+// prove a point.
+type Metadata = linkmeta.Metadata
 
 func canonicalPostKey(post *Post) string {
 	if post == nil {
@@ -496,29 +490,20 @@ func loadFeed() {
 	mutex.Unlock()
 }
 
-func getMetadataPath(uri string) string {
-	// Generate stable ID from URL hash
-	itemID := fmt.Sprintf("%x", md5.Sum([]byte(uri)))[:16]
-	return filepath.Join("news", "metadata", itemID+".json")
-}
+func getMetadataPath(uri string) string { return linkmeta.Path(uri) }
 
-func loadCachedMetadata(uri string) (*Metadata, bool) {
-	path := getMetadataPath(uri)
-	var md Metadata
-	if err := data.LoadJSON(path, &md); err != nil {
-		return nil, false
-	}
-	return &md, true
-}
+func loadCachedMetadata(uri string) (*Metadata, bool) { return linkmeta.Lookup(uri) }
 
 // LookupMetadata returns cached OG metadata for a URL if available.
-func LookupMetadata(uri string) (*Metadata, bool) {
-	return loadCachedMetadata(uri)
-}
+//
+// Kept as this package's own name because news is where most callers already
+// look for it. Anything outside news should ask linkmeta directly — social used
+// to ask here, and importing a whole service for a link preview is what that
+// cost.
+func LookupMetadata(uri string) (*Metadata, bool) { return linkmeta.Lookup(uri) }
 
 func saveCachedMetadata(uri string, md *Metadata) {
-	path := getMetadataPath(uri)
-	if err := data.SaveJSON(path, md); err != nil {
+	if err := linkmeta.Save(uri, md); err != nil {
 		app.Log("news", "Error saving metadata: %v", err)
 	}
 }
