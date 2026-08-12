@@ -526,7 +526,35 @@ func ClearIndex() {
 	saveIndex()
 }
 
-// saveIndex persists the index to disk
+// saveDebounce is how long a save waits to batch further updates. A variable so
+// a test need not spend a real second proving where a write lands.
+var saveDebounce = time.Second
+
+// saveQueued is called once a save has decided where it is going and before it
+// waits. Nil in normal operation, and a nil check is its whole cost.
+//
+// It exists because the property worth testing here — that the destination is
+// fixed at queue time rather than at write time — is only observable in the gap
+// between the two, and a test that tried to hit that gap by sleeping would be
+// testing the scheduler.
+var saveQueued func()
+
+// saveIndex persists the index to disk, batching updates that arrive together.
+//
+// The destination is resolved before the wait, not after, and that is the whole
+// point of the two lines rather than one. dataPath reads $HOME every time it is
+// called, so resolving it after a one-second sleep meant a pending write
+// followed $HOME wherever it had got to — it wrote the index into whichever
+// data directory happened to be current when the goroutine woke up, not the one
+// that was current when the write was queued.
+//
+// In production $HOME does not move and this never showed. In the test binary
+// every test sets its own, and the result was a real CI failure that read as
+// something else entirely: TestSQLiteMigration wrote a two-entry index.json into
+// its own temp directory, an earlier test's debounced save landed on top of it,
+// and the test reported "Expected 2 entries, got 3" and "Entry not found" — a
+// migration bug on the face of it, and actually a write to the wrong directory.
+// The fix is to decide where a write is going when it is queued.
 func saveIndex() {
 	// Debounce saves - only save once even if called multiple times
 	saveMutex.Lock()
@@ -537,12 +565,26 @@ func saveIndex() {
 	savePending = true
 	saveMutex.Unlock()
 
-	// Wait a bit to batch multiple index updates
-	time.Sleep(1 * time.Second)
+	// Where this is going is decided now, while the caller's data directory is
+	// still the current one.
+	file, err := dataPath("index.json")
+	if saveQueued != nil {
+		saveQueued()
+	}
 
-	indexMutex.RLock()
-	SaveJSON("index.json", index)
-	indexMutex.RUnlock()
+	// Wait a bit to batch multiple index updates
+	time.Sleep(saveDebounce)
+
+	if err == nil {
+		// Marshalled under the read lock, written outside it: the disk write
+		// does not need to hold up every reader of the index.
+		indexMutex.RLock()
+		b, mErr := json.Marshal(index)
+		indexMutex.RUnlock()
+		if mErr == nil {
+			writeAtomic(file, b) //nolint:errcheck
+		}
+	}
 
 	saveMutex.Lock()
 	savePending = false

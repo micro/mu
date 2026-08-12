@@ -9,18 +9,36 @@ import (
 
 var sqliteTestMu sync.Mutex
 
-func resetSQLiteTestDB(t *testing.T) string {
-	t.Helper()
-	sqliteTestMu.Lock()
-	t.Cleanup(sqliteTestMu.Unlock)
-	tempDir := t.TempDir()
-	t.Setenv("HOME", tempDir)
+// closeSQLiteDB drops the package's database handle and the once that guards it.
+func closeSQLiteDB() {
 	if db != nil {
 		_ = db.Close()
 	}
 	dbOnce = sync.Once{}
 	db = nil
 	dbPath = ""
+}
+
+// resetSQLiteTestDB gives a test its own data directory and its own database.
+//
+// It closes at both ends, and the second one is the addition: closing only on
+// the way in left the last test's handle open on a database inside a temp
+// directory that had just been deleted. Nothing fails on Linux, where unlinking
+// an open file is allowed, which is why it survived — but a live handle on a
+// deleted file is a thing later code can be handed.
+//
+// The ordering is not an accident. Cleanups run last-registered-first, so this
+// one runs before Setenv puts $HOME back, before TempDir removes the directory,
+// and before the mutex is released — the handle is closed while this test still
+// owns the directory it points into.
+func resetSQLiteTestDB(t *testing.T) string {
+	t.Helper()
+	sqliteTestMu.Lock()
+	t.Cleanup(sqliteTestMu.Unlock)
+	tempDir := t.TempDir()
+	t.Setenv("HOME", tempDir)
+	closeSQLiteDB()
+	t.Cleanup(closeSQLiteDB)
 	return tempDir
 }
 
