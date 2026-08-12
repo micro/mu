@@ -215,6 +215,42 @@ func (Server) Geocode(_ context.Context, req *GeocodeRequest, rsp *GeocodeRespon
 	return nil
 }
 
+// AddressRequest asks what is at a point.
+type AddressRequest struct {
+	Lat float64 `json:"lat" required:"true" description:"Latitude, e.g. 51.5308"`
+	Lon float64 `json:"lon" required:"true" description:"Longitude, e.g. -0.1238"`
+}
+
+// AddressResponse is the place at those coordinates.
+type AddressResponse struct {
+	Text string `json:"text" description:"The address at those coordinates"`
+}
+
+// Address names the place at a set of coordinates — the reverse of
+// places_geocode. Use it whenever you have a latitude and longitude and need to
+// say where that is.
+// @example {"lat": 51.5308, "lon": -0.1238}
+func (Server) Address(_ context.Context, req *AddressRequest, rsp *AddressResponse) error {
+	// 0,0 is in the Gulf of Guinea and is almost always a field nobody filled
+	// in. Saying so beats naming the ocean.
+	if req.Lat == 0 && req.Lon == 0 {
+		rsp.Text = "Please give a latitude and longitude."
+		return nil
+	}
+	r, err := reverseGeocode(req.Lat, req.Lon)
+	if err != nil {
+		rsp.Text = err.Error() + "."
+		return nil
+	}
+	// The display name, whole. Shortening it with buildAddress was tried and
+	// dropped: that reads road/city/postcode, and a reverse lookup at building
+	// zoom often has neither road nor city — King's Cross came back as "Greater
+	// London, N1C 4DE" beside a full name that said King's Cross. A shorter
+	// answer that has lost the thing you asked about is not shorter.
+	rsp.Text = r.DisplayName
+	return nil
+}
+
 // ElevationRequest asks how high somewhere is.
 type ElevationRequest struct {
 	Place string  `json:"place" description:"A place name or address, e.g. 'Denver' or 'Ben Nevis'"`
@@ -325,7 +361,8 @@ var Spec = service.Spec{
 	Page:        "/places",
 	Icon:        "places.svg",
 	Endpoints: map[string]service.Endpoint{
-		"ETA":       {Doc: "How long it takes to travel between two places, by road rather than as the crow flies", Cost: quota.OpPlacesETA},
+		"Address":   {Doc: "Name the place at a latitude and longitude — the reverse of places_geocode. Use it whenever you have coordinates and need to say where that is"},
+		"ETA":       {Doc: "How long it takes to travel between two places, by road rather than as the crow flies. Can be asked about a future departure, or told when you need to arrive and answer when to leave", Cost: quota.OpPlacesETA},
 		"Elevation": {Doc: "How high a place is above sea level, in metres and feet. Sampled from a 90-metre global elevation model, so a summit reads a little under its surveyed height"},
 		"Geocode":   {Doc: "Resolve a place name or address to coordinates"},
 		"Nearby":    {Doc: "List points of interest near a location", Cost: quota.OpPlacesNearby},
