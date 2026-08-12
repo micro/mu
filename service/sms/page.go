@@ -80,7 +80,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<p class="text-sm text-muted">Sent from <strong>` + html.EscapeString(from) +
 		`</strong>. ` + html.EscapeString(allowance(who)+yours) + `</p>`)
 	b.WriteString(composer(r, who))
-	b.WriteString(threads(history))
+	b.WriteString(threads(r, who, history))
 	b.WriteString(pageCSS)
 
 	w.Write([]byte(app.RenderHTMLForRequest("SMS", "Text somebody, and read what they text back", b.String(), r)))
@@ -253,11 +253,22 @@ func openIf(b bool) string {
 	return ""
 }
 
-// threads is the history, grouped by the other end.
-func threads(history []Message) string {
+// threads is the history, grouped by the other end, each with a box to reply in.
+//
+// The reply box is the point. Every conversation was read-only: to answer
+// somebody you scrolled back to the compose box at the top and typed their
+// number in again, having just read it. WhatsApp put the box in the thread from
+// the start and this did not, which is the same service wearing two different
+// manners.
+//
+// The compose box stays, because SMS can start a conversation and WhatsApp
+// cannot — that is the real difference between them, and it is the only one
+// worth showing.
+func threads(r *http.Request, who string, history []Message) string {
 	if len(history) == 0 {
 		return ""
 	}
+	csrf := html.EscapeString(auth.CSRFToken(r))
 	order := []string{}
 	byNumber := map[string][]Message{}
 	for _, m := range history {
@@ -281,6 +292,20 @@ func threads(history []Message) string {
 			b.WriteString(`<div class="sms-msg ` + cls + `">` +
 				`<span class="sms-body">` + html.EscapeString(m.Text) + `</span>` +
 				`<span class="sms-when">` + html.EscapeString(app.TimeAgo(m.At)) + `</span></div>`)
+		}
+		// Somebody who has said STOP has said it to us, and the page should say
+		// so where the reply box would be rather than take a message and fail.
+		if OptedOut(number) {
+			b.WriteString(`<p class="sms-closed">They asked not to be texted. ` +
+				`Nothing more goes to this number.</p>`)
+		} else {
+			b.WriteString(`<form method="POST" action="/sms" class="sms-reply">` +
+				`<input type="hidden" name="_csrf" value="` + csrf + `">` +
+				`<input type="hidden" name="send" value="1">` +
+				`<input type="hidden" name="to" value="` + html.EscapeString(number) + `">` +
+				`<input name="text" required maxlength="` + itoa(maxBody) + `" class="sms-reply-box" ` +
+				`placeholder="Reply" aria-label="Reply to ` + html.EscapeString(number) + `">` +
+				`<button type="submit">Send</button></form>`)
 		}
 		b.WriteString(`</div>`)
 	}
@@ -355,4 +380,8 @@ const pageCSS = `<style>
 .sms-in-msg{background:var(--surface-alt,#f2f2f2);border-bottom-left-radius:4px}
 .sms-body{font-size:14px;line-height:1.45;white-space:pre-wrap;word-break:break-word}
 .sms-when{font-size:11px;opacity:.65}
+.sms-reply{display:flex;gap:8px;margin:10px 0 0}
+.sms-reply-box{flex:1;min-width:0;padding:8px 10px;border:1px solid var(--border-color,#d1d5db);
+  border-radius:8px;font-size:14px;font-family:inherit}
+.sms-closed{font-size:12px;color:var(--text-muted,#999);margin:8px 0 0}
 </style>`

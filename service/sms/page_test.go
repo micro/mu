@@ -84,6 +84,52 @@ func TestAVerifiedNumberIsVisible(t *testing.T) {
 	}
 }
 
+// TestYouCanReplyWhereYouRead. Every conversation on this page was read-only:
+// to answer somebody you scrolled back to the compose box at the top and typed
+// in the number you had just finished reading. WhatsApp put the box in the
+// thread from the start, and this is the same service.
+func TestYouCanReplyWhereYouRead(t *testing.T) {
+	setup(t)
+	const me, them = "acct-reply", "+15550109999"
+	r := httptest.NewRequest(http.MethodGet, "/sms", nil)
+
+	Record(me, "in", them, "are you around?", 1)
+	got := threads(r, me, History(me, 50))
+
+	if !strings.Contains(got, `name="text"`) {
+		t.Error("no box to reply in")
+	}
+	if !strings.Contains(got, `name="to" value="`+them+`"`) {
+		t.Error("the reply box does not know who it is replying to")
+	}
+	if !strings.Contains(got, `name="send"`) {
+		t.Error("the reply form would not send")
+	}
+	if !strings.Contains(got, `name="_csrf"`) {
+		t.Error("the reply form has no CSRF token, so it would be rejected")
+	}
+}
+
+// TestSomebodyWhoSaidStopHasNoReplyBox — the rule about who you may text is the
+// service, so the page says it where the box would be rather than accepting a
+// message and failing afterwards.
+func TestSomebodyWhoSaidStopHasNoReplyBox(t *testing.T) {
+	setup(t)
+	const me, them = "acct-stop", "+15550107777"
+	r := httptest.NewRequest(http.MethodGet, "/sms", nil)
+
+	Record(me, "in", them, "STOP", 1)
+	OptOut(them)
+
+	got := threads(r, me, History(me, 50))
+	if strings.Contains(got, `name="text"`) {
+		t.Error("offered a reply box to somebody who asked not to be texted")
+	}
+	if !strings.Contains(got, "asked not to be texted") {
+		t.Errorf("the page does not say why there is no box: %s", got)
+	}
+}
+
 // And an action says it happened.
 func TestNoticeSaysWhatHappened(t *testing.T) {
 	for q, want := range map[string]string{
