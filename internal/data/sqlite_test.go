@@ -9,18 +9,23 @@ import (
 
 var sqliteTestMu sync.Mutex
 
-func resetSQLiteTestDB(t *testing.T) string {
-	t.Helper()
-	sqliteTestMu.Lock()
-	t.Cleanup(sqliteTestMu.Unlock)
-	tempDir := t.TempDir()
-	t.Setenv("HOME", tempDir)
+func closeSQLiteDB() {
 	if db != nil {
 		_ = db.Close()
 	}
 	dbOnce = sync.Once{}
 	db = nil
 	dbPath = ""
+}
+
+func resetSQLiteTestDB(t *testing.T) string {
+	t.Helper()
+	sqliteTestMu.Lock()
+	t.Cleanup(sqliteTestMu.Unlock)
+	tempDir := t.TempDir()
+	t.Setenv("HOME", tempDir)
+	closeSQLiteDB()
+	t.Cleanup(closeSQLiteDB)
 	return tempDir
 }
 
