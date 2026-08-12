@@ -35,10 +35,42 @@ var (
 // During the first 24 hours after signup an account is on a tight cap;
 // after that it gets a generous hourly cap that still throttles abuse.
 // Admins and approved accounts are unlimited.
+// PlanPostsPerHour answers what a plan allows, and is filled in by
+// internal/server/hooks.go from wallet.PlanByID.
+//
+// A function variable because the plans live in wallet/, which is product, and
+// this is internal/ — internal may never import the product. Nil on a build
+// with no billing linked in, which is the same answer a self-hosted instance
+// with no Stripe gives anyway: everybody gets the established rate.
+var PlanPostsPerHour func(plan string) int
+
+// PostLimitFor is how many writes an hour this account gets. Exported because
+// it is a number a person is entitled to know before they meet it, and because
+// what a plan buys is not worth much if it cannot be read back.
+func PostLimitFor(acc Account) int {
+	n, _ := postLimitFor(acc)
+	return n
+}
+
 func postLimitFor(acc Account) (int, time.Duration) {
 	if acc.Admin || acc.Approved {
 		return 1<<31 - 1, time.Hour
 	}
+
+	// What the plan bought. This is the "higher rate limits" that Pro and
+	// Premium have advertised on the pricing page since it was written, with
+	// nothing anywhere that read a plan — the limit varied by admin, approved,
+	// trusted and account age, and by nothing anybody could pay for.
+	//
+	// A subscriber is past the new-account cap by definition: a card on file is
+	// a stronger signal of accountability than the 24-hour wait it replaces,
+	// which is the same argument trusted() makes below.
+	if acc.Plan != "" && PlanPostsPerHour != nil {
+		if n := PlanPostsPerHour(acc.Plan); n > 0 {
+			return n, time.Hour
+		}
+	}
+
 	// A verified address or a funded wallet clears the new-account cap for the
 	// same reason it clears the 24-hour wait in CanPost: it is the signal the
 	// cap was standing in for. Still capped, just at the established rate.

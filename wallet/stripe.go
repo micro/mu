@@ -14,6 +14,7 @@ import (
 	"mu/internal/quota"
 
 	"mu/internal/app"
+	"mu/internal/auth"
 	"mu/internal/settings"
 )
 
@@ -44,9 +45,30 @@ type SubscriptionPlan struct {
 	Credits int    `json:"credits"` // Credits granted each month
 	Label   string `json:"label"`
 
-	// What the plan sells beyond the credits, for the cards on /pricing.
-	// Credits are 1p on every plan, so this is the difference between them.
-	Features []string `json:"features"`
+	// What the plan sells beyond the credits. Credits are 1p on every plan, so
+	// these are the difference between them — and they are numbers rather than
+	// words because something has to read them.
+	//
+	// Agents is how many the account may keep; PostsPerHour is its write rate
+	// limit. Both were prose on a card and nothing else: "5 agents" and "higher
+	// rate limits" were advertised with no plan field to read, no cap anywhere
+	// that counted agents, and a rate limit that varied by whether an account
+	// was an admin, approved, or under a day old — never by what it paid.
+	Agents       int `json:"agents"`
+	PostsPerHour int `json:"posts_per_hour"`
+
+	// Nothing about the channels — external email, SMS, WhatsApp — is here on
+	// purpose. "Send mail, SMS and WhatsApp" was a line on the Pro card and
+	// nothing gated it, which is the same defect as the agent count and the
+	// rate limit; the difference is that those two had an obvious right answer
+	// and this one does not. Whether £10 buys the ability to send an email at
+	// all is a product decision nobody has made, and inventing it here would
+	// take something away from every account that can do it today.
+	//
+	// So the line is off the card until it is gated. A field with no enforcement
+	// behind it is how the first three got there.
+
+	Features []string `json:"features"` // extra lines for the card, beyond the above
 	Featured bool     `json:"featured"` // the one the pricing page highlights
 }
 
@@ -66,24 +88,77 @@ type SubscriptionPlan struct {
 var SubscriptionPlans = []SubscriptionPlan{
 	{
 		ID: "personal", Name: "Personal", Price: 1000, Credits: 1000,
-		Label:    "£10/month — 1,000 credits",
-		Features: []string{"Every tool over MCP", "1 agent", "The web app, included"},
+		Label:        "£10/month — 1,000 credits",
+		Agents:       1,
+		PostsPerHour: 60,
+		Features:     []string{"Every tool over MCP", "The web app, included"},
 	},
 	{
 		ID: "pro", Name: "Pro", Price: 2000, Credits: 2000,
-		Label:    "£20/month — 2,000 credits",
-		Features: []string{"Everything in Personal", "5 agents", "Send mail, SMS and WhatsApp", "Higher rate limits"},
-		Featured: true,
+		Label:        "£20/month — 2,000 credits",
+		Agents:       5,
+		PostsPerHour: 300,
+		Features:     []string{"Everything in Personal"},
+		Featured:     true,
 	},
 	{
 		ID: "premium", Name: "Premium", Price: 10000, Credits: 10000,
-		Label:    "£100/month — 10,000 credits",
-		Features: []string{"Everything in Pro", "25 agents", "Highest rate limits"},
+		Label:        "£100/month — 10,000 credits",
+		Agents:       25,
+		PostsPerHour: 1200,
+		Features:     []string{"Everything in Pro"},
 	},
 }
 
+// noPlan is what an account without a subscription gets: the limits that were
+// already in force before plans read anything.
+//
+// It is not a free tier — an account here still pays per call out of a balance
+// it topped up — it is the shape of somebody who has not subscribed. One agent
+// and the established post rate, which is exactly what everybody had before,
+// so introducing plans took nothing away from anyone.
+var noPlan = SubscriptionPlan{ID: "", Name: "No plan", Agents: 1, PostsPerHour: 60}
+
 // Plans is the catalogue, for pages that render it.
 func Plans() []SubscriptionPlan { return SubscriptionPlans }
+
+// setPlan records which plan an account is on, after a payment for it.
+//
+// Empty is ignored rather than written: a one-off top-up goes through the same
+// webhook branch and carries no plan id, and clearing somebody's plan because
+// they bought £5 of credits would take away what they are paying monthly for.
+func setPlan(userID, planID string) {
+	if userID == "" || planID == "" {
+		return
+	}
+	acc, err := auth.GetAccount(userID)
+	if err != nil {
+		app.Log("stripe", "cannot set plan %s: no account %s", planID, userID)
+		return
+	}
+	if acc.Plan == planID {
+		return
+	}
+	acc.Plan = planID
+	if err := auth.UpdateAccount(acc); err != nil {
+		app.Log("stripe", "failed to record plan %s for %s: %v", planID, userID, err)
+		return
+	}
+	app.Log("stripe", "%s is now on the %s plan", userID, planID)
+}
+
+// PlanByID is what an account on this plan is allowed. An unknown or empty id
+// gets noPlan rather than nothing, so a caller never has to handle a missing
+// plan and a subscription Stripe knows about but this build does not cannot
+// leave somebody with a limit of zero.
+func PlanByID(id string) SubscriptionPlan {
+	for _, p := range SubscriptionPlans {
+		if p.ID == id {
+			return p
+		}
+	}
+	return noPlan
+}
 
 // CreateSubscriptionSession creates a Stripe Checkout Session for a
 // recurring subscription. Credits are granted on each successful payment
@@ -355,6 +430,7 @@ func HandleStripeWebhook(w http.ResponseWriter, r *http.Request) {
 			Metadata      struct {
 				UserID  string `json:"user_id"`
 				Credits string `json:"credits"`
+				PlanID  string `json:"plan_id"`
 			} `json:"metadata"`
 			AmountTotal int `json:"amount_total"`
 		}
@@ -391,6 +467,10 @@ func HandleStripeWebhook(w http.ResponseWriter, r *http.Request) {
 				} else {
 					app.Log("stripe", "credited %d to user %s (session %s)", credits, userID, session.ID)
 				}
+				// A subscription checkout carries a plan id; a one-off top-up
+				// does not, and setPlan ignores an empty one rather than
+				// clearing what somebody is already on.
+				setPlan(userID, session.Metadata.PlanID)
 			}
 		}
 	}
@@ -441,6 +521,11 @@ func HandleStripeWebhook(w http.ResponseWriter, r *http.Request) {
 			} else {
 				app.Log("stripe", "subscription: credited %d to %s (invoice %s)", credits, userID, invoice.ID)
 			}
+			// The credits were only ever half of what was paid for. This is the
+			// other half: the plan the account is on, which is what decides how
+			// many agents it may run and how hard it may write. It rides in the
+			// same metadata the credits do and was being read and thrown away.
+			setPlan(userID, invoice.SubscriptionData.Metadata.PlanID)
 		}
 	}
 

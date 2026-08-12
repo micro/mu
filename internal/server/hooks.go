@@ -571,6 +571,30 @@ func wireHooks() {
 	// Wire guest agent news search directly to the live feed-backed provider path.
 	api.GuestNewsSearch = news.SearchToolText
 
+	// What a plan is worth, to the two places that enforce it.
+	//
+	// Both live below wallet/ — internal/auth and agent/ — and neither may
+	// import it, so the numbers come down through here like every other cycle
+	// in this file. Until this existed the pricing page sold "5 agents" and
+	// "higher rate limits" to a product where no code had ever read a plan.
+	//
+	// An admin is exempt from the agent cap for the same reason they are exempt
+	// from the charge: they are the operator, and the operator is already
+	// paying for the instance.
+	auth.PlanPostsPerHour = func(plan string) int {
+		return wallet.PlanByID(plan).PostsPerHour
+	}
+	agent.PlanAgents = func(accountID string) int {
+		acc, err := auth.GetAccount(accountID)
+		if err != nil {
+			return 0
+		}
+		if acc.Admin || acc.Agent {
+			return 0
+		}
+		return wallet.PlanByID(acc.Plan).Agents
+	}
+
 	// The gateway every service call goes through.
 	//
 	// internal/service cannot ask these questions itself — the answers need the
@@ -579,6 +603,23 @@ func wireHooks() {
 	// internal/service/gateway.go for what it replaced: four different places a
 	// charge could live, and most operations landing in none of them.
 	service.Gate.Allow = func(account, op string) (bool, error) {
+		// Somebody who paid in USDC has already paid, at the door, for this
+		// exact operation — VerifyAndSettle runs before the tool does, and the
+		// free trial is counted there too. There is no account behind a wallet
+		// identity by design: not signing up is the entire point of x402.
+		//
+		// So asking the wallet about one gets "account not found", and the
+		// gateway turns that into a refusal — of a call that has been paid for.
+		// The money is gone and the caller has nothing. This was live for every
+		// scoped priced service, and binding the caller on priced tools spread
+		// it to web_search, which is the example in the README.
+		//
+		// Allowed, recorded, and not charged again.
+		if api.IsWalletIdentity(account) {
+			quota.Record(account, op)
+			return false, nil
+		}
+
 		// A free allowance is spent before a credit is. Checking it here rather
 		// than inside CheckQuota keeps the two ideas apart: what an operation
 		// costs is arithmetic about providers, and how much of it somebody gets

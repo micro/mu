@@ -46,6 +46,19 @@ type Account struct {
 	// admin may be an agent; not knowing which is how a password reset ends up
 	// being mailed to a program.
 	Agent bool `json:"agent,omitempty"`
+	// Plan is the subscription an account is on, by plan id, or empty for
+	// somebody who has only ever topped up.
+	//
+	// A plan sells scale — how many agents you may run and how hard you may
+	// hammer the instance — because credits are 1p on every plan and a tier
+	// that only sold credits would sell nothing a top-up does not. That is only
+	// true while something reads this: the pricing page advertised "5 agents"
+	// and "higher rate limits" for a year with no field to read, no limit to
+	// raise, and nothing anywhere that knew what plan anybody was on.
+	//
+	// Set by the Stripe webhook, which already carries the plan id in its
+	// metadata. What each plan allows is wallet.SubscriptionPlans.
+	Plan string `json:"plan,omitempty"`
 }
 
 // legacyCardIDs maps retired card ids to their current name. Accounts saved

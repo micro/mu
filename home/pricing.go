@@ -20,6 +20,13 @@ func money(pence int) string {
 	return fmt.Sprintf("£%d.%02d", pence/100, pence%100)
 }
 
+func plural(n int) string {
+	if n == 1 {
+		return ""
+	}
+	return "s"
+}
+
 // thousands puts separators in, so 10000 credits reads as 10,000.
 func thousands(n int) string {
 	s := fmt.Sprintf("%d", n)
@@ -99,6 +106,15 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 		for _, f := range p.Features {
 			b.WriteString(`<li>&#10003; ` + html.EscapeString(f) + `</li>`)
 		}
+		// The lines that used to be prose. "5 agents" and "Higher rate limits"
+		// were typed into this list while nothing in the product read a plan,
+		// so they were claims rather than facts for as long as the page existed.
+		// Written from the same fields the limits are enforced from, which is
+		// the only arrangement where the card cannot be wrong.
+		b.WriteString(`<li>&#10003; ` + html.EscapeString(
+			fmt.Sprintf("%d agent%s", p.Agents, plural(p.Agents))) + `</li>`)
+		b.WriteString(`<li>&#10003; ` + html.EscapeString(
+			fmt.Sprintf("%s posts an hour", thousands(p.PostsPerHour))) + `</li>`)
 		b.WriteString(`</ul>`)
 		b.WriteString(`<a href="/signup" class="btn" style="display:block;text-align:center">Get ` +
 			html.EscapeString(p.Name) + `</a>`)

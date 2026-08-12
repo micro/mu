@@ -147,6 +147,28 @@ func tagFor(owner, name string, existing []*Agent) string {
 // Unscoped reports whether this agent can reach everything its owner can.
 func (a *Agent) Unscoped() bool { return len(a.Services) == 0 }
 
+// PlanAgents answers how many agents this account's plan allows, and is filled
+// in by internal/server/hooks.go from wallet.PlanByID.
+//
+// Nil on a build with no billing linked in, which is what a self-hosted
+// instance is: nobody is selling anything there, so nobody is limited.
+var PlanAgents func(accountID string) int
+
+// agentAllowance is how many this account may keep, or 0 for no limit.
+func agentAllowance(owner string) int {
+	if PlanAgents == nil {
+		return 0
+	}
+	return PlanAgents(owner)
+}
+
+func plural(n int) string {
+	if n == 1 {
+		return ""
+	}
+	return "s"
+}
+
 // Create makes an agent and issues its token, returning the secret exactly
 // once.
 //
@@ -167,6 +189,21 @@ func CreateAgent(owner, name, kind, prompt, description string, services []strin
 	}
 	if kind != Hosted && kind != External {
 		kind = External
+	}
+
+	// How many agents an account may keep is what its plan sells. The pricing
+	// page has offered 1, 5 and 25 since it was written and nothing counted
+	// them, so every account had as many as it liked and the first line of
+	// every card was decoration.
+	//
+	// Checked here because this is the only place an agent is made. The message
+	// says the number and where to change it, because a limit somebody meets
+	// without being told what it is reads as a bug.
+	existing := Agents(owner)
+	if max := agentAllowance(owner); max > 0 && len(existing) >= max {
+		return nil, "", fmt.Errorf("your plan runs %d agent%s and you have %d — "+
+			"see /pricing to run more, or delete one first",
+			max, plural(max), len(existing))
 	}
 
 	services = validServices(services)

@@ -19,6 +19,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"go-micro.dev/v6/broker"
 	"go-micro.dev/v6/client"
@@ -55,8 +56,23 @@ func bypassProxyForLoopback() {
 }
 
 var (
-	mu       sync.Mutex
-	inited   bool
+	mu sync.Mutex
+	// inited is atomic because ensure() reads it on every accessor while Init
+	// writes it under mu.
+	//
+	// It was a plain bool, and the read in ensure() was unguarded: two
+	// goroutines could both see false and both call Init — which is harmless,
+	// because Init takes the lock and the second returns — but the far worse
+	// case is the other way round. A goroutine seeing inited == true through an
+	// unsynchronised read has no guarantee that the writes to reg, cl, br and
+	// st are visible to it yet, so Broker() could hand back a nil broker to a
+	// caller that had done nothing wrong.
+	//
+	// Reachable in production, not just under test: home.Load starts several
+	// goroutines that each call event.Subscribe, which calls Broker(), which
+	// calls ensure(). The race detector reports it the moment anything stands
+	// the server up and subscribes.
+	inited   atomic.Bool
 	reg      registry.Registry
 	cl       client.Client
 	br       broker.Broker
@@ -70,7 +86,7 @@ var (
 func Init() {
 	mu.Lock()
 	defer mu.Unlock()
-	if inited {
+	if inited.Load() {
 		return
 	}
 	// MU_REGISTRY selects how services find each other, and so whether a
@@ -130,7 +146,9 @@ func Init() {
 		client.Transport(tr),
 	)
 	st = newDurableStore()
-	inited = true
+	// Last, and under the lock: this is what publishes everything above to a
+	// goroutine that only ever reads the flag.
+	inited.Store(true)
 }
 
 // registrySpec reads the registry selection. Env only: it is needed during
@@ -165,7 +183,7 @@ func newDurableStore() store.Store {
 }
 
 func ensure() {
-	if !inited {
+	if !inited.Load() {
 		Init()
 	}
 }

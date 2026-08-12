@@ -358,10 +358,22 @@ In order, each landable on its own:
    two, and `sms` and `whatsapp` stop charging themselves.
 3. **Never-free operations.** A flag in quota.json, enforced in the gate, with a
    refusal that says what to do about it.
-4. **`Account.Plan`, and the plan's monthly credits.** The Stripe webhook
-   already grants credits on `invoice.payment_succeeded`; what is missing is the
-   field saying which plan an account is on, so agent limits and the channel
-   gate have something to read. Deletes the dead `DailyQuota` while it is there.
+4. ~~**`Account.Plan`.**~~ Done. The webhook carried the plan id in its
+   metadata and threw it away, so nothing in the product had ever read a plan —
+   which meant "1 agent", "5 agents", "25 agents" and "higher rate limits" were
+   sold on the pricing page against no field, no counter and a rate limit that
+   varied by account age. `Account.Plan` is set from the webhook;
+   `SubscriptionPlan` carries `Agents` and `PostsPerHour`; `CreateAgent`
+   enforces the count and `postLimitFor` reads the rate, both through function
+   variables filled in by `hooks.go` because `auth` and `agent` sit below
+   `wallet`. The pricing card renders those same two numbers, so it cannot
+   claim what is not enforced. Held by `test/plans_are_real_test.go`.
+
+   **Still open: the channels.** "Send mail, SMS and WhatsApp" was the fourth
+   claim on the Pro card and it is off the card rather than enforced, because
+   unlike the other three it has no obvious right answer — whether £10 buys the
+   ability to send an email at all is a decision nobody has made, and gating it
+   would take something away from every account that can do it today.
 5. **Meter the tool door, include the app.** The gateway already knows the
    difference is not visible to it, so the door has to say: a call arriving from
    a page is marked as included, everything else is charged. That is one flag on
