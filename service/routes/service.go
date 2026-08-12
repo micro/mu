@@ -153,9 +153,14 @@ type NearestResponse struct {
 	Text string `json:"text" description:"The places ordered by travel time, nearest first, with time and distance for each"`
 }
 
-// maxCompare bounds one Nearest call. Each destination is a routing request, so
-// a list of two hundred is two hundred charges somebody did not mean to make.
-const maxCompare = 10
+// maxCompare bounds one Nearest call.
+//
+// Each destination is its own routing request, and the endpoint declares a
+// single cost — so the bound is what keeps a call's price and a call's expense
+// within sight of each other. It is deliberately small: "which of these is
+// nearest" is a question about a shortlist, and anybody handing it fifty
+// addresses wants a different tool.
+const maxCompare = 5
 
 // Nearest says which of several places is quickest to reach, in order.
 // @example {"from": "Shoreditch, London", "to": ["Heathrow Airport", "Gatwick Airport", "Stansted Airport"]}
@@ -363,7 +368,8 @@ var Spec = service.Spec{
 		},
 		"Nearest": {
 			Doc: "Given a starting point and several destinations, say which is quickest to reach and " +
-				"put them in order. Each destination is a separate lookup, so it is charged per destination",
+				"put them in order. Each destination is a separate routing lookup, so ask about the " +
+				"places you are actually choosing between rather than a long list",
 			Cost: quota.OpRoutesETA,
 		},
 	},
