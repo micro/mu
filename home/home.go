@@ -431,6 +431,13 @@ function fetchW(la,lo){
 	// the page — and it left /account describing a home screen that no longer
 	// had any cards on it. Home shows what this instance knows right now, which
 	// is the whole demonstration that the tools are real.
+	//
+	// Labelled, because that demonstration only lands if somebody can tell what
+	// they are looking at. Unlabelled, the cards read as a dashboard somebody
+	// configured — headlines, prices, weather, arranged on a page. What they
+	// actually are is the tools answering, live, right now: the same calls an
+	// agent makes, rendered. Two words say so.
+	b.WriteString(`<p class="home-section"><small>Live context</small></p>`)
 	b.WriteString(CardsHTML(r, viewerAcc))
 
 	b.WriteString(`</div>`) // close #home-cards

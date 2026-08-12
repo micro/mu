@@ -756,6 +756,20 @@ body.page-home #page-title ~ #customize-link {
   gap: 8px;
   flex-wrap: wrap;
 }
+
+/* Says what the block underneath is. The cards read as a dashboard somebody
+   arranged; they are the tools answering live, and two words are the whole
+   difference between those two readings. Quiet, because a label that competes
+   with what it labels is worse than none. */
+.home-section {
+  color: #888;
+  margin: 4px 0 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.home-section small {
+  font-size: 11px;
+}
 #home-date-text {
   white-space: nowrap;
 }
