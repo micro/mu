@@ -121,7 +121,7 @@ var SubscriptionPlans = []SubscriptionPlan{
 			quota.OpWhatsAppSend:  50,
 		},
 		Concurrency: 8,
-		Features:    []string{"Everything in pay as you go"},
+		Features:    []string{"Everything in pay-as-go"},
 		Featured: true,
 	},
 	{

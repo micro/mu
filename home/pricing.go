@@ -44,6 +44,68 @@ func thousands(n int) string {
 	return string(out)
 }
 
+// rows is the bullet list on a plan card, and every card goes through it.
+//
+// The cards had their own lists and the lists had different shapes: "1 agent"
+// was the third line on one column and the second on the others, so reading
+// across the row you were on told you nothing. A price table is read
+// horizontally — that is the whole reason it is a table — and three lists
+// written separately will not stay aligned however carefully they are typed.
+//
+// So the order is here, once: what you get, then agents, then concurrency, then
+// what may leave the building. Anything a single card wants to add of its own
+// comes first, because a lead line is the one thing that legitimately differs.
+//
+// WhatsApp is not a row. It is capped and enforced like the other two, but
+// Meta's 24-hour window means this instance answers people who wrote first and
+// cannot start a conversation — so a number reads as reach it does not have.
+// A line that has to be explained is worse than no line.
+func rows(p wallet.SubscriptionPlan, lead string, tail ...string) string {
+	var b strings.Builder
+	b.WriteString(`<ul style="text-align:left;list-style:none;padding:0;margin:0 0 16px;font-size:14px;line-height:2">`)
+	item := func(s string) {
+		b.WriteString(`<li>&#10003; ` + html.EscapeString(s) + `</li>`)
+	}
+	item(lead)
+	item(fmt.Sprintf("%d agent%s", p.Agents, plural(p.Agents)))
+	// The rate limit an MCP buyer means: how many tool calls their agents may
+	// have running at once. "Higher rate limits" was reaching for this and
+	// hitting the abuse control on the social timeline.
+	item(fmt.Sprintf("%d tool calls at once", p.Concurrency))
+	for _, l := range []struct{ op, noun string }{
+		{quota.OpExternalEmail, "emails"},
+		{quota.OpSMSSend, "texts"},
+	} {
+		n, ok := p.LimitFor(l.op)
+		if !ok {
+			// No plan of its own, so the floor everybody gets — the same number
+			// the gate reads, from quota.json.
+			n = quota.DailyLimit(l.op)
+		}
+		if n == quota.NoLimit {
+			continue
+		}
+		item(fmt.Sprintf("%s %s a day", thousands(n), l.noun))
+	}
+	// Anything a card adds of its own goes last, so the rows above line up
+	// across every column. It was second on one card and the agent count
+	// slipped to third there and stayed second everywhere else, which is the
+	// one thing a price table must not do: it is read across.
+	for _, t := range tail {
+		item(t)
+	}
+	b.WriteString(`</ul>`)
+	return b.String()
+}
+
+// feature is a plan's own first line, or a sensible one if it has none.
+func feature(p wallet.SubscriptionPlan) string {
+	if len(p.Features) > 0 {
+		return p.Features[0]
+	}
+	return "Every tool"
+}
+
 func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	var b strings.Builder
 
@@ -103,13 +165,7 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<p style="font-size:2rem;font-weight:700;margin:8px 0">1p` +
 		`<span style="font-size:14px;font-weight:400;color:#888">/credit</span></p>`)
 	b.WriteString(`<p style="color:#666;font-size:14px;margin:0 0 16px">Top up any amount</p>`)
-	b.WriteString(`<ul style="text-align:left;list-style:none;padding:0;margin:0 0 16px;font-size:14px;line-height:2">`)
-	b.WriteString(`<li>&#10003; Every read tool</li>`)
-	b.WriteString(`<li>&#10003; The web app, included</li>`)
-	b.WriteString(`<li>&#10003; 1 agent</li>`)
-	b.WriteString(`<li>&#10003; 2 tool calls at once</li>`)
-	b.WriteString(`<li>&#10003; No subscription</li>`)
-	b.WriteString(`</ul>`)
+	b.WriteString(rows(wallet.PlanByID(""), "Every tool", "Web app included"))
 	b.WriteString(`<a href="/signup" class="btn" style="display:block;text-align:center">Start</a>`)
 	b.WriteString(`</div>`)
 
@@ -127,49 +183,7 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 			`<span style="font-size:14px;font-weight:400;color:#888">/month</span></p>`)
 		b.WriteString(`<p style="color:#666;font-size:14px;margin:0 0 16px">` +
 			html.EscapeString(thousands(p.Credits)+" credits a month") + `</p>`)
-		b.WriteString(`<ul style="text-align:left;list-style:none;padding:0;margin:0 0 16px;font-size:14px;line-height:2">`)
-		for _, f := range p.Features {
-			b.WriteString(`<li>&#10003; ` + html.EscapeString(f) + `</li>`)
-		}
-		// Written from the field the limit is enforced from, which is the only
-		// arrangement where the card cannot be wrong.
-		//
-		// The post rate is not here, though a plan does raise it. It is an
-		// abuse control on writing to the social side — the defence against a
-		// runaway bot filling the timeline — and this is an MCP server, where
-		// what a buyer means by a rate limit is how hard their agent may call
-		// tools. Advertising "300 posts an hour" answers a question nobody
-		// asked and implies we are metering something we are not. A limit and
-		// a feature are different things, and only one of them belongs on a
-		// price card.
-		b.WriteString(`<li>&#10003; ` + html.EscapeString(
-			fmt.Sprintf("%d agent%s", p.Agents, plural(p.Agents))) + `</li>`)
-		// The rate limit an MCP buyer means: how many tool calls their agents
-		// may have running at once. This is what "higher rate limits" was
-		// reaching for and never was.
-		b.WriteString(`<li>&#10003; ` + html.EscapeString(
-			fmt.Sprintf("%d tool calls at once", p.Concurrency)) + `</li>`)
-		// The send caps, from the same map the gate reads. These are the third
-		// thing a plan sells and the only one whose cost to us is not covered
-		// by the credits — what a bad month spends is a domain's or a number's
-		// reputation, and no balance repairs that.
-		// WhatsApp is not on the card. It is capped and enforced like the other
-		// two, but Meta's 24-hour window means this instance answers people who
-		// wrote first and cannot start a conversation — a number somebody reads
-		// as "reach 50 people a day" and which does not mean that. A line that
-		// has to be explained is worse than no line.
-		for _, l := range []struct {
-			op, noun string
-		}{
-			{quota.OpExternalEmail, "emails"},
-			{quota.OpSMSSend, "texts"},
-		} {
-			if n, ok := p.LimitFor(l.op); ok {
-				b.WriteString(`<li>&#10003; ` + html.EscapeString(
-					fmt.Sprintf("%s %s a day", thousands(n), l.noun)) + `</li>`)
-			}
-		}
-		b.WriteString(`</ul>`)
+		b.WriteString(rows(p, feature(p)))
 		b.WriteString(`<a href="/signup" class="btn" style="display:block;text-align:center">Get ` +
 			html.EscapeString(p.Name) + `</a>`)
 		b.WriteString(`</div>`)

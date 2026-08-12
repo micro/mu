@@ -155,7 +155,7 @@
     {
       "op": "sms_send",
       "cost": 10,
-      "limit": 20,
+      "limit": 5,
       "limit_env": "SMS_DAILY_LIMIT",
       "label": "Text message (per segment)",
       "env": "CREDIT_COST_SMS",
