@@ -16,18 +16,32 @@
 // this thing send on my behalf" finds three services with one shape instead of
 // two services and a method hidden inside a third.
 //
-// It also fixes what was wrong with sending from mail. Outbound went under
-// MAIL_DOMAIN, the domain the website is on, so agent mail and password resets
-// shared a reputation and there was no way to separate them after the fact.
-// This sends from its own authenticated domain, which carries nothing else.
+// It sends from its own domain, and that is the decision this service exists
+// to hold. Outbound used to go under MAIL_DOMAIN, the domain the website is on.
+//
+// The reason is not that agent mail is untidy, it is who writes it. **Anyone
+// can sign up here and send.** What leaves this instance is user-generated
+// content going to strangers under one shared identity, and a domain's
+// reputation is the one thing a single bad account can spend on everybody
+// else's behalf — including on the mail that has to arrive, which is the
+// password reset and the receipt. A separate sending domain is how that stays
+// somebody else's problem.
+//
+// The isolation is real and it is partial: receivers treat a subdomain as
+// mostly its own sender, but they connect related identities, so a bad enough
+// month bleeds upward and a poor root reputation is inherited downward. It is a
+// blast radius, not a wall. It is still worth having, because the alternative
+// is no separation at all.
+//
+// **Replies to it bounce, and that is accepted for now.** Twilio will not carry
+// a Reply-To — no field, and the header is refused — so a message is answered
+// at its From, and the sending domain has no inbox. Fixing it means an MX
+// record and teaching the SMTP server to accept a second domain and route it,
+// which is inbound work on a service that currently exists to send. The
+// alternative, sending as MAIL_DOMAIN, is the thing above that must not happen.
 //
 // Two rules that are the service rather than decoration:
 //
-//   - **Replies go somewhere.** The sending domain is authenticated for sending
-//     and has no inbox. A reply to it bounces, so every message carries a
-//     Reply-To pointing at the sender's address on the instance's mail domain,
-//     which mail does answer. Without it, sending is a broadcast and the sender
-//     never learns anyone replied.
 //   - **A daily cap per account**, which a plan raises. The price is the first
 //     control and the cap is the second, because they fail differently: a price
 //     stops somebody who has to pay, a cap stops a loop that found a way not
@@ -163,13 +177,13 @@ func SenderFor(owner string) string {
 //
 // Not the same question as ReplyFor, and the difference is the carrier's.
 // Twilio will not carry a Reply-To — there is no field for it and the header is
-// refused — so a message sent that way is answered at its From address and
-// nowhere else. Over this instance's own SMTP the header is ours to set, and
-// answers go to the mailbox at the mail domain.
+// refused — so a message sent that way is answered at its From, which on the
+// sending domain is an address with no inbox behind it. Over this instance's
+// own SMTP the header is ours to set, and answers reach the mail domain.
 //
-// Said out loud because a service that quietly sends from an address nobody can
-// reply to is worse than one that cannot send: the sender believes they have
-// started a conversation.
+// A caller that needs an answer should say where in the body until the sending
+// domain can receive. See the package comment for why the obvious fix — send as
+// MAIL_DOMAIN — is the one thing this service exists to avoid.
 func Answers(owner string) string {
 	if twilio.EmailConfigured() {
 		return SenderFor(owner)
