@@ -126,18 +126,20 @@ var Spec = service.Spec{
 		"Search":  {Doc: "Search the account's mail and return matching messages"},
 		"Address": {Aliases: []string{"mail_address"}, Doc: "Get an email address that reaches the caller. Pass a tag for a plus-address (you+tag@) — give that out, then read only its mail with mail_inbox(tag)"},
 		"Send": {
-			Doc: "Send an email from the caller's own address on this instance. Takes a recipient address, a subject and a body; resolve a name to an address with contacts_find first. The mail really is delivered — there is no draft state to undo from",
+			Doc: "Send a message to somebody on this instance, by username. Stays here — " +
+				"for a real email to an outside address use mail_email",
+			Cost:        quota.OpMailSend,
+			AccountOnly: true,
+			Destructive: true,
+		},
+		"Email": {
+			Doc: "Send a real email to an outside address, over SMTP and signed by this " +
+				"instance's domain. Takes an address, a subject and a body; resolve a name " +
+				"with contacts_find first. It really is delivered — there is no draft state " +
+				"to undo from. For somebody on this instance use mail_send, which is cheaper",
+			Cost: quota.OpExternalEmail,
 			// A funded wallet is not accountable for this sending domain, so
-			// paying cannot stand in for having an account. The price is for
-			// external delivery, and it is charged inside Send once the
-			// recipient is known — a local message costs nothing.
-			// No Cost, deliberately, and this is the one shape the gateway
-			// cannot take over: what this endpoint charges depends on where the
-			// mail is going. External mail costs external_email and local mail
-			// costs mail_send, decided at run time from the recipient. A single
-			// declared price would charge the wrong operation for half the
-			// calls and double-charge the other half, so mail keeps its own
-			// charging — see the two ConsumeQuota calls in Send.
+			// paying cannot stand in for having an account.
 			AccountOnly: true,
 			Destructive: true,
 		},
@@ -166,47 +168,26 @@ type SendResponse struct {
 	Result string `json:"result" description:"Confirmation, saying whether it went out over SMTP or stayed on this instance"`
 }
 
-// Send sends mail from the caller's own address on this instance.
+// Send delivers a message to somebody on this instance.
 //
-// The mail really is delivered — there is no draft state to undo from.
-// @example {"to": "sarah@example.com", "subject": "Hello", "body": "..."}
+// Split from sending a real email, which is now Email. They were one endpoint
+// that chose its price at run time from the recipient — one thing if the
+// address was local, another if it was not — and that is two operations
+// wearing one name. They differ in price, in what may go wrong, and in what
+// they spend: this writes a row, Email spends the reputation of a domain we
+// have to defend. An agent should be able to read what a call costs before
+// making it, and a price that depends on an argument cannot be shown in the
+// catalogue.
+//
+// @example {"to": "asim", "subject": "Hello", "body": "..."}
 func (Server) Send(ctx context.Context, req *SendRequest, rsp *SendResponse) error {
-	who := service.AccountFrom(ctx)
-	if who == "" {
-		return fmt.Errorf("sign in to send mail")
-	}
-	acc, err := auth.GetAccount(who)
+	acc, err := sender(ctx, req)
 	if err != nil {
-		return fmt.Errorf("account not found")
+		return err
 	}
 	to := strings.TrimSpace(req.To)
-	if to == "" || strings.TrimSpace(req.Subject) == "" || strings.TrimSpace(req.Body) == "" {
-		return fmt.Errorf("to, subject and body are all required")
-	}
-
 	if IsExternalEmail(to) {
-		if !acc.Admin {
-			if ok, _, cost, err := quota.CheckQuota(acc.ID, quota.OpExternalEmail); err != nil || !ok {
-				return fmt.Errorf("external email costs %d credits — top up at /wallet/topup", cost)
-			}
-		}
-		from := GetEmailForUser(acc.ID, GetConfiguredDomain())
-		messageID, err := SendExternalEmail(acc.Name, from, to, req.Subject, req.Body,
-			convertPlainTextToHTML(req.Body), "")
-		if err != nil {
-			return fmt.Errorf("failed to send: %w", err)
-		}
-		if !acc.Admin {
-			if err := quota.ConsumeQuota(acc.ID, quota.OpExternalEmail); err != nil {
-				app.Log("mail", "external email sent but not charged: %v", err)
-			}
-		}
-		// Kept in Sent whether or not the copy succeeds: the mail has gone.
-		if err := SendMessage(acc.Name, acc.ID, to, to, req.Subject, req.Body, "", messageID); err != nil {
-			app.Log("mail", "sent copy not stored: %v", err)
-		}
-		rsp.Result = "Sent to " + to + "."
-		return nil
+		return fmt.Errorf("%s is not on this instance — use mail_email to send a real email there", to)
 	}
 
 	// A local recipient may be a bare username or a full local address, with
@@ -216,19 +197,57 @@ func (Server) Send(ctx context.Context, req *SendRequest, rsp *SendResponse) err
 	if err != nil {
 		return fmt.Errorf("no account here called %q", to)
 	}
-	if !acc.Admin {
-		if ok, _, cost, _ := quota.CheckQuota(acc.ID, quota.OpMailSend); !ok {
-			return fmt.Errorf("sending mail costs %d credits — top up at /wallet/topup", cost)
-		}
-	}
 	if err := SendMessage(acc.Name, acc.ID, toAcc.Name, toAcc.ID, req.Subject, req.Body, "", ""); err != nil {
 		return fmt.Errorf("failed to send: %w", err)
 	}
-	if !acc.Admin {
-		_ = quota.ConsumeQuota(acc.ID, quota.OpMailSend)
-	}
 	rsp.Result = "Sent to " + toAcc.Name + " on this instance."
 	return nil
+}
+
+// Email sends a real email off this instance, over SMTP and under our domain.
+//
+// @example {"to": "sarah@example.com", "subject": "Hello", "body": "..."}
+func (Server) Email(ctx context.Context, req *SendRequest, rsp *SendResponse) error {
+	acc, err := sender(ctx, req)
+	if err != nil {
+		return err
+	}
+	to := strings.TrimSpace(req.To)
+	if !IsExternalEmail(to) {
+		return fmt.Errorf("%s is on this instance — use mail_send, which does not leave it", to)
+	}
+
+	from := GetEmailForUser(acc.ID, GetConfiguredDomain())
+	messageID, err := SendExternalEmail(acc.Name, from, to, req.Subject, req.Body,
+		convertPlainTextToHTML(req.Body), "")
+	if err != nil {
+		return fmt.Errorf("failed to send: %w", err)
+	}
+	// Kept in Sent whether or not the copy succeeds: the mail has gone.
+	if err := SendMessage(acc.Name, acc.ID, to, to, req.Subject, req.Body, "", messageID); err != nil {
+		app.Log("mail", "sent copy not stored: %v", err)
+	}
+	rsp.Result = "Sent to " + to + "."
+	return nil
+}
+
+// sender resolves the caller and checks the message is complete. Neither
+// endpoint charges: both declare a flat price and the gateway applies it, which
+// is what splitting them bought.
+func sender(ctx context.Context, req *SendRequest) (*auth.Account, error) {
+	who := service.AccountFrom(ctx)
+	if who == "" {
+		return nil, fmt.Errorf("sign in to send mail")
+	}
+	acc, err := auth.GetAccount(who)
+	if err != nil {
+		return nil, fmt.Errorf("account not found")
+	}
+	if strings.TrimSpace(req.To) == "" || strings.TrimSpace(req.Subject) == "" ||
+		strings.TrimSpace(req.Body) == "" {
+		return nil, fmt.Errorf("to, subject and body are all required")
+	}
+	return acc, nil
 }
 
 // ── Address ─────────────────────────────────────────────────────

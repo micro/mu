@@ -123,6 +123,9 @@ var pageCharged = map[string]bool{
 	"weather_pollen": true, "weather_forecast": true,
 	"web_search": true, "web_fetch": true,
 	"news_search": true,
+	// /mail's Handler charges for both, for the same reason: the page sends
+	// mail without going through the endpoint.
+	"mail_send": true, "external_email": true,
 }
 
 // viaHook is charged by the agent and the app runtime through ChargeQuota,
