@@ -20,10 +20,12 @@ var settingGroups = []settingGroup{
 		"ANTHROPIC_API_KEY",
 		"ANTHROPIC_MODEL",
 		"ATLAS_API_KEY",
+		"ATLAS_MODEL",
 		"OPENROUTER_API_KEY",
 		"OPENROUTER_MODEL",
 		"OPENAI_BASE_URL",
 		"OPENAI_API_KEY",
+		"IMAGE_MODEL",
 	}},
 	{"Search", []string{
 		"BRAVE_API_KEY",
@@ -45,6 +47,7 @@ var settingGroups = []settingGroup{
 		"STRIPE_PUBLISHABLE_KEY",
 		"STRIPE_WEBHOOK_SECRET",
 		"X402_PAY_TO",
+		"CRYPTO_TOPUP",
 	}},
 	{"Trading", []string{
 		"TRADE_RPC_URL",
@@ -62,11 +65,59 @@ var settingGroups = []settingGroup{
 		"WHATSAPP_VERIFY_TOKEN",
 		"WHATSAPP_APP_SECRET",
 	}},
+	// SMS and WhatsApp-over-Twilio. These were absent, and /sms and /whatsapp
+	// both send an operator here by name to set them — a page pointing at a
+	// page that could not help, which is worse than no pointer at all.
+	{"Twilio — SMS and WhatsApp", []string{
+		"TWILIO_ACCOUNT_SID",
+		"TWILIO_AUTH_TOKEN",
+		"TWILIO_API_KEY",
+		"TWILIO_API_SECRET",
+		"TWILIO_FROM",
+		"TWILIO_MESSAGING_SERVICE_SID",
+		"TWILIO_WHATSAPP_FROM",
+		"TWILIO_WEBHOOK_URL",
+		"SMS_DEFAULT_COUNTRY",
+		"SMS_COUNTRIES",
+		"SMS_KNOWN_ONLY",
+		"SMS_VERIFY_INBOUND",
+	}},
+	{"Sign-in", []string{
+		"GOOGLE_CLIENT_ID",
+		"GOOGLE_CLIENT_SECRET",
+		"GOOGLE_REDIRECT_URI",
+	}},
+	{"Storage", []string{
+		"S3_ENDPOINT",
+		"S3_BUCKET",
+		"S3_REGION",
+		"S3_ACCESS_KEY",
+		"S3_SECRET_KEY",
+	}},
+	{"Social", []string{
+		"SOCIAL_ATPROTO",
+	}},
 	{"Platform", []string{
 		"MU_DOMAIN",
 		"PASSKEY_ORIGIN",
 		"PASSKEY_RP_ID",
 	}},
+}
+
+// Settable reports whether a setting can be changed from this page.
+//
+// Exported so a service can be checked against it: /sms and /whatsapp tell an
+// operator to come here for a named variable, and nothing stopped that claim
+// from going stale — which is exactly what happened to every Twilio setting.
+func Settable(name string) bool {
+	for _, g := range settingGroups {
+		for _, v := range g.Vars {
+			if v == name {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func EnvHandler(w http.ResponseWriter, r *http.Request) {
