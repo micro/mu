@@ -49,12 +49,31 @@ var averageSpeedKPH = map[string]float64{
 // route is one leg's answer.
 type route struct {
 	Duration time.Duration
+	// Static is the same journey with no traffic on the road. Zero when the
+	// provider did not give one — a walk has no traffic, and an estimate has no
+	// idea. The interesting number is the difference.
+	Static   time.Duration
 	Metres   int
 	Estimate bool // true when this is a straight-line guess, not a real route
 }
 
+// Delay is how much of the journey is traffic.
+func (r route) Delay() time.Duration {
+	if r.Static <= 0 || r.Duration <= r.Static {
+		return 0
+	}
+	return r.Duration - r.Static
+}
+
+// when says when the journey happens. Both zero means now, which is what every
+// call to this used to mean and could not say otherwise.
+type when struct {
+	Depart time.Time // leave at this time
+	Arrive time.Time // be there by this time
+}
+
 // computeRoute asks Google how long the journey takes.
-func computeRoute(fromLat, fromLon, toLat, toLon float64, mode string) (route, error) {
+func computeRoute(fromLat, fromLon, toLat, toLon float64, mode string, w when) (route, error) {
 	key := googleAPIKey()
 	if key == "" {
 		return estimateRoute(fromLat, fromLon, toLat, toLon, mode), nil
@@ -70,6 +89,30 @@ func computeRoute(fromLat, fromLon, toLat, toLon float64, mode string) (route, e
 	if mode == "DRIVE" {
 		payload["routingPreference"] = "TRAFFIC_AWARE"
 	}
+	// When the journey happens.
+	//
+	// Everything here used to mean "now", which is wrong for most of the
+	// questions people actually ask — "how long on Monday morning" and "when do
+	// I need to leave" are both unanswerable without it, and transit without a
+	// departure time is a timetable read at the wrong hour.
+	//
+	// A time in the past is refused by the provider rather than ignored, and a
+	// caller who says "8am" on a day that has already had one means tomorrow's
+	// question, not an error. Dropped instead: the answer is then "now", which
+	// is the answer they used to get anyway.
+	switch {
+	case !w.Depart.IsZero() && w.Depart.After(time.Now()):
+		payload["departureTime"] = w.Depart.UTC().Format(time.RFC3339)
+	case !w.Arrive.IsZero() && w.Arrive.After(time.Now()):
+		if mode == "TRANSIT" {
+			payload["arrivalTime"] = w.Arrive.UTC().Format(time.RFC3339)
+		} else {
+			// Only transit can be asked to arrive by a time. For everything else
+			// the useful approximation is to ask about the road as it will be at
+			// that hour, and subtract — which is what ETA does with the answer.
+			payload["departureTime"] = w.Arrive.UTC().Format(time.RFC3339)
+		}
+	}
 	body, _ := json.Marshal(payload)
 
 	req, err := http.NewRequest(http.MethodPost, googleRoutesURL, bytes.NewReader(body))
@@ -78,7 +121,11 @@ func computeRoute(fromLat, fromLon, toLat, toLon float64, mode string) (route, e
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Goog-Api-Key", key)
-	req.Header.Set("X-Goog-FieldMask", "routes.duration,routes.distanceMeters")
+	// staticDuration is the same journey with an empty road. It costs nothing
+	// extra to ask for alongside duration, and it is the difference between
+	// "34 minutes" and "34 minutes, 11 of them traffic" — which is the part
+	// somebody deciding when to leave actually needs.
+	req.Header.Set("X-Goog-FieldMask", "routes.duration,routes.distanceMeters,routes.staticDuration")
 
 	resp, err := routesClient.Do(req)
 	if err != nil {
@@ -98,6 +145,7 @@ func computeRoute(fromLat, fromLon, toLat, toLon float64, mode string) (route, e
 	var parsed struct {
 		Routes []struct {
 			Duration       string `json:"duration"`
+			StaticDuration string `json:"staticDuration"`
 			DistanceMeters int    `json:"distanceMeters"`
 		} `json:"routes"`
 	}
@@ -114,7 +162,10 @@ func computeRoute(fromLat, fromLon, toLat, toLon float64, mode string) (route, e
 	if err != nil {
 		return estimateRoute(fromLat, fromLon, toLat, toLon, mode), nil
 	}
-	return route{Duration: d, Metres: parsed.Routes[0].DistanceMeters}, nil
+	// A missing or unparseable staticDuration is not a failure — it means this
+	// mode has no traffic to report. Zero, and Delay says nothing.
+	static, _ := time.ParseDuration(parsed.Routes[0].StaticDuration)
+	return route{Duration: d, Static: static, Metres: parsed.Routes[0].DistanceMeters}, nil
 }
 
 func latLng(lat, lon float64) map[string]any {
@@ -150,12 +201,60 @@ func haversineKM(lat1, lon1, lat2, lon2 float64) float64 {
 	return earthKM * 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
 }
 
-// travelMode resolves the caller's word to a Routes travel mode.
-func travelMode(s string) string {
-	if m, ok := travelModes[strings.ToLower(strings.TrimSpace(s))]; ok {
-		return m
+// travelMode resolves the caller's word to a Routes travel mode, and says
+// whether it recognised it.
+//
+// It used to answer DRIVE to anything it did not know, so "by helicopter" and
+// "by ferry" came back as confident driving times and nothing anywhere said the
+// question had been changed. An unknown mode is now the caller's to correct:
+// silently answering a different question is worse than refusing this one.
+// Empty is still DRIVE, because that is the documented default rather than a
+// guess.
+func travelMode(s string) (string, bool) {
+	s = strings.ToLower(strings.TrimSpace(s))
+	if s == "" {
+		return "DRIVE", true
 	}
-	return "DRIVE"
+	m, ok := travelModes[s]
+	return m, ok
+}
+
+// modeWords is every word travelMode accepts, for saying so when it refuses.
+func modeWords() string {
+	seen := map[string]bool{}
+	var out []string
+	for _, canonical := range []string{"drive", "walk", "cycle", "transit"} {
+		if !seen[canonical] {
+			seen[canonical] = true
+			out = append(out, canonical)
+		}
+	}
+	return strings.Join(out, ", ")
+}
+
+// journeyTime reads the caller's two optional times.
+//
+// Both together is a contradiction rather than a preference — "leave at 8 and
+// be there by 9" is either a question about a journey or an assertion about
+// one, and guessing which is how you answer neither.
+func journeyTime(departAt, arriveBy string) (when, error) {
+	departAt, arriveBy = strings.TrimSpace(departAt), strings.TrimSpace(arriveBy)
+	if departAt != "" && arriveBy != "" {
+		return when{}, fmt.Errorf("say either when you are leaving or when you need to arrive, not both")
+	}
+	var w when
+	var err error
+	if departAt != "" {
+		if w.Depart, err = time.Parse(time.RFC3339, departAt); err != nil {
+			return when{}, fmt.Errorf("I could not read %q as a time — use a full date and time like 2026-08-13T08:00:00Z", departAt)
+		}
+	}
+	if arriveBy != "" {
+		if w.Arrive, err = time.Parse(time.RFC3339, arriveBy); err != nil {
+			return when{}, fmt.Errorf("I could not read %q as a time — use a full date and time like 2026-08-13T15:00:00Z", arriveBy)
+		}
+	}
+	return w, nil
 }
 
 // humanDuration writes a duration the way a person says it: "22 min", "1 hr 5 min".

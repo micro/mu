@@ -37,10 +37,10 @@
     },
     {
       "op": "places_eta",
-      "cost": 3,
+      "cost": 2,
       "label": "Travel time between two places",
       "env": "CREDIT_COST_PLACES_ETA",
-      "note": "Google Routes, ~0.5p"
+      "note": "Google Routes, 0.38p at Essentials (£3.76/1k after 10k free), 0.75p at Pro. We ask for traffic, which may bill at Pro — priced to cover it"
     },
     {
       "op": "weather_forecast",
