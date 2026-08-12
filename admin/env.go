@@ -2,7 +2,9 @@ package admin
 
 import (
 	"fmt"
+	"html"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"mu/internal/app"
@@ -85,12 +87,14 @@ var settingGroups = []settingGroup{
 	// Email that leaves the instance, which is a different thing from the
 	// mailbox — see service/email. /email names all of these and sends an
 	// operator here, so they have to be here.
-	{"Email — sending out", []string{
+	{"Sending limits and email out", []string{
 		"SENDGRID_API_KEY",
 		"EMAIL_DOMAIN",
 		"EMAIL_REPLY_DOMAIN",
 		"EMAIL_DAILY_LIMIT",
-		"EMAIL_NEW_ACCOUNT_LIMIT",
+		"SMS_DAILY_LIMIT",
+		"WHATSAPP_DAILY_LIMIT",
+		"GUEST_DAILY_TOTAL",
 	}},
 	{"Sign-in", []string{
 		"GOOGLE_CLIENT_ID",
@@ -130,6 +134,50 @@ func Settable(name string) bool {
 	return false
 }
 
+// secret reports whether a value should be kept out of the page by default.
+//
+// By name, because that is all there is to go on and it is what an operator
+// reading the page assumes too: anything called a key, a secret, a token or a
+// password. Wrong in the safe direction — MAIL_SELECTOR is not a secret and
+// nothing breaks by masking it — where a name that ought to be on this list and
+// is not is a credential printed in full on a page somebody may be sharing.
+func secret(key string) bool {
+	up := strings.ToUpper(key)
+	for _, w := range []string{"KEY", "SECRET", "TOKEN", "PASS", "DKIM"} {
+		if strings.Contains(up, w) {
+			return true
+		}
+	}
+	return false
+}
+
+// hint is enough of a value to recognise it by and not enough to use.
+//
+// The point is identification: an operator with three Stripe keys in three
+// places needs to know which one this is, and "••••••" answers nothing. A short
+// value gets no hint, because half of a six-character secret is most of it.
+func hint(v string) string {
+	if len(v) <= 12 {
+		return strings.Repeat("•", 6)
+	}
+	return v[:4] + "…" + v[len(v)-4:]
+}
+
+// EnvHandler is /admin/env: what this instance is configured with, where each
+// value came from, and which of them this page can change.
+//
+// It used to answer none of those. Every value that was set at all rendered as
+// "••••••" — the handler fetched the real one and threw it away on the next
+// line, `_ = val` — so the page could say a thing was configured and never what
+// it was configured to. On an instance with some settings in a .env file, some
+// in the store, and the same names in both, "which is which" was unanswerable
+// from the one page that exists to answer it.
+//
+// Worse, a value coming from the environment was rendered in an editable box.
+// The environment wins in settings.Get, permanently, so typing a new value
+// there and pressing Save stored something that would never be read — and the
+// page said "Settings saved". The environment is now shown as what it is: in
+// force here, changeable where it was set.
 func EnvHandler(w http.ResponseWriter, r *http.Request) {
 	_, _, err := auth.RequireAdmin(r)
 	if err != nil {
@@ -138,11 +186,24 @@ func EnvHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == "POST" {
-		r.ParseForm()
+		r.ParseForm() //nolint:errcheck
 		for _, group := range settingGroups {
 			for _, key := range group.Vars {
-				val := r.FormValue(key)
-				if val == "••••••" || val == "" {
+				// The environment wins whatever is stored, so writing one of
+				// these would be storing a value nothing reads.
+				if settings.Source(key) == "env" {
+					continue
+				}
+				if r.FormValue("clear_"+key) != "" {
+					settings.Set(key, "")
+					continue
+				}
+				val := strings.TrimSpace(r.FormValue(key))
+				// A secret's box starts empty, so empty means "leave it alone"
+				// and clearing one is the checkbox beside it. A plain value's
+				// box holds the value, so empty means empty — which is the only
+				// way to unset anything, and there was not one before.
+				if val == "" && secret(key) {
 					continue
 				}
 				settings.Set(key, val)
@@ -152,57 +213,121 @@ func EnvHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	reveal := r.URL.Query().Get("reveal")
+
 	var b strings.Builder
 
 	if r.URL.Query().Get("saved") == "1" {
-		b.WriteString(`<div class="card" style="background:#f0fff0;border-color:#a3d9a5"><p style="color:#27ae60;margin:0">Settings saved. Restart to apply changes to env-loaded services.</p></div>`)
+		b.WriteString(`<div class="card" style="background:#f0fff0;border-color:#a3d9a5"><p style="color:#27ae60;margin:0">Saved. Anything read once at start-up needs a restart to take effect.</p></div>`)
 	}
+
+	// The count first, because "which of these is coming from where" is asked
+	// about the instance and a per-row badge answers it one row at a time.
+	var fromEnv, saved, unset int
+	for _, g := range settingGroups {
+		for _, key := range g.Vars {
+			switch settings.Source(key) {
+			case "env":
+				fromEnv++
+			case "saved":
+				saved++
+			default:
+				unset++
+			}
+		}
+	}
+	b.WriteString(`<div class="card"><h3>Where these come from</h3>`)
+	b.WriteString(fmt.Sprintf(`<p style="font-size:14px;color:#666;margin:0 0 8px">`+
+		`<b>%d</b> from the environment · <b>%d</b> saved here · <b>%d</b> not set</p>`,
+		fromEnv, saved, unset))
+	b.WriteString(`<p style="font-size:13px;color:#888;margin:0">` +
+		`The environment wins. A value set in the shell, a <code>.env</code> file or a ` +
+		`systemd unit cannot be changed from this page — it is shown, and marked, and its ` +
+		`box is locked, because saving over it would store something nothing reads.</p>`)
+	b.WriteString(`</div>`)
 
 	b.WriteString(`<form method="POST" action="/admin/env">`)
 
 	for _, group := range settingGroups {
 		b.WriteString(`<div class="card">`)
-		b.WriteString(fmt.Sprintf(`<h3>%s</h3>`, group.Name))
+		b.WriteString(fmt.Sprintf(`<h3>%s</h3>`, html.EscapeString(group.Name)))
 
 		for _, key := range group.Vars {
 			source := settings.Source(key)
 			val := settings.Get(key)
+			isSecret := secret(key)
+			shown := reveal == key
 
-			displayVal := ""
-			badge := `<span style="font-size:11px;color:#c00">not set</span>`
-			if source == "env" {
-				displayVal = "••••••"
-				badge = `<span style="font-size:11px;color:#27ae60">env</span>`
-			} else if source == "saved" {
-				displayVal = "••••••"
-				badge = `<span style="font-size:11px;color:#2980b9">saved</span>`
+			var badge string
+			switch source {
+			case "env":
+				badge = `<span style="font-size:11px;color:#27ae60">environment</span>`
+			case "saved":
+				badge = `<span style="font-size:11px;color:#2980b9">saved here</span>`
+			default:
+				badge = `<span style="font-size:11px;color:#bbb">not set</span>`
 			}
 
-			_ = val
-
-			isSecret := strings.Contains(strings.ToUpper(key), "KEY") ||
-				strings.Contains(strings.ToUpper(key), "SECRET") ||
-				strings.Contains(strings.ToUpper(key), "TOKEN") ||
-				strings.Contains(strings.ToUpper(key), "PASS")
-
-			inputType := "text"
-			if isSecret {
-				inputType = "password"
+			b.WriteString(`<div style="margin-bottom:12px">`)
+			b.WriteString(fmt.Sprintf(
+				`<label style="font-size:12px;color:#888;display:block;margin-bottom:2px"><code>%s</code> %s`,
+				html.EscapeString(key), badge))
+			// Revealing is a round trip rather than a script, so a secret is not
+			// sitting in the page source of every visit waiting to be read.
+			if isSecret && val != "" && !shown {
+				b.WriteString(` <a href="/admin/env?reveal=` + url.QueryEscape(key) +
+					`" style="font-size:11px;color:#888">show</a>`)
+			} else if isSecret && shown {
+				b.WriteString(` <a href="/admin/env" style="font-size:11px;color:#888">hide</a>`)
 			}
+			b.WriteString(`</label>`)
 
-			b.WriteString(fmt.Sprintf(`<div style="margin-bottom:10px">
-				<label style="font-size:12px;color:#888;display:block;margin-bottom:2px"><code>%s</code> %s</label>
-				<input type="%s" name="%s" value="%s" placeholder="not set" autocomplete="off"
-					style="width:100%%;padding:6px 8px;border:1px solid #ddd;border-radius:4px;font-size:13px;box-sizing:border-box;font-family:monospace">
-				</div>`, key, badge, inputType, key, displayVal))
+			switch {
+			case source == "env":
+				// Read-only and unnamed, so the POST above cannot see it even if
+				// somebody edits the DOM.
+				display := val
+				if isSecret && !shown {
+					display = hint(val)
+				}
+				b.WriteString(fmt.Sprintf(
+					`<input type="text" value="%s" readonly
+						style="width:100%%;padding:6px 8px;border:1px solid #eee;border-radius:4px;font-size:13px;box-sizing:border-box;font-family:monospace;background:#fafafa;color:#666">`,
+					html.EscapeString(display)))
+			case isSecret:
+				// Empty box, so the value is not in the page and typing means
+				// replace. What it currently is goes in the placeholder.
+				ph := "not set"
+				if val != "" {
+					ph = hint(val)
+					if shown {
+						ph = val
+					}
+				}
+				b.WriteString(fmt.Sprintf(
+					`<input type="text" name="%s" value="" placeholder="%s" autocomplete="off"
+						style="width:100%%;padding:6px 8px;border:1px solid #ddd;border-radius:4px;font-size:13px;box-sizing:border-box;font-family:monospace">`,
+					html.EscapeString(key), html.EscapeString(ph)))
+				if val != "" {
+					b.WriteString(fmt.Sprintf(
+						`<label style="font-size:11px;color:#888"><input type="checkbox" name="clear_%s" value="1"> clear</label>`,
+						html.EscapeString(key)))
+				}
+			default:
+				b.WriteString(fmt.Sprintf(
+					`<input type="text" name="%s" value="%s" placeholder="not set" autocomplete="off"
+						style="width:100%%;padding:6px 8px;border:1px solid #ddd;border-radius:4px;font-size:13px;box-sizing:border-box;font-family:monospace">`,
+					html.EscapeString(key), html.EscapeString(val)))
+			}
+			b.WriteString(`</div>`)
 		}
 		b.WriteString(`</div>`)
 	}
 
-	b.WriteString(`<button type="submit" class="btn" style="margin-bottom:16px">Save Settings</button>`)
+	b.WriteString(`<button type="submit" class="btn" style="margin-bottom:16px">Save</button>`)
 	b.WriteString(`</form>`)
 	b.WriteString(`<p><a href="/admin">← Back to Admin</a></p>`)
 
-	html := app.RenderHTMLForRequest("Settings", "Platform configuration", b.String(), r)
-	w.Write([]byte(html))
+	page := app.RenderHTMLForRequest("Settings", "What this instance is configured with", b.String(), r)
+	w.Write([]byte(page)) //nolint:errcheck
 }
