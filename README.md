@@ -122,6 +122,15 @@ Here are the tools
 
 [Open an issue](https://github.com/micro/mu/issues/new?labels=enhancement&title=Tool%20request%3A%20&body=What%20should%20it%20do%3F%0A%0AWhat%20would%20you%20use%20it%20for%3F%0A) and say what it should do.
 
+## The app
+
+The server includes a web app. A home screen renders each service at a glance —
+headlines, prices, weather, unread mail — and the agent sits inline to act on
+what you are looking at. Apps run sandboxed, in an opaque origin, and reach the
+platform through a fixed set of operations rather than your session.
+
+Sign in with a username and password, a passkey (WebAuthn), or Google.
+
 ## CLI
 
 Every tool is a `mu` subcommand. The same binary runs the server (`mu --serve`)
@@ -166,15 +175,6 @@ slash command per service with the methods as subcommands; on Telegram you type
 composing, and `/usage` for your own stats.
 
 Setup for both is in [Install](docs/INSTALL.md).
-
-## The app
-
-The server includes a web app. A home screen renders each service at a glance —
-headlines, prices, weather, unread mail — and the agent sits inline to act on
-what you are looking at. Apps run sandboxed, in an opaque origin, and reach the
-platform through a fixed set of operations rather than your session.
-
-Sign in with a username and password, a passkey (WebAuthn), or Google.
 
 ## Credits & Payments
 
