@@ -1,7 +1,7 @@
 {
   "name": "Mu",
   "short_name": "Mu",
-  "description": "Building blocks for apps",
+  "description": "Tools for agents. Real-world access — news, mail, search, weather, markets, flights — and the assistant that uses them.",
   "scope": "/",
   "start_url": "/",
   "background_color": "#ffffff",

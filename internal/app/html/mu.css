@@ -5443,3 +5443,8 @@ body.display-mode .card h4 {
   font-size: 13px;
   color: #999;
 }
+
+/* A soft navigation is fast but not instant, so say something is happening
+   without moving anything: the old content dims for as long as the next page
+   takes. A spinner would be a bigger lie about the wait than this is. */
+#content[data-loading] { opacity: .55; transition: opacity .12s ease-in; }

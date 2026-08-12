@@ -217,6 +217,22 @@ func Respond(w http.ResponseWriter, r *http.Request, resp Response) {
 //go:embed html/*
 var htmlFiles embed.FS
 
+// footerFor is the footer, and signed in there isn't one.
+//
+// About · Tools · Pricing · Help · Privacy · Status is a website's footer: it
+// exists to tell a visitor what this is and to satisfy the links a site is
+// expected to carry. Once somebody is signed in they are not a visitor, they are
+// using the thing — and an app does not put a marketing nav under every screen.
+// It is the single clearest tell that this is a page rather than an app, and it
+// costs nothing to drop, because everything in it is in the sidebar or on
+// /account for anyone who wants it.
+func footerFor(acc *auth.Account) string {
+	if acc != nil {
+		return ""
+	}
+	return `<div id="footer">` + FooterLinks() + `</div>`
+}
+
 // FooterLinks is the site footer, shared by the app shell and the sidebar-less
 // landing shell (/about, /agents) so every page shows the same links.
 func FooterLinks() string {
@@ -327,11 +343,79 @@ var Template = `
         <h1 id="page-title">%s</h1>
         %s
       </div>
-      <div id="footer">
-        ` + FooterLinks() + `
-      </div>
+      %s
     </div>
   <script>
+      // Navigating without repainting the page.
+      //
+      // A full load between screens is the loudest thing that says "website":
+      // the chrome flashes, the sidebar redraws, and for a moment there is
+      // nothing there. The pages are server-rendered and that is worth keeping —
+      // no build step, no framework, works with JavaScript off — so this does
+      // the smallest thing that removes the flash: fetch the next page, swap the
+      // title and the content, leave the sidebar alone.
+      //
+      // Everything degrades. Without JavaScript, or if the fetch fails, or on
+      // anything that is not a plain same-origin left-click, the browser does
+      // what it always did. Nothing here is load-bearing.
+      (function(){
+        var content = document.getElementById('content');
+        if (!content || !window.history || !window.fetch) return;
+
+        function swap(html, push, url) {
+          var doc = new DOMParser().parseFromString(html, 'text/html');
+          var next = doc.getElementById('content');
+          if (!next) { location.href = url; return; }
+          content.innerHTML = next.innerHTML;
+          // innerHTML does not run scripts, and half these pages carry one:
+          // the weather card, the flights radar, the notes editor. Without this
+          // a soft navigation would leave them inert, which is worse than the
+          // flash it was removing. Re-create each script so the browser runs it.
+          var scripts = content.querySelectorAll('script');
+          for (var i = 0; i < scripts.length; i++) {
+            var old = scripts[i], s = document.createElement('script');
+            for (var j = 0; j < old.attributes.length; j++) {
+              s.setAttribute(old.attributes[j].name, old.attributes[j].value);
+            }
+            s.text = old.text;
+            old.parentNode.replaceChild(s, old);
+          }
+          if (doc.title) document.title = doc.title;
+          if (push) history.pushState({mu:1}, '', url);
+          window.scrollTo(0, 0);
+          // Anything the new content wired up on load has to be re-wired.
+          document.dispatchEvent(new CustomEvent('mu:navigated'));
+        }
+
+        function go(url, push) {
+          content.setAttribute('data-loading', '1');
+          fetch(url, {credentials: 'same-origin', headers: {'X-Mu-Nav': '1'}})
+            .then(function(r){
+              if (!r.ok || (r.redirected && r.url !== url)) { location.href = url; return null; }
+              return r.text();
+            })
+            .then(function(html){ if (html !== null) swap(html, push, url); })
+            .catch(function(){ location.href = url; })
+            .then(function(){ content.removeAttribute('data-loading'); });
+        }
+
+        document.addEventListener('click', function(e){
+          if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+          var a = e.target.closest ? e.target.closest('a') : null;
+          if (!a || !a.href || a.target || a.hasAttribute('download')) return;
+          if (a.getAttribute('href').charAt(0) === '#') return;
+          var u = new URL(a.href, location.href);
+          if (u.origin !== location.origin) return;
+          // Downloads, media and anything that is not a page.
+          if (/\.(png|jpe?g|gif|svg|ico|css|js|json|pdf|zip|webmanifest)$/i.test(u.pathname)) return;
+          e.preventDefault();
+          if (u.href === location.href) return;
+          go(u.href, true);
+        });
+
+        window.addEventListener('popstate', function(){ go(location.href, false); });
+      })();
+
       if (navigator.serviceWorker) {
         navigator.serviceWorker.register (
           '/mu.js',
@@ -751,7 +835,7 @@ func RenderHTMLWithLangAndAuth(title, desc, html, lang string, acc *auth.Account
 		lang = "en"
 	}
 	title, desc = escapeMeta(title), escapeMeta(desc)
-	return (fmt.Sprintf(Template, lang, title, desc, "", headBalance(acc), navOperate(acc)+navPinned(acc), navBottom(acc), title, html))
+	return (fmt.Sprintf(Template, lang, title, desc, "", headBalance(acc), navOperate(acc)+navPinned(acc), navBottom(acc), title, html, footerFor(acc)))
 }
 
 // escapeMeta escapes a page title or description. Handlers pass these through
@@ -774,7 +858,7 @@ func RenderHTMLWithLangAndBody(title, desc, html, lang, bodyAttr string, acc *au
 	if banner := creditsBannerFor(acc, ""); banner != "" {
 		html = banner + html
 	}
-	return (fmt.Sprintf(Template, lang, title, desc, bodyAttr, headBalance(acc), navOperate(acc)+navPinned(acc), navBottom(acc), title, html))
+	return (fmt.Sprintf(Template, lang, title, desc, bodyAttr, headBalance(acc), navOperate(acc)+navPinned(acc), navBottom(acc), title, html, footerFor(acc)))
 }
 
 // RenderString renders a markdown string as html
@@ -786,7 +870,7 @@ func RenderString(v string) string {
 func RenderTemplate(title string, desc, text string) string {
 	body := RenderString(text)
 	title, desc = escapeMeta(title), escapeMeta(desc)
-	return (fmt.Sprintf(Template, "en", title, desc, "", headBalance(nil), navOperate(nil), navBottom(nil), title, body))
+	return (fmt.Sprintf(Template, "en", title, desc, "", headBalance(nil), navOperate(nil), navBottom(nil), title, body, footerFor(nil)))
 }
 
 func ServeHTML(html string) http.Handler {
