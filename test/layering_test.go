@@ -128,14 +128,17 @@ func importsFrom(t *testing.T, root string, want *regexp.Regexp) map[string]stri
 // internal/ — and not in a non-service directory under service/, because
 // "one directory per service" is only checkable while it is true.
 //
-// The ledger below is debt, not permission. Every line is a pair somebody
-// coupled before this test existed, and the fix for each is the same: find what
-// is actually shared and move it down. Adding a line is not how this test is
-// meant to be passed.
+// The allowlist is empty, and that is the point. It held nine pairs when this
+// test was written — five of them blog composing a digest, which turned out not
+// to be an import problem at all but an agent living inside a service. Every one
+// was retired by finding what was actually shared and moving it down:
+// internal/geo, internal/phone, internal/linkmeta, internal/contacts,
+// agent/blog, agent/social, and web absorbing the search directory that was
+// never a service.
+//
+// Adding a line back is not how this test is meant to be passed.
 func TestServicesDoNotImportEachOther(t *testing.T) {
-	allowed := map[string]string{
-		"sms -> contacts": "resolving a name to a number; an address book lookup belongs below both",
-	}
+	allowed := map[string]string{}
 
 	imports := regexp.MustCompile(`"mu/service/([a-z0-9]+)"`)
 	dirs, err := os.ReadDir(at("service"))

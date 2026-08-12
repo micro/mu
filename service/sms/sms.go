@@ -51,10 +51,10 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/contacts"
 	"mu/internal/phone"
 	"mu/internal/settings"
 	"mu/internal/userdb"
-	"mu/service/contacts"
 )
 
 const (

@@ -15,8 +15,8 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/contacts"
 	"mu/internal/quota"
-	"mu/service/contacts"
 )
 
 // Handler serves /sms.

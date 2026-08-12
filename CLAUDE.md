@@ -43,6 +43,7 @@ Built on go-micro: every capability is a go-micro service, the assistant is a go
 | `client/telegram/` | Telegram bot with commands and groups |
 | `client/whatsapp/` | WhatsApp Business API integration |
 | `wallet/` | How an account pays: the credit ledger, Stripe, x402 and the /wallet pages. Account furniture, not a service — no Spec and no tools |
+| `internal/contacts/` | The address book itself. `service/contacts` is the tools, the page and the Google People bridge over it; `service/sms` asks it whether a number is known before texting a stranger |
 | `internal/linkmeta/` | What a link looks like when you show it: the Open Graph tags behind a URL, cached on disk. News fills it, social reads it, and it belongs to neither — the files stay at `news/metadata/` because that is where every instance already has them |
 | `internal/phone/` | Who a phone number belongs to: normalising it, and the proof that an account owns it. Shared by `service/sms` and `service/whatsapp`, because a number is a number whichever message it carries |
 | `internal/twilio/` | The provider under `service/sms` and `service/whatsapp`: credentials, the send, and the webhook signature. It holds no opinion about what may be sent |
@@ -130,8 +131,8 @@ services one unit — read together, changed together, moved together — and th
 catalogue stops being a list of independent things. Whatever they share goes in
 `internal/`, never in a non-service directory under `service/`, because "one
 directory per service" is only checkable while it is true. Enforced by
-`TestServicesDoNotImportEachOther`, whose allowlist is a debt ledger and not
-permission.
+`TestServicesDoNotImportEachOther`, whose allowlist is empty and should stay that
+way.
 
 A service never imports `wallet/`. What a service needs to know about money is
 `internal/quota` — what an operation costs and whether this caller may do it.

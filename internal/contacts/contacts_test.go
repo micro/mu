@@ -1,12 +1,9 @@
 package contacts
 
 import (
-	"context"
 	"os"
 	"strings"
 	"testing"
-
-	"mu/internal/service"
 )
 
 func TestMain(m *testing.M) {
@@ -159,25 +156,6 @@ func TestBadInputIsRefused(t *testing.T) {
 }
 
 // The handler binds the owner from the call context, never a field.
-func TestServiceBindsOwnerFromContext(t *testing.T) {
-	clear("carol")
-	defer clear("carol")
-
-	var add AddResponse
-	err := Server{}.Add(service.WithAccount(context.Background(), "carol"),
-		&AddRequest{Name: "Dan", Email: "dan@example.com"}, &add)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if add.Contact.Owner != "carol" {
-		t.Errorf("owner is %q, want carol", add.Contact.Owner)
-	}
-
-	if err := (Server{}).List(context.Background(), &ListRequest{}, &ListResponse{}); err == nil {
-		t.Error("a caller with no account listed contacts")
-	}
-}
-
 func TestRenderReadsAsText(t *testing.T) {
 	got := Render([]*Contact{{ID: "1", Name: "Sarah Chen", Email: "sarah@example.com", Note: "prefers email"}})
 	for _, want := range []string{"Sarah Chen", "<sarah@example.com>", "prefers email"} {

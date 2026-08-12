@@ -9,6 +9,16 @@
 // Records live in userdb like every other per-user thing, so ownership,
 // listing and the private/public model are the ones the rest of Mu already
 // uses. Identity comes from the call context, never a request field.
+//
+// The store is here rather than in service/contacts because more than one
+// service needs to turn a name into a way of reaching somebody. sms asks it
+// whether a number is in your address book before it will text a stranger, and
+// to reach it, service/sms imported service/contacts — a sideways import over a
+// lookup. The service above this one keeps the tools, the page and the
+// rendering; what an address book *is* lives here.
+//
+// The namespace stays "contacts" because that is where every existing record
+// already is.
 package contacts
 
 import (
