@@ -241,7 +241,7 @@ function ask(q){
       return resp.json().catch(function(){return {};}).then(function(j){
         stopWork();
         var msg=esc(j.error||'Sign up to keep using the AI agent.');
-        a.innerHTML='<div class="mu-cta">'+msg+' <a href="/signup">Sign up free →</a> <a href="/login?redirect=/agent" style="margin-left:10px">Log in</a></div>';
+        a.innerHTML='<div class="mu-cta">'+msg+' <a href="/signup">Sign up →</a> <a href="/login?redirect=/agent" style="margin-left:10px">Log in</a></div>';
         save();
         throw 'handled';
       });

@@ -82,7 +82,7 @@ var LoginTemplate = `<html lang="en">
     <div id="container">
       <div id="content">
 	<form id="login" action="/login%s" method="POST">
-	  <h1>app.Log in</h1>
+	  <h1>Log in</h1>
 	  <p class="auth-lede">Your agents, your tools, and the app they share.</p>
 	  %s
 	  %s
@@ -204,7 +204,7 @@ var SignupTemplate = `<html lang="en">
 	  <br>
 	  <button>Signup</button>
 	</form>
-	<p class="text-center mt-5"><a href="/login">app.Log in</a> if you have an account</p>
+	<p class="text-center mt-5"><a href="/login">Log in</a> if you have an account</p>
 	<p class="auth-foot"><a href="/tools">See the tools first &rarr;</a></p>
       </div>
     </div>
@@ -260,7 +260,7 @@ func renderRequestInvitePage(w http.ResponseWriter, r *http.Request, message str
   %s
   <button type="submit">Request invite</button>
 </form>
-<p class="text-muted text-sm mt-3">Already have an invite? <a href="/login">app.Log in</a> or paste your link.</p>
+<p class="text-muted text-sm mt-3">Already have an invite? <a href="/login">Log in</a> or paste your link.</p>
 </div>`, msg, app.CaptchaHTML(c))
 	w.Write([]byte(app.RenderHTML("Request an Invite", "Request an invite to Mu", body)))
 }
