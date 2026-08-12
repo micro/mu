@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"mu/internal/app"
-	"mu/internal/quota"
 	"mu/internal/service"
 )
 
@@ -176,7 +175,10 @@ var Spec = service.Spec{
 		// is not like that — an anonymous spammer paying ten pence a message is
 		// still a spammer, and what they spend is the number's reputation,
 		// which belongs to everybody on this instance and cannot be topped up.
-		"Send": {Cost: quota.OpSMSSend, AccountOnly: true, Destructive: true,
+		// No Cost: a text is priced per 160-character segment, because that is
+		// how the carrier bills us, and the gateway charges a flat price once.
+		// sms does its own check and its own charge — see service/sms/send.go.
+		"Send": {AccountOnly: true, Destructive: true,
 			Doc: "Text somebody, from this instance's number. Charged per 160-character segment, capped per day, and the recipient can stop it with STOP"},
 		"History": {AccountOnly: true, Aliases: []string{"sms_inbox"},
 			Doc: "Read the texts this account has sent and received, newest first. Both directions, which is why it is not called an inbox"},

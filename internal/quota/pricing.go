@@ -45,6 +45,19 @@ type Price struct {
 	Label string `json:"label"`
 	Env   string `json:"env,omitempty"`
 	Note  string `json:"note,omitempty"`
+
+	// Free is how many of this operation an account may do each day before the
+	// cost applies. Zero means the price applies from the first call.
+	//
+	// The providers we pay do exactly this — Google gives 10,000 Routes calls a
+	// month before billing a penny — and it is the honest shape for a product
+	// too: somebody trying the thing out should not meet a paywall on their
+	// first question, and somebody running a job through it should pay for the
+	// job. A price with no free allowance is a toll booth at the front door.
+	Free int `json:"free,omitempty"`
+
+	// FreeEnv is the variable that overrides Free, the way Env overrides Cost.
+	FreeEnv string `json:"free_env,omitempty"`
 }
 
 type priceFile struct {
@@ -132,6 +145,7 @@ func apply(f priceFile) {
 	list := make([]Price, 0, len(f.Operations))
 	for _, p := range f.Operations {
 		p.Cost = envOverride(p.Env, p.Cost)
+		p.Free = envOverride(p.FreeEnv, p.Free)
 		byOp[p.Op] = p
 		list = append(list, p)
 	}
@@ -184,6 +198,17 @@ func GetOperationCost(operation string) int {
 		return p.Cost
 	}
 	return 1
+}
+
+// FreeAllowance is how many of this operation an account gets each day before
+// the price applies. Zero means it is charged from the first call.
+func FreeAllowance(operation string) int {
+	priceMu.RLock()
+	defer priceMu.RUnlock()
+	if p, ok := prices[operation]; ok {
+		return p.Free
+	}
+	return 0
 }
 
 // Prices is every published operation, cheapest first. The cost tables on the

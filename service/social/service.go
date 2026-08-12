@@ -82,10 +82,6 @@ func (Server) Search(ctx context.Context, req *SearchRequest, rsp *SearchRespons
 		limit = 20
 	}
 
-	if err := quota.ConsumeQuota(who, quota.OpSocialSearch); err != nil {
-		return err
-	}
-
 	var b strings.Builder
 	n := 0
 	for _, entry := range data.Search(q, 50) {

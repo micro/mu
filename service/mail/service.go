@@ -131,7 +131,13 @@ var Spec = service.Spec{
 			// paying cannot stand in for having an account. The price is for
 			// external delivery, and it is charged inside Send once the
 			// recipient is known — a local message costs nothing.
-			Cost:        quota.OpExternalEmail,
+			// No Cost, deliberately, and this is the one shape the gateway
+			// cannot take over: what this endpoint charges depends on where the
+			// mail is going. External mail costs external_email and local mail
+			// costs mail_send, decided at run time from the recipient. A single
+			// declared price would charge the wrong operation for half the
+			// calls and double-charge the other half, so mail keeps its own
+			// charging — see the two ConsumeQuota calls in Send.
 			AccountOnly: true,
 			Destructive: true,
 		},

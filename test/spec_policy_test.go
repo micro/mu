@@ -1,6 +1,10 @@
 package test
 
 import (
+	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
 	"testing"
 
 	"mu/tool"
@@ -206,7 +210,36 @@ func TestSendingMailNeedsAnAccountNotAWallet(t *testing.T) {
 		t.Error("mail.Send is not account-only — a settled payment would be " +
 			"identity enough to send from this domain")
 	}
-	if ep.Cost == "" {
+	// Not "declares a Cost" any more. What mail charges depends on where the
+	// mail is going — external_email for the outside world, mail_send for an
+	// account here — so it is one of the few endpoints the gateway cannot
+	// price flatly and it charges for itself. What matters is that external
+	// delivery is charged, not which mechanism does it.
+	if ep.Cost != "" {
+		t.Error("mail.Send declares a flat cost, which would charge the wrong " +
+			"operation for local mail and double-charge external mail")
+	}
+	if !chargesFor(t, "service/mail", "OpExternalEmail") {
 		t.Error("mail.Send charges nothing, so external delivery is free")
 	}
+}
+
+// chargesFor reports whether a service package debits an operation itself.
+func chargesFor(t *testing.T, pkg, op string) bool {
+	t.Helper()
+	found := false
+	filepath.Walk(at(filepath.FromSlash(pkg)), func(path string, info os.FileInfo, err error) error { //nolint:errcheck
+		if err != nil || info.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+			return nil
+		}
+		b, err := os.ReadFile(path)
+		if err != nil {
+			return nil
+		}
+		if regexp.MustCompile(`Consume(Quota|With)\([^,]+,\s*quota\.` + op + `\b`).Match(b) {
+			found = true
+		}
+		return nil
+	})
+	return found
 }

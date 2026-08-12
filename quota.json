@@ -14,7 +14,21 @@
     "",
     "label is what the cost table on /pricing and /wallet says. An operation",
     "with no entry here is not published and charges 1 credit, which a test",
-    "catches — see TestEveryChargedOperationIsPublished."
+    "catches — see TestEveryChargedOperationIsPublished.",
+    "",
+    "free is how many of an operation an account gets each day before the cost",
+    "applies, and free_env overrides it the way env overrides cost. Zero, or",
+    "absent, means the price applies from the first call.",
+    "",
+    "This is the shape the providers underneath already use — Google gives ten",
+    "thousand Routes calls a month before billing anything — and it separates two",
+    "decisions that were stuck together. What a call costs us is arithmetic about",
+    "providers. How much of it somebody gets for nothing is a commercial choice,",
+    "and it belongs to whoever runs the instance. Before this the only way to let",
+    "people try something was to price it at zero, which then gave it away for",
+    "ever.",
+    "",
+    "Every allowance is 0 today, so nothing changes until an operator sets one."
   ],
   "daily_quota": {
     "value": 100,
@@ -69,7 +83,6 @@
       "env": "CREDIT_COST_SEARCH",
       "note": "Brave, ~0.4p — was 5, a 12x markup"
     },
-
     {
       "op": "chat_query",
       "cost": 5,
@@ -110,7 +123,6 @@
       "env": "CREDIT_COST_APP_EDIT",
       "note": "The model call only. Manual editing at /apps/<slug>/edit is free"
     },
-
     {
       "op": "external_email",
       "cost": 4,
@@ -132,7 +144,6 @@
       "env": "CREDIT_COST_SMS",
       "note": "Twilio: under a penny to a US mobile, ~4p to a UK one, and charged per 160-character segment. A markup that would be silly on a search is the point here — a text cannot be unsent, and the number's reputation is shared by everybody on the instance. Ten pence makes a spam run cost real money before any of the other limits are reached"
     },
-
     {
       "op": "news_search",
       "cost": 0,

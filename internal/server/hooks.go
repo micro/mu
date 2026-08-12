@@ -571,6 +571,41 @@ func wireHooks() {
 	// Wire guest agent news search directly to the live feed-backed provider path.
 	api.GuestNewsSearch = news.SearchToolText
 
+	// The gateway every service call goes through.
+	//
+	// internal/service cannot ask these questions itself — the answers need the
+	// wallet, and the wallet sits above it — so the two halves are filled in
+	// here, the same way every other cycle in this file is broken. See
+	// internal/service/gateway.go for what it replaced: four different places a
+	// charge could live, and most operations landing in none of them.
+	service.Gate.Allow = func(account, op string) (bool, error) {
+		// A free allowance is spent before a credit is. Checking it here rather
+		// than inside CheckQuota keeps the two ideas apart: what an operation
+		// costs is arithmetic about providers, and how much of it somebody gets
+		// for nothing is an operator's commercial choice.
+		if quota.WithinAllowance(account, op) {
+			// Inside the allowance: allowed, recorded, not charged. Recorded
+			// because /usage should show what an account actually did, and a
+			// free call is still something it did.
+			quota.Record(account, op)
+			return false, nil
+		}
+		ok, _, cost, err := quota.CheckQuota(account, op)
+		if err != nil {
+			return false, err
+		}
+		if !ok {
+			return false, fmt.Errorf("this costs %d credits and your balance is %d — top up at /wallet",
+				cost, quota.BalanceOf(account))
+		}
+		return true, nil
+	}
+	service.Gate.Charge = func(account, op string) {
+		if err := quota.ConsumeWith(account, op, nil); err != nil {
+			app.Log("wallet", "charging %s for %s: %v", account, op, err)
+		}
+	}
+
 	// Wire MCP quota checking using wallet credit system
 	api.QuotaCheck = func(r *http.Request, op string) (bool, int, error) {
 		// Nothing to charge, nobody to charge it to. A free tool has no

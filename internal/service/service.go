@@ -236,6 +236,9 @@ func startService(spec Spec) (gomicro.Service, error) {
 			gomicro.Client(cl),
 			gomicro.Broker(br),
 			gomicro.Transport(tr),
+			// Every call to this service's endpoints goes through the gateway:
+			// allowance, balance, charge. See gateway.go.
+			gomicro.WrapHandler(gateway(spec)),
 		)
 		var opts []server.HandlerOption
 		if o := endpointOptions(spec); o != nil {

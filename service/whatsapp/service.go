@@ -217,7 +217,12 @@ var Spec = service.Spec{
 		// Account-only for the same reason texts are: what an anonymous sender
 		// spends is the sender's standing with Meta, and a WhatsApp number that
 		// gets reported enough is not one a payment can restore.
-		"Send": {Cost: quota.OpWhatsAppSend, AccountOnly: true, Destructive: true,
+		// No Cost: what a message costs depends on whether it opens a
+		// conversation. A reply inside Meta's 24-hour window is free and only a
+		// fresh conversation is charged, which a single declared price would
+		// bill on every reply. whatsapp checks and charges for itself — see
+		// Send above.
+		"Send": {AccountOnly: true, Destructive: true,
 			Doc: "Send a WhatsApp message. Only to somebody who has written to this instance in the last 24 hours — WhatsApp's own rule, not this one, and there is no way around it without templates approved in advance"},
 		"History": {AccountOnly: true,
 			Doc: "Read the WhatsApp messages this account has sent and received, newest first"},

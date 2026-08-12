@@ -162,7 +162,11 @@ func Generate(owner, prompt string) (string, error) {
 	if owner == "" {
 		return "", fmt.Errorf("sign in to generate images")
 	}
-	// Affordability check before spending time on the model.
+	// Affordability, before spending time on the model. The charge itself is
+	// not here any more: a tool call is charged by the gateway every service
+	// call goes through (internal/service/gateway.go), and the page below
+	// charges its own, because a page still reaches past the endpoint into
+	// this function. When pages call endpoints, the line below goes too.
 	canProceed, _, cost, err := quota.CheckQuota(owner, quota.OpImageGenerate)
 	if err != nil {
 		return "", err
@@ -173,11 +177,6 @@ func Generate(owner, prompt string) (string, error) {
 
 	url, err := ai.GenerateImage(prompt)
 	if err != nil {
-		return "", err
-	}
-
-	// Only charge once we actually have an image.
-	if err := quota.ConsumeQuota(owner, quota.OpImageGenerate); err != nil {
 		return "", err
 	}
 
@@ -361,6 +360,11 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusPaymentRequired)
 		app.RespondJSON(w, map[string]string{"error": err.Error()})
 		return
+	}
+	// Charged here rather than inside Generate, which the tool door also calls
+	// and which the gateway now charges for. Only once we have an image.
+	if err := quota.ConsumeQuota(acc.ID, quota.OpImageGenerate); err != nil {
+		app.Log("images", "image generated but not charged: %v", err)
 	}
 	// id lets the page show the new image with its share button without
 	// reloading — the reload is what used to throw the result away.
