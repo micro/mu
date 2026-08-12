@@ -25,13 +25,38 @@ twice, and a new service appears in both at once.
 
 ## Paying
 
-Every priced call answers `402 Payment Required` with an
-[x402](https://x402.org) challenge: pay in USDC, retry, get the answer. No
-signup, no card. Signed in, the same calls come out of a credit balance.
+Most of it is free. Storage, and any read that only touches this instance, costs
+nothing. What costs anything costs it because a model ran or a paid provider
+answered, and the price list is [/pricing](/pricing) — one file, one credit is
+one penny.
 
-Storage and reads that only touch this instance are free. What costs anything
-costs it because a model ran or a paid provider answered — the price list is at
-[/pricing](/pricing), and it is one file.
+There are two ways to pay for the rest, and which one you use depends on whether
+you are a person or a program.
+
+**A person tops up with a card.** Sign in, add credits through Stripe, and
+priced calls come out of that balance — the web pages, the assistant and any
+agent you have given a token all draw on the same one. That is the *one account
+instead of a hundred* part: no separate card on file for news, for maps, for
+search.
+
+**An agent pays per request in USDC, and never signs up at all.** Every priced
+call answers `402 Payment Required` with an [x402](https://x402.org) challenge
+naming the price, the asset and where to send it. Pay, retry, get the answer.
+No account, no card, no email, nothing to rotate — the payment *is* the
+identity. Try it:
+
+```
+curl -X POST https://micro.mu/mcp \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call",
+       "params":{"name":"web_search","arguments":{"query":"x402"}}}'
+```
+
+That comes back 402 with the challenge, today, on this instance.
+
+Self-hosting, neither is switched on. An instance with no Stripe keys and no
+x402 address cannot charge anybody, so nothing is metered and every tool is
+simply free. Turning payments on is what turns the meter on — see
+[Install](/install).
 
 ## Yours to run
 

@@ -22,9 +22,10 @@ import (
 	"time"
 
 	"mu/internal/ai"
+	"mu/internal/api"
 	"mu/internal/app"
+	"mu/internal/auth"
 	"mu/internal/service"
-	"mu/service/web"
 
 	blogsvc "mu/service/blog"
 )
@@ -66,9 +67,15 @@ Your measure of success:
 - Did you connect information in a way that benefits their understanding?
 - A single piece that leaves someone better informed and more thoughtful is worth more than ten that merely provoke.`
 
-// opinionCategories is what the blog says it is about. Asked of the service
-// rather than read from its embedded file, because reaching into another
-// package's data is how this whole arrangement started.
+// opinionCategories is what the blog says it is about.
+//
+// One of the two places this still reads the blog package directly rather than
+// through a tool. Writing goes through blog_create — that is the effect, and an
+// effect should be counted. These two are reads of the blog's own configuration
+// and of its own posts, and there is no tool shaped for either: blog_list
+// returns prose, and asking it "which categories did Micro publish under today"
+// would mean parsing back out of text. Worth a tool eventually; not worth
+// pretending it has one now.
 func opinionCategories() []string { return blogsvc.GetTopics() }
 
 // Start begins the background opinion generation loop.
@@ -160,7 +167,16 @@ func publishCategoryOpinion(category string) {
 	}
 
 	tags := opinionTag + "," + strings.ToLower(category)
-	err = blogsvc.CreatePost(title, body, app.SystemUserName, app.SystemUserID, tags, false)
+	// Published through the tool, not the package. blog_create takes the author
+	// from the caller, and the caller is now Micro's own account — so the post
+	// is attributed, counted and priced exactly as it would be for anybody else
+	// publishing to their blog.
+	_, failed, err := api.ExecuteToolAs(auth.MicroID, "blog_create", map[string]any{
+		"title": title, "content": body, "tags": tags,
+	})
+	if err == nil && failed {
+		err = fmt.Errorf("blog_create refused the post")
+	}
 	if err != nil {
 		app.Log("opinion", "Failed to create opinion post [%s]: %v", category, err)
 		return
@@ -179,7 +195,7 @@ func FindTodayOpinions() []*blogsvc.Post {
 	now := time.Now()
 	y, m, d := now.Date()
 	var result []*blogsvc.Post
-	for _, post := range blogsvc.GetPostsByAuthorID(app.SystemUserID, app.SystemUserName) {
+	for _, post := range blogsvc.GetPostsByAuthorID(auth.MicroID, "Micro") {
 		if !strings.Contains(post.Tags, opinionTag) {
 			continue
 		}
@@ -340,21 +356,20 @@ func researchCategoryStories(category string) string {
 			query = query[:120]
 		}
 
-		results, err := web.SearchBraveCached(query, 5)
-		if err != nil || len(results) == 0 {
+		// Through the tool layer, not the provider. Brave is a paid call, and
+		// calling SearchBraveCached directly meant the daily opinion spent real
+		// money that appeared in no usage record and was charged to nobody —
+		// there was no identity to charge it to until Micro had an account.
+		// ExecuteToolAs is what makes this agent a caller like any other:
+		// counted, scoped, and chargeable.
+		text, failed, err := api.ExecuteToolAs(auth.MicroID, "web_search",
+			map[string]any{"query": query})
+		if err != nil || failed || strings.TrimSpace(text) == "" {
 			continue
 		}
-
-		fmt.Fprintf(&sb, "### Research: %s\n", title)
-		for _, r := range results {
-			desc := r.Description
-			if len(desc) > 300 {
-				desc = desc[:300] + "..."
-			}
-			fmt.Fprintf(&sb, "- [%s] %s (Source: %s)\n", r.Title, desc, r.URL)
-		}
-		if full := fetchArticleContent(results[0].URL); full != "" {
-			fmt.Fprintf(&sb, "\nFull article from %s:\n%s\n", results[0].URL, full)
+		fmt.Fprintf(&sb, "### Research: %s\n%s\n", title, strings.TrimSpace(text))
+		if full := fetchArticleContent(firstURL(text)); full != "" {
+			fmt.Fprintf(&sb, "\nFull article:\n%s\n", full)
 		}
 		sb.WriteString("\n")
 		time.Sleep(500 * time.Millisecond)
@@ -366,13 +381,21 @@ func researchCategoryStories(category string) string {
 // treatment. Each one is a paid search plus a fetch, so this is a budget.
 const researchStories = 3
 
+// fetchArticleContent reads one article in full, through the tool layer.
+//
+// web_fetch is priced at zero, so nothing is charged — but it is still this
+// agent doing something, and an agent whose free calls are invisible is only
+// half attributed. The counter is the point as much as the charge.
 func fetchArticleContent(rawURL string) string {
-	_, body, err := web.FetchAndExtract(rawURL)
-	if err != nil {
+	if rawURL == "" {
+		return ""
+	}
+	body, failed, err := api.ExecuteToolAs(auth.MicroID, "web_fetch",
+		map[string]any{"url": rawURL})
+	if err != nil || failed {
 		app.Log("opinion", "Failed to fetch %s: %v", rawURL, err)
 		return ""
 	}
-
 	if len(body) > 2000 {
 		cut := strings.LastIndex(body[:2000], ". ")
 		if cut > 1000 {
@@ -382,8 +405,23 @@ func fetchArticleContent(rawURL string) string {
 		}
 		body += "\n[truncated]"
 	}
-
 	return body
+}
+
+// firstURL pulls the first link out of a search result, which is prose now
+// rather than a struct. Nothing is parsed beyond finding a URL to read: if the
+// shape changes, the research step loses its full article and keeps its
+// summaries rather than breaking.
+func firstURL(text string) string {
+	i := strings.Index(text, "http")
+	if i < 0 {
+		return ""
+	}
+	end := strings.IndexAny(text[i:], " \n\t)")
+	if end < 0 {
+		return strings.TrimRight(text[i:], ".,")
+	}
+	return strings.TrimRight(text[i:i+end], ".,")
 }
 
 func opinionTodayKey() string {

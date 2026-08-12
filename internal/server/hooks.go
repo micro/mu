@@ -553,6 +553,11 @@ func wireHooks() {
 	// Start web search topics (loads cache from disk, generates in background)
 	web.StartTopics()
 
+	// The instance's own agent needs an account before it does anything, so
+	// what it does can be attributed. No-op until a human admin exists — the
+	// first signup on a fresh instance is theirs, not the agent's.
+	auth.EnsureMicro()
+
 	// Start daily opinion generation (publishes as blog post)
 	agentblog.Start()
 

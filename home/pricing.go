@@ -93,10 +93,31 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<p style="font-size:13px;color:#888;margin:8px 0 0">Most apps are free. Paid ones show their price before you run them; the author keeps 90%.</p>`)
 	b.WriteString(`</div>`)
 
+	// How you actually pay. Two ways, and which applies depends on whether you
+	// are a person or a program — the page said "one balance" and never
+	// mentioned that an agent does not need a balance, or an account, at all.
+	b.WriteString(`<div class="card" style="margin:0 0 16px">`)
+	b.WriteString(`<h3>Two ways to pay</h3>`)
+	b.WriteString(`<p style="font-size:14px;color:#666;margin:0 0 12px"><strong>People top up with a card.</strong> ` +
+		`Credits are bought through Stripe and every priced call — the pages, the assistant, ` +
+		`and any agent you have given a token — comes out of the same balance. ` +
+		`<a href="/wallet" style="color:#111">Your wallet →</a></p>`)
+	if wallet.X402Enabled() {
+		b.WriteString(`<p style="font-size:14px;color:#666;margin:0 0 8px"><strong>Agents pay per request in USDC, with no account at all.</strong> ` +
+			`A priced call with no credentials answers <code>402 Payment Required</code> with an ` +
+			`<a href="https://x402.org" style="color:#111">x402</a> challenge naming the price and where to send it. ` +
+			`Pay, retry, get the answer — no signup, no card, no key to rotate.</p>`)
+		b.WriteString(`<pre style="font-size:12px;background:#fafafa;border:1px solid #eee;border-radius:6px;padding:10px;overflow-x:auto;margin:0">` +
+			`curl -X POST ` + html.EscapeString(app.BaseURL(r)) + `/mcp \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call",
+       "params":{"name":"web_search","arguments":{"query":"x402"}}}'</pre>`)
+	}
+	b.WriteString(`</div>`)
+
 	// Self-host
 	b.WriteString(`<div class="card" style="margin:0 0 16px">`)
 	b.WriteString(`<h3>Self-host</h3>`)
-	b.WriteString(`<p style="font-size:14px;color:#666">Run your own instance with no limits. Single Go binary, bring your own AI provider.</p>`)
+	b.WriteString(`<p style="font-size:14px;color:#666">Run your own instance with no limits. Single Go binary, bring your own AI provider. With no Stripe keys and no x402 address an instance cannot charge anybody, so nothing is metered and every tool is free.</p>`)
 	b.WriteString(`<p style="font-size:14px"><a href="https://github.com/micro/mu">github.com/micro/mu</a></p>`)
 	b.WriteString(`</div>`)
 

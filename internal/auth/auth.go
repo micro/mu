@@ -41,6 +41,11 @@ type Account struct {
 	EmailVerified   bool      `json:"email_verified,omitempty"`
 	EmailVerifiedAt time.Time `json:"email_verified_at,omitempty"`
 	Banned          bool      `json:"banned,omitempty"` // Silently hidden from everyone except themselves
+	// Agent marks an account that is a program rather than a person: the
+	// instance's own Micro, and anything else acting on its own behalf. An
+	// admin may be an agent; not knowing which is how a password reset ends up
+	// being mailed to a program.
+	Agent bool `json:"agent,omitempty"`
 }
 
 // legacyCardIDs maps retired card ids to their current name. Accounts saved
