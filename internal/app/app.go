@@ -394,7 +394,20 @@ var Template = `
           document.dispatchEvent(new CustomEvent('mu:navigated'));
         }
 
+        // On a phone the sidebar is an overlay sitting on top of the content,
+        // and a soft navigation does not reload the page — so tapping a nav
+        // item swapped the content in behind a menu that was still covering
+        // it. The page you asked for had arrived and you could not see it, and
+        // the only way out was to find the overlay's edge and tap that.
+        //
+        // Nothing was wrong before soft navigation, which is what makes it easy
+        // to miss: the reload used to close the menu as a side effect of
+        // throwing the whole document away. On desktop the sidebar is not an
+        // overlay and menu-open is unused, so this is a no-op there.
+        function closeMenu() { document.body.classList.remove('menu-open'); }
+
         function go(url, push) {
+          closeMenu();
           content.setAttribute('data-loading', '1');
           fetch(url, {credentials: 'same-origin', headers: {'X-Mu-Nav': '1'}})
             .then(function(r){
@@ -422,6 +435,16 @@ var Template = `
           e.preventDefault();
           if (u.href === location.href) return;
           go(u.href, true);
+        });
+
+        // A tap on anything in the sidebar closes it, whether or not it turned
+        // into a soft navigation. Some links never reach go(): a hash on the
+        // page you are already on is handled by the browser, and a link to
+        // where you already are returns early. Both leave the menu open over
+        // the content, which is the same dead end from a different direction.
+        document.addEventListener('click', function(e){
+          var a = e.target.closest ? e.target.closest('a') : null;
+          if (a && a.closest('#nav-container')) closeMenu();
         });
 
         window.addEventListener('popstate', function(){ go(location.href, false); });

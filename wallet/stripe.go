@@ -147,6 +147,24 @@ func setPlan(userID, planID string) {
 	app.Log("stripe", "%s is now on the %s plan", userID, planID)
 }
 
+// clearPlan puts an account back on no plan, when its subscription ends.
+func clearPlan(userID string) {
+	if userID == "" {
+		return
+	}
+	acc, err := auth.GetAccount(userID)
+	if err != nil || acc.Plan == "" {
+		return
+	}
+	was := acc.Plan
+	acc.Plan = ""
+	if err := auth.UpdateAccount(acc); err != nil {
+		app.Log("stripe", "failed to end plan %s for %s: %v", was, userID, err)
+		return
+	}
+	app.Log("stripe", "%s is no longer on the %s plan", userID, was)
+}
+
 // PlanByID is what an account on this plan is allowed. An unknown or empty id
 // gets noPlan rather than nothing, so a caller never has to handle a missing
 // plan and a subscription Stripe knows about but this build does not cannot
@@ -527,6 +545,36 @@ func HandleStripeWebhook(w http.ResponseWriter, r *http.Request) {
 			// same metadata the credits do and was being read and thrown away.
 			setPlan(userID, invoice.SubscriptionData.Metadata.PlanID)
 		}
+	}
+
+	// Cancelled, or stopped paying.
+	//
+	// A plan grants standing capacity — agents you keep, a rate you write at —
+	// rather than a one-off delivery, so it has to be taken back when the
+	// payments stop or it is granted for ever after one month. Nothing here
+	// handled this event at all, which was harmless for exactly as long as
+	// nothing read Account.Plan.
+	//
+	// Credits already bought are not clawed back: they were paid for, and a
+	// balance is not capacity. What goes is the allowance, back to what an
+	// account with no subscription gets — and agents already created stay,
+	// because the cap is checked when one is made. Somebody who drops from
+	// Premium to nothing keeps their twenty-five and cannot make a
+	// twenty-sixth, which is the version of this that does not delete
+	// somebody's work over a failed card.
+	if event.Type == "customer.subscription.deleted" {
+		var sub struct {
+			ID       string `json:"id"`
+			Metadata struct {
+				UserID string `json:"user_id"`
+			} `json:"metadata"`
+		}
+		if err := json.Unmarshal(event.Data.Object, &sub); err != nil {
+			app.Log("stripe", "subscription parse error: %v", err)
+			http.Error(w, "parse error", http.StatusBadRequest)
+			return
+		}
+		clearPlan(sub.Metadata.UserID)
 	}
 
 	w.WriteHeader(http.StatusOK)
