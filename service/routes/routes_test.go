@@ -1,4 +1,4 @@
-package places
+package routes
 
 import (
 	"context"
@@ -147,7 +147,7 @@ func TestTheJourneyTimeReachesTheProvider(t *testing.T) {
 	future := time.Now().Add(48 * time.Hour).UTC().Truncate(time.Second)
 
 	// Driving, leaving later: the provider is told when.
-	if _, err := computeRoute(51.53, -0.12, 51.47, -0.45, "DRIVE", when{Depart: future}); err != nil {
+	if _, err := computeRoute(51.53, -0.12, 51.47, -0.45, "DRIVE", when{Depart: future}, summary); err != nil {
 		t.Fatal(err)
 	}
 	if got["departureTime"] != future.Format(time.RFC3339) {
@@ -156,7 +156,7 @@ func TestTheJourneyTimeReachesTheProvider(t *testing.T) {
 
 	// Transit, arriving by: only transit can be asked to arrive by a time.
 	got = nil
-	if _, err := computeRoute(51.53, -0.12, 51.47, -0.45, "TRANSIT", when{Arrive: future}); err != nil {
+	if _, err := computeRoute(51.53, -0.12, 51.47, -0.45, "TRANSIT", when{Arrive: future}, summary); err != nil {
 		t.Fatal(err)
 	}
 	if got["arrivalTime"] != future.Format(time.RFC3339) {
@@ -169,7 +169,7 @@ func TestTheJourneyTimeReachesTheProvider(t *testing.T) {
 	// Driving, arriving by: asked about the road at that hour instead, since
 	// only transit takes an arrivalTime.
 	got = nil
-	if _, err := computeRoute(51.53, -0.12, 51.47, -0.45, "DRIVE", when{Arrive: future}); err != nil {
+	if _, err := computeRoute(51.53, -0.12, 51.47, -0.45, "DRIVE", when{Arrive: future}, summary); err != nil {
 		t.Fatal(err)
 	}
 	if got["arrivalTime"] != nil {
@@ -182,7 +182,7 @@ func TestTheJourneyTimeReachesTheProvider(t *testing.T) {
 	// A time that has already been is dropped rather than sent and refused.
 	got = nil
 	past := time.Now().Add(-24 * time.Hour)
-	if _, err := computeRoute(51.53, -0.12, 51.47, -0.45, "DRIVE", when{Depart: past}); err != nil {
+	if _, err := computeRoute(51.53, -0.12, 51.47, -0.45, "DRIVE", when{Depart: past}, summary); err != nil {
 		t.Fatal(err)
 	}
 	if got["departureTime"] != nil {
@@ -206,7 +206,7 @@ func TestTrafficIsSeparatedFromTheJourney(t *testing.T) {
 	googleRoutesURL = srv.URL
 	defer func() { googleRoutesURL = orig }()
 
-	r, err := computeRoute(51.53, -0.12, 51.47, -0.45, "DRIVE", when{})
+	r, err := computeRoute(51.53, -0.12, 51.47, -0.45, "DRIVE", when{}, summary)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -279,7 +279,7 @@ func TestRoutingFailureFallsBackToAnEstimate(t *testing.T) {
 	googleRoutesURL = srv.URL
 	defer func() { googleRoutesURL = orig }()
 
-	r, err := computeRoute(51.5308, -0.1238, 51.47, -0.4543, "DRIVE", when{})
+	r, err := computeRoute(51.5308, -0.1238, 51.47, -0.4543, "DRIVE", when{}, summary)
 	if err != nil {
 		t.Fatalf("a blocked routing API produced an error instead of an estimate: %v", err)
 	}
@@ -305,7 +305,7 @@ func TestNoRouteIsReportedRatherThanEstimated(t *testing.T) {
 	googleRoutesURL = srv.URL
 	defer func() { googleRoutesURL = orig }()
 
-	if _, err := computeRoute(51.5, -0.1, 40.7, -74.0, "DRIVE", when{}); err == nil {
+	if _, err := computeRoute(51.5, -0.1, 40.7, -74.0, "DRIVE", when{}, summary); err == nil {
 		t.Error("an impossible journey was estimated rather than reported")
 	}
 }

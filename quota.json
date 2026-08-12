@@ -40,7 +40,14 @@
       "cost": 2,
       "label": "Travel time between two places",
       "env": "CREDIT_COST_PLACES_ETA",
-      "note": "Google Routes, 0.38p at Essentials (£3.76/1k after 10k free), 0.75p at Pro. We ask for traffic, which may bill at Pro — priced to cover it"
+      "note": "routes_eta. Google Routes, 0.38p at Essentials (£3.76/1k after 10k free), 0.75p at Pro. We ask for traffic, which may bill at Pro — priced to cover it. The op id keeps the old name so an operator's existing override and usage history survive the rename"
+    },
+    {
+      "op": "routes_directions",
+      "cost": 3,
+      "label": "Turn-by-turn directions",
+      "env": "CREDIT_COST_ROUTES_DIRECTIONS",
+      "note": "Google Routes asking for steps and the road's shape, which is more than an ETA and bills higher — 1.14p at Enterprise"
     },
     {
       "op": "weather_forecast",

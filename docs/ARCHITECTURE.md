@@ -129,7 +129,8 @@ guessable.
 | `notes` | /notes | ✅ | ✅ | A title and what is under it, kept between conversations. Addressed by title, where docs holds collections you query |
 | `news` | /news | ✅ |  | RSS aggregation, sentiment, search |
 | `flights` | /flights | ✅ |  | Where aircraft are, live from ADS-B. No schedule behind it: it reports positions aeroplanes broadcast, never a departure time |
-| `places` | /places | ✅ |  | Maps, points of interest, travel time, elevation |
+| `places` | /places | ✅ |  | Points of interest, geocoding both ways, elevation — what is there |
+| `routes` | /routes | ✅ |  | How to get between two places: time with traffic, turn-by-turn, and which of several is nearest. Split from `places`, which is the Places API's domain where this is the Routes API's |
 | `prayer` | /prayer | ✅ |  | Islamic prayer times, qibla, and a daily reflection |
 | `sms` | /sms | ✅ | ✅ | A phone number: text somebody, read what they text back. Twilio. Account-only even when paid: what an anonymous sender spends is the number's reputation |
 | `whatsapp` | /whatsapp | ✅ | ✅ | Reply to people on WhatsApp, through Twilio. Sending is bounded by Meta's 24-hour window, so it answers rather than initiates |

@@ -27,6 +27,7 @@ import (
 	"mu/service/notes"
 	"mu/service/places"
 	"mu/service/prayer"
+	"mu/service/routes"
 	"mu/service/sms"
 	"mu/service/social"
 	"mu/service/stream"
@@ -94,6 +95,7 @@ func boot() {
 
 	// load flights
 	flights.Load()
+	routes.Load()
 	contacts.Load()
 	user.Load()
 

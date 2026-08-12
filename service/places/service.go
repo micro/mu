@@ -98,88 +98,6 @@ func (Server) Nearby(_ context.Context, req *NearbyRequest, rsp *PlacesResponse)
 	return nil
 }
 
-// ETARequest asks how long it takes to get from one place to another.
-type ETARequest struct {
-	From     string  `json:"from" description:"Where the journey starts, e.g. 'King's Cross, London' (or give from_lat/from_lon)"`
-	To       string  `json:"to" description:"Where the journey ends, e.g. 'Heathrow Airport'"`
-	FromLat  float64 `json:"from_lat" description:"Optional start latitude, if already known"`
-	FromLon  float64 `json:"from_lon" description:"Optional start longitude, if already known"`
-	ToLat    float64 `json:"to_lat" description:"Optional end latitude, if already known"`
-	ToLon    float64 `json:"to_lon" description:"Optional end longitude, if already known"`
-	Mode     string  `json:"mode" description:"How to travel: drive (default), walk, cycle or transit"`
-	DepartAt string  `json:"depart_at,omitempty" description:"When the journey starts, as RFC3339 (e.g. 2026-08-13T08:00:00Z). Defaults to now. Traffic and timetables are read for this time"`
-	ArriveBy string  `json:"arrive_by,omitempty" description:"Be there by this time, as RFC3339. Answers when to leave. Cannot be combined with depart_at"`
-}
-
-// ETAResponse is how long the journey takes, as model-ready text.
-type ETAResponse struct {
-	Text string `json:"text" description:"Journey time and distance between the two places"`
-}
-
-// ETA gives the travel time and distance between two places, by road rather
-// than as the crow flies. Use it to answer whether somewhere is worth going to,
-// or when to leave.
-// @example {"from": "King's Cross, London", "to": "Heathrow Airport", "mode": "transit"}
-func (Server) ETA(_ context.Context, req *ETARequest, rsp *ETAResponse) error {
-	fromLat, fromLon, hasFrom := resolveLocation(req.From, req.FromLat, req.FromLon)
-	if !hasFrom {
-		rsp.Text = "Please say where the journey starts (a place name or coordinates)."
-		return nil
-	}
-	toLat, toLon, hasTo := resolveLocation(req.To, req.ToLat, req.ToLon)
-	if !hasTo {
-		rsp.Text = "Please say where the journey ends (a place name or coordinates)."
-		return nil
-	}
-
-	mode, known := travelMode(req.Mode)
-	if !known {
-		rsp.Text = fmt.Sprintf("I do not know how to travel by %q. Try one of: %s.",
-			req.Mode, modeWords())
-		return nil
-	}
-
-	w, err := journeyTime(req.DepartAt, req.ArriveBy)
-	if err != nil {
-		rsp.Text = err.Error()
-		return nil
-	}
-
-	r, err := computeRoute(fromLat, fromLon, toLat, toLon, mode, w)
-	if err != nil {
-		return err
-	}
-
-	from := locationLabel(req.From, fromLat, fromLon)
-	to := locationLabel(req.To, toLat, toLon)
-	verb := strings.ToLower(mode)
-	if verb == "bicycle" {
-		verb = "cycle"
-	}
-
-	rsp.Text = fmt.Sprintf("%s to %s by %s: %s, %s.",
-		from, to, verb, humanDuration(r.Duration), humanDistance(r.Metres))
-	if d := r.Delay(); d > 0 {
-		rsp.Text += fmt.Sprintf(" %s of that is traffic.", humanDuration(d))
-	}
-	// "When do I leave" is the question behind arrive_by, so answer that rather
-	// than making the caller do the subtraction.
-	if !w.Arrive.IsZero() {
-		rsp.Text += fmt.Sprintf(" To arrive by %s, leave at %s.",
-			w.Arrive.Format("15:04"), w.Arrive.Add(-r.Duration).Format("15:04"))
-	} else if !w.Depart.IsZero() {
-		rsp.Text += fmt.Sprintf(" Leaving at %s, arriving %s.",
-			w.Depart.Format("15:04"), w.Depart.Add(r.Duration).Format("15:04"))
-	}
-	if r.Estimate {
-		// Deliberately vague about why: from here it may be a missing key, a key
-		// without the Routes API enabled, or an outage, and none of those is the
-		// caller's problem. The operator gets the real reason in the log.
-		rsp.Text += " (Estimated from straight-line distance — live routing is unavailable on this instance, so treat it as approximate.)"
-	}
-	return nil
-}
-
 // GeocodeRequest resolves a place name or address to coordinates.
 type GeocodeRequest struct {
 	Address string `json:"address" description:"A place name or address to locate"`
@@ -362,7 +280,6 @@ var Spec = service.Spec{
 	Icon:        "places.svg",
 	Endpoints: map[string]service.Endpoint{
 		"Address":   {Doc: "Name the place at a latitude and longitude — the reverse of places_geocode. Use it whenever you have coordinates and need to say where that is"},
-		"ETA":       {Doc: "How long it takes to travel between two places, by road rather than as the crow flies. Can be asked about a future departure, or told when you need to arrive and answer when to leave", Cost: quota.OpPlacesETA},
 		"Elevation": {Doc: "How high a place is above sea level, in metres and feet. Sampled from a 90-metre global elevation model, so a summit reads a little under its surveyed height"},
 		"Geocode":   {Doc: "Resolve a place name or address to coordinates"},
 		"Nearby":    {Doc: "List points of interest near a location", Cost: quota.OpPlacesNearby},

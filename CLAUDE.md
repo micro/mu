@@ -54,6 +54,7 @@ Built on go-micro: every capability is a go-micro service, the assistant is a go
 | `service/whatsapp/` | Reply to people on WhatsApp, through Twilio. Bounded by Meta's 24-hour window, so it answers rather than initiates. The Meta bot in `client/whatsapp/` is the other half — a door, not a capability |
 | `service/sms/` | A phone number: text somebody, read what they text back. Twilio. The rules about who you may text are the service, not decoration — see the package comment |
 | `service/web/` | The open web: search it (`web.Search`), fetch a URL (`web.Fetch`). The Brave provider, the readability reader and the /search page live here too — they were `service/search`, a directory under `service/` that was not a service |
+| `service/routes/` | Getting from one place to another: time with traffic, turn-by-turn, and which of several is nearest. It was one ETA inside `places`, whose own package comment gave the game away — "places could already tell an agent what is nearby and where it is, but not whether it is worth going". Those are two questions: `places` is the Places API's domain, this is the Routes API's. Not `routing`, which is what it does; a service is named for a domain. The page draws the route from the polyline Google already returned, so there is no map tile to buy |
 | `service/stream/` | The console — this instance's own event timeline |
 | `service/chat/` | Live discussion rooms attached to an item |
 | `internal/profile/` | The public face of an account: the page at /@username, and who is online |

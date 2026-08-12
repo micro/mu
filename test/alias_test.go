@@ -51,6 +51,10 @@ var legacy = map[string]string{
 	"cache_get":     "notes_get",
 	"cache_list":    "notes_list",
 	"cache_delete":  "notes_delete",
+	// places answered "what is there" and "how do I get between them", and the
+	// second is the Routes API's domain rather than the Places API's. The ETA
+	// moved out to routes; the name it was called by still works.
+	"places_eta": "routes_eta",
 	// db_* is deliberately absent, and is the one retirement in this file that
 	// was not a rename.
 	//

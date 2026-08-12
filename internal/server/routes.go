@@ -44,6 +44,7 @@ import (
 	"mu/service/notes"
 	"mu/service/places"
 	"mu/service/prayer"
+	"mu/service/routes"
 	"mu/service/sms"
 	"mu/service/social"
 	"mu/service/stream"
@@ -403,6 +404,9 @@ func registerRoutes() {
 
 	// serve flights page
 	http.HandleFunc("/flights", flights.Handler)
+
+	// serve routes page
+	http.HandleFunc("/routes", routes.Handler)
 
 	// serve apps
 	http.HandleFunc("/apps", apps.Handler)

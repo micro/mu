@@ -1,16 +1,25 @@
-package places
-
-// How long it takes to get somewhere.
+// Package routes is how you get from one place to another: how long it takes,
+// which way to go, and which of several is nearest.
 //
-// places could already tell an agent what is nearby and where it is, but not
-// whether it is worth going — and "is it worth going" is the question a person
-// actually asks. Distance as the crow flies does not answer it: a mile across a
-// river is not a mile along a road.
+// It began inside places as a single ETA, and the package comment there said
+// what was wrong with that: "places could already tell an agent what is nearby
+// and where it is, but not whether it is worth going". Those are two questions.
+// places answers *what is there* — the Places API's domain, and the name is not
+// an accident. This answers *how you get between them*, which is the Routes
+// API's, and wedging both behind one noun made the catalogue lie about what it
+// held.
 //
-// This uses the Google Routes API, which the same GOOGLE_API_KEY already
-// reaches, and falls back to a straight-line estimate when there is no key so a
-// self-hosted instance without Google still answers something honest — labelled
-// as an estimate rather than passed off as a route.
+// Distance as the crow flies does not answer any of it: a mile across a river
+// is not a mile along a road.
+//
+// Google Routes, reached with the same GOOGLE_API_KEY that places and weather
+// already use. Without a key there is a straight-line estimate, labelled as an
+// estimate rather than passed off as a route, so a self-hosted instance with no
+// Google account still answers something honest.
+//
+// No import of places, and none is needed: geocoding a name to a point is
+// internal/geo, which is where the two of them already share it.
+package routes
 
 import (
 	"bytes"
@@ -19,11 +28,19 @@ import (
 	"io"
 	"math"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
 	"mu/internal/app"
 )
+
+// googleAPIKey is the same key places and weather read. Each service reads it
+// for itself rather than reaching into another for a getter — a shared line of
+// os.Getenv is cheaper than a sideways import.
+func googleAPIKey() string {
+	return os.Getenv("GOOGLE_API_KEY")
+}
 
 // googleRoutesURL is a var so a test can point it at a stub; the Routes API is
 // not something to call for real from a test suite.
@@ -55,7 +72,34 @@ type route struct {
 	Static   time.Duration
 	Metres   int
 	Estimate bool // true when this is a straight-line guess, not a real route
+
+	// Steps and Shape are only filled in when asked for. They are what makes
+	// directions directions rather than a number, and they are also more fields
+	// on the request, so a caller who only wants an ETA does not pay for them.
+	Steps []step
+	Shape []point
 }
+
+// step is one instruction.
+type step struct {
+	Text     string
+	Metres   int
+	Duration time.Duration
+}
+
+// point is somewhere the route passes through.
+type point struct{ Lat, Lon float64 }
+
+// detail is how much of the route to ask for.
+type detail int
+
+const (
+	// summary is duration, distance and traffic — what an ETA needs.
+	summary detail = iota
+	// full adds the turn-by-turn and the shape of the road, which is what
+	// directions need and what the page draws.
+	full
+)
 
 // Delay is how much of the journey is traffic.
 func (r route) Delay() time.Duration {
@@ -72,8 +116,8 @@ type when struct {
 	Arrive time.Time // be there by this time
 }
 
-// computeRoute asks Google how long the journey takes.
-func computeRoute(fromLat, fromLon, toLat, toLon float64, mode string, w when) (route, error) {
+// computeRoute asks Google about the journey.
+func computeRoute(fromLat, fromLon, toLat, toLon float64, mode string, w when, d detail) (route, error) {
 	key := googleAPIKey()
 	if key == "" {
 		return estimateRoute(fromLat, fromLon, toLat, toLon, mode), nil
@@ -125,7 +169,18 @@ func computeRoute(fromLat, fromLon, toLat, toLon float64, mode string, w when) (
 	// extra to ask for alongside duration, and it is the difference between
 	// "34 minutes" and "34 minutes, 11 of them traffic" — which is the part
 	// somebody deciding when to leave actually needs.
-	req.Header.Set("X-Goog-FieldMask", "routes.duration,routes.distanceMeters,routes.staticDuration")
+	//
+	// Steps and the polyline are asked for only when somebody wants directions.
+	// Google prices this API by what you request, so an ETA should not pay for
+	// the shape of a road nobody is going to draw.
+	mask := "routes.duration,routes.distanceMeters,routes.staticDuration"
+	if d == full {
+		mask += ",routes.polyline.encodedPolyline" +
+			",routes.legs.steps.navigationInstruction" +
+			",routes.legs.steps.distanceMeters" +
+			",routes.legs.steps.staticDuration"
+	}
+	req.Header.Set("X-Goog-FieldMask", mask)
 
 	resp, err := routesClient.Do(req)
 	if err != nil {
@@ -138,7 +193,7 @@ func computeRoute(fromLat, fromLon, toLat, toLon float64, mode string, w when) (
 		// which is a 403 that says nothing useful to whoever asked how long the
 		// journey takes. Answer with the estimate and say it is one; the
 		// operator can read the real reason in the log.
-		app.Log("places", "routes api unavailable (%d): %s", resp.StatusCode, strings.TrimSpace(string(raw)))
+		app.Log("routes", "routes api unavailable (%d): %s", resp.StatusCode, strings.TrimSpace(string(raw)))
 		return estimateRoute(fromLat, fromLon, toLat, toLon, mode), nil
 	}
 
@@ -147,6 +202,18 @@ func computeRoute(fromLat, fromLon, toLat, toLon float64, mode string, w when) (
 			Duration       string `json:"duration"`
 			StaticDuration string `json:"staticDuration"`
 			DistanceMeters int    `json:"distanceMeters"`
+			Polyline       struct {
+				EncodedPolyline string `json:"encodedPolyline"`
+			} `json:"polyline"`
+			Legs []struct {
+				Steps []struct {
+					DistanceMeters        int    `json:"distanceMeters"`
+					StaticDuration        string `json:"staticDuration"`
+					NavigationInstruction struct {
+						Instructions string `json:"instructions"`
+					} `json:"navigationInstruction"`
+				} `json:"steps"`
+			} `json:"legs"`
 		} `json:"routes"`
 	}
 	if err := json.Unmarshal(raw, &parsed); err != nil {
@@ -157,15 +224,67 @@ func computeRoute(fromLat, fromLon, toLat, toLon float64, mode string, w when) (
 		// say. That is an answer, not a failure of ours.
 		return route{}, fmt.Errorf("no %s route between those places", strings.ToLower(mode))
 	}
+	first := parsed.Routes[0]
 
-	d, err := time.ParseDuration(parsed.Routes[0].Duration)
+	dur, err := time.ParseDuration(first.Duration)
 	if err != nil {
 		return estimateRoute(fromLat, fromLon, toLat, toLon, mode), nil
 	}
 	// A missing or unparseable staticDuration is not a failure — it means this
 	// mode has no traffic to report. Zero, and Delay says nothing.
-	static, _ := time.ParseDuration(parsed.Routes[0].StaticDuration)
-	return route{Duration: d, Static: static, Metres: parsed.Routes[0].DistanceMeters}, nil
+	static, _ := time.ParseDuration(first.StaticDuration)
+	out := route{Duration: dur, Static: static, Metres: first.DistanceMeters}
+
+	for _, leg := range first.Legs {
+		for _, s := range leg.Steps {
+			text := strings.TrimSpace(s.NavigationInstruction.Instructions)
+			if text == "" {
+				// A step with no instruction is a joining segment. It has a
+				// distance, and nothing to tell somebody to do.
+				continue
+			}
+			d, _ := time.ParseDuration(s.StaticDuration)
+			out.Steps = append(out.Steps, step{Text: text, Metres: s.DistanceMeters, Duration: d})
+		}
+	}
+	out.Shape = decodePolyline(first.Polyline.EncodedPolyline)
+	return out, nil
+}
+
+// decodePolyline reads Google's encoded polyline format: the route's shape as
+// a string of ASCII, each point stored as a delta from the last.
+//
+// Written out rather than imported. It is thirty lines of a published format
+// that has not changed since 2005, and the alternative is a dependency for the
+// benefit of drawing a line.
+func decodePolyline(s string) []point {
+	var out []point
+	var lat, lon int
+	for i := 0; i < len(s); {
+		// Each value is a run of 5-bit chunks, low bits first, continuing while
+		// the 0x20 flag is set. The result is zig-zag encoded so that a small
+		// negative delta stays a small number.
+		next := func() int {
+			var shift, result int
+			for i < len(s) {
+				b := int(s[i]) - 63
+				i++
+				result |= (b & 0x1f) << shift
+				shift += 5
+				if b < 0x20 {
+					break
+				}
+			}
+			if result&1 != 0 {
+				return ^(result >> 1)
+			}
+			return result >> 1
+		}
+		lat += next()
+		lon += next()
+		out = append(out, point{Lat: float64(lat) / 1e5, Lon: float64(lon) / 1e5})
+	}
+	return out
 }
 
 func latLng(lat, lon float64) map[string]any {

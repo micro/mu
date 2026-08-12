@@ -71,18 +71,25 @@ func record(account, operation string) {
 
 // Operation types
 const (
-	OpNewsSearch        = "news_search"
-	OpQuranSearch       = "quran_search"
-	OpVideoSearch       = "video_search"
-	OpChatQuery         = "chat_query"
-	OpBlogCreate        = "blog_create"
-	OpMailSend          = "mail_send"
-	OpExternalEmail     = "external_email"
-	OpSMSSend           = "sms_send"
-	OpWhatsAppSend      = "whatsapp_send"
-	OpPlacesSearch      = "places_search"
-	OpPlacesNearby      = "places_nearby"
-	OpPlacesETA         = "places_eta"
+	OpNewsSearch    = "news_search"
+	OpQuranSearch   = "quran_search"
+	OpVideoSearch   = "video_search"
+	OpChatQuery     = "chat_query"
+	OpBlogCreate    = "blog_create"
+	OpMailSend      = "mail_send"
+	OpExternalEmail = "external_email"
+	OpSMSSend       = "sms_send"
+	OpWhatsAppSend  = "whatsapp_send"
+	OpPlacesSearch  = "places_search"
+	OpPlacesNearby  = "places_nearby"
+	// OpRoutesETA keeps the operation id "places_eta" although the service is
+	// now routes. The id is what quota.json, every operator's
+	// CREDIT_COST_PLACES_ETA and every row of recorded usage are keyed on;
+	// renaming it would silently reset the price to the default on upgrade and
+	// break the history in two. The tool was renamed, which is visible and has
+	// an alias. The price key is not, and does not.
+	OpRoutesETA         = "places_eta"
+	OpRoutesDirections  = "routes_directions"
 	OpWeatherForecast   = "weather_forecast"
 	OpWeatherPollen     = "weather_pollen"
 	OpWebSearch         = "web_search"
