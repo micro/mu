@@ -2,7 +2,7 @@
 
 **Tools for agents.** News, mail, search, weather, markets, video, places,
 files, contacts, calendar and your own documents, as tools an agent can use via one MCP
-server — one account and token rather than hundreds.
+server — also includes a web app for humans.
 
 ## Hosting
 
