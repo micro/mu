@@ -20,8 +20,13 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Hero
 	b.WriteString(`<div style="text-align:center;padding:24px 0 0">`)
-	b.WriteString(`<h2 style="font-size:1.6rem;margin:0 0 8px">Tools for agents, and for you</h2>`)
-	b.WriteString(`<p style="color:#666;font-size:15px;margin:0 0 24px">One balance covers both: the tools your agent calls over <a href="/mcp" style="color:#111">MCP</a> and the app you sign into. <a href="/tools" style="color:#111">Browse the tools →</a> Or self-host for free.</p>`)
+	b.WriteString(`<h2 style="font-size:1.6rem;margin:0 0 8px">Tools for agents</h2>`)
+	// One audience, said once. It read "Tools for agents, and for you", and the
+	// second half was a hedge that cost both halves their clarity: somebody
+	// wiring up an agent could not tell whether this was for them, and somebody
+	// looking for an app could not either. The app is how you see the tools
+	// work, not a second product being sold alongside them.
+	b.WriteString(`<p style="color:#666;font-size:15px;margin:0 0 24px">The everyday internet as tools your agent calls over <a href="/mcp" style="color:#111">MCP</a>, metered per call. The app you sign into is included. <a href="/tools" style="color:#111">Browse the tools →</a> Or self-host for free.</p>`)
 	b.WriteString(`</div>`)
 
 	// Plans — three tiers: Free, Starter, Pro.
