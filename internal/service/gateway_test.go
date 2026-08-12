@@ -218,3 +218,28 @@ func TestMethodName(t *testing.T) {
 		}
 	}
 }
+
+// BenchmarkGatewayOverhead measures what the gateway adds to a call: the free
+// path (a map lookup and a string scan) against the priced one (that, plus the
+// two hooks). The RPC round trip underneath dwarfs both, which is the point —
+// this is the number to check before putting anything else in the wrapper.
+func BenchmarkGatewayFree(b *testing.B) {
+	registerTolled(&testing.T{}, "bench-gw")
+	ctx := WithAccount(context.Background(), "asim")
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = callTolled(ctx, "bench-gw", "Free", &TollReq{})
+	}
+}
+
+func BenchmarkGatewayPriced(b *testing.B) {
+	registerTolled(&testing.T{}, "bench-gw2")
+	Gate.Allow = func(string, string) (bool, error) { return true, nil }
+	Gate.Charge = func(string, string) {}
+	defer func() { Gate.Allow, Gate.Charge = nil, nil }()
+	ctx := WithAccount(context.Background(), "asim")
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = callTolled(ctx, "bench-gw2", "Priced", &TollReq{})
+	}
+}
