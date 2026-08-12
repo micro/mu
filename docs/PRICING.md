@@ -248,20 +248,24 @@ more successful it is. Credits are bought at face value, always: **1 credit = 1p
 subscription or not.**
 
 So what does a tier sell? **Scale.** The thing somebody outgrows is not how much
-they spend — they can top up — it is how many agents they may run, how hard they
-may hit it, and whether the real-world channels are open to them. Those cost us
-in ways credits do not: an agent is a token to keep, a rate limit to hold, a
-share of a phone number's reputation.
+they spend — they can top up — it is how many agents they may run and how much
+they may send to people outside this instance. Those cost us in ways credits do
+not: an agent is a token to keep, and a send is a share of a domain's and a
+number's reputation.
+
+What follows is the shape of the argument. The current table, counted against
+what is actually built, is in *What actually scales, counted honestly* below —
+read that one for the numbers.
 
 | | Personal — £10/mo | Pro — £20/mo | Premium — £100/mo |
 |---|---|---|---|
 | Credits included | 1,000, at face value | 2,000, at face value | 10,000, at face value |
 | Agents | 1 | 5 | 25 |
 
-That is the whole table, and **it is too thin to sell Premium.** £100 for
-10,000 credits and twenty-four more agents is not an offer somebody reasons
-their way into. The axes below are what it is missing; this section is what
-they get measured against.
+That is what is enforced today, and **it is too thin to sell a third column.**
+£100 for 10,000 credits and twenty-four more agents is not an offer somebody
+reasons their way into. The next section is what to do about it using only
+what is built.
 
 Everything above what a tier includes is bought at the same 1p. There is no
 tier at which a credit is cheaper, and the pricing page should say so — it is
@@ -290,8 +294,8 @@ Why these shapes:
 - **£20 rather than £5.** £5 competed with nothing and signalled a toy. £20 is
   about what one provider's entry plan costs, for all of them.
 - **The included credits are a prepayment, not a discount.** £20 a month gets
-  £20 of usage. The subscription is worth having for the agents, the channels
-  and the limits, and those cannot be bought à la carte.
+  £20 of usage. The subscription is worth having for the agents and the
+  channels, and those cannot be bought à la carte.
 - **The channels are the paid line, and the honest reason is identity.** A card
   on file is worth more to us than the money there: it is the thing that makes
   spam expensive. That should be said plainly rather than dressed up as a
@@ -299,106 +303,163 @@ Why these shapes:
 - **Agents, not seats.** The unit somebody scales is how many agents they run,
   which is also the unit that costs us.
 
-## What actually scales
+## What actually scales, counted honestly
 
-A tier axis has to pass three tests, and most candidates fail one of them.
+An earlier draft of this section proposed scheduled runs, tiered storage and a
+dedicated phone number. None of those exist. Pricing a product you have not
+built is how a page ends up promising "5 agents" against no field and no
+counter, which is the failure the rest of this document was written about —
+made a second time, in the same document, while describing the first.
+
+So: only what is in the repository today.
+
+### The test
+
+A tier axis has to be all three of these. Most candidates fail one.
 
 1. **It costs us more as it goes up.** Otherwise the top tier is rent.
-2. **Somebody can tell in advance which side of it they are on.** "Higher rate
-   limits" fails this: nobody knows whether they need it until they are stopped.
-3. **It grows with success rather than with signup.** A limit somebody meets in
-   week one is a paywall; one they meet in month six is a reason to upgrade.
+2. **Somebody can place themselves on it before paying.** "Higher rate limits"
+   fails: nobody knows whether they need it until they are stopped.
+3. **It grows with use.** A limit met in week one is a paywall; one met in
+   month six is a reason to upgrade.
 
-**Agents already passes 2 and 3 and only half-passes 1.** An agent is a row and
-a scoped token; twenty-five of them cost us nothing at rest. What costs money is
-what agents *do*, and that is credits, which are already metered. So the agent
-count is a proxy, and it stays a weak one **until agents can act without being
-typed at**. Which is the first item below, and the reason it is first.
+### What passes, today
 
-### The one that changes the product
+**Credits.** Exists, metered through one gateway, 1p each.
 
-**Scheduled runs — how many standing instructions may fire, and how often.**
+**Agents.** Exists and is enforced. Half-passes test 1 — an agent is a row and
+a scoped token, and twenty-five cost nothing at rest. What costs money is what
+agents do, which is credits. It is a proxy, and honest to sell only because the
+number of agents somebody wants really does track how much they intend to use
+this.
 
-Mu is tools for agents, and today an agent runs when somebody talks to it. That
-is a chat box with good tools. An agent that wakes at seven, reads the overnight
-news, checks the markets and mails a briefing is a different product, and it is
-the one the roster page already describes — every agent has a standing
-instruction and nothing fires it.
+**The outbound channels.** External email, SMS, WhatsApp. These exist, they are
+already the three most expensive operations in `quota.json`, and they are the
+only ones with a cost that is not a credit — see below.
 
-As a tier axis it passes all three tests better than anything else here:
+That is the whole list. Three.
 
-- **Cost.** A schedule is a direct multiplier on our provider spend, and the
-  only one that runs while nobody is watching. Hourly versus daily is a 24×
-  difference in what an account costs us.
-- **Legibility.** "Three schedules, hourly" versus "twenty-five, every minute"
-  is a sentence somebody can hold against what they are trying to build.
-- **Growth.** Nobody needs twenty schedules on day one, and anybody running
-  this seriously needs more than three.
+### What fails, and why it was on the list anyway
 
-It also makes the agent count mean something, because an agent that can fire on
-its own is worth having several of.
+**Storage.** One server, one SSD. If Premium sells 100 GB then Premium owes
+100 GB, multiplied by however many take it, on a disk we bought. `files`
+already caps an account at 200 MiB for exactly this reason — it is a cost
+control, and selling it converts a control into an obligation. Storage becomes
+sellable when it is object storage somebody else operates and bills for. Until
+then it stays flat and invisible.
 
-Priced as well as tiered: each firing spends credits at the ordinary rate, so a
-schedule that does real work bills for it. The tier sells *how many* may exist
-and *how often*, not the work itself.
+**Scheduled runs.** Every agent has a `Prompt` field described in the code as
+"the standing instruction: what this agent is for", and nothing anywhere fires
+it — an agent only runs when somebody types at it. A clock that runs standing
+instructions is the thing that would make the agent count worth paying for, and
+it is a genuine build, not a pricing decision. It belongs in the roadmap, not
+on a card.
 
-**This does not exist.** It is the largest build on this page and the one worth
-doing first.
+**A phone number of your own.** We do not offer one. Twilio would bill about a
+pound a month for it and nothing in the repository provisions, stores or routes
+one. Pricing it is pricing a wish.
 
-### The cheap ones worth having
+### Inbound and outbound, which is the line that matters
 
-**Concurrency — in-flight tool calls per account.** This is the honest version
-of what "rate limit" was reaching for, in the units an MCP client thinks in. An
-agent fanning out over twenty tools at once is a different load from one asking
-a question a minute, and it is exactly the shape a paying customer generates. It
-belongs in `internal/service/gateway.go`, which every call already passes
-through — a semaphore keyed by account, next to the charge. Small build.
+The earlier draft said: never tier the tools. That is too broad, and the
+instinct it was arguing against is right.
 
-**Storage — one number in GB, across files, docs, images and app data.**
-`files.MaxOwnerBytes` is already a flat 200 MiB constant per account; making it
-a plan field is close to a one-line change. Real disk cost, universally
-understood, and nobody hits it in week one.
+Of twenty-five services, twenty-two answer a question. News, weather, markets,
+places, routes, search, video, flights, prayer — you ask, we answer, it costs a
+fraction of a penny and the blast radius is zero. **Gating any of these breaks
+the product.** The claim is one account instead of a hundred; a tier that
+withholds routes makes it one account instead of a hundred *unless you want the
+good ones*. It is also the easiest thing here to implement, which is what makes
+it dangerous.
 
-**A phone number of your own.** SMS shares one instance number capped at 20 a
-day (`sms.DailyLimit`). A dedicated number is about a pound a month of real
-cost, it removes a shared reputation, and it is the clearest premium line here —
-somebody either needs their own number or does not, and they know which.
+Three services do something categorically different: they **send something to a
+person who did not ask for it**, from infrastructure every account here shares.
+A text goes out over a number whose reputation is shared. An email goes out
+under a domain whose deliverability is shared. Abuse of these does not cost
+credits, it costs the domain — and a spam complaint cannot be refunded the way
+an over-charge can.
 
-**Retention.** How far back mail, usage, stream and chat go. Cheap to build,
-real storage cost, and it is the standard axis in every product of this shape,
-which means nobody has to have it explained.
+**So the line is not tools versus not. It is what comes in versus what leaves
+the building.** Reads are never gated. What leaves is, and the reason is
+accountability rather than premium-ness.
 
-### What not to tier
+### But gating them on and off is still the wrong shape
 
-**Never the tools themselves.** The claim is one account instead of a hundred;
-a tier that withholds routes or markets makes it one account instead of a
-hundred, *unless you want the good ones*. That is the pitch destroyed to sell a
-tier, and it is the single most tempting mistake available here because it is
-so easy to implement.
+What makes abuse expensive is a card on file. Once there is no free plan, every
+subscriber has one — so "must be on Pro to send email" gates on something every
+paying account already has, and gates out the one group it should not: somebody
+paying £10 a month who wants to send twenty emails.
 
-**Not the model.** `agent_query` and `agent_query_premium` are priced 7 and 20
-because they cost different amounts. Gating the premium one behind a plan
-charges twice for the same difference.
+The axis is **volume**, which is how every provider of these sells: SendGrid,
+Twilio and Mailgun all price by sends. It is the most legible pricing in the
+industry and nobody needs it explained.
 
-**Not seats, yet.** Team accounts are a real axis and a large build touching
-auth, ownership and billing, and there is no evidence anybody has asked. Later.
+It also closes a live hole. `sms.DailyLimit` caps an account at 20 texts a day.
+**External email has no cap at all** — nothing in `service/mail` limits how many
+an account may send. Given that uncapped outbound has already been abused on
+this product once, that is not a missing feature, it is an exposure.
 
-### Where that leaves the table
+### The recommendation
 
-With scheduling, concurrency and storage, the tiers have something to say:
+Three columns, two gates, everything on it already built:
 
-| | Personal | Pro | Premium |
+| | Pay as you go | Pro — £20/mo | Scale — £100/mo |
 |---|---|---|---|
-| Credits included | 1,000 | 2,000 | 10,000 |
+| Credits | top up any amount, 1p each | 2,000 included | 10,000 included |
+| Every read tool | yes | yes | yes |
 | Agents | 1 | 5 | 25 |
-| Schedules | 1, daily | 5, hourly | 25, every 15 min |
-| Concurrent calls | 2 | 8 | 32 |
-| Storage | 1 GB | 10 GB | 100 GB |
-| Own phone number | — | — | yes |
+| Email out, per day | — | 200 | 1,000 |
+| Texts, per day | — | 25 | 100 |
+| WhatsApp replies, per day | — | 50 | 200 |
 
-Every row is something that costs us more as it goes up, that somebody can
-place themselves on before paying, and that they grow into. None of it is a
-tool withheld.
+**Pay as you go replaces the third tier rather than being a free one.** You
+still pay — top up any amount at 1p a credit — and you get the entire read
+catalogue, which is the pitch, unaltered. It is the answer to "I do not want to
+gate": nothing anybody comes here for is behind the wall. What is behind the
+wall is the ability to send things to strangers under our domain and our
+number, and that is a wall against abuse rather than against a customer.
+
+**Two tiers above it, not three.** With only credits, agents and send volume to
+sell, a third column has to invent a difference. Two columns can be told apart
+in one sentence: Pro is a person with agents, Scale is somebody running this as
+infrastructure.
+
+x402 is unchanged and orthogonal: per-call payment in USDC with no account at
+all, for the read tools. An agent with no human present still needs no signup.
+
+### A separate sending domain is not a tier, it is what makes one safe
+
+Outbound mail goes out under `MAIL_DOMAIN`, which is the root domain — the one
+the website is on. Selling send volume on top of that means selling capacity on
+the reputation of the domain people sign in to, and a bad month of agent mail
+takes the site's own delivery with it.
+
+Sending agent mail from its own subdomain, on a provider that does nothing else
+— `email.micro.mu` through SendGrid, which is Twilio, so the same vendor
+relationship SMS and WhatsApp already run on — separates the two. The root
+domain keeps password resets and receipts. The subdomain carries whatever
+agents send, and if it burns, it burns alone.
+
+This is a deliverability decision and not a pricing one: it adds no column and
+no feature. It is here because it is the precondition for the send-volume rows
+above being something we can honestly sell rather than something we hope
+nobody uses. Do it before raising any cap.
+
+### Tools, agents, services — where the money is on each rung
+
+The repository's own ladder: services are the building block, tools are derived
+from them, agents use tools. Pricing maps onto **who is calling**.
+
+| Rung | Who calls | What is charged | What a tier sells |
+|---|---|---|---|
+| **Tools** | you, or your agent running elsewhere — Claude Desktop, Cursor, your own code, x402 | per call, 1p a credit | the included credits |
+| **Agents** | agents we host, acting for you | per call, plus the agent's own model call | how many you may keep |
+| **Services** | your app, calling on behalf of whoever runs it | per call to whoever runs the app; the author keeps 90% | nothing yet — and that is correct |
+
+The third rung already works and deliberately has no tier lever. An app that
+somebody else runs bills them, not its author, so the author's plan is not what
+scales — their revenue share is, and 90% is already generous enough that
+tiering it would be taking back the thing that makes building here worthwhile.
 
 ## Getting off the ground
 
