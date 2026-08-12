@@ -67,6 +67,17 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 				u.Admin = !u.Admin
 				auth.UpdateAccount(u)
 			}
+		// Marking an account as a program rather than a person. It decides two
+		// things: an agent account is recorded but not charged (the instance is
+		// acting for itself, so there is nobody else to bill), and anything that
+		// would write to a human — a password reset, a verification mail —
+		// knows not to. Admin-only, which is what keeps "I am an agent" from
+		// being a caller's own claim to be free.
+		case "toggle_agent":
+			if u, err := auth.GetAccount(userID); err == nil {
+				u.Agent = !u.Agent
+				auth.UpdateAccount(u)
+			}
 		case "delete":
 			if userID != acc.ID {
 				auth.DeleteAccount(userID)
@@ -126,6 +137,9 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 		if u.Admin {
 			badges = append(badges, `<span style="background:#000;color:#fff;padding:1px 6px;border-radius:8px;font-size:11px">admin</span>`)
 		}
+		if u.Agent {
+			badges = append(badges, `<span style="background:#555;color:#fff;padding:1px 6px;border-radius:8px;font-size:11px">agent</span>`)
+		}
 		if u.Banned {
 			badges = append(badges, `<span style="background:#c00;color:#fff;padding:1px 6px;border-radius:8px;font-size:11px">banned</span>`)
 		}
@@ -140,6 +154,12 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 			statusHTML = `<span class="text-muted" style="font-size:12px">—</span>`
 		}
 		var actions []string
+		agentLabel, agentTitle := "Mark agent", "Mark as a program: recorded, not charged"
+		if u.Agent {
+			agentLabel, agentTitle = "Mark human", "Mark as a person: charged like any other account"
+		}
+		actions = append(actions, fmt.Sprintf(`<form method="POST" class="d-inline"><input type="hidden" name="action" value="toggle_agent"><input type="hidden" name="user_id" value="%s"><input type="hidden" name="tab" value="%s"><button type="submit" title="%s" style="font-size:12px;padding:2px 8px;border-radius:4px;border:1px solid #555;background:#fff;color:#555;cursor:pointer">%s</button></form>`,
+			u.ID, tab, agentTitle, agentLabel))
 		if u.ID != acc.ID {
 			if u.Banned {
 				actions = append(actions, fmt.Sprintf(`<form method="POST" class="d-inline"><input type="hidden" name="action" value="unban"><input type="hidden" name="user_id" value="%s"><input type="hidden" name="tab" value="%s"><button type="submit" style="font-size:12px;padding:2px 8px;border-radius:4px;border:1px solid #22c55e;background:#fff;color:#22c55e;cursor:pointer">Unban</button></form>`, u.ID, tab))

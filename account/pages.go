@@ -193,7 +193,7 @@ var SignupTemplate = `<html lang="en">
 	  <h1>Create your account</h1>
 	  <p class="auth-lede">One account, and your agents get every tool on this
 	  instance &mdash; news, web search, mail, markets, weather, storage &mdash;
-	  over a single MCP endpoint. Free to start.</p>
+	  over a single MCP server. Free to start.</p>
 	  %s
 	  %s
 	  <input id="id" name="id" placeholder="Username (4-24 chars, lowercase)" required>

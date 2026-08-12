@@ -14,14 +14,15 @@ package auth
 // /admin/usage, quota, banning and the wallet work for it without any of them
 // learning a new concept.
 //
-// Admin, because the instance's agent acts for the instance. Admins are
-// recorded but never charged (internal/quota), so its spend becomes visible
-// without a balance that can run out and silently stop the daily opinion. Giving
-// it a real budget later is a switch, not a rewrite — and it is the right switch
-// to reach for once there is a month of usage to look at.
+// Not an admin. It was, briefly, and that was the wrong instinct: what this
+// account needs is not to be *charged*, which is a billing property, and admin
+// was reached for because admins happen to be exempt. That trade granted
+// /admin/env — every secret on the instance — /admin/console and the power to
+// delete and ban, all to avoid a balance check. The exemption is now its own
+// rule in internal/quota, expressed as itself.
 //
-// Agent, because a human admin and an agent admin are not the same thing and a
-// system that cannot tell them apart will eventually mail a password reset to a
+// Agent, because a person and a program are not the same caller and a system
+// that cannot tell them apart will eventually mail a password reset to a
 // program. An admin may well be an agent one day; that is a different claim from
 // not knowing which one you are talking to.
 
@@ -68,7 +69,6 @@ func EnsureMicro() {
 		Name:     "Micro",
 		Secret:   hex.EncodeToString(secret),
 		Created:  time.Now(),
-		Admin:    true,
 		Agent:    true,
 		Approved: true,
 	}

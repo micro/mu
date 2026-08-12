@@ -37,7 +37,12 @@ func TestMicroWaitsForAHuman(t *testing.T) {
 	}
 }
 
-func TestMicroIsAnAdminAndAnAgent(t *testing.T) {
+// TestMicroIsAnAgentAndNotAnAdmin — it was an admin, briefly, to get the
+// billing exemption that admins happen to carry. That granted /admin/env, the
+// console and the power to ban, to avoid a balance check. The exemption is now
+// its own rule in internal/quota and this account has no more privilege than it
+// needs.
+func TestMicroIsAnAgentAndNotAnAdmin(t *testing.T) {
 	withAccounts(t, map[string]*Account{
 		"asim": {ID: "asim", Name: "Asim", Admin: true, Created: time.Now()},
 	})
@@ -47,8 +52,9 @@ func TestMicroIsAnAdminAndAnAgent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Micro was not created once a human admin existed: %v", err)
 	}
-	if !acc.Admin {
-		t.Error("Micro is not an admin — it acts for the instance")
+	if acc.Admin {
+		t.Error("Micro is an admin — that is /admin/env, the console and the " +
+			"power to ban, granted to a program to avoid a balance check")
 	}
 	if !acc.Agent {
 		t.Error("Micro is not marked as an agent — a system that cannot tell a " +

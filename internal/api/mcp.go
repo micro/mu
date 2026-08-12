@@ -347,10 +347,15 @@ func ExecuteToolAs(accountID, name string, args map[string]any) (string, bool, e
 		return text, err != nil, err
 	}
 
-	sess, err := auth.CreateSession(accountID)
+	// An internal session: in memory, gone when this call returns. CreateSession
+	// wrote one to disk per tool call and never removed it, so every Discord
+	// command and every agent step left a permanent, working credential in
+	// sessions.json — and rewrote the file to add it.
+	sess, err := auth.InternalSession(accountID)
 	if err != nil {
 		return "", true, fmt.Errorf("failed to create session: %v", err)
 	}
+	defer auth.EndSession(sess.Token)
 
 	req, _ := http.NewRequest("POST", "/", nil)
 	req.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})

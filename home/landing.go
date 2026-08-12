@@ -46,13 +46,13 @@ your own agent, an email address it answers on, and the endpoint your own client
 
 <div class="lctas">
   <a class="lcta" href="/tools">Browse the tools →</a>
-  <a class="lcta lcta-alt" href="/mcp">MCP endpoint</a>
+  <a class="lcta lcta-alt" href="/mcp">MCP server</a>
 </div>
 
 <div class="lcards">
-  <div class="lcard"><h3>Real world access</h3><p>The news, the markets, the weather, the web, your mail — the things happening outside a model's training data. And run here, not proxied: this instance is the mail server, the feed aggregator, the search index and the sandbox.</p></div>
-  <div class="lcard"><h3>One endpoint, not nine</h3><p>News, search, mail and storage for an agent usually means wiring up a server for each. This is one connection and one set of credentials.</p></div>
-  <div class="lcard"><h3>Run anywhere</h3><p>Build an agent here and this instance runs it, or point your own at the endpoint and run it wherever you like — same tools either way. And it is one Go binary: self-host it and anyone paying to call your tools pays you.</p></div>
+  <div class="lcard"><h3>Real world access</h3><p>News, markets, weather, the web, your mail — what is happening outside a model's training data. Run here rather than proxied: this instance is the mail server and the search index.</p></div>
+  <div class="lcard"><h3>One server, not nine</h3><p>News, search, mail and storage for an agent usually means a provider each: a signup, a card and a key apiece. Here it is one connection, one balance, one thing to rotate.</p></div>
+  <div class="lcard"><h3>Run anywhere</h3><p>Build an agent here and this instance runs it, or point your own at the endpoint — same tools either way. One Go binary, so self-host it and anyone calling your tools pays you.</p></div>
 </div>
 
 <div class="lpay" id="connecting">

@@ -138,6 +138,20 @@ func CheckQuota(userID string, operation string) (bool, bool, int, error) {
 		return true, false, 0, nil
 	}
 
+	// An agent account is the instance acting for itself, so there is nobody
+	// else to bill: the operator is already paying for the instance that runs
+	// it. Its calls are recorded like everyone's — the point is that its spend
+	// is visible in /usage, not that it is invisible.
+	//
+	// This used to be got by making the agent an admin, which is exempt for its
+	// own reasons. That granted /admin/env, the console and the power to ban, to
+	// avoid a balance check. Only an admin can set the flag (see /admin/users),
+	// so it is the operator deciding what the instance pays for on its own
+	// behalf, not a caller declaring itself free.
+	if acc.Agent {
+		return true, false, 0, nil
+	}
+
 	// If nothing can be charged, nothing is metered (self-hosted instance)
 	if !Charging() {
 		return true, false, 0, nil
@@ -174,6 +188,14 @@ func ConsumeWith(userID, operation string, meta map[string]interface{}) error {
 
 	// Admins get unlimited access but usage is tracked
 	if acc.Admin {
+		record(userID, operation)
+		return nil
+	}
+
+	// An agent account is the instance acting for itself: recorded, not charged.
+	// See CheckQuota for why this is its own rule rather than borrowed from
+	// admin.
+	if acc.Agent {
 		record(userID, operation)
 		return nil
 	}

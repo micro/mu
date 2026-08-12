@@ -207,7 +207,7 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	sb.WriteString(`<button type="submit">Generate Token</button></form>`)
 	sb.WriteString(tokenScopeCSS)
 
-	sb.WriteString(`<p style="margin-top:20px"><a href="/account">← Account</a> · <a href="/mcp">MCP endpoint</a></p>`)
+	sb.WriteString(`<p style="margin-top:20px"><a href="/account">← Account</a> · <a href="/mcp">MCP server</a></p>`)
 
 	sb.WriteString(`<script>
 async function createToken(e) {
