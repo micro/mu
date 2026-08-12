@@ -422,17 +422,37 @@ func runCommand(cmd string) string {
 		}
 		return sb.String()
 
+	// credit — topping somebody up by hand. The only way to put credits into an
+	// account without a card, so it is what an operator reaches for to comp
+	// somebody, refund a bad call, or fund a test account.
+	//
+	// It took a user id and nothing else, while move beside it takes usernames.
+	// An operator with a username in front of them had to go and look the id up,
+	// and an id typed slightly wrong silently credited nobody: AddCredits
+	// creates a wallet for whatever string it is handed, so the credits landed
+	// in an account that does not exist and the command said "Added 500 credits
+	// to asmi". Either form works now, and a name that resolves to nothing is
+	// refused rather than banked.
 	case "credit":
 		if arg(1) == "" || arg(2) == "" {
-			return "usage: credit <user_id> <amount>"
+			return "usage: credit <username|id> <amount>"
 		}
 		var amount int
 		fmt.Sscanf(arg(2), "%d", &amount)
 		if amount <= 0 {
 			return "Amount must be positive"
 		}
-		wallet.AddCredits(arg(1), amount, "admin_grant", nil)
-		return fmt.Sprintf("Added %d credits to %s", amount, arg(1))
+		acc, err := auth.AccountByUsername(arg(1))
+		if err != nil {
+			if acc, err = auth.GetAccount(arg(1)); err != nil {
+				return "No account called " + arg(1) + " — try users to list them"
+			}
+		}
+		if err := wallet.AddCredits(acc.ID, amount, "admin_grant", nil); err != nil {
+			return "Failed: " + err.Error()
+		}
+		return fmt.Sprintf("Added %d credits to %s (%s) — balance now %d",
+			amount, acc.Name, acc.ID, wallet.GetWallet(acc.ID).Balance)
 
 	// move — the one an operator actually reaches for, and the one that was
 	// missing.
@@ -539,7 +559,7 @@ func runCommand(cmd string) string {
 		return strings.Join(data.DeleteTypes(), ", ")
 
 	case "help":
-		return `Users:    users · user <id> · credit <id> <amount>
+		return `Users:    users · user <id> · credit <username|id> <amount>
 Wallet:   wallet <id> · move <from> <to> <amount>
 Apps:     apps · app <slug>
 Content:  search <query> · delete <type> <id> · flags

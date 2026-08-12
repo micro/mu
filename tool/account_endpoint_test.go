@@ -65,7 +65,7 @@ func TestAnAccountEndpointOnAnOpenServiceIsBoundToItsCaller(t *testing.T) {
 	if !ok {
 		t.Fatal("the read tool was not derived")
 	}
-	if read.HandleAuth != nil {
+	if read.HandleAuth != nil || read.HandleCall != nil {
 		t.Error("an open read was registered as auth-only, which puts an account behind news and weather")
 	}
 
@@ -73,7 +73,7 @@ func TestAnAccountEndpointOnAnOpenServiceIsBoundToItsCaller(t *testing.T) {
 	if !ok {
 		t.Fatal("the write tool was not derived")
 	}
-	if write.HandleAuth == nil {
+	if write.HandleAuth == nil && write.HandleCall == nil {
 		t.Error("a method declaring Account was registered with a hard-coded empty caller, " +
 			"so it will refuse every call it receives")
 	}

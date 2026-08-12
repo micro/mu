@@ -193,7 +193,11 @@ func registerDerived(spec service.Spec, method string, ep service.Endpoint, name
 
 	t := derivedTool(spec, ep, name, reqType)
 
-	call := func(args map[string]any, accountID string) (string, error) {
+	// The context comes from the door rather than being made here. It was
+	// context.Background(), which threw away everything the door knew before the
+	// call had even started — including the caller's own request id, which is
+	// the only thing that can tell a retry of a slow call from a second call.
+	call := func(base context.Context, args map[string]any, accountID string) (string, error) {
 		// Through JSON so the argument map lands in the request struct by the
 		// same tags everything else reads.
 		raw, err := json.Marshal(args)
@@ -206,7 +210,10 @@ func registerDerived(spec service.Spec, method string, ep service.Endpoint, name
 		}
 
 		rsp := map[string]any{}
-		ctx := service.WithAccount(context.Background(), accountID)
+		if base == nil {
+			base = context.Background()
+		}
+		ctx := service.WithAccount(base, accountID)
 		if err := service.Call(ctx, svc, endpoint, req, &rsp); err != nil {
 			return "", err
 		}
@@ -221,12 +228,35 @@ func registerDerived(spec service.Spec, method string, ep service.Endpoint, name
 	// discussion anyone may read — and that is Endpoint.Account. Without it the
 	// tool was registered with a hard-coded empty account, so the handler read
 	// no caller and refused its own call.
-	if spec.Scoped || ep.Account || ep.OptionalAuth {
-		api.RegisterToolWithAuth(t, call)
+	//
+	// **A price is the fourth reason, and it was missing.** An endpoint that
+	// costs something is billed by the gateway to the account on the call, and
+	// the gateway can only bill somebody it has been told about — so a priced
+	// tool dispatched with a hard-coded empty account is free, whatever its Spec
+	// says. Ten were: news_search, places_search, places_nearby, prayer_search,
+	// routes_eta, routes_directions, routes_nearest, weather_forecast,
+	// web_search and web_fetch. Every one of them went out unbilled through the
+	// tool door while the matching page charged for the same work, which is what
+	// the live instance showed when two web_search calls moved a balance from
+	// 75 to 75.
+	//
+	// Landing the gateway did not fix that and could not have. The gateway was
+	// never the part that was missing; the identity was, three layers above it.
+	//
+	// Guests are still served. A price binds the caller when there is one rather
+	// than demanding one — a priced call with nobody behind it is x402's
+	// business, or the door's, not this function's. The other three reasons are
+	// each a reason an account is *required*, so they are left alone.
+	if spec.Scoped || ep.Account || ep.OptionalAuth || ep.Cost != "" {
+		if !spec.Scoped && !ep.Account && !ep.AccountOnly {
+			t.OptionalAuth = true
+		}
+		api.RegisterToolWithCall(t, call)
 		return
 	}
-	t.Handle = func(args map[string]any) (string, error) { return call(args, "") }
-	api.RegisterTool(t)
+	api.RegisterToolOpen(t, func(ctx context.Context, args map[string]any) (string, error) {
+		return call(ctx, args, "")
+	})
 }
 
 // renderResponse prefers the one text field a response carries, because that is

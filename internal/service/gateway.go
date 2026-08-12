@@ -67,7 +67,10 @@ var Gate struct {
 // says what this service's methods cost, and it does not change after Register.
 func gateway(spec Spec) server.HandlerWrapper {
 	return func(next server.HandlerFunc) server.HandlerFunc {
-		return func(ctx context.Context, req server.Request, rsp interface{}) error {
+		// retErr is named so the deferred finish below records what this call
+		// actually returned — everybody waiting on it as a duplicate gets the
+		// same answer, including the same failure.
+		return func(ctx context.Context, req server.Request, rsp interface{}) (retErr error) {
 			op := spec.Operation(methodName(req.Method()))
 			if op == "" || Gate.Allow == nil {
 				// Free, or nothing here can charge. Straight through — and
@@ -85,12 +88,36 @@ func gateway(spec Spec) server.HandlerWrapper {
 				return next(ctx, req, rsp)
 			}
 
+			// Is this a request we are already answering? A slow endpoint gets
+			// retried by proxies and clients that believe the first attempt was
+			// lost, and every one of those arrivals is one request — so it is
+			// answered once and charged once. See dedupe.go.
+			key, explicit := dedupeKey(ctx, who, op, req.Body())
+			if key != "" {
+				if first, mine := claim(key, explicit); !mine {
+					<-first.done
+					if first.err != nil {
+						return first.err
+					}
+					if replay(rsp, first.rsp) {
+						return nil
+					}
+					// Could not hand back the first answer, so this has to be a
+					// real call after all: fall through, run, and charge.
+					key = ""
+				} else {
+					defer func() { finish(key, first, rsp, retErr) }()
+				}
+			}
+
 			charge, err := Gate.Allow(who, op)
 			if err != nil {
-				return err
+				retErr = err
+				return retErr
 			}
 			if err := next(ctx, req, rsp); err != nil {
-				return err
+				retErr = err
+				return retErr
 			}
 			// Charged after the fact, so a call that failed is not billed. The
 			// provider may still have cost us; charging for a failure loses an

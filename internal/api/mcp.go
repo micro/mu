@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -127,6 +128,15 @@ type Tool struct {
 	RESTOnly   bool                                         `json:"-"`
 	Handle     func(map[string]any) (string, error)         `json:"-"` // Optional direct handler (bypasses HTTP dispatch)
 	HandleAuth func(map[string]any, string) (string, error) `json:"-"` // Like Handle but receives the account ID
+	// HandleCall is HandleAuth with the call's context, and is preferred over it
+	// when set. The context is what carries anything addressed to the gateway
+	// rather than to the handler — today that is the caller's request id, which
+	// is how a retry of a slow call is told apart from a second call. A door
+	// with nothing to say leaves it empty and nothing changes.
+	HandleCall func(context.Context, map[string]any, string) (string, error) `json:"-"`
+	// HandleOpen is Handle with the call's context, for a tool that asks nobody
+	// who is calling.
+	HandleOpen func(context.Context, map[string]any) (string, error) `json:"-"`
 	// OptionalAuth runs HandleAuth with an empty account rather than refusing
 	// when there is no caller. For a tool that answers anyone but answers a
 	// signed-in caller with more — index_search returns public content to a
@@ -278,6 +288,45 @@ func RegisterTool(t Tool) {
 func RegisterToolWithAuth(t Tool, handler func(map[string]any, string) (string, error)) {
 	t.HandleAuth = handler
 	tools = append(tools, t)
+}
+
+// RegisterToolWithCall adds a tool that receives the call's context as well as
+// the authenticated account ID. See Tool.HandleCall.
+func RegisterToolWithCall(t Tool, handler func(context.Context, map[string]any, string) (string, error)) {
+	t.HandleCall = handler
+	tools = append(tools, t)
+}
+
+// RegisterToolOpen adds a tool anybody may call, with the call's context. Like
+// RegisterTool, and unlike RegisterToolWithCall, it never asks who is calling.
+func RegisterToolOpen(t Tool, handler func(context.Context, map[string]any) (string, error)) {
+	t.HandleOpen = handler
+	tools = append(tools, t)
+}
+
+// idempotencyHeaders are the names a caller can use to say "this is a retry of
+// a request I already sent, not a second one".
+//
+// Only an explicit header counts. The JSON-RPC id on the envelope is the
+// obvious candidate and is deliberately not used: clients are free to number
+// their requests however they like, and one that reuses id 1 for everything
+// would have every call of an operation collapsed into the first. A header a
+// caller had to go and set is a promise; a field they get for free is not.
+var idempotencyHeaders = []string{"Idempotency-Key", "X-Idempotency-Key", "X-Request-Id"}
+
+// callContext is the context a tool handler runs under, carrying whatever this
+// door knows that the gateway needs. Never nil.
+func callContext(r *http.Request) context.Context {
+	if r == nil {
+		return context.Background()
+	}
+	ctx := r.Context()
+	for _, h := range idempotencyHeaders {
+		if v := strings.TrimSpace(r.Header.Get(h)); v != "" {
+			return service.WithRequest(ctx, v)
+		}
+	}
+	return ctx
 }
 
 // ToolDescriptions returns a simple "- name: description" list of all tools,
@@ -563,7 +612,7 @@ func ExecuteTool(r *http.Request, name string, args map[string]any) (string, boo
 		}
 	}
 
-	if tool.HandleAuth != nil {
+	if tool.HandleCall != nil || tool.HandleAuth != nil {
 		// Auth-bound tools must never run without a server-validated identity.
 		// There are two: a session, and a wallet that has paid for this request.
 		// Both are server-validated — a session by the cookie or token, a wallet
@@ -576,7 +625,16 @@ func ExecuteTool(r *http.Request, name string, args map[string]any) (string, boo
 			}
 			caller = "" // answer as a guest
 		}
+		if tool.HandleCall != nil {
+			text, err := tool.HandleCall(callContext(r), args, caller)
+			return text, err != nil, err
+		}
 		text, err := tool.HandleAuth(args, caller)
+		return text, err != nil, err
+	}
+
+	if tool.HandleOpen != nil {
+		text, err := tool.HandleOpen(callContext(r), args)
 		return text, err != nil, err
 	}
 
