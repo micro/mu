@@ -4,6 +4,8 @@
 files, contacts, calendar and your own documents, as tools an agent can call over MCP
 and REST — behind one account instead of many providers.
 
+## Live
+
 Use it live at [micro.mu](https://micro.mu), or run your own.
 
 ## Install
