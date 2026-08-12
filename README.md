@@ -121,9 +121,7 @@ Here are the tools
 | **Weather** | `weather_forecast` — conditions, forecast, pollen |
 | **WhatsApp** | `whatsapp_send` · `whatsapp_history` · `whatsapp_open` — reply to people on WhatsApp. Only within 24 hours of their message, which is WhatsApp's rule and not ours: `whatsapp_open` says who can be written to and until when |
 
-## Request a tool
-
-[Open an issue](https://github.com/micro/mu/issues/new?labels=enhancement&title=Tool%20request%3A%20&body=What%20should%20it%20do%3F%0A%0AWhat%20would%20you%20use%20it%20for%3F%0A) and say what it should do.
+[Open an issue](https://github.com/micro/mu/issues/new?labels=enhancement&title=Tool%20request%3A%20&body=What%20should%20it%20do%3F%0A%0AWhat%20would%20you%20use%20it%20for%3F%0A) to request a tool.
 
 ## The app
 
