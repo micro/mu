@@ -42,6 +42,7 @@ import (
 	"mu/service/blog"
 	"mu/service/contacts"
 	"mu/service/docs"
+	"mu/service/email"
 	"mu/service/events"
 	"mu/service/files"
 	"mu/service/images"
@@ -543,6 +544,7 @@ func wireHooks() {
 		images.DeleteAll,
 		docs.DeleteAll,
 		sms.DeleteAll,
+		email.DeleteAll,
 		whatsappsvc.DeleteAll,
 	)
 

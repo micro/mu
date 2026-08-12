@@ -17,6 +17,7 @@ import (
 	"mu/service/chat"
 	"mu/service/contacts"
 	"mu/service/docs"
+	"mu/service/email"
 	"mu/service/events"
 	"mu/service/files"
 	"mu/service/flights"
@@ -85,6 +86,7 @@ func boot() {
 	notes.LoadService()
 	sms.LoadService()
 	whatsappsvc.LoadService()
+	email.Load()
 	images.Load()
 	// The cache behind /img, which serves article images from here instead of
 	// from four publisher CDNs. See internal/imageproxy.

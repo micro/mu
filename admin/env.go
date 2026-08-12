@@ -82,6 +82,16 @@ var settingGroups = []settingGroup{
 		"SMS_KNOWN_ONLY",
 		"SMS_VERIFY_INBOUND",
 	}},
+	// Email that leaves the instance, which is a different thing from the
+	// mailbox — see service/email. /email names all of these and sends an
+	// operator here, so they have to be here.
+	{"Email — sending out", []string{
+		"SENDGRID_API_KEY",
+		"EMAIL_DOMAIN",
+		"EMAIL_REPLY_DOMAIN",
+		"EMAIL_DAILY_LIMIT",
+		"EMAIL_NEW_ACCOUNT_LIMIT",
+	}},
 	{"Sign-in", []string{
 		"GOOGLE_CLIENT_ID",
 		"GOOGLE_CLIENT_SECRET",
