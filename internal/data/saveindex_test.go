@@ -26,14 +26,14 @@ import (
 // a wait, and resets the shared save state so one test cannot silence the next.
 func quickDebounce(t *testing.T) {
 	t.Helper()
+	saveMutex.Lock()
 	orig := saveDebounce
 	saveDebounce = 50 * time.Millisecond
-	saveMutex.Lock()
 	savePending = false
 	saveMutex.Unlock()
 	t.Cleanup(func() {
-		saveDebounce = orig
 		saveMutex.Lock()
+		saveDebounce = orig
 		savePending = false
 		saveMutex.Unlock()
 	})
@@ -44,8 +44,14 @@ func quickDebounce(t *testing.T) {
 func start(t *testing.T) chan struct{} {
 	t.Helper()
 	resolved := make(chan struct{})
+	saveMutex.Lock()
 	saveQueued = func() { close(resolved) }
-	t.Cleanup(func() { saveQueued = nil })
+	saveMutex.Unlock()
+	t.Cleanup(func() {
+		saveMutex.Lock()
+		saveQueued = nil
+		saveMutex.Unlock()
+	})
 
 	done := make(chan struct{})
 	go func() { saveIndex(); close(done) }()

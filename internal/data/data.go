@@ -528,10 +528,17 @@ func ClearIndex() {
 
 // saveDebounce is how long a save waits to batch further updates. A variable so
 // a test need not spend a real second proving where a write lands.
+//
+// Read and written under saveMutex, which costs nothing here and is not
+// optional: a save is a goroutine that outlives the call that started it, so a
+// test setting this while a previous test's save is still sleeping on it is a
+// real race and the detector says so. Under -race the whole package failed on
+// it, in a test that passed on its own.
 var saveDebounce = time.Second
 
 // saveQueued is called once a save has decided where it is going and before it
-// waits. Nil in normal operation, and a nil check is its whole cost.
+// waits. Nil in normal operation, and a nil check is its whole cost. Same lock,
+// for the same reason.
 //
 // It exists because the property worth testing here — that the destination is
 // fixed at queue time rather than at write time — is only observable in the gap
@@ -563,17 +570,21 @@ func saveIndex() {
 		return
 	}
 	savePending = true
+	// Taken now, with the lock already held, so this goroutine sleeps on the
+	// value that was current when it was queued rather than one a later caller
+	// installs while it waits.
+	debounce, queued := saveDebounce, saveQueued
 	saveMutex.Unlock()
 
 	// Where this is going is decided now, while the caller's data directory is
 	// still the current one.
 	file, err := dataPath("index.json")
-	if saveQueued != nil {
-		saveQueued()
+	if queued != nil {
+		queued()
 	}
 
 	// Wait a bit to batch multiple index updates
-	time.Sleep(saveDebounce)
+	time.Sleep(debounce)
 
 	if err == nil {
 		// Marshalled under the read lock, written outside it: the disk write
