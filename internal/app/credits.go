@@ -209,7 +209,7 @@ func connectBannerFor(acc *auth.Account, path string) string {
 
 	tools := ""
 	if ToolCountFunc != nil {
-		tools = fmt.Sprintf(" All %d of them, on one endpoint.", ToolCountFunc())
+		tools = fmt.Sprintf(" All %d of them, on one server.", ToolCountFunc())
 	}
 	return `<div class="credits-banner connect-banner">
 <strong>Connect your agent.</strong>

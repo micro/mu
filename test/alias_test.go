@@ -51,13 +51,17 @@ var legacy = map[string]string{
 	"cache_get":     "notes_get",
 	"cache_list":    "notes_list",
 	"cache_delete":  "notes_delete",
-	// db became docs: named collections of documents, not a database.
-	"db_create": "docs_create",
-	"db_set":    "docs_create",
-	"db_get":    "docs_get",
-	"db_list":   "docs_list",
-	"db_delete": "docs_delete",
-	"reminder":  "prayer_reflection",
+	// db_* is deliberately absent, and is the one retirement in this file that
+	// was not a rename.
+	//
+	// db became docs, and docs was still a database: docs_create took a
+	// collection name and a bag of JSON. Documents are a title and a body now,
+	// so docs_write is not docs_create under a new name — it takes different
+	// arguments and means a different thing, and an alias would point an old
+	// caller at a tool that cannot do what they are asking. Nothing was stored
+	// through the old shape on any instance we know of, which is why this could
+	// be a break rather than a bridge.
+	"reminder": "prayer_reflection",
 	// sms_inbox returned both directions, which is not what an inbox is.
 	"sms_inbox": "sms_history",
 	// The content verbs became a service — user.Save, user.Hide and the rest —

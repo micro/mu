@@ -2,12 +2,15 @@ package docs
 
 // The page can do what the tools can do.
 //
-// It shipped as a viewer, on the argument that records are written by an agent
-// and a form here would be a fourth way to do the same thing. But two doors onto
-// one service is the shape of the whole product — an agent calls the tool, a
-// person opens the page — and a store you cannot correct by hand is one where
-// the only remedy for a bad write is to write another agent. These tests hold
-// the four verbs in place so the page cannot quietly become read-only again.
+// Two doors onto one service is the shape of the whole product — an agent calls
+// the tool, a person opens the page — and a store you cannot correct by hand is
+// one where the only remedy for a bad write is to write another agent. These
+// tests hold the four verbs in place so the page cannot quietly become
+// read-only.
+//
+// What they no longer hold is JSON. The page used to ask a person to type a
+// record; now it asks for a title and a body, which is what it should have asked
+// for all along.
 
 import (
 	"encoding/json"
@@ -18,7 +21,6 @@ import (
 	"testing"
 
 	"mu/internal/auth"
-	"mu/internal/userdb"
 )
 
 // signedIn returns a request carrying a real session for owner, plus the CSRF
@@ -51,137 +53,109 @@ func post(t *testing.T, owner string, form url.Values) string {
 	w := httptest.NewRecorder()
 	Handler(w, signedIn(t, owner, "POST", "/docs", form))
 	if w.Code != http.StatusSeeOther {
-		t.Fatalf("expected a redirect after a write, got %d: %s", w.Code, w.Body.String())
+		t.Fatalf("expected a redirect after a write, got %d", w.Code)
 	}
 	return w.Header().Get("Location")
 }
 
-// records reads a collection back through the page's own JSON view, so the test
-// asserts what a reader would actually be shown rather than what the store holds.
-func records(t *testing.T, owner, collection string) []userdb.Record {
+// shown reads the caller's documents back through the page's own JSON view, so
+// the test asserts what a reader would be given rather than what the store holds.
+func shown(t *testing.T, owner string) []*Doc {
 	t.Helper()
-	r := signedIn(t, owner, "GET", "/docs?collection="+collection, nil)
+	r := signedIn(t, owner, "GET", "/docs", nil)
 	r.Header.Set("Accept", "application/json")
 	w := httptest.NewRecorder()
 	Handler(w, r)
 	var out struct {
-		Records []userdb.Record `json:"records"`
+		Docs []*Doc `json:"docs"`
 	}
 	if err := json.Unmarshal(w.Body.Bytes(), &out); err != nil {
-		t.Fatalf("reading %s back: %v (%s)", collection, err, w.Body.String())
+		t.Fatalf("reading documents back: %v (%s)", err, w.Body.String())
 	}
-	return out.Records
+	return out.Docs
 }
 
-func TestThePageCreatesReadsEditsAndDeletes(t *testing.T) {
-	const owner = "page-crud"
+func TestThePageWritesReadsEditsAndDeletes(t *testing.T) {
+	const owner = "page-user"
 
-	// Create — and with it the collection, which has no separate existence.
-	if loc := post(t, owner, url.Values{
-		"action": {"save"}, "collection": {"leads"},
-		"data": {`{"name":"Sam","stage":"contacted"}`},
-	}); loc != "/docs?collection=leads" {
-		t.Fatalf("expected to land on the collection, got %q", loc)
-	}
-
-	got := records(t, owner, "leads")
-	if len(got) != 1 || got[0].Data["name"] != "Sam" {
-		t.Fatalf("expected the record just written, got %+v", got)
-	}
-	id := got[0].ID
-
-	// Edit — the same form with an id, which is what docs_create does with an id.
-	post(t, owner, url.Values{
-		"action": {"save"}, "collection": {"leads"}, "id": {id},
-		"data": {`{"name":"Sam","stage":"closed"}`}, "public": {"1"},
+	loc := post(t, owner, url.Values{
+		"title":   {"A plan"},
+		"content": {"# A plan\n\nStep one."},
 	})
-	got = records(t, owner, "leads")
-	if len(got) != 1 {
-		t.Fatalf("an edit created a second record: %+v", got)
+	if !strings.Contains(loc, "/docs?id=") {
+		t.Fatalf("after writing, went to %q — expected the new document", loc)
 	}
-	if got[0].Data["stage"] != "closed" || !got[0].Public {
-		t.Fatalf("the edit did not take: %+v", got[0])
+	docs := shown(t, owner)
+	if len(docs) != 1 || docs[0].Title != "A plan" {
+		t.Fatalf("the page shows %d documents: %+v", len(docs), docs)
 	}
+	id := docs[0].ID
 
-	// Delete.
-	post(t, owner, url.Values{"action": {"delete"}, "collection": {"leads"}, "id": {id}})
-	if got = records(t, owner, "leads"); len(got) != 0 {
-		t.Fatalf("expected the record gone, got %+v", got)
-	}
-}
-
-// The query controls are docs_list's arguments, so they have to behave like them.
-func TestThePageQueriesLikeDbList(t *testing.T) {
-	const owner = "page-query"
-	for _, rec := range []string{
-		`{"name":"Sam","priority":2}`,
-		`{"name":"Alex","priority":5}`,
-		`{"name":"Jo","priority":9}`,
-	} {
-		post(t, owner, url.Values{"action": {"save"}, "collection": {"q"}, "data": {rec}})
-	}
-
-	ask := func(qs string) []userdb.Record {
-		r := signedIn(t, owner, "GET", "/docs?collection=q&"+qs, nil)
-		r.Header.Set("Accept", "application/json")
-		w := httptest.NewRecorder()
-		Handler(w, r)
-		var out struct {
-			Records []userdb.Record `json:"records"`
-		}
-		_ = json.Unmarshal(w.Body.Bytes(), &out)
-		return out.Records
-	}
-
-	if got := ask(`where=` + url.QueryEscape(`{"name":"Alex"}`)); len(got) != 1 {
-		t.Fatalf("an equality filter returned %d records", len(got))
-	}
-	if got := ask(`where=` + url.QueryEscape(`{"priority":{"gte":5}}`)); len(got) != 2 {
-		t.Fatalf("an operator filter returned %d records", len(got))
-	}
-	if got := ask(`limit=1`); len(got) != 1 {
-		t.Fatalf("limit returned %d records", len(got))
-	}
-	got := ask(`sort=priority&order=asc`)
-	if len(got) != 3 || got[0].Data["name"] != "Sam" {
-		t.Fatalf("sort did not order ascending: %+v", got)
-	}
-
-	// A filter that is not JSON must not read as an empty collection. Showing
-	// nothing and saying nothing is the failure mode that would send someone
-	// looking for lost data.
-	if got := ask(`where=` + url.QueryEscape(`{nope`)); len(got) != 3 {
-		t.Fatalf("a malformed filter hid records: got %d, want all 3", len(got))
-	}
-}
-
-// The page is not a way around ownership. It writes through the same userdb
-// calls with the session's account as the owner, which is what the tools do.
-func TestThePageCannotTouchSomebodyElsesRecords(t *testing.T) {
-	const mine, theirs = "page-owner", "page-stranger"
-	post(t, mine, url.Values{"action": {"save"}, "collection": {"private"}, "data": {`{"secret":"mine"}`}})
-	id := records(t, mine, "private")[0].ID
-
+	// Reading renders the body rather than showing the raw markdown.
 	w := httptest.NewRecorder()
-	Handler(w, signedIn(t, theirs, "POST", "/docs",
-		url.Values{"action": {"delete"}, "collection": {"private"}, "id": {id}}))
-	if loc := w.Header().Get("Location"); !strings.Contains(loc, "error=") {
-		t.Fatalf("a stranger's delete was not refused, redirected to %q", loc)
+	Handler(w, signedIn(t, owner, "GET", "/docs?id="+id, nil))
+	if body := w.Body.String(); !strings.Contains(body, "Step one.") {
+		t.Error("the document's body is not on its page")
 	}
-	if got := records(t, mine, "private"); len(got) != 1 {
-		t.Fatal("a stranger deleted a record they do not own")
+
+	// Editing keeps one document.
+	post(t, owner, url.Values{"id": {id}, "title": {"A plan"}, "content": {"Step two."}})
+	docs = shown(t, owner)
+	if len(docs) != 1 {
+		t.Fatalf("editing left %d documents", len(docs))
 	}
-	if got := records(t, theirs, "private"); len(got) != 0 {
-		t.Fatalf("a stranger can read a private collection: %+v", got)
+	if docs[0].Content != "Step two." {
+		t.Errorf("the edit did not stick: %q", docs[0].Content)
+	}
+
+	post(t, owner, url.Values{"delete": {id}})
+	if got := shown(t, owner); len(got) != 0 {
+		t.Errorf("%d documents survived deletion", len(got))
 	}
 }
 
-// A signed-out visitor gets nothing, and gets told to sign in rather than
-// silently seeing an empty database.
+// TestABadWriteKeepsWhatWasTyped — losing a document to a validation message is
+// worse than the mistake that caused it.
+func TestABadWriteKeepsWhatWasTyped(t *testing.T) {
+	const owner = "careless"
+	w := httptest.NewRecorder()
+	Handler(w, signedIn(t, owner, "POST", "/docs", url.Values{
+		"title":   {""},
+		"content": {"an hour of writing"},
+	}))
+	body := w.Body.String()
+	if w.Code != http.StatusOK {
+		t.Fatalf("a bad write returned %d", w.Code)
+	}
+	if !strings.Contains(body, "needs a title") {
+		t.Error("the page did not say what was wrong")
+	}
+	if !strings.Contains(body, "an hour of writing") {
+		t.Error("the page threw away what had been typed")
+	}
+}
+
+func TestThePageCannotTouchSomebodyElsesDocuments(t *testing.T) {
+	loc := post(t, "owner-a", url.Values{"title": {"Private"}, "content": {"mine"}})
+	id := strings.TrimPrefix(loc, "/docs?id=")
+
+	// Another account deleting by id must not work.
+	post(t, "owner-b", url.Values{"delete": {id}})
+	if got := shown(t, "owner-a"); len(got) != 1 {
+		t.Fatal("another account deleted this document")
+	}
+	// Nor reading it.
+	w := httptest.NewRecorder()
+	Handler(w, signedIn(t, "owner-b", "GET", "/docs?id="+id, nil))
+	if strings.Contains(w.Body.String(), "mine") {
+		t.Error("another account can read this document's body")
+	}
+}
+
 func TestThePageRefusesAGuest(t *testing.T) {
 	w := httptest.NewRecorder()
 	Handler(w, httptest.NewRequest("GET", "/docs", nil))
-	if w.Code != http.StatusUnauthorized {
-		t.Fatalf("expected a guest to be refused, got %d", w.Code)
+	if w.Code != http.StatusSeeOther && w.Code != http.StatusFound {
+		t.Errorf("a guest got %d rather than a redirect to sign in", w.Code)
 	}
 }

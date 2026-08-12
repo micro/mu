@@ -289,9 +289,14 @@ signed-in user) and a **public** flag, so one app can hold each user's private
 data plus a shared public set. This is the building block for real apps — notes,
 lists, posts, trackers — where "mine" and "public" both matter.
 
-An agent gets the same shape through the `docs_*` tools and the `/docs` page, in a
-separate store: each app has its own namespace, so what an app writes here is
-not what `docs_create` writes and the other way round. A record published with
+This is the record store, and it has no page and no tools of its own — "a
+database" is not a kind of thing a person makes, it is how all the kinds are
+stored. `service/docs` used to expose it directly, which is why writing a
+document meant typing JSON into a form; Docs is now documents (a title and a
+markdown body) and this stays underneath, reached by apps as `mu.db`.
+
+Each app has its own namespace, so what one app writes is not what another
+reads, and neither is what the caller's documents hold. A record published with
 `public: true` is the only thing both sides see.
 
 ```javascript
@@ -321,10 +326,10 @@ Scoping rules (enforced server-side):
 `list` options: `scope` (`mine`|`public`|`all`), `where` (filter on data fields),
 `sort` (a data field), `order` (`asc`|`desc`), `limit`.
 
-The same store is reachable outside apps: agents can use the `docs_create` / `docs_get`
-/ `docs_list` / `docs_delete` tools over MCP and REST (see [MCP docs](MCP.md)). Owner
-scoping and the private/public model are identical; an app's data and a user's
-API data live in separate namespaces.
+Owner scoping and the private/public model are the same wherever this store is
+used. `service/docs` builds on it — a document is a record with a title and a
+body — but its tools are `docs_write` / `docs_read` / `docs_list` /
+`docs_delete`, which speak documents rather than records.
 
 `where` matches a scalar for equality, or an operator object per field —
 `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `contains` (substring, or array membership),
