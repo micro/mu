@@ -17,22 +17,28 @@ Measured, not remembered.
 |---|---|
 | A new account starts with | **0 credits** |
 | One credit is | **£0.01** |
-| Subscriptions on offer | **£5/month → 500 credits**, **£10/month → 1,200 credits** |
+| Subscriptions on offer | **£10 → 1,000**, **£20 → 2,000**, **£100 → 10,000** credits a month |
 | `daily_quota: 100` in quota.json | **dead** — declared, documented, configurable, read by nothing |
 | Operations priced at 0 | 15 of 27 |
 | Charging path | one gateway, since `127a326` |
 
-Two of those need saying plainly.
+The plans were £5 → 500 and £10 → 1,200, and the second half of this document
+was written to answer why nobody would buy either. £5 buys 500 credits, which is
+£5 of credits: the tier sold nothing a top-up did not, except at £10 where it
+sold a 20% discount on the one thing with a marginal cost. A subscription that
+is a payment method rather than a product has no reason to exist.
 
-**The subscriptions are not a product.** £5 buys 500 credits, which is £5 of
-credits. The tier sells nothing that topping up does not, except at £10 where it
-sells a 20% discount. A subscription that is a payment method rather than a
-product has no reason to exist, and no reason for anybody to pick it.
+They are now Personal, Pro and Premium, a credit is 1p on all three, and what a
+plan sells is scale — agents, the channels that spend real money, and rate
+limits. There is no free plan; see *No free plan* below. `/pricing` renders from
+`wallet.SubscriptionPlans`, so the page that advertises a plan and the page that
+charges for it cannot disagree again. Held by `wallet/plans_test.go`.
 
-**A new account cannot do anything that costs money.** It starts at zero. The
-only reason the product appears to work is that most things are priced at zero,
-which is a different fact and a fragile one — the moment pricing is applied
-properly, a new account hits a wall on its first search.
+**A new account cannot do anything that costs money.** It starts at zero, and
+deliberately. The only reason the product appears to work is that most things
+are priced at zero, which is a different fact and a fragile one — the moment
+pricing is applied properly, a new account hits a wall on its first search.
+That wall is the decision point, and moving it is what a plan is for.
 
 ## The user we are pricing for
 
@@ -117,9 +123,45 @@ free for a decade. What is not free is an app calling our services through the
 SDK — that is the tool surface again, charged to whoever runs the app, and it is
 what lets somebody build a business on top and pay us as it grows.
 
+## No free plan
+
+This section used to design one. It concluded with 500 credits on signup and
+100 a month after, and it was wrong in a way worth keeping on the page rather
+than deleting, because the argument for it is the one that will be made again.
+
+The argument was: pricing every call puts a paywall in front of somebody who has
+not yet seen the product work, and that is the failure mode that kills adoption.
+True. The error was in what it costs to answer it. **Every priced call here
+spends somebody else's money** — Atlas for inference, Brave for search, Google
+for places and routes, Twilio for a text. There is no margin to give away
+because there is no marginal cost of zero to give away *from*. A free tier is
+therefore not a marketing spend with a known ceiling; it is a bill that scales
+with exactly the accounts that use it most, and 500 credits on signup is £5 of
+provider spend for every address that can receive a confirmation email.
+
+That is different from the businesses this reasoning was borrowed from. Google
+can give away ten thousand Routes calls because Google owns the routes. We do
+not own anything underneath.
+
+**The free option is self-hosting, and it is a real one.** The binary is AGPL,
+it takes your provider keys rather than ours, and an instance with no Stripe and
+no x402 configured cannot charge anybody — so nothing is metered and every tool
+is free. Somebody who wants this for nothing can have all of it for nothing.
+What is sold at micro.mu is not the software. It is not having to hold thirty
+accounts.
+
+What remains true from the old argument is that the wall should be somewhere
+useful. That is what the ordering constraint at the end of this document is
+about: meter the tool door before pricing everything, so the app a person is
+looking at is included, and the wall is at the point where an *agent* starts
+spending — which is the point where somebody can already see what they are
+buying.
+
 ## One meter, not two
 
-A free tier can be built two ways and they are not equally good.
+Given that, the free-tier question narrows to how an *operator* — anyone running
+their own instance, us included — grants usage. Two ways, and they are not
+equally good.
 
 **As a second mechanism** — a monthly quota of calls per operation, the way
 Google does it, sitting alongside credits. This is honest about provider
@@ -132,18 +174,14 @@ monthly grant of them. One number. It runs out in one way. "You have 100 credits
 this month" needs no further explanation, and "top up" is the same action
 whether you are a free user or a paying one.
 
-**Take the second.** The per-operation allowance stays in the code because an
-operator running their own instance may want Google's shape, and because it is
-the right tool for a provider free tier that we are passing through. It is off
-by default and it is not the story anybody is told.
+**Take the second.** The per-operation allowance stays in the code — `free` per
+operation in quota.json, `internal/quota/allowance.go` — because an operator may
+want Google's shape, and because it is the right tool for passing a provider's
+own free tier through. Every entry is zero on this instance, so it is inert
+here, and it is not the story anybody is told.
 
-So: *a credit is the unit of everything*. The free tier is credits that arrive
-monthly and do not accumulate.
-
-Note the wording, because it was wrong in an earlier draft of this thinking:
-"100 free credits" sounds like a balance, and a balance that never renews is a
-wall with a delay on it. It has to be **100 credits a month**, refilled, or the
-free tier is a trial pretending to be a tier.
+So: *a credit is the unit of everything*. A plan is credits that arrive monthly
+and do not accumulate, and there is no plan where they arrive for free.
 
 ## The thing that must not be free
 
@@ -250,22 +288,20 @@ Why these shapes:
 ## Getting off the ground
 
 The failure mode at one end is giving everything away; at the other it is a
-paywall before anybody has seen it work. The second is the one that kills
-adoption, and pricing every call makes it easy to walk into.
+paywall before anybody has seen it work. Pricing every call makes the second
+easy to walk into, and *No free plan* above rules out buying our way out of it
+with a grant.
 
-The shape that avoids both: **a larger one-off grant to build with, and a
-smaller monthly one to live on.** 500 credits when an account is created is
-enough to wire up an agent, iterate, and see it do something real. 100 a month
-after that keeps a small thing running and is nowhere near enough for anything
-serious — which is the point at which somebody decides.
+So it is bought with sequencing instead. A visitor sees the tool catalogue,
+the prices with what each one costs us beside it, and the app itself — none of
+which is metered — before they are asked for anything. What they cannot do
+without paying is have an agent spend our providers' money, which is the one
+thing that has a bill attached.
 
-That split does what neither number does alone. A single monthly 100 is too
-tight to evaluate with and somebody bounces on day one. A single large grant
-that never renews is a trial with extra steps.
-
-Both numbers are guesses and should be tuned against what actually happens:
-how far a new account gets before it stops, and how many come back. Instrument
-that before arguing about the numbers again.
+The number to instrument is not the size of a grant, it is where people stop:
+how far a new account gets before it hits the wall, and whether the thing they
+were trying to do was visible enough by then to be worth £10. That is a
+measurement, and it should be taken before anyone argues about the tiers again.
 
 ## What the pricing page shows
 
@@ -322,8 +358,10 @@ In order, each landable on its own:
    two, and `sms` and `whatsapp` stop charging themselves.
 3. **Never-free operations.** A flag in quota.json, enforced in the gate, with a
    refusal that says what to do about it.
-4. **The two grants** — 500 on signup, 100 a month — replacing the dead
-   `DailyQuota`.
+4. **`Account.Plan`, and the plan's monthly credits.** The Stripe webhook
+   already grants credits on `invoice.payment_succeeded`; what is missing is the
+   field saying which plan an account is on, so agent limits and the channel
+   gate have something to read. Deletes the dead `DailyQuota` while it is there.
 5. **Meter the tool door, include the app.** The gateway already knows the
    difference is not visible to it, so the door has to say: a call arriving from
    a page is marked as included, everything else is charged. That is one flag on
@@ -336,8 +374,10 @@ In order, each landable on its own:
 
 Note the ordering constraint: **5 before 6.** Metering every operation while the
 web app is still charged would make browsing cost money, which is the outcome
-this document exists to prevent. And **4 before 6**, so there is something in
-the account when the meter starts.
+this document exists to prevent. With no signup grant to soften it, 5 is the
+only thing standing between a new visitor and a paywall on the first page they
+look at, so it is not optional and it is not last.
 
-Instrument before tuning: how far a new account gets before it runs out, and
-whether it comes back. Both grant sizes are guesses until that exists.
+Instrument before tuning: how far a new account gets before it hits the wall,
+and whether it comes back. Every number on the pricing page is a guess until
+that exists.

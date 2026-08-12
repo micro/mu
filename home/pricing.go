@@ -11,15 +11,46 @@ import (
 	"mu/wallet"
 )
 
+// money renders pence as £10 — plans are whole pounds, and a plan that is not
+// would be a pricing decision rather than a formatting one.
+func money(pence int) string {
+	if pence%100 == 0 {
+		return "£" + thousands(pence/100)
+	}
+	return fmt.Sprintf("£%d.%02d", pence/100, pence%100)
+}
+
+// thousands puts separators in, so 10000 credits reads as 10,000.
+func thousands(n int) string {
+	s := fmt.Sprintf("%d", n)
+	if len(s) <= 3 {
+		return s
+	}
+	var out []byte
+	for i, c := range []byte(s) {
+		if i > 0 && (len(s)-i)%3 == 0 {
+			out = append(out, ',')
+		}
+		out = append(out, c)
+	}
+	return string(out)
+}
+
 func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	var b strings.Builder
 
-	// Everything sits in one centered column so the hero, plan cards and the
-	// info cards below share a single width and centre line.
-	b.WriteString(`<div style="max-width:760px;margin:0 auto">`)
+	// One column, anchored where every other page's content is anchored.
+	//
+	// It was centred — margin:0 auto inside #content, which is 1400px wide and
+	// left-aligned — so the 760px column sat in the middle of the page while
+	// the "Pricing" heading above it stayed at the left edge. The hero read as
+	// belonging to some other page: nothing lined up with the one heading the
+	// visitor had just read. A column that starts where the title starts costs
+	// nothing and puts them on the same line.
+	b.WriteString(`<div style="max-width:760px">`)
 
 	// Hero
-	b.WriteString(`<div style="text-align:center;padding:24px 0 0">`)
+	b.WriteString(`<div style="padding:16px 0 0">`)
 	b.WriteString(`<h2 style="font-size:1.6rem;margin:0 0 8px">Tools for agents</h2>`)
 	// One audience, said once. It read "Tools for agents, and for you", and the
 	// second half was a hedge that cost both halves their clarity: somebody
@@ -39,64 +70,38 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	// So a credit is 1p on every plan and what a plan sells is scale: how many
 	// agents you may run, and whether the channels that spend real money are
 	// open. See docs/PRICING.md.
+	//
+	// And there is no free column. Every call here spends somebody's money —
+	// Atlas for inference, Brave for search, Google for places and routes,
+	// Twilio for a text — so a tier that costs nothing is a tier that runs at a
+	// loss for every account that uses it, and the ones that use it most cost
+	// the most. Self-hosting is the free option and it is a real one: the binary
+	// is AGPL, it wants your API keys rather than ours, and an instance with no
+	// Stripe and no x402 cannot charge anybody. What is sold here is not
+	// software. It is not having to hold thirty accounts.
 	b.WriteString(`<div class="plans">`)
 
-	type plan struct {
-		name, price, sub string
-		features         []string
-		cta, href        string
-		featured         bool
-	}
-	for _, p := range []plan{
-		{
-			name: "Free", price: "£0", sub: "500 credits to start, then 100 a month",
-			features: []string{
-				"Every tool over MCP",
-				"1 agent",
-				"The web app, included",
-				"No card needed",
-			},
-			cta: "Start free", href: "/signup",
-		},
-		{
-			name: "Pro", price: "£20", sub: "2,000 credits a month",
-			features: []string{
-				"Everything in Free",
-				"5 agents",
-				"Send mail, SMS and WhatsApp",
-				"Higher rate limits",
-			},
-			cta: "Get Pro", href: "/signup", featured: true,
-		},
-		{
-			name: "Premium", price: "£100", sub: "10,000 credits a month",
-			features: []string{
-				"Everything in Pro",
-				"25 agents",
-				"Highest rate limits",
-			},
-			cta: "Get Premium", href: "/signup",
-		},
-	} {
+	// Rendered from wallet.Plans(), which is what /wallet actually charges for,
+	// so this page cannot advertise a plan nobody can buy.
+	for _, p := range wallet.Plans() {
 		cls := "card plan"
-		if p.featured {
+		if p.Featured {
 			cls += " plan-featured"
 		}
 		b.WriteString(`<div class="` + cls + `">`)
-		b.WriteString(`<h3 style="margin:0 0 4px">` + p.name + `</h3>`)
-		b.WriteString(`<p style="font-size:2rem;font-weight:700;margin:8px 0">` + p.price)
-		if p.price != "£0" {
-			b.WriteString(`<span style="font-size:14px;font-weight:400;color:#888">/month</span>`)
-		}
-		b.WriteString(`</p>`)
-		b.WriteString(`<p style="color:#666;font-size:14px;margin:0 0 16px">` + html.EscapeString(p.sub) + `</p>`)
+		b.WriteString(`<h3 style="margin:0 0 4px">` + html.EscapeString(p.Name) + `</h3>`)
+		b.WriteString(`<p style="font-size:2rem;font-weight:700;margin:8px 0">` +
+			html.EscapeString(money(p.Price)) +
+			`<span style="font-size:14px;font-weight:400;color:#888">/month</span></p>`)
+		b.WriteString(`<p style="color:#666;font-size:14px;margin:0 0 16px">` +
+			html.EscapeString(thousands(p.Credits)+" credits a month") + `</p>`)
 		b.WriteString(`<ul style="text-align:left;list-style:none;padding:0;margin:0 0 16px;font-size:14px;line-height:2">`)
-		for _, f := range p.features {
+		for _, f := range p.Features {
 			b.WriteString(`<li>&#10003; ` + html.EscapeString(f) + `</li>`)
 		}
 		b.WriteString(`</ul>`)
-		b.WriteString(`<a href="` + p.href + `" class="btn" style="display:block;text-align:center">` +
-			html.EscapeString(p.cta) + `</a>`)
+		b.WriteString(`<a href="/signup" class="btn" style="display:block;text-align:center">Get ` +
+			html.EscapeString(p.Name) + `</a>`)
 		b.WriteString(`</div>`)
 	}
 
@@ -105,7 +110,7 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	// The ceiling, said before somebody meets it. Credits included in a plan
 	// are what the plan costs, not an allowance that renews when it runs out —
 	// so the sentence that matters is what happens when it does.
-	b.WriteString(`<p style="text-align:center;font-size:14px;color:#666;margin:0 0 24px">` +
+	b.WriteString(`<p style="font-size:14px;color:#666;margin:0 0 24px">` +
 		`A credit is 1p on every plan — there is no tier where usage is cheaper. ` +
 		`Run out and you top up at the same rate, any amount, or carry on next month. ` +
 		`<a href="/pricing#costs" style="color:#111">What a call costs →</a></p>`)
@@ -165,7 +170,7 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Login link (only when not logged in)
 	if sess, _ := auth.TrySession(r); sess == nil {
-		b.WriteString(`<p style="text-align:center;font-size:14px;color:#888;margin:16px 0">Already have an account? <a href="/login">Log in</a></p>`)
+		b.WriteString(`<p style="font-size:14px;color:#888;margin:16px 0">Already have an account? <a href="/login">Log in</a></p>`)
 	}
 
 	b.WriteString(`</div>`) // close centered column

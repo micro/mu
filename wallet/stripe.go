@@ -30,18 +30,60 @@ func StripeEnabled() bool {
 }
 
 // Subscription plans — monthly credit bundles via Stripe.
+//
+// This is the list, and /pricing renders from it rather than keeping its own.
+// They disagreed: /wallet sold Starter at £5 and Pro at £10 while /pricing
+// advertised a free tier, Pro at £20 and Premium at £100, so what a visitor was
+// promised and what they could actually buy were different pages nobody had
+// read together. A plan is a thing you can purchase; the only place that can be
+// right about it is the place that takes the money.
 type SubscriptionPlan struct {
 	ID      string `json:"id"`
 	Name    string `json:"name"`
 	Price   int    `json:"price"`   // Monthly price in pence
 	Credits int    `json:"credits"` // Credits granted each month
 	Label   string `json:"label"`
+
+	// What the plan sells beyond the credits, for the cards on /pricing.
+	// Credits are 1p on every plan, so this is the difference between them.
+	Features []string `json:"features"`
+	Featured bool     `json:"featured"` // the one the pricing page highlights
 }
 
+// There is no free plan.
+//
+// Every priced call here spends somebody's money — Atlas for inference, Brave
+// for search, Google for places and routes, Twilio for a text — so a free tier
+// loses money in proportion to how much it is used, and the accounts that use
+// it most cost the most. The free option is self-hosting, which is real: AGPL,
+// your own provider keys, and an instance with no Stripe and no x402 cannot
+// charge anybody.
+//
+// The old plans sold credits at par — £5 bought 500 credits, which is £5 of
+// credits — so the subscription sold nothing a top-up did not, except £10 for
+// 1,200, a 20% discount on the one thing with a marginal cost. A credit is 1p
+// on every plan now, and what a plan sells is scale.
 var SubscriptionPlans = []SubscriptionPlan{
-	{ID: "starter", Name: "Starter", Price: 500, Credits: 500, Label: "£5/month — 500 credits"},
-	{ID: "pro", Name: "Pro", Price: 1000, Credits: 1200, Label: "£10/month — 1,200 credits"},
+	{
+		ID: "personal", Name: "Personal", Price: 1000, Credits: 1000,
+		Label:    "£10/month — 1,000 credits",
+		Features: []string{"Every tool over MCP", "1 agent", "The web app, included"},
+	},
+	{
+		ID: "pro", Name: "Pro", Price: 2000, Credits: 2000,
+		Label:    "£20/month — 2,000 credits",
+		Features: []string{"Everything in Personal", "5 agents", "Send mail, SMS and WhatsApp", "Higher rate limits"},
+		Featured: true,
+	},
+	{
+		ID: "premium", Name: "Premium", Price: 10000, Credits: 10000,
+		Label:    "£100/month — 10,000 credits",
+		Features: []string{"Everything in Pro", "25 agents", "Highest rate limits"},
+	},
 }
+
+// Plans is the catalogue, for pages that render it.
+func Plans() []SubscriptionPlan { return SubscriptionPlans }
 
 // CreateSubscriptionSession creates a Stripe Checkout Session for a
 // recurring subscription. Credits are granted on each successful payment
