@@ -350,9 +350,15 @@ still work.
 
 ### Email that leaves the instance
 
-An authenticated sending domain, through SendGrid. Without these the `email_*`
-tools refuse and `/email` says so; the mail service, its inbox and `mail_email`
-are unaffected — they send over this instance's own SMTP under `MAIL_DOMAIN`.
+A verified sending domain on the Twilio account you already have. Twilio has a
+native email API — `comms.twilio.com/v1/Emails`, HTTP basic with the same
+credentials the texts use — so there is **no second key**: verify the domain in
+the Twilio console and set `EMAIL_DOMAIN`. Without it the `email_*` tools refuse
+and `/email` says so; the mail service, its inbox and `mail_email` are
+unaffected — they send over this instance's own SMTP under `MAIL_DOMAIN`.
+
+With no Twilio account at all, this falls back to that same SMTP server, so a
+self-hosted instance can send from its own subdomain with nothing bought.
 
 The two are separate on purpose. `mail_email` goes out as `you@MAIL_DOMAIN`,
 which is the address with an inbox behind it and the one a reply has to come
@@ -362,8 +368,7 @@ of password resets with it.
 
 | Variable | Default | What it does |
 |---|---|---|
-| `SENDGRID_API_KEY` | — | The provider credential. A key with **Mail Send** permission is all this needs |
-| `EMAIL_DOMAIN` | — | The authenticated sending domain — `email.example.com`, not the root domain. Set up under Sender Authentication, which gives you CNAMEs to add; SendGrid's own hostname (`em1234.email.example.com`) is the CNAME target and **not** what goes here. Deliberately has no default: falling back to `MAIL_DOMAIN` would quietly undo the separation, on the instance where somebody forgot to set this rather than the one where they thought about it |
+| `EMAIL_DOMAIN` | — | The verified sending domain — `email.example.com`, not the root domain. Verify it in the Twilio console, which gives you CNAMEs to add; the hostname it generates (`em1234.email.example.com`) is the CNAME target and **not** what goes here. Deliberately has no default: falling back to `MAIL_DOMAIN` would quietly undo the separation, on the instance where somebody forgot to set this rather than the one where they thought about it |
 | `EMAIL_REPLY_DOMAIN` | `MAIL_DOMAIN` | Where replies are pointed. The sending domain has no MX record, so a reply to a `From` on it bounces and the sender never learns their message was answered — every message carries a `Reply-To` here instead, which needs an inbox behind it |
 | `EMAIL_DAILY_LIMIT` | `50` | Messages one account may send in a day, on top of the per-message price. It is `limit_env` on `external_email` in `quota.json`, which is where the number itself lives — beside the price, because what a thing costs and how much of it somebody may do are the same kind of decision. A plan raises it. **Set it to `0` to stop sending entirely** — the kill switch, and the same setting rather than a second one because an operator reaching for it is in a hurry |
 

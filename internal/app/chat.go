@@ -87,7 +87,6 @@ func ChatComponent(cfg ChatConfig) string {
   </form>
   <div id="mu-chat-opts">` + agentPicker + `</div>
   <div id="mu-chat-suggest"></div>
-  <div id="mu-chat-hint"></div>
   <div id="mu-chat-conv">` + initialConv + `</div>
 </div>
 
@@ -102,7 +101,6 @@ func ChatComponent(cfg ChatConfig) string {
 #mu-chat-input{flex:1;padding:10px 0;border:none;font-size:16px;font-family:inherit;resize:none;line-height:1.4;overflow:hidden;background:transparent;outline:none}
 #mu-chat-form button{flex-shrink:0;width:36px;height:36px;background:#111;color:#fff;border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px}
 #mu-chat-suggest{margin-top:16px}
-#mu-chat-hint{margin-top:10px;text-align:center;font-size:13px;color:#777}
 .mu-pills{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
 .mu-pills a{padding:8px 14px;border:1px solid #e0e0e0;border-radius:6px;font-size:13px;color:#555;text-decoration:none;cursor:pointer}
 .mu-pills a:hover{background:#f5f5f5}
@@ -155,7 +153,6 @@ var form=document.getElementById('mu-chat-form');
 var input=document.getElementById('mu-chat-input');
 var conv=document.getElementById('mu-chat-conv');
 var sugDiv=document.getElementById('mu-chat-suggest');
-var hintDiv=document.getElementById('mu-chat-hint');
 if(!form)return;
 var NS=` + JSString(cfg.StorageNS) + `;
 // Persistence is per-surface and opt-in. With no namespace the component is
@@ -187,9 +184,12 @@ function protectCurrencyDollars(s){return String(s||'').replace(/\$(?=\d)/g,'$\u
 
 var SUGGEST=['Give me a morning brief','What is moving in markets?','Weather in San Francisco','Find today\'s AI news'];
 function showSuggestions(){
-  if(HIDE_SUGGEST){sugDiv.innerHTML='';if(hintDiv)hintDiv.innerHTML='';return;}
-  if(conv.innerHTML.trim()){sugDiv.innerHTML='';if(hintDiv)hintDiv.innerHTML='';return;}
-  if(GUEST&&hintDiv)hintDiv.innerHTML='A few questions to try it, no account needed. Sign up when you want your own.';
+  if(HIDE_SUGGEST){sugDiv.innerHTML='';return;}
+  if(conv.innerHTML.trim()){sugDiv.innerHTML='';return;}
+  // No guest note here. The page that renders a guest chat says it once, in
+  // its own markup, under the box — and this said it a second time directly
+  // above that, so the landing page told a visitor the same thing twice in two
+  // stacked paragraphs. One offer, stated once, by whoever owns the page.
   var h='<div class="mu-pills">';
   SUGGEST.forEach(function(s){h+='<a href="#" data-q="'+esc(s)+'">'+esc(s)+'</a>';});
   h+='</div>';

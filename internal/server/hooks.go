@@ -661,6 +661,25 @@ func wireHooks() {
 	// free allowance and the daily limit read.
 	service.Gate.Done = quota.Done
 
+	// How hard an account's agents may hit this at once.
+	service.Concurrency = func(account string) int {
+		acc, err := auth.GetAccount(account)
+		if err != nil {
+			return 0
+		}
+		if acc.Admin || acc.Agent {
+			return 0 // the operator's own instance is not queued behind a plan
+		}
+		return wallet.PlanByID(acc.Plan).Concurrency
+	}
+
+	// Email out goes through this instance's own SMTP unless an operator has
+	// configured a provider. No second credential is needed to send from a
+	// subdomain of a domain this instance already signs for — DMARC alignment
+	// is relaxed by default, so a signature for MAIL_DOMAIN covers a From on a
+	// subdomain of it.
+	email.SendVia = mail.SendExternalAs
+
 	// What a plan allows of an operation. Everything a subscription sells that
 	// is not credits comes through here.
 	quota.PlanLimit = func(account, op string) (int, bool) {

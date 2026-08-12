@@ -40,10 +40,32 @@ import (
 //
 // The description still follows. It reads better as a caption than as a pitch.
 func Landing(w http.ResponseWriter, r *http.Request) {
-	host := app.BaseURL(r)
+	body := landingBody(app.BaseURL(r))
+
+	page := app.RenderLanding(app.Landing{
+		Title:       "Mu — Tools for Agents",
+		Description: "The everyday internet as tools an agent can call — news, web search, mail, markets, weather, video, storage. Over MCP and REST, paid per request. Open source and self-hostable.",
+		Brand:       "Mu",
+		Tagline:     "Tools for Agents",
+		TopRight:    `<a href="/login">Sign in →</a>`,
+		Body:        body,
+		Footer:      app.FooterLinks(),
+	})
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write([]byte(page)) //nolint:errcheck
+}
+
+// landingBody is the page itself, separate from serving it.
+//
+// Separated so it can be read by a test, which is how the duplicated guest
+// note went unnoticed: nothing could look at the whole page at once, so two
+// paragraphs saying the same thing stayed correct individually and wrong
+// together.
+func landingBody(host string) string {
 	// Counted, not claimed. This said "67 real tools" as a literal and the
 	// endpoint was serving 72 by the time anyone checked.
-	body := `<p class="lead">` + strconv.Itoa(api.ToolCount()) + ` tools an agent can call — news, web search, mail,
+	return `<p class="lead">` + strconv.Itoa(api.ToolCount()) + ` tools an agent can call — news, web search, mail,
 markets, weather, places, storage — behind one account instead of one per provider.
 Ask something and watch it use them.</p>
 
@@ -101,17 +123,4 @@ your own agent, an email address it answers on, and the endpoint your own client
 .lpay code{background:#f4f4f5;border-radius:4px;padding:1px 5px;font-size:.9em}
 .lnote{font-size:14px;color:#666;margin:0}
 </style>`
-
-	page := app.RenderLanding(app.Landing{
-		Title:       "Mu — Tools for Agents",
-		Description: "The everyday internet as tools an agent can call — news, web search, mail, markets, weather, video, storage. Over MCP and REST, paid per request. Open source and self-hostable.",
-		Brand:       "Mu",
-		Tagline:     "Tools for Agents",
-		TopRight:    `<a href="/login">Sign in →</a>`,
-		Body:        body,
-		Footer:      app.FooterLinks(),
-	})
-
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Write([]byte(page))
 }

@@ -79,6 +79,19 @@ type SubscriptionPlan struct {
 	// has, and gates out the smallest customer for no safety gained.
 	Limits map[string]int `json:"limits,omitempty"`
 
+	// Concurrency is how many tool calls this account may have running at once.
+	//
+	// This is the rate limit an MCP buyer actually means. The cards used to sell
+	// "higher rate limits" against POST_LIMIT_PER_HOUR — the abuse control on
+	// writing to the social timeline — which answers a question nobody asked.
+	// What an agent hits is this: fan out across twenty tools and the twenty-first
+	// waits. It is also the axis that costs us, because concurrent calls are
+	// concurrent provider calls and concurrent memory.
+	//
+	// Enforced in internal/service/gateway.go, which every call already passes
+	// through, so there is one place it can be true.
+	Concurrency int `json:"concurrency"`
+
 	Features []string `json:"features"` // extra lines for the card, beyond the above
 	Featured bool     `json:"featured"` // the one the pricing page highlights
 }
@@ -107,7 +120,8 @@ var SubscriptionPlans = []SubscriptionPlan{
 			quota.OpSMSSend:       25,
 			quota.OpWhatsAppSend:  50,
 		},
-		Features: []string{"Everything in pay as you go"},
+		Concurrency: 8,
+		Features:    []string{"Everything in pay as you go"},
 		Featured: true,
 	},
 	{
@@ -120,7 +134,8 @@ var SubscriptionPlans = []SubscriptionPlan{
 			quota.OpSMSSend:       100,
 			quota.OpWhatsAppSend:  200,
 		},
-		Features: []string{"Everything in Pro"},
+		Concurrency: 32,
+		Features:    []string{"Everything in Pro"},
 	},
 }
 
@@ -141,7 +156,7 @@ var SubscriptionPlans = []SubscriptionPlan{
 // the one above — and the column that was actually missing was the one for
 // somebody who wants the tools and does not want a subscription.
 var noPlan = SubscriptionPlan{
-	ID: "", Name: "Pay as you go", Agents: 1, PostsPerHour: 60,
+	ID: "", Name: "Pay as you go", Agents: 1, PostsPerHour: 60, Concurrency: 2,
 }
 
 // LimitFor is what this plan allows of an operation, and whether it says

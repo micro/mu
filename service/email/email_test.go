@@ -8,6 +8,8 @@ package email
 // they are worth holding down the way sms holds its own.
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -32,9 +34,8 @@ func withSettings(t *testing.T, kv map[string]string) {
 // it.
 func TestTheSendingDomainNeverFallsBackToTheRootDomain(t *testing.T) {
 	withSettings(t, map[string]string{
-		"EMAIL_DOMAIN":     "",
-		"MAIL_DOMAIN":      "micro.mu",
-		"SENDGRID_API_KEY": "SG.test",
+		"EMAIL_DOMAIN": "",
+		"MAIL_DOMAIN":  "micro.mu",
 	})
 	if d := Domain(); d != "" {
 		t.Errorf("with no EMAIL_DOMAIN set, mail would be sent from %q", d)
@@ -94,7 +95,7 @@ func TestTheCapComesFromQuota(t *testing.T) {
 // TestSendingRefusesWithoutADomain — before any provider call, so a
 // misconfigured instance fails at the door rather than at SendGrid.
 func TestSendingRefusesWithoutADomain(t *testing.T) {
-	withSettings(t, map[string]string{"EMAIL_DOMAIN": "", "SENDGRID_API_KEY": ""})
+	withSettings(t, map[string]string{"EMAIL_DOMAIN": ""})
 	_, err := Send("someone", "a@example.com", "Hi", "there")
 	if err == nil {
 		t.Fatal("a send was attempted with nothing configured")
@@ -107,9 +108,12 @@ func TestSendingRefusesWithoutADomain(t *testing.T) {
 // TestALocalAddressIsSentBackToMail — email is for what leaves the building,
 // and a username with no domain on it is somebody here.
 func TestALocalAddressIsSentBackToMail(t *testing.T) {
-	withSettings(t, map[string]string{
-		"EMAIL_DOMAIN": "email.micro.mu", "SENDGRID_API_KEY": "SG.test",
-	})
+	withSettings(t, map[string]string{"EMAIL_DOMAIN": "email.micro.mu"})
+	// A way to send, so the refusal under test is about the address rather
+	// than about the instance.
+	orig := SendVia
+	SendVia = func(_, _, _, _, _, _, _ string) (string, error) { return "id", nil }
+	t.Cleanup(func() { SendVia = orig })
 	_, err := Send("someone", "asim", "Hi", "there")
 	if err == nil {
 		t.Fatal("a bare username was accepted as an email address")
@@ -153,4 +157,81 @@ func TestTheBodyIsEscapedIntoHTML(t *testing.T) {
 	if !strings.Contains(got, "<br>") || strings.Count(got, "<p>") != 2 {
 		t.Errorf("line and paragraph breaks were lost: %s", got)
 	}
+}
+
+// TestNoSecondCredentialIsNeeded — the point of the rewrite.
+//
+// The first version of this service reached for SendGrid, which Twilio owns but
+// which authenticates separately with its own SG key: another credential to
+// create, store, rotate and mask, for a capability the Twilio account already
+// had. Twilio's own email API takes the same credentials the texts use.
+func TestNoSecondCredentialIsNeeded(t *testing.T) {
+	root := at()
+	// The credential nobody should have to create, and the package that read it.
+	// Not a search for the word: service/mail lists sendgrid.net among the bulk
+	// senders it filters inbound mail from, which is unrelated and correct.
+	for _, ref := range []string{`settings.Get("SENDGRID_API_KEY")`, `"mu/internal/sendgrid"`} {
+		if grepTree(t, root, ref) {
+			t.Errorf("%s is still there — email is meant to send on the Twilio "+
+				"credentials this instance already has, with no second key", ref)
+		}
+	}
+}
+
+// TestSomethingHasToCarryIt — a domain with nothing to send it is not
+// configured, however much of the rest is set.
+func TestSomethingHasToCarryIt(t *testing.T) {
+	withSettings(t, map[string]string{
+		"EMAIL_DOMAIN":       "email.micro.mu",
+		"TWILIO_ACCOUNT_SID": "",
+		"TWILIO_AUTH_TOKEN":  "",
+		"TWILIO_API_KEY":     "",
+		"TWILIO_API_SECRET":  "",
+	})
+	orig := SendVia
+	SendVia = nil
+	t.Cleanup(func() { SendVia = orig })
+
+	if Configured() {
+		t.Error("email reports itself configured with a domain and no way to send")
+	}
+	if Provider() != "" {
+		t.Errorf("it names %q as the carrier when there is none", Provider())
+	}
+
+	SendVia = func(_, _, _, _, _, _, _ string) (string, error) { return "", nil }
+	if !Configured() {
+		t.Error("this instance's own SMTP is not accepted as a way to send, so a " +
+			"self-hosted instance cannot send at all")
+	}
+}
+
+// at is the repository root, walking up from this package.
+func at() string {
+	dir, _ := os.Getwd()
+	for i := 0; i < 6; i++ {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return dir
+		}
+		dir = filepath.Dir(dir)
+	}
+	return "."
+}
+
+// grepTree reports whether any Go file under root mentions s.
+func grepTree(t *testing.T, root, s string) bool {
+	t.Helper()
+	found := false
+	filepath.Walk(root, func(path string, info os.FileInfo, err error) error { //nolint:errcheck
+		if found || err != nil || info.IsDir() || !strings.HasSuffix(path, ".go") ||
+			strings.HasSuffix(path, "_test.go") {
+			return nil
+		}
+		b, err := os.ReadFile(path)
+		if err == nil && strings.Contains(string(b), s) {
+			found = true
+		}
+		return nil
+	})
+	return found
 }

@@ -88,7 +88,6 @@ var settingGroups = []settingGroup{
 	// mailbox — see service/email. /email names all of these and sends an
 	// operator here, so they have to be here.
 	{"Sending limits and email out", []string{
-		"SENDGRID_API_KEY",
 		"EMAIL_DOMAIN",
 		"EMAIL_REPLY_DOMAIN",
 		"EMAIL_DAILY_LIMIT",

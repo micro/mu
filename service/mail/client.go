@@ -97,6 +97,22 @@ func LoadDKIMConfig(domain, selector string) error {
 // Sends multipart/alternative with both plain text and HTML versions (like Gmail)
 // Returns the generated Message-ID for threading purposes
 func SendExternalEmail(displayName, from, to, subject, bodyPlain, bodyHTML string, replyToMsgID string) (string, error) {
+	return sendExternal(displayName, from, "", to, subject, bodyPlain, bodyHTML, replyToMsgID)
+}
+
+// SendExternalAs sends under a From this instance signs for, with answers
+// directed somewhere else.
+//
+// The two differ because the address a message comes *from* and the address it
+// should be answered *at* stopped being the same thing once agent mail moved to
+// its own subdomain: it goes out as you@<sending domain>, which carries no
+// inbox, and a reply to it would bounce. Reply-To is what makes a sent message
+// the start of a conversation rather than a broadcast.
+func SendExternalAs(displayName, from, replyTo, to, subject, bodyPlain, bodyHTML string) (string, error) {
+	return sendExternal(displayName, from, replyTo, to, subject, bodyPlain, bodyHTML, "")
+}
+
+func sendExternal(displayName, from, replyTo, to, subject, bodyPlain, bodyHTML string, replyToMsgID string) (string, error) {
 	// Extract username from email for Message-ID
 	username := from
 	if strings.Contains(from, "@") {
@@ -122,6 +138,9 @@ func SendExternalEmail(displayName, from, to, subject, bodyPlain, bodyHTML strin
 	msg.WriteString(fmt.Sprintf("Subject: %s\r\n", subject))
 	msg.WriteString(fmt.Sprintf("Date: %s\r\n", time.Now().Format(time.RFC1123Z)))
 	msg.WriteString(fmt.Sprintf("Message-ID: %s\r\n", messageID))
+	if replyTo != "" {
+		msg.WriteString(fmt.Sprintf("Reply-To: %s\r\n", replyTo))
+	}
 
 	if replyToMsgID != "" {
 		msg.WriteString(fmt.Sprintf("In-Reply-To: %s\r\n", replyToMsgID))

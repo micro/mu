@@ -97,6 +97,15 @@ func gateway(spec Spec) server.HandlerWrapper {
 				return next(ctx, req, rsp)
 			}
 
+			// How many of this account's calls may run at once — the rate limit
+			// an agent actually meets. Taken before the work and released
+			// after, whatever happens to it.
+			release, err := acquire(ctx, who)
+			if err != nil {
+				return err
+			}
+			defer release()
+
 			// Is this a request we are already answering? A slow endpoint gets
 			// retried by proxies and clients that believe the first attempt was
 			// lost, and every one of those arrivals is one request — so it is

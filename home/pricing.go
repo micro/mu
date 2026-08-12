@@ -107,6 +107,7 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<li>&#10003; Every read tool</li>`)
 	b.WriteString(`<li>&#10003; The web app, included</li>`)
 	b.WriteString(`<li>&#10003; 1 agent</li>`)
+	b.WriteString(`<li>&#10003; 2 tool calls at once</li>`)
 	b.WriteString(`<li>&#10003; No subscription</li>`)
 	b.WriteString(`</ul>`)
 	b.WriteString(`<a href="/signup" class="btn" style="display:block;text-align:center">Start</a>`)
@@ -143,16 +144,25 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 		// price card.
 		b.WriteString(`<li>&#10003; ` + html.EscapeString(
 			fmt.Sprintf("%d agent%s", p.Agents, plural(p.Agents))) + `</li>`)
+		// The rate limit an MCP buyer means: how many tool calls their agents
+		// may have running at once. This is what "higher rate limits" was
+		// reaching for and never was.
+		b.WriteString(`<li>&#10003; ` + html.EscapeString(
+			fmt.Sprintf("%d tool calls at once", p.Concurrency)) + `</li>`)
 		// The send caps, from the same map the gate reads. These are the third
 		// thing a plan sells and the only one whose cost to us is not covered
 		// by the credits — what a bad month spends is a domain's or a number's
 		// reputation, and no balance repairs that.
+		// WhatsApp is not on the card. It is capped and enforced like the other
+		// two, but Meta's 24-hour window means this instance answers people who
+		// wrote first and cannot start a conversation — a number somebody reads
+		// as "reach 50 people a day" and which does not mean that. A line that
+		// has to be explained is worse than no line.
 		for _, l := range []struct {
 			op, noun string
 		}{
 			{quota.OpExternalEmail, "emails"},
 			{quota.OpSMSSend, "texts"},
-			{quota.OpWhatsAppSend, "WhatsApp chats"},
 		} {
 			if n, ok := p.LimitFor(l.op); ok {
 				b.WriteString(`<li>&#10003; ` + html.EscapeString(

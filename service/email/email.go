@@ -45,7 +45,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/quota"
-	"mu/internal/sendgrid"
+	"mu/internal/twilio"
 	"mu/internal/settings"
 	"mu/internal/userdb"
 )
@@ -67,11 +67,56 @@ type Sent struct {
 	Provider string `json:"provider,omitempty"`
 }
 
-// Configured reports whether this instance can send at all.
-func Configured() bool { return sendgrid.Configured() }
+// SendVia is this instance's own SMTP sender, filled in by
+// internal/server/hooks.go from the mail service. The fallback for an instance
+// with no Twilio account.
+//
+// It is a hook rather than an import because email and mail are two services
+// and services do not import each other — see hooks.go, which is the ledger of
+// exactly these.
+//
+// It exists because a provider is not required. This instance already runs an
+// SMTP server with DKIM; what was wrong with sending from mail was never the
+// transport, it was the domain — agent mail going out under MAIL_DOMAIN, the
+// one the website is on, staking the deliverability of password resets on
+// whatever an agent decides to send. Sending from a subdomain of our own fixes
+// that with no third party and no second credential: DMARC alignment is
+// relaxed by default, so a signature for micro.mu covers a From on
+// email.micro.mu, which is the same organisational domain.
+//
+// Twilio carries it when there is an account, over the same credentials the
+// texts use — there is no second key for email. This is what sends when there
+// is not.
+var SendVia func(displayName, from, replyTo, to, subject, plain, html string) (string, error)
 
-// Domain is the authenticated domain messages are sent from.
-func Domain() string { return sendgrid.Domain() }
+// Configured reports whether this instance can send at all: a domain to send
+// from, and something to send with.
+func Configured() bool {
+	if Domain() == "" {
+		return false
+	}
+	return twilio.EmailConfigured() || SendVia != nil
+}
+
+// Provider names what will carry the message, for the page.
+func Provider() string {
+	if twilio.EmailConfigured() {
+		return "Twilio"
+	}
+	if SendVia != nil {
+		return "this instance's own SMTP"
+	}
+	return ""
+}
+
+// Domain is the domain messages are sent from.
+//
+// Read here rather than from the provider, because the provider is optional and
+// the domain is not. It is the whole point of this service: agent mail leaves
+// under a name of its own, whoever carries it.
+func Domain() string {
+	return strings.ToLower(strings.TrimSpace(settings.Get("EMAIL_DOMAIN")))
+}
 
 // ReplyDomain is where replies are pointed, which must be a domain with an
 // inbox behind it.
@@ -195,29 +240,40 @@ func Send(owner, to, subject, body string) (*Sent, error) {
 		return nil, fmt.Errorf("account not found")
 	}
 
-	res, err := sendgrid.Send(sendgrid.Message{
-		From:     SenderFor(owner),
-		FromName: acc.Name,
-		ReplyTo:  ReplyFor(owner),
-		To:       to,
-		Subject:  subject,
-		Plain:    body,
-		HTML:     asHTML(body),
-	})
+	// Ours first. A provider is an option here, not a dependency: the
+	// instance already runs an SMTP server with DKIM, and adding a second
+	// credential to send from a subdomain of a domain we already sign for
+	// would be paying a toll to cross our own bridge.
+	var providerID string
+	switch {
+	case twilio.EmailConfigured():
+		providerID, err = twilio.SendEmail(twilio.Email{
+			From:     SenderFor(owner),
+			FromName: acc.Name,
+			ReplyTo:  ReplyFor(owner),
+			To:       to,
+			Subject:  subject,
+			Text:     body,
+			HTML:     asHTML(body),
+		})
+	default:
+		providerID, err = SendVia(acc.Name, SenderFor(owner), ReplyFor(owner),
+			to, subject, body, asHTML(body))
+	}
 	if err != nil {
 		return nil, err
 	}
 
 	rec, err := userdb.Create(ns, owner, sent, map[string]interface{}{
 		"to": to, "subject": subject, "body": body,
-		"provider": res.ID,
+		"provider": providerID,
 		"sent":     time.Now().Format(time.RFC3339),
 	}, false)
 	if err != nil {
 		// It has gone. Failing the call now would tell the caller to send it
 		// again, which is the one outcome worse than losing the record.
 		app.Log("email", "sent for %s but not recorded: %v", owner, err)
-		return &Sent{To: to, Subject: subject, Body: body, Sent: time.Now(), Provider: res.ID}, nil
+		return &Sent{To: to, Subject: subject, Body: body, Sent: time.Now(), Provider: providerID}, nil
 	}
 	return fromRecord(*rec), nil
 }
@@ -301,8 +357,9 @@ func DeleteAll(owner string) {
 // words of the settings themselves.
 func Missing() []string {
 	var out []string
-	if sendgrid.APIKey() == "" {
-		out = append(out, "SENDGRID_API_KEY — the provider credential")
+	if !twilio.EmailConfigured() && SendVia == nil {
+		out = append(out, "a way to send — Twilio credentials (the same ones SMS uses), "+
+			"or this instance's own SMTP with MAIL_DOMAIN and a DKIM key")
 	}
 	if Domain() == "" {
 		out = append(out, "EMAIL_DOMAIN — the authenticated sending domain, e.g. email.example.com")
