@@ -23,8 +23,19 @@ import (
 	socialsvc "mu/service/social"
 )
 
-// Start begins watching the news for stories worth surfacing.
-func Start() { go detectBreakingStories() }
+// Start begins watching for stories worth surfacing: this instance's own news,
+// and — where an operator has turned it on — the open social network.
+func Start() {
+	go detectBreakingStories()
+
+	// What the agent decides, handed to the service to store. Wired here rather
+	// than imported inside the watcher so the filtering and the scoring can be
+	// tested without standing up social.
+	Surface = func(c *candidate) {
+		socialsvc.SurfaceBreaking(c.Category, c.display(), c.Link)
+	}
+	go Watch()
+}
 
 // detectBreakingStories checks the news feed for stories covered by multiple
 // categories/sources. If the same story appears across 2+ sources, it's

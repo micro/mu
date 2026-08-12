@@ -123,7 +123,17 @@ func SurfaceBreaking(category, title, link string) {
 		content = content[:497] + "..."
 	}
 
-	id := fmt.Sprintf("%x", md5.Sum([]byte("breaking:"+link)))[:16]
+	// The link identifies the story, so the same story from two sources is one
+	// message. When there is no link the title has to identify it — keying every
+	// link-less item on the same empty string made them all one message, and
+	// exactly one of them would ever have appeared. Nothing surfaced here was
+	// ever link-less until the network watcher started passing posts that carry
+	// only an image.
+	key := link
+	if key == "" {
+		key = title
+	}
+	id := fmt.Sprintf("%x", md5.Sum([]byte("breaking:"+key)))[:16]
 
 	addMessage(&Message{
 		ID:       id,

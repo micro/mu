@@ -422,6 +422,23 @@ that.
 
 DNS records are above.
 
+### Social
+
+| Variable | Default | What it does |
+|---|---|---|
+| `SOCIAL_ATPROTO` | off | `true` to watch the open social network — Bluesky's public firehose — for posts worth surfacing on `/social` |
+
+Off unless you turn it on. Everything else in Mu works with no configuration;
+this one does not, because pulling strangers' posts into your instance is a
+decision about what you are willing to publish, and it is yours to make.
+
+No key and no account: the firehose is public JSON over a websocket. What
+arrives is about three million posts a day, so almost all of the work is
+refusing them — English, not a reply, long enough to stand alone, pointing at
+something, in one of the categories the news is already sorted by, and not an
+advert or a repost bot. Three are surfaced every fifteen minutes, one per
+category and one per author.
+
 ### Channels
 
 | Variable | What it does |
