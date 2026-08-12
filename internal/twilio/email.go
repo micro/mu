@@ -73,30 +73,7 @@ func SendEmail(m Email) (string, error) {
 		return "", fmt.Errorf("a sender and a recipient are both required")
 	}
 
-	from := map[string]string{"address": m.From}
-	if m.FromName != "" {
-		from["name"] = m.FromName
-	}
-	to := map[string]string{"address": m.To}
-	if m.ToName != "" {
-		to["name"] = m.ToName
-	}
-	content := map[string]any{"subject": m.Subject}
-	if m.Text != "" {
-		content["text"] = m.Text
-	}
-	if m.HTML != "" {
-		content["html"] = m.HTML
-	}
-	// Deliberately not sent. See Email.ReplyTo: Twilio refuses the header with a
-	// 400, so passing it through would fail every message rather than degrade
-	// one.
-
-	raw, err := json.Marshal(map[string]any{
-		"from":    from,
-		"to":      []map[string]string{to},
-		"content": content,
-	})
+	raw, err := json.Marshal(emailBody(m))
 	if err != nil {
 		return "", err
 	}
@@ -124,6 +101,34 @@ func SendEmail(m Email) (string, error) {
 	}
 	json.Unmarshal(body, &ok) //nolint:errcheck
 	return ok.OperationID, nil
+}
+
+// emailBody is the request Twilio is sent, separated from sending it so the
+// shape can be checked against the documented one without a network call.
+//
+// It is the whole of what this package decides, and it got that wrong once: a
+// Reply-To in content.headers is refused with a 400, and every message failed.
+func emailBody(m Email) map[string]any {
+	from := map[string]string{"address": m.From}
+	if m.FromName != "" {
+		from["name"] = m.FromName
+	}
+	to := map[string]string{"address": m.To}
+	if m.ToName != "" {
+		to["name"] = m.ToName
+	}
+	content := map[string]any{"subject": m.Subject}
+	if m.Text != "" {
+		content["text"] = m.Text
+	}
+	if m.HTML != "" {
+		content["html"] = m.HTML
+	}
+	return map[string]any{
+		"from":    from,
+		"to":      []map[string]string{to},
+		"content": content,
+	}
 }
 
 // emailError pulls Twilio's own explanation out of a refusal, so an operator

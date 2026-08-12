@@ -63,26 +63,19 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Where it comes from and where answers land. The second line is the one
-	// worth putting on a page: mail goes out from a domain with no inbox, so
-	// "reply to this" resolves somewhere else, and somebody should not have to
-	// discover that from a bounce.
+	// What this account sends as, and what is left today.
+	//
+	// Nothing here about replies. Sending from a domain and receiving at one are
+	// separate problems with separate DNS, and an MX record is not a thing this
+	// service needs to send — that was a consequence of an arrangement that only
+	// worked while a Reply-To could be set, and it cannot. A page that warns
+	// about it is answering a question nobody has asked yet.
 	b.WriteString(`<div class="card">`)
 	b.WriteString(`<h3>You send as</h3>`)
 	b.WriteString(`<p style="font-size:15px;margin:0 0 4px"><code>` +
 		html.EscapeString(SenderFor(acc.ID)) + `</code></p>`)
-	b.WriteString(`<p style="font-size:14px;color:#666;margin:0 0 12px">Replies arrive at <code>` +
-		html.EscapeString(Answers(acc.ID)) + `</code>`)
-	if Answers(acc.ID) == SenderFor(acc.ID) {
-		// Twilio carries no Reply-To, so the From is the only address a reply
-		// can go to — which makes an MX record on the sending domain the
-		// difference between a conversation and a bounce.
-		b.WriteString(` — the carrier cannot redirect replies, so <code>` +
-			html.EscapeString(Domain()) + `</code> needs an MX record pointing here or answers will bounce.`)
-	} else {
-		b.WriteString(`, which is your inbox here.`)
-	}
-	b.WriteString(`</p>`)
+	b.WriteString(`<p style="font-size:14px;color:#666;margin:0 0 12px">Carried by ` +
+		html.EscapeString(Provider()) + `.</p>`)
 	b.WriteString(`<p style="font-size:14px;color:#666;margin:0">` +
 		html.EscapeString(strings.ToUpper(Allowance(acc.ID)[:1])+Allowance(acc.ID)[1:]) + `.</p>`)
 	b.WriteString(`</div>`)

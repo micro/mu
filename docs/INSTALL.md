@@ -360,6 +360,9 @@ unaffected — they send over this instance's own SMTP under `MAIL_DOMAIN`.
 With no Twilio account at all, this falls back to that same SMTP server, so a
 self-hosted instance can send from its own subdomain with nothing bought.
 
+Sending only. Nothing here needs an MX record on the sending domain — that is
+how a domain *receives*, and Twilio's verification is CNAMEs.
+
 The two are separate on purpose. `mail_email` goes out as `you@MAIL_DOMAIN`,
 which is the address with an inbox behind it and the one a reply has to come
 from for a thread to hold together. `email_send` goes out from a domain that
@@ -369,7 +372,7 @@ of password resets with it.
 | Variable | Default | What it does |
 |---|---|---|
 | `EMAIL_DOMAIN` | — | The verified sending domain — `email.example.com`, not the root domain. Verify it in the Twilio console, which gives you CNAMEs to add; the hostname it generates (`em1234.email.example.com`) is the CNAME target and **not** what goes here. Deliberately has no default: falling back to `MAIL_DOMAIN` would quietly undo the separation, on the instance where somebody forgot to set this rather than the one where they thought about it |
-| `EMAIL_REPLY_DOMAIN` | `MAIL_DOMAIN` | Where replies are pointed, **when the carrier can redirect them**. This instance's own SMTP sets a `Reply-To`; Twilio cannot — there is no field for it and the header is refused with *"The header 'Reply-To' is restricted and cannot be overridden"* — so mail sent through Twilio is answered at its `From` and nowhere else. **Give the sending domain an MX record pointing at this server**, or replies to it bounce and the sender never learns they were answered. `/email` says which of the two is in force |
+| `EMAIL_REPLY_DOMAIN` | `MAIL_DOMAIN` | Where replies are pointed, on the SMTP path only. Twilio cannot carry a `Reply-To` — there is no field for it and the header is refused — so mail sent through Twilio is answered at its `From`. Receiving at the sending domain is a separate problem with separate DNS and is not needed to send |
 | `EMAIL_DAILY_LIMIT` | `10` | Messages one account may send in a day, on top of the per-message price. It is `limit_env` on `external_email` in `quota.json`, which is where the number itself lives — beside the price, because what a thing costs and how much of it somebody may do are the same kind of decision. A plan raises it. **Set it to `0` to stop sending entirely** — the kill switch, and the same setting rather than a second one because an operator reaching for it is in a hurry |
 
 ### Texts
