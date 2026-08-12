@@ -6,25 +6,6 @@ and REST — behind one account instead of many providers.
 
 Use it live at [micro.mu](https://micro.mu), or run your own.
 
-Two ways to pay for the calls that cost anything. A person tops up with a card
-and everything — the pages, the assistant, their agents' tokens — comes out of
-one credit balance. **An agent pays per request in USDC over
-[x402](https://x402.org) and never signs up at all**: a priced call with no
-credentials answers `402 Payment Required` with a challenge naming the price
-and where to send it, so the payment is the identity and there is no account,
-no card and no key to rotate.
-
-```bash
-curl -X POST https://micro.mu/mcp \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call",
-       "params":{"name":"web_search","arguments":{"query":"x402"}}}'
-# → 402, with the x402 challenge
-```
-
-Reads that only touch the instance are free either way, and a self-hosted
-instance with neither Stripe nor x402 configured cannot charge anybody — so
-nothing is metered and every tool is simply free.
-
 ## Install
 
 ```bash
@@ -194,6 +175,28 @@ what you are looking at. Apps run sandboxed, in an opaque origin, and reach the
 platform through a fixed set of operations rather than your session.
 
 Sign in with a username and password, a passkey (WebAuthn), or Google.
+
+## Credits & Payments
+
+The server integrates credits and payments for public servers like [micro.mu](https://micro.mu).
+A person tops up with a credit card using stripe and everything comes out of one credit balance. 
+
+**An agent can pay per request in USDC over
+[x402](https://x402.org) and never signs up at all**: a priced call with no
+credentials answers `402 Payment Required` with a challenge naming the price
+and where to send it, so the payment is the identity and there is no account,
+no card and no key to rotate.
+
+```bash
+curl -X POST https://micro.mu/mcp \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call",
+       "params":{"name":"web_search","arguments":{"query":"x402"}}}'
+# → 402, with the x402 challenge
+```
+
+Reads that only touch the instance are free either way, and a self-hosted
+instance with neither Stripe nor x402 configured cannot charge anybody — so
+nothing is metered and every tool is simply free.
 
 ## Configuration
 
