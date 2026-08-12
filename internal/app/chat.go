@@ -189,7 +189,7 @@ var SUGGEST=['Give me a morning brief','What is moving in markets?','Weather in 
 function showSuggestions(){
   if(HIDE_SUGGEST){sugDiv.innerHTML='';if(hintDiv)hintDiv.innerHTML='';return;}
   if(conv.innerHTML.trim()){sugDiv.innerHTML='';if(hintDiv)hintDiv.innerHTML='';return;}
-  if(GUEST&&hintDiv)hintDiv.innerHTML='No account needed for your first 3 questions. Sign up only when you want to keep going.';
+  if(GUEST&&hintDiv)hintDiv.innerHTML='A few questions to try it, no account needed. Sign up when you want your own.';
   var h='<div class="mu-pills">';
   SUGGEST.forEach(function(s){h+='<a href="#" data-q="'+esc(s)+'">'+esc(s)+'</a>';});
   h+='</div>';

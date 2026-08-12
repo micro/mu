@@ -26,9 +26,17 @@ import (
 // makes that land is `ollama run llama3` putting you in a conversation on the
 // first command — because nobody wants a model, they want to use one. Nobody
 // wants tools either. So the tools are used here, on arrival, by anyone: a
-// guest gets three agent queries a day (agent/guest.go) against every service
+// guest gets a few agent queries a day (agent/guest.go) against every service
 // that is not somebody's private data, which is enough to watch it read the
 // news, check a market and answer.
+//
+// The copy used to name the number — "three questions a day without an
+// account" — and that was the wrong promise to make. There is no free plan
+// here, and a page offering a daily allowance is describing one; it also fixed
+// in writing a number that is an operator's to change, and made a spend that
+// scales with arrivals sound like a feature. What this is, and what it now
+// says, is a demonstration: enough to see it work, bounded by a ceiling the
+// operator sets, and not a tier anybody can plan around.
 //
 // The description still follows. It reads better as a caption than as a pitch.
 func Landing(w http.ResponseWriter, r *http.Request) {
@@ -41,7 +49,7 @@ Ask something and watch it use them.</p>
 
 <div class="ltry">` + chatComponent(true) + `</div>
 
-<p class="ltrynote">Three questions a day without an account. <a href="/signup">Sign up</a> for
+<p class="ltrynote">A few questions to try it, no account needed. <a href="/signup">Sign up</a> for
 your own agent, an email address it answers on, and the endpoint your own client can call.</p>
 
 <div class="lctas">

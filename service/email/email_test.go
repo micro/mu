@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"mu/internal/quota"
 	"mu/internal/settings"
 )
 
@@ -74,26 +75,19 @@ func TestAnOperatorCanRedirectReplies(t *testing.T) {
 	}
 }
 
-// TestZeroIsTheKillSwitch — an operator typing 0 into /admin/env to stop the
-// mail must not be told fifty. app.EnvInt treats 0 as "not set", which is right
-// for a size and wrong for a limit.
-func TestZeroIsTheKillSwitch(t *testing.T) {
-	withSettings(t, map[string]string{"EMAIL_DAILY_LIMIT": "0"})
-	if n := DailyLimit(); n != 0 {
-		t.Errorf("EMAIL_DAILY_LIMIT=0 gives a limit of %d, so sending carries on", n)
+// TestTheCapComesFromQuota — the number is not this package's to invent. It is
+// quota.json, beside the price, and the point of moving it there was that sms
+// had already invented its own name for the same idea.
+func TestTheCapComesFromQuota(t *testing.T) {
+	if err := quota.LoadFromTree(); err != nil {
+		t.Skipf("cannot read quota.json here: %v", err)
 	}
-	if n := LimitFor("anybody"); n != 0 {
-		t.Errorf("with sending off, one account still gets %d", n)
+	want := quota.DailyLimit(quota.OpExternalEmail)
+	if want == quota.NoLimit {
+		t.Fatal("external_email has no limit in quota.json, so sending is uncapped")
 	}
-}
-
-// TestABadLimitDoesNotOpenTheGates — a typo must not read as unlimited.
-func TestABadLimitDoesNotOpenTheGates(t *testing.T) {
-	for _, v := range []string{"fifty", "-3", " "} {
-		withSettings(t, map[string]string{"EMAIL_DAILY_LIMIT": v})
-		if n := DailyLimit(); n != 50 {
-			t.Errorf("EMAIL_DAILY_LIMIT=%q gives %d, want the default", v, n)
-		}
+	if got := LimitFor("nobody-in-particular"); got != want {
+		t.Errorf("email caps an account at %d and quota.json says %d", got, want)
 	}
 }
 

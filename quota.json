@@ -20,6 +20,17 @@
     "applies, and free_env overrides it the way env overrides cost. Zero, or",
     "absent, means the price applies from the first call.",
     "",
+    "limit is the most of an operation one account may do in a day, whatever",
+    "its balance, and limit_env overrides it. Absent means no limit; an",
+    "explicit 0 means nobody may do it at all, which is the kill switch. A",
+    "price and a limit fail differently, which is why both exist: a price stops",
+    "somebody who has to pay and does nothing about a loop, and a runaway agent",
+    "with a funded balance is the case that costs real money. The three",
+    "operations carrying one are the three that leave this instance — an email,",
+    "a text, a WhatsApp conversation — because what those spend is a domain's",
+    "or a number's reputation, and no refund repairs that. A plan raises them;",
+    "the number here is the floor everybody gets.",
+    "",
     "This is the shape the providers underneath already use — Google gives ten",
     "thousand Routes calls a month before billing anything — and it separates two",
     "decisions that were stuck together. What a call costs us is arithmetic about",
@@ -126,6 +137,8 @@
     {
       "op": "external_email",
       "cost": 4,
+      "limit": 50,
+      "limit_env": "EMAIL_DAILY_LIMIT",
       "label": "External email",
       "env": "CREDIT_COST_EMAIL",
       "note": "Leaves the instance over SMTP"
@@ -133,6 +146,8 @@
     {
       "op": "whatsapp_send",
       "cost": 5,
+      "limit": 50,
+      "limit_env": "WHATSAPP_DAILY_LIMIT",
       "label": "WhatsApp conversation",
       "env": "CREDIT_COST_WHATSAPP",
       "note": "Twilio bills WhatsApp by the 24-hour conversation rather than the message, so this is charged once per window and the rest of the thread is free. Cheaper than a text because it costs us less and cannot be sent cold — the other person has to write first"
@@ -140,6 +155,8 @@
     {
       "op": "sms_send",
       "cost": 10,
+      "limit": 20,
+      "limit_env": "SMS_DAILY_LIMIT",
       "label": "Text message (per segment)",
       "env": "CREDIT_COST_SMS",
       "note": "Twilio: under a penny to a US mobile, ~4p to a UK one, and charged per 160-character segment. A markup that would be silly on a search is the point here — a text cannot be unsent, and the number's reputation is shared by everybody on the instance. Ten pence makes a spam run cost real money before any of the other limits are reached"

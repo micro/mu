@@ -59,6 +59,15 @@ var Gate struct {
 	// returns without error, because nothing should be billed for a call that
 	// failed.
 	Charge func(account, operation string)
+
+	// Done says one succeeded, whether or not it was charged for.
+	//
+	// Separate from Charge because a call can succeed and cost nothing — an
+	// account inside its free allowance — and that call still has to be
+	// counted, or the allowance is infinite. Counted here rather than before
+	// the handler runs, so a call that failed spends neither an allowance nor
+	// a daily limit.
+	Done func(account, operation string)
 }
 
 // gateway wraps every endpoint of one service.
@@ -124,6 +133,11 @@ func gateway(spec Spec) server.HandlerWrapper {
 			// account rather than a credit.
 			if charge && Gate.Charge != nil {
 				Gate.Charge(who, op)
+			}
+			// Counted whether or not it was billed, because a free allowance
+			// that is never counted down is not an allowance.
+			if Gate.Done != nil {
+				Gate.Done(who, op)
 			}
 			return nil
 		}

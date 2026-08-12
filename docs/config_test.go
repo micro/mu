@@ -1,6 +1,7 @@
 package docs
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -89,6 +90,14 @@ func TestEveryConfigVarIsDocumented(t *testing.T) {
 		}
 	}
 
+	// Names quota.json hands to the environment. quota reads them by the name
+	// in the file rather than a literal in Go — env, free_env and limit_env —
+	// so a scan for os.Getenv("X") cannot see them, and the honest answer is
+	// that they are read, by the file that names them.
+	for _, v := range quotaEnvNames(t, root) {
+		read[v] = true
+	}
+
 	for v := range read {
 		if family(v) {
 			continue
@@ -123,4 +132,32 @@ func repoRoot(t *testing.T) string {
 		}
 		dir = parent
 	}
+}
+
+// quotaEnvNames is every environment variable quota.json names as an override.
+func quotaEnvNames(t *testing.T, root string) []string {
+	t.Helper()
+	b, err := os.ReadFile(filepath.Join(root, "quota.json"))
+	if err != nil {
+		t.Fatalf("cannot read quota.json: %v", err)
+	}
+	var f struct {
+		Operations []struct {
+			Env      string `json:"env"`
+			FreeEnv  string `json:"free_env"`
+			LimitEnv string `json:"limit_env"`
+		} `json:"operations"`
+	}
+	if err := json.Unmarshal(b, &f); err != nil {
+		t.Fatalf("quota.json is not valid JSON: %v", err)
+	}
+	var out []string
+	for _, o := range f.Operations {
+		for _, v := range []string{o.Env, o.FreeEnv, o.LimitEnv} {
+			if v != "" {
+				out = append(out, v)
+			}
+		}
+	}
+	return out
 }

@@ -58,6 +58,30 @@ type Price struct {
 
 	// FreeEnv is the variable that overrides Free, the way Env overrides Cost.
 	FreeEnv string `json:"free_env,omitempty"`
+
+	// Limit is the most of this operation an account may do in a day, whatever
+	// its balance. Absent means no limit; an explicit 0 means nobody may do it,
+	// which is the kill switch.
+	//
+	// A price and a limit fail differently and that is why both exist. A price
+	// stops somebody who has to pay; it does nothing about a loop, and a
+	// runaway agent with a funded balance is the case that costs real money.
+	// The three operations that leave this building — an email, a text, a
+	// WhatsApp conversation — are where that difference is expensive, because
+	// what they spend is a domain's or a number's reputation and no refund
+	// repairs it.
+	//
+	// It lives here rather than in each service because it was living in each
+	// service: sms invented SMS_DAILY_LIMIT and email was about to invent
+	// EMAIL_DAILY_LIMIT, two names for one idea in two packages, and an
+	// operator looking for "how much can an account send" had to know which
+	// package to look in. What a thing costs and how much of it somebody may
+	// do are the same kind of decision — an operator's — so they belong on the
+	// same line of the same file.
+	Limit *int `json:"limit,omitempty"`
+
+	// LimitEnv is the variable that overrides Limit.
+	LimitEnv string `json:"limit_env,omitempty"`
 }
 
 type priceFile struct {
@@ -146,6 +170,14 @@ func apply(f priceFile) {
 	for _, p := range f.Operations {
 		p.Cost = envOverride(p.Env, p.Cost)
 		p.Free = envOverride(p.FreeEnv, p.Free)
+		// A limit believes a zero, where a price does not. envOverride rejects
+		// it because an unset variable and one set to "0" look the same to a
+		// container and a price silently dropping to free is the wrong way to
+		// fail — but for a limit, zero is the whole point: it is how an
+		// operator stops the texts going out at two in the morning, and being
+		// told "that is not a number" instead is how they end up pulling the
+		// process.
+		p.Limit = limitOverride(p.LimitEnv, p.Limit)
 		byOp[p.Op] = p
 		list = append(list, p)
 	}
@@ -185,6 +217,23 @@ func envOverride(key string, fallback int) int {
 	return n
 }
 
+// limitOverride reads a cap from the environment, and unlike envOverride it
+// accepts zero. See the call site.
+func limitOverride(key string, fallback *int) *int {
+	if key == "" {
+		return fallback
+	}
+	v := strings.TrimSpace(os.Getenv(key))
+	if v == "" {
+		return fallback
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil || n < 0 {
+		return fallback
+	}
+	return &n
+}
+
 // GetOperationCost is what this operation costs the caller, in credits.
 //
 // An operation with no entry costs 1. That is the old switch's default and it
@@ -209,6 +258,50 @@ func FreeAllowance(operation string) int {
 		return p.Free
 	}
 	return 0
+}
+
+// Label is what the price table calls an operation, or "" if it is unpublished.
+func Label(operation string) string {
+	priceMu.RLock()
+	defer priceMu.RUnlock()
+	return prices[operation].Label
+}
+
+// NoLimit is what DailyLimit answers for an operation nobody has capped.
+const NoLimit = -1
+
+// DailyLimit is the most of this operation one account may do in a day, from
+// quota.json. NoLimit when the file says nothing.
+//
+// A plan can raise it — see PlanLimit, which is what a subscription actually
+// sells — and this is the floor everybody gets.
+func DailyLimit(operation string) int {
+	priceMu.RLock()
+	defer priceMu.RUnlock()
+	p, ok := prices[operation]
+	if !ok || p.Limit == nil {
+		return NoLimit
+	}
+	return *p.Limit
+}
+
+// PlanLimit is what this account's plan allows of an operation, and whether the
+// plan says anything at all. Filled in by internal/server/hooks.go from
+// wallet.PlanByID, because the plans are product and this is internal.
+//
+// Nil on a build with no billing linked in, which is a self-hosted instance:
+// nobody is selling anything there, so quota.json's number stands for everyone.
+var PlanLimit func(account, operation string) (int, bool)
+
+// LimitFor is the cap that applies to this account: the plan's if it has one,
+// otherwise the file's.
+func LimitFor(account, operation string) int {
+	if PlanLimit != nil && account != "" {
+		if n, ok := PlanLimit(account, operation); ok {
+			return n
+		}
+	}
+	return DailyLimit(operation)
 }
 
 // Prices is every published operation, cheapest first. The cost tables on the

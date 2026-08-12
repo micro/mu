@@ -622,6 +622,15 @@ func wireHooks() {
 			return false, nil
 		}
 
+		// A daily limit is checked before anything about money, because it is
+		// not about money. It is the second control: a price stops somebody who
+		// has to pay and does nothing about a loop, and what a loop spends on
+		// the three outbound operations is a domain's or a number's reputation,
+		// which no balance repairs. See the limit block in quota.json.
+		if over, why := quota.OverLimit(account, op); over {
+			return false, fmt.Errorf("%s", why)
+		}
+
 		// A free allowance is spent before a credit is. Checking it here rather
 		// than inside CheckQuota keeps the two ideas apart: what an operation
 		// costs is arithmetic about providers, and how much of it somebody gets
@@ -647,6 +656,24 @@ func wireHooks() {
 		if err := quota.ConsumeWith(account, op, nil); err != nil {
 			app.Log("wallet", "charging %s for %s: %v", account, op, err)
 		}
+	}
+	// One counter, moved once, after the call succeeded — it is what both the
+	// free allowance and the daily limit read.
+	service.Gate.Done = quota.Done
+
+	// What a plan allows of an operation. Everything a subscription sells that
+	// is not credits comes through here.
+	quota.PlanLimit = func(account, op string) (int, bool) {
+		acc, err := auth.GetAccount(account)
+		if err != nil {
+			return 0, false
+		}
+		// The operator's own instance and its agent are not on a plan and are
+		// not capped by one, for the same reason they are not charged.
+		if acc.Admin || acc.Agent {
+			return quota.NoLimit, true
+		}
+		return wallet.PlanByID(acc.Plan).LimitFor(op)
 	}
 
 	// Wire MCP quota checking using wallet credit system

@@ -8,6 +8,7 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/quota"
 	"mu/wallet"
 )
 
@@ -88,6 +89,29 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	// software. It is not having to hold thirty accounts.
 	b.WriteString(`<div class="plans">`)
 
+	// Pay as you go is a column, not an absence.
+	//
+	// It is where the third paid tier was, and it is the answer to "I do not
+	// want to gate": every read tool is here, unmetered by any plan, bought at
+	// the same penny a credit as everywhere else. What it does not carry is
+	// volume on the three operations that leave the building, and that is a
+	// wall against abuse rather than against a customer — what an account sends
+	// under our domain and our number is the one cost a balance cannot make
+	// whole.
+	b.WriteString(`<div class="card plan">`)
+	b.WriteString(`<h3 style="margin:0 0 4px">Pay as you go</h3>`)
+	b.WriteString(`<p style="font-size:2rem;font-weight:700;margin:8px 0">1p` +
+		`<span style="font-size:14px;font-weight:400;color:#888">/credit</span></p>`)
+	b.WriteString(`<p style="color:#666;font-size:14px;margin:0 0 16px">Top up any amount</p>`)
+	b.WriteString(`<ul style="text-align:left;list-style:none;padding:0;margin:0 0 16px;font-size:14px;line-height:2">`)
+	b.WriteString(`<li>&#10003; Every read tool</li>`)
+	b.WriteString(`<li>&#10003; The web app, included</li>`)
+	b.WriteString(`<li>&#10003; 1 agent</li>`)
+	b.WriteString(`<li>&#10003; No subscription</li>`)
+	b.WriteString(`</ul>`)
+	b.WriteString(`<a href="/signup" class="btn" style="display:block;text-align:center">Start</a>`)
+	b.WriteString(`</div>`)
+
 	// Rendered from wallet.Plans(), which is what /wallet actually charges for,
 	// so this page cannot advertise a plan nobody can buy.
 	for _, p := range wallet.Plans() {
@@ -119,6 +143,22 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 		// price card.
 		b.WriteString(`<li>&#10003; ` + html.EscapeString(
 			fmt.Sprintf("%d agent%s", p.Agents, plural(p.Agents))) + `</li>`)
+		// The send caps, from the same map the gate reads. These are the third
+		// thing a plan sells and the only one whose cost to us is not covered
+		// by the credits — what a bad month spends is a domain's or a number's
+		// reputation, and no balance repairs that.
+		for _, l := range []struct {
+			op, noun string
+		}{
+			{quota.OpExternalEmail, "emails"},
+			{quota.OpSMSSend, "texts"},
+			{quota.OpWhatsAppSend, "WhatsApp chats"},
+		} {
+			if n, ok := p.LimitFor(l.op); ok {
+				b.WriteString(`<li>&#10003; ` + html.EscapeString(
+					fmt.Sprintf("%s %s a day", thousands(n), l.noun)) + `</li>`)
+			}
+		}
 		b.WriteString(`</ul>`)
 		b.WriteString(`<a href="/signup" class="btn" style="display:block;text-align:center">Get ` +
 			html.EscapeString(p.Name) + `</a>`)

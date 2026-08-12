@@ -53,6 +53,7 @@ import (
 	"mu/internal/auth"
 	"mu/internal/contacts"
 	"mu/internal/phone"
+	"mu/internal/quota"
 	"mu/internal/settings"
 	"mu/internal/userdb"
 )
@@ -364,7 +365,17 @@ func Numbers(owner string) []string { return phone.Numbers(owner) }
 // Set it to zero and nobody sends anything. That is the kill switch, and it is
 // the same setting rather than a second one, because an operator reaching for
 // it is in a hurry.
-func DailyLimit() int { return limitSetting("SMS_DAILY_LIMIT", 20) }
+// The number itself now lives in quota.json, beside the price, under limit —
+// because what a text costs and how many of them an account may send are the
+// same kind of decision made by the same person, and this owning one while the
+// price lived in a JSON file is why email was about to invent a second name for
+// the same idea. SMS_DAILY_LIMIT still overrides it; that is limit_env.
+func DailyLimit() int {
+	if n := quota.DailyLimit(quota.OpSMSSend); n != quota.NoLimit {
+		return n
+	}
+	return limitSetting("SMS_DAILY_LIMIT", 20)
+}
 
 // limitSetting reads a cap, and unlike app.EnvInt it believes a zero.
 //
@@ -390,7 +401,12 @@ func limitSetting(key string, def int) int {
 // a script and twenty texts an hour — and somebody genuinely texting a friend
 // on their first day is not sending fifty.
 func LimitFor(owner string) int {
-	limit := DailyLimit()
+	// What the plan allows, when there is one. A subscription raising the send
+	// caps is the third thing it sells, after credits and agents.
+	limit := quota.LimitFor(owner, quota.OpSMSSend)
+	if limit == quota.NoLimit {
+		limit = DailyLimit()
+	}
 	if limit == 0 {
 		return 0
 	}

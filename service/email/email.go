@@ -28,23 +28,23 @@
 //     Reply-To pointing at the sender's address on the instance's mail domain,
 //     which mail does answer. Without it, sending is a broadcast and the sender
 //     never learns anyone replied.
-//   - **A daily cap per account**, tighter for an account nobody has vouched
-//     for. The price is the first control and the cap is the second, because
-//     they fail differently: a price stops somebody who has to pay, a cap stops
-//     a loop that found a way not to. External email had no cap of any kind
-//     before this, which on a product that has already been abused this way is
-//     not a missing feature, it is an exposure.
+//   - **A daily cap per account**, which a plan raises. The price is the first
+//     control and the cap is the second, because they fail differently: a price
+//     stops somebody who has to pay, a cap stops a loop that found a way not
+//     to. External email had no cap of any kind before this, which on a product
+//     that has already been abused this way is not a missing feature, it is an
+//     exposure. The number lives in quota.json beside the price.
 package email
 
 import (
 	"fmt"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/quota"
 	"mu/internal/sendgrid"
 	"mu/internal/settings"
 	"mu/internal/userdb"
@@ -128,61 +128,25 @@ func localPart(owner string) string {
 
 // ── The daily cap ───────────────────────────────────────────────
 
-// DailyLimit is how many messages one account may send in a day. Zero turns
-// sending off instance-wide, which is the kill switch — the same setting rather
-// than a second one, because an operator reaching for it is in a hurry.
-func DailyLimit() int { return limitSetting("EMAIL_DAILY_LIMIT", 50) }
+// The cap itself is not here. It is quota.json, on the same line as the price,
+// under limit — because "what does this cost" and "how much of it may somebody
+// do" are the same kind of decision made by the same person, and keeping them
+// apart is how sms came to own SMS_DAILY_LIMIT while this was about to invent
+// EMAIL_DAILY_LIMIT: two names for one idea in two packages, and an operator
+// looking for either had to know which package to read.
+//
+// What a plan raises it to is wallet's business, and quota asks it through a
+// hook. Everything below is a view of that one answer.
 
-// limitSetting reads a cap, and unlike app.EnvInt it believes a zero. EnvInt
-// treats 0 as "not set" and hands back the default, which is right for a size
-// and wrong for a limit: an operator typing zero to stop the mail would have
-// been told fifty.
-func limitSetting(key string, def int) int {
-	v := strings.TrimSpace(settings.Get(key))
-	if v == "" {
-		return def
-	}
-	n, err := strconv.Atoi(v)
-	if err != nil || n < 0 {
-		return def
-	}
-	return n
-}
+// LimitFor is how many this account may send today.
+func LimitFor(owner string) int { return quota.LimitFor(owner, quota.OpExternalEmail) }
 
-// LimitFor is the cap for one account. An account made in the last day gets a
-// much smaller one: signing up takes a minute, so the cap on a fresh account is
-// the only thing between a script and a mailing list.
-func LimitFor(owner string) int {
-	limit := DailyLimit()
-	if limit == 0 {
-		return 0
-	}
-	if auth.IsNewAccount(owner) {
-		if n := limitSetting("EMAIL_NEW_ACCOUNT_LIMIT", 5); n < limit {
-			return n
-		}
-	}
-	return limit
-}
+// SentToday is how many it has sent.
+func SentToday(owner string) int { return quota.UsedToday(owner, quota.OpExternalEmail) }
 
-// SentToday is how many this account has sent since midnight.
-func SentToday(owner string) int {
-	n := 0
-	midnight := time.Now().Truncate(24 * time.Hour)
-	for _, m := range History(owner, 500) {
-		if m.Sent.After(midnight) {
-			n++
-		}
-	}
-	return n
-}
-
-// LeftToday is how many more this account may send.
+// LeftToday is how many more it may send.
 func LeftToday(owner string) int {
-	left := LimitFor(owner) - SentToday(owner)
-	if left < 0 {
-		return 0
-	}
+	left, _ := quota.LeftToday(owner, quota.OpExternalEmail)
 	return left
 }
 
@@ -210,10 +174,11 @@ func Send(owner, to, subject, body string) (*Sent, error) {
 		return nil, fmt.Errorf("%s is not an email address — for somebody on this instance use mail_send", to)
 	}
 
-	if limit := LimitFor(owner); limit == 0 {
-		return nil, fmt.Errorf("sending is turned off on this instance")
-	} else if SentToday(owner) >= limit {
-		return nil, fmt.Errorf("that is %d emails today, which is this account's limit — it resets at midnight", limit)
+	// The gateway checks this too, before the handler runs. It is here as well
+	// because the page reaches past the endpoint into this function, and a cap
+	// that only one of the two doors honours is not a cap.
+	if over, why := quota.OverLimit(owner, quota.OpExternalEmail); over {
+		return nil, fmt.Errorf("%s", why)
 	}
 
 	// The same message to the same address twice running is refused, for the

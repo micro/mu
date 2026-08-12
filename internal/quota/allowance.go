@@ -21,6 +21,8 @@ package quota
 // the money, which is the wallet's job and always has been.
 
 import (
+	"fmt"
+	"strings"
 	"sync"
 	"time"
 )
@@ -54,11 +56,14 @@ func FreeCallsLeft(account, operation string) int {
 }
 
 // WithinAllowance reports whether this call is free because the account has not
-// used up its allowance today, and counts it if so.
+// used up its allowance today.
 //
-// Counting here rather than in a separate step is what keeps the two in step: a
-// caller that asked whether a call was free and then forgot to say it had
-// happened would hand out the same allowance for ever.
+// It used to count as well as ask, on the argument that a caller who asked and
+// then forgot to say it happened would hand out the same allowance for ever.
+// That was true and the fix was in the wrong place: it counted before the call
+// ran, so a call that failed still spent an allowance, and it meant one counter
+// was incremented from here while the limits below needed it incremented after
+// success. One counter, moved once, by Done.
 func WithinAllowance(account, operation string) bool {
 	allowance := FreeAllowance(operation)
 	if allowance <= 0 || account == "" {
@@ -67,12 +72,66 @@ func WithinAllowance(account, operation string) bool {
 	used.Lock()
 	defer used.Unlock()
 	rollLocked()
-	key := account + "\x00" + operation
-	if used.count[key] >= allowance {
-		return false
+	return used.count[account+"\x00"+operation] < allowance
+}
+
+// UsedToday is how many of an operation this account has done today.
+func UsedToday(account, operation string) int {
+	used.Lock()
+	defer used.Unlock()
+	rollLocked()
+	return used.count[account+"\x00"+operation]
+}
+
+// Done records that one succeeded. Called once per successful call, after the
+// fact, so nothing that failed counts against an allowance or a limit.
+func Done(account, operation string) {
+	if account == "" {
+		return
 	}
-	used.count[key]++
-	return true
+	used.Lock()
+	defer used.Unlock()
+	rollLocked()
+	used.count[account+"\x00"+operation]++
+}
+
+// LeftToday is how many more of an operation this account may do, and whether
+// it is capped at all.
+func LeftToday(account, operation string) (int, bool) {
+	limit := LimitFor(account, operation)
+	if limit == NoLimit {
+		return 0, false
+	}
+	if left := limit - UsedToday(account, operation); left > 0 {
+		return left, true
+	}
+	return 0, true
+}
+
+// OverLimit reports whether this account has used up its allowance of an
+// operation for today, with a sentence saying so.
+func OverLimit(account, operation string) (bool, string) {
+	limit := LimitFor(account, operation)
+	if limit == NoLimit {
+		return false, ""
+	}
+	if limit == 0 {
+		return true, "this instance has " + Describe(operation) + " turned off"
+	}
+	if UsedToday(account, operation) < limit {
+		return false, ""
+	}
+	return true, fmt.Sprintf("that is %d today, which is this account's limit for %s — it resets at midnight, and a plan raises it",
+		limit, Describe(operation))
+}
+
+// Describe is the operation in the words the price table uses, so a refusal
+// reads as "your limit for Text message" rather than for "sms_send".
+func Describe(operation string) string {
+	if label := Label(operation); label != "" {
+		return strings.ToLower(label)
+	}
+	return operation
 }
 
 // rollLocked throws the counters away when the date changes.

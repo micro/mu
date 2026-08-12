@@ -63,16 +63,21 @@ type SubscriptionPlan struct {
 	// question nobody asked.
 	PostsPerHour int `json:"posts_per_hour"`
 
-	// Nothing about the channels — external email, SMS, WhatsApp — is here on
-	// purpose. "Send mail, SMS and WhatsApp" was a line on the Pro card and
-	// nothing gated it, which is the same defect as the agent count and the
-	// rate limit; the difference is that those two had an obvious right answer
-	// and this one does not. Whether £10 buys the ability to send an email at
-	// all is a product decision nobody has made, and inventing it here would
-	// take something away from every account that can do it today.
+	// Limits is how much of an operation a day this plan allows, by quota
+	// operation id. Absent means quota.json's own number stands.
 	//
-	// So the line is off the card until it is gated. A field with no enforcement
-	// behind it is how the first three got there.
+	// This is the third thing a plan sells and the honest one: the outbound
+	// operations — an email, a text, a WhatsApp conversation — are the only
+	// ones whose cost to us is not covered by the credits, because what a bad
+	// month spends is a domain's or a number's reputation and no balance
+	// repairs that. Selling volume on them is how every provider of the same
+	// thing sells, which means nobody has to have it explained.
+	//
+	// What is deliberately not here is switching them off. A card on file is
+	// what makes abuse expensive, and every subscriber has one — so gating
+	// sending behind a *tier* gates on something every paying account already
+	// has, and gates out the smallest customer for no safety gained.
+	Limits map[string]int `json:"limits,omitempty"`
 
 	Features []string `json:"features"` // extra lines for the card, beyond the above
 	Featured bool     `json:"featured"` // the one the pricing page highlights
@@ -93,37 +98,61 @@ type SubscriptionPlan struct {
 // on every plan now, and what a plan sells is scale.
 var SubscriptionPlans = []SubscriptionPlan{
 	{
-		ID: "personal", Name: "Personal", Price: 1000, Credits: 1000,
-		Label:        "£10/month — 1,000 credits",
-		Agents:       1,
-		PostsPerHour: 60,
-		Features:     []string{"Every tool over MCP", "The web app, included"},
-	},
-	{
 		ID: "pro", Name: "Pro", Price: 2000, Credits: 2000,
 		Label:        "£20/month — 2,000 credits",
 		Agents:       5,
 		PostsPerHour: 300,
-		Features:     []string{"Everything in Personal"},
-		Featured:     true,
+		Limits: map[string]int{
+			quota.OpExternalEmail: 200,
+			quota.OpSMSSend:       25,
+			quota.OpWhatsAppSend:  50,
+		},
+		Features: []string{"Everything in pay as you go"},
+		Featured: true,
 	},
 	{
-		ID: "premium", Name: "Premium", Price: 10000, Credits: 10000,
+		ID: "scale", Name: "Scale", Price: 10000, Credits: 10000,
 		Label:        "£100/month — 10,000 credits",
 		Agents:       25,
 		PostsPerHour: 1200,
-		Features:     []string{"Everything in Pro"},
+		Limits: map[string]int{
+			quota.OpExternalEmail: 1000,
+			quota.OpSMSSend:       100,
+			quota.OpWhatsAppSend:  200,
+		},
+		Features: []string{"Everything in Pro"},
 	},
 }
 
-// noPlan is what an account without a subscription gets: the limits that were
-// already in force before plans read anything.
+// noPlan is pay as you go, and it is not a free tier.
 //
-// It is not a free tier — an account here still pays per call out of a balance
-// it topped up — it is the shape of somebody who has not subscribed. One agent
-// and the established post rate, which is exactly what everybody had before,
-// so introducing plans took nothing away from anyone.
-var noPlan = SubscriptionPlan{ID: "", Name: "No plan", Agents: 1, PostsPerHour: 60}
+// You still pay — top up any amount, a credit is a penny — and you get the
+// entire read catalogue, which is the pitch unaltered: news, weather, markets,
+// places, routes, search, and everything else that answers a question. Nothing
+// anybody comes here for is behind a wall.
+//
+// What it does not include is volume on the three operations that leave the
+// building, which take quota.json's floor rather than a plan's. That is a wall
+// against abuse rather than against a customer: what an account sends under our
+// domain and our number is the one cost a balance cannot make whole.
+//
+// It replaced a third paid tier at £10. With only credits, agents and send
+// volume to sell, a third column had to invent a difference between itself and
+// the one above — and the column that was actually missing was the one for
+// somebody who wants the tools and does not want a subscription.
+var noPlan = SubscriptionPlan{
+	ID: "", Name: "Pay as you go", Agents: 1, PostsPerHour: 60,
+}
+
+// LimitFor is what this plan allows of an operation, and whether it says
+// anything. A plan that is silent leaves quota.json's number in place.
+func (p SubscriptionPlan) LimitFor(operation string) (int, bool) {
+	if p.Limits == nil {
+		return 0, false
+	}
+	n, ok := p.Limits[operation]
+	return n, ok
+}
 
 // Plans is the catalogue, for pages that render it.
 func Plans() []SubscriptionPlan { return SubscriptionPlans }
