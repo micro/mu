@@ -180,33 +180,22 @@ Setup for both is in [Install](docs/INSTALL.md).
 
 ## Credits & Payments
 
-The server integrates credits and payments for public servers like [micro.mu](https://micro.mu).
-A person tops up with a credit card using stripe and everything comes out of one credit balance. 
+A person tops up by card and spends one credit balance. A credit is 1p.
 
-**An agent can pay per request in USDC over
-[x402](https://x402.org) and never signs up at all**: a priced call with no
-credentials answers `402 Payment Required` with a challenge naming the price
-and where to send it, so the payment is the identity and there is no account,
-no card and no key to rotate.
+**An agent can pay with USDC over [x402](https://x402.org) and never sign
+up.** A priced call with no credentials answers `402 Payment Required` naming
+the price and where to send it. The payment is the identity.
 
-```bash
-curl -X POST https://micro.mu/mcp \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call",
-       "params":{"name":"web_search","arguments":{"query":"x402"}}}'
-# → 402, with the x402 challenge
-```
-
-To pay it, `mu` is its own x402 client — put a funded Base wallet's key in
-`~/.mu/keys/wallet.seed` and:
+`mu` is its own x402 client. Put a funded Base wallet's key in
+`~/.mu/keys/wallet.seed`:
 
 ```bash
-mu x402 call web_search query="x402"      # pays the 402 and returns the result
-mu x402 call markets_list                  # free tool: no wallet, no account
+mu x402 call markets_list                 # free — no wallet, no account
+mu x402 call web_search query="x402"      # priced — pays the 402, returns it
 ```
 
-Reads that only touch the instance are free either way, and a self-hosted
-instance with neither Stripe nor x402 configured cannot charge anybody — so
-nothing is metered and every tool is simply free.
+Self-host with neither Stripe nor x402 and nothing is metered: every tool is
+free.
 
 ## Configuration
 
