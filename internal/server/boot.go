@@ -21,6 +21,7 @@ import (
 	"mu/service/events"
 	"mu/service/files"
 	"mu/service/flights"
+	"mu/service/food"
 	"mu/service/hazards"
 	"mu/service/images"
 	"mu/service/mail"
@@ -84,6 +85,7 @@ func boot() {
 	prayer.Load()
 	web.Load()
 	text.Load()
+	food.Load()
 	transit.Load()
 	hazards.Load()
 	stream.LoadService()

@@ -139,6 +139,7 @@ guessable.
 | `stream` | /stream | ✅ |  | The console: this instance's own timeline |
 | `tasks` | /tasks | ✅ | ✅ | What is to be done, and work handed to the agent |
 | `text` | /text | ✅ |  | Language work at a fixed price per call: summarise, extract JSON to a schema, classify, translate. Capped at 30,000 characters, because our cost varies with length and the price does not |
+| `food` | /food | ✅ |  | Ingredients, allergens and nutrition by barcode from Open Food Facts; UK hygiene ratings from the FSA. Both keyless and both authoritative rather than plausible |
 | `hazards` | /hazards | ✅ |  | What is going wrong physically: earthquakes live from the USGS, disasters from GDACS. No key, and authoritative rather than plausible — the point of it is that a model would otherwise guess |
 | `transit` | /transit | ✅ |  | Public transport: stops near you, what is due, which lines are down. London live from TfL; everywhere else from published GTFS timetables via `internal/gtfs`. No key either way — it works on a fresh install, which is the point |
 | `video` | /video | ✅ |  | Curated channels, without ads or recommendations |

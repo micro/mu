@@ -36,6 +36,7 @@ import (
 	"mu/service/events"
 	"mu/service/files"
 	"mu/service/flights"
+	"mu/service/food"
 	"mu/service/hazards"
 	"mu/service/images"
 	"mu/service/mail"
@@ -75,6 +76,7 @@ func authRequired() map[string]bool {
 		"/blog":                   false, // Public viewing, auth for posting
 		"/markets":                false, // Public viewing
 		"/text":                   false, // Public: the tools are callable without an account
+		"/food":                   false, // Public food data is public
 		"/transit":                false, // Public transport data is public
 		"/hazards":                false, // Public hazard data, published to be redistributed
 		"/prayer":                 false, // Public prayer times, daily verse and hadith
@@ -353,6 +355,7 @@ func registerRoutes() {
 	// serve markets page
 	http.HandleFunc("/markets", markets.Handler)
 	http.HandleFunc("/text", text.Handler)
+	http.HandleFunc("/food", food.Handler)
 	http.HandleFunc("/transit", transit.Handler)
 	http.HandleFunc("/hazards", hazards.Handler)
 	http.HandleFunc(imageproxy.Path, imageproxy.Handler)
