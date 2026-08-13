@@ -296,3 +296,45 @@ func describe(desc string, required []string) string {
 	}
 	return strings.TrimSpace(desc + " Required arguments: " + strings.Join(required, ", ") + ".")
 }
+
+// Exchange is one question and the answer it got, for persisting a session.
+type Exchange struct {
+	Question string `json:"q"`
+	Answer   string `json:"a"`
+}
+
+// History returns the conversation so far, oldest first.
+//
+// Deliberately not a file path: this package does not do IO. Where a
+// conversation is kept — a dotfile, a database, nowhere — belongs to whatever
+// is running the agent, and a client that wants no record on disk should not
+// have to opt out of one.
+func (s *Session) History() []Exchange {
+	var out []Exchange
+	for i := 0; i+1 < len(s.messages); i += 2 {
+		q, _ := s.messages[i].Content.(string)
+		a, _ := s.messages[i+1].Content.(string)
+		out = append(out, Exchange{Question: q, Answer: a})
+	}
+	return out
+}
+
+// Restore seeds the session with an earlier conversation, so a new process
+// picks up where the last one left off. Trimmed to the same limit as a live
+// session, because yesterday's transcript is re-sent on today's first question
+// and costs the same as any other context.
+func (s *Session) Restore(h []Exchange) {
+	s.messages = nil
+	for _, e := range h {
+		if e.Question == "" || e.Answer == "" {
+			continue
+		}
+		s.messages = append(s.messages,
+			gmai.Message{Role: "user", Content: e.Question},
+			gmai.Message{Role: "assistant", Content: e.Answer},
+		)
+	}
+	if len(s.messages) > historyLimit {
+		s.messages = append([]gmai.Message{}, s.messages[len(s.messages)-historyLimit:]...)
+	}
+}

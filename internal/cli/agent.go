@@ -128,15 +128,25 @@ func runAgent(args []string) int {
 		return 1
 	}
 
+	// Yesterday's conversation, so the first question of the day is not asked
+	// into a vacuum.
+	if past := loadHistory(); len(past) > 0 {
+		agent.Restore(past)
+		fmt.Printf("history: %d earlier exchanges\n", len(past))
+	}
+
 	s := &session{bw: bw, agent: agent, opening: usdcRaw(bw)}
 
 	if question != "" {
 		fmt.Println()
 		fmt.Println(s.ask(ctx, question))
+		saveHistory(agent.History())
 		s.reportSpend(s.opening)
 		return 0
 	}
-	return s.converse(ctx)
+	code := s.converse(ctx)
+	saveHistory(agent.History())
+	return code
 }
 
 // session is one run's state: the catalogue, the wallet and what has been said
@@ -346,4 +356,56 @@ func asLocalTools(tools []remoteTool) []local.Tool {
 		out = append(out, local.Tool{Name: t.Name, Description: t.Description, Schema: t.Schema})
 	}
 	return out
+}
+
+// historyFile is where a conversation survives the process.
+//
+// Sessions were in memory only, so closing the terminal lost everything the
+// last one had already paid to fetch — and the first question of the day
+// started from nothing every day. A dotfile is the whole feature for now:
+// enough that yesterday's answers are still there, small enough to delete.
+func historyFile() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(home, ".mu", "agent_history")
+}
+
+// loadHistory reads the last conversation, or nothing if there isn't one.
+// Never an error: a missing or unreadable history is a session that starts
+// fresh, which is exactly what happened before it existed.
+func loadHistory() []local.Exchange {
+	path := historyFile()
+	if path == "" {
+		return nil
+	}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return nil
+	}
+	var h []local.Exchange
+	if err := json.Unmarshal(b, &h); err != nil {
+		return nil
+	}
+	return h
+}
+
+// saveHistory writes the conversation back.
+//
+// 0600 because it holds whatever you asked and whatever came back — mail,
+// messages, where you were going. It is as private as the questions were.
+func saveHistory(h []local.Exchange) {
+	path := historyFile()
+	if path == "" || len(h) == 0 {
+		return
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return
+	}
+	b, err := json.Marshal(h)
+	if err != nil {
+		return
+	}
+	_ = os.WriteFile(path, b, 0o600)
 }
