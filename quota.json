@@ -125,28 +125,28 @@
       "cost": 2,
       "label": "Summarise text",
       "env": "CREDIT_COST_TEXT_SUMMARISE",
-      "note": "Atlas deepseek-v4-flash \u2014 capped at 30k characters"
+      "note": "Atlas deepseek-v4-flash ($0.14/$0.28 per M). 0.10p at the 30k cap \u2014 a 21x markup, 160x on a typical call"
     },
     {
       "op": "text_extract",
-      "cost": 3,
+      "cost": 5,
       "label": "Extract structure from text",
       "env": "CREDIT_COST_TEXT_EXTRACT",
-      "note": "Atlas deepseek-v4-pro \u2014 accuracy matters, capped at 30k characters"
+      "note": "Atlas deepseek-v4-pro ($1.68/$3.38 per M) because a wrong field is silent. 1.28p at the 30k cap \u2014 was 3, which left only 2.4x"
     },
     {
       "op": "text_classify",
       "cost": 1,
       "label": "Classify text",
       "env": "CREDIT_COST_TEXT_CLASSIFY",
-      "note": "Atlas deepseek-v4-flash \u2014 the cheapest real model call"
+      "note": "Atlas deepseek-v4-flash, output is one word. 0.09p at the 30k cap \u2014 the cheapest real model call here"
     },
     {
       "op": "text_translate",
       "cost": 3,
       "label": "Translate text",
       "env": "CREDIT_COST_TEXT_TRANSLATE",
-      "note": "Atlas deepseek-v4-pro \u2014 capped at 30k characters"
+      "note": "Atlas deepseek-v4-flash. Output is as long as the input, so on pro this cost 3.46p at the cap against a 3p price \u2014 the one loss-making path. On flash, 0.29p and a 10x markup"
     },
     {
       "op": "app_build",

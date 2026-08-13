@@ -138,6 +138,7 @@ guessable.
 | `social` | /social | ✅ |  | Threads, replies, status |
 | `stream` | /stream | ✅ |  | The console: this instance's own timeline |
 | `tasks` | /tasks | ✅ | ✅ | What is to be done, and work handed to the agent |
+| `text` | /text | ✅ |  | Language work at a fixed price per call: summarise, extract JSON to a schema, classify, translate. Capped at 30,000 characters, because our cost varies with length and the price does not |
 | `video` | /video | ✅ |  | Curated channels, without ads or recommendations |
 | `weather` | /weather | ✅ |  | Forecast and pollen |
 | `web` | /search | ✅ |  | Search the web; fetch a URL and return readable content |
