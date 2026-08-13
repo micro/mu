@@ -18,7 +18,11 @@ package wallet
 // its dependencies few enough that the whole EVM stack is in evm.go for the
 // same reason. See docs/INSTALL.md for X402_BAZAAR.
 
-import "strings"
+import (
+	"strings"
+
+	"mu/internal/settings"
+)
 
 // bazaarKey is the extension's name in the extensions map, matching
 // x402.NewFacilitatorExtension("bazaar").
@@ -35,8 +39,14 @@ const mcpTransport = "streamable-http"
 // choice for micro.mu and nobody else's to make by default — a self-hosted
 // instance behind a company firewall should not start publishing its tool
 // catalogue because it upgraded.
+//
+// Read through settings, not os.Getenv, so /admin/env can set it and it takes
+// effect without a restart — the same as CryptoTopupEnabled beside it. It was
+// os.Getenv first, which made it the one payment setting an operator could not
+// reach from the page where every other payment setting lives, and turning it
+// on would have meant editing the environment and restarting.
 func BazaarEnabled() bool {
-	return strings.EqualFold(strings.TrimSpace(envOr("X402_BAZAAR", "")), "true")
+	return strings.EqualFold(strings.TrimSpace(settings.Get("X402_BAZAAR")), "true")
 }
 
 // BazaarExtension describes one MCP tool for the discovery index.

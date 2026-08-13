@@ -49,6 +49,7 @@ var settingGroups = []settingGroup{
 		"STRIPE_PUBLISHABLE_KEY",
 		"STRIPE_WEBHOOK_SECRET",
 		"X402_PAY_TO",
+		"X402_BAZAAR",
 		"CRYPTO_TOPUP",
 	}},
 	{"Trading", []string{
