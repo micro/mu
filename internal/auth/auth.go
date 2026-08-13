@@ -591,6 +591,19 @@ func trusted(acc Account) bool {
 	return HasCredit != nil && HasCredit(acc.ID)
 }
 
+// Trusted is the same question asked by account id.
+//
+// Exported because posting is not the only thing that spends something shared.
+// Mail leaving this instance goes out under a domain that also carries password
+// resets, and what an unaccountable account sends is charged to the
+// deliverability of the mail that has to arrive. That wants the same answer
+// this already gives, not a second notion of accountability with its own bugs —
+// see service/mail/outbound.go.
+func Trusted(accountID string) bool {
+	acc, exists := snapshot(accountID)
+	return exists && trusted(acc)
+}
+
 // snapshot returns a copy of an account, or false if there is no such account.
 // The copy is what the trust rules below run against, so they can call out to
 // the wallet without holding the lock.

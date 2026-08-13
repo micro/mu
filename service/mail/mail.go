@@ -373,22 +373,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			if IsExternalEmail(to) {
-				if !acc.Admin {
-					canProceed, _, cost, err := quota.CheckQuota(acc.ID, quota.OpExternalEmail)
-					if err != nil || !canProceed {
-						app.RespondError(w, http.StatusPaymentRequired, fmt.Sprintf("external email requires %d credits", cost))
-						return
-					}
-				}
-				fromEmail := GetEmailForUser(acc.ID, GetConfiguredDomain())
-				htmlBody := convertPlainTextToHTML(body)
-				messageID, err := SendExternalEmail(acc.Name, fromEmail, to, subject, body, htmlBody, replyTo)
+				// Through SendOut, like everything else that leaves. This had its
+				// own copy of the quota check and its own call to the transport,
+				// so it could send what the tool would have refused.
+				messageID, err := SendOut(acc.ID, acc.Name, to, subject, body, "", replyTo)
 				if err != nil {
-					app.RespondError(w, http.StatusInternalServerError, "failed to send email: "+err.Error())
+					app.RespondError(w, http.StatusPaymentRequired, err.Error())
 					return
-				}
-				if !acc.Admin {
-					quota.ConsumeQuota(acc.ID, quota.OpExternalEmail) //nolint:errcheck
 				}
 				SendMessage(acc.Name, acc.ID, to, to, subject, body, replyTo, messageID) //nolint:errcheck
 			} else {
@@ -497,38 +488,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		// Check if recipient is external (has @domain)
 		if IsExternalEmail(to) {
-			// External email costs credits (unless admin)
-			if !acc.Admin {
-				canProceed, useFree, cost, err := quota.CheckQuota(acc.ID, quota.OpExternalEmail)
-				if err != nil || !canProceed {
-					http.Error(w, fmt.Sprintf("External email requires %d credits. Top up at /wallet/topup", cost), http.StatusPaymentRequired)
-					return
-				}
-				// Consume quota after successful send (deferred below)
-				_ = useFree
-				_ = cost
-			}
-
-			// External email - send via SMTP with multipart/alternative (plain text + HTML)
-			fromEmail := GetEmailForUser(acc.ID, GetConfiguredDomain())
-			displayName := acc.Name
-
-			// Convert plain text to HTML only for the external email
-			// The HTML version has <br> for newlines and escapes dangerous chars
-			htmlBody := convertPlainTextToHTML(bodyPlain)
-
-			// Send multipart email with threading headers
-			messageID, err := SendExternalEmail(displayName, fromEmail, to, subject, bodyPlain, htmlBody, replyTo)
+			// Through SendOut, like everything else that leaves. This was the
+			// third copy of the quota check, and the only one that also passed
+			// bodyHTML — so it kept its own multipart body and lost every rule
+			// the other two had.
+			messageID, err := SendOut(acc.ID, acc.Name, to, subject, bodyPlain, bodyHTML, replyTo)
 			if err != nil {
-				http.Error(w, "Failed to send email: "+err.Error(), http.StatusInternalServerError)
+				http.Error(w, err.Error(), http.StatusPaymentRequired)
 				return
-			}
-
-			// Consume quota for external email (after successful send)
-			if !acc.Admin {
-				if err := quota.ConsumeQuota(acc.ID, quota.OpExternalEmail); err != nil {
-					app.Log("mail", "Warning: Failed to consume quota for external email: %v", err)
-				}
 			}
 
 			// Store plain text in sent messages - render to HTML only at display time

@@ -228,16 +228,25 @@ func TestSendingMailNeedsAnAccountNotAWallet(t *testing.T) {
 			"other way round", ep.Cost)
 	}
 
-	// Charged in the handler, since the gateway cannot. Read from the source
+	// Charged in the package, since the gateway cannot. Read from the source
 	// because there is no other way to state it: an endpoint with no Cost that
 	// forgot to charge looks exactly like one that meant to be free.
-	src, err := os.ReadFile("../service/mail/service.go")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, want := range []string{"quota.OpExternalEmail", "quota.OpMailSend"} {
-		if !strings.Contains(string(src), want) {
-			t.Errorf("mail.Send never charges %s, so that route is free", want)
+	//
+	// Two files, and which is which is the point. Local delivery is charged
+	// where the endpoint routes; mail that leaves is charged in outbound.go,
+	// which is the single path everything that leaves goes through — the tool,
+	// the JSON API and the compose form all reach it, so the price and the gate
+	// are applied once rather than copied three times.
+	for file, op := range map[string]string{
+		"../service/mail/service.go":  "quota.OpMailSend",
+		"../service/mail/outbound.go": "quota.OpExternalEmail",
+	} {
+		src, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(src), op) {
+			t.Errorf("%s never charges %s, so that route is free", file, op)
 		}
 	}
 

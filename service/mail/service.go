@@ -234,19 +234,9 @@ func (Server) Send(ctx context.Context, req *SendRequest, rsp *SendResponse) err
 		return nil
 	}
 
-	if !Reachable() {
-		return fmt.Errorf("%s is outside this instance, and there is no mail domain here to "+
-			"send it from — use email_send, which sends from this instance's own sending domain", to)
-	}
-	if err := charge(acc.ID, quota.OpExternalEmail); err != nil {
-		return err
-	}
-
-	from := GetEmailForUser(acc.ID, GetConfiguredDomain())
-	messageID, err := SendExternalEmail(acc.Name, from, to, req.Subject, req.Body,
-		convertPlainTextToHTML(req.Body), "")
+	messageID, err := SendOut(acc.ID, acc.Name, to, req.Subject, req.Body, "", "")
 	if err != nil {
-		return fmt.Errorf("failed to send: %w", err)
+		return err
 	}
 	// Kept in Sent whether or not the copy succeeds: the mail has gone.
 	if err := SendMessage(acc.Name, acc.ID, to, to, req.Subject, req.Body, "", messageID); err != nil {
