@@ -34,6 +34,7 @@ import (
 	"mu/service/stream"
 	"mu/service/tasks"
 	"mu/service/text"
+	"mu/service/transit"
 	user "mu/service/user"
 	"mu/service/video"
 	"mu/service/weather"
@@ -82,6 +83,7 @@ func boot() {
 	prayer.Load()
 	web.Load()
 	text.Load()
+	transit.Load()
 	stream.LoadService()
 	chat.LoadService()
 	docs.LoadService()

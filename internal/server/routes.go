@@ -50,6 +50,7 @@ import (
 	"mu/service/stream"
 	"mu/service/tasks"
 	"mu/service/text"
+	"mu/service/transit"
 	"mu/service/user"
 	"mu/service/video"
 	"mu/service/weather"
@@ -73,6 +74,7 @@ func authRequired() map[string]bool {
 		"/blog":                   false, // Public viewing, auth for posting
 		"/markets":                false, // Public viewing
 		"/text":                   false, // Public: the tools are callable without an account
+		"/transit":                false, // Public transport data is public
 		"/prayer":                 false, // Public prayer times, daily verse and hadith
 		"/about":                  false, // Public "what is Mu" pitch
 		"/oauth2/google":          false, // Google sign-in start (no session yet)
@@ -349,6 +351,7 @@ func registerRoutes() {
 	// serve markets page
 	http.HandleFunc("/markets", markets.Handler)
 	http.HandleFunc("/text", text.Handler)
+	http.HandleFunc("/transit", transit.Handler)
 	http.HandleFunc(imageproxy.Path, imageproxy.Handler)
 	http.HandleFunc("/contacts", contacts.Handler)
 	http.HandleFunc("/docs", docs.Handler)
