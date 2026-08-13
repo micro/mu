@@ -52,7 +52,7 @@ func TestAFreeOperationIsNotMetered(t *testing.T) {
 		}
 		if reqs := BuildPaymentRequirements(free, "https://example.test/mcp"); len(reqs) != 0 {
 			t.Errorf("%s produced %d payment requirements: a free tool priced at %s",
-				free, len(reqs), reqs[0].MaxAmountRequired)
+				free, len(reqs), reqs[0].AmountAtomic())
 		}
 	}
 }
@@ -97,8 +97,8 @@ func TestAPaidOperationStillChallenges(t *testing.T) {
 	if len(reqs) == 0 {
 		t.Skip("no payment assets configured on this instance")
 	}
-	if reqs[0].MaxAmountRequired == "" || reqs[0].MaxAmountRequired == "0" {
-		t.Errorf("a paid tool asks for %q", reqs[0].MaxAmountRequired)
+	if reqs[0].AmountAtomic() == "" || reqs[0].AmountAtomic() == "0" {
+		t.Errorf("a paid tool asks for %q", reqs[0].AmountAtomic())
 	}
 }
 

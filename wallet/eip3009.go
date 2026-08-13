@@ -59,9 +59,9 @@ func SignX402Payment(bw *BaseWallet, req PaymentRequirements) (string, error) {
 	if name == "" || version == "" {
 		return "", fmt.Errorf("requirement missing EIP-712 domain (extra.name/version)")
 	}
-	value, ok := new(big.Int).SetString(strings.TrimSpace(req.MaxAmountRequired), 10)
+	value, ok := new(big.Int).SetString(req.AmountAtomic(), 10)
 	if !ok {
-		return "", fmt.Errorf("invalid amount %q", req.MaxAmountRequired)
+		return "", fmt.Errorf("invalid amount %q", req.AmountAtomic())
 	}
 
 	timeout := req.MaxTimeoutSeconds
@@ -100,9 +100,9 @@ func SignX402Payment(bw *BaseWallet, req PaymentRequirements) (string, error) {
 	sig[64] = v + 27 // Ethereum signatures use v ∈ {27,28}
 
 	payload := map[string]any{
-		"x402Version": x402Version,
-		"scheme":      "exact",
-		"network":     req.Network,
+		"x402Version": x402Ver(),
+		"scheme":    "exact",
+		"network":   req.Network,
 		"payload": map[string]any{
 			"signature":     "0x" + hex.EncodeToString(sig),
 			"authorization": auth,

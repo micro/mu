@@ -520,7 +520,8 @@ token.
 |---|---|
 | `X402_PAY_TO` | Your wallet address — receives x402 payments |
 | `CRYPTO_TOPUP` | `true` to offer paying in crypto: the USDC card on /wallet and the address in `wallet_balance`. Off by default — accepting x402 payments is separate and unaffected |
-| `X402_NETWORK` · `X402_ASSETS` | Chain and accepted tokens |
+| `X402_NETWORK` · `X402_VERSION` | The advertised pair. Default `eip155:8453` + `2`. CDP settles `base`+`1` too, and that pair works — but the discovery index carries only v2 entries, so a v1 server is payable and unfindable. Both are live: change them at `/admin/env` and the next request uses them |
+| `X402_ASSETS` | Accepted tokens (default USDC) |
 | `X402_SERVERS` | Other MCP servers this instance may pay, as `name=url` — read by the outbound client, which no tool currently exposes |
 | `CDP_API_KEY_ID` · `CDP_API_KEY_SECRET` | Coinbase facilitator credentials |
 | `SUPPORT_CHAT` | Optional. A chat invite shown on /support — a Discord or Matrix link, per instance. Without it /support offers the support@ address and the issue tracker. `support@<MAIL_DOMAIN>` delivers to the oldest admin |

@@ -86,7 +86,7 @@ func TestCDPBearer(t *testing.T) {
 
 func TestBuildPaymentRequirementsShape(t *testing.T) {
 	x402PayTo = "0x9a717EFF039622231C65ADbF7B2A002b544b06A9"
-	x402NetworkID = "eip155:8453"
+	t.Setenv("X402_NETWORK", "eip155:8453")
 	defer func() { x402PayTo = "" }()
 
 	reqs := BuildPaymentRequirements("chat_query", "https://m3o.com/mcp")
@@ -97,8 +97,8 @@ func TestBuildPaymentRequirementsShape(t *testing.T) {
 	if r.Scheme != "exact" || r.Network != "eip155:8453" || r.PayTo != x402PayTo {
 		t.Errorf("bad requirement: %+v", r)
 	}
-	if r.MaxAmountRequired == "" || strings.Contains(r.MaxAmountRequired, "$") {
-		t.Errorf("maxAmountRequired must be atomic units, got %q", r.MaxAmountRequired)
+	if r.AmountAtomic() == "" || strings.Contains(r.AmountAtomic(), "$") {
+		t.Errorf("amount must be atomic units, got %q", r.AmountAtomic())
 	}
 	if r.Extra["name"] == "" || r.Extra["version"] == "" {
 		t.Errorf("extra must carry EIP-712 name/version, got %v", r.Extra)

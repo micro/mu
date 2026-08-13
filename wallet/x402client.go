@@ -90,9 +90,9 @@ func PayAndCallMCP(ctx context.Context, accountID, baseURL, tool string, args ma
 		}
 		// Bound the payment: a server's challenge can never authorise more than
 		// the per-call/daily caps, so a misled agent can't drain the wallet.
-		amt, ok := new(big.Int).SetString(strings.TrimSpace(req.MaxAmountRequired), 10)
+		amt, ok := new(big.Int).SetString(req.AmountAtomic(), 10)
 		if !ok {
-			return "", fmt.Errorf("invalid payment amount %q", req.MaxAmountRequired)
+			return "", fmt.Errorf("invalid payment amount %q", req.AmountAtomic())
 		}
 		if err := checkAndRecordSpend(accountID, amt); err != nil {
 			return "", err

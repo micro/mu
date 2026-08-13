@@ -40,14 +40,36 @@ const (
 var (
 	x402PayTo          = strings.TrimSpace(os.Getenv("X402_PAY_TO")) // receiving address
 	x402FacilitatorURL = envOr("X402_FACILITATOR_URL", "https://api.cdp.coinbase.com/platform/v2/x402")
-	// Advertised verbatim — the facilitator registers specific (network,
-	// version) pairs. CDP settles the "exact" scheme as base+v1 or
-	// eip155:8453+v2, so the defaults here (base, v1) match its v1 entry and
-	// what common x402 clients speak. Set X402_NETWORK=eip155:8453 +
-	// X402_VERSION=2 to use the v2 pair instead.
-	x402NetworkID = envOr("X402_NETWORK", "base")
-	x402Version   = envIntOr("X402_VERSION", 1) // advertised protocol version
 )
+
+// The advertised (network, version) pair.
+//
+// CDP registers specific pairs and settles the "exact" scheme as base+v1 or
+// eip155:8453+v2. The default is the v2 pair: v1 works and settles perfectly
+// well, but the discovery index carries only v2 entries, so a v1 server is
+// payable and unfindable.
+//
+// Read live rather than fixed at init. These decide what every payer is told to
+// sign, so a wrong pair stops paid calls working — and as os.Getenv the fix was
+// an environment edit and a restart. Through settings they change from
+// /admin/env and take effect on the next request, which is the difference
+// between a minute of broken payments and however long a deploy takes.
+// X402_NETWORK=base + X402_VERSION=1 goes back.
+func x402Net() string {
+	if v := strings.TrimSpace(settings.Get("X402_NETWORK")); v != "" {
+		return v
+	}
+	return "eip155:8453"
+}
+
+func x402Ver() int {
+	if v := strings.TrimSpace(settings.Get("X402_VERSION")); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			return n
+		}
+	}
+	return 2
+}
 
 func envOr(key, fallback string) string {
 	if v := strings.TrimSpace(os.Getenv(key)); v != "" {
@@ -103,7 +125,7 @@ var x402AssetsByNetwork = map[string]map[string]x402Asset{
 // acceptedAssets returns the assets to advertise, honouring X402_ASSETS
 // (comma-separated symbols) and defaulting to USDC only.
 func acceptedAssets() []x402Asset {
-	known := x402AssetsByNetwork[normalizeNetwork(x402NetworkID)]
+	known := x402AssetsByNetwork[normalizeNetwork(x402Net())]
 	if known == nil {
 		return nil
 	}
@@ -159,18 +181,40 @@ func X402UseTrialCall(walletAddr string) bool {
 }
 
 // PaymentRequirements is a single accepted way to pay, matching the x402
-// "exact" scheme. maxAmountRequired is in the asset's atomic units.
+// "exact" scheme. Amounts are in the asset's atomic units.
+//
+// Two shapes, one struct. v2 renamed maxAmountRequired to amount and moved
+// resource, description and mimeType out of every requirement into one
+// top-level resource object — the same facts, said once instead of per asset.
+// Both sets are tagged omitempty and only the ones belonging to the advertised
+// version are filled, so a v2 body carries no v1 fields and vice versa.
 type PaymentRequirements struct {
-	Scheme            string            `json:"scheme"`
-	Network           string            `json:"network"`
-	MaxAmountRequired string            `json:"maxAmountRequired"`
-	Resource          string            `json:"resource"`
-	Description       string            `json:"description"`
-	MimeType          string            `json:"mimeType"`
+	Scheme  string `json:"scheme"`
+	Network string `json:"network"`
+
+	// v2
+	Amount string `json:"amount,omitempty"`
+
+	// v1
+	MaxAmountRequired string `json:"maxAmountRequired,omitempty"`
+	Resource          string `json:"resource,omitempty"`
+	Description       string `json:"description,omitempty"`
+	MimeType          string `json:"mimeType,omitempty"`
+
 	PayTo             string            `json:"payTo"`
 	MaxTimeoutSeconds int               `json:"maxTimeoutSeconds"`
 	Asset             string            `json:"asset"`
 	Extra             map[string]string `json:"extra,omitempty"`
+}
+
+// AmountAtomic is what this requirement asks for, whichever version named it.
+// Anything that signs or bounds a payment goes through here rather than reading
+// a field, so a version flip cannot silently produce a zero amount.
+func (r PaymentRequirements) AmountAtomic() string {
+	if s := strings.TrimSpace(r.Amount); s != "" {
+		return s
+	}
+	return strings.TrimSpace(r.MaxAmountRequired)
 }
 
 // SettleResponse is the facilitator's settlement result.
@@ -213,18 +257,24 @@ func BuildPaymentRequirements(operation, resource string) []PaymentRequirements 
 	}
 	var reqs []PaymentRequirements
 	for _, a := range acceptedAssets() {
-		reqs = append(reqs, PaymentRequirements{
+		r := PaymentRequirements{
 			Scheme:            "exact",
-			Network:           x402NetworkID,
-			MaxAmountRequired: creditsToAtomic(cost, a.Decimals),
-			Resource:          resource,
-			Description:       "Access to " + operation,
-			MimeType:          "application/json",
+			Network:           x402Net(),
 			PayTo:             x402PayTo,
 			MaxTimeoutSeconds: 60,
 			Asset:             a.Address,
 			Extra:             map[string]string{"name": a.Name, "version": a.Version},
-		})
+		}
+		amount := creditsToAtomic(cost, a.Decimals)
+		if x402Ver() >= 2 {
+			r.Amount = amount
+		} else {
+			r.MaxAmountRequired = amount
+			r.Resource = resource
+			r.Description = "Access to " + operation
+			r.MimeType = "application/json"
+		}
+		reqs = append(reqs, r)
 	}
 	return reqs
 }
@@ -253,11 +303,24 @@ func WritePaymentRequired(w http.ResponseWriter, operation, resource string, ext
 		return false
 	}
 	body := map[string]any{
-		"x402Version": x402Version,
+		"x402Version": x402Ver(),
 		"error": "This tool costs credits. Sign in, or send a token from /token as " +
 			"'Authorization: Bearer' — see /tools. Machine callers can pay per call " +
 			"with an X-PAYMENT header instead; see accepts.",
 		"accepts": reqs,
+	}
+	// v2 says what is being bought once, at the top, rather than repeating it in
+	// every requirement. serviceName and tags are read by the discovery index —
+	// they are how a listing gets a name and turns up in a search rather than
+	// only in a full enumeration.
+	if x402Ver() >= 2 {
+		body["resource"] = map[string]any{
+			"url":         resource,
+			"description": "Access to " + operation,
+			"mimeType":    "application/json",
+			"serviceName": serviceName(),
+			"tags":        []string{"mcp", "agent-tools"},
+		}
 	}
 	if len(extensions) > 0 {
 		body["extensions"] = extensions
@@ -338,7 +401,7 @@ func settlePayload(payload map[string]any, operation, resource string) (*SettleR
 // requirement (used when the amount isn't a fixed tool price, e.g. a USDC → credit
 // top-up that sweeps an arbitrary balance).
 func settleRequirement(payload map[string]any, req *PaymentRequirements) (*SettleResponse, error) {
-	body := map[string]any{"x402Version": x402Version, "paymentPayload": payload, "paymentRequirements": req}
+	body := map[string]any{"x402Version": x402Ver(), "paymentPayload": payload, "paymentRequirements": req}
 
 	vres, err := facilitatorPost("/verify", body)
 	if err != nil {
@@ -399,8 +462,8 @@ func ConvertUSDCToCredits(accountID string) (int, error) {
 	a := assets[0]
 	req := &PaymentRequirements{
 		Scheme:            "exact",
-		Network:           x402NetworkID,
-		MaxAmountRequired: raw.String(),
+		Network:           x402Net(),
+		Amount:            raw.String(),
 		Resource:          "credit-topup",
 		Description:       "USDC to credits",
 		MimeType:          "application/json",
@@ -554,8 +617,8 @@ func X402Status() string {
 	fmt.Fprintf(&b, "enabled:       %v\n", X402Enabled())
 	fmt.Fprintf(&b, "pay-to:        %s\n", firstNonEmpty(x402PayTo, "(X402_PAY_TO not set)"))
 	fmt.Fprintf(&b, "facilitator:   %s\n", x402FacilitatorURL)
-	fmt.Fprintf(&b, "network:       %s\n", x402NetworkID)
-	fmt.Fprintf(&b, "version:       %d\n", x402Version)
+	fmt.Fprintf(&b, "network:       %s\n", x402Net())
+	fmt.Fprintf(&b, "version:       %d\n", x402Ver())
 	var syms []string
 	for _, a := range acceptedAssets() {
 		syms = append(syms, a.Symbol)
@@ -593,8 +656,8 @@ func X402Status() string {
 		return b.String()
 	}
 	fmt.Fprintf(&b, "\ncdp probe:     OK — auth working. Supported schemes/networks:\n%s\n", strings.TrimSpace(string(data)))
-	if !strings.Contains(string(data), x402NetworkID) {
-		fmt.Fprintf(&b, "\nWARNING: configured network %s not in the supported list above.\n", x402NetworkID)
+	if !strings.Contains(string(data), x402Net()) {
+		fmt.Fprintf(&b, "\nWARNING: configured network %s not in the supported list above.\n", x402Net())
 	}
 	return b.String()
 }
@@ -678,4 +741,21 @@ func PayerFrom(ctx context.Context) string {
 		return ""
 	}
 	return strings.ToLower(strings.TrimSpace(h.Resp.Payer))
+}
+
+// serviceName is what this instance calls itself in a discovery listing.
+//
+// The index shows a name rather than a URL, so without one an entry is a bare
+// address next to entries that read like products. Derived from the mail domain
+// or the public URL rather than configured separately: an operator has already
+// said what this instance is called, and asking twice invites the two to
+// disagree.
+func serviceName() string {
+	if u := strings.TrimSpace(settings.Get("MU_DOMAIN")); u != "" {
+		return u
+	}
+	if u := strings.TrimSpace(settings.Get("APP_URL")); u != "" {
+		return strings.TrimPrefix(strings.TrimPrefix(strings.TrimRight(u, "/"), "https://"), "http://")
+	}
+	return "mu"
 }
