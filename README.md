@@ -186,8 +186,14 @@ A person tops up by card and spends one credit balance. A credit is 1p.
 up.** A priced call with no credentials answers `402 Payment Required` naming
 the price and where to send it. The payment is the identity.
 
-`mu` is its own x402 client, so you can see it work end to end. Put a funded
-Base wallet's key in `~/.mu/keys/wallet.seed`:
+To write an agent that pays, see
+[examples/x402-agent](examples/x402-agent) — a standalone module that imports
+none of this. It uses the [x402
+Foundation](https://github.com/x402-foundation/x402) SDK, so the same file pays
+any x402 server.
+
+To watch it work, `mu` is its own client too. Put a funded Base wallet's key in
+`~/.mu/keys/wallet.seed`:
 
 ```bash
 mu x402 call web_search query="x402"   # 402 → signs → pays → returns the result

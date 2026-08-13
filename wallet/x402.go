@@ -479,9 +479,50 @@ func facilitatorPost(path string, body map[string]any) ([]byte, error) {
 		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("facilitator %s returned %d: %s", path, resp.StatusCode, strings.TrimSpace(string(data)))
+		return nil, &facilitatorError{Path: path, Status: resp.StatusCode, Body: data}
 	}
 	return data, nil
+}
+
+// facilitatorError is a non-200 from the facilitator, carrying the body so it
+// can be turned into something the caller can act on.
+//
+// It used to be a fmt.Errorf that pasted the raw JSON into the message, and
+// that string is what an agent developer sees on their first attempt — the
+// commonest first attempt being a wallet with no USDC in it, which comes back
+// as `execution reverted`. Nothing in those words says "your wallet is empty",
+// so the one error most likely to be hit was the one hardest to act on.
+type facilitatorError struct {
+	Path   string
+	Status int
+	Body   []byte
+}
+
+func (e *facilitatorError) Error() string {
+	var f struct {
+		InvalidReason  string `json:"invalidReason"`
+		InvalidMessage string `json:"invalidMessage"`
+		Message        string `json:"message"`
+		ErrorReason    string `json:"errorReason"`
+		Payer          string `json:"payer"`
+	}
+	_ = json.Unmarshal(e.Body, &f)
+	detail := firstNonEmpty(f.InvalidMessage, f.Message, f.ErrorReason, f.InvalidReason)
+
+	// A reverted transfer means the token contract refused it. The payer's
+	// balance is the reason in almost every case, and it is the only one the
+	// payer can do anything about, so it leads.
+	if strings.Contains(strings.ToLower(detail), "execution reverted") {
+		who := "the paying wallet"
+		if f.Payer != "" {
+			who = f.Payer
+		}
+		return fmt.Sprintf("the payment could not be taken — %s does not hold enough USDC on this network", who)
+	}
+	if detail != "" {
+		return detail
+	}
+	return fmt.Sprintf("facilitator %s returned %d: %s", e.Path, e.Status, strings.TrimSpace(string(e.Body)))
 }
 
 // X402Status returns a human-readable diagnostic of the x402 configuration
