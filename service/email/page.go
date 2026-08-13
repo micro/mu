@@ -109,7 +109,20 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			// The outcome, in the row. Without it the table answers "what did I
 			// try to send" and the question anybody actually has after wiring up
 			// a sending domain is whether it went.
-			result := `<span style="color:#27ae60">sent</span>`
+			// The carrier's own word, coloured by what it means. "Accepted" is
+			// amber on purpose: Twilio answers before anything is delivered, so
+			// it is a promise rather than an outcome, and showing it in the same
+			// green as "delivered" is what made the history a receipt for one.
+			colour := "#888"
+			switch m.Status() {
+			case "delivered":
+				colour = "#27ae60"
+			case "undelivered", "failed", "canceled":
+				colour = "#c00"
+			case "accepted", "sending", "sent", "scheduled":
+				colour = "#b8860b"
+			}
+			result := `<span style="color:` + colour + `">` + html.EscapeString(m.Status()) + `</span>`
 			if !m.OK() {
 				result = `<span style="color:#c00" title="` + html.EscapeString(m.Error) + `">failed</span>`
 			}

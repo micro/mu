@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -166,4 +167,113 @@ func emailError(body []byte, status string) string {
 		return status + ": " + strings.TrimSpace(string(body))
 	}
 	return status
+}
+
+// ── What became of it ───────────────────────────────────────────
+
+// EmailOperation is Twilio's account of one send.
+//
+// A send is asynchronous: the POST answers 202 the moment it is accepted, which
+// is not the moment anything arrives. Status is the batch's own progress and
+// Stats is what happened to the messages in it — so a message that was accepted,
+// sent, and then refused by the receiving server shows COMPLETED with an
+// undelivered count, and calling that "sent" is the difference between a send
+// log and a send history.
+//
+// One recipient per operation here, so the counts are about a single message.
+type EmailOperation struct {
+	ID     string `json:"id"`
+	Status string `json:"status"` // SCHEDULED, PROCESSING, COMPLETED, CANCELED
+	Stats  struct {
+		Total       int `json:"total"`
+		Recipients  int `json:"recipients"`
+		Attempts    int `json:"attempts"`
+		Queued      int `json:"queued"`
+		Sent        int `json:"sent"`
+		Scheduled   int `json:"scheduled"`
+		Delivered   int `json:"delivered"`
+		Opened      int `json:"opened"`
+		Undelivered int `json:"undelivered"`
+		Failed      int `json:"failed"`
+		Canceled    int `json:"canceled"`
+	} `json:"stats"`
+	CreatedAt string `json:"createdAt"`
+	UpdatedAt string `json:"updatedAt"`
+}
+
+// EmailRetention is how long Twilio keeps an operation. Past it the answer is
+// not "nothing happened", it is "nobody knows any more", and a caller has to be
+// able to tell those apart.
+const EmailRetention = 7 * 24 * time.Hour
+
+// EmailStatus asks what became of one send.
+func EmailStatus(operationID string) (EmailOperation, error) {
+	var op EmailOperation
+	if !EmailConfigured() {
+		return op, fmt.Errorf("no Twilio credentials")
+	}
+	if strings.TrimSpace(operationID) == "" {
+		return op, fmt.Errorf("no operation id")
+	}
+
+	req, err := http.NewRequest("GET", emailEndpoint+"/Operations/"+url.PathEscape(operationID), nil)
+	if err != nil {
+		return op, err
+	}
+	user, pass := Credentials()
+	req.SetBasicAuth(user, pass)
+
+	rsp, err := (&http.Client{Timeout: 15 * time.Second}).Do(req)
+	if err != nil {
+		return op, fmt.Errorf("could not reach Twilio: %w", err)
+	}
+	defer rsp.Body.Close() //nolint:errcheck
+
+	body, _ := io.ReadAll(io.LimitReader(rsp.Body, 32<<10))
+	if rsp.StatusCode >= 300 {
+		return op, fmt.Errorf("Twilio would not say: %s", emailError(body, rsp.Status))
+	}
+	if err := json.Unmarshal(body, &op); err != nil {
+		return op, fmt.Errorf("could not read Twilio's answer: %w", err)
+	}
+	return op, nil
+}
+
+// Outcome is one word for what happened to a single-recipient send.
+//
+// The counts are read before the batch status, because they are the answer to
+// the question actually being asked. COMPLETED means Twilio finished working on
+// it, not that anybody received anything — a message can complete and be
+// undelivered, and reporting that as "sent" is exactly the lie this exists to
+// stop telling.
+func (o EmailOperation) Outcome() string {
+	switch {
+	case o.Stats.Delivered > 0:
+		return "delivered"
+	case o.Stats.Undelivered > 0:
+		return "undelivered"
+	case o.Stats.Failed > 0:
+		return "failed"
+	case o.Stats.Canceled > 0 || o.Status == "CANCELED":
+		return "canceled"
+	case o.Stats.Sent > 0:
+		// Handed to the receiving server and nothing said since.
+		return "sent"
+	case o.Status == "SCHEDULED" || o.Stats.Scheduled > 0:
+		return "scheduled"
+	case o.Status == "PROCESSING" || o.Stats.Queued > 0:
+		return "sending"
+	case o.Status == "COMPLETED":
+		return "sent"
+	}
+	return ""
+}
+
+// Settled reports whether an outcome can still change.
+func Settled(outcome string) bool {
+	switch outcome {
+	case "delivered", "undelivered", "failed", "canceled":
+		return true
+	}
+	return false
 }

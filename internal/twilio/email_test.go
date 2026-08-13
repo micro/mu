@@ -84,3 +84,70 @@ func TestOptionalFieldsAreOmittedRatherThanEmpty(t *testing.T) {
 		t.Errorf("the body is missing its text part: %s", raw)
 	}
 }
+
+// TestOutcomeReadsTheCountsNotTheBatch — COMPLETED means Twilio finished
+// working on the batch, not that anybody received anything. A message can
+// complete and be undelivered, and reporting that as sent is the lie this
+// exists to stop telling.
+func TestOutcomeReadsTheCountsNotTheBatch(t *testing.T) {
+	op := func(status string, set func(o *EmailOperation)) EmailOperation {
+		o := EmailOperation{Status: status}
+		if set != nil {
+			set(&o)
+		}
+		return o
+	}
+	for _, c := range []struct {
+		name string
+		op   EmailOperation
+		want string
+	}{
+		{"delivered", op("COMPLETED", func(o *EmailOperation) { o.Stats.Delivered = 1 }), "delivered"},
+		{"completed but bounced", op("COMPLETED", func(o *EmailOperation) { o.Stats.Undelivered = 1 }), "undelivered"},
+		{"completed but failed", op("COMPLETED", func(o *EmailOperation) { o.Stats.Failed = 1 }), "failed"},
+		{"handed over, nothing since", op("COMPLETED", func(o *EmailOperation) { o.Stats.Sent = 1 }), "sent"},
+		{"still working", op("PROCESSING", func(o *EmailOperation) { o.Stats.Queued = 1 }), "sending"},
+		{"for later", op("SCHEDULED", nil), "scheduled"},
+		{"called off", op("CANCELED", nil), "canceled"},
+		{"nothing said", op("", nil), ""},
+	} {
+		if got := c.op.Outcome(); got != c.want {
+			t.Errorf("%s: Outcome() = %q, want %q", c.name, got, c.want)
+		}
+	}
+}
+
+// TestOnlyAFinalOutcomeIsSettled — what stops the carrier being asked for ever
+// about the same message.
+func TestOnlyAFinalOutcomeIsSettled(t *testing.T) {
+	for outcome, want := range map[string]bool{
+		"delivered": true, "undelivered": true, "failed": true, "canceled": true,
+		"sending": false, "scheduled": false, "sent": false, "": false,
+	} {
+		if got := Settled(outcome); got != want {
+			t.Errorf("Settled(%q) = %v, want %v", outcome, got, want)
+		}
+	}
+}
+
+// TestTheOperationResponseParses — against the documented field names, because
+// a typo in a JSON tag reads as "nothing happened" rather than as an error.
+func TestTheOperationResponseParses(t *testing.T) {
+	var op EmailOperation
+	body := []byte(`{"id":"comms_operation_01h9krwprkeee8fzqspvwy6nq8","status":"COMPLETED",
+		"stats":{"total":1,"recipients":1,"attempts":1,"queued":0,"sent":1,"scheduled":0,
+		"delivered":1,"opened":0,"undelivered":0,"failed":0,"canceled":0},
+		"createdAt":"2026-08-12T10:00:00Z","updatedAt":"2026-08-12T10:00:05Z"}`)
+	if err := json.Unmarshal(body, &op); err != nil {
+		t.Fatal(err)
+	}
+	if op.Status != "COMPLETED" || op.Stats.Delivered != 1 || op.Stats.Total != 1 {
+		t.Errorf("parsed as %+v", op)
+	}
+	if op.ID == "" || op.CreatedAt == "" {
+		t.Errorf("id or timestamps were dropped: %+v", op)
+	}
+	if got := op.Outcome(); got != "delivered" {
+		t.Errorf("a delivered message reads as %q", got)
+	}
+}

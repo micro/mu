@@ -79,6 +79,17 @@ type Sent struct {
 	// Provider is the id the provider gave it, which is the handle for asking
 	// what happened to it afterwards.
 	Provider string `json:"provider,omitempty"`
+	// Delivery is what became of it, once the carrier has been asked:
+	// delivered, undelivered, failed, sending, and so on. Empty until asked, or
+	// where there is nothing to ask.
+	//
+	// Separate from Error, which is whether it was accepted at all. The two
+	// answer different questions and a message can pass the first and fail the
+	// second — accepted, sent, then refused by the receiving server — which is
+	// exactly the case that made "sent" a lie.
+	Delivery string `json:"delivery,omitempty"`
+	// Checked is when the carrier was last asked.
+	Checked time.Time `json:"checked,omitempty"`
 	// Error is what went wrong, empty when the carrier accepted it.
 	//
 	// A failed send used to leave no trace at all: the error went back to
@@ -92,12 +103,42 @@ type Sent struct {
 // OK reports whether the carrier took it.
 func (s *Sent) OK() bool { return s != nil && s.Error == "" }
 
-// Status is the outcome in a word or two, for a page or a tool.
+// Status is the outcome in a word, for a page or a tool.
+//
+// What the carrier last said, when it has said anything. "Accepted" is the
+// honest word for the gap in between: Twilio takes a message and answers before
+// anything has been delivered, so a history that called that "sent" was
+// reporting a receipt for a promise.
 func (s *Sent) Status() string {
-	if s.OK() {
-		return "sent"
+	switch {
+	case s == nil:
+		return ""
+	case s.Error != "":
+		return "failed"
+	case s.Delivery != "":
+		return s.Delivery
 	}
-	return "failed"
+	return "accepted"
+}
+
+// Settled reports whether this record's outcome can still change — a message
+// still in flight, or one nobody has asked about yet.
+func (s *Sent) Settled() bool {
+	if s == nil {
+		return true
+	}
+	if s.Error != "" {
+		return true // it never left
+	}
+	if s.Provider == "" {
+		return true // nothing to ask about
+	}
+	if time.Since(s.Sent) > twilio.EmailRetention {
+		// Past retention the carrier has forgotten. Not knowing is the final
+		// answer, and asking again would only produce the same refusal.
+		return true
+	}
+	return twilio.Settled(s.Delivery)
 }
 
 // SendVia is this instance's own SMTP sender, filled in by
@@ -364,6 +405,56 @@ func record(owner, to, subject, body, providerID, failed string) *Sent {
 	return fromRecord(*rec)
 }
 
+// Refresh asks the carrier what became of anything still in flight, and writes
+// the answer down.
+//
+// Called when somebody looks, rather than from a loop. A send settles in
+// seconds to minutes and the only person who cares is the one asking, so a
+// background poller would be work done on the chance that somebody might — and
+// a loop that runs whether or not anybody is watching is exactly the thing that
+// spends a provider's rate limit on nothing.
+//
+// Bounded: only records that can still change, only the recent ones, and never
+// more than a handful per look.
+func Refresh(owner string, msgs []*Sent) {
+	if !twilio.EmailConfigured() {
+		return
+	}
+	const most = 10
+	asked := 0
+	for _, m := range msgs {
+		if asked >= most {
+			return
+		}
+		if m.Settled() || time.Since(m.Checked) < 10*time.Second {
+			continue
+		}
+		asked++
+		op, err := twilio.EmailStatus(m.Provider)
+		if err != nil {
+			app.Log("email", "status for %s: %v", m.Provider, err)
+			continue
+		}
+		outcome := op.Outcome()
+		if outcome == "" {
+			continue
+		}
+		m.Delivery, m.Checked = outcome, time.Now()
+		// Update replaces the record's data, so the rest of it has to go back
+		// with the two new fields — a partial update here would lose the
+		// message.
+		if _, err := userdb.Update(ns, owner, sent, m.ID, map[string]interface{}{
+			"to": m.To, "subject": m.Subject, "body": m.Body,
+			"provider": m.Provider,
+			"sent":     m.Sent.Format(time.RFC3339),
+			"delivery": outcome,
+			"checked":  m.Checked.Format(time.RFC3339),
+		}, false); err != nil {
+			app.Log("email", "recording delivery for %s: %v", m.ID, err)
+		}
+	}
+}
+
 // History is what this account has sent, newest first.
 func History(owner string, limit int) []*Sent {
 	if limit <= 0 {
@@ -380,6 +471,10 @@ func History(owner string, limit int) []*Sent {
 		}
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Sent.After(out[j].Sent) })
+	// Asked when somebody looks. History is the one place that answers "what
+	// happened to my mail", so it is the place that has to be current — a list
+	// that says "accepted" for ever is a receipt for a promise.
+	Refresh(owner, out)
 	return out
 }
 
@@ -398,7 +493,11 @@ func fromRecord(rec userdb.Record) *Sent {
 		Subject:  str("subject"),
 		Body:     str("body"),
 		Provider: str("provider"),
+		Delivery: str("delivery"),
 		Error:    str("error"),
+	}
+	if t, err := time.Parse(time.RFC3339, str("checked")); err == nil {
+		m.Checked = t
 	}
 	if t, err := time.Parse(time.RFC3339, str("sent")); err == nil {
 		m.Sent = t

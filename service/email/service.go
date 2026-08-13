@@ -63,8 +63,9 @@ var Spec = service.Spec{
 		},
 		"History": {
 			AccountOnly: true,
-			Doc: "The emails this account has sent, newest first, and whether each one " +
-				"was accepted — a refused send is listed with the reason",
+			Doc: "The emails this account has sent, newest first, and what became of " +
+				"each one — delivered, undelivered, failed, or still going. Asks the " +
+				"carrier about anything still in flight, so it is current when read",
 		},
 		"Sender": {
 			AccountOnly: true,
@@ -106,7 +107,7 @@ type HistoryRequest struct {
 }
 
 type HistoryResponse struct {
-	Text string `json:"text" description:"What has been sent: recipient, subject, whether it was accepted, and when"`
+	Text string `json:"text" description:"What has been sent: recipient, subject, what became of it, and when"`
 }
 
 // History lists what this account has sent.

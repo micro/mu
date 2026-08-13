@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"mu/internal/auth"
 	"mu/internal/quota"
@@ -323,7 +324,10 @@ func TestAFailedSendIsInTheHistory(t *testing.T) {
 		t.Fatalf("send: %v", err)
 	}
 	ok := History(owner, 100)[0]
-	if !ok.OK() || ok.Status() != "sent" {
+	// "Accepted", not "sent": the carrier took it and nothing has been
+	// delivered yet. Calling that sent is the receipt-for-a-promise this whole
+	// change exists to stop.
+	if !ok.OK() || ok.Status() != "accepted" {
 		t.Errorf("a successful send reads as %q with error %q", ok.Status(), ok.Error)
 	}
 	if ok.Provider != "op-123" {
@@ -332,3 +336,47 @@ func TestAFailedSendIsInTheHistory(t *testing.T) {
 }
 
 var errFake = fmt.Errorf("the carrier refused it: pretend failure")
+
+// TestStatusSaysWhatIsKnownRatherThanWhatIsHoped — the four states a record can
+// be in, and the words for them.
+func TestStatusSaysWhatIsKnownRatherThanWhatIsHoped(t *testing.T) {
+	for _, c := range []struct {
+		name string
+		s    Sent
+		want string
+	}{
+		{"taken, nothing known yet", Sent{Provider: "op1"}, "accepted"},
+		{"the carrier said delivered", Sent{Provider: "op1", Delivery: "delivered"}, "delivered"},
+		{"the carrier said it bounced", Sent{Provider: "op1", Delivery: "undelivered"}, "undelivered"},
+		{"never left", Sent{Error: "refused"}, "failed"},
+	} {
+		if got := c.s.Status(); got != c.want {
+			t.Errorf("%s reads as %q, want %q", c.name, got, c.want)
+		}
+	}
+}
+
+// TestNothingIsAskedAboutTwiceOnceItIsSettled — Refresh is called every time
+// anybody looks, so what stops it hammering the carrier is which records it
+// considers finished.
+func TestNothingIsAskedAboutTwiceOnceItIsSettled(t *testing.T) {
+	for _, c := range []struct {
+		name    string
+		s       Sent
+		settled bool
+	}{
+		{"delivered", Sent{Provider: "op", Delivery: "delivered", Sent: time.Now()}, true},
+		{"bounced", Sent{Provider: "op", Delivery: "undelivered", Sent: time.Now()}, true},
+		{"still going", Sent{Provider: "op", Delivery: "sending", Sent: time.Now()}, false},
+		{"never asked", Sent{Provider: "op", Sent: time.Now()}, false},
+		{"never left", Sent{Error: "refused", Sent: time.Now()}, true},
+		{"no id to ask about", Sent{Sent: time.Now()}, true},
+		{"older than the carrier keeps", Sent{
+			Provider: "op", Sent: time.Now().Add(-8 * 24 * time.Hour),
+		}, true},
+	} {
+		if got := c.s.Settled(); got != c.settled {
+			t.Errorf("%s: Settled() = %v, want %v", c.name, got, c.settled)
+		}
+	}
+}
