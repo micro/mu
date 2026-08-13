@@ -430,14 +430,24 @@ td {
   transition: all var(--transition-fast);
 }
 
-#nav a:hover {
-  background: var(--hover-background);
-  color: var(--text-primary);
+/* Hover only where there is a pointer that can hover. A touch device keeps
+   :hover on whatever was tapped last, so on a phone the item you came from
+   stayed lit as though it were still selected — and since nothing set .active,
+   that stale hover was the only highlight the sidebar had. */
+@media (hover: hover) and (pointer: fine) {
+  #nav a:hover {
+    background: var(--hover-background);
+    color: var(--text-primary);
+  }
 }
 
+/* Where you actually are. Distinct from hover on purpose: hover is the
+   pointer's opinion and this is the page's fact, so they must not look
+   identical or "selected" and "under the cursor" become the same signal. */
 #nav a.active {
-  background: var(--hover-background);
+  background: var(--active-background, var(--hover-background));
   font-weight: var(--font-weight-semibold);
+  box-shadow: inset 3px 0 0 var(--accent-color, currentColor);
 }
 
 #nav img {

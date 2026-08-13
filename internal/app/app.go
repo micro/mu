@@ -481,6 +481,34 @@ var Template = `
         document.body.classList.toggle('menu-open');
       }
       document.addEventListener('click',function(){document.querySelectorAll('.ctrl-menu').forEach(function(m){m.style.display='none'})});
+
+      // Which sidebar item is the page you are on.
+      //
+      // The stylesheet has had a rule for this all along and nothing ever set
+      // the class, so the only highlight the sidebar had was :hover — which on
+      // a phone sticks to whatever was tapped last. The item you came from
+      // stayed lit, and the item you were actually on never did.
+      //
+      // Re-run on soft navigation, because that swaps #content and leaves the
+      // sidebar exactly as the last full page load drew it.
+      function markNav() {
+        var here = location.pathname.replace(/\/+$/, '') || '/';
+        var links = document.querySelectorAll('#nav a, .nav-bottom a');
+        var best = null, bestLen = -1;
+        for (var i = 0; i < links.length; i++) {
+          links[i].classList.remove('active');
+          var path;
+          try { path = new URL(links[i].href, location.href).pathname.replace(/\/+$/, '') || '/'; }
+          catch (e) { continue; }
+          // Longest match wins, so /news/tech lights News rather than Home —
+          // and "/" only matches "/", or it would claim every page.
+          var hit = path === here || (path !== '/' && here.indexOf(path + '/') === 0);
+          if (hit && path.length > bestLen) { best = links[i]; bestLen = path.length; }
+        }
+        if (best) best.classList.add('active');
+      }
+      document.addEventListener('mu:navigated', markNav);
+      markNav();
   </script>
   </body>
 </html>
