@@ -89,7 +89,7 @@ https://micro.mu/mcp?tools=news,web,mail
 
 See [micro.mu/tools](https://micro.mu/tools) for all the tools. See [Help](docs/HELP.md) for the protocol.
 
-## The tools
+## Tools
 
 Here are the tools
 
@@ -124,7 +124,7 @@ Here are the tools
 
 [Open an issue](https://github.com/micro/mu/issues/new?labels=enhancement&title=Tool%20request%3A%20&body=What%20should%20it%20do%3F%0A%0AWhat%20would%20you%20use%20it%20for%3F%0A) to request a tool.
 
-## The app
+## App
 
 The server includes a web app. A home screen renders each service at a glance —
 headlines, prices, weather, unread mail — and the agent sits inline to act on
