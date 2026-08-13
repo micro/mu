@@ -80,7 +80,17 @@ func policyOf(t Tool) Policy {
 	// is how the path-backed ones do it — mail_inbox carries no flag, and
 	// mail's Spec is Scoped. This is the same question MCPToolNeedsAuth asks,
 	// asked from the same sources, so the audit and the gate cannot drift.
-	p.NeedsAccount = t.AccountOnly || t.HandleAuth != nil ||
+	// HandleCall counts as well as HandleAuth. Both take an account id — that
+	// is what "implied by taking one" means — and derivation registers with
+	// HandleCall now, so checking only HandleAuth quietly reported a tool as
+	// open the moment it stopped being AccountOnly. web_fetch was exactly that:
+	// it needs a caller, said so on its Endpoint, and the policy could not see
+	// it, which would have offered it to anonymous callers for its own handler
+	// to refuse a layer later.
+	//
+	// A merely priced tool is not caught by this: derivation marks it
+	// OptionalAuth, which clears the flag below.
+	p.NeedsAccount = t.AccountOnly || t.HandleAuth != nil || t.HandleCall != nil ||
 		service.AccountScoped(serviceOf(t.Name))
 	if t.OptionalAuth {
 		p.NeedsAccount = false

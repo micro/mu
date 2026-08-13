@@ -195,7 +195,21 @@ func MCPWalletOp(body []byte) string {
 	}
 	for i := range tools {
 		if toolMatches(tools[i], req.Params.Name) {
-			if policyOf(tools[i]).NeedsAccount {
+			// AccountOnly, not NeedsAccount. The two were the same thing when
+			// the only identity was a signed-in session: a scoped tool would
+			// refuse an anonymous caller whatever they paid, so offering to
+			// sell them entry was taking money for nothing.
+			//
+			// A wallet can identify itself now, and the auth gate upstream has
+			// already turned away anyone who cannot — so a scoped tool that
+			// reaches here has an identified caller, and charging them is
+			// exactly right. Excluding scoped tools kept image generation, the
+			// most obviously saleable thing here, unbuyable by the agents this
+			// endpoint is for.
+			//
+			// AccountOnly still returns nothing, because there the account is
+			// the point and no payment substitutes for it.
+			if tools[i].AccountOnly {
 				return ""
 			}
 			return tools[i].WalletOp
