@@ -81,10 +81,11 @@ func setSecurityHeaders(w http.ResponseWriter) {
 		// at a URL on this host, which reads like a browser bug and is not one.
 		//
 		// Named hosts rather than a wildcard. checkout.stripe.com is where a
-		// session lands; a wildcard would also cover anything else Stripe ever
+		// session lands, billing.stripe.com is the portal where a subscription
+		// is cancelled; a wildcard would also cover anything else Stripe ever
 		// hosts, and the point of this directive is to enumerate where a form
 		// may take a person.
-		"form-action 'self' https://checkout.stripe.com",
+		"form-action 'self' https://checkout.stripe.com https://billing.stripe.com",
 		"frame-ancestors 'self'",
 	}, "; "))
 	h.Set("X-Content-Type-Options", "nosniff")

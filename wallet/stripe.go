@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	neturl "net/url"
 	"strings"
 	"time"
 
@@ -23,6 +24,7 @@ var (
 )
 
 func stripeSecret() string  { return settings.Get("STRIPE_SECRET_KEY") }
+func stripePortal() string  { return strings.TrimSpace(settings.Get("STRIPE_PORTAL_URL")) }
 func stripePublic() string  { return settings.Get("STRIPE_PUBLISHABLE_KEY") }
 func stripeWebhook() string { return settings.Get("STRIPE_WEBHOOK_SECRET") }
 
@@ -122,7 +124,7 @@ var SubscriptionPlans = []SubscriptionPlan{
 		},
 		Concurrency: 8,
 		Features:    []string{"Everything in pay-as-go"},
-		Featured: true,
+		Featured:    true,
 	},
 	{
 		ID: "scale", Name: "Scale", Price: 10000, Credits: 10000,
@@ -195,6 +197,187 @@ func setPlan(userID, planID string) {
 		return
 	}
 	app.Log("stripe", "%s is now on the %s plan", userID, planID)
+}
+
+// setCustomer records who Stripe thinks an account is.
+//
+// Written once and then left alone. Stripe reuses a customer across purchases,
+// so the first one is the one that holds the cards and the subscriptions;
+// overwriting it on a later checkout that happened to mint a second would
+// point the billing portal at the emptier of the two.
+func setCustomer(userID, customerID string) {
+	if userID == "" || !strings.HasPrefix(customerID, "cus_") {
+		return
+	}
+	acc, err := auth.GetAccount(userID)
+	if err != nil || acc.Customer == customerID {
+		return
+	}
+	if acc.Customer != "" {
+		return
+	}
+	acc.Customer = customerID
+	if err := auth.UpdateAccount(acc); err != nil {
+		app.Log("stripe", "failed to record customer %s for %s: %v", customerID, userID, err)
+		return
+	}
+	app.Log("stripe", "%s is stripe customer %s", userID, customerID)
+}
+
+// CustomerFor is the Stripe customer for an account, finding it by email when
+// it was never recorded.
+//
+// The fallback is not tidiness. Anybody who subscribed before the webhook
+// started keeping this has no customer id, and without one they cannot reach
+// the portal — so the people most in need of a cancel button would be the only
+// ones without it. Stripe indexes customers by email, and an account with a
+// verified address is exactly the case where that lookup is safe: it matches on
+// something the account has proved is its own.
+func CustomerFor(userID string) (string, error) {
+	acc, err := auth.GetAccount(userID)
+	if err != nil {
+		return "", fmt.Errorf("account not found")
+	}
+	if acc.Customer != "" {
+		return acc.Customer, nil
+	}
+	if !acc.EmailVerified || acc.Email == "" {
+		return "", fmt.Errorf("this account has no billing record here yet")
+	}
+	id, err := customerByEmail(acc.Email)
+	if err != nil || id == "" {
+		return "", fmt.Errorf("no billing record found for %s", acc.Email)
+	}
+	setCustomer(userID, id)
+	return id, nil
+}
+
+// customerByEmail asks Stripe for the customer holding an address.
+func customerByEmail(email string) (string, error) {
+	req, err := http.NewRequest("GET",
+		"https://api.stripe.com/v1/customers?limit=1&email="+neturl.QueryEscape(email), nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Authorization", "Bearer "+stripeSecret())
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	var out struct {
+		Data []struct {
+			ID string `json:"id"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return "", err
+	}
+	if len(out.Data) == 0 {
+		return "", nil
+	}
+	return out.Data[0].ID, nil
+}
+
+// CreatePortalSession opens Stripe's own billing page for an account.
+//
+// The portal rather than a cancel button of our own, and it is not laziness:
+// cancelling is one of four things somebody needs here, alongside changing
+// plan, replacing a card and finding an invoice. Stripe hosts all four on a
+// page that already holds the card details, so building one of them ourselves
+// would leave three that still had nowhere to happen.
+//
+// It has to be switched on in the Stripe dashboard — Settings, Billing,
+// Customer portal — and the error says so, because an operator who has not done
+// it will otherwise read this as our bug.
+// A session is minted per customer, which lands somebody straight in their own
+// billing page. STRIPE_PORTAL_URL is the fallback — Stripe's shareable portal
+// link, which works with no customer id at all because it asks the visitor for
+// their email and sends them a magic link. Worse, and the difference matters
+// for exactly one group: anybody who subscribed before the customer id was
+// being recorded has none, and a cancel button they cannot use is no better
+// than the one they did not have.
+func CreatePortalSession(userID, returnURL string) (string, error) {
+	if !StripeEnabled() {
+		if link := stripePortal(); link != "" {
+			return link, nil
+		}
+		return "", fmt.Errorf("stripe not configured")
+	}
+	customer, err := CustomerFor(userID)
+	if err != nil {
+		if link := stripePortal(); link != "" {
+			app.Log("stripe", "no customer for %s, using the shared portal link: %v", userID, err)
+			return link, nil
+		}
+		return "", err
+	}
+
+	form := neturl.Values{}
+	form.Set("customer", customer)
+	form.Set("return_url", returnURL)
+
+	req, err := http.NewRequest("POST", "https://api.stripe.com/v1/billing_portal/sessions",
+		strings.NewReader(form.Encode()))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Authorization", "Bearer "+stripeSecret())
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	var out struct {
+		URL   string `json:"url"`
+		Error struct {
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return "", err
+	}
+	if out.URL == "" {
+		if link := stripePortal(); link != "" {
+			app.Log("stripe", "portal session refused, using the shared link: %s", out.Error.Message)
+			return link, nil
+		}
+		why := strings.TrimSpace(out.Error.Message)
+		if why == "" {
+			why = "stripe returned no portal url"
+		}
+		return "", fmt.Errorf("%s — the customer portal may need turning on in the "+
+			"Stripe dashboard, under Settings, Billing, Customer portal", why)
+	}
+	return out.URL, nil
+}
+
+// PortalAvailable reports whether there is any way to reach a billing portal,
+// so a page does not draw a button that cannot work.
+func PortalAvailable() bool { return StripeEnabled() || stripePortal() != "" }
+
+// planForPrice is which plan costs this much a month, or "" for none of them.
+//
+// Price rather than a stored id, because a plan can be changed in Stripe's own
+// portal and the subscription's metadata does not follow: it is written when
+// the subscription is created and Stripe has no reason to rewrite it when the
+// price changes. So the metadata says what somebody signed up for and the price
+// says what they are paying now, and only one of those is worth acting on.
+//
+// It works because the prices are distinct, which is a fact about the
+// catalogue rather than a guarantee. Two plans at the same price would be
+// ambiguous here — and would also be two plans nobody could tell apart on the
+// pricing page, so it is the kind of thing that breaks visibly first.
+func planForPrice(pence int) string {
+	for _, p := range SubscriptionPlans {
+		if p.Price == pence {
+			return p.ID
+		}
+	}
+	return ""
 }
 
 // clearPlan puts an account back on no plan, when its subscription ends.
@@ -495,7 +678,13 @@ func HandleStripeWebhook(w http.ResponseWriter, r *http.Request) {
 		var session struct {
 			ID            string `json:"id"`
 			PaymentStatus string `json:"payment_status"`
-			Metadata      struct {
+			// Customer is who Stripe thinks this is, and it is the only handle
+			// on a subscription after it exists. Without it there is no way to
+			// open a billing portal, so there is no way to cancel — which is
+			// what this account had: a monthly charge with no customer-side
+			// exit but a failed card or a chargeback.
+			Customer string `json:"customer"`
+			Metadata struct {
 				UserID  string `json:"user_id"`
 				Credits string `json:"credits"`
 				PlanID  string `json:"plan_id"`
@@ -539,6 +728,10 @@ func HandleStripeWebhook(w http.ResponseWriter, r *http.Request) {
 				// does not, and setPlan ignores an empty one rather than
 				// clearing what somebody is already on.
 				setPlan(userID, session.Metadata.PlanID)
+				// Kept whether or not this was a subscription: a one-off top-up
+				// creates a customer too, and having it means a card saved on
+				// one purchase can be managed later without another.
+				setCustomer(userID, session.Customer)
 			}
 		}
 	}
@@ -612,6 +805,56 @@ func HandleStripeWebhook(w http.ResponseWriter, r *http.Request) {
 	// Premium to nothing keeps their twenty-five and cannot make a
 	// twenty-sixth, which is the version of this that does not delete
 	// somebody's work over a failed card.
+	// A subscription changed — which is how we find out somebody switched plan.
+	//
+	// Without this, the portal is a way for a customer to silently desync their
+	// account from what they are paying: move Pro to Scale and keep five agents
+	// while being charged a hundred pounds, or Scale to Pro and keep
+	// twenty-five while paying twenty. Neither is a state anybody would report
+	// as a bug, which is the worst kind.
+	//
+	// The price is the truth, not the metadata — see planForPrice. And a plan is
+	// only set from a live subscription: this event also fires when a card
+	// fails, and an account whose payment is in the past due state has not
+	// bought anything new.
+	if event.Type == "customer.subscription.updated" {
+		var sub struct {
+			Status   string `json:"status"`
+			Metadata struct {
+				UserID string `json:"user_id"`
+			} `json:"metadata"`
+			Items struct {
+				Data []struct {
+					Price struct {
+						UnitAmount int `json:"unit_amount"`
+					} `json:"price"`
+				} `json:"data"`
+			} `json:"items"`
+		}
+		if err := json.Unmarshal(event.Data.Object, &sub); err != nil {
+			app.Log("stripe", "subscription update parse error: %v", err)
+			http.Error(w, "parse error", http.StatusBadRequest)
+			return
+		}
+		switch sub.Status {
+		case "active", "trialing":
+			if len(sub.Items.Data) > 0 {
+				if id := planForPrice(sub.Items.Data[0].Price.UnitAmount); id != "" {
+					setPlan(sub.Metadata.UserID, id)
+				} else {
+					app.Log("stripe", "%s is on a subscription at %d pence, which is no plan here",
+						sub.Metadata.UserID, sub.Items.Data[0].Price.UnitAmount)
+				}
+			}
+		case "canceled", "unpaid", "incomplete_expired":
+			// Ended for real. A cancellation scheduled for the end of the period
+			// is still active until then and is deliberately not caught here —
+			// somebody who has paid to the end of the month keeps what they paid
+			// for, and the deleted event arrives when it actually ends.
+			clearPlan(sub.Metadata.UserID)
+		}
+	}
+
 	if event.Type == "customer.subscription.deleted" {
 		var sub struct {
 			ID       string `json:"id"`

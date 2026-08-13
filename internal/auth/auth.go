@@ -63,6 +63,14 @@ type Account struct {
 	// Set by the Stripe webhook, which already carries the plan id in its
 	// metadata. What each plan allows is wallet.SubscriptionPlans.
 	Plan string `json:"plan,omitempty"`
+	// Customer is who Stripe thinks this account is: cus_….
+	//
+	// The only handle on a subscription once it exists. Without it there is no
+	// way to open a billing portal and therefore no way to cancel, which is
+	// what this product shipped with — a monthly charge whose only
+	// customer-side exit was a failed card or a chargeback. Recorded by the
+	// webhook, and looked up by email for anyone who paid before it was.
+	Customer string `json:"customer,omitempty"`
 }
 
 // legacyCardIDs maps retired card ids to their current name. Accounts saved

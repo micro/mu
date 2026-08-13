@@ -522,6 +522,7 @@ token.
 | `X402_SERVERS` | Other MCP servers this instance may pay, as `name=url` — read by the outbound client, which no tool currently exposes |
 | `CDP_API_KEY_ID` · `CDP_API_KEY_SECRET` | Coinbase facilitator credentials |
 | `STRIPE_SECRET_KEY` · `STRIPE_PUBLISHABLE_KEY` · `STRIPE_WEBHOOK_SECRET` | Card top-ups for credits |
+| `STRIPE_PORTAL_URL` | Optional. Stripe's shareable customer-portal link, used when an account has no stored customer id — anyone who subscribed before those were recorded. With a customer id a portal session is minted per person instead, which skips the email step. Either way the portal must be turned on in the Stripe dashboard, under Settings → Billing → Customer portal, or cancelling has nowhere to happen |
 | `BASE_RPC_URL` · `TRADE_CHAIN` · `TRADE_RPC_URL` | On-chain reads |
 
 ### Prices and limits
