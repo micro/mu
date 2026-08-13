@@ -142,7 +142,7 @@ guessable.
 | `hazards` | /hazards | ✅ |  | What is going wrong physically: earthquakes live from the USGS, disasters from GDACS. No key, and authoritative rather than plausible — the point of it is that a model would otherwise guess |
 | `transit` | /transit | ✅ |  | Public transport, live: stops near you, what is due, which lines are down. TfL, and no key needed — it works on a fresh install, which is the point |
 | `video` | /video | ✅ |  | Curated channels, without ads or recommendations |
-| `weather` | /weather | ✅ |  | Forecast and pollen |
+| `weather` | /weather | ✅ |  | Forecast and pollen through Google, keyed. Air quality, sea state and the historical record through Open-Meteo, keyless — the part that still works on a clone |
 | `web` | /search | ✅ |  | Search the web; fetch a URL and return readable content |
 
 ## Account-scoped

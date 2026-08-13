@@ -157,6 +157,26 @@ func handleJSON(w http.ResponseWriter, r *http.Request) {
 		"forecast": forecast,
 	}
 
+	// Air quality comes free with the same coordinates, so it is not a toggle
+	// and not a second charge — a toggle only earns its place when saying yes
+	// costs the reader something. If the model is down the forecast still
+	// stands, which is why this failure is silent.
+	if air, err := airQuality(lat, lon); err == nil {
+		a := map[string]interface{}{
+			"pm25": air.PM25, "pm10": air.PM10,
+			"ozone": air.Ozone, "no2": air.NO2, "uv": air.UV,
+		}
+		if air.HaveEuropeanAQI {
+			a["aqi"] = air.EuropeanAQI
+			a["aqi_scale"] = "European AQI"
+			a["aqi_word"] = aqiWord(air.EuropeanAQI)
+		} else if air.HaveUSAQIReading {
+			a["aqi"] = air.USAQI
+			a["aqi_scale"] = "US AQI"
+		}
+		result["air"] = a
+	}
+
 	// Pollen is a second charge and a second question, asked only if the first
 	// one was answered. A caller who cannot afford it still keeps the forecast.
 	if includePollen {
@@ -227,6 +247,7 @@ func renderWeatherPage(r *http.Request) string {
   <div id="weather-result" style="display:none;">
     <div id="weather-location"></div>
     <div id="weather-current"></div>
+    <div id="weather-air"></div>
     <div id="weather-hourly"></div>
     <div id="weather-daily"></div>
     <div id="weather-pollen"></div>
@@ -348,6 +369,24 @@ func renderWeatherPage(r *http.Request) string {
       cur += '</div>';
     }
     document.getElementById('weather-current').innerHTML = cur;
+
+    // Air quality. Free, so it is here whenever the model answered, and absent
+    // without comment when it did not.
+    var air = '';
+    if (data.air) {
+      var a = data.air;
+      air += '<div class="card weather-air">';
+      air += '<h3 style="margin-top:0;">Air quality</h3>';
+      if (a.aqi !== undefined) {
+        air += '<div class="weather-aqi">' + a.aqi + (a.aqi_word ? ' <span class="weather-aqi-word">' + escHtml(a.aqi_word) + '</span>' : '') + '</div>';
+        air += '<div class="card-meta">' + escHtml(a.aqi_scale || '') + '</div>';
+      }
+      air += '<div class="card-meta">PM2.5 ' + a.pm25.toFixed(1) + ' · PM10 ' + a.pm10.toFixed(1) +
+             ' · Ozone ' + Math.round(a.ozone) + ' · NO₂ ' + a.no2.toFixed(1) + ' µg/m³</div>';
+      air += '<div class="card-meta">UV index ' + a.uv.toFixed(1) + '</div>';
+      air += '</div>';
+    }
+    document.getElementById('weather-air').innerHTML = air;
 
     // Hourly forecast
     var hourly = '';

@@ -5108,6 +5108,22 @@ a.btn-secondary:hover, .btn-secondary:hover {
   margin-top: 4px;
 }
 
+.weather-air {
+  margin-bottom: 20px;
+}
+
+.weather-aqi {
+  font-size: 2em;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.weather-aqi-word {
+  font-size: 0.5em;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
 .weather-hourly-row {
   display: flex;
   gap: 8px;

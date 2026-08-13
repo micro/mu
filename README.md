@@ -118,7 +118,7 @@ Here are the tools
 | **Transit** | `transit_nearby` · `transit_arrivals` · `transit_status` — live London public transport: stops near a point, what is due at one and in how many minutes, and which lines are delayed or suspended. Needs no key, so it works on a fresh install |
 | **User** | `user_saved` · `user_save` · `user_unsave` · `user_hide` · `user_flag` · `user_block` · `user_unblock` — what you do about other people's posts: keep one, stop seeing one, report one, or stop hearing from an account |
 | **Video** | `video_list` · `video_search` — curated channels, no ads or recommendations |
-| **Weather** | `weather_forecast` — conditions, forecast, pollen |
+| **Weather** | `weather_forecast` · `weather_air` · `weather_marine` · `weather_history` — conditions and the days ahead; air quality, pollutants, UV and pollen; wave height, period and direction at a coastal point; and what the weather actually was between two dates. Everything but the forecast is keyless |
 | **WhatsApp** | `whatsapp_send` · `whatsapp_history` · `whatsapp_open` — reply to people on WhatsApp. Only within 24 hours of their message, which is WhatsApp's rule and not ours: `whatsapp_open` says who can be written to and until when |
 
 [Open an issue](https://github.com/micro/mu/issues/new?labels=enhancement&title=Tool%20request%3A%20&body=What%20should%20it%20do%3F%0A%0AWhat%20would%20you%20use%20it%20for%3F%0A) to request a tool.
