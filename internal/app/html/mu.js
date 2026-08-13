@@ -896,13 +896,39 @@ function sendRoomMessage(form) {
   }
 }
 
+// Which room this page is, read from the page itself.
+//
+// It used to be a global the server defined in a script at the end of <body>.
+// Soft navigation swaps #content and re-runs only the scripts inside it, so
+// that script was never carried over and the global was whatever the last full
+// page load had left there — undefined on the way in, and stale on the way out.
+// Reading it from an element inside the content means there is nothing to go
+// stale: no element, no room.
+function roomFromPage() {
+  const el = document.getElementById('room-data');
+  if (!el) return null;
+  try {
+    const d = JSON.parse(el.textContent);
+    return d && d.id ? d : null;
+  } catch (e) {
+    return null;
+  }
+}
+
 // Initialize room chat on page load and when switching topics
-document.addEventListener('DOMContentLoaded', function() {
-  // Check if we're in a room (from roomData injected by server)
-  // Use a local variable to avoid pollution across page loads
-  const currentRoomData = (typeof roomData !== 'undefined' && roomData && roomData.id) ? roomData : null;
-  
-  if (currentRoomData) {
+function initRoomChat() {
+  const currentRoomData = roomFromPage();
+
+  // Navigated away from a room. Without this the socket outlives the page that
+  // opened it and keeps appending messages to a #messages that is no longer
+  // there — or worse, to the next page's.
+  if (!currentRoomData) {
+    if (roomWs) { roomWs.close(); roomWs = null; }
+    currentRoomId = null;
+    return;
+  }
+
+  {
     // Set the topic to the room title and display context like regular topics
     topic = currentRoomData.title;
     
@@ -960,7 +986,16 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     }
   }
-});
+}
+
+// Both events, because a room can be arrived at either way and this only ever
+// listened for one of them. DOMContentLoaded does not fire on a soft
+// navigation, so clicking "Join discussion" swapped the room's markup in and
+// then nothing wired it up: no socket, no context line, a form that posted
+// nowhere. A hard refresh fixed it because that is a real page load, which is
+// exactly the shape of a bug that only exists after soft navigation was added.
+document.addEventListener('DOMContentLoaded', initRoomChat);
+document.addEventListener('mu:navigated', initRoomChat);
 
 // ============================================
 // BLOG POST VALIDATION

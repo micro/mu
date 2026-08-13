@@ -1410,10 +1410,22 @@ func handleGetChat(w http.ResponseWriter, r *http.Request, roomID string) {
 		title = t
 	}
 
-	tmpl := app.RenderHTMLForRequest(title, "Live discussion", fmt.Sprintf(Template, guestNotice), r)
-	tmpl = strings.Replace(tmpl, "</body>", fmt.Sprintf(`<script>var roomData = %s;</script></body>`, roomJSON), 1)
+	// Which room this is, inside the content rather than at the end of <body>.
+	//
+	// It was a global assigned by a script appended to the document, and soft
+	// navigation swaps #content and re-runs only the scripts inside it — so
+	// arriving here by clicking a link left the browser with whatever global the
+	// last full page load had set, which is nothing on the way in and the
+	// previous room on the way out. Inside the content it travels with the page
+	// it describes.
+	//
+	// Data rather than code: a JSON block is read, never executed, so there is
+	// no ordering to get right and nothing to leak into the next page. json
+	// escapes < as <, so a room title cannot close the tag.
+	content := fmt.Sprintf(Template, guestNotice) +
+		`<script type="application/json" id="room-data">` + string(roomJSON) + `</script>`
 
-	w.Write([]byte(tmpl))
+	w.Write([]byte(app.RenderHTMLForRequest(title, "Live discussion", content, r)))
 }
 
 // listRooms renders what is being discussed right now.

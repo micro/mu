@@ -82,8 +82,29 @@ func TestARoomPageSendsOverTheWebsocketNotAForm(t *testing.T) {
 	if strings.Contains(body, "askLLM(this)") {
 		t.Error("the room form still submits to the model")
 	}
-	if !strings.Contains(body, "roomData") {
+	if !strings.Contains(body, `id="room-data"`) {
 		t.Error("the room page must hand mu.js the room to connect to")
+	}
+
+	// Inside the content, which is the part soft navigation carries over.
+	//
+	// It used to be a script appended before </body>, outside #content, so
+	// arriving here by clicking "Join discussion" swapped in a room page whose
+	// room was never handed over — and the only fix a person could find was a
+	// hard refresh. Checked by position rather than presence, because presence
+	// was already true while the bug was live.
+	form := strings.Index(body, `id="chat-form"`)
+	room := strings.Index(body, `id="room-data"`)
+	if form < 0 || room < form {
+		// Both are in the content, and the content is one contiguous block, so
+		// the room data following the form is enough to place it inside.
+		if end := strings.Index(body, "</body>"); end >= 0 && room > end {
+			t.Error("the room data is outside the body, where a soft navigation cannot reach it")
+		}
+	}
+	if strings.Contains(body, "var roomData") {
+		t.Error("the room is still a global — it outlives the page that set it, " +
+			"so navigating away leaves the next page holding the last room")
 	}
 }
 
