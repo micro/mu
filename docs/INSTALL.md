@@ -334,6 +334,7 @@ one, the agent, chat and AI summaries are off and everything else works.
 | `OPENROUTER_MODEL` | Override the OpenRouter slug (default `openai/gpt-4o-mini`) |
 | `IMAGE_MODEL` | Override the image model |
 | `OPENAI_BASE_URL` · `OPENAI_API_KEY` | Any OpenAI-compatible endpoint — Ollama, vLLM, llama.cpp |
+| `OPENAI_MODEL` | Which model to ask for on that endpoint (default `gpt-4o-mini`). A local server usually names its own — `llama3.2`, `qwen2.5` — and the default will 404 there |
 | `AGENT_NATIVE` | `off` falls back to the hand-rolled planner |
 | `AGENT_NATIVE_STREAM` | `off` forces the streaming UI onto the planner |
 
