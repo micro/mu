@@ -65,8 +65,11 @@ func Landing(w http.ResponseWriter, r *http.Request) {
 func landingBody(host string) string {
 	// Counted, not claimed. This said "67 real tools" as a literal and the
 	// endpoint was serving 72 by the time anyone checked.
+	// The seven is the list immediately before it, counted. Change one and change
+	// the other — the number is what makes the claim land, because the reader has
+	// just read the things it counts.
 	return `<p class="lead">` + strconv.Itoa(api.ToolCount()) + ` tools an agent can call — news, web search, mail,
-markets, weather, places, storage — one account for all of them, not one per provider.
+markets, weather, places, storage — one account instead of seven providers.
 Ask something and watch it use them.</p>
 
 <div class="ltry">` + chatComponent(true) + `</div>
