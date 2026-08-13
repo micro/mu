@@ -93,6 +93,8 @@ var Spec = service.Spec{
 	Name:        "text",
 	Handler:     new(Server),
 	Description: "Language work: summarise, extract structure, classify, translate",
+	Page:        "/text",
+	Icon:        "docs.svg",
 	Endpoints: map[string]service.Endpoint{
 		"Summarise": {
 			Aliases: []string{"text_summarize"},
