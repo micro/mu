@@ -165,6 +165,45 @@ export MU_TOKEN=xxx       # or use the environment
 
 Run `mu --help` for the list — it reads the same catalogue the agent does.
 
+## Agent
+
+The same binary is also an agent. `mu agent` brings your own model and your own
+wallet, reads its tools from a running instance, and pays per call — no account
+on that instance and no signup.
+
+```bash
+# 1. A model. The tools are rented; the thinking is yours.
+export ANTHROPIC_API_KEY=sk-ant-...     # or OPENROUTER_API_KEY
+                                        # or OPENAI_BASE_URL for Ollama etc.
+
+# 2. A wallet. Created for you on first run, or make it yourself:
+mu wallet new                           # prints an address; send USDC on Base
+                                        # to it. No ETH — you never pay gas.
+
+# 3. Ask.
+mu agent                                # a conversation
+mu agent "what happened in markets today?"
+```
+
+```
+model: anthropic/claude-sonnet-4-6
+96 tools from https://micro.mu
+wallet: 0x4160a863… (1.27 USDC)
+
+> what are the top news headlines today?
+· news_list
+…
+> of those, which matters most for markets?
+… answered with no tool call, and no charge
+```
+
+Reading the catalogue is free, so it works before the wallet holds anything —
+only priced tools need funds. What a run spent is read back off the chain when
+it ends, not totted up from what the agent believes it authorised.
+
+`--server` points it at any x402 instance; a name from `X402_SERVERS` works too.
+`--seed` uses a different key.
+
 ## Discord & Telegram
 
 Talk to the agent from Discord or Telegram — questions, markets, news, all from

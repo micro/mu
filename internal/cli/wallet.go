@@ -16,6 +16,10 @@ import (
 //
 //	mu wallet [path-to-seed]   (default ~/.mu/keys/wallet.seed)
 func runWallet(args []string) int {
+	if len(args) > 0 && args[0] == "new" {
+		return newWallet(args[1:])
+	}
+
 	seedPath := ""
 	for _, a := range args {
 		if !strings.HasPrefix(a, "-") {
@@ -107,4 +111,76 @@ func dotenvValue(key string) string {
 		}
 	}
 	return ""
+}
+
+// newWallet creates the key `mu agent` pays from.
+//
+// There was no way to make one. `mu wallet` audits a seed and the agent reads
+// it, but nothing wrote it — so the honest answer to "how do I fund the wallet"
+// was "generate a secp256k1 key by hand and put the hex in this file", which is
+// not an answer. Running clean, the first thing anybody met was a path that did
+// not exist and no way to make it exist.
+func newWallet(args []string) int {
+	seedPath := ""
+	for _, a := range args {
+		if !strings.HasPrefix(a, "-") {
+			seedPath = a
+			break
+		}
+	}
+	if seedPath == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			fmt.Println("could not find your home directory:", err)
+			return 1
+		}
+		seedPath = filepath.Join(home, ".mu", "keys", "wallet.seed")
+	}
+
+	// Never overwrite. The file being there means a key exists, and a key can
+	// hold money — replacing it would strand whatever it holds, silently and
+	// unrecoverably. Refusing is the only safe default.
+	if _, err := os.Stat(seedPath); err == nil {
+		fmt.Printf("%s already exists — not touching it.\n", seedPath)
+		fmt.Println("Run `mu wallet` to see which address it controls.")
+		return 1
+	}
+
+	addr, err := createSeed(seedPath)
+	if err != nil {
+		fmt.Println(err)
+		return 1
+	}
+
+	fmt.Println("address:", addr)
+	fmt.Println("key:    ", seedPath, "(0600)")
+	fmt.Println()
+	fmt.Println("Send USDC on Base to that address to fund it. No ETH is needed —")
+	fmt.Println("payments are signed here and the gas is paid by whoever settles them.")
+	fmt.Println()
+	fmt.Println("Back this file up. It is the only copy, and it is the money.")
+	return 0
+}
+
+// createSeed writes a fresh key at path and returns its address.
+//
+// Shared by `mu wallet new` and `mu agent`, which needs one on a clean run and
+// should not make somebody go and get it. Refuses to overwrite: the file being
+// there means a key exists, a key can hold money, and replacing it would
+// strand whatever it holds silently and unrecoverably.
+func createSeed(path string) (string, error) {
+	if _, err := os.Stat(path); err == nil {
+		return "", fmt.Errorf("%s already exists — not touching it", path)
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return "", fmt.Errorf("could not create the key directory: %w", err)
+	}
+	priv, addr, err := wallet.GenerateKeypair()
+	if err != nil {
+		return "", fmt.Errorf("could not generate a key: %w", err)
+	}
+	if err := os.WriteFile(path, []byte(priv+"\n"), 0o600); err != nil {
+		return "", fmt.Errorf("could not write the key: %w", err)
+	}
+	return addr, nil
 }

@@ -32,6 +32,7 @@ import (
 	"math/big"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -86,10 +87,27 @@ func runAgent(args []string) int {
 	}
 
 	if !ai.Configured() {
-		fmt.Println("No model configured. This mode rents tools, not thinking —")
-		fmt.Println("set ANTHROPIC_API_KEY, OPENROUTER_API_KEY, or run a local")
-		fmt.Println("model and set LOCAL_MODEL_URL.")
+		fmt.Println("You need a model. This rents tools, not thinking — the tools")
+		fmt.Println("come from the server, the thinking is yours.")
+		fmt.Println()
+		fmt.Println("Set one of these and run it again:")
+		fmt.Println()
+		fmt.Println("  export ANTHROPIC_API_KEY=sk-ant-...     # console.anthropic.com")
+		fmt.Println("  export OPENROUTER_API_KEY=sk-or-...     # openrouter.ai/keys")
+		fmt.Println("  export OPENAI_BASE_URL=http://localhost:11434/v1   # Ollama, or any")
+		fmt.Println("                                                     # OpenAI-compatible server")
 		return 1
+	}
+
+	// Say which model, up front. A key can be set and still not work — a stale
+	// base URL answers 404 — and the failure then arrived mid-conversation as a
+	// provider error with no clue which provider it came from. Naming it here
+	// makes that a five-second diagnosis instead of a mystery.
+	if status, ok := ai.Status(); !ok {
+		fmt.Printf("model: %s\n", status)
+		fmt.Println("       (that is what it will try; the first question may fail)")
+	} else {
+		fmt.Printf("model: %s\n", status)
 	}
 
 	ctx := context.Background()
@@ -104,13 +122,7 @@ func runAgent(args []string) int {
 	// The wallet is optional because much of the catalogue is free. Saying so
 	// up front is better than failing on the first priced call, and an agent
 	// that can answer from free tools alone should not be stopped at the door.
-	bw, err := walletFromSeed(seedPath)
-	if err != nil {
-		fmt.Printf("no wallet (%v) — free tools only\n", err)
-	} else {
-		human, _ := wallet.USDCBalance(bw.Address)
-		fmt.Printf("paying from %s (%s USDC)\n", bw.Address, human)
-	}
+	bw := openOrCreateWallet(seedPath)
 	s := &session{server: server, tools: tools, bw: bw, system: systemFor(tools)}
 	s.opening = usdcRaw(bw)
 
@@ -176,6 +188,68 @@ func (s *session) reportSpend(since *big.Int) {
 	if spent := new(big.Int).Sub(since, usdcRaw(s.bw)); spent.Sign() > 0 {
 		fmt.Printf("spent %s USDC\n", wallet.FormatUnits(spent, 6))
 	}
+}
+
+// openOrCreateWallet loads the paying key, making one on a clean run.
+//
+// A first run used to print the path of a file that did not exist and leave it
+// there — a dead end wearing the clothes of an error message. Generating a key
+// is free, local and risks nothing (an empty wallet can lose nothing), so the
+// only thing the old behaviour saved anybody was the step it did not tell them
+// how to take.
+//
+// Returns nil only when there is genuinely no usable wallet, and the caller
+// carries on regardless: most of the catalogue is free, and being unable to pay
+// is not a reason to be unable to ask.
+func openOrCreateWallet(seedPath string) *wallet.BaseWallet {
+	bw, err := walletFromSeed(seedPath)
+	if err == nil {
+		human, raw := wallet.USDCBalance(bw.Address)
+		if raw == nil || raw.Sign() == 0 {
+			fmt.Printf("wallet: %s — empty\n", bw.Address)
+			fmt.Println("        Send USDC on Base to it to use the priced tools.")
+			fmt.Println("        Free tools work now; a priced one will say it could not pay.")
+			return bw
+		}
+		fmt.Printf("wallet: %s (%s USDC)\n", bw.Address, human)
+		return bw
+	}
+
+	// Anything other than "it is not there yet" is a real problem with a real
+	// file, and quietly making a second key beside it would be worse than
+	// saying so.
+	path := seedPath
+	if path == "" {
+		home, herr := os.UserHomeDir()
+		if herr != nil {
+			fmt.Println("wallet: no wallet, and no home directory to put one in —", herr)
+			return nil
+		}
+		path = filepath.Join(home, ".mu", "keys", "wallet.seed")
+	}
+	if _, serr := os.Stat(path); serr == nil {
+		fmt.Printf("wallet: %s could not be used (%v) — free tools only\n", path, err)
+		return nil
+	}
+
+	addr, cerr := createSeed(path)
+	if cerr != nil {
+		fmt.Println("wallet: could not create one —", cerr)
+		fmt.Println("        Free tools will still answer.")
+		return nil
+	}
+	fmt.Printf("wallet: created %s\n", addr)
+	fmt.Printf("        key at %s — back it up, it is the only copy\n", path)
+	fmt.Println()
+	fmt.Println("        You need to fund this wallet to use the priced tools.")
+	fmt.Println("        Send USDC on Base to the address above. No ETH needed —")
+	fmt.Println("        payments are signed here and somebody else pays the gas.")
+
+	bw, err = walletFromSeed(path)
+	if err != nil {
+		return nil
+	}
+	return bw
 }
 
 // usdcRaw reads the wallet's balance in atomic units, or zero when there is no

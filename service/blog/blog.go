@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"regexp"
 	"sort"
 	"strings"
@@ -229,16 +230,37 @@ func Load() {
 	// CreatePost — e.g. the news digest on startup — panics on a nil map.
 	postsMap = make(map[string]*Post)
 
-	// Load existing posts from disk. A missing or unreadable file just means no
-	// posts yet — fall through so seeding and cache-building still run.
-	if b, err := data.LoadFile("blog.json"); err != nil {
-		posts = []*Post{}
-	} else if err := json.Unmarshal(b, &posts); err != nil {
-		posts = []*Post{}
+	// Load existing posts from disk.
+	//
+	// "Missing" and "unreadable" are not the same fact, and treating them the
+	// same is how a restart could empty the blog. Both used to fall through to
+	// an empty slice, and the very next thing that runs is seeding, which
+	// saves — so one transient read error replaced every post on disk with a
+	// single seed post, permanently, and nothing said anything. A file that is
+	// there but cannot be read is the case where doing nothing is the only
+	// safe move.
+	b, err := data.LoadFile("blog.json")
+	switch {
+	case err != nil && os.IsNotExist(err):
+		posts = []*Post{} // fresh install: nothing to lose
+	case err != nil:
+		posts, postsUnreadable = []*Post{}, true
+		app.Log("blog", "REFUSING TO WRITE: blog.json exists but could not be read (%v). "+
+			"Posts are intact on disk; fix the file or its permissions and restart.", err)
+	default:
+		if err := json.Unmarshal(b, &posts); err != nil {
+			posts, postsUnreadable = []*Post{}, true
+			app.Log("blog", "REFUSING TO WRITE: blog.json is not valid JSON (%v). "+
+				"Posts are intact on disk; repair or move the file and restart.", err)
+		}
 	}
 
-	// Publish the built-in announcement post if it isn't already there.
-	ensureSeedPosts()
+	// Publish the built-in announcement post if it isn't already there. Not
+	// when the file is unreadable: seeding saves, and saving is what would
+	// destroy the posts we just failed to read.
+	if !postsUnreadable {
+		ensureSeedPosts()
+	}
 
 	// Sort posts by most recent activity (updated or created) newest first
 	sort.Slice(posts, func(i, j int) bool {
@@ -384,8 +406,18 @@ func populateComments() {
 	}
 }
 
+// postsUnreadable is set when blog.json was present at startup and could not be
+// read or parsed. It makes every later write a no-op, because the in-memory
+// posts are empty and the ones on disk are not — so any save would overwrite
+// real posts with nothing. An instance in this state serves an empty blog,
+// which is recoverable; one that has saved over the file is not.
+var postsUnreadable bool
+
 // Save blog posts to disk
 func save() error {
+	if postsUnreadable {
+		return fmt.Errorf("blog.json could not be read at startup; refusing to overwrite it")
+	}
 	return data.SaveJSON("blog.json", posts)
 }
 
