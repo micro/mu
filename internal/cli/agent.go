@@ -328,30 +328,84 @@ type toolCall struct {
 	Args map[string]any `json:"args"`
 }
 
-// parseToolCall reads a tool request out of a model reply, tolerating the code
-// fence models habitually wrap JSON in. Anything that is not a well-formed
-// call naming a tool is prose, which is how the model says it has finished.
+// parseToolCall reads a tool request out of a model reply.
+//
+// It looks for the call *anywhere* in the reply, not just at the start. This
+// used to require the whole reply to be the JSON object, which failed the
+// moment a model did the most natural thing in the world:
+//
+//	Let me grab the latest headlines for you!
+//
+//	{"tool":"news_list","args":{"limit":10}}
+//
+// That was read as prose, so the loop took it for a final answer and never
+// called the tool — and the model, having been shown no result, went on to
+// invent the news. A parser that silently turns a tool call into a
+// hallucination is worse than one that rejects it loudly, so the fix is to
+// find the call wherever it is rather than to insist on where it should be.
+//
+// Anything with no well-formed object naming a tool is genuinely prose, which
+// is how the model says it has finished.
 func parseToolCall(reply string) (toolCall, bool) {
-	s := strings.TrimSpace(reply)
-	if i := strings.Index(s, "```"); i >= 0 {
-		s = s[i+3:]
-		s = strings.TrimPrefix(s, "json")
-		if j := strings.Index(s, "```"); j >= 0 {
-			s = s[:j]
+	for _, candidate := range jsonObjects(reply) {
+		var c toolCall
+		if err := json.Unmarshal([]byte(candidate), &c); err != nil || c.Tool == "" {
+			continue
 		}
-		s = strings.TrimSpace(s)
+		if c.Args == nil {
+			c.Args = map[string]any{}
+		}
+		return c, true
 	}
-	if !strings.HasPrefix(s, "{") {
-		return toolCall{}, false
+	return toolCall{}, false
+}
+
+// jsonObjects returns every balanced {…} span in s, in order.
+//
+// Brace matching rather than a regex because arguments nest and can contain
+// braces inside strings — `{"q":"a {b} c"}` is one object, not two.
+func jsonObjects(s string) []string {
+	var out []string
+	for i := 0; i < len(s); i++ {
+		if s[i] != '{' {
+			continue
+		}
+		if end, ok := matchBrace(s, i); ok {
+			out = append(out, s[i:end+1])
+			i = end
+		}
 	}
-	var c toolCall
-	if err := json.Unmarshal([]byte(s), &c); err != nil || c.Tool == "" {
-		return toolCall{}, false
+	return out
+}
+
+// matchBrace returns the index of the } closing the { at start.
+func matchBrace(s string, start int) (int, bool) {
+	depth, inString, escaped := 0, false, false
+	for j := start; j < len(s); j++ {
+		ch := s[j]
+		if inString {
+			switch {
+			case escaped:
+				escaped = false
+			case ch == '\\':
+				escaped = true
+			case ch == '"':
+				inString = false
+			}
+			continue
+		}
+		switch ch {
+		case '"':
+			inString = true
+		case '{':
+			depth++
+		case '}':
+			if depth--; depth == 0 {
+				return j, true
+			}
+		}
 	}
-	if c.Args == nil {
-		c.Args = map[string]any{}
-	}
-	return c, true
+	return 0, false
 }
 
 // systemFor renders the catalogue into the system prompt.
@@ -361,6 +415,10 @@ func systemFor(tools []remoteTool) string {
 	b.WriteString("Today's date is " + time.Now().Format("2 January 2006") + ".\n\n")
 	b.WriteString("To use a tool, reply with ONLY a JSON object and nothing else:\n")
 	b.WriteString(`{"tool":"tool_name","args":{"key":"value"}}` + "\n\n")
+	b.WriteString("No text before it and none after — do not say what you are about to do, ")
+	b.WriteString("and never write a tool call and an answer in the same reply. You will be ")
+	b.WriteString("given the result and asked again, and that is when you answer. Never ")
+	b.WriteString("state facts a tool has not yet returned to you.\n\n")
 	b.WriteString("When you can answer, reply with prose and no JSON. Prefer answering ")
 	b.WriteString("from what you already know; call a tool when the question needs ")
 	b.WriteString("current data. Each call costs the user real money, so do not call ")
