@@ -728,7 +728,17 @@ func getAssetsForCategory(category string) []string {
 	case CategoryFutures:
 		return futuresAssets
 	case CategoryCommodities:
-		return commoditiesAssets
+		// Everything a person means by "commodities": oil and the metals as
+		// well as the crops. They were split by contract type — futures for the
+		// hard ones, commodities for the agricultural — which is a distinction
+		// the caller does not have. Asked for the oil price, an agent chose
+		// commodities, received coffee and wheat, and reported that oil was
+		// unavailable while it sat one category away.
+		//
+		// futures still returns the hard ones on their own, because that name
+		// is accurate about what those contracts are and something may be
+		// asking for exactly them.
+		return append(append([]string{}, futuresAssets...), commoditiesAssets...)
 	case CategoryCurrencies:
 		return currencyAssets
 	case CategoryStocks:
