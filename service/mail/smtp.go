@@ -517,12 +517,7 @@ func (s *Session) Data(r io.Reader) error {
 		// encoded, for the same reason as the multipart path above: the body
 		// is what the inbox previews, what the index searches and what an
 		// agent reads, and a wall of base64 corrupts all three.
-		if isValidUTF8Text(bodyBytes) {
-			body = string(bodyBytes)
-		} else {
-			body = describeAttachment(partFilename("", contentType), contentType, len(bodyBytes))
-			app.Log("mail", "Binary body (%d bytes, %s) described rather than inlined", len(bodyBytes), contentType)
-		}
+		body, inboundAttachment = singlePartBody(bodyBytes, contentType)
 
 		// Additional check: if the body looks entirely like base64 (no header specified),
 		// try decoding it as a fallback for improperly formatted emails
@@ -1183,6 +1178,30 @@ func isBinaryish(contentType string) bool {
 		}
 	}
 	return false
+}
+
+// singlePartBody turns a message that is not multipart into what to show and
+// what to keep beside it.
+//
+// Text is the body. Anything else is described in the body and handed back, and
+// the second half is what was missing: this path described the attachment and
+// dropped the bytes, while the multipart path returned them. A DMARC report
+// that arrives as a single part — Content-Type: application/zip, no text
+// alongside it — therefore became a line saying a zip had come, with nothing
+// behind it for the message view to render as a table.
+//
+// Indistinguishable from the outside, which is why it survived: a report that
+// renders nothing looks the same whether the renderer is broken or the bytes
+// were never stored.
+func singlePartBody(bodyBytes []byte, contentType string) (string, *Attachment) {
+	if isValidUTF8Text(bodyBytes) {
+		return string(bodyBytes), nil
+	}
+	name := partFilename("", contentType)
+	app.Log("mail", "Binary body (%d bytes, %s) described rather than inlined, bytes kept",
+		len(bodyBytes), contentType)
+	return describeAttachment(name, contentType, len(bodyBytes)),
+		&Attachment{Name: name, Type: contentType, Content: append([]byte(nil), bodyBytes...)}
 }
 
 // describeAttachment is what the body says when the only thing in the message

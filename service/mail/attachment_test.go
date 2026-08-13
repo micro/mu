@@ -135,3 +135,56 @@ func TestAMessageWithNoAttachmentRendersNothing(t *testing.T) {
 		}
 	}
 }
+
+// A report that arrives as one part keeps its bytes.
+//
+// This is the half that was still broken. The multipart path handed its
+// attachment back so the message view could render the table; the single-part
+// path described the attachment and dropped it — and Google sends aggregate
+// reports as a single application/zip part with no text alongside. So the body
+// read "[google.com!….zip (application/zip), 707 bytes — not shown]" and there
+// was nothing behind it, for months, looking exactly like a renderer that had
+// stopped working.
+func TestASinglePartReportKeepsItsBytes(t *testing.T) {
+	raw := zipped(t, "google.com!micro.mu!1786492800!1786579199.xml", dmarcXML)
+
+	body, att := singlePartBody(raw, `application/zip; name="google.com!micro.mu!1.zip"`)
+
+	if att == nil {
+		t.Fatal("the bytes were dropped, so the message view has nothing to render")
+	}
+	if !bytes.Equal(att.Content, raw) {
+		t.Error("the stored bytes are not the ones that arrived")
+	}
+	if !strings.Contains(body, "not shown") {
+		t.Errorf("the body does not say what arrived: %q", body)
+	}
+	// And nothing binary reached the body, which is the rule that came first.
+	if strings.Contains(body, "PK") {
+		t.Errorf("the zip leaked into the body: %q", body)
+	}
+
+	// End to end: what was kept is what renders.
+	stored := &Message{
+		FromID:         "noreply-dmarc-support@google.com",
+		Body:           body,
+		Attachment:     base64.StdEncoding.EncodeToString(att.Content),
+		AttachmentType: att.Type,
+		AttachmentName: att.Name,
+	}
+	html, _ := renderStoredAttachment(stored)
+	if !strings.Contains(html, "<table") {
+		t.Errorf("a single-part report still does not render as a table:\n%s", html)
+	}
+}
+
+// Text is still just the body — nothing is stored beside a plain message.
+func TestAPlainSinglePartMessageStoresNoAttachment(t *testing.T) {
+	body, att := singlePartBody([]byte("hello there"), "text/plain; charset=utf-8")
+	if att != nil {
+		t.Error("a plain text message was filed as carrying an attachment")
+	}
+	if body != "hello there" {
+		t.Errorf("body = %q", body)
+	}
+}
