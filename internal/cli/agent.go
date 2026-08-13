@@ -36,14 +36,9 @@ import (
 	"strings"
 	"time"
 
-	"mu/internal/ai"
+	"mu/agent/local"
 	"mu/wallet"
 )
-
-// maxSteps bounds a run. A model that keeps calling tools without converging
-// is spending real money on every pass, so the loop has to end on its own
-// rather than when somebody notices.
-const maxSteps = 8
 
 // remoteTool is one entry from the server's catalogue.
 type remoteTool struct {
@@ -86,7 +81,7 @@ func runAgent(args []string) int {
 		}
 	}
 
-	if !ai.Configured() {
+	if !local.Configured() {
 		fmt.Println("You need a model. This rents tools, not thinking — the tools")
 		fmt.Println("come from the server, the thinking is yours.")
 		fmt.Println()
@@ -99,16 +94,10 @@ func runAgent(args []string) int {
 		return 1
 	}
 
-	// Say which model, up front. A key can be set and still not work — a stale
-	// base URL answers 404 — and the failure then arrived mid-conversation as a
-	// provider error with no clue which provider it came from. Naming it here
-	// makes that a five-second diagnosis instead of a mystery.
-	if status, ok := ai.Status(); !ok {
-		fmt.Printf("model: %s\n", status)
-		fmt.Println("       (that is what it will try; the first question may fail)")
-	} else {
-		fmt.Printf("model: %s\n", status)
-	}
+	// Say which provider, up front. A key can be set and still not answer — a
+	// stale base URL replies 404 — and that failure used to arrive
+	// mid-conversation with no clue which provider produced it.
+	fmt.Printf("model: %s\n", local.Describe())
 
 	ctx := context.Background()
 
@@ -123,8 +112,23 @@ func runAgent(args []string) int {
 	// up front is better than failing on the first priced call, and an agent
 	// that can answer from free tools alone should not be stopped at the door.
 	bw := openOrCreateWallet(seedPath)
-	s := &session{server: server, tools: tools, bw: bw, system: systemFor(tools)}
-	s.opening = usdcRaw(bw)
+
+	// The one place that can spend money, handed to the loop as a function.
+	// agent/local never learns what a wallet is.
+	pay := func(ctx context.Context, name string, args map[string]any) (string, error) {
+		return wallet.PayAndCallMCP(ctx, "", server, name, args, bw)
+	}
+	agent, err := local.New(local.Options{
+		Tools:  asLocalTools(tools),
+		Call:   pay,
+		OnCall: func(name string) { fmt.Printf("· %s\n", name) },
+	})
+	if err != nil {
+		fmt.Println("could not start:", err)
+		return 1
+	}
+
+	s := &session{bw: bw, agent: agent, opening: usdcRaw(bw)}
 
 	if question != "" {
 		fmt.Println()
@@ -139,11 +143,8 @@ func runAgent(args []string) int {
 // so far. Holding it across questions is what makes a second question cheap —
 // the model can answer from what the first one already paid for.
 type session struct {
-	server  string
-	tools   []remoteTool
 	bw      *wallet.BaseWallet
-	system  string
-	history ai.History
+	agent   *local.Session
 	opening *big.Int
 }
 
@@ -265,209 +266,14 @@ func usdcRaw(bw *wallet.BaseWallet) *big.Int {
 	return raw
 }
 
-// ask runs the model/tool loop until the model stops asking for tools, and
-// keeps the exchange so the next question can build on it.
+// ask answers one question. The loop, the tool calling and the history are
+// agent/local's; what belongs here is only how a call gets paid for.
 func (s *session) ask(ctx context.Context, question string) string {
-	turn := s.history
-	prompt := question
-
-	for step := 0; step < maxSteps; step++ {
-		reply, err := ai.Ask(&ai.Prompt{
-			System:   s.system,
-			Question: prompt,
-			Context:  turn,
-			Caller:   "cli_agent",
-		})
-		if err != nil {
-			return "the model failed: " + err.Error()
-		}
-
-		call, ok := parseToolCall(reply)
-		if !ok {
-			answer := strings.TrimSpace(reply)
-			s.history = trimHistory(append(turn, ai.Message{Prompt: prompt, Answer: answer}))
-			return answer
-		}
-
-		fmt.Printf("· %s\n", call.Tool)
-		out, err := wallet.PayAndCallMCP(ctx, "", s.server, call.Tool, call.Args, s.bw)
-		if err != nil {
-			// A failed call is told to the model rather than to the user. It
-			// may well have asked for a tool that needs an account, and the
-			// useful next move is for it to try another one.
-			out = "that call failed: " + err.Error()
-		}
-
-		// The model's own request and the result go back as one turn, so the
-		// next pass can see what it asked for as well as what it got.
-		turn = append(turn, ai.Message{Prompt: prompt, Answer: reply})
-		prompt = "Result of " + call.Tool + ":\n" + truncate(out, 6000) +
-			"\n\nAnswer the original question, or call another tool."
+	answer, err := s.agent.Ask(ctx, question)
+	if err != nil {
+		return "the model failed: " + err.Error()
 	}
-
-	s.history = trimHistory(turn)
-	return "gave up after " + fmt.Sprint(maxSteps) + " steps without settling on an answer"
-}
-
-// historyLimit caps what is carried between questions. Tool results are
-// verbose, every message is re-sent on the next call, and a session left open
-// all afternoon would otherwise grow until the model refuses it — or until
-// each question costs more than the tool it calls.
-const historyLimit = 20
-
-func trimHistory(h ai.History) ai.History {
-	if len(h) <= historyLimit {
-		return h
-	}
-	return append(ai.History{}, h[len(h)-historyLimit:]...)
-}
-
-// toolCall is the model's request to use a tool.
-type toolCall struct {
-	Tool string         `json:"tool"`
-	Args map[string]any `json:"args"`
-}
-
-// parseToolCall reads a tool request out of a model reply.
-//
-// It looks for the call *anywhere* in the reply, not just at the start. This
-// used to require the whole reply to be the JSON object, which failed the
-// moment a model did the most natural thing in the world:
-//
-//	Let me grab the latest headlines for you!
-//
-//	{"tool":"news_list","args":{"limit":10}}
-//
-// That was read as prose, so the loop took it for a final answer and never
-// called the tool — and the model, having been shown no result, went on to
-// invent the news. A parser that silently turns a tool call into a
-// hallucination is worse than one that rejects it loudly, so the fix is to
-// find the call wherever it is rather than to insist on where it should be.
-//
-// Anything with no well-formed object naming a tool is genuinely prose, which
-// is how the model says it has finished.
-func parseToolCall(reply string) (toolCall, bool) {
-	for _, candidate := range jsonObjects(reply) {
-		var c toolCall
-		if err := json.Unmarshal([]byte(candidate), &c); err != nil || c.Tool == "" {
-			continue
-		}
-		if c.Args == nil {
-			c.Args = map[string]any{}
-		}
-		return c, true
-	}
-	return toolCall{}, false
-}
-
-// jsonObjects returns every balanced {…} span in s, in order.
-//
-// Brace matching rather than a regex because arguments nest and can contain
-// braces inside strings — `{"q":"a {b} c"}` is one object, not two.
-func jsonObjects(s string) []string {
-	var out []string
-	for i := 0; i < len(s); i++ {
-		if s[i] != '{' {
-			continue
-		}
-		if end, ok := matchBrace(s, i); ok {
-			out = append(out, s[i:end+1])
-			i = end
-		}
-	}
-	return out
-}
-
-// matchBrace returns the index of the } closing the { at start.
-func matchBrace(s string, start int) (int, bool) {
-	depth, inString, escaped := 0, false, false
-	for j := start; j < len(s); j++ {
-		ch := s[j]
-		if inString {
-			switch {
-			case escaped:
-				escaped = false
-			case ch == '\\':
-				escaped = true
-			case ch == '"':
-				inString = false
-			}
-			continue
-		}
-		switch ch {
-		case '"':
-			inString = true
-		case '{':
-			depth++
-		case '}':
-			if depth--; depth == 0 {
-				return j, true
-			}
-		}
-	}
-	return 0, false
-}
-
-// systemFor renders the catalogue into the system prompt.
-func systemFor(tools []remoteTool) string {
-	var b strings.Builder
-	b.WriteString("You are an agent with access to tools on a remote server. ")
-	b.WriteString("Today's date is " + time.Now().Format("2 January 2006") + ".\n\n")
-	b.WriteString("To use a tool, reply with ONLY a JSON object and nothing else:\n")
-	b.WriteString(`{"tool":"tool_name","args":{"key":"value"}}` + "\n\n")
-	b.WriteString("No text before it and none after — do not say what you are about to do, ")
-	b.WriteString("and never write a tool call and an answer in the same reply. You will be ")
-	b.WriteString("given the result and asked again, and that is when you answer. Never ")
-	b.WriteString("state facts a tool has not yet returned to you.\n\n")
-	b.WriteString("When you can answer, reply with prose and no JSON. Prefer answering ")
-	b.WriteString("from what you already know; call a tool when the question needs ")
-	b.WriteString("current data. Each call costs the user real money, so do not call ")
-	b.WriteString("a tool twice for the same thing.\n\nTools:\n")
-
-	for _, t := range tools {
-		b.WriteString("- " + t.Name)
-		if d := strings.TrimSpace(t.Description); d != "" {
-			b.WriteString(": " + truncate(d, 160))
-		}
-		if params := paramNames(t.Schema); params != "" {
-			b.WriteString(" [" + params + "]")
-		}
-		b.WriteString("\n")
-	}
-	return b.String()
-}
-
-// paramNames renders a tool's parameters as "name:type" pairs, with required
-// ones marked. The full JSON Schema for ninety-six tools would be most of a
-// context window and almost none of it load-bearing.
-func paramNames(schema map[string]any) string {
-	props, ok := schema["properties"].(map[string]any)
-	if !ok {
-		return ""
-	}
-	required := map[string]bool{}
-	if list, ok := schema["required"].([]any); ok {
-		for _, r := range list {
-			if s, ok := r.(string); ok {
-				required[s] = true
-			}
-		}
-	}
-	var out []string
-	for name, raw := range props {
-		kind := "string"
-		if m, ok := raw.(map[string]any); ok {
-			if t, ok := m["type"].(string); ok {
-				kind = t
-			}
-		}
-		entry := name + ":" + kind
-		if required[name] {
-			entry += "*"
-		}
-		out = append(out, entry)
-	}
-	return strings.Join(out, " ")
+	return answer
 }
 
 // fetchCatalogue reads the server's tool list, which costs nothing and needs
@@ -529,4 +335,15 @@ func mcpPost(ctx context.Context, endpoint string, payload any) ([]byte, error) 
 	}
 	defer resp.Body.Close()
 	return io.ReadAll(resp.Body)
+}
+
+// asLocalTools converts the server's catalogue into what the loop needs. The
+// JSON Schema is passed through untouched: it is the server's description of
+// its own arguments, and the provider hands it to the model as-is.
+func asLocalTools(tools []remoteTool) []local.Tool {
+	out := make([]local.Tool, 0, len(tools))
+	for _, t := range tools {
+		out = append(out, local.Tool{Name: t.Name, Description: t.Description, Schema: t.Schema})
+	}
+	return out
 }
