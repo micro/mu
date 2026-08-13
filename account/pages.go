@@ -609,6 +609,46 @@ func Account(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// The display name, which had no way to be changed.
+		//
+		// It is set once at signup — optionally — and then shown on the profile,
+		// in mail, in invites and on every post, with no form anywhere that
+		// edits it. Somebody who skipped it, or typed it wrong, or changed their
+		// name, had to ask an admin.
+		//
+		// Not the username: that is the id, it is in addresses and URLs that
+		// other people hold, and renaming it is a different operation with
+		// different consequences.
+		if r.Form.Get("display_name") != "" || r.Form.Get("save_name") != "" {
+			name := strings.TrimSpace(r.Form.Get("display_name"))
+			if len(name) > 60 {
+				name = strings.TrimSpace(name[:60])
+			}
+			// Empty is allowed and means "no display name" — the id stands in,
+			// which is what an account that never set one already does.
+			if name == "" {
+				name = acc.ID
+			}
+			acc.Name = name
+			auth.UpdateAccount(acc) //nolint:errcheck
+			http.Redirect(w, r, "/account?saved=name", http.StatusSeeOther)
+			return
+		}
+
+		// Giving up an address that was proved by code.
+		//
+		// The sign-in address is not removable here — it is what a password
+		// reset goes to, and it is changed by verifying a new one, which is a
+		// different operation. These are the extras.
+		if addr := strings.TrimSpace(r.Form.Get("forget_address")); addr != "" {
+			if err := auth.RemoveVerifiedAddress(acc.ID, addr); err != nil {
+				http.Redirect(w, r, "/account?error="+url.QueryEscape(err.Error()), http.StatusSeeOther)
+				return
+			}
+			http.Redirect(w, r, "/account?saved=address", http.StatusSeeOther)
+			return
+		}
+
 		// Chat channel link code generation
 		if r.Form.Get("channel_link") != "" {
 			if app.LinkCodeFunc != nil {
@@ -676,9 +716,27 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	content := fmt.Sprintf(`<div class="card">
+	notice := ""
+	switch r.URL.Query().Get("saved") {
+	case "name":
+		notice = `<div class="card" style="background:#f0fff0;border-color:#a3d9a5"><p style="color:#27ae60;margin:0">Name saved.</p></div>`
+	case "address":
+		notice = `<div class="card" style="background:#f0fff0;border-color:#a3d9a5"><p style="color:#27ae60;margin:0">Address removed.</p></div>`
+	}
+	if msg := r.URL.Query().Get("error"); msg != "" {
+		notice = `<div class="card" style="border-color:#e0a3a3"><p style="color:#c00;margin:0">` +
+			htmlpkg.EscapeString(msg) + `</p></div>`
+	}
+
+	content := notice + fmt.Sprintf(`<div class="card">
 <h4>Profile</h4>
 <p><strong><a href="/@%s">%s</a></strong> · %s · Joined %s</p>
+<form action="/account" method="POST" class="d-flex items-center gap-3" style="margin-top:8px">
+	<input type="hidden" name="save_name" value="1">
+	<input name="display_name" value="%s" maxlength="60" placeholder="Display name" style="max-width:280px">
+	<button type="submit">Save</button>
+</form>
+<p class="text-sm text-muted" style="margin:6px 0 0">Shown on your posts and your profile. Your username, <strong>%s</strong>, is the one in addresses and links and does not change.</p>
 </div>
 
 %s
@@ -707,6 +765,8 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		acc.ID,
 		acc.Name,
 		acc.Created.Format("January 2, 2006"),
+		htmlpkg.EscapeString(acc.Name),
+		htmlpkg.EscapeString(acc.ID),
 		emailCard,
 		googleCard,
 		languageOptions,
@@ -719,6 +779,37 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	// missing on the one page you reach by being signed in.
 	html := app.RenderHTMLForRequest("Account", "Account", content, r)
 	w.Write([]byte(html))
+}
+
+// otherAddresses lists the addresses this account proved by code, with a way to
+// give each one up.
+//
+// They were only visible on /email, which is the service for sending — an
+// address you have proved is yours is account identity, and the page that says
+// who you are is where somebody looks for it. Nothing lists the sign-in address
+// here again; it is above, and it is not removable from this form.
+func otherAddresses(acc *auth.Account) string {
+	var extra []string
+	for _, a := range acc.Verified() {
+		if !strings.EqualFold(a, acc.Email) {
+			extra = append(extra, a)
+		}
+	}
+	if len(extra) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString(`<p class="text-sm text-muted" style="margin:12px 0 4px">Also proved yours — mail from these reaches your agents:</p>`)
+	b.WriteString(`<ul style="font-size:14px;margin:0;padding-left:18px">`)
+	for _, a := range extra {
+		b.WriteString(`<li style="margin:0 0 4px"><code>` + htmlpkg.EscapeString(a) + `</code>` +
+			`<form action="/account" method="POST" style="display:inline">` +
+			`<input type="hidden" name="forget_address" value="` + htmlpkg.EscapeString(a) + `">` +
+			`<button type="submit" style="background:none;border:0;color:#c00;cursor:pointer;font-size:13px;padding:0 0 0 6px">remove</button>` +
+			`</form></li>`)
+	}
+	b.WriteString(`</ul>`)
+	return b.String()
 }
 
 // renderEmailCard renders the email verification card on the account
@@ -738,10 +829,21 @@ func renderEmailCard(acc *auth.Account) string {
 	}
 
 	if acc.EmailVerified {
+		// Verified was a dead end: the address showed with a tick and there was
+		// no way to change it, and no way to see or drop the others this account
+		// had proved. An address is not yours for ever — people leave jobs and
+		// close accounts — and the one a password reset goes to is exactly the
+		// one somebody needs to be able to move.
 		return fmt.Sprintf(`<div class="card">
 <h4>Email</h4>
 <p><strong>%s</strong> — verified ✓</p>
-</div>`, htmlpkg.EscapeString(acc.Email))
+<p class="text-sm text-muted">Where a password reset goes. Verifying a different one replaces it.</p>
+<form action="/account" method="POST" class="d-flex items-center gap-3" style="margin-top:8px">
+	<input type="email" name="email" placeholder="you@example.com" required style="max-width:280px">
+	<button type="submit">Verify a different address</button>
+</form>
+%s
+</div>`, htmlpkg.EscapeString(acc.Email), otherAddresses(acc))
 	}
 
 	pending := ""

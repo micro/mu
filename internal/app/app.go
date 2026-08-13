@@ -438,6 +438,12 @@ var Template = `
           // already on. The browser does that natively, and doing it here
           // instead meant re-fetching the page to land back where we started.
           if (u.pathname === location.pathname && u.search === location.search && u.hash) return;
+          // Logging out changes who you are, and a soft navigation only swaps
+          // #content — the sidebar and everything else drawn for a signed-in
+          // person would stay exactly as it was, so it reads as nothing having
+          // happened. Let the browser do the whole page: rebuilding the chrome
+          // is the point, not a side effect.
+          if (u.pathname === '/logout') return;
           e.preventDefault();
           if (u.href === location.href) return;
           go(u.href, true);
