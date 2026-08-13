@@ -17,6 +17,13 @@ package auth
 // — your agent answering mail you send from your work address as readily as
 // from the one you signed up with.
 //
+// This is not where email_verify's answers go. That tool checks whether one of
+// the *caller's* users can read their own mail, and the caller's users are not
+// accounts here; nothing reaches this list unless somebody asks for it, about
+// an address they read themselves. The distinction matters because the one rule
+// below that verification does not have — one address to one account — only
+// makes sense on this side of it.
+//
 // That asymmetry is deliberate and it is a security boundary. Adding an address
 // here cannot take an account over, because recovery reads Email alone; if this
 // list ever became a way in, the code flow in service/email would be a way to
@@ -117,8 +124,10 @@ func OwnsAddress(id, addr string) bool {
 // on purpose: the challenge belongs to whichever channel carried it, and this
 // package has no way to send an email.
 //
-// One account per address. Two accounts both claiming to read one mailbox makes
-// AccountForAddress a coin toss, and it is used to decide whose mail arrived.
+// One account per address, and this is the only place that rule holds. It is
+// here because AccountForAddress decides whose mail arrived and two claimants
+// make that a coin toss. Verification itself has no such rule and must not:
+// two products may both have a user at the same address, and they do.
 func AddVerifiedAddress(id, addr string) error {
 	addr = NormaliseAddress(addr)
 	if addr == "" {

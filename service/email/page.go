@@ -1,6 +1,7 @@
 package email
 
 import (
+	"fmt"
 	"html"
 	"net/http"
 	"net/url"
@@ -47,11 +48,29 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			// One form, two steps: with a code it finishes, without one it starts.
 			// Which is showing is decided by Pending, so the page never asks for a
 			// code nobody has been sent.
+			//
+			// The page is the one caller that always means "mine" — a person is
+			// looking at their own account — so it claims on approval. The tool
+			// does not, because an agent is almost always asking about one of its
+			// users' addresses instead.
 			addr := r.FormValue("address")
+			var v Verification
 			if code := strings.TrimSpace(r.FormValue("code")); code != "" {
-				err, done = Confirm(acc.ID, addr, code), "?verified="+url.QueryEscape(addr)
+				if v, err = Check(acc.ID, addr, code); err == nil && v.OK() {
+					err = Claim(acc.ID, v.Address)
+				}
 			} else {
-				err, done = StartVerify(acc.ID, addr), "?code="+url.QueryEscape(addr)
+				v, err = StartVerify(acc.ID, addr, "")
+			}
+			switch {
+			case err != nil:
+			case v.OK() || v.Status == "pending":
+				done = "?said=" + url.QueryEscape(v.Says())
+			default:
+				// Mistyped, expired, run out of guesses. Not an error the page
+				// should style as a failure of the instance, but the person has to
+				// be told which of them it was.
+				err = fmt.Errorf("%s", v.Says())
 			}
 		case "forget":
 			err, done = Forget(acc.ID, r.FormValue("address")), "?forgot=1"
@@ -101,10 +120,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	switch q := r.URL.Query(); {
 	case q.Get("sent") == "1":
 		note = "Sent."
-	case q.Get("code") != "":
-		note = "Emailed a code to " + q.Get("code") + ". It is good for ten minutes."
-	case q.Get("verified") != "":
-		note = q.Get("verified") + " is yours."
+	case q.Get("said") != "":
+		note = q.Get("said")
 	case q.Get("forgot") == "1":
 		note = "Removed."
 	}
@@ -165,7 +182,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		b.WriteString(`<input name="address" type="email" required placeholder="you@example.com" style="width:260px;padding:8px;margin:0 8px 0 0;border:1px solid #ddd;border-radius:6px;font-size:14px">`)
 		b.WriteString(`<button type="submit" class="btn">Send a code</button>`)
-		b.WriteString(`<p style="font-size:13px;color:#888;margin:8px 0 0">The code is emailed there, so it costs one send and counts against today's allowance.</p>`)
+		b.WriteString(`<p style="font-size:13px;color:#888;margin:8px 0 0">The code is emailed there, so it costs one send and counts against today's allowance. An agent runs the same check on <em>its</em> users with <code>email_verify</code> — a code under your product's name, and an answer saying whether it came back.</p>`)
 	}
 	b.WriteString(`</form></div>`)
 

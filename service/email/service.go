@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"mu/internal/quota"
 	"mu/internal/service"
@@ -73,17 +74,24 @@ var Spec = service.Spec{
 				"this account has proved are its own, and how many messages are left today",
 		},
 		// No Cost, unlike Send, and the reason is that only one of its two steps
-		// sends anything: asking for a code puts an email on the wire, sending
+		// sends anything: asking for a code puts an email on the wire, checking
 		// the code back does not. An endpoint charge cannot tell them apart, so
-		// the service charges itself — see verify.go, which is also where the
-		// harder cap on starts lives.
+		// the service charges itself — see verify.go.
+		//
+		// How many people you may verify is the plan's emails-per-day and
+		// nothing else. That is the point: it is the same allowance sending
+		// uses, so it is a tier to buy your way up rather than a second meter
+		// invented for this tool.
 		"Verify": {
 			AccountOnly: true,
-			Doc: "Claim an email address as your own, so mail you send from it is " +
-				"recognised here rather than treated as a stranger's — it reaches your " +
-				"agent, and at the shared agent address it is what says the mail is " +
-				"yours. Call it with just the address to have a code emailed there, then " +
-				"again with the code. Costs a send and counts against the daily cap",
+			Doc: "Check that somebody can read an email address — the verification a " +
+				"signup form runs. Call it with an address to have a six-digit code " +
+				"emailed there, then again with the code the person typed back: the answer " +
+				"says approved or why not, so a wrong code is an answer rather than an " +
+				"error. Pass app to put your product's name in the message rather than " +
+				"this instance's. Costs one send and counts against the daily email " +
+				"allowance. Pass mine when the address is your own and you want mail from " +
+				"it recognised here",
 		},
 	},
 }
@@ -188,42 +196,62 @@ func (Server) Sender(ctx context.Context, _ *SenderRequest, rsp *SenderResponse)
 // ── Verify ──────────────────────────────────────────────────────
 
 type VerifyRequest struct {
-	Address string `json:"address" required:"true" description:"An email address you can read"`
-	Code    string `json:"code,omitempty" description:"The code that was emailed to it. Omit to have one sent"`
+	Address string `json:"address" required:"true" description:"The address to verify — usually one of your users', not your own"`
+	Code    string `json:"code,omitempty" description:"The code the person typed back. Omit to have one emailed to them"`
+	App     string `json:"app,omitempty" description:"Your product's name, to put in the message. Defaults to this account's name"`
+	Mine    bool   `json:"mine,omitempty" description:"Set only when the address is your own: on approval it is recorded here, so mail you send from it reaches your agent instead of a spam folder"`
 }
 
 type VerifyResponse struct {
-	Result   string   `json:"result" description:"What happened"`
-	Verified bool     `json:"verified" description:"Whether the address is now yours"`
-	Yours    []string `json:"yours" description:"Every address this account has proved is its own"`
+	Address  string `json:"address" description:"The address, in the spelling everything here uses"`
+	Status   string `json:"status" description:"pending — a code has been emailed; approved — the code was right; incorrect, expired, exhausted — it was not; none — no code is waiting for that address"`
+	Approved bool   `json:"approved" description:"Whether the person proved they can read the address"`
+	Left     int    `json:"left" description:"Guesses this code has left, while it is pending"`
+	Expires  string `json:"expires,omitempty" description:"When the code stops working"`
+	Result   string `json:"result" description:"The same, as a sentence you can show somebody"`
 }
 
-// Verify claims an address as the caller's own, in two steps.
+// Verify checks that somebody can read an address, in two steps.
 //
-// Called without a code it emails one there; called with the code it records
-// the address. What that buys is being recognised: mail arriving here from an
-// address you have proved is yours reaches your agent rather than a spam
-// folder, and at the shared agent address it is the only thing that says whose
-// mail it is.
-// @example {"address": "you@example.com"}
+// The check a signup form runs, and the caller is almost always asking about
+// somebody else's address rather than their own — so nothing here records
+// anything against the caller's account unless they ask for it with mine. What
+// the answer means is theirs to decide and theirs to store; this says whether
+// the code matched.
+//
+// A wrong code comes back as a status rather than an error, because it is the
+// ordinary outcome of asking somebody to type six digits.
+// @example {"address": "user@example.com", "app": "Acme"}
 func (Server) Verify(ctx context.Context, req *VerifyRequest, rsp *VerifyResponse) error {
 	who := service.AccountFrom(ctx)
 	if who == "" {
 		return fmt.Errorf("sign in to verify an address")
 	}
+
+	var (
+		v   Verification
+		err error
+	)
 	if code := strings.TrimSpace(req.Code); code != "" {
-		if err := Confirm(who, req.Address, code); err != nil {
-			return err
-		}
-		rsp.Verified, rsp.Result = true, req.Address+" is yours."
-		rsp.Yours = Addresses(who)
-		return nil
+		v, err = Check(who, req.Address, code)
+	} else {
+		v, err = StartVerify(who, req.Address, req.App)
 	}
-	if err := StartVerify(who, req.Address); err != nil {
+	if err != nil {
 		return err
 	}
-	rsp.Yours = Addresses(who)
-	rsp.Result = "Emailed a code to " + req.Address + ". Send it back to finish."
+
+	if v.OK() && req.Mine {
+		if err := Claim(who, v.Address); err != nil {
+			return err
+		}
+	}
+
+	rsp.Address, rsp.Status, rsp.Approved = v.Address, v.Status, v.OK()
+	rsp.Left, rsp.Result = v.Left, v.Says()
+	if !v.Expires.IsZero() {
+		rsp.Expires = v.Expires.Format(time.RFC3339)
+	}
 	return nil
 }
 

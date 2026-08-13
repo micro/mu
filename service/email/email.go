@@ -351,7 +351,6 @@ func Send(owner, to, subject, body string) (*Sent, error) {
 
 	providerID, err := deliver(owner, acc.Name, to, subject, body)
 
-
 	// Recorded either way, and before the error is returned. What went wrong is
 	// the half of the history worth having: a message that was refused is the
 	// one you have to do something about, and it used to disappear.
