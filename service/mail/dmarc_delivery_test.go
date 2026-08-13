@@ -115,3 +115,38 @@ func TestGooglesReportingAddressIsTrustedToUnpack(t *testing.T) {
 		t.Error("a stranger's zip was unpacked")
 	}
 }
+
+// Every place that renders a message body has to read the stored attachment.
+//
+// There are two, and only one of them knew. The single-message view was taught
+// to read bytes kept beside the body when they moved out of it; the thread loop
+// — which is how a conversation is shown, including a conversation of one — was
+// not, and still sniffs m.Body for base64 and zip magic because that is where
+// attachments used to live. So a DMARC report opened in a thread printed the
+// line describing the zip and nothing else.
+//
+// Worse, it could not report its own failure: the note about bytes that were
+// never kept lived in the other block, so the two states — never stored, and
+// stored but ignored — looked identical from the page. Two renderers, one
+// taught and one not, is the shape of this bug rather than a detail of it.
+func TestEveryBodyRendererReadsTheStoredAttachment(t *testing.T) {
+	src := readSource(t, "mail.go")
+
+	renders := strings.Count(src, "renderEmailBody(")
+	reads := strings.Count(src, "renderStoredAttachment(")
+	if renders == 0 {
+		t.Fatal("no body renderer found, so this test is checking nothing")
+	}
+	if reads < renders {
+		t.Errorf("%d places render a message body and only %d read the attachment "+
+			"stored beside it — one of them shows the line describing a report "+
+			"instead of the report", renders, reads)
+	}
+	// And each of them says so when the bytes are gone, rather than leaving a
+	// description with nothing behind it and no explanation.
+	if strings.Count(src, "describedNothing(") < renders {
+		t.Errorf("a body renderer cannot tell a lost attachment from a broken one, "+
+			"which is what let this run: %d renderers, %d checks",
+			renders, strings.Count(src, "describedNothing("))
+	}
+}

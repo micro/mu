@@ -1048,6 +1048,26 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			}
 
 		threadSkipBodyProcessing:
+			// An attachment stored beside the body wins here too.
+			//
+			// This loop is a second body renderer, and it only ever knew the old
+			// scheme: everything above sniffs m.Body for base64, gzip and zip
+			// magic bytes, because that is where attachments used to live. When
+			// they moved out of the body, the single-message view was taught to
+			// read them and this was not — so a DMARC report shown inside a
+			// thread, which is how a conversation of one is shown, ignored the
+			// bytes entirely and printed the line describing them.
+			//
+			// It is why the report rendered nothing and said nothing: the note
+			// about bytes that were never kept lives in the other block, so this
+			// path could not even report its own failure.
+			if rendered, _ := renderStoredAttachment(m); rendered != "" {
+				msgBody, msgIsAttachment = rendered, true
+			} else if describedNothing(m) {
+				msgBody += "\n\n(The attachment itself was not kept — this message " +
+					"arrived before they were stored. A new report supersedes it.)"
+			}
+
 			// Process email body - renders markdown if detected, otherwise linkifies URLs
 			msgBody = renderEmailBody(msgBody, msgIsAttachment)
 
