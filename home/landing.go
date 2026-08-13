@@ -66,7 +66,7 @@ func landingBody(host string) string {
 	// Counted, not claimed. This said "67 real tools" as a literal and the
 	// endpoint was serving 72 by the time anyone checked.
 	return `<p class="lead">` + strconv.Itoa(api.ToolCount()) + ` tools an agent can call — news, web search, mail,
-markets, weather, places, storage — behind one account instead of one per provider.
+markets, weather, places, storage — one account for all of them, not one per provider.
 Ask something and watch it use them.</p>
 
 <div class="ltry">` + chatComponent(true) + `</div>

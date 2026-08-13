@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/quota"
@@ -96,7 +97,18 @@ func feature(p wallet.SubscriptionPlan) string {
 	if len(p.Features) > 0 {
 		return p.Features[0]
 	}
-	return "Every tool"
+	return everyTool()
+}
+
+// everyTool names the number rather than gesturing at it.
+//
+// "Every tool" is a claim the reader has to go and check; "All 97 tools" is the
+// same claim with the scale in it, which is the thing that makes one account
+// worth having instead of seven. Counted from the registry for the reason the
+// landing page counts it — the landing said "67 real tools" as a literal while
+// the endpoint was serving 72.
+func everyTool() string {
+	return fmt.Sprintf("All %d tools", api.ToolCount())
 }
 
 func PricingHandler(w http.ResponseWriter, r *http.Request) {
@@ -120,7 +132,11 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	// wiring up an agent could not tell whether this was for them, and somebody
 	// looking for an app could not either. The app is how you see the tools
 	// work, not a second product being sold alongside them.
-	b.WriteString(`<p style="color:#666;font-size:15px;margin:0 0 24px">The everyday internet as tools your agent calls over <a href="/mcp" style="color:#111">MCP</a>, metered per call. The app you sign into is included. <a href="/tools" style="color:#111">Browse the tools →</a> Or self-host for free.</p>`)
+	b.WriteString(`<p style="color:#666;font-size:15px;margin:0 0 12px">The everyday internet as tools your agent calls over <a href="/mcp" style="color:#111">MCP</a>, metered per call. The app you sign into is included.</p>`)
+	// The two links are their own line. Run on from the sentence above they read
+	// as more prose and get skipped — a call to action that is the tail of a
+	// paragraph is not one.
+	b.WriteString(`<p style="color:#666;font-size:15px;margin:0 0 24px"><a href="/tools" style="color:#111">Browse the tools →</a> &nbsp;·&nbsp; Or self-host for free.</p>`)
 	b.WriteString(`</div>`)
 
 	// Plans.
@@ -158,7 +174,7 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<p style="font-size:2rem;font-weight:700;margin:8px 0">1p` +
 		`<span style="font-size:14px;font-weight:400;color:#888">/credit</span></p>`)
 	b.WriteString(`<p style="color:#666;font-size:14px;margin:0 0 16px">Top up any amount</p>`)
-	b.WriteString(rows(wallet.PlanByID(""), "Every tool"))
+	b.WriteString(rows(wallet.PlanByID(""), everyTool()))
 	b.WriteString(`<a href="/signup" class="btn" style="display:block;text-align:center">Start</a>`)
 	b.WriteString(`</div>`)
 
