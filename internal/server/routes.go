@@ -143,6 +143,7 @@ func authRequired() map[string]bool {
 
 		"/status":                        false, // Public - server health status
 		"/pricing":                       false, // Public - pricing page
+		"/plans":                         false, // Public - the same page
 		"/privacy":                       false, // Public - privacy policy
 		"/help":                          false, // Public - how to connect an agent
 		"/install":                       false, // Public - run your own instance
@@ -305,6 +306,12 @@ func registerRoutes() {
 	// surface until the page that shows what your agents are doing exists to
 	// take it.
 	http.HandleFunc("/pricing", home.PricingHandler)
+	// The same page under the name a customer looks for. A visitor deciding
+	// whether to start reads "pricing"; somebody already signed in who wants
+	// more agents looks for "plans", and finding nothing there is how they end
+	// up hunting through the menu. One page, because two would describe the same
+	// prices and drift.
+	http.HandleFunc("/plans", home.PricingHandler)
 	// Every MCP directory submission asks for a privacy policy URL, and this
 	// instance runs a mail server — so there is real correspondence to account
 	// for, not just a formality.

@@ -66,7 +66,13 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 		`Claude, Cursor or your own program.</p>`)
 
 	if msg := r.URL.Query().Get("error"); msg != "" {
-		b.WriteString(`<p class="text-error">` + html.EscapeString(msg) + `</p>`)
+		// The way out is a link, because it reads as one. Hitting the agent limit
+		// names /pricing as where to change it — and as escaped text that is a
+		// path you click and nothing happens, so the one route the message exists
+		// to open is the one that dead-ends.
+		said := html.EscapeString(msg)
+		said = strings.ReplaceAll(said, "/pricing", `<a href="/pricing">/pricing</a>`)
+		b.WriteString(`<p class="text-error">` + said + `</p>`)
 	}
 	if r.URL.Query().Get("removed") != "" {
 		b.WriteString(`<p class="text-sm" style="color:#666">Agent removed and its token revoked.</p>`)

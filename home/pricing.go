@@ -111,6 +111,58 @@ func everyTool() string {
 	return fmt.Sprintf("All %d tools", api.ToolCount())
 }
 
+// agentLine says how many agents the plan you are on runs.
+//
+// The number, not just the name, because it is the one somebody arriving from
+// the agent limit came here to find out — and reading it off a card means first
+// working out which card is yours.
+func agentLine(p wallet.SubscriptionPlan) string {
+	if p.Agents <= 0 {
+		return ""
+	}
+	return fmt.Sprintf(" — %d agent%s", p.Agents, plural(p.Agents))
+}
+
+// cta is a plan card's button, which depends entirely on who is reading.
+//
+// It was "Get Pro" pointing at /signup on every card, for everybody. A signed-in
+// account that hit its agent limit was told to come here to run more, came here,
+// clicked Pro, and was sent to a signup form for an account it already had —
+// so the one path the limit message exists to open was the one that dead-ended.
+//
+// Three readers, three answers: somebody with no account signs up, somebody on
+// this plan is told so, and somebody on another plan gets the button that
+// actually changes it. The subscribe form is the same POST /wallet does, rather
+// than a link to /wallet — a page that tells you the price should be able to
+// take it.
+func cta(r *http.Request, planID string) string {
+	const style = `class="btn" style="display:block;text-align:center"`
+
+	_, acc := auth.TrySession(r)
+	if acc == nil {
+		label := "Start"
+		if planID != "" {
+			label = "Get " + wallet.PlanByID(planID).Name
+		}
+		return `<a href="/signup" ` + style + `>` + html.EscapeString(label) + `</a>`
+	}
+	if acc.Plan == planID {
+		return `<div style="text-align:center;padding:8px 0;font-size:14px;color:#666;font-weight:600">Your plan</div>`
+	}
+	if planID == "" {
+		// Leaving a plan is a cancellation, and cancelling somebody's
+		// subscription from a pricing card is not a thing to make one click away.
+		return `<a href="/wallet" ` + style + ` style="display:block;text-align:center;background:#fff;color:#111;border:1px solid #ddd">Manage in wallet</a>`
+	}
+	verb := "Upgrade to "
+	if cur := wallet.PlanByID(acc.Plan); cur.Price > wallet.PlanByID(planID).Price {
+		verb = "Change to "
+	}
+	return `<form method="POST" action="/wallet/stripe/subscribe" style="margin:0">` +
+		`<input type="hidden" name="plan" value="` + html.EscapeString(planID) + `">` +
+		`<button type="submit" ` + style + `>` + html.EscapeString(verb+wallet.PlanByID(planID).Name) + `</button></form>`
+}
+
 func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	var b strings.Builder
 
@@ -137,6 +189,17 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	// as more prose and get skipped — a call to action that is the tail of a
 	// paragraph is not one.
 	b.WriteString(`<p style="color:#666;font-size:15px;margin:0 0 24px"><a href="/tools" style="color:#111">Browse the tools →</a> &nbsp;·&nbsp; Or self-host for free.</p>`)
+
+	// What you are on, said before the cards rather than left to be worked out
+	// from them. Somebody arriving here from a limit they just met is not
+	// shopping — they are asking which of these they already have.
+	if _, acc := auth.TrySession(r); acc != nil {
+		cur := wallet.PlanByID(acc.Plan)
+		b.WriteString(`<p style="font-size:15px;margin:0 0 24px;padding:10px 14px;background:#f6f6f6;border-radius:6px">` +
+			`You are on <strong>` + html.EscapeString(cur.Name) + `</strong>` +
+			html.EscapeString(agentLine(cur)) +
+			` · <a href="/wallet" style="color:#111">Wallet</a></p>`)
+	}
 	b.WriteString(`</div>`)
 
 	// Plans.
@@ -175,7 +238,7 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 		`<span style="font-size:14px;font-weight:400;color:#888">/credit</span></p>`)
 	b.WriteString(`<p style="color:#666;font-size:14px;margin:0 0 16px">Top up any amount</p>`)
 	b.WriteString(rows(wallet.PlanByID(""), everyTool()))
-	b.WriteString(`<a href="/signup" class="btn" style="display:block;text-align:center">Start</a>`)
+	b.WriteString(cta(r, ""))
 	b.WriteString(`</div>`)
 
 	// Rendered from wallet.Plans(), which is what /wallet actually charges for,
@@ -193,8 +256,7 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`<p style="color:#666;font-size:14px;margin:0 0 16px">` +
 			html.EscapeString(thousands(p.Credits)+" credits a month") + `</p>`)
 		b.WriteString(rows(p, feature(p)))
-		b.WriteString(`<a href="/signup" class="btn" style="display:block;text-align:center">Get ` +
-			html.EscapeString(p.Name) + `</a>`)
+		b.WriteString(cta(r, p.ID))
 		b.WriteString(`</div>`)
 	}
 
