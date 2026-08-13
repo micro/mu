@@ -174,6 +174,135 @@ func (p SubscriptionPlan) LimitFor(operation string) (int, bool) {
 // Plans is the catalogue, for pages that render it.
 func Plans() []SubscriptionPlan { return SubscriptionPlans }
 
+// checkoutSession is a completed purchase, however we came to hear about it.
+type checkoutSession struct {
+	ID            string
+	PaymentStatus string
+	Customer      string
+	AmountTotal   int
+	UserID        string
+	Credits       string
+	PlanID        string
+}
+
+// settleSession applies a paid checkout: credits, plan, customer.
+//
+// Extracted because the webhook was the only thing that could do it, and a
+// webhook is a promise from a service you do not control. If it is not
+// configured, or its secret is wrong, or its event list is missing the one that
+// matters, the customer's card is charged and nothing whatever happens here —
+// no credits, no plan, no error, and no way to find out but asking them why
+// their balance is zero. That is not a subscription problem: a one-off top-up
+// hangs on exactly the same thread.
+//
+// So the return from Stripe settles it too, and the two are safe to race
+// because this is the only place it happens and it runs once per session id.
+// The dedupe is what makes a second route free rather than dangerous.
+//
+// how is only for the log — knowing whether the money landed by webhook or by
+// somebody coming back to the page is the difference between "Stripe is fine"
+// and "Stripe has never once called us".
+func settleSession(s checkoutSession, how string) {
+	if s.PaymentStatus != "paid" || s.ID == "" {
+		return
+	}
+
+	mutex.Lock()
+	if processedSessions[s.ID] {
+		mutex.Unlock()
+		return
+	}
+	processedSessions[s.ID] = true
+	mutex.Unlock()
+
+	if s.UserID == "" {
+		app.Log("stripe", "session %s (%s) names no account, so nothing can be credited", s.ID, how)
+		return
+	}
+
+	var credits int
+	fmt.Sscanf(s.Credits, "%d", &credits)
+	if credits > 0 {
+		if err := AddCredits(s.UserID, credits, quota.OpTopup, map[string]interface{}{
+			"source":     "stripe",
+			"session_id": s.ID,
+			"amount":     s.AmountTotal,
+			"settled_by": how,
+		}); err != nil {
+			app.Log("stripe", "failed to credit user %s: %v", s.UserID, err)
+		} else {
+			app.Log("stripe", "credited %d to %s via %s (session %s)", credits, s.UserID, how, s.ID)
+		}
+	}
+	// A subscription checkout carries a plan id; a one-off top-up does not, and
+	// setPlan ignores an empty one rather than clearing what somebody is on.
+	setPlan(s.UserID, s.PlanID)
+	// Kept either way: a one-off top-up creates a customer too, and having it
+	// means a card saved on one purchase can be managed later without another.
+	setCustomer(s.UserID, s.Customer)
+}
+
+// SettleCheckout reads a session back from Stripe and applies it.
+//
+// What the return from a payment calls. The session id arrives in the URL
+// Stripe redirects to, and everything acted on comes from asking Stripe about
+// it rather than from the query string — a caller can type any id they like
+// into a URL, and the answer is only trustworthy because Stripe gave it.
+func SettleCheckout(sessionID, forAccount string) error {
+	if !StripeEnabled() || strings.TrimSpace(sessionID) == "" {
+		return fmt.Errorf("no session")
+	}
+	req, err := http.NewRequest("GET",
+		"https://api.stripe.com/v1/checkout/sessions/"+neturl.PathEscape(sessionID), nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+stripeSecret())
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	var out struct {
+		ID            string `json:"id"`
+		PaymentStatus string `json:"payment_status"`
+		Customer      string `json:"customer"`
+		AmountTotal   int    `json:"amount_total"`
+		Metadata      struct {
+			UserID  string `json:"user_id"`
+			Credits string `json:"credits"`
+			PlanID  string `json:"plan_id"`
+		} `json:"metadata"`
+		Error struct {
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return err
+	}
+	if out.Error.Message != "" {
+		return fmt.Errorf("%s", out.Error.Message)
+	}
+	// The session has to belong to whoever is asking. Session ids are not
+	// secrets — one arrives in a URL and sits in a browser history — so without
+	// this, pasting somebody else's would apply their purchase to your account.
+	if forAccount != "" && out.Metadata.UserID != forAccount {
+		return fmt.Errorf("that payment belongs to another account")
+	}
+
+	settleSession(checkoutSession{
+		ID:            out.ID,
+		PaymentStatus: out.PaymentStatus,
+		Customer:      out.Customer,
+		AmountTotal:   out.AmountTotal,
+		UserID:        out.Metadata.UserID,
+		Credits:       out.Metadata.Credits,
+		PlanID:        out.Metadata.PlanID,
+	}, "return from checkout")
+	return nil
+}
+
 // setPlan records which plan an account is on, after a payment for it.
 //
 // Empty is ignored rather than written: a one-off top-up goes through the same
@@ -855,43 +984,15 @@ func HandleStripeWebhook(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if session.PaymentStatus == "paid" {
-			// Check for duplicate processing
-			mutex.Lock()
-			if processedSessions[session.ID] {
-				mutex.Unlock()
-				app.Log("stripe", "session %s already processed, skipping", session.ID)
-				w.WriteHeader(http.StatusOK)
-				return
-			}
-			processedSessions[session.ID] = true
-			mutex.Unlock()
-
-			userID := session.Metadata.UserID
-			var credits int
-			fmt.Sscanf(session.Metadata.Credits, "%d", &credits)
-
-			if userID != "" && credits > 0 {
-				err := AddCredits(userID, credits, quota.OpTopup, map[string]interface{}{
-					"source":     "stripe",
-					"session_id": session.ID,
-					"amount":     session.AmountTotal,
-				})
-				if err != nil {
-					app.Log("stripe", "failed to credit user %s: %v", userID, err)
-				} else {
-					app.Log("stripe", "credited %d to user %s (session %s)", credits, userID, session.ID)
-				}
-				// A subscription checkout carries a plan id; a one-off top-up
-				// does not, and setPlan ignores an empty one rather than
-				// clearing what somebody is already on.
-				setPlan(userID, session.Metadata.PlanID)
-				// Kept whether or not this was a subscription: a one-off top-up
-				// creates a customer too, and having it means a card saved on
-				// one purchase can be managed later without another.
-				setCustomer(userID, session.Customer)
-			}
-		}
+		settleSession(checkoutSession{
+			ID:            session.ID,
+			PaymentStatus: session.PaymentStatus,
+			Customer:      session.Customer,
+			AmountTotal:   session.AmountTotal,
+			UserID:        session.Metadata.UserID,
+			Credits:       session.Metadata.Credits,
+			PlanID:        session.Metadata.PlanID,
+		}, "webhook")
 	}
 
 	// Handle invoice.payment_succeeded — subscription renewal credits.

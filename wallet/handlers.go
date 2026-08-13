@@ -745,7 +745,7 @@ func handleStripeSubscribe(w http.ResponseWriter, r *http.Request) {
 	url, err := CreateSubscriptionSession(
 		sess.Account,
 		planID,
-		base+"/wallet?success=subscribed",
+		base+"/wallet/stripe/success?session_id={CHECKOUT_SESSION_ID}",
 		base+"/wallet/topup",
 	)
 	if err != nil {
@@ -831,14 +831,44 @@ func handleStripeCheckout(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, checkoutURL, http.StatusSeeOther)
 }
 
+// handleStripeSuccess is where Stripe returns somebody after they have paid,
+// and it settles the purchase rather than only announcing it.
+//
+// It used to say "your credits will be added shortly" and do nothing, because
+// the webhook did the work. A webhook is a promise from a service you do not
+// control: if it is not configured, or its secret is wrong, or its event list
+// is missing the one that matters, the card is charged and nothing happens here
+// — no credits, no plan, no error, and nothing to find out from except an
+// account asking why its balance is zero. Which is how this was found.
+//
+// Both routes call the same function and it runs once per session id, so
+// whichever arrives first wins and the other is free.
 func handleStripeSuccess(w http.ResponseWriter, r *http.Request) {
-	// Just show success message - actual crediting happens via webhook
+	sess, _ := auth.TrySession(r)
+	account := ""
+	if sess != nil {
+		account = sess.Account
+	}
+
+	settled := false
+	if id := r.URL.Query().Get("session_id"); id != "" && account != "" {
+		if err := SettleCheckout(id, account); err != nil {
+			app.Log("stripe", "settling %s on return: %v", id, err)
+		} else {
+			settled = true
+		}
+	}
+
+	body := `<p>Your credits will be added to your account shortly.</p>`
+	if settled {
+		body = fmt.Sprintf(`<p>Your balance is now <strong>%d credits</strong>.</p>`,
+			GetBalance(account))
+	}
 	content := `<div class="card">
-		<h2>Payment Successful</h2>
-		<p>Your credits will be added to your account shortly.</p>
-		<p><a href="/wallet" class="btn">View Wallet</a></p>
+		<h2>Payment complete</h2>` + body + `
+		<p><a href="/wallet" class="btn">View wallet</a></p>
 	</div>`
-	html := app.RenderHTMLForRequest("Payment Complete", "Credits added", content, r)
+	html := app.RenderHTMLForRequest("Payment complete", "Credits added", content, r)
 	w.Write([]byte(html))
 }
 
