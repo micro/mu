@@ -4,10 +4,6 @@
 files, contacts, calendar and your own documents, as tools an agent can use via one MCP
 server and token — also includes a web app for humans.
 
-## Hosting
-
-Use it live at [micro.mu](https://micro.mu), or run your own.
-
 ## Install
 
 ```bash
