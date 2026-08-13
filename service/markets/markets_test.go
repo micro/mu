@@ -221,7 +221,7 @@ func TestGenerateMarketsPageIncludesFreshnessDisclosure(t *testing.T) {
 		"ETH": {Price: 3500, UpdatedAt: updated, Source: "Coinbase + CoinGecko"},
 	}
 
-	html := generateMarketsPage(priceData, CategoryCrypto)
+	html := generateMarketsPage(priceData, CategoryCrypto, "")
 	if !strings.Contains(html, "Last refresh: 2026-07-01 12:00 UTC") {
 		t.Fatalf("expected last-refresh metadata in markets page, got %q", html)
 	}
@@ -299,7 +299,7 @@ func TestStockRowNamesTheCompany(t *testing.T) {
 func TestMarketsPageOffersStocks(t *testing.T) {
 	html := generateMarketsPage(map[string]PriceData{
 		"AAPL": {Price: 230.10, Change24h: 0.8, UpdatedAt: time.Now().UTC()},
-	}, CategoryStocks)
+	}, CategoryStocks, "")
 
 	if !strings.Contains(html, `href="/markets?category=stocks"`) {
 		t.Error("expected a Stocks tab")

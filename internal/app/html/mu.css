@@ -4735,6 +4735,47 @@ a.btn-secondary:hover, .btn-secondary:hover {
   flex-wrap: wrap;
 }
 
+.fx-form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.fx-form input {
+  width: auto;
+  display: inline-block;
+  margin: 0;
+}
+
+.fx-amount {
+  max-width: 110px;
+}
+
+.fx-code {
+  max-width: 80px;
+  text-transform: uppercase;
+}
+
+.fx-date {
+  max-width: 160px;
+}
+
+.fx-in {
+  color: var(--text-secondary);
+}
+
+.fx-result {
+  margin-bottom: 20px;
+}
+
+.fx-answer {
+  font-size: 1.8em;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
 .markets-tab {
   display: inline-block;
   color: var(--accent-color) !important;

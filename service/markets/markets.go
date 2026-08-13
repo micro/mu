@@ -713,7 +713,7 @@ func handleHTML(w http.ResponseWriter, r *http.Request, category string) {
 	priceData := GetAllPriceData()
 
 	// Generate HTML for the selected category
-	body := generateMarketsPage(priceData, category)
+	body := generateMarketsPage(priceData, category, converterHTML(r))
 
 	app.Respond(w, r, app.Response{
 		Title:       "Markets",
@@ -749,7 +749,7 @@ func getAssetsForCategory(category string) []string {
 }
 
 // generateMarketsPage generates the full markets page HTML
-func generateMarketsPage(priceData map[string]PriceData, activeCategory string) string {
+func generateMarketsPage(priceData map[string]PriceData, activeCategory, converter string) string {
 	var sb strings.Builder
 
 	// Page header
@@ -764,6 +764,8 @@ func generateMarketsPage(priceData map[string]PriceData, activeCategory string) 
 	sb.WriteString(generateTab("Commodities", CategoryCommodities, activeCategory))
 	sb.WriteString(generateTab("Currencies", CategoryCurrencies, activeCategory))
 	sb.WriteString(`</div>`)
+
+	sb.WriteString(converter)
 
 	// Market data table
 	sb.WriteString(`<table class="markets-table">`)

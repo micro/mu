@@ -125,7 +125,7 @@ guessable.
 | `files` | /files | ✅ | ✅ | Per-user file storage: keep a file, get a URL |
 | `images` | /images | ✅ | ✅ | Generation, daily image, archive |
 | `mail` | /mail | ✅ | ✅ | Private messages, and an inbox each agent can be reached at. A handle always; an email address when the instance has a mail domain. Everything leaving goes through one path in `outbound.go`, where the price and the gate are applied once — mail out as yourself needs an account this instance can hold to something (`auth.Trusted`: admin, approved, verified, or funded), and answering somebody who wrote to you first is never gated |
-| `markets` | /markets | ✅ |  | Crypto, stocks, futures, commodities, currencies |
+| `markets` | /markets | ✅ |  | Crypto, stocks, futures, commodities, currencies. Prices from Coinbase, CoinGecko and Yahoo; conversion from ECB reference rates, keyless, back to 1999 |
 | `notes` | /notes | ✅ | ✅ | A title and what is under it, kept between conversations. Addressed by title, where docs holds collections you query |
 | `news` | /news | ✅ |  | RSS aggregation, sentiment, search |
 | `flights` | /flights | ✅ |  | Where aircraft are, live from ADS-B. No schedule behind it: it reports positions aeroplanes broadcast, never a departure time |

@@ -103,7 +103,7 @@ Here are the tools
 | **Hazards** | `hazards_quakes` · `hazards_alerts` — recent earthquakes worldwide from the USGS, with magnitude, place, how long ago and any tsunami warning, and current disasters from GDACS: cyclones, floods, volcanoes and wildfires, green through red. Pass a lat/lon to ask about somewhere in particular. Needs no key |
 | **Images** | `images_generate` · `images_search` |
 | **Mail** | `mail_inbox` · `mail_send` · `mail_search` · `mail_info` — private messages, and an inbox each of your agents can be reached at. `mail_send` writes as you: a username stays here, a full address leaves so a reply comes back. Write to `you+name@` and that agent answers in the thread |
-| **Markets** | `markets_list` — stocks, crypto, futures, commodities, currencies |
+| **Markets** | `markets_list` · `markets_convert` — stocks, crypto, futures, commodities, currencies, and conversion between them. `markets_convert` takes a past date back to 1999 and converts crypto at the live price through the dollar |
 | **News** | `news_list` · `news_read` · `news_search` — RSS aggregation, full articles |
 | **Notes** | `notes_add` · `notes_get` · `notes_list` · `notes_delete` — a title and what is under it, kept between conversations and read back into every one |
 | **Places** | `places_search` · `places_nearby` · `places_geocode` · `places_address` · `places_elevation` — points of interest, geocoding both directions, height above sea level |
