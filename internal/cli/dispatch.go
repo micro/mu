@@ -113,6 +113,8 @@ func Run(args []string) int {
 		return runWallet(rest)
 	case "x402":
 		return runX402(rest)
+	case "agent":
+		return runAgent(rest)
 	case "version", "--version":
 		fmt.Printf("mu %s\n", version.String())
 		return 0
