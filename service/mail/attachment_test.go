@@ -188,3 +188,35 @@ func TestAPlainSinglePartMessageStoresNoAttachment(t *testing.T) {
 		t.Errorf("body = %q", body)
 	}
 }
+
+// An old message says so rather than looking broken.
+//
+// Nothing recovers the bytes for a report that arrived before they were kept —
+// only headers are stored, never the raw message. So the one thing left to do
+// is tell the two apart: a body that describes an attachment with nothing
+// behind it is not a renderer that has stopped working, and saying which is
+// what would have surfaced this in a week instead of months.
+func TestAMessageWhoseAttachmentWasNeverKeptSaysSo(t *testing.T) {
+	old := &Message{
+		FromID: "noreply-dmarc-support@google.com",
+		Body:   "[google.com!micro.mu!1786492800!1786579199.zip (application/zip), 707 bytes — not shown]",
+	}
+	if !describedNothing(old) {
+		t.Error("a described attachment with no bytes is not recognised as one")
+	}
+
+	// One that kept its bytes is not that, whatever its body says.
+	kept := &Message{
+		FromID:     "noreply-dmarc-support@google.com",
+		Body:       old.Body,
+		Attachment: base64.StdEncoding.EncodeToString(zipped(t, "r.xml", dmarcXML)),
+	}
+	if describedNothing(kept) {
+		t.Error("a message that kept its attachment is reported as having lost it")
+	}
+
+	// And an ordinary message is neither.
+	if describedNothing(&Message{Body: "hello, nothing was attached"}) {
+		t.Error("a plain message is being treated as a lost attachment")
+	}
+}

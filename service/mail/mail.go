@@ -870,6 +870,17 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			if attachmentName == "" {
 				attachmentName = name
 			}
+		} else if describedNothing(msg) {
+			// A message that says something arrived and has nothing behind it.
+			//
+			// Every one of these predates the parser keeping single-part bytes:
+			// the body was written, the attachment was dropped, and there is
+			// nothing to recover — the raw message is not stored, only its
+			// headers. Saying so is the point. Without it the message is
+			// indistinguishable from a renderer that has stopped working, which
+			// is precisely the ambiguity that let the bug run for months.
+			displayBody += "\n\n(The attachment itself was not kept — this message " +
+				"arrived before they were stored. A new report supersedes it.)"
 		}
 
 		// Process email body - renders markdown if detected, otherwise linkifies URLs

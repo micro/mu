@@ -326,6 +326,18 @@ func renderDMARCReport(xmlData string) string {
 // arrived — which is more honest than a page of decoded noise.
 //
 // Handles the three shapes a report arrives in: a zip, a gzip, and bare XML.
+// describedNothing reports whether a message says an attachment arrived and
+// has no attachment stored.
+//
+// Matched on the sentence this package writes itself, which is the only
+// reliable way to tell the two apart: a message whose body was replaced by
+// describeAttachment and whose bytes were then dropped looks, from the record,
+// exactly like a message that simply had that text in it.
+func describedNothing(msg *Message) bool {
+	return msg != nil && msg.Attachment == "" &&
+		strings.HasSuffix(strings.TrimSpace(msg.Body), "— not shown]")
+}
+
 func renderStoredAttachment(msg *Message) (html string, name string) {
 	if msg == nil || msg.Attachment == "" {
 		return "", ""
