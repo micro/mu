@@ -255,6 +255,14 @@ func wireHooks() {
 				if domain == "" || domain == "localhost" || from == "" {
 					return
 				}
+				// An empty answer is not an answer. The agent returning "" is
+				// not an error, so a blank body went all the way out as a
+				// blank email — which reads as the agent having broken, and
+				// tells the person nothing about what to do next.
+				if strings.TrimSpace(body) == "" {
+					app.Log("mail", "agent %s had nothing to say to %s; not sending", name, m.From)
+					return
+				}
 				subject := m.Subject
 				if !strings.HasPrefix(strings.ToLower(subject), "re:") {
 					subject = "Re: " + subject
@@ -291,6 +299,15 @@ func wireHooks() {
 			if err != nil {
 				app.Log("mail", "agent %s failed on mail from %s: %v", name, m.From, err)
 				reply("I could not answer that one. Try again, or ask a different way.")
+				return
+			}
+			if strings.TrimSpace(answer) == "" {
+				// Distinct from the error above, because it is a different
+				// fact: the run finished and produced nothing. Silence would
+				// leave somebody watching an inbox for a reply that is never
+				// coming.
+				app.Log("mail", "agent %s produced an empty answer for mail from %s", name, m.From)
+				reply("I did not manage an answer to that one. Try asking a different way.")
 				return
 			}
 			reply(answer)
