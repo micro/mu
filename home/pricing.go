@@ -91,7 +91,7 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 		`and any agent you have given a token — comes out of the same balance. ` +
 		`<a href="/wallet" style="color:#111">Your wallet →</a></p>`)
 	if wallet.X402Enabled() {
-		b.WriteString(`<p style="font-size:14px;color:#666;margin:0 0 8px"><strong>Agents can also pay per request in USDC, with no account at all.</strong> ` +
+		b.WriteString(`<p style="font-size:14px;color:#666;margin:0 0 8px"><strong>Agents can also pay using USDC, with no account.</strong> ` +
 			`A priced call with no credentials answers <code>402 Payment Required</code> with an ` +
 			`<a href="https://x402.org" style="color:#111">x402</a> challenge naming the price and where to send it. ` +
 			`Pay, retry, get the answer — no signup, no card, no key to rotate.</p>`)
