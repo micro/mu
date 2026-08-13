@@ -244,7 +244,12 @@ func runHealthChecks() []app.ServiceHealth {
 		"video":   func() bool { return video.GetLatestVideos(1) != nil },
 		"markets": func() bool { return len(markets.GetAllPrices()) > 0 },
 		"social":  func() bool { return len(social.GetThreads()) > 0 },
-		"mail":    func() bool { return mail.GetConfiguredDomain() != "" },
+		// No probe for mail. It had one — GetConfiguredDomain() != "" — which
+		// could never be false, because that function answers "localhost" when
+		// nothing is set. Replacing it with a real domain check would be worse:
+		// an instance with no mail server still has a working inbox and private
+		// messaging, so it would report a healthy service as broken. Registered
+		// and serving is the honest check here.
 		"prayer":  func() bool { return prayer.GetReminderData() != nil },
 		"search":  func() bool { return settings.Get("BRAVE_API_KEY") != "" },
 	}

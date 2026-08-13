@@ -117,29 +117,56 @@ func clip(s string, n int) string {
 var Spec = service.Spec{
 	Name:        "mail",
 	Handler:     new(Server),
-	Description: "Private messaging and email, with an SMTP server and DKIM",
+	// What it is to whoever is reading, which is almost never an operator.
+	//
+	// It said "Private messaging and email, with an SMTP server and DKIM". The
+	// half that matters is the first three words; the rest names machinery that
+	// somebody running this for themselves will never configure and does not
+	// need to know about to use the thing. An SMTP server is how one capability
+	// is delivered, not what the service is — that belongs in the install guide,
+	// where an operator goes looking for it.
+	Description: "Private messages, and an inbox each of your agents can be reached at",
 	Page:        "/mail",
 	Scoped:      true,
 	Icon:        "mail.png",
 	Endpoints: map[string]service.Endpoint{
 		"Inbox":   {Aliases: []string{"mail_read"}, Doc: "List the account's most recent messages — read my mail, check my inbox"},
 		"Search":  {Doc: "Search the account's mail and return matching messages"},
-		"Address": {Aliases: []string{"mail_address"}, Doc: "Get an email address that reaches the caller. Pass a tag for a plus-address (you+tag@) — give that out, then read only its mail with mail_inbox(tag)"},
+		// Aliased to the name it had, because an agent that learned mail_address
+		// last week should not find it gone. What it returns changed shape, and
+		// the name had to follow: an instance with no mail domain has no address
+		// to give, only a handle.
+		"Info": {Aliases: []string{"mail_address"}, Doc: "How to reach the caller here: the handle, " +
+			"the email address if this instance has a mail domain, and whether mail from outside " +
+			"can arrive at all. Pass a tag for a separate one (you+tag) — give that out, then read " +
+			"only its messages with mail_inbox(tag)"},
+		// One way to write to a person, whoever they are.
+		//
+		// This was two endpoints, Send and Email, and the argument for splitting
+		// them was that a price depending on an argument cannot be shown in the
+		// catalogue. That was true and it was not worth what it cost: a caller
+		// had to know whether the recipient happened to hold an account here
+		// before choosing which tool to call, which is a fact about our database
+		// that has nothing to do with writing to somebody. Three ways to send a
+		// message — mail_send, mail_email, email_send — and the first two
+		// differed by a lookup the caller could not perform.
+		//
+		// So it routes, and charges itself for what it actually did. sms_send
+		// already does exactly this because a text is priced per segment; a
+		// price settled at run time is a solved problem here, and it was never
+		// the reason to make a caller do our routing for us.
+		//
+		// mail_email stays as an alias, because it named a real distinction —
+		// mail that leaves — and an agent that learned it should not find it
+		// gone. It resolves to the same call.
 		"Send": {
-			Doc: "Send a message to somebody on this instance, by username. Stays here — " +
-				"for a real email to an outside address use mail_email",
-			Cost:        quota.OpMailSend,
-			AccountOnly: true,
-			Destructive: true,
-		},
-		"Email": {
-			Doc: "Send a real email to an outside address, over SMTP and signed by this " +
-				"instance's domain. Takes an address, a subject and a body; resolve a name " +
-				"with contacts_find first. It really is delivered — there is no draft state " +
-				"to undo from. For somebody on this instance use mail_send, which is cheaper",
-			Cost: quota.OpExternalEmail,
-			// A funded wallet is not accountable for this sending domain, so
-			// paying cannot stand in for having an account.
+			Aliases: []string{"mail_email"},
+			Doc: "Write to somebody, as you. A username reaches them on this instance and is " +
+				"free; a full email address leaves over SMTP under this instance's domain, so a " +
+				"reply comes back to your inbox, and is charged. Resolve a name with " +
+				"contacts_find first. Mail that leaves needs a mail domain configured — without " +
+				"one use email_send, which sends from this instance's own sending domain and " +
+				"expects no reply",
 			AccountOnly: true,
 			Destructive: true,
 		},
@@ -168,16 +195,18 @@ type SendResponse struct {
 	Result string `json:"result" description:"Confirmation, saying whether it went out over SMTP or stayed on this instance"`
 }
 
-// Send delivers a message to somebody on this instance.
+// Send writes to somebody, wherever they are.
 //
-// Split from sending a real email, which is now Email. They were one endpoint
-// that chose its price at run time from the recipient — one thing if the
-// address was local, another if it was not — and that is two operations
-// wearing one name. They differ in price, in what may go wrong, and in what
-// they spend: this writes a row, Email spends the reputation of a domain we
-// have to defend. An agent should be able to read what a call costs before
-// making it, and a price that depends on an argument cannot be shown in the
-// catalogue.
+// The recipient decides the route, which is the thing a caller should not have
+// had to decide: a username or a local address stays here and is free, anything
+// else leaves over SMTP under this instance's domain and is charged. Asking an
+// agent to pick the tool meant asking it to know whether a stranger held an
+// account here, which it cannot find out and should not care about.
+//
+// Mail that leaves requires a mail domain. Without one there is no address to
+// send it from, and the answer says where to go instead rather than failing
+// somewhere in the transport — email_send exists precisely for the instance
+// that has no mail server.
 //
 // @example {"to": "asim", "subject": "Hello", "body": "..."}
 func (Server) Send(ctx context.Context, req *SendRequest, rsp *SendResponse) error {
@@ -186,35 +215,31 @@ func (Server) Send(ctx context.Context, req *SendRequest, rsp *SendResponse) err
 		return err
 	}
 	to := strings.TrimSpace(req.To)
-	if IsExternalEmail(to) {
-		return fmt.Errorf("%s is not on this instance — use mail_email to send a real email there", to)
-	}
 
 	// A local recipient may be a bare username or a full local address, with
 	// or without a +tag: asim, asim@micro.mu and asim+claude@micro.mu all
 	// reach the same inbox.
-	toAcc, err := auth.GetAccount(LocalRecipient(to))
-	if err != nil {
-		return fmt.Errorf("no account here called %q", to)
-	}
-	if err := SendMessage(acc.Name, acc.ID, toAcc.Name, toAcc.ID, req.Subject, req.Body, "", ""); err != nil {
-		return fmt.Errorf("failed to send: %w", err)
-	}
-	rsp.Result = "Sent to " + toAcc.Name + " on this instance."
-	return nil
-}
-
-// Email sends a real email off this instance, over SMTP and under our domain.
-//
-// @example {"to": "sarah@example.com", "subject": "Hello", "body": "..."}
-func (Server) Email(ctx context.Context, req *SendRequest, rsp *SendResponse) error {
-	acc, err := sender(ctx, req)
-	if err != nil {
-		return err
-	}
-	to := strings.TrimSpace(req.To)
 	if !IsExternalEmail(to) {
-		return fmt.Errorf("%s is on this instance — use mail_send, which does not leave it", to)
+		toAcc, err := auth.GetAccount(LocalRecipient(to))
+		if err != nil {
+			return fmt.Errorf("no account here called %q", to)
+		}
+		if err := charge(acc.ID, quota.OpMailSend); err != nil {
+			return err
+		}
+		if err := SendMessage(acc.Name, acc.ID, toAcc.Name, toAcc.ID, req.Subject, req.Body, "", ""); err != nil {
+			return fmt.Errorf("failed to send: %w", err)
+		}
+		rsp.Result = "Sent to " + toAcc.Name + " on this instance."
+		return nil
+	}
+
+	if !Reachable() {
+		return fmt.Errorf("%s is outside this instance, and there is no mail domain here to "+
+			"send it from — use email_send, which sends from this instance's own sending domain", to)
+	}
+	if err := charge(acc.ID, quota.OpExternalEmail); err != nil {
+		return err
 	}
 
 	from := GetEmailForUser(acc.ID, GetConfiguredDomain())
@@ -231,9 +256,35 @@ func (Server) Email(ctx context.Context, req *SendRequest, rsp *SendResponse) er
 	return nil
 }
 
-// sender resolves the caller and checks the message is complete. Neither
-// endpoint charges: both declare a flat price and the gateway applies it, which
-// is what splitting them bought.
+// charge takes the price of whichever route Send took.
+//
+// The service charges rather than the gateway, because the gateway applies one
+// flat Cost per endpoint and this endpoint has two prices. sms_send does the
+// same for the same reason — a text is priced per segment — so a price settled
+// at run time is a shape this codebase already has rather than a reason to
+// split an endpoint in two.
+//
+// Before the send, unlike the gateway, which charges after. Mail that has left
+// cannot be recalled if the charge then fails, and refusing up front is the
+// only point at which "there is not enough on this account" is still true.
+func charge(owner, op string) error {
+	if !quota.Metered(op) {
+		return nil
+	}
+	ok, _, price, err := quota.CheckQuota(owner, op)
+	if err != nil {
+		return err
+	}
+	if price == 0 {
+		return nil
+	}
+	if !ok || quota.BalanceOf(owner) < price {
+		return fmt.Errorf("sending that costs %d credits and there are not enough on this account", price)
+	}
+	return quota.ConsumeQuota(owner, op)
+}
+
+// sender resolves the caller and checks the message is complete.
 func sender(ctx context.Context, req *SendRequest) (*auth.Account, error) {
 	who := service.AccountFrom(ctx)
 	if who == "" {
@@ -252,29 +303,44 @@ func sender(ctx context.Context, req *SendRequest) (*auth.Account, error) {
 
 // ── Address ─────────────────────────────────────────────────────
 
-// What your own address is, which the mail service could not answer.
-//
-// It had Inbox, Search and Send, and no way to ask where mail reaches you —
-// so an agent could read and write mail but not tell anyone where to write
-// back. It was a tool in the assembly instead.
+// ── Info ────────────────────────────────────────────────────────
 
-type AddressRequest struct {
-	Tag string `json:"tag" description:"A label for this address, e.g. \"research\" or \"receipts\". Omit for the plain one"`
+// How mail reaches you here, and how far it goes.
+//
+// It was Address, and it answered with one string. That was right while every
+// instance had a mail domain and wrong the moment one did not: an address is
+// not what this service always has. A handle is. Whether that handle is also an
+// email address depends on something an operator did or did not do, and a
+// caller that cannot see which is which will hand out an address that reaches
+// nobody — which is exactly what the old tool did, since it appended a domain
+// of "localhost" rather than admitting there was none.
+//
+// So it answers the whole question instead of one field of it: what to give
+// somebody, whether outside mail can arrive, and what to do next. The same
+// shape sms_number has, for the same reason — the useful answer to "what is my
+// number" includes what may be done with it.
+
+type InfoRequest struct {
+	Tag string `json:"tag" description:"A label for this handle, e.g. \"research\" or \"receipts\". Omit for the plain one"`
 }
 
-type AddressResponse struct {
-	Address string `json:"address" description:"An email address that reaches the caller"`
-	Text    string `json:"text" description:"The address, with what to do with it"`
+type InfoResponse struct {
+	Handle   string `json:"handle" description:"What the caller is called here — asim, or asim+research. Always answers; messaging on this instance needs nothing configured"`
+	Address  string `json:"address,omitempty" description:"The same handle as an email address, when this instance has a mail domain. Empty when it does not, and then nothing outside can write to it"`
+	External bool   `json:"external" description:"Whether mail from outside this instance can arrive at all"`
+	Domain   string `json:"domain,omitempty" description:"The mail domain, when there is one"`
+	Reach    string `json:"reach" description:"Give this out — the address where there is one, the handle where there is not"`
+	Text     string `json:"text" description:"The same, as a sentence"`
 }
 
-// Address returns an email address that reaches the caller.
+// Info says how to reach the caller here.
 //
-// With a tag it returns a plus-address — you+tag@ — which is the whole point:
+// With a tag it answers a plus-handle — you+tag — which is the whole point:
 // give one out per correspondent or per purpose, and mail_inbox(tag) reads only
-// that stream. Nothing has to be configured first; the address works because
-// the account exists.
+// that stream. Nothing has to be configured first; it works because the account
+// exists.
 // @example {"tag": "receipts"}
-func (Server) Address(ctx context.Context, req *AddressRequest, rsp *AddressResponse) error {
+func (Server) Info(ctx context.Context, req *InfoRequest, rsp *InfoResponse) error {
 	who := service.AccountFrom(ctx)
 	if who == "" {
 		return fmt.Errorf("sign in to have an address")
@@ -282,15 +348,29 @@ func (Server) Address(ctx context.Context, req *AddressRequest, rsp *AddressResp
 	if _, err := auth.GetAccount(who); err != nil {
 		return fmt.Errorf("account not found")
 	}
-	addr := AliasFor(who, strings.TrimSpace(req.Tag))
-	if addr == "" {
-		return fmt.Errorf("this instance has no mail domain configured")
+	tag := strings.TrimSpace(req.Tag)
+	rsp.Handle = Handle(who, tag)
+	rsp.External, rsp.Domain = Reachable(), Domain()
+	if rsp.External {
+		rsp.Address = rsp.Handle + "@" + rsp.Domain
 	}
-	rsp.Address = addr
-	if req.Tag == "" {
-		rsp.Text = addr + " — mail sent here reaches you. Pass a tag for a separate address you can read on its own."
-		return nil
+	rsp.Reach = AliasFor(who, tag)
+
+	switch {
+	case !rsp.External && tag == "":
+		rsp.Text = rsp.Handle + " — messages from anyone on this instance reach you here. " +
+			"This instance has no mail domain, so nothing from outside can. " +
+			"To send an email out, use email_send."
+	case !rsp.External:
+		rsp.Text = rsp.Handle + " — give this out here, then read only its messages with " +
+			"mail_inbox(tag: \"" + tag + "\"). This instance has no mail domain, so nothing " +
+			"from outside can reach it."
+	case tag == "":
+		rsp.Text = rsp.Address + " — mail sent here reaches you. Pass a tag for a separate " +
+			"address you can read on its own."
+	default:
+		rsp.Text = rsp.Address + " — give this out, then read only its mail with " +
+			"mail_inbox(tag: \"" + tag + "\")."
 	}
-	rsp.Text = addr + " — give this out, then read only its mail with mail_inbox(tag: \"" + req.Tag + "\")."
 	return nil
 }

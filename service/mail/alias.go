@@ -17,7 +17,49 @@ package mail
 // agent can ask for only its own mail. Nothing else about mail changes: one
 // inbox, one set of credits, one reputation to protect.
 
-import "strings"
+import (
+	"os"
+	"strings"
+)
+
+// Domain is the mail domain this instance can be reached at, or "" when it has
+// none.
+//
+// Not the same question as GetConfiguredDomain, which answers "localhost" when
+// nothing is set so that the SMTP handshake has a hostname to greet with. That
+// default is right for a protocol and wrong for everything a person reads, and
+// two bugs came out of the difference: an instance with no mail server told an
+// agent its address was asim@localhost, and the instance's own readiness check
+// asked whether GetConfiguredDomain() was empty, which it never is.
+func Domain() string {
+	d := strings.ToLower(strings.TrimSpace(os.Getenv("MAIL_DOMAIN")))
+	if d == "localhost" {
+		return ""
+	}
+	return d
+}
+
+// Reachable reports whether mail here can be reached from outside.
+//
+// The one thing an SMTP server buys that private messaging does not. Everything
+// else about this service — an inbox, a handle, an agent that answers, messages
+// between accounts — works with nothing configured at all.
+func Reachable() bool { return Domain() != "" }
+
+// Handle is what somebody is called here, with no domain on it: asim, or
+// asim+research.
+//
+// A handle is the whole identity on an instance that is not running a mail
+// server, and the local part of the address on one that is. That is the honest
+// shape of this service: an inbox that always works, and a domain that turns it
+// into an email address when an operator adds one.
+func Handle(account, tag string) string {
+	account = strings.TrimSpace(account)
+	if tag = cleanTag(tag); tag == "" {
+		return account
+	}
+	return account + "+" + tag
+}
 
 // SplitAlias separates an address's local part into the account it belongs to
 // and the tag after the plus. "asim+research" is ("asim", "research");
@@ -40,14 +82,21 @@ func SplitAlias(localPart string) (account, tag string) {
 	return account, tag
 }
 
-// AliasFor builds the address an agent should be given.
+// AliasFor is what to give somebody so they can reach an agent — an address
+// where there is a mail domain, and the handle where there is not.
+//
+// One function rather than two callers each deciding, because every one of them
+// is display: the agent roster, the inbox panel, the address tool. What they
+// all want is "what do I show", and the answer is the most a person can
+// actually use. It used to append the domain unconditionally, which on an
+// unconfigured instance produced asim@localhost — an address that looks real,
+// is offered as real, and reaches nobody.
 func AliasFor(account, tag string) string {
-	account = strings.TrimSpace(account)
-	tag = cleanTag(tag)
-	if tag == "" {
-		return account + "@" + GetConfiguredDomain()
+	h := Handle(account, tag)
+	if !Reachable() {
+		return h
 	}
-	return account + "+" + tag + "@" + GetConfiguredDomain()
+	return h + "@" + Domain()
 }
 
 // CleanTag makes a tag safe to put in an address, so a caller with a name

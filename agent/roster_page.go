@@ -20,6 +20,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/service"
+	"mu/service/mail"
 )
 
 // Handler serves /agents.
@@ -197,9 +198,18 @@ func agentRow(a *Agent, csrf, base string) string {
 	// somewhere else — into a form, a signup, a person's contacts. An agent that
 	// can be written to is most of what makes it more than a preset, and it was
 	// previously reachable only by knowing the plus-address convention.
+	//
+	// What it says depends on how far that reach goes. With a mail domain it is
+	// an address and "write to it" is true; without one it is a handle, good
+	// inside this instance and nowhere else, and telling somebody to write to it
+	// would be telling them to write to nothing.
 	addr := ""
-	if a.Address() != "" {
-		addr = `<div class="agent-mail">Write to it at <code>` + html.EscapeString(a.Address()) + `</code></div>`
+	if r := a.Address(); r != "" {
+		verb := "Message it at"
+		if mail.Reachable() {
+			verb = "Write to it at"
+		}
+		addr = `<div class="agent-mail">` + verb + ` <code>` + html.EscapeString(r) + `</code></div>`
 	}
 
 	// Where it runs, on the row, in a word.

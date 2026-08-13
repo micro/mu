@@ -55,10 +55,32 @@ func TestAnUnusableNameStillGetsATag(t *testing.T) {
 
 // The address is owner+tag, which is what delivery resolves.
 func TestTheAddressIsTheOwnersPlusAddress(t *testing.T) {
+	t.Setenv("MAIL_DOMAIN", "micro.mu")
+
 	a := &Agent{Owner: "asim", Name: "Research", Tag: "research"}
 	got := a.Address()
 	if !strings.HasPrefix(got, "asim+research@") {
 		t.Errorf("Address() = %q, want asim+research@…", got)
+	}
+}
+
+// With no mail domain it is a handle, not an address.
+//
+// The instance still has an inbox and still delivers between accounts — that
+// needs no configuration — so an agent still has somewhere to be reached. What
+// it does not have is a domain, and appending one anyway is how this page came
+// to offer asim+research@localhost: an address that looks real, is presented as
+// real, and reaches nobody.
+func TestWithNoMailDomainAnAgentHasAHandleRatherThanAnAddress(t *testing.T) {
+	t.Setenv("MAIL_DOMAIN", "")
+
+	a := &Agent{Owner: "asim", Name: "Research", Tag: "research"}
+	got := a.Address()
+	if got != "asim+research" {
+		t.Errorf("Address() = %q, want the bare handle asim+research", got)
+	}
+	if strings.Contains(got, "@") {
+		t.Errorf("%q is offered as an address on an instance that cannot receive mail", got)
 	}
 }
 

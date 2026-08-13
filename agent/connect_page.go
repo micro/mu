@@ -102,17 +102,29 @@ func connectPanel(a *Agent, base, csrf string) string {
 	// phone; the point of agent@ is that there is nothing to remember, and an
 	// address nobody is told about is an address nobody uses.
 	if addr := a.Address(); addr != "" {
-		shared := ""
-		if s := mail.SharedAgentAddress(); s != "" {
-			shared = `<br><span class="conn-sub">Or <code>` + html.EscapeString(s) +
-				`</code> from your verified address, which reaches your default agent ` +
-				`and needs nothing remembered.</span>`
+		// Without a mail domain this is a handle rather than an address, so the
+		// row has to say what it is good for. Everything below about verified
+		// senders and filtering is about mail arriving from outside, which on
+		// such an instance never happens.
+		if !mail.Reachable() {
+			b.WriteString(`<div class="conn-row"><span class="conn-k">Message it</span>` +
+				`<span class="conn-v"><code>` + html.EscapeString(addr) + `</code><br>` +
+				`<span class="conn-sub">From anyone on this instance. There is no mail domain ` +
+				`configured, so nothing from outside can reach it — an operator sets ` +
+				`<code>MAIL_DOMAIN</code> to change that.</span></span></div>`)
+		} else {
+			shared := ""
+			if s := mail.SharedAgentAddress(); s != "" {
+				shared = `<br><span class="conn-sub">Or <code>` + html.EscapeString(s) +
+					`</code> from your verified address, which reaches your default agent ` +
+					`and needs nothing remembered.</span>`
+			}
+			b.WriteString(`<div class="conn-row"><span class="conn-k">Write to it</span>` +
+				`<span class="conn-v"><code>` + html.EscapeString(addr) + `</code><br>` +
+				`<span class="conn-sub">Answers your own verified address and people in ` +
+				app.Link("your contacts", "/contacts") + `. Other mail is filed, not answered.</span>` +
+				shared + `</span></div>`)
 		}
-		b.WriteString(`<div class="conn-row"><span class="conn-k">Write to it</span>` +
-			`<span class="conn-v"><code>` + html.EscapeString(addr) + `</code><br>` +
-			`<span class="conn-sub">Answers your own verified address and people in ` +
-			app.Link("your contacts", "/contacts") + `. Other mail is filed, not answered.</span>` +
-			shared + `</span></div>`)
 	}
 
 	// The token. A secret is shown once and never again, so this reports state

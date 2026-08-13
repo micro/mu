@@ -1,6 +1,8 @@
 package test
 
 import (
+	"os"
+	"strings"
 	"testing"
 
 	"mu/tool"
@@ -207,29 +209,48 @@ func TestSendingMailNeedsAnAccountNotAWallet(t *testing.T) {
 		t.Error("mail.Send is not account-only — a settled payment would be " +
 			"identity enough to send from this domain")
 	}
-	// Send is local delivery now and declares its own flat price. Sending a
-	// real email is a separate endpoint, because the two differ in price, in
-	// what may go wrong, and in what they spend — one writes a row, the other
-	// spends the reputation of a domain we have to defend.
-	if ep.Cost == "" {
-		t.Error("mail.Send declares no cost")
+	// Send routes by recipient and has two prices, so it declares no flat Cost
+	// and charges itself — the shape sms_send has for the same reason.
+	//
+	// This used to require the opposite: a Cost on Send, and a second endpoint
+	// called Email, on the argument that a price depending on an argument cannot
+	// be shown in the catalogue. That was true and it cost more than it bought.
+	// A caller had to know whether a recipient held an account here before
+	// choosing which tool to call, which is a fact about our database rather
+	// than about writing to somebody.
+	//
+	// What has to survive is not the split. It is that mail leaving this
+	// instance is charged and is answerable to an account, and both are checked
+	// below.
+	if ep.Cost != "" {
+		t.Errorf("mail.Send declares a flat cost of %s, but it has two prices — "+
+			"the gateway would charge local delivery at the external rate or the "+
+			"other way round", ep.Cost)
 	}
 
-	out, ok := mail.Spec.Endpoints["Email"]
-	if !ok {
-		t.Fatal("the mail service no longer declares Email, so there is no way " +
-			"to send a real email — or it has been folded back into Send, which " +
-			"is the shape this test exists to prevent")
+	// Charged in the handler, since the gateway cannot. Read from the source
+	// because there is no other way to state it: an endpoint with no Cost that
+	// forgot to charge looks exactly like one that meant to be free.
+	src, err := os.ReadFile("../service/mail/service.go")
+	if err != nil {
+		t.Fatal(err)
 	}
-	if !out.AccountOnly {
-		t.Error("mail.Email is not account-only — a settled payment would be " +
-			"identity enough to send from this domain")
+	for _, want := range []string{"quota.OpExternalEmail", "quota.OpMailSend"} {
+		if !strings.Contains(string(src), want) {
+			t.Errorf("mail.Send never charges %s, so that route is free", want)
+		}
 	}
-	if out.Cost == "" {
-		t.Error("mail.Email charges nothing, so external delivery is free")
+
+	// mail_email named a real distinction and agents learned it. It resolves to
+	// the same call now, but it has to keep resolving.
+	found := false
+	for _, a := range ep.Aliases {
+		if a == "mail_email" {
+			found = true
+		}
 	}
-	if out.Cost == ep.Cost {
-		t.Errorf("mail.Send and mail.Email both charge %s — the split exists "+
-			"because they cost different amounts", ep.Cost)
+	if !found {
+		t.Error("mail_email is gone rather than aliased — an agent that learned " +
+			"it now gets a tool-not-found for something it used yesterday")
 	}
 }
