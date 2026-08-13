@@ -727,11 +727,21 @@ func handleStripeSubscribe(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/wallet/topup?error=plan+required", http.StatusSeeOther)
 		return
 	}
-	scheme := "https"
-	if r.Header.Get("X-Forwarded-Proto") == "" {
-		scheme = "http"
-	}
-	base := scheme + "://" + r.Host
+	// app.BaseURL, not r.Host, for the reason internal/origin exists.
+	//
+	// Mu runs behind a reverse proxy that forwards to a loopback port, so r.Host
+	// is "localhost:8081" and every URL built from it names an address no client
+	// can reach. This handler assembled its own — a scheme guessed from whether
+	// X-Forwarded-Proto was present, and r.Host — so paying for a plan took the
+	// money, fired the webhook, recorded the plan, and returned the customer to
+	// https://localhost:8081/wallet.
+	//
+	// The failure is entirely on the way back, which is what let it stand: the
+	// subscription is real and the account is right, so nothing is wrong except
+	// the one screen that tells somebody it worked. The top-up handler beside
+	// this one already used BaseURL, and origin's own package comment claims
+	// the Stripe return URL had the logic right — it did not.
+	base := app.BaseURL(r)
 	url, err := CreateSubscriptionSession(
 		sess.Account,
 		planID,

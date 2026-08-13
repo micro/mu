@@ -5,8 +5,13 @@
 // being paid for. The OAuth discovery documents — the ones an MCP client reads
 // to find out how to authenticate — advertised https://localhost:8081 as the
 // authorization server, which points every client at a host it cannot reach.
-// Only the Stripe return URL had the logic right, inline, where nothing else
-// could use it.
+// The Stripe return URL was believed to have the logic right, inline, where
+// nothing else could use it. It did not: it guessed the scheme from whether
+// X-Forwarded-Proto was present and took the host from r.Host, so paying for a
+// subscription returned the customer to https://localhost:8081/wallet. That is
+// the fourth answer, and it was the one held up as correct — which is the
+// argument for this package rather than against it. Inline logic nobody can
+// call is inline logic nobody can check.
 //
 // It lives in its own package because the callers cannot share one otherwise:
 // internal/app imports internal/auth, so auth cannot import app.
