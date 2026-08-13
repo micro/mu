@@ -335,6 +335,7 @@ one, the agent, chat and AI summaries are off and everything else works.
 | `IMAGE_MODEL` | Override the image model |
 | `OPENAI_BASE_URL` · `OPENAI_API_KEY` | Any OpenAI-compatible endpoint — Ollama, vLLM, llama.cpp |
 | `OPENAI_MODEL` | Which model to ask for on that endpoint (default `gpt-4o-mini`). A local server usually names its own — `llama3.2`, `qwen2.5` — and the default will 404 there |
+| `X402_BAZAAR` | `true` to advertise your priced tools to the [x402 Bazaar](https://docs.x402.org/extensions/bazaar) index. Each 402 then carries a listing — tool name, description, arguments — and the facilitator catalogues it. Off by default: listing tells a third party this instance exists and what it sells, which is not a decision to inherit from an upgrade |
 | `AGENT_NATIVE` | `off` falls back to the hand-rolled planner |
 | `AGENT_NATIVE_STREAM` | `off` forces the streaming UI onto the planner |
 

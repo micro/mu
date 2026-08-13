@@ -36,7 +36,7 @@ func TestThePaymentGateAsksWhetherTheToolCostsAnything(t *testing.T) {
 	}
 	// And when the challenge declines to be written, the request continues
 	// rather than being refused with an empty 402.
-	if !strings.Contains(body, "if wallet.WritePaymentRequired(w, op, resource) {") {
+	if !strings.Contains(body, "if wallet.WritePaymentRequired(w, op, resource, listing) {") {
 		t.Error("the gate ignores whether a challenge was actually written")
 	}
 }

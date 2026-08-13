@@ -369,7 +369,14 @@ func serve(addr string) {
 						r = r.WithContext(ctx)
 						w = wallet.NewSettleWriter(w, holder)
 					} else if err := auth.ValidateToken(token); err != nil {
-						if wallet.WritePaymentRequired(w, op, resource) {
+						// Describe what is being refused, so a facilitator
+						// reading this challenge can index the tool. Nil
+						// unless X402_BAZAAR is on.
+						var listing map[string]any
+						if t, ok := api.MCPToolCalled(body); ok {
+							listing = wallet.BazaarExtensions(t.Name, t.Description, api.ToolSchema(t))
+						}
+						if wallet.WritePaymentRequired(w, op, resource, listing) {
 							// Count the refusal. Calls are recorded inside the
 							// dispatcher, which this returns before reaching,
 							// so every call turned away at the door was absent

@@ -244,21 +244,42 @@ func BuildPaymentRequirements(operation, resource string) []PaymentRequirements 
 // must then let the request through rather than block it. A gate that cannot
 // say "there is nothing to pay" can only say "pay", which is how free tools
 // came to be paywalled.
-func WritePaymentRequired(w http.ResponseWriter, operation, resource string) bool {
+// extensions, when non-nil, are published alongside accepts — today that is
+// the Bazaar discovery listing, which is how a facilitator learns this endpoint
+// exists at the moment it is asked what it charges.
+func WritePaymentRequired(w http.ResponseWriter, operation, resource string, extensions map[string]any) bool {
 	reqs := BuildPaymentRequirements(operation, resource)
 	if len(reqs) == 0 {
 		return false
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusPaymentRequired)
-	_ = json.NewEncoder(w).Encode(map[string]any{
+	body := map[string]any{
 		"x402Version": x402Version,
 		"error": "This tool costs credits. Sign in, or send a token from /token as " +
 			"'Authorization: Bearer' — see /tools. Machine callers can pay per call " +
 			"with an X-PAYMENT header instead; see accepts.",
 		"accepts": reqs,
-	})
+	}
+	if len(extensions) > 0 {
+		body["extensions"] = extensions
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusPaymentRequired)
+	_ = json.NewEncoder(w).Encode(body)
 	return true
+}
+
+// BazaarExtensions wraps one tool's listing in the extensions map, or returns
+// nil when this instance is not advertising. Callers can pass the result
+// straight to WritePaymentRequired without checking anything themselves.
+func BazaarExtensions(tool, description string, inputSchema map[string]any) map[string]any {
+	if !BazaarEnabled() {
+		return nil
+	}
+	ext := BazaarExtension(tool, description, inputSchema)
+	if ext == nil {
+		return nil
+	}
+	return map[string]any{bazaarKey: ext}
 }
 
 // HasPayment reports whether a request carries an x402 payment header.
