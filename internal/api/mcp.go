@@ -438,6 +438,17 @@ func callerIdentity(r *http.Request) (string, error) {
 	if payer := WalletPayer(r); payer != "" {
 		return walletIdentityPrefix + payer, nil
 	}
+	// A wallet that signed instead of paying. Identity used to arrive only with
+	// a settled payment, which left every free account-scoped tool unreachable:
+	// notes, files, docs and tasks cost nothing, so they never challenge, so no
+	// payment settles, so the caller stayed anonymous and was refused. An agent
+	// could not pay to identify itself for something that was free.
+	//
+	// The same address either way, so an agent that signs today and pays
+	// tomorrow is the same caller with the same notes.
+	if signer := WalletSigner(r); signer != "" {
+		return walletIdentityPrefix + signer, nil
+	}
 	return "", fmt.Errorf("authentication required")
 }
 
@@ -445,6 +456,11 @@ func callerIdentity(r *http.Request) (string, error) {
 // payment out of the request context. Wired there to keep this package free of
 // a wallet import.
 var WalletPayer = func(r *http.Request) string { return "" }
+
+// WalletSigner verifies an Authorization: Wallet header and returns the address
+// it proves. Wired alongside WalletPayer for the same reason — the signature
+// maths belongs to the wallet, and this package only needs the answer.
+var WalletSigner = func(r *http.Request) string { return "" }
 
 // ExecuteTool calls a registered MCP tool with the given name and arguments,
 // forwarding authentication from r. It does NOT check wallet quota — the caller

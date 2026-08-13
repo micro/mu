@@ -99,7 +99,14 @@ var Spec = service.Spec{
 			// this server makes on their behalf, to wherever they say. That
 			// wants somebody accountable behind it, which is a different
 			// question from what it costs.
-			AccountOnly: true,
+			//
+			// Account rather than AccountOnly, now that a wallet can prove
+			// itself by signing. What this needs is somebody to hold
+			// responsible and to ration, and a key that has identified itself
+			// is exactly that: durable, unforgeable, and the same caller
+			// tomorrow. Requiring a signup as well was refusing the accountable
+			// agent along with the anonymous one.
+			Account: true,
 		},
 		"Search": {Aliases: []string{"search_web"}, Doc: "Search the web for current information and news", Cost: quota.OpWebSearch},
 	},

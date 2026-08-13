@@ -327,12 +327,21 @@ func serve(addr string) {
 			//
 			// Only auth-requiring tools challenge. A blanket 401 would make news
 			// and weather unreachable without an account.
+			// A wallet that signed instead of paying. Verified once, here,
+			// because the nonce may only be spent once — checking it again
+			// deeper in would refuse the caller's own second look.
+			if r.URL.Path == "/mcp" {
+				host := strings.TrimPrefix(strings.TrimPrefix(app.BaseURL(r), "https://"), "http://")
+				r, _ = wallet.AuthenticateRequest(r, strings.TrimRight(host, "/"))
+			}
+
 			if r.URL.Path == "/mcp" && r.Method == http.MethodPost {
 				body, _ := io.ReadAll(io.LimitReader(r.Body, 1<<20))
 				r.Body.Close()
 				r.Body = io.NopCloser(bytes.NewReader(body))
 				if api.MCPToolNeedsAuth(body) {
-					if _, err := auth.GetSession(r); err != nil && !wallet.HasPayment(r) {
+					if _, err := auth.GetSession(r); err != nil && !wallet.HasPayment(r) &&
+						wallet.SignerFrom(r.Context()) == "" {
 						origin := app.BaseURL(r)
 						w.Header().Set("WWW-Authenticate",
 							`Bearer resource_metadata="`+origin+`/.well-known/oauth-protected-resource"`)

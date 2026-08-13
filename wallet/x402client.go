@@ -13,6 +13,7 @@ import (
 	"io"
 	"math/big"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -75,7 +76,7 @@ func PayAndCallMCP(ctx context.Context, accountID, baseURL, tool string, args ma
 		"params": map[string]any{"name": tool, "arguments": args},
 	}
 
-	status, body, err := postJSON(ctx, endpoint, rpc, "")
+	status, body, err := postJSON(ctx, endpoint, rpc, "", bw)
 	if err != nil {
 		return "", err
 	}
@@ -101,7 +102,7 @@ func PayAndCallMCP(ctx context.Context, accountID, baseURL, tool string, args ma
 		if serr != nil {
 			return "", fmt.Errorf("sign payment: %w", serr)
 		}
-		status, body, err = postJSON(ctx, endpoint, rpc, payHeader)
+		status, body, err = postJSON(ctx, endpoint, rpc, payHeader, bw)
 		if err != nil {
 			return "", err
 		}
@@ -167,14 +168,27 @@ func parseToolResult(body []byte) (string, error) {
 	return sb.String(), nil
 }
 
-func postJSON(ctx context.Context, url string, payload any, xPayment string) (int, []byte, error) {
+func postJSON(ctx context.Context, endpoint string, payload any, xPayment string, bw *BaseWallet) (int, []byte, error) {
 	b, _ := json.Marshal(payload)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(b))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(b))
 	if err != nil {
 		return 0, nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
+
+	// Say who we are on every call, for nothing. Free account-scoped tools —
+	// notes, files, tasks — need an identity and never charge for one, so
+	// without this an agent holding a funded wallet still could not keep a
+	// note. Signing costs no round trip and no money, so there is no reason to
+	// wait until something is refused before doing it.
+	if bw != nil {
+		if u, uerr := url.Parse(endpoint); uerr == nil {
+			if h, herr := SignAuth(bw, u.Host); herr == nil {
+				req.Header.Set("Authorization", h)
+			}
+		}
+	}
 	if xPayment != "" {
 		req.Header.Set("X-PAYMENT", xPayment)
 	}

@@ -38,7 +38,7 @@ func TestASoftNavigationClosesTheMenu(t *testing.T) {
 	}
 	// The navigation function has to do it. Everything that changes the page
 	// goes through go() — a link, and the back button.
-	i := strings.Index(out, "function go(url, push) {")
+	i := strings.Index(out, "function go(url, push, restoreY) {")
 	if i < 0 {
 		t.Fatal("the soft navigation function is not there any more; this test needs rewriting")
 	}

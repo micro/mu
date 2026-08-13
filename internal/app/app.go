@@ -387,7 +387,13 @@ var Template = `
             old.parentNode.replaceChild(s, old);
           }
           if (doc.title) document.title = doc.title;
-          if (push) history.pushState({mu:1}, '', url);
+          // Remember where the page being left was scrolled to, so going back
+          // returns you to it rather than to the top of a list you had already
+          // read halfway down.
+          if (push) {
+            try { history.replaceState({mu:1, scroll: window.scrollY}, ''); } catch (e) {}
+            history.pushState({mu:1}, '', url);
+          }
           // A hash is a destination, not decoration. The browser scrolls to one
           // by itself on a real page load and never on a soft one, so a link to
           // /news#Tech swapped the content in and then scrolled to the top —
@@ -395,7 +401,9 @@ var Template = `
           var hash = '';
           try { hash = new URL(url, location.href).hash; } catch (e) {}
           var target = hash.length > 1 ? document.getElementById(decodeURIComponent(hash.slice(1))) : null;
-          if (target && target.scrollIntoView) { target.scrollIntoView(); } else { window.scrollTo(0, 0); }
+          if (typeof restoreY === 'number') { window.scrollTo(0, restoreY); }
+          else if (target && target.scrollIntoView) { target.scrollIntoView(); }
+          else { window.scrollTo(0, 0); }
           // Anything the new content wired up on load has to be re-wired.
           document.dispatchEvent(new CustomEvent('mu:navigated'));
         }
@@ -412,7 +420,7 @@ var Template = `
         // overlay and menu-open is unused, so this is a no-op there.
         function closeMenu() { document.body.classList.remove('menu-open'); }
 
-        function go(url, push) {
+        function go(url, push, restoreY) {
           closeMenu();
           content.setAttribute('data-loading', '1');
           fetch(url, {credentials: 'same-origin', headers: {'X-Mu-Nav': '1'}})
@@ -459,7 +467,20 @@ var Template = `
           if (a && a.closest('#nav-container')) closeMenu();
         });
 
-        window.addEventListener('popstate', function(){ go(location.href, false); });
+        window.addEventListener('popstate', function(e){
+          go(location.href, false, e.state && typeof e.state.scroll === 'number' ? e.state.scroll : undefined);
+        });
+
+        // Scroll position is ours to set, not the browser's to restore.
+        //
+        // The default is 'auto': the browser remembers where each history entry
+        // was scrolled to and puts you back there — which is right for a real
+        // page load and wrong for a soft one, because pushState records a
+        // position for the page being left and then restores it over the page
+        // arriving. On a phone, where you are usually scrolled down before you
+        // reach for the menu, that landed you halfway down whatever you tapped.
+        // go() already scrolls deliberately, to the anchor or to the top.
+        if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
       })();
 
       if (navigator.serviceWorker) {

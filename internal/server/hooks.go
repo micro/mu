@@ -828,6 +828,9 @@ func wireHooks() {
 	// reach account-scoped tools without an account. Read from the settled
 	// payment only — never from the unauthenticated X-Wallet-Address header.
 	api.WalletPayer = func(r *http.Request) string { return wallet.PayerFrom(r.Context()) }
+	// Read from the context rather than re-verified: the signature is checked
+	// once at the door, because its nonce is single-use.
+	api.WalletSigner = func(r *http.Request) string { return wallet.SignerFrom(r.Context()) }
 
 	// Wire x402 payment required response for MCP
 	if wallet.X402Enabled() {

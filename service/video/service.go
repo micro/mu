@@ -101,11 +101,12 @@ var Spec = service.Spec{
 		"List": {Aliases: []string{"video"}, Doc: "Read the latest videos from curated channels"},
 		"Search": {
 			Doc: "Search videos from the channels this instance curates. A curated set rather than all of YouTube, so a miss means it is not followed here, not that it does not exist",
-			// Priced at zero and still not for strangers: see the note on the
-			// method. Rationing needs somebody to ration.
-			Cost:        quota.OpVideoSearch,
-			AccountOnly: true,
-			Account:     true,
+			// Priced at zero and still not for strangers: it spends this
+			// instance's YouTube quota, which is shared and cannot be topped
+			// up per caller. Rationing needs somebody to ration — but a wallet
+			// that has signed is somebody, so Account rather than AccountOnly.
+			Cost:    quota.OpVideoSearch,
+			Account: true,
 		},
 	},
 }
