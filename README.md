@@ -186,12 +186,11 @@ A person tops up by card and spends one credit balance. A credit is 1p.
 up.** A priced call with no credentials answers `402 Payment Required` naming
 the price and where to send it. The payment is the identity.
 
-`mu` is its own x402 client. Put a funded Base wallet's key in
-`~/.mu/keys/wallet.seed`:
+`mu` is its own x402 client, so you can see it work end to end. Put a funded
+Base wallet's key in `~/.mu/keys/wallet.seed`:
 
 ```bash
-mu x402 call markets_list                 # free — no wallet, no account
-mu x402 call web_search query="x402"      # priced — pays the 402, returns it
+mu x402 call web_search query="x402"   # 402 → signs → pays → returns the result
 ```
 
 Self-host with neither Stripe nor x402 and nothing is metered: every tool is
