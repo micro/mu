@@ -90,8 +90,8 @@ your own agent, an email address it answers on, and the endpoint your own client
 
 <div class="lpay" id="connecting">
   <h2>Connecting</h2>
-  <p class="lnote">Two ways in, depending on what your client reads. Both need an account —
-  the same one you sign into the app with.</p>
+  <p class="lnote">Two ways in for a client you sign in with, and a third for an agent
+  that has no account at all.</p>
   <ol>
     <li><b>Cursor, and clients with a config file.</b> Create a token at <a href="/token">/token</a>
     and point them at <code>` + host + `/mcp</code> with an
@@ -100,6 +100,10 @@ your own agent, an email address it answers on, and the endpoint your own client
     <code>` + host + `/mcp</code>. It opens a browser and asks you to sign in — no token needed.</li>
     <li><b>Then call anything.</b> Calls draw on your credits — most tools are included, the ones
     that cost us money are priced on <a href="/pricing">pricing</a>.</li>
+    <li><b>Or bring a wallet and skip all of that.</b> Call <code>` + host + `/mcp</code> with no
+    credentials. Free tools answer; a priced one replies <code>402</code> naming its price and where
+    to send it, and an <a href="https://x402.org" rel="noopener">x402</a> client pays in USDC and
+    retries. No signup, no key, no card — the payment is the identity.</li>
   </ol>
   <p class="lnote">No account yet? <a href="/signup">Create one →</a> Full setup on
   <a href="/tools">Tools</a>.</p>

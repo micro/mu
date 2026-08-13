@@ -49,22 +49,30 @@ func TestTheLandingLetsYouUseItBeforeExplainingIt(t *testing.T) {
 	}
 }
 
-// The landing offers one way in. It used to explain a payment protocol before it
-// explained how to connect, which left a reader choosing a rail when all they
-// wanted was the endpoint.
-func TestLandingOffersOneWayIn(t *testing.T) {
+// The landing leads with how to connect, never with how to pay. It once
+// explained a payment protocol before it explained the endpoint, which left a
+// reader choosing a rail when all they wanted was the URL.
+//
+// This used to be enforced by banning the words outright. That was the right
+// guard for the wrong rule: paying per call is a real way in, and the only one
+// an agent with no human attached can use, so the page is worse for not
+// mentioning it. What must not come back is the ordering — the endpoint first,
+// the rail after it, for a reader who has already decided to connect.
+func TestLandingLeadsWithConnectingNotPaying(t *testing.T) {
 	t.Setenv("MU_DOMAIN", "micro.mu")
 
 	rec := httptest.NewRecorder()
 	Landing(rec, httptest.NewRequest("GET", "/", nil))
 	body := rec.Body.String()
 
-	for _, gone := range []string{"x402", "USDC", "402", "wallet"} {
-		if strings.Contains(body, gone) {
-			t.Errorf("the landing still explains %q instead of how to connect", gone)
-		}
+	endpoint := strings.Index(body, "https://micro.mu/mcp")
+	if endpoint < 0 {
+		t.Fatal("the landing does not name the endpoint to connect to")
 	}
-	if !strings.Contains(body, "https://micro.mu/mcp") {
-		t.Error("the landing does not name the endpoint to connect to")
+	for _, rail := range []string{"x402", "USDC", "Payment Required"} {
+		if i := strings.Index(body, rail); i >= 0 && i < endpoint {
+			t.Errorf("%q is explained before the endpoint is named, so a reader "+
+				"meets a payment rail while still looking for the URL", rail)
+		}
 	}
 }
