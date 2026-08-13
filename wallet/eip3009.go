@@ -99,14 +99,32 @@ func SignX402Payment(bw *BaseWallet, req PaymentRequirements) (string, error) {
 	copy(sig[64-len(s.Bytes()):64], s.Bytes())
 	sig[64] = v + 27 // Ethereum signatures use v ∈ {27,28}
 
-	payload := map[string]any{
-		"x402Version": x402Ver(),
-		"scheme":    "exact",
-		"network":   req.Network,
-		"payload": map[string]any{
-			"signature":     "0x" + hex.EncodeToString(sig),
-			"authorization": auth,
-		},
+	inner := map[string]any{
+		"signature":     "0x" + hex.EncodeToString(sig),
+		"authorization": auth,
+	}
+
+	// The two versions carry the same signature in different envelopes. v1 puts
+	// scheme and network beside the payload; v2 replaces both with `accepted` —
+	// the whole requirement being paid — so the facilitator can check the payer
+	// agreed to the terms it is settling rather than inferring them.
+	//
+	// Version comes from the challenge, not from this instance's own setting: a
+	// payer answers whoever it is calling, and a v1 server must not be sent a v2
+	// payload because we happen to advertise v2 ourselves.
+	// Told apart by shape rather than by a field: only v2 names the price
+	// "amount", so a requirement that has one came from a v2 challenge.
+	payloadVersion := 1
+	if strings.TrimSpace(req.Amount) != "" {
+		payloadVersion = 2
+	}
+
+	payload := map[string]any{"x402Version": payloadVersion, "payload": inner}
+	if payloadVersion >= 2 {
+		payload["accepted"] = req
+	} else {
+		payload["scheme"] = "exact"
+		payload["network"] = req.Network
 	}
 	b, _ := json.Marshal(payload)
 	return base64.StdEncoding.EncodeToString(b), nil
