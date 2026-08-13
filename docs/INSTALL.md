@@ -521,9 +521,7 @@ token.
 | `X402_NETWORK` · `X402_ASSETS` | Chain and accepted tokens |
 | `X402_SERVERS` | Other MCP servers this instance may pay, as `name=url` — read by the outbound client, which no tool currently exposes |
 | `CDP_API_KEY_ID` · `CDP_API_KEY_SECRET` | Coinbase facilitator credentials |
-| `STRIPE_SECRET_KEY` · `STRIPE_PUBLISHABLE_KEY` · `STRIPE_WEBHOOK_SECRET` | Card top-ups for credits. The webhook must be subscribed to four events: `checkout.session.completed` (a purchase — credits, plan, and the customer id), `invoice.payment_succeeded` (a renewal's credits), `customer.subscription.updated` (a plan switched or a payment gone bad — without it somebody can change plan in the portal and keep the old one's limits), and `customer.subscription.deleted` (it ended) |
-| `STRIPE_PRICE_PRO` · `STRIPE_PRICE_SCALE` | Optional, one per plan id. The Stripe Price each plan is sold as (`price_…`). Without them the checkout sends an inline amount and Stripe mints a throwaway product per purchase — which charges correctly and leaves the customer portal unable to offer a plan switch, because it can only list Prices that exist. Make a Product and a recurring GBP Price per plan, then set these |
-| `STRIPE_PORTAL_URL` | Optional. Stripe's shareable customer-portal link, used when an account has no stored customer id — anyone who subscribed before those were recorded. With a customer id a portal session is minted per person instead, which skips the email step. Either way the portal must be turned on in the Stripe dashboard, under Settings → Billing → Customer portal, or cancelling has nowhere to happen |
+| `STRIPE_SECRET_KEY` · `STRIPE_PUBLISHABLE_KEY` · `STRIPE_WEBHOOK_SECRET` | Card top-ups for credits. The webhook wants `checkout.session.completed`. It is belt and braces rather than the only route: the return from Stripe settles a purchase too, so a webhook that is missing, misconfigured or signed with the wrong secret no longer means the card is charged and nothing happens |
 | `BASE_RPC_URL` · `TRADE_CHAIN` · `TRADE_RPC_URL` | On-chain reads |
 
 ### Prices and limits

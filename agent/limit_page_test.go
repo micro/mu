@@ -28,9 +28,9 @@ func capped(t *testing.T, id string, allowed, made int) {
 		t.Cleanup(func() { auth.DeleteAccount(id) }) //nolint:errcheck
 	}
 
-	orig := PlanAgents
-	PlanAgents = func(string) int { return allowed }
-	t.Cleanup(func() { PlanAgents = orig })
+	orig := AgentAllowance
+	AgentAllowance = func(string) int { return allowed }
+	t.Cleanup(func() { AgentAllowance = orig })
 
 	for i := 0; i < made; i++ {
 		a := &Agent{Owner: id, Name: "agent", Kind: External}
@@ -70,14 +70,14 @@ func TestBelowTheLimitNothingIsInTheWay(t *testing.T) {
 // An unlimited plan is not a limit of zero. agentAllowance answers 0 when
 // nothing knows about plans, and a naive check would read that as "no agents
 // allowed" and lock everybody out of the builder.
-func TestNoPlanMachineryMeansNoLimitRatherThanNoAgents(t *testing.T) {
+func TestNoAllowanceMachineryMeansNoLimitRatherThanNoAgents(t *testing.T) {
 	const owner = "agent-limit-noplan"
-	orig := PlanAgents
-	PlanAgents = nil
-	t.Cleanup(func() { PlanAgents = orig })
+	orig := AgentAllowance
+	AgentAllowance = nil
+	t.Cleanup(func() { AgentAllowance = orig })
 
 	if full, _, _ := AtAgentLimit(owner); full {
-		t.Error("with no plan machinery every account is treated as full")
+		t.Error("with no allowance machinery every account is treated as full")
 	}
 }
 

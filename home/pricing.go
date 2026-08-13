@@ -9,159 +9,8 @@ import (
 	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
-	"mu/internal/quota"
 	"mu/wallet"
 )
-
-// money renders pence as £10 — plans are whole pounds, and a plan that is not
-// would be a pricing decision rather than a formatting one.
-func money(pence int) string {
-	if pence%100 == 0 {
-		return "£" + thousands(pence/100)
-	}
-	return fmt.Sprintf("£%d.%02d", pence/100, pence%100)
-}
-
-func plural(n int) string {
-	if n == 1 {
-		return ""
-	}
-	return "s"
-}
-
-// thousands puts separators in, so 10000 credits reads as 10,000.
-func thousands(n int) string {
-	s := fmt.Sprintf("%d", n)
-	if len(s) <= 3 {
-		return s
-	}
-	var out []byte
-	for i, c := range []byte(s) {
-		if i > 0 && (len(s)-i)%3 == 0 {
-			out = append(out, ',')
-		}
-		out = append(out, c)
-	}
-	return string(out)
-}
-
-// rows is the bullet list on a plan card, and every card goes through it.
-//
-// The cards had their own lists and the lists had different shapes: "1 agent"
-// was the third line on one column and the second on the others, so reading
-// across the row you were on told you nothing. A price table is read
-// horizontally — that is the whole reason it is a table — and three lists
-// written separately will not stay aligned however carefully they are typed.
-//
-// So the order is here, once: what you get, then agents, then concurrency, then
-// what may leave the building. Anything a single card wants to add of its own
-// comes first, because a lead line is the one thing that legitimately differs.
-//
-// WhatsApp is not a row. It is capped and enforced like the other two, but
-// Meta's 24-hour window means this instance answers people who wrote first and
-// cannot start a conversation — so a number reads as reach it does not have.
-// A line that has to be explained is worse than no line.
-func rows(p wallet.SubscriptionPlan, lead string) string {
-	var b strings.Builder
-	b.WriteString(`<ul style="text-align:left;list-style:none;padding:0;margin:0 0 16px;font-size:14px;line-height:2">`)
-	item := func(s string) {
-		b.WriteString(`<li>&#10003; ` + html.EscapeString(s) + `</li>`)
-	}
-	item(lead)
-	item(fmt.Sprintf("%d agent%s", p.Agents, plural(p.Agents)))
-	// The rate limit an MCP buyer means: how many tool calls their agents may
-	// have running at once. "Higher rate limits" was reaching for this and
-	// hitting the abuse control on the social timeline.
-	item(fmt.Sprintf("%d tool calls at once", p.Concurrency))
-	for _, l := range []struct{ op, noun string }{
-		{quota.OpExternalEmail, "emails"},
-		{quota.OpSMSSend, "texts"},
-	} {
-		n, ok := p.LimitFor(l.op)
-		if !ok {
-			// No plan of its own, so the floor everybody gets — the same number
-			// the gate reads, from quota.json.
-			n = quota.DailyLimit(l.op)
-		}
-		if n == quota.NoLimit {
-			continue
-		}
-		item(fmt.Sprintf("%s %s a day", thousands(n), l.noun))
-	}
-	b.WriteString(`</ul>`)
-	return b.String()
-}
-
-// feature is a plan's own first line, or a sensible one if it has none.
-func feature(p wallet.SubscriptionPlan) string {
-	if len(p.Features) > 0 {
-		return p.Features[0]
-	}
-	return everyTool()
-}
-
-// everyTool names the number rather than gesturing at it.
-//
-// "Every tool" is a claim the reader has to go and check; "All 97 tools" is the
-// same claim with the scale in it, which is the thing that makes one account
-// worth having instead of seven. Counted from the registry for the reason the
-// landing page counts it — the landing said "67 real tools" as a literal while
-// the endpoint was serving 72.
-func everyTool() string {
-	return fmt.Sprintf("All %d tools", api.ToolCount())
-}
-
-// agentLine says how many agents the plan you are on runs.
-//
-// The number, not just the name, because it is the one somebody arriving from
-// the agent limit came here to find out — and reading it off a card means first
-// working out which card is yours.
-func agentLine(p wallet.SubscriptionPlan) string {
-	if p.Agents <= 0 {
-		return ""
-	}
-	return fmt.Sprintf(" — %d agent%s", p.Agents, plural(p.Agents))
-}
-
-// cta is a plan card's button, which depends entirely on who is reading.
-//
-// It was "Get Pro" pointing at /signup on every card, for everybody. A signed-in
-// account that hit its agent limit was told to come here to run more, came here,
-// clicked Pro, and was sent to a signup form for an account it already had —
-// so the one path the limit message exists to open was the one that dead-ended.
-//
-// Three readers, three answers: somebody with no account signs up, somebody on
-// this plan is told so, and somebody on another plan gets the button that
-// actually changes it. The subscribe form is the same POST /wallet does, rather
-// than a link to /wallet — a page that tells you the price should be able to
-// take it.
-func cta(r *http.Request, planID string) string {
-	const style = `class="btn" style="display:block;text-align:center"`
-
-	_, acc := auth.TrySession(r)
-	if acc == nil {
-		label := "Start"
-		if planID != "" {
-			label = "Get " + wallet.PlanByID(planID).Name
-		}
-		return `<a href="/signup" ` + style + `>` + html.EscapeString(label) + `</a>`
-	}
-	if acc.Plan == planID {
-		return `<div style="text-align:center;padding:8px 0;font-size:14px;color:#666;font-weight:600">Your plan</div>`
-	}
-	if planID == "" {
-		// Leaving a plan is a cancellation, and cancelling somebody's
-		// subscription from a pricing card is not a thing to make one click away.
-		return `<a href="/wallet" ` + style + ` style="display:block;text-align:center;background:#fff;color:#111;border:1px solid #ddd">Manage in wallet</a>`
-	}
-	verb := "Upgrade to "
-	if cur := wallet.PlanByID(acc.Plan); cur.Price > wallet.PlanByID(planID).Price {
-		verb = "Change to "
-	}
-	return `<form method="POST" action="/wallet/stripe/subscribe" style="margin:0">` +
-		`<input type="hidden" name="plan" value="` + html.EscapeString(planID) + `">` +
-		`<button type="submit" ` + style + `>` + html.EscapeString(verb+wallet.PlanByID(planID).Name) + `</button></form>`
-}
 
 func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	var b strings.Builder
@@ -188,87 +37,13 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	// The two links are their own line. Run on from the sentence above they read
 	// as more prose and get skipped — a call to action that is the tail of a
 	// paragraph is not one.
+	b.WriteString(fmt.Sprintf(`<p style="color:#666;font-size:15px;margin:0 0 12px">`+
+		`One price, one way: <strong>a credit is 1p</strong>, top up any amount, and all %d tools `+
+		`are there from the first penny. No plan, no tier, nothing held back for a bigger one.</p>`,
+		api.ToolCount()))
 	b.WriteString(`<p style="color:#666;font-size:15px;margin:0 0 24px"><a href="/tools" style="color:#111">Browse the tools →</a> &nbsp;·&nbsp; Or self-host for free.</p>`)
 
-	// What you are on, said before the cards rather than left to be worked out
-	// from them. Somebody arriving here from a limit they just met is not
-	// shopping — they are asking which of these they already have.
-	if _, acc := auth.TrySession(r); acc != nil {
-		cur := wallet.PlanByID(acc.Plan)
-		b.WriteString(`<p style="font-size:15px;margin:0 0 24px;padding:10px 14px;background:#f6f6f6;border-radius:6px">` +
-			`You are on <strong>` + html.EscapeString(cur.Name) + `</strong>` +
-			html.EscapeString(agentLine(cur)) +
-			` · <a href="/wallet" style="color:#111">Wallet</a></p>`)
-	}
 	b.WriteString(`</div>`)
-
-	// Plans.
-	//
-	// They were Free, Starter at £5 and Pro at £10, and they sold credits: £5
-	// bought 500 credits, which is £5 of credits, so the tier sold nothing that
-	// topping up did not. £10 bought 1,200, which is a 20% discount on the one
-	// thing that costs us money — a plan that loses more the better it does.
-	//
-	// So a credit is 1p on every plan and what a plan sells is scale: how many
-	// agents you may run, and whether the channels that spend real money are
-	// open. See docs/PRICING.md.
-	//
-	// And there is no free column. Every call here spends somebody's money —
-	// Atlas for inference, Brave for search, Google for places and routes,
-	// Twilio for a text — so a tier that costs nothing is a tier that runs at a
-	// loss for every account that uses it, and the ones that use it most cost
-	// the most. Self-hosting is the free option and it is a real one: the binary
-	// is AGPL, it wants your API keys rather than ours, and an instance with no
-	// Stripe and no x402 cannot charge anybody. What is sold here is not
-	// software. It is not having to hold thirty accounts.
-	b.WriteString(`<div class="plans">`)
-
-	// Pay as you go is a column, not an absence.
-	//
-	// It is where the third paid tier was, and it is the answer to "I do not
-	// want to gate": every read tool is here, unmetered by any plan, bought at
-	// the same penny a credit as everywhere else. What it does not carry is
-	// volume on the three operations that leave the building, and that is a
-	// wall against abuse rather than against a customer — what an account sends
-	// under our domain and our number is the one cost a balance cannot make
-	// whole.
-	b.WriteString(`<div class="card plan">`)
-	b.WriteString(`<h3 style="margin:0 0 4px">Pay as you go</h3>`)
-	b.WriteString(`<p style="font-size:2rem;font-weight:700;margin:8px 0">1p` +
-		`<span style="font-size:14px;font-weight:400;color:#888">/credit</span></p>`)
-	b.WriteString(`<p style="color:#666;font-size:14px;margin:0 0 16px">Top up any amount</p>`)
-	b.WriteString(rows(wallet.PlanByID(""), everyTool()))
-	b.WriteString(cta(r, ""))
-	b.WriteString(`</div>`)
-
-	// Rendered from wallet.Plans(), which is what /wallet actually charges for,
-	// so this page cannot advertise a plan nobody can buy.
-	for _, p := range wallet.Plans() {
-		cls := "card plan"
-		if p.Featured {
-			cls += " plan-featured"
-		}
-		b.WriteString(`<div class="` + cls + `">`)
-		b.WriteString(`<h3 style="margin:0 0 4px">` + html.EscapeString(p.Name) + `</h3>`)
-		b.WriteString(`<p style="font-size:2rem;font-weight:700;margin:8px 0">` +
-			html.EscapeString(money(p.Price)) +
-			`<span style="font-size:14px;font-weight:400;color:#888">/month</span></p>`)
-		b.WriteString(`<p style="color:#666;font-size:14px;margin:0 0 16px">` +
-			html.EscapeString(thousands(p.Credits)+" credits a month") + `</p>`)
-		b.WriteString(rows(p, feature(p)))
-		b.WriteString(cta(r, p.ID))
-		b.WriteString(`</div>`)
-	}
-
-	b.WriteString(`</div>`)
-
-	// The ceiling, said before somebody meets it. Credits included in a plan
-	// are what the plan costs, not an allowance that renews when it runs out —
-	// so the sentence that matters is what happens when it does.
-	b.WriteString(`<p style="font-size:14px;color:#666;margin:0 0 24px">` +
-		`A credit is 1p on every plan — there is no tier where usage is cheaper. ` +
-		`Run out and you top up at the same rate, any amount, or carry on next month. ` +
-		`<a href="/pricing#costs" style="color:#111">What a call costs →</a></p>`)
 
 	// Credit costs
 	b.WriteString(`<div class="card" id="costs" style="margin:0 0 16px">`)
@@ -295,11 +70,19 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<p style="font-size:13px;color:#888;margin:8px 0 0">Most apps are free. Paid ones show their price before you run them; the author keeps 90%.</p>`)
 	b.WriteString(`</div>`)
 
-	// How you actually pay. Two ways, and which applies depends on whether you
-	// are a person or a program — the page said "one balance" and never
-	// mentioned that an agent does not need a balance, or an account, at all.
+	// How you actually pay. Which applies depends on whether you are a person or
+	// a program — the page said "one balance" and never mentioned that an agent
+	// does not need a balance, or an account, at all.
+	//
+	// There were plan cards above this once, selling agents, send volume and
+	// concurrency for £20 a month. They went because they sold three limits and
+	// a credit at par, which is nothing a top-up does not do — and because every
+	// one of them was a moving part between a customer and paying us. The limits
+	// they sold are still there; they lift when an account becomes accountable,
+	// which is a verified address or money on the balance, and neither needs a
+	// subscription.
 	b.WriteString(`<div class="card" style="margin:0 0 16px">`)
-	b.WriteString(`<h3>Two ways to pay</h3>`)
+	b.WriteString(`<h3>How you pay</h3>`)
 	b.WriteString(`<p style="font-size:14px;color:#666;margin:0 0 12px"><strong>People top up with a card.</strong> ` +
 		`Credits are bought through Stripe and every priced call — the pages, the assistant, ` +
 		`and any agent you have given a token — comes out of the same balance. ` +
@@ -330,6 +113,6 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 
 	b.WriteString(`</div>`) // close centered column
 
-	page := app.RenderHTMLForRequest("Pricing", "Personal AI — plans and pricing", b.String(), r)
+	page := app.RenderHTMLForRequest("Pricing", "What it costs and how you pay", b.String(), r)
 	w.Write([]byte(page))
 }

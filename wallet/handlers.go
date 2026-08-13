@@ -92,57 +92,6 @@ function cwConvert(el){el.disabled=true;var t=el.textContent;el.textContent='Con
 // the escaper was weaker than it looked.
 func htmlEsc(s string) string { return html.EscapeString(s) }
 
-// planCard is which plan an account is on and how to leave it.
-//
-// The wallet is how an account pays, so this is where a subscription belongs —
-// and it was nowhere. One place in the whole product read acc.Plan, the pricing
-// page, and that is where you go to decide rather than to administer: somebody
-// wondering what is leaving their card each month looked at the page about
-// money and found no mention of the twenty pounds.
-//
-// Manage rather than Cancel, because the button opens Stripe's portal and
-// cancelling is one of the four things there — the others being change plan,
-// replace a card, and find an invoice. Naming it after one of them would
-// mislead about the other three.
-func planCard(userID string) string {
-	acc, err := auth.GetAccount(userID)
-	if err != nil {
-		return ""
-	}
-	plan := PlanByID(acc.Plan)
-
-	var sb strings.Builder
-	sb.WriteString(`<div class="card">`)
-	sb.WriteString(`<h3>Plan</h3>`)
-	if acc.Plan == "" {
-		// Not a failure state, and it should not read as one: pay as you go is
-		// a way of paying, not the absence of one.
-		sb.WriteString(`<p>Pay as you go — a credit is 1p, top up any amount.</p>`)
-		sb.WriteString(`<p class="text-sm text-muted">A monthly plan raises how many agents you run, ` +
-			`how much you may send a day, and how many calls run at once.</p>`)
-		sb.WriteString(`<p><a href="/pricing">See plans →</a></p>`)
-		sb.WriteString(`</div>`)
-		return sb.String()
-	}
-
-	sb.WriteString(fmt.Sprintf(`<p><strong>%s</strong> — %s, renewing monthly.</p>`,
-		html.EscapeString(plan.Name), html.EscapeString(money(plan.Price))))
-	sb.WriteString(fmt.Sprintf(`<p class="text-sm text-muted">%s credits a month, %d agent%s, `+
-		`%d calls at once.</p>`, thousands(plan.Credits), plan.Agents,
-		map[bool]string{true: "", false: "s"}[plan.Agents == 1], plan.Concurrency))
-
-	if PortalAvailable() {
-		sb.WriteString(`<form method="POST" action="/wallet/stripe/portal" style="display:inline">` +
-			`<button type="submit" class="btn">Manage subscription</button></form> `)
-	}
-	sb.WriteString(`<a href="/pricing" class="btn btn-secondary">Change plan</a>`)
-	sb.WriteString(`<p class="text-sm text-muted" style="margin-top:10px">` +
-		`Cancel, change your card or find an invoice in Manage subscription. ` +
-		`Cancelling leaves you on pay as you go — credits you have already bought stay.</p>`)
-	sb.WriteString(`</div>`)
-	return sb.String()
-}
-
 // money renders pence as £20. Plans are whole pounds; one that is not would be
 // a pricing decision rather than a formatting one.
 func money(pence int) string {
@@ -194,8 +143,6 @@ func WalletPage(userID string) string {
 	}
 	sb.WriteString(`<p><a href="/wallet/topup">Add Credits →</a> · <a href="/wallet/transfer">Transfer →</a></p>`)
 	sb.WriteString(`</div>`)
-
-	sb.WriteString(planCard(userID))
 
 	// USDC on Base. Only when this instance offers crypto top-up, or when the
 	// user already holds some — see cryptoWalletCard.
@@ -350,10 +297,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		handleTopupJSON(w, r)
 	case path == "/wallet/topup" && r.Method == "GET":
 		handleDepositPage(w, r)
-	case path == "/wallet/stripe/subscribe" && r.Method == "POST":
-		handleStripeSubscribe(w, r)
-	case path == "/wallet/stripe/portal" && r.Method == "POST":
-		handleStripePortal(w, r)
 	case path == "/wallet/stripe/checkout" && r.Method == "POST":
 		handleStripeCheckout(w, r)
 	case path == "/wallet/stripe/success" && r.Method == "GET":
@@ -474,16 +417,6 @@ func renderStripeDeposit(userID, errMsg string) string {
 	if errMsg != "" {
 		sb.WriteString(fmt.Sprintf(`<p class="text-error">%s</p>`, errMsg))
 	}
-	// Monthly subscription plans.
-	sb.WriteString(`<h4>Monthly Plan</h4>`)
-	sb.WriteString(`<p class="text-sm text-muted mb-2">Subscribe for monthly credits — auto-renews via Stripe.</p>`)
-	sb.WriteString(`<div class="d-flex gap-2 mb-3">`)
-	for _, plan := range SubscriptionPlans {
-		sb.WriteString(fmt.Sprintf(
-			`<form method="POST" action="/wallet/stripe/subscribe" style="display:inline"><input type="hidden" name="plan" value="%s"><button type="submit" class="btn">%s</button></form>`,
-			plan.ID, plan.Label))
-	}
-	sb.WriteString(`</div>`)
 	sb.WriteString(`<hr style="border:none;border-top:1px solid #eee;margin:16px 0">`)
 
 	sb.WriteString("<h4>One-time top-up</h4>")
@@ -713,73 +646,6 @@ func handleTopupJSON(w http.ResponseWriter, r *http.Request) {
 	app.RespondJSON(w, map[string]interface{}{
 		"methods": methods,
 	})
-}
-
-func handleStripeSubscribe(w http.ResponseWriter, r *http.Request) {
-	sess, _, err := auth.RequireSession(r)
-	if err != nil {
-		app.RedirectToLogin(w, r)
-		return
-	}
-	r.ParseForm()
-	planID := r.FormValue("plan")
-	if planID == "" {
-		http.Redirect(w, r, "/wallet/topup?error=plan+required", http.StatusSeeOther)
-		return
-	}
-	// app.BaseURL, not r.Host, for the reason internal/origin exists.
-	//
-	// Mu runs behind a reverse proxy that forwards to a loopback port, so r.Host
-	// is "localhost:8081" and every URL built from it names an address no client
-	// can reach. This handler assembled its own — a scheme guessed from whether
-	// X-Forwarded-Proto was present, and r.Host — so paying for a plan took the
-	// money, fired the webhook, recorded the plan, and returned the customer to
-	// https://localhost:8081/wallet.
-	//
-	// The failure is entirely on the way back, which is what let it stand: the
-	// subscription is real and the account is right, so nothing is wrong except
-	// the one screen that tells somebody it worked. The top-up handler beside
-	// this one already used BaseURL, and origin's own package comment claims
-	// the Stripe return URL had the logic right — it did not.
-	base := app.BaseURL(r)
-	url, err := CreateSubscriptionSession(
-		sess.Account,
-		planID,
-		base+"/wallet/stripe/success?session_id={CHECKOUT_SESSION_ID}",
-		base+"/wallet/topup",
-	)
-	if err != nil {
-		app.Log("stripe", "subscribe error: %v", err)
-		http.Redirect(w, r, "/wallet/topup?error="+neturl.QueryEscape(err.Error()), http.StatusSeeOther)
-		return
-	}
-	http.Redirect(w, r, url, http.StatusSeeOther)
-}
-
-// handleStripePortal sends somebody to Stripe's own billing page.
-//
-// Where cancelling happens, and until this existed there was nowhere. clearPlan
-// had exactly one caller — the customer.subscription.deleted webhook — so a
-// subscription ended only when it was cancelled inside Stripe, which the
-// merchant can reach and the customer cannot. The two exits left were letting a
-// card fail and filing a chargeback, and the second of those costs more than
-// the subscription.
-//
-// A redirect, like subscribing, so form-action has to allow the destination —
-// see internal/server/helpers.go, which learned that the hard way.
-func handleStripePortal(w http.ResponseWriter, r *http.Request) {
-	sess, _, err := auth.RequireSession(r)
-	if err != nil {
-		app.RedirectToLogin(w, r)
-		return
-	}
-	url, err := CreatePortalSession(sess.Account, app.BaseURL(r)+"/wallet")
-	if err != nil {
-		app.Log("stripe", "portal error: %v", err)
-		http.Redirect(w, r, "/wallet?error="+neturl.QueryEscape(err.Error()), http.StatusSeeOther)
-		return
-	}
-	http.Redirect(w, r, url, http.StatusSeeOther)
 }
 
 func handleStripeCheckout(w http.ResponseWriter, r *http.Request) {

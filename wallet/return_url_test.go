@@ -46,19 +46,15 @@ func TestNoHandlerBuildsAReturnURLFromTheRequestHost(t *testing.T) {
 	}
 }
 
-// Both Stripe flows and the portal must agree about where "back" is, and the
-// only way to be sure is that they all ask the same function.
-func TestEveryStripeReturnURLComesFromTheSamePlace(t *testing.T) {
+// Topping up returns somewhere, and that somewhere must be this instance's
+// public address rather than whatever host the request happened to carry.
+func TestTheTopUpReturnURLComesFromOrigin(t *testing.T) {
 	src, err := os.ReadFile("handlers.go")
 	if err != nil {
 		t.Fatal(err)
 	}
-	text := string(src)
-
-	// One per flow: subscribe, one-off top-up, and the billing portal.
-	if n := strings.Count(text, "app.BaseURL(r)"); n < 3 {
-		t.Errorf("only %d of the Stripe flows ask app.BaseURL where this instance "+
-			"is — subscribe, top-up and the portal all return somewhere and all "+
-			"have to agree", n)
+	if !strings.Contains(string(src), "app.BaseURL(r)") {
+		t.Error("no Stripe flow asks app.BaseURL where this instance is, so a " +
+			"return URL is being built from something else")
 	}
 }

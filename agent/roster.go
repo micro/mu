@@ -147,19 +147,23 @@ func tagFor(owner, name string, existing []*Agent) string {
 // Unscoped reports whether this agent can reach everything its owner can.
 func (a *Agent) Unscoped() bool { return len(a.Services) == 0 }
 
-// PlanAgents answers how many agents this account's plan allows, and is filled
-// in by internal/server/hooks.go from wallet.PlanByID.
+// AgentAllowance answers how many agents this account may keep, and is filled
+// in by internal/server/hooks.go.
+//
+// It used to be what a plan allowed. Plans are gone; the answer now comes from
+// how accountable an account is — a verified address or money on the balance —
+// which is the thing the cap was standing in for all along.
 //
 // Nil on a build with no billing linked in, which is what a self-hosted
 // instance is: nobody is selling anything there, so nobody is limited.
-var PlanAgents func(accountID string) int
+var AgentAllowance func(accountID string) int
 
 // agentAllowance is how many this account may keep, or 0 for no limit.
 func agentAllowance(owner string) int {
-	if PlanAgents == nil {
+	if AgentAllowance == nil {
 		return 0
 	}
-	return PlanAgents(owner)
+	return AgentAllowance(owner)
 }
 
 // AtAgentLimit reports whether this account may not make another agent, with

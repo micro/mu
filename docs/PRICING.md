@@ -17,22 +17,44 @@ Measured, not remembered.
 |---|---|
 | A new account starts with | **0 credits** |
 | One credit is | **£0.01** |
-| Subscriptions on offer | **£10 → 1,000**, **£20 → 2,000**, **£100 → 10,000** credits a month |
+| Ways to pay | **top up** any amount at 1p a credit · **x402** per request, no account · **self-host**, nothing metered |
+| Subscriptions on offer | **none** — see *Why there are no plans* |
 | `daily_quota: 100` in quota.json | **dead** — declared, documented, configurable, read by nothing |
 | Operations priced at 0 | 15 of 27 |
 | Charging path | one gateway, since `127a326` |
 
-The plans were £5 → 500 and £10 → 1,200, and the second half of this document
-was written to answer why nobody would buy either. £5 buys 500 credits, which is
-£5 of credits: the tier sold nothing a top-up did not, except at £10 where it
-sold a 20% discount on the one thing with a marginal cost. A subscription that
+## Why there are no plans
+
+There were, twice, and both times they failed the same test.
+
+The first pair — £5 → 500 credits, £10 → 1,200 — sold nothing a top-up did not,
+except a 20% discount on the one thing with a marginal cost. A subscription that
 is a payment method rather than a product has no reason to exist.
 
-They are now Personal, Pro and Premium, a credit is 1p on all three, and what a
-plan sells is scale — agents, the channels that spend real money, and rate
-limits. There is no free plan; see *No free plan* below. `/pricing` renders from
-`wallet.SubscriptionPlans`, so the page that advertises a plan and the page that
-charges for it cannot disagree again. Held by `wallet/plans_test.go`.
+The second pair — Pro at £20, Scale at £100, a credit at 1p on both — fixed that
+by selling scale instead: agents, daily send volume, concurrency. Better, and
+still thin. Agents are a soft unit, because tokens are unlimited and an account
+can mint as many as it likes. Send caps only bite on an account that sends.
+Concurrency only bites at a size nobody here is at. Three limits, and every one
+of them is really an abuse control rather than a thing to buy.
+
+What killed it was the moving parts. Selling a subscription meant Stripe
+Products and Prices, a customer id, a billing portal, four webhook events, a
+cancellation obligation in consumer law, and a plan field to keep in step with
+whatever a customer did in Stripe's own UI. The first live subscription found
+three separate silent failures in that chain — a CSP directive that blocked the
+redirect, a return URL pointing at localhost, and settlement that hung entirely
+on a webhook — none of which were visible from the server side.
+
+So the limits stayed and the subscription went. They lift on **accountability**
+rather than on a tier: a verified address or money on the balance, which is
+`auth.Trusted`, the same signal that already decides who may post publicly and
+who may send mail out of the instance. It costs nothing to run, needs no Stripe
+object, and it is the honest axis — what makes abuse expensive is a real person
+behind an account, not a recurring charge.
+
+Three ways to pay, and that is the whole surface: **top up** at 1p a credit,
+**x402** per request with no account at all, or **self-host** and meter nothing.
 
 **A new account cannot do anything that costs money.** It starts at zero, and
 deliberately. The only reason the product appears to work is that most things
@@ -180,8 +202,8 @@ want Google's shape, and because it is the right tool for passing a provider's
 own free tier through. Every entry is zero on this instance, so it is inert
 here, and it is not the story anybody is told.
 
-So: *a credit is the unit of everything*. A plan is credits that arrive monthly
-and do not accumulate, and there is no plan where they arrive for free.
+So: *a credit is the unit of everything*, bought at 1p, in any amount, by
+anybody — or paid per request over x402 by an agent that never signs up.
 
 ## The thing that must not be free
 
@@ -240,36 +262,31 @@ The rule that falls out, and the one to apply to the next case:
 - The **price** differs → two endpoints.
 - The **quantity** differs → one endpoint, units.
 
-## What the tiers should be
+## What a tier would have sold, and why it does not exist
+
+Kept because the reasoning is the reason there are no plans, and somebody will
+propose them again.
 
 A subscription must not sell credits at a discount. £10 buying 1,200 credits is
 selling £12 for £10 on the one thing that costs us money, which loses more the
-more successful it is. Credits are bought at face value, always: **1 credit = 1p,
-subscription or not.**
+more successful it is. Credits are bought at face value, always: **1 credit =
+1p**, and there is no arrangement under which one is cheaper.
 
-So what does a tier sell? **Scale.** The thing somebody outgrows is not how much
-they spend — they can top up — it is how many agents they may run and how much
-they may send to people outside this instance. Those cost us in ways credits do
-not: an agent is a token to keep, and a send is a share of a domain's and a
-number's reputation.
+So a tier could only sell **scale** — how many agents you run, how much you may
+send outside, how many calls run at once. Those cost us in ways credits do not:
+an agent is a token to keep, and a send is a share of a domain's and a number's
+reputation.
 
-What follows is the shape of the argument. The current table, counted against
-what is actually built, is in *What actually scales, counted honestly* below —
-read that one for the numbers.
+Two things killed it. The offer was thin — £100 for more credits at the same
+price and twenty-four more agents is not something anybody reasons their way
+into — and every one of those three is an abuse control wearing a price tag. A
+limit is not a feature, and selling one is how a card ends up answering a
+question nobody asked.
 
-| | Personal — £10/mo | Pro — £20/mo | Premium — £100/mo |
-|---|---|---|---|
-| Credits included | 1,000, at face value | 2,000, at face value | 10,000, at face value |
-| Agents | 1 | 5 | 25 |
-
-That is what is enforced today, and **it is too thin to sell a third column.**
-£100 for 10,000 credits and twenty-four more agents is not an offer somebody
-reasons their way into. The next section is what to do about it using only
-what is built.
-
-Everything above what a tier includes is bought at the same 1p. There is no
-tier at which a credit is cheaper, and the pricing page should say so — it is
-the sentence that stops anybody wondering whether they are on the wrong plan.
+They are still enforced. They lift on `auth.Trusted` — a verified address or
+money on the balance — because what makes abuse expensive is a real person
+behind the account. Paying monthly was only ever a proxy for that, and a costly
+one to run.
 
 ### What a rate limit is not
 

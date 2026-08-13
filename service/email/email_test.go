@@ -262,9 +262,9 @@ func TestTheAddressIsTheUsername(t *testing.T) {
 // LimitFor answers as quota.NoLimit, and a page that printed it read
 // "0 of -1 left today".
 func TestAnUncappedAccountIsNotToldMinusOne(t *testing.T) {
-	orig := quota.PlanLimit
-	t.Cleanup(func() { quota.PlanLimit = orig })
-	quota.PlanLimit = func(string, string) (int, bool) { return quota.NoLimit, true }
+	orig := quota.LimitOverride
+	t.Cleanup(func() { quota.LimitOverride = orig })
+	quota.LimitOverride = func(string, string) (int, bool) { return quota.NoLimit, true }
 
 	if got := Allowance("someone"); !strings.Contains(got, "no daily limit") {
 		t.Errorf("an uncapped account is told %q", got)
@@ -273,7 +273,7 @@ func TestAnUncappedAccountIsNotToldMinusOne(t *testing.T) {
 		t.Errorf("the allowance renders a sentinel as a number: %q", Allowance("someone"))
 	}
 
-	quota.PlanLimit = func(string, string) (int, bool) { return 10, true }
+	quota.LimitOverride = func(string, string) (int, bool) { return 10, true }
 	if got := Allowance("someone"); !strings.Contains(got, "of 10") {
 		t.Errorf("a capped account is told %q", got)
 	}

@@ -287,17 +287,17 @@ func DailyLimit(operation string) int {
 
 // PlanLimit is what this account's plan allows of an operation, and whether the
 // plan says anything at all. Filled in by internal/server/hooks.go from
-// wallet.PlanByID, because the plans are product and this is internal.
+// hooks.go, because who is exempt is a product question and this is internal.
 //
 // Nil on a build with no billing linked in, which is a self-hosted instance:
 // nobody is selling anything there, so quota.json's number stands for everyone.
-var PlanLimit func(account, operation string) (int, bool)
+var LimitOverride func(account, operation string) (int, bool)
 
 // LimitFor is the cap that applies to this account: the plan's if it has one,
 // otherwise the file's.
 func LimitFor(account, operation string) int {
-	if PlanLimit != nil && account != "" {
-		if n, ok := PlanLimit(account, operation); ok {
+	if LimitOverride != nil && account != "" {
+		if n, ok := LimitOverride(account, operation); ok {
 			return n
 		}
 	}

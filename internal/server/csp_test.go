@@ -48,14 +48,6 @@ func TestAFormMayReachStripeCheckoutAndNowhereElseOffOrigin(t *testing.T) {
 		t.Errorf("form-action does not allow Stripe Checkout, so paying is blocked "+
 			"by the browser after the session has been created: %q", directive)
 	}
-	// The portal is where a subscription is cancelled, and it redirects the same
-	// way. Leaving it out would give somebody a Manage subscription button that
-	// the browser refuses to follow — which is the state this product was
-	// already in, differently.
-	if !strings.Contains(directive, "https://billing.stripe.com") {
-		t.Errorf("form-action does not allow the Stripe billing portal, so there is "+
-			"no way to cancel: %q", directive)
-	}
 	// Enumerated, not wildcarded. The point of this directive is to say where a
 	// form may take somebody, and a wildcard says "anywhere Stripe ever hosts".
 	if strings.Contains(directive, "*") {

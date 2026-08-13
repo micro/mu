@@ -33,16 +33,13 @@ func TestASettledSessionCreditsAndRecordsThePlan(t *testing.T) {
 
 	settleSession(checkoutSession{
 		ID: "cs_settle_1", PaymentStatus: "paid", Customer: "cus_x",
-		AmountTotal: 2000, UserID: owner, Credits: "2000", PlanID: "pro",
+		AmountTotal: 2000, UserID: owner, Credits: "2000",
 	}, "test")
 
 	if got := GetBalance(owner); got != before+2000 {
 		t.Errorf("balance is %d, want %d", got, before+2000)
 	}
 	acc, _ := auth.GetAccount(owner)
-	if acc.Plan != "pro" {
-		t.Errorf("plan is %q, want pro", acc.Plan)
-	}
 	if acc.Customer != "cus_x" {
 		t.Errorf("customer is %q, want cus_x", acc.Customer)
 	}
@@ -76,14 +73,11 @@ func TestAnUnpaidSessionChangesNothing(t *testing.T) {
 
 	settleSession(checkoutSession{
 		ID: "cs_settle_3", PaymentStatus: "unpaid",
-		UserID: owner, Credits: "5000", PlanID: "scale",
+		UserID: owner, Credits: "5000",
 	}, "test")
 
 	if got := GetBalance(owner); got != before {
 		t.Errorf("an unpaid session credited %d", got-before)
-	}
-	if acc, _ := auth.GetAccount(owner); acc.Plan != "" {
-		t.Errorf("an unpaid session set the plan to %q", acc.Plan)
 	}
 }
 
@@ -97,13 +91,13 @@ func TestSettlingChecksThePurchaseBelongsToTheCaller(t *testing.T) {
 	}
 }
 
-// Both flows return through the settling handler, not to a page that only says
-// a payment worked.
-func TestBothCheckoutsReturnThroughTheHandlerThatSettles(t *testing.T) {
+// The checkout returns through the handler that settles, not to a page that
+// only says a payment worked.
+func TestCheckoutReturnsThroughTheHandlerThatSettles(t *testing.T) {
 	src := readWalletSource(t, "handlers.go")
-	if n := strings.Count(src, "/wallet/stripe/success?session_id={CHECKOUT_SESSION_ID}"); n < 2 {
-		t.Errorf("only %d checkout flows return with a session id — one of them lands "+
-			"somewhere that cannot settle the payment", n)
+	if !strings.Contains(src, "/wallet/stripe/success?session_id={CHECKOUT_SESSION_ID}") {
+		t.Error("the checkout does not return with a session id, so it lands " +
+			"somewhere that cannot settle the payment if the webhook never arrives")
 	}
 }
 

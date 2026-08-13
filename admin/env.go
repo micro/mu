@@ -10,7 +10,6 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/settings"
-	"mu/wallet"
 )
 
 type settingGroup struct {
@@ -49,15 +48,6 @@ var settingGroups = []settingGroup{
 		"STRIPE_SECRET_KEY",
 		"STRIPE_PUBLISHABLE_KEY",
 		"STRIPE_WEBHOOK_SECRET",
-		// A plan is sold as one of these, and without them Stripe mints a
-		// throwaway product per purchase — which charges fine and leaves the
-		// customer portal unable to offer a switch, because it can only list
-		// Prices that exist.
-		"STRIPE_PRICE_PRO",
-		"STRIPE_PRICE_SCALE",
-		// Where somebody goes to cancel when their account has no stored
-		// customer id, which is everyone who subscribed before those were kept.
-		"STRIPE_PORTAL_URL",
 		"X402_PAY_TO",
 		"CRYPTO_TOPUP",
 	}},
@@ -335,33 +325,6 @@ func EnvHandler(w http.ResponseWriter, r *http.Request) {
 
 	b.WriteString(`<button type="submit" class="btn" style="margin-bottom:16px">Save</button>`)
 	b.WriteString(`</form>`)
-
-	// Whether what Stripe sells is what this instance advertises.
-	//
-	// Two systems hold the price and nothing compared them, so a Price id
-	// pointing at the wrong amount charges the wrong amount forever with no
-	// error anywhere: the checkout succeeds, the webhook fires, the account gets
-	// its plan, and only the card statement disagrees. Behind ?billing=1 because
-	// it calls Stripe, and a settings page should not do that every time it is
-	// opened.
-	if r.URL.Query().Get("billing") == "1" {
-		b.WriteString(`<div class="card" style="margin-bottom:16px"><h3>Billing</h3>`)
-		if problems := wallet.CheckPlans(); len(problems) == 0 {
-			b.WriteString(`<p style="color:#27ae60;margin:0">Every plan matches what Stripe sells, ` +
-				`and there is a way to reach the billing portal.</p>`)
-		} else {
-			b.WriteString(`<ul style="font-size:14px;color:#c00;margin:0;padding-left:18px">`)
-			for _, p := range problems {
-				b.WriteString(`<li style="margin:0 0 6px">` + html.EscapeString(p) + `</li>`)
-			}
-			b.WriteString(`</ul>`)
-		}
-		b.WriteString(`</div>`)
-	} else {
-		b.WriteString(`<p style="margin-bottom:16px"><a href="/admin/env?billing=1">Check billing against Stripe →</a> ` +
-			`<span style="color:#888;font-size:13px">Compares each plan's price, currency and interval ` +
-			`with the Price it is sold as.</span></p>`)
-	}
 
 	b.WriteString(`<p><a href="/admin">← Back to Admin</a></p>`)
 

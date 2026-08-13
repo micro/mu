@@ -583,18 +583,26 @@ func wireHooks() {
 	// An admin is exempt from the agent cap for the same reason they are exempt
 	// from the charge: they are the operator, and the operator is already
 	// paying for the instance.
-	auth.PlanPostsPerHour = func(plan string) int {
-		return wallet.PlanByID(plan).PostsPerHour
-	}
-	agent.PlanAgents = func(accountID string) int {
+	// Everything a subscription used to sell is keyed on accountability now,
+	// which is auth.Trusted: an admin, an approved account, a verified address,
+	// or money on the balance. Plans are gone — they sold three limits and a
+	// credit at par, which is nothing a top-up does not do — and the limits they
+	// sold were never really tiers. They are abuse controls, and what makes
+	// abuse expensive is a real person behind the account, not a subscription.
+	//
+	// So the axis is the one that was already there: put money in, or prove who
+	// you are, and the caps lift. It costs nothing to build, needs no Stripe
+	// object, and it is the same signal that decides who may post publicly and
+	// who may send mail out.
+	agent.AgentAllowance = func(accountID string) int {
 		acc, err := auth.GetAccount(accountID)
 		if err != nil {
 			return 0
 		}
-		if acc.Admin || acc.Agent {
-			return 0
+		if acc.Admin || acc.Agent || auth.Trusted(accountID) {
+			return 0 // no limit
 		}
-		return wallet.PlanByID(acc.Plan).Agents
+		return 1
 	}
 
 	// The gateway every service call goes through.
@@ -668,9 +676,14 @@ func wireHooks() {
 			return 0
 		}
 		if acc.Admin || acc.Agent {
-			return 0 // the operator's own instance is not queued behind a plan
+			return 0 // the operator's own instance is not queued behind anything
 		}
-		return wallet.PlanByID(acc.Plan).Concurrency
+		if auth.Trusted(account) {
+			return 16
+		}
+		// A signup that has put nothing in gets enough to work with and not
+		// enough to fan out across the whole catalogue at once.
+		return 4
 	}
 
 	// Email out goes through this instance's own SMTP unless an operator has
@@ -680,19 +693,21 @@ func wireHooks() {
 	// subdomain of it.
 	email.SendVia = mail.SendExternalAs
 
-	// What a plan allows of an operation. Everything a subscription sells that
-	// is not credits comes through here.
-	quota.PlanLimit = func(account, op string) (int, bool) {
+	// Who is not capped at all. quota.json holds the number everybody else
+	// takes.
+	quota.LimitOverride = func(account, op string) (int, bool) {
 		acc, err := auth.GetAccount(account)
 		if err != nil {
 			return 0, false
 		}
-		// The operator's own instance and its agent are not on a plan and are
-		// not capped by one, for the same reason they are not charged.
+		// The operator's own instance and its agent are not capped, for the same
+		// reason they are not charged. Everybody else takes quota.json's number,
+		// which is an abuse ceiling rather than a tier — an operator who wants a
+		// different one edits the file that already holds the prices.
 		if acc.Admin || acc.Agent {
 			return quota.NoLimit, true
 		}
-		return wallet.PlanByID(acc.Plan).LimitFor(op)
+		return 0, false
 	}
 
 	// Wire MCP quota checking using wallet credit system

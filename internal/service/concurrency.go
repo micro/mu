@@ -32,7 +32,8 @@ import (
 const maxWait = 30 * time.Second
 
 // Concurrency is how many calls this account may have in flight, or 0 for no
-// limit. Filled in by internal/server/hooks.go from wallet.PlanByID.
+// limit. Filled in by internal/server/hooks.go, from how accountable the
+// account is.
 //
 // Nil on a build with no billing linked in — a self-hosted instance sells
 // nothing, so it limits nothing.
