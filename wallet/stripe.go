@@ -359,6 +359,48 @@ func CreatePortalSession(userID, returnURL string) (string, error) {
 // so a page does not draw a button that cannot work.
 func PortalAvailable() bool { return StripeEnabled() || stripePortal() != "" }
 
+// priceIDFor is the Stripe Price this plan is sold as, when an operator has
+// made one: STRIPE_PRICE_PRO, STRIPE_PRICE_SCALE.
+//
+// Without it the checkout sends price_data — an inline amount and a product
+// name — and Stripe mints a throwaway product and price for each purchase.
+// That works for taking money and fails for everything after it: the customer
+// portal can only offer a switch between Prices you have listed in its
+// configuration, and an ad-hoc price cannot be listed. So an operator who has
+// not made real Prices has a dashboard full of one-off products and no way to
+// turn plan switching on.
+//
+// Optional rather than required, because an instance that only ever takes
+// payments does not need them, and demanding Stripe dashboard setup before the
+// first pound can be charged is a worse first run.
+// Written out per plan rather than built from the id. A name assembled at run
+// time is invisible to anything that scans for what the code reads, and this
+// repo has a test that holds every setting against the install guide — so a
+// composed name documents itself nowhere and warns nobody. Adding a plan means
+// adding a line here, and that test is what says so.
+func priceIDFor(planID string) string {
+	switch planID {
+	case "pro":
+		return strings.TrimSpace(settings.Get("STRIPE_PRICE_PRO"))
+	case "scale":
+		return strings.TrimSpace(settings.Get("STRIPE_PRICE_SCALE"))
+	}
+	return ""
+}
+
+// planForPriceID is which plan is sold as this Stripe Price, or "".
+func planForPriceID(priceID string) string {
+	if strings.TrimSpace(priceID) == "" {
+		return ""
+	}
+	for _, p := range SubscriptionPlans {
+		if id := priceIDFor(p.ID); id != "" && id == priceID {
+			return p.ID
+		}
+	}
+	return ""
+}
+
 // planForPrice is which plan costs this much a month, or "" for none of them.
 //
 // Price rather than a stored id, because a plan can be changed in Stripe's own
@@ -430,26 +472,35 @@ func CreateSubscriptionSession(userID, planID, successURL, cancelURL string) (st
 		return "", fmt.Errorf("unknown plan: %s", planID)
 	}
 
+	// A real Price when the operator has made one, an inline amount otherwise.
+	//
+	// Same charge either way; the difference is everything that happens after.
+	// A price_data purchase creates a throwaway product per checkout, and the
+	// customer portal can only offer a switch between Prices listed in its
+	// configuration — so plan switching cannot be turned on at all until these
+	// exist. See priceIDFor.
+	item := map[string]interface{}{"quantity": 1}
+	if priceID := priceIDFor(plan.ID); priceID != "" {
+		item["price"] = priceID
+	} else {
+		item["price_data"] = map[string]interface{}{
+			"currency": "gbp",
+			"recurring": map[string]interface{}{
+				"interval": "month",
+			},
+			"unit_amount": plan.Price,
+			"product_data": map[string]interface{}{
+				"name":        plan.Name + " Plan",
+				"description": fmt.Sprintf("%d credits/month", plan.Credits),
+			},
+		}
+	}
+
 	data := map[string]interface{}{
 		"mode":        "subscription",
 		"success_url": successURL,
 		"cancel_url":  cancelURL,
-		"line_items": []map[string]interface{}{
-			{
-				"price_data": map[string]interface{}{
-					"currency": "gbp",
-					"recurring": map[string]interface{}{
-						"interval": "month",
-					},
-					"unit_amount": plan.Price,
-					"product_data": map[string]interface{}{
-						"name":        plan.Name + " Plan",
-						"description": fmt.Sprintf("%d credits/month", plan.Credits),
-					},
-				},
-				"quantity": 1,
-			},
-		},
+		"line_items":  []map[string]interface{}{item},
 		"metadata": map[string]string{
 			"user_id": userID,
 			"plan_id": plan.ID,
@@ -826,7 +877,8 @@ func HandleStripeWebhook(w http.ResponseWriter, r *http.Request) {
 			Items struct {
 				Data []struct {
 					Price struct {
-						UnitAmount int `json:"unit_amount"`
+						ID         string `json:"id"`
+						UnitAmount int    `json:"unit_amount"`
 					} `json:"price"`
 				} `json:"data"`
 			} `json:"items"`
@@ -839,11 +891,20 @@ func HandleStripeWebhook(w http.ResponseWriter, r *http.Request) {
 		switch sub.Status {
 		case "active", "trialing":
 			if len(sub.Items.Data) > 0 {
-				if id := planForPrice(sub.Items.Data[0].Price.UnitAmount); id != "" {
+				price := sub.Items.Data[0].Price
+				// The Price id first, when the operator has made real ones —
+				// it is exact, and it stays right if two plans ever share an
+				// amount. The amount is the fallback, and it is all there is
+				// for a subscription bought with an inline price.
+				id := planForPriceID(price.ID)
+				if id == "" {
+					id = planForPrice(price.UnitAmount)
+				}
+				if id != "" {
 					setPlan(sub.Metadata.UserID, id)
 				} else {
-					app.Log("stripe", "%s is on a subscription at %d pence, which is no plan here",
-						sub.Metadata.UserID, sub.Items.Data[0].Price.UnitAmount)
+					app.Log("stripe", "%s is on a subscription at %d pence (%s), which is no plan here",
+						sub.Metadata.UserID, price.UnitAmount, price.ID)
 				}
 			}
 		case "canceled", "unpaid", "incomplete_expired":
