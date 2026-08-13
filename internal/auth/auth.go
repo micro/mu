@@ -40,7 +40,11 @@ type Account struct {
 	Email           string    `json:"email,omitempty"`
 	EmailVerified   bool      `json:"email_verified,omitempty"`
 	EmailVerifiedAt time.Time `json:"email_verified_at,omitempty"`
-	Banned          bool      `json:"banned,omitempty"` // Silently hidden from everyone except themselves
+	// Addresses are other email addresses this account has proved it can read,
+	// beyond the one above. See address.go: Email is the address the account
+	// signs in and recovers with, and there is exactly one; these are the rest.
+	Addresses []string `json:"addresses,omitempty"`
+	Banned    bool     `json:"banned,omitempty"` // Silently hidden from everyone except themselves
 	// Agent marks an account that is a program rather than a person: the
 	// instance's own Micro, and anything else acting on its own behalf. An
 	// admin may be an agent; not knowing which is how a password reset ends up

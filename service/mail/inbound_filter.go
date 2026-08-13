@@ -231,15 +231,17 @@ func CheckInboundAllowed(fromAddr, inReplyTo, references string) (string, bool) 
 // agents' aliases.
 //
 // This is the one relationship the instance can be certain about: the account
-// holder proved they control that mailbox by clicking a link in it. Mail from
-// it to themselves is never spam and never needs whitelisting, and treating it
-// like any other stranger is what made "email your agent" — the first thing
-// anyone tries — fail silently into a folder.
+// holder proved they control that mailbox, by clicking a link in it or by
+// sending back a code that arrived there. Mail from it to themselves is never
+// spam and never needs whitelisting, and treating it like any other stranger is
+// what made "email your agent" — the first thing anyone tries — fail silently
+// into a folder.
+//
+// Any address the account has proved, not only the one it signs in with. That
+// used to be the same thing, and the gap it left was the ordinary case: you
+// sign up from a personal address and then write to your agent from work.
 func isOwnVerifiedAddress(acc *auth.Account, fromAddr string) bool {
-	if acc == nil || !acc.EmailVerified || acc.Email == "" {
-		return false
-	}
-	return strings.EqualFold(strings.TrimSpace(acc.Email), strings.TrimSpace(fromAddr))
+	return acc.Owns(fromAddr)
 }
 
 // SenderIsAccountOwner reports whether an address is the verified email of one
@@ -266,18 +268,9 @@ func SenderIsAccountOwner(ownerID, fromAddr string) bool {
 // The shared agent mailbox has no owner in its own name — agent@<domain>
 // belongs to the instance — so whose mail it is has to come from who sent it.
 // A verified email is the only claim strong enough to answer that: the person
-// clicked a link in the mailbox. Nil when nobody has proved it.
+// proved they can read the mailbox. Nil when nobody has.
 func AccountForVerifiedEmail(fromAddr string) *auth.Account {
-	fromAddr = strings.ToLower(strings.TrimSpace(fromAddr))
-	if fromAddr == "" {
-		return nil
-	}
-	for _, acc := range auth.GetAllAccounts() {
-		if acc.EmailVerified && strings.EqualFold(acc.Email, fromAddr) {
-			return acc
-		}
-	}
-	return nil
+	return auth.AccountForAddress(fromAddr)
 }
 
 // VerifiedAccountAddress reports whether an address is the verified email of
@@ -285,14 +278,5 @@ func AccountForVerifiedEmail(fromAddr string) *auth.Account {
 // proved they own a mailbox is not a stranger, so their mail should reach this
 // instance without an operator adding their domain by hand.
 func VerifiedAccountAddress(fromAddr string) bool {
-	fromAddr = strings.ToLower(strings.TrimSpace(fromAddr))
-	if fromAddr == "" {
-		return false
-	}
-	for _, acc := range auth.GetAllAccounts() {
-		if acc.EmailVerified && strings.EqualFold(acc.Email, fromAddr) {
-			return true
-		}
-	}
-	return false
+	return auth.AccountForAddress(fromAddr) != nil
 }

@@ -36,6 +36,28 @@ func TestYourOwnVerifiedAddressSkipsTheSpamFilter(t *testing.T) {
 	}
 }
 
+// Any address the account proved, not only the one it signs in with.
+//
+// That used to be the same thing, and the gap was the ordinary case: you sign
+// up from a personal address and then write to your agent from work. email_verify
+// is the second door onto the same proof — a code rather than a link, because an
+// agent has no browser to click one in — and this is the whole of what it buys.
+func TestAnyAddressTheAccountProvedIsItsOwn(t *testing.T) {
+	owner := &auth.Account{
+		ID: "asim", Email: "asim@aslam.me", EmailVerified: true,
+		Addresses: []string{"asim@work.example"},
+	}
+	if !isOwnVerifiedAddress(owner, "asim@work.example") {
+		t.Error("an address proved by code is being scored as a stranger's")
+	}
+	if !isOwnVerifiedAddress(owner, "asim@aslam.me") {
+		t.Error("proving a second address lost the first")
+	}
+	if isOwnVerifiedAddress(owner, "someone@work.example") {
+		t.Error("proving one address opened the whole domain")
+	}
+}
+
 // Unverified is not verified. The whole weight of this rule rests on the
 // mailbox having been proven, so an address merely typed into a form earns
 // nothing.

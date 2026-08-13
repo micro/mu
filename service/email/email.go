@@ -349,26 +349,8 @@ func Send(owner, to, subject, body string) (*Sent, error) {
 		return nil, fmt.Errorf("account not found")
 	}
 
-	// Ours first. A provider is an option here, not a dependency: the
-	// instance already runs an SMTP server with DKIM, and adding a second
-	// credential to send from a subdomain of a domain we already sign for
-	// would be paying a toll to cross our own bridge.
-	var providerID string
-	switch {
-	case twilio.EmailConfigured():
-		providerID, err = twilio.SendEmail(twilio.Email{
-			From:     SenderFor(owner),
-			FromName: acc.Name,
-			ReplyTo:  ReplyFor(owner),
-			To:       to,
-			Subject:  subject,
-			Text:     body,
-			HTML:     asHTML(body),
-		})
-	default:
-		providerID, err = SendVia(acc.Name, SenderFor(owner), ReplyFor(owner),
-			to, subject, body, asHTML(body))
-	}
+	providerID, err := deliver(owner, acc.Name, to, subject, body)
+
 
 	// Recorded either way, and before the error is returned. What went wrong is
 	// the half of the history worth having: a message that was refused is the
@@ -382,6 +364,35 @@ func Send(owner, to, subject, body string) (*Sent, error) {
 		return nil, err
 	}
 	return rec, nil
+}
+
+// deliver puts a message on the wire, whoever is carrying it, and returns the
+// carrier's id for it.
+//
+// The one place the transport is chosen. Ours first: a provider is an option
+// here, not a dependency — the instance already runs an SMTP server with DKIM,
+// and adding a second credential to send from a subdomain of a domain we
+// already sign for would be paying a toll to cross our own bridge.
+//
+// Separated from Send because verification sends an email too, and it must go
+// out the same way. What is *not* here is every rule about sending — the caps,
+// the charge, the duplicate check, the history. Those are Send's, and a
+// verification code is the one message this service sends that is not somebody
+// writing to somebody else.
+func deliver(owner, fromName, to, subject, body string) (string, error) {
+	if twilio.EmailConfigured() {
+		return twilio.SendEmail(twilio.Email{
+			From:     SenderFor(owner),
+			FromName: fromName,
+			ReplyTo:  ReplyFor(owner),
+			To:       to,
+			Subject:  subject,
+			Text:     body,
+			HTML:     asHTML(body),
+		})
+	}
+	return SendVia(fromName, SenderFor(owner), ReplyFor(owner),
+		to, subject, body, asHTML(body))
 }
 
 // record files one attempt.

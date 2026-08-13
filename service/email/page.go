@@ -40,12 +40,29 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// whole billing effort was about.
 	if r.Method == "POST" {
 		r.ParseForm() //nolint:errcheck
-		_, err := Send(acc.ID, r.FormValue("to"), r.FormValue("subject"), r.FormValue("body"))
+		var err error
+		done := "?sent=1"
+		switch r.FormValue("do") {
+		case "verify":
+			// One form, two steps: with a code it finishes, without one it starts.
+			// Which is showing is decided by Pending, so the page never asks for a
+			// code nobody has been sent.
+			addr := r.FormValue("address")
+			if code := strings.TrimSpace(r.FormValue("code")); code != "" {
+				err, done = Confirm(acc.ID, addr, code), "?verified="+url.QueryEscape(addr)
+			} else {
+				err, done = StartVerify(acc.ID, addr), "?code="+url.QueryEscape(addr)
+			}
+		case "forget":
+			err, done = Forget(acc.ID, r.FormValue("address")), "?forgot=1"
+		default:
+			_, err = Send(acc.ID, r.FormValue("to"), r.FormValue("subject"), r.FormValue("body"))
+		}
 		if err != nil {
 			http.Redirect(w, r, "/email?error="+url.QueryEscape(err.Error()), http.StatusSeeOther)
 			return
 		}
-		http.Redirect(w, r, "/email?sent=1", http.StatusSeeOther)
+		http.Redirect(w, r, "/email"+done, http.StatusSeeOther)
 		return
 	}
 
@@ -80,8 +97,20 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		html.EscapeString(strings.ToUpper(Allowance(acc.ID)[:1])+Allowance(acc.ID)[1:]) + `.</p>`)
 	b.WriteString(`</div>`)
 
-	if r.URL.Query().Get("sent") == "1" {
-		b.WriteString(`<div class="card" style="background:#f0fff0;border-color:#a3d9a5;margin-top:16px"><p style="color:#27ae60;margin:0">Sent.</p></div>`)
+	note := ""
+	switch q := r.URL.Query(); {
+	case q.Get("sent") == "1":
+		note = "Sent."
+	case q.Get("code") != "":
+		note = "Emailed a code to " + q.Get("code") + ". It is good for ten minutes."
+	case q.Get("verified") != "":
+		note = q.Get("verified") + " is yours."
+	case q.Get("forgot") == "1":
+		note = "Removed."
+	}
+	if note != "" {
+		b.WriteString(`<div class="card" style="background:#f0fff0;border-color:#a3d9a5;margin-top:16px"><p style="color:#27ae60;margin:0">` +
+			html.EscapeString(note) + `</p></div>`)
 	}
 	if msg := r.URL.Query().Get("error"); msg != "" {
 		b.WriteString(`<div class="card" style="border-color:#e0a3a3;margin-top:16px"><p style="color:#c00;margin:0">` +
@@ -95,6 +124,49 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<input name="subject" required placeholder="Subject" style="width:100%;padding:8px;margin:0 0 8px;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box">`)
 	b.WriteString(`<textarea name="body" required rows="6" placeholder="Message" style="width:100%;padding:8px;margin:0 0 8px;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box;font-family:inherit"></textarea>`)
 	b.WriteString(`<button type="submit" class="btn">Send</button>`)
+	b.WriteString(`</form></div>`)
+
+	// Addresses you have proved you can read.
+	//
+	// Under sending rather than on the account page, because what it buys is a
+	// mail question: this is the only address a stranger can be told to write
+	// to, since the domain above has no inbox. The one on the account is shown
+	// too, greyed and without a remove button, so the list is every address this
+	// instance believes is yours rather than only the ones added here.
+	b.WriteString(`<div class="card" style="margin-top:16px"><h3>Your addresses</h3>`)
+	b.WriteString(`<p style="font-size:14px;color:#666;margin:0 0 12px">Mail you send from one of these is recognised here — it reaches your agent rather than a spam folder. Nobody can reply to <code>` +
+		html.EscapeString(SenderFor(acc.ID)) + `</code>, so this is where to ask for an answer.</p>`)
+	yours := Addresses(acc.ID)
+	if len(yours) == 0 {
+		b.WriteString(`<p style="font-size:14px;color:#888;margin:0 0 12px">None yet.</p>`)
+	} else {
+		b.WriteString(`<ul style="font-size:14px;margin:0 0 12px;padding-left:18px">`)
+		for _, a := range yours {
+			b.WriteString(`<li style="margin:0 0 4px"><code>` + html.EscapeString(a) + `</code>`)
+			if acc.EmailVerified && strings.EqualFold(acc.Email, a) {
+				b.WriteString(` <span style="color:#888">— the address on your account</span>`)
+			} else {
+				b.WriteString(` <form method="POST" action="/email" style="display:inline">` +
+					`<input type="hidden" name="do" value="forget">` +
+					`<input type="hidden" name="address" value="` + html.EscapeString(a) + `">` +
+					`<button type="submit" style="background:none;border:0;color:#c00;cursor:pointer;font-size:13px;padding:0 0 0 6px">remove</button></form>`)
+			}
+			b.WriteString(`</li>`)
+		}
+		b.WriteString(`</ul>`)
+	}
+	b.WriteString(`<form method="POST" action="/email"><input type="hidden" name="do" value="verify">`)
+	if pending, ok := Pending(acc.ID); ok {
+		b.WriteString(`<input type="hidden" name="address" value="` + html.EscapeString(pending) + `">`)
+		b.WriteString(`<p style="font-size:14px;color:#666;margin:0 0 8px">A code went to <code>` +
+			html.EscapeString(pending) + `</code>.</p>`)
+		b.WriteString(`<input name="code" required inputmode="numeric" autocomplete="one-time-code" placeholder="6-digit code" style="width:160px;padding:8px;margin:0 8px 0 0;border:1px solid #ddd;border-radius:6px;font-size:14px">`)
+		b.WriteString(`<button type="submit" class="btn">Confirm</button>`)
+	} else {
+		b.WriteString(`<input name="address" type="email" required placeholder="you@example.com" style="width:260px;padding:8px;margin:0 8px 0 0;border:1px solid #ddd;border-radius:6px;font-size:14px">`)
+		b.WriteString(`<button type="submit" class="btn">Send a code</button>`)
+		b.WriteString(`<p style="font-size:13px;color:#888;margin:8px 0 0">The code is emailed there, so it costs one send and counts against today's allowance.</p>`)
+	}
 	b.WriteString(`</form></div>`)
 
 	b.WriteString(`<div class="card" style="margin-top:16px">`)

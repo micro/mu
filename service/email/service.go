@@ -69,8 +69,21 @@ var Spec = service.Spec{
 		},
 		"Sender": {
 			AccountOnly: true,
-			Doc: "The address email is sent from, where replies to it go, and how many " +
-				"messages are left today",
+			Doc: "The address email is sent from, where replies to it go, which addresses " +
+				"this account has proved are its own, and how many messages are left today",
+		},
+		// No Cost, unlike Send, and the reason is that only one of its two steps
+		// sends anything: asking for a code puts an email on the wire, sending
+		// the code back does not. An endpoint charge cannot tell them apart, so
+		// the service charges itself — see verify.go, which is also where the
+		// harder cap on starts lives.
+		"Verify": {
+			AccountOnly: true,
+			Doc: "Claim an email address as your own, so mail you send from it is " +
+				"recognised here rather than treated as a stranger's — it reaches your " +
+				"agent, and at the shared agent address it is what says the mail is " +
+				"yours. Call it with just the address to have a code emailed there, then " +
+				"again with the code. Costs a send and counts against the daily cap",
 		},
 	},
 }
@@ -138,10 +151,11 @@ func (Server) History(ctx context.Context, req *HistoryRequest, rsp *HistoryResp
 type SenderRequest struct{}
 
 type SenderResponse struct {
-	From    string `json:"from" description:"The address email is sent from"`
-	ReplyTo string `json:"reply_to" description:"Where replies to it arrive"`
-	Left    int    `json:"left" description:"How many more may be sent today"`
-	Text    string `json:"text" description:"The same, as a sentence"`
+	From    string   `json:"from" description:"The address email is sent from"`
+	ReplyTo string   `json:"reply_to" description:"Where replies to it arrive"`
+	Yours   []string `json:"yours" description:"Addresses this account has proved are its own. Tell somebody to write to one of these if you need an answer"`
+	Left    int      `json:"left" description:"How many more may be sent today"`
+	Text    string   `json:"text" description:"The same, as a sentence"`
 }
 
 // Sender says what this account sends as, and how much is left.
@@ -160,9 +174,56 @@ func (Server) Sender(ctx context.Context, _ *SenderRequest, rsp *SenderResponse)
 		return fmt.Errorf("this instance has no sending domain configured")
 	}
 	rsp.From, rsp.ReplyTo = SenderFor(who), Answers(who)
+	rsp.Yours = Addresses(who)
 	rsp.Left, _ = LeftToday(who)
 	rsp.Text = fmt.Sprintf("Email is sent from %s and replies arrive at %s. %s.",
 		rsp.From, rsp.ReplyTo, Allowance(who))
+	if len(rsp.Yours) > 0 {
+		rsp.Text += fmt.Sprintf(" To be written back to, ask for an answer at %s.",
+			strings.Join(rsp.Yours, " or "))
+	}
+	return nil
+}
+
+// ── Verify ──────────────────────────────────────────────────────
+
+type VerifyRequest struct {
+	Address string `json:"address" required:"true" description:"An email address you can read"`
+	Code    string `json:"code,omitempty" description:"The code that was emailed to it. Omit to have one sent"`
+}
+
+type VerifyResponse struct {
+	Result   string   `json:"result" description:"What happened"`
+	Verified bool     `json:"verified" description:"Whether the address is now yours"`
+	Yours    []string `json:"yours" description:"Every address this account has proved is its own"`
+}
+
+// Verify claims an address as the caller's own, in two steps.
+//
+// Called without a code it emails one there; called with the code it records
+// the address. What that buys is being recognised: mail arriving here from an
+// address you have proved is yours reaches your agent rather than a spam
+// folder, and at the shared agent address it is the only thing that says whose
+// mail it is.
+// @example {"address": "you@example.com"}
+func (Server) Verify(ctx context.Context, req *VerifyRequest, rsp *VerifyResponse) error {
+	who := service.AccountFrom(ctx)
+	if who == "" {
+		return fmt.Errorf("sign in to verify an address")
+	}
+	if code := strings.TrimSpace(req.Code); code != "" {
+		if err := Confirm(who, req.Address, code); err != nil {
+			return err
+		}
+		rsp.Verified, rsp.Result = true, req.Address+" is yours."
+		rsp.Yours = Addresses(who)
+		return nil
+	}
+	if err := StartVerify(who, req.Address); err != nil {
+		return err
+	}
+	rsp.Yours = Addresses(who)
+	rsp.Result = "Emailed a code to " + req.Address + ". Send it back to finish."
 	return nil
 }
 
