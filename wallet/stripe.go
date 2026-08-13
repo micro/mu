@@ -388,6 +388,113 @@ func priceIDFor(planID string) string {
 	return ""
 }
 
+// CheckPlans asks Stripe whether what it sells matches what this instance
+// advertises, and returns what does not line up.
+//
+// Two systems hold the price and nothing compared them. The catalogue here says
+// Pro is £20 a month; the Price id in the environment points at whatever an
+// operator selected in a dashboard, and a mistake there charges the wrong
+// amount forever without a single error — the checkout succeeds, the webhook
+// fires, the account gets its plan, and only the card statement disagrees.
+//
+// Read-only, and it names what to fix rather than only that something is wrong.
+func CheckPlans() []string {
+	if !StripeEnabled() {
+		return []string{"Stripe is not configured, so no plan can be bought"}
+	}
+
+	var problems []string
+	for _, p := range SubscriptionPlans {
+		id := priceIDFor(p.ID)
+		if id == "" {
+			problems = append(problems, fmt.Sprintf(
+				"%s has no Stripe Price (STRIPE_PRICE_%s). It can still be bought — the "+
+					"checkout sends an inline amount — but the customer portal cannot offer a "+
+					"switch to it, because it can only list Prices that exist",
+				p.Name, strings.ToUpper(p.ID)))
+			continue
+		}
+		price, err := fetchPrice(id)
+		if err != nil {
+			problems = append(problems, fmt.Sprintf("%s: %s could not be read from Stripe — %v",
+				p.Name, id, err))
+			continue
+		}
+		if price.UnitAmount != p.Price {
+			problems = append(problems, fmt.Sprintf(
+				"%s is advertised at %s here and sells at %s in Stripe (%s). The card is "+
+					"charged the Stripe amount",
+				p.Name, pounds(p.Price), pounds(price.UnitAmount), id))
+		}
+		if !strings.EqualFold(price.Currency, "gbp") {
+			problems = append(problems, fmt.Sprintf("%s sells in %s, and every price here is in pounds",
+				p.Name, strings.ToUpper(price.Currency)))
+		}
+		if price.Recurring.Interval != "month" {
+			every := price.Recurring.Interval
+			if every == "" {
+				every = "once, not on a subscription"
+			}
+			problems = append(problems, fmt.Sprintf("%s renews %s in Stripe, and is sold here as monthly",
+				p.Name, every))
+		}
+		if !price.Active {
+			problems = append(problems, fmt.Sprintf("%s points at an archived Price (%s), which cannot be bought",
+				p.Name, id))
+		}
+	}
+	if stripePortal() == "" {
+		problems = append(problems, "No STRIPE_PORTAL_URL. Anybody who subscribed before "+
+			"their Stripe customer id was being recorded has no way to reach the billing "+
+			"portal, and so no way to cancel")
+	}
+	return problems
+}
+
+type stripePrice struct {
+	UnitAmount int    `json:"unit_amount"`
+	Currency   string `json:"currency"`
+	Active     bool   `json:"active"`
+	Recurring  struct {
+		Interval string `json:"interval"`
+	} `json:"recurring"`
+}
+
+func fetchPrice(id string) (stripePrice, error) {
+	var out stripePrice
+	req, err := http.NewRequest("GET", "https://api.stripe.com/v1/prices/"+neturl.PathEscape(id), nil)
+	if err != nil {
+		return out, err
+	}
+	req.Header.Set("Authorization", "Bearer "+stripeSecret())
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return out, err
+	}
+	defer resp.Body.Close()
+	var body struct {
+		stripePrice
+		Error struct {
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		return out, err
+	}
+	if body.Error.Message != "" {
+		return out, fmt.Errorf("%s", body.Error.Message)
+	}
+	return body.stripePrice, nil
+}
+
+// pounds renders pence for an operator reading a mismatch.
+func pounds(pence int) string {
+	if pence%100 == 0 {
+		return fmt.Sprintf("£%d", pence/100)
+	}
+	return fmt.Sprintf("£%.2f", float64(pence)/100)
+}
+
 // planForPriceID is which plan is sold as this Stripe Price, or "".
 func planForPriceID(priceID string) string {
 	if strings.TrimSpace(priceID) == "" {
