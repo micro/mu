@@ -139,6 +139,7 @@ guessable.
 | `stream` | /stream | ✅ |  | The console: this instance's own timeline |
 | `tasks` | /tasks | ✅ | ✅ | What is to be done, and work handed to the agent |
 | `text` | /text | ✅ |  | Language work at a fixed price per call: summarise, extract JSON to a schema, classify, translate. Capped at 30,000 characters, because our cost varies with length and the price does not |
+| `hazards` | /hazards | ✅ |  | What is going wrong physically: earthquakes live from the USGS. No key, and authoritative rather than plausible — the point of it is that a model would otherwise guess |
 | `transit` | /transit | ✅ |  | Public transport, live: stops near you, what is due, which lines are down. TfL, and no key needed — it works on a fresh install, which is the point |
 | `video` | /video | ✅ |  | Curated channels, without ads or recommendations |
 | `weather` | /weather | ✅ |  | Forecast and pollen |

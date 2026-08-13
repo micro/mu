@@ -933,9 +933,15 @@ func navBottom(acc *auth.Account) string {
 	if acc.Admin {
 		admin = `<a id="nav-admin" href="/admin"><img src="/admin.svg?` + Version + `"><span class="label">Admin</span></a>`
 	}
+	// Support sits here rather than only in the footer, because the footer is
+	// not rendered for somebody signed in — see footerFor. So the one link a
+	// person needs when something has gone wrong disappeared at exactly the
+	// moment they had an account, a balance and therefore something to go
+	// wrong with. A signed-out visitor still has the footer.
 	return `<div id="nav-username">Signed in as @` + username + `</div>
           <a id="nav-account" href="/account"><img src="/account.png?` + Version + `"><span class="label">Account</span></a>
           ` + admin + `
+          <a id="nav-support" href="/support"><img src="/help.svg?` + Version + `"><span class="label">Support</span></a>
           <a id="nav-logout" href="/logout"><img src="/logout.png?` + Version + `"><span class="label">Logout</span></a>
           <a id="nav-login" href="/login" style="display: none;"><img src="/account.png?` + Version + `"><span class="label">Login</span></a>`
 }

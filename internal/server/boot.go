@@ -21,6 +21,7 @@ import (
 	"mu/service/events"
 	"mu/service/files"
 	"mu/service/flights"
+	"mu/service/hazards"
 	"mu/service/images"
 	"mu/service/mail"
 	"mu/service/markets"
@@ -84,6 +85,7 @@ func boot() {
 	web.Load()
 	text.Load()
 	transit.Load()
+	hazards.Load()
 	stream.LoadService()
 	chat.LoadService()
 	docs.LoadService()
