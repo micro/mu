@@ -11,6 +11,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/service/mail"
+	"mu/wallet"
 )
 
 // AdminHandler shows the admin page with user management
@@ -44,6 +45,21 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
 
 	html := app.RenderHTMLForRequest("Admin", "Admin Dashboard", content, r)
 	w.Write([]byte(html))
+}
+
+// balanceCell is what an account holds, on the row beside the button that adds
+// to it.
+//
+// Granting credits without seeing the balance is working blind: the question is
+// almost always "does this account have enough", and answering it meant leaving
+// the page for the console. Zero is shown as a dash rather than 0 — a list where
+// most rows read "0" is a column of noise around the few that matter.
+func balanceCell(userID string) string {
+	n := wallet.GetBalance(userID)
+	if n == 0 {
+		return `<span class="text-muted" style="font-size:12px">—</span>`
+	}
+	return fmt.Sprintf(`<span style="font-size:13px">%d</span>`, n)
 }
 
 // UsersHandler shows and manages users with tabs: All, Banned, New.
@@ -88,6 +104,31 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 			auth.UnbanAccount(userID)
 		case "approve":
 			auth.ApproveAccount(userID)
+
+		// Crediting an account by hand.
+		//
+		// It existed only as a console command — `credit <user> <amount>` at
+		// /admin/console — which is to say it existed for somebody who already
+		// knew it was there. An operator looking at a list of users, wanting to
+		// comp one of them, found buttons for banning and approving and nothing
+		// about money, and reasonably concluded the product could not do it.
+		//
+		// The same call the console makes, so there is one way credits are
+		// granted and one operation in the ledger to look for afterwards.
+		case "credit":
+			var amount int
+			fmt.Sscanf(strings.TrimSpace(r.FormValue("amount")), "%d", &amount)
+			if amount > 0 {
+				if u, err := auth.GetAccount(userID); err == nil {
+					if err := wallet.AddCredits(u.ID, amount, "admin_grant", map[string]interface{}{
+						"by": acc.ID,
+					}); err != nil {
+						app.Log("admin", "granting %d to %s: %v", amount, u.ID, err)
+					} else {
+						app.Log("admin", "%s granted %d credits to %s", acc.ID, amount, u.ID)
+					}
+				}
+			}
 		}
 		tab := r.FormValue("tab")
 		redir := "/admin/users"
@@ -130,7 +171,7 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	sb.WriteString(fmt.Sprintf(`<p class="text-muted text-sm">%d users</p>`, len(filtered)))
-	sb.WriteString(`<table class="admin-table"><thead><tr><th>Username</th><th>Name</th><th class="created-col">Created</th><th>Status</th><th class="center">Actions</th></tr></thead><tbody>`)
+	sb.WriteString(`<table class="admin-table"><thead><tr><th>Username</th><th>Name</th><th class="created-col">Created</th><th>Status</th><th class="center">Credits</th><th class="center">Actions</th></tr></thead><tbody>`)
 	for _, u := range filtered {
 		created := u.Created.Format("2006-01-02")
 		var badges []string
@@ -168,7 +209,23 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			actions = append(actions, fmt.Sprintf(`<form method="POST" class="d-inline" onsubmit="return confirm('Delete %s?')"><input type="hidden" name="action" value="delete"><input type="hidden" name="user_id" value="%s"><input type="hidden" name="tab" value="%s"><button type="submit" class="btn-danger" style="font-size:12px;padding:2px 8px">Delete</button></form>`, u.ID, u.ID, tab))
 		}
-		sb.WriteString(fmt.Sprintf(`<tr><td><strong><a href="/@%s">%s</a></strong></td><td>%s</td><td class="created-col">%s</td><td>%s</td><td class="center" style="white-space:nowrap">%s</td></tr>`, u.ID, u.ID, u.Name, created, statusHTML, strings.Join(actions, " ")))
+		// Credit, on the row, because that is where somebody wanting to comp an
+		// account is looking. An amount box rather than fixed buttons: the
+		// number is different every time — a refund is what a call cost, a comp
+		// is what you feel like giving — and three preset buttons would be
+		// wrong for most of them.
+		actions = append(actions, fmt.Sprintf(
+			`<form method="POST" class="d-inline" style="display:inline-flex;gap:2px;align-items:center">`+
+				`<input type="hidden" name="action" value="credit">`+
+				`<input type="hidden" name="user_id" value="%s">`+
+				`<input type="hidden" name="tab" value="%s">`+
+				`<input name="amount" inputmode="numeric" pattern="[0-9]*" placeholder="credits" `+
+				`style="width:64px;font-size:12px;padding:2px 4px;border:1px solid #ddd;border-radius:4px">`+
+				`<button type="submit" title="Add credits to this account" `+
+				`style="font-size:12px;padding:2px 8px;border-radius:4px;border:1px solid #06b;background:#fff;color:#06b;cursor:pointer">Credit</button></form>`,
+			u.ID, tab))
+
+		sb.WriteString(fmt.Sprintf(`<tr><td><strong><a href="/@%s">%s</a></strong></td><td>%s</td><td class="created-col">%s</td><td>%s</td><td class="center">%s</td><td class="center" style="white-space:nowrap">%s</td></tr>`, u.ID, u.ID, u.Name, created, statusHTML, balanceCell(u.ID), strings.Join(actions, " ")))
 	}
 	sb.WriteString(`</tbody></table>`)
 	html := app.RenderHTMLForRequest("Admin", "Users", sb.String(), r)
