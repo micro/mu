@@ -196,6 +196,14 @@ curl -X POST https://micro.mu/mcp \
 # → 402, with the x402 challenge
 ```
 
+To pay it, `mu` is its own x402 client — put a funded Base wallet's key in
+`~/.mu/keys/wallet.seed` and:
+
+```bash
+mu x402 call web_search query="x402"      # pays the 402 and returns the result
+mu x402 call markets_list                  # free tool: no wallet, no account
+```
+
 Reads that only touch the instance are free either way, and a self-hosted
 instance with neither Stripe nor x402 configured cannot charge anybody — so
 nothing is metered and every tool is simply free.

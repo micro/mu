@@ -13,6 +13,15 @@ import (
 //
 //	mu x402
 func runX402(args []string) int {
+	// `mu x402` alone reports configuration; `mu x402 call ...` actually pays.
+	// The status was the whole command for a long time, which meant an operator
+	// could confirm the endpoint was configured and never that it worked.
+	if len(args) > 0 && args[0] == "call" {
+		return runX402Pay(args[1:])
+	}
 	fmt.Print(wallet.X402Status())
+	fmt.Println()
+	fmt.Println("Pay for a call from a wallet on this machine:")
+	fmt.Println("  mu x402 call web_search query=\"x402\"")
 	return 0
 }

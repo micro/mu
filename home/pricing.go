@@ -70,9 +70,12 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<p style="font-size:13px;color:#888;margin:8px 0 0">Most apps are free. Paid ones show their price before you run them; the author keeps 90%.</p>`)
 	b.WriteString(`</div>`)
 
-	// How you actually pay. Which applies depends on whether you are a person or
-	// a program — the page said "one balance" and never mentioned that an agent
-	// does not need a balance, or an account, at all.
+	// How you actually pay. "Can also", because the paragraph above has just
+	// explained that an agent spends its owner's balance through a token — and
+	// then this one said agents pay per request in USDC, which reads as a
+	// correction rather than a second option. Both are true at once: give an
+	// agent a token and it draws on your credits, or let it pay its own way and
+	// it needs nothing from you.
 	//
 	// There were plan cards above this once, selling agents, send volume and
 	// concurrency for £20 a month. They went because they sold three limits and
@@ -88,7 +91,7 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 		`and any agent you have given a token — comes out of the same balance. ` +
 		`<a href="/wallet" style="color:#111">Your wallet →</a></p>`)
 	if wallet.X402Enabled() {
-		b.WriteString(`<p style="font-size:14px;color:#666;margin:0 0 8px"><strong>Agents pay per request in USDC, with no account at all.</strong> ` +
+		b.WriteString(`<p style="font-size:14px;color:#666;margin:0 0 8px"><strong>Agents can also pay per request in USDC, with no account at all.</strong> ` +
 			`A priced call with no credentials answers <code>402 Payment Required</code> with an ` +
 			`<a href="https://x402.org" style="color:#111">x402</a> challenge naming the price and where to send it. ` +
 			`Pay, retry, get the answer — no signup, no card, no key to rotate.</p>`)
