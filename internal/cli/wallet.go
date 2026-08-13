@@ -56,6 +56,23 @@ func runWallet(args []string) int {
 			return 1
 		}
 		fmt.Println("seed controls address:", addr)
+
+		// What is actually in it. `mu wallet` could say which address a key
+		// controlled and not what it held, which is the one question somebody
+		// funding a wallet is asking — and the answer lived only in `mu agent`'s
+		// startup line, where you had to start a session to see it.
+		//
+		// Read from the chain rather than from anything we store, because a
+		// balance we remember is a balance that can be wrong.
+		human, raw := wallet.USDCBalance(addr)
+		switch {
+		case raw == nil || raw.Sign() == 0:
+			fmt.Println("balance:              0 USDC — send USDC on Base to the address above")
+			fmt.Println("                      (no ETH needed; you never pay gas)")
+		default:
+			fmt.Printf("balance:              %s USDC on Base\n", human)
+		}
+
 		if payTo == "" {
 			fmt.Println("(X402_PAY_TO not set here — run after `source ~/.env`, or pass it in the environment)")
 			return 0
