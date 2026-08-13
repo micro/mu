@@ -37,16 +37,42 @@ type BaseWallet struct {
 var (
 	walletMu    sync.RWMutex
 	userWallets = map[string]*BaseWallet{} // accountID → wallet
-	walletsFile = "trade_wallets.json"     // kept for continuity with existing keys
+	walletsFile = "wallets.json"
 	walletsInit sync.Once
 )
+
+// legacyWalletsFile is where these keys lived when the only thing an account's
+// wallet did was trade. It pays for tool calls now, and holds the balance a
+// person topped up with, so the name had stopped describing the contents.
+//
+// It is read, never written, and never deleted. Anything else risks an
+// instance coming up against the new name, finding nothing, and minting fresh
+// wallets for accounts whose funds are sitting in keys we just stopped
+// reading — a silent way to lose real money.
+const legacyWalletsFile = "trade_wallets.json"
 
 func loadWallets() {
 	walletsInit.Do(func() {
 		walletMu.Lock()
 		defer walletMu.Unlock()
-		data.LoadJSON(walletsFile, &userWallets)
+		userWallets = loadWalletsFrom(walletsFile, legacyWalletsFile)
 	})
+}
+
+// loadWalletsFrom reads the wallet map, falling back to the pre-rename file and
+// copying it forward. Separate from loadWallets so it can be tested without
+// fighting the sync.Once that guards process-wide state.
+func loadWalletsFrom(primary, legacy string) map[string]*BaseWallet {
+	m := map[string]*BaseWallet{}
+	_ = data.LoadJSON(primary, &m)
+	if len(m) > 0 {
+		return m
+	}
+	_ = data.LoadJSON(legacy, &m)
+	if len(m) > 0 {
+		_ = data.SaveJSON(primary, m)
+	}
+	return m
 }
 
 // BaseRPCURL returns the Base JSON-RPC endpoint. Honours BASE_RPC_URL, then the

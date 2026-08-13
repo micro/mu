@@ -23,6 +23,7 @@ package cli
 // and buys everything else two pence at a time.
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -30,6 +31,7 @@ import (
 	"io"
 	"math/big"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -70,16 +72,10 @@ func runAgent(args []string) int {
 		}
 	}
 
+	// No question opens a conversation instead. One-shot is for scripts; a
+	// session is for working, and it is the difference between paying to
+	// rediscover context on every question and paying once.
 	question := strings.TrimSpace(strings.Join(words, " "))
-	if question == "" {
-		fmt.Println("usage: mu agent [--server URL] [--seed PATH] <question>")
-		fmt.Println()
-		fmt.Println("  An agent with your model and your wallet, using another")
-		fmt.Println("  instance's tools and paying per call.")
-		fmt.Println()
-		fmt.Println("  mu agent \"what happened in markets today?\"")
-		return 2
-	}
 
 	// A name from X402_SERVERS resolves to its URL, so the instance you rent
 	// from can be configured once rather than typed every time.
@@ -96,8 +92,7 @@ func runAgent(args []string) int {
 		return 1
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
+	ctx := context.Background()
 
 	tools, err := fetchCatalogue(ctx, server)
 	if err != nil {
@@ -116,19 +111,71 @@ func runAgent(args []string) int {
 		human, _ := wallet.USDCBalance(bw.Address)
 		fmt.Printf("paying from %s (%s USDC)\n", bw.Address, human)
 	}
-	before := usdcRaw(bw)
+	s := &session{server: server, tools: tools, bw: bw, system: systemFor(tools)}
+	s.opening = usdcRaw(bw)
 
-	answer := think(ctx, server, question, tools, bw)
-
-	// Spend is reported from the chain rather than from what we believe we
-	// authorised. The wallet is the only account of what a run cost that
-	// cannot be wrong.
-	if spent := new(big.Int).Sub(before, usdcRaw(bw)); spent.Sign() > 0 {
-		fmt.Printf("\nspent %s USDC\n", wallet.FormatUnits(spent, 6))
+	if question != "" {
+		fmt.Println()
+		fmt.Println(s.ask(ctx, question))
+		s.reportSpend(s.opening)
+		return 0
 	}
+	return s.converse(ctx)
+}
+
+// session is one run's state: the catalogue, the wallet and what has been said
+// so far. Holding it across questions is what makes a second question cheap —
+// the model can answer from what the first one already paid for.
+type session struct {
+	server  string
+	tools   []remoteTool
+	bw      *wallet.BaseWallet
+	system  string
+	history ai.History
+	opening *big.Int
+}
+
+// converse reads questions until the input ends.
+func (s *session) converse(ctx context.Context) int {
 	fmt.Println()
-	fmt.Println(answer)
+	fmt.Println("Ask a question. Ctrl-D or \"exit\" to finish.")
+
+	in := bufio.NewScanner(os.Stdin)
+	in.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+	for {
+		fmt.Print("\n> ")
+		if !in.Scan() {
+			break
+		}
+		q := strings.TrimSpace(in.Text())
+		if q == "" {
+			continue
+		}
+		if q == "exit" || q == "quit" {
+			break
+		}
+		fmt.Println()
+		fmt.Println(s.ask(ctx, q))
+	}
+
+	fmt.Println()
+	s.reportSpend(s.opening)
 	return 0
+}
+
+// reportSpend prints what has been spent since a balance was taken.
+//
+// Read from the chain rather than totted up from what we believe we
+// authorised: the wallet is the one account of a run's cost that cannot be
+// wrong, and an agent spending somebody's money should be checkable against
+// something other than its own bookkeeping.
+func (s *session) reportSpend(since *big.Int) {
+	if since == nil || s.bw == nil {
+		return
+	}
+	if spent := new(big.Int).Sub(since, usdcRaw(s.bw)); spent.Sign() > 0 {
+		fmt.Printf("spent %s USDC\n", wallet.FormatUnits(spent, 6))
+	}
 }
 
 // usdcRaw reads the wallet's balance in atomic units, or zero when there is no
@@ -144,17 +191,17 @@ func usdcRaw(bw *wallet.BaseWallet) *big.Int {
 	return raw
 }
 
-// think runs the model/tool loop until the model stops asking for tools.
-func think(ctx context.Context, server, question string, tools []remoteTool, bw *wallet.BaseWallet) string {
-	system := systemFor(tools)
-	history := ai.History{}
-	ask := question
+// ask runs the model/tool loop until the model stops asking for tools, and
+// keeps the exchange so the next question can build on it.
+func (s *session) ask(ctx context.Context, question string) string {
+	turn := s.history
+	prompt := question
 
 	for step := 0; step < maxSteps; step++ {
 		reply, err := ai.Ask(&ai.Prompt{
-			System:   system,
-			Question: ask,
-			Context:  history,
+			System:   s.system,
+			Question: prompt,
+			Context:  turn,
 			Caller:   "cli_agent",
 		})
 		if err != nil {
@@ -163,22 +210,42 @@ func think(ctx context.Context, server, question string, tools []remoteTool, bw 
 
 		call, ok := parseToolCall(reply)
 		if !ok {
-			return strings.TrimSpace(reply)
+			answer := strings.TrimSpace(reply)
+			s.history = trimHistory(append(turn, ai.Message{Prompt: prompt, Answer: answer}))
+			return answer
 		}
 
 		fmt.Printf("· %s\n", call.Tool)
-		out, err := wallet.PayAndCallMCP(ctx, "", server, call.Tool, call.Args, bw)
+		out, err := wallet.PayAndCallMCP(ctx, "", s.server, call.Tool, call.Args, s.bw)
 		if err != nil {
+			// A failed call is told to the model rather than to the user. It
+			// may well have asked for a tool that needs an account, and the
+			// useful next move is for it to try another one.
 			out = "that call failed: " + err.Error()
 		}
 
 		// The model's own request and the result go back as one turn, so the
 		// next pass can see what it asked for as well as what it got.
-		history = append(history, ai.Message{Prompt: ask, Answer: reply})
-		ask = "Result of " + call.Tool + ":\n" + truncate(out, 6000) +
+		turn = append(turn, ai.Message{Prompt: prompt, Answer: reply})
+		prompt = "Result of " + call.Tool + ":\n" + truncate(out, 6000) +
 			"\n\nAnswer the original question, or call another tool."
 	}
+
+	s.history = trimHistory(turn)
 	return "gave up after " + fmt.Sprint(maxSteps) + " steps without settling on an answer"
+}
+
+// historyLimit caps what is carried between questions. Tool results are
+// verbose, every message is re-sent on the next call, and a session left open
+// all afternoon would otherwise grow until the model refuses it — or until
+// each question costs more than the tool it calls.
+const historyLimit = 20
+
+func trimHistory(h ai.History) ai.History {
+	if len(h) <= historyLimit {
+		return h
+	}
+	return append(ai.History{}, h[len(h)-historyLimit:]...)
 }
 
 // toolCall is the model's request to use a tool.
