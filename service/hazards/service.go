@@ -98,6 +98,65 @@ func periodWord(p string) string {
 	return "day"
 }
 
+// AlertsRequest narrows the alerts asked for.
+type AlertsRequest struct {
+	Level    string  `json:"level" description:"Lowest level to include: green, orange or red — default green (everything)"`
+	Lat      float64 `json:"lat" description:"Optional: only alerts near this point"`
+	Lon      float64 `json:"lon" description:"Optional: only alerts near this point"`
+	WithinKm float64 `json:"within_km" description:"Optional: how near, in kilometres, default 1000 when lat/lon given"`
+}
+
+// AlertsResponse is what is happening.
+type AlertsResponse struct {
+	Text string `json:"text" description:"Current disasters, worst first, or nearest first when a point was given"`
+}
+
+// Alerts lists current disasters worldwide, from GDACS.
+// @example {"level": "orange"}
+func (Server) Alerts(_ context.Context, req *AlertsRequest, rsp *AlertsResponse) error {
+	within := req.WithinKm
+	if within <= 0 && (req.Lat != 0 || req.Lon != 0) {
+		within = 1000
+	}
+
+	found, err := alerts(req.Level, req.Lat, req.Lon, within)
+	if err != nil {
+		return err
+	}
+	if len(found) == 0 {
+		if within > 0 {
+			rsp.Text = fmt.Sprintf("No active disaster alerts within %.0fkm.", within)
+			return nil
+		}
+		rsp.Text = "No active disaster alerts at that level."
+		return nil
+	}
+
+	var b strings.Builder
+	for i, a := range found {
+		if i >= 15 {
+			fmt.Fprintf(&b, "…and %d more.", len(found)-15)
+			break
+		}
+		fmt.Fprintf(&b, "%s %s", a.Level, a.Kind)
+		if a.Name != "" {
+			fmt.Fprintf(&b, " %s", a.Name)
+		}
+		if a.Country != "" {
+			fmt.Fprintf(&b, " — %s", a.Country)
+		}
+		if within > 0 {
+			fmt.Fprintf(&b, ", %.0fkm away", a.AwayKm)
+		}
+		if a.Severity != "" {
+			fmt.Fprintf(&b, "\n  %s", a.Severity)
+		}
+		b.WriteString("\n")
+	}
+	rsp.Text = strings.TrimRight(b.String(), "\n")
+	return nil
+}
+
 // Load registers the service.
 func Load() {
 	if err := service.Register(Spec); err != nil {
@@ -108,11 +167,16 @@ func Load() {
 var Spec = service.Spec{
 	Name:        "hazards",
 	Handler:     new(Server),
-	Description: "What is going wrong in the physical world: earthquakes, live from the USGS",
+	Description: "What is going wrong in the physical world: earthquakes and disaster alerts, live",
 	Page:        "/hazards",
 	Icon:        "hazards.svg",
 	Card:        Card,
 	Endpoints: map[string]service.Endpoint{
+		"Alerts": {
+			Doc: "Current disasters worldwide from GDACS — cyclones, floods, volcanoes, " +
+				"wildfires and earthquakes — with an alert level of green, orange or red. " +
+				"Pass lat/lon to ask about somewhere in particular",
+		},
 		"Quakes": {
 			Aliases: []string{"quakes"},
 			Doc: "Recent earthquakes worldwide from the USGS, with magnitude, place and how " +
@@ -183,7 +247,33 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			b.WriteString(`</div>`)
 		}
 	}
-	b.WriteString(`</div></div>` + pageStyle)
+	// Disasters above the noise floor, under the quake list. Green is most of
+	// the feed and is mostly a wildfire nobody needs telling about; orange and
+	// red are the ones somebody would act on.
+	if live, err := alerts("orange", 0, 0, 0); err == nil && len(live) > 0 {
+		b.WriteString(`<div class="card"><h3>Active alerts</h3>`)
+		for i, a := range live {
+			if i >= 10 {
+				break
+			}
+			b.WriteString(`<div class="hq"><span class="hlev hlev-` +
+				strings.ToLower(html.EscapeString(a.Level)) + `">` + html.EscapeString(a.Level) +
+				`</span> ` + html.EscapeString(a.Kind))
+			if a.Name != "" {
+				b.WriteString(` ` + html.EscapeString(a.Name))
+			}
+			if a.Country != "" {
+				b.WriteString(` — ` + html.EscapeString(a.Country))
+			}
+			if a.Severity != "" {
+				b.WriteString(`<div class="htsu">` + html.EscapeString(a.Severity) + `</div>`)
+			}
+			b.WriteString(`</div>`)
+		}
+		b.WriteString(`</div>`)
+	}
+
+	b.WriteString(`</div>` + pageStyle)
 
 	w.Write([]byte(app.RenderHTMLForRequest("Hazards", //nolint:errcheck
 		"Earthquakes worldwide, live from the USGS", b.String(), r)))
@@ -235,4 +325,8 @@ const pageStyle = `<style>
 .hago{color:#888;font-size:13px;margin-left:auto}
 .htsu{color:#b23;font-size:13px;width:100%}
 .hmore{margin:12px 0 0;font-size:14px}
+.hlev{font-size:12px;font-weight:600;padding:2px 7px;border-radius:10px;text-transform:uppercase}
+.hlev-red{background:#fde8e8;color:#b23}
+.hlev-orange{background:#fdf0e2;color:#a55a00}
+.hlev-green{background:#e8f5ee;color:#0f7a52}
 </style>`
