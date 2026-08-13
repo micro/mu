@@ -72,7 +72,19 @@ func setSecurityHeaders(w http.ResponseWriter) {
 		"frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com",
 		"object-src 'none'",
 		"base-uri 'self'",
-		"form-action 'self'",
+		// Stripe Checkout is the one place a form leaves this origin, and it
+		// leaves by redirect: the form posts to /wallet/stripe/subscribe, which
+		// answers 303 to a checkout URL Stripe has just minted. form-action is
+		// enforced against the *redirect target*, not only against the action
+		// attribute, so 'self' alone blocked the POST that had already been
+		// accepted — the console said the form violated 'self' while pointing
+		// at a URL on this host, which reads like a browser bug and is not one.
+		//
+		// Named hosts rather than a wildcard. checkout.stripe.com is where a
+		// session lands; a wildcard would also cover anything else Stripe ever
+		// hosts, and the point of this directive is to enumerate where a form
+		// may take a person.
+		"form-action 'self' https://checkout.stripe.com",
 		"frame-ancestors 'self'",
 	}, "; "))
 	h.Set("X-Content-Type-Options", "nosniff")
