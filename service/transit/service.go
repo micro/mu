@@ -6,9 +6,12 @@ package transit
 // that a call is charged when it costs us something to run. Free also means an
 // anonymous agent can use them, which is right for public data.
 //
-// Every doc string says London, because an agent that asks for Manchester and
-// gets an empty list will conclude the tool is broken rather than that the
-// coverage is. A limit stated is a limit; a limit discovered is a bug.
+// The doc strings used to say London on every method, because an agent that
+// asks for Manchester and gets an empty list concludes the tool is broken
+// rather than that the coverage is. A limit stated is a limit; a limit
+// discovered is a bug. The limit is now narrower — live tracking is London,
+// timetables are wherever an operator has loaded one — and the doc strings say
+// exactly that.
 
 import (
 	"context"
@@ -16,6 +19,7 @@ import (
 	"strings"
 
 	"mu/internal/app"
+	"mu/internal/gtfs"
 	"mu/internal/service"
 )
 
@@ -44,11 +48,28 @@ func (Server) Nearby(_ context.Context, req *NearbyRequest, rsp *NearbyResponse)
 		return fmt.Errorf("lat and lon are required")
 	}
 	stops, err := nearbyStops(req.Lat, req.Lon, req.Radius)
-	if err != nil {
-		return err
-	}
-	if len(stops) == 0 {
-		rsp.Text = "No stops within range. This covers London only."
+	if err != nil || len(stops) == 0 {
+		// Outside TfL's city, or TfL is down. Either way the timetable knows
+		// the same streets, so the caller gets an answer rather than a lesson
+		// about which API we happen to speak.
+		if idx, near := timetableNear(req.Lat, req.Lon, 12); idx != nil && len(near) > 0 {
+			var b strings.Builder
+			for _, s := range near {
+				name := s.Name
+				if name == "" {
+					name = s.ID
+				}
+				fmt.Fprintf(&b, "%s, %.0fm (id %s)\n",
+					name, gtfs.DistanceKm(req.Lat, req.Lon, s.Lat, s.Lon)*1000, s.ID)
+			}
+			rsp.Text = strings.TrimRight(b.String(), "\n")
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		rsp.Text = "No stops within range. London is covered live; elsewhere depends on " +
+			"which timetables this instance has loaded."
 		return nil
 	}
 
@@ -91,19 +112,35 @@ func (Server) Arrivals(_ context.Context, req *ArrivalsRequest, rsp *ArrivalsRes
 	// digits is already an id, which avoids a search call for the common case
 	// of a caller passing back what nearby just told it.
 	id, label := name, name
+	var findErr error
 	if strings.ContainsAny(name, " ,") || !strings.ContainsAny(name, "0123456789") {
 		found, err := findStop(name)
 		if err != nil {
-			return err
+			findErr = err
+		} else {
+			id, label = found.ID, found.Name
 		}
-		id, label = found.ID, found.Name
 	}
 
-	arrs, err := arrivalsAt(id)
-	if err != nil {
-		return err
+	var arrs []arrival
+	var err error
+	if findErr == nil {
+		arrs, err = arrivalsAt(id)
 	}
-	if len(arrs) == 0 {
+	if findErr != nil || err != nil || len(arrs) == 0 {
+		// The timetable, for stops TfL has never heard of. Scheduled rather
+		// than live, and labelled as such: "due 23:03" and "4 min away" are
+		// different promises and should not be dressed alike.
+		if sched, ok := timetableAt(name, 10); ok {
+			rsp.Text = renderScheduled(sched)
+			return nil
+		}
+		if findErr != nil {
+			return findErr
+		}
+		if err != nil {
+			return err
+		}
 		rsp.Text = "Nothing due at " + label + " right now."
 		return nil
 	}
@@ -185,11 +222,12 @@ func (Server) Status(_ context.Context, req *StatusRequest, rsp *StatusResponse)
 	return nil
 }
 
-// Load registers the service.
+// Load registers the service and starts keeping timetables current.
 func Load() {
 	if err := service.Register(Spec); err != nil {
 		app.Log("transit", "service register failed: %v", err)
 	}
+	StartFeeds()
 }
 
 var Spec = service.Spec{
@@ -202,11 +240,13 @@ var Spec = service.Spec{
 	Endpoints: map[string]service.Endpoint{
 		"Nearby": {
 			Doc: "Bus stops and stations near a point, nearest first, with the id each one " +
-				"is called by. London only",
+				"is called by. London live from TfL; elsewhere from whichever published " +
+				"timetables this instance has loaded",
 		},
 		"Arrivals": {
-			Doc: "What is due at a stop and in how many minutes — buses, tube, DLR, " +
-				"Overground and Elizabeth line. Takes a stop name or an id. London only",
+			Doc: "What is due at a stop and when. Takes a stop name or an id. In London " +
+				"this is live from TfL — buses, tube, DLR, Overground and Elizabeth line. " +
+				"Elsewhere it is the published timetable, and says so",
 		},
 		"Status": {
 			Doc: "Which lines are delayed, part-suspended or closed right now, and why. " +

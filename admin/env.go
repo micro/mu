@@ -56,6 +56,9 @@ var settingGroups = []settingGroup{
 		"TRADE_RPC_URL",
 		"TRADE_CHAIN",
 	}},
+	{"Transit", []string{
+		"TRANSIT_FEEDS",
+	}},
 	{"Discord", []string{
 		"DISCORD_BOT_TOKEN",
 	}},
