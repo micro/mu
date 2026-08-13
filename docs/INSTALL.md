@@ -521,6 +521,7 @@ token.
 | `X402_NETWORK` · `X402_ASSETS` | Chain and accepted tokens |
 | `X402_SERVERS` | Other MCP servers this instance may pay, as `name=url` — read by the outbound client, which no tool currently exposes |
 | `CDP_API_KEY_ID` · `CDP_API_KEY_SECRET` | Coinbase facilitator credentials |
+| `SUPPORT_CHAT` | Optional. A chat invite shown on /support — a Discord or Matrix link, per instance. Without it /support offers the support@ address and the issue tracker. `support@<MAIL_DOMAIN>` delivers to the oldest admin |
 | `STRIPE_SECRET_KEY` · `STRIPE_PUBLISHABLE_KEY` · `STRIPE_WEBHOOK_SECRET` | Card top-ups for credits. The webhook wants `checkout.session.completed`. It is belt and braces rather than the only route: the return from Stripe settles a purchase too, so a webhook that is missing, misconfigured or signed with the wrong secret no longer means the card is charged and nothing happens |
 | `BASE_RPC_URL` · `TRADE_CHAIN` · `TRADE_RPC_URL` | On-chain reads |
 

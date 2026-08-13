@@ -236,7 +236,13 @@ func footerFor(acc *auth.Account) string {
 // FooterLinks is the site footer, shared by the app shell and the sidebar-less
 // landing shell (/about, /agents) so every page shows the same links.
 func FooterLinks() string {
-	return `<a href="/about">About</a> · <a href="/tools">Tools</a> · <a href="/pricing">Pricing</a> · <a href="/help">Help</a> · <a href="/privacy">Privacy</a> · <a href="/status">Status</a>` + torFooterLink()
+	// Support is in the footer because a person who cannot pay has to be able to
+	// find a way to say so from wherever they got stuck, and there was none: the
+	// Discord invite lived in the README on GitHub, and support@ was a reserved
+	// username with no mailbox behind it. Somebody whose top-up failed had
+	// nowhere at all to report it, which meant an operator only found out by
+	// being told in person.
+	return `<a href="/about">About</a> · <a href="/tools">Tools</a> · <a href="/pricing">Pricing</a> · <a href="/help">Help</a> · <a href="/support">Support</a> · <a href="/privacy">Privacy</a> · <a href="/status">Status</a>` + torFooterLink()
 }
 
 func torFooterLink() string {

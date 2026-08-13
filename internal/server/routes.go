@@ -145,6 +145,7 @@ func authRequired() map[string]bool {
 		"/pricing":                       false, // Public - pricing page
 		"/plans":                         false, // Public - the same page
 		"/privacy":                       false, // Public - privacy policy
+		"/support":                       false, // Public - how to reach the operator
 		"/help":                          false, // Public - how to connect an agent
 		"/install":                       false, // Public - run your own instance
 		"/whitepaper":                    false, // Public - whitepaper
@@ -316,6 +317,7 @@ func registerRoutes() {
 	// instance runs a mail server — so there is real correspondence to account
 	// for, not just a formality.
 	http.HandleFunc("/privacy", home.PrivacyHandler)
+	http.HandleFunc("/support", home.SupportHandler)
 
 	// first-run setup wizard (open only until an admin exists)
 	http.HandleFunc("/setup", setup.Handler)

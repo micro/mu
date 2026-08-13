@@ -245,6 +245,16 @@ func (s *Session) Rcpt(to string, opts *smtpd.RcptOptions) error {
 		}
 	}
 
+	// support@ is an address this instance offers and nobody holds — "support"
+	// is a reserved username, so the lookup below refuses it and the mail is
+	// rejected at the door. Somebody who cannot pay writes there and gets a
+	// bounce; Data delivers it to the admin.
+	if strings.EqualFold(username, SupportMailbox) {
+		s.to = append(s.to, to)
+		app.Log("mail", "Accepting support mail for %s", to)
+		return nil
+	}
+
 	// Domain matches - verify user exists and has mail access
 	acc, err := auth.GetAccount(username)
 	if err != nil {
@@ -584,6 +594,16 @@ func (s *Session) Data(r io.Reader) error {
 				continue
 			}
 			app.Log("mail", "Shared agent mail from %s resolved to account %s", fromAddr.Address, toAcc.ID)
+		} else if !isExternal && toTag == "" && strings.EqualFold(toUsername, SupportMailbox) {
+			// support@ is nobody's account — it is a reserved username, so it
+			// resolved to no recipient and the mail was dropped. Anybody who
+			// could not pay, or whose top-up did not land, wrote there and was
+			// answered by silence.
+			if toAcc = firstAdmin(); toAcc == nil {
+				app.Log("mail", "Support mail from %s: no admin to deliver it to", fromAddr.Address)
+				continue
+			}
+			app.Log("mail", "Support mail from %s delivered to %s", fromAddr.Address, toAcc.ID)
 		} else {
 			var err error
 			if toAcc, err = auth.GetAccount(toUsername); err != nil {
