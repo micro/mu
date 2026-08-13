@@ -121,6 +121,34 @@
       "env": "CREDIT_COST_IMAGE"
     },
     {
+      "op": "text_summarise",
+      "cost": 2,
+      "label": "Summarise text",
+      "env": "CREDIT_COST_TEXT_SUMMARISE",
+      "note": "Atlas deepseek-v4-flash \u2014 capped at 30k characters"
+    },
+    {
+      "op": "text_extract",
+      "cost": 3,
+      "label": "Extract structure from text",
+      "env": "CREDIT_COST_TEXT_EXTRACT",
+      "note": "Atlas deepseek-v4-pro \u2014 accuracy matters, capped at 30k characters"
+    },
+    {
+      "op": "text_classify",
+      "cost": 1,
+      "label": "Classify text",
+      "env": "CREDIT_COST_TEXT_CLASSIFY",
+      "note": "Atlas deepseek-v4-flash \u2014 the cheapest real model call"
+    },
+    {
+      "op": "text_translate",
+      "cost": 3,
+      "label": "Translate text",
+      "env": "CREDIT_COST_TEXT_TRANSLATE",
+      "note": "Atlas deepseek-v4-pro \u2014 capped at 30k characters"
+    },
+    {
       "op": "app_build",
       "cost": 15,
       "label": "App build (AI)",
