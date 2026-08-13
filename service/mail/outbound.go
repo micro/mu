@@ -65,9 +65,12 @@ func MaySendOut(owner, to string) (bool, string) {
 	if WroteToUs(owner, to) {
 		return true, ""
 	}
+	// Places, not paths. A route written into a sentence reads as a link and is
+	// not one — see internal/app, which linkifies these words for a page and
+	// leaves the sentence readable everywhere else.
 	return false, fmt.Sprintf("this account cannot send mail out as itself yet — %s has not "+
 		"written to you, and mail leaving here goes out under this instance's own domain. "+
-		"Verify your email address on /account, or add credit on /wallet, and it will. "+
+		"Verify your email address in your Account, or add credit to your Wallet, and it will. "+
 		"To send from this instance's sending domain instead, which needs none of that, "+
 		"use email_send", to)
 }

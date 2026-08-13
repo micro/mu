@@ -162,6 +162,20 @@ func agentAllowance(owner string) int {
 	return PlanAgents(owner)
 }
 
+// AtAgentLimit reports whether this account may not make another agent, with
+// how many it has and how many it may have.
+//
+// Asked before the door rather than behind it. The limit was checked only where
+// an agent is actually made, so the way to find out was to press New agent,
+// fill in a name, a description, a prompt and a set of tools, submit, and be
+// told no — every part of which had to be typed first. A limit is not a
+// surprise to spring on somebody who has already done the work.
+func AtAgentLimit(owner string) (full bool, have, max int) {
+	max = agentAllowance(owner)
+	have = len(Agents(owner))
+	return max > 0 && have >= max, have, max
+}
+
 func plural(n int) string {
 	if n == 1 {
 		return ""
@@ -202,7 +216,7 @@ func CreateAgent(owner, name, kind, prompt, description string, services []strin
 	existing := Agents(owner)
 	if max := agentAllowance(owner); max > 0 && len(existing) >= max {
 		return nil, "", fmt.Errorf("your plan runs %d agent%s and you have %d — "+
-			"change your plan at /pricing to run more, or delete one first",
+			"change your plan on Pricing to run more, or delete one first",
 			max, plural(max), len(existing))
 	}
 

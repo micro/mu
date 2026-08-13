@@ -46,10 +46,16 @@ func TestAnUnaccountableAccountCannotColdMailOut(t *testing.T) {
 	}
 	// The refusal has to name both ways out. One that does not is
 	// indistinguishable from the feature being broken.
-	for _, want := range []string{"/account", "email_send"} {
+	//
+	// Named as places rather than as routes: a path written into a sentence
+	// reads as a link and is not one, wherever the sentence ends up.
+	for _, want := range []string{"your Account", "email_send"} {
 		if !strings.Contains(why, want) {
 			t.Errorf("the refusal does not mention %s: %s", want, why)
 		}
+	}
+	if strings.Contains(why, "/account") || strings.Contains(why, "/wallet") {
+		t.Errorf("the refusal names a route, which reads as a link and is not one: %s", why)
 	}
 }
 

@@ -2,6 +2,7 @@ package agent
 
 import (
 	"encoding/json"
+	"fmt"
 	"html"
 	"net/http"
 	"strings"
@@ -288,6 +289,29 @@ func NewAgentHandler(w http.ResponseWriter, r *http.Request) {
 	} else if fid := r.URL.Query().Get("fork"); fid != "" {
 		if a := AgentFor(acc.ID, fid); a != nil {
 			cur, forkFrom = a.AsMicro(), fid
+		}
+	}
+
+	// At the cap, the builder is a form you cannot submit — so it is not shown.
+	//
+	// The check lived only where an agent is made, so the way to discover the
+	// limit was to fill the whole thing in and have an alert say no. Editing is
+	// exempt because editing adds nothing; forking is not, because a fork is a
+	// new agent with a head start.
+	if editID == "" {
+		if full, have, max := AtAgentLimit(acc.ID); full {
+			app.Respond(w, r, app.Response{
+				Title:       "Agent limit",
+				Description: "Build a custom agent",
+				HTML: fmt.Sprintf(`<div class="card" style="max-width:600px">`+
+					`<h3 style="margin:0 0 8px">You are running %d of %d agent%s</h3>`+
+					`<p style="color:#666;font-size:15px;margin:0 0 16px">Your plan runs %d. `+
+					`Change your plan to add more, or delete one you are not using.</p>`+
+					`<a href="/pricing" class="btn">Upgrade to add more</a> `+
+					`<a href="/agents" class="btn" style="background:#fff;color:#111;border:1px solid #ddd">Your agents</a>`+
+					`</div>`, have, max, plural(max), max),
+			})
+			return
 		}
 	}
 

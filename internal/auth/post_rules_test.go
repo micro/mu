@@ -64,10 +64,16 @@ func TestPostBlockReasonOffersTheWayOut(t *testing.T) {
 	VerificationRequired = func() bool { return true }
 
 	reason := PostBlockReason("blocked-user")
-	for _, want := range []string{"/account", "/wallet", "24 hours"} {
+	// Both ways out, named as places rather than as routes. A path written into
+	// a sentence reads as a link and is not one; the renderer turns these words
+	// into the links, so the sentence stays a sentence wherever it is shown.
+	for _, want := range []string{"your Account", "your Wallet", "24 hours"} {
 		if !strings.Contains(reason, want) {
 			t.Fatalf("expected the reason to mention %q, got %q", want, reason)
 		}
+	}
+	if strings.Contains(reason, "/account") || strings.Contains(reason, "/wallet") {
+		t.Errorf("the reason names a route, which reads as a link and is not one: %q", reason)
 	}
 }
 

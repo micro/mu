@@ -67,11 +67,13 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 
 	if msg := r.URL.Query().Get("error"); msg != "" {
 		// The way out is a link, because it reads as one. Hitting the agent limit
-		// names /pricing as where to change it — and as escaped text that is a
-		// path you click and nothing happens, so the one route the message exists
-		// to open is the one that dead-ends.
+		// names where to change it, and as plain text that is a place you click
+		// and nothing happens — so the one route the message exists to open is
+		// the one that dead-ends. Named as the page rather than as its route,
+		// for the reason the post banner gives: /pricing is how it is addressed,
+		// "Pricing" is what it is called.
 		said := html.EscapeString(msg)
-		said = strings.ReplaceAll(said, "/pricing", `<a href="/pricing">/pricing</a>`)
+		said = strings.ReplaceAll(said, "on Pricing", `on <a href="/pricing">Pricing</a>`)
 		b.WriteString(`<p class="text-error">` + said + `</p>`)
 	}
 	if r.URL.Query().Get("removed") != "" {
@@ -110,7 +112,19 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	// services and issued a token, the other asked for tools and a system prompt
 	// and issued nothing, and neither linked to the other. The builder took the
 	// missing question ("where does it run?") so this could become a link.
-	b.WriteString(app.ActionLink("/agent/new", "+ New agent"))
+	//
+	// At the cap it is not a button to the builder, because the builder is a
+	// form you cannot submit. It becomes the thing that would actually change
+	// the answer.
+	if full, have, max := AtAgentLimit(owner); full {
+		b.WriteString(app.ActionLink("/pricing", "Upgrade to add more"))
+		b.WriteString(fmt.Sprintf(
+			`<p class="text-sm" style="color:#666;margin:8px 0 0">Your plan runs %d agent%s and you have %d. `+
+				`Change your plan on <a href="/pricing">Pricing</a>, or delete one first.</p>`,
+			max, plural(max), have))
+	} else {
+		b.WriteString(app.ActionLink("/agent/new", "+ New agent"))
+	}
 	// Close the column this page opened. Without it the footer was swallowed
 	// into a 720px div and rendered halfway up the page: #content is a flex
 	// child sized to hold the footer at the bottom, and an unclosed div puts

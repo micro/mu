@@ -758,17 +758,25 @@ func VerifyBanner(r *http.Request) string {
 		// No mail on this instance, so verifying is not on offer: credit is.
 		action, href = "Add credit →", "/wallet"
 	}
-	// The paths inside the sentence are links, because they read as ones.
+	// The places named in the sentence are links, because they read as ones.
 	//
-	// The reason names where to go — "verify your email address on /account" —
-	// and that is the sentence a person acts on. It was escaped text, so it
-	// looked like a link, invited a click and did nothing; the only way out was
-	// the button at the far end of the row, which on a narrow screen wraps onto
-	// its own line below the fold of the banner. Two ways to the same place is
-	// not clutter when one of them is the one people try.
+	// The reason says where to go — "verify your email address in your Account"
+	// — and that is the sentence a person acts on. It was plain text naming a
+	// route, /account, which looks like a link, invites a click and does
+	// nothing; the only way out was the button at the far end of the row, which
+	// on a narrow screen wraps below the fold of the banner. Two ways to one
+	// place is not clutter when one of them is the one people try.
+	//
+	// "your Account" rather than the bare word, because the same sentence
+	// contains "a new account waits 24 hours" — and a rule that linked every
+	// "account" would turn that into a route to somewhere it does not mean.
 	said := htmlpkg.EscapeString(reason)
-	for _, p := range []string{"/account", "/wallet"} {
-		said = strings.ReplaceAll(said, p, `<a href="`+p+`" style="color:#5b4a00">`+p+`</a>`)
+	for _, l := range []struct{ phrase, href string }{
+		{"your Account", "/account"},
+		{"your Wallet", "/wallet"},
+	} {
+		said = strings.ReplaceAll(said, l.phrase,
+			`your <a href="`+l.href+`" style="color:#5b4a00">`+strings.TrimPrefix(l.phrase, "your ")+`</a>`)
 	}
 	return `<div class="verify-banner" style="background:#fff8e1;border:1px solid #f1d68c;border-radius:6px;padding:10px 14px;margin:0 0 14px;font-size:14px;color:#5b4a00;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
 <strong>You cannot post yet.</strong>

@@ -655,12 +655,19 @@ func PostBlockReason(accountID string) string {
 	// Lead with the way out. The wait is the fallback, not the instruction —
 	// a reason that only says "come back tomorrow" reads as a dead end when
 	// two doors are open right now.
+	//
+	// Named the way a person would name them — "in your Account", "to your
+	// Wallet" — rather than as paths. A route written into a sentence reads as
+	// a link, so it gets clicked, and in plain text nothing happens; and even
+	// where it is turned into one, /account is how the page is addressed rather
+	// than what it is called. The words are what the renderer links, so this
+	// stays a sentence and not markup.
 	if time.Since(acc.Created) < 24*time.Hour {
 		remaining := (24*time.Hour - time.Since(acc.Created)).Round(time.Minute)
-		return fmt.Sprintf("Verify your email address on /account, or add credit on /wallet, and you can post straight away. Otherwise a new account waits 24 hours — %s remaining.", remaining)
+		return fmt.Sprintf("Verify your email address in your Account, or add credit to your Wallet, and you can post straight away. Otherwise a new account waits 24 hours — %s remaining.", remaining)
 	}
 	if VerificationRequired != nil && VerificationRequired() {
-		return "Verify your email address on /account before posting."
+		return "Verify your email address in your Account before posting."
 	}
 	return ""
 }
