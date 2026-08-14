@@ -23,6 +23,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"mu/internal/app"
 	"strings"
 	"sync"
 	"time"
@@ -113,6 +114,57 @@ func init() {
 	// Load daily usage from disk
 	b, _ = data.LoadFile("daily_usage.json")
 	json.Unmarshal(b, &dailyUsage)
+
+	rebuildFromTransactions()
+}
+
+// rebuildFromTransactions restores balances the ledger file no longer has.
+//
+// wallets.json was written by two different maps — this one and the key store
+// in basewallet.go, which used the same filename — so whichever saved last
+// destroyed the other. Accounts came back with a balance of zero having done
+// nothing to spend it.
+//
+// Every transaction records the balance after it, so the ledger is
+// reconstructable from a file neither writer ever touched. Only for accounts
+// with no entry at all: an entry that survived is authoritative, and a balance
+// somebody topped up after the last recorded transaction must not be rolled
+// back to it.
+func rebuildFromTransactions() {
+	if len(transactions) == 0 {
+		return
+	}
+	// Keyed by account already, but the newest row is what carries the balance
+	// and the slice is not guaranteed to be in order.
+	latest := map[string]*Transaction{}
+	for id, list := range transactions {
+		for _, t := range list {
+			if t == nil {
+				continue
+			}
+			if prev, ok := latest[id]; !ok || t.CreatedAt.After(prev.CreatedAt) {
+				latest[id] = t
+			}
+		}
+	}
+
+	restored := 0
+	for id, t := range latest {
+		if _, ok := wallets[id]; ok {
+			continue
+		}
+		if t.Balance <= 0 {
+			continue
+		}
+		wallets[id] = &Wallet{
+			UserID: id, Balance: t.Balance, Currency: "GBP", UpdatedAt: t.CreatedAt,
+		}
+		restored++
+	}
+	if restored > 0 {
+		app.Log("wallet", "restored %d credit balances from the transaction log", restored)
+		data.SaveJSON("wallets.json", wallets) //nolint:errcheck
+	}
 }
 
 // Load initializes wallet

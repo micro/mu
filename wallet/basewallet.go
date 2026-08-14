@@ -38,12 +38,25 @@ type BaseWallet struct {
 var (
 	walletMu    sync.RWMutex
 	userWallets = map[string]*BaseWallet{} // accountID → wallet
-	walletsFile = "wallets.json"
+	// Named for what it holds. It used to be "wallets.json" — the same file the
+	// credit ledger in wallet.go writes — and the two maps overwrote each other
+	// on every save, in whichever order they happened to run.
+	//
+	// It destroyed both. Loading this file into BaseWallet structs gave every
+	// account an entry with no address and no key, because the credit ledger's
+	// fields have different names; saving that map back wiped every balance.
+	// An account with 560 credits read zero, and a wallet holding real USDC
+	// showed no address to send to.
+	//
+	// Two stores, two files. TestNoTwoStoresShareAFile holds the line.
+	walletsFile = "base_wallets.json"
 	walletsInit sync.Once
 )
 
 // legacyWalletsFile is where these keys lived when the only thing an account's
-// wallet did was trade. It pays for tool calls now, and holds the balance a
+// wallet did was trade. It is also where they survived the collision above,
+// because it is only ever read and the primary was never empty enough to reach
+// it — which is the sole reason nobody's USDC was stranded. It pays for tool calls now, and holds the balance a
 // person topped up with, so the name had stopped describing the contents.
 //
 // It is read, never written, and never deleted. Anything else risks an
@@ -64,16 +77,40 @@ func loadWallets() {
 // copying it forward. Separate from loadWallets so it can be tested without
 // fighting the sync.Once that guards process-wide state.
 func loadWalletsFrom(primary, legacy string) map[string]*BaseWallet {
-	m := map[string]*BaseWallet{}
-	_ = data.LoadJSON(primary, &m)
+	m := usable(loadRaw(primary))
 	if len(m) > 0 {
 		return m
 	}
-	_ = data.LoadJSON(legacy, &m)
+	m = usable(loadRaw(legacy))
 	if len(m) > 0 {
 		_ = data.SaveJSON(primary, m)
 	}
 	return m
+}
+
+func loadRaw(file string) map[string]*BaseWallet {
+	m := map[string]*BaseWallet{}
+	_ = data.LoadJSON(file, &m)
+	return m
+}
+
+// usable drops entries that decoded into nothing.
+//
+// A file written by something else parses cleanly into these structs and
+// yields an entry per key with every field empty — which is how the credit
+// ledger came to look like a full set of wallets holding no keys. An entry
+// with neither an address nor a key is not a wallet, and treating the map as
+// populated because it has keys in it is what stopped the fallback to the file
+// that did have them.
+func usable(m map[string]*BaseWallet) map[string]*BaseWallet {
+	out := make(map[string]*BaseWallet, len(m))
+	for id, w := range m {
+		if w == nil || (w.Address == "" && w.PrivateKey == "") {
+			continue
+		}
+		out[id] = w
+	}
+	return out
 }
 
 // BaseRPCURL returns the Base JSON-RPC endpoint. Honours BASE_RPC_URL, then the
