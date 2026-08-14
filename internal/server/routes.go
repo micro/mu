@@ -272,23 +272,33 @@ func registerRoutes() {
 	// Where the money used to be. /wallet is a service now, so these are not
 	// merely renamed — the old prefix has come to mean something else, and a
 	// bookmark for a balance must not land on a crypto address.
-	//
-	// The Stripe webhook is not in this list, and does not move either. It is a
-	// POST from Stripe to whatever URL its dashboard names: a redirect on a POST
-	// is a dropped payment, and a path Stripe has not been told about is a
-	// top-up that never lands. It stays where it already is until somebody
-	// changes it in the dashboard first.
 	for _, moved := range []string{
 		"/wallet/topup", "/wallet/transfer", "/wallet/pricing",
 		"/wallet/stripe/checkout", "/wallet/stripe/success",
 	} {
 		http.HandleFunc(moved, account.MovedToAccount)
 	}
-	http.HandleFunc("/wallet/stripe/webhook", account.BalanceHandler)
 
-	// Nothing under /wallet is in authRequired(), so the webhook stays reachable
-	// without a session — as it must be. /account is authenticated by prefix,
-	// which is why the webhook could not simply move under it.
+	// Stripe posts here. Named for the provider, at the top level, and that is
+	// the whole point: a webhook URL is a contract with somebody outside this
+	// process, configured once in their dashboard, and it has to survive every
+	// rearrangement of ours. It was /wallet/stripe/webhook, and when the money
+	// moved to the account the webhook could not follow — a redirect on a POST
+	// is a dropped payment, and /account is authenticated by prefix while a
+	// webhook must be public. Both of those are reasons the path should never
+	// have described where credits happened to live.
+	//
+	// This instance has made the same mistake once before in the other
+	// direction: /sms/webhook is named for our service rather than the provider,
+	// and Twilio — which bundles SMS and WhatsApp onto one webhook — posted
+	// WhatsApp messages to it that were refused for being the wrong kind.
+	//
+	// The old path stays live rather than redirecting, until the Stripe
+	// dashboard is pointed at the new one and events are seen arriving. Two
+	// registrations, one handler; settleSession is keyed on the session id, so
+	// nothing settles twice whatever arrives where.
+	http.HandleFunc("/stripe/webhook", account.HandleStripeWebhook)
+	http.HandleFunc("/wallet/stripe/webhook", account.HandleStripeWebhook)
 
 	// serve whatsapp webhook
 	http.HandleFunc("/whatsapp/webhook", whatsapp.Handler)

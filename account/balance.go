@@ -207,11 +207,11 @@ func abs(n int) int {
 
 // BalanceHandler serves everything under /account that involves money.
 //
-// The paths were /wallet/* and moved with the ledger. The old ones redirect,
-// except the Stripe webhook, which does not move at all: Stripe posts to
-// whatever URL its dashboard names, a redirect on a POST is a dropped payment,
-// and a path Stripe has not been told about is a top-up that never lands. It
-// answers on its original path until somebody changes the dashboard first.
+// The paths were /wallet/* and moved with the ledger; the old ones redirect.
+//
+// The Stripe webhook is not among them and is not routed through here at all.
+// It is a contract with somebody outside this process rather than a page, so it
+// is registered on its own at /stripe/webhook — see routes.go.
 func BalanceHandler(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 
@@ -244,8 +244,6 @@ func BalanceHandler(w http.ResponseWriter, r *http.Request) {
 		handleStripeCheckout(w, r)
 	case path == "/account/stripe/success" && r.Method == "GET":
 		handleStripeSuccess(w, r)
-	case path == "/wallet/stripe/webhook" && r.Method == "POST":
-		HandleStripeWebhook(w, r)
 	case path == "/account/transfer" && r.Method == "POST":
 		handleTransfer(w, r)
 	case path == "/account/transfer" && r.Method == "GET":

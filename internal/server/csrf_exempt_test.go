@@ -3,6 +3,8 @@ package server
 import (
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"strings"
 	"testing"
 )
 
@@ -15,7 +17,8 @@ import (
 // because the request never became anybody's to log.
 func TestWebhooksAreExemptFromCSRF(t *testing.T) {
 	for _, path := range []string{
-		"/wallet/stripe/webhook",
+		"/stripe/webhook",
+		"/wallet/stripe/webhook", // the old one, live until the dashboard moves
 		"/sms/webhook",
 		"/whatsapp/webhook",
 	} {
@@ -48,5 +51,53 @@ func TestCredentialledRequestsAreExempt(t *testing.T) {
 	r = httptest.NewRequest(http.MethodPost, "/login", nil)
 	if !csrfExempt(r) {
 		t.Error("signing in has no session to carry a token from")
+	}
+}
+
+// A webhook must be reachable with no session, and Stripe's is the one that
+// nearly was not.
+//
+// The path used to sit under whichever noun currently owned money. That made it
+// a hostage to our own refactoring: /account is authenticated by prefix, so
+// moving the webhook there would have made every top-up bounce with a 401 that
+// Stripe reports as a delivery failure and this side never logs. Named for the
+// provider at the top level, it is in nobody's prefix and stays public.
+func TestTheStripeWebhookNeedsNoSession(t *testing.T) {
+	authed := authRequired()
+	for _, path := range []string{"/stripe/webhook", "/wallet/stripe/webhook"} {
+		for prefix, needsAuth := range authed {
+			if strings.HasPrefix(path, prefix) && needsAuth {
+				t.Errorf("%s is behind auth via the %q prefix — Stripe has no session, "+
+					"so every top-up would bounce", path, prefix)
+			}
+		}
+	}
+}
+
+// And both paths reach the handler, because the dashboard still names the old
+// one. A redirect would not do: Stripe POSTs, and a 303 drops the body.
+func TestBothStripeWebhookPathsAreRegistered(t *testing.T) {
+	src, err := os.ReadFile("routes.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		`http.HandleFunc("/stripe/webhook", account.HandleStripeWebhook)`,
+		`http.HandleFunc("/wallet/stripe/webhook", account.HandleStripeWebhook)`,
+	} {
+		if !strings.Contains(string(src), want) {
+			t.Errorf("missing %s — a webhook path that stops answering is a top-up "+
+				"that is charged and never credited", want)
+		}
+	}
+	// And not in the moved-to-account list, which redirects.
+	body := string(src)
+	i := strings.Index(body, "for _, moved := range []string{")
+	if i < 0 {
+		t.Fatal("the redirect list is gone; this test no longer checks anything")
+	}
+	list := body[i : i+strings.Index(body[i:], "}")]
+	if strings.Contains(list, "stripe/webhook") {
+		t.Error("the Stripe webhook is in the redirect list; a 303 on a POST drops the payment")
 	}
 }

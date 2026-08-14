@@ -568,8 +568,16 @@ token.
 | `X402_SERVERS` | Other MCP servers this instance may pay, as `name=url` — read by the outbound client, which no tool currently exposes |
 | `CDP_API_KEY_ID` · `CDP_API_KEY_SECRET` | Coinbase facilitator credentials |
 | `SUPPORT_CHAT` | Optional. A chat invite shown on /support — a Discord or Matrix link, per instance. Without it /support offers the support@ address and the issue tracker. `support@<MAIL_DOMAIN>` delivers to the oldest admin |
-| `STRIPE_SECRET_KEY` · `STRIPE_PUBLISHABLE_KEY` · `STRIPE_WEBHOOK_SECRET` | Card top-ups for credits. The webhook wants `checkout.session.completed`. It is belt and braces rather than the only route: the return from Stripe settles a purchase too, so a webhook that is missing, misconfigured or signed with the wrong secret no longer means the card is charged and nothing happens |
+| `STRIPE_SECRET_KEY` · `STRIPE_PUBLISHABLE_KEY` · `STRIPE_WEBHOOK_SECRET` | Card top-ups for credits. Point the endpoint at `https://<your domain>/stripe/webhook` and subscribe it to `checkout.session.completed`. It is belt and braces rather than the only route: the return from Stripe settles a purchase too, so a webhook that is missing, misconfigured or signed with the wrong secret no longer means the card is charged and nothing happens |
 | `BASE_RPC_URL` · `TRADE_CHAIN` · `TRADE_RPC_URL` | On-chain reads |
+
+The webhook used to be at `/wallet/stripe/webhook`, and that path still answers
+so an instance upgrading does not lose a top-up between the deploy and the
+dashboard edit. Move it when convenient; the old one goes away once nothing is
+arriving there. It is named for Stripe rather than for whichever page shows a
+balance because a webhook URL is a contract with somebody outside this process:
+it is configured once, possibly by somebody who has since left, and it should
+not need changing because we rearranged our own routes.
 
 ### Prices and limits
 
