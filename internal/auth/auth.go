@@ -659,7 +659,7 @@ func PostBlockReason(accountID string) string {
 	// stays a sentence and not markup.
 	if time.Since(acc.Created) < 24*time.Hour {
 		remaining := (24*time.Hour - time.Since(acc.Created)).Round(time.Minute)
-		return fmt.Sprintf("Verify your email address in your Account, or add credit to your Wallet, and you can post straight away. Otherwise a new account waits 24 hours — %s remaining.", remaining)
+		return fmt.Sprintf("Verify your email address in your Account, or add credit to your Balance, and you can post straight away. Otherwise a new account waits 24 hours — %s remaining.", remaining)
 	}
 	if VerificationRequired != nil && VerificationRequired() {
 		return "Verify your email address in your Account before posting."

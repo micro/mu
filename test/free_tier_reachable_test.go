@@ -52,14 +52,14 @@ func TestRefusedCallsAreCounted(t *testing.T) {
 }
 
 // "You cannot post yet" belongs nowhere near somebody's money.
-func TestTheVerifyBannerStaysOffTheWalletPages(t *testing.T) {
+func TestTheVerifyBannerStaysOffTheMoneyPages(t *testing.T) {
 	src, err := os.ReadFile("../internal/app/app.go")
 	if err != nil {
 		t.Fatal(err)
 	}
 	body := string(src)
-	if !strings.Contains(body, `strings.HasPrefix(p, "/wallet/")`) {
-		t.Error("the verify banner is exempted by exact path again, so /wallet/transfer " +
+	if !strings.Contains(body, `strings.HasPrefix(p, "/account/")`) {
+		t.Error("the verify banner is exempted by exact path again, so /account/transfer " +
 			"tells someone moving their own credit that they cannot post")
 	}
 }

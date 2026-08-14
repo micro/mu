@@ -1,4 +1,4 @@
-package wallet
+package account
 
 import (
 	"os"
@@ -136,7 +136,7 @@ func TestEveryChargedOperationIsPublished(t *testing.T) {
 		if err != nil || info.IsDir() || !strings.HasSuffix(path, ".go") {
 			return nil
 		}
-		if strings.HasSuffix(path, "_test.go") || strings.Contains(path, "/wallet/") || strings.Contains(path, "/quota/") {
+		if strings.HasSuffix(path, "_test.go") || strings.Contains(path, "/account/") || strings.Contains(path, "/quota/") {
 			return nil
 		}
 		b, err := os.ReadFile(path)

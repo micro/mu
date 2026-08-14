@@ -1,4 +1,4 @@
-package wallet
+package account
 
 import (
 	"encoding/json"
@@ -50,34 +50,51 @@ func thousands(n int) string {
 	return string(out)
 }
 
-// WalletPage renders the wallet page HTML
-func WalletPage(userID string) string {
-	wallet := GetWallet(userID)
-	transactions := GetTransactions(userID, 20)
+// BalanceCard is what an account has to spend, at the top of /account.
+//
+// It sits directly under the profile because it is the one thing on that page
+// with a deadline: everything else — a display name, a language, a passkey —
+// can wait, and an empty balance stops the agent mid-errand. It used to be a
+// nav item of its own called Wallet, which put a person's money one click
+// further away than their choice of language.
+func BalanceCard(userID string) string {
+	c := CreditsOf(userID)
 
-	// Check if user is admin
 	isAdmin := false
 	if acc, err := auth.GetAccount(userID); err == nil {
 		isAdmin = acc.Admin
 	}
 
 	var sb strings.Builder
-
-	// Balance
-	sb.WriteString(`<div class="card">`)
-	sb.WriteString(`<h3>Balance</h3>`)
+	sb.WriteString(`<div class="card" id="balance">`)
+	sb.WriteString(`<h4>Balance</h4>`)
+	sb.WriteString(fmt.Sprintf(`<p style="font-size:28px;margin:4px 0 2px"><b>%s</b> `+
+		`<span style="color:#999;font-size:14px">credits</span></p>`, thousands(c.Balance)))
+	sb.WriteString(fmt.Sprintf(`<p class="text-sm text-muted" style="margin:0 0 10px">%s · 1 credit = 1p</p>`,
+		money(c.Balance)))
 	if isAdmin {
-		sb.WriteString(`<p class="text-sm text-muted">Admin · Unlimited access</p>`)
-		if wallet.Balance > 0 {
-			sb.WriteString(fmt.Sprintf(`<p>%d credits</p>`, wallet.Balance))
-		}
-	} else {
-		sb.WriteString(fmt.Sprintf(`<p>%d credits</p>`, wallet.Balance))
+		sb.WriteString(`<p class="text-sm text-muted" style="margin:0 0 10px">` +
+			`You are an admin on this instance, so your own calls are never charged.</p>`)
 	}
-	sb.WriteString(`<p><a href="/wallet/topup">Add Credits →</a> · <a href="/wallet/transfer">Transfer →</a></p>`)
+	sb.WriteString(`<p style="margin:0"><a href="/account/topup">Add credits →</a> · ` +
+		`<a href="/account/transfer">Transfer →</a> · <a href="#ledger">History →</a></p>`)
 	sb.WriteString(`</div>`)
+	return sb.String()
+}
 
-	// App earnings summary
+// LedgerSection is the receipts: what things cost, and what this account has
+// actually been charged.
+//
+// Below the fold on purpose. Somebody arriving at /account wants the number and
+// the button; the itemised history is what they scroll to when the number is
+// not what they expected.
+func LedgerSection(userID string) string {
+	transactions := Transactions(userID, 20)
+
+	var sb strings.Builder
+
+	// App earnings, when there are any. Money coming in reads differently from
+	// money going out and should not be a row in the same table.
 	var totalEarnings int
 	for _, tx := range transactions {
 		if tx.Operation == quota.OpAppRevenue {
@@ -86,98 +103,91 @@ func WalletPage(userID string) string {
 	}
 	if totalEarnings > 0 {
 		sb.WriteString(`<div class="card">`)
-		sb.WriteString(`<h3>App Earnings</h3>`)
+		sb.WriteString(`<h4>App earnings</h4>`)
 		sb.WriteString(fmt.Sprintf(`<p>%d credits earned from your apps (recent)</p>`, totalEarnings))
 		sb.WriteString(`<p class="text-sm text-muted">You keep 90%% of every sale. <a href="/apps">Manage your apps →</a></p>`)
 		sb.WriteString(`</div>`)
 	}
 
-	if !isAdmin {
-		// Self-hosting note
-		sb.WriteString(`<div class="card">`)
-		sb.WriteString(`<h3>Self-Host</h3>`)
-		sb.WriteString(`<p class="text-sm text-muted">Want unlimited? <a href="https://github.com/micro/mu">Self-host your own instance</a>.</p>`)
-		sb.WriteString(`</div>`)
-	}
-
-	// Credit costs
-	sb.WriteString(`<div class="card">`)
-	sb.WriteString(`<h3>Costs</h3>`)
+	sb.WriteString(`<div class="card" id="ledger">`)
+	sb.WriteString(`<h4>Costs</h4>`)
 	sb.WriteString(PricingTableHTML())
 	sb.WriteString(`</div>`)
 
-	// Transaction history
 	if len(transactions) > 0 {
 		sb.WriteString(`<div class="card">`)
-		sb.WriteString(`<h3>History</h3>`)
+		sb.WriteString(`<h4>History</h4>`)
 		sb.WriteString(`<table class="data-table">`)
 		sb.WriteString(`<tr><th>Date</th><th>Type</th><th>Amount</th><th>Balance</th></tr>`)
-
 		for _, tx := range transactions {
-			typeLabel := tx.Operation
-			if tx.Operation == quota.OpAppUse {
-				if appSlug, ok := tx.Metadata["app"].(string); ok {
-					typeLabel = "App: " + appSlug
-				} else {
-					typeLabel = "App usage"
-				}
-			} else if tx.Operation == quota.OpAppRevenue {
-				if appSlug, ok := tx.Metadata["app"].(string); ok {
-					typeLabel = "Earned: " + appSlug
-				} else {
-					typeLabel = "App revenue"
-				}
-			} else if tx.Type == TxTopup {
-				typeLabel = "Deposit"
-			} else if tx.Type == TxTransfer {
-				// Prefer the name recorded with the transfer, then the name of
-				// the id it went to, then the bare id. Receipts written before
-				// names were recorded still resolve, and one whose account has
-				// since gone still says something.
-				who := func(nameKey, idKey string) string {
-					if n, ok := tx.Metadata[nameKey].(string); ok && n != "" {
-						return n
-					}
-					if id, ok := tx.Metadata[idKey].(string); ok && id != "" {
-						return AccountLabel(id)
-					}
-					return ""
-				}
-				if tx.Amount > 0 {
-					if from := who("from_name", "from"); from != "" {
-						typeLabel = "Transfer from " + from
-					} else {
-						typeLabel = "Transfer in"
-					}
-				} else {
-					if to := who("to_name", "to"); to != "" {
-						typeLabel = "Transfer to " + to
-					} else {
-						typeLabel = "Transfer out"
-					}
-				}
-			}
-			var amountStr string
-			if tx.Amount == 0 {
-				amountStr = "included"
-			} else if tx.Amount > 0 {
-				amountStr = fmt.Sprintf("+%d", tx.Amount)
-			} else {
-				amountStr = fmt.Sprintf("-%d", abs(tx.Amount))
-			}
 			sb.WriteString(fmt.Sprintf(`<tr>
 				<td>%s</td>
 				<td>%s</td>
 				<td>%s</td>
 				<td>%d</td>
-			</tr>`, tx.CreatedAt.Format("2 Jan 15:04"), typeLabel, amountStr, tx.Balance))
+			</tr>`, tx.CreatedAt.Format("2 Jan 15:04"), htmlEsc(transactionLabel(tx)),
+				transactionAmount(tx), tx.Balance))
 		}
-
 		sb.WriteString(`</table>`)
 		sb.WriteString(`</div>`)
 	}
 
 	return sb.String()
+}
+
+// transactionLabel names a movement in words somebody recognises.
+func transactionLabel(tx *Transaction) string {
+	switch {
+	case tx.Operation == quota.OpAppUse:
+		if appSlug, ok := tx.Metadata["app"].(string); ok {
+			return "App: " + appSlug
+		}
+		return "App usage"
+	case tx.Operation == quota.OpAppRevenue:
+		if appSlug, ok := tx.Metadata["app"].(string); ok {
+			return "Earned: " + appSlug
+		}
+		return "App revenue"
+	case tx.Type == TxTopup:
+		return "Deposit"
+	case tx.Type == TxTransfer:
+		// Prefer the name recorded with the transfer, then the name of the id it
+		// went to, then the bare id. Receipts written before names were recorded
+		// still resolve, and one whose account has since gone still says
+		// something.
+		who := func(nameKey, idKey string) string {
+			if n, ok := tx.Metadata[nameKey].(string); ok && n != "" {
+				return n
+			}
+			if id, ok := tx.Metadata[idKey].(string); ok && id != "" {
+				return Label(id)
+			}
+			return ""
+		}
+		if tx.Amount > 0 {
+			if from := who("from_name", "from"); from != "" {
+				return "Transfer from " + from
+			}
+			return "Transfer in"
+		}
+		if to := who("to_name", "to"); to != "" {
+			return "Transfer to " + to
+		}
+		return "Transfer out"
+	}
+	return tx.Operation
+}
+
+// transactionAmount renders a movement, including the zero that means a call
+// was free rather than uncharged.
+func transactionAmount(tx *Transaction) string {
+	switch {
+	case tx.Amount == 0:
+		return "included"
+	case tx.Amount > 0:
+		return fmt.Sprintf("+%d", tx.Amount)
+	}
+	return fmt.Sprintf("-%d", abs(tx.Amount))
 }
 
 // QuotaExceededPage renders the quota exceeded message
@@ -195,17 +205,23 @@ func abs(n int) int {
 	return n
 }
 
-// Handler handles wallet-related HTTP requests
-func Handler(w http.ResponseWriter, r *http.Request) {
+// BalanceHandler serves everything under /account that involves money.
+//
+// The paths were /wallet/* and moved with the ledger. The old ones redirect,
+// except the Stripe webhook, which does not move at all: Stripe posts to
+// whatever URL its dashboard names, a redirect on a POST is a dropped payment,
+// and a path Stripe has not been told about is a top-up that never lands. It
+// answers on its original path until somebody changes the dashboard first.
+func BalanceHandler(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 
 	// The balance, as data.
 	//
 	// This used to answer only to ?balance=1, so a caller that asked for JSON
-	// and didn't know the flag got the rendered wallet page instead — 20KB of
-	// HTML returned to an agent that called a tool named wallet_balance. The
-	// tool dispatcher sets Accept: application/json on every path-backed call,
-	// so honouring Accept fixes it here and for anything else routed this way.
+	// and didn't know the flag got a rendered page instead — 20KB of HTML
+	// returned to something that only wanted a number. The tool dispatcher sets
+	// Accept: application/json on every path-backed call, so honouring Accept
+	// fixes it here and for anything else routed this way.
 	if r.URL.Query().Get("balance") == "1" || app.WantsJSON(r) {
 		sess, _ := auth.TrySession(r)
 		if sess == nil {
@@ -214,89 +230,57 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(`{"error":"authentication required"}`))
 			return
 		}
-		balance := GetBalance(sess.Account)
+		balance := Balance(sess.Account)
 		app.RespondJSON(w, map[string]int{"balance": balance})
 		return
 	}
 
 	switch {
-	case path == "/wallet" && r.Method == "GET":
-		handleWalletPage(w, r)
-	case path == "/wallet/topup" && r.Method == "GET" && app.WantsJSON(r):
+	case path == "/account/topup" && r.Method == "GET" && app.WantsJSON(r):
 		handleTopupJSON(w, r)
-	case path == "/wallet/topup" && r.Method == "GET":
+	case path == "/account/topup" && r.Method == "GET":
 		handleDepositPage(w, r)
-	case path == "/wallet/stripe/checkout" && r.Method == "POST":
+	case path == "/account/stripe/checkout" && r.Method == "POST":
 		handleStripeCheckout(w, r)
-	case path == "/wallet/stripe/success" && r.Method == "GET":
+	case path == "/account/stripe/success" && r.Method == "GET":
 		handleStripeSuccess(w, r)
 	case path == "/wallet/stripe/webhook" && r.Method == "POST":
 		HandleStripeWebhook(w, r)
-	case path == "/wallet/transfer" && r.Method == "POST":
+	case path == "/account/transfer" && r.Method == "POST":
 		handleTransfer(w, r)
-	case path == "/wallet/transfer" && r.Method == "GET":
+	case path == "/account/transfer" && r.Method == "GET":
 		handleTransferPage(w, r)
-	case path == "/wallet/pricing":
+	case path == "/account/pricing":
 		handlePricing(w, r)
 	default:
 		http.NotFound(w, r)
 	}
 }
 
-func handleWalletPage(w http.ResponseWriter, r *http.Request) {
-	sess, _ := auth.TrySession(r)
-
-	var content string
-	if sess != nil {
-		content = WalletPage(sess.Account)
-	} else {
-		content = PublicWalletPage()
+// MovedToAccount sends the old money URLs to the page that now holds them.
+//
+// /wallet is a service now — a key an agent spends — so the old paths do not
+// merely change, they come to mean something else. A link somebody bookmarked
+// for their balance has to land on their balance rather than on a crypto
+// address that happens to live at the same prefix.
+func MovedToAccount(w http.ResponseWriter, r *http.Request) {
+	to := "/account"
+	switch strings.TrimSuffix(r.URL.Path, "/") {
+	case "/wallet/topup":
+		to = "/account/topup"
+	case "/wallet/transfer":
+		to = "/account/transfer"
+	case "/wallet/pricing":
+		to = "/account/pricing"
+	case "/wallet/stripe/checkout":
+		to = "/account/stripe/checkout"
+	case "/wallet/stripe/success":
+		to = "/account/stripe/success"
 	}
-
-	html := app.RenderHTMLForRequest("Wallet", "Credits and pricing", content, r)
-	w.Write([]byte(html))
-}
-
-// PublicWalletPage renders the wallet page for unauthenticated users
-func PublicWalletPage() string {
-	var sb strings.Builder
-
-	// Intro
-	sb.WriteString(`<div class="card">`)
-	sb.WriteString(`<h3>Credits &amp; Pricing</h3>`)
-	sb.WriteString(`<p>Browsing is included. AI and search features use credits. Top up and pay as you go — no subscription required.</p>`)
-	sb.WriteString(`<p><a href="/login" class="btn">Login to view your balance</a>&nbsp;<a href="/signup" class="btn btn-secondary">Sign up</a></p>`)
-	sb.WriteString(`</div>`)
-
-	// Credit costs
-	sb.WriteString(`<div class="card">`)
-	sb.WriteString(`<h3>Costs</h3>`)
-	sb.WriteString(PricingTableHTML())
-	sb.WriteString(`</div>`)
-
-	// Topup options
-	sb.WriteString(`<div class="card">`)
-	sb.WriteString(`<h3>Top Up</h3>`)
-	sb.WriteString(`<p>Add credits to your account via card:</p>`)
-	sb.WriteString(`<ul>`)
-	if StripeEnabled() {
-		sb.WriteString(`<li><strong>Card</strong> — secure payment via Stripe</li>`)
+	if q := r.URL.RawQuery; q != "" {
+		to += "?" + q
 	}
-	sb.WriteString(`</ul>`)
-	sb.WriteString(`<p><a href="/login">Login</a> or <a href="/signup">sign up</a> to top up.</p>`)
-	sb.WriteString(`</div>`)
-
-	// This used to carry a second card offering pay-per-request in stablecoin.
-	// Credits are the one thing a caller pays in — an agent's calls and a
-	// person's draw on the same balance — so there is nothing to compare here.
-
-	// Self-hosting note
-	sb.WriteString(`<div class="card">`)
-	sb.WriteString(`<h3>Self-Host</h3>`)
-	sb.WriteString(`<p class="text-sm text-muted">Want unlimited? <a href="https://github.com/micro/mu">Self-host your own instance</a>.</p>`)
-	sb.WriteString(`</div>`)
-
-	return sb.String()
+	http.Redirect(w, r, to, http.StatusSeeOther)
 }
 
 func handleDepositPage(w http.ResponseWriter, r *http.Request) {
@@ -328,7 +312,7 @@ func renderStripeDeposit(userID, errMsg string) string {
 	sb.WriteString(`<hr style="border:none;border-top:1px solid #eee;margin:16px 0">`)
 
 	sb.WriteString("<h4>One-time top-up</h4>")
-	sb.WriteString(`<form method="POST" action="/wallet/stripe/checkout">`)
+	sb.WriteString(`<form method="POST" action="/account/stripe/checkout">`)
 
 	// Preset quick-select buttons
 	sb.WriteString(`<div class="d-flex gap-2 mb-3 mt-2">`)
@@ -366,7 +350,7 @@ func handleTransferPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	balance := GetBalance(sess.Account)
+	balance := Balance(sess.Account)
 	errMsg := r.URL.Query().Get("error")
 	successMsg := r.URL.Query().Get("success")
 
@@ -408,7 +392,7 @@ func handleTransferPage(w http.ResponseWriter, r *http.Request) {
 	}
 	sb.WriteString(`</datalist>`)
 
-	sb.WriteString(`<form method="POST" action="/wallet/transfer">`)
+	sb.WriteString(`<form method="POST" action="/account/transfer">`)
 	sb.WriteString(`<div>`)
 	sb.WriteString(`<label for="transfer-to" class="text-sm">Recipient</label>`)
 	sb.WriteString(`<input type="text" id="transfer-to" name="to" placeholder="username" required class="form-input w-full mt-1" list="user-list" autocomplete="off">`)
@@ -460,7 +444,7 @@ func handleTransfer(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// Form submission
 		if err := r.ParseForm(); err != nil {
-			http.Redirect(w, r, "/wallet/transfer?error=Invalid+form", http.StatusSeeOther)
+			http.Redirect(w, r, "/account/transfer?error=Invalid+form", http.StatusSeeOther)
 			return
 		}
 		to = r.FormValue("to")
@@ -505,7 +489,7 @@ func handleTransfer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if app.WantsJSON(r) || app.SendsJSON(r) {
-		newBalance := GetBalance(sess.Account)
+		newBalance := Balance(sess.Account)
 		app.RespondJSON(w, map[string]interface{}{
 			"status":  "ok",
 			"to":      recipient.Name,
@@ -516,7 +500,7 @@ func handleTransfer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	msg := fmt.Sprintf("Transferred %d credits to %s", amount, recipient.Name)
-	http.Redirect(w, r, "/wallet/transfer?success="+neturl.QueryEscape(msg), http.StatusSeeOther)
+	http.Redirect(w, r, "/account/transfer?success="+neturl.QueryEscape(msg), http.StatusSeeOther)
 }
 
 func respondTransferError(w http.ResponseWriter, r *http.Request, msg string) {
@@ -524,7 +508,7 @@ func respondTransferError(w http.ResponseWriter, r *http.Request, msg string) {
 		app.RespondJSON(w, map[string]string{"error": msg})
 		return
 	}
-	http.Redirect(w, r, "/wallet/transfer?error="+neturl.QueryEscape(msg), http.StatusSeeOther)
+	http.Redirect(w, r, "/account/transfer?error="+neturl.QueryEscape(msg), http.StatusSeeOther)
 }
 
 // maxTopupPounds is the maximum allowed top-up amount in whole pounds
@@ -564,7 +548,7 @@ func handleStripeCheckout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := r.ParseForm(); err != nil {
-		http.Redirect(w, r, "/wallet/topup?error=Invalid+form+submission", http.StatusSeeOther)
+		http.Redirect(w, r, "/account/topup?error=Invalid+form+submission", http.StatusSeeOther)
 		return
 	}
 
@@ -574,11 +558,11 @@ func handleStripeCheckout(w http.ResponseWriter, r *http.Request) {
 	fmt.Sscanf(amountStr, "%d", &pounds)
 
 	if pounds < 1 {
-		http.Redirect(w, r, "/wallet/topup?error=Please+enter+an+amount", http.StatusSeeOther)
+		http.Redirect(w, r, "/account/topup?error=Please+enter+an+amount", http.StatusSeeOther)
 		return
 	}
 	if pounds > maxTopupPounds {
-		http.Redirect(w, r, fmt.Sprintf("/wallet/topup?error=Maximum+top-up+is+%%C2%%A3%d", maxTopupPounds), http.StatusSeeOther)
+		http.Redirect(w, r, fmt.Sprintf("/account/topup?error=Maximum+top-up+is+%%C2%%A3%d", maxTopupPounds), http.StatusSeeOther)
 		return
 	}
 
@@ -587,14 +571,14 @@ func handleStripeCheckout(w http.ResponseWriter, r *http.Request) {
 	// Success/cancel URLs must name the public origin — see app.BaseURL, which
 	// is the single answer to "what is this instance's address".
 	baseURL := app.BaseURL(r)
-	successURL := baseURL + "/wallet/stripe/success?session_id={CHECKOUT_SESSION_ID}"
-	cancelURL := baseURL + "/wallet/topup"
+	successURL := baseURL + "/account/stripe/success?session_id={CHECKOUT_SESSION_ID}"
+	cancelURL := baseURL + "/account/topup"
 
 	// Create checkout session
 	checkoutURL, err := CreateCheckoutSession(sess.Account, amount, successURL, cancelURL)
 	if err != nil {
 		app.Log("stripe", "checkout error: %v", err)
-		content := `<div class="card"><h2>Payment Error</h2><p>Failed to create checkout session. Please try again.</p><p><a href="/wallet/topup" class="btn">Back</a></p></div>`
+		content := `<div class="card"><h2>Payment Error</h2><p>Failed to create checkout session. Please try again.</p><p><a href="/account/topup" class="btn">Back</a></p></div>`
 		html := app.RenderHTMLForRequest("Payment Error", "Checkout failed", content, r)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(html))
@@ -636,11 +620,11 @@ func handleStripeSuccess(w http.ResponseWriter, r *http.Request) {
 	body := `<p>Your credits will be added to your account shortly.</p>`
 	if settled {
 		body = fmt.Sprintf(`<p>Your balance is now <strong>%d credits</strong>.</p>`,
-			GetBalance(account))
+			Balance(account))
 	}
 	content := `<div class="card">
 		<h2>Payment complete</h2>` + body + `
-		<p><a href="/wallet" class="btn">View wallet</a></p>
+		<p><a href="/account" class="btn">View your balance</a></p>
 	</div>`
 	html := app.RenderHTMLForRequest("Payment complete", "Credits added", content, r)
 	w.Write([]byte(html))
@@ -660,13 +644,13 @@ type pricingItem = PricingItem
 
 // Pricing returns every billable operation, cheapest first. This is the single
 // source of truth for what things cost: the wallet page, the signed-out wallet
-// page, the /wallet/pricing API and the public pricing page all render from it.
+// page, the /account/pricing API and the public pricing page all render from it.
 // They each used to carry their own hardcoded table, which drifted — image
 // generation was the most expensive op a user could trigger and three of the
 // four tables omitted it entirely.
 //
 // Anything added to the Cost* vars belongs here too.
-// Pricing is what this instance charges, for the cost tables on /wallet, the
+// Pricing is what this instance charges, for the cost tables on /account, the
 // signed-out wallet page, the pricing API and /pricing.
 //
 // It reads internal/quota's list rather than keeping its own. There used to be
@@ -769,7 +753,7 @@ func handlePricing(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`<p class="info mt-3"><a href="/apps/new">Build an app →</a></p>`)
 	sb.WriteString(`</div>`)
 
-	sb.WriteString(`<p class="info mt-3">JSON: <code>curl -H "Accept: application/json" /wallet/pricing</code></p>`)
+	sb.WriteString(`<p class="info mt-3">JSON: <code>curl -H "Accept: application/json" /account/pricing</code></p>`)
 	sb.WriteString(`</div>`)
 
 	html := app.RenderHTMLForRequest("Pricing", "Platform pricing and costs", sb.String(), r)

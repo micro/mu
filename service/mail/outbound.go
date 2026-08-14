@@ -70,7 +70,7 @@ func MaySendOut(owner, to string) (bool, string) {
 	// leaves the sentence readable everywhere else.
 	return false, fmt.Sprintf("this account cannot send mail out as itself yet — %s has not "+
 		"written to you, and mail leaving here goes out under this instance's own domain. "+
-		"Verify your email address in your Account, or add credit to your Wallet, and it will. "+
+		"Verify your email address in your Account, or add credit to your Balance, and it will. "+
 		"To send from this instance's sending domain instead, which needs none of that, "+
 		"use email_send", to)
 }

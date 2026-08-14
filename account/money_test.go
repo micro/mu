@@ -1,4 +1,4 @@
-package wallet
+package account
 
 // The invariants that hold when money moves.
 //
@@ -44,7 +44,7 @@ func moneyHome(t *testing.T) {
 	t.Cleanup(func() { os.RemoveAll(dir) })
 
 	mutex.Lock()
-	wallets = map[string]*Wallet{}
+	balances = map[string]*Credits{}
 	transactions = map[string][]*Transaction{}
 	mutex.Unlock()
 }
@@ -67,19 +67,19 @@ func TestATransferConservesCredits(t *testing.T) {
 	account(t, "payee", "Payee")
 	AddCredits("payer", 100, "test", nil)
 
-	before := GetBalance("payer") + GetBalance("payee")
+	before := Balance("payer") + Balance("payee")
 	if err := TransferCredits("payer", "payee", 30); err != nil {
 		t.Fatal(err)
 	}
-	after := GetBalance("payer") + GetBalance("payee")
+	after := Balance("payer") + Balance("payee")
 
 	if before != after {
 		t.Errorf("credits were created or destroyed: %d before, %d after", before, after)
 	}
-	if got := GetBalance("payer"); got != 70 {
+	if got := Balance("payer"); got != 70 {
 		t.Errorf("payer has %d, want 70", got)
 	}
-	if got := GetBalance("payee"); got != 30 {
+	if got := Balance("payee"); got != 30 {
 		t.Errorf("payee has %d, want 30", got)
 	}
 }
@@ -98,7 +98,7 @@ func TestATransferIsRecordedOnBothSidesWithNames(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	out := GetTransactions("sender", 10)
+	out := Transactions("sender", 10)
 	if len(out) == 0 {
 		t.Fatal("the sender has no record of the transfer")
 	}
@@ -113,7 +113,7 @@ func TestATransferIsRecordedOnBothSidesWithNames(t *testing.T) {
 		t.Errorf("the sender's receipt has no readable name: %v", sent.Metadata)
 	}
 
-	in := GetTransactions("getter", 10)
+	in := Transactions("getter", 10)
 	if len(in) == 0 {
 		t.Fatal("the recipient has no record of the transfer")
 	}
@@ -133,10 +133,10 @@ func TestAnUnaffordableTransferChangesNothing(t *testing.T) {
 	if err := TransferCredits("poor", "rich", 50); err == nil {
 		t.Fatal("a transfer larger than the balance was allowed")
 	}
-	if got := GetBalance("poor"); got != 5 {
+	if got := Balance("poor"); got != 5 {
 		t.Errorf("the sender's balance moved on a refused transfer: %d", got)
 	}
-	if got := GetBalance("rich"); got != 0 {
+	if got := Balance("rich"); got != 0 {
 		t.Errorf("the recipient was credited by a refused transfer: %d", got)
 	}
 }
@@ -160,7 +160,7 @@ func TestTransfersRefuseNonsense(t *testing.T) {
 			t.Errorf("%s was allowed", c.name)
 		}
 	}
-	if got := GetBalance("solo"); got != 100 {
+	if got := Balance("solo"); got != 100 {
 		t.Errorf("a refused transfer moved credits: %d", got)
 	}
 }

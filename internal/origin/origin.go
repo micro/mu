@@ -8,7 +8,7 @@
 // The Stripe return URL was believed to have the logic right, inline, where
 // nothing else could use it. It did not: it guessed the scheme from whether
 // X-Forwarded-Proto was present and took the host from r.Host, so paying for a
-// subscription returned the customer to https://localhost:8081/wallet. That is
+// subscription returned the customer to https://localhost:8081/account. That is
 // the fourth answer, and it was the one held up as correct — which is the
 // argument for this package rather than against it. Inline logic nobody can
 // call is inline logic nobody can check.

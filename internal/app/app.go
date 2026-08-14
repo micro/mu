@@ -802,22 +802,22 @@ func VerifyBanner(r *http.Request) string {
 	// Not on the pages that are the way out of it — the form is right there —
 	// and not on money at all.
 	//
-	// This was a list of four exact paths, so /wallet/transfer was not on it,
+	// This was a list of four exact paths, so /account/transfer was not on it,
 	// and moving your own credit between accounts was met with "You cannot post
 	// yet. Verify your email address before posting." Nothing on that page is a
 	// post, so the banner read as a refusal of the transfer. A prefix rather
-	// than a fifth path, because the next page under /wallet would have been
+	// than a fifth path, because the next page under /account would have been
 	// wrong in the same way.
 	switch p := r.URL.Path; {
-	case p == "/account" || p == "/verify":
+	case p == "/verify":
 		return ""
-	case p == "/wallet" || strings.HasPrefix(p, "/wallet/"):
+	case p == "/account" || strings.HasPrefix(p, "/account/"):
 		return ""
 	}
 	action, href := "Verify →", "/account"
 	if auth.VerificationRequired == nil || !auth.VerificationRequired() {
 		// No mail on this instance, so verifying is not on offer: credit is.
-		action, href = "Add credit →", "/wallet"
+		action, href = "Add credit →", "/account/topup"
 	}
 	// The places named in the sentence are links, because they read as ones.
 	//
@@ -834,7 +834,7 @@ func VerifyBanner(r *http.Request) string {
 	said := htmlpkg.EscapeString(reason)
 	for _, l := range []struct{ phrase, href string }{
 		{"your Account", "/account"},
-		{"your Wallet", "/wallet"},
+		{"your Balance", "/account#balance"},
 	} {
 		said = strings.ReplaceAll(said, l.phrase,
 			`your <a href="`+l.href+`" style="color:#5b4a00">`+strings.TrimPrefix(l.phrase, "your ")+`</a>`)
@@ -846,26 +846,21 @@ func VerifyBanner(r *http.Request) string {
 </div>`
 }
 
-// navOperate closes the top group with what you have used and what you have
-// left.
-//
-// These sit with the product rather than under it. They are not services — you
-// do not use the wallet to do something, you use it to manage your use of
-// everything else — but they are things you open and read, which is what the
-// top of the sidebar is for. The bottom is the account itself: who you are, and
-// getting in and out of it.
+// navOperate closes the top group with what you have used.
 //
 // Usage needs a session to mean anything and its page redirects without one, so
-// it is drawn only for a signed-in viewer. Wallet is always drawn — a signed-out
-// visitor still needs the way to it, and mu.js rewrites this anchor's href to
-// the login redirect, which is why the id lives here.
+// it is drawn only for a signed-in viewer.
+//
+// There was a Wallet item beside it, and it has gone rather than moved. Money
+// is the account's now — the balance is the first card on /account and the
+// badge in the header links straight to it — so a third entrance to the same
+// number was one more than the page had things to say. /wallet is a service
+// today, and appears where every other service appears.
 func navOperate(acc *auth.Account) string {
-	out := ""
-	if acc != nil {
-		out = `<a href="/usage"><img src="/usage.svg?` + Version + `"><span class="label">Usage</span></a>
-          `
+	if acc == nil {
+		return ""
 	}
-	return out + `<a id="nav-wallet" href="/wallet"><img src="/wallet.png?` + Version + `"><span class="label">Wallet</span></a>`
+	return `<a href="/usage"><img src="/usage.svg?` + Version + `"><span class="label">Usage</span></a>`
 }
 
 // navPinned is the reader's own services, under a heading of their own.

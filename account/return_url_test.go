@@ -1,11 +1,11 @@
-package wallet
+package account
 
 // Where a payment sends somebody back to.
 //
 // Mu runs behind a reverse proxy that forwards to a loopback port, so r.Host is
 // "localhost:8081" and any URL built from it names an address no client can
 // reach. Subscribing did exactly that: it took the money, fired the webhook,
-// recorded the plan, and returned the customer to https://localhost:8081/wallet.
+// recorded the plan, and returned the customer to https://localhost:8081/account.
 //
 // The failure is entirely on the way back, which is what let it stand. Nothing
 // is wrong except the one screen that tells somebody it worked, so no log, no
@@ -49,7 +49,7 @@ func TestNoHandlerBuildsAReturnURLFromTheRequestHost(t *testing.T) {
 // Topping up returns somewhere, and that somewhere must be this instance's
 // public address rather than whatever host the request happened to carry.
 func TestTheTopUpReturnURLComesFromOrigin(t *testing.T) {
-	src, err := os.ReadFile("handlers.go")
+	src, err := os.ReadFile("balance.go")
 	if err != nil {
 		t.Fatal(err)
 	}

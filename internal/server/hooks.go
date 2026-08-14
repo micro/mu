@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"mu/account"
 	"mu/admin"
 	"mu/agent"
 	agentblog "mu/agent/blog"
@@ -310,7 +311,7 @@ func wireHooks() {
 		canProceed, _, cost, err := quota.CheckQuota(m.Owner, quota.OpAgentQuery)
 		if err != nil || !canProceed {
 			reply(prompt, fmt.Sprintf("I could not run this one: it costs %d credits and the account is short. "+
-				"Top up at %s/wallet and send it again.", cost, app.PublicURL()))
+				"Top up at %s/account/topup and send it again.", cost, app.PublicURL()))
 			return
 		}
 
@@ -417,7 +418,7 @@ func wireHooks() {
 			parts = append(parts, fmt.Sprintf("- %d unread email(s)", unread))
 		}
 		// Wallet balance.
-		bal := wallet.GetBalance(accountID)
+		bal := account.Balance(accountID)
 		if bal > 0 {
 			parts = append(parts, fmt.Sprintf("- Wallet: %d credits", bal))
 		}
@@ -568,7 +569,7 @@ func wireHooks() {
 		apps.DeleteAppsByAuthor,
 		stream.ClearByAuthor,
 		mail.DeleteInbox,
-		func(id string) { wallet.DeleteWallet(id) },
+		func(id string) { account.DeleteCredits(id) },
 		func(id string) { wallet.DeleteBaseWallet(id) },
 		func(id string) { micro.DeleteUserAgents(id) },
 		func(id string) { discord.DeleteLinks(id) },
@@ -701,7 +702,7 @@ func wireHooks() {
 			return false, err
 		}
 		if !ok {
-			return false, fmt.Errorf("this costs %d credits and your balance is %d — top up at /wallet",
+			return false, fmt.Errorf("this costs %d credits and your balance is %d — top up at /account/topup",
 				cost, quota.BalanceOf(account))
 		}
 		return true, nil
@@ -847,7 +848,7 @@ func wireHooks() {
 		}
 	}
 	apps.ChargeQuota = chargeUser
-	apps.ChargeUse = wallet.ChargeAppUse
+	apps.ChargeUse = account.ChargeAppUse
 	agent.ChargeQuota = chargeUser
 
 	// Inline visual cards now come from the capability registry (core), which
@@ -888,7 +889,7 @@ func wireHooks() {
 	// Money is a trust signal, so auth needs to be able to see it. Wired as a
 	// hook because the wallet imports auth and cannot be imported back.
 	auth.HasCredit = func(accountID string) bool {
-		return wallet.GetBalance(accountID) > 0
+		return account.Balance(accountID) > 0
 	}
 
 	// The status page asks the AI package what the model is doing rather than

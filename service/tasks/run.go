@@ -70,7 +70,7 @@ func Run(owner, id string) error {
 		runMu.Lock()
 		delete(running, t.ID)
 		runMu.Unlock()
-		return fmt.Errorf("this costs %d credits — top up at /wallet", cost)
+		return fmt.Errorf("this costs %d credits — top up at /account/topup", cost)
 	}
 
 	if _, err := Update(owner, t.ID, "", "", StatusDoing, Agent, ""); err != nil {

@@ -11,12 +11,12 @@ import (
 	"strings"
 	"time"
 
+	"mu/account"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
 	"mu/internal/flag"
 	"mu/service/apps"
-	"mu/wallet"
 )
 
 // InviteHandler serves the admin invite page at /admin/invite.
@@ -287,7 +287,7 @@ func runCommand(cmd string) string {
 		if err != nil {
 			return "User not found"
 		}
-		w := wallet.GetWallet(acc.ID)
+		w := account.CreditsOf(acc.ID)
 		emailLine := "Email: (not set)"
 		if acc.Email != "" {
 			verified := "unverified"
@@ -410,8 +410,8 @@ func runCommand(cmd string) string {
 		if arg(1) == "" {
 			return "usage: wallet <user_id>"
 		}
-		w := wallet.GetWallet(arg(1))
-		txns := wallet.GetTransactions(arg(1), 10)
+		w := account.CreditsOf(arg(1))
+		txns := account.Transactions(arg(1), 10)
 		var sb strings.Builder
 		sb.WriteString(fmt.Sprintf("Balance: %d credits\n", w.Balance))
 		if len(txns) > 0 {
@@ -448,11 +448,11 @@ func runCommand(cmd string) string {
 				return "No account called " + arg(1) + " — try users to list them"
 			}
 		}
-		if err := wallet.AddCredits(acc.ID, amount, "admin_grant", nil); err != nil {
+		if err := account.AddCredits(acc.ID, amount, "admin_grant", nil); err != nil {
 			return "Failed: " + err.Error()
 		}
 		return fmt.Sprintf("Added %d credits to %s (%s) — balance now %d",
-			amount, acc.Name, acc.ID, wallet.GetWallet(acc.ID).Balance)
+			amount, acc.Name, acc.ID, account.CreditsOf(acc.ID).Balance)
 
 	// move — the one an operator actually reaches for, and the one that was
 	// missing.
@@ -460,7 +460,7 @@ func runCommand(cmd string) string {
 	// credit only adds, so putting credits back where they belong meant
 	// granting a second lot and leaving the first stranded: the balances come
 	// out right and the ledger no longer adds up. Deleting the account they
-	// landed in is worse — wallet.DeleteWallet is an account-delete hook, so it
+	// landed in is worse — account.DeleteCredits is an account-delete hook, so it
 	// destroys the credits rather than releasing them.
 	//
 	// This goes through TransferCredits, so both sides are written and the
@@ -483,13 +483,13 @@ func runCommand(cmd string) string {
 		if err != nil {
 			return "No account with the username " + arg(2)
 		}
-		if err := wallet.TransferCredits(from.ID, to.ID, moveAmount); err != nil {
+		if err := account.TransferCredits(from.ID, to.ID, moveAmount); err != nil {
 			return "Could not move: " + err.Error()
 		}
 		return fmt.Sprintf("Moved %d credits from %s (%s) to %s (%s)\n%s: %d · %s: %d",
 			moveAmount, from.ID, from.Name, to.ID, to.Name,
-			from.ID, wallet.GetWallet(from.ID).Balance,
-			to.ID, wallet.GetWallet(to.ID).Balance)
+			from.ID, account.CreditsOf(from.ID).Balance,
+			to.ID, account.CreditsOf(to.ID).Balance)
 
 	// --- Apps ---
 	case "apps":

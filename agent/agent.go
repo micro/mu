@@ -965,7 +965,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	if !isGuest && QuotaCheck != nil {
 		canProceed, _, err := QuotaCheck(r, model.WalletOp)
 		if !canProceed {
-			msg := "Insufficient credits for agent query. Top up at /wallet/topup."
+			msg := "Insufficient credits for agent query. Top up at /account/topup."
 			if err != nil {
 				msg = err.Error()
 			}
@@ -2655,7 +2655,7 @@ func formatWalletBalanceResult(result string) string {
 	}
 
 	var sb strings.Builder
-	fmt.Fprintf(&sb, "Wallet balance: %d credits (£%d.%02d). Top up at /wallet/topup.\n", credits, credits/100, credits%100)
+	fmt.Fprintf(&sb, "Wallet balance: %d credits (£%d.%02d). Top up at /account/topup.\n", credits, credits/100, credits%100)
 	if data.Address != "" {
 		fmt.Fprintf(&sb, "Base address for USDC top-ups: %s (holding $%s USDC).\n", data.Address, data.USDC)
 	}

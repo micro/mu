@@ -58,7 +58,6 @@ import (
 	"mu/service/weather"
 	"mu/service/web"
 	whatsappsvc "mu/service/whatsapp"
-	"mu/wallet"
 )
 
 // authRequired reports, per path, whether a caller must be signed in.
@@ -140,7 +139,7 @@ func authRequired() map[string]bool {
 		"/admin/console":     true,
 		"/admin/diagnostics": true,
 		"/admin/invite":      true,
-		"/wallet":            false, // Public - shows wallet info; auth checked in handler
+		"/account/":          true, // Money: top-up, transfer, the ledger
 
 		"/apps":      false, // Public - apps directory; auth checked in handler for create/edit
 		"/work":      false, // Public - task bounties; auth checked in handler for post/claim
@@ -265,9 +264,30 @@ func registerRoutes() {
 	http.HandleFunc("/admin/diagnostics", admin.DiagnosticsHandler)
 	http.HandleFunc("/admin/invite", admin.InviteHandler)
 
-	// wallet - credits and payments
-	http.HandleFunc("/wallet", wallet.Handler)
-	http.HandleFunc("/wallet/", wallet.Handler) // Handle sub-routes like /wallet/topup
+	// Money: top-up, transfer, Stripe and the price list, all under the account
+	// that holds them.
+	http.HandleFunc("/account/", account.BalanceHandler)
+
+	// Where the money used to be. /wallet is a service now, so these are not
+	// merely renamed — the old prefix has come to mean something else, and a
+	// bookmark for a balance must not land on a crypto address.
+	//
+	// The Stripe webhook is not in this list, and does not move either. It is a
+	// POST from Stripe to whatever URL its dashboard names: a redirect on a POST
+	// is a dropped payment, and a path Stripe has not been told about is a
+	// top-up that never lands. It stays where it already is until somebody
+	// changes it in the dashboard first.
+	for _, moved := range []string{
+		"/wallet/topup", "/wallet/transfer", "/wallet/pricing",
+		"/wallet/stripe/checkout", "/wallet/stripe/success",
+	} {
+		http.HandleFunc(moved, account.MovedToAccount)
+	}
+	http.HandleFunc("/wallet/stripe/webhook", account.BalanceHandler)
+
+	// Nothing under /wallet is in authRequired(), so the webhook stays reachable
+	// without a session — as it must be. /account is authenticated by prefix,
+	// which is why the webhook could not simply move under it.
 
 	// serve whatsapp webhook
 	http.HandleFunc("/whatsapp/webhook", whatsapp.Handler)

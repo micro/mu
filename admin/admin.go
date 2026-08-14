@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
+	"mu/account"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/service/mail"
-	"mu/wallet"
 )
 
 // AdminHandler shows the admin page with user management
@@ -55,7 +55,7 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
 // the page for the console. Zero is shown as a dash rather than 0 — a list where
 // most rows read "0" is a column of noise around the few that matter.
 func balanceCell(userID string) string {
-	n := wallet.GetBalance(userID)
+	n := account.Balance(userID)
 	if n == 0 {
 		return `<span class="text-muted" style="font-size:12px">—</span>`
 	}
@@ -120,7 +120,7 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 			fmt.Sscanf(strings.TrimSpace(r.FormValue("amount")), "%d", &amount)
 			if amount > 0 {
 				if u, err := auth.GetAccount(userID); err == nil {
-					if err := wallet.AddCredits(u.ID, amount, "admin_grant", map[string]interface{}{
+					if err := account.AddCredits(u.ID, amount, "admin_grant", map[string]interface{}{
 						"by": acc.ID,
 					}); err != nil {
 						app.Log("admin", "granting %d to %s: %v", amount, u.ID, err)

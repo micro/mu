@@ -26,10 +26,10 @@ import (
 	"sort"
 	"strings"
 
+	"mu/account"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/usage"
-	"mu/wallet"
 )
 
 // UsageHandler serves /usage: one caller's own activity.
@@ -67,12 +67,12 @@ func UsageHandler(w http.ResponseWriter, r *http.Request) {
 
 // spendSection breaks the ledger down by operation, so "what is costing me" has
 // an answer with a number next to it rather than a scroll of transactions.
-func spendSection(account string, admin bool) string {
+func spendSection(id string, admin bool) string {
 	var sb strings.Builder
 
 	// 500 is enough to cover a heavy month and short enough to stay quick; the
-	// ledger on /wallet is the full record.
-	txs := wallet.GetTransactions(account, 500)
+	// ledger on /account is the full record.
+	txs := account.Transactions(id, 500)
 
 	spentBy := map[string]int{}
 	spent, topped := 0, 0
@@ -98,7 +98,7 @@ func spendSection(account string, admin bool) string {
 	})
 
 	sb.WriteString(`<div class="card"><div class="traffic-stats">`)
-	usage.Stat(&sb, "Credits now", wallet.GetBalance(account))
+	usage.Stat(&sb, "Credits now", account.Balance(id))
 	usage.Stat(&sb, "Credits spent", spent)
 	usage.Stat(&sb, "Credits added", topped)
 	sb.WriteString(`</div>`)
@@ -132,7 +132,7 @@ func spendSection(account string, admin bool) string {
 			fmt.Fprintf(&sb, `<tr><td>%s</td><td class="usage-when">%s</td><td class="traffic-n %s">%s</td></tr>`,
 				html.EscapeString(tx.Operation), html.EscapeString(usage.Since(tx.CreatedAt)), class, amount)
 		}
-		sb.WriteString(`</table><p class="text-sm text-muted"><a href="/wallet">Full ledger →</a></p>`)
+		sb.WriteString(`</table><p class="text-sm text-muted"><a href="/account">Full ledger →</a></p>`)
 	}
 	sb.WriteString(`</div></div>`)
 	return sb.String()

@@ -728,6 +728,12 @@ func Account(w http.ResponseWriter, r *http.Request) {
 			htmlpkg.EscapeString(msg) + `</p></div>`
 	}
 
+	// The balance goes directly under the profile, and everything else after it.
+	//
+	// It is the one thing on this page with a deadline: a display name, a
+	// language or a passkey can wait, and an empty balance stops the agent
+	// mid-errand. It was a nav item of its own called Wallet, which put a
+	// person's money one click further away than their choice of language.
 	content := notice + fmt.Sprintf(`<div class="card">
 <h4>Profile</h4>
 <p><strong><a href="/@%s">%s</a></strong> · %s · Joined %s</p>
@@ -738,6 +744,8 @@ func Account(w http.ResponseWriter, r *http.Request) {
 </form>
 <p class="text-sm text-muted" style="margin:6px 0 0">Shown on your posts and your profile. Your username, <strong>%s</strong>, is the one in addresses and links and does not change.</p>
 </div>
+
+%s
 
 %s
 
@@ -760,18 +768,22 @@ func Account(w http.ResponseWriter, r *http.Request) {
 <p><a href="/token">API Credentials →</a></p>
 <p><a href="/user">User prefs →</a></p>
 <p style="margin-top:12px"><a href="/logout" class="text-error">Logout</a></p>
-</div>`,
+</div>
+
+%s`,
 		acc.ID,
 		acc.ID,
 		acc.Name,
 		acc.Created.Format("January 2, 2006"),
 		htmlpkg.EscapeString(acc.Name),
 		htmlpkg.EscapeString(acc.ID),
+		BalanceCard(acc.ID),
 		emailCard,
 		googleCard,
 		languageOptions,
 		PasskeyListHTML(acc.ID),
 		clientsCard,
+		LedgerSection(acc.ID),
 	)
 
 	// app.RenderHTMLForRequest, not app.RenderHTML: the latter hard-codes a nil account,

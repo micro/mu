@@ -33,14 +33,14 @@ func TestWalletsAreReadFromTheOldFileAndCopiedForward(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got := loadWalletsFrom("wallets.json", legacyWalletsFile)
+	got := loadWalletsFrom(walletsFile, legacyWalletsFile)
 	if len(got) != 2 || got["acct-1"].Address != "0xaaa" {
 		t.Fatalf("legacy wallets not read: %+v", got)
 	}
 
 	// Copied forward, so the next start does not depend on the old file.
 	forward := map[string]*BaseWallet{}
-	if err := data.LoadJSON("wallets.json", &forward); err != nil {
+	if err := data.LoadJSON(walletsFile, &forward); err != nil {
 		t.Fatalf("new file not written: %v", err)
 	}
 	if forward["acct-2"].PrivateKey != "22" {
@@ -57,13 +57,13 @@ func TestTheNewFileWinsOverTheOld(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if err := data.SaveJSON("wallets.json", map[string]*BaseWallet{
+	if err := data.SaveJSON(walletsFile, map[string]*BaseWallet{
 		"acct-1": {Address: "0xaaa", PrivateKey: "11"},
 	}); err != nil {
 		t.Fatal(err)
 	}
 
-	got := loadWalletsFrom("wallets.json", legacyWalletsFile)
+	got := loadWalletsFrom(walletsFile, legacyWalletsFile)
 	if _, resurrected := got["ghost"]; resurrected {
 		t.Error("a deleted wallet came back from the legacy file")
 	}
@@ -75,7 +75,7 @@ func TestTheNewFileWinsOverTheOld(t *testing.T) {
 // A fresh instance has neither file and must simply start empty.
 func TestNoWalletFilesIsNotAnError(t *testing.T) {
 	dataHome(t)
-	if got := loadWalletsFrom("wallets.json", legacyWalletsFile); len(got) != 0 {
+	if got := loadWalletsFrom(walletsFile, legacyWalletsFile); len(got) != 0 {
 		t.Errorf("expected no wallets, got %+v", got)
 	}
 }

@@ -1,6 +1,10 @@
 package wallet
 
 // Getting back what the collision destroyed.
+//
+// The key store and the credit ledger wrote the same filename, so whichever
+// saved last destroyed the other. These are the key store's half; the ledger's
+// is in account/recovery_test.go.
 
 import "testing"
 
@@ -42,59 +46,5 @@ func TestAPoisonedPrimaryFallsBackToTheLegacyFile(t *testing.T) {
 	forward := loadWalletsFrom("poisoned_primary.json", "does_not_exist.json")
 	if forward["asim"] == nil || forward["asim"].Address != "0x0537d281" {
 		t.Error("the recovered keys were not written to the primary file")
-	}
-}
-
-func TestBalancesAreRebuiltOverAPoisonedLedger(t *testing.T) {
-	// What is on disk after the collision: an entry per account, decoded from
-	// the key store's records, with no id and no balance. It is not empty, so
-	// "does this account have a wallet" answered yes and the rebuild skipped
-	// everybody.
-	mu := &walletTestState{}
-	mu.save(t)
-	defer mu.restore()
-
-	wallets = map[string]*Wallet{
-		"asim": {}, "someone": {}, // poisoned: decoded into nothing
-	}
-	for id, w := range wallets {
-		if w == nil || (w.UserID == "" && w.Balance == 0) {
-			delete(wallets, id)
-		}
-	}
-	transactions = map[string][]*Transaction{
-		"asim": {
-			{UserID: "asim", Balance: 100, CreatedAt: timeAt(1)},
-			{UserID: "asim", Balance: 560, CreatedAt: timeAt(3)},
-			{UserID: "asim", Balance: 300, CreatedAt: timeAt(2)}, // out of order
-		},
-	}
-
-	rebuildFromTransactions()
-
-	if wallets["asim"] == nil {
-		t.Fatal("the balance was not rebuilt")
-	}
-	if got := wallets["asim"].Balance; got != 560 {
-		t.Errorf("rebuilt to %d, want 560 — the newest transaction's balance", got)
-	}
-}
-
-func TestASurvivingBalanceIsNotRolledBack(t *testing.T) {
-	// A top-up made after the last recorded transaction must win. An entry that
-	// survived is authoritative.
-	mu := &walletTestState{}
-	mu.save(t)
-	defer mu.restore()
-
-	wallets = map[string]*Wallet{"asim": {UserID: "asim", Balance: 900}}
-	transactions = map[string][]*Transaction{
-		"asim": {{UserID: "asim", Balance: 560, CreatedAt: timeAt(1)}},
-	}
-
-	rebuildFromTransactions()
-
-	if got := wallets["asim"].Balance; got != 900 {
-		t.Errorf("rolled a live balance back to %d, want 900", got)
 	}
 }

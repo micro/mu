@@ -541,7 +541,7 @@ func TestFormatWalletBalanceResult_WithBalance(t *testing.T) {
 	if !strings.Contains(got, "£15.50") {
 		t.Errorf("expected formatted pounds in output, got %q", got)
 	}
-	if !strings.Contains(got, "/wallet/topup") {
+	if !strings.Contains(got, "/account/topup") {
 		t.Errorf("expected topup link in output, got %q", got)
 	}
 }
@@ -642,7 +642,7 @@ func TestRenderToolCallRef_Category(t *testing.T) {
 func TestFormatToolResult_WalletDispatch(t *testing.T) {
 	// One tool answers the whole question: credits, and where to send USDC.
 	got := formatToolResult("wallet_balance", `{"credits":500,"address":"0xabc","usdc":"1.50","network":"base"}`, nil)
-	for _, want := range []string{"500 credits", "0xabc", "/wallet/topup"} {
+	for _, want := range []string{"500 credits", "0xabc", "/account/topup"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("wallet_balance output is missing %q, got %q", want, got)
 		}

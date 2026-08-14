@@ -73,7 +73,7 @@ func setSecurityHeaders(w http.ResponseWriter) {
 		"object-src 'none'",
 		"base-uri 'self'",
 		// Stripe Checkout is the one place a form leaves this origin, and it
-		// leaves by redirect: the form posts to /wallet/stripe/checkout, which
+		// leaves by redirect: the form posts to /account/stripe/checkout, which
 		// answers 303 to a checkout URL Stripe has just minted. form-action is
 		// enforced against the *redirect target*, not only against the action
 		// attribute, so 'self' alone blocked the POST that had already been

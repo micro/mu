@@ -1,4 +1,4 @@
-package wallet
+package account
 
 import (
 	"testing"
@@ -136,18 +136,18 @@ func TestDefaultCosts(t *testing.T) {
 }
 
 func TestGetWallet_CreatesNew(t *testing.T) {
-	// Reset wallets for test
+	// Reset balances for test
 	mutex.Lock()
-	origWallets := wallets
-	wallets = map[string]*Wallet{}
+	origWallets := balances
+	balances = map[string]*Credits{}
 	mutex.Unlock()
 	defer func() {
 		mutex.Lock()
-		wallets = origWallets
+		balances = origWallets
 		mutex.Unlock()
 	}()
 
-	w := GetWallet("test-user-new")
+	w := CreditsOf("test-user-new")
 	if w == nil {
 		t.Fatal("expected wallet to be created")
 	}
@@ -164,18 +164,18 @@ func TestGetWallet_CreatesNew(t *testing.T) {
 
 func TestGetWallet_ReturnsCached(t *testing.T) {
 	mutex.Lock()
-	origWallets := wallets
-	wallets = map[string]*Wallet{
+	origWallets := balances
+	balances = map[string]*Credits{
 		"cached-user": {UserID: "cached-user", Balance: 500, Currency: "GBP"},
 	}
 	mutex.Unlock()
 	defer func() {
 		mutex.Lock()
-		wallets = origWallets
+		balances = origWallets
 		mutex.Unlock()
 	}()
 
-	w := GetWallet("cached-user")
+	w := CreditsOf("cached-user")
 	if w.Balance != 500 {
 		t.Errorf("expected balance 500, got %d", w.Balance)
 	}
@@ -183,34 +183,34 @@ func TestGetWallet_ReturnsCached(t *testing.T) {
 
 func TestGetBalance(t *testing.T) {
 	mutex.Lock()
-	origWallets := wallets
-	wallets = map[string]*Wallet{
+	origWallets := balances
+	balances = map[string]*Credits{
 		"balance-user": {UserID: "balance-user", Balance: 1000, Currency: "GBP"},
 	}
 	mutex.Unlock()
 	defer func() {
 		mutex.Lock()
-		wallets = origWallets
+		balances = origWallets
 		mutex.Unlock()
 	}()
 
-	if GetBalance("balance-user") != 1000 {
-		t.Errorf("expected 1000, got %d", GetBalance("balance-user"))
+	if Balance("balance-user") != 1000 {
+		t.Errorf("expected 1000, got %d", Balance("balance-user"))
 	}
 }
 
 func TestAddCredits(t *testing.T) {
 	mutex.Lock()
-	origWallets := wallets
+	origWallets := balances
 	origTx := transactions
-	wallets = map[string]*Wallet{
+	balances = map[string]*Credits{
 		"add-user": {UserID: "add-user", Balance: 100, Currency: "GBP"},
 	}
 	transactions = map[string][]*Transaction{}
 	mutex.Unlock()
 	defer func() {
 		mutex.Lock()
-		wallets = origWallets
+		balances = origWallets
 		transactions = origTx
 		mutex.Unlock()
 	}()
@@ -219,8 +219,8 @@ func TestAddCredits(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if GetBalance("add-user") != 600 {
-		t.Errorf("expected balance 600, got %d", GetBalance("add-user"))
+	if Balance("add-user") != 600 {
+		t.Errorf("expected balance 600, got %d", Balance("add-user"))
 	}
 }
 
@@ -240,16 +240,16 @@ func TestAddCredits_ZeroAmount(t *testing.T) {
 
 func TestDeductCredits(t *testing.T) {
 	mutex.Lock()
-	origWallets := wallets
+	origWallets := balances
 	origTx := transactions
-	wallets = map[string]*Wallet{
+	balances = map[string]*Credits{
 		"deduct-user": {UserID: "deduct-user", Balance: 100, Currency: "GBP"},
 	}
 	transactions = map[string][]*Transaction{}
 	mutex.Unlock()
 	defer func() {
 		mutex.Lock()
-		wallets = origWallets
+		balances = origWallets
 		transactions = origTx
 		mutex.Unlock()
 	}()
@@ -258,21 +258,21 @@ func TestDeductCredits(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if GetBalance("deduct-user") != 70 {
-		t.Errorf("expected balance 70, got %d", GetBalance("deduct-user"))
+	if Balance("deduct-user") != 70 {
+		t.Errorf("expected balance 70, got %d", Balance("deduct-user"))
 	}
 }
 
 func TestDeductCredits_InsufficientBalance(t *testing.T) {
 	mutex.Lock()
-	origWallets := wallets
-	wallets = map[string]*Wallet{
+	origWallets := balances
+	balances = map[string]*Credits{
 		"poor-user": {UserID: "poor-user", Balance: 5, Currency: "GBP"},
 	}
 	mutex.Unlock()
 	defer func() {
 		mutex.Lock()
-		wallets = origWallets
+		balances = origWallets
 		mutex.Unlock()
 	}()
 
@@ -284,12 +284,12 @@ func TestDeductCredits_InsufficientBalance(t *testing.T) {
 
 func TestDeductCredits_NonexistentUser(t *testing.T) {
 	mutex.Lock()
-	origWallets := wallets
-	wallets = map[string]*Wallet{}
+	origWallets := balances
+	balances = map[string]*Credits{}
 	mutex.Unlock()
 	defer func() {
 		mutex.Lock()
-		wallets = origWallets
+		balances = origWallets
 		mutex.Unlock()
 	}()
 
@@ -301,9 +301,9 @@ func TestDeductCredits_NonexistentUser(t *testing.T) {
 
 func TestTransferCreditsDailyCap(t *testing.T) {
 	mutex.Lock()
-	origWallets := wallets
+	origWallets := balances
 	origTx := transactions
-	wallets = map[string]*Wallet{
+	balances = map[string]*Credits{
 		"sender":   {UserID: "sender", Balance: DailyTransferCap + 1000, Currency: "GBP"},
 		"receiver": {UserID: "receiver", Balance: 0, Currency: "GBP"},
 	}
@@ -311,7 +311,7 @@ func TestTransferCreditsDailyCap(t *testing.T) {
 	mutex.Unlock()
 	defer func() {
 		mutex.Lock()
-		wallets = origWallets
+		balances = origWallets
 		transactions = origTx
 		mutex.Unlock()
 	}()
@@ -322,7 +322,7 @@ func TestTransferCreditsDailyCap(t *testing.T) {
 	if err := TransferCredits("sender", "receiver", 1); err == nil {
 		t.Fatal("expected daily transfer cap error")
 	}
-	if got := GetBalance("sender"); got != 1000 {
+	if got := Balance("sender"); got != 1000 {
 		t.Fatalf("sender balance after blocked transfer = %d, want 1000", got)
 	}
 }
@@ -368,7 +368,7 @@ func TestGetTransactions(t *testing.T) {
 		mutex.Unlock()
 	}()
 
-	txs := GetTransactions("tx-user", 2)
+	txs := Transactions("tx-user", 2)
 	if len(txs) != 2 {
 		t.Fatalf("expected 2 transactions, got %d", len(txs))
 	}
@@ -389,7 +389,7 @@ func TestGetTransactions_EmptyUser(t *testing.T) {
 		mutex.Unlock()
 	}()
 
-	txs := GetTransactions("nobody", 10)
+	txs := Transactions("nobody", 10)
 	if txs == nil {
 		t.Error("expected non-nil empty slice")
 	}

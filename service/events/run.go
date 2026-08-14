@@ -47,7 +47,7 @@ func RunPrompt(e *Event) string {
 	}
 	if !canProceed {
 		return fmt.Sprintf("This scheduled task did not run: it costs %d credits and your balance is short. "+
-			"Top up at /wallet and it will run at its next time.", cost)
+			"Top up at /account/topup and it will run at its next time.", cost)
 	}
 
 	answer, err := RunAgent(e.Owner, prompt)

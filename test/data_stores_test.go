@@ -3,7 +3,7 @@ package test
 // One file, one owner.
 //
 // wallets.json was written by two different maps — the credit ledger in
-// wallet/wallet.go and the key store in wallet/basewallet.go — because a rename
+// account/credits.go and the key store in wallet/basewallet.go — because a rename
 // moved the second onto the first's filename. Each save destroyed the other's
 // contents. It cost an account its balance and very nearly cost a wallet the
 // private key to real money; the key survived only because a legacy file is
@@ -116,7 +116,7 @@ func TestTheKeyStoreAndTheLedgerAreSeparate(t *testing.T) {
 		}
 		return string(b)
 	}
-	ledger := read("../wallet/wallet.go")
+	ledger := read("../account/credits.go")
 	keys := read("../wallet/basewallet.go")
 
 	if !strings.Contains(ledger, `"wallets.json"`) {

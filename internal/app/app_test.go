@@ -246,12 +246,15 @@ func TestRenderHTMLWithAuthNavShowsSignedInActions(t *testing.T) {
 }
 
 // The bottom group is the account itself: who you are, the page about you, and
-// the way out. Usage and Wallet are not there — they close the top group, since
-// they are things you open and read rather than part of signing in and out.
+// the way out. Usage is not there — it closes the top group, since it is
+// something you open and read rather than part of signing in and out.
+//
+// There is no Wallet item any more. Money is the account's, so the balance is
+// the first card on /account and the badge in the header links to it.
 func TestTheBottomGroupIsTheAccount(t *testing.T) {
 	result := RenderHTMLWithLangAndAuth("Test", "d", "<p>c</p>", "en", &auth.Account{ID: "alice"})
 
-	for _, want := range []string{`id="nav-account"`, `id="nav-logout"`, `href="/usage"`, `id="nav-wallet"`} {
+	for _, want := range []string{`id="nav-account"`, `id="nav-logout"`, `href="/usage"`} {
 		if !strings.Contains(result, want) {
 			t.Errorf("the sidebar is missing %s", want)
 		}

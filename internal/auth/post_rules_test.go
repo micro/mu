@@ -67,7 +67,7 @@ func TestPostBlockReasonOffersTheWayOut(t *testing.T) {
 	// Both ways out, named as places rather than as routes. A path written into
 	// a sentence reads as a link and is not one; the renderer turns these words
 	// into the links, so the sentence stays a sentence wherever it is shown.
-	for _, want := range []string{"your Account", "your Wallet", "24 hours"} {
+	for _, want := range []string{"your Account", "your Balance", "24 hours"} {
 		if !strings.Contains(reason, want) {
 			t.Fatalf("expected the reason to mention %q, got %q", want, reason)
 		}

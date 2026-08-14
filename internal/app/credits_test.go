@@ -46,7 +46,7 @@ func TestAnEmptyBalanceSaysHowToStart(t *testing.T) {
 	if !strings.Contains(got, "Top up to get started") {
 		t.Errorf("an empty balance produced %q", got)
 	}
-	if !strings.Contains(got, `href="/wallet"`) {
+	if !strings.Contains(got, `href="/account/topup"`) {
 		t.Error("the banner does not say where to go")
 	}
 }
@@ -106,12 +106,12 @@ func TestAdminsSeeUnlimitedAndAreNeverAskedToTopUp(t *testing.T) {
 	}
 }
 
-// The banner points at /wallet, so it must not appear on top of /wallet.
+// The banner points at the account, so it must not appear on top of it.
 func TestTheBannerIsNotShownOnThePageItPointsAt(t *testing.T) {
 	withBalance(t, 0, true)
 
 	acc := withToken(t, "newcomer2")
-	for _, path := range []string{"/wallet", "/wallet/add", "/wallet/transfer"} {
+	for _, path := range []string{"/account", "/account/topup", "/account/transfer"} {
 		if got := creditsBannerFor(acc, path); got != "" {
 			t.Errorf("the banner appeared on %s", path)
 		}
@@ -170,8 +170,8 @@ func TestTheHeadBalanceShowsEveryState(t *testing.T) {
 	if !strings.Contains(got, ">1,200<") {
 		t.Errorf("head balance rendered %q", got)
 	}
-	if !strings.Contains(got, `href="/wallet"`) {
-		t.Error("the balance is not a link to the wallet")
+	if !strings.Contains(got, `href="/account#balance"`) {
+		t.Error("the balance is not a link to where the balance lives")
 	}
 
 	// Same suppressions as everywhere else.

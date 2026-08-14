@@ -6,11 +6,11 @@ import (
 	"net/http"
 	"strings"
 
+	"mu/account"
 	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/x402"
-	"mu/wallet"
 )
 
 func PricingHandler(w http.ResponseWriter, r *http.Request) {
@@ -54,12 +54,12 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	// the page and not of the tool — the same forecast is included when you
 	// look at it and metered when your agent asks for it.
 	b.WriteString(`<p style="font-size:14px;color:#666;margin:0 0 8px">1 credit = 1p. The web app is included — you are charged for what your agents call.</p>`)
-	// Rendered from wallet.Pricing() so this page and the wallet page can never
+	// Rendered from account.Pricing() so this page and the account page can never
 	// disagree about what something costs.
 	b.WriteString(`<table class="stats-table" style="font-size:14px">`)
 	b.WriteString(`<tr><th style="text-align:left">Action</th><th style="text-align:right">Credits</th></tr>`)
 	b.WriteString(`<tr><td>Anything you read in the web app</td><td>included</td></tr>`)
-	for _, it := range wallet.Pricing() {
+	for _, it := range account.Pricing() {
 		cost := fmt.Sprintf("%d", it.Cost)
 		if it.Cost == 0 {
 			cost = "free"
@@ -90,7 +90,7 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<p style="font-size:14px;color:#666;margin:0 0 12px"><strong>People top up with a card.</strong> ` +
 		`Credits are bought through Stripe and every priced call — the pages, the assistant, ` +
 		`and any agent you have given a token — comes out of the same balance. ` +
-		`<a href="/wallet" style="color:#111">Your wallet →</a></p>`)
+		`<a href="/account#balance" style="color:#111">Your balance →</a></p>`)
 	if x402.X402Enabled() {
 		b.WriteString(`<p style="font-size:14px;color:#666;margin:0 0 8px"><strong>Agents can also pay using USDC, with no account.</strong> ` +
 			`A priced call with no credentials answers <code>402 Payment Required</code> with an ` +

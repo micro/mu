@@ -1,4 +1,4 @@
-package wallet
+package account
 
 // A payment must land whether or not the webhook ever arrives.
 //
@@ -29,14 +29,14 @@ func settler(t *testing.T, id string) {
 func TestASettledSessionCreditsAndRecordsThePlan(t *testing.T) {
 	const owner = "settle-paid"
 	settler(t, owner)
-	before := GetBalance(owner)
+	before := Balance(owner)
 
 	settleSession(checkoutSession{
 		ID: "cs_settle_1", PaymentStatus: "paid", Customer: "cus_x",
 		AmountTotal: 2000, UserID: owner, Credits: "2000",
 	}, "test")
 
-	if got := GetBalance(owner); got != before+2000 {
+	if got := Balance(owner); got != before+2000 {
 		t.Errorf("balance is %d, want %d", got, before+2000)
 	}
 	acc, _ := auth.GetAccount(owner)
@@ -49,7 +49,7 @@ func TestASettledSessionCreditsAndRecordsThePlan(t *testing.T) {
 func TestTheSameSessionSettlesOnlyOnce(t *testing.T) {
 	const owner = "settle-twice"
 	settler(t, owner)
-	before := GetBalance(owner)
+	before := Balance(owner)
 
 	s := checkoutSession{
 		ID: "cs_settle_2", PaymentStatus: "paid",
@@ -58,7 +58,7 @@ func TestTheSameSessionSettlesOnlyOnce(t *testing.T) {
 	settleSession(s, "webhook")
 	settleSession(s, "return from checkout")
 
-	if got := GetBalance(owner); got != before+500 {
+	if got := Balance(owner); got != before+500 {
 		t.Errorf("balance is %d, want %d — the session was applied twice, which is "+
 			"what a second settling route would cost if it were not deduped",
 			got, before+500)
@@ -69,14 +69,14 @@ func TestTheSameSessionSettlesOnlyOnce(t *testing.T) {
 func TestAnUnpaidSessionChangesNothing(t *testing.T) {
 	const owner = "settle-unpaid"
 	settler(t, owner)
-	before := GetBalance(owner)
+	before := Balance(owner)
 
 	settleSession(checkoutSession{
 		ID: "cs_settle_3", PaymentStatus: "unpaid",
 		UserID: owner, Credits: "5000",
 	}, "test")
 
-	if got := GetBalance(owner); got != before {
+	if got := Balance(owner); got != before {
 		t.Errorf("an unpaid session credited %d", got-before)
 	}
 }
@@ -94,8 +94,8 @@ func TestSettlingChecksThePurchaseBelongsToTheCaller(t *testing.T) {
 // The checkout returns through the handler that settles, not to a page that
 // only says a payment worked.
 func TestCheckoutReturnsThroughTheHandlerThatSettles(t *testing.T) {
-	src := readWalletSource(t, "handlers.go")
-	if !strings.Contains(src, "/wallet/stripe/success?session_id={CHECKOUT_SESSION_ID}") {
+	src := readWalletSource(t, "balance.go")
+	if !strings.Contains(src, "/account/stripe/success?session_id={CHECKOUT_SESSION_ID}") {
 		t.Error("the checkout does not return with a session id, so it lands " +
 			"somewhere that cannot settle the payment if the webhook never arrives")
 	}

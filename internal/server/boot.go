@@ -6,6 +6,7 @@ package server
 // register itself as its package loads. The rest is independent.
 
 import (
+	"mu/account"
 	"mu/admin"
 	"mu/internal/data"
 	"mu/internal/imageproxy"
@@ -42,7 +43,6 @@ import (
 	"mu/service/weather"
 	"mu/service/web"
 	whatsappsvc "mu/service/whatsapp"
-	"mu/wallet"
 )
 
 // boot starts the runtime core and loads every service.
@@ -116,7 +116,7 @@ func boot() {
 	// answer three short. Loading is boot's job.
 	apps.Load()
 	social.Load()
-	wallet.Load()
+	account.Load()
 	tasks.Load()
 	events.Load()
 }

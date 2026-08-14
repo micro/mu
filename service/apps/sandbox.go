@@ -10,7 +10,7 @@ package apps
 //	post:function(p,b){return post(p,b)},
 //
 // Apps are public, searchable and forkable, and opening one is a click. So
-// opening somebody's app ran their JavaScript as you: mu.post('/wallet/
+// opening somebody's app ran their JavaScript as you: mu.post('/account/
 // transfer', …) moved your credits, mu.get('/mail') read your mail. CSRF was no
 // obstacle — the token is in a cookie JavaScript can read, which is how the
 // product's own pages get it — and neither was the /sdk/ proxy, because
@@ -27,7 +27,7 @@ package apps
 //
 // The parent is ours, the app cannot reach into it, and the only things it will
 // do are the operations the SDK documents. An app asking for anything else —
-// /wallet/transfer, /account, an endpoint invented tomorrow — is refused,
+// /account/transfer, /account, an endpoint invented tomorrow — is refused,
 // because the bridge dispatches from a fixed table rather than a path.
 //
 // Not WASM. WASM bounds CPU and memory for code you execute yourself; the

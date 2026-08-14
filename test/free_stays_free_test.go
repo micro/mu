@@ -2,7 +2,7 @@ package test
 
 // What quota.json calls free has to actually be free.
 //
-// The cost table on /pricing and /wallet renders straight from quota.json, so a
+// The cost table on /pricing and /account renders straight from quota.json, so a
 // row saying "free" is a promise made to whoever read it. Thirteen operations
 // make that promise, and they are the ones that only touch this instance's own
 // storage: posting, commenting, replying, creating an app, sending a message to
@@ -24,9 +24,9 @@ package test
 import (
 	"testing"
 
+	"mu/account"
 	"mu/internal/auth"
 	"mu/internal/quota"
-	"mu/wallet"
 )
 
 // loadPrices reads the real quota.json, which main() does at boot and a test
@@ -71,7 +71,7 @@ func TestAFreeOperationDoesNotMoveTheBalance(t *testing.T) {
 	if acc.Admin || acc.Agent {
 		t.Skip("this account is exempt for other reasons, so it proves nothing")
 	}
-	if err := wallet.AddCredits(acc.ID, 100, quota.OpTopup, nil); err != nil {
+	if err := account.AddCredits(acc.ID, 100, quota.OpTopup, nil); err != nil {
 		t.Skipf("cannot fund a wallet here: %v", err)
 	}
 	before := quota.BalanceOf(acc.ID)
@@ -142,10 +142,10 @@ func TestAFreeOperationWorksOnAnEmptyBalance(t *testing.T) {
 // file, and this is the assertion that they agree about what "free" means.
 func TestEveryPublishedFreeRowIsFreeInQuota(t *testing.T) {
 	loadPrices(t)
-	if len(wallet.Pricing()) == 0 {
+	if len(account.Pricing()) == 0 {
 		t.Fatal("the published price list is empty, so this asserts nothing")
 	}
-	for _, item := range wallet.Pricing() {
+	for _, item := range account.Pricing() {
 		if item.Cost != 0 {
 			continue
 		}

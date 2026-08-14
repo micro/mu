@@ -507,7 +507,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			if !acc.Admin {
 				canProceed, _, cost, _ := quota.CheckQuota(acc.ID, quota.OpMailSend)
 				if !canProceed {
-					http.Error(w, fmt.Sprintf("Sending mail requires %d credits. Top up at /wallet/topup", cost), http.StatusPaymentRequired)
+					http.Error(w, fmt.Sprintf("Sending mail requires %d credits. Top up at /account/topup", cost), http.StatusPaymentRequired)
 					return
 				}
 			}

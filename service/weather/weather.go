@@ -325,7 +325,7 @@ func renderWeatherPage(r *http.Request) string {
         showLoading(false);
         var msg = (err && err.error) ? err.error : 'Weather is unavailable right now. Please try again later.';
         if (msg.indexOf('Insufficient credits') !== -1) {
-          msg += ' <a href="/wallet/topup">Top up your wallet</a>.';
+          msg += ' <a href="/account/topup">Top up your balance</a>.';
         }
         showError(msg);
       });

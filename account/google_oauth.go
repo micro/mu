@@ -29,15 +29,20 @@ func googleClientSecret() string { return strings.TrimSpace(settings.Get("GOOGLE
 // GoogleConfigured reports whether Google sign-in is available.
 func GoogleConfigured() bool { return googleClientID() != "" && googleClientSecret() != "" }
 
+// googleRedirectURI is the callback Google is told to send the user back to.
+//
+// It has to be this instance's public address, because Google matches it
+// character for character against what is registered and sends the person
+// there afterwards. The fallback assembled it from r.Host, which behind the
+// reverse proxy is localhost:8081 — so an instance that had not set
+// GOOGLE_REDIRECT_URI explicitly got a callback Google rejects. That is the
+// same bug the Stripe return URL had, and internal/origin is the one answer to
+// it; app.BaseURL is how everything else reaches it.
 func googleRedirectURI(r *http.Request) string {
 	if v := strings.TrimSpace(settings.Get("GOOGLE_REDIRECT_URI")); v != "" {
 		return v
 	}
-	scheme := "https"
-	if r.TLS == nil && r.Header.Get("X-Forwarded-Proto") != "https" {
-		scheme = "http"
-	}
-	return scheme + "://" + r.Host + "/oauth2/callback"
+	return app.BaseURL(r) + "/oauth2/callback"
 }
 
 func randToken(n int) string {

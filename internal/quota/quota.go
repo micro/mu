@@ -181,7 +181,7 @@ func CheckQuota(userID string, operation string) (bool, bool, int, error) {
 	// what an agent reads when it has to explain itself, and "insufficient
 	// credits" told neither of them what to do next.
 	return false, false, cost, fmt.Errorf(
-		"this costs %d credits and your balance is %d — top up at /wallet", cost, balance)
+		"this costs %d credits and your balance is %d — top up at /account/topup", cost, balance)
 }
 
 // ConsumeQuota consumes quota for an operation (call after successful operation)
@@ -242,7 +242,7 @@ func ExceededPage(cost int) string {
 	return `<div class="card center-card-md">` +
 		`<h2>Credits Required</h2>` +
 		fmt.Sprintf(`<p>This costs %d credit%s. `, cost, plural) +
-		`<a href="/wallet/topup">Add credits</a> to continue.</p>` +
-		`<p class="text-sm text-muted">1 credit = 1p · <a href="/wallet">View wallet</a></p>` +
+		`<a href="/account/topup">Add credits</a> to continue.</p>` +
+		`<p class="text-sm text-muted">1 credit = 1p · <a href="/account#balance">Your balance</a></p>` +
 		`</div>`
 }

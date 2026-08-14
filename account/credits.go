@@ -1,23 +1,25 @@
-// Package wallet is money: what this instance charges, and how it gets paid.
+// Credits: what an account has to spend, and how it gets more.
 //
-// It is a staple rather than a service, which is why it sits at the top level
-// beside home, agent, client and admin instead of under service/. It was under
-// service/ and that put it in the wrong place twice over — as one entry in the
-// catalogue of what this instance offers, and as a leaf that internal/api,
-// internal/server and fifteen sibling services all had to import in order to
-// ask what something cost.
+// This is the second half of the account — the first is who you are, and this
+// is what you can afford. They are one thing to a person and were two
+// directories to us: a nav item called Wallet that held a balance, a card
+// form and a ledger, sitting beside an Account page that held everything else
+// about the same account. Nobody has a wallet here. They have a balance.
 //
-// They do not ask here any more. The price list and the gate in front of it are
-// internal/quota, which knows what things cost and deliberately does not know
-// what a balance is; this package fills in the half quota cannot answer, from
-// its own init, because quota sits underneath it and there is no cycle to
-// break. A service imports quota. Nothing but the server, the two aggregating
-// surfaces and this package's own page imports the wallet.
+// It used to be a top-level staple called wallet/, and the name was doing two
+// jobs at once — this ledger, and a key that signs. Splitting them left this
+// half with no name of its own, which is the tell: it never had one. It is the
+// account's money, so it lives with the account.
 //
-// The name is the caller's word, not an accountant's. On the x402 path there is
-// no account, no credit balance and no invoice — a wallet signs, and that is
-// the whole of it. Credits are the other rail into the same meter.
-package wallet
+// The price list and the gate in front of it are internal/quota, which knows
+// what things cost and deliberately does not know what a balance is. This file
+// fills in the half quota cannot answer, from its own init, because quota sits
+// underneath and there is no cycle to break.
+//
+// One meter, not two. A person tops up with a card and an agent holding their
+// token spends the same credits; an agent with no account pays per request over
+// x402 and never comes here at all.
+package account
 
 import (
 	"encoding/json"
@@ -57,12 +59,18 @@ const (
 var mutex sync.RWMutex
 
 // Storage
-var wallets = map[string]*Wallet{}
+var balances = map[string]*Credits{}
 var transactions = map[string][]*Transaction{}
 var dailyUsage = map[string]*DailyUsage{}
 
-// Wallet represents a user's credit balance
-type Wallet struct {
+// Credits is what one account has to spend.
+//
+// The field names are the ones already on disk, and so is the filename. It is
+// still wallets.json in a package with no wallet in it, because renaming a live
+// money file is exactly how the last balance got destroyed: the code ships, the
+// old file is never read again, and every account reads zero. Renaming it is a
+// migration, not an edit. TestTheKeyStoreAndTheLedgerAreSeparate pins it.
+type Credits struct {
 	UserID    string    `json:"user_id"`
 	Balance   int       `json:"balance"`  // Credits (1 credit = 1 penny = £0.01)
 	Currency  string    `json:"currency"` // Always "GBP" for now
@@ -99,24 +107,24 @@ func init() {
 	// build that links the wallet has a working meter, rather than one that
 	// lets everything through because a hook stayed nil.
 	quota.Enabled = PaymentsEnabled
-	quota.Balance = GetBalance
+	quota.Balance = Balance
 	quota.Record = RecordUsage
 	quota.Deduct = func(account, operation string, amount int, meta map[string]interface{}) error {
 		return DeductCredits(account, amount, operation, meta)
 	}
 
-	// Load wallets from disk, keeping only the ones that decoded into something.
+	// Load balances from disk, keeping only the ones that decoded into something.
 	//
 	// The key store used to write this same filename, and its records parse
-	// cleanly into a Wallet: the field names simply do not match, so every
+	// cleanly into a Credits record: the field names simply do not match, so every
 	// account arrives with no id and a balance of zero. That map is not empty —
 	// it has an entry per account — so anything asking "does this account have a
 	// wallet" gets yes, and the rebuild below skips every one of them.
 	b, _ := data.LoadFile("wallets.json")
-	json.Unmarshal(b, &wallets)
-	for id, w := range wallets {
+	json.Unmarshal(b, &balances)
+	for id, w := range balances {
 		if w == nil || (w.UserID == "" && w.Balance == 0) {
-			delete(wallets, id)
+			delete(balances, id)
 		}
 	}
 
@@ -163,53 +171,53 @@ func rebuildFromTransactions() {
 
 	restored := 0
 	for id, t := range latest {
-		if _, ok := wallets[id]; ok {
+		if _, ok := balances[id]; ok {
 			continue
 		}
 		if t.Balance <= 0 {
 			continue
 		}
-		wallets[id] = &Wallet{
+		balances[id] = &Credits{
 			UserID: id, Balance: t.Balance, Currency: "GBP", UpdatedAt: t.CreatedAt,
 		}
 		restored++
 	}
 	if restored > 0 {
 		app.Log("wallet", "restored %d credit balances from the transaction log", restored)
-		data.SaveJSON("wallets.json", wallets) //nolint:errcheck
+		data.SaveJSON("wallets.json", balances) //nolint:errcheck
 	}
 }
 
 // Load initializes wallet
 func Load() {
-	// Wallet loaded
+	// Balances loaded
 }
 
-// GetWallet retrieves or creates a wallet for a user
-func GetWallet(userID string) *Wallet {
+// CreditsOf retrieves or creates a wallet for a user
+func CreditsOf(userID string) *Credits {
 	mutex.RLock()
-	w, exists := wallets[userID]
+	w, exists := balances[userID]
 	mutex.RUnlock()
 
 	if !exists {
-		w = &Wallet{
+		w = &Credits{
 			UserID:    userID,
 			Balance:   0,
 			Currency:  "GBP",
 			UpdatedAt: time.Now(),
 		}
 		mutex.Lock()
-		wallets[userID] = w
-		data.SaveJSON("wallets.json", wallets)
+		balances[userID] = w
+		data.SaveJSON("wallets.json", balances)
 		mutex.Unlock()
 	}
 
 	return w
 }
 
-// GetBalance returns the current balance for a user
-func GetBalance(userID string) int {
-	w := GetWallet(userID)
+// Balance returns the current balance for a user
+func Balance(userID string) int {
+	w := CreditsOf(userID)
 	return w.Balance
 }
 
@@ -222,14 +230,14 @@ func AddCredits(userID string, amount int, operation string, metadata map[string
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	w, exists := wallets[userID]
+	w, exists := balances[userID]
 	if !exists {
-		w = &Wallet{
+		w = &Credits{
 			UserID:   userID,
 			Balance:  0,
 			Currency: "GBP",
 		}
-		wallets[userID] = w
+		balances[userID] = w
 	}
 
 	w.Balance += amount
@@ -249,7 +257,7 @@ func AddCredits(userID string, amount int, operation string, metadata map[string
 	transactions[userID] = append(transactions[userID], tx)
 
 	// Persist
-	data.SaveJSON("wallets.json", wallets)
+	data.SaveJSON("wallets.json", balances)
 	data.SaveJSON("transactions.json", transactions)
 
 	return nil
@@ -264,7 +272,7 @@ func DeductCredits(userID string, amount int, operation string, metadata map[str
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	w, exists := wallets[userID]
+	w, exists := balances[userID]
 	if !exists || w.Balance < amount {
 		return errors.New("insufficient credits")
 	}
@@ -286,7 +294,7 @@ func DeductCredits(userID string, amount int, operation string, metadata map[str
 	transactions[userID] = append(transactions[userID], tx)
 
 	// Persist
-	data.SaveJSON("wallets.json", wallets)
+	data.SaveJSON("wallets.json", balances)
 	data.SaveJSON("transactions.json", transactions)
 
 	return nil
@@ -340,20 +348,20 @@ func TransferCredits(fromUserID, toUserID string, amount int) error {
 	}
 
 	// Check sender has sufficient balance
-	sender, exists := wallets[fromUserID]
+	sender, exists := balances[fromUserID]
 	if !exists || sender.Balance < amount {
 		return errors.New("insufficient credits")
 	}
 
 	// Get or create receiver wallet
-	receiver, exists := wallets[toUserID]
+	receiver, exists := balances[toUserID]
 	if !exists {
-		receiver = &Wallet{
+		receiver = &Credits{
 			UserID:   toUserID,
 			Balance:  0,
 			Currency: "GBP",
 		}
-		wallets[toUserID] = receiver
+		balances[toUserID] = receiver
 	}
 
 	// Deduct from sender
@@ -381,7 +389,7 @@ func TransferCredits(fromUserID, toUserID string, amount int) error {
 		// Recording the id alone produced receipts reading "Transfer to 3834",
 		// which is unreadable and — when the recipient was resolved wrongly —
 		// indistinguishable from a correct one.
-		Metadata:  map[string]interface{}{"to": toUserID, "to_name": AccountLabel(toUserID)},
+		Metadata:  map[string]interface{}{"to": toUserID, "to_name": Label(toUserID)},
 		CreatedAt: now,
 	}
 	transactions[fromUserID] = append(transactions[fromUserID], senderTx)
@@ -394,30 +402,30 @@ func TransferCredits(fromUserID, toUserID string, amount int) error {
 		Amount:    amount,
 		Balance:   receiver.Balance,
 		Operation: quota.OpTransfer,
-		Metadata:  map[string]interface{}{"from": fromUserID, "from_name": AccountLabel(fromUserID)},
+		Metadata:  map[string]interface{}{"from": fromUserID, "from_name": Label(fromUserID)},
 		CreatedAt: now,
 	}
 	transactions[toUserID] = append(transactions[toUserID], receiverTx)
 
 	// Persist
-	data.SaveJSON("wallets.json", wallets)
+	data.SaveJSON("wallets.json", balances)
 	data.SaveJSON("transactions.json", transactions)
 
 	return nil
 }
 
-// AccountLabel is the name to show for an account id, falling back to the id
+// Label is the name to show for an account id, falling back to the id
 // when there is no account to ask — a deleted one, or a wallet that outlived
 // it. Never empty, so a receipt always says something.
-func AccountLabel(id string) string {
+func Label(id string) string {
 	if acc, err := auth.GetAccount(id); err == nil && strings.TrimSpace(acc.Name) != "" {
 		return acc.Name
 	}
 	return id
 }
 
-// GetTransactions returns transaction history for a user
-func GetTransactions(userID string, limit int) []*Transaction {
+// Transactions returns transaction history for a user
+func Transactions(userID string, limit int) []*Transaction {
 	mutex.RLock()
 	defer mutex.RUnlock()
 
@@ -439,15 +447,15 @@ func RecordUsage(userID string, operation string) {
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	w, exists := wallets[userID]
+	w, exists := balances[userID]
 	if !exists {
-		w = &Wallet{
+		w = &Credits{
 			UserID:    userID,
 			Balance:   0,
 			Currency:  "GBP",
 			UpdatedAt: time.Now(),
 		}
-		wallets[userID] = w
+		balances[userID] = w
 	}
 
 	tx := &Transaction{
@@ -477,20 +485,20 @@ func ChargeAppUse(userID, authorID, appSlug string, price int) error {
 	defer mutex.Unlock()
 
 	// Check sender has sufficient balance
-	user, exists := wallets[userID]
+	user, exists := balances[userID]
 	if !exists || user.Balance < price {
 		return errors.New("insufficient credits")
 	}
 
 	// Get or create author wallet
-	author, exists := wallets[authorID]
+	author, exists := balances[authorID]
 	if !exists {
-		author = &Wallet{
+		author = &Credits{
 			UserID:   authorID,
 			Balance:  0,
 			Currency: "GBP",
 		}
-		wallets[authorID] = author
+		balances[authorID] = author
 	}
 
 	// Calculate split: author gets 90%, platform gets 10%
@@ -536,7 +544,7 @@ func ChargeAppUse(userID, authorID, appSlug string, price int) error {
 	transactions[authorID] = append(transactions[authorID], authorTx)
 
 	// Persist
-	data.SaveJSON("wallets.json", wallets)
+	data.SaveJSON("wallets.json", balances)
 	data.SaveJSON("transactions.json", transactions)
 
 	return nil
@@ -549,12 +557,12 @@ func FormatCredits(credits int) string {
 	return fmt.Sprintf("£%d.%02d", pounds, pence)
 }
 
-// DeleteWallet removes a user's wallet and transaction history.
-func DeleteWallet(userID string) {
+// DeleteCredits removes a user's wallet and transaction history.
+func DeleteCredits(userID string) {
 	mutex.Lock()
 	defer mutex.Unlock()
-	delete(wallets, userID)
+	delete(balances, userID)
 	delete(transactions, userID)
-	data.SaveJSON("wallets.json", wallets)
+	data.SaveJSON("wallets.json", balances)
 	data.SaveJSON("transactions.json", transactions)
 }

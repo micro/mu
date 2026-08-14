@@ -14,8 +14,8 @@ import (
 	"strings"
 	"testing"
 
+	"mu/account"
 	"mu/internal/auth"
-	"mu/wallet"
 )
 
 func adminSession(t *testing.T, id string, admin bool) *http.Cookie {
@@ -53,10 +53,10 @@ func TestAnAdminCanCreditAnAccountFromTheUsersPage(t *testing.T) {
 	admin := adminSession(t, "admin-credit-giver", true)
 	adminSession(t, "admin-credit-taker", false)
 
-	before := wallet.GetBalance("admin-credit-taker")
+	before := account.Balance("admin-credit-taker")
 	grant(t, admin, "admin-credit-taker", "500")
 
-	if got := wallet.GetBalance("admin-credit-taker"); got != before+500 {
+	if got := account.Balance("admin-credit-taker"); got != before+500 {
 		t.Errorf("balance is %d, want %d — the grant did not land", got, before+500)
 	}
 }
@@ -67,10 +67,10 @@ func TestAJunkAmountIsRefusedRatherThanBanked(t *testing.T) {
 	admin := adminSession(t, "admin-credit-junk", true)
 	adminSession(t, "admin-credit-target", false)
 
-	before := wallet.GetBalance("admin-credit-target")
+	before := account.Balance("admin-credit-target")
 	for _, amount := range []string{"", "0", "-100", "lots"} {
 		grant(t, admin, "admin-credit-target", amount)
-		if got := wallet.GetBalance("admin-credit-target"); got != before {
+		if got := account.Balance("admin-credit-target"); got != before {
 			t.Fatalf("%q changed the balance to %d", amount, got)
 		}
 	}
@@ -81,13 +81,13 @@ func TestANonAdminCannotGrantCredits(t *testing.T) {
 	notAdmin := adminSession(t, "admin-credit-nobody", false)
 	adminSession(t, "admin-credit-victim", false)
 
-	before := wallet.GetBalance("admin-credit-victim")
+	before := account.Balance("admin-credit-victim")
 	rr := grant(t, notAdmin, "admin-credit-victim", "1000")
 
 	if rr.Code == http.StatusSeeOther {
 		t.Error("a non-admin's grant was accepted")
 	}
-	if got := wallet.GetBalance("admin-credit-victim"); got != before {
+	if got := account.Balance("admin-credit-victim"); got != before {
 		t.Errorf("a non-admin moved the balance to %d", got)
 	}
 }
