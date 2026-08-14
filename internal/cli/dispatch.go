@@ -297,6 +297,30 @@ func callTool(name string, rest []string, rc *ResolvedConfig) (code int, unknown
 		return 1, true // say nothing: the caller may have another reading
 	}
 
+	// A number where a string was wanted, tried again as a string.
+	//
+	// Everything off a command line is a string and coerce guesses which ones
+	// were meant as numbers. It has to guess, because nothing here knows the
+	// tool's schema. It guesses wrong on an id that happens to be all digits —
+	// `mu blog read --id 1786633600633959421` sent a JSON number and was
+	// refused, so there was no way to read a post by its id at all. The comment
+	// on coerce says to quote the value; quoting does not reach us, because the
+	// shell removes it.
+	//
+	// Retrying is free of side effects for the same reason the two-word retry
+	// above is: the call was refused before anything ran.
+	if err != nil && wantedAString(err) {
+		if retry, changed := stringifyNumbers(args); changed {
+			// The retry's outcome either way, not just its successes. Once the
+			// server has said the field is a string, sending a string is the
+			// correct reading of the command — so if that still fails, what it
+			// failed with is the real answer. Keeping the first error meant
+			// `--id 999999999999` reported a complaint about unmarshalling when
+			// what had happened was that no post has that id.
+			text, err = client.CallTool(name, retry)
+		}
+	}
+
 	if text != "" {
 		if ferr := Format(os.Stdout, text, rc); ferr != nil {
 			fmt.Fprintln(os.Stderr, "format error:", ferr)
@@ -309,6 +333,35 @@ func callTool(name string, rest []string, rc *ResolvedConfig) (code int, unknown
 		return 1, false
 	}
 	return 0, false
+}
+
+// wantedAString reports that the server refused a number for a string field.
+func wantedAString(err error) bool {
+	s := err.Error()
+	return strings.Contains(s, "cannot unmarshal number into") &&
+		strings.Contains(s, "of type string")
+}
+
+// stringifyNumbers re-types every numeric argument as a string.
+//
+// All of them, rather than the one the error names: the field name in that
+// message belongs to a Go struct, not to the JSON, and matching them up is
+// guesswork of the kind that put us here. If the retry is wrong it fails and
+// the original error is what gets reported, so the blunt version costs nothing.
+func stringifyNumbers(args map[string]any) (map[string]any, bool) {
+	out := make(map[string]any, len(args))
+	changed := false
+	for k, v := range args {
+		switch n := v.(type) {
+		case int64:
+			out[k], changed = strconv.FormatInt(n, 10), true
+		case float64:
+			out[k], changed = strconv.FormatFloat(n, 'f', -1, 64), true
+		default:
+			out[k] = v
+		}
+	}
+	return out, changed
 }
 
 // parseToolFlags walks remaining args and extracts --name value /
@@ -350,9 +403,13 @@ func parseToolFlags(args []string) (map[string]any, []string, error) {
 }
 
 // coerce converts a string value to the most plausible JSON type.
-// Numbers and booleans become their typed form; everything else stays
-// a string. Edge cases (a string that happens to look numeric) can be
-// worked around by the caller quoting the value.
+// Numbers and booleans become their typed form; everything else stays a string.
+//
+// It is a guess, and it has to be: nothing here knows the tool's schema. When
+// it guesses wrong — an id that is all digits — callTool notices the server's
+// complaint and tries again as a string. This used to say the caller could
+// quote the value instead, which was never true: the shell removes the quotes
+// before we see anything.
 func coerce(s string) any {
 	// Bool.
 	if s == "true" {
