@@ -298,6 +298,34 @@ func DeleteAccount(id string) error {
 	return nil
 }
 
+// CheckSecret verifies an account's password without signing anybody in.
+//
+// Login does this too, and mints a session as well — which is wrong for asking
+// somebody to prove who they are before doing something dangerous with the
+// session they already have. The point of re-authenticating is that the cookie
+// is not enough on its own; issuing a second one in the middle of it is exactly
+// backwards.
+//
+// An account signed up through Google or a passkey has no password anybody
+// knows, so this can only ever say no to them. That is not a bug in this
+// function, but a caller must say so in words rather than reporting a wrong
+// password.
+func CheckSecret(id, secret string) error {
+	mutex.Lock()
+	acc, ok := accounts[id]
+	mutex.Unlock()
+	if !ok {
+		return errors.New("account does not exist")
+	}
+	if strings.TrimSpace(acc.Secret) == "" {
+		return errors.New("this account has no password set")
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(acc.Secret), []byte(secret)); err != nil {
+		return errors.New("invalid account secret")
+	}
+	return nil
+}
+
 func Login(id, secret string) (*Session, error) {
 	mutex.Lock()
 	defer mutex.Unlock()

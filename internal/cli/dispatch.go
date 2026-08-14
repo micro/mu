@@ -110,6 +110,21 @@ func Run(args []string) int {
 	case "setup":
 		return runSetup(rest)
 	case "wallet":
+		// `wallet` names two different things, and both are right.
+		//
+		// Here it is a key on *this machine* — the seed `mu agent` pays from,
+		// which the server never sees. On the server it is a service, with an
+		// address of its own and the tools to use it. The words collided when
+		// the wallet became a service, and the collision was silent: `mu wallet
+		// address` read "address" as a path to a seed file and reported that it
+		// could not open it.
+		//
+		// So the local command keeps the bare form and `new`, and anything that
+		// names one of the service's methods goes to the server. A seed path is
+		// still a seed path; none of them is called "balance".
+		if len(rest) > 0 && walletServiceMethod(rest[0]) {
+			return runTool(command, rest, &rc)
+		}
 		return runWallet(rest)
 	case "x402":
 		return runX402(rest)

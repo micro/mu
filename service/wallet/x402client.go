@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"mu/internal/origin"
 	"mu/internal/settings"
 
 	"mu/internal/x402"
@@ -39,7 +40,7 @@ type Server402 struct {
 // payer is worse than none — and wallet_list and wallet_pay are what it was
 // being kept for.
 func Servers() []Server402 {
-	out := []Server402{{Name: "self", URL: strings.TrimRight(settings.Get("APP_URL"), "/")}}
+	out := []Server402{{Name: "self", URL: selfURL()}}
 	for _, entry := range strings.Split(settings.Get("X402_SERVERS"), ",") {
 		entry = strings.TrimSpace(entry)
 		if entry == "" {
@@ -62,9 +63,23 @@ func ServerURL(name string) string {
 		}
 	}
 	if name == "" || strings.EqualFold(name, "self") {
-		return strings.TrimRight(settings.Get("APP_URL"), "/")
+		return selfURL()
 	}
 	return ""
+}
+
+// selfURL is this instance's own address.
+//
+// It read APP_URL alone, which nothing sets and nothing documents, so "self"
+// resolved to the empty string and wallet_pay refused every call to this
+// instance with "no server called". internal/origin is where the question of
+// what this instance's public address is already has an answer; APP_URL still
+// wins when it is set, because an operator who set it meant it.
+func selfURL() string {
+	if v := strings.TrimSpace(settings.Get("APP_URL")); v != "" {
+		return strings.TrimRight(v, "/")
+	}
+	return origin.Self()
 }
 
 var payClient = &http.Client{Timeout: 60 * time.Second}

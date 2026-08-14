@@ -201,3 +201,18 @@ func createSeed(path string) (string, error) {
 	}
 	return addr, nil
 }
+
+// walletServiceMethod reports whether a word names a method of the wallet
+// service rather than a seed file.
+//
+// A list rather than a lookup against the server, because deciding which
+// command to run must not depend on the network: `mu wallet` has to keep
+// working on a machine that cannot reach an instance, and that is exactly when
+// somebody is checking a key.
+func walletServiceMethod(s string) bool {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "address", "balance", "list", "pay":
+		return true
+	}
+	return false
+}

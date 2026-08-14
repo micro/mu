@@ -89,7 +89,10 @@ func Page(accountID string) string {
     <p class="cw-qrnote">Scans as <b>USDC on %s</b> — your wallet should already
     have the network and token filled in. If it offers a different network, stop.</p>
   </details>
-  <p class="text-sm text-muted" style="margin:12px 0 0">Credits for this instance are a
+  <p class="text-sm text-muted" style="margin:12px 0 0"><a href="/wallet/export">Export your
+  private key →</a> The key is held on this instance; a copy you hold yourself is the only
+  thing that makes losing it here survivable.</p>
+  <p class="text-sm text-muted" style="margin:6px 0 0">Credits for this instance are a
   separate thing and are bought with a card — <a href="/account#balance">your balance</a>.</p>
 </div>
 %s

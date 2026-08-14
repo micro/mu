@@ -388,6 +388,11 @@ func registerRoutes() {
 	http.HandleFunc("/transit", transit.Handler)
 	http.HandleFunc("/hazards", hazards.Handler)
 	http.HandleFunc("/wallet", wallet.Handler)
+	// Taking your key with you. A page action and never a tool: an agent that
+	// can read a private key is a prompt injection away from posting it
+	// somewhere. It re-checks the password, so it is not in authRequired()
+	// either — the handler wants the session *and* the password.
+	http.HandleFunc("/wallet/export", wallet.ExportHandler)
 	http.HandleFunc(imageproxy.Path, imageproxy.Handler)
 	http.HandleFunc("/contacts", contacts.Handler)
 	http.HandleFunc("/docs", docs.Handler)

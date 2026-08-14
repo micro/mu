@@ -25,7 +25,8 @@ COMMON COMMANDS
   mu web search "claude code"    Search the web
   mu weather forecast --lat 51.5 --lon -0.12
   mu apps search "pomodoro"      Search the apps directory
-  mu wallet                      Your credit balance
+  mu wallet                      The x402 key on this machine
+  mu wallet balance              What your wallet holds on the server
 
 MANAGEMENT
   mu login                       Log in by pasting a token from /token

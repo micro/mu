@@ -37,8 +37,8 @@ import (
 // directly exposed instance would be taking it from the client, which is the
 // same assumption ClientIP already makes.
 func URL(r *http.Request) string {
-	if d := strings.TrimSpace(settings.Get("MU_DOMAIN")); d != "" && d != "localhost" {
-		return "https://" + strings.TrimSuffix(trimScheme(d), "/")
+	if u := Self(); u != "" {
+		return u
 	}
 	if h := strings.TrimSpace(r.Header.Get("X-Forwarded-Host")); h != "" {
 		if i := strings.Index(h, ","); i > 0 {
@@ -47,6 +47,32 @@ func URL(r *http.Request) string {
 		return scheme(r) + "://" + trimScheme(h)
 	}
 	return scheme(r) + "://" + r.Host
+}
+
+// Self is the public origin when there is no request to derive it from.
+//
+// Background work has the same question and none of the answers: a scheduled
+// job, a service naming this instance to another one, anything that runs
+// without somebody having asked. It was reachable only through URL(r), so those
+// callers each invented their own — and the wallet's "self" server read an
+// APP_URL that nothing sets, which made paying a tool on this instance fail
+// with "no server called".
+//
+// Returns "" when nothing is configured, which is the honest answer: a caller
+// with no request and no MU_DOMAIN genuinely cannot know its own address, and
+// guessing localhost is how a URL nobody can reach gets published.
+func Self() string {
+	for _, key := range []string{"MU_DOMAIN", "PUBLIC_URL", "APP_URL"} {
+		v := strings.TrimSpace(settings.Get(key))
+		if v == "" || v == "localhost" {
+			continue
+		}
+		// Always https, whatever was configured. This is the address handed to
+		// somebody else — an OAuth issuer, an x402 resource, a link in a mail —
+		// and http there is a downgrade published in writing.
+		return "https://" + strings.TrimSuffix(trimScheme(v), "/")
+	}
+	return ""
 }
 
 func scheme(r *http.Request) string {
