@@ -103,9 +103,20 @@ func init() {
 		return DeductCredits(account, amount, operation, meta)
 	}
 
-	// Load wallets from disk
+	// Load wallets from disk, keeping only the ones that decoded into something.
+	//
+	// The key store used to write this same filename, and its records parse
+	// cleanly into a Wallet: the field names simply do not match, so every
+	// account arrives with no id and a balance of zero. That map is not empty —
+	// it has an entry per account — so anything asking "does this account have a
+	// wallet" gets yes, and the rebuild below skips every one of them.
 	b, _ := data.LoadFile("wallets.json")
 	json.Unmarshal(b, &wallets)
+	for id, w := range wallets {
+		if w == nil || (w.UserID == "" && w.Balance == 0) {
+			delete(wallets, id)
+		}
+	}
 
 	// Load transactions from disk
 	b, _ = data.LoadFile("transactions.json")
