@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -109,23 +110,14 @@ func Run(args []string) int {
 		return runConfig(rest, &rc)
 	case "setup":
 		return runSetup(rest)
-	case "wallet":
-		// `wallet` names two different things, and both are right.
-		//
-		// Here it is a key on *this machine* — the seed `mu agent` pays from,
-		// which the server never sees. On the server it is a service, with an
-		// address of its own and the tools to use it. The words collided when
-		// the wallet became a service, and the collision was silent: `mu wallet
-		// address` read "address" as a path to a seed file and reported that it
-		// could not open it.
-		//
-		// So the local command keeps the bare form and `new`, and anything that
-		// names one of the service's methods goes to the server. A seed path is
-		// still a seed path; none of them is called "balance".
-		if len(rest) > 0 && walletServiceMethod(rest[0]) {
-			return runTool(command, rest, &rc)
-		}
-		return runWallet(rest)
+	case "key":
+		// The key on this machine, which the server never sees. `wallet` is
+		// deliberately *not* a case here: it is an ordinary service and reaches
+		// the generic dispatcher below like every other one. It was a case for
+		// a while, with a rule about which arguments meant the local key and
+		// which meant the service, and that rule was the overload rather than a
+		// fix for it.
+		return runKey(rest)
 	case "x402":
 		return runX402(rest)
 	case "agent":
@@ -208,8 +200,47 @@ func runTool(name string, rest []string, rc *ResolvedConfig) int {
 	if len(rest) > 0 && toolWord.MatchString(name) && toolWord.MatchString(rest[0]) {
 		typed = name + " " + rest[0]
 	}
+
+	// A bare service name is the likeliest way to get here, and "unknown tool"
+	// is a poor answer to it: `mu wallet` is not a typo, it is somebody who
+	// knows there is a wallet and not which methods it has. Every service whose
+	// main method is not aliased to its own name lands here — wallet, files,
+	// contacts — so the fix belongs to all of them rather than to whichever one
+	// somebody tried today.
+	if methods := methodsOf(name, rc); len(methods) > 0 {
+		fmt.Fprintf(os.Stderr, "%s is a service. Its methods:\n", name)
+		for _, m := range methods {
+			fmt.Fprintf(os.Stderr, "  mu %s %s\n", name, m)
+		}
+		return 1
+	}
+
 	fmt.Fprintf(os.Stderr, "unknown tool: %s — run `mu help` for the list\n", typed)
 	return 1
+}
+
+// methodsOf returns the methods of a service, given its name.
+//
+// Reads the catalogue the server already publishes, which is free and needs no
+// credentials — so this works before anybody has a token, which is exactly when
+// somebody is guessing at command names. Returns nothing when the server cannot
+// be reached: a suggestion is worth a round trip, and never worth an error
+// about the network in place of the error they actually made.
+func methodsOf(service string, rc *ResolvedConfig) []string {
+	client := NewClient(rc)
+	tools, err := client.ListTools()
+	if err != nil {
+		return nil
+	}
+	prefix := strings.ToLower(service) + "_"
+	var out []string
+	for _, t := range tools {
+		if strings.HasPrefix(strings.ToLower(t.Name), prefix) {
+			out = append(out, strings.TrimPrefix(strings.ToLower(t.Name), prefix))
+		}
+	}
+	sort.Strings(out)
+	return out
 }
 
 // canTakeArgs reports whether a tool could accept these words: either they are

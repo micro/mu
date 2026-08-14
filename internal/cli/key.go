@@ -10,14 +10,31 @@ import (
 	"mu/service/wallet"
 )
 
-// runWallet audits which address a stored key controls and whether it matches
-// the configured x402 pay-to address. It reads the seed locally and prints only
+// The key on this machine.
+//
+// This was `mu wallet`, and that word now means something else: a service on
+// the server, with an address of its own and four tools to use it. Two
+// different keys under one name — one the server holds for your account, one
+// you hold and the server never sees — and the only thing telling them apart
+// was which arguments you happened to type. That is not a distinction anybody
+// should have to hold in their head about money.
+//
+// So this is `mu key`, which is what it is: a private key in a file, that this
+// CLI signs with. The server has no idea it exists.
+//
+// The file it reads is still ~/.mu/keys/wallet.seed. A command can be renamed
+// freely; a file that holds real money cannot, because the rename ships, the
+// old path is never read again, and somebody's funds are at a key nothing
+// looks for.
+
+// runKey audits which address a stored key controls and whether it matches
+// the configured x402 pay-to address. It reads the key locally and prints only
 // public addresses — never the key itself.
 //
-//	mu wallet [path-to-seed]   (default ~/.mu/keys/wallet.seed)
-func runWallet(args []string) int {
+//	mu key [path-to-key]   (default ~/.mu/keys/wallet.seed)
+func runKey(args []string) int {
 	if len(args) > 0 && args[0] == "new" {
-		return newWallet(args[1:])
+		return newKey(args[1:])
 	}
 
 	seedPath := ""
@@ -57,7 +74,7 @@ func runWallet(args []string) int {
 		}
 		fmt.Println("seed controls address:", addr)
 
-		// What is actually in it. `mu wallet` could say which address a key
+		// What is actually in it. `mu key` could say which address a key
 		// controlled and not what it held, which is the one question somebody
 		// funding a wallet is asking — and the answer lived only in `mu agent`'s
 		// startup line, where you had to start a session to see it.
@@ -130,14 +147,14 @@ func dotenvValue(key string) string {
 	return ""
 }
 
-// newWallet creates the key `mu agent` pays from.
+// newKey creates the key `mu agent` pays from.
 //
-// There was no way to make one. `mu wallet` audits a seed and the agent reads
+// There was no way to make one. `mu key` audits one and the agent reads
 // it, but nothing wrote it — so the honest answer to "how do I fund the wallet"
 // was "generate a secp256k1 key by hand and put the hex in this file", which is
 // not an answer. Running clean, the first thing anybody met was a path that did
 // not exist and no way to make it exist.
-func newWallet(args []string) int {
+func newKey(args []string) int {
 	seedPath := ""
 	for _, a := range args {
 		if !strings.HasPrefix(a, "-") {
@@ -159,7 +176,7 @@ func newWallet(args []string) int {
 	// unrecoverably. Refusing is the only safe default.
 	if _, err := os.Stat(seedPath); err == nil {
 		fmt.Printf("%s already exists — not touching it.\n", seedPath)
-		fmt.Println("Run `mu wallet` to see which address it controls.")
+		fmt.Println("Run `mu key` to see which address it controls.")
 		return 1
 	}
 
@@ -181,7 +198,7 @@ func newWallet(args []string) int {
 
 // createSeed writes a fresh key at path and returns its address.
 //
-// Shared by `mu wallet new` and `mu agent`, which needs one on a clean run and
+// Shared by `mu key new` and `mu agent`, which needs one on a clean run and
 // should not make somebody go and get it. Refuses to overwrite: the file being
 // there means a key exists, a key can hold money, and replacing it would
 // strand whatever it holds silently and unrecoverably.
@@ -200,19 +217,4 @@ func createSeed(path string) (string, error) {
 		return "", fmt.Errorf("could not write the key: %w", err)
 	}
 	return addr, nil
-}
-
-// walletServiceMethod reports whether a word names a method of the wallet
-// service rather than a seed file.
-//
-// A list rather than a lookup against the server, because deciding which
-// command to run must not depend on the network: `mu wallet` has to keep
-// working on a machine that cannot reach an instance, and that is exactly when
-// somebody is checking a key.
-func walletServiceMethod(s string) bool {
-	switch strings.ToLower(strings.TrimSpace(s)) {
-	case "address", "balance", "list", "pay":
-		return true
-	}
-	return false
 }
