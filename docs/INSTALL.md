@@ -561,7 +561,6 @@ token.
 | Variable | What it does |
 |---|---|
 | `X402_PAY_TO` | Your wallet address — receives x402 payments |
-| `CRYPTO_TOPUP` | `true` to offer paying in crypto: the USDC card on /wallet and the address in `wallet_balance`. Off by default — accepting x402 payments is separate and unaffected |
 | `X402_NETWORK` · `X402_VERSION` | The advertised pair. Default `eip155:8453` + `2`. CDP settles `base`+`1` too, and that pair works — but the discovery index carries only v2 entries, so a v1 server is payable and unfindable. Both are live: change them at `/admin/env` and the next request uses them |
 | `X402_ASSETS` | Accepted tokens (default USDC) |
 | `TFL_APP_KEY` | Optional. Transit works with no key at all — this only raises TfL's rate limit, and one is free to register at api-portal.tfl.gov.uk |

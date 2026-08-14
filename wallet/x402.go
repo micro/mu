@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math/big"
 	"net/http"
 	"net/url"
 	"os"
@@ -147,21 +146,6 @@ func acceptedAssets() []x402Asset {
 
 // X402Enabled reports whether x402 payments are configured.
 func X402Enabled() bool { return x402PayTo != "" }
-
-// CryptoTopupEnabled reports whether this instance offers paying in crypto —
-// the USDC card on /wallet, and the USDC line in what wallet_balance tells an
-// agent.
-//
-// Off unless CRYPTO_TOPUP is set. Accepting x402 payments is a separate
-// question and is not affected: an instance can settle machine payments over
-// x402 while telling people to use a card, and most should. What this hides is
-// the *offer*, which is the part that has to be explained before it can be
-// used.
-//
-// Live-reloadable, so turning it on does not need a restart.
-func CryptoTopupEnabled() bool {
-	return strings.EqualFold(strings.TrimSpace(settings.Get("CRYPTO_TOPUP")), "true")
-}
 
 // x402 free trial — first N calls per wallet address are free. Tracked in
 // memory (resets on restart, which is acceptable for a trial).
@@ -429,69 +413,6 @@ func settleRequirement(payload map[string]any, req *PaymentRequirements) (*Settl
 	}
 	app.Log("x402", "settled %s: tx=%s payer=%s", req.Resource, settle.Transaction, settle.Payer)
 	return &settle, nil
-}
-
-// usdcAtomicPerCredit is the 6-decimal USDC atomic amount for one credit
-// (1 credit ≈ 1¢), so 1 USDC = 100 credits — matching X402PriceFor.
-const usdcAtomicPerCredit = 10000
-
-// ConvertUSDCToCredits sweeps the account's entire USDC balance to the treasury
-// (gasless, settled via the facilitator) and credits the account at ~1¢/credit,
-// so credits and crypto become one balance. Returns the credits added.
-func ConvertUSDCToCredits(accountID string) (int, error) {
-	if !X402Enabled() {
-		return 0, fmt.Errorf("crypto payments are not configured")
-	}
-	bw := WalletFor(accountID)
-	if bw == nil {
-		return 0, fmt.Errorf("no wallet")
-	}
-	_, raw := USDCBalance(bw.Address)
-	if raw == nil || raw.Sign() <= 0 {
-		return 0, fmt.Errorf("no USDC balance to convert")
-	}
-	assets := acceptedAssets()
-	if len(assets) == 0 {
-		return 0, fmt.Errorf("no asset configured for this network")
-	}
-	credits := int(new(big.Int).Div(raw, big.NewInt(usdcAtomicPerCredit)).Int64())
-	if credits <= 0 {
-		return 0, fmt.Errorf("USDC amount too small to convert (min $0.01)")
-	}
-
-	a := assets[0]
-	req := &PaymentRequirements{
-		Scheme:            "exact",
-		Network:           x402Net(),
-		Amount:            raw.String(),
-		Resource:          "credit-topup",
-		Description:       "USDC to credits",
-		MimeType:          "application/json",
-		PayTo:             x402PayTo,
-		MaxTimeoutSeconds: 60,
-		Asset:             a.Address,
-		Extra:             map[string]string{"name": a.Name, "version": a.Version},
-	}
-	payloadB64, err := SignX402Payment(bw, *req)
-	if err != nil {
-		return 0, err
-	}
-	rawp, err := base64.StdEncoding.DecodeString(payloadB64)
-	if err != nil {
-		return 0, err
-	}
-	var payload map[string]any
-	if err := json.Unmarshal(rawp, &payload); err != nil {
-		return 0, err
-	}
-	if _, err := settleRequirement(payload, req); err != nil {
-		return 0, err
-	}
-	if err := AddCredits(accountID, credits, "usdc_topup", map[string]interface{}{"usdc_atomic": raw.String()}); err != nil {
-		return credits, err
-	}
-	app.Log("x402", "converted %s USDC atomic to %d credits for %s", raw.String(), credits, accountID)
-	return credits, nil
 }
 
 // matchRequirement picks the advertised requirement the payment was made

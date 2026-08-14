@@ -41,7 +41,7 @@ const mcpTransport = "streamable-http"
 // catalogue because it upgraded.
 //
 // Read through settings, not os.Getenv, so /admin/env can set it and it takes
-// effect without a restart — the same as CryptoTopupEnabled beside it. It was
+// effect without a restart. It was
 // os.Getenv first, which made it the one payment setting an operator could not
 // reach from the page where every other payment setting lives, and turning it
 // on would have meant editing the environment and restarting.

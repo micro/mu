@@ -104,23 +104,3 @@ func TestBuildPaymentRequirementsShape(t *testing.T) {
 		t.Errorf("extra must carry EIP-712 name/version, got %v", r.Extra)
 	}
 }
-
-// Crypto top-up is off unless asked for. An instance that is not pursuing it
-// should not put a second way to pay in front of someone choosing how to pay —
-// and accepting x402 payments is a separate switch that this must not touch.
-func TestCryptoTopupIsOffByDefault(t *testing.T) {
-	t.Setenv("CRYPTO_TOPUP", "")
-	if CryptoTopupEnabled() {
-		t.Error("crypto top-up is offered without being switched on")
-	}
-	for _, on := range []string{"true", "TRUE", " true "} {
-		t.Setenv("CRYPTO_TOPUP", on)
-		if !CryptoTopupEnabled() {
-			t.Errorf("CRYPTO_TOPUP=%q did not switch it on", on)
-		}
-	}
-	t.Setenv("CRYPTO_TOPUP", "yes")
-	if CryptoTopupEnabled() {
-		t.Error("an unrecognised value switched it on")
-	}
-}

@@ -51,7 +51,6 @@ var settingGroups = []settingGroup{
 		"STRIPE_WEBHOOK_SECRET",
 		"X402_PAY_TO",
 		"X402_BAZAAR",
-		"CRYPTO_TOPUP",
 	}},
 	// The node this instance reads balances from. BASE_RPC_URL was readable by
 	// the code and settable nowhere, so the only way to point it at Base was an

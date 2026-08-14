@@ -15,125 +15,6 @@ import (
 	"mu/internal/auth"
 )
 
-// cryptoWalletCard renders the user's Base (USDC) wallet on the /wallet page:
-// balance, a tap-to-copy address and a fund QR.
-//
-// This is a way to top up credits, not a second currency to spend. Everything a
-// caller is charged is in credits; USDC held here converts into them.
-//
-// Offered only when CryptoTopupEnabled. Paying in crypto is a thing to explain
-// before a card is, and an instance not pursuing it should not put that in
-// front of someone deciding how to pay.
-//
-// The one exception is a user who already holds USDC here. That is real money
-// at a real address, and hiding the only screen that can move it would strand
-// it — so they still get the card, worded as a way out rather than an
-// invitation in.
-func cryptoWalletCard(userID string) string {
-	bw, err := GetOrCreateWallet(userID)
-	// Say so rather than vanishing. A card that renders with an empty address
-	// and a QR code of nothing is worse than no card: it looks like the feature
-	// half-works, and the operator who just switched it on has nothing to go on.
-	if err != nil || bw == nil || bw.Address == "" {
-		if !CryptoTopupEnabled() {
-			return ""
-		}
-		return `<div class="card"><h3>Top up with USDC</h3>` +
-			`<p class="text-sm text-muted">This instance offers crypto top-up, but your ` +
-			`wallet could not be opened, so there is no address to show. The server log ` +
-			`under <code>wallet</code> says why.</p></div>`
-	}
-	usdc, raw, balErr := USDCBalanceErr(bw.Address)
-	holding := raw != nil && raw.Sign() > 0
-	if !CryptoTopupEnabled() && !holding {
-		return ""
-	}
-
-	// A balance we could not read is not a balance of zero. Somebody who has
-	// just sent money and refreshes needs to know which of the two they are
-	// looking at, because one means wait and the other means go and check the
-	// chain yourself.
-	unreadable := ""
-	if balErr != nil {
-		unreadable = ` <span style="color:#b7791f;font-size:13px">· could not reach Base to read this, so it may not be zero</span>`
-		app.Log("wallet", "could not read the USDC balance of %s: %v", bw.Address, balErr)
-	}
-
-	// What the QR actually encodes.
-	//
-	// It used to be the bare address, and a bare EVM address names no chain —
-	// so a wallet scanning it picks whatever it is already on, which is
-	// Ethereum mainnet for almost everybody. The predictable result is USDC
-	// arriving at this address on the wrong network, where nothing here can
-	// reach it. That happened, with real money, and calling it user error would
-	// be wrong: the QR did not carry the one fact that mattered.
-	//
-	// EIP-681 carries it. `ethereum:<token>@<chainId>/transfer?address=<to>`
-	// tells the wallet the chain, the token and the recipient, so it opens a
-	// USDC-on-Base transfer with nothing left to choose. Wallets that cannot
-	// parse it fall back to showing the address, which is where we started.
-	chainID, ok := chainIDFor(x402Net())
-	if !ok {
-		chainID = 8453
-	}
-	payURI := fmt.Sprintf("ethereum:%s@%d/transfer?address=%s", baseUSDC, chainID, bw.Address)
-
-	heading, blurb := "Top up with USDC", `Send <b>USDC on Base</b> to this address and convert it into credits.`
-	if !CryptoTopupEnabled() {
-		heading = "Your USDC balance"
-		blurb = `This instance tops up by card. You hold USDC at the address below — convert it into credits, or move it out.`
-	}
-
-	return fmt.Sprintf(`<div class="card">
-  <h3>`+heading+`</h3>
-  <p class="text-sm text-muted">`+blurb+`</p>
-  <p style="font-size:24px;margin:6px 0 10px"><b>$%s</b> <span style="color:#999;font-size:14px">USDC</span>%s</p>
-  <button type="button" class="cw-convert" onclick="cwConvert(this)">Convert to credits →</button>
-  <p class="text-sm text-muted" style="margin:6px 0 12px">Moves your USDC into your credit balance (1 USDC = 100 credits), gas-free.</p>
-  <p class="cw-net"><b>Base network only.</b> USDC sent on Ethereum, Arbitrum or any
-  other chain lands at this same address on that chain, where this instance cannot
-  see it or move it.</p>
-  <button type="button" class="cw-addr" data-addr="%s" onclick="cwCopy(this)">%s</button>
-  <div class="cw-copied" id="cw-copied" hidden>Copied to clipboard ✓</div>
-  <details class="cw-qrwrap"><summary>Show QR code</summary>
-    <div class="cw-qr" id="cw-qr" data-uri="%s"></div>
-    <p class="cw-qrnote">Scans as <b>USDC on Base</b> — your wallet should already
-    have the network and token filled in. If it offers a different network, stop.</p>
-  </details>
-</div>
-<style>
-.cw-addr{display:block;width:100%%;text-align:left;font-family:ui-monospace,Menlo,monospace;font-size:13px;word-break:break-all;background:#f5f5f5;padding:11px;border:1px solid #e2e2e2;border-radius:6px;color:#222;cursor:pointer}
-.cw-addr:hover{background:var(--hover-background,#f5f5f5);border-color:var(--border-color,#ddd)}
-.cw-copied{font-size:12px;color:#1a7f37;margin-top:6px}
-.cw-net{font-size:13px;color:#8a5a00;background:#fff8e6;border:1px solid #f0dfae;border-radius:6px;padding:9px 11px;margin:0 0 10px}
-.cw-qrnote{font-size:12px;color:#666;margin:8px 0 0;max-width:260px}
-.cw-qrwrap{margin-top:10px;font-size:13px;color:#666}
-.cw-qrwrap summary{cursor:pointer}
-.cw-qr{margin-top:8px}.cw-qr img{width:180px;height:180px;image-rendering:pixelated}
-.cw-convert{padding:9px 16px;font-size:14px;font-weight:600;border:0;border-radius:6px;background:#1a7f37;color:#fff;cursor:pointer}
-.cw-convert:hover{background:#166b2e}
-.cw-convert[disabled]{opacity:.6;cursor:default}
-</style>
-<script src="/qrcode.js"></script>
-<script>
-(function(){var q=document.getElementById('cw-qr');if(!q||!window.qrcode)return;
-var addr=document.querySelector('.cw-addr');
-// The payment URI, which names the chain. Only ever the bare address as a last
-// resort, because that is the thing that sent somebody's money to the wrong network.
-var data=q.getAttribute('data-uri')||(addr&&addr.getAttribute('data-addr'));
-if(!data)return;
-try{var qr=qrcode(0,'M');qr.addData(data);qr.make();q.innerHTML=qr.createImgTag(4,8);}catch(e){}})();
-function cwCsrf(){var m=document.cookie.match(/(?:^|; )csrf_token=([^;]+)/);return m?decodeURIComponent(m[1]):'';}
-function cwCopy(el){var a=el.getAttribute('data-addr');function done(){var c=document.getElementById('cw-copied');if(c){c.hidden=false;setTimeout(function(){c.hidden=true;},1800);}}
-  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(a).then(done).catch(function(){cwFallback(a,done);});}else{cwFallback(a,done);}}
-function cwFallback(a,done){var t=document.createElement('textarea');t.value=a;t.style.position='fixed';t.style.opacity='0';document.body.appendChild(t);t.select();try{document.execCommand('copy');done();}catch(e){}document.body.removeChild(t);}
-function cwConvert(el){el.disabled=true;var t=el.textContent;el.textContent='Converting…';
-  fetch('/wallet/convert',{method:'POST',headers:{'X-CSRF-Token':cwCsrf()}}).then(function(r){return r.json();}).then(function(d){
-    if(d.error){alert(d.error);el.disabled=false;el.textContent=t;return;}
-    location.reload();}).catch(function(){el.disabled=false;el.textContent=t;});}
-</script>`, usdc, unreadable, htmlEsc(bw.Address), htmlEsc(bw.Address), htmlEsc(payURI))
-}
-
 // htmlEsc escapes text for HTML.
 //
 // It delegates rather than reimplementing, because this package had its own
@@ -195,10 +76,6 @@ func WalletPage(userID string) string {
 	}
 	sb.WriteString(`<p><a href="/wallet/topup">Add Credits →</a> · <a href="/wallet/transfer">Transfer →</a></p>`)
 	sb.WriteString(`</div>`)
-
-	// USDC on Base. Only when this instance offers crypto top-up, or when the
-	// user already holds some — see cryptoWalletCard.
-	sb.WriteString(cryptoWalletCard(userID))
 
 	// App earnings summary
 	var totalEarnings int
@@ -355,8 +232,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		handleStripeSuccess(w, r)
 	case path == "/wallet/stripe/webhook" && r.Method == "POST":
 		HandleStripeWebhook(w, r)
-	case path == "/wallet/convert" && r.Method == "POST":
-		handleConvert(w, r)
 	case path == "/wallet/transfer" && r.Method == "POST":
 		handleTransfer(w, r)
 	case path == "/wallet/transfer" && r.Method == "GET":
@@ -366,25 +241,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.NotFound(w, r)
 	}
-}
-
-// handleConvert sweeps the user's USDC balance to the treasury and credits
-// their account (USDC → credits), then returns the new credit balance.
-func handleConvert(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	sess, _ := auth.TrySession(r)
-	if sess == nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(`{"error":"login required"}`))
-		return
-	}
-	credited, err := ConvertUSDCToCredits(sess.Account)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		_ = json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
-		return
-	}
-	_ = json.NewEncoder(w).Encode(map[string]any{"credited": credited, "balance": GetBalance(sess.Account)})
 }
 
 func handleWalletPage(w http.ResponseWriter, r *http.Request) {
