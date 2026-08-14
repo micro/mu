@@ -121,6 +121,11 @@ var settingGroups = []settingGroup{
 		// self-hosting has their own community or none, and pointing their users
 		// at ours would send them where nobody can help them.
 		"SUPPORT_CHAT",
+		// Proof of domain ownership for the MCP registry, served at
+		// /.well-known/mcp-registry-auth. It was readable by the code and
+		// settable nowhere, so publishing meant an environment edit and a
+		// restart on a box somebody had to have shell on.
+		"MCP_REGISTRY_PROOF",
 		"PASSKEY_ORIGIN",
 		"PASSKEY_RP_ID",
 	}},

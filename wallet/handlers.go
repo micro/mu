@@ -43,10 +43,20 @@ func cryptoWalletCard(userID string) string {
 			`wallet could not be opened, so there is no address to show. The server log ` +
 			`under <code>wallet</code> says why.</p></div>`
 	}
-	usdc, raw := USDCBalance(bw.Address)
+	usdc, raw, balErr := USDCBalanceErr(bw.Address)
 	holding := raw != nil && raw.Sign() > 0
 	if !CryptoTopupEnabled() && !holding {
 		return ""
+	}
+
+	// A balance we could not read is not a balance of zero. Somebody who has
+	// just sent money and refreshes needs to know which of the two they are
+	// looking at, because one means wait and the other means go and check the
+	// chain yourself.
+	unreadable := ""
+	if balErr != nil {
+		unreadable = ` <span style="color:#b7791f;font-size:13px">· could not reach Base to read this, so it may not be zero</span>`
+		app.Log("wallet", "could not read the USDC balance of %s: %v", bw.Address, balErr)
 	}
 
 	heading, blurb := "Top up with USDC", `Send <b>USDC on Base</b> to this address and convert it into credits.`
@@ -58,7 +68,7 @@ func cryptoWalletCard(userID string) string {
 	return fmt.Sprintf(`<div class="card">
   <h3>`+heading+`</h3>
   <p class="text-sm text-muted">`+blurb+`</p>
-  <p style="font-size:24px;margin:6px 0 10px"><b>$%s</b> <span style="color:#999;font-size:14px">USDC</span></p>
+  <p style="font-size:24px;margin:6px 0 10px"><b>$%s</b> <span style="color:#999;font-size:14px">USDC</span>%s</p>
   <button type="button" class="cw-convert" onclick="cwConvert(this)">Convert to credits →</button>
   <p class="text-sm text-muted" style="margin:6px 0 12px">Moves your USDC into your credit balance (1 USDC = 100 credits), gas-free.</p>
   <button type="button" class="cw-addr" data-addr="%s" onclick="cwCopy(this)">%s</button>
@@ -88,7 +98,7 @@ function cwConvert(el){el.disabled=true;var t=el.textContent;el.textContent='Con
   fetch('/wallet/convert',{method:'POST',headers:{'X-CSRF-Token':cwCsrf()}}).then(function(r){return r.json();}).then(function(d){
     if(d.error){alert(d.error);el.disabled=false;el.textContent=t;return;}
     location.reload();}).catch(function(){el.disabled=false;el.textContent=t;});}
-</script>`, usdc, htmlEsc(bw.Address), htmlEsc(bw.Address))
+</script>`, usdc, unreadable, htmlEsc(bw.Address), htmlEsc(bw.Address))
 }
 
 // htmlEsc escapes text for HTML.

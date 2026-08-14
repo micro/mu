@@ -23,7 +23,9 @@ The submission forms converge on the same questions. Mu answers all of them:
 | Documentation URL | <https://micro.mu/help> |
 | Privacy policy URL | <https://micro.mu/privacy> |
 
-Check the first four against a running instance before submitting anywhere:
+Check the first four against a running instance before submitting anywhere.
+At the time of writing that is 113 tools, all titled and annotated, the longest
+name 17 characters — well inside the 64 the registries cap at:
 
 ```bash
 curl -s -X POST https://micro.mu/mcp -H 'Content-Type: application/json' \
@@ -51,8 +53,10 @@ can self-host: the name should belong to whoever runs the instance.
 
 Ownership is proved either way round, and Mu serves the easier one.
 
-**By file (no DNS access needed).** Set `MCP_REGISTRY_PROOF` to the proof string
-and Mu serves it at `/.well-known/mcp-registry-auth`:
+**By file (no DNS access needed).** Set `MCP_REGISTRY_PROOF` — at `/admin/env`
+under Platform, or in the environment — and Mu serves it at
+`/.well-known/mcp-registry-auth`. Unset, that path 404s, which is how to tell
+whether it has been configured:
 
 ```bash
 openssl genpkey -algorithm Ed25519 -out key.pem
@@ -108,5 +112,5 @@ submissions before spending time on it.
 
 The catalogue is the argument. Most entries in these directories are a wrapper
 over one API; this one runs the mail server, the feed aggregator, the search
-index and the app sandbox, and exposes 67 tools over a single endpoint. Lead
+index and the app sandbox, and exposes 113 tools over a single endpoint. Lead
 with that rather than the tool count — the count is a consequence.

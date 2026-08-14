@@ -150,11 +150,26 @@ func DeleteBaseWallet(accountID string) {
 // USDCBalance returns the wallet's USDC balance as a formatted decimal string
 // (e.g. "1.50") and the raw atomic amount.
 func USDCBalance(address string) (string, *big.Int) {
+	human, raw, _ := USDCBalanceErr(address)
+	return human, raw
+}
+
+// USDCBalanceErr is the same read, saying whether it worked.
+//
+// The plain version reports an unreachable node as a zero balance, which is the
+// wrong answer to the only question anybody asks this: somebody who has just
+// sent money refreshes, sees nothing, and cannot tell whether the transfer has
+// not landed or whether we failed to look. Those want different reactions —
+// wait, or check the chain yourself — so a caller that can say which should.
+func USDCBalanceErr(address string) (string, *big.Int, error) {
 	raw, err := tokenBalance(baseUSDC, address)
-	if err != nil || raw == nil {
-		return "0", big.NewInt(0)
+	if err != nil {
+		return "0", big.NewInt(0), err
 	}
-	return FormatUnits(raw, baseUSDCDecimal), raw
+	if raw == nil {
+		return "0", big.NewInt(0), fmt.Errorf("no balance returned for %s", address)
+	}
+	return FormatUnits(raw, baseUSDCDecimal), raw, nil
 }
 
 // ── minimal JSON-RPC ────────────────────────────────────────────────────────
