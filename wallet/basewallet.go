@@ -214,12 +214,36 @@ func rpcCall(method string, params ...any) (json.RawMessage, error) {
 // tokenBalance calls ERC-20 balanceOf(address).
 func tokenBalance(token, wallet string) (*big.Int, error) {
 	addr := strings.TrimPrefix(strings.ToLower(wallet), "0x")
+	if addr == "" {
+		return nil, fmt.Errorf("no address to read a balance for")
+	}
 	callData := "0x70a08231" + fmt.Sprintf("%064s", addr) // balanceOf selector + padded addr
 	res, err := rpcCall("eth_call", map[string]string{"to": token, "data": callData}, "latest")
 	if err != nil {
 		return nil, err
 	}
-	return hexToBigInt(strings.Trim(string(res), `"`)), nil
+
+	// An empty result is not a balance of zero.
+	//
+	// eth_call against an address that holds no contract returns "0x", and
+	// hexToBigInt turns anything it cannot parse into zero — so a node pointed
+	// at the wrong chain reports every token balance as nought, with no error,
+	// forever. That is indistinguishable from an empty wallet and it is what
+	// somebody staring at real money on a block explorer is looking at.
+	//
+	// BaseRPCURL falls back to TRADE_RPC_URL, which was set for trading and may
+	// point anywhere, so this is a configuration away rather than a theory.
+	hexed := strings.TrimPrefix(strings.Trim(string(res), `"`), "0x")
+	if hexed == "" {
+		return nil, fmt.Errorf("%s returned no data for a balance on %s — "+
+			"the node is probably not on the chain this token is on (check BASE_RPC_URL "+
+			"and TRADE_RPC_URL)", BaseRPCURL(), token)
+	}
+	v, ok := new(big.Int).SetString(hexed, 16)
+	if !ok {
+		return nil, fmt.Errorf("%s returned a balance that is not a number: %q", BaseRPCURL(), string(res))
+	}
+	return v, nil
 }
 
 func hexToBigInt(s string) *big.Int {
