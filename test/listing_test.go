@@ -35,7 +35,11 @@ func TestTheAdvertisedToolCountIsTheRealOne(t *testing.T) {
 
 	claim := regexp.MustCompile(`(\d+) tools`)
 
-	for _, f := range []string{"../server.json", "../docs/LISTING.md"} {
+	// The README is in this list because it was not, and "96 tools from
+	// https://micro.mu" sat in it while the server served 117. It is the
+	// document most people read first, and a number in it is a claim whether or
+	// not it is wearing a terminal prompt.
+	for _, f := range []string{"../server.json", "../docs/LISTING.md", "../README.md"} {
 		b, err := os.ReadFile(f)
 		if err != nil {
 			t.Errorf("%s: %v", filepath.Base(f), err)

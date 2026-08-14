@@ -188,7 +188,7 @@ mu agent "what happened in markets today?"
 
 ```
 model: anthropic/claude-sonnet-4-6
-96 tools from https://micro.mu
+117 tools from https://micro.mu
 wallet: 0x4160a863… (1.27 USDC)
 
 > what are the top news headlines today?
