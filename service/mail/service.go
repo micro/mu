@@ -115,8 +115,8 @@ func clip(s string, n int) string {
 }
 
 var Spec = service.Spec{
-	Name:        "mail",
-	Handler:     new(Server),
+	Name:    "mail",
+	Handler: new(Server),
 	// What it is to whoever is reading, which is almost never an operator.
 	//
 	// It said "Private messaging and email, with an SMTP server and DKIM". The
@@ -130,8 +130,8 @@ var Spec = service.Spec{
 	Scoped:      true,
 	Icon:        "mail.png",
 	Endpoints: map[string]service.Endpoint{
-		"Inbox":   {Aliases: []string{"mail_read"}, Doc: "List the account's most recent messages — read my mail, check my inbox"},
-		"Search":  {Doc: "Search the account's mail and return matching messages"},
+		"Inbox":  {Aliases: []string{"mail_read"}, Doc: "List the account's most recent messages — read my mail, check my inbox"},
+		"Search": {Doc: "Search the account's mail and return matching messages"},
 		// Aliased to the name it had, because an agent that learned mail_address
 		// last week should not find it gone. What it returns changed shape, and
 		// the name had to follow: an instance with no mail domain has no address

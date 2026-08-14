@@ -105,4 +105,3 @@ func TestServerJSONIsValidForTheRegistry(t *testing.T) {
 		t.Errorf("description is %d characters; registries truncate", len(s.Description))
 	}
 }
-

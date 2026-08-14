@@ -262,8 +262,8 @@ func runHealthChecks() []app.ServiceHealth {
 		// an instance with no mail server still has a working inbox and private
 		// messaging, so it would report a healthy service as broken. Registered
 		// and serving is the honest check here.
-		"prayer":  func() bool { return prayer.GetReminderData() != nil },
-		"search":  func() bool { return settings.Get("BRAVE_API_KEY") != "" },
+		"prayer": func() bool { return prayer.GetReminderData() != nil },
+		"search": func() bool { return settings.Get("BRAVE_API_KEY") != "" },
 	}
 	// Services with no page of their own.
 	noPage := map[string]bool{"index": true}

@@ -113,21 +113,21 @@ func airQuality(lat, lon float64) (*AirQuality, error) {
 	var r struct {
 		Timezone string `json:"timezone"`
 		Current  struct {
-			Time     string   `json:"time"`
-			PM25     float64  `json:"pm2_5"`
-			PM10     float64  `json:"pm10"`
-			Ozone    float64  `json:"ozone"`
-			NO2      float64  `json:"nitrogen_dioxide"`
-			SO2      float64  `json:"sulphur_dioxide"`
-			UV       float64  `json:"uv_index"`
-			EAQI     *float64 `json:"european_aqi"`
-			USAQI    *float64 `json:"us_aqi"`
-			Alder    *float64 `json:"alder_pollen"`
-			Birch    *float64 `json:"birch_pollen"`
-			Grass    *float64 `json:"grass_pollen"`
-			Mugwort  *float64 `json:"mugwort_pollen"`
-			Olive    *float64 `json:"olive_pollen"`
-			Ragweed  *float64 `json:"ragweed_pollen"`
+			Time    string   `json:"time"`
+			PM25    float64  `json:"pm2_5"`
+			PM10    float64  `json:"pm10"`
+			Ozone   float64  `json:"ozone"`
+			NO2     float64  `json:"nitrogen_dioxide"`
+			SO2     float64  `json:"sulphur_dioxide"`
+			UV      float64  `json:"uv_index"`
+			EAQI    *float64 `json:"european_aqi"`
+			USAQI   *float64 `json:"us_aqi"`
+			Alder   *float64 `json:"alder_pollen"`
+			Birch   *float64 `json:"birch_pollen"`
+			Grass   *float64 `json:"grass_pollen"`
+			Mugwort *float64 `json:"mugwort_pollen"`
+			Olive   *float64 `json:"olive_pollen"`
+			Ragweed *float64 `json:"ragweed_pollen"`
 		} `json:"current"`
 	}
 	if err := openMeteoGet(url, &r); err != nil {

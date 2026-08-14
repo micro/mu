@@ -34,8 +34,8 @@ func TestTheQRNamesTheChainAndTheToken(t *testing.T) {
 		t.Fatalf("the QR does not carry a payment URI:\n%s", out[:400])
 	}
 	for _, want := range []string{
-		baseUSDC,      // the token, so the wallet does not have to be told
-		"@8453",       // the chain, which is the whole point
+		baseUSDC, // the token, so the wallet does not have to be told
+		"@8453",  // the chain, which is the whole point
 		"/transfer?address=0x",
 	} {
 		if !strings.Contains(out, want) {

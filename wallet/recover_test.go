@@ -57,9 +57,9 @@ func TestRecoverRejectsATamperedMessage(t *testing.T) {
 func TestRecoverRejectsMalformed(t *testing.T) {
 	hash := keccak256([]byte("x"))
 	cases := map[string][]byte{
-		"empty":      {},
-		"too short":  make([]byte, 64),
-		"bad recid":  append(make([]byte, 64), 9),
+		"empty":     {},
+		"too short": make([]byte, 64),
+		"bad recid": append(make([]byte, 64), 9),
 		"zero r and s": func() []byte {
 			s := make([]byte, 65)
 			s[64] = 27

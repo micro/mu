@@ -70,15 +70,15 @@ func fsaGet(v url.Values) ([]place, error) {
 
 	var raw struct {
 		Establishments []struct {
-			Name     string `json:"BusinessName"`
-			Kind     string `json:"BusinessType"`
-			Rating   string `json:"RatingValue"`
-			RatedOn  string `json:"RatingDate"`
-			Line1    string `json:"AddressLine1"`
-			Line2    string `json:"AddressLine2"`
-			Line3    string `json:"AddressLine3"`
-			Postcode string `json:"PostCode"`
-			Scheme   string `json:"SchemeType"`
+			Name     string   `json:"BusinessName"`
+			Kind     string   `json:"BusinessType"`
+			Rating   string   `json:"RatingValue"`
+			RatedOn  string   `json:"RatingDate"`
+			Line1    string   `json:"AddressLine1"`
+			Line2    string   `json:"AddressLine2"`
+			Line3    string   `json:"AddressLine3"`
+			Postcode string   `json:"PostCode"`
+			Scheme   string   `json:"SchemeType"`
 			Distance *float64 `json:"Distance"`
 			Scores   struct {
 				Hygiene    *int `json:"Hygiene"`
