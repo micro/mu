@@ -1,4 +1,4 @@
-package wallet
+package x402
 
 import (
 	"encoding/json"
@@ -62,8 +62,8 @@ func TestWritePaymentRequiredHTTP(t *testing.T) {
 	if got.PayTo != x402PayTo {
 		t.Errorf("payTo = %q, want %q", got.PayTo, x402PayTo)
 	}
-	if got.Network != x402Net() {
-		t.Errorf("network = %q, want %q", got.Network, x402Net())
+	if got.Network != Network() {
+		t.Errorf("network = %q, want %q", got.Network, Network())
 	}
 	// Whichever version is advertised, the challenge has to say what is being
 	// bought — a client that cannot tell which URL it is paying for cannot

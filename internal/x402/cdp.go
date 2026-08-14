@@ -1,4 +1,4 @@
-package wallet
+package x402
 
 import (
 	"crypto/ed25519"

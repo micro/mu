@@ -1,4 +1,4 @@
-package wallet
+package x402
 
 import (
 	"crypto/ed25519"
@@ -33,8 +33,8 @@ func TestNormalizeNetwork(t *testing.T) {
 		"eip155:84532": "eip155:84532",
 		"solana":       "solana", // passthrough
 	} {
-		if got := normalizeNetwork(in); got != want {
-			t.Errorf("normalizeNetwork(%q)=%q want %q", in, got, want)
+		if got := NormalizeNetwork(in); got != want {
+			t.Errorf("NormalizeNetwork(%q)=%q want %q", in, got, want)
 		}
 	}
 }

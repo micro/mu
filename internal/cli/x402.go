@@ -3,7 +3,7 @@ package cli
 import (
 	"fmt"
 
-	"mu/wallet"
+	"mu/internal/x402"
 )
 
 // runX402 prints the x402 configuration and, when CDP credentials are present
@@ -19,7 +19,7 @@ func runX402(args []string) int {
 	if len(args) > 0 && args[0] == "call" {
 		return runX402Pay(args[1:])
 	}
-	fmt.Print(wallet.X402Status())
+	fmt.Print(x402.X402Status())
 	fmt.Println()
 	fmt.Println("Pay for a call from a wallet on this machine:")
 	fmt.Println("  mu x402 call web_search query=\"x402\"")

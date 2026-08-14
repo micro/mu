@@ -23,6 +23,8 @@ import (
 
 	"mu/internal/auth"
 	"mu/internal/service"
+
+	"mu/internal/x402"
 )
 
 // withAccount is how identity reaches a service: from the call context, never
@@ -172,7 +174,7 @@ func TestNothingChargesForAFreeOperation(t *testing.T) {
 		if quota.Metered(free) {
 			t.Errorf("%s reads as metered", free)
 		}
-		if reqs := BuildPaymentRequirements(free, "https://x.test/mcp"); len(reqs) != 0 {
+		if reqs := x402.BuildPaymentRequirements(free, "https://x.test/mcp"); len(reqs) != 0 {
 			t.Errorf("%s was given a payment challenge for %s", free, reqs[0].MaxAmountRequired)
 		}
 	}

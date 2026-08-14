@@ -1,4 +1,4 @@
-package wallet
+package x402
 
 // A tool priced at zero must not ask anyone for money.
 //
@@ -59,13 +59,16 @@ func TestAFreeOperationIsNotMetered(t *testing.T) {
 
 // withPayments turns this instance into one that can charge, which is what
 // "metered" is relative to.
+//
+// Whether an instance can charge is the money package's answer, not this one's
+// — it is Stripe keys or an x402 address, and this package knows only the
+// second half. So the hook quota reads is set here directly rather than
+// reaching for a decision that lives above.
 func withPayments(t *testing.T) {
 	t.Helper()
-	t.Setenv("STRIPE_SECRET_KEY", "sk_test_x")
-	t.Setenv("STRIPE_PUBLISHABLE_KEY", "pk_test_x")
-	if !PaymentsEnabled() {
-		t.Skip("payments cannot be enabled in this environment")
-	}
+	prev := quota.Enabled
+	quota.Enabled = func() bool { return true }
+	t.Cleanup(func() { quota.Enabled = prev })
 }
 
 // Nothing is metered where nothing can be charged.
@@ -75,11 +78,10 @@ func withPayments(t *testing.T) {
 // not ask, so a fresh install refused an anonymous caller with "this call is
 // metered" for weather, which is the first thing anybody tries.
 func TestWithoutPaymentsNothingIsMetered(t *testing.T) {
-	t.Setenv("STRIPE_SECRET_KEY", "")
-	t.Setenv("STRIPE_PUBLISHABLE_KEY", "")
-	if PaymentsEnabled() {
-		t.Skip("this instance is configured to take payments")
-	}
+	prev := quota.Enabled
+	quota.Enabled = func() bool { return false }
+	t.Cleanup(func() { quota.Enabled = prev })
+
 	for _, op := range []string{quota.OpWebSearch, quota.OpImageGenerate, quota.OpAgentQuery} {
 		if quota.Metered(op) {
 			t.Errorf("%s reads as metered on an instance that cannot charge", op)

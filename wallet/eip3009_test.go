@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"mu/internal/x402"
 )
 
 // TestEIP712TypeHashes pins the type hashes to their canonical published values,
@@ -24,7 +26,7 @@ func TestEIP712TypeHashes(t *testing.T) {
 func TestSignX402PaymentStructure(t *testing.T) {
 	priv, addr, _ := GenerateKeypair()
 	bw := &BaseWallet{Address: addr, PrivateKey: priv}
-	req := PaymentRequirements{
+	req := x402.PaymentRequirements{
 		Scheme:            "exact",
 		Network:           "base",
 		MaxAmountRequired: "50000",
@@ -75,7 +77,7 @@ func TestSignX402PaymentStructure(t *testing.T) {
 
 func TestSignX402PaymentRejectsBadInputs(t *testing.T) {
 	bw := &BaseWallet{Address: "0xabc", PrivateKey: "00"}
-	if _, err := SignX402Payment(bw, PaymentRequirements{Network: "solana"}); err == nil {
+	if _, err := SignX402Payment(bw, x402.PaymentRequirements{Network: "solana"}); err == nil {
 		t.Error("expected error for unsupported network")
 	}
 }

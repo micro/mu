@@ -3,7 +3,7 @@ package wallet
 // x402 "exact" scheme payer: sign an EIP-3009 TransferWithAuthorization so the
 // user's Base wallet can pay for a resource without the payer submitting a
 // transaction (the facilitator broadcasts it, gas-sponsored). This is the
-// client side that complements the server side in x402.go.
+// client side that complements the server side in internal/x402.
 
 import (
 	"crypto/rand"
@@ -15,6 +15,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"mu/internal/x402"
 )
 
 // EIP-712 type hashes (keccak256 of the canonical type strings). Verified in
@@ -36,7 +38,7 @@ type authorization struct {
 
 // chainIDFor maps a network id (short or CAIP-2) to its EVM chain id.
 func chainIDFor(network string) (int64, bool) {
-	switch normalizeNetwork(network) {
+	switch x402.NormalizeNetwork(network) {
 	case "eip155:8453":
 		return 8453, true
 	case "eip155:84532":
@@ -47,7 +49,7 @@ func chainIDFor(network string) (int64, bool) {
 
 // SignX402Payment builds and signs an EIP-3009 authorization paying the given
 // requirement from the wallet, and returns the base64 X-PAYMENT header value.
-func SignX402Payment(bw *BaseWallet, req PaymentRequirements) (string, error) {
+func SignX402Payment(bw *BaseWallet, req x402.PaymentRequirements) (string, error) {
 	if bw == nil {
 		return "", fmt.Errorf("no wallet")
 	}

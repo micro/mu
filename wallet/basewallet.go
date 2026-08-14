@@ -21,6 +21,8 @@ import (
 	"mu/internal/app"
 	"mu/internal/data"
 	"mu/internal/settings"
+
+	"mu/internal/x402"
 )
 
 // USDC on Base mainnet (6 decimals) — the asset x402 settles in.
@@ -133,7 +135,7 @@ func BaseRPCURL() string {
 // expectedChain is the chain this instance's money is on, from the configured
 // x402 network.
 func expectedChain() int64 {
-	if id, ok := chainIDFor(x402Net()); ok {
+	if id, ok := chainIDFor(x402.Network()); ok {
 		return id
 	}
 	return 8453

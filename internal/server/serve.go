@@ -29,6 +29,7 @@ import (
 	"mu/internal/quota"
 	"mu/internal/setup"
 	"mu/internal/usage"
+	"mu/internal/x402"
 	"mu/service/blog"
 	"mu/service/mail"
 	"mu/wallet"
@@ -159,8 +160,8 @@ func serve(addr string) {
 					// deny access if invalid
 					if err := auth.ValidateToken(token); err != nil {
 						// Allow x402 payment as alternative to auth for API requests
-						if wallet.X402Enabled() && wallet.HasPayment(r) && (app.SendsJSON(r) || app.WantsJSON(r)) {
-							r = r.WithContext(context.WithValue(r.Context(), wallet.X402ContextKey, true))
+						if x402.X402Enabled() && x402.HasPayment(r) && (app.SendsJSON(r) || app.WantsJSON(r)) {
+							r = r.WithContext(context.WithValue(r.Context(), x402.X402ContextKey, true))
 						} else if app.SendsJSON(r) || app.WantsJSON(r) {
 							// Return JSON 401 for API-style requests
 							w.Header().Set("Content-Type", "application/json")
@@ -340,7 +341,7 @@ func serve(addr string) {
 				r.Body.Close()
 				r.Body = io.NopCloser(bytes.NewReader(body))
 				if api.MCPToolNeedsAuth(body) {
-					if _, err := auth.GetSession(r); err != nil && !wallet.HasPayment(r) &&
+					if _, err := auth.GetSession(r); err != nil && !x402.HasPayment(r) &&
 						wallet.SignerFrom(r.Context()) == "" {
 						origin := app.BaseURL(r)
 						w.Header().Set("WWW-Authenticate",
@@ -356,7 +357,7 @@ func serve(addr string) {
 			// A metered tools/call with no session gets the standard 402
 			// challenge; one bearing a payment header is routed to the
 			// facilitator for verify+settle by the tool's QuotaCheck.
-			if r.URL.Path == "/mcp" && r.Method == http.MethodPost && wallet.X402Enabled() {
+			if r.URL.Path == "/mcp" && r.Method == http.MethodPost && x402.X402Enabled() {
 				body, _ := io.ReadAll(io.LimitReader(r.Body, 1<<20))
 				r.Body.Close()
 				r.Body = io.NopCloser(bytes.NewReader(body))
@@ -371,21 +372,21 @@ func serve(addr string) {
 					// the loopback port, and an x402 client checks this field
 					// against what it is calling.
 					resource := app.BaseURL(r) + r.URL.Path
-					if wallet.HasPayment(r) {
-						holder := &wallet.SettleHolder{}
-						ctx := context.WithValue(r.Context(), wallet.X402ContextKey, true)
-						ctx = context.WithValue(ctx, wallet.X402SettleKey, holder)
+					if x402.HasPayment(r) {
+						holder := &x402.SettleHolder{}
+						ctx := context.WithValue(r.Context(), x402.X402ContextKey, true)
+						ctx = context.WithValue(ctx, x402.X402SettleKey, holder)
 						r = r.WithContext(ctx)
-						w = wallet.NewSettleWriter(w, holder)
+						w = x402.NewSettleWriter(w, holder)
 					} else if err := auth.ValidateToken(token); err != nil {
 						// Describe what is being refused, so a facilitator
 						// reading this challenge can index the tool. Nil
 						// unless X402_BAZAAR is on.
 						var listing map[string]any
 						if t, ok := api.MCPToolCalled(body); ok {
-							listing = wallet.BazaarExtensions(t.Name, t.Description, api.ToolSchema(t))
+							listing = x402.BazaarExtensions(t.Name, t.Description, api.ToolSchema(t))
 						}
-						if wallet.WritePaymentRequired(w, op, resource, listing) {
+						if x402.WritePaymentRequired(w, op, resource, listing) {
 							// Count the refusal. Calls are recorded inside the
 							// dispatcher, which this returns before reaching,
 							// so every call turned away at the door was absent

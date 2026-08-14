@@ -38,6 +38,7 @@ import (
 	"mu/internal/quota"
 	"mu/internal/service"
 	"mu/internal/settings"
+	"mu/internal/x402"
 	"mu/service/apps"
 	"mu/service/blog"
 	"mu/service/contacts"
@@ -782,13 +783,13 @@ func wireHooks() {
 		// Check for x402 payment (bypasses auth + credits).
 		// Free trial: first 10 calls per wallet address are free —
 		// no payment header needed if within the trial.
-		if r.Context().Value(wallet.X402ContextKey) != nil {
+		if r.Context().Value(x402.X402ContextKey) != nil {
 			// Try free trial first (by wallet address from payment header).
 			payAddr := r.Header.Get("X-Wallet-Address")
-			if payAddr != "" && wallet.X402UseTrialCall(payAddr) {
+			if payAddr != "" && x402.X402UseTrialCall(payAddr) {
 				return true, 0, nil
 			}
-			_, err := wallet.VerifyAndSettle(r, op, r.URL.Path)
+			_, err := x402.VerifyAndSettle(r, op, r.URL.Path)
 			if err != nil {
 				return false, 0, fmt.Errorf("x402 payment failed: %w", err)
 			}
@@ -816,8 +817,8 @@ func wireHooks() {
 			return true, 0, nil
 		}
 		// Check for x402 payment (bypasses auth + credits)
-		if r.Context().Value(wallet.X402ContextKey) != nil {
-			_, err := wallet.VerifyAndSettle(r, op, r.URL.Path)
+		if r.Context().Value(x402.X402ContextKey) != nil {
+			_, err := x402.VerifyAndSettle(r, op, r.URL.Path)
 			if err != nil {
 				return false, 0, fmt.Errorf("x402 payment failed: %w", err)
 			}
@@ -855,13 +856,13 @@ func wireHooks() {
 	// A paid wallet is an identity: an agent that has settled a payment can
 	// reach account-scoped tools without an account. Read from the settled
 	// payment only — never from the unauthenticated X-Wallet-Address header.
-	api.WalletPayer = func(r *http.Request) string { return wallet.PayerFrom(r.Context()) }
+	api.WalletPayer = func(r *http.Request) string { return x402.PayerFrom(r.Context()) }
 	// Read from the context rather than re-verified: the signature is checked
 	// once at the door, because its nonce is single-use.
 	api.WalletSigner = func(r *http.Request) string { return wallet.SignerFrom(r.Context()) }
 
 	// Wire x402 payment required response for MCP
-	if wallet.X402Enabled() {
+	if x402.X402Enabled() {
 	}
 
 	// Wire email sending for verification mails. Uses the platform's own

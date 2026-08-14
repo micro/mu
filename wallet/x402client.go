@@ -18,6 +18,8 @@ import (
 	"time"
 
 	"mu/internal/settings"
+
+	"mu/internal/x402"
 )
 
 // Server is a named MCP endpoint the agent can call.
@@ -116,19 +118,19 @@ func PayAndCallMCP(ctx context.Context, accountID, baseURL, tool string, args ma
 
 // choosePayable picks a requirement from a 402 body that this wallet can pay:
 // a known EVM network with an EIP-712 domain in extra.
-func choosePayable(body []byte) (PaymentRequirements, error) {
+func choosePayable(body []byte) (x402.PaymentRequirements, error) {
 	var challenge struct {
-		Accepts []PaymentRequirements `json:"accepts"`
+		Accepts []x402.PaymentRequirements `json:"accepts"`
 	}
 	if err := json.Unmarshal(body, &challenge); err != nil {
-		return PaymentRequirements{}, fmt.Errorf("bad 402 body: %w", err)
+		return x402.PaymentRequirements{}, fmt.Errorf("bad 402 body: %w", err)
 	}
 	for _, r := range challenge.Accepts {
 		if _, ok := chainIDFor(r.Network); ok && r.Extra["name"] != "" && r.PayTo != "" {
 			return r, nil
 		}
 	}
-	return PaymentRequirements{}, fmt.Errorf("no payable requirement offered")
+	return x402.PaymentRequirements{}, fmt.Errorf("no payable requirement offered")
 }
 
 func challengeError(body []byte) string {

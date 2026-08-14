@@ -34,6 +34,8 @@ import (
 	"mu/internal/data"
 
 	"github.com/google/uuid"
+
+	"mu/internal/x402"
 )
 
 const DailyTransferCap = 10000
@@ -41,7 +43,7 @@ const DailyTransferCap = 10000
 // PaymentsEnabled returns true if payments are configured
 // When false, quotas are disabled (self-hosted, no restrictions)
 func PaymentsEnabled() bool {
-	return StripeEnabled() || X402Enabled()
+	return StripeEnabled() || x402.X402Enabled()
 }
 
 // Transaction types

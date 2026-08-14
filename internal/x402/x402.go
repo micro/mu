@@ -1,4 +1,23 @@
-package wallet
+// Package x402 is the toll on the door: how a caller with no account pays for
+// one request and gets it.
+//
+// It is a protocol, not a capability. Nobody asks this instance for an x402 —
+// they ask for a web search, and this is what happens in the middleware on the
+// way to it: the price is looked up, a challenge is written, a signed payment
+// is verified and settled through a facilitator, and a receipt goes back in a
+// header. There is no page, no tool and no state of its own.
+//
+// So it lives under internal/ with the rest of the plumbing. It was in the
+// wallet package, which put the till and the cash register in one directory
+// and made "the wallet" mean two unrelated things: a key an agent spends, and
+// the gate every priced request passes through. The gate does not need a key —
+// verification is the facilitator's job, and this side only ever checks and
+// settles what somebody else signed.
+//
+// The one thing it does not know is whether this instance can charge at all.
+// That is Stripe keys or a receiving address, and the second half is only half
+// — quota.Enabled is filled in from above by whoever holds both.
+package x402
 
 import (
 	"bytes"
@@ -54,7 +73,7 @@ var (
 // /admin/env and take effect on the next request, which is the difference
 // between a minute of broken payments and however long a deploy takes.
 // X402_NETWORK=base + X402_VERSION=1 goes back.
-func x402Net() string {
+func Network() string {
 	if v := strings.TrimSpace(settings.Get("X402_NETWORK")); v != "" {
 		return v
 	}
@@ -86,9 +105,9 @@ func envIntOr(key string, fallback int) int {
 	return fallback
 }
 
-// normalizeNetwork accepts either CAIP-2 ids (eip155:8453) or the short v1
+// NormalizeNetwork accepts either CAIP-2 ids (eip155:8453) or the short v1
 // names (base) and returns the CAIP-2 id, which the CDP facilitator uses.
-func normalizeNetwork(n string) string {
+func NormalizeNetwork(n string) string {
 	switch strings.ToLower(strings.TrimSpace(n)) {
 	case "base", "eip155:8453":
 		return "eip155:8453"
@@ -124,7 +143,7 @@ var x402AssetsByNetwork = map[string]map[string]x402Asset{
 // acceptedAssets returns the assets to advertise, honouring X402_ASSETS
 // (comma-separated symbols) and defaulting to USDC only.
 func acceptedAssets() []x402Asset {
-	known := x402AssetsByNetwork[normalizeNetwork(x402Net())]
+	known := x402AssetsByNetwork[NormalizeNetwork(Network())]
 	if known == nil {
 		return nil
 	}
@@ -243,7 +262,7 @@ func BuildPaymentRequirements(operation, resource string) []PaymentRequirements 
 	for _, a := range acceptedAssets() {
 		r := PaymentRequirements{
 			Scheme:            "exact",
-			Network:           x402Net(),
+			Network:           Network(),
 			PayTo:             x402PayTo,
 			MaxTimeoutSeconds: 60,
 			Asset:             a.Address,
@@ -423,10 +442,10 @@ func matchRequirement(reqs []PaymentRequirements, payload map[string]any) *Payme
 		return nil
 	}
 	net, _ := payload["network"].(string)
-	net = normalizeNetwork(net)
+	net = NormalizeNetwork(net)
 	asset := payloadAsset(payload)
 	for i := range reqs {
-		if net != "" && normalizeNetwork(reqs[i].Network) != net {
+		if net != "" && NormalizeNetwork(reqs[i].Network) != net {
 			continue
 		}
 		if asset != "" && !strings.EqualFold(reqs[i].Asset, asset) {
@@ -538,7 +557,7 @@ func X402Status() string {
 	fmt.Fprintf(&b, "enabled:       %v\n", X402Enabled())
 	fmt.Fprintf(&b, "pay-to:        %s\n", firstNonEmpty(x402PayTo, "(X402_PAY_TO not set)"))
 	fmt.Fprintf(&b, "facilitator:   %s\n", x402FacilitatorURL)
-	fmt.Fprintf(&b, "network:       %s\n", x402Net())
+	fmt.Fprintf(&b, "network:       %s\n", Network())
 	fmt.Fprintf(&b, "version:       %d\n", x402Ver())
 	var syms []string
 	for _, a := range acceptedAssets() {
@@ -577,8 +596,8 @@ func X402Status() string {
 		return b.String()
 	}
 	fmt.Fprintf(&b, "\ncdp probe:     OK — auth working. Supported schemes/networks:\n%s\n", strings.TrimSpace(string(data)))
-	if !strings.Contains(string(data), x402Net()) {
-		fmt.Fprintf(&b, "\nWARNING: configured network %s not in the supported list above.\n", x402Net())
+	if !strings.Contains(string(data), Network()) {
+		fmt.Fprintf(&b, "\nWARNING: configured network %s not in the supported list above.\n", Network())
 	}
 	return b.String()
 }

@@ -8,6 +8,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"mu/internal/x402"
 )
 
 // TestPayAndCallMCP drives the full payer loop: 402 challenge → sign → retry →
@@ -31,7 +33,7 @@ func TestPayAndCallMCP(t *testing.T) {
 		w.WriteHeader(http.StatusPaymentRequired)
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"x402Version": 1, "error": "payment required",
-			"accepts": []PaymentRequirements{{
+			"accepts": []x402.PaymentRequirements{{
 				Scheme: "exact", Network: "base", MaxAmountRequired: "10000",
 				PayTo: "0x9a717EFF039622231C65ADbF7B2A002b544b06A9", Asset: baseUSDC,
 				MaxTimeoutSeconds: 60, Extra: map[string]string{"name": "USD Coin", "version": "2"},
