@@ -59,6 +59,25 @@ func cryptoWalletCard(userID string) string {
 		app.Log("wallet", "could not read the USDC balance of %s: %v", bw.Address, balErr)
 	}
 
+	// What the QR actually encodes.
+	//
+	// It used to be the bare address, and a bare EVM address names no chain —
+	// so a wallet scanning it picks whatever it is already on, which is
+	// Ethereum mainnet for almost everybody. The predictable result is USDC
+	// arriving at this address on the wrong network, where nothing here can
+	// reach it. That happened, with real money, and calling it user error would
+	// be wrong: the QR did not carry the one fact that mattered.
+	//
+	// EIP-681 carries it. `ethereum:<token>@<chainId>/transfer?address=<to>`
+	// tells the wallet the chain, the token and the recipient, so it opens a
+	// USDC-on-Base transfer with nothing left to choose. Wallets that cannot
+	// parse it fall back to showing the address, which is where we started.
+	chainID, ok := chainIDFor(x402Net())
+	if !ok {
+		chainID = 8453
+	}
+	payURI := fmt.Sprintf("ethereum:%s@%d/transfer?address=%s", baseUSDC, chainID, bw.Address)
+
 	heading, blurb := "Top up with USDC", `Send <b>USDC on Base</b> to this address and convert it into credits.`
 	if !CryptoTopupEnabled() {
 		heading = "Your USDC balance"
@@ -71,14 +90,23 @@ func cryptoWalletCard(userID string) string {
   <p style="font-size:24px;margin:6px 0 10px"><b>$%s</b> <span style="color:#999;font-size:14px">USDC</span>%s</p>
   <button type="button" class="cw-convert" onclick="cwConvert(this)">Convert to credits →</button>
   <p class="text-sm text-muted" style="margin:6px 0 12px">Moves your USDC into your credit balance (1 USDC = 100 credits), gas-free.</p>
+  <p class="cw-net"><b>Base network only.</b> USDC sent on Ethereum, Arbitrum or any
+  other chain lands at this same address on that chain, where this instance cannot
+  see it or move it.</p>
   <button type="button" class="cw-addr" data-addr="%s" onclick="cwCopy(this)">%s</button>
   <div class="cw-copied" id="cw-copied" hidden>Copied to clipboard ✓</div>
-  <details class="cw-qrwrap"><summary>Show QR code</summary><div class="cw-qr" id="cw-qr"></div></details>
+  <details class="cw-qrwrap"><summary>Show QR code</summary>
+    <div class="cw-qr" id="cw-qr" data-uri="%s"></div>
+    <p class="cw-qrnote">Scans as <b>USDC on Base</b> — your wallet should already
+    have the network and token filled in. If it offers a different network, stop.</p>
+  </details>
 </div>
 <style>
 .cw-addr{display:block;width:100%%;text-align:left;font-family:ui-monospace,Menlo,monospace;font-size:13px;word-break:break-all;background:#f5f5f5;padding:11px;border:1px solid #e2e2e2;border-radius:6px;color:#222;cursor:pointer}
 .cw-addr:hover{background:var(--hover-background,#f5f5f5);border-color:var(--border-color,#ddd)}
 .cw-copied{font-size:12px;color:#1a7f37;margin-top:6px}
+.cw-net{font-size:13px;color:#8a5a00;background:#fff8e6;border:1px solid #f0dfae;border-radius:6px;padding:9px 11px;margin:0 0 10px}
+.cw-qrnote{font-size:12px;color:#666;margin:8px 0 0;max-width:260px}
 .cw-qrwrap{margin-top:10px;font-size:13px;color:#666}
 .cw-qrwrap summary{cursor:pointer}
 .cw-qr{margin-top:8px}.cw-qr img{width:180px;height:180px;image-rendering:pixelated}
@@ -88,8 +116,13 @@ func cryptoWalletCard(userID string) string {
 </style>
 <script src="/qrcode.js"></script>
 <script>
-(function(){var addr=document.querySelector('.cw-addr');if(!addr)return;var a=addr.getAttribute('data-addr');
-var q=document.getElementById('cw-qr');if(q&&window.qrcode){try{var qr=qrcode(0,'M');qr.addData(a);qr.make();q.innerHTML=qr.createImgTag(4,8);}catch(e){}}})();
+(function(){var q=document.getElementById('cw-qr');if(!q||!window.qrcode)return;
+var addr=document.querySelector('.cw-addr');
+// The payment URI, which names the chain. Only ever the bare address as a last
+// resort, because that is the thing that sent somebody's money to the wrong network.
+var data=q.getAttribute('data-uri')||(addr&&addr.getAttribute('data-addr'));
+if(!data)return;
+try{var qr=qrcode(0,'M');qr.addData(data);qr.make();q.innerHTML=qr.createImgTag(4,8);}catch(e){}})();
 function cwCsrf(){var m=document.cookie.match(/(?:^|; )csrf_token=([^;]+)/);return m?decodeURIComponent(m[1]):'';}
 function cwCopy(el){var a=el.getAttribute('data-addr');function done(){var c=document.getElementById('cw-copied');if(c){c.hidden=false;setTimeout(function(){c.hidden=true;},1800);}}
   if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(a).then(done).catch(function(){cwFallback(a,done);});}else{cwFallback(a,done);}}
@@ -98,7 +131,7 @@ function cwConvert(el){el.disabled=true;var t=el.textContent;el.textContent='Con
   fetch('/wallet/convert',{method:'POST',headers:{'X-CSRF-Token':cwCsrf()}}).then(function(r){return r.json();}).then(function(d){
     if(d.error){alert(d.error);el.disabled=false;el.textContent=t;return;}
     location.reload();}).catch(function(){el.disabled=false;el.textContent=t;});}
-</script>`, usdc, unreadable, htmlEsc(bw.Address), htmlEsc(bw.Address))
+</script>`, usdc, unreadable, htmlEsc(bw.Address), htmlEsc(bw.Address), htmlEsc(payURI))
 }
 
 // htmlEsc escapes text for HTML.
