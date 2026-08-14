@@ -1,6 +1,25 @@
-// Package digest generates daily news digests by synthesizing headlines,
-// market data, and video content into a coherent briefing. The generated
-// digest is published as a blog post tagged "digest".
+// Package digest writes the daily briefing: headlines, market data and video,
+// synthesised by a model and published as a blog post tagged "digest".
+//
+// It was service/news/digest, and it was the same mistake agent/blog was made
+// to fix — an agent living inside a service. It read three services by name,
+// called a model and published a post, which is deciding what to say, not
+// answering a question about state. Being one directory below service/news is
+// what kept it: the sideways rule globbed service/<name>/*.go and its pattern
+// ended at the closing quote, so "mu/service/markets" from here was never seen.
+// A rule you can get out of by making a subdirectory is not a rule, and both
+// halves are fixed in test/layering_test.go now.
+//
+// Moving it up paid for itself immediately. Three function variables in
+// internal/server/hooks.go existed only so a service could reach the blog
+// without importing it; an agent may import what it publishes to, so they are
+// gone and this calls blog.CreatePost like any other caller.
+//
+// It still names news, markets and video in code, which agent/blog no longer
+// does — that one asks the registry what exists, so a service added tomorrow
+// appears in the opinion with nobody editing it. This is two daily writers with
+// one such catalogue between them, and that is a product question rather than a
+// layering one.
 package digest
 
 import (
@@ -12,27 +31,11 @@ import (
 	"mu/internal/ai"
 	"mu/internal/app"
 	"mu/internal/data"
+	"mu/service/blog"
 	"mu/service/markets"
 	"mu/service/news"
 	"mu/service/video"
 )
-
-// DigestPost holds minimal info about a digest blog post.
-// Populated via callbacks wired in main.go to avoid import cycles with blog.
-type DigestPost struct {
-	ID      string
-	Title   string
-	Content string
-}
-
-// PublishBlogPost creates a new blog post. Wired in main.go.
-var PublishBlogPost func(title, content, author, authorID, tags string) (string, error)
-
-// UpdateBlogPost updates an existing blog post. Wired in main.go.
-var UpdateBlogPost func(id, title, content, tags string) error
-
-// FindTodayBlogDigest returns today's digest blog post, if any. Wired in main.go.
-var FindTodayBlogDigest func() *DigestPost
 
 var (
 	mu         sync.Mutex
@@ -100,12 +103,7 @@ func Generate() bool {
 }
 
 // GetTodayDigest returns today's digest from the blog, or nil.
-func GetTodayDigest() *DigestPost {
-	if FindTodayBlogDigest == nil {
-		return nil
-	}
-	return FindTodayBlogDigest()
-}
+func GetTodayDigest() *blog.Post { return blog.FindTodayDigest() }
 
 // TestGenerate runs the digest pipeline synchronously and returns the
 // result or error. Used by diagnostics to test without publishing.
@@ -137,11 +135,6 @@ func scheduler() {
 }
 
 func generate() {
-	if PublishBlogPost == nil || UpdateBlogPost == nil {
-		app.Log("digest", "Blog callbacks not wired, skipping")
-		return
-	}
-
 	mu.Lock()
 	if running {
 		mu.Unlock()
@@ -191,7 +184,7 @@ func createDigest() {
 	response += buildReferences(refs)
 
 	title := "Daily Digest — " + time.Now().Format("2 Jan 2006")
-	_, err = PublishBlogPost(title, response, app.SystemUserName, app.SystemUserID, "digest")
+	err = blog.CreatePost(title, response, app.SystemUserName, app.SystemUserID, "digest", false)
 	if err != nil {
 		setError(err.Error())
 		app.Log("digest", "Failed to publish digest blog post: %v", err)

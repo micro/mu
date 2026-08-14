@@ -21,6 +21,7 @@ import (
 	"mu/admin"
 	"mu/agent"
 	agentblog "mu/agent/blog"
+	"mu/agent/digest"
 	"mu/agent/micro"
 	agentsocial "mu/agent/social"
 	"mu/client/discord"
@@ -51,7 +52,6 @@ import (
 	"mu/service/mail"
 	"mu/service/markets"
 	"mu/service/news"
-	"mu/service/news/digest"
 	"mu/service/sms"
 	"mu/service/social"
 	"mu/service/stream"
@@ -447,35 +447,9 @@ func wireHooks() {
 	}
 	micro.UserContextFunc = userCtxFunc
 
-	// Wire digest → blog callbacks (digest publishes as blog post)
-	digest.PublishBlogPost = func(title, content, author, authorID, tags string) (string, error) {
-		err := blog.CreatePost(title, content, author, authorID, tags, false)
-		if err != nil {
-			return "", err
-		}
-		// Return the ID of the just-created post
-		post := blog.FindTodayDigest()
-		if post != nil {
-			return post.ID, nil
-		}
-		return "", nil
-	}
-	digest.UpdateBlogPost = func(id, title, content, tags string) error {
-		return blog.UpdatePost(id, title, content, tags, false)
-	}
-	digest.FindTodayBlogDigest = func() *digest.DigestPost {
-		post := blog.FindTodayDigest()
-		if post == nil {
-			return nil
-		}
-		return &digest.DigestPost{
-			ID:      post.ID,
-			Title:   post.Title,
-			Content: post.Content,
-		}
-	}
-
-	// load daily digest scheduler
+	// Three hooks stood here handing the digest a way to publish. They were the
+	// cost of a service that could not import the blog; the digest is an agent
+	// now and imports it.
 	digest.Load()
 
 	// load search

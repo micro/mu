@@ -146,8 +146,14 @@ func TestTheServerRegistersNoToolsByHand(t *testing.T) {
 // anything while it is true of every directory, and until this test existed
 // nothing could notice a new one that was not a service.
 //
-// A subdirectory is fine — service/news/digest is part of news, not a service
-// beside it. This checks the top level only.
+// This checks the top level only, which is deliberate but was read as
+// permission. The comment here used to name service/news/digest as the fine
+// case — "part of news, not a service beside it" — and it was neither: it was
+// an agent, reading markets and video by name to compose a blog post, one
+// directory below where the sideways rule stopped looking. It is agent/digest
+// now. A subdirectory is still fine when it is an implementation detail of the
+// service above it; what it must not be is somewhere the rules do not reach,
+// and TestServicesDoNotImportEachOther walks the whole subtree for that reason.
 func TestEveryDirectoryUnderServiceIsAService(t *testing.T) {
 	spec := regexp.MustCompile(`Spec = service\.Spec\{`)
 

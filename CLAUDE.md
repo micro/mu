@@ -14,7 +14,7 @@ Built on go-micro: every capability is a go-micro service, the assistant is a go
 
 - **Single Go binary** — `mu --serve` starts the web server, `mu <command>` runs CLI
 - **Services** — each domain is a package under `service/`, one directory per service
-- **Agents** — `agent/micro/` contains specialised micro-agents per domain, routed by keyword + LLM. `agent/<name>/` is an agent that writes into the service of the same name: `agent/blog` composes the daily opinion by asking the registry what exists rather than naming services in code, `agent/social` surfaces breaking stories. The service stores; the agent decides what is worth storing
+- **Agents** — `agent/micro/` contains specialised micro-agents per domain, routed by keyword + LLM. `agent/<name>/` is an agent that writes into the service of the same name: `agent/blog` composes the daily opinion by asking the registry what exists rather than naming services in code, `agent/social` surfaces breaking stories, `agent/digest` writes the daily briefing. The service stores; the agent decides what is worth storing. `agent/a2a` is the A2A door onto them — it belongs here rather than beside the MCP server, because /mcp serves tools derived from services and /a2a serves the thing that consumes them
 - **Channels** — Discord (`client/discord/`), Telegram (`client/telegram/`), WhatsApp (`client/whatsapp/`)
 - **Protocols** — MCP server at `/mcp`, A2A at `/a2a`, x402 crypto payments
 - **AI** — `internal/ai/` supports Anthropic Claude, Atlas Cloud (DeepSeek), OpenRouter, and local models (Ollama)
@@ -148,7 +148,21 @@ catalogue stops being a list of independent things. Whatever they share goes in
 `internal/`, never in a non-service directory under `service/`, because "one
 directory per service" is only checkable while it is true. Enforced by
 `TestServicesDoNotImportEachOther`, whose allowlist is empty and should stay that
-way.
+way. Both it and `TestInternalNeverImportsTheProduct` used to stop at the first
+directory level — a glob of `service/<name>/*.go`, a pattern ending at the
+closing quote — so a package one level deeper was invisible to the rule about
+it. `internal/a2a` imported the micro agent and `service/news/digest` imported
+markets and video, for a year, under tests whose whole subject was those edges.
+Both now walk the subtree. A rule you can get out of by making a subdirectory is
+not a rule.
+
+**An agent may import a service; a service may never import an agent.** Same
+rule one level up, and this one has a reason rather than a convention behind it:
+a service answers a question about state, an agent decides which question to
+ask, and a service calling an agent is asking the model what its own answer
+should be. Not yet enforced — `tasks.RunAgent`, `events.RunAgent`,
+`events.OnFireEvent` and `stream.AIReplyHook` are four hooks that exist to make
+that direction compile. See "Where it leaks" in `docs/ARCHITECTURE.md`.
 
 A service never imports `account/`. What a service needs to know about money is
 `internal/quota` — what an operation costs and whether this caller may do it.

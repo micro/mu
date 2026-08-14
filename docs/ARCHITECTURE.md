@@ -40,7 +40,6 @@ mu/
 │   ├── web/
 │   └── whatsapp/
 ├── internal/               # runtime and infrastructure, not features
-│   ├── a2a/
 │   ├── ai/
 │   ├── api/
 │   ├── app/
@@ -64,6 +63,11 @@ mu/
 │   ├── userdb/
 │   └── version/
 ├── agent/                  # the agent pipeline and micro-agents
+│   ├── a2a/                #   the A2A door onto them
+│   ├── blog/               #   writes the daily opinion
+│   ├── digest/             #   writes the daily digest
+│   ├── micro/              #   registry, router, executor, orchestrator
+│   └── social/             #   surfaces breaking stories
 ├── client/                 # discord, telegram, whatsapp
 ├── home/                   # landing, home screen, pricing
 ├── admin/                  # moderation and admin panel
@@ -398,27 +402,122 @@ mu.blog.list();  mu.blog.read(id);  mu.blog.create({ ... });
 mu.apps.list();  mu.apps.read(slug);
 ```
 
-## Dependency rules
+## Layering
 
-1. **Subsystems must not import the product** — `internal/` is the runtime, not
-   the features. The two exceptions are the programs: `internal/server` and
-   `internal/cli` assemble everything, so they import everything
-2. **Services import subsystems freely** — that's what they're for
-3. **Services must not import each other** — whatever two of them share goes in
+Four levels, and everything points down.
+
+```
+              ┌───────────────────────────────────────────────┐
+   PROGRAMS   │   internal/server        internal/cli         │
+              │   assemble everything, so they import         │
+              │   everything — this is where the wiring lives │
+              └───────────────────────┬───────────────────────┘
+                                      │ constructs and wires
+   ═══════════════════════════════════▼═══════════════════════════  the product
+              ┌───────────┬───────────┬───────────┬───────────┐
+   DOORS      │  home/    │  client/  │  admin/   │ account/  │
+              │  the web  │  Discord  │  ops and  │ who you   │
+              │  UI       │  Telegram │  moder-   │ are, what │
+              │           │  WhatsApp │  ation    │ you can   │
+              │           │           │           │ afford    │
+              └─────┬─────┴─────┬─────┴─────┬─────┴───────────┘
+                    │           │           │
+                    └───────────┼───────────┘
+                                ▼
+              ┌───────────────────────────────────────────────┐
+   DECIDERS   │  agent/    micro/  a2a/  blog/  social/       │
+              │            digest/                            │
+              │  Takes a goal, reads the catalogue, chooses    │
+              │  which questions to ask. Cannot be in the      │
+              │  catalogue, because it consumes it.           │
+              └───────────────────────┬───────────────────────┘
+                                      │ calls tools
+              ┌───────────────────────▼───────────────────────┐
+   ANSWERERS  │  service/  — 31 of them, no edges between any  │
+              │  two. Request in, response out, deterministic  │
+              │  given the data. A tool is derived from one;   │
+              │  tool/ is that derivation and nothing else.    │
+              └───────────────────────┬───────────────────────┘
+                                      │ may import freely
+   ═══════════════════════════════════▼═══════════════════════════  the substrate
+              ┌───────────────────────────────────────────────┐
+   SUBSTRATE  │  internal/ — app auth data quota ai settings   │
+              │  x402 service api event blob gtfs phone …      │
+              │  Nothing here has a name a user would          │
+              │  recognise, and nothing here may look up.      │
+              └───────────────────────────────────────────────┘
+```
+
+Six rules follow from the picture.
+
+1. **Down only.** `internal/` is the runtime, not the features, and it may never
+   import the product. The two exceptions are the programs: `internal/server`
+   and `internal/cli` assemble everything, so they import everything
+2. **Services import the substrate freely** — that's what it's for
+3. **Services must not import each other.** Whatever two of them share goes in
    `internal/`. A sideways import makes two services one unit: read together,
    changed together, moved together, and the catalogue stops being a list of
    independent things
-4. **No service asks what money is** — a service declares what an operation
-   costs (`Cost: quota.OpWebSearch` on its `Endpoint`) and `internal/quota`
-   answers. Quota holds prices and deliberately does not know what a balance is;
+4. **An agent may import a service; a service may never import an agent.** This
+   is rule 3 stated for the level above, and it is the one with a reason rather
+   than a convention behind it. A service answers a question about state; an
+   agent decides which question to ask. A service that calls an agent is asking
+   the model what its own answer should be
+5. **No service asks what money is.** A service declares what an operation costs
+   (`Cost: quota.OpWebSearch` on its `Endpoint`) and `internal/quota` answers.
+   Quota holds prices and deliberately does not know what a balance is;
    `account/` fills in that half from its own init, because quota sits
    underneath it. There used to be a cross-cutting `wallet` every service
    imported, and this is what replaced it
-5. **`admin` imports the product** — `mail` for the spam filter and blocklists,
-   `account` for credits and transactions, plus `apps`, `news` and `markets` for
-   the panel's own views. An acceptable coupling: admin is a management UI over
-   the services, and nothing imports admin
+6. **`admin` imports the product and nothing imports `admin`.** It is a
+   management UI over the services — `mail` for the spam filter, `account` for
+   the ledger, `apps`, `news` and `markets` for the panel's own views. An
+   acceptable coupling because it is a leaf
 
-Rules 1 and 3 are enforced by `test/layering_test.go`, and rule 4 by
-`TestNoServiceImportsTheAccount` in the same file. The rest are conventions —
-the import graph is worth a look before adding an edge to it.
+Rules 1, 3 and 5 are enforced by `test/layering_test.go`. Rules 2, 4 and 6 are
+conventions, and rule 4 is the one currently broken — see below.
+
+## Where it leaks
+
+The picture above is what the code mostly is. What follows is where it is not,
+written down because two of these hid for a year inside tests whose whole
+subject was catching them.
+
+**A rule you can get out of by making a subdirectory.** Both layering tests
+stopped at the first directory level. `TestServicesDoNotImportEachOther` globbed
+`service/<name>/*.go`, and its pattern ended at the closing quote so
+`"mu/service/markets"` matched but `"mu/service/news/digest"` did not look like
+a service import at all. `TestInternalNeverImportsTheProduct` matched `"mu/agent"`
+and missed `"mu/agent/micro"`. Two real violations lived in exactly that gap:
+`internal/a2a` imported the micro agent, and `service/news/digest` imported
+`markets` and `video`. Both tests now walk the whole subtree, and both
+violations are fixed — `a2a` and `digest` are under `agent/`, where the imports
+they need are legal.
+
+**`internal/server/hooks.go` is the bill.** 885 lines and about fifty function
+variables, each one a dependency somebody could not express as an import. They
+are not one thing, and the file reads as though they were:
+
+| What it is | Roughly | Verdict |
+|---|---|---|
+| `internal/` needing something from the product — `app.EmailSender`, `auth.HasCredit`, `api.WalletPayer`, `profile.GetUserPosts`, `quota.LimitOverride`, `service.Gate.*` | 22 | **Correct.** Rule 1 leaves no alternative, and this is what the exception costs |
+| A service needing another service — `news.FetchSocialContext`, `mail.KnownSender`, `email.SendVia`, `events.OnCreate` | 6 | **Rule 3 in letter only.** There is no import, and the two packages still change together |
+| A service needing the agent — `tasks.RunAgent`, `events.RunAgent`, `events.OnFireEvent`, `stream.AIReplyHook` | 4 | **Rule 4 broken.** The direction is inverted; the hook is what makes it compile |
+| A service needing the money — `apps.QuotaCheck`, `apps.ChargeQuota`, `apps.ChargeUse` | 3 | **Correct.** Rule 5, same shape as the first row |
+| A service needing Google — `events.External*`, `contacts.External*` | 6 | **Not debt at all.** `internal/google` imports only `data` and `settings`; either service could import it directly under rule 2. The indirection buys provider-neutrality, which is a design choice and not a layering one |
+
+The middle two rows are the ones worth acting on, and they are twelve hooks, not
+fifty. The first and fourth rows are the price of rules that are working.
+
+**`tool/` is a directory this document says should not exist.** It is 280 lines
+that derive `api.Tool` from `service.Spec`, it imports nothing but `internal/`,
+and it is imported by `agent/micro` and the server. The convention section above
+says a nav item is a view of a staple and that Tools has no directory for that
+reason; then there is one, at the top level, next to the six things a user can
+name. It belongs at `internal/tool`.
+
+**The catalogue is not evenly asked.** `agent/blog` asks the registry what
+exists, so a service added tomorrow appears in the daily opinion with nobody
+editing it. `agent/digest` still names `news`, `markets` and `video` in code —
+it is the older copy of the same idea, and moving it up out of `service/` did
+not modernise it. Two daily writers, one catalogue-driven and one not.

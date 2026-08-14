@@ -7,6 +7,14 @@
 //
 //	GET  /.well-known/agent.json  — Agent Card (discovery)
 //	POST /a2a                     — JSON-RPC 2.0 (task execution)
+//
+// It sits under agent/ because it is a door onto the agent: it lists the micro
+// agents, routes a prompt to them and orchestrates the answer. It was in
+// internal/, next to the MCP server, which looks symmetrical and is not — /mcp
+// serves tools, which are derived from services and live below the product,
+// while /a2a serves the agent, which reads the catalogue and therefore cannot
+// be in it. The import it needed said so all along; the layering test was
+// matching "mu/agent" and not "mu/agent/micro", so nothing objected.
 package a2a
 
 import (

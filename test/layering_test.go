@@ -27,12 +27,20 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 )
 
 // The top-level product packages, in import-path form.
-var productImport = regexp.MustCompile(`"mu/(home|agent|admin|account|client/[a-z]+|service/[a-z]+)"`)
+//
+// The nested group is not decoration. This used to end each alternative at the
+// closing quote — `client/[a-z]+`, `service/[a-z]+` — which matches "mu/agent"
+// and misses "mu/agent/micro". internal/a2a imported the micro agent for a year
+// under that regex, and the test that exists to notice said nothing, because a
+// package one directory deeper is invisible to a pattern that stops at the
+// first level. Anything under a product directory is the product.
+var productImport = regexp.MustCompile(`"mu/(home|agent|admin|account|client|service|tool)(/[a-z0-9/]+)?"`)
 
 // The programs. They assemble everything, so they import everything.
 var assembly = map[string]bool{
@@ -52,49 +60,58 @@ var assembly = map[string]bool{
 // key, not a balance, and service/wallet importing account/ would be caught
 // here like any other.
 func TestNoServiceImportsTheAccount(t *testing.T) {
-	offenders := importsFrom(t, "service", regexp.MustCompile(`"mu/account"`))
-	for pkg, file := range offenders {
-		t.Errorf("%s imports the account (%s) — a service asks internal/quota what "+
-			"something costs; money is not underneath it", pkg, file)
+	for pkg, found := range importsFrom(t, "service", regexp.MustCompile(`"mu/account"`)) {
+		for _, imp := range found {
+			t.Errorf("%s imports the account (%s) — a service asks internal/quota what "+
+				"something costs; money is not underneath it", pkg, imp)
+		}
 	}
 }
 
 // And the wider rule the above is one case of.
 func TestServicesDoNotReachSideways(t *testing.T) {
-	for pkg, file := range importsFrom(t, "service", productImport) {
-		// A service may build on another service — news reads markets, web
-		// reads search. That is a peer edge inside one layer, not a reach out
-		// of it.
-		if strings.Contains(file, `"mu/service/`) {
-			continue
+	for pkg, found := range importsFrom(t, "service", productImport) {
+		for _, imp := range found {
+			// One service importing another is caught by
+			// TestServicesDoNotImportEachOther, which can say which pair.
+			if strings.HasPrefix(imp, `"mu/service/`) {
+				continue
+			}
+			t.Errorf("%s imports %s — anything a service needs from the product is "+
+				"wired by the server, not imported", pkg, imp)
 		}
-		t.Errorf("%s imports %s — anything a service needs from the product is "+
-			"wired by the server, not imported", pkg, file)
 	}
 }
 
 func TestInternalNeverImportsTheProduct(t *testing.T) {
 	found := importsFrom(t, "internal", productImport)
-	for pkg, file := range found {
+	for pkg, imports := range found {
 		if assembly[pkg] {
 			continue
 		}
-		t.Errorf("%s imports %s — internal/ is underneath the product and cannot "+
-			"see it; if it needs something up there, the server hands it over", pkg, file)
+		for _, imp := range imports {
+			t.Errorf("%s imports %s — internal/ is underneath the product and cannot "+
+				"see it; if it needs something up there, the server hands it over", pkg, imp)
+		}
 	}
 	// The exception has to still be in use, or this test is asserting a rule
 	// nobody is near breaking.
-	if found["internal/server"] == "" {
+	if len(found["internal/server"]) == 0 {
 		t.Error("internal/server imports no product package, so either the " +
 			"assembly moved or this scan is matching nothing")
 	}
 }
 
-// importsFrom returns package dir -> the offending import line, for every
+// importsFrom returns package dir -> every distinct offending import, for each
 // package under root whose non-test source matches want.
-func importsFrom(t *testing.T, root string, want *regexp.Regexp) map[string]string {
+//
+// Every, not the first. It used to keep one match per package and stop, which
+// meant a package importing both a peer service and the agent showed whichever
+// the walk reached first — and the caller that skips peer imports skipped the
+// whole package with it.
+func importsFrom(t *testing.T, root string, want *regexp.Regexp) map[string][]string {
 	t.Helper()
-	out := map[string]string{}
+	out := map[string][]string{}
 	seen := 0
 	err := filepath.Walk(at(root), func(path string, info os.FileInfo, err error) error {
 		if err != nil || info.IsDir() || !strings.HasSuffix(path, ".go") {
@@ -108,10 +125,11 @@ func importsFrom(t *testing.T, root string, want *regexp.Regexp) map[string]stri
 			return nil
 		}
 		seen++
-		if m := want.Find(b); m != nil {
-			rel, _ := filepath.Rel(at(""), filepath.Dir(path))
-			if _, dup := out[rel]; !dup {
-				out[rel] = string(m)
+		rel, _ := filepath.Rel(at(""), filepath.Dir(path))
+		for _, m := range want.FindAll(b, -1) {
+			imp := string(m)
+			if !slices.Contains(out[rel], imp) {
+				out[rel] = append(out[rel], imp)
 			}
 		}
 		return nil
@@ -151,7 +169,13 @@ func importsFrom(t *testing.T, root string, want *regexp.Regexp) map[string]stri
 func TestServicesDoNotImportEachOther(t *testing.T) {
 	allowed := map[string]string{}
 
-	imports := regexp.MustCompile(`"mu/service/([a-z0-9]+)"`)
+	// Both halves of this used to stop at the first directory, and a package one
+	// level deeper slipped between them: the glob was service/<name>/*.go, and
+	// the pattern ended at the closing quote so "mu/service/news/digest" did not
+	// even look like a service import. service/news/digest imported markets and
+	// video for a year under a test whose whole subject is that edge. A rule you
+	// can get out of by making a subdirectory is not a rule.
+	imports := regexp.MustCompile(`"mu/service/([a-z0-9]+)(?:/[a-z0-9/]+)?"`)
 	dirs, err := os.ReadDir(at("service"))
 	if err != nil {
 		t.Fatal(err)
@@ -161,7 +185,17 @@ func TestServicesDoNotImportEachOther(t *testing.T) {
 			continue
 		}
 		from := d.Name()
-		files, _ := filepath.Glob(filepath.Join(at("service", from), "*.go"))
+
+		var files []string
+		if err := filepath.Walk(at("service", from), func(path string, info os.FileInfo, err error) error {
+			if err == nil && !info.IsDir() && strings.HasSuffix(path, ".go") {
+				files = append(files, path)
+			}
+			return nil
+		}); err != nil {
+			t.Fatal(err)
+		}
+
 		for _, file := range files {
 			if strings.HasSuffix(file, "_test.go") {
 				continue
@@ -179,8 +213,9 @@ func TestServicesDoNotImportEachOther(t *testing.T) {
 				if _, ok := allowed[edge]; ok {
 					continue
 				}
-				t.Errorf("%s imports mu/service/%s — services must not import each "+
-					"other. Whatever they share goes in internal/", edge, to)
+				rel, _ := filepath.Rel(at(""), file)
+				t.Errorf("%s imports mu/service/%s (%s) — services must not import "+
+					"each other. Whatever they share goes in internal/", edge, to, rel)
 			}
 		}
 	}
