@@ -22,8 +22,10 @@ package cli
 import (
 	"context"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -69,7 +71,7 @@ func runX402Pay(args []string) int {
 			fmt.Printf("argument %q is not key=value\n", p)
 			return 2
 		}
-		toolArgs[k] = v
+		toolArgs[k] = typedArg(v)
 	}
 
 	// The wallet is optional, because most of the catalogue is free and calling
@@ -128,4 +130,42 @@ func walletFromSeed(path string) (*wallet.BaseWallet, error) {
 		return nil, fmt.Errorf("%s does not hold a 32-byte hex private key", path)
 	}
 	return &wallet.BaseWallet{Address: addr, PrivateKey: key}, nil
+}
+
+// typedArg reads a command-line value as the JSON type it looks like.
+//
+// Everything off a command line is a string, and the tools are not: lat is a
+// float64 and limit is an int, so `mu x402 call weather_forecast lat=51.5`
+// arrived as "51.5" and was refused with "cannot unmarshal string into Go
+// struct field ForecastRequest.lat".
+//
+// Which cost real money. The payment is settled at the door, before the tool
+// runs and therefore before anything looks at the arguments — so a typo in a
+// number was a charge with no answer. The flag path (`mu weather forecast
+// --lat 51.5`) has always coerced properly; only the x402 path did not, and it
+// is the one where being wrong costs a payment.
+//
+// Deliberately narrow. A bare word stays a string, because a tool taking a
+// query of "true" or "42" is ordinary and silently retyping it would be a
+// worse bug than the one being fixed.
+func typedArg(v string) any {
+	switch v {
+	case "true":
+		return true
+	case "false":
+		return false
+	}
+	if n, err := strconv.ParseInt(v, 10, 64); err == nil {
+		return n
+	}
+	// Only what parses whole and is an actual finite number. ParseFloat accepts
+	// "1e5", "Inf" and "NaN"; the round trip rejects the first, and the last two
+	// round-trip to themselves so they need saying out loud. None of them is a
+	// coordinate anybody typed, and NaN in a request body is not even valid JSON.
+	if f, err := strconv.ParseFloat(v, 64); err == nil &&
+		!math.IsNaN(f) && !math.IsInf(f, 0) &&
+		strconv.FormatFloat(f, 'f', -1, 64) == v {
+		return f
+	}
+	return v
 }

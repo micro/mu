@@ -147,7 +147,7 @@ mu markets list --category stocks       # live prices
 mu agent "what is the btc price?"       # run the full agent
 mu weather forecast --lat 51.5 --lon -0.12
 mu docs list --collection notes         # your own documents
-mu key                                  # the x402 key on this machine
+mu key                                  # the key on this machine, and what it holds
 mu help                                 # full tool list
 ```
 

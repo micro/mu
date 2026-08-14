@@ -27,39 +27,60 @@ import (
 // old path is never read again, and somebody's funds are at a key nothing
 // looks for.
 
-// runKey audits which address a stored key controls and whether it matches
-// the configured x402 pay-to address. It reads the key locally and prints only
-// public addresses — never the key itself.
+// KeyPath is where the signing key lives, unless a caller names another.
+//
+// Still wallet.seed. A command can be renamed freely; a file that holds real
+// money cannot, because the rename ships, the old path is never read again, and
+// somebody's funds sit at a key nothing looks for.
+func KeyPath(args []string) string {
+	for _, a := range args {
+		if !strings.HasPrefix(a, "-") {
+			return a
+		}
+	}
+	home, _ := os.UserHomeDir()
+	return filepath.Join(home, ".mu", "keys", "wallet.seed")
+}
+
+// KeyAddress returns the address a stored key controls.
+//
+// Shared with `mu x402`, which asks a different question about the same file:
+// this one is "what do I sign with", that one is "is the address I am being
+// paid at one I can prove I control". Same key, two people.
+func KeyAddress(path string) (string, bool) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return "", false
+	}
+	seed := strings.TrimSpace(string(raw))
+	if compact := strings.TrimPrefix(seed, "0x"); len(compact) != 64 || !isHexStr(compact) {
+		return "", false
+	}
+	return wallet.AddressFromPrivateKeyHex(seed)
+}
+
+// runKey says what this machine signs with, and what it holds.
 //
 //	mu key [path-to-key]   (default ~/.mu/keys/wallet.seed)
+//
+// Caller-side only. It used to also report whether the key controlled
+// X402_PAY_TO, which is a different question asked by a different person: that
+// is an operator checking they can reach the money their instance is being
+// paid, and it lives in `mu x402` with the rest of what an operator configures.
+// One command answering two people's questions is how each of them reads half
+// an answer and stops.
 func runKey(args []string) int {
 	if len(args) > 0 && args[0] == "new" {
 		return newKey(args[1:])
 	}
 
-	seedPath := ""
-	for _, a := range args {
-		if !strings.HasPrefix(a, "-") {
-			seedPath = a
-			break
-		}
-	}
-	if seedPath == "" {
-		home, _ := os.UserHomeDir()
-		seedPath = filepath.Join(home, ".mu", "keys", "wallet.seed")
-	}
+	path := KeyPath(args)
+	fmt.Println("key file:", path)
 
-	payTo := strings.TrimSpace(os.Getenv("X402_PAY_TO"))
-	if payTo == "" {
-		payTo = dotenvValue("X402_PAY_TO")
-	}
-
-	fmt.Println("x402 pay-to (X402_PAY_TO):", orNotSet(payTo))
-	fmt.Println("seed file:", seedPath)
-
-	raw, err := os.ReadFile(seedPath)
+	raw, err := os.ReadFile(path)
 	if err != nil {
-		fmt.Println("seed: could not read —", err)
+		fmt.Println("key: could not read —", err)
+		fmt.Println("Make one with `mu key new`.")
 		return 1
 	}
 	seed := strings.TrimSpace(string(raw))
@@ -69,10 +90,10 @@ func runKey(args []string) int {
 	case len(compact) == 64 && isHexStr(compact):
 		addr, ok := wallet.AddressFromPrivateKeyHex(seed)
 		if !ok {
-			fmt.Println("seed: not a valid private key")
+			fmt.Println("key: not a valid private key")
 			return 1
 		}
-		fmt.Println("seed controls address:", addr)
+		fmt.Println("address: ", addr)
 
 		// What is actually in it. `mu key` could say which address a key
 		// controlled and not what it held, which is the one question somebody
@@ -81,34 +102,26 @@ func runKey(args []string) int {
 		//
 		// Read from the chain rather than from anything we store, because a
 		// balance we remember is a balance that can be wrong.
-		human, raw := wallet.USDCBalance(addr)
+		human, rawBal := wallet.USDCBalance(addr)
 		switch {
-		case raw == nil || raw.Sign() == 0:
-			fmt.Println("balance:              0 USDC — send USDC on Base to the address above")
-			fmt.Println("                      (no ETH needed; you never pay gas)")
+		case rawBal == nil || rawBal.Sign() == 0:
+			fmt.Println("balance:  0 USDC — send USDC on Base to the address above")
+			fmt.Println("          (no ETH needed; you never pay gas)")
 		default:
-			fmt.Printf("balance:              %s USDC on Base\n", human)
+			fmt.Printf("balance:  %s USDC on Base\n", human)
 		}
-
-		if payTo == "" {
-			fmt.Println("(X402_PAY_TO not set here — run after `source ~/.env`, or pass it in the environment)")
-			return 0
-		}
-		if strings.EqualFold(addr, payTo) {
-			fmt.Println("✓ MATCH — this seed controls your pay-to address. Back the seed up offline.")
-			return 0
-		}
-		fmt.Println("✗ MISMATCH — the pay-to address is NOT controlled by this seed.")
-		fmt.Println("  USDC sent to X402_PAY_TO is controlled by a different key. Find that key,")
-		fmt.Println("  or point X402_PAY_TO at an address you can prove you control.")
-		return 2
+		fmt.Println()
+		fmt.Println("This is what `mu agent` and `mu x402 call` sign with. It signs two")
+		fmt.Println("things: payments, and who you are — free account-scoped tools need an")
+		fmt.Println("identity and never charge for one.")
+		return 0
 	case len(strings.Fields(seed)) >= 12:
-		fmt.Printf("seed: looks like a %d-word mnemonic (not Mu's native raw-key format).\n", len(strings.Fields(seed)))
-		fmt.Println("Verify on a trusted machine: import the mnemonic into a wallet and check its")
-		fmt.Println("first address equals the pay-to address above.")
+		fmt.Printf("key: looks like a %d-word mnemonic (not Mu's native raw-key format).\n", len(strings.Fields(seed)))
+		fmt.Println("Verify on a trusted machine: import the mnemonic into a wallet and check")
+		fmt.Println("which address it derives.")
 		return 0
 	default:
-		fmt.Println("seed: unrecognized format (neither a 64-hex private key nor a mnemonic).")
+		fmt.Println("key: unrecognized format (neither a 64-hex private key nor a mnemonic).")
 		return 1
 	}
 }
