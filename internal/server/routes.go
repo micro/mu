@@ -293,12 +293,10 @@ func registerRoutes() {
 	// and Twilio — which bundles SMS and WhatsApp onto one webhook — posted
 	// WhatsApp messages to it that were refused for being the wrong kind.
 	//
-	// The old path stays live rather than redirecting, until the Stripe
-	// dashboard is pointed at the new one and events are seen arriving. Two
-	// registrations, one handler; settleSession is keyed on the session id, so
-	// nothing settles twice whatever arrives where.
+	// The old path is gone. It was kept live across the move so that no top-up
+	// was lost between the deploy and the dashboard edit; the dashboard now
+	// names this one.
 	http.HandleFunc("/stripe/webhook", account.HandleStripeWebhook)
-	http.HandleFunc("/wallet/stripe/webhook", account.HandleStripeWebhook)
 
 	// serve whatsapp webhook
 	http.HandleFunc("/whatsapp/webhook", whatsapp.Handler)

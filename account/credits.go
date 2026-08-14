@@ -194,31 +194,52 @@ func Load() {
 }
 
 // CreditsOf retrieves or creates a wallet for a user
+// CreditsOf returns what an account has, creating the record on first ask.
+//
+// A copy, not the record. Handing out the pointer let a caller read a balance
+// while a credit was being added to it — an unsynchronised read of an int that
+// the race detector calls what it is, and that the Go memory model gives no
+// answer for at all. Nothing outside this file needs to write a balance, and
+// everything that does write one goes through a function here.
+//
+// The check and the create are one critical section, which they were not.
+// CreditsOf read the map under a read lock, released it, built an empty record
+// and then stored it under the write lock — so a credit arriving in that gap
+// created the account first and was then overwritten by the empty record.
+// Somebody opening /account while their top-up settled lost the top-up. It is
+// not a narrow window either: the test that found this hit it on the second
+// attempt.
 func CreditsOf(userID string) *Credits {
-	mutex.RLock()
-	w, exists := balances[userID]
-	mutex.RUnlock()
+	mutex.Lock()
+	defer mutex.Unlock()
+	c := creditsOf(userID)
+	out := *c
+	return &out
+}
 
-	if !exists {
-		w = &Credits{
-			UserID:    userID,
-			Balance:   0,
-			Currency:  "GBP",
-			UpdatedAt: time.Now(),
-		}
-		mutex.Lock()
-		balances[userID] = w
-		data.SaveJSON("wallets.json", balances)
-		mutex.Unlock()
+// creditsOf returns the live record, creating it if there is none.
+//
+// Callers hold mutex, and must not let the pointer escape.
+func creditsOf(userID string) *Credits {
+	if w, exists := balances[userID]; exists && w != nil {
+		return w
 	}
-
+	w := &Credits{
+		UserID:    userID,
+		Balance:   0,
+		Currency:  "GBP",
+		UpdatedAt: time.Now(),
+	}
+	balances[userID] = w
+	data.SaveJSON("wallets.json", balances) //nolint:errcheck
 	return w
 }
 
 // Balance returns the current balance for a user
 func Balance(userID string) int {
-	w := CreditsOf(userID)
-	return w.Balance
+	mutex.Lock()
+	defer mutex.Unlock()
+	return creditsOf(userID).Balance
 }
 
 // SettlementKey is the metadata field a one-time credit is deduped on.

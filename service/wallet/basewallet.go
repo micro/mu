@@ -200,12 +200,23 @@ func checkChain() error {
 	return nil
 }
 
-// WalletFor returns the account's wallet, or nil if it has none yet.
+// WalletFor returns a copy of the account's wallet, or nil if it has none yet.
+//
+// A copy, because the stored record is repaired in place — GetOrCreateWallet
+// writes an address back onto a record that lost one — and a caller reading the
+// key while that happens is an unsynchronised read of a private key. Nothing
+// outside this file has any business writing one, and everything that does goes
+// through a function here.
 func WalletFor(accountID string) *BaseWallet {
 	loadWallets()
 	walletMu.RLock()
 	defer walletMu.RUnlock()
-	return userWallets[accountID]
+	w, ok := userWallets[accountID]
+	if !ok || w == nil {
+		return nil
+	}
+	out := *w
+	return &out
 }
 
 // GetOrCreateWallet returns the account's wallet, generating one on first use.
@@ -226,13 +237,13 @@ func GetOrCreateWallet(accountID string) (*BaseWallet, error) {
 	defer walletMu.Unlock()
 	if w, ok := userWallets[accountID]; ok && w != nil {
 		if w.Address != "" {
-			return w, nil
+			return copyOf(w), nil
 		}
 		if addr, ok := AddressFromPrivateKeyHex(w.PrivateKey); ok {
 			w.Address = addr
-			data.SaveJSON(walletsFile, userWallets) //nolint:errcheck
+			saveWallets() //nolint:errcheck
 			app.Log("wallet", "repaired the address on %s's wallet from its key", accountID)
-			return w, nil
+			return copyOf(w), nil
 		}
 		// A record with neither is not a wallet. Falling through mints one,
 		// which is safe precisely because there is no key to strand.
@@ -244,8 +255,14 @@ func GetOrCreateWallet(accountID string) (*BaseWallet, error) {
 	}
 	w := &BaseWallet{Address: addr, PrivateKey: priv}
 	userWallets[accountID] = w
-	data.SaveJSON(walletsFile, userWallets)
-	return w, nil
+	saveWallets() //nolint:errcheck
+	return copyOf(w), nil
+}
+
+// copyOf hands out the values rather than the record they came from.
+func copyOf(w *BaseWallet) *BaseWallet {
+	out := *w
+	return &out
 }
 
 // DeleteBaseWallet removes an account's on-chain wallet (account teardown).
@@ -255,7 +272,9 @@ func DeleteBaseWallet(accountID string) {
 	defer walletMu.Unlock()
 	if _, ok := userWallets[accountID]; ok {
 		delete(userWallets, accountID)
-		data.SaveJSON(walletsFile, userWallets)
+		// One fewer is the point of this function, so the guard is told to
+		// expect it. Two fewer still is not.
+		saveWalletsAllowing(1) //nolint:errcheck
 	}
 }
 
