@@ -225,7 +225,9 @@ func wireHooks() {
 		return contacts.HasEmail(owner, addr)
 	}
 
-	mail.InboundAgent = func(m mail.InboundMail) {
+	// Registered rather than assigned: mail no longer knows what an agent is,
+	// it knows that something asked for mail at these addresses.
+	answerMail := func(m mail.InboundMail) {
 		// Which agent answers. A tag names one; the shared address names none,
 		// so the account's default assistant takes it — the thing you get when
 		// you have not made an agent yet, which is most people writing to
@@ -240,79 +242,105 @@ func wireHooks() {
 		if a != nil {
 			name, ref = a.Name, a.ID
 		}
-		go func() {
-			domain := mail.GetConfiguredDomain()
-			// Reply from the address that reaches this agent again, so hitting
-			// reply continues the conversation. It used to answer from
-			// agent@<domain> whoever had written to, which was a dead letter
-			// until that address started resolving, and still loses which
-			// agent you were talking to.
-			from := mail.SharedAgentAddress()
-			if a != nil && a.Address() != "" {
-				from = a.Address()
-			}
-			reply := func(body string) {
-				if domain == "" || domain == "localhost" || from == "" {
-					return
-				}
-				// An empty answer is not an answer. The agent returning "" is
-				// not an error, so a blank body went all the way out as a
-				// blank email — which reads as the agent having broken, and
-				// tells the person nothing about what to do next.
-				if strings.TrimSpace(body) == "" {
-					app.Log("mail", "agent %s had nothing to say to %s; not sending", name, m.From)
-					return
-				}
-				subject := m.Subject
-				if !strings.HasPrefix(strings.ToLower(subject), "re:") {
-					subject = "Re: " + subject
-				}
-				if _, err := mail.SendExternalEmail(name, from, m.From, subject, body, "", m.MessageID); err != nil {
-					app.Log("mail", "agent %s could not reply to %s: %v", name, m.From, err)
-				}
-			}
+		started := time.Now()
+		trigger := "email from " + m.From
 
-			canProceed, _, cost, err := quota.CheckQuota(m.Owner, quota.OpAgentQuery)
-			if err != nil || !canProceed {
-				reply(fmt.Sprintf("I could not run this one: it costs %d credits and the account is short. "+
-					"Top up at %s/wallet and send it again.", cost, app.PublicURL()))
-				return
-			}
+		domain := mail.GetConfiguredDomain()
+		// Reply from the address that reaches this agent again, so hitting
+		// reply continues the conversation. It used to answer from
+		// agent@<domain> whoever had written to, which was a dead letter
+		// until that address started resolving, and still loses which
+		// agent you were talking to.
+		from := mail.SharedAgentAddress()
+		if a != nil && a.Address() != "" {
+			from = a.Address()
+		}
 
-			opts, err := agent.AskAs(m.Owner, ref)
-			if err != nil {
-				app.Log("mail", "agent %s could not be resolved: %v", name, err)
-				return
-			}
-			prompt := m.Subject
-			if body := strings.TrimSpace(m.Body); body != "" {
-				if prompt != "" {
-					prompt += "\n\n"
-				}
-				prompt += body
-			}
-			if strings.TrimSpace(prompt) == "" {
-				return
-			}
+		// record writes the run down where the owner can find it, and hands
+		// back the id so a failed delivery can be marked against it. Somebody
+		// else's mail can start this run and spend this account's credits, so
+		// the account has to be able to see that it happened.
+		record := func(prompt, answer string, err error) string {
+			return agent.Record(agent.Recorded{
+				Account: m.Owner, Agent: ref,
+				Source: agent.FromMail, Trigger: trigger,
+				Prompt: prompt, Answer: answer, Err: err, Started: started,
+			})
+		}
 
-			answer, err := agent.QueryWithOpts(m.Owner, prompt, opts)
-			if err != nil {
-				app.Log("mail", "agent %s failed on mail from %s: %v", name, m.From, err)
-				reply("I could not answer that one. Try again, or ask a different way.")
+		reply := func(prompt, body string) {
+			if domain == "" || domain == "localhost" || from == "" {
+				record(prompt, body, fmt.Errorf("this instance cannot send mail, so the answer went nowhere"))
 				return
 			}
-			if strings.TrimSpace(answer) == "" {
-				// Distinct from the error above, because it is a different
-				// fact: the run finished and produced nothing. Silence would
-				// leave somebody watching an inbox for a reply that is never
-				// coming.
-				app.Log("mail", "agent %s produced an empty answer for mail from %s", name, m.From)
-				reply("I did not manage an answer to that one. Try asking a different way.")
+			// An empty answer is not an answer. The agent returning "" is
+			// not an error, so a blank body went all the way out as a
+			// blank email — which reads as the agent having broken, and
+			// tells the person nothing about what to do next.
+			if strings.TrimSpace(body) == "" {
+				app.Log("mail", "agent %s had nothing to say to %s; not sending", name, m.From)
 				return
 			}
-			reply(answer)
-		}()
+			subject := m.Subject
+			if !strings.HasPrefix(strings.ToLower(subject), "re:") {
+				subject = "Re: " + subject
+			}
+			id := record(prompt, body, nil)
+			if _, err := mail.SendExternalEmail(name, from, m.From, subject, body, "", m.MessageID); err != nil {
+				app.Log("mail", "agent %s could not reply to %s: %v", name, m.From, err)
+				// Recorded as an error against the run, because a reply that
+				// was written and never delivered is not a reply, and the
+				// owner should not read the record as though it arrived.
+				agent.Failed(id, err)
+			}
+		}
+
+		prompt := m.Subject
+		if body := strings.TrimSpace(m.Body); body != "" {
+			if prompt != "" {
+				prompt += "\n\n"
+			}
+			prompt += body
+		}
+		if strings.TrimSpace(prompt) == "" {
+			return
+		}
+
+		canProceed, _, cost, err := quota.CheckQuota(m.Owner, quota.OpAgentQuery)
+		if err != nil || !canProceed {
+			reply(prompt, fmt.Sprintf("I could not run this one: it costs %d credits and the account is short. "+
+				"Top up at %s/wallet and send it again.", cost, app.PublicURL()))
+			return
+		}
+
+		opts, err := agent.AskAs(m.Owner, ref)
+		if err != nil {
+			app.Log("mail", "agent %s could not be resolved: %v", name, err)
+			record(prompt, "", err)
+			return
+		}
+
+		answer, err := agent.QueryWithOpts(m.Owner, prompt, opts)
+		if err != nil {
+			app.Log("mail", "agent %s failed on mail from %s: %v", name, m.From, err)
+			record(prompt, "", err)
+			reply(prompt, "I could not answer that one. Try again, or ask a different way.")
+			return
+		}
+		if strings.TrimSpace(answer) == "" {
+			// Distinct from the error above, because it is a different
+			// fact: the run finished and produced nothing. Silence would
+			// leave somebody watching an inbox for a reply that is never
+			// coming.
+			app.Log("mail", "agent %s produced an empty answer for mail from %s", name, m.From)
+			reply(prompt, "I did not manage an answer to that one. Try asking a different way.")
+			return
+		}
+		reply(prompt, answer)
 	}
+
+	mail.Inbound(mail.Tagged, answerMail)
+	mail.Inbound(mail.AgentMailbox, answerMail)
 
 	// When an event is scheduled, email the owner an .ics invite so it also
 	// lands in their real calendar. Only for users with a verified email (e.g.

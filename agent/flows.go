@@ -17,15 +17,22 @@ type Flow struct {
 	Prompt    string `json:"prompt"`
 	// Title is a name given to the conversation this flow starts, replacing the
 	// first prompt in the rail. Only ever set on a root flow.
-	Title     string     `json:"title,omitempty"`
-	Steps     []FlowStep `json:"steps"`
-	Answer    string     `json:"answer"`    // markdown answer text
-	HTML      string     `json:"html"`      // rendered HTML (set on completion)
-	Status    string     `json:"status"`    // "running", "done", "error"
-	Error     string     `json:"error"`     // error message if status is "error"
-	Agent     string     `json:"agent"`     // user-defined agent id used for this turn ("" = default)
-	ParentID  string     `json:"parent_id"` // prior flow ID for multi-turn chains
-	CreatedAt time.Time  `json:"created_at"`
+	Title  string     `json:"title,omitempty"`
+	Steps  []FlowStep `json:"steps"`
+	Answer string     `json:"answer"` // markdown answer text
+	HTML   string     `json:"html"`   // rendered HTML (set on completion)
+	Status string     `json:"status"` // "running", "done", "error"
+	Error  string     `json:"error"`  // error message if status is "error"
+	Agent  string     `json:"agent"`  // user-defined agent id used for this turn ("" = default)
+	// Source is what triggered the run — "" for the page, "mail", "schedule".
+	// Empty on every flow written before runs could start without somebody
+	// watching, which is why the page treats empty as the page.
+	Source string `json:"source,omitempty"`
+	// Trigger names who set it off, for the ones nobody asked for in person:
+	// "email from asim@aslam.me".
+	Trigger   string    `json:"trigger,omitempty"`
+	ParentID  string    `json:"parent_id"` // prior flow ID for multi-turn chains
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // FlowStep records one tool call and its result within a flow.

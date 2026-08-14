@@ -27,8 +27,8 @@ func req(t *testing.T, r wakeRequest, known ...string) bool {
 	t.Helper()
 	withDomain(t, "micro.mu")
 
-	prevHook, prevKnown := InboundAgent, KnownSender
-	InboundAgent = func(InboundMail) {}
+	prevKnown := KnownSender
+	restore := withHandler(t)
 	KnownSender = func(_, addr string) bool {
 		for _, k := range known {
 			if strings.EqualFold(k, addr) {
@@ -37,12 +37,12 @@ func req(t *testing.T, r wakeRequest, known ...string) bool {
 		}
 		return false
 	}
-	t.Cleanup(func() { InboundAgent, KnownSender = prevHook, prevKnown })
+	t.Cleanup(func() { restore(); KnownSender = prevKnown })
 
 	if r.Owner == "" {
 		r.Owner = "wakeowner"
 	}
-	return shouldWakeAgent(r)
+	return mayDispatch(r)
 }
 
 // tagged is mail to one agent's own address, authenticated, not spam.
@@ -162,29 +162,53 @@ func TestWithNoAddressBookOnlyTheOwnerGetsThrough(t *testing.T) {
 	wakeOwner(t)
 	withDomain(t, "micro.mu")
 
-	prevHook, prevKnown := InboundAgent, KnownSender
-	InboundAgent = func(InboundMail) {}
+	prevKnown := KnownSender
+	restore := withHandler(t)
 	KnownSender = nil
-	defer func() { InboundAgent, KnownSender = prevHook, prevKnown }()
+	defer func() { restore(); KnownSender = prevKnown }()
 
-	if !shouldWakeAgent(tagged("asim@aslam.me")) {
+	if !mayDispatch(tagged("asim@aslam.me")) {
 		t.Error("the owner cannot reach their agent when no address book is wired")
 	}
-	if shouldWakeAgent(tagged("stranger@example.com")) {
+	if mayDispatch(tagged("stranger@example.com")) {
 		t.Error("an unwired address book lets everybody in")
 	}
 }
 
-func TestAnInstanceWithNoAgentNeverWakesOne(t *testing.T) {
+func TestAnInstanceWithNothingListeningNeverWakesAnything(t *testing.T) {
 	wakeOwner(t)
 	withDomain(t, "micro.mu")
 
-	prev := InboundAgent
-	InboundAgent = nil
-	defer func() { InboundAgent = prev }()
+	inboundMu.Lock()
+	prev := inboundHandlers
+	inboundHandlers = map[string][]InboundHandler{}
+	inboundMu.Unlock()
+	defer func() {
+		inboundMu.Lock()
+		inboundHandlers = prev
+		inboundMu.Unlock()
+	}()
 
-	if shouldWakeAgent(tagged("asim@aslam.me")) {
-		t.Error("an instance with no agent configured still tries to wake one")
+	if mayDispatch(tagged("asim@aslam.me")) {
+		t.Error("an instance with nothing registered still decides to wake something")
+	}
+}
+
+// withHandler registers a do-nothing handler so the guard has something to
+// dispatch to, and hands back the undo.
+func withHandler(t *testing.T) func() {
+	t.Helper()
+	inboundMu.Lock()
+	prev := inboundHandlers
+	inboundHandlers = map[string][]InboundHandler{
+		Tagged:       {func(InboundMail) {}},
+		AgentMailbox: {func(InboundMail) {}},
+	}
+	inboundMu.Unlock()
+	return func() {
+		inboundMu.Lock()
+		inboundHandlers = prev
+		inboundMu.Unlock()
 	}
 }
 
@@ -211,7 +235,7 @@ func TestTheSharedMailboxResolvesItsOwnerFromTheSender(t *testing.T) {
 func TestTheGuardIsStillInThePath(t *testing.T) {
 	src := readSource(t, "smtp.go")
 	for _, want := range []string{
-		"if shouldWakeAgent(wakeRequest{",
+		"}, wakeRequest{",
 		"Authenticated: dkimPass || s.spfPass,",
 		"Shared:        sharedAgentMail,",
 	} {
@@ -221,7 +245,7 @@ func TestTheGuardIsStillInThePath(t *testing.T) {
 	}
 
 	store := strings.Index(src, "if err := SendMessageTo(")
-	woken := strings.Index(src, "if shouldWakeAgent(")
+	woken := strings.Index(src, "deliverInbound(InboundMail{")
 	if store < 0 || woken < 0 || woken < store {
 		t.Error("the agent is woken before the message is stored, so a panic there loses the mail")
 	}

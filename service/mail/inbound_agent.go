@@ -87,14 +87,18 @@ type wakeRequest struct {
 	Authenticated bool
 }
 
-// shouldWakeAgent is the whole rule, in one place, so it can be read and tested
+// mayDispatch is the whole rule, in one place, so it can be read and tested
 // without standing up an SMTP session.
-func shouldWakeAgent(r wakeRequest) bool {
-	if InboundAgent == nil || r.IsSpam {
+//
+// It asks whether this message is entitled to wake anything at all — not what
+// will be woken, which is the registry's business and used to be a special case
+// for agents right here.
+func mayDispatch(r wakeRequest) bool {
+	if !anyRegistered() || r.IsSpam {
 		return false
 	}
-	// Either a named agent's address or the shared one. Untagged mail to your
-	// own address is just mail — every newsletter would otherwise start a run.
+	// Either a tagged address or the shared one. Untagged mail to your own
+	// address is just mail — every newsletter would otherwise start a run.
 	if r.Tag == "" && !r.Shared {
 		return false
 	}

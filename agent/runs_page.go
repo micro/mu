@@ -166,17 +166,30 @@ func runRow(f *Flow, csrf string) string {
 		failed = `<div class="run-err">` + html.EscapeString(f.Error) + `</div>`
 	}
 
+	// Where it came from, but only when it came from somewhere. Every run
+	// started at the page would otherwise carry a chip saying "page", which is
+	// noise on the common case — and the point of the chip is that a run
+	// somebody else set off should not look like one you asked for.
+	came := ""
+	if f.Source != "" {
+		what := f.Trigger
+		if what == "" {
+			what = f.Source
+		}
+		came = `<span class="run-from">` + html.EscapeString(what) + `</span>`
+	}
+
 	return fmt.Sprintf(`<div class="run-row">
   <div style="flex:1;min-width:0">
     <a class="run-prompt" href="/agent?session=%s">%s</a>
-    <div class="run-meta"><span class="%s">%s</span> · as %s · %s</div>
+    <div class="run-meta"><span class="%s">%s</span> · as %s · %s %s</div>
     <div class="run-tools">%s</div>
     %s
   </div>
   %s
 </div>`,
 		html.EscapeString(f.ID), html.EscapeString(prompt),
-		cls, status, html.EscapeString(as), html.EscapeString(app.TimeAgo(f.CreatedAt)),
+		cls, status, html.EscapeString(as), html.EscapeString(app.TimeAgo(f.CreatedAt)), came,
 		ran, failed, del)
 }
 
@@ -188,6 +201,7 @@ const runsCSS = `<style>
 .run-meta{font-size:12px;color:#999;margin-top:3px}
 .run-tools{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
 .run-tool{border:1px solid #eee;border-radius:999px;padding:2px 9px;font-size:11px;color:#666;white-space:nowrap}
+.run-from{border:1px solid #e6e0cf;background:#fdfbf3;border-radius:999px;padding:1px 8px;font-size:11px;color:#8a7a4a;white-space:nowrap}
 .run-none{font-size:11px;color:#bbb}
 .run-err{font-size:12px;color:#b00;margin-top:5px}
 .run-ok{color:#0a7d33}

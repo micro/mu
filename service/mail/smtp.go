@@ -707,20 +707,29 @@ func (s *Session) Data(r io.Reader) error {
 			continue
 		}
 
-		// Mail addressed to an agent wakes it, if the sender is entitled to.
+		// Anything registered for this address gets the message.
 		//
 		// Every agent already had an address — you+name@ — and writing to one
 		// put a message in the owner's inbox and did nothing else. An agent
 		// with an address that cannot answer is a mailbox with a name on it,
 		// and "email your agent" is the first thing anyone tries.
 		//
-		// The whole rule is shouldWakeAgent, in inbound_agent.go: not spam, not
-		// our own reply coming back, the sender authenticated by SPF or DKIM,
-		// and known to this account. Those last two are new — the address used
-		// to be protected by nothing but being hard to guess. The hook resolves
-		// the tag to an agent and returns quietly when it is not one, so plain
-		// tagged mail — you+receipts@ — still just files.
-		if shouldWakeAgent(wakeRequest{
+		// The whole rule is mayDispatch, in inbound_agent.go: not spam, not our
+		// own reply coming back, the sender authenticated by SPF or DKIM, and
+		// known to this account. Those last two matter — the address used to be
+		// protected by nothing but being hard to guess. A handler resolves the
+		// tag itself and returns quietly when it names nothing, so plain tagged
+		// mail — you+receipts@ — still just files.
+		deliverInbound(InboundMail{
+			Owner:     toAcc.ID,
+			Tag:       toTag,
+			Shared:    sharedAgentMail,
+			From:      fromAddr.Address,
+			FromName:  senderName,
+			Subject:   subject,
+			Body:      body,
+			MessageID: messageID,
+		}, wakeRequest{
 			Owner:         toAcc.ID,
 			Tag:           toTag,
 			Shared:        sharedAgentMail,
@@ -728,18 +737,7 @@ func (s *Session) Data(r io.Reader) error {
 			To:            toAddr.Address,
 			IsSpam:        spamResult.IsSpam,
 			Authenticated: dkimPass || s.spfPass,
-		}) {
-			InboundAgent(InboundMail{
-				Owner:     toAcc.ID,
-				Tag:       toTag,
-				Shared:    sharedAgentMail,
-				From:      fromAddr.Address,
-				FromName:  senderName,
-				Subject:   subject,
-				Body:      body,
-				MessageID: messageID,
-			})
-		}
+		})
 	}
 
 	app.Log("mail", "Email processed successfully")
@@ -1270,10 +1268,5 @@ type InboundMail struct {
 	MessageID string // for threading the reply
 }
 
-// InboundAgent is called when mail arrives at a tagged address, so an agent
-// with that tag can answer it. Wired in main.go, which is where the agent and
-// the roster are in scope; nil on an instance with no agent configured.
-//
-// Called after the message is stored, so the mail is in the inbox whether or
-// not an agent picks it up, and a failure to answer never loses the mail.
-var InboundAgent func(InboundMail)
+// Handlers register with Inbound, in inbound.go. There used to be a function
+// variable here for the agent specifically.
