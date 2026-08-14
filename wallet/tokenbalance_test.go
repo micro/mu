@@ -86,3 +86,66 @@ func TestNoAddressIsRefusedBeforeTheCall(t *testing.T) {
 		t.Error("read a balance for no address at all")
 	}
 }
+
+func TestTheWrongChainSaysWhichChain(t *testing.T) {
+	// The exact failure: an Alchemy key for Ethereum used as the Base node.
+	// Base USDC's address holds no contract there, so balanceOf returns "0x"
+	// and eth_chainId returns 1.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body := make([]byte, r.ContentLength)
+		r.Body.Read(body) //nolint:errcheck
+		if strings.Contains(string(body), "eth_chainId") {
+			fmt.Fprint(w, `{"jsonrpc":"2.0","id":1,"result":"0x1"}`) // Ethereum
+			return
+		}
+		fmt.Fprint(w, `{"jsonrpc":"2.0","id":1,"result":"0x"}`)
+	}))
+	defer srv.Close()
+
+	prev := settings.Get("BASE_RPC_URL")
+	settings.Set("BASE_RPC_URL", srv.URL)
+	t.Cleanup(func() {
+		settings.Set("BASE_RPC_URL", prev)
+		chainSeen.Delete(srv.URL)
+	})
+
+	_, _, err := USDCBalanceErr("0x0537d281fd50e3b07e1045c5f95b91d45bd801c3")
+	if err == nil {
+		t.Fatal("a node on the wrong chain reported a balance of zero")
+	}
+	// The message has to name both chains — the reader is comparing our zero
+	// against a block explorer showing real money.
+	for _, want := range []string{"chain 1", "chain 8453", "BASE_RPC_URL", "TRADE_RPC_URL"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("the error does not mention %q: %v", want, err)
+		}
+	}
+}
+
+func TestTheRightChainDoesNotComplain(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body := make([]byte, r.ContentLength)
+		r.Body.Read(body) //nolint:errcheck
+		if strings.Contains(string(body), "eth_chainId") {
+			fmt.Fprint(w, `{"jsonrpc":"2.0","id":1,"result":"0x2105"}`) // 8453
+			return
+		}
+		fmt.Fprint(w, `{"jsonrpc":"2.0","id":1,"result":"0x00000000000000000000000000000000000000000000000000000000000f4240"}`)
+	}))
+	defer srv.Close()
+
+	prev := settings.Get("BASE_RPC_URL")
+	settings.Set("BASE_RPC_URL", srv.URL)
+	t.Cleanup(func() {
+		settings.Set("BASE_RPC_URL", prev)
+		chainSeen.Delete(srv.URL)
+	})
+
+	human, _, err := USDCBalanceErr("0x0537d281fd50e3b07e1045c5f95b91d45bd801c3")
+	if err != nil {
+		t.Fatalf("a correct node was reported as misconfigured: %v", err)
+	}
+	if human != "1" {
+		t.Errorf("read %q, want 1 USDC", human)
+	}
+}

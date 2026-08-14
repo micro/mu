@@ -82,10 +82,68 @@ func BaseRPCURL() string {
 	if v := settings.Get("BASE_RPC_URL"); v != "" {
 		return v
 	}
+	// TRADE_RPC_URL is a fallback and an assumption: it was set for trading and
+	// nothing says it is on Base. An Alchemy key is per-chain — eth-mainnet and
+	// base-mainnet are different hostnames — so a trading node configured for
+	// Ethereum answers every Base token read with "0x". See checkChain, which
+	// is what turns that into a sentence instead of a zero.
 	if v := settings.Get("TRADE_RPC_URL"); v != "" {
 		return v
 	}
 	return "https://mainnet.base.org"
+}
+
+// expectedChain is the chain this instance's money is on, from the configured
+// x402 network.
+func expectedChain() int64 {
+	if id, ok := chainIDFor(x402Net()); ok {
+		return id
+	}
+	return 8453
+}
+
+// chainOf asks a node which chain it is on, once per URL.
+//
+// Only ever called when something has already looked wrong, so the happy path
+// pays nothing for it. Cached because the answer cannot change without the URL
+// changing.
+var chainSeen sync.Map // url -> int64
+
+func chainOf(url string) (int64, error) {
+	if v, ok := chainSeen.Load(url); ok {
+		return v.(int64), nil
+	}
+	res, err := rpcCall("eth_chainId")
+	if err != nil {
+		return 0, err
+	}
+	hexed := strings.TrimPrefix(strings.Trim(string(res), `"`), "0x")
+	id, ok := new(big.Int).SetString(hexed, 16)
+	if !ok {
+		return 0, fmt.Errorf("%s did not say which chain it is on", url)
+	}
+	chainSeen.Store(url, id.Int64())
+	return id.Int64(), nil
+}
+
+// checkChain names the misconfiguration behind an empty answer.
+//
+// The failure this exists for: a token balance reads as zero while a block
+// explorer shows real money at the same address. The node is fine, the address
+// is fine, and the call is being made on the wrong chain — which no amount of
+// staring at either will reveal.
+func checkChain() error {
+	url := BaseRPCURL()
+	got, err := chainOf(url)
+	if err != nil {
+		return nil // unreachable is a different complaint, already reported
+	}
+	if want := expectedChain(); got != want {
+		return fmt.Errorf("%s is on chain %d, but this instance's funds are on chain %d — "+
+			"set BASE_RPC_URL to a node for chain %d (TRADE_RPC_URL is being used as a "+
+			"fallback and is for a different chain)", url, got, want, want)
+	}
+	return nil
 }
 
 // WalletFor returns the account's wallet, or nil if it has none yet.
@@ -235,9 +293,17 @@ func tokenBalance(token, wallet string) (*big.Int, error) {
 	// point anywhere, so this is a configuration away rather than a theory.
 	hexed := strings.TrimPrefix(strings.Trim(string(res), `"`), "0x")
 	if hexed == "" {
-		return nil, fmt.Errorf("%s returned no data for a balance on %s — "+
-			"the node is probably not on the chain this token is on (check BASE_RPC_URL "+
-			"and TRADE_RPC_URL)", BaseRPCURL(), token)
+		// Ask the node what chain it is on, so the answer is the actual
+		// misconfiguration rather than a guess at it.
+		if err := checkChain(); err != nil {
+			return nil, err
+		}
+		// The chain could not be established either, so name the two settings
+		// that decide it — that is the actionable half whatever the cause.
+		return nil, fmt.Errorf("%s returned no data for a balance on %s — that address "+
+			"holds no token contract there, which usually means the node is on the wrong "+
+			"chain (check BASE_RPC_URL, and TRADE_RPC_URL which is used as a fallback)",
+			BaseRPCURL(), token)
 	}
 	v, ok := new(big.Int).SetString(hexed, 16)
 	if !ok {
