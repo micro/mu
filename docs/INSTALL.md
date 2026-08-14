@@ -158,6 +158,47 @@ Set `MAIL_DOMAIN` to the domain and restart. `mail_send` is account-only: an
 unauthenticated caller can never send, so a paying agent cannot spend your
 domain's reputation.
 
+### Who is allowed to send you mail
+
+This instance does not accept mail from strangers. A message gets in if **any
+one** of these is true:
+
+| | Rule |
+|---|---|
+| 1 | It is a reply to something you sent — `In-Reply-To` or `References` matches a Message-ID this server generated. |
+| 2 | You have written to that address before. Recorded automatically on the way out. |
+| 3 | The sender's domain is whitelisted — see below. |
+| 4 | The sender's address is verified on an account here. Somebody who proved they own a mailbox is not a stranger, whatever their domain. |
+| 5 | The message is addressed to `support@` **and nothing else**. |
+
+Anything else is refused with a `550`, so the sender's own mail server tells
+them rather than the message disappearing.
+
+**Building your own whitelist.** Set `MAIL_WHITELIST` to a comma-separated list
+of domains:
+
+```
+MAIL_WHITELIST=acme.com, partner.co.uk, supplier.example
+```
+
+It is live — change it at `/admin/env` and the next message is judged by the new
+list, no restart. There is also a built-in list of common company and
+infrastructure domains. Consumer domains (`gmail.com`, `outlook.com`,
+`hotmail.com`) are deliberately **not** on it: they are where unsolicited mail
+comes from, and rule 4 already covers the case that matters — your own users
+writing in from a personal address.
+
+**Why `support@` is different.** It is the address somebody writes to when they
+cannot sign up or their payment failed — which means they have no verified
+address and their domain is not on any list, so every other rule refuses them.
+The whole point of a support address is hearing from people you have never heard
+of, so the whitelist does not apply to it. Only when it is the sole recipient:
+`support@` alongside a user's address would otherwise be a way into that user's
+mailbox. Instead of the whitelist it is capped at 20 messages a day per sending
+address, which is the thing an abuser has to keep making more of.
+
+`support@` delivers to the oldest admin account.
+
 ## Discord
 
 1. Create an application at [discord.com/developers/applications](https://discord.com/developers/applications).
@@ -450,8 +491,9 @@ that.
 | `MAIL_PORT` | `2525` | SMTP listener — `25` in production |
 | `MAIL_SELECTOR` | `default` | DKIM selector, the `<selector>._domainkey` DNS record |
 | `DKIM_PRIVATE_KEY` | — | DKIM signing key |
+| `MAIL_WHITELIST` | — | Domains you accept mail from, comma separated: `acme.com, partner.co.uk`. Merged with a built-in list of company and infrastructure domains; consumer domains are deliberately absent. Live — no restart |
 
-DNS records are above.
+DNS records are above, and [Who is allowed to send you mail](#who-is-allowed-to-send-you-mail) is the whole inbound rule — including why `support@` bypasses the whitelist.
 
 ### Social
 

@@ -466,10 +466,11 @@ func (s *Session) Data(r io.Reader) error {
 	}
 
 	// ── Strict inbound filter ──────────────────────────────────
-	// Only allow: replies to our mail, whitelisted domains, or
-	// addresses we've previously sent to. Everything else rejected.
+	// The whole policy is at the top of inbound_filter.go. It needs the
+	// recipients as well as the sender, because support@ is public and nothing
+	// else is.
 	if !s.isLocalhost {
-		reason, allowed := CheckInboundAllowed(fromAddr.Address, inReplyTo, references)
+		reason, allowed := CheckInboundAllowed(fromAddr.Address, s.to, inReplyTo, references)
 		if !allowed {
 			app.Log("mail", "Rejected inbound from %s: %s", fromAddr.Address, reason)
 			return &smtpd.SMTPError{

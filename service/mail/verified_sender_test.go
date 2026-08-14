@@ -78,7 +78,7 @@ func TestAnUnverifiedAddressEarnsNothing(t *testing.T) {
 // domain. aslam.me is not company mail and never will be on a built-in list.
 func TestAVerifiedSenderPassesTheInboundFilter(t *testing.T) {
 	const addr = "verified-sender-test@aslam.me"
-	if _, ok := CheckInboundAllowed(addr, "", ""); ok {
+	if _, ok := CheckInboundAllowed(addr, []string{"someone@micro.mu"}, "", ""); ok {
 		t.Skip("aslam.me is already allowed by another rule on this instance")
 	}
 
@@ -94,11 +94,11 @@ func TestAVerifiedSenderPassesTheInboundFilter(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if reason, ok := CheckInboundAllowed(addr, "", ""); !ok {
+	if reason, ok := CheckInboundAllowed(addr, []string{"someone@micro.mu"}, "", ""); !ok {
 		t.Errorf("a verified account's own address was rejected: %s", reason)
 	}
 	// An unrelated address on the same domain is still a stranger.
-	if _, ok := CheckInboundAllowed("nobody@aslam.me", "", ""); ok {
+	if _, ok := CheckInboundAllowed("nobody@aslam.me", []string{"someone@micro.mu"}, "", ""); ok {
 		t.Error("verifying one address opened the whole domain")
 	}
 }

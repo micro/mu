@@ -36,6 +36,7 @@ var settingGroups = []settingGroup{
 	}},
 	{"Mail", []string{
 		"MAIL_DOMAIN",
+		"MAIL_WHITELIST",
 		"MAIL_PORT",
 		"MAIL_SELECTOR",
 		"DKIM_PRIVATE_KEY",
