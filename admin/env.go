@@ -53,7 +53,13 @@ var settingGroups = []settingGroup{
 		"X402_BAZAAR",
 		"CRYPTO_TOPUP",
 	}},
-	{"Trading", []string{
+	// The node this instance reads balances from. BASE_RPC_URL was readable by
+	// the code and settable nowhere, so the only way to point it at Base was an
+	// environment edit and a restart — and until it was set, BaseRPCURL fell
+	// back to TRADE_RPC_URL, which is for trading and may be on another chain
+	// entirely. That silently reported every balance as zero.
+	{"Chain", []string{
+		"BASE_RPC_URL",
 		"TRADE_RPC_URL",
 		"TRADE_CHAIN",
 	}},
@@ -156,7 +162,11 @@ func Settable(name string) bool {
 // is not is a credential printed in full on a page somebody may be sharing.
 func secret(key string) bool {
 	up := strings.ToUpper(key)
-	for _, w := range []string{"KEY", "SECRET", "TOKEN", "PASS", "DKIM"} {
+	// RPC_URL is here because every hosted provider puts the credential in the
+	// path — Alchemy, Infura and QuickNode all hand you a URL ending in the key
+	// itself. Nothing in the name says "key", so the old list printed somebody's
+	// paid endpoint in full on a page they might be sharing a screenshot of.
+	for _, w := range []string{"KEY", "SECRET", "TOKEN", "PASS", "DKIM", "RPC_URL"} {
 		if strings.Contains(up, w) {
 			return true
 		}
