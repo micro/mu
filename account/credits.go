@@ -221,6 +221,73 @@ func Balance(userID string) int {
 	return w.Balance
 }
 
+// SettlementKey is the metadata field a one-time credit is deduped on.
+//
+// The value is the payment provider's own id for the purchase. It is spelled
+// session_id because that is what every top-up already on disk calls it, and
+// the point of this is that history counts: renaming it would make every
+// transaction ever written invisible to the check below, which is the same
+// mistake as renaming a live data file.
+const SettlementKey = "session_id"
+
+// CreditOnce credits an account unless the ledger already records this key.
+//
+// A payment can arrive twice — Stripe's webhook and the customer's return from
+// checkout both settle, deliberately, so that a misconfigured webhook does not
+// mean a charged card and nothing else. There was a map of seen session ids to
+// stop the second one counting, and it was in memory: a restart emptied it, and
+// Stripe retries a delivery for three days. Charge, settle, deploy, retry,
+// credited twice.
+//
+// The fix is not a second file remembering what the first one did. Two stores
+// that have to agree is the shape of the bug that destroyed this ledger once
+// already. The ledger is the record: a top-up writes the session id into its
+// own transaction, so asking whether a payment has settled is asking the only
+// thing that knows. It survives restarts because it is the thing being
+// restarted, it cannot drift from what was actually credited, and it answers
+// correctly for every payment made before this was written.
+//
+// Returns whether it credited. Not an error when it did not — a payment that
+// has already settled is the expected outcome of the second route arriving,
+// not a failure.
+func CreditOnce(userID string, amount int, operation, key string, metadata map[string]interface{}) (bool, error) {
+	if strings.TrimSpace(key) == "" {
+		return false, errors.New("a one-time credit needs a key to settle against")
+	}
+	if amount <= 0 {
+		return false, errors.New("amount must be positive")
+	}
+
+	// The check and the write are one critical section. Two deliveries racing
+	// would otherwise both look up, both find nothing, and both credit.
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	if settled(userID, key) {
+		return false, nil
+	}
+	if metadata == nil {
+		metadata = map[string]interface{}{}
+	}
+	metadata[SettlementKey] = key
+	return true, addCredits(userID, amount, operation, metadata)
+}
+
+// settled reports whether this account has already been credited for key.
+//
+// Callers hold mutex.
+func settled(userID, key string) bool {
+	for _, tx := range transactions[userID] {
+		if tx == nil || tx.Type != TxTopup {
+			continue
+		}
+		if v, ok := tx.Metadata[SettlementKey].(string); ok && v == key {
+			return true
+		}
+	}
+	return false
+}
+
 // AddCredits adds credits to a user's wallet
 func AddCredits(userID string, amount int, operation string, metadata map[string]interface{}) error {
 	if amount <= 0 {
@@ -230,6 +297,12 @@ func AddCredits(userID string, amount int, operation string, metadata map[string
 	mutex.Lock()
 	defer mutex.Unlock()
 
+	return addCredits(userID, amount, operation, metadata)
+}
+
+// addCredits is AddCredits with the lock already held, so that a caller needing
+// to decide and then write — CreditOnce — can do both without a gap.
+func addCredits(userID string, amount int, operation string, metadata map[string]interface{}) error {
 	w, exists := balances[userID]
 	if !exists {
 		w = &Credits{

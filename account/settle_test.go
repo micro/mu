@@ -10,11 +10,13 @@ package account
 // one-off top-up hung on exactly the same thread.
 
 import (
+	"encoding/json"
 	"os"
 	"strings"
 	"testing"
 
 	"mu/internal/auth"
+	"mu/internal/data"
 )
 
 func settler(t *testing.T, id string) {
@@ -62,6 +64,66 @@ func TestTheSameSessionSettlesOnlyOnce(t *testing.T) {
 		t.Errorf("balance is %d, want %d — the session was applied twice, which is "+
 			"what a second settling route would cost if it were not deduped",
 			got, before+500)
+	}
+}
+
+// And it survives a restart, which is the case the old guard could not.
+//
+// Settling was deduped against a map of seen session ids held in memory. Stripe
+// retries a delivery for up to three days, so the sequence that double-credited
+// somebody was ordinary: charge, settle, deploy, retry. Nothing about it needed
+// bad luck — a deploy inside three days of a top-up is most deploys.
+//
+// There is no map to clear here because there is no map: the guard is the
+// ledger, and the ledger is what a restart reloads. Wiping every scrap of
+// in-process state that is not the ledger is exactly what a restart does, so
+// that is what this does.
+func TestASettledSessionStaysSettledAcrossARestart(t *testing.T) {
+	const owner = "settle-restart"
+	settler(t, owner)
+	before := Balance(owner)
+
+	s := checkoutSession{
+		ID: "cs_settle_restart", PaymentStatus: "paid",
+		AmountTotal: 700, UserID: owner, Credits: "700",
+	}
+	settleSession(s, "webhook")
+	if got := Balance(owner); got != before+700 {
+		t.Fatalf("the first settle credited %d, want %d", got-before, 700)
+	}
+
+	// The restart: drop the loaded balances and read them back from disk, the
+	// way init does. Anything remembering this payment other than the ledger
+	// does not come back.
+	mutex.Lock()
+	balances = map[string]*Credits{}
+	b, _ := data.LoadFile("wallets.json")
+	json.Unmarshal(b, &balances) //nolint:errcheck
+	mutex.Unlock()
+
+	settleSession(s, "webhook retry")
+
+	if got := Balance(owner); got != before+700 {
+		t.Errorf("balance is %d, want %d — a retried delivery credited the same "+
+			"payment twice after a restart", got, before+700)
+	}
+}
+
+// The other half: a genuinely different payment is not swallowed by the dedupe.
+func TestADifferentSessionStillCredits(t *testing.T) {
+	const owner = "settle-distinct"
+	settler(t, owner)
+	before := Balance(owner)
+
+	for _, id := range []string{"cs_distinct_a", "cs_distinct_b"} {
+		settleSession(checkoutSession{
+			ID: id, PaymentStatus: "paid",
+			AmountTotal: 300, UserID: owner, Credits: "300",
+		}, "webhook")
+	}
+
+	if got := Balance(owner); got != before+600 {
+		t.Errorf("balance is %d, want %d — the dedupe key is not the session", got, before+600)
 	}
 }
 

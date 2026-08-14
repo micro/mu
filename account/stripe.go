@@ -19,10 +19,6 @@ import (
 	"mu/internal/settings"
 )
 
-var (
-	processedSessions = make(map[string]bool)
-)
-
 func stripeSecret() string  { return settings.Get("STRIPE_SECRET_KEY") }
 func stripePublic() string  { return settings.Get("STRIPE_PUBLISHABLE_KEY") }
 func stripeWebhook() string { return settings.Get("STRIPE_WEBHOOK_SECRET") }
@@ -83,14 +79,6 @@ func settleSession(s checkoutSession, how string) {
 		return
 	}
 
-	mutex.Lock()
-	if processedSessions[s.ID] {
-		mutex.Unlock()
-		return
-	}
-	processedSessions[s.ID] = true
-	mutex.Unlock()
-
 	if s.UserID == "" {
 		app.Log("stripe", "session %s (%s) names no account, so nothing can be credited", s.ID, how)
 		return
@@ -99,14 +87,28 @@ func settleSession(s checkoutSession, how string) {
 	var credits int
 	fmt.Sscanf(s.Credits, "%d", &credits)
 	if credits > 0 {
-		if err := AddCredits(s.UserID, credits, quota.OpTopup, map[string]interface{}{
+		// Deduped against the ledger rather than against a map of seen ids.
+		// That map was in memory, a restart emptied it, and Stripe retries a
+		// delivery for three days — so a charge settled before a deploy could
+		// be credited again after it. The transaction carries the session id,
+		// which makes the ledger the only thing that has to be consulted and
+		// the only thing that can be wrong.
+		//
+		// A failure is not recorded as settled, so a retry can still land it.
+		// That is the right way round: a top-up nobody credited is a customer
+		// out of pocket, and Stripe will try again.
+		credited, err := CreditOnce(s.UserID, credits, quota.OpTopup, s.ID, map[string]interface{}{
 			"source":     "stripe",
-			"session_id": s.ID,
 			"amount":     s.AmountTotal,
 			"settled_by": how,
-		}); err != nil {
-			app.Log("stripe", "failed to credit user %s: %v", s.UserID, err)
-		} else {
+		})
+		switch {
+		case err != nil:
+			app.Log("stripe", "failed to credit user %s for session %s: %v", s.UserID, s.ID, err)
+			return
+		case !credited:
+			app.Log("stripe", "session %s already settled; %s changed nothing", s.ID, how)
+		default:
 			app.Log("stripe", "credited %d to %s via %s (session %s)", credits, s.UserID, how, s.ID)
 		}
 	}
