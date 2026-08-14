@@ -38,13 +38,27 @@ func AdminHandler(w http.ResponseWriter, r *http.Request) {
 		<a href="/admin/moderate">Moderation</a>
 		<a href="/admin/server">Server</a>
 		<a href="/admin/spam">Spam Filter</a>
-		<a href="/admin/log">System Log</a>
+		<a href="/admin/log">System Log` + alertBadge() + `</a>
 		<a href="/admin/traffic">Traffic</a>
 		<a href="/admin/users">Users <span class="count">` + fmt.Sprintf("%d", len(users)) + `</span></a>
 	</div>`
 
 	html := app.RenderHTMLForRequest("Admin", "Admin Dashboard", content, r)
 	w.Write([]byte(html))
+}
+
+// alertBadge puts the number of outstanding alerts beside the log, so that
+// something serious is visible from the one page an admin actually opens.
+//
+// An alert that only exists in a log nobody has scrolled to is the same as no
+// alert at all — which is what three of them were, written as the word CRITICAL
+// at the front of an ordinary line.
+func alertBadge() string {
+	n := app.AlertCount()
+	if n == 0 {
+		return ""
+	}
+	return fmt.Sprintf(` <span class="count" style="background:#c00;color:#fff">%d</span>`, n)
 }
 
 // balanceCell is what an account holds, on the row beside the button that adds

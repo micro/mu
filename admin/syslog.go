@@ -51,6 +51,7 @@ func SysLogHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var content strings.Builder
+	content.WriteString(alertsCard())
 	content.WriteString(`<div class="card">`)
 	content.WriteString(fmt.Sprintf(`<h3>System Log <span class="count">%d</span></h3>`, len(entries)))
 
@@ -97,4 +98,35 @@ func truncateMsg(s string, max int) string {
 		return s
 	}
 	return string([]rune(s)[:max]) + "…"
+}
+
+// alertsCard is the things somebody has to look at, above the ordinary log.
+//
+// Above it, and kept separately, because the log is a ring of five hundred
+// lines — an hour or two on a busy instance, and then the alert that said the
+// key store had refused a write is gone. These were being recorded all along
+// and were invisible for exactly that reason.
+func alertsCard() string {
+	alerts := app.Alerts()
+	if len(alerts) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString(`<div class="card" style="border-color:#e0a3a3">`)
+	fmt.Fprintf(&b, `<h3 style="color:#c00">Alerts <span class="count">%d</span></h3>`, len(alerts))
+	b.WriteString(`<p class="text-sm text-muted">Things this instance did that it should ` +
+		`not have had to, or refused in order to protect itself. Kept apart from the log ` +
+		`below, which rolls over.</p>`)
+	b.WriteString(`<div style="overflow-x:auto"><table class="email-log" style="width:100%;table-layout:fixed">`)
+	b.WriteString(`<colgroup><col style="width:130px"><col style="width:90px"><col></colgroup>`)
+	b.WriteString(`<tr><th>When</th><th>Where</th><th>What</th></tr>`)
+	for _, a := range alerts {
+		fmt.Fprintf(&b, `<tr><td style="white-space:nowrap">%s</td><td>%s</td>`+
+			`<td style="word-break:break-word;white-space:pre-wrap">%s</td></tr>`,
+			a.Time.Format("Jan 2 15:04:05"),
+			html.EscapeString(a.Package),
+			html.EscapeString(a.Message))
+	}
+	b.WriteString(`</table></div></div>`)
+	return b.String()
 }

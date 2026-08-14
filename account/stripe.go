@@ -341,7 +341,7 @@ func HandleStripeWebhook(w http.ResponseWriter, r *http.Request) {
 
 	// Verify webhook signature — REQUIRED for security
 	if stripeWebhook() == "" {
-		app.Log("stripe", "CRITICAL: STRIPE_WEBHOOK_SECRET not configured, rejecting webhook")
+		app.Alert("stripe", "STRIPE_WEBHOOK_SECRET is not configured, so every webhook is being rejected — top-ups settle only by the return from checkout")
 		http.Error(w, "webhook not configured", http.StatusServiceUnavailable)
 		return
 	}

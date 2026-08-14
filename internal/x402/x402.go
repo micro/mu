@@ -772,7 +772,7 @@ func (s *settleWriter) finish() {
 			// without an answer, and refusing here would break it in the
 			// other direction — they would have paid nothing and received
 			// nothing, having done nothing wrong.
-			app.Log("x402", "CRITICAL: work succeeded and settlement failed, "+
+			app.Alert("x402", "work succeeded and settlement failed, "+
 				"so this answer was given away: %v", err)
 		default:
 			s.holder.Resp = resp

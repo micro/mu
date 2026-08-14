@@ -1046,6 +1046,14 @@ func Forbidden(w http.ResponseWriter, r *http.Request, message string) {
 // Log prints a formatted log message with a colored package prefix
 // and stores it in the in-memory system log ring buffer.
 func Log(pkg string, format string, args ...interface{}) {
+	logLine(pkg, format, args...)
+	appendSysLog(pkg, format, args...)
+}
+
+// logLine writes to the terminal without recording anything. Split out so that
+// Alert can print and record separately — it records with a flag, and calling
+// Log would have stored the line twice.
+func logLine(pkg string, format string, args ...interface{}) {
 	color := pkgColors[pkg]
 	if color == "" {
 		color = colorWhite
@@ -1055,7 +1063,6 @@ func Log(pkg string, format string, args ...interface{}) {
 	if !cliMode {
 		fmt.Printf(prefix+format+"\n", args...)
 	}
-	appendSysLog(pkg, format, args...)
 }
 
 // Error writes an error response: JSON if the client expects it, otherwise a

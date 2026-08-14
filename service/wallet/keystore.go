@@ -50,12 +50,12 @@ func saveWalletsAllowing(drop int) error {
 			have, onDisk, onDisk-have-drop)
 		// Loudly. A refusal nobody sees is a corruption nobody sees, one deploy
 		// later, when whatever caused this is still there.
-		app.Log("wallet", "CRITICAL: %v", err)
+		app.Alert("wallet", "%v", err)
 		return err
 	}
 
 	if err := data.SaveJSON(walletsFile, userWallets); err != nil {
-		app.Log("wallet", "CRITICAL: could not write the key store: %v", err)
+		app.Alert("wallet", "could not write the key store: %v", err)
 		return err
 	}
 	return nil
