@@ -378,6 +378,12 @@ func serve(addr string) {
 						ctx = context.WithValue(ctx, x402.X402SettleKey, holder)
 						r = r.WithContext(ctx)
 						w = x402.NewSettleWriter(w, holder)
+						// Nothing is written or charged until this runs: the
+						// payment settles only if the response says the work
+						// succeeded, and the response is held back until then
+						// because the receipt is a header and the verdict is in
+						// the body.
+						defer x402.Finish(w)
 					} else if err := auth.ValidateToken(token); err != nil {
 						// Describe what is being refused, so a facilitator
 						// reading this challenge can index the tool. Nil

@@ -365,6 +365,36 @@ func paymentHeader(r *http.Request) string {
 // request context (see SettleHolder) so the response layer can emit the
 // X-PAYMENT-RESPONSE header. Returns the settlement or an error.
 func VerifyAndSettle(r *http.Request, operation, resource string) (*SettleResponse, error) {
+	v, err := Verify(r, operation, resource)
+	if err != nil {
+		return nil, err
+	}
+	return v.Settle()
+}
+
+// Verified is a payment the facilitator has checked and not yet moved.
+//
+// The two halves of a payment are separate calls in the protocol for a reason,
+// and this instance was collapsing them: it verified and settled at the door,
+// before the tool ran and therefore before anything had looked at the
+// arguments. So a request that failed afterwards — a mistyped number, a
+// provider down, a panic — was a charge with no answer. That is the one thing a
+// pay-per-call endpoint must never do, and it was the default path.
+//
+// Verify says the money is good and moves none of it. Settle moves it, once
+// there is something to hand back.
+type Verified struct {
+	payload map[string]any
+	req     *PaymentRequirements
+}
+
+// Verify checks a payment without moving any money.
+//
+// Everything that can refuse a caller happens here: a malformed header, a
+// payment for the wrong thing, an authorization the facilitator will not
+// honour. What is left after this returns is a promise that settling will work,
+// which is what makes it safe to do the work first.
+func Verify(r *http.Request, operation, resource string) (*Verified, error) {
 	hdr := paymentHeader(r)
 	if hdr == "" {
 		return nil, fmt.Errorf("no payment header")
@@ -380,14 +410,44 @@ func VerifyAndSettle(r *http.Request, operation, resource string) (*SettleRespon
 		return nil, fmt.Errorf("invalid payment payload: %w", err)
 	}
 
-	settle, err := settlePayload(payload, operation, resource)
-	if err != nil {
+	req := matchRequirement(BuildPaymentRequirements(operation, resource), payload)
+	if req == nil {
+		return nil, fmt.Errorf("no matching payment requirement for the presented payment")
+	}
+	if err := verifyRequirement(payload, req); err != nil {
 		return nil, err
 	}
+
+	v := &Verified{payload: payload, req: req}
+	// Hand it to the writer, which settles once it knows the work succeeded.
 	if h, ok := r.Context().Value(X402SettleKey).(*SettleHolder); ok && h != nil {
-		h.Resp = settle
+		h.Verified = v
 	}
-	return settle, nil
+	return v, nil
+}
+
+// Settle moves the money for a payment that has already been verified.
+func (v *Verified) Settle() (*SettleResponse, error) {
+	if v == nil {
+		return nil, fmt.Errorf("nothing verified to settle")
+	}
+	return settleVerified(v.payload, v.req)
+}
+
+// Payer is the address that signed this payment.
+//
+// Read from the authorization the facilitator has just verified, so it is
+// authenticated in the way that matters — only the holder of that key could
+// have produced it — and it is available before settlement, which is what lets
+// an account-scoped tool know who is calling while the money is still unmoved.
+func (v *Verified) Payer() string {
+	if v == nil {
+		return ""
+	}
+	inner, _ := v.payload["payload"].(map[string]any)
+	auth, _ := inner["authorization"].(map[string]any)
+	from, _ := auth["from"].(string)
+	return strings.ToLower(strings.TrimSpace(from))
 }
 
 // settlePayload verifies then settles a decoded payment payload against the
@@ -400,15 +460,15 @@ func settlePayload(payload map[string]any, operation, resource string) (*SettleR
 	return settleRequirement(payload, req)
 }
 
-// settleRequirement verifies then settles a payment payload against a specific
-// requirement (used when the amount isn't a fixed tool price, e.g. a USDC → credit
-// top-up that sweeps an arbitrary balance).
-func settleRequirement(payload map[string]any, req *PaymentRequirements) (*SettleResponse, error) {
+// verifyRequirement asks the facilitator whether a payment would succeed.
+//
+// No money moves. This is the half that can say no.
+func verifyRequirement(payload map[string]any, req *PaymentRequirements) error {
 	body := map[string]any{"x402Version": x402Ver(), "paymentPayload": payload, "paymentRequirements": req}
 
 	vres, err := facilitatorPost("/verify", body)
 	if err != nil {
-		return nil, fmt.Errorf("verify: %w", err)
+		return fmt.Errorf("verify: %w", err)
 	}
 	var verify struct {
 		IsValid        bool   `json:"isValid"`
@@ -418,8 +478,14 @@ func settleRequirement(payload map[string]any, req *PaymentRequirements) (*Settl
 	}
 	_ = json.Unmarshal(vres, &verify)
 	if !verify.IsValid && !verify.Valid {
-		return nil, fmt.Errorf("payment invalid: %s", firstNonEmpty(verify.InvalidMessage, verify.InvalidReason, "rejected by facilitator"))
+		return fmt.Errorf("payment invalid: %s", firstNonEmpty(verify.InvalidMessage, verify.InvalidReason, "rejected by facilitator"))
 	}
+	return nil
+}
+
+// settleVerified moves the money for a payment that verifyRequirement passed.
+func settleVerified(payload map[string]any, req *PaymentRequirements) (*SettleResponse, error) {
+	body := map[string]any{"x402Version": x402Ver(), "paymentPayload": payload, "paymentRequirements": req}
 
 	sres, err := facilitatorPost("/settle", body)
 	if err != nil {
@@ -432,6 +498,16 @@ func settleRequirement(payload map[string]any, req *PaymentRequirements) (*Settl
 	}
 	app.Log("x402", "settled %s: tx=%s payer=%s", req.Resource, settle.Transaction, settle.Payer)
 	return &settle, nil
+}
+
+// settleRequirement verifies then settles in one step, for a caller that has
+// nothing to do in between — the outbound payer, where this instance is the one
+// paying somebody else.
+func settleRequirement(payload map[string]any, req *PaymentRequirements) (*SettleResponse, error) {
+	if err := verifyRequirement(payload, req); err != nil {
+		return nil, err
+	}
+	return settleVerified(payload, req)
 }
 
 // matchRequirement picks the advertised requirement the payment was made
@@ -620,46 +696,128 @@ var X402ContextKey = x402ContextKeyType{}
 
 type x402SettleKeyType struct{}
 
-// X402SettleKey holds a *SettleHolder that VerifyAndSettle fills on success.
+// X402SettleKey holds a *SettleHolder that Verify fills once a payment checks
+// out, and that the response writer settles from once the work has succeeded.
 var X402SettleKey = x402SettleKeyType{}
 
-// SettleHolder carries a settlement result out of VerifyAndSettle (which runs
-// deep inside the tool dispatch) to the response writer.
-type SettleHolder struct{ Resp *SettleResponse }
+// SettleHolder carries a verified-but-unmoved payment out of the gate (which
+// runs deep inside the tool dispatch) to the response writer, which is the only
+// thing that knows whether there is an answer to charge for.
+type SettleHolder struct {
+	Verified *Verified
+	Resp     *SettleResponse
+}
 
-// settleWriter injects the X-PAYMENT-RESPONSE / PAYMENT-RESPONSE headers
-// (base64 settlement) just before the status line is written — by which point
-// settlement, if any, has completed.
+// settleWriter holds the response back until it knows whether the work
+// succeeded, settles the payment if it did, and only then writes.
+//
+// Holding it back is the point. The receipt is an HTTP header, headers go
+// before the body, and whether a JSON-RPC call succeeded is in the body — so
+// deciding on the way past is impossible and the response has to be complete
+// before anything is charged. These are single JSON documents on one endpoint,
+// so there is nothing here worth streaming, and http.Flusher is deliberately
+// not implemented: a handler that could flush could commit a status line before
+// the money question was asked.
 type settleWriter struct {
 	http.ResponseWriter
 	holder *SettleHolder
-	wrote  bool
+	code   int
+	body   bytes.Buffer
 }
 
-// NewSettleWriter wraps w so a successful settlement is surfaced as the standard
-// response headers.
+// NewSettleWriter wraps w so the payment settles only if the work succeeds.
 func NewSettleWriter(w http.ResponseWriter, h *SettleHolder) http.ResponseWriter {
 	return &settleWriter{ResponseWriter: w, holder: h}
 }
 
 func (s *settleWriter) WriteHeader(code int) {
-	if !s.wrote {
-		s.wrote = true
-		if s.holder != nil && s.holder.Resp != nil {
-			b, _ := json.Marshal(s.holder.Resp)
+	if s.code == 0 {
+		s.code = code
+	}
+}
+
+func (s *settleWriter) Write(b []byte) (int, error) {
+	if s.code == 0 {
+		s.code = http.StatusOK
+	}
+	return s.body.Write(b)
+}
+
+// Finish settles if there is something to charge for, then sends the response.
+//
+// Called by the server once the handler has returned. A caller that forgets is
+// a caller whose response never arrives, which is the right way round for this
+// mistake to fail.
+func Finish(w http.ResponseWriter) {
+	s, ok := w.(*settleWriter)
+	if !ok {
+		return
+	}
+	s.finish()
+}
+
+func (s *settleWriter) finish() {
+	if s.code == 0 {
+		s.code = http.StatusOK
+	}
+	body := s.body.Bytes()
+
+	if s.holder != nil && s.holder.Verified != nil && succeeded(s.code, body) {
+		resp, err := s.holder.Verified.Settle()
+		switch {
+		case err != nil:
+			// The work is done and the money did not move. The caller gets
+			// their answer for nothing, which is the right way to be wrong:
+			// the invariant worth keeping is that nobody is ever charged
+			// without an answer, and refusing here would break it in the
+			// other direction — they would have paid nothing and received
+			// nothing, having done nothing wrong.
+			app.Log("x402", "CRITICAL: work succeeded and settlement failed, "+
+				"so this answer was given away: %v", err)
+		default:
+			s.holder.Resp = resp
+			b, _ := json.Marshal(resp)
 			enc := base64.StdEncoding.EncodeToString(b)
 			s.Header().Set(HeaderPaymentRespV1, enc)
 			s.Header().Set(HeaderPaymentRespV2, enc)
 		}
 	}
-	s.ResponseWriter.WriteHeader(code)
+
+	s.ResponseWriter.WriteHeader(s.code)
+	if len(body) > 0 {
+		s.ResponseWriter.Write(body) //nolint:errcheck
+	}
 }
 
-func (s *settleWriter) Write(b []byte) (int, error) {
-	if !s.wrote {
-		s.WriteHeader(http.StatusOK)
+// succeeded reports whether this response is something worth charging for.
+//
+// The HTTP status is necessary and not sufficient: MCP answers a failed tool
+// call with 200 and a JSON-RPC error, which is exactly the case that was being
+// charged for — a mistyped argument cost real money and returned a complaint
+// about unmarshalling.
+func succeeded(code int, body []byte) bool {
+	if code < 200 || code >= 300 {
+		return false
 	}
-	return s.ResponseWriter.Write(b)
+	var rpc struct {
+		Error  json.RawMessage `json:"error"`
+		Result *struct {
+			IsError bool `json:"isError"`
+		} `json:"result"`
+	}
+	if err := json.Unmarshal(body, &rpc); err != nil {
+		// Not JSON-RPC. A 2xx from anything else is a success by the only
+		// measure available, and refusing to charge for every non-JSON answer
+		// would be a worse error than the one being fixed.
+		return true
+	}
+	if len(rpc.Error) > 0 && string(rpc.Error) != "null" {
+		return false
+	}
+	if rpc.Result != nil && rpc.Result.IsError {
+		return false
+	}
+	return true
 }
 
 // PayerFrom returns the wallet address that paid for this request, or "" if
@@ -677,7 +835,25 @@ func (s *settleWriter) Write(b []byte) (int, error) {
 // records by typing their address.
 func PayerFrom(ctx context.Context) string {
 	h, ok := ctx.Value(X402SettleKey).(*SettleHolder)
-	if !ok || h == nil || h.Resp == nil {
+	if !ok || h == nil {
+		return ""
+	}
+	// The verified payment first, because that is what exists while the tool is
+	// running. This used to read the settlement, which was fine when settling
+	// happened at the door and became a silent hole the moment it moved to the
+	// end: an account-scoped tool reached by paying would have asked who was
+	// calling, got nothing, and refused a call that had been paid for.
+	//
+	// It is no weaker. The address comes from the authorization the facilitator
+	// has just checked the signature on — only the holder of that key could
+	// have produced it — and that is true before the money moves as much as
+	// after.
+	if h.Verified != nil {
+		if addr := h.Verified.Payer(); addr != "" {
+			return addr
+		}
+	}
+	if h.Resp == nil {
 		return ""
 	}
 	return strings.ToLower(strings.TrimSpace(h.Resp.Payer))

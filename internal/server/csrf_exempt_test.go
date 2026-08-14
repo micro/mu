@@ -96,3 +96,47 @@ func TestTheStripeWebhookIsRegisteredDirectly(t *testing.T) {
 		t.Error("the Stripe webhook is in the redirect list; a 303 on a POST drops the payment")
 	}
 }
+
+// The gate verifies; the writer settles. Never the other way round.
+//
+// The whole fix is an ordering, and an ordering is exactly the kind of thing
+// that gets undone by somebody tidying an import or inlining a call. So it is
+// pinned where it lives: the request path must not settle, and the response
+// must not be able to leave without the settle decision having been made.
+func TestTheGateVerifiesAndDoesNotSettle(t *testing.T) {
+	hooks, err := os.ReadFile("hooks.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(hooks), "x402.VerifyAndSettle(") {
+		t.Error("the request gate settles a payment before the tool has run, so a " +
+			"call that fails afterwards is a charge with no answer — verify here " +
+			"and let x402.Finish settle once there is something to hand back")
+	}
+	if !strings.Contains(string(hooks), "x402.Verify(") {
+		t.Error("the request gate no longer verifies the payment at all")
+	}
+
+	serve, err := os.ReadFile("serve.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := string(serve)
+	if !strings.Contains(body, "defer x402.Finish(w)") {
+		t.Error("nothing settles the payment after the handler returns — the writer " +
+			"holds the whole response back until Finish, so without it no paid " +
+			"request answers at all")
+	}
+	// And it is deferred before the dispatch it guards, so a panic or an early
+	// return still releases the response.
+	//
+	// LastIndex, not Index: there are two mux dispatches and the first is the
+	// static-asset fast path, which returns long before any of this. Comparing
+	// against that one said the defer was in the wrong place while it was in
+	// the right one.
+	if i, j := strings.Index(body, "defer x402.Finish(w)"),
+		strings.LastIndex(body, "http.DefaultServeMux.ServeHTTP(w, r)"); i < 0 || j < 0 || i > j {
+		t.Error("Finish is not deferred before the handler runs, so an early return " +
+			"leaves the caller with nothing")
+	}
+}

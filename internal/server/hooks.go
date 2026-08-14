@@ -790,8 +790,11 @@ func wireHooks() {
 			if payAddr != "" && x402.X402UseTrialCall(payAddr) {
 				return true, 0, nil
 			}
-			_, err := x402.VerifyAndSettle(r, op, r.URL.Path)
-			if err != nil {
+			// Verify, do not settle. The money moves once there is an answer
+			// to hand back — see x402.Finish. Everything that can refuse a
+			// caller happens here, so a verified payment is a promise that
+			// settling will work rather than a charge already taken.
+			if _, err := x402.Verify(r, op, r.URL.Path); err != nil {
 				return false, 0, fmt.Errorf("x402 payment failed: %w", err)
 			}
 			return true, 0, nil
@@ -819,8 +822,11 @@ func wireHooks() {
 		}
 		// Check for x402 payment (bypasses auth + credits)
 		if r.Context().Value(x402.X402ContextKey) != nil {
-			_, err := x402.VerifyAndSettle(r, op, r.URL.Path)
-			if err != nil {
+			// Verify, do not settle. The money moves once there is an answer
+			// to hand back — see x402.Finish. Everything that can refuse a
+			// caller happens here, so a verified payment is a promise that
+			// settling will work rather than a charge already taken.
+			if _, err := x402.Verify(r, op, r.URL.Path); err != nil {
 				return false, 0, fmt.Errorf("x402 payment failed: %w", err)
 			}
 			return true, 0, nil
