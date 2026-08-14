@@ -31,8 +31,17 @@ import (
 // invitation in.
 func cryptoWalletCard(userID string) string {
 	bw, err := GetOrCreateWallet(userID)
-	if err != nil {
-		return ""
+	// Say so rather than vanishing. A card that renders with an empty address
+	// and a QR code of nothing is worse than no card: it looks like the feature
+	// half-works, and the operator who just switched it on has nothing to go on.
+	if err != nil || bw == nil || bw.Address == "" {
+		if !CryptoTopupEnabled() {
+			return ""
+		}
+		return `<div class="card"><h3>Top up with USDC</h3>` +
+			`<p class="text-sm text-muted">This instance offers crypto top-up, but your ` +
+			`wallet could not be opened, so there is no address to show. The server log ` +
+			`under <code>wallet</code> says why.</p></div>`
 	}
 	usdc, raw := USDCBalance(bw.Address)
 	holding := raw != nil && raw.Sign() > 0

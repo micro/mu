@@ -18,6 +18,7 @@ import (
 	"sync"
 	"time"
 
+	"mu/internal/app"
 	"mu/internal/data"
 	"mu/internal/settings"
 )
@@ -96,12 +97,34 @@ func WalletFor(accountID string) *BaseWallet {
 }
 
 // GetOrCreateWallet returns the account's wallet, generating one on first use.
+//
+// A stored record is checked rather than trusted. One with a key but no address
+// used to come straight back with no error, and everything downstream then
+// rendered an empty string where an address goes — the /wallet card drew a
+// blank button and a QR code of nothing, and said nothing was wrong. A record
+// can end up that way from a half-written file or a migration between two
+// shapes of the same struct.
+//
+// The address is derived from the key rather than replaced. Minting a fresh
+// wallet would be the easy repair and the wrong one: the old key may hold real
+// USDC, and issuing a new address strands it silently.
 func GetOrCreateWallet(accountID string) (*BaseWallet, error) {
 	loadWallets()
 	walletMu.Lock()
 	defer walletMu.Unlock()
-	if w, ok := userWallets[accountID]; ok {
-		return w, nil
+	if w, ok := userWallets[accountID]; ok && w != nil {
+		if w.Address != "" {
+			return w, nil
+		}
+		if addr, ok := AddressFromPrivateKeyHex(w.PrivateKey); ok {
+			w.Address = addr
+			data.SaveJSON(walletsFile, userWallets) //nolint:errcheck
+			app.Log("wallet", "repaired the address on %s's wallet from its key", accountID)
+			return w, nil
+		}
+		// A record with neither is not a wallet. Falling through mints one,
+		// which is safe precisely because there is no key to strand.
+		app.Log("wallet", "%s had a wallet record with no address and no usable key; minting", accountID)
 	}
 	priv, addr, err := GenerateKeypair()
 	if err != nil {
