@@ -13,47 +13,59 @@ import (
 	"testing"
 )
 
-func TestWantedAStringOnlyMatchesThatMistake(t *testing.T) {
-	yes := errors.New(`bad arguments: json: cannot unmarshal number into Go struct field ReadRequest.id of type string`)
-	if !wantedAString(yes) {
-		t.Error("the type mismatch that strands every numeric id was not recognised")
+func TestWrongTypeMatchesAnyTypeComplaintAndNothingElse(t *testing.T) {
+	for _, yes := range []error{
+		errors.New(`bad arguments: json: cannot unmarshal number into Go struct field ReadRequest.id of type string`),
+		errors.New(`json: cannot unmarshal string into Go struct field ForecastRequest.lat of type float64`),
+		errors.New(`json: cannot unmarshal bool into Go struct field SearchRequest.query of type string`),
+	} {
+		if !wrongType(yes) {
+			t.Errorf("a type complaint was not recognised: %v", yes)
+		}
 	}
 	for _, no := range []error{
 		errors.New("no post with that id"),
-		errors.New(`json: cannot unmarshal string into Go struct field ForecastRequest.lat of type float64`),
-		errors.New(`json: cannot unmarshal number into Go struct field X.y of type bool`),
 		errors.New("connection refused"),
+		errors.New("unauthorized"),
 	} {
-		if wantedAString(no) {
+		if wrongType(no) {
 			t.Errorf("retried on an unrelated failure: %v", no)
 		}
 	}
 }
 
-func TestStringifyNumbersLeavesEverythingElseAlone(t *testing.T) {
-	in := map[string]any{
-		"id":     int64(1786633600633959421),
-		"lat":    51.5,
-		"query":  "x402",
-		"public": true,
-	}
-	out, changed := stringifyNumbers(in)
-	if !changed {
-		t.Fatal("nothing was re-typed")
-	}
-	if out["id"] != "1786633600633959421" {
-		t.Errorf(`id = %#v, want the digits as a string`, out["id"])
-	}
-	if out["lat"] != "51.5" {
-		t.Errorf(`lat = %#v, want "51.5" — and not "51.500000"`, out["lat"])
-	}
-	if out["query"] != "x402" || out["public"] != true {
-		t.Errorf("a string or a bool was altered: %#v", out)
-	}
+// The conversions the schema asks for, and no others.
+func TestAsTypeConvertsOnlyWhatItCan(t *testing.T) {
+	for _, c := range []struct {
+		in   any
+		want string
+		out  any
+	}{
+		// The case that stranded every numeric id.
+		{int64(1786633600633959421), "string", "1786633600633959421"},
+		{51.5, "string", "51.5"},
+		{true, "string", "true"},
 
-	// Nothing numeric, nothing to retry.
-	if _, changed := stringifyNumbers(map[string]any{"query": "x402"}); changed {
-		t.Error("a retry was offered for a call with no numbers in it")
+		// And the mirror image: a search for the word "true", which coerce
+		// turned into a boolean.
+		{"true", "string", "true"},
+		{"51.5", "number", 51.5},
+		{"10", "integer", int64(10)},
+		{"true", "boolean", true},
+
+		// A word is not a number. The server's complaint about the type is
+		// more use than a silent zero.
+		{"x402", "number", "x402"},
+		{"x402", "boolean", "x402"},
+
+		// A type the schema does not name is left alone.
+		{"x402", "", "x402"},
+		{int64(3), "object", int64(3)},
+	} {
+		if got := asType(c.in, c.want); got != c.out {
+			t.Errorf("asType(%#v, %q) = %#v (%T), want %#v (%T)",
+				c.in, c.want, got, got, c.out, c.out)
+		}
 	}
 }
 

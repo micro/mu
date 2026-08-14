@@ -297,24 +297,28 @@ func callTool(name string, rest []string, rc *ResolvedConfig) (code int, unknown
 		return 1, true // say nothing: the caller may have another reading
 	}
 
-	// A number where a string was wanted, tried again as a string.
+	// The wrong type, tried again as the right one.
 	//
 	// Everything off a command line is a string and coerce guesses which ones
-	// were meant as numbers. It has to guess, because nothing here knows the
-	// tool's schema. It guesses wrong on an id that happens to be all digits —
-	// `mu blog read --id 1786633600633959421` sent a JSON number and was
-	// refused, so there was no way to read a post by its id at all. The comment
-	// on coerce says to quote the value; quoting does not reach us, because the
-	// shell removes it.
+	// were meant as numbers or booleans. It has to guess, because a bare call
+	// does not fetch the catalogue and so has no schema to read. It guesses
+	// wrong on an id that is all digits — `mu blog read --id
+	// 1786633600633959421` sent a JSON number and was refused, so there was no
+	// way to read a post by its id at all — and wrong the other way on a search
+	// for the word "true". The comment on coerce used to say to quote the
+	// value; quoting never reached us, because the shell removes it.
 	//
-	// Retrying is free of side effects for the same reason the two-word retry
-	// above is: the call was refused before anything ran.
-	if err != nil && wantedAString(err) {
-		if retry, changed := stringifyNumbers(args); changed {
+	// So the schema is fetched when, and only when, the server says the types
+	// were wrong. The happy path pays nothing, the failing path pays one free
+	// unauthenticated request, and the retry is exact rather than another
+	// guess. Retrying is free of side effects for the same reason the two-word
+	// retry above is: the call was refused before anything ran.
+	if err != nil && wrongType(err) {
+		if retry, changed := coerceToSchema(client, name, args); changed {
 			// The retry's outcome either way, not just its successes. Once the
-			// server has said the field is a string, sending a string is the
-			// correct reading of the command — so if that still fails, what it
-			// failed with is the real answer. Keeping the first error meant
+			// schema has been read, what it declares is the correct reading of
+			// the command — so if that still fails, what it failed with is the
+			// real answer. Keeping the first error meant
 			// `--id 999999999999` reported a complaint about unmarshalling when
 			// what had happened was that no post has that id.
 			text, err = client.CallTool(name, retry)
@@ -335,33 +339,84 @@ func callTool(name string, rest []string, rc *ResolvedConfig) (code int, unknown
 	return 0, false
 }
 
-// wantedAString reports that the server refused a number for a string field.
-func wantedAString(err error) bool {
+// wrongType reports that the server refused an argument's JSON type.
+func wrongType(err error) bool {
 	s := err.Error()
-	return strings.Contains(s, "cannot unmarshal number into") &&
-		strings.Contains(s, "of type string")
+	return strings.Contains(s, "cannot unmarshal") && strings.Contains(s, "of type ")
 }
 
-// stringifyNumbers re-types every numeric argument as a string.
+// coerceToSchema re-types the arguments to what the tool actually declares.
 //
-// All of them, rather than the one the error names: the field name in that
-// message belongs to a Go struct, not to the JSON, and matching them up is
-// guesswork of the kind that put us here. If the retry is wrong it fails and
-// the original error is what gets reported, so the blunt version costs nothing.
-func stringifyNumbers(args map[string]any) (map[string]any, bool) {
+// One free, unauthenticated tools/list, read for this tool's properties. A
+// field the schema does not mention is left exactly as it was: a server is
+// entitled to accept things it does not advertise, and rewriting an argument
+// nobody asked about would be the same overreach that put us here.
+func coerceToSchema(client *Client, tool string, args map[string]any) (map[string]any, bool) {
+	tools, err := client.ListTools()
+	if err != nil {
+		return nil, false
+	}
+	var props map[string]SchemaField
+	for _, t := range tools {
+		if strings.EqualFold(t.Name, tool) {
+			props = t.InputSchema.Properties
+			break
+		}
+	}
+	if props == nil {
+		return nil, false
+	}
+
 	out := make(map[string]any, len(args))
 	changed := false
 	for k, v := range args {
-		switch n := v.(type) {
-		case int64:
-			out[k], changed = strconv.FormatInt(n, 10), true
-		case float64:
-			out[k], changed = strconv.FormatFloat(n, 'f', -1, 64), true
-		default:
+		field, known := props[k]
+		if !known {
 			out[k] = v
+			continue
+		}
+		got := asType(v, field.Type)
+		out[k] = got
+		if got != v {
+			changed = true
 		}
 	}
 	return out, changed
+}
+
+// asType renders v as the JSON type the schema asks for.
+//
+// Only conversions that cannot lose anything. A word that is not a number stays
+// a word even where a number was wanted, because the server's complaint about
+// the type is more use to somebody than a silent zero.
+func asType(v any, want string) any {
+	switch want {
+	case "string":
+		switch n := v.(type) {
+		case int64:
+			return strconv.FormatInt(n, 10)
+		case float64:
+			return strconv.FormatFloat(n, 'f', -1, 64)
+		case bool:
+			return strconv.FormatBool(n)
+		}
+	case "number", "integer":
+		if str, ok := v.(string); ok {
+			if n, err := strconv.ParseInt(str, 10, 64); err == nil {
+				return n
+			}
+			if f, err := strconv.ParseFloat(str, 64); err == nil {
+				return f
+			}
+		}
+	case "boolean":
+		if str, ok := v.(string); ok {
+			if b, err := strconv.ParseBool(str); err == nil {
+				return b
+			}
+		}
+	}
+	return v
 }
 
 // parseToolFlags walks remaining args and extracts --name value /
