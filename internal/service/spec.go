@@ -284,6 +284,27 @@ func Destructive(service, method string) bool {
 	return false
 }
 
+// DestructiveTool reports whether a flat tool name is withheld from the model.
+//
+// The same question as Destructive, asked the way a tool call arrives: one
+// string, "files_delete" or "files.Delete". Providers sanitise the separator
+// differently and go-micro puts the handler type in the middle
+// (news.Server.Search), so the first and last segments are what identify the
+// method.
+//
+// It lives here because more than one place has to ask. The agent had its own
+// copy and the micro-agents had none at all, which is exactly the shape of that
+// mistake: a rule enforced at one door and unknown at the next.
+func DestructiveTool(name string) bool {
+	parts := strings.FieldsFunc(strings.ToLower(strings.TrimSpace(name)), func(r rune) bool {
+		return r == '.' || r == '_'
+	})
+	if len(parts) < 2 {
+		return false
+	}
+	return Destructive(parts[0], parts[len(parts)-1])
+}
+
 // CostOf returns the wallet operation a method charges, or "" if it is free.
 func CostOf(service, method string) string {
 	s, ok := SpecFor(service)

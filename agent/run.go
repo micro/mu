@@ -204,6 +204,10 @@ func RunHandler(w http.ResponseWriter, r *http.Request) {
 		if isGuest && !isGuestAllowedTool(tc.Tool) {
 			continue
 		}
+		if toolBlocked(tc.Tool) {
+			app.Log("agent", "refused %s: withheld from the model", tc.Tool)
+			continue
+		}
 		text, isErr, execErr := api.ExecuteTool(r, tc.Tool, tc.Args)
 		if execErr != nil || isErr {
 			toolsUsed = append(toolsUsed, ToolUsed{Name: tc.Tool, Status: "error"})

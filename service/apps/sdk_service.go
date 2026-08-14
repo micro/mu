@@ -69,6 +69,26 @@ func handleSDKService(w http.ResponseWriter, r *http.Request, slug string) {
 		return
 	}
 
+	// Nothing irreversible, whatever the service.
+	//
+	// The allowlist above is per service and that is one level too coarse.
+	// Scoped keeps an app out of mail, files, notes and the rest, but blog is
+	// deliberately unscoped — reading a blog is public — while blog.Delete is
+	// marked Destructive because it is not. So an app, which is public,
+	// forkable and one click to open, could delete the viewer's posts by
+	// calling mu.blog.delete. Nobody had to be tricked; opening the app was
+	// enough.
+	//
+	// Destructive already names exactly this: an irreversible effect nobody
+	// asked for. The agent honours it because the agent reads text strangers
+	// wrote; an app *is* text a stranger wrote, which is the same argument with
+	// one fewer step.
+	if service.Destructive(svc, req.Method) {
+		app.RespondError(w, http.StatusForbidden,
+			"This action can only be taken by the person themselves, not by an app")
+		return
+	}
+
 	// Bind identity server-side, on the context rather than in the arguments.
 	// CallDynamic stamps it into the request and drops anything the app sent,
 	// so an app can never read or write another user's data by naming them.
@@ -163,11 +183,17 @@ func handleSDKServices(w http.ResponseWriter, r *http.Request, slug string) {
 		}
 		methods := make([]string, 0, len(eps))
 		for _, ep := range eps {
-			if _, m, ok := strings.Cut(ep, "."); ok {
-				methods = append(methods, strings.ToLower(m))
+			m := ep
+			if _, after, ok := strings.Cut(ep, "."); ok {
+				m = after
+			}
+			// Not advertised either. The refusal above is what enforces it; this
+			// is so the SDK does not build an accessor for something that will
+			// always say no.
+			if service.Destructive(name, m) {
 				continue
 			}
-			methods = append(methods, strings.ToLower(ep))
+			methods = append(methods, strings.ToLower(m))
 		}
 		out = append(out, svcInfo{Name: name, Methods: methods, RequiresLogin: scoped})
 	}

@@ -253,6 +253,19 @@ func QueryWithOpts(accountID, prompt string, opts QueryOpts) (string, error) {
 		if opts.Public && !isGuestAllowedTool(tc.Tool) {
 			continue
 		}
+		// Withheld from the model, whatever the model asked for.
+		//
+		// The native tool-calling path wraps every call and refuses these. This
+		// is the JSON-in-prose path, which is the one actually in use, and it
+		// had no such check — the only thing standing between an injected page
+		// and files_delete was that the hand-written tool list does not mention
+		// it. A list is not a control: a model can name a tool from its
+		// training, from an earlier turn, or because something it just read
+		// suggested one.
+		if toolBlocked(tc.Tool) {
+			app.Log("agent", "refused %s: withheld from the model", tc.Tool)
+			continue
+		}
 		startedAt := time.Now()
 		text, isErr, execErr := api.ExecuteToolAs(accountID, tc.Tool, tc.Args)
 		if opts.OnStep != nil {
@@ -1153,6 +1166,10 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		if isGuest && !isGuestAllowedTool(tc.Tool) {
+			continue
+		}
+		if toolBlocked(tc.Tool) {
+			app.Log("agent", "refused %s: withheld from the model", tc.Tool)
 			continue
 		}
 		msg := toolLabel(tc.Tool)

@@ -142,15 +142,7 @@ func injectAccount(accountID string) gmai.ToolWrapper {
 // separator differently, so both forms are matched. The handler type shows up
 // in the middle of a native tool name (news.Server.Search), so the first and
 // last segments are what identify the method.
-func toolBlocked(name string) bool {
-	parts := strings.FieldsFunc(strings.ToLower(strings.TrimSpace(name)), func(r rune) bool {
-		return r == '.' || r == '_'
-	})
-	if len(parts) < 2 {
-		return false
-	}
-	return service.Destructive(parts[0], parts[len(parts)-1])
-}
+func toolBlocked(name string) bool { return service.DestructiveTool(name) }
 
 // blockDestructiveTools refuses those calls before they run, telling the model
 // why so it can say so rather than silently looping.

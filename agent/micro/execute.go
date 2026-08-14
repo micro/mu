@@ -97,6 +97,13 @@ func (a *Agent) Execute(accountID, prompt string, public bool, onStep func(strin
 		if public && !isGuestAllowedTool(tc.Tool) {
 			continue
 		}
+		// And refused, not merely unadvertised. A model can name a tool nobody
+		// told it about — from its training, from an earlier turn, or because a
+		// page it read suggested one — so the list it is shown is not a control.
+		if service.DestructiveTool(tc.Tool) {
+			app.Log("micro", "refused %s: withheld from the model", tc.Tool)
+			continue
+		}
 		startedAt := time.Now()
 		text, isErr, execErr := api.ExecuteToolAs(accountID, tc.Tool, tc.Args)
 		if onStep != nil {
@@ -168,6 +175,15 @@ func (a *Agent) buildToolsDesc(public bool) string {
 			continue
 		}
 		if public && !isGuestAllowedTool(name) {
+			continue
+		}
+		// Never offered to the model. The general agent has Tools: nil, which
+		// means every tool, and the router falls back to it whenever it is
+		// unsure — so without this a specialist that had just read a web page
+		// was planning over files_delete and contacts_delete with the page's
+		// text in its context. That is the whole reason Destructive exists, and
+		// this path did not know about it.
+		if service.DestructiveTool(name) {
 			continue
 		}
 		sb.WriteString(line + "\n")
