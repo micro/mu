@@ -126,7 +126,7 @@ list** — a step marked partial or missing is work, not aspiration.
 | 4 | Connects their own agent — config file, or OAuth for Claude Desktop | ✅ both paths on `/tools` |
 | 5 | Gets a credential scoped to what that agent should reach | ✅ `/agents` |
 | 6 | Tests a call and sees it work | ⚠️ playground at `/mcp`; `/runs` now shows what ran, but nothing pushes "your agent called us" |
-| 7 | Tops up so calls keep working | ✅ wallet, with a banner before it runs out |
+| 7 | Tops up so calls keep working | ✅ balance on /account, with a banner before it runs out |
 | 8 | Discovers Mu can run agents too, and tries one | ⚠️ possible, but nothing on the connect path mentions it |
 | 9 | Comes back because something happened while they were away | ✅ `/runs`, and Recent on Home |
 

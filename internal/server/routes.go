@@ -55,6 +55,7 @@ import (
 	"mu/service/transit"
 	"mu/service/user"
 	"mu/service/video"
+	"mu/service/wallet"
 	"mu/service/weather"
 	"mu/service/web"
 	whatsappsvc "mu/service/whatsapp"
@@ -378,6 +379,7 @@ func registerRoutes() {
 	http.HandleFunc("/food", food.Handler)
 	http.HandleFunc("/transit", transit.Handler)
 	http.HandleFunc("/hazards", hazards.Handler)
+	http.HandleFunc("/wallet", wallet.Handler)
 	http.HandleFunc(imageproxy.Path, imageproxy.Handler)
 	http.HandleFunc("/contacts", contacts.Handler)
 	http.HandleFunc("/docs", docs.Handler)

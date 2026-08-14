@@ -6,7 +6,7 @@ The claim that matters is *one account instead of a hundred*. An agent that want
 
 This replaces an earlier line — *real tools, not wrappers* — which was wrong in a way that cost us. It made "did we build the backend" the measure, which caps breadth at what one team can operate, and breadth concentrated behind one account is the whole value. Depth still matters where depth is what removes the barrier. It is not the point on its own.
 
-Two doors onto one set of services. An agent calls `/mcp`; a person signs in and gets the home screen — cards per service, agent inline, apps, wallet. Nothing is built twice, and a new service appears in both at once. **Keep the signed-in app intact** — it is not legacy, it is the proof the tools work.
+Two doors onto one set of services. An agent calls `/mcp`; a person signs in and gets the home screen — cards per service, agent inline, apps, balance. Nothing is built twice, and a new service appears in both at once. **Keep the signed-in app intact** — it is not legacy, it is the proof the tools work.
 
 Built on go-micro: every capability is a go-micro service, the assistant is a go-micro agent. Single binary, self-hostable — run an instance and anyone paying to call your tools pays you.
 
@@ -42,7 +42,9 @@ Built on go-micro: every capability is a go-micro service, the assistant is a go
 | `client/discord/` | Discord bot with slash commands, embeds, briefings |
 | `client/telegram/` | Telegram bot with commands and groups |
 | `client/whatsapp/` | WhatsApp Business API integration |
-| `wallet/` | How an account pays: the credit ledger, Stripe, x402 and the /wallet pages. Account furniture, not a service — no Spec and no tools |
+| `account/` | Who you are and what you can afford: sign-in, passkeys, tokens, Google, and the credit ledger with Stripe behind it. The balance is the first card on /account. Account furniture, not a service — no Spec and no tools |
+| `service/wallet/` | A key of your own on Base: an address that holds USDC, and paying an x402-priced tool on another server with it. Capped per call and per day, because the agent reads text strangers wrote |
+| `internal/x402/` | The toll on the door: price a request, write the challenge, verify and settle the payment. A protocol, not a capability — no page, no tool, no state |
 | `internal/contacts/` | The address book itself. `service/contacts` is the tools, the page and the Google People bridge over it; `service/sms` asks it whether a number is known before texting a stranger |
 | `internal/linkmeta/` | What a link looks like when you show it: the Open Graph tags behind a URL, cached on disk. News fills it, social reads it, and it belongs to neither — the files stay at `news/metadata/` because that is where every instance already has them |
 | `internal/phone/` | Who a phone number belongs to: normalising it, and the proof that an account owns it. Shared by `service/sms` and `service/whatsapp`, because a number is a number whichever message it carries |
@@ -90,19 +92,26 @@ questions to ask — it consumes the catalogue, so it cannot be in it.
 - Every `service.Spec` lives under `service/`. One exception would be one too
   many: the moment a Spec lives elsewhere, "what is a service" stops being
   checkable and starts being something you have to remember.
-- Nothing that consumes tools declares a Spec — not `agent/`, not `wallet/`,
+- Nothing that consumes tools declares a Spec — not `agent/`, not `account/`,
   not `home/`, `client/` or `admin/`.
 - Nothing registers a tool by hand. A tool with nowhere to come from is a
   service that has not been written yet.
 
 Enforced by `test/services_test.go`.
 
-**The wallet is not a service.** It is how an account pays — the same shelf as
-changing your email or rotating a token — so it has pages under Account and no
-Spec, no tools and no entry in the catalogue. It was in `/services` once, and
-the fix was a boolean called `Staple` meaning "is a service, but hide it": that
-flag was the error made legible, and deleting it was the actual fix. What a
-service needs to know about money is still `internal/quota`.
+**A balance is not a service.** How an account pays is the same shelf as
+changing your email or rotating a token, so it lives in `account/` with the rest
+of the account and has no Spec, no tools and no entry in the catalogue. It was
+in `/services` once under the name Wallet, and the fix was a boolean called
+`Staple` meaning "is a service, but hide it": that flag was the error made
+legible, and deleting it was the actual fix. What a service needs to know about
+money is still `internal/quota`.
+
+That word `wallet` used to mean two things — a ledger you top up with a card,
+and a key that signs — in one directory, writing one file, destroying each
+other's data. They are separated now. The ledger is the account's; the key is
+`service/wallet`, which *is* a service by the definition above: it answers
+questions about state and an agent can derive tools from it.
 
 **The agent is not a service** either, for the same reason stated the other way
 round: it is the thing that reads the catalogue. `agent_ask` and `agent_list`
@@ -112,7 +121,7 @@ agent holds, and listing your agents is a page, which exists.
 ## Layering
 
 The top level is the product — `home/`, `agent/`, `service/`, `client/`,
-`admin/`, `wallet/`. Each is a staple: it owns something nothing else owns, and
+`admin/`, `account/`. Each is a staple: it owns something nothing else owns, and
 a user can name it. Underneath is `internal/`, which is everything with no name
 a user would recognise.
 
@@ -122,7 +131,7 @@ assemble everything, so they import everything. Enforced by
 `test/layering_test.go`.
 
 A nav item is a *view* of a staple, and a staple can have more than one — Tools
-and Services are both `service/`, Wallet and Usage are both money. A view owns
+and Services are both `service/`, Account and Usage are both money. A view owns
 nothing, which is why Tools has no directory and should not get one.
 
 When two packages genuinely need each other, the cycle is broken with a function
@@ -141,14 +150,19 @@ directory per service" is only checkable while it is true. Enforced by
 `TestServicesDoNotImportEachOther`, whose allowlist is empty and should stay that
 way.
 
-A service never imports `wallet/`. What a service needs to know about money is
+A service never imports `account/`. What a service needs to know about money is
 `internal/quota` — what an operation costs and whether this caller may do it.
-Quota holds prices and does not know what a balance is; the wallet fills in the
+Quota holds prices and does not know what a balance is; `account/` fills in the
 half quota cannot answer, from its own `init`, because quota sits underneath it.
+Enforced by `TestNoServiceImportsTheAccount`.
+
+This rule does not touch `service/wallet`, which holds a key rather than a
+balance — and a sideways import from it to `account/` would be caught here like
+any other.
 
 ## Conventions
 
-- No external dependencies for crypto (secp256k1, RLP, ECDSA implemented in pure Go in `wallet/evm.go`)
+- No external dependencies for crypto (secp256k1, RLP, ECDSA implemented in pure Go in `service/wallet/evm.go`)
 - Settings via `internal/settings/` — reads env vars first, falls back to stored values
 - Background loops use goroutines started in `Load()` or `main.go`
 - Agent tools registered in `internal/api/mcp.go` (static) and `main.go` (dynamic with handlers)

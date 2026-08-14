@@ -32,7 +32,7 @@ import (
 	"mu/internal/x402"
 	"mu/service/blog"
 	"mu/service/mail"
-	"mu/wallet"
+	"mu/service/wallet"
 )
 
 // serve builds the handler and runs the server until interrupted.

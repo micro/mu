@@ -20,11 +20,14 @@ package test
 //   - agent_ask and agent_list. An MCP client calling agent_ask already holds
 //     every tool this instance's agent holds; it was paying for a second model
 //     to decide what to call. Listing your agents is a page, and there is one.
-//   - wallet_balance and wallet_check. The wallet is how an account pays. It is
-//     account furniture — the same shelf as changing your email or rotating a
-//     token — and it was in the catalogue at /services between Video and
-//     Weather until a boolean called Staple was invented to hide it there.
-//     Deleting the flag was the fix; the flag was the error made legible.
+//   - wallet_balance and wallet_check, as they were then. That wallet was the
+//     credit ledger — how an account pays — which is account furniture, the
+//     same shelf as changing your email or rotating a token, and it was in the
+//     catalogue at /services between Video and Weather until a boolean called
+//     Staple was invented to hide it there. Deleting the flag was the fix; the
+//     flag was the error made legible. The ledger is in account/ now, and the
+//     word wallet has been given back to the thing that holds a key — which is
+//     a service, and is in the catalogue on its own merits.
 //
 // So this asserts the rule rather than the two cases, because the cases are
 // gone and the rule is what stops the next one.
@@ -79,7 +82,7 @@ func TestEverySpecLivesUnderService(t *testing.T) {
 // call, so a Spec on it would put the consumer inside the thing it consumes.
 // Same for anything else that reaches for the registry to choose.
 func TestNothingThatUsesToolsIsAService(t *testing.T) {
-	for _, consumer := range []string{"agent", "home", "client", "admin", "wallet"} {
+	for _, consumer := range []string{"agent", "home", "client", "admin", "account"} {
 		dir := at(consumer)
 		if _, err := os.Stat(dir); err != nil {
 			continue

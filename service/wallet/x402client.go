@@ -22,21 +22,24 @@ import (
 	"mu/internal/x402"
 )
 
-// Server is a named MCP endpoint the agent can call.
-type Server struct {
-	Name string `json:"name"`
-	URL  string `json:"url"` // base URL; /mcp is appended
+// Server402 is a named MCP endpoint this wallet may pay.
+type Server402 struct {
+	Name string `json:"name" description:"The short name to pass to wallet_pay"`
+	URL  string `json:"url" description:"Its base URL; /mcp is appended"`
 }
 
 // Servers returns the configured MCP servers: always "self" (this instance),
 // plus any in X402_SERVERS as "name=url,name2=url2".
 //
-// Unreachable today, and kept on purpose along with the rest of the payer —
-// see the note on the absent `pay` tool in main.go. Deleting only the registry
-// would leave PayAndCallMCP unable to name a server, which is worse than
-// either keeping the payer whole or removing it whole.
-func Servers() []Server {
-	out := []Server{{Name: "self", URL: strings.TrimRight(settings.Get("APP_URL"), "/")}}
+// A closed list rather than "any URL the caller names", and that is the point
+// rather than an omission: an agent that can pay a URL it read in a document
+// has a wallet belonging to whoever writes the documents.
+//
+// It was unreachable for a long time — kept whole on the argument that half a
+// payer is worse than none — and wallet_list and wallet_pay are what it was
+// being kept for.
+func Servers() []Server402 {
+	out := []Server402{{Name: "self", URL: strings.TrimRight(settings.Get("APP_URL"), "/")}}
 	for _, entry := range strings.Split(settings.Get("X402_SERVERS"), ",") {
 		entry = strings.TrimSpace(entry)
 		if entry == "" {
@@ -46,7 +49,7 @@ func Servers() []Server {
 		if !ok {
 			continue
 		}
-		out = append(out, Server{Name: strings.TrimSpace(name), URL: strings.TrimRight(strings.TrimSpace(url), "/")})
+		out = append(out, Server402{Name: strings.TrimSpace(name), URL: strings.TrimRight(strings.TrimSpace(url), "/")})
 	}
 	return out
 }

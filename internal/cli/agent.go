@@ -37,7 +37,7 @@ import (
 	"time"
 
 	"mu/agent/local"
-	"mu/wallet"
+	"mu/service/wallet"
 )
 
 // remoteTool is one entry from the server's catalogue.

@@ -40,6 +40,7 @@ import (
 	"mu/service/transit"
 	user "mu/service/user"
 	"mu/service/video"
+	"mu/service/wallet"
 	"mu/service/weather"
 	"mu/service/web"
 	whatsappsvc "mu/service/whatsapp"
@@ -88,6 +89,7 @@ func boot() {
 	food.Load()
 	transit.Load()
 	hazards.Load()
+	wallet.Load()
 	stream.LoadService()
 	chat.LoadService()
 	docs.LoadService()

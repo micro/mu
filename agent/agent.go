@@ -884,7 +884,8 @@ const agentToolsDesc = `Available tools (use exact name):
 - apps_build: build a small app (a tracker, checklist, or counter) from a description (args: {"prompt":"an expense tracker"})
 - apps_edit: Edit an existing app (args: {"slug":"app-slug","html":"<new html>","name":"New Name"})
 - apps_run: publish a snippet of JavaScript and get a URL that runs it in a browser. Returns a link, not an answer — not for calculations (args: {"code":"return \u003ch1\u003ehello\u003c/h1\u003e"})
-- wallet_balance: Check your balance — credits, plus your Base address and USDC for topping up (no args). To add credits, point the user at /wallet/topup; there is no tool for it.
+- wallet_address: The caller's own address on Base, for receiving USDC (no args).
+- wallet_balance: What that address holds in USDC (no args). This is not credits — credits are this instance's own meter, and there is no tool for topping them up; point the user at /account/topup.
 - stream: Read the public event stream (no args)`
 
 const guestToolsDesc = `Available tools (use exact name):
@@ -1451,11 +1452,13 @@ func shortcutToolCalls(prompt string) []shortcutToolCall {
 		"find me the latest tech videos":                {{Tool: "video_search", Args: map[string]any{"query": "tech"}}},
 		"search the web for the latest ai news":         {{Tool: "web_search", Args: map[string]any{"q": "latest AI news"}}},
 		"show me today's islamic reminder":              {{Tool: "prayer_reflection", Args: map[string]any{}}},
-		// Wallet
+		// Wallet — the key on Base, not the credit balance. Credits are on
+		// /account and have no tool, deliberately: spending should follow from
+		// the user's own action.
 		"my wallet":      {{Tool: "wallet_balance", Args: map[string]any{}}},
 		"wallet":         {{Tool: "wallet_balance", Args: map[string]any{}}},
 		"wallet balance": {{Tool: "wallet_balance", Args: map[string]any{}}},
-		"wallet address": {{Tool: "wallet_balance", Args: map[string]any{}}},
+		"wallet address": {{Tool: "wallet_address", Args: map[string]any{}}},
 	}
 	lower := strings.ToLower(strings.TrimSpace(prompt))
 	if tc, ok := aliases[lower]; ok {
@@ -2631,33 +2634,52 @@ type placeItem struct {
 // formatWalletBalanceResult converts a raw JSON wallet balance result into
 // human-readable text for the AI synthesis RAG context.
 //
-// One tool answers the whole question now, so this renders credits and the
-// deposit address together. "balance" is the key the old path-backed tool
-// returned; it is still read so an answer built before this change formats.
+// formatWalletBalanceResult renders what the wallet holds.
+//
+// The wallet is a key on Base now and the number it returns is USDC. It used to
+// be a credit balance, and answers in that shape still format — an older client,
+// or a conversation replayed from before the split, should not come back as raw
+// JSON. The two are labelled differently on purpose: mistaking one for the other
+// is how somebody tries to pay for a tool call with money the meter cannot see.
 func formatWalletBalanceResult(result string) string {
 	var data struct {
 		Credits *int   `json:"credits"`
 		Balance *int   `json:"balance"`
 		Address string `json:"address"`
 		USDC    string `json:"usdc"`
+		Network string `json:"network"`
+		Text    string `json:"text"`
 	}
 	if err := json.Unmarshal([]byte(result), &data); err != nil {
 		return result
 	}
-	credits := 0
-	switch {
-	case data.Credits != nil:
-		credits = *data.Credits
-	case data.Balance != nil:
-		credits = *data.Balance
-	default:
-		return result
-	}
 
 	var sb strings.Builder
-	fmt.Fprintf(&sb, "Wallet balance: %d credits (£%d.%02d). Top up at /account/topup.\n", credits, credits/100, credits%100)
-	if data.Address != "" {
-		fmt.Fprintf(&sb, "Base address for USDC top-ups: %s (holding $%s USDC).\n", data.Address, data.USDC)
+	// Credits, when something answered in the old shape.
+	if credits := data.Credits; credits != nil || data.Balance != nil {
+		n := 0
+		if credits != nil {
+			n = *credits
+		} else {
+			n = *data.Balance
+		}
+		fmt.Fprintf(&sb, "Credit balance: %d credits (£%d.%02d). Top up at /account/topup.\n", n, n/100, n%100)
+	}
+	switch {
+	case data.USDC != "":
+		net := data.Network
+		if net == "" {
+			net = "Base"
+		}
+		fmt.Fprintf(&sb, "Wallet: %s holds $%s USDC on %s.\n", data.Address, data.USDC, net)
+	case data.Address != "":
+		fmt.Fprintf(&sb, "Wallet address: %s.\n", data.Address)
+	}
+	if sb.Len() == 0 {
+		if data.Text != "" {
+			return data.Text
+		}
+		return result
 	}
 	return sb.String()
 }

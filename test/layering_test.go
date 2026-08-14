@@ -32,7 +32,7 @@ import (
 )
 
 // The top-level product packages, in import-path form.
-var productImport = regexp.MustCompile(`"mu/(home|agent|admin|wallet|client/[a-z]+|service/[a-z]+)"`)
+var productImport = regexp.MustCompile(`"mu/(home|agent|admin|account|client/[a-z]+|service/[a-z]+)"`)
 
 // The programs. They assemble everything, so they import everything.
 var assembly = map[string]bool{
@@ -40,10 +40,21 @@ var assembly = map[string]bool{
 	"internal/cli":    true,
 }
 
-func TestNoServiceImportsTheWallet(t *testing.T) {
-	offenders := importsFrom(t, "service", regexp.MustCompile(`"mu/wallet"`))
+// No service asks the account what money is.
+//
+// This named the wallet when the wallet was the ledger. The ledger is the
+// account's now, and the rule is the same one: a service asks internal/quota
+// what an operation costs, and quota deliberately does not know what a balance
+// is. A service that could read a balance would start deciding who may afford
+// what, which is the gate's job and not fifteen services'.
+//
+// The wallet is a service today and this rule does not touch it — it holds a
+// key, not a balance, and service/wallet importing account/ would be caught
+// here like any other.
+func TestNoServiceImportsTheAccount(t *testing.T) {
+	offenders := importsFrom(t, "service", regexp.MustCompile(`"mu/account"`))
 	for pkg, file := range offenders {
-		t.Errorf("%s imports the wallet (%s) — a service asks internal/quota what "+
+		t.Errorf("%s imports the account (%s) — a service asks internal/quota what "+
 			"something costs; money is not underneath it", pkg, file)
 	}
 }

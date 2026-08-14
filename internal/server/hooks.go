@@ -57,9 +57,9 @@ import (
 	"mu/service/stream"
 	"mu/service/tasks"
 	"mu/service/user"
+	"mu/service/wallet"
 	"mu/service/web"
 	whatsappsvc "mu/service/whatsapp"
-	"mu/wallet"
 )
 
 // wireHooks connects the building blocks to each other.

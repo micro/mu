@@ -141,6 +141,21 @@ func expectedChain() int64 {
 	return 8453
 }
 
+// chainName is the chain in words, for anything a person or a model reads.
+//
+// The number is what the protocol needs and says nothing to anybody else; "an
+// address on 8453" is not an instruction somebody can follow when the thing
+// that matters is not sending USDC on the wrong network.
+func chainName() string {
+	switch expectedChain() {
+	case 8453:
+		return "Base"
+	case 84532:
+		return "Base Sepolia"
+	}
+	return fmt.Sprintf("chain %d", expectedChain())
+}
+
 // chainOf asks a node which chain it is on, once per URL.
 //
 // Only ever called when something has already looked wrong, so the happy path

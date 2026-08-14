@@ -91,8 +91,7 @@ The exception is a **headless** service: a capability with no page, so no route
 and no nav entry — it exists for the agent, for apps and for other services to
 call. `contacts` is one.
 
-Two footnotes. `wallet` has a page that predates its service; both are the same
-capability with two surfaces. And the `web` service is reached at `/search`,
+One footnote. The `web` service is reached at `/search`,
 because "Search" is what a person looks for in the sidebar while `web` is what
 the capability is about. The nav label is for humans; the service name is for
 callers. `/web` still 301s to `/search` for old links.
@@ -143,6 +142,7 @@ guessable.
 | `hazards` | /hazards | ✅ |  | What is going wrong physically: earthquakes live from the USGS, disasters from GDACS. No key, and authoritative rather than plausible — the point of it is that a model would otherwise guess |
 | `transit` | /transit | ✅ |  | Public transport: stops near you, what is due, which lines are down. London live from TfL; everywhere else from published GTFS timetables via `internal/gtfs`. No key either way — it works on a fresh install, which is the point |
 | `video` | /video | ✅ |  | Curated channels, without ads or recommendations |
+| `wallet` | /wallet | ✅ | ✅ | A key of your own on Base: an address that holds USDC, and paying an x402-priced tool on another server with it |
 | `weather` | /weather | ✅ |  | Forecast and pollen through Google, keyed. Air quality, sea state and the historical record through Open-Meteo, keyless — the part that still works on a clone |
 | `web` | /search | ✅ |  | Search the web; fetch a URL and return readable content |
 
@@ -182,12 +182,12 @@ can. That is the intended boundary: the risk is prompt injection steering the
 model, not a person deleting their own file. An unscoped token is the whole
 account, deletes included; scope an agent if that is not what you want.
 
-Four are withheld from the model:
-
-- **`wallet.Charge`** — spending should follow from the user's own action
-- **`tasks.Delete`** — irreversible, and the user can delete from the page
-- **`files.Delete`** — the same, for stored bytes
-- **`contacts.Delete`** — the same, for the address book
+Some are withheld from the model, by `Destructive: true` on the endpoint —
+`tasks.Delete`, `files.Delete`, `contacts.Delete`, `events.Delete`,
+`notes.Delete`, `sms.Send` and the rest. The test is an irreversible effect
+nobody asked for: the agent reads text strangers wrote, so a tool it holds is a
+tool prompt injection holds. Deleting your own file from the page is fine;
+having it deleted because a web page said so is not.
 
 Everything else on those services is available: the agent can read a balance,
 check a cost, create, list, get and update records, store and share a file, and
@@ -400,16 +400,25 @@ mu.apps.list();  mu.apps.read(slug);
 
 ## Dependency rules
 
-1. **Subsystems should not import services** — `internal/` is the runtime, not
-   the features. The one exception is `wallet`, which `internal/api` and
-   `internal/cli` import to price a call; see rule 4
+1. **Subsystems must not import the product** — `internal/` is the runtime, not
+   the features. The two exceptions are the programs: `internal/server` and
+   `internal/cli` assemble everything, so they import everything
 2. **Services import subsystems freely** — that's what they're for
-3. **Services should not import each other** — except documented composition layers
-4. **`wallet` is the one cross-cutting service** — most services import it for quota
-5. **`admin` imports services** — `mail` for the spam filter and blocklists,
-   `wallet` for credits and transactions, plus `apps`, `news` and `markets` for
+3. **Services must not import each other** — whatever two of them share goes in
+   `internal/`. A sideways import makes two services one unit: read together,
+   changed together, moved together, and the catalogue stops being a list of
+   independent things
+4. **No service asks what money is** — a service declares what an operation
+   costs (`Cost: quota.OpWebSearch` on its `Endpoint`) and `internal/quota`
+   answers. Quota holds prices and deliberately does not know what a balance is;
+   `account/` fills in that half from its own init, because quota sits
+   underneath it. There used to be a cross-cutting `wallet` every service
+   imported, and this is what replaced it
+5. **`admin` imports the product** — `mail` for the spam filter and blocklists,
+   `account` for credits and transactions, plus `apps`, `news` and `markets` for
    the panel's own views. An acceptable coupling: admin is a management UI over
    the services, and nothing imports admin
 
-These are conventions, not compiler-enforced boundaries — the import graph is
-worth a look before adding an edge to it.
+Rules 1 and 3 are enforced by `test/layering_test.go`, and rule 4 by
+`TestNoServiceImportsTheAccount` in the same file. The rest are conventions —
+the import graph is worth a look before adding an edge to it.

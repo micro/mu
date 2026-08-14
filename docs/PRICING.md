@@ -189,7 +189,7 @@ equally good.
 Google does it, sitting alongside credits. This is honest about provider
 economics and it is what the machinery now supports (`free` per operation in
 quota.json). It also means somebody has two numbers to understand, two things
-that can run out, and two explanations on the wallet page.
+that can run out, and two explanations on the account page.
 
 **As one meter** — everything is priced in credits, and the free tier is a
 monthly grant of them. One number. It runs out in one way. "You have 100 credits
@@ -225,7 +225,7 @@ get back, in a way that harms other users of this instance*. Reputation and
 deliverability are shared; a credit balance is not.
 
 This is the one place where two buckets exist rather than one, and it is
-invisible until you try: the wallet shows a single balance, and the refusal on a
+invisible until you try: the account shows a single balance, and the refusal on a
 never-free operation says what to do about it.
 
 ## Dynamic pricing, and when it is two endpoints instead
@@ -559,7 +559,7 @@ In order, each landable on its own:
    `SubscriptionPlan` carries `Agents` and `PostsPerHour`; `CreateAgent`
    enforces the count and `postLimitFor` reads the rate, both through function
    variables filled in by `hooks.go` because `auth` and `agent` sit below
-   `wallet`. The pricing card renders those same two numbers, so it cannot
+   `account`. The pricing card renders those same two numbers, so it cannot
    claim what is not enforced. Held by `test/plans_are_real_test.go`.
 
    **Still open: the channels.** "Send mail, SMS and WhatsApp" was the fourth

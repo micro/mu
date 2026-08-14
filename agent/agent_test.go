@@ -640,15 +640,22 @@ func TestRenderToolCallRef_Category(t *testing.T) {
 }
 
 func TestFormatToolResult_WalletDispatch(t *testing.T) {
-	// One tool answers the whole question: credits, and where to send USDC.
-	got := formatToolResult("wallet_balance", `{"credits":500,"address":"0xabc","usdc":"1.50","network":"base"}`, nil)
-	for _, want := range []string{"500 credits", "0xabc", "/account/topup"} {
+	// What the wallet service actually answers: an address and what it holds.
+	got := formatToolResult("wallet_balance", `{"address":"0xabc","usdc":"1.50","network":"Base"}`, nil)
+	for _, want := range []string{"0xabc", "1.50", "Base"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("wallet_balance output is missing %q, got %q", want, got)
 		}
 	}
+	// And it must not call USDC credits. They are different meters, and
+	// confusing them is how somebody tries to pay for a call with money this
+	// instance cannot see.
+	if strings.Contains(got, "credits") {
+		t.Errorf("USDC was reported as credits: %q", got)
+	}
 
-	// An answer built before the merge used "balance" for the same number.
+	// An answer in the old shape — a credit balance — still formats rather
+	// than coming back as raw JSON.
 	if got := formatToolResult("wallet_balance", `{"balance":500}`, nil); !strings.Contains(got, "500 credits") {
 		t.Errorf("the old balance key no longer formats, got %q", got)
 	}

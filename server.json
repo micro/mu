@@ -1,7 +1,7 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "mu.micro/mu",
-  "description": "News, web search, mail, markets, weather, places, transit, food, hazards, files, calendar, contacts and your own notes. 113 tools, one endpoint.",
+  "description": "News, web search, mail, markets, weather, places, transit, food, hazards, files, calendar, contacts and your own notes. 117 tools, one endpoint.",
   "repository": {
     "url": "https://github.com/micro/mu",
     "source": "github"

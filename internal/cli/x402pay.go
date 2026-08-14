@@ -27,7 +27,7 @@ import (
 	"strings"
 	"time"
 
-	"mu/wallet"
+	"mu/service/wallet"
 )
 
 // runX402Pay handles `mu x402 call ...`.
