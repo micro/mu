@@ -56,7 +56,34 @@ const (
 	TxTransfer = "transfer"
 )
 
-var mutex sync.RWMutex
+// The ledger's lock, and the only thing that takes it.
+//
+// It was an RWMutex with every function locking by hand, and that shape is what
+// produced the bug it eventually produced: CreditsOf took the read lock, let it
+// go, and took the write lock — and a credit landing in that gap was
+// overwritten. Nothing was wrong with any single line. The design invited the
+// mistake, which is the kind that review does not catch twice.
+//
+// So: a plain Mutex, because there is no read lock left to upgrade from, and
+// one function that takes it. Everything below the line is handed a *ledger,
+// which cannot be made anywhere else — so a helper that touches balances or
+// transactions cannot be called without the lock held, and it is checked by the
+// compiler rather than by a comment saying "callers hold mutex".
+var mutex sync.Mutex
+
+// ledger is proof that the lock is held. It has no fields and needs none: its
+// whole job is to be unforgeable outside withLedger.
+type ledger struct{}
+
+// withLedger runs fn with the ledger locked.
+//
+// The only place in this package that locks. TestTheLedgerHasOneDoor fails if
+// another appears.
+func withLedger[T any](fn func(*ledger) T) T {
+	mutex.Lock()
+	defer mutex.Unlock()
+	return fn(&ledger{})
+}
 
 // Storage
 var balances = map[string]*Credits{}
@@ -210,17 +237,17 @@ func Load() {
 // not a narrow window either: the test that found this hit it on the second
 // attempt.
 func CreditsOf(userID string) *Credits {
-	mutex.Lock()
-	defer mutex.Unlock()
-	c := creditsOf(userID)
-	out := *c
-	return &out
+	return withLedger(func(l *ledger) *Credits {
+		out := *creditsOf(l, userID)
+		return &out
+	})
 }
 
 // creditsOf returns the live record, creating it if there is none.
 //
-// Callers hold mutex, and must not let the pointer escape.
-func creditsOf(userID string) *Credits {
+// Takes a *ledger, so it cannot be reached without the lock. Must not let the
+// pointer escape.
+func creditsOf(l *ledger, userID string) *Credits {
 	if w, exists := balances[userID]; exists && w != nil {
 		return w
 	}
@@ -237,9 +264,7 @@ func creditsOf(userID string) *Credits {
 
 // Balance returns the current balance for a user
 func Balance(userID string) int {
-	mutex.Lock()
-	defer mutex.Unlock()
-	return creditsOf(userID).Balance
+	return withLedger(func(l *ledger) int { return creditsOf(l, userID).Balance })
 }
 
 // SettlementKey is the metadata field a one-time credit is deduped on.
@@ -281,23 +306,23 @@ func CreditOnce(userID string, amount int, operation, key string, metadata map[s
 
 	// The check and the write are one critical section. Two deliveries racing
 	// would otherwise both look up, both find nothing, and both credit.
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	if settled(userID, key) {
-		return false, nil
-	}
-	if metadata == nil {
-		metadata = map[string]interface{}{}
-	}
-	metadata[SettlementKey] = key
-	return true, addCredits(userID, amount, operation, metadata)
+	var credited bool
+	err := withLedger(func(l *ledger) error {
+		if settled(l, userID, key) {
+			return nil
+		}
+		if metadata == nil {
+			metadata = map[string]interface{}{}
+		}
+		metadata[SettlementKey] = key
+		credited = true
+		return addCredits(l, userID, amount, operation, metadata)
+	})
+	return credited, err
 }
 
 // settled reports whether this account has already been credited for key.
-//
-// Callers hold mutex.
-func settled(userID, key string) bool {
+func settled(l *ledger, userID, key string) bool {
 	for _, tx := range transactions[userID] {
 		if tx == nil || tx.Type != TxTopup {
 			continue
@@ -315,15 +340,14 @@ func AddCredits(userID string, amount int, operation string, metadata map[string
 		return errors.New("amount must be positive")
 	}
 
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	return addCredits(userID, amount, operation, metadata)
+	return withLedger(func(l *ledger) error {
+		return addCredits(l, userID, amount, operation, metadata)
+	})
 }
 
-// addCredits is AddCredits with the lock already held, so that a caller needing
-// to decide and then write — CreditOnce — can do both without a gap.
-func addCredits(userID string, amount int, operation string, metadata map[string]interface{}) error {
+// addCredits is AddCredits behind the door, so that a caller needing to decide
+// and then write — CreditOnce — can do both without a gap.
+func addCredits(l *ledger, userID string, amount int, operation string, metadata map[string]interface{}) error {
 	w, exists := balances[userID]
 	if !exists {
 		w = &Credits{
@@ -363,8 +387,13 @@ func DeductCredits(userID string, amount int, operation string, metadata map[str
 		return errors.New("amount must be positive")
 	}
 
-	mutex.Lock()
-	defer mutex.Unlock()
+	return withLedger(func(l *ledger) error {
+		return deductCredits(l, userID, amount, operation, metadata)
+	})
+}
+
+// deductCredits is DeductCredits with the lock held.
+func deductCredits(l *ledger, userID string, amount int, operation string, metadata map[string]interface{}) error {
 
 	w, exists := balances[userID]
 	if !exists || w.Balance < amount {
@@ -397,10 +426,16 @@ func DeductCredits(userID string, amount int, operation string, metadata map[str
 // DailyTransferTotal returns the number of credits transferred out by a user on the given UTC date.
 func DailyTransferTotal(userID string, day time.Time) int {
 	date := day.UTC().Format("2006-01-02")
+	return withLedger(func(l *ledger) int { return transferredOn(l, userID, date) })
+}
 
-	mutex.RLock()
-	defer mutex.RUnlock()
-
+// transferredOn totals what an account sent on one UTC date.
+//
+// Shared with TransferCredits, which needs the same number while holding the
+// lock it is about to write under. It was copied out into that function to
+// avoid locking twice, and two copies of a cap is how one of them stops being
+// the cap.
+func transferredOn(l *ledger, userID, date string) int {
 	total := 0
 	for _, tx := range transactions[userID] {
 		if tx == nil || tx.Type != TxTransfer || tx.Operation != quota.OpTransfer || tx.Amount >= 0 {
@@ -423,20 +458,19 @@ func TransferCredits(fromUserID, toUserID string, amount int) error {
 		return errors.New("cannot transfer to yourself")
 	}
 
-	mutex.Lock()
-	defer mutex.Unlock()
+	return withLedger(func(l *ledger) error {
+		return transferCredits(l, fromUserID, toUserID, amount)
+	})
+}
 
-	// Check sender has not exceeded the daily transfer cap.
+// transferCredits is TransferCredits with the lock held.
+func transferCredits(l *ledger, fromUserID, toUserID string, amount int) error {
+
+	// The same total DailyTransferTotal reports, from the same function. It was
+	// written out again here to avoid taking the lock twice, and a cap with two
+	// implementations is a cap that one day only one of them enforces.
 	today := time.Now().UTC().Format("2006-01-02")
-	dailyTotal := 0
-	for _, tx := range transactions[fromUserID] {
-		if tx == nil || tx.Type != TxTransfer || tx.Operation != quota.OpTransfer || tx.Amount >= 0 {
-			continue
-		}
-		if tx.CreatedAt.UTC().Format("2006-01-02") == today {
-			dailyTotal += -tx.Amount
-		}
-	}
+	dailyTotal := transferredOn(l, fromUserID, today)
 	if dailyTotal+amount > DailyTransferCap {
 		return fmt.Errorf("daily transfer cap exceeded: maximum %d credits per day", DailyTransferCap)
 	}
@@ -520,26 +554,30 @@ func Label(id string) string {
 
 // Transactions returns transaction history for a user
 func Transactions(userID string, limit int) []*Transaction {
-	mutex.RLock()
-	defer mutex.RUnlock()
-
-	txs := transactions[userID]
-	if txs == nil {
-		return []*Transaction{}
-	}
-
-	// Return most recent first
-	result := make([]*Transaction, 0, len(txs))
-	for i := len(txs) - 1; i >= 0 && len(result) < limit; i-- {
-		result = append(result, txs[i])
-	}
-	return result
+	return withLedger(func(_ *ledger) []*Transaction {
+		txs := transactions[userID]
+		if txs == nil {
+			return []*Transaction{}
+		}
+		// Most recent first.
+		result := make([]*Transaction, 0, len(txs))
+		for i := len(txs) - 1; i >= 0 && len(result) < limit; i-- {
+			result = append(result, txs[i])
+		}
+		return result
+	})
 }
 
 // RecordUsage records a zero-cost usage transaction (for admins and quota tracking)
 func RecordUsage(userID string, operation string) {
-	mutex.Lock()
-	defer mutex.Unlock()
+	withLedger(func(l *ledger) error {
+		recordUsage(l, userID, operation)
+		return nil
+	})
+}
+
+// recordUsage is RecordUsage with the lock held.
+func recordUsage(l *ledger, userID string, operation string) {
 
 	w, exists := balances[userID]
 	if !exists {
@@ -575,8 +613,13 @@ func ChargeAppUse(userID, authorID, appSlug string, price int) error {
 		return nil // Authors don't pay for their own apps
 	}
 
-	mutex.Lock()
-	defer mutex.Unlock()
+	return withLedger(func(l *ledger) error {
+		return chargeAppUse(l, userID, authorID, appSlug, price)
+	})
+}
+
+// chargeAppUse is ChargeAppUse with the lock held.
+func chargeAppUse(l *ledger, userID, authorID, appSlug string, price int) error {
 
 	// Check sender has sufficient balance
 	user, exists := balances[userID]
@@ -653,8 +696,14 @@ func FormatCredits(credits int) string {
 
 // DeleteCredits removes a user's wallet and transaction history.
 func DeleteCredits(userID string) {
-	mutex.Lock()
-	defer mutex.Unlock()
+	withLedger(func(l *ledger) error {
+		deleteCredits(l, userID)
+		return nil
+	})
+}
+
+// deleteCredits is DeleteCredits with the lock held.
+func deleteCredits(l *ledger, userID string) {
 	delete(balances, userID)
 	delete(transactions, userID)
 	data.SaveJSON("wallets.json", balances)
