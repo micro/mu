@@ -222,6 +222,75 @@ func (Server) Status(_ context.Context, req *StatusRequest, rsp *StatusResponse)
 	return nil
 }
 
+// ── Feeds ───────────────────────────────────────────────────────────────────
+
+// FeedsRequest optionally narrows to a country.
+type FeedsRequest struct {
+	Country string `json:"country" description:"Optional two-letter code to narrow the list: GB, US, ES…"`
+}
+
+// FeedsResponse is what this instance carries and what it could.
+type FeedsResponse struct {
+	Text string `json:"text" description:"Timetables loaded now, and others worth loading with their size"`
+}
+
+// Feeds lists the timetables loaded and the ones available.
+// @example {"country": "GB"}
+func (Server) Feeds(_ context.Context, req *FeedsRequest, rsp *FeedsResponse) error {
+	var b strings.Builder
+
+	loaded := FeedSummary()
+	if len(loaded) == 0 {
+		b.WriteString("No timetables loaded. London answers live from TfL without one; " +
+			"anywhere else needs a feed.\n\n")
+	} else {
+		b.WriteString("Loaded:\n")
+		for _, l := range loaded {
+			b.WriteString("  " + l + "\n")
+		}
+		b.WriteString("\n")
+	}
+
+	want := strings.ToUpper(strings.TrimSpace(req.Country))
+	match := func(k Known) bool { return want == "" || k.Country == want }
+
+	shown := 0
+	b.WriteString("Available — add the name to TRANSIT_FEEDS to switch one on:\n")
+	for _, k := range KnownFeeds {
+		if !match(k) {
+			continue
+		}
+		shown++
+		fmt.Fprintf(&b, "  %-38s %-32s %5.1fMB", k.Query, k.Place, k.MB)
+		if k.Note != "" {
+			fmt.Fprintf(&b, "\n      %s", k.Note)
+		}
+		b.WriteString("\n")
+	}
+	if shown == 0 {
+		fmt.Fprintf(&b, "  Nothing on the shortlist for %s. The catalogue holds about 1,160 "+
+			"keyless feeds, so there may still be one — this list is only the ones checked by hand.\n", want)
+	}
+
+	// The traps are worth more than the shortlist, because each is the obvious
+	// thing to reach for and each would be refused after the download.
+	var dead []Known
+	for _, k := range Expired {
+		if match(k) {
+			dead = append(dead, k)
+		}
+	}
+	if len(dead) > 0 {
+		b.WriteString("\nPublished but out of date — these would be refused rather than loaded:\n")
+		for _, k := range dead {
+			fmt.Fprintf(&b, "  %-38s %-26s %s\n", k.Query, k.Place, k.Note)
+		}
+	}
+
+	rsp.Text = strings.TrimRight(b.String(), "\n")
+	return nil
+}
+
 // Load registers the service and starts keeping timetables current.
 func Load() {
 	if err := service.Register(Spec); err != nil {
@@ -251,6 +320,11 @@ var Spec = service.Spec{
 		"Status": {
 			Doc: "Which lines are delayed, part-suspended or closed right now, and why. " +
 				"London only",
+		},
+		"Feeds": {
+			Doc: "Which published timetables this instance carries, and which others it could — " +
+				"with the size of each, so an operator can see what switching one on costs. " +
+				"Also names the feeds that look right but whose timetables have run out",
 		},
 	},
 }

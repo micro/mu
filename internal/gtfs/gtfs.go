@@ -72,6 +72,39 @@ type Departure struct {
 	Trip uint32
 }
 
+// Window is a span of the day over which a pattern repeats.
+//
+// "Every eight minutes between seven and ten" is one of these. A feed that uses
+// them does not list the individual departures at all.
+type Window struct {
+	Start, End, Headway uint32
+}
+
+// nextFrom returns departure times at or after `from` for a stop that sits
+// `offset` seconds into the pattern.
+//
+// At most `limit`, because a five-minute headway over a twelve-hour window is
+// a hundred and forty departures and a caller asked for the next three.
+func (w Window) nextFrom(from, offset uint32, limit int) []uint32 {
+	if w.Headway == 0 || w.End <= w.Start {
+		return nil
+	}
+	// The first departure of the pattern that has not already gone.
+	var k uint32
+	if start := w.Start + offset; from > start {
+		k = (from - start + w.Headway - 1) / w.Headway
+	}
+	var out []uint32
+	for ; len(out) < limit; k++ {
+		t := w.Start + k*w.Headway
+		if t >= w.End {
+			break
+		}
+		out = append(out, t+offset)
+	}
+	return out
+}
+
 // Service is the set of days a trip runs on.
 type Service struct {
 	// Days is a bitmask, Monday is bit 0.

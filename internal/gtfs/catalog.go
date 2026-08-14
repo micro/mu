@@ -218,28 +218,57 @@ func FeedsFor(lat, lon float64, limit int) ([]Feed, error) {
 }
 
 // FindFeed looks a feed up by id, provider or place.
+//
+// Ranked rather than first-past-the-post, which is not fussiness: over a
+// catalogue of this size the first partial match is usually the wrong one.
+// "metrobus" found Metrobus Transit of St. John's, Newfoundland, ahead of the
+// Metrobus that runs buses around Gatwick, because Newfoundland came first in
+// the file. An exact name has to beat a name that merely contains it.
 func FindFeed(q string) (Feed, bool) {
 	all, err := Catalog()
 	if err != nil {
 		return Feed{}, false
 	}
-	lower := strings.ToLower(strings.TrimSpace(q))
+	q = strings.TrimSpace(q)
+	lower := strings.ToLower(q)
 	if lower == "" {
 		return Feed{}, false
 	}
-	var partial *Feed
+
+	// Lower is better. Nothing beyond a place match is considered a match.
+	const (
+		rankID = iota
+		rankProvider
+		rankProviderPrefix
+		rankProviderContains
+		rankPlace
+		rankNone
+	)
+
+	best, bestRank := -1, rankNone
 	for i := range all {
-		f := all[i]
-		if strings.EqualFold(f.ID, q) {
-			return f, true
+		p := strings.ToLower(all[i].Provider)
+		var rank int
+		switch {
+		case strings.EqualFold(all[i].ID, q):
+			return all[i], true
+		case p == lower:
+			rank = rankProvider
+		case strings.HasPrefix(p, lower):
+			rank = rankProviderPrefix
+		case strings.Contains(p, lower):
+			rank = rankProviderContains
+		case strings.Contains(strings.ToLower(all[i].Place), lower):
+			rank = rankPlace
+		default:
+			continue
 		}
-		if partial == nil && (strings.Contains(strings.ToLower(f.Provider), lower) ||
-			strings.Contains(strings.ToLower(f.Place), lower)) {
-			partial = &all[i]
+		if rank < bestRank {
+			best, bestRank = i, rank
 		}
 	}
-	if partial != nil {
-		return *partial, true
+	if best < 0 {
+		return Feed{}, false
 	}
-	return Feed{}, false
+	return all[best], true
 }

@@ -42,6 +42,10 @@ type Meta struct {
 	// departures are all in the past if you read them as UTC, so an instance in
 	// London reports that no trains run in San Francisco.
 	Timezone string
+	// Windows holds the headway patterns of frequency-based trips, keyed by
+	// trip. A trip listed here has offsets in the departures file rather than
+	// times, and its actual departures are replayed at query time.
+	Windows map[uint32][]Window
 	// Covers is the span the timetable actually describes, as yyyymmdd.
 	//
 	// Feeds expire. Agencies publish a few weeks at a time and republish before
@@ -302,6 +306,35 @@ func Build(feedID string, r io.ReaderAt, size int64, dir string, etag, modified 
 		return nil, err
 	}
 
+	// Frequencies, read before stop_times because they change what stop_times
+	// means.
+	//
+	// A frequency-based feed does not list every departure. It lists one
+	// template trip per pattern and then says, here, that the pattern repeats
+	// every so many seconds between two times. Reading only stop_times gives
+	// one bus a day where there is one every ten minutes — no error, just
+	// silent under-reporting, which is the worst shape of wrong for a
+	// departure board. Madrid publishes 86,000 of these rows and Singapore
+	// 7,500.
+	type freq struct{ start, end, headway uint32 }
+	freqs := map[uint32][]freq{}
+	if err := a.each("frequencies.txt", func(get func(string) string) error {
+		trip, ok := tripIndex[get("trip_id")]
+		if !ok {
+			return nil
+		}
+		start, ok1 := parseTime(get("start_time"))
+		end, ok2 := parseTime(get("end_time"))
+		headway, err := strconv.Atoi(get("headway_secs"))
+		if !ok1 || !ok2 || err != nil || headway <= 0 || end <= start {
+			return nil
+		}
+		freqs[trip] = append(freqs[trip], freq{start: start, end: end, headway: uint32(headway)})
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
 	// stop_times, the big one. Collected as (stop, time, trip) triples, then
 	// sorted by stop so each stop's departures end up contiguous on disk.
 	type row struct {
@@ -335,6 +368,43 @@ func Build(feedID string, r io.ReaderAt, size int64, dir string, etag, modified 
 	}
 	if len(rows) == 0 {
 		return nil, fmt.Errorf("feed has no usable stop times")
+	}
+
+	// Keep the templates as templates.
+	//
+	// The obvious move is to expand here — replay each pattern at every
+	// headway step and store the result — and it is wrong. Madrid's 2.2
+	// million rows describe 41.5 million departures, so expanding turns a
+	// 17MB index into 316MB. The feed arrived compressed and throwing that
+	// away defeats the point of not unpacking anything.
+	//
+	// So a frequency trip's rows hold the offset from the trip's first stop
+	// instead of a time, and the windows are kept beside them. The query
+	// replays the pattern for the one stop being asked about, over the next
+	// few hours, which is a few hundred rows of arithmetic.
+	if len(freqs) > 0 {
+		first := map[uint32]uint32{}
+		for _, r := range rows {
+			if _, ok := freqs[r.trip]; !ok {
+				continue
+			}
+			if t, seen := first[r.trip]; !seen || r.time < t {
+				first[r.trip] = r.time
+			}
+		}
+		for i := range rows {
+			if _, ok := freqs[rows[i].trip]; ok {
+				rows[i].time -= first[rows[i].trip]
+			}
+		}
+
+		m.Windows = make(map[uint32][]Window, len(freqs))
+		for trip, ws := range freqs {
+			for _, w := range ws {
+				m.Windows[trip] = append(m.Windows[trip],
+					Window{Start: w.start, End: w.end, Headway: w.headway})
+			}
+		}
 	}
 
 	// What the timetable actually covers, taken from the calendar rather than

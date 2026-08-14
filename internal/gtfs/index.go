@@ -27,6 +27,10 @@ const (
 	// A busy interchange has thousands a day and a caller wants the next few;
 	// this is the difference between reading 8KB and reading a megabyte.
 	maxScan = 1024
+	// maxStopRows bounds a frequency feed's per-stop scan, which cannot binary
+	// search. Singapore, the densest seen, holds about 1,200 rows at its
+	// busiest stop.
+	maxStopRows = 8192
 )
 
 // departureWriter buffers fixed-width records.
@@ -120,6 +124,24 @@ func (i *Index) NextAt(stopIdx uint32, at time.Time, limit int) ([]Next, error) 
 	out = append(out, i.scan(start, end, secs, today, weekday, now, 0, limit)...)
 
 	sort.Slice(out, func(a, b int) bool { return out[a].When.Before(out[b].When) })
+
+	// The same bus can appear more than once. A feed carries a trip per
+	// direction, per day pattern and sometimes per season, and several of them
+	// can resolve to the same route leaving the same stop at the same minute —
+	// Madrid showed one departure four times over. Nobody standing at the stop
+	// believes there are four of them, so the duplicates go.
+	seen := make(map[string]bool, len(out))
+	kept := out[:0]
+	for _, n := range out {
+		key := n.Route + "\x00" + n.Headsign + "\x00" + n.When.Format("2006-01-02T15:04")
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		kept = append(kept, n)
+	}
+	out = kept
+
 	if len(out) > limit {
 		out = out[:limit]
 	}
@@ -131,18 +153,32 @@ func (i *Index) scan(start, end, from uint32, date int, weekday time.Weekday,
 	now time.Time, shift int, limit int) []Next {
 
 	n := int(end - start)
-	// The slice is sorted by time, so the first candidate is a binary search
-	// rather than a walk from the top of the day.
-	lo := sort.Search(n, func(k int) bool {
-		d, err := i.at(start + uint32(k))
-		if err != nil {
-			return true
-		}
-		return d.Time >= from
-	})
+
+	// Where every row holds a real time the slice is sorted, so the first
+	// candidate is a binary search. A frequency feed's rows hold offsets
+	// instead, which are not in time order, so the whole stop has to be read —
+	// affordable because a stop holds hundreds of rows, not millions.
+	lo, scan := 0, n
+	if len(i.Meta.Windows) == 0 {
+		lo = sort.Search(n, func(k int) bool {
+			d, err := i.at(start + uint32(k))
+			if err != nil {
+				return true
+			}
+			return d.Time >= from
+		})
+		scan = maxScan
+	} else if scan > maxStopRows {
+		scan = maxStopRows
+	}
+
+	midnight := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 
 	var out []Next
-	for k := lo; k < n && k-lo < maxScan && len(out) < limit; k++ {
+	for k := lo; k < n && k-lo < scan; k++ {
+		if len(out) >= limit && len(i.Meta.Windows) == 0 {
+			break
+		}
 		d, err := i.at(start + uint32(k))
 		if err != nil {
 			break
@@ -158,12 +194,14 @@ func (i *Index) scan(start, end, from uint32, date int, weekday time.Weekday,
 			continue
 		}
 
-		// Rebuild the wall-clock moment. shift moves yesterday's late services
-		// back onto the day they were timetabled for.
-		midnight := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-		when := midnight.Add(time.Duration(int(d.Time)+shift) * time.Second)
-		if when.Before(now.Add(-time.Minute)) {
-			continue
+		// One row becomes many when the trip is a pattern rather than a
+		// timetabled run.
+		times := []uint32{d.Time}
+		if windows, ok := i.Meta.Windows[d.Trip]; ok {
+			times = times[:0]
+			for _, w := range windows {
+				times = append(times, w.nextFrom(from, d.Time, limit)...)
+			}
 		}
 
 		var name string
@@ -176,10 +214,19 @@ func (i *Index) scan(start, end, from uint32, date int, weekday time.Weekday,
 			}
 			kind = r.Type
 		}
-		out = append(out, Next{
-			Route: name, Headsign: trip.Headsign, When: when,
-			In: when.Sub(now).Round(time.Minute), Type: kind,
-		})
+
+		for _, t := range times {
+			// Rebuild the wall-clock moment. shift moves yesterday's late
+			// services back onto the day they were timetabled for.
+			when := midnight.Add(time.Duration(int(t)+shift) * time.Second)
+			if when.Before(now.Add(-time.Minute)) {
+				continue
+			}
+			out = append(out, Next{
+				Route: name, Headsign: trip.Headsign, When: when,
+				In: when.Sub(now).Round(time.Minute), Type: kind,
+			})
+		}
 	}
 	return out
 }

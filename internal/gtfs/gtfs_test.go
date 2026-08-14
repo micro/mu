@@ -337,3 +337,219 @@ func TestParseTimeKeepsHoursPastMidnight(t *testing.T) {
 		}
 	}
 }
+
+// buildFreqZip makes a feed whose one trip is a pattern rather than a run.
+func buildFreqZip(t *testing.T, tmpl string, windows []string) []byte {
+	t.Helper()
+	files := map[string]string{
+		"agency.txt":   "agency_id,agency_name,agency_timezone\nA,Test,Europe/London\n",
+		"stops.txt":    "stop_id,stop_name,stop_lat,stop_lon\nSTOP1,First,51.4,-0.9\nSTOP2,Second,51.5,-0.8\n",
+		"routes.txt":   "route_id,route_short_name,route_type\nR1,7,3\n",
+		"calendar.txt": "service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date\nS1,1,1,1,1,1,1,1,20200101,20991231\n",
+		"trips.txt":    "route_id,service_id,trip_id,trip_headsign\nR1,S1,T1,Townwards\n",
+		// The template: the vehicle takes 10 minutes to reach the second stop.
+		"stop_times.txt": "trip_id,stop_id,stop_sequence,arrival_time,departure_time\n" +
+			"T1,STOP1,1," + tmpl + "," + tmpl + "\nT1,STOP2,2,06:10:00,06:10:00\n",
+		"frequencies.txt": "trip_id,start_time,end_time,headway_secs\n" + strings.Join(windows, "\n") + "\n",
+	}
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	for name, body := range files {
+		w, err := zw.Create(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := w.Write([]byte(body)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return buf.Bytes()
+}
+
+func openFreq(t *testing.T, b []byte) *Index {
+	t.Helper()
+	dir := t.TempDir()
+	if _, err := Build("f", bytes.NewReader(b), int64(len(b)), dir, "", ""); err != nil {
+		t.Fatal(err)
+	}
+	idx, err := Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { idx.Close() })
+	return idx
+}
+
+func TestAPatternBecomesEveryDepartureInIt(t *testing.T) {
+	// Every 10 minutes from 09:00 to 10:00.
+	idx := openFreq(t, buildFreqZip(t, "06:00:00", []string{"T1,09:00:00,10:00:00,600"}))
+
+	stop, _ := idx.Find("First")
+	at := time.Date(2026, 8, 13, 9, 1, 0, 0, idx.Meta.Location())
+	next, err := idx.NextAt(stop, at, 5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"09:10", "09:20", "09:30", "09:40", "09:50"}
+	if len(next) != len(want) {
+		t.Fatalf("got %d departures, want %d", len(next), len(want))
+	}
+	for i, w := range want {
+		if got := next[i].When.Format("15:04"); got != w {
+			t.Errorf("departure %d at %s, want %s", i, got, w)
+		}
+	}
+}
+
+func TestAPatternIsNotExpandedOntoDisk(t *testing.T) {
+	// A five-second headway over twelve hours is 8,640 departures at each of
+	// two stops. Storing them would be the bug this design exists to avoid.
+	b := buildFreqZip(t, "06:00:00", []string{"T1,06:00:00,18:00:00,5"})
+	dir := t.TempDir()
+	if _, err := Build("f", bytes.NewReader(b), int64(len(b)), dir, "", ""); err != nil {
+		t.Fatal(err)
+	}
+	fi, err := os.Stat(filepath.Join(dir, departuresFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rows := fi.Size() / departureSize; rows != 2 {
+		t.Errorf("wrote %d rows for a 2-row template, want 2 — the pattern was expanded onto disk", rows)
+	}
+}
+
+func TestLaterStopsKeepTheirPlaceInThePattern(t *testing.T) {
+	// The second stop is ten minutes down the route, so its departures run ten
+	// minutes behind the first's.
+	idx := openFreq(t, buildFreqZip(t, "06:00:00", []string{"T1,09:00:00,10:00:00,600"}))
+
+	stop, _ := idx.Find("Second")
+	at := time.Date(2026, 8, 13, 9, 1, 0, 0, idx.Meta.Location())
+	next, err := idx.NextAt(stop, at, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(next) == 0 {
+		t.Fatal("the second stop has no departures")
+	}
+	if got := next[0].When.Format("15:04"); got != "09:10" {
+		t.Errorf("second stop first departure at %s, want 09:10", got)
+	}
+}
+
+func TestSeveralWindowsInADayAllCount(t *testing.T) {
+	// Peak, a gap, then peak again — the shape almost every real feed uses.
+	idx := openFreq(t, buildFreqZip(t, "06:00:00", []string{
+		"T1,07:00:00,09:00:00,600",
+		"T1,16:00:00,18:00:00,300",
+	}))
+
+	stop, _ := idx.Find("First")
+	// Mid-afternoon: the morning window is done, the evening one has not begun.
+	at := time.Date(2026, 8, 13, 14, 0, 0, 0, idx.Meta.Location())
+	next, err := idx.NextAt(stop, at, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(next) == 0 {
+		t.Fatal("lost the evening window")
+	}
+	if got := next[0].When.Format("15:04"); got != "16:00" {
+		t.Errorf("first afternoon departure at %s, want 16:00", got)
+	}
+}
+
+func TestNothingIsDueAfterThePatternEnds(t *testing.T) {
+	idx := openFreq(t, buildFreqZip(t, "06:00:00", []string{"T1,09:00:00,10:00:00,600"}))
+
+	stop, _ := idx.Find("First")
+	at := time.Date(2026, 8, 13, 11, 0, 0, 0, idx.Meta.Location())
+	next, err := idx.NextAt(stop, at, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(next) != 0 {
+		t.Errorf("invented %d departures after the pattern ended: %v", len(next), next[0].When)
+	}
+}
+
+func TestTheSameBusIsNotShownTwice(t *testing.T) {
+	// Two trips on one route, identical in every way a passenger can see. A
+	// feed carries these for directions and day patterns; a departure board
+	// must not show four of one bus.
+	files := map[string]string{
+		"agency.txt":   "agency_id,agency_name,agency_timezone\nA,Test,Europe/London\n",
+		"stops.txt":    "stop_id,stop_name,stop_lat,stop_lon\nSTOP1,First,51.4,-0.9\n",
+		"routes.txt":   "route_id,route_short_name,route_type\nR1,7,3\n",
+		"calendar.txt": "service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date\nS1,1,1,1,1,1,1,1,20200101,20991231\n",
+		"trips.txt": "route_id,service_id,trip_id,trip_headsign\n" +
+			"R1,S1,T1,Townwards\nR1,S1,T2,Townwards\n",
+		"stop_times.txt": "trip_id,stop_id,stop_sequence,arrival_time,departure_time\n" +
+			"T1,STOP1,1,09:30:00,09:30:00\nT2,STOP1,1,09:30:00,09:30:00\n",
+	}
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	for name, body := range files {
+		w, _ := zw.Create(name)
+		w.Write([]byte(body))
+	}
+	zw.Close()
+	b := buf.Bytes()
+
+	idx := openFreq(t, b)
+	stop, _ := idx.Find("First")
+	at := time.Date(2026, 8, 13, 9, 0, 0, 0, idx.Meta.Location())
+	next, err := idx.NextAt(stop, at, 5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(next) != 1 {
+		t.Errorf("showed one bus %d times", len(next))
+	}
+}
+
+func TestAnExactNameBeatsOneThatMerelyContainsIt(t *testing.T) {
+	// The order here is the trap: the wrong feed comes first in the file, which
+	// is exactly how "metrobus" found Newfoundland instead of Gatwick.
+	catalogMu.Lock()
+	old, oldAt := catalog, catalogAt
+	catalog = []Feed{
+		{ID: "a", Provider: "Metrobus Transit", Country: "CA", Place: "St. John's", Direct: "x"},
+		{ID: "b", Provider: "Metrobus", Country: "GB", Place: "Crawley", Direct: "x"},
+		{ID: "c", Provider: "Reading Buses", Country: "GB", Place: "Reading", Direct: "x"},
+	}
+	catalogAt = time.Now()
+	catalogMu.Unlock()
+	t.Cleanup(func() {
+		catalogMu.Lock()
+		catalog, catalogAt = old, oldAt
+		catalogMu.Unlock()
+	})
+
+	f, ok := FindFeed("metrobus")
+	if !ok {
+		t.Fatal("found nothing")
+	}
+	if f.Country != "GB" {
+		t.Errorf("matched %s in %s, want the exactly-named one in GB", f.Provider, f.Country)
+	}
+
+	// An id still wins outright.
+	if f, ok := FindFeed("a"); !ok || f.Country != "CA" {
+		t.Errorf("an exact id no longer wins: %+v", f)
+	}
+
+	// A prefix beats a substring, and a place still matches when nothing else does.
+	if f, ok := FindFeed("reading"); !ok || f.ID != "c" {
+		t.Errorf("prefix match failed: %+v", f)
+	}
+	if f, ok := FindFeed("crawley"); !ok || f.ID != "b" {
+		t.Errorf("place match failed: %+v", f)
+	}
+	if _, ok := FindFeed("nowhere at all"); ok {
+		t.Error("matched something that is not there")
+	}
+}
