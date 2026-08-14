@@ -179,11 +179,8 @@ func derivedTool(spec service.Spec, ep service.Endpoint, name string, reqType re
 		// here, or the tool is advertised to an anonymous caller and refused
 		// one call later — and, for web_fetch, is a request this server makes
 		// to wherever a stranger names.
-		AccountOnly: ep.AccountOnly,
-		// A method that answers a guest and answers a caller with more says so
-		// here, or it is registered auth-only and the guest half never runs.
-		OptionalAuth: ep.OptionalAuth,
-		Params:       params(reqType),
+		AccountOnly: ep.Needs == service.Account,
+		Params:      params(reqType),
 	}
 }
 
@@ -247,8 +244,8 @@ func registerDerived(spec service.Spec, method string, ep service.Endpoint, name
 	// than demanding one — a priced call with nobody behind it is x402's
 	// business, or the door's, not this function's. The other three reasons are
 	// each a reason an account is *required*, so they are left alone.
-	if spec.Scoped || ep.Account || ep.OptionalAuth || ep.Cost != "" {
-		if !spec.Scoped && !ep.Account && !ep.AccountOnly {
+	if spec.Scoped || ep.Needs != service.Open || ep.Cost != "" {
+		if !spec.Scoped && ep.Needs == service.Open {
 			t.OptionalAuth = true
 		}
 		api.RegisterToolWithCall(t, call)

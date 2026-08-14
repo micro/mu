@@ -240,11 +240,11 @@ var Spec = service.Spec{
 		// fresh conversation is charged, which a single declared price would
 		// bill on every reply. whatsapp checks and charges for itself — see
 		// Send above.
-		"Send": {AccountOnly: true, Destructive: true,
+		"Send": {Needs: service.Account, Destructive: true,
 			Doc: "Send a WhatsApp message. Only to somebody who has written to this instance in the last 24 hours — WhatsApp's own rule, not this one, and there is no way around it without templates approved in advance"},
-		"History": {AccountOnly: true,
+		"History": {Needs: service.Account,
 			Doc: "Read the WhatsApp messages this account has sent and received, newest first"},
-		"Open": {AccountOnly: true,
+		"Open": {Needs: service.Account,
 			Doc: "List who can be written to on WhatsApp right now and until when. Check this before promising to follow up later"},
 	},
 }

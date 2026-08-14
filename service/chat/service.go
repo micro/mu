@@ -220,7 +220,7 @@ var Spec = service.Spec{
 	Card:        Card,
 	Endpoints: map[string]service.Endpoint{
 		"Messages": {Doc: "Read the recent conversation in a discussion room"},
-		"Send":     {Doc: "Say something in a discussion room, as the caller. Use chat_rooms to find the room id", Account: true},
+		"Send":     {Doc: "Say something in a discussion room, as the caller. Use chat_rooms to find the room id", Needs: service.Caller},
 		"Rooms":    {Doc: "List discussion rooms that currently have activity"},
 	},
 }

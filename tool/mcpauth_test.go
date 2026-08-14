@@ -36,7 +36,7 @@ func registerScopedMail(t *testing.T) {
 			// a property of the declaration, checked against the real one in
 			// test/spec_policy_test.go; what is checked here is that the
 			// property survives derivation and reaches the protocol.
-			"Send": {Doc: "Send an email from the caller's own address", AccountOnly: true},
+			"Send": {Doc: "Send an email from the caller's own address", Needs: service.Account},
 		},
 	}); err != nil {
 		t.Fatalf("register mail: %v", err)

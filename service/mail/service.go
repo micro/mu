@@ -167,7 +167,7 @@ var Spec = service.Spec{
 				"contacts_find first. Mail that leaves needs a mail domain configured — without " +
 				"one use email_send, which sends from this instance's own sending domain and " +
 				"expects no reply",
-			AccountOnly: true,
+			Needs:       service.Account,
 			Destructive: true,
 		},
 	},

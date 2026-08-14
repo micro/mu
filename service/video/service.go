@@ -105,8 +105,8 @@ var Spec = service.Spec{
 			// instance's YouTube quota, which is shared and cannot be topped
 			// up per caller. Rationing needs somebody to ration — but a wallet
 			// that has signed is somebody, so Account rather than AccountOnly.
-			Cost:    quota.OpVideoSearch,
-			Account: true,
+			Cost:  quota.OpVideoSearch,
+			Needs: service.Caller,
 		},
 	},
 }

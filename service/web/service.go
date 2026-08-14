@@ -106,7 +106,7 @@ var Spec = service.Spec{
 			// is exactly that: durable, unforgeable, and the same caller
 			// tomorrow. Requiring a signup as well was refusing the accountable
 			// agent along with the anonymous one.
-			Account: true,
+			Needs: service.Caller,
 		},
 		"Search": {Aliases: []string{"search_web"}, Doc: "Search the web for current information and news", Cost: quota.OpWebSearch},
 	},

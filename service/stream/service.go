@@ -107,6 +107,6 @@ var Spec = service.Spec{
 		// hand-written stream_post in internal/api/mcp.go currently overrides
 		// this one and forwards the session; declaring it here means the derived
 		// tool works on its own if that registration ever goes.
-		"Post": {Doc: "Post an entry to the console timeline", Cost: quota.OpStreamPost, Account: true},
+		"Post": {Doc: "Post an entry to the console timeline", Cost: quota.OpStreamPost, Needs: service.Caller},
 	},
 }

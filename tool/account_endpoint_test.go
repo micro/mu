@@ -51,7 +51,7 @@ func TestAnAccountEndpointOnAnOpenServiceIsBoundToItsCaller(t *testing.T) {
 		// Not scoped: anyone may read it.
 		Endpoints: map[string]service.Endpoint{
 			"List": {Doc: "read it"},
-			"Post": {Doc: "write to it", Account: true},
+			"Post": {Doc: "write to it", Needs: service.Caller},
 		},
 	}
 	if _, already := service.SpecFor("openthing"); !already {
@@ -95,7 +95,7 @@ func TestThePostingMethodsDeclareTheyNeedACaller(t *testing.T) {
 			t.Errorf("%s has no %s endpoint", c.svc, c.method)
 			continue
 		}
-		if !spec.Scoped && !ep.Account {
+		if !spec.Scoped && ep.Needs == service.Open {
 			t.Errorf("%s.%s writes as the caller on an unscoped service but does not "+
 				"declare Account, so it is dispatched with no caller and refuses itself",
 				c.svc, c.method)

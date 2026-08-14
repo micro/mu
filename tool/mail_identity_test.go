@@ -41,7 +41,7 @@ func TestMailSendRefusesAPaidWallet(t *testing.T) {
 	if mailSend == nil {
 		t.Fatal("mail_send is gone; the guard needs rechecking")
 	}
-	if !mailSend.AccountOnly {
+	if !mailSend.AccountOnly { // derived from Needs: service.Account
 		t.Fatal("mail_send is no longer account-only — a funded wallet could send from this domain")
 	}
 	_ = mailSend

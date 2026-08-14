@@ -77,6 +77,29 @@ type Spec struct {
 	Card func() string
 }
 
+// Requires is how much identity a method needs.
+type Requires int
+
+const (
+	// Open is the zero value: anybody may call it, including nobody at all.
+	Open Requires = iota
+
+	// Caller means there has to be somebody, and a funded wallet counts.
+	// Enough for anything scoped to the person asking — their own notes, their
+	// own files — where the point is only that "theirs" has an answer.
+	Caller
+
+	// Account means a funded wallet is not enough and there has to be a real
+	// account behind it.
+	//
+	// What earns it is a method where money is not what is in the way.
+	// web.Fetch is free — an http.Get and a readability pass — but "fetch any
+	// URL you name" is a request this server makes on somebody's behalf, to
+	// wherever they say. Sending mail spends this domain's reputation.
+	// Rationing needs somebody to ration, and a wallet is not somebody.
+	Account
+)
+
 // Endpoint is one method of a service.
 type Endpoint struct {
 	// Doc is what the method does, written for a model rather than a
@@ -89,40 +112,21 @@ type Endpoint struct {
 	// attacker-controlled text, so a tool it holds is a tool prompt injection
 	// holds; what earns this flag is an irreversible effect nobody asked for.
 	Destructive bool
-	// OptionalAuth runs the method with an empty caller rather than refusing
-	// when there is nobody signed in.
+	// Needs is who may call this: nobody in particular, somebody, or somebody
+	// with an account.
 	//
-	// For a method that answers anyone and answers a signed-in caller with
-	// more: index.Search returns this instance's public content to a guest and
-	// the caller's own on top of it. Without this the choice is between
-	// refusing guests and never learning who is asking, and refusing guests is
-	// what a scoped service does — against the design this one declares.
-	OptionalAuth bool
-	// AccountOnly refuses a caller whose only identity is a paid wallet.
+	// One field with three values, because it was two booleans with four
+	// combinations and one of those combinations was nonsense. Account meant
+	// "there has to be a caller" and AccountOnly meant "and paying is not a
+	// caller", so AccountOnly without Account was a state nobody could describe
+	// and the code had to keep straight anyway. Three named values say the same
+	// thing and cannot be set to a contradiction.
 	//
-	// Different from Account, which asks whether there is a caller at all.
-	// This asks whether paying can stand in for one, and says no. What earns
-	// it is a method where the cost is not what is in the way: web.Fetch is
-	// free — an http.Get and a readability pass in this process — but "fetch
-	// any URL you name" is a request this server makes on somebody's behalf,
-	// to wherever they say, and that wants an account behind it rather than a
-	// funded wallet. Rationing needs somebody to ration.
-	AccountOnly bool
-	// Account marks a method that cannot run without a caller, on a service
-	// that is otherwise open.
-	//
-	// Scoped is per service and answers "is any of this private". Some open
-	// services have one method that still needs to know who is asking: chat is
-	// readable by a guest and posting to it is not, and the same is true of the
-	// console. A derived tool on an unscoped service was always dispatched with
-	// an empty account, so such a method could never work over MCP — it read
-	// no caller and refused itself. chat_send did exactly that from the day it
-	// shipped; stream_post only escaped because a hand-written registration
-	// happened to override the derived one.
-	//
-	// Per method rather than per service for the same reason Destructive is:
-	// the property belongs to the operation, not to the domain.
-	Account bool
+	// Scoped, on the Spec, is the same question asked once for a whole service:
+	// a scoped service needs a caller for everything it does. This is for the
+	// open services that have one method that still needs to know who is
+	// asking — chat is readable by a guest and posting to it is not.
+	Needs Requires
 	// Aliases are retired names that must keep resolving to this method. They
 	// are not listed — the point of retiring a name is to stop teaching it —
 	// but anything already calling one keeps working.

@@ -43,8 +43,8 @@ var Spec = service.Spec{
 			Doc: "Search public posts on this instance by keyword. This is the instance's own feed, not the wider internet — use web_search for that",
 			// The index is this instance's, so the search costs a model call
 			// rather than a vendor lookup; the price is on the operation.
-			Cost:    quota.OpSocialSearch,
-			Account: true,
+			Cost:  quota.OpSocialSearch,
+			Needs: service.Caller,
 		},
 	},
 }

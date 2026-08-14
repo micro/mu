@@ -210,22 +210,22 @@ var Spec = service.Spec{
 	Scoped: true,
 	Endpoints: map[string]service.Endpoint{
 		"Address": {
-			AccountOnly: true,
+			Needs: service.Account,
 			Doc: "Your own address on Base, to receive USDC. Created the first time you ask. " +
 				"Funds sent on any other chain land at the same address there and cannot be reached from here",
 		},
 		"Balance": {
-			AccountOnly: true,
+			Needs: service.Account,
 			Doc: "What your wallet holds in USDC on Base. Says so plainly when the chain " +
 				"could not be reached, because that is not the same as holding nothing",
 		},
 		"List": {
-			AccountOnly: true,
+			Needs: service.Account,
 			Doc: "Which priced servers this wallet is allowed to pay, by name. " +
 				"Pass one of these names to wallet_pay",
 		},
 		"Pay": {
-			AccountOnly: true,
+			Needs: service.Account,
 			Doc: "Call a tool on one of those servers and pay for it from your wallet if it " +
 				"asks. Nothing is spent when the tool is free. Every payment is capped per " +
 				"call and per day, so a server cannot name any price it likes",

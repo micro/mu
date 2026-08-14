@@ -123,18 +123,18 @@ var Spec = service.Spec{
 	Card:        Preview,
 	Endpoints: map[string]service.Endpoint{
 		"Build": {Doc: "Build a small app from a description, save it, and return its details and URL. An app is a single page — a tracker, a checklist, a counter — that keeps its own store and runs in the browser",
-			Cost: quota.OpAppBuild, Account: true},
+			Cost: quota.OpAppBuild, Needs: service.Caller},
 		"Read":   {Doc: "Read the details of one app by its slug"},
 		"Search": {Doc: "Search the apps directory for small, useful tools, by name, description or tag"},
 
 		// Where an app comes from. Implemented in authoring.go.
 		"Create": {Doc: "Create an app — a small, self-contained HTML tool hosted here. Takes the HTML; apps_build writes it for you from a description",
-			Cost: quota.OpAppCreate, Account: true},
+			Cost: quota.OpAppCreate, Needs: service.Caller},
 		"Edit": {Doc: "Edit an app you own — its name, description, tags, icon, HTML or price. Fields left out keep their value",
-			Cost: quota.OpAppEdit, Account: true},
-		"Fork": {Doc: "Fork an app into your own account, to change independently of the original", Account: true},
+			Cost: quota.OpAppEdit, Needs: service.Caller},
+		"Fork": {Doc: "Fork an app into your own account, to change independently of the original", Needs: service.Caller},
 		"Run": {Doc: "Publish a snippet of JavaScript and get back a URL that runs it in a browser. It returns a link rather than output — the code runs in a sandbox when somebody opens it, not here",
-			Cost: quota.OpAgentQuery, Account: true},
-		"Test": {Doc: "Test an app by checking its HTML and running its mu.api calls server-side, so an author finds out what is broken without opening it", Account: true},
+			Cost: quota.OpAgentQuery, Needs: service.Caller},
+		"Test": {Doc: "Test an app by checking its HTML and running its mu.api calls server-side, so an author finds out what is broken without opening it", Needs: service.Caller},
 	},
 }

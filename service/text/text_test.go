@@ -1,6 +1,7 @@
 package text
 
 import (
+	"mu/internal/service"
 	"strings"
 	"testing"
 )
@@ -95,8 +96,8 @@ func TestServiceIsNotScoped(t *testing.T) {
 		if ep.Cost == "" {
 			t.Errorf("%s has no price, but every call here costs us a model", name)
 		}
-		if ep.AccountOnly {
-			t.Errorf("%s is AccountOnly, so a paying agent cannot buy it", name)
+		if ep.Needs == service.Account {
+			t.Errorf("%s requires an account, so a paying agent cannot buy it", name)
 		}
 	}
 }

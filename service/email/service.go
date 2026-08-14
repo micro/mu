@@ -53,7 +53,7 @@ var Spec = service.Spec{
 		// deliverability of password resets.
 		"Send": {
 			Cost:        quota.OpExternalEmail,
-			AccountOnly: true,
+			Needs:       service.Account,
 			Destructive: true,
 			Doc: "Send a real email to an outside address, from this instance's " +
 				"authenticated sending domain. Takes an address, a subject and a body; " +
@@ -63,13 +63,13 @@ var Spec = service.Spec{
 				"somebody on this instance use mail_send",
 		},
 		"History": {
-			AccountOnly: true,
+			Needs: service.Account,
 			Doc: "The emails this account has sent, newest first, and what became of " +
 				"each one — delivered, undelivered, failed, or still going. Asks the " +
 				"carrier about anything still in flight, so it is current when read",
 		},
 		"Sender": {
-			AccountOnly: true,
+			Needs: service.Account,
 			Doc: "The address email is sent from, where replies to it go, which addresses " +
 				"this account has proved are its own, and how many messages are left today",
 		},
@@ -83,7 +83,7 @@ var Spec = service.Spec{
 		// uses, so it is a tier to buy your way up rather than a second meter
 		// invented for this tool.
 		"Verify": {
-			AccountOnly: true,
+			Needs: service.Account,
 			Doc: "Check that somebody can read an email address — the verification a " +
 				"signup form runs. Call it with an address to have a six-digit code " +
 				"emailed there, then again with the code the person typed back: the answer " +
