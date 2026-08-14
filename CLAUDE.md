@@ -67,7 +67,12 @@ Built on go-micro: every capability is a go-micro service, the assistant is a go
 go build ./...          # build
 go test ./... -short    # test
 go vet ./...            # vet
+gofmt -l .              # formatting — CI gates on this and nothing above catches it
 ```
+
+CI runs `gofmt -l .` and fails on any output. None of build, test or vet
+look at formatting, so a change can pass everything run by hand and fail the
+first thing CI does — which is how it stayed red across several commits.
 
 ## What a service is
 
