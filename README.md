@@ -147,7 +147,7 @@ mu markets list --category stocks       # live prices
 mu agent "what is the btc price?"       # run the full agent
 mu weather forecast --lat 51.5 --lon -0.12
 mu docs list --collection notes         # your own documents
-mu key                                  # the key on this machine, and what it holds
+mu x402                                 # paying per call: config, and your key
 mu help                                 # full tool list
 ```
 
@@ -178,7 +178,7 @@ export ANTHROPIC_API_KEY=sk-ant-...     # or OPENROUTER_API_KEY
                                         # or OPENAI_BASE_URL for Ollama etc.
 
 # 2. A wallet. Created for you on first run, or make it yourself:
-mu key new                              # prints an address; send USDC on Base
+mu x402 key new                         # prints an address; send USDC on Base
                                         # to it. No ETH — you never pay gas.
 
 # 3. Ask.

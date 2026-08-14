@@ -12,8 +12,9 @@ package cli
 // was the service. That rule *is* the overload. It works and it is unlearnable,
 // because nothing about the words tells you which key you are about to look at.
 //
-// So the local one is `mu key` and `wallet` is an ordinary service reaching the
-// ordinary dispatcher. This checks the special case has not grown back.
+// So the local one is `mu x402 key` — under the thing it exists for — and
+// `wallet` is an ordinary service reaching the ordinary dispatcher. This checks
+// neither special case has grown back.
 
 import (
 	"os"
@@ -34,9 +35,22 @@ func TestWalletHasNoSpecialCaseInTheDispatcher(t *testing.T) {
 			`here means the CLI is deciding between two things called wallet, which ` +
 			`is the thing that was wrong`)
 	}
-	if !strings.Contains(body, `case "key":`) {
-		t.Error(`the local key command is gone from the dispatcher — "mu key" is how ` +
-			`somebody reaches the key on their own machine`)
+	if strings.Contains(body, `case "key":`) {
+		t.Error(`"key" is a top-level command again. It belongs under x402, which is ` +
+			`what it is for — and this CLI already deals in keys that have nothing ` +
+			`to do with a chain, since mu login pastes a token`)
+	}
+}
+
+// And it is reachable, under x402, where it was put.
+func TestTheKeyIsReachableUnderX402(t *testing.T) {
+	src, err := os.ReadFile("x402.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(src), `args[0] == "key"`) {
+		t.Error(`mu x402 key does not reach the local key — there is then no way to ` +
+			`see which key this machine signs with, or to make one`)
 	}
 }
 

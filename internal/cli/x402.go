@@ -21,6 +21,18 @@ func runX402(args []string) int {
 	if len(args) > 0 && args[0] == "call" {
 		return runX402Pay(args[1:])
 	}
+	// The key this machine signs with. Under x402 because that is what it is
+	// for: it was made to pay per call with no account, and the identity it
+	// also signs is not a second purpose but the same one covering the free
+	// half — an agent that pays for what costs money still needs to say who it
+	// is for what does not. See walletauth.go, which exists for exactly that.
+	//
+	// It was `mu key` for a day. That is a fine word until you notice this CLI
+	// already deals in keys that are nothing to do with a chain — `mu login`
+	// pastes a token, and /token mints more.
+	if len(args) > 0 && args[0] == "key" {
+		return runKey(args[1:])
+	}
 	fmt.Print(x402.X402Status())
 
 	// Can the operator actually reach what they are paid?
@@ -36,7 +48,8 @@ func runX402(args []string) int {
 	fmt.Println()
 	fmt.Println("Pay for a call with the key on this machine:")
 	fmt.Println("  mu x402 call web_search query=\"x402\"")
-	fmt.Println("  mu key                    which key that is, and what it holds")
+	fmt.Println("  mu x402 key               which key that is, and what it holds")
+	fmt.Println("  mu x402 key new           make one")
 	return 0
 }
 

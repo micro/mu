@@ -25,8 +25,7 @@ COMMON COMMANDS
   mu web search "claude code"    Search the web
   mu weather forecast --lat 51.5 --lon -0.12
   mu apps search "pomodoro"      Search the apps directory
-  mu key                         The key on this machine, and what it holds
-  mu x402                        This instance's payment config
+  mu x402                        Paying per call: config, and this machine's key
   mu wallet balance              What your wallet holds on the server
 
 MANAGEMENT

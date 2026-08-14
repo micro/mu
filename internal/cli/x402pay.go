@@ -97,7 +97,7 @@ func runX402Pay(args []string) int {
 		if bw == nil && strings.Contains(err.Error(), "no wallet") {
 			fmt.Println()
 			fmt.Println("That tool is priced. Put a funded Base wallet's key in")
-			fmt.Println("~/.mu/keys/wallet.seed, or pass --seed. `mu key` says which")
+			fmt.Println("~/.mu/keys/wallet.seed, or pass --seed. `mu x402 key` says which")
 			fmt.Println("address a seed controls.")
 		}
 		return 1
@@ -108,7 +108,7 @@ func runX402Pay(args []string) int {
 
 // walletFromSeed loads a Base wallet from a private key on disk.
 //
-// The same file `mu key` audits, so an operator who has already checked
+// The same file `mu x402 key` audits, so an operator who has already checked
 // which address they control pays from that one. Read here rather than through
 // GetOrCreateWallet, because that keys wallets by account and there is no
 // account in this flow.

@@ -10,17 +10,24 @@ import (
 	"mu/service/wallet"
 )
 
-// The key on this machine.
+// The key on this machine: `mu x402 key`.
 //
-// This was `mu wallet`, and that word now means something else: a service on
+// This was `mu wallet`, and that word now means something else — a service on
 // the server, with an address of its own and four tools to use it. Two
-// different keys under one name — one the server holds for your account, one
-// you hold and the server never sees — and the only thing telling them apart
-// was which arguments you happened to type. That is not a distinction anybody
-// should have to hold in their head about money.
+// different keys under one name, one the server holds for your account and one
+// you hold that it never sees, told apart only by which arguments you happened
+// to type. Not a distinction anybody should hold in their head about money.
 //
-// So this is `mu key`, which is what it is: a private key in a file, that this
-// CLI signs with. The server has no idea it exists.
+// It went to `mu key` first, and that was half a fix. The word is accurate and
+// it is not free: this CLI already deals in keys that have nothing to do with a
+// chain, since `mu login` pastes a token and /token mints more. Under `x402` it
+// is unambiguous, and it sits with the two other things about paying per call.
+//
+// The identity it signs is not an argument against that grouping. Free
+// account-scoped tools need a caller and never charge for one, so an agent that
+// pays for what costs money still has to say who it is for what does not — see
+// walletauth.go, which exists for that and for nothing else. Same purpose,
+// free half.
 //
 // The file it reads is still ~/.mu/keys/wallet.seed. A command can be renamed
 // freely; a file that holds real money cannot, because the rename ships, the
@@ -44,7 +51,7 @@ func KeyPath(args []string) string {
 
 // KeyAddress returns the address a stored key controls.
 //
-// Shared with `mu x402`, which asks a different question about the same file:
+// Shared with `mu x402` bare, which asks a different question about the same file:
 // this one is "what do I sign with", that one is "is the address I am being
 // paid at one I can prove I control". Same key, two people.
 func KeyAddress(path string) (string, bool) {
@@ -61,7 +68,7 @@ func KeyAddress(path string) (string, bool) {
 
 // runKey says what this machine signs with, and what it holds.
 //
-//	mu key [path-to-key]   (default ~/.mu/keys/wallet.seed)
+//	mu x402 key [path-to-key]   (default ~/.mu/keys/wallet.seed)
 //
 // Caller-side only. It used to also report whether the key controlled
 // X402_PAY_TO, which is a different question asked by a different person: that
@@ -80,7 +87,7 @@ func runKey(args []string) int {
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		fmt.Println("key: could not read —", err)
-		fmt.Println("Make one with `mu key new`.")
+		fmt.Println("Make one with `mu x402 key new`.")
 		return 1
 	}
 	seed := strings.TrimSpace(string(raw))
@@ -95,7 +102,7 @@ func runKey(args []string) int {
 		}
 		fmt.Println("address: ", addr)
 
-		// What is actually in it. `mu key` could say which address a key
+		// What is actually in it. `mu x402 key` could say which address a key
 		// controlled and not what it held, which is the one question somebody
 		// funding a wallet is asking — and the answer lived only in `mu agent`'s
 		// startup line, where you had to start a session to see it.
@@ -162,7 +169,7 @@ func dotenvValue(key string) string {
 
 // newKey creates the key `mu agent` pays from.
 //
-// There was no way to make one. `mu key` audits one and the agent reads
+// There was no way to make one. `mu x402 key` audits one and the agent reads
 // it, but nothing wrote it — so the honest answer to "how do I fund the wallet"
 // was "generate a secp256k1 key by hand and put the hex in this file", which is
 // not an answer. Running clean, the first thing anybody met was a path that did
@@ -189,7 +196,7 @@ func newKey(args []string) int {
 	// unrecoverably. Refusing is the only safe default.
 	if _, err := os.Stat(seedPath); err == nil {
 		fmt.Printf("%s already exists — not touching it.\n", seedPath)
-		fmt.Println("Run `mu key` to see which address it controls.")
+		fmt.Println("Run `mu x402 key` to see which address it controls.")
 		return 1
 	}
 
@@ -211,7 +218,7 @@ func newKey(args []string) int {
 
 // createSeed writes a fresh key at path and returns its address.
 //
-// Shared by `mu key new` and `mu agent`, which needs one on a clean run and
+// Shared by `mu x402 key new` and `mu agent`, which needs one on a clean run and
 // should not make somebody go and get it. Refuses to overwrite: the file being
 // there means a key exists, a key can hold money, and replacing it would
 // strand whatever it holds silently and unrecoverably.

@@ -110,14 +110,6 @@ func Run(args []string) int {
 		return runConfig(rest, &rc)
 	case "setup":
 		return runSetup(rest)
-	case "key":
-		// The key on this machine, which the server never sees. `wallet` is
-		// deliberately *not* a case here: it is an ordinary service and reaches
-		// the generic dispatcher below like every other one. It was a case for
-		// a while, with a rule about which arguments meant the local key and
-		// which meant the service, and that rule was the overload rather than a
-		// fix for it.
-		return runKey(rest)
 	case "x402":
 		return runX402(rest)
 	case "agent":
