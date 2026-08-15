@@ -163,9 +163,13 @@ func authRequired() map[string]bool {
 		"/.well-known/agent.json":        false, // Public - A2A agent card
 		"/.well-known/mcp-registry-auth": false, // Public - registry domain proof
 		"/a2a":                           false, // Public - A2A protocol
-		"/agent":                         false, // Public page, auth checked in handler
-		"/setup":                         false, // First-run setup (open only until an admin exists)
-		"/developers":                    false, // Legacy alias → /tools (public)
+		// Public at the door, decided per tool inside. The same answer /mcp
+		// gives, for the same reason: news and weather must not need an account.
+		"/api/v1":     false,
+		"/api/v1/":    false,
+		"/agent":      false, // Public page, auth checked in handler
+		"/setup":      false, // First-run setup (open only until an admin exists)
+		"/developers": false, // Legacy alias → /tools (public)
 	}
 	return authenticated
 }
@@ -614,11 +618,21 @@ func registerRoutes() {
 	// /api used to document a second way in: the same tools over plain REST,
 	// with their own auth story and their own price table. Two documented doors
 	// is a choice the reader has to make before they can start, and MCP is the
-	// one that matters — so this is now a signpost to it, not a page. The REST
-	// paths themselves still answer; they are just not a thing to learn.
+	// one that matters — so this is a signpost to it, not a page.
 	http.HandleFunc("/api", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/mcp", http.StatusMovedPermanently)
 	})
+
+	// /api/v1/<service>/<method> — the door for a program that is not an agent.
+	//
+	// It has no auth story and no price table of its own; it turns a path into a
+	// tool name and calls the same function /mcp calls, which is why adding it
+	// is not adding a second way in. See internal/api/rest.go.
+	// Both forms, because serve() strips a trailing slash before routing: with
+	// only the subtree pattern the bare root redirects to itself forever. Every
+	// other subtree route here does the same.
+	http.HandleFunc(api.RESTRoot, api.RESTHandler)
+	http.HandleFunc(api.RESTPrefix, api.RESTHandler)
 
 	// serve the MCP page and server (GET = HTML page, POST = JSON-RPC)
 	// One catalogue, two lenses — see internal/api/tools_page.go.

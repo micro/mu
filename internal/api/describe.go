@@ -7,8 +7,6 @@ package api
 // the only way to get it was to be the tools/list handler. A 402 that wants to
 // say "this is what you would be buying" had no way to find out.
 
-import "encoding/json"
-
 // ToolSchema is a tool's arguments as JSON Schema, in the shape tools/list
 // publishes.
 func ToolSchema(t Tool) map[string]any {
@@ -31,18 +29,15 @@ func ToolSchema(t Tool) map[string]any {
 //
 // Matching goes through toolMatches, the same as dispatch, so an alias
 // describes the tool it actually reaches rather than nothing.
-func MCPToolCalled(body []byte) (Tool, bool) {
-	var req struct {
-		Method string `json:"method"`
-		Params struct {
-			Name string `json:"name"`
-		} `json:"params"`
-	}
-	if err := json.Unmarshal(body, &req); err != nil || req.Method != "tools/call" {
+func MCPToolCalled(body []byte) (Tool, bool) { return ToolByName(mcpToolName(body)) }
+
+// ToolByName resolves a tool by its canonical name or one of its aliases.
+func ToolByName(name string) (Tool, bool) {
+	if name == "" {
 		return Tool{}, false
 	}
 	for i := range tools {
-		if toolMatches(tools[i], req.Params.Name) {
+		if toolMatches(tools[i], name) {
 			return tools[i], true
 		}
 	}

@@ -331,16 +331,28 @@ func serve(addr string) {
 			// A wallet that signed instead of paying. Verified once, here,
 			// because the nonce may only be spent once — checking it again
 			// deeper in would refuse the caller's own second look.
-			if r.URL.Path == "/mcp" {
+			// Two doors dispatch tools — /mcp for something choosing one, and
+			// /api/v1/ for something that already knows which it wants — and
+			// everything below has to happen for both. It used to say /mcp four
+			// times, which is how a second door starts out unauthenticated and
+			// unpriced: the handler is the easy half, and this is the half
+			// nobody remembers exists.
+			//
+			// Read the body once. It was read twice, restored twice, and parsed
+			// twice for two questions about the same tool.
+			if api.ToolDoor(r.URL.Path) {
 				host := strings.TrimPrefix(strings.TrimPrefix(app.BaseURL(r), "https://"), "http://")
 				r, _ = wallet.AuthenticateRequest(r, strings.TrimRight(host, "/"))
-			}
 
-			if r.URL.Path == "/mcp" && r.Method == http.MethodPost {
-				body, _ := io.ReadAll(io.LimitReader(r.Body, 1<<20))
-				r.Body.Close()
-				r.Body = io.NopCloser(bytes.NewReader(body))
-				if api.MCPToolNeedsAuth(body) {
+				var body []byte
+				if r.Method == http.MethodPost {
+					body, _ = io.ReadAll(io.LimitReader(r.Body, 1<<20))
+					r.Body.Close()
+					r.Body = io.NopCloser(bytes.NewReader(body))
+				}
+				tool := api.RequestTool(r.URL.Path, body)
+
+				if api.ToolNeedsAuth(tool) {
 					if _, err := auth.GetSession(r); err != nil && !x402.HasPayment(r) &&
 						wallet.SignerFrom(r.Context()) == "" {
 						origin := app.BaseURL(r)
@@ -350,24 +362,20 @@ func serve(addr string) {
 						return
 					}
 				}
-			}
 
-			// x402: gate metered MCP tool calls. /mcp is a public endpoint, so
-			// the payment handshake lives here where auth + wallet are in scope.
-			// A metered tools/call with no session gets the standard 402
-			// challenge; one bearing a payment header is routed to the
-			// facilitator for verify+settle by the tool's QuotaCheck.
-			if r.URL.Path == "/mcp" && r.Method == http.MethodPost && x402.X402Enabled() {
-				body, _ := io.ReadAll(io.LimitReader(r.Body, 1<<20))
-				r.Body.Close()
-				r.Body = io.NopCloser(bytes.NewReader(body))
+				// x402: gate metered tool calls. Both doors are public, so the
+				// payment handshake lives here where auth + wallet are in
+				// scope. A metered call with no session gets the standard 402
+				// challenge; one bearing a payment header is routed to the
+				// facilitator for verify+settle by the tool's QuotaCheck.
+				//
 				// Metered, not merely priced. A tool having a wallet operation
 				// is not the same as it costing anything: news, web fetch,
 				// quran and video search are zero on purpose. Gating on "has an
 				// operation" charged an anonymous caller for all four, so the
 				// free tier was unreachable and an agent that found this
 				// endpoint mid-task met a demand for USDC on its first call.
-				if op := api.MCPWalletOp(body); op != "" && quota.Metered(op) {
+				if op := api.ToolWalletOp(tool); x402.X402Enabled() && op != "" && quota.Metered(op) {
 					// The public origin, not r.Host: behind the proxy r.Host is
 					// the loopback port, and an x402 client checks this field
 					// against what it is calling.
@@ -389,7 +397,7 @@ func serve(addr string) {
 						// reading this challenge can index the tool. Nil
 						// unless X402_BAZAAR is on.
 						var listing map[string]any
-						if t, ok := api.MCPToolCalled(body); ok {
+						if t, ok := api.ToolByName(tool); ok {
 							listing = x402.BazaarExtensions(t.Name, t.Description, api.ToolSchema(t))
 						}
 						if x402.WritePaymentRequired(w, op, resource, listing) {

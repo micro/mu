@@ -183,18 +183,20 @@ type ToolParam struct {
 // The charge still happens: service/mail checks and consumes external_email
 // itself once it knows who is sending. What is dropped is only the offer to
 // sell entry to somebody who will be turned away at the door.
-func MCPWalletOp(body []byte) string {
-	var req struct {
-		Method string `json:"method"`
-		Params struct {
-			Name string `json:"name"`
-		} `json:"params"`
-	}
-	if err := json.Unmarshal(body, &req); err != nil || req.Method != "tools/call" {
+func MCPWalletOp(body []byte) string { return ToolWalletOp(mcpToolName(body)) }
+
+// ToolWalletOp is the same question asked of a tool name rather than a
+// JSON-RPC body, so a door that is not MCP can ask it.
+//
+// The split exists because the answers below are about the tool, and only the
+// parsing above was ever about MCP. A second door that re-derived them would be
+// a second price list and a second opinion about who may pay.
+func ToolWalletOp(name string) string {
+	if name == "" {
 		return ""
 	}
 	for i := range tools {
-		if toolMatches(tools[i], req.Params.Name) {
+		if toolMatches(tools[i], name) {
 			// AccountOnly, not NeedsAccount. The two were the same thing when
 			// the only identity was a signed-in session: a scoped tool would
 			// refuse an anonymous caller whatever they paid, so offering to
@@ -229,18 +231,16 @@ func MCPWalletOp(body []byte) string {
 //
 // Public tools stay anonymous: a challenge on those would make news and weather
 // unreachable without an account, which is the opposite of the point.
-func MCPToolNeedsAuth(body []byte) bool {
-	var req struct {
-		Method string `json:"method"`
-		Params struct {
-			Name string `json:"name"`
-		} `json:"params"`
-	}
-	if err := json.Unmarshal(body, &req); err != nil || req.Method != "tools/call" {
+func MCPToolNeedsAuth(body []byte) bool { return ToolNeedsAuth(mcpToolName(body)) }
+
+// ToolNeedsAuth is the same question asked of a tool name. See ToolWalletOp for
+// why the two halves are separate.
+func ToolNeedsAuth(name string) bool {
+	if name == "" {
 		return false
 	}
 	for i := range tools {
-		if !toolMatches(tools[i], req.Params.Name) {
+		if !toolMatches(tools[i], name) {
 			continue
 		}
 		if tools[i].OptionalAuth {
@@ -256,6 +256,21 @@ func MCPToolNeedsAuth(body []byte) bool {
 		return service.AccountScoped(serviceOf(tools[i].Name))
 	}
 	return false
+}
+
+// mcpToolName returns the tool a JSON-RPC body is calling, or "" if the body is
+// not a tools/call at all.
+func mcpToolName(body []byte) string {
+	var req struct {
+		Method string `json:"method"`
+		Params struct {
+			Name string `json:"name"`
+		} `json:"params"`
+	}
+	if err := json.Unmarshal(body, &req); err != nil || req.Method != "tools/call" {
+		return ""
+	}
+	return req.Params.Name
 }
 
 // toolMatches reports whether name is the tool's canonical name or one of its

@@ -16,7 +16,7 @@ Built on go-micro: every capability is a go-micro service, the assistant is a go
 - **Services** — each domain is a package under `service/`, one directory per service
 - **Agents** — `agent/micro/` contains specialised micro-agents per domain, routed by keyword + LLM. `agent/<name>/` is an agent that writes into the service of the same name: `agent/blog` composes the daily opinion by asking the registry what exists rather than naming services in code, `agent/social` surfaces breaking stories, `agent/digest` writes the daily briefing. The service stores; the agent decides what is worth storing. `agent/a2a` is the A2A door onto them — it belongs here rather than beside the MCP server, because /mcp serves tools derived from services and /a2a serves the thing that consumes them
 - **Channels** — Discord (`client/discord/`), Telegram (`client/telegram/`), WhatsApp (`client/whatsapp/`)
-- **Protocols** — MCP server at `/mcp`, A2A at `/a2a`, x402 crypto payments
+- **Protocols** — MCP server at `/mcp`, A2A at `/a2a`, REST at `/api/v1/`, x402 crypto payments. Everything upstream of the mux that a tool door needs — wallet signature, auth challenge, payment gate — asks `api.ToolDoor(path)` rather than naming a path, because a second door otherwise starts out unpriced
 - **AI** — `internal/ai/` supports Anthropic Claude, Atlas Cloud (DeepSeek), OpenRouter, and local models (Ollama)
 - **Config** — `internal/settings/` for live-reloadable settings, admin UI at `/admin/env`
 
@@ -33,7 +33,7 @@ Built on go-micro: every capability is a go-micro service, the assistant is a go
 | `service/mail/` | SMTP server, DKIM, inbound filtering |
 | `service/blog/` | Microblogging with AI-generated daily digests |
 | `internal/ai/` | LLM abstraction — Anthropic, Atlas Cloud, OpenRouter, local models |
-| `internal/api/` | MCP server, tool registry |
+| `internal/api/` | MCP server, tool registry, and the REST door at `/api/v1/<service>/<method>` — a path becomes a tool name and goes to the same `ExecuteTool`, so it has no auth story or price table of its own. Not a second agent door: `/mcp` is that |
 | `internal/app/` | Web UI framework, templates, middleware |
 | `internal/auth/` | Account system, sessions, passkeys |
 | `internal/notes/` | The store behind `service/notes` — a title, its text, and nothing that expires |

@@ -106,6 +106,7 @@ changing anything.
 | Surface | Path to the capability |
 |---|---|
 | `/mcp` — external agents | `api.ExecuteTool` → `tool/derive.go` → `service.Call` (go-micro RPC) |
+| `/api/v1/<service>/<method>` — programs that are not agents | path → tool name → the same `api.ExecuteTool` |
 | `mu <service> <method>` — CLI | HTTP → `/mcp` → the above |
 | `/a2a` — other agents | `agent/a2a` → `agent/micro` → `api.RunPlannedAs` → the above |
 | Apps — `mu.service(name, method, args)` | `POST /apps/{slug}/sdk/service` → `service.CallDynamic` → RPC |
@@ -167,21 +168,30 @@ refused, and it is currently addressed as though it belonged to apps.
 
 ## 5. Architecture: what to change, in order
 
-**1. Promote the app SDK's service door to a first-class API.**
-`POST /apps/{slug}/sdk/service` already takes `{service, method, args}`, binds
-identity from the session, strips any `account_id` the caller supplies, and
-refuses account-scoped services. That is the API — it is just addressed as if it
-belonged to apps, and it is deliberately crippled (no scoped services) for a
-reason that applies to sandboxed apps and not to a signed-in desktop client.
+**1. ~~Promote the app SDK's service door to a first-class API.~~ Done.**
+`/api/v1/<service>/<method>` is live. It has no auth story and no price table of
+its own: a path becomes a tool name and goes to `ExecuteTool`, the same function
+`/mcp` calls, so scope, account-only refusals, quota, identity binding and price
+are inherited rather than reimplemented. `GET` for reads with arguments typed
+off the tool's own schema, `POST` for anything, and a destructive method refuses
+`GET` so a link or a prefetch cannot fire one. `GET /api/v1/` is the catalogue,
+derived from the same specs. See `internal/api/rest.go`.
 
-Lift it to a route of its own (`/api/v1/<service>/<method>`; note `/api` itself
-is currently the API documentation page), derive it from Specs like every other
-door, and let apps be one caller of it rather than its owner. This is mostly a
-route move and a permission split, and it is what makes "everything works
-against an API" true without touching a line of UI.
+Two things it taught, both now written down where they will be found again:
 
-It also needs the same treatment `/mcp` has for payment: x402 sits at the door,
-not on the spine, so a new door starts unpriced unless it is wired.
+- The payment and authentication challenges live *upstream of the mux*, and
+  they said `/mcp` four times. A second door starts out unpriced and
+  unauthenticated unless somebody remembers that file exists — the handler is
+  the easy half. They now ask `api.ToolDoor(path)` once.
+- `internal/server` strips a trailing slash from every path before routing, so
+  a subtree route registered only as `/api/v1/` is reached as `/api/v1`, which
+  the mux answers by redirecting to `/api/v1/`, which is stripped again. The
+  catalogue redirected to itself forever. Every other subtree route in the
+  codebase registers both forms, which is why nothing had noticed.
+
+What is deliberately **not** done: this is not documented as a second way for an
+agent to call tools, and should not be. `/mcp` is the agent door. This is for
+programs that already know which method they want.
 
 **2. Let page handlers use the spine, opportunistically.**
 Not a UI rewrite — that is the expensive answer to a cheap question. A page
