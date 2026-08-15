@@ -253,6 +253,54 @@ client already exists and proved the API, not in order to have one.
 
 ## 7. Product: what to change
 
+### The read on the history, and what it decides
+
+Three positions so far. Personal home server: nobody came. Tools for agents:
+more interesting to developers, still not enough. The tempting conclusion is
+that agents is the next rung and the ladder is the point.
+
+The more useful reading is what the two failures have in common. Both offered
+**supply** — here is a catalogue, come and get it — and both made the customer
+bring the goal *and* do the assembly: find us, sign up, wire it, then still
+decide what to ask for. Nothing shipped so far has ever brought the intent.
+
+That is what an agent changes, and it is the only reason the move is
+interesting. Not because it is next, but because it is the first version where
+somebody says what they want once and the system does the assembly.
+
+**The trap is that "we do agents" is undifferentiated.** Every model vendor
+ships one, better funded, with distribution we do not have. If the pitch is "an
+assistant", we lose.
+
+What is defensible is that this agent has hands. A real sending address with
+DKIM. A phone number. A wallet with USDC and a per-day cap. Storage. The
+ability to pay a stranger's API mid-task with no signup. Most agents talk; this
+one acts, is accountable for the action, and the action costs money from a
+balance somebody topped up. That is not a feature list — it is what two pivots
+of building have actually produced, and it has never been the headline.
+
+**And it is not a pivot away from the tools business.** Tool calls are the
+revenue, metered per request. An agent answering one question makes five of
+them. Agents do not replace tools; agents are how tool calls get generated —
+the demand side of a supply business that already works. Everything built stays.
+
+### The uncomfortable alternative
+
+The honest competing explanation is that product shape was never the binding
+constraint. Home server, MCP tools, agents — all three are prosumer or
+developer products with the same go-to-market: somebody has to find us and
+configure something. If distribution is the constraint, agents is a fourth
+product that fails the same way.
+
+That is now answerable rather than arguable. Usage is attributed per surface —
+`web`, `mcp`, `api`, `agent`, `cli`, `app` — since the API door was built and
+the attribution bug fixed. The question that decides this is not which rung is
+next. It is **does anyone come back on day two**: did an account open the home
+screen twice, does any agent token call twice in a week. Read the number before
+building the fourth thing.
+
+### So, concretely
+
 **1. Agents becomes a surface, not an inventory.**
 `/agents` lists tokens. It should list *your agents*, and clicking one should
 open a conversation with that agent — its scope, its memory, its history, its
@@ -264,9 +312,25 @@ conversation view and per-agent history.
 daily without a design, and what survives a week of using it is what deserves a
 page. Ship the loop there, then surface it.
 
-**2. Decide what "agents" means for the neutrality claim** — see the rule in §1.
-This is a positioning decision, not an engineering one, and it should be made
-deliberately rather than discovered later.
+**2. Do not bet on a protocol.** The catalogue is protocol-independent and doors
+are cheap — REST took a day. Be reachable over MCP, A2A and whatever comes next,
+and stay indifferent to which wins. A directory of agents is the one part of an
+agent-to-agent world with no moat: A2A already discovers through
+`/.well-known/agent.json`, so a phone book competes with a design decision the
+protocol already made. What has value there is settlement, identity and
+delivery — the bank, the passport office and the post office — and we run all
+three.
+
+If the missing layer is worth building, it is an *extension* and not a standard:
+x402 over A2A, a paid and identified agent-to-agent message. Both halves exist.
+A spec that documents a running implementation is worth something; a spec
+written as a design is a bid for other people's engineering time, and MCP won on
+distribution rather than on design.
+
+**3. The neutrality rule is what makes agents safe to ship** — see §1. Everything
+`agent/` can reach, an MCP client with a token can reach. The moment our agent
+has a private door we are competing with our own callers and have removed the
+reason to build on us.
 
 **3. Keep the two lenses honest.** Services and Tools are the same catalogue
 seen by a person and by a model. As the catalogue grows, the person's lens needs
