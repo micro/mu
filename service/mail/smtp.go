@@ -216,7 +216,7 @@ func (s *Session) Rcpt(to string, opts *smtpd.RcptOptions) error {
 	// asim+research@ is asim's inbox, tagged research — see alias.go. The
 	// account lookup uses the part before the plus; without this, every
 	// plus-address is rejected as a non-existent user.
-	username, _ := SplitAlias(parts[0])
+	username, tag := SplitAlias(parts[0])
 
 	// If from localhost (trusted internal client), allow any recipient
 	// But still require SMTP AUTH to prevent abuse
@@ -245,13 +245,26 @@ func (s *Session) Rcpt(to string, opts *smtpd.RcptOptions) error {
 		}
 	}
 
-	// support@ is an address this instance offers and nobody holds — "support"
-	// is a reserved username, so the lookup below refuses it and the mail is
-	// rejected at the door. Somebody who cannot pay writes there and gets a
-	// bounce; Data delivers it to the admin.
-	if strings.EqualFold(username, SupportMailbox) {
+	// Two addresses this instance offers that nobody holds. Both are reserved
+	// usernames (internal/auth/username.go), so the account lookup below refuses
+	// them and the mail is rejected at the door — 550 before Data ever runs.
+	// Data knows what to do with each of them; without this it never got the
+	// chance, which is how agent@ was unreachable while the code answering it
+	// sat there working.
+	//
+	//   support@ — somebody who cannot pay writes there. Data delivers it to
+	//              the first admin.
+	//   agent@   — write to your agent and it writes back. Data attributes the
+	//              mail by *sender*, so a verified address on this instance
+	//              reaches its own agent with nothing to remember.
+	//
+	// The tag has to be empty because that is the condition Data resolves them
+	// under: accepting support+x@ here would take the mail and then drop it
+	// silently, and a bounce at the door is the honest answer.
+	if tag == "" && (strings.EqualFold(username, SupportMailbox) ||
+		strings.EqualFold(username, AgentMailbox)) {
 		s.to = append(s.to, to)
-		app.Log("mail", "Accepting support mail for %s", to)
+		app.Log("mail", "Accepting mail for reserved mailbox %s", to)
 		return nil
 	}
 
