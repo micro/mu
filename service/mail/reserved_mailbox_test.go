@@ -79,21 +79,54 @@ func TestAnotherDomainIsStillNotRelayed(t *testing.T) {
 	}
 }
 
-// A tagged reserved address bounces rather than vanishing.
+// The two reserved mailboxes differ on the tag, and the door has to differ the
+// same way.
 //
-// Data resolves support@ and agent@ only when there is no +tag: agent+foo@
-// falls through to an account lookup for "agent", finds nothing and drops the
-// message with a log line. Accepting it at the door would mean taking
-// responsibility for mail and then silently discarding it, which is the one
-// outcome worse than a bounce.
-func TestATaggedReservedAddressIsRefusedRatherThanDropped(t *testing.T) {
+// agent+research@ names which agent answers, so it is accepted. support has
+// nothing to name: support+x@ falls through to an account lookup for "support",
+// finds nothing and drops the message with a log line. Accepting that at the
+// door means taking responsibility for mail and then silently discarding it,
+// which is worse than a bounce.
+func TestTheTagIsAcceptedOnlyWhereDeliveryUsesIt(t *testing.T) {
 	t.Setenv("MAIL_DOMAIN", "micro.mu")
 
-	for _, box := range []string{SupportMailbox, AgentMailbox} {
-		if err := rcpt(t, box+"+anything@micro.mu"); err == nil {
-			t.Errorf("%s+anything@micro.mu was accepted at the door, but Data resolves "+
-				"the reserved mailboxes only with an empty tag — so this message is "+
-				"accepted and then thrown away", box)
+	if err := rcpt(t, AgentMailbox+"+research@micro.mu"); err != nil {
+		t.Errorf("agent+research@micro.mu refused (%v) — the tag names which agent "+
+			"answers, so this is an address, not a typo", err)
+	}
+	if err := rcpt(t, SupportMailbox+"+anything@micro.mu"); err == nil {
+		t.Error("support+anything@micro.mu was accepted at the door, but Data resolves " +
+			"support only with an empty tag — so this message is accepted and then " +
+			"thrown away")
+	}
+}
+
+// The loop guard has to see through the tag.
+//
+// An agent answering from agent+research@ and being written back to is a fresh
+// run every turn, forever, at a model call each. The guard compared against the
+// plain shared address, which stopped being enough the moment the tagged form
+// existed.
+func TestAnAgentsOwnReplyDoesNotWakeItAgain(t *testing.T) {
+	t.Setenv("MAIL_DOMAIN", "micro.mu")
+
+	for _, from := range []string{
+		"agent@micro.mu", "AGENT@micro.mu", "agent+research@micro.mu",
+		"agent+anything+nested@micro.mu",
+	} {
+		if !fromSharedAgent(from) {
+			t.Errorf("%s is not recognised as this instance's own agent address, so its "+
+				"reply wakes the agent again and the two of them talk forever", from)
+		}
+	}
+	// And it is not a way to wave through anybody who happens to be called
+	// agent somewhere else, or a local user whose name starts the same way.
+	for _, from := range []string{
+		"agent@example.net", "agentsmith@micro.mu", "notagent@micro.mu", "",
+	} {
+		if fromSharedAgent(from) {
+			t.Errorf("%s was treated as this instance's own agent address, so real mail "+
+				"from it is silently ignored", from)
 		}
 	}
 }

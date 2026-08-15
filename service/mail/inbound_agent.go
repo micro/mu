@@ -57,12 +57,44 @@ func SupportAddress() string {
 }
 
 // SharedAgentAddress is the address itself, for display and comparison.
-func SharedAgentAddress() string {
+func SharedAgentAddress() string { return SharedAgentAddressFor("") }
+
+// SharedAgentAddressFor is the shared address naming one agent:
+// agent+research@<domain>. Empty tag gives the plain address, which is the
+// default assistant.
+//
+// The tag carries the agent's name and not the owner's, which is the whole
+// difference from you+research@ — one thing to remember instead of two, and the
+// one you actually chose.
+func SharedAgentAddressFor(tag string) string {
 	domain := ConfiguredDomain()
 	if domain == "" {
 		return ""
 	}
+	if tag = cleanTag(tag); tag != "" {
+		return AgentMailbox + "+" + tag + "@" + domain
+	}
 	return AgentMailbox + "@" + domain
+}
+
+// fromSharedAgent reports whether an address is this instance's own agent
+// address, tagged or not.
+//
+// The loop guard, and it has to see the tag: an agent answering from
+// agent+research@ and being written back to would otherwise be a fresh run
+// every turn, forever, at a model call each. Comparing against the plain
+// address alone stopped being enough the moment the tagged form existed.
+func fromSharedAgent(addr string) bool {
+	domain := ConfiguredDomain()
+	if domain == "" || addr == "" {
+		return false
+	}
+	local, at, found := strings.Cut(addr, "@")
+	if !found || !strings.EqualFold(at, domain) {
+		return false
+	}
+	account, _ := SplitAlias(local)
+	return strings.EqualFold(account, AgentMailbox)
 }
 
 // KnownSender reports whether an address is one this account corresponds with.
@@ -112,8 +144,9 @@ func mayDispatch(r wakeRequest) bool {
 	}
 	// Our own reply coming back. An agent answering its own answer is a model
 	// call per turn, forever. Two forms: the shared address an agent replies
-	// from, and any address writing to itself.
-	if strings.EqualFold(r.From, SharedAgentAddress()) {
+	// from — tagged or not, see fromSharedAgent — and any address writing to
+	// itself.
+	if fromSharedAgent(r.From) {
 		return false
 	}
 	if r.To != "" && strings.EqualFold(r.From, r.To) {

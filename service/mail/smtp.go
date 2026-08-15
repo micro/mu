@@ -258,11 +258,12 @@ func (s *Session) Rcpt(to string, opts *smtpd.RcptOptions) error {
 	//              mail by *sender*, so a verified address on this instance
 	//              reaches its own agent with nothing to remember.
 	//
-	// The tag has to be empty because that is the condition Data resolves them
-	// under: accepting support+x@ here would take the mail and then drop it
-	// silently, and a bounce at the door is the honest answer.
-	if tag == "" && (strings.EqualFold(username, SupportMailbox) ||
-		strings.EqualFold(username, AgentMailbox)) {
+	// They differ on the tag, because Data does: agent+research@ names which of
+	// your agents answers, and support has nothing to name. Accepting
+	// support+x@ here would take the mail and then drop it silently, and a
+	// bounce at the door is the honest answer.
+	if strings.EqualFold(username, AgentMailbox) ||
+		(tag == "" && strings.EqualFold(username, SupportMailbox)) {
 		s.to = append(s.to, to)
 		app.Log("mail", "Accepting mail for reserved mailbox %s", to)
 		return nil
@@ -595,9 +596,14 @@ func (s *Session) Data(r io.Reader) error {
 		// which agent you named what — and it is the address agent replies
 		// already come from, so it is what makes replying to your agent
 		// continue the conversation instead of bouncing.
+		//
+		// A tag on it names which of your agents answers: agent+research@ is
+		// the same address with an addressee. It carries the agent's name and
+		// not the owner's, which is the half worth dropping — you know what you
+		// called the thing, and you should not also have to spell your own
+		// username to reach it.
 		var toAcc *auth.Account
-		sharedAgentMail := !isExternal && toTag == "" &&
-			strings.EqualFold(toUsername, AgentMailbox)
+		sharedAgentMail := !isExternal && strings.EqualFold(toUsername, AgentMailbox)
 		if sharedAgentMail {
 			if toAcc = AccountForVerifiedEmail(fromAddr.Address); toAcc == nil {
 				// Not a verified address on this instance, so there is no

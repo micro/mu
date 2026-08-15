@@ -226,14 +226,33 @@ func wireHooks() {
 	// Registered rather than assigned: mail no longer knows what an agent is,
 	// it knows that something asked for mail at these addresses.
 	answerMail := func(m mail.InboundMail) {
-		// Which agent answers. A tag names one; the shared address names none,
-		// so the account's default assistant takes it — the thing you get when
-		// you have not made an agent yet, which is most people writing to
-		// agent@ for the first time.
+		// Which agent answers. A tag names one; an untagged shared address
+		// names none, so the account's default assistant takes it — the thing
+		// you get when you have not made an agent yet, which is most people
+		// writing to agent@ for the first time.
+		//
+		// An unknown tag means opposite things on the two addresses, so it is
+		// handled twice rather than once. On you+receipts@ it is ordinary
+		// tagged mail that happens not to name an agent, and filing it is the
+		// right answer. On agent+receipts@ the person asked for an agent by
+		// name and there isn't one — silence there is the same bug as the
+		// address that swallowed mail, so it is answered below.
 		var a *agent.Agent
-		if !m.Shared {
-			if a = agent.ForTag(m.Owner, m.Tag); a == nil {
+		unknownTag := ""
+		if m.Tag != "" {
+			if a = agent.ForTag(m.Owner, m.Tag); a == nil && !m.Shared {
 				return // a tag that is not an agent: ordinary tagged mail
+			}
+			// agent+micro@ is the default assistant, which is nobody's agent
+			// record and so matches no tag. It is the first name anyone would
+			// try — it is the name it signs with — and it must mean the same
+			// thing on every account, so it is checked here rather than left to
+			// whether somebody happened to make an agent called that.
+			//
+			// Your own agent wins if you named one this: it is your address
+			// space, and an explicit choice beats a default.
+			if a == nil && !defaultAssistantTag(m.Tag) {
+				unknownTag = m.Tag
 			}
 		}
 		name, ref := "Micro", ""
@@ -250,7 +269,14 @@ func wireHooks() {
 		// until that address started resolving, and still loses which
 		// agent you were talking to.
 		from := mail.SharedAgentAddress()
-		if a != nil && a.Address() != "" {
+		switch {
+		case m.Shared && a != nil:
+			// Answer from the shared address carrying this agent's name, so
+			// hitting reply reaches the same agent by the address that was
+			// written to. Answering from owner+tag@ would silently move the
+			// thread onto the address the shared one exists to avoid.
+			from = mail.SharedAgentAddressFor(a.Tag)
+		case a != nil && a.Address() != "":
 			from = a.Address()
 		}
 
@@ -301,6 +327,24 @@ func wireHooks() {
 			prompt += body
 		}
 		if strings.TrimSpace(prompt) == "" {
+			return
+		}
+
+		// Written to a name that is not one of yours. Answered rather than
+		// dropped: the person spelled out which agent they wanted, so they are
+		// waiting for that agent and a typo should say so rather than look like
+		// the agent having nothing to say.
+		if unknownTag != "" {
+			names := []string{"micro"}
+			for _, own := range agent.Agents(m.Owner) {
+				if own.Tag != "" {
+					names = append(names, own.Tag)
+				}
+			}
+			reply(prompt, fmt.Sprintf("There is no agent called %q on this account. "+
+				"The ones you can write to are: %s — as agent+<name>@%s. "+
+				"Plain agent@%s reaches Micro, the default assistant.",
+				unknownTag, strings.Join(names, ", "), domain, domain))
 			return
 		}
 
@@ -878,4 +922,18 @@ func wireHooks() {
 	// login form, /session) and in the CLI. An agent never needs them: it
 	// authenticates with a token a human issued, or pays per request over x402,
 	// where there is no account to create.
+}
+
+// defaultAssistantTag reports whether a tag on the shared agent address names
+// the default assistant rather than one of the account's own agents.
+//
+// "Micro" is the name it answers under and signs with, so it is the first thing
+// somebody writes on agent+<name>@ — and it is not an agent record, so nothing
+// resolves it. Reserved, so it means the same on every account.
+func defaultAssistantTag(tag string) bool {
+	switch strings.ToLower(strings.TrimSpace(tag)) {
+	case "micro", "default", "assistant":
+		return true
+	}
+	return false
 }
