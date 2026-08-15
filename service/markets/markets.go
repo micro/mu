@@ -465,10 +465,10 @@ func indexMarketPrices(prices map[string]float64) {
 	}
 }
 
-// MarketsHTML returns the rendered markets card HTML. It serves the broker-fed
+// HTML returns the rendered markets card HTML. It serves the broker-fed
 // snapshot mirror (the go-micro read plane); if no snapshot has arrived yet it
 // falls back to the locally-generated HTML so a render never regresses.
-func MarketsHTML() string {
+func HTML() string {
 	if s := cardSnap.Get(); s != "" {
 		return s
 	}

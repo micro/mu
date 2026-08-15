@@ -58,7 +58,7 @@ func pathSID() string                     { return twilio.PathSID() }
 func authToken() string                   { return twilio.AuthToken() }
 func credentials() (string, string)       { return twilio.Credentials() }
 func signedURLs(r *http.Request) []string { return twilio.SignedURLs(r) }
-func verifyInbound() bool                 { return twilio.VerifyInbound() }
+func verifyInbound() bool                 { return twilio.VerifiesInbound() }
 func looksLikeAuthToken(t string) bool    { return twilio.LooksLikeAuthToken(t) }
 
 func validSignature(r *http.Request, candidates []string, form url.Values) bool {

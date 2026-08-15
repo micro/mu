@@ -26,7 +26,7 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if twilio.VerifyInbound() {
+	if twilio.VerifiesInbound() {
 		if !twilio.ValidSignature(r, twilio.SignedURLs(r), r.PostForm) {
 			why := "signature did not match. tried: " + strings.Join(twilio.SignedURLs(r), " ")
 			if r.Header.Get("X-Twilio-Signature") == "" {

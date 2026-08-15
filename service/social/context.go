@@ -45,7 +45,7 @@ func FetchContext(articleURL, articleContent string) *SocialContext {
 
 		// Derive platform from URL
 		platform := "X"
-		if DetectTruthSocial(u) {
+		if TruthSocial(u) {
 			platform = "Truth Social"
 		}
 
@@ -65,8 +65,8 @@ func FetchContext(articleURL, articleContent string) *SocialContext {
 	return &SocialContext{Posts: ctxPosts}
 }
 
-// DetectTruthSocial checks if a URL is from Truth Social.
-func DetectTruthSocial(u string) bool {
+// TruthSocial checks if a URL is from Truth Social.
+func TruthSocial(u string) bool {
 	parsed, err := url.Parse(u)
 	if err != nil {
 		return false

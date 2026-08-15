@@ -201,6 +201,52 @@ any other.
   the tool name `search_search`. Methods returning the current set of something
   are all called `List`. Enforced by `TestNoMethodRepeatsItsService`
 
+## Naming what a package exports
+
+Services are named for domains and tools are `service_method`. The 1,300
+exported functions underneath had no rule written down, so this is the one the
+code already mostly follows, read off it rather than invented.
+
+**The package is the first word.** `markets.Prices()`, not
+`markets.GetMarketPrices()`. 187 exported names are a single word for this
+reason — the call site is where the name is read, and the import path already
+said the noun. Never repeat the package: `x402.Enabled()`, not
+`x402.X402Enabled()`.
+
+**A question is an adjective, a participle, or a noun phrase describing its
+argument. Never a bare verb.** The family is large and consistent —
+`ai.Configured()`, `quota.Metered()`, `sms.OptedOut()`, `mail.Reachable()`,
+`tasks.Running()`, `setup.Needed()` — and the noun-phrase form classifies what
+was passed in: `service.DestructiveTool(name)`, `api.ToolDispatch(path)`.
+`Is`/`Has`/`Can` are fine and used about twenty times; they are not required,
+because an adjective already reads as a question.
+
+What breaks it is a verb, because a verb is an instruction and the caller is
+asking rather than telling. `usage.Skip(path)` looked like a command to skip
+something and was a question about whether a path is noise; `twilio.VerifyInbound()`
+looked like it verified something and reported a setting. They are
+`usage.Skipped` and `twilio.VerifiesInbound` now — third person is the other
+way to say a question, as in `app.SendsJSON(r)` and `app.WantsJSON(r)`.
+
+**An action is a verb**, and says what it changes: `blog.CreatePost`,
+`account.ChargeAppUse`, `mail.SendMessageTo`.
+
+**An HTTP handler ends in `Handler`.** 108 of them do. A service's own page is
+just `Handler`; anything more specific says which page — `blog.PostHandler`,
+`account.TokenHandler`.
+
+Two things this does not settle, both deliberate:
+
+- **`Get` is still on 75 functions** — `auth.GetAccount`, `news.GetFeed`. Go's
+  own guidance is to drop it, and no package here has both `GetX` and `X`, so it
+  is a consistent deviation rather than a mess. Sweeping it is a rename of 75
+  exported names for no behaviour change; worth doing deliberately, not in
+  passing.
+- **A method on a type may repeat nothing and say everything** — `(*Verified).Settle()`
+  reads off its receiver, and the rules above are about package-level names.
+
+`TestExportedNamesDoNotStutter` holds the first rule.
+
 ## The go-micro relationship
 
 go-micro is the substrate Mu is built on. It has three roles, and they must stay separate.

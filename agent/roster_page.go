@@ -81,12 +81,12 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	created := r.URL.Query().Get("created")
 	if secret := r.URL.Query().Get("secret"); secret != "" {
-		b.WriteString(secretPanel(secret, AgentFor(owner, created), app.BaseURL(r)))
+		b.WriteString(secretPanel(secret, For(owner, created), app.BaseURL(r)))
 	} else if created != "" {
 		// An agent that runs here has no secret to show, so say what happened
 		// and what it is now for — otherwise the page just silently grows a row.
 		name := "It"
-		if a := AgentFor(owner, created); a != nil {
+		if a := For(owner, created); a != nil {
 			name = html.EscapeString(a.Name)
 		}
 		b.WriteString(`<p class="text-sm" style="color:#666">` + name + ` is ready. Open its name below ` +

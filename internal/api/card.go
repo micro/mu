@@ -3,7 +3,7 @@ package api
 // A service, rendered at a glance.
 //
 // Cards were registered per tool, imperatively, from six hand-written lines in
-// main.go — api.SetCard("markets_list", "Markets", markets.MarketsHTML) and
+// main.go — api.SetCard("markets_list", "Markets", markets.HTML) and
 // five like it. That is the pattern the Spec exists to end: nothing connected a
 // card to the service behind it, so a renamed tool lost its card silently and a
 // new service could grow one and never be offered it.

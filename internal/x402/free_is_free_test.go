@@ -117,7 +117,7 @@ func TestTheChallengeReportsWhetherItWroteOne(t *testing.T) {
 
 	paid := httptest.NewRecorder()
 	if !WritePaymentRequired(paid, quota.OpWebSearch, "https://example.test/mcp", nil) {
-		if X402Enabled() {
+		if Enabled() {
 			t.Error("a paid operation wrote no challenge on an x402 instance")
 		}
 		return

@@ -87,9 +87,9 @@ func AllAgentTools() []string {
 	return nativeServices(false)
 }
 
-// AgentToolLabel returns a friendly display label for a service tool id, from
+// ToolLabel returns a friendly display label for a service tool id, from
 // the service's own Spec — the same label the sidebar uses.
-func AgentToolLabel(id string) string { return service.Label(id) }
+func ToolLabel(id string) string { return service.Label(id) }
 
 // filterServices intersects the full service set with an agent's allowed tools,
 // preserving order. An empty allow list means all services.

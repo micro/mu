@@ -64,7 +64,7 @@ func AgentsHandler(w http.ResponseWriter, r *http.Request) {
 			var saved *Agent
 			var secret string
 			var err error
-			if id := r.FormValue("id"); id != "" && AgentFor(acc.ID, id) != nil {
+			if id := r.FormValue("id"); id != "" && For(acc.ID, id) != nil {
 				saved, err = UpdateAgent(acc.ID, id, name, prompt, desc, r.Form["tools"])
 			} else {
 				saved, secret, err = CreateAgent(acc.ID, name, kind, prompt, desc, r.Form["tools"], issuesToken(kind))
@@ -283,11 +283,11 @@ func NewAgentHandler(w http.ResponseWriter, r *http.Request) {
 	editID := ""
 	forkFrom := ""
 	if id := r.URL.Query().Get("id"); id != "" {
-		if a := AgentFor(acc.ID, id); a != nil {
+		if a := For(acc.ID, id); a != nil {
 			cur, editing, editID = a.AsMicro(), a, id
 		}
 	} else if fid := r.URL.Query().Get("fork"); fid != "" {
-		if a := AgentFor(acc.ID, fid); a != nil {
+		if a := For(acc.ID, fid); a != nil {
 			cur, forkFrom = a.AsMicro(), fid
 		}
 	}
@@ -339,7 +339,7 @@ func NewAgentHandler(w http.ResponseWriter, r *http.Request) {
 			chk = " checked"
 		}
 		toolsHTML.WriteString(`<label class="chip"><input type="checkbox" name="tool" value="` + t + `"` + chk +
-			`><span>` + html.EscapeString(AgentToolLabel(t)) + `</span></label>`)
+			`><span>` + html.EscapeString(ToolLabel(t)) + `</span></label>`)
 	}
 
 	// Where it runs is only *asked* when there is something to decide: editing

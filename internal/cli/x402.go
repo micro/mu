@@ -33,7 +33,7 @@ func runX402(args []string) int {
 	if len(args) > 0 && args[0] == "key" {
 		return runKey(args[1:])
 	}
-	fmt.Print(x402.X402Status())
+	fmt.Print(x402.Status())
 
 	// Can the operator actually reach what they are paid?
 	//

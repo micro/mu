@@ -24,7 +24,7 @@ func TestMarketsTextPrioritizesTopMovers(t *testing.T) {
 		marketsMutex.Unlock()
 	}()
 
-	got := MarketsText(CategoryCrypto)
+	got := Text(CategoryCrypto)
 	if !strings.Contains(got, "Top crypto movers by 24h change:") {
 		t.Fatalf("expected top movers heading, got %q", got)
 	}

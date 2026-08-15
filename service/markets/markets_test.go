@@ -205,7 +205,7 @@ func TestMarketsTextIncludesFreshnessDisclosure(t *testing.T) {
 	lastPriceRefresh = updated
 	marketsMutex.Unlock()
 
-	got := MarketsText(CategoryCrypto)
+	got := Text(CategoryCrypto)
 	if !strings.Contains(got, "Last refresh: 2026-07-01 12:00 UTC") {
 		t.Fatalf("expected freshness disclosure, got %q", got)
 	}
@@ -235,7 +235,7 @@ func TestMarketsHTML(t *testing.T) {
 	marketsHTML = "<div>test html</div>"
 	marketsMutex.Unlock()
 
-	got := MarketsHTML()
+	got := HTML()
 	if got != "<div>test html</div>" {
 		t.Errorf("expected cached HTML, got %q", got)
 	}
@@ -319,7 +319,7 @@ func TestMarketsTextAcceptsStocks(t *testing.T) {
 	cachedPrices = nil
 	marketsMutex.Unlock()
 
-	got := MarketsText(CategoryStocks)
+	got := Text(CategoryStocks)
 	if !strings.Contains(got, "TSLA (Tesla)") {
 		t.Errorf("expected the labelled stock line, got %q", got)
 	}

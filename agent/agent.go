@@ -1806,7 +1806,7 @@ func resolveAgent(accountID, id string, isGuest bool) *micro.Agent {
 	if isGuest || accountID == "" || id == "" {
 		return nil
 	}
-	if a := AgentFor(accountID, id); a != nil {
+	if a := For(accountID, id); a != nil {
 		return a.AsMicro()
 	}
 	// Somebody else's, published. RunPublic charges its price and counts the

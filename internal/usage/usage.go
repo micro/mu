@@ -165,9 +165,9 @@ func Endpoint(path string) string {
 	return parts[0]
 }
 
-// Skip reports whether a path is noise rather than usage: assets, the image
+// Skipped reports whether a path is noise rather than usage: assets, the image
 // cache, health checks. Counting them buries the traffic that means something.
-func Skip(path string) bool {
+func Skipped(path string) bool {
 	for _, prefix := range []string{"/img", "/static", "/favicon", "/robots.txt", "/health", "/updates", "/chat/ws"} {
 		if strings.HasPrefix(path, prefix) {
 			return true

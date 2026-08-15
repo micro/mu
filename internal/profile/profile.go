@@ -205,14 +205,14 @@ func PresenceHandler(w http.ResponseWriter, r *http.Request) {
 	}()
 }
 
-// ModerateAIResponse checks an AI-generated response BEFORE it is posted.
+// AIResponseAllowed checks an AI-generated response BEFORE it is posted.
 // Returns true if the response is safe to post. If the content is flagged, the
 // requesting user is banned (admins are exempt).
 //
 // It stays here rather than going with the status stream it was written for:
 // the stream service's @micro replies run through the same check, and that is
 // the surviving one.
-func ModerateAIResponse(askerID, response string) bool {
+func AIResponseAllowed(askerID, response string) bool {
 	if acc, err := auth.GetAccount(askerID); err == nil && acc.Admin {
 		return true
 	}

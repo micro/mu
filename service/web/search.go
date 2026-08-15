@@ -183,8 +183,8 @@ func searchBrave(query string, limit int) ([]BraveResult, error) {
 	return braveResp.Web.Results, nil
 }
 
-// WebHandler serves the /web page (Brave web search, paid, auth required).
-func WebHandler(w http.ResponseWriter, r *http.Request) {
+// Handler serves the /web page (Brave web search, paid, auth required).
+func Handler(w http.ResponseWriter, r *http.Request) {
 	query := strings.TrimSpace(r.URL.Query().Get("q"))
 
 	// Render search bar

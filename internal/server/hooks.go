@@ -232,7 +232,7 @@ func wireHooks() {
 		// agent@ for the first time.
 		var a *agent.Agent
 		if !m.Shared {
-			if a = agent.AgentForTag(m.Owner, m.Tag); a == nil {
+			if a = agent.ForTag(m.Owner, m.Tag); a == nil {
 				return // a tag that is not an agent: ordinary tagged mail
 			}
 		}
@@ -507,7 +507,7 @@ func wireHooks() {
 		if answer == "" {
 			return
 		}
-		if !profile.ModerateAIResponse(askerID, answer) {
+		if !profile.AIResponseAllowed(askerID, answer) {
 			app.Log("stream", "AI response for %s blocked by moderation", askerID)
 			return
 		}
@@ -757,7 +757,7 @@ func wireHooks() {
 		if r.Context().Value(x402.X402ContextKey) != nil {
 			// Try free trial first (by wallet address from payment header).
 			payAddr := r.Header.Get("X-Wallet-Address")
-			if payAddr != "" && x402.X402UseTrialCall(payAddr) {
+			if payAddr != "" && x402.UseTrialCall(payAddr) {
 				return true, 0, nil
 			}
 			// Verify, do not settle. The money moves once there is an answer
@@ -839,7 +839,7 @@ func wireHooks() {
 	api.WalletSigner = func(r *http.Request) string { return wallet.SignerFrom(r.Context()) }
 
 	// Wire x402 payment required response for MCP
-	if x402.X402Enabled() {
+	if x402.Enabled() {
 	}
 
 	// Wire email sending for verification mails. Uses the platform's own

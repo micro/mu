@@ -41,7 +41,7 @@ type SearchResponse struct {
 // Search searches the web for current information and news.
 // @example {"query": "latest AI news"}
 func (Server) Search(_ context.Context, req *SearchRequest, rsp *SearchResponse) error {
-	rsp.Text = WebSearchText(req.Query, req.Limit)
+	rsp.Text = SearchText(req.Query, req.Limit)
 	return nil
 }
 

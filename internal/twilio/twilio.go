@@ -230,13 +230,13 @@ func SignedURLs(r *http.Request) []string {
 	return out
 }
 
-// VerifyInbound reports whether an arriving message must prove it is genuine.
+// VerifiesInbound reports whether an arriving message must prove it is genuine.
 //
 // On by default, because unverified an inbound endpoint lets anybody who knows
 // the URL write into a person's message history. Off is a real choice with a
 // real cost — an instance authenticating with an API key has no auth token and
 // so nothing to check against — and it belongs to whoever runs the instance.
-func VerifyInbound() bool {
+func VerifiesInbound() bool {
 	v := strings.ToLower(strings.TrimSpace(settings.Get("SMS_VERIFY_INBOUND")))
 	return v != "0" && v != "false" && v != "off" && v != "no"
 }

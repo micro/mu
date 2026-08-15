@@ -20,8 +20,8 @@ func TestDetectTruthSocial(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := DetectTruthSocial(tt.url); got != tt.want {
-				t.Fatalf("DetectTruthSocial(%q) = %v, want %v", tt.url, got, tt.want)
+			if got := TruthSocial(tt.url); got != tt.want {
+				t.Fatalf("TruthSocial(%q) = %v, want %v", tt.url, got, tt.want)
 			}
 		})
 	}

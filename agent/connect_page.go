@@ -36,7 +36,7 @@ func ConnectHandler(w http.ResponseWriter, r *http.Request) {
 	owner := sess.Account
 
 	id := strings.TrimSpace(r.URL.Query().Get("id"))
-	a := AgentFor(owner, id)
+	a := For(owner, id)
 
 	// Built as one string and wrapped once, so every path opens and closes the
 	// column exactly once. An early return that closes a div its caller opened

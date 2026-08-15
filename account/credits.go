@@ -45,7 +45,7 @@ const DailyTransferCap = 10000
 // PaymentsEnabled returns true if payments are configured
 // When false, quotas are disabled (self-hosted, no restrictions)
 func PaymentsEnabled() bool {
-	return StripeEnabled() || x402.X402Enabled()
+	return StripeEnabled() || x402.Enabled()
 }
 
 // Transaction types

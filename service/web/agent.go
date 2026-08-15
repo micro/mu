@@ -8,9 +8,9 @@ import (
 	"unicode"
 )
 
-// WebSearchText runs a cached web search and returns model-ready results.
+// SearchText runs a cached web search and returns model-ready results.
 // It is the AI-first accessor behind the web_search agent tool.
-func WebSearchText(query string, limit int) string {
+func SearchText(query string, limit int) string {
 	query = strings.TrimSpace(query)
 	if query == "" {
 		return "No query provided."

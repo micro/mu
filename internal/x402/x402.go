@@ -163,8 +163,8 @@ func acceptedAssets() []x402Asset {
 	return out
 }
 
-// X402Enabled reports whether x402 payments are configured.
-func X402Enabled() bool { return x402PayTo != "" }
+// Enabled reports whether x402 payments are configured.
+func Enabled() bool { return x402PayTo != "" }
 
 // x402 free trial — first N calls per wallet address are free. Tracked in
 // memory (resets on restart, which is acceptable for a trial).
@@ -173,8 +173,8 @@ var (
 	x402TrialUsage = map[string]int{}
 )
 
-// X402UseTrialCall records a free trial call, returning false when exhausted.
-func X402UseTrialCall(walletAddr string) bool {
+// UseTrialCall records a free trial call, returning false when exhausted.
+func UseTrialCall(walletAddr string) bool {
 	if walletAddr == "" || x402TrialUsage[walletAddr] >= x402TrialLimit {
 		return false
 	}
@@ -625,12 +625,12 @@ func (e *facilitatorError) Error() string {
 	return fmt.Sprintf("facilitator %s returned %d: %s", e.Path, e.Status, strings.TrimSpace(string(e.Body)))
 }
 
-// X402Status returns a human-readable diagnostic of the x402 configuration
+// Status returns a human-readable diagnostic of the x402 configuration
 // and, when CDP credentials are present, the facilitator's advertised support —
 // so an operator can certify auth on the box without exposing the secret.
-func X402Status() string {
+func Status() string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "enabled:       %v\n", X402Enabled())
+	fmt.Fprintf(&b, "enabled:       %v\n", Enabled())
 	fmt.Fprintf(&b, "pay-to:        %s\n", firstNonEmpty(x402PayTo, "(X402_PAY_TO not set)"))
 	fmt.Fprintf(&b, "facilitator:   %s\n", x402FacilitatorURL)
 	fmt.Fprintf(&b, "network:       %s\n", Network())

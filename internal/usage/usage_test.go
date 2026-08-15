@@ -241,12 +241,12 @@ func TestEndpointNames(t *testing.T) {
 
 func TestSkipsNoise(t *testing.T) {
 	for _, p := range []string{"/img?u=x", "/favicon.ico", "/updates", "/chat/ws"} {
-		if !Skip(p) {
+		if !Skipped(p) {
 			t.Errorf("%s should not be counted as usage", p)
 		}
 	}
 	for _, p := range []string{"/news", "/mail", "/apps/timer", "/"} {
-		if Skip(p) {
+		if Skipped(p) {
 			t.Errorf("%s is real usage and must be counted", p)
 		}
 	}

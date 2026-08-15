@@ -102,7 +102,7 @@ func serve(addr string) {
 			// counting here as well would file every call twice — once as a
 			// path and once as the tool it ran. Assets and polling endpoints
 			// are noise — see internal/usage.
-			if !api.ToolDispatch(r.URL.Path) && !usage.Skip(r.URL.Path) {
+			if !api.ToolDispatch(r.URL.Path) && !usage.Skipped(r.URL.Path) {
 				account := ""
 				if _, acc := auth.TrySession(r); acc != nil {
 					account = acc.ID
@@ -163,7 +163,7 @@ func serve(addr string) {
 					// deny access if invalid
 					if err := auth.ValidateToken(token); err != nil {
 						// Allow x402 payment as alternative to auth for API requests
-						if x402.X402Enabled() && x402.HasPayment(r) && (app.SendsJSON(r) || app.WantsJSON(r)) {
+						if x402.Enabled() && x402.HasPayment(r) && (app.SendsJSON(r) || app.WantsJSON(r)) {
 							r = r.WithContext(context.WithValue(r.Context(), x402.X402ContextKey, true))
 						} else if app.SendsJSON(r) || app.WantsJSON(r) {
 							// Return JSON 401 for API-style requests
@@ -378,7 +378,7 @@ func serve(addr string) {
 				// operation" charged an anonymous caller for all four, so the
 				// free tier was unreachable and an agent that found this
 				// endpoint mid-task met a demand for USDC on its first call.
-				if op := api.ToolWalletOp(tool); x402.X402Enabled() && op != "" && quota.Metered(op) {
+				if op := api.ToolWalletOp(tool); x402.Enabled() && op != "" && quota.Metered(op) {
 					// The public origin, not r.Host: behind the proxy r.Host is
 					// the loopback port, and an x402 client checks this field
 					// against what it is calling.

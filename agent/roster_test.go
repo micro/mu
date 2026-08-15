@@ -130,7 +130,7 @@ func TestRemovingAnAgentRevokesItsToken(t *testing.T) {
 	if err := RemoveAgent(id, a.ID); err != nil {
 		t.Fatal(err)
 	}
-	if AgentFor(id, a.ID) != nil {
+	if For(id, a.ID) != nil {
 		t.Error("the agent survived removal")
 	}
 	if _, err := auth.GetTokenByID(a.TokenID); err == nil {
@@ -148,13 +148,13 @@ func TestAgentsAreOwnedByOneAccount(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if AgentFor(theirs, a.ID) != nil {
+	if For(theirs, a.ID) != nil {
 		t.Error("another account could read my agent")
 	}
 	if err := RemoveAgent(theirs, a.ID); err == nil {
 		t.Error("another account could delete my agent")
 	}
-	if AgentFor(mine, a.ID) == nil {
+	if For(mine, a.ID) == nil {
 		t.Error("the owner lost their own agent")
 	}
 }
@@ -247,7 +247,7 @@ func TestATokenlessAgentCanBeIssuedOne(t *testing.T) {
 	if issued == "" {
 		t.Error("no secret was returned")
 	}
-	got := AgentFor(id, a.ID)
+	got := For(id, a.ID)
 	if got.TokenID == "" {
 		t.Error("the issued token was not recorded")
 	}

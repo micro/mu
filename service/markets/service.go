@@ -30,7 +30,7 @@ type ListResponse struct {
 // commodities and currencies.
 // @example {"category": "crypto"}
 func (Server) List(_ context.Context, req *ListRequest, rsp *ListResponse) error {
-	rsp.Text = MarketsText(req.Category)
+	rsp.Text = Text(req.Category)
 	return nil
 }
 
@@ -83,7 +83,7 @@ var Spec = service.Spec{
 	Description: "Live crypto, stock, futures, commodity and currency prices, and conversion between them",
 	Page:        "/markets",
 	Icon:        "markets.svg",
-	Card:        MarketsHTML,
+	Card:        HTML,
 	Endpoints: map[string]service.Endpoint{
 		"List": {Aliases: []string{"markets"}, Doc: "Get live prices for cryptocurrencies, stocks, commodities (oil, gold, silver, copper and crops), futures and currencies"},
 		"Convert": {Doc: "Convert an amount from one currency to another — 250 GBP in JPY. Uses European " +

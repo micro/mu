@@ -50,7 +50,7 @@ func TestConcurrentFirstUseMintsOneWallet(t *testing.T) {
 	}
 
 	// And the address handed out is the one actually kept.
-	if kept := WalletFor(id); kept == nil || kept.Address != first {
+	if kept := For(id); kept == nil || kept.Address != first {
 		t.Errorf("callers were told %s, the store holds %v", first, kept)
 	}
 }
@@ -77,7 +77,7 @@ func TestReadingAWalletWhileItIsRepaired(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if w := WalletFor(id); w != nil {
+			if w := For(id); w != nil {
 				_ = w.PrivateKey
 				_ = w.Address
 			}
@@ -92,7 +92,7 @@ func TestReadingAWalletWhileItIsRepaired(t *testing.T) {
 
 	// The key must be the one we put there. A repair that minted instead would
 	// strand whatever the old key held.
-	if w := WalletFor(id); w == nil || w.PrivateKey != priv {
+	if w := For(id); w == nil || w.PrivateKey != priv {
 		t.Error("the key was replaced rather than repaired")
 	}
 }

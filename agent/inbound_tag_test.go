@@ -23,12 +23,12 @@ func TestATagResolvesToTheAgentThatAnswersOnIt(t *testing.T) {
 		t.Fatal("a new agent got no mail tag, so nothing can be written to it")
 	}
 
-	got := AgentForTag(acc, made.Tag)
+	got := ForTag(acc, made.Tag)
 	if got == nil || got.ID != made.ID {
 		t.Fatalf("the agent's own tag %q did not resolve back to it", made.Tag)
 	}
 	// Mail headers arrive in whatever case the sender used.
-	if got := AgentForTag(acc, upper(made.Tag)); got == nil || got.ID != made.ID {
+	if got := ForTag(acc, upper(made.Tag)); got == nil || got.ID != made.ID {
 		t.Error("an upper-case tag did not resolve")
 	}
 }
@@ -41,16 +41,16 @@ func TestATagThatIsNotAnAgentWakesNothing(t *testing.T) {
 	}
 
 	for _, tag := range []string{"receipts", "newsletters", "", "   "} {
-		if got := AgentForTag(acc, tag); got != nil {
+		if got := ForTag(acc, tag); got != nil {
 			t.Errorf("you+%s@ resolved to the agent %q — plain tagged mail must just file", tag, got.Name)
 		}
 	}
 	// And an agent belongs to one account: somebody else's tag is not yours.
 	other := owner(t, "tag-other")
-	if got := AgentForTag(other, "research"); got != nil {
+	if got := ForTag(other, "research"); got != nil {
 		t.Error("one account's tag resolved on another account")
 	}
-	if got := AgentForTag("", "research"); got != nil {
+	if got := ForTag("", "research"); got != nil {
 		t.Error("an empty owner matched an agent")
 	}
 }

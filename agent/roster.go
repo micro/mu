@@ -353,7 +353,7 @@ func Agents(owner string) []*Agent {
 }
 
 // Get returns one agent the owner owns, or nil.
-func AgentFor(owner, id string) *Agent {
+func For(owner, id string) *Agent {
 	for _, a := range Agents(owner) {
 		if a.ID == id {
 			return a
@@ -368,7 +368,7 @@ func AgentFor(owner, id string) *Agent {
 // working would be the worst of both: gone from the page that would have told
 // you it existed, and still able to call.
 func RemoveAgent(owner, id string) error {
-	a := AgentFor(owner, id)
+	a := For(owner, id)
 	if a == nil {
 		return fmt.Errorf("no such agent")
 	}
@@ -460,7 +460,7 @@ func (a *Agent) Endpoint(base string) string {
 
 // UpdateAgent rewrites an agent the owner owns, keeping its id and token.
 func UpdateAgent(owner, id, name, prompt, description string, services []string) (*Agent, error) {
-	a := AgentFor(owner, id)
+	a := For(owner, id)
 	if a == nil {
 		return nil, fmt.Errorf("no such agent")
 	}
@@ -484,7 +484,7 @@ func UpdateAgent(owner, id, name, prompt, description string, services []string)
 // run somewhere else, and because the secret can only be shown once — so it has
 // to be an action somebody takes deliberately rather than a side effect.
 func IssueToken(owner, id string) (string, error) {
-	a := AgentFor(owner, id)
+	a := For(owner, id)
 	if a == nil {
 		return "", fmt.Errorf("no such agent")
 	}
@@ -621,7 +621,7 @@ func PublicAgent(viewer, id string) *Agent {
 // the prompt, so publishing an empty one puts a name in a list and gives
 // whoever runs it the default assistant.
 func Publish(owner, id string, public bool) error {
-	a := AgentFor(owner, id)
+	a := For(owner, id)
 	if a == nil {
 		return fmt.Errorf("no such agent")
 	}
@@ -676,11 +676,11 @@ func RunPublic(asker, id string) *Agent {
 	return a
 }
 
-// AgentForTag finds an agent by the mail tag it answers on: the part after the
+// ForTag finds an agent by the mail tag it answers on: the part after the
 // plus in you+<tag>@. Empty tag, unknown tag, or an agent made before tags
 // existed all return nil, so mail to a tag that is not an agent — you+receipts@
 // — just files in the inbox like any other tagged mail.
-func AgentForTag(owner, tag string) *Agent {
+func ForTag(owner, tag string) *Agent {
 	tag = strings.ToLower(strings.TrimSpace(tag))
 	if owner == "" || tag == "" {
 		return nil

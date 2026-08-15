@@ -14,8 +14,8 @@ import (
 	"mu/service/mail"
 )
 
-// AdminHandler shows the admin page with user management
-func AdminHandler(w http.ResponseWriter, r *http.Request) {
+// Handler shows the admin page with user management
+func Handler(w http.ResponseWriter, r *http.Request) {
 	// Check if user is admin
 	_, _, err := auth.RequireAdmin(r)
 	if err != nil {

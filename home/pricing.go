@@ -91,7 +91,7 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 		`Credits are bought through Stripe and every priced call — the pages, the assistant, ` +
 		`and any agent you have given a token — comes out of the same balance. ` +
 		`<a href="/account#balance" style="color:#111">Your balance →</a></p>`)
-	if x402.X402Enabled() {
+	if x402.Enabled() {
 		b.WriteString(`<p style="font-size:14px;color:#666;margin:0 0 8px"><strong>Agents can also pay using USDC, with no account.</strong> ` +
 			`A priced call with no credentials answers <code>402 Payment Required</code> with an ` +
 			`<a href="https://x402.org" style="color:#111">x402</a> challenge naming the price and where to send it. ` +

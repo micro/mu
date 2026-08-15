@@ -67,7 +67,7 @@ func RunsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		runs = mine
 		onlyName = only
-		if a := AgentFor(owner, only); a != nil {
+		if a := For(owner, only); a != nil {
 			onlyName = a.Name
 		}
 	}
@@ -140,7 +140,7 @@ func runRow(f *Flow, csrf string) string {
 	as := "Micro"
 	if f.Agent != "" {
 		// The name if it still exists; agents get deleted and their runs do not.
-		if a := AgentFor(f.AccountID, f.Agent); a != nil {
+		if a := For(f.AccountID, f.Agent); a != nil {
 			as = a.Name
 		} else {
 			as = "a removed agent"
@@ -239,7 +239,7 @@ func AskAs(accountID, ref string) (QueryOpts, error) {
 // because somebody writing a call by hand knows what they named it and does not
 // know its uuid; by id first because an id is unambiguous and a name need not be.
 func findAgent(accountID, ref string) *Agent {
-	if a := AgentFor(accountID, ref); a != nil {
+	if a := For(accountID, ref); a != nil {
 		return a
 	}
 	want := strings.ToLower(ref)

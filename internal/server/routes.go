@@ -228,7 +228,7 @@ func registerRoutes() {
 	http.HandleFunc("/admin/flag", admin.FlagHandler)
 
 	// admin dashboard
-	http.HandleFunc("/admin", admin.AdminHandler)
+	http.HandleFunc("/admin", admin.Handler)
 
 	// admin user management
 	http.HandleFunc("/admin/users", admin.UsersHandler)
@@ -319,7 +319,7 @@ func registerRoutes() {
 
 	// serve search page (local + Brave web search)
 	// serve search page
-	http.HandleFunc("/search", web.WebHandler)
+	http.HandleFunc("/search", web.Handler)
 	http.HandleFunc("/web", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/search?"+r.URL.RawQuery, http.StatusMovedPermanently)
 	})
@@ -533,7 +533,7 @@ func registerRoutes() {
 		app.Log("agents", "imported %d agent(s) into the roster", n)
 	}
 	micro.UserAgentResolver = func(accountID, id string) *micro.Agent {
-		if a := agent.AgentFor(accountID, id); a != nil {
+		if a := agent.For(accountID, id); a != nil {
 			return a.AsMicro()
 		}
 		return nil

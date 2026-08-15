@@ -200,14 +200,14 @@ func checkChain() error {
 	return nil
 }
 
-// WalletFor returns a copy of the account's wallet, or nil if it has none yet.
+// For returns a copy of the account's wallet, or nil if it has none yet.
 //
 // A copy, because the stored record is repaired in place — GetOrCreateWallet
 // writes an address back onto a record that lost one — and a caller reading the
 // key while that happens is an unsynchronised read of a private key. Nothing
 // outside this file has any business writing one, and everything that does goes
 // through a function here.
-func WalletFor(accountID string) *BaseWallet {
+func For(accountID string) *BaseWallet {
 	loadWallets()
 	walletMu.RLock()
 	defer walletMu.RUnlock()

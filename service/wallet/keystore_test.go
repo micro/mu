@@ -152,7 +152,7 @@ func TestDeleteBaseWalletStillDeletes(t *testing.T) {
 
 	DeleteBaseWallet("bob")
 
-	if WalletFor("bob") != nil {
+	if For("bob") != nil {
 		t.Error("the wallet was not deleted")
 	}
 	back := map[string]*BaseWallet{}
