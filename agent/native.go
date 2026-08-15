@@ -16,6 +16,7 @@ import (
 	gmai "go-micro.dev/v6/ai"
 
 	"mu/internal/ai"
+	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/service"
 	"mu/internal/settings"
@@ -142,7 +143,11 @@ func injectAccount(accountID string) gmai.ToolWrapper {
 // separator differently, so both forms are matched. The handler type shows up
 // in the middle of a native tool name (news.Server.Search), so the first and
 // last segments are what identify the method.
-func toolBlocked(name string) bool { return service.DestructiveTool(name) }
+//
+// The native path is the one that does not go through api.RunPlanned, because
+// go-micro dispatches the call itself. So it asks separately — and asks the
+// same function, which is the whole point of there being one.
+func toolBlocked(name string) bool { return api.AllowPlanned(name, false) != nil }
 
 // blockDestructiveTools refuses those calls before they run, telling the model
 // why so it can say so rather than silently looping.

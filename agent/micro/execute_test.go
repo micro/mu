@@ -6,6 +6,7 @@ import (
 
 	"mu/tool"
 
+	"mu/internal/api"
 	"mu/internal/service"
 	"mu/service/mail"
 	"mu/service/markets"
@@ -55,7 +56,7 @@ func TestGuestAllowedToolsCoverPublicCoreServices(t *testing.T) {
 	registerServices(t)
 	for _, tool := range []string{"weather_forecast", "news_list", "markets_list", "web_search"} {
 		t.Run(tool, func(t *testing.T) {
-			if !isGuestAllowedTool(tool) {
+			if !api.GuestTool(tool) {
 				t.Fatalf("%s should be allowed for guest ask-answer smoke paths", tool)
 			}
 		})
@@ -63,7 +64,7 @@ func TestGuestAllowedToolsCoverPublicCoreServices(t *testing.T) {
 
 	for _, tool := range []string{"mail_inbox", "mail_send"} {
 		t.Run(tool, func(t *testing.T) {
-			if isGuestAllowedTool(tool) {
+			if api.GuestTool(tool) {
 				t.Fatalf("%s should stay private for guest ask-answer smoke paths", tool)
 			}
 		})

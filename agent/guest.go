@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"mu/internal/service"
+	"mu/internal/api"
 	"mu/internal/settings"
 )
 
@@ -43,22 +43,13 @@ func guestDailyTotal() int {
 	return n
 }
 
-// guestExtraTools are the tools a guest may use that have no service behind
-// them, so service.GuestAllowedTool cannot answer for them. Everything that is
-// service-backed is derived from whether that service is account-scoped.
-var guestExtraTools = map[string]bool{
-	"quran":         true,
-	"quran_search":  true,
-	"hadith":        true,
-	"blog_read":     true,
-	"social_search": true,
-	"video_search":  true,
-	"apps_run":      true,
-}
-
-func isGuestAllowedTool(name string) bool {
-	return service.GuestAllowedTool(name) || guestExtraTools[name]
-}
+// isGuestAllowedTool is api.GuestTool, kept as a name because the fallback
+// paths below read better with it.
+//
+// The list of tools with no service behind them was written out here and again
+// in agent/micro, both under a comment about the two hand-written allowlists
+// they had replaced. There is one, next to the door that asks.
+func isGuestAllowedTool(name string) bool { return api.GuestTool(name) }
 
 var (
 	guestMu     sync.Mutex

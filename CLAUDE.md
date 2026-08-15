@@ -130,9 +130,17 @@ The two exceptions are the programs: `internal/server` and `internal/cli`
 assemble everything, so they import everything. Enforced by
 `test/layering_test.go`.
 
-A nav item is a *view* of a staple, and a staple can have more than one — Tools
-and Services are both `service/`, Account and Usage are both money. A view owns
-nothing, which is why Tools has no directory and should not get one.
+The top level is the sidebar: Home, Account, Tools, Agents, Services. That is
+the test for whether something belongs there — a user can name it and click it —
+and it is why `tool/` is 280 lines of derivation sitting next to packages twenty
+times its size. Small is what a good derivation looks like, not evidence it
+belongs in `internal/`.
+
+A nav item can still be a *view* rather than a directory, and a staple can have
+more than one — Usage is a view of money, and Services and Tools are two lenses
+on the same catalogue. What decides is ownership: `tool/` owns the derivation
+from `service.Spec` to `api.Tool`, so it is a directory; Usage owns nothing, so
+it is not.
 
 When two packages genuinely need each other, the cycle is broken with a function
 variable filled in by `internal/server/hooks.go`. That file is the ledger of

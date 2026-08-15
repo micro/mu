@@ -27,62 +27,90 @@ import (
 	"mu/internal/service"
 )
 
-// TestEveryModelPlanIsFilteredForDestructiveTools finds the execution sites
-// itself rather than reading a list somebody maintains.
+// TestNoAgentReachesTheRawDoor is the rule stated so a new caller cannot start
+// with it off.
 //
-// A list would have been written when there were two of them and would not have
-// grown to four. What identifies one is the shape: a tool name taken from a
-// parsed plan — tc.Tool — handed to ExecuteTool or ExecuteToolAs. Every such
-// line must be preceded by a refusal.
+// This used to look for the guard clause above each execution site: find every
+// line handing tc.Tool to ExecuteTool, then require a refusal within fifteen
+// lines above it. That caught the four that existed, and it was still the wrong
+// shape — it says the guards must be written out again at the fifth site, and
+// the reason there were only three working guards in the first place is that
+// somebody wrote a site and did not write the guards.
+//
+// So the guards moved into api.RunPlanned and api.RunPlannedAs, and what is
+// checked is that nothing under agent/ calls the raw doors. A new execution
+// site has one function to call, and it asks.
 //
 // Not MCP: a client holding a token is a program somebody wrote, not a model
-// choosing from a catalogue after reading a stranger's web page. It gets the
-// destructive tools with an annotation saying so, which is what the annotation
-// is for.
-func TestEveryModelPlanIsFilteredForDestructiveTools(t *testing.T) {
-	var checked int
+// choosing from a catalogue after reading a stranger's web page. It reaches
+// ExecuteTool directly and gets the destructive tools with an annotation saying
+// so, which is what the annotation is for.
+func TestNoAgentReachesTheRawDoor(t *testing.T) {
+	var planned int
 
-	for _, dir := range []string{"agent", "agent/micro"} {
-		files, _ := filepath.Glob(filepath.Join(at(""), dir, "*.go"))
-		for _, f := range files {
-			if strings.HasSuffix(f, "_test.go") {
-				continue
-			}
-			b, err := os.ReadFile(f)
-			if err != nil {
-				continue
-			}
-			lines := strings.Split(string(b), "\n")
-			for i, line := range lines {
-				if !strings.Contains(line, "tc.Tool, tc.Args") {
+	err := filepath.Walk(at("agent"), func(path string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() || !strings.HasSuffix(path, ".go") {
+			return nil
+		}
+		if strings.HasSuffix(path, "_test.go") {
+			return nil
+		}
+		b, err := os.ReadFile(path)
+		if err != nil {
+			return nil
+		}
+		rel, _ := filepath.Rel(at(""), path)
+		for i, line := range strings.Split(string(b), "\n") {
+			switch {
+			case strings.Contains(line, "api.RunPlanned"):
+				planned++
+			case strings.Contains(line, "api.ExecuteTool"):
+				// Unless the agent named the tool itself. agent/blog calls
+				// blog_create, web_search and web_fetch as literals — it decided
+				// to publish, and going through the tool layer is what makes it
+				// a counted, charged caller rather than one reaching into the
+				// package. A literal is a decision a programmer made and can be
+				// read in review; a variable is a decision a model made after
+				// reading a web page. That is the whole distinction, and it is
+				// visible right here in the argument.
+				call := line[strings.Index(line, "api.ExecuteTool"):]
+				if strings.Contains(call, `"`) {
 					continue
 				}
-				if !strings.Contains(line, "ExecuteTool") {
-					continue
-				}
-				checked++
-
-				// The refusal has to be above it, in the same loop. Fifteen
-				// lines is generous for the guard clauses that live there.
-				lo := i - 15
-				if lo < 0 {
-					lo = 0
-				}
-				before := strings.Join(lines[lo:i], "\n")
-				if !strings.Contains(before, "toolBlocked(tc.Tool)") &&
-					!strings.Contains(before, "DestructiveTool(tc.Tool)") {
-					rel, _ := filepath.Rel(at(""), f)
-					t.Errorf("%s:%d runs a tool the model named with nothing refusing the "+
-						"destructive ones — an injected page can reach files_delete from "+
-						"here", rel, i+1)
-				}
+				t.Errorf("%s:%d hands the raw door a tool name it did not write — an "+
+					"agent runs a model's chosen tool through api.RunPlanned or "+
+					"api.RunPlannedAs, which refuse the destructive ones and the ones "+
+					"a guest may not have. From here an injected page reaches "+
+					"files_delete", rel, i+1)
 			}
 		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	if checked < 4 {
-		t.Fatalf("found only %d model-plan execution sites — this scan is broken, not "+
-			"the code", checked)
+	if planned < 4 {
+		t.Fatalf("found only %d planned execution sites — this scan is broken, not "+
+			"the code", planned)
+	}
+}
+
+// And the one path that cannot use that door still asks the same question.
+//
+// The native path is dispatched by go-micro rather than by us, so it wraps the
+// call instead of routing it. That is a legitimate second site and the reason
+// AllowPlanned is exported; what would not be legitimate is a second opinion,
+// so this pins it to the shared function rather than to a re-derivation.
+func TestTheNativePathAsksTheSameFunction(t *testing.T) {
+	b, err := os.ReadFile(filepath.Join(at(""), "agent/native.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(b), "api.AllowPlanned(") {
+		t.Error("agent/native.go no longer asks api.AllowPlanned — the go-micro path " +
+			"dispatches its own calls, so if it is deciding for itself the two doors " +
+			"can disagree about what is destructive")
 	}
 }
 
@@ -97,10 +125,15 @@ func TestTheSpecialistsRefuseAsWellAsWithhold(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if n := strings.Count(string(b), "DestructiveTool("); n < 2 {
-		t.Errorf("agent/micro/execute.go asks %d times, want both: once so the tool is "+
-			"never listed for the planner, and once so a tool the model named anyway "+
-			"does not run", n)
+	src := string(b)
+	if !strings.Contains(src, "api.AllowPlanned(") {
+		t.Error("agent/micro/execute.go does not filter the list it shows the planner — " +
+			"the general agent has Tools: nil, meaning every tool, and the router " +
+			"falls back to it whenever it is unsure")
+	}
+	if !strings.Contains(src, "api.RunPlannedAs(") {
+		t.Error("agent/micro/execute.go does not refuse at the point of execution — a " +
+			"model can name a tool nobody listed for it")
 	}
 }
 

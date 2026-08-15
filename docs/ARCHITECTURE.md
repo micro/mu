@@ -494,30 +494,51 @@ and missed `"mu/agent/micro"`. Two real violations lived in exactly that gap:
 violations are fixed — `a2a` and `digest` are under `agent/`, where the imports
 they need are legal.
 
-**`internal/server/hooks.go` is the bill.** 885 lines and about fifty function
+**`internal/server/hooks.go` is the bill.** Around 880 lines and 47 function
 variables, each one a dependency somebody could not express as an import. They
 are not one thing, and the file reads as though they were:
 
 | What it is | Roughly | Verdict |
 |---|---|---|
 | `internal/` needing something from the product — `app.EmailSender`, `auth.HasCredit`, `api.WalletPayer`, `profile.GetUserPosts`, `quota.LimitOverride`, `service.Gate.*` | 22 | **Correct.** Rule 1 leaves no alternative, and this is what the exception costs |
-| A service needing another service — `news.FetchSocialContext`, `mail.KnownSender`, `email.SendVia`, `events.OnCreate` | 6 | **Rule 3 in letter only.** There is no import, and the two packages still change together |
+| A service needing another service — `news.FetchSocialContext`, `email.SendVia`, `events.OnCreate`, `events.OnFire`, `mail.OnNewMail` | 5 | **Rule 3 in letter only.** There is no import, and the two packages still change together |
 | A service needing the agent — `tasks.RunAgent`, `events.RunAgent`, `events.OnFireEvent`, `stream.AIReplyHook` | 4 | **Rule 4 broken.** The direction is inverted; the hook is what makes it compile |
 | A service needing the money — `apps.QuotaCheck`, `apps.ChargeQuota`, `apps.ChargeUse` | 3 | **Correct.** Rule 5, same shape as the first row |
 | A service needing Google — `events.External*`, `contacts.External*` | 6 | **Not debt at all.** `internal/google` imports only `data` and `settings`; either service could import it directly under rule 2. The indirection buys provider-neutrality, which is a design choice and not a layering one |
 
-The middle two rows are the ones worth acting on, and they are twelve hooks, not
+The middle two rows are the ones worth acting on, and they are nine hooks, not
 fifty. The first and fourth rows are the price of rules that are working.
 
-**`tool/` is a directory this document says should not exist.** It is 280 lines
-that derive `api.Tool` from `service.Spec`, it imports nothing but `internal/`,
-and it is imported by `agent/micro` and the server. The convention section above
-says a nav item is a view of a staple and that Tools has no directory for that
-reason; then there is one, at the top level, next to the six things a user can
-name. It belongs at `internal/tool`.
+One of the second row is already gone, and it is worth saying which and why.
+`mail.KnownSender` was wired to `service/contacts` so mail could ask whether a
+sender is in the address book — a hook justified by rule 3. But the address book
+*is* `internal/contacts`; `service/contacts` is the tools, the page and the
+Google bridge over it. Rule 3 was never in the way and rule 2 always allowed the
+import. Before reaching for a hook, check whether the thing being reached for
+already has a home in the substrate.
 
-**The catalogue is not evenly asked.** `agent/blog` asks the registry what
-exists, so a service added tomorrow appears in the daily opinion with nobody
-editing it. `agent/digest` still names `news`, `markets` and `video` in code —
-it is the older copy of the same idea, and moving it up out of `service/` did
-not modernise it. Two daily writers, one catalogue-driven and one not.
+The remaining nine do not have that escape. `email.SendVia` wants the SMTP
+server, which mail genuinely owns; `tasks.RunAgent` and its three siblings want
+the agent, and inverting those means moving "run this now" out of the services
+that hold the schedule. Both are design changes with live background loops
+attached, not import cleanups, and they should be done deliberately rather than
+in passing.
+
+**One door for a tool a model named.** Two questions have to be asked before a
+model's chosen tool runs — may a caller with no account use it, and is it one of
+the destructive ones withheld from the model — and they were asked by the
+callers, written out above each execution site. The arithmetic never held: the
+destructive check was at one site and missing at the next for as long as
+`agent/micro` existed, and the residual guest allowlist was copied into two
+files that then drifted. The guards now live in `api.RunPlanned` and
+`api.RunPlannedAs`, nothing under `agent/` may call `api.ExecuteTool` with a
+name it did not write itself, and `test/destructive_test.go` checks that rather
+than checking each site for a nearby guard clause. A fifth execution site gets
+the answers whether or not its author knew to ask.
+
+**Not a leak: `tool/` at the top level.** It is 280 lines deriving `api.Tool`
+from `service.Spec` and it imports nothing but `internal/`, which reads like
+something that belongs underneath. It does not. The top level is the sidebar —
+Home, Account, Tools, Agents, Services — and Tools is one of them, so it has a
+directory for the same reason `home/` does. What sits under it is small because
+a tool is derived rather than written, which is the design working.

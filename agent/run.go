@@ -2,6 +2,7 @@ package agent
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -201,14 +202,11 @@ func RunHandler(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		seenToolCalls[key] = true
-		if isGuest && !isGuestAllowedTool(tc.Tool) {
+		text, isErr, execErr := api.RunPlanned(r, isGuest, tc.Tool, tc.Args)
+		if errors.Is(execErr, api.ErrRefused) {
+			app.Log("agent", "refused %s: %v", tc.Tool, execErr)
 			continue
 		}
-		if toolBlocked(tc.Tool) {
-			app.Log("agent", "refused %s: withheld from the model", tc.Tool)
-			continue
-		}
-		text, isErr, execErr := api.ExecuteTool(r, tc.Tool, tc.Args)
 		if execErr != nil || isErr {
 			toolsUsed = append(toolsUsed, ToolUsed{Name: tc.Tool, Status: "error"})
 			continue

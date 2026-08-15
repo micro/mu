@@ -4,6 +4,7 @@ package agent
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html"
 	htmlpkg "html"
@@ -250,24 +251,12 @@ func QueryWithOpts(accountID, prompt string, opts QueryOpts) (string, error) {
 		if skipMarketMoverCompanionTool(prompt, tc.Tool) {
 			continue
 		}
-		if opts.Public && !isGuestAllowedTool(tc.Tool) {
-			continue
-		}
-		// Withheld from the model, whatever the model asked for.
-		//
-		// The native tool-calling path wraps every call and refuses these. This
-		// is the JSON-in-prose path, which is the one actually in use, and it
-		// had no such check — the only thing standing between an injected page
-		// and files_delete was that the hand-written tool list does not mention
-		// it. A list is not a control: a model can name a tool from its
-		// training, from an earlier turn, or because something it just read
-		// suggested one.
-		if toolBlocked(tc.Tool) {
-			app.Log("agent", "refused %s: withheld from the model", tc.Tool)
-			continue
-		}
 		startedAt := time.Now()
-		text, isErr, execErr := api.ExecuteToolAs(accountID, tc.Tool, tc.Args)
+		text, isErr, execErr := api.RunPlannedAs(accountID, opts.Public, tc.Tool, tc.Args)
+		if errors.Is(execErr, api.ErrRefused) {
+			app.Log("agent", "refused %s: %v", tc.Tool, execErr)
+			continue
+		}
 		if opts.OnStep != nil {
 			opts.OnStep(Step{Tool: tc.Tool, Args: tc.Args, OK: execErr == nil && !isErr, Took: time.Since(startedAt)})
 		}
@@ -1165,17 +1154,16 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		if skipMarketMoverCompanionTool(req.Prompt, tc.Tool) {
 			continue
 		}
-		if isGuest && !isGuestAllowedTool(tc.Tool) {
-			continue
-		}
-		if toolBlocked(tc.Tool) {
-			app.Log("agent", "refused %s: withheld from the model", tc.Tool)
+		// Asked before the tool_start frame, so a refusal is not announced to
+		// the user as a step that then fails.
+		if err := api.AllowPlanned(tc.Tool, isGuest); err != nil {
+			app.Log("agent", "refused %s: %v", tc.Tool, err)
 			continue
 		}
 		msg := toolLabel(tc.Tool)
 		sse(w, map[string]any{"type": "tool_start", "name": tc.Tool, "message": msg})
 
-		text, isErr, execErr := api.ExecuteTool(r, tc.Tool, tc.Args)
+		text, isErr, execErr := api.RunPlanned(r, isGuest, tc.Tool, tc.Args)
 		if execErr != nil || isErr {
 			app.Log("agent", "Tool %s failed: err=%v isErr=%v response=%.200s", tc.Tool, execErr, isErr, text)
 			unavailableTools = append(unavailableTools, tc.Tool)

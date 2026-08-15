@@ -15,26 +15,34 @@
 // without importing it; an agent may import what it publishes to, so they are
 // gone and this calls blog.CreatePost like any other caller.
 //
-// It still names news, markets and video in code, which agent/blog no longer
-// does — that one asks the registry what exists, so a service added tomorrow
-// appears in the opinion with nobody editing it. This is two daily writers with
-// one such catalogue between them, and that is a product question rather than a
-// layering one.
+// It names its sources, and that is the difference between it and agent/blog,
+// deliberately. The opinion asks the registry what exists, because it is
+// deciding what is worth saying and a service that shipped yesterday might be
+// it. The digest does a fixed piece of work — here is what happened today —
+// and a fixed job wants a fixed list, read in one place and widened on purpose
+// rather than by whatever happened to register.
+//
+// What it does not do any more is name *packages*. It called news.GetFeed,
+// markets.GetAllPriceData and video.GetLatestVideos, which is what made it a
+// service importing services. It calls tools now, by name, through the same
+// door every other caller uses — so the work is attributed to Micro's account,
+// counted in usage, and priced if it ever stops being free. Widening the list
+// is one line in digestSources.
 package digest
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
 
 	"mu/internal/ai"
+	"mu/internal/api"
 	"mu/internal/app"
+	"mu/internal/auth"
 	"mu/internal/data"
 	"mu/service/blog"
-	"mu/service/markets"
-	"mu/service/news"
-	"mu/service/video"
 )
 
 var (
@@ -256,65 +264,86 @@ type ref struct {
 	url   string
 }
 
+// digestSources is the fixed list, and the only place to change what the daily
+// briefing knows about.
+//
+// Every one is free, unscoped and not destructive, which is what makes it safe
+// to call unattended on behalf of Micro's own account: the briefing is written
+// by the instance about the world, and nothing here can read one person's data
+// or spend money. Adding a line is how the digest learns about a new service —
+// check those three properties on its Spec first.
+//
+// It was news, markets and video. Hazards and social are what "what happened
+// today" was missing: an earthquake or a severe-weather alert is the most
+// digest-worthy thing there is, and social is the half of the news the feeds
+// have not caught up with yet.
+var digestSources = []struct {
+	heading string
+	tool    string
+	args    map[string]any
+}{
+	{"News Headlines", "news_list", nil},
+	{"Breaking", "social_list", nil},
+	{"Market Data", "markets_list", nil},
+	{"Alerts", "hazards_alerts", nil},
+	{"Earthquakes", "hazards_quakes", nil},
+	{"Videos", "video_list", nil},
+	{"Reflection", "prayer_verse", nil},
+}
+
+// Sources returns the tools the briefing reads, so a test can check the three
+// properties that make the list safe to run unattended against the specs
+// themselves rather than against a copy of this list.
+func Sources() []string {
+	out := make([]string, 0, len(digestSources))
+	for _, s := range digestSources {
+		out = append(out, s.tool)
+	}
+	return out
+}
+
+// linkPatterns pull a title and a URL back out of whatever a tool returned.
+//
+// This is the one thing lost by going through tools rather than reading the
+// packages: news.Post had a Title and a URL as fields, and a tool answers with
+// text. The references block under each digest is worth keeping, so both shapes
+// a tool answers in are matched — a markdown link, and a JSON object with title
+// and url next to each other. A source that answers in neither contributes no
+// references and still contributes its prose, which is the right way round.
+var linkPatterns = []*regexp.Regexp{
+	regexp.MustCompile(`\[([^\]]{3,200})\]\((https?://[^)\s]+)\)`),
+	regexp.MustCompile(`"title"\s*:\s*"([^"]{3,200})"[^{}]*?"url"\s*:\s*"(https?://[^"]+)"`),
+}
+
 func gatherContext() (string, []ref) {
 	var sb strings.Builder
 	var refs []ref
+	seen := map[string]bool{}
 
-	feed := news.GetFeed()
-	if len(feed) > 0 {
-		sb.WriteString("## News Headlines\n\n")
-		byCategory := make(map[string][]*news.Post)
-		for _, item := range feed {
-			byCategory[item.Category] = append(byCategory[item.Category], item)
+	for _, src := range digestSources {
+		// Through the checked door, though nothing here was chosen by a model.
+		// It costs nothing — every source passes, and the test above says so
+		// against the specs — and it means that widening digestSources with
+		// something destructive is refused at runtime as well as at build time.
+		// A reader of this line cannot tell a fixed table from a parsed plan
+		// either, which is the other half of why it goes through the door.
+		text, failed, err := api.RunPlannedAs(auth.MicroID, false, src.tool, src.args)
+		if err != nil || failed || strings.TrimSpace(text) == "" {
+			// One quiet source must not empty the briefing.
+			app.Log("digest", "%s contributed nothing: %v", src.tool, err)
+			continue
 		}
-		for category, items := range byCategory {
-			sb.WriteString(fmt.Sprintf("### %s\n", category))
-			count := 3
-			if len(items) < count {
-				count = len(items)
-			}
-			for _, item := range items[:count] {
-				refs = append(refs, ref{item.Title, item.URL})
-				sb.WriteString(fmt.Sprintf("- [%s](%s): %s\n", item.Title, item.URL, item.Description))
-			}
-			sb.WriteString("\n")
-		}
-	}
+		fmt.Fprintf(&sb, "## %s\n\n%s\n\n", src.heading, strings.TrimSpace(text))
 
-	priceData := markets.GetAllPriceData()
-	if len(priceData) > 0 {
-		sb.WriteString("## Market Data\n\n")
-		categories := []struct {
-			name   string
-			assets []string
-		}{
-			{"Crypto", []string{"BTC", "ETH", "SOL", "PAXG"}},
-			{"Futures", []string{"OIL", "GOLD", "SILVER", "COPPER"}},
-			{"Commodities", []string{"COFFEE", "WHEAT", "CORN"}},
-			{"Currencies", []string{"EUR", "GBP", "JPY", "CNY"}},
-		}
-		for _, cat := range categories {
-			for _, symbol := range cat.assets {
-				if pd, ok := priceData[symbol]; ok && pd.Price > 0 {
-					change := ""
-					if pd.Change24h != 0 {
-						change = fmt.Sprintf(" %+.1f%%", pd.Change24h)
-					}
-					sb.WriteString(fmt.Sprintf("- %s: %.2f USD%s\n", symbol, pd.Price, change))
+		for _, re := range linkPatterns {
+			for _, m := range re.FindAllStringSubmatch(text, -1) {
+				if seen[m[2]] {
+					continue
 				}
+				seen[m[2]] = true
+				refs = append(refs, ref{m[1], m[2]})
 			}
 		}
-		sb.WriteString("\n")
-	}
-
-	videos := video.GetLatestVideos(5)
-	if len(videos) > 0 {
-		sb.WriteString("## Videos\n\n")
-		for _, v := range videos {
-			refs = append(refs, ref{v.Title, v.URL})
-			sb.WriteString(fmt.Sprintf("- [%s](%s) by %s\n", v.Title, v.URL, v.Channel))
-		}
-		sb.WriteString("\n")
 	}
 
 	return sb.String(), refs

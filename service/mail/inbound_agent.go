@@ -29,6 +29,7 @@ import (
 	"strings"
 
 	"mu/internal/auth"
+	"mu/internal/contacts"
 )
 
 // AgentMailbox is the local part of the shared address: agent@<domain>. A
@@ -65,11 +66,18 @@ func SharedAgentAddress() string {
 }
 
 // KnownSender reports whether an address is one this account corresponds with.
-// Wired in main.go to the address book, because contacts is a different domain
-// and mail should not import it. Nil on an instance without one, which leaves
-// the owner's own verified address as the only way in — the safe direction to
-// fail.
-var KnownSender func(owner, addr string) bool
+//
+// It was a hook the server filled in from service/contacts, on the grounds that
+// contacts is a different domain and mail must not import it. That was the
+// right rule and the wrong conclusion: the address book itself is
+// internal/contacts, and service/contacts is the tools, the page and the Google
+// bridge over it. A service may import the substrate freely, so this is an
+// import — the sideways rule was never in the way.
+//
+// It stays a variable because the tests override it, and because an instance
+// can still turn the address book off by setting it nil, which leaves the
+// owner's own verified address as the only way in — the safe direction to fail.
+var KnownSender = contacts.HasEmail
 
 // wakeRequest is everything the rule needs. A struct rather than six
 // positional arguments, three of which would be bools in a row.

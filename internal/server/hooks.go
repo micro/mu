@@ -223,10 +223,6 @@ func wireHooks() {
 	// account knows — its own verified address, checked inside mail, or a name
 	// in its address book, which is this hook because contacts is a different
 	// domain and mail should not import it.
-	mail.KnownSender = func(owner, addr string) bool {
-		return contacts.HasEmail(owner, addr)
-	}
-
 	// Registered rather than assigned: mail no longer knows what an agent is,
 	// it knows that something asked for mail at these addresses.
 	answerMail := func(m mail.InboundMail) {

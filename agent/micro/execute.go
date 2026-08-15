@@ -2,11 +2,10 @@ package micro
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
-
-	"mu/internal/service"
 
 	"mu/internal/ai"
 	"mu/internal/api"
@@ -94,18 +93,16 @@ func (a *Agent) Execute(accountID, prompt string, public bool, onStep func(strin
 		if !a.hasTool(tc.Tool) {
 			continue
 		}
-		if public && !isGuestAllowedTool(tc.Tool) {
-			continue
-		}
-		// And refused, not merely unadvertised. A model can name a tool nobody
-		// told it about — from its training, from an earlier turn, or because a
-		// page it read suggested one — so the list it is shown is not a control.
-		if service.DestructiveTool(tc.Tool) {
-			app.Log("micro", "refused %s: withheld from the model", tc.Tool)
-			continue
-		}
+		// Refused, not merely unadvertised. A model can name a tool nobody told
+		// it about — from its training, from an earlier turn, or because a page
+		// it read suggested one — so the list it is shown is not a control.
+		// RunPlannedAs asks; there is no way in here that does not.
 		startedAt := time.Now()
-		text, isErr, execErr := api.ExecuteToolAs(accountID, tc.Tool, tc.Args)
+		text, isErr, execErr := api.RunPlannedAs(accountID, public, tc.Tool, tc.Args)
+		if errors.Is(execErr, api.ErrRefused) {
+			app.Log("micro", "refused %s: %v", tc.Tool, execErr)
+			continue
+		}
 		if onStep != nil {
 			onStep(tc.Tool, tc.Args, execErr == nil && !isErr, time.Since(startedAt))
 		}
@@ -174,38 +171,17 @@ func (a *Agent) buildToolsDesc(public bool) string {
 		if a.Tools != nil && !allowed[name] {
 			continue
 		}
-		if public && !isGuestAllowedTool(name) {
-			continue
-		}
-		// Never offered to the model. The general agent has Tools: nil, which
-		// means every tool, and the router falls back to it whenever it is
-		// unsure — so without this a specialist that had just read a web page
-		// was planning over files_delete and contacts_delete with the page's
-		// text in its context. That is the whole reason Destructive exists, and
-		// this path did not know about it.
-		if service.DestructiveTool(name) {
+		// Never offered to the model, and the same question the executor asks.
+		// The general agent has Tools: nil, which means every tool, and the
+		// router falls back to it whenever it is unsure — so without this a
+		// specialist that had just read a web page was planning over
+		// files_delete and contacts_delete with the page's text in its context.
+		if api.AllowPlanned(name, public) != nil {
 			continue
 		}
 		sb.WriteString(line + "\n")
 	}
 	return sb.String()
-}
-
-// guestExtraTools are the guest-usable tools with no service behind them; the
-// rest is derived from whether the service is account-scoped. See
-// service.GuestAllowedTool.
-var guestExtraTools = map[string]bool{
-	"quran":         true,
-	"quran_search":  true,
-	"hadith":        true,
-	"blog_read":     true,
-	"social_search": true,
-	"video_search":  true,
-	"apps_run":      true,
-}
-
-func isGuestAllowedTool(name string) bool {
-	return service.GuestAllowedTool(name) || guestExtraTools[name]
 }
 
 func (a *Agent) hasTool(name string) bool {
