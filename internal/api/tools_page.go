@@ -73,6 +73,17 @@ func ToolsPageHandler(w http.ResponseWriter, r *http.Request) {
 			`give it a token, and these are the tools it gets — priced per call, no account needed ` +
 			`if it pays.</p>`)
 		b.WriteString(connectSection(r))
+		// Outside the connect card, deliberately. That step offers one way in
+		// because a reader choosing between two of everything connects to
+		// neither — see TestConnectOffersOneWayIn — and this is not a second way
+		// to connect an agent, it is the door for something that is not one.
+		//
+		// It is here at all because every reference page lived behind the
+		// footer, and there is no footer once you are signed in: a person with
+		// an account could not reach /api from anywhere in the product.
+		b.WriteString(`<p class="card-meta" style="margin-top:-8px">` +
+			`Not connecting an agent? Every method is a plain HTTP call too — ` +
+			`<a href="/api">the HTTP API &rarr;</a></p>`)
 		b.WriteString(toolGrid())
 	}
 

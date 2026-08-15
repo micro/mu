@@ -242,7 +242,7 @@ func FooterLinks() string {
 	// username with no mailbox behind it. Somebody whose top-up failed had
 	// nowhere at all to report it, which meant an operator only found out by
 	// being told in person.
-	return `<a href="/about">About</a> · <a href="/tools">Tools</a> · <a href="/pricing">Pricing</a> · <a href="/help">Help</a> · <a href="/support">Support</a> · <a href="/privacy">Privacy</a> · <a href="/status">Status</a>` + torFooterLink()
+	return `<a href="/about">About</a> · <a href="/tools">Tools</a> · <a href="/api">API</a> · <a href="/pricing">Pricing</a> · <a href="/help">Help</a> · <a href="/support">Support</a> · <a href="/privacy">Privacy</a> · <a href="/status">Status</a>` + torFooterLink()
 }
 
 func torFooterLink() string {

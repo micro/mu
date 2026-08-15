@@ -786,6 +786,21 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		LedgerSection(acc.ID),
 	)
 
+	// About, Pricing, Help, Privacy, Status and the API reference live in the
+	// footer, and there is no footer once you are signed in — deliberately, on
+	// the argument that everything in it is in the sidebar or on /account. It
+	// was not: Tools was, and the rest were nowhere, so a person with an account
+	// could not reach the pricing page or the API docs from anywhere in the
+	// product. Support had already been noticed and patched into the sidebar on
+	// its own, one link at a time.
+	//
+	// Here rather than back under every screen, because the reasoning for
+	// dropping the footer was sound — a marketing nav under an app screen is the
+	// clearest tell that this is a website. Settings is where an app keeps
+	// About and Legal, and /account is in the sidebar for everybody.
+	content += `<div class="card"><span class="card-title">About Mu</span>` +
+		`<p class="card-meta">` + app.FooterLinks() + `</p></div>`
+
 	// app.RenderHTMLForRequest, not app.RenderHTML: the latter hard-codes a nil account,
 	// so every part of the chrome that depends on knowing who is signed in went
 	// missing on the one page you reach by being signed in.
