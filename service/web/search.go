@@ -386,7 +386,14 @@ var webRecentSearchesScript = `
     });
   }
 
-  document.addEventListener('DOMContentLoaded', function() {
+  // Run now if the document is already parsed, not only on DOMContentLoaded.
+  //
+  // A soft navigation swaps #content and re-creates the scripts inside it, so
+  // this script runs again — but DOMContentLoaded fired once, on the first real
+  // page load, and never again. So arriving at /search by clicking a link left
+  // the recent searches unrendered and the form unwired, and reloading fixed
+  // it, which is the tell.
+  function wireSearch() {
     displayRecentSearches();
     var form = document.querySelector('form[action="/web"]');
     if (form) {
@@ -395,6 +402,11 @@ var webRecentSearchesScript = `
         if (q && q.value.trim()) saveRecentSearch(q.value.trim());
       });
     }
-  });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', wireSearch);
+  } else {
+    wireSearch();
+  }
 </script>
 `

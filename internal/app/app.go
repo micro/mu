@@ -368,7 +368,73 @@ var Template = `
         var content = document.getElementById('content');
         if (!content || !window.history || !window.fetch) return;
 
-        function swap(html, push, url) {
+        // What has already been fetched, so going back is not a network round
+        // trip. A real back button comes out of the browser's cache instantly;
+        // intercepting popstate and re-fetching threw that away, and on a phone
+        // — especially installed as a PWA, where back is a swipe and gets used
+        // constantly — that is the difference between instant and a spinner.
+        //
+        // Bounded, and holding what the page looked like when it was left,
+        // which is what a back button is meant to show.
+        // What actually scrolls.
+        //
+        // Not the window. This layout gives body a fixed height and
+        // overflow-y:auto, so body is the scroll container and the root element
+        // does not scroll at all — which makes window.scrollY permanently 0 and
+        // window.scrollTo a no-op. Everything here used to use both: the
+        // position saved into history was always 0, restoring it did nothing,
+        // and — the one people notice — scrolling to the top on a forward
+        // navigation did nothing either, so following a link from halfway down
+        // a page landed you halfway down the next one.
+        //
+        // document.scrollingElement is the standard answer and the wrong one
+        // here: it reports the root, which is exactly the element that does not
+        // move. So ask which one has somewhere to scroll to.
+        function scroller() {
+          var b = document.body, d = document.documentElement;
+          if (b && b.scrollHeight > b.clientHeight + 1) return b;
+          if (d && d.scrollHeight > d.clientHeight + 1) return d;
+          return document.scrollingElement || d || b;
+        }
+        function scrollNow() { var e = scroller(); return e ? e.scrollTop : 0; }
+        function scrollToY(y) { var e = scroller(); if (e) e.scrollTop = y; }
+
+        var seen = Object.create(null), order = [];
+        function remember(url, html) {
+          if (!(url in seen)) order.push(url);
+          seen[url] = html;
+          while (order.length > 12) { delete seen[order.shift()]; }
+        }
+
+        // The page you arrived on was never fetched by this code, so it was the
+        // one thing never in the cache — and it is the one people go back to.
+        // Land on Home, open a card, press back, and that was a network fetch
+        // of the page you had been looking at a second earlier.
+        //
+        // Built through the DOM rather than by concatenating strings, so the
+        // title cannot be mis-escaped into the markup. swap() only reads #content
+        // and the title, which is all this has to carry.
+        function snapshot() {
+          try {
+            var d = document.implementation.createHTMLDocument('');
+            d.title = document.title;
+            var c = d.createElement('div');
+            c.id = 'content';
+            c.innerHTML = content.innerHTML;
+            d.body.appendChild(c);
+            return d.documentElement.outerHTML;
+          } catch (e) { return null; }
+        }
+
+        function swap(html, push, url, restoreY) {
+          // Where the page being left was scrolled to, read before anything is
+          // replaced. Reading it after the swap records the wrong number and
+          // usually zero: the new content is written first, the document
+          // collapses to whatever height it has before images and cards lay
+          // out, and the browser clamps scrollTop down to fit. The position
+          // being saved for the back button was the position after the page it
+          // describes had already gone.
+          var leavingY = scrollNow();
           var doc = new DOMParser().parseFromString(html, 'text/html');
           var next = doc.getElementById('content');
           if (!next) { location.href = url; return; }
@@ -391,7 +457,7 @@ var Template = `
           // returns you to it rather than to the top of a list you had already
           // read halfway down.
           if (push) {
-            try { history.replaceState({mu:1, scroll: window.scrollY}, ''); } catch (e) {}
+            try { history.replaceState({mu:1, scroll: leavingY}, ''); } catch (e) {}
             history.pushState({mu:1}, '', url);
           }
           // A hash is a destination, not decoration. The browser scrolls to one
@@ -401,9 +467,28 @@ var Template = `
           var hash = '';
           try { hash = new URL(url, location.href).hash; } catch (e) {}
           var target = hash.length > 1 ? document.getElementById(decodeURIComponent(hash.slice(1))) : null;
-          if (typeof restoreY === 'number') { window.scrollTo(0, restoreY); }
-          else if (target && target.scrollIntoView) { target.scrollIntoView(); }
-          else { window.scrollTo(0, 0); }
+
+          // restoreY is an argument, and it used to be read as a free variable
+          // here while being a parameter of go() — a sibling function, not an
+          // enclosing one. typeof on an undeclared name is "undefined" rather
+          // than an error, so the branch was silently never taken and going
+          // back always landed at the top. The popstate handler had been
+          // carefully passing the saved position to a parameter nobody read.
+          //
+          // Applied twice. The content has just been written and the images and
+          // cards in it have no height yet, so the document can still be
+          // shorter than the offset being restored — the browser clamps to
+          // whatever the height is now, and a moment later the rest arrives and
+          // you are somewhere you never scrolled to. The second pass runs after
+          // a frame, once layout has caught up.
+          function place() {
+            if (typeof restoreY === 'number') { scrollToY(restoreY); }
+            else if (target && target.scrollIntoView) { target.scrollIntoView(); }
+            else { scrollToY(0); }
+          }
+          place();
+          if (window.requestAnimationFrame) requestAnimationFrame(place);
+
           // Anything the new content wired up on load has to be re-wired.
           document.dispatchEvent(new CustomEvent('mu:navigated'));
         }
@@ -422,13 +507,34 @@ var Template = `
 
         function go(url, push, restoreY) {
           closeMenu();
+
+          // Going back to something already seen is answered from memory. Only
+          // on back and forward, never on a click: following a link is a
+          // request for the current state of that page, and serving a copy
+          // would show yesterday's headlines to somebody who just asked for
+          // today's.
+          if (!push && seen[url] !== undefined) {
+            swap(seen[url], push, url, restoreY);
+            return;
+          }
+
+          // Keep the page being left, before it is replaced.
+          if (push && seen[location.href] === undefined) {
+            var snap = snapshot();
+            if (snap) remember(location.href, snap);
+          }
+
           content.setAttribute('data-loading', '1');
           fetch(url, {credentials: 'same-origin', headers: {'X-Mu-Nav': '1'}})
             .then(function(r){
               if (!r.ok || (r.redirected && r.url !== url)) { location.href = url; return null; }
               return r.text();
             })
-            .then(function(html){ if (html !== null) swap(html, push, url); })
+            .then(function(html){
+              if (html === null) return;
+              remember(url, html);
+              swap(html, push, url, restoreY);
+            })
             .catch(function(){ location.href = url; })
             .then(function(){ content.removeAttribute('data-loading'); });
         }

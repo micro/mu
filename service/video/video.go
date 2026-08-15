@@ -224,7 +224,10 @@ var recentSearchesScript = `
 	}
 
   // Save search when form is submitted
-  document.addEventListener('DOMContentLoaded', function() {
+  // Run now if the document is already parsed — see the note in
+  // service/web/search.go. A soft navigation re-runs this script but
+  // DOMContentLoaded has long since fired.
+  function wireVideo() {
     displayRecentSearches();
     
     const form = document.querySelector('form[action="/video"]');
@@ -236,7 +239,12 @@ var recentSearchesScript = `
         }
       });
     }
-  });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', wireVideo);
+  } else {
+    wireVideo();
+  }
 </script>
 `
 
