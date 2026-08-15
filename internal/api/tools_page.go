@@ -375,7 +375,7 @@ func priceLabel(t Tool) string {
 	if t.WalletOp == "" {
 		return `<span class="free">Included</span>`
 	}
-	n := quota.GetOperationCost(t.WalletOp)
+	n := quota.OperationCost(t.WalletOp)
 	if n <= 0 {
 		return `<span class="free">Included</span>`
 	}

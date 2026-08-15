@@ -31,7 +31,7 @@ func TestSupportMailGoesToTheOldestAdmin(t *testing.T) {
 	if first == nil {
 		t.Skip("no admin on this instance")
 	}
-	for _, acc := range auth.GetAllAccounts() {
+	for _, acc := range auth.AllAccounts() {
 		if acc.Admin && acc.Created.Before(first.Created) {
 			t.Errorf("support goes to %s but %s is older", first.ID, acc.ID)
 		}

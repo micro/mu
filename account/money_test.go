@@ -168,7 +168,7 @@ func TestTransfersRefuseNonsense(t *testing.T) {
 // A free operation is free at every layer that could charge for it.
 func TestNothingChargesForAFreeOperation(t *testing.T) {
 	for _, free := range []string{quota.OpNewsSearch, quota.OpQuranSearch, quota.OpWebFetch, quota.OpVideoSearch} {
-		if c := quota.GetOperationCost(free); c != 0 {
+		if c := quota.OperationCost(free); c != 0 {
 			t.Errorf("%s costs %d — this test is about the ones priced at zero", free, c)
 		}
 		if quota.Metered(free) {

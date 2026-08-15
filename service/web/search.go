@@ -58,8 +58,8 @@ func cacheResult(r BraveResult) string {
 	return id
 }
 
-// GetCachedResult returns a cached search result by ID.
-func GetCachedResult(id string) *BraveResult {
+// CachedResult returns a cached search result by ID.
+func CachedResult(id string) *BraveResult {
 	resultCacheMu.RLock()
 	defer resultCacheMu.RUnlock()
 	return resultCache[id]
@@ -200,7 +200,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		landing.WriteString(`<div id="recent-searches-container"></div>`)
 
 		// Topics from indexed content
-		topics := GetTopics()
+		topics := Topics()
 		if len(topics) > 0 {
 			landing.WriteString(`<div class="recent-searches"><h3>Topics</h3><div class="recent-searches-scroll">`)
 			for _, topic := range topics {

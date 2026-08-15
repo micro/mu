@@ -137,8 +137,8 @@ func IndexSQLite(id, entryType, title, content, owner string, metadata map[strin
 	return err
 }
 
-// GetByIDSQLite retrieves an entry by ID from SQLite
-func GetByIDSQLite(id string) (*IndexEntry, error) {
+// ByIDSQLite retrieves an entry by ID from SQLite
+func ByIDSQLite(id string) (*IndexEntry, error) {
 	db, err := getDB()
 	if err != nil {
 		return nil, err
@@ -447,8 +447,8 @@ func getPostedAt(entry *IndexEntry) time.Time {
 	return entry.IndexedAt
 }
 
-// GetByTypeSQLite returns entries of a specific type
-func GetByTypeSQLite(entryType string, limit int) ([]*IndexEntry, error) {
+// ByTypeSQLite returns entries of a specific type
+func ByTypeSQLite(entryType string, limit int) ([]*IndexEntry, error) {
 	db, err := getDB()
 	if err != nil {
 		return nil, err
@@ -575,8 +575,8 @@ func MigrateFromJSON() error {
 	return nil
 }
 
-// GetIndexStats returns statistics about the SQLite index
-func GetIndexStats() (entries int, embeddingCount int, err error) {
+// IndexStats returns statistics about the SQLite index
+func IndexStats() (entries int, embeddingCount int, err error) {
 	db, err := getDB()
 	if err != nil {
 		return 0, 0, err

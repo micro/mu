@@ -151,7 +151,7 @@ func OutboxHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	base := apBaseURL()
-	userPosts := GetPostsByAuthor(acc.Name)
+	userPosts := PostsByAuthor(acc.Name)
 
 	// Filter out private posts
 	var publicPosts []*Post

@@ -153,7 +153,7 @@ func restMethods() []restMethod {
 			}
 			cost := 0
 			if ep.Cost != "" {
-				cost = quota.GetOperationCost(ep.Cost)
+				cost = quota.OperationCost(ep.Cost)
 			}
 			out = append(out, restMethod{
 				Service:     sp.Name,

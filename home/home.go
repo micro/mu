@@ -493,7 +493,7 @@ function fetchW(la,lo){
 		bodyClass = ` class="page-home display-mode"`
 	}
 
-	lang := app.GetUserLanguage(r)
+	lang := app.UserLanguage(r)
 	// The home screen is where someone lands after signing up, so it is the one
 	// page that must carry the invitation to connect an agent.
 	body := app.ConnectBanner(r) + b.String()

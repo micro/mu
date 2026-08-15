@@ -16,7 +16,7 @@ package auth
 // Empty on an instance with no accounts yet, which is a real state on a first
 // run and not an error.
 func Operator() string {
-	for _, acc := range GetAllAccounts() {
+	for _, acc := range AllAccounts() {
 		if acc != nil && acc.Admin {
 			return acc.ID
 		}

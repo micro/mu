@@ -167,7 +167,7 @@ func fixThreading() {
 		}
 
 		// Check if the parent exists
-		if GetMessageUnlocked(msg.ReplyTo) == nil {
+		if MessageUnlocked(msg.ReplyTo) == nil {
 			// Parent doesn't exist - mark as orphaned
 			app.Log("mail", "Message %s has missing parent %s - marking as root", msg.ID, msg.ReplyTo)
 			msg.ReplyTo = ""
@@ -201,7 +201,7 @@ func computeThreadID(msg *Message) string {
 	current := msg
 	for current.ReplyTo != "" && !visited[current.ID] {
 		visited[current.ID] = true
-		parent := GetMessageUnlocked(current.ReplyTo)
+		parent := MessageUnlocked(current.ReplyTo)
 		if parent == nil {
 			break // Parent doesn't exist, current is root
 		}
@@ -210,8 +210,8 @@ func computeThreadID(msg *Message) string {
 	return current.ID
 }
 
-// GetMessageUnlocked finds a message without locking (for internal use when lock is held)
-func GetMessageUnlocked(msgID string) *Message {
+// MessageUnlocked finds a message without locking (for internal use when lock is held)
+func MessageUnlocked(msgID string) *Message {
 	for _, msg := range messages {
 		if msg.ID == msgID {
 			return msg
@@ -263,7 +263,7 @@ func addMessageToInbox(inbox *Inbox, msg *Message, userID string) {
 	thread := inbox.Threads[threadID]
 	if thread == nil {
 		// New thread
-		rootMsg := GetMessageUnlocked(threadID)
+		rootMsg := MessageUnlocked(threadID)
 		if rootMsg == nil {
 			rootMsg = msg
 		}
@@ -1187,7 +1187,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Build datalist of users for autocomplete (exclude self)
-		users := auth.GetAllAccounts()
+		users := auth.AllAccounts()
 		var dl strings.Builder
 		dl.WriteString(`<datalist id="mail-users">`)
 		for _, u := range users {
@@ -1288,7 +1288,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	// Check if requesting preview for account page
 	if r.URL.Query().Get("preview") == "1" {
-		preview := GetRecentThreadsPreview(acc.ID, 3)
+		preview := RecentThreadsPreview(acc.ID, 3)
 		unread := GetUnreadCount(acc.ID)
 
 		w.Header().Set("Content-Type", "application/json")
@@ -1378,7 +1378,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 	} else if view == "filtered" {
 		// Filtered view - show spam messages using same card format as inbox
-		spamMsgs := GetSpamMessages(acc.ID)
+		spamMsgs := SpamMessages(acc.ID)
 		for _, msg := range spamMsgs {
 			reasons := ""
 			if len(msg.SpamReasons) > 0 {
@@ -1509,7 +1509,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	if unreadCount > 0 {
 		inboxLabel = fmt.Sprintf("Inbox (%d)", unreadCount)
 	}
-	spamMsgs := GetSpamMessages(acc.ID)
+	spamMsgs := SpamMessages(acc.ID)
 	filteredLabel := "Filtered"
 	if len(spamMsgs) > 0 {
 		filteredLabel = fmt.Sprintf("Filtered (%d)", len(spamMsgs))
@@ -1641,7 +1641,7 @@ func SendMessage(from, fromID, to, toID, subject, body, replyTo, messageID strin
 	// Compute ThreadID
 	mutex.Lock()
 	if replyTo != "" {
-		parent := GetMessageUnlocked(replyTo)
+		parent := MessageUnlocked(replyTo)
 		if parent != nil {
 			msg.ThreadID = computeThreadID(parent)
 		} else {
@@ -1696,7 +1696,7 @@ func SendMessageTo(from, fromID, to, toID, tag, subject, body, replyTo, messageI
 	// Compute ThreadID
 	mutex.Lock()
 	if replyTo != "" {
-		parent := GetMessageUnlocked(replyTo)
+		parent := MessageUnlocked(replyTo)
 		if parent != nil {
 			msg.ThreadID = computeThreadID(parent)
 		} else {
@@ -1840,8 +1840,8 @@ func ListMessages(userID string, limit int) []*Message {
 	return out
 }
 
-// GetSpamMessages returns spam-flagged messages for a user
-func GetSpamMessages(userID string) []*Message {
+// SpamMessages returns spam-flagged messages for a user
+func SpamMessages(userID string) []*Message {
 	mutex.RLock()
 	defer mutex.RUnlock()
 
@@ -1923,8 +1923,8 @@ func searchMail(userID, query string) []*Message {
 	return results
 }
 
-// GetRecentThreadsPreview returns HTML preview of recent threads for account page
-func GetRecentThreadsPreview(userID string, limit int) string {
+// RecentThreadsPreview returns HTML preview of recent threads for account page
+func RecentThreadsPreview(userID string, limit int) string {
 	mutex.RLock()
 	defer mutex.RUnlock()
 
@@ -2114,7 +2114,7 @@ func DeleteThread(msgID, userID string) error {
 // wrong, and the send path used the wrong one. There is one definition now.
 func IsExternalAddress(addr string) bool {
 	addr = strings.ToLower(strings.TrimSpace(addr))
-	domain := strings.ToLower(GetConfiguredDomain())
+	domain := strings.ToLower(ConfiguredDomain())
 	if !strings.Contains(addr, "@") {
 		return false
 	}
@@ -2215,8 +2215,8 @@ func GetEmailStats() EmailStats {
 	return stats
 }
 
-// GetRecentMessages returns the N most recent messages
-func GetRecentMessages(limit int) []*Message {
+// RecentMessages returns the N most recent messages
+func RecentMessages(limit int) []*Message {
 	mutex.RLock()
 	defer mutex.RUnlock()
 

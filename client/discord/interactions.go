@@ -88,7 +88,7 @@ func handleInteraction(raw json.RawMessage) {
 	discordID := inter.userID()
 	isChannelCmd := inter.Member != nil
 
-	accountID := GetLinkedAccount(discordID)
+	accountID := LinkedAccount(discordID)
 
 	// Defer the response — tell Discord we're thinking
 	deferResponse(inter.ID, inter.Token)
@@ -166,7 +166,7 @@ func handleInteraction(raw json.RawMessage) {
 			editResponse(inter.Token, "Wallet balance is private — use this command in a DM.")
 			return
 		}
-		bw, err := wallet.GetOrCreateWallet(accountID)
+		bw, err := wallet.EnsureFor(accountID)
 		if err != nil {
 			editResponse(inter.Token, "Wallet error: "+err.Error())
 			return

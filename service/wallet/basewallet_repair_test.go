@@ -2,7 +2,7 @@ package wallet
 
 // A wallet record with a key but no address.
 //
-// It came back from GetOrCreateWallet with no error and everything downstream
+// It came back from EnsureFor with no error and everything downstream
 // rendered an empty string where an address goes — a blank button and a QR code
 // of nothing, on a card that otherwise looked fine.
 
@@ -19,7 +19,7 @@ func TestBlankAddressIsRepairedFromTheKey(t *testing.T) {
 	userWallets["repairme"] = &BaseWallet{PrivateKey: priv} // address lost
 	walletMu.Unlock()
 
-	got, err := GetOrCreateWallet("repairme")
+	got, err := EnsureFor("repairme")
 	if err != nil {
 		t.Fatal(err)
 	}

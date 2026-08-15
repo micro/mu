@@ -375,7 +375,7 @@ func handleTransferPage(w http.ResponseWriter, r *http.Request) {
 	// stranger who happened to have typed the recipient's handle into their
 	// profile. The display name rides along as the label, since that is how you
 	// recognise a person.
-	allAccounts := auth.GetAllAccounts()
+	allAccounts := auth.AllAccounts()
 	sb.WriteString(`<datalist id="user-list">`)
 	for _, a := range allAccounts {
 		if a.ID == sess.Account {

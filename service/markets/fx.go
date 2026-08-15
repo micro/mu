@@ -157,7 +157,7 @@ func cryptoUSD(symbol string) (float64, bool) {
 	if isFiat(symbol) {
 		return 0, false
 	}
-	prices := GetAllPrices()
+	prices := AllPrices()
 	p, ok := prices[symbol]
 	if !ok || p <= 0 {
 		return 0, false
@@ -285,7 +285,7 @@ func nonFiatOf(from, to string, fromFiat, toFiat bool) string {
 // somebody BTC is not an asset we price would be false as well as unhelpful.
 func unknownCode(code string) error {
 	tracked := make([]string, 0, 8)
-	for symbol := range GetAllPrices() {
+	for symbol := range AllPrices() {
 		if !isFiat(symbol) {
 			tracked = append(tracked, symbol)
 		}

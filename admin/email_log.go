@@ -22,7 +22,7 @@ func EmailLogHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	stats := mail.GetEmailStats()
-	messages := mail.GetRecentMessages(50)
+	messages := mail.RecentMessages(50)
 	relays := mail.RecentRelays(50)
 	relaySent, relayFailed := mail.RelayStats()
 

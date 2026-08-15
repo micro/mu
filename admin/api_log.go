@@ -18,7 +18,7 @@ func APILogHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	entries := app.GetAPILog()
+	entries := app.APILog()
 
 	var content strings.Builder
 

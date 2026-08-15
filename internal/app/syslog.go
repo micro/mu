@@ -96,8 +96,8 @@ func AlertCount() int {
 	return len(alertEntries)
 }
 
-// GetSysLog returns a copy of the system log in reverse-chronological order.
-func GetSysLog() []*SysLogEntry {
+// SysLog returns a copy of the system log in reverse-chronological order.
+func SysLog() []*SysLogEntry {
 	sysLogMu.Lock()
 	defer sysLogMu.Unlock()
 	result := make([]*SysLogEntry, len(sysLogEntries))

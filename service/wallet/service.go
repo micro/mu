@@ -72,7 +72,7 @@ func (Server) Address(ctx context.Context, _ *AddressRequest, rsp *AddressRespon
 	if err != nil {
 		return err
 	}
-	bw, err := GetOrCreateWallet(id)
+	bw, err := EnsureFor(id)
 	if err != nil {
 		return err
 	}
@@ -101,7 +101,7 @@ func (Server) Balance(ctx context.Context, _ *BalanceRequest, rsp *BalanceRespon
 	if err != nil {
 		return err
 	}
-	bw, err := GetOrCreateWallet(id)
+	bw, err := EnsureFor(id)
 	if err != nil {
 		return err
 	}
@@ -177,7 +177,7 @@ func (Server) Pay(ctx context.Context, req *PayRequest, rsp *PayResponse) error 
 	if base == "" {
 		return fmt.Errorf("no server called %q — wallet_list says which are configured", req.Server)
 	}
-	bw, err := GetOrCreateWallet(id)
+	bw, err := EnsureFor(id)
 	if err != nil {
 		return err
 	}

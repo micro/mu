@@ -266,7 +266,7 @@ func runCommand(cmd string) string {
 
 	// --- Users ---
 	case "users":
-		accounts := auth.GetAllAccounts()
+		accounts := auth.AllAccounts()
 		sort.Slice(accounts, func(i, j int) bool { return accounts[i].Created.After(accounts[j].Created) })
 		var sb strings.Builder
 		sb.WriteString(fmt.Sprintf("%d users\n", len(accounts)))
@@ -338,7 +338,7 @@ func runCommand(cmd string) string {
 			return "days must be >= 1"
 		}
 		cutoff := time.Now().AddDate(0, 0, -days)
-		accounts := auth.GetAllAccounts()
+		accounts := auth.AllAccounts()
 		count := 0
 		for _, a := range accounts {
 			if a.Approved || a.Admin {
@@ -493,7 +493,7 @@ func runCommand(cmd string) string {
 
 	// --- Apps ---
 	case "apps":
-		allApps := apps.GetPublicApps()
+		allApps := apps.Public()
 		var sb strings.Builder
 		sb.WriteString(fmt.Sprintf("%d public apps\n", len(allApps)))
 		for _, a := range allApps {
@@ -537,7 +537,7 @@ func runCommand(cmd string) string {
 		return fmt.Sprintf("Deleted %s %s", arg(1), rest(2))
 
 	case "flags":
-		flagged := flag.GetAll()
+		flagged := flag.All()
 		if len(flagged) == 0 {
 			return "No flagged content."
 		}
@@ -550,8 +550,8 @@ func runCommand(cmd string) string {
 	// --- System ---
 	case "stats":
 		stats := data.GetStats()
-		accounts := auth.GetAllAccounts()
-		allApps := apps.GetPublicApps()
+		accounts := auth.AllAccounts()
+		allApps := apps.Public()
 		return fmt.Sprintf("Users: %d\nApps: %d\nIndex: %d entries\nSQLite: %v",
 			len(accounts), len(allApps), stats.TotalEntries, stats.UsingSQLite)
 

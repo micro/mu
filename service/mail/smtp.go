@@ -155,7 +155,7 @@ func (s *Session) Mail(from string, opts *smtpd.MailOptions) error {
 	}
 
 	// Reject external senders claiming to be from our domain (anti-spoofing)
-	if strings.EqualFold(senderDomain, GetConfiguredDomain()) {
+	if strings.EqualFold(senderDomain, ConfiguredDomain()) {
 		app.Log("mail", "Rejected domain spoofing: external IP %s claiming to send from %s", s.remoteIP, from)
 		return &smtpd.SMTPError{
 			Code:    550,
@@ -237,7 +237,7 @@ func (s *Session) Rcpt(to string, opts *smtpd.RcptOptions) error {
 	}
 
 	recipientDomain := parts[1]
-	if recipientDomain != GetConfiguredDomain() {
+	if recipientDomain != ConfiguredDomain() {
 		app.Log("mail", "Rejected mail for external domain %s (not an open relay)", recipientDomain)
 		return &smtpd.SMTPError{
 			Code:    550,
@@ -333,7 +333,7 @@ func relayToExternal(from, to string, data []byte) error {
 		defer client.Close()
 
 		// Say HELO/EHLO
-		hostname := GetConfiguredDomain()
+		hostname := ConfiguredDomain()
 		if err := client.Hello(hostname); err != nil {
 			app.Log("mail", "HELO failed for %s: %v", host, err)
 			lastErr = err
@@ -436,7 +436,7 @@ func (s *Session) Data(r io.Reader) error {
 	var rawHeaders strings.Builder
 	// Add a Received header with our server info
 	rawHeaders.WriteString(fmt.Sprintf("Received: from %s (%s)\r\n        by %s with SMTP; %s\r\n",
-		s.remoteIP, s.remoteIP, GetConfiguredDomain(), time.Now().UTC().Format(time.RFC1123Z)))
+		s.remoteIP, s.remoteIP, ConfiguredDomain(), time.Now().UTC().Format(time.RFC1123Z)))
 	// Preserve all original headers
 	for key, vals := range msg.Header {
 		for _, v := range vals {
@@ -456,7 +456,7 @@ func (s *Session) Data(r io.Reader) error {
 	// can use a different envelope sender and forge the From: header in the body.
 	if !s.isLocalhost {
 		headerParts := strings.Split(fromAddr.Address, "@")
-		if len(headerParts) == 2 && strings.EqualFold(headerParts[1], GetConfiguredDomain()) {
+		if len(headerParts) == 2 && strings.EqualFold(headerParts[1], ConfiguredDomain()) {
 			app.Log("mail", "Rejected header spoofing: external IP %s with From header %s", s.remoteIP, fromAddr.Address)
 			return &smtpd.SMTPError{
 				Code:    550,
@@ -561,7 +561,7 @@ func (s *Session) Data(r io.Reader) error {
 		toDomain := parts[1]
 
 		// Check if this is an external recipient
-		isExternal := toDomain != GetConfiguredDomain()
+		isExternal := toDomain != ConfiguredDomain()
 
 		if isExternal && s.isLocalhost {
 			// Relay to external SMTP server
@@ -927,7 +927,7 @@ func StartSMTPServer(addr string) error {
 	s := smtpd.NewServer(be)
 
 	s.Addr = addr
-	s.Domain = GetConfiguredDomain()
+	s.Domain = ConfiguredDomain()
 	s.ReadTimeout = 10 * time.Second
 	s.WriteTimeout = 10 * time.Second
 	s.MaxMessageBytes = 1024 * 1024 * 10 // 10 MB

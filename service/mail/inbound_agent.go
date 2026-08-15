@@ -58,7 +58,7 @@ func SupportAddress() string {
 
 // SharedAgentAddress is the address itself, for display and comparison.
 func SharedAgentAddress() string {
-	domain := GetConfiguredDomain()
+	domain := ConfiguredDomain()
 	if domain == "" {
 		return ""
 	}
@@ -142,7 +142,7 @@ func senderKnownTo(owner, from string) bool {
 // at all, which cannot happen after first-run but is not worth crashing over.
 func firstAdmin() *auth.Account {
 	var out *auth.Account
-	for _, acc := range auth.GetAllAccounts() {
+	for _, acc := range auth.AllAccounts() {
 		if !acc.Admin {
 			continue
 		}

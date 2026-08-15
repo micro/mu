@@ -113,8 +113,8 @@ func IsBlocked(userID, authorID string) bool {
 	return blocked
 }
 
-// GetSavedItems returns all saved item keys for a user
-func GetSavedItems(userID string) map[string]time.Time {
+// SavedItems returns all saved item keys for a user
+func SavedItems(userID string) map[string]time.Time {
 	prefsMu.RLock()
 	defer prefsMu.RUnlock()
 	p, ok := prefs[userID]
@@ -124,8 +124,8 @@ func GetSavedItems(userID string) map[string]time.Time {
 	return p.Saved
 }
 
-// GetBlockedUsers returns all blocked user IDs for a user
-func GetBlockedUsers(userID string) map[string]time.Time {
+// BlockedUsers returns all blocked user IDs for a user
+func BlockedUsers(userID string) map[string]time.Time {
 	prefsMu.RLock()
 	defer prefsMu.RUnlock()
 	p, ok := prefs[userID]
@@ -143,14 +143,14 @@ func ClearUserPrefs(userID string) {
 	savePrefs()
 }
 
-// GetHiddenItems returns what this account has hidden from its own view,
+// HiddenItems returns what this account has hidden from its own view,
 // keyed "type:id".
 //
 // There was no getter: hiding was write-only, so an item could be dismissed and
 // never found again — no page listed them and nothing could undo one. IsDismissed
 // answered about a single item you already had in your hand, which is the wrong
 // shape for "what did I hide".
-func GetHiddenItems(userID string) map[string]time.Time {
+func HiddenItems(userID string) map[string]time.Time {
 	prefsMu.RLock()
 	defer prefsMu.RUnlock()
 	out := map[string]time.Time{}

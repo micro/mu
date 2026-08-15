@@ -188,8 +188,8 @@ func CountSince(since time.Time) int {
 	return count
 }
 
-// GetThreads returns all cached messages (most recent first)
-func GetThreads() []*Message {
+// Threads returns all cached messages (most recent first)
+func Threads() []*Message {
 	mutex.RLock()
 	defer mutex.RUnlock()
 	result := make([]*Message, len(messages))

@@ -63,8 +63,8 @@ func RegisterDeleter(contentType string, deleter ContentDeleter) {
 	deleters[contentType] = deleter
 }
 
-// GetDeleter returns the registered deleter for a content type.
-func GetDeleter(contentType string) (ContentDeleter, bool) {
+// Deleter returns the registered deleter for a content type.
+func Deleter(contentType string) (ContentDeleter, bool) {
 	d, ok := deleters[contentType]
 	return d, ok
 }
@@ -148,14 +148,14 @@ func Add(contentType, contentID, username string) (int, bool, error) {
 	return item.FlagCount, false, nil
 }
 
-// GetCount returns flag count for content.
-func GetCount(contentType, contentID string) int {
-	count, _ := GetFlags(contentType, contentID)
+// Count returns flag count for content.
+func Count(contentType, contentID string) int {
+	count, _ := Flags(contentType, contentID)
 	return count
 }
 
-// GetFlags returns flag info for content (flagCount, isFlagged).
-func GetFlags(contentType, contentID string) (int, bool) {
+// Flags returns flag info for content (flagCount, isFlagged).
+func Flags(contentType, contentID string) (int, bool) {
 	key := contentType + ":" + contentID
 	mutex.RLock()
 	defer mutex.RUnlock()
@@ -165,8 +165,8 @@ func GetFlags(contentType, contentID string) (int, bool) {
 	return 0, false
 }
 
-// GetItem returns full flag details.
-func GetItem(contentType, contentID string) *FlaggedItem {
+// Item returns full flag details.
+func Item(contentType, contentID string) *FlaggedItem {
 	key := contentType + ":" + contentID
 	mutex.RLock()
 	defer mutex.RUnlock()
@@ -176,8 +176,8 @@ func GetItem(contentType, contentID string) *FlaggedItem {
 	return nil
 }
 
-// GetAll returns all flagged items.
-func GetAll() []*FlaggedItem {
+// All returns all flagged items.
+func All() []*FlaggedItem {
 	mutex.RLock()
 	defer mutex.RUnlock()
 	var items []*FlaggedItem
@@ -211,7 +211,7 @@ func Approve(contentType, contentID string) error {
 
 // IsHidden checks if content is flagged/hidden.
 func IsHidden(contentType, contentID string) bool {
-	_, flagged := GetFlags(contentType, contentID)
+	_, flagged := Flags(contentType, contentID)
 	return flagged
 }
 

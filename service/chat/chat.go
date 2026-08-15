@@ -203,7 +203,7 @@ func handlePatternMatch(content string, room *Room) string {
 		for _, pattern := range p.patterns {
 			if contentLower == pattern || strings.HasPrefix(contentLower, pattern+" ") || strings.HasSuffix(contentLower, " "+pattern) {
 				// Look up price from data index
-				entry := data.GetByID("market_" + p.symbol)
+				entry := data.ByID("market_" + p.symbol)
 				if entry != nil {
 					if price, ok := entry.Metadata["price"].(float64); ok {
 						if price >= 1000 {
@@ -224,7 +224,7 @@ func handlePatternMatch(content string, room *Room) string {
 	if strings.HasSuffix(contentLower, " price") {
 		symbol := strings.ToUpper(strings.TrimSuffix(contentLower, " price"))
 		if len(symbol) >= 2 && len(symbol) <= 6 {
-			entry := data.GetByID("market_" + symbol)
+			entry := data.ByID("market_" + symbol)
 			if entry != nil {
 				if price, ok := entry.Metadata["price"].(float64); ok {
 					if price >= 1000 {
@@ -243,7 +243,7 @@ func handlePatternMatch(content string, room *Room) string {
 	if strings.HasPrefix(contentLower, "price of ") {
 		symbol := strings.ToUpper(strings.TrimPrefix(contentLower, "price of "))
 		if len(symbol) >= 2 && len(symbol) <= 6 {
-			entry := data.GetByID("market_" + symbol)
+			entry := data.ByID("market_" + symbol)
 			if entry != nil {
 				if price, ok := entry.Metadata["price"].(float64); ok {
 					if price >= 1000 {
@@ -307,7 +307,7 @@ func getOrCreateRoom(id string) *Room {
 		// Try with a timeout to avoid blocking during heavy indexing
 		entryChan := make(chan *data.IndexEntry, 1)
 		go func() {
-			entryChan <- data.GetByID(itemID)
+			entryChan <- data.ByID(itemID)
 		}()
 
 		var entry *data.IndexEntry
@@ -346,7 +346,7 @@ func getOrCreateRoom(id string) *Room {
 		// Try with a timeout to avoid blocking during heavy indexing
 		entryChan := make(chan *data.IndexEntry, 1)
 		go func() {
-			entryChan <- data.GetByID(itemID)
+			entryChan <- data.ByID(itemID)
 		}()
 
 		var entry *data.IndexEntry
@@ -386,7 +386,7 @@ func getOrCreateRoom(id string) *Room {
 		// Try with a timeout to avoid blocking during heavy indexing
 		entryChan := make(chan *data.IndexEntry, 1)
 		go func() {
-			entryChan <- data.GetByID(itemID)
+			entryChan <- data.ByID(itemID)
 		}()
 
 		var entry *data.IndexEntry
@@ -445,7 +445,7 @@ func getOrCreateRoom(id string) *Room {
 		// Try with a timeout to avoid blocking during heavy indexing
 		entryChan := make(chan *data.IndexEntry, 1)
 		go func() {
-			entryChan <- data.GetByID(itemID)
+			entryChan <- data.ByID(itemID)
 		}()
 
 		var entry *data.IndexEntry
@@ -517,7 +517,7 @@ func getOrCreateRoom(id string) *Room {
 					parts := strings.SplitN(room.ID, "_", 2)
 					if len(parts) == 2 && parts[1] == itemID {
 						// Fetch updated entry
-						entry := data.GetByID(itemID)
+						entry := data.ByID(itemID)
 						if entry != nil {
 							room.mutex.Lock()
 							room.Title = entry.Title
@@ -547,7 +547,7 @@ func getOrCreateRoom(id string) *Room {
 					app.Log("chat", "Room %s still has no content after 5s, attempting direct fetch", room.ID)
 					parts := strings.SplitN(room.ID, "_", 2)
 					if len(parts) == 2 {
-						entry := data.GetByID(parts[1])
+						entry := data.ByID(parts[1])
 						if entry != nil {
 							room.mutex.Lock()
 							room.Title = entry.Title
@@ -880,7 +880,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 						if strings.HasPrefix(room.ID, "reminder_") {
 							parts := strings.SplitN(room.ID, "_", 2)
 							if len(parts) == 2 {
-								if entry := data.GetByID(parts[1]); entry != nil {
+								if entry := data.ByID(parts[1]); entry != nil {
 									room.mutex.Lock()
 									room.Summary = entry.Content
 									if len(room.Summary) > 2000 {
@@ -1381,7 +1381,7 @@ func handleGetChat(w http.ResponseWriter, r *http.Request, roomID string) {
 				app.Log("chat", "Room is nil for: %s", roomID)
 			}
 		case <-time.After(5 * time.Second):
-			app.Log("chat", "TIMEOUT creating room %s - likely blocked on data.GetByID()", roomID)
+			app.Log("chat", "TIMEOUT creating room %s - likely blocked on data.ByID()", roomID)
 			http.Error(w, "Room creation timeout - server may be busy indexing content. Please try again.", http.StatusRequestTimeout)
 			return
 		}

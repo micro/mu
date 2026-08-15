@@ -21,7 +21,7 @@ var (
 	uaOnce     sync.Once
 )
 
-func init() { UserAgentResolver = GetUserAgentFor }
+func init() { UserAgentResolver = UserAgentFor }
 
 func loadUserAgents() {
 	uaOnce.Do(func() {
@@ -56,8 +56,8 @@ func SaveUserAgent(accountID string, a *Agent) *Agent {
 	return a
 }
 
-// GetUserAgentFor returns an account's agent by ID, or nil.
-func GetUserAgentFor(accountID, id string) *Agent {
+// UserAgentFor returns an account's agent by ID, or nil.
+func UserAgentFor(accountID, id string) *Agent {
 	loadUserAgents()
 	uaMu.RLock()
 	defer uaMu.RUnlock()

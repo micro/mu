@@ -44,7 +44,7 @@ func TestFreeDoesNotMeanOpen(t *testing.T) {
 func TestAFreeOperationIsNotMetered(t *testing.T) {
 	withPayments(t) // the question is the price, not whether payments exist
 	for _, free := range []string{quota.OpNewsSearch, quota.OpWebFetch, quota.OpQuranSearch} {
-		if quota.GetOperationCost(free) != 0 {
+		if quota.OperationCost(free) != 0 {
 			t.Fatalf("%s is no longer priced at zero — this test is about the ones that are", free)
 		}
 		if quota.Metered(free) {

@@ -160,10 +160,10 @@ func ArticleText(idOrURL string) (string, error) {
 
 	// Accept either an article id or a full URL.
 	url := ""
-	entry := data.GetByID(idOrURL)
+	entry := data.ByID(idOrURL)
 	if entry == nil && strings.HasPrefix(idOrURL, "http") {
 		url = idOrURL
-		entry = data.GetByID(articleID(idOrURL))
+		entry = data.ByID(articleID(idOrURL))
 	}
 	// Only ever expose news entries through this tool — never another type
 	// (e.g. a private mail entry) that happens to share an id space.

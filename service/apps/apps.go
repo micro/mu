@@ -805,7 +805,7 @@ func handleCreate(w http.ResponseWriter, r *http.Request) {
 	go func(authorID, appSlug, appName, appDesc, appHTML string) {
 		// Moderate name + description.
 		flag.CheckContent("app", appSlug, appName, appDesc)
-		if item := flag.GetItem("app", appSlug); item != nil && item.Flagged {
+		if item := flag.Item("app", appSlug); item != nil && item.Flagged {
 			app.Log("moderation", "Auto-banning %s after app %q name/desc flagged", authorID, appName)
 			auth.BanAccount(authorID)
 			return
@@ -814,7 +814,7 @@ func handleCreate(w http.ResponseWriter, r *http.Request) {
 		body := extractAppText(appHTML)
 		if body != "" {
 			flag.CheckContent("app_content", appSlug, appName, body)
-			if item := flag.GetItem("app_content", appSlug); item != nil && item.Flagged {
+			if item := flag.Item("app_content", appSlug); item != nil && item.Flagged {
 				app.Log("moderation", "Auto-banning %s after app %q content flagged", authorID, appName)
 				auth.BanAccount(authorID)
 			}
@@ -1710,8 +1710,8 @@ func UpdateAppOwned(accountID, slug, name, description, tags, html, icon string,
 // authenticated account, never from model input. Defaults to the id.
 var AuthorNameFor = func(accountID string) string { return accountID }
 
-// GetPublicApps returns all public apps sorted by installs.
-func GetPublicApps() []*App {
+// Public returns all public apps sorted by installs.
+func Public() []*App {
 	mutex.RLock()
 	defer mutex.RUnlock()
 
@@ -1735,8 +1735,8 @@ func GetPublicApps() []*App {
 	return list
 }
 
-// GetAppsByAuthor returns all public apps by a given author ID, sorted by name.
-func GetAppsByAuthor(authorID string) []*App {
+// ByAuthor returns all public apps by a given author ID, sorted by name.
+func ByAuthor(authorID string) []*App {
 	mutex.RLock()
 	defer mutex.RUnlock()
 

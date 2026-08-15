@@ -254,7 +254,7 @@ func creditsToAtomic(credits, decimals int) string {
 // tier existed in the price list and was unreachable in practice, which is the
 // opposite of what /mcp being a public endpoint is for.
 func BuildPaymentRequirements(operation, resource string) []PaymentRequirements {
-	cost := quota.GetOperationCost(operation)
+	cost := quota.OperationCost(operation)
 	if cost < 1 {
 		return nil
 	}

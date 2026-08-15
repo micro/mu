@@ -3,8 +3,8 @@ package blog
 // What the instance has to say today, asked of the catalogue rather than of
 // five packages somebody chose once.
 //
-// gatherCategoryContext used to call news.GetFeed, markets.GetAllPriceData,
-// video.GetLatestVideos and prayer.GetReminderData — four services, named in
+// gatherCategoryContext used to call news.GetFeed, markets.AllPriceData,
+// video.LatestVideos and prayer.GetReminderData — four services, named in
 // code. Flights shipped and the digest could not mention it, and a self-hoster
 // who adds their own service would never see it appear, because nothing here
 // was asking what exists. It was asking four packages how they were.

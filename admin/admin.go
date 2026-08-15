@@ -23,7 +23,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	users := auth.GetAllAccounts()
+	users := auth.AllAccounts()
 
 	// Alphabetical. There is no ranking to express here, and a list that is
 	// sorted is one nobody has to scan twice.
@@ -152,7 +152,7 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, redir, http.StatusSeeOther)
 		return
 	}
-	users := auth.GetAllAccounts()
+	users := auth.AllAccounts()
 	sort.Slice(users, func(i, j int) bool { return users[i].Created.After(users[j].Created) })
 	tab := r.URL.Query().Get("tab")
 	if tab == "" {

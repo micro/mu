@@ -20,7 +20,7 @@ func Text(category string) string {
 		category = CategoryCrypto
 	}
 
-	priceData := GetAllPriceData()
+	priceData := AllPriceData()
 	assets := getAssetsForCategory(category)
 
 	var sb strings.Builder

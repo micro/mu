@@ -101,7 +101,7 @@ func TestAnOverrideReplacesOneEntryNotTheList(t *testing.T) {
 	if before == 0 {
 		t.Fatal("no prices loaded")
 	}
-	webBefore := GetOperationCost(OpWebSearch)
+	webBefore := OperationCost(OpWebSearch)
 
 	dir := t.TempDir()
 	t.Setenv("HOME", dir)
@@ -115,14 +115,14 @@ func TestAnOverrideReplacesOneEntryNotTheList(t *testing.T) {
 	t.Cleanup(ReloadPrices)
 	ReloadPrices()
 
-	if got := GetOperationCost(OpWebSearch); got != 9 {
+	if got := OperationCost(OpWebSearch); got != 9 {
 		t.Fatalf("an operator's quota.json was ignored: web_search is %d, want 9", got)
 	}
 	if after := len(Prices()); after != before {
 		t.Errorf("a one-line override left %d prices, was %d — the rest were dropped",
 			after, before)
 	}
-	if GetOperationCost(OpAgentQuery) == 1 && webBefore != 1 {
+	if OperationCost(OpAgentQuery) == 1 && webBefore != 1 {
 		t.Error("agent_query fell back to the unpriced default, so the override " +
 			"replaced the list rather than one entry")
 	}
@@ -144,7 +144,7 @@ func TestTheNamedEnvVarOverridesAPrice(t *testing.T) {
 	t.Setenv(withEnv.Env, "42")
 	t.Cleanup(ReloadPrices)
 	ReloadPrices()
-	if got := GetOperationCost(withEnv.Op); got != 42 {
+	if got := OperationCost(withEnv.Op); got != 42 {
 		t.Errorf("%s=42 left %s at %d", withEnv.Env, withEnv.Op, got)
 	}
 }

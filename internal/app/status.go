@@ -341,7 +341,7 @@ func buildStatus() StatusResponse {
 		},
 		Services:    services,
 		Config:      config,
-		OnlineUsers: auth.GetOnlineCount(),
+		OnlineUsers: auth.OnlineCount(),
 		IndexStats: IndexStatus{
 			Entries: indexStats.TotalEntries,
 		},

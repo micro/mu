@@ -442,7 +442,7 @@ func fromRecord(owner string, rec userdb.Record) *Agent {
 	// Last used comes from the token, which is the only thing that knows: the
 	// agent record is not touched by a call.
 	if a.TokenID != "" {
-		if tok, err := auth.GetTokenByID(a.TokenID); err == nil && tok != nil {
+		if tok, err := auth.TokenByID(a.TokenID); err == nil && tok != nil {
 			a.LastUsed = tok.LastUsed
 		}
 	}

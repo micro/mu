@@ -202,7 +202,7 @@ func checkChain() error {
 
 // For returns a copy of the account's wallet, or nil if it has none yet.
 //
-// A copy, because the stored record is repaired in place — GetOrCreateWallet
+// A copy, because the stored record is repaired in place — EnsureFor
 // writes an address back onto a record that lost one — and a caller reading the
 // key while that happens is an unsynchronised read of a private key. Nothing
 // outside this file has any business writing one, and everything that does goes
@@ -219,7 +219,7 @@ func For(accountID string) *BaseWallet {
 	return &out
 }
 
-// GetOrCreateWallet returns the account's wallet, generating one on first use.
+// EnsureFor returns the account's wallet, generating one on first use.
 //
 // A stored record is checked rather than trusted. One with a key but no address
 // used to come straight back with no error, and everything downstream then
@@ -231,7 +231,7 @@ func For(accountID string) *BaseWallet {
 // The address is derived from the key rather than replaced. Minting a fresh
 // wallet would be the easy repair and the wrong one: the old key may hold real
 // USDC, and issuing a new address strands it silently.
-func GetOrCreateWallet(accountID string) (*BaseWallet, error) {
+func EnsureFor(accountID string) (*BaseWallet, error) {
 	loadWallets()
 	walletMu.Lock()
 	defer walletMu.Unlock()

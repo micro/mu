@@ -117,7 +117,7 @@ func presenceBroadcaster() {
 }
 
 func broadcastPresence() {
-	users := auth.GetOnlineUsers()
+	users := auth.OnlineUsers()
 
 	msg := PresenceMessage{
 		Type:  "presence",
@@ -167,7 +167,7 @@ func PresenceHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Send current user list immediately
-	users := auth.GetOnlineUsers()
+	users := auth.OnlineUsers()
 	msg := PresenceMessage{
 		Type:  "presence",
 		Users: users,
@@ -217,7 +217,7 @@ func AIResponseAllowed(askerID, response string) bool {
 		return true
 	}
 	flag.CheckContent("ai_response", askerID, "", response)
-	item := flag.GetItem("ai_response", askerID)
+	item := flag.Item("ai_response", askerID)
 	if item != nil && item.Flagged {
 		app.Log("moderation", "AI response flagged for %s — banning asker", askerID)
 		auth.BanAccount(askerID)

@@ -93,7 +93,7 @@ func FlagHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Refresh cache if content was hidden
 	if count >= 3 {
-		if deleter, ok := flag.GetDeleter(contentType); ok {
+		if deleter, ok := flag.Deleter(contentType); ok {
 			deleter.RefreshCache()
 		}
 	}
@@ -118,7 +118,7 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 
 	_ = acc // acc.Admin is always true here
 
-	flaggedItems := flag.GetAll()
+	flaggedItems := flag.All()
 
 	var itemsList []string
 	for _, item := range flaggedItems {
@@ -128,7 +128,7 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 		var createdAt string
 
 		// Get content from the appropriate handler
-		if deleter, ok := flag.GetDeleter(item.ContentType); ok {
+		if deleter, ok := flag.Deleter(item.ContentType); ok {
 			content := deleter.Get(item.ContentID)
 			switch item.ContentType {
 			case "post":

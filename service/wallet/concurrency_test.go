@@ -25,7 +25,7 @@ func TestConcurrentFirstUseMintsOneWallet(t *testing.T) {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			bw, err := GetOrCreateWallet(id)
+			bw, err := EnsureFor(id)
 			if err != nil || bw == nil {
 				return
 			}
@@ -57,7 +57,7 @@ func TestConcurrentFirstUseMintsOneWallet(t *testing.T) {
 
 // Reading a wallet while its address is repaired must not race.
 //
-// GetOrCreateWallet writes an address back onto a record that lost one. A caller
+// EnsureFor writes an address back onto a record that lost one. A caller
 // holding the stored record rather than a copy reads the key while that write
 // happens.
 func TestReadingAWalletWhileItIsRepaired(t *testing.T) {
@@ -85,7 +85,7 @@ func TestReadingAWalletWhileItIsRepaired(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			GetOrCreateWallet(id) //nolint:errcheck
+			EnsureFor(id) //nolint:errcheck
 		}()
 	}
 	wg.Wait()

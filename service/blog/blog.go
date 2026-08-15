@@ -89,8 +89,8 @@ type Comment struct {
 // tagRegex validates tag format: alphanumeric only
 var tagRegex = regexp.MustCompile(`^[a-zA-Z0-9]+$`)
 
-// GetTopics returns the list of valid topics/categories
-func GetTopics() []string {
+// Topics returns the list of valid topics/categories
+func Topics() []string {
 	return topics
 }
 
@@ -345,8 +345,8 @@ func (d *postDeleter) Get(id string) interface{} {
 	}
 }
 
-// GetNewAccountBlogPosts returns blog posts from new accounts for the moderation page.
-func GetNewAccountBlogPosts() []flag.PostContent {
+// PostsByNewAccounts returns blog posts from new accounts for the moderation page.
+func PostsByNewAccounts() []flag.PostContent {
 	mutex.RLock()
 	defer mutex.RUnlock()
 
@@ -1117,8 +1117,8 @@ func RefreshCache() {
 	updateCache()
 }
 
-// GetPostsByAuthor returns all posts by a specific author (for user profiles)
-func GetPostsByAuthor(authorName string) []*Post {
+// PostsByAuthor returns all posts by a specific author (for user profiles)
+func PostsByAuthor(authorName string) []*Post {
 	mutex.RLock()
 	defer mutex.RUnlock()
 
@@ -1131,7 +1131,7 @@ func GetPostsByAuthor(authorName string) []*Post {
 	return userPosts
 }
 
-// GetPostsByAuthorID returns an account's posts, matched on the id the post
+// PostsByAuthorID returns an account's posts, matched on the id the post
 // was written with rather than on the name it was displayed under.
 //
 // The profile page used the name, and the blog links an author at /@<id> while
@@ -1144,7 +1144,7 @@ func GetPostsByAuthor(authorName string) []*Post {
 // Posts written before AuthorID existed have none, so those still match on
 // name. Dropping them would make old posts vanish from a profile to fix a
 // join.
-func GetPostsByAuthorID(authorID, authorName string) []*Post {
+func PostsByAuthorID(authorID, authorName string) []*Post {
 	mutex.RLock()
 	defer mutex.RUnlock()
 

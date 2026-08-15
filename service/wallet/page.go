@@ -45,7 +45,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 // Page renders the signed-in wallet.
 func Page(accountID string) string {
-	bw, err := GetOrCreateWallet(accountID)
+	bw, err := EnsureFor(accountID)
 	// Say so rather than vanishing. A card that renders with an empty address
 	// and a QR code of nothing is worse than no card: it looks like the feature
 	// half-works, and there is nothing to go on.

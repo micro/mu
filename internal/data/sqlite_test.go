@@ -77,18 +77,18 @@ func TestSQLiteMigration(t *testing.T) {
 	}
 
 	// Verify stats
-	entries, _, err := GetIndexStats()
+	entries, _, err := IndexStats()
 	if err != nil {
-		t.Fatalf("GetIndexStats failed: %v", err)
+		t.Fatalf("IndexStats failed: %v", err)
 	}
 	if entries != 2 {
 		t.Errorf("Expected 2 entries, got %d", entries)
 	}
 
-	// Test GetByID
-	entry, err := GetByIDSQLite("test1")
+	// Test ByID
+	entry, err := ByIDSQLite("test1")
 	if err != nil {
-		t.Fatalf("GetByIDSQLite failed: %v", err)
+		t.Fatalf("ByIDSQLite failed: %v", err)
 	}
 	if entry == nil {
 		t.Fatal("Entry not found")
@@ -100,10 +100,10 @@ func TestSQLiteMigration(t *testing.T) {
 		t.Errorf("Metadata not preserved")
 	}
 
-	// Test GetByType
-	newsEntries, err := GetByTypeSQLite("news", 10)
+	// Test ByType
+	newsEntries, err := ByTypeSQLite("news", 10)
 	if err != nil {
-		t.Fatalf("GetByTypeSQLite failed: %v", err)
+		t.Fatalf("ByTypeSQLite failed: %v", err)
 	}
 	if len(newsEntries) != 1 {
 		t.Errorf("Expected 1 news entry, got %d", len(newsEntries))
@@ -197,9 +197,9 @@ func TestSQLiteIndexUpdate(t *testing.T) {
 	}
 
 	// Verify update
-	entry, err := GetByIDSQLite("update1")
+	entry, err := ByIDSQLite("update1")
 	if err != nil {
-		t.Fatalf("GetByIDSQLite failed: %v", err)
+		t.Fatalf("ByIDSQLite failed: %v", err)
 	}
 	if entry.Title != "Updated Title" {
 		t.Errorf("Expected 'Updated Title', got '%s'", entry.Title)
@@ -209,7 +209,7 @@ func TestSQLiteIndexUpdate(t *testing.T) {
 	}
 
 	// Verify only one entry exists
-	entries, _, _ := GetIndexStats()
+	entries, _, _ := IndexStats()
 	if entries != 1 {
 		t.Errorf("Expected 1 entry after update, got %d", entries)
 	}

@@ -1343,7 +1343,7 @@ func Load() {
 					itemID := fmt.Sprintf("%x", md5.Sum([]byte(uri)))[:16]
 
 					// Get existing index entry to preserve metadata
-					existing := data.GetByID(itemID)
+					existing := data.ByID(itemID)
 					metadata := map[string]interface{}{
 						"url": uri,
 					}
@@ -1483,7 +1483,7 @@ func formatSummary(text string) string {
 
 func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string) {
 	// Get article from index
-	entry := data.GetByID(articleID)
+	entry := data.ByID(articleID)
 	if entry == nil {
 		http.Error(w, "Article not found", http.StatusNotFound)
 		return

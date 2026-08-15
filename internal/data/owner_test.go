@@ -42,9 +42,9 @@ func TestOwnerScopingInMemory(t *testing.T) {
 		t.Errorf("bob-scoped search wrong: %v", got)
 	}
 
-	// GetByType is public-only.
-	if mails := GetByType("mail", 10); len(mails) != 0 {
-		t.Errorf("GetByType leaked %d private mail entries", len(mails))
+	// ByType is public-only.
+	if mails := ByType("mail", 10); len(mails) != 0 {
+		t.Errorf("ByType leaked %d private mail entries", len(mails))
 	}
 }
 
@@ -74,8 +74,8 @@ func TestOwnerScopingSQLite(t *testing.T) {
 		t.Errorf("alice-scoped SQLite search wrong: %v", got)
 	}
 
-	mails, _ := GetByTypeSQLite("mail", 10)
+	mails, _ := ByTypeSQLite("mail", 10)
 	if len(mails) != 0 {
-		t.Errorf("GetByTypeSQLite leaked %d private mail entries", len(mails))
+		t.Errorf("ByTypeSQLite leaked %d private mail entries", len(mails))
 	}
 }

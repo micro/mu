@@ -241,7 +241,7 @@ func googleUserInfo(accessToken string) (*googleUser, error) {
 // in via Google, not a password).
 func findOrCreateGoogleAccount(info *googleUser) *auth.Account {
 	email := strings.ToLower(strings.TrimSpace(info.Email))
-	if acc, err := auth.GetAccountByEmail(email); err == nil && acc != nil {
+	if acc, err := auth.AccountByEmail(email); err == nil && acc != nil {
 		return acc
 	}
 	id := uniqueUsernameFromEmail(email)
@@ -317,7 +317,7 @@ func linkGoogleToCurrentAccount(w http.ResponseWriter, r *http.Request, info *go
 		return
 	}
 	email := strings.ToLower(strings.TrimSpace(info.Email))
-	if other, e := auth.GetAccountByEmail(email); e == nil && other != nil && other.ID != acc.ID {
+	if other, e := auth.AccountByEmail(email); e == nil && other != nil && other.ID != acc.ID {
 		http.Error(w, "That Google account ("+email+") is already linked to another Mu account (@"+other.ID+"). Delete or unlink that account first, then connect.", http.StatusConflict)
 		return
 	}

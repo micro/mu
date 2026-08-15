@@ -11,7 +11,7 @@ func FeedText(limit int) string {
 	if limit <= 0 || limit > 50 {
 		limit = 20
 	}
-	threads := GetThreads()
+	threads := Threads()
 	if len(threads) == 0 {
 		return "No social posts available right now."
 	}

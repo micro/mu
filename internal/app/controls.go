@@ -154,11 +154,11 @@ type SavedEntry struct {
 	SavedAt time.Time `json:"saved_at"`
 }
 
-// GetSavedList returns a user's saved items, newest first, each resolved to a
+// SavedList returns a user's saved items, newest first, each resolved to a
 // URL and a human title from the content index. Shared by the Saved page, its
 // JSON view and the saved_list tool so all three stay in sync.
-func GetSavedList(userID string) []SavedEntry {
-	saved := GetSavedItems(userID)
+func SavedList(userID string) []SavedEntry {
+	saved := SavedItems(userID)
 	var out []SavedEntry
 	for key, t := range saved {
 		parts := strings.SplitN(key, ":", 2)
@@ -176,16 +176,16 @@ func GetSavedList(userID string) []SavedEntry {
 	return out
 }
 
-// GetHiddenList is GetSavedList for the things a caller has hidden: same
+// HiddenList is SavedList for the things a caller has hidden: same
 // resolution to a title and a permalink.
 //
 // Without it the hidden list rendered its storage key — "post
 // 1771579274882357473" — which names the row in the file rather than the thing
 // it refers to. Nobody can act on that: you cannot tell what you hid, and the
 // undo beside it is a guess.
-func GetHiddenList(userID string) []SavedEntry {
+func HiddenList(userID string) []SavedEntry {
 	var out []SavedEntry
-	for key, t := range GetHiddenItems(userID) {
+	for key, t := range HiddenItems(userID) {
 		parts := strings.SplitN(key, ":", 2)
 		if len(parts) != 2 {
 			continue
@@ -204,10 +204,10 @@ func GetHiddenList(userID string) []SavedEntry {
 // savedTitle resolves a human title for a saved item from the content index,
 // falling back to the decoded URL (web) or the content-type label.
 func savedTitle(ct, cid string) string {
-	if entry := data.GetByID(cid); entry != nil && entry.Title != "" {
+	if entry := data.ByID(cid); entry != nil && entry.Title != "" {
 		return entry.Title
 	}
-	if entry := data.GetByID(ct + "_" + cid); entry != nil && entry.Title != "" {
+	if entry := data.ByID(ct + "_" + cid); entry != nil && entry.Title != "" {
 		return entry.Title
 	}
 	if ct == "web" {
@@ -223,7 +223,7 @@ func savedTitle(ct, cid string) string {
 }
 
 func renderSavedPage(w http.ResponseWriter, r *http.Request, userID string) {
-	items := GetSavedList(userID)
+	items := SavedList(userID)
 
 	if WantsJSON(r) {
 		RespondJSON(w, map[string]interface{}{"saved": items})
@@ -253,7 +253,7 @@ func renderSavedPage(w http.ResponseWriter, r *http.Request, userID string) {
 }
 
 func renderBlockedPage(w http.ResponseWriter, r *http.Request, userID string) {
-	blocked := GetBlockedUsers(userID)
+	blocked := BlockedUsers(userID)
 
 	var sb strings.Builder
 

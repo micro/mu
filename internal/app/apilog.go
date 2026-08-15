@@ -73,8 +73,8 @@ func RecordAPICall(service, method, url string, status int, duration time.Durati
 	apiLogMu.Unlock()
 }
 
-// GetAPILog returns a copy of the API log entries in reverse-chronological order.
-func GetAPILog() []*APILogEntry {
+// APILog returns a copy of the API log entries in reverse-chronological order.
+func APILog() []*APILogEntry {
 	apiLogMu.Lock()
 	defer apiLogMu.Unlock()
 	result := make([]*APILogEntry, len(apiLogEntries))

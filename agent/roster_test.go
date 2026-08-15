@@ -69,7 +69,7 @@ func TestAnAgentsScopeIsWrittenIntoItsToken(t *testing.T) {
 		t.Fatal("no token secret was returned")
 	}
 
-	tok, err := auth.GetTokenByID(a.TokenID)
+	tok, err := auth.TokenByID(a.TokenID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +108,7 @@ func TestAnAgentWithNoScopeChosenIsUnscoped(t *testing.T) {
 	if !a.Unscoped() {
 		t.Error("an agent created with no services reads as scoped")
 	}
-	tok, err := auth.GetTokenByID(a.TokenID)
+	tok, err := auth.TokenByID(a.TokenID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,7 +133,7 @@ func TestRemovingAnAgentRevokesItsToken(t *testing.T) {
 	if For(id, a.ID) != nil {
 		t.Error("the agent survived removal")
 	}
-	if _, err := auth.GetTokenByID(a.TokenID); err == nil {
+	if _, err := auth.TokenByID(a.TokenID); err == nil {
 		t.Error("the agent's token still exists after removal")
 	}
 }
@@ -251,7 +251,7 @@ func TestATokenlessAgentCanBeIssuedOne(t *testing.T) {
 	if got.TokenID == "" {
 		t.Error("the issued token was not recorded")
 	}
-	tok, err := auth.GetTokenByID(got.TokenID)
+	tok, err := auth.TokenByID(got.TokenID)
 	if err != nil {
 		t.Fatal(err)
 	}

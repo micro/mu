@@ -27,14 +27,14 @@ func TestSeedIncludesHelloWorld(t *testing.T) {
 	}
 
 	var found bool
-	for _, p := range GetPublicApps() {
+	for _, p := range Public() {
 		if p.Slug == "hello-world" {
 			found = true
 			break
 		}
 	}
 	if !found {
-		t.Error("hello-world not listed in GetPublicApps()")
+		t.Error("hello-world not listed in Public()")
 	}
 }
 

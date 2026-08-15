@@ -52,7 +52,7 @@ func TestAnAlertIsKeptApartFromTheLog(t *testing.T) {
 	// order should see it in its place, but a duplicate would make the same
 	// event look like two.
 	n := 0
-	for _, e := range GetSysLog() {
+	for _, e := range SysLog() {
 		if strings.Contains(e.Message, "lose 3 keys") {
 			n++
 		}
@@ -79,7 +79,7 @@ func TestAlertsSurviveTheLogRollingOver(t *testing.T) {
 		t.Error("the alert was lost to ordinary chatter, which is the thing this fixes")
 	}
 	// And the ordinary log really did roll, so the test proved something.
-	for _, e := range GetSysLog() {
+	for _, e := range SysLog() {
 		if strings.Contains(e.Message, "refused a write") {
 			t.Fatal("the log did not roll over — this test is not testing what it claims")
 		}

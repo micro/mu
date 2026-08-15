@@ -25,7 +25,7 @@ func TestPostsAreFoundByTheIdTheyAreLinkedBy(t *testing.T) {
 
 	// The system user's display name is not its id, which is the case that
 	// was broken.
-	got := GetPostsByAuthorID("micro", "Mu")
+	got := PostsByAuthorID("micro", "Mu")
 	if len(got) != 2 {
 		t.Fatalf("the system user has %d posts, want 2 (one by id, one legacy by name)", len(got))
 	}
@@ -38,7 +38,7 @@ func TestPostsAreFoundByTheIdTheyAreLinkedBy(t *testing.T) {
 	}
 
 	// And an account whose name never matched anything still gets its own.
-	if got := GetPostsByAuthorID("asim", "Asim Aslam"); len(got) != 1 || got[0].ID != "2" {
+	if got := PostsByAuthorID("asim", "Asim Aslam"); len(got) != 1 || got[0].ID != "2" {
 		t.Errorf("a renamed account lost its posts: %v", got)
 	}
 }
@@ -51,10 +51,10 @@ func TestALegacyPostDoesNotMatchEveryone(t *testing.T) {
 	mutex.Unlock()
 	t.Cleanup(func() { mutex.Lock(); posts = saved; mutex.Unlock() })
 
-	if got := GetPostsByAuthorID("someone", "Someone Else"); len(got) != 0 {
+	if got := PostsByAuthorID("someone", "Someone Else"); len(got) != 0 {
 		t.Errorf("a post with no author id showed on an unrelated profile: %v", got)
 	}
-	if got := GetPostsByAuthorID("nameless", ""); len(got) != 0 {
+	if got := PostsByAuthorID("nameless", ""); len(got) != 0 {
 		t.Errorf("an account with no display name matched a nameless post: %v", got)
 	}
 }

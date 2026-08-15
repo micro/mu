@@ -65,7 +65,7 @@ func TestAdd_ThreeFlags_HidesContent(t *testing.T) {
 func TestGetFlags(t *testing.T) {
 	resetFlags(t)
 
-	count, flagged := GetFlags("post", "nonexistent")
+	count, flagged := Flags("post", "nonexistent")
 	if count != 0 {
 		t.Errorf("expected 0 for nonexistent, got %d", count)
 	}
@@ -74,7 +74,7 @@ func TestGetFlags(t *testing.T) {
 	}
 
 	Add("post", "789", "alice")
-	count, flagged = GetFlags("post", "789")
+	count, flagged = Flags("post", "789")
 	if count != 1 {
 		t.Errorf("expected 1, got %d", count)
 	}
@@ -86,26 +86,26 @@ func TestGetFlags(t *testing.T) {
 func TestGetCount(t *testing.T) {
 	resetFlags(t)
 
-	if GetCount("post", "nonexistent") != 0 {
+	if Count("post", "nonexistent") != 0 {
 		t.Error("expected 0 for nonexistent")
 	}
 
 	Add("post", "abc", "alice")
 	Add("post", "abc", "bob")
-	if GetCount("post", "abc") != 2 {
-		t.Errorf("expected 2, got %d", GetCount("post", "abc"))
+	if Count("post", "abc") != 2 {
+		t.Errorf("expected 2, got %d", Count("post", "abc"))
 	}
 }
 
 func TestGetItem(t *testing.T) {
 	resetFlags(t)
 
-	if GetItem("post", "nonexistent") != nil {
+	if Item("post", "nonexistent") != nil {
 		t.Error("expected nil for nonexistent")
 	}
 
 	Add("post", "xyz", "alice")
-	item := GetItem("post", "xyz")
+	item := Item("post", "xyz")
 	if item == nil {
 		t.Fatal("expected item")
 	}
@@ -123,7 +123,7 @@ func TestGetAll(t *testing.T) {
 	Add("post", "1", "alice")
 	Add("thread", "2", "bob")
 
-	items := GetAll()
+	items := All()
 	if len(items) != 2 {
 		t.Errorf("expected 2 items, got %d", len(items))
 	}
@@ -145,7 +145,7 @@ func TestApprove(t *testing.T) {
 	if IsHidden("post", "approve-me") {
 		t.Error("should not be hidden after approve")
 	}
-	if GetCount("post", "approve-me") != 0 {
+	if Count("post", "approve-me") != 0 {
 		t.Error("flags should be cleared after approve")
 	}
 }
@@ -171,7 +171,7 @@ func TestAdminFlag(t *testing.T) {
 
 	AdminFlag("post", "admin-flag", "admin_user")
 
-	item := GetItem("post", "admin-flag")
+	item := Item("post", "admin-flag")
 	if item == nil {
 		t.Fatal("expected item after admin flag")
 	}
@@ -192,7 +192,7 @@ func TestAdminFlag_SameAdminDoesNotDuplicateFlagger(t *testing.T) {
 	AdminFlag("post", "admin-flag", "admin_user")
 	AdminFlag("post", "admin-flag", "admin_user")
 
-	item := GetItem("post", "admin-flag")
+	item := Item("post", "admin-flag")
 	if item == nil {
 		t.Fatal("expected item after admin flag")
 	}
@@ -210,7 +210,7 @@ func TestAdminFlag_ExistingItem(t *testing.T) {
 	Add("post", "existing", "alice")
 	AdminFlag("post", "existing", "admin_user")
 
-	item := GetItem("post", "existing")
+	item := Item("post", "existing")
 	if item.FlagCount != 3 {
 		t.Errorf("expected 3, got %d", item.FlagCount)
 	}
@@ -237,13 +237,13 @@ func TestDelete(t *testing.T) {
 	Add("post", "delete-me", "alice")
 	Delete("post", "delete-me")
 
-	if GetItem("post", "delete-me") != nil {
+	if Item("post", "delete-me") != nil {
 		t.Error("item should be removed after delete")
 	}
 }
 
 func TestRegisterDeleter(t *testing.T) {
-	_, ok := GetDeleter("unknown")
+	_, ok := Deleter("unknown")
 	if ok {
 		t.Error("expected false for unregistered type")
 	}
@@ -264,7 +264,7 @@ func TestCheckContent_AutoFlagsSuspiciousContent(t *testing.T) {
 
 	CheckContent("post", "spam-post", "Cheap stuff", "Buy now")
 
-	item := GetItem("post", "spam-post")
+	item := Item("post", "spam-post")
 	if item == nil {
 		t.Fatal("expected suspicious content to be flagged")
 	}
@@ -285,7 +285,7 @@ func TestCheckContent_OKDoesNotFlag(t *testing.T) {
 
 	CheckContent("post", "normal-post", "Daily update", "Working on tests")
 
-	if item := GetItem("post", "normal-post"); item != nil {
+	if item := Item("post", "normal-post"); item != nil {
 		t.Fatalf("expected OK content to remain unflagged, got %#v", item)
 	}
 }
@@ -333,7 +333,7 @@ func TestApprove_RefreshesRegisteredDeleterCache(t *testing.T) {
 	if got, want := deleter.refreshCount, 1; got != want {
 		t.Fatalf("expected refresh count %d, got %d", want, got)
 	}
-	if _, ok := GetDeleter("post"); !ok {
+	if _, ok := Deleter("post"); !ok {
 		t.Fatal("expected registered deleter to be available")
 	}
 }
@@ -354,7 +354,7 @@ func TestDelete_CallsRegisteredDeleter(t *testing.T) {
 	if got, want := deleter.deleted[0], "delete-with-deleter"; got != want {
 		t.Fatalf("expected deleted id %q, got %q", want, got)
 	}
-	if item := GetItem("post", "delete-with-deleter"); item != nil {
+	if item := Item("post", "delete-with-deleter"); item != nil {
 		t.Fatalf("expected flag state to be removed, got %#v", item)
 	}
 }

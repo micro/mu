@@ -23,7 +23,7 @@
 // rather than by whatever happened to register.
 //
 // What it does not do any more is name *packages*. It called news.GetFeed,
-// markets.GetAllPriceData and video.GetLatestVideos, which is what made it a
+// markets.AllPriceData and video.LatestVideos, which is what made it a
 // service importing services. It calls tools now, by name, through the same
 // door every other caller uses — so the work is attributed to Micro's account,
 // counted in usage, and priced if it ever stops being free. Widening the list
@@ -110,8 +110,8 @@ func Generate() bool {
 	return true
 }
 
-// GetTodayDigest returns today's digest from the blog, or nil.
-func GetTodayDigest() *blog.Post { return blog.FindTodayDigest() }
+// Today returns today's digest from the blog, or nil.
+func Today() *blog.Post { return blog.FindTodayDigest() }
 
 // TestGenerate runs the digest pipeline synchronously and returns the
 // result or error. Used by diagnostics to test without publishing.
@@ -127,7 +127,7 @@ func scheduler() {
 	// Wait for blog callbacks to be wired in main.go
 	time.Sleep(5 * time.Second)
 	// Only create a digest on startup if one doesn't exist for today
-	if GetTodayDigest() == nil {
+	if Today() == nil {
 		generate()
 	}
 	for {
@@ -162,7 +162,7 @@ func generate() {
 	lastStatus = "running"
 	mu.Unlock()
 
-	existing := GetTodayDigest()
+	existing := Today()
 	if existing == nil {
 		app.Log("digest", "No existing digest for today, creating new one")
 		createDigest()

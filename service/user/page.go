@@ -35,9 +35,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	who := sess.Account
 
-	saved := app.GetSavedList(who)
-	hidden := app.GetHiddenList(who)
-	blocked := sortedKeys(app.GetBlockedUsers(who))
+	saved := app.SavedList(who)
+	hidden := app.HiddenList(who)
+	blocked := sortedKeys(app.BlockedUsers(who))
 
 	if app.WantsJSON(r) {
 		app.RespondJSON(w, map[string]any{

@@ -235,15 +235,31 @@ way to say a question, as in `app.SendsJSON(r)` and `app.WantsJSON(r)`.
 just `Handler`; anything more specific says which page — `blog.PostHandler`,
 `account.TokenHandler`.
 
-Two things this does not settle, both deliberate:
+**Drop `Get` where the bare noun is free.** `mail.ConfiguredDomain()`,
+`auth.OnlineCount()`, `quota.OperationCost(op)`, `flag.Count()`, `data.ByID(id)`.
+Fifty-one names lost the prefix that way.
 
-- **`Get` is still on 75 functions** — `auth.GetAccount`, `news.GetFeed`. Go's
-  own guidance is to drop it, and no package here has both `GetX` and `X`, so it
-  is a consistent deviation rather than a mess. Sweeping it is a rename of 75
-  exported names for no behaviour change; worth doing deliberately, not in
-  passing.
-- **A method on a type may repeat nothing and say everything** — `(*Verified).Settle()`
-  reads off its receiver, and the rules above are about package-level names.
+It stays on sixteen, and the reason is a rule rather than an exception:
+**`GetX` is right when `X` is the type.** `auth.Account` is a struct, so
+`auth.Account(id)` would not compile and, if it did, would read like a
+conversion. Same for `news.GetFeed`, `apps.GetApp`, `blog.GetPost`. There the
+prefix is the thing distinguishing a lookup from the type it returns, and
+inventing `AccountByID` to avoid three letters is a worse name, not a better
+one.
+
+`Get` alone — `settings.Get("KEY")`, `blob.Get(id)`, `(*Store).Get` — was never
+the same thing and is idiomatic Go. Fifteen of those.
+
+One thing this does not settle: **a name may also stutter at the end** —
+`quota.CheckQuota`, `agent.CreateAgent`, `apps.SearchApps`, `weather.FetchWeather`.
+Nineteen do. The rule is the same rule and the fix is the same fix; the reason
+it is written down rather than done is that some of them are not stutters at all
+(`social.TruthSocial` is a proper noun, `wallet.DeleteBaseWallet` names its type)
+and each needs looking at.
+
+And **a method on a type may repeat nothing and say everything** —
+`(*Verified).Settle()` reads off its receiver, and the rules above are about
+package-level names.
 
 `TestExportedNamesDoNotStutter` holds the first rule.
 

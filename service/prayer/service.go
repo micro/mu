@@ -40,7 +40,7 @@ type ReflectionResponse struct {
 // read.
 // @example {}
 func (Server) Reflection(_ context.Context, _ *ReflectionRequest, rsp *ReflectionResponse) error {
-	d := GetDailyReminderData()
+	d := DailyReminderData()
 	if d == nil {
 		rsp.Reminder = "No reflection is available right now."
 		return nil

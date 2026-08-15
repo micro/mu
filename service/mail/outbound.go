@@ -129,7 +129,7 @@ func SendOut(owner, displayName, to, subject, bodyPlain, bodyHTML, replyTo strin
 	if bodyHTML == "" {
 		bodyHTML = convertPlainTextToHTML(bodyPlain)
 	}
-	from := GetEmailForUser(owner, GetConfiguredDomain())
+	from := EmailForUser(owner, ConfiguredDomain())
 	messageID, err := SendExternalEmail(displayName, from, to, subject, bodyPlain, bodyHTML, replyTo)
 	if err != nil {
 		return "", err

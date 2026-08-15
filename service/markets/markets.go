@@ -477,8 +477,8 @@ func HTML() string {
 	return marketsHTML
 }
 
-// GetAllPrices returns all cached prices
-func GetAllPrices() map[string]float64 {
+// AllPrices returns all cached prices
+func AllPrices() map[string]float64 {
 	marketsMutex.RLock()
 	defer marketsMutex.RUnlock()
 
@@ -489,8 +489,8 @@ func GetAllPrices() map[string]float64 {
 	return result
 }
 
-// GetAllPriceData returns all cached price data including 24h changes
-func GetAllPriceData() map[string]PriceData {
+// AllPriceData returns all cached price data including 24h changes
+func AllPriceData() map[string]PriceData {
 	marketsMutex.RLock()
 	defer marketsMutex.RUnlock()
 
@@ -671,7 +671,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 // handleJSON returns market data as JSON
 func handleJSON(w http.ResponseWriter, r *http.Request, category string) {
-	priceData := GetAllPriceData()
+	priceData := AllPriceData()
 
 	var data []MarketData
 	assets := getAssetsForCategory(category)
@@ -710,7 +710,7 @@ func handleJSON(w http.ResponseWriter, r *http.Request, category string) {
 
 // handleHTML returns market data as HTML page
 func handleHTML(w http.ResponseWriter, r *http.Request, category string) {
-	priceData := GetAllPriceData()
+	priceData := AllPriceData()
 
 	// Generate HTML for the selected category
 	body := generateMarketsPage(priceData, category, converterHTML(r))

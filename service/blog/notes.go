@@ -140,7 +140,7 @@ func nextNote() (string, string) {
 // notesTag, authored by the system account), or zero.
 func latestNoteTime() time.Time {
 	var latest time.Time
-	for _, post := range GetPostsByAuthor(app.SystemUserName) {
+	for _, post := range PostsByAuthor(app.SystemUserName) {
 		if !strings.EqualFold(post.AuthorID, app.SystemUserID) || !hasTag(post.Tags, notesTag) {
 			continue
 		}

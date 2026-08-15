@@ -120,7 +120,7 @@ func sendExternal(displayName, from, replyTo, to, subject, bodyPlain, bodyHTML s
 	}
 
 	// Generate unique Message-ID for threading
-	messageID := fmt.Sprintf("<%d.%s@%s>", time.Now().UnixNano(), username, GetConfiguredDomain())
+	messageID := fmt.Sprintf("<%d.%s@%s>", time.Now().UnixNano(), username, ConfiguredDomain())
 
 	// Generate boundary for multipart
 	boundary := fmt.Sprintf("----=_Part_%d", time.Now().UnixNano())
@@ -245,7 +245,7 @@ func SendCalendarInvite(displayName, from, to, subject, bodyHTML, ics string) (s
 	if strings.Contains(from, "@") {
 		username = strings.Split(from, "@")[0]
 	}
-	messageID := fmt.Sprintf("<%d.%s@%s>", time.Now().UnixNano(), username, GetConfiguredDomain())
+	messageID := fmt.Sprintf("<%d.%s@%s>", time.Now().UnixNano(), username, ConfiguredDomain())
 	boundary := fmt.Sprintf("----=_Mixed_%d", time.Now().UnixNano())
 
 	var msg bytes.Buffer
@@ -311,16 +311,16 @@ func IsExternalEmail(email string) bool {
 	return IsExternalAddress(strings.TrimSpace(email))
 }
 
-// GetEmailForUser generates an email address for a local user
-func GetEmailForUser(username, domain string) string {
+// EmailForUser generates an email address for a local user
+func EmailForUser(username, domain string) string {
 	if domain == "" {
 		domain = "localhost"
 	}
 	return username + "@" + domain
 }
 
-// GetConfiguredDomain returns the configured mail domain
-func GetConfiguredDomain() string {
+// ConfiguredDomain returns the configured mail domain
+func ConfiguredDomain() string {
 	domain := os.Getenv("MAIL_DOMAIN")
 	if domain == "" {
 		domain = "localhost"

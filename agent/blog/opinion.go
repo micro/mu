@@ -76,7 +76,7 @@ Your measure of success:
 // returns prose, and asking it "which categories did Micro publish under today"
 // would mean parsing back out of text. Worth a tool eventually; not worth
 // pretending it has one now.
-func opinionCategories() []string { return blogsvc.GetTopics() }
+func opinionCategories() []string { return blogsvc.Topics() }
 
 // Start begins the background opinion generation loop.
 func Start() {
@@ -195,7 +195,7 @@ func FindTodayOpinions() []*blogsvc.Post {
 	now := time.Now()
 	y, m, d := now.Date()
 	var result []*blogsvc.Post
-	for _, post := range blogsvc.GetPostsByAuthorID(auth.MicroID, "Micro") {
+	for _, post := range blogsvc.PostsByAuthorID(auth.MicroID, "Micro") {
 		if !strings.Contains(post.Tags, opinionTag) {
 			continue
 		}

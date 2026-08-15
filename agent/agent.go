@@ -1817,7 +1817,7 @@ func resolveAgent(accountID, id string, isGuest bool) *micro.Agent {
 	if a := RunPublic(accountID, id); a != nil {
 		return a.AsMicro()
 	}
-	return micro.GetUserAgentFor(accountID, id)
+	return micro.UserAgentFor(accountID, id)
 }
 
 func renderResultCard(toolName, result string, args map[string]any) string {

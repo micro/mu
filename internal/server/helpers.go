@@ -252,11 +252,11 @@ func runHealthChecks() []app.ServiceHealth {
 	// which is still a real check — the service failed to start otherwise.
 	probes := map[string]func() bool{
 		"news":    func() bool { return len(news.GetFeed()) > 0 },
-		"blog":    func() bool { return blog.GetTopics() != nil },
-		"video":   func() bool { return video.GetLatestVideos(1) != nil },
-		"markets": func() bool { return len(markets.GetAllPrices()) > 0 },
-		"social":  func() bool { return len(social.GetThreads()) > 0 },
-		// No probe for mail. It had one — GetConfiguredDomain() != "" — which
+		"blog":    func() bool { return blog.Topics() != nil },
+		"video":   func() bool { return video.LatestVideos(1) != nil },
+		"markets": func() bool { return len(markets.AllPrices()) > 0 },
+		"social":  func() bool { return len(social.Threads()) > 0 },
+		// No probe for mail. It had one — ConfiguredDomain() != "" — which
 		// could never be false, because that function answers "localhost" when
 		// nothing is set. Replacing it with a real domain check would be worse:
 		// an instance with no mail server still has a working inbox and private

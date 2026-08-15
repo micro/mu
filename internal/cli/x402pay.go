@@ -110,7 +110,7 @@ func runX402Pay(args []string) int {
 //
 // The same file `mu x402 key` audits, so an operator who has already checked
 // which address they control pays from that one. Read here rather than through
-// GetOrCreateWallet, because that keys wallets by account and there is no
+// EnsureFor, because that keys wallets by account and there is no
 // account in this flow.
 func walletFromSeed(path string) (*wallet.BaseWallet, error) {
 	if path == "" {

@@ -21,9 +21,9 @@ var topicCache struct {
 const topicCacheTTL = 6 * time.Hour
 const maxTopics = 10
 
-// GetTopics returns current topic suggestions. Returns cached results immediately;
+// Topics returns current topic suggestions. Returns cached results immediately;
 // regeneration happens in the background.
-func GetTopics() []string {
+func Topics() []string {
 	topicCache.RLock()
 	topics := topicCache.topics
 	stale := time.Since(topicCache.updated) > topicCacheTTL
@@ -61,17 +61,17 @@ func regenerateTopics() {
 	// Gather recent content titles
 	var headlines []string
 
-	newsItems := data.GetByType("news", 30)
+	newsItems := data.ByType("news", 30)
 	for _, item := range newsItems {
 		headlines = append(headlines, item.Title)
 	}
 
-	blogItems := data.GetByType("post", 10)
+	blogItems := data.ByType("post", 10)
 	for _, item := range blogItems {
 		headlines = append(headlines, item.Title)
 	}
 
-	videoItems := data.GetByType("video", 10)
+	videoItems := data.ByType("video", 10)
 	for _, item := range videoItems {
 		headlines = append(headlines, item.Title)
 	}

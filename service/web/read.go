@@ -72,7 +72,7 @@ func ReadHandler(w http.ResponseWriter, r *http.Request) {
 
 		// Try to show cached search result data instead of a bare error
 		resultID := r.URL.Query().Get("id")
-		cached := GetCachedResult(resultID)
+		cached := CachedResult(resultID)
 
 		var b strings.Builder
 		b.WriteString(`<div id="news-article">`)

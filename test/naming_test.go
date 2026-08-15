@@ -30,7 +30,7 @@ var exported = regexp.MustCompile(`(?m)^func ([A-Z]\w*)\s*\(`)
 // package saying itself twice.
 //
 // Services() is the plural of the package's subject, not "service" plus
-// "s" — same for Agents(). Geocode is one word. Each of these has to be
+// "s" — same for Agents() and Flags(). Geocode is one word. Each of these has to be
 // looked at rather than pattern-matched, which is why the list is short and
 // should stay short: if it grows, the rule is wrong.
 var stutterAllowed = map[string]bool{
@@ -38,6 +38,7 @@ var stutterAllowed = map[string]bool{
 	"agent.Agents":              true,
 	"agent.AgentsHandler":       true,
 	"internal/geo.Geocode":      true,
+	"internal/flag.Flags":       true,
 }
 
 func TestExportedNamesDoNotStutter(t *testing.T) {

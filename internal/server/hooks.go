@@ -196,7 +196,7 @@ func wireHooks() {
 			// and this instance runs the inbox. Tagged so an agent can read
 			// back only its own scheduled results.
 			if acc, err := auth.GetAccount(e.Owner); err == nil {
-				_ = mail.SendMessageTo("Mu", "agent@"+mail.GetConfiguredDomain(),
+				_ = mail.SendMessageTo("Mu", "agent@"+mail.ConfiguredDomain(),
 					acc.Name, acc.ID, "scheduled", e.Title, answer, "", "", false, 0, nil, "", "", nil)
 			}
 			// Contentless, for the reason on events.OnFire above: the title
@@ -243,7 +243,7 @@ func wireHooks() {
 		started := time.Now()
 		trigger := "email from " + m.From
 
-		domain := mail.GetConfiguredDomain()
+		domain := mail.ConfiguredDomain()
 		// Reply from the address that reaches this agent again, so hitting
 		// reply continues the conversation. It used to answer from
 		// agent@<domain> whoever had written to, which was a dead letter
@@ -344,7 +344,7 @@ func wireHooks() {
 	// lands in their real calendar. Only for users with a verified email (e.g.
 	// via Google sign-in) and only when this instance can send mail.
 	events.OnCreate = func(e *events.Event) {
-		domain := mail.GetConfiguredDomain()
+		domain := mail.ConfiguredDomain()
 		if domain == "" || domain == "localhost" {
 			return
 		}
@@ -474,7 +474,7 @@ func wireHooks() {
 
 	// Wire user → blog callback (avoids direct import between building blocks)
 	profile.GetUserPosts = func(authorID, authorName string) []profile.UserPost {
-		posts := blog.GetPostsByAuthorID(authorID, authorName)
+		posts := blog.PostsByAuthorID(authorID, authorName)
 		result := make([]profile.UserPost, len(posts))
 		for i, p := range posts {
 			result[i] = profile.UserPost{
@@ -515,7 +515,7 @@ func wireHooks() {
 	}
 
 	profile.GetUserApps = func(authorID string) []profile.UserApp {
-		appList := apps.GetAppsByAuthor(authorID)
+		appList := apps.ByAuthor(authorID)
 		result := make([]profile.UserApp, len(appList))
 		for i, a := range appList {
 			result[i] = profile.UserApp{
@@ -529,7 +529,7 @@ func wireHooks() {
 	}
 
 	// Wire admin → blog callbacks (avoids blog importing admin)
-	admin.GetNewAccountBlog = blog.GetNewAccountBlogPosts
+	admin.GetNewAccountBlog = blog.PostsByNewAccounts
 	admin.RefreshBlogCache = blog.RefreshCache
 
 	// Register account deletion hooks — each package cleans up its own data.
@@ -847,7 +847,7 @@ func wireHooks() {
 	// Only enabled when MAIL_DOMAIN is configured to a real domain —
 	// instances without mail configured skip the verification gate
 	// entirely (see auth.VerificationRequired below).
-	if domain := mail.GetConfiguredDomain(); domain != "" && domain != "localhost" {
+	if domain := mail.ConfiguredDomain(); domain != "" && domain != "localhost" {
 		app.EmailSender = func(to, subject, plain, html string) error {
 			from := "no-reply@" + domain
 			_, err := mail.SendExternalEmail("Mu", from, to, subject, plain, html, "")

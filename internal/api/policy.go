@@ -7,7 +7,7 @@ package api
 //   - Does this need an account?  AccountOnly, OptionalAuth, HandleAuth,
 //     MCPToolNeedsAuth, and whatever the service's own HTTP handler decided.
 //   - Does it cost anything?      Endpoint.Cost → Tool.WalletOp →
-//     GetOperationCost, read as "has an operation" in one place and "costs
+//     OperationCost, read as "has an operation" in one place and "costs
 //     something" in another.
 //   - Can this caller pay?        api.QuotaCheck, agent.QuotaCheck, the x402
 //     gate in the HTTP layer, chargedWriteOp for web paths.
@@ -72,7 +72,7 @@ func policyOf(t Tool) Policy {
 		// Asked of quota directly. This was a hook set by main.go to the
 		// wallet's lookup, back when the price list lived inside the wallet
 		// and this package could not import it. It does not any more.
-		p.Price = quota.GetOperationCost(t.WalletOp)
+		p.Price = quota.OperationCost(t.WalletOp)
 	}
 	// Three ways a tool comes to need a caller, and the policy has to know all
 	// of them or it reports tools as open that are not. Declared on the tool;

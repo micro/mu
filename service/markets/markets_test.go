@@ -135,7 +135,7 @@ func TestGetAllPrices_ReturnsDefensiveCopy(t *testing.T) {
 	cachedPrices = map[string]float64{"BTC": 97000}
 	marketsMutex.Unlock()
 
-	prices := GetAllPrices()
+	prices := AllPrices()
 	prices["BTC"] = 0 // Modify the copy
 
 	marketsMutex.RLock()
@@ -185,7 +185,7 @@ func TestGetAllPriceData_ReturnsDefensiveCopy(t *testing.T) {
 	cachedPrices = map[string]float64{"ETH": 3500, "BTC": 97000}
 	marketsMutex.Unlock()
 
-	data := GetAllPriceData()
+	data := AllPriceData()
 	if data["ETH"].Price != 3500 {
 		t.Errorf("expected ETH price 3500, got %v", data["ETH"].Price)
 	}

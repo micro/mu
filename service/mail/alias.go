@@ -25,12 +25,12 @@ import (
 // Domain is the mail domain this instance can be reached at, or "" when it has
 // none.
 //
-// Not the same question as GetConfiguredDomain, which answers "localhost" when
+// Not the same question as ConfiguredDomain, which answers "localhost" when
 // nothing is set so that the SMTP handshake has a hostname to greet with. That
 // default is right for a protocol and wrong for everything a person reads, and
 // two bugs came out of the difference: an instance with no mail server told an
 // agent its address was asim@localhost, and the instance's own readiness check
-// asked whether GetConfiguredDomain() was empty, which it never is.
+// asked whether ConfiguredDomain() was empty, which it never is.
 func Domain() string {
 	d := strings.ToLower(strings.TrimSpace(os.Getenv("MAIL_DOMAIN")))
 	if d == "localhost" {

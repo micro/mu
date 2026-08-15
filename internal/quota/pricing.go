@@ -234,13 +234,13 @@ func limitOverride(key string, fallback *int) *int {
 	return &n
 }
 
-// GetOperationCost is what this operation costs the caller, in credits.
+// OperationCost is what this operation costs the caller, in credits.
 //
 // An operation with no entry costs 1. That is the old switch's default and it
 // is kept on purpose: an unpriced operation charging nothing would be the
 // quieter failure of the two, and TestEveryChargedOperationIsPublished catches
 // a charge site whose operation is not in the file.
-func GetOperationCost(operation string) int {
+func OperationCost(operation string) int {
 	priceMu.RLock()
 	defer priceMu.RUnlock()
 	if p, ok := prices[operation]; ok {

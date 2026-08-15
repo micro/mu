@@ -132,7 +132,7 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	}
 
 	sb.WriteString(`<table class="token-table"><thead><tr><th>Name</th><th>Client ID</th><th>Created</th><th></th></tr></thead><tbody>`)
-	oauthClients := auth.GetAllOAuthClients()
+	oauthClients := auth.AllOAuthClients()
 	if len(oauthClients) == 0 {
 		sb.WriteString(`<tr><td colspan="4" style="padding:20px;text-align:center;color:#666">No OAuth clients yet.</td></tr>`)
 	}

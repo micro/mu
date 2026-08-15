@@ -32,26 +32,26 @@ func TestGetOperationCost(t *testing.T) {
 		op       string
 		expected int
 	}{
-		{quota.OpNewsSearch, quota.GetOperationCost(quota.OpNewsSearch)},
-		{quota.OpVideoSearch, quota.GetOperationCost(quota.OpVideoSearch)},
-		{quota.OpChatQuery, quota.GetOperationCost(quota.OpChatQuery)},
-		{quota.OpBlogCreate, quota.GetOperationCost(quota.OpBlogCreate)},
-		{quota.OpMailSend, quota.GetOperationCost(quota.OpMailSend)},
-		{quota.OpExternalEmail, quota.GetOperationCost(quota.OpExternalEmail)},
-		{quota.OpPlacesSearch, quota.GetOperationCost(quota.OpPlacesSearch)},
-		{quota.OpPlacesNearby, quota.GetOperationCost(quota.OpPlacesNearby)},
-		{quota.OpWeatherForecast, quota.GetOperationCost(quota.OpWeatherForecast)},
-		{quota.OpWeatherPollen, quota.GetOperationCost(quota.OpWeatherPollen)},
-		{quota.OpWebSearch, quota.GetOperationCost(quota.OpWebSearch)},
-		{quota.OpWebFetch, quota.GetOperationCost(quota.OpWebFetch)},
-		{quota.OpAgentQuery, quota.GetOperationCost(quota.OpAgentQuery)},
-		{quota.OpAgentQueryPremium, quota.GetOperationCost(quota.OpAgentQueryPremium)},
+		{quota.OpNewsSearch, quota.OperationCost(quota.OpNewsSearch)},
+		{quota.OpVideoSearch, quota.OperationCost(quota.OpVideoSearch)},
+		{quota.OpChatQuery, quota.OperationCost(quota.OpChatQuery)},
+		{quota.OpBlogCreate, quota.OperationCost(quota.OpBlogCreate)},
+		{quota.OpMailSend, quota.OperationCost(quota.OpMailSend)},
+		{quota.OpExternalEmail, quota.OperationCost(quota.OpExternalEmail)},
+		{quota.OpPlacesSearch, quota.OperationCost(quota.OpPlacesSearch)},
+		{quota.OpPlacesNearby, quota.OperationCost(quota.OpPlacesNearby)},
+		{quota.OpWeatherForecast, quota.OperationCost(quota.OpWeatherForecast)},
+		{quota.OpWeatherPollen, quota.OperationCost(quota.OpWeatherPollen)},
+		{quota.OpWebSearch, quota.OperationCost(quota.OpWebSearch)},
+		{quota.OpWebFetch, quota.OperationCost(quota.OpWebFetch)},
+		{quota.OpAgentQuery, quota.OperationCost(quota.OpAgentQuery)},
+		{quota.OpAgentQueryPremium, quota.OperationCost(quota.OpAgentQueryPremium)},
 		{"unknown_op", 1}, // default
 	}
 	for _, tt := range tests {
-		got := quota.GetOperationCost(tt.op)
+		got := quota.OperationCost(tt.op)
 		if got != tt.expected {
-			t.Errorf("GetOperationCost(%q) = %d, want %d", tt.op, got, tt.expected)
+			t.Errorf("OperationCost(%q) = %d, want %d", tt.op, got, tt.expected)
 		}
 	}
 }
@@ -89,12 +89,12 @@ func TestTransactionTypeConstants(t *testing.T) {
 func TestDefaultCosts(t *testing.T) {
 	// A model call always costs something.
 	for name, cost := range map[string]int{
-		"chat":          quota.GetOperationCost(quota.OpChatQuery),
-		"agent":         quota.GetOperationCost(quota.OpAgentQuery),
-		"agent premium": quota.GetOperationCost(quota.OpAgentQueryPremium),
-		"image":         quota.GetOperationCost(quota.OpImageGenerate),
-		"app build":     quota.GetOperationCost(quota.OpAppBuild),
-		"app edit":      quota.GetOperationCost(quota.OpAppEdit),
+		"chat":          quota.OperationCost(quota.OpChatQuery),
+		"agent":         quota.OperationCost(quota.OpAgentQuery),
+		"agent premium": quota.OperationCost(quota.OpAgentQueryPremium),
+		"image":         quota.OperationCost(quota.OpImageGenerate),
+		"app build":     quota.OperationCost(quota.OpAppBuild),
+		"app edit":      quota.OperationCost(quota.OpAppEdit),
 	} {
 		if cost < 1 {
 			t.Errorf("%s calls a model, so it cannot be free", name)
@@ -106,10 +106,10 @@ func TestDefaultCosts(t *testing.T) {
 	// readability pass; searching video is a free (quota'd) API rationed by
 	// service/video/searchlimit.go instead.
 	for name, cost := range map[string]int{
-		"news search":  quota.GetOperationCost(quota.OpNewsSearch),
-		"web fetch":    quota.GetOperationCost(quota.OpWebFetch),
-		"video search": quota.GetOperationCost(quota.OpVideoSearch),
-		"quran search": quota.GetOperationCost(quota.OpQuranSearch),
+		"news search":  quota.OperationCost(quota.OpNewsSearch),
+		"web fetch":    quota.OperationCost(quota.OpWebFetch),
+		"video search": quota.OperationCost(quota.OpVideoSearch),
+		"quran search": quota.OperationCost(quota.OpQuranSearch),
 	} {
 		if cost != 0 {
 			t.Errorf("%s costs us nothing to run, so charging for it prices something that is not a cost", name)
@@ -118,16 +118,16 @@ func TestDefaultCosts(t *testing.T) {
 
 	// The premium tier routes to a materially more expensive provider, and was
 	// priced 29% above standard for roughly 10-20x the cost.
-	if quota.GetOperationCost(quota.OpAgentQueryPremium) < 2*quota.GetOperationCost(quota.OpAgentQuery) {
+	if quota.OperationCost(quota.OpAgentQueryPremium) < 2*quota.OperationCost(quota.OpAgentQuery) {
 		t.Error("premium agent should cost enough more than standard to cover a different provider")
 	}
 	// An app build is one generation. It was 100 — six times the next most
 	// expensive thing on the menu, and more than an agent run that may make
 	// several model calls.
-	if quota.GetOperationCost(quota.OpAppBuild) > 3*quota.GetOperationCost(quota.OpAgentQuery) {
-		t.Errorf("app build at %d is out of proportion to an agent run at %d", quota.GetOperationCost(quota.OpAppBuild), quota.GetOperationCost(quota.OpAgentQuery))
+	if quota.OperationCost(quota.OpAppBuild) > 3*quota.OperationCost(quota.OpAgentQuery) {
+		t.Errorf("app build at %d is out of proportion to an agent run at %d", quota.OperationCost(quota.OpAppBuild), quota.OperationCost(quota.OpAgentQuery))
 	}
-	if quota.GetOperationCost(quota.OpExternalEmail) <= quota.GetOperationCost(quota.OpMailSend) {
+	if quota.OperationCost(quota.OpExternalEmail) <= quota.OperationCost(quota.OpMailSend) {
 		t.Error("external email should cost more than internal mail")
 	}
 	if quota.DailyQuota < 1 {

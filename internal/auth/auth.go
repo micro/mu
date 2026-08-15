@@ -180,7 +180,7 @@ func UpdateAccount(acc *Account) error {
 	return nil
 }
 
-func GetAllAccounts() []*Account {
+func AllAccounts() []*Account {
 	mutex.Lock()
 	defer mutex.Unlock()
 
@@ -204,9 +204,9 @@ func AdminExists() bool {
 	return false
 }
 
-// GetAccountByEmail finds an account by email (case-insensitive). Used for
+// AccountByEmail finds an account by email (case-insensitive). Used for
 // OAuth sign-in, where the email is the stable identity across providers.
-func GetAccountByEmail(email string) (*Account, error) {
+func AccountByEmail(email string) (*Account, error) {
 	email = strings.ToLower(strings.TrimSpace(email))
 	if email == "" {
 		return nil, errors.New("email required")
@@ -562,8 +562,8 @@ func UpdatePresence(username string) {
 	userPresence[username] = time.Now()
 }
 
-// GetOnlineUsers returns a list of currently online usernames
-func GetOnlineUsers() []string {
+// OnlineUsers returns a list of currently online usernames
+func OnlineUsers() []string {
 	presenceMutex.RLock()
 	defer presenceMutex.RUnlock()
 
@@ -776,9 +776,9 @@ func ApproveAccount(accountID string) error {
 	return nil
 }
 
-// GetOnlineCount returns the number of online users
-func GetOnlineCount() int {
-	return len(GetOnlineUsers())
+// OnlineCount returns the number of online users
+func OnlineCount() int {
+	return len(OnlineUsers())
 }
 
 // ============================================
@@ -928,8 +928,8 @@ func DeleteToken(tokenID, accountID string) error {
 	return nil
 }
 
-// GetTokenByID retrieves a token by ID (for display purposes)
-func GetTokenByID(tokenID string) (*Token, error) {
+// TokenByID retrieves a token by ID (for display purposes)
+func TokenByID(tokenID string) (*Token, error) {
 	mutex.Lock()
 	defer mutex.Unlock()
 

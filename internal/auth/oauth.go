@@ -74,8 +74,8 @@ func RegisterOAuthClient(name string, redirectURIs []string) *OAuthClient {
 	return client
 }
 
-// GetAllOAuthClients returns all registered clients.
-func GetAllOAuthClients() []*OAuthClient {
+// AllOAuthClients returns all registered clients.
+func AllOAuthClients() []*OAuthClient {
 	oauthMu.Lock()
 	defer oauthMu.Unlock()
 	var list []*OAuthClient

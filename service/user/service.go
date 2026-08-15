@@ -158,7 +158,7 @@ func (Server) Flag(ctx context.Context, req *FlagRequest, rsp *FlagResponse) err
 	}
 	// Enough reports hide the item, and the cache the pages read has to be told.
 	if count >= 3 {
-		if deleter, ok := flag.GetDeleter(req.Type); ok {
+		if deleter, ok := flag.Deleter(req.Type); ok {
 			deleter.RefreshCache()
 		}
 	}
@@ -277,7 +277,7 @@ func (Server) Saved(ctx context.Context, req *SavedRequest, rsp *SavedResponse) 
 	if limit <= 0 || limit > 200 {
 		limit = 50
 	}
-	entries := app.GetSavedList(who)
+	entries := app.SavedList(who)
 	if len(entries) == 0 {
 		rsp.Text = "You have not saved anything yet."
 		return nil

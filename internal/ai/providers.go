@@ -201,8 +201,8 @@ func generateStream(prompt *Prompt, onToken func(string)) (string, error) {
 	return streamViaMicro(mdl, systemPromptText, msgs, clr, maxTok, onToken)
 }
 
-// GetCacheStats returns Anthropic prompt cache statistics
-func GetCacheStats() (hits, misses, readTokens, creationTokens int) {
+// CacheStats returns Anthropic prompt cache statistics
+func CacheStats() (hits, misses, readTokens, creationTokens int) {
 	cacheStatsMu.Lock()
 	defer cacheStatsMu.Unlock()
 	return cacheHits, cacheMisses, cacheReadTokens, cacheCreationTokens
@@ -277,5 +277,5 @@ func LocalModelAvailable() bool {
 
 func init() {
 	// Inject cache stats function into app package to avoid import cycle
-	app.CacheStatsFunc = GetCacheStats
+	app.CacheStatsFunc = CacheStats
 }

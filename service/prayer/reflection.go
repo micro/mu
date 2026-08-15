@@ -468,17 +468,17 @@ func GetReminderData() *ReminderData {
 	return &reminderData
 }
 
-// GetDailyReminderData fetches the fixed daily reminder from reminder.dev/api/daily.
+// DailyReminderData fetches the fixed daily reminder from reminder.dev/api/daily.
 // Unlike GetReminderData (which rotates hourly), this returns the same content
 // all day — suitable for seeding social threads and opinion pieces.
 // Results are cached per date to avoid repeated API calls.
-func GetDailyReminderData() *ReminderData {
-	return GetDailyReminderForDate(time.Now().Format("2006-01-02"))
+func DailyReminderData() *ReminderData {
+	return DailyReminderForDate(time.Now().Format("2006-01-02"))
 }
 
-// GetDailyReminderForDate fetches the daily reminder for a specific date (YYYY-MM-DD).
+// DailyReminderForDate fetches the daily reminder for a specific date (YYYY-MM-DD).
 // Results are cached per date.
-func GetDailyReminderForDate(date string) *ReminderData {
+func DailyReminderForDate(date string) *ReminderData {
 	cacheFile := "reminder_daily_" + date + ".json"
 
 	// Check cache

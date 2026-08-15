@@ -11,7 +11,7 @@ func LatestText(limit int) string {
 	if limit <= 0 || limit > 50 {
 		limit = 15
 	}
-	vids := GetLatestVideos(limit)
+	vids := LatestVideos(limit)
 	if len(vids) == 0 {
 		return "No videos available right now."
 	}

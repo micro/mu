@@ -415,7 +415,7 @@ func regenerateHTML() {
 			}
 			// Try to get Channel name and ID from indexed metadata if missing
 			if video.Channel == "" || video.ChannelID == "" {
-				if indexed := data.GetByID("video_" + video.ID); indexed != nil {
+				if indexed := data.ByID("video_" + video.ID); indexed != nil {
 					if video.Channel == "" {
 						if ch, ok := indexed.Metadata["channel"].(string); ok {
 							video.Channel = ch
@@ -862,8 +862,8 @@ func Latest() string {
 	return latestHtml
 }
 
-// GetLatestVideos returns up to n most recently published videos across all channels.
-func GetLatestVideos(n int) []*Result {
+// LatestVideos returns up to n most recently published videos across all channels.
+func LatestVideos(n int) []*Result {
 	mutex.RLock()
 	defer mutex.RUnlock()
 

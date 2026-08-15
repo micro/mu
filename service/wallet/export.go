@@ -85,7 +85,7 @@ func ExportHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	bw, err := GetOrCreateWallet(acc.ID)
+	bw, err := EnsureFor(acc.ID)
 	if err != nil || bw == nil || bw.PrivateKey == "" {
 		w.Write([]byte(app.RenderHTMLForRequest("Export key", "Take a copy of your private key",
 			exportForm(r, "Your wallet could not be opened, so there is no key to show."), r)))

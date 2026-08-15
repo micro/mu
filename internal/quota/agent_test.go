@@ -26,7 +26,7 @@ func TestAnAgentAccountIsRecordedNotCharged(t *testing.T) {
 	t.Cleanup(func() { auth.RemoveAccountForTest(id) })
 
 	// web_search costs real money and this account has no balance at all.
-	if cost := GetOperationCost(OpWebSearch); cost == 0 {
+	if cost := OperationCost(OpWebSearch); cost == 0 {
 		t.Fatal("web_search is priced at zero, so this proves nothing")
 	}
 	ok, _, cost, err := CheckQuota(id, OpWebSearch)

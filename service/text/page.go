@@ -144,7 +144,7 @@ func page(answer string) string {
 		if i == 0 {
 			checked = " checked"
 		}
-		cost := quota.GetOperationCost(j.Op)
+		cost := quota.OperationCost(j.Op)
 		b.WriteString(`<label class="tjob"><input type="radio" name="job" value="` +
 			j.Name + `"` + checked + ` data-hint="` + html.EscapeString(j.Hint) +
 			`" data-note="` + html.EscapeString(j.Note) + `"> ` +

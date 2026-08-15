@@ -18,7 +18,7 @@ func SysLogHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	entries := app.GetSysLog()
+	entries := app.SysLog()
 
 	// JSON API
 	if app.WantsJSON(r) {

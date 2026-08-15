@@ -46,7 +46,7 @@ func TestFreeOperationsAreNotRefused(t *testing.T) {
 		quota.OpSocialReply, quota.OpAppCreate, quota.OpStreamPost,
 	}
 	for _, op := range free {
-		if cost := quota.GetOperationCost(op); cost != 0 {
+		if cost := quota.OperationCost(op); cost != 0 {
 			t.Fatalf("%s is priced at %d, not free — update this test or the price", op, cost)
 		}
 		if err := quota.ConsumeQuota(id, op); err != nil {
@@ -56,7 +56,7 @@ func TestFreeOperationsAreNotRefused(t *testing.T) {
 
 	// Free must not have become a bypass: a priced operation on an empty wallet
 	// is still refused.
-	if quota.GetOperationCost(quota.OpImageGenerate) > 0 {
+	if quota.OperationCost(quota.OpImageGenerate) > 0 {
 		if err := quota.ConsumeQuota(id, quota.OpImageGenerate); err == nil {
 			t.Fatal("a priced operation was allowed through on an empty wallet")
 		}

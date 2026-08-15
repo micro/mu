@@ -322,7 +322,7 @@ func passkeyDelete(w http.ResponseWriter, r *http.Request) {
 
 // PasskeyListHTML returns HTML for listing passkeys on the account page
 func PasskeyListHTML(accountID string) string {
-	pks := auth.GetPasskeys(accountID)
+	pks := auth.Passkeys(accountID)
 
 	var rows string
 	for _, pk := range pks {

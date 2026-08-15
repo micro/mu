@@ -605,7 +605,7 @@ func registerRoutes() {
 		auth.UpdatePresence(acc.ID)
 
 		w.Header().Set("Content-Type", "application/json")
-		onlineCount := auth.GetOnlineCount()
+		onlineCount := auth.OnlineCount()
 		w.Write([]byte(fmt.Sprintf(`{"status":"ok","online":%d}`, onlineCount)))
 	})
 

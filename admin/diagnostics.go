@@ -194,7 +194,7 @@ func checkNews() healthCheck {
 }
 
 func checkMarkets() healthCheck {
-	data := markets.GetAllPriceData()
+	data := markets.AllPriceData()
 	if len(data) == 0 {
 		return healthCheck{
 			Name:   "Markets",

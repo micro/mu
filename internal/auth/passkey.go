@@ -79,8 +79,8 @@ func SavePasskey(pk *Passkey) error {
 	return nil
 }
 
-// GetPasskeys returns all passkeys for an account
-func GetPasskeys(accountID string) []*Passkey {
+// Passkeys returns all passkeys for an account
+func Passkeys(accountID string) []*Passkey {
 	mutex.Lock()
 	defer mutex.Unlock()
 

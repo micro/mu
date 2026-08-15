@@ -121,7 +121,7 @@ func allowance(who string) string {
 		s = ""
 	}
 	msg := "" + itoa(left) + " message" + s + " left today"
-	if cost := quota.GetOperationCost(quota.OpSMSSend); cost > 0 {
+	if cost := quota.OperationCost(quota.OpSMSSend); cost > 0 {
 		msg += ", at " + itoa(cost) + " credits each"
 	}
 	return msg + "."

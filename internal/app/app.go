@@ -852,8 +852,8 @@ var SupportedLanguages = map[string]string{
 	"zh": "中文",
 }
 
-// GetUserLanguage returns the language preference for the current user, defaults to "en"
-func GetUserLanguage(r *http.Request) string {
+// UserLanguage returns the language preference for the current user, defaults to "en"
+func UserLanguage(r *http.Request) string {
 	_, acc := auth.TrySession(r)
 	if acc == nil || acc.Language == "" {
 		return "en"
@@ -871,7 +871,7 @@ func RenderHTML(title, desc, html string) string {
 // authenticated user has an unverified account on a verification-gated
 // instance.
 func RenderHTMLForRequest(title, desc, html string, r *http.Request) string {
-	lang := GetUserLanguage(r)
+	lang := UserLanguage(r)
 	if banner := VerifyBanner(r); banner != "" {
 		html = banner + html
 	}
@@ -1195,7 +1195,7 @@ func Error(w http.ResponseWriter, r *http.Request, status int, message string) {
 	// the page, and a banner repeating the message word for word above it just
 	// says the same thing twice.
 	_, acc := auth.TrySession(r)
-	page := RenderHTMLWithLangAndAuth(errorTitle(status), message, body, GetUserLanguage(r), acc)
+	page := RenderHTMLWithLangAndAuth(errorTitle(status), message, body, UserLanguage(r), acc)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
 	w.Write([]byte(page))

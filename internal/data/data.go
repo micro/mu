@@ -394,12 +394,12 @@ func indexWorker(id int) {
 	}
 }
 
-// GetByID retrieves an entry by its exact ID
-func GetByID(id string) *IndexEntry {
+// ByID retrieves an entry by its exact ID
+func ByID(id string) *IndexEntry {
 	if UseSQLite {
-		entry, err := GetByIDSQLite(id)
+		entry, err := ByIDSQLite(id)
 		if err != nil {
-			fmt.Printf("[data] SQLite GetByID error: %v\n", err)
+			fmt.Printf("[data] SQLite ByID error: %v\n", err)
 			return nil
 		}
 		return entry
@@ -483,12 +483,12 @@ func Search(query string, limit int, opts ...SearchOption) []*IndexEntry {
 	return entries
 }
 
-// GetByType returns all entries of a specific type
-func GetByType(entryType string, limit int) []*IndexEntry {
+// ByType returns all entries of a specific type
+func ByType(entryType string, limit int) []*IndexEntry {
 	if UseSQLite {
-		results, err := GetByTypeSQLite(entryType, limit)
+		results, err := ByTypeSQLite(entryType, limit)
 		if err != nil {
-			fmt.Printf("[data] SQLite GetByType error: %v\n", err)
+			fmt.Printf("[data] SQLite ByType error: %v\n", err)
 			return nil
 		}
 		return results
@@ -499,7 +499,7 @@ func GetByType(entryType string, limit int) []*IndexEntry {
 
 	var entries []*IndexEntry
 	for _, entry := range index {
-		// GetByType is public-only: private entries are excluded so callers
+		// ByType is public-only: private entries are excluded so callers
 		// (e.g. topic generation) can never pull another account's content.
 		if entry.Type == entryType && entry.Owner == "" {
 			entries = append(entries, entry)
@@ -612,7 +612,7 @@ func Load() {
 		}
 		EnsureFTS()
 		// Get stats
-		entries, embCount, err := GetIndexStats()
+		entries, embCount, err := IndexStats()
 		if err == nil {
 			fmt.Printf("[data] SQLite index: %d entries, %d embeddings\n", entries, embCount)
 		}
@@ -638,7 +638,7 @@ type Stats struct {
 // GetStats returns current index statistics
 func GetStats() Stats {
 	if UseSQLite {
-		entries, _, _ := GetIndexStats()
+		entries, _, _ := IndexStats()
 		return Stats{
 			TotalEntries: entries,
 			UsingSQLite:  true,

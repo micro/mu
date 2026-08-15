@@ -132,7 +132,7 @@ func Metered(operation string) bool {
 	if !Charging() {
 		return false
 	}
-	return GetOperationCost(operation) > 0
+	return OperationCost(operation) > 0
 }
 
 // CheckQuota checks if a user can perform an operation
@@ -168,7 +168,7 @@ func CheckQuota(userID string, operation string) (bool, bool, int, error) {
 		return true, false, 0, nil
 	}
 
-	cost := GetOperationCost(operation)
+	cost := OperationCost(operation)
 
 	// Check if user has sufficient credits
 	balance := BalanceOf(userID)
@@ -219,7 +219,7 @@ func ConsumeWith(userID, operation string, meta map[string]interface{}) error {
 	// nobody was being asked for. Admins skip the charge entirely and new
 	// accounts were stopped by the post gate first, so the one group who hit it
 	// was ordinary established users, on every single write.
-	cost := GetOperationCost(operation)
+	cost := OperationCost(operation)
 	if cost <= 0 {
 		record(userID, operation)
 		return nil

@@ -398,7 +398,7 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 	if acc != nil {
 		caller = acc.ID
 	}
-	price := quota.GetOperationCost(quota.OpImageGenerate)
+	price := quota.OperationCost(quota.OpImageGenerate)
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
 
 	var b strings.Builder

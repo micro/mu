@@ -265,7 +265,7 @@ func serve(addr string) {
 							app.Error(w, r, http.StatusPaymentRequired, err.Error())
 							return
 						}
-						app.Log("wallet", "Charged %s %d credit(s) for POST /@%s status", sess.Account, quota.GetOperationCost(op), rest)
+						app.Log("wallet", "Charged %s %d credit(s) for POST /@%s status", sess.Account, quota.OperationCost(op), rest)
 					}
 					profile.Handler(w, r)
 					return
@@ -320,7 +320,7 @@ func serve(addr string) {
 					app.Error(w, r, http.StatusPaymentRequired, err.Error())
 					return
 				}
-				app.Log("wallet", "Charged %s %d credit(s) for %s %s", sess.Account, quota.GetOperationCost(op), r.Method, r.URL.Path)
+				app.Log("wallet", "Charged %s %d credit(s) for %s %s", sess.Account, quota.OperationCost(op), r.Method, r.URL.Path)
 			}
 
 			// MCP authorization: an unauthenticated call to a tool that needs an

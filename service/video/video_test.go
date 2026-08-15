@@ -84,7 +84,7 @@ func TestGetLatestVideos_Empty(t *testing.T) {
 		mutex.Unlock()
 	}()
 
-	result := GetLatestVideos(5)
+	result := LatestVideos(5)
 	if len(result) != 0 {
 		t.Errorf("expected empty result, got %d", len(result))
 	}
@@ -109,7 +109,7 @@ func TestGetLatestVideos_SortedByPublishDate(t *testing.T) {
 		mutex.Unlock()
 	}()
 
-	result := GetLatestVideos(10)
+	result := LatestVideos(10)
 	if len(result) != 2 {
 		t.Fatalf("expected 2 videos, got %d", len(result))
 	}
@@ -138,7 +138,7 @@ func TestGetLatestVideos_LimitsResults(t *testing.T) {
 		mutex.Unlock()
 	}()
 
-	result := GetLatestVideos(2)
+	result := LatestVideos(2)
 	if len(result) != 2 {
 		t.Fatalf("expected 2 videos, got %d", len(result))
 	}
@@ -159,7 +159,7 @@ func TestGetLatestVideos_AcrossChannels(t *testing.T) {
 		mutex.Unlock()
 	}()
 
-	result := GetLatestVideos(10)
+	result := LatestVideos(10)
 	if len(result) != 2 {
 		t.Fatalf("expected 2, got %d", len(result))
 	}

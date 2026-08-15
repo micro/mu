@@ -147,7 +147,7 @@ func Owner(number string) string {
 			return owner
 		}
 	}
-	for _, acc := range auth.GetAllAccounts() {
+	for _, acc := range auth.AllAccounts() {
 		if acc != nil && Verified(acc.ID, number) {
 			claim(acc.ID, number)
 			return acc.ID

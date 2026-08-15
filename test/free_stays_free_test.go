@@ -42,7 +42,7 @@ func loadPrices(t *testing.T) {
 	if err := quota.LoadFromTree(); err != nil {
 		t.Fatalf("cannot read quota.json: %v", err)
 	}
-	if quota.GetOperationCost("web_search") == 0 {
+	if quota.OperationCost("web_search") == 0 {
 		t.Fatal("quota.json loaded but web_search is free, so nothing was read")
 	}
 }
@@ -149,7 +149,7 @@ func TestEveryPublishedFreeRowIsFreeInQuota(t *testing.T) {
 		if item.Cost != 0 {
 			continue
 		}
-		if got := quota.GetOperationCost(item.Operation); got != 0 {
+		if got := quota.OperationCost(item.Operation); got != 0 {
 			t.Errorf("%s (%s) renders as free on /pricing and the gate charges %d",
 				item.Operation, item.Description, got)
 		}

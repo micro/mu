@@ -57,7 +57,7 @@ func TestSaveAndGetPasskeys(t *testing.T) {
 	}
 
 	// Get passkeys
-	pks := GetPasskeys("testuser")
+	pks := Passkeys("testuser")
 	if len(pks) != 1 {
 		t.Fatalf("expected 1 passkey, got %d", len(pks))
 	}
@@ -69,7 +69,7 @@ func TestSaveAndGetPasskeys(t *testing.T) {
 	}
 
 	// Get passkeys for different user
-	pks2 := GetPasskeys("otheruser")
+	pks2 := Passkeys("otheruser")
 	if len(pks2) != 0 {
 		t.Errorf("expected 0 passkeys for otheruser, got %d", len(pks2))
 	}
@@ -104,7 +104,7 @@ func TestDeletePasskey(t *testing.T) {
 	}
 
 	// Verify deleted
-	pks := GetPasskeys("testuser")
+	pks := Passkeys("testuser")
 	if len(pks) != 0 {
 		t.Errorf("expected 0 passkeys after delete, got %d", len(pks))
 	}
@@ -137,7 +137,7 @@ func TestUpdatePasskeyUsage(t *testing.T) {
 
 	UpdatePasskeyUsage([]byte("cred-usage"), 5)
 
-	pks := GetPasskeys("testuser")
+	pks := Passkeys("testuser")
 	if len(pks) != 1 {
 		t.Fatalf("expected 1 passkey, got %d", len(pks))
 	}

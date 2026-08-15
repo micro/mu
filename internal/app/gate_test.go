@@ -66,7 +66,7 @@ func TestAFreeOperationIsFreeEvenWhenCharging(t *testing.T) {
 	// news_search and web_fetch are priced at 0 in quota.json: they touch only
 	// this instance's own storage and bandwidth.
 	for _, op := range []string{quota.OpNewsSearch, quota.OpWebFetch} {
-		if cost := quota.GetOperationCost(op); cost != 0 {
+		if cost := quota.OperationCost(op); cost != 0 {
 			t.Errorf("%s costs %d in quota.json — it reads this instance's own "+
 				"storage, so pricing it means this rule needs revisiting", op, cost)
 			continue
@@ -85,7 +85,7 @@ func TestAMeteredCallStillNeedsAnAccount(t *testing.T) {
 	realPrices(t)
 	withCharging(t, true)
 
-	if quota.GetOperationCost(quota.OpWebSearch) == 0 {
+	if quota.OperationCost(quota.OpWebSearch) == 0 {
 		t.Fatal("web_search is priced at zero — Brave is paid for per call, so " +
 			"a price of nothing means somebody is being given away")
 	}

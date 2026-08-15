@@ -78,8 +78,8 @@ func LinkAccount(discordID, muAccount string) {
 	data.SaveJSON("discord_links.json", links)
 }
 
-// GetLinkedAccount returns the Mu account for a Discord user, or "".
-func GetLinkedAccount(discordID string) string {
+// LinkedAccount returns the Mu account for a Discord user, or "".
+func LinkedAccount(discordID string) string {
 	linkMu.RLock()
 	defer linkMu.RUnlock()
 	return links[discordID]
@@ -343,7 +343,7 @@ func handleMessage(m discordMessage) {
 	}
 
 	// Look up or auto-create account
-	accountID := GetLinkedAccount(m.Author.ID)
+	accountID := LinkedAccount(m.Author.ID)
 	if accountID == "" {
 		accountID = autoCreateAccount(m.Author.ID, m.Author.Username)
 		if accountID == "" {
