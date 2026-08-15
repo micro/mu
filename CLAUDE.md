@@ -61,7 +61,7 @@ Built on go-micro: every capability is a go-micro service, the assistant is a go
 | `service/stream/` | The console — this instance's own event timeline |
 | `service/chat/` | Live discussion rooms attached to an item |
 | `internal/profile/` | The public face of an account: the page at /@username, and who is online |
-| `docs/` | Three embedded pages — /about, /help, /install — plus the markdown the repository keeps for itself (`ARCHITECTURE.md`, `PRODUCT.md`, `PRICING.md`, `SECURITY.md`, `PRINCIPLES.md`, `USECASES.md`, `LISTING.md`), which is not served. `PRODUCT.md` is the one-pager: what Mu is, who arrives, and what Home is for. `PRICING.md` is its companion: what things cost, who pays, and how we make money — one meter not two, when a varying price is two endpoints and when it is units, and what must never be free. Check changes against both. The /docs route is the Docs service |
+| `docs/` | Three embedded pages — /about, /help, /install — plus the markdown the repository keeps for itself (`ARCHITECTURE.md`, `DIRECTION.md`, `PRODUCT.md`, `PRICING.md`, `SECURITY.md`, `PRINCIPLES.md`, `USECASES.md`, `LISTING.md`), which is not served. `PRODUCT.md` is the one-pager: what Mu is, who arrives, and what Home is for. `DIRECTION.md` is where the thesis is written down and allowed to move — home server, then tools for agents, maybe agents — plus how a surface reaches a capability, and what to change next. Read it before a change that adds a door or a top-level directory. `PRICING.md` is its companion: what things cost, who pays, and how we make money — one meter not two, when a varying price is two endpoints and when it is units, and what must never be free. Check changes against both. The /docs route is the Docs service |
 
 ## Development
 
