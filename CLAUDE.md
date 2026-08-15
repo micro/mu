@@ -16,7 +16,7 @@ Built on go-micro: every capability is a go-micro service, the assistant is a go
 - **Services** — each domain is a package under `service/`, one directory per service
 - **Agents** — `agent/micro/` contains specialised micro-agents per domain, routed by keyword + LLM. `agent/<name>/` is an agent that writes into the service of the same name: `agent/blog` composes the daily opinion by asking the registry what exists rather than naming services in code, `agent/social` surfaces breaking stories, `agent/digest` writes the daily briefing. The service stores; the agent decides what is worth storing. `agent/a2a` is the A2A door onto them — it belongs here rather than beside the MCP server, because /mcp serves tools derived from services and /a2a serves the thing that consumes them
 - **Channels** — Discord (`client/discord/`), Telegram (`client/telegram/`), WhatsApp (`client/whatsapp/`)
-- **Protocols** — MCP server at `/mcp`, A2A at `/a2a`, REST at `/api/v1/`, x402 crypto payments. Everything upstream of the mux that a tool door needs — wallet signature, auth challenge, payment gate — asks `api.DispatchesTools(path)` rather than naming a path, because a second door otherwise starts out unpriced
+- **Protocols** — MCP server at `/mcp`, A2A at `/a2a`, REST at `/api/v1/`, x402 crypto payments. Everything upstream of the mux that a tool door needs — wallet signature, auth challenge, payment gate — asks `api.ToolDispatch(path)` rather than naming a path, because a second door otherwise starts out unpriced
 - **AI** — `internal/ai/` supports Anthropic Claude, Atlas Cloud (DeepSeek), OpenRouter, and local models (Ollama)
 - **Config** — `internal/settings/` for live-reloadable settings, admin UI at `/admin/env`
 

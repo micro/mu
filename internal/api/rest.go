@@ -85,8 +85,7 @@ func RESTToolName(path string) string {
 	return strings.ToLower(parts[0]) + "_" + strings.ToLower(parts[1])
 }
 
-// DispatchesTools reports whether a path is one of the two a tool call
-// arrives at.
+// ToolDispatch reports whether a path is one a tool call arrives at.
 //
 // There are two and there should not be a third without a reason: /mcp for
 // something choosing a tool, and /api/v1/ for something that already knows
@@ -94,7 +93,7 @@ func RESTToolName(path string) string {
 // signature, challenging for authentication, taking payment — has to happen for
 // both, and asking here is what stops that list being written out twice with
 // one of the copies missing an entry.
-func DispatchesTools(path string) bool {
+func ToolDispatch(path string) bool {
 	return path == "/mcp" || path == RESTRoot || strings.HasPrefix(path, RESTPrefix)
 }
 

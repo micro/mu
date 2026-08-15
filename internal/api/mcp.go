@@ -588,7 +588,7 @@ func toolSurface(r *http.Request) string {
 	switch {
 	case r.URL.Path == "/mcp":
 		return "mcp"
-	case DispatchesTools(r.URL.Path):
+	case ToolDispatch(r.URL.Path):
 		return "api"
 	default:
 		return "agent"

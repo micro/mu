@@ -57,14 +57,14 @@ func TestThePathIsTheToolName(t *testing.T) {
 // naming a path twice.
 func TestBothDoorsAreRecognised(t *testing.T) {
 	for _, p := range []string{"/mcp", "/api/v1/news/list", "/api/v1/"} {
-		if !api.DispatchesTools(p) {
-			t.Errorf("DispatchesTools(%q) = false — this path dispatches tools, so the "+
+		if !api.ToolDispatch(p) {
+			t.Errorf("ToolDispatch(%q) = false — this path dispatches tools, so the "+
 				"wallet check, the auth challenge and the payment gate all skip it", p)
 		}
 	}
 	for _, p := range []string{"/news", "/home", "/apiv1/news/list", "/api", "/a2a"} {
-		if api.DispatchesTools(p) {
-			t.Errorf("DispatchesTools(%q) = true — an ordinary page would be handed a 402", p)
+		if api.ToolDispatch(p) {
+			t.Errorf("ToolDispatch(%q) = true — an ordinary page would be handed a 402", p)
 		}
 	}
 }

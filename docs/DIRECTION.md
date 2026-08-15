@@ -204,7 +204,7 @@ Three things it taught, all now written down where they will be found again:
 - The payment and authentication challenges live *upstream of the mux*, and
   they said `/mcp` four times. A second door starts out unpriced and
   unauthenticated unless somebody remembers that file exists — the handler is
-  the easy half. They now ask `api.DispatchesTools(path)` once.
+  the easy half. They now ask `api.ToolDispatch(path)` once.
 - `internal/server` strips a trailing slash from every path before routing, so
   a subtree route registered only as `/api/v1/` is reached as `/api/v1`, which
   the mux answers by redirecting to `/api/v1/`, which is stripped again. The
