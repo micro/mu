@@ -1092,9 +1092,16 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				thumbnailURL = item.Snippet.Thumbnails.Medium.Url
 			}
 
+			// Through Mu's origin, like every other thumbnail here. This was the
+			// one render path linking straight to i.ytimg.com, and it is the
+			// reason every image on a channel or playlist page could be broken
+			// while the same videos showed fine on /video: a content blocker, a
+			// filtering resolver or a network policy that refuses that hostname
+			// takes out the whole page at once. See thumbnail.go — working is
+			// the first reason the proxy exists, not leaking is the second.
 			fmt.Fprintf(&resultsSB, `
-		<div class="thumbnail"><a href="/video?id=%s"><img src="%s"><h3>%s</h3></a>%s · %s</div>`,
-				videoID, thumbnailURL, item.Snippet.Title, channel, desc)
+		<div class="thumbnail"><a href="/video?id=%s"><img src="%s" loading="lazy" alt=""><h3>%s</h3></a>%s · %s</div>`,
+				videoID, thumbSrc(videoID, thumbnailURL), item.Snippet.Title, channel, desc)
 		}
 
 		content := fmt.Sprintf(PlaylistView, head, playlistDesc+resultsSB.String())
@@ -1161,9 +1168,16 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				thumbnailURL = item.Snippet.Thumbnails.Medium.Url
 			}
 
+			// Through Mu's origin, like every other thumbnail here. This was the
+			// one render path linking straight to i.ytimg.com, and it is the
+			// reason every image on a channel or playlist page could be broken
+			// while the same videos showed fine on /video: a content blocker, a
+			// filtering resolver or a network policy that refuses that hostname
+			// takes out the whole page at once. See thumbnail.go — working is
+			// the first reason the proxy exists, not leaking is the second.
 			fmt.Fprintf(&resultsSB, `
-		<div class="thumbnail"><a href="/video?id=%s"><img src="%s"><h3>%s</h3></a>%s · %s</div>`,
-				videoID, thumbnailURL, item.Snippet.Title, channel, desc)
+		<div class="thumbnail"><a href="/video?id=%s"><img src="%s" loading="lazy" alt=""><h3>%s</h3></a>%s · %s</div>`,
+				videoID, thumbSrc(videoID, thumbnailURL), item.Snippet.Title, channel, desc)
 		}
 
 		content := fmt.Sprintf(ChannelView, head, channelInfo, resultsSB.String())
