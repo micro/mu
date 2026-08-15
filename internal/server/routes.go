@@ -615,13 +615,14 @@ func registerRoutes() {
 		json.NewEncoder(w).Encode(versionInfo())
 	})
 
-	// /api used to document a second way in: the same tools over plain REST,
-	// with their own auth story and their own price table. Two documented doors
-	// is a choice the reader has to make before they can start, and MCP is the
-	// one that matters — so this is a signpost to it, not a page.
-	http.HandleFunc("/api", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/mcp", http.StatusMovedPermanently)
-	})
+	// /api is the HTTP API reference. It was a redirect to /mcp, on the
+	// argument that two documented doors is a decision the reader has to make
+	// before they can start — right when the second door was another way for an
+	// agent to call tools, wrong now. Somebody building a desktop client is not
+	// choosing between two things, and being sent to a tool-calling protocol
+	// reads as "not for you". The two pages say different things and link to
+	// each other.
+	http.HandleFunc("/api", api.RESTPageHandler)
 
 	// /api/v1/<service>/<method> — the door for a program that is not an agent.
 	//

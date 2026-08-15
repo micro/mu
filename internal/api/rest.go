@@ -35,6 +35,7 @@ import (
 	"strings"
 
 	"mu/internal/app"
+	"mu/internal/auth"
 	"mu/internal/service"
 )
 
@@ -55,7 +56,7 @@ const (
 )
 
 // authRefusal is what this codebase says when there is no caller. Both
-// spellings of it — see RESTStatus.
+// spellings of it — see restStatus.
 const authRefusal = "authentication required"
 
 // RESTToolName turns a request path into the tool it names, or "" if the path
@@ -84,7 +85,8 @@ func RESTToolName(path string) string {
 	return strings.ToLower(parts[0]) + "_" + strings.ToLower(parts[1])
 }
 
-// ToolDoor reports whether a path is one of the two that dispatch tools.
+// DispatchesTools reports whether a path is one of the two a tool call
+// arrives at.
 //
 // There are two and there should not be a third without a reason: /mcp for
 // something choosing a tool, and /api/v1/ for something that already knows
@@ -92,7 +94,7 @@ func RESTToolName(path string) string {
 // signature, challenging for authentication, taking payment — has to happen for
 // both, and asking here is what stops that list being written out twice with
 // one of the copies missing an entry.
-func ToolDoor(path string) bool {
+func DispatchesTools(path string) bool {
 	return path == "/mcp" || path == RESTRoot || strings.HasPrefix(path, RESTPrefix)
 }
 
@@ -143,6 +145,22 @@ func RESTHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		args = queryArgs(r, name)
 	case http.MethodPost:
+		// A cookie is not a credential a program should be relying on here, and
+		// a browser sends it whoever asked. Anything authenticating by header —
+		// a token, a wallet signature, a payment — is not forgeable cross-site
+		// and is let through; a call resting on the session cookie has to prove
+		// it came from a page this instance served.
+		//
+		// StrictCSRF rather than ValidCSRF, which allows a request that omits
+		// the token entirely for the sake of pages already in the wild. This
+		// door has no pages in the wild.
+		if !headerCredential(r) && !auth.StrictCSRF(r) {
+			app.RespondError(w, http.StatusForbidden,
+				"A cookie-authenticated call needs an X-CSRF-Token header. "+
+					"Programs should send Authorization: Bearer <token> instead.")
+			return
+		}
+
 		args = map[string]any{}
 		// An empty body is a call with no arguments, not a bad request.
 		dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20))
@@ -161,15 +179,28 @@ func RESTHandler(w http.ResponseWriter, r *http.Request) {
 
 	text, failed, err := ExecuteTool(r, name, args)
 	if err != nil {
-		app.RespondError(w, RESTStatus(text, err), err.Error())
+		app.RespondError(w, restStatus(text, err), err.Error())
 		return
 	}
 	if failed {
-		app.RespondError(w, RESTStatus(text, nil), text)
+		app.RespondError(w, restStatus(text, nil), text)
 		return
 	}
 
 	app.RespondJSON(w, map[string]any{"result": text})
+}
+
+// headerCredential reports whether the caller identified itself with something
+// a browser does not attach on its own.
+//
+// That is the whole CSRF question, asked the useful way round. A cookie rides
+// along with a request whoever caused it; a header has to be put there by the
+// program making the call, so a page on another origin cannot supply one.
+func headerCredential(r *http.Request) bool {
+	return r.Header.Get("Authorization") != "" ||
+		r.Header.Get(TokenHeader) != "" ||
+		WalletSigner(r) != "" ||
+		WalletPayer(r) != ""
 }
 
 // queryArgs reads a GET's arguments, typed the way the tool declared them.
@@ -198,13 +229,13 @@ func queryArgs(r *http.Request, tool string) map[string]any {
 		if len(v) == 0 {
 			continue
 		}
-		args[k] = Typed(v[0], want[strings.ToLower(k)])
+		args[k] = typed(v[0], want[strings.ToLower(k)])
 	}
 	return args
 }
 
-// Typed converts one query value to its declared JSON type.
-func Typed(raw, want string) any {
+// typed converts one query value to its declared JSON type.
+func typed(raw, want string) any {
 	switch want {
 	case "number":
 		if f, err := strconv.ParseFloat(raw, 64); err == nil {
@@ -222,7 +253,7 @@ func Typed(raw, want string) any {
 	return raw
 }
 
-// RESTStatus turns a refusal into the status code a client can act on.
+// restStatus turns a refusal into the status code a client can act on.
 //
 // The door middleware answers the refusals it can see coming — a tool that
 // needs an account, a tool that needs paying for — with 401 or 402 and the
@@ -243,7 +274,7 @@ func Typed(raw, want string) any {
 // turns a caller away before dispatch; a spec-derived tool dispatches, and the
 // service refuses with auth's own lowercase error. blog_delete answered 400
 // for that second reason until this matched both.
-func RESTStatus(text string, err error) int {
+func restStatus(text string, err error) int {
 	msg := text
 	if err != nil {
 		msg = err.Error()

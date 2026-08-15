@@ -573,14 +573,26 @@ func contains(list []string, s string) bool {
 	return false
 }
 
-// toolSurface tells an operator where a tool call came from: an agent
-// connected over MCP, or Mu's own agent running a tool on someone's behalf.
-// Both land here, and they are different kinds of load.
+// toolSurface tells an operator where a tool call came from. Three things reach
+// ExecuteTool and they are different kinds of load: an agent connected over
+// MCP, a program calling the REST door, and Mu's own agent running a tool on
+// somebody's behalf.
+//
+// It answered "agent" for everything that was not /mcp, so every REST call was
+// filed as the assistant's. An operator reading usage would have seen this
+// instance's own agent apparently getting busy, and no sign of the API at all.
 func toolSurface(r *http.Request) string {
-	if r != nil && r.URL != nil && r.URL.Path == "/mcp" {
-		return "mcp"
+	if r == nil || r.URL == nil {
+		return "agent"
 	}
-	return "agent"
+	switch {
+	case r.URL.Path == "/mcp":
+		return "mcp"
+	case DispatchesTools(r.URL.Path):
+		return "api"
+	default:
+		return "agent"
+	}
 }
 
 // toolCaller is who to count the call against, empty for an unauthenticated

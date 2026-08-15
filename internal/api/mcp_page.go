@@ -50,6 +50,12 @@ func mcpPageHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<p>Endpoint: <code>POST /mcp</code> &mdash; calls carry <code>Authorization: Bearer</code>.</p>`)
 	b.WriteString(`<p class="card-meta">Not connected yet? <a href="/tools#connect">Connect your agent &rarr;</a> ` +
 		`&middot; <a href="/help/mcp">Auth and protocol detail</a> &middot; <a href="/pricing">What calls cost</a></p>`)
+	// Not everybody arriving here is building an agent. Somebody writing a
+	// client wants one URL per method, and being handed a tool-calling protocol
+	// because it was the only door documented is how they conclude this is not
+	// for them.
+	b.WriteString(`<p class="card-meta">Not building an agent? <a href="/api">The HTTP API</a> ` +
+		`serves the same methods as plain <code>GET</code> and <code>POST</code>.</p>`)
 	b.WriteString(`</div>`)
 
 	// Interactive playground

@@ -93,3 +93,31 @@ func ValidCSRF(r *http.Request) bool {
 	// The SetCSRFCookie middleware ensures the cookie is set for next time.
 	return true
 }
+
+// StrictCSRF is ValidCSRF without the grace period: a request carrying a
+// session and no token is refused.
+//
+// The grace above means CSRF is not, today, enforced anywhere — a request that
+// simply omits the token is allowed, which is what a forging page would do.
+// That is a deliberate compatibility decision for pages and scripts this
+// instance has already served, and it is not this function's job to overturn
+// it; changing ValidCSRF would break every form that has not been reloaded.
+//
+// A door opened today has no stale clients, so it can start correct. The API
+// door uses this for state-changing calls that rest on a cookie. Anything
+// authenticating by header — a token, a wallet, a payment — is not forgeable
+// cross-site in the first place and never reaches here.
+func StrictCSRF(r *http.Request) bool {
+	sess, _ := TrySession(r)
+	if sess == nil {
+		return true
+	}
+	expected := csrfTokenFor(sess.ID)
+	if token := r.Header.Get("X-CSRF-Token"); token != "" {
+		return hmac.Equal([]byte(token), []byte(expected))
+	}
+	if token := r.FormValue("_csrf"); token != "" {
+		return hmac.Equal([]byte(token), []byte(expected))
+	}
+	return false
+}

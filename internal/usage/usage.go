@@ -117,7 +117,9 @@ func restore() {
 
 // Record counts one call.
 //
-//   - surface is how it arrived: "web", "mcp", "cli", "app".
+//   - surface is how it arrived: "web", "mcp", "api", "agent", "cli", "app".
+//     "mcp" and "api" are the two tool doors, counted here per tool rather than
+//     per path — see internal/server/serve.go.
 //   - name is what was asked for: an endpoint, a tool name, an app slug.
 //   - account is who asked, empty for a signed-out visitor.
 func Record(surface, name, account string) {

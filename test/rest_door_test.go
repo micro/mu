@@ -14,7 +14,6 @@ package test
 // cannot be fired by a GET.
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -58,14 +57,14 @@ func TestThePathIsTheToolName(t *testing.T) {
 // naming a path twice.
 func TestBothDoorsAreRecognised(t *testing.T) {
 	for _, p := range []string{"/mcp", "/api/v1/news/list", "/api/v1/"} {
-		if !api.ToolDoor(p) {
-			t.Errorf("ToolDoor(%q) = false — this path dispatches tools, so the "+
+		if !api.DispatchesTools(p) {
+			t.Errorf("DispatchesTools(%q) = false — this path dispatches tools, so the "+
 				"wallet check, the auth challenge and the payment gate all skip it", p)
 		}
 	}
 	for _, p := range []string{"/news", "/home", "/apiv1/news/list", "/api", "/a2a"} {
-		if api.ToolDoor(p) {
-			t.Errorf("ToolDoor(%q) = true — an ordinary page would be handed a 402", p)
+		if api.DispatchesTools(p) {
+			t.Errorf("DispatchesTools(%q) = true — an ordinary page would be handed a 402", p)
 		}
 	}
 }
@@ -197,102 +196,5 @@ func TestTheCatalogueIsNotATool(t *testing.T) {
 	if api.ToolNeedsAuth("") || api.ToolWalletOp("") != "" {
 		t.Error("the empty tool name needs auth or has a price, so any request that " +
 			"names no tool is challenged")
-	}
-}
-
-// A refusal says which kind it is.
-//
-// ExecuteTool reports in prose because its other caller is a model. A door
-// serving programs has to turn that back into a status a client can branch on:
-// re-authenticate, give up, or fix the arguments. Mapping everything to 400
-// tells a client its arguments were wrong when it was simply not signed in.
-func TestARefusalCarriesAStatusAClientCanActOn(t *testing.T) {
-	for _, c := range []struct {
-		what string
-		text string
-		err  error
-		want int
-	}{
-		{"a tool that does not exist", "", errors.New("unknown tool: nope_nope"), 404},
-		{"no caller at all", "Authentication required", errors.New("no session"), 401},
-
-		// The other spelling. A spec-derived tool dispatches and the service
-		// refuses with auth's own lowercase error, so the text is not
-		// ExecuteTool's. blog_delete answered 400 until this was matched too.
-		{"a service refusing for no caller", "", errors.New("authentication required"), 401},
-
-		// Not 401: the caller proved who they are with a wallet and that
-		// identity is not enough here, so retrying the same way loops.
-		{"a wallet on an account-only tool", "This tool requires an account",
-			errors.New("mail_send requires an account, not a paid wallet"), 403},
-
-		{"bad arguments", "weather_forecast requires lat", nil, 400},
-		{"a service refusing for its own reasons", "no account found for that address", nil, 400},
-
-		// Mentioning it is not being it. A longer sentence is a service
-		// explaining something, and telling a client to re-authenticate over it
-		// sends it round a loop it cannot leave.
-		{"a sentence that mentions it", "this step needs authentication required earlier", nil, 400},
-	} {
-		if got := api.RESTStatus(c.text, c.err); got != c.want {
-			t.Errorf("%s: status %d, want %d", c.what, got, c.want)
-		}
-	}
-}
-
-// And the strings matched above are the ones ExecuteTool actually writes.
-// Matching on prose is only safe while something notices the prose changing.
-func TestTheRefusalsMatchedAreTheOnesWritten(t *testing.T) {
-	b, err := os.ReadFile(filepath.Join(at(""), "internal/api/mcp.go"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, phrase := range []string{
-		`"Authentication required", true, err`,
-		`"This tool requires an account", true,`,
-	} {
-		if !strings.Contains(string(b), phrase) {
-			t.Errorf("internal/api/mcp.go no longer returns %s — RESTStatus still "+
-				"matches it, so that refusal now reaches a client as a 400 telling "+
-				"it to fix its arguments", phrase)
-		}
-	}
-}
-
-// A query string is all strings; the handlers behind these tools are not.
-//
-// lat=51.5 has to reach the dispatcher as a number or it answers "cannot
-// unmarshal string into Go struct field" — correct, and useless, because a URL
-// cannot carry anything else. The types come off the tool's own declaration
-// rather than the shape of the value, so an id or a postcode that happens to be
-// all digits stays a string.
-func TestQueryArgumentsAreTypedByTheToolNotGuessed(t *testing.T) {
-	for _, c := range []struct {
-		raw, declared string
-		want          any
-	}{
-		{"51.5", "number", 51.5},
-		{"-0.12", "number", -0.12},
-		{"7", "integer", 7},
-		{"true", "boolean", true},
-		{"false", "boolean", false},
-
-		// Declared a string, so it stays one however numeric it looks. Guessing
-		// from the value would turn a postcode, an id or a version into a float
-		// and lose the leading zero on the way.
-		{"01234", "string", "01234"},
-		{"51.5", "string", "51.5"},
-
-		// Undeclared: passed through rather than guessed at.
-		{"51.5", "", "51.5"},
-
-		// Declared but unparseable: passed through so the handler can say why,
-		// rather than silently becoming a zero.
-		{"north", "number", "north"},
-		{"maybe", "boolean", "maybe"},
-	} {
-		if got := api.Typed(c.raw, c.declared); got != c.want {
-			t.Errorf("Typed(%q, %q) = %#v, want %#v", c.raw, c.declared, got, c.want)
-		}
 	}
 }

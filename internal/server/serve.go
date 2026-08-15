@@ -96,10 +96,13 @@ func serve(addr string) {
 				}
 			}
 
-			// Count the request. /mcp is counted per tool instead (every call
-			// is a POST to the same path, so the path says nothing), and assets
-			// and polling endpoints are noise — see internal/usage.
-			if r.URL.Path != "/mcp" && !usage.Skip(r.URL.Path) {
+			// Count the request. Both tool doors are counted per tool instead,
+			// inside the dispatcher: for /mcp because every call is a POST to
+			// the same path so the path says nothing, and for /api/v1/ because
+			// counting here as well would file every call twice — once as a
+			// path and once as the tool it ran. Assets and polling endpoints
+			// are noise — see internal/usage.
+			if !api.DispatchesTools(r.URL.Path) && !usage.Skip(r.URL.Path) {
 				account := ""
 				if _, acc := auth.TrySession(r); acc != nil {
 					account = acc.ID
@@ -340,7 +343,7 @@ func serve(addr string) {
 			//
 			// Read the body once. It was read twice, restored twice, and parsed
 			// twice for two questions about the same tool.
-			if api.ToolDoor(r.URL.Path) {
+			if api.DispatchesTools(r.URL.Path) {
 				host := strings.TrimPrefix(strings.TrimPrefix(app.BaseURL(r), "https://"), "http://")
 				r, _ = wallet.AuthenticateRequest(r, strings.TrimRight(host, "/"))
 

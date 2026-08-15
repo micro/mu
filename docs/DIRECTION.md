@@ -169,29 +169,49 @@ refused, and it is currently addressed as though it belonged to apps.
 ## 5. Architecture: what to change, in order
 
 **1. ~~Promote the app SDK's service door to a first-class API.~~ Done.**
-`/api/v1/<service>/<method>` is live. It has no auth story and no price table of
-its own: a path becomes a tool name and goes to `ExecuteTool`, the same function
-`/mcp` calls, so scope, account-only refusals, quota, identity binding and price
-are inherited rather than reimplemented. `GET` for reads with arguments typed
-off the tool's own schema, `POST` for anything, and a destructive method refuses
-`GET` so a link or a prefetch cannot fire one. `GET /api/v1/` is the catalogue,
-derived from the same specs. See `internal/api/rest.go`.
+`/api/v1/<service>/<method>` is live, and `/api` is its reference — every
+method, its arguments and types, what it costs, whether it needs an account,
+and a copyable curl, all derived from the specs. `/api` was a redirect to
+`/mcp`, on the argument that two documented doors is a decision the reader has
+to make before they can start. That argument was right when the second door was
+another way for an *agent* to call tools and is wrong now: somebody building a
+desktop client is not choosing between two things, and being handed a
+tool-calling protocol because it was the only door documented is how they
+conclude this is not for them. The two pages link to each other.
 
-Two things it taught, both now written down where they will be found again:
+The door has no auth story and no price table of its own. A path becomes a tool
+name and goes to `ExecuteTool`, the same function `/mcp` calls, so scope,
+account-only refusals, quota, identity and price are inherited. Verified live
+against a running instance rather than only in tests: the same tool, with the
+same credential, over both doors, agrees on every case — including a token
+scoped to one service being refused for another.
+
+Two differences from `/mcp`, both deliberate:
+
+- **A destructive method refuses `GET`.** Reads work either way, because a REST
+  API where reads are GETs is what every client expects; a URL that acts would
+  be fired by a link, a prefetch or an `<img src>`.
+- **A `POST` resting on the session cookie needs `X-CSRF-Token`.** `/mcp` is
+  blanket CSRF-exempt, and `auth.ValidCSRF` allows a request that omits the
+  token entirely — a grace period for pages already served, which means CSRF is
+  not in practice enforced anywhere. That is a real hole and it is not this
+  door's to fix, but it is not this door's to copy either. A door opened today
+  has no stale clients, so it uses `auth.StrictCSRF`. Anything authenticating by
+  header is not forgeable cross-site and never reaches the check.
+
+Three things it taught, all now written down where they will be found again:
 
 - The payment and authentication challenges live *upstream of the mux*, and
   they said `/mcp` four times. A second door starts out unpriced and
   unauthenticated unless somebody remembers that file exists — the handler is
-  the easy half. They now ask `api.ToolDoor(path)` once.
+  the easy half. They now ask `api.DispatchesTools(path)` once.
 - `internal/server` strips a trailing slash from every path before routing, so
   a subtree route registered only as `/api/v1/` is reached as `/api/v1`, which
   the mux answers by redirecting to `/api/v1/`, which is stripped again. The
   catalogue redirected to itself forever. Every other subtree route in the
   codebase registers both forms, which is why nothing had noticed.
-
-What is deliberately **not** done: this is not documented as a second way for an
-agent to call tools, and should not be. `/mcp` is the agent door. This is for
-programs that already know which method they want.
+- Usage was attributed by asking "is this `/mcp`?" and calling everything else
+  the agent, so every API call was filed as this instance's own assistant.
 
 **2. Let page handlers use the spine, opportunistically.**
 Not a UI rewrite — that is the expensive answer to a cheap question. A page
