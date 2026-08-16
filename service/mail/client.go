@@ -97,7 +97,20 @@ func LoadDKIMConfig(domain, selector string) error {
 // Sends multipart/alternative with both plain text and HTML versions (like Gmail)
 // Returns the generated Message-ID for threading purposes
 func SendExternalEmail(displayName, from, to, subject, bodyPlain, bodyHTML string, replyToMsgID string) (string, error) {
-	return sendExternal(displayName, from, "", to, subject, bodyPlain, bodyHTML, replyToMsgID)
+	return sendExternal(displayName, from, "", to, subject, bodyPlain, bodyHTML, replyToMsgID, "")
+}
+
+// SendExternalReply answers into a thread that already exists.
+//
+// It differs from SendExternalEmail by carrying References — the whole chain of
+// message ids, not just the parent. A receiving client threads on that, and one
+// that sees only In-Reply-To will file a long conversation as a series of
+// unrelated messages. The caller passes what arrived, and the message being
+// answered is appended to it.
+func SendExternalReply(displayName, from, to, subject, bodyPlain, bodyHTML,
+	inReplyTo, references string) (string, error) {
+	return sendExternal(displayName, from, "", to, subject, bodyPlain, bodyHTML,
+		inReplyTo, references)
 }
 
 // SendExternalAs sends under a From this instance signs for, with answers
@@ -109,10 +122,23 @@ func SendExternalEmail(displayName, from, to, subject, bodyPlain, bodyHTML strin
 // inbox, and a reply to it would bounce. Reply-To is what makes a sent message
 // the start of a conversation rather than a broadcast.
 func SendExternalAs(displayName, from, replyTo, to, subject, bodyPlain, bodyHTML string) (string, error) {
-	return sendExternal(displayName, from, replyTo, to, subject, bodyPlain, bodyHTML, "")
+	return sendExternal(displayName, from, replyTo, to, subject, bodyPlain, bodyHTML, "", "")
 }
 
-func sendExternal(displayName, from, replyTo, to, subject, bodyPlain, bodyHTML string, replyToMsgID string) (string, error) {
+func sendExternal(displayName, from, replyTo, to, subject, bodyPlain, bodyHTML string, replyToMsgID, references string) (string, error) {
+	message, messageID := buildExternal(displayName, from, replyTo, to, subject,
+		bodyPlain, bodyHTML, replyToMsgID, references)
+	return finishExternal(message, from, to, messageID)
+}
+
+// buildExternal assembles the message, and is separate from sending it so the
+// wire format can be tested.
+//
+// It is worth a seam of its own: the agent's answers went out as a
+// multipart/alternative whose HTML half was empty, which is a well-formed
+// message that displays as nothing, and no test could see it because building
+// and relaying were one function.
+func buildExternal(displayName, from, replyTo, to, subject, bodyPlain, bodyHTML string, replyToMsgID, references string) ([]byte, string) {
 	// Extract username from email for Message-ID
 	username := from
 	if strings.Contains(from, "@") {
@@ -144,10 +170,42 @@ func sendExternal(displayName, from, replyTo, to, subject, bodyPlain, bodyHTML s
 
 	if replyToMsgID != "" {
 		msg.WriteString(fmt.Sprintf("In-Reply-To: %s\r\n", replyToMsgID))
-		msg.WriteString(fmt.Sprintf("References: %s\r\n", replyToMsgID))
+		// References is everything the thread has referenced, ending with the
+		// message being answered. Naming only the parent is enough for the
+		// second message in a thread and loses it by the fourth, which is where
+		// a client gives up and files the answers as unrelated mail.
+		//
+		// The parent is appended here rather than by the caller, because a
+		// caller that passes a chain without it produces a References that does
+		// not mention what In-Reply-To names — which is worse than no chain.
+		chain := strings.TrimSpace(references)
+		if !strings.Contains(chain, replyToMsgID) {
+			chain = strings.TrimSpace(chain + " " + replyToMsgID)
+		}
+		msg.WriteString(fmt.Sprintf("References: %s\r\n", chain))
 	}
 
 	msg.WriteString("MIME-Version: 1.0\r\n")
+
+	bodyPlain = strings.ReplaceAll(bodyPlain, "\r\n", "\n")
+	bodyPlain = strings.ReplaceAll(bodyPlain, "\n", "\r\n")
+
+	// One part when there is only one thing to say.
+	//
+	// This wrote both halves of a multipart/alternative unconditionally, so a
+	// caller with no HTML — the agent answering mail is one — sent a valid,
+	// empty HTML part alongside the real text. A client shows the *last*
+	// alternative it can render, which was the empty one, so the answer arrived
+	// blank. The text was always there and never displayed.
+	if strings.TrimSpace(bodyHTML) == "" {
+		msg.WriteString("Content-Type: text/plain; charset=utf-8\r\n")
+		msg.WriteString("Content-Transfer-Encoding: 7bit\r\n")
+		msg.WriteString("\r\n")
+		msg.WriteString(bodyPlain)
+		msg.WriteString("\r\n")
+		return msg.Bytes(), messageID
+	}
+
 	msg.WriteString(fmt.Sprintf("Content-Type: multipart/alternative; boundary=\"%s\"\r\n", boundary))
 	msg.WriteString("\r\n")
 
@@ -156,8 +214,6 @@ func sendExternal(displayName, from, replyTo, to, subject, bodyPlain, bodyHTML s
 	msg.WriteString("Content-Type: text/plain; charset=utf-8\r\n")
 	msg.WriteString("Content-Transfer-Encoding: 7bit\r\n")
 	msg.WriteString("\r\n")
-	bodyPlain = strings.ReplaceAll(bodyPlain, "\r\n", "\n")
-	bodyPlain = strings.ReplaceAll(bodyPlain, "\n", "\r\n")
 	msg.WriteString(bodyPlain)
 	msg.WriteString("\r\n\r\n")
 
@@ -192,8 +248,15 @@ func sendExternal(displayName, from, replyTo, to, subject, bodyPlain, bodyHTML s
 	// End boundary
 	msg.WriteString(fmt.Sprintf("--%s--\r\n", boundary))
 
-	message := msg.Bytes()
+	return msg.Bytes(), messageID
+}
 
+// finishExternal signs, records and relays a built message.
+//
+// Split out because a message with no HTML alternative is finished earlier and
+// must be signed and relayed the same way — a second copy of this would be a
+// second place for DKIM to be forgotten.
+func finishExternal(message []byte, from, to, messageID string) (string, error) {
 	// Apply DKIM signing if configured
 	if dkimConfig != nil {
 		options := &dkim.SignOptions{
@@ -219,11 +282,9 @@ func sendExternal(displayName, from, replyTo, to, subject, bodyPlain, bodyHTML s
 	RecordOutbound(messageID, to)
 
 	app.Log("mail", "=== Direct Relay (Internal) ===")
-	app.Log("mail", "From: %s <%s>", displayName, from)
+	app.Log("mail", "From: %s", from)
 	app.Log("mail", "To: %s", to)
-	app.Log("mail", "Subject: %s", subject)
 	app.Log("mail", "Message-ID: %s", messageID)
-	app.Log("mail", "Message headers preview: %s", string(message[:min(500, len(message))]))
 
 	// Call relay function directly (no SMTP needed!)
 	if err := RelayToExternal(from, to, message); err != nil {

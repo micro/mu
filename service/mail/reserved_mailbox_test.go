@@ -157,3 +157,31 @@ func TestBothEndsOfTheDoorKnowTheSameMailboxes(t *testing.T) {
 		}
 	}
 }
+
+// Whatever address was written to is what answers.
+//
+// The reply address used to be rebuilt from whichever agent answered rather
+// than taken from the message, so mail to agent@ came back from
+// agent+micro@ — the catch-all resolves to the agent named micro, and naming
+// it changed the address mid-conversation. To the recipient that is a stranger
+// arriving out of nowhere in a thread they started, which is confusing and a
+// spam signal, and it is why the first real reply this instance sent was
+// filtered.
+//
+// The recipient now travels with the message, so there is nothing to rebuild.
+func TestTheAddressWrittenToTravelsWithTheMessage(t *testing.T) {
+	src := readSource(t, "smtp.go")
+
+	i := strings.Index(src, "deliverInbound(InboundMail{")
+	if i < 0 {
+		t.Fatal("cannot find where inbound mail is handed on")
+	}
+	handoff := src[i:]
+	if end := strings.Index(handoff, "wakeRequest{"); end > 0 {
+		handoff = handoff[:end]
+	}
+	if !strings.Contains(handoff, "To:") {
+		t.Error("the address the message was sent to is not passed to the handler, " +
+			"so an answer has to guess which address it came from")
+	}
+}

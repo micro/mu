@@ -745,6 +745,7 @@ func (s *Session) Data(r io.Reader) error {
 			Tag:        toTag,
 			Shared:     sharedAgentMail,
 			From:       fromAddr.Address,
+			To:         toAddr.Address,
 			FromName:   senderName,
 			Subject:    subject,
 			Body:       body,
@@ -1285,6 +1286,7 @@ type InboundMail struct {
 	Shared bool
 
 	From      string // who wrote in
+	To        string // the address they wrote to, which is what answers them
 	FromName  string
 	Subject   string
 	Body      string

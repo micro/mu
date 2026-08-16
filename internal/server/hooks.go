@@ -277,15 +277,24 @@ func wireHooks() {
 		// agent@<domain> whoever had written to, which was a dead letter
 		// until that address started resolving, and still loses which
 		// agent you were talking to.
-		from := mail.SharedAgentAddress()
-		switch {
-		case plat != nil:
-			// Answer from the address that was written to, so hitting reply
-			// reaches the same specialist. Answering from the plain shared
-			// address would put every follow-up back on the catch-all.
-			from = mail.SharedAgentAddressFor(plat.ID)
-		case a != nil && a.Address() != "":
-			from = a.Address()
+		// Answer from the address they wrote to. Whatever reached the agent is
+		// what answers as it — anything else is a different sender arriving out
+		// of nowhere, which is both confusing and a spam signal.
+		//
+		// This was reconstructed from the agent that answered rather than taken
+		// from the message, so writing to agent@ got a reply from
+		// agent+micro@: the catch-all resolves to the agent named micro, and
+		// naming it in the reply address changed the address mid-conversation.
+		from := m.To
+		if from == "" {
+			// Nothing to answer as. Older messages have no recipient recorded.
+			from = mail.SharedAgentAddress()
+			switch {
+			case plat != nil:
+				from = mail.SharedAgentAddressFor(plat.ID)
+			case a != nil && a.Address() != "":
+				from = a.Address()
+			}
 		}
 
 		// record writes the run down where the owner can find it, and hands
@@ -326,7 +335,8 @@ func wireHooks() {
 				subject = "Re: " + subject
 			}
 			id := record(prompt, body, nil)
-			sent, err := mail.SendExternalEmail(name, from, m.From, subject, body, "", m.MessageID)
+			sent, err := mail.SendExternalReply(name, from, m.From, subject, body, "",
+				m.MessageID, m.References)
 			// The id the answer went out under, so the reply to *it* finds this
 			// turn. Recorded even when delivery failed below, because a message
 			// that reached the far side and then errored still gets answered.
