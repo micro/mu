@@ -1,112 +1,29 @@
 package agent
 
-// A conversation that arrived by mail, rather than a pile of unrelated runs.
+// How a run is framed for the client it answers, and where it came from.
 //
-// A conversation on the page has been a chain since there were sessions: each
-// turn carries the id of the one before it, and ListSessions walks the chain to
-// group them. Mail never joined it. Every message that woke an agent started a
-// run with no parent, so writing three times was three strangers answering in
-// sequence — the second reply could not see the first, and the person on the
-// other end was the only one holding the thread together.
-//
-// What links them is what email already threads on. A reply carries In-Reply-To
-// and References naming the messages it answers; the ids of both the message
-// that came in and the reply that went out are kept on the turn, so the next
-// message finds the turn it continues and hangs itself off it. Nothing new is
-// stored about the conversation — the chain is the same chain the page uses,
-// entered through a different door.
-//
-// That is the whole point of doing it this way rather than building a thread
-// store beside it: a conversation you started in the tab can be continued by
-// email, and one that arrived by email is readable in the tab, because there is
-// only ever one of them.
+// What was said is internal/thread. This is what is left once that moved out:
+// the mail framing, and the note on a workflow record saying which client asked
+// for it.
 
 import (
 	"strings"
 )
 
-// Via is where a turn came from: which client, which conversation on it, and
-// whatever that client needs to recognise the conversation again.
+// Via is where a run came from: which client, and which conversation on it.
 //
-// It was MailTurn, holding mail's message ids and nothing else, because mail
-// was the first client to need any of this. Every client needs the same two
-// facts — which one, and which thread — so they live here and the mail-specific
-// ids sit alongside rather than defining the shape.
+// Metadata on the workflow record, so the runs page can say where an answer was
+// asked for. Finding a conversation again is internal/thread's job — this held
+// mail's message ids for a while, which made a workflow record the place a
+// reply looked for its history.
 type Via struct {
 	// Client is discord, telegram, whatsapp, mail, web, cli.
 	Client string
-	// Thread is that client's own identifier for the conversation.
+	// Thread is the conversation in the record, where there is one.
 	Thread string
-
-	// InboundID is the Message-ID of what arrived. ReplyID is the Message-ID of
-	// what we sent back — a follow-up answers *that*, so it is the one most
-	// lookups match on.
-	InboundID string
-	ReplyID   string
-	// From is the address that wrote in. A turn somebody else set off is not
-	// the same thing as one the owner typed, and the difference should be data
-	// rather than a sentence in the trigger.
+	// From is who set it off, where that is not the account itself: somebody
+	// else's address, on mail answered on the owner's behalf.
 	From string
-}
-
-// ContinuesMail finds the turn a message answers, given its In-Reply-To and
-// References headers.
-//
-// Both headers, because a mail client may send either: In-Reply-To names the
-// immediate parent and References the whole chain, and a client that sends only
-// References is common enough that matching just the first loses the thread.
-// The newest match wins, so a long chain continues from its head.
-func ContinuesMail(accountID, inReplyTo, references string) string {
-	ids := mailIDs(inReplyTo + " " + references)
-	if len(ids) == 0 {
-		return ""
-	}
-	want := make(map[string]bool, len(ids))
-	for _, id := range ids {
-		want[id] = true
-	}
-	// ListFlows is newest first, so the first match is the latest turn in the
-	// chain and the new turn hangs off the head rather than the middle.
-	for _, f := range ListFlows(accountID) {
-		if want[f.Via.ReplyID] || want[f.Via.InboundID] {
-			return f.ID
-		}
-	}
-	return ""
-}
-
-// Delivered records the Message-ID a turn's answer went out as, so the reply to
-// that reply finds its way back here.
-//
-// Separate from Record because the id does not exist until the message is
-// actually sent, and a turn is written down before that — a reply that fails to
-// send still has to be visible to the owner.
-func Delivered(flowID, messageID string) {
-	if flowID == "" || strings.TrimSpace(messageID) == "" {
-		return
-	}
-	updateFlow(flowID, func(f *Flow) { f.Via.ReplyID = messageID })
-}
-
-// mailIDs pulls <...> bracketed Message-IDs out of a header value.
-//
-// Mail has its own copy of this for the inbound filter. It is four lines and
-// duplicating it is cheaper than a shared package, or than agent importing a
-// service to parse a string.
-func mailIDs(s string) []string {
-	var ids []string
-	for {
-		start := strings.Index(s, "<")
-		if start < 0 {
-			return ids
-		}
-		end := strings.Index(s[start:], ">")
-		if end < 0 {
-			return ids
-		}
-		ids = append(ids, s[start:start+end+1])
-		s = s[start+end+1:]
-	}
 }
 
 // MailPrompt frames a run as answering an email, on top of whatever system

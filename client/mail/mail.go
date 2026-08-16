@@ -134,33 +134,19 @@ func answerMail(m mail.InboundMail) {
 	// back the id so a failed delivery can be marked against it. Somebody
 	// else's mail can start this run and spend this account's credits, so
 	// the account has to be able to see that it happened.
-	// The turn this message continues, if it continues one. A reply names
-	// what it answers, and both sides of every previous turn were written
-	// down with their message ids — so a thread stays one conversation
-	// instead of a queue of strangers answering in sequence.
-	parent := agent.ContinuesMail(m.Owner, m.InReplyTo, m.References)
+	via := agent.Via{From: m.From}
 
-	// Which conversation this belongs to. A reply joins the thread its parent
-	// is part of; a first message starts one, identified by its own message id.
-	//
-	// It was the address written to, which made every email ever sent to
-	// agent@ one enormous thread — inert only because mail finds its parent
-	// from message ids rather than by asking which turn was last on the
-	// thread. The moment it stopped doing that, unrelated conversations would
-	// have been spliced together and each handed the others' history.
-	thread := agent.ThreadOf(m.Owner, parent)
-	if thread == "" {
-		thread = m.MessageID
-	}
-	via := agent.Via{InboundID: m.MessageID, From: m.From}
+	// The conversation the answer will be recorded on, filled in once the run
+	// has happened. deliver closes over it so it can note the id the reply went
+	// out under, which is what the next message in the thread looks for.
+	var threadRef string
 
 	record := func(prompt, answer string, err error) string {
 		return agent.Record(agent.Recorded{
 			Account: m.Owner, Agent: ref,
 			Source: Client, Trigger: trigger,
 			Prompt: prompt, Answer: answer, Err: err, Started: started,
-			Parent: parent,
-			Via:    agent.Via{Client: Client, Thread: thread, InboundID: m.MessageID, From: m.From},
+			Via: agent.Via{Client: Client, From: m.From},
 		})
 	}
 
@@ -202,7 +188,10 @@ func answerMail(m mail.InboundMail) {
 		// The id the answer went out under, so the reply to *it* finds this
 		// turn. Recorded even when delivery failed below, because a message
 		// that reached the far side and then errored still gets answered.
-		agent.Delivered(id, sent)
+		// Against the conversation, which is what the next message looks
+		// in — the workflow record is how this answer was produced, not what
+		// was said.
+		agent.Sent(m.Owner, threadRef, sent)
 		if err != nil {
 			app.Log("mail", "agent %s could not reply to %s: %v", name, m.From, err)
 			// Recorded as an error against the run, because a reply that
@@ -263,15 +252,17 @@ func answerMail(m mail.InboundMail) {
 	res, err := agent.Ask(agent.AskRequest{
 		Account: m.Owner,
 		Client:  Client,
-		Thread:  thread,
+		Thread:  m.To,
 		Text:    prompt,
 		Agent:   ref,
 		System:  agent.MailPrompt(""),
 		Trigger: trigger,
-		Parent:  parent,
+		Ref:     m.InReplyTo + " " + m.References,
+		From:    m.From,
 		Via:     via,
 	})
 	answer := res.Text
+	threadRef = res.Thread
 	if err != nil {
 		app.Log("mail", "agent %s failed on mail from %s: %v", name, m.From, err)
 		deliver(res.Flow, prompt, "I could not answer that one. Try again, or ask a different way.")

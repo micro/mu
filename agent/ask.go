@@ -27,6 +27,8 @@ package agent
 
 import (
 	"strings"
+
+	"mu/internal/thread"
 )
 
 // AskRequest is one message arriving from a client.
@@ -55,11 +57,13 @@ type AskRequest struct {
 	System string
 	// Trigger says who set this off, in words, for the run record.
 	Trigger string
-	// Parent is the turn this message continues, when the client can work
-	// that out for itself. Mail can: a reply names what it answers in its
-	// headers, which is more reliable than "the last thing on this thread".
-	// Empty means look it up from Client and Thread.
-	Parent string
+	// Ref is what the client says this message answers — mail's In-Reply-To
+	// and References. Where it matches something recorded, that conversation
+	// is continued in preference to whatever is newest on the thread.
+	Ref string
+	// From is who wrote in, where that is not simply the account: a message
+	// somebody else sent to an address this account owns.
+	From string
 	// Via carries anything else the client needs to recognise this
 	// conversation later — mail's message ids. Client and Thread are filled
 	// in from the fields above, so a caller cannot set one and mean another.
@@ -69,9 +73,12 @@ type AskRequest struct {
 // Answer is what came back, and where it was written down.
 type Answer struct {
 	Text string
-	// Flow is the run record's id, so a client that later learns delivery
-	// failed can mark it against the right turn.
+	// Flow is the workflow record's id, so a client that later learns delivery
+	// failed can mark it against the right run.
 	Flow string
+	// Thread is the conversation it was recorded on, so a client can note the
+	// id its own protocol gave the reply — see Sent.
+	Thread string
 }
 
 // historyTurns is how much of a conversation an agent is reminded of.
@@ -87,14 +94,21 @@ func Ask(r AskRequest) (Answer, error) {
 		return Answer{}, nil
 	}
 
-	parent := r.Parent
-	if parent == "" {
-		parent = ThreadHead(r.Account, r.Client, r.Thread)
+	// The conversation this belongs to, in the system of record. A client that
+	// knows better says so — mail resolves a reply from its headers, which
+	// beats "the last thing on this thread" when somebody answers a message
+	// from last week.
+	var th *thread.Thread
+	if r.Ref != "" {
+		th = thread.ByRef(r.Account, r.Ref)
+	}
+	if th == nil {
+		th = thread.Open(r.Account, r.Client, r.Thread)
 	}
 
 	opts := QueryOpts{
 		Public:  r.Public,
-		History: ThreadHistory(r.Account, parent, historyTurns),
+		History: history(r.Account, th, historyTurns),
 	}
 	if plat := Platform(r.Agent); r.Agent != "" && plat != nil {
 		opts.System = PlatformOpts(plat).System
@@ -112,18 +126,36 @@ func Ask(r AskRequest) (Answer, error) {
 		opts.System = strings.TrimSpace(opts.System)
 	}
 
+	// What was said goes in the record whatever the run did. An agent that
+	// failed was still written to, and the next message continues the same
+	// conversation.
+	if th != nil {
+		thread.Add(thread.Message{
+			Thread: th.ID, Account: r.Account, Role: thread.RolePerson,
+			Text: r.Text, Ref: r.Ref, From: r.From,
+		})
+	}
+
 	answer, err := QueryWithOpts(r.Account, r.Text, opts)
 
 	via := r.Via
 	via.Client, via.Thread = r.Client, r.Thread
 
+	// The workflow record: how the answer was produced, which is a different
+	// question with a different lifetime from what was said.
 	id := Record(Recorded{
 		Account: r.Account, Agent: r.Agent,
 		Source: r.Client, Trigger: r.Trigger,
 		Prompt: r.Text, Answer: answer, Err: err,
-		Parent: parent,
-		Via:    via,
+		Via: via,
 	})
+
+	if th != nil && strings.TrimSpace(answer) != "" {
+		thread.Add(thread.Message{
+			Thread: th.ID, Account: r.Account, Role: thread.RoleAgent,
+			Text: answer, Workflow: id,
+		})
+	}
 
 	// Notice anything worth remembering, from every client rather than one.
 	// Off the response path: it is a background model call and the answer is
@@ -132,66 +164,46 @@ func Ask(r AskRequest) (Answer, error) {
 		go extractMemory(r.Account, r.Text)
 	}
 
-	return Answer{Text: answer, Flow: id}, err
+	return Answer{Text: answer, Flow: id, Thread: threadID(th)}, err
 }
 
-// ThreadHead is the latest turn of a conversation, or "" if it is a new one.
+// history is a conversation's prior messages, as the model wants them.
 //
-// Scoped to the account as well as the client, because a thread id is a string
-// somebody else's service chose and two accounts may well be handed the same
-// one.
-func ThreadHead(accountID, client, thread string) string {
-	if accountID == "" || client == "" || thread == "" {
-		return ""
-	}
-	// ListFlows is newest first, so the first match is the head and a new turn
-	// hangs off the end of the conversation rather than its middle.
-	for _, f := range ListFlows(accountID) {
-		if f.Via.Client == client && f.Via.Thread == thread {
-			return f.ID
-		}
-	}
-	return ""
-}
-
-// ThreadHistory is a conversation's prior turns, oldest first, as the model
-// wants them.
-//
-// Without it a chain is cosmetic: the turns group on a page and the agent still
-// meets every message as a stranger, so "as we discussed" means nothing.
-func ThreadHistory(accountID, flowID string, max int) []QueryMessage {
-	if flowID == "" || max <= 0 {
+// Read from the record rather than from workflow records, which is the whole
+// point of there being a record: a workflow is how one answer was produced and
+// expires as debugging does, while what was said is memory and does not.
+func history(accountID string, th *thread.Thread, max int) []QueryMessage {
+	if th == nil || max <= 0 {
 		return nil
 	}
-	var out []QueryMessage
-	for _, f := range sessionChain(accountID, flowID) {
-		if f.Prompt != "" {
-			out = append(out, QueryMessage{Role: "user", Text: f.Prompt})
+	msgs := thread.Messages(accountID, th.ID, max)
+	out := make([]QueryMessage, 0, len(msgs))
+	for _, m := range msgs {
+		role := "user"
+		if m.Role == thread.RoleAgent {
+			role = "assistant"
 		}
-		if f.Answer != "" {
-			out = append(out, QueryMessage{Role: "assistant", Text: f.Answer})
-		}
-	}
-	// Trimmed from the front: the recent turns are the ones being answered.
-	if len(out) > max {
-		out = out[len(out)-max:]
+		out = append(out, QueryMessage{Role: role, Text: m.Text})
 	}
 	return out
 }
 
-// ThreadOf is the conversation a turn belongs to.
-//
-// Used by a client that resolves a parent itself and then needs the thread that
-// parent is part of — mail finds its parent from message ids, and the thread is
-// whatever the first message in that chain established.
-func ThreadOf(accountID, flowID string) string {
-	if flowID == "" {
-		return ""
+// Sent records the id a client's own protocol gave an answer, so a reply to it
+// finds this conversation. Mail's Message-ID; nothing for a client without one.
+func Sent(accountID, threadID, ref string) {
+	if threadID == "" || strings.TrimSpace(ref) == "" {
+		return
 	}
-	for _, f := range ListFlows(accountID) {
-		if f.ID == flowID {
-			return f.Via.Thread
+	for _, m := range thread.Messages(accountID, threadID, 1) {
+		if m.Role == thread.RoleAgent {
+			thread.SetRef(accountID, m.ID, ref)
 		}
 	}
-	return ""
+}
+
+func threadID(th *thread.Thread) string {
+	if th == nil {
+		return ""
+	}
+	return th.ID
 }

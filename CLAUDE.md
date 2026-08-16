@@ -37,6 +37,8 @@ Built on go-micro: every capability is a go-micro service, the assistant is a go
 | `internal/app/` | Web UI framework, templates, middleware |
 | `internal/auth/` | Account system, sessions, passkeys |
 | `internal/notes/` | The store behind `service/notes` — a title, its text, and nothing that expires |
+| `internal/thread/` | The system of record: what was said, to whom, on which conversation. Written on every turn from every client, by nobody's decision — see "Clients, and the record between them". Not a service, and not a workflow |
+| `client/mail/` | Mail as a client: the shape a message arrives in, handed to the agent, and the answer turned back into a reply. `service/mail` is the capability underneath — the inbox, the address, the SMTP server |
 | `internal/settings/` | Live-reloadable configuration |
 | `home/` | Landing page, assistant, home dashboard, summary |
 | `client/discord/` | Discord bot with slash commands, embeds, briefings |
@@ -117,6 +119,66 @@ questions about state and an agent can derive tools from it.
 round: it is the thing that reads the catalogue. `agent_ask` and `agent_list`
 were tools; an MCP client calling `agent_ask` already holds every tool this
 agent holds, and listing your agents is a page, which exists.
+
+## Clients, and the record between them
+
+Five ways in — web, CLI, mail, Discord, Telegram, WhatsApp — and the agent is
+the same one behind all of them. What differs is protocol and nothing else, so a
+client's whole job is to translate: parse what arrived, hand it over, render what
+comes back, and name an agent where the address or the command already chose one
+(`agent+news@`, a slash command).
+
+**Everything else belongs to `agent.Ask`.** Finding the conversation a message
+continues, handing the agent what was already said, running it, writing the turn
+down, noticing anything worth remembering. Every client wrote that for itself
+once and it had drifted five ways: three kept history in a map in memory, keyed
+differently, lost on restart and unreadable by anything else; none of them
+recorded that a run had happened, so a WhatsApp conversation left no trace; and
+memory was extracted on the web alone, so an agent remembered what you typed in
+a browser and forgot everything you said anywhere else.
+
+Three words that are not the same thing:
+
+- **History** — the messages of one conversation. Per thread, persisted.
+- **Memory** — durable facts about an account, across every client. `notes`.
+- **Context** — what is assembled for one run out of both, plus live tool data.
+  Assembled fresh each time, never stored.
+
+### The system of record is not a service
+
+`internal/thread` holds what was said: a message, on a thread, on a client, for
+an account. It is written on every turn whether or not anybody asks.
+
+**A service is something a caller may choose to use. A system of record is not a
+choice.** That is why this is substrate and not `service/threads` — the core of
+the product must not sit behind a decision an agent takes, because an agent that
+forgot to call it would simply stop remembering. It keeps the company of the
+others nobody chooses: `internal/quota` for what things cost, `internal/x402`
+for pricing a request, `internal/auth` for who you are.
+
+Reading is a different question and a service over it is welcome, because
+searching your own past *is* something an agent decides to do. The test for
+whether that has been built in the right place: **delete the service and nothing
+breaks.** Clients still record, the agent still gets its history, the pages still
+render; you lose only the ability to go looking on purpose. If deleting it breaks
+the product, the core is in the wrong layer.
+
+Messages, not events. An event log that accepts anything has no schema and
+cannot be queried a year later, and there are already two event-shaped things —
+`service/stream` is the instance's public timeline, `internal/usage` the
+counters. If a second kind of event ever needs this treatment, a message becomes
+a kind of event and the store does not change.
+
+### A thread is not a workflow
+
+`agent.Flow` is a **workflow** record, in go-micro's sense and the ordinary one:
+the steps a task took, the tools it called, whether it failed. That is *how an
+answer was produced*. `internal/thread` is *what was said*.
+
+They were one struct for a while, which is how a workflow record came to stand in
+as conversation history — and they have different lifetimes. A workflow record is
+debugging and may expire; a message is memory and should not. One eviction limit
+was governing both, which is why it was wrong for each.
 
 ## Layering
 
