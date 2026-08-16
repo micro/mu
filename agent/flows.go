@@ -30,8 +30,11 @@ type Flow struct {
 	Source string `json:"source,omitempty"`
 	// Trigger names who set it off, for the ones nobody asked for in person:
 	// "email from asim@aslam.me".
-	Trigger   string    `json:"trigger,omitempty"`
-	ParentID  string    `json:"parent_id"` // prior flow ID for multi-turn chains
+	Trigger  string `json:"trigger,omitempty"`
+	ParentID string `json:"parent_id"` // prior flow ID for multi-turn chains
+	// Mail is set on a turn that arrived as email, and is what lets the next
+	// message in that thread find this one. See thread.go.
+	Mail      MailTurn  `json:"mail,omitzero"`
 	CreatedAt time.Time `json:"created_at"`
 }
 

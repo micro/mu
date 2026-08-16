@@ -48,6 +48,12 @@ type Recorded struct {
 	// Started is when the run began, so the record shows the real duration
 	// rather than the moment it finished.
 	Started time.Time
+	// Parent is the turn this one continues, or "" to start a conversation.
+	// Set when a message threads onto one already answered — see thread.go.
+	Parent string
+	// Mail carries the message ids this turn arrived and left under, so the
+	// next message in the thread can find it.
+	Mail MailTurn
 }
 
 // Record writes a completed run to the same store the pages read.
@@ -72,6 +78,8 @@ func Record(r Recorded) string {
 		Prompt:    r.Prompt,
 		Answer:    r.Answer,
 		Status:    "done",
+		ParentID:  r.Parent,
+		Mail:      r.Mail,
 		CreatedAt: started,
 	}
 	if r.Err != nil {

@@ -62,6 +62,13 @@ import (
 	whatsappsvc "mu/service/whatsapp"
 )
 
+// mailHistoryTurns is how much of an email thread an agent is reminded of.
+//
+// Six messages is three exchanges, which covers the back-and-forth people
+// actually have by mail and stops a thread somebody has been adding to for a
+// month from costing more in prompt than the answer is worth.
+const mailHistoryTurns = 6
+
 // wireHooks connects the building blocks to each other.
 func wireHooks() {
 	// Attach the calendar somebody already keeps. events owns scheduling and
@@ -285,11 +292,19 @@ func wireHooks() {
 		// back the id so a failed delivery can be marked against it. Somebody
 		// else's mail can start this run and spend this account's credits, so
 		// the account has to be able to see that it happened.
+		// The turn this message continues, if it continues one. A reply names
+		// what it answers, and both sides of every previous turn were written
+		// down with their message ids — so a thread stays one conversation
+		// instead of a queue of strangers answering in sequence.
+		parent := agent.ContinuesMail(m.Owner, m.InReplyTo, m.References)
+
 		record := func(prompt, answer string, err error) string {
 			return agent.Record(agent.Recorded{
 				Account: m.Owner, Agent: ref,
 				Source: agent.FromMail, Trigger: trigger,
 				Prompt: prompt, Answer: answer, Err: err, Started: started,
+				Parent: parent,
+				Mail:   agent.MailTurn{InboundID: m.MessageID, From: m.From},
 			})
 		}
 
@@ -311,7 +326,12 @@ func wireHooks() {
 				subject = "Re: " + subject
 			}
 			id := record(prompt, body, nil)
-			if _, err := mail.SendExternalEmail(name, from, m.From, subject, body, "", m.MessageID); err != nil {
+			sent, err := mail.SendExternalEmail(name, from, m.From, subject, body, "", m.MessageID)
+			// The id the answer went out under, so the reply to *it* finds this
+			// turn. Recorded even when delivery failed below, because a message
+			// that reached the far side and then errored still gets answered.
+			agent.Delivered(id, sent)
+			if err != nil {
 				app.Log("mail", "agent %s could not reply to %s: %v", name, m.From, err)
 				// Recorded as an error against the run, because a reply that
 				// was written and never delivered is not a reply, and the
@@ -377,6 +397,10 @@ func wireHooks() {
 				return
 			}
 		}
+		// What was already said in this thread. Without it the chain is
+		// cosmetic — the turns group on a page and the agent still meets every
+		// message as a stranger, so "as we discussed" means nothing to it.
+		opts.History = agent.MailHistory(m.Owner, parent, mailHistoryTurns)
 
 		answer, err := agent.QueryWithOpts(m.Owner, prompt, opts)
 		if err != nil {

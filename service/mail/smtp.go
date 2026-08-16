@@ -741,14 +741,16 @@ func (s *Session) Data(r io.Reader) error {
 		// tag itself and returns quietly when it names nothing, so plain tagged
 		// mail — you+receipts@ — still just files.
 		deliverInbound(InboundMail{
-			Owner:     toAcc.ID,
-			Tag:       toTag,
-			Shared:    sharedAgentMail,
-			From:      fromAddr.Address,
-			FromName:  senderName,
-			Subject:   subject,
-			Body:      body,
-			MessageID: messageID,
+			Owner:      toAcc.ID,
+			Tag:        toTag,
+			Shared:     sharedAgentMail,
+			From:       fromAddr.Address,
+			FromName:   senderName,
+			Subject:    subject,
+			Body:       body,
+			MessageID:  messageID,
+			InReplyTo:  inReplyTo,
+			References: references,
 		}, wakeRequest{
 			Owner:         toAcc.ID,
 			Tag:           toTag,
@@ -1276,9 +1278,10 @@ type InboundMail struct {
 	Owner string // account the address belongs to
 	Tag   string // the part after the plus: you+<tag>@; empty when Shared
 
-	// Shared marks mail that arrived at agent@<domain> rather than at one
-	// agent's own address. There is no tag to resolve, so it is the account's
-	// default agent that answers.
+	// Shared marks mail that arrived at agent@<domain> rather than at one of
+	// the account's own agents. Tag then names one of this instance's agents
+	// rather than one of theirs — two namespaces, see agent/platform.go — and
+	// an empty tag is the catch-all.
 	Shared bool
 
 	From      string // who wrote in
@@ -1286,6 +1289,13 @@ type InboundMail struct {
 	Subject   string
 	Body      string
 	MessageID string // for threading the reply
+
+	// InReplyTo and References are what the sender says this message answers.
+	// Passed through rather than consumed here, because whether it continues
+	// something is a question about the conversation and mail does not hold
+	// one — the handler matches them against turns it has already answered.
+	InReplyTo  string
+	References string
 }
 
 // Handlers register with Inbound, in inbound.go. There used to be a function
