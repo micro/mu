@@ -3426,6 +3426,18 @@ a.btn-secondary:hover, .btn-secondary:hover {
   align-items: center;
 }
 
+/* Filtered mail: what you can do about it, under what it is.
+   Separated by a rule so the buttons read as a footer to the card rather than
+   as part of the message — they had no rule at all, which is why they stacked
+   wherever they happened to be written. */
+.spam-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(128, 128, 128, .18);
+}
+
 .mail-thread-preview {
   color: #999;
   font-size: 13px;

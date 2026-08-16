@@ -1410,8 +1410,26 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 			relativeTime := app.TimeAgo(msg.CreatedAt)
 
+			// The card reads before it offers: subject, who from, what it says,
+			// why it was filtered — and only then what you can do about it.
+			//
+			// Not Spam and Delete used to be the first thing in the card, above
+			// the subject, so every row led with two buttons and you had to
+			// look past them to find out what they applied to. On a screen of
+			// filtered mail that is a column of controls with the messages
+			// interleaved. They belong at the foot, after the reason, which is
+			// the thing the decision is actually made on.
 			items = append(items, fmt.Sprintf(
 				`<div class="thread-preview card" onclick="window.location.href='/mail?id=%s'">
+					<div class="mail-thread-item">
+						<strong class="mail-thread-subject">%s</strong>
+					</div>
+					<div class="mail-thread-meta">%s</div>
+					<div class="mail-thread-row">
+						<div class="mail-thread-preview">%s</div>
+						<span class="mail-thread-time">%s</span>
+					</div>
+					<div class="spam-info text-muted text-sm">Spam score: %d — %s</div>
 					<div class="spam-actions" onclick="event.stopPropagation()">
 						<form method="POST" action="/mail?view=filtered" class="d-inline">
 							<input type="hidden" name="action" value="not_spam">
@@ -1424,18 +1442,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 							<button type="submit" class="btn-sm btn-danger">Delete</button>
 						</form>
 					</div>
-					<div class="mail-thread-item">
-						<strong class="mail-thread-subject">%s</strong>
-					</div>
-					<div class="mail-thread-meta">%s</div>
-					<div class="mail-thread-row">
-						<div class="mail-thread-preview">%s</div>
-						<span class="mail-thread-time">%s</span>
-					</div>
-					<div class="spam-info text-muted text-sm">Spam score: %d — %s</div>
 				</div>`,
-				msg.ID,
-				msg.ID,
 				msg.ID,
 				subject,
 				fromDisplay,
@@ -1443,6 +1450,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				relativeTime,
 				msg.SpamScore,
 				html.EscapeString(reasons),
+				msg.ID,
+				msg.ID,
 			))
 		}
 	} else {
