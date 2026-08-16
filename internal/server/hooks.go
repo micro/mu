@@ -335,8 +335,17 @@ func wireHooks() {
 				subject = "Re: " + subject
 			}
 			id := record(prompt, body, nil)
-			sent, err := mail.SendExternalReply(name, from, m.From, subject, body, "",
-				m.MessageID, m.References)
+			// An agent answers in markdown, and mail was the one surface that
+			// sent it raw — so an answer with a list or a bold word arrived
+			// with its asterisks showing. Every other surface normalises and
+			// renders; this is the same two steps, and RenderString is already
+			// what the inbox uses for markdown arriving the other way.
+			//
+			// Render, not RenderTrusted: the body is model output, so raw HTML
+			// in it is escaped rather than passed through.
+			plain := app.NormalizeAnswerMarkdown(body)
+			sent, err := mail.SendExternalReply(name, from, m.From, subject,
+				plain, app.RenderString(plain), m.MessageID, m.References)
 			// The id the answer went out under, so the reply to *it* finds this
 			// turn. Recorded even when delivery failed below, because a message
 			// that reached the far side and then errored still gets answered.
