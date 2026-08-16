@@ -128,6 +128,9 @@ func Load() {
 		// Fix threading for any messages with broken chains
 		fixThreading()
 
+		// Mail you sent yourself is not mail waiting to be read.
+		markSelfSentRead()
+
 		// Build inbox structures organized by thread
 		rebuildInboxes()
 
@@ -246,6 +249,49 @@ func rebuildInboxes() {
 			addMessageToInbox(inboxes[msg.ToID], msg, msg.ToID)
 		}
 	}
+}
+
+// markSelfSentRead clears the unread flag on messages an account sent to
+// itself, which in practice means everything written to agent@.
+//
+// That address resolves to whoever wrote to it, so the message is filed in the
+// sender's own inbox. Delivery marks it read now, but everything sent before
+// that is still sitting there — and it is the count the home page offers to
+// deal with, so it reads as four emails to answer when it is four questions
+// you asked. Once, at load: after this there is nothing left to convert.
+//
+// The test is who owns the sending address, not the tag, so it holds for
+// agent@ and agent+news@ alike and for a note somebody mailed themselves.
+func markSelfSentRead() {
+	var fixed int
+	for _, msg := range messages {
+		if msg.Read || msg.ToID == "" {
+			continue
+		}
+		if !selfAddressed(msg) {
+			continue
+		}
+		msg.Read = true
+		fixed++
+	}
+	if fixed > 0 {
+		app.Log("mail", "marked %d self-sent message(s) read", fixed)
+		save() //nolint:errcheck
+	}
+}
+
+// selfAddressed reports whether a message's sender and recipient are the same
+// account, whichever way the sender was recorded — an account id for local
+// delivery, an email address for anything that arrived over SMTP.
+func selfAddressed(msg *Message) bool {
+	if msg.FromID == "" {
+		return false
+	}
+	if msg.FromID == msg.ToID {
+		return true
+	}
+	acc := auth.AccountForAddress(msg.FromID)
+	return acc != nil && acc.ID == msg.ToID
 }
 
 // addMessageToInbox adds a message to an inbox's thread structure

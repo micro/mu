@@ -1,4 +1,4 @@
-package server
+package mail
 
 // An agent answers in markdown, and mail has to render it.
 //
@@ -7,7 +7,7 @@ package server
 // arrives the other way. Mail was the one place an answer went out raw, so a
 // reply with a list or a bold word arrived with its asterisks showing.
 //
-// The reply is built inside a closure in wireHooks, so this reads the source. It
+// The reply is built inside answerMail, so this reads the source. It
 // is checking a wiring decision — which arguments the send is given — and that
 // is exactly what a source read can see.
 
@@ -19,7 +19,7 @@ import (
 
 func replySource(t *testing.T) string {
 	t.Helper()
-	b, err := os.ReadFile("hooks.go")
+	b, err := os.ReadFile("mail.go")
 	if err != nil {
 		t.Fatal(err)
 	}
