@@ -86,6 +86,11 @@ type QueryOpts struct {
 	// tokens on every turn and most questions have nothing to do with it.
 	Extra string
 	Tools []string // optional tool allow-list (user-defined agent); empty = all
+	// Stream reports the answer as it is produced, for a client that shows it
+	// arriving. Zero value means nobody is listening, which is every client
+	// but the web today — and the reason streaming was unreachable to them is
+	// that it lived in the SSE handler rather than here.
+	Stream StreamHooks
 	// OnStep is called once per tool the agent runs, if set.
 	//
 	// The pipeline discarded this: a caller got a final string and no way to
@@ -166,7 +171,7 @@ func QueryWithOpts(accountID, prompt string, opts QueryOpts) (string, error) {
 	// synthesize below. If the native provider is unconfigured, or a native run
 	// errors, fall through to the hand-rolled pipeline so a query never fails.
 	if nativeEnabled() {
-		if answer, handled, err := queryNative(accountID, prompt, opts); handled {
+		if answer, handled, err := runNative(accountID, prompt, opts); handled {
 			if err == nil {
 				return app.NormalizeAnswerMarkdown(answer), nil
 			}
@@ -790,7 +795,10 @@ func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts Query
 	startedTools := map[string]bool{}
 	endedTools := map[string]bool{}
 
-	answer, handled, err := streamNative(accountID, prompt, opts, StreamHooks{
+	// The hooks travel in opts now, so this handler translates events to SSE
+	// frames and owns nothing else about the run.
+	sopts := opts
+	sopts.Stream = StreamHooks{
 		ToolStart: func(label, name string) {
 			if startedTools[label] {
 				return
@@ -821,7 +829,8 @@ func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts Query
 			captured.WriteString(tok)
 			sse(w, map[string]any{"type": "stream_token", "token": tok})
 		},
-	})
+	}
+	answer, handled, err := runNative(accountID, prompt, sopts)
 
 	if !handled {
 		return false // no native provider — fall back to the planner

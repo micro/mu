@@ -40,12 +40,12 @@ func TestQueryNativeLive(t *testing.T) {
 		t.Fatalf("register: %v", err)
 	}
 
-	answer, handled, err := queryNative("acct-1", "What's the weather in London right now?", QueryOpts{})
+	answer, handled, err := runNative("acct-1", "What's the weather in London right now?", QueryOpts{})
 	if !handled {
 		t.Fatal("native path did not handle the query")
 	}
 	if err != nil {
-		t.Fatalf("queryNative: %v", err)
+		t.Fatalf("runNative: %v", err)
 	}
 	t.Logf("answer: %s", answer)
 	if !strings.Contains(answer, "14") {

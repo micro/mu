@@ -68,6 +68,15 @@ type AskRequest struct {
 	// conversation later — mail's message ids. Client and Thread are filled
 	// in from the fields above, so a caller cannot set one and mean another.
 	Via Via
+	// Stream reports the answer as it is produced, for a client that can show
+	// it arriving — the web streams to the page, Telegram could edit a message
+	// in place, Discord could type. An option for the caller and not a fork in
+	// the implementation: with nobody listening the same run happens and the
+	// same answer comes back, so a streaming client and a quiet one cannot
+	// drift apart.
+	//
+	// Meaningless on mail, which is the one client with nothing to update.
+	Stream StreamHooks
 }
 
 // Answer is what came back, and where it was written down.
@@ -109,6 +118,7 @@ func Ask(r AskRequest) (Answer, error) {
 	opts := QueryOpts{
 		Public:  r.Public,
 		History: history(r.Account, th, historyTurns),
+		Stream:  r.Stream,
 	}
 	if plat := Platform(r.Agent); r.Agent != "" && plat != nil {
 		opts.System = PlatformOpts(plat).System

@@ -292,25 +292,14 @@ func nativeAgentInstanceName() string {
 //
 // It returns (answer, true) when it handled the request, or ("", false) to
 // signal the caller to fall back to the hand-rolled path (e.g. no Atlas key).
-func queryNative(accountID, prompt string, opts QueryOpts) (string, bool, error) {
-	recorder := newNativeToolRecorder()
-	a, question, ok := buildNativeAgent(accountID, prompt, opts, recorder.wrap)
-	if !ok {
-		return "", false, nil
-	}
-	defer a.Stop()
-
-	resp, err := a.Ask(context.Background(), question)
-	if err != nil {
-		return "", true, fmt.Errorf("native agent: %w", err)
-	}
-	answer := app.StripLatexDollars(resp.Reply)
-	answer = completeToolAnswer(answer, recorder.ragParts())
-	return answer, true, nil
-}
-
 // StreamHooks receives streaming events from the native agent: tool lifecycle
 // (with a friendly label) and answer tokens as they arrive.
+// wants reports whether anything is listening. A caller with no hooks is not
+// asking for a stream, whatever the operator has enabled.
+func (h StreamHooks) wants() bool {
+	return h.Token != nil || h.ToolStart != nil || h.ToolEnd != nil
+}
+
 type StreamHooks struct {
 	// label is for the reader, name is the tool. The run record needs the
 	// name — "⚙️ Working" is what a person watching wants and is worthless as
@@ -324,7 +313,7 @@ type StreamHooks struct {
 // start/end events and answer tokens via hooks, and returns the final answer.
 // Returns (answer, true, err) when it handled the request, or ("", false, nil)
 // to signal the caller to fall back (no provider).
-func streamNative(accountID, prompt string, opts QueryOpts, hooks StreamHooks) (string, bool, error) {
+func runNative(accountID, prompt string, opts QueryOpts) (string, bool, error) {
 	recorder := newNativeToolRecorder()
 	a, question, ok := buildNativeAgent(accountID, prompt, opts, recorder.wrap)
 	if !ok {
@@ -332,9 +321,43 @@ func streamNative(accountID, prompt string, opts QueryOpts, hooks StreamHooks) (
 	}
 	defer a.Stop()
 
+	// Streaming when somebody is watching and the operator allows it.
+	//
+	// One function rather than two, because two drifted: the same construction,
+	// the same post-processing and the same contract were written twice, and
+	// the streaming copy was reachable only from the web's SSE handler — which
+	// is why no other client could show an answer arriving.
+	//
+	// The branch is not a caller's choice. AGENT_NATIVE_STREAM exists because
+	// StreamAsk had a tool-resolution bug once, and it lets an operator put
+	// everything back on the plain ask without disabling the native agent. A
+	// caller says whether anyone is listening; the operator says what is
+	// trusted.
+	final := ""
+	if opts.Stream.wants() && nativeStreamEnabled() {
+		var err error
+		if final, err = askStreaming(a, question, recorder, opts.Stream); err != nil {
+			return "", true, err
+		}
+	} else {
+		resp, err := a.Ask(context.Background(), question)
+		if err != nil {
+			return "", true, fmt.Errorf("native agent: %w", err)
+		}
+		final = resp.Reply
+	}
+
+	answer := app.StripLatexDollars(final)
+	answer = completeToolAnswer(answer, recorder.ragParts())
+	return answer, true, nil
+}
+
+// askStreaming runs the agent with StreamAsk, reporting tools and tokens as
+// they arrive, and returns the whole answer.
+func askStreaming(a gmagent.Agent, question string, recorder *nativeToolRecorder, hooks StreamHooks) (string, error) {
 	stream, err := gmagent.StreamAsk(context.Background(), a, question)
 	if err != nil {
-		return "", true, fmt.Errorf("native agent stream: %w", err)
+		return "", fmt.Errorf("native agent stream: %w", err)
 	}
 
 	var reply strings.Builder
@@ -345,7 +368,7 @@ func streamNative(accountID, prompt string, opts QueryOpts, hooks StreamHooks) (
 			break
 		}
 		if err != nil {
-			return "", true, fmt.Errorf("native agent stream: %w", err)
+			return "", fmt.Errorf("native agent stream: %w", err)
 		}
 		if ev == nil {
 			continue
@@ -376,9 +399,7 @@ func streamNative(accountID, prompt string, opts QueryOpts, hooks StreamHooks) (
 	if final == "" {
 		final = reply.String()
 	}
-	answer := app.StripLatexDollars(final)
-	answer = completeToolAnswer(answer, recorder.ragParts())
-	return answer, true, nil
+	return final, nil
 }
 
 // nativeToolRecorder keeps the raw tool payloads produced by go-micro's native
