@@ -349,7 +349,7 @@ func handleMessage(m discordMessage) {
 	res, err := agent.Ask(agent.AskRequest{
 		Account: accountID,
 		Client:  Client,
-		Thread:  m.ChannelID,
+		Thread:  threadKey(m.ChannelID, m.Author.ID, isDM),
 		Text:    content,
 		Public:  !isDM,
 		Trigger: "discord message from " + m.Author.Username,
@@ -436,4 +436,23 @@ func commandAgent(name string) string {
 		return name
 	}
 	return ""
+}
+
+// threadKey identifies one conversation.
+//
+// A DM is a conversation: one channel, one person. A shared channel is not —
+// it is a room where several people talk to the same bot, and keying on the
+// channel alone made everything ever said in #general one conversation, with
+// each person handed the others' history as context. In a channel the
+// conversation is per person.
+//
+// The honest limit: Discord has real threads of its own, and this does not use
+// them. Two topics a person raises in the same channel are still one thread
+// here, which is wrong in the harmless direction — too much context rather than
+// somebody else's.
+func threadKey(channelID, authorID string, isDM bool) string {
+	if isDM {
+		return channelID
+	}
+	return channelID + ":" + authorID
 }

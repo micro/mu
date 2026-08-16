@@ -231,7 +231,7 @@ func handleInteraction(raw json.RawMessage) {
 	res, err := agent.Ask(agent.AskRequest{
 		Account: accountID,
 		Client:  Client,
-		Thread:  inter.ChannelID,
+		Thread:  threadKey(inter.ChannelID, discordID, !isChannelCmd),
 		Text:    prompt,
 		Public:  isChannelCmd,
 		Agent:   commandAgent(inter.Data.Name),

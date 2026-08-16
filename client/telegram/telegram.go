@@ -312,7 +312,7 @@ func handleMessage(token string, userID int64, username, firstName string, chatI
 	res, err := agent.Ask(agent.AskRequest{
 		Account: accountID,
 		Client:  Client,
-		Thread:  fmt.Sprintf("%d", chatID),
+		Thread:  threadKey(chatID, telegramID, isDM),
 		Text:    text,
 		Public:  !isDM,
 		Trigger: "telegram message",
@@ -562,3 +562,13 @@ func truncateText(s string, n int) string {
 
 // Client names this client in a run record. See discord.Client.
 const Client = "telegram"
+
+// threadKey identifies one conversation. A private chat is one; a group is a
+// room where several people talk to the same bot, so the conversation there is
+// per person rather than per chat. See discord.threadKey.
+func threadKey(chatID int64, userID string, isDM bool) string {
+	if isDM {
+		return fmt.Sprintf("%d", chatID)
+	}
+	return fmt.Sprintf("%d:%s", chatID, userID)
+}

@@ -55,6 +55,15 @@ type AskRequest struct {
 	System string
 	// Trigger says who set this off, in words, for the run record.
 	Trigger string
+	// Parent is the turn this message continues, when the client can work
+	// that out for itself. Mail can: a reply names what it answers in its
+	// headers, which is more reliable than "the last thing on this thread".
+	// Empty means look it up from Client and Thread.
+	Parent string
+	// Via carries anything else the client needs to recognise this
+	// conversation later — mail's message ids. Client and Thread are filled
+	// in from the fields above, so a caller cannot set one and mean another.
+	Via Via
 }
 
 // Answer is what came back, and where it was written down.
@@ -78,7 +87,10 @@ func Ask(r AskRequest) (Answer, error) {
 		return Answer{}, nil
 	}
 
-	parent := ThreadHead(r.Account, r.Client, r.Thread)
+	parent := r.Parent
+	if parent == "" {
+		parent = ThreadHead(r.Account, r.Client, r.Thread)
+	}
 
 	opts := QueryOpts{
 		Public:  r.Public,
@@ -102,12 +114,15 @@ func Ask(r AskRequest) (Answer, error) {
 
 	answer, err := QueryWithOpts(r.Account, r.Text, opts)
 
+	via := r.Via
+	via.Client, via.Thread = r.Client, r.Thread
+
 	id := Record(Recorded{
 		Account: r.Account, Agent: r.Agent,
 		Source: r.Client, Trigger: r.Trigger,
 		Prompt: r.Text, Answer: answer, Err: err,
 		Parent: parent,
-		Via:    Via{Client: r.Client, Thread: r.Thread},
+		Via:    via,
 	})
 
 	// Notice anything worth remembering, from every client rather than one.
@@ -162,4 +177,21 @@ func ThreadHistory(accountID, flowID string, max int) []QueryMessage {
 		out = out[len(out)-max:]
 	}
 	return out
+}
+
+// ThreadOf is the conversation a turn belongs to.
+//
+// Used by a client that resolves a parent itself and then needs the thread that
+// parent is part of — mail finds its parent from message ids, and the thread is
+// whatever the first message in that chain established.
+func ThreadOf(accountID, flowID string) string {
+	if flowID == "" {
+		return ""
+	}
+	for _, f := range ListFlows(accountID) {
+		if f.ID == flowID {
+			return f.Via.Thread
+		}
+	}
+	return ""
 }

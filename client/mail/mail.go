@@ -140,20 +140,34 @@ func answerMail(m mail.InboundMail) {
 	// instead of a queue of strangers answering in sequence.
 	parent := agent.ContinuesMail(m.Owner, m.InReplyTo, m.References)
 
+	// Which conversation this belongs to. A reply joins the thread its parent
+	// is part of; a first message starts one, identified by its own message id.
+	//
+	// It was the address written to, which made every email ever sent to
+	// agent@ one enormous thread — inert only because mail finds its parent
+	// from message ids rather than by asking which turn was last on the
+	// thread. The moment it stopped doing that, unrelated conversations would
+	// have been spliced together and each handed the others' history.
+	thread := agent.ThreadOf(m.Owner, parent)
+	if thread == "" {
+		thread = m.MessageID
+	}
+	via := agent.Via{InboundID: m.MessageID, From: m.From}
+
 	record := func(prompt, answer string, err error) string {
 		return agent.Record(agent.Recorded{
 			Account: m.Owner, Agent: ref,
 			Source: Client, Trigger: trigger,
 			Prompt: prompt, Answer: answer, Err: err, Started: started,
 			Parent: parent,
-			Via: agent.Via{
-				Client: "mail", Thread: m.To,
-				InboundID: m.MessageID, From: m.From,
-			},
+			Via:    agent.Via{Client: Client, Thread: thread, InboundID: m.MessageID, From: m.From},
 		})
 	}
 
-	reply := func(prompt, body string) {
+	// deliver sends an answer. flowID names the run it came from; "" is for the
+	// replies that are not runs — a typo in the address, an account that cannot
+	// pay — which still have to be written down and still have to be sent.
+	deliver := func(flowID, prompt, body string) {
 		if domain == "" || domain == "localhost" || from == "" {
 			record(prompt, body, fmt.Errorf("this instance cannot send mail, so the answer went nowhere"))
 			return
@@ -170,7 +184,10 @@ func answerMail(m mail.InboundMail) {
 		if !strings.HasPrefix(strings.ToLower(subject), "re:") {
 			subject = "Re: " + subject
 		}
-		id := record(prompt, body, nil)
+		id := flowID
+		if id == "" {
+			id = record(prompt, body, nil)
+		}
 		// An agent answers in markdown, and mail was the one surface that
 		// sent it raw — so an answer with a list or a bold word arrived
 		// with its asterisks showing. Every other surface normalises and
@@ -229,44 +246,35 @@ func answerMail(m mail.InboundMail) {
 			answer += fmt.Sprintf("\n\nYour own agents are at %s+<name>@%s — "+
 				"you have: %s.", mail.Handle(m.Owner, ""), domain, strings.Join(mine, ", "))
 		}
-		reply(prompt, answer)
+		deliver("", prompt, answer)
 		return
 	}
 
 	canProceed, _, cost, err := quota.CheckQuota(m.Owner, quota.OpAgentQuery)
 	if err != nil || !canProceed {
-		reply(prompt, fmt.Sprintf("I could not run this one: it costs %d credits and the account is short. "+
+		deliver("", prompt, fmt.Sprintf("I could not run this one: it costs %d credits and the account is short. "+
 			"Top up at %s/account/topup and send it again.", cost, app.PublicURL()))
 		return
 	}
 
-	// A platform agent brings its own prompt and its own tools; a specialist
-	// with every tool is not one. An account's agent resolves through
-	// AskAs as before.
-	opts := agent.PlatformOpts(agent.Platform(platID))
-	if platID == "" {
-		var err error
-		if opts, err = agent.AskAs(m.Owner, ref); err != nil {
-			app.Log("mail", "agent %s could not be resolved: %v", name, err)
-			record(prompt, "", err)
-			return
-		}
-	}
-	// What was already said in this thread. Without it the chain is
-	// cosmetic — the turns group on a page and the agent still meets every
-	// message as a stranger, so "as we discussed" means nothing to it.
-	opts.History = agent.ThreadHistory(m.Owner, parent, historyTurns)
-
-	// And that it is answering an email at all, which it had no way to know:
-	// it behaved as it does on the page, where a follow-up question costs a
-	// second rather than a day.
-	opts.System = agent.MailPrompt(opts.System)
-
-	answer, err := agent.QueryWithOpts(m.Owner, prompt, opts)
+	// The same entry point every client uses: history, the run record and
+	// anything worth remembering are its business. What is passed is what only
+	// mail knows — which turn this answers, and the ids that will find it again.
+	res, err := agent.Ask(agent.AskRequest{
+		Account: m.Owner,
+		Client:  Client,
+		Thread:  thread,
+		Text:    prompt,
+		Agent:   ref,
+		System:  agent.MailPrompt(""),
+		Trigger: trigger,
+		Parent:  parent,
+		Via:     via,
+	})
+	answer := res.Text
 	if err != nil {
 		app.Log("mail", "agent %s failed on mail from %s: %v", name, m.From, err)
-		record(prompt, "", err)
-		reply(prompt, "I could not answer that one. Try again, or ask a different way.")
+		deliver(res.Flow, prompt, "I could not answer that one. Try again, or ask a different way.")
 		return
 	}
 	if strings.TrimSpace(answer) == "" {
@@ -275,8 +283,8 @@ func answerMail(m mail.InboundMail) {
 		// leave somebody watching an inbox for a reply that is never
 		// coming.
 		app.Log("mail", "agent %s produced an empty answer for mail from %s", name, m.From)
-		reply(prompt, "I did not manage an answer to that one. Try asking a different way.")
+		deliver(res.Flow, prompt, "I did not manage an answer to that one. Try asking a different way.")
 		return
 	}
-	reply(prompt, answer)
+	deliver(res.Flow, prompt, answer)
 }

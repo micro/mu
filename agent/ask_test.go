@@ -112,3 +112,48 @@ func TestEveryClientTeachesMemory(t *testing.T) {
 			"whichever client happens to call it — which was the web, and nowhere else")
 	}
 }
+
+// A client that resolves its own parent still gets one conversation.
+//
+// Mail finds the turn a message answers from its headers, which is better than
+// "the last thing on this thread" — a reply to something from a week ago is a
+// reply to that, not to whatever came since. So Ask takes the parent when the
+// client has one, and only looks it up when it does not.
+func TestAResolvedParentWinsOverTheThreadHead(t *testing.T) {
+	const acc = "ask-parent"
+	old := turnVia(t, acc, "mail", "<root@x.com>", "", "first", "1")
+	updateFlow(old, func(f *Flow) { f.CreatedAt = time.Now().Add(-time.Hour) })
+	newer := turnVia(t, acc, "mail", "<root@x.com>", old, "second", "2")
+
+	if head := ThreadHead(acc, "mail", "<root@x.com>"); head != newer {
+		t.Fatalf("head is %q, want %q", head, newer)
+	}
+	// The thread of any turn in the chain is the thread the first one set.
+	if got := ThreadOf(acc, old); got != "<root@x.com>" {
+		t.Errorf("ThreadOf = %q, want the thread the conversation started under", got)
+	}
+	if got := ThreadOf(acc, ""); got != "" {
+		t.Errorf("ThreadOf of nothing is %q", got)
+	}
+}
+
+// A thread key identifies a conversation, not a room.
+//
+// Keying on the channel alone made everything ever said in a shared channel one
+// conversation, and handed each person the others' history as context. That is
+// somebody else's mail, arriving as if the agent already knew them.
+func TestAThreadKeySeparatesPeopleInASharedRoom(t *testing.T) {
+	for _, c := range []struct{ path, name string }{
+		{"../client/discord/discord.go", "discord"},
+		{"../client/telegram/telegram.go", "telegram"},
+	} {
+		b, err := os.ReadFile(c.path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(b), "func threadKey(") {
+			t.Errorf("%s has no threadKey, so a shared channel is one conversation "+
+				"and everyone in it shares a history", c.name)
+		}
+	}
+}
