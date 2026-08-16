@@ -727,6 +727,23 @@ func (s *Session) Data(r io.Reader) error {
 			continue
 		}
 
+		// Mail to agent@ is filed read, because you wrote it.
+		//
+		// That address resolves to whoever sent it, so the message lands in the
+		// sender's own inbox. Keeping it is right — it is the record of the
+		// conversation and nothing should lose it — but it is not
+		// correspondence waiting to be dealt with. Left unread it told you that
+		// you had unread mail from yourself, and told the agent the same thing:
+		// the unread count is part of every run's context, so asking a question
+		// by email made the agent report on the inbox the question was in.
+		if sharedAgentMail {
+			if saved := FindMessageByMessageID(messageID); saved != nil {
+				if err := MarkAsRead(saved.ID, toAcc.ID); err != nil {
+					app.Log("mail", "could not mark agent mail read: %v", err)
+				}
+			}
+		}
+
 		// Anything registered for this address gets the message.
 		//
 		// Every agent already had an address — you+name@ — and writing to one

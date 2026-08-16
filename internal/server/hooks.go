@@ -421,6 +421,11 @@ func wireHooks() {
 		// message as a stranger, so "as we discussed" means nothing to it.
 		opts.History = agent.MailHistory(m.Owner, parent, mailHistoryTurns)
 
+		// And that it is answering an email at all, which it had no way to know:
+		// it behaved as it does on the page, where a follow-up question costs a
+		// second rather than a day.
+		opts.System = agent.MailPrompt(opts.System)
+
 		answer, err := agent.QueryWithOpts(m.Owner, prompt, opts)
 		if err != nil {
 			app.Log("mail", "agent %s failed on mail from %s: %v", name, m.From, err)

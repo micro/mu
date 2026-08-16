@@ -127,18 +127,37 @@ func Query(accountID, prompt string, history ...QueryMessage) (string, error) {
 // QueryWithOpts runs the agent with explicit options.
 // Routes to specialised micro-agents when possible.
 func QueryWithOpts(accountID, prompt string, opts QueryOpts) (string, error) {
+	// A caller who supplied a system prompt has already chosen the agent, and
+	// the router must not choose a different one.
+	//
+	// Orchestrate takes no system prompt — Execute builds its own from the
+	// registry entry — so every routed run silently dropped opts.System. Two
+	// things went out of the window together: the agent somebody addressed, and
+	// any instruction about the medium. Mail is where it showed. Writing to
+	// agent+news@ about markets got the markets specialist, because the words
+	// won over the address; and the framing that tells an agent it is answering
+	// an email — do the work, do not offer to draft — was discarded for exactly
+	// the questions that route, which is most of them. That is how a request
+	// for news came back as a draft email addressed to itself.
+	//
+	// Same bug one level down as the one described at synthSystem below, where
+	// every task and scheduled run composed as Micro whichever agent it was for.
+	chosen := strings.TrimSpace(opts.System) != ""
+
 	// Check for direct agent addressing
-	if agentID := micro.MatchDirectAddress(prompt); agentID != "" {
+	if agentID := micro.MatchDirectAddress(prompt); agentID != "" && !chosen {
 		cleanPrompt := micro.StripAddress(prompt)
 		return normalizeQueryAnswer(micro.Orchestrate(accountID, cleanPrompt, []string{agentID}, opts.Public, microStepper(opts)))
 	}
 
 	// Route to specialist agent(s)
-	agentIDs := micro.Route(prompt)
+	if !chosen {
+		agentIDs := micro.Route(prompt)
 
-	// If router picks specialist(s), use the multi-agent system
-	if len(agentIDs) > 0 && agentIDs[0] != "micro" {
-		return normalizeQueryAnswer(micro.Orchestrate(accountID, prompt, agentIDs, opts.Public, microStepper(opts)))
+		// If router picks specialist(s), use the multi-agent system
+		if len(agentIDs) > 0 && agentIDs[0] != "micro" {
+			return normalizeQueryAnswer(micro.Orchestrate(accountID, prompt, agentIDs, opts.Public, microStepper(opts)))
+		}
 	}
 
 	// Native go-micro agent path (default for this agent platform; set
