@@ -1,57 +1,15 @@
 package agent
 
-// An agent somebody chose is the agent that answers.
+// The mail framing composes with a specialist's own instructions.
 //
-// QueryWithOpts routed on the words in the prompt before looking at whether the
-// caller had already picked an agent, and micro.Orchestrate takes no system
-// prompt — Execute builds its own from the registry. So a routed run dropped
-// opts.System, and with it two things at once: the agent that was addressed,
-// and any instruction about the medium.
-//
-// It showed up in mail. "Tell me more about markets" sent to agent+news@ got
-// the markets specialist, because the words beat the address; and the framing
-// that tells an agent it is answering an email was discarded for exactly the
-// questions that route, which is most of them.
+// Whether a chosen agent survives the router is tested directly in
+// routed_test.go; this is the other half — that framing a run for the medium
+// does not throw away what the agent is.
 
 import (
 	"strings"
 	"testing"
 )
-
-// The rule, read off the source: routing is skipped when a system prompt was
-// supplied. Running the real thing needs a model, so this pins the branch
-// instead — the bug was a missing condition, and a missing condition is visible.
-func TestRoutingIsSkippedWhenTheCallerChoseAnAgent(t *testing.T) {
-	src := readSource(t, "agent.go")
-
-	i := strings.Index(src, "func QueryWithOpts(")
-	if i < 0 {
-		t.Fatal("QueryWithOpts is gone")
-	}
-	body := src[i:]
-	if end := strings.Index(body, "\nfunc "); end > 0 {
-		body = body[:end]
-	}
-
-	route := strings.Index(body, "micro.Route(")
-	if route < 0 {
-		t.Fatal("QueryWithOpts no longer routes at all")
-	}
-	guard := strings.Index(body, "opts.System")
-	if guard < 0 || guard > route {
-		t.Error("QueryWithOpts routes on the prompt before considering whether the " +
-			"caller supplied a system prompt — so an addressed agent and its " +
-			"instructions are dropped in favour of whatever the words look like")
-	}
-
-	// Both routing branches have to be covered, not just the second: direct
-	// addressing in the text would otherwise still beat the caller's choice.
-	direct := strings.Index(body, "micro.MatchDirectAddress(")
-	if direct >= 0 && guard > direct {
-		t.Error("direct addressing in the prompt text is handled before the caller's " +
-			"own choice of agent is considered")
-	}
-}
 
 // And the mail framing survives being composed with a specialist's prompt.
 func TestTheMailFramingKeepsTheAgentsOwnInstructions(t *testing.T) {

@@ -129,6 +129,46 @@ func Query(accountID, prompt string, history ...QueryMessage) (string, error) {
 	return QueryWithOpts(accountID, prompt, QueryOpts{History: history})
 }
 
+// Routed applies the router when the caller has not already chosen an agent,
+// and returns the prompt and options to run with.
+//
+// Picking a specialist *sets the options* rather than diverting into a separate
+// pipeline. That is what makes the choice survive: micro.Orchestrate takes no
+// system prompt and builds its own from the registry, so diverting there
+// discarded whatever the caller had said — and it could not stream, which is
+// why the web skipped routing altogether and quietly became the one client
+// answering as the generalist while the other four got specialists. Same
+// question, different agent, depending on how you happened to arrive.
+//
+// One specialist, not several. The router may name more than one and the old
+// path ran them in parallel and merged the answers; a single question wants a
+// single answerer, and fanning out multiplies the cost of every turn for a
+// synthesis nobody asked for.
+func Routed(prompt string, opts QueryOpts) (string, QueryOpts) {
+	// A caller who supplied a system prompt has already chosen the agent, and
+	// the router must not choose a different one.
+	//
+	// Same bug one level down as the one described at synthSystem below, where
+	// every task and scheduled run composed as Micro whichever agent it was for.
+	if strings.TrimSpace(opts.System) != "" {
+		return prompt, opts
+	}
+
+	id := micro.MatchDirectAddress(prompt)
+	if id != "" {
+		prompt = micro.StripAddress(prompt)
+	} else if ids := micro.Route(prompt); len(ids) > 0 {
+		id = ids[0]
+	}
+	if id == "" || id == DefaultPlatformAgent {
+		return prompt, opts
+	}
+	if o := PlatformOpts(Platform(id)); o.System != "" {
+		opts.System, opts.Tools = o.System, o.Tools
+	}
+	return prompt, opts
+}
+
 // QueryWithOpts runs the agent with explicit options.
 // Routes to specialised micro-agents when possible.
 func QueryWithOpts(accountID, prompt string, opts QueryOpts) (string, error) {
@@ -147,23 +187,7 @@ func QueryWithOpts(accountID, prompt string, opts QueryOpts) (string, error) {
 	//
 	// Same bug one level down as the one described at synthSystem below, where
 	// every task and scheduled run composed as Micro whichever agent it was for.
-	chosen := strings.TrimSpace(opts.System) != ""
-
-	// Check for direct agent addressing
-	if agentID := micro.MatchDirectAddress(prompt); agentID != "" && !chosen {
-		cleanPrompt := micro.StripAddress(prompt)
-		return normalizeQueryAnswer(micro.Orchestrate(accountID, cleanPrompt, []string{agentID}, opts.Public, microStepper(opts)))
-	}
-
-	// Route to specialist agent(s)
-	if !chosen {
-		agentIDs := micro.Route(prompt)
-
-		// If router picks specialist(s), use the multi-agent system
-		if len(agentIDs) > 0 && agentIDs[0] != "micro" {
-			return normalizeQueryAnswer(micro.Orchestrate(accountID, prompt, agentIDs, opts.Public, microStepper(opts)))
-		}
-	}
+	prompt, opts = Routed(prompt, opts)
 
 	// Native go-micro agent path (default for this agent platform; set
 	// AGENT_NATIVE=off to disable): the LLM does native tool-calling over the
@@ -1098,7 +1122,13 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 				QueryMessage{Role: "user", Text: f.Prompt},
 				QueryMessage{Role: "assistant", Text: f.Answer})
 		}
-		if streamNativeSSE(w, accountID, req.Prompt, nopts, flow, isGuest) {
+		// The same routing decision every other client gets. It used to be
+		// skipped entirely here, so the web answered as the generalist while
+		// mail and Discord got specialists — and because routing now sets the
+		// options rather than diverting into a pipeline of its own, a routed
+		// question still streams.
+		routedPrompt, nopts := Routed(req.Prompt, nopts)
+		if streamNativeSSE(w, accountID, routedPrompt, nopts, flow, isGuest) {
 			return
 		}
 	}
