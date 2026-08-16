@@ -51,9 +51,9 @@ type Recorded struct {
 	// Parent is the turn this one continues, or "" to start a conversation.
 	// Set when a message threads onto one already answered — see thread.go.
 	Parent string
-	// Mail carries the message ids this turn arrived and left under, so the
-	// next message in the thread can find it.
-	Mail MailTurn
+	// Via is the client and conversation this turn belongs to, so the next
+	// message in it can find this one.
+	Via Via
 }
 
 // Record writes a completed run to the same store the pages read.
@@ -79,7 +79,7 @@ func Record(r Recorded) string {
 		Answer:    r.Answer,
 		Status:    "done",
 		ParentID:  r.Parent,
-		Mail:      r.Mail,
+		Via:       r.Via,
 		CreatedAt: started,
 	}
 	if r.Err != nil {

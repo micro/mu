@@ -25,9 +25,19 @@ import (
 	"strings"
 )
 
-// MailTurn is what mail knows about a turn: the message that started it, the
-// reply that went back, and who was on the other end.
-type MailTurn struct {
+// Via is where a turn came from: which client, which conversation on it, and
+// whatever that client needs to recognise the conversation again.
+//
+// It was MailTurn, holding mail's message ids and nothing else, because mail
+// was the first client to need any of this. Every client needs the same two
+// facts — which one, and which thread — so they live here and the mail-specific
+// ids sit alongside rather than defining the shape.
+type Via struct {
+	// Client is discord, telegram, whatsapp, mail, web, cli.
+	Client string
+	// Thread is that client's own identifier for the conversation.
+	Thread string
+
 	// InboundID is the Message-ID of what arrived. ReplyID is the Message-ID of
 	// what we sent back — a follow-up answers *that*, so it is the one most
 	// lookups match on.
@@ -58,7 +68,7 @@ func ContinuesMail(accountID, inReplyTo, references string) string {
 	// ListFlows is newest first, so the first match is the latest turn in the
 	// chain and the new turn hangs off the head rather than the middle.
 	for _, f := range ListFlows(accountID) {
-		if want[f.Mail.ReplyID] || want[f.Mail.InboundID] {
+		if want[f.Via.ReplyID] || want[f.Via.InboundID] {
 			return f.ID
 		}
 	}
@@ -75,37 +85,7 @@ func Delivered(flowID, messageID string) {
 	if flowID == "" || strings.TrimSpace(messageID) == "" {
 		return
 	}
-	updateFlow(flowID, func(f *Flow) { f.Mail.ReplyID = messageID })
-}
-
-// MailHistory is a conversation's prior turns, oldest first, as the model wants
-// them.
-//
-// This is what makes a thread a conversation rather than a chain that merely
-// looks like one: without it the agent is handed the newest message with no
-// idea what was agreed two mails ago, and answers as a stranger every time.
-//
-// Bounded, because a long-running thread would otherwise grow the prompt until
-// it costs more than it is worth, and the oldest turns are the least relevant.
-func MailHistory(accountID, flowID string, max int) []QueryMessage {
-	if flowID == "" || max <= 0 {
-		return nil
-	}
-	chain := sessionChain(accountID, flowID)
-	var out []QueryMessage
-	for _, f := range chain {
-		if f.Prompt != "" {
-			out = append(out, QueryMessage{Role: "user", Text: f.Prompt})
-		}
-		if f.Answer != "" {
-			out = append(out, QueryMessage{Role: "assistant", Text: f.Answer})
-		}
-	}
-	// Trimmed from the front: the recent turns are the ones being answered.
-	if len(out) > max {
-		out = out[len(out)-max:]
-	}
-	return out
+	updateFlow(flowID, func(f *Flow) { f.Via.ReplyID = messageID })
 }
 
 // mailIDs pulls <...> bracketed Message-IDs out of a header value.

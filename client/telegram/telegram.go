@@ -35,10 +35,7 @@ var (
 	links  = map[string]string{} // telegram user ID → mu account ID
 
 	historyMu sync.RWMutex
-	histories = map[string][]agent.QueryMessage{} // telegram user ID → recent messages
 )
-
-const maxHistory = 10
 
 func Load() {
 	data.LoadJSON("telegram_links.json", &links)
@@ -312,11 +309,15 @@ func handleMessage(token string, userID int64, username, firstName string, chatI
 
 	// Run agent with conversation context
 	// Channel messages are public — no private data
-	history := getHistory(telegramID)
-	answer, err := agent.QueryWithOpts(accountID, text, agent.QueryOpts{
-		History: history,
+	res, err := agent.Ask(agent.AskRequest{
+		Account: accountID,
+		Client:  Client,
+		Thread:  fmt.Sprintf("%d", chatID),
+		Text:    text,
 		Public:  !isDM,
+		Trigger: "telegram message",
 	})
+	answer := res.Text
 	if err != nil {
 		app.Log("telegram", "Agent error for %s: %v", accountID, err)
 		sendTelegram(token, chatID, "Sorry, something went wrong.")
@@ -327,9 +328,6 @@ func handleMessage(token string, userID int64, username, firstName string, chatI
 		sendTelegram(token, chatID, "I couldn't generate a response. Try rephrasing.")
 		return
 	}
-
-	addHistory(telegramID, "user", text)
-	addHistory(telegramID, "assistant", answer)
 
 	// Telegram has a 4096 char limit
 	if len(answer) > 4000 {
@@ -500,21 +498,6 @@ func autoCreateAccount(telegramID, username, displayName string) string {
 	return id
 }
 
-func getHistory(telegramID string) []agent.QueryMessage {
-	historyMu.RLock()
-	defer historyMu.RUnlock()
-	return append([]agent.QueryMessage(nil), histories[telegramID]...)
-}
-
-func addHistory(telegramID string, role, text string) {
-	historyMu.Lock()
-	defer historyMu.Unlock()
-	histories[telegramID] = append(histories[telegramID], agent.QueryMessage{Role: role, Text: text})
-	if len(histories[telegramID]) > maxHistory {
-		histories[telegramID] = histories[telegramID][len(histories[telegramID])-maxHistory:]
-	}
-}
-
 func min(a, b int) int {
 	if a < b {
 		return a
@@ -576,3 +559,6 @@ func truncateText(s string, n int) string {
 	}
 	return s[:n-1] + "…"
 }
+
+// Client names this client in a run record. See discord.Client.
+const Client = "telegram"

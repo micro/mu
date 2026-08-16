@@ -225,11 +225,19 @@ func handleInteraction(raw json.RawMessage) {
 		return
 	}
 
-	history := getHistory(discordID)
-	answer, err := agent.QueryWithOpts(accountID, prompt, agent.QueryOpts{
-		History: history,
+	// A slash command is a routing decision the client already made, so the
+	// agent it names is passed rather than left for the keyword router to guess
+	// from the prompt text.
+	res, err := agent.Ask(agent.AskRequest{
+		Account: accountID,
+		Client:  Client,
+		Thread:  inter.ChannelID,
+		Text:    prompt,
 		Public:  isChannelCmd,
+		Agent:   commandAgent(inter.Data.Name),
+		Trigger: "discord /" + inter.Data.Name,
 	})
+	answer := res.Text
 	if err != nil {
 		editResponse(inter.Token, "Error: "+err.Error())
 		return
@@ -239,9 +247,6 @@ func handleInteraction(raw json.RawMessage) {
 		editResponse(inter.Token, "I couldn't generate a response.")
 		return
 	}
-
-	addHistory(discordID, "user", prompt)
-	addHistory(discordID, "assistant", answer)
 
 	embed := formatAsEmbed(prompt, answer)
 	editResponseEmbed(inter.Token, embed)

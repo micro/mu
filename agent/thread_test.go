@@ -18,7 +18,7 @@ func mailTurn(t *testing.T, account, parent, prompt, answer, inboundID, replyID 
 	id := Record(Recorded{
 		Account: account, Source: FromMail, Trigger: "email from someone@example.com",
 		Prompt: prompt, Answer: answer, Parent: parent,
-		Mail:    MailTurn{InboundID: inboundID, From: "someone@example.com"},
+		Via:     Via{Client: "mail", InboundID: inboundID, From: "someone@example.com"},
 		Started: time.Now(),
 	})
 	if id == "" {
@@ -109,7 +109,7 @@ func TestTheAgentIsGivenWhatWasAlreadySaid(t *testing.T) {
 	updateFlow(first, func(f *Flow) { f.CreatedAt = time.Now().Add(-time.Hour) })
 	second := mailTurn(t, acc, first, "friday", "done, 8pm", "<h2@x.com>", "<r2@micro.mu>")
 
-	h := MailHistory(acc, second, 10)
+	h := ThreadHistory(acc, second, 10)
 	if len(h) != 4 {
 		t.Fatalf("history has %d messages, want 4 (two turns, both sides): %+v", len(h), h)
 	}
@@ -128,11 +128,11 @@ func TestTheAgentIsGivenWhatWasAlreadySaid(t *testing.T) {
 
 	// Bounded, so a thread somebody has added to for a month does not cost more
 	// in prompt than the answer is worth. The recent turns are the ones kept.
-	if trimmed := MailHistory(acc, second, 2); len(trimmed) != 2 ||
+	if trimmed := ThreadHistory(acc, second, 2); len(trimmed) != 2 ||
 		trimmed[1].Text != "done, 8pm" {
 		t.Errorf("trimmed history is %+v, want the last two messages", trimmed)
 	}
-	if got := MailHistory(acc, "", 10); got != nil {
+	if got := ThreadHistory(acc, "", 10); got != nil {
 		t.Errorf("a conversation with no parent has history %+v, want none", got)
 	}
 }
@@ -151,7 +151,7 @@ func TestTheReplyIdIsRecordedSoTheNextReplyFindsIt(t *testing.T) {
 
 	// Nothing to record is not an error, and must not blank what is there.
 	Delivered(id, "   ")
-	if f := getFlow(id); f == nil || f.Mail.ReplyID != "<out-d@micro.mu>" {
+	if f := getFlow(id); f == nil || f.Via.ReplyID != "<out-d@micro.mu>" {
 		t.Error("an empty Delivered wiped the recorded reply id")
 	}
 }

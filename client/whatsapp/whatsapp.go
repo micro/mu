@@ -40,10 +40,7 @@ var (
 	links  = map[string]string{} // whatsapp phone number → mu account ID
 
 	historyMu sync.RWMutex
-	histories = map[string][]agent.QueryMessage{}
 )
-
-const maxHistory = 10
 
 func Load() {
 	data.LoadJSON("whatsapp_links.json", &links)
@@ -242,11 +239,15 @@ func handleMessage(from, text string, isGroup bool, replyTo string) {
 	app.Log("whatsapp", "Message from %s (%s, group=%v): %s", from, accountID, isGroup, text)
 
 	// Groups are public context, DMs are private
-	history := getHistory(from)
-	answer, err := agent.QueryWithOpts(accountID, text, agent.QueryOpts{
-		History: history,
+	res, err := agent.Ask(agent.AskRequest{
+		Account: accountID,
+		Client:  Client,
+		Thread:  from,
+		Text:    text,
 		Public:  isGroup,
+		Trigger: "whatsapp message",
 	})
+	answer := res.Text
 	if err != nil {
 		app.Log("whatsapp", "Agent error for %s: %v", accountID, err)
 		sendMessage(from, "Sorry, something went wrong.")
@@ -257,9 +258,6 @@ func handleMessage(from, text string, isGroup bool, replyTo string) {
 		sendMessage(from, "I couldn't generate a response. Try rephrasing.")
 		return
 	}
-
-	addHistory(from, "user", text)
-	addHistory(from, "assistant", answer)
 
 	// WhatsApp has a 4096 char limit
 	if len(answer) > 4000 {
@@ -383,21 +381,6 @@ func autoCreateAccount(phone string) string {
 	return id
 }
 
-func getHistory(phone string) []agent.QueryMessage {
-	historyMu.RLock()
-	defer historyMu.RUnlock()
-	return histories[phone]
-}
-
-func addHistory(phone string, role, text string) {
-	historyMu.Lock()
-	defer historyMu.Unlock()
-	histories[phone] = append(histories[phone], agent.QueryMessage{Role: role, Text: text})
-	if len(histories[phone]) > maxHistory {
-		histories[phone] = histories[phone][len(histories[phone])-maxHistory:]
-	}
-}
-
 func verifySignature(body []byte, signature, secret string) bool {
 	if !strings.HasPrefix(signature, "sha256=") {
 		return false
@@ -410,3 +393,6 @@ func verifySignature(body []byte, signature, secret string) bool {
 	mac.Write(body)
 	return hmac.Equal(sig, mac.Sum(nil))
 }
+
+// Client names this client in a run record. See discord.Client.
+const Client = "whatsapp"

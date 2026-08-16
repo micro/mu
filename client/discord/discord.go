@@ -40,25 +40,7 @@ var (
 	links  = map[string]string{} // discord user ID → mu account ID
 
 	historyMu sync.RWMutex
-	histories = map[string][]agent.QueryMessage{} // discord user ID → recent messages
 )
-
-const maxHistory = 10
-
-func getHistory(discordID string) []agent.QueryMessage {
-	historyMu.RLock()
-	defer historyMu.RUnlock()
-	return histories[discordID]
-}
-
-func addHistory(discordID string, role, text string) {
-	historyMu.Lock()
-	defer historyMu.Unlock()
-	histories[discordID] = append(histories[discordID], agent.QueryMessage{Role: role, Text: text})
-	if len(histories[discordID]) > maxHistory {
-		histories[discordID] = histories[discordID][len(histories[discordID])-maxHistory:]
-	}
-}
 
 func Load() {
 	data.LoadJSON("discord_links.json", &links)
@@ -361,11 +343,18 @@ func handleMessage(m discordMessage) {
 
 	// Get conversation history and run agent with context.
 	// Channel messages are public — skip private data (mail, wallet).
-	history := getHistory(m.Author.ID)
-	answer, err := agent.QueryWithOpts(accountID, content, agent.QueryOpts{
-		History: history,
+	// One turn of a conversation, through the same entry point every client
+	// uses. History, the run record and anything worth remembering are its
+	// business now — this client's job is Discord's protocol and nothing else.
+	res, err := agent.Ask(agent.AskRequest{
+		Account: accountID,
+		Client:  Client,
+		Thread:  m.ChannelID,
+		Text:    content,
 		Public:  !isDM,
+		Trigger: "discord message from " + m.Author.Username,
 	})
+	answer := res.Text
 	if err != nil {
 		app.Log("discord", "Agent error for %s: %v", accountID, err)
 		sendMessage(m.ChannelID, "Sorry, something went wrong: "+err.Error())
@@ -378,8 +367,6 @@ func handleMessage(m discordMessage) {
 	}
 
 	// Save conversation history
-	addHistory(m.Author.ID, "user", content)
-	addHistory(m.Author.ID, "assistant", answer)
 
 	app.Log("discord", "Reply to %s: %.100s", m.Author.Username, answer)
 
@@ -427,4 +414,26 @@ func showTyping(channelID string) {
 	}
 	io.Copy(io.Discard, resp.Body)
 	resp.Body.Close()
+}
+
+// Client names this client in a run record, so a conversation here can be told
+// from one by mail. It is the package name for the reason the field is called
+// Client at all: it is the word somebody would use.
+const Client = "discord"
+
+// commandAgent maps a slash command to the agent that should answer it.
+//
+// A slash command is a routing decision the person already made — /news means
+// the news agent. It used to become the prompt *text* "news" and leave the
+// keyword router to infer that back out of it, which happens to work for /news
+// and is a guess for everything else. Naming the agent makes the address
+// authoritative, the same way agent+news@ is.
+//
+// Unknown commands return "", which is the default agent, so a command that is
+// not one of this instance's specialists still gets an answer.
+func commandAgent(name string) string {
+	if agent.Platform(name) != nil {
+		return name
+	}
+	return ""
 }

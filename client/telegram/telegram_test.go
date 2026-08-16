@@ -1,9 +1,9 @@
 package telegram
 
 import (
+	"os"
+	"strings"
 	"testing"
-
-	"mu/agent"
 )
 
 func TestSanitizeAccountID(t *testing.T) {
@@ -64,22 +64,24 @@ func TestUniqueAccountIDExhaustion(t *testing.T) {
 	}
 }
 
-func TestGetHistoryReturnsCopy(t *testing.T) {
-	telegramID := "history-copy-test"
-	historyMu.Lock()
-	histories[telegramID] = []agent.QueryMessage{{Role: "user", Text: "original"}}
-	historyMu.Unlock()
-	defer func() {
-		historyMu.Lock()
-		delete(histories, telegramID)
-		historyMu.Unlock()
-	}()
-
-	got := getHistory(telegramID)
-	got[0].Text = "mutated"
-
-	again := getHistory(telegramID)
-	if again[0].Text != "original" {
-		t.Fatalf("getHistory returned mutable backing storage; got %q", again[0].Text)
+// A client keeps no conversation history of its own.
+//
+// It kept a map keyed by Telegram id: in memory, lost on restart, invisible on
+// /agents, and one of three such maps that had all drifted apart. History
+// belongs to the agent now, where it is persisted, shared, and the same shape
+// whichever client a message came through — see agent.Ask.
+func TestTheClientKeepsNoHistoryOfItsOwn(t *testing.T) {
+	src, err := os.ReadFile("telegram.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, gone := range []string{"histories", "getHistory", "addHistory"} {
+		if strings.Contains(string(src), gone) {
+			t.Errorf("telegram still has %s — conversation history is the agent's, and "+
+				"a second copy here is one that restarts empty and nothing else can read", gone)
+		}
+	}
+	if !strings.Contains(string(src), "agent.Ask(") {
+		t.Error("telegram no longer goes through agent.Ask, so it has its own surround again")
 	}
 }

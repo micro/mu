@@ -32,9 +32,9 @@ type Flow struct {
 	// "email from asim@aslam.me".
 	Trigger  string `json:"trigger,omitempty"`
 	ParentID string `json:"parent_id"` // prior flow ID for multi-turn chains
-	// Mail is set on a turn that arrived as email, and is what lets the next
-	// message in that thread find this one. See thread.go.
-	Mail      MailTurn  `json:"mail,omitzero"`
+	// Via is which client the turn arrived through and which conversation on
+	// it, and is what lets the next message find this one. See thread.go.
+	Via       Via       `json:"via,omitzero"`
 	CreatedAt time.Time `json:"created_at"`
 }
 

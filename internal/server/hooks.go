@@ -313,7 +313,10 @@ func wireHooks() {
 				Source: agent.FromMail, Trigger: trigger,
 				Prompt: prompt, Answer: answer, Err: err, Started: started,
 				Parent: parent,
-				Mail:   agent.MailTurn{InboundID: m.MessageID, From: m.From},
+				Via: agent.Via{
+					Client: "mail", Thread: m.To,
+					InboundID: m.MessageID, From: m.From,
+				},
 			})
 		}
 
@@ -419,7 +422,7 @@ func wireHooks() {
 		// What was already said in this thread. Without it the chain is
 		// cosmetic — the turns group on a page and the agent still meets every
 		// message as a stranger, so "as we discussed" means nothing to it.
-		opts.History = agent.MailHistory(m.Owner, parent, mailHistoryTurns)
+		opts.History = agent.ThreadHistory(m.Owner, parent, mailHistoryTurns)
 
 		// And that it is answering an email at all, which it had no way to know:
 		// it behaved as it does on the page, where a follow-up question costs a
