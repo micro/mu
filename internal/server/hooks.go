@@ -226,38 +226,40 @@ func wireHooks() {
 	// Registered rather than assigned: mail no longer knows what an agent is,
 	// it knows that something asked for mail at these addresses.
 	answerMail := func(m mail.InboundMail) {
-		// Which agent answers. A tag names one; an untagged shared address
-		// names none, so the account's default assistant takes it — the thing
-		// you get when you have not made an agent yet, which is most people
-		// writing to agent@ for the first time.
+		// Which agent answers, and the two addresses answer it from two
+		// different namespaces — see agent/platform.go.
 		//
-		// An unknown tag means opposite things on the two addresses, so it is
-		// handled twice rather than once. On you+receipts@ it is ordinary
-		// tagged mail that happens not to name an agent, and filing it is the
-		// right answer. On agent+receipts@ the person asked for an agent by
-		// name and there isn't one — silence there is the same bug as the
-		// address that swallowed mail, so it is answered below.
-		var a *agent.Agent
-		unknownTag := ""
-		if m.Tag != "" {
-			if a = agent.ForTag(m.Owner, m.Tag); a == nil && !m.Shared {
-				return // a tag that is not an agent: ordinary tagged mail
-			}
-			// agent+micro@ is the default assistant, which is nobody's agent
-			// record and so matches no tag. It is the first name anyone would
-			// try — it is the name it signs with — and it must mean the same
-			// thing on every account, so it is checked here rather than left to
-			// whether somebody happened to make an agent called that.
-			//
-			// Your own agent wins if you named one this: it is your address
-			// space, and an explicit choice beats a default.
-			if a == nil && !defaultAssistantTag(m.Tag) {
+		//   you+research@   your roster. A tag naming nothing is ordinary
+		//                   tagged mail and filing it is the whole job.
+		//   agent+news@     this instance's own. A name that is not here is a
+		//                   typo somebody is waiting on, so it is answered.
+		//   agent@          the default, Micro, which is what somebody writing
+		//                   for the first time means.
+		//
+		// The same word means different things on either side and that is the
+		// point: your namespace is yours, and a new built-in agent can never
+		// take over an address you were already using.
+		var (
+			a          *agent.Agent // the account's own
+			plat       *micro.Agent // this instance's own
+			unknownTag string
+		)
+		switch {
+		case m.Shared:
+			if plat = agent.Platform(m.Tag); plat == nil {
 				unknownTag = m.Tag
+			}
+		case m.Tag != "":
+			if a = agent.ForTag(m.Owner, m.Tag); a == nil {
+				return // a tag that is not an agent: ordinary tagged mail
 			}
 		}
 		name, ref := "Micro", ""
-		if a != nil {
+		switch {
+		case a != nil:
 			name, ref = a.Name, a.ID
+		case plat != nil:
+			name, ref = plat.Name, plat.ID
 		}
 		started := time.Now()
 		trigger := "email from " + m.From
@@ -270,12 +272,11 @@ func wireHooks() {
 		// agent you were talking to.
 		from := mail.SharedAgentAddress()
 		switch {
-		case m.Shared && a != nil:
-			// Answer from the shared address carrying this agent's name, so
-			// hitting reply reaches the same agent by the address that was
-			// written to. Answering from owner+tag@ would silently move the
-			// thread onto the address the shared one exists to avoid.
-			from = mail.SharedAgentAddressFor(a.Tag)
+		case plat != nil:
+			// Answer from the address that was written to, so hitting reply
+			// reaches the same specialist. Answering from the plain shared
+			// address would put every follow-up back on the catch-all.
+			from = mail.SharedAgentAddressFor(plat.ID)
 		case a != nil && a.Address() != "":
 			from = a.Address()
 		}
@@ -335,16 +336,25 @@ func wireHooks() {
 		// waiting for that agent and a typo should say so rather than look like
 		// the agent having nothing to say.
 		if unknownTag != "" {
-			names := []string{"micro"}
+			answer := fmt.Sprintf("There is no agent called %q here. The ones on "+
+				"this instance are: %s — write to agent+<name>@%s, or to agent@%s "+
+				"for Micro, which handles anything.",
+				unknownTag, strings.Join(agent.PlatformNames(), ", "), domain, domain)
+			// Your own agents are a different namespace and a different
+			// address, so naming them here is the difference between a dead end
+			// and a correction — the name they wanted may well exist, one
+			// address over.
+			var mine []string
 			for _, own := range agent.Agents(m.Owner) {
 				if own.Tag != "" {
-					names = append(names, own.Tag)
+					mine = append(mine, own.Tag)
 				}
 			}
-			reply(prompt, fmt.Sprintf("There is no agent called %q on this account. "+
-				"The ones you can write to are: %s — as agent+<name>@%s. "+
-				"Plain agent@%s reaches Micro, the default assistant.",
-				unknownTag, strings.Join(names, ", "), domain, domain))
+			if len(mine) > 0 {
+				answer += fmt.Sprintf("\n\nYour own agents are at %s+<name>@%s — "+
+					"you have: %s.", mail.Handle(m.Owner, ""), domain, strings.Join(mine, ", "))
+			}
+			reply(prompt, answer)
 			return
 		}
 
@@ -355,11 +365,17 @@ func wireHooks() {
 			return
 		}
 
-		opts, err := agent.AskAs(m.Owner, ref)
-		if err != nil {
-			app.Log("mail", "agent %s could not be resolved: %v", name, err)
-			record(prompt, "", err)
-			return
+		// A platform agent brings its own prompt and its own tools; a specialist
+		// with every tool is not one. An account's agent resolves through
+		// AskAs as before.
+		opts := agent.PlatformOpts(plat)
+		if plat == nil {
+			var err error
+			if opts, err = agent.AskAs(m.Owner, ref); err != nil {
+				app.Log("mail", "agent %s could not be resolved: %v", name, err)
+				record(prompt, "", err)
+				return
+			}
 		}
 
 		answer, err := agent.QueryWithOpts(m.Owner, prompt, opts)
@@ -922,18 +938,4 @@ func wireHooks() {
 	// login form, /session) and in the CLI. An agent never needs them: it
 	// authenticates with a token a human issued, or pays per request over x402,
 	// where there is no account to create.
-}
-
-// defaultAssistantTag reports whether a tag on the shared agent address names
-// the default assistant rather than one of the account's own agents.
-//
-// "Micro" is the name it answers under and signs with, so it is the first thing
-// somebody writes on agent+<name>@ — and it is not an agent record, so nothing
-// resolves it. Reserved, so it means the same on every account.
-func defaultAssistantTag(tag string) bool {
-	switch strings.ToLower(strings.TrimSpace(tag)) {
-	case "micro", "default", "assistant":
-		return true
-	}
-	return false
 }

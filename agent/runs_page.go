@@ -140,8 +140,14 @@ func runRow(f *Flow, csrf string) string {
 	as := "Micro"
 	if f.Agent != "" {
 		// The name if it still exists; agents get deleted and their runs do not.
+		//
+		// A run can also name one of this instance's own agents — somebody wrote
+		// to agent+markets@ — which is nobody's roster entry and would otherwise
+		// read as removed. Those do not get deleted, so the name is always there.
 		if a := For(f.AccountID, f.Agent); a != nil {
 			as = a.Name
+		} else if name := platformName(f.Agent); name != "" {
+			as = name
 		} else {
 			as = "a removed agent"
 		}
