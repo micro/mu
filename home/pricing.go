@@ -13,13 +13,19 @@ import (
 	"mu/internal/x402"
 )
 
-// tierSpec is one of the three ways to have this.
+// tierSpec is one rung of the ladder.
 //
-// Not three sizes of one plan — the tiers this page used to carry were three
-// limits and a credit at par, and they went because none of them was anything a
-// top-up did not already do. These are three different relationships: our
-// instance metered per call, your instance for nothing, or your instance run by
-// us. What differs is who operates it, which is the only axis worth a column.
+// Free, Starter, Pro. There were tiers here once and they went, rightly: they
+// sold three limits and a credit at par, which is nothing a top-up does not do.
+// These sell something else — an allowance that costs less than buying the same
+// credits, and the caps lifting — so the subscription is worth more than the
+// money in it, and what is metered stays metered so a heavy month cannot cost
+// more to serve than it brings in.
+//
+// Two things are deliberately not columns. Self-hosting earns nothing by design
+// and belongs beside the ladder rather than on it, and anything past Pro is a
+// conversation: a price on the page for work nobody has scoped is a price you
+// have to honour.
 type tierSpec struct {
 	Name   string
 	Price  string
@@ -75,8 +81,11 @@ const tiersCSS = `<style>
   font-size:14px;font-weight:600;overflow-wrap:anywhere}
 .tier-act:hover{border-color:#999}
 .tier-on .tier-act{background:var(--text-primary,#111);border-color:var(--text-primary,#111);color:#fff}
-/* One column on a phone, in the order they are written: try it, run it, or have
-   it run. A three-column grid at 380px wide is three unreadable columns. */
+.tier-more{display:flex;flex-direction:column;gap:10px;margin:0 0 28px;
+  font-size:13.5px;line-height:1.6;color:var(--text-secondary,#555)}
+.tier-more strong{color:var(--text-primary,#111)}
+/* One column on a phone. A three-column grid at 380px wide is three unreadable
+   columns, and the order they are written is the order to read them in. */
 @media(max-width:820px){.tiers{grid-template-columns:1fr;gap:12px}}
 </style>`
 
@@ -103,65 +112,81 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	// work, not a second product being sold alongside them.
 	b.WriteString(fmt.Sprintf(`<p style="color:#666;font-size:15px;margin:0 0 20px">`+
 		`The everyday internet as tools your agent calls over <a href="/mcp" style="color:#111">MCP</a> — `+
-		`all %d of them, one account instead of a hundred. Use ours by the call, run your own for `+
-		`nothing, or have us run one for you.</p>`, api.ToolCount()))
+		`all %d of them, one account instead of a hundred. Start free, and what you pay for is `+
+		`how much of it you use.</p>`, api.ToolCount()))
 	b.WriteString(`</div>`)
 
-	// Three ways to have it, which is three different relationships rather than
-	// three sizes of the same one.
+	// The ladder.
 	//
 	// It was one column of cards — costs, then how you pay, then a note about
 	// self-hosting — which reads as a price list for a single product, and the
-	// only thing a visitor could do with it was top up. The two options that are
-	// not "pay us per call" were a paragraph and a link at the bottom of the
-	// page. If somebody wants an instance of their own, or wants one run for
-	// them, that has to be visible at the same moment as the price.
+	// only thing a visitor could do with it was top up. A page with nothing to
+	// choose asks for a decision nobody is in a position to make: pay us per
+	// call, for a thing you have not used.
 	b.WriteString(`<div class="tiers">`)
 
 	b.WriteString(tier(tierSpec{
-		Name:  "Pay as you go",
-		Price: "1p",
-		Unit:  "a credit",
-		Lead:  "Use this instance. Top up any amount and every tool is there from the first penny — no plan, no tier, nothing held back for a bigger one.",
-		Points: []string{
-			"All " + fmt.Sprintf("%d", api.ToolCount()) + " tools",
-			"The web app included",
-			"Agents can pay per call in USDC, with no account at all",
-			"Stop any time — credits do not expire",
-		},
-		Action: "Top up", Href: "/account/topup",
-	}))
-
-	b.WriteString(tier(tierSpec{
-		Name:  "Self-host",
-		Price: "Free",
-		Unit:  "for ever",
-		Lead:  "Run your own instance. One Go binary, your machine, your data — and with no Stripe keys and no x402 address it cannot charge anybody, so nothing is metered.",
-		Points: []string{
-			"Every tool, no limits",
-			"Bring your own AI provider",
-			"Your own mail domain and agent addresses",
-			"Charge for your instance and the money is yours",
-		},
-		Action: "Get the code", Href: "https://github.com/micro/mu",
-	}))
-
-	b.WriteString(tier(tierSpec{
-		Name:  "Hosted",
-		Price: "Talk to us",
+		Name:  "Free",
+		Price: "£0",
 		Unit:  "",
-		Lead:  "Your own instance, run by us. Your domain, your mail, your agents, kept up and backed up — the self-hosted product without the hosting.",
+		Lead: "Everything works. All " + fmt.Sprintf("%d", api.ToolCount()) +
+			" tools, the app, an agent with an address of its own — enough of a monthly allowance to use it for real rather than to evaluate it.",
 		Points: []string{
-			"A dedicated instance on your own domain",
-			"Mail, agents and tools set up for you",
-			"Backups, upgrades and monitoring",
-			"Support with an actual person behind it",
+			"200 credits a month",
+			"One agent, reachable by email",
+			"Notes, files, contacts, calendar — unlimited",
+			"Top up any time at 1p a credit",
 		},
-		Action: "support@micro.mu", Href: "mailto:support@micro.mu?subject=Hosted%20Mu",
+		Action: "Start", Href: "/signup",
+	}))
+
+	b.WriteString(tier(tierSpec{
+		Name:  "Starter",
+		Price: "£10",
+		Unit:  "a month",
+		Lead:  "For an assistant you actually rely on: as many agents as you want, reachable wherever you already are, and a record that is kept rather than trimmed.",
+		Points: []string{
+			"1,500 credits a month — £15 of them",
+			"Unlimited agents, each with its own address",
+			"Discord, Telegram and WhatsApp",
+			"Your whole history kept and searchable",
+			"Higher daily limits on mail and messages",
+		},
+		Action: "Choose Starter", Href: "/account/topup?plan=starter",
 		Highlight: true,
 	}))
 
-	b.WriteString(`</div>` + tiersCSS)
+	b.WriteString(tier(tierSpec{
+		Name:  "Pro",
+		Price: "£100",
+		Unit:  "a month",
+		Lead:  "For running something real on it — a product, a business, a fleet of agents working all day. The headroom, and a person to ask.",
+		Points: []string{
+			"20,000 credits a month — £200 of them",
+			"Everything in Starter",
+			"The highest send limits",
+			"Priority support from a person",
+			"A say in what gets built next",
+		},
+		Action: "Choose Pro", Href: "/account/topup?plan=pro",
+	}))
+
+	b.WriteString(`</div>`)
+
+	// The two that are not a column.
+	//
+	// Self-hosting earns nothing by design — it is the credibility and the way
+	// people find this — so it is not a rung on a ladder that goes up. And
+	// anything past Pro is a conversation rather than a price: a number on a
+	// page for work nobody has scoped yet is a number you have to honour.
+	b.WriteString(`<div class="tier-more">` +
+		`<span><strong>Run it yourself.</strong> Free, for ever — one Go binary, your machine, ` +
+		`your data. With no Stripe keys and no x402 address an instance cannot charge anybody, ` +
+		`so nothing is metered. <a href="https://github.com/micro/mu">github.com/micro/mu</a></span>` +
+		`<span><strong>Need more, or something of your own?</strong> More credits, your own ` +
+		`domain, an instance set up and run for you — say what you need and we will price it. ` +
+		`<a href="mailto:support@micro.mu?subject=Mu">support@micro.mu</a></span>` +
+		`</div>` + tiersCSS)
 
 	// Credit costs
 	b.WriteString(`<div class="card" id="costs" style="margin:0 0 16px">`)
