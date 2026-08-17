@@ -154,8 +154,8 @@ func authRequired() map[string]bool {
 		"/web/read":  false, // Public page, auth checked in handler (proxied reader)
 
 		"/status":                        false, // Public - server health status
-		"/plans":                         false, // Public - what a plan costs
-		"/pricing":                       false, // Public - redirects to /plans
+		"/plans":                         false, // Public - redirects to /tools
+		"/pricing":                       false, // Public - redirects to /tools
 		"/privacy":                       false, // Public - privacy policy
 		"/support":                       false, // Public - how to reach the operator
 		"/help":                          false, // Public - how to connect an agent
@@ -353,20 +353,24 @@ func registerRoutes() {
 	// belongs to the user's agents, not to marketing; it points at the agent
 	// surface until the page that shows what your agents are doing exists to
 	// take it.
-	// Plans is the name. What is being sold is a standing order for credits at a
-	// better rate, which is a plan; "pricing" is a page about numbers, and it
-	// put the reader in the frame of working out what a call costs rather than
-	// choosing one of three things. /pricing was the canonical name and is now
-	// the redirect, because links to it exist and breaking them to tidy a word
-	// is a bad trade.
-	http.HandleFunc("/plans", home.PlansHandler)
-	http.HandleFunc("/pricing", func(w http.ResponseWriter, r *http.Request) {
-		to := "/plans"
-		if q := r.URL.RawQuery; q != "" {
-			to += "?" + q
-		}
-		http.Redirect(w, r, to, http.StatusMovedPermanently)
-	})
+	// There is no pricing page.
+	//
+	// It was rebuilt three times in a day — a cost table, then three columns of
+	// plans, then plans without columns — and every version came apart on the
+	// same fact: a credit is 1p and every tool costs what quota.json says,
+	// whoever is asking. There is nothing to choose, so a page asking somebody
+	// to choose was a page inventing a decision to make it feel like a product.
+	//
+	// What a call costs belongs beside the call. /tools carries the price on
+	// every tool, /account carries the balance and the same table, and both are
+	// where somebody actually is when the question occurs to them. These two
+	// names redirect rather than 404 because they are in server.json, in the
+	// README and in three years of links.
+	plansGone := func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/tools", http.StatusMovedPermanently)
+	}
+	http.HandleFunc("/plans", plansGone)
+	http.HandleFunc("/pricing", plansGone)
 	// Every MCP directory submission asks for a privacy policy URL, and this
 	// instance runs a mail server — so there is real correspondence to account
 	// for, not just a formality.

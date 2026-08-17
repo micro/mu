@@ -99,7 +99,7 @@ func TestTheBuilderRefusesBeforeAskingForAnything(t *testing.T) {
 	if strings.Contains(body, `id="b-prompt"`) {
 		t.Error("the builder drew its form to an account that cannot submit it")
 	}
-	if !strings.Contains(body, "/plans") {
+	if !strings.Contains(body, "/account") {
 		t.Error("the refusal does not offer the thing that would change the answer")
 	}
 }

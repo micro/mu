@@ -80,7 +80,7 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 		// for the reason the post banner gives: /plans is how it is addressed,
 		// "Plans" is what it is called.
 		said := html.EscapeString(msg)
-		said = strings.ReplaceAll(said, "on Plans", `on <a href="/plans">Plans</a>`)
+		said = strings.ReplaceAll(said, "your account", `<a href="/account">your account</a>`)
 		b.WriteString(`<p class="text-error">` + said + `</p>`)
 	}
 	if r.URL.Query().Get("removed") != "" {
@@ -134,10 +134,10 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	// form you cannot submit. It becomes the thing that would actually change
 	// the answer.
 	if full, have, max := AtAgentLimit(owner); full {
-		b.WriteString(app.ActionLink("/plans", "Upgrade to add more"))
+		b.WriteString(app.ActionLink("/account/topup", "Add credit to lift the limit"))
 		b.WriteString(fmt.Sprintf(
 			`<p class="text-sm" style="color:#666;margin:8px 0 0">Your plan runs %d agent%s and you have %d. `+
-				`Change your plan on <a href="/plans">Plans</a>, or delete one first.</p>`,
+				`Verify your address or put credit on <a href="/account">your account</a>, or delete one first.</p>`,
 			max, plural(max), have))
 	} else {
 		b.WriteString(app.ActionLink("/agent/new", "+ New agent"))

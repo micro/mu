@@ -87,7 +87,7 @@ func acquire(ctx context.Context, account string) (func(), error) {
 		return nil, ctx.Err()
 	case <-timer.C:
 		return nil, fmt.Errorf("this account already has %d calls running and one has "+
-			"been waiting %s for a slot — a plan raises the limit, see /plans",
+			"been waiting %s for a slot — it clears in a moment",
 			size, maxWait)
 	}
 }

@@ -599,7 +599,7 @@ An override of `0` is ignored, because an unset variable and one set to `"0"`
 look the same to a container and a price silently dropping to free is the wrong
 way to fail. Make something free in the file.
 
-The full list is on [/plans](https://micro.mu/plans), which renders from
+The full list is on [/tools](https://micro.mu/tools), which renders from
 that same file, so this page does not repeat twenty-six rows.
 
 | Variable | Default | What it does |

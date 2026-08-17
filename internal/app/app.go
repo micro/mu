@@ -242,7 +242,7 @@ func FooterLinks() string {
 	// username with no mailbox behind it. Somebody whose top-up failed had
 	// nowhere at all to report it, which meant an operator only found out by
 	// being told in person.
-	return `<a href="/about">About</a> · <a href="/tools">Tools</a> · <a href="/api">API</a> · <a href="/plans">Plans</a> · <a href="/help">Help</a> · <a href="/support">Support</a> · <a href="/privacy">Privacy</a> · <a href="/status">Status</a>` + torFooterLink()
+	return `<a href="/about">About</a> · <a href="/tools">Tools</a> · <a href="/api">API</a> · <a href="/help">Help</a> · <a href="/support">Support</a> · <a href="/privacy">Privacy</a> · <a href="/status">Status</a>` + torFooterLink()
 }
 
 func torFooterLink() string {
@@ -336,6 +336,7 @@ var Template = `
                Anyone who lives in Apps can pin it and it comes back, which is
                what pinning is for. -->
           <a href="/home"><img src="/home.png?` + Version + `"><span class="label">Home</span></a>
+          %s
           <a href="/tools"><img src="/tools.svg?` + Version + `"><span class="label">Tools</span></a>
           <a href="/agents"><img src="/agent.svg?` + Version + `"><span class="label">Agents</span></a>
           <a href="/services"><img src="/services.svg?` + Version + `"><span class="label">Services</span></a>
@@ -952,6 +953,26 @@ func VerifyBanner(r *http.Request) string {
 </div>`
 }
 
+// navAdmin is the operator's door, directly under Home.
+//
+// It sat at the bottom with Account and Logout, on the reasoning that admin is a
+// role and a role belongs with identity. That is true and it is not what an
+// operator does with it: this is the page they open most, several times a day,
+// and it was the last item in the second group — past Usage, past whatever is
+// pinned, below the fold on a phone. Home is where you go to see how the
+// instance is; Admin is the same question with the lid off, so it goes next to
+// it.
+//
+// Nothing changes for anybody else. It is drawn only for an admin, and /admin
+// checks the session itself regardless — this is about not showing a door that
+// is not yours, not about guarding it.
+func navAdmin(acc *auth.Account) string {
+	if acc == nil || !acc.Admin {
+		return ""
+	}
+	return `<a id="nav-admin" href="/admin"><img src="/admin.svg?` + Version + `"><span class="label">Admin</span></a>`
+}
+
 // navOperate closes the top group with what you have used.
 //
 // Usage needs a session to mean anything and its page redirects without one, so
@@ -1013,27 +1034,11 @@ func navPinned(acc *auth.Account) string {
 // clicks is a logout people hunt for. nav-username is a label mu.js corrects
 // from the session: a page cached for one viewer and served to another would
 // otherwise greet them by the wrong name.
-//
-// Admin belongs here and not in the top group. The top group is what the
-// product is — Home, Tools, Agents, Services, Clients — and it should look the
-// same to everybody, in a screenshot, in the docs, on somebody else's instance.
-// Admin is a role, and a role sits with identity. It was reachable only as a
-// line of text on /account, three clicks from anywhere, which is not where you
-// put the page an operator opens most.
-//
-// It is rendered for an admin and hidden by mu.js for anyone else, so the link
-// survives a page with no JavaScript and does not survive a page cached for an
-// admin and served to a stranger. /admin checks the session itself either way;
-// this is about not showing a door that is not yours.
 func navBottom(acc *auth.Account) string {
 	if acc == nil {
 		return `<a id="nav-login" href="/login"><img src="/account.png?` + Version + `"><span class="label">Login</span></a>`
 	}
 	username := htmlpkg.EscapeString(acc.ID)
-	admin := `<a id="nav-admin" href="/admin" style="display: none;"><img src="/admin.svg?` + Version + `"><span class="label">Admin</span></a>`
-	if acc.Admin {
-		admin = `<a id="nav-admin" href="/admin"><img src="/admin.svg?` + Version + `"><span class="label">Admin</span></a>`
-	}
 	// Support sits here rather than only in the footer, because the footer is
 	// not rendered for somebody signed in — see footerFor. So the one link a
 	// person needs when something has gone wrong disappeared at exactly the
@@ -1041,7 +1046,6 @@ func navBottom(acc *auth.Account) string {
 	// wrong with. A signed-out visitor still has the footer.
 	return `<div id="nav-username">Signed in as @` + username + `</div>
           <a id="nav-account" href="/account"><img src="/account.png?` + Version + `"><span class="label">Account</span></a>
-          ` + admin + `
           <a id="nav-support" href="/support"><img src="/help.svg?` + Version + `"><span class="label">Support</span></a>
           <a id="nav-logout" href="/logout"><img src="/logout.png?` + Version + `"><span class="label">Logout</span></a>
           <a id="nav-login" href="/login" style="display: none;"><img src="/account.png?` + Version + `"><span class="label">Login</span></a>`
@@ -1057,7 +1061,7 @@ func RenderHTMLWithLangAndAuth(title, desc, html, lang string, acc *auth.Account
 		lang = "en"
 	}
 	title, desc = escapeMeta(title), escapeMeta(desc)
-	return (fmt.Sprintf(Template, lang, title, desc, "", headBalance(acc), navOperate(acc)+navPinned(acc), navBottom(acc), title, html, footerFor(acc)))
+	return (fmt.Sprintf(Template, lang, title, desc, "", headBalance(acc), navAdmin(acc), navOperate(acc)+navPinned(acc), navBottom(acc), title, html, footerFor(acc)))
 }
 
 // escapeMeta escapes a page title or description. Handlers pass these through
@@ -1080,7 +1084,7 @@ func RenderHTMLWithLangAndBody(title, desc, html, lang, bodyAttr string, acc *au
 	if banner := creditsBannerFor(acc, ""); banner != "" {
 		html = banner + html
 	}
-	return (fmt.Sprintf(Template, lang, title, desc, bodyAttr, headBalance(acc), navOperate(acc)+navPinned(acc), navBottom(acc), title, html, footerFor(acc)))
+	return (fmt.Sprintf(Template, lang, title, desc, bodyAttr, headBalance(acc), navAdmin(acc), navOperate(acc)+navPinned(acc), navBottom(acc), title, html, footerFor(acc)))
 }
 
 // RenderString renders a markdown string as html
@@ -1092,7 +1096,7 @@ func RenderString(v string) string {
 func RenderTemplate(title string, desc, text string) string {
 	body := RenderString(text)
 	title, desc = escapeMeta(title), escapeMeta(desc)
-	return (fmt.Sprintf(Template, "en", title, desc, "", headBalance(nil), navOperate(nil), navBottom(nil), title, body, footerFor(nil)))
+	return (fmt.Sprintf(Template, "en", title, desc, "", headBalance(nil), navAdmin(nil), navOperate(nil), navBottom(nil), title, body, footerFor(nil)))
 }
 
 func ServeHTML(html string) http.Handler {
