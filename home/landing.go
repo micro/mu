@@ -1,11 +1,13 @@
 package home
 
 import (
+	"html"
 	"net/http"
 	"strconv"
 
 	"mu/internal/api"
 	"mu/internal/app"
+	"mu/service/mail"
 )
 
 // Landing is the front door for anyone not signed in: something to try, then
@@ -43,10 +45,10 @@ func Landing(w http.ResponseWriter, r *http.Request) {
 	body := landingBody(app.BaseURL(r))
 
 	page := app.RenderLanding(app.Landing{
-		Title:       "Mu — Tools for Agents",
-		Description: "The everyday internet as tools an agent can call — news, web search, mail, markets, weather, video, storage. Over MCP and REST, paid per request. Open source and self-hostable.",
+		Title:       "Mu — An Inbox for Agents",
+		Description: "Give your agent an address. Write to it and it answers — with news, web search, mail, markets, weather, places and storage behind it. Open source and self-hostable.",
 		Brand:       "Mu",
-		Tagline:     "Tools for Agents",
+		Tagline:     "An Inbox for Agents",
 		TopRight:    `<a href="/login">Sign in →</a>`,
 		Body:        body,
 		Footer:      app.FooterLinks(),
@@ -68,24 +70,48 @@ func landingBody(host string) string {
 	// The seven is the list immediately before it, counted. Change one and change
 	// the other — the number is what makes the claim land, because the reader has
 	// just read the things it counts.
-	return `<p class="lead">` + strconv.Itoa(api.ToolCount()) + ` tools an agent can call — news, web search, mail,
-markets, weather, places, storage — one account instead of seven providers.
-Ask something and watch it use them.</p>
+	// The address first, and the box below it as proof.
+	//
+	// This led with the tools and a chat box, which is the right way round for
+	// "tools for agents" and the wrong way round for what is actually
+	// differentiated. Every provider ships an MCP server now; what none of them
+	// ship is an agent that is permanently reachable and remembers. An address
+	// is the only handle that needs nothing on the other side — no SDK, no
+	// OAuth, no protocol to adopt — so a person can use it, another agent can
+	// use it, a form can use it.
+	//
+	// The box stays, underneath. It is the only thing on the page that shows the
+	// product working in five seconds, and a page that only describes an address
+	// is asking somebody to imagine what happens when they write to it.
+	addr := mail.SharedAgentAddress()
+	if addr == "" {
+		addr = "agent@" + host
+	}
+	return `<p class="lead">Your agent has an address. Write to it and it answers — with
+` + strconv.Itoa(api.ToolCount()) + ` tools behind it: news, web search, mail, markets,
+weather, places, storage. One account instead of seven providers.</p>
+
+<div class="laddr"><code>` + html.EscapeString(addr) + `</code></div>
+<p class="laddrnote">That one reaches the default agent. Your own get their own —
+<code>you+research@</code> — and each answers in the thread, remembers the last
+one, and can be reached from anywhere that can send an email.</p>
 
 <div class="ltry">` + chatComponent(true) + `</div>
 
-<p class="ltrynote">A few questions to try it, no account needed. <a href="/signup">Sign up</a> for
-your own agent, an email address it answers on, and the endpoint your own client can call.</p>
+<p class="ltrynote">Or ask it here — a few questions to try it, no account needed.
+<a href="/signup">Sign up</a> for an agent of your own, the address it answers on,
+and the endpoint your client can call.</p>
 
 <div class="lctas">
-  <a class="lcta" href="/tools">Browse the tools →</a>
+  <a class="lcta" href="/agent">Talk to an agent →</a>
+  <a class="lcta lcta-alt" href="/tools">Browse the tools</a>
   <a class="lcta lcta-alt" href="/mcp">MCP server</a>
 </div>
 
 <div class="lcards">
-  <div class="lcard"><h3>Real world access</h3><p>News, markets, weather, the web, your mail — what is happening outside a model's training data. Run here rather than proxied: this instance is the mail server and the search index.</p></div>
-  <div class="lcard"><h3>One server, not nine</h3><p>News, search, mail and storage for an agent usually means a provider each: a signup, a card and a key apiece. Here it is one connection, one balance, one thing to rotate.</p></div>
-  <div class="lcard"><h3>Run anywhere</h3><p>Build an agent here and this instance runs it, or point your own at the endpoint — same tools either way. One Go binary, so self-host it and anyone calling your tools pays you.</p></div>
+  <div class="lcard"><h3>Reachable by anyone</h3><p>An address needs nothing on the other side — no SDK, no key, no signup. A person, another agent, a form or a cron job can write to yours, and it answers in the thread.</p></div>
+  <div class="lcard"><h3>It remembers</h3><p>Every conversation is kept, whichever way it arrived — the address, the web, Discord, Telegram, WhatsApp. One thread of what was said, not five that forget on restart.</p></div>
+  <div class="lcard"><h3>One server, not nine</h3><p>News, search, mail and storage usually means a provider each: a signup, a card and a key apiece. Here it is one connection, one balance, one thing to rotate — or self-host the binary and it is yours.</p></div>
 </div>
 
 <div class="lpay" id="connecting">
@@ -110,7 +136,12 @@ your own agent, an email address it answers on, and the endpoint your own client
 </div>
 
 <style>
-.lead{max-width:600px;text-align:center;color:#555;font-size:16px;line-height:1.6;margin:0 auto 22px}
+.lead{max-width:600px;text-align:center;color:#555;font-size:16px;line-height:1.6;margin:0 auto 18px}
+.laddr{text-align:center;margin:0 auto 8px}
+.laddr code{display:inline-block;background:#111;color:#fff;border-radius:8px;padding:10px 18px;
+  font-size:17px;letter-spacing:.01em;overflow-wrap:anywhere}
+.laddrnote{max-width:600px;margin:0 auto 26px;text-align:center;font-size:13px;color:#888;line-height:1.55}
+.laddrnote code{background:#f4f4f5;border-radius:4px;padding:1px 5px;font-size:.95em}
 .ltry{max-width:660px;margin:0 auto 10px;text-align:left}
 .ltrynote{max-width:660px;margin:0 auto 26px;text-align:center;font-size:13px;color:#888}
 .ltrynote a{color:#111}

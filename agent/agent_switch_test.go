@@ -32,15 +32,16 @@ func TestPickingAnAgentNavigatesRatherThanRelabelling(t *testing.T) {
 	}
 }
 
-// An agent with no conversations has an empty rail, and says so. The rail is
-// filtered by the agent the page is for, so this is only true if the page is
-// actually re-rendered for the agent that was picked.
+// An agent with no conversations has an empty inbox, and says so — and says
+// what to do about it, which is an address. The rail is filtered by the agent
+// the page is for, so this is only true if the page is actually re-rendered for
+// the agent that was picked.
 func TestARailForOneAgentIsEmptyUntilThatAgentHasBeenUsed(t *testing.T) {
 	acc := owner(t, "rail-reader")
 
 	rail := renderSessionsRail(acc, "", "agent-with-no-history")
-	if !strings.Contains(rail, "No conversations with this agent yet.") {
-		t.Errorf("a fresh agent's rail does not read as empty:\n%s", rail)
+	if !strings.Contains(rail, "Nothing here yet. Ask this agent something.") {
+		t.Errorf("a fresh agent's inbox does not read as empty:\n%s", rail)
 	}
 	// New chat keeps the agent, rather than rewriting the address bar back to
 	// the default and quietly widening the rail to the whole account.
@@ -50,7 +51,7 @@ func TestARailForOneAgentIsEmptyUntilThatAgentHasBeenUsed(t *testing.T) {
 
 	// The account-wide rail is a different sentence, because it means
 	// something different: nothing has been asked at all.
-	if all := renderSessionsRail(acc, "", ""); !strings.Contains(all, "No conversations yet.") {
-		t.Errorf("the unfiltered rail lost its empty state:\n%s", all)
+	if all := renderSessionsRail(acc, "", ""); !strings.Contains(all, "Nothing here yet. Ask something") {
+		t.Errorf("the unfiltered inbox lost its empty state:\n%s", all)
 	}
 }

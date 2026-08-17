@@ -982,6 +982,22 @@ body.page-home #page-title ~ #customize-link {
 
 /* Suggestion chips: wrap+centre on wide screens, scroll on one row on narrow
    ones so they never break to an awkward 2-then-1 layout. */
+/* The agent's address, under the box on Home. Quiet: it is a second way in,
+   not a call to action, and it should read as a fact about the agent. */
+.home-inbox {
+  margin: 10px 2px 0;
+  font-size: 13px;
+  color: var(--text-muted, #888);
+  line-height: 1.5;
+}
+.home-inbox code {
+  background: var(--hover-background, #f4f4f5);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
 .home-chips {
   display: flex;
   gap: 6px;
@@ -990,7 +1006,23 @@ body.page-home #page-title ~ #customize-link {
   margin-top: 12px;
 }
 @media only screen and (max-width: 600px) {
-  .home-chips {
+  /* The agent's address, under the box on Home. Quiet: it is a second way in,
+   not a call to action, and it should read as a fact about the agent. */
+.home-inbox {
+  margin: 10px 2px 0;
+  font-size: 13px;
+  color: var(--text-muted, #888);
+  line-height: 1.5;
+}
+.home-inbox code {
+  background: var(--hover-background, #f4f4f5);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.home-chips {
     flex-wrap: nowrap;
     overflow-x: auto;
     justify-content: flex-start;

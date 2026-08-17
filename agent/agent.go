@@ -22,6 +22,7 @@ import (
 	"mu/internal/auth"
 	"mu/internal/quota"
 	"mu/internal/thread"
+	"mu/service/mail"
 )
 
 // Model represents an available LLM model tier for agent queries.
@@ -691,7 +692,24 @@ func chatThreads(accountID, agentID string) []thread.Thread {
 	return out
 }
 
-// renderSessionsRail renders the list of past conversations.
+// inboxAddress is where this agent can be written to, or "" when the instance
+// has no mail domain and there is nothing to advertise.
+func inboxAddress(accountID, agentID string) string {
+	if agentID != "" {
+		if a := For(accountID, agentID); a != nil {
+			return a.Address()
+		}
+	}
+	return mail.SharedAgentAddress()
+}
+
+// renderSessionsRail renders the inbox: every conversation, whichever way it
+// arrived.
+//
+// It is a list of threads with an address behind it, which is an inbox — and
+// calling it one is not a rename for its own sake. The rail was a list of chats
+// on a page, and what it actually holds is every conversation this account has
+// had with an agent, on any client, most of which did not start here.
 func renderSessionsRail(accountID, currentID, agentID string) string {
 	sessions := chatThreads(accountID, agentID)
 	// A new chat with the agent whose rail this is. It used to rewrite the URL
@@ -704,12 +722,23 @@ func renderSessionsRail(accountID, currentID, agentID string) string {
 	}
 	var b strings.Builder
 	b.WriteString(`<aside class="chat-rail"><button class="chat-new" onclick="if(window.muChatNew){muChatNew();history.replaceState(null,''` +
-		`,` + app.JSString(newURL) + `);document.querySelectorAll('.chat-sess.active').forEach(function(e){e.classList.remove('active')});}">+ New chat</button><div class="chat-sess-list">`)
+		`,` + app.JSString(newURL) + `);document.querySelectorAll('.chat-sess.active').forEach(function(e){e.classList.remove('active')});}">+ New</button><div class="chat-sess-list">`)
 	if len(sessions) == 0 {
+		// An empty inbox says how to fill it, and the answer is an address.
+		// "No conversations yet" is a true sentence that leaves somebody looking
+		// at a blank column with nothing to do about it — and the thing they can
+		// do is the whole product: write to it from anywhere.
+		where := ""
+		if a := inboxAddress(accountID, agentID); a != "" {
+			where = ` Or write to it at <code>` + htmlEsc(a) + `</code> — from your ` +
+				`mail, from your phone, from anywhere that can send an email.`
+		}
 		if agentID != "" {
-			b.WriteString(`<div class="chat-sess-empty">No conversations with this agent yet.</div>`)
+			b.WriteString(`<div class="chat-sess-empty">Nothing here yet. Ask this agent ` +
+				`something.` + where + `</div>`)
 		} else {
-			b.WriteString(`<div class="chat-sess-empty">No conversations yet.</div>`)
+			b.WriteString(`<div class="chat-sess-empty">Nothing here yet. Ask something ` +
+				`below.` + where + `</div>`)
 		}
 	}
 	for _, s := range sessions {
@@ -836,7 +865,8 @@ const chatLayoutCSS = `<style>
 .chat-sess-del{border:0;background:none;color:#ccc;font-size:15px;line-height:1;cursor:pointer;padding:2px 6px;opacity:0}
 .chat-sess-row:hover .chat-sess-del{opacity:1}
 .chat-sess-del:hover{color:#b00}
-.chat-sess-empty{color:#999;font-size:13px;padding:8px 10px}
+.chat-sess-empty{color:#999;font-size:13px;padding:8px 10px;line-height:1.5}
+.chat-sess-empty code{background:#f4f4f5;border-radius:4px;padding:1px 5px;font-size:11px;overflow-wrap:anywhere}
 /* The two buttons in the bar are for phones. On a desktop the panels are always
    there, so a control that opens them is a second way to do nothing. */
 .chat-open-list{display:none}

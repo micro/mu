@@ -394,6 +394,20 @@ function fetchW(la,lo){
 		if chips != "" {
 			b.WriteString(fmt.Sprintf(`<div class="home-chips">%s</div>`, chips))
 		}
+		// The box is one way in and not the interesting one.
+		//
+		// Home has always offered a place to type, which makes the agent look
+		// like a chat on a page — something you visit. The thing that makes it
+		// more than that is that it has an address and answers whether or not
+		// anybody has this page open, and there was nowhere on the screen you
+		// arrive at saying so.
+		if viewerID != "" {
+			if addr := mail.SharedAgentAddress(); addr != "" {
+				b.WriteString(`<p class="home-inbox">Or write to it at <code>` +
+					html.EscapeString(addr) + `</code> — from your mail, your phone, anywhere. ` +
+					app.Link("Your inbox", "/agent") + `</p>`)
+			}
+		}
 		b.WriteString(`</div>`)
 	}
 

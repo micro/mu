@@ -242,7 +242,7 @@ func FooterLinks() string {
 	// username with no mailbox behind it. Somebody whose top-up failed had
 	// nowhere at all to report it, which meant an operator only found out by
 	// being told in person.
-	return `<a href="/about">About</a> · <a href="/tools">Tools</a> · <a href="/api">API</a> · <a href="/help">Help</a> · <a href="/support">Support</a> · <a href="/privacy">Privacy</a> · <a href="/status">Status</a>` + torFooterLink()
+	return `<a href="/about">About</a> · <a href="/tools">Tools</a> · <a href="/help">Help</a> · <a href="/support">Support</a> · <a href="/privacy">Privacy</a> · <a href="/status">Status</a>` + torFooterLink()
 }
 
 func torFooterLink() string {
@@ -329,6 +329,12 @@ var Template = `
                picker on it and was removed. Memory, the half that was real, is
                a card on /account.
 
+               Inbox is above Tools because it is the thing itself. An agent
+               with an address that answers and remembers is what this is; the
+               tools are what it reaches for. It points at /agent, which is the
+               conversation and the list of them — Agents below it is the roster,
+               where one is made and scoped.
+
                Apps was here once, on the argument that it is half the product.
                It is a service with a Spec and a tile in the catalogue like the
                others, so a permanent entry above the fold was the spine
@@ -337,6 +343,7 @@ var Template = `
                what pinning is for. -->
           <a href="/home"><img src="/home.png?` + Version + `"><span class="label">Home</span></a>
           %s
+          <a href="/agent"><img src="/mail.png?` + Version + `"><span class="label">Inbox</span></a>
           <a href="/tools"><img src="/tools.svg?` + Version + `"><span class="label">Tools</span></a>
           <a href="/agents"><img src="/agent.svg?` + Version + `"><span class="label">Agents</span></a>
           <a href="/services"><img src="/services.svg?` + Version + `"><span class="label">Services</span></a>

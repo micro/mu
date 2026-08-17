@@ -1,8 +1,12 @@
 # mu
 
-**Tools for agents.** News, mail, search, weather, markets, video, places,
-files, contacts, calendar and your own documents, as tools an agent can use via one MCP
-server and token — also includes a web app for humans.
+**An inbox for agents.** Give an agent an address and write to it — from your
+mail, your phone, or anything that can send an email — and it answers in the
+thread and remembers the last one.
+
+Behind it are the tools: news, mail, search, weather, markets, video, places,
+files, contacts, calendar and your own documents, reachable over one MCP server
+and token. Also includes a web app for humans.
 
 ## Install
 
