@@ -242,7 +242,7 @@ function muAgentChip(){var c=document.getElementById('active-agent-chip');if(c)c
 function muAgentPick(id){
   var p=window.location.pathname,to;
   if(p.indexOf('/agent/connect')===0){to=id?'/agent/connect?id='+encodeURIComponent(id):'/agent/connect';}
-  else{to=id?'/agent?id='+encodeURIComponent(id):'/agent';}
+  else{to=id?'/inbox?id='+encodeURIComponent(id):'/inbox';}
   if(window.location.pathname+window.location.search===to){return;}
   window.location=to;
 }

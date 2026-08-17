@@ -58,7 +58,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<div style="max-width:760px">`)
 	b.WriteString(`<p class="lens-lead">Everything you and your agents have said to each other, ` +
 		`wherever you said it — here, by email, on Discord, Telegram or WhatsApp. Search it. ` +
-		`Your conversations as a list, to carry one on, are on ` + app.Link("Agent", "/agent") + `</p>`)
+		`Your conversations as a list, to carry one on, are on ` + app.Link("your inbox", "/inbox") + `</p>`)
 
 	b.WriteString(`<form method="GET" action="/recall" class="rc-form">` +
 		`<input class="rc-input" type="search" name="q" placeholder="A word or phrase somebody said" ` +
@@ -107,7 +107,7 @@ func hitRow(h thread.Hit, query string) string {
 	if subject == "" {
 		subject = "Untitled"
 	}
-	return `<a class="rc-hit" href="/agent?session=` + url.QueryEscape(h.Thread) + `">` +
+	return `<a class="rc-hit" href="/inbox?session=` + url.QueryEscape(h.Thread) + `">` +
 		`<div class="rc-meta">` + html.EscapeString(who) + ` · ` +
 		html.EscapeString(app.TimeAgo(h.At)) + ` · ` +
 		`<span class="rc-where">` + html.EscapeString(clientName(h.Client)) + `</span></div>` +

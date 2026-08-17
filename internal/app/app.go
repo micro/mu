@@ -331,9 +331,8 @@ var Template = `
 
                Inbox is above Tools because it is the thing itself. An agent
                with an address that answers and remembers is what this is; the
-               tools are what it reaches for. It points at /agent, which is the
-               conversation and the list of them — Agents below it is the roster,
-               where one is made and scoped.
+               tools are what it reaches for. Agents stays below it and is a
+               different question — the roster, where one is made and scoped.
 
                Apps was here once, on the argument that it is half the product.
                It is a service with a Spec and a tile in the catalogue like the
@@ -343,7 +342,7 @@ var Template = `
                what pinning is for. -->
           <a href="/home"><img src="/home.png?` + Version + `"><span class="label">Home</span></a>
           %s
-          <a href="/agent"><img src="/mail.png?` + Version + `"><span class="label">Inbox</span></a>
+          <a href="/inbox"><img src="/mail.png?` + Version + `"><span class="label">Inbox</span></a>
           <a href="/tools"><img src="/tools.svg?` + Version + `"><span class="label">Tools</span></a>
           <a href="/agents"><img src="/agent.svg?` + Version + `"><span class="label">Agents</span></a>
           <a href="/services"><img src="/services.svg?` + Version + `"><span class="label">Services</span></a>

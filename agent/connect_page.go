@@ -50,7 +50,7 @@ func ConnectHandler(w http.ResponseWriter, r *http.Request) {
 		body = connectPanel(a, app.BaseURL(r), auth.CSRFToken(r))
 	}
 
-	back := "/agent"
+	back := "/inbox"
 	if id != "" {
 		back += "?id=" + url.QueryEscape(id)
 	}

@@ -70,7 +70,7 @@ func elsewhereView(accountID string, t *thread.Thread) string {
 	b.WriteString(`<p class="els-note">This happened on ` +
 		html.EscapeString(clientName(t.Client)) + `, so it carries on there — reply to it the way ` +
 		`it arrived and the agent answers in the same thread. ` +
-		app.Link("Start a new chat here", "/agent") + `</p>`)
+		app.Link("Start a new chat here", "/inbox") + `</p>`)
 	b.WriteString(`</div>` + conversationCSS)
 	return b.String()
 }

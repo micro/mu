@@ -32,7 +32,7 @@ func TestAnExternalAgentOpensOnHowToReachItAndAHostedOneOnTalkingToIt(t *testing
 		t.Errorf("an external agent's name still opens a chat box it will never use:\n%s", row)
 	}
 	if row := agentRow(in, "csrf", "http://localhost"); !strings.Contains(row,
-		`class="agent-name" href="/agent?id=`+in.ID) {
+		`class="agent-name" href="/inbox?id=`+in.ID) {
 		t.Errorf("a hosted agent's name no longer opens a conversation with it:\n%s", row)
 	}
 	// Either kind can be reached from the row without guessing at the URL.

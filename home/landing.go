@@ -103,9 +103,8 @@ one, and can be reached from anywhere that can send an email.</p>
 and the endpoint your client can call.</p>
 
 <div class="lctas">
-  <a class="lcta" href="/agent">Talk to an agent →</a>
+  <a class="lcta" href="/inbox">Talk to an agent →</a>
   <a class="lcta lcta-alt" href="/tools">Browse the tools</a>
-  <a class="lcta lcta-alt" href="/mcp">MCP server</a>
 </div>
 
 <div class="lcards">
@@ -115,9 +114,10 @@ and the endpoint your client can call.</p>
 </div>
 
 <div class="lpay" id="connecting">
-  <h2>Connecting</h2>
+  <h2>Connect via MCP</h2>
   <p class="lnote">Two ways in for a client you sign in with, and a third for an agent
-  that has no account at all.</p>
+  that has no account at all. Everything the inbox holds comes with it — an agent on the
+  other end can list your conversations, read one back and search what was said.</p>
   <ol>
     <li><b>Cursor, and clients with a config file.</b> Create a token at <a href="/token">/token</a>
     and point them at <code>` + host + `/mcp</code> with an

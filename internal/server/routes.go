@@ -171,7 +171,8 @@ func authRequired() map[string]bool {
 		// gives, for the same reason: news and weather must not need an account.
 		"/api/v1":     false,
 		"/api/v1/":    false,
-		"/agent":      false, // Public page, auth checked in handler
+		"/agent":      false, // Public page, auth checked in handler (redirects to /inbox)
+		"/inbox":      false, // The conversation and the list of them; auth checked in handler
 		"/setup":      false, // First-run setup (open only until an admin exists)
 		"/developers": false, // Legacy alias → /tools (public)
 	}
@@ -390,7 +391,30 @@ func registerRoutes() {
 	})
 
 	// serve the agent
-	http.HandleFunc("/agent", agent.Handler)
+	// The inbox is /inbox, and the agent family is /agent*.
+	//
+	// It was /agent for the conversation and /agents for the roster — a
+	// singular and a plural of the same word, one page apart, which is the
+	// confusion routes.go already records about /agent/agents. Naming the page
+	// after what it holds fixes it: /inbox is where you read and reply, and
+	// /agents, /agent/new and /agent/connect are where an agent is made,
+	// scoped and reached. Two families with two names.
+	//
+	// /agent still answers. A GET is redirected, because links to it exist; a
+	// POST is the chat asking a question and is handled here, because moving
+	// that is a change to the component every page embeds and it can follow.
+	http.HandleFunc("/inbox", agent.Handler)
+	http.HandleFunc("/agent", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			agent.Handler(w, r)
+			return
+		}
+		to := "/inbox"
+		if q := r.URL.RawQuery; q != "" {
+			to += "?" + q
+		}
+		http.Redirect(w, r, to, http.StatusMovedPermanently)
+	})
 	http.HandleFunc("/agent/", agent.Handler)
 	http.HandleFunc("/agents/data", agent.AgentsHandler)
 	// The old path, so a page cached with the previous script keeps working.
@@ -670,13 +694,13 @@ func registerRoutes() {
 	// them. Both are on /agent now — the conversation, and the tools each answer
 	// came from beside the answer.
 	http.HandleFunc("/agent/threads", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/agent", http.StatusMovedPermanently)
+		http.Redirect(w, r, "/inbox", http.StatusMovedPermanently)
 	})
 	http.HandleFunc("/agent/runs", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/agent", http.StatusMovedPermanently)
+		http.Redirect(w, r, "/inbox", http.StatusMovedPermanently)
 	})
 	http.HandleFunc("/runs", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/agent", http.StatusMovedPermanently)
+		http.Redirect(w, r, "/inbox", http.StatusMovedPermanently)
 	})
 	// A service rendered at a glance — see internal/api/card.go.
 	http.HandleFunc("/card", api.CardHandler)

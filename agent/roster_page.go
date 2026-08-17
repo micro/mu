@@ -274,7 +274,7 @@ func agentRow(a *Agent, csrf, base string) string {
 		`<a href="/agent/connect?id=%s">Connect</a>`+
 		`<a href="/agent/new?id=%s">Edit</a>`+
 		`<a href="/agent/new?fork=%s">Fork</a>`+
-		`<a href="/agent?id=%s">Talk to it &rarr;</a></div>`,
+		`<a href="/inbox?id=%s">Talk to it &rarr;</a></div>`,
 		html.EscapeString(a.ID), html.EscapeString(a.ID),
 		html.EscapeString(a.ID), html.EscapeString(a.ID))
 
@@ -282,7 +282,7 @@ func agentRow(a *Agent, csrf, base string) string {
 	// opens on talking to it; one that runs elsewhere opens on how to reach it,
 	// because a chat box is the least useful half of that page and the endpoint,
 	// the scope and the token were nowhere on it.
-	open := "/agent?id=%s"
+	open := "/inbox?id=%s"
 	if a.Kind != Hosted {
 		open = "/agent/connect?id=%s"
 	}
@@ -328,13 +328,13 @@ func defaultRow() string {
 	return `<h3 style="font-size:15px;margin:0 0 10px">The default</h3>` +
 		`<div style="display:flex;flex-direction:column;gap:8px;margin:0 0 24px">` +
 		`<div class="agent-row"><div style="flex:1;min-width:0">` +
-		`<a class="agent-name" href="/agent">Micro</a>` +
+		`<a class="agent-name" href="/inbox">Micro</a>` +
 		`<span class="agent-kind here">Runs here</span>` +
 		`<div class="agent-scope wide">everything you can reach</div>` +
 		`<div class="agent-meta">Always here, nothing to set up. It answers as your account, so it ` +
 		`has no token of its own.</div>` + addr +
 		`<div class="agent-links">` +
-		`<a href="/agent">Talk to it</a>` +
+		`<a href="/inbox">Talk to it</a>` +
 		`<a href="/agent/connect">How to reach it &rarr;</a></div>` +
 		`</div></div></div>`
 }

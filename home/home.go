@@ -405,7 +405,7 @@ function fetchW(la,lo){
 			if addr := mail.SharedAgentAddress(); addr != "" {
 				b.WriteString(`<p class="home-inbox">Or write to it at <code>` +
 					html.EscapeString(addr) + `</code> — from your mail, your phone, anywhere. ` +
-					app.Link("Your inbox", "/agent") + `</p>`)
+					app.Link("Your inbox", "/inbox") + `</p>`)
 			}
 		}
 		b.WriteString(`</div>`)

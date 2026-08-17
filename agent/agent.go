@@ -427,7 +427,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		case "GET":
 			// Saved flows are conversations now — reopen in the unified chat.
 			if id != "" && r.URL.Query().Get("json") != "1" {
-				http.Redirect(w, r, "/agent?session="+id, http.StatusFound)
+				http.Redirect(w, r, "/inbox?session="+id, http.StatusFound)
 				return
 			}
 			serveFlowPage(w, r, id) // ?json=1 still returns the flow JSON for polling
@@ -618,7 +618,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 		content += `<script>window.muSeedAgent(` + app.JSString(selAgent) + `);</script>`
 	}
 	if prefill != "" {
-		content += `<script>(function(){var i=document.getElementById('mu-chat-input');if(i&&window.muChatAsk){i.value=` + app.JSString(prefill) + `;window.muChatAsk(i.value);}history.replaceState(null,'','/agent');})()</script>`
+		content += `<script>(function(){var i=document.getElementById('mu-chat-input');if(i&&window.muChatAsk){i.value=` + app.JSString(prefill) + `;window.muChatAsk(i.value);}history.replaceState(null,'','/inbox');})()</script>`
 	}
 
 	html := app.RenderHTMLForRequest("Agent", "Ask the Mu agent — news, mail, markets, weather, search and more, with tools", content, r)
@@ -716,7 +716,7 @@ func renderSessionsRail(accountID, currentID, agentID string) string {
 	// to a bare /agent, which dropped the agent out of the address bar while
 	// the page went on talking to it — so a reload landed you on the default
 	// and the rail silently widened to every conversation on the account.
-	newURL := "/agent"
+	newURL := "/inbox"
 	if agentID != "" {
 		newURL += "?id=" + url.QueryEscape(agentID)
 	}
@@ -763,7 +763,7 @@ func renderSessionsRail(accountID, currentID, agentID string) string {
 		}
 		// Deletable. A conversation you can start and never be rid of is a list
 		// that only grows, and the rail is the one place somebody looks at it.
-		b.WriteString(`<div class="chat-sess-row"><a href="/agent?session=` + url.QueryEscape(s.ID) +
+		b.WriteString(`<div class="chat-sess-row"><a href="/inbox?session=` + url.QueryEscape(s.ID) +
 			`" class="` + cls + `">` + htmlEsc(title) + where + `</a>` +
 			`<button class="chat-sess-del" title="Delete conversation" ` +
 			`onclick="muSessionDelete(` + app.JSString(s.ID) + `,event)">×</button></div>`)
@@ -782,7 +782,7 @@ function muSessionDelete(id,ev){
   ev.preventDefault();ev.stopPropagation();
   if(!confirm('Delete this conversation? What was said in it is gone.'))return;
   fetch('/agent/session/'+encodeURIComponent(id),{method:'DELETE',headers:{'X-CSRF-Token':muAgentCsrf()}})
-    .then(function(){window.location='/agent';});
+    .then(function(){window.location='/inbox';});
 }
 // A conversation that has just started, listed while you are still in it.
 //
