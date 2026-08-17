@@ -68,9 +68,10 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<div style="max-width:720px">`)
 	// The first line of the same three-page sentence: an agent acts for you,
 	// tools are what it can call, services are what runs behind them.
-	b.WriteString(`<p class="lens-lead">What acts for you. Give one a standing instruction and ` +
-		`the services it may reach, then talk to it here or hand it a token and run it from ` +
-		`Claude, Cursor or your own program.</p>`)
+	b.WriteString(`<p class="lens-lead">What acts for you. Each one gets an address people ` +
+		`can write to, a standing instruction, and the services it may reach — then talk to it ` +
+		`in your ` + app.Link("inbox", "/inbox") + `, or hand it a token and run it from Claude, ` +
+		`Cursor or your own program.</p>`)
 
 	if msg := r.URL.Query().Get("error"); msg != "" {
 		// The way out is a link, because it reads as one. Hitting the agent limit

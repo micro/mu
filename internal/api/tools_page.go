@@ -64,14 +64,14 @@ func ToolsPageHandler(w http.ResponseWriter, r *http.Request) {
 	// are standing on, and nothing on either page said so.
 	var b strings.Builder
 	if services {
-		b.WriteString(`<p class="lens-lead">The back end for your agents. Every capability this ` +
-			`instance runs — the thing behind each tool, with a page you can open and use yourself. ` +
-			`Pin the ones you want in the sidebar.</p>`)
+		b.WriteString(`<p class="lens-lead">What is behind the tools. Every capability this ` +
+			`instance runs, with a page you can open and use yourself — this is what an agent is ` +
+			`reaching for when you write to it. Pin the ones you want in the sidebar.</p>`)
 		b.WriteString(serviceGrid(r))
 	} else {
-		b.WriteString(`<p class="lens-lead">What an agent can call. Point one at this instance, ` +
-			`give it a token, and these are the tools it gets — priced per call, no account needed ` +
-			`if it pays.</p>`)
+		b.WriteString(`<p class="lens-lead">What an agent can call. Your agents here reach all ` +
+			`of these; point your own at this instance with a token and it gets the same set, plus ` +
+			`the inbox — priced per call, no account needed if it pays.</p>`)
 		b.WriteString(connectSection(r))
 		// Outside the connect card, deliberately. That step offers one way in
 		// because a reader choosing between two of everything connects to

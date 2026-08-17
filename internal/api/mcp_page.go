@@ -46,7 +46,10 @@ func mcpPageHandler(w http.ResponseWriter, r *http.Request) {
 	// this page owns "call". Setup is a link.
 	b.WriteString(`<div class="card">`)
 	b.WriteString(`<h2>Model Context Protocol</h2>`)
-	b.WriteString(`<p class="card-desc">Every tool this instance serves, with its parameters and a playground to run it.</p>`)
+	b.WriteString(`<p class="card-desc">Every tool this instance serves, with its parameters and a playground to run it. ` +
+		`The inbox comes with them — <code>recall_list</code>, <code>recall_conversation</code> and ` +
+		`<code>recall_search</code> read what arrived here, so a client on the other end sees the ` +
+		`conversations as well as the capabilities.</p>`)
 	b.WriteString(`<p>Endpoint: <code>POST /mcp</code> &mdash; calls carry <code>Authorization: Bearer</code>.</p>`)
 	b.WriteString(`<p class="card-meta">Not connected yet? <a href="/tools#connect">Connect your agent &rarr;</a> ` +
 		`&middot; <a href="/help/mcp">Auth and protocol detail</a> &middot; <a href="/tools">What calls cost</a></p>`)

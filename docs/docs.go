@@ -41,7 +41,7 @@ type page struct {
 
 var pages = []page{
 	{Path: "/about", Filename: "ABOUT.md", Title: "About",
-		Description: "Tools for agents — what Mu is and why"},
+		Description: "An inbox for agents — what Mu is and why"},
 	{Path: "/help", Filename: "HELP.md", Title: "Help",
 		Description: "How to point an agent at this instance, and what it costs"},
 	{Path: "/install", Filename: "INSTALL.md", Title: "Install",

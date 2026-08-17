@@ -548,10 +548,22 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 		// pointing at /tools, on a page that already knows which agent you are
 		// looking at. When it knows, it points at that one's endpoint, scope and
 		// token rather than at the catalogue.
-		connect := `<a class="agent-connect" href="/tools">Connect your own agent &rarr;</a>`
+		connect := `<a class="agent-connect" href="/agent/connect">Connect &rarr;</a>`
 		if selAgent != "" {
 			connect = `<a class="agent-connect" href="/agent/connect?id=` +
-				url.QueryEscape(selAgent) + `">How to reach this one &rarr;</a>`
+				url.QueryEscape(selAgent) + `">Connect &rarr;</a>`
+		}
+		// The address, in the bar, for the agent this page is about.
+		//
+		// Picking an agent changed a chip and nothing else you could act on:
+		// its address, its scope and its token were one page away behind a link
+		// called "How to reach this one", and the first question anybody has
+		// about an agent is where to write to it. It is the product's whole
+		// claim, and it was the one fact not on the screen.
+		where := ""
+		if a := inboxAddress(accountID, selAgent); a != "" {
+			where = `<code class="agent-addr" title="Write to it here — it answers in the thread">` +
+				htmlEsc(a) + `</code>`
 		}
 		// On a phone this bar is the whole of the navigation: the chip opens the
 		// agent picker and the button beside it opens your conversations. Both
@@ -566,7 +578,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 			`<button type="button" id="active-agent-chip" class="agent-chip" ` +
 			`onclick="muPane('agents')">Agent: Micro</button>` +
 			`<button type="button" class="chat-open-list" onclick="muPane('chats')">Chats</button>` +
-			connect + `</div>` + paneJS
+			where + connect + `</div>` + paneJS
 	}
 
 	// A signed-out visitor arrives here from the landing's "See it working",
@@ -577,9 +589,9 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	if guest {
 		chip = `<div class="agent-intro">` +
 			`<b>This is the agent, using the tools.</b> Ask it something and it calls them on this ` +
-			`instance — the news feeds, the search index, the markets data — the same tools your own ` +
-			`agent gets over <a href="/mcp">MCP</a>. ` +
-			`<a href="/tools">See what it can reach &rarr;</a></div>`
+			`instance — the news feeds, the search index, the markets data. ` +
+			`<a href="/signup">Sign up</a> and it gets an address people can write to, and remembers ` +
+			`what was said last time. <a href="/tools">See what it can reach &rarr;</a></div>`
 	}
 	// No tabs. There were four — Chat, Threads, Runs, Connect — for one thing:
 	// you, an agent, and what you have said to each other. Two of them listed
@@ -621,7 +633,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 		content += `<script>(function(){var i=document.getElementById('mu-chat-input');if(i&&window.muChatAsk){i.value=` + app.JSString(prefill) + `;window.muChatAsk(i.value);}history.replaceState(null,'','/inbox');})()</script>`
 	}
 
-	html := app.RenderHTMLForRequest("Agent", "Ask the Mu agent — news, mail, markets, weather, search and more, with tools", content, r)
+	html := app.RenderHTMLForRequest("Inbox", "Everything you and your agents have said, wherever it arrived — and the address they answer on", content, r)
 	w.Write([]byte(html))
 }
 
@@ -722,7 +734,8 @@ func renderSessionsRail(accountID, currentID, agentID string) string {
 	}
 	var b strings.Builder
 	b.WriteString(`<aside class="chat-rail"><button class="chat-new" onclick="if(window.muChatNew){muChatNew();history.replaceState(null,''` +
-		`,` + app.JSString(newURL) + `);document.querySelectorAll('.chat-sess.active').forEach(function(e){e.classList.remove('active')});}">+ New</button><div class="chat-sess-list">`)
+		`,` + app.JSString(newURL) + `);document.querySelectorAll('.chat-sess.active').forEach(function(e){e.classList.remove('active')});}">+ New</button>` +
+		`<div class="chat-sess-head">Conversations</div><div class="chat-sess-list">`)
 	if len(sessions) == 0 {
 		// An empty inbox says how to fill it, and the answer is an address.
 		// "No conversations yet" is a true sentence that leaves somebody looking
@@ -851,6 +864,10 @@ const chatLayoutCSS = `<style>
 .agent-connect{margin-left:auto;font-size:13px;color:var(--text-muted,#666);text-decoration:none;white-space:nowrap}
 .agent-connect:hover{color:var(--text-primary,#111)}
 @media only screen and (max-width:600px){.agent-connect{margin-left:0}}
+.agent-addr{font-size:12px;background:var(--hover-background,#f5f5f5);border-radius:999px;
+  padding:3px 10px;color:var(--text-secondary,#555);overflow-wrap:anywhere}
+.chat-sess-head{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--text-muted,#999);padding:0 10px 6px}
 .agent-chip{display:inline-block;padding:3px 10px;border-radius:999px;background:var(--hover-background,#f5f5f5);color:var(--text-primary,#111);font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
 .agent-intro{margin:0 0 14px;padding:12px 14px;border:1px solid var(--border-color,#e5e5e5);border-radius:8px;font-size:14px;line-height:1.55;color:var(--text-secondary,#555)}
 .agent-intro b{color:var(--text-primary,#111)}
