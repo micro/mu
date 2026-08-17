@@ -62,9 +62,10 @@ func elsewhereView(accountID string, t *thread.Thread) string {
 		html.EscapeString(clientName(t.Client)) + `</span><span class="els-when">started ` +
 		html.EscapeString(app.TimeAgo(t.Started)) + `</span></div>`)
 	b.WriteString(`<h2 class="els-title">` + html.EscapeString(subject) + `</h2>`)
+	b.WriteString(partyLine(accountID, t))
 
 	for _, m := range msgs {
-		b.WriteString(messageBlock(m))
+		b.WriteString(messageBlock(accountID, t, m))
 	}
 
 	b.WriteString(`<p class="els-note">This happened on ` +
@@ -75,11 +76,50 @@ func elsewhereView(accountID string, t *thread.Thread) string {
 	return b.String()
 }
 
+// partyLine says who is on a conversation.
+//
+// Worth its own line because a thread is not always two-sided, and where it is
+// not, nothing on the page said so: a stranger writes to agent@, the agent
+// answers, and the owner reads an exchange they were never in. "You" and
+// "Agent" describe that badly enough to be misleading.
+//
+// Silent for the ordinary case — you and your agent, which every conversation
+// started here is — because a line naming the two people already obvious from
+// the messages is furniture.
+func partyLine(accountID string, t *thread.Thread) string {
+	people := 0
+	var names []string
+	for _, p := range thread.Parties(accountID, t.ID) {
+		if p.Kind == thread.RoleAgent {
+			continue
+		}
+		people++
+		names = append(names, partyName(p))
+	}
+	if people < 2 {
+		return ""
+	}
+	return `<div class="els-parties">Between ` + html.EscapeString(strings.Join(names, ", ")) +
+		` and the agent</div>`
+}
+
+// partyName is what to call somebody: the name the client knew, the address
+// they wrote from, or "You" for the account this conversation belongs to.
+func partyName(p thread.Party) string {
+	switch {
+	case p.Name != "":
+		return p.Name
+	case p.Key != "":
+		return p.Key
+	}
+	return "You"
+}
+
 // messageBlock is one message. What a person wrote is escaped and shown as
 // typed; what an agent wrote is markdown, rendered the way the chat renders it —
 // through the untrusted renderer, because model output is exactly what that
 // renderer is for.
-func messageBlock(m thread.Message) string {
+func messageBlock(accountID string, t *thread.Thread, m thread.Message) string {
 	if m.Role == thread.RoleAgent {
 		ran := ""
 		if m.Workflow != "" {
@@ -89,9 +129,18 @@ func messageBlock(m thread.Message) string {
 			html.EscapeString(app.TimeAgo(m.At)) + `</div>` +
 			`<div class="th-body">` + app.RenderString(m.Text) + `</div>` + ran + `</div>`
 	}
+	// The author, by the name the conversation knows them under rather than the
+	// address on the message. A thread where three people have written is three
+	// names; one where the display name arrived later says it on every line.
 	who := "You"
 	if m.From != "" {
 		who = m.From
+		for _, p := range thread.Parties(accountID, t.ID) {
+			if p.Kind == thread.RolePerson && p.Key == m.From && p.Name != "" {
+				who = p.Name
+				break
+			}
+		}
 	}
 	return `<div class="th-msg th-person"><div class="th-from">` + html.EscapeString(who) + ` · ` +
 		html.EscapeString(app.TimeAgo(m.At)) + `</div>` +
@@ -160,7 +209,8 @@ const conversationCSS = `<style>
 .els-head{display:flex;align-items:center;gap:10px;margin-bottom:4px}
 .els-where{border:1px solid #eee;border-radius:999px;padding:2px 9px;font-size:11px;color:#666}
 .els-when{font-size:12px;color:#aaa}
-.els-title{font-size:20px;margin:0 0 20px}
+.els-title{font-size:20px;margin:0 0 6px}
+.els-parties{font-size:13px;color:#888;margin:0 0 20px}
 .els-note{margin-top:24px;padding-top:14px;border-top:1px solid #eee;font-size:13px;color:#888}
 .th-msg{border-left:2px solid #eee;padding-left:14px;margin-bottom:16px}
 .th-agent{border-left-color:#ddd}

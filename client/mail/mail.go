@@ -285,16 +285,17 @@ func answerMail(m mail.InboundMail) {
 	// anything worth remembering are its business. What is passed is what only
 	// mail knows — which turn this answers, and the ids that will find it again.
 	res, err := agent.Ask(agent.AskRequest{
-		Account: m.Owner,
-		Client:  Client,
-		Thread:  chainKey(m),
-		Text:    prompt,
-		Agent:   ref,
-		System:  agent.MailPrompt(""),
-		Trigger: trigger,
-		Ref:     m.InReplyTo + " " + m.References,
-		From:    m.From,
-		Via:     via,
+		Account:  m.Owner,
+		Client:   Client,
+		Thread:   chainKey(m),
+		Text:     prompt,
+		Agent:    ref,
+		System:   agent.MailPrompt(""),
+		Trigger:  trigger,
+		Ref:      m.InReplyTo + " " + m.References,
+		From:     m.From,
+		FromName: m.FromName,
+		Via:      via,
 	})
 	answer := res.Text
 	threadRef = res.Thread

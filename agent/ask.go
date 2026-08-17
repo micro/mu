@@ -65,6 +65,10 @@ type AskRequest struct {
 	// From is who wrote in, where that is not simply the account: a message
 	// somebody else sent to an address this account owns.
 	From string
+	// FromName is what to call them, where the client knew — a mail display
+	// name. It belongs to the party rather than to each message, so it is
+	// recorded once against the conversation and not on every line.
+	FromName string
 	// Via carries anything else the client needs to recognise this
 	// conversation later — mail's message ids. Client and Thread are filled
 	// in from the fields above, so a caller cannot set one and mean another.
@@ -118,6 +122,13 @@ func Ask(r AskRequest) (Answer, error) {
 	// Who the conversation is with, so a surface that has an agent selected can
 	// show that agent's conversations rather than all of them or none.
 	thread.SetAgent(r.Account, threadID(th), r.Agent)
+	// And who is on it. Writing puts you on a conversation by itself — see
+	// thread.Add — so this is only for what a message cannot carry: the name
+	// behind an address.
+	if r.From != "" && strings.TrimSpace(r.FromName) != "" {
+		thread.Join(r.Account, threadID(th), thread.Party{
+			Kind: thread.RolePerson, Key: r.From, Name: strings.TrimSpace(r.FromName)})
+	}
 
 	opts := QueryOpts{
 		Public:  r.Public,

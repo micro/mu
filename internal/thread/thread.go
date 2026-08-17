@@ -82,9 +82,48 @@ type Thread struct {
 	// this a page that has an agent selected has to either show every
 	// conversation on the account or none: both were tried and both read as the
 	// surface having lost track of which agent you were talking to.
-	Agent   string    `json:"agent,omitempty"`
+	Agent string `json:"agent,omitempty"`
+	// Parties is everybody on this conversation: the account it belongs to, the
+	// agent answering, and anybody else who has written in or been added.
+	//
+	// A conversation had exactly two sides — an owner and an agent — which is
+	// true of a chat on a page and of nothing else. Mail already breaks it: a
+	// stranger writes to agent@, the agent answers, and the owner is a third
+	// party who can read it and was never in the exchange. A group is four
+	// people and an agent. An agent writing to another agent is two agents and
+	// nobody.
+	//
+	// This records who is on a conversation. It does not yet decide who may read
+	// one — Get, Messages and Search are still scoped to Account, so being a
+	// party to somebody else's thread grants nothing. Widening that is a
+	// separate decision and a deliberate one; recording it first is what makes
+	// the decision possible.
+	Parties []Party   `json:"parties,omitempty"`
 	Started time.Time `json:"started"`
 	Updated time.Time `json:"updated"`
+}
+
+// Party is somebody on a conversation.
+//
+// Identified by a key rather than by an account, because most of them are not
+// accounts here: a stranger who emailed in is an address, a Discord user is an
+// id on somebody else's service. Key is whatever the client used to name them,
+// and it is what a message's From matches.
+type Party struct {
+	// Kind is RolePerson or RoleAgent. The same two words a message uses,
+	// because they answer the same question about a different noun.
+	Kind string `json:"kind"`
+	// Key is how this party is addressed on the client the conversation is on:
+	// an email address, a phone number, a channel-scoped user id. Empty means
+	// the account the conversation belongs to, which is how every message
+	// written before this existed identifies its author.
+	Key string `json:"key,omitempty"`
+	// Name is what to call them, when the client knew. Falls back to Key.
+	Name string `json:"name,omitempty"`
+	// Agent is which agent, for a party of RoleAgent: one of the account's own
+	// by id, or empty for the default.
+	Agent  string    `json:"agent,omitempty"`
+	Joined time.Time `json:"joined"`
 }
 
 // Message is one thing said.
@@ -285,9 +324,70 @@ func Add(m Message) string {
 	if t.Subject == "" && stored.Role == RolePerson {
 		t.Subject = summarise(stored.Text)
 	}
+	// Whoever spoke is on the conversation. Parties accrete from what actually
+	// happened rather than needing a client to declare them, which means the
+	// mail thread where a stranger wrote in has both of them on it without mail
+	// knowing this exists.
+	joinUnlocked(t, Party{Kind: stored.Role, Key: stored.From, Agent: t.Agent, Joined: stored.At})
 	trim(m.Account)
 	save()
 	return stored.ID
+}
+
+// Join puts somebody on a conversation who has not written to it.
+//
+// Everything else here records what happened; this records who is expected to.
+// A shared inbox is exactly the case that cannot be derived from messages — the
+// colleague who has been added and has not said anything yet is still supposed
+// to see it.
+func Join(account, id string, p Party) {
+	mu.Lock()
+	defer mu.Unlock()
+	t := threads[id]
+	if t == nil || t.Account != account {
+		return
+	}
+	if joinUnlocked(t, p) {
+		save()
+	}
+}
+
+// joinUnlocked adds a party if it is not already there. Caller holds mu.
+//
+// Matched on kind and key together: the owner writing and the agent answering
+// are two parties with the same empty key, which is the common case and would
+// otherwise collapse into one.
+func joinUnlocked(t *Thread, p Party) bool {
+	if p.Kind == "" {
+		p.Kind = RolePerson
+	}
+	for i, have := range t.Parties {
+		if have.Kind != p.Kind || have.Key != p.Key {
+			continue
+		}
+		// Something learned late — a name the first message did not carry.
+		if have.Name == "" && p.Name != "" {
+			t.Parties[i].Name = p.Name
+			return true
+		}
+		return false
+	}
+	if p.Joined.IsZero() {
+		p.Joined = time.Now().UTC()
+	}
+	t.Parties = append(t.Parties, p)
+	return true
+}
+
+// Parties is who is on a conversation, scoped to its owner.
+func Parties(account, id string) []Party {
+	mu.RLock()
+	defer mu.RUnlock()
+	t := threads[id]
+	if t == nil || t.Account != account {
+		return nil
+	}
+	return append([]Party(nil), t.Parties...)
 }
 
 // Messages returns a conversation's messages, oldest first. limit 0 is all of
