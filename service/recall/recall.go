@@ -238,10 +238,8 @@ func Load() {
 	}
 }
 
-// Headless: there is no /recall page, because the page over this record already
-// exists and is the agent page itself: the rail lists every conversation and
-// clicking one opens it. A second page listing the same conversations under a
-// different heading is exactly what was just taken out.
+// It has a page, like every other service does — see page.go for why that is
+// not the second conversation list it sounds like.
 //
 // Nothing is charged. Reading your own record touches this instance's storage
 // and no model and no third party, which is the whole of the free/paid rule in
@@ -250,6 +248,8 @@ var Spec = service.Spec{
 	Name:        "recall",
 	Handler:     new(Server),
 	Description: "Your own past: search what was said, on any client, and read a conversation back",
+	Page:        "/recall",
+	Icon:        "saved.svg",
 	Scoped:      true,
 	Endpoints: map[string]service.Endpoint{
 		"Search": {Aliases: []string{"history_search", "recall_history"},

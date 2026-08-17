@@ -46,6 +46,7 @@ import (
 	"mu/service/notes"
 	"mu/service/places"
 	"mu/service/prayer"
+	"mu/service/recall"
 	"mu/service/routes"
 	"mu/service/sms"
 	"mu/service/social"
@@ -107,6 +108,7 @@ func authRequired() map[string]bool {
 		"/runs":              true,  // What your agents did (redirects to /agent/runs)
 		"/agent/runs":        true,  // What your agents did
 		"/agent/session/":    true,  // Deleting one of your conversations
+		"/recall":            true,  // Your own past — sign-in required
 		"/agent/connect":     true,  // How to reach one agent
 		"/tasks":             true,  // Your task list — sign-in required
 		"/social":            false, // Public viewing, auth for search
@@ -647,6 +649,9 @@ func registerRoutes() {
 	// Runs belong to the agent, so they live under it and the agent surface
 	// tabs between them. /runs still works — links to it exist.
 	http.HandleFunc("/agent/connect", agent.ConnectHandler)
+	// Search everything you have ever said to an agent. The list of your
+	// conversations is /agent; this is the search over all of them.
+	http.HandleFunc("/recall", recall.Handler)
 	// Deleting a conversation. The list of them is the rail on /agent.
 	http.HandleFunc("/agent/session/", agent.SessionHandler)
 	// Two pages that were tabs and are not any more: one listed the same

@@ -63,9 +63,18 @@ a service.
 Services live under `service/<name>/`. `internal/service` is the runtime core
 that hosts them — it is not itself a service.
 
-The exception is a **headless** service: a capability with no page, so no route
-and no nav entry — it exists for the agent, for apps and for other services to
-call. `contacts` is one.
+There is no exception. `Spec.Headless()` exists — a service with an empty
+`Page` — and nothing is, which is worth saying out loud because the escape hatch
+being there invites use: `contacts` was documented as headless for a long time
+while sitting at `/contacts`, and `recall` shipped without a page on the
+reasoning that another page already showed its data.
+
+A service a person cannot find in the sidebar is a capability that exists only
+for the agent, and the pitch is that both doors reach the same set of things. If
+something seems to want to be a service with no page, the question to ask is
+whether it is a service — the last time the answer was dressed up instead, it
+was a flag called `Staple` meaning "is a service, but hide it", and deleting the
+flag was the fix.
 
 One footnote. The `web` service is reached at `/search`,
 because "Search" is what a person looks for in the sidebar while `web` is what
@@ -106,7 +115,7 @@ guessable.
 | `places` | /places | ✅ |  | Points of interest, geocoding both ways, elevation — what is there |
 | `routes` | /routes | ✅ |  | How to get between two places: time with traffic, turn-by-turn, and which of several is nearest. Split from `places`, which is the Places API's domain where this is the Routes API's |
 | `prayer` | /prayer | ✅ |  | Islamic prayer times, qibla, and a daily reflection |
-| `recall` |  | ✅ | ✅ | The caller's own past: search what was said on any client, and read a conversation back. The read over `internal/thread`, which every client writes to on every turn and which is deliberately not a service — a record is not a choice, going looking in it is. Headless because the page over it already exists and is `/agent` itself. Delete this service and nothing breaks: clients still record, the agent still gets its history, the page still renders |
+| `recall` | /recall | ✅ | ✅ | The caller's own past: search what was said on any client, and read a conversation back. The read over `internal/thread`, which every client writes to on every turn and which is deliberately not a service — a record is not a choice, going looking in it is. Its page is a search box: `/agent` browses your conversations, this searches every message in all of them. Delete this service and nothing breaks: clients still record, the agent still gets its history, the page still renders |
 | `email` | /email | ✅ | ✅ | Email that leaves the instance, from its own sending domain, on the same Twilio credentials the texts use. A sibling of `sms` and `whatsapp` rather than half of `mail`: a mailbox is invisible outside the building, sending puts a message in front of somebody who did not ask. History asks the carrier what became of each message, so "accepted" and "delivered" are different words. `email_verify` is address verification as a tool: a code to one of the caller's own users, under the caller's product name, and an answer saying whether the code came back — a wrong one is a status, not an error. Nothing is recorded against the caller's account unless they pass `mine`, which is the narrower case of proving an address you read yourself, the claim `mail` routes on. `mail_send` is still how you send *as* your own address, and needs an accountable account because that spends the instance's own domain |
 | `sms` | /sms | ✅ | ✅ | A phone number: text somebody, read what they text back. Twilio. Account-only even when paid: what an anonymous sender spends is the number's reputation |
 | `whatsapp` | /whatsapp | ✅ | ✅ | Reply to people on WhatsApp, through Twilio. Sending is bounded by Meta's 24-hour window, so it answers rather than initiates |

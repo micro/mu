@@ -38,7 +38,7 @@ Built on go-micro: every capability is a go-micro service, the assistant is a go
 | `internal/auth/` | Account system, sessions, passkeys |
 | `internal/notes/` | The store behind `service/notes` — a title, its text, and nothing that expires |
 | `internal/thread/` | The system of record: what was said, to whom, on which conversation. Written on every turn from every client, by nobody's decision — see "Clients, and the record between them". Not a service, and not a workflow. `service/recall` is the read over it, and `/agent` the page — one list of conversations, whichever client each happened on |
-| `service/recall/` | Going looking in your own past on purpose: search what was said on any client, read a conversation back. Headless — the page already exists, and it is `/agent` itself — and it owns none of what it reads, which is the point: delete it and the record is unaffected |
+| `service/recall/` | Going looking in your own past on purpose: search what was said on any client, read a conversation back. Its page at `/recall` is a search box, not a second list — `/agent` browses conversations, this searches every message in them. It owns none of what it reads, which is the point: delete it and the record is unaffected |
 | `client/mail/` | Mail as a client: the shape a message arrives in, handed to the agent, and the answer turned back into a reply. `service/mail` is the capability underneath — the inbox, the address, the SMTP server |
 | `internal/settings/` | Live-reloadable configuration |
 | `home/` | Landing page, assistant, home dashboard, summary |
@@ -56,7 +56,7 @@ Built on go-micro: every capability is a go-micro service, the assistant is a go
 | `internal/quota/` | What things cost and who may do them. The only thing a service knows about money — it holds prices, not balances. Prices are `quota.json` at the top level, not Go |
 | `service/docs/` | The caller's own documents: a title and a markdown body. It was a record store wearing the word — the tool took a collection and a bag of JSON, so the page asked a person to type JSON. A service is named for a kind of thing somebody makes, never for how it is stored; the record store stays underneath as `internal/userdb`, reached by apps as `mu.db`, with no page and no tools |
 | `service/files/` | Per-user file storage — keep a file, get a URL, read it back |
-| `service/contacts/` | The caller's address book, so a name resolves to an address (headless) |
+| `service/contacts/` | The caller's address book, so a name resolves to an address |
 | `service/whatsapp/` | Reply to people on WhatsApp, through Twilio. Bounded by Meta's 24-hour window, so it answers rather than initiates. The Meta bot in `client/whatsapp/` is the other half — a door, not a capability |
 | `service/sms/` | A phone number: text somebody, read what they text back. Twilio. The rules about who you may text are the service, not decoration — see the package comment |
 | `service/web/` | The open web: search it (`web.Search`), fetch a URL (`web.Fetch`). The Brave provider, the readability reader and the /search page live here too — they were `service/search`, a directory under `service/` that was not a service |
@@ -262,8 +262,12 @@ any other.
 - One directory per service under `service/`, named for the service — see
   "What a service is" above. `internal/service` is the runtime core that hosts
   them, not a service itself. See
-  `docs/ARCHITECTURE.md` for what is registered, which are headless, which
-  are account-scoped, and which are deliberately not exposed to the agent
+  `docs/ARCHITECTURE.md` for what is registered, which are account-scoped, and
+  which are deliberately not exposed to the agent. Every service has a page:
+  service name == directory == route == nav label == tool prefix, with no
+  exceptions in it. A capability with no page is one a person cannot find, and
+  the last attempt at "is a service, but hide it" was a boolean whose deletion
+  was the fix
 - A service is named for a **domain** (a noun), never an action. Tool names are
   derived as `service_method`, so an action-named service leaves its main method
   nothing to be called but the same word — that is how `search.Search` produced
