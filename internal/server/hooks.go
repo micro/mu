@@ -38,10 +38,10 @@ import (
 	"mu/internal/data"
 	"mu/internal/google"
 	"mu/internal/notes"
-	"mu/internal/profile"
 	"mu/internal/quota"
 	"mu/internal/service"
 	"mu/internal/settings"
+	"mu/internal/user"
 	"mu/internal/x402"
 	"mu/service/apps"
 	"mu/service/blog"
@@ -58,7 +58,6 @@ import (
 	"mu/service/social"
 	"mu/service/stream"
 	"mu/service/tasks"
-	"mu/service/user"
 	"mu/service/wallet"
 	"mu/service/web"
 	whatsappsvc "mu/service/whatsapp"
@@ -329,9 +328,6 @@ func wireHooks() {
 	// load docs
 	help.Load()
 
-	// load user presence tracking
-	profile.Load()
-
 	// Load the stream (platform event timeline).
 	stream.Load()
 
@@ -356,11 +352,11 @@ func wireHooks() {
 	}
 
 	// Wire user → blog callback (avoids direct import between building blocks)
-	profile.GetUserPosts = func(authorID, authorName string) []profile.UserPost {
+	user.GetUserPosts = func(authorID, authorName string) []user.UserPost {
 		posts := blog.PostsByAuthorID(authorID, authorName)
-		result := make([]profile.UserPost, len(posts))
+		result := make([]user.UserPost, len(posts))
 		for i, p := range posts {
-			result[i] = profile.UserPost{
+			result[i] = user.UserPost{
 				ID:        p.ID,
 				Title:     p.Title,
 				Content:   p.Content,
@@ -370,7 +366,7 @@ func wireHooks() {
 		}
 		return result
 	}
-	profile.LinkifyContent = blog.Linkify
+	user.LinkifyContent = blog.Linkify
 
 	// Wire @micro replies in the stream: run the agent against the sender's
 	// wallet and post the answer back into the timeline. Async, so the POST
@@ -390,18 +386,18 @@ func wireHooks() {
 		if answer == "" {
 			return
 		}
-		if !profile.AIResponseAllowed(askerID, answer) {
+		if !user.AIResponseAllowed(askerID, answer) {
 			app.Log("stream", "AI response for %s blocked by moderation", askerID)
 			return
 		}
 		stream.PostAgent(answer)
 	}
 
-	profile.GetUserApps = func(authorID string) []profile.UserApp {
+	user.GetUserApps = func(authorID string) []user.UserApp {
 		appList := apps.ByAuthor(authorID)
-		result := make([]profile.UserApp, len(appList))
+		result := make([]user.UserApp, len(appList))
 		for i, a := range appList {
-			result[i] = profile.UserApp{
+			result[i] = user.UserApp{
 				Slug:        a.Slug,
 				Name:        a.Name,
 				Description: a.Description,

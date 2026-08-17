@@ -34,7 +34,6 @@ import (
 	"mu/service/tasks"
 	"mu/service/text"
 	"mu/service/transit"
-	user "mu/service/user"
 	"mu/service/video"
 	"mu/service/wallet"
 	"mu/service/weather"
@@ -56,7 +55,7 @@ func allSpecs() []service.Spec {
 		email.Spec, files.Spec, flights.Spec, food.Spec, hazards.Spec, images.Spec, mail.Spec, markets.Spec,
 		notes.Spec, news.Spec, places.Spec, prayer.Spec, routes.Spec, sms.Spec,
 		social.Spec,
-		stream.Spec, tasks.Spec, text.Spec, transit.Spec, user.Spec, video.Spec,
+		stream.Spec, tasks.Spec, text.Spec, transit.Spec, video.Spec,
 		wallet.Spec, weather.Spec, web.Spec,
 		whatsappsvc.Spec,
 	}
@@ -81,7 +80,7 @@ func registerAll(t *testing.T) {
 
 // The real specs must reproduce the policy the deleted hand-written maps held.
 func TestSpecsReproduceTheOldPolicy(t *testing.T) {
-	for _, s := range []service.Spec{mail.Spec, tasks.Spec, web.Spec, blog.Spec, user.Spec} {
+	for _, s := range []service.Spec{mail.Spec, tasks.Spec, web.Spec, blog.Spec, notes.Spec} {
 		// Idempotent for the same reason registerAll is: another test in this
 		// binary may have registered these already, and registering twice
 		// races for the port.
@@ -92,8 +91,10 @@ func TestSpecsReproduceTheOldPolicy(t *testing.T) {
 			t.Fatalf("register %s: %v", s.Name, err)
 		}
 	}
-	// accountScoped, deleted from internal/service/dynamic.go
-	for _, n := range []string{"mail", "tasks", "user"} {
+	// accountScoped, deleted from internal/service/dynamic.go. "user" was on
+	// this list and is not a service any more — what an account saves, hides
+	// and blocks is furniture, not a capability. See internal/user.
+	for _, n := range []string{"mail", "tasks", "notes"} {
 		if !service.AccountScoped(n) {
 			t.Errorf("%s lost its account scoping", n)
 		}
@@ -106,7 +107,7 @@ func TestSpecsReproduceTheOldPolicy(t *testing.T) {
 	// index is deliberately not scoped, and this is a change. The old
 	// accountScoped map marked it scoped, which closed it to guests in the
 	// agent — while the micro-agent's own allowlist let guests use it. Two
-	for _, tool := range []string{"mail_inbox", "tasks_list", "user_saved"} {
+	for _, tool := range []string{"mail_inbox", "tasks_list", "notes_list"} {
 		if service.GuestAllowedTool(tool) {
 			t.Errorf("%s must stay closed to guests", tool)
 		}

@@ -93,13 +93,6 @@ transit_arrivals             needsAccount=false destructive=false open accountOn
 transit_feeds                needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 transit_nearby               needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 transit_status               needsAccount=false destructive=false open accountOnly=false optionalAuth=false
-user_block                   needsAccount=true  destructive=true  bound accountOnly=false optionalAuth=false
-user_flag                    needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
-user_hide                    needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
-user_save                    needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
-user_saved                   needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
-user_unblock                 needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
-user_unsave                  needsAccount=true  destructive=true  bound accountOnly=false optionalAuth=false
 video_list                   needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 video_search                 needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 wallet_address               needsAccount=true  destructive=false bound accountOnly=true  optionalAuth=false

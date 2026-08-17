@@ -26,9 +26,9 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/imageproxy"
-	"mu/internal/profile"
 	"mu/internal/settings"
 	"mu/internal/setup"
+	"mu/internal/user"
 	"mu/service/apps"
 	"mu/service/blog"
 	"mu/service/chat"
@@ -53,7 +53,6 @@ import (
 	"mu/service/tasks"
 	"mu/service/text"
 	"mu/service/transit"
-	"mu/service/user"
 	"mu/service/video"
 	"mu/service/wallet"
 	"mu/service/weather"
@@ -597,7 +596,7 @@ func registerRoutes() {
 	http.HandleFunc("/.well-known/webfinger", blog.WebFingerHandler)
 
 	// presence WebSocket endpoint
-	http.HandleFunc("/presence", profile.PresenceHandler)
+	http.HandleFunc("/presence", user.PresenceHandler)
 
 	// presence ping endpoint
 	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {

@@ -68,18 +68,12 @@ var legacy = map[string]string{
 	"reminder": "prayer_reflection",
 	// sms_inbox returned both directions, which is not what an inbox is.
 	"sms_inbox": "sms_history",
-	// The content verbs became a service — user.Save, user.Hide and the rest —
-	// and the names clients were already calling by have to survive that.
-	"content_save":   "user_save",
-	"save":           "user_save",
-	"content_unsave": "user_unsave",
-	"unsave":         "user_unsave",
-	"content_hide":   "user_hide",
-	"dismiss":        "user_hide",
-	"content_flag":   "user_flag",
-	"flag":           "user_flag",
-	"block_user":     "user_block",
-	"unblock_user":   "user_unblock",
+	// The content verbs — save, hide, flag, block — were tools pointed at page
+	// handlers, then briefly a service, and are now neither: what an account
+	// keeps and mutes is furniture rather than a capability, so it lives at
+	// /user with no tools over it. See internal/user. There is nothing to
+	// redirect them to, which is why they are not in this map: an alias to a
+	// tool that no longer exists is worse than a name that plainly does not.
 }
 
 func TestEveryRetiredNameStillResolves(t *testing.T) {

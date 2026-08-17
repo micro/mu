@@ -1,16 +1,18 @@
 package test
 
-// /@username is the profile, not the user service.
+// /@username is the profile, not the page about what you keep.
 //
-// internal/user held the public profile page and service/user holds what an
-// account saves, hides and blocks. Two packages called user, and the file that
-// dispatches /@username imported one of them under that name. Renaming
-// internal/user to internal/profile did not break the build, because the other
-// user was already imported in the same file — so /@somebody quietly started
-// rendering somebody else's saved-items page.
+// There were two packages called user — one holding the public profile page,
+// one holding what an account saves, hides and blocks — and the file that
+// dispatches /@username imported one of them under that name. Renaming did not
+// break the build, because the other user was already imported in the same
+// file, so /@somebody quietly started rendering somebody else's saved-items
+// page. Nothing caught it: both packages exported Handler with the same
+// signature.
 //
-// Nothing caught it. The compiler could not: both packages export Handler with
-// the same signature.
+// They are one package now, which removes the import ambiguity and leaves the
+// hazard: two handlers, one public and one private, a few lines apart. The
+// public one is named for its page for that reason, and this holds the wiring.
 
 import (
 	"os"
@@ -31,12 +33,12 @@ func TestTheProfileRouteServesTheProfile(t *testing.T) {
 	}
 	branch := body[i:min(i+2500, len(body))]
 
-	if !strings.Contains(branch, "profile.Handler(w, r)") {
-		t.Error("/@username is not served by internal/profile")
+	if !strings.Contains(branch, "user.ProfileHandler(w, r)") {
+		t.Error("/@username is not served by the profile handler")
 	}
 	if strings.Contains(branch, "user.Handler(w, r)") {
-		t.Error("/@username is served by the user service, which renders what " +
-			"the caller has saved, hidden and blocked — not a public profile")
+		t.Error("/@username is served by the page that renders what the caller has " +
+			"saved, hidden and blocked — that is theirs alone, not a public profile")
 	}
 }
 

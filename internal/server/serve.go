@@ -25,10 +25,10 @@ import (
 	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
-	"mu/internal/profile"
 	"mu/internal/quota"
 	"mu/internal/setup"
 	"mu/internal/usage"
+	"mu/internal/user"
 	"mu/internal/x402"
 	"mu/service/blog"
 	"mu/service/mail"
@@ -267,7 +267,7 @@ func serve(addr string) {
 						}
 						app.Log("wallet", "Charged %s %d credit(s) for POST /@%s status", sess.Account, quota.OperationCost(op), rest)
 					}
-					profile.Handler(w, r)
+					user.ProfileHandler(w, r)
 					return
 				}
 			}

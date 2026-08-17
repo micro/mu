@@ -8,10 +8,13 @@ package user
 // hiding was write-only, so dismissing something removed it from view with no
 // way to find out what you had dismissed or to undo it.
 //
-// This is the service's own page, at /user, the same as every other service
-// with something to show. Three lists and an undo beside each row, because the
-// undo is the point: a control you cannot reverse is one people learn not to
-// touch.
+// Three lists at /user and an undo beside each row, because the undo is the
+// point: a control you cannot reverse is one people learn not to touch.
+//
+// It was a service's page, and the service is gone — see the package comment.
+// The page and the routes under it are unchanged, which is most of what there
+// was: the Spec's seven methods were a thin wrapper over exactly these calls
+// into internal/app.
 
 import (
 	"fmt"
@@ -176,3 +179,10 @@ func UndoHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	app.RespondJSON(w, map[string]any{"status": "ok"})
 }
+
+// Delete removes everything this account chose to save, hide or block.
+//
+// Called by the account-deletion hook. The store it clears is internal/app's,
+// and the hook pointed straight at that once — which is a second place to
+// remember what a user's data is, so it comes through here.
+func Delete(owner string) { app.ClearUserPrefs(owner) }

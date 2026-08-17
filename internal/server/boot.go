@@ -13,6 +13,7 @@ import (
 	"mu/internal/service"
 	"mu/internal/settings"
 	"mu/internal/usage"
+	"mu/internal/user"
 	"mu/service/apps"
 	"mu/service/blog"
 	"mu/service/chat"
@@ -38,7 +39,6 @@ import (
 	"mu/service/tasks"
 	"mu/service/text"
 	"mu/service/transit"
-	user "mu/service/user"
 	"mu/service/video"
 	"mu/service/wallet"
 	"mu/service/weather"
@@ -109,6 +109,9 @@ func boot() {
 	flights.Load()
 	routes.Load()
 	contacts.Load()
+	// Who is here: the presence broadcaster behind /presence. It was started
+	// from wireHooks, which is for breaking cycles rather than standing things
+	// up, and it never needed one.
 	user.Load()
 
 	// These three loaded from wireHooks, which is for breaking cycles rather

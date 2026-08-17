@@ -17,13 +17,13 @@ mu/
 ├── service/                # one directory per service, named for it
 │     apps  blog  chat  contacts  docs  email  events  files  flights  food
 │     hazards  images  mail  markets  news  notes  places  prayer  routes
-│     sms  social  stream  tasks  text  transit  user  video  wallet
-│     weather  web  whatsapp
+│     sms  social  stream  tasks  text  transit  video  wallet  weather
+│     web  whatsapp
 ├── internal/               # runtime and infrastructure, not features
 │     ai  api  app  auth  backup  blob  cli  contacts  data  env  event  flag
-│     geo  google  gtfs  imageproxy  linkmeta  notes  origin  phone  profile
-│     quota  safefetch  safety  server  service  settings  setup  snapshot
-│     thread  twilio  usage  userdb  version  x402
+│     geo  google  gtfs  imageproxy  linkmeta  notes  origin  phone  quota
+│     safefetch  safety  server  service  settings  setup  snapshot  thread
+│     twilio  usage  user  userdb  version  x402
 ├── agent/                  # the agent pipeline and micro-agents
 │   ├── a2a/                #   the A2A door onto them
 │   ├── blog/               #   writes the daily opinion
@@ -93,7 +93,6 @@ guessable.
 | `blog` | /blog | ✅ |  | Microblogging, daily digests, ActivityPub |
 | `chat` | /chat | ✅ |  | Live discussion rooms attached to an item |
 | `contacts` | /contacts | ✅ | ✅ | The caller's address book: turn a name into an address |
-| `user` | /user | ✅ | ✅ | What an account does about other people's content: save, hide, flag, block. One page listing what you have saved, hidden and blocked, each with an undo |
 | `docs` | /docs | ✅ | ✅ | The caller's own documents: named collections that outlive a conversation. Apps keep a separate store each through `mu.db` |
 | `events` | /events | ✅ | ✅ | Calendar: scheduling, `.ics` invites, and when you are free — optionally counting an attached Google Calendar |
 | `files` | /files | ✅ | ✅ | Per-user file storage: keep a file, get a URL |

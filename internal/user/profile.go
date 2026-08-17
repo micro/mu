@@ -1,13 +1,32 @@
-// Package profile is the public face of an account: the page at /@username,
-// and who is online.
+// Package user is a person on this instance: the face they show other people,
+// whether they are here, and what they have decided about everybody else.
 //
-// It was internal/user, which collided by name with service/user and described
-// neither of them. This is not the account — that is internal/auth, which holds
-// identity and credentials — and it is not a service: the Profile type carries
-// a user id and a timestamp, and the page it renders is assembled from
-// auth.Account plus posts and apps fetched through hooks. A Spec over it would
-// be a Spec over a view.
-package profile
+// This is not the account. internal/auth holds identity and credentials — who
+// you are and how you prove it. This is what that identity looks like from
+// outside (the page at /@username, presence) and the view it has of everyone
+// else (what it saved, hid and blocked). Neither is a question about the world;
+// both are furniture belonging to one account.
+//
+// # Why it is not a service
+//
+// It was two packages, and one of them was a service. internal/profile rendered
+// the public page; service/user carried a Spec with seven methods over saving,
+// hiding, flagging and blocking — which read as a service because it has a noun
+// and some verbs, but the noun is the caller and the verbs change nothing
+// anybody else can observe.
+//
+// That is the same shelf as changing your email or rotating a token: account
+// furniture, which CLAUDE.md already settles for the balance. A service answers
+// a question about state that does not depend on who is asking; "what have I
+// saved" is a question about the asker. The split also cost the obvious thing —
+// two packages named for one person, and the page about you at /@you had no
+// relationship in code with the page about what you kept at /user.
+//
+// The word user is still free for a service, and should be spent on the one
+// that is missing: a directory. Who exists here, people and agents alike, and
+// how to reach them. That is a question about the world, the answer does not
+// depend on who asks, and nothing in this package is it.
+package user
 
 import (
 	"encoding/json"
@@ -226,7 +245,12 @@ func AIResponseAllowed(askerID, response string) bool {
 	return true
 }
 
-func Handler(w http.ResponseWriter, r *http.Request) {
+// ProfileHandler serves /@username: what an account looks like to other people.
+//
+// Named for its page rather than left as the package's plain Handler, because
+// this package now has two: the face you show other people, and the page about
+// what you have decided to keep and hide, which is yours alone.
+func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 	// Extract username from URL path (remove /@ prefix)
 	username := strings.TrimPrefix(r.URL.Path, "/@")
 	username = strings.TrimSuffix(username, "/")
