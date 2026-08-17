@@ -15,65 +15,36 @@ One surface does not yet derive: the MCP tool list. See
 mu/
 ├── main.go                 # wiring: Load(), routes, middleware
 ├── service/                # one directory per service, named for it
-│   ├── apps/
-│   ├── blog/
-│   ├── chat/
-│   ├── contacts/
-│   ├── docs/
-│   ├── events/
-│   ├── files/
-│   ├── flights/
-│   ├── images/
-│   ├── mail/
-│   ├── markets/
-│   ├── news/
-│   ├── notes/
-│   ├── places/
-│   ├── prayer/
-│   ├── sms/
-│   ├── social/
-│   ├── stream/
-│   ├── tasks/
-│   ├── user/
-│   ├── video/
-│   ├── weather/
-│   ├── web/
-│   └── whatsapp/
+│     apps  blog  chat  contacts  docs  email  events  files  flights  food
+│     hazards  images  mail  markets  news  notes  places  prayer  routes
+│     sms  social  stream  tasks  text  transit  user  video  wallet
+│     weather  web  whatsapp
 ├── internal/               # runtime and infrastructure, not features
-│   ├── ai/
-│   ├── api/
-│   ├── app/
-│   ├── auth/
-│   ├── blob/
-│   ├── cli/
-│   ├── data/
-│   ├── env/
-│   ├── event/
-│   ├── flag/
-│   ├── imageproxy/
-│   ├── notes/
-│   ├── origin/
-│   ├── safefetch/
-│   ├── service/
-│   ├── settings/
-│   ├── setup/
-│   ├── snapshot/
-│   ├── usage/
-│   ├── user/
-│   ├── userdb/
-│   └── version/
+│     ai  api  app  auth  backup  blob  cli  contacts  data  env  event  flag
+│     geo  google  gtfs  imageproxy  linkmeta  notes  origin  phone  profile
+│     quota  safefetch  safety  server  service  settings  setup  snapshot
+│     thread  twilio  usage  userdb  version  x402
 ├── agent/                  # the agent pipeline and micro-agents
 │   ├── a2a/                #   the A2A door onto them
 │   ├── blog/               #   writes the daily opinion
 │   ├── digest/             #   writes the daily digest
+│   ├── local/              #   models running on this machine
 │   ├── micro/              #   registry, router, executor, orchestrator
 │   └── social/             #   surfaces breaking stories
-├── client/                 # discord, telegram, whatsapp
+├── client/                 # discord, mail, telegram, whatsapp
+├── account/                # sign-in, tokens, the credit ledger
 ├── home/                   # landing, home screen, pricing
+├── tool/                   # service.Spec → api.Tool
 ├── admin/                  # moderation and admin panel
 ├── scripts/                # deploy, DKIM keys, git hooks, tor
 └── docs/                   # this folder, served at /help
 ```
+
+`internal/thread` is the system of record — what was said, on which
+conversation, from which client — and it is written on every turn whether or
+not anybody asks. That is why it is substrate rather than a service: a service
+is something a caller may choose to use, and an agent that forgot to call this
+one would simply stop remembering. The read side is a page, `/agent/threads`.
 
 There is no exception to "one directory per service". There was one —
 `service/search` held the `/search` page and its providers while the capability

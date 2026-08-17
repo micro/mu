@@ -357,6 +357,9 @@ func agentTabs(active, agentID string) string {
 	if agentID != "" {
 		out += tab("Connect", "/agent/connect"+q, "connect")
 	}
+	// Threads carries no agent: it is the record of what was said on every
+	// client, and a conversation by mail or on Discord is not one agent's.
+	out += tab("Threads", "/agent/threads", "threads")
 	return out + tab("Runs", "/agent/runs"+runsQ, "runs") + `</div>` + agentTabsCSS
 }
 

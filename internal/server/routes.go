@@ -107,6 +107,7 @@ func authRequired() map[string]bool {
 		"/whatsapp":          false,
 		"/runs":              true,  // What your agents did (redirects to /agent/runs)
 		"/agent/runs":        true,  // What your agents did
+		"/agent/threads":     true,  // What was said, on every client
 		"/agent/connect":     true,  // How to reach one agent
 		"/tasks":             true,  // Your task list — sign-in required
 		"/social":            false, // Public viewing, auth for search
@@ -647,6 +648,9 @@ func registerRoutes() {
 	// Runs belong to the agent, so they live under it and the agent surface
 	// tabs between them. /runs still works — links to it exist.
 	http.HandleFunc("/agent/runs", agent.RunsHandler)
+	// What was said, on every client — the read side of the record every client
+	// writes. Runs is how an answer was produced; this is the conversation.
+	http.HandleFunc("/agent/threads", agent.ThreadsHandler)
 	http.HandleFunc("/agent/connect", agent.ConnectHandler)
 	http.HandleFunc("/runs", func(w http.ResponseWriter, r *http.Request) {
 		to := "/agent/runs"
