@@ -373,6 +373,22 @@ const agentsCSS = `<style>
 .agent-pub{display:flex;align-items:center;gap:6px;font-size:12px;color:#666;cursor:pointer}
 .agent-pub input{width:auto;flex:none;margin:0}
 .agent-secret{background:#f5f5f5;padding:10px 12px;font-size:12px;overflow-x:auto;border-radius:6px;margin:0;word-break:break-all}
+/* On a phone a row is a card, not a line.
+   It was a flex row with the name and its scope squeezed into whatever the
+   Remove button and the endpoint left over, so an agent's own address wrapped
+   to three lines and its name to two. Stacked, the controls go to the bottom
+   where they are reachable with a thumb, and the endpoint scrolls inside its own
+   line rather than pushing the page sideways. */
+@media(max-width:600px){
+  .agent-row{flex-direction:column;align-items:stretch;gap:8px;padding:12px 14px}
+  .agent-row>form,.agent-row>div:last-child{align-self:flex-start}
+  .agent-name{font-size:15px}
+  .agent-kind{margin-left:6px}
+  .agent-meta{white-space:normal;overflow-wrap:anywhere}
+  .agent-links{gap:14px;margin-top:8px}
+  .agent-links a{font-size:13px;padding:2px 0}
+  .agent-act,.agent-remove{font-size:14px;padding:4px 0}
+}
 .agent-input{display:block;width:100%;padding:9px 11px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;font-family:inherit;margin:0 0 10px}
 .agent-scope-pick{border-top:1px solid #eee;padding-top:12px;margin:0 0 14px}
 </style>` + chipCSS

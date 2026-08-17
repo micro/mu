@@ -54,11 +54,16 @@ func ConnectHandler(w http.ResponseWriter, r *http.Request) {
 	if id != "" {
 		back += "?id=" + url.QueryEscape(id)
 	}
-	page := `<div class="chat-layout"><div class="chat-side">` + renderAgentsPanel() +
-		`</div><div class="chat-main"><p class="conn-back">` +
-		app.Link("← Back to the conversation", back) + `</p>` +
+	// The same picker the conversation has, and on a phone the same sheet: the
+	// column is fixed off-screen there, so without the button it would be a
+	// panel nothing could open.
+	page := `<div class="chat-layout"><div class="chat-side">` +
+		`<div class="chat-pane" id="pane-agents">` + renderAgentsPanel() + `</div></div>` +
+		`<div class="chat-main"><p class="conn-back">` +
+		app.Link("← Back to the conversation", back) +
+		`<button type="button" class="chat-open-list" onclick="muPane('agents')">Agents</button></p>` +
 		`<div style="max-width:820px">` + body + `</div></div></div>` +
-		chatLayoutCSS + connectCSS +
+		chatLayoutCSS + connectCSS + paneJS +
 		`<script>window.muSeedAgent(` + app.JSString(id) + `);</script>`
 	w.Write([]byte(app.RenderHTMLForRequest(title, desc, page, r)))
 }
@@ -249,5 +254,14 @@ code.conn-v{background:var(--hover-background,#f5f5f5);border-radius:4px;padding
 .conn-pre{background:var(--hover-background,#f5f5f5);border-radius:8px;padding:12px 14px;
   font-size:12px;overflow-x:auto;margin:0}
 .conn-note{font-size:13px;color:var(--text-muted,#666);margin:10px 0 0}
-.conn-back{font-size:13px;margin:0 0 14px}
+.conn-back{display:flex;align-items:center;gap:12px;font-size:13px;margin:0 0 14px}
+/* The rows are label-and-value pairs; below 600px the label column eats most of
+   a phone's width and the value — an endpoint, an address, the thing you came to
+   copy — wraps to a column two words wide. */
+@media(max-width:600px){
+  .conn-row{display:block;padding:10px 0}
+  .conn-k{display:block;flex:none;margin-bottom:3px}
+  .conn-v,.conn-scope{display:block;flex:none}
+  .conn-pre{font-size:11px}
+}
 </style>`

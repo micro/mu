@@ -524,10 +524,16 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// The two panels beside the conversation. On a phone they are folded away
+	// behind the bar below and the chat is the first thing on the page — see
+	// chatLayoutCSS. Each is its own pane so one can be open without the other:
+	// picking an agent and picking a conversation are separate errands.
 	rail := ""
 	if !guest {
-		rail = `<div class="chat-side">` + renderAgentsPanel() +
-			renderSessionsRail(accountID, activeRoot, selAgent) + `</div>`
+		rail = `<div class="chat-side">` +
+			`<div class="chat-pane" id="pane-agents">` + renderAgentsPanel() + `</div>` +
+			`<div class="chat-pane" id="pane-chats">` +
+			renderSessionsRail(accountID, activeRoot, selAgent) + `</div></div>`
 	}
 
 	chip := ""
@@ -546,9 +552,20 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 			connect = `<a class="agent-connect" href="/agent/connect?id=` +
 				url.QueryEscape(selAgent) + `">How to reach this one &rarr;</a>`
 		}
+		// On a phone this bar is the whole of the navigation: the chip opens the
+		// agent picker and the button beside it opens your conversations. Both
+		// were columns above the chat before, so the first thing on the page was
+		// a list of agents, then a list of conversations, and the box you came to
+		// type in was somewhere below the fold.
+		//
+		// The same markup on a desktop, where the panels are always open and
+		// these two do nothing — so they are hidden there rather than made a
+		// second way to do what the sidebar already does.
 		chip = `<div class="agent-bar">` +
-			`<div id="active-agent-chip" class="agent-chip">Agent: Micro</div>` +
-			connect + `</div>`
+			`<button type="button" id="active-agent-chip" class="agent-chip" ` +
+			`onclick="muPane('agents')">Agent: Micro</button>` +
+			`<button type="button" class="chat-open-list" onclick="muPane('chats')">Chats</button>` +
+			connect + `</div>` + paneJS
 	}
 
 	// A signed-out visitor arrives here from the landing's "See it working",
@@ -762,6 +779,35 @@ window.muSessionStarted=function(id,title){
 };
 </script>`
 
+// paneJS opens one of the side panels as a sheet on a phone.
+//
+// Nothing here runs on a desktop: the buttons that call it are hidden and the
+// panels are always visible, so the class it toggles matches nothing.
+const paneJS = `<script>
+function muPane(which){
+  var el=document.getElementById('pane-'+which),side=document.querySelector('.chat-side');
+  if(!el||!side)return;
+  var wasOpen=el.classList.contains('open');
+  document.querySelectorAll('.chat-pane.open').forEach(function(p){p.classList.remove('open')});
+  if(!wasOpen)el.classList.add('open');
+  var any=!!document.querySelector('.chat-pane.open');
+  side.classList.toggle('up',any);
+  var scrim=document.querySelector('.chat-scrim');
+  if(!scrim){
+    scrim=document.createElement('div');scrim.className='chat-scrim';
+    scrim.onclick=function(){muPaneClose()};
+    document.body.appendChild(scrim);
+  }
+  scrim.classList.toggle('up',any);
+}
+function muPaneClose(){
+  document.querySelectorAll('.chat-pane.open').forEach(function(p){p.classList.remove('open')});
+  var side=document.querySelector('.chat-side');if(side)side.classList.remove('up');
+  var scrim=document.querySelector('.chat-scrim');if(scrim)scrim.classList.remove('up');
+}
+document.addEventListener('keydown',function(e){if(e.key==='Escape')muPaneClose()});
+</script>`
+
 const chatLayoutCSS = `<style>
 .chat-layout{display:flex;gap:24px;align-items:flex-start}
 .chat-side{width:250px;flex-shrink:0;display:flex;flex-direction:column}
@@ -791,11 +837,54 @@ const chatLayoutCSS = `<style>
 .chat-sess-row:hover .chat-sess-del{opacity:1}
 .chat-sess-del:hover{color:#b00}
 .chat-sess-empty{color:#999;font-size:13px;padding:8px 10px}
-/* Stacking the layout turns align-items:flex-start into *horizontal*
-   alignment, so children size to their content rather than the screen — a wide
-   answer then pushed the column (and the input with it) past the viewport.
-   Stretch them back to full width. */
-@media(max-width:760px){.chat-layout{flex-direction:column;gap:12px;align-items:stretch}.chat-side,.chat-rail,.chat-main{width:100%;min-width:0;max-width:100%}.chat-sess-list{flex-direction:row;overflow-x:auto;flex-wrap:nowrap}.chat-sess-row{flex-shrink:0;max-width:180px}.chat-sess-del{opacity:1}}
+/* The two buttons in the bar are for phones. On a desktop the panels are always
+   there, so a control that opens them is a second way to do nothing. */
+.chat-open-list{display:none}
+button.agent-chip{border:0;font-family:inherit;cursor:default}
+
+/* On a phone the conversation is the page.
+   It was a stacked column: the agent picker first, then every conversation as a
+   row of horizontally-scrolling chips, and only then the box you came to type
+   in — so the first screen of the agent page was two lists and no agent. Now the
+   panels are a sheet that slides up from the bottom when you ask for one, and
+   the chat starts at the top.
+   Stacking also turns align-items:flex-start into *horizontal* alignment, so
+   children size to their content rather than the screen and a wide answer pushes
+   the input off the side. Hence the stretch. */
+@media(max-width:760px){
+  .chat-layout{flex-direction:column;gap:12px;align-items:stretch}
+  .chat-main{width:100%;min-width:0;max-width:100%}
+  .chat-open-list{display:inline-block;border:1px solid var(--border-color,#e5e5e5);
+    background:var(--card-background,#fff);color:var(--text-primary,#111);
+    border-radius:999px;padding:3px 12px;font-size:12px;font-weight:600;
+    font-family:inherit;cursor:pointer}
+  button.agent-chip{cursor:pointer}
+  button.agent-chip::after{content:" ▾";color:#999}
+  .chat-open-list::after{content:" ▾";color:#999}
+  /* The sheet. Off-screen rather than display:none, so opening it animates and
+     so the panels inside keep their state. */
+  .chat-side{position:fixed;left:0;right:0;bottom:0;max-height:72vh;overflow-y:auto;
+    width:auto;padding:12px 14px calc(14px + env(safe-area-inset-bottom));
+    background:var(--card-background,#fff);border-top:1px solid var(--border-color,#e5e5e5);
+    border-radius:14px 14px 0 0;box-shadow:0 -10px 30px rgba(0,0,0,.14);
+    z-index:60;transform:translateY(101%);transition:transform .18s ease;visibility:hidden}
+  .chat-side.up{transform:translateY(0);visibility:visible}
+  .chat-scrim{position:fixed;inset:0;background:rgba(0,0,0,.28);z-index:59;display:none}
+  .chat-scrim.up{display:block}
+  .chat-pane{display:none}
+  .chat-pane.open{display:block}
+  .chat-rail{width:100%}
+  /* A vertical list, which is what a list of conversations is. As a horizontal
+     scroller everything past the third was off the side of the screen with
+     nothing saying so. */
+  .chat-sess-list{flex-direction:column;overflow:visible;flex-wrap:nowrap;max-height:52vh;overflow-y:auto}
+  .chat-sess-row{flex-shrink:0;max-width:none}
+  .chat-sess{font-size:14px;padding:10px}
+  .chat-sess-del{opacity:1;padding:6px 10px;font-size:18px}
+  .agents-list>div{padding:10px 8px;font-size:14px}
+  .agents-actions{opacity:1}
+  .agents-actions a,.agents-actions button{padding:4px 6px;font-size:14px}
+}
 </style>`
 
 // FormatAge returns a human-friendly string for an elapsed duration.
