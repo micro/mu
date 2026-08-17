@@ -9,15 +9,17 @@ package agent
 // nowhere on it. The page even carried a generic "Connect your agent" link
 // that pointed at /tools rather than at this agent.
 //
-// So the agent surface has three tabs and the first one depends on what the
-// agent is: an external agent opens on how to reach it, a hosted one opens on
-// talking to it. Same page, same tabs, different emphasis — which is what the
-// difference between the two kinds actually amounts to.
+// So there is a page saying how to reach one, and clicking an agent that runs
+// elsewhere opens it rather than a chat. It is the one page beside the
+// conversation, reached from the link in the bar above it — not a tab, because
+// a strip of four names for one thing is what the agent surface had and what it
+// was rightly called bizarre for.
 
 import (
 	"fmt"
 	"html"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"mu/internal/app"
@@ -48,7 +50,16 @@ func ConnectHandler(w http.ResponseWriter, r *http.Request) {
 		body = connectPanel(a, app.BaseURL(r), auth.CSRFToken(r))
 	}
 
-	page := agentPage("connect", id, body) + connectCSS
+	back := "/agent"
+	if id != "" {
+		back += "?id=" + url.QueryEscape(id)
+	}
+	page := `<div class="chat-layout"><div class="chat-side">` + renderAgentsPanel() +
+		`</div><div class="chat-main"><p class="conn-back">` +
+		app.Link("← Back to the conversation", back) + `</p>` +
+		`<div style="max-width:820px">` + body + `</div></div></div>` +
+		chatLayoutCSS + connectCSS +
+		`<script>window.muSeedAgent(` + app.JSString(id) + `);</script>`
 	w.Write([]byte(app.RenderHTMLForRequest(title, desc, page, r)))
 }
 
@@ -82,8 +93,8 @@ func defaultPanel(base string) string {
 		b.WriteString(`<div class="conn-row"><span class="conn-k">Write to it</span>` +
 			`<span class="conn-v"><code>` + html.EscapeString(addr) + `</code><br>` +
 			`<span class="conn-sub">From your verified address. It answers in the thread, and ` +
-			`the conversation shows up under ` + app.Link("Threads", "/agent/threads") +
-			` beside the ones you started here.</span></span></div>`)
+			`the conversation shows up in your list beside the ones you started ` +
+			`here.</span></span></div>`)
 	}
 
 	b.WriteString(`<div class="conn-row"><span class="conn-k">Token</span>` +
@@ -238,4 +249,5 @@ code.conn-v{background:var(--hover-background,#f5f5f5);border-radius:4px;padding
 .conn-pre{background:var(--hover-background,#f5f5f5);border-radius:8px;padding:12px 14px;
   font-size:12px;overflow-x:auto;margin:0}
 .conn-note{font-size:13px;color:var(--text-muted,#666);margin:10px 0 0}
+.conn-back{font-size:13px;margin:0 0 14px}
 </style>`

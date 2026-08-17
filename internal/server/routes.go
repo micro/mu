@@ -106,7 +106,7 @@ func authRequired() map[string]bool {
 		"/whatsapp":          false,
 		"/runs":              true,  // What your agents did (redirects to /agent/runs)
 		"/agent/runs":        true,  // What your agents did
-		"/agent/threads":     true,  // What was said, on every client
+		"/agent/session/":    true,  // Deleting one of your conversations
 		"/agent/connect":     true,  // How to reach one agent
 		"/tasks":             true,  // Your task list — sign-in required
 		"/social":            false, // Public viewing, auth for search
@@ -646,17 +646,21 @@ func registerRoutes() {
 	// What your agents did. Flows were recorded and never served.
 	// Runs belong to the agent, so they live under it and the agent surface
 	// tabs between them. /runs still works — links to it exist.
-	http.HandleFunc("/agent/runs", agent.RunsHandler)
-	// What was said, on every client — the read side of the record every client
-	// writes. Runs is how an answer was produced; this is the conversation.
-	http.HandleFunc("/agent/threads", agent.ThreadsHandler)
 	http.HandleFunc("/agent/connect", agent.ConnectHandler)
+	// Deleting a conversation. The list of them is the rail on /agent.
+	http.HandleFunc("/agent/session/", agent.SessionHandler)
+	// Two pages that were tabs and are not any more: one listed the same
+	// conversations the rail lists, the other listed the workflow records behind
+	// them. Both are on /agent now — the conversation, and the tools each answer
+	// came from beside the answer.
+	http.HandleFunc("/agent/threads", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/agent", http.StatusMovedPermanently)
+	})
+	http.HandleFunc("/agent/runs", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/agent", http.StatusMovedPermanently)
+	})
 	http.HandleFunc("/runs", func(w http.ResponseWriter, r *http.Request) {
-		to := "/agent/runs"
-		if q := r.URL.RawQuery; q != "" {
-			to += "?" + q
-		}
-		http.Redirect(w, r, to, http.StatusMovedPermanently)
+		http.Redirect(w, r, "/agent", http.StatusMovedPermanently)
 	})
 	// A service rendered at a glance — see internal/api/card.go.
 	http.HandleFunc("/card", api.CardHandler)

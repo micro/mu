@@ -1,27 +1,29 @@
 package agent
 
-// The rail is the chat's own history, and a conversation can be got rid of.
+// One list of conversations, and it can be got rid of.
 //
-// Every client records a run, so once mail could wake an agent the chat rail
-// started listing emails: rows titled with whatever markup somebody's phone
-// produced, opening a conversation that never happened on this page. And
-// nothing could be deleted — the rail only ever grew.
+// The agent surface had four names for one thing — Chat, Threads, Runs,
+// Connect — two of them listing the same conversations under different
+// headings. There is one list now: the rail, everything on it, with the ones
+// that happened elsewhere marked and read-only. And nothing could be deleted;
+// the list only ever grew.
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
 	"mu/internal/thread"
 )
 
-// A conversation that happened somewhere else is not a chat session.
+// One list of conversations, wherever they happened.
 //
-// Every client writes to the record, so an email answered at 6am was a row in
-// the chat rail: a conversation that did not happen on this page, titled with
-// whatever markup the sender's phone produced, opening something you could not
-// continue here. All of them together is Threads.
-func TestTheRailListsWhatWasSaidHere(t *testing.T) {
+// There were two: the rail listed the ones from this page and a second page
+// listed all of them under another heading, differing by a filter nobody asked
+// for. A conversation from another client opens read-only, which is the honest
+// difference and does not need a page of its own to say.
+func TestTheRailListsEveryConversation(t *testing.T) {
 	acc := fmt.Sprintf("rail-%d", time.Now().UnixNano())
 
 	here := Opened(acc, WebClient, "root", "", "")
@@ -33,17 +35,24 @@ func TestTheRailListsWhatWasSaidHere(t *testing.T) {
 	Answered(acc, byMail, "Not much.", "")
 
 	rail := chatThreads(acc, "")
-	if len(rail) != 1 {
-		t.Fatalf("the rail lists %d conversations, want only the one started here: %+v",
-			len(rail), rail)
-	}
-	if rail[0].ID != here {
-		t.Error("the rail lists a conversation that did not happen on this page")
+	if len(rail) != 2 {
+		t.Fatalf("the rail lists %d conversations, want both: %+v", len(rail), rail)
 	}
 
-	// Threads still shows both: that is the difference between the two pages.
-	if n := len(thread.List(acc, 0)); n != 2 {
-		t.Errorf("the record holds %d conversations, want both", n)
+	// The one that did not happen here is marked as such, because it cannot be
+	// continued from this page — replying happens where it arrived.
+	var mail *thread.Thread
+	for i, tt := range rail {
+		if tt.Client != WebClient {
+			mail = &rail[i]
+		}
+	}
+	if mail == nil {
+		t.Fatal("the mail conversation is not in the list")
+	}
+	if got := elsewhereView(acc, mail); !strings.Contains(got, "Email") ||
+		!strings.Contains(got, "What&#39;s happening") {
+		t.Errorf("a conversation from another client does not read back:\n%s", got)
 	}
 }
 

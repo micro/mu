@@ -87,13 +87,6 @@ func TestTheConnectPageCarriesTheScopeTheEndpointAndTheTokenState(t *testing.T) 
 // shape depending on which agent was selected, and the agent nearly everybody
 // uses was the one with no answer to "how do I reach this".
 func TestTheDefaultAgentSaysHowToReachIt(t *testing.T) {
-	if tabs := agentTabs("chat", ""); !strings.Contains(tabs, `href="/agent/connect"`) {
-		t.Errorf("the default agent has no Connect tab:\n%s", tabs)
-	}
-	if tabs := agentTabs("chat", "some-agent"); !strings.Contains(tabs, "/agent/connect?id=some-agent") {
-		t.Errorf("a named agent has no Connect tab:\n%s", tabs)
-	}
-
 	panel := defaultPanel("https://mu.example")
 	for _, want := range []string{
 		"everything you can reach",              // its scope, which is the widest one

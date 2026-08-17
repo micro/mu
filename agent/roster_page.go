@@ -38,6 +38,13 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 			_ = RemoveAgent(owner, r.FormValue("id"))
 			http.Redirect(w, r, "/agents?removed=1", http.StatusSeeOther)
 			return
+		case "delete-run":
+			// One workflow record, from the summary on the builder — the only
+			// place runs are still listed, now that the page listing all of them
+			// is gone.
+			_ = deleteFlow(owner, r.FormValue("id"))
+			http.Redirect(w, r, "/agents", http.StatusSeeOther)
+			return
 		case "token":
 			secret, err := IssueToken(owner, r.FormValue("id"))
 			if err != nil {
@@ -267,7 +274,7 @@ func agentRow(a *Agent, csrf, base string) string {
 		`<a href="/agent/connect?id=%s">Connect</a>`+
 		`<a href="/agent/new?id=%s">Edit</a>`+
 		`<a href="/agent/new?fork=%s">Fork</a>`+
-		`<a href="/agent/runs?agent=%s">Runs &rarr;</a></div>`,
+		`<a href="/agent?id=%s">Talk to it &rarr;</a></div>`,
 		html.EscapeString(a.ID), html.EscapeString(a.ID),
 		html.EscapeString(a.ID), html.EscapeString(a.ID))
 
@@ -327,10 +334,8 @@ func defaultRow() string {
 		`<div class="agent-meta">Always here, nothing to set up. It answers as your account, so it ` +
 		`has no token of its own.</div>` + addr +
 		`<div class="agent-links">` +
-		`<a href="/agent">Chat</a>` +
-		`<a href="/agent/threads">Threads</a>` +
-		`<a href="/agent/runs">Runs</a>` +
-		`<a href="/agent/connect">Connect &rarr;</a></div>` +
+		`<a href="/agent">Talk to it</a>` +
+		`<a href="/agent/connect">How to reach it &rarr;</a></div>` +
 		`</div></div></div>`
 }
 

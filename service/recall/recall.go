@@ -10,7 +10,7 @@
 //
 // The test for whether this is in the right place is that deleting it breaks
 // nothing. Clients still record, the agent is still handed the last few turns
-// of the conversation it is in, /agent/threads still renders. What goes is the
+// of the conversation it is in, /agent still renders it. What goes is the
 // ability to go looking on purpose — which is exactly what a service should be.
 //
 // # Recall and notes are different kinds of remembering
@@ -239,9 +239,9 @@ func Load() {
 }
 
 // Headless: there is no /recall page, because the page over this record already
-// exists and belongs to the agent — /agent/threads, beside the runs and the
-// chat. A second one listing the same conversations under a different heading
-// would be the catalogue disagreeing with itself about where your history is.
+// exists and is the agent page itself: the rail lists every conversation and
+// clicking one opens it. A second page listing the same conversations under a
+// different heading is exactly what was just taken out.
 //
 // Nothing is charged. Reading your own record touches this instance's storage
 // and no model and no third party, which is the whole of the free/paid rule in

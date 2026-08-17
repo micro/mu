@@ -469,18 +469,29 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	activeRoot := "" // the reopened conversation, for the rail highlight
 	reopened := false
 	reopenAgent := "" // agent the reopened conversation is with
+	// elsewhere is set when the opened conversation happened on another client.
+	// It is read rather than continued: typing into a box here would send
+	// nothing, because the thread it belongs to is an email chain or a WhatsApp
+	// exchange and the way to carry it on is to reply there.
+	elsewhere := ""
 	if sessionID != "" && !guest {
 		// A conversation is a conversation in the record. It used to be a chain
-		// of workflow records linked by ParentID, which is why the chat and
-		// Threads disagreed about what had been said and why an evicted run took
-		// a conversation with it. Old links still work — see openThread.
+		// of workflow records linked by ParentID, which is why the chat and the
+		// conversation list disagreed about what had been said, and why an
+		// evicted run took a conversation with it. Old links still work — see
+		// openThread.
 		if id := openThread(accountID, sessionID); id != "" {
-			cfg.ContextID = id
-			cfg.InitialConvHTML = renderThreadTurns(accountID, id)
+			th := thread.Get(accountID, id)
 			activeRoot = id
 			reopened = true
-			if th := thread.Get(accountID, id); th != nil {
+			if th != nil {
 				reopenAgent = th.Agent
+			}
+			if th != nil && th.Client != WebClient {
+				elsewhere = elsewhereView(accountID, th)
+			} else {
+				cfg.ContextID = id
+				cfg.InitialConvHTML = renderThreadTurns(accountID, id)
 			}
 		}
 	}
@@ -552,14 +563,17 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 			`agent gets over <a href="/mcp">MCP</a>. ` +
 			`<a href="/tools">See what it can reach &rarr;</a></div>`
 	}
-	// Tabs above the conversation for anyone signed in: talking to an agent and
-	// seeing what it has done are the same question asked twice, and runs used
-	// to be a top-level page as if they were a peer of the agent itself.
-	tabs := ""
-	if !guest {
-		tabs = agentTabs("chat", selAgent)
+	// No tabs. There were four — Chat, Threads, Runs, Connect — for one thing:
+	// you, an agent, and what you have said to each other. Two of them listed
+	// the same conversations under different headings, one listed the workflow
+	// records behind them, and the strip changed shape as you moved between
+	// agents. This is the page; Connect is the link in the bar above, which was
+	// already there and says what it does.
+	main := app.ChatComponent(cfg)
+	if elsewhere != "" {
+		main = elsewhere
 	}
-	content := `<div class="chat-layout">` + rail + `<div class="chat-main">` + tabs + chip + app.ChatComponent(cfg) + `</div></div>` + chatLayoutCSS
+	content := `<div class="chat-layout">` + rail + `<div class="chat-main">` + chip + main + `</div></div>` + chatLayoutCSS
 
 	// Seed the active agent so the panel highlights it and follow-ups continue
 	// with it: an explicit ?id= selection (deep link) wins; otherwise a reopened
@@ -638,18 +652,17 @@ func latestThreadFor(accountID, agentID string) string {
 	return ""
 }
 
-// chatThreads is what belongs in the rail: this account's conversations on this
-// page, with one agent when a page is about one.
+// chatThreads is what belongs in the rail: this account's conversations, with
+// one agent's when a page is about one.
 //
-// Web only. Every client writes to the record, so an email answered at 6am
-// would otherwise be a row in the chat rail — a conversation that did not happen
-// here and cannot be continued here. All of them together is Threads.
+// Every one of them, whichever client it happened on. There was a second page
+// listing exactly this under the heading Threads while the rail showed the web
+// ones — two lists of the same thing, differing by a filter nobody asked for.
+// A conversation from another client opens read-only, which is the honest
+// difference and does not need a page of its own to express.
 func chatThreads(accountID, agentID string) []thread.Thread {
 	var out []thread.Thread
 	for _, t := range thread.List(accountID, 0) {
-		if t.Client != WebClient {
-			continue
-		}
 		// One agent's conversations, when a page is about one agent. The rail
 		// listed every conversation regardless, so a brand-new agent opened
 		// showing somebody else's history and looked like it had been used.
@@ -694,10 +707,18 @@ func renderSessionsRail(accountID, currentID, agentID string) string {
 		if len(title) > 60 {
 			title = title[:60] + "…"
 		}
+		// Where it happened, when that is not here. The common case carries no
+		// chip: every row saying "web" is noise, and the point of the mark is
+		// that a conversation you cannot continue from this page should not look
+		// like one you can.
+		where := ""
+		if s.Client != WebClient {
+			where = `<span class="chat-sess-where">` + htmlEsc(clientName(s.Client)) + `</span>`
+		}
 		// Deletable. A conversation you can start and never be rid of is a list
 		// that only grows, and the rail is the one place somebody looks at it.
 		b.WriteString(`<div class="chat-sess-row"><a href="/agent?session=` + url.QueryEscape(s.ID) +
-			`" class="` + cls + `">` + htmlEsc(title) + `</a>` +
+			`" class="` + cls + `">` + htmlEsc(title) + where + `</a>` +
 			`<button class="chat-sess-del" title="Delete conversation" ` +
 			`onclick="muSessionDelete(` + app.JSString(s.ID) + `,event)">×</button></div>`)
 	}
@@ -709,14 +730,12 @@ func renderSessionsRail(accountID, currentID, agentID string) string {
 // path, which is where a conversation is already deleted from — the id is the
 // chain's root and the server walks the rest.
 const sessionDeleteJS = `<script>
-// The conversation, on the page that owns conversations. It used to DELETE a
-// workflow record, because the rail was built out of those.
+// The conversation. It used to DELETE a workflow record, because the rail was
+// built out of those.
 function muSessionDelete(id,ev){
   ev.preventDefault();ev.stopPropagation();
   if(!confirm('Delete this conversation? What was said in it is gone.'))return;
-  var b=new URLSearchParams();b.append('action','delete');b.append('id',id);b.append('_csrf',muAgentCsrf());
-  fetch('/agent/threads',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded',
-    'X-CSRF-Token':muAgentCsrf()},body:b.toString()})
+  fetch('/agent/session/'+encodeURIComponent(id),{method:'DELETE',headers:{'X-CSRF-Token':muAgentCsrf()}})
     .then(function(){window.location='/agent';});
 }
 // A conversation that has just started, listed while you are still in it.
@@ -767,6 +786,7 @@ const chatLayoutCSS = `<style>
 .chat-sess{display:block;flex:1;min-width:0;padding:8px 10px;border-radius:6px;color:#444;text-decoration:none;font-size:13px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .chat-sess:hover{background:#f5f5f5}
 .chat-sess.active{background:#eef0ff;color:#111;font-weight:600}
+.chat-sess-where{margin-left:6px;font-size:10px;color:#aaa;border:1px solid #eee;border-radius:999px;padding:1px 6px;vertical-align:middle}
 .chat-sess-del{border:0;background:none;color:#ccc;font-size:15px;line-height:1;cursor:pointer;padding:2px 6px;opacity:0}
 .chat-sess-row:hover .chat-sess-del{opacity:1}
 .chat-sess-del:hover{color:#b00}
@@ -884,8 +904,8 @@ func handleDeleteFlow(w http.ResponseWriter, r *http.Request, id string) {
 		http.Error(w, `{"error":"authentication required"}`, http.StatusUnauthorized)
 		return
 	}
-	// One run. Deleting a conversation is /agent/threads: the two records have
-	// different lifetimes and the pages that own them delete their own.
+	// One run. Deleting a conversation is /agent/session/<id>: the two records
+	// have different lifetimes and are deleted separately.
 	if err := deleteFlow(acc.ID, id); err != nil {
 		http.Error(w, `{"error":"failed to delete run"}`, http.StatusInternalServerError)
 		return

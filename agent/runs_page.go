@@ -1,108 +1,28 @@
 package agent
 
-// What your agents actually did, and whether it worked.
+// What an agent has done, where it is worth showing.
 //
-// Every question already produced a Flow: the prompt, the agent it was asked
-// as, each tool it ran, the answer, and the error if there was one. Persisted
-// per account, evicted by age. ListFlows existed. Nothing served it — flows
-// were read only to restore a chat, so the record of every run an agent ever
-// made was written and never shown.
+// This was a page: /agent/runs, a tab beside the chat, listing every workflow
+// record — prompt, agent, tools, whether it finished. It was built because
+// nothing showed that a run had happened, and it answered that by adding a
+// fourth name to a surface that already had three. Chat, Threads, Runs,
+// Connect, for what is one thing: you, an agent, and what you said to each
+// other.
 //
-// That is the difference between a thing you delegate to and a thing you watch
-// do the work. A question you asked and watched answer needs no receipt; a task
-// that ran at 6am, or an agent somebody else is driving over MCP, is invisible
-// without one. docs/PRODUCT.md called this the missing piece and it was right:
-// the product never told you when something worked.
-//
-// The list is deliberately thin — when, what was asked, who answered, what it
-// ran, and whether it finished. A run opens as what it is: a turn in a
-// conversation, in the chat, with that agent selected and its other
-// conversations beside it.
-//
-// It links at /agent?session= directly. /agent/flow/<id> still exists and
-// redirects there — flows became conversations — so linking at the old path
-// meant every click took two requests to land somewhere the first one already
-// knew about.
+// The information was worth keeping and the page was not. What tools an answer
+// came from, and the error when it failed, now sit next to the answer in the
+// conversation — see runTools in conversation.go — which is where somebody
+// looking at an odd answer actually is. What remains here is the row, which the
+// agent builder still uses to show what one agent has been doing.
 
 import (
 	"encoding/json"
 	"fmt"
 	"html"
-	"net/http"
-	"net/url"
 	"strings"
 
 	"mu/internal/app"
-	"mu/internal/auth"
 )
-
-// RunsHandler serves /agent/runs.
-func RunsHandler(w http.ResponseWriter, r *http.Request) {
-	sess, _, err := auth.RequireSession(r)
-	if err != nil {
-		app.RedirectToLogin(w, r)
-		return
-	}
-	owner := sess.Account
-
-	if r.Method == http.MethodPost && r.FormValue("action") == "delete" {
-		_ = deleteFlow(owner, r.FormValue("id"))
-		http.Redirect(w, r, "/agent/runs", http.StatusSeeOther)
-		return
-	}
-
-	runs := ListFlows(owner)
-
-	// One agent's runs. The builder links here so "what has this agent done"
-	// has an answer past the three it shows inline, and an agent you drive over
-	// MCP is the case with no other way to see it at all.
-	only := strings.TrimSpace(r.URL.Query().Get("agent"))
-	onlyName := ""
-	if only != "" {
-		var mine []*Flow
-		for _, f := range runs {
-			if f.Agent == only {
-				mine = append(mine, f)
-			}
-		}
-		runs = mine
-		onlyName = only
-		if a := For(owner, only); a != nil {
-			onlyName = a.Name
-		}
-	}
-
-	if app.WantsJSON(r) {
-		app.RespondJSON(w, map[string]any{"runs": runs})
-		return
-	}
-
-	var b strings.Builder
-	b.WriteString(`<p class="lens-lead">A trace of every question your agents have answered: what was ` +
-		`asked, which agent took it, which tools it called, and whether it finished. Runs started by ` +
-		`a task, a schedule, or an agent calling in over MCP land here too — those are the ones ` +
-		`nobody watched. Open one to see the answer and its sources. ` +
-		`What it all cost is on ` + app.Link("Usage", "/usage") + `</p>`)
-
-	if onlyName != "" {
-		b.WriteString(`<p class="lens-lead" style="margin-top:-8px">Showing only <strong>` +
-			html.EscapeString(onlyName) + `</strong>. ` + app.Link("Every agent", "/agent/runs") + `</p>`)
-	}
-
-	if len(runs) == 0 {
-		b.WriteString(`<p style="color:#888;font-size:14px">Nothing yet. Ask an agent something and ` +
-			`it will appear here.</p>`)
-	} else {
-		b.WriteString(`<div class="runs">`)
-		for _, f := range runs {
-			b.WriteString(runRow(f, auth.CSRFToken(r)))
-		}
-		b.WriteString(`</div>`)
-	}
-
-	body := agentPage("runs", only, b.String()) + runsCSS
-	w.Write([]byte(app.RenderHTMLForRequest("Runs", "What your agents did, and whether it worked", body, r)))
-}
 
 // runRow is one run. csrf empty means no delete control, for anywhere this is
 // rendered as a summary rather than as the page you came to manage runs on.
@@ -158,8 +78,8 @@ func runRow(f *Flow, csrf string) string {
 
 	del := ""
 	if csrf != "" {
-		del = fmt.Sprintf(`<form method="POST" action="/agent/runs" style="margin:0" onsubmit="return confirm('Delete this run?')">
-    <input type="hidden" name="_csrf" value="%s"><input type="hidden" name="action" value="delete">
+		del = fmt.Sprintf(`<form method="POST" action="/agents" style="margin:0" onsubmit="return confirm('Delete this run?')">
+    <input type="hidden" name="_csrf" value="%s"><input type="hidden" name="action" value="delete-run">
     <input type="hidden" name="id" value="%s">
     <button type="submit" class="run-del">Delete</button></form>`,
 			html.EscapeString(csrf), html.EscapeString(f.ID))
@@ -317,71 +237,7 @@ func agentRunsSummary(accountID, agentID string) string {
 	}
 	b.WriteString(`</div>`)
 	if len(mine) > len(shown) {
-		b.WriteString(`<p class="b-state">` +
-			app.Link(fmt.Sprintf("All %d runs by this agent", len(mine)),
-				"/agent/runs?agent="+url.QueryEscape(agentID)) + `</p>`)
+		b.WriteString(fmt.Sprintf(`<p class="b-state">and %d more</p>`, len(mine)-len(shown)))
 	}
 	return b.String() + runsCSS
 }
-
-// agentTabs is the strip that switches between talking to an agent and seeing
-// what it has done.
-//
-// Runs used to be /runs, a top-level page beside Home and Tools, which put the
-// record of what your agents did at the same level as the things themselves. It
-// is not a peer of the agent; it is the other half of one. So it lives under
-// /agent and the four tab between each other.
-//
-// Every tab carries the selected agent, and this is the whole of it: a strip
-// where one tab drops the selection is a strip that loses your place. Threads
-// carried no agent and Connect appeared only for an agent that had one, so
-// clicking Threads and then Chat put you back with the default agent, and the
-// tabs changed shape as you moved between agents. Both read as the surface
-// having forgotten what you were doing, because it had.
-// agentPage is one tab of the agent surface: the same picker on the left that
-// the chat has, the tab strip, and this tab's content.
-//
-// The picker was on Chat alone, so moving to Connect or Runs dropped the list of
-// agents out of the page — and with it any way to switch between them without
-// going back. Four tabs of one surface should not disagree about whether the
-// surface has a sidebar.
-func agentPage(active, agentID, body string) string {
-	return `<div class="chat-layout"><div class="chat-side">` + renderAgentsPanel() +
-		`</div><div class="chat-main">` + agentTabs(active, agentID) +
-		`<div style="max-width:820px">` + body + `</div></div></div>` + chatLayoutCSS +
-		`<script>window.muSeedAgent(` + app.JSString(agentID) + `);</script>`
-}
-
-func agentTabs(active, agentID string) string {
-	q, agentQ := "", ""
-	if agentID != "" {
-		q = "?" + url.Values{"id": {agentID}}.Encode()
-		agentQ = "?" + url.Values{"agent": {agentID}}.Encode()
-	}
-	tab := func(label, href, key string) string {
-		cls := "agent-tab"
-		if key == active {
-			cls += " on"
-		}
-		return `<a class="` + cls + `" href="` + href + `">` + label + `</a>`
-	}
-	return `<div class="agent-tabs">` +
-		tab("Chat", "/agent"+q, "chat") +
-		tab("Threads", "/agent/threads"+agentQ, "threads") +
-		tab("Runs", "/agent/runs"+agentQ, "runs") +
-		// Connect is a tab for the default agent too. It has no token and no
-		// scope of its own, which is a thing to say rather than a reason to
-		// leave out the page that answers "how do I reach this one" — that is
-		// the first question anybody has about an agent, and Micro is the agent
-		// most people are looking at.
-		tab("Connect", "/agent/connect"+q, "connect") +
-		`</div>` + agentTabsCSS
-}
-
-const agentTabsCSS = `<style>
-.agent-tabs{display:flex;gap:2px;margin:0 0 16px;border-bottom:1px solid var(--border-color,#e5e5e5)}
-.agent-tab{padding:7px 14px;font-size:14px;color:var(--text-muted,#666);text-decoration:none;
-  border-bottom:2px solid transparent;margin-bottom:-1px}
-.agent-tab:hover{color:var(--text-primary,#111)}
-.agent-tab.on{color:var(--text-primary,#111);font-weight:600;border-bottom-color:var(--text-primary,#111)}
-</style>`

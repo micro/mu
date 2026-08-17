@@ -113,7 +113,8 @@ your mail, your files, or your records, because the token cannot reach them.
 
 One scoped to `db` + `files` + `index` for a project; one scoped to `news` +
 `web` for reading. Each has its own instructions and its own runs, so "what has
-this one been doing" is a question with an answer — `/agent/runs?agent=…`.
+this one been doing" is a question with an answer: pick it and the list beside
+the conversation is its own.
 
 ## Things that work because there are payment rails
 

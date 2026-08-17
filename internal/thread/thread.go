@@ -52,6 +52,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"mu/internal/data"
@@ -140,6 +141,7 @@ func init() {
 	for id := range messages {
 		sortByTime(messages[id])
 	}
+	go flusher()
 }
 
 // Open finds the conversation a client is on, or starts one.
@@ -356,18 +358,63 @@ func trim(account string) {
 	}
 }
 
-// save persists. Caller holds mu.
-func save() {
+// save marks the store dirty. Caller holds mu.
+//
+// It used to marshal every message on this instance and fsync the file, while
+// holding the write lock, on every single message — so the whole record was
+// rewritten twice per turn of every conversation, and every reader waited
+// behind it. Adoption made that visible: it writes a message at a time, so
+// carrying a few hundred old conversations across meant a few hundred full-file
+// writes with the lock held, and the UI stopped answering.
+//
+// Now a write is a flag. The flusher below does the work, at most once a second,
+// with the lock released while it marshals and writes. The cost is that a crash
+// can lose the last second of conversation; the alternative was freezing the
+// product to avoid it.
+func save() { dirty.Store(true) }
+
+var (
+	dirty   atomic.Bool
+	writeMu sync.Mutex // one writer at a time, held only around the write
+)
+
+// flushInterval bounds how stale the file on disk can be.
+const flushInterval = time.Second
+
+func flusher() {
+	for range time.Tick(flushInterval) {
+		Flush()
+	}
+}
+
+// Flush writes the store out now, if anything changed.
+//
+// Exported for the two callers that cannot wait for the tick: a test that wants
+// to know the file is on disk, and anything shutting down.
+func Flush() {
+	if !dirty.Swap(false) {
+		return
+	}
 	var stored struct {
 		Threads  []*Thread  `json:"threads"`
 		Messages []*Message `json:"messages"`
 	}
+	// A copy under the read lock, so marshalling and the fsync happen with
+	// nothing blocked behind them. The pointers are shared with the live maps,
+	// which is why the copy is taken while readers are excluded from writing:
+	// every mutation happens under the write lock, so nothing is being changed
+	// underneath the marshal.
+	mu.RLock()
 	for _, t := range threads {
 		stored.Threads = append(stored.Threads, t)
 	}
 	for _, msgs := range messages {
 		stored.Messages = append(stored.Messages, msgs...)
 	}
+	mu.RUnlock()
+
+	writeMu.Lock()
+	defer writeMu.Unlock()
 	data.SaveJSON("threads.json", stored) //nolint:errcheck
 }
 

@@ -37,8 +37,8 @@ Built on go-micro: every capability is a go-micro service, the assistant is a go
 | `internal/app/` | Web UI framework, templates, middleware |
 | `internal/auth/` | Account system, sessions, passkeys |
 | `internal/notes/` | The store behind `service/notes` — a title, its text, and nothing that expires |
-| `internal/thread/` | The system of record: what was said, to whom, on which conversation. Written on every turn from every client, by nobody's decision — see "Clients, and the record between them". Not a service, and not a workflow. `service/recall` is the read over it and `/agent/threads` the page |
-| `service/recall/` | Going looking in your own past on purpose: search what was said on any client, read a conversation back. Headless — the page already exists at `/agent/threads` — and it owns none of what it reads, which is the point: delete it and the record is unaffected |
+| `internal/thread/` | The system of record: what was said, to whom, on which conversation. Written on every turn from every client, by nobody's decision — see "Clients, and the record between them". Not a service, and not a workflow. `service/recall` is the read over it, and `/agent` the page — one list of conversations, whichever client each happened on |
+| `service/recall/` | Going looking in your own past on purpose: search what was said on any client, read a conversation back. Headless — the page already exists, and it is `/agent` itself — and it owns none of what it reads, which is the point: delete it and the record is unaffected |
 | `client/mail/` | Mail as a client: the shape a message arrives in, handed to the agent, and the answer turned back into a reply. `service/mail` is the capability underneath — the inbox, the address, the SMTP server |
 | `internal/settings/` | Live-reloadable configuration |
 | `home/` | Landing page, assistant, home dashboard, summary |

@@ -11,7 +11,7 @@ package agent
 // find out what had been said on their behalf.
 //
 // So a run that nothing was watching writes itself down, in the same place the
-// watched ones go, and /agent/runs shows all of them.
+// watched ones go. What an answer called shows beside it in the conversation.
 
 import (
 	"strings"
