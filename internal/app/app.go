@@ -1,6 +1,8 @@
 package app
 
 import (
+	"bytes"
+	"compress/gzip"
 	"embed"
 	"encoding/json"
 	"fmt"
@@ -12,7 +14,9 @@ import (
 	"os"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"mu/internal/auth"
@@ -1131,8 +1135,87 @@ func Serve() http.Handler {
 			strings.HasSuffix(r.URL.Path, ".webmanifest") {
 			w.Header().Set("Cache-Control", "public, max-age=86400") // 1 day
 		}
+		if compressed(w, r, htmlContent) {
+			return
+		}
 		fileServer.ServeHTTP(w, r)
 	})
+}
+
+// compressed serves a text asset gzipped, and reports whether it did.
+//
+// The pages are compressed by whatever sits in front of this — 28KB of news
+// arrives as 28KB — but the assets are not, because serve() has a fast path
+// that sends anything with a static suffix straight to the mux to skip the
+// middleware. mu.css is 110KB and mu.js is 42KB, so every cold visit pulled
+// 150KB of text that compresses to about a fifth of that, and every cache
+// expiry pulled it again.
+//
+// Compressed once and kept, rather than per request: the files are embedded, so
+// they cannot change while the process runs, and there are a handful of them.
+//
+// Only text. A png or an ico is already compressed and gzipping it spends CPU
+// to make it very slightly bigger.
+func compressed(w http.ResponseWriter, r *http.Request, files fs.FS) bool {
+	name := strings.TrimPrefix(r.URL.Path, "/")
+	switch {
+	case name == "", !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip"):
+		return false
+	case !strings.HasSuffix(name, ".css") && !strings.HasSuffix(name, ".js") &&
+		!strings.HasSuffix(name, ".svg") && !strings.HasSuffix(name, ".webmanifest"):
+		return false
+	}
+
+	gzipOnce.RLock()
+	body, ok := gzipped[name]
+	gzipOnce.RUnlock()
+	if !ok {
+		raw, err := fs.ReadFile(files, name)
+		if err != nil {
+			return false
+		}
+		var buf bytes.Buffer
+		zw, _ := gzip.NewWriterLevel(&buf, gzip.BestCompression)
+		if _, err := zw.Write(raw); err != nil || zw.Close() != nil {
+			return false
+		}
+		body = buf.Bytes()
+		gzipOnce.Lock()
+		gzipped[name] = body
+		gzipOnce.Unlock()
+	}
+
+	w.Header().Set("Content-Encoding", "gzip")
+	w.Header().Set("Vary", "Accept-Encoding")
+	w.Header().Set("Content-Type", contentType(name))
+	w.Header().Set("Content-Length", strconv.Itoa(len(body)))
+	if r.Method == http.MethodHead {
+		return true
+	}
+	w.Write(body) //nolint:errcheck
+	return true
+}
+
+var (
+	gzipOnce sync.RWMutex
+	gzipped  = map[string][]byte{}
+)
+
+// contentType is set here because writing the body ourselves skips the sniffing
+// http.FileServer would have done, and a stylesheet served as text/plain is a
+// page with no styles.
+func contentType(name string) string {
+	switch {
+	case strings.HasSuffix(name, ".css"):
+		return "text/css; charset=utf-8"
+	case strings.HasSuffix(name, ".js"):
+		return "text/javascript; charset=utf-8"
+	case strings.HasSuffix(name, ".svg"):
+		return "image/svg+xml"
+	case strings.HasSuffix(name, ".webmanifest"):
+		return "application/manifest+json"
+	}
+	return "application/octet-stream"
 }
 
 // ReturnTo is where to send someone after a control that writes the account is
