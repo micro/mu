@@ -62,6 +62,35 @@ const (
 // to refuse the plain cases.
 var Classify func(prompt string) (Category, bool)
 
+// NeverAllowed is the first category alone, for the places where the whole
+// policy would be wrong.
+//
+// The distinction is between refusing to *make* something and refusing to
+// *read* something. An agent is handed text it did not choose — an arriving
+// email, a page it fetched, a message somebody else sent — and refusing to
+// answer because that text mentions something is how an inbox stops working.
+// So the full policy belongs where a caller asks for something to be created,
+// and this narrower one belongs everywhere else: sexual content involving
+// children is worth refusing even at the cost of a false positive, and adult
+// content is not.
+func NeverAllowed(prompt string) (reason string, refused bool) {
+	if involvesMinors(normalise(prompt)) {
+		return refusalMinors, true
+	}
+	if Classify != nil {
+		if cat, yes := Classify(prompt); yes && cat == Minors {
+			return refusalMinors, true
+		}
+	}
+	return "", false
+}
+
+const (
+	refusalMinors = "This instance does not generate sexual content involving children, " +
+		"and that is not a setting."
+	refusalAdult = "This instance does not generate explicit sexual content."
+)
+
 // Refused reports whether this instance will generate from a prompt, and says
 // why not in words the person asking can act on.
 //
@@ -72,21 +101,19 @@ func Refused(prompt string) (reason string, refused bool) {
 	p := normalise(prompt)
 
 	if involvesMinors(p) {
-		return "This instance does not generate sexual content involving children, " +
-			"and that is not a setting.", true
+		return refusalMinors, true
 	}
 	if explicit(p) && !adultAllowed() {
-		return "This instance does not generate explicit sexual content.", true
+		return refusalAdult, true
 	}
 	if Classify != nil {
 		if cat, yes := Classify(prompt); yes {
 			switch cat {
 			case Minors:
-				return "This instance does not generate sexual content involving children, " +
-					"and that is not a setting.", true
+				return refusalMinors, true
 			case Adult:
 				if !adultAllowed() {
-					return "This instance does not generate explicit sexual content.", true
+					return refusalAdult, true
 				}
 			}
 		}

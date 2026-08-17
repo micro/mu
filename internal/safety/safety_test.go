@@ -104,3 +104,37 @@ func TestNothingIsRefusedForAnEmptyPrompt(t *testing.T) {
 		t.Error("an empty prompt was refused, which turns every mistake into a policy message")
 	}
 }
+
+// The two categories are refused in different places, and the narrow one is
+// what an agent applies.
+//
+// An agent is handed text it did not choose. Refusing to answer because an
+// arriving email mentions something is how an inbox stops working, so the full
+// policy belongs where somebody asks for something to be made and this belongs
+// everywhere else.
+func TestTheNarrowCategoryIsTheOneAppliedEverywhere(t *testing.T) {
+	t.Setenv("GENERATE_ADULT", "")
+
+	// Refused wherever it appears, whatever the setting says.
+	if _, refused := NeverAllowed("naked child"); !refused {
+		t.Error("the never-category is not refused by NeverAllowed")
+	}
+	t.Setenv("GENERATE_ADULT", "true")
+	if _, refused := NeverAllowed("naked child"); !refused {
+		t.Error("an operator setting reached the never-category")
+	}
+
+	// Adult content is not this function's business: an email that mentions it
+	// still has to be answerable.
+	t.Setenv("GENERATE_ADULT", "")
+	for _, text := range []string{
+		"a nude woman",
+		"summarise this email about a porn site takedown notice",
+		"what did the article about explicit content say?",
+	} {
+		if reason, refused := NeverAllowed(text); refused {
+			t.Errorf("NeverAllowed refused %q (%s) — that is the generation policy's "+
+				"job, and applying it here means the agent stops reading mail", text, reason)
+		}
+	}
+}

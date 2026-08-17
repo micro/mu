@@ -287,14 +287,24 @@ func TestAFailedSendIsInTheHistory(t *testing.T) {
 	orig := SendVia
 	t.Cleanup(func() { SendVia = orig })
 
-	const owner = "email-history-outcome"
-	if _, err := auth.GetAccount(owner); err != nil {
-		if err := auth.Create(&auth.Account{ID: owner, Name: owner}); err != nil {
-			t.Skipf("cannot create an account here: %v", err)
-		}
-		t.Cleanup(func() { auth.DeleteAccount(owner) }) //nolint:errcheck
+	// An owner of its own, per run.
+	//
+	// This shared one account with every previous run and asked for
+	// History(owner, 100) — so once a hundred records had accumulated, `before`
+	// was pinned at the limit and `before+1` became unreachable. The test then
+	// failed for ever, on a code path that was working, which is worse than no
+	// test: it was red for so long that a real failure here would have been
+	// read as the same old thing.
+	owner := fmt.Sprintf("email-history-outcome-%d", time.Now().UnixNano())
+	if err := auth.Create(&auth.Account{ID: owner, Name: owner}); err != nil {
+		t.Skipf("cannot create an account here: %v", err)
 	}
+	t.Cleanup(func() { auth.DeleteAccount(owner) }) //nolint:errcheck
+
 	before := len(History(owner, 100))
+	if before != 0 {
+		t.Fatalf("a fresh account already has %d sends", before)
+	}
 
 	SendVia = func(_, _, _, _, _, _, _ string) (string, error) {
 		return "", errFake

@@ -28,6 +28,7 @@ package agent
 import (
 	"strings"
 
+	"mu/internal/safety"
 	"mu/internal/thread"
 )
 
@@ -137,6 +138,19 @@ func Ask(r AskRequest) (Answer, error) {
 	}
 
 	Said(r.Account, threadID(th), r.Text, r.Ref, r.From)
+
+	// The one category that is refused wherever it appears, before the model is
+	// asked and before anything is charged.
+	//
+	// Only that category here. The full generation policy belongs where
+	// somebody asks for something to be made — see service/images — because an
+	// agent is handed text it did not choose: an arriving email, a fetched
+	// page, a message from somebody else. Refusing to answer because that text
+	// mentions something is how an inbox stops working.
+	if reason, refused := safety.NeverAllowed(r.Text); refused {
+		Answered(r.Account, threadID(th), reason, "")
+		return Answer{Text: reason, Thread: threadID(th)}, nil
+	}
 
 	answer, err := QueryWithOpts(r.Account, r.Text, opts)
 
