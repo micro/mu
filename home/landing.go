@@ -132,7 +132,7 @@ and the endpoint your client can call.</p>
     retries. No signup, no key, no card — the payment is the identity.</li>
   </ol>
   <p class="lnote">No account yet? <a href="/signup">Create one →</a> Full setup on
-  <a href="/tools">Tools</a>.</p>
+  <a href="/tools">Tools</a>, protocol detail on the <a href="/mcp">MCP server</a> page.</p>
 </div>
 
 <style>

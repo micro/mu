@@ -10,8 +10,9 @@ answer to "what is this and who arrives how".
 
 ## The product in one sentence
 
-**Mu is tools for agents: the everyday internet — news, mail, calendar, search,
-weather, markets, places, storage — as tools an agent can call over MCP, paid per
+**Mu is an inbox for agents: an agent with an address, that answers where it was
+written to and remembers — with the everyday internet behind it. News, mail,
+calendar, search, weather, markets, places, storage — as tools it can call over MCP, paid per
 request, with no account in the way.**
 
 The claim that matters is *one account instead of a hundred*.

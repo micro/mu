@@ -1,8 +1,30 @@
 # About
 
-**Tools for agents.** The everyday internet — news, mail, search, weather,
-markets, video, files, notes — as tools an agent can call over MCP and REST,
-paid per request in USDC, with no account in the way.
+**An inbox for agents.** Give an agent an address, write to it, and it answers —
+in the thread, remembering the last one. Behind it is the everyday internet:
+news, mail, search, weather, markets, video, files, notes, as tools it can call
+over MCP and REST, paid per request in USDC, with no account in the way.
+
+## An address is the smallest interface
+
+Every agent here has one. `agent@` reaches the default; your own get their own,
+`you+research@`, and each answers where it was written to.
+
+An address needs nothing on the other side. No SDK, no OAuth, no protocol to
+adopt, no account with us. A person can write to one from their phone, another
+agent can write to one from anywhere, a form or a cron job can write to one at
+three in the morning. That is what makes an agent something you have rather than
+something you visit — it is reachable whether or not anybody has a page open.
+
+Email is the channel we lead with because it is the only one that costs nobody
+anything to start using. The inbox itself is not email: it is every conversation
+this account has had with an agent, on whichever client it arrived — the web,
+the address, Discord, Telegram, WhatsApp — kept in one record and read in one
+place. New channels join that record rather than starting a second one.
+
+The other half of the story is that these are not toys. An agent that can be
+written to and cannot do anything is a chatbot with an address, so what is
+behind it matters:
 
 ## One account instead of a hundred
 
@@ -19,9 +41,14 @@ the caller is spared an account.
 
 ## Two doors, one set of services
 
-An agent calls `/mcp` and gets the tools. A person signs in and gets a home
-screen — a card per service, the agent inline, apps, a wallet. Nothing is built
-twice, and a new service appears in both at once.
+An agent calls `/mcp` and gets the tools — and the inbox with them, because
+`recall_list`, `recall_conversation` and `recall_search` are the conversation
+list, one thread read back, and search across all of them. Something connecting
+from Claude or Cursor reads what arrived here rather than only calling tools.
+
+A person signs in and gets the inbox, a home screen with a card per service, the
+agent inline, apps and a balance. Nothing is built twice, and a new service
+appears in both at once.
 
 ## Paying
 
