@@ -620,3 +620,22 @@ func EnsureFTS() {
 		rebuildFTS()
 	}
 }
+
+// SnapshotInto writes a consistent copy of the search index.
+//
+// A plain file copy of a live SQLite database can catch it mid-transaction, and
+// with WAL enabled the file on disk is not the whole story. VACUUM INTO writes
+// a complete, consistent database in one statement, which is what a backup
+// wants — and the index is worth backing up because nothing rebuilds it:
+// services index what they create, and there is no pass that reindexes what is
+// already there. Losing it loses every article, post and video ever indexed.
+func SnapshotInto(dst string) error {
+	d, err := getDB()
+	if err != nil {
+		return err
+	}
+	// VACUUM INTO refuses to overwrite.
+	os.Remove(dst)
+	_, err = d.Exec("VACUUM INTO ?", dst)
+	return err
+}

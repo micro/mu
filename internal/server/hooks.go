@@ -34,6 +34,7 @@ import (
 	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/backup"
 	"mu/internal/data"
 	"mu/internal/google"
 	"mu/internal/notes"
@@ -338,6 +339,14 @@ func wireHooks() {
 
 	// Load the stream (platform event timeline).
 	stream.Load()
+
+	// Keep copies of the data directory. It takes one at startup, because the
+	// most useful snapshot is the one from before whatever is about to go
+	// wrong, and the search index goes in through VACUUM rather than a file
+	// copy — nothing reindexes what is already there, so losing it is not a
+	// rebuild, it is a loss.
+	backup.IndexSnapshot = data.SnapshotInto
+	backup.Load()
 
 	// Optionally run go-micro's MCP gateway alongside mu's existing /mcp, on a
 	// separate port. It auto-exposes every registered service as an MCP tool.

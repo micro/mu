@@ -30,12 +30,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	content := `<div class="admin-links">
 		<a href="/admin/api">API Log</a>
 		<a href="/admin/usage">API Spend</a>
+		<a href="/admin/backup">Backup</a>
 		<a href="/admin/blocklist">Blocklist</a>
 		<a href="/admin/console">Console</a>
 		<a href="/admin/env">Environment</a>
 		<a href="/admin/invite">Invites</a>
 		<a href="/admin/email">Mail Log</a>
 		<a href="/admin/moderate">Moderation</a>
+		<a href="/admin/retention">Retention</a>
 		<a href="/admin/server">Server</a>
 		<a href="/admin/spam">Spam Filter</a>
 		<a href="/admin/log">System Log` + alertBadge() + `</a>

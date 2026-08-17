@@ -140,6 +140,7 @@ func authRequired() map[string]bool {
 		"/admin/console":     true,
 		"/admin/diagnostics": true,
 		"/admin/retention":   true,
+		"/admin/backup":      true,
 		"/admin/invite":      true,
 		"/account/":          true, // Money: top-up, transfer, the ledger
 
@@ -269,6 +270,7 @@ func registerRoutes() {
 	http.HandleFunc("/admin/console", admin.ConsoleHandler)
 	http.HandleFunc("/admin/diagnostics", admin.DiagnosticsHandler)
 	http.HandleFunc("/admin/retention", admin.RetentionHandler)
+	http.HandleFunc("/admin/backup", admin.BackupHandler)
 	http.HandleFunc("/admin/invite", admin.InviteHandler)
 
 	// Money: top-up, transfer, Stripe and the price list, all under the account

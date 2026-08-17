@@ -1,0 +1,200 @@
+package admin
+
+// Whether the backups are actually happening.
+//
+// A backup nobody has looked at is a hope, not a backup, and the failure mode
+// is silent by construction: snapshots stop, everything keeps working, and you
+// find out on the day you needed one. So this page answers three questions in
+// the order somebody panicking would ask them — is it running, what is there,
+// and did anything fail to load.
+//
+// The button is here because "back up now" is what you want immediately before
+// doing something you are not sure about, and reaching for a shell at that
+// moment is how it gets skipped.
+
+import (
+	"fmt"
+	"html"
+	"net/http"
+	"sort"
+	"strings"
+	"time"
+
+	"mu/internal/app"
+	"mu/internal/auth"
+	"mu/internal/backup"
+	"mu/internal/data"
+	"mu/internal/usage"
+)
+
+// BackupHandler shows /admin/backup.
+func BackupHandler(w http.ResponseWriter, r *http.Request) {
+	if _, _, err := auth.RequireAdmin(r); err != nil {
+		app.Forbidden(w, r, "Admin access required")
+		return
+	}
+
+	var notice string
+	if r.Method == http.MethodPost {
+		if !auth.StrictCSRF(r) {
+			app.Forbidden(w, r, "Invalid CSRF token")
+			return
+		}
+		snap, err := backup.Take()
+		if err != nil {
+			notice = `<div class="card backup-bad">Could not take a snapshot: ` +
+				html.EscapeString(err.Error()) + `</div>`
+		} else {
+			notice = fmt.Sprintf(`<div class="card backup-ok">Snapshot taken: %d files, %s.</div>`,
+				snap.Files, size(snap.Bytes))
+		}
+	}
+
+	snaps := backup.List()
+
+	var sb strings.Builder
+	sb.WriteString(usage.CSS)
+	sb.WriteString(backupCSS)
+	sb.WriteString(notice)
+
+	sb.WriteString(`<div class="card"><div class="traffic-stats">`)
+	usage.Stat(&sb, "Snapshots", len(snaps))
+	sb.WriteString(`<div class="traffic-stat"><span class="traffic-stat-n">` +
+		html.EscapeString(lastRun(snaps)) + `</span><span class="traffic-stat-l">last taken</span></div>`)
+	sb.WriteString(`<div class="traffic-stat"><span class="traffic-stat-n">` +
+		html.EscapeString(size(onDisk(snaps))) + `</span><span class="traffic-stat-l">stored (before hardlinks)</span></div>`)
+	sb.WriteString(`</div>`)
+	sb.WriteString(`<p class="card-desc">A snapshot is taken hourly when anything has ` +
+		`changed, and one at startup. Files that have not changed are hardlinked to ` +
+		`the previous snapshot, so keeping a month of them costs far less than the ` +
+		`figure above — that is the size if every copy were real.</p>`)
+	// The token from the cookie, in the form: a POST resting on the session
+	// needs it, because StrictCSRF refuses a request that simply omits one.
+	fmt.Fprintf(&sb, `<form method="POST" class="d-inline">`+
+		`<input type="hidden" name="csrf_token" value="%s">`+
+		`<button type="submit" class="btn-sm">Back up now</button></form>`,
+		html.EscapeString(auth.CSRFToken(r)))
+	sb.WriteString(`</div>`)
+
+	sb.WriteString(quarantine())
+	sb.WriteString(snapshotTable(snaps))
+	sb.WriteString(backupCaveats())
+
+	app.Respond(w, r, app.Response{
+		Title:       "Backup",
+		Description: "Snapshots of this instance's data",
+		HTML:        sb.String(),
+	})
+}
+
+// quarantine reports stores that would not load.
+//
+// Loudly, and at the top, because this is the state where data is sitting in a
+// file under another name and nobody knows: the instance runs, the pages
+// render, and one store is quietly empty.
+func quarantine() string {
+	bad := data.Quarantined()
+	if len(bad) == 0 {
+		return ""
+	}
+	keys := make([]string, 0, len(bad))
+	for k := range bad {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	var sb strings.Builder
+	sb.WriteString(`<div class="card backup-bad"><span class="card-title">A store did not load</span>`)
+	sb.WriteString(`<p class="card-desc">These files could not be read and were moved ` +
+		`out of the way before anything could overwrite them. What was in them is ` +
+		`still on disk under the name below. Each of these stores started empty.</p><ul class="caveats">`)
+	for _, k := range keys {
+		fmt.Fprintf(&sb, `<li><b>%s</b> → <code>%s</code></li>`,
+			html.EscapeString(k), html.EscapeString(bad[k]))
+	}
+	sb.WriteString(`</ul></div>`)
+	return sb.String()
+}
+
+func snapshotTable(snaps []backup.Snapshot) string {
+	var sb strings.Builder
+	sb.WriteString(`<div class="card"><span class="card-title">Snapshots</span>`)
+	if len(snaps) == 0 {
+		sb.WriteString(`<p class="card-desc">None yet. One is taken at startup, so ` +
+			`either this instance has just come up or something is wrong — the ` +
+			`button above will say which.</p></div>`)
+		return sb.String()
+	}
+	sb.WriteString(`<div class="cohort-scroll"><table class="cohort">`)
+	sb.WriteString(`<tr><th>Taken</th><th>Age</th><th>Files</th><th>Size</th></tr>`)
+	for _, s := range snaps {
+		fmt.Fprintf(&sb, `<tr><td>%s</td><td>%s</td><td class="n">%d</td><td class="n">%s</td></tr>`,
+			html.EscapeString(s.At.Format("2 Jan 15:04")),
+			html.EscapeString(app.TimeAgo(s.At)),
+			s.Files, html.EscapeString(size(s.Bytes)))
+	}
+	sb.WriteString(`</table></div>`)
+	fmt.Fprintf(&sb, `<p class="card-desc">In <code>%s</code>. Recent ones are kept in `+
+		`full; older ones thin to one a day, for a month. Restoring is copying a `+
+		`file back — they are ordinary JSON.</p></div>`, html.EscapeString(backup.Dir()))
+	return sb.String()
+}
+
+func backupCaveats() string {
+	return `<div class="card"><span class="card-title">What this does not cover</span><ul class="caveats">` +
+		`<li><b>The disk.</b> These snapshots are on the same machine as the thing ` +
+		`they protect. They survive a bad write and an operator mistake; they do ` +
+		`not survive losing the instance. That needs a copy somewhere else, which ` +
+		`is a command and somebody's crontab rather than something an instance can ` +
+		`arrange for itself.</li>` +
+		`<li><b>The keys.</b> Snapshots cover the data directory. The encryption ` +
+		`key, the mail signing key and the CLI's wallet seed live in ` +
+		`<code>keys/</code> — without them a copy of encrypted mail is unreadable, ` +
+		`so an off-box backup has to include them and therefore has to be treated ` +
+		`as the most sensitive thing you own.</li>` +
+		`<li><b>Consistency across files, not within them.</b> Every file is whole, ` +
+		`because every write is atomic. A snapshot taken mid-flight can still catch ` +
+		`one store updated and a related one not.</li>` +
+		`<li><b>A restore nobody has tried.</b> Nothing here has been restored from. ` +
+		`That is the usual reason backups fail.</li>` +
+		`</ul></div>`
+}
+
+func lastRun(snaps []backup.Snapshot) string {
+	at := backup.Last()
+	if at.IsZero() {
+		if len(snaps) == 0 {
+			return "never"
+		}
+		at = snaps[0].At
+	}
+	return app.TimeAgo(at)
+}
+
+func onDisk(snaps []backup.Snapshot) int64 {
+	var n int64
+	for _, s := range snaps {
+		n += s.Bytes
+	}
+	return n
+}
+
+func size(b int64) string {
+	switch {
+	case b >= 1<<30:
+		return fmt.Sprintf("%.1f GB", float64(b)/(1<<30))
+	case b >= 1<<20:
+		return fmt.Sprintf("%.1f MB", float64(b)/(1<<20))
+	case b >= 1<<10:
+		return fmt.Sprintf("%.0f KB", float64(b)/(1<<10))
+	}
+	return fmt.Sprintf("%d B", b)
+}
+
+var _ = time.Now
+
+const backupCSS = `<style>
+.backup-ok { border-left: 3px solid #1f6f5c; }
+.backup-bad { border-left: 3px solid #a8321b; }
+.backup-bad code { font-size: 12px; word-break: break-all; }
+</style>`
