@@ -234,8 +234,17 @@ function muAgentChip(){var c=document.getElementById('active-agent-chip');if(c)c
 //
 // The id goes in the URL, which is the same thing clicking an agent on /agents
 // does. One door, one behaviour, and a reload keeps the agent.
+//
+// It stays on the tab you are on. The picker is beside Chat, Threads, Runs and
+// Connect alike, and sending every pick to Chat meant switching agents while
+// looking at what one of them had said threw away the question you were asking
+// and answered a different one.
 function muAgentPick(id){
-  var to=id?'/agent?id='+encodeURIComponent(id):'/agent';
+  var p=window.location.pathname,to;
+  if(p.indexOf('/agent/threads')===0){to=id?'/agent/threads?agent='+encodeURIComponent(id):'/agent/threads';}
+  else if(p.indexOf('/agent/runs')===0){to=id?'/agent/runs?agent='+encodeURIComponent(id):'/agent/runs';}
+  else if(p.indexOf('/agent/connect')===0){to=id?'/agent/connect?id='+encodeURIComponent(id):'/agent/connect';}
+  else{to=id?'/agent?id='+encodeURIComponent(id):'/agent';}
   if(window.location.pathname+window.location.search===to){return;}
   window.location=to;
 }

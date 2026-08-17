@@ -41,21 +41,71 @@ func ConnectHandler(w http.ResponseWriter, r *http.Request) {
 	// Built as one string and wrapped once, so every path opens and closes the
 	// column exactly once. An early return that closes a div its caller opened
 	// ends the page layout early — see TestMarkupBuildersCloseTheirTags.
-	title, desc := "Connect", "How to reach this agent"
-	body := `<p class="lens-lead">Pick an agent to see how to reach it. ` +
-		app.Link("Your agents", "/agents") + `</p>`
+	title, desc := "Connect Micro", "How to reach the default agent"
+	body := defaultPanel(app.BaseURL(r))
 	if a != nil {
 		title, desc = "Connect "+a.Name, "How to reach "+a.Name
 		body = connectPanel(a, app.BaseURL(r), auth.CSRFToken(r))
 	}
 
+	page := agentPage("connect", id, body) + connectCSS
+	w.Write([]byte(app.RenderHTMLForRequest(title, desc, page, r)))
+}
+
+// defaultPanel is the same page for Micro, which is nobody's roster entry.
+//
+// The default agent used to have no Connect tab at all, on the reasoning that it
+// has no token, no scope and no address of its own. Two of those are wrong: it
+// has an address — agent@<domain>, the one nothing has to be remembered for —
+// and it reaches every tool, which is a scope and the widest one. Only the token
+// is genuinely absent, because Micro is not a separate identity: it is this
+// account, so it uses this account's token.
+//
+// Leaving the tab out meant the tab strip changed shape depending on which agent
+// you had selected, and the agent most people are looking at was the one with no
+// answer to "how do I reach this".
+func defaultPanel(base string) string {
 	var b strings.Builder
-	b.WriteString(`<div style="max-width:820px">`)
-	b.WriteString(agentTabs("connect", id))
-	b.WriteString(body)
-	b.WriteString(`</div>`)
-	b.WriteString(connectCSS)
-	w.Write([]byte(app.RenderHTMLForRequest(title, desc, b.String(), r)))
+
+	b.WriteString(`<p class="lens-lead"><strong>Micro</strong> — Runs here. The default agent: ` +
+		`every tool on this instance, no setup, and nothing to remember. It is not a separate ` +
+		`identity, so it uses your account rather than a token of its own. ` +
+		app.Link("Make one that is", "/agent/new") + `</p>`)
+
+	b.WriteString(`<div class="conn-row"><span class="conn-k">May reach</span>` +
+		`<span class="conn-scope wide">everything you can reach</span></div>`)
+
+	b.WriteString(`<div class="conn-row"><span class="conn-k">Endpoint</span>` +
+		`<code class="conn-v">` + html.EscapeString(strings.TrimSuffix(base, "/")+"/mcp") + `</code></div>`)
+
+	if addr := mail.SharedAgentAddress(); addr != "" {
+		b.WriteString(`<div class="conn-row"><span class="conn-k">Write to it</span>` +
+			`<span class="conn-v"><code>` + html.EscapeString(addr) + `</code><br>` +
+			`<span class="conn-sub">From your verified address. It answers in the thread, and ` +
+			`the conversation shows up under ` + app.Link("Threads", "/agent/threads") +
+			` beside the ones you started here.</span></span></div>`)
+	}
+
+	b.WriteString(`<div class="conn-row"><span class="conn-k">Token</span>` +
+		`<span class="conn-v">Your account's. ` + app.Link("Issue one", "/token") +
+		` and anything holding it reaches every tool you can — which is why an agent you ` +
+		`hand to somebody else should be ` + app.Link("its own", "/agent/new") +
+		`, with a scope.</span></div>`)
+
+	b.WriteString(`<h3 class="conn-head">Point a client at it</h3>`)
+	b.WriteString(`<pre class="conn-pre">` + html.EscapeString(`{
+  "mcpServers": {
+    "mu": {
+      "url": "`+strings.TrimSuffix(base, "/")+`/mcp",
+      "headers": { "Authorization": "Bearer YOUR_TOKEN" }
+    }
+  }
+}`) + `</pre>`)
+	b.WriteString(`<p class="conn-note">Claude Desktop takes the URL on its own — Settings → ` +
+		`Connectors → Add custom connector — and signs you in instead of using a token. ` +
+		app.Link("Full setup", "/tools") + `</p>`)
+
+	return b.String()
 }
 
 // connectPanel is everything you need to point something at this agent: what it

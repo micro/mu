@@ -71,11 +71,17 @@ const (
 // client knows what a conversation is on its own service, and this stores
 // whatever it says without interpreting it.
 type Thread struct {
-	ID      string    `json:"id"`
-	Account string    `json:"account"`
-	Client  string    `json:"client"`
-	Key     string    `json:"key"`
-	Subject string    `json:"subject,omitempty"`
+	ID      string `json:"id"`
+	Account string `json:"account"`
+	Client  string `json:"client"`
+	Key     string `json:"key"`
+	Subject string `json:"subject,omitempty"`
+	// Agent is who the conversation is with — one of the account's own, by id,
+	// or empty for the default. A conversation is with somebody, and without
+	// this a page that has an agent selected has to either show every
+	// conversation on the account or none: both were tried and both read as the
+	// surface having lost track of which agent you were talking to.
+	Agent   string    `json:"agent,omitempty"`
 	Started time.Time `json:"started"`
 	Updated time.Time `json:"updated"`
 }
@@ -387,6 +393,44 @@ func newID() string {
 		return hex.EncodeToString([]byte(time.Now().UTC().Format(time.RFC3339Nano)))
 	}
 	return hex.EncodeToString(b)
+}
+
+// SetAgent records who a conversation is with.
+//
+// Set on every turn rather than at Open, because Open is also how an existing
+// conversation is found and the answer can change: writing to agent+news@ after
+// a week of writing to agent@ is a conversation with news from that point on.
+// The last agent to answer is the one the conversation is with.
+func SetAgent(account, id, agentID string) {
+	mu.Lock()
+	defer mu.Unlock()
+	t := threads[id]
+	if t == nil || t.Account != account || t.Agent == agentID {
+		return
+	}
+	t.Agent = agentID
+	save()
+}
+
+// Delete removes a conversation and everything said on it.
+//
+// The record is memory and trimming it is forgetting, which is why nothing
+// expires it — but it is somebody's own memory, and being unable to delete a
+// conversation from your own account is not a durability guarantee, it is a
+// missing button.
+//
+// Silent about whether there was one: every caller is a person clicking Delete,
+// and "there was nothing there" and "it is gone now" are the same outcome to
+// them.
+func Delete(account, id string) {
+	mu.Lock()
+	defer mu.Unlock()
+	if t := threads[id]; t == nil || t.Account != account {
+		return
+	}
+	delete(threads, id)
+	delete(messages, id)
+	save()
 }
 
 // SetRef records the client's identifier for a message after the fact.

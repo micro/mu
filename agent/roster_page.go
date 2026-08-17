@@ -93,11 +93,21 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 			`to talk to it here — it has no token, so nothing outside this instance can call it.</p>`)
 	}
 
+	// The one you already have.
+	//
+	// This page listed the agents you had made and nothing else, while the picker
+	// on /agent listed Micro first — so the default agent existed in one place
+	// and not the other, and the page called "Agents" was the one denying it. It
+	// is the agent nearly every account actually uses: it has an address, it
+	// reaches every tool, and there was nowhere saying so.
+	b.WriteString(defaultRow())
+
 	EnsureTags(owner)
 	roster := Agents(owner)
 	if len(roster) == 0 {
-		b.WriteString(`<p style="color:#888;font-size:14px">No agents yet. An agent is a name, a scope, ` +
-			`and a token — so what you hand a credential to reaches the services you chose and no others.</p>`)
+		b.WriteString(`<p style="color:#888;font-size:14px">That is the only one so far. An agent of ` +
+			`your own is a name, a scope, and a token — so what you hand a credential to reaches the ` +
+			`services you chose and no others.</p>`)
 	} else {
 		b.WriteString(`<h3 style="font-size:15px;margin:0 0 10px">Your agents</h3>`)
 		b.WriteString(`<div style="display:flex;flex-direction:column;gap:8px;margin:0 0 24px">`)
@@ -290,6 +300,38 @@ func agentRow(a *Agent, csrf, base string) string {
 		cls, html.EscapeString(scope),
 		meta, addr, action,
 		html.EscapeString(csrf), html.EscapeString(a.ID))
+}
+
+// defaultRow is Micro on the roster: the same shape as an agent you made,
+// saying the things that are true about this one.
+//
+// No Remove and no Issue token, because neither is a thing you can do to it —
+// it is not a separate identity, it is this account. Everything else a row
+// carries it has: where it runs, what it may reach, an address, and the four
+// ways into it.
+func defaultRow() string {
+	addr := ""
+	if a := mail.SharedAgentAddress(); a != "" {
+		verb := "Message it at"
+		if mail.Reachable() {
+			verb = "Write to it at"
+		}
+		addr = `<div class="agent-mail">` + verb + ` <code>` + html.EscapeString(a) + `</code></div>`
+	}
+	return `<h3 style="font-size:15px;margin:0 0 10px">The default</h3>` +
+		`<div style="display:flex;flex-direction:column;gap:8px;margin:0 0 24px">` +
+		`<div class="agent-row"><div style="flex:1;min-width:0">` +
+		`<a class="agent-name" href="/agent">Micro</a>` +
+		`<span class="agent-kind here">Runs here</span>` +
+		`<div class="agent-scope wide">everything you can reach</div>` +
+		`<div class="agent-meta">Always here, nothing to set up. It answers as your account, so it ` +
+		`has no token of its own.</div>` + addr +
+		`<div class="agent-links">` +
+		`<a href="/agent">Chat</a>` +
+		`<a href="/agent/threads">Threads</a>` +
+		`<a href="/agent/runs">Runs</a>` +
+		`<a href="/agent/connect">Connect &rarr;</a></div>` +
+		`</div></div></div>`
 }
 
 const agentsCSS = `<style>

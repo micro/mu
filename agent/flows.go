@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"mu/internal/data"
+	"mu/internal/thread"
 
 	"github.com/google/uuid"
 )
@@ -171,8 +172,19 @@ type Session struct {
 // ListSessions groups an account's flows into conversations (ParentID chains)
 // and returns one entry per conversation, newest first. A conversation's head
 // is its latest turn (a flow that is not any other flow's parent).
+//
+// Runs that arrived some other way are not sessions. Every client records a
+// run, so an email answered at 6am became a row in the chat rail — titled with
+// whatever markup the sender's phone produced, opening a conversation you never
+// had here and could not continue. The rail is the chat's own history; what
+// happened everywhere else is Threads, which shows the client it happened on.
 func ListSessions(accountID string) []Session {
-	flows := ListFlows(accountID) // newest first
+	var flows []*Flow
+	for _, f := range ListFlows(accountID) { // newest first
+		if startedHere(f.Source) {
+			flows = append(flows, f)
+		}
+	}
 	byID := make(map[string]*Flow, len(flows))
 	isParent := make(map[string]bool, len(flows))
 	for _, f := range flows {
@@ -208,6 +220,32 @@ func ListSessions(accountID string) []Session {
 			Agent: f.Agent, UpdatedAt: f.CreatedAt, Turns: turns})
 	}
 	return sessions
+}
+
+// startedHere says whether a run came from the chat on this page. Empty is the
+// page: every flow written before a run could start anywhere else has no source,
+// and there was nowhere else for it to have come from.
+func startedHere(source string) bool {
+	return source == "" || source == WebClient
+}
+
+// deleteSession removes a whole conversation: every turn in the chain, and the
+// record of what was said on it. Given any id in the chain.
+func deleteSession(accountID, anyID string) {
+	// The chain first, and the root out of it: the conversation in the system of
+	// record is keyed by the root flow id, and once the flows are gone there is
+	// nothing left to walk.
+	chain := sessionChain(accountID, anyID)
+	root := anyID
+	if len(chain) > 0 {
+		root = chain[0].ID
+	}
+	for _, f := range chain {
+		deleteFlow(accountID, f.ID) //nolint:errcheck
+	}
+	if th := thread.Find(accountID, WebClient, root); th != nil {
+		thread.Delete(accountID, th.ID)
+	}
 }
 
 // sessionChain returns a conversation's turns (oldest first) given ANY flow id

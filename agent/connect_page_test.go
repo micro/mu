@@ -75,13 +75,39 @@ func TestTheConnectPageCarriesTheScopeTheEndpointAndTheTokenState(t *testing.T) 
 	}
 }
 
-// Connect is a tab only when there is an agent to connect to. Mu's own
-// assistant has no token, no scope and no address of its own.
-func TestTheDefaultAssistantHasNothingToConnectTo(t *testing.T) {
-	if tabs := agentTabs("chat", ""); strings.Contains(tabs, "/agent/connect") {
-		t.Errorf("the default assistant offers a Connect tab:\n%s", tabs)
+// The default agent has a Connect page too.
+//
+// It used not to, on the reasoning that Micro has no token, no scope and no
+// address of its own. Two of those were wrong: it has an address — agent@, the
+// one with nothing to remember — and it reaches every tool, which is a scope and
+// the widest one going. Only the token is genuinely absent, and "it uses your
+// account's" is a thing to say rather than a reason to withhold the page.
+//
+// The cost of withholding it was not just a missing page: the tab strip changed
+// shape depending on which agent was selected, and the agent nearly everybody
+// uses was the one with no answer to "how do I reach this".
+func TestTheDefaultAgentSaysHowToReachIt(t *testing.T) {
+	if tabs := agentTabs("chat", ""); !strings.Contains(tabs, `href="/agent/connect"`) {
+		t.Errorf("the default agent has no Connect tab:\n%s", tabs)
 	}
 	if tabs := agentTabs("chat", "some-agent"); !strings.Contains(tabs, "/agent/connect?id=some-agent") {
 		t.Errorf("a named agent has no Connect tab:\n%s", tabs)
+	}
+
+	panel := defaultPanel("https://mu.example")
+	for _, want := range []string{
+		"everything you can reach",              // its scope, which is the widest one
+		"https://mu.example/mcp",                // where something points at it
+		`href="/token"`,                         // the credential it actually uses
+		html.EscapeString(`"url": "https://mu`), // a config block to copy
+	} {
+		if !strings.Contains(panel, want) {
+			t.Errorf("the default agent's page does not say %q:\n%s", want, panel)
+		}
+	}
+	// It is not an agent you can be issued a token for or delete: it is this
+	// account, and offering either would be offering something that cannot happen.
+	if strings.Contains(panel, `name="action" value="token"`) {
+		t.Error("the default agent offers to issue itself a token")
 	}
 }

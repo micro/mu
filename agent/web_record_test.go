@@ -69,7 +69,7 @@ func TestATurnIsRecordedOnce(t *testing.T) {
 
 // A guest has no account, so there is nothing to record against.
 func TestNothingIsRecordedForAGuest(t *testing.T) {
-	if got := Opened("", WebClient, "some-key", ""); got != "" {
+	if got := Opened("", WebClient, "some-key", "", ""); got != "" {
 		t.Errorf("a conversation was opened for an account-less caller (%q)", got)
 	}
 	// And the writes are no-ops rather than panics when there is no thread.
@@ -83,7 +83,7 @@ func TestNothingIsRecordedForAGuest(t *testing.T) {
 // The record is what history comes from, and it round-trips.
 func TestWhatWasSaidComesBackAsHistory(t *testing.T) {
 	const acc = "web-record"
-	id := Opened(acc, WebClient, "root-flow-1", "")
+	id := Opened(acc, WebClient, "root-flow-1", "", "")
 	if id == "" {
 		t.Fatal("no conversation")
 	}
@@ -92,7 +92,7 @@ func TestWhatWasSaidComesBackAsHistory(t *testing.T) {
 
 	// The same key resolves to the same conversation, which is what makes a
 	// second message a continuation rather than a new thread.
-	if again := Opened(acc, WebClient, "root-flow-1", ""); again != id {
+	if again := Opened(acc, WebClient, "root-flow-1", "", ""); again != id {
 		t.Fatalf("the same conversation opened twice: %q then %q", id, again)
 	}
 

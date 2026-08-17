@@ -643,11 +643,50 @@ func renderSessionsRail(accountID, currentID, agentID string) string {
 		if len(title) > 60 {
 			title = title[:60] + "…"
 		}
-		b.WriteString(`<a href="/agent?session=` + s.RootID + `" class="` + cls + `">` + htmlEsc(title) + `</a>`)
+		// Deletable. A conversation you can start and never be rid of is a list
+		// that only grows, and the rail is the one place somebody looks at it.
+		b.WriteString(`<div class="chat-sess-row"><a href="/agent?session=` + s.RootID +
+			`" class="` + cls + `">` + htmlEsc(title) + `</a>` +
+			`<button class="chat-sess-del" title="Delete conversation" ` +
+			`onclick="muSessionDelete(` + app.JSString(s.RootID) + `,event)">×</button></div>`)
 	}
-	b.WriteString(`</div></aside>`)
+	b.WriteString(`</div>` + sessionDeleteJS + `</aside>`)
 	return b.String()
 }
+
+// sessionDeleteJS removes a conversation and its record. DELETE on the flow
+// path, which is where a conversation is already deleted from — the id is the
+// chain's root and the server walks the rest.
+const sessionDeleteJS = `<script>
+function muSessionDelete(id,ev){
+  ev.preventDefault();ev.stopPropagation();
+  if(!confirm('Delete this conversation? What was said in it is gone.'))return;
+  fetch('/agent/flow/'+encodeURIComponent(id),{method:'DELETE',headers:{'X-CSRF-Token':muAgentCsrf()}})
+    .then(function(){window.location='/agent';});
+}
+// A conversation that has just started, listed while you are still in it.
+//
+// The rail is rendered by the server, so a new conversation appeared only on
+// the next page load: you said hello, got an answer, refreshed for some other
+// reason and a row you had never seen was suddenly there. The chat calls this
+// when the first turn of a fresh conversation comes back.
+window.muSessionStarted=function(id,title){
+  var list=document.querySelector('.chat-sess-list');if(!list)return;
+  var empty=list.querySelector('.chat-sess-empty');if(empty)empty.remove();
+  var href='/agent?session='+id;
+  if(list.querySelector('a[href="'+href+'"]'))return;
+  title=(title||'Untitled').trim();
+  if(title.length>60)title=title.slice(0,60)+'…';
+  list.querySelectorAll('.chat-sess.active').forEach(function(e){e.classList.remove('active');});
+  var row=document.createElement('div');row.className='chat-sess-row';
+  var a=document.createElement('a');a.className='chat-sess active';a.href=href;a.textContent=title;
+  var b=document.createElement('button');b.className='chat-sess-del';b.type='button';
+  b.title='Delete conversation';b.textContent='×';
+  b.onclick=function(e){muSessionDelete(id,e);};
+  row.appendChild(a);row.appendChild(b);
+  list.insertBefore(row,list.firstChild);
+};
+</script>`
 
 const chatLayoutCSS = `<style>
 .chat-layout{display:flex;gap:24px;align-items:flex-start}
@@ -669,15 +708,19 @@ const chatLayoutCSS = `<style>
 .agent-intro a{color:var(--text-primary,#111)}
 .chat-new{width:100%;padding:9px 12px;background:#111;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;font-family:inherit;margin-bottom:12px}
 .chat-sess-list{display:flex;flex-direction:column;gap:2px}
-.chat-sess{display:block;padding:8px 10px;border-radius:6px;color:#444;text-decoration:none;font-size:13px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chat-sess-row{display:flex;align-items:center;gap:2px}
+.chat-sess{display:block;flex:1;min-width:0;padding:8px 10px;border-radius:6px;color:#444;text-decoration:none;font-size:13px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .chat-sess:hover{background:#f5f5f5}
 .chat-sess.active{background:#eef0ff;color:#111;font-weight:600}
+.chat-sess-del{border:0;background:none;color:#ccc;font-size:15px;line-height:1;cursor:pointer;padding:2px 6px;opacity:0}
+.chat-sess-row:hover .chat-sess-del{opacity:1}
+.chat-sess-del:hover{color:#b00}
 .chat-sess-empty{color:#999;font-size:13px;padding:8px 10px}
 /* Stacking the layout turns align-items:flex-start into *horizontal*
    alignment, so children size to their content rather than the screen — a wide
    answer then pushed the column (and the input with it) past the viewport.
    Stretch them back to full width. */
-@media(max-width:760px){.chat-layout{flex-direction:column;gap:12px;align-items:stretch}.chat-side,.chat-rail,.chat-main{width:100%;min-width:0;max-width:100%}.chat-sess-list{flex-direction:row;overflow-x:auto;flex-wrap:nowrap}.chat-sess{flex-shrink:0;max-width:160px}}
+@media(max-width:760px){.chat-layout{flex-direction:column;gap:12px;align-items:stretch}.chat-side,.chat-rail,.chat-main{width:100%;min-width:0;max-width:100%}.chat-sess-list{flex-direction:row;overflow-x:auto;flex-wrap:nowrap}.chat-sess-row{flex-shrink:0;max-width:180px}.chat-sess-del{opacity:1}}
 </style>`
 
 // FormatAge returns a human-friendly string for an elapsed duration.
@@ -786,10 +829,11 @@ func handleDeleteFlow(w http.ResponseWriter, r *http.Request, id string) {
 		http.Error(w, `{"error":"authentication required"}`, http.StatusUnauthorized)
 		return
 	}
-	if err := deleteFlow(acc.ID, id); err != nil {
-		http.Error(w, `{"error":"failed to delete flow"}`, http.StatusInternalServerError)
-		return
-	}
+	// The whole conversation, not one turn of it. The rail lists conversations
+	// and deletes from here, so deleting the id it holds has to mean what the
+	// rail says it means — otherwise a five-turn chat loses its first message
+	// and stays in the list.
+	deleteSession(acc.ID, id)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -1096,7 +1140,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		if key == "" {
 			key = flow.ID // this message starts the conversation
 		}
-		threadID = Opened(accountID, WebClient, key, "")
+		threadID = Opened(accountID, WebClient, key, "", req.Agent)
 		Said(accountID, threadID, req.Prompt, "", "")
 
 		// Notice anything worth remembering. This ran only on /agent/run — the

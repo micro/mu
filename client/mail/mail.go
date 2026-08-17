@@ -23,6 +23,7 @@ import (
 	"mu/agent"
 	"mu/internal/app"
 	"mu/internal/quota"
+	"mu/internal/thread"
 	"mu/service/mail"
 )
 
@@ -35,6 +36,32 @@ const Client = "mail"
 // actually have by mail and stops a thread somebody has been adding to for a
 // month from costing more in prompt than the answer is worth.
 const historyTurns = 6
+
+// chainKey names the conversation a message belongs to, mail's way.
+//
+// The root of the reference chain: the first message id in References, or this
+// message's own when it starts one. That is what every mail client means by a
+// thread, and it is stable for everyone in it.
+//
+// It used to be the address written to, which made every message anybody ever
+// sent to agent@ one conversation — a stranger's question and yours filed
+// together, and the agent handed both as history. Ask still resolves a reply by
+// its In-Reply-To before this is consulted; this is what a *new* message opens.
+func chainKey(m mail.InboundMail) string {
+	if refs := thread.Refs(m.References); len(refs) > 0 {
+		return refs[0]
+	}
+	if refs := thread.Refs(m.InReplyTo); len(refs) > 0 {
+		return refs[0]
+	}
+	if m.MessageID != "" {
+		return m.MessageID
+	}
+	// Nothing to key on at all. The address is a poor thread — everyone who
+	// writes to it lands in one — so it is scoped by sender, which at least
+	// keeps two strangers apart.
+	return m.To + " " + m.From
+}
 
 // Load registers the agent for mail arriving at an address that names one.
 //
@@ -201,8 +228,16 @@ func answerMail(m mail.InboundMail) {
 		}
 	}
 
+	// The message as prose, not as the markup somebody's client happened to send
+	// it in. A mail composed on a phone arrives as `<div dir="auto">…</div>`, and
+	// that was going to the agent as the question and into the record as the
+	// conversation's name. Body is what the inbox renders; Text is what was said.
 	prompt := m.Subject
-	if body := strings.TrimSpace(m.Body); body != "" {
+	body := strings.TrimSpace(m.Text)
+	if body == "" {
+		body = strings.TrimSpace(m.Body)
+	}
+	if body != "" {
 		if prompt != "" {
 			prompt += "\n\n"
 		}
@@ -252,7 +287,7 @@ func answerMail(m mail.InboundMail) {
 	res, err := agent.Ask(agent.AskRequest{
 		Account: m.Owner,
 		Client:  Client,
-		Thread:  m.To,
+		Thread:  chainKey(m),
 		Text:    prompt,
 		Agent:   ref,
 		System:  agent.MailPrompt(""),

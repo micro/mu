@@ -54,11 +54,36 @@ func TestTheAgentSurfaceOffersThreads(t *testing.T) {
 		t.Error("no Threads tab — the record is written on every turn and there is no " +
 			"way to look at it")
 	}
-	// Threads is not one agent's. A mail chain or a Discord DM is a conversation
-	// with this instance, and scoping the tab to whichever agent a page happened
-	// to be about would hide the rest of somebody's history.
-	if strings.Contains(agentTabs("chat", "agent-123"), `href="/agent/threads?`) {
-		t.Error("the Threads tab carries an agent — the record is not per agent")
+}
+
+// Every tab keeps the agent you are looking at.
+//
+// A strip where one tab drops the selection is a strip that loses your place:
+// Threads carried no agent and Connect was not there at all for the default, so
+// clicking Threads and then Chat put you back with a different agent than the
+// one you had been talking to, and the tabs changed shape as you moved around.
+func TestEveryAgentTabKeepsTheAgent(t *testing.T) {
+	tabs := agentTabs("chat", "agent-123")
+	for _, want := range []string{
+		`href="/agent?id=agent-123"`,
+		`href="/agent/threads?agent=agent-123"`,
+		`href="/agent/runs?agent=agent-123"`,
+		`href="/agent/connect?id=agent-123"`,
+	} {
+		if !strings.Contains(tabs, want) {
+			t.Errorf("a tab drops the selected agent: no %s in the strip", want)
+		}
+	}
+
+	// And the strip is the same four tabs whichever agent is selected, including
+	// the default. Connect used to appear only for an agent with a token, so the
+	// agent most people use was the one with no answer to "how do I reach this".
+	def, named := agentTabs("chat", ""), tabs
+	if strings.Count(def, "agent-tab ") != strings.Count(named, "agent-tab ") {
+		t.Error("the tab strip changes shape depending on which agent is selected")
+	}
+	if !strings.Contains(def, `href="/agent/connect"`) {
+		t.Error("no Connect tab for the default agent")
 	}
 }
 
@@ -96,7 +121,7 @@ func TestAConversationRendersWhatWasSaid(t *testing.T) {
 			"asterisks — this was the observed bug in mail. Got: %s", agentSaid)
 	}
 
-	row := threadRow(owner, *thread.Get(owner, th.ID))
+	row := threadRow(owner, *thread.Get(owner, th.ID), "csrf-token", "")
 	if !strings.Contains(row, "/agent/threads?id="+th.ID) {
 		t.Error("the row does not open the conversation")
 	}
@@ -127,7 +152,7 @@ func TestAnAnswerCannotSmuggleMarkupOntoThePage(t *testing.T) {
 	}
 
 	// And in the list, where the last message is shown as a preview.
-	if strings.Contains(threadRow(owner, *thread.Get(owner, th.ID)), "<script>") {
+	if strings.Contains(threadRow(owner, *thread.Get(owner, th.ID), "csrf-token", ""), "<script>") {
 		t.Error("the preview put raw script on the page")
 	}
 }

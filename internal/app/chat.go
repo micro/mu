@@ -264,7 +264,18 @@ function ask(q){
               // Continue this server session on the next message. Persist it now
               // (it arrives before the answer) so a reload mid-stream still
               // threads the follow-up onto this same conversation.
-              if(ev.flow_id){contextId=ev.flow_id;save();}
+              // A conversation that did not exist a moment ago is one the page
+              // beside this can now list. Without this the rail only learned
+              // about a conversation on the next reload, so saying hello and
+              // then refreshing made a row appear that had not been there while
+              // you were talking — the list looked like it was lagging reality,
+              // because it was. Optional: the same component runs on Home and
+              // the landing page, where there is no rail to tell.
+              if(ev.flow_id){
+                var fresh=!contextId;
+                contextId=ev.flow_id;save();
+                if(fresh&&window.muSessionStarted)window.muSessionStarted(ev.flow_id,q);
+              }
             }else if(ev.type==='thinking'){
               startWork(ev.message);
             }else if(ev.type==='stream_start'){

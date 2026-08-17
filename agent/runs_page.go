@@ -78,8 +78,6 @@ func RunsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var b strings.Builder
-	b.WriteString(`<div style="max-width:820px">`)
-	b.WriteString(agentTabs("runs", only))
 	b.WriteString(`<p class="lens-lead">A trace of every question your agents have answered: what was ` +
 		`asked, which agent took it, which tools it called, and whether it finished. Runs started by ` +
 		`a task, a schedule, or an agent calling in over MCP land here too — those are the ones ` +
@@ -102,8 +100,8 @@ func RunsHandler(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`</div>`)
 	}
 
-	b.WriteString(`</div>` + runsCSS)
-	w.Write([]byte(app.RenderHTMLForRequest("Runs", "What your agents did, and whether it worked", b.String(), r)))
+	body := agentPage("runs", only, b.String()) + runsCSS
+	w.Write([]byte(app.RenderHTMLForRequest("Runs", "What your agents did, and whether it worked", body, r)))
 }
 
 // runRow is one run. csrf empty means no delete control, for anywhere this is
@@ -332,17 +330,33 @@ func agentRunsSummary(accountID, agentID string) string {
 // Runs used to be /runs, a top-level page beside Home and Tools, which put the
 // record of what your agents did at the same level as the things themselves. It
 // is not a peer of the agent; it is the other half of one. So it lives under
-// /agent and the two tab between each other, carrying the selected agent across
-// so "chat to this one" and "what has this one done" are the same question
-// asked twice.
+// /agent and the four tab between each other.
+//
+// Every tab carries the selected agent, and this is the whole of it: a strip
+// where one tab drops the selection is a strip that loses your place. Threads
+// carried no agent and Connect appeared only for an agent that had one, so
+// clicking Threads and then Chat put you back with the default agent, and the
+// tabs changed shape as you moved between agents. Both read as the surface
+// having forgotten what you were doing, because it had.
+// agentPage is one tab of the agent surface: the same picker on the left that
+// the chat has, the tab strip, and this tab's content.
+//
+// The picker was on Chat alone, so moving to Connect or Runs dropped the list of
+// agents out of the page — and with it any way to switch between them without
+// going back. Four tabs of one surface should not disagree about whether the
+// surface has a sidebar.
+func agentPage(active, agentID, body string) string {
+	return `<div class="chat-layout"><div class="chat-side">` + renderAgentsPanel() +
+		`</div><div class="chat-main">` + agentTabs(active, agentID) +
+		`<div style="max-width:820px">` + body + `</div></div></div>` + chatLayoutCSS +
+		`<script>window.muSeedAgent(` + app.JSString(agentID) + `);</script>`
+}
+
 func agentTabs(active, agentID string) string {
-	q := ""
+	q, agentQ := "", ""
 	if agentID != "" {
 		q = "?" + url.Values{"id": {agentID}}.Encode()
-	}
-	runsQ := ""
-	if agentID != "" {
-		runsQ = "?" + url.Values{"agent": {agentID}}.Encode()
+		agentQ = "?" + url.Values{"agent": {agentID}}.Encode()
 	}
 	tab := func(label, href, key string) string {
 		cls := "agent-tab"
@@ -351,16 +365,17 @@ func agentTabs(active, agentID string) string {
 		}
 		return `<a class="` + cls + `" href="` + href + `">` + label + `</a>`
 	}
-	out := `<div class="agent-tabs">` + tab("Chat", "/agent"+q, "chat")
-	// Connect is only a tab when there is an agent to connect to. The default
-	// assistant has no token, no scope and no address of its own.
-	if agentID != "" {
-		out += tab("Connect", "/agent/connect"+q, "connect")
-	}
-	// Threads carries no agent: it is the record of what was said on every
-	// client, and a conversation by mail or on Discord is not one agent's.
-	out += tab("Threads", "/agent/threads", "threads")
-	return out + tab("Runs", "/agent/runs"+runsQ, "runs") + `</div>` + agentTabsCSS
+	return `<div class="agent-tabs">` +
+		tab("Chat", "/agent"+q, "chat") +
+		tab("Threads", "/agent/threads"+agentQ, "threads") +
+		tab("Runs", "/agent/runs"+agentQ, "runs") +
+		// Connect is a tab for the default agent too. It has no token and no
+		// scope of its own, which is a thing to say rather than a reason to
+		// leave out the page that answers "how do I reach this one" — that is
+		// the first question anybody has about an agent, and Micro is the agent
+		// most people are looking at.
+		tab("Connect", "/agent/connect"+q, "connect") +
+		`</div>` + agentTabsCSS
 }
 
 const agentTabsCSS = `<style>

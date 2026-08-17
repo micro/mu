@@ -766,6 +766,7 @@ func (s *Session) Data(r io.Reader) error {
 			FromName:   senderName,
 			Subject:    subject,
 			Body:       body,
+			Text:       stripHTMLTags(body),
 			MessageID:  messageID,
 			InReplyTo:  inReplyTo,
 			References: references,
@@ -1302,11 +1303,23 @@ type InboundMail struct {
 	// an empty tag is the catch-all.
 	Shared bool
 
-	From      string // who wrote in
-	To        string // the address they wrote to, which is what answers them
-	FromName  string
-	Subject   string
-	Body      string
+	From     string // who wrote in
+	To       string // the address they wrote to, which is what answers them
+	FromName string
+	Subject  string
+
+	// Body is the message as it arrived, HTML preferred, because that is what
+	// the inbox renders.
+	//
+	// Text is the same message as prose. A handler that hands a message to
+	// something other than a browser wants this one: the agent was being given
+	// `<div dir="auto">What&#39;s happening </div>` as the question, which is
+	// what it answered, and the same string became the conversation's name in
+	// the record. Markup is not what somebody wrote — it is how their client
+	// chose to send it.
+	Body string
+	Text string
+
 	MessageID string // for threading the reply
 
 	// InReplyTo and References are what the sender says this message answers.

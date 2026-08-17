@@ -115,6 +115,9 @@ func Ask(r AskRequest) (Answer, error) {
 	if th == nil {
 		th = thread.Open(r.Account, r.Client, r.Thread)
 	}
+	// Who the conversation is with, so a surface that has an agent selected can
+	// show that agent's conversations rather than all of them or none.
+	thread.SetAgent(r.Account, threadID(th), r.Agent)
 
 	opts := QueryOpts{
 		Public:  r.Public,
@@ -184,13 +187,18 @@ func Ask(r AskRequest) (Answer, error) {
 // record — the web streams, so it cannot hand the whole turn to Ask and wait.
 // What it must not do is write its own version of the record, which is why
 // these three are the only way in and Ask uses them too.
-func Opened(account, client, key, ref string) string {
+func Opened(account, client, key, ref, agentID string) string {
+	id := ""
 	if ref != "" {
 		if th := thread.ByRef(account, ref); th != nil {
-			return th.ID
+			id = th.ID
 		}
 	}
-	return threadID(thread.Open(account, client, key))
+	if id == "" {
+		id = threadID(thread.Open(account, client, key))
+	}
+	thread.SetAgent(account, id, agentID)
+	return id
 }
 
 // Said records what a person wrote. It happens before the run, so a message
