@@ -13,6 +13,73 @@ import (
 	"mu/internal/x402"
 )
 
+// tierSpec is one of the three ways to have this.
+//
+// Not three sizes of one plan — the tiers this page used to carry were three
+// limits and a credit at par, and they went because none of them was anything a
+// top-up did not already do. These are three different relationships: our
+// instance metered per call, your instance for nothing, or your instance run by
+// us. What differs is who operates it, which is the only axis worth a column.
+type tierSpec struct {
+	Name   string
+	Price  string
+	Unit   string
+	Lead   string
+	Points []string
+	Action string
+	Href   string
+	// Highlight marks the one we would rather you took. Exactly one, and the
+	// honest one: a page where every column is emphasised has emphasised none.
+	Highlight bool
+}
+
+func tier(s tierSpec) string {
+	cls := "tier"
+	if s.Highlight {
+		cls += " tier-on"
+	}
+	var b strings.Builder
+	b.WriteString(`<div class="` + cls + `">`)
+	b.WriteString(`<div class="tier-name">` + html.EscapeString(s.Name) + `</div>`)
+	b.WriteString(`<div class="tier-price">` + html.EscapeString(s.Price))
+	if s.Unit != "" {
+		b.WriteString(`<span class="tier-unit">` + html.EscapeString(s.Unit) + `</span>`)
+	}
+	b.WriteString(`</div>`)
+	b.WriteString(`<p class="tier-lead">` + html.EscapeString(s.Lead) + `</p>`)
+	b.WriteString(`<ul class="tier-points">`)
+	for _, p := range s.Points {
+		b.WriteString(`<li>` + html.EscapeString(p) + `</li>`)
+	}
+	b.WriteString(`</ul>`)
+	b.WriteString(`<a class="tier-act" href="` + html.EscapeString(s.Href) + `">` +
+		html.EscapeString(s.Action) + `</a>`)
+	b.WriteString(`</div>`)
+	return b.String()
+}
+
+const tiersCSS = `<style>
+.tiers{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:0 0 28px;align-items:stretch}
+.tier{display:flex;flex-direction:column;border:1px solid var(--card-border,#e8e8e8);border-radius:10px;
+  padding:18px 18px 16px;background:var(--card-background,#fff)}
+.tier-on{border-color:var(--text-primary,#111);box-shadow:0 1px 0 var(--text-primary,#111)}
+.tier-name{font-size:13px;font-weight:600;letter-spacing:.02em;color:var(--text-muted,#666)}
+.tier-price{font-size:1.5rem;font-weight:600;margin:6px 0 10px;color:var(--text-primary,#111)}
+.tier-unit{font-size:13px;font-weight:400;color:var(--text-muted,#888);margin-left:6px}
+.tier-lead{font-size:13.5px;line-height:1.55;color:var(--text-secondary,#555);margin:0 0 12px}
+.tier-points{list-style:none;padding:0;margin:0 0 16px;font-size:13px;color:var(--text-secondary,#555)}
+.tier-points li{padding:4px 0 4px 18px;position:relative;line-height:1.45}
+.tier-points li::before{content:"·";position:absolute;left:6px;color:#bbb;font-weight:700}
+.tier-act{margin-top:auto;display:block;text-align:center;padding:9px 12px;border-radius:6px;
+  border:1px solid var(--border-color,#ddd);color:var(--text-primary,#111);text-decoration:none;
+  font-size:14px;font-weight:600;overflow-wrap:anywhere}
+.tier-act:hover{border-color:#999}
+.tier-on .tier-act{background:var(--text-primary,#111);border-color:var(--text-primary,#111);color:#fff}
+/* One column on a phone, in the order they are written: try it, run it, or have
+   it run. A three-column grid at 380px wide is three unreadable columns. */
+@media(max-width:820px){.tiers{grid-template-columns:1fr;gap:12px}}
+</style>`
+
 func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	var b strings.Builder
 
@@ -34,17 +101,67 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	// wiring up an agent could not tell whether this was for them, and somebody
 	// looking for an app could not either. The app is how you see the tools
 	// work, not a second product being sold alongside them.
-	b.WriteString(`<p style="color:#666;font-size:15px;margin:0 0 12px">The everyday internet as tools your agent calls over <a href="/mcp" style="color:#111">MCP</a>, metered per call. The app you sign into is included.</p>`)
-	// The two links are their own line. Run on from the sentence above they read
-	// as more prose and get skipped — a call to action that is the tail of a
-	// paragraph is not one.
-	b.WriteString(fmt.Sprintf(`<p style="color:#666;font-size:15px;margin:0 0 12px">`+
-		`One price, one way: <strong>a credit is 1p</strong>, top up any amount, and all %d tools `+
-		`are there from the first penny. No plan, no tier, nothing held back for a bigger one.</p>`,
-		api.ToolCount()))
-	b.WriteString(`<p style="color:#666;font-size:15px;margin:0 0 24px"><a href="/tools" style="color:#111">Browse the tools →</a> &nbsp;·&nbsp; Or self-host for free.</p>`)
-
+	b.WriteString(fmt.Sprintf(`<p style="color:#666;font-size:15px;margin:0 0 20px">`+
+		`The everyday internet as tools your agent calls over <a href="/mcp" style="color:#111">MCP</a> — `+
+		`all %d of them, one account instead of a hundred. Use ours by the call, run your own for `+
+		`nothing, or have us run one for you.</p>`, api.ToolCount()))
 	b.WriteString(`</div>`)
+
+	// Three ways to have it, which is three different relationships rather than
+	// three sizes of the same one.
+	//
+	// It was one column of cards — costs, then how you pay, then a note about
+	// self-hosting — which reads as a price list for a single product, and the
+	// only thing a visitor could do with it was top up. The two options that are
+	// not "pay us per call" were a paragraph and a link at the bottom of the
+	// page. If somebody wants an instance of their own, or wants one run for
+	// them, that has to be visible at the same moment as the price.
+	b.WriteString(`<div class="tiers">`)
+
+	b.WriteString(tier(tierSpec{
+		Name:  "Pay as you go",
+		Price: "1p",
+		Unit:  "a credit",
+		Lead:  "Use this instance. Top up any amount and every tool is there from the first penny — no plan, no tier, nothing held back for a bigger one.",
+		Points: []string{
+			"All " + fmt.Sprintf("%d", api.ToolCount()) + " tools",
+			"The web app included",
+			"Agents can pay per call in USDC, with no account at all",
+			"Stop any time — credits do not expire",
+		},
+		Action: "Top up", Href: "/account/topup",
+	}))
+
+	b.WriteString(tier(tierSpec{
+		Name:  "Self-host",
+		Price: "Free",
+		Unit:  "for ever",
+		Lead:  "Run your own instance. One Go binary, your machine, your data — and with no Stripe keys and no x402 address it cannot charge anybody, so nothing is metered.",
+		Points: []string{
+			"Every tool, no limits",
+			"Bring your own AI provider",
+			"Your own mail domain and agent addresses",
+			"Charge for your instance and the money is yours",
+		},
+		Action: "Get the code", Href: "https://github.com/micro/mu",
+	}))
+
+	b.WriteString(tier(tierSpec{
+		Name:  "Hosted",
+		Price: "Talk to us",
+		Unit:  "",
+		Lead:  "Your own instance, run by us. Your domain, your mail, your agents, kept up and backed up — the self-hosted product without the hosting.",
+		Points: []string{
+			"A dedicated instance on your own domain",
+			"Mail, agents and tools set up for you",
+			"Backups, upgrades and monitoring",
+			"Support with an actual person behind it",
+		},
+		Action: "support@micro.mu", Href: "mailto:support@micro.mu?subject=Hosted%20Mu",
+		Highlight: true,
+	}))
+
+	b.WriteString(`</div>` + tiersCSS)
 
 	// Credit costs
 	b.WriteString(`<div class="card" id="costs" style="margin:0 0 16px">`)
@@ -101,13 +218,6 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/call",
        "params":{"name":"web_search","arguments":{"query":"x402"}}}'</pre>`)
 	}
-	b.WriteString(`</div>`)
-
-	// Self-host
-	b.WriteString(`<div class="card" style="margin:0 0 16px">`)
-	b.WriteString(`<h3>Self-host</h3>`)
-	b.WriteString(`<p style="font-size:14px;color:#666">Run your own instance with no limits. Single Go binary, bring your own AI provider. With no Stripe keys and no x402 address an instance cannot charge anybody, so nothing is metered and every tool is free.</p>`)
-	b.WriteString(`<p style="font-size:14px"><a href="https://github.com/micro/mu">github.com/micro/mu</a></p>`)
 	b.WriteString(`</div>`)
 
 	// Login link (only when not logged in)
