@@ -272,11 +272,11 @@ somebody says what they want once and the system does the assembly.
 ships one, better funded, with distribution we do not have. If the pitch is "an
 assistant", we lose.
 
-What is defensible is that this agent has hands. A real sending address with
-DKIM. A phone number. A wallet with USDC and a per-day cap. Storage. The
-ability to pay a stranger's API mid-task with no signup. Most agents talk; this
-one acts, is accountable for the action, and the action costs money from a
-balance somebody topped up. That is not a feature list — it is what two pivots
+What is defensible is that this agent has hands. An address that reaches it and
+that it can answer from. A phone number. A wallet with USDC and a per-day cap.
+Storage. The ability to pay a stranger's API mid-task with no signup. Most
+agents talk; this one acts, is accountable for the action, and the action costs
+money from a balance somebody topped up. That is not a feature list — it is what two pivots
 of building have actually produced, and it has never been the headline.
 
 **And it is not a pivot away from the tools business.** Tool calls are the

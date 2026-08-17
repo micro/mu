@@ -22,12 +22,11 @@ cards on file, six tokens to rotate, six sets of terms. Mu is one balance and
 one protocol, and for an agent paying per request over x402, no signup at all.
 Removing that barrier is the product.
 
-Sometimes removing it means running the thing ourselves. The SMTP server with
-DKIM is real, and it has to be, because a sending domain with deliverability is
-not something a caller can casually acquire — building it *is* the barrier
-coming down. Sometimes it means paying a provider so the caller never holds
-that relationship. Both count. The test is whether the caller is spared an
-account, not whether we wrote the backend.
+Sometimes removing it means running the thing ourselves; sometimes it means
+paying a provider so the caller never holds that relationship. Both count. The
+test is whether the caller is spared an account, not whether we wrote the
+backend — which half a given service falls on is an implementation detail, and
+never the pitch.
 
 **On the line this replaces.** For a long time this said *real tools, not
 wrappers*, and treated "we built the backend" as the thing that made Mu worth

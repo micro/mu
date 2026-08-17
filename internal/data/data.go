@@ -176,7 +176,47 @@ func SaveJSON(key string, val interface{}) error {
 	if err != nil {
 		return err
 	}
+	keepIfShrinking(key, file, len(b))
 	return writeAtomic(file, b)
+}
+
+// shrinkFloor is how much a store may lose in one write before a copy is kept.
+//
+// Half. Deletions happen and are legitimate; halving a file in a single write
+// is the shape of an accident rather than a decision.
+const shrinkFloor = 0.5
+
+// keepIfShrinking copies a file aside when a write is about to make it much
+// smaller.
+//
+// The wallet was destroyed this way and not by a torn write: two components
+// each loaded the same file into a map of their own, and each saved its own
+// view back over the other's. Every store here has that shape — load the whole
+// thing into memory, mutate, marshal the whole thing back — so a caller holding
+// a stale or partial map overwrites everything with what it happens to know.
+//
+// Detecting *why* would need the callers to change. Noticing that a store just
+// lost most of itself does not, and one kept copy is the difference between an
+// afternoon and a year.
+func keepIfShrinking(key, file string, size int) {
+	info, err := os.Stat(file)
+	if err != nil || info.Size() < 1024 {
+		// Nothing there yet, or too small for the ratio to mean anything.
+		return
+	}
+	if float64(size) >= float64(info.Size())*shrinkFloor {
+		return
+	}
+	prev := file + ".prev"
+	b, err := os.ReadFile(file)
+	if err != nil {
+		return
+	}
+	if err := writeAtomic(prev, b); err != nil {
+		return
+	}
+	fmt.Fprintf(os.Stderr, "[data] %s shrank from %d to %d bytes in one write; "+
+		"the previous contents are in %s\n", key, info.Size(), size, prev)
 }
 
 func LoadJSON(key string, val interface{}) error {
@@ -186,9 +226,77 @@ func LoadJSON(key string, val interface{}) error {
 	}
 	b, err := os.ReadFile(file)
 	if err != nil {
+		// No file is not a failure: a store that has never been written to
+		// starts empty, which is correct and is the common case on first run.
 		return err
 	}
-	return json.Unmarshal(b, val)
+	if err := json.Unmarshal(b, val); err != nil {
+		// A file that exists and will not parse is the dangerous one.
+		//
+		// Every store here treats a load error as "no data" and starts empty —
+		// and then the next write saves that empty state straight over the
+		// file. One unparseable byte is total, silent, permanent loss, made
+		// permanent by the very next message. That is not a hypothetical: it
+		// is one save away, on every store, all the time.
+		//
+		// So the file is moved out of the way before anything can overwrite
+		// it. The store still starts empty and the instance still runs, but
+		// what was there is on disk under another name and an operator can
+		// read it, repair it and put it back. Loud, recoverable, and it costs
+		// a rename.
+		quarantine(key, file, err)
+		return fmt.Errorf("%s: %w", key, err)
+	}
+	return nil
+}
+
+var (
+	badMu sync.Mutex
+	bad   = map[string]string{} // key → where its unreadable file was put
+)
+
+// quarantine moves a file that will not parse somewhere it cannot be
+// overwritten, and remembers that it happened.
+func quarantine(key, file string, cause error) {
+	aside := file + ".corrupt." + time.Now().UTC().Format("20060102-150405")
+	if err := os.Rename(file, aside); err != nil {
+		// Could not move it. Say so — this is the case where the next save
+		// really will destroy it.
+		fmt.Fprintf(os.Stderr, "[data] %s is unreadable (%v) and could not be "+
+			"set aside (%v); the next write will overwrite it\n", key, cause, err)
+		return
+	}
+	badMu.Lock()
+	bad[key] = aside
+	badMu.Unlock()
+	fmt.Fprintf(os.Stderr, "[data] %s is unreadable (%v). Moved to %s and started "+
+		"empty; nothing was overwritten\n", key, cause, aside)
+}
+
+// Quarantine moves a store's file aside, for a caller that reads and unmarshals
+// it itself and so cannot be protected by LoadJSON.
+//
+// service/mail is one: it loads raw bytes because the messages are encrypted,
+// and on a parse failure it emptied its in-memory list and carried on — which
+// meant the next save wrote an empty inbox over everybody's mail.
+func Quarantine(key string, cause error) {
+	file, err := dataPath(key)
+	if err != nil {
+		return
+	}
+	quarantine(key, file, cause)
+}
+
+// Quarantined reports which stores failed to load and where their files went,
+// so a status page can say so rather than leaving it in a log nobody reads.
+func Quarantined() map[string]string {
+	badMu.Lock()
+	defer badMu.Unlock()
+	out := make(map[string]string, len(bad))
+	for k, v := range bad {
+		out[k] = v
+	}
+	return out
 }
 
 // ============================================

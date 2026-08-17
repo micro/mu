@@ -113,6 +113,12 @@ func Load() {
 		messages = []*Message{}
 		inboxes = make(map[string]*Inbox)
 	} else if err := json.Unmarshal(b, &messages); err != nil {
+		// Mail that will not parse is moved out of the way before anything can
+		// overwrite it. This branch emptied the list and carried on, and the
+		// next save wrote that empty list over every account's mail — the one
+		// store where losing it silently is worst, and the one that reads its
+		// own bytes and so is not covered by data.LoadJSON.
+		data.Quarantine("mail.json", err)
 		messages = []*Message{}
 		inboxes = make(map[string]*Inbox)
 	} else {
