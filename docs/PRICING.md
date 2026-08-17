@@ -18,12 +18,28 @@ Measured, not remembered.
 | A new account starts with | **0 credits** |
 | One credit is | **£0.01** |
 | Ways to pay | **top up** any amount at 1p a credit · **x402** per request, no account · **self-host**, nothing metered |
-| Subscriptions on offer | **none** — see *Why there are no plans* |
+| Plans on offer | **Starter £10, Pro £100** — rolling credits at a better rate, `/plans` |
 | `daily_quota: 100` in quota.json | **dead** — declared, documented, configurable, read by nothing |
 | Operations priced at 0 | 15 of 27 |
 | Charging path | one gateway, since `127a326` |
 
-## Why there are no plans
+## Why there are plans again, and what they are
+
+Rolling credits, and nothing else. A plan buys the same credits at the same
+price list, monthly instead of by hand, at a better rate per pound — and what is
+not spent stays on the balance rather than expiring. It is not a product, not a
+subscription to a different tier of service, and it grants nothing: every tool
+costs what the table below says on every rung, and Free includes no credits at
+all, because a grant is a bill that scales with the accounts that use it most.
+
+What a plan does change is the caps, which is where the account's plan has to be
+mapped: the limits that lift on `auth.Trusted` today should lift on the plan
+instead.
+
+The two earlier attempts are below, because the arguments that killed them are
+the ones that will be made again.
+
+### The two that failed
 
 There were, twice, and both times they failed the same test.
 

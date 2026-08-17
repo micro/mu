@@ -220,7 +220,7 @@ func CreateAgent(owner, name, kind, prompt, description string, services []strin
 	existing := Agents(owner)
 	if max := agentAllowance(owner); max > 0 && len(existing) >= max {
 		return nil, "", fmt.Errorf("your plan runs %d agent%s and you have %d — "+
-			"change your plan on Pricing to run more, or delete one first",
+			"change your plan on Plans to run more, or delete one first",
 			max, plural(max), len(existing))
 	}
 

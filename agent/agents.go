@@ -314,7 +314,7 @@ func NewAgentHandler(w http.ResponseWriter, r *http.Request) {
 					`<h3 style="margin:0 0 8px">You are running %d of %d agent%s</h3>`+
 					`<p style="color:#666;font-size:15px;margin:0 0 16px">Your plan runs %d. `+
 					`Change your plan to add more, or delete one you are not using.</p>`+
-					`<a href="/pricing" class="btn">Upgrade to add more</a> `+
+					`<a href="/plans" class="btn">Upgrade to add more</a> `+
 					`<a href="/agents" class="btn" style="background:#fff;color:#111;border:1px solid #ddd">Your agents</a>`+
 					`</div>`, have, max, plural(max), max),
 			})

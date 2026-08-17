@@ -27,7 +27,7 @@ twice, and a new service appears in both at once.
 
 Most of it is free. Storage, and any read that only touches this instance, costs
 nothing. What costs anything costs it because a model ran or a paid provider
-answered, and the price list is [/pricing](/pricing) — one file, one credit is
+answered, and the price list is [/plans](/plans) — one file, one credit is
 one penny.
 
 There are two ways to pay for the rest, and which one you use depends on whether

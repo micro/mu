@@ -17,10 +17,23 @@ import (
 //
 // Free, Starter, Pro. There were tiers here once and they went, rightly: they
 // sold three limits and a credit at par, which is nothing a top-up does not do.
-// These sell something else — an allowance that costs less than buying the same
-// credits, and the caps lifting — so the subscription is worth more than the
-// money in it, and what is metered stays metered so a heavy month cannot cost
-// more to serve than it brings in.
+// A plan is rolling credits at a better rate, plus the caps coming off. Not a
+// product and not a subscription to anything different: the same tools at the
+// same prices, bought monthly instead of by hand, and what is not spent stays on
+// the balance. Priced at par it would be pay-as-you-go with a cancellation
+// obligation attached, which is the first attempt in docs/PRICING.md and why it
+// died; the rate is what makes it a plan.
+//
+// The discount costs margin rather than cash — an agent run is charged 7p
+// against well under a penny of provider spend — so more credits per pound is a
+// discount on our own markup, not a subsidy.
+//
+// Nothing is given away. Free is an account and the app, which is included
+// everywhere because the app is the demonstration rather than the product; the
+// moment an agent calls a tool it is metered like everybody else's. There is no
+// free allowance of credits and there must not be: every priced call spends a
+// provider's money, so a grant is a bill that scales with exactly the accounts
+// that use it most. The free option is self-hosting, and it is a real one.
 //
 // Two things are deliberately not columns. Self-hosting earns nothing by design
 // and belongs beside the ladder rather than on it, and anything past Pro is a
@@ -89,7 +102,7 @@ const tiersCSS = `<style>
 @media(max-width:820px){.tiers{grid-template-columns:1fr;gap:12px}}
 </style>`
 
-func PricingHandler(w http.ResponseWriter, r *http.Request) {
+func PlansHandler(w http.ResponseWriter, r *http.Request) {
 	var b strings.Builder
 
 	// One column, anchored where every other page's content is anchored.
@@ -129,13 +142,12 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 		Name:  "Free",
 		Price: "£0",
 		Unit:  "",
-		Lead: "Everything works. All " + fmt.Sprintf("%d", api.ToolCount()) +
-			" tools, the app, an agent with an address of its own — enough of a monthly allowance to use it for real rather than to evaluate it.",
+		Lead:  "An account and the app. Look at anything — news, markets, weather, a route, your own notes and files — and it costs nothing. What your agents call is metered, at 1p a credit, from the first call.",
 		Points: []string{
-			"200 credits a month",
+			"The web app, included",
 			"One agent, reachable by email",
-			"Notes, files, contacts, calendar — unlimited",
-			"Top up any time at 1p a credit",
+			"All " + fmt.Sprintf("%d", api.ToolCount()) + " tools, pay as you go",
+			"Top up any amount, any time",
 		},
 		Action: "Start", Href: "/signup",
 	}))
@@ -144,9 +156,9 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 		Name:  "Starter",
 		Price: "£10",
 		Unit:  "a month",
-		Lead:  "For an assistant you actually rely on: as many agents as you want, reachable wherever you already are, and a record that is kept rather than trimmed.",
+		Lead:  "Credits every month at a better rate, and they roll — a quiet month pays for a busy one. The caps come off with it: agents without a limit, the channels you already use, and a history that is kept.",
 		Points: []string{
-			"1,500 credits a month — £15 of them",
+			"1,200 rolling credits a month — 20% more than topping up",
 			"Unlimited agents, each with its own address",
 			"Discord, Telegram and WhatsApp",
 			"Your whole history kept and searchable",
@@ -160,9 +172,9 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 		Name:  "Pro",
 		Price: "£100",
 		Unit:  "a month",
-		Lead:  "For running something real on it — a product, a business, a fleet of agents working all day. The headroom, and a person to ask.",
+		Lead:  "For running something real on it — a product, a business, agents working all day. The same rolling credits at the best rate, the headroom, and a person to ask when it matters.",
 		Points: []string{
-			"20,000 credits a month — £200 of them",
+			"13,000 rolling credits a month — 30% more than topping up",
 			"Everything in Starter",
 			"The highest send limits",
 			"Priority support from a person",
@@ -180,6 +192,10 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	// anything past Pro is a conversation rather than a price: a number on a
 	// page for work nobody has scoped yet is a number you have to honour.
 	b.WriteString(`<div class="tier-more">` +
+		`<span><strong>Credits never expire.</strong> A plan is a standing order for them at a ` +
+		`better rate, not a subscription to a different product — the tools, the app and the ` +
+		`prices are the same on every rung. Stop whenever you like and what you have not spent ` +
+		`stays yours.</span>` +
 		`<span><strong>Run it yourself.</strong> Free, for ever — one Go binary, your machine, ` +
 		`your data. With no Stripe keys and no x402 address an instance cannot charge anybody, ` +
 		`so nothing is metered. <a href="https://github.com/micro/mu">github.com/micro/mu</a></span>` +
@@ -252,6 +268,6 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 
 	b.WriteString(`</div>`) // close centered column
 
-	page := app.RenderHTMLForRequest("Pricing", "What it costs and how you pay", b.String(), r)
+	page := app.RenderHTMLForRequest("Plans", "Credits, and what a plan costs", b.String(), r)
 	w.Write([]byte(page))
 }

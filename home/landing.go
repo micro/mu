@@ -47,7 +47,7 @@ func Landing(w http.ResponseWriter, r *http.Request) {
 		Description: "The everyday internet as tools an agent can call — news, web search, mail, markets, weather, video, storage. Over MCP and REST, paid per request. Open source and self-hostable.",
 		Brand:       "Mu",
 		Tagline:     "Tools for Agents",
-		TopRight:    `<a href="/login">Sign in →</a>`,
+		TopRight:    `<a href="/plans">Plans</a> <a href="/login">Sign in →</a>`,
 		Body:        body,
 		Footer:      app.FooterLinks(),
 	})
@@ -99,7 +99,7 @@ your own agent, an email address it answers on, and the endpoint your own client
     <li><b>Claude Desktop.</b> Settings → Connectors → Add custom connector, and paste
     <code>` + host + `/mcp</code>. It opens a browser and asks you to sign in — no token needed.</li>
     <li><b>Then call anything.</b> Calls draw on your credits — most tools are included, the ones
-    that cost us money are priced on <a href="/pricing">pricing</a>.</li>
+    that cost us money are priced on <a href="/plans">plans</a>.</li>
     <li><b>Or bring a wallet and skip all of that.</b> Call <code>` + host + `/mcp</code> with no
     credentials. Free tools answer; a priced one replies <code>402</code> naming its price and where
     to send it, and an <a href="https://x402.org" rel="noopener">x402</a> client pays in USDC and

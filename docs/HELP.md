@@ -48,7 +48,7 @@ builds the URL.
 
 Every priced call answers `402 Payment Required` with an
 [x402](https://x402.org) challenge: pay in USDC, retry, get your answer. No
-signup, no card, no account. What each call costs is on [/pricing](/pricing).
+signup, no card, no account. What each call costs is on [/plans](/plans).
 
 Signed in, the same calls come out of your credit balance, which is on
 [your account](/account).

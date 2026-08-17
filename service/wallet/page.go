@@ -34,7 +34,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			`spend it on priced endpoints anywhere — no account with those servers, no card ` +
 			`on file, no key to rotate.</p>` +
 			`<p class="text-sm text-muted">Credits for this instance are separate and are bought ` +
-			`with a card — see <a href="/pricing">pricing</a>.</p>` +
+			`with a card — see <a href="/plans">plans</a>.</p>` +
 			`<p><a href="/login" class="btn">Sign in</a> <a href="/signup" class="btn btn-secondary">Sign up</a></p></div>` +
 			toolsCard()
 		w.Write([]byte(app.RenderHTMLForRequest("Wallet", "A key of your own on Base", body, r)))

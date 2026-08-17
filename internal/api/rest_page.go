@@ -50,7 +50,7 @@ func RESTPageHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<p class="card-meta">` +
 		`<a href="` + RESTRoot + `">Machine-readable catalogue &rarr;</a> &middot; ` +
 		`<a href="/token">Get a token</a> &middot; ` +
-		`<a href="/pricing">What calls cost</a></p>`)
+		`<a href="/plans">What calls cost</a></p>`)
 	b.WriteString(`<p class="card-meta">Building an AI agent instead? ` +
 		`<a href="/mcp">The MCP endpoint</a> serves the same methods as tools, with a ` +
 		`catalogue to plan over.</p>`)
@@ -83,7 +83,7 @@ func restAuthCard(base string) string {
 
 	b.WriteString(`<p><b>Paying instead.</b> A metered method answers an unauthenticated ` +
 		`call with <code>402</code> and an x402 challenge; pay it and the same request ` +
-		`succeeds. No account, no signup — see <a href="/pricing">pricing</a>.</p>`)
+		`succeeds. No account, no signup — see <a href="/plans">plans</a>.</p>`)
 
 	b.WriteString(`<p><b>From a browser.</b> A signed-in session works for reads. ` +
 		`A <code>POST</code> resting on the session cookie also needs an ` +
