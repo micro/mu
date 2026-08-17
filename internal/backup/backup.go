@@ -46,19 +46,32 @@ import (
 	"time"
 )
 
-// Interval is how often a snapshot is taken when anything has changed.
+// Interval is how often a snapshot is taken.
 //
-// Hourly. Often enough that an accident costs an hour of conversation, rare
-// enough that the snapshots are worth looking through — and it is a copy of a
-// directory rather than something in the request path, so the cost is disk
-// rather than latency.
-const Interval = time.Hour
+// Daily. Hourly was the first guess and it was wrong on a small disk: the point
+// of a *local* copy is undoing a bad write or a mistake, and the finest-grained
+// protection against that is already elsewhere — SaveJSON keeps a .prev the
+// moment a store loses half of itself, which is closer to the accident than any
+// snapshot could be. What these add is yesterday, and last week.
+//
+// Depth belongs off the box, where disk is somebody else's and losing the
+// machine does not take the backups with it.
+const Interval = 24 * time.Hour
 
-// Recent snapshots are kept in full; older ones thin out to one a day.
+// What is kept: recent snapshots in full, older ones thinning to one a day, and
+// under all of it a hard ceiling on bytes.
 const (
-	keepRecent = 24
+	keepRecent = 7
 	keepDays   = 30
 )
+
+// MaxBytes is the ceiling on the whole snapshot directory.
+//
+// A count is not a budget. Seven snapshots of a small instance is nothing and
+// seven of a large one fills the disk, and the disk filling takes the instance
+// with it — a backup that stops the thing it protects is worse than no backup.
+// So the oldest are dropped until the total fits, whatever the count says.
+var MaxBytes int64 = 256 << 20
 
 // IndexSnapshot copies the search index consistently, when something can.
 //
@@ -156,18 +169,23 @@ func Take() (Snapshot, error) {
 		snap.Bytes += info.Size()
 	}
 
-	// The search index, which is not rebuildable: nothing reindexes what is
-	// already there, so losing it loses every article, post and video ever
-	// indexed rather than costing a rebuild.
-	if err := indexInto(src, dst); err != nil {
-		fmt.Fprintf(os.Stderr, "[backup] index: %v\n", err)
-	} else if info, err := os.Stat(filepath.Join(dst, "index.db")); err == nil {
-		snap.Files++
-		snap.Bytes += info.Size()
-	}
+	// The search index is not here, and that is deliberate.
+	//
+	// It is the largest thing in the directory by far, it changes constantly,
+	// and VACUUM writes a fresh file every time — so it can never be hardlinked
+	// and every snapshot costs another whole copy of it. That is what turned a
+	// small data directory into hundreds of megabytes of backups.
+	//
+	// It also protects nothing. These snapshots exist for a bad write to a JSON
+	// store; nothing writes the index that way. The event that would lose the
+	// index is losing the disk, and losing the disk loses these snapshots too.
+	// So the index belongs in the off-box copy, which is the only thing that
+	// survives that event, and nowhere else. See IndexSnapshot, which is what
+	// that copy uses.
 
 	lastRun = at
 	prune()
+	fit()
 	return snap, nil
 }
 
@@ -237,8 +255,11 @@ func skip(name string) bool {
 		return true
 	case strings.HasSuffix(name, ".prev"), strings.Contains(name, ".corrupt."):
 		return true
-	case strings.HasSuffix(name, "-wal"), strings.HasSuffix(name, "-shm"):
-		return true // SQLite's sidecars; the snapshot is taken through VACUUM
+	case name == "index.db", strings.HasSuffix(name, "-wal"), strings.HasSuffix(name, "-shm"):
+		// The search index and its sidecars. See Take: it is the biggest thing
+		// here, it can never be hardlinked, and a local copy of it protects
+		// nothing that losing the disk would not take too.
+		return true
 	}
 	return false
 }
@@ -291,6 +312,27 @@ func Last() time.Time {
 		return all[0].At
 	}
 	return time.Time{}
+}
+
+// fit drops the oldest snapshots until the directory is under MaxBytes.
+//
+// After prune, not instead of it: prune expresses what is worth keeping and
+// this expresses what there is room for. The newest is never dropped — a
+// backup directory with nothing in it is the one outcome worse than a large
+// one. Caller holds mu.
+func fit() {
+	if MaxBytes <= 0 {
+		return
+	}
+	all := list()
+	var total int64
+	for _, s := range all {
+		total += s.Bytes
+	}
+	for i := len(all) - 1; i > 0 && total > MaxBytes; i-- {
+		os.RemoveAll(filepath.Join(Dir(), all[i].Name))
+		total -= all[i].Bytes
+	}
 }
 
 // prune keeps the recent ones in full and thins the rest to one a day.

@@ -7,6 +7,7 @@ package backup
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -163,5 +164,55 @@ func TestPruningKeepsTheRecentOnes(t *testing.T) {
 	// And the newest is still there, which is the one that matters most.
 	if len(got) > 0 && time.Since(got[0].At) > 2*time.Hour {
 		t.Error("the newest snapshot was pruned")
+	}
+}
+
+// A budget is a budget: the directory does not grow past it.
+//
+// A count is not a budget — seven snapshots of a large instance fills a small
+// disk, and the disk filling takes the instance with it.
+func TestTheDirectoryStaysUnderItsCeiling(t *testing.T) {
+	home := sandbox(t)
+	old := MaxBytes
+	MaxBytes = 4096
+	t.Cleanup(func() { MaxBytes = old })
+
+	// Snapshots big enough that a few of them blow the ceiling.
+	for i := 0; i < 6; i++ {
+		write(t, home, "big.json", strings.Repeat("x", 2000)+string(rune('a'+i)))
+		if _, err := Take(); err != nil {
+			t.Fatal(err)
+		}
+		time.Sleep(1050 * time.Millisecond)
+	}
+
+	got := List()
+	if len(got) == 0 {
+		t.Fatal("everything was pruned — an empty backup directory is the one " +
+			"outcome worse than a large one")
+	}
+	var total int64
+	for _, s := range got {
+		total += s.Bytes
+	}
+	if total > MaxBytes {
+		t.Errorf("the directory holds %d bytes, over the %d ceiling", total, MaxBytes)
+	}
+}
+
+// The search index is not copied into every snapshot.
+func TestTheIndexIsNotInEverySnapshot(t *testing.T) {
+	home := sandbox(t)
+	write(t, home, "small.json", "{}")
+	write(t, home, "index.db", strings.Repeat("i", 5000))
+
+	snap, err := Take()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(Dir(), snap.Name, "index.db")); err == nil {
+		t.Error("the index is in the snapshot — it cannot be hardlinked, so every " +
+			"snapshot costs another whole copy, and it protects nothing that " +
+			"losing the disk would not take with it anyway")
 	}
 }

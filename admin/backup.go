@@ -64,10 +64,12 @@ func BackupHandler(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`<div class="traffic-stat"><span class="traffic-stat-n">` +
 		html.EscapeString(size(onDisk(snaps))) + `</span><span class="traffic-stat-l">stored (before hardlinks)</span></div>`)
 	sb.WriteString(`</div>`)
-	sb.WriteString(`<p class="card-desc">A snapshot is taken hourly when anything has ` +
-		`changed, and one at startup. Files that have not changed are hardlinked to ` +
-		`the previous snapshot, so keeping a month of them costs far less than the ` +
-		`figure above — that is the size if every copy were real.</p>`)
+	fmt.Fprintf(&sb, `<p class="card-desc">One a day, and one at startup. Files that `+
+		`have not changed are hardlinked to the previous snapshot, so the real cost `+
+		`on disk is far below the figure above — that is the size if every copy `+
+		`were a copy. The whole directory is held under %s: a count is not a `+
+		`budget, and a backup that fills the disk stops the thing it protects.</p>`,
+		html.EscapeString(size(backup.MaxBytes)))
 	// The token from the cookie, in the form: a POST resting on the session
 	// needs it, because StrictCSRF refuses a request that simply omits one.
 	fmt.Fprintf(&sb, `<form method="POST" class="d-inline">`+
@@ -144,9 +146,12 @@ func backupCaveats() string {
 	return `<div class="card"><span class="card-title">What this does not cover</span><ul class="caveats">` +
 		`<li><b>The disk.</b> These snapshots are on the same machine as the thing ` +
 		`they protect. They survive a bad write and an operator mistake; they do ` +
-		`not survive losing the instance. That needs a copy somewhere else, which ` +
-		`is a command and somebody's crontab rather than something an instance can ` +
-		`arrange for itself.</li>` +
+		`not survive losing the instance. That needs a copy somewhere else.</li>` +
+		`<li><b>The search index.</b> Deliberately not here. It is the largest ` +
+		`thing in the data directory, it changes constantly, and it cannot be ` +
+		`hardlinked — so every snapshot would cost another whole copy of it. It ` +
+		`also protects nothing: the event that loses the index is losing the disk, ` +
+		`which loses these snapshots too. It belongs in the off-box copy.</li>` +
 		`<li><b>The keys.</b> Snapshots cover the data directory. The encryption ` +
 		`key, the mail signing key and the CLI's wallet seed live in ` +
 		`<code>keys/</code> — without them a copy of encrypted mail is unreadable, ` +

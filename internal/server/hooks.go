@@ -137,19 +137,14 @@ func wireHooks() {
 	}
 
 	events.OnFire = func(accountID, title, note string) {
-		// The console is the instance's own timeline: what happened here, in
-		// order — and nothing about whose it was or what it said.
+		// Nothing goes to the public timeline.
 		//
-		// It used to post the reminder's title and the owner's account id. The
-		// console is public: /stream serves it with no session, and stream_list
-		// answers an unauthenticated MCP caller. So a reminder called "Dentist
-		// about the biopsy results" was published to the open internet the
-		// moment it fired, by the person who had written it down privately.
-		// Anything carrying a title, a subject, a sender or an account id is
-		// somebody's content and does not belong on a public timeline.
-		stream.PostSystem("⏰ A reminder fired", map[string]any{
-			"kind": stream.TypeReminder,
-		})
+		// This posted the reminder's title and the owner's account id once, so
+		// "Dentist about the biopsy results" was published to the open internet
+		// the moment it fired. That was cut back to a contentless line, which
+		// was the wrong repair: /stream is served with no session, so even a
+		// bare "a reminder fired" tells anybody watching that somebody here was
+		// reminded of something, at that minute. See mail.OnNewMail below.
 		msg := "⏰ Event: " + title
 		if note != "" {
 			msg += "\n" + note
@@ -208,11 +203,6 @@ func wireHooks() {
 				_ = mail.SendMessageTo("Mu", "agent@"+mail.ConfiguredDomain(),
 					acc.Name, acc.ID, "scheduled", e.Title, answer, "", "", false, 0, nil, "", "", nil)
 			}
-			// Contentless, for the reason on events.OnFire above: the title
-			// of a standing instruction is as private as the reminder.
-			stream.PostSystem("⏰ A scheduled instruction ran", map[string]any{
-				"kind": stream.TypeReminder,
-			})
 		}(*e)
 	}
 
@@ -251,13 +241,18 @@ func wireHooks() {
 	telegram.Load()
 	whatsapp.Load()
 	mail.OnNewMail = func(accountID, from, subject, body string) {
-		// The worst of the three: this published who wrote to somebody and
-		// what about, to a timeline anybody can read without signing in. The
-		// notifications below go to the owner's own linked channels, which is
-		// where a sender and a subject belong.
-		stream.PostSystem("📬 Mail arrived", map[string]any{
-			"kind": stream.TypeSystem,
-		})
+		// Nothing goes to the public timeline.
+		//
+		// It used to publish the sender and the subject, which was plainly
+		// wrong and was cut back to a contentless "mail arrived". That was the
+		// wrong repair: the event itself is the private part. /stream is served
+		// with no session, so a bare line still tells anybody watching that
+		// somebody here was written to, at that minute — and correlated with a
+		// message you sent yourself, that it was delivered. Nobody reading a
+		// public console learns anything from it either.
+		//
+		// The notifications below go to the owner's own linked channels, which
+		// is where any of this belongs.
 		summary := discord.SummariseEmail(from, subject, body)
 		discord.NotifyNewMail(accountID, from, subject, summary)
 		telegram.NotifyUser(accountID, fmt.Sprintf("📬 *New email from %s*\n%s", from, summary))
