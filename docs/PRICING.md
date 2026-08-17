@@ -18,16 +18,17 @@ Measured, not remembered.
 | A new account starts with | **0 credits** |
 | One credit is | **£0.01** |
 | Ways to pay | **top up** any amount at 1p a credit · **x402** per request, no account · **self-host**, nothing metered |
-| Plans on offer | **Starter £10, Pro £100** — rolling credits at a better rate, `/plans` |
+| Plans on offer | **Starter £10 → 1,000 credits, Pro £100 → 10,000** — rolling, at the same 1p, `/plans` |
 | `daily_quota: 100` in quota.json | **dead** — declared, documented, configurable, read by nothing |
 | Operations priced at 0 | 15 of 27 |
 | Charging path | one gateway, since `127a326` |
 
 ## Why there are plans again, and what they are
 
-Rolling credits, and nothing else. A plan buys the same credits at the same
-price list, monthly instead of by hand, at a better rate per pound — and what is
-not spent stays on the balance rather than expiring. It is not a product, not a
+Rolling credits, and nothing else. A plan buys the same credits at the same 1p,
+monthly instead of by hand, and what is not spent stays on the balance rather
+than expiring. No discount: a credit having two prices is a second price list to
+keep in step, and an answer to "what does this cost" that begins "it depends". It is not a product, not a
 subscription to a different tier of service, and it grants nothing: every tool
 costs what the table below says on every rung, and Free includes no credits at
 all, because a grant is a bill that scales with the accounts that use it most.

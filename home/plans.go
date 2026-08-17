@@ -17,16 +17,22 @@ import (
 //
 // Free, Starter, Pro. There were tiers here once and they went, rightly: they
 // sold three limits and a credit at par, which is nothing a top-up does not do.
-// A plan is rolling credits at a better rate, plus the caps coming off. Not a
-// product and not a subscription to anything different: the same tools at the
-// same prices, bought monthly instead of by hand, and what is not spent stays on
-// the balance. Priced at par it would be pay-as-you-go with a cancellation
-// obligation attached, which is the first attempt in docs/PRICING.md and why it
-// died; the rate is what makes it a plan.
+// A plan is rolling credits, plus the caps coming off. £10 is 1,000 credits and
+// £100 is 10,000, at the same 1p everybody else pays — there is no discount and
+// there is nothing included, because a credit having two prices is a second
+// price list to keep in step and an answer to "what does this cost" that starts
+// with "it depends".
 //
-// The discount costs margin rather than cash — an agent run is charged 7p
-// against well under a penny of provider spend — so more credits per pound is a
-// discount on our own markup, not a subsidy.
+// What a plan changes is that the credits arrive without anybody doing anything,
+// they roll rather than expire, and the account's caps lift.
+//
+// Which is why the credits are the last line of a column rather than its
+// headline. They are identical to a top-up, so they cannot be the reason
+// anybody chooses one — a column led by "1,000 credits" is a column that
+// invites the reader to work out they could just buy 1,000 credits. What is
+// actually being sold is the caps coming off, and those cost nothing to give:
+// agents, channels, retention, send limits. The credits are what makes the
+// price honest, not what makes it worth paying.
 //
 // Nothing is given away. Free is an account and the app, which is included
 // everywhere because the app is the demonstration rather than the product; the
@@ -156,13 +162,13 @@ func PlansHandler(w http.ResponseWriter, r *http.Request) {
 		Name:  "Starter",
 		Price: "£10",
 		Unit:  "a month",
-		Lead:  "Credits every month at a better rate, and they roll — a quiet month pays for a busy one. The caps come off with it: agents without a limit, the channels you already use, and a history that is kept.",
+		Lead:  "Where the product stops saying no. Agents without a cap, reachable wherever you already are, and a history that is kept rather than trimmed.",
 		Points: []string{
-			"1,200 rolling credits a month — 20% more than topping up",
 			"Unlimited agents, each with its own address",
 			"Discord, Telegram and WhatsApp",
 			"Your whole history kept and searchable",
 			"Higher daily limits on mail and messages",
+			"£10 of credits a month, rolling — 1,000, at the usual 1p",
 		},
 		Action: "Choose Starter", Href: "/account/topup?plan=starter",
 		Highlight: true,
@@ -172,13 +178,13 @@ func PlansHandler(w http.ResponseWriter, r *http.Request) {
 		Name:  "Pro",
 		Price: "£100",
 		Unit:  "a month",
-		Lead:  "For running something real on it — a product, a business, agents working all day. The same rolling credits at the best rate, the headroom, and a person to ask when it matters.",
+		Lead:  "For running something real on it — a product, a business, agents working all day. The room to do it, and a person to ask when it matters.",
 		Points: []string{
-			"13,000 rolling credits a month — 30% more than topping up",
 			"Everything in Starter",
 			"The highest send limits",
 			"Priority support from a person",
 			"A say in what gets built next",
+			"£100 of credits a month, rolling — 10,000, at the usual 1p",
 		},
 		Action: "Choose Pro", Href: "/account/topup?plan=pro",
 	}))
@@ -192,9 +198,9 @@ func PlansHandler(w http.ResponseWriter, r *http.Request) {
 	// anything past Pro is a conversation rather than a price: a number on a
 	// page for work nobody has scoped yet is a number you have to honour.
 	b.WriteString(`<div class="tier-more">` +
-		`<span><strong>Credits never expire.</strong> A plan is a standing order for them at a ` +
-		`better rate, not a subscription to a different product — the tools, the app and the ` +
-		`prices are the same on every rung. Stop whenever you like and what you have not spent ` +
+		`<span><strong>Credits never expire.</strong> A plan is a standing order for them, not a ` +
+		`subscription to a different product — a credit is 1p on every rung and every tool costs ` +
+		`the same whichever one you are on. Stop whenever you like and what you have not spent ` +
 		`stays yours.</span>` +
 		`<span><strong>Run it yourself.</strong> Free, for ever — one Go binary, your machine, ` +
 		`your data. With no Stripe keys and no x402 address an instance cannot charge anybody, ` +
