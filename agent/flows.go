@@ -158,9 +158,13 @@ func newFlowID() string {
 	return uuid.New().String()
 }
 
-// Session is one chat conversation — a chain of turns linked by ParentID.
-// RootID (the first turn) is its stable identity; HeadID is the latest turn.
-type Session struct {
+// session is one chat conversation as the web used to keep them: a chain of
+// turns linked by ParentID. RootID (the first turn) is its stable identity.
+//
+// Not what a conversation is any more — that is internal/thread. This survives
+// for one reason, adoption: the chains written before the record existed are
+// somebody's history and have to be read once to be carried across.
+type session struct {
 	RootID    string // stable id of the conversation's first turn
 	HeadID    string // latest turn in the chain
 	Title     string // the conversation's first prompt
@@ -169,16 +173,14 @@ type Session struct {
 	Turns     int
 }
 
-// ListSessions groups an account's flows into conversations (ParentID chains)
-// and returns one entry per conversation, newest first. A conversation's head
-// is its latest turn (a flow that is not any other flow's parent).
+// flowSessions groups an account's flows into conversations (ParentID chains),
+// newest first. A conversation's head is its latest turn — a flow that is not
+// any other flow's parent.
 //
-// Runs that arrived some other way are not sessions. Every client records a
-// run, so an email answered at 6am became a row in the chat rail — titled with
-// whatever markup the sender's phone produced, opening a conversation you never
-// had here and could not continue. The rail is the chat's own history; what
-// happened everywhere else is Threads, which shows the client it happened on.
-func ListSessions(accountID string) []Session {
+// Runs that arrived some other way are not chat conversations, so they are not
+// adopted into one: an email is a conversation on mail and the record already
+// has it as that.
+func flowSessions(accountID string) []session {
 	var flows []*Flow
 	for _, f := range ListFlows(accountID) { // newest first
 		if startedHere(f.Source) {
@@ -193,7 +195,7 @@ func ListSessions(accountID string) []Session {
 			isParent[f.ParentID] = true
 		}
 	}
-	var sessions []Session
+	var sessions []session
 	for _, f := range flows {
 		if isParent[f.ID] {
 			continue // not a leaf — a later turn continues it
@@ -216,7 +218,7 @@ func ListSessions(accountID string) []Session {
 			rootID = cur.ID // ends at the root's id
 			id = cur.ParentID
 		}
-		sessions = append(sessions, Session{RootID: rootID, HeadID: f.ID, Title: title,
+		sessions = append(sessions, session{RootID: rootID, HeadID: f.ID, Title: title,
 			Agent: f.Agent, UpdatedAt: f.CreatedAt, Turns: turns})
 	}
 	return sessions
@@ -229,22 +231,81 @@ func startedHere(source string) bool {
 	return source == "" || source == WebClient
 }
 
-// deleteSession removes a whole conversation: every turn in the chain, and the
-// record of what was said on it. Given any id in the chain.
-func deleteSession(accountID, anyID string) {
-	// The chain first, and the root out of it: the conversation in the system of
-	// record is keyed by the root flow id, and once the flows are gone there is
-	// nothing left to walk.
-	chain := sessionChain(accountID, anyID)
-	root := anyID
-	if len(chain) > 0 {
-		root = chain[0].ID
+// pastTurns is a conversation's prior turns, oldest first, as pairs.
+//
+// The shape the hand-rolled pipeline wants, filled from the record rather than
+// from the workflow chain it used to walk. A run is evicted at 200 per account
+// and a message is not, so reading history out of runs quietly truncated a long
+// conversation and there was no way to tell from the page.
+func pastTurns(accountID, threadID string, turns int) []*Flow {
+	msgs := thread.Messages(accountID, threadID, turns*2)
+	var out []*Flow
+	for _, m := range msgs {
+		if m.Role == thread.RoleAgent {
+			if len(out) > 0 && out[len(out)-1].Answer == "" {
+				out[len(out)-1].Answer = m.Text
+			}
+			continue
+		}
+		out = append(out, &Flow{Prompt: m.Text})
 	}
+	// A question nobody answered is not a turn: it is the message being answered
+	// now, already written down before the run starts.
+	for len(out) > 0 && out[len(out)-1].Answer == "" {
+		out = out[:len(out)-1]
+	}
+	return out
+}
+
+// adopt brings a conversation that predates the record into it.
+//
+// The web kept conversations as chains of workflow records for a year before
+// there was a record, and those chains are somebody's history: a rail that
+// stopped listing them would read as the product having deleted them. So the
+// first time one is opened — or once, at startup, for the rail — it is written
+// into the record as what it always was. Idempotent: keyed on the chain's root,
+// which is what the web has always keyed its conversation on.
+func adopt(accountID string, chain []*Flow) string {
+	if len(chain) == 0 {
+		return ""
+	}
+	root := chain[0]
+	if th := thread.Find(accountID, WebClient, root.ID); th != nil {
+		return th.ID
+	}
+	th := thread.Open(accountID, WebClient, root.ID)
+	if th == nil {
+		return ""
+	}
+	thread.SetAgent(accountID, th.ID, chain[len(chain)-1].Agent)
 	for _, f := range chain {
-		deleteFlow(accountID, f.ID) //nolint:errcheck
+		thread.Add(thread.Message{Thread: th.ID, Account: accountID,
+			Role: thread.RolePerson, Text: f.Prompt, At: f.CreatedAt})
+		thread.Add(thread.Message{Thread: th.ID, Account: accountID,
+			Role: thread.RoleAgent, Text: f.Answer, At: f.CreatedAt, Workflow: f.ID})
 	}
-	if th := thread.Find(accountID, WebClient, root); th != nil {
-		thread.Delete(accountID, th.ID)
+	return th.ID
+}
+
+// adoptAll adopts every conversation the chat still holds only as workflow
+// records. Runs once, at start-up, so the rail has them the first time it is
+// drawn rather than only after somebody opens one.
+func adoptAll() {
+	accounts := map[string]bool{}
+	flowMu.RLock()
+	for _, f := range flowStore {
+		if f.AccountID != "" && startedHere(f.Source) {
+			accounts[f.AccountID] = true
+		}
+	}
+	flowMu.RUnlock()
+
+	for id := range accounts {
+		for _, s := range flowSessions(id) {
+			if thread.Find(id, WebClient, s.RootID) == nil {
+				adopt(id, sessionChain(id, s.RootID))
+			}
+		}
 	}
 }
 
@@ -327,15 +388,4 @@ func persistFlows() error {
 		flows = append(flows, f)
 	}
 	return data.SaveJSON("agent_flows.json", flows)
-}
-
-// latestSessionFor returns the root id of the most recent conversation with an
-// agent, or "" when there has not been one. Empty agentID means the default.
-func latestSessionFor(accountID, agentID string) string {
-	for _, s := range ListSessions(accountID) { // newest first
-		if s.Agent == agentID {
-			return s.RootID
-		}
-	}
-	return ""
 }

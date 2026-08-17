@@ -271,10 +271,14 @@ function ask(q){
               // you were talking — the list looked like it was lagging reality,
               // because it was. Optional: the same component runs on Home and
               // the landing page, where there is no rail to tell.
-              if(ev.flow_id){
+              // The conversation, where there is one — a signed-in caller. A
+              // guest is not recorded, so the run id carries the thread for the
+              // length of the page and no further.
+              var id=ev.thread||ev.flow_id;
+              if(id){
                 var fresh=!contextId;
-                contextId=ev.flow_id;save();
-                if(fresh&&window.muSessionStarted)window.muSessionStarted(ev.flow_id,q);
+                contextId=id;save();
+                if(fresh&&window.muSessionStarted)window.muSessionStarted(id,q);
               }
             }else if(ev.type==='thinking'){
               startWork(ev.message);

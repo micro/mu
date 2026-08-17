@@ -15,64 +15,127 @@ import (
 	"mu/internal/thread"
 )
 
-// A run that arrived some other way is not a chat session.
+// A conversation that happened somewhere else is not a chat session.
+//
+// Every client writes to the record, so an email answered at 6am was a row in
+// the chat rail: a conversation that did not happen on this page, titled with
+// whatever markup the sender's phone produced, opening something you could not
+// continue here. All of them together is Threads.
 func TestTheRailListsWhatWasSaidHere(t *testing.T) {
 	acc := fmt.Sprintf("rail-%d", time.Now().UnixNano())
 
-	here := Record(Recorded{Account: acc, Prompt: "hello", Answer: "hi"})
-	byMail := Record(Recorded{Account: acc, Source: "mail",
-		Trigger: "email from someone@example.com",
-		Prompt:  `<div dir="auto">What&#39;s happening </div>`, Answer: "Not much."})
-	if here == "" || byMail == "" {
-		t.Fatal("nothing recorded")
-	}
+	here := Opened(acc, WebClient, "root", "", "")
+	Said(acc, here, "hello", "", "")
+	Answered(acc, here, "hi", "")
 
-	sessions := ListSessions(acc)
-	if len(sessions) != 1 {
+	byMail := Opened(acc, "mail", "<one@phone>", "", "")
+	Said(acc, byMail, "What's happening", "", "someone@example.com")
+	Answered(acc, byMail, "Not much.", "")
+
+	rail := chatThreads(acc, "")
+	if len(rail) != 1 {
 		t.Fatalf("the rail lists %d conversations, want only the one started here: %+v",
-			len(sessions), sessions)
+			len(rail), rail)
 	}
-	if sessions[0].RootID != here {
-		t.Error("the rail lists a run that did not happen on this page — an email answered " +
-			"at 6am became a row you cannot continue, titled with the sender's markup")
+	if rail[0].ID != here {
+		t.Error("the rail lists a conversation that did not happen on this page")
 	}
 
-	// Runs still shows everything: that is the difference between the two pages.
-	if len(ListFlows(acc)) != 2 {
-		t.Error("filtering the rail dropped a run from the run log")
+	// Threads still shows both: that is the difference between the two pages.
+	if n := len(thread.List(acc, 0)); n != 2 {
+		t.Errorf("the record holds %d conversations, want both", n)
 	}
 }
 
-// Deleting a conversation deletes the conversation, not one turn of it.
+// Deleting a conversation takes the whole conversation.
+//
+// The rail lists conversations, so deleting the id it holds has to mean what the
+// rail says it means — not one turn of a five-turn chat, leaving the rest in the
+// list.
 func TestDeletingAConversationTakesTheWholeThing(t *testing.T) {
 	acc := fmt.Sprintf("rail-del-%d", time.Now().UnixNano())
+
+	id := Opened(acc, WebClient, "root-flow", "", "")
+	Said(acc, id, "book me a table", "", "")
+	Answered(acc, id, "which night?", "flow-1")
+	Said(acc, id, "friday", "", "")
+	Answered(acc, id, "done", "flow-2")
+
+	if n := len(chatThreads(acc, "")); n != 1 {
+		t.Fatalf("two turns made %d conversations, want 1", n)
+	}
+
+	thread.Delete(acc, id)
+
+	if n := len(chatThreads(acc, "")); n != 0 {
+		t.Errorf("%d conversations left in the rail after deleting the only one", n)
+	}
+	if got := thread.Messages(acc, id, 0); len(got) != 0 {
+		t.Errorf("what was said survived deletion (%d messages)", len(got))
+	}
+}
+
+// A conversation the chat kept before there was a record is adopted into it,
+// rather than disappearing from the rail the day the rail changed where it
+// reads from.
+func TestOldConversationsAreAdoptedIntoTheRecord(t *testing.T) {
+	acc := fmt.Sprintf("rail-adopt-%d", time.Now().UnixNano())
 
 	first := Record(Recorded{Account: acc, Prompt: "book me a table", Answer: "which night?"})
 	second := Record(Recorded{Account: acc, Parent: first, Prompt: "friday", Answer: "done"})
 	if first == "" || second == "" {
 		t.Fatal("nothing recorded")
 	}
-	if n := len(ListSessions(acc)); n != 1 {
-		t.Fatalf("two turns made %d conversations, want 1", n)
+	if n := len(chatThreads(acc, "")); n != 0 {
+		t.Fatalf("a workflow chain is already in the record (%d) — this test proves nothing", n)
 	}
 
-	// The record of what was said, keyed the way the web keys it: on the root.
-	id := Opened(acc, WebClient, first, "", "")
-	Said(acc, id, "book me a table", "", "")
-	Answered(acc, id, "which night?", first)
-
-	deleteSession(acc, first)
-
-	if n := len(ListSessions(acc)); n != 0 {
-		t.Errorf("%d conversations left after deleting the only one — deleting the id the "+
-			"rail holds removed one turn and left the rest in the list", n)
+	// Opening it by any id in the chain, which is what old links hold.
+	id := openThread(acc, second)
+	if id == "" {
+		t.Fatal("an old conversation could not be opened, so its history is gone")
 	}
-	if n := len(ListFlows(acc)); n != 0 {
-		t.Errorf("%d turns survived, so a deleted conversation is still on Runs", n)
+
+	msgs := thread.Messages(acc, id, 0)
+	if len(msgs) != 4 {
+		t.Fatalf("adopted %d messages, want both sides of both turns: %+v", len(msgs), msgs)
 	}
-	if got := thread.Messages(acc, id, 0); len(got) != 0 {
-		t.Errorf("what was said survived deletion (%d messages) — the conversation is gone "+
-			"from every page and the record still has it", len(got))
+	if msgs[0].Text != "book me a table" || msgs[3].Text != "done" {
+		t.Errorf("the conversation was adopted out of order: %+v", msgs)
+	}
+	if n := len(chatThreads(acc, "")); n != 1 {
+		t.Errorf("the rail lists %d conversations after adoption, want 1", n)
+	}
+	// Twice is once: opening it again must not duplicate it.
+	if again := openThread(acc, first); again != id {
+		t.Errorf("opening the same conversation twice adopted it twice: %q then %q", id, again)
+	}
+	if n := len(thread.Messages(acc, id, 0)); n != 4 {
+		t.Errorf("re-opening doubled the conversation to %d messages", n)
+	}
+}
+
+// History comes from what was said, not from how it was produced.
+func TestHistoryIsReadFromTheRecord(t *testing.T) {
+	acc := fmt.Sprintf("rail-hist-%d", time.Now().UnixNano())
+
+	id := Opened(acc, WebClient, "root", "", "")
+	Said(acc, id, "one", "", "")
+	Answered(acc, id, "first", "")
+	Said(acc, id, "two", "", "")
+	Answered(acc, id, "second", "")
+	// The message being answered right now, written down before the run starts.
+	Said(acc, id, "three", "", "")
+
+	turns := pastTurns(acc, id, 6)
+	if len(turns) != 2 {
+		t.Fatalf("history has %d turns, want the two that were answered: %+v", len(turns), turns)
+	}
+	if turns[0].Prompt != "one" || turns[0].Answer != "first" {
+		t.Errorf("first turn is %+v", turns[0])
+	}
+	if turns[1].Prompt != "two" || turns[1].Answer != "second" {
+		t.Errorf("second turn is %+v", turns[1])
 	}
 }
 

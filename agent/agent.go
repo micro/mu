@@ -21,6 +21,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/quota"
+	"mu/internal/thread"
 )
 
 // Model represents an available LLM model tier for agent queries.
@@ -66,8 +67,13 @@ var QuotaCheck func(r *http.Request, op string) (bool, int, error)
 // app owner) is deliberate. Admins and self-hosted instances are unaffected.
 var ChargeQuota func(r *http.Request, op string)
 
-// Load initialises the agent package (no-op for now; reserved for future use).
-func Load() {}
+// Load initialises the agent package.
+func Load() {
+	// Conversations the chat kept as workflow records before there was a record
+	// to keep them in. The rail reads the record now, so without this somebody's
+	// history would appear to have been deleted.
+	adoptAll()
+}
 
 // QueryMessage is a single turn in a conversation.
 type QueryMessage struct {
@@ -460,20 +466,22 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 		sessionID = r.URL.Query().Get("continue")
 	}
 	cfg := app.ChatConfig{Guest: guest, StorageNS: "agent"}
-	activeRoot := "" // stable id of the reopened conversation, for rail highlight
+	activeRoot := "" // the reopened conversation, for the rail highlight
 	reopened := false
-	reopenAgent := "" // agent id the reopened conversation was using
+	reopenAgent := "" // agent the reopened conversation is with
 	if sessionID != "" && !guest {
-		// Resolve the (possibly stale) id to the whole chain and its current head
-		// so follow-ups continue this conversation instead of branching it.
-		turns := sessionChain(accountID, sessionID)
-		if len(turns) > 0 && turns[len(turns)-1].AccountID == accountID {
-			head := turns[len(turns)-1]
-			cfg.ContextID = head.ID // seed to the true head
-			cfg.InitialConvHTML = renderSessionTurns(turns)
-			activeRoot = turns[0].ID
+		// A conversation is a conversation in the record. It used to be a chain
+		// of workflow records linked by ParentID, which is why the chat and
+		// Threads disagreed about what had been said and why an evicted run took
+		// a conversation with it. Old links still work — see openThread.
+		if id := openThread(accountID, sessionID); id != "" {
+			cfg.ContextID = id
+			cfg.InitialConvHTML = renderThreadTurns(accountID, id)
+			activeRoot = id
 			reopened = true
-			reopenAgent = head.Agent
+			if th := thread.Get(accountID, id); th != nil {
+				reopenAgent = th.Agent
+			}
 		}
 	}
 
@@ -498,13 +506,10 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 		selAgent = reopenAgent
 	} else if selAgent != "" && !guest && prefill == "" {
 		// Land in the last conversation with this agent, if there is one.
-		if last := latestSessionFor(accountID, selAgent); last != "" {
-			if turns := sessionChain(accountID, last); len(turns) > 0 {
-				head := turns[len(turns)-1]
-				cfg.ContextID = head.ID
-				cfg.InitialConvHTML = renderSessionTurns(turns)
-				activeRoot = turns[0].ID
-			}
+		if last := latestThreadFor(accountID, selAgent); last != "" {
+			cfg.ContextID = last
+			cfg.InitialConvHTML = renderThreadTurns(accountID, last)
+			activeRoot = last
 		}
 	}
 
@@ -588,31 +593,77 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(html))
 }
 
-// renderSessionTurns renders a conversation's prior turns into the chat log.
-func renderSessionTurns(turns []*Flow) string {
+// openThread resolves whatever is in a ?session= link to a conversation.
+//
+// Three things have been called a session id: a thread id, which is what the
+// rail links with now; the root of a chain of workflow records, which is what it
+// linked with before; and any turn in the middle of one, which is what older
+// bookmarks and the /agent/flow redirect hold. The last two are the same lookup,
+// because the web keyed its conversation on the chain's root.
+//
+// A chain with no conversation behind it predates the record, and is adopted
+// into it here rather than rendered from workflow records — otherwise the chat
+// would keep a second way of reading a conversation forever, which is the thing
+// being fixed.
+func openThread(accountID, id string) string {
+	if th := thread.Get(accountID, id); th != nil {
+		return th.ID
+	}
+	chain := sessionChain(accountID, id)
+	if len(chain) == 0 || chain[len(chain)-1].AccountID != accountID {
+		return ""
+	}
+	return adopt(accountID, chain)
+}
+
+// renderThreadTurns renders a conversation into the chat log.
+func renderThreadTurns(accountID, threadID string) string {
 	var b strings.Builder
-	for _, f := range turns {
-		b.WriteString(`<div class="mu-user">` + htmlEsc(f.Prompt) + `</div>`)
-		b.WriteString(`<div class="mu-agent"><div class="card" id="agent-response">` + app.RenderString(f.Answer) + `</div></div>`)
+	for _, m := range thread.Messages(accountID, threadID, 0) {
+		if m.Role == thread.RoleAgent {
+			b.WriteString(`<div class="mu-agent"><div class="card" id="agent-response">` +
+				app.RenderString(m.Text) + `</div></div>`)
+			continue
+		}
+		b.WriteString(`<div class="mu-user">` + htmlEsc(m.Text) + `</div>`)
 	}
 	return b.String()
 }
 
+// latestThreadFor is the most recent conversation with an agent on this page.
+func latestThreadFor(accountID, agentID string) string {
+	for _, t := range chatThreads(accountID, agentID) { // newest first
+		return t.ID
+	}
+	return ""
+}
+
+// chatThreads is what belongs in the rail: this account's conversations on this
+// page, with one agent when a page is about one.
+//
+// Web only. Every client writes to the record, so an email answered at 6am
+// would otherwise be a row in the chat rail — a conversation that did not happen
+// here and cannot be continued here. All of them together is Threads.
+func chatThreads(accountID, agentID string) []thread.Thread {
+	var out []thread.Thread
+	for _, t := range thread.List(accountID, 0) {
+		if t.Client != WebClient {
+			continue
+		}
+		// One agent's conversations, when a page is about one agent. The rail
+		// listed every conversation regardless, so a brand-new agent opened
+		// showing somebody else's history and looked like it had been used.
+		if agentID != "" && t.Agent != agentID {
+			continue
+		}
+		out = append(out, t)
+	}
+	return out
+}
+
 // renderSessionsRail renders the list of past conversations.
 func renderSessionsRail(accountID, currentID, agentID string) string {
-	sessions := ListSessions(accountID)
-	// One agent's conversations, when a page is about one agent. The rail listed
-	// every conversation on the account regardless, so a brand-new agent opened
-	// showing somebody else's history and looked like it had already been used.
-	if agentID != "" {
-		var mine []Session
-		for _, s := range sessions {
-			if s.Agent == agentID {
-				mine = append(mine, s)
-			}
-		}
-		sessions = mine
-	}
+	sessions := chatThreads(accountID, agentID)
 	// A new chat with the agent whose rail this is. It used to rewrite the URL
 	// to a bare /agent, which dropped the agent out of the address bar while
 	// the page went on talking to it — so a reload landed you on the default
@@ -633,10 +684,10 @@ func renderSessionsRail(accountID, currentID, agentID string) string {
 	}
 	for _, s := range sessions {
 		cls := "chat-sess"
-		if s.RootID == currentID {
+		if s.ID == currentID {
 			cls += " active"
 		}
-		title := s.Title
+		title := s.Subject
 		if title == "" {
 			title = "Untitled"
 		}
@@ -645,10 +696,10 @@ func renderSessionsRail(accountID, currentID, agentID string) string {
 		}
 		// Deletable. A conversation you can start and never be rid of is a list
 		// that only grows, and the rail is the one place somebody looks at it.
-		b.WriteString(`<div class="chat-sess-row"><a href="/agent?session=` + s.RootID +
+		b.WriteString(`<div class="chat-sess-row"><a href="/agent?session=` + url.QueryEscape(s.ID) +
 			`" class="` + cls + `">` + htmlEsc(title) + `</a>` +
 			`<button class="chat-sess-del" title="Delete conversation" ` +
-			`onclick="muSessionDelete(` + app.JSString(s.RootID) + `,event)">×</button></div>`)
+			`onclick="muSessionDelete(` + app.JSString(s.ID) + `,event)">×</button></div>`)
 	}
 	b.WriteString(`</div>` + sessionDeleteJS + `</aside>`)
 	return b.String()
@@ -658,10 +709,14 @@ func renderSessionsRail(accountID, currentID, agentID string) string {
 // path, which is where a conversation is already deleted from — the id is the
 // chain's root and the server walks the rest.
 const sessionDeleteJS = `<script>
+// The conversation, on the page that owns conversations. It used to DELETE a
+// workflow record, because the rail was built out of those.
 function muSessionDelete(id,ev){
   ev.preventDefault();ev.stopPropagation();
   if(!confirm('Delete this conversation? What was said in it is gone.'))return;
-  fetch('/agent/flow/'+encodeURIComponent(id),{method:'DELETE',headers:{'X-CSRF-Token':muAgentCsrf()}})
+  var b=new URLSearchParams();b.append('action','delete');b.append('id',id);b.append('_csrf',muAgentCsrf());
+  fetch('/agent/threads',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded',
+    'X-CSRF-Token':muAgentCsrf()},body:b.toString()})
     .then(function(){window.location='/agent';});
 }
 // A conversation that has just started, listed while you are still in it.
@@ -829,11 +884,12 @@ func handleDeleteFlow(w http.ResponseWriter, r *http.Request, id string) {
 		http.Error(w, `{"error":"authentication required"}`, http.StatusUnauthorized)
 		return
 	}
-	// The whole conversation, not one turn of it. The rail lists conversations
-	// and deletes from here, so deleting the id it holds has to mean what the
-	// rail says it means — otherwise a five-turn chat loses its first message
-	// and stays in the list.
-	deleteSession(acc.ID, id)
+	// One run. Deleting a conversation is /agent/threads: the two records have
+	// different lifetimes and the pages that own them delete their own.
+	if err := deleteFlow(acc.ID, id); err != nil {
+		http.Error(w, `{"error":"failed to delete run"}`, http.StatusInternalServerError)
+		return
+	}
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -1081,12 +1137,31 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Load conversation history when continuing a conversation. A saved flow
-	// (context_id) takes precedence; otherwise fall back to the client-supplied
-	// inline history used by the stateless inline chat.
+	accountID := ""
+	if acc != nil {
+		accountID = acc.ID
+	}
+
+	// The conversation this message continues, in the system of record.
+	//
+	// context_id is a thread id: the page holds what the rail linked with and
+	// sends it back. An id from before the record — the root of a chain of
+	// workflow records, or any turn in one — resolves through the same door the
+	// rail links through, so an open tab keeps working.
+	//
+	// Guests have no account, so there is nobody to remember and nothing to
+	// record against; their history comes up with the request instead.
+	threadID := ""
+	if !isGuest && req.ContextID != "" {
+		threadID = openThread(accountID, req.ContextID)
+	}
+
+	// Load conversation history when continuing one. What was said, not how it
+	// was produced — this used to walk the workflow chain, which is why an
+	// evicted run silently truncated a conversation.
 	var conversationHistory []*Flow
-	if req.ContextID != "" {
-		conversationHistory = getConversationHistory(req.ContextID, 5)
+	if threadID != "" {
+		conversationHistory = pastTurns(accountID, threadID, historyTurns)
 	}
 	if len(conversationHistory) == 0 && len(req.History) > 0 {
 		const maxTurns = 6
@@ -1108,39 +1183,26 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 
 	// Create flow early so progress is saved server-side even if the
 	// SSE connection drops (e.g. mobile browser suspends the tab).
-	accountID := ""
-	if acc != nil {
-		accountID = acc.ID
-	}
 	flow := &Flow{
 		ID:        newFlowID(),
 		AccountID: accountID,
 		Prompt:    req.Prompt,
 		Status:    "running",
 		Agent:     req.Agent,
-		ParentID:  req.ContextID,
 		CreatedAt: time.Now().UTC(),
 	}
-	// The conversation in the system of record.
-	//
-	// The web drives its own run because it streams, so it cannot hand the
-	// whole turn to Ask and wait — but it must not write its own version of
-	// the record either, which is why it goes through the same three calls Ask
-	// uses. Its thread key is the conversation's root flow id, which the page
-	// already holds and puts in the URL.
-	//
-	// Guests have no account, so there is nobody to remember and nothing to
-	// record against.
-	threadID := ""
+	// The web drives its own run because it streams, so it cannot hand the whole
+	// turn to Ask and wait — but it must not write its own version of the record
+	// either, which is why it goes through the same three calls Ask uses.
 	if !isGuest {
 		if err := saveFlow(flow); err != nil {
 			app.Log("agent", "Failed to create flow: %v", err)
 		}
-		key := req.ContextID
-		if key == "" {
-			key = flow.ID // this message starts the conversation
+		if threadID == "" {
+			// A conversation that starts here. Keyed on this first run, which is
+			// unique and is what the record was already keyed on.
+			threadID = Opened(accountID, WebClient, flow.ID, "", req.Agent)
 		}
-		threadID = Opened(accountID, WebClient, key, "", req.Agent)
 		Said(accountID, threadID, req.Prompt, "", "")
 
 		// Notice anything worth remembering. This ran only on /agent/run — the
@@ -1157,8 +1219,11 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("X-Accel-Buffering", "no")
 
-	// Send flow_id immediately so the client can recover on disconnect.
-	sse(w, map[string]any{"type": "flow_id", "flow_id": flow.ID})
+	// Send both ids immediately: flow_id so the client can recover this run on
+	// disconnect, thread so the next message continues this conversation. They
+	// used to be the same id doing both jobs, which is how a run and a
+	// conversation came to be one thing.
+	sse(w, map[string]any{"type": "flow_id", "flow_id": flow.ID, "thread": threadID})
 
 	// Native go-micro agent path (opt-in via AGENT_NATIVE_STREAM while the
 	// upstream StreamAsk tool-name bug is fixed): the LLM does native
