@@ -117,7 +117,7 @@ func Ask(r AskRequest) (Answer, error) {
 
 	opts := QueryOpts{
 		Public:  r.Public,
-		History: history(r.Account, th, historyTurns),
+		History: History(r.Account, threadID(th), historyTurns),
 		Stream:  r.Stream,
 	}
 	if plat := Platform(r.Agent); r.Agent != "" && plat != nil {
@@ -136,15 +136,7 @@ func Ask(r AskRequest) (Answer, error) {
 		opts.System = strings.TrimSpace(opts.System)
 	}
 
-	// What was said goes in the record whatever the run did. An agent that
-	// failed was still written to, and the next message continues the same
-	// conversation.
-	if th != nil {
-		thread.Add(thread.Message{
-			Thread: th.ID, Account: r.Account, Role: thread.RolePerson,
-			Text: r.Text, Ref: r.Ref, From: r.From,
-		})
-	}
+	Said(r.Account, threadID(th), r.Text, r.Ref, r.From)
 
 	answer, err := QueryWithOpts(r.Account, r.Text, opts)
 
@@ -160,12 +152,7 @@ func Ask(r AskRequest) (Answer, error) {
 		Via: via,
 	})
 
-	if th != nil && strings.TrimSpace(answer) != "" {
-		thread.Add(thread.Message{
-			Thread: th.ID, Account: r.Account, Role: thread.RoleAgent,
-			Text: answer, Workflow: id,
-		})
-	}
+	Answered(r.Account, threadID(th), answer, id)
 
 	// Notice anything worth remembering, from every client rather than one.
 	// Off the response path: it is a background model call and the answer is
@@ -177,16 +164,50 @@ func Ask(r AskRequest) (Answer, error) {
 	return Answer{Text: answer, Flow: id, Thread: threadID(th)}, err
 }
 
-// history is a conversation's prior messages, as the model wants them.
+// Opened is the conversation a message belongs to, started if it is new.
 //
-// Read from the record rather than from workflow records, which is the whole
-// point of there being a record: a workflow is how one answer was produced and
-// expires as debugging does, while what was said is memory and does not.
-func history(accountID string, th *thread.Thread, max int) []QueryMessage {
-	if th == nil || max <= 0 {
+// Exported because a client that drives its own run still has to write to the
+// record — the web streams, so it cannot hand the whole turn to Ask and wait.
+// What it must not do is write its own version of the record, which is why
+// these three are the only way in and Ask uses them too.
+func Opened(account, client, key, ref string) string {
+	if ref != "" {
+		if th := thread.ByRef(account, ref); th != nil {
+			return th.ID
+		}
+	}
+	return threadID(thread.Open(account, client, key))
+}
+
+// Said records what a person wrote. It happens before the run, so a message
+// that nothing answers is still in the record.
+func Said(account, threadID, text, ref, from string) {
+	if threadID == "" {
+		return
+	}
+	thread.Add(thread.Message{
+		Thread: threadID, Account: account, Role: thread.RolePerson,
+		Text: text, Ref: ref, From: from,
+	})
+}
+
+// Answered records what the agent replied, and which workflow produced it.
+func Answered(account, threadID, text, workflow string) {
+	if threadID == "" || strings.TrimSpace(text) == "" {
+		return
+	}
+	thread.Add(thread.Message{
+		Thread: threadID, Account: account, Role: thread.RoleAgent,
+		Text: text, Workflow: workflow,
+	})
+}
+
+// History is a conversation's prior messages, as the model wants them.
+func History(account, threadID string, max int) []QueryMessage {
+	if threadID == "" || max <= 0 {
 		return nil
 	}
-	msgs := thread.Messages(accountID, th.ID, max)
+	msgs := thread.Messages(account, threadID, max)
 	out := make([]QueryMessage, 0, len(msgs))
 	for _, m := range msgs {
 		role := "user"
@@ -217,3 +238,8 @@ func threadID(th *thread.Thread) string {
 	}
 	return th.ID
 }
+
+// WebClient names the web page in the record, so a conversation there can be
+// told from one by mail. The other clients declare their own — see
+// discord.Client — and this one lives here because the page is the agent's own.
+const WebClient = "web"

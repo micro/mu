@@ -809,7 +809,7 @@ func sse(w http.ResponseWriter, event map[string]any) {
 // failed before producing any user-visible output — in which case nothing but
 // the already-sent flow_id was emitted, so the caller can fall back to the
 // hand-rolled pipeline cleanly.
-func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts QueryOpts, flow *Flow, isGuest bool) bool {
+func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts QueryOpts, flow *Flow, isGuest bool, threadID string) bool {
 	streaming := false
 	emitted := false
 	var captured strings.Builder
@@ -884,6 +884,11 @@ func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts Query
 		sse(w, map[string]any{"type": "stream_start"})
 		sse(w, map[string]any{"type": "stream_token", "token": answer})
 	}
+	// What was said, in the record. The workflow record below is how it was
+	// produced; this is the answer itself, and it is what the next message in
+	// this conversation will be given as history.
+	Answered(accountID, threadID, answer, flow.ID)
+
 	rendered := app.RenderString(answer)
 	html := `<div class="card" id="agent-response">` + rendered + `</div>`
 	updateFlow(flow.ID, func(f *Flow) {
@@ -1072,10 +1077,28 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		ParentID:  req.ContextID,
 		CreatedAt: time.Now().UTC(),
 	}
+	// The conversation in the system of record.
+	//
+	// The web drives its own run because it streams, so it cannot hand the
+	// whole turn to Ask and wait — but it must not write its own version of
+	// the record either, which is why it goes through the same three calls Ask
+	// uses. Its thread key is the conversation's root flow id, which the page
+	// already holds and puts in the URL.
+	//
+	// Guests have no account, so there is nobody to remember and nothing to
+	// record against.
+	threadID := ""
 	if !isGuest {
 		if err := saveFlow(flow); err != nil {
 			app.Log("agent", "Failed to create flow: %v", err)
 		}
+		key := req.ContextID
+		if key == "" {
+			key = flow.ID // this message starts the conversation
+		}
+		threadID = Opened(accountID, WebClient, key, "")
+		Said(accountID, threadID, req.Prompt, "", "")
+
 		// Notice anything worth remembering. This ran only on /agent/run — the
 		// REST and MCP path — so an agent remembered what a program told it and
 		// forgot everything a person did, which is backwards: the chat is where
@@ -1114,13 +1137,20 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 			nopts.System = ua.SystemPrompt
 			nopts.Tools = ua.Tools
 		}
-		for _, f := range conversationHistory {
-			if strings.TrimSpace(f.Prompt) == "" {
-				continue
+		// What was already said, from the record rather than from workflow
+		// records. Guests have no record, so they keep the history the page
+		// sent up with the request.
+		if h := History(accountID, threadID, historyTurns); len(h) > 0 {
+			nopts.History = h
+		} else {
+			for _, f := range conversationHistory {
+				if strings.TrimSpace(f.Prompt) == "" {
+					continue
+				}
+				nopts.History = append(nopts.History,
+					QueryMessage{Role: "user", Text: f.Prompt},
+					QueryMessage{Role: "assistant", Text: f.Answer})
 			}
-			nopts.History = append(nopts.History,
-				QueryMessage{Role: "user", Text: f.Prompt},
-				QueryMessage{Role: "assistant", Text: f.Answer})
 		}
 		// The same routing decision every other client gets. It used to be
 		// skipped entirely here, so the web answered as the generalist while
@@ -1128,7 +1158,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		// options rather than diverting into a pipeline of its own, a routed
 		// question still streams.
 		routedPrompt, nopts := Routed(req.Prompt, nopts)
-		if streamNativeSSE(w, accountID, routedPrompt, nopts, flow, isGuest) {
+		if streamNativeSSE(w, accountID, routedPrompt, nopts, flow, isGuest, threadID) {
 			return
 		}
 	}
