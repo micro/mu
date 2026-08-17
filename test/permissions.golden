@@ -69,6 +69,9 @@ prayer_saying                needsAccount=false destructive=false open accountOn
 prayer_search                needsAccount=false destructive=false bound accountOnly=false optionalAuth=true
 prayer_times                 needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 prayer_verse                 needsAccount=false destructive=false open accountOnly=false optionalAuth=false
+recall_conversation          needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
+recall_list                  needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
+recall_search                needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 routes_directions            needsAccount=false destructive=false bound accountOnly=false optionalAuth=true
 routes_eta                   needsAccount=false destructive=false bound accountOnly=false optionalAuth=true
 routes_nearest               needsAccount=false destructive=false bound accountOnly=false optionalAuth=true

@@ -54,6 +54,7 @@ import (
 	"mu/service/mail"
 	"mu/service/markets"
 	"mu/service/news"
+	"mu/service/recall"
 	"mu/service/sms"
 	"mu/service/social"
 	"mu/service/stream"
@@ -442,6 +443,13 @@ func wireHooks() {
 		sms.DeleteAll,
 		email.DeleteAll,
 		whatsappsvc.DeleteAll,
+
+		// Everything that was ever said, on any client. The record is written
+		// by the machinery rather than by a service, so nothing owned it and
+		// nothing cleared it: deleting an account left the transcript of every
+		// conversation it had ever had on disk. recall is the reader over it,
+		// and the only thing in the catalogue that knows it exists.
+		recall.Delete,
 	)
 
 	// Enable indexing after all content is loaded

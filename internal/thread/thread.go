@@ -433,6 +433,30 @@ func Delete(account, id string) {
 	save()
 }
 
+// Forget removes an account's whole record: every conversation, everything said
+// on any of them.
+//
+// For account deletion, which had no way to reach this store — the record is
+// written by the machinery rather than by a service, so nothing owned it and
+// nothing cleared it. Deleting your account left the transcript of every
+// conversation you had ever had on disk, which is the worst possible thing to
+// forget to delete.
+func Forget(account string) {
+	if account == "" {
+		return
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	for id, t := range threads {
+		if t.Account != account {
+			continue
+		}
+		delete(threads, id)
+		delete(messages, id)
+	}
+	save()
+}
+
 // SetRef records the client's identifier for a message after the fact.
 //
 // An outbound id does not exist until the message has actually been sent, and

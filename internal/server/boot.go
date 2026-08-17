@@ -32,6 +32,7 @@ import (
 	"mu/service/notes"
 	"mu/service/places"
 	"mu/service/prayer"
+	"mu/service/recall"
 	"mu/service/routes"
 	"mu/service/sms"
 	"mu/service/social"
@@ -84,6 +85,9 @@ func boot() {
 	// load markets, reminder, wallet
 	markets.Load()
 	prayer.Load()
+	// Going looking in your own past on purpose — the read over internal/thread
+	// that every client writes to. See service/recall.
+	recall.Load()
 	web.Load()
 	text.Load()
 	food.Load()

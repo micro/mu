@@ -37,7 +37,8 @@ Built on go-micro: every capability is a go-micro service, the assistant is a go
 | `internal/app/` | Web UI framework, templates, middleware |
 | `internal/auth/` | Account system, sessions, passkeys |
 | `internal/notes/` | The store behind `service/notes` — a title, its text, and nothing that expires |
-| `internal/thread/` | The system of record: what was said, to whom, on which conversation. Written on every turn from every client, by nobody's decision — see "Clients, and the record between them". Not a service, and not a workflow |
+| `internal/thread/` | The system of record: what was said, to whom, on which conversation. Written on every turn from every client, by nobody's decision — see "Clients, and the record between them". Not a service, and not a workflow. `service/recall` is the read over it and `/agent/threads` the page |
+| `service/recall/` | Going looking in your own past on purpose: search what was said on any client, read a conversation back. Headless — the page already exists at `/agent/threads` — and it owns none of what it reads, which is the point: delete it and the record is unaffected |
 | `client/mail/` | Mail as a client: the shape a message arrives in, handed to the agent, and the answer turned back into a reply. `service/mail` is the capability underneath — the inbox, the address, the SMTP server |
 | `internal/settings/` | Live-reloadable configuration |
 | `home/` | Landing page, assistant, home dashboard, summary |
@@ -157,11 +158,17 @@ others nobody chooses: `internal/quota` for what things cost, `internal/x402`
 for pricing a request, `internal/auth` for who you are.
 
 Reading is a different question and a service over it is welcome, because
-searching your own past *is* something an agent decides to do. The test for
-whether that has been built in the right place: **delete the service and nothing
-breaks.** Clients still record, the agent still gets its history, the pages still
-render; you lose only the ability to go looking on purpose. If deleting it breaks
-the product, the core is in the wrong layer.
+searching your own past *is* something an agent decides to do. That service is
+`service/recall`. The test for whether it has been built in the right place:
+**delete the service and nothing breaks.** Clients still record, the agent still
+gets its history, the pages still render; you lose only the ability to go
+looking on purpose. If deleting it breaks the product, the core is in the wrong
+layer.
+
+One thing recall does own, and it is worth knowing why: deleting an account.
+Nothing else in the catalogue knows the record exists — it is written by the
+machinery, so no service claimed it and no deletion hook cleared it, and
+deleting your account left every conversation you had ever had on disk.
 
 Messages, not events. An event log that accepts anything has no schema and
 cannot be queried a year later, and there are already two event-shaped things —
