@@ -14,9 +14,9 @@ func TestGuestAgentPageSaysItIsUsingTools(t *testing.T) {
 	servePage(rec, httptest.NewRequest("GET", "/agent", nil))
 	body := rec.Body.String()
 
-	for _, want := range []string{"agent-intro", `href="/tools"`, `href="/mcp"`} {
+	for _, want := range []string{"agent-intro", `href="/tools"`, `href="/signup"`} {
 		if !strings.Contains(body, want) {
-			t.Errorf("the guest agent page is missing %q, so the landing's promise goes unexplained", want)
+			t.Errorf("the guest inbox is missing %q, so the landing's promise goes unexplained", want)
 		}
 	}
 }
