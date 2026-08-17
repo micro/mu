@@ -633,3 +633,16 @@ that same file, so this page does not repeat twenty-six rows.
 | `MU_TOKEN` | Personal Access Token |
 | `MU_URL` | Instance to talk to — defaults to the hosted one |
 | `MU_NO_COLOR` | Disable colour output |
+
+### Object storage and generation policy
+
+| Variable | Default | What it does |
+|----------|---------|--------------|
+| `S3_BUCKET` | — | Bucket for off-box backups. A snapshot on the same disk survives a bad write and not the disk; this is the copy that survives losing the machine. Later it is also where files and generated images belong, which is why these are named for the storage rather than for the backup |
+| `S3_REGION` | `us-east-1` | Region of the bucket |
+| `S3_ENDPOINT` | — | For anything that is not AWS — R2, Backblaze, MinIO. Leave empty for AWS |
+| `S3_ACCESS_KEY_ID` | — | Access key. Give it write access to this bucket and nothing else: it is on a machine that runs model output |
+| `S3_SECRET_ACCESS_KEY` | — | Secret key |
+| `S3_PREFIX` | — | Optional path inside the bucket, so one bucket can hold several instances |
+| `BACKUP_S3` | `false` | Whether backups are pushed to the bucket above |
+| `GENERATE_ADULT` | `false` | Whether this instance will generate explicit sexual content. Off by default. It has no effect on sexual content involving children, which is refused always and is not a setting — see `internal/safety` |

@@ -111,6 +111,7 @@ func Load() {
 		if _, err := Take(); err != nil {
 			fmt.Fprintf(os.Stderr, "[backup] %v\n", err)
 		}
+		go pushLoop()
 		for range time.Tick(Interval) {
 			if _, err := Take(); err != nil {
 				fmt.Fprintf(os.Stderr, "[backup] %v\n", err)
@@ -359,4 +360,45 @@ func prune() {
 		}
 		seen[day] = true
 	}
+}
+
+// pushLoop sends the archive off the box, when an operator has said where.
+func pushLoop() {
+	for {
+		if PushEnabled() {
+			key, err := Push()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "[backup] push: %v\n", err)
+			} else {
+				pushMu.Lock()
+				lastPush, lastPushKey, lastPushErr = time.Now().UTC(), key, ""
+				pushMu.Unlock()
+			}
+			if err != nil {
+				pushMu.Lock()
+				lastPushErr = err.Error()
+				pushMu.Unlock()
+			}
+		}
+		time.Sleep(PushInterval)
+	}
+}
+
+var (
+	pushMu      sync.Mutex
+	lastPush    time.Time
+	lastPushKey string
+	lastPushErr string
+)
+
+// LastPush reports when the archive last left the machine, what it was called,
+// and what went wrong if anything did.
+//
+// All three, because "backups are switched on" and "backups are working" are
+// different states and the gap between them is where people discover they have
+// none.
+func LastPush() (time.Time, string, string) {
+	pushMu.Lock()
+	defer pushMu.Unlock()
+	return lastPush, lastPushKey, lastPushErr
 }

@@ -18,6 +18,7 @@ import (
 	"mu/internal/blob"
 	"mu/internal/data"
 	"mu/internal/quota"
+	"mu/internal/safety"
 	"mu/internal/service"
 	"mu/internal/settings"
 	"mu/internal/userdb"
@@ -161,6 +162,13 @@ func Generate(owner, prompt string) (string, error) {
 	}
 	if owner == "" {
 		return "", fmt.Errorf("sign in to generate images")
+	}
+	// What this instance will not make, whoever asks. Before the quota check
+	// and before the model, so a refused request costs nobody anything and
+	// leaves no half-charge to explain.
+	if reason, refused := safety.Refused(prompt); refused {
+		app.Log("images", "refused a generation for %s", owner)
+		return "", fmt.Errorf("%s", reason)
 	}
 	// Affordability, before spending time on the model. The charge itself is
 	// not here any more: a tool call is charged by the gateway every service

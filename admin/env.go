@@ -45,6 +45,19 @@ var settingGroups = []settingGroup{
 		"SMTP_USER",
 		"SMTP_PASS",
 	}},
+	// Object storage. Backups go here first, because a copy on the same disk
+	// does not survive losing the disk — and later the same bucket is where
+	// files and generated images belong, which is why these are named for the
+	// storage rather than for the backup.
+	{"Object storage (S3)", []string{
+		"S3_BUCKET",
+		"S3_REGION",
+		"S3_ENDPOINT",
+		"S3_ACCESS_KEY_ID",
+		"S3_SECRET_ACCESS_KEY",
+		"S3_PREFIX",
+		"BACKUP_S3",
+	}},
 	{"Payments", []string{
 		"STRIPE_SECRET_KEY",
 		"STRIPE_PUBLISHABLE_KEY",

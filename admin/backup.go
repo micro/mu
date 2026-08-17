@@ -78,6 +78,7 @@ func BackupHandler(w http.ResponseWriter, r *http.Request) {
 		html.EscapeString(auth.CSRFToken(r)))
 	sb.WriteString(`</div>`)
 
+	sb.WriteString(offBox())
 	sb.WriteString(quarantine())
 	sb.WriteString(snapshotTable(snaps))
 	sb.WriteString(backupCaveats())
@@ -87,6 +88,47 @@ func BackupHandler(w http.ResponseWriter, r *http.Request) {
 		Description: "Snapshots of this instance's data",
 		HTML:        sb.String(),
 	})
+}
+
+// offBox says whether anything leaves this machine.
+//
+// Separately from the snapshots, and above them, because they answer different
+// questions: the snapshots survive a bad write, and only this survives losing
+// the disk. An operator reading a page full of green snapshots should not come
+// away thinking they are covered for the second thing.
+func offBox() string {
+	if !backup.PushEnabled() {
+		return `<div class="card"><span class="card-title">Off-box copy</span>` +
+			`<p class="card-desc">Not configured. Everything above is on the same ` +
+			`disk as the data it protects, so none of it survives losing this ` +
+			`machine. Set <code>S3_BUCKET</code> and the keys beside it in ` +
+			`<a href="/admin/env">Environment</a>, then <code>BACKUP_S3</code>, ` +
+			`and an archive goes out daily — the data, the search index, and the ` +
+			`encryption keys, because a restore without them is an inbox nobody ` +
+			`can read.</p></div>`
+	}
+	at, key, failure := backup.LastPush()
+	var sb strings.Builder
+	class := "backup-ok"
+	if failure != "" || at.IsZero() {
+		class = "backup-bad"
+	}
+	fmt.Fprintf(&sb, `<div class="card %s"><span class="card-title">Off-box copy</span>`, class)
+	switch {
+	case failure != "":
+		fmt.Fprintf(&sb, `<p class="card-desc">The last attempt failed: <code>%s</code>. `+
+			`Switched on is not the same as working.</p>`, html.EscapeString(failure))
+	case at.IsZero():
+		sb.WriteString(`<p class="card-desc">Switched on, and nothing has gone out yet. ` +
+			`The first archive goes shortly after startup.</p>`)
+	default:
+		fmt.Fprintf(&sb, `<p class="card-desc">Last archive %s, as <code>%s</code>. `+
+			`It holds the data, the search index and the encryption keys — treat the `+
+			`bucket accordingly.</p>`,
+			html.EscapeString(app.TimeAgo(at)), html.EscapeString(key))
+	}
+	sb.WriteString(`</div>`)
+	return sb.String()
 }
 
 // quarantine reports stores that would not load.
