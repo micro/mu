@@ -25,11 +25,13 @@ package digest
 // day's brief and the next one does not land in the middle of the thread.
 
 import (
+	"strings"
 	"time"
 
 	"mu/agent"
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/push"
 	"mu/internal/settings"
 	"mu/internal/thread"
 )
@@ -75,6 +77,15 @@ func deliver(title, body string) {
 			continue
 		}
 		agent.Answered(acc.ID, th.ID, title+"\n\n"+body, "")
+		// And on the phone, where a briefing is actually read. The one thing
+		// the agent does on its own every day is the thing most worth being
+		// told about — see internal/push.
+		push.Send(acc.ID, push.Notification{
+			Title: title,
+			Body:  firstLine(body),
+			URL:   "/inbox",
+			Tag:   key,
+		})
 		sent++
 	}
 	if sent > 0 {
@@ -95,4 +106,15 @@ func plural(n int) string {
 		return ""
 	}
 	return "es"
+}
+
+// firstLine is the opening of the brief, for a notification. Two lines is what
+// a lock screen shows, so the rest is payload nobody reads.
+func firstLine(body string) string {
+	for _, line := range strings.Split(body, "\n") {
+		if line = strings.TrimSpace(line); line != "" {
+			return line
+		}
+	}
+	return ""
 }

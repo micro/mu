@@ -556,6 +556,24 @@ that.
 | `SMTP_RELAY_PASS` | — | Password for the relay |
 | `MAIL_WHITELIST` | — | Domains you accept mail from, comma separated: `acme.com, partner.co.uk`. Merged with a built-in list of company and infrastructure domains; consumer domains are deliberately absent. Live — no restart |
 
+### Notifications
+
+Mail, briefings and answers can turn up on a phone with the page closed. Nothing
+to configure: the first time somebody turns it on, this instance mints its own
+signing key and keeps it.
+
+| Variable | Default | What it does |
+|---|---|---|
+| `VAPID_PRIVATE_KEY` | minted on first use | The key that signs push requests, base64url. Set it only to move an instance without invalidating what people have already subscribed — a browser binds its subscription to the public half, so a new key silently stops every existing device receiving anything |
+
+The payload is encrypted end to end (RFC 8291): the push service — Google's,
+Apple's, Mozilla's — forwards bytes it cannot read. It does learn that a
+notification went to a device, and when.
+
+Turning it on is a button on `/account`, per device, and the browser asks before
+anything is stored. It needs HTTPS: a service worker will not register over
+plain HTTP, except on `localhost`.
+
 ### The daily briefing
 
 | Variable | Default | What it does |

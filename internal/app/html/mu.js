@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v150';
+var VERSION = 'v151';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -67,6 +67,49 @@ self.addEventListener('activate', function (e) {
         })
       );
     }).then(() => self.clients.claim())
+  );
+});
+
+// A notification arriving while nothing is open.
+//
+// This is the half of the product that was invisible on a phone: mail turns up
+// at four in the morning, the agent answers it, and the only way to find out
+// was to open the site and look. The payload is encrypted end to end — the push
+// service forwards bytes it cannot read — so it is decrypted here and nowhere
+// else. See internal/push.
+self.addEventListener('push', function (e) {
+  var n = {};
+  try { n = e.data ? e.data.json() : {}; } catch (err) { n = {}; }
+  if (!n.title) return;
+  e.waitUntil(self.registration.showNotification(n.title, {
+    body: n.body || '',
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
+    // Two arrivals in one conversation replace each other rather than stack.
+    tag: n.tag || 'mu',
+    renotify: true,
+    data: {url: n.url || '/inbox'}
+  }));
+});
+
+// Tapping it goes where it is about. A notification you cannot act on trains
+// somebody to ignore the next one.
+//
+// An open tab is focused rather than a second one opened, which is what makes
+// this feel like an app rather than a series of windows.
+self.addEventListener('notificationclick', function (e) {
+  e.notification.close();
+  var url = (e.notification.data && e.notification.data.url) || '/inbox';
+  e.waitUntil(
+    self.clients.matchAll({type: 'window', includeUncontrolled: true}).then(function (all) {
+      for (var i = 0; i < all.length; i++) {
+        if (all[i].url.indexOf(self.registration.scope) === 0 && 'focus' in all[i]) {
+          all[i].navigate(url);
+          return all[i].focus();
+        }
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(url);
+    })
   );
 });
 

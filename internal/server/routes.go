@@ -27,6 +27,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/imageproxy"
+	"mu/internal/push"
 	"mu/internal/settings"
 	"mu/internal/setup"
 	"mu/internal/user"
@@ -175,6 +176,7 @@ func authRequired() map[string]bool {
 		"/api/v1/":    false,
 		"/agent":      false, // Redirects to the named page; auth checked in handler
 		"/agent/":     false, // /agent/<name> — one agent's page; auth checked in handler
+		"/push/":      true,  // Subscribing this device to notifications
 		"/inbox":      true,  // The mailbox — yours, so it needs a session
 		"/inbox/":     true,  // One alias's mail
 		"/setup":      false, // First-run setup (open only until an admin exists)
@@ -725,6 +727,10 @@ func registerRoutes() {
 	// Putting a conversation back to unread. Its own path, because /inbox's POST
 	// is the instruction box and the two are not variations of each other.
 	http.HandleFunc("/inbox/unread", inbox.UnreadHandler)
+	// Telling a device something happened while the page is closed. Two
+	// endpoints, one handler — see internal/push.
+	http.HandleFunc("/push/subscribe", push.SubscribeHandler)
+	http.HandleFunc("/push/unsubscribe", push.SubscribeHandler)
 	// Two pages that were tabs and are not any more: one listed the same
 	// conversations the rail lists, the other listed the workflow records behind
 	// them. Both are on /agent now — the conversation, and the tools each answer

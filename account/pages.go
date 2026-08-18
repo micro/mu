@@ -26,6 +26,7 @@ import (
 	"mu/internal/app"
 
 	"mu/internal/auth"
+	"mu/internal/push"
 )
 
 // SignupRateLimit returns true if the IP is allowed to sign up.
@@ -798,6 +799,11 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	// dropping the footer was sound — a marketing nav under an app screen is the
 	// clearest tell that this is a website. Settings is where an app keeps
 	// About and Legal, and /account is in the sidebar for everybody.
+	// Notifications on this device. Above About because it is a thing you do
+	// rather than a thing you read, and because on a phone it is the setting
+	// that makes the product work when the page is closed.
+	content += push.Card(r, acc.ID)
+
 	content += `<div class="card"><span class="card-title">About Mu</span>` +
 		`<p class="card-meta">` + app.FooterLinks() + `</p></div>`
 

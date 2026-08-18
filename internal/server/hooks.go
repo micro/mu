@@ -39,6 +39,8 @@ import (
 	"mu/internal/data"
 	"mu/internal/google"
 	"mu/internal/notes"
+	"mu/internal/origin"
+	"mu/internal/push"
 	"mu/internal/quota"
 	"mu/internal/service"
 	"mu/internal/settings"
@@ -259,7 +261,29 @@ func wireHooks() {
 		discord.NotifyNewMail(accountID, from, subject, summary)
 		telegram.NotifyUser(accountID, fmt.Sprintf("📬 *New email from %s*\n%s", from, summary))
 		whatsapp.NotifyUser(accountID, fmt.Sprintf("📬 *New email from %s*\n%s", from, summary))
+		// And the device itself, which is the one channel that needs nothing
+		// linked and works on a phone with the page closed. See internal/push.
+		title := subject
+		if strings.TrimSpace(title) == "" {
+			title = "New mail"
+		}
+		push.Send(accountID, push.Notification{
+			Title: title,
+			Body:  "From " + from,
+			URL:   "/inbox",
+			Tag:   "mail-" + from,
+		})
 	}
+
+	// Where a push service should complain. mailto: with the mail domain when
+	// there is one, and this instance's own address otherwise — a request with
+	// no valid contact is refused rather than merely impolite.
+	push.Contact(func() string {
+		if d := mail.ConfiguredDomain(); d != "" {
+			return "mailto:" + mail.SupportMailbox + "@" + d
+		}
+		return origin.Self()
+	})
 
 	// Resolve app author display names server-side from the authenticated
 	// account, so the native apps.Build service never trusts a model-supplied
@@ -480,6 +504,9 @@ func wireHooks() {
 		func(id string) { telegram.DeleteLinks(id) },
 		func(id string) { whatsapp.DeleteLinks(id) },
 		func(id string) { user.Delete(id) },
+		// The devices they told us to notify. A subscription outliving the
+		// account is a stranger's phone still receiving somebody's mail.
+		push.Forget,
 		notes.Clear,
 
 		// Everything the caller stored themselves. These six were missing, so

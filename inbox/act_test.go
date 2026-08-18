@@ -3,6 +3,7 @@ package inbox
 // The agent, on the thing you are reading.
 
 import (
+	"fmt"
 	"net/http/httptest"
 	"net/url"
 	"strings"
@@ -108,9 +109,13 @@ func TestAnEmptyInstructionDoesNothing(t *testing.T) {
 // about, so the thread reads as what arrived, what was asked, and what was done.
 func TestTheInstructionLandsOnTheConversation(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
-	reader(t, "act-record")
-	mine := thread.Open("act-record", "mail", "<z@example.com>")
-	thread.Add(thread.Message{Thread: mine.ID, Account: "act-record", Text: "dinner on the 4th at 8"})
+	// A fresh account per run. The record loads from disk at package init,
+	// before a test can point HOME somewhere else, so a fixed id accumulates
+	// across runs and the counts below drift.
+	who := fmt.Sprintf("act-record-%d", time.Now().UnixNano())
+	reader(t, who)
+	mine := thread.Open(who, "mail", "<z@example.com>")
+	thread.Add(thread.Message{Thread: mine.ID, Account: who, Text: "dinner on the 4th at 8"})
 
 	Act = func(accountID, threadID, ask string) error {
 		// What the wiring does: the agent's own door, on this conversation.
@@ -124,9 +129,9 @@ func TestTheInstructionLandsOnTheConversation(t *testing.T) {
 	form := url.Values{"id": {mine.ID}, "ask": {"add this to my calendar"}}
 	r := httptest.NewRequest("POST", "/inbox", strings.NewReader(form.Encode()))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	action(httptest.NewRecorder(), r, "act-record")
+	action(httptest.NewRecorder(), r, who)
 
-	msgs := thread.Messages("act-record", mine.ID, 10)
+	msgs := thread.Messages(who, mine.ID, 10)
 	if len(msgs) != 3 {
 		t.Fatalf("the conversation holds %d messages, want what arrived, the ask and the answer", len(msgs))
 	}
