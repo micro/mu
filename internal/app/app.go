@@ -668,8 +668,25 @@ var CardTemplate = `
 // <password>", which asked people to type a password into a chat window.
 var LinkCodeFunc func(accountID string) string
 
+// Link is a call to action: its own line, with an arrow. `.link` is
+// display:block globally, which is what makes it one.
 func Link(name, ref string) string {
 	return fmt.Sprintf(`<a href="%s" class="link">%s →</a>`, ref, name)
+}
+
+// TextLink is a link inside a sentence.
+//
+// Link was being used for both, and a display:block anchor in the middle of a
+// paragraph breaks the line where it sits — so "talk to it in your inbox →, or
+// hand it a token" rendered as three lines with a stray arrow before a comma.
+// The arrow goes too: it points at a destination, and inside prose the sentence
+// is already doing that.
+//
+// The alternative was another entry in the `.notice .link, .rooms .row .link`
+// override list in mu.css, which is a list that grows by one every time
+// somebody writes a sentence with a link in it.
+func TextLink(name, ref string) string {
+	return fmt.Sprintf(`<a href="%s" class="link-text">%s</a>`, ref, name)
 }
 
 func Head(appName string, refs []string) string {

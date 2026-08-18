@@ -340,9 +340,25 @@ window.muChatNew=function(){
   var KEY='mu_active_agent';
   try{ window.muActiveAgent=window.muActiveAgent||sessionStorage.getItem(KEY)||''; }catch(e){}
 
+  // Where to write to whichever agent is answering.
+  //
+  // The host page renders the address; the id is the contract between them.
+  // Picking an agent changed which name answered and nothing else on the
+  // screen, so the page read "answering as Test" directly above "write to it
+  // at agent@" — the first question anybody has about an agent, answered
+  // wrongly by the one control that should have changed it.
+  var addrs={};
+  function showAddr(){
+    var el=document.getElementById('mu-agent-addr');
+    if(!el) return;
+    var a=addrs[sel.value]||addrs[''];
+    if(a) el.textContent=a;
+  }
+
   sel.addEventListener('change',function(){
     window.muActiveAgent=sel.value;
     try{ sessionStorage.setItem(KEY, sel.value); }catch(e){}
+    showAddr();
   });
 
   fetch('/agents/data',{headers:{'Accept':'application/json'}})
@@ -356,17 +372,29 @@ window.muChatNew=function(){
       // No agents, nothing to choose between: a picker with one option is a
       // control that only takes up room.
       if(!list.length){ var l=document.getElementById('mu-chat-agent'); if(l) l.remove(); return; }
+      // Rebuilt, not appended to. This ran twice on one page — a soft
+      // navigation back to Home re-runs it against a select that already has
+      // its options — and every agent appeared once per run, so the list read
+      // Micro, Test, Test. Building the whole list is right however many times
+      // it happens.
+      sel.innerHTML='';
+      var def=document.createElement('option');
+      def.value=''; def.textContent='Micro (default)';
+      sel.appendChild(def);
+      addrs={'':(d&&d.address)||''};
       list.forEach(function(a){
         var o=document.createElement('option');
         o.value=a.id; o.textContent=a.name;
         if(a.description) o.title=a.description;
         sel.appendChild(o);
+        if(a.address) addrs[a.id]=a.address;
       });
       // Restore the choice, unless that agent has since been removed.
       if(window.muActiveAgent){
         sel.value=window.muActiveAgent;
         if(sel.value!==window.muActiveAgent){ window.muActiveAgent=''; sel.value=''; }
       }
+      showAddr();
     })
     .catch(function(){ var l=document.getElementById('mu-chat-agent'); if(l) l.remove(); });
 })();

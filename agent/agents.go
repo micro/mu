@@ -11,6 +11,7 @@ import (
 	"mu/internal/ai"
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/service/mail"
 )
 
 // AgentsHandler is the JSON API behind the chat's agent picker, at /agents/data.
@@ -98,6 +99,14 @@ func AgentsHandler(w http.ResponseWriter, r *http.Request) {
 		// picker wants only the ones that can actually answer here, and could
 		// not tell them apart without this.
 		Kind string `json:"kind,omitempty"`
+
+		// Where to write to this one. Picking an agent changed which name
+		// answered and nothing else on the screen — the address underneath went
+		// on naming the default, so the page said "answering as Test" directly
+		// above "write to it at agent@". The first question anybody has about an
+		// agent is where to reach it, and it was the one fact the picker could
+		// not change.
+		Address string `json:"address,omitempty"`
 	}
 	// One list, one store. This used to read agent/micro's own store while
 	// /agents wrote to the roster, so "my agents" depended on which page you
@@ -111,9 +120,16 @@ func AgentsHandler(w http.ResponseWriter, r *http.Request) {
 		// prompt rendered as an agent's one-line description is not a
 		// description, it is the whole agent spilled onto the list.
 		mine = append(mine, lite{m.ID, m.Name, firstLine(a.Description, m.Description),
-			m.SystemPrompt, m.Tools, a.Kind})
+			m.SystemPrompt, m.Tools, a.Kind, a.Address()})
 	}
-	_ = json.NewEncoder(w).Encode(map[string]any{"agents": mine, "tools": AllAgentTools()})
+	// The default's address too, so the picker can put it back when the reader
+	// returns to Micro. Without it the only way back to the shared address is a
+	// page reload.
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"agents":  mine,
+		"tools":   AllAgentTools(),
+		"address": mail.SharedAgentAddress(),
+	})
 }
 
 // firstLine returns the stored description if there is one, otherwise the

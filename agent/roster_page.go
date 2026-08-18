@@ -70,7 +70,7 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	// tools are what it can call, services are what runs behind them.
 	b.WriteString(`<p class="lens-lead">What acts for you. Each one gets an address people ` +
 		`can write to, a standing instruction, and the services it may reach — then talk to it ` +
-		`in your ` + app.Link("inbox", "/inbox") + `, or hand it a token and run it from Claude, ` +
+		`in your ` + app.TextLink("inbox", "/inbox") + `, or hand it a token and run it from Claude, ` +
 		`Cursor or your own program.</p>`)
 
 	if msg := r.URL.Query().Get("error"); msg != "" {
@@ -326,7 +326,12 @@ func defaultRow() string {
 		}
 		addr = `<div class="agent-mail">` + verb + ` <code>` + html.EscapeString(a) + `</code></div>`
 	}
-	return `<h3 style="font-size:15px;margin:0 0 10px">The default</h3>` +
+	// "Our agents" against "Your agents" below it, which is the distinction the
+	// two lists are actually drawing: one this instance provides, and the ones
+	// you made. It read "The default", which names it by its position in a
+	// dropdown rather than by whose it is — and left the pair reading "The
+	// default" / "Your agents", two headings answering different questions.
+	return `<h3 style="font-size:15px;margin:0 0 10px">Our agents</h3>` +
 		`<div style="display:flex;flex-direction:column;gap:8px;margin:0 0 24px">` +
 		`<div class="agent-row"><div style="flex:1;min-width:0">` +
 		`<a class="agent-name" href="/inbox">Micro</a>` +

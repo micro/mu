@@ -417,8 +417,12 @@ function fetchW(la,lo){
 		// way through; when there is no preview there is nothing to go to, and
 		// the sidebar carries Inbox regardless.
 		if viewerID != "" {
+			// The address of whichever agent is answering. The id is the
+			// contract with the picker in the chat component, which rewrites it
+			// when the selection changes — this said agent@ while the control
+			// directly above it said "answering as Test".
 			if addr := mail.SharedAgentAddress(); addr != "" {
-				b.WriteString(`<p class="home-inbox">Or write to it at <code>` +
+				b.WriteString(`<p class="home-inbox">Or write to it at <code id="mu-agent-addr">` +
 					html.EscapeString(addr) + `</code> — from your mail, your phone, anywhere.</p>`)
 			}
 			b.WriteString(agent.InboxPreview(viewerID))

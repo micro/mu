@@ -2281,6 +2281,18 @@ body:has(#messages) #chat-back-link {
   text-decoration: none;
 }
 
+/* A link inside a sentence. See app.TextLink: .link is display:block, so used
+   in prose it breaks the line where it sits. */
+.link-text {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.link-text:hover {
+  color: var(--accent-color, #000);
+}
+
 .category,
 .highlight,
 a.category,

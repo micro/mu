@@ -35,9 +35,12 @@ func TestTheChatPickerLeavesOutAgentsThatRunElsewhere(t *testing.T) {
 			"assistant wearing their scope rather than as themselves")
 	}
 
-	// The filter is worthless if the field never arrives.
+	// The filter is worthless if the field never arrives. Asserted on the field
+	// and the value that fills it, not on the whole struct literal — that was
+	// spelled "m.Tools, a.Kind}", so adding any field after Kind failed a test
+	// about something else entirely.
 	data := readAgentSource(t, "agents.go")
-	if !strings.Contains(data, `json:"kind,omitempty"`) || !strings.Contains(data, "m.Tools, a.Kind}") {
+	if !strings.Contains(data, `json:"kind,omitempty"`) || !strings.Contains(data, "a.Kind") {
 		t.Error("/agents/data no longer reports where an agent runs, so nothing " +
 			"downstream can tell the two kinds apart")
 	}
