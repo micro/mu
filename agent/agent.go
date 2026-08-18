@@ -2286,7 +2286,13 @@ func resolveAgent(accountID, id string, isGuest bool) *micro.Agent {
 	if a := RunPublic(accountID, id); a != nil {
 		return a.AsMicro()
 	}
-	return micro.UserAgentFor(accountID, id)
+	if a := micro.UserAgentFor(accountID, id); a != nil {
+		return a
+	}
+	// And this instance's own specialists. Without this the chat resolved
+	// agent+news@ to nothing and ran the default with every tool, so the page
+	// named one agent and a different one answered.
+	return micro.Get(id)
 }
 
 func renderResultCard(toolName, result string, args map[string]any) string {

@@ -325,36 +325,110 @@ func agentRow(a *Agent, csrf, base string) string {
 // it is not a separate identity, it is this account. Everything else a row
 // carries it has: where it runs, what it may reach, an address, and the four
 // ways into it.
+//
+// And the specialists beside it. Eleven agents have been in the registry since
+// the router was written — news, markets, mail, weather, places, social, video,
+// apps, faith, search — each with its own instruction and its own tools, and
+// every one was reachable at agent+news@ and nowhere else. Not a page, not a
+// link, not this list. A product that provides services and tools and then
+// expects you to build your own agents has the same gap as one that expects you
+// to build your own tools.
 func defaultRow() string {
+	var b strings.Builder
+	b.WriteString(`<h3 style="font-size:15px;margin:0 0 4px">Our agents</h3>`)
+	b.WriteString(`<p class="agent-note">Provided by this instance, nothing to set up. ` +
+		`Each has its own address and reaches only what it needs.</p>`)
+	b.WriteString(`<div style="display:flex;flex-direction:column;gap:8px;margin:0 0 24px">`)
+
+	b.WriteString(platformRow(DefaultPlatformAgent))
+	for _, name := range PlatformNames() {
+		if name == DefaultPlatformAgent {
+			continue
+		}
+		b.WriteString(platformRow(name))
+	}
+	b.WriteString(`</div>`)
+	return b.String()
+}
+
+// platformRow is one of this instance's own agents.
+func platformRow(name string) string {
+	a := Platform(name)
+	if a == nil {
+		return ""
+	}
+	def := name == DefaultPlatformAgent
+
+	// Its address. The default answers at the bare agent@, the rest at
+	// agent+<name>@ — the tag names the agent rather than the owner, which is
+	// the whole difference from you+research@: one thing to remember instead of
+	// two, and the one you actually chose.
 	addr := ""
-	if a := mail.SharedAgentAddress(); a != "" {
+	tag := name
+	if def {
+		tag = ""
+	}
+	if at := mail.SharedAgentAddressFor(tag); at != "" {
 		verb := "Message it at"
 		if mail.Reachable() {
 			verb = "Write to it at"
 		}
-		addr = `<div class="agent-mail">` + verb + ` <code>` + html.EscapeString(a) + `</code></div>`
+		addr = `<div class="agent-mail">` + verb + ` <code>` + html.EscapeString(at) + `</code></div>`
 	}
-	// "Our agents" against "Your agents" below it, which is the distinction the
-	// two lists are actually drawing: one this instance provides, and the ones
-	// you made. It read "The default", which names it by its position in a
-	// dropdown rather than by whose it is — and left the pair reading "The
-	// default" / "Your agents", two headings answering different questions.
-	return `<h3 style="font-size:15px;margin:0 0 10px">Our agents</h3>` +
-		`<div style="display:flex;flex-direction:column;gap:8px;margin:0 0 24px">` +
-		`<div class="agent-row"><div style="flex:1;min-width:0">` +
-		`<a class="agent-name" href="/agent/micro">Micro</a>` +
+
+	// What it may reach. Nil tools means everything, which is true of the
+	// catch-all and is the thing worth flagging rather than hiding.
+	scope := `<div class="agent-scope">` + html.EscapeString(toolWords(a.Tools)) + `</div>`
+	if len(a.Tools) == 0 {
+		scope = `<div class="agent-scope wide">everything you can reach</div>`
+	}
+
+	meta := html.EscapeString(a.Description)
+	if def {
+		meta = "Always here, nothing to set up. It answers as your account, so it has no " +
+			"token of its own."
+	}
+
+	path := "/agent/" + html.EscapeString(strings.ToLower(name))
+	return `<div class="agent-row"><div style="flex:1;min-width:0">` +
+		`<a class="agent-name" href="` + path + `">` + html.EscapeString(a.Name) + `</a>` +
 		`<span class="agent-kind here">Runs here</span>` +
-		`<div class="agent-scope wide">everything you can reach</div>` +
-		`<div class="agent-meta">Always here, nothing to set up. It answers as your account, so it ` +
-		`has no token of its own.</div>` + addr +
-		`<div class="agent-links">` +
-		`<a href="/agent/micro">Talk to it</a>` +
+		scope +
+		`<div class="agent-meta">` + meta + `</div>` + addr +
+		`<div class="agent-links"><a href="` + path + `">Talk to it</a>` +
 		`<a href="/agent/connect">How to reach it &rarr;</a></div>` +
-		`</div></div></div>`
+		`</div></div>`
+}
+
+// toolWords says what an agent reaches, in words rather than tool names.
+//
+// The service each tool belongs to, deduplicated and in the order the agent
+// declares them: "news, web" says something to a person where
+// "news_list, news_search, web_search, web_fetch" is a list they have to parse
+// to learn the same thing.
+func toolWords(tools []string) string {
+	var out []string
+	seen := map[string]bool{}
+	for _, t := range tools {
+		name := t
+		if i := strings.IndexByte(t, '_'); i > 0 {
+			name = t[:i]
+		}
+		if name == "" || seen[name] {
+			continue
+		}
+		seen[name] = true
+		out = append(out, name)
+	}
+	if len(out) == 0 {
+		return "everything you can reach"
+	}
+	return strings.Join(out, ", ")
 }
 
 const agentsCSS = `<style>
 .lens-lead{color:#666;font-size:14px;margin:0 0 18px;max-width:640px}
+.agent-note{color:#999;font-size:12px;margin:0 0 12px;max-width:640px}
 .agent-row{display:flex;align-items:center;gap:12px;border:1px solid #eee;border-radius:8px;padding:10px 14px}
 .agent-kind{display:inline-block;font-size:11px;font-weight:600;margin-left:8px;
   padding:1px 7px;border-radius:999px;vertical-align:middle}

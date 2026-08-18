@@ -71,6 +71,20 @@ func BySlug(owner, slug string) (id string, ok bool) {
 			return a.ID, true
 		}
 	}
+	// Then this instance's own — news, markets, weather, the rest.
+	//
+	// Eleven of them have existed since the router was written, each with its
+	// own instruction and its own tools, and every one was reachable at
+	// agent+news@ and at nothing else. Not a page, not a link, not the picker.
+	// A specialist you can only reach if you already know the plus-address
+	// convention and the name is one nobody has.
+	//
+	// Your roster wins on a collision, which is the same rule the addresses
+	// use: your namespace is yours, and a built-in agent must never take over a
+	// name you were already using.
+	if a := Platform(slug); a != nil {
+		return a.ID, true
+	}
 	return "", false
 }
 
@@ -82,6 +96,11 @@ func SlugFor(owner, id string) string {
 	}
 	if a := For(owner, id); a != nil {
 		return Slug(a)
+	}
+	// One of this instance's own. Its id is already its name — see the registry
+	// in agent/micro — so it is its own slug.
+	if platformName(id) != "" {
+		return strings.ToLower(id)
 	}
 	return DefaultSlug
 }
@@ -111,6 +130,9 @@ func agentTitle(accountID, id string) string {
 	}
 	if a := For(accountID, id); a != nil {
 		return a.Name
+	}
+	if n := platformName(id); n != "" {
+		return n
 	}
 	return "Micro"
 }
