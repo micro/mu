@@ -14,12 +14,20 @@ package digest
 // for, the same way it lands on the blog. Mailing it is a different decision
 // with a different cost, and it can be made later without undoing this.
 //
+// Through the agent's own door, not around it. This wrote thread.Add directly
+// once, which is the shape of a special case: the agent would have been the one
+// thing on the instance putting messages in the record by reaching past the API
+// every other caller uses. agent.Answered is that API — the same call
+// client/mail makes when an agent answers an email — so a brief is recorded the
+// way an answer is, because that is what it is.
+//
 // One conversation per account per day, so replying to it is replying to that
 // day's brief and the next one does not land in the middle of the thread.
 
 import (
 	"time"
 
+	"mu/agent"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/settings"
@@ -66,14 +74,8 @@ func deliver(title, body string) {
 		if len(thread.Messages(acc.ID, th.ID, 1)) > 0 {
 			continue
 		}
-		if thread.Add(thread.Message{
-			Thread:  th.ID,
-			Account: acc.ID,
-			Role:    thread.RoleAgent,
-			Text:    title + "\n\n" + body,
-		}) != "" {
-			sent++
-		}
+		agent.Answered(acc.ID, th.ID, title+"\n\n"+body, "")
+		sent++
 	}
 	if sent > 0 {
 		app.Log("digest", "Briefing delivered to %d inbox%s", sent, plural(sent))
