@@ -101,6 +101,14 @@ type Thread struct {
 	Parties []Party   `json:"parties,omitempty"`
 	Started time.Time `json:"started"`
 	Updated time.Time `json:"updated"`
+	// Seen is when the owner last looked at this conversation. Anything that
+	// happened after it is unread.
+	//
+	// A timestamp rather than a flag, because "unread" is a comparison and a
+	// flag is a copy of one — two writers and the flag drifts from the thing it
+	// describes. This is also why marking a conversation unread again is one
+	// assignment rather than a second piece of state.
+	Seen time.Time `json:"seen,omitempty"`
 }
 
 // Party is somebody on a conversation.
@@ -389,6 +397,16 @@ func Add(m Message) string {
 	// mail thread where a stranger wrote in has both of them on it without mail
 	// knowing this exists.
 	joinUnlocked(t, Party{Kind: stored.Role, Key: stored.From, Agent: t.Agent, Joined: stored.At})
+	// Your own words are read the moment you write them. Everything else —
+	// somebody writing in, an agent answering, a briefing arriving — is not, and
+	// that is the whole of the unread rule.
+	//
+	// A person's message with no From is the owner; one with a From is somebody
+	// else writing to an address they own, which is exactly the case a mailbox
+	// exists for.
+	if stored.Role == RolePerson && stored.From == "" {
+		t.Seen = stored.At
+	}
 	trim(m.Account)
 	save()
 	return stored.ID

@@ -30,6 +30,10 @@ type NavItem struct {
 	// Key marks which item is the current one, matched against the request path
 	// so the rail can show where you are. Empty means never current.
 	Key string
+	// Badge is a short count shown against the item — unread mail, for the
+	// mailboxes. Empty for nothing to say, which is the ordinary case: a badge
+	// reading zero is a badge that has stopped meaning anything.
+	Badge string
 }
 
 // Wired at boot to whoever owns each list. Nil is a build without that package,
@@ -57,8 +61,12 @@ func navChildren(items []NavItem, current string) string {
 		if it.Key != "" && it.Key == current {
 			cls += " on"
 		}
+		badge := ""
+		if it.Badge != "" {
+			badge = `<span class="nav-badge">` + html.EscapeString(it.Badge) + `</span>`
+		}
 		b.WriteString(`<a class="` + cls + `" href="` + html.EscapeString(it.Href) + `">` +
-			`<span class="label">` + html.EscapeString(it.Label) + `</span></a>`)
+			`<span class="label">` + html.EscapeString(it.Label) + `</span>` + badge + `</a>`)
 	}
 	b.WriteString(`</div>`)
 	return b.String()

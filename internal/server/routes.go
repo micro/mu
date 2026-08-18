@@ -722,6 +722,9 @@ func registerRoutes() {
 	http.HandleFunc("/archive", archive.Handler)
 	// Deleting a conversation. The list of them is the rail on /agent.
 	http.HandleFunc("/agent/session/", inbox.SessionHandler)
+	// Putting a conversation back to unread. Its own path, because /inbox's POST
+	// is the instruction box and the two are not variations of each other.
+	http.HandleFunc("/inbox/unread", inbox.UnreadHandler)
 	// Two pages that were tabs and are not any more: one listed the same
 	// conversations the rail lists, the other listed the workflow records behind
 	// them. Both are on /agent now — the conversation, and the tools each answer

@@ -18,13 +18,13 @@ import (
 	"mu/internal/thread"
 )
 
-// One list of conversations, wherever they happened.
+// The rail is what you started; the inbox is what arrived.
 //
-// There were two: the rail listed the ones from this page and a second page
-// listed all of them under another heading, differing by a filter nobody asked
-// for. A conversation from another client opens read-only, which is the honest
-// difference and does not need a page of its own to say.
-func TestTheRailListsEveryConversation(t *testing.T) {
+// These were one list twice: the rail showed every conversation on the account
+// and so does /inbox, so the two pages differed only in furniture and neither
+// could be described in a sentence. The line is the one every mail product
+// draws — see thread.Arrived.
+func TestTheRailIsWhatYouStartedNotWhatArrived(t *testing.T) {
 	acc := fmt.Sprintf("rail-%d", time.Now().UnixNano())
 
 	here := Opened(acc, thread.WebClient, "root", "", "")
@@ -36,20 +36,18 @@ func TestTheRailListsEveryConversation(t *testing.T) {
 	Answered(acc, byMail, "Not much.", "")
 
 	rail := chatThreads(acc, "")
-	if len(rail) != 2 {
-		t.Fatalf("the rail lists %d conversations, want both: %+v", len(rail), rail)
+	if len(rail) != 1 {
+		t.Fatalf("the rail lists %d conversations, want only the one started here: %+v", len(rail), rail)
+	}
+	if rail[0].Client != thread.WebClient {
+		t.Errorf("the rail is showing a conversation from %q", rail[0].Client)
 	}
 
-	// The one that did not happen here is marked as such, because it cannot be
-	// continued from this page — replying happens where it arrived.
-	var mail *thread.Thread
-	for i, tt := range rail {
-		if tt.Client != thread.WebClient {
-			mail = &rail[i]
-		}
-	}
+	// And the one that arrived still reads back, on the page that owns it.
+	// Read-only there, because replying happens where it arrived.
+	mail := thread.Get(acc, byMail)
 	if mail == nil {
-		t.Fatal("the mail conversation is not in the list")
+		t.Fatal("the mail conversation is not in the record")
 	}
 	if got := inbox.ConversationView(acc, mail); !strings.Contains(got, "Email") ||
 		!strings.Contains(got, "What&#39;s happening") {

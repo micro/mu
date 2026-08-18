@@ -1,0 +1,172 @@
+package inbox
+
+// What makes this a mailbox rather than a list.
+
+import (
+	"net/http/httptest"
+	"net/url"
+	"strings"
+	"testing"
+
+	"mu/internal/thread"
+)
+
+// arrived is a conversation somebody else started: a message with a From,
+// which is what makes it something waiting for you rather than something you
+// wrote. said() has no From, so it is the owner speaking and is read on
+// arrival — see thread.Add.
+func arrived(t *testing.T, owner, client, key, agentID, from, text string) *thread.Thread {
+	t.Helper()
+	th := thread.Open(owner, client, key)
+	if th == nil {
+		t.Fatal("could not open a conversation")
+	}
+	if agentID != "" {
+		thread.SetAgent(owner, th.ID, agentID)
+	}
+	thread.Add(thread.Message{Thread: th.ID, Account: owner, Text: text, From: from})
+	return th
+}
+
+// The inbox is what arrived; a chat you started here is not in it.
+//
+// These were two lists of the same conversations — /inbox and the rail on
+// /agent both read the whole record — so neither page could be described in a
+// sentence, which is exactly how it read.
+func TestTheInboxIsWhatArrived(t *testing.T) {
+	const who = "mailbox-arrived"
+	said(t, who, "mail", "<a@example.com>", "", "about the invoice")
+	said(t, who, thread.WebClient, "chat", "", "what are the markets doing")
+	said(t, who, thread.CLIClient, "term", "", "run the briefing")
+
+	body := listBody(t, "/inbox", who, "")
+	if !strings.Contains(body, "about the invoice") {
+		t.Error("mail is not in the inbox")
+	}
+	for _, started := range []string{"what are the markets doing", "run the briefing"} {
+		if strings.Contains(body, started) {
+			t.Errorf("a conversation started here is in the inbox: %q", started)
+		}
+	}
+}
+
+// A row you have not read looks different from one you have. Without that the
+// page is a log — read top to bottom every time, because nothing says which of
+// these you have dealt with.
+func TestUnreadRowsAreMarked(t *testing.T) {
+	const who = "mailbox-unread"
+	th := arrived(t, who, "mail", "<b@example.com>", "", "them@example.com", "the quarterly numbers")
+
+	// The markup, not the stylesheet — inboxCSS always carries the rule.
+	const marked = `class="ib-row unseen"`
+	if body := listBody(t, "/inbox", who, ""); !strings.Contains(body, marked) {
+		t.Errorf("a conversation nobody has opened is not marked unread:\n%s", body)
+	}
+
+	thread.MarkSeen(who, th.ID)
+	if body := listBody(t, "/inbox", who, ""); strings.Contains(body, marked) {
+		t.Error("a conversation that has been read is still marked unread")
+	}
+}
+
+// Your own words are read the moment you write them. An agent's answer, and
+// anything somebody else sends, is not.
+func TestWhatCountsAsUnread(t *testing.T) {
+	const who = "mailbox-rule"
+
+	mine := thread.Open(who, "mail", "<mine@example.com>")
+	thread.Add(thread.Message{Thread: mine.ID, Account: who, Text: "I said this"})
+	if got := thread.Get(who, mine.ID); thread.Unread(*got) {
+		t.Error("something you wrote yourself is unread")
+	}
+
+	// The agent answers.
+	thread.Add(thread.Message{Thread: mine.ID, Account: who,
+		Role: thread.RoleAgent, Text: "and it answered"})
+	if got := thread.Get(who, mine.ID); !thread.Unread(*got) {
+		t.Error("an answer you have not seen is not unread")
+	}
+
+	// Somebody else writes in.
+	theirs := thread.Open(who, "mail", "<theirs@example.com>")
+	thread.Add(thread.Message{Thread: theirs.ID, Account: who,
+		Text: "a stranger wrote", From: "someone@example.com"})
+	if got := thread.Get(who, theirs.ID); !thread.Unread(*got) {
+		t.Error("mail from somebody else is not unread")
+	}
+}
+
+// Opening a conversation reads it, and there is a way to put it back — which is
+// the half a mailbox is unusable without, because a thing you meant to come back
+// to otherwise disappears into the pile.
+func TestOpeningReadsItAndItCanBePutBack(t *testing.T) {
+	const who = "mailbox-open"
+	th := arrived(t, who, "mail", "<c@example.com>", "", "them@example.com", "please confirm")
+
+	w := httptest.NewRecorder()
+	conversation(w, httptest.NewRequest("GET", "/inbox?id="+url.QueryEscape(th.ID), nil), who, th.ID)
+	body := w.Body.String()
+
+	if got := thread.Get(who, th.ID); thread.Unread(*got) {
+		t.Error("opening a conversation did not read it")
+	}
+	// And the control is offered, because it was unread when it was opened.
+	if !strings.Contains(body, "Mark unread") {
+		t.Errorf("no way to put it back:\n%s", body)
+	}
+
+	thread.MarkUnread(who, th.ID)
+	if got := thread.Get(who, th.ID); !thread.Unread(*got) {
+		t.Error("marking unread did nothing")
+	}
+}
+
+// The control is not offered on something that was already read. Marking unread
+// what you had already dealt with is a thing nobody does, and a control shown
+// always is furniture on every page.
+func TestNothingToPutBackOnSomethingAlreadyRead(t *testing.T) {
+	const who = "mailbox-read"
+	th := said(t, who, "mail", "<d@example.com>", "", "no action needed")
+	thread.MarkSeen(who, th.ID)
+
+	w := httptest.NewRecorder()
+	conversation(w, httptest.NewRequest("GET", "/inbox?id="+url.QueryEscape(th.ID), nil), who, th.ID)
+	if strings.Contains(w.Body.String(), "Mark unread") {
+		t.Error("a conversation that was already read offers to be put back")
+	}
+}
+
+// The rail carries the count, per mailbox and for the whole inbox — a number
+// rather than a dot, because three and forty are different situations.
+func TestTheRailCountsWhatIsWaiting(t *testing.T) {
+	const who = "mailbox-count"
+	AgentName = func(owner, id string) string {
+		if id == "a1" {
+			return "Research"
+		}
+		return ""
+	}
+	t.Cleanup(func() { AgentName = nil })
+
+	arrived(t, who, "mail", "<e@example.com>", "a1", "them@example.com", "found three papers")
+	read := arrived(t, who, "mail", "<f@example.com>", "a1", "them@example.com", "and one more")
+	thread.MarkSeen(who, read.ID)
+	arrived(t, who, "whatsapp", "44700900000", "", "44700900000", "are you around")
+
+	if got := Unread(who); got != 2 {
+		t.Errorf("%d unread, want the two nobody has opened", got)
+	}
+
+	boxes := Mailboxes(who)
+	if len(boxes) == 0 {
+		t.Fatal("no mailboxes")
+	}
+	if boxes[0].Label != "All" || boxes[0].Badge != "2" {
+		t.Errorf("the whole inbox reads %q/%q, want All/2", boxes[0].Label, boxes[0].Badge)
+	}
+	for _, b := range boxes[1:] {
+		if b.Label == "Research" && b.Badge != "1" {
+			t.Errorf("the research box reads %q, want 1 — one of its two is read", b.Badge)
+		}
+	}
+}

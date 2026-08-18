@@ -757,17 +757,26 @@ func latestThreadFor(accountID, agentID string) string {
 // every page load.
 const railShown = 40
 
-// chatThreads is what belongs in the rail: this account's conversations, with
-// one agent's when a page is about one.
+// chatThreads is what belongs in the rail: the conversations you have had with
+// this agent here.
 //
-// Every one of them, whichever client it happened on. There was a second page
-// listing exactly this under the heading Threads while the rail showed the web
-// ones — two lists of the same thing, differing by a filter nobody asked for.
-// A conversation from another client opens read-only, which is the honest
-// difference and does not need a page of its own to express.
+// Here, and not everywhere. The rail listed every conversation on the account
+// whichever client carried it — which is exactly what /inbox lists, so the two
+// pages were two lists of the same thing with different furniture, and neither
+// could be described in a sentence. The line that holds is the one every mail
+// product draws: an inbox is what arrived, a chat is what you started. See
+// thread.Arrived.
+//
+// So a mail chain, a WhatsApp exchange and this morning's briefing are on
+// /inbox, where you deal with what came in. What is here is the chat: the
+// conversations you opened on this instance's own screens, were present for,
+// and watched the answer to.
 func chatThreads(accountID, agentID string) []thread.Thread {
 	var out []thread.Thread
 	for _, t := range thread.List(accountID, 0) {
+		if thread.Arrived(t) {
+			continue
+		}
 		// One agent's conversations, when a page is about one agent. The rail
 		// listed every conversation regardless, so a brand-new agent opened
 		// showing somebody else's history and looked like it had been used.

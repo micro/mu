@@ -79,9 +79,27 @@ func boxOf(r *http.Request) string {
 	return box
 }
 
+// arrivals is what belongs in the inbox: the conversations that came in,
+// whichever channel carried them.
+//
+// Not the chats you started here. Those are on /agent, which is where you were
+// sitting when you had them — see thread.Arrived. Without this line the two
+// pages are two lists of the same conversations with different furniture, which
+// is what they were, and neither could be described in a sentence.
+func arrivals(accountID string) []thread.Thread {
+	all := thread.List(accountID, held)
+	out := all[:0:0]
+	for _, t := range all {
+		if thread.Arrived(t) {
+			out = append(out, t)
+		}
+	}
+	return out
+}
+
 // list is the inbox proper.
 func list(w http.ResponseWriter, r *http.Request, accountID, box string) {
-	all := thread.List(accountID, held)
+	all := arrivals(accountID)
 
 	threads := all
 	if box != "" {
@@ -107,9 +125,11 @@ func list(w http.ResponseWriter, r *http.Request, accountID, box string) {
 			b.WriteString(`<p class="ib-empty">Nothing for <code>` + html.EscapeString(box) +
 				`</code> yet.</p>`)
 		} else {
-			b.WriteString(`<p class="ib-empty">Nothing here yet. Write to the address above from ` +
-				`anywhere — your own mail, your phone — and it turns up here. The agent reads ` +
-				`what arrives and answers in the thread.</p>`)
+			b.WriteString(`<p class="ib-empty">Nothing has arrived yet. Write to the address ` +
+				`above from anywhere — your own mail, your phone — and it turns up here. The ` +
+				`agent reads what arrives and answers in the thread.</p>` +
+				`<p class="ib-empty">This is what came in. Chats you started here are with ` +
+				`the agent, on ` + app.TextLink("Agents", "/agents") + `.</p>`)
 		}
 		b.WriteString(`</div>` + inboxCSS)
 		app.Respond(w, r, app.Response{Title: "Inbox", Description: "What arrived", HTML: b.String()})
@@ -147,15 +167,20 @@ func row(accountID string, t thread.Thread) string {
 		snippet = trimTo(m.Text, 110)
 	}
 
-	// Where it happened, when that is not here. A row saying "Web" on the page
-	// you are already on is noise; one saying "Email" is the fact worth showing,
-	// because it means the conversation happened without you.
-	where := ""
-	if t.Client != thread.WebClient {
-		where = `<span class="ib-tag">` + html.EscapeString(app.ClientName(t.Client)) + `</span>`
+	// Which channel carried it. Every row here arrived from somewhere that is
+	// not this page, so the label is always worth showing — it is the answer to
+	// "where do I reply".
+	where := `<span class="ib-tag">` + html.EscapeString(app.ClientName(t.Client)) + `</span>`
+
+	// Unread, which is what makes this a mailbox rather than a log. Without it
+	// every row looks the same and the page has to be read top to bottom every
+	// time, because nothing says which of these you have dealt with.
+	cls := "ib-row"
+	if thread.Unread(t) {
+		cls += " unseen"
 	}
 
-	return `<a class="ib-row" href="/inbox?id=` + url.QueryEscape(t.ID) + `">` +
+	return `<a class="` + cls + `" href="/inbox?id=` + url.QueryEscape(t.ID) + `">` +
 		`<span class="ib-who">` + html.EscapeString(trimTo(who, 24)) + `</span>` +
 		`<span class="ib-mid"><span class="ib-subject">` +
 		html.EscapeString(trimTo(subject, 70)) + `</span>` + where +
@@ -178,9 +203,15 @@ func conversation(w http.ResponseWriter, r *http.Request, accountID, id string) 
 		subject = "Untitled"
 	}
 
+	// Opening it is reading it. Before rendering, so a reload of the page you
+	// are already on does not still show it bold.
+	wasUnread := thread.Unread(*t)
+	thread.MarkSeen(accountID, t.ID)
+
 	var b strings.Builder
 	b.WriteString(`<div class="ib">`)
 	b.WriteString(`<p class="ib-back">` + app.TextLink("← Inbox", "/inbox") + `</p>`)
+	b.WriteString(unreadButton(r, t.ID, wasUnread))
 	b.WriteString(ConversationView(accountID, t))
 	// The agent, on the thing you are reading. See act.go.
 	b.WriteString(askBox(r, t.ID))
@@ -307,6 +338,11 @@ const inboxCSS = `<style>
 .ib-box.on{background:#111;border-color:#111;color:#fff}
 .ib-empty{font-size:14px;color:#888;line-height:1.6}
 .ib-row{display:flex;align-items:baseline;gap:12px;padding:11px 0;border-bottom:1px solid #f4f4f4;text-decoration:none;color:inherit}
+.ib-row.unseen .ib-who,.ib-row.unseen .ib-subject{font-weight:700}
+.ib-row.unseen .ib-snip{color:#666}
+.ib-row.unseen{border-left:2px solid #111;padding-left:9px;margin-left:-11px}
+.ib-mark{display:inline-block;font:inherit;font-size:12px;color:#888;background:none;border:1px solid #eee;border-radius:999px;padding:3px 11px;cursor:pointer;margin-left:10px}
+.ib-mark:hover{border-color:#ddd;color:#111}
 .ib-row:hover .ib-subject{text-decoration:underline}
 .ib-who{flex:0 0 130px;font-size:13px;font-weight:500;color:#111;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ib-mid{flex:1;min-width:0;display:flex;align-items:baseline;gap:8px;overflow:hidden}
@@ -315,9 +351,22 @@ const inboxCSS = `<style>
 .ib-when{flex:none;font-size:11px;color:#bbb;white-space:nowrap}
 .ib-tag{border:1px solid #eee;border-radius:999px;padding:1px 7px;font-size:10px;color:#777;flex:none}
 .ib-back{font-size:13px;margin:0 0 12px}
+/* On a phone a row is two lines, not one squeezed into 390px. The name and
+   the time on top, the subject and the preview under it — which is what every
+   mail client on a phone does, and for the same reason: three columns at that
+   width leaves each of them too narrow to read. The preview used to be hidden
+   entirely, so a mobile inbox was a list of subjects with no way to tell what
+   any of them said. */
 @media (max-width:640px){
-  .ib-who{flex-basis:90px}
-  .ib-snip{display:none}
+  .ib-row{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:12px 0}
+  .ib-who{flex:none;grid-column:1;font-size:13px}
+  .ib-when{grid-column:2;grid-row:1;font-size:11px}
+  .ib-mid{grid-column:1 / -1;flex-direction:column;align-items:flex-start;gap:2px}
+  .ib-subject{max-width:100%;white-space:normal;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical}
+  .ib-snip{display:block;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.45}
+  .ib-tag{order:3}
+  .ib-addr{gap:6px}
+  .ib-addr-note{font-size:11px}
 }
 </style>`
 
@@ -328,14 +377,22 @@ func Mailboxes(accountID string) []app.NavItem {
 	if accountID == "" {
 		return nil
 	}
-	all := thread.List(accountID, held)
-	seen := map[string]string{}
+	all := arrivals(accountID)
+	seen := map[string]string{} // slug -> label
+	unread := map[string]int{}  // slug -> how many, "" for the whole inbox
 	for _, t := range all {
-		if t.Agent == "" {
-			continue
+		box := ""
+		if t.Agent != "" {
+			label := agentLabel(accountID, t.Agent)
+			if s := slugOf(label); s != "" {
+				seen[s], box = label, s
+			}
 		}
-		if s := slugOf(agentLabel(accountID, t.Agent)); s != "" {
-			seen[s] = agentLabel(accountID, t.Agent)
+		if thread.Unread(t) {
+			unread[""]++
+			if box != "" {
+				unread[box]++
+			}
 		}
 	}
 	if len(seen) == 0 {
@@ -347,9 +404,30 @@ func Mailboxes(accountID string) []app.NavItem {
 	}
 	sort.Strings(slugs)
 
-	out := []app.NavItem{{Label: "All", Href: "/inbox"}}
+	badge := func(n int) string {
+		if n == 0 {
+			return ""
+		}
+		return app.Count(n)
+	}
+
+	out := []app.NavItem{{Label: "All", Href: "/inbox", Badge: badge(unread[""])}}
 	for _, s := range slugs {
-		out = append(out, app.NavItem{Label: seen[s], Href: boxPath(s), Key: s})
+		out = append(out, app.NavItem{Label: seen[s], Href: boxPath(s), Key: s,
+			Badge: badge(unread[s])})
 	}
 	return out
+}
+
+// Unread is how many conversations have arrived and not been read, for the
+// sidebar. Only arrivals: a chat you had here five minutes ago is not something
+// waiting for you.
+func Unread(accountID string) int {
+	n := 0
+	for _, t := range arrivals(accountID) {
+		if thread.Unread(t) {
+			n++
+		}
+	}
+	return n
 }
