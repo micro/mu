@@ -1,12 +1,14 @@
 package app
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"mu/internal/auth"
+	"mu/internal/service"
 )
 
 func TestWantsJSON(t *testing.T) {
@@ -314,53 +316,47 @@ func TestTheSidebarIsTheProductsNouns(t *testing.T) {
 	}
 }
 
-// The catalogue sits under the heading that says Services.
+// A pinned service comes back into the sidebar. Demoting anything out of the
+// spine — apps, most recently — is only defensible if the way back is the
+// ordinary one that every other service already uses.
 //
-// It used to be a group of its own further down the rail, under a second
-// heading also called Services, holding only what somebody had pinned — while
-// Inbox and Agents had their things directly underneath them. Two headings with
-// one name and one of them usually empty is what "services aren't under
-// services" describes.
-//
-// What goes in the list is the server's decision (pinned first, then the rest);
-// what this holds is that the rail renders it nested, under the right heading,
-// and only for somebody signed in.
-func TestTheCatalogueSitsUnderServices(t *testing.T) {
-	NavServices = func(account string) []NavItem {
-		return []NavItem{
-			{Label: "Video", Href: "/video", Key: "video"},
-			{Label: "Weather", Href: "/weather", Key: "weather"},
+// Asserted with a service registered here rather than by naming apps: Pinned
+// resolves through the registry, so naming a real service would make this pass
+// or fail on whether that service's package happens to be linked into this test
+// binary, which is not what is being tested.
+func TestAPinnedServiceReturnsToTheSidebar(t *testing.T) {
+	const name = "pinprobe"
+	if _, known := service.SpecFor(name); !known {
+		if err := service.Register(service.Spec{
+			Name: name, Handler: new(PinProbe), Page: "/" + name,
+			Endpoints: map[string]service.Endpoint{"List": {Doc: "probe"}},
+		}); err != nil {
+			t.Fatal(err)
 		}
 	}
-	t.Cleanup(func() { NavServices = nil })
-
-	result := RenderHTMLWithLangAndAuth("Test", "d", "<p>c</p>", "en", &auth.Account{ID: "alice"})
-	for _, want := range []string{`href="/video"`, `href="/weather"`, `class="nav-kid"`} {
-		if !strings.Contains(result, want) {
-			t.Errorf("the sidebar is missing %s", want)
-		}
-	}
-	// Nested under Services rather than flush with it — the whole point.
-	services := strings.Index(result, `href="/services"`)
-	kids := strings.Index(result, `href="/video"`)
-	if services < 0 || kids < 0 || kids < services {
-		t.Error("the catalogue is not under the Services heading")
-	}
-
-	// And a visitor gets the four nouns and nothing else, which is what the
-	// rail is for on the way in.
-	if out := RenderHTMLWithLang("Test", "d", "<p>c</p>", "en"); strings.Contains(out, `href="/video"`) {
-		t.Error("a signed-out visitor was given the whole catalogue")
+	acc := &auth.Account{ID: "alice"}
+	acc.SetPinned([]string{name})
+	result := RenderHTMLWithLangAndAuth("Test", "d", "<p>c</p>", "en", acc)
+	if !strings.Contains(result, `href="/`+name+`"`) {
+		t.Error("a pinned service did not appear in the sidebar")
 	}
 }
 
-// A build with nothing wired in draws the heading alone, rather than an empty
-// list under it.
-func TestNoCatalogueDrawsNoList(t *testing.T) {
-	NavServices = nil
+// PinProbe is the service the test above registers.
+type PinProbe struct{}
+
+func (PinProbe) List(ctx context.Context, req *struct{}, rsp *struct {
+	Text string `json:"text"`
+}) error {
+	return nil
+}
+
+// Nothing pinned draws no group at all. An empty heading over an empty list is
+// a worse answer than no heading, and it is what every new account would see.
+func TestPinningNothingDrawsNoGroup(t *testing.T) {
 	result := RenderHTMLWithLangAndAuth("Test", "d", "<p>c</p>", "en", &auth.Account{ID: "alice"})
-	if strings.Contains(result, `class="nav-kids"`) && !strings.Contains(result, `href="/inbox/`) {
-		t.Error("an empty list was drawn under a heading")
+	if strings.Contains(result, "nav-group") || strings.Contains(result, "nav-heading") {
+		t.Error("an account that pinned nothing was given a Services group")
 	}
 }
 
