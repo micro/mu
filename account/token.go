@@ -63,7 +63,7 @@ func TokenHandler(w http.ResponseWriter, r *http.Request) {
 			if name == "" {
 				name = "MCP Client"
 			}
-			client := auth.RegisterOAuthClient(name, []string{})
+			client := auth.RegisterOAuthClient(acc.ID, name, []string{})
 			// Store credentials in session flash (not URL)
 			setFlash(sess.ID, "client_id", client.ClientID)
 			setFlash(sess.ID, "client_secret", client.ClientSecret)
@@ -71,7 +71,7 @@ func TokenHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if clientID := r.URL.Query().Get("delete_client"); clientID != "" && r.FormValue("_method") == "DELETE" {
-			auth.DeleteOAuthClient(clientID)
+			auth.DeleteOAuthClient(clientID, acc.ID) //nolint:errcheck — a refused delete redirects to a list that still shows it
 			http.Redirect(w, r, "/token", http.StatusSeeOther)
 			return
 		}
@@ -119,8 +119,17 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 </style>`)
 
 	// === OAuth Clients ===
+	// Yours, and only yours.
+	//
+	// This asked for every client on the instance. Anyone signed in saw the
+	// names other people's MCP clients had registered under, their client ids
+	// and when they appeared — with a Delete beside each that worked. A client
+	// that registered itself at /oauth/register has no owner to compare
+	// against, so it belongs to nobody and appears here for nobody.
 	sb.WriteString(`<h3>OAuth Clients</h3>`)
-	sb.WriteString(`<p style="color:#666;font-size:13px">For connecting Claude, MCP clients, or other apps via OAuth 2.1.</p>`)
+	sb.WriteString(`<p style="color:#666;font-size:13px">For connecting Claude, MCP clients, or ` +
+		`other apps via OAuth 2.1. Clients that register themselves when they connect do not ` +
+		`appear here — they belong to no account, and nothing needs doing about them.</p>`)
 
 	if newClientID != "" {
 		sb.WriteString(fmt.Sprintf(`<div style="margin:15px 0;padding:15px;background:#d4edda;border:1px solid #c3e6cb;border-radius:6px;overflow:hidden">
@@ -132,7 +141,7 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	}
 
 	sb.WriteString(`<table class="token-table"><thead><tr><th>Name</th><th>Client ID</th><th>Created</th><th></th></tr></thead><tbody>`)
-	oauthClients := auth.AllOAuthClients()
+	oauthClients := auth.OAuthClientsFor(accountID)
 	if len(oauthClients) == 0 {
 		sb.WriteString(`<tr><td colspan="4" style="padding:20px;text-align:center;color:#666">No OAuth clients yet.</td></tr>`)
 	}
@@ -159,10 +168,16 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	sb.WriteString(`<strong>Token Created</strong><p>Copy this token now — you won't see it again:</p>`)
 	sb.WriteString(`<pre id="new-token" style="background:#fff;padding:10px;border:1px solid #c3e6cb;border-radius:3px;overflow-x:auto;white-space:pre-wrap;word-break:break-all"></pre></div>`)
 
-	sb.WriteString(`<table class="token-table"><thead><tr><th>Name</th><th>Permissions</th><th>Last Used</th><th>Expires</th><th></th></tr></thead><tbody>`)
+	// Created, beside Last Used.
+	//
+	// The table showed a name and three dates, none of them the one people
+	// reach for: "when did this appear". So a token whose Last Used had just
+	// moved read as a token that had just been issued, which is an alarming
+	// thing to misread about a credential.
+	sb.WriteString(`<table class="token-table"><thead><tr><th>Name</th><th>Permissions</th><th>Created</th><th>Last Used</th><th>Expires</th><th></th></tr></thead><tbody>`)
 	tokens := auth.ListTokens(accountID)
 	if len(tokens) == 0 {
-		sb.WriteString(`<tr><td colspan="5" style="padding:20px;text-align:center;color:#666">No tokens yet.</td></tr>`)
+		sb.WriteString(`<tr><td colspan="6" style="padding:20px;text-align:center;color:#666">No tokens yet.</td></tr>`)
 	}
 	for _, token := range tokens {
 		expires := "Never"
@@ -173,10 +188,14 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 		if !token.LastUsed.IsZero() {
 			lastUsed = app.TimeAgo(token.LastUsed)
 		}
-		sb.WriteString(fmt.Sprintf(`<tr><td data-label="Name">%s</td><td data-label="Permissions">%s</td><td data-label="Last Used">%s</td><td data-label="Expires">%s</td><td>
+		created := "Unknown"
+		if !token.Created.IsZero() {
+			created = app.TimeAgo(token.Created)
+		}
+		sb.WriteString(fmt.Sprintf(`<tr><td data-label="Name">%s</td><td data-label="Permissions">%s</td><td data-label="Created">%s</td><td data-label="Last Used">%s</td><td data-label="Expires">%s</td><td>
 			<form method="POST" action="/token?id=%s" style="display:inline" onsubmit="return confirm('Delete?')">
 			<input type="hidden" name="_method" value="DELETE"><button type="submit" style="font-size:13px">Delete</button></form></td></tr>`,
-			token.Name, strings.Join(token.Permissions, ", "), lastUsed, expires, token.ID))
+			token.Name, strings.Join(token.Permissions, ", "), created, lastUsed, expires, token.ID))
 	}
 	sb.WriteString(`</tbody></table>`)
 

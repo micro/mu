@@ -9,6 +9,7 @@ import (
 	"html"
 	"net/http"
 	"net/url"
+	"sort"
 	"sync"
 	"time"
 
@@ -24,6 +25,16 @@ type OAuthClient struct {
 	Name         string    `json:"name"`
 	RedirectURIs []string  `json:"redirect_uris"`
 	CreatedAt    time.Time `json:"created_at"`
+
+	// Account is who registered it here, and is empty for one that registered
+	// itself at /oauth/register — dynamic registration is anonymous by
+	// specification, so there is nobody to record.
+	//
+	// The field exists because there was no owner at all, and /token listed
+	// every client on the instance to every signed-in person, with a working
+	// Delete beside each. You could read the names other people's MCP clients
+	// had chosen and remove their registrations.
+	Account string `json:"account,omitempty"`
 }
 
 // OAuthCode represents a pending authorization code.
@@ -54,8 +65,12 @@ func saveOAuthClients() {
 	data.SaveJSON("oauth_clients.json", oauthClients)
 }
 
-// RegisterOAuthClient creates a new OAuth client.
-func RegisterOAuthClient(name string, redirectURIs []string) *OAuthClient {
+// RegisterOAuthClient creates a client owned by an account.
+//
+// account is empty only for anonymous dynamic registration, which has nobody to
+// attribute it to. Everything that registers on somebody's behalf passes it, and
+// what is unowned is what /token must never show.
+func RegisterOAuthClient(account, name string, redirectURIs []string) *OAuthClient {
 	oauthMu.Lock()
 	defer oauthMu.Unlock()
 
@@ -68,13 +83,44 @@ func RegisterOAuthClient(name string, redirectURIs []string) *OAuthClient {
 		Name:         name,
 		RedirectURIs: redirectURIs,
 		CreatedAt:    time.Now(),
+		Account:      account,
 	}
 	oauthClients[id] = client
 	saveOAuthClients()
 	return client
 }
 
-// AllOAuthClients returns all registered clients.
+// OAuthClientsFor is one account's clients, newest first.
+//
+// This is what a person's own page asks for. It used to ask for all of them —
+// see AllOAuthClients, which is now admin-only and named so that using it on a
+// user's page reads as the mistake it is.
+func OAuthClientsFor(account string) []*OAuthClient {
+	if account == "" {
+		return nil
+	}
+	oauthMu.Lock()
+	defer oauthMu.Unlock()
+	var list []*OAuthClient
+	for _, c := range oauthClients {
+		if c.Account == account {
+			list = append(list, c)
+		}
+	}
+	sort.Slice(list, func(i, j int) bool { return list[i].CreatedAt.After(list[j].CreatedAt) })
+	return list
+}
+
+// GetOAuthClient returns one by id, or nil. The prefix stays because
+// OAuthClient is the type — see the naming rules in CLAUDE.md.
+func GetOAuthClient(clientID string) *OAuthClient {
+	oauthMu.Lock()
+	defer oauthMu.Unlock()
+	return oauthClients[clientID]
+}
+
+// AllOAuthClients is every client on the instance, newest first — the operator's
+// view, and nobody else's. Callers must be admin.
 func AllOAuthClients() []*OAuthClient {
 	oauthMu.Lock()
 	defer oauthMu.Unlock()
@@ -82,11 +128,37 @@ func AllOAuthClients() []*OAuthClient {
 	for _, c := range oauthClients {
 		list = append(list, c)
 	}
+	sort.Slice(list, func(i, j int) bool { return list[i].CreatedAt.After(list[j].CreatedAt) })
 	return list
 }
 
-// DeleteOAuthClient removes a client.
-func DeleteOAuthClient(clientID string) {
+// DeleteOAuthClient removes one of an account's own clients.
+//
+// It took a client id and nothing else, so the Delete button beside every client
+// on /token worked on every client on the instance. Ownership is the whole point
+// of the second argument.
+//
+// An error rather than a bool, like DeleteToken beside it: a verb is an
+// instruction, and an instruction read inside an if is the wrong shape — see
+// TestAPredicateIsNotAnInstruction.
+func DeleteOAuthClient(clientID, account string) error {
+	if clientID == "" || account == "" {
+		return errors.New("no such client")
+	}
+	oauthMu.Lock()
+	defer oauthMu.Unlock()
+	c := oauthClients[clientID]
+	if c == nil || c.Account != account {
+		return errors.New("no such client")
+	}
+	delete(oauthClients, clientID)
+	saveOAuthClients()
+	return nil
+}
+
+// ForceDeleteOAuthClient removes any client, owner or not. The operator's
+// version, for the ones that registered themselves and belong to nobody.
+func ForceDeleteOAuthClient(clientID string) {
 	oauthMu.Lock()
 	defer oauthMu.Unlock()
 	delete(oauthClients, clientID)
@@ -226,7 +298,10 @@ func OAuthRegisterHandler(w http.ResponseWriter, r *http.Request) {
 		req.RedirectURIs = []string{"http://localhost:0/callback"}
 	}
 
-	client := RegisterOAuthClient(req.ClientName, req.RedirectURIs)
+	// No owner: dynamic registration is anonymous by specification, so there is
+	// nobody to attribute this to. That is exactly why it must not appear on
+	// anybody's /token — see OAuthClient.Account.
+	client := RegisterOAuthClient("", req.ClientName, req.RedirectURIs)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(201)

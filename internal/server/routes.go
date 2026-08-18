@@ -595,6 +595,7 @@ func registerRoutes() {
 	http.HandleFunc("/oauth2/google/contacts", account.GoogleGrantConnect)
 	http.HandleFunc("/oauth2/google/disconnect", account.GoogleGrantDisconnect)
 
+	http.HandleFunc("/admin/oauth", admin.OAuthHandler)
 	http.HandleFunc("/oauth/register", auth.OAuthRegisterHandler)
 	http.HandleFunc("/oauth/authorize", auth.OAuthAuthorizePostHandler)
 	http.HandleFunc("/oauth/token", auth.OAuthTokenHandler)
