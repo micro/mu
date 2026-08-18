@@ -42,9 +42,6 @@ var comments []*Comment
 // cached HTML for home page preview
 var postsPreviewHtml string
 
-// cached HTML for full blog page
-var postsList string
-
 // listItem is one rendered post, kept beside its ids.
 //
 // The blog page is one HTML blob built when posts change and handed to every
@@ -58,8 +55,17 @@ type listItem struct {
 	HTML     string
 }
 
-// postsItems is postsList, unjoined.
+// postsItems is every visible post, rendered, newest first.
+//
+// It used to be joined into one string when posts changed and that string was
+// what /blog served — every post ever written, to every visitor, on every load.
+// The list is append-only, so that page had no upper bound and got slower for
+// the rest of its life. The items are kept apart now and a window of them is
+// joined per request. See postsPerPage.
 var postsItems []listItem
+
+// postsPerPage is how much of the blog one page is.
+const postsPerPage = 20
 
 // Valid topics/categories for posts
 var topics []string
@@ -557,7 +563,6 @@ func updateCacheUnlocked() {
 	}
 
 	// Generate full list for blog page (exclude flagged posts)
-	var fullList []string
 	var items []listItem
 	for _, post := range posts {
 		// Skip flagged posts
@@ -653,16 +658,10 @@ func updateCacheUnlocked() {
 			<div>%s</div>
 			%s
 		</div>`, tagsHtml, post.ID, title, listTime.Unix(), listTimeLabel, authorLink, replyLink, controls, content, keepReading)
-		fullList = append(fullList, item)
 		items = append(items, listItem{ID: post.ID, AuthorID: post.AuthorID, HTML: item})
 	}
 
 	postsItems = items
-	if len(fullList) == 0 {
-		postsList = "<p>No blog posts yet. Write something below!</p>"
-	} else {
-		postsList = strings.Join(fullList, "\n")
-	}
 
 	// Publish the rebuilt preview snapshot to the go-micro store + broker; runs
 	// under the caller's lock (nil-safe before Load wires cardSnap).
@@ -670,12 +669,12 @@ func updateCacheUnlocked() {
 }
 
 // visibleTo drops the posts this viewer has hidden, and the posts by accounts
-// they have blocked. Nothing to drop means the shared list, untouched.
-func visibleTo(viewer string, items []listItem, all string) string {
+// they have blocked. Nothing to drop means the list, untouched.
+func visibleTo(viewer string, items []listItem) []listItem {
 	if viewer == "" || len(items) == 0 {
-		return all
+		return items
 	}
-	kept := make([]string, 0, len(items))
+	kept := make([]listItem, 0, len(items))
 	for _, it := range items {
 		if app.IsDismissed(viewer, "post", it.ID) {
 			continue
@@ -683,15 +682,21 @@ func visibleTo(viewer string, items []listItem, all string) string {
 		if it.AuthorID != "" && app.IsBlocked(viewer, it.AuthorID) {
 			continue
 		}
-		kept = append(kept, it.HTML)
+		kept = append(kept, it)
 	}
-	if len(kept) == len(items) {
-		return all
+	return kept
+}
+
+// joinItems is one page of the list as HTML.
+func joinItems(items []listItem) string {
+	if len(items) == 0 {
+		return ""
 	}
-	if len(kept) == 0 {
-		return "<p>Nothing to show — you have hidden everything here.</p>"
+	parts := make([]string, 0, len(items))
+	for _, it := range items {
+		parts = append(parts, it.HTML)
 	}
-	return strings.Join(kept, "\n")
+	return strings.Join(parts, "\n")
 }
 
 // Preview returns HTML preview of latest posts for home page
@@ -749,19 +754,34 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 		}
 		mutex.RUnlock()
 
-		app.RespondJSON(w, visiblePosts)
+		// The same window the page shows. A JSON caller asking for the blog
+		// wants the blog, not a transfer of every post ever written — and one
+		// answer in two encodings has to mean the same amount of answer.
+		p := app.Paginate(r, len(visiblePosts), postsPerPage)
+		app.RespondJSON(w, visiblePosts[p.From:p.To])
 		return
 	}
 
 	mutex.RLock()
-	list := postsList
 	items := postsItems
 	mutex.RUnlock()
 
-	// What this viewer has hidden or blocked comes out of the list. Everyone
-	// else gets the blob that was built when the posts last changed.
+	// What this viewer has hidden or blocked comes out of the list, and then one
+	// page of what is left is joined. Hiding first, paging second: the other way
+	// round gives a page of nineteen because one of the twenty was blocked.
+	written := len(items)
 	if _, acc := auth.TrySession(r); acc != nil {
-		list = visibleTo(acc.ID, items, list)
+		items = visibleTo(acc.ID, items)
+	}
+	pager := app.Paginate(r, len(items), postsPerPage)
+	list := joinItems(items[pager.From:pager.To])
+	switch {
+	case list != "":
+		list += pager.Nav("/blog")
+	case written > 0:
+		list = "<p>Nothing to show — you have hidden everything here.</p>"
+	default:
+		list = "<p>No blog posts yet. Write something below!</p>"
 	}
 
 	// Check if write mode is requested

@@ -218,6 +218,26 @@ func replyCount(threadID string) int {
 	return count
 }
 
+// replyCounts is every thread's message count, in one pass.
+//
+// The feed asked replyCount per row, and replyCount walks every message there
+// is — so drawing the feed was rows × messages, both of which only ever grow,
+// and it took the lock once per row to do it. One pass, one lock.
+//
+// Caller must hold the read lock.
+func replyCounts() map[string]int {
+	counts := make(map[string]int)
+	for _, p := range messages {
+		if p.ReplyTo != "" {
+			counts[p.ReplyTo]++
+		}
+	}
+	return counts
+}
+
+// feedPerPage is how many threads one page of the feed is.
+const feedPerPage = 25
+
 // getReplies returns messages in a thread in chronological order (oldest first). Caller must hold read lock.
 func getReplies(threadID string) []*Message {
 	var replies []*Message
@@ -423,6 +443,7 @@ func handleGetFeed(w http.ResponseWriter, r *http.Request) {
 	mutex.RLock()
 	all := make([]*Message, len(messages))
 	copy(all, messages)
+	counts := replyCounts()
 	mutex.RUnlock()
 
 	// Filter out flagged/banned messages and replies (only show threads in feed)
@@ -437,12 +458,29 @@ func handleGetFeed(w http.ResponseWriter, r *http.Request) {
 		visible = append(visible, p)
 	}
 
+	// And what this viewer has hidden or blocked, before the page is cut rather
+	// than after — otherwise a page of twenty-five shows however many of them
+	// survive, and the count on the pager is a number about somebody else's
+	// feed. This was inside the rendering loop, which is why it had to be.
+	if _, acc := auth.TrySession(r); acc != nil {
+		var kept []*Message
+		for _, p := range visible {
+			if app.IsBlocked(acc.ID, p.AuthorID) || app.IsDismissed(acc.ID, "social", p.ID) {
+				continue
+			}
+			kept = append(kept, p)
+		}
+		visible = kept
+	}
+
+	pager := app.Paginate(r, len(visible), feedPerPage)
+
 	if app.WantsJSON(r) {
-		app.RespondJSON(w, map[string]interface{}{"threads": visible})
+		app.RespondJSON(w, map[string]interface{}{"threads": visible[pager.From:pager.To]})
 		return
 	}
 
-	body := generatePageHTML(visible, r)
+	body := generatePageHTML(visible[pager.From:pager.To], counts, pager.Nav("/social"), r)
 
 	app.Respond(w, r, app.Response{
 		Title:       "Social",
@@ -868,7 +906,7 @@ func generateCardHTML(allMessages []*Message) string {
 	return sb.String()
 }
 
-func generatePageHTML(visible []*Message, r *http.Request) string {
+func generatePageHTML(visible []*Message, counts map[string]int, nav string, r *http.Request) string {
 	var sb strings.Builder
 	sb.WriteString(`<div style="max-width:600px;">`)
 
@@ -905,13 +943,6 @@ func generatePageHTML(visible []*Message, r *http.Request) string {
 	}
 
 	for _, p := range visible {
-		var viewerID string
-		if acc != nil {
-			viewerID = acc.ID
-		}
-		if viewerID != "" && (app.IsBlocked(viewerID, p.AuthorID) || app.IsDismissed(viewerID, "social", p.ID)) {
-			continue
-		}
 		content := htmlpkg.EscapeString(p.Content)
 
 		// Extract first URL for card rendering, then linkify remaining
@@ -937,10 +968,8 @@ func generatePageHTML(visible []*Message, r *http.Request) string {
 		}
 		controls := app.ItemControls(userID, isAdmin, "social", p.ID, p.AuthorID, "", "/social?id="+p.ID)
 
-		// Message count
-		mutex.RLock()
-		rc := replyCount(p.ID)
-		mutex.RUnlock()
+		// Message count, counted once for the whole page rather than per row.
+		rc := counts[p.ID]
 		replyLink := fmt.Sprintf(`<a href="/social/thread?id=%s" style="color:#888;text-decoration:none;font-size:13px;">open thread</a>`, p.ID)
 		if rc > 0 {
 			noun := "messages"
@@ -974,6 +1003,7 @@ func generatePageHTML(visible []*Message, r *http.Request) string {
 		))
 	}
 
+	sb.WriteString(nav)
 	sb.WriteString(`</div>`)
 	return sb.String()
 }
