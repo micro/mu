@@ -312,6 +312,9 @@ conversation view and per-agent history.
 daily without a design, and what survives a week of using it is what deserves a
 page. Ship the loop there, then surface it.
 
+Where that conversation lives is settled in §8: `/agents` is the roster,
+`/agent/<name>` is the room, and the room does not carry the roster.
+
 **2. Do not bet on a protocol.** The catalogue is protocol-independent and doors
 are cheap — REST took a day. Be reachable over MCP, A2A and whatever comes next,
 and stay indifferent to which wins. A directory of agents is the one part of an
@@ -337,7 +340,108 @@ seen by a person and by a model. As the catalogue grows, the person's lens needs
 grouping and the model's needs pruning, and they will want to diverge. They
 should not diverge in *content*.
 
-## 8. What keeps this true
+## 8. The inbox, and the four surfaces
+
+Written down because it was implicit, and implicit is what costs a week.
+
+### There are two inboxes, and the one called Inbox is not the mail one
+
+- **`service/mail`** is the SMTP server, DKIM, the inbound filter *and* the
+  message store. Its page is `/mail`. This is the MTA and the mailbox.
+- **`internal/thread`** is the record of conversations with agents.
+- **`/inbox`** is served by `agent.Handler`. It is a view over `internal/thread`.
+
+So an ordinary email — a person writing to you about something, not addressed to
+an agent — lands in `service/mail` and never appears at `/inbox`. What `/inbox`
+shows is agent conversations, of which the mail-originated ones are a subset
+routed through `client/mail`.
+
+**`/inbox` is a conversation log wearing the word "inbox".**
+
+This is the reason the page does not look like a mail client, and the reason is
+worth stating precisely: it is not a design gap, it is a *dataset* gap. A
+conversation log cannot be made to look like a mailbox, because it is not one.
+Anybody comparing the screen to Gmail, or to Cloudflare's agentic-inbox, is
+comparing two different things and concluding the wrong thing about the
+stylesheet.
+
+### MTA, MUA, and where the agent already sits
+
+The ordinary mail vocabulary settles it. `service/mail` is the **MTA**: it
+accepts, filters, signs and relays. That part is good, it is not the problem,
+and it is **not to be touched** — no second mail store, no message model beside
+the one that exists.
+
+The **MUA** is the missing piece, and it is missing in a specific way: it exists
+as `/mail`, but the thing the sidebar calls Inbox points somewhere else.
+
+The agent's access to the mailbox is already built. `mail.Inbox`, `mail.Search`,
+`mail.Send` and `mail.Info` are tools derived from the Spec like any others —
+most of what a comparable product ships as its agent's toolbox. Nothing needs
+inventing there.
+
+So the work is not "give the agent email tools" and not "write a mail backend".
+It is: **make the inbox the mailbox, with the agent in it.**
+
+### Four surfaces, each whole on its own
+
+The rule that generates the layout, and it is worth naming because it decides
+several arguments at once:
+
+> **A page about one thing does not carry the list of its siblings.**
+
+On `/mail` there is no list of services down the side. That is correct, and it
+is correct for the same reason everywhere else.
+
+| Surface | What it is | What it is not |
+|---|---|---|
+| `/services` | The catalogue as a person reads it. Navigate them, use them directly. | Not a chat |
+| `/tools` | The same catalogue as a model reads it. Use them over MCP with a token. | Not a chat |
+| `/agents` | Your agents. Clicking one opens a conversation with it. | Not a token inventory |
+| `/agent/<name>` | One conversation with one agent. | **No agent switcher** |
+| `/inbox` | The agentic inbox: mail, and the agent that works on it. | Not a chat, not a roster, not a catalogue |
+
+`/agents` and `/agent/<name>` are the roster and the room, the same way
+`/services` and `/mail` are the catalogue and the service. Once you are in the
+room you do not need the roster on the wall — the switcher on the agent page is
+the same mistake as a services list on `/mail`, and it should go.
+
+Three of these already work as isolated things: `/services`, `/tools`, and
+`/agents` once its rows open conversations. The fourth is the one being built.
+
+### What this costs, honestly
+
+`/inbox` is currently `agent.Handler` — the chat, plus a rail of conversations,
+plus the mobile sheet that opens it. Under this direction that whole surface
+moves to `/agent/<name>`, and `/inbox` becomes something else. That is not a
+rename; it is moving a working page and building a new one behind its URL.
+
+Two things already point at the old meaning and will need to follow:
+
+- `agent.InboxPreview`, on Home, lists recent *conversations*. In an inbox it
+  should list recent *mail*.
+- The sidebar's Inbox, and every "Talk to it" link on `/agents`, currently
+  resolve to the chat.
+
+None of that is hard. All of it is invisible until somebody tries to do it in an
+afternoon.
+
+### On the name
+
+Cloudflare shipped `agentic-inbox` — "a self-hosted email client with an AI
+agent". That is evidence the category is real, and a reason not to take the
+phrase: being the second product with the same two words is a weak position.
+
+Their tagline also concedes the ceiling. An email client with an agent in the
+side panel is an agent that reads *your* mail. The stronger claim is the one
+this codebase can already make: **the agent has an address of its own, and mail
+arrives for it.** `agent+news@`, `you+research@`, an alias per purpose. That is
+not a panel beside an inbox, it is a participant in one — and it is why
+`internal/thread` has parties rather than two sides.
+
+Lead with what the agent *is*, not with what the inbox *is like*.
+
+## 9. What keeps this true
 
 Rules that are not enforced become comments. These already exist:
 
@@ -354,3 +458,7 @@ Worth adding as the above lands:
 - **Every nav item has a directory and every product directory is a nav item**,
   with `client/` named as the one deliberate exception. The mapping in §2 is the
   method for reading this codebase, and it is worth one test to keep it real.
+- **A page about one thing does not carry the list of its siblings** — §8. The
+  agent switcher on an agent's own page is the live instance of this, and the
+  rule is checkable: a surface that renders one item must not also render the
+  roster it came from.
