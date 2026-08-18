@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"mu/agent"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/event"
@@ -401,12 +402,20 @@ function fetchW(la,lo){
 		// more than that is that it has an address and answers whether or not
 		// anybody has this page open, and there was nowhere on the screen you
 		// arrive at saying so.
+		//
+		// And what is in it, when there is anything. The link on its own was a
+		// word pointing at a page, so the one thing the product claims — that
+		// the agent answers whether or not you have this open — was visible only
+		// to somebody who clicked through to check. Mail that arrived and was
+		// answered overnight left Home looking exactly as it had the night
+		// before. See agent.InboxPreview.
 		if viewerID != "" {
 			if addr := mail.SharedAgentAddress(); addr != "" {
 				b.WriteString(`<p class="home-inbox">Or write to it at <code>` +
 					html.EscapeString(addr) + `</code> — from your mail, your phone, anywhere. ` +
 					app.Link("Your inbox", "/inbox") + `</p>`)
 			}
+			b.WriteString(agent.InboxPreview(viewerID))
 		}
 		b.WriteString(`</div>`)
 	}
