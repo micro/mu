@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"html"
 	"net/http"
 	"os"
 	"os/exec"
@@ -14,6 +15,7 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/data"
 )
 
 // GenerateDigestFunc is set by main to trigger digest generation (avoids import cycle)
@@ -60,7 +62,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 	content := `<p><a href="/admin">← Admin</a></p>
 	<h2>Server</h2>
-	` + statusHTML + `
+	` + statusHTML + storesTable() + `
 	<h3>Deploy</h3>
 	<p><strong>Source:</strong> <code>` + sourceDir() + `</code></p>
 	<div id="deploy-controls">
@@ -132,6 +134,45 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 	html := app.RenderHTMLForRequest("Admin", "Server", content, r)
 	w.Write([]byte(html))
+}
+
+// storesShown is how much of the data directory the table lists. The question
+// it answers is "has anything got big", and the answer is at the top.
+const storesShown = 12
+
+// storesTable is what is on disk, largest first.
+//
+// Every store is a whole-file blob rewritten in one go, so a file that has
+// quietly become the largest thing in the directory is a page or a background
+// loop paying for its whole size on every write. Nothing said so anywhere, and
+// the only way to find out was to go and look with ls on the box.
+func storesTable() string {
+	stores := data.Stores()
+	if len(stores) == 0 {
+		return ""
+	}
+
+	var total int64
+	for _, s := range stores {
+		total += s.Size
+	}
+	if len(stores) > storesShown {
+		stores = stores[:storesShown]
+	}
+
+	var b strings.Builder
+	b.WriteString(`<h3>Stores</h3><table class="stats-table">`)
+	for _, s := range stores {
+		where := html.EscapeString(s.Name)
+		if s.Files > 1 {
+			where += fmt.Sprintf(` <span class="text-muted text-sm">%d files</span>`, s.Files)
+		}
+		b.WriteString(fmt.Sprintf(`<tr><td>%s</td><td>%s</td></tr>`, where, app.Bytes(s.Size)))
+	}
+	b.WriteString(`</table>`)
+	b.WriteString(fmt.Sprintf(`<p class="text-muted text-sm">%s in the data directory. `+
+		`Each of these is rewritten whole when it changes.</p>`, app.Bytes(total)))
+	return b.String()
 }
 
 func handleDeploy(w http.ResponseWriter, r *http.Request) {

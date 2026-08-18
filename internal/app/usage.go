@@ -41,10 +41,14 @@ type persistedUsage struct {
 const usageFile = "usage.json"
 const maxUsageRecords = 2000
 
+// usageFlush is how long a cost record may sit in memory before it is on disk.
+const usageFlush = 2 * time.Second
+
 var (
 	usageMu      sync.Mutex
 	usageRecords []UsageRecord
 	usageStarted time.Time
+	usageDirty   bool
 )
 
 func init() {
@@ -56,11 +60,20 @@ func init() {
 	} else if err := data.LoadJSON("ai_usage.json", &stored); err == nil && len(stored.Records) > 0 {
 		usageRecords = stored.Records
 		usageStarted = stored.Since
-		// Migrate: save as new file
-		saveUsage()
+		// Migrate: write it out under the new name now rather than waiting for
+		// the first tick, so a restart before then does not read the legacy
+		// file a second time.
+		usageDirty = true
+		flushUsage()
 	} else {
 		usageStarted = time.Now()
 	}
+
+	go func() {
+		for range time.Tick(usageFlush) {
+			flushUsage()
+		}
+	}()
 }
 
 // RecordUsage records a cost-bearing external API call.
@@ -81,14 +94,31 @@ func RecordUsage(service, caller string, costCents float64, details map[string]a
 		usageRecords = usageRecords[len(usageRecords)-maxUsageRecords:]
 	}
 
-	saveUsage()
+	usageDirty = true
 }
 
-func saveUsage() {
-	data.SaveJSON(usageFile, persistedUsage{
+// flushUsage writes the spend log if anything has been added to it.
+//
+// Every cost-bearing call used to write the whole file, in the call's own
+// goroutine, holding the lock while it marshalled and wrote. Two thousand
+// records is a hundred and forty kilobytes, so a busy minute is a hundred and
+// forty kilobytes serialised and fsynced per external request, and every other
+// recorder waiting behind it. The records are the same records a second later;
+// what they are not is on the critical path of the thing being measured.
+func flushUsage() {
+	usageMu.Lock()
+	if !usageDirty {
+		usageMu.Unlock()
+		return
+	}
+	snapshot := persistedUsage{
 		Since:   usageStarted,
-		Records: usageRecords,
-	})
+		Records: append([]UsageRecord(nil), usageRecords...),
+	}
+	usageDirty = false
+	usageMu.Unlock()
+
+	data.SaveJSON(usageFile, snapshot) //nolint:errcheck — a spend record is not worth failing a request over
 }
 
 // GetUsageSummary returns a summary of all usage across services.

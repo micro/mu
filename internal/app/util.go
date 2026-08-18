@@ -85,3 +85,18 @@ func distanceOfTime(minutes float64) string {
 		return fmt.Sprintf("%d months", int(minutes/43800))
 	}
 }
+
+// Bytes is a size somebody has to read at a glance.
+//
+// Three significant figures at most and no decimal below a megabyte: the
+// question a size answers on a page is "is this big", and 1.4MB answers it
+// where 1468006 does not.
+func Bytes(n int64) string {
+	switch {
+	case n >= 1<<20:
+		return fmt.Sprintf("%.1fMB", float64(n)/(1<<20))
+	case n >= 1<<10:
+		return fmt.Sprintf("%dKB", n/(1<<10))
+	}
+	return fmt.Sprintf("%dB", n)
+}
