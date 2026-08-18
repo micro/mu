@@ -156,6 +156,32 @@ func DeleteOAuthClient(clientID, account string) error {
 	return nil
 }
 
+// SetOAuthRedirects replaces a client's registered addresses.
+//
+// For the ones made before the form asked for an address, which is every client
+// the /token form ever created: they hold a client_id somebody may have pasted
+// into a config, so being able to give them an address is worth more than
+// making them start again under a new id.
+func SetOAuthRedirects(clientID string, uris []string) error {
+	if len(uris) == 0 {
+		return errors.New("a client needs somewhere to receive its code")
+	}
+	for _, u := range uris {
+		if !RegisterableRedirect(u) {
+			return errors.New("must be https, or http on a loopback address: " + u)
+		}
+	}
+	oauthMu.Lock()
+	defer oauthMu.Unlock()
+	c := oauthClients[clientID]
+	if c == nil {
+		return ErrUnknownClient
+	}
+	c.RedirectURIs = uris
+	saveOAuthClients()
+	return nil
+}
+
 // ForceDeleteOAuthClient removes any client, owner or not. The operator's
 // version, for the ones that registered themselves and belong to nobody.
 func ForceDeleteOAuthClient(clientID string) {

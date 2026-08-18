@@ -32,7 +32,20 @@ func OAuthHandler(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == "POST" {
 		r.ParseForm() //nolint:errcheck
-		if id := strings.TrimSpace(r.FormValue("client_id")); id != "" {
+		id := strings.TrimSpace(r.FormValue("client_id"))
+		switch {
+		case id == "":
+		// Setting an address rather than removing, so a client whose id is
+		// already pasted into somebody's config can be made to work instead of
+		// having to come back under a new one.
+		case r.FormValue("action") == "redirect":
+			uri := strings.TrimSpace(r.FormValue("redirect_uri"))
+			if err := auth.SetOAuthRedirects(id, []string{uri}); err != nil {
+				app.BadRequest(w, r, err.Error())
+				return
+			}
+			app.Log("admin", "oauth client %s now redirects to %s", id, uri)
+		default:
 			auth.ForceDeleteOAuthClient(id)
 			app.Log("admin", "removed oauth client %s", id)
 		}
@@ -73,13 +86,18 @@ func OAuthHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			owner = html.EscapeString(who)
 		}
-		where := `<span class="text-muted">none</span>`
-		if len(c.RedirectURIs) > 0 {
-			var uris []string
-			for _, u := range c.RedirectURIs {
-				uris = append(uris, `<code style="font-size:11px">`+html.EscapeString(u)+`</code>`)
-			}
-			where = strings.Join(uris, "<br>")
+		// No address means the client cannot complete a sign-in at all, so the
+		// row offers the one thing that fixes it. Every client the /token form
+		// made before it asked for an address is in this state, and none of
+		// them ever worked.
+		where := `<form method="POST" action="/admin/oauth" style="margin:0;display:flex;gap:4px">` +
+			`<input type="hidden" name="action" value="redirect">` +
+			`<input type="hidden" name="client_id" value="` + html.EscapeString(c.ClientID) + `">` +
+			`<input type="text" name="redirect_uri" placeholder="https://… or http://localhost:0/callback" ` +
+			`style="font-size:11px;width:230px" value="` + html.EscapeString(firstURI(c.RedirectURIs)) + `">` +
+			`<button type="submit" style="font-size:11px">Set</button></form>`
+		if len(c.RedirectURIs) == 0 {
+			where = `<span class="text-muted" style="font-size:11px">none — cannot sign anybody in</span><br>` + where
 		}
 		fmt.Fprintf(&b, `<tr><td>%s</td><td><code style="font-size:11px">%s</code></td>`+
 			`<td>%s</td><td>%s</td><td class="created-col">%s</td><td class="center">`+
@@ -96,4 +114,12 @@ func OAuthHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`</tbody></table>`)
 
 	w.Write([]byte(app.RenderHTMLForRequest("Admin", "OAuth Clients", b.String(), r))) //nolint:errcheck
+}
+
+// firstURI is what to show in the row's box: the address it has, or nothing.
+func firstURI(uris []string) string {
+	if len(uris) == 0 {
+		return ""
+	}
+	return uris[0]
 }

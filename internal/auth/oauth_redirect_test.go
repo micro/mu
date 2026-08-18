@@ -117,3 +117,33 @@ func TestOnlyLocalhostOrHTTPSMayBeRegistered(t *testing.T) {
 		}
 	}
 }
+
+// A client made before the form asked for an address can be given one, rather
+// than having to come back under a new id — somebody may already have pasted
+// that client_id into a config.
+func TestAnAddressCanBeGivenToAClientThatHasNone(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	c := RegisterOAuthClient("ann", "Made by the old form", nil)
+	if _, err := RedirectFor(c.ClientID, "https://app.example.com/cb"); err == nil {
+		t.Fatal("a client with no registered address accepted one anyway")
+	}
+
+	if err := SetOAuthRedirects(c.ClientID, []string{"https://app.example.com/cb"}); err != nil {
+		t.Fatalf("could not give it an address: %v", err)
+	}
+	if _, err := RedirectFor(c.ClientID, "https://app.example.com/cb"); err != nil {
+		t.Errorf("the address that was just set is refused: %v", err)
+	}
+
+	// And the same rule applies to what may be set as to what may be registered.
+	if err := SetOAuthRedirects(c.ClientID, []string{"http://evil.example/cb"}); err == nil {
+		t.Error("a cleartext address was accepted")
+	}
+	if err := SetOAuthRedirects(c.ClientID, nil); err == nil {
+		t.Error("a client was left with nowhere to send a code")
+	}
+	if err := SetOAuthRedirects("no-such-client", []string{"https://x.example/cb"}); err == nil {
+		t.Error("an unknown client was given an address")
+	}
+}

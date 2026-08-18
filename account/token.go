@@ -63,7 +63,23 @@ func TokenHandler(w http.ResponseWriter, r *http.Request) {
 			if name == "" {
 				name = "MCP Client"
 			}
-			client := auth.RegisterOAuthClient(acc.ID, name, []string{})
+			// Where this client will receive its authorization code.
+			//
+			// The form asked for a name and nothing else, and registered the
+			// client with no address at all — so every client made here was a
+			// dead record: there was nowhere a code could correctly be sent.
+			// Nothing noticed, because the flow did not read the registry. Five
+			// of them accumulated on micro.mu before the check that reads it
+			// made them visible.
+			redirect := strings.TrimSpace(r.FormValue("redirect_uri"))
+			if redirect == "" {
+				redirect = "http://localhost:0/callback"
+			}
+			if !auth.RegisterableRedirect(redirect) {
+				app.BadRequest(w, r, "The redirect URL must be https, or http on localhost: "+redirect)
+				return
+			}
+			client := auth.RegisterOAuthClient(acc.ID, name, []string{redirect})
 			// Store credentials in session flash (not URL)
 			setFlash(sess.ID, "client_id", client.ClientID)
 			setFlash(sess.ID, "client_secret", client.ClientSecret)
@@ -156,6 +172,14 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	sb.WriteString(`<h4 style="margin-top:20px">Create OAuth Client</h4>`)
 	sb.WriteString(`<form method="POST" action="/token?create_client=1">`)
 	sb.WriteString(`<div style="margin-bottom:10px"><input type="text" name="client_name" placeholder="e.g. Claude" required></div>`)
+	// The address is half of what a client is. Without it there is nowhere a
+	// code may be sent, and a client registered without one can never complete
+	// a sign-in — which is what every client made on this form used to be.
+	sb.WriteString(`<div style="margin-bottom:10px"><input type="text" name="redirect_uri" ` +
+		`placeholder="Redirect URL, e.g. https://example.com/callback" style="width:100%;box-sizing:border-box"></div>`)
+	sb.WriteString(`<p style="color:#666;font-size:12px;margin:0 0 10px">Where the client receives ` +
+		`its code. Must be https, or http on localhost. Left empty it is ` +
+		`<code>http://localhost:0/callback</code>, which suits a command-line or desktop client.</p>`)
 	sb.WriteString(`<button type="submit">Create Client</button></form>`)
 
 	sb.WriteString(`<hr style="margin:30px 0;border:none;border-top:1px solid #eee">`)
