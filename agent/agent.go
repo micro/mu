@@ -551,6 +551,21 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	if selAgent == "" {
 		selAgent = r.URL.Query().Get("agent")
 	}
+	// /agent/<name> — the page is about one agent, and says so in its address.
+	//
+	// named is what removes the roster from the room: on a page about one agent
+	// the list of the others is the same furniture as a services list down the
+	// side of /mail. See docs/DIRECTION.md §8.
+	named := false
+	if slug := strings.TrimPrefix(r.URL.Path, "/agent/"); r.URL.Path != "/agent" &&
+		slug != "" && !strings.Contains(slug, "/") {
+		id, ok := agentSlugTarget(accountID, slug, guest)
+		if !ok {
+			app.NotFound(w, r, "no agent called "+slug)
+			return
+		}
+		selAgent, named = id, true
+	}
 	if reopened {
 		// A reopened conversation decides its own agent; the rail filters to it.
 		selAgent = reopenAgent
@@ -569,8 +584,14 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	// picking an agent and picking a conversation are separate errands.
 	rail := ""
 	if !guest {
-		rail = `<div class="chat-side">` +
-			`<div class="chat-pane" id="pane-agents">` + renderAgentsPanel() + `</div>` +
+		// The roster, except on a page that is about one agent. A room does not
+		// carry the list of rooms — the same reason /mail has no services list
+		// down the side of it.
+		agents := ""
+		if !named {
+			agents = `<div class="chat-pane" id="pane-agents">` + renderAgentsPanel() + `</div>`
+		}
+		rail = `<div class="chat-side">` + agents +
 			`<div class="chat-pane" id="pane-chats">` +
 			renderSessionsRail(accountID, activeRoot, selAgent) + `</div></div>`
 	}
@@ -612,9 +633,16 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 		// The same markup on a desktop, where the panels are always open and
 		// these two do nothing — so they are hidden there rather than made a
 		// second way to do what the sidebar already does.
-		chip = `<div class="agent-bar">` +
-			`<button type="button" id="active-agent-chip" class="agent-chip" ` +
-			`onclick="muPane('agents')">Agent: Micro</button>` +
+		// The chip is the switcher on a page listing every agent, and a label on
+		// a page about one. A control that opens a picker you have already used
+		// is a way back out of the room you just walked into.
+		agentChip := `<button type="button" id="active-agent-chip" class="agent-chip" ` +
+			`onclick="muPane('agents')">Agent: Micro</button>`
+		if named {
+			agentChip = `<span id="active-agent-chip" class="agent-chip agent-chip-fixed">` +
+				htmlEsc(agentTitle(accountID, selAgent)) + `</span>`
+		}
+		chip = `<div class="agent-bar">` + agentChip +
 			`<button type="button" class="chat-open-list" onclick="muPane('chats')">Chats</button>` +
 			where + connect + `</div>` + paneJS
 	}

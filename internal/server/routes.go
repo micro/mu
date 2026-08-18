@@ -172,7 +172,8 @@ func authRequired() map[string]bool {
 		// gives, for the same reason: news and weather must not need an account.
 		"/api/v1":     false,
 		"/api/v1/":    false,
-		"/agent":      false, // Public page, auth checked in handler (redirects to /inbox)
+		"/agent":      false, // Redirects to the named page; auth checked in handler
+		"/agent/":     false, // /agent/<name> — one agent's page; auth checked in handler
 		"/inbox":      false, // The conversation and the list of them; auth checked in handler
 		"/setup":      false, // First-run setup (open only until an admin exists)
 		"/developers": false, // Legacy alias → /tools (public)
@@ -405,16 +406,35 @@ func registerRoutes() {
 	// POST is the chat asking a question and is handled here, because moving
 	// that is a change to the component every page embeds and it can follow.
 	http.HandleFunc("/inbox", agent.Handler)
+	// /agent — the chat with no agent named. A GET goes to the one it is about,
+	// which is /agent/<name>: an agent is a place, and a place has an address
+	// rather than a query parameter. See agent/slug.go and DIRECTION §8.
+	//
+	// ?id= and ?agent= still resolve, because links to them exist and breaking a
+	// URL to tidy a parameter is a bad trade — they redirect to the name, which
+	// is one hop and leaves the address bar saying something true.
 	http.HandleFunc("/agent", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			agent.Handler(w, r)
 			return
 		}
-		to := "/inbox"
-		if q := r.URL.RawQuery; q != "" {
+		id := r.URL.Query().Get("id")
+		if id == "" {
+			id = r.URL.Query().Get("agent")
+		}
+		owner := ""
+		if sess, _ := auth.TrySession(r); sess != nil {
+			owner = sess.Account
+		}
+		to := agent.Path(owner, id)
+		// Everything except the agent's name, which is in the path now.
+		rest := r.URL.Query()
+		rest.Del("id")
+		rest.Del("agent")
+		if q := rest.Encode(); q != "" {
 			to += "?" + q
 		}
-		http.Redirect(w, r, to, http.StatusMovedPermanently)
+		http.Redirect(w, r, to, http.StatusFound)
 	})
 	http.HandleFunc("/agent/", agent.Handler)
 	http.HandleFunc("/agents/data", agent.AgentsHandler)

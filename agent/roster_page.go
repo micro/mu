@@ -275,18 +275,26 @@ func agentRow(a *Agent, csrf, base string) string {
 		`<a href="/agent/connect?id=%s">Connect</a>`+
 		`<a href="/agent/new?id=%s">Edit</a>`+
 		`<a href="/agent/new?fork=%s">Fork</a>`+
-		`<a href="/inbox?id=%s">Talk to it &rarr;</a></div>`,
+		`<a href="%s">Talk to it &rarr;</a></div>`,
 		html.EscapeString(a.ID), html.EscapeString(a.ID),
-		html.EscapeString(a.ID), html.EscapeString(a.ID))
+		html.EscapeString(a.ID), html.EscapeString(Path(a.Owner, a.ID)))
 
 	// Where the name goes depends on what the agent is for. One that runs here
 	// opens on talking to it; one that runs elsewhere opens on how to reach it,
 	// because a chat box is the least useful half of that page and the endpoint,
 	// the scope and the token were nowhere on it.
-	open := "/inbox?id=%s"
+	// The agent's own page, named. /inbox?id= was a conversation surface reached
+	// through a query parameter; /agent/<name> is a place — see slug.go.
+	//
+	// A finished href rather than a format string. It used to carry its own %s
+	// filled by the row's first argument, which is the kind of thing that works
+	// until the URL stops needing the id — and then silently shifts every
+	// argument after it by one.
+	open := html.EscapeString(Path(a.Owner, a.ID))
 	if a.Kind != Hosted {
-		open = "/agent/connect?id=%s"
+		open = "/agent/connect?id=" + html.EscapeString(a.ID)
 	}
+	open = strings.ReplaceAll(open, "%", "%%")
 
 	return fmt.Sprintf(`<div class="agent-row">
   <div style="flex:1;min-width:0">
@@ -304,7 +312,7 @@ func agentRow(a *Agent, csrf, base string) string {
     <button type="submit" class="agent-remove">Remove</button>
   </form>
 </div>`,
-		html.EscapeString(a.ID), html.EscapeString(a.Name),
+		html.EscapeString(a.Name),
 		cls, html.EscapeString(scope),
 		meta, addr, action,
 		html.EscapeString(csrf), html.EscapeString(a.ID))
@@ -334,13 +342,13 @@ func defaultRow() string {
 	return `<h3 style="font-size:15px;margin:0 0 10px">Our agents</h3>` +
 		`<div style="display:flex;flex-direction:column;gap:8px;margin:0 0 24px">` +
 		`<div class="agent-row"><div style="flex:1;min-width:0">` +
-		`<a class="agent-name" href="/inbox">Micro</a>` +
+		`<a class="agent-name" href="/agent/micro">Micro</a>` +
 		`<span class="agent-kind here">Runs here</span>` +
 		`<div class="agent-scope wide">everything you can reach</div>` +
 		`<div class="agent-meta">Always here, nothing to set up. It answers as your account, so it ` +
 		`has no token of its own.</div>` + addr +
 		`<div class="agent-links">` +
-		`<a href="/inbox">Talk to it</a>` +
+		`<a href="/agent/micro">Talk to it</a>` +
 		`<a href="/agent/connect">How to reach it &rarr;</a></div>` +
 		`</div></div></div>`
 }
