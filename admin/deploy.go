@@ -69,21 +69,35 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		<button id="update-btn" onclick="runAction('update')">Update</button>
 		<button id="restart-btn" onclick="runAction('restart')">Restart</button>
 		<button id="digest-btn" onclick="runAction('digest')">Generate Digest</button>
+		` + sweepButton() + `
 	</div>
 	<pre id="deploy-output" style="background:#1e1e1e;color:#d4d4d4;padding:16px;border-radius:6px;min-height:200px;max-height:500px;overflow-y:auto;font-size:13px;line-height:1.6;white-space:pre-wrap;display:none;"></pre>
 	<script>
+	// One table, so a fourth action is a row rather than another branch in three
+	// places. It was written as three named variables and an if/else chain whose
+	// last arm was the default, so any action but update or restart relabelled
+	// the digest button — with an undefined label, for anything not in the map.
+	var actions = {
+		update:  {id: 'update-btn', idle: 'Update',           busy: 'Updating...',  done: 'Update'},
+		restart: {id: 'restart-btn', idle: 'Restart',         busy: 'Restarting...', done: 'Restart'},
+		digest:  {id: 'digest-btn', idle: 'Generate Digest',  busy: 'Generating...', done: 'Digest'},
+		sweep:   {id: 'sweep-btn',  idle: 'Remove superseded stores', busy: 'Removing...', done: 'Removal'}
+	};
+	function actionButtons() {
+		var out = [];
+		for (var name in actions) {
+			var el = document.getElementById(actions[name].id);
+			if (el) out.push({el: el, spec: actions[name]});
+		}
+		return out;
+	}
 	function runAction(action) {
-		var updateBtn = document.getElementById('update-btn');
-		var restartBtn = document.getElementById('restart-btn');
-		var digestBtn = document.getElementById('digest-btn');
 		var output = document.getElementById('deploy-output');
-		var labels = {update: 'Updating...', restart: 'Restarting...', digest: 'Generating...'};
-		updateBtn.disabled = true;
-		restartBtn.disabled = true;
-		digestBtn.disabled = true;
-		if (action === 'update') updateBtn.textContent = labels[action];
-		else if (action === 'restart') restartBtn.textContent = labels[action];
-		else digestBtn.textContent = labels[action];
+		var spec = actions[action];
+		if (!spec) return;
+		actionButtons().forEach(function(b) { b.el.disabled = true; });
+		var self = document.getElementById(spec.id);
+		if (self) self.textContent = spec.busy;
 		output.style.display = 'block';
 		output.textContent = '';
 
@@ -107,27 +121,16 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 			if (data.message) {
 				lines += '<span style="color:#6a9955;">' + data.message + '</span>\n';
 			}
-			var doneLabel = action === 'digest' ? 'Digest' : (action === 'update' ? 'Update' : 'Restart');
 			if (data.success) {
-				lines += '\n<span style="color:#6a9955;font-weight:bold;">' + doneLabel + ' complete.</span>\n';
+				lines += '\n<span style="color:#6a9955;font-weight:bold;">' + spec.done + ' complete.</span>\n';
 			} else if (!data.message) {
-				lines += '\n<span style="color:#f44747;font-weight:bold;">' + doneLabel + ' failed.</span>\n';
+				lines += '\n<span style="color:#f44747;font-weight:bold;">' + spec.done + ' failed.</span>\n';
 			}
 			output.innerHTML = lines;
-			updateBtn.disabled = false;
-			restartBtn.disabled = false;
-			digestBtn.disabled = false;
-			updateBtn.textContent = 'Update';
-			restartBtn.textContent = 'Restart';
-			digestBtn.textContent = 'Generate Digest';
+			actionButtons().forEach(function(b) { b.el.disabled = false; b.el.textContent = b.spec.idle; });
 		}).catch(function(err) {
 			output.innerHTML = '<span style="color:#f44747;">Error: ' + err.message + '</span>';
-			updateBtn.disabled = false;
-			restartBtn.disabled = false;
-			digestBtn.disabled = false;
-			updateBtn.textContent = 'Update';
-			restartBtn.textContent = 'Restart';
-			digestBtn.textContent = 'Generate Digest';
+			actionButtons().forEach(function(b) { b.el.disabled = false; b.el.textContent = b.spec.idle; });
 		});
 	}
 	</script>`
@@ -187,11 +190,60 @@ func storesTable() string {
 	return b.String()
 }
 
+// sweepButton offers to remove the stores the live index has superseded, and
+// only appears when there are any.
+//
+// A button that is usually a no-op teaches people to ignore it, and this one is
+// a delete — it should be absent on the ordinary day and present on the one
+// where a hundred megabytes of six-month-old file is sitting in every backup.
+func sweepButton() string {
+	names := data.Superseded()
+	if len(names) == 0 {
+		return ""
+	}
+	var freed int64
+	for _, s := range data.Stores() {
+		for _, name := range names {
+			if s.Name == name {
+				freed += s.Size
+			}
+		}
+	}
+	label := "Remove superseded stores"
+	if freed > 0 {
+		label += " (" + app.Bytes(freed) + ")"
+	}
+	return `<button id="sweep-btn" onclick="if(confirm('Delete ` +
+		html.EscapeString(strings.Join(names, " and ")) +
+		`? Everything in them is already in the live index.')){runAction('sweep')}">` +
+		html.EscapeString(label) + `</button>`
+}
+
 func handleDeploy(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Action string `json:"action"`
 	}
 	json.NewDecoder(r.Body).Decode(&req)
+
+	// Removing what the migration superseded is not a deploy step: no build, no
+	// restart, and it must never run as a side effect of one.
+	if req.Action == "sweep" {
+		removed, freed, err := data.RemoveSuperseded()
+		message := "Nothing to remove — every store on disk is one the live index writes."
+		switch {
+		case err != nil:
+			message = "Could not remove them: " + err.Error()
+		case len(removed) > 0:
+			message = fmt.Sprintf("Removed %s, freeing %s.",
+				strings.Join(removed, " and "), app.Bytes(freed))
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": err == nil,
+			"message": message,
+		})
+		return
+	}
 
 	// Digest is handled separately — it runs in the background
 	if req.Action == "digest" {
