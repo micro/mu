@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"mu/agent"
+	"mu/inbox"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/event"
@@ -408,7 +408,7 @@ function fetchW(la,lo){
 		// the agent answers whether or not you have this open — was visible only
 		// to somebody who clicked through to check. Mail that arrived and was
 		// answered overnight left Home looking exactly as it had the night
-		// before. See agent.InboxPreview.
+		// before. See inbox.Preview.
 		//
 		// The address line says where to write and nothing else. It used to end
 		// in "Your inbox →" as well, so a screen with the preview on it carried
@@ -425,7 +425,7 @@ function fetchW(la,lo){
 				b.WriteString(`<p class="home-inbox">Or write to it at <code id="mu-agent-addr">` +
 					html.EscapeString(addr) + `</code> — from your mail, your phone, anywhere.</p>`)
 			}
-			b.WriteString(agent.InboxPreview(viewerID))
+			b.WriteString(inbox.Preview(viewerID))
 		}
 		b.WriteString(`</div>`)
 	}

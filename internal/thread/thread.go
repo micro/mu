@@ -668,3 +668,40 @@ func SetRef(account, messageID, ref string) {
 		}
 	}
 }
+
+// WebClient names the web page in the record, so a conversation there can be
+// told from one by mail. The other clients declare their own — see
+// discord.Client — and this one is here rather than beside the page because
+// three packages need to say "the web one" and only one of them is the page.
+const WebClient = "web"
+
+// ClientName is what a client is called in front of somebody.
+//
+// One name, in one place. There were two of these — one on the conversation
+// view and one on /recall — and they had already drifted: the same conversation
+// was labelled "Web" on one page and "Here" on the other. A map of display
+// names is exactly the kind of thing that gets copied rather than imported.
+//
+// A client not named here shows as it names itself, so a new one appears the
+// day it is written rather than the day somebody remembers this switch.
+func ClientName(client string) string {
+	switch client {
+	case WebClient:
+		return "Web"
+	case "mail":
+		return "Email"
+	case "discord":
+		return "Discord"
+	case "telegram":
+		return "Telegram"
+	case "whatsapp":
+		return "WhatsApp"
+	case "sms":
+		return "SMS"
+	case "cli":
+		return "CLI"
+	case "a2a":
+		return "A2A"
+	}
+	return client
+}

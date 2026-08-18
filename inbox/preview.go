@@ -1,4 +1,4 @@
-package agent
+package inbox
 
 // The inbox, on the screen you arrive at.
 //
@@ -16,6 +16,7 @@ package agent
 // whichever client it arrived — and it is what Home is now for.
 
 import (
+	"html"
 	"net/url"
 	"strings"
 
@@ -32,10 +33,10 @@ const previewShown = 3
 // previewSnippet bounds the line of text under a subject.
 const previewSnippet = 90
 
-// InboxPreview is the most recent conversations, for Home. Empty when there are
+// Preview is the most recent conversations, for Home. Empty when there are
 // none — an empty list is worse than the address line on its own, which at least
 // says what to do about it.
-func InboxPreview(accountID string) string {
+func Preview(accountID string) string {
 	if accountID == "" {
 		return ""
 	}
@@ -56,8 +57,8 @@ func InboxPreview(accountID string) string {
 		// page you are already on is noise; a row saying "Email" is the fact
 		// worth showing, because it happened without you.
 		where := ""
-		if t.Client != WebClient {
-			where = `<span class="peek-where">` + htmlEsc(clientName(t.Client)) + `</span>`
+		if t.Client != thread.WebClient {
+			where = `<span class="peek-where">` + html.EscapeString(thread.ClientName(t.Client)) + `</span>`
 		}
 
 		// The last thing said, so the row is worth reading rather than just
@@ -72,13 +73,13 @@ func InboxPreview(accountID string) string {
 			} else if m.From != "" {
 				who = m.From
 			}
-			line = `<span class="peek-who">` + htmlEsc(who) + `</span> ` +
-				htmlEsc(trimTo(m.Text, previewSnippet))
+			line = `<span class="peek-who">` + html.EscapeString(who) + `</span> ` +
+				html.EscapeString(trimTo(m.Text, previewSnippet))
 		}
 
 		b.WriteString(`<a class="peek-row" href="/inbox?session=` + url.QueryEscape(t.ID) + `">` +
-			`<span class="peek-head"><span class="peek-title">` + htmlEsc(trimTo(title, 60)) + `</span>` +
-			where + `<span class="peek-when">` + htmlEsc(app.TimeAgo(t.Updated)) + `</span></span>` +
+			`<span class="peek-head"><span class="peek-title">` + html.EscapeString(trimTo(title, 60)) + `</span>` +
+			where + `<span class="peek-when">` + html.EscapeString(app.TimeAgo(t.Updated)) + `</span></span>` +
 			`<span class="peek-line">` + line + `</span></a>`)
 	}
 	b.WriteString(`<a class="peek-more" href="/inbox">Go to inbox &rarr;</a>`)

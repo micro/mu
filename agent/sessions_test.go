@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"mu/inbox"
 	"mu/internal/thread"
 )
 
@@ -26,7 +27,7 @@ import (
 func TestTheRailListsEveryConversation(t *testing.T) {
 	acc := fmt.Sprintf("rail-%d", time.Now().UnixNano())
 
-	here := Opened(acc, WebClient, "root", "", "")
+	here := Opened(acc, thread.WebClient, "root", "", "")
 	Said(acc, here, "hello", "", "")
 	Answered(acc, here, "hi", "")
 
@@ -43,14 +44,14 @@ func TestTheRailListsEveryConversation(t *testing.T) {
 	// continued from this page — replying happens where it arrived.
 	var mail *thread.Thread
 	for i, tt := range rail {
-		if tt.Client != WebClient {
+		if tt.Client != thread.WebClient {
 			mail = &rail[i]
 		}
 	}
 	if mail == nil {
 		t.Fatal("the mail conversation is not in the list")
 	}
-	if got := elsewhereView(acc, mail); !strings.Contains(got, "Email") ||
+	if got := inbox.ConversationView(acc, mail); !strings.Contains(got, "Email") ||
 		!strings.Contains(got, "What&#39;s happening") {
 		t.Errorf("a conversation from another client does not read back:\n%s", got)
 	}
@@ -64,7 +65,7 @@ func TestTheRailListsEveryConversation(t *testing.T) {
 func TestDeletingAConversationTakesTheWholeThing(t *testing.T) {
 	acc := fmt.Sprintf("rail-del-%d", time.Now().UnixNano())
 
-	id := Opened(acc, WebClient, "root-flow", "", "")
+	id := Opened(acc, thread.WebClient, "root-flow", "", "")
 	Said(acc, id, "book me a table", "", "")
 	Answered(acc, id, "which night?", "flow-1")
 	Said(acc, id, "friday", "", "")
@@ -128,7 +129,7 @@ func TestOldConversationsAreAdoptedIntoTheRecord(t *testing.T) {
 func TestHistoryIsReadFromTheRecord(t *testing.T) {
 	acc := fmt.Sprintf("rail-hist-%d", time.Now().UnixNano())
 
-	id := Opened(acc, WebClient, "root", "", "")
+	id := Opened(acc, thread.WebClient, "root", "", "")
 	Said(acc, id, "one", "", "")
 	Answered(acc, id, "first", "")
 	Said(acc, id, "two", "", "")
@@ -153,8 +154,8 @@ func TestHistoryIsReadFromTheRecord(t *testing.T) {
 func TestAConversationRemembersWhichAgentItIsWith(t *testing.T) {
 	acc := fmt.Sprintf("rail-agent-%d", time.Now().UnixNano())
 
-	mine := Opened(acc, WebClient, "root-a", "", "agent-42")
-	other := Opened(acc, WebClient, "root-b", "", "")
+	mine := Opened(acc, thread.WebClient, "root-a", "", "agent-42")
+	other := Opened(acc, thread.WebClient, "root-b", "", "")
 	Said(acc, mine, "what are the markets doing", "", "")
 	Said(acc, other, "hello", "", "")
 
@@ -173,7 +174,7 @@ func TestAConversationRemembersWhichAgentItIsWith(t *testing.T) {
 
 	// And the last agent to answer is the one it is with: writing to a
 	// specialist after a week of writing to the default moves the conversation.
-	if again := Opened(acc, WebClient, "root-b", "", "agent-42"); again != other {
+	if again := Opened(acc, thread.WebClient, "root-b", "", "agent-42"); again != other {
 		t.Fatalf("the same key opened a second conversation: %q then %q", other, again)
 	}
 	if th := thread.Get(acc, other); th == nil || th.Agent != "agent-42" {

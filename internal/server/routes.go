@@ -22,6 +22,7 @@ import (
 	"mu/client/whatsapp"
 	help "mu/docs"
 	"mu/home"
+	"mu/inbox"
 	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
@@ -689,7 +690,7 @@ func registerRoutes() {
 	// conversations is /agent; this is the search over all of them.
 	http.HandleFunc("/recall", recall.Handler)
 	// Deleting a conversation. The list of them is the rail on /agent.
-	http.HandleFunc("/agent/session/", agent.SessionHandler)
+	http.HandleFunc("/agent/session/", inbox.SessionHandler)
 	// Two pages that were tabs and are not any more: one listed the same
 	// conversations the rail lists, the other listed the workflow records behind
 	// them. Both are on /agent now — the conversation, and the tools each answer

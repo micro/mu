@@ -29,6 +29,7 @@ Built on go-micro: every capability is a go-micro service, the assistant is a go
 | Package | Purpose |
 |---------|---------|
 | `agent/` | Main agent pipeline (plan → execute → synthesise) |
+| `inbox/` | The agentic inbox: what arrived, and the agent that works on it. A staple by the usual test — you can name it and click it — and it grew inside `agent/` on the reasonable-looking grounds that both render conversations. They are not the same: the chat is a room you talk in, the inbox is where things turn up whether or not you are in it. Not the mail service (`service/mail` is the MTA and the store) and not the record (`internal/thread` is), so deleting it loses the pages and nothing else. It may not import `agent/`; where it needs the workflow record the agent hands it over — see `inbox.Tools`. `docs/DIRECTION.md` §8 has where it is going |
 | `agent/micro/` | Multi-agent system — registry, router, executor, orchestrator |
 | `agent/blog/` | Writes the daily opinion. Reads news, markets, video, prayer and the web, and calls `blog.CreatePost` — the five imports the blog service used to carry |
 | `agent/social/` | Decides which headlines are worth surfacing, and calls `social.SurfaceBreaking` |
@@ -41,7 +42,7 @@ Built on go-micro: every capability is a go-micro service, the assistant is a go
 | `internal/app/` | Web UI framework, templates, middleware |
 | `internal/auth/` | Account system, sessions, passkeys |
 | `internal/notes/` | The store behind `service/notes` — a title, its text, and nothing that expires |
-| `internal/thread/` | The system of record: what was said, to whom, on which conversation. Written on every turn from every client, by nobody's decision — see "Clients, and the record between them". Not a service, and not a workflow. `service/recall` is the read over it, and `/inbox` the page — one list of conversations, whichever client each happened on |
+| `internal/thread/` | The system of record: what was said, to whom, on which conversation. Written on every turn from every client, by nobody's decision — see "Clients, and the record between them". Not a service, and not a workflow. `service/recall` is the read over it and `inbox/` is the pages over it — one list of conversations, whichever client each happened on. `thread.ClientName` is what a client is called in front of somebody, in one place: there were two copies and they had already drifted, labelling the same conversation "Web" on one page and "Here" on another |
 | `service/recall/` | Going looking in your own past on purpose: search what was said on any client, read a conversation back. Its page at `/recall` is a search box, not a second list — `/inbox` browses conversations, this searches every message in them. It owns none of what it reads, which is the point: delete it and the record is unaffected |
 | `client/mail/` | Mail as a client: the shape a message arrives in, handed to the agent, and the answer turned back into a reply. `service/mail` is the capability underneath — the inbox, the address, the SMTP server |
 | `internal/settings/` | Live-reloadable configuration |

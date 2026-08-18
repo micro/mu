@@ -1,4 +1,4 @@
-package agent
+package inbox
 
 // Reading a conversation that did not happen here.
 //
@@ -49,17 +49,17 @@ func SessionHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// messagesShown bounds one conversation.
+// MessagesShown bounds one conversation.
 //
 // A mail thread somebody has been adding to for a year is the case this page
 // exists for, and rendering every message of it — each through the markdown
 // renderer — is a page that takes a second to draw and that nobody reads the
 // top of. The most recent are the ones being read.
-const messagesShown = 100
+const MessagesShown = 100
 
-// elsewhereView renders a conversation from another client, read-only.
-func elsewhereView(accountID string, t *thread.Thread) string {
-	msgs := thread.Messages(accountID, t.ID, messagesShown)
+// ConversationView renders a conversation from another client, read-only.
+func ConversationView(accountID string, t *thread.Thread) string {
+	msgs := thread.Messages(accountID, t.ID, MessagesShown)
 
 	subject := t.Subject
 	if subject == "" {
@@ -68,13 +68,13 @@ func elsewhereView(accountID string, t *thread.Thread) string {
 
 	var b strings.Builder
 	b.WriteString(`<div class="els"><div class="els-head"><span class="els-where">` +
-		html.EscapeString(clientName(t.Client)) + `</span><span class="els-when">started ` +
+		html.EscapeString(thread.ClientName(t.Client)) + `</span><span class="els-when">started ` +
 		html.EscapeString(app.TimeAgo(t.Started)) + `</span></div>`)
 	b.WriteString(`<h2 class="els-title">` + html.EscapeString(subject) + `</h2>`)
 	b.WriteString(partyLine(accountID, t))
-	if len(msgs) >= messagesShown {
+	if len(msgs) >= MessagesShown {
 		b.WriteString(`<p class="els-trimmed">Showing the most recent ` +
-			strconv.Itoa(messagesShown) + `. ` +
+			strconv.Itoa(MessagesShown) + `. ` +
 			app.Link("Search the whole conversation", "/recall") + `</p>`)
 	}
 
@@ -83,7 +83,7 @@ func elsewhereView(accountID string, t *thread.Thread) string {
 	}
 
 	b.WriteString(`<p class="els-note">This happened on ` +
-		html.EscapeString(clientName(t.Client)) + `, so it carries on there — reply to it the way ` +
+		html.EscapeString(thread.ClientName(t.Client)) + `, so it carries on there — reply to it the way ` +
 		`it arrived and the agent answers in the same thread. ` +
 		app.Link("Start a new chat here", "/inbox") + `</p>`)
 	b.WriteString(`</div>` + conversationCSS)
@@ -161,62 +161,21 @@ func messageBlock(accountID string, t *thread.Thread, m thread.Message) string {
 		`<div class="th-body th-typed">` + html.EscapeString(m.Text) + `</div></div>`
 }
 
-// runTools shows what the run behind an answer actually called.
+// Tools renders which tools produced an answer, and is filled in by the agent
+// because the workflow record is the agent's own — how an answer was made is a
+// different question, with a different lifetime, from what was said.
 //
-// This is where the workflow record surfaces, and it is the whole of what the
-// Runs page was for: which tools an answer came from, and the error if it
-// failed. In the conversation, next to the answer, rather than on a page of its
-// own listing the same events with none of the context.
-//
-// Silent when the run has expired, which it will — workflow records are evicted
-// and messages are not, so an old conversation keeps what was said and loses how
-// it was produced. That asymmetry is intended.
-func runTools(workflow string) string {
-	f := getFlow(workflow)
-	if f == nil {
-		return ""
-	}
-	var chips strings.Builder
-	seen := map[string]bool{}
-	for _, s := range f.Steps {
-		if s.Tool == "" || seen[s.Tool] {
-			continue
-		}
-		seen[s.Tool] = true
-		chips.WriteString(`<span class="th-tool">` + html.EscapeString(s.Tool) + `</span>`)
-	}
-	if f.Status == "error" && f.Error != "" {
-		chips.WriteString(`<span class="th-failed">` + html.EscapeString(f.Error) + `</span>`)
-	}
-	if chips.Len() == 0 {
-		return ""
-	}
-	return `<div class="th-tools">` + chips.String() + `</div>`
-}
+// Nil on a build with no agent wired in, and silent when the run has expired,
+// which it will: workflow records are evicted and messages are not, so an old
+// conversation keeps what was said and loses how it was produced. That
+// asymmetry is intended.
+var Tools func(workflow string) string
 
-// clientName is what a client is called in front of somebody. One not named
-// here is shown as it names itself — a new client should appear the day it is
-// written, not the day somebody remembers to add it to a map.
-func clientName(client string) string {
-	switch client {
-	case WebClient:
-		return "Web"
-	case "mail":
-		return "Email"
-	case "discord":
-		return "Discord"
-	case "telegram":
-		return "Telegram"
-	case "whatsapp":
-		return "WhatsApp"
-	case "sms":
-		return "SMS"
-	case "cli":
-		return "CLI"
-	case "a2a":
-		return "A2A"
+func runTools(workflow string) string {
+	if Tools == nil {
+		return ""
 	}
-	return client
+	return Tools(workflow)
 }
 
 const conversationCSS = `<style>

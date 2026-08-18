@@ -228,7 +228,7 @@ func flowSessions(accountID string) []session {
 // page: every flow written before a run could start anywhere else has no source,
 // and there was nowhere else for it to have come from.
 func startedHere(source string) bool {
-	return source == "" || source == WebClient
+	return source == "" || source == thread.WebClient
 }
 
 // pastTurns is a conversation's prior turns, oldest first, as pairs.
@@ -270,10 +270,10 @@ func adopt(accountID string, chain []*Flow) string {
 		return ""
 	}
 	root := chain[0]
-	if th := thread.Find(accountID, WebClient, root.ID); th != nil {
+	if th := thread.Find(accountID, thread.WebClient, root.ID); th != nil {
 		return th.ID
 	}
-	th := thread.Open(accountID, WebClient, root.ID)
+	th := thread.Open(accountID, thread.WebClient, root.ID)
 	if th == nil {
 		return ""
 	}
@@ -302,7 +302,7 @@ func adoptAll() {
 
 	for id := range accounts {
 		for _, s := range flowSessions(id) {
-			if thread.Find(id, WebClient, s.RootID) == nil {
+			if thread.Find(id, thread.WebClient, s.RootID) == nil {
 				adopt(id, sessionChain(id, s.RootID))
 			}
 		}

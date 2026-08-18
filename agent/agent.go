@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"mu/agent/micro"
+	"mu/inbox"
 	"mu/internal/ai"
 	"mu/internal/api"
 	"mu/internal/app"
@@ -74,6 +75,43 @@ func Load() {
 	// to keep them in. The rail reads the record now, so without this somebody's
 	// history would appear to have been deleted.
 	adoptAll()
+
+	// Which tools produced an answer, for the inbox to show beside it.
+	//
+	// The inbox reads the record — what was said — and the workflow store is the
+	// agent's, because how an answer was produced is a different question with a
+	// different lifetime. So the inbox asks, rather than importing: it must not
+	// depend on the agent to render a conversation somebody had by mail.
+	inbox.Tools = runTools
+}
+
+// runTools is what the run behind an answer actually called.
+//
+// This is where the workflow record surfaces, and it is the whole of what the
+// Runs page was for: which tools an answer came from, and the error if it
+// failed — in the conversation, next to the answer, rather than on a page of
+// its own listing the same events with none of the context.
+func runTools(workflow string) string {
+	f := getFlow(workflow)
+	if f == nil {
+		return ""
+	}
+	var chips strings.Builder
+	seen := map[string]bool{}
+	for _, s := range f.Steps {
+		if s.Tool == "" || seen[s.Tool] {
+			continue
+		}
+		seen[s.Tool] = true
+		chips.WriteString(`<span class="th-tool">` + htmlEsc(s.Tool) + `</span>`)
+	}
+	if f.Status == "error" && f.Error != "" {
+		chips.WriteString(`<span class="th-failed">` + htmlEsc(f.Error) + `</span>`)
+	}
+	if chips.Len() == 0 {
+		return ""
+	}
+	return `<div class="th-tools">` + chips.String() + `</div>`
 }
 
 // QueryMessage is a single turn in a conversation.
@@ -488,8 +526,8 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 			if th != nil {
 				reopenAgent = th.Agent
 			}
-			if th != nil && th.Client != WebClient {
-				elsewhere = elsewhereView(accountID, th)
+			if th != nil && th.Client != thread.WebClient {
+				elsewhere = inbox.ConversationView(accountID, th)
 			} else {
 				cfg.ContextID = id
 				cfg.InitialConvHTML = renderThreadTurns(accountID, id)
@@ -661,10 +699,10 @@ func openThread(accountID, id string) string {
 }
 
 // renderThreadTurns renders a conversation into the chat log, most recent
-// messagesShown of it — see the constant.
+// inbox.MessagesShown of it — see the constant.
 func renderThreadTurns(accountID, threadID string) string {
 	var b strings.Builder
-	for _, m := range thread.Messages(accountID, threadID, messagesShown) {
+	for _, m := range thread.Messages(accountID, threadID, inbox.MessagesShown) {
 		if m.Role == thread.RoleAgent {
 			b.WriteString(`<div class="mu-agent"><div class="card" id="agent-response">` +
 				app.RenderString(m.Text) + `</div></div>`)
@@ -783,8 +821,8 @@ func renderSessionsRail(accountID, currentID, agentID string) string {
 		// that a conversation you cannot continue from this page should not look
 		// like one you can.
 		where := ""
-		if s.Client != WebClient {
-			where = `<span class="chat-sess-where">` + htmlEsc(clientName(s.Client)) + `</span>`
+		if s.Client != thread.WebClient {
+			where = `<span class="chat-sess-where">` + htmlEsc(thread.ClientName(s.Client)) + `</span>`
 		}
 		// Deletable. A conversation you can start and never be rid of is a list
 		// that only grows, and the rail is the one place somebody looks at it.
@@ -1374,7 +1412,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		if threadID == "" {
 			// A conversation that starts here. Keyed on this first run, which is
 			// unique and is what the record was already keyed on.
-			threadID = Opened(accountID, WebClient, flow.ID, "", req.Agent)
+			threadID = Opened(accountID, thread.WebClient, flow.ID, "", req.Agent)
 		}
 		Said(accountID, threadID, req.Prompt, "", "")
 

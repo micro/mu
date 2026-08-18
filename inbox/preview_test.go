@@ -1,4 +1,4 @@
-package agent
+package inbox
 
 import (
 	"strconv"
@@ -27,7 +27,7 @@ func TestHomeShowsWhatIsInTheInbox(t *testing.T) {
 	thread.Add(thread.Message{Thread: byMail.ID, Account: who, Role: thread.RoleAgent,
 		Text: "Sent it over — the total is 420."})
 
-	out := InboxPreview(who)
+	out := Preview(who)
 
 	if !strings.Contains(out, "invoice for March") {
 		t.Fatalf("the conversation is not on the page:\n%s", out)
@@ -51,10 +51,10 @@ func TestHomeShowsWhatIsInTheInbox(t *testing.T) {
 // An empty inbox shows nothing here. An empty list is worse than the address
 // line on its own, which at least says what to do about it.
 func TestAnEmptyInboxAddsNothingToHome(t *testing.T) {
-	if out := InboxPreview("nobody-has-written-to-this-account"); out != "" {
+	if out := Preview("nobody-has-written-to-this-account"); out != "" {
 		t.Errorf("an account with no conversations gets: %s", out)
 	}
-	if out := InboxPreview(""); out != "" {
+	if out := Preview(""); out != "" {
 		t.Errorf("a signed-out visitor gets: %s", out)
 	}
 }
@@ -65,14 +65,14 @@ func TestHomeCarriesOnlyTheMostRecentFew(t *testing.T) {
 
 	for i := 0; i < previewShown*3; i++ {
 		n := strconv.Itoa(i)
-		th := thread.Open(who, WebClient, "chain-"+n)
+		th := thread.Open(who, thread.WebClient, "chain-"+n)
 		if th == nil {
 			t.Fatal("could not open a conversation")
 		}
 		thread.Add(thread.Message{Thread: th.ID, Account: who, Text: "conversation number " + n})
 	}
 
-	if got := strings.Count(InboxPreview(who), `class="peek-row"`); got != previewShown {
+	if got := strings.Count(Preview(who), `class="peek-row"`); got != previewShown {
 		t.Fatalf("Home shows %d conversations, want %d", got, previewShown)
 	}
 }

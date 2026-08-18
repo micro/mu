@@ -271,8 +271,3 @@ func threadID(th *thread.Thread) string {
 	}
 	return th.ID
 }
-
-// WebClient names the web page in the record, so a conversation there can be
-// told from one by mail. The other clients declare their own — see
-// discord.Client — and this one lives here because the page is the agent's own.
-const WebClient = "web"
