@@ -433,6 +433,10 @@ func serve(addr string) {
 	// Start SMTP server if enabled (disabled by default)
 	mail.StartSMTPServerIfEnabled()
 
+	// And IMAP, so the mail this instance receives can be read in whatever
+	// client somebody already has open. See service/mail/imap.go.
+	mail.StartIMAPServerIfEnabled()
+
 	// Log initial memory usage
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)

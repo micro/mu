@@ -2084,6 +2084,35 @@ func MarkAsRead(msgID, userID string) error {
 	return fmt.Errorf("message not found")
 }
 
+// MarkAsUnread puts a message back to unread.
+//
+// The other half of MarkAsRead, which had no other half — the product could
+// only ever move in one direction, so a message opened by accident was read
+// forever. IMAP is what forced it (a client sends -FLAGS \Seen and expects it to
+// mean something), but it was missing from the page too.
+func MarkAsUnread(msgID, userID string) error {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	for _, msg := range messages {
+		if msg.ID != msgID || msg.ToID != userID {
+			continue
+		}
+		if !msg.Read {
+			return nil
+		}
+		msg.Read = false
+		if inbox := inboxes[userID]; inbox != nil {
+			inbox.UnreadCount++
+			if thread := inbox.Threads[msg.ThreadID]; thread != nil {
+				thread.HasUnread = true
+			}
+		}
+		return save()
+	}
+	return fmt.Errorf("message not found")
+}
+
 // FindMessageByMessageID finds a message by its email Message-ID header
 func FindMessageByMessageID(messageID string) *Message {
 	mutex.RLock()
@@ -2296,6 +2325,9 @@ func DeleteInbox(userID string) {
 	mutex.Lock()
 	delete(inboxes, userID)
 	mutex.Unlock()
+	// And the IMAP numbering, which is a record of which of this account's
+	// messages was number four — about their mail, so it goes with their mail.
+	imapForget(userID)
 	// Re-save all mail data.
 	save()
 }

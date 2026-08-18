@@ -158,6 +158,40 @@ Set `MAIL_DOMAIN` to the domain and restart. `mail_send` is account-only: an
 unauthenticated caller can never send, so a paying agent cannot spend your
 domain's reputation.
 
+### Reading your mail in a mail client
+
+Mu speaks IMAP, so the mail this instance receives can be read in whatever
+client is already open — Mail.app, Thunderbird, your phone — and the agent's
+replies appear in the thread there.
+
+| | |
+|---|---|
+| Server | your domain |
+| Port | `IMAP_PORT`, `1143` by default; set it to `143` in production |
+| Username | your Mu username, or your full address |
+| Password | an access token from `/account/tokens` |
+
+Mu has no password — sign-in is a passkey or a link — so an access token is what
+goes in the password field. That is the app-password pattern, and it has the
+property that matters: a client is revoked on its own without touching how you
+sign in.
+
+**Folders are your addresses.** The inbox holds everything. Each plus-address
+tag you have received mail at is a folder of its own — mail to `you+research@`
+appears in the folder *INBOX/research* — so an agent's mail can be subscribed to
+on its own. *Junk* is what the spam filter caught, where you can see it and
+disagree with it.
+
+**TLS is the proxy's job.** Nothing in Mu terminates TLS; the web server runs
+behind something that does, and IMAP is the same. Point your terminator at the
+IMAP port and offer 993, or use `stunnel`. Do not expose the plaintext port to
+the internet — a token would cross it in the clear.
+
+Folders cannot be created, renamed or deleted from the client, and a client
+cannot upload mail into one. Folders here follow your addresses and your mail,
+so there is nothing for those commands to do that would still be true a minute
+later.
+
 ### Who is allowed to send you mail
 
 This instance does not accept mail from strangers. A message gets in if **any
@@ -489,6 +523,7 @@ that.
 |---|---|---|
 | `MAIL_DOMAIN` | — | The domain you send and receive as |
 | `MAIL_PORT` | `2525` | SMTP listener — `25` in production |
+| `IMAP_PORT` | `1143` | IMAP listener — `143` in production, `off` to have none. See [Reading your mail in a mail client](#reading-your-mail-in-a-mail-client) |
 | `MAIL_SELECTOR` | `default` | DKIM selector, the `<selector>._domainkey` DNS record |
 | `DKIM_PRIVATE_KEY` | — | DKIM signing key |
 | `MAIL_WHITELIST` | — | Domains you accept mail from, comma separated: `acme.com, partner.co.uk`. Merged with a built-in list of company and infrastructure domains; consumer domains are deliberately absent. Live — no restart |
