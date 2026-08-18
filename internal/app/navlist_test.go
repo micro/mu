@@ -7,23 +7,24 @@ import (
 	"mu/internal/auth"
 )
 
-// The rail lists your things, not just the pages they live on.
+// The rail lists your mailboxes, and nothing else.
 //
-// Inbox, Agents, Tools and Services were four links — a set of pages. A client
-// puts your mailboxes and your agents in the rail, so you move between them
-// rather than opening a page to find out what they are.
-func TestTheRailListsYourMailboxesAndYourAgents(t *testing.T) {
+// One nested list, and it is the one that earns its place: the mailboxes carry
+// unread counts, so the rail is telling you something rather than repeating a
+// page you can open. The roster and the catalogue were tried underneath their
+// own headings and turned the sidebar into a table of contents.
+func TestTheRailListsYourMailboxes(t *testing.T) {
 	NavMailboxes = func(string) []NavItem {
-		return []NavItem{{Label: "All", Href: "/inbox"}, {Label: "Research", Href: "/inbox/research", Key: "research"}}
+		return []NavItem{
+			{Label: "All", Href: "/inbox", Badge: "3"},
+			{Label: "Research", Href: "/inbox/research", Key: "research"},
+		}
 	}
-	NavAgents = func(string) []NavItem {
-		return []NavItem{{Label: "Micro", Href: "/agent/micro", Key: "micro"}}
-	}
-	t.Cleanup(func() { NavMailboxes, NavAgents = nil, nil })
+	t.Cleanup(func() { NavMailboxes = nil })
 
 	out := renderShell("en", "Test", "d", "", "<p>c</p>", &auth.Account{ID: "alice"}, "/inbox/research")
 
-	for _, want := range []string{`href="/inbox/research"`, `href="/agent/micro"`, `>Research<`, `>Micro<`} {
+	for _, want := range []string{`href="/inbox/research"`, `>Research<`, `class="nav-badge">3<`} {
 		if !strings.Contains(out, want) {
 			t.Errorf("the rail is missing %s", want)
 		}
@@ -31,6 +32,13 @@ func TestTheRailListsYourMailboxesAndYourAgents(t *testing.T) {
 	// Where you are is marked, or the list is decoration.
 	if !strings.Contains(out, `class="nav-kid on"`) {
 		t.Error("the rail does not show which mailbox you are in")
+	}
+	// And Agents is a link to its page, not a list of agents.
+	if !strings.Contains(out, `href="/agents"`) {
+		t.Error("the Agents heading is missing")
+	}
+	if strings.Contains(out, `href="/agent/`) {
+		t.Error("the roster is back in the rail")
 	}
 }
 

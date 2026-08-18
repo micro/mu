@@ -349,7 +349,6 @@ var Template = `
           <a href="/inbox"><img src="/mail.png?` + Version + `"><span class="label">Inbox</span></a>
           %s
           <a href="/agents"><img src="/agent.svg?` + Version + `"><span class="label">Agents</span></a>
-          %s
           <a href="/tools"><img src="/tools.svg?` + Version + `"><span class="label">Tools</span></a>
           <a href="/services"><img src="/services.svg?` + Version + `"><span class="label">Services</span></a>
           %s
@@ -1383,7 +1382,6 @@ func renderShell(lang, title, desc, bodyAttr, body string, acc *auth.Account, pa
 		headBalance(acc),
 		navAdmin(acc),
 		navMailboxes(account, path),
-		navAgents(account, path),
 		navOperate(acc)+navPinned(acc),
 		navBottom(acc),
 		title, body, footerFor(acc))

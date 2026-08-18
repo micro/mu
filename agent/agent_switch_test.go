@@ -17,7 +17,7 @@ import (
 func TestPickingAnAgentNavigatesRatherThanRelabelling(t *testing.T) {
 	panel := renderAgentsPanel()
 
-	if !strings.Contains(panel, "window.location='/inbox'") &&
+	if !strings.Contains(panel, "window.location='/agent'") &&
 		!strings.Contains(panel, "window.location=to") {
 		t.Error("picking an agent still does not navigate, so the rail and the conversation " +
 			"beside it keep showing the agent you just left")
@@ -27,7 +27,9 @@ func TestPickingAnAgentNavigatesRatherThanRelabelling(t *testing.T) {
 	}
 	// The id belongs in the URL, the same way /agents links to an agent, so a
 	// reload keeps the agent instead of falling back to the default.
-	if !strings.Contains(panel, "'/inbox?id='+encodeURIComponent(id)") {
+	// /agent, not /inbox: this is the page you talk to an agent on, and the
+	// mailbox is a different page holding what arrived.
+	if !strings.Contains(panel, "'/agent?id='+encodeURIComponent(id)") {
 		t.Error("the chosen agent does not reach the URL")
 	}
 }
@@ -45,7 +47,10 @@ func TestARailForOneAgentIsEmptyUntilThatAgentHasBeenUsed(t *testing.T) {
 	}
 	// New chat keeps the agent, rather than rewriting the address bar back to
 	// the default and quietly widening the rail to the whole account.
-	if !strings.Contains(rail, "/inbox?id=agent-with-no-history") {
+	// An id that names no agent in the roster keeps its id in the URL, since
+	// there is no slug to name it by — the alternative is rewriting to the
+	// default, which is what silently widened the rail to the whole account.
+	if !strings.Contains(rail, "/agent?id=agent-with-no-history") {
 		t.Errorf("+ New chat drops the agent out of the URL:\n%s", rail)
 	}
 

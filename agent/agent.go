@@ -465,7 +465,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		case "GET":
 			// Saved flows are conversations now — reopen in the unified chat.
 			if id != "" && r.URL.Query().Get("json") != "1" {
-				http.Redirect(w, r, "/inbox?session="+id, http.StatusFound)
+				// The agent page, where a conversation you started is read —
+				// /inbox is what arrived and does not have this one in it.
+				http.Redirect(w, r, "/agent/"+DefaultSlug+"?session="+url.QueryEscape(id),
+					http.StatusFound)
 				return
 			}
 			serveFlowPage(w, r, id) // ?json=1 still returns the flow JSON for polling
@@ -696,10 +699,21 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 		content += `<script>window.muSeedAgent(` + app.JSString(selAgent) + `);</script>`
 	}
 	if prefill != "" {
-		content += `<script>(function(){var i=document.getElementById('mu-chat-input');if(i&&window.muChatAsk){i.value=` + app.JSString(prefill) + `;window.muChatAsk(i.value);}history.replaceState(null,'','/inbox');})()</script>`
+		content += `<script>(function(){var i=document.getElementById('mu-chat-input');if(i&&window.muChatAsk){i.value=` + app.JSString(prefill) + `;window.muChatAsk(i.value);}history.replaceState(null,'',` + app.JSString(Path(accountID, selAgent)) + `);})()</script>`
 	}
 
-	html := app.RenderHTMLForRequest("Inbox", "Everything you and your agents have said, wherever it arrived — and the address they answer on", content, r)
+	// The agent's own name, because this page is about one agent.
+	//
+	// It said "Inbox", from when this rail was the inbox and there was no other
+	// page called that. There is now — /inbox is the mailbox, and this is where
+	// you talk to an agent — so the title was the clearest possible statement
+	// that the two had not been told apart.
+	title, desc := "Agent", "Talk to your agent, and the address it answers on"
+	if !guest {
+		title = agentTitle(accountID, selAgent)
+		desc = "Talk to " + title + ", and the address it answers on"
+	}
+	html := app.RenderHTMLForRequest(title, desc, content, r)
 	w.Write([]byte(html))
 }
 
@@ -815,9 +829,17 @@ func renderSessionsRail(accountID, currentID, agentID string) string {
 	// to a bare /agent, which dropped the agent out of the address bar while
 	// the page went on talking to it — so a reload landed you on the default
 	// and the rail silently widened to every conversation on the account.
-	newURL := "/inbox"
-	if agentID != "" {
-		newURL += "?id=" + url.QueryEscape(agentID)
+	// The agent's own page. It rewrote the URL to /inbox, which is a different
+	// page now — the rail holds the conversations you started here and /inbox
+	// holds what arrived, so a link from one to the other lands somewhere that
+	// does not have the conversation in it.
+	base := Path(accountID, agentID)
+	newURL := base
+	if agentID != "" && base == "/agent/"+DefaultSlug {
+		// An id that resolves to nothing in the roster. Keep it in the URL
+		// rather than silently rewriting to the default, which is what widened
+		// the rail to the whole account.
+		newURL = "/agent?id=" + url.QueryEscape(agentID)
 	}
 	var b strings.Builder
 	b.WriteString(`<aside class="chat-rail"><button class="chat-new" onclick="if(window.muChatNew){muChatNew();history.replaceState(null,''` +
@@ -863,7 +885,7 @@ func renderSessionsRail(accountID, currentID, agentID string) string {
 		}
 		// Deletable. A conversation you can start and never be rid of is a list
 		// that only grows, and the rail is the one place somebody looks at it.
-		b.WriteString(`<div class="chat-sess-row"><a href="/inbox?session=` + url.QueryEscape(s.ID) +
+		b.WriteString(`<div class="chat-sess-row"><a href="` + base + `?session=` + url.QueryEscape(s.ID) +
 			`" class="` + cls + `">` + htmlEsc(title) + where + `</a>` +
 			`<button class="chat-sess-del" title="Delete conversation" ` +
 			`onclick="muSessionDelete(` + app.JSString(s.ID) + `,event)">×</button></div>`)
@@ -871,21 +893,22 @@ func renderSessionsRail(accountID, currentID, agentID string) string {
 	if len(sessions) >= railShown {
 		b.WriteString(`<a class="chat-sess-more" href="/recall">Older conversations →</a>`)
 	}
-	b.WriteString(`</div>` + sessionDeleteJS + `</aside>`)
+	b.WriteString(`</div>` + sessionDeleteJS(base) + `</aside>`)
 	return b.String()
 }
 
 // sessionDeleteJS removes a conversation and its record. DELETE on the flow
 // path, which is where a conversation is already deleted from — the id is the
 // chain's root and the server walks the rest.
-const sessionDeleteJS = `<script>
+func sessionDeleteJS(back string) string {
+	return `<script>
 // The conversation. It used to DELETE a workflow record, because the rail was
 // built out of those.
 function muSessionDelete(id,ev){
   ev.preventDefault();ev.stopPropagation();
   if(!confirm('Delete this conversation? What was said in it is gone.'))return;
   fetch('/agent/session/'+encodeURIComponent(id),{method:'DELETE',headers:{'X-CSRF-Token':muAgentCsrf()}})
-    .then(function(){window.location='/inbox';});
+    .then(function(){window.location=` + app.JSString(back) + `;});
 }
 // A conversation that has just started, listed while you are still in it.
 //
@@ -910,6 +933,7 @@ window.muSessionStarted=function(id,title){
   list.insertBefore(row,list.firstChild);
 };
 </script>`
+}
 
 // paneJS opens one of the side panels as a sheet on a phone.
 //

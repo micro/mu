@@ -41,7 +41,12 @@ type NavItem struct {
 var (
 	// NavMailboxes is the account's mailboxes, one per agent that has mail.
 	NavMailboxes func(account string) []NavItem
-	// NavAgents is the account's agents.
+	// NavAgents was the account's roster, listed under the Agents heading. Kept
+	// as a hook with nothing drawing it: the rail is four nouns and the one
+	// nested list that earns its place, which is the mailboxes — they carry
+	// unread counts, so the rail is telling you something rather than repeating
+	// a page. A roster and a catalogue underneath their headings turned the
+	// sidebar into a table of contents.
 	NavAgents func(account string) []NavItem
 )
 
@@ -78,14 +83,6 @@ func navMailboxes(account, path string) string {
 		return ""
 	}
 	return navChildren(NavMailboxes(account), strings.TrimPrefix(path, "/inbox/"))
-}
-
-// navAgents is the Agents heading and the roster under it.
-func navAgents(account, path string) string {
-	if account == "" || NavAgents == nil {
-		return ""
-	}
-	return navChildren(NavAgents(account), strings.TrimPrefix(path, "/agent/"))
 }
 
 // navPath is the path the rail should highlight against, from the request.

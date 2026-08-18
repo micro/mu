@@ -50,7 +50,9 @@ func ConnectHandler(w http.ResponseWriter, r *http.Request) {
 		body = connectPanel(a, app.BaseURL(r), auth.CSRFToken(r))
 	}
 
-	back := "/inbox"
+	// Back to the agent, not to the mailbox. /inbox is what arrived; this page
+	// is about one agent and so is where it goes back to.
+	back := "/agent"
 	if id != "" {
 		back += "?id=" + url.QueryEscape(id)
 	}
