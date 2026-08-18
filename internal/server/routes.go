@@ -31,6 +31,7 @@ import (
 	"mu/internal/setup"
 	"mu/internal/user"
 	"mu/service/apps"
+	"mu/service/archive"
 	"mu/service/blog"
 	"mu/service/chat"
 	"mu/service/contacts"
@@ -716,6 +717,9 @@ func registerRoutes() {
 	// Search everything you have ever said to an agent. The list of your
 	// conversations is /agent; this is the search over all of them.
 	http.HandleFunc("/recall", recall.Handler)
+	// And the search over what the instance has collected, which is the other
+	// archive and belongs to nobody.
+	http.HandleFunc("/archive", archive.Handler)
 	// Deleting a conversation. The list of them is the rail on /agent.
 	http.HandleFunc("/agent/session/", inbox.SessionHandler)
 	// Two pages that were tabs and are not any more: one listed the same

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -99,6 +100,25 @@ func Bytes(n int64) string {
 		return fmt.Sprintf("%dKB", n/(1<<10))
 	}
 	return fmt.Sprintf("%dB", n)
+}
+
+// Count is a quantity somebody has to read at a glance.
+//
+// The same job Bytes does, for things rather than for bytes: on a page the
+// question a count answers is "roughly how much", and 612k answers it where
+// 611,847 makes the reader do arithmetic to find out it is about six hundred
+// thousand. Exact below a thousand, because there the exact number is the
+// readable one.
+func Count(n int) string {
+	switch {
+	case n >= 1_000_000:
+		return fmt.Sprintf("%.1fm", float64(n)/1_000_000)
+	case n >= 10_000:
+		return fmt.Sprintf("%dk", n/1000)
+	case n >= 1_000:
+		return fmt.Sprintf("%.1fk", float64(n)/1000)
+	}
+	return strconv.Itoa(n)
 }
 
 // ClientName is what a client is called in front of somebody.

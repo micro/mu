@@ -10,6 +10,7 @@ import (
 	"mu/internal/api"
 	"mu/internal/service"
 	"mu/service/apps"
+	"mu/service/archive"
 	"mu/service/blog"
 	"mu/service/chat"
 	"mu/service/contacts"
@@ -52,7 +53,7 @@ import (
 // list is invisible to the very checks that exist to notice that.
 func allSpecs() []service.Spec {
 	return []service.Spec{
-		apps.Spec, blog.Spec, chat.Spec, contacts.Spec, docs.Spec, events.Spec,
+		apps.Spec, archive.Spec, blog.Spec, chat.Spec, contacts.Spec, docs.Spec, events.Spec,
 		email.Spec, files.Spec, flights.Spec, food.Spec, hazards.Spec, images.Spec, mail.Spec, markets.Spec,
 		notes.Spec, news.Spec, places.Spec, prayer.Spec, recall.Spec, routes.Spec,
 		sms.Spec,

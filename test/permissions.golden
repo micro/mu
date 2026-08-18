@@ -6,6 +6,8 @@ apps_read                    needsAccount=false destructive=false open accountOn
 apps_run                     needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 apps_search                  needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 apps_test                    needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
+archive_list                 needsAccount=false destructive=false open accountOnly=false optionalAuth=false
+archive_search               needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 blog_create                  needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 blog_delete                  needsAccount=true  destructive=true  bound accountOnly=false optionalAuth=false
 blog_list                    needsAccount=false destructive=false open accountOnly=false optionalAuth=false

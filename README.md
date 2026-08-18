@@ -116,6 +116,7 @@ Here are the tools
 | Service | Tools |
 |---|---|
 | **Apps** | `apps_build` · `apps_create` · `apps_edit` · `apps_fork` · `apps_read` · `apps_run` · `apps_search` · `apps_test` — build and run small web tools |
+| **Archive** | `archive_search` · `archive_list` — everything this instance has collected, across news, video, markets and posts at once. Use it when the question crosses a service, or when you do not know which one would hold the answer |
 | **Blog** | `blog_create` · `blog_read` · `blog_list` · `blog_update` · `blog_delete` — publish, with AI-generated daily digests |
 | **Chat** | `chat_rooms` · `chat_messages` · `chat_send` — the live discussion rooms attached to an item, and saying something in one |
 | **Contacts** | `contacts_add` · `contacts_find` · `contacts_list` · `contacts_delete` — turn a name into an address |
@@ -212,7 +213,7 @@ mu agent "what happened in markets today?"
 
 ```
 model: anthropic/claude-sonnet-4-6
-113 tools from https://micro.mu
+115 tools from https://micro.mu
 wallet: 0x4160a863… (1.27 USDC)
 
 > what are the top news headlines today?

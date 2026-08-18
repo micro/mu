@@ -107,7 +107,7 @@ func hitRow(h thread.Hit, query string) string {
 	if subject == "" {
 		subject = "Untitled"
 	}
-	return `<a class="rc-hit" href="/inbox?session=` + url.QueryEscape(h.Thread) + `">` +
+	return `<a class="rc-hit" href="/inbox?id=` + url.QueryEscape(h.Thread) + `">` +
 		`<div class="rc-meta">` + html.EscapeString(who) + ` · ` +
 		html.EscapeString(app.TimeAgo(h.At)) + ` · ` +
 		`<span class="rc-where">` + html.EscapeString(app.ClientName(h.Client)) + `</span></div>` +

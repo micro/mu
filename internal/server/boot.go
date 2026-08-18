@@ -15,6 +15,7 @@ import (
 	"mu/internal/usage"
 	"mu/internal/user"
 	"mu/service/apps"
+	"mu/service/archive"
 	"mu/service/blog"
 	"mu/service/chat"
 	"mu/service/contacts"
@@ -88,6 +89,9 @@ func boot() {
 	// Going looking in your own past on purpose — the read over internal/thread
 	// that every client writes to. See service/recall.
 	recall.Load()
+	// One search across everything this instance has collected. Six services
+	// write to that index and every reader over it was filtered to one type.
+	archive.Load()
 	web.Load()
 	text.Load()
 	food.Load()
