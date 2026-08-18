@@ -157,10 +157,25 @@ type Message struct {
 // dropping them rather than to raise the number again.
 const maxPerAccount = 5000
 
+// One lock over everything, and an index so that everything is not what gets
+// walked.
+//
+// The lock is shared by every account, which is fine while the work under it is
+// bounded and was not: List, Search, ByRef, findUnlocked and trim each walked
+// every thread on the instance to answer a question about one account. On a
+// single-user instance that is invisible. On a busy one it is the whole store
+// scanned to draw one sidebar, with every writer queued behind it.
+//
+// owned is that index. It costs a map entry per thread and removes the scans;
+// sharding the lock itself can wait until the scans are gone and it is still
+// slow, because a lock split before the work under it shrinks is a lock split
+// twice.
 var (
 	mu       sync.RWMutex
-	threads  = map[string]*Thread{}    // id → thread
-	messages = map[string][]*Message{} // thread id → messages, oldest first
+	threads  = map[string]*Thread{}            // id → thread
+	messages = map[string][]*Message{}         // thread id → messages, oldest first
+	owned    = map[string]map[string]*Thread{} // account → id → thread
+	held     = map[string]int{}                // account → messages, for trim
 )
 
 func init() {
@@ -169,18 +184,45 @@ func init() {
 		Messages []*Message `json:"messages"`
 	}
 	if err := data.LoadJSON("threads.json", &stored); err != nil {
+		go flusher()
 		return
 	}
 	for _, t := range stored.Threads {
 		threads[t.ID] = t
+		ownUnlocked(t)
 	}
 	for _, m := range stored.Messages {
 		messages[m.Thread] = append(messages[m.Thread], m)
+		held[m.Account]++
 	}
 	for id := range messages {
 		sortByTime(messages[id])
 	}
 	go flusher()
+}
+
+// ownUnlocked files a thread under its account. Caller holds mu.
+func ownUnlocked(t *Thread) {
+	if owned[t.Account] == nil {
+		owned[t.Account] = map[string]*Thread{}
+	}
+	owned[t.Account][t.ID] = t
+}
+
+// dropUnlocked removes a thread from every index. Caller holds mu.
+func dropUnlocked(t *Thread) {
+	held[t.Account] -= len(messages[t.ID])
+	if held[t.Account] < 0 {
+		held[t.Account] = 0
+	}
+	delete(messages, t.ID)
+	delete(threads, t.ID)
+	if m := owned[t.Account]; m != nil {
+		delete(m, t.ID)
+		if len(m) == 0 {
+			delete(owned, t.Account)
+		}
+	}
 }
 
 // Open finds the conversation a client is on, or starts one.
@@ -202,6 +244,7 @@ func Open(account, client, key string) *Thread {
 	t := &Thread{ID: newID(), Account: account, Client: client, Key: key,
 		Started: now, Updated: now}
 	threads[t.ID] = t
+	ownUnlocked(t)
 	save()
 	return t
 }
@@ -214,8 +257,8 @@ func Find(account, client, key string) *Thread {
 }
 
 func findUnlocked(account, client, key string) *Thread {
-	for _, t := range threads {
-		if t.Account == account && t.Client == client && t.Key == key {
+	for _, t := range owned[account] {
+		if t.Client == client && t.Key == key {
 			return t
 		}
 	}
@@ -256,9 +299,9 @@ func ByRef(account string, refs ...string) *Thread {
 	// middle: a client quotes every id in the thread, and matching the oldest
 	// would fan the conversation into a bush.
 	var best *Message
-	for _, msgs := range messages {
-		for _, m := range msgs {
-			if m.Account != account || m.Ref == "" || !want[m.Ref] {
+	for id := range owned[account] {
+		for _, m := range messages[id] {
+			if m.Ref == "" || !want[m.Ref] {
 				continue
 			}
 			if best == nil || m.At.After(best.At) {
@@ -320,6 +363,7 @@ func Add(m Message) string {
 	}
 	stored := m
 	messages[m.Thread] = append(messages[m.Thread], &stored)
+	held[m.Account]++
 	t.Updated = stored.At
 	if t.Subject == "" && stored.Role == RolePerson {
 		t.Subject = summarise(stored.Text)
@@ -417,10 +461,8 @@ func List(account string, limit int) []Thread {
 	defer mu.RUnlock()
 
 	var out []Thread
-	for _, t := range threads {
-		if t.Account == account {
-			out = append(out, *t)
-		}
+	for _, t := range owned[account] {
+		out = append(out, *t)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Updated.After(out[j].Updated) })
 	if limit > 0 && len(out) > limit {
@@ -435,26 +477,19 @@ func List(account string, limit int) []Thread {
 // a conversation is worse than none, because what survives reads as the whole
 // of it.
 func trim(account string) {
-	var total int
-	var owned []*Thread
-	for _, t := range threads {
-		if t.Account != account {
-			continue
-		}
-		owned = append(owned, t)
-		total += len(messages[t.ID])
-	}
-	if total <= maxPerAccount {
+	if held[account] <= maxPerAccount {
 		return
 	}
-	sort.Slice(owned, func(i, j int) bool { return owned[i].Updated.Before(owned[j].Updated) })
-	for _, t := range owned {
-		if total <= maxPerAccount {
+	mine := make([]*Thread, 0, len(owned[account]))
+	for _, t := range owned[account] {
+		mine = append(mine, t)
+	}
+	sort.Slice(mine, func(i, j int) bool { return mine[i].Updated.Before(mine[j].Updated) })
+	for _, t := range mine {
+		if held[account] <= maxPerAccount {
 			return
 		}
-		total -= len(messages[t.ID])
-		delete(messages, t.ID)
-		delete(threads, t.ID)
+		dropUnlocked(t)
 	}
 }
 
@@ -496,20 +531,29 @@ func Flush() {
 		return
 	}
 	var stored struct {
-		Threads  []*Thread  `json:"threads"`
-		Messages []*Message `json:"messages"`
+		Threads  []Thread  `json:"threads"`
+		Messages []Message `json:"messages"`
 	}
-	// A copy under the read lock, so marshalling and the fsync happen with
-	// nothing blocked behind them. The pointers are shared with the live maps,
-	// which is why the copy is taken while readers are excluded from writing:
-	// every mutation happens under the write lock, so nothing is being changed
-	// underneath the marshal.
+	// Values, not pointers, and copied under the read lock.
+	//
+	// This took the pointers and marshalled them after releasing the lock, which
+	// reads every field of every struct while Add is writing to them — a data
+	// race, and the kind that corrupts the file it is writing rather than
+	// crashing where you can see it. A test holds it now.
+	//
+	// The copy is the price of marshalling outside the lock, and marshalling
+	// outside the lock is the point: the whole record is serialised here, and
+	// doing that with writers queued behind it is what makes a page hang.
 	mu.RLock()
+	stored.Threads = make([]Thread, 0, len(threads))
+	stored.Messages = make([]Message, 0, len(threads)*4)
 	for _, t := range threads {
-		stored.Threads = append(stored.Threads, t)
+		stored.Threads = append(stored.Threads, *t)
 	}
 	for _, msgs := range messages {
-		stored.Messages = append(stored.Messages, msgs...)
+		for _, m := range msgs {
+			stored.Messages = append(stored.Messages, *m)
+		}
 	}
 	mu.RUnlock()
 
@@ -572,11 +616,11 @@ func SetAgent(account, id, agentID string) {
 func Delete(account, id string) {
 	mu.Lock()
 	defer mu.Unlock()
-	if t := threads[id]; t == nil || t.Account != account {
+	t := threads[id]
+	if t == nil || t.Account != account {
 		return
 	}
-	delete(threads, id)
-	delete(messages, id)
+	dropUnlocked(t)
 	save()
 }
 
@@ -594,13 +638,11 @@ func Forget(account string) {
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	for id, t := range threads {
-		if t.Account != account {
-			continue
-		}
-		delete(threads, id)
-		delete(messages, id)
+	for _, t := range owned[account] {
+		dropUnlocked(t)
 	}
+	delete(owned, account)
+	delete(held, account)
 	save()
 }
 
@@ -616,9 +658,9 @@ func SetRef(account, messageID, ref string) {
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	for _, msgs := range messages {
-		for _, m := range msgs {
-			if m.ID == messageID && m.Account == account {
+	for id := range owned[account] {
+		for _, m := range messages[id] {
+			if m.ID == messageID {
 				m.Ref = ref
 				save()
 				return

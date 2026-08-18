@@ -18,6 +18,7 @@ package agent
 import (
 	"html"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"mu/internal/app"
@@ -48,9 +49,17 @@ func SessionHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// messagesShown bounds one conversation.
+//
+// A mail thread somebody has been adding to for a year is the case this page
+// exists for, and rendering every message of it — each through the markdown
+// renderer — is a page that takes a second to draw and that nobody reads the
+// top of. The most recent are the ones being read.
+const messagesShown = 100
+
 // elsewhereView renders a conversation from another client, read-only.
 func elsewhereView(accountID string, t *thread.Thread) string {
-	msgs := thread.Messages(accountID, t.ID, 0)
+	msgs := thread.Messages(accountID, t.ID, messagesShown)
 
 	subject := t.Subject
 	if subject == "" {
@@ -63,6 +72,11 @@ func elsewhereView(accountID string, t *thread.Thread) string {
 		html.EscapeString(app.TimeAgo(t.Started)) + `</span></div>`)
 	b.WriteString(`<h2 class="els-title">` + html.EscapeString(subject) + `</h2>`)
 	b.WriteString(partyLine(accountID, t))
+	if len(msgs) >= messagesShown {
+		b.WriteString(`<p class="els-trimmed">Showing the most recent ` +
+			strconv.Itoa(messagesShown) + `. ` +
+			app.Link("Search the whole conversation", "/recall") + `</p>`)
+	}
 
 	for _, m := range msgs {
 		b.WriteString(messageBlock(accountID, t, m))
@@ -211,6 +225,7 @@ const conversationCSS = `<style>
 .els-when{font-size:12px;color:#aaa}
 .els-title{font-size:20px;margin:0 0 6px}
 .els-parties{font-size:13px;color:#888;margin:0 0 20px}
+.els-trimmed{font-size:12px;color:#999;margin:0 0 18px}
 .els-note{margin-top:24px;padding-top:14px;border-top:1px solid #eee;font-size:13px;color:#888}
 .th-msg{border-left:2px solid #eee;padding-left:14px;margin-bottom:16px}
 .th-agent{border-left-color:#ddd}

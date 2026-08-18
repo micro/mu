@@ -660,10 +660,11 @@ func openThread(accountID, id string) string {
 	return adopt(accountID, chain)
 }
 
-// renderThreadTurns renders a conversation into the chat log.
+// renderThreadTurns renders a conversation into the chat log, most recent
+// messagesShown of it — see the constant.
 func renderThreadTurns(accountID, threadID string) string {
 	var b strings.Builder
-	for _, m := range thread.Messages(accountID, threadID, 0) {
+	for _, m := range thread.Messages(accountID, threadID, messagesShown) {
 		if m.Role == thread.RoleAgent {
 			b.WriteString(`<div class="mu-agent"><div class="card" id="agent-response">` +
 				app.RenderString(m.Text) + `</div></div>`)
@@ -681,6 +682,14 @@ func latestThreadFor(accountID, agentID string) string {
 	}
 	return ""
 }
+
+// railShown bounds the rail.
+//
+// A conversation list is not a page of results, it is somewhere you glance: the
+// one you want is almost always in the last few, and the rest is what /recall
+// searches. Unbounded, it grew with the account and rendered every row of it on
+// every page load.
+const railShown = 40
 
 // chatThreads is what belongs in the rail: this account's conversations, with
 // one agent's when a page is about one.
@@ -700,6 +709,9 @@ func chatThreads(accountID, agentID string) []thread.Thread {
 			continue
 		}
 		out = append(out, t)
+		if len(out) >= railShown {
+			break
+		}
 	}
 	return out
 }
@@ -780,6 +792,9 @@ func renderSessionsRail(accountID, currentID, agentID string) string {
 			`" class="` + cls + `">` + htmlEsc(title) + where + `</a>` +
 			`<button class="chat-sess-del" title="Delete conversation" ` +
 			`onclick="muSessionDelete(` + app.JSString(s.ID) + `,event)">×</button></div>`)
+	}
+	if len(sessions) >= railShown {
+		b.WriteString(`<a class="chat-sess-more" href="/recall">Older conversations →</a>`)
 	}
 	b.WriteString(`</div>` + sessionDeleteJS + `</aside>`)
 	return b.String()
@@ -882,6 +897,8 @@ const chatLayoutCSS = `<style>
 .chat-sess-del{border:0;background:none;color:#ccc;font-size:15px;line-height:1;cursor:pointer;padding:2px 6px;opacity:0}
 .chat-sess-row:hover .chat-sess-del{opacity:1}
 .chat-sess-del:hover{color:#b00}
+.chat-sess-more{display:block;padding:8px 10px;font-size:12px;color:#888;text-decoration:none}
+.chat-sess-more:hover{color:var(--text-primary,#111)}
 .chat-sess-empty{color:#999;font-size:13px;padding:8px 10px;line-height:1.5}
 .chat-sess-empty code{background:#f4f4f5;border-radius:4px;padding:1px 5px;font-size:11px;overflow-wrap:anywhere}
 /* The two buttons in the bar are for phones. On a desktop the panels are always

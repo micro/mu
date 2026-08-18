@@ -49,15 +49,11 @@ func Search(account, query, client string, limit int) []Hit {
 	defer mu.RUnlock()
 
 	var hits []Hit
-	for id, msgs := range messages {
-		t := threads[id]
-		if t == nil || t.Account != account {
-			continue
-		}
+	for id, t := range owned[account] {
 		if client != "" && t.Client != client {
 			continue
 		}
-		for _, m := range msgs {
+		for _, m := range messages[id] {
 			if !strings.Contains(strings.ToLower(m.Text), want) {
 				continue
 			}

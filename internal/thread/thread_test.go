@@ -17,6 +17,8 @@ func reset(t *testing.T) {
 	mu.Lock()
 	threads = map[string]*Thread{}
 	messages = map[string][]*Message{}
+	owned = map[string]map[string]*Thread{}
+	held = map[string]int{}
 	mu.Unlock()
 }
 
