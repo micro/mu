@@ -192,6 +192,31 @@ cannot upload mail into one. Folders here follow your addresses and your mail,
 so there is nothing for those commands to do that would still be true a minute
 later.
 
+### Outbound deliverability
+
+By default Mu delivers its own mail: it looks up the recipient's MX and speaks
+SMTP to it. That is correct and it is not the hard part. The hard part is the
+reputation of the IP the packets came from — a new address with no history, no
+feedback loop and no bounce processing gets filed as spam by the large providers
+however carefully the message is signed, and nothing in the protocol fixes it
+from this end.
+
+So outbound can go through a submission server instead:
+
+```bash
+export SMTP_RELAY_HOST="smtp.provider.example"   # :587 assumed
+export SMTP_RELAY_USER="apikey"
+export SMTP_RELAY_PASS="..."
+```
+
+Anything that speaks submission works — this is named for the protocol, not for
+a provider. The message is still built here and still signed with your own DKIM
+key; the relay is one hop, not a rewrite. STARTTLS is required, because the
+credential crosses that connection.
+
+Inbound is unchanged either way: Mu runs its own SMTP server and owns the
+mailbox, which is the half that matters.
+
 ### Who is allowed to send you mail
 
 This instance does not accept mail from strangers. A message gets in if **any
@@ -526,6 +551,9 @@ that.
 | `IMAP_PORT` | `1143` | IMAP listener — `143` in production, `off` to have none. See [Reading your mail in a mail client](#reading-your-mail-in-a-mail-client) |
 | `MAIL_SELECTOR` | `default` | DKIM selector, the `<selector>._domainkey` DNS record |
 | `DKIM_PRIVATE_KEY` | — | DKIM signing key |
+| `SMTP_RELAY_HOST` | — | Hand outbound mail to a submission server instead of delivering it to the recipient's MX. `host` or `host:port`, 587 assumed. See [Outbound deliverability](#outbound-deliverability) |
+| `SMTP_RELAY_USER` | — | Username for the relay. No username means no AUTH |
+| `SMTP_RELAY_PASS` | — | Password for the relay |
 | `MAIL_WHITELIST` | — | Domains you accept mail from, comma separated: `acme.com, partner.co.uk`. Merged with a built-in list of company and infrastructure domains; consumer domains are deliberately absent. Live — no restart |
 
 ### The daily briefing

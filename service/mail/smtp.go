@@ -299,6 +299,13 @@ func RelayToExternal(from, to string, data []byte) error {
 
 // relayToExternal delivers email to an external SMTP server
 func relayToExternal(from, to string, data []byte) error {
+	// Through a submission server where one is configured. Deliverability is
+	// about the reputation of the IP the packets came from, which is not
+	// something the protocol can fix from this end. See relay.go.
+	if host := relayHost(); host != "" {
+		return relayViaSubmission(host, from, to, data)
+	}
+
 	// Extract domain from recipient address
 	parts := strings.Split(to, "@")
 	if len(parts) != 2 {
