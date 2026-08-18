@@ -21,70 +21,72 @@ import (
 	"strings"
 
 	"mu/internal/app"
-	"mu/internal/thread"
+	"mu/service/mail"
 )
 
-// previewShown is how many conversations Home carries.
+// previewShown is how many messages Home carries.
 //
-// Enough to show that something happened while you were away, not so many that
+// Enough to show that something arrived while you were away, not so many that
 // Home becomes the inbox. The page for reading them is one link below.
 const previewShown = 3
 
 // previewSnippet bounds the line of text under a subject.
 const previewSnippet = 90
 
-// Preview is the most recent conversations, for Home. Empty when there are
-// none — an empty list is worse than the address line on its own, which at least
-// says what to do about it.
+// Preview is the most recent mail, for Home. Empty when there is none — an
+// empty list is worse than the address line on its own, which at least says
+// what to do about it.
+//
+// Mail rather than conversations, because that is what the inbox is now: a
+// block on Home headed by an address, listing things that are not mail, was the
+// same confusion the page itself had.
 func Preview(accountID string) string {
 	if accountID == "" {
 		return ""
 	}
-	threads := thread.List(accountID, previewShown)
-	if len(threads) == 0 {
+	msgs := mail.ListMessages(accountID, previewShown)
+	if len(msgs) == 0 {
 		return ""
 	}
 
 	var b strings.Builder
 	b.WriteString(`<div class="inbox-peek">`)
-	for _, t := range threads {
-		title := t.Subject
-		if title == "" {
-			title = "Untitled"
+	for _, m := range msgs {
+		subject := strings.TrimSpace(m.Subject)
+		if subject == "" {
+			subject = "(no subject)"
 		}
-
-		// Where it happened, when that is not here. A row saying "web" on the
-		// page you are already on is noise; a row saying "Email" is the fact
-		// worth showing, because it happened without you.
+		// Where it was addressed, when that is an agent's own alias. A row
+		// saying "research" is the fact worth showing: it arrived for something
+		// other than you, and was handled without you.
 		where := ""
-		if t.Client != thread.WebClient {
-			where = `<span class="peek-where">` + html.EscapeString(app.ClientName(t.Client)) + `</span>`
+		if m.Tag != "" {
+			where = `<span class="peek-where">` + html.EscapeString(m.Tag) + `</span>`
 		}
-
-		// The last thing said, so the row is worth reading rather than just
-		// worth counting. Who said it matters as much as what: "you asked" and
-		// "it answered" are different states of a conversation.
-		line := ""
-		if msgs := thread.Messages(accountID, t.ID, 1); len(msgs) > 0 {
-			m := msgs[0]
-			who := "You"
-			if m.Role == thread.RoleAgent {
-				who = "Agent"
-			} else if m.From != "" {
-				who = m.From
-			}
-			line = `<span class="peek-who">` + html.EscapeString(who) + `</span> ` +
-				html.EscapeString(trimTo(m.Text, previewSnippet))
+		unread := ""
+		if !m.Read {
+			unread = " peek-new"
 		}
-
-		b.WriteString(`<a class="peek-row" href="/inbox?session=` + url.QueryEscape(t.ID) + `">` +
-			`<span class="peek-head"><span class="peek-title">` + html.EscapeString(trimTo(title, 60)) + `</span>` +
-			where + `<span class="peek-when">` + html.EscapeString(app.TimeAgo(t.Updated)) + `</span></span>` +
-			`<span class="peek-line">` + line + `</span></a>`)
+		b.WriteString(`<a class="peek-row` + unread + `" href="/inbox?id=` +
+			url.QueryEscape(m.ID) + `">` +
+			`<span class="peek-head"><span class="peek-title">` +
+			html.EscapeString(trimTo(subject, 60)) + `</span>` + where +
+			`<span class="peek-when">` + html.EscapeString(app.TimeAgo(m.CreatedAt)) +
+			`</span></span>` +
+			`<span class="peek-line"><span class="peek-who">` +
+			html.EscapeString(trimTo(senderOf(m), 40)) + `</span></span></a>`)
 	}
 	b.WriteString(`<a class="peek-more" href="/inbox">Go to inbox &rarr;</a>`)
 	b.WriteString(`</div>` + previewCSS)
 	return b.String()
+}
+
+// senderOf is who a message came from.
+func senderOf(m *mail.Message) string {
+	if s := strings.TrimSpace(m.From); s != "" {
+		return s
+	}
+	return "Unknown"
 }
 
 // trimTo shortens text to fit a line, on a word where it can.
@@ -114,6 +116,7 @@ const previewCSS = `<style>
 .peek-when{font-size:11px;color:#bbb;margin-left:auto;white-space:nowrap;flex:none}
 .peek-line{display:block;font-size:13px;color:#888;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .peek-who{color:#aaa}
+.peek-new .peek-title{font-weight:600;color:#000}
 .peek-more{display:inline-block;margin-top:9px;font-size:13px;color:#555;text-decoration:none}
 .peek-more:hover{color:#000}
 </style>`

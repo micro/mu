@@ -174,7 +174,8 @@ func authRequired() map[string]bool {
 		"/api/v1/":    false,
 		"/agent":      false, // Redirects to the named page; auth checked in handler
 		"/agent/":     false, // /agent/<name> — one agent's page; auth checked in handler
-		"/inbox":      false, // The conversation and the list of them; auth checked in handler
+		"/inbox":      true,  // The mailbox — yours, so it needs a session
+		"/inbox/":     true,  // One alias's mail
 		"/setup":      false, // First-run setup (open only until an admin exists)
 		"/developers": false, // Legacy alias → /tools (public)
 	}
@@ -405,7 +406,13 @@ func registerRoutes() {
 	// /agent still answers. A GET is redirected, because links to it exist; a
 	// POST is the chat asking a question and is handled here, because moving
 	// that is a change to the component every page embeds and it can follow.
-	http.HandleFunc("/inbox", agent.Handler)
+	// The inbox is the mailbox. It was agent.Handler — the chat — which is why
+	// ordinary mail never appeared on the page called Inbox; the chat is
+	// /agent/<name> now. See DIRECTION §8.
+	http.HandleFunc("/inbox", inbox.Handler)
+	// /inbox/<box> — one alias's mail. An alias is a mailbox: asim+research@
+	// goes to the research agent, so what arrives there is that agent's mail.
+	http.HandleFunc("/inbox/", inbox.Handler)
 	// /agent — the chat with no agent named. A GET goes to the one it is about,
 	// which is /agent/<name>: an agent is a place, and a place has an address
 	// rather than a query parameter. See agent/slug.go and DIRECTION §8.
