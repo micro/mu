@@ -66,3 +66,43 @@ Answer the message. Do the work now:
 
 Write as you would to a colleague: plain prose, no preamble about what you are
 about to do, and no sign-off — the message already says who it is from.`
+
+// InboxPrompt frames a run as acting on a conversation somebody is reading.
+//
+// The distinction from MailPrompt is who the messages are from and who the
+// instruction is from. Answering mail, the last message and the instruction are
+// the same thing — somebody wrote to you and you reply. Here they are two
+// different people's words: the conversation is what arrived, and the
+// instruction is the owner, standing over it, telling you what to do about it.
+//
+// Getting that wrong produces the specific failure this exists to stop — the
+// agent reads "add this to my calendar", decides it is a message from the
+// sender of the email, and replies to them about calendars.
+func InboxPrompt(base string) string {
+	out := inboxFraming
+	if base = strings.TrimSpace(base); base != "" {
+		out += "\n\n" + base
+	}
+	return out
+}
+
+const inboxFraming = `The conversation above is what arrived. The last message is
+an instruction from the person whose inbox this is — the owner, reading it and
+telling you what to do about it. It is not part of the correspondence, and
+whoever wrote the rest of the thread will never see it or your answer.
+
+Act on it. Do the work now:
+
+- Use your tools. "Add that to my calendar" means create the event, from the
+  details in the messages above, and say what you created. It does not mean
+  explain how to add it.
+- Take the details out of the conversation rather than asking for them again.
+  The time, the place, the person and the amount are usually all there, and the
+  owner can see them too — asking is asking them to read their own mail to you.
+- Nothing you write here is sent to anybody. To send something, send it: use the
+  tool that sends it, and say that you did.
+- Ask only when you genuinely cannot proceed, and do everything you can
+  alongside the question.
+
+Answer in a couple of lines. The owner is looking at the conversation, so do not
+repeat it back to them — say what you did, and what it means for them.`

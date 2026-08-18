@@ -42,6 +42,7 @@ import (
 	"mu/internal/quota"
 	"mu/internal/service"
 	"mu/internal/settings"
+	"mu/internal/thread"
 	"mu/internal/user"
 	"mu/internal/x402"
 	"mu/service/apps"
@@ -283,6 +284,28 @@ func wireHooks() {
 	// depend on them. See inbox/doc.go.
 	inbox.AgentName = agent.NameOf
 	inbox.Address = mail.SharedAgentAddress
+
+	// The agent, on the conversation somebody is reading. The same entry point
+	// every client uses — what is different is that the conversation already
+	// exists and the caller is holding it, which is AskRequest.On, and that the
+	// last message is an instruction about the thread rather than part of it,
+	// which is InboxPrompt.
+	inbox.Act = func(accountID, threadID, ask string) error {
+		th := thread.Get(accountID, threadID)
+		if th == nil {
+			return fmt.Errorf("no conversation with that id")
+		}
+		_, err := agent.Ask(agent.AskRequest{
+			Account: accountID,
+			Client:  th.Client,
+			On:      threadID,
+			Text:    ask,
+			Agent:   th.Agent,
+			System:  agent.InboxPrompt(""),
+			Trigger: "asked in the inbox",
+		})
+		return err
+	}
 
 	// The rail lists your things. Your mailboxes and your agents are yours,
 	// there are a handful, and they are what you move between — so they sit

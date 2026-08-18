@@ -320,6 +320,10 @@ func answerMail(m mail.InboundMail) {
 		deliver(res.Flow, prompt, "I could not answer that one. Try again, or ask a different way.")
 		return
 	}
+	// Charged now the run has happened. CheckQuota above only asks whether it
+	// can be afforded — nothing here consumed it, so every agent run started by
+	// mail was free, which is the one door somebody else can push.
+	quota.ConsumeQuota(m.Owner, quota.OpAgentQuery) //nolint:errcheck
 	if strings.TrimSpace(answer) == "" {
 		// Distinct from the error above, because it is a different
 		// fact: the run finished and produced nothing. Silence would

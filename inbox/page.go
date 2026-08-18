@@ -56,6 +56,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		app.RedirectToLogin(w, r)
 		return
 	}
+	// An instruction about the conversation being read. POST here rather than at
+	// a path of its own, because /inbox/<box> is a mailbox name and /inbox/act
+	// would be one an account could have.
+	if r.Method == http.MethodPost {
+		action(w, r, acc.ID)
+		return
+	}
 	if id := r.URL.Query().Get("id"); id != "" {
 		conversation(w, r, acc.ID, id)
 		return
@@ -175,7 +182,9 @@ func conversation(w http.ResponseWriter, r *http.Request, accountID, id string) 
 	b.WriteString(`<div class="ib">`)
 	b.WriteString(`<p class="ib-back">` + app.TextLink("← Inbox", "/inbox") + `</p>`)
 	b.WriteString(ConversationView(accountID, t))
-	b.WriteString(`</div>` + inboxCSS)
+	// The agent, on the thing you are reading. See act.go.
+	b.WriteString(askBox(r, t.ID))
+	b.WriteString(`</div>` + inboxCSS + askCSS)
 
 	app.Respond(w, r, app.Response{Title: subject, Description: "A conversation", HTML: b.String()})
 }

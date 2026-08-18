@@ -26,11 +26,17 @@ package agent
 //            Assembled fresh each time, never stored.
 
 import (
+	"errors"
 	"strings"
 
 	"mu/internal/safety"
 	"mu/internal/thread"
 )
+
+// errNoConversation is a caller naming a conversation that is not theirs, or is
+// not there. Not "forbidden": scoped by account, somebody else's id is not a
+// thing that exists here.
+var errNoConversation = errors.New("no conversation with that id")
 
 // AskRequest is one message arriving from a client.
 type AskRequest struct {
@@ -46,7 +52,16 @@ type AskRequest struct {
 	// Not "session", which already means the chain of turns itself, an SMTP
 	// connection, and a login.
 	Thread string
-	Text   string
+	// On names a conversation in the record that the caller already has, by id.
+	// Set it and Thread and Ref are not consulted — there is nothing to find.
+	//
+	// For a surface that is looking at a conversation rather than receiving a
+	// message on one: the inbox, where somebody reads an email and tells the
+	// agent to do something about it. Without this such a caller has to
+	// reconstruct the client's own key for a thread it is holding a pointer to,
+	// and get it right, which is how a second way of writing the record starts.
+	On   string
+	Text string
 	// Public skips private context — a group chat is not a DM.
 	Public bool
 	// Agent names one when the client already decided: a slash command, or
@@ -128,11 +143,21 @@ func Ask(r AskRequest) (Answer, error) {
 	// beats "the last thing on this thread" when somebody answers a message
 	// from last week.
 	var th *thread.Thread
-	if r.Ref != "" {
-		th = thread.ByRef(r.Account, r.Ref)
-	}
-	if th == nil {
-		th = thread.Open(r.Account, r.Client, r.Thread)
+	switch {
+	case r.On != "":
+		// The caller is holding it. Scoped to the account by Get, so an id from
+		// somewhere else is not a conversation.
+		th = thread.Get(r.Account, r.On)
+		if th == nil {
+			return Answer{}, errNoConversation
+		}
+	default:
+		if r.Ref != "" {
+			th = thread.ByRef(r.Account, r.Ref)
+		}
+		if th == nil {
+			th = thread.Open(r.Account, r.Client, r.Thread)
+		}
 	}
 	// Who the conversation is with, so a surface that has an agent selected can
 	// show that agent's conversations rather than all of them or none.

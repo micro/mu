@@ -417,9 +417,16 @@ func TestPlainCredentials(t *testing.T) {
 func TestAClientCanReadItsMail(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 
-	acc := &auth.Account{ID: "imap-live", Name: "reader", Created: time.Now()}
+	// Created if it is not there. Tests in this package share the account store
+	// with whatever ran before them, so insisting on a fresh one fails on the
+	// second run rather than proving anything.
+	acc := &auth.Account{ID: "imap-live", Name: "imapreader", Created: time.Now()}
 	if err := auth.Create(acc); err != nil {
-		t.Fatal(err)
+		if have, err := auth.GetAccount(acc.ID); err == nil {
+			acc = have
+		} else {
+			t.Fatal(err)
+		}
 	}
 	_, token, err := auth.CreateToken(acc.ID, "mail client", nil, time.Time{})
 	if err != nil {
@@ -428,10 +435,10 @@ func TestAClientCanReadItsMail(t *testing.T) {
 
 	mutex.Lock()
 	messages = []*Message{
-		{ID: "1", ToID: acc.ID, From: "a@example.com", To: "reader@micro.mu",
+		{ID: "1", ToID: acc.ID, From: "a@example.com", To: "imapreader@micro.mu",
 			Subject: "Invoice 4021", Body: "Attached is this month's invoice.",
 			MessageID: "<inv@example.com>", CreatedAt: time.Now().Add(-2 * time.Hour)},
-		{ID: "2", ToID: acc.ID, From: "b@example.com", To: "reader+research@micro.mu",
+		{ID: "2", ToID: acc.ID, From: "b@example.com", To: "imapreader+research@micro.mu",
 			Tag: "research", Subject: "Three papers", Body: "All on retrieval.",
 			CreatedAt: time.Now().Add(-time.Hour)},
 	}
@@ -439,7 +446,7 @@ func TestAClientCanReadItsMail(t *testing.T) {
 	t.Cleanup(func() { mutex.Lock(); messages = nil; mutex.Unlock() })
 
 	c := dial(t)
-	c.ok("LOGIN reader " + token)
+	c.ok("LOGIN " + acc.Name + " " + token)
 
 	folders := joined(c.ok(`LIST "" *`))
 	for _, want := range []string{`"INBOX"`, `"INBOX/research"`, `"Junk"`} {

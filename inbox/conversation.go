@@ -82,10 +82,14 @@ func ConversationView(accountID string, t *thread.Thread) string {
 		b.WriteString(messageBlock(accountID, t, m))
 	}
 
+	// Where a reply goes, which is not this page.
+	//
+	// Worth saying now that there is a box below it: the box talks to the agent
+	// about the conversation, and replying to whoever wrote in is a different
+	// act that happens where the conversation is.
 	b.WriteString(`<p class="els-note">This happened on ` +
-		html.EscapeString(app.ClientName(t.Client)) + `, so it carries on there — reply to it the way ` +
-		`it arrived and the agent answers in the same thread. ` +
-		app.Link("Start a new chat here", "/inbox") + `</p>`)
+		html.EscapeString(app.ClientName(t.Client)) + `, so a reply carries on there — answer it ` +
+		`the way it arrived and the agent picks it up in the same thread.</p>`)
 	b.WriteString(`</div>` + conversationCSS)
 	return b.String()
 }
