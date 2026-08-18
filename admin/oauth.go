@@ -48,8 +48,12 @@ func OAuthHandler(w http.ResponseWriter, r *http.Request) {
 		`itself at <code>/oauth/register</code> without signing in — that is what the ` +
 		`protocol asks for — so most of these belong to nobody. A client registered from ` +
 		`somebody's <a href="/token">token page</a> carries their account, and only they ` +
-		`can remove it. Removing one here stops that client from completing a sign-in; ` +
-		`it will register again next time it connects.</p>`)
+		`can remove it. Removing one here stops it signing anybody in until it registers ` +
+		`again, which it will do the next time it connects.</p>`)
+	b.WriteString(`<p class="text-muted text-sm">A code is only ever sent to an address ` +
+		`the client registered, matched exactly — the port aside, for loopback. The ` +
+		`addresses each one gave are below, so a client that stops working after this ` +
+		`can be told apart from one that never registered the address it is asking for.</p>`)
 
 	suffix := "s"
 	if len(clients) == 1 {
@@ -57,7 +61,8 @@ func OAuthHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	fmt.Fprintf(&b, `<p class="text-muted text-sm">%d client%s.</p>`, len(clients), suffix)
 	b.WriteString(`<table class="admin-table"><thead><tr><th>Name</th><th>Client ID</th>` +
-		`<th>Owner</th><th class="created-col">Created</th><th class="center"></th></tr></thead><tbody>`)
+		`<th>Redirects to</th><th>Owner</th><th class="created-col">Created</th>` +
+		`<th class="center"></th></tr></thead><tbody>`)
 
 	for _, c := range clients {
 		owner := `<span class="text-muted">self-registered</span>`
@@ -68,17 +73,25 @@ func OAuthHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			owner = html.EscapeString(who)
 		}
+		where := `<span class="text-muted">none</span>`
+		if len(c.RedirectURIs) > 0 {
+			var uris []string
+			for _, u := range c.RedirectURIs {
+				uris = append(uris, `<code style="font-size:11px">`+html.EscapeString(u)+`</code>`)
+			}
+			where = strings.Join(uris, "<br>")
+		}
 		fmt.Fprintf(&b, `<tr><td>%s</td><td><code style="font-size:11px">%s</code></td>`+
-			`<td>%s</td><td class="created-col">%s</td><td class="center">`+
+			`<td>%s</td><td>%s</td><td class="created-col">%s</td><td class="center">`+
 			`<form method="POST" action="/admin/oauth" style="display:inline" `+
 			`onsubmit="return confirm('Remove this client?')">`+
 			`<input type="hidden" name="client_id" value="%s">`+
 			`<button type="submit" style="font-size:13px">Remove</button></form></td></tr>`,
-			html.EscapeString(c.Name), html.EscapeString(c.ClientID), owner,
+			html.EscapeString(c.Name), html.EscapeString(c.ClientID), where, owner,
 			c.CreatedAt.Format("2006-01-02"), html.EscapeString(c.ClientID))
 	}
 	if len(clients) == 0 {
-		b.WriteString(`<tr><td colspan="5" class="center text-muted">Nothing registered.</td></tr>`)
+		b.WriteString(`<tr><td colspan="6" class="center text-muted">Nothing registered.</td></tr>`)
 	}
 	b.WriteString(`</tbody></table>`)
 

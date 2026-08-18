@@ -297,6 +297,22 @@ func OAuthRegisterHandler(w http.ResponseWriter, r *http.Request) {
 	if len(req.RedirectURIs) == 0 {
 		req.RedirectURIs = []string{"http://localhost:0/callback"}
 	}
+	// Localhost or HTTPS, which is what the MCP authorization spec requires.
+	// An http:// address anywhere else is an authorization code travelling in
+	// clear text, and accepting one now means enforcing it later would lock the
+	// client out — better to refuse it while it is still the client's problem.
+	for _, uri := range req.RedirectURIs {
+		if !RegisterableRedirect(uri) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(400)
+			_ = json.NewEncoder(w).Encode(map[string]string{
+				"error": "invalid_redirect_uri",
+				"error_description": "redirect_uris must be https, or http on a " +
+					"loopback address: " + uri,
+			})
+			return
+		}
+	}
 
 	// No owner: dynamic registration is anonymous by specification, so there is
 	// nobody to attribute this to. That is exactly why it must not appear on
@@ -389,6 +405,16 @@ func OAuthAuthorizeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Where the code may be sent, decided here rather than taken from the
+	// query string. This branch below issues one immediately to anybody who
+	// already has a session, so an unchecked redirect_uri meant a single click
+	// on a crafted link handed over that account's code. See oauth_redirect.go.
+	redirectURI, err := RedirectFor(clientID, redirectURI)
+	if err != nil {
+		http.Error(w, err.Error(), 400)
+		return
+	}
+
 	// Check if already logged in
 	sess, _ := TrySession(r)
 	if sess != nil {
@@ -423,8 +449,17 @@ func OAuthAuthorizePostHandler(w http.ResponseWriter, r *http.Request) {
 	username := r.FormValue("username")
 	password := r.FormValue("password")
 
+	// The same check as the GET, and it has to be here too: this form posts
+	// back whatever hidden fields the page carried, and the page was rendered
+	// from the query string.
+	redirectURI, err := RedirectFor(clientID, redirectURI)
+	if err != nil {
+		http.Error(w, err.Error(), 400)
+		return
+	}
+
 	// Validate credentials
-	_, err := Login(username, password)
+	_, err = Login(username, password)
 	if err != nil {
 		w.Header().Set("Content-Type", "text/html")
 		w.Write([]byte(authorizePage(clientID, redirectURI, state, codeChallenge, codeChallengeMethod,
