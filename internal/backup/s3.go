@@ -93,13 +93,31 @@ func Push() (string, error) {
 		return "", err
 	}
 
-	key := strings.TrimSuffix(strings.TrimSpace(settings.Get("S3_PREFIX")), "/")
-	if key != "" {
-		key += "/"
-	}
-	key += time.Now().UTC().Format("2006-01-02") + ".tar.gz"
+	key := archiveKey(time.Now().UTC())
 
 	return key, put(key, f, size, hex.EncodeToString(sum.Sum(nil)))
+}
+
+// DefaultPrefix is where archives go when nothing says otherwise.
+//
+// Not the root of the bucket, because the bucket is not ours alone:
+// internal/blob reads the same S3_BUCKET for user file storage, so an archive
+// written to the root sits among the files it is supposed to protect. A
+// directory named for what is in it costs nothing and keeps the two apart.
+const DefaultPrefix = "backups"
+
+// archiveKey is where one day's archive goes.
+//
+// S3_PREFIX names a directory inside the bucket and nothing else — the bucket
+// is S3_BUCKET, so repeating it here is what produces micro/micro. Trailing
+// and leading slashes are trimmed for the same reason: "/backups/" and
+// "backups" mean the same thing to a person and different things to S3.
+func archiveKey(at time.Time) string {
+	prefix := strings.Trim(strings.TrimSpace(settings.Get("S3_PREFIX")), "/")
+	if prefix == "" {
+		prefix = DefaultPrefix
+	}
+	return prefix + "/" + at.Format("2006-01-02") + ".tar.gz"
 }
 
 // archive writes the whole instance as a gzipped tar.
@@ -185,9 +203,19 @@ func put(key string, body io.Reader, size int64, payloadHash string) error {
 		}
 	}
 
-	// Path-style against a custom endpoint, virtual-host style against AWS.
+	// Path-style against a custom endpoint, virtual-host style against AWS —
+	// unless the endpoint already names the bucket, which is the form every
+	// provider console puts in front of you. DigitalOcean shows the Space's
+	// endpoint as https://<bucket>.<region>.digitaloceanspaces.com, so pasting
+	// it and also setting S3_BUCKET signed a path of /<bucket>/<key> against a
+	// host that had already resolved the bucket — and the archives landed under
+	// a folder named after the bucket, inside the bucket. Nothing failed; it was
+	// only visible by looking in the console.
+	//
+	// internal/blob builds a path the same way against the same S3_ENDPOINT and
+	// S3_BUCKET, and carries the same check.
 	path := "/" + key
-	if endpoint != "" {
+	if endpoint != "" && !strings.HasPrefix(host, bucket+".") {
 		path = "/" + bucket + "/" + key
 	}
 

@@ -90,6 +90,24 @@ func BackupHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// endpointNote says what the two location settings mean, because the obvious
+// reading of them is wrong in the same way for everybody.
+//
+// A provider console shows a bucket's endpoint with the bucket in it —
+// DigitalOcean's is https://<bucket>.<region>.digitaloceanspaces.com — so the
+// natural thing is to paste that and set S3_BUCKET as well, and then the bucket
+// is named twice. That used to produce a folder named after the bucket, inside
+// the bucket, silently. It is handled now; saying so is cheaper than having
+// somebody discover the layout by browsing it.
+func endpointNote() string {
+	return `<p class="card-desc"><code>S3_ENDPOINT</code> is the region — ` +
+		`<code>https://lon1.digitaloceanspaces.com</code>, not the address with ` +
+		`the bucket in front of it. <code>S3_PREFIX</code> is a directory inside ` +
+		`the bucket and defaults to <code>` + backup.DefaultPrefix + `/</code>; ` +
+		`it is not the bucket again. The bucket is shared with file storage, so ` +
+		`archives live under a directory rather than at the root.</p>`
+}
+
 // offBox says whether anything leaves this machine.
 //
 // Separately from the snapshots, and above them, because they answer different
@@ -105,7 +123,7 @@ func offBox() string {
 			`<a href="/admin/env">Environment</a>, then <code>BACKUP_S3</code>, ` +
 			`and an archive goes out daily — the data, the search index, and the ` +
 			`encryption keys, because a restore without them is an inbox nobody ` +
-			`can read.</p></div>`
+			`can read.</p>` + endpointNote() + `</div>`
 	}
 	at, key, failure := backup.LastPush()
 	var sb strings.Builder

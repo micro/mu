@@ -148,7 +148,18 @@ func (s *s3Store) request(method, key string, body []byte) (*http.Request, error
 	if body != nil {
 		r = bytes.NewReader(body)
 	}
-	escaped := "/" + s.bucket + "/" + escapeKey(key)
+	// Path-style, unless the endpoint already names the bucket.
+	//
+	// Every provider console hands you the bucket-qualified endpoint —
+	// DigitalOcean shows a Space as https://<bucket>.<region>.digitaloceanspaces.com
+	// — so pasting that and also setting S3_BUCKET puts the bucket in the path
+	// of a host that has already resolved it, and every object lands in a folder
+	// named after the bucket, inside the bucket. It does not fail; it is only
+	// visible by looking. internal/backup carries the same check.
+	escaped := "/" + escapeKey(key)
+	if !s.endpointNamesBucket() {
+		escaped = "/" + s.bucket + escaped
+	}
 	req, err := http.NewRequest(method, s.endpoint+escaped, r)
 	if err != nil {
 		return nil, err
@@ -167,6 +178,13 @@ func (s *s3Store) request(method, key string, body []byte) (*http.Request, error
 	// "+" among them — so the escaping has to be ours either way.
 	req.URL.RawPath = escaped
 	return req, nil
+}
+
+// endpointNamesBucket reports whether the endpoint host is already the bucket's
+// own — the virtual-host form, where the path must not repeat it.
+func (s *s3Store) endpointNamesBucket() bool {
+	host := strings.TrimPrefix(strings.TrimPrefix(s.endpoint, "https://"), "http://")
+	return s.bucket != "" && strings.HasPrefix(host, s.bucket+".")
 }
 
 func s3Error(op, key string, resp *http.Response) error {

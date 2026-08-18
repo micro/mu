@@ -231,3 +231,49 @@ func TestEndpointGetsAScheme(t *testing.T) {
 		t.Errorf("endpoint = %q, want an https scheme", s.endpoint)
 	}
 }
+
+// The endpoint a provider console gives you already names the bucket.
+//
+// DigitalOcean shows a Space as https://<bucket>.<region>.digitaloceanspaces.com.
+// Pasting that and also setting S3_BUCKET put the bucket in the path of a host
+// that had already resolved it, so every object landed in a folder named after
+// the bucket, inside the bucket. Nothing failed — it was only visible by looking
+// in the console, which is how it survived.
+func TestABucketQualifiedEndpointIsNotRepeatedInThePath(t *testing.T) {
+	t.Setenv("S3_ENDPOINT", "https://micro.lon1.digitaloceanspaces.com")
+	t.Setenv("S3_BUCKET", "micro")
+	t.Setenv("S3_ACCESS_KEY", "k")
+	t.Setenv("S3_SECRET_KEY", "s")
+
+	s, err := newS3FromSettings()
+	if err != nil {
+		t.Fatal(err)
+	}
+	req, err := s.request("PUT", "files/report.csv", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := req.URL.Path, "/files/report.csv"; got != want {
+		t.Errorf("path = %q, want %q — the host already names the bucket", got, want)
+	}
+}
+
+// The regional endpoint does not, so the path carries it.
+func TestARegionalEndpointKeepsTheBucketInThePath(t *testing.T) {
+	t.Setenv("S3_ENDPOINT", "https://lon1.digitaloceanspaces.com")
+	t.Setenv("S3_BUCKET", "micro")
+	t.Setenv("S3_ACCESS_KEY", "k")
+	t.Setenv("S3_SECRET_KEY", "s")
+
+	s, err := newS3FromSettings()
+	if err != nil {
+		t.Fatal(err)
+	}
+	req, err := s.request("PUT", "files/report.csv", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := req.URL.Path, "/micro/files/report.csv"; got != want {
+		t.Errorf("path = %q, want %q", got, want)
+	}
+}
