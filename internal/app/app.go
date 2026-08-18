@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"mu/internal/auth"
-	"mu/internal/service"
 
 	"github.com/gomarkdown/markdown"
 	"github.com/gomarkdown/markdown/ast"
@@ -352,6 +351,7 @@ var Template = `
           %s
           <a href="/tools"><img src="/tools.svg?` + Version + `"><span class="label">Tools</span></a>
           <a href="/services"><img src="/services.svg?` + Version + `"><span class="label">Services</span></a>
+          %s
           %s
         </div>
         <div class="nav-bottom">
@@ -1021,42 +1021,6 @@ func navOperate(acc *auth.Account) string {
 	return `<a href="/usage"><img src="/usage.svg?` + Version + `"><span class="label">Usage</span></a>`
 }
 
-// navPinned is the reader's own services, under a heading of their own.
-//
-// The sidebar went from nineteen alphabetical services — which put Wallet
-// eighteenth, between Video and Weather — to none of them, because the three
-// levels are what the product is and a list of nineteen buried them. That was
-// right for arriving and wrong for using: somebody who wanted Video reached for
-// the sidebar, found nothing, and had to go to the catalogue and hunt.
-//
-// The way back is not the old list. This one is chosen, so it is short, it is
-// ordered by the person who made it, and it is empty until somebody pins
-// something — which means the view a developer arrives at is unchanged. The
-// group scrolls if it grows; the account group below it does not move, because
-// signing out is not something to scroll for.
-//
-// Nothing is drawn at all when nothing is pinned. An empty heading over an
-// empty list is a worse answer than no heading.
-func navPinned(acc *auth.Account) string {
-	if acc == nil {
-		return ""
-	}
-	pinned := service.Pinned(acc.PinnedServices())
-	if len(pinned) == 0 {
-		return ""
-	}
-
-	var b strings.Builder
-	b.WriteString(`<div class="nav-group"><div class="nav-heading">Services</div>`)
-	for _, s := range pinned {
-		b.WriteString(`<a href="` + htmlpkg.EscapeString(s.Page) + `">` +
-			`<img src="/` + htmlpkg.EscapeString(s.NavIcon()) + `?` + Version + `">` +
-			`<span class="label">` + htmlpkg.EscapeString(s.NavLabel()) + `</span></a>`)
-	}
-	b.WriteString(`</div>`)
-	return b.String()
-}
-
 // navBottom is the account: who you are, the page about you, running the place,
 // and the way out.
 //
@@ -1384,7 +1348,8 @@ func renderShell(lang, title, desc, bodyAttr, body string, acc *auth.Account, pa
 		navAdmin(acc),
 		navMailboxes(account, path),
 		navAgents(account, path),
-		navOperate(acc)+navPinned(acc),
+		navServices(account, path),
+		navOperate(acc),
 		navBottom(acc),
 		title, body, footerFor(acc))
 }

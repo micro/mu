@@ -40,9 +40,17 @@ func Preview(accountID string) string {
 	if accountID == "" {
 		return ""
 	}
-	threads := thread.List(accountID, previewShown)
-	if len(threads) == 0 {
+	// What arrived, the same as the page it previews. It listed every
+	// conversation, so Home showed the chat you had here thirty seconds ago
+	// under a heading that says these are things that turned up while you were
+	// away — see thread.Arrived.
+	all := arrivals(accountID)
+	if len(all) == 0 {
 		return ""
+	}
+	threads := all
+	if len(threads) > previewShown {
+		threads = threads[:previewShown]
 	}
 
 	var b strings.Builder
@@ -53,12 +61,15 @@ func Preview(accountID string) string {
 			title = "Untitled"
 		}
 
-		// Where it happened, when that is not here. A row saying "web" on the
-		// page you are already on is noise; a row saying "Email" is the fact
-		// worth showing, because it happened without you.
-		where := ""
-		if t.Client != thread.WebClient {
-			where = `<span class="peek-where">` + html.EscapeString(app.ClientName(t.Client)) + `</span>`
+		// Which channel carried it. Every row here arrived from somewhere that
+		// is not this page, so the label is always the fact worth showing.
+		where := `<span class="peek-where">` + html.EscapeString(app.ClientName(t.Client)) + `</span>`
+
+		// And whether it is waiting for you, which is most of what a preview on
+		// Home is for — three rows you have already dealt with say nothing.
+		cls := "peek-row"
+		if thread.Unread(t) {
+			cls += " unseen"
 		}
 
 		// The last thing said, so the row is worth reading rather than just
@@ -79,7 +90,7 @@ func Preview(accountID string) string {
 
 		// ?id=, which is what the inbox reads. It said ?session= and the handler
 		// has never looked at that, so every row on Home opened the list.
-		b.WriteString(`<a class="peek-row" href="/inbox?id=` + url.QueryEscape(t.ID) + `">` +
+		b.WriteString(`<a class="` + cls + `" href="/inbox?id=` + url.QueryEscape(t.ID) + `">` +
 			`<span class="peek-head"><span class="peek-title">` + html.EscapeString(trimTo(title, 60)) + `</span>` +
 			where + `<span class="peek-when">` + html.EscapeString(app.TimeAgo(t.Updated)) + `</span></span>` +
 			`<span class="peek-line">` + line + `</span></a>`)
@@ -110,6 +121,8 @@ const previewCSS = `<style>
 .inbox-peek{margin:10px 0 0;border-top:1px solid #eee;padding-top:10px}
 .peek-row{display:block;padding:7px 0;text-decoration:none;color:inherit;border-bottom:1px solid #f4f4f4}
 .peek-row:hover .peek-title{text-decoration:underline}
+.peek-row.unseen .peek-title{font-weight:700}
+.peek-row.unseen .peek-line{color:#666}
 .peek-head{display:flex;align-items:baseline;gap:8px}
 .peek-title{font-size:14px;font-weight:500;color:#111;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .peek-where{border:1px solid #eee;border-radius:999px;padding:1px 7px;font-size:10px;color:#777;white-space:nowrap;flex:none}

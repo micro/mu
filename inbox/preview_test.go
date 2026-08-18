@@ -64,14 +64,18 @@ func TestHomeCarriesOnlyTheMostRecentFew(t *testing.T) {
 
 	for i := 0; i < previewShown*3; i++ {
 		n := strconv.Itoa(i)
-		th := thread.Open(who, thread.WebClient, "chain-"+n)
+		// Mail, not the web page: Home previews what arrived, and a chat you
+		// started here is on /agent — see thread.Arrived.
+		th := thread.Open(who, "mail", "<chain-"+n+"@example.com>")
 		if th == nil {
 			t.Fatal("could not open a conversation")
 		}
-		thread.Add(thread.Message{Thread: th.ID, Account: who, Text: "conversation number " + n})
+		thread.Add(thread.Message{Thread: th.ID, Account: who,
+			Text: "conversation number " + n, From: "them@example.com"})
 	}
 
-	if got := strings.Count(Preview(who), `class="peek-row"`); got != previewShown {
+	// Prefix, not the whole attribute: an unread row carries a second class.
+	if got := strings.Count(Preview(who), `class="peek-row`); got != previewShown {
 		t.Fatalf("Home shows %d conversations, want %d", got, previewShown)
 	}
 }

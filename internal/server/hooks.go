@@ -336,6 +336,41 @@ func wireHooks() {
 	// under their headings in the sidebar rather than behind a page. Tools and
 	// Services stay single entries: that catalogue is the instance's, it runs
 	// to dozens, and it is something you browse. See internal/app/navlist.go.
+	// The catalogue, under the heading that says Services. It sat in a group of
+	// its own further down the rail, under a second heading with the same name,
+	// holding only what somebody had pinned — two headings called Services, one
+	// of them usually empty, while Inbox and Agents had their things underneath
+	// them. See internal/app/navlist.go.
+	//
+	// Pinned first and in the order they were pinned, because that is somebody
+	// saying which of thirty they actually use; the rest alphabetically after.
+	app.NavServices = func(account string) []app.NavItem {
+		acc, err := auth.GetAccount(account)
+		if err != nil || acc == nil {
+			return nil
+		}
+		var out []app.NavItem
+		seen := map[string]bool{}
+		add := func(spec service.Spec) {
+			if spec.Headless() || seen[spec.Name] {
+				return
+			}
+			seen[spec.Name] = true
+			out = append(out, app.NavItem{
+				Label: spec.NavLabel(),
+				Href:  spec.Page,
+				Key:   spec.Name,
+			})
+		}
+		for _, spec := range service.Pinned(acc.PinnedServices()) {
+			add(spec)
+		}
+		for _, spec := range service.Specs() {
+			add(spec)
+		}
+		return out
+	}
+
 	app.NavMailboxes = inbox.Mailboxes
 	app.NavAgents = func(account string) []app.NavItem {
 		var out []app.NavItem

@@ -43,6 +43,8 @@ var (
 	NavMailboxes func(account string) []NavItem
 	// NavAgents is the account's agents.
 	NavAgents func(account string) []NavItem
+	// NavServices is the catalogue, for somebody signed in.
+	NavServices func(account string) []NavItem
 )
 
 // navChildren renders the items under one heading, or nothing at all.
@@ -86,6 +88,40 @@ func navAgents(account, path string) string {
 		return ""
 	}
 	return navChildren(NavAgents(account), strings.TrimPrefix(path, "/agent/"))
+}
+
+// navServices is the Services heading and the catalogue under it.
+//
+// This was the odd one out and it read as unfinished: Inbox and Agents had
+// their things underneath them and Services had a separate group further down
+// the rail, under a second heading also called Services, holding only what
+// somebody had pinned. Two headings with one name, one of them usually empty.
+//
+// So the catalogue goes where it says it is. It is longer than the other two —
+// this is the instance's list rather than yours, and it runs to dozens — which
+// is exactly what nesting is for: indented under a heading it reads as one
+// group you can skim past, where twenty-five entries flush with Home and Inbox
+// would be a table of contents.
+//
+// Signed in only, like the others. A first-time visitor gets the four nouns and
+// nothing else, which is the whole of what the rail is for on the way in.
+//
+// Matched on the path's first segment, because a service's page is its name and
+// its sub-pages are underneath: /news/tech should light News.
+func navServices(account, path string) string {
+	if account == "" || NavServices == nil {
+		return ""
+	}
+	return navChildren(NavServices(account), firstSegment(path))
+}
+
+// firstSegment is the leading path element, without its slash.
+func firstSegment(path string) string {
+	rest := strings.TrimPrefix(path, "/")
+	if i := strings.IndexByte(rest, '/'); i >= 0 {
+		rest = rest[:i]
+	}
+	return rest
 }
 
 // navPath is the path the rail should highlight against, from the request.
