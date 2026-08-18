@@ -341,6 +341,15 @@ func Refs(s string) []string {
 }
 
 // Add records something said, and returns its id.
+//
+// Recording the same message twice records it once. Ref is the client's own
+// identifier — a mail Message-ID — so two callers who both saw the same arrival
+// are describing one event, and the second is answered with the first's id
+// rather than a second line in the conversation. Mail has two such callers on
+// purpose: one writes down that a message was delivered, the other runs the
+// agent that answers it, and neither can be made to depend on the other having
+// gone first. Only Ref carries this — a message with none is only ever recorded
+// by whoever saw it.
 func Add(m Message) string {
 	if m.Thread == "" || m.Account == "" || strings.TrimSpace(m.Text) == "" {
 		return ""
@@ -351,6 +360,13 @@ func Add(m Message) string {
 	t := threads[m.Thread]
 	if t == nil || t.Account != m.Account {
 		return ""
+	}
+	if m.Ref != "" {
+		for _, have := range messages[m.Thread] {
+			if have.Ref == m.Ref {
+				return have.ID
+			}
+		}
 	}
 	if m.ID == "" {
 		m.ID = newID()

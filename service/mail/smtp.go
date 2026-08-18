@@ -446,6 +446,18 @@ func (s *Session) Data(r io.Reader) error {
 	inReplyTo := msg.Header.Get("In-Reply-To")
 	references := msg.Header.Get("References")
 
+	// A message with no id of its own gets one here.
+	//
+	// RFC 5322 says a sender should always write one and a few do not, and every
+	// downstream question keys on it: which stored message this is
+	// (FindMessageByMessageID), which conversation a later reply continues, and
+	// whether a message already in the record is this one. Without it those all
+	// answer "no such thing", so two copies of one mail become two of everything.
+	// Ours is marked so it cannot be mistaken for the sender's.
+	if strings.TrimSpace(messageID) == "" {
+		messageID = fmt.Sprintf("<%d.received@%s>", time.Now().UnixNano(), ConfiguredDomain())
+	}
+
 	// Capture raw headers for View Raw display
 	var rawHeaders strings.Builder
 	// Add a Received header with our server info

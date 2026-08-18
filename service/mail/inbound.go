@@ -40,6 +40,7 @@ type InboundHandler func(InboundMail)
 var (
 	inboundMu       sync.RWMutex
 	inboundHandlers = map[string][]InboundHandler{}
+	deliverHandlers []InboundHandler
 )
 
 // Inbound registers a handler for mail arriving at a local address.
@@ -58,6 +59,41 @@ func Inbound(local string, h InboundHandler) {
 	inboundMu.Lock()
 	inboundHandlers[key] = append(inboundHandlers[key], h)
 	inboundMu.Unlock()
+}
+
+// Delivered registers a handler for every message that lands in a local inbox,
+// whatever address it arrived at and whoever sent it.
+//
+// The difference from Inbound is the whole reason both exist. Inbound asks who
+// may *wake* something — a stranger holding your agent's address must not be
+// able to drive it and spend your credits, so that dispatch is gated on SPF or
+// DKIM and on the sender being somebody this account knows. Delivered asks what
+// *arrived*, which is a question of fact and has no such gate: mail from
+// somebody you have never met is still mail you were sent.
+//
+// Conflating them is how the inbox came to hold only the conversations you had
+// started. Nothing but agent-addressed mail was ever handed on, so nothing but
+// agent-addressed mail was ever written to the record, and /inbox — a page whose
+// whole claim is that things turn up in it — showed an empty list to an account
+// with a full mailbox.
+//
+// Spam is the one exclusion, and it is made here rather than by each handler:
+// it was refused at the door in every sense that matters, and a record full of
+// it is not a record of anything.
+func Delivered(h InboundHandler) {
+	if h == nil {
+		return
+	}
+	inboundMu.Lock()
+	deliverHandlers = append(deliverHandlers, h)
+	inboundMu.Unlock()
+}
+
+// deliveredHandlers returns what is registered for every delivery.
+func deliveredHandlers() []InboundHandler {
+	inboundMu.RLock()
+	defer inboundMu.RUnlock()
+	return append([]InboundHandler(nil), deliverHandlers...)
 }
 
 // handlersFor returns what is registered for a message's address.
@@ -88,10 +124,20 @@ func anyRegistered() bool {
 // Called after the message is saved, so the mail is in the inbox whether or not
 // anything picks it up, and a handler that fails never loses it.
 func deliverInbound(m InboundMail, r wakeRequest) {
+	// What arrived, before and regardless of who may wake what. See Delivered.
+	if !r.IsSpam {
+		dispatch(deliveredHandlers(), m)
+	}
 	if !mayDispatch(r) {
 		return
 	}
-	for _, h := range handlersFor(m) {
+	dispatch(handlersFor(m), m)
+}
+
+// dispatch runs handlers, each on its own goroutine and none able to bring the
+// server down with it.
+func dispatch(handlers []InboundHandler, m InboundMail) {
+	for _, h := range handlers {
 		go func(h InboundHandler) {
 			defer func() {
 				// A handler is somebody else's code. It must not be able to

@@ -63,13 +63,40 @@ func chainKey(m mail.InboundMail) string {
 	return m.To + " " + m.From
 }
 
-// Load registers the agent for mail arriving at an address that names one.
+// Load registers the agent for mail arriving at an address that names one, and
+// the recorder for everything that arrives at all.
 //
 // Two addresses, one handler: you+research@ names one of the account's own
 // agents, agent+news@ names one of this instance's. See agent/platform.go.
+//
+// The recorder is registered separately and answers a different question — see
+// mail.Delivered and record.go.
 func Load() {
+	mail.Delivered(recordDelivery)
 	mail.Inbound(mail.Tagged, answerMail)
 	mail.Inbound(mail.AgentMailbox, answerMail)
+}
+
+// asked is the message as a question: its subject and its text, in the shape
+// the agent is handed and the record keeps.
+//
+// Prose, not the markup somebody's client happened to send it in. A mail
+// composed on a phone arrives as `<div dir="auto">…</div>`, and that was going
+// to the agent as the question and into the record as the conversation's name.
+// Body is what the inbox renders; Text is what was said.
+func asked(m mail.InboundMail) string {
+	out := m.Subject
+	body := strings.TrimSpace(m.Text)
+	if body == "" {
+		body = strings.TrimSpace(m.Body)
+	}
+	if body != "" {
+		if out != "" {
+			out += "\n\n"
+		}
+		out += body
+	}
+	return strings.TrimSpace(out)
 }
 
 // Mail addressed to an agent wakes it, and it answers in the thread.
@@ -228,22 +255,10 @@ func answerMail(m mail.InboundMail) {
 		}
 	}
 
-	// The message as prose, not as the markup somebody's client happened to send
-	// it in. A mail composed on a phone arrives as `<div dir="auto">…</div>`, and
-	// that was going to the agent as the question and into the record as the
-	// conversation's name. Body is what the inbox renders; Text is what was said.
-	prompt := m.Subject
-	body := strings.TrimSpace(m.Text)
-	if body == "" {
-		body = strings.TrimSpace(m.Body)
-	}
-	if body != "" {
-		if prompt != "" {
-			prompt += "\n\n"
-		}
-		prompt += body
-	}
-	if strings.TrimSpace(prompt) == "" {
+	// The message as prose. Exactly what the recorder wrote down, because they
+	// are the same message — see asked.
+	prompt := asked(m)
+	if prompt == "" {
 		return
 	}
 
@@ -285,17 +300,18 @@ func answerMail(m mail.InboundMail) {
 	// anything worth remembering are its business. What is passed is what only
 	// mail knows — which turn this answers, and the ids that will find it again.
 	res, err := agent.Ask(agent.AskRequest{
-		Account:  m.Owner,
-		Client:   Client,
-		Thread:   chainKey(m),
-		Text:     prompt,
-		Agent:    ref,
-		System:   agent.MailPrompt(""),
-		Trigger:  trigger,
-		Ref:      m.InReplyTo + " " + m.References,
-		From:     m.From,
-		FromName: m.FromName,
-		Via:      via,
+		Account:    m.Owner,
+		Client:     Client,
+		Thread:     chainKey(m),
+		Text:       prompt,
+		Agent:      ref,
+		System:     agent.MailPrompt(""),
+		Trigger:    trigger,
+		Ref:        m.InReplyTo + " " + m.References,
+		MessageRef: m.MessageID,
+		From:       m.From,
+		FromName:   m.FromName,
+		Via:        via,
 	})
 	answer := res.Text
 	threadRef = res.Thread

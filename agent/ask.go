@@ -61,7 +61,22 @@ type AskRequest struct {
 	// Ref is what the client says this message answers — mail's In-Reply-To
 	// and References. Where it matches something recorded, that conversation
 	// is continued in preference to whatever is newest on the thread.
+	//
+	// Read only. It is a chain of ids, not one, and it names other messages —
+	// which is why it is not what gets stored against this one. See MessageRef.
 	Ref string
+	// MessageRef is this message's own identifier on the client, where it has
+	// one: mail's Message-ID. Stored against the message, so a later reply
+	// naming it finds this conversation, and so that two callers who both saw
+	// the same arrival record it once — see thread.Add.
+	//
+	// It used to be Ref that was written down, which is a different fact said in
+	// the same field: the ids a message *answers*, stored as the id a message
+	// *is*. Nothing ever matched it — ByRef compares one id at a time and a
+	// References header is several — so mail threaded on the agent's replies
+	// alone, and two answers to one message shared a "ref" that identified
+	// neither.
+	MessageRef string
 	// From is who wrote in, where that is not simply the account: a message
 	// somebody else sent to an address this account owns.
 	From string
@@ -151,7 +166,7 @@ func Ask(r AskRequest) (Answer, error) {
 		opts.System = strings.TrimSpace(opts.System)
 	}
 
-	Said(r.Account, threadID(th), r.Text, r.Ref, r.From)
+	Said(r.Account, threadID(th), r.Text, r.MessageRef, r.From)
 
 	// The one category that is refused wherever it appears, before the model is
 	// asked and before anything is charged.
