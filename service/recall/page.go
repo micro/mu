@@ -58,7 +58,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<div style="max-width:760px">`)
 	b.WriteString(`<p class="lens-lead">Everything you and your agents have said to each other, ` +
 		`wherever you said it — here, by email, on Discord, Telegram or WhatsApp. Search it. ` +
-		`Your conversations as a list, to carry one on, are on ` + app.Link("your inbox", "/inbox") + `</p>`)
+		`Your conversations as a list, to carry one on, are on ` + app.TextLink("your inbox", "/inbox") + `.</p>`)
 
 	b.WriteString(`<form method="GET" action="/recall" class="rc-form">` +
 		`<input class="rc-input" type="search" name="q" placeholder="A word or phrase somebody said" ` +
@@ -76,7 +76,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`<p class="rc-empty">Nothing is shown until you ask for something. ` +
 			`This is the transcript — everything anybody said, whether or not it turned out to ` +
 			`matter. What you asked to be remembered on purpose is in ` +
-			app.Link("Notes", "/notes") + `.</p>`)
+			app.TextLink("Notes", "/notes") + `.</p>`)
 	case len(hits) == 0:
 		b.WriteString(`<p class="rc-empty">Nothing in your history mentions ` +
 			`<strong>` + html.EscapeString(query) + `</strong>.</p>`)

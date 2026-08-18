@@ -103,9 +103,9 @@ func defaultPanel(base string) string {
 	}
 
 	b.WriteString(`<div class="conn-row"><span class="conn-k">Token</span>` +
-		`<span class="conn-v">Your account's. ` + app.Link("Issue one", "/token") +
+		`<span class="conn-v">Your account's. ` + app.TextLink("Issue one", "/token") +
 		` and anything holding it reaches every tool you can — which is why an agent you ` +
-		`hand to somebody else should be ` + app.Link("its own", "/agent/new") +
+		`hand to somebody else should be ` + app.TextLink("its own", "/agent/new") +
 		`, with a scope.</span></div>`)
 
 	b.WriteString(`<h3 class="conn-head">Point a client at it</h3>`)
@@ -188,7 +188,7 @@ func connectPanel(a *Agent, base, csrf string) string {
 			b.WriteString(`<div class="conn-row"><span class="conn-k">Write to it</span>` +
 				`<span class="conn-v"><code>` + html.EscapeString(addr) + `</code><br>` +
 				`<span class="conn-sub">Answers your own verified address and people in ` +
-				app.Link("your contacts", "/contacts") + `. Other mail is filed, not answered.</span>` +
+				app.TextLink("your contacts", "/contacts") + `. Other mail is filed, not answered.</span>` +
 				shared + `</span></div>`)
 		}
 	}
