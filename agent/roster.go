@@ -362,6 +362,31 @@ func For(owner, id string) *Agent {
 	return nil
 }
 
+// NameOf is what to call an agent when all you have is its id.
+//
+// Three places an id can come from, and a caller holding one out of the record
+// has no way to know which: the roster, the store the roster replaced, and this
+// instance's own agents, whose ids are names already. Asking only the first is
+// what put raw ids in front of people — the inbox draws a mailbox per agent, and
+// three of its four boxes were labelled with a uuid.
+//
+// Empty when it resolves to nothing, and that is a real answer rather than a
+// failure: an id that names no agent means the agent is gone. A caller should
+// say nothing about it, not print the id — which is a name for a row in a file,
+// not for anything a person has met.
+func NameOf(owner, id string) string {
+	if strings.TrimSpace(id) == "" {
+		return ""
+	}
+	if a := For(owner, id); a != nil && a.Name != "" {
+		return a.Name
+	}
+	if a := micro.UserAgentFor(owner, id); a != nil && a.Name != "" {
+		return a.Name
+	}
+	return platformName(id)
+}
+
 // Remove deletes an agent and revokes its token.
 //
 // Both, always. An agent removed from the list while its credential kept

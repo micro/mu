@@ -40,11 +40,8 @@ const shown = 25
 const held = 500
 
 // AgentName is what to call the agent a conversation is with, filled in by the
-// agent package because the roster is its own.
-//
-// Nil on a build with no agent wired in, and the id is the fallback: a box
-// named after an identifier is bad, and a box that disappears because a name
-// could not be resolved is worse.
+// agent package because the roster is its own. Empty for an agent that is no
+// longer here — see agentLabel.
 var AgentName func(owner, id string) string
 
 // Address is where mail for this instance's agent arrives, filled in by the
@@ -191,15 +188,21 @@ func boxOfThread(accountID string, t thread.Thread) string {
 	return slugOf(agentLabel(accountID, t.Agent))
 }
 
-// agentLabel is what to call an agent: its name where one has been wired in,
-// and its id otherwise.
+// agentLabel is what to call an agent, and empty when there is nothing to call
+// it.
+//
+// The id used to be the fallback, on the reasoning that a box named badly beats
+// a box that vanishes. That was wrong in both halves. An id that resolves to no
+// agent means the agent has been deleted, so there is no box to lose — the
+// conversations are still in All, which is where they belong once the thing they
+// were with is gone. And what it actually produced was a rail listing
+// "47b6428c-fa8a-4610-a302-45dbc992ad5d" as though that were somewhere to click:
+// three of four mailboxes named after rows in a file.
 func agentLabel(accountID, id string) string {
-	if AgentName != nil {
-		if n := AgentName(accountID, id); n != "" {
-			return n
-		}
+	if AgentName == nil {
+		return ""
 	}
-	return id
+	return strings.TrimSpace(AgentName(accountID, id))
 }
 
 // slugOf is a box's name in a path — lowercase, letters and digits only, the

@@ -77,7 +77,9 @@ func Preview(accountID string) string {
 				html.EscapeString(trimTo(m.Text, previewSnippet))
 		}
 
-		b.WriteString(`<a class="peek-row" href="/inbox?session=` + url.QueryEscape(t.ID) + `">` +
+		// ?id=, which is what the inbox reads. It said ?session= and the handler
+		// has never looked at that, so every row on Home opened the list.
+		b.WriteString(`<a class="peek-row" href="/inbox?id=` + url.QueryEscape(t.ID) + `">` +
 			`<span class="peek-head"><span class="peek-title">` + html.EscapeString(trimTo(title, 60)) + `</span>` +
 			where + `<span class="peek-when">` + html.EscapeString(app.TimeAgo(t.Updated)) + `</span></span>` +
 			`<span class="peek-line">` + line + `</span></a>`)

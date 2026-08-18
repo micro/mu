@@ -281,12 +281,7 @@ func wireHooks() {
 	// record; the roster is the agent's and the mail domain is the mail
 	// service's, and neither is a reason for a page over internal/thread to
 	// depend on them. See inbox/doc.go.
-	inbox.AgentName = func(owner, id string) string {
-		if a := agent.For(owner, id); a != nil {
-			return a.Name
-		}
-		return ""
-	}
+	inbox.AgentName = agent.NameOf
 	inbox.Address = mail.SharedAgentAddress
 
 	// The rail lists your things. Your mailboxes and your agents are yours,
