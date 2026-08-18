@@ -199,6 +199,11 @@ func createDigest() {
 		return
 	}
 
+	// And into the inbox, which is where somebody actually meets it. The blog
+	// post is the public record; this is the thing that turns up whether or not
+	// anybody went looking. See inbox.go.
+	deliver(title, response)
+
 	setSuccess()
 	app.Log("digest", "Daily digest published as blog post: %s", title)
 }
