@@ -175,8 +175,21 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	// The address is half of what a client is. Without it there is nowhere a
 	// code may be sent, and a client registered without one can never complete
 	// a sign-in — which is what every client made on this form used to be.
+	// A list you can type past, not a list you must choose from.
+	//
+	// The address belongs to the client, not to us: a closed set would be a
+	// claim that we know every client's callback, and that claim goes stale on
+	// its own — Cursor moved from cursor:// to a loopback port, and any list
+	// naming the old one would have been confidently wrong for months. What
+	// helps is showing the shape and saving the typing for the two that are
+	// actually common.
 	sb.WriteString(`<div style="margin-bottom:10px"><input type="text" name="redirect_uri" ` +
-		`placeholder="Redirect URL, e.g. https://example.com/callback" style="width:100%;box-sizing:border-box"></div>`)
+		`list="redirect-suggestions" placeholder="Redirect URL, e.g. https://example.com/callback" ` +
+		`style="width:100%;box-sizing:border-box">` +
+		`<datalist id="redirect-suggestions">` +
+		`<option value="http://localhost:0/callback">Command-line or desktop client</option>` +
+		`<option value="https://claude.ai/api/mcp/auth_callback">Claude custom connector</option>` +
+		`</datalist></div>`)
 	sb.WriteString(`<p style="color:#666;font-size:12px;margin:0 0 10px">Where the client receives ` +
 		`its code. Must be https, or http on localhost. Left empty it is ` +
 		`<code>http://localhost:0/callback</code>, which suits a command-line or desktop client.</p>`)
