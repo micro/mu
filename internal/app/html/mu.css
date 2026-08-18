@@ -2804,6 +2804,11 @@ a.highlight {
     min-width: auto;
   }
 
+  /* The corner mark tracks the card's padding, which is smaller here. */
+  .home-left .card-corner, .home-right .card-corner {
+    right: 38px;
+  }
+
   .home-left .card h3 {
     font-size: 14px;
     margin-bottom: 8px;
@@ -5644,9 +5649,21 @@ body.display-mode .card h4 {
 /* A small marker in a card's top-right corner — the next prayer on the Prayer
    card. .card is already position:relative. Empty until filled, so it takes no
    space when there is nothing to show. */
+/* The next prayer, in the corner of its card.
+   It shares that corner with the title's "?", which floats right — so the two
+   sat on top of each other and the time read as nonsense under a circle. The
+   offset is the card's own padding plus the circle (16px and a border either
+   side) plus a gap, so it lands to the left of it rather than under it.
+   Only the prayer card uses this, which is why the offset can assume the "?"
+   is there: it always is. */
 .card-corner {
-  position: absolute; top: 14px; right: 14px; z-index: 1;
-  font-size: 12px; color: #6b7280; font-variant-numeric: tabular-nums;
+  position: absolute;
+  top: 14px;
+  right: calc(var(--item-padding, 16px) + 26px);
+  z-index: 1;
+  font-size: 12px;
+  color: #6b7280;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 .card-corner:empty { display: none; }
