@@ -409,11 +409,17 @@ function fetchW(la,lo){
 		// to somebody who clicked through to check. Mail that arrived and was
 		// answered overnight left Home looking exactly as it had the night
 		// before. See agent.InboxPreview.
+		//
+		// The address line says where to write and nothing else. It used to end
+		// in "Your inbox →" as well, so a screen with the preview on it carried
+		// two links to the same page, one directly above the other, under a list
+		// of the very conversations they led to. The preview's own link is the
+		// way through; when there is no preview there is nothing to go to, and
+		// the sidebar carries Inbox regardless.
 		if viewerID != "" {
 			if addr := mail.SharedAgentAddress(); addr != "" {
 				b.WriteString(`<p class="home-inbox">Or write to it at <code>` +
-					html.EscapeString(addr) + `</code> — from your mail, your phone, anywhere. ` +
-					app.Link("Your inbox", "/inbox") + `</p>`)
+					html.EscapeString(addr) + `</code> — from your mail, your phone, anywhere.</p>`)
 			}
 			b.WriteString(agent.InboxPreview(viewerID))
 		}
