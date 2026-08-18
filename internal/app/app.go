@@ -347,8 +347,10 @@ var Template = `
           <a href="/home"><img src="/home.png?` + Version + `"><span class="label">Home</span></a>
           %s
           <a href="/inbox"><img src="/mail.png?` + Version + `"><span class="label">Inbox</span></a>
-          <a href="/tools"><img src="/tools.svg?` + Version + `"><span class="label">Tools</span></a>
+          %s
           <a href="/agents"><img src="/agent.svg?` + Version + `"><span class="label">Agents</span></a>
+          %s
+          <a href="/tools"><img src="/tools.svg?` + Version + `"><span class="label">Tools</span></a>
           <a href="/services"><img src="/services.svg?` + Version + `"><span class="label">Services</span></a>
           %s
         </div>
@@ -910,7 +912,9 @@ func RenderHTMLForRequest(title, desc, html string, r *http.Request) string {
 		html = banner + html
 	}
 	_, acc := auth.TrySession(r)
-	out := RenderHTMLWithLangAndAuth(title, desc, html, lang, acc)
+	// The path, so the rail can show which mailbox or agent you are in. Only
+	// this render has a request to read it from.
+	out := renderShell(lang, title, desc, "", html, acc, navPath(r.URL.Path))
 	return out
 }
 
@@ -1088,7 +1092,7 @@ func RenderHTMLWithLangAndAuth(title, desc, html, lang string, acc *auth.Account
 		lang = "en"
 	}
 	title, desc = escapeMeta(title), escapeMeta(desc)
-	return (fmt.Sprintf(Template, lang, title, desc, "", headBalance(acc), navAdmin(acc), navOperate(acc)+navPinned(acc), navBottom(acc), title, html, footerFor(acc)))
+	return renderShell(lang, title, desc, "", html, acc, "")
 }
 
 // escapeMeta escapes a page title or description. Handlers pass these through
@@ -1111,7 +1115,7 @@ func RenderHTMLWithLangAndBody(title, desc, html, lang, bodyAttr string, acc *au
 	if banner := creditsBannerFor(acc, ""); banner != "" {
 		html = banner + html
 	}
-	return (fmt.Sprintf(Template, lang, title, desc, bodyAttr, headBalance(acc), navAdmin(acc), navOperate(acc)+navPinned(acc), navBottom(acc), title, html, footerFor(acc)))
+	return renderShell(lang, title, desc, bodyAttr, html, acc, "")
 }
 
 // RenderString renders a markdown string as html
@@ -1123,7 +1127,7 @@ func RenderString(v string) string {
 func RenderTemplate(title string, desc, text string) string {
 	body := RenderString(text)
 	title, desc = escapeMeta(title), escapeMeta(desc)
-	return (fmt.Sprintf(Template, "en", title, desc, "", headBalance(nil), navAdmin(nil), navOperate(nil), navBottom(nil), title, body, footerFor(nil)))
+	return renderShell("en", title, desc, "", body, nil, "")
 }
 
 func ServeHTML(html string) http.Handler {
@@ -1361,4 +1365,26 @@ func ValidEmail(s string) bool {
 		return false
 	}
 	return true
+}
+
+// renderShell fills the app shell.
+//
+// One place, because the Template gained the lists under Inbox and Agents and
+// three call sites each filling eleven positional slots is a shape where adding
+// one silently shifts the rest. path is what the rail highlights against, and
+// is empty where the caller has no request to read it from.
+func renderShell(lang, title, desc, bodyAttr, body string, acc *auth.Account, path string) string {
+	account := ""
+	if acc != nil {
+		account = acc.ID
+	}
+	return fmt.Sprintf(Template,
+		lang, title, desc, bodyAttr,
+		headBalance(acc),
+		navAdmin(acc),
+		navMailboxes(account, path),
+		navAgents(account, path),
+		navOperate(acc)+navPinned(acc),
+		navBottom(acc),
+		title, body, footerFor(acc))
 }

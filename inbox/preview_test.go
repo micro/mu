@@ -5,65 +5,53 @@ import (
 	"strings"
 	"testing"
 
-	"mu/service/mail"
+	"mu/internal/thread"
 )
 
-// deliver puts a message in an account's mailbox and returns it.
-func deliver(t *testing.T, to, from, subject, tag string) *mail.Message {
-	t.Helper()
-	if err := mail.SendMessageTo(from, "", to, to, tag, subject,
-		"the body of "+subject, "", "", false, 0, nil, "", "", nil); err != nil {
-		t.Skipf("cannot deliver in this environment: %v", err)
-	}
-	msgs := mail.ListMessages(to, 200)
-	for _, m := range msgs {
-		if m.Subject == subject {
-			return m
-		}
-	}
-	t.Fatalf("delivered %q but it is not in the mailbox", subject)
-	return nil
-}
-
-// Home shows what is in the inbox, and the inbox is mail.
+// Home shows what is in the inbox.
 //
-// The block used to list agent conversations under a heading naming a mail
-// address — the same confusion the page itself had. Mail that arrived and was
-// answered overnight left Home looking exactly as it had the night before,
-// which is the one thing this block exists to prevent.
-func TestHomeShowsWhatArrived(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
-
+// The link on its own was a word pointing at a page, so the product's whole
+// claim — that the agent is reachable and answers whether or not you have this
+// open — was visible only to somebody who clicked through to check. Mail that
+// arrived and was answered overnight left Home looking exactly as it had the
+// night before.
+func TestHomeShowsWhatIsInTheInbox(t *testing.T) {
 	const who = "preview-owner"
-	m := deliver(t, who, "bob@example.com", "Invoice for March", "")
+
+	byMail := thread.Open(who, "mail", "<invoice@example.com>")
+	if byMail == nil {
+		t.Fatal("could not open a conversation")
+	}
+	thread.Add(thread.Message{Thread: byMail.ID, Account: who, From: "bob@example.com",
+		Text: "Could you send the invoice for March"})
+	thread.Add(thread.Message{Thread: byMail.ID, Account: who, Role: thread.RoleAgent,
+		Text: "Sent it over — the total is 420."})
 
 	out := Preview(who)
 
-	if !strings.Contains(out, "Invoice for March") {
-		t.Fatalf("the message is not on the page:\n%s", out)
+	if !strings.Contains(out, "invoice for March") {
+		t.Fatalf("the conversation is not on the page:\n%s", out)
 	}
-	if !strings.Contains(out, "id="+m.ID) {
-		t.Error("the row does not open the message")
+	if !strings.Contains(out, "session="+byMail.ID) && !strings.Contains(out, "id="+byMail.ID) {
+		t.Error("the row does not open the conversation")
 	}
-	if !strings.Contains(out, "bob@example.com") {
-		t.Errorf("the sender is missing:\n%s", out)
+	// Where it happened, because it happened without you.
+	if !strings.Contains(out, "Email") {
+		t.Error("a conversation that arrived by mail does not say so")
+	}
+	if !strings.Contains(out, "the total is 420") {
+		t.Errorf("the latest message is missing:\n%s", out)
 	}
 	if !strings.Contains(out, `href="/inbox"`) {
 		t.Error("no way through to the inbox itself")
-	}
-	// Unread is the fact worth carrying: it is why you would look.
-	if !strings.Contains(out, "peek-new") {
-		t.Error("an unopened message is not marked as one")
 	}
 }
 
 // An empty inbox shows nothing here. An empty list is worse than the address
 // line on its own, which at least says what to do about it.
 func TestAnEmptyInboxAddsNothingToHome(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
-
 	if out := Preview("nobody-has-written-to-this-account"); out != "" {
-		t.Errorf("an account with no mail gets: %s", out)
+		t.Errorf("an account with no conversations gets: %s", out)
 	}
 	if out := Preview(""); out != "" {
 		t.Errorf("a signed-out visitor gets: %s", out)
@@ -72,15 +60,19 @@ func TestAnEmptyInboxAddsNothingToHome(t *testing.T) {
 
 // Home carries a few, not the inbox.
 func TestHomeCarriesOnlyTheMostRecentFew(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
-
 	const who = "preview-busy-owner"
+
 	for i := 0; i < previewShown*3; i++ {
-		deliver(t, who, "sender@example.com", "Message "+strconv.Itoa(i), "")
+		n := strconv.Itoa(i)
+		th := thread.Open(who, thread.WebClient, "chain-"+n)
+		if th == nil {
+			t.Fatal("could not open a conversation")
+		}
+		thread.Add(thread.Message{Thread: th.ID, Account: who, Text: "conversation number " + n})
 	}
 
-	if got := strings.Count(Preview(who), `class="peek-row`); got != previewShown {
-		t.Fatalf("Home shows %d messages, want %d", got, previewShown)
+	if got := strings.Count(Preview(who), `class="peek-row"`); got != previewShown {
+		t.Fatalf("Home shows %d conversations, want %d", got, previewShown)
 	}
 }
 

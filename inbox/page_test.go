@@ -4,41 +4,76 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"mu/internal/thread"
 )
 
-// An alias is a mailbox.
+// said starts a conversation with an agent and puts a line in it.
+func said(t *testing.T, owner, client, key, agentID, text string) *thread.Thread {
+	t.Helper()
+	th := thread.Open(owner, client, key)
+	if th == nil {
+		t.Fatal("could not open a conversation")
+	}
+	if agentID != "" {
+		thread.SetAgent(owner, th.ID, agentID)
+	}
+	thread.Add(thread.Message{Thread: th.ID, Account: owner, Text: text})
+	return th
+}
+
+// The inbox lists conversations, whichever client each arrived on.
 //
-// asim+research@ goes to the research agent, so what arrives there is that
-// agent's mail and not a slice of yours — the same shape as a mailbox per
-// client, arrived at from the other direction. The tag rides on the message
-// already, so nothing new is stored to make this true.
-func TestEachAliasIsItsOwnMailbox(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+// That is what makes it one inbox rather than five: an email chain, a WhatsApp
+// exchange and a chat on this page are the same kind of thing in the record.
+func TestTheInboxListsEveryConversation(t *testing.T) {
+	const who = "inbox-lister"
+	said(t, who, "mail", "<a@example.com>", "", "about the invoice")
+	said(t, who, "whatsapp", "44700900000", "", "are you around")
 
-	const who = "boxes-owner"
-	deliver(t, who, "a@example.com", "About the research", "research")
-	deliver(t, who, "b@example.com", "Something for the briefer", "briefer")
-	deliver(t, who, "c@example.com", "Just for you", "")
-
-	all := listBody(t, "/inbox", who)
-	for _, want := range []string{"About the research", "Something for the briefer", "Just for you"} {
-		if !strings.Contains(all, want) {
-			t.Errorf("the whole inbox is missing %q", want)
+	body := listBody(t, "/inbox", who, "")
+	for _, want := range []string{"about the invoice", "are you around"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the inbox is missing %q", want)
 		}
 	}
+	// Where it happened, when that is not here.
+	if !strings.Contains(body, "Email") || !strings.Contains(body, "WhatsApp") {
+		t.Errorf("the rows do not say where they happened:\n%s", body)
+	}
+}
 
-	// The switcher offers every box that has something in it.
+// An agent is a mailbox. What arrives for the research agent is its mail, not a
+// slice of yours, so it gets a box of its own with a way in and out.
+func TestEachAgentIsItsOwnMailbox(t *testing.T) {
+	const who = "inbox-boxes"
+	AgentName = func(owner, id string) string {
+		switch id {
+		case "a1":
+			return "Research"
+		case "a2":
+			return "Briefer"
+		}
+		return ""
+	}
+	t.Cleanup(func() { AgentName = nil })
+
+	said(t, who, "mail", "<r@example.com>", "a1", "found three papers")
+	said(t, who, "mail", "<b@example.com>", "a2", "your morning brief")
+	said(t, who, thread.WebClient, "plain", "", "just chatting")
+
+	all := listBody(t, "/inbox", who, "")
 	for _, want := range []string{`href="/inbox/research"`, `href="/inbox/briefer"`, `href="/inbox"`} {
 		if !strings.Contains(all, want) {
 			t.Errorf("no way to reach %s", want)
 		}
 	}
 
-	one := listBody(t, "/inbox/research", who)
-	if !strings.Contains(one, "About the research") {
-		t.Error("the research box does not hold its own mail")
+	one := listBody(t, "/inbox/research", who, "research")
+	if !strings.Contains(one, "found three papers") {
+		t.Error("the research box does not hold its own conversation")
 	}
-	for _, other := range []string{"Something for the briefer", "Just for you"} {
+	for _, other := range []string{"your morning brief", "just chatting"} {
 		if strings.Contains(one, other) {
 			t.Errorf("the research box also shows %q", other)
 		}
@@ -46,39 +81,36 @@ func TestEachAliasIsItsOwnMailbox(t *testing.T) {
 }
 
 // A switcher with one destination is a control that cannot do anything.
-func TestNoSwitcherWhenThereIsOnlyTheOneMailbox(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
-
-	const who = "one-box-owner"
-	deliver(t, who, "a@example.com", "Ordinary mail", "")
+func TestNoSwitcherWhenNothingHasAnAgent(t *testing.T) {
+	const who = "inbox-one-box"
+	said(t, who, thread.WebClient, "only", "", "hello")
 
 	// The markup, not the stylesheet — inboxCSS always carries the rule.
-	if body := listBody(t, "/inbox", who); strings.Contains(body, `<div class="ib-boxes">`) {
-		t.Error("an account with no aliases is offered a mailbox switcher")
+	if body := listBody(t, "/inbox", who, ""); strings.Contains(body, `<div class="ib-boxes">`) {
+		t.Error("an account with no agent conversations is offered a switcher")
 	}
 }
 
-// An empty box says so, rather than saying the inbox is empty — the narrower
-// fact is the true one, and the address is already on the page above it.
+// An empty box says which box is empty. The narrower fact is the true one, and
+// the address is already on the page above it.
 func TestAnEmptyBoxSaysWhichBoxIsEmpty(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	const who = "inbox-empty-box"
+	// A distinctive phrase: the page shell has prose in it, and a common
+	// word will match a comment rather than a row.
+	said(t, who, "mail", "<x@example.com>", "", "zarquon the invoice")
 
-	const who = "empty-box-owner"
-	deliver(t, who, "a@example.com", "About the research", "research")
-
-	body := listBody(t, "/inbox/briefer", who)
+	body := listBody(t, "/inbox/briefer", who, "briefer")
 	if !strings.Contains(body, "briefer") {
 		t.Errorf("an empty box does not name itself:\n%s", body)
 	}
-	if strings.Contains(body, "About the research") {
-		t.Error("an empty box is showing another box's mail")
+	if strings.Contains(body, "zarquon") {
+		t.Error("an empty box is showing another box's conversation")
 	}
 }
 
-// listBody renders the inbox for an account without going through auth.
-func listBody(t *testing.T, path, accountID string) string {
+func listBody(t *testing.T, path, accountID, box string) string {
 	t.Helper()
 	w := httptest.NewRecorder()
-	list(w, httptest.NewRequest("GET", path, nil), accountID, boxOf(httptest.NewRequest("GET", path, nil)))
+	list(w, httptest.NewRequest("GET", path, nil), accountID, box)
 	return w.Body.String()
 }

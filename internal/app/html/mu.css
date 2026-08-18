@@ -471,7 +471,37 @@ td {
   display: none;
 }
 
-#nav-container > .nav-bottom {
+#nav-container > /* The lists under Inbox and Agents. Your mailboxes and your agents belong in
+   the rail — see internal/app/navlist.go — and they are indented under the
+   heading they belong to rather than sitting flush with it, so the rail reads
+   as two levels and not as ten equal destinations. */
+.nav-kids {
+  display: flex;
+  flex-direction: column;
+  margin: 0 0 6px;
+}
+
+.nav-kid {
+  display: block;
+  padding: 3px 0 3px 34px;
+  font-size: 13px;
+  color: var(--text-muted, #888);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nav-kid:hover {
+  color: var(--text-primary, #111);
+}
+
+.nav-kid.on {
+  color: var(--text-primary, #111);
+  font-weight: 600;
+}
+
+.nav-bottom {
   /* nav-bottom is now direct child of nav-container */
 }
 

@@ -278,11 +278,17 @@ func TestTheBottomGroupIsTheAccount(t *testing.T) {
 func TestTheSidebarIsTheProductsNouns(t *testing.T) {
 	result := RenderHTMLWithLangAndAuth("Test", "d", "<p>c</p>", "en", &auth.Account{ID: "alice"})
 
-	// The order somebody meets them in: Tools is what the product is named for
-	// and where you connect, Agents is what you build on top, Services is the
-	// back end. Agents used to sit above Tools, which put the demo in front of
-	// the thing being demonstrated.
-	want := []string{`href="/home"`, `href="/tools"`, `href="/agents"`, `href="/services"`}
+	// The order somebody meets them in, and it has moved: what is yours first —
+	// Inbox and the mailboxes under it, then Agents and the roster under it —
+	// and the catalogue after, Tools then Services.
+	//
+	// Tools sat above Agents when tools were the lead, on the reasoning that
+	// the product was named for them and Agents was what you built on top. The
+	// thesis moved (DIRECTION §1 and §8) and so does this: the inbox and the
+	// agents are the product, and the catalogue is what they reach for. Putting
+	// the two personal lists together also keeps the rail readable as two
+	// levels rather than as six equal destinations.
+	want := []string{`href="/home"`, `href="/inbox"`, `href="/agents"`, `href="/tools"`, `href="/services"`}
 	at := -1
 	for _, w := range want {
 		i := strings.Index(result, w)
