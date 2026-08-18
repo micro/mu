@@ -160,6 +160,14 @@ func storesTable() string {
 		stores = stores[:storesShown]
 	}
 
+	// Which files the live backend does not write, so a large one can be read
+	// as an archive rather than as a cost. Two index implementations leave two
+	// files, and from outside a hot index and a dead one look the same.
+	stale := map[string]bool{}
+	for _, name := range data.Stale() {
+		stale[name] = true
+	}
+
 	var b strings.Builder
 	b.WriteString(`<h3>Stores</h3><table class="stats-table">`)
 	for _, s := range stores {
@@ -167,11 +175,15 @@ func storesTable() string {
 		if s.Files > 1 {
 			where += fmt.Sprintf(` <span class="text-muted text-sm">%d files</span>`, s.Files)
 		}
+		if stale[strings.TrimSuffix(s.Name, "/")] {
+			where += ` <span class="text-muted text-sm">not written</span>`
+		}
 		b.WriteString(fmt.Sprintf(`<tr><td>%s</td><td>%s</td></tr>`, where, app.Bytes(s.Size)))
 	}
 	b.WriteString(`</table>`)
 	b.WriteString(fmt.Sprintf(`<p class="text-muted text-sm">%s in the data directory. `+
-		`Each of these is rewritten whole when it changes.</p>`, app.Bytes(total)))
+		`Each of these is rewritten whole when it changes, except where marked. `+
+		`Search index: %s.</p>`, app.Bytes(total), html.EscapeString(data.SearchBackend())))
 	return b.String()
 }
 
