@@ -2,7 +2,9 @@ package auth
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -87,6 +89,38 @@ type Token struct {
 	LastUsed    time.Time `json:"last_used"`
 	ExpiresAt   time.Time `json:"expires_at"`  // Optional expiration
 	Permissions []string  `json:"permissions"` // e.g., "read", "write", "admin"
+
+	// Lookup is sha256 of the raw token, hex, and it is how a token is found.
+	//
+	// Validation used to bcrypt-compare the presented token against every token
+	// on the instance, twice each — once unpadded, once padded — while holding
+	// the package mutex that accounts and sessions also use. bcrypt at cost 10
+	// is about 60ms by design, so a hundred tokens is six seconds of CPU per
+	// call with every other request on the instance blocked behind it. That is
+	// not a slow admin page, it is one agent calling /mcp stalling the site.
+	//
+	// A hash rather than a slow KDF, because these are not passwords: a token
+	// is 32 bytes from crypto/rand, so there is no dictionary to attack and
+	// nothing for a work factor to buy. It is what GitHub and Stripe do with
+	// theirs. The bcrypt hash stays in Token for tokens issued before this
+	// existed; they are found by the old scan once and filled in here.
+	Lookup string `json:"lookup,omitempty"`
+}
+
+// tokenBy is the index: sha256 of a raw token to the token. Guarded by mutex.
+var tokenBy = map[string]*Token{}
+
+// tokenKey is how a raw token is looked up.
+func tokenKey(raw string) string {
+	sum := sha256.Sum256([]byte(strings.TrimRight(raw, "=")))
+	return hex.EncodeToString(sum[:])
+}
+
+// indexToken files a token under its lookup. Caller holds mutex.
+func indexToken(t *Token) {
+	if t != nil && t.Lookup != "" {
+		tokenBy[t.Lookup] = t
+	}
 }
 
 func init() {
@@ -96,6 +130,9 @@ func init() {
 	json.Unmarshal(b, &sessions)
 	b, _ = data.LoadFile("tokens.json")
 	json.Unmarshal(b, &tokens)
+	for _, t := range tokens {
+		indexToken(t)
+	}
 }
 
 func Create(acc *Account) error {
@@ -820,77 +857,110 @@ func CreateToken(accountID, name string, permissions []string, expiresAt time.Ti
 		LastUsed:    time.Time{},
 		ExpiresAt:   expiresAt,
 		Permissions: permissions,
+		Lookup:      tokenKey(rawToken),
 	}
 
 	tokens[tokenID] = token
+	indexToken(token)
 	data.SaveJSON("tokens.json", tokens)
 
 	// Return the unhashed token only once (user must save it)
 	return token, rawToken, nil
 }
 
-// ValidatePAT validates a Personal Access Token and returns the associated account ID
+// ValidatePAT validates a Personal Access Token and returns the account it
+// belongs to.
 func ValidatePAT(rawToken string) (string, error) {
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	// Normalize: strip trailing base64 padding so tokens work with or without '='
-	rawToken = strings.TrimRight(rawToken, "=")
-
-	// Check all tokens to find a match (try without padding, then with)
-	for _, token := range tokens {
-		// Try raw token (no padding) first, then with padding for older tokens
-		err := bcrypt.CompareHashAndPassword([]byte(token.Token), []byte(rawToken))
-		if err != nil {
-			// Retry with padding in case the hash was generated with padded token
-			padded := rawToken
-			if m := len(padded) % 4; m != 0 {
-				padded += strings.Repeat("=", 4-m)
-			}
-			err = bcrypt.CompareHashAndPassword([]byte(token.Token), []byte(padded))
-		}
-		if err == nil {
-			// Check if expired
-			if !token.ExpiresAt.IsZero() && time.Now().After(token.ExpiresAt) {
-				return "", errors.New("token expired")
-			}
-
-			// Update last used time
-			token.LastUsed = time.Now()
-			data.SaveJSON("tokens.json", tokens)
-
-			return token.Account, nil
-		}
+	t, err := tokenFor(rawToken)
+	if err != nil {
+		return "", err
 	}
-
-	return "", errors.New("invalid token")
+	return t.Account, nil
 }
 
 // ValidatePATToken is ValidatePAT returning the token's id rather than its
 // account, so a caller that needs the token record — to read its scope — can
-// find it without a second comparison pass over every bcrypt hash.
+// find it without a second pass.
 func ValidatePATToken(rawToken string) (string, error) {
+	t, err := tokenFor(rawToken)
+	if err != nil {
+		return "", err
+	}
+	return t.ID, nil
+}
+
+// tokenFor resolves a presented token, by index where it can and by comparison
+// where it must.
+//
+// The index is one map lookup. The fallback exists for tokens issued before the
+// index did: those are compared against their bcrypt hash, and — this is the
+// part that matters — the comparing happens with the mutex released, because it
+// is the slow thing and everything else in this package waits on that lock. A
+// token found the slow way is indexed, so it is only ever slow once.
+func tokenFor(rawToken string) (*Token, error) {
 	rawToken = strings.TrimRight(rawToken, "=")
+	if rawToken == "" {
+		return nil, errors.New("invalid token")
+	}
 
 	mutex.Lock()
-	defer mutex.Unlock()
-	for _, token := range tokens {
-		err := bcrypt.CompareHashAndPassword([]byte(token.Token), []byte(rawToken))
-		if err != nil {
-			padded := rawToken
-			if m := len(padded) % 4; m != 0 {
-				padded += strings.Repeat("=", 4-m)
+	t := tokenBy[tokenKey(rawToken)]
+	var legacy []*Token
+	if t == nil {
+		for _, candidate := range tokens {
+			if candidate.Lookup == "" {
+				legacy = append(legacy, candidate)
 			}
-			err = bcrypt.CompareHashAndPassword([]byte(token.Token), []byte(padded))
-		}
-		if err == nil {
-			if !token.ExpiresAt.IsZero() && time.Now().After(token.ExpiresAt) {
-				return "", errors.New("token expired")
-			}
-			return token.ID, nil
 		}
 	}
-	return "", errors.New("invalid token")
+	mutex.Unlock()
+
+	if t == nil {
+		// Outside the lock. This is the path that used to hold it.
+		padded := rawToken
+		if m := len(padded) % 4; m != 0 {
+			padded += strings.Repeat("=", 4-m)
+		}
+		for _, candidate := range legacy {
+			if bcrypt.CompareHashAndPassword([]byte(candidate.Token), []byte(rawToken)) != nil &&
+				bcrypt.CompareHashAndPassword([]byte(candidate.Token), []byte(padded)) != nil {
+				continue
+			}
+			t = candidate
+			mutex.Lock()
+			t.Lookup = tokenKey(rawToken)
+			indexToken(t)
+			mutex.Unlock()
+			break
+		}
+	}
+	if t == nil {
+		return nil, errors.New("invalid token")
+	}
+	if !t.ExpiresAt.IsZero() && time.Now().After(t.ExpiresAt) {
+		return nil, errors.New("token expired")
+	}
+
+	touchToken(t)
+	return t, nil
+}
+
+// touchToken notes that a token was used, and writes that down rarely.
+//
+// Every successful validation wrote the whole token file to disk, under the
+// package mutex, so an agent polling an endpoint rewrote every token on the
+// instance on every call. The field is a diagnostic — "last called 3 Jan 14:02"
+// on the connect page — and a minute of resolution is more than it needs.
+func touchToken(t *Token) {
+	now := time.Now()
+	mutex.Lock()
+	defer mutex.Unlock()
+	if now.Sub(t.LastUsed) < time.Minute {
+		t.LastUsed = now
+		return
+	}
+	t.LastUsed = now
+	data.SaveJSON("tokens.json", tokens) //nolint:errcheck
 }
 
 // ListTokens returns all PAT tokens for an account (with hashed values)
@@ -923,6 +993,7 @@ func DeleteToken(tokenID, accountID string) error {
 	}
 
 	delete(tokens, tokenID)
+	delete(tokenBy, token.Lookup)
 	data.SaveJSON("tokens.json", tokens)
 
 	return nil
