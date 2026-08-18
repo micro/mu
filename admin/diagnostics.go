@@ -32,7 +32,9 @@ func DiagnosticsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	checks := runHealthChecks()
+	// The digest check can run the pipeline for real to find out why it is
+	// stuck, which is a model call — asked for, never on the way past.
+	checks := runHealthChecks(r.URL.Query().Get("test") == "digest")
 
 	// Count issues
 	errors := 0
@@ -100,7 +102,7 @@ func DiagnosticsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(html))
 }
 
-func runHealthChecks() []healthCheck {
+func runHealthChecks(testDigest bool) []healthCheck {
 	var checks []healthCheck
 
 	// AI Provider
@@ -113,7 +115,7 @@ func runHealthChecks() []healthCheck {
 	checks = append(checks, checkMarkets())
 
 	// Daily Digest
-	checks = append(checks, checkDigest())
+	checks = append(checks, checkDigest(testDigest))
 
 	// Discord Bot
 	checks = append(checks, checkDiscord())
@@ -211,39 +213,42 @@ func checkMarkets() healthCheck {
 	}
 }
 
-func checkDigest() healthCheck {
+// checkDigest reports whether the digest is current, and — only when asked —
+// runs the pipeline for real to tell a broken generator from a stuck scheduler.
+//
+// The live test used to run whenever the digest was *not* ok, under a comment
+// saying "if requested", which nothing did. That is a whole model generation on
+// the render path, and the one condition that triggers it is exactly the
+// condition an operator opens this page under. A page that costs a digest to
+// look at, and takes as long as one, is how /admin/diagnostics came to be
+// something you avoided loading.
+func checkDigest(test bool) healthCheck {
 	ok, details := digest.Status()
-
-	// If requested, run a live test
-	testResult := ""
-	if !ok {
-		test, err := digest.TestGenerate()
-		if err != nil {
-			testResult = "Test failed: " + err.Error()
-		} else if test == "" {
-			testResult = "Test returned empty"
-		} else {
-			testResult = fmt.Sprintf("Test succeeded (%d chars) — the pipeline works, the scheduler may be stuck", len(test))
-		}
-	}
-
-	if !ok {
-		fix := "Check AI provider status"
-		if testResult != "" {
-			fix = testResult
-		}
+	if ok {
 		return healthCheck{
 			Name:   "Daily Digest",
-			Status: "error",
+			Status: "ok",
 			Detail: details,
-			Fix:    fix,
 		}
 	}
 
+	fix := "Check AI provider status. " + app.Link("Test the generator", "/admin/diagnostics?test=digest")
+	if test {
+		out, err := digest.TestGenerate()
+		switch {
+		case err != nil:
+			fix = "Test failed: " + err.Error()
+		case out == "":
+			fix = "Test returned empty"
+		default:
+			fix = fmt.Sprintf("Test succeeded (%d chars) — the pipeline works, the scheduler may be stuck", len(out))
+		}
+	}
 	return healthCheck{
 		Name:   "Daily Digest",
-		Status: "ok",
+		Status: "error",
 		Detail: details,
+		Fix:    fix,
 	}
 }
 

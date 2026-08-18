@@ -262,9 +262,22 @@ func creditsOf(l *ledger, userID string) *Credits {
 	return w
 }
 
-// Balance returns the current balance for a user
+// Balance is what an account has to spend.
+//
+// A read, and only a read. It went through creditsOf, which creates the record
+// when there is none and writes the whole of wallets.json to do it — so asking
+// what somebody's balance was wrote a file. /admin/users asks it once per row,
+// which on an instance with a few hundred accounts is a few hundred whole-file
+// writes, serialised behind the ledger lock, on the way to drawing a table.
+// An account with no row has no balance to report and the answer is zero;
+// there is nothing to record about that.
 func Balance(userID string) int {
-	return withLedger(func(l *ledger) int { return creditsOf(l, userID).Balance })
+	return withLedger(func(l *ledger) int {
+		if w := balances[userID]; w != nil {
+			return w.Balance
+		}
+		return 0
+	})
 }
 
 // SettlementKey is the metadata field a one-time credit is deduped on.

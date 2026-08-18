@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -8,6 +9,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -295,19 +297,11 @@ func buildStatus() StatusResponse {
 		Details: mailSelector,
 	})
 
-	// Check DNS records
+	// Check DNS records — from the cache, never on the request. See dnsAnswer.
 	if mailDomain != "" && mailDomain != "localhost" && mailSelector != "" {
-		dkimDNS := checkDKIMDNS(mailSelector, mailDomain)
-		config = append(config, StatusCheck{
-			Name:   "DKIM DNS Record",
-			Status: dkimDNS,
-		})
-
-		spfDNS := checkSPFDNS(mailDomain)
-		config = append(config, StatusCheck{
-			Name:   "SPF DNS Record",
-			Status: spfDNS,
-		})
+		config = append(config, dnsStatus("DKIM DNS Record",
+			mailSelector+"._domainkey."+mailDomain, "v=DKIM1"))
+		config = append(config, dnsStatus("SPF DNS Record", mailDomain, "v=spf1"))
 	}
 
 	// Calculate overall health
@@ -391,31 +385,91 @@ func maskDomain(domain string) string {
 	return domain
 }
 
-func checkDKIMDNS(selector, domain string) bool {
-	record := fmt.Sprintf("%s._domainkey.%s", selector, domain)
-	txts, err := net.LookupTXT(record)
-	if err != nil {
-		return false
-	}
-	for _, txt := range txts {
-		if strings.Contains(txt, "v=DKIM1") {
-			return true
-		}
-	}
-	return false
+// A DNS lookup is not a page render.
+//
+// Two questions were asked live on every draw of /status and /admin/server: is
+// the DKIM record published, and is there an SPF record. `net.LookupTXT` has no
+// deadline, and against a resolver that is not answering it retries until the
+// stub gives up — seconds each, twice, on a page whose other work is
+// microseconds. That is what a twenty-five second /admin/server was, and
+// /status is public, so anyone could hold a request open that long.
+//
+// A published DNS record changes about once in the life of an instance, so the
+// answer keeps for dnsTTL and a stale one is refreshed behind the page rather
+// than in front of it. Nothing here ever blocks: the first ask on a cold
+// process starts the lookup and says so, and the next render has the answer.
+const (
+	dnsTTL     = 15 * time.Minute
+	dnsTimeout = 5 * time.Second
+)
+
+type dnsAnswerState struct {
+	ok      bool
+	checked time.Time // zero until the first lookup returns
+	asking  bool
 }
 
-func checkSPFDNS(domain string) bool {
-	txts, err := net.LookupTXT(domain)
-	if err != nil {
-		return false
+var (
+	dnsMu      sync.Mutex
+	dnsAnswers = map[string]*dnsAnswerState{}
+)
+
+// dnsAnswer reports whether a TXT record containing want is published at
+// question, and whether that has been established yet.
+func dnsAnswer(question, want string) (ok, known bool) {
+	dnsMu.Lock()
+	defer dnsMu.Unlock()
+
+	a := dnsAnswers[question]
+	if a == nil {
+		a = &dnsAnswerState{}
+		dnsAnswers[question] = a
 	}
-	for _, txt := range txts {
-		if strings.Contains(txt, "v=spf1") {
-			return true
+	if !a.asking && time.Since(a.checked) > dnsTTL {
+		a.asking = true
+		go lookupDNS(question, want)
+	}
+	return a.ok, !a.checked.IsZero()
+}
+
+// lookupDNS asks, with a deadline, and records what came back.
+func lookupDNS(question, want string) {
+	ctx, cancel := context.WithTimeout(context.Background(), dnsTimeout)
+	defer cancel()
+
+	found := false
+	txts, err := net.DefaultResolver.LookupTXT(ctx, question)
+	if err == nil {
+		for _, txt := range txts {
+			if strings.Contains(txt, want) {
+				found = true
+				break
+			}
 		}
 	}
-	return false
+
+	dnsMu.Lock()
+	defer dnsMu.Unlock()
+	a := dnsAnswers[question]
+	if a == nil {
+		return
+	}
+	a.ok = found
+	a.checked = time.Now()
+	a.asking = false
+}
+
+// dnsStatus is one of those answers as a row on the status page. An answer that
+// has not come back yet says so rather than reporting a missing record, because
+// "not checked" and "not published" are different things and only one of them
+// is somebody's problem.
+func dnsStatus(name, question, want string) StatusCheck {
+	ok, known := dnsAnswer(question, want)
+	c := StatusCheck{Name: name, Status: ok}
+	if !known {
+		c.Details = "checking…"
+	}
+	return c
 }
 
 func formatUptime(d time.Duration) string {
