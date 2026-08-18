@@ -100,3 +100,40 @@ func Bytes(n int64) string {
 	}
 	return fmt.Sprintf("%dB", n)
 }
+
+// ClientName is what a client is called in front of somebody.
+//
+// One name, in one place. There were two of these — one on the conversation
+// view and one on /recall — and they had already drifted: the same conversation
+// was labelled "Web" on one page and "Here" on the other. A map of display
+// names is exactly the kind of thing that gets copied rather than imported.
+//
+// Here rather than beside the record, because it is presentation: the same
+// shape as TimeAgo above it, a stored value turned into words for a reader. The
+// record owns the value — thread.WebClient is a constant it stores and looks up
+// by — and this owns how it reads. It takes a plain string for that reason, and
+// knows nothing about threads.
+//
+// A client not named here shows as it names itself, so a new one appears the
+// day it is written rather than the day somebody remembers this switch.
+func ClientName(client string) string {
+	switch client {
+	case "web":
+		return "Web"
+	case "mail":
+		return "Email"
+	case "discord":
+		return "Discord"
+	case "telegram":
+		return "Telegram"
+	case "whatsapp":
+		return "WhatsApp"
+	case "sms":
+		return "SMS"
+	case "cli":
+		return "CLI"
+	case "a2a":
+		return "A2A"
+	}
+	return client
+}

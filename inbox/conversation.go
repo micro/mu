@@ -68,7 +68,7 @@ func ConversationView(accountID string, t *thread.Thread) string {
 
 	var b strings.Builder
 	b.WriteString(`<div class="els"><div class="els-head"><span class="els-where">` +
-		html.EscapeString(thread.ClientName(t.Client)) + `</span><span class="els-when">started ` +
+		html.EscapeString(app.ClientName(t.Client)) + `</span><span class="els-when">started ` +
 		html.EscapeString(app.TimeAgo(t.Started)) + `</span></div>`)
 	b.WriteString(`<h2 class="els-title">` + html.EscapeString(subject) + `</h2>`)
 	b.WriteString(partyLine(accountID, t))
@@ -83,7 +83,7 @@ func ConversationView(accountID string, t *thread.Thread) string {
 	}
 
 	b.WriteString(`<p class="els-note">This happened on ` +
-		html.EscapeString(thread.ClientName(t.Client)) + `, so it carries on there — reply to it the way ` +
+		html.EscapeString(app.ClientName(t.Client)) + `, so it carries on there — reply to it the way ` +
 		`it arrived and the agent answers in the same thread. ` +
 		app.Link("Start a new chat here", "/inbox") + `</p>`)
 	b.WriteString(`</div>` + conversationCSS)

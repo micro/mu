@@ -58,7 +58,7 @@ func Preview(accountID string) string {
 		// worth showing, because it happened without you.
 		where := ""
 		if t.Client != thread.WebClient {
-			where = `<span class="peek-where">` + html.EscapeString(thread.ClientName(t.Client)) + `</span>`
+			where = `<span class="peek-where">` + html.EscapeString(app.ClientName(t.Client)) + `</span>`
 		}
 
 		// The last thing said, so the row is worth reading rather than just

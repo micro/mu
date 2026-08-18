@@ -822,7 +822,7 @@ func renderSessionsRail(accountID, currentID, agentID string) string {
 		// like one you can.
 		where := ""
 		if s.Client != thread.WebClient {
-			where = `<span class="chat-sess-where">` + htmlEsc(thread.ClientName(s.Client)) + `</span>`
+			where = `<span class="chat-sess-where">` + htmlEsc(app.ClientName(s.Client)) + `</span>`
 		}
 		// Deletable. A conversation you can start and never be rid of is a list
 		// that only grows, and the rail is the one place somebody looks at it.

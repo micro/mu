@@ -110,7 +110,7 @@ func hitRow(h thread.Hit, query string) string {
 	return `<a class="rc-hit" href="/inbox?session=` + url.QueryEscape(h.Thread) + `">` +
 		`<div class="rc-meta">` + html.EscapeString(who) + ` · ` +
 		html.EscapeString(app.TimeAgo(h.At)) + ` · ` +
-		`<span class="rc-where">` + html.EscapeString(thread.ClientName(h.Client)) + `</span></div>` +
+		`<span class="rc-where">` + html.EscapeString(app.ClientName(h.Client)) + `</span></div>` +
 		`<div class="rc-text">` + highlight(snippet(h.Text, query), query) + `</div>` +
 		`<div class="rc-subject">in “` + html.EscapeString(subject) + `”</div></a>`
 }
@@ -146,7 +146,7 @@ func clientChips(owner, query, active string) string {
 	var b strings.Builder
 	b.WriteString(`<div class="rc-chips">` + chip("Everywhere", ""))
 	for _, c := range present {
-		b.WriteString(chip(thread.ClientName(c), c))
+		b.WriteString(chip(app.ClientName(c), c))
 	}
 	b.WriteString(`</div>`)
 	return b.String()
