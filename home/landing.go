@@ -87,7 +87,8 @@ func landingBody(host string) string {
 	if addr == "" {
 		addr = "agent@" + host
 	}
-	return `<p class="lead">Your agent has an address. Write to it and it answers — with
+	return `<h2 class="lhead">A personal agent.</h2>
+<p class="lead">It has an email address. Write to it and it answers — with
 ` + strconv.Itoa(api.ToolCount()) + ` tools behind it: news, web search, mail, markets,
 weather, places, storage. One account instead of seven providers.</p>
 
@@ -136,6 +137,8 @@ and the endpoint your client can call.</p>
 </div>
 
 <style>
+.lhead{max-width:700px;text-align:center;margin:0 auto 10px;font-size:34px;line-height:1.15;
+  letter-spacing:-.02em;font-weight:700;color:#111}
 .lead{max-width:600px;text-align:center;color:#555;font-size:16px;line-height:1.6;margin:0 auto 18px}
 .laddr{text-align:center;margin:0 auto 8px}
 .laddr code{display:inline-block;background:#111;color:#fff;border-radius:8px;padding:10px 18px;
@@ -146,6 +149,7 @@ and the endpoint your client can call.</p>
 .ltrynote{max-width:660px;margin:0 auto 26px;text-align:center;font-size:13px;color:#888}
 .ltrynote a{color:#111}
 .lead a{color:#111}
+@media (max-width:640px){.lhead{font-size:27px}}
 .lcards{display:flex;flex-wrap:wrap;gap:14px;max-width:760px;justify-content:center;margin:34px auto 0}
 .lcard{flex:1 1 220px;min-width:220px;max-width:240px;border:1px solid #e5e5e5;border-radius:10px;padding:16px 18px;background:#fff;text-align:left}
 .lcard h3{margin:0 0 6px;font-size:1em}

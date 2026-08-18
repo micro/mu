@@ -9,9 +9,9 @@ package mail
 // IMAP is the standard answer and has been since 1986. It costs one protocol and
 // it turns "an address" into "an address you can actually use".
 //
-// It matters more than it looks, because the pitch is an inbox for agents. An
-// agent that answers your mail is worth something only if the mail is somewhere
-// you were going to look anyway. With IMAP the agent's replies appear in the
+// It matters more than it looks, because the pitch is a personal agent with an
+// address, and an agent that answers your mail is worth something only if the
+// mail is somewhere you were going to look anyway. With IMAP the agent's replies appear in the
 // thread in the client you already have open, and the folders are the agents —
 // see imapbox.go, where a plus-address tag is a folder.
 //

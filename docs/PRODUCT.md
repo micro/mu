@@ -10,7 +10,7 @@ answer to "what is this and who arrives how".
 
 ## The product in one sentence
 
-**Mu is an inbox for agents: an agent with an address, that answers where it was
+**Mu is a personal agent: one with an email address, that answers where it was
 written to and remembers — with the everyday internet behind it. News, mail,
 calendar, search, weather, markets, places, storage — as tools it can call over MCP, paid per
 request, with no account in the way.**

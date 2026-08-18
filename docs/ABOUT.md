@@ -1,6 +1,6 @@
 # About
 
-**An inbox for agents.** Give an agent an address, write to it, and it answers —
+**A personal agent.** It has an email address; write to it and it answers —
 in the thread, remembering the last one. Behind it is the everyday internet:
 news, mail, search, weather, markets, video, files, notes, as tools it can call
 over MCP and REST, paid per request in USDC, with no account in the way.

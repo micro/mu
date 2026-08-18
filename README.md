@@ -1,17 +1,17 @@
 # mu
 
-**An inbox for agents.** Give an agent an address and write to it — from your
-mail, your phone, or anything that can send an email — and it answers in the
-thread and remembers the last one.
+**A personal agent.** It has an email address. Write to it — from your mail,
+your phone, or anything that can send a message — and it answers in the thread
+and remembers the last one.
 
 Behind it are the tools: news, mail, search, weather, markets, video, places,
 files, contacts, calendar and your own documents, reachable over one MCP server
-and token. Also includes a web app for humans.
+and token. One Go binary, your domain, your data.
 
 ## How it works
 
-**Every agent has an address.** `agent@yourdomain` reaches the default one;
-each agent you make gets its own, `you+research@yourdomain`.
+**It has an address.** `agent@yourdomain` reaches the default one; each agent
+you make gets its own, `you+research@yourdomain`.
 
 **Write to it and it answers.** In the thread, from your mail client, your
 phone, a form, a cron job, or another agent — anything that can send an email.
