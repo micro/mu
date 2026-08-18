@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"mu/internal/auth"
+	"mu/internal/origin"
 )
 
 // Wired at boot to the wallet. Unset — a build with no wallet at all — reads as
@@ -180,8 +181,21 @@ func CheckQuota(userID string, operation string) (bool, bool, int, error) {
 	// where to go: this string is what a person reads when a tool refuses and
 	// what an agent reads when it has to explain itself, and "insufficient
 	// credits" told neither of them what to do next.
+	//
+	// Where to go is a whole address when this instance knows its own. The
+	// reader here is often a program on another machine, and "/account/topup"
+	// is only a destination if you already know what it is relative to.
 	return false, false, cost, fmt.Errorf(
-		"this costs %d credits and your balance is %d — top up at /account/topup", cost, balance)
+		"this costs %d credits and your balance is %d — top up at %s", cost, balance, TopupURL())
+}
+
+// TopupURL is where to add credits, absolute when this instance knows its own
+// address and a path when it does not. See origin.Self.
+func TopupURL() string {
+	if self := origin.Self(); self != "" {
+		return self + "/account/topup"
+	}
+	return "/account/topup"
 }
 
 // ConsumeQuota consumes quota for an operation (call after successful operation)

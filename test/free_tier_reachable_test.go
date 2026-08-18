@@ -35,8 +35,11 @@ func TestThePaymentGateAsksWhetherTheToolCostsAnything(t *testing.T) {
 			"so free tools are paywalled to anonymous callers again")
 	}
 	// And when the challenge declines to be written, the request continues
-	// rather than being refused with an empty 402.
-	if !strings.Contains(body, "if x402.WritePaymentRequired(w, op, resource, listing) {") {
+	// rather than being refused with an empty 402. The call gained a reason
+	// argument — see TestTheGateAsksWhetherTheCallerCanPayNotWhetherTheyExist —
+	// so what is asserted is that the result is still what decides, not the
+	// exact shape of the arguments.
+	if !strings.Contains(body, "if x402.WritePaymentRequired(w, op, resource, listing") {
 		t.Error("the gate ignores whether a challenge was actually written")
 	}
 }

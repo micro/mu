@@ -300,17 +300,23 @@ func BuildPaymentRequirements(operation, resource string) []PaymentRequirements 
 // extensions, when non-nil, are published alongside accepts — today that is
 // the Bazaar discovery listing, which is how a facilitator learns this endpoint
 // exists at the moment it is asked what it charges.
-func WritePaymentRequired(w http.ResponseWriter, operation, resource string, extensions map[string]any) bool {
+// reason, when non-empty, replaces the default wording. A caller with no
+// account is told to sign in or pay; one that is signed in and out of credits
+// needs different words, because "sign in" is not advice it can act on.
+func WritePaymentRequired(w http.ResponseWriter, operation, resource string, extensions map[string]any, reason string) bool {
 	reqs := BuildPaymentRequirements(operation, resource)
 	if len(reqs) == 0 {
 		return false
 	}
+	if reason == "" {
+		reason = "This tool costs credits. Sign in, or send a token from /token as " +
+			"'Authorization: Bearer' — see /tools. Machine callers can pay per call " +
+			"with an X-PAYMENT header instead; see accepts."
+	}
 	body := map[string]any{
 		"x402Version": x402Ver(),
-		"error": "This tool costs credits. Sign in, or send a token from /token as " +
-			"'Authorization: Bearer' — see /tools. Machine callers can pay per call " +
-			"with an X-PAYMENT header instead; see accepts.",
-		"accepts": reqs,
+		"error":       reason,
+		"accepts":     reqs,
 	}
 	// v2 says what is being bought once, at the top, rather than repeating it in
 	// every requirement. serviceName and tags are read by the discovery index —

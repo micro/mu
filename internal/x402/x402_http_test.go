@@ -22,7 +22,7 @@ func TestWritePaymentRequiredHTTP(t *testing.T) {
 	const resource = "https://micro.mu/agent/run"
 
 	rec := httptest.NewRecorder()
-	WritePaymentRequired(rec, op, resource, nil)
+	WritePaymentRequired(rec, op, resource, nil, "")
 
 	if rec.Code != http.StatusPaymentRequired {
 		t.Fatalf("status = %d, want 402", rec.Code)

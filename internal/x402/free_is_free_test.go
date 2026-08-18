@@ -108,7 +108,7 @@ func TestAPaidOperationStillChallenges(t *testing.T) {
 // say "pay" is how a free tool ends up behind a paywall.
 func TestTheChallengeReportsWhetherItWroteOne(t *testing.T) {
 	w := httptest.NewRecorder()
-	if WritePaymentRequired(w, quota.OpNewsSearch, "https://example.test/mcp", nil) {
+	if WritePaymentRequired(w, quota.OpNewsSearch, "https://example.test/mcp", nil, "") {
 		t.Error("a free operation produced a 402 challenge")
 	}
 	if w.Code != 200 || strings.Contains(w.Body.String(), "x402Version") {
@@ -116,7 +116,7 @@ func TestTheChallengeReportsWhetherItWroteOne(t *testing.T) {
 	}
 
 	paid := httptest.NewRecorder()
-	if !WritePaymentRequired(paid, quota.OpWebSearch, "https://example.test/mcp", nil) {
+	if !WritePaymentRequired(paid, quota.OpWebSearch, "https://example.test/mcp", nil, "") {
 		if Enabled() {
 			t.Error("a paid operation wrote no challenge on an x402 instance")
 		}

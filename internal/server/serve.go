@@ -395,7 +395,7 @@ func serve(addr string) {
 						// because the receipt is a header and the verdict is in
 						// the body.
 						defer x402.Finish(w)
-					} else if err := auth.ValidateToken(token); err != nil {
+					} else if who, blocked, reason := payer(r, token, op); blocked {
 						// Describe what is being refused, so a facilitator
 						// reading this challenge can index the tool. Nil
 						// unless X402_BAZAAR is on.
@@ -403,7 +403,7 @@ func serve(addr string) {
 						if t, ok := api.ToolByName(tool); ok {
 							listing = x402.BazaarExtensions(t.Name, t.Description, api.ToolSchema(t))
 						}
-						if x402.WritePaymentRequired(w, op, resource, listing) {
+						if x402.WritePaymentRequired(w, op, resource, listing, reason) {
 							// Count the refusal. Calls are recorded inside the
 							// dispatcher, which this returns before reaching,
 							// so every call turned away at the door was absent
@@ -411,7 +411,7 @@ func serve(addr string) {
 							// this gate should never have been refusing. The
 							// number that would have shown the mistake could
 							// not see it.
-							usage.Record("mcp-refused", op, "guest")
+							usage.Record("mcp-refused", op, who)
 							return
 						}
 						// Nothing to charge: let it through rather than
