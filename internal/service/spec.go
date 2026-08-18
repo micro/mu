@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"go-micro.dev/v6/server"
 )
@@ -74,7 +75,57 @@ type Spec struct {
 	// hold state or take input. Anything that does belongs in an app, which
 	// already has a sandbox and a security boundary — there is no reason for a
 	// second one.
-	Card func() string
+	//
+	// Wrap a plain renderer with Glance, or one that knows when what it shows
+	// happened with Timed. The difference decides where a card goes — see Card.
+	Card func() Card
+}
+
+// Card is a service rendered at a glance, and when.
+//
+// The time is the thing that was missing, and it is what makes a card a first
+// class object rather than a panel: a headline from four minutes ago and a
+// weather forecast are different kinds of thing, and until a card could say
+// which, the home screen had to be told by hand in a JSON file kept beside the
+// services it named.
+//
+// With it the question answers itself. A card that knows when belongs in a
+// stream, newest first — that is what a stream is. One that does not is a
+// standing view of how things are now: the forecast, the prices, the next
+// prayer. Nothing about those is "new", and putting them in a chronology would
+// be inventing an ordering they do not have.
+type Card struct {
+	HTML string
+	// At is when what this card shows happened. Zero means it shows how things
+	// are rather than something that occurred, which is the honest answer for
+	// a forecast and a wrong one for a headline.
+	At time.Time
+}
+
+// Streamed reports whether a card belongs in a chronology.
+func (c Card) Streamed() bool { return !c.At.IsZero() }
+
+// Glance wraps a renderer that shows how things are now.
+func Glance(f func() string) func() Card {
+	if f == nil {
+		return nil
+	}
+	return func() Card { return Card{HTML: f()} }
+}
+
+// Timed wraps a renderer that knows when what it shows happened.
+//
+// A renderer that returns a zero time — nothing published yet, an empty feed —
+// falls back to a glance rather than claiming the epoch, which would sort it to
+// the bottom of the stream forever.
+func Timed(f func() (string, time.Time)) func() Card {
+	if f == nil {
+		return nil
+	}
+	return func() Card {
+		html, at := f()
+		return Card{HTML: html, At: at}
+	}
 }
 
 // Requires is how much identity a method needs.
@@ -179,11 +230,11 @@ func Cards() []Spec {
 	return out
 }
 
-// CardFor renders one service's card, or "" if it has none.
-func CardFor(name string) string {
+// CardFor renders one service's card, or the zero card if it has none.
+func CardFor(name string) Card {
 	s, ok := SpecFor(name)
 	if !ok || s.Card == nil {
-		return ""
+		return Card{}
 	}
 	return s.Card()
 }

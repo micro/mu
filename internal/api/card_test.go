@@ -20,13 +20,13 @@ func registerCardProbes(t *testing.T) {
 	t.Helper()
 	for _, spec := range []service.Spec{
 		{Name: "cardy", Handler: new(CardProbe), Page: "/cardy", Label: "Cardy",
-			Icon: "cardy.svg", Card: func() string { return "<b>BODY</b>" }},
+			Icon: "cardy.svg", Card: service.Glance(func() string { return "<b>BODY</b>" })},
 		{Name: "cardless", Handler: new(CardProbe), Page: "/cardless", Label: "Cardless",
 			Icon: "cardless.svg"},
 		{Name: "cardblank", Handler: new(CardProbe), Page: "/cardblank", Label: "Blank",
-			Icon: "cardblank.svg", Card: func() string { return "   " }},
+			Icon: "cardblank.svg", Card: service.Glance(func() string { return "   " })},
 		{Name: "cardmine", Handler: new(CardProbe), Page: "/cardmine", Label: "Mine",
-			Icon: "cardmine.svg", Scoped: true, Card: func() string { return "<b>PRIVATE</b>" }},
+			Icon: "cardmine.svg", Scoped: true, Card: service.Glance(func() string { return "<b>PRIVATE</b>" })},
 	} {
 		if _, already := service.SpecFor(spec.Name); already {
 			continue

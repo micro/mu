@@ -176,7 +176,7 @@ var Spec = service.Spec{
 	Description: "Forecast, air quality, sea state and what the weather actually was",
 	Page:        "/weather",
 	Icon:        "weather.svg",
-	Card:        CardHTML,
+	Card:        service.Glance(CardHTML),
 	Endpoints: map[string]service.Endpoint{
 		"Forecast": {Doc: "Get the weather forecast for a location — current conditions and the days ahead", Cost: quota.OpWeatherForecast},
 		"Air": {Doc: "Air quality at a location right now — AQI, PM2.5, PM10, ozone, nitrogen dioxide, " +

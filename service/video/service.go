@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"mu/internal/quota"
 	"mu/internal/service"
@@ -96,7 +97,7 @@ var Spec = service.Spec{
 	Description: "Video from curated channels, without ads or recommendations",
 	Page:        "/video",
 	Icon:        "video.png",
-	Card:        Latest,
+	Card:        service.Timed(func() (string, time.Time) { return Latest(), CardAt() }),
 	Endpoints: map[string]service.Endpoint{
 		"List": {Aliases: []string{"video"}, Doc: "Read the latest videos from curated channels"},
 		"Search": {

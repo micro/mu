@@ -2,6 +2,7 @@ package news
 
 import (
 	"context"
+	"time"
 
 	"mu/internal/quota"
 	"mu/internal/service"
@@ -94,7 +95,7 @@ var Spec = service.Spec{
 	Description: "Headlines aggregated from RSS feeds, with search and full articles",
 	Page:        "/news",
 	Icon:        "news.png",
-	Card:        Headlines,
+	Card:        service.Timed(func() (string, time.Time) { return Headlines(), CardAt() }),
 	Endpoints: map[string]service.Endpoint{
 		"List":   {Aliases: []string{"news", "news_headlines"}, Doc: "Read recent news headlines with short summaries, balanced across topics"},
 		"Read":   {Doc: "Read one news article in full by its id or URL"},

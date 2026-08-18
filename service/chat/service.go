@@ -217,7 +217,7 @@ var Spec = service.Spec{
 	Description: "Live discussion rooms attached to an item",
 	Page:        "/chat",
 	Icon:        "chat.png",
-	Card:        Card,
+	Card:        service.Glance(Card),
 	Endpoints: map[string]service.Endpoint{
 		"Messages": {Doc: "Read the recent conversation in a discussion room"},
 		"Send":     {Doc: "Say something in a discussion room, as the caller. Use chat_rooms to find the room id", Needs: service.Caller},

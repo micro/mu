@@ -305,7 +305,7 @@ var Spec = service.Spec{
 	Description: "Public transport: stops near you, what is due, and which lines are down",
 	Page:        "/transit",
 	Icon:        "transit.svg",
-	Card:        Card,
+	Card:        service.Glance(Card),
 	Endpoints: map[string]service.Endpoint{
 		"Nearby": {
 			Doc: "Bus stops and stations near a point, nearest first, with the id each one " +

@@ -36,7 +36,7 @@ func CardForTool(name string) string {
 	if svc == "" {
 		return ""
 	}
-	return wrapCard(service.Label(svc), service.CardFor(svc))
+	return wrapCard(service.Label(svc), service.CardFor(svc).HTML)
 }
 
 // CardHandler serves /card/<service> as an HTML fragment, and /card as the list
@@ -68,7 +68,7 @@ func CardHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body := wrapCard(service.Label(name), service.CardFor(name))
+	body := wrapCard(service.Label(name), service.CardFor(name).HTML)
 	if body == "" {
 		app.NotFound(w, r, "No card for that service")
 		return

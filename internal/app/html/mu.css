@@ -998,6 +998,17 @@ body.page-home #page-title ~ #customize-link {
   gap: 20px;
 }
 
+/* How old the thing on a card is. Only the stream carries it — the forecast and
+   the prices are how things are now, and a time against them would be the time
+   we asked rather than the time anything happened. */
+.card-when {
+  font-size: 0.75em;
+  font-weight: var(--font-weight-normal, 400);
+  color: var(--text-muted, #999);
+  margin-left: 8px;
+  white-space: nowrap;
+}
+
 .home-left {
   flex: 1;
   min-width: 0;
@@ -2802,19 +2813,13 @@ a.highlight {
     font-size: 12px;
   }
 
-  /* Card order on mobile. Every card needs an explicit order: one with none
-     defaults to order:0 and jumps ahead of everything — which is what happened
-     when Images was added, and again each time the reminder card was renamed —
-     first to #islam, then to #prayer — and this selector stopped matching.
-     Keep these ids in step with cards.json. */
-  #blog { order: 1; }
-  #prayer { order: 2; }
-  #markets { order: 3; }
-  #news { order: 4; }
-  #images { order: 5; }
-  #social { order: 6; }
-  #video { order: 7; }
-  #home-chat { order: 8; }
+  /* One column, in the order the server sent: the stream newest first, then
+     what is fixed. There was a hand-written order per card id here — a list
+     that had to be kept in step with cards.json, and was not: a card with no
+     rule defaulted to order:0 and jumped to the top, which is what happened
+     when Images was added and again each time the reminder card was renamed.
+     display:contents flattens both columns into this grid in DOM order, and
+     DOM order is now a decision rather than a file. */
 
   .cover {
     display: block;

@@ -129,7 +129,7 @@ var Spec = service.Spec{
 	Handler:     new(Server),
 	Description: "Islamic prayer times, qibla and a daily reflection",
 	Page:        "/prayer",
-	Card:        ReminderHTML,
+	Card:        service.Glance(ReminderHTML),
 	Endpoints: map[string]service.Endpoint{
 		"Times":      {Aliases: []string{"islam_prayer"}, Doc: "Get today's Islamic prayer times (salah) for a location, and which prayer is next"},
 		"Qibla":      {Aliases: []string{"islam_qibla"}, Doc: "Get the qibla — the compass bearing to face for Islamic prayer from a location"},

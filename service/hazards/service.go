@@ -170,7 +170,7 @@ var Spec = service.Spec{
 	Description: "What is going wrong in the physical world: earthquakes and disaster alerts, live",
 	Page:        "/hazards",
 	Icon:        "hazards.svg",
-	Card:        Card,
+	Card:        service.Glance(Card),
 	Endpoints: map[string]service.Endpoint{
 		"Alerts": {
 			Doc: "Current disasters worldwide from GDACS — cyclones, floods, volcanoes, " +

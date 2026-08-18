@@ -2,6 +2,7 @@ package blog
 
 import (
 	"context"
+	"time"
 
 	"mu/internal/quota"
 	"mu/internal/service"
@@ -33,7 +34,7 @@ var Spec = service.Spec{
 	Description: "Microblogging with AI-generated daily digests, federated over ActivityPub",
 	Page:        "/blog",
 	Icon:        "post.png",
-	Card:        Preview,
+	Card:        service.Timed(func() (string, time.Time) { return Preview(), CardAt() }),
 	Endpoints: map[string]service.Endpoint{
 		"List": {Doc: "Read recent blog posts — titles, snippets and ids"},
 

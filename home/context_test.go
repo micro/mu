@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"mu/internal/auth"
 )
@@ -169,17 +170,20 @@ func TestTheCardGridHoldsNothingPersonal(t *testing.T) {
 // The grid renders each card in the column cards.json puts it in.
 //
 // It used to deal them out alternately — left, right, left, right — so the
-// configured columns were decoration, and skipping an empty card reshuffled
-// everything after it. The page moved depending on whether the daily image had
-// landed yet.
-func TestEachCardRendersInItsConfiguredColumn(t *testing.T) {
+// a card knows when. The page moved depending on whether the daily image had
+// landed yet, and the column was a string in a file kept in step by hand.
+func TestAStreamCardGoesLeftAndAFixedOneRight(t *testing.T) {
 	prev := Cards
+	now := time.Now()
 	Cards = []Card{
-		{ID: "blog", Title: "Blog", Column: "left", CachedHTML: `<p>a post</p>`},
-		{ID: "prayer", Title: "Prayer", Column: "left", CachedHTML: `<p>fajr</p>`},
-		{ID: "markets", Title: "Markets", Column: "right", CachedHTML: `<p>BTC</p>`},
-		{ID: "images", Title: "Images", Column: "right", CachedHTML: ``}, // nothing today
-		{ID: "video", Title: "Video", Column: "right", CachedHTML: `<p>a clip</p>`},
+		// Things that happened, so they stream — and out of order here, to
+		// prove the page puts them in it.
+		{ID: "blog", Title: "Blog", At: now.Add(-2 * time.Hour), CachedHTML: `<p>a post</p>`},
+		{ID: "video", Title: "Video", At: now.Add(-10 * time.Minute), CachedHTML: `<p>a clip</p>`},
+		// How things are, so they do not.
+		{ID: "prayer", Title: "Prayer", Position: 1, CachedHTML: `<p>fajr</p>`},
+		{ID: "markets", Title: "Markets", Position: 2, CachedHTML: `<p>BTC</p>`},
+		{ID: "images", Title: "Images", Position: 3, CachedHTML: ``}, // nothing today
 	}
 	t.Cleanup(func() { Cards = prev })
 
@@ -187,22 +191,33 @@ func TestEachCardRendersInItsConfiguredColumn(t *testing.T) {
 	left := got[strings.Index(got, `class="home-left"`):strings.Index(got, `class="home-right"`)]
 	right := got[strings.Index(got, `class="home-right"`):]
 
-	for _, id := range []string{"blog", "prayer"} {
+	for _, id := range []string{"blog", "video"} {
 		if !strings.Contains(left, `id="`+id+`"`) {
-			t.Errorf("%s is configured left and did not render there", id)
+			t.Errorf("%s knows when it is from and did not go in the stream", id)
 		}
 	}
-	for _, id := range []string{"markets", "video"} {
+	for _, id := range []string{"prayer", "markets"} {
 		if !strings.Contains(right, `id="`+id+`"`) {
-			t.Errorf("%s is configured right and did not render there", id)
+			t.Errorf("%s shows how things are and did not go in the fixed column", id)
 		}
+	}
+	// Newest first, which is what makes it a stream rather than a list.
+	if strings.Index(left, `id="video"`) > strings.Index(left, `id="blog"`) {
+		t.Error("the stream is not newest first")
+	}
+	// And every stream card says how old it is.
+	if !strings.Contains(left, "card-when") {
+		t.Error("a stream card does not say when it is from")
+	}
+	if strings.Contains(right, "card-when") {
+		t.Error("a card showing how things are was given a time")
 	}
 	// The empty one is skipped without moving the ones after it.
 	if strings.Contains(got, `id="images"`) {
 		t.Error("a card with nothing in it rendered")
 	}
-	if strings.Index(right, `id="markets"`) > strings.Index(right, `id="video"`) {
-		t.Error("skipping the empty card reordered the column")
+	if strings.Index(right, `id="prayer"`) > strings.Index(right, `id="markets"`) {
+		t.Error("the fixed column lost the file's order")
 	}
 }
 

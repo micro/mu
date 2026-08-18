@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"mu/internal/data"
 	"mu/internal/quota"
@@ -36,7 +37,7 @@ var Spec = service.Spec{
 	Description: "Public threads, replies and status",
 	Page:        "/social",
 	Icon:        "social.svg",
-	Card:        CardHTML,
+	Card:        service.Timed(func() (string, time.Time) { return CardHTML(), CardAt() }),
 	Endpoints: map[string]service.Endpoint{
 		"List": {Aliases: []string{"social"}, Doc: "Read the latest social posts from the network"},
 		"Search": {

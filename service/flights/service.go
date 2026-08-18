@@ -285,7 +285,7 @@ var Spec = service.Spec{
 	Description: "Where aircraft are, live from ADS-B",
 	Page:        "/flights",
 	Icon:        "flights.svg",
-	Card:        CardHTML,
+	Card:        service.Glance(CardHTML),
 	Endpoints: map[string]service.Endpoint{
 		"Overhead": {Doc: "List the aircraft flying near a location right now, nearest first, with altitude, speed, heading and distance. Live positions broadcast by the aircraft themselves, not a schedule"},
 		"Track":    {Doc: "Find where an aircraft is right now by flight number ('BA117'), radio callsign ('BAW117') or registration ('G-ZBKL'). Only sees aeroplanes that are airborne and in range of a receiver — not finding one does not mean the flight was cancelled"},

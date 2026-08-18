@@ -25,29 +25,45 @@ import (
 //go:embed cards.json
 var f embed.FS
 
-// Template is the home cards container: two independent columns (so each flows
-// at its own height, no ragged gaps) on desktop, a single stack on mobile.
+// Template is the home cards container: two columns on desktop, one stack on a
+// phone.
+//
+// The left is the stream — everything that happened, newest first. The right is
+// what is fixed: how things are now, in an order that does not move. Two
+// independent columns rather than a grid, so each flows at its own height and
+// an empty card does not leave a hole in the other.
 var Template = `<div id="home">
   <div class="home-left">%s</div>
   <div class="home-right">%s</div>
 </div>`
 
-func newsCard() string {
-	return news.Headlines()
+func newsCard() (string, time.Time) {
+	return news.Headlines(), news.CardAt()
 }
 
 type Card struct {
-	ID          string
-	Title       string
-	Icon        string // Optional icon image path (e.g. "/news.png")
-	Column      string // "left" or "right"
-	Position    int
-	Link        string
-	Content     func() string
-	CachedHTML  string    // Cached rendered content
+	ID       string
+	Title    string
+	Icon     string // Optional icon image path (e.g. "/news.png")
+	Position int
+	Link     string
+	Content  func() service.Card
+	// CachedHTML is the last render; At is when what it shows happened, zero
+	// for a card that shows how things are rather than something that occurred.
+	CachedHTML  string
+	At          time.Time
 	ContentHash string    // Hash of content for change detection
-	UpdatedAt   time.Time // Last update timestamp
+	UpdatedAt   time.Time // Last time the render changed
 }
+
+// Streamed reports whether this card belongs in the left column.
+//
+// Derived rather than configured. cards.json used to say "left" or "right" per
+// card, which meant the layout was a list somebody kept in step by hand — and
+// the answer was already knowable: a card that can say when what it shows
+// happened is a card with a place in a chronology, and one that cannot is a
+// standing view of how things are. See service.Card.
+func (c Card) Streamed() bool { return !c.At.IsZero() }
 
 var (
 	lastRefresh time.Time
@@ -90,7 +106,7 @@ func Load() {
 	// service could grow a card and never appear here, and a renamed one would
 	// silently render nothing. News stays written out: it is this package's own
 	// card, not the service's view of itself.
-	cardFunctions := map[string]func() string{}
+	cardFunctions := map[string]func() service.Card{}
 	for _, sp := range service.Cards() {
 		cardFunctions[sp.Name] = sp.Card
 	}
@@ -104,7 +120,7 @@ func Load() {
 	// called Reminder, Topup and Code Run. It was from when the agent was a
 	// service with a card like any other; it is not, and cards.json had already
 	// stopped asking for it, so it rendered nowhere while it rotted.
-	cardFunctions["news"] = newsCard
+	cardFunctions["news"] = service.Timed(newsCard)
 
 	// Build Cards array from config
 	Cards = []Card{}
@@ -115,7 +131,6 @@ func Load() {
 				ID:       c.ID,
 				Title:    c.Title,
 				Icon:     c.Icon,
-				Column:   "left",
 				Position: c.Position,
 				Link:     c.Link,
 				Content:  fn,
@@ -126,24 +141,22 @@ func Load() {
 	for _, c := range config.Right {
 		if fn, ok := cardFunctions[c.Type]; ok {
 			Cards = append(Cards, Card{
-				ID:       c.ID,
-				Title:    c.Title,
-				Icon:     c.Icon,
-				Column:   "right",
-				Position: c.Position,
+				ID:    c.ID,
+				Title: c.Title,
+				Icon:  c.Icon,
+				// Positions in the file run from zero per column, so the
+				// right-hand ones are pushed past the left to keep the file's
+				// own order readable now that the column is derived.
+				Position: 100 + c.Position,
 				Link:     c.Link,
 				Content:  fn,
 			})
 		}
 	}
 
-	// Sort by column and position
-	sort.Slice(Cards, func(i, j int) bool {
-		if Cards[i].Column != Cards[j].Column {
-			return Cards[i].Column < Cards[j].Column
-		}
-		return Cards[i].Position < Cards[j].Position
-	})
+	// The file's order is the fallback: it is what decides the fixed column,
+	// and what orders two stream cards carrying the same time.
+	sort.Slice(Cards, func(i, j int) bool { return Cards[i].Position < Cards[j].Position })
 
 	// Do initial refresh
 	RefreshCards()
@@ -190,15 +203,16 @@ func RefreshCards() {
 	for i := range Cards {
 		card := &Cards[i]
 
-		// Get fresh content
-		content := card.Content()
+		// Get fresh content, and when what it shows happened.
+		fresh := card.Content()
+		card.At = fresh.At
 
 		// Calculate hash
-		hash := fmt.Sprintf("%x", sha256.Sum256([]byte(content)))
+		hash := fmt.Sprintf("%x", sha256.Sum256([]byte(fresh.HTML)))
 
 		// Only update if content changed
 		if hash != card.ContentHash {
-			card.CachedHTML = content
+			card.CachedHTML = fresh.HTML
 			card.ContentHash = hash
 			card.UpdatedAt = now
 		}
@@ -235,7 +249,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				ID:     card.ID,
 				Title:  card.Title,
 				HTML:   card.CachedHTML,
-				Column: card.Column,
+				Column: card.column(),
 			})
 		}
 		cacheMutex.RUnlock()
@@ -588,8 +602,23 @@ func CardsHTML(r *http.Request, viewerAcc *auth.Account) string {
 	//
 	// Dealing also meant an empty card reshuffled everything after it, so the
 	// whole page moved depending on whether the daily image had landed yet.
+	// The stream first, newest at the top; then what is fixed, in the file's
+	// order. Sorted here rather than at load, because a card's time changes as
+	// things arrive and the ordering has to change with it.
+	ordered := make([]Card, len(Cards))
+	copy(ordered, Cards)
+	sort.SliceStable(ordered, func(i, j int) bool {
+		if ordered[i].Streamed() != ordered[j].Streamed() {
+			return ordered[i].Streamed()
+		}
+		if ordered[i].Streamed() {
+			return ordered[i].At.After(ordered[j].At)
+		}
+		return ordered[i].Position < ordered[j].Position
+	})
+
 	var leftHTML, rightHTML []string
-	for _, card := range Cards {
+	for _, card := range ordered {
 		content := card.CachedHTML
 		if strings.TrimSpace(content) == "" {
 			continue
@@ -601,11 +630,17 @@ func CardsHTML(r *http.Request, viewerAcc *auth.Account) string {
 		if tip, ok := tooltips[card.ID]; ok {
 			title += fmt.Sprintf(` <span class="card-tooltip" data-tip="%s" onclick="event.stopPropagation();document.querySelectorAll('.card-tooltip.show').forEach(function(e){e.classList.remove('show')});this.classList.toggle('show')">?</span>`, htmlEsc(tip))
 		}
+		// When it is from, on the card, which is the whole point of the stream:
+		// a row of headlines with no age on it reads as "now" whether it is an
+		// hour old or a week.
+		if card.Streamed() {
+			title += ` <span class="card-when">` + htmlEsc(app.TimeAgo(card.At)) + `</span>`
+		}
 		rendered := fmt.Sprintf(app.CardTemplate, card.ID, card.ID, title, content)
-		if card.Column == "right" {
-			rightHTML = append(rightHTML, rendered)
-		} else {
+		if card.Streamed() {
 			leftHTML = append(leftHTML, rendered)
+		} else {
+			rightHTML = append(rightHTML, rendered)
 		}
 	}
 
@@ -613,4 +648,13 @@ func CardsHTML(r *http.Request, viewerAcc *auth.Account) string {
 		b.WriteString(fmt.Sprintf(Template, strings.Join(leftHTML, "\n"), strings.Join(rightHTML, "\n")))
 	}
 	return b.String()
+}
+
+// column names where a card renders, for the JSON the page refreshes itself
+// with.
+func (c Card) column() string {
+	if c.Streamed() {
+		return "left"
+	}
+	return "right"
 }

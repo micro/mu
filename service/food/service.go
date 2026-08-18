@@ -251,7 +251,7 @@ var Spec = service.Spec{
 	Description: "What is in it and whether the kitchen is clean",
 	Page:        "/food",
 	Icon:        "food.svg",
-	Card:        Card,
+	Card:        service.Glance(Card),
 	Endpoints: map[string]service.Endpoint{
 		"Product": {
 			Doc: "Look up a packaged food by its barcode — name, brand, ingredients, " +

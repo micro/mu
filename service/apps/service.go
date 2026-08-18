@@ -120,7 +120,7 @@ var Spec = service.Spec{
 	Description: "Small self-contained web tools, built and run in place",
 	Page:        "/apps",
 	Icon:        "apps.svg",
-	Card:        Preview,
+	Card:        service.Glance(Preview),
 	Endpoints: map[string]service.Endpoint{
 		"Build": {Doc: "Build a small app from a description, save it, and return its details and URL. An app is a single page — a tracker, a checklist, a counter — that keeps its own store and runs in the browser",
 			Cost: quota.OpAppBuild, Needs: service.Caller},
