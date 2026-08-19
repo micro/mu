@@ -96,6 +96,14 @@ type AskRequest struct {
 	// From is who wrote in, where that is not simply the account: a message
 	// somebody else sent to an address this account owns.
 	From string
+	// As is the address this agent answers from, where it has one.
+	//
+	// Recorded on the answer so "has this agent spoken here" can be asked of
+	// one agent rather than of the conversation. Empty everywhere but mail,
+	// which is the only client where two agents can be in the same
+	// conversation — see AnsweredAs.
+	As string
+
 	// FromName is what to call them, where the client knew — a mail display
 	// name. It belongs to the party rather than to each message, so it is
 	// recorded once against the conversation and not on every line.
@@ -237,7 +245,7 @@ func Ask(r AskRequest) (Answer, error) {
 		Via: via,
 	})
 
-	Answered(r.Account, threadID(th), answer, id)
+	AnsweredAs(r.Account, threadID(th), answer, id, r.As)
 
 	// Notice anything worth remembering, from every client rather than one.
 	// Off the response path: it is a background model call and the answer is
@@ -293,12 +301,26 @@ func SaidTo(account, threadID, text, ref, from, to string) {
 
 // Answered records what the agent replied, and which workflow produced it.
 func Answered(account, threadID, text, workflow string) {
+	AnsweredAs(account, threadID, text, workflow, "")
+}
+
+// AnsweredAs is Answered, recording which address answered.
+//
+// Empty for every client but mail, where it is the address the reply goes out
+// from — agent@, agent+news@, you+research@. It is the answer to "has *this*
+// agent spoken on this conversation", which is not the same question as "has an
+// agent spoken", and the difference only shows once two of them are on one
+// thread: copy agent+news@ and agent+markets@ into the same mail and whichever
+// ran first would otherwise silence the other, because the rule that keeps an
+// agent from interrupting a conversation it has already joined would read the
+// other agent's answer as its own.
+func AnsweredAs(account, threadID, text, workflow, from string) {
 	if threadID == "" || strings.TrimSpace(text) == "" {
 		return
 	}
 	thread.Add(thread.Message{
 		Thread: threadID, Account: account, Role: thread.RoleAgent,
-		Text: text, Workflow: workflow,
+		Text: text, Workflow: workflow, From: from,
 	})
 }
 

@@ -28,13 +28,74 @@ func TestOthersLeavesOutTheSenderAndUs(t *testing.T) {
 	t.Setenv("MAIL_DOMAIN", "mu.example")
 
 	to := []string{"brother@example.net", "agent@mu.example"}
-	cc := []string{"asim@example.com", "BROTHER@example.net", "asim+research@mu.example"}
+	cc := []string{"asim@example.com", "BROTHER@example.net"}
 
-	got := Others(to, cc, "asim@example.com")
+	got := Others(to, cc, "asim@example.com", "agent@mu.example")
 	want := []string{"brother@example.net"}
 	if strings.Join(got, ",") != strings.Join(want, ",") {
-		t.Errorf("got %v, want %v — the sender is the To of the reply, our own "+
-			"addresses are a loop, and a duplicate is a person copied twice", got, want)
+		t.Errorf("got %v, want %v — the sender is the To of the reply, the address "+
+			"we answer as is ourselves, and a duplicate is a person copied twice",
+			got, want)
+	}
+}
+
+// A second agent on the thread stays on the reply.
+//
+// The first version of Others stripped every address at the mail domain, which
+// killed two things at once. Copy agent+news@ and agent+markets@ into one mail
+// and neither could see the other, so a thread with two specialists on it was
+// two private conversations. And a Mu user is a person with an address at the
+// mail domain, so a thread between two accounts here had one of them silently
+// dropped from the reply — the loop guard eating a participant.
+//
+// It is safe to leave them because the guard that matters is on the sender, not
+// the recipient: mayDispatch refuses anything written by one of this instance's
+// agent addresses, so an agent never wakes on another agent's answer. The human
+// is always what triggers a run.
+func TestASecondAgentStaysOnTheThread(t *testing.T) {
+	t.Setenv("MAIL_DOMAIN", "mu.example")
+
+	got := Others(
+		[]string{"brother@example.net"},
+		[]string{"agent+news@mu.example", "agent+markets@mu.example", "someone@mu.example"},
+		"asim@example.com", "agent+news@mu.example")
+
+	want := []string{"brother@example.net", "agent+markets@mu.example", "someone@mu.example"}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Errorf("got %v, want %v — the other agent and the Mu user were dropped "+
+			"from the reply, so nobody on this thread can see each other", got, want)
+	}
+}
+
+// And an agent's own answer never wakes another agent.
+//
+// This is the guard that makes the above safe, and the failure it prevents is
+// the worst one in this design: two agents replying to each other with no human
+// in the loop, at a model call each, until somebody notices the bill.
+func TestAnAgentNeverWakesOnAnotherAgent(t *testing.T) {
+	t.Setenv("MAIL_DOMAIN", "mu.example")
+	KnownSender = func(string, string) bool { return true }
+	defer func() { KnownSender = nil }()
+	// mayDispatch declines to reason about who may wake what on an instance
+	// where nothing is listening, so there has to be something listening.
+	Inbound(AgentMailbox, func(InboundMail) {})
+
+	from := wakeRequest{
+		Owner: "someone", Shared: true, Tag: "markets",
+		From: "agent+news@mu.example", To: "agent+markets@mu.example",
+		Authenticated: true,
+	}
+	if mayDispatch(from) {
+		t.Fatal("agent+markets@ would answer agent+news@ — two agents replying to " +
+			"each other forever, at a model call each, with no human in the loop")
+	}
+	// The same message from a person does wake it, so the guard is not simply
+	// refusing everything.
+	human := from
+	human.From = "asim@example.com"
+	if !mayDispatch(human) {
+		t.Error("a person on the thread cannot wake the agent either, so this guard " +
+			"is refusing everything rather than refusing agents")
 	}
 }
 

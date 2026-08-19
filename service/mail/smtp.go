@@ -823,7 +823,7 @@ func (s *Session) Data(r io.Reader) error {
 			Subject:    subject,
 			Body:       body,
 			Text:       stripHTMLTags(body),
-			Others:     Others(headerTo, headerCc, fromAddr.Address),
+			Others:     Others(headerTo, headerCc, fromAddr.Address, toAddr.Address),
 			ToAgent:    inList(headerTo, toAddr.Address),
 			MessageID:  messageID,
 			InReplyTo:  inReplyTo,

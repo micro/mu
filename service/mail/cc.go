@@ -64,18 +64,33 @@ func Recipients(header string) []string {
 	return out
 }
 
-// Others is everybody else on a message: the humans who will read the reply.
+// Others is everybody else on a message: who the reply is copied to.
 //
-// The sender is excluded because they are the To of the reply rather than the
-// Cc, and this instance's own addresses are excluded because an agent that
-// copies itself answers its own answer, forever, at a model call a turn. That
-// is the same loop fromSharedAgent guards, arriving by a different door.
+// Excluded: the sender, who is the To of the reply rather than the Cc, and the
+// address this delivery is answering as, because copying yourself is silly.
+//
+// **Not** excluded: every other address on this instance. That was the first
+// version and it was wrong twice over.
+//
+// It dropped human beings. A Mu user is a person with an address at the mail
+// domain, so a thread between two accounts here had one of them silently
+// removed from the reply — the loop guard eating a participant.
+//
+// And it defended against a loop that is already guarded, one layer down and in
+// the better place: mayDispatch refuses any message whose *sender* is one of
+// this instance's agent addresses. The guard belongs on who wrote, not on who
+// was copied. With it there, two agents can sit on the same thread — CC
+// agent+news@ and agent+markets@ and both answer — and neither wakes on the
+// other's reply, because the human is always the one who triggers a run.
 //
 // Order is preserved and duplicates are dropped, because the same person is
 // routinely in both To and Cc and being copied twice is how a reply-all looks
 // broken.
-func Others(to, cc []string, sender string) []string {
-	seen := map[string]bool{strings.ToLower(strings.TrimSpace(sender)): true}
+func Others(to, cc []string, sender, self string) []string {
+	seen := map[string]bool{
+		strings.ToLower(strings.TrimSpace(sender)): true,
+		strings.ToLower(strings.TrimSpace(self)):   true,
+	}
 	var out []string
 	for _, addr := range append(append([]string{}, to...), cc...) {
 		addr = strings.TrimSpace(addr)
@@ -84,9 +99,6 @@ func Others(to, cc []string, sender string) []string {
 			continue
 		}
 		seen[key] = true
-		if Ours(addr) {
-			continue
-		}
 		out = append(out, addr)
 	}
 	return out

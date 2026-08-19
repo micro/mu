@@ -155,23 +155,6 @@ func answerMail(m mail.InboundMail) {
 	case platID != "":
 		name, ref = platName, platID
 	}
-	// Whether this message is for the agent at all.
-	//
-	// It always is when nobody else is on it — that is what writing to an agent
-	// means. Once the agent has been copied into a conversation between other
-	// people, answering every message would be a model call a turn and an
-	// interruption a turn, which is how a thing gets muted. It speaks when it is
-	// spoken to and when it has just arrived; otherwise it listens. See
-	// thread.go and mail.Addressed.
-	//
-	// Nothing is lost by staying quiet: the message is already stored and
-	// already in the record, so the next question it *is* asked has the whole
-	// conversation behind it.
-	if !wanted(m.Owner, m) {
-		app.Log("mail", "agent %s is on this thread but was not addressed; staying quiet", name)
-		return
-	}
-
 	started := time.Now()
 	trigger := "email from " + m.From
 
@@ -199,6 +182,23 @@ func answerMail(m mail.InboundMail) {
 		case a != nil && a.Address() != "":
 			from = a.Address()
 		}
+	}
+
+	// Whether this message is for the agent at all.
+	//
+	// It always is when nobody else is on it — that is what writing to an agent
+	// means. Once the agent has been copied into a conversation between other
+	// people, answering every message would be a model call a turn and an
+	// interruption a turn, which is how a thing gets muted. It speaks when it is
+	// spoken to and when it has just arrived; otherwise it listens. See
+	// thread.go and mail.Addressed.
+	//
+	// Nothing is lost by staying quiet: the message is already stored and
+	// already in the record, so the next question it *is* asked has the whole
+	// conversation behind it.
+	if !wanted(m.Owner, m, from) {
+		app.Log("mail", "agent %s is on this thread but was not addressed; staying quiet", name)
+		return
 	}
 
 	// record writes the run down where the owner can find it, and hands
@@ -345,6 +345,7 @@ func answerMail(m mail.InboundMail) {
 		// changes with that. See agent.GroupPrompt.
 		System:     agent.GroupPrompt(m.Others),
 		Trigger:    trigger,
+		As:         from,
 		Ref:        m.InReplyTo + " " + m.References,
 		MessageRef: m.MessageID,
 		From:       m.From,

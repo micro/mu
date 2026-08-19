@@ -34,7 +34,7 @@ import (
 // not conversations, and whether the agent has spoken here is a fact about the
 // record. Looked up by the ids the incoming message carries, which is the same
 // way the run finds the conversation to continue.
-func spoken(owner string, m mail.InboundMail) bool {
+func spoken(owner string, m mail.InboundMail, as string) bool {
 	refs := append(thread.Refs(m.InReplyTo), thread.Refs(m.References)...)
 	if len(refs) == 0 {
 		return false
@@ -44,7 +44,11 @@ func spoken(owner string, m mail.InboundMail) bool {
 		return false
 	}
 	for _, msg := range thread.Messages(owner, t.ID, 50) {
-		if msg.Role == thread.RoleAgent {
+		// This agent, not any agent. Copy agent+news@ and agent+markets@ into
+		// one thread and the first to answer would otherwise silence the
+		// second — the rule that stops an agent interrupting a conversation it
+		// has already joined would read the other one's answer as its own.
+		if msg.Role == thread.RoleAgent && strings.EqualFold(msg.From, as) {
 			return true
 		}
 	}
@@ -56,8 +60,8 @@ func spoken(owner string, m mail.InboundMail) bool {
 // Always, for an ordinary one-to-one message — that is what writing to an agent
 // is. In a thread with other people on it, the rule is in mail.Addressed and the
 // default is silence.
-func wanted(owner string, m mail.InboundMail) bool {
-	return mail.Addressed(m.ToAgent, m.Others, spoken(owner, m), m.Text)
+func wanted(owner string, m mail.InboundMail, as string) bool {
+	return mail.Addressed(m.ToAgent, m.Others, spoken(owner, m, as), m.Text)
 }
 
 // introduction is the line the agent leads with the first time it appears in
@@ -73,7 +77,7 @@ func wanted(owner string, m mail.InboundMail) bool {
 // a feature, and saying so up front is the difference between being useful and
 // being something that happened to you.
 func introduction(owner string, m mail.InboundMail, addr string) string {
-	if len(m.Others) == 0 || spoken(owner, m) {
+	if len(m.Others) == 0 || spoken(owner, m, addr) {
 		return ""
 	}
 	who := strings.TrimSpace(m.FromName)
