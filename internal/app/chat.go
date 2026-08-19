@@ -6,16 +6,6 @@ import (
 	"strings"
 )
 
-// generalSuggestions is what to ask when nobody has chosen a specialist —
-// Home, the landing page, and the default agent. Four different services on
-// purpose: the point being made is breadth.
-var generalSuggestions = []string{
-	"Give me a morning brief",
-	"What is moving in markets?",
-	"Weather in San Francisco",
-	"Find today's AI news",
-}
-
 // JSString returns s as a safely-quoted JavaScript string literal (with
 // surrounding quotes) for embedding in inline scripts.
 func JSString(s string) string {
@@ -102,14 +92,22 @@ func ChatComponent(cfg ChatConfig) string {
 		initialConv = cfg.InitialConvHTML
 	}
 
-	// What to ask, in this agent's words when there is one.
+	// What to ask, in this agent's words when there is one — and nothing at all
+	// when there is not.
+	//
+	// The default used to be four general suggestions and a placeholder built
+	// out of the first of them, so every empty box on the site read "Try: give
+	// me a morning brief". It was on the landing, on Home, on the default
+	// agent, and it aged: a suggestion nobody has changed in months reads as a
+	// demo rather than an offer, and the same one everywhere reads as the
+	// product having one idea.
+	//
+	// A page that has something specific to suggest still passes it. The
+	// general case gets a box that says what it is.
 	suggestions := cfg.Suggestions
-	if len(suggestions) == 0 {
-		suggestions = generalSuggestions
-	}
 	placeholder := strings.TrimSpace(cfg.Placeholder)
 	if placeholder == "" {
-		placeholder = "Try: " + strings.ToLower(suggestions[0][:1]) + suggestions[0][1:]
+		placeholder = "Ask it something"
 	}
 	suggestJS, err := json.Marshal(suggestions)
 	if err != nil {

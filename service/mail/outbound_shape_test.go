@@ -116,3 +116,48 @@ func headerOf(t *testing.T, msg, name string) string {
 	t.Fatalf("no %s header in:\n%s", name, msg)
 	return ""
 }
+
+// A reply-all is a well-formed message with everybody on it.
+//
+// Every agent mail reply goes through this path now, not only the copied-in
+// ones — SendExternalReply delegates to it with no Cc. So a fault here is not a
+// missing feature, it is every agent on the instance failing to answer its mail,
+// and the seam exists because that has happened before: the answers went out as
+// a multipart/alternative whose HTML half was empty, which is a well-formed
+// message that displays as nothing.
+func TestAReplyAllCarriesEverybody(t *testing.T) {
+	msg, _ := buildExternalTo("Micro", "agent@micro.mu", "", "asim@example.com",
+		[]string{"brother@example.net", "agent+markets@micro.mu"},
+		"Re: the train", "when it leaves", "<p>when it leaves</p>", "<abc@example.com>", "")
+	out := string(msg)
+
+	head, body, ok := strings.Cut(out, "\r\n\r\n")
+	if !ok {
+		t.Fatal("no header/body separator, so this is not a message")
+	}
+	if !strings.Contains(head, "To: asim@example.com\r\n") {
+		t.Error("the sender of the message being answered is not the To of the reply")
+	}
+	if !strings.Contains(head, "Cc: brother@example.net, agent+markets@micro.mu\r\n") {
+		t.Errorf("the rest of the thread is not on the reply:\n%s", head)
+	}
+	// Threading, which is what keeps it in the conversation rather than
+	// arriving as a separate message that says the same thing.
+	if !strings.Contains(head, "In-Reply-To: <abc@example.com>") ||
+		!strings.Contains(head, "References: <abc@example.com>") {
+		t.Errorf("the reply is not threaded:\n%s", head)
+	}
+	if !strings.Contains(body, "when it leaves") {
+		t.Error("the body did not survive")
+	}
+}
+
+// And with nobody copied there is no empty Cc, which some servers reject and
+// every client renders as a stray blank recipient.
+func TestAnOrdinaryReplyHasNoCcHeader(t *testing.T) {
+	msg, _ := buildExternalTo("Micro", "agent@micro.mu", "", "asim@example.com", nil,
+		"Re: hello", "hi", "<p>hi</p>", "", "")
+	if strings.Contains(string(msg), "Cc:") {
+		t.Error("a one-to-one reply carries an empty Cc header")
+	}
+}

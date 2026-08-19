@@ -25,6 +25,7 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
+	"strconv"
 	"strings"
 
 	"mu/internal/app"
@@ -155,7 +156,7 @@ func list(w http.ResponseWriter, r *http.Request, accountID, box string) {
 	app.Respond(w, r, app.Response{Title: "Inbox", Description: "What arrived", HTML: b.String()})
 }
 
-// row is one conversation: who last spoke, what it is about, the last thing
+// row is one conversation: who it is with, what it is about, the last thing
 // said, and when. The shape of a mail client's list, because a list of
 // conversations is what a mail client shows.
 func row(accountID string, t thread.Thread) string {
@@ -164,22 +165,35 @@ func row(accountID string, t thread.Thread) string {
 		subject = "Untitled"
 	}
 
-	who, full, snippet := "You", "", ""
+	// Who the conversation is *with*, which is not who spoke last.
+	//
+	// It was the last speaker, so an inbound email from Henrik was labelled
+	// "Agent" the moment the agent answered it — the row said the message was
+	// from an agent when it was from a person, and the whole list relabelled
+	// itself as replies landed. No mail client does that: the first column is
+	// who you are corresponding with, and it does not change because the last
+	// word happened to be yours.
+	who, full := party(accountID, t)
+	snippet := ""
 	if msgs := thread.Messages(accountID, t.ID, 1); len(msgs) > 0 {
-		m := msgs[0]
-		switch {
-		case m.Role == thread.RoleAgent:
-			who = "Agent"
-		case m.From != "":
-			who, full = senderName(accountID, t.ID, m.From), m.From
-		}
-		snippet = trimTo(m.Text, 110)
+		snippet = trimTo(msgs[0].Text, 110)
 	}
 
-	// Which channel carried it. Every row here arrived from somewhere that is
-	// not this page, so the label is always worth showing — it is the answer to
-	// "where do I reply".
-	where := app.Pill(app.ClientName(t.Client))
+	// The labels, before the subject rather than after it.
+	//
+	// They were between the subject and the snippet, which is the one place
+	// they cannot be read: mid-sentence, in the middle of the row. A label is
+	// how you decide whether to read the line at all, so it comes first.
+	//
+	// Which channel carried it — every row here arrived from somewhere that is
+	// not this page, so it answers "where do I reply" — and which agent it is
+	// with, where it is with one. "Agent" as a bare word was the other half of
+	// the confusion: it named a role rather than saying which of them, and
+	// there are eleven.
+	labels := app.Pill(app.ClientName(t.Client))
+	if name := agentLabel(accountID, t.Agent); name != "" {
+		labels += app.Pill(name)
+	}
 
 	// Unread, which is what makes this a mailbox rather than a log. Without it
 	// every row looks the same and the page has to be read top to bottom every
@@ -191,10 +205,47 @@ func row(accountID string, t thread.Thread) string {
 
 	return `<a class="` + cls + `" href="/inbox?id=` + url.QueryEscape(t.ID) + `">` +
 		`<span class="ib-who"` + titleAttr(full) + `>` + html.EscapeString(who) + `</span>` +
-		`<span class="ib-mid"><span class="ib-subject">` +
-		html.EscapeString(trimTo(subject, 70)) + `</span>` + where +
+		`<span class="ib-mid">` + labels + `<span class="ib-subject">` +
+		html.EscapeString(trimTo(subject, 70)) + `</span>` +
 		`<span class="ib-snip">` + html.EscapeString(snippet) + `</span></span>` +
 		`<span class="ib-when">` + html.EscapeString(app.TimeAgo(t.Updated)) + `</span></a>`
+}
+
+// party is who a conversation is with, and the address behind the name.
+//
+// The other people on it — anybody who is not this account and not an agent.
+// "You" when there is nobody else, which is every conversation you started
+// yourself: your own name in your own inbox is furniture, and "You · What is
+// the weather" reads correctly as a note to yourself.
+//
+// Names, not addresses, because the address is on the hover and in the
+// conversation. Two people are joined with a comma the way a mail client does
+// it; more than two is counted, because three names is wider than the column.
+func party(accountID string, t thread.Thread) (who, full string) {
+	var names, addrs []string
+	for _, p := range thread.Parties(accountID, t.ID) {
+		if p.Kind == thread.RoleAgent || p.Key == "" {
+			continue
+		}
+		if strings.EqualFold(p.Key, accountID) {
+			continue
+		}
+		name := p.Name
+		if name == "" {
+			name = senderName(accountID, t.ID, p.Key)
+		}
+		names = append(names, trimTo(name, 22))
+		addrs = append(addrs, p.Key)
+	}
+	switch len(names) {
+	case 0:
+		return "You", ""
+	case 1:
+		return names[0], addrs[0]
+	case 2:
+		return names[0] + ", " + names[1], strings.Join(addrs, ", ")
+	}
+	return names[0] + " +" + strconv.Itoa(len(names)-1), strings.Join(addrs, ", ")
 }
 
 // conversation is one thread, read.

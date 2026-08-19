@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"html"
 	"net/http"
-	"net/url"
 	"strings"
 
 	"mu/agent/micro"
@@ -44,34 +43,40 @@ func ConnectHandler(w http.ResponseWriter, r *http.Request) {
 	// Built as one string and wrapped once, so every path opens and closes the
 	// column exactly once. An early return that closes a div its caller opened
 	// ends the page layout early — see TestMarkupBuildersCloseTheirTags.
-	title, desc := "Connect Micro", "How to reach the default agent"
+	title, desc := "Connect to Micro", "How to reach the default agent"
 	body := defaultPanel(app.BaseURL(r))
 	switch {
 	case a != nil:
-		title, desc = "Connect "+a.Name, "How to reach "+a.Name
+		title, desc = "Connect to "+a.Name, "How to reach "+a.Name
 		body = connectPanel(a, app.BaseURL(r), auth.CSRFToken(r))
 	case Platform(id) != nil && !strings.EqualFold(id, DefaultPlatformAgent):
 		// One of this instance's own. Without this every specialist's "How to
 		// reach it" fell through to the default panel and said Micro — eleven
 		// links to a page about a different agent.
 		p := Platform(id)
-		title, desc = "Connect "+p.Name, "How to reach "+p.Name
+		title, desc = "Connect to "+p.Name, "How to reach "+p.Name
 		body = platformPanel(p, app.BaseURL(r))
 	}
 
-	// Back to the agent, not to the mailbox. /inbox is what arrived; this page
-	// is about one agent and so is where it goes back to.
-	back := "/agent"
-	if id != "" {
-		back += "?id=" + url.QueryEscape(id)
-	}
+	// Back to the roster, not to a conversation.
+	//
+	// It said "← Back to the conversation" and pointed at /agent — which is
+	// wrong twice. Most people arrive here from /agents, having clicked Connect
+	// on a row, so "back" sent them somewhere they had not been. And for an
+	// agent that runs elsewhere there is no conversation to go back to: it is
+	// reached over MCP by something outside this instance, and this product has
+	// never claimed you can chat with one here.
+	//
+	// /agents is where the link on this page comes from and where every agent is
+	// listed, so it is both true and the same for everybody.
+	back := "/agents"
 	// The same picker the conversation has, and on a phone the same sheet: the
 	// column is fixed off-screen there, so without the button it would be a
 	// panel nothing could open.
 	page := `<div class="chat-layout"><div class="chat-side">` +
 		`<div class="chat-pane" id="pane-agents">` + renderAgentsPanel() + `</div></div>` +
 		`<div class="chat-main"><p class="conn-back">` +
-		app.Link("← Back to the conversation", back) +
+		app.Link("← Agents", back) +
 		`<button type="button" class="chat-open-list" onclick="muPane('agents')">Agents</button></p>` +
 		`<div style="max-width:820px">` + body + `</div></div></div>` +
 		chatLayoutCSS + connectCSS + paneJS +
@@ -106,11 +111,12 @@ func defaultPanel(base string) string {
 		`<code class="conn-v">` + html.EscapeString(strings.TrimSuffix(base, "/")+"/mcp") + `</code></div>`)
 
 	if addr := mail.SharedAgentAddress(); addr != "" {
-		b.WriteString(`<div class="conn-row"><span class="conn-k">Write to it</span>` +
-			`<span class="conn-v"><code>` + html.EscapeString(addr) + `</code><br>` +
-			`<span class="conn-sub">From your verified address. It answers in the thread, and ` +
-			`the conversation shows up in your list beside the ones you started ` +
-			`here.</span></span></div>`)
+		// The address, with no paragraph under it. This carried three lines
+		// about verified addresses, what is filed rather than answered, and
+		// which conversation list it shows up in — rules, on a page whose job
+		// is to hand you the four things you copy somewhere else.
+		b.WriteString(`<div class="conn-row"><span class="conn-k">Email</span>` +
+			`<code class="conn-v">` + html.EscapeString(addr) + `</code></div>`)
 	}
 
 	b.WriteString(`<div class="conn-row"><span class="conn-k">Token</span>` +
@@ -190,17 +196,16 @@ func connectPanel(a *Agent, base, csrf string) string {
 				`configured, so nothing from outside can reach it — an operator sets ` +
 				`<code>MAIL_DOMAIN</code> to change that.</span></span></div>`)
 		} else {
-			shared := ""
-			if s := mail.SharedAgentAddress(); s != "" {
-				shared = `<br><span class="conn-sub">Or <code>` + html.EscapeString(s) +
-					`</code> from your verified address, which reaches your default agent ` +
-					`and needs nothing remembered.</span>`
-			}
-			b.WriteString(`<div class="conn-row"><span class="conn-k">Write to it</span>` +
-				`<span class="conn-v"><code>` + html.EscapeString(addr) + `</code><br>` +
-				`<span class="conn-sub">Answers your own verified address and people in ` +
-				app.TextLink("your contacts", "/contacts") + `. Other mail is filed, not answered.</span>` +
-				shared + `</span></div>`)
+			// The address, and nothing under it.
+			//
+			// This carried two paragraphs: who it answers and what is filed
+			// instead, then a second address with its own explanation. Both are
+			// rules rather than things to copy, and this page is a list of four
+			// things you take somewhere else — an endpoint, an address, a
+			// scope, a token. Where the rules belong is /help; where the other
+			// address belongs is the page about the other agent.
+			b.WriteString(`<div class="conn-row"><span class="conn-k">Email</span>` +
+				`<code class="conn-v">` + html.EscapeString(addr) + `</code></div>`)
 		}
 	}
 

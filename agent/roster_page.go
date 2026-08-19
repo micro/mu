@@ -68,10 +68,16 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<div style="max-width:720px">`)
 	// The first line of the same three-page sentence: an agent acts for you,
 	// tools are what it can call, services are what runs behind them.
-	b.WriteString(`<p class="lens-lead">What acts for you. Each one gets an address people ` +
-		`can write to, a standing instruction, and the services it may reach — then talk to it ` +
-		`in your ` + app.TextLink("inbox", "/inbox") + `, or hand it a token and run it from Claude, ` +
-		`Cursor or your own program.</p>`)
+	// What you can do with one, in the order you can do it.
+	//
+	// This said "Each one gets an address people can write to, a standing
+	// instruction, and the services it may reach — then talk to it in your
+	// inbox, or hand it a token and run it from Claude, Cursor or your own
+	// program." Three things an agent *has* before one thing you can do, and
+	// the two ways to use it were a subordinate clause at the end. There are
+	// two: chat with it here, or email it. Everything else is configuration.
+	b.WriteString(`<p class="lens-lead">Chat with one here, or email it. Each has its own ` +
+		`address, its own standing instruction, and only the services you gave it.</p>`)
 
 	if msg := r.URL.Query().Get("error"); msg != "" {
 		// The way out is a link, because it reads as one. Hitting the agent limit
@@ -230,9 +236,10 @@ func agentRow(a *Agent, csrf, base string) string {
 	// Changing where an agent runs is editing it, and editing is /agent/new.
 	meta, action := "", ""
 	if a.TokenID == "" {
-		// The name above is the link now, so this says what is true rather than
-		// repeating where to click.
-		meta = `Open its name to talk to it here. No token, so nothing outside this instance can call it.`
+		// What is true about it, not where to click. There are four links
+		// directly below saying that, and a sentence pointing at them was the
+		// row explaining its own furniture.
+		meta = `No token, so nothing outside this instance can call it.`
 		if a.Kind != Hosted {
 			action = fmt.Sprintf(`<form method="POST" action="/agents" style="margin:0">
     <input type="hidden" name="_csrf" value="%s"><input type="hidden" name="action" value="token">
@@ -259,11 +266,11 @@ func agentRow(a *Agent, csrf, base string) string {
 	// would be telling them to write to nothing.
 	addr := ""
 	if r := a.Address(); r != "" {
-		verb := "Message it at"
-		if mail.Reachable() {
-			verb = "Write to it at"
-		}
-		addr = `<div class="agent-mail">` + verb + ` <code>` + html.EscapeString(r) + `</code></div>`
+		// The address, plainly. It said "Write to it at <addr>" or "Message it
+		// at <addr>" depending on whether mail leaves this instance — a
+		// sentence where a label would do, and two sentences to maintain for a
+		// distinction the reader cannot act on either way.
+		addr = `<div class="agent-mail"><code>` + html.EscapeString(r) + `</code></div>`
 	}
 
 	// Where it runs, on the row, in a word.
@@ -287,13 +294,17 @@ func agentRow(a *Agent, csrf, base string) string {
 	// 250px column, behind an icon — while the page whose whole job is managing
 	// agents offered no way to change one. You could make an agent here, name
 	// it, scope it, delete it, and not edit it.
+	// Chat, Connect, Edit, Fork — in that order, because that is how often each
+	// is wanted. Connect was first and Chat was last, phrased as "Talk to it →",
+	// which put the rarest action at the front of every row and the commonest at
+	// the end of it. Talking to the thing is the point of having made it.
 	links := fmt.Sprintf(`<div class="agent-links">`+
+		`<a href="%s">Chat</a>`+
 		`<a href="/agent/connect?id=%s">Connect</a>`+
 		`<a href="/agent/new?id=%s">Edit</a>`+
-		`<a href="/agent/new?fork=%s">Fork</a>`+
-		`<a href="%s">Talk to it &rarr;</a></div>`,
-		html.EscapeString(a.ID), html.EscapeString(a.ID),
-		html.EscapeString(a.ID), html.EscapeString(Path(a.Owner, a.ID)))
+		`<a href="/agent/new?fork=%s">Fork</a></div>`,
+		html.EscapeString(Path(a.Owner, a.ID)), html.EscapeString(a.ID),
+		html.EscapeString(a.ID), html.EscapeString(a.ID))
 
 	// Where the name goes depends on what the agent is for. One that runs here
 	// opens on talking to it; one that runs elsewhere opens on how to reach it,

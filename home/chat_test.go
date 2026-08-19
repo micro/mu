@@ -20,13 +20,22 @@ import (
 	"testing"
 )
 
+// A guest chat offers the two ways on and nothing pre-typed.
+//
+// It used to require the placeholder "Try: give me a morning brief" and two of
+// the four suggestions behind it. Those were the component's defaults, so every
+// empty box on the site said the same thing — the landing, Home, the default
+// agent, and a specialist's own page, which suggested another agent's work on
+// the page you opened to get away from the general one. A suggestion nobody has
+// changed in months reads as a demo rather than an offer.
+//
+// What this holds now is what the guest chat is actually for: a box you can
+// type in, and the two ways to keep going once the free queries run out.
 func TestGuestChatFirstRunGuidance(t *testing.T) {
 	html := chatComponent(true)
 
 	checks := []string{
-		`placeholder="Try: give me a morning brief"`,
-		"Give me a morning brief",
-		"What is moving in markets?",
+		`placeholder="Ask it something"`,
 		`href="/signup"`,
 		`href="/login?redirect=/agent"`,
 	}
@@ -34,6 +43,9 @@ func TestGuestChatFirstRunGuidance(t *testing.T) {
 		if !strings.Contains(html, want) {
 			t.Fatalf("guest chat HTML missing %q", want)
 		}
+	}
+	if strings.Contains(html, "morning brief") {
+		t.Error("the box still comes pre-loaded with a suggestion nobody wrote for it")
 	}
 }
 
