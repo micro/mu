@@ -19,6 +19,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -665,25 +666,22 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Build language options
+	// The languages this instance speaks, as options rather than as markup.
 	currentLang := acc.Language
 	if currentLang == "" {
 		currentLang = "en"
 	}
-	languageOptions := ""
+	langs := make([]app.Option, 0, len(app.SupportedLanguages))
 	for code, name := range app.SupportedLanguages {
-		selected := ""
-		if code == currentLang {
-			selected = " selected"
-		}
-		languageOptions += fmt.Sprintf(`<option value="%s"%s>%s</option>`, code, selected, name)
+		langs = append(langs, app.Option{Value: code, Label: name, On: code == currentLang})
 	}
+	sort.Slice(langs, func(i, j int) bool { return langs[i].Label < langs[j].Label })
 
 	// Email verification card + Google connect card
 	emailCard := renderEmailCard(acc)
 	googleCard := renderGoogleCard(acc)
 	if r.URL.Query().Get("linked") == "google" {
-		googleCard = `<div class="card" style="border-color:#1a7f37"><p style="margin:0;color:#1a7f37">✓ Google connected. You can now sign in with Google.</p></div>` + googleCard
+		googleCard = app.Notice("Google connected. You can now sign in with Google.") + googleCard
 	}
 	// What this account has handed over, in one place. The asks live on the
 	// pages that earn them; the audit belongs where somebody goes to check.
@@ -698,35 +696,30 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	// the one with a page.
 	clientsCard := ""
 	if app.LinkCodeFunc != nil {
-		code := r.URL.Query().Get("link_code")
-		if code != "" {
-			clientsCard = fmt.Sprintf(`<div class="card">
-<h4>Clients</h4>
-<p>Your link code: <code style="font-size:18px;font-weight:bold;background:#f0f0f0;padding:4px 12px;border-radius:4px">%s</code></p>
-<p class="text-sm text-muted" style="margin-top:4px">Send <code>link %s</code> to the Mu bot on Discord, Telegram or WhatsApp. Expires in 5 minutes, and works once.</p>
-</div>`, code, code)
+		if code := r.URL.Query().Get("link_code"); code != "" {
+			clientsCard = app.Section("Clients",
+				`<p class="link-code"><code>`+htmlpkg.EscapeString(code)+`</code></p>`,
+				app.NoteHTML(`Send <code>link `+htmlpkg.EscapeString(code)+`</code> to the Mu bot on `+
+					`Discord, Telegram or WhatsApp. Expires in five minutes, and works once.`))
 		} else {
-			clientsCard = `<div class="card">
-<h4>Clients</h4>
-<p class="text-sm text-muted">Use the agent from Discord, Telegram or WhatsApp. Generate a code, then send <code>link &lt;code&gt;</code> to the bot. Never send your password to a chat app.</p>
-<form action="/account" method="POST" style="margin-top:8px">
-<input type="hidden" name="channel_link" value="1">
-<button type="submit">Generate Link Code</button>
-</form>
-</div>`
+			clientsCard = app.Section("Clients",
+				app.NoteHTML(`Use the agent from Discord, Telegram or WhatsApp. Generate a code, `+
+					`then send <code>link &lt;code&gt;</code> to the bot. Never send your password `+
+					`to a chat app.`),
+				app.Form{Action: "/account", Hidden: map[string]string{"channel_link": "1"},
+					Submit: "Generate a link code"}.HTML())
 		}
 	}
 
 	notice := ""
 	switch r.URL.Query().Get("saved") {
 	case "name":
-		notice = `<div class="card" style="background:#f0fff0;border-color:#a3d9a5"><p style="color:#27ae60;margin:0">Name saved.</p></div>`
+		notice = app.Notice("Name saved.")
 	case "address":
-		notice = `<div class="card" style="background:#f0fff0;border-color:#a3d9a5"><p style="color:#27ae60;margin:0">Address removed.</p></div>`
+		notice = app.Notice("Address removed.")
 	}
 	if msg := r.URL.Query().Get("error"); msg != "" {
-		notice = `<div class="card" style="border-color:#e0a3a3"><p style="color:#c00;margin:0">` +
-			htmlpkg.EscapeString(msg) + `</p></div>`
+		notice = app.Problem(msg)
 	}
 
 	// The balance goes directly under the profile, and everything else after it.
@@ -735,60 +728,47 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	// language or a passkey can wait, and an empty balance stops the agent
 	// mid-errand. It was a nav item of its own called Wallet, which put a
 	// person's money one click further away than their choice of language.
-	content := notice + fmt.Sprintf(`<div class="card">
-<h4>Profile</h4>
-<p><strong><a href="/@%s">%s</a></strong> · %s · Joined %s</p>
-<form action="/account" method="POST" class="d-flex items-center gap-3" style="margin-top:8px">
-	<input type="hidden" name="save_name" value="1">
-	<input name="display_name" value="%s" maxlength="60" placeholder="Display name" style="max-width:280px">
-	<button type="submit">Save</button>
-</form>
-<p class="text-sm text-muted" style="margin:6px 0 0">Shown on your posts and your profile. Your username, <strong>%s</strong>, is the one in addresses and links and does not change.</p>
-</div>
+	// The page, as a list of sections.
+	//
+	// It was one fmt.Sprintf with fourteen %s in it and a template above them,
+	// so reading it meant counting placeholders down one list and arguments up
+	// another to find out which card was which. Every block below says its own
+	// name, and the order on the screen is the order in the code.
+	//
+	// The balance goes directly under the profile because it is the one thing
+	// here with a deadline: a display name, a language or a passkey can wait,
+	// and an empty balance stops the agent mid-errand.
+	profile := app.Section("Profile",
+		`<p><strong><a href="/@`+htmlpkg.EscapeString(acc.ID)+`">`+
+			htmlpkg.EscapeString(acc.ID)+`</a></strong> · `+htmlpkg.EscapeString(acc.Name)+
+			` · Joined `+acc.Created.Format("January 2, 2006")+`</p>`,
+		app.Form{Action: "/account", Inline: true,
+			Hidden: map[string]string{"save_name": "1"},
+			Fields: []app.Field{{Name: "display_name", Value: acc.Name, Max: 60,
+				Placeholder: "Display name"}},
+			Submit: "Save"}.HTML(),
+		app.Note("Shown on your posts and your profile. Your username, @"+acc.ID+
+			", is the one in addresses and links and does not change."))
 
-%s
+	language := app.Section("Language",
+		app.Form{Action: "/account", Inline: true,
+			Fields: []app.Field{{Name: "language", Options: langs}},
+			Submit: "Save"}.HTML())
 
-%s
+	settings := app.Section("Settings",
+		app.Links([2]string{"/token", "API credentials"}, [2]string{"/user", "User preferences"}),
+		`<p class="signout"><a class="text-error" href="/logout">Log out</a></p>`)
 
-%s
-
-%s
-
-<div class="card">
-<h4>Language</h4>
-<form action="/account" method="POST" class="d-flex items-center gap-3">
-	<select name="language" class="form-select text-sm">%s</select>
-	<button type="submit">Save</button>
-</form>
-</div>
-
-%s
-
-%s
-
-<div class="card">
-<h4>Settings</h4>
-<p><a href="/token">API Credentials →</a></p>
-<p><a href="/user">User prefs →</a></p>
-<p style="margin-top:12px"><a href="/logout" class="text-error">Logout</a></p>
-</div>
-
-%s`,
-		acc.ID,
-		acc.ID,
-		acc.Name,
-		acc.Created.Format("January 2, 2006"),
-		htmlpkg.EscapeString(acc.Name),
-		htmlpkg.EscapeString(acc.ID),
-		BalanceCard(acc.ID),
-		PlaceCard(r, acc.ID),
-		emailCard,
-		googleCard,
-		languageOptions,
-		PasskeyListHTML(acc.ID),
-		clientsCard,
-		LedgerSection(acc.ID),
-	)
+	content := notice + profile +
+		BalanceCard(acc.ID) +
+		PlaceCard(r, acc.ID) +
+		emailCard +
+		googleCard +
+		language +
+		PasskeyListHTML(acc.ID) +
+		clientsCard +
+		settings +
+		LedgerSection(acc.ID)
 
 	// About, Pricing, Help, Privacy, Status and the API reference live in the
 	// footer, and there is no footer once you are signed in — deliberately, on
@@ -834,14 +814,14 @@ func otherAddresses(acc *auth.Account) string {
 		return ""
 	}
 	var b strings.Builder
-	b.WriteString(`<p class="text-sm text-muted" style="margin:12px 0 4px">Also proved yours — mail from these reaches your agents:</p>`)
-	b.WriteString(`<ul style="font-size:14px;margin:0;padding-left:18px">`)
+	b.WriteString(app.Note("Also proved yours — mail from these reaches your agents:"))
+	b.WriteString(`<ul class="addr-list">`)
 	for _, a := range extra {
-		b.WriteString(`<li style="margin:0 0 4px"><code>` + htmlpkg.EscapeString(a) + `</code>` +
-			`<form action="/account" method="POST" style="display:inline">` +
-			`<input type="hidden" name="forget_address" value="` + htmlpkg.EscapeString(a) + `">` +
-			`<button type="submit" style="background:none;border:0;color:#c00;cursor:pointer;font-size:13px;padding:0 0 0 6px">remove</button>` +
-			`</form></li>`)
+		b.WriteString(`<li><code>` + htmlpkg.EscapeString(a) + `</code>` +
+			app.Form{Action: "/account", Class: "addr-drop",
+				Hidden: map[string]string{"forget_address": a},
+				Extra:  []app.Button{{Label: "remove", Kind: app.Danger}}}.HTML() +
+			`</li>`)
 	}
 	b.WriteString(`</ul>`)
 	return b.String()
@@ -854,13 +834,14 @@ func renderEmailCard(acc *auth.Account) string {
 	if acc.Admin || acc.Approved {
 		// Admins/approved users don't need verification.
 		if acc.EmailVerified {
-			return fmt.Sprintf(`<div class="card"><h4>Email</h4><p>%s — verified</p></div>`, htmlpkg.EscapeString(acc.Email))
+			return app.Section("Email", `<p>`+htmlpkg.EscapeString(acc.Email)+` — verified</p>`)
 		}
 		return ""
 	}
 
 	if app.EmailSender == nil {
-		return `<div class="card"><h4>Email</h4><p class="text-muted">Email verification is not configured on this instance.</p></div>`
+		return app.Section("Email",
+			app.Note("Email verification is not configured on this instance."))
 	}
 
 	if acc.EmailVerified {
@@ -869,32 +850,31 @@ func renderEmailCard(acc *auth.Account) string {
 		// had proved. An address is not yours for ever — people leave jobs and
 		// close accounts — and the one a password reset goes to is exactly the
 		// one somebody needs to be able to move.
-		return fmt.Sprintf(`<div class="card">
-<h4>Email</h4>
-<p><strong>%s</strong> — verified ✓</p>
-<p class="text-sm text-muted">Where a password reset goes. Verifying a different one replaces it.</p>
-<form action="/account" method="POST" class="d-flex items-center gap-3" style="margin-top:8px">
-	<input type="email" name="email" placeholder="you@example.com" required style="max-width:280px">
-	<button type="submit">Verify a different address</button>
-</form>
-%s
-</div>`, htmlpkg.EscapeString(acc.Email), otherAddresses(acc))
+		return app.Section("Email",
+			`<p><strong>`+htmlpkg.EscapeString(acc.Email)+`</strong> — verified ✓</p>`,
+			app.Note("Where a password reset goes. Verifying a different one replaces it."),
+			app.Form{Action: "/account", Inline: true,
+				Fields: []app.Field{{Name: "email", Type: "email", Required: true,
+					Placeholder: "you@example.com"}},
+				Submit: "Verify a different address"}.HTML(),
+			otherAddresses(acc))
 	}
 
 	pending := ""
 	if acc.Email != "" {
-		pending = fmt.Sprintf(`<p class="text-muted text-sm">A verification link was sent to <strong>%s</strong>. Click it to unlock posting. Submit again to resend.</p>`, htmlpkg.EscapeString(acc.Email))
+		pending = app.NoteHTML(`A verification link was sent to <strong>` +
+			htmlpkg.EscapeString(acc.Email) + `</strong>. Click it to unlock posting. ` +
+			`Submit again to resend.`)
 	}
 
-	return fmt.Sprintf(`<div class="card">
-<h4>Verify your email to post</h4>
-<p class="text-sm">Verifying your email unlocks status updates, replies, comments and blog posts. We do not share or sell your address.</p>
-%s
-<form action="/account" method="POST" class="d-flex items-center gap-3" style="margin-top:8px">
-	<input type="email" name="email" placeholder="you@example.com" value="%s" required>
-	<button type="submit">Send verification</button>
-</form>
-</div>`, pending, htmlpkg.EscapeString(acc.Email))
+	return app.Section("Verify your email to post",
+		`<p>Verifying your email unlocks status updates, replies, comments and blog posts. `+
+			`We do not share or sell your address.</p>`,
+		pending,
+		app.Form{Action: "/account", Inline: true,
+			Fields: []app.Field{{Name: "email", Type: "email", Value: acc.Email,
+				Required: true, Placeholder: "you@example.com"}},
+			Submit: "Send verification"}.HTML())
 }
 
 // Verify handles GET /verify?token=XXX — consumes a verification token

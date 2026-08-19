@@ -21,13 +21,16 @@ func TestTheChannelCardIsCalledClientsNotChat(t *testing.T) {
 	}
 	body := string(src)
 
-	if strings.Contains(body, "<h4>Chat</h4>") {
+	// Named through app.Section now rather than written as an <h4>, which is
+	// why this looks for the call and not the markup. The heading is the point
+	// either way.
+	if strings.Contains(body, `app.Section("Chat"`) || strings.Contains(body, "<h4>Chat</h4>") {
 		t.Error("/account still has a card headed Chat, which reads as the chat " +
 			"service rather than the bots you link an account to")
 	}
 	// Both states of the card — before a code is generated and after — carry
 	// the heading, so renaming one and not the other is the likely slip.
-	if n := strings.Count(body, "<h4>Clients</h4>"); n != 2 {
-		t.Errorf("found %d Clients headings, want 2 (with a link code and without)", n)
+	if n := strings.Count(body, `app.Section("Clients"`); n != 2 {
+		t.Errorf("found %d Clients sections, want 2 (with a link code and without)", n)
 	}
 }

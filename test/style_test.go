@@ -19,9 +19,11 @@ package test
 // internal/app/primitives.go should own.
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -115,5 +117,47 @@ func walkGo(t *testing.T, f func(path, src string)) {
 	})
 	if err != nil {
 		t.Fatalf("walking the repository: %v", err)
+	}
+}
+
+// inlineStyles is how many style="..." attributes the product may carry.
+//
+// A ratchet, like styleBlocks above, and for the same reason: 771 of these is
+// not a design somebody chose, it is what happens when a page has no way to say
+// "the usual button". Every one of them is a decision made once, in one file,
+// that nothing else can inherit.
+//
+// It goes down as surfaces move onto the components in internal/app/form.go.
+// Raising it means a page invented a look again.
+const inlineStyles = 745
+
+var styleAttr = regexp.MustCompile(`style="`)
+
+func TestInlineStylesAreGoingDown(t *testing.T) {
+	total := 0
+	worst := map[string]int{}
+	walkGo(t, func(path, src string) {
+		if strings.HasSuffix(path, "_test.go") {
+			return
+		}
+		n := len(styleAttr.FindAllString(src, -1))
+		if n == 0 {
+			return
+		}
+		total += n
+		worst[filepath.Dir(path)] += n
+	})
+	if total > inlineStyles {
+		var over []string
+		for d, n := range worst {
+			if n >= 20 {
+				over = append(over, fmt.Sprintf("%s (%d)", d, n))
+			}
+		}
+		sort.Strings(over)
+		t.Errorf("%d inline style attributes, over the %d this is ratcheting down from.\n"+
+			"A style attribute is a decision nothing else can inherit — see "+
+			"internal/app/form.go for the components that replace them.\nHeaviest: %s",
+			total, inlineStyles, strings.Join(over, ", "))
 	}
 }

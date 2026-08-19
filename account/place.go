@@ -28,7 +28,6 @@ package account
 
 import (
 	"fmt"
-	"html"
 	"math"
 	"net/http"
 	"strconv"
@@ -102,36 +101,33 @@ func PlaceCard(r *http.Request, accountID string) string {
 	if err != nil || acc == nil {
 		return ""
 	}
-	coords := ""
+	at := ""
 	if acc.Lat != 0 || acc.Lon != 0 {
-		coords = fmt.Sprintf("%.2f, %.2f", acc.Lat, acc.Lon)
+		at = `<span class="place-at">` + fmt.Sprintf("%.2f, %.2f", acc.Lat, acc.Lon) + `</span>`
 	}
 
-	var b strings.Builder
-	b.WriteString(`<div class="card" id="place"><h4>Where you are</h4>`)
-	b.WriteString(`<form action="/account/place" method="POST" class="place-form">`)
-	b.WriteString(`<input type="hidden" name="_csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `">`)
-	b.WriteString(`<input class="ib-field" type="text" name="place" maxlength="120" placeholder="London" value="` +
-		html.EscapeString(acc.Place) + `">`)
-	b.WriteString(`<input type="hidden" name="lat" id="place-lat" value="` +
-		strconv.FormatFloat(acc.Lat, 'f', -1, 64) + `">`)
-	b.WriteString(`<input type="hidden" name="lon" id="place-lon" value="` +
-		strconv.FormatFloat(acc.Lon, 'f', -1, 64) + `">`)
-	b.WriteString(`<input type="hidden" name="zone" id="place-zone" value="` +
-		html.EscapeString(acc.Zone) + `">`)
-	b.WriteString(`<div class="ib-ask-row"><button type="submit">Save</button>` +
-		`<button type="button" class="pill" onclick="muUseMyLocation(this)">Use my location</button>`)
-	if coords != "" {
-		b.WriteString(`<span class="place-at">` + html.EscapeString(coords) + `</span>`)
+	form := app.Form{
+		Action: "/account/place",
+		CSRF:   auth.CSRFToken(r),
+		Fields: []app.Field{
+			{Name: "place", Value: acc.Place, Max: 120, Placeholder: "London"},
+			{Name: "lat", ID: "place-lat", Type: "hidden",
+				Value: strconv.FormatFloat(acc.Lat, 'f', -1, 64)},
+			{Name: "lon", ID: "place-lon", Type: "hidden",
+				Value: strconv.FormatFloat(acc.Lon, 'f', -1, 64)},
+			{Name: "zone", ID: "place-zone", Type: "hidden", Value: acc.Zone},
+		},
+		Submit: "Save",
+		Extra: []app.Button{{Label: "Use my location", Kind: app.Quiet,
+			Type: "button", OnClick: "muUseMyLocation(this)"}},
 	}
-	b.WriteString(`</div></form>`)
-	b.WriteString(`<p class="text-sm text-muted" style="margin:10px 0 0">Your agents use this ` +
-		`for the forecast, what is nearby, prayer times and the trains — including runs that ` +
-		`happen while you are away from the screen. Coordinates are rounded to about a ` +
-		`kilometre, never finer.</p>`)
-	b.WriteString(placeJS)
-	b.WriteString(`</div>`)
-	return b.String()
+
+	return app.SectionID("place", "Where you are",
+		form.HTML()+at,
+		app.Note("Your agents use this for the forecast, what is nearby, prayer times "+
+			"and the trains — including runs that happen while you are away from the "+
+			"screen. Coordinates are rounded to about a kilometre, never finer."),
+		placeJS)
 }
 
 // placeJS fills the coordinates from the browser, which is the only thing that

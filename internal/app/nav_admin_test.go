@@ -89,7 +89,10 @@ func TestTheAccountPageHoldsNoOperatorErrands(t *testing.T) {
 			"change your language")
 	}
 	// Not vacuous: the handler is still building the page it is supposed to.
-	if !strings.Contains(page, `href="/token"`) {
+	// The links are app.Links pairs rather than hand-written anchors now, so
+	// this looks for the path. What it is guarding is unchanged: that the scan
+	// above ran over a handler that is actually building the account page.
+	if !strings.Contains(page, `"/token"`) {
 		t.Error("the account page no longer offers API credentials, so this scan " +
 			"is reading the wrong function")
 	}

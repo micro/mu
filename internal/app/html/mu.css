@@ -6132,3 +6132,106 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
 .fl-line-row { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; padding: 2px 0 }
 .fl-alt { color: var(--text-muted, #888); white-space: nowrap }
 .fl-more, .fl-none { display: block; margin-top: 6px; font-size: 13px; color: var(--text-muted, #888); text-decoration: none }
+
+/* --- Sections, fields and buttons ------------------------------------------
+
+   The shapes a settings page is made of, defined once. See
+   internal/app/form.go for why these arrived with a page rather than before
+   one. Everything is in tokens. */
+
+.note {
+  font-size: 13px;
+  color: var(--text-muted, #888);
+  line-height: var(--line-height, 1.6);
+  margin: 6px 0 0;
+}
+
+.notice-ok, .notice-bad {
+  font-size: 13px;
+  padding: 10px 14px;
+  border-radius: var(--border-radius, 6px);
+  border: var(--border-width, 1px) solid;
+  margin: 0 0 var(--spacing-md, 16px);
+}
+
+.notice-ok { background: #f2faf4; border-color: #cfe8d6; color: var(--btn-success, #1a7f37) }
+.notice-bad { background: #fdf4f4; border-color: #e8cfcf; color: var(--btn-danger, #c00) }
+
+.form { display: flex; flex-direction: column; gap: 10px; margin: 8px 0 0 }
+.form-inline { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px }
+.form-inline .form-actions { margin: 0 }
+.form-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px }
+
+.field {
+  font: inherit;
+  font-size: 14px;
+  padding: 8px 11px;
+  border: var(--border-width, 1px) solid var(--card-border, #e8e8e8);
+  border-radius: var(--border-radius, 6px);
+  background: var(--card-background, #fff);
+  color: var(--text-primary, #1a1a1a);
+  max-width: 320px;
+  box-sizing: border-box;
+}
+
+.field:focus { outline: none; border-color: #bbb }
+.field-wide { max-width: 100%; width: 100% }
+textarea.field { resize: vertical; line-height: var(--line-height, 1.6); width: 100%; max-width: 100% }
+select.field { max-width: 220px }
+
+.field-label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-muted, #888);
+}
+
+/* One button, three volumes. The product drew 232 <button> elements against 26
+   uses of .btn, so most of them arrived with the browser's own face on. */
+.btn {
+  display: inline-block;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 7px 18px;
+  border-radius: 999px;
+  border: var(--border-width, 1px) solid var(--btn-primary, #000);
+  background: var(--btn-primary, #000);
+  color: #fff;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--transition-fast, .15s ease), border-color var(--transition-fast, .15s ease);
+}
+
+.btn:hover { background: var(--btn-primary-hover, #333); border-color: var(--btn-primary-hover, #333); color: #fff }
+
+.btn-quiet {
+  background: none;
+  border-color: var(--card-border, #e8e8e8);
+  color: var(--text-secondary, #555);
+}
+
+.btn-quiet:hover { background: none; border-color: #ddd; color: var(--text-primary, #1a1a1a) }
+
+.btn-danger { background: none; border-color: var(--card-border, #e8e8e8); color: var(--text-secondary, #555) }
+.btn-danger:hover { background: none; border-color: #e6b3b3; color: var(--btn-danger, #c00) }
+
+.links { display: flex; flex-direction: column; gap: 7px; font-size: 14px }
+.links a { text-decoration: none }
+
+/* The balance, on /account. */
+.balance-figure { font-size: 28px; margin: 4px 0 2px }
+.balance-figure span { color: var(--text-muted, #888); font-size: 14px }
+.balance-links { margin: 10px 0 0; font-size: 14px }
+.place-at { font-size: 12px; color: var(--text-muted, #888); margin-left: 4px }
+.signout { margin: 12px 0 0 }
+.link-code code { font-size: 18px; font-weight: var(--font-weight-bold, 700); background: var(--hover-background, #fafafa); border: var(--border-width, 1px) solid var(--card-border, #e8e8e8); border-radius: var(--border-radius, 6px); padding: 4px 12px }
+
+/* Addresses this account has proved, on /account. */
+.addr-list { font-size: 14px; margin: 4px 0 0; padding-left: 18px }
+.addr-list li { margin: 0 0 4px }
+.addr-drop { display: inline; margin: 0 }
+.addr-drop .form-actions { display: inline-flex }
+.addr-drop .btn { border: 0; background: none; padding: 0 0 0 8px; font-size: 13px }

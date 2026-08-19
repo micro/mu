@@ -65,25 +65,20 @@ func BalanceCard(userID string) string {
 		isAdmin = acc.Admin
 	}
 
-	var sb strings.Builder
-	sb.WriteString(`<div class="card" id="balance">`)
-	sb.WriteString(`<h4>Balance</h4>`)
-	sb.WriteString(fmt.Sprintf(`<p style="font-size:28px;margin:4px 0 2px"><b>%s</b> `+
-		`<span style="color:#999;font-size:14px">credits</span></p>`, thousands(c.Balance)))
-	sb.WriteString(fmt.Sprintf(`<p class="text-sm text-muted" style="margin:0 0 10px">%s · 1 credit = 1p</p>`,
-		money(c.Balance)))
+	admin := ""
 	if isAdmin {
-		sb.WriteString(`<p class="text-sm text-muted" style="margin:0 0 10px">` +
-			`You are an admin on this instance, so your own calls are never charged.</p>`)
+		admin = app.Note("You are an admin on this instance, so your own calls are never charged.")
 	}
 	// Usage is on this line because the sidebar no longer carries it: what an
 	// account has spent is a view of the money above it, not a fourth level of
 	// the product beside Tools and Services, which is where it sat.
-	sb.WriteString(`<p style="margin:0"><a href="/account/topup">Add credits →</a> · ` +
-		`<a href="/account/transfer">Transfer →</a> · <a href="/usage">Usage →</a> · ` +
-		`<a href="#ledger">History →</a></p>`)
-	sb.WriteString(`</div>`)
-	return sb.String()
+	return app.SectionID("balance", "Balance",
+		`<p class="balance-figure"><b>`+thousands(c.Balance)+`</b> <span>credits</span></p>`,
+		app.Note(money(c.Balance)+" · 1 credit = 1p"),
+		admin,
+		`<p class="balance-links"><a href="/account/topup">Add credits &rarr;</a> · `+
+			`<a href="/account/transfer">Transfer &rarr;</a> · <a href="/usage">Usage &rarr;</a> · `+
+			`<a href="#ledger">History &rarr;</a></p>`)
 }
 
 // LedgerSection is the receipts: what things cost, and what this account has
@@ -106,25 +101,19 @@ func LedgerSection(userID string) string {
 		}
 	}
 	if totalEarnings > 0 {
-		sb.WriteString(`<div class="card">`)
-		sb.WriteString(`<h4>App earnings</h4>`)
-		sb.WriteString(fmt.Sprintf(`<p>%d credits earned from your apps (recent)</p>`, totalEarnings))
-		sb.WriteString(`<p class="text-sm text-muted">You keep 90%% of every sale. <a href="/apps">Manage your apps →</a></p>`)
-		sb.WriteString(`</div>`)
+		sb.WriteString(app.Section("App earnings",
+			fmt.Sprintf(`<p>%d credits earned from your apps (recent)</p>`, totalEarnings),
+			app.NoteHTML(`You keep 90% of every sale. <a href="/apps">Manage your apps &rarr;</a>`)))
 	}
 
-	sb.WriteString(`<div class="card" id="ledger">`)
-	sb.WriteString(`<h4>Costs</h4>`)
-	sb.WriteString(PricingTableHTML())
-	sb.WriteString(`</div>`)
+	sb.WriteString(app.SectionID("ledger", "Costs", PricingTableHTML()))
 
 	if len(transactions) > 0 {
-		sb.WriteString(`<div class="card">`)
-		sb.WriteString(`<h4>History</h4>`)
-		sb.WriteString(`<table class="data-table">`)
-		sb.WriteString(`<tr><th>Date</th><th>Type</th><th>Amount</th><th>Balance</th></tr>`)
+		var rows strings.Builder
+		rows.WriteString(`<table class="data-table">`)
+		rows.WriteString(`<tr><th>Date</th><th>Type</th><th>Amount</th><th>Balance</th></tr>`)
 		for _, tx := range transactions {
-			sb.WriteString(fmt.Sprintf(`<tr>
+			rows.WriteString(fmt.Sprintf(`<tr>
 				<td>%s</td>
 				<td>%s</td>
 				<td>%s</td>
@@ -132,8 +121,8 @@ func LedgerSection(userID string) string {
 			</tr>`, tx.CreatedAt.Format("2 Jan 15:04"), htmlEsc(transactionLabel(tx)),
 				transactionAmount(tx), tx.Balance))
 		}
-		sb.WriteString(`</table>`)
-		sb.WriteString(`</div>`)
+		rows.WriteString(`</table>`)
+		sb.WriteString(app.Section("History", rows.String()))
 	}
 
 	return sb.String()
