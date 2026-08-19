@@ -57,7 +57,7 @@ func TestUnreadRowsAreMarked(t *testing.T) {
 	const who = "mailbox-unread"
 	th := arrived(t, who, "mail", "<b@example.com>", "", "them@example.com", "the quarterly numbers")
 
-	// The markup, not the stylesheet — inboxCSS always carries the rule.
+	// The markup, not the stylesheet — mu.css always carries the rule.
 	const marked = `class="ib-row unseen"`
 	if body := listBody(t, "/inbox", who, ""); !strings.Contains(body, marked) {
 		t.Errorf("a conversation nobody has opened is not marked unread:\n%s", body)

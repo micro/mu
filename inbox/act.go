@@ -123,7 +123,7 @@ func askBox(r *http.Request, threadID string) string {
 	} {
 		// Fills the box rather than submitting, so the suggestion is a starting
 		// point somebody can change — which is what makes it a suggestion.
-		b.WriteString(`<button type="button" class="ib-chip" onclick="this.form.ask.value='` +
+		b.WriteString(`<button type="button" class="pill" onclick="this.form.ask.value='` +
 			html.EscapeString(s) + `';this.form.ask.focus()">` + html.EscapeString(s) + `</button>`)
 	}
 	b.WriteString(`</div><p class="ib-ask-note">This is not a reply — nothing here is sent to ` +
@@ -131,18 +131,3 @@ func askBox(r *http.Request, threadID string) string {
 	b.WriteString(`</form>`)
 	return b.String()
 }
-
-const askCSS = `<style>
-.ib-ask{margin-top:22px;padding-top:16px;border-top:1px solid #eee}
-.ib-ask textarea{width:100%;box-sizing:border-box;font:inherit;font-size:14px;padding:9px 11px;border:1px solid #e2e2e2;border-radius:8px;resize:vertical}
-.ib-ask textarea:focus{outline:none;border-color:#bbb}
-.ib-ask-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;align-items:center}
-.ib-ask button[type=submit]{font:inherit;font-size:13px;padding:6px 16px;border:1px solid #111;background:#111;color:#fff;border-radius:999px;cursor:pointer}
-.ib-chip{font:inherit;font-size:12px;padding:4px 11px;border:1px solid #eee;background:none;color:#666;border-radius:999px;cursor:pointer}
-.ib-chip:hover{border-color:#ddd;color:#111}
-.ib-ask-note{font-size:12px;color:#aaa;margin:9px 0 0}
-.ib-ask-problem{font-size:13px;color:#b00;margin:0 0 9px}
-@media (max-width:640px){
-  .ib-chip{font-size:11px}
-}
-</style>`

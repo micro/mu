@@ -5715,3 +5715,254 @@ body.display-mode .card h4 {
    without moving anything: the old content dims for as long as the next page
    takes. A spinner would be a bigger lie about the wait than this is. */
 #content[data-loading] { opacity: .55; transition: opacity .12s ease-in; }
+
+/* --- Shared primitives ----------------------------------------------------
+
+   The shapes that were being redrawn once per page. See
+   internal/app/primitives.go for why these are here rather than in another
+   <style> block: the tokens above were never the missing piece, a component
+   small enough to reach for was.
+
+   Everything below is written in tokens, so the palette reaches the pages that
+   use it — which is the only thing that makes it a palette. */
+
+.pill {
+  display: inline-block;
+  border: var(--border-width, 1px) solid var(--card-border, #e8e8e8);
+  border-radius: 999px;
+  padding: 2px 9px;
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--text-muted, #888);
+  white-space: nowrap;
+  flex: none;
+}
+
+/* A pill that does something is a touch larger, because it has to be hit with
+   a thumb. Buttons carry font:inherit because a <button> otherwise arrives
+   with the browser's own face and is the one control on the page in a
+   different typeface. */
+a.pill,
+button.pill {
+  font: inherit;
+  font-size: 12px;
+  padding: 3px 11px;
+  background: none;
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color var(--transition-fast, .15s ease), color var(--transition-fast, .15s ease);
+}
+
+a.pill:hover,
+button.pill:hover {
+  border-color: #ddd;
+  color: var(--text-primary, #1a1a1a);
+}
+
+.pill.on,
+.pill.on:hover {
+  background: var(--accent-color, #000);
+  border-color: var(--accent-color, #000);
+  color: #fff;
+}
+
+/* Destructive, and only on hover: a Delete sitting permanently in red reads as
+   an alarm about the page rather than a thing you may do to it. */
+.pill-danger:hover {
+  border-color: #e6b3b3;
+  color: var(--btn-danger, #c00);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm, 8px);
+  margin: 0 0 var(--spacing-md, 16px);
+  padding-bottom: 10px;
+  border-bottom: var(--border-width, 1px) solid var(--divider, #f0f0f0);
+  font-size: 13px;
+}
+
+.actions-back { min-width: 0 }
+.actions-back p { margin: 0 }
+.actions-set { display: flex; align-items: center; gap: 6px; flex: none }
+.actions-set form { display: inline; margin: 0 }
+
+/* --- Inbox ----------------------------------------------------------------
+
+   Four <style> blocks lived in inbox/ — one per file — with sixty-two literal
+   colours between them and not one token. That is why /inbox looked like a
+   different site: not because it was styled badly, because it was styled
+   separately.
+
+   The pill shapes it drew four ways are gone; it uses .pill above. What is left
+   here is the part that is genuinely only true of a mailbox. */
+
+.ib { max-width: 760px }
+
+/* The address is the one thing on the page that makes this an agentic inbox
+   rather than a list, so it sits above everything and is selectable. */
+.ib-addr {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0 0 var(--spacing-md, 16px);
+  padding-bottom: 14px;
+  border-bottom: var(--border-width, 1px) solid var(--divider, #f0f0f0);
+}
+
+.ib-addr code {
+  font-size: 13px;
+  background: var(--hover-background, #fafafa);
+  border: var(--border-width, 1px) solid var(--card-border, #e8e8e8);
+  border-radius: var(--border-radius, 6px);
+  padding: 3px 8px;
+}
+
+.ib-addr-note { font-size: 12px; color: var(--text-muted, #888) }
+.ib-boxes { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px }
+.ib-empty { font-size: 14px; color: var(--text-muted, #888); line-height: var(--line-height, 1.6) }
+
+.ib-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: var(--border-width, 1px) solid var(--divider, #f0f0f0);
+  text-decoration: none;
+  color: inherit;
+}
+
+.ib-row:hover .ib-subject { text-decoration: underline }
+
+/* Unread is what makes this a mailbox rather than a log: a rule down the left
+   and a heavier subject, so the eye finds the two that need answering without
+   reading the twenty that do not. */
+.ib-row.unseen { border-left: 2px solid var(--accent-color, #000); padding-left: 9px; margin-left: -11px }
+.ib-row.unseen .ib-who,
+.ib-row.unseen .ib-subject { font-weight: var(--font-weight-bold, 700) }
+.ib-row.unseen .ib-snip { color: var(--text-secondary, #555) }
+
+.ib-who {
+  flex: 0 0 130px;
+  font-size: 13px;
+  font-weight: var(--font-weight-medium, 500);
+  color: var(--text-primary, #1a1a1a);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ib-mid { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 8px; overflow: hidden }
+
+.ib-subject {
+  font-size: 14px;
+  color: var(--text-primary, #1a1a1a);
+  white-space: nowrap;
+  flex: none;
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ib-snip { font-size: 13px; color: var(--text-muted, #888); overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.ib-when { flex: none; font-size: 11px; color: var(--text-muted, #888); white-space: nowrap }
+
+/* A conversation, read. */
+.ib-head { display: flex; align-items: center; gap: 10px; margin-bottom: 4px }
+.ib-title { font-size: 20px; margin: 0 0 6px }
+.ib-started { font-size: 12px; color: var(--text-muted, #888) }
+.ib-parties { font-size: 13px; color: var(--text-muted, #888); margin: 0 0 20px }
+.ib-trimmed { font-size: 12px; color: var(--text-muted, #888); margin: 0 0 18px }
+
+.ib-note {
+  margin-top: var(--spacing-lg, 24px);
+  padding-top: 14px;
+  border-top: var(--border-width, 1px) solid var(--divider, #f0f0f0);
+  font-size: 13px;
+  color: var(--text-muted, #888);
+}
+
+.ib-msg { border-left: 2px solid var(--divider, #f0f0f0); padding-left: 14px; margin-bottom: var(--spacing-md, 16px) }
+.ib-from { font-size: 12px; color: var(--text-muted, #888); margin-bottom: 4px }
+.ib-body { font-size: 14px; line-height: var(--line-height, 1.6) }
+.ib-body p:first-child { margin-top: 0 }
+.ib-body p:last-child { margin-bottom: 0 }
+.ib-typed { white-space: pre-wrap }
+.ib-ran { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px }
+.ib-failed { font-size: 12px; color: var(--btn-danger, #c00) }
+
+/* The instruction box: telling the agent what to do about what you are
+   reading. See inbox/act.go. */
+.ib-ask { margin-top: 22px; padding-top: var(--spacing-md, 16px); border-top: var(--border-width, 1px) solid var(--divider, #f0f0f0) }
+
+.ib-ask textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 14px;
+  padding: 9px 11px;
+  border: var(--border-width, 1px) solid var(--card-border, #e8e8e8);
+  border-radius: var(--border-radius, 6px);
+  resize: vertical;
+}
+
+.ib-ask textarea:focus { outline: none; border-color: #bbb }
+.ib-ask-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center }
+
+.ib-ask button[type=submit] {
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 16px;
+  border: var(--border-width, 1px) solid var(--btn-primary, #000);
+  background: var(--btn-primary, #000);
+  color: #fff;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.ib-ask button[type=submit]:hover { background: var(--btn-primary-hover, #333); border-color: var(--btn-primary-hover, #333) }
+.ib-ask-note { font-size: 12px; color: var(--text-muted, #888); margin: 9px 0 0 }
+.ib-ask-problem { font-size: 13px; color: var(--btn-danger, #c00); margin: 0 0 9px }
+
+/* The inbox on Home. Same conversations, narrower column. */
+.inbox-peek { margin: 10px 0 0 }
+.peek-row { display: block; padding: 7px 0; text-decoration: none; color: inherit; border-bottom: var(--border-width, 1px) solid var(--divider, #f0f0f0) }
+.peek-row:hover .peek-title { text-decoration: underline }
+.peek-row.unseen .peek-title { font-weight: var(--font-weight-bold, 700) }
+.peek-row.unseen .peek-line { color: var(--text-secondary, #555) }
+.peek-head { display: flex; align-items: baseline; gap: 8px }
+
+.peek-title {
+  font-size: 14px;
+  font-weight: var(--font-weight-medium, 500);
+  color: var(--text-primary, #1a1a1a);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.peek-when { font-size: 11px; color: var(--text-muted, #888); margin-left: auto; white-space: nowrap; flex: none }
+.peek-line { display: block; font-size: 13px; color: var(--text-muted, #888); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.peek-who { color: var(--text-muted, #888) }
+.peek-more { display: inline-block; margin-top: 9px; font-size: 13px; color: var(--text-secondary, #555); text-decoration: none }
+.peek-more:hover { color: var(--text-primary, #1a1a1a) }
+
+/* On a phone a row is two lines, not one squeezed into 390px: the name and the
+   time on top, the subject and the preview under it — which is what every mail
+   client on a phone does, and for the same reason. The preview used to be
+   hidden entirely here, so a mobile inbox was a list of subjects with no way to
+   tell what any of them said. */
+@media (max-width: 640px) {
+  .ib-row { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 12px 0 }
+  .ib-who { flex: none; grid-column: 1; font-size: 13px }
+  .ib-when { grid-column: 2; grid-row: 1; font-size: 11px }
+  .ib-mid { grid-column: 1 / -1; flex-direction: column; align-items: flex-start; gap: 2px }
+  .ib-subject { max-width: 100%; white-space: normal; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical }
+  .ib-snip { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.45 }
+  .ib-mid .pill { order: 3 }
+  .ib-addr { gap: 6px }
+  .ib-addr-note { font-size: 11px }
+}

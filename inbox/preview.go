@@ -63,7 +63,7 @@ func Preview(accountID string) string {
 
 		// Which channel carried it. Every row here arrived from somewhere that
 		// is not this page, so the label is always the fact worth showing.
-		where := `<span class="peek-where">` + html.EscapeString(app.ClientName(t.Client)) + `</span>`
+		where := app.Pill(app.ClientName(t.Client))
 
 		// And whether it is waiting for you, which is most of what a preview on
 		// Home is for — three rows you have already dealt with say nothing.
@@ -96,7 +96,7 @@ func Preview(accountID string) string {
 			`<span class="peek-line">` + line + `</span></a>`)
 	}
 	b.WriteString(`<a class="peek-more" href="/inbox">Go to inbox &rarr;</a>`)
-	b.WriteString(`</div>` + previewCSS)
+	b.WriteString(`</div>`)
 	return b.String()
 }
 
@@ -116,19 +116,3 @@ func trimTo(s string, n int) string {
 	}
 	return cut + "…"
 }
-
-const previewCSS = `<style>
-.inbox-peek{margin:10px 0 0;border-top:1px solid #eee;padding-top:10px}
-.peek-row{display:block;padding:7px 0;text-decoration:none;color:inherit;border-bottom:1px solid #f4f4f4}
-.peek-row:hover .peek-title{text-decoration:underline}
-.peek-row.unseen .peek-title{font-weight:700}
-.peek-row.unseen .peek-line{color:#666}
-.peek-head{display:flex;align-items:baseline;gap:8px}
-.peek-title{font-size:14px;font-weight:500;color:#111;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.peek-where{border:1px solid #eee;border-radius:999px;padding:1px 7px;font-size:10px;color:#777;white-space:nowrap;flex:none}
-.peek-when{font-size:11px;color:#bbb;margin-left:auto;white-space:nowrap;flex:none}
-.peek-line{display:block;font-size:13px;color:#888;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.peek-who{color:#aaa}
-.peek-more{display:inline-block;margin-top:9px;font-size:13px;color:#555;text-decoration:none}
-.peek-more:hover{color:#000}
-</style>`

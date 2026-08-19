@@ -67,13 +67,13 @@ func ConversationView(accountID string, t *thread.Thread) string {
 	}
 
 	var b strings.Builder
-	b.WriteString(`<div class="els"><div class="els-head"><span class="els-where">` +
-		html.EscapeString(app.ClientName(t.Client)) + `</span><span class="els-when">started ` +
+	b.WriteString(`<div class="ib-conv"><div class="ib-head"><span class="pill">` +
+		html.EscapeString(app.ClientName(t.Client)) + `</span><span class="ib-started">started ` +
 		html.EscapeString(app.TimeAgo(t.Started)) + `</span></div>`)
-	b.WriteString(`<h2 class="els-title">` + html.EscapeString(subject) + `</h2>`)
+	b.WriteString(`<h2 class="ib-title">` + html.EscapeString(subject) + `</h2>`)
 	b.WriteString(partyLine(accountID, t))
 	if len(msgs) >= MessagesShown {
-		b.WriteString(`<p class="els-trimmed">Showing the most recent ` +
+		b.WriteString(`<p class="ib-trimmed">Showing the most recent ` +
 			strconv.Itoa(MessagesShown) + `. ` +
 			app.Link("Search the whole conversation", "/recall") + `</p>`)
 	}
@@ -87,10 +87,10 @@ func ConversationView(accountID string, t *thread.Thread) string {
 	// Worth saying now that there is a box below it: the box talks to the agent
 	// about the conversation, and replying to whoever wrote in is a different
 	// act that happens where the conversation is.
-	b.WriteString(`<p class="els-note">This happened on ` +
+	b.WriteString(`<p class="ib-note">This happened on ` +
 		html.EscapeString(app.ClientName(t.Client)) + `, so a reply carries on there — answer it ` +
 		`the way it arrived and the agent picks it up in the same thread.</p>`)
-	b.WriteString(`</div>` + conversationCSS)
+	b.WriteString(`</div>`)
 	return b.String()
 }
 
@@ -117,7 +117,7 @@ func partyLine(accountID string, t *thread.Thread) string {
 	if people < 2 {
 		return ""
 	}
-	return `<div class="els-parties">Between ` + html.EscapeString(strings.Join(names, ", ")) +
+	return `<div class="ib-parties">Between ` + html.EscapeString(strings.Join(names, ", ")) +
 		` and the agent</div>`
 }
 
@@ -143,9 +143,9 @@ func messageBlock(accountID string, t *thread.Thread, m thread.Message) string {
 		if m.Workflow != "" {
 			ran = runTools(m.Workflow)
 		}
-		return `<div class="th-msg th-agent"><div class="th-from">Agent · ` +
+		return `<div class="ib-msg ib-agent"><div class="ib-from">Agent · ` +
 			html.EscapeString(app.TimeAgo(m.At)) + `</div>` +
-			`<div class="th-body">` + app.RenderString(m.Text) + `</div>` + ran + `</div>`
+			`<div class="ib-body">` + app.RenderString(m.Text) + `</div>` + ran + `</div>`
 	}
 	// The author, by the name the conversation knows them under rather than the
 	// address on the message. A thread where three people have written is three
@@ -160,9 +160,9 @@ func messageBlock(accountID string, t *thread.Thread, m thread.Message) string {
 			}
 		}
 	}
-	return `<div class="th-msg th-person"><div class="th-from">` + html.EscapeString(who) + ` · ` +
+	return `<div class="ib-msg ib-person"><div class="ib-from">` + html.EscapeString(who) + ` · ` +
 		html.EscapeString(app.TimeAgo(m.At)) + `</div>` +
-		`<div class="th-body th-typed">` + html.EscapeString(m.Text) + `</div></div>`
+		`<div class="ib-body ib-typed">` + html.EscapeString(m.Text) + `</div></div>`
 }
 
 // Tools renders which tools produced an answer, and is filled in by the agent
@@ -181,23 +181,3 @@ func runTools(workflow string) string {
 	}
 	return Tools(workflow)
 }
-
-const conversationCSS = `<style>
-.els-head{display:flex;align-items:center;gap:10px;margin-bottom:4px}
-.els-where{border:1px solid #eee;border-radius:999px;padding:2px 9px;font-size:11px;color:#666}
-.els-when{font-size:12px;color:#aaa}
-.els-title{font-size:20px;margin:0 0 6px}
-.els-parties{font-size:13px;color:#888;margin:0 0 20px}
-.els-trimmed{font-size:12px;color:#999;margin:0 0 18px}
-.els-note{margin-top:24px;padding-top:14px;border-top:1px solid #eee;font-size:13px;color:#888}
-.th-msg{border-left:2px solid #eee;padding-left:14px;margin-bottom:16px}
-.th-agent{border-left-color:#ddd}
-.th-from{font-size:12px;color:#999;margin-bottom:4px}
-.th-body{font-size:14px;line-height:1.6}
-.th-body p:first-child{margin-top:0}
-.th-body p:last-child{margin-bottom:0}
-.th-typed{white-space:pre-wrap}
-.th-tools{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
-.th-tool{border:1px solid #eee;border-radius:999px;padding:2px 9px;font-size:11px;color:#666;white-space:nowrap}
-.th-failed{font-size:12px;color:#b00}
-</style>`

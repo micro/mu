@@ -131,7 +131,7 @@ func list(w http.ResponseWriter, r *http.Request, accountID, box string) {
 				`<p class="ib-empty">This is what came in. Chats you started here are with ` +
 				`the agent, on ` + app.TextLink("Agents", "/agents") + `.</p>`)
 		}
-		b.WriteString(`</div>` + inboxCSS)
+		b.WriteString(`</div>`)
 		app.Respond(w, r, app.Response{Title: "Inbox", Description: "What arrived", HTML: b.String()})
 		return
 	}
@@ -141,7 +141,7 @@ func list(w http.ResponseWriter, r *http.Request, accountID, box string) {
 		b.WriteString(row(accountID, threads[i]))
 	}
 	b.WriteString(pager.Nav(boxPath(box)))
-	b.WriteString(`</div>` + inboxCSS)
+	b.WriteString(`</div>`)
 
 	app.Respond(w, r, app.Response{Title: "Inbox", Description: "What arrived", HTML: b.String()})
 }
@@ -170,7 +170,7 @@ func row(accountID string, t thread.Thread) string {
 	// Which channel carried it. Every row here arrived from somewhere that is
 	// not this page, so the label is always worth showing — it is the answer to
 	// "where do I reply".
-	where := `<span class="ib-tag">` + html.EscapeString(app.ClientName(t.Client)) + `</span>`
+	where := app.Pill(app.ClientName(t.Client))
 
 	// Unread, which is what makes this a mailbox rather than a log. Without it
 	// every row looks the same and the page has to be read top to bottom every
@@ -210,13 +210,14 @@ func conversation(w http.ResponseWriter, r *http.Request, accountID, id string) 
 
 	var b strings.Builder
 	b.WriteString(`<div class="ib">`)
-	b.WriteString(`<p class="ib-back">` + app.TextLink("← Inbox", "/inbox") + `</p>`)
-	b.WriteString(unreadButton(r, t.ID, wasUnread))
-	b.WriteString(deleteButton(r, t.ID))
+	// Where you came from, and what you can do to this — one bar rather than
+	// three loose things stacked above the conversation. See app.Actions.
+	b.WriteString(app.Actions(app.TextLink("← Inbox", "/inbox"),
+		unreadButton(r, t.ID, wasUnread), deleteButton(r, t.ID)))
 	b.WriteString(ConversationView(accountID, t))
 	// The agent, on the thing you are reading. See act.go.
 	b.WriteString(askBox(r, t.ID))
-	b.WriteString(`</div>` + inboxCSS + askCSS)
+	b.WriteString(`</div>`)
 
 	app.Respond(w, r, app.Response{Title: subject, Description: "A conversation", HTML: b.String()})
 }
@@ -297,11 +298,7 @@ func boxes(accountID string, all []thread.Thread, current string) string {
 	sort.Strings(slugs)
 
 	chip := func(label, box string) string {
-		cls := "ib-box"
-		if strings.EqualFold(box, current) {
-			cls += " on"
-		}
-		return `<a class="` + cls + `" href="` + boxPath(box) + `">` + html.EscapeString(label) + `</a>`
+		return app.PillLink(label, boxPath(box), strings.EqualFold(box, current))
 	}
 
 	var b strings.Builder
@@ -327,50 +324,6 @@ func addressBar() string {
 		`<span class="ib-addr-note">Write here from anywhere and the agent answers in the thread. ` +
 		app.TextLink("Your agents", "/agents") + `</span></div>`
 }
-
-const inboxCSS = `<style>
-.ib{max-width:760px}
-.ib-addr{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px;margin:0 0 16px;padding-bottom:14px;border-bottom:1px solid #eee}
-.ib-addr code{font-size:13px;background:#f5f5f5;border-radius:4px;padding:3px 8px}
-.ib-addr-note{font-size:12px;color:#999}
-.ib-boxes{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px}
-.ib-box{border:1px solid #eee;border-radius:999px;padding:3px 11px;font-size:12px;color:#666;text-decoration:none}
-.ib-box:hover{border-color:#ddd;color:#111}
-.ib-box.on{background:#111;border-color:#111;color:#fff}
-.ib-empty{font-size:14px;color:#888;line-height:1.6}
-.ib-row{display:flex;align-items:baseline;gap:12px;padding:11px 0;border-bottom:1px solid #f4f4f4;text-decoration:none;color:inherit}
-.ib-row.unseen .ib-who,.ib-row.unseen .ib-subject{font-weight:700}
-.ib-row.unseen .ib-snip{color:#666}
-.ib-row.unseen{border-left:2px solid #111;padding-left:9px;margin-left:-11px}
-.ib-mark{display:inline-block;font:inherit;font-size:12px;color:#888;background:none;border:1px solid #eee;border-radius:999px;padding:3px 11px;cursor:pointer;margin-left:10px}
-.ib-mark:hover{border-color:#ddd;color:#111}
-.ib-del:hover{border-color:#e6b3b3;color:#b00}
-.ib-row:hover .ib-subject{text-decoration:underline}
-.ib-who{flex:0 0 130px;font-size:13px;font-weight:500;color:#111;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ib-mid{flex:1;min-width:0;display:flex;align-items:baseline;gap:8px;overflow:hidden}
-.ib-subject{font-size:14px;color:#111;white-space:nowrap;flex:none;max-width:60%;overflow:hidden;text-overflow:ellipsis}
-.ib-snip{font-size:13px;color:#999;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ib-when{flex:none;font-size:11px;color:#bbb;white-space:nowrap}
-.ib-tag{border:1px solid #eee;border-radius:999px;padding:1px 7px;font-size:10px;color:#777;flex:none}
-.ib-back{font-size:13px;margin:0 0 12px}
-/* On a phone a row is two lines, not one squeezed into 390px. The name and
-   the time on top, the subject and the preview under it — which is what every
-   mail client on a phone does, and for the same reason: three columns at that
-   width leaves each of them too narrow to read. The preview used to be hidden
-   entirely, so a mobile inbox was a list of subjects with no way to tell what
-   any of them said. */
-@media (max-width:640px){
-  .ib-row{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:12px 0}
-  .ib-who{flex:none;grid-column:1;font-size:13px}
-  .ib-when{grid-column:2;grid-row:1;font-size:11px}
-  .ib-mid{grid-column:1 / -1;flex-direction:column;align-items:flex-start;gap:2px}
-  .ib-subject{max-width:100%;white-space:normal;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical}
-  .ib-snip{display:block;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.45}
-  .ib-tag{order:3}
-  .ib-addr{gap:6px}
-  .ib-addr-note{font-size:11px}
-}
-</style>`
 
 // Mailboxes is the rail's view of this account's boxes: All, and one per agent
 // that has something in it. The same list the switcher draws, so the sidebar

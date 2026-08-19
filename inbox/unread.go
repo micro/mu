@@ -26,11 +26,11 @@ import (
 // A confirm, because it is not undoable and the thing it takes is a
 // conversation rather than a row.
 func deleteButton(r *http.Request, id string) string {
-	return `<form class="ib-markform" method="post" action="/inbox/delete" style="display:inline" ` +
+	return `<form method="post" action="/inbox/delete" ` +
 		`onsubmit="return confirm('Delete this conversation? What was said in it is gone.')">` +
 		`<input type="hidden" name="id" value="` + html.EscapeString(id) + `">` +
 		`<input type="hidden" name="_csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `">` +
-		`<button class="ib-mark ib-del" type="submit">Delete</button></form>`
+		`<button class="pill pill-danger" type="submit">Delete</button></form>`
 }
 
 // DeleteHandler serves POST /inbox/delete.
@@ -66,10 +66,10 @@ func unreadButton(r *http.Request, id string, wasUnread bool) string {
 	if !wasUnread {
 		return ""
 	}
-	return `<form class="ib-markform" method="post" action="/inbox/unread" style="display:inline">` +
+	return `<form method="post" action="/inbox/unread">` +
 		`<input type="hidden" name="id" value="` + html.EscapeString(id) + `">` +
 		`<input type="hidden" name="_csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `">` +
-		`<button class="ib-mark" type="submit">Mark unread</button></form>`
+		`<button class="pill" type="submit">Mark unread</button></form>`
 }
 
 // UnreadHandler serves POST /inbox/unread.

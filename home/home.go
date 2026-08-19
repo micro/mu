@@ -439,7 +439,15 @@ function fetchW(la,lo){
 				b.WriteString(`<p class="home-inbox">Or write to it at <code id="mu-agent-addr">` +
 					html.EscapeString(addr) + `</code> — from your mail, your phone, anywhere.</p>`)
 			}
-			b.WriteString(inbox.Preview(viewerID))
+			// Labelled the same way the cards below are, because they are the
+			// two halves of this screen and were not being read as a pair: one
+			// carried a label in small caps and the other carried none, so the
+			// conversations read as loose links under the address line.
+			// Rendered first, because Preview is empty when nothing has
+			// arrived and a heading over nothing is furniture.
+			if peek := inbox.Preview(viewerID); peek != "" {
+				b.WriteString(`<p class="home-section"><small>Inbox</small></p>` + peek)
+			}
 		}
 		b.WriteString(`</div>`)
 	}
@@ -484,7 +492,10 @@ function fetchW(la,lo){
 	// configured — headlines, prices, weather, arranged on a page. What they
 	// actually are is the tools answering, live, right now: the same calls an
 	// agent makes, rendered. Two words say so.
-	b.WriteString(`<p class="home-section"><small>Live context</small></p>`)
+	// "Live context" was two claims where one was needed: everything on this
+	// screen is live, so the word did no work here that the inbox above did not
+	// also deserve. What distinguishes this block is that it is context.
+	b.WriteString(`<p class="home-section"><small>Context</small></p>`)
 	b.WriteString(CardsHTML(r, viewerAcc))
 
 	b.WriteString(`</div>`) // close #home-cards

@@ -85,7 +85,7 @@ func TestNoSwitcherWhenNothingHasAnAgent(t *testing.T) {
 	const who = "inbox-one-box"
 	said(t, who, thread.WebClient, "only", "", "hello")
 
-	// The markup, not the stylesheet — inboxCSS always carries the rule.
+	// The markup, not the stylesheet — mu.css always carries the rule.
 	if body := listBody(t, "/inbox", who, ""); strings.Contains(body, `<div class="ib-boxes">`) {
 		t.Error("an account with no agent conversations is offered a switcher")
 	}
