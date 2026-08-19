@@ -73,12 +73,24 @@ func load() {
 }
 
 // save persists the store. Caller holds mu.
+//
+// Synchronous, and it used to be a goroutine. The write is a small JSON file
+// and it happens when somebody subscribes a device or loses one — once per
+// device, not once per notification — so the goroutine bought nothing and cost
+// determinism: the file landed after the caller had moved on. In the tests that
+// meant a write arriving during t.TempDir cleanup and failing the run
+// intermittently, which is the visible half. The invisible half is worse — a
+// process that exits between the subscribe and the write silently loses the
+// device, and the reader is told it worked.
+//
+// A snapshot is still taken under the caller's lock, because SaveJSON iterates
+// and the map must not be written while it does.
 func save() {
 	snapshot := make(map[string][]*Subscription, len(subs))
 	for k, v := range subs {
 		snapshot[k] = append([]*Subscription(nil), v...)
 	}
-	go data.SaveJSON(storeFile, snapshot) //nolint:errcheck
+	data.SaveJSON(storeFile, snapshot) //nolint:errcheck
 }
 
 // Subscribe records a device, or updates the one already there.

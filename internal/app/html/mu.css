@@ -6012,3 +6012,26 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
 .ib-compose .ib-ask-note { margin: 0 }
 .ib-compose-link { margin-left: auto }
 .ib-sent { font-size: 13px; color: var(--btn-success, #1a7f37); margin: 0 0 12px }
+
+/* One tool, at an address of its own. See internal/api/tool_page.go. */
+.tool-page { max-width: 760px }
+.tool-name { font-size: 24px; margin: 0 0 6px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace }
+.tool-lead { font-size: 15px; color: var(--text-secondary, #555); margin: 0 0 var(--spacing-md, 16px); line-height: var(--line-height, 1.6) }
+.tool-cost, .tool-from { font-size: 13px; color: var(--text-secondary, #555); margin: 0 0 8px }
+.tool-h { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted, #888); margin: var(--spacing-lg, 24px) 0 10px; font-weight: var(--font-weight-semibold, 600) }
+.tool-note { font-size: 13px; color: var(--text-muted, #888); margin: 0 0 10px }
+.tool-args { width: 100%; border-collapse: collapse; font-size: 13px }
+.tool-args th { text-align: left; font-weight: var(--font-weight-medium, 500); color: var(--text-muted, #888); padding: 4px 8px 6px; border-bottom: var(--border-width, 1px) solid var(--card-border, #e8e8e8) }
+.tool-args td { padding: 7px 8px; border-bottom: var(--border-width, 1px) solid var(--divider, #f0f0f0); vertical-align: top }
+.tool-args code { font-size: 13px }
+.tool-req { color: var(--btn-danger, #c00); margin-left: 2px }
+
+.tool-call {
+  background: var(--hover-background, #fafafa);
+  border: var(--border-width, 1px) solid var(--divider, #f0f0f0);
+  border-radius: var(--border-radius, 6px);
+  padding: 10px 12px;
+  font-size: 12px;
+  overflow-x: auto;
+  margin: 0 0 8px;
+}

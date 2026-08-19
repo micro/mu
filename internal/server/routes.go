@@ -68,6 +68,7 @@ import (
 func authRequired() map[string]bool {
 	authenticated := map[string]bool{
 		"/tools":                  false, // Public — the catalogue, agent lens
+		"/tools/":                 false, // Public — one tool, same as the catalogue
 		"/services":               false, // Public — the catalogue, person lens
 		"/card/":                  false, // Public — a service rendered at a glance
 		"/usage":                  true,  // Your own calls and spend
@@ -711,6 +712,10 @@ func registerRoutes() {
 	// serve the MCP page and server (GET = HTML page, POST = JSON-RPC)
 	// One catalogue, two lenses — see internal/api/tools_page.go.
 	http.HandleFunc("/tools", api.ToolsPageHandler)
+	// /tools/<name> — one tool. The smallest unit in the catalogue, and until
+	// now the only one with no page: clicking a tool jumped to a fragment on
+	// the playground. See internal/api/tool_page.go.
+	http.HandleFunc("/tools/", api.ToolPageHandler)
 	http.HandleFunc("/services", api.ToolsPageHandler)
 	// What your agents did. Flows were recorded and never served.
 	// Runs belong to the agent, so they live under it and the agent surface

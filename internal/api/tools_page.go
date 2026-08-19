@@ -232,7 +232,7 @@ func toolGrid() string {
 		b.WriteString(`<h3 class="tool-group-title">` + html.EscapeString(g.Label) + `</h3>`)
 		b.WriteString(`<div class="tool-grid">`)
 		for _, t := range g.Tools {
-			b.WriteString(`<a class="tool-tile" href="/mcp#tool-` + html.EscapeString(t.Name) + `">`)
+			b.WriteString(`<a class="tool-tile" href="/tools/` + html.EscapeString(t.Name) + `">`)
 			b.WriteString(`<span class="tool-tile-name">` + html.EscapeString(t.Name) + `</span>`)
 			b.WriteString(`<span class="tool-tile-desc">` + html.EscapeString(clipDesc(t.Description)) + `</span>`)
 			b.WriteString(`<span class="tool-tile-price">` + priceLabel(t) + `</span>`)
