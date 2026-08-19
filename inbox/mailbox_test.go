@@ -232,3 +232,53 @@ func TestAMailConversationIsNamedByItsSubject(t *testing.T) {
 		t.Errorf("the conversation is called %q", got.Subject)
 	}
 }
+
+// A conversation says who it was from and who it was sent to, in full.
+//
+// Neither was visible: the sender was truncated into a 130px column and the
+// recipient was never recorded at all. Which of your addresses a message
+// arrived at is the fact that explains why it is in this inbox — you@ is you,
+// you+research@ is one of your agents, agent@ is this instance's.
+func TestAConversationSaysWhoItWasSentTo(t *testing.T) {
+	const who = "mailbox-addresses"
+	th := thread.Open(who, "mail", "<addr@example.com>")
+	thread.Add(thread.Message{Thread: th.ID, Account: who,
+		From: "henrik@getdirectree.example.com",
+		To:   "asim+research@micro.mu",
+		Text: "About the thing"})
+
+	w := httptest.NewRecorder()
+	conversation(w, httptest.NewRequest("GET", "/inbox?id="+url.QueryEscape(th.ID), nil), who, th.ID)
+	body := w.Body.String()
+
+	for _, want := range []string{"henrik@getdirectree.example.com", "asim+research@micro.mu"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the conversation does not show %q in full:\n%s", want, body)
+		}
+	}
+}
+
+// Your own words carry no address line. "From: you, To: nobody" is furniture.
+func TestYourOwnMessagesHaveNoAddressLine(t *testing.T) {
+	if got := addressLine(thread.Message{Text: "mine"}); got != "" {
+		t.Errorf("a message you wrote shows an address line: %q", got)
+	}
+}
+
+// A long address is readable in the list, and the whole of it is one hover
+// away. "henrik@getdirectree.co…" tells you nothing "henrik" does not, and the
+// part cut off is the part that would have.
+func TestALongSenderIsReadableInTheList(t *testing.T) {
+	const who = "mailbox-longsender"
+	th := arrived(t, who, "mail", "<long@example.com>", "",
+		"henrik@getdirectree.example.com", "hello")
+
+	body := listBody(t, "/inbox", who, "")
+	if !strings.Contains(body, `title="henrik@getdirectree.example.com"`) {
+		t.Errorf("the full address is not available on the row:\n%s", body)
+	}
+	if !strings.Contains(body, ">henrik<") {
+		t.Errorf("the row does not show a readable name:\n%s", body)
+	}
+	_ = th
+}

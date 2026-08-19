@@ -6255,3 +6255,30 @@ select.field { max-width: 220px }
 
 .tiles-img, .tiles-blank { display: block; width: 100%; aspect-ratio: 1 / 1 }
 .tiles-blank { background: var(--divider, #f0f0f0) }
+
+/* Who a message was from and who it was sent to, in full, under the name.
+   The addresses were nowhere: the sender was truncated into a 130px column and
+   the recipient was never recorded. See inbox/conversation.go. */
+.ib-addrs {
+  font-size: 12px;
+  color: var(--text-muted, #888);
+  margin: 0 0 8px;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+
+.ib-addr-k { text-transform: uppercase; letter-spacing: .06em; font-size: 10px; margin-right: 3px }
+.ib-addr-sep { margin: 0 8px; opacity: .5 }
+
+/* A sender you can read, with the whole address on hover. */
+.ib-who[title] { cursor: help }
+
+/* The two addresses at the top of the inbox: yours, and the agent's. It showed
+   one and composed as the other. See inbox/page.go. */
+.ib-addr-one { display: inline-flex; align-items: baseline; gap: 6px }
+.ib-addr-one .ib-addr-k {
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  font-size: 10px;
+  color: var(--text-muted, #888);
+}

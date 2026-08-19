@@ -161,7 +161,7 @@ func messageBlock(accountID string, t *thread.Thread, m thread.Message) string {
 		}
 	}
 	return `<div class="ib-msg ib-person"><div class="ib-from">` + html.EscapeString(who) + ` · ` +
-		html.EscapeString(app.TimeAgo(m.At)) + `</div>` +
+		html.EscapeString(app.TimeAgo(m.At)) + `</div>` + addressLine(m) +
 		`<div class="ib-body ib-typed">` + html.EscapeString(m.Text) + `</div></div>`
 }
 
@@ -180,4 +180,34 @@ func runTools(workflow string) string {
 		return ""
 	}
 	return Tools(workflow)
+}
+
+// addressLine is who a message was from and who it was sent to, in full.
+//
+// The addresses, not the names — the name is on the line above and this is the
+// line you read when you want to know exactly who wrote and which of your
+// addresses they wrote to. A conversation could be read end to end without ever
+// saying either: the sender was truncated into a column and the recipient was
+// never recorded at all.
+//
+// Which address it arrived at is the fact that explains why the message is in
+// this inbox. you@ is you; you+research@ is one of your agents; agent@ is this
+// instance's. Same message, three different reasons for it to be here.
+//
+// Empty for anything with neither, which is every message you wrote yourself —
+// "From: you, To: nobody" is furniture on your own words.
+func addressLine(m thread.Message) string {
+	from := strings.TrimSpace(m.From)
+	to := strings.TrimSpace(m.To)
+	if from == "" && to == "" {
+		return ""
+	}
+	var parts []string
+	if from != "" {
+		parts = append(parts, `<span class="ib-addr-k">from</span> `+html.EscapeString(from))
+	}
+	if to != "" {
+		parts = append(parts, `<span class="ib-addr-k">to</span> `+html.EscapeString(to))
+	}
+	return `<div class="ib-addrs">` + strings.Join(parts, `<span class="ib-addr-sep">·</span>`) + `</div>`
 }

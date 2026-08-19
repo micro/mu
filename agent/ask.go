@@ -272,12 +272,22 @@ func Opened(account, client, key, ref, agentID string) string {
 // Said records what a person wrote. It happens before the run, so a message
 // that nothing answers is still in the record.
 func Said(account, threadID, text, ref, from string) {
+	SaidTo(account, threadID, text, ref, from, "")
+}
+
+// SaidTo is Said where the client also knows which of the account's addresses
+// the message arrived at.
+//
+// A separate function rather than a sixth argument on Said, because Said has
+// five callers across the clients and only mail has a "to" worth recording —
+// a Discord message arrives at a channel, not at one of your addresses.
+func SaidTo(account, threadID, text, ref, from, to string) {
 	if threadID == "" {
 		return
 	}
 	thread.Add(thread.Message{
 		Thread: threadID, Account: account, Role: thread.RolePerson,
-		Text: text, Ref: ref, From: from,
+		Text: text, Ref: ref, From: from, To: to,
 	})
 }
 

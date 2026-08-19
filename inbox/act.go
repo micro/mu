@@ -94,13 +94,23 @@ func action(w http.ResponseWriter, r *http.Request, accountID string) {
 	http.Redirect(w, r, back, http.StatusSeeOther)
 }
 
-// askBox is the control itself: somewhere to type, and four things people
-// actually ask for.
+// askBox is the control itself: somewhere to type, and three things that are
+// true of any message.
 //
-// The suggestions are there because an empty box on a page nobody has seen
-// before is a question with no hint of what the answers look like — and the
-// gap between "there is an agent here" and "I can tell it to put this in my
-// calendar" is exactly one example.
+// The suggestions exist because an empty box on a page nobody has seen before
+// is a question with no hint of what the answers look like.
+//
+// "Add this to my calendar" was one of them and has gone. It read as a claim
+// about the message — the thing Gmail does when it has found a date — and it
+// was on every conversation whether or not there was anything to put in a
+// calendar, including a newsletter. A suggestion that is wrong about what you
+// are looking at is worse than no suggestion, because the first one somebody
+// tries teaches them what the box is for.
+//
+// What is left is true of anything: summarise it, tell me what to do, draft a
+// reply. Making them depend on the content would mean reading the content,
+// which is a model call to decide what to offer before anybody has asked for
+// anything.
 func askBox(r *http.Request, threadID string) string {
 	if Act == nil {
 		return ""
@@ -116,9 +126,8 @@ func askBox(r *http.Request, threadID string) string {
 		`placeholder="Tell the agent what to do about this"></textarea>`)
 	b.WriteString(`<div class="ib-ask-row"><button type="submit">Ask</button>`)
 	for _, s := range []string{
-		"Add this to my calendar",
 		"Summarise this",
-		"Remind me about this",
+		"Draft a reply",
 		"What should I do about this?",
 	} {
 		// Fills the box rather than submitting, so the suggestion is a starting

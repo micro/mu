@@ -44,7 +44,7 @@ func recordDelivery(m mail.InboundMail) {
 	if th == nil {
 		return
 	}
-	agent.Said(m.Owner, th.ID, text, m.MessageID, m.From)
+	agent.SaidTo(m.Owner, th.ID, text, m.MessageID, m.From, m.To)
 	// The name behind the address, which a message cannot carry — it belongs to
 	// whoever wrote in, not to each line they wrote.
 	if name := strings.TrimSpace(m.FromName); name != "" && m.From != "" {

@@ -154,6 +154,15 @@ type Message struct {
 	// From is who wrote it, where that is not simply the account — somebody
 	// else's address, on mail that was answered on the owner's behalf.
 	From string `json:"from,omitempty"`
+	// To is the address it arrived at, where the client knows one.
+	//
+	// The fact that explains why a message is in this inbox at all. An account
+	// has several addresses — you@, you+research@, agent@ — and which one was
+	// written to decides whether the agent woke, which agent woke, and which
+	// mailbox the conversation belongs in. None of that was recorded, so a
+	// conversation could be read in full without ever saying who it was sent
+	// to, and the page had nothing to show because nothing had been stored.
+	To string `json:"to,omitempty"`
 }
 
 // maxPerAccount bounds one account's record.

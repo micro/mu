@@ -30,6 +30,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/thread"
+	"mu/service/mail"
 )
 
 // shown is how many conversations one page of the inbox is.
@@ -113,7 +114,7 @@ func list(w http.ResponseWriter, r *http.Request, accountID, box string) {
 
 	var b strings.Builder
 	b.WriteString(`<div class="ib">`)
-	b.WriteString(addressBar())
+	b.WriteString(addressBar(accountID))
 	// What just happened, when something did. A message you sent appears in the
 	// list below as a conversation, which is right and is also indistinguishable
 	// from a message that failed to send — so the page says so once.
@@ -163,14 +164,14 @@ func row(accountID string, t thread.Thread) string {
 		subject = "Untitled"
 	}
 
-	who, snippet := "You", ""
+	who, full, snippet := "You", "", ""
 	if msgs := thread.Messages(accountID, t.ID, 1); len(msgs) > 0 {
 		m := msgs[0]
 		switch {
 		case m.Role == thread.RoleAgent:
 			who = "Agent"
 		case m.From != "":
-			who = m.From
+			who, full = senderName(accountID, t.ID, m.From), m.From
 		}
 		snippet = trimTo(m.Text, 110)
 	}
@@ -189,7 +190,7 @@ func row(accountID string, t thread.Thread) string {
 	}
 
 	return `<a class="` + cls + `" href="/inbox?id=` + url.QueryEscape(t.ID) + `">` +
-		`<span class="ib-who">` + html.EscapeString(trimTo(who, 24)) + `</span>` +
+		`<span class="ib-who"` + titleAttr(full) + `>` + html.EscapeString(who) + `</span>` +
 		`<span class="ib-mid"><span class="ib-subject">` +
 		html.EscapeString(trimTo(subject, 70)) + `</span>` + where +
 		`<span class="ib-snip">` + html.EscapeString(snippet) + `</span></span>` +
@@ -318,19 +319,43 @@ func boxes(accountID string, all []thread.Thread, current string) string {
 	return b.String()
 }
 
-// addressBar is what makes this an agentic inbox rather than a mailbox: the
-// address the agent answers at, on the page where its mail lands.
-func addressBar() string {
-	if Address == nil {
+// addressBar is the two addresses this page is about.
+//
+// It showed one — the agent's — and then compose sent as a different one, with
+// nothing saying why. Both are real and they are for different things, and the
+// order matters: yours first, because this is your inbox and the agent is in
+// it rather than the other way round.
+//
+//	you@       mail to you lands here, and this is what compose sends as
+//	agent@     write to it and it answers, in the thread
+//
+// Same page, because they arrive in the same place. A stranger writing to your
+// address and a stranger writing to your agent are both things that turned up
+// while you were elsewhere, which is what this page is.
+func addressBar(accountID string) string {
+	mine := mail.EmailForUser(accountID, mail.ConfiguredDomain())
+	theirs := ""
+	if Address != nil {
+		theirs = Address()
+	}
+	if mine == "" && theirs == "" {
 		return ""
 	}
-	addr := Address()
-	if addr == "" {
-		return ""
+
+	var b strings.Builder
+	b.WriteString(`<div class="ib-addr">`)
+	if mine != "" {
+		b.WriteString(`<span class="ib-addr-one"><span class="ib-addr-k">You</span>` +
+			`<code>` + html.EscapeString(mine) + `</code></span>`)
 	}
-	return `<div class="ib-addr"><code>` + html.EscapeString(addr) + `</code>` +
-		`<span class="ib-addr-note">Write here from anywhere and the agent answers in the thread. ` +
-		app.TextLink("Your agents", "/agents") + `</span>` + composeLink() + `</div>`
+	if theirs != "" && !strings.EqualFold(theirs, mine) {
+		b.WriteString(`<span class="ib-addr-one"><span class="ib-addr-k">Agent</span>` +
+			`<code>` + html.EscapeString(theirs) + `</code></span>`)
+	}
+	b.WriteString(`<span class="ib-addr-note">Mail to either lands here. Write to the agent ` +
+		`from anywhere and it answers in the thread. ` + app.TextLink("Your agents", "/agents") +
+		`</span>` + composeLink() + `</div>`)
+	return b.String()
 }
 
 // Mailboxes is the rail's view of this account's boxes: All, and one per agent
@@ -393,4 +418,31 @@ func Unread(accountID string) int {
 		}
 	}
 	return n
+}
+
+// senderName is what to call whoever wrote, in a column 130px wide.
+//
+// The address is what a message carries and it is the wrong thing to show: a
+// list of "henrik@getdirectree.co…" tells you nothing that "henrik" does not,
+// and the part that got cut off is the part that would have. So the display
+// name where the conversation knows one, the local part otherwise, and the
+// whole address in a title attribute for anybody who wants it.
+func senderName(accountID, threadID, addr string) string {
+	for _, p := range thread.Parties(accountID, threadID) {
+		if p.Kind == thread.RolePerson && strings.EqualFold(p.Key, addr) && p.Name != "" {
+			return trimTo(p.Name, 22)
+		}
+	}
+	if local, _, ok := strings.Cut(addr, "@"); ok && local != "" {
+		return trimTo(local, 22)
+	}
+	return trimTo(addr, 22)
+}
+
+// titleAttr is a hover label, and nothing at all when there is nothing to say.
+func titleAttr(s string) string {
+	if strings.TrimSpace(s) == "" {
+		return ""
+	}
+	return ` title="` + html.EscapeString(s) + `"`
 }
