@@ -1003,23 +1003,6 @@ func navAdmin(acc *auth.Account) string {
 	return `<a id="nav-admin" href="/admin"><img src="/admin.svg?` + Version + `"><span class="label">Admin</span></a>`
 }
 
-// navOperate closes the top group with what you have used.
-//
-// Usage needs a session to mean anything and its page redirects without one, so
-// it is drawn only for a signed-in viewer.
-//
-// There was a Wallet item beside it, and it has gone rather than moved. Money
-// is the account's now — the balance is the first card on /account and the
-// badge in the header links straight to it — so a third entrance to the same
-// number was one more than the page had things to say. /wallet is a service
-// today, and appears where every other service appears.
-func navOperate(acc *auth.Account) string {
-	if acc == nil {
-		return ""
-	}
-	return `<a href="/usage"><img src="/usage.svg?` + Version + `"><span class="label">Usage</span></a>`
-}
-
 // navPinned is the reader's own services, under a heading of their own.
 //
 // The sidebar went from nineteen alphabetical services — which put Wallet
@@ -1056,8 +1039,14 @@ func navPinned(acc *auth.Account) string {
 	return b.String()
 }
 
-// navBottom is the account: who you are, the page about you, running the place,
+// navBottom is the account: who you are, the page about you, what it has cost,
 // and the way out.
+//
+// Usage is here rather than in the top group, where it closed the product's own
+// three levels — Inbox, Agents, Tools, Services, Usage — as though it were a
+// fourth thing you do. It is not. It is what this account has spent, on the
+// same shelf as the balance it spends from, and CLAUDE.md already says so:
+// "Usage is a view of money". A view of money belongs beside the money.
 //
 // Kept as its own group rather than folded into the account page, because
 // signing out is something you reach for directly and a logout that takes two
@@ -1076,6 +1065,7 @@ func navBottom(acc *auth.Account) string {
 	// wrong with. A signed-out visitor still has the footer.
 	return `<div id="nav-username">Signed in as @` + username + `</div>
           <a id="nav-account" href="/account"><img src="/account.png?` + Version + `"><span class="label">Account</span></a>
+          <a id="nav-usage" href="/usage"><img src="/usage.svg?` + Version + `"><span class="label">Usage</span></a>
           <a id="nav-support" href="/support"><img src="/help.svg?` + Version + `"><span class="label">Support</span></a>
           <a id="nav-logout" href="/logout"><img src="/logout.png?` + Version + `"><span class="label">Logout</span></a>
           <a id="nav-login" href="/login" style="display: none;"><img src="/account.png?` + Version + `"><span class="label">Login</span></a>`
@@ -1382,7 +1372,7 @@ func renderShell(lang, title, desc, bodyAttr, body string, acc *auth.Account, pa
 		headBalance(acc),
 		navAdmin(acc),
 		navMailboxes(account, path),
-		navOperate(acc)+navPinned(acc),
+		navPinned(acc),
 		navBottom(acc),
 		title, body, footerFor(acc))
 }

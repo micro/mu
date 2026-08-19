@@ -76,8 +76,12 @@ func BalanceCard(userID string) string {
 		sb.WriteString(`<p class="text-sm text-muted" style="margin:0 0 10px">` +
 			`You are an admin on this instance, so your own calls are never charged.</p>`)
 	}
+	// Usage is on this line because the sidebar no longer carries it: what an
+	// account has spent is a view of the money above it, not a fourth level of
+	// the product beside Tools and Services, which is where it sat.
 	sb.WriteString(`<p style="margin:0"><a href="/account/topup">Add credits →</a> · ` +
-		`<a href="/account/transfer">Transfer →</a> · <a href="#ledger">History →</a></p>`)
+		`<a href="/account/transfer">Transfer →</a> · <a href="/usage">Usage →</a> · ` +
+		`<a href="#ledger">History →</a></p>`)
 	sb.WriteString(`</div>`)
 	return sb.String()
 }
