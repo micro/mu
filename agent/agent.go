@@ -103,15 +103,15 @@ func runTools(workflow string) string {
 			continue
 		}
 		seen[s.Tool] = true
-		chips.WriteString(`<span class="th-tool">` + htmlEsc(s.Tool) + `</span>`)
+		chips.WriteString(app.Pill(s.Tool))
 	}
 	if f.Status == "error" && f.Error != "" {
-		chips.WriteString(`<span class="th-failed">` + htmlEsc(f.Error) + `</span>`)
+		chips.WriteString(`<span class="ib-failed">` + htmlEsc(f.Error) + `</span>`)
 	}
 	if chips.Len() == 0 {
 		return ""
 	}
-	return `<div class="th-tools">` + chips.String() + `</div>`
+	return `<div class="ib-ran">` + chips.String() + `</div>`
 }
 
 // QueryMessage is a single turn in a conversation.
@@ -898,7 +898,9 @@ func renderSessionsRail(accountID, currentID, agentID string) string {
 		// like one you can.
 		where := ""
 		if s.Client != thread.WebClient {
-			where = `<span class="chat-sess-where">` + htmlEsc(app.ClientName(s.Client)) + `</span>`
+			// The same pill the inbox draws. It was .chat-sess-where here and
+			// .ib-tag there, two names and two stylesheets for one shape.
+			where = ` ` + app.Pill(app.ClientName(s.Client))
 		}
 		// Deletable. A conversation you can start and never be rid of is a list
 		// that only grows, and the rail is the one place somebody looks at it.
@@ -1009,7 +1011,6 @@ const chatLayoutCSS = `<style>
 .chat-sess{display:block;flex:1;min-width:0;padding:8px 10px;border-radius:6px;color:#444;text-decoration:none;font-size:13px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .chat-sess:hover{background:#f5f5f5}
 .chat-sess.active{background:#eef0ff;color:#111;font-weight:600}
-.chat-sess-where{margin-left:6px;font-size:10px;color:#aaa;border:1px solid #eee;border-radius:999px;padding:1px 6px;vertical-align:middle}
 .chat-sess-del{border:0;background:none;color:#ccc;font-size:15px;line-height:1;cursor:pointer;padding:2px 6px;opacity:0}
 .chat-sess-row:hover .chat-sess-del{opacity:1}
 .chat-sess-del:hover{color:#b00}
