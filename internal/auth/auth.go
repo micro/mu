@@ -74,6 +74,16 @@ type Account struct {
 	// admin may be an agent; not knowing which is how a password reset ends up
 	// being mailed to a program.
 	Agent bool `json:"agent,omitempty"`
+	// Unclaimed marks an account created from an inbound email that nobody has
+	// signed up for. It has no secret, so it cannot sign in; it exists so a
+	// stranger writing to agent@ gets an answer and a conversation that is still
+	// there when they do sign up. See unclaimed.go.
+	Unclaimed bool `json:"unclaimed,omitempty"`
+	// Turns is how many free exchanges an unclaimed account has used. Reset to
+	// zero when it is claimed, at which point credits govern it like any other.
+	Turns int `json:"turns,omitempty"`
+	// InvitedAt is when the sign-up invitation was mailed, so it is mailed once.
+	InvitedAt time.Time `json:"invited_at,omitempty"`
 	// Customer is who Stripe thinks this account is: cus_….
 	//
 	// The only handle on a subscription once it exists. Without it there is no

@@ -289,11 +289,23 @@ func answerMail(m mail.InboundMail) {
 		return
 	}
 
-	canProceed, _, cost, err := quota.CheckQuota(m.Owner, quota.OpAgentQuery)
-	if err != nil || !canProceed {
-		deliver("", prompt, fmt.Sprintf("I could not run this one: it costs %d credits and the account is short. "+
-			"Top up at %s/account/topup and send it again.", cost, app.PublicURL()))
+	// Two ways to be allowed to run, and which one applies is not the caller's
+	// choice: an account somebody signed up for spends credits, one opened for a
+	// stranger who wrote in spends free turns. Asking an unclaimed account for
+	// credits would answer a first-time sender with "top up at /account/topup"
+	// — a bill, for an account they do not know exists. See trial.go.
+	trial, allowed, why := trialRun(m.Owner)
+	switch {
+	case trial && !allowed:
+		deliver("", prompt, why)
 		return
+	case !trial:
+		canProceed, _, cost, err := quota.CheckQuota(m.Owner, quota.OpAgentQuery)
+		if err != nil || !canProceed {
+			deliver("", prompt, fmt.Sprintf("I could not run this one: it costs %d credits and the account is short. "+
+				"Top up at %s/account/topup and send it again.", cost, app.PublicURL()))
+			return
+		}
 	}
 
 	// The same entry point every client uses: history, the run record and
@@ -323,7 +335,15 @@ func answerMail(m mail.InboundMail) {
 	// Charged now the run has happened. CheckQuota above only asks whether it
 	// can be afforded — nothing here consumed it, so every agent run started by
 	// mail was free, which is the one door somebody else can push.
-	quota.ConsumeQuota(m.Owner, quota.OpAgentQuery) //nolint:errcheck
+	//
+	// A trial run is spent against turns instead, and never against the ledger:
+	// an unclaimed account has no balance to debit and debiting it would put it
+	// in the red before anybody had agreed to anything.
+	if trial {
+		defer trialSpent(m.Owner)
+	} else {
+		quota.ConsumeQuota(m.Owner, quota.OpAgentQuery) //nolint:errcheck
+	}
 	if strings.TrimSpace(answer) == "" {
 		// Distinct from the error above, because it is a different
 		// fact: the run finished and produced nothing. Silence would

@@ -738,3 +738,49 @@ func SetRef(account, messageID, ref string) {
 // discord.Client — and this one is here rather than beside the page because
 // three packages need to say "the web one" and only one of them is the page.
 const WebClient = "web"
+
+// Rename moves a whole account's record to a new id.
+//
+// An account id is the key of `owned`, the Account on every Thread and on every
+// Message, so renaming one is a rename in three places at once — which is why
+// this is here rather than assembled at a call site out of the exported parts.
+//
+// It exists for claiming: somebody writes to agent@ from an address nobody
+// knows, gets an answer, and later signs up and picks a username. The account is
+// renamed rather than replaced so the conversation they already had is the one
+// they find when they log in — see auth.Claim. Copying instead would leave the
+// record behind, which is the only thing that made an unclaimed account worth
+// having.
+func Rename(oldID, newID string) {
+	if oldID == "" || newID == "" || oldID == newID {
+		return
+	}
+	mu.Lock()
+	defer mu.Unlock()
+
+	ts, ok := owned[oldID]
+	if !ok {
+		return
+	}
+	// Nothing is merged. A new id that is somehow already in use would join two
+	// people's conversations, which is worse than the rename not happening.
+	//
+	// Whether it *holds* anything, not whether the key is there: an empty map
+	// under a name is what reading somebody's empty record leaves behind, and
+	// refusing on that would block a rename over nothing at all.
+	if existing, taken := owned[newID]; taken && len(existing) > 0 {
+		return
+	}
+
+	for id, t := range ts {
+		t.Account = newID
+		for _, m := range messages[id] {
+			m.Account = newID
+		}
+	}
+	owned[newID] = ts
+	delete(owned, oldID)
+	held[newID] = held[oldID]
+	delete(held, oldID)
+	save()
+}

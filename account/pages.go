@@ -515,14 +515,38 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 			name = id
 		}
 
-		if err := auth.Create(&auth.Account{
-			ID:      id,
-			Secret:  secret,
-			Name:    name,
-			Created: time.Now(),
-		}); err != nil {
-			w.Write([]byte(renderSignupTo(fmt.Sprintf(`<p class="text-error">%s</p>`, err.Error()), redirectParam)))
-			return
+		// Claiming, where there is something to claim.
+		//
+		// Somebody who emailed agent@ already has an account: unclaimed, no
+		// password, holding the conversation they had. The invite mailed to
+		// them at the end of their free exchanges names their address, so
+		// signing up with it takes over that account rather than making a
+		// second one — which is the difference between "everything we have said
+		// is saved" being true and being a line in an email.
+		//
+		// Creating instead would leave the conversation filed under an id
+		// nobody can sign in to, and the person would arrive at an empty
+		// account having been invited to keep a full one.
+		claimed := false
+		if invCode != "" {
+			if existing := auth.UnclaimedFor(auth.InviteEmail(invCode)); existing != nil {
+				if err := auth.Claim(existing.ID, id, secret); err != nil {
+					w.Write([]byte(renderSignupTo(fmt.Sprintf(`<p class="text-error">%s</p>`, err.Error()), redirectParam)))
+					return
+				}
+				claimed = true
+			}
+		}
+		if !claimed {
+			if err := auth.Create(&auth.Account{
+				ID:      id,
+				Secret:  secret,
+				Name:    name,
+				Created: time.Now(),
+			}); err != nil {
+				w.Write([]byte(renderSignupTo(fmt.Sprintf(`<p class="text-error">%s</p>`, err.Error()), redirectParam)))
+				return
+			}
 		}
 
 		// Consume invite code if present (marks it as used).

@@ -301,6 +301,15 @@ func wireHooks() {
 		return social.RenderContextHTML(ctx)
 	}
 
+	// The record follows a renamed account.
+	//
+	// Claiming an unclaimed account changes its id, and the id is what every
+	// conversation is filed under. internal/auth sits below internal/thread and
+	// cannot call it, so the store registers instead — see auth.Renamed. Without
+	// this, somebody invited to keep the conversation they had by email would
+	// sign up and find nothing, which is the one thing the invitation promises.
+	auth.Renamed(thread.Rename)
+
 	// load the home cards
 	// What the inbox needs from packages it must not import. It renders the
 	// record; the roster is the agent's and the mail domain is the mail

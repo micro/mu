@@ -702,6 +702,8 @@ that same file, so this page does not repeat twenty-six rows.
 | `SIGNUP_MAX_PER_IP` · `SIGNUP_WINDOW_HOURS` | — | Signups allowed per IP, and the window |
 | `GUEST_MAX_PER_IP` · `GUEST_WINDOW_MINUTES` | 120 · 60 | Free tool calls an unauthenticated caller may make per IP. Credits price what a call costs; this is what stops a loop, since a free call is charged nothing |
 | `GUEST_DAILY_TOTAL` | `300` | Agent queries this instance will spend on guests in a day, across everybody. The landing page demonstrates the tools by using them, and an agent query is the dearest operation here — a per-IP allowance alone is unbounded in aggregate, so it costs whatever arrives. This is the ceiling that makes it a marketing budget instead of a free tier. **Set it to `0`** on an instance you run for yourself, where there is nobody to demonstrate to |
+| `FREE_TURNS` | `10` | Exchanges somebody gets by email before they are asked to sign up. Writing to `agent@` from an address this instance has never seen opens an unclaimed account — no password, holding the conversation — and this is what it may spend. When it runs out the answer still goes, followed by one mail with a sign-up link that claims the account and keeps the conversation. Nothing user-facing quotes the number, so it stays yours to change |
+| `TRIAL_DAILY_TOTAL` | `500` | Free email exchanges this instance will give away in a day, across everybody. The same argument as `GUEST_DAILY_TOTAL`: an allowance per sender is unbounded in aggregate, so this is the ceiling that makes it a budget. **Set it to `0`** on an instance you run for yourself |
 | `X402_FACILITATOR_URL` | Coinbase | x402 facilitator to settle through |
 
 ### Runtime

@@ -624,15 +624,43 @@ func (s *Session) Data(r io.Reader) error {
 		var toAcc *auth.Account
 		sharedAgentMail := !isExternal && strings.EqualFold(toUsername, AgentMailbox)
 		if sharedAgentMail {
-			if toAcc = AccountForVerifiedEmail(fromAddr.Address); toAcc == nil {
-				// Not a verified address on this instance, so there is no
-				// account to attribute it to and nothing to answer with.
-				// Silent: a bounce tells whoever probed that the address is
-				// live.
-				app.Log("mail", "Shared agent mail from unknown sender %s: dropped", fromAddr.Address)
-				continue
+			toAcc = AccountForVerifiedEmail(fromAddr.Address)
+			if toAcc == nil {
+				// Somebody nobody here has heard of, writing to the address the
+				// front page advertises.
+				//
+				// This was dropped — silently, so a probe could not learn the
+				// address was live. Good reasoning, bad outcome: the landing
+				// page says "write to it and it answers", and for everybody
+				// without an account it did not. The first thing anybody does
+				// with an agent that has an address is write to it, and the
+				// answer was nothing.
+				//
+				// They get an account instead — unclaimed, no password, holding
+				// the conversation until they sign up and claim it. See
+				// auth.Unclaimed.
+				//
+				// Only if the mail authenticated. Without SPF or DKIM the
+				// sender address is whatever the sending machine typed, and an
+				// allowance per address becomes an open model-call endpoint
+				// costing an operator money per request. Still silent when it
+				// fails, for the original reason.
+				if !dkimPass && !s.spfPass {
+					app.Log("mail", "Shared agent mail from unauthenticated sender %s: dropped",
+						fromAddr.Address)
+					continue
+				}
+				var err error
+				if toAcc, err = auth.Unclaimed(fromAddr.Address); err != nil || toAcc == nil {
+					app.Log("mail", "Shared agent mail from %s: could not open an account: %v",
+						fromAddr.Address, err)
+					continue
+				}
+				app.Log("mail", "Shared agent mail from new sender %s: opened unclaimed account %s",
+					fromAddr.Address, toAcc.ID)
+			} else {
+				app.Log("mail", "Shared agent mail from %s resolved to account %s", fromAddr.Address, toAcc.ID)
 			}
-			app.Log("mail", "Shared agent mail from %s resolved to account %s", fromAddr.Address, toAcc.ID)
 		} else if !isExternal && toTag == "" && strings.EqualFold(toUsername, SupportMailbox) {
 			// support@ is nobody's account — it is a reserved username, so it
 			// resolved to no recipient and the mail was dropped. Anybody who

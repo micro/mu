@@ -228,3 +228,31 @@ func DeleteInviteRequest(email string) {
 	delete(requests, email)
 	data.SaveJSON("invite_requests.json", requests)
 }
+
+// InviteEmail is the address an invite was issued to, or empty for a code that
+// does not exist or was issued to nobody in particular.
+//
+// It exists so signing up with an invite can find what is already waiting under
+// that address. An unclaimed account — one opened because somebody emailed
+// agent@ — holds a conversation, and the code mailed to them at the end of their
+// free exchanges is the thread back to it. Without this the sign-up makes a
+// second account and the conversation they were invited to keep is orphaned
+// under the first, which would make the invitation a lie.
+func InviteEmail(code string) string {
+	inviteMu.Lock()
+	defer inviteMu.Unlock()
+	if inv, ok := invites[code]; ok {
+		return inv.Email
+	}
+	return ""
+}
+
+// UnclaimedFor is the unclaimed account behind an address, or nil when the
+// address is unknown or its account has already been claimed.
+func UnclaimedFor(addr string) *Account {
+	acc := AccountForAddress(addr)
+	if acc == nil || !acc.Unclaimed {
+		return nil
+	}
+	return acc
+}
