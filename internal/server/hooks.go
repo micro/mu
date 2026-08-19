@@ -331,6 +331,36 @@ func wireHooks() {
 		return err
 	}
 
+	// The agent writing a message the owner will send.
+	//
+	// No thread and no client: a draft is not a conversation, it is a box being
+	// filled in, and half a dozen abandoned drafts in the record would be six
+	// conversations nobody had. What is sent gets recorded when it is sent —
+	// see inbox.record — which is the point at which something actually
+	// happened.
+	inbox.Draft = func(accountID, instruction, to, subject, body string) (string, error) {
+		var ask strings.Builder
+		if to != "" {
+			ask.WriteString("This message is to " + to + ".\n")
+		}
+		// What is already in the boxes, so "make it shorter" has something to be
+		// shorter than. Labelled, because an unlabelled draft pasted above an
+		// instruction reads as part of the instruction.
+		if strings.TrimSpace(subject) != "" || strings.TrimSpace(body) != "" {
+			ask.WriteString("\nThe current draft is:\n\n" +
+				strings.TrimSpace(subject) + "\n\n" + strings.TrimSpace(body) + "\n")
+		}
+		ask.WriteString("\nWhat they have asked for: " + instruction)
+
+		// QueryWithOpts rather than Ask, which is the difference between running
+		// the agent and having a conversation with it. Ask opens a thread and
+		// writes both sides down — right for every client, wrong here: six
+		// presses of Draft would leave six conversations nobody had, in the same
+		// record that holds the mail.
+		return agent.QueryWithOpts(accountID, ask.String(),
+			agent.QueryOpts{System: agent.DraftPrompt("")})
+	}
+
 	// The rail lists your things. Your mailboxes and your agents are yours,
 	// there are a handful, and they are what you move between — so they sit
 	// under their headings in the sidebar rather than behind a page. Tools and

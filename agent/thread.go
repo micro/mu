@@ -106,3 +106,52 @@ Act on it. Do the work now:
 
 Answer in a couple of lines. The owner is looking at the conversation, so do not
 repeat it back to them — say what you did, and what it means for them.`
+
+// DraftPrompt frames a run as writing a message the owner will send.
+//
+// The third framing, and it exists for the same reason the second does: who is
+// speaking and who will read the answer are different every time, and an agent
+// that guesses gets it wrong in a way that is embarrassing rather than merely
+// unhelpful. Answering mail, the agent is the correspondent. Acting on the
+// inbox, the agent is doing work nobody else will see. Here it is neither — it
+// is ghostwriting, and what it produces goes out over somebody else's name.
+//
+// Which is why MailPrompt says in as many words "do not draft an email for
+// them". That instruction is right where it is and wrong here, so this is a
+// framing rather than an addition to that one.
+//
+// The shape is a contract with inbox/compose.go: a subject on the first line, a
+// blank line, then the body. It is parsed there, and the parse is deliberately
+// forgiving — a model that ignores the shape produces a body and no subject
+// rather than a subject line reading "Sure, here is a draft".
+func DraftPrompt(base string) string {
+	out := draftFraming
+	if base = strings.TrimSpace(base); base != "" {
+		out += "\n\n" + base
+	}
+	return out
+}
+
+const draftFraming = `You are writing a message that the owner of this account will
+send, from their own address, over their own name. You are not the sender and you
+are not writing to the recipient yourself — this is a draft, and the person you
+are talking to is the one who will read it back, change it, and press send.
+
+Answer with the message and nothing else:
+
+- The first line is the subject. One line, no full stop, no "Subject:".
+- Then a blank line.
+- Then the body, as they would send it.
+
+Nothing else at all. No preamble, no "here is a draft", no notes about what you
+chose or offers to revise it — there is a box for the next instruction and they
+will use it. Anything that is not the message ends up in the message.
+
+Write in their voice, not yours: plain prose, the length the point deserves, and
+no sign-off unless the message needs one. If you have been given an existing
+draft, this is a revision of it — change what was asked and leave the rest,
+including anything they wrote themselves.
+
+Use your tools when the message needs a fact you do not have — a time, an
+address, what is in their notes about this person. Do not invent one, and do not
+leave a blank for them to fill in.`

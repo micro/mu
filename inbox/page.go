@@ -114,6 +114,13 @@ func list(w http.ResponseWriter, r *http.Request, accountID, box string) {
 	var b strings.Builder
 	b.WriteString(`<div class="ib">`)
 	b.WriteString(addressBar())
+	// What just happened, when something did. A message you sent appears in the
+	// list below as a conversation, which is right and is also indistinguishable
+	// from a message that failed to send — so the page says so once.
+	if to := strings.TrimSpace(r.URL.Query().Get("sent")); to != "" {
+		b.WriteString(`<p class="ib-sent">Sent to ` + html.EscapeString(trimTo(to, 80)) +
+			`. Their reply lands on the same conversation.</p>`)
+	}
 	b.WriteString(boxes(accountID, all, box))
 
 	if len(threads) == 0 {
@@ -129,7 +136,8 @@ func list(w http.ResponseWriter, r *http.Request, accountID, box string) {
 				`above from anywhere — your own mail, your phone — and it turns up here. The ` +
 				`agent reads what arrives and answers in the thread.</p>` +
 				`<p class="ib-empty">This is what came in. Chats you started here are with ` +
-				`the agent, on ` + app.TextLink("Agents", "/agents") + `.</p>`)
+				`the agent, on ` + app.TextLink("Agents", "/agents") + `. Or ` +
+				app.TextLink("write one yourself", "/inbox/compose") + ` — the agent will draft it.</p>`)
 		}
 		b.WriteString(`</div>`)
 		app.Respond(w, r, app.Response{Title: "Inbox", Description: "What arrived", HTML: b.String()})
@@ -322,7 +330,7 @@ func addressBar() string {
 	}
 	return `<div class="ib-addr"><code>` + html.EscapeString(addr) + `</code>` +
 		`<span class="ib-addr-note">Write here from anywhere and the agent answers in the thread. ` +
-		app.TextLink("Your agents", "/agents") + `</span></div>`
+		app.TextLink("Your agents", "/agents") + `</span>` + composeLink() + `</div>`
 }
 
 // Mailboxes is the rail's view of this account's boxes: All, and one per agent

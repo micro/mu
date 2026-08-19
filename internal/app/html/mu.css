@@ -5966,3 +5966,49 @@ button.pill:hover {
   .ib-addr { gap: 6px }
   .ib-addr-note { font-size: 11px }
 }
+
+/* Composing one, with the agent drafting. See inbox/compose.go. */
+.ib-from-line { font-size: 13px; color: var(--text-muted, #888); margin: 0 0 14px }
+.ib-from-line code { font-size: 13px; background: var(--hover-background, #fafafa); border: var(--border-width, 1px) solid var(--card-border, #e8e8e8); border-radius: var(--border-radius, 6px); padding: 2px 7px }
+.ib-compose { display: flex; flex-direction: column; gap: 8px }
+
+.ib-field {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 14px;
+  padding: 9px 11px;
+  border: var(--border-width, 1px) solid var(--card-border, #e8e8e8);
+  border-radius: var(--border-radius, 6px);
+}
+
+textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
+.ib-field:focus { outline: none; border-color: #bbb }
+
+/* Under the message rather than beside it, because it is a way of filling the
+   boxes above and reads in the order it is used. */
+.ib-draft {
+  margin-top: 6px;
+  padding: 12px;
+  background: var(--hover-background, #fafafa);
+  border: var(--border-width, 1px) solid var(--divider, #f0f0f0);
+  border-radius: var(--border-radius, 6px);
+}
+
+.ib-draft .ib-field { background: var(--card-background, #fff) }
+
+.ib-compose button[type=submit]:not(.pill) {
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 18px;
+  border: var(--border-width, 1px) solid var(--btn-primary, #000);
+  background: var(--btn-primary, #000);
+  color: #fff;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.ib-compose button[type=submit]:not(.pill):hover { background: var(--btn-primary-hover, #333); border-color: var(--btn-primary-hover, #333) }
+.ib-compose .ib-ask-note { margin: 0 }
+.ib-compose-link { margin-left: auto }
+.ib-sent { font-size: 13px; color: var(--btn-success, #1a7f37); margin: 0 0 12px }
