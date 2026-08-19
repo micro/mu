@@ -863,14 +863,34 @@ body.page-home #page-title ~ #customize-link {
    difference between those two readings. Quiet, because a label that competes
    with what it labels is worse than none. */
 .home-section {
-  color: #888;
-  margin: 4px 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 30px 0 12px;
+  color: var(--text-muted, #888);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
+  font-weight: var(--font-weight-semibold, 600);
 }
-.home-section small {
-  font-size: 11px;
+
+/* The rule is what makes it a section rather than a caption. Two words in
+   small caps sitting over a list read as a label on the thing below; a line
+   across the rest of the width reads as a break between two things, which is
+   what Home needed — it is a stack of unrelated blocks and nothing separated
+   them. */
+.home-section::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--divider, #f0f0f0);
 }
+
+.home-section small { font-size: 11px; white-space: nowrap }
+
+/* What is waiting, said once, in the section it is about. It was a suggestion
+   chip under the chat box that spent a model call to read your own mail. */
+.home-unread { margin: 0 0 10px; font-size: 13px }
+.home-unread a { font-weight: var(--font-weight-semibold, 600); text-decoration: none }
 #home-date-text {
   white-space: nowrap;
 }
@@ -1082,8 +1102,6 @@ body.page-home #page-title ~ #customize-link {
 #home-agent #mu-chat { max-width: none; }
 #home-agent #mu-chat-form { top: 58px; }
 
-/* Suggestion chips: wrap+centre on wide screens, scroll on one row on narrow
-   ones so they never break to an awkward 2-then-1 layout. */
 /* The agent's address, under the box on Home. Quiet: it is a second way in,
    not a call to action, and it should read as a fact about the agent. */
 .home-inbox {
@@ -1100,39 +1118,6 @@ body.page-home #page-title ~ #customize-link {
   overflow-wrap: anywhere;
 }
 
-.home-chips {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  justify-content: center;
-  margin-top: 12px;
-}
-@media only screen and (max-width: 600px) {
-  /* The agent's address, under the box on Home. Quiet: it is a second way in,
-   not a call to action, and it should read as a fact about the agent. */
-.home-inbox {
-  margin: 10px 2px 0;
-  font-size: 13px;
-  color: var(--text-muted, #888);
-  line-height: 1.5;
-}
-.home-inbox code {
-  background: var(--hover-background, #f4f4f5);
-  border-radius: 4px;
-  padding: 1px 6px;
-  font-size: 12px;
-  overflow-wrap: anywhere;
-}
-
-.home-chips {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    justify-content: flex-start;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: 2px;
-  }
-  .home-chips .console-suggest { flex: 0 0 auto; }
-}
 
 /* ========================================
    CARDS & BLOCKS
@@ -5578,9 +5563,6 @@ body.display-mode .card h4 {
   overflow-x: auto;
   max-width: 100%;
 }
-.console-suggest {
-  flex-shrink: 0;
-}
 @media (max-width: 480px) {
   #console-prompt {
     padding-top: 12px !important;
@@ -5588,13 +5570,6 @@ body.display-mode .card h4 {
   #console-input {
     font-size: 15px !important;
     padding: 12px 40px 12px 12px !important;
-  }
-  #console-suggestions {
-    gap: 4px !important;
-  }
-  .console-suggest {
-    padding: 5px 10px !important;
-    font-size: 12px !important;
   }
   #console-response {
     padding: 12px !important;
@@ -5928,12 +5903,32 @@ button.pill:hover {
 .ib-ask-problem { font-size: 13px; color: var(--btn-danger, #c00); margin: 0 0 9px }
 
 /* The inbox on Home. Same conversations, narrower column. */
-.inbox-peek { margin: 10px 0 0 }
-.peek-row { display: block; padding: 7px 0; text-decoration: none; color: inherit; border-bottom: var(--border-width, 1px) solid var(--divider, #f0f0f0) }
+/* The inbox on Home.
+   
+   In a card, like everything else on that screen. It was the one block not in
+   one — naked rows between bordered cards, which is most of why it read as
+   unfinished rather than as a section. */
+.inbox-peek {
+  border: var(--border-width, 1px) solid var(--card-border, #e8e8e8);
+  border-radius: var(--border-radius, 6px);
+  background: var(--card-background, #fff);
+  padding: 4px var(--item-padding, 16px) 12px;
+  margin: 0;
+}
+
+.peek-row {
+  display: block;
+  padding: 11px 0;
+  text-decoration: none;
+  color: inherit;
+  border-bottom: var(--border-width, 1px) solid var(--divider, #f0f0f0);
+}
+
+.peek-row:last-of-type { border-bottom: 0 }
 .peek-row:hover .peek-title { text-decoration: underline }
 .peek-row.unseen .peek-title { font-weight: var(--font-weight-bold, 700) }
 .peek-row.unseen .peek-line { color: var(--text-secondary, #555) }
-.peek-head { display: flex; align-items: baseline; gap: 8px }
+.peek-head { display: flex; align-items: baseline; gap: 10px }
 
 .peek-title {
   font-size: 14px;
@@ -5945,9 +5940,15 @@ button.pill:hover {
 }
 
 .peek-when { font-size: 11px; color: var(--text-muted, #888); margin-left: auto; white-space: nowrap; flex: none }
-.peek-line { display: block; font-size: 13px; color: var(--text-muted, #888); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
-.peek-who { color: var(--text-muted, #888) }
-.peek-more { display: inline-block; margin-top: 9px; font-size: 13px; color: var(--text-secondary, #555); text-decoration: none }
+.peek-line { display: block; font-size: 13px; color: var(--text-muted, #888); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.peek-who { color: var(--text-secondary, #555); font-weight: var(--font-weight-medium, 500) }
+
+/* The channel, last on the line the eye reads last. It was a pill, which made
+   it the loudest thing in the block and usually said "Mail" three times. */
+.peek-via { color: var(--text-muted, #888) }
+.peek-via::before { content: " · " }
+
+.peek-more { display: inline-block; margin-top: 12px; font-size: 13px; color: var(--text-secondary, #555); text-decoration: none }
 .peek-more:hover { color: var(--text-primary, #1a1a1a) }
 
 /* On a phone a row is two lines, not one squeezed into 390px: the name and the

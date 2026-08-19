@@ -352,92 +352,25 @@ function fetchW(la,lo){
 	// for everyone: logged out, this is the public face of the product. Signed-in
 	// users get personalised chips; guests get generic starters and the guest chat.
 	{
-		var suggestions []string
-		if viewerID != "" {
-			if unread := mail.GetUnreadCount(viewerID); unread > 0 {
-				if unread == 1 {
-					suggestions = append(suggestions, "Read my unread email")
-				} else {
-					suggestions = append(suggestions, fmt.Sprintf("Read my %d unread emails", unread))
-				}
-			}
-		}
-		// No chips for things the cards below already show.
-		//
-		// There were three: top movers, "Today's news" and "What's happening?".
-		// Every one of them asked the agent to fetch something already on the
-		// screen — the markets card has the prices, the news card has the
-		// headlines, the blog digest is what's happening. A chip that spends a
-		// model call to re-fetch what you can already see is a worse version of
-		// scrolling down.
-		//
-		// What is left is the one suggestion the cards cannot answer: unread
-		// mail, which needs your inbox opened and read rather than displayed.
-
-		// The question is carried in a data attribute and read by a listener,
-		// not written into an onclick.
-		//
-		// It was `onclick="…muChatAsk(` + JSString(s) + `)"`, and JSString
-		// returns a JSON string — double-quoted. Dropped into a double-quoted
-		// attribute, the attribute ended at that first quote, so the browser
-		// received the handler `window.muChatAsk&&window.muChatAsk(` and threw
-		// "Unexpected end of input". Every chip was dead, silently, because the
-		// `&&` guard made a broken handler look like a missing one.
-		//
-		// Escaping the literal would have fixed it. Not putting code in an
-		// attribute fixes the whole category, and survives a stricter CSP.
-		var chips string
-		for _, s := range suggestions {
-			chips += chipMarkup(s)
-		}
-		if chips != "" {
-			chips += `<script>
-(function(){
-  document.querySelectorAll('.console-suggest[data-ask]').forEach(function(btn){
-    btn.addEventListener('click', function(){
-      var q = btn.getAttribute('data-ask');
-      if (window.muChatAsk) { window.muChatAsk(q); return; }
-      // The chat component has not finished wiring itself up yet; wait for it
-      // rather than dropping the click on the floor.
-      var tries = 0;
-      var again = function(){
-        if (window.muChatAsk) { window.muChatAsk(q); return; }
-        if (++tries < 40) setTimeout(again, 50);
-      };
-      again();
-    });
-  });
-})();
-</script>`
-		}
-
-		b.WriteString(`<div id="home-agent" style="margin:0 0 20px">`)
+		b.WriteString(`<div id="home-agent">`)
 		b.WriteString(app.ChatComponent(app.ChatConfig{Guest: viewerID == "", HideSuggestions: true,
 			OfferAgentPicker: viewerID != ""}))
-		if chips != "" {
-			b.WriteString(fmt.Sprintf(`<div class="home-chips">%s</div>`, chips))
-		}
-		// The box is one way in and not the interesting one.
+
+		// The address, under the box. Quiet, because it is a fact about the
+		// agent rather than a call to action: the thing that makes this more
+		// than a chat on a page is that it answers whether or not anybody has
+		// the page open, and there was nowhere on the screen you arrive at
+		// saying so.
 		//
-		// Home has always offered a place to type, which makes the agent look
-		// like a chat on a page — something you visit. The thing that makes it
-		// more than that is that it has an address and answers whether or not
-		// anybody has this page open, and there was nowhere on the screen you
-		// arrive at saying so.
+		// There were suggestion chips here and they have gone. The machinery
+		// was a data attribute, a listener with a forty-try retry loop, a flex
+		// container and a class defined twice in the stylesheet — to render at
+		// most one button, only when there was unread mail, saying "read my
+		// unread email". One centred pill under a chat box, and an inbox fact
+		// sitting above the inbox section. It is a line in that section now.
 		//
-		// And what is in it, when there is anything. The link on its own was a
-		// word pointing at a page, so the one thing the product claims — that
-		// the agent answers whether or not you have this open — was visible only
-		// to somebody who clicked through to check. Mail that arrived and was
-		// answered overnight left Home looking exactly as it had the night
-		// before. See inbox.Preview.
-		//
-		// The address line says where to write and nothing else. It used to end
-		// in "Your inbox →" as well, so a screen with the preview on it carried
-		// two links to the same page, one directly above the other, under a list
-		// of the very conversations they led to. The preview's own link is the
-		// way through; when there is no preview there is nothing to go to, and
-		// the sidebar carries Inbox regardless.
+		// The other three chips had already gone for a related reason: they
+		// asked the agent to fetch things the cards below already show.
 		if viewerID != "" {
 			// The address of whichever agent is answering. The id is the
 			// contract with the picker in the chat component, which rewrites it
@@ -447,17 +380,20 @@ function fetchW(la,lo){
 				b.WriteString(`<p class="home-inbox">Or write to it at <code id="mu-agent-addr">` +
 					html.EscapeString(addr) + `</code> — from your mail, your phone, anywhere.</p>`)
 			}
-			// Labelled the same way the cards below are, because they are the
-			// two halves of this screen and were not being read as a pair: one
-			// carried a label in small caps and the other carried none, so the
-			// conversations read as loose links under the address line.
-			// Rendered first, because Preview is empty when nothing has
-			// arrived and a heading over nothing is furniture.
-			if peek := inbox.Preview(viewerID); peek != "" {
-				b.WriteString(`<p class="home-section"><small>Inbox</small></p>` + peek)
-			}
 		}
 		b.WriteString(`</div>`)
+
+		// What arrived, under a heading that looks like one.
+		//
+		// Both halves of this screen are labelled the same way and each label
+		// carries a rule across the page, because two words in small caps over
+		// a list read as a caption rather than as a section — which is how the
+		// conversations came to look like loose links under the address line.
+		if viewerID != "" {
+			if peek := inbox.Preview(viewerID); peek != "" {
+				b.WriteString(sectionRule("Inbox") + unreadLine(viewerID) + peek)
+			}
+		}
 	}
 
 	// No counts strip. Four tiles reading Agents 0, Unread 0, Apps 0, Credits
@@ -503,7 +439,7 @@ function fetchW(la,lo){
 	// "Live context" was two claims where one was needed: everything on this
 	// screen is live, so the word did no work here that the inbox above did not
 	// also deserve. What distinguishes this block is that it is context.
-	b.WriteString(`<p class="home-section"><small>Context</small></p>`)
+	b.WriteString(sectionRule("Context"))
 	b.WriteString(CardsHTML(r, viewerAcc))
 
 	b.WriteString(`</div>`) // close #home-cards
@@ -575,14 +511,32 @@ function fetchW(la,lo){
 // the escaper was weaker than it looked.
 func htmlEsc(s string) string { return html.EscapeString(s) }
 
-// chipMarkup renders one starter chip. The question rides in a data attribute,
-// escaped once — see the comment where these are built for what putting it in
-// an onclick cost.
-func chipMarkup(q string) string {
-	return fmt.Sprintf(`<button type="button" class="console-suggest" data-ask="%s" `+
-		`style="padding:6px 12px;border:1px solid #e0e0e0;border-radius:6px;background:#fff;`+
-		`font-size:13px;color:#555;cursor:pointer;white-space:nowrap;font-family:inherit">%s</button>`,
-		htmlEsc(q), htmlEsc(q))
+// sectionRule is a heading that delimits: the label, then a hairline across the
+// rest of the width.
+//
+// Home is a stack of unrelated blocks — a chat, what arrived, what the tools
+// know — and it carried two words in small caps to tell them apart. That reads
+// as a caption on the thing below it rather than as a break between two things,
+// which is why the sections did not look like sections.
+func sectionRule(label string) string {
+	return `<p class="home-section"><small>` + htmlEsc(label) + `</small></p>`
+}
+
+// unreadLine is what is waiting, said once, in the section it is about.
+//
+// This was a chip under the chat box that asked the agent to read your mail.
+// Here it is a sentence with a link, which is the same offer without a model
+// call and without a lone pill floating under a text field.
+func unreadLine(viewerID string) string {
+	n := mail.GetUnreadCount(viewerID)
+	if n <= 0 {
+		return ""
+	}
+	word := "messages"
+	if n == 1 {
+		word = "message"
+	}
+	return fmt.Sprintf(`<p class="home-unread"><a href="/inbox">%d unread %s</a></p>`, n, word)
 }
 
 // CardsHTML renders the cards a reader watches: the live view of each

@@ -61,9 +61,17 @@ func Preview(accountID string) string {
 			title = "Untitled"
 		}
 
-		// Which channel carried it. Every row here arrived from somewhere that
-		// is not this page, so the label is always the fact worth showing.
-		where := app.Pill(app.ClientName(t.Client))
+		// Which channel carried it, as quiet text rather than a pill.
+		//
+		// Renamed off peek-where deliberately: that name is on the retired-pill
+		// list in test/style_test.go, and reusing it for a shape that is no
+		// longer a pill would leave the next reader looking for a border.
+		//
+		// Every row here arrived from somewhere, so the label is worth showing —
+		// and shown as a pill it was the loudest thing in the block, repeated
+		// three times, usually saying "Mail". It is at the end of the line the
+		// eye reads last, which is where a qualifier belongs.
+		where := `<span class="peek-via">` + html.EscapeString(app.ClientName(t.Client)) + `</span>`
 
 		// And whether it is waiting for you, which is most of what a preview on
 		// Home is for — three rows you have already dealt with say nothing.
@@ -91,9 +99,9 @@ func Preview(accountID string) string {
 		// ?id=, which is what the inbox reads. It said ?session= and the handler
 		// has never looked at that, so every row on Home opened the list.
 		b.WriteString(`<a class="` + cls + `" href="/inbox?id=` + url.QueryEscape(t.ID) + `">` +
-			`<span class="peek-head"><span class="peek-title">` + html.EscapeString(trimTo(title, 60)) + `</span>` +
-			where + `<span class="peek-when">` + html.EscapeString(app.TimeAgo(t.Updated)) + `</span></span>` +
-			`<span class="peek-line">` + line + `</span></a>`)
+			`<span class="peek-head"><span class="peek-title">` + html.EscapeString(trimTo(title, 60)) +
+			`</span><span class="peek-when">` + html.EscapeString(app.TimeAgo(t.Updated)) + `</span></span>` +
+			`<span class="peek-line">` + line + where + `</span></a>`)
 	}
 	b.WriteString(`<a class="peek-more" href="/inbox">Go to inbox &rarr;</a>`)
 	b.WriteString(`</div>`)
