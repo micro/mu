@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"mu/internal/app"
+	"mu/internal/auth"
 )
 
 // Handler serves /flights.
@@ -227,7 +228,16 @@ const pageCSS = `<style>
 // It asks the browser where it is and shows the three nearest aircraft. Without
 // permission it says so and offers the page, rather than guessing a city — the
 // answer to "what is overhead" is worthless if it is overhead somewhere else.
-func CardHTML() string {
+func CardHTML(accountID string) string {
+	// Rendered here when we know where you are, which is the better answer and
+	// the one that works with no browser in the room — see account/place.go.
+	// Three aircraft rather than the page's forty: the page has a scope and a
+	// table and is a different thing, which is why it is still a page.
+	if lat, lon, ok := auth.Located(accountID); ok {
+		if found, err := Near(lat, lon, 25); err == nil {
+			return nearestHTML(found)
+		}
+	}
 	return `<div id="flights-card"><div id="flights-card-content" style="font-size:13px;color:#888">
 <a href="/flights" style="color:#888">See what's overhead</a></div>
 <script>
@@ -273,5 +283,27 @@ func ranges(selected int) string {
 		}
 		fmt.Fprintf(&b, `<option value="%d"%s>%d nm</option>`, nm, sel, nm)
 	}
+	return b.String()
+}
+
+// nearestHTML is the three nearest aircraft, for a card.
+func nearestHTML(found []Aircraft) string {
+	if len(found) == 0 {
+		return `<a class="fl-none" href="/flights">Nothing overhead</a>`
+	}
+	sort.Slice(found, func(i, j int) bool { return found[i].Distance < found[j].Distance })
+	var b strings.Builder
+	for i, a := range found {
+		if i >= 3 {
+			break
+		}
+		alt := "ground"
+		if !a.OnGround {
+			alt = comma(a.Altitude) + " ft"
+		}
+		b.WriteString(`<div class="fl-line-row">` + linkTo(a) +
+			`<span class="fl-alt">` + html.EscapeString(alt) + `</span></div>`)
+	}
+	b.WriteString(`<div class="fl-more"><a href="/flights">More →</a></div>`)
 	return b.String()
 }

@@ -6127,3 +6127,8 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
 .wx-where { font-size: 12px; color: var(--text-muted, #888); margin-top: 2px }
 .wx-days { display: flex; gap: 12px; margin-top: 6px; font-size: 12px; color: var(--text-muted, #888) }
 .wx-day { white-space: nowrap }
+
+/* The flights card, rendered here for somebody whose place we know. */
+.fl-line-row { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; padding: 2px 0 }
+.fl-alt { color: var(--text-muted, #888); white-space: nowrap }
+.fl-more, .fl-none { display: block; margin-top: 6px; font-size: 13px; color: var(--text-muted, #888); text-decoration: none }

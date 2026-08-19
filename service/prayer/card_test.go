@@ -8,8 +8,13 @@ import (
 // The home card answers the time-sensitive question in its corner — "Asr
 // 14:25" — while the verse stays the body. Before this you had to open the
 // page and scroll to find out when the next prayer was.
+//
+// This is the reader we know nothing about, which is the browser fallback. For
+// somebody who has set a place the mark is computed here instead — see
+// nextMark, and account/place.go for why that matters more for a prayer time
+// than for anything else on the screen.
 func TestHomeCardCarriesTheNextPrayer(t *testing.T) {
-	html := ReminderHTML()
+	html := ReminderHTML("")
 	if !strings.Contains(html, `id="prayer-next"`) {
 		t.Error("home card has no slot for the next prayer")
 	}
@@ -22,7 +27,7 @@ func TestHomeCardCarriesTheNextPrayer(t *testing.T) {
 // from coordinates already granted to the weather or prayer cards, and stays
 // empty otherwise — .card-corner:empty is display:none.
 func TestHomeCardNeverAsksForLocation(t *testing.T) {
-	html := ReminderHTML()
+	html := ReminderHTML("")
 	if strings.Contains(html, "geolocation") {
 		t.Error("the home card asks for geolocation; it must only reuse cached coordinates")
 	}

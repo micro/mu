@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"mu/internal/app"
+	"mu/internal/auth"
 	"mu/internal/data"
 	"mu/internal/event"
 	"mu/internal/service"
@@ -120,13 +121,55 @@ func stringField(val map[string]interface{}, key string) string {
 }
 
 // ReminderHTML returns the rendered reminder card HTML
-func ReminderHTML() string {
+func ReminderHTML(accountID string) string {
 	reminderMutex.RLock()
-	defer reminderMutex.RUnlock()
-	return nextPrayerMark + reminderHTML
+	body := reminderHTML
+	reminderMutex.RUnlock()
+	return nextMark(accountID) + body
 }
 
-// nextPrayerMark puts the next prayer in the corner of the home card — "Asr
+// nextMark is the next prayer, in the corner of the card.
+//
+// Computed here when this instance knows where the reader is, which it does now
+// for anybody who has set a place — see account/place.go. That is the whole
+// difference between a card that answers and one that waits: the mark used to
+// come from coordinates a browser had cached, so it was empty on a first visit,
+// empty on a second device, and empty in anything that is not a browser at all.
+//
+// A prayer time is the case that makes this worth doing rather than merely
+// tidy. It is not a convenience — it is the reason somebody opens the page, it
+// is wrong everywhere but one latitude, and it cannot be guessed.
+func nextMark(accountID string) string {
+	lat, lon, ok := auth.Located(accountID)
+	if !ok {
+		return browserMark
+	}
+	zone := ""
+	if acc, err := auth.GetAccount(accountID); err == nil && acc != nil {
+		zone = acc.Zone
+	}
+	times, err := GetPrayerTimes(lat, lon, zone, "")
+	if err != nil || times == nil {
+		return browserMark
+	}
+	loc := time.UTC
+	if zone != "" {
+		if z, err := time.LoadLocation(zone); err == nil {
+			loc = z
+		}
+	}
+	name, at := times.Next(time.Now().In(loc))
+	if name == "" {
+		return ""
+	}
+	return `<span class="card-corner">` + html.EscapeString(name+" "+at) + `</span>`
+}
+
+// browserMark is the fallback for a reader this instance does not have a place
+// for: it fills itself in from coordinates a browser cached, and stays empty
+// when there are none.
+//
+// It puts the next prayer in the corner of the home card — "Asr
 // 14:25" — so the card answers the time-sensitive question at a glance and the
 // verse stays the body of it.
 //
@@ -134,7 +177,7 @@ func ReminderHTML() string {
 // (the weather and prayer cards share these keys). It never asks for location
 // itself: the home screen is not the place to prompt, and with nothing cached
 // the mark simply stays empty.
-const nextPrayerMark = `<span id="prayer-next" class="card-corner"></span>
+const browserMark = `<span id="prayer-next" class="card-corner"></span>
 <script>
 (function(){
   var el=document.getElementById('prayer-next');
