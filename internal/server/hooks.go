@@ -402,8 +402,33 @@ func wireHooks() {
 	agent.Load()
 
 	// Wire user context into the agent — personalises responses.
+	// What an agent knows about you before you have said anything.
+	//
+	// It was four lines — unread mail, balance, top movers, notes — and none of
+	// them answered the question every specialist actually needs answered
+	// first, which is who and where and when. So the weather agent, asked "do I
+	// need a coat today", replied "which city are you in?" from an instance
+	// whose home screen was showing that account's local forecast: the
+	// coordinates existed, in a browser, and nothing server-side had ever been
+	// told. Places could not do "near me", prayer had no latitude to compute
+	// from, and every scheduled run started from nowhere because there was no
+	// browser in the room at 7am.
+	//
+	// Who, where, when, then what is going on. The order is deliberate: the
+	// first three are the ones a model needs to not ask a question back.
 	userCtxFunc := func(accountID string) string {
 		var parts []string
+		if acc, err := auth.GetAccount(accountID); err == nil && acc != nil {
+			if name := strings.TrimSpace(acc.Name); name != "" {
+				parts = append(parts, "- You are talking to "+name+" (@"+acc.ID+")")
+			}
+		}
+		// Where they are, and what time it is there. Together, because either
+		// alone still leaves "today" ambiguous — see account/place.go.
+		if place := account.PlaceLine(accountID); place != "" {
+			parts = append(parts, "- They are in "+place)
+		}
+		parts = append(parts, "- It is "+localNow(accountID))
 		// Unread mail count.
 		if unread := mail.GetUnreadCount(accountID); unread > 0 {
 			parts = append(parts, fmt.Sprintf("- %d unread email(s)", unread))
@@ -888,4 +913,20 @@ func wireHooks() {
 	// login form, /session) and in the CLI. An agent never needs them: it
 	// authenticates with a token a human issued, or pays per request over x402,
 	// where there is no account to create.
+}
+
+// localNow is the date and time where the account is, falling back to UTC.
+//
+// An agent that knows the city and not the hour still cannot answer "today":
+// the model has a training cutoff and no clock, so without this line every
+// question with a "now" in it is a guess. The zone comes from the browser when
+// somebody sets their place — see account/place.go.
+func localNow(accountID string) string {
+	loc := time.UTC
+	if acc, err := auth.GetAccount(accountID); err == nil && acc != nil && acc.Zone != "" {
+		if z, err := time.LoadLocation(acc.Zone); err == nil {
+			loc = z
+		}
+	}
+	return time.Now().In(loc).Format("Monday 2 January 2006, 15:04 MST")
 }

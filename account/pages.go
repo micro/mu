@@ -752,6 +752,8 @@ func Account(w http.ResponseWriter, r *http.Request) {
 
 %s
 
+%s
+
 <div class="card">
 <h4>Language</h4>
 <form action="/account" method="POST" class="d-flex items-center gap-3">
@@ -779,6 +781,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		htmlpkg.EscapeString(acc.Name),
 		htmlpkg.EscapeString(acc.ID),
 		BalanceCard(acc.ID),
+		PlaceCard(r, acc.ID),
 		emailCard,
 		googleCard,
 		languageOptions,

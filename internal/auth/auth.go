@@ -30,12 +30,34 @@ var presenceMutex sync.RWMutex
 var userPresence = map[string]time.Time{} // username -> last seen time
 
 type Account struct {
-	ID              string    `json:"id"`
-	Name            string    `json:"name"`
-	Secret          string    `json:"secret"`
-	Created         time.Time `json:"created"`
-	Admin           bool      `json:"admin"`
-	Language        string    `json:"language"`
+	ID       string    `json:"id"`
+	Name     string    `json:"name"`
+	Secret   string    `json:"secret"`
+	Created  time.Time `json:"created"`
+	Admin    bool      `json:"admin"`
+	Language string    `json:"language"`
+	// Place is where this account is, in words — "London", "Lisbon,
+	// Portugal" — with Lat and Lon where they are known and Zone the IANA
+	// timezone.
+	//
+	// The single most useful fact an agent can have about somebody, and until
+	// now it existed nowhere on this server. The weather card resolved
+	// coordinates in the browser and kept them in localStorage, so asking the
+	// weather agent "do I need a coat today" got "which city are you in?" —
+	// from an instance whose home screen was showing that person's local
+	// forecast at the time. Everything else inherited the hole: places could
+	// not answer "near me", transit had no stop, prayer had no qibla, and a
+	// scheduled run at 7am had no location at all because there was no browser
+	// in the room.
+	//
+	// Coordinates are rounded to two decimal places before they are stored —
+	// see account.SetPlace. That is about a kilometre, which is right for a
+	// forecast, a prayer time and what is nearby, and is not somebody's
+	// address.
+	Place           string    `json:"place,omitempty"`
+	Lat             float64   `json:"lat,omitempty"`
+	Lon             float64   `json:"lon,omitempty"`
+	Zone            string    `json:"zone,omitempty"`
 	Widgets         []string  `json:"widgets,omitempty"`  // App IDs to show as home widgets
 	Pinned          []string  `json:"pinned,omitempty"`   // Service names pinned to the sidebar, in the order shown
 	Approved        bool      `json:"approved,omitempty"` // Admin-approved, bypasses new account restrictions

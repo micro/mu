@@ -736,6 +736,9 @@ func registerRoutes() {
 	// Writing one yourself, with the agent drafting. An exact route, because
 	// /inbox/<box> is a mailbox name and a box could be called anything.
 	http.HandleFunc("/inbox/compose", inbox.ComposeHandler)
+	// Where you are, which every specialist needs and nothing server-side
+	// held — see account/place.go.
+	http.HandleFunc("/account/place", account.PlaceHandler)
 	// Telling a device something happened while the page is closed. Two
 	// endpoints, one handler — see internal/push.
 	http.HandleFunc("/push/subscribe", push.SubscribeHandler)
