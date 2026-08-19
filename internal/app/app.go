@@ -73,11 +73,26 @@ func init() {
 }
 
 // Response holds data for responding in either JSON or HTML format
+// Response is one page, or one JSON answer, from anywhere in the product.
+//
+// The single door. There were six — RenderHTML, RenderHTMLForRequest,
+// RenderHTMLWithLang, RenderHTMLWithLangAndAuth, RenderHTMLWithLangAndBody and
+// this — which is what happens when each new need adds a parameter and a name
+// rather than a field. Four of them had one caller or none, and the two that
+// were used differed only in whether the caller remembered to wrap the result
+// in w.Write([]byte(...)).
+//
+// Everything a page can vary is a field here, so the next thing a page needs is
+// a field rather than a seventh function.
 type Response struct {
 	Data        interface{} // Data to serialize as JSON or pass to HTML renderer
 	HTML        string      // Pre-rendered HTML body (used when Data is nil for HTML)
 	Title       string      // Page title for HTML response
 	Description string      // Meta description for HTML response
+	// BodyClass is set on <body>, for a page whose layout differs from the
+	// rest — the home screen, and the kiosk variant of it. One field rather
+	// than the function that existed to pass one string.
+	BodyClass string
 }
 
 // WantsJSON returns true if the request prefers JSON response
@@ -212,10 +227,9 @@ func Respond(w http.ResponseWriter, r *http.Request, resp Response) {
 		return
 	}
 
-	// HTML response — RenderHTMLForRequest already prepends the verify
-	// banner for unverified users on verification-gated instances.
-	html := RenderHTMLForRequest(resp.Title, resp.Description, resp.HTML, r)
-	w.Write([]byte(html))
+	// HTML response — renderForRequest already prepends the verify banner for
+	// unverified users on verification-gated instances.
+	w.Write([]byte(renderForRequest(resp.Title, resp.Description, resp.HTML, resp.BodyClass, r))) //nolint:errcheck
 }
 
 //go:embed html/*
@@ -891,15 +905,23 @@ func UserLanguage(r *http.Request) string {
 }
 
 // RenderHTML renders the given html in a template with default language (English)
-func RenderHTML(title, desc, html string) string {
-	return RenderHTMLWithLangAndAuth(title, desc, html, "en", nil)
+// RenderHTML is a page with no request behind it.
+//
+// The one exported render besides Respond, and it survives because two callers
+// genuinely have no request: first-run setup, which happens before there is a
+// session or a language to read, and the test that asks what chrome a signed-in
+// account is served. Everything else has a request and goes through Respond.
+//
+// acc may be nil, which is a signed-out reader.
+func RenderHTML(title, desc, html string, acc *auth.Account) string {
+	return renderWithLang(title, desc, html, "en", acc)
 }
 
 // RenderHTMLForRequest renders the given html in a template using the
 // user's language preference. Prepends the verify-to-post banner if the
 // authenticated user has an unverified account on a verification-gated
 // instance.
-func RenderHTMLForRequest(title, desc, html string, r *http.Request) string {
+func renderForRequest(title, desc, html, bodyClass string, r *http.Request) string {
 	lang := UserLanguage(r)
 	if banner := VerifyBanner(r); banner != "" {
 		html = banner + html
@@ -913,8 +935,7 @@ func RenderHTMLForRequest(title, desc, html string, r *http.Request) string {
 	_, acc := auth.TrySession(r)
 	// The path, so the rail can show which mailbox or agent you are in. Only
 	// this render has a request to read it from.
-	out := renderShell(lang, title, desc, "", html, acc, navPath(r.URL.Path))
-	return out
+	return renderShell(lang, title, desc, bodyClass, html, acc, navPath(r.URL.Path))
 }
 
 // VerifyBanner says, before you write anything, that you cannot post yet and
@@ -1071,12 +1092,7 @@ func navBottom(acc *auth.Account) string {
           <a id="nav-login" href="/login" style="display: none;"><img src="/account.png?` + Version + `"><span class="label">Login</span></a>`
 }
 
-// RenderHTMLWithLang renders the given html in a template with specified language
-func RenderHTMLWithLang(title, desc, html, lang string) string {
-	return RenderHTMLWithLangAndAuth(title, desc, html, lang, nil)
-}
-
-func RenderHTMLWithLangAndAuth(title, desc, html, lang string, acc *auth.Account) string {
+func renderWithLang(title, desc, html, lang string, acc *auth.Account) string {
 	if lang == "" {
 		lang = "en"
 	}
@@ -1091,20 +1107,6 @@ func RenderHTMLWithLangAndAuth(title, desc, html, lang string, acc *auth.Account
 // body argument is deliberately not escaped: handlers build that as HTML.
 func escapeMeta(s string) string {
 	return htmlpkg.EscapeString(s)
-}
-
-// RenderHTMLWithLangAndBody renders html with a custom body attribute string
-// (e.g. ` class="page-home"` to enable page-specific CSS). Pass the viewer's
-// account so the sidebar shows Account/Logout when signed in (nil for guests).
-func RenderHTMLWithLangAndBody(title, desc, html, lang, bodyAttr string, acc *auth.Account) string {
-	if lang == "" {
-		lang = "en"
-	}
-	title, desc = escapeMeta(title), escapeMeta(desc)
-	if banner := creditsBannerFor(acc, ""); banner != "" {
-		html = banner + html
-	}
-	return renderShell(lang, title, desc, bodyAttr, html, acc, "")
 }
 
 // RenderString renders a markdown string as html
@@ -1298,7 +1300,7 @@ func Error(w http.ResponseWriter, r *http.Request, status int, message string) {
 	// the page, and a banner repeating the message word for word above it just
 	// says the same thing twice.
 	_, acc := auth.TrySession(r)
-	page := RenderHTMLWithLangAndAuth(errorTitle(status), message, body, UserLanguage(r), acc)
+	page := renderWithLang(errorTitle(status), message, body, UserLanguage(r), acc)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
 	w.Write([]byte(page))

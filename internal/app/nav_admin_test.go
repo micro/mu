@@ -31,7 +31,7 @@ func TestAnAdminGetsTheLinkInTheNav(t *testing.T) {
 		t.Error("the admin's own link is hidden, so it needs JavaScript to appear")
 	}
 	// And it is drawn where it now claims to be: directly under Home.
-	page := RenderHTMLWithLangAndAuth("t", "d", "", "en", &auth.Account{ID: "boss", Admin: true})
+	page := renderWithLang("t", "d", "", "en", &auth.Account{ID: "boss", Admin: true})
 	home, adm, tools := strings.Index(page, `href="/home"`), strings.Index(page, `id="nav-admin"`),
 		strings.Index(page, `href="/tools"`)
 	if adm < home || adm > tools {

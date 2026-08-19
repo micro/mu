@@ -162,7 +162,7 @@ func listPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	b.WriteString(tasksPageCSS)
-	w.Write([]byte(app.RenderHTMLForRequest("Tasks", "What is to be done", b.String(), r)))
+	app.Respond(w, r, app.Response{Title: "Tasks", Description: "What is to be done", HTML: b.String()})
 }
 
 func tab(b *strings.Builder, status, active, label string) {

@@ -62,8 +62,8 @@ func handleGet(w http.ResponseWriter, r *http.Request) {
 	// HTML page — the console view.
 	events := Recent(StreamLimit, viewerID)
 	events = DedupeAdjacent(events)
-	html := RenderStreamPage(events, viewerID, r)
-	w.Write([]byte(html))
+	app.Respond(w, r, app.Response{Title: "Stream", Description: "Console",
+		HTML: streamBody(events, viewerID)})
 }
 
 func handlePost(w http.ResponseWriter, r *http.Request) {
@@ -143,8 +143,13 @@ func FragmentHandler(w http.ResponseWriter, r *http.Request) {
 
 // ── Rendering ───────────────────────────────────────────────
 
-// RenderStreamPage renders the full console page.
-func RenderStreamPage(events []*Event, viewerID string, r *http.Request) string {
+// streamBody renders the console, without the page around it.
+//
+// It used to call app.RenderHTMLForRequest itself and hand back a whole
+// document, which is what made it the only page-rendering function outside
+// internal/app. A body is what every other surface returns; the shell is
+// app.Respond's business and nobody else's.
+func streamBody(events []*Event, viewerID string) string {
 	var sb strings.Builder
 	sb.WriteString(`<div id="console">`)
 
@@ -164,7 +169,7 @@ func RenderStreamPage(events []*Event, viewerID string, r *http.Request) string 
 	sb.WriteString(streamScript)
 
 	sb.WriteString(`</div>`)
-	return app.RenderHTMLForRequest("Stream", "Console", sb.String(), r)
+	return sb.String()
 }
 
 // RenderEventList renders just the event entries (used by both the

@@ -43,7 +43,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			`<p class="text-sm text-muted">This instance has no WhatsApp sender. An operator sets ` +
 			`<code>TWILIO_WHATSAPP_FROM</code> at <a href="/admin/env">/admin/env</a> and points the ` +
 			`sender's inbound webhook at <code>/whatsapp/twilio</code>.</p></div>`)
-		w.Write([]byte(app.RenderHTMLForRequest("WhatsApp", "Reply to people on WhatsApp", b.String(), r)))
+		app.Respond(w, r, app.Response{Title: "WhatsApp", Description: "Reply to people on WhatsApp", HTML: b.String()})
 		return
 	}
 
@@ -52,7 +52,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		`replies — anybody not here has to write first.</p>`)
 	b.WriteString(threads(r, who, history))
 	b.WriteString(pageCSS)
-	w.Write([]byte(app.RenderHTMLForRequest("WhatsApp", "Reply to people on WhatsApp", b.String(), r)))
+	app.Respond(w, r, app.Response{Title: "WhatsApp", Description: "Reply to people on WhatsApp", HTML: b.String()})
 }
 
 // threads is one card per conversation, with a reply box on the open ones.

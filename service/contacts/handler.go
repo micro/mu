@@ -164,7 +164,7 @@ func listPage(w http.ResponseWriter, r *http.Request) {
 
 	b.WriteString(connectCard(sess.Account, r.URL.Query().Get("connection")))
 	b.WriteString(contactsPageCSS)
-	w.Write([]byte(app.RenderHTMLForRequest("Contacts", "Your address book", b.String(), r)))
+	app.Respond(w, r, app.Response{Title: "Contacts", Description: "Your address book", HTML: b.String()})
 }
 
 func orDash(s string) string {

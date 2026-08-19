@@ -76,7 +76,7 @@ func ConnectHandler(w http.ResponseWriter, r *http.Request) {
 		`<div style="max-width:820px">` + body + `</div></div></div>` +
 		chatLayoutCSS + connectCSS + paneJS +
 		`<script>window.muSeedAgent(` + app.JSString(id) + `);</script>`
-	w.Write([]byte(app.RenderHTMLForRequest(title, desc, page, r)))
+	app.Respond(w, r, app.Response{Title: title, Description: desc, HTML: page})
 }
 
 // defaultPanel is the same page for Micro, which is nobody's roster entry.

@@ -300,8 +300,7 @@ func handleDepositPage(w http.ResponseWriter, r *http.Request) {
 		sb.WriteString(`<div class="card"><p class="text-error">No payment methods available.</p></div>`)
 	}
 
-	html := app.RenderHTMLForRequest("Add Credits", "Top up your wallet", sb.String(), r)
-	w.Write([]byte(html))
+	app.Respond(w, r, app.Response{Title: "Add Credits", Description: "Top up your wallet", HTML: sb.String()})
 }
 
 func renderStripeDeposit(userID, errMsg string) string {
@@ -411,8 +410,7 @@ func handleTransferPage(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(fmt.Sprintf(`<p class="text-sm text-muted">1 credit = 1p. Transfers are instant and non-reversible. Daily transfer limit: %d credits.</p>`, DailyTransferCap))
 	sb.WriteString(`</div>`)
 
-	html := app.RenderHTMLForRequest("Transfer Credits", "Send credits to another user", sb.String(), r)
-	w.Write([]byte(html))
+	app.Respond(w, r, app.Response{Title: "Transfer Credits", Description: "Send credits to another user", HTML: sb.String()})
 }
 
 func handleTransfer(w http.ResponseWriter, r *http.Request) {
@@ -581,9 +579,8 @@ func handleStripeCheckout(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		app.Log("stripe", "checkout error: %v", err)
 		content := `<div class="card"><h2>Payment Error</h2><p>Failed to create checkout session. Please try again.</p><p><a href="/account/topup" class="btn">Back</a></p></div>`
-		html := app.RenderHTMLForRequest("Payment Error", "Checkout failed", content, r)
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(html))
+		app.Respond(w, r, app.Response{Title: "Payment Error", Description: "Checkout failed", HTML: content})
 		return
 	}
 
@@ -628,8 +625,7 @@ func handleStripeSuccess(w http.ResponseWriter, r *http.Request) {
 		<h2>Payment complete</h2>` + body + `
 		<p><a href="/account" class="btn">View your balance</a></p>
 	</div>`
-	html := app.RenderHTMLForRequest("Payment complete", "Credits added", content, r)
-	w.Write([]byte(html))
+	app.Respond(w, r, app.Response{Title: "Payment complete", Description: "Credits added", HTML: content})
 }
 
 // PricingItem is one billable operation and what it costs.
@@ -758,6 +754,5 @@ func handlePricing(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`<p class="info mt-3">JSON: <code>curl -H "Accept: application/json" /account/pricing</code></p>`)
 	sb.WriteString(`</div>`)
 
-	html := app.RenderHTMLForRequest("Pricing", "Platform pricing and costs", sb.String(), r)
-	w.Write([]byte(html))
+	app.Respond(w, r, app.Response{Title: "Pricing", Description: "Platform pricing and costs", HTML: sb.String()})
 }

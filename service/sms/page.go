@@ -52,7 +52,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			b.WriteString(`<li><code>` + html.EscapeString(m) + `</code></li>`)
 		}
 		b.WriteString(`</ul></div>`)
-		w.Write([]byte(app.RenderHTMLForRequest("SMS", "Text somebody, and read what they text back", b.String(), r)))
+		app.Respond(w, r, app.Response{Title: "SMS", Description: "Text somebody, and read what they text back", HTML: b.String()})
 		return
 	}
 
@@ -83,7 +83,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(threads(r, who, history))
 	b.WriteString(pageCSS)
 
-	w.Write([]byte(app.RenderHTMLForRequest("SMS", "Text somebody, and read what they text back", b.String(), r)))
+	app.Respond(w, r, app.Response{Title: "SMS", Description: "Text somebody, and read what they text back", HTML: b.String()})
 }
 
 // notice says what just happened.

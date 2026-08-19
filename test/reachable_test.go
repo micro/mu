@@ -42,7 +42,7 @@ func TestEveryFooterLinkIsReachableSignedIn(t *testing.T) {
 	// The chrome a signed-in account is served. Rendered rather than asserted
 	// about, so a link moving out of the sidebar is noticed here.
 	acc := &auth.Account{ID: "reader", Name: "Reader"}
-	sidebar := app.RenderHTMLWithLangAndAuth("t", "d", "", "en", acc)
+	sidebar := app.RenderHTML("t", "d", "", acc)
 
 	if strings.Contains(sidebar, `id="footer"`) {
 		t.Error("the footer is rendered for a signed-in account — if that is now " +

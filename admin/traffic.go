@@ -62,5 +62,5 @@ func TrafficHandler(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`<p class="text-sm text-muted">Counts only — no request is stored. ` +
 		`Minutes are kept for 2 hours, hours for 7 days, days for 90.</p>`)
 
-	w.Write([]byte(app.RenderHTMLForRequest("Traffic", "What this instance is being asked to do", sb.String(), r)))
+	app.Respond(w, r, app.Response{Title: "Traffic", Description: "What this instance is being asked to do", HTML: sb.String()})
 }

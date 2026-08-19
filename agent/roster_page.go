@@ -149,7 +149,7 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	// the footer inside the content instead of after it.
 	b.WriteString(`</div>`)
 	b.WriteString(agentsCSS)
-	w.Write([]byte(app.RenderHTMLForRequest("Agents", "The agents that act for you, and what each one may reach", b.String(), r)))
+	app.Respond(w, r, app.Response{Title: "Agents", Description: "The agents that act for you, and what each one may reach", HTML: b.String()})
 }
 
 func urlSafe(s string) string { return strings.ReplaceAll(html.EscapeString(s), " ", "%20") }

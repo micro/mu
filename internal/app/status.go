@@ -94,8 +94,8 @@ func StatusHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	html := renderPublicStatusHTML(status)
-	w.Write([]byte(RenderHTML("Status", "Service status", html)))
+	Respond(w, r, Response{Title: "Status", Description: "Service status",
+		HTML: renderPublicStatusHTML(status)})
 }
 
 func checkPublicStatus() PublicStatusResponse {

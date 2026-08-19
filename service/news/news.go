@@ -1628,8 +1628,7 @@ func handleArticleView(w http.ResponseWriter, r *http.Request, articleID string)
 	`, imageSection, postedAt.Unix(), app.TimeAgo(postedAt), getDomain(articleURL), categoryBadge, descriptionSection, summarySection, socialContextHTML, articleURL, articleID)
 
 	// Use title for browser tab, but empty page title since article already has its own H1
-	pageHTML := app.RenderHTMLForRequest(title, title, articleHtml, r)
-	w.Write([]byte(pageHTML))
+	app.Respond(w, r, app.Response{Title: title, Description: title, HTML: articleHtml})
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
@@ -2598,8 +2597,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 		}
 	}
 
-	html := app.RenderHTMLForRequest("News", query, string(searchResults), r)
-	w.Write([]byte(html))
+	app.Respond(w, r, app.Response{Title: "News", Description: query, HTML: string(searchResults)})
 }
 
 // RefreshHNMetadata forces a refresh of HN article metadata with fresh comments

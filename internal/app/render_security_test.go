@@ -145,7 +145,7 @@ func TestSafeURL(t *testing.T) {
 // Page titles and descriptions come from query strings and stored records and
 // land in <title>, a meta attribute and an <h1>.
 func TestRenderHTMLEscapesTitleAndDescription(t *testing.T) {
-	out := RenderHTML(`x" onload="alert(1)`, `</title><script>alert(1)</script>`, "<p>body</p>")
+	out := RenderHTML(`x" onload="alert(1)`, `</title><script>alert(1)</script>`, "<p>body</p>", nil)
 
 	if strings.Contains(out, `onload="alert(1)`) {
 		t.Error("title escaped out of its attribute context")

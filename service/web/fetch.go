@@ -53,7 +53,7 @@ func FetchHandler(w http.ResponseWriter, r *http.Request) {
 
 	if rawURL == "" {
 		content := inputForm + `<p class="empty">Paste a URL above to fetch and read a clean version of any web page.</p>`
-		w.Write([]byte(app.RenderHTMLForRequest("Fetch", "Web Fetch", content, r)))
+		app.Respond(w, r, app.Response{Title: "Fetch", Description: "Web Fetch", HTML: content})
 		return
 	}
 
@@ -133,8 +133,7 @@ func FetchHandler(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`</div>`)
 	}
 
-	pageHTML := app.RenderHTMLForRequest("Fetch", "Fetched page", b.String(), r)
-	w.Write([]byte(pageHTML))
+	app.Respond(w, r, app.Response{Title: "Fetch", Description: "Fetched page", HTML: b.String()})
 }
 
 // FetchAndExtract fetches a URL and returns the page title and cleaned readable text.

@@ -37,10 +37,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			`with a card — see <a href="/account">your account</a>.</p>` +
 			`<p><a href="/login" class="btn">Sign in</a> <a href="/signup" class="btn btn-secondary">Sign up</a></p></div>` +
 			toolsCard()
-		w.Write([]byte(app.RenderHTMLForRequest("Wallet", "A key of your own on Base", body, r)))
+		app.Respond(w, r, app.Response{Title: "Wallet", Description: "A key of your own on Base", HTML: body})
 		return
 	}
-	w.Write([]byte(app.RenderHTMLForRequest("Wallet", "A key of your own on Base", Page(sess.Account), r)))
+	app.Respond(w, r, app.Response{Title: "Wallet", Description: "A key of your own on Base", HTML: Page(sess.Account)})
 }
 
 // Page renders the signed-in wallet.

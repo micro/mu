@@ -935,8 +935,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			html := app.RenderHTMLForRequest("Video", query+" | Results", fmt.Sprintf(Results, htmlpkg.EscapeString(query), head, results), r)
-			w.Write([]byte(html))
+			app.Respond(w, r, app.Response{Title: "Video", Description: query + " | Results", HTML: fmt.Sprintf(Results, htmlpkg.EscapeString(query), head, results)})
 			return
 		}
 	}
@@ -1032,8 +1031,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		head = ""
 
-		html := app.RenderHTMLForRequest("Video", query+" | Results", fmt.Sprintf(Results, htmlpkg.EscapeString(query), head, results), r)
-		w.Write([]byte(html))
+		app.Respond(w, r, app.Response{Title: "Video", Description: query + " | Results", HTML: fmt.Sprintf(Results, htmlpkg.EscapeString(query), head, results)})
 		return
 	}
 
@@ -1105,8 +1103,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		content := fmt.Sprintf(PlaylistView, head, playlistDesc+resultsSB.String())
-		html := app.RenderHTMLForRequest("Video", playlistTitle, content, r)
-		w.Write([]byte(html))
+		app.Respond(w, r, app.Response{Title: "Video", Description: playlistTitle, HTML: content})
 		return
 	}
 
@@ -1181,8 +1178,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		content := fmt.Sprintf(ChannelView, head, channelInfo, resultsSB.String())
-		html := app.RenderHTMLForRequest("Video", channelTitle, content, r)
-		w.Write([]byte(html))
+		app.Respond(w, r, app.Response{Title: "Video", Description: channelTitle, HTML: content})
 		return
 	}
 
@@ -1277,5 +1273,5 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Write([]byte(app.RenderHTMLForRequest("Video", "Search for videos", currentHtml, r)))
+	app.Respond(w, r, app.Response{Title: "Video", Description: "Search for videos", HTML: currentHtml})
 }

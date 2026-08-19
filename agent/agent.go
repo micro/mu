@@ -721,8 +721,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 		title = agentTitle(accountID, selAgent)
 		desc = "Talk to " + title + ", and the address it answers on"
 	}
-	html := app.RenderHTMLForRequest(title, desc, content, r)
-	w.Write([]byte(html))
+	app.Respond(w, r, app.Response{Title: title, Description: desc, HTML: content})
 }
 
 // openThread resolves whatever is in a ?session= link to a conversation.
@@ -1164,8 +1163,7 @@ func serveFlowPage(w http.ResponseWriter, r *http.Request, id string) {
 	b.WriteString(`<a href="#" onclick="var u=location.href;if(navigator.share){navigator.share({url:u})}else if(navigator.clipboard){navigator.clipboard.writeText(u).then(function(){this.textContent='Copied!'}.bind(this))}else{prompt('Copy:',u)};return false;">Share</a>`)
 	b.WriteString(`</div>`)
 
-	html := app.RenderHTMLForRequest("Agent", "Saved agent query: "+htmlEsc(f.Prompt), b.String(), r)
-	w.Write([]byte(html))
+	app.Respond(w, r, app.Response{Title: "Agent", Description: "Saved agent query: " + htmlEsc(f.Prompt), HTML: b.String()})
 }
 
 // handleDeleteFlow handles DELETE /agent/flow/<id>.

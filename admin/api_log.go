@@ -84,6 +84,5 @@ func APILogHandler(w http.ResponseWriter, r *http.Request) {
 	content.WriteString(`</div>`)
 	content.WriteString(`<p><a href="/admin">← Back to Admin</a></p>`)
 
-	html := app.RenderHTMLForRequest("API Log", "External API Log", content.String(), r)
-	w.Write([]byte(html))
+	app.Respond(w, r, app.Response{Title: "API Log", Description: "External API Log", HTML: content.String()})
 }

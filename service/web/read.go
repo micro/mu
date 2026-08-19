@@ -95,7 +95,7 @@ func ReadHandler(w http.ResponseWriter, r *http.Request) {
 		if cached != nil && cached.Title != "" {
 			pageTitle = cached.Title
 		}
-		w.Write([]byte(app.RenderHTMLForRequest(pageTitle, "Read Page", b.String(), r)))
+		app.Respond(w, r, app.Response{Title: pageTitle, Description: "Read Page", HTML: b.String()})
 		return
 	}
 
@@ -130,8 +130,7 @@ func ReadHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<div class="article-back"><a href="javascript:history.back()">← Back to results</a></div>`)
 	b.WriteString(`</div>`)
 
-	pageHTML := app.RenderHTMLForRequest(title, title, b.String(), r)
-	w.Write([]byte(pageHTML))
+	app.Respond(w, r, app.Response{Title: title, Description: title, HTML: b.String()})
 }
 
 // getDomain extracts the domain from a URL string.

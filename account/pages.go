@@ -263,7 +263,7 @@ func renderRequestInvitePage(w http.ResponseWriter, r *http.Request, message str
 </form>
 <p class="text-muted text-sm mt-3">Already have an invite? <a href="/login">Log in</a> or paste your link.</p>
 </div>`, msg, app.CaptchaHTML(c))
-	w.Write([]byte(app.RenderHTML("Request an Invite", "Request an invite to Mu", body)))
+	app.Respond(w, r, app.Response{Title: "Request an Invite", Description: "Request an invite to Mu", HTML: body})
 }
 
 // InviteHandler lets any logged-in user invite someone by email.
@@ -297,7 +297,7 @@ func InviteHandler(w http.ResponseWriter, r *http.Request) {
 <p>Invite sent to <strong>%s</strong></p>
 <p><a href="/invite">Invite another</a> · <a href="/home">Home</a></p>
 </div>`, htmlpkg.EscapeString(email))
-		w.Write([]byte(app.RenderHTML("Invite Sent", "Invite sent", body)))
+		app.Respond(w, r, app.Response{Title: "Invite Sent", Description: "Invite sent", HTML: body})
 		return
 	}
 
@@ -310,7 +310,7 @@ func InviteHandler(w http.ResponseWriter, r *http.Request) {
 	<button type="submit" class="mt-2">Send invite</button>
 </form>
 </div>`
-	w.Write([]byte(app.RenderHTML("Invite", "Invite someone to Mu", body)))
+	app.Respond(w, r, app.Response{Title: "Invite", Description: "Invite someone to Mu", HTML: body})
 }
 
 // RequestInvite handles POST /request-invite — someone is asking to
@@ -357,7 +357,7 @@ func RequestInvite(w http.ResponseWriter, r *http.Request) {
 <p>We'll email <strong>%s</strong> if we have a seat for you.</p>
 <p class="mt-3"><a href="/">← Back</a></p>
 </div>`, htmlpkg.EscapeString(email))
-	w.Write([]byte(app.RenderHTML("Request Received", "Invite request received", body)))
+	app.Respond(w, r, app.Response{Title: "Request Received", Description: "Invite request received", HTML: body})
 }
 
 // Login handler
@@ -813,8 +813,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	// app.RenderHTMLForRequest, not app.RenderHTML: the latter hard-codes a nil account,
 	// so every part of the chrome that depends on knowing who is signed in went
 	// missing on the one page you reach by being signed in.
-	html := app.RenderHTMLForRequest("Account", "Account", content, r)
-	w.Write([]byte(html))
+	app.Respond(w, r, app.Response{Title: "Account", Description: "Account", HTML: content})
 }
 
 // otherAddresses lists the addresses this account proved by code, with a way to
@@ -918,8 +917,7 @@ func Verify(w http.ResponseWriter, r *http.Request) {
 <p>Thanks, <strong>%s</strong>. Your email is verified and you can now post.</p>
 <p><a href="/home" class="btn">Go home</a> &nbsp; <a href="/account">Account →</a></p>
 </div>`, htmlpkg.EscapeString(acc.Name))
-	html := app.RenderHTMLForRequest("Verified", "Email verified", body, r)
-	w.Write([]byte(html))
+	app.Respond(w, r, app.Response{Title: "Verified", Description: "Email verified", HTML: body})
 }
 
 func Logout(w http.ResponseWriter, r *http.Request) {

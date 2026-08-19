@@ -211,7 +211,7 @@ func TestRenderString(t *testing.T) {
 }
 
 func TestRenderHTML(t *testing.T) {
-	result := RenderHTML("Test", "A test page", "<p>content</p>")
+	result := RenderHTML("Test", "A test page", "<p>content</p>", nil)
 	if !strings.Contains(result, "<title>Test | Mu</title>") {
 		t.Error("expected title")
 	}
@@ -224,7 +224,7 @@ func TestRenderHTML(t *testing.T) {
 }
 
 func TestRenderHTMLGuestNavHidesSignedInActions(t *testing.T) {
-	result := RenderHTML("Test", "A test page", "<p>content</p>")
+	result := RenderHTML("Test", "A test page", "<p>content</p>", nil)
 	if strings.Contains(result, `id="nav-account"`) {
 		t.Fatalf("guest nav should not render account link: %s", result)
 	}
@@ -237,7 +237,7 @@ func TestRenderHTMLGuestNavHidesSignedInActions(t *testing.T) {
 }
 
 func TestRenderHTMLWithAuthNavShowsSignedInActions(t *testing.T) {
-	result := RenderHTMLWithLangAndAuth("Test", "A test page", "<p>content</p>", "en", &auth.Account{ID: "alice"})
+	result := renderWithLang("Test", "A test page", "<p>content</p>", "en", &auth.Account{ID: "alice"})
 	for _, want := range []string{`id="nav-account"`, `id="nav-logout"`, `Signed in as @alice`} {
 		if !strings.Contains(result, want) {
 			t.Fatalf("signed-in nav missing %q", want)
@@ -252,7 +252,7 @@ func TestRenderHTMLWithAuthNavShowsSignedInActions(t *testing.T) {
 // There is no Wallet item any more. Money is the account's, so the balance is
 // the first card on /account and the badge in the header links to it.
 func TestTheBottomGroupIsTheAccount(t *testing.T) {
-	result := RenderHTMLWithLangAndAuth("Test", "d", "<p>c</p>", "en", &auth.Account{ID: "alice"})
+	result := renderWithLang("Test", "d", "<p>c</p>", "en", &auth.Account{ID: "alice"})
 
 	for _, want := range []string{`id="nav-account"`, `id="nav-logout"`, `href="/usage"`} {
 		if !strings.Contains(result, want) {
@@ -276,7 +276,7 @@ func TestTheBottomGroupIsTheAccount(t *testing.T) {
 // something the rest of the product does not agree with. Anyone who lives in
 // Apps pins it, which is what pinning is for.
 func TestTheSidebarIsTheProductsNouns(t *testing.T) {
-	result := RenderHTMLWithLangAndAuth("Test", "d", "<p>c</p>", "en", &auth.Account{ID: "alice"})
+	result := renderWithLang("Test", "d", "<p>c</p>", "en", &auth.Account{ID: "alice"})
 
 	// The order somebody meets them in, and it has moved: what is yours first —
 	// Inbox and the mailboxes under it, then Agents and the roster under it —
@@ -336,7 +336,7 @@ func TestAPinnedServiceReturnsToTheSidebar(t *testing.T) {
 	}
 	acc := &auth.Account{ID: "alice"}
 	acc.SetPinned([]string{name})
-	result := RenderHTMLWithLangAndAuth("Test", "d", "<p>c</p>", "en", acc)
+	result := renderWithLang("Test", "d", "<p>c</p>", "en", acc)
 	if !strings.Contains(result, `href="/`+name+`"`) {
 		t.Error("a pinned service did not appear in the sidebar")
 	}
@@ -354,21 +354,21 @@ func (PinProbe) List(ctx context.Context, req *struct{}, rsp *struct {
 // Nothing pinned draws no group at all. An empty heading over an empty list is
 // a worse answer than no heading, and it is what every new account would see.
 func TestPinningNothingDrawsNoGroup(t *testing.T) {
-	result := RenderHTMLWithLangAndAuth("Test", "d", "<p>c</p>", "en", &auth.Account{ID: "alice"})
+	result := renderWithLang("Test", "d", "<p>c</p>", "en", &auth.Account{ID: "alice"})
 	if strings.Contains(result, "nav-group") || strings.Contains(result, "nav-heading") {
 		t.Error("an account that pinned nothing was given a Services group")
 	}
 }
 
-func TestRenderHTMLWithLang(t *testing.T) {
-	result := RenderHTMLWithLang("Test", "desc", "<p>hello</p>", "ar")
+func TestTheLanguageIsSetOnTheDocument(t *testing.T) {
+	result := renderWithLang("Test", "desc", "<p>hello</p>", "ar", nil)
 	if !strings.Contains(result, `lang="ar"`) {
 		t.Error("expected Arabic language")
 	}
 }
 
-func TestRenderHTMLWithLang_DefaultsToEn(t *testing.T) {
-	result := RenderHTMLWithLang("Test", "desc", "<p>hello</p>", "")
+func TestTheLanguageDefaultsToEnglish(t *testing.T) {
+	result := renderWithLang("Test", "desc", "<p>hello</p>", "", nil)
 	if !strings.Contains(result, `lang="en"`) {
 		t.Error("expected English when empty lang")
 	}

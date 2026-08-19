@@ -46,8 +46,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		<a href="/admin/users">Users <span class="count">` + fmt.Sprintf("%d", len(users)) + `</span></a>
 	</div>`
 
-	html := app.RenderHTMLForRequest("Admin", "Admin Dashboard", content, r)
-	w.Write([]byte(html))
+	app.Respond(w, r, app.Response{Title: "Admin", Description: "Admin Dashboard", HTML: content})
 }
 
 // alertBadge puts the number of outstanding alerts beside the log, so that
@@ -245,8 +244,7 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 		sb.WriteString(fmt.Sprintf(`<tr><td><strong><a href="/@%s">%s</a></strong></td><td>%s</td><td class="created-col">%s</td><td>%s</td><td class="center">%s</td><td class="center" style="white-space:nowrap">%s</td></tr>`, u.ID, u.ID, u.Name, created, statusHTML, balanceCell(u.ID), strings.Join(actions, " ")))
 	}
 	sb.WriteString(`</tbody></table>`)
-	html := app.RenderHTMLForRequest("Admin", "Users", sb.String(), r)
-	w.Write([]byte(html))
+	app.Respond(w, r, app.Response{Title: "Admin", Description: "Users", HTML: sb.String()})
 }
 
 // BlocklistHandler shows and manages the mail blocklist
@@ -381,8 +379,7 @@ func BlocklistHandler(w http.ResponseWriter, r *http.Request) {
 		<p><a href="/admin">← Back to Admin</a></p>
 	</div>`
 
-	html := app.RenderHTMLForRequest("Admin", "Mail Blocklist", content, r)
-	w.Write([]byte(html))
+	app.Respond(w, r, app.Response{Title: "Admin", Description: "Mail Blocklist", HTML: content})
 }
 
 func blocklistEmailRow(email string) string {
@@ -623,8 +620,7 @@ func SpamFilterHandler(w http.ResponseWriter, r *http.Request) {
 		<p><a href="/admin">← Back to Admin</a></p>
 	</div>`
 
-	htmlPage := app.RenderHTMLForRequest("Admin", "Spam Filter", content, r)
-	w.Write([]byte(htmlPage))
+	app.Respond(w, r, app.Response{Title: "Admin", Description: "Spam Filter", HTML: content})
 }
 
 // Helper functions to access mail package functions

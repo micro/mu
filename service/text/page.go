@@ -51,8 +51,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		run(w, r)
 		return
 	}
-	w.Write([]byte(app.RenderHTMLForRequest("Text", //nolint:errcheck
-		"Summarise, extract, classify and translate — priced per call", page(""), r)))
+	app.Respond(w, r, app.Response{Title: "Text", Description:            //nolint:errcheck
+	"Summarise, extract, classify and translate — priced per call", HTML: page("")})
 }
 
 // run does the work and renders the page with the answer in place.
@@ -69,9 +69,8 @@ func run(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		out = err.Error()
 	}
-	w.Write([]byte(app.RenderHTMLForRequest("Text", //nolint:errcheck
-		"Summarise, extract, classify and translate — priced per call",
-		page(result(which, body, second, out)), r)))
+	app.Respond(w, r, app.Response{Title: "Text", Description:            //nolint:errcheck
+	"Summarise, extract, classify and translate — priced per call", HTML: page(result(which, body, second, out))})
 }
 
 // do dispatches to the service, so the page and an agent go through exactly the

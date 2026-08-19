@@ -113,7 +113,7 @@ func OAuthHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	b.WriteString(`</tbody></table>`)
 
-	w.Write([]byte(app.RenderHTMLForRequest("Admin", "OAuth Clients", b.String(), r))) //nolint:errcheck
+	app.Respond(w, r, app.Response{Title: "Admin", Description: "OAuth Clients", HTML: b.String()})
 }
 
 // firstURI is what to show in the row's box: the address it has, or nothing.

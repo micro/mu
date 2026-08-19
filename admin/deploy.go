@@ -135,8 +135,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	</script>`
 
-	html := app.RenderHTMLForRequest("Admin", "Server", content, r)
-	w.Write([]byte(html))
+	app.Respond(w, r, app.Response{Title: "Admin", Description: "Server", HTML: content})
 }
 
 // storesShown is how much of the data directory the table lists. The question

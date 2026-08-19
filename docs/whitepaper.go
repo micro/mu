@@ -87,6 +87,5 @@ func WhitepaperHandler(w http.ResponseWriter, r *http.Request) {
 	html := `<div class="docs"><div class="docs-content">` + string(rendered) +
 		`<p style="margin-top:2em"><a href="/whitepaper.pdf">Download PDF</a></p></div></div>`
 
-	page := app.RenderHTMLForRequest("Whitepaper", "Mu: A Unified Service Network with Native Payments for Humans and Autonomous Agents", html, r)
-	w.Write([]byte(page))
+	app.Respond(w, r, app.Response{Title: "Whitepaper", Description: "Mu: A Unified Service Network with Native Payments for Humans and Autonomous Agents", HTML: html})
 }

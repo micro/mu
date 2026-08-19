@@ -88,8 +88,7 @@ func SysLogHandler(w http.ResponseWriter, r *http.Request) {
 	content.WriteString(`</div>`)
 	content.WriteString(`<p><a href="/admin">← Back to Admin</a></p>`)
 
-	pageHTML := app.RenderHTMLForRequest("System Log", "System Log", content.String(), r)
-	w.Write([]byte(pageHTML))
+	app.Respond(w, r, app.Response{Title: "System Log", Description: "System Log", HTML: content.String()})
 }
 
 // truncateMsg shortens s to at most max characters for display, appending "…" if truncated.

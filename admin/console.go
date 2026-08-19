@@ -72,7 +72,7 @@ func InviteHandler(w http.ResponseWriter, r *http.Request) {
 %s
 <p><a href="/admin/invite">Back to invites →</a></p>
 </div>`, email, link, link, emailedMsg)
-		w.Write([]byte(app.RenderHTMLForRequest("Invite Sent", "Invite sent", content, r)))
+		app.Respond(w, r, app.Response{Title: "Invite Sent", Description: "Invite sent", HTML: content})
 		return
 	}
 
@@ -126,7 +126,7 @@ func InviteHandler(w http.ResponseWriter, r *http.Request) {
 </form>
 </div>`)
 
-	w.Write([]byte(app.RenderHTMLForRequest("Invites", "Invite requests and send invites", sb.String(), r)))
+	app.Respond(w, r, app.Response{Title: "Invites", Description: "Invite requests and send invites", HTML: sb.String()})
 }
 
 // ConsoleHandler provides an admin console.
@@ -239,8 +239,7 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 })();
 </script>`)
 
-	html := app.RenderHTMLForRequest("Console", "Admin Console", sb.String(), r)
-	w.Write([]byte(html))
+	app.Respond(w, r, app.Response{Title: "Console", Description: "Admin Console", HTML: sb.String()})
 }
 
 func runCommand(cmd string) string {

@@ -90,7 +90,7 @@ func serve(w http.ResponseWriter, r *http.Request, p page) {
 
 	rendered := app.RenderTrusted(stripTitle(content))
 	html := fmt.Sprintf(`<div class="docs"><div class="docs-content">%s</div></div>`, string(rendered))
-	w.Write([]byte(app.RenderHTMLForRequest(p.Title, p.Description, html, r)))
+	app.Respond(w, r, app.Response{Title: p.Title, Description: p.Description, HTML: html})
 }
 
 // stripTitle drops a document's leading H1.

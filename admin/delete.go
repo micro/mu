@@ -86,6 +86,5 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`</p>`)
 	sb.WriteString(`</div>`)
 
-	html := app.RenderHTMLForRequest("Delete Content", "Admin", sb.String(), r)
-	w.Write([]byte(html))
+	app.Respond(w, r, app.Response{Title: "Delete Content", Description: "Admin", HTML: sb.String()})
 }

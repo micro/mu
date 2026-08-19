@@ -60,8 +60,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Write([]byte(app.RenderHTMLForRequest("Transit", //nolint:errcheck
-		"Stops near you, what is due, and which lines are down", page(), r)))
+	app.Respond(w, r, app.Response{Title: "Transit", Description:  //nolint:errcheck
+	"Stops near you, what is due, and which lines are down", HTML: page()})
 }
 
 func stopsJSON(stops []stop) []map[string]any {

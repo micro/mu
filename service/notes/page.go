@@ -179,8 +179,7 @@ func handlePost(w http.ResponseWriter, r *http.Request, who string) {
 
 // render wraps a body in the page shell.
 func render(w http.ResponseWriter, r *http.Request, title, body string) {
-	w.Write([]byte(app.RenderHTMLForRequest(title,
-		"What you and your agents have written down", body, r)))
+	app.Respond(w, r, app.Response{Title: title, Description: "What you and your agents have written down", HTML: body})
 }
 
 // preview is the first line or so of a note, for the card that opens it.

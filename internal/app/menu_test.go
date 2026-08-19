@@ -23,7 +23,7 @@ import (
 
 func shell(t *testing.T) string {
 	t.Helper()
-	out := RenderHTML("Test", "a page", "<p>hello</p>")
+	out := RenderHTML("Test", "a page", "<p>hello</p>", nil)
 	if !strings.Contains(out, "menu-toggle") {
 		t.Fatal("the rendered page has no menu button, so this test is looking at the wrong thing")
 	}

@@ -382,8 +382,7 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 </div>`, acc.ID, verifiedBadge, acc.Created.Format("January 2006"), messageLink, appsSection, postCount, userPosts)
 
 	// Use name as page title
-	html := app.RenderHTMLForRequest(acc.Name, fmt.Sprintf("Profile of %s", acc.Name), content, r)
-	w.Write([]byte(html))
+	app.Respond(w, r, app.Response{Title: acc.Name, Description: fmt.Sprintf("Profile of %s", acc.Name), HTML: content})
 }
 
 // avatarColors are the palette used for status card avatars.

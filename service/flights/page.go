@@ -53,7 +53,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			`be found, and that is not the same as a flight being cancelled.</p></div>`)
 	}
 	b.WriteString(pageCSS)
-	w.Write([]byte(app.RenderHTMLForRequest("Flights", "Live aircraft positions from ADS-B", b.String(), r)))
+	app.Respond(w, r, app.Response{Title: "Flights", Description: "Live aircraft positions from ADS-B", HTML: b.String()})
 }
 
 func handleJSON(w http.ResponseWriter, r *http.Request, q, near string, lat, lon float64) {

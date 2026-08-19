@@ -61,8 +61,7 @@ func AIUsageHandler(w http.ResponseWriter, r *http.Request) {
 
 	sb.WriteString(`</tbody></table></div>`)
 
-	html := app.RenderHTMLForRequest("API Usage", "API Usage", sb.String(), r)
-	w.Write([]byte(html))
+	app.Respond(w, r, app.Response{Title: "API Usage", Description: "API Usage", HTML: sb.String()})
 }
 
 // formatDetail renders service-specific details into a short string.

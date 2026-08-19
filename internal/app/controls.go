@@ -248,8 +248,7 @@ func renderSavedPage(w http.ResponseWriter, r *http.Request, userID string) {
 		sb.WriteString(`</div>`)
 	}
 
-	html := RenderHTMLForRequest("Saved", "Your saved items", sb.String(), r)
-	w.Write([]byte(html))
+	Respond(w, r, Response{Title: "Saved", Description: "Your saved items", HTML: sb.String()})
 }
 
 func renderBlockedPage(w http.ResponseWriter, r *http.Request, userID string) {
@@ -270,6 +269,5 @@ func renderBlockedPage(w http.ResponseWriter, r *http.Request, userID string) {
 		sb.WriteString(`</div>`)
 	}
 
-	html := RenderHTMLForRequest("Blocked Users", "Blocked users", sb.String(), r)
-	w.Write([]byte(html))
+	Respond(w, r, Response{Title: "Blocked Users", Description: "Blocked users", HTML: sb.String()})
 }

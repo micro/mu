@@ -147,5 +147,5 @@ func render(errMsg string) string {
   </form>
   <p style="color:#888;font-size:13px;margin:16px 0 0">You can change any of this later at <code>/admin/env</code>. Prefer the terminal? Run <code>mu setup</code>.</p>
 </div>`
-	return app.RenderHTML("Setup", "Set up your Mu instance", body)
+	return app.RenderHTML("Setup", "Set up your Mu instance", body, nil)
 }

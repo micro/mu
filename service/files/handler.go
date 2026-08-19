@@ -224,7 +224,7 @@ func listPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	b.WriteString(filesPageCSS)
-	w.Write([]byte(app.RenderHTMLForRequest("Files", "Your stored files", b.String(), r)))
+	app.Respond(w, r, app.Response{Title: "Files", Description: "Your stored files", HTML: b.String()})
 }
 
 // filesPageCSS styles the page, and on a narrow screen unmakes the table.

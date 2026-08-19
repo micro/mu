@@ -83,7 +83,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(calendarCard(owner, r.URL.Query().Get("calendar"), csrf))
 	b.WriteString(`</div>`)
 
-	w.Write([]byte(app.RenderHTMLForRequest("Events", "Your scheduled reminders and events", b.String(), r)))
+	app.Respond(w, r, app.Response{Title: "Events", Description: "Your scheduled reminders and events", HTML: b.String()})
 }
 
 func eventRow(e *Event, csrf string) string {

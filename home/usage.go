@@ -62,7 +62,7 @@ func UsageHandler(w http.ResponseWriter, r *http.Request) {
 		`2 hours by the minute, 7 days by the hour and 90 days by the day — nothing about ` +
 		`a request itself is stored. <a href="/tools">Connect an agent →</a></p>`)
 
-	w.Write([]byte(app.RenderHTMLForRequest("Usage", "What you have used, and what it cost", sb.String(), r)))
+	app.Respond(w, r, app.Response{Title: "Usage", Description: "What you have used, and what it cost", HTML: sb.String()})
 }
 
 // spendSection breaks the ledger down by operation, so "what is costing me" has

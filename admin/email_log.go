@@ -169,8 +169,7 @@ func EmailLogHandler(w http.ResponseWriter, r *http.Request) {
 
 	content.WriteString(`<p><a href="/admin">← Back to Admin</a></p>`)
 
-	page := app.RenderHTMLForRequest("Email", "Email activity", content.String(), r)
-	w.Write([]byte(page))
+	app.Respond(w, r, app.Response{Title: "Email", Description: "Email activity", HTML: content.String()})
 }
 
 func truncate(s string, max int) string {

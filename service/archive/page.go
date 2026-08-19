@@ -84,8 +84,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	b.WriteString(`</div>` + pageCSS)
-	w.Write([]byte(app.RenderHTMLForRequest("Archive",
-		"Everything this instance has collected, searchable as one thing", b.String(), r)))
+	app.Respond(w, r, app.Response{Title: "Archive", Description: "Everything this instance has collected, searchable as one thing", HTML: b.String()})
 }
 
 // row is one entry: what it is, when it was collected, and enough of it to know

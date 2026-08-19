@@ -213,7 +213,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		landing.WriteString(webRecentSearchesScript)
 		content := landing.String()
-		w.Write([]byte(app.RenderHTMLForRequest("Search", "Search the web", content, r)))
+		app.Respond(w, r, app.Response{Title: "Search", Description: "Search the web", HTML: content})
 		return
 	}
 
@@ -287,8 +287,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	})();
 	</script>`)
 
-	pageHTML := app.RenderHTMLForRequest("Search: "+query, "Results for "+query, b.String(), r)
-	w.Write([]byte(pageHTML))
+	app.Respond(w, r, app.Response{Title: "Search: " + query, Description: "Results for " + query, HTML: b.String()})
 }
 
 // PreviewHandler returns cached Brave results as JSON for the landing page.

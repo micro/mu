@@ -364,6 +364,5 @@ func EnvHandler(w http.ResponseWriter, r *http.Request) {
 
 	b.WriteString(`<p><a href="/admin">← Back to Admin</a></p>`)
 
-	page := app.RenderHTMLForRequest("Settings", "What this instance is configured with", b.String(), r)
-	w.Write([]byte(page)) //nolint:errcheck
+	app.Respond(w, r, app.Response{Title: "Settings", Description: "What this instance is configured with", HTML: b.String()})
 }

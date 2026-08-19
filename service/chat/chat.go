@@ -1425,7 +1425,7 @@ func handleGetChat(w http.ResponseWriter, r *http.Request, roomID string) {
 	content := fmt.Sprintf(Template, guestNotice) +
 		`<script type="application/json" id="room-data">` + string(roomJSON) + `</script>`
 
-	w.Write([]byte(app.RenderHTMLForRequest(title, "Live discussion", content, r)))
+	app.Respond(w, r, app.Response{Title: title, Description: "Live discussion", HTML: content})
 }
 
 // listRooms renders what is being discussed right now.
@@ -1496,7 +1496,7 @@ func listRooms(w http.ResponseWriter, r *http.Request) {
 	}
 	b.WriteString(`</div>`)
 
-	w.Write([]byte(app.RenderHTMLForRequest("Chat", "Live discussion rooms", b.String(), r)))
+	app.Respond(w, r, app.Response{Title: "Chat", Description: "Live discussion rooms", HTML: b.String()})
 }
 
 // describeRoom says who is there and when it last moved, which is the whole

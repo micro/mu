@@ -1221,7 +1221,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		</div>
 	</div>
 `, spamActions, otherPartyDisplay, threadHTML.String(), msgID, otherParty, replySubject, replyToID, msg.ID, blockButton, backToMail)
-		w.Write([]byte(app.RenderHTMLForRequest(decodedSubject, "", messageView, r)))
+		app.Respond(w, r, app.Response{Title: decodedSubject, Description: "", HTML: messageView})
 		return
 	}
 
@@ -1272,7 +1272,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		</div>
 		`, replyTo, to, datalist, subject, backLink, backLink)
 
-		w.Write([]byte(app.RenderHTMLForRequest(pageTitle, "", composeForm, r)))
+		app.Respond(w, r, app.Response{Title: pageTitle, Description: "", HTML: composeForm})
 		return
 	}
 
@@ -1320,7 +1320,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			Label:   "+ Compose",
 			Content: searchBar + content,
 		})
-		w.Write([]byte(app.RenderHTMLForRequest("Mail — Search", "", pageHTML, r)))
+		app.Respond(w, r, app.Response{Title: "Mail — Search", Description: "", HTML: pageHTML})
 		return
 	}
 
@@ -1593,7 +1593,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			`<div id="mailbox">` + content + `</div>`,
 	})
 
-	w.Write([]byte(app.RenderHTMLForRequest(title, "Your messages", pageHTML, r)))
+	app.Respond(w, r, app.Response{Title: title, Description: "Your messages", HTML: pageHTML})
 }
 
 // tagFilter is the row of plus-addresses that have actually received mail.

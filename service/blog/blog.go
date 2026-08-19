@@ -939,8 +939,7 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 		</div>`, actions, list)
 	}
 
-	html := app.RenderHTMLForRequest("Blog", "Share your thoughts", content, r)
-	w.Write([]byte(html))
+	app.Respond(w, r, app.Response{Title: "Blog", Description: "Share your thoughts", HTML: content})
 }
 
 // CreatePost creates a new post and returns error if any
@@ -1484,8 +1483,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 			</form>
 		</div>`, post.ID, post.Title, post.Content, post.Tags, publicSelected, privateSelected, post.ID)
 
-		html := app.RenderHTMLForRequest(pageTitle, "", content, r)
-		w.Write([]byte(html))
+		app.Respond(w, r, app.Response{Title: pageTitle, Description: "", HTML: content})
 		return
 	}
 
@@ -1557,8 +1555,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 	contentSB.WriteString(`</div>`)
 	content := contentSB.String()
 
-	html := app.RenderHTMLForRequest(title, post.Content[:min(len(post.Content), 150)], content, r)
-	w.Write([]byte(html))
+	app.Respond(w, r, app.Response{Title: title, Description: post.Content[:min(len(post.Content), 150)], HTML: content})
 }
 
 func min(a, b int) int {

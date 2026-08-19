@@ -51,21 +51,18 @@ func ExportHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method != http.MethodPost {
-		w.Write([]byte(app.RenderHTMLForRequest("Export key",
-			"Take a copy of your private key", exportForm(r, ""), r)))
+		app.Respond(w, r, app.Response{Title: "Export key", Description: "Take a copy of your private key", HTML: exportForm(r, "")})
 		return
 	}
 
 	if err := r.ParseForm(); err != nil {
-		w.Write([]byte(app.RenderHTMLForRequest("Export key", "Take a copy of your private key",
-			exportForm(r, "That form could not be read. Try again."), r)))
+		app.Respond(w, r, app.Response{Title: "Export key", Description: "Take a copy of your private key", HTML: exportForm(r, "That form could not be read. Try again.")})
 		return
 	}
 
 	pw := r.Form.Get("password")
 	if strings.TrimSpace(pw) == "" {
-		w.Write([]byte(app.RenderHTMLForRequest("Export key", "Take a copy of your private key",
-			exportForm(r, "Enter your password."), r)))
+		app.Respond(w, r, app.Response{Title: "Export key", Description: "Take a copy of your private key", HTML: exportForm(r, "Enter your password.")})
 		return
 	}
 
@@ -80,15 +77,13 @@ func ExportHandler(w http.ResponseWriter, r *http.Request) {
 				"Set a password first, or ask an admin to export the key for you."
 		}
 		app.Log("wallet", "SECURITY: failed key export for %s: %v", acc.ID, err)
-		w.Write([]byte(app.RenderHTMLForRequest("Export key", "Take a copy of your private key",
-			exportForm(r, msg), r)))
+		app.Respond(w, r, app.Response{Title: "Export key", Description: "Take a copy of your private key", HTML: exportForm(r, msg)})
 		return
 	}
 
 	bw, err := EnsureFor(acc.ID)
 	if err != nil || bw == nil || bw.PrivateKey == "" {
-		w.Write([]byte(app.RenderHTMLForRequest("Export key", "Take a copy of your private key",
-			exportForm(r, "Your wallet could not be opened, so there is no key to show."), r)))
+		app.Respond(w, r, app.Response{Title: "Export key", Description: "Take a copy of your private key", HTML: exportForm(r, "Your wallet could not be opened, so there is no key to show.")})
 		return
 	}
 
@@ -96,8 +91,7 @@ func ExportHandler(w http.ResponseWriter, r *http.Request) {
 	// able to find out that it happened.
 	app.Log("wallet", "SECURITY: private key exported for %s (%s)", acc.ID, bw.Address)
 
-	w.Write([]byte(app.RenderHTMLForRequest("Export key", "Take a copy of your private key",
-		exportedKey(bw), r)))
+	app.Respond(w, r, app.Response{Title: "Export key", Description: "Take a copy of your private key", HTML: exportedKey(bw)})
 }
 
 func exportForm(r *http.Request, errMsg string) string {

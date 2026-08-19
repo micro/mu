@@ -90,7 +90,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	b.WriteString(`</div>` + pageCSS)
-	w.Write([]byte(app.RenderHTMLForRequest("Recall", "Search everything you have said to an agent", b.String(), r)))
+	app.Respond(w, r, app.Response{Title: "Recall", Description: "Search everything you have said to an agent", HTML: b.String()})
 }
 
 // hitRow is one match: who said it, when, where, and the way into the rest of

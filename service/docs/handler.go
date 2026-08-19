@@ -61,7 +61,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		body = list(docs, query)
 	}
 
-	w.Write([]byte(app.RenderHTMLForRequest("Docs", "Your own documents", body+pageCSS, r)))
+	app.Respond(w, r, app.Response{Title: "Docs", Description: "Your own documents", HTML: body + pageCSS})
 }
 
 // handlePost saves or deletes.
@@ -87,8 +87,7 @@ func handlePost(w http.ResponseWriter, r *http.Request, who string) {
 			Content: r.Form.Get("content"),
 			Public:  r.Form.Get("public") == "on",
 		}
-		w.Write([]byte(app.RenderHTMLForRequest("Docs", "Your own documents",
-			notice(html.EscapeString(err.Error()))+editor(r, draft)+pageCSS, r)))
+		app.Respond(w, r, app.Response{Title: "Docs", Description: "Your own documents", HTML: notice(html.EscapeString(err.Error())) + editor(r, draft) + pageCSS})
 		return
 	}
 	http.Redirect(w, r, "/docs?id="+doc.ID, http.StatusSeeOther)

@@ -1,13 +1,24 @@
 package app
 
 import (
-	"fmt"
 	"html"
 	"strings"
 )
 
-// UI layout helpers for consistent rendering.
-// Use these wrappers + mu.css classes.
+// The components a page is built from.
+//
+// This file used to hold twenty-four of these and seventeen had no callers.
+// That is worth stating plainly, because it is the same shape as everything
+// else that went wrong with the UI: the abstraction was built, it was
+// reasonable, and nothing adopted it — so every page hand-rolled its markup
+// beside a library that already did the job.
+//
+// The dead ones are gone. What is left is what pages actually call, and the
+// rule for adding one is that it has a second caller waiting. A component with
+// no users is not a component, it is a proposal.
+//
+// Everything here escapes its own input and carries exactly one class, defined
+// in internal/app/html/mu.css. See primitives.go for the smallest shapes.
 
 // SearchBar renders a search input with search button
 func SearchBar(action, placeholder, query string) string {
@@ -27,72 +38,14 @@ func ActionLink(href, label string) string {
 	return `<a href="` + href + `" class="btn">` + html.EscapeString(label) + `</a>`
 }
 
-// Grid wraps content in a card-grid container
-func Grid(content string) string {
-	return `<div class="card-grid">` + content + `</div>`
-}
-
 // List wraps content in a card-list container
 func List(content string) string {
 	return `<div class="card-list">` + content + `</div>`
 }
 
-// Row wraps content in a card-row container
-func Row(content string) string {
-	return `<div class="card-row">` + content + `</div>`
-}
-
 // Empty renders an empty state message
 func Empty(message string) string {
 	return `<p class="empty">` + html.EscapeString(message) + `</p>`
-}
-
-// CardDiv wraps content in a card container
-func CardDiv(content string) string {
-	return `<div class="card">` + content + `</div>`
-}
-
-// CardDivClass wraps content in a card with additional classes
-func CardDivClass(class, content string) string {
-	return `<div class="card ` + class + `">` + content + `</div>`
-}
-
-// Tags renders a list of tags
-func Tags(tags []string, baseURL string) string {
-	if len(tags) == 0 {
-		return ""
-	}
-	var b strings.Builder
-	b.WriteString(`<div class="card-tags">`)
-	for _, tag := range tags {
-		if baseURL != "" {
-			b.WriteString(`<a href="`)
-			b.WriteString(baseURL)
-			b.WriteString(html.EscapeString(tag))
-			b.WriteString(`" class="tag">`)
-			b.WriteString(html.EscapeString(tag))
-			b.WriteString(`</a>`)
-		} else {
-			b.WriteString(`<span class="tag">`)
-			b.WriteString(html.EscapeString(tag))
-			b.WriteString(`</span>`)
-		}
-	}
-	b.WriteString(`</div>`)
-	return b.String()
-}
-
-// Title renders a card title with link
-func Title(text, href string) string {
-	if href != "" {
-		return `<a href="` + href + `" class="card-title">` + html.EscapeString(text) + `</a>`
-	}
-	return `<span class="card-title">` + html.EscapeString(text) + `</span>`
-}
-
-// Meta renders metadata text
-func Meta(content string) string {
-	return `<div class="card-meta">` + content + `</div>`
 }
 
 // Desc renders description text
@@ -160,92 +113,3 @@ const (
 // --- Shared content components ---
 // Used across blog, news, mail, and other packages
 // for consistent rendering of common UI patterns.
-
-// Category renders a topic/tag badge.
-// If href is set, renders as a link; otherwise a span.
-func Category(label, href string) string {
-	escaped := html.EscapeString(label)
-	if href != "" {
-		return `<a href="` + href + `" class="category">` + escaped + `</a>`
-	}
-	return `<span class="category">` + escaped + `</span>`
-}
-
-// AuthorLink renders an author name as a profile link.
-func AuthorLink(authorID, authorName string) string {
-	return fmt.Sprintf(`<a href="/@%s" class="text-muted">%s</a>`,
-		authorID, html.EscapeString(authorName))
-}
-
-// ItemMeta renders a metadata line with parts separated by " · ".
-// Pass any combination of strings (category, author link, time, action links).
-// Empty strings are skipped.
-func ItemMeta(parts ...string) string {
-	var nonEmpty []string
-	for _, p := range parts {
-		if p != "" {
-			nonEmpty = append(nonEmpty, p)
-		}
-	}
-	if len(nonEmpty) == 0 {
-		return ""
-	}
-	return `<div class="card-meta">` + strings.Join(nonEmpty, " · ") + `</div>`
-}
-
-// DeleteButton renders a delete link with a confirmation dialog.
-// It creates a hidden form with _method=DELETE and submits on confirm.
-func DeleteButton(action, label, confirmMsg string) string {
-	if label == "" {
-		label = "Delete"
-	}
-	if confirmMsg == "" {
-		confirmMsg = "Are you sure?"
-	}
-	return fmt.Sprintf(`<a href="#" onclick="if(confirm('%s')){var f=document.createElement('form');f.method='POST';f.action='%s';var i=document.createElement('input');i.type='hidden';i.name='_method';i.value='DELETE';f.appendChild(i);document.body.appendChild(f);f.submit();}return false;" class="text-error">%s</a>`,
-		html.EscapeString(confirmMsg),
-		html.EscapeString(action),
-		html.EscapeString(label))
-}
-
-// ReplyForm renders a reply/comment form with an optional hidden parent ID.
-// Set parentName and parentValue for threaded replies (e.g. "parent_id", "123").
-func ReplyForm(action, placeholder, parentName, parentValue string) string {
-	if placeholder == "" {
-		placeholder = "Write a reply..."
-	}
-	var b strings.Builder
-	b.WriteString(`<form method="POST" action="`)
-	b.WriteString(html.EscapeString(action))
-	b.WriteString(`" class="blog-form card mt-5">`)
-	if parentName != "" && parentValue != "" {
-		b.WriteString(`<input type="hidden" name="`)
-		b.WriteString(html.EscapeString(parentName))
-		b.WriteString(`" value="`)
-		b.WriteString(html.EscapeString(parentValue))
-		b.WriteString(`">`)
-	}
-	b.WriteString(`<textarea name="content" rows="3" placeholder="`)
-	b.WriteString(html.EscapeString(placeholder))
-	b.WriteString(`" required></textarea>`)
-	b.WriteString(`<button type="submit">Reply</button>`)
-	b.WriteString(`</form>`)
-	return b.String()
-}
-
-// Section renders a section header.
-func Section(title string) string {
-	return `<h3 style="margin-top:20px;">` + html.EscapeString(title) + `</h3>`
-}
-
-// LoginPrompt renders a "Login to X" message with redirect.
-func LoginPrompt(action, redirectTo string) string {
-	return fmt.Sprintf(`<p class="text-muted mt-5"><a href="/login?redirect=%s">Login</a> to %s</p>`,
-		html.EscapeString(redirectTo), html.EscapeString(action))
-}
-
-// BackLink renders a "← Back to X" navigation link.
-func BackLink(label, href string) string {
-	return fmt.Sprintf(`<p class="mt-5"><a href="%s">← %s</a></p>`,
-		html.EscapeString(href), html.EscapeString(label))
-}

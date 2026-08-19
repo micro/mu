@@ -86,6 +86,5 @@ func PrivacyHandler(w http.ResponseWriter, r *http.Request) {
 
 	b.WriteString(`</div>`)
 
-	w.Write([]byte(app.RenderHTMLForRequest("Privacy",
-		"What this instance stores, why, and what it never does", b.String(), r)))
+	app.Respond(w, r, app.Response{Title: "Privacy", Description: "What this instance stores, why, and what it never does", HTML: b.String()})
 }

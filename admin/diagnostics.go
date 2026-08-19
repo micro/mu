@@ -98,8 +98,7 @@ func DiagnosticsHandler(w http.ResponseWriter, r *http.Request) {
 
 	b.WriteString(`<p style="margin-top:12px"><a href="/admin">← Back to Admin</a></p>`)
 
-	html := app.RenderHTMLForRequest("Diagnostics", "System health", b.String(), r)
-	w.Write([]byte(html))
+	app.Respond(w, r, app.Response{Title: "Diagnostics", Description: "System health", HTML: b.String()})
 }
 
 func runHealthChecks(testDigest bool) []healthCheck {

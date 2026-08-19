@@ -45,7 +45,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			`tells you whether the route goes the way you expected.</p></div>`)
 	}
 	b.WriteString(pageCSS)
-	w.Write([]byte(app.RenderHTMLForRequest("Routes", "How to get from one place to another", b.String(), r)))
+	app.Respond(w, r, app.Response{Title: "Routes", Description: "How to get from one place to another", HTML: b.String()})
 }
 
 // form is the two ends and the mode.

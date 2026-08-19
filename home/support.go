@@ -67,5 +67,5 @@ func SupportHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	b.WriteString(`</div>`)
-	w.Write([]byte(app.RenderHTMLForRequest("Support", "How to reach this instance's operator", b.String(), r))) //nolint:errcheck
+	app.Respond(w, r, app.Response{Title: "Support", Description: "How to reach this instance's operator", HTML: b.String()})
 }

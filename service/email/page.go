@@ -95,7 +95,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			b.WriteString(`<li>` + html.EscapeString(m) + `</li>`)
 		}
 		b.WriteString(`</ul></div></div>`)
-		w.Write([]byte(app.RenderHTMLForRequest("Email", "Email that leaves this instance", b.String(), r))) //nolint:errcheck
+		app.Respond(w, r, app.Response{Title: "Email", Description: "Email that leaves this instance", HTML: b.String()})
 		return
 	}
 
@@ -236,5 +236,5 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`</div>`)
 
 	b.WriteString(`</div>`)
-	w.Write([]byte(app.RenderHTMLForRequest("Email", "Email that leaves this instance", b.String(), r))) //nolint:errcheck
+	app.Respond(w, r, app.Response{Title: "Email", Description: "Email that leaves this instance", HTML: b.String()})
 }
