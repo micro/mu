@@ -1,11 +1,15 @@
 package weather
 
 import (
+	"html"
+	"math"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"mu/internal/api"
 	"mu/internal/app"
+	"mu/internal/auth"
 	"mu/internal/quota"
 	"mu/internal/service"
 )
@@ -17,10 +21,63 @@ func Load() {
 	}
 }
 
-// CardHTML returns the weather card for the home screen.
-// Only fetches for logged-in users. Caches in localStorage for 30 min.
-// First visit: user clicks to enable location. After that, auto-refreshes.
-func CardHTML() string {
+// CardHTML returns the weather card.
+//
+// Two renders, and which one you get depends on whether this instance knows
+// where you are.
+//
+// It does now, for anybody who has set a place — see account/place.go — and
+// that is the better half: the forecast is fetched here, server-side, and
+// arrives as text. No geolocation prompt, no JavaScript, nothing kept in a
+// browser, and it works everywhere a card can go, including a page rendered
+// into an email at seven in the morning with nobody watching.
+//
+// The browser render is the fallback and is what everybody used to get: ask
+// for geolocation, keep the coordinates in localStorage, fetch. It stays
+// because a signed-out reader is a real case and most of these pages are
+// public — but it is the lesser answer, and it is the reason the weather agent
+// could not say whether you needed a coat while the home screen showed your
+// forecast.
+func CardHTML(accountID string) string {
+	if lat, lon, ok := auth.Located(accountID); ok {
+		if f, err := FetchWeather(lat, lon); err == nil && f != nil && f.Current != nil {
+			return serverCard(f, auth.PlaceName(accountID))
+		}
+	}
+	return browserCard()
+}
+
+// serverCard is the forecast for somebody whose place we know, as plain markup.
+func serverCard(f *WeatherForecast, place string) string {
+	where := strings.TrimSpace(place)
+	if where == "" {
+		where = f.Location
+	}
+	c := f.Current
+	var b strings.Builder
+	b.WriteString(`<div class="wx"><div class="wx-now">`)
+	b.WriteString(`<span class="wx-temp">` + strconv.Itoa(int(math.Round(c.TempC))) + `°C</span>`)
+	b.WriteString(`<span class="wx-desc">` + html.EscapeString(c.Description) + `</span></div>`)
+	if where != "" {
+		b.WriteString(`<div class="wx-where">` + html.EscapeString(where) + `</div>`)
+	}
+	if len(f.DailyItems) > 0 {
+		b.WriteString(`<div class="wx-days">`)
+		for i, d := range f.DailyItems {
+			if i >= 3 {
+				break
+			}
+			b.WriteString(`<span class="wx-day">` + html.EscapeString(d.Date.Format("Mon")) + ` ` +
+				strconv.Itoa(int(math.Round(d.MaxTempC))) + `°/` +
+				strconv.Itoa(int(math.Round(d.MinTempC))) + `°</span>`)
+		}
+		b.WriteString(`</div>`)
+	}
+	b.WriteString(`</div>`)
+	return b.String()
+}
+
+func browserCard() string {
 	return `<div id="weather-card">
 <div id="weather-card-content" style="font-size:13px;color:#888">
 <span id="weather-card-loading"></span>

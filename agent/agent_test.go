@@ -863,7 +863,7 @@ func TestFormatToolResult_AppsRunDispatch(t *testing.T) {
 
 func TestRenderResultCard_AppsRun(t *testing.T) {
 	result := `{"id":"abc","run":"/apps/run?id=abc&raw=1"}`
-	card := renderResultCard("apps_run", result, nil)
+	card := renderResultCard("", "apps_run", result, nil)
 	if !strings.Contains(card, "<iframe") {
 		t.Errorf("expected iframe in result card, got %q", card)
 	}

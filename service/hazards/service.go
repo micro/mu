@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 
+	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/service"
 )
@@ -187,99 +188,16 @@ var Spec = service.Spec{
 }
 
 // Handler serves /hazards.
+// Handler is the page, derived from the Spec — see api.ServicePage.
+//
+// It was a magnitude picker, a period picker, a table and a stylesheet: a form
+// over hazards_quakes with one argument, drawn by hand. The card is the same
+// answer and the tool takes the same argument, so the page had nothing of its
+// own except the layout, which is now everybody's.
 func Handler(w http.ResponseWriter, r *http.Request) {
-	min := 4.5
-	if v := r.URL.Query().Get("min"); v != "" {
-		if f, err := strconv.ParseFloat(v, 64); err == nil {
-			min = f
-		}
-	}
-	period := r.URL.Query().Get("period")
-	if period == "" {
-		period = "day"
-	}
-
-	var b strings.Builder
-	b.WriteString(`<div class="hwrap"><div class="card"><h2>Hazards</h2>`)
-	b.WriteString(`<p class="hlede">Earthquakes worldwide, live from the ` +
-		`<a href="https://earthquake.usgs.gov" rel="noopener">USGS</a>. Free, needs no key, ` +
-		`and callable by an agent — see <a href="/tools">Tools</a>.</p></div>`)
-
-	b.WriteString(`<div class="card"><div class="hpick">`)
-	for _, m := range []float64{2.5, 4.5, 6.0} {
-		cls := "hopt"
-		if m == min {
-			cls += " hon"
-		}
-		b.WriteString(`<a class="` + cls + `" href="/hazards?min=` + trimF(m) +
-			`&period=` + html.EscapeString(period) + `">M` + trimF(m) + `+</a>`)
-	}
-	for _, p := range []string{"day", "week"} {
-		cls := "hopt"
-		if p == period {
-			cls += " hon"
-		}
-		b.WriteString(`<a class="` + cls + `" href="/hazards?min=` + trimF(min) +
-			`&period=` + p + `">past ` + p + `</a>`)
-	}
-	b.WriteString(`</div>`)
-
-	quakes, err := recent(min, period, 0, 0, 0)
-	switch {
-	case err != nil:
-		b.WriteString(`<p class="hmuted">` + html.EscapeString(err.Error()) + `</p>`)
-	case len(quakes) == 0:
-		b.WriteString(`<p class="hmuted">Nothing at M` + trimF(min) + ` or above in the past ` +
-			html.EscapeString(period) + `.</p>`)
-	default:
-		for i, q := range quakes {
-			if i >= 40 {
-				break
-			}
-			b.WriteString(`<div class="hq"><span class="hmag">M` +
-				fmt.Sprintf("%.1f", q.Magnitude) + `</span> ` +
-				`<a href="` + html.EscapeString(q.URL) + `" rel="noopener">` +
-				html.EscapeString(q.Place) + `</a>` +
-				`<span class="hago">` + html.EscapeString(ago(q.When)) + `</span>`)
-			if q.Tsunami {
-				b.WriteString(`<div class="htsu">⚠ tsunami warning issued</div>`)
-			}
-			b.WriteString(`</div>`)
-		}
-	}
-	// Disasters above the noise floor, under the quake list. Green is most of
-	// the feed and is mostly a wildfire nobody needs telling about; orange and
-	// red are the ones somebody would act on.
-	if live, err := alerts("orange", 0, 0, 0); err == nil && len(live) > 0 {
-		b.WriteString(`<div class="card"><h3>Active alerts</h3>`)
-		for i, a := range live {
-			if i >= 10 {
-				break
-			}
-			b.WriteString(`<div class="hq"><span class="hlev hlev-` +
-				strings.ToLower(html.EscapeString(a.Level)) + `">` + html.EscapeString(a.Level) +
-				`</span> ` + html.EscapeString(a.Kind))
-			if a.Name != "" {
-				b.WriteString(` ` + html.EscapeString(a.Name))
-			}
-			if a.Country != "" {
-				b.WriteString(` — ` + html.EscapeString(a.Country))
-			}
-			if a.Severity != "" {
-				b.WriteString(`<div class="htsu">` + html.EscapeString(a.Severity) + `</div>`)
-			}
-			b.WriteString(`</div>`)
-		}
-		b.WriteString(`</div>`)
-	}
-
-	b.WriteString(`</div>` + pageStyle)
-
-	w.Write([]byte(app.RenderHTMLForRequest("Hazards", //nolint:errcheck
-		"Earthquakes worldwide, live from the USGS", b.String(), r)))
+	api.ServicePage(w, r, Spec)
 }
 
-// Card renders the home-screen card: the largest few, recently.
 func Card() string {
 	quakes, err := recent(4.5, "day", 0, 0, 0)
 	if err != nil {
@@ -287,7 +205,7 @@ func Card() string {
 	}
 	if len(quakes) == 0 {
 		return `<p class="hmuted">Nothing above M4.5 in the past day.</p>` +
-			`<p class="hmore"><a href="/hazards">Hazards →</a></p>` + pageStyle
+			`<p class="hmore"><a href="/hazards">Hazards →</a></p>`
 	}
 	var b strings.Builder
 	for i, q := range quakes {
@@ -300,7 +218,7 @@ func Card() string {
 			`<span class="hago">` + html.EscapeString(ago(q.When)) + `</span></div>`)
 	}
 	b.WriteString(`<p class="hmore"><a href="/hazards">All hazards →</a></p>`)
-	return b.String() + pageStyle
+	return b.String()
 }
 
 // trimF renders a magnitude without a trailing zero, so the links read M6+
@@ -309,24 +227,3 @@ func trimF(f float64) string {
 	s := strconv.FormatFloat(f, 'f', -1, 64)
 	return s
 }
-
-const pageStyle = `<style>
-.hwrap{max-width:680px;margin:0 auto}
-.hlede{color:#666;font-size:15px;margin:0}
-.hmuted{color:#888;font-size:14px;margin:0}
-.hpick{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
-.hopt{border:1px solid var(--border-color,#e3e3e3);border-radius:var(--border-radius,8px);
-  padding:6px 12px;font-size:14px;text-decoration:none;color:inherit}
-.hopt.hon{border-color:#111;font-weight:600}
-.hq{padding:8px 0;border-bottom:1px solid var(--border-color,#eee);font-size:15px;
-  display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
-.hq:last-of-type{border-bottom:0}
-.hmag{font-variant-numeric:tabular-nums;font-weight:600;min-width:3.4em}
-.hago{color:#888;font-size:13px;margin-left:auto}
-.htsu{color:#b23;font-size:13px;width:100%}
-.hmore{margin:12px 0 0;font-size:14px}
-.hlev{font-size:12px;font-weight:600;padding:2px 7px;border-radius:10px;text-transform:uppercase}
-.hlev-red{background:#fde8e8;color:#b23}
-.hlev-orange{background:#fdf0e2;color:#a55a00}
-.hlev-green{background:#e8f5ee;color:#0f7a52}
-</style>`

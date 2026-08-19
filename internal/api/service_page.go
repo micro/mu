@@ -46,6 +46,7 @@ import (
 	"strings"
 
 	"mu/internal/app"
+	"mu/internal/auth"
 	"mu/internal/quota"
 	"mu/internal/service"
 )
@@ -65,14 +66,21 @@ var AgentPrompts func(service string) (path string, examples []string)
 // declaration is already in that package and a lookup by string would be a
 // second way to get it wrong.
 func ServicePage(w http.ResponseWriter, r *http.Request, spec service.Spec) {
+	// Who is looking, so a card that can answer for them does. Empty for a
+	// signed-out reader, which every card must still render for — most of
+	// these pages are public and are the funnel.
+	accountID := ""
+	if _, acc := auth.TrySession(r); acc != nil {
+		accountID = acc.ID
+	}
 	app.Respond(w, r, app.Response{
 		Title:       spec.NavLabel(),
 		Description: spec.Description,
-		HTML:        servicePage(spec),
+		HTML:        servicePage(spec, accountID),
 	})
 }
 
-func servicePage(spec service.Spec) string {
+func servicePage(spec service.Spec, accountID string) string {
 	var b strings.Builder
 	b.WriteString(`<div class="svc-page">`)
 	b.WriteString(`<p class="svc-lead">` + html.EscapeString(spec.Description) + `</p>`)
@@ -80,7 +88,7 @@ func servicePage(spec service.Spec) string {
 	// What it knows right now. The whole page, really — everything below is
 	// about how to ask for more of it.
 	if spec.Card != nil {
-		b.WriteString(`<div class="svc-card">` + spec.Card().HTML + `</div>`)
+		b.WriteString(`<div class="svc-card">` + spec.Card(accountID).HTML + `</div>`)
 	}
 
 	// Somewhere to go for a person, which the card cannot always be.

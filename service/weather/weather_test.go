@@ -158,9 +158,11 @@ func restoreNWSBaseURL(t *testing.T, value string) {
 	t.Cleanup(func() { nwsBaseURL, openMeteoBaseURL = oldNWS, oldOM })
 }
 
+// The signed-out card, which is the browser render: no account, no place, so
+// there is nothing to fetch here and the JS asks.
 func TestCardHTMLShowsWeatherUnavailableOnFetchFailure(t *testing.T) {
 	resetCache()
-	got := CardHTML()
+	got := CardHTML("")
 	if !strings.Contains(got, "Weather unavailable") {
 		t.Fatalf("CardHTML should show a clear unavailable state on fetch failure, got %q", got)
 	}

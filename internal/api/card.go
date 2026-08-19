@@ -31,12 +31,12 @@ import (
 //
 // Keyed by tool because the caller is holding a tool result — the agent has
 // just run news_list and wants to show the news card rather than describe it.
-func CardForTool(name string) string {
+func CardForTool(name, accountID string) string {
 	svc := serviceOf(name)
 	if svc == "" {
 		return ""
 	}
-	return wrapCard(service.Label(svc), service.CardFor(svc).HTML)
+	return wrapCard(service.Label(svc), service.CardFor(svc, accountID).HTML)
 }
 
 // CardHandler serves /card/<service> as an HTML fragment, and /card as the list
@@ -68,7 +68,12 @@ func CardHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body := wrapCard(service.Label(name), service.CardFor(name).HTML)
+	// The signed-out view, deliberately. This endpoint is a shared fragment
+	// with a cache header on it, so it must render the card that is the same
+	// for everybody — a personal card served from a shared cache is one
+	// account's forecast shown to the next reader. A caller that wants the
+	// personal one has an account and can ask the page for it.
+	body := wrapCard(service.Label(name), service.CardFor(name, "").HTML)
 	if body == "" {
 		app.NotFound(w, r, "No card for that service")
 		return

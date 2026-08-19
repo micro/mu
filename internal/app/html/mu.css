@@ -6104,3 +6104,26 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
 }
 .place-form button[type=submit]:hover { background: var(--btn-primary-hover, #333); border-color: var(--btn-primary-hover, #333) }
 .place-at { font-size: 12px; color: var(--text-muted, #888) }
+
+/* The hazards card: what has shaken, and how hard. Was a <style> block in
+   service/hazards, shared by the card and a page that no longer exists. */
+.hq { padding: 8px 0; border-bottom: var(--border-width, 1px) solid var(--divider, #f0f0f0); font-size: 15px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap }
+.hq:last-of-type { border-bottom: 0 }
+.hmag { font-variant-numeric: tabular-nums; font-weight: var(--font-weight-semibold, 600); min-width: 3.4em }
+.hago { color: var(--text-muted, #888); font-size: 13px; margin-left: auto }
+.htsu { color: #b23; font-size: 13px; width: 100% }
+.hmuted { color: var(--text-muted, #888); font-size: 14px; margin: 0 }
+.hmore { margin: 12px 0 0; font-size: 14px }
+.hlev { font-size: 12px; font-weight: var(--font-weight-semibold, 600); padding: 2px 7px; border-radius: 10px; text-transform: uppercase }
+.hlev-red { background: #fde8e8; color: #b23 }
+.hlev-orange { background: #fdf0e2; color: #a55a00 }
+.hlev-green { background: #e8f5ee; color: #0f7a52 }
+
+/* The forecast, rendered here rather than in a browser, for somebody whose
+   place this instance knows. See service/weather. */
+.wx-now { display: flex; align-items: baseline; gap: 8px }
+.wx-temp { font-size: 22px; font-weight: var(--font-weight-semibold, 600); color: var(--text-primary, #1a1a1a) }
+.wx-desc { color: var(--text-secondary, #555) }
+.wx-where { font-size: 12px; color: var(--text-muted, #888); margin-top: 2px }
+.wx-days { display: flex; gap: 12px; margin-top: 6px; font-size: 12px; color: var(--text-muted, #888) }
+.wx-day { white-space: nowrap }

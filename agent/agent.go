@@ -1142,7 +1142,7 @@ func serveFlowPage(w http.ResponseWriter, r *http.Request, id string) {
 
 	// Append typed cards from stored steps
 	for _, step := range f.Steps {
-		if card := renderResultCard(step.Tool, step.Result, step.Args); card != "" {
+		if card := renderResultCard(f.AccountID, step.Tool, step.Result, step.Args); card != "" {
 			b.WriteString(card)
 		}
 	}
@@ -1739,7 +1739,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		rendered := app.RenderString(answer)
 		html := `<div class="card" id="agent-response">` + rendered + `</div>`
 		for _, res := range results {
-			if card := renderResultCard(res.Name, res.Result, res.Args); card != "" {
+			if card := renderResultCard(accountID, res.Name, res.Result, res.Args); card != "" {
 				html += card
 			}
 		}
@@ -1828,7 +1828,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		// So say the summary failed and show what came back.
 		var raw strings.Builder
 		for _, res := range results {
-			if card := renderResultCard(res.Name, res.Result, res.Args); card != "" {
+			if card := renderResultCard(accountID, res.Name, res.Result, res.Args); card != "" {
 				raw.WriteString(card)
 				continue
 			}
@@ -1863,7 +1863,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	html := `<div class="card" id="agent-response">` + rendered + `</div>`
 
 	for _, res := range results {
-		if card := renderResultCard(res.Name, res.Result, res.Args); card != "" {
+		if card := renderResultCard(accountID, res.Name, res.Result, res.Args); card != "" {
 			html += card
 		}
 	}
@@ -2313,7 +2313,7 @@ func resolveAgent(accountID, id string, isGuest bool) *micro.Agent {
 	return micro.Get(id)
 }
 
-func renderResultCard(toolName, result string, args map[string]any) string {
+func renderResultCard(accountID, toolName, result string, args map[string]any) string {
 	switch toolName {
 	case "news", "news_search":
 		return renderNewsCard(result)
@@ -2328,7 +2328,7 @@ func renderResultCard(toolName, result string, args map[string]any) string {
 	}
 	// Service-sourced dashboard cards (markets, news_headlines, social, …),
 	// pulled from the same tool registry, attached via api.SetCard in main.go.
-	return api.CardForTool(toolName)
+	return api.CardForTool(toolName, accountID)
 }
 
 // --- typed card renderers ---
