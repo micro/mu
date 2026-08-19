@@ -146,20 +146,20 @@ one, and can be reached from anywhere that can send an email.</p>
 
 <style>
 .lwrap{padding:0}
-.lhead{max-width:700px;text-align:center;margin:0 auto 12px;font-size:28px;line-height:1.15;
-  letter-spacing:-.02em;font-weight:700;color:#111}
+.lhead{max-width:700px;text-align:center;margin:0 auto 12px;font-size:20px;line-height:1.2;
+  letter-spacing:-.01em;font-weight:700;color:#111}
 .lead{max-width:560px;text-align:center;color:#555;font-size:17px;line-height:1.6;margin:0 auto 22px}
 .lead a{color:#111}
 .laddr{text-align:center;margin:0 auto 12px}
 .laddr code{display:inline-block;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
-  font-size:24px;font-weight:600;color:#111;letter-spacing:-.01em;overflow-wrap:anywhere;
-  padding-bottom:6px;border-bottom:2px solid #ececec}
+  font-size:20px;font-weight:400;color:slategray;letter-spacing:-.01em;overflow-wrap:anywhere;
+  padding-bottom:6px;border-bottom:1px solid #e8e8ea}
 .laddrnote{max-width:560px;margin:0 auto 24px;text-align:center;font-size:13px;color:#888;line-height:1.55}
 .laddrnote code{background:#f4f4f5;border-radius:4px;padding:1px 5px;font-size:.95em}
 .lctas{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin:0}
 .lcta{display:inline-block;background:#111;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:700;font-size:15px}
 .lcta-alt{background:#fff;color:#111;border:1px solid #ddd}
 .lcta-alt:hover{border-color:#bbb}
-@media (max-width:640px){.lhead{font-size:22px}.lead{font-size:15px}}
+@media (max-width:640px){.lead{font-size:15px}}
 </style>`
 }
