@@ -438,8 +438,17 @@ function fetchW(la,lo){
 	// agent makes, rendered. Two words say so.
 	// "Live context" was two claims where one was needed: everything on this
 	// screen is live, so the word did no work here that the inbox above did not
-	// also deserve. What distinguishes this block is that it is context.
-	b.WriteString(sectionRule("Context"))
+	// also deserve.
+	//
+	// And then "Context" was a word from inside the machine. It names what these
+	// cards are *for* — the material a run is assembled from — which is a fact
+	// about the agent, not about what somebody is looking at. What they are
+	// looking at is the services, answering: news, markets, weather, each card
+	// one service's own view of itself. That word is already the nav label, the
+	// route and the tool prefix, so using it here costs nothing and says where
+	// to go next. Naming the parts after the parts is the rule everywhere else
+	// in this repo; the cards were the exception.
+	b.WriteString(sectionRule("Services"))
 	b.WriteString(CardsHTML(r, viewerAcc))
 
 	b.WriteString(`</div>`) // close #home-cards

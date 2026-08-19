@@ -84,6 +84,12 @@ func Landing(w http.ResponseWriter, r *http.Request) {
 //
 // What is left: a headline, a sentence, the address, two ways on.
 //
+// The second way on is /agents rather than /tools. A visitor who has just read
+// "a personal agent" and an address wants to know which agents there are, and
+// the tool catalogue answers a question they have not asked yet — it is the page
+// for somebody who has decided to build on this, which is a later moment and a
+// different person. Tools are still one click on from there.
+//
 // And it has to actually fit, which is a measurement rather than an intention.
 // The first version of this centred the block with min-height:calc(100vh -
 // 200px), forgetting that the shell it sits in already pads 14vh from the top
@@ -187,7 +193,7 @@ weather, places, storage.</p>
 
 <div class="lctas">
   <a class="lcta" href="/signup">Get an agent →</a>
-  <a class="lcta lcta-alt" href="/tools">Browse the tools</a>
+  <a class="lcta lcta-alt" href="/agents">Browse the agents</a>
 </div>
 </div>
 
