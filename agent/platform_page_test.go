@@ -3,8 +3,12 @@ package agent
 // The specialists this instance provides, where somebody can find them.
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"mu/internal/auth"
 )
 
 // Eleven agents have been in the registry since the router was written, and
@@ -132,5 +136,47 @@ func TestAgentNamesDoNotEndInAgent(t *testing.T) {
 		if strings.HasSuffix(a.Name, " Agent") {
 			t.Errorf("%q still ends in Agent", a.Name)
 		}
+	}
+}
+
+// Yours comes before ours.
+//
+// This page listed only the agents you had made until the instance's own were
+// added to it, and a new section goes at the top — so six things nobody made sat
+// above the one thing they did, on the page named for what they made. The empty
+// state gave it away: "That is the only one so far" was a sentence about the row
+// above it, and only made sense in that order.
+//
+// Read off the rendered page, because the bug was an ordering one and ordering
+// is the one thing a unit test of either section cannot see.
+func TestYourAgentsComeFirst(t *testing.T) {
+	const who = "roster-order"
+	if err := auth.Create(&auth.Account{ID: who}); err != nil {
+		t.Fatalf("creating the account: %v", err)
+	}
+	sess, err := auth.CreateSession(who)
+	if err != nil {
+		t.Fatalf("creating the session: %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/agents", nil)
+	req.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
+	RosterHandler(rec, req)
+	page := rec.Body.String()
+
+	yours, ours := strings.Index(page, "Your agents"), strings.Index(page, "Our agents")
+	if yours < 0 || ours < 0 {
+		t.Fatalf("the roster did not draw both sections (yours %d, ours %d)", yours, ours)
+	}
+	if yours > ours {
+		t.Errorf("Our agents (%d) is drawn above Your agents (%d) — the page is named "+
+			"for the ones somebody made, so those go first", ours, yours)
+	}
+	// And the button that makes one belongs to the section it adds to, so it is
+	// above the instance's own list rather than under it.
+	if made := strings.Index(page, "New agent"); made >= 0 && made > ours {
+		t.Error("+ New agent is drawn under Our agents, which is a button pointing " +
+			"at a list nobody can add to")
 	}
 }

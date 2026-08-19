@@ -28,6 +28,7 @@ import (
 
 	"mu/internal/auth"
 	"mu/internal/push"
+	"mu/internal/usage"
 )
 
 // SignupRateLimit returns true if the IP is allowed to sign up.
@@ -759,8 +760,13 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		app.Links([2]string{"/token", "API credentials"}, [2]string{"/user", "User preferences"}),
 		`<p class="signout"><a class="text-error" href="/logout">Log out</a></p>`)
 
+	// Under the balance, because it is the picture of what drained it. Usage was
+	// a sidebar entry until it was not: it is a view of money, and the money is
+	// here. See usage.Card — it draws nothing at all for an account that has
+	// never called anything, so a new account is not shown an empty graph.
 	content := notice + profile +
 		BalanceCard(acc.ID) +
+		usage.Card(acc.ID) +
 		PlaceCard(r, acc.ID) +
 		emailCard +
 		googleCard +

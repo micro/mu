@@ -101,23 +101,26 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 			`to talk to it here — it has no token, so nothing outside this instance can call it.</p>`)
 	}
 
-	// The one you already have.
+	// Yours first, then ours.
 	//
-	// This page listed the agents you had made and nothing else, while the picker
-	// on /agent listed Micro first — so the default agent existed in one place
-	// and not the other, and the page called "Agents" was the one denying it. It
-	// is the agent nearly every account actually uses: it has an address, it
-	// reaches every tool, and there was nowhere saying so.
-	b.WriteString(defaultRow())
-
+	// It was the other way round, because the section listing this instance's own
+	// agents was added to a page that had only ever listed yours, and new
+	// sections go at the top. That put six things nobody made above the one thing
+	// they did, on the page named for what they made — and the empty state read
+	// "That is the only one so far", a sentence about the row above it that only
+	// worked in that order.
+	//
+	// The heading is drawn either way now. "Your agents / none yet" is the
+	// account saying something true about itself; skipping it when the list is
+	// empty means the page tells you what it has and not what you have.
 	EnsureTags(owner)
 	roster := Agents(owner)
+	b.WriteString(`<h3 style="font-size:15px;margin:0 0 10px">Your agents</h3>`)
 	if len(roster) == 0 {
-		b.WriteString(`<p style="color:#888;font-size:14px">That is the only one so far. An agent of ` +
+		b.WriteString(`<p class="agent-note" style="margin:0 0 16px">None yet. An agent of ` +
 			`your own is a name, a scope, and a token — so what you hand a credential to reaches the ` +
-			`services you chose and no others.</p>`)
+			`services you chose and no others. Ours are below and need nothing set up.</p>`)
 	} else {
-		b.WriteString(`<h3 style="font-size:15px;margin:0 0 10px">Your agents</h3>`)
 		b.WriteString(`<div style="display:flex;flex-direction:column;gap:8px;margin:0 0 24px">`)
 		for _, a := range roster {
 			b.WriteString(agentRow(a, csrf, app.BaseURL(r)))
@@ -143,6 +146,19 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		b.WriteString(app.ActionLink("/agent/new", "+ New agent"))
 	}
+
+	// And then the ones that came with the instance. Below the button that makes
+	// one of yours, because that button belongs to the section above it — a
+	// "+ New agent" sitting under a list nobody can add to is a button pointing
+	// at the wrong list.
+	//
+	// This section exists because eleven agents had been in the registry since
+	// the router was written, each reachable at agent+news@ and nowhere else: not
+	// a page, not a link, not this list.
+	b.WriteString(`<div style="margin-top:28px">`)
+	b.WriteString(defaultRow())
+	b.WriteString(`</div>`)
+
 	// Close the column this page opened. Without it the footer was swallowed
 	// into a 720px div and rendered halfway up the page: #content is a flex
 	// child sized to hold the footer at the bottom, and an unclosed div puts

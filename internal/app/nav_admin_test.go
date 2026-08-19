@@ -8,11 +8,15 @@ package app
 // the page an operator opens most and it was the hardest one to reach.
 //
 // It sat in the bottom group with Account and Logout, on the reasoning that
-// admin is a role and roles sit with identity. True, and not what an operator
-// does with it: it is the page they open several times a day and it was the last
-// item in the second group, past Usage and past whatever is pinned. It is under
-// Home now — Home is how the instance looks, Admin is the same question with the
-// lid off.
+// admin is a role and roles sit with identity. That was right, and the objection
+// to it was about position rather than grouping: it ended up last in the second
+// group, past Usage and past whatever is pinned. Moving it under Home fixed the
+// position and broke the grouping — it read as a fourth level of the product,
+// between how the instance looks and what you do with it, sitting above Inbox
+// for the one account that has it.
+//
+// It is directly under Account now, which answers both. Usage has left the group
+// for a card on /account, so there is nothing between them.
 
 import (
 	"os"
@@ -30,12 +34,19 @@ func TestAnAdminGetsTheLinkInTheNav(t *testing.T) {
 	if strings.Contains(nav, "display: none") {
 		t.Error("the admin's own link is hidden, so it needs JavaScript to appear")
 	}
-	// And it is drawn where it now claims to be: directly under Home.
+	// And it is drawn where it now claims to be: directly under Account, with
+	// nothing between them and Support after.
 	page := renderWithLang("t", "d", "", "en", &auth.Account{ID: "boss", Admin: true})
-	home, adm, tools := strings.Index(page, `href="/home"`), strings.Index(page, `id="nav-admin"`),
-		strings.Index(page, `href="/tools"`)
-	if adm < home || adm > tools {
-		t.Errorf("admin is not between Home and Tools (home %d, admin %d, tools %d)", home, adm, tools)
+	acct, adm, support := strings.Index(page, `id="nav-account"`), strings.Index(page, `id="nav-admin"`),
+		strings.Index(page, `id="nav-support"`)
+	if adm < acct || adm > support {
+		t.Errorf("admin is not between Account and Support (account %d, admin %d, support %d)",
+			acct, adm, support)
+	}
+	// Directly under: nothing else is drawn in the gap. This is what the last
+	// arrangement lost — Admin was in the right group and at the wrong end of it.
+	if between := page[acct:adm]; strings.Count(between, "<a ") != 1 {
+		t.Errorf("something has been added between Account and Admin: %q", between)
 	}
 }
 

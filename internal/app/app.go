@@ -359,7 +359,6 @@ var Template = `
                Anyone who lives in Apps can pin it and it comes back, which is
                what pinning is for. -->
           <a href="/home"><img src="/home.png?` + Version + `"><span class="label">Home</span></a>
-          %s
           <a href="/inbox"><img src="/mail.png?` + Version + `"><span class="label">Inbox</span></a>
           %s
           <a href="/agents"><img src="/agent.svg?` + Version + `"><span class="label">Agents</span></a>
@@ -1060,14 +1059,23 @@ func navPinned(acc *auth.Account) string {
 	return b.String()
 }
 
-// navBottom is the account: who you are, the page about you, what it has cost,
-// and the way out.
+// navBottom is the account: who you are, the page about you, running the place
+// if you do, and the way out.
 //
-// Usage is here rather than in the top group, where it closed the product's own
-// three levels — Inbox, Agents, Tools, Services, Usage — as though it were a
-// fourth thing you do. It is not. It is what this account has spent, on the
-// same shelf as the balance it spends from, and CLAUDE.md already says so:
-// "Usage is a view of money". A view of money belongs beside the money.
+// Usage was here and is not a nav item any more. The reasoning that moved it out
+// of the top group was right and did not go far enough: it is a view of money,
+// so it belongs beside the money — and the money is on /account, not in a rail
+// next to it. It is a card there now, showing the graph and linking through, so
+// what an account has spent is read where its balance is.
+//
+// Admin follows Account for the same reason it left the top group once and came
+// back: it is a role, not a level of the product. Under Home it sat between
+// "how the instance looks" and "what you do with it", which reads as a fourth
+// thing everybody has; here it is what this account may additionally do, next to
+// the rest of what this account is. The objection recorded when it moved out —
+// that it ended up last, past Usage and past whatever is pinned — is answered by
+// where it goes rather than by which group: directly under Account, with Usage
+// gone from the group entirely.
 //
 // Kept as its own group rather than folded into the account page, because
 // signing out is something you reach for directly and a logout that takes two
@@ -1086,7 +1094,7 @@ func navBottom(acc *auth.Account) string {
 	// wrong with. A signed-out visitor still has the footer.
 	return `<div id="nav-username">Signed in as @` + username + `</div>
           <a id="nav-account" href="/account"><img src="/account.png?` + Version + `"><span class="label">Account</span></a>
-          <a id="nav-usage" href="/usage"><img src="/usage.svg?` + Version + `"><span class="label">Usage</span></a>
+          ` + navAdmin(acc) + `
           <a id="nav-support" href="/support"><img src="/help.svg?` + Version + `"><span class="label">Support</span></a>
           <a id="nav-logout" href="/logout"><img src="/logout.png?` + Version + `"><span class="label">Logout</span></a>
           <a id="nav-login" href="/login" style="display: none;"><img src="/account.png?` + Version + `"><span class="label">Login</span></a>`
@@ -1372,7 +1380,6 @@ func renderShell(lang, title, desc, bodyAttr, body string, acc *auth.Account, pa
 	return fmt.Sprintf(Template,
 		lang, title, desc, bodyAttr,
 		headBalance(acc),
-		navAdmin(acc),
 		navMailboxes(account, path),
 		navPinned(acc),
 		navBottom(acc),

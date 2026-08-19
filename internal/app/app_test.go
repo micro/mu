@@ -246,18 +246,28 @@ func TestRenderHTMLWithAuthNavShowsSignedInActions(t *testing.T) {
 }
 
 // The bottom group is the account itself: who you are, the page about you, and
-// the way out. Usage is not there — it closes the top group, since it is
-// something you open and read rather than part of signing in and out.
+// the way out.
 //
 // There is no Wallet item any more. Money is the account's, so the balance is
 // the first card on /account and the badge in the header links to it.
+//
+// And no Usage item, which this test used to require. It moved from the top
+// group to here on the argument that a view of money belongs beside the money —
+// and the money is a card on /account, not a rail entry beside it. It is a card
+// there now, under the balance, and /usage is still the page it links to. A
+// sidebar entry per view of a page is how a sidebar becomes a site map.
 func TestTheBottomGroupIsTheAccount(t *testing.T) {
 	result := renderWithLang("Test", "d", "<p>c</p>", "en", &auth.Account{ID: "alice"})
 
-	for _, want := range []string{`id="nav-account"`, `id="nav-logout"`, `href="/usage"`} {
+	for _, want := range []string{`id="nav-account"`, `id="nav-logout"`} {
 		if !strings.Contains(result, want) {
 			t.Errorf("the sidebar is missing %s", want)
 		}
+	}
+	if strings.Contains(result, `href="/usage"`) {
+		t.Error("Usage is back in the sidebar. It is a view of what the account " +
+			"spent, so it is a card on /account under the balance — the rail is " +
+			"for places, not for views of one")
 	}
 	// Signing out is reached for directly; a logout behind another page is one
 	// people hunt for.
