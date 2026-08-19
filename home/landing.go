@@ -91,6 +91,12 @@ func Landing(w http.ResponseWriter, r *http.Request) {
 // scrolled by 74px at 1440x900 while claiming to be one screen. The block sizes
 // to its content now and the shell does the positioning.
 //
+// Not centred in the leftover space either, which was the next thing tried: the
+// shell pads 14vh before the wordmark, so centring what comes after it leaves
+// the wordmark alone at the top with a hole under it. The group reads as one
+// thing when it flows, and the whitespace goes at the bottom where a landing
+// normally puts it.
+//
 // The prose explaining all that is here rather than in the stylesheet, because
 // a comment inside the <style> block is served to every visitor — which is how
 // a test looking for "Connect via MCP" on the page found it in the note saying
@@ -104,6 +110,13 @@ func landingBody(host string) string {
 	// to weigh it, on a page whose job is to say what this is. It also carried a
 	// second number that had to be kept in step with the list beside it by hand.
 	// The list is the proof; it does not need a claim after it.
+	//
+	// The address is set as text, not as a black pill. It was drawn with the
+	// same background, radius and white-on-#111 as .lcta immediately below it,
+	// so the page showed two identical black rectangles of which only the lower
+	// one did anything — the address read as the primary button and the primary
+	// button read as its twin. It is a thing to read and copy, so it is
+	// monospaced and underscored with a hairline instead.
 	//
 	// The address first, because it is what is actually differentiated. Every
 	// provider ships an MCP server now; what none of them ship is an agent that
@@ -133,19 +146,20 @@ one, and can be reached from anywhere that can send an email.</p>
 
 <style>
 .lwrap{padding:0}
-.lhead{max-width:700px;text-align:center;margin:0 auto 12px;font-size:38px;line-height:1.12;
+.lhead{max-width:700px;text-align:center;margin:0 auto 12px;font-size:28px;line-height:1.15;
   letter-spacing:-.02em;font-weight:700;color:#111}
 .lead{max-width:560px;text-align:center;color:#555;font-size:17px;line-height:1.6;margin:0 auto 22px}
 .lead a{color:#111}
-.laddr{text-align:center;margin:0 auto 10px}
-.laddr code{display:inline-block;background:#111;color:#fff;border-radius:8px;padding:12px 20px;
-  font-size:18px;letter-spacing:.01em;overflow-wrap:anywhere}
+.laddr{text-align:center;margin:0 auto 12px}
+.laddr code{display:inline-block;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:24px;font-weight:600;color:#111;letter-spacing:-.01em;overflow-wrap:anywhere;
+  padding-bottom:6px;border-bottom:2px solid #ececec}
 .laddrnote{max-width:560px;margin:0 auto 24px;text-align:center;font-size:13px;color:#888;line-height:1.55}
 .laddrnote code{background:#f4f4f5;border-radius:4px;padding:1px 5px;font-size:.95em}
 .lctas{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin:0}
 .lcta{display:inline-block;background:#111;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:700;font-size:15px}
 .lcta-alt{background:#fff;color:#111;border:1px solid #ddd}
 .lcta-alt:hover{border-color:#bbb}
-@media (max-width:640px){.lhead{font-size:28px}.lead{font-size:15px}}
+@media (max-width:640px){.lhead{font-size:22px}.lead{font-size:15px}}
 </style>`
 }
