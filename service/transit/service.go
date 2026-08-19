@@ -292,6 +292,59 @@ func (Server) Feeds(_ context.Context, req *FeedsRequest, rsp *FeedsResponse) er
 }
 
 // Load registers the service and starts keeping timetables current.
+// TrainsRequest is a station and how much of its board to show.
+type TrainsRequest struct {
+	Station  string `json:"station" description:"Three-letter station code — KGX, MAN, EDB"`
+	Rows     int    `json:"rows" description:"How many services, 1 to 20, default 10"`
+	Arrivals bool   `json:"arrivals" description:"Show what is coming in rather than what is leaving"`
+}
+
+// TrainsResponse is the board.
+type TrainsResponse struct {
+	Text string `json:"text" description:"The board: time, destination, expected, platform and operator, one service per line"`
+}
+
+// Trains is the live departure board at a station.
+//
+// @example {"station": "KGX", "rows": 5}
+func (Server) Trains(_ context.Context, req *TrainsRequest, rsp *TrainsResponse) error {
+	station, trains, notices, err := railBoard(req.Station, req.Rows, req.Arrivals)
+	if err != nil {
+		return err
+	}
+	rsp.Text = renderBoard(station, trains, notices, req.Arrivals)
+	return nil
+}
+
+// BusesRequest is where to look.
+type BusesRequest struct {
+	Lat      float64 `json:"lat" description:"Latitude of the point to look around"`
+	Lon      float64 `json:"lon" description:"Longitude of the point"`
+	WithinKm float64 `json:"within_km" description:"How far to look, in kilometres — default 2, most 25"`
+	Limit    int     `json:"limit" description:"How many to list, default 10"`
+}
+
+// BusesResponse is what is moving.
+type BusesResponse struct {
+	Text string `json:"text" description:"Buses nearby, nearest first, with line, destination and distance"`
+}
+
+// Buses is where the buses are right now.
+//
+// @example {"lat": 51.5074, "lon": -0.1278, "within_km": 1}
+func (Server) Buses(_ context.Context, req *BusesRequest, rsp *BusesResponse) error {
+	found, err := busesNear(req.Lat, req.Lon, req.WithinKm, req.Limit)
+	if err != nil {
+		return err
+	}
+	within := req.WithinKm
+	if within <= 0 {
+		within = 2
+	}
+	rsp.Text = renderBuses(found, within)
+	return nil
+}
+
 func Load() {
 	if err := service.Register(Spec); err != nil {
 		app.Log("transit", "service register failed: %v", err)
@@ -325,6 +378,17 @@ var Spec = service.Spec{
 			Doc: "Which published timetables this instance carries, and which others it could — " +
 				"with the size of each, so an operator can see what switching one on costs. " +
 				"Also names the feeds that look right but whose timetables have run out",
+		},
+		"Trains": {
+			Doc: "The live departure or arrival board at a British station, by its three-letter " +
+				"code — KGX, MAN, EDB. Scheduled and expected time, platform, operator and " +
+				"where it is going, plus any disruption notice. From National Rail",
+		},
+		"Buses": {
+			Doc: "Where the buses actually are near a point right now — line, where each is " +
+				"heading and how far away, nearest first. England, from the Bus Open Data " +
+				"Service. This is position rather than prediction: it says what is moving, " +
+				"not when it reaches you",
 		},
 	},
 }

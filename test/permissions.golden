@@ -97,9 +97,11 @@ text_translate               needsAccount=false destructive=false bound accountO
 tiles_area                   needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 tiles_tile                   needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 transit_arrivals             needsAccount=false destructive=false open accountOnly=false optionalAuth=false
+transit_buses                needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 transit_feeds                needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 transit_nearby               needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 transit_status               needsAccount=false destructive=false open accountOnly=false optionalAuth=false
+transit_trains               needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 video_list                   needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 video_search                 needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 wallet_address               needsAccount=true  destructive=false bound accountOnly=true  optionalAuth=false

@@ -81,6 +81,11 @@ var settingGroups = []settingGroup{
 		// raises TfL's rate limit, and it was readable by the code and
 		// settable nowhere — the same gap the Twilio group below records.
 		"TFL_APP_KEY",
+		// The two that make transit live outside London: buses from the DfT,
+		// trains from National Rail. Both are free to register for and both
+		// were the reason /transit could only say what the timetable promised.
+		"BODS_API_KEY",
+		"LDBWS_TOKEN",
 	}},
 	// The basemap. /tiles sends an operator here by name when it has no key,
 	// so this group has to exist for that sentence to be true — see the note
