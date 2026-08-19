@@ -18,6 +18,7 @@ package inbox
 import (
 	"html"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -82,16 +83,73 @@ func ConversationView(accountID string, t *thread.Thread) string {
 		b.WriteString(messageBlock(accountID, t, m))
 	}
 
-	// Where a reply goes, which is not this page.
+	// Replying, where replying is a thing this page can do.
 	//
-	// Worth saying now that there is a box below it: the box talks to the agent
-	// about the conversation, and replying to whoever wrote in is a different
-	// act that happens where the conversation is.
-	b.WriteString(`<p class="ib-note">This happened on ` +
-		html.EscapeString(app.ClientName(t.Client)) + `, so a reply carries on there — answer it ` +
-		`the way it arrived and the agent picks it up in the same thread.</p>`)
+	// It could not, and said so: "This happened on Mail, so a reply carries on
+	// there — answer it the way it arrived." That sentence described the product
+	// accurately and described an inbox you cannot answer from, which is not an
+	// inbox. Somebody reading a message here had two controls, one of which was
+	// a box captioned "This is not a reply", and the reasonable thing to do with
+	// the other was press it and hope.
+	//
+	// Mail only. The rest are somebody else's transport — a Discord thread is
+	// answered in Discord — and that is what the note underneath still says.
+	if to := replyTo(accountID, t, msgs); to != "" {
+		b.WriteString(replyBar(t, to))
+	} else {
+		b.WriteString(`<p class="ib-note">This happened on ` +
+			html.EscapeString(app.ClientName(t.Client)) + `, so a reply carries on there — answer it ` +
+			`the way it arrived and the agent picks it up in the same thread.</p>`)
+	}
 	b.WriteString(`</div>`)
 	return b.String()
+}
+
+// replyTo is the address a reply goes to, or empty where there is nobody to
+// reply to.
+//
+// The most recent person who is not you, rather than the oldest or the party
+// list, because a thread three people have written on is answered to whoever
+// spoke last — and because the party list has no order in it, so it cannot tell
+// you that.
+//
+// Only mail. A conversation from Discord or the web has an address on nothing.
+func replyTo(accountID string, t *thread.Thread, msgs []thread.Message) string {
+	if t.Client != mailClient {
+		return ""
+	}
+	for i := len(msgs) - 1; i >= 0; i-- {
+		m := msgs[i]
+		if m.Role == thread.RoleAgent {
+			continue
+		}
+		if from := strings.TrimSpace(m.From); from != "" && from != accountID {
+			return from
+		}
+	}
+	return ""
+}
+
+// replyBar is the way to answer, next to the way to ask the agent about it.
+//
+// A link rather than a box, because the compose page is where a message is
+// written and there is no reason for a second half-sized version of it here.
+// It arrives with the recipient and the subject filled in and the conversation
+// attached, so what comes back joins this thread instead of starting one.
+func replyBar(t *thread.Thread, to string) string {
+	subject := strings.TrimSpace(t.Subject)
+	if subject == "" {
+		subject = "your message"
+	}
+	// One Re:, however many times a subject has been round.
+	if !strings.HasPrefix(strings.ToLower(subject), "re:") {
+		subject = "Re: " + subject
+	}
+	q := url.Values{"to": {to}, "subject": {subject}, "on": {t.ID}}
+	return `<div class="ib-reply">` +
+		`<a class="ib-reply-go" href="/inbox/compose?` + q.Encode() + `">Reply</a>` +
+		`<span class="ib-reply-who">to ` + html.EscapeString(to) + `</span>` +
+		`</div>`
 }
 
 // partyLine says who is on a conversation.

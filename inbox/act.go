@@ -111,10 +111,11 @@ func action(w http.ResponseWriter, r *http.Request, accountID string) {
 // reply. Making them depend on the content would mean reading the content,
 // which is a model call to decide what to offer before anybody has asked for
 // anything.
-func askBox(r *http.Request, threadID string) string {
+func askBox(r *http.Request, threadID, replyWho string) string {
 	if Act == nil {
 		return ""
 	}
+	canReply := replyWho != ""
 	var b strings.Builder
 	b.WriteString(`<form class="ib-ask" method="post" action="/inbox">`)
 	b.WriteString(`<input type="hidden" name="id" value="` + html.EscapeString(threadID) + `">`)
@@ -124,7 +125,24 @@ func askBox(r *http.Request, threadID string) string {
 	}
 	b.WriteString(`<textarea name="ask" rows="2" maxlength="` + strconv.Itoa(askLimit) + `" ` +
 		`placeholder="Tell the agent what to do about this"></textarea>`)
-	b.WriteString(`<div class="ib-ask-row"><button type="submit">Ask</button>`)
+	// Pressed once, and it says so.
+	//
+	// This posts, runs a model for as long as a model takes, and redirects back
+	// to a page that looks exactly like the one it left. Nothing moved, nothing
+	// spun, and the button was still there to press — so the honest reading of
+	// the screen was that the press had not registered. Somebody asked their
+	// inbox to turn a sender down politely, pressed Ask twice on that reading,
+	// and paid for two runs.
+	//
+	// Inline rather than in mu.js because the whole behaviour is three
+	// assignments on one form and it belongs where the form is. The submit is
+	// not cancelled — disabling a submit button in its own handler would stop
+	// the POST — so the click goes through and the second one has nothing to
+	// click.
+	b.WriteString(`<div class="ib-ask-row"><button type="submit" ` +
+		`onclick="var f=this.form;setTimeout(function(){f.querySelectorAll('button').forEach(` +
+		`function(b){b.disabled=true});f.querySelector('button[type=submit]').textContent='Working…'},0)"` +
+		`>Ask</button>`)
 	for _, s := range []string{
 		"Summarise this",
 		"Draft a reply",
@@ -135,8 +153,18 @@ func askBox(r *http.Request, threadID string) string {
 		b.WriteString(`<button type="button" class="pill" onclick="this.form.ask.value='` +
 			html.EscapeString(s) + `';this.form.ask.focus()">` + html.EscapeString(s) + `</button>`)
 	}
-	b.WriteString(`</div><p class="ib-ask-note">This is not a reply — nothing here is sent to ` +
-		`anybody. What you ask and what it does are kept on this conversation.</p>`)
+	// What this box is not, and — where there is one — where the other thing is.
+	//
+	// "This is not a reply" was the whole caption, and on a page with no reply
+	// button anywhere it read as a statement that replying was not possible. It
+	// is a distinction now rather than a refusal.
+	note := `This is not a reply — nothing here is sent to anybody. What you ask ` +
+		`and what it does are kept on this conversation.`
+	if canReply {
+		note = `Not a reply — nothing typed here is sent. Use Reply above to answer ` +
+			`` + html.EscapeString(replyWho) + ` yourself, or ask the agent to draft it.`
+	}
+	b.WriteString(`</div><p class="ib-ask-note">` + note + `</p>`)
 	b.WriteString(`</form>`)
 	return b.String()
 }

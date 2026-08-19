@@ -81,6 +81,13 @@ func ComposeHandler(w http.ResponseWriter, r *http.Request) {
 		Subject: strings.TrimSpace(r.FormValue("subject")),
 		Body:    r.FormValue("body"),
 		Ask:     strings.TrimSpace(r.FormValue("ask")),
+		On:      strings.TrimSpace(r.FormValue("on")),
+	}
+	// A conversation somebody else's id names is not a conversation. Checked on
+	// the way in rather than at the point it is written, so a forged id is a
+	// blank compose form and never a message filed onto a stranger's thread.
+	if f.On != "" && thread.Get(acc.ID, f.On) == nil {
+		f.On = ""
 	}
 	if len(f.Body) > bodyLimit {
 		f.Body = f.Body[:bodyLimit]
@@ -119,6 +126,13 @@ type form struct {
 	Ask     string
 	Problem string
 	Done    string
+	// On is the conversation this answers, when it is one.
+	//
+	// A reply is a message with a thread already chosen, and that is the whole
+	// difference from a new one. Without it a reply filed itself as its own
+	// conversation and the page showed two: what they wrote, and what you sent
+	// back, side by side, neither knowing about the other.
+	On string
 }
 
 // drafted runs the agent over what is in the form and puts the answer back.
@@ -218,18 +232,28 @@ func sent(w http.ResponseWriter, r *http.Request, accountID string, f form) {
 	}
 
 	record(accountID, messageID, f)
+	// Back to the conversation when there was one, because that is where the
+	// answer now is. Sending from a reply and landing on the inbox list means
+	// looking for the thread you were just reading.
+	if f.On != "" {
+		http.Redirect(w, r, "/inbox?id="+url.QueryEscape(f.On), http.StatusSeeOther)
+		return
+	}
 	http.Redirect(w, r, "/inbox?sent="+url.QueryEscape(f.To), http.StatusSeeOther)
 }
 
 // record files what was sent as a conversation, keyed so the reply joins it.
 func record(accountID, messageID string, f form) {
-	key := messageID
-	if key == "" {
-		// Nothing to thread on, so it is at least its own conversation rather
-		// than landing in somebody else's.
-		key = "sent " + f.To + " " + f.Subject
+	th := replyTarget(accountID, f)
+	if th == nil {
+		key := messageID
+		if key == "" {
+			// Nothing to thread on, so it is at least its own conversation rather
+			// than landing in somebody else's.
+			key = "sent " + f.To + " " + f.Subject
+		}
+		th = thread.Open(accountID, mailClient, key)
 	}
-	th := thread.Open(accountID, mailClient, key)
 	if th == nil {
 		return
 	}
@@ -244,6 +268,19 @@ func record(accountID, messageID string, f form) {
 	thread.Join(accountID, th.ID, thread.Party{Kind: thread.RolePerson, Key: f.To})
 }
 
+// replyTarget is the conversation a reply belongs on, or nil for a new message.
+//
+// Re-checked here rather than trusted from the form, because this is the call
+// that writes: ComposeHandler cleared a bad id on the way in, and a second look
+// costs a map lookup and means the write cannot be reached with an id that was
+// never checked.
+func replyTarget(accountID string, f form) *thread.Thread {
+	if f.On == "" {
+		return nil
+	}
+	return thread.Get(accountID, f.On)
+}
+
 // mailClient is what the record calls a mail conversation. The same string
 // client/mail uses, so a sent message and the reply to it are one conversation
 // on one client rather than two — it is a constant here rather than an import
@@ -254,10 +291,20 @@ const mailClient = "mail"
 func compose(w http.ResponseWriter, r *http.Request, accountID string, f form) {
 	var b strings.Builder
 	b.WriteString(`<div class="ib">`)
-	b.WriteString(app.Actions(app.TextLink("← Inbox", "/inbox")))
+	// Back where you came from. A reply reached from a conversation that offers
+	// "← Inbox" sends you to the list, which is one step past where you were.
+	back := app.TextLink("← Inbox", "/inbox")
+	if f.On != "" {
+		back = app.TextLink("← Back to the conversation", "/inbox?id="+url.QueryEscape(f.On))
+	}
+	b.WriteString(app.Actions(back))
 
 	if from := mail.EmailForUser(accountID, mail.ConfiguredDomain()); from != "" {
 		b.WriteString(`<p class="ib-from-line">From <code>` + html.EscapeString(from) + `</code></p>`)
+	}
+	if f.On != "" {
+		b.WriteString(`<p class="ib-from-line">Replying to <code>` +
+			html.EscapeString(f.To) + `</code> — this lands on the same conversation.</p>`)
 	}
 	if f.Problem != "" {
 		b.WriteString(`<p class="ib-ask-problem">` + html.EscapeString(f.Problem) + `</p>`)
@@ -265,6 +312,9 @@ func compose(w http.ResponseWriter, r *http.Request, accountID string, f form) {
 
 	b.WriteString(`<form class="ib-compose" method="post" action="/inbox/compose">`)
 	b.WriteString(`<input type="hidden" name="_csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `">`)
+	if f.On != "" {
+		b.WriteString(`<input type="hidden" name="on" value="` + html.EscapeString(f.On) + `">`)
+	}
 	b.WriteString(`<input class="ib-field" type="email" name="to" required placeholder="To" value="` +
 		html.EscapeString(f.To) + `">`)
 	b.WriteString(`<input class="ib-field" type="text" name="subject" placeholder="Subject" value="` +

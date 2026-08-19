@@ -224,8 +224,10 @@ func conversation(w http.ResponseWriter, r *http.Request, accountID, id string) 
 	b.WriteString(app.Actions(app.TextLink("← Inbox", "/inbox"),
 		unreadButton(r, t.ID, wasUnread), deleteButton(r, t.ID)))
 	b.WriteString(ConversationView(accountID, t))
-	// The agent, on the thing you are reading. See act.go.
-	b.WriteString(askBox(r, t.ID))
+	// The agent, on the thing you are reading. See act.go. It is told who a
+	// reply would go to, so its caption can point at the Reply button rather
+	// than only saying what it is not.
+	b.WriteString(askBox(r, t.ID, replyTo(accountID, t, thread.Messages(accountID, t.ID, MessagesShown))))
 	b.WriteString(`</div>`)
 
 	app.Respond(w, r, app.Response{Title: subject, Description: "A conversation", HTML: b.String()})

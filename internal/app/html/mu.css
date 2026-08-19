@@ -5902,6 +5902,37 @@ button.pill:hover {
 .ib-ask-note { font-size: 12px; color: var(--text-muted, #888); margin: 9px 0 0 }
 .ib-ask-problem { font-size: 13px; color: var(--btn-danger, #c00); margin: 0 0 9px }
 
+/* A run in flight. The button reports that it is working and stops taking
+   presses — a POST that redirects on completion looks identical to one that
+   did nothing, which is how the same instruction got sent twice. */
+.ib-ask button[type=submit][disabled] {
+  background: var(--text-muted, #888);
+  border-color: var(--text-muted, #888);
+  cursor: default;
+}
+
+/* Replying, on a mail conversation. See inbox/conversation.go. */
+.ib-reply {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+
+.ib-reply-go {
+  font-size: 13px;
+  font-weight: var(--font-weight-bold, 700);
+  padding: 7px 18px;
+  border-radius: 999px;
+  background: var(--btn-primary, #000);
+  color: #fff;
+  text-decoration: none;
+}
+
+.ib-reply-go:hover { background: var(--btn-primary-hover, #333) }
+.ib-reply-who { font-size: 12px; color: var(--text-muted, #888) }
+
 /* The inbox on Home. Same conversations, narrower column. */
 /* The inbox on Home.
    

@@ -37,7 +37,7 @@ func TestAConversationCarriesTheAskBox(t *testing.T) {
 	t.Cleanup(func() { Act = nil })
 
 	r := httptest.NewRequest("GET", "/inbox?id=x", nil)
-	body := askBox(r, "x")
+	body := askBox(r, "x", "")
 
 	for _, want := range []string{`method="post"`, `action="/inbox"`,
 		`name="id" value="x"`, `name="_csrf"`, `name="ask"`} {
@@ -56,7 +56,7 @@ func TestAConversationCarriesTheAskBox(t *testing.T) {
 // is a control that does nothing.
 func TestNoAgentMeansNoBox(t *testing.T) {
 	Act = nil
-	if got := askBox(httptest.NewRequest("GET", "/inbox?id=x", nil), "x"); got != "" {
+	if got := askBox(httptest.NewRequest("GET", "/inbox?id=x", nil), "x", ""); got != "" {
 		t.Errorf("a box was drawn with nothing behind it: %s", got)
 	}
 }
