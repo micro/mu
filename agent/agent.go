@@ -2625,7 +2625,50 @@ func formatToolResult(toolName, result string, args map[string]any) string {
 	case "apps_run":
 		return formatAppsRunResult(result)
 	}
-	return result
+	return plainToolText(result)
+}
+
+// plainToolText unwraps the envelope every service answers in.
+//
+// The switch above names the tools somebody has written a formatter for, and
+// everything else fell through as the literal bytes the tool returned — which
+// for a go-micro service is `{"text":"..."}`, because that is the response shape
+// the convention asks for. Most of the time nobody sees it: the model reads it,
+// understands it perfectly well, and writes prose. But the freshness guard in
+// answer_guard.go replaces a suspect answer with a rendering of the tool results
+// themselves, and at that moment the raw envelope is the answer — which is how
+// somebody asking their inbox to turn a sender down politely got
+// `{"text":"Your inbox (5 messages):\n- ..."}` back as the agent's reply.
+//
+// So the default case unwraps rather than passing through. Doing it here rather
+// than adding `mail_inbox` to the switch is the point: a list that has to be
+// extended for every service written from now on is a list that will be missing
+// the next one, and this is the shape they all share.
+//
+// Only a lone text field. An object with more in it — a price, a list, a
+// structured answer — is left alone, because dropping its other fields would
+// lose what a formatter is supposed to keep.
+func plainToolText(result string) string {
+	trimmed := strings.TrimSpace(result)
+	if !strings.HasPrefix(trimmed, "{") {
+		return result
+	}
+	var body map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(trimmed), &body); err != nil {
+		return result
+	}
+	raw, ok := body["text"]
+	if !ok || len(body) != 1 {
+		return result
+	}
+	var text string
+	if err := json.Unmarshal(raw, &text); err != nil {
+		return result
+	}
+	if strings.TrimSpace(text) == "" {
+		return result
+	}
+	return text
 }
 
 // formatMarketsResult converts raw markets tool JSON into readable price context

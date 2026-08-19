@@ -1,6 +1,7 @@
 package home
 
 import (
+	"encoding/json"
 	"html"
 	"net/http"
 	"strconv"
@@ -101,6 +102,20 @@ func Landing(w http.ResponseWriter, r *http.Request) {
 // a comment inside the <style> block is served to every visitor — which is how
 // a test looking for "Connect via MCP" on the page found it in the note saying
 // the section had been removed.
+// landingRoles are the words that retype themselves after the plus.
+//
+// One list, read twice: the script cycles it and the stylesheet reserves room
+// for the longest of them. Two lists would drift, and the drift is invisible —
+// a word longer than whatever the CSS was hardcoded to would push the domain
+// along on that word alone, which is the kind of thing nobody sees until it is
+// on the front page.
+//
+// "agent" is first because it is what the address is when nobody has chosen,
+// and the rest are the ordinary parts of a life rather than the names of
+// services — one agent per thing you deal with is the idea, and you+markets@
+// would be a smaller and wronger claim.
+var landingRoles = []string{"agent", "research", "work", "family", "money", "travel"}
+
 func landingBody(host string) string {
 	// The tool count is counted, not claimed. This said "67 real tools" as a
 	// literal and the endpoint was serving 72 by the time anyone checked.
@@ -123,20 +138,52 @@ func landingBody(host string) string {
 	// is permanently reachable and remembers. An address is the only handle that
 	// needs nothing on the other side — no SDK, no OAuth, no protocol to adopt —
 	// so a person can use it, another agent can use it, a form can use it.
-	addr := mail.SharedAgentAddress()
-	if addr == "" {
-		addr = "agent@" + host
+	//
+	// It is shown as you+agent@ rather than agent@, and the paragraph explaining
+	// the difference has gone with it. That paragraph was three sentences doing
+	// the work the address does by itself: agent@ is this instance's shared one,
+	// yours are you+something@, and a reader who has to be told that in prose is
+	// a reader looking at the wrong address. The form is the explanation.
+	domain := mail.ConfiguredDomain()
+	if domain == "" {
+		domain = host
 	}
+	longestRole := 0
+	for _, w := range landingRoles {
+		if len(w) > longestRole {
+			longestRole = len(w)
+		}
+	}
+	roles, _ := json.Marshal(landingRoles)
+	// The word after the plus retypes itself. It is the one animation on the
+	// page and it is carrying an argument rather than decorating one: a static
+	// you+agent@ looks like the address, and the whole point is that the word is
+	// yours to pick. Watching it deleted and retyped says "anything goes here"
+	// without a sentence saying so — which is the sentence that was just cut.
+	//
+	// The names are the ordinary ones somebody would actually choose. Naming
+	// services instead (you+markets@) would be a smaller claim and a wrong one:
+	// an agent is not a service, and one per part of your life is the idea.
+	//
+	// It degrades to plain text with no script and holds still for anybody who
+	// asked their system not to animate things.
+	//
+	// The box is a fixed width and the word is not, which is the way round that
+	// looks right. Padding the word to its longest left a hole between it and the
+	// @ — "you+money⎵⎵⎵@micro.mu" — because the gap has to go somewhere. Sizing
+	// the box instead puts the slack after the domain, where there is nothing to
+	// see: the left edge and the rule under it never move, and the tail slides
+	// the way a tail does when you delete a word in front of it. The width is
+	// "you+" and "@" (5) plus the longest role plus the domain, counted here
+	// because only Go knows the domain.
 	return `<div class="lwrap">
 <h2 class="lhead">A personal agent.</h2>
 <p class="lead">It has an email address. Write to it and it answers — with
 ` + strconv.Itoa(api.ToolCount()) + ` tools behind it: news, web search, mail, markets,
 weather, places, storage.</p>
 
-<div class="laddr"><code>` + html.EscapeString(addr) + `</code></div>
-<p class="laddrnote">That one reaches the default agent. Your own get their own —
-<code>you+research@</code> — and each answers in the thread, remembers the last
-one, and can be reached from anywhere that can send an email.</p>
+<div class="laddr"><code>you+<span id="lrole">agent</span><span class="lcaret" aria-hidden="true"></span>@` +
+		html.EscapeString(domain) + `</code></div>
 
 <div class="lctas">
   <a class="lcta" href="/signup">Get an agent →</a>
@@ -151,15 +198,38 @@ one, and can be reached from anywhere that can send an email.</p>
 .lead{max-width:560px;text-align:center;color:#555;font-size:17px;line-height:1.6;margin:0 auto 22px}
 .lead a{color:#111}
 .laddr{text-align:center;margin:0 auto 12px}
+#lrole{color:#111}
+.lcaret{display:inline-block;width:1px;height:1em;margin:0 1px -.15em 0;background:#bbb;
+  animation:lblink 1.05s step-end infinite}
+@keyframes lblink{0%,100%{opacity:1}50%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.lcaret{display:none}}
 .laddr code{display:inline-block;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
-  font-size:20px;font-weight:400;color:slategray;letter-spacing:-.01em;overflow-wrap:anywhere;
-  padding-bottom:6px;border-bottom:1px solid #e8e8ea}
-.laddrnote{max-width:560px;margin:0 auto 24px;text-align:center;font-size:13px;color:#888;line-height:1.55}
-.laddrnote code{background:#f4f4f5;border-radius:4px;padding:1px 5px;font-size:.95em}
+  font-size:20px;font-weight:400;color:slategray;letter-spacing:-.01em;text-align:left;
+  min-width:` + strconv.Itoa(5+longestRole+len(domain)) + `ch;padding-bottom:6px;border-bottom:1px solid #e8e8ea}
 .lctas{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin:0}
 .lcta{display:inline-block;background:#111;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:700;font-size:15px}
 .lcta-alt{background:#fff;color:#111;border:1px solid #ddd}
 .lcta-alt:hover{border-color:#bbb}
 @media (max-width:640px){.lead{font-size:15px}}
-</style>`
+</style>
+
+<script>
+(function(){
+  var el=document.getElementById('lrole');
+  if(!el)return;
+  if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion:reduce)').matches)return;
+  var words=` + string(roles) + `;
+  var i=0,n=words[0].length,cut=true;
+  function tick(){
+    n+=cut?-1:1;
+    el.textContent=words[i].slice(0,n);
+    var wait;
+    if(cut&&n===0){cut=false;i=(i+1)%words.length;wait=280;}
+    else if(!cut&&n===words[i].length){cut=true;wait=2400;}
+    else{wait=cut?55:90;}
+    setTimeout(tick,wait);
+  }
+  setTimeout(tick,2000);
+})();
+</script>`
 }
