@@ -24,7 +24,7 @@ The submission forms converge on the same questions. Mu answers all of them:
 | Privacy policy URL | <https://micro.mu/privacy> |
 
 Check the first four against a running instance before submitting anywhere.
-At the time of writing that is 119 tools, all titled and annotated, the longest
+At the time of writing that is 120 tools, all titled and annotated, the longest
 name 17 characters — well inside the 64 the registries cap at:
 
 ```bash
@@ -112,5 +112,5 @@ submissions before spending time on it.
 
 The catalogue is the argument. Most entries in these directories are a wrapper
 over one API; this one runs the mail server, the feed aggregator, the search
-index and the app sandbox, and exposes 119 tools over a single endpoint. Lead
+index and the app sandbox, and exposes 120 tools over a single endpoint. Lead
 with that rather than the tool count — the count is a consequence.

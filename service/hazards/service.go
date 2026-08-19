@@ -184,6 +184,12 @@ var Spec = service.Spec{
 				"long ago. Pass lat/lon to ask about somewhere in particular, min for a " +
 				"magnitude floor, and period for hour, day, week or month",
 		},
+		"Floods": {
+			Doc: "Flood warnings and alerts in force in England, most severe first, from the " +
+				"Environment Agency. The one hazard here that is a forecast rather than a " +
+				"record — a warning says flooding is expected, which is something you can " +
+				"act on. Optionally near a point. England only, and the answer says so",
+		},
 	},
 }
 

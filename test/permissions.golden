@@ -44,6 +44,7 @@ food_hygiene                 needsAccount=false destructive=false open accountOn
 food_product                 needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 food_search                  needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 hazards_alerts               needsAccount=false destructive=false open accountOnly=false optionalAuth=false
+hazards_floods               needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 hazards_quakes               needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 images_generate              needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 images_search                needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
