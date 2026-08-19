@@ -166,20 +166,30 @@ func TestCardHTMLShowsWeatherUnavailableOnFetchFailure(t *testing.T) {
 	}
 }
 
-func TestRenderWeatherPageGuestShowsAgentPathAndLoginScope(t *testing.T) {
-	got := renderWeatherPage(httptest.NewRequest("GET", "/weather", nil))
-	for _, want := range []string{
-		"Weather forecasts are available through Mu's agent for guests",
-		`href="/agent?q=Weather%20in%20San%20Francisco"`,
-		"saved location forecasts, pollen, and credit-backed refreshes require an account",
-		`href="/login"`,
-	} {
-		if !strings.Contains(got, want) {
-			t.Fatalf("guest weather page missing %q in:\n%s", want, got)
-		}
+// The page a guest gets is no longer this package's to render. It is the card
+// plus the tool list, derived from the Spec — see api.ServicePage — and the
+// thing the old test was protecting, that a guest is not sent to a dead-end
+// login prompt, is now true of every service page at once rather than of this
+// one because somebody remembered.
+//
+// What is still this package's business is that the Spec says enough for that
+// page to be worth reading. A service with no description and no card renders
+// as a heading and a list of tool names.
+func TestTheSpecCarriesEnoughToDrawThePage(t *testing.T) {
+	if Spec.Description == "" {
+		t.Error("no description, so the page opens with a blank line")
 	}
-	if strings.Contains(got, "Please <a href=\"/login\">log in</a> to use Weather") {
-		t.Fatalf("guest weather page should not be a dead-end login prompt:\n%s", got)
+	if Spec.Card == nil {
+		t.Error("no card, so the page cannot show what the weather is — which is " +
+			"the only reason somebody opened it")
+	}
+	if len(Spec.Endpoints) == 0 {
+		t.Error("no endpoints, so there is nothing to say it can be asked")
+	}
+	for name, e := range Spec.Endpoints {
+		if e.Doc == "" {
+			t.Errorf("%s has no doc, so it is a name with nothing beside it", name)
+		}
 	}
 }
 

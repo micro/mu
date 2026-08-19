@@ -361,6 +361,18 @@ func wireHooks() {
 			agent.QueryOpts{System: agent.DraftPrompt("")})
 	}
 
+	// The specialist for a service, on that service's page. Names match by
+	// design — the weather agent is the one that calls the weather tools — so
+	// this is a lookup rather than a table, and a service with no specialist
+	// gets no line rather than a link to the general one.
+	api.AgentPrompts = func(name string) (string, []string) {
+		a := micro.Get(name)
+		if a == nil {
+			return "", nil
+		}
+		return agent.Path("", a.ID), a.Examples
+	}
+
 	// The rail lists your things. Your mailboxes and your agents are yours,
 	// there are a handful, and they are what you move between — so they sit
 	// under their headings in the sidebar rather than behind a page. Tools and

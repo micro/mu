@@ -6035,3 +6035,57 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
   overflow-x: auto;
   margin: 0 0 8px;
 }
+
+/* A service, derived from its Spec. See internal/api/service_page.go. */
+.svc-page { max-width: 760px }
+.svc-lead { font-size: 15px; color: var(--text-secondary, #555); margin: 0 0 var(--spacing-md, 16px); line-height: var(--line-height, 1.6) }
+
+/* The card, at the size the page has room for. It is the answer somebody came
+   for; everything under it is about how to ask for more. */
+.svc-card {
+  border: var(--border-width, 1px) solid var(--card-border, #e8e8e8);
+  border-radius: var(--border-radius, 6px);
+  padding: var(--item-padding, 16px);
+  margin: 0 0 var(--spacing-lg, 24px);
+  background: var(--card-background, #fff);
+}
+
+.svc-h { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted, #888); margin: var(--spacing-lg, 24px) 0 10px; font-weight: var(--font-weight-semibold, 600) }
+.svc-tools { display: flex; flex-direction: column }
+
+.svc-tool {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: var(--border-width, 1px) solid var(--divider, #f0f0f0);
+  text-decoration: none;
+  color: inherit;
+}
+
+.svc-tool:hover .svc-tool-name { text-decoration: underline }
+.svc-tool-name { flex: 0 0 auto; font-size: 13px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text-primary, #1a1a1a) }
+.svc-tool-desc { flex: 1; min-width: 0; font-size: 13px; color: var(--text-muted, #888); overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.svc-price, .svc-free { flex: none; font-size: 11px; color: var(--text-muted, #888); white-space: nowrap }
+.svc-doors { font-size: 13px; color: var(--text-muted, #888); margin: var(--spacing-lg, 24px) 0 0; line-height: var(--line-height, 1.6) }
+
+@media (max-width: 640px) {
+  .svc-tool { flex-wrap: wrap; gap: 2px 10px }
+  .svc-tool-desc { flex: 1 0 100%; white-space: normal }
+}
+
+/* Somewhere to go for a person, on a service page whose card needs a session.
+   See askTheAgent in internal/api/service_page.go. */
+.svc-ask {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 var(--spacing-lg, 24px);
+  padding: 12px 14px;
+  background: var(--hover-background, #fafafa);
+  border: var(--border-width, 1px) solid var(--divider, #f0f0f0);
+  border-radius: var(--border-radius, 6px);
+}
+
+.svc-ask-lead { flex: 1 0 100%; font-size: 13px; color: var(--text-secondary, #555); margin-bottom: 2px }
