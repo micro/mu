@@ -452,6 +452,15 @@ func (s *Session) Data(r io.Reader) error {
 	messageID := msg.Header.Get("Message-ID")
 	inReplyTo := msg.Header.Get("In-Reply-To")
 	references := msg.Header.Get("References")
+	// Everybody the message went to, which is a different question from the one
+	// recipient this pass is delivering to.
+	//
+	// SMTP does not distinguish To from Cc — both arrive as RCPT TO — so being
+	// copied into somebody's conversation already reached this far. What was
+	// missing is any record of who else is on it, so the reply went to the
+	// sender alone: the agent answered one person in a room of three. See cc.go.
+	headerTo := Recipients(msg.Header.Get("To"))
+	headerCc := Recipients(msg.Header.Get("Cc"))
 
 	// A message with no id of its own gets one here.
 	//
@@ -814,6 +823,8 @@ func (s *Session) Data(r io.Reader) error {
 			Subject:    subject,
 			Body:       body,
 			Text:       stripHTMLTags(body),
+			Others:     Others(headerTo, headerCc, fromAddr.Address),
+			ToAgent:    inList(headerTo, toAddr.Address),
 			MessageID:  messageID,
 			InReplyTo:  inReplyTo,
 			References: references,
@@ -1366,6 +1377,21 @@ type InboundMail struct {
 	// chose to send it.
 	Body string
 	Text string
+
+	// Others is everybody else on the message: the people who will read the
+	// reply besides the sender, with this instance's own addresses removed.
+	//
+	// Empty for the ordinary case — one person writing to their agent — and
+	// non-empty exactly when the agent has been put into a conversation that
+	// already had people in it. That is the whole difference between answering
+	// somebody and joining a thread, and everything downstream keys on it. See
+	// cc.go.
+	Others []string
+
+	// ToAgent is whether the agent's address was in To rather than only Cc.
+	// Being in To is somebody speaking to it; being in Cc is somebody adding it
+	// to what they were already saying to each other.
+	ToAgent bool
 
 	MessageID string // for threading the reply
 

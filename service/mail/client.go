@@ -113,6 +113,23 @@ func SendExternalReply(displayName, from, to, subject, bodyPlain, bodyHTML,
 		inReplyTo, references)
 }
 
+// SendExternalReplyAll is a reply that keeps everybody else on the thread.
+//
+// The one-to-one SendExternalReply answers the sender, which is right when the
+// sender is the only other person there. Once the agent has been copied into a
+// conversation, answering the sender alone leaves the rest of the thread
+// watching half of it — and the next reply-all from anybody carries the agent's
+// answer to them anyway, out of order and without its question.
+//
+// cc is everybody else, already stripped of this instance's own addresses by
+// mail.Others: an agent that copies itself answers its own answer, forever, at
+// a model call a turn.
+func SendExternalReplyAll(displayName, from, to string, cc []string, subject, bodyPlain, bodyHTML,
+	inReplyTo, references string) (string, error) {
+	return sendExternalTo(displayName, from, "", to, cc, subject, bodyPlain, bodyHTML,
+		inReplyTo, references)
+}
+
 // SendExternalAs sends under a From this instance signs for, with answers
 // directed somewhere else.
 //
@@ -126,9 +143,19 @@ func SendExternalAs(displayName, from, replyTo, to, subject, bodyPlain, bodyHTML
 }
 
 func sendExternal(displayName, from, replyTo, to, subject, bodyPlain, bodyHTML string, replyToMsgID, references string) (string, error) {
-	message, messageID := buildExternal(displayName, from, replyTo, to, subject,
+	return sendExternalTo(displayName, from, replyTo, to, nil, subject, bodyPlain, bodyHTML, replyToMsgID, references)
+}
+
+// sendExternalTo is sendExternal with other people copied in.
+//
+// Separate rather than another positional parameter on the four functions above
+// it, because every one of those call sites would then carry a nil that means
+// "nobody else is here" — and the one case where somebody is is the interesting
+// one. See SendExternalReplyAll.
+func sendExternalTo(displayName, from, replyTo, to string, cc []string, subject, bodyPlain, bodyHTML string, replyToMsgID, references string) (string, error) {
+	message, messageID := buildExternalTo(displayName, from, replyTo, to, cc, subject,
 		bodyPlain, bodyHTML, replyToMsgID, references)
-	return finishExternal(message, from, to, messageID)
+	return finishExternal(message, from, to, cc, messageID)
 }
 
 // buildExternal assembles the message, and is separate from sending it so the
@@ -139,6 +166,10 @@ func sendExternal(displayName, from, replyTo, to, subject, bodyPlain, bodyHTML s
 // message that displays as nothing, and no test could see it because building
 // and relaying were one function.
 func buildExternal(displayName, from, replyTo, to, subject, bodyPlain, bodyHTML string, replyToMsgID, references string) ([]byte, string) {
+	return buildExternalTo(displayName, from, replyTo, to, nil, subject, bodyPlain, bodyHTML, replyToMsgID, references)
+}
+
+func buildExternalTo(displayName, from, replyTo, to string, cc []string, subject, bodyPlain, bodyHTML string, replyToMsgID, references string) ([]byte, string) {
 	// Extract username from email for Message-ID
 	username := from
 	if strings.Contains(from, "@") {
@@ -161,6 +192,12 @@ func buildExternal(displayName, from, replyTo, to, subject, bodyPlain, bodyHTML 
 	}
 	msg.WriteString(fmt.Sprintf("From: %s\r\n", fromHeader))
 	msg.WriteString(fmt.Sprintf("To: %s\r\n", to))
+	// Everybody else on the thread, so their clients show the answer as part of
+	// the conversation rather than as a separate message that happens to say
+	// the same thing.
+	if len(cc) > 0 {
+		msg.WriteString(fmt.Sprintf("Cc: %s\r\n", strings.Join(cc, ", ")))
+	}
 	msg.WriteString(fmt.Sprintf("Subject: %s\r\n", subject))
 	msg.WriteString(fmt.Sprintf("Date: %s\r\n", time.Now().Format(time.RFC1123Z)))
 	msg.WriteString(fmt.Sprintf("Message-ID: %s\r\n", messageID))
@@ -256,7 +293,7 @@ func buildExternal(displayName, from, replyTo, to, subject, bodyPlain, bodyHTML 
 // Split out because a message with no HTML alternative is finished earlier and
 // must be signed and relayed the same way — a second copy of this would be a
 // second place for DKIM to be forgotten.
-func finishExternal(message []byte, from, to, messageID string) (string, error) {
+func finishExternal(message []byte, from, to string, cc []string, messageID string) (string, error) {
 	// Apply DKIM signing if configured
 	if dkimConfig != nil {
 		options := &dkim.SignOptions{
@@ -265,7 +302,10 @@ func finishExternal(message []byte, from, to, messageID string) (string, error) 
 			Signer:                 dkimConfig.PrivateKey,
 			HeaderCanonicalization: dkim.CanonicalizationRelaxed,
 			BodyCanonicalization:   dkim.CanonicalizationRelaxed,
-			HeaderKeys:             []string{"from", "to", "subject", "date", "message-id", "mime-version", "content-type"},
+			// Cc is signed too. A recipient list that is not covered by the
+			// signature can be rewritten in transit, which on a reply-all is
+			// the header that says who else is in the room.
+			HeaderKeys: []string{"from", "to", "cc", "subject", "date", "message-id", "mime-version", "content-type"},
 		}
 
 		var signedBuf bytes.Buffer
@@ -290,6 +330,17 @@ func finishExternal(message []byte, from, to, messageID string) (string, error) 
 	if err := RelayToExternal(from, to, message); err != nil {
 		app.Log("mail", "✗ Failed to relay email: %v", err)
 		return "", fmt.Errorf("failed to relay email: %v", err)
+	}
+	// And to everybody copied. One relay each, with the same message: the Cc
+	// header already names them all, so each client shows the whole room.
+	// A failure here is logged and not returned — the answer reached the person
+	// who asked, and losing that because a third recipient's server was down
+	// would be the wrong trade.
+	for _, addr := range cc {
+		RecordOutbound(messageID, addr)
+		if err := RelayToExternal(from, addr, message); err != nil {
+			app.Log("mail", "✗ could not copy %s on the reply: %v", addr, err)
+		}
 	}
 
 	app.Log("mail", "✓ Email relayed successfully")

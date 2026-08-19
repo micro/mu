@@ -155,6 +155,23 @@ func answerMail(m mail.InboundMail) {
 	case platID != "":
 		name, ref = platName, platID
 	}
+	// Whether this message is for the agent at all.
+	//
+	// It always is when nobody else is on it — that is what writing to an agent
+	// means. Once the agent has been copied into a conversation between other
+	// people, answering every message would be a model call a turn and an
+	// interruption a turn, which is how a thing gets muted. It speaks when it is
+	// spoken to and when it has just arrived; otherwise it listens. See
+	// thread.go and mail.Addressed.
+	//
+	// Nothing is lost by staying quiet: the message is already stored and
+	// already in the record, so the next question it *is* asked has the whole
+	// conversation behind it.
+	if !wanted(m.Owner, m) {
+		app.Log("mail", "agent %s is on this thread but was not addressed; staying quiet", name)
+		return
+	}
+
 	started := time.Now()
 	trigger := "email from " + m.From
 
@@ -237,7 +254,13 @@ func answerMail(m mail.InboundMail) {
 		// Render, not RenderTrusted: the body is model output, so raw HTML
 		// in it is escaped rather than passed through.
 		plain := app.NormalizeAnswerMarkdown(body)
-		sent, err := mail.SendExternalReply(name, from, m.From, subject,
+		// Everybody on the thread, and the line that says what this is the
+		// first time somebody else is in the room. See thread.go — the
+		// introduction is empty for an ordinary one-to-one message, which is
+		// every message from somebody writing to their own agent.
+		to, cc := replyTo(m)
+		plain = introduction(m.Owner, m, from) + plain
+		sent, err := mail.SendExternalReplyAll(name, from, to, cc, subject,
 			plain, app.RenderString(plain), m.MessageID, m.References)
 		// The id the answer went out under, so the reply to *it* finds this
 		// turn. Recorded even when delivery failed below, because a message
@@ -312,12 +335,15 @@ func answerMail(m mail.InboundMail) {
 	// anything worth remembering are its business. What is passed is what only
 	// mail knows — which turn this answers, and the ids that will find it again.
 	res, err := agent.Ask(agent.AskRequest{
-		Account:    m.Owner,
-		Client:     Client,
-		Thread:     chainKey(m),
-		Text:       prompt,
-		Agent:      ref,
-		System:     agent.MailPrompt(""),
+		Account: m.Owner,
+		Client:  Client,
+		Thread:  chainKey(m),
+		Text:    prompt,
+		Agent:   ref,
+		// Told whether it is alone with the sender or copied into somebody
+		// else's conversation, because everything about how it should write
+		// changes with that. See agent.GroupPrompt.
+		System:     agent.GroupPrompt(m.Others),
 		Trigger:    trigger,
 		Ref:        m.InReplyTo + " " + m.References,
 		MessageRef: m.MessageID,
