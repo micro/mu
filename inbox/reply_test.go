@@ -29,9 +29,17 @@ func TestAMailConversationCanBeAnswered(t *testing.T) {
 
 	page := ConversationView(who, th)
 
-	if !strings.Contains(page, "ib-reply-go") {
+	if !strings.Contains(page, ">Reply</a>") {
 		t.Fatal("a mail conversation has no Reply — the only thing on the page is a " +
 			"box that says it is not a reply")
+	}
+	// The site's own button, not one drawn here. mu.css has a global
+	// `a:visited { color: #000 }`, so a hand-made black pill is legible until
+	// you use it and black-on-black afterwards — which is what happened. a.btn
+	// carries color:#fff !important precisely because this was fixed once.
+	if !strings.Contains(page, `class="btn"`) {
+		t.Error("Reply is not an a.btn, so it is a second button that has to " +
+			"re-learn everything the first one already knows")
 	}
 	// Addressed to the sender, on this conversation, with the subject carried.
 	for _, want := range []string{"to=henrik%40example.com", "on=" + th.ID} {
@@ -73,7 +81,7 @@ func TestAConversationFromElsewhereStillPointsThere(t *testing.T) {
 	thread.Add(thread.Message{Thread: th.ID, Account: who, Text: "hello", From: "someone"})
 
 	page := ConversationView(who, th)
-	if strings.Contains(page, "ib-reply-go") {
+	if strings.Contains(page, "/inbox/compose?") {
 		t.Error("a conversation that did not arrive by mail is offering to send an email")
 	}
 }

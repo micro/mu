@@ -90,7 +90,16 @@ a:hover {
   text-decoration: underline;
 }
 
-a:visited {
+/* Not on a filled button. This rule is one element plus one pseudo-class, so it
+   outranks any plain class selector — which means every button-shaped anchor on
+   the site turns black-on-black the moment somebody uses it. a.btn survived it
+   only by carrying `color: #fff !important`, and the inbox's Reply, drawn by
+   hand as a black pill, did not: it was legible until you clicked it.
+
+   Excluding the button here is the fix; the !important below is now belt as
+   well as braces. Anything that wants to look like a call to action should be
+   an a.btn (app.ActionLink) rather than a new class that has to re-learn this. */
+a:visited:not(.btn) {
   color: #000;
 }
 
@@ -5970,18 +5979,10 @@ button.pill:hover {
 .ib-ask textarea:focus { outline: none; border-color: #bbb }
 .ib-ask-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center }
 
-.ib-ask button[type=submit] {
-  font: inherit;
-  font-size: 13px;
-  padding: 6px 16px;
-  border: var(--border-width, 1px) solid var(--btn-primary, #000);
-  background: var(--btn-primary, #000);
-  color: #fff;
-  border-radius: 999px;
-  cursor: pointer;
-}
-
-.ib-ask button[type=submit]:hover { background: var(--btn-primary-hover, #333); border-color: var(--btn-primary-hover, #333) }
+/* Ask and Send are the plain `button` at the top of this file — the same one
+   every form on the site submits with. They were redeclared here at 13px with
+   a 999px radius, which is why the inbox looked like a different product from
+   the page next to it: it had its own button. */
 .ib-ask-note { font-size: 12px; color: var(--text-muted, #888); margin: 9px 0 0 }
 .ib-ask-problem { font-size: 13px; color: var(--btn-danger, #c00); margin: 0 0 9px }
 
@@ -6003,17 +6004,10 @@ button.pill:hover {
   margin-top: 20px;
 }
 
-.ib-reply-go {
-  font-size: 13px;
-  font-weight: var(--font-weight-bold, 700);
-  padding: 7px 18px;
-  border-radius: 999px;
-  background: var(--btn-primary, #000);
-  color: #fff;
-  text-decoration: none;
-}
-
-.ib-reply-go:hover { background: var(--btn-primary-hover, #333) }
+/* Reply is an a.btn like every other call to action on the site. It was drawn
+   here instead, as a black pill with color:#fff — and `a:visited { color: #000 }`
+   above outranks a plain class, so it went black-on-black once used. a.btn
+   carries color:#fff !important for exactly that reason. */
 .ib-reply-who { font-size: 12px; color: var(--text-muted, #888) }
 
 /* The inbox on Home. Same conversations, narrower column. */
@@ -6112,18 +6106,6 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
 
 .ib-draft .ib-field { background: var(--card-background, #fff) }
 
-.ib-compose button[type=submit]:not(.pill) {
-  font: inherit;
-  font-size: 13px;
-  padding: 6px 18px;
-  border: var(--border-width, 1px) solid var(--btn-primary, #000);
-  background: var(--btn-primary, #000);
-  color: #fff;
-  border-radius: 999px;
-  cursor: pointer;
-}
-
-.ib-compose button[type=submit]:not(.pill):hover { background: var(--btn-primary-hover, #333); border-color: var(--btn-primary-hover, #333) }
 .ib-compose .ib-ask-note { margin: 0 }
 .ib-compose-link { margin-left: auto }
 .ib-sent { font-size: 13px; color: var(--btn-success, #1a7f37); margin: 0 0 12px }

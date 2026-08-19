@@ -74,8 +74,16 @@ func TestPagesDoNotEachInventALook(t *testing.T) {
 // reintroducing one is a deliberate act rather than a copy from the file next
 // door — which is exactly how there came to be four.
 func TestThePillIsNotReinvented(t *testing.T) {
+	// ib-reply-go is here for a different reason from the rest, and a sharper
+	// one. The others were a hairline pill drawn six ways. That was a black
+	// call-to-action drawn once, by hand, instead of app.ActionLink — and
+	// mu.css carries `a:visited { color: #000 }`, which outranks a plain class.
+	// So Reply was white-on-black until somebody used it and black-on-black
+	// afterwards. a.btn already carried `color:#fff !important` against exactly
+	// that. The site has one button; a second one re-earns every bug the first
+	// one has already fixed.
 	gone := []string{"ib-tag", "els-where", "th-tool", "peek-where",
-		"chat-sess-where", "run-tool"}
+		"chat-sess-where", "run-tool", "ib-reply-go"}
 	walkGo(t, func(path, src string) {
 		if strings.HasSuffix(path, "_test.go") || strings.HasSuffix(path, "primitives.go") {
 			return

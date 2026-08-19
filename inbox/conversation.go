@@ -136,6 +136,14 @@ func replyTo(accountID string, t *thread.Thread, msgs []thread.Message) string {
 // written and there is no reason for a second half-sized version of it here.
 // It arrives with the recipient and the subject filled in and the conversation
 // attached, so what comes back joins this thread instead of starting one.
+//
+// app.ActionLink, not a class of its own. The first version of this was
+// hand-drawn — a black pill with color:#fff — and mu.css carries a global
+// `a:visited { color: #000 }`, which outranks a plain class selector. So the
+// button was legible until you used it and black-on-black afterwards. That is
+// the exact bug `a.btn` already carries `color: #fff !important` to prevent:
+// the site has one button and it has been fixed once. Drawing a second one
+// re-earns every bug the first one has already had.
 func replyBar(t *thread.Thread, to string) string {
 	subject := strings.TrimSpace(t.Subject)
 	if subject == "" {
@@ -147,7 +155,7 @@ func replyBar(t *thread.Thread, to string) string {
 	}
 	q := url.Values{"to": {to}, "subject": {subject}, "on": {t.ID}}
 	return `<div class="ib-reply">` +
-		`<a class="ib-reply-go" href="/inbox/compose?` + q.Encode() + `">Reply</a>` +
+		app.ActionLink("/inbox/compose?"+q.Encode(), "Reply") +
 		`<span class="ib-reply-who">to ` + html.EscapeString(to) + `</span>` +
 		`</div>`
 }

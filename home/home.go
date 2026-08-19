@@ -42,9 +42,11 @@ func newsCard() (string, time.Time) {
 }
 
 type Card struct {
-	ID       string
-	Title    string
-	Icon     string // Optional icon image path (e.g. "/news.png")
+	ID    string
+	Title string
+	Icon  string // Optional icon image path (e.g. "/news.png")
+	// Column is "left" or "right", from cards.json. Position orders within it.
+	Column   string
 	Position int
 	Link     string
 	Content  func(service.Viewer) service.Card
@@ -56,13 +58,18 @@ type Card struct {
 	UpdatedAt   time.Time // Last time the render changed
 }
 
-// Streamed reports whether this card belongs in the left column.
+// Streamed reports whether what this card shows happened at a time.
 //
-// Derived rather than configured. cards.json used to say "left" or "right" per
-// card, which meant the layout was a list somebody kept in step by hand — and
-// the answer was already knowable: a card that can say when what it shows
-// happened is a card with a place in a chronology, and one that cannot is a
-// standing view of how things are. See service.Card.
+// It used to decide the column too, on the argument that the answer was already
+// knowable: a card that can say when its contents happened has a place in a
+// chronology, one that cannot is a standing view of how things are. True about
+// the cards, and not a layout. It sorted blog, news, social, video and images
+// into one column and left markets and prayer alone in the other — four against
+// two, and the two halves of the page no longer the same length.
+//
+// cards.json says which column, and now decides it again. What is on the left
+// and what is on the right is a judgement about how the page looks, and there is
+// no property of a card that computes it. See Column.
 func (c Card) Streamed() bool { return !c.At.IsZero() }
 
 var (
@@ -125,12 +132,18 @@ func Load() {
 	// Build Cards array from config
 	Cards = []Card{}
 
+	// Positions run from zero within each column, because each column is its
+	// own list in the file. They were offset by 100 on the right to flatten
+	// both into one sequence, back when the column was computed and the file's
+	// halves were only a way of writing the order down. The halves mean what
+	// they say again, so a position means its place in its own column.
 	for _, c := range config.Left {
 		if fn, ok := cardFunctions[c.Type]; ok {
 			Cards = append(Cards, Card{
 				ID:       c.ID,
 				Title:    c.Title,
 				Icon:     c.Icon,
+				Column:   "left",
 				Position: c.Position,
 				Link:     c.Link,
 				Content:  fn,
@@ -141,22 +154,24 @@ func Load() {
 	for _, c := range config.Right {
 		if fn, ok := cardFunctions[c.Type]; ok {
 			Cards = append(Cards, Card{
-				ID:    c.ID,
-				Title: c.Title,
-				Icon:  c.Icon,
-				// Positions in the file run from zero per column, so the
-				// right-hand ones are pushed past the left to keep the file's
-				// own order readable now that the column is derived.
-				Position: 100 + c.Position,
+				ID:       c.ID,
+				Title:    c.Title,
+				Icon:     c.Icon,
+				Column:   "right",
+				Position: c.Position,
 				Link:     c.Link,
 				Content:  fn,
 			})
 		}
 	}
 
-	// The file's order is the fallback: it is what decides the fixed column,
-	// and what orders two stream cards carrying the same time.
-	sort.Slice(Cards, func(i, j int) bool { return Cards[i].Position < Cards[j].Position })
+	// The file's order, within the file's column.
+	sort.SliceStable(Cards, func(i, j int) bool {
+		if Cards[i].Column != Cards[j].Column {
+			return Cards[i].Column == "left"
+		}
+		return Cards[i].Position < Cards[j].Position
+	})
 
 	// Do initial refresh
 	RefreshCards()
@@ -571,34 +586,24 @@ func CardsHTML(r *http.Request, viewerAcc *auth.Account) string {
 		"images":  "A picture a day, generated here",
 	}
 
-	// Each card renders in the column cards.json puts it in.
+	// Each card renders in the column cards.json puts it in, in the order the
+	// file lists it. That is the third answer this has had.
 	//
-	// It used to flatten every card into one list and deal them out
-	// alternately — left, right, left, right — which threw the configuration
-	// away. The file said blog, prayer, news on the left and markets, images,
-	// social, video on the right; the page rendered blog, news, social on the
-	// left and prayer, markets, video on the right. Nobody could set the
-	// layout, because the only code that read the layout was ignoring it.
+	// It flattened every card into one list and dealt them out alternately —
+	// left, right, left, right — which threw the configuration away. Then the
+	// column was computed from whether a card carries a time, which threw it
+	// away again and worse: blog, news, social, video and images all carry
+	// times, so five went left and two went right, and the page was lopsided in
+	// a way nothing in the file could correct.
 	//
-	// Dealing also meant an empty card reshuffled everything after it, so the
-	// whole page moved depending on whether the daily image had landed yet.
-	// The stream first, newest at the top; then what is fixed, in the file's
-	// order. Sorted here rather than at load, because a card's time changes as
-	// things arrive and the ordering has to change with it.
-	ordered := make([]Card, len(Cards))
-	copy(ordered, Cards)
-	sort.SliceStable(ordered, func(i, j int) bool {
-		if ordered[i].Streamed() != ordered[j].Streamed() {
-			return ordered[i].Streamed()
-		}
-		if ordered[i].Streamed() {
-			return ordered[i].At.After(ordered[j].At)
-		}
-		return ordered[i].Position < ordered[j].Position
-	})
-
+	// Cards is already in this order, sorted at load. Nothing is re-sorted here
+	// on the way out, because the only thing that changes between loads is a
+	// card's contents, and contents do not decide where a card goes. That was
+	// the other cost of computing it: an empty card reshuffled everything after
+	// it, so the whole page moved depending on whether the daily image had
+	// landed yet.
 	var leftHTML, rightHTML []string
-	for _, card := range ordered {
+	for _, card := range Cards {
 		content := card.CachedHTML
 		if strings.TrimSpace(content) == "" {
 			continue
@@ -617,7 +622,7 @@ func CardsHTML(r *http.Request, viewerAcc *auth.Account) string {
 			title += ` <span class="card-when">` + htmlEsc(app.TimeAgo(card.At)) + `</span>`
 		}
 		rendered := fmt.Sprintf(app.CardTemplate, card.ID, card.ID, title, content)
-		if card.Streamed() {
+		if card.column() == "left" {
 			leftHTML = append(leftHTML, rendered)
 		} else {
 			rightHTML = append(rightHTML, rendered)
@@ -630,10 +635,15 @@ func CardsHTML(r *http.Request, viewerAcc *auth.Account) string {
 	return b.String()
 }
 
-// column names where a card renders, for the JSON the page refreshes itself
-// with.
+// column names where a card renders — for the page, and for the JSON it
+// refreshes itself with, which must agree with it or a refresh moves cards
+// about.
+//
+// Right is the default for a card whose config named no column, because a card
+// that fell through is better stacked with the standing views than dropped into
+// the reading column at the top of the page.
 func (c Card) column() string {
-	if c.Streamed() {
+	if c.Column == "left" {
 		return "left"
 	}
 	return "right"

@@ -167,23 +167,31 @@ func TestTheCardGridHoldsNothingPersonal(t *testing.T) {
 	}
 }
 
-// The grid renders each card in the column cards.json puts it in.
+// The grid renders each card in the column it is configured into.
 //
-// It used to deal them out alternately — left, right, left, right — so the
-// a card knows when. The page moved depending on whether the daily image had
-// landed yet, and the column was a string in a file kept in step by hand.
-func TestAStreamCardGoesLeftAndAFixedOneRight(t *testing.T) {
+// This test used to be called TestAStreamCardGoesLeftAndAFixedOneRight, and it
+// held the rule that a card carrying a time goes left and one that does not goes
+// right. That rule was wrong, and this test is why it survived: it asserted the
+// derivation rather than the layout, so it passed happily while the page put
+// blog, news, social, video and images in one column and markets and prayer in
+// the other. Five against two, and cards.json — which says three and four —
+// unable to do anything about it.
+//
+// So what is checked now is that the configured column is obeyed, and that
+// nothing about a card's contents can override it. Whether a card carries a
+// time still decides whether it is stamped with one, which is what Streamed()
+// is actually for.
+func TestACardRendersInTheColumnItIsConfiguredInto(t *testing.T) {
 	prev := Cards
 	now := time.Now()
 	Cards = []Card{
-		// Things that happened, so they stream — and out of order here, to
-		// prove the page puts them in it.
-		{ID: "blog", Title: "Blog", At: now.Add(-2 * time.Hour), CachedHTML: `<p>a post</p>`},
-		{ID: "video", Title: "Video", At: now.Add(-10 * time.Minute), CachedHTML: `<p>a clip</p>`},
-		// How things are, so they do not.
-		{ID: "prayer", Title: "Prayer", Position: 1, CachedHTML: `<p>fajr</p>`},
-		{ID: "markets", Title: "Markets", Position: 2, CachedHTML: `<p>BTC</p>`},
-		{ID: "images", Title: "Images", Position: 3, CachedHTML: ``}, // nothing today
+		{ID: "blog", Title: "Blog", Column: "left", Position: 0, At: now.Add(-2 * time.Hour), CachedHTML: `<p>a post</p>`},
+		{ID: "prayer", Title: "Prayer", Column: "left", Position: 1, CachedHTML: `<p>fajr</p>`},
+		// Carries a time and is on the right anyway — the case the old rule
+		// could not express, and the reason the page was lopsided.
+		{ID: "video", Title: "Video", Column: "right", Position: 0, At: now.Add(-10 * time.Minute), CachedHTML: `<p>a clip</p>`},
+		{ID: "markets", Title: "Markets", Column: "right", Position: 1, CachedHTML: `<p>BTC</p>`},
+		{ID: "images", Title: "Images", Column: "right", Position: 2, CachedHTML: ``}, // nothing today
 	}
 	t.Cleanup(func() { Cards = prev })
 
@@ -191,33 +199,34 @@ func TestAStreamCardGoesLeftAndAFixedOneRight(t *testing.T) {
 	left := got[strings.Index(got, `class="home-left"`):strings.Index(got, `class="home-right"`)]
 	right := got[strings.Index(got, `class="home-right"`):]
 
-	for _, id := range []string{"blog", "video"} {
+	for _, id := range []string{"blog", "prayer"} {
 		if !strings.Contains(left, `id="`+id+`"`) {
-			t.Errorf("%s knows when it is from and did not go in the stream", id)
+			t.Errorf("%s is configured left and did not render there", id)
 		}
 	}
-	for _, id := range []string{"prayer", "markets"} {
+	for _, id := range []string{"video", "markets"} {
 		if !strings.Contains(right, `id="`+id+`"`) {
-			t.Errorf("%s shows how things are and did not go in the fixed column", id)
+			t.Errorf("%s is configured right and did not render there", id)
 		}
 	}
-	// Newest first, which is what makes it a stream rather than a list.
-	if strings.Index(left, `id="video"`) > strings.Index(left, `id="blog"`) {
-		t.Error("the stream is not newest first")
+	// In the configured order within each column, not by time.
+	if strings.Index(left, `id="blog"`) > strings.Index(left, `id="prayer"`) {
+		t.Error("the left column lost the file's order")
 	}
-	// And every stream card says how old it is.
-	if !strings.Contains(left, "card-when") {
-		t.Error("a stream card does not say when it is from")
+	if strings.Index(right, `id="video"`) > strings.Index(right, `id="markets"`) {
+		t.Error("the right column lost the file's order")
 	}
-	if strings.Contains(right, "card-when") {
+	// A card that knows when its contents are from still says so, wherever it
+	// renders — that is what Streamed() is for now that it does not pick sides.
+	if !strings.Contains(right, "card-when") {
+		t.Error("video knows when it is from and was not stamped with it")
+	}
+	if strings.Contains(left[strings.Index(left, `id="prayer"`):], "card-when") {
 		t.Error("a card showing how things are was given a time")
 	}
 	// The empty one is skipped without moving the ones after it.
 	if strings.Contains(got, `id="images"`) {
 		t.Error("a card with nothing in it rendered")
-	}
-	if strings.Index(right, `id="prayer"`) > strings.Index(right, `id="markets"`) {
-		t.Error("the fixed column lost the file's order")
 	}
 }
 
