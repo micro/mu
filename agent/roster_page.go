@@ -215,134 +215,120 @@ func secretPanel(secret string, a *Agent, base string) string {
 // So it branches on whether there is a credential, not on the declared kind:
 // what matters is whether this thing can be called from outside, and a token is
 // exactly what decides that.
+// entry is one line in the directory: somebody you can write to.
+//
+// Both lists render through this, which they did not before — an agent you made
+// and one that came with the instance were two different pieces of markup with
+// different links in a different order, so the page looked like two products
+// stacked. "Talk to it" and "How to reach it →" on one, "Connect / Edit / Fork /
+// Talk to it →" on the other, all at slightly different sizes.
+//
+// What a directory entry is: a name, what it is for, its address, and the two
+// ways to reach it. Everything else — the token, the endpoint, the scope, where
+// it runs — is administration, and lives one click away on the page that exists
+// for it.
+type entry struct {
+	Name string // what it is called
+	Path string // where the name opens
+	// Chat is where talking to it happens, and empty when there is nowhere.
+	//
+	// An agent that runs elsewhere is reached over MCP by something outside this
+	// instance; there is no conversation with it here, and offering one is a box
+	// that will never be used. Its name opens the page it does have.
+	Chat  string
+	For   string // one line: what it is for
+	Addr  string // its address, empty where it has none
+	ID    string // for the links that need it
+	Admin bool   // whether Edit and Fork apply, which is only to your own
+	Extra string // owner-only controls, appended after the links
+}
+
+// entryRow draws one.
+//
+// Chat first, because talking to it is the point of it existing. Email second,
+// as a mailto — this product's whole claim is that you can write to the thing,
+// and a page listing agents that had no way to start a message was describing
+// the feature rather than offering it.
+func entryRow(e entry) string {
+	var b strings.Builder
+	b.WriteString(`<div class="agent-row"><div style="flex:1;min-width:0">`)
+	b.WriteString(`<a class="agent-name" href="` + e.Path + `">` + html.EscapeString(e.Name) + `</a>`)
+	if e.For != "" {
+		b.WriteString(`<div class="agent-for">` + html.EscapeString(e.For) + `</div>`)
+	}
+	if e.Addr != "" {
+		b.WriteString(`<div class="agent-mail"><code>` + html.EscapeString(e.Addr) + `</code></div>`)
+	}
+
+	b.WriteString(`<div class="agent-links">`)
+	if e.Chat != "" {
+		b.WriteString(`<a href="` + e.Chat + `">Chat</a>`)
+	}
+	if e.Addr != "" {
+		b.WriteString(`<a href="mailto:` + html.EscapeString(e.Addr) + `">Email</a>`)
+	}
+	b.WriteString(`<a href="/agent/connect?id=` + html.EscapeString(e.ID) + `">Connect</a>`)
+	if e.Admin {
+		b.WriteString(`<a href="/agent/new?id=` + html.EscapeString(e.ID) + `">Edit</a>`)
+		b.WriteString(`<a href="/agent/new?fork=` + html.EscapeString(e.ID) + `">Fork</a>`)
+	}
+	b.WriteString(`</div></div>` + e.Extra + `</div>`)
+	return b.String()
+}
+
 func agentRow(a *Agent, csrf, base string) string {
-	scope := "everything you can reach"
-	cls := "agent-scope wide"
-	if !a.Unscoped() {
-		labels := make([]string, 0, len(a.Services))
-		for _, s := range a.Services {
-			labels = append(labels, service.Label(s))
+	// What it is for, in one line.
+	//
+	// The row used to carry four: the scope as a coloured list of service
+	// names, a meta line about tokens, an address with a verb in front of it,
+	// and a badge saying whether it runs here — every fact the system knows,
+	// on a list you are scanning to decide who to write to. A directory entry
+	// says what somebody does; the rest is on their page.
+	//
+	// The description is what the agent was made for and what the router reads
+	// when deciding who answers, so it is the closest thing to a job title. An
+	// agent made before there was a field for it falls back to its scope.
+	for_ := strings.TrimSpace(a.Description)
+	if for_ == "" {
+		if a.Unscoped() {
+			for_ = "Everything you can reach"
+		} else {
+			labels := make([]string, 0, len(a.Services))
+			for _, sv := range a.Services {
+				labels = append(labels, service.Label(sv))
+			}
+			for_ = strings.Join(labels, ", ")
 		}
-		scope = strings.Join(labels, ", ")
-		cls = "agent-scope"
 	}
 
-	// What this agent is, in terms of what you can do with it.
-	//
-	// An agent that runs here is offered no token. It was offered one because
-	// the button branched on whether a credential existed rather than on whether
-	// one could be used, so "runs here" — the option whose whole meaning is that
-	// nothing outside calls it — got a button inviting you to make that untrue.
-	// Changing where an agent runs is editing it, and editing is /agent/new.
-	meta, action := "", ""
-	if a.TokenID == "" {
-		// What is true about it, not where to click. There are four links
-		// directly below saying that, and a sentence pointing at them was the
-		// row explaining its own furniture.
-		meta = `No token, so nothing outside this instance can call it.`
-		if a.Kind != Hosted {
-			action = fmt.Sprintf(`<form method="POST" action="/agents" style="margin:0">
-    <input type="hidden" name="_csrf" value="%s"><input type="hidden" name="action" value="token">
-    <input type="hidden" name="id" value="%s">
-    <button type="submit" class="agent-act" title="It runs elsewhere, so it needs a credential to call in">Issue token</button>
-  </form>`, html.EscapeString(csrf), html.EscapeString(a.ID))
-		}
-	} else {
-		used := "not called yet"
-		if !a.LastUsed.IsZero() {
-			used = "last called " + a.LastUsed.Local().Format("2 Jan 15:04")
-		}
-		meta = html.EscapeString(used) + ` · <code>` + html.EscapeString(a.Endpoint(base)) + `</code>`
-	}
-
-	// The address is on the row because it is the thing you have to copy
-	// somewhere else — into a form, a signup, a person's contacts. An agent that
-	// can be written to is most of what makes it more than a preset, and it was
-	// previously reachable only by knowing the plus-address convention.
-	//
-	// What it says depends on how far that reach goes. With a mail domain it is
-	// an address and "write to it" is true; without one it is a handle, good
-	// inside this instance and nowhere else, and telling somebody to write to it
-	// would be telling them to write to nothing.
-	addr := ""
-	if r := a.Address(); r != "" {
-		// The address, plainly. It said "Write to it at <addr>" or "Message it
-		// at <addr>" depending on whether mail leaves this instance — a
-		// sentence where a label would do, and two sentences to maintain for a
-		// distinction the reader cannot act on either way.
-		addr = `<div class="agent-mail"><code>` + html.EscapeString(r) + `</code></div>`
-	}
-
-	// Where it runs, on the row, in a word.
-	//
-	// It was only ever asked at creation and never shown again — not here, not
-	// in the editor — so once an agent existed there was nowhere in the product
-	// that told you whether it ran on this instance or somewhere else calling
-	// in. That is the difference between a thing you talk to and a thing you
-	// point Claude Desktop at, and it was inferable at best from whether a
-	// token happened to be mentioned further down the row.
-	kind := `<span class="agent-kind here">Runs here</span>`
-	if a.Kind != Hosted {
-		kind = `<span class="agent-kind away">Runs elsewhere</span>`
-	}
-
-	// The two things you come to this page to do to an agent that are not
-	// talking to it: change it, and see what it did.
-	//
-	// Edit was missing entirely. The rail on /agent has had a pencil on every
-	// row for a while, so the builder was reachable — from the chat, in a
-	// 250px column, behind an icon — while the page whose whole job is managing
-	// agents offered no way to change one. You could make an agent here, name
-	// it, scope it, delete it, and not edit it.
-	// Chat, Connect, Edit, Fork — in that order, because that is how often each
-	// is wanted. Connect was first and Chat was last, phrased as "Talk to it →",
-	// which put the rarest action at the front of every row and the commonest at
-	// the end of it. Talking to the thing is the point of having made it.
-	links := fmt.Sprintf(`<div class="agent-links">`+
-		`<a href="%s">Chat</a>`+
-		`<a href="/agent/connect?id=%s">Connect</a>`+
-		`<a href="/agent/new?id=%s">Edit</a>`+
-		`<a href="/agent/new?fork=%s">Fork</a></div>`,
-		html.EscapeString(Path(a.Owner, a.ID)), html.EscapeString(a.ID),
-		html.EscapeString(a.ID), html.EscapeString(a.ID))
-
-	// Where the name goes depends on what the agent is for. One that runs here
-	// opens on talking to it; one that runs elsewhere opens on how to reach it,
-	// because a chat box is the least useful half of that page and the endpoint,
-	// the scope and the token were nowhere on it.
-	// The agent's own page, named. /inbox?id= was a conversation surface reached
-	// through a query parameter; /agent/<name> is a place — see slug.go.
-	//
-	// A finished href rather than a format string. It used to carry its own %s
-	// filled by the row's first argument, which is the kind of thing that works
-	// until the URL stops needing the id — and then silently shifts every
-	// argument after it by one.
-	open := html.EscapeString(Path(a.Owner, a.ID))
-	if a.Kind != Hosted {
-		open = "/agent/connect?id=" + html.EscapeString(a.ID)
-	}
-	open = strings.ReplaceAll(open, "%", "%%")
-
-	return fmt.Sprintf(`<div class="agent-row">
-  <div style="flex:1;min-width:0">
-    <a class="agent-name" href="`+open+`">%s</a>`+kind+`
-    <div class="%s">%s</div>
-    <div class="agent-meta">%s</div>
-    %s
-    `+links+`
-  </div>
-  %s
-  <form method="POST" action="/agents" style="margin:0" onsubmit="return confirm('Remove this agent?')">
+	// Remove stays on the row, because it is the one thing you do to an entry
+	// without opening it — and it is the reason the row has a right-hand side.
+	extra := fmt.Sprintf(`<form method="POST" action="/agents" style="margin:0" onsubmit="return confirm('Remove this agent?')">
     <input type="hidden" name="_csrf" value="%s">
     <input type="hidden" name="action" value="delete">
     <input type="hidden" name="id" value="%s">
     <button type="submit" class="agent-remove">Remove</button>
-  </form>
-</div>`,
-		html.EscapeString(a.Name),
-		cls, html.EscapeString(scope),
-		meta, addr, action,
-		html.EscapeString(csrf), html.EscapeString(a.ID))
+  </form>`, html.EscapeString(csrf), html.EscapeString(a.ID))
+
+	// Where the name opens depends on what the agent is for. One that runs here
+	// opens on talking to it; one that runs elsewhere opens on how to reach it,
+	// because a chat box is the least useful half of that page and the endpoint,
+	// the scope and the token were nowhere on it.
+	open, chat := Path(a.Owner, a.ID), Path(a.Owner, a.ID)
+	if a.Kind != Hosted {
+		open, chat = "/agent/connect?id="+html.EscapeString(a.ID), ""
+	}
+
+	return entryRow(entry{
+		Name:  a.Name,
+		Path:  open,
+		Chat:  chat,
+		For:   for_,
+		Addr:  a.Address(),
+		ID:    a.ID,
+		Admin: true,
+		Extra: extra,
+	})
 }
 
 // defaultRow is Micro on the roster: the same shape as an agent you made,
@@ -384,56 +370,36 @@ func platformRow(name string) string {
 	if a == nil {
 		return ""
 	}
-	def := name == DefaultPlatformAgent
-
-	// Its address. The default answers at the bare agent@, the rest at
-	// agent+<name>@ — the tag names the agent rather than the owner, which is
-	// the whole difference from you+research@: one thing to remember instead of
-	// two, and the one you actually chose.
-	addr := ""
+	// The default answers at the bare agent@, the rest at agent+<name>@ — the
+	// tag names the agent rather than the owner, which is the whole difference
+	// from you+research@: one thing to remember instead of two, and the one you
+	// actually chose.
 	tag := name
-	if def {
+	if name == DefaultPlatformAgent {
 		tag = ""
 	}
-	if at := mail.SharedAgentAddressFor(tag); at != "" {
-		verb := "Message it at"
-		if mail.Reachable() {
-			verb = "Write to it at"
-		}
-		addr = `<div class="agent-mail">` + verb + ` <code>` + html.EscapeString(at) + `</code></div>`
-	}
 
-	// What it may reach. Nil tools means everything, which is true of the
-	// catch-all and is the thing worth flagging rather than hiding.
-	scope := `<div class="agent-scope">` + html.EscapeString(toolWords(a.Tools)) + `</div>`
+	for_ := strings.TrimSpace(a.Description)
+	if for_ == "" {
+		for_ = toolWords(a.Tools)
+	}
 	if len(a.Tools) == 0 {
-		scope = `<div class="agent-scope wide">everything you can reach</div>`
+		for_ = "Everything you can reach"
 	}
 
-	meta := html.EscapeString(a.Description)
-	if def {
-		meta = "Always here, nothing to set up. It answers as your account, so it has no " +
-			"token of its own."
-	}
-
-	path := "/agent/" + html.EscapeString(strings.ToLower(name))
-	return `<div class="agent-row"><div style="flex:1;min-width:0">` +
-		`<a class="agent-name" href="` + path + `">` + html.EscapeString(a.Name) + `</a>` +
-		`<span class="agent-kind here">Runs here</span>` +
-		scope +
-		`<div class="agent-meta">` + meta + `</div>` + addr +
-		`<div class="agent-links"><a href="` + path + `">Talk to it</a>` +
-		`<a href="/agent/connect?id=` + html.EscapeString(strings.ToLower(name)) +
-		`">How to reach it &rarr;</a></div>` +
-		`</div></div>`
+	// No Edit and no Fork: these are the instance's, not yours. Making one of
+	// your own starts from the builder rather than from somebody else's row.
+	path := "/agent/" + strings.ToLower(name)
+	return entryRow(entry{
+		Name: a.Name,
+		Path: path,
+		Chat: path,
+		For:  for_,
+		Addr: mail.SharedAgentAddressFor(tag),
+		ID:   strings.ToLower(name),
+	})
 }
 
-// toolWords says what an agent reaches, in words rather than tool names.
-//
-// The service each tool belongs to, deduplicated and in the order the agent
-// declares them: "news, web" says something to a person where
-// "news_list, news_search, web_search, web_fetch" is a list they have to parse
-// to learn the same thing.
 func toolWords(tools []string) string {
 	var out []string
 	seen := map[string]bool{}
@@ -457,20 +423,28 @@ func toolWords(tools []string) string {
 const agentsCSS = `<style>
 .lens-lead{color:#666;font-size:14px;margin:0 0 18px;max-width:640px}
 .agent-note{color:#999;font-size:12px;margin:0 0 12px;max-width:640px}
-.agent-row{display:flex;align-items:center;gap:12px;border:1px solid #eee;border-radius:8px;padding:10px 14px}
+/* Top-aligned, not centred. A row is three or four lines tall now, and
+   centring left Remove floating in the middle of the card beside nothing. */
+.agent-row{display:flex;align-items:flex-start;gap:12px;border:1px solid #eee;border-radius:8px;padding:12px 14px}
 .agent-kind{display:inline-block;font-size:11px;font-weight:600;margin-left:8px;
   padding:1px 7px;border-radius:999px;vertical-align:middle}
 .agent-kind.here{color:#0a7d33;background:#eaf6ee}
 .agent-kind.away{color:#a86400;background:#fdf3e3}
-.agent-links{display:flex;flex-wrap:wrap;gap:12px;margin-top:6px}
-.agent-links a{font-size:12px;color:#666;text-decoration:none}
+/* One size, one colour, one weight for every link on a row.
+   They were three: 12px grey in the link strip, 13px green or amber for the
+   scope, 13px for the buttons beside them, and the name at 14px semibold. A
+   row is one thing to read, so the parts that are the same rank look the
+   same. */
+.agent-links{display:flex;flex-wrap:wrap;gap:14px;margin-top:8px}
+.agent-links a{font-size:13px;color:#666;text-decoration:none}
 .agent-links a:hover{color:var(--text-primary,#111);text-decoration:underline}
-.agent-scope{font-size:13px;color:#0a7d33}
-.agent-scope.wide{color:#a86400}
-.agent-meta{font-size:12px;color:#999;margin-top:2px;overflow:hidden;text-overflow:ellipsis}
-.agent-meta code{font-size:11px}
-.agent-mail{font-size:12px;color:#666;margin-top:3px}
-.agent-mail code{font-size:11px;background:#f5f5f5;border-radius:3px;padding:1px 5px}
+/* What it is for. One line, and it truncates rather than wrapping — a list you
+   are scanning stops being a list the moment the rows are different heights. */
+.agent-for{font-size:13px;color:#666;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.agent-meta{font-size:13px;color:#999;margin-top:2px;overflow:hidden;text-overflow:ellipsis}
+.agent-meta code{font-size:12px}
+.agent-mail{font-size:13px;margin-top:3px}
+.agent-mail code{font-size:12px;color:#666;background:#f5f5f5;border-radius:3px;padding:1px 5px}
 /* The agent's name is the way into it, so it looks like body text until you
    are over it rather than like one more small grey control. */
 .agent-name{display:inline-block;font-weight:600;font-size:14px;color:var(--text-primary,#111);text-decoration:none}
@@ -479,9 +453,9 @@ const agentsCSS = `<style>
    account. Both were #bbb — barely visible — and both took the same red hover,
    which said "destructive" about issuing a token. Now issuing reads as an
    ordinary action and only Remove goes red, which is the one that is. */
-.agent-act{background:none;border:0;color:#666;font-size:13px;cursor:pointer;padding:0}
+.agent-act{background:none;border:0;color:#666;font-size:13px;cursor:pointer;padding:0;font-family:inherit}
 .agent-act:hover{color:#111;text-decoration:underline}
-.agent-remove{background:none;border:0;color:#999;font-size:13px;cursor:pointer;padding:0}
+.agent-remove{background:none;border:0;color:#999;font-size:13px;cursor:pointer;padding:0;font-family:inherit}
 .agent-remove:hover{color:#b00;text-decoration:underline}
 .agent-by{font-size:12px;color:#999}
 .agent-mine{font-size:12px;color:#999}
