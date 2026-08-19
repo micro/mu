@@ -45,13 +45,17 @@ func Landing(w http.ResponseWriter, r *http.Request) {
 	body := landingBody(app.BaseURL(r))
 
 	page := app.RenderLanding(app.Landing{
-		Title:       "Mu — An Inbox for Agents",
+		Title:       "Mu — A personal agent",
 		Description: "Give your agent an address. Write to it and it answers — with news, web search, mail, markets, weather, places and storage behind it. Open source and self-hostable.",
 		Brand:       "Mu",
-		Tagline:     "An Inbox for Agents",
-		TopRight:    `<a href="/login">Sign in →</a>`,
-		Body:        body,
-		Footer:      app.FooterLinks(),
+		// The tagline and the headline in the body were two different pitches
+		// stacked: "An Inbox for Agents" over "A personal agent." The first was
+		// the line this positioning replaced and it survived here because
+		// nothing renders the two together except the page.
+		Tagline:  "A personal agent",
+		TopRight: `<a href="/login">Sign in →</a>`,
+		Body:     body,
+		Footer:   app.FooterLinks(),
 	})
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -64,6 +68,22 @@ func Landing(w http.ResponseWriter, r *http.Request) {
 // note went unnoticed: nothing could look at the whole page at once, so two
 // paragraphs saying the same thing stayed correct individually and wrong
 // together.
+// One screen, and it fits on one.
+//
+// This page had a chat box, three feature cards and a four-step section on
+// pointing an MCP client at the endpoint — a landing that argued for four
+// things and scrolled for two of them. None of the parts were wrong; each was
+// true and each argued for something different. A visitor here is deciding
+// whether they want an agent at all, which is one question, and how to
+// configure Cursor is a question asked by somebody who already decided. That
+// one belongs on /tools, which is the page about tools.
+//
+// What is left: a headline, a sentence, the address, two ways on.
+//
+// The prose explaining all that is here rather than in the stylesheet, because
+// a comment inside the <style> block is served to every visitor — which is how
+// a test looking for "Connect via MCP" on the page found it in the note saying
+// the section had been removed.
 func landingBody(host string) string {
 	// Counted, not claimed. This said "67 real tools" as a literal and the
 	// endpoint was serving 72 by the time anyone checked.
@@ -87,7 +107,8 @@ func landingBody(host string) string {
 	if addr == "" {
 		addr = "agent@" + host
 	}
-	return `<h2 class="lhead">A personal agent.</h2>
+	return `<div class="lwrap">
+<h2 class="lhead">A personal agent.</h2>
 <p class="lead">It has an email address. Write to it and it answers — with
 ` + strconv.Itoa(api.ToolCount()) + ` tools behind it: news, web search, mail, markets,
 weather, places, storage. One account instead of seven providers.</p>
@@ -97,72 +118,27 @@ weather, places, storage. One account instead of seven providers.</p>
 <code>you+research@</code> — and each answers in the thread, remembers the last
 one, and can be reached from anywhere that can send an email.</p>
 
-<div class="ltry">` + chatComponent(true) + `</div>
-
-<p class="ltrynote">Or ask it here — a few questions to try it, no account needed.
-<a href="/signup">Sign up</a> for an agent of your own, the address it answers on,
-and the endpoint your client can call.</p>
-
 <div class="lctas">
-  <a class="lcta" href="/inbox">Talk to an agent →</a>
+  <a class="lcta" href="/signup">Get an agent →</a>
   <a class="lcta lcta-alt" href="/tools">Browse the tools</a>
 </div>
-
-<div class="lcards">
-  <div class="lcard"><h3>Reachable by anyone</h3><p>An address needs nothing on the other side — no SDK, no key, no signup. A person, another agent, a form or a cron job can write to yours, and it answers in the thread.</p></div>
-  <div class="lcard"><h3>It remembers</h3><p>Every conversation is kept, whichever way it arrived — the address, the web, Discord, Telegram, WhatsApp. One thread of what was said, not five that forget on restart.</p></div>
-  <div class="lcard"><h3>One server, not nine</h3><p>News, search, mail and storage usually means a provider each: a signup, a card and a key apiece. Here it is one connection, one balance, one thing to rotate — or self-host the binary and it is yours.</p></div>
-</div>
-
-<div class="lpay" id="connecting">
-  <h2>Connect via MCP</h2>
-  <p class="lnote">Two ways in for a client you sign in with, and a third for an agent
-  that has no account at all. Everything the inbox holds comes with it — an agent on the
-  other end can list your conversations, read one back and search what was said.</p>
-  <ol>
-    <li><b>Cursor, and clients with a config file.</b> Create a token at <a href="/token">/token</a>
-    and point them at <code>` + host + `/mcp</code> with an
-    <code>Authorization: Bearer</code> header.</li>
-    <li><b>Claude Desktop.</b> Settings → Connectors → Add custom connector, and paste
-    <code>` + host + `/mcp</code>. It opens a browser and asks you to sign in — no token needed.</li>
-    <li><b>Then call anything.</b> Calls draw on your credits — most tools are included, the ones
-    that cost us money carry a price on <a href="/tools">tools</a>.</li>
-    <li><b>Or bring a wallet and skip all of that.</b> Call <code>` + host + `/mcp</code> with no
-    credentials. Free tools answer; a priced one replies <code>402</code> naming its price and where
-    to send it, and an <a href="https://x402.org" rel="noopener">x402</a> client pays in USDC and
-    retries. No signup, no key, no card — the payment is the identity.</li>
-  </ol>
-  <p class="lnote">No account yet? <a href="/signup">Create one →</a> Full setup on
-  <a href="/tools">Tools</a>, protocol detail on the <a href="/mcp">MCP server</a> page.</p>
 </div>
 
 <style>
-.lhead{max-width:700px;text-align:center;margin:0 auto 10px;font-size:34px;line-height:1.15;
+.lwrap{min-height:calc(100vh - 200px);display:flex;flex-direction:column;justify-content:center;padding:20px 0}
+.lhead{max-width:700px;text-align:center;margin:0 auto 12px;font-size:38px;line-height:1.12;
   letter-spacing:-.02em;font-weight:700;color:#111}
-.lead{max-width:600px;text-align:center;color:#555;font-size:16px;line-height:1.6;margin:0 auto 18px}
-.laddr{text-align:center;margin:0 auto 8px}
-.laddr code{display:inline-block;background:#111;color:#fff;border-radius:8px;padding:10px 18px;
-  font-size:17px;letter-spacing:.01em;overflow-wrap:anywhere}
-.laddrnote{max-width:600px;margin:0 auto 26px;text-align:center;font-size:13px;color:#888;line-height:1.55}
-.laddrnote code{background:#f4f4f5;border-radius:4px;padding:1px 5px;font-size:.95em}
-.ltry{max-width:660px;margin:0 auto 10px;text-align:left}
-.ltrynote{max-width:660px;margin:0 auto 26px;text-align:center;font-size:13px;color:#888}
-.ltrynote a{color:#111}
+.lead{max-width:560px;text-align:center;color:#555;font-size:17px;line-height:1.6;margin:0 auto 26px}
 .lead a{color:#111}
-@media (max-width:640px){.lhead{font-size:27px}}
-.lcards{display:flex;flex-wrap:wrap;gap:14px;max-width:760px;justify-content:center;margin:34px auto 0}
-.lcard{flex:1 1 220px;min-width:220px;max-width:240px;border:1px solid #e5e5e5;border-radius:10px;padding:16px 18px;background:#fff;text-align:left}
-.lcard h3{margin:0 0 6px;font-size:1em}
-.lcard p{margin:0;font-size:14px;color:#666;line-height:1.5}
+.laddr{text-align:center;margin:0 auto 10px}
+.laddr code{display:inline-block;background:#111;color:#fff;border-radius:8px;padding:12px 20px;
+  font-size:18px;letter-spacing:.01em;overflow-wrap:anywhere}
+.laddrnote{max-width:560px;margin:0 auto 30px;text-align:center;font-size:13px;color:#888;line-height:1.55}
+.laddrnote code{background:#f4f4f5;border-radius:4px;padding:1px 5px;font-size:.95em}
 .lctas{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin:0}
-.lcta{display:inline-block;background:#111;color:#fff;text-decoration:none;padding:11px 22px;border-radius:8px;font-weight:700;font-size:15px}
+.lcta{display:inline-block;background:#111;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:700;font-size:15px}
 .lcta-alt{background:#fff;color:#111;border:1px solid #ddd}
 .lcta-alt:hover{border-color:#bbb}
-.lpay{max-width:620px;margin:44px auto 0;text-align:left;border-top:1px solid #eee;padding-top:28px}
-.lpay h2{font-size:1.15em;margin:0 0 12px}
-.lpay ol{margin:0 0 14px;padding-left:20px}
-.lpay li{margin:0 0 10px;font-size:15px;line-height:1.55;color:#333}
-.lpay code{background:#f4f4f5;border-radius:4px;padding:1px 5px;font-size:.9em}
-.lnote{font-size:14px;color:#666;margin:0}
+@media (max-width:640px){.lhead{font-size:28px}.lead{font-size:15px}.lwrap{min-height:0}}
 </style>`
 }

@@ -57,16 +57,6 @@ func TestTheChatComponentMakesNoOfferOfItsOwn(t *testing.T) {
 	}
 }
 
-// TestTheLandingPageSaysItOnce — the offer belongs to the page making it, and
-// appears there exactly once.
-func TestTheLandingPageSaysItOnce(t *testing.T) {
-	body := landingBody("https://example.com")
-	if n := strings.Count(body, "no account needed"); n != 1 {
-		t.Errorf("the landing page makes the guest offer %d times, want 1 — a "+
-			"visitor reads the same sentence twice in two stacked paragraphs", n)
-	}
-}
-
 func TestSignedInChatRendersAsSignedIn(t *testing.T) {
 	html := chatComponent(false)
 	if !strings.Contains(html, "var GUEST=false") {
