@@ -142,6 +142,7 @@ Here are the tools
 | **Stream** | `stream_list` · `stream_post` — this instance's own timeline |
 | **Tasks** | `tasks_create` · `tasks_list` · `tasks_next` · `tasks_update` · `tasks_delete` — what is to be done, and work you can hand to the agent |
 | **Text** | `text_summarise` · `text_extract` · `text_classify` · `text_translate` — language work at a fixed price per call: shorten it, turn it into JSON matching a schema you give, sort it into one of your labels, or put it in another language. Capped at 30,000 characters, and priced because each one is a model call we pay for |
+| **Tiles** | `tiles_tile` · `tiles_area` — Ordnance Survey map tiles for Britain, as URLs a map library takes directly: road, outdoor (rights of way and contours) and light. Ask for one tile or for every tile covering a bounding box. A tile costs a credit the first time this instance fetches it and nothing on every serve after that, to anybody, because a tile does not change |
 | **Transit** | `transit_nearby` · `transit_arrivals` · `transit_status` · `transit_feeds` — stops near a point, what is due at one, and which lines are delayed or suspended. London is live from TfL, down to how many minutes away the bus is. Anywhere else answers from the agency's published timetable, using the same two tools and saying which kind of answer it gave — set `TRANSIT_FEEDS` to load one, and `transit_feeds` lists which are worth loading and what each costs. Needs no key either way |
 | **Video** | `video_list` · `video_search` — curated channels, no ads or recommendations |
 | **Wallet** | `wallet_address` · `wallet_balance` · `wallet_list` · `wallet_pay` — a key of your own on Base: an address that holds USDC, and paying for a tool on another x402 server with it. Capped per call and per day |
@@ -213,7 +214,7 @@ mu agent "what happened in markets today?"
 
 ```
 model: anthropic/claude-sonnet-4-6
-115 tools from https://micro.mu
+117 tools from https://micro.mu
 wallet: 0x4160a863… (1.27 USDC)
 
 > what are the top news headlines today?

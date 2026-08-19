@@ -48,7 +48,8 @@ var keptItsPage = map[string]string{
 	"food": "a barcode or a product name", "places": "a search", "web": "a query",
 	"markets": "one of five categories", "routes": "two endpoints",
 	"transit": "a stop", "flights": "a callsign, and a scope the card cannot draw",
-	"text": "the text to work on",
+	"tiles": "a map you move around, which is the one thing a card cannot be",
+	"text":  "the text to work on",
 
 	// 3. It is browsable.
 	"news": "many stories, paged", "video": "many videos", "blog": "many posts",

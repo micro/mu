@@ -35,6 +35,7 @@ import (
 	"mu/service/stream"
 	"mu/service/tasks"
 	"mu/service/text"
+	"mu/service/tiles"
 	"mu/service/transit"
 	"mu/service/video"
 	"mu/service/wallet"
@@ -58,7 +59,7 @@ func allSpecs() []service.Spec {
 		notes.Spec, news.Spec, places.Spec, prayer.Spec, recall.Spec, routes.Spec,
 		sms.Spec,
 		social.Spec,
-		stream.Spec, tasks.Spec, text.Spec, transit.Spec, video.Spec,
+		stream.Spec, tasks.Spec, text.Spec, tiles.Spec, transit.Spec, video.Spec,
 		wallet.Spec, weather.Spec, web.Spec,
 		whatsappsvc.Spec,
 	}

@@ -40,6 +40,7 @@ import (
 	"mu/service/stream"
 	"mu/service/tasks"
 	"mu/service/text"
+	"mu/service/tiles"
 	"mu/service/transit"
 	"mu/service/video"
 	"mu/service/wallet"
@@ -97,6 +98,7 @@ func boot() {
 	food.Load()
 	transit.Load()
 	hazards.Load()
+	tiles.Load()
 	wallet.Load()
 	stream.LoadService()
 	chat.LoadService()

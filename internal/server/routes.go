@@ -56,6 +56,7 @@ import (
 	"mu/service/stream"
 	"mu/service/tasks"
 	"mu/service/text"
+	"mu/service/tiles"
 	"mu/service/transit"
 	"mu/service/video"
 	"mu/service/wallet"
@@ -83,6 +84,8 @@ func authRequired() map[string]bool {
 		"/food":                   false, // Public food data is public
 		"/transit":                false, // Public transport data is public
 		"/hazards":                false, // Public hazard data, published to be redistributed
+		"/tiles":                  false, // Public — the page, and any tile already held
+		"/tiles/":                 false, // A held tile is free to anybody; a cold one needs a session
 		"/prayer":                 false, // Public prayer times, daily verse and hadith
 		"/about":                  false, // Public "what is Mu" pitch
 		"/oauth2/google":          false, // Google sign-in start (no session yet)
@@ -464,6 +467,11 @@ func registerRoutes() {
 	http.HandleFunc("/food", food.Handler)
 	http.HandleFunc("/transit", transit.Handler)
 	http.HandleFunc("/hazards", hazards.Handler)
+	// The basemap under anything spatial. /tiles is the page; the images are
+	// at /tiles/<style>/<z>/<x>/<y>.png, which is the shape every map library
+	// takes and the only shape any of them take. See service/tiles.
+	http.HandleFunc("/tiles", tiles.Handler)
+	http.HandleFunc("/tiles/", tiles.TileHandler)
 	http.HandleFunc("/wallet", wallet.Handler)
 	// Taking your key with you. A page action and never a tool: an agent that
 	// can read a private key is a prompt injection away from posting it

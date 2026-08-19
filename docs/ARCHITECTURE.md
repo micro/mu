@@ -127,6 +127,7 @@ guessable.
 | `food` | /food | ✅ |  | Ingredients, allergens and nutrition by barcode from Open Food Facts; UK hygiene ratings from the FSA. Both keyless and both authoritative rather than plausible |
 | `hazards` | /hazards | ✅ |  | What is going wrong physically: earthquakes live from the USGS, disasters from GDACS. No key, and authoritative rather than plausible — the point of it is that a model would otherwise guess |
 | `transit` | /transit | ✅ |  | Public transport: stops near you, what is due, which lines are down. London live from TfL; everywhere else from published GTFS timetables via `internal/gtfs`. No key either way — it works on a fresh install, which is the point |
+| `tiles` | /tiles | ✅ |  | Ordnance Survey raster tiles for Britain — the basemap under anything spatial. Fetched once and served from `internal/blob` forever after, which is why a tile is charged on the first fetch this instance ever makes of it and free on every serve to anybody afterwards. `OS_MAPS_KEY` to fetch; without one it still serves what it holds |
 | `video` | /video | ✅ |  | Curated channels, without ads or recommendations |
 | `wallet` | /wallet | ✅ | ✅ | A key of your own on Base: an address that holds USDC, and paying an x402-priced tool on another server with it |
 | `weather` | /weather | ✅ |  | Forecast and pollen through Google, keyed. Air quality, sea state and the historical record through Open-Meteo, keyless — the part that still works on a clone |

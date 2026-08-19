@@ -90,7 +90,39 @@ func TestThePillIsNotReinvented(t *testing.T) {
 	})
 }
 
-// walkGo calls f for every Go file in the repository.
+// stripComments removes Go comments before anything is counted.
+//
+// Both ratchets below count strings that appear in prose as often as in
+// markup — a doc comment explaining that a page used to say
+// style="margin:6px 0 0" is not a page saying it. Counting comments made the
+// tests fail on the commit that documented the thing they exist to discourage,
+// which is the wrong way round.
+func stripComments(src string) string {
+	var b strings.Builder
+	i := 0
+	for i < len(src) {
+		switch {
+		case strings.HasPrefix(src[i:], "//"):
+			j := strings.IndexByte(src[i:], '\n')
+			if j < 0 {
+				return b.String()
+			}
+			i += j
+		case strings.HasPrefix(src[i:], "/*"):
+			j := strings.Index(src[i+2:], "*/")
+			if j < 0 {
+				return b.String()
+			}
+			i += j + 4
+		default:
+			b.WriteByte(src[i])
+			i++
+		}
+	}
+	return b.String()
+}
+
+// walkGo calls f for every Go file in the repository, comments removed.
 func walkGo(t *testing.T, f func(path, src string)) {
 	t.Helper()
 	root := ".."
@@ -112,7 +144,7 @@ func walkGo(t *testing.T, f func(path, src string)) {
 		if err != nil {
 			return nil
 		}
-		f(strings.TrimPrefix(path, root+"/"), string(b))
+		f(strings.TrimPrefix(path, root+"/"), stripComments(string(b)))
 		return nil
 	})
 	if err != nil {

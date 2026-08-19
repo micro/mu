@@ -6235,3 +6235,22 @@ select.field { max-width: 220px }
 .addr-drop { display: inline; margin: 0 }
 .addr-drop .form-actions { display: inline-flex }
 .addr-drop .btn { border: 0; background: none; padding: 0 0 0 8px; font-size: 13px }
+
+/* The tile preview on /tiles: a grid of images and no map library, because the
+   page is the demonstration and the app somebody builds brings its own. */
+.tiles-page { max-width: 760px }
+.tiles-styles { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px }
+
+.tiles-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0;
+  border: var(--border-width, 1px) solid var(--card-border, #e8e8e8);
+  border-radius: var(--border-radius, 6px);
+  overflow: hidden;
+  margin: 0 0 var(--spacing-lg, 24px);
+  background: var(--hover-background, #fafafa);
+}
+
+.tiles-img, .tiles-blank { display: block; width: 100%; aspect-ratio: 1 / 1 }
+.tiles-blank { background: var(--divider, #f0f0f0) }
