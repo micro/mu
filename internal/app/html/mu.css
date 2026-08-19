@@ -628,12 +628,95 @@ td {
   margin: 8px 14px;
 }
 
-#nav-username {
-  font-weight: 400;
-  color: #999;
-  padding: 4px 14px;
-  font-size: 0.75em;
+/* The account, as one control. See navBottom.
+
+   It was a caption plus four destinations, which put Log out on the same
+   footing as Inbox and made a five-item product look like a ten-item
+   dashboard. */
+.nav-me { position: relative }
+
+.nav-me-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  list-style: none; /* the default disclosure triangle, which we draw ourselves */
+  font-size: 0.95em;
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
 }
+
+.nav-me-btn::-webkit-details-marker { display: none }
+.nav-me-btn:hover,
+.nav-me[open] .nav-me-btn { background-color: #f5f5f5 }
+
+.nav-me-av {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--btn-primary, #111);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#nav-username {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Points up, because the menu opens upward. Turns over when it is open. */
+.nav-me-chev {
+  flex: 0 0 auto;
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 5px solid var(--text-muted, #999);
+}
+
+.nav-me[open] .nav-me-chev {
+  border-bottom: 0;
+  border-top: 5px solid var(--text-muted, #999);
+}
+
+.nav-me-menu {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 6px;
+  right: 6px;
+  background: var(--card-background, #fff);
+  border: 1px solid var(--card-border, #e8e8e8);
+  border-radius: 10px;
+  padding: 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, .1);
+  z-index: 20;
+}
+
+.nav-me-menu a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 6px;
+  text-decoration: none;
+  color: var(--text-primary);
+  font-size: 0.92em;
+}
+
+.nav-me-menu a:hover { background-color: #f5f5f5 }
+.nav-me-menu img { height: 17px; width: 17px }
 
 /* Credit balance, pinned above the account links so the number is in view on
    every page. Empty and low are coloured because "0 credits" in the same grey

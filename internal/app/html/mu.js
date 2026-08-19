@@ -437,8 +437,10 @@ function setSession() {
       if (navLogout) navLogout.style.display = 'flex';
       if (navLogin) navLogin.style.display = 'none';
       if (navUsername && sess.account) {
-        navUsername.textContent = 'Signed in as @' + sess.account;
+        navUsername.textContent = '@' + sess.account;
         navUsername.style.display = 'block';
+        var navMeAv = document.getElementById("nav-me-av");
+        if (navMeAv) navMeAv.textContent = sess.account.charAt(0).toUpperCase();
       }
       // Rendered server-side for an admin so the link works without JS, and
       // corrected here for the same reason nav-username is: a page cached for

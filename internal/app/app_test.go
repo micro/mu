@@ -236,12 +236,22 @@ func TestRenderHTMLGuestNavHidesSignedInActions(t *testing.T) {
 	}
 }
 
+// The account is one control now, with everything about it behind that. It was
+// a caption reading "Signed in as @alice" plus four destinations, which is what
+// made a five-item product render as a ten-item dashboard — so the name is the
+// control's own label rather than a row of its own.
 func TestRenderHTMLWithAuthNavShowsSignedInActions(t *testing.T) {
 	result := renderWithLang("Test", "A test page", "<p>content</p>", "en", &auth.Account{ID: "alice"})
-	for _, want := range []string{`id="nav-account"`, `id="nav-logout"`, `Signed in as @alice`} {
+	for _, want := range []string{`id="nav-account"`, `id="nav-logout"`, `@alice`, `id="nav-me"`} {
 		if !strings.Contains(result, want) {
 			t.Fatalf("signed-in nav missing %q", want)
 		}
+	}
+	// Reachable with no JavaScript: a <details>, not a button waiting on a
+	// handler. Sign out behind a control that needs a script to open is sign out
+	// you cannot reach when the script fails.
+	if !strings.Contains(result, `<details class="nav-me"`) {
+		t.Error("the account menu is not a disclosure, so it needs JavaScript to open")
 	}
 }
 

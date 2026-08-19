@@ -528,7 +528,15 @@ var Template = `
         // to miss: the reload used to close the menu as a side effect of
         // throwing the whole document away. On desktop the sidebar is not an
         // overlay and menu-open is unused, so this is a no-op there.
-        function closeMenu() { document.body.classList.remove('menu-open'); }
+        // The account menu closes with it. <details> stays open on its own —
+        // that is the whole point of it needing no JavaScript — so after a soft
+        // navigation it would still be hanging over the new page's rail, which
+        // is the same dead end this function exists for one element down.
+        function closeMenu() {
+          document.body.classList.remove('menu-open');
+          var me = document.getElementById('nav-me');
+          if (me) me.removeAttribute('open');
+        }
 
         function go(url, push, restoreY) {
           closeMenu();
@@ -1077,27 +1085,62 @@ func navPinned(acc *auth.Account) string {
 // where it goes rather than by which group: directly under Account, with Usage
 // gone from the group entirely.
 //
-// Kept as its own group rather than folded into the account page, because
-// signing out is something you reach for directly and a logout that takes two
-// clicks is a logout people hunt for. nav-username is a label mu.js corrects
-// from the session: a page cached for one viewer and served to another would
-// otherwise greet them by the wrong name.
+// One row, not five.
+//
+// This group was a text label reading "Signed in as @asim" and then Account,
+// Admin, Support and Logout as four more destinations — on top of the five the
+// product already has above it. Ten rows and a caption is a dashboard, and a
+// dashboard is what somebody said it felt like. No app anybody compares this to
+// does that: the account is one control at the bottom of the rail and everything
+// about the account is behind it, because Log out is not a peer of Inbox.
+//
+// The earlier reasoning was that "signing out is something you reach for
+// directly and a logout that takes two clicks is a logout people hunt for."
+// Two clicks is where every other product keeps it, and it is not hunted for
+// there, because the first click is your own name — which is the one thing on
+// the screen a person already reads as "me and my stuff".
+//
+// <details> rather than a button and a handler: it opens on click and on
+// Enter, it is a disclosure to a screen reader without being told to be one, and
+// it works with no JavaScript at all. The menu opens upward because the control
+// is at the bottom of the rail.
+//
+// nav-username is a label mu.js corrects from the session: a page cached for
+// one viewer and served to another would otherwise greet them by the wrong name.
 func navBottom(acc *auth.Account) string {
 	if acc == nil {
 		return `<a id="nav-login" href="/login"><img src="/account.png?` + Version + `"><span class="label">Login</span></a>`
 	}
 	username := htmlpkg.EscapeString(acc.ID)
-	// Support sits here rather than only in the footer, because the footer is
+	// Support is in here rather than only in the footer, because the footer is
 	// not rendered for somebody signed in — see footerFor. So the one link a
 	// person needs when something has gone wrong disappeared at exactly the
 	// moment they had an account, a balance and therefore something to go
 	// wrong with. A signed-out visitor still has the footer.
-	return `<div id="nav-username">Signed in as @` + username + `</div>
-          <a id="nav-account" href="/account"><img src="/account.png?` + Version + `"><span class="label">Account</span></a>
-          ` + navAdmin(acc) + `
-          <a id="nav-support" href="/support"><img src="/help.svg?` + Version + `"><span class="label">Support</span></a>
-          <a id="nav-logout" href="/logout"><img src="/logout.png?` + Version + `"><span class="label">Logout</span></a>
+	return `<details class="nav-me" id="nav-me">
+            <summary class="nav-me-btn">
+              <span class="nav-me-av" id="nav-me-av">` + initial(acc.ID) + `</span>
+              <span class="label" id="nav-username">@` + username + `</span>
+              <span class="nav-me-chev" aria-hidden="true"></span>
+            </summary>
+            <div class="nav-me-menu">
+              <a id="nav-account" href="/account"><img src="/account.png?` + Version + `"><span class="label">Account</span></a>
+              ` + navAdmin(acc) + `
+              <a id="nav-support" href="/support"><img src="/help.svg?` + Version + `"><span class="label">Support</span></a>
+              <a id="nav-logout" href="/logout"><img src="/logout.png?` + Version + `"><span class="label">Log out</span></a>
+            </div>
+          </details>
           <a id="nav-login" href="/login" style="display: none;"><img src="/account.png?` + Version + `"><span class="label">Login</span></a>`
+}
+
+// initial is the letter in the avatar: the first of the account name, upper
+// case. Escaped like anything else off an account, because an account id is
+// whatever somebody signed up with.
+func initial(id string) string {
+	for _, r := range id {
+		return htmlpkg.EscapeString(strings.ToUpper(string(r)))
+	}
+	return "?"
 }
 
 func renderWithLang(title, desc, html, lang string, acc *auth.Account) string {
