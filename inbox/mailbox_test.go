@@ -170,3 +170,65 @@ func TestTheRailCountsWhatIsWaiting(t *testing.T) {
 		}
 	}
 }
+
+// A mailbox you cannot delete from is a list that only grows.
+func TestAConversationCanBeDeleted(t *testing.T) {
+	const who = "mailbox-delete"
+	th := arrived(t, who, "mail", "<g@example.com>", "", "them@example.com", "delete me")
+
+	w := httptest.NewRecorder()
+	conversation(w, httptest.NewRequest("GET", "/inbox?id="+url.QueryEscape(th.ID), nil), who, th.ID)
+	if !strings.Contains(w.Body.String(), "/inbox/delete") {
+		t.Error("no way to delete a conversation")
+	}
+
+	form := url.Values{"id": {th.ID}}
+	r := httptest.NewRequest("POST", "/inbox/delete", strings.NewReader(form.Encode()))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	DeleteHandler(httptest.NewRecorder(), r)
+
+	// No session on that request, so nothing went — the handler requires one.
+	if thread.Get(who, th.ID) == nil {
+		t.Error("a request with no session deleted a conversation")
+	}
+	// The store's own scoping is the guarantee that matters.
+	thread.Delete("somebody-else", th.ID)
+	if thread.Get(who, th.ID) == nil {
+		t.Error("somebody else deleted this account's conversation")
+	}
+	thread.Delete(who, th.ID)
+	if thread.Get(who, th.ID) != nil {
+		t.Error("the owner could not delete their own conversation")
+	}
+}
+
+// The briefing arrived as "Untitled": a conversation took its name from a
+// person's message only, and the one thing the agent starts on its own is the
+// briefing.
+func TestAConversationTheAgentStartsHasAName(t *testing.T) {
+	const who = "mailbox-subject"
+	th := thread.Open(who, "digest", "digest-2026-08-19")
+	thread.Add(thread.Message{Thread: th.ID, Account: who, Role: thread.RoleAgent,
+		Text: "Daily Digest — 19 Aug 2026\n\nMarkets were quiet and the news was not."})
+
+	got := thread.Get(who, th.ID)
+	if got == nil {
+		t.Fatal("no conversation")
+	}
+	if got.Subject != "Daily Digest — 19 Aug 2026" {
+		t.Errorf("the briefing is called %q", got.Subject)
+	}
+}
+
+// And a mail conversation is named by its subject line, not its subject line
+// plus the opening of the body.
+func TestAMailConversationIsNamedByItsSubject(t *testing.T) {
+	const who = "mailbox-mailsubject"
+	th := thread.Open(who, "mail", "<h@example.com>")
+	thread.Add(thread.Message{Thread: th.ID, Account: who, From: "them@example.com",
+		Text: "Invoice 4021\n\nAttached is this month's invoice, due on the 30th."})
+
+	if got := thread.Get(who, th.ID); got.Subject != "Invoice 4021" {
+		t.Errorf("the conversation is called %q", got.Subject)
+	}
+}

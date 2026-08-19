@@ -17,6 +17,45 @@ import (
 	"mu/internal/thread"
 )
 
+// deleteButton removes a conversation and everything said on it.
+//
+// A mailbox you cannot delete from is a list that only grows. The record is
+// somebody's own memory and nothing expires it, which is right — but that is a
+// durability guarantee, not a reason to withhold the button.
+//
+// A confirm, because it is not undoable and the thing it takes is a
+// conversation rather than a row.
+func deleteButton(r *http.Request, id string) string {
+	return `<form class="ib-markform" method="post" action="/inbox/delete" style="display:inline" ` +
+		`onsubmit="return confirm('Delete this conversation? What was said in it is gone.')">` +
+		`<input type="hidden" name="id" value="` + html.EscapeString(id) + `">` +
+		`<input type="hidden" name="_csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `">` +
+		`<button class="ib-mark ib-del" type="submit">Delete</button></form>`
+}
+
+// DeleteHandler serves POST /inbox/delete.
+func DeleteHandler(w http.ResponseWriter, r *http.Request) {
+	_, acc, err := auth.RequireSession(r)
+	if err != nil {
+		app.RedirectToLogin(w, r)
+		return
+	}
+	if r.Method != http.MethodPost {
+		Handler(w, r)
+		return
+	}
+	if !auth.StrictCSRF(r) {
+		app.Forbidden(w, r, "that request did not carry a valid token")
+		return
+	}
+	if id := strings.TrimSpace(r.FormValue("id")); id != "" {
+		// Scoped to the reader by thread.Delete, so somebody else's id removes
+		// nothing rather than removing theirs.
+		thread.Delete(acc.ID, id)
+	}
+	http.Redirect(w, r, "/inbox", http.StatusSeeOther)
+}
+
 // unreadButton is the control on an open conversation.
 //
 // Shown only on one that was unread when you opened it, because that is when

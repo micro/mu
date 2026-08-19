@@ -212,6 +212,7 @@ func conversation(w http.ResponseWriter, r *http.Request, accountID, id string) 
 	b.WriteString(`<div class="ib">`)
 	b.WriteString(`<p class="ib-back">` + app.TextLink("← Inbox", "/inbox") + `</p>`)
 	b.WriteString(unreadButton(r, t.ID, wasUnread))
+	b.WriteString(deleteButton(r, t.ID))
 	b.WriteString(ConversationView(accountID, t))
 	// The agent, on the thing you are reading. See act.go.
 	b.WriteString(askBox(r, t.ID))
@@ -343,6 +344,7 @@ const inboxCSS = `<style>
 .ib-row.unseen{border-left:2px solid #111;padding-left:9px;margin-left:-11px}
 .ib-mark{display:inline-block;font:inherit;font-size:12px;color:#888;background:none;border:1px solid #eee;border-radius:999px;padding:3px 11px;cursor:pointer;margin-left:10px}
 .ib-mark:hover{border-color:#ddd;color:#111}
+.ib-del:hover{border-color:#e6b3b3;color:#b00}
 .ib-row:hover .ib-subject{text-decoration:underline}
 .ib-who{flex:0 0 130px;font-size:13px;font-weight:500;color:#111;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ib-mid{flex:1;min-width:0;display:flex;align-items:baseline;gap:8px;overflow:hidden}

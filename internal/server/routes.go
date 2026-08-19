@@ -727,6 +727,7 @@ func registerRoutes() {
 	// Putting a conversation back to unread. Its own path, because /inbox's POST
 	// is the instruction box and the two are not variations of each other.
 	http.HandleFunc("/inbox/unread", inbox.UnreadHandler)
+	http.HandleFunc("/inbox/delete", inbox.DeleteHandler)
 	// Telling a device something happened while the page is closed. Two
 	// endpoints, one handler — see internal/push.
 	http.HandleFunc("/push/subscribe", push.SubscribeHandler)

@@ -2369,12 +2369,16 @@ body:has(#messages) #chat-back-link {
   text-align: right;
 }
 
+/* A call to action reads as one.
+   It was muted grey at 500, which is the weight and colour of furniture — so
+   "Make one of your own →", the one thing a paragraph is asking you to do,
+   was the least legible text in it. */
 .link {
   display: block;
-  font-weight: 500;
+  font-weight: var(--font-weight-semibold, 600);
   text-decoration: none;
   margin-top: 12px;
-  color: var(--text-muted, #888);
+  color: var(--text-primary, #111);
   font-size: 13px;
 }
 

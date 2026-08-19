@@ -389,7 +389,13 @@ func Add(m Message) string {
 	messages[m.Thread] = append(messages[m.Thread], &stored)
 	held[m.Account]++
 	t.Updated = stored.At
-	if t.Subject == "" && stored.Role == RolePerson {
+	// What the conversation is about, from whatever opened it.
+	//
+	// This took the subject from a person's message only, so a conversation the
+	// agent starts had none — and the daily briefing, which is exactly that,
+	// arrived in the inbox as "Untitled". A conversation is named by its first
+	// message whoever wrote it.
+	if t.Subject == "" {
 		t.Subject = summarise(stored.Text)
 	}
 	// Whoever spoke is on the conversation. Parties accrete from what actually
@@ -601,7 +607,22 @@ func sortByTime(m []*Message) {
 }
 
 // summarise makes a one-line name for a conversation from its first message.
+// summarise makes a one-line name for a conversation from its first message.
+//
+// The first line, where there is one worth having. A message that arrived by
+// mail is its subject, a blank line, then the body — and flattening all of that
+// into one string produced "Invoice 4021 Attached is this month\u2019s invoice for"
+// where the subject was sitting right there on line one. Same for the briefing,
+// whose first line is its title.
+//
+// Falls back to the flattened whole for a message that opens with a long
+// paragraph, which is what somebody typing into a chat box writes.
 func summarise(text string) string {
+	if line, _, ok := strings.Cut(strings.TrimSpace(text), "\n"); ok {
+		if line = strings.TrimSpace(line); line != "" && len(line) <= 80 {
+			return line
+		}
+	}
 	text = strings.TrimSpace(strings.ReplaceAll(text, "\n", " "))
 	for strings.Contains(text, "  ") {
 		text = strings.ReplaceAll(text, "  ", " ")
