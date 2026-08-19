@@ -126,7 +126,8 @@ func TestCancelTaskUpdatesStoredTask(t *testing.T) {
 
 func TestAgentForSkill(t *testing.T) {
 	got := AgentForSkill("weather")
-	if !strings.Contains(got, "Weather Agent") || !strings.Contains(got, "Weather forecasts") {
+	// "Weather", not "Weather Agent" — the noun repeated in its own category.
+	if !strings.Contains(got, "Weather") || !strings.Contains(got, "Weather forecasts") {
 		t.Fatalf("AgentForSkill(weather) = %q, want weather agent description", got)
 	}
 	if got := AgentForSkill("missing"); got != "" {

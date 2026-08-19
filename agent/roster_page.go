@@ -396,7 +396,8 @@ func platformRow(name string) string {
 		scope +
 		`<div class="agent-meta">` + meta + `</div>` + addr +
 		`<div class="agent-links"><a href="` + path + `">Talk to it</a>` +
-		`<a href="/agent/connect">How to reach it &rarr;</a></div>` +
+		`<a href="/agent/connect?id=` + html.EscapeString(strings.ToLower(name)) +
+		`">How to reach it &rarr;</a></div>` +
 		`</div></div>`
 }
 

@@ -1,5 +1,12 @@
 package micro
 
+// The agents this instance provides.
+//
+// Named for what they are about and nothing else — News, Markets, Weather. They
+// read "News Agent", "Markets Agent" and so on, which is the noun repeated in
+// its own category: nobody calls the weather forecast the Weather Forecast
+// Thing, and on a page headed "Our agents" every row ended in the word already
+// at the top of it.
 func init() {
 	Register(&Agent{
 		ID:           "micro",
@@ -12,7 +19,7 @@ func init() {
 
 	Register(&Agent{
 		ID:           "news",
-		Name:         "News Agent",
+		Name:         "News",
 		Description:  "News, current events, and headlines",
 		SystemPrompt: `You are the News specialist on Mu. You curate and summarise news from RSS feeds and web searches. Always cite specific headlines and publication dates. Distinguish between breaking news, developing stories, and background context. Be concise — nomads check news on the go.`,
 		Tools:        []string{"news_list", "news_search", "web_search", "web_fetch"},
@@ -21,7 +28,7 @@ func init() {
 
 	Register(&Agent{
 		ID:           "markets",
-		Name:         "Markets Agent",
+		Name:         "Markets",
 		Description:  "Crypto prices, market data, price analysis",
 		SystemPrompt: `You are the Markets specialist on Mu. You track stocks, crypto, futures, commodities, and currencies. Always quote exact prices and 24h changes from tool data. Highlight significant moves. When asked about trends, correlate price action with news. Never speculate without data.`,
 		Tools:        []string{"markets_list", "wallet"},
@@ -30,7 +37,7 @@ func init() {
 
 	Register(&Agent{
 		ID:           "mail",
-		Name:         "Mail Agent",
+		Name:         "Mail",
 		Description:  "Email inbox, sending messages, mail summaries",
 		SystemPrompt: `You are the Mail specialist on Mu. You read and summarise the inbox, draft replies, and send messages. When summarising, lead with urgent/important items. For drafts, match the user's tone from previous messages. Keep summaries brief — one line per message.`,
 		Tools:        []string{"mail_inbox", "mail_send"},
@@ -39,7 +46,7 @@ func init() {
 
 	Register(&Agent{
 		ID:           "weather",
-		Name:         "Weather Agent",
+		Name:         "Weather",
 		Description:  "Weather forecasts and conditions",
 		SystemPrompt: `You are the Weather specialist on Mu. You provide forecasts and current conditions. If the user hasn't specified a location, check their memory for a stored location. Include temperature, conditions, and a practical recommendation (umbrella, sunscreen, etc.). Digital nomads move often — always confirm which city.`,
 		Tools:        []string{"weather_forecast", "places_search"},
@@ -48,7 +55,7 @@ func init() {
 
 	Register(&Agent{
 		ID:           "places",
-		Name:         "Places Agent",
+		Name:         "Places",
 		Description:  "Find coworking spaces, cafes, restaurants, and local spots",
 		SystemPrompt: `You are the Places specialist on Mu. You find coworking spaces, cafes with wifi, restaurants, and anything nearby. Digital nomads need reliable wifi, power outlets, and good coffee. Always include distance and ratings when available. Suggest alternatives.`,
 		Tools:        []string{"places_search", "places_nearby", "weather_forecast"},
@@ -57,7 +64,7 @@ func init() {
 
 	Register(&Agent{
 		ID:           "social",
-		Name:         "Social Agent",
+		Name:         "Social",
 		Description:  "Social feed, blog posts, content creation",
 		SystemPrompt: `You are the Social specialist on Mu. You manage the social feed and blog. Help users write posts, find trending topics, and engage with the community. For blog posts, suggest titles and structure. Keep social posts concise and engaging.`,
 		Tools:        []string{"social_list", "social_search", "blog_list", "blog_read", "blog_create", "blog_update"},
@@ -66,7 +73,7 @@ func init() {
 
 	Register(&Agent{
 		ID:           "video",
-		Name:         "Video Agent",
+		Name:         "Video",
 		Description:  "Video feeds and YouTube search",
 		SystemPrompt: `You are the Video specialist on Mu. You curate videos from followed channels and search YouTube. When recommending videos, include the title, channel, and a one-line description of why it's relevant. Prefer curated channel content over random search results.`,
 		Tools:        []string{"video_list", "video_search"},
@@ -75,7 +82,7 @@ func init() {
 
 	Register(&Agent{
 		ID:           "apps",
-		Name:         "Apps Agent",
+		Name:         "Apps",
 		Description:  "Build, find, and run small web apps",
 		SystemPrompt: `You are the Apps specialist on Mu. You build small web apps from descriptions, find existing apps, and help users customise them. The app SDK supports mu.ai() for AI-powered apps, mu.store for persistence, and mu.markets/mu.news for live data. Generate clean, working HTML.`,
 		Tools:        []string{"apps_search", "apps_read", "apps_build", "apps_edit", "apps_run"},
@@ -84,7 +91,7 @@ func init() {
 
 	Register(&Agent{
 		ID:           "faith",
-		Name:         "Faith Agent",
+		Name:         "Faith",
 		Description:  "Islamic prayer times, qibla, reflections, Quran, Hadith",
 		SystemPrompt: `You are the Faith specialist on Mu. You give today's Islamic reflection, prayer times and the qibla, look up Quran verses and Hadith, and answer questions about Islamic teachings. Be respectful and accurate. Always cite the surah/verse or hadith source.`,
 		Tools:        []string{"prayer_reflection", "prayer_times", "prayer_qibla", "quran", "hadith", "quran_search"},
@@ -93,7 +100,7 @@ func init() {
 
 	Register(&Agent{
 		ID:           "search",
-		Name:         "Search Agent",
+		Name:         "Search",
 		Description:  "Web search and content fetching",
 		SystemPrompt: `You are the Search specialist on Mu. You search the web, fetch pages, and extract relevant information. Always cite your sources with URLs. Distinguish between facts and opinions. Summarise clearly — the user wants the answer, not a list of links.`,
 		Tools:        []string{"web_search", "web_fetch"},

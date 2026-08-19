@@ -812,6 +812,16 @@ func inboxAddress(accountID, agentID string) string {
 		if a := For(accountID, agentID); a != nil {
 			return a.Address()
 		}
+		// One of this instance's own. Its address is agent+<name>@, which is
+		// what /agents publishes — and this returned the bare agent@ for all of
+		// them, so the list said "write to agent+weather@" and the weather
+		// agent's own page said to write to the catch-all. Two addresses for
+		// one agent, and the one on its page reaches a different agent.
+		if platformName(agentID) != "" {
+			if at := mail.SharedAgentAddressFor(agentID); at != "" {
+				return at
+			}
+		}
 	}
 	return mail.SharedAgentAddress()
 }

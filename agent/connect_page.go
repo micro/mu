@@ -22,6 +22,7 @@ import (
 	"net/url"
 	"strings"
 
+	"mu/agent/micro"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/service"
@@ -45,9 +46,17 @@ func ConnectHandler(w http.ResponseWriter, r *http.Request) {
 	// ends the page layout early — see TestMarkupBuildersCloseTheirTags.
 	title, desc := "Connect Micro", "How to reach the default agent"
 	body := defaultPanel(app.BaseURL(r))
-	if a != nil {
+	switch {
+	case a != nil:
 		title, desc = "Connect "+a.Name, "How to reach "+a.Name
 		body = connectPanel(a, app.BaseURL(r), auth.CSRFToken(r))
+	case Platform(id) != nil && !strings.EqualFold(id, DefaultPlatformAgent):
+		// One of this instance's own. Without this every specialist's "How to
+		// reach it" fell through to the default panel and said Micro — eleven
+		// links to a page about a different agent.
+		p := Platform(id)
+		title, desc = "Connect "+p.Name, "How to reach "+p.Name
+		body = platformPanel(p, app.BaseURL(r))
 	}
 
 	// Back to the agent, not to the mailbox. /inbox is what arrived; this page
@@ -267,3 +276,35 @@ code.conn-v{background:var(--hover-background,#f5f5f5);border-radius:4px;padding
   .conn-pre{font-size:11px}
 }
 </style>`
+
+// platformPanel is how to reach one of this instance's own agents.
+//
+// Shorter than an agent of your own has, and the difference is the point: there
+// is no token, no scope to set and nothing to create. It is here, it answers at
+// an address, and it reaches the services it was built for.
+func platformPanel(a *micro.Agent, base string) string {
+	var b strings.Builder
+	b.WriteString(`<p class="lens-lead"><strong>` + html.EscapeString(a.Name) +
+		`</strong> — Runs here. ` + html.EscapeString(a.Description) + `. Provided by this ` +
+		`instance, so there is nothing to create and no token to hold: it answers as your ` +
+		`account, against your credits. ` + app.Link("Make one of your own", "/agent/new") + `</p>`)
+
+	b.WriteString(`<div class="conn-row"><span class="conn-k">May reach</span>` +
+		`<span class="conn-scope">` + html.EscapeString(toolWords(a.Tools)) + `</span></div>`)
+
+	if addr := mail.SharedAgentAddressFor(a.ID); addr != "" {
+		b.WriteString(`<div class="conn-row"><span class="conn-k">Write to it</span>` +
+			`<span class="conn-v"><code>` + html.EscapeString(addr) + `</code><br>` +
+			`<span class="conn-sub">From your verified address. The tag names the agent ` +
+			`rather than you, so it is one thing to remember — and it answers in the ` +
+			`thread, which turns up in your inbox.</span></span></div>`)
+	}
+
+	b.WriteString(`<div class="conn-row"><span class="conn-k">Endpoint</span>` +
+		`<code class="conn-v">` + html.EscapeString(strings.TrimSuffix(base, "/")+"/mcp") + `</code></div>`)
+
+	b.WriteString(`<div class="conn-row"><span class="conn-k">Talk to it</span>` +
+		`<span class="conn-v">` + app.TextLink(base+"/agent/"+html.EscapeString(a.ID),
+		"/agent/"+html.EscapeString(a.ID)) + `</span></div>`)
+	return b.String()
+}
