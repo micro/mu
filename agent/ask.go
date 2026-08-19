@@ -29,6 +29,7 @@ import (
 	"errors"
 	"strings"
 
+	"mu/internal/notes"
 	"mu/internal/safety"
 	"mu/internal/thread"
 )
@@ -176,7 +177,23 @@ func Ask(r AskRequest) (Answer, error) {
 		Stream:  r.Stream,
 	}
 	if plat := Platform(r.Agent); r.Agent != "" && plat != nil {
-		opts.System = PlatformOpts(plat).System
+		// Both halves. It took System only, so every one of this instance's
+		// agents arrived at the chat and at agent+weather@ holding every tool
+		// on the box — the allow-list that makes a specialist a specialist was
+		// read on the Execute path and dropped on this one. See PlatformOpts,
+		// which returns the pair for exactly this reason.
+		o := PlatformOpts(plat)
+		opts.System, opts.Tools = o.System, o.Tools
+		// And what this agent knows about you, which is the thing that made
+		// eleven agents worth having rather than one prompt eleven ways. The
+		// scope was declared in the registry and read in one place — the
+		// planner inside micro.Execute — so a conversation held here, or by
+		// mail, never saw it. See notes.ForScopedContext.
+		if plat.MemoryScope != "" && !r.Public {
+			if mem := notes.ForScopedContext(r.Account, plat.MemoryScope); mem != "" {
+				opts.System += "\n\nWhat you know about them:\n" + mem
+			}
+		}
 	} else if r.Agent != "" {
 		// One of the account's own. Unknown names fall through to the default
 		// rather than failing: a client naming an agent that no longer exists
@@ -226,7 +243,7 @@ func Ask(r AskRequest) (Answer, error) {
 	// Off the response path: it is a background model call and the answer is
 	// already written.
 	if err == nil {
-		go extractMemory(r.Account, r.Text)
+		go extractMemory(r.Account, r.Text, scopeOf(r.Agent))
 	}
 
 	return Answer{Text: answer, Flow: id, Thread: threadID(th)}, err

@@ -581,6 +581,13 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// What to ask, in this agent's words. The box read "Try: give me a morning
+	// brief" on every page including this one, so the Weather agent's own page
+	// suggested the general agent's work — see micro.Agent.Examples.
+	if ex := examplesFor(selAgent); len(ex) > 0 {
+		cfg.Suggestions = ex
+	}
+
 	// The two panels beside the conversation. On a phone they are folded away
 	// behind the bar below and the chat is the first thing on the page — see
 	// chatLayoutCSS. Each is its own pane so one can be open without the other:
@@ -1493,7 +1500,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		// somebody says "I'm in London, keep it short". Cheap: one background
 		// model call, off the response path, and it stores nothing when the
 		// message holds no fact.
-		go extractMemory(accountID, req.Prompt)
+		go extractMemory(accountID, req.Prompt, scopeOf(req.Agent))
 	}
 
 	// Start SSE stream

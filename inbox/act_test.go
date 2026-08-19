@@ -16,8 +16,15 @@ import (
 
 // reader is an account that exists, which the quota check needs before it will
 // let a run happen.
+//
+// Idempotent, because accounts are stored on disk and a second run of the suite
+// on the same machine finds the one the first run made. A test that fails only
+// the second time it is run is a worse thing to own than this line.
 func reader(t *testing.T, id string) {
 	t.Helper()
+	if _, err := auth.GetAccount(id); err == nil {
+		return
+	}
 	if err := auth.Create(&auth.Account{ID: id, Name: id, Created: time.Now()}); err != nil {
 		t.Fatalf("could not create %s: %v", id, err)
 	}

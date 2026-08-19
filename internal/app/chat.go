@@ -1,6 +1,20 @@
 package app
 
-import "encoding/json"
+import (
+	"encoding/json"
+	htmlpkg "html"
+	"strings"
+)
+
+// generalSuggestions is what to ask when nobody has chosen a specialist —
+// Home, the landing page, and the default agent. Four different services on
+// purpose: the point being made is breadth.
+var generalSuggestions = []string{
+	"Give me a morning brief",
+	"What is moving in markets?",
+	"Weather in San Francisco",
+	"Find today's AI news",
+}
 
 // JSString returns s as a safely-quoted JavaScript string literal (with
 // surrounding quotes) for embedding in inline scripts.
@@ -36,6 +50,16 @@ type ChatConfig struct {
 	// from the place you would naturally talk to it. That is most of why a new
 	// agent reads as a toy.
 	OfferAgentPicker bool
+	// Placeholder is the grey text in the empty box, and Suggestions are the
+	// pills under it.
+	//
+	// Both were constants, so every chat on the site read "Try: give me a
+	// morning brief" — including the one on the Weather agent's page, which
+	// suggests a different agent's work on the page you opened to get away
+	// from the general one. Empty keeps the general set, which is right for
+	// Home and for a guest: they have not chosen a specialist.
+	Placeholder string
+	Suggestions []string
 	// StorageNS namespaces the component's sessionStorage keys so different
 	// surfaces (Home, /agent) keep separate in-tab conversations and never show
 	// each other's. When empty the component is ephemeral: it neither restores
@@ -78,9 +102,23 @@ func ChatComponent(cfg ChatConfig) string {
 		initialConv = cfg.InitialConvHTML
 	}
 
+	// What to ask, in this agent's words when there is one.
+	suggestions := cfg.Suggestions
+	if len(suggestions) == 0 {
+		suggestions = generalSuggestions
+	}
+	placeholder := strings.TrimSpace(cfg.Placeholder)
+	if placeholder == "" {
+		placeholder = "Try: " + strings.ToLower(suggestions[0][:1]) + suggestions[0][1:]
+	}
+	suggestJS, err := json.Marshal(suggestions)
+	if err != nil {
+		suggestJS = []byte("[]")
+	}
+
 	html := `<div id="mu-chat">
   <form id="mu-chat-form">
-    <textarea id="mu-chat-input" placeholder="Try: give me a morning brief" maxlength="1024" rows="1"
+    <textarea id="mu-chat-input" placeholder="` + htmlpkg.EscapeString(placeholder) + `" maxlength="1024" rows="1"
       onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();document.getElementById('mu-chat-form').dispatchEvent(new Event('submit'))}"
       oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,140)+'px'"></textarea>
     <button type="submit" aria-label="Send">&#x2192;</button>
@@ -182,7 +220,7 @@ if(!SESSION && PERSIST){
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function protectCurrencyDollars(s){return String(s||'').replace(/\$(?=\d)/g,'$\u2060');}
 
-var SUGGEST=['Give me a morning brief','What is moving in markets?','Weather in San Francisco','Find today\'s AI news'];
+var SUGGEST=` + string(suggestJS) + `;
 function showSuggestions(){
   if(HIDE_SUGGEST){sugDiv.innerHTML='';return;}
   if(conv.innerHTML.trim()){sugDiv.innerHTML='';return;}

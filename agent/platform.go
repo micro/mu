@@ -95,3 +95,20 @@ func PlatformNamed(name string) (id, display string, ok bool) {
 	}
 	return a.ID, a.Name, true
 }
+
+// examplesFor is what is worth asking this agent, for the box on its page.
+//
+// No account argument, and the test above this file's rules is why: platform
+// resolution means the same thing to everybody. Only the platform's own agents
+// have examples — one somebody made themselves has a name and an instruction
+// and no examples, and inventing four from its prompt would be a guess
+// presented as the agent's own words. The general set is the honest fallback.
+func examplesFor(agentID string) []string {
+	if agentID == "" {
+		return nil
+	}
+	if a := micro.Get(agentID); a != nil {
+		return a.Examples
+	}
+	return nil
+}

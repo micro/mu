@@ -8,14 +8,24 @@ package micro
 // Agent defines a specialised micro-agent. Built-in agents have an empty
 // OwnerAccountID; user-defined agents are owned by the account that created them.
 type Agent struct {
-	ID             string   // "markets", "news", or a user agent id like "u_xxxx"
-	Name           string   // Human-friendly: "Markets Agent"
-	Description    string   // One-line for the router
-	SystemPrompt   string   // Personality and instructions
-	Tools          []string // Allowed MCP tool names
-	MemoryScope    string   // Memory namespace prefix (e.g. "markets")
-	OwnerAccountID string   `json:",omitempty"` // empty = built-in; else the creator
-	ForkedFrom     string   `json:",omitempty"` // id this was forked from, if any
+	ID           string   // "markets", "news", or a user agent id like "u_xxxx"
+	Name         string   // Human-friendly: "Markets Agent"
+	Description  string   // One-line for the router
+	SystemPrompt string   // Personality and instructions
+	Tools        []string // Allowed MCP tool names
+	MemoryScope  string   // Memory namespace prefix (e.g. "markets")
+	// Examples are things worth asking this agent, in its own words.
+	//
+	// Every chat box on the site read "Try: give me a morning brief",
+	// including the one on the Weather agent's page — which is a suggestion
+	// for a different agent, offered by the page you opened to get away from
+	// the general one. A specialist whose prompt cannot say what it is for is
+	// indistinguishable from the default with a different name on it.
+	//
+	// The first is the placeholder; all of them are the pills under the box.
+	Examples       []string
+	OwnerAccountID string `json:",omitempty"` // empty = built-in; else the creator
+	ForkedFrom     string `json:",omitempty"` // id this was forked from, if any
 }
 
 // Registry maps agent IDs to their (built-in) definitions.

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"mu/agent/micro"
 	"mu/internal/ai"
 	"mu/internal/api"
 	"mu/internal/app"
@@ -18,7 +19,23 @@ import (
 // extractMemory checks if the user's prompt contains something to
 // remember (preferences, facts about themselves, interests). Runs
 // async after the response so it doesn't slow down the answer.
-func extractMemory(accountID, prompt string) {
+//
+// scope is the agent the conversation was with, and it is the half that was
+// missing. Every one of this instance's agents declares a MemoryScope —
+// "weather", "markets", "faith" — read by notes.ForScopedContext to give each
+// one its own memory on top of the shared pool. Nothing ever wrote into it. So
+// eleven agents had eleven namespaces, all of them empty, and every one of them
+// saw the same unscoped notes: separate agents with identical memories, which
+// is one agent with eleven names.
+//
+// What goes where is the model's call and the prompt says how to make it: a
+// fact about the person is theirs and belongs to everybody, a fact that only
+// matters to this specialty is scoped. "I live in London" is not the weather
+// agent's — the markets agent needs it for the exchange, the places agent needs
+// it to find a cafe. "I only care about the 5am forecast" is nobody else's
+// business, and putting it in the shared pool is how every agent's context
+// silently fills with the last ten conversations you had with a different one.
+func extractMemory(accountID, prompt, scope string) {
 	lower := strings.ToLower(prompt)
 	// Quick check — only run the LLM if the prompt looks like it
 	// contains a memory-worthy statement.
@@ -36,14 +53,25 @@ func extractMemory(accountID, prompt string) {
 		return
 	}
 
-	result, err := ai.Ask(&ai.Prompt{
-		System: `Extract any personal preference or fact the user is sharing about themselves.
+	system := `Extract any personal preference or fact the user is sharing about themselves.
 Output ONLY valid JSON: {"key":"short label","value":"what to remember"}
 If the message does NOT contain a personal preference or fact, output: {}
 Examples:
 "Remember I like Bitcoin" → {"key":"interest","value":"likes Bitcoin"}
 "I live in London" → {"key":"location","value":"London"}
-"What's the weather?" → {}`,
+"What's the weather?" → {}`
+	if scope != "" {
+		system += `
+
+This was said to the ` + scope + ` specialist. Add "scoped":true when the fact is
+only of use to that specialist and would be noise to any other, and leave it out
+when it is a fact about the person that anything should know.
+"I live in London" → {"key":"location","value":"London"}
+"Only show me the 5am forecast" → {"key":"forecast","value":"wants the 5am one","scoped":true}`
+	}
+
+	result, err := ai.Ask(&ai.Prompt{
+		System:   system,
 		Question: prompt,
 		Model:    ai.BackgroundModel(),
 		Caller:   "memory-extract",
@@ -52,16 +80,41 @@ Examples:
 		return
 	}
 	var extracted struct {
-		Key   string `json:"key"`
-		Value string `json:"value"`
+		Key    string `json:"key"`
+		Value  string `json:"value"`
+		Scoped bool   `json:"scoped"`
 	}
 	if err := json.Unmarshal([]byte(strings.TrimSpace(result)), &extracted); err != nil {
 		return
 	}
-	if extracted.Key != "" && extracted.Value != "" {
-		notes.Add(accountID, extracted.Key, extracted.Value)
-		app.Log("memory", "Saved for %s: %s = %s", accountID, extracted.Key, extracted.Value)
+	if extracted.Key == "" || extracted.Value == "" {
+		return
 	}
+	title := extracted.Key
+	if extracted.Scoped && scope != "" {
+		// The prefix is the namespace, and it is a colon rather than a field
+		// because notes are a title and a body and nothing else — see
+		// internal/notes. ForScopedContext reads it back and strips it.
+		title = scope + ":" + extracted.Key
+	}
+	notes.Add(accountID, title, extracted.Value)
+	app.Log("memory", "Saved for %s: %s = %s", accountID, title, extracted.Value)
+}
+
+// scopeOf is the memory namespace of the agent that answered, empty for the
+// general one and for an agent somebody made themselves.
+//
+// A user's own agent has no scope on purpose. They made one thing and they get
+// one memory; namespacing it would split their own facts across agents they did
+// not know were separate, and there is no registry entry to declare a scope in.
+func scopeOf(agentID string) string {
+	if agentID == "" {
+		return ""
+	}
+	if a := micro.Get(agentID); a != nil {
+		return a.MemoryScope
+	}
+	return ""
 }
 
 // UserContextFunc is set by main.go to provide personalised context
@@ -261,7 +314,10 @@ func RunHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	go extractMemory(acc.ID, req.Prompt)
+	// No scope: /agent/run names no agent, so there is no specialist for a
+	// fact to belong to and it goes in the shared pool, which is where a fact
+	// with no owner belongs.
+	go extractMemory(acc.ID, req.Prompt, "")
 
 	var steps []FlowStep
 	for _, tu := range toolsUsed {
