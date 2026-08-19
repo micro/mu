@@ -77,6 +77,17 @@ var settingGroups = []settingGroup{
 	}},
 	{"Transit", []string{
 		"TRANSIT_FEEDS",
+		// Optional everywhere: transit answers with no key at all. This only
+		// raises TfL's rate limit, and it was readable by the code and
+		// settable nowhere — the same gap the Twilio group below records.
+		"TFL_APP_KEY",
+	}},
+	// The basemap. /tiles sends an operator here by name when it has no key,
+	// so this group has to exist for that sentence to be true — see the note
+	// on the Twilio group, which is the same mistake found the same way.
+	{"Maps", []string{
+		"OS_MAPS_KEY",
+		"TILE_FETCH_PER_HOUR",
 	}},
 	{"Discord", []string{
 		"DISCORD_BOT_TOKEN",

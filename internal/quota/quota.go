@@ -89,16 +89,10 @@ const (
 	// renaming it would silently reset the price to the default on upgrade and
 	// break the history in two. The tool was renamed, which is visible and has
 	// an alias. The price key is not, and does not.
-	OpRoutesETA        = "places_eta"
-	OpRoutesDirections = "routes_directions"
-	OpWeatherForecast  = "weather_forecast"
-	OpWeatherPollen    = "weather_pollen"
-	// OpMapTile is one Ordnance Survey tile this instance has never fetched.
-	//
-	// Charged on the cold fetch and not on the serve, which is the whole
-	// pricing idea for tiles: they are immutable, so a tile anybody has looked
-	// at is free for everybody afterwards. See service/tiles.
-	OpMapTile           = "map_tile"
+	OpRoutesETA         = "places_eta"
+	OpRoutesDirections  = "routes_directions"
+	OpWeatherForecast   = "weather_forecast"
+	OpWeatherPollen     = "weather_pollen"
 	OpWebSearch         = "web_search"
 	OpWebFetch          = "web_fetch"
 	OpDBWrite           = "db_write"

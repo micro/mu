@@ -18,22 +18,26 @@
 // By the definition: request in, response out, deterministic given the data,
 // callable by anything. z/x/y names exactly one image and always the same one.
 //
-// # Pricing, which is the part that needed thinking about
+// # Free, and why that is affordable
 //
-// A tile costs a credit the first time this instance has ever fetched it, and
-// nothing on every serve after that, to anybody. Not per request — one pan of a
-// map is twenty to forty tiles, and metering that would make looking at a map
-// feel like a taxi meter.
+// Tiles cost nothing. Not per request and not on the first fetch either, which
+// was the first design and was too clever: a price that depends on whether
+// somebody else happened to look at Snowdonia first is a price nobody can
+// predict, and a basemap you have to think about the cost of is one you build
+// something else on.
 //
-// It works because tiles are immutable in a way almost nothing else here is.
-// OS does not redraw last week's Snowdonia. So the cache is not an optimisation
-// with a staleness question attached; it is the true shape of the cost, and a
-// region anybody has already looked at is free for everybody afterwards. An
-// instance that has served Britain once serves it from disk.
+// It is affordable because tiles are immutable in a way almost nothing else
+// here is. OS does not redraw last week's Snowdonia. So a region is fetched
+// once, ever, by anybody, and served from disk forever after — which means the
+// bill is bounded by how much of Britain has been looked at rather than by how
+// often. An instance that has served the Lake District has finished paying for
+// the Lake District.
 //
-// The odd corner, said plainly rather than hidden: the same request costs
-// differently depending on who asked first. That is a fair description of what
-// actually happened.
+// What stands in for the price is a limit on cold fetches per account per hour,
+// because free means nothing else throttles what this instance spends at
+// Ordnance Survey. That is CLAUDE.md's own division of labour — credits price
+// real cost, rate limits stop bots — applied to a case where the real cost is
+// bounded and the bot is the risk. See limit.go.
 package tiles
 
 import (
@@ -46,7 +50,6 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/blob"
-	"mu/internal/quota"
 	"mu/internal/service"
 	"mu/internal/settings"
 )
@@ -246,19 +249,13 @@ var Spec = service.Spec{
 	Page:        "/tiles",
 	Icon:        "tiles.svg",
 	Endpoints: map[string]service.Endpoint{
-		// Neither declares a Cost, and that is the design rather than an
-		// oversight — TestNoOperationIsChargedTwice caught it being both.
-		//
-		// These return URLs. Answering "which tiles cover this box" touches
-		// nothing but arithmetic, and charging for it would either bill one
-		// credit for a list or four hundred for a box nobody has fetched yet.
-		// The charge is on the image, once, the first time this instance has
-		// ever fetched that tile — see fetch and TileHandler.
+		// Neither declares a Cost, because tiles are free — see the package
+		// comment. What bounds them is a limit on cold fetches per account per
+		// hour, which is a different mechanism for a different job.
 		"Tile": {
 			Doc: "The URL for one map tile, by zoom, column and row. Styles: road, " +
 				"outdoor (rights of way and contours), light (a quiet basemap to draw on). " +
-				"Free — the tile itself costs a credit the first time this instance " +
-				"fetches it, and nothing afterwards. Britain only",
+				"Free. Britain only",
 		},
 		"Area": {
 			Doc: "Every tile covering a bounding box at a zoom level, as URLs, row by row " +
@@ -300,12 +297,12 @@ func fetch(owner, layer string, z, x, y int) ([]byte, error) {
 		return nil, fmt.Errorf("this instance has no Ordnance Survey key, so it can only " +
 			"serve tiles it already holds")
 	}
-	// Charged before the provider is called, because after that we have been
-	// billed whatever we decide — the order service/mail/outbound.go uses.
-	if owner != "" {
-		if err := quota.ConsumeQuota(owner, quota.OpMapTile); err != nil {
-			return nil, err
-		}
+	// Nothing is charged. What is checked is how many tiles this account has
+	// already made this instance go and fetch this hour — the limit stands in
+	// for the price, and it is checked before the provider is called because
+	// after that we have been billed whatever we decide. See limit.go.
+	if err := mayFetch(owner); err != nil {
+		return nil, err
 	}
 
 	url := fmt.Sprintf("https://api.os.uk/maps/raster/v1/zxy/%s/%d/%d/%d.png?key=%s",

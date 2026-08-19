@@ -88,13 +88,6 @@
       "env": "CREDIT_COST_WEATHER_POLLEN"
     },
     {
-      "op": "map_tile",
-      "cost": 1,
-      "label": "Map tile (first fetch)",
-      "env": "CREDIT_COST_MAP_TILE",
-      "note": "Ordnance Survey, charged once per tile ever — every serve after is free to anybody, because a tile does not change"
-    },
-    {
       "op": "web_search",
       "cost": 2,
       "label": "Web search",

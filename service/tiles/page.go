@@ -12,7 +12,6 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/auth"
-	"mu/internal/quota"
 )
 
 // maxTileBytes bounds one image. An OS raster tile is 20-60KB; anything past
@@ -123,12 +122,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	var b strings.Builder
 	b.WriteString(`<div class="tiles-page">`)
-	b.WriteString(`<p class="svc-lead">` + Spec.Description + `. Every tile is fetched once ` +
-		`and then served from here, so a region somebody has already looked at is free.</p>`)
+	b.WriteString(`<p class="svc-lead">` + Spec.Description + `. Free, and fetched once — a ` +
+		`tile is served from here forever after, so a region costs this instance one look ` +
+		`however many people use it.</p>`)
 
 	if !Configured() {
 		b.WriteString(app.Problem("This instance has no Ordnance Survey key, so it can only " +
-			"serve tiles it already holds. Set OS_MAPS_KEY in Settings."))
+			"serve tiles it already holds. An admin can set OS_MAPS_KEY under Maps in " +
+			"Settings — the free tier at osdatahub.os.uk is enough."))
 	}
 
 	b.WriteString(`<div class="tiles-styles">`)
@@ -147,10 +148,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<pre class="tool-call">https://` + hostOf(r) + `/tiles/` + style +
 		`/{z}/{x}/{y}.png</pre>`)
 	b.WriteString(app.NoteHTML(`That is a raster tile URL — give it to MapLibre, Leaflet or ` +
-		`OpenLayers as-is. Signed in, a tile this instance has not seen costs ` +
-		strconv.Itoa(quota.OperationCost(quota.OpMapTile)) + ` credit and every serve after ` +
-		`that is free, to anybody. Ask <code>tiles_area</code> for the tiles covering a ` +
-		`bounding box. Contains OS data © Crown copyright and database right.`))
+		`OpenLayers as-is. Free: a tile is fetched once, ever, and served from here ` +
+		`afterwards. Signing in is only needed for a tile this instance has never seen, ` +
+		`and there is a limit of ` + strconv.Itoa(coldLimit()) + ` of those an hour per ` +
+		`account so nobody can mirror Britain by accident. Ask <code>tiles_area</code> for ` +
+		`the tiles covering a bounding box. ` +
+		`Contains OS data © Crown copyright and database right.`))
 
 	b.WriteString(`</div>`)
 	app.Respond(w, r, app.Response{Title: "Tiles", Description: Spec.Description, HTML: b.String()})

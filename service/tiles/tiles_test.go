@@ -5,6 +5,7 @@ package tiles
 import (
 	"context"
 	"math"
+	"os"
 	"strings"
 	"testing"
 )
@@ -168,5 +169,63 @@ func TestThePreviewIsTheGridTheStylesheetExpects(t *testing.T) {
 	// a hill rather than a city: Outdoor shows paths and contours there.
 	if math.Abs(previewLat-54.4542) > 0.001 {
 		t.Error("the preview moved off Scafell Pike without the comment moving with it")
+	}
+}
+
+// Free means nothing else throttles what this instance spends at Ordnance
+// Survey, so the limit is the only thing standing between an enthusiastic
+// script and a mirror of Britain. Worth testing as the load-bearing thing it is.
+func TestColdFetchesAreBounded(t *testing.T) {
+	t.Setenv("TILE_FETCH_PER_HOUR", "3")
+	forgetFetches()
+	t.Cleanup(forgetFetches)
+
+	for i := 0; i < 3; i++ {
+		if err := mayFetch("mapper"); err != nil {
+			t.Fatalf("fetch %d of 3 was refused: %v", i+1, err)
+		}
+	}
+	err := mayFetch("mapper")
+	if err == nil {
+		t.Fatal("the fourth cold fetch was allowed past a limit of three")
+	}
+	// The refusal says what still works, because "limit reached" on a map that
+	// then keeps drawing from cache would read as broken.
+	if !strings.Contains(err.Error(), "already held") {
+		t.Errorf("the refusal does not say cached tiles still work: %v", err)
+	}
+
+	// One account's budget is not another's.
+	if err := mayFetch("somebody-else"); err != nil {
+		t.Errorf("one account exhausting its own budget blocked another: %v", err)
+	}
+}
+
+// An anonymous caller cannot make this instance fetch anything. With no charge
+// and no account there is nothing to bound, so a shared bucket would be one
+// script able to exhaust it for everybody.
+func TestNobodyAnonymousCausesAFetch(t *testing.T) {
+	forgetFetches()
+	t.Cleanup(forgetFetches)
+	if err := mayFetch(""); err == nil {
+		t.Error("an anonymous caller was allowed to cause a cold fetch")
+	}
+}
+
+// Tiles are free, and the way to be sure is that no operation exists to charge
+// them with. A zero-cost operation left lying around is the kind of thing this
+// codebase keeps rediscovering years later.
+func TestNothingChargesForATile(t *testing.T) {
+	for _, e := range Spec.Endpoints {
+		if e.Cost != "" {
+			t.Errorf("an endpoint declares Cost %q, but tiles are free", e.Cost)
+		}
+	}
+	src, err := os.ReadFile("tiles.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(src), "ConsumeQuota") {
+		t.Error("something here consumes quota, so tiles are not free after all")
 	}
 }
