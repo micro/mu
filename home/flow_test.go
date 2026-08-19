@@ -54,19 +54,37 @@ func TestTheLandingIsOneScreenAboutOneThing(t *testing.T) {
 	}
 }
 
-// Two taglines are one too many.
+// The line is said once.
 //
 // The page carried "An Inbox for Agents" in the chrome and "A personal agent."
 // as its headline — the line this positioning replaced, surviving in the one
-// place nothing rendered next to the other. Only the page shows both at once,
-// so only the page could catch it.
+// place nothing rendered next to the other. Retiring the old line by writing
+// the new one into the same slot fixed the contradiction and left the
+// duplication: the same sentence twice, once at 18px and once at 38px, on a
+// page whose whole argument is that it says one thing.
+//
+// So the rule is a count, not an absence — an absent old line is what the
+// previous version of this test checked, and it passed the whole time the page
+// said it twice. The <head> is excluded on purpose: the <title> and the og
+// description are allowed to repeat the pitch, because nobody reads them
+// beside it.
 func TestThereIsOneTagline(t *testing.T) {
 	rec := httptest.NewRecorder()
 	Landing(rec, httptest.NewRequest("GET", "/", nil))
-	body := rec.Body.String()
+	page := rec.Body.String()
 
-	if strings.Contains(body, "An Inbox for Agents") {
+	if strings.Contains(page, "An Inbox for Agents") {
 		t.Error("the landing still carries the old tagline above the new headline, " +
 			"so a visitor reads two different pitches stacked")
+	}
+
+	body := page
+	if i := strings.Index(page, "<body>"); i >= 0 {
+		body = page[i:]
+	}
+	if n := strings.Count(body, "A personal agent"); n != 1 {
+		t.Errorf("the landing says %q %d times on one screen, want once — it is the "+
+			"headline, and a second copy in the chrome above it is the same "+
+			"sentence in a smaller font", "A personal agent", n)
 	}
 }

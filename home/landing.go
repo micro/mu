@@ -48,11 +48,14 @@ func Landing(w http.ResponseWriter, r *http.Request) {
 		Title:       "Mu — A personal agent",
 		Description: "Give your agent an address. Write to it and it answers — with news, web search, mail, markets, weather, places and storage behind it. Open source and self-hostable.",
 		Brand:       "Mu",
-		// The tagline and the headline in the body were two different pitches
-		// stacked: "An Inbox for Agents" over "A personal agent." The first was
-		// the line this positioning replaced and it survived here because
-		// nothing renders the two together except the page.
-		Tagline:  "A personal agent",
+		// No tagline in the chrome. This slot held "An Inbox for Agents" — the
+		// line this positioning replaced — sitting directly above a headline
+		// that said something else, and swapping it for the new line only made
+		// the page say "A personal agent" twice in three centimetres. The
+		// headline is where the line belongs: it is set at 38px and the tagline
+		// slot is 18px, so the chrome copy was a smaller, duplicate version of
+		// the thing immediately below it. Nothing renders the two together
+		// except the page, which is why neither reading caught it.
 		TopRight: `<a href="/login">Sign in →</a>`,
 		Body:     body,
 		Footer:   app.FooterLinks(),
@@ -80,29 +83,33 @@ func Landing(w http.ResponseWriter, r *http.Request) {
 //
 // What is left: a headline, a sentence, the address, two ways on.
 //
+// And it has to actually fit, which is a measurement rather than an intention.
+// The first version of this centred the block with min-height:calc(100vh -
+// 200px), forgetting that the shell it sits in already pads 14vh from the top
+// and that there is a wordmark above and a footer below — so the page asked for
+// a full screen inside something that had already spent a fifth of one, and
+// scrolled by 74px at 1440x900 while claiming to be one screen. The block sizes
+// to its content now and the shell does the positioning.
+//
 // The prose explaining all that is here rather than in the stylesheet, because
 // a comment inside the <style> block is served to every visitor — which is how
 // a test looking for "Connect via MCP" on the page found it in the note saying
 // the section had been removed.
 func landingBody(host string) string {
-	// Counted, not claimed. This said "67 real tools" as a literal and the
-	// endpoint was serving 72 by the time anyone checked.
-	// The seven is the list immediately before it, counted. Change one and change
-	// the other — the number is what makes the claim land, because the reader has
-	// just read the things it counts.
-	// The address first, and the box below it as proof.
+	// The tool count is counted, not claimed. This said "67 real tools" as a
+	// literal and the endpoint was serving 72 by the time anyone checked.
 	//
-	// This led with the tools and a chat box, which is the right way round for
-	// "tools for agents" and the wrong way round for what is actually
-	// differentiated. Every provider ships an MCP server now; what none of them
-	// ship is an agent that is permanently reachable and remembers. An address
-	// is the only handle that needs nothing on the other side — no SDK, no
-	// OAuth, no protocol to adopt — so a person can use it, another agent can
-	// use it, a form can use it.
+	// The sentence used to end "One account instead of seven providers", which
+	// is the argument rather than the thing — and an argument invites the reader
+	// to weigh it, on a page whose job is to say what this is. It also carried a
+	// second number that had to be kept in step with the list beside it by hand.
+	// The list is the proof; it does not need a claim after it.
 	//
-	// The box stays, underneath. It is the only thing on the page that shows the
-	// product working in five seconds, and a page that only describes an address
-	// is asking somebody to imagine what happens when they write to it.
+	// The address first, because it is what is actually differentiated. Every
+	// provider ships an MCP server now; what none of them ship is an agent that
+	// is permanently reachable and remembers. An address is the only handle that
+	// needs nothing on the other side — no SDK, no OAuth, no protocol to adopt —
+	// so a person can use it, another agent can use it, a form can use it.
 	addr := mail.SharedAgentAddress()
 	if addr == "" {
 		addr = "agent@" + host
@@ -111,7 +118,7 @@ func landingBody(host string) string {
 <h2 class="lhead">A personal agent.</h2>
 <p class="lead">It has an email address. Write to it and it answers — with
 ` + strconv.Itoa(api.ToolCount()) + ` tools behind it: news, web search, mail, markets,
-weather, places, storage. One account instead of seven providers.</p>
+weather, places, storage.</p>
 
 <div class="laddr"><code>` + html.EscapeString(addr) + `</code></div>
 <p class="laddrnote">That one reaches the default agent. Your own get their own —
@@ -125,20 +132,20 @@ one, and can be reached from anywhere that can send an email.</p>
 </div>
 
 <style>
-.lwrap{min-height:calc(100vh - 200px);display:flex;flex-direction:column;justify-content:center;padding:20px 0}
+.lwrap{padding:0}
 .lhead{max-width:700px;text-align:center;margin:0 auto 12px;font-size:38px;line-height:1.12;
   letter-spacing:-.02em;font-weight:700;color:#111}
-.lead{max-width:560px;text-align:center;color:#555;font-size:17px;line-height:1.6;margin:0 auto 26px}
+.lead{max-width:560px;text-align:center;color:#555;font-size:17px;line-height:1.6;margin:0 auto 22px}
 .lead a{color:#111}
 .laddr{text-align:center;margin:0 auto 10px}
 .laddr code{display:inline-block;background:#111;color:#fff;border-radius:8px;padding:12px 20px;
   font-size:18px;letter-spacing:.01em;overflow-wrap:anywhere}
-.laddrnote{max-width:560px;margin:0 auto 30px;text-align:center;font-size:13px;color:#888;line-height:1.55}
+.laddrnote{max-width:560px;margin:0 auto 24px;text-align:center;font-size:13px;color:#888;line-height:1.55}
 .laddrnote code{background:#f4f4f5;border-radius:4px;padding:1px 5px;font-size:.95em}
 .lctas{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin:0}
 .lcta{display:inline-block;background:#111;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:700;font-size:15px}
 .lcta-alt{background:#fff;color:#111;border:1px solid #ddd}
 .lcta-alt:hover{border-color:#bbb}
-@media (max-width:640px){.lhead{font-size:28px}.lead{font-size:15px}.lwrap{min-height:0}}
+@media (max-width:640px){.lhead{font-size:28px}.lead{font-size:15px}}
 </style>`
 }

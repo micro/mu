@@ -84,6 +84,10 @@ body{font-family:'Nunito Sans',sans-serif;background:#fff;color:#111;min-height:
    them on one line. */
 .footer a{color:#555;text-decoration:none}
 .footer a:hover{text-decoration:underline}
+/* 14vh of air above the wordmark is right on a tall window and is a fifth of a
+   short one — a 1280x600 laptop spent 84px on padding and then scrolled by 23.
+   Height is the axis that decides here, so the query is on height. */
+@media (max-height:720px){.landing{padding-top:6vh}}
 /* The hero cards on these pages are capped at ~240px so three sit in a row on
    desktop. Below that the cap left them stranded mid-screen, so let them fill
    the column like every card elsewhere in the app. */
