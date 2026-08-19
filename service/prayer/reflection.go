@@ -121,11 +121,11 @@ func stringField(val map[string]interface{}, key string) string {
 }
 
 // ReminderHTML returns the rendered reminder card HTML
-func ReminderHTML(accountID string) string {
+func ReminderHTML(who service.Viewer) string {
 	reminderMutex.RLock()
 	body := reminderHTML
 	reminderMutex.RUnlock()
-	return nextMark(accountID) + body
+	return nextMark(who.Account) + body
 }
 
 // nextMark is the next prayer, in the corner of the card.

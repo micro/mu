@@ -3,6 +3,8 @@ package prayer
 import (
 	"strings"
 	"testing"
+
+	"mu/internal/service"
 )
 
 // The home card answers the time-sensitive question in its corner — "Asr
@@ -14,7 +16,7 @@ import (
 // nextMark, and account/place.go for why that matters more for a prayer time
 // than for anything else on the screen.
 func TestHomeCardCarriesTheNextPrayer(t *testing.T) {
-	html := ReminderHTML("")
+	html := ReminderHTML(service.Anyone())
 	if !strings.Contains(html, `id="prayer-next"`) {
 		t.Error("home card has no slot for the next prayer")
 	}
@@ -27,7 +29,7 @@ func TestHomeCardCarriesTheNextPrayer(t *testing.T) {
 // from coordinates already granted to the weather or prayer cards, and stays
 // empty otherwise — .card-corner:empty is display:none.
 func TestHomeCardNeverAsksForLocation(t *testing.T) {
-	html := ReminderHTML("")
+	html := ReminderHTML(service.Anyone())
 	if strings.Contains(html, "geolocation") {
 		t.Error("the home card asks for geolocation; it must only reuse cached coordinates")
 	}

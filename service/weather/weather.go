@@ -38,10 +38,10 @@ func Load() {
 // public — but it is the lesser answer, and it is the reason the weather agent
 // could not say whether you needed a coat while the home screen showed your
 // forecast.
-func CardHTML(accountID string) string {
-	if lat, lon, ok := auth.Located(accountID); ok {
+func CardHTML(who service.Viewer) string {
+	if lat, lon, ok := auth.Located(who.Account); ok {
 		if f, err := FetchWeather(lat, lon); err == nil && f != nil && f.Current != nil {
-			return serverCard(f, auth.PlaceName(accountID))
+			return serverCard(f, auth.PlaceName(who.Account))
 		}
 	}
 	return browserCard()

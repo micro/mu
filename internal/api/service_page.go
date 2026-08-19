@@ -19,17 +19,36 @@ package api
 // right now, what it can be asked, and how to ask it. Four things, all read off
 // the Spec and the tool registry, none of them typed out per service.
 //
-// # What this is not for
+// # When a service keeps its page
 //
-// A service you *do* something in. Mail, blog, notes, files, apps, chat — you
-// compose, you write, you upload, you run. Those pages are applications and
-// they pass the test that settled this: if all you could do was look at blogs,
-// it would not be a blog service. They keep what they have.
+// The rule, arrived at by converting one and getting the next one wrong: a
+// service keeps its page when the page shows something the card cannot. There
+// are exactly three reasons that is ever true, and they are checkable rather
+// than a matter of taste.
 //
-// This is for the other kind, which is most of them: a service you look at and
-// leave. Weather, markets, transit, flights, prayer times. There the page was
-// only ever a bigger version of the card, with a location box on top and
-// nothing underneath the card could not say.
+//  1. **It is your data.** Thirteen services are Scoped — mail, notes, files,
+//     contacts, tasks, images and the rest. A card is shared by definition, so
+//     it can never show one person's mail. These are applications and always
+//     were.
+//
+//  2. **It takes an argument to say anything.** A barcode, a search, a
+//     callsign, a category, a stop. food, places, web, markets, routes,
+//     transit, flights. A form is not a card, and the answer changes with what
+//     you type.
+//
+//  3. **It is browsable.** news, video, blog, social, apps — many items, paged,
+//     read one at a time. A card shows the top four and that is all it should.
+//
+// Fail all three and the page was a bigger version of the card. Two services
+// fail all three, and both have gone: weather and hazards.
+//
+// That is a much smaller answer than the one this file started with, and it is
+// the true one. The 22,000 lines of hand-written HTML under service/ do not
+// come out this way; most of them are earning their place by rule 1 or rule 3.
+//
+// What actually improved everything was the other half — see service.Viewer. A
+// card that knows who is looking is better on Home, in an agent's answer, on
+// this page and in an email, which is fourteen services rather than two pages.
 //
 // # Why not delete the page entirely
 //
@@ -69,18 +88,18 @@ func ServicePage(w http.ResponseWriter, r *http.Request, spec service.Spec) {
 	// Who is looking, so a card that can answer for them does. Empty for a
 	// signed-out reader, which every card must still render for — most of
 	// these pages are public and are the funnel.
-	accountID := ""
+	who := service.Anyone()
 	if _, acc := auth.TrySession(r); acc != nil {
-		accountID = acc.ID
+		who = service.For(acc.ID)
 	}
 	app.Respond(w, r, app.Response{
 		Title:       spec.NavLabel(),
 		Description: spec.Description,
-		HTML:        servicePage(spec, accountID),
+		HTML:        servicePage(spec, who),
 	})
 }
 
-func servicePage(spec service.Spec, accountID string) string {
+func servicePage(spec service.Spec, who service.Viewer) string {
 	var b strings.Builder
 	b.WriteString(`<div class="svc-page">`)
 	b.WriteString(`<p class="svc-lead">` + html.EscapeString(spec.Description) + `</p>`)
@@ -88,7 +107,7 @@ func servicePage(spec service.Spec, accountID string) string {
 	// What it knows right now. The whole page, really — everything below is
 	// about how to ask for more of it.
 	if spec.Card != nil {
-		b.WriteString(`<div class="svc-card">` + spec.Card(accountID).HTML + `</div>`)
+		b.WriteString(`<div class="svc-card">` + spec.Card(who).HTML + `</div>`)
 	}
 
 	// Somewhere to go for a person, which the card cannot always be.

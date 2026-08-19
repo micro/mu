@@ -47,7 +47,7 @@ type Card struct {
 	Icon     string // Optional icon image path (e.g. "/news.png")
 	Position int
 	Link     string
-	Content  func(accountID string) service.Card
+	Content  func(service.Viewer) service.Card
 	// CachedHTML is the last render; At is when what it shows happened, zero
 	// for a card that shows how things are rather than something that occurred.
 	CachedHTML  string
@@ -106,7 +106,7 @@ func Load() {
 	// service could grow a card and never appear here, and a renamed one would
 	// silently render nothing. News stays written out: it is this package's own
 	// card, not the service's view of itself.
-	cardFunctions := map[string]func(string) service.Card{}
+	cardFunctions := map[string]func(service.Viewer) service.Card{}
 	for _, sp := range service.Cards() {
 		cardFunctions[sp.Name] = sp.Card
 	}
@@ -212,7 +212,7 @@ func RefreshCards() {
 		// surface, which is what a service page is; giving Home one means
 		// giving Home a cache per account, and that is a change to make on
 		// purpose rather than as a side effect of this signature.
-		fresh := card.Content("")
+		fresh := card.Content(service.Anyone())
 		card.At = fresh.At
 
 		// Calculate hash

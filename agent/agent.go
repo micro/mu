@@ -22,6 +22,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/quota"
+	"mu/internal/service"
 	"mu/internal/thread"
 	"mu/service/mail"
 )
@@ -2328,7 +2329,7 @@ func renderResultCard(accountID, toolName, result string, args map[string]any) s
 	}
 	// Service-sourced dashboard cards (markets, news_headlines, social, …),
 	// pulled from the same tool registry, attached via api.SetCard in main.go.
-	return api.CardForTool(toolName, accountID)
+	return api.CardForTool(toolName, service.For(accountID))
 }
 
 // --- typed card renderers ---

@@ -8,7 +8,6 @@ package transit
 // whether or not they will share where they are standing.
 
 import (
-	"context"
 	"fmt"
 	"html"
 	"net/http"
@@ -161,9 +160,6 @@ func Card() string {
 	b.WriteString(`<p class="xmore"><a href="/transit">Stops near you →</a></p>`)
 	return b.String()
 }
-
-// CardCtx is Card with a context, for callers that have one.
-func CardCtx(_ context.Context) string { return Card() }
 
 const pageStyle = `<style>
 .xwrap{max-width:680px;margin:0 auto}

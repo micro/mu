@@ -21,6 +21,7 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/service"
 )
 
 // Handler serves /flights.
@@ -228,12 +229,12 @@ const pageCSS = `<style>
 // It asks the browser where it is and shows the three nearest aircraft. Without
 // permission it says so and offers the page, rather than guessing a city — the
 // answer to "what is overhead" is worthless if it is overhead somewhere else.
-func CardHTML(accountID string) string {
+func CardHTML(who service.Viewer) string {
 	// Rendered here when we know where you are, which is the better answer and
 	// the one that works with no browser in the room — see account/place.go.
 	// Three aircraft rather than the page's forty: the page has a scope and a
 	// table and is a different thing, which is why it is still a page.
-	if lat, lon, ok := auth.Located(accountID); ok {
+	if lat, lon, ok := auth.Located(who.Account); ok {
 		if found, err := Near(lat, lon, 25); err == nil {
 			return nearestHTML(found)
 		}

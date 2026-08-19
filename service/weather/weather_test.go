@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"mu/internal/service"
 )
 
 func TestToCelsius_Fahrenheit(t *testing.T) {
@@ -162,7 +164,7 @@ func restoreNWSBaseURL(t *testing.T, value string) {
 // there is nothing to fetch here and the JS asks.
 func TestCardHTMLShowsWeatherUnavailableOnFetchFailure(t *testing.T) {
 	resetCache()
-	got := CardHTML("")
+	got := CardHTML(service.Anyone())
 	if !strings.Contains(got, "Weather unavailable") {
 		t.Fatalf("CardHTML should show a clear unavailable state on fetch failure, got %q", got)
 	}

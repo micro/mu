@@ -7,7 +7,6 @@ package food
 // somebody. There is nothing here worth a fetch and a spinner.
 
 import (
-	"context"
 	"fmt"
 	"html"
 	"net/http"
@@ -100,6 +99,3 @@ func Card() string {
 		`or check a restaurant's hygiene rating.</p>` +
 		`<p><a href="/food">Look something up</a></p>`
 }
-
-// CardCtx matches the Spec's card signature where a context is passed.
-func CardCtx(_ context.Context) string { return Card() }

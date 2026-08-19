@@ -43,22 +43,22 @@ func registerCardProbes(t *testing.T) {
 func TestCardForToolResolvesThroughTheService(t *testing.T) {
 	registerCardProbes(t)
 
-	got := CardForTool("cardy_list", "")
+	got := CardForTool("cardy_list", service.Anyone())
 	if !strings.Contains(got, `class="card"`) || !strings.Contains(got, "Cardy") || !strings.Contains(got, "BODY") {
 		t.Errorf("a tool did not resolve to its service's card: %q", got)
 	}
 	// The bare service name works too — some tools are named for their service.
-	if got := CardForTool("cardy", ""); !strings.Contains(got, "BODY") {
+	if got := CardForTool("cardy", service.Anyone()); !strings.Contains(got, "BODY") {
 		t.Errorf("a bare service name did not resolve: %q", got)
 	}
-	if got := CardForTool("cardless_list", ""); got != "" {
+	if got := CardForTool("cardless_list", service.Anyone()); got != "" {
 		t.Errorf("a service with no card rendered %q", got)
 	}
-	if got := CardForTool("nosuchservice_list", ""); got != "" {
+	if got := CardForTool("nosuchservice_list", service.Anyone()); got != "" {
 		t.Errorf("an unknown service rendered %q", got)
 	}
 	// An empty body is not a card, so it gets no wrapper and no heading.
-	if got := CardForTool("cardblank_list", ""); got != "" {
+	if got := CardForTool("cardblank_list", service.Anyone()); got != "" {
 		t.Errorf("an empty body was still wrapped: %q", got)
 	}
 }

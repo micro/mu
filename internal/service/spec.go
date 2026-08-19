@@ -79,10 +79,9 @@ type Spec struct {
 	// Wrap a plain renderer with Glance, or one that knows when what it shows
 	// happened with Timed. The difference decides where a card goes — see Card.
 	// Wrap a plain renderer with Glance, one that varies by reader with
-	// Personal, and one that knows when what it shows happened with Timed. The
-	// account id is empty for a signed-out reader, which is a real case: most
-	// of these pages are public and must render something.
-	Card func(accountID string) Card
+	// Personal, and one that knows when what it shows happened with Timed.
+	// See Viewer, whose zero value is the shared render.
+	Card func(Viewer) Card
 }
 
 // Card is a service rendered at a glance, and when.
@@ -109,13 +108,45 @@ type Card struct {
 // Streamed reports whether a card belongs in a chronology.
 func (c Card) Streamed() bool { return !c.At.IsZero() }
 
+// Viewer is who a card is being rendered for.
+//
+// A struct rather than an account id, because an id is a signature that has to
+// break again the moment a card needs a second fact — a locale, a unit system,
+// whether this render is going into a page or an email. It was an id for about
+// an hour and that was already the wrong shape.
+//
+// Not context.Context either, though two services had grown a dead CardCtx
+// taking one "for callers that have one" that never arrived. A Context carries
+// cancellation and request scope; who is looking is domain data, and putting
+// domain data in context values means every card fishes for a key it cannot see
+// in its own signature.
+//
+// **The zero value is the shared render**: nobody in particular, the same for
+// everybody, safe to cache. That matters more than it looks. Two callers must
+// render impersonally — /card/<service>, which sends a cache header, and the
+// home screen, which keeps one set of strings for every viewer — and with an
+// id they did it by passing "", which is a convention the next caller can
+// forget. Viewer{} says what it is.
+type Viewer struct {
+	// Account is who is looking, empty for a signed-out reader or a shared
+	// render. Every card must render something for the empty case: most of
+	// these pages are public.
+	Account string
+}
+
+// Anyone is the shared render — nobody in particular, safe to cache.
+func Anyone() Viewer { return Viewer{} }
+
+// For is the render for one account.
+func For(accountID string) Viewer { return Viewer{Account: accountID} }
+
 // Glance wraps a renderer that shows how things are now, the same for
 // everybody: the headlines, the FTSE, which lines are down.
-func Glance(f func() string) func(string) Card {
+func Glance(f func() string) func(Viewer) Card {
 	if f == nil {
 		return nil
 	}
-	return func(string) Card { return Card{HTML: f()} }
+	return func(Viewer) Card { return Card{HTML: f()} }
 }
 
 // Personal wraps a renderer that answers for whoever is looking.
@@ -131,11 +162,11 @@ func Glance(f func() string) func(string) Card {
 // hand-written page that asked the browser instead, which is how the location
 // ended up in localStorage where no agent could reach it. See account/place.go
 // for the other half.
-func Personal(f func(accountID string) string) func(string) Card {
+func Personal(f func(Viewer) string) func(Viewer) Card {
 	if f == nil {
 		return nil
 	}
-	return func(accountID string) Card { return Card{HTML: f(accountID)} }
+	return func(v Viewer) Card { return Card{HTML: f(v)} }
 }
 
 // Timed wraps a renderer that knows when what it shows happened.
@@ -143,11 +174,11 @@ func Personal(f func(accountID string) string) func(string) Card {
 // A renderer that returns a zero time — nothing published yet, an empty feed —
 // falls back to a glance rather than claiming the epoch, which would sort it to
 // the bottom of the stream forever.
-func Timed(f func() (string, time.Time)) func(string) Card {
+func Timed(f func() (string, time.Time)) func(Viewer) Card {
 	if f == nil {
 		return nil
 	}
-	return func(string) Card {
+	return func(Viewer) Card {
 		html, at := f()
 		return Card{HTML: html, At: at}
 	}
@@ -256,12 +287,12 @@ func Cards() []Spec {
 }
 
 // CardFor renders one service's card, or the zero card if it has none.
-func CardFor(name, accountID string) Card {
+func CardFor(name string, v Viewer) Card {
 	s, ok := SpecFor(name)
 	if !ok || s.Card == nil {
 		return Card{}
 	}
-	return s.Card(accountID)
+	return s.Card(v)
 }
 
 // Nav returns every service, ordered by label. This is the catalogue at
