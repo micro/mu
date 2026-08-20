@@ -2,18 +2,15 @@ package agent
 
 // What an agent is, for the person who made one.
 //
-// Clicking an agent opened a chat with it. For one that runs here that is the
-// right thing. For one you built to run elsewhere — the whole point of which is
-// that something outside calls in with its token — a chat box is the least
-// useful half of the page, and the endpoint, the scope and the token were
-// nowhere on it. The page even carried a generic "Connect your agent" link
-// that pointed at /tools rather than at this agent.
+// Clicking an agent opened a chat with it and nothing said how else to reach
+// one: the endpoint, the scope and the token were nowhere, and the page carried
+// a generic "Connect your agent" link pointing at /tools rather than at this
+// agent. So there is a page saying how to reach one — the API endpoint, the
+// address, the token, the MCP config.
 //
-// So there is a page saying how to reach one, and clicking an agent that runs
-// elsewhere opens it rather than a chat. It is the one page beside the
-// conversation, reached from the link in the bar above it — not a tab, because
-// a strip of four names for one thing is what the agent surface had and what it
-// was rightly called bizarre for.
+// It is the one page beside the conversation, reached from the link in the bar
+// above it — not a tab, because a strip of four names for one thing is what the
+// agent surface had and what it was rightly called bizarre for.
 
 import (
 	"fmt"
@@ -60,12 +57,9 @@ func ConnectHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Back to the roster, not to a conversation.
 	//
-	// It said "← Back to the conversation" and pointed at /agent — which is
-	// wrong twice. Most people arrive here from /agents, having clicked Connect
-	// on a row, so "back" sent them somewhere they had not been. And for an
-	// agent that runs elsewhere there is no conversation to go back to: it is
-	// reached over MCP by something outside this instance, and this product has
-	// never claimed you can chat with one here.
+	// It said "← Back to the conversation" and pointed at /agent, and most
+	// people arrive here from /agents having clicked Connect on a row — so
+	// "back" sent them somewhere they had not been.
 	//
 	// /agents is where the link on this page comes from and where every agent is
 	// listed, so it is both true and the same for everybody.
@@ -122,8 +116,6 @@ func connRow(k, v string) string {
 // guess: passing it back is what makes a second call a conversation rather than
 // a fresh question. That is the whole difference between this and a completion
 // endpoint, and it is invisible from the request alone.
-//
-// Empty for an agent with nowhere to run. See connChat.
 func connEndpoint(base, path string) string {
 	if path == "" {
 		return ""
@@ -150,10 +142,6 @@ func connEndpoint(base, path string) string {
 // Every agent gets one, which is the whole point of the fix: the default had
 // "Talk to it" and nobody else did, so the page about one agent offered a way
 // in that the page about the next agent did not.
-//
-// Empty for an agent that runs elsewhere. There is no conversation with it
-// here — it is called over MCP by something outside this instance — and a link
-// to a chat box it will never use is the thing its page used to open on.
 func connChat(base, path string) string {
 	if path == "" {
 		return ""
@@ -248,15 +236,16 @@ func connectPanel(a *Agent, base, csrf string) string {
 		scope = strings.Join(labels, ", ")
 		cls = "conn-scope"
 	}
-	kind := "Runs here"
-	kindNote := "This instance executes its standing instruction. It needs no credential " +
-		"unless you want to reach it from outside."
-	if a.Kind != Hosted {
-		kind = "Runs elsewhere"
-		kindNote = "Claude, Cursor or your own program calls in with its token."
-	}
-	b.WriteString(`<p class="lens-lead"><strong>` + html.EscapeString(a.Name) + `</strong> — ` +
-		html.EscapeString(kind) + `. ` + html.EscapeString(kindNote) + `</p>`)
+	// One sentence, and it no longer says where the agent runs.
+	//
+	// It said "Runs here" or "Runs elsewhere", from a choice made on the create
+	// form before you had written anything. Every agent runs here: this instance
+	// executes its standing instruction, and it answers at POST /agent/<name>
+	// like the rest. A token is what you hand to something outside, which is the
+	// row further down, not a different kind of agent.
+	b.WriteString(`<p class="lens-lead"><strong>` + html.EscapeString(a.Name) +
+		`</strong> — this instance executes its standing instruction. It needs no ` +
+		`credential unless you want to reach it from outside.</p>`)
 
 	b.WriteString(`<div class="conn-row"><span class="conn-k">Tools</span>` +
 		`<span class="` + cls + `">` + html.EscapeString(scope) + `</span></div>`)
@@ -293,16 +282,10 @@ func connectPanel(a *Agent, base, csrf string) string {
 		}
 	}
 
-	// Chat and the endpoint, which an agent of your own was missing entirely —
-	// the default had a "Talk to it" link and the one you made had nothing.
-	//
-	// Neither for an agent that runs elsewhere: there is no conversation with it
-	// here, and POSTing a question to a name that runs on somebody else's
-	// machine would be this instance answering as an agent it does not run.
-	if a.Kind == Hosted {
-		path := Path(a.Owner, a.ID)
-		b.WriteString(connChat(base, path))
-	}
+	// Chat, which an agent of your own was missing entirely — the default had a
+	// "Talk to it" link and the one you made had nothing. Every agent gets it
+	// now, because every agent is something you can talk to.
+	b.WriteString(connChat(base, Path(a.Owner, a.ID)))
 
 	// The token. A secret is shown once and never again, so this reports state
 	// rather than pretending it can show you one.
@@ -346,9 +329,7 @@ func connectPanel(a *Agent, base, csrf string) string {
 	// *tools*. Pointing Claude at it does not talk to your agent at all — Claude
 	// brings its own instruction and uses the services you scoped this one to.
 	// The row also duplicated the url in the JSON directly below it.
-	if a.Kind == Hosted {
-		b.WriteString(connEndpoint(base, Path(a.Owner, a.ID)))
-	}
+	b.WriteString(connEndpoint(base, Path(a.Owner, a.ID)))
 
 	b.WriteString(`<h3 class="conn-head">MCP configuration</h3>`)
 	b.WriteString(`<p class="conn-note">For giving something else the tools this agent may ` +

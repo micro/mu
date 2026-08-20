@@ -10,9 +10,8 @@
 // An agent is the smaller thing you actually meant. It has a name, so it can be
 // talked about. It has a scope, so it reaches some services and not others. It
 // has one token, so it can be revoked on its own without taking your other
-// agents with it. And it is either hosted here or external — the difference
-// between something this instance runs and something you run elsewhere that
-// holds a credential to call in.
+// agents with it. Every agent runs here — see Kind below for the distinction
+// this used to make and why it stopped making it.
 //
 // The scope is the point. Everything else is bookkeeping around it.
 //
@@ -45,13 +44,25 @@ const (
 	collection = "agents"
 )
 
-// Kind is where an agent runs.
+// Kind is a field on every stored record and a distinction the product no
+// longer makes.
+//
+// There were two: Hosted, meaning this instance executes the standing
+// instruction, and External, meaning the agent runs in Claude or Cursor and
+// calls in with its token. The create form asked which before you had written
+// anything, and the question contradicted the form it was on — an agent running
+// in Cursor does not use the prompt you are typing, so half the page configured
+// something the other half had declared irrelevant.
+//
+// It is one thing now. Every agent runs here, answers at POST /agent/<name> and
+// has a page you can chat on; a token is something you additionally hand to a
+// program outside, which is a row on the Connect page rather than a species of
+// agent. Nothing branches on this any more.
+//
+// The constants stay because records on disk carry the word, and normalising
+// them on read is cheaper than a migration that has nothing to migrate to.
 const (
-	// Hosted runs on this instance: you give it instructions and it executes
-	// here, against its own scope.
-	Hosted = "hosted"
-	// External runs wherever you run it — Claude Desktop, Cursor, your own
-	// program — and calls in with its token.
+	Hosted   = "hosted"
 	External = "external"
 )
 
@@ -220,9 +231,9 @@ func CreateAgent(owner, name, kind, prompt, description string, services []strin
 	if len(name) > 60 {
 		return nil, "", fmt.Errorf("that name is too long")
 	}
-	if kind != Hosted && kind != External {
-		kind = External
-	}
+	// Everything runs here. The parameter is kept because callers pass it and
+	// records on disk carry it; there is nothing left to decide. See Kind.
+	kind = Hosted
 
 	// How many agents an account may keep is what its plan sells. The pricing
 	// page has offered 1, 5 and 25 since it was written and nothing counted
@@ -469,9 +480,10 @@ func fromRecord(owner string, rec userdb.Record) *Agent {
 		Tag: str("tag"), Public: rec.Public,
 		Runs: num("runs"), ForkedOf: str("forked_of"),
 	}
-	if a.Kind != Hosted {
-		a.Kind = External
-	}
+	// Records written before the distinction went carry kind:"external". They
+	// are ordinary agents: normalised on read, so nothing downstream has to know
+	// the word ever existed.
+	a.Kind = Hosted
 	if s := str("services"); s != "" {
 		a.Services = strings.Split(s, ",")
 	}

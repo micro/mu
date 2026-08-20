@@ -57,18 +57,18 @@ func AgentsHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			// Into the roster, the one store — and this is now the only place
-			// an agent is made. The kind rides along because it is the one
-			// question the form this replaced asked and the builder did not:
-			// where does it run, and therefore does it need a credential.
+			// an agent is made.
 			desc := strings.TrimSpace(r.FormValue("description"))
-			kind := r.FormValue("kind")
 			var saved *Agent
 			var secret string
 			var err error
 			if id := r.FormValue("id"); id != "" && For(acc.ID, id) != nil {
 				saved, err = UpdateAgent(acc.ID, id, name, prompt, desc, r.Form["tools"])
 			} else {
-				saved, secret, err = CreateAgent(acc.ID, name, kind, prompt, desc, r.Form["tools"], issuesToken(kind))
+				// No token at creation. An agent is something you talk to; a
+				// token is what you additionally hand to a program outside, and
+				// the Connect page is where you ask for one.
+				saved, secret, err = CreateAgent(acc.ID, name, Hosted, prompt, desc, r.Form["tools"], false)
 			}
 			if err != nil {
 				w.WriteHeader(http.StatusBadRequest)
@@ -262,11 +262,10 @@ function muAgentPick(id){
   if(window.location.pathname+window.location.search===to){return;}
   window.location=to;
 }
-// An agent that runs elsewhere cannot be talked to here: it is a credential and
-// a scope for something that calls in, and nothing on this side can hand it a
-// question. Clicking one opens how to reach it, which is what /agents does too.
+// Every agent is one you can talk to, so clicking one picks it. The second
+// argument is a leftover from when an agent could be declared external and had
+// no conversation here; callers pass false.
 function muAgentOpen(id,external){
-  if(external){window.location='/agent/connect?id='+encodeURIComponent(id);return;}
   muAgentPick(id);
 }
 // Set the active agent from the server (session reopen / deep link) and persist
@@ -281,8 +280,8 @@ function muAgentsLoad(){
   fetch('/agents/data',{headers:{'Accept':'application/json'}}).then(function(r){return r.json();}).then(function(d){
     var list=document.getElementById('agents-list');if(!list)return;
     var h='<div class="'+(window.muActiveAgent?'':'on')+'" data-id="" onclick="muAgentPick(\'\')">Micro <span class="agents-def">default</span></div>';
-    (d.agents||[]).forEach(function(a){var id=muAgentEsc(a.id);var ext=a.kind==='external';
-      h+='<div class="'+(window.muActiveAgent===a.id?'on':'')+'" data-id="'+id+'" onclick="muAgentOpen(\''+id+'\','+(ext?'true':'false')+')" title="'+muAgentEsc(a.description||(ext?'Runs elsewhere — opens how to reach it':''))+'"><span>'+muAgentEsc(a.name)+'</span>'+(ext?'<span class="agents-def">elsewhere</span>':'')+'<span class="agents-actions"><a title="Edit" href="/agent/new?id='+id+'" onclick="event.stopPropagation()">✎</a><a title="Fork" href="/agent/new?fork='+id+'" onclick="event.stopPropagation()">⑂</a><button type="button" title="Delete" onclick="muAgentDelete(\''+id+'\',event)">✕</button></span></div>';
+    (d.agents||[]).forEach(function(a){var id=muAgentEsc(a.id);
+      h+='<div class="'+(window.muActiveAgent===a.id?'on':'')+'" data-id="'+id+'" onclick="muAgentOpen(\''+id+'\',false)" title="'+muAgentEsc(a.description||'')+'"><span>'+muAgentEsc(a.name)+'</span><span class="agents-actions"><a title="Edit" href="/agent/new?id='+id+'" onclick="event.stopPropagation()">✎</a><a title="Fork" href="/agent/new?fork='+id+'" onclick="event.stopPropagation()">⑂</a><button type="button" title="Delete" onclick="muAgentDelete(\''+id+'\',event)">✕</button></span></div>';
     });
     list.innerHTML=h;
     muAgentChip();
@@ -302,12 +301,11 @@ func NewAgentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var cur *micro.Agent
-	var editing *Agent // the stored record, for the things AsMicro drops
 	editID := ""
 	forkFrom := ""
 	if id := r.URL.Query().Get("id"); id != "" {
 		if a := For(acc.ID, id); a != nil {
-			cur, editing, editID = a.AsMicro(), a, id
+			cur, editID = a.AsMicro(), id
 		}
 	} else if fid := r.URL.Query().Get("fork"); fid != "" {
 		if a := For(acc.ID, fid); a != nil {
@@ -365,36 +363,18 @@ func NewAgentHandler(w http.ResponseWriter, r *http.Request) {
 			`><span>` + html.EscapeString(ToolLabel(t)) + `</span></label>`)
 	}
 
-	// Where it runs is only *asked* when there is something to decide: editing
-	// does not move an agent, and changing the answer under somebody would
-	// either revoke a live token or mint one they did not ask for.
+	// Nothing here asks where it runs.
 	//
-	// But not asking is not the same as not saying. Editing an agent showed no
-	// trace of the choice made when it was created, so an agent built to run
-	// elsewhere — the whole reason it has a token — looked identical to one
-	// that runs here. The answer you gave is shown back to you, with the token
-	// state beside it, and /agents is where the token is actually managed.
-	kindHTML := ""
-	switch {
-	case editID == "":
-		kindHTML = `<label class="b-label">Where does it run?</label>
-    <div class="pick-row">
-      <label class="pick"><input type="radio" name="kind" value="hosted" checked><span><strong>Here</strong>Give it standing instructions and this instance executes them</span></label>
-      <label class="pick"><input type="radio" name="kind" value="external"><span><strong>Elsewhere</strong>Claude, Cursor, or your own program, calling in with its token</span></label>
-    </div>`
-	case editing != nil && editing.Kind == External:
-		token := "no token yet"
-		if editing.TokenID != "" {
-			token = "token issued"
-		}
-		kindHTML = `<label class="b-label">Where it runs</label>
-    <p class="b-state"><strong>Elsewhere</strong> — Claude, Cursor or your own program, calling in with its token · ` +
-			token + `. <a href="/agents">Manage its token</a></p>`
-	case editing != nil:
-		kindHTML = `<label class="b-label">Where it runs</label>
-    <p class="b-state"><strong>Here</strong> — this instance executes its standing instructions. ` +
-			`<a href="/agents">Give it a token</a> to point an outside program at it instead.</p>`
-	}
+	// It used to: Here, or Elsewhere — Claude, Cursor or your own program,
+	// calling in with its token. The question never belonged on this form,
+	// which is the form where you write the standing instruction: an agent
+	// running in Cursor does not use the prompt you type here, so half the page
+	// asked you to configure something the other half had declared irrelevant.
+	//
+	// Every agent runs here and answers at POST /agent/<name>. Pointing an
+	// outside program at it is a token — something you ask for on the Connect
+	// page when you want one, not a second species of agent chosen before you
+	// have written a word.
 
 	// What it has actually done. An agent is a scope — a name, a system prompt
 	// and the tools it may reach — and the page where you set that scope said
@@ -421,7 +401,6 @@ func NewAgentHandler(w http.ResponseWriter, r *http.Request) {
     <input id="b-desc" maxlength="140" value="` + html.EscapeString(desc) + `">
     <label class="b-label">System prompt</label>
     <textarea id="b-prompt" rows="9" required>` + html.EscapeString(prompt) + `</textarea>
-    ` + kindHTML + `
     <label class="b-label">What may it reach? <span class="b-hint">— none selected means everything you can</span></label>
     <div class="b-tools">` + toolsHTML.String() + `</div>
     ` + runsHTML + `
@@ -477,14 +456,13 @@ function bSave(e){e.preventDefault();
   b.append('name',document.getElementById('b-name').value);
   b.append('description',document.getElementById('b-desc').value);
   b.append('prompt',document.getElementById('b-prompt').value);
-  var k=document.querySelector('input[name="kind"]:checked');if(k)b.append('kind',k.value);
   document.querySelectorAll('.b-tools input:checked').forEach(function(el){b.append('tools',el.value);});
   fetch('/agents/data',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','X-CSRF-Token':bCsrf()},body:b.toString()})
     .then(function(r){return r.json();}).then(function(a){if(a.error){alert(a.error);return;}
       if(!a.id){location.href='/agents';return;}
-      // One that runs elsewhere has a secret to hand over, and /agents is the
-      // page that shows it once. One that runs here has nothing to copy, so go
-      // straight to the thing you just built and talk to it.
+      // Creation mints no token now, so there is normally nothing to copy and
+      // the next screen is the agent itself. The branch stays because /agents
+      // is still where a secret is shown once, if one ever comes back.
       if(a.secret){location.href='/agents?created='+encodeURIComponent(a.id)+'&secret='+encodeURIComponent(a.secret);return;}
       location.href='/agent?id='+encodeURIComponent(a.id);}).catch(function(){});
   return false;}

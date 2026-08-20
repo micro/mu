@@ -400,11 +400,12 @@ window.muChatNew=function(){
   fetch('/agents/data',{headers:{'Accept':'application/json'}})
     .then(function(r){return r.json();})
     .then(function(d){
-      // Only agents that run here. An external one is a credential and a scope
-      // for something that calls in from outside; nothing here can hand a
-      // question to it, so "answering as" it meant Micro answering with that
-      // agent's scope and an empty prompt — near enough the default, silently.
-      var list=((d&&d.agents)||[]).filter(function(a){return a.kind!=='external';});
+      // Every agent. There used to be a filter here for ones declared
+      // "external" — a credential and a scope for something calling in from
+      // outside, which nothing here could hand a question to, so "answering as"
+      // it meant Micro answering with that agent's scope and an empty prompt.
+      // That kind is gone: every agent runs here and has a prompt.
+      var list=(d&&d.agents)||[];
       // No agents, nothing to choose between: a picker with one option is a
       // control that only takes up room.
       if(!list.length){ var l=document.getElementById('mu-chat-agent'); if(l) l.remove(); return; }

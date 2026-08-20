@@ -1,12 +1,10 @@
 package agent
 
-// Clicking an agent should open the agent, not a chat with it.
+// How to reach an agent, on a page about that agent.
 //
-// An external agent is one you built to run somewhere else and call in with a
-// token. Its page opened on a chat box — the one thing that agent will never
-// use — and the endpoint, the scope and the token it does need were on no page
-// at all. The only "connect" link went to /tools, the generic catalogue, from a
-// page that already knew which agent you were looking at.
+// The endpoint, the scope and the token were on no page at all: the only
+// "connect" link went to /tools, the generic catalogue, from a page that
+// already knew which agent you were looking at.
 
 import (
 	"html"
@@ -14,39 +12,28 @@ import (
 	"testing"
 )
 
-func TestAnExternalAgentOpensOnHowToReachItAndAHostedOneOnTalkingToIt(t *testing.T) {
+func TestAnAgentsNameOpensAConversationWithIt(t *testing.T) {
 	probes(t)
 	id := owner(t, "connect-reader")
 
-	out, _, err := CreateAgent(id, "Outsider", External, "runs elsewhere", "", []string{"probealpha"}, true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	in, _, err := CreateAgent(id, "Homebody", Hosted, "runs here", "watch things", nil, false)
+	// There were two kinds, and an agent declared "external" opened on the
+	// Connect page instead of a chat, because there was nothing here to talk
+	// to. Every agent runs here now, so every name opens on the conversation.
+	a, _, err := CreateAgent(id, "Homebody", Hosted, "runs here", "watch things", nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if row := agentRow(out, "csrf", "http://localhost"); !strings.Contains(row,
-		`class="agent-name" href="/agent/connect?id=`+out.ID) {
-		t.Errorf("an external agent's name still opens a chat box it will never use:\n%s", row)
-	}
 	// By name, not by id in a query string. An agent is a place — /agent/<name>,
 	// the way /mail and /news are — and the roster is the one thing building
 	// those links, so it and the redirect cannot disagree about where an agent
 	// lives. See slug.go.
-	if row := agentRow(in, "csrf", "http://localhost"); !strings.Contains(row,
-		`class="agent-name" href="`+Path(id, in.ID)+`"`) {
-		t.Errorf("a hosted agent's name no longer opens a conversation with it:\n%s", row)
+	row := agentRow(a, "csrf", "http://localhost")
+	if !strings.Contains(row, `class="agent-name" href="`+Path(id, a.ID)+`"`) {
+		t.Errorf("an agent's name no longer opens a conversation with it:\n%s", row)
 	}
-	if row := agentRow(in, "csrf", "http://localhost"); strings.Contains(row, "/inbox?id=") {
-		t.Errorf("the roster still reaches an agent through the inbox:\n%s", row)
-	}
-	// Either kind can be reached from the row without guessing at the URL.
-	for _, a := range []*Agent{out, in} {
-		if !strings.Contains(agentRow(a, "csrf", "http://localhost"), `/agent/connect?id=`+a.ID+`">Connect`) {
-			t.Errorf("%s has no Connect link on /agents", a.Name)
-		}
+	if strings.Contains(row, "/agent/connect?id=") && !strings.Contains(row, ">Connect<") {
+		t.Errorf("the name still points at the Connect page:\n%s", row)
 	}
 }
 
@@ -56,7 +43,7 @@ func TestTheConnectPageCarriesTheScopeTheEndpointAndTheTokenState(t *testing.T) 
 	probes(t)
 	id := owner(t, "connect-panel")
 
-	a, _, err := CreateAgent(id, "Scoped", External, "reads probes", "", []string{"probealpha"}, false)
+	a, _, err := CreateAgent(id, "Scoped", Hosted, "reads probes", "", []string{"probealpha"}, false)
 	if err != nil {
 		t.Fatal(err)
 	}

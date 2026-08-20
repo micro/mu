@@ -212,18 +212,6 @@ func query(path, params string) string {
 	return "?" + params
 }
 
-// issuesToken says whether creating an agent of this kind should mint a
-// credential.
-//
-// A token is what lets something outside this instance call in, so the answer
-// is exactly "does this agent run outside". One that runs here is reached
-// through the agent page and needs nothing; one that runs elsewhere cannot work
-// without a token, so withholding it would ship something broken.
-//
-// Anything unrecognised is treated as external, because that is what the form
-// defaults to and an agent that cannot be called is the more confusing failure.
-func issuesToken(kind string) bool { return kind != Hosted }
-
 // secretPanel shows the token once. There is no second chance by design: it is
 // stored hashed, so this page could not show it again if it wanted to.
 func secretPanel(secret string, a *Agent, base string) string {
@@ -344,14 +332,15 @@ func agentRow(a *Agent, csrf, base string) string {
     <button type="submit" class="agent-remove">Remove</button>
   </form>`, html.EscapeString(csrf), html.EscapeString(a.ID))
 
-	// Where the name opens depends on what the agent is for. One that runs here
-	// opens on talking to it; one that runs elsewhere opens on how to reach it,
-	// because a chat box is the least useful half of that page and the endpoint,
-	// the scope and the token were nowhere on it.
+	// Every agent opens on talking to it.
+	//
+	// There used to be a fork here: an agent declared "external" opened on the
+	// Connect page instead, because there was nothing to talk to — it ran in
+	// Claude or Cursor and called in with a token. That distinction is gone.
+	// Every agent runs here and answers at POST /agent/<name>; a token is a
+	// thing you additionally give something outside, not a different kind of
+	// agent. See the Kind field in roster.go.
 	open, chat := Path(a.Owner, a.ID), Path(a.Owner, a.ID)
-	if a.Kind != Hosted {
-		open, chat = "/agent/connect?id="+html.EscapeString(a.ID), ""
-	}
 
 	return entryRow(entry{
 		Name:  a.Name,
@@ -457,10 +446,6 @@ const agentsCSS = `<style>
 /* Top-aligned, not centred. A row is three or four lines tall now, and
    centring left Remove floating in the middle of the card beside nothing. */
 .agent-row{display:flex;align-items:flex-start;gap:12px;border:1px solid #eee;border-radius:8px;padding:12px 14px}
-.agent-kind{display:inline-block;font-size:11px;font-weight:600;margin-left:8px;
-  padding:1px 7px;border-radius:6px;vertical-align:middle}
-.agent-kind.here{color:#0a7d33;background:#eaf6ee}
-.agent-kind.away{color:#a86400;background:#fdf3e3}
 /* One size, one colour, one weight for every link on a row.
    They were three: 12px grey in the link strip, 13px green or amber for the
    scope, 13px for the buttons beside them, and the name at 14px semibold. A
@@ -504,8 +489,7 @@ const agentsCSS = `<style>
   .agent-row{flex-direction:column;align-items:stretch;gap:8px;padding:12px 14px}
   .agent-row>form,.agent-row>div:last-child{align-self:flex-start}
   .agent-name{font-size:15px}
-  .agent-kind{margin-left:6px}
-  .agent-meta{white-space:normal;overflow-wrap:anywhere}
+    .agent-meta{white-space:normal;overflow-wrap:anywhere}
   .agent-links{gap:14px;margin-top:8px}
   .agent-links a{font-size:13px;padding:2px 0}
   .agent-act,.agent-remove{font-size:14px;padding:4px 0}

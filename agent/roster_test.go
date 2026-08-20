@@ -261,23 +261,31 @@ func TestATokenlessAgentCanBeIssuedOne(t *testing.T) {
 	}
 }
 
-// Which kind gets a credential is the whole difference between the two options
-// on the create form. Both used to get one, which made the choice cosmetic: you
-// could say "runs here" and still be handed a token and an MCP endpoint for
-// something nothing outside was ever going to call, and the row's "Issue token"
-// action — written for exactly that case — could never appear.
-func TestOnlyAnAgentThatRunsElsewhereIsGivenAToken(t *testing.T) {
-	for _, tc := range []struct {
-		kind string
-		want bool
-		why  string
-	}{
-		{External, true, "it cannot be called without one"},
-		{Hosted, false, "nothing outside it needs to call it"},
-		{"", true, "the form defaults to external, and an agent that cannot be called is the worse failure"},
-	} {
-		if got := issuesToken(tc.kind); got != tc.want {
-			t.Errorf("issuesToken(%q) = %v, want %v — %s", tc.kind, got, tc.want, tc.why)
-		}
+// No agent is handed a token it did not ask for.
+//
+// There were two kinds and the difference between them was exactly this: one
+// declared "external" got a credential at creation, because it could not be
+// called without one. Both kinds are gone — every agent runs here and answers
+// at POST /agent/<name> — so creation mints nothing, and a token is what you
+// ask for on the Connect page when something outside needs to call in.
+func TestCreatingAnAgentIssuesNoToken(t *testing.T) {
+	id := owner(t, "roster-notoken")
+	a, secret, err := CreateAgent(id, "Research", Hosted, "read the news", "", nil, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if secret != "" {
+		t.Error("a secret was minted for an agent nobody asked to connect")
+	}
+	if a.TokenID != "" {
+		t.Errorf("the agent carries token %q it was never asked to have", a.TokenID)
+	}
+
+	// And asking still works, which is the half that has to keep working.
+	if _, err := IssueToken(id, a.ID); err != nil {
+		t.Errorf("could not issue a token on request: %v", err)
+	}
+	if got := For(id, a.ID); got == nil || got.TokenID == "" {
+		t.Error("the issued token was not recorded on the agent")
 	}
 }
