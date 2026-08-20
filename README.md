@@ -128,7 +128,7 @@ Scope the connection to the services you need:
 https://micro.mu/mcp?tools=news,web,mail
 ```
 
-See [micro.mu/tools](https://micro.mu/tools) for all the tools. See [Help](docs/HELP.md) for the protocol.
+See [micro.mu/tools](https://micro.mu/tools) for all the tools.
 
 ## App
 
@@ -261,11 +261,9 @@ See [Install](docs/INSTALL.md) for every setting the code reads.
 
 ## Documentation
 
-Three pages, and they are the site's: [About](https://micro.mu/about),
-[Help](https://micro.mu/help) for connecting an agent, and
-[Install](https://micro.mu/install) for running your own. The live tool
-catalogue is at [/tools](https://micro.mu/tools) — it is generated from what
-the instance runs, so it cannot go stale.
+- [About](https://micro.mu/about)
+- [Install](https://micro.mu/install)
+- [Tools](https://micro.mu/tools)
 
 For the code, [Architecture](docs/ARCHITECTURE.md).
 
