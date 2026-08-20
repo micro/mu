@@ -308,10 +308,23 @@ func TestTheSidebarIsTheProductsNouns(t *testing.T) {
 	// agents are the product, and the catalogue is what they reach for. Putting
 	// the two personal lists together also keeps the rail readable as two
 	// levels rather than as six equal destinations.
+	// The sidebar, not the whole page: the header carries an envelope that opens
+	// the inbox, and a search over the document finds that first and calls the
+	// rail out of order.
+	nav := result
+	if i := strings.Index(nav, `<div id="nav"`); i >= 0 {
+		nav = nav[i:]
+	} else {
+		t.Fatal("no sidebar in the rendered shell")
+	}
+	if j := strings.Index(nav, `<div id="content"`); j > 0 {
+		nav = nav[:j]
+	}
+
 	want := []string{`href="/home"`, `href="/inbox"`, `href="/agents"`, `href="/tools"`, `href="/services"`}
 	at := -1
 	for _, w := range want {
-		i := strings.Index(result, w)
+		i := strings.Index(nav, w)
 		if i < 0 {
 			t.Errorf("the sidebar is missing %s", w)
 			continue

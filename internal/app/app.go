@@ -324,7 +324,11 @@ var Template = `
            fourth item. Hidden children take no space, so mail appearing and
            disappearing still costs nothing. -->
       <div id="head-right">
-        <a id="head-mail" href="/mail" aria-label="Mail"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="22,7 12,13 2,7"/></svg><span id="head-mail-badge"></span></a>
+        <!-- The envelope is the inbox, not the mail store. It appears when
+             something is waiting and the thing waiting is a conversation, which
+             lives at /inbox; /mail is the envelopes SMTP delivered and is not
+             what a badge in the header is counting. -->
+        <a id="head-inbox" href="/inbox" aria-label="Inbox"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="22,7 12,13 2,7"/></svg><span id="head-inbox-badge"></span></a>
         %s
       </div>
     </div>

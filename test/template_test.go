@@ -74,6 +74,29 @@ func TestThePageTitleIsNotInTheSidebar(t *testing.T) {
 	}
 }
 
+// The envelope in the header opens the inbox.
+//
+// It pointed at /mail for as long as it existed, and /mail is the other thing —
+// the envelopes SMTP delivered, not the conversations. On a phone the sidebar is
+// behind a hamburger, so this badge is the only sign anything arrived, and it
+// took the reader to the wrong page.
+func TestTheHeaderEnvelopeOpensTheInbox(t *testing.T) {
+	out := app.RenderHTML("A page", "a description", "<p>body</p>",
+		&auth.Account{ID: "someone", Name: "Someone"})
+
+	head := section(out, `<div id="head-right"`, `</div>
+    </div>`)
+	if head == "" {
+		t.Fatal("no header cluster in the rendered shell")
+	}
+	if !strings.Contains(head, `href="/inbox"`) {
+		t.Errorf("the header envelope does not open the inbox:\n%s", head)
+	}
+	if strings.Contains(head, `href="/mail"`) {
+		t.Errorf("the header envelope opens the mail store:\n%s", head)
+	}
+}
+
 // section returns what lies between two markers, or "" if either is missing.
 func section(s, from, to string) string {
 	i := strings.Index(s, from)

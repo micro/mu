@@ -670,25 +670,6 @@ td {
 .credits-banner a { margin-left: 0; }
 }
 
-#nav-mail-badge {
-  background: #555;
-  color: white;
-  font-size: 11px;
-  min-width: 16px;
-  height: 16px;
-  line-height: 16px;
-  text-align: center;
-  padding: 0 4px;
-  border-radius: 8px;
-  font-weight: 600;
-  margin-left: auto;
-  display: none;
-}
-
-#nav-mail-badge:not(:empty) {
-  display: inline-block;
-}
-
 /* The right-hand cluster: mail, credit balance, Tools. One flex row so the
    items measure themselves instead of being nudged apart by hand — the old
    absolute offsets needed a new magic number per item and could not look
@@ -703,21 +684,24 @@ td {
   gap: 14px;
 }
 
-/* Header mail indicator — hidden on desktop, visible on mobile */
-#head-mail {
+/* The header's inbox indicator. Hidden on desktop, where the sidebar carries
+   Inbox; on a phone the sidebar is behind a hamburger, so this is the only
+   way to see that something arrived. Shown only when something has — see
+   .has-unread in the mobile block. */
+#head-inbox {
   display: none;
   position: relative;
   text-decoration: none;
   color: #555;
   line-height: 0;
 }
-#head-mail svg {
+#head-inbox svg {
   vertical-align: middle;
 }
-#head-mail-badge {
+#head-inbox-badge {
   display: none;
 }
-#head-mail-badge:not(:empty) {
+#head-inbox-badge:not(:empty) {
   display: block;
   position: absolute;
   top: -6px;
@@ -2313,7 +2297,7 @@ a.highlight {
     box-sizing: border-box;
   }
 
-  #head-mail.has-mail {
+  #head-inbox.has-unread {
     display: block;
   }
   
@@ -5089,7 +5073,7 @@ body.display-mode #nav-overlay,
 body.display-mode #footer,
 body.display-mode #menu-toggle,
 body.display-mode #page-title,
-body.display-mode #head-mail {
+body.display-mode #head-inbox {
   display: none !important;
 }
 

@@ -65,6 +65,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		action(w, r, acc.ID)
 		return
 	}
+	// How many are waiting, for the envelope in the header. A fetch rather than
+	// a number rendered into the shell, because the shell is cached and the next
+	// viewer must not be handed this one's count.
+	if r.URL.Query().Get("unread") == "count" {
+		app.RespondJSON(w, map[string]int{"count": Unread(acc.ID)})
+		return
+	}
 	if id := r.URL.Query().Get("id"); id != "" {
 		conversation(w, r, acc.ID, id)
 		return

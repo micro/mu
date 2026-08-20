@@ -422,11 +422,9 @@ function setSession() {
   .then(sess => {
     console.log('Success:', sess);
     // Nav elements (sidebar)
-    var navMail = document.getElementById("nav-mail");
     var navAccount = document.getElementById("nav-account");
     var navLogout = document.getElementById("nav-logout");
     var navLogin = document.getElementById("nav-login");
-    var navMailBadge = document.getElementById("nav-mail-badge");
     var navUsername = document.getElementById("nav-username");
     var navAdmin = document.getElementById("nav-admin");
 
@@ -448,17 +446,17 @@ function setSession() {
       if (navAdmin) navAdmin.style.display = sess.admin ? 'flex' : 'none';
       // Show the wallet link and badge its credit balance for logged-in users.
       document.body.classList.add('signed-in');
-      // Fetch unread mail count for badge
-      var headMail = document.getElementById("head-mail");
-      var headMailBadge = document.getElementById("head-mail-badge");
-      fetch('/mail?unread=count')
+      // How many conversations are waiting, for the envelope in the header.
+      // The inbox, not the mail store: the envelope opens /inbox, so a count
+      // taken from /mail would be a number you click and cannot find.
+      var headInbox = document.getElementById("head-inbox");
+      var headInboxBadge = document.getElementById("head-inbox-badge");
+      fetch('/inbox?unread=count')
         .then(res => res.json())
         .then(data => {
           if (data.count > 0) {
-            var label = data.count > 9 ? '9+' : data.count;
-            if (navMailBadge) navMailBadge.textContent = label;
-            if (headMailBadge) headMailBadge.textContent = label;
-            if (headMail) headMail.classList.add('has-mail');
+            if (headInboxBadge) headInboxBadge.textContent = data.count > 9 ? '9+' : data.count;
+            if (headInbox) headInbox.classList.add('has-unread');
           }
         })
         .catch(() => {});
@@ -469,8 +467,6 @@ function setSession() {
     } else {
       isAuthenticated = false;
       if (navAdmin) navAdmin.style.display = 'none';
-      // Redirect mail to login when not authenticated
-      if (navMail) navMail.href = '/login?redirect=' + encodeURIComponent('/mail');
       // Hide authenticated nav items, show login
       if (navAccount) navAccount.style.display = 'none';
       if (navLogout) navLogout.style.display = 'none';
@@ -489,14 +485,11 @@ function setSession() {
   .catch(error => {
     console.error('Error:', error);
     isAuthenticated = false;
-    var navMail = document.getElementById("nav-mail");
     var navAccount = document.getElementById("nav-account");
     var navLogout = document.getElementById("nav-logout");
     var navLogin = document.getElementById("nav-login");
     var navAdmin = document.getElementById("nav-admin");
     if (navAdmin) navAdmin.style.display = 'none';
-    // Redirect mail to login when not authenticated
-    if (navMail) navMail.href = '/login?redirect=' + encodeURIComponent('/mail');
     if (navAccount) navAccount.style.display = 'none';
     if (navLogout) navLogout.style.display = 'none';
     if (navLogin) {
