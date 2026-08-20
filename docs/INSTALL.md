@@ -228,7 +228,6 @@ one** of these is true:
 | 2 | You have written to that address before. Recorded automatically on the way out. |
 | 3 | The sender's domain is whitelisted — see below. |
 | 4 | The sender's address is verified on an account here. Somebody who proved they own a mailbox is not a stranger, whatever their domain. |
-| 5 | The message is addressed to `support@` **and nothing else**. |
 
 Anything else is refused with a `550`, so the sender's own mail server tells
 them rather than the message disappearing.
@@ -247,16 +246,11 @@ infrastructure domains. Consumer domains (`gmail.com`, `outlook.com`,
 comes from, and rule 4 already covers the case that matters — your own users
 writing in from a personal address.
 
-**Why `support@` is different.** It is the address somebody writes to when they
-cannot sign up or their payment failed — which means they have no verified
-address and their domain is not on any list, so every other rule refuses them.
-The whole point of a support address is hearing from people you have never heard
-of, so the whitelist does not apply to it. Only when it is the sole recipient:
-`support@` alongside a user's address would otherwise be a way into that user's
-mailbox. Instead of the whitelist it is capped at 20 messages a day per sending
-address, which is the thing an abuser has to keep making more of.
-
-`support@` delivers to the oldest admin account.
+There used to be a fifth rule: mail addressed to `support@` and nothing else got
+through whatever the sender's domain, because the point of a support address is
+hearing from people you have never heard of. That also made it the one address
+here that spam could reach, and a per-sender cap does nothing about a thousand
+senders. The address, the page and the rule are gone.
 
 ## Discord
 
@@ -579,7 +573,7 @@ plain HTTP, except on `localhost`.
 | Variable | Default | What it does |
 |---|---|---|
 
-DNS records are above, and [Who is allowed to send you mail](#who-is-allowed-to-send-you-mail) is the whole inbound rule — including why `support@` bypasses the whitelist.
+DNS records are above, and [Who is allowed to send you mail](#who-is-allowed-to-send-you-mail) is the whole inbound rule.
 
 ### Social
 
@@ -657,7 +651,6 @@ token.
 | `TILE_FETCH_PER_HOUR` | Optional, default 2000. How many tiles one account may make this instance fetch from Ordnance Survey in an hour. Tiles already held are served without limit and without a session, because serving one again costs nothing — this bounds only what is spent upstream. Raise it to seed a region on purpose |
 | `X402_SERVERS` | Other MCP servers this instance may pay, as `name=url` — read by the outbound client, which no tool currently exposes |
 | `CDP_API_KEY_ID` · `CDP_API_KEY_SECRET` | Coinbase facilitator credentials |
-| `SUPPORT_CHAT` | Optional. A chat invite shown on /support — a Discord or Matrix link, per instance. Without it /support offers the support@ address and the issue tracker. `support@<MAIL_DOMAIN>` delivers to the oldest admin |
 | `STRIPE_SECRET_KEY` · `STRIPE_PUBLISHABLE_KEY` · `STRIPE_WEBHOOK_SECRET` | Card top-ups for credits. Point the endpoint at `https://<your domain>/stripe/webhook` and subscribe it to `checkout.session.completed`. It is belt and braces rather than the only route: the return from Stripe settles a purchase too, so a webhook that is missing, misconfigured or signed with the wrong secret no longer means the card is charged and nothing happens |
 | `BASE_RPC_URL` · `TRADE_CHAIN` · `TRADE_RPC_URL` | On-chain reads |
 

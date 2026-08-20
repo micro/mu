@@ -16,7 +16,7 @@ func TestCredentialBearingURLsAreMasked(t *testing.T) {
 
 func TestOrdinaryValuesAreNotMasked(t *testing.T) {
 	// Masking everything would make the page useless for the thing it is for.
-	for _, k := range []string{"MAIL_DOMAIN", "MAIL_WHITELIST", "TRANSIT_FEEDS", "TRADE_CHAIN", "SUPPORT_CHAT"} {
+	for _, k := range []string{"MAIL_DOMAIN", "MAIL_WHITELIST", "TRANSIT_FEEDS", "TRADE_CHAIN"} {
 		if secret(k) {
 			t.Errorf("%s is masked, but it holds nothing secret", k)
 		}

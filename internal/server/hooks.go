@@ -275,15 +275,14 @@ func wireHooks() {
 		})
 	}
 
-	// Where a push service should complain. mailto: with the mail domain when
-	// there is one, and this instance's own address otherwise — a request with
-	// no valid contact is refused rather than merely impolite.
-	push.Contact(func() string {
-		if d := mail.ConfiguredDomain(); d != "" {
-			return "mailto:" + mail.SupportMailbox + "@" + d
-		}
-		return origin.Self()
-	})
+	// Where a push service should complain.
+	//
+	// This instance's own address. It was mailto:support@<domain>, and there is
+	// no support@ any more — it was the one address the inbound whitelist did
+	// not apply to, so it was the one address spam could reach. A URL is a valid
+	// VAPID contact, and it is the honest one: a push service with a problem
+	// should look at the instance, not write to a mailbox nobody reads.
+	push.Contact(origin.Self)
 
 	// Resolve app author display names server-side from the authenticated
 	// account, so the native apps.Build service never trusts a model-supplied

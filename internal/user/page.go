@@ -75,7 +75,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(card("Hidden", hideRows.String(), "Nothing hidden. Hiding an item removes it from your view and nobody else's."))
 	b.WriteString(card("Blocked", blockRows.String(), "Nobody blocked."))
 	b.WriteString(undoScript)
-	app.Respond(w, r, app.Response{Title: "User", Description: "What you have saved, hidden and blocked", HTML: b.String()})
+	// "Saved and blocked", not "User". A page title is read in a tab and a
+	// history list, where "User" names nobody and nothing.
+	app.Respond(w, r, app.Response{Title: "Saved and blocked",
+		Description: "What you have saved, hidden and blocked", HTML: b.String()})
 }
 
 // undoScript posts the undo and reloads.

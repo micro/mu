@@ -2,11 +2,11 @@ package test
 
 // A page nobody signed in can reach is a page that does not exist.
 //
-// The footer — About, Tools, API, Pricing, Help, Support, Privacy, Status — is
-// not rendered once you are signed in. That is a deliberate design decision and
-// a good one: a marketing nav under every app screen is the clearest tell that
-// this is a website rather than a product. It was justified in a comment saying
-// everything in the footer is in the sidebar or on /account.
+// The footer — About, Tools, Privacy, Status — is not rendered once you are
+// signed in. That is a deliberate design decision and a good one: a marketing
+// nav under every app screen is the clearest tell that this is a website rather
+// than a product. It was justified in a comment saying everything in the footer
+// is in the sidebar or on /account.
 //
 // It was not. Tools was in the sidebar and the rest were nowhere, so somebody
 // with an account could not reach the pricing page, the help page or the API
@@ -14,6 +14,9 @@ package test
 // patched into the sidebar on its own, one link at a time, which is what this
 // failing quietly looks like: it gets fixed for whichever link somebody happens
 // to miss, and the next page added behind the footer disappears again.
+//
+// Help and Support have since been deleted rather than fixed, which is the
+// other way to make a page reachable.
 //
 // So this holds the claim rather than the layout. Where a link lives is a design
 // question; that a signed-in account can get to it at all is not.
@@ -35,7 +38,7 @@ var footerHref = regexp.MustCompile(`href="(/[a-z0-9/-]*)"`)
 
 func TestEveryFooterLinkIsReachableSignedIn(t *testing.T) {
 	links := footerHref.FindAllStringSubmatch(app.FooterLinks(), -1)
-	if len(links) < 5 {
+	if len(links) < 4 {
 		t.Fatalf("found %d footer links — this scan is broken, not the code", len(links))
 	}
 

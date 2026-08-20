@@ -144,8 +144,14 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	// appear here — while a token is what you come to this page for, and it was
 	// below a form most people will never fill in.
 
-	// === Personal Access Tokens ===
-	sb.WriteString(`<h3>Personal Access Tokens</h3>`)
+	// === Tokens ===
+	//
+	// "Tokens", not "Personal Access Tokens". The page is /token, the section
+	// under it is the only kind of token an account has, and the phrase is
+	// GitHub's name for the thing rather than a description of it — three words
+	// where one is unambiguous. PAT stays in the code, where it distinguishes
+	// this from a session and an OAuth grant.
+	sb.WriteString(`<h3>Tokens</h3>`)
 	sb.WriteString(`<p style="color:#666;font-size:13px">For API authentication. Use with <code>Authorization: Bearer TOKEN</code> header.</p>`)
 
 	sb.WriteString(`<div id="token-result" style="display:none;margin:20px 0;padding:15px;background:#d4edda;border:1px solid #c3e6cb;border-radius:5px">`)

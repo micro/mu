@@ -1,6 +1,6 @@
 // Who is allowed to send us mail.
 //
-// This instance does not accept mail from strangers. Five things get a message
+// This instance does not accept mail from strangers. Four things get a message
 // through, and a sender needs only one of them:
 //
 //  1. It is a reply to something we sent — In-Reply-To or References matches a
@@ -10,8 +10,11 @@
 //     is on it and how to add to it.
 //  4. The sender's address is verified on an account here. Somebody who proved
 //     they own a mailbox is not a stranger, whatever their domain.
-//  5. The message is addressed to support@ and nothing else. That one is
-//     public on purpose; see supportIsPublic.
+//
+// There was a fifth: mail addressed to support@ and nothing else, which was
+// public on purpose so somebody who could not pay had a way to say so. It was
+// also the only address a spammer could reach, and a per-sender cap does
+// nothing about a thousand senders. Gone, with the address and the page.
 //
 // Everything else is refused with a 550, so the sender's own server tells them
 // rather than the message vanishing.
@@ -25,7 +28,6 @@ package mail
 import (
 	"strings"
 	"sync"
-	"time"
 
 	"mu/internal/auth"
 	"mu/internal/data"
@@ -243,15 +245,14 @@ func isWhitelistedDomain(domain string) bool {
 // accepted. Returns ("", true) if allowed, or (reason, false) if
 // it should be rejected.
 func CheckInboundAllowed(fromAddr string, to []string, inReplyTo, references string) (string, bool) {
-	// 0. Is it support mail? That address is public, so the whitelist does not
-	// apply to it — the whole point of it is to hear from people this instance
-	// has never heard of.
-	if supportIsPublic(to) {
-		if supportFlooding(fromAddr) {
-			return "too many messages to support from this address today", false
-		}
-		return "", true
-	}
+	// There is no support bypass any more.
+	//
+	// support@ was the one address the whitelist did not apply to, because the
+	// point of it was to hear from people this instance had never heard of.
+	// That is also what made it the one address a spammer could reach, and a
+	// per-sender cap did nothing about a thousand senders. The whitelist is the
+	// whole rule now: mail here is from somebody the account knows, or it is a
+	// reply to something we sent.
 
 	// 1. Is it a reply to something we sent?
 	if inReplyTo != "" || references != "" {
@@ -283,82 +284,6 @@ func CheckInboundAllowed(fromAddr string, to []string, inReplyTo, references str
 	}
 
 	return "sender not in whitelist and message is not a reply", false
-}
-
-// supportIsPublic reports whether a message is for support and only support.
-//
-// Only support: a sender who puts support@ alongside a user's address would
-// otherwise use it as a skeleton key into every mailbox here. Addressed solely
-// to support, the worst case is that an admin reads something they did not want
-// to — which is what a support address is.
-func supportIsPublic(to []string) bool {
-	if len(to) == 0 {
-		return false
-	}
-	for _, addr := range to {
-		local := addr
-		if i := strings.Index(local, "@"); i >= 0 {
-			local = local[:i]
-		}
-		if !strings.EqualFold(strings.TrimSpace(local), SupportMailbox) {
-			return false
-		}
-	}
-	return true
-}
-
-// ── Support flood control ───────────────────────────────────
-//
-// The whitelist was doing two jobs: keeping spam out, and keeping strangers
-// out. Support needs the first without the second, so it gets a cap instead —
-// per sending address, which is the unit somebody has to keep making more of
-// to get round it.
-//
-// Held in memory and lost on restart. That is the right trade for abuse
-// control: a bot that has to wait for a mail server to be restarted is not
-// getting much, and persisting it would mean a disk write per message to a
-// mailbox that mostly receives nothing.
-
-const (
-	supportPerDay = 20
-	supportWindow = 24 * time.Hour
-)
-
-var (
-	supportMu   sync.Mutex
-	supportSeen = map[string][]time.Time{} // sender → when they wrote
-)
-
-// supportFlooding records an attempt and reports whether it is over the cap.
-func supportFlooding(fromAddr string) bool {
-	key := strings.ToLower(strings.TrimSpace(fromAddr))
-	if key == "" {
-		return true // no address to hold responsible
-	}
-
-	supportMu.Lock()
-	defer supportMu.Unlock()
-
-	cutoff := time.Now().Add(-supportWindow)
-	kept := supportSeen[key][:0]
-	for _, t := range supportSeen[key] {
-		if t.After(cutoff) {
-			kept = append(kept, t)
-		}
-	}
-	// Senders who stopped writing stop being remembered, so this cannot grow
-	// without bound on an instance that has been up for months.
-	if len(kept) == 0 {
-		delete(supportSeen, key)
-	} else {
-		supportSeen[key] = kept
-	}
-
-	if len(kept) >= supportPerDay {
-		return true
-	}
-	supportSeen[key] = append(supportSeen[key], time.Now())
-	return false
 }
 
 // isOwnVerifiedAddress reports whether an inbound sender is the recipient's

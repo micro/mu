@@ -164,7 +164,6 @@ func authRequired() map[string]bool {
 		"/plans":                         false, // Public - redirects to /tools
 		"/pricing":                       false, // Public - redirects to /tools
 		"/privacy":                       false, // Public - privacy policy
-		"/support":                       false, // Public - how to reach the operator
 		"/install":                       false, // Public - run your own instance
 		"/whitepaper":                    false, // Public - whitepaper
 		"/mcp":                           false, // Public - MCP tools page
@@ -385,7 +384,6 @@ func registerRoutes() {
 	// instance runs a mail server — so there is real correspondence to account
 	// for, not just a formality.
 	http.HandleFunc("/privacy", home.PrivacyHandler)
-	http.HandleFunc("/support", home.SupportHandler)
 
 	// first-run setup wizard (open only until an admin exists)
 	http.HandleFunc("/setup", setup.Handler)

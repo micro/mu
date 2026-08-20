@@ -263,7 +263,7 @@ func FooterLinks() string {
 	// No Help. It was a second page about pointing an agent at this instance,
 	// which is what /tools is for — two pages answering one question, and the
 	// one nobody maintained was the one in the footer.
-	return `<a href="/about">About</a> · <a href="/tools">Tools</a> · <a href="/support">Support</a> · <a href="/privacy">Privacy</a> · <a href="/status">Status</a>` + torFooterLink()
+	return `<a href="/about">About</a> · <a href="/tools">Tools</a> · <a href="/privacy">Privacy</a> · <a href="/status">Status</a>` + torFooterLink()
 }
 
 func torFooterLink() string {

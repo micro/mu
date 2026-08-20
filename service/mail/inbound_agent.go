@@ -28,7 +28,6 @@ package mail
 import (
 	"strings"
 
-	"mu/internal/auth"
 	"mu/internal/contacts"
 )
 
@@ -36,25 +35,6 @@ import (
 // username of the same name is reserved (internal/auth/username.go) so nobody
 // can take delivery of it.
 const AgentMailbox = "agent"
-
-// SupportMailbox is the local part of support@<domain>.
-//
-// "support" is a reserved username, so nobody can register it — which meant
-// mail to it resolved to no account and was dropped at the door. An address the
-// product tells people to write to, that silently discards what they write, is
-// worse than not offering one: somebody who cannot top up, or whose payment did
-// not land, writes once and hears nothing.
-//
-// It delivers to the admins, because on this instance they are support.
-const SupportMailbox = "support"
-
-// SupportAddress is the address itself, or "" where there is no mail domain.
-func SupportAddress() string {
-	if d := Domain(); d != "" {
-		return SupportMailbox + "@" + d
-	}
-	return ""
-}
 
 // SharedAgentAddress is the address itself, for display and comparison.
 func SharedAgentAddress() string { return SharedAgentAddressFor("") }
@@ -166,22 +146,4 @@ func senderKnownTo(owner, from string) bool {
 		return true
 	}
 	return KnownSender != nil && KnownSender(owner, from)
-}
-
-// firstAdmin is who support mail goes to.
-//
-// The oldest admin, so a second operator added later does not silently take
-// over the inbox somebody has been watching. Nil on an instance with no admin
-// at all, which cannot happen after first-run but is not worth crashing over.
-func firstAdmin() *auth.Account {
-	var out *auth.Account
-	for _, acc := range auth.AllAccounts() {
-		if !acc.Admin {
-			continue
-		}
-		if out == nil || acc.Created.Before(out.Created) {
-			out = acc
-		}
-	}
-	return out
 }

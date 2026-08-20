@@ -778,7 +778,12 @@ func Account(w http.ResponseWriter, r *http.Request) {
 			Submit: "Save"}.HTML())
 
 	settings := app.Section("Settings",
-		app.Links([2]string{"/token", "API credentials"}, [2]string{"/user", "User preferences"}),
+		// "Saved and blocked", not "User preferences". The page is three lists —
+		// what you starred, what you hid, who you blocked — and none of them is
+		// a preference: a preference is a setting you choose once, and these are
+		// piles that accumulate as you use the product. Somebody looking for the
+		// thing they starred would not have opened a page called Preferences.
+		app.Links([2]string{"/token", "Tokens"}, [2]string{"/user", "Saved and blocked"}),
 		`<p class="signout"><a class="text-error" href="/logout">Log out</a></p>`)
 
 	// Under the balance, because it is the picture of what drained it. Usage was

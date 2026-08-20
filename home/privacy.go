@@ -23,7 +23,7 @@ func PrivacyHandler(w http.ResponseWriter, r *http.Request) {
 	// Left-aligned in a column of the same width as every other page.
 	//
 	// It was the one page that centred itself — max-width with margin:0 auto —
-	// so walking from /support to /privacy moved the text sideways under you.
+	// so walking between the public pages moved the text sideways under you.
 	// A column that is a different width on every page is the same fault in a
 	// slower form; see app.Column.
 	b.WriteString(app.Column())
@@ -68,7 +68,7 @@ func PrivacyHandler(w http.ResponseWriter, r *http.Request) {
 		 before you ask it.`)
 
 	section("Tokens and connected agents",
-		`A personal access token, or a client you signed in through the MCP
+		`A token, or a client you signed in through the MCP
 		 authorization flow, acts as you: it reaches the same tools and the same
 		 data. Revoke either at <a href="/token">/token</a>. Anything an agent did
 		 with a token is attributed to your account, which is why

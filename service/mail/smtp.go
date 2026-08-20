@@ -216,7 +216,7 @@ func (s *Session) Rcpt(to string, opts *smtpd.RcptOptions) error {
 	// asim+research@ is asim's inbox, tagged research — see alias.go. The
 	// account lookup uses the part before the plus; without this, every
 	// plus-address is rejected as a non-existent user.
-	username, tag := SplitAlias(parts[0])
+	username, _ := SplitAlias(parts[0])
 
 	// If from localhost (trusted internal client), allow any recipient
 	// But still require SMTP AUTH to prevent abuse
@@ -252,18 +252,14 @@ func (s *Session) Rcpt(to string, opts *smtpd.RcptOptions) error {
 	// chance, which is how agent@ was unreachable while the code answering it
 	// sat there working.
 	//
-	//   support@ — somebody who cannot pay writes there. Data delivers it to
-	//              the first admin.
 	//   agent@   — write to your agent and it writes back. Data attributes the
 	//              mail by *sender*, so a verified address on this instance
 	//              reaches its own agent with nothing to remember.
 	//
-	// They differ on the tag, because Data does: agent+research@ names which of
-	// your agents answers, and support has nothing to name. Accepting
-	// support+x@ here would take the mail and then drop it silently, and a
-	// bounce at the door is the honest answer.
-	if strings.EqualFold(username, AgentMailbox) ||
-		(tag == "" && strings.EqualFold(username, SupportMailbox)) {
+	// support@ used to be the other one, delivering to the first admin. It was
+	// the only address here the whitelist did not apply to, which made it the
+	// only address a spammer could reach, and that is what it filled up with.
+	if strings.EqualFold(username, AgentMailbox) {
 		s.to = append(s.to, to)
 		app.Log("mail", "Accepting mail for reserved mailbox %s", to)
 		return nil
@@ -508,9 +504,7 @@ func (s *Session) Data(r io.Reader) error {
 	}
 
 	// ── Strict inbound filter ──────────────────────────────────
-	// The whole policy is at the top of inbound_filter.go. It needs the
-	// recipients as well as the sender, because support@ is public and nothing
-	// else is.
+	// The whole policy is at the top of inbound_filter.go.
 	if !s.isLocalhost {
 		reason, allowed := CheckInboundAllowed(fromAddr.Address, s.to, inReplyTo, references)
 		if !allowed {
@@ -670,16 +664,6 @@ func (s *Session) Data(r io.Reader) error {
 			} else {
 				app.Log("mail", "Shared agent mail from %s resolved to account %s", fromAddr.Address, toAcc.ID)
 			}
-		} else if !isExternal && toTag == "" && strings.EqualFold(toUsername, SupportMailbox) {
-			// support@ is nobody's account — it is a reserved username, so it
-			// resolved to no recipient and the mail was dropped. Anybody who
-			// could not pay, or whose top-up did not land, wrote there and was
-			// answered by silence.
-			if toAcc = firstAdmin(); toAcc == nil {
-				app.Log("mail", "Support mail from %s: no admin to deliver it to", fromAddr.Address)
-				continue
-			}
-			app.Log("mail", "Support mail from %s delivered to %s", fromAddr.Address, toAcc.ID)
 		} else {
 			var err error
 			if toAcc, err = auth.GetAccount(toUsername); err != nil {

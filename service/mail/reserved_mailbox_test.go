@@ -42,14 +42,13 @@ func code(err error) int {
 func TestTheReservedMailboxesAreAcceptedAtTheDoor(t *testing.T) {
 	t.Setenv("MAIL_DOMAIN", "micro.mu")
 
-	for _, box := range []string{SupportMailbox, AgentMailbox} {
-		// Both spellings, because a sending server may send either and the
-		// local part is case-insensitive here.
-		for _, addr := range []string{box + "@micro.mu", strings.ToUpper(box) + "@micro.mu"} {
-			if err := rcpt(t, addr); err != nil {
-				t.Errorf("%s refused at RCPT TO (%v) — it is a reserved username with no "+
-					"account, so Data never gets to answer it", addr, err)
-			}
+	// Both spellings, because a sending server may send either and the local
+	// part is case-insensitive here.
+	box := AgentMailbox
+	for _, addr := range []string{box + "@micro.mu", strings.ToUpper(box) + "@micro.mu"} {
+		if err := rcpt(t, addr); err != nil {
+			t.Errorf("%s refused at RCPT TO (%v) — it is a reserved username with no "+
+				"account, so Data never gets to answer it", addr, err)
 		}
 	}
 }
@@ -70,34 +69,25 @@ func TestAnUnknownUserIsStillRefused(t *testing.T) {
 func TestAnotherDomainIsStillNotRelayed(t *testing.T) {
 	t.Setenv("MAIL_DOMAIN", "micro.mu")
 
-	// The reserved names must not be a way past the relay check, which runs
+	// The reserved name must not be a way past the relay check, which runs
 	// first. agent@gmail.com is not ours.
-	for _, box := range []string{SupportMailbox, AgentMailbox} {
-		if err := rcpt(t, box+"@example.net"); err == nil {
-			t.Errorf("%s@example.net was accepted — this instance is an open relay", box)
-		}
+	if err := rcpt(t, AgentMailbox+"@example.net"); err == nil {
+		t.Errorf("%s@example.net was accepted — this instance is an open relay", AgentMailbox)
 	}
 }
 
-// The two reserved mailboxes differ on the tag, and the door has to differ the
-// same way.
+// The tag names which agent answers, so it is part of the address.
 //
-// agent+research@ names which agent answers, so it is accepted. support has
-// nothing to name: support+x@ falls through to an account lookup for "support",
-// finds nothing and drops the message with a log line. Accepting that at the
-// door means taking responsibility for mail and then silently discarding it,
-// which is worse than a bounce.
-func TestTheTagIsAcceptedOnlyWhereDeliveryUsesIt(t *testing.T) {
+// This used to be a contrast: agent+research@ accepted, support+anything@
+// refused, because Data resolved support only with an empty tag and accepting a
+// tagged one meant taking mail and then throwing it away. support@ is gone, so
+// what is left is the half that was always the point.
+func TestTheTagIsPartOfTheAgentAddress(t *testing.T) {
 	t.Setenv("MAIL_DOMAIN", "micro.mu")
 
 	if err := rcpt(t, AgentMailbox+"+research@micro.mu"); err != nil {
 		t.Errorf("agent+research@micro.mu refused (%v) — the tag names which agent "+
 			"answers, so this is an address, not a typo", err)
-	}
-	if err := rcpt(t, SupportMailbox+"+anything@micro.mu"); err == nil {
-		t.Error("support+anything@micro.mu was accepted at the door, but Data resolves " +
-			"support only with an empty tag — so this message is accepted and then " +
-			"thrown away")
 	}
 }
 
@@ -147,7 +137,7 @@ func TestBothEndsOfTheDoorKnowTheSameMailboxes(t *testing.T) {
 	}
 	door, delivery := src[i:j], src[j:]
 
-	for _, name := range []string{"SupportMailbox", "AgentMailbox"} {
+	for _, name := range []string{"AgentMailbox"} {
 		if !strings.Contains(door, name) {
 			t.Errorf("Data handles %s but Rcpt does not mention it, so that mail is "+
 				"refused 550 before Data ever runs", name)

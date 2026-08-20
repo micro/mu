@@ -1,7 +1,6 @@
 package home
 
 import (
-	"encoding/json"
 	"html"
 	"net/http"
 	"strconv"
@@ -108,20 +107,15 @@ func Landing(w http.ResponseWriter, r *http.Request) {
 // a comment inside the <style> block is served to every visitor — which is how
 // a test looking for "Connect via MCP" on the page found it in the note saying
 // the section had been removed.
-// landingRoles are the words that retype themselves after the plus.
+// No animation on the address.
 //
-// One list, read twice: the script cycles it and the stylesheet reserves room
-// for the longest of them. Two lists would drift, and the drift is invisible —
-// a word longer than whatever the CSS was hardcoded to would push the domain
-// along on that word alone, which is the kind of thing nobody sees until it is
-// on the front page.
-//
-// "agent" is first because it is what the address is when nobody has chosen,
-// and the rest are the ordinary parts of a life rather than the names of
-// services — one agent per thing you deal with is the idea, and you+markets@
-// would be a smaller and wronger claim.
-var landingRoles = []string{"agent", "research", "work", "family", "money", "travel"}
-
+// The word after the plus used to delete and retype itself through research,
+// work, family, money, travel — an argument that the word is yours to pick,
+// made without a sentence saying so. It was the right trick for a page whose
+// thesis was the address. It is not that page any more: the address sits under
+// the button now as one fact among several, and a fact that moves while you
+// read the rest of the page is asking for attention its position says it does
+// not want. A landing gets one thing that moves at most, and this is not it.
 func landingBody(host string) string {
 	// The tool count is counted, not claimed. This said "67 real tools" as a
 	// literal and the endpoint was serving 72 by the time anyone checked.
@@ -150,9 +144,8 @@ func landingBody(host string) string {
 	// when the way in for almost everybody is to sign up and type.
 	//
 	// So the order is what you do first: chat, then the fact that you can also
-	// write to it from anywhere. Same address, same animation, a third of the
-	// weight — and it reads as a detail about the agent rather than the
-	// definition of one.
+	// write to it from anywhere. Same address, a third of the weight — and it
+	// reads as a detail about the agent rather than the definition of one.
 	//
 	// It is shown as you+agent@ rather than agent@, and the paragraph explaining
 	// the difference has gone with it. That paragraph was three sentences doing
@@ -163,34 +156,6 @@ func landingBody(host string) string {
 	if domain == "" {
 		domain = host
 	}
-	longestRole := 0
-	for _, w := range landingRoles {
-		if len(w) > longestRole {
-			longestRole = len(w)
-		}
-	}
-	roles, _ := json.Marshal(landingRoles)
-	// The word after the plus retypes itself. It is the one animation on the
-	// page and it is carrying an argument rather than decorating one: a static
-	// you+agent@ looks like the address, and the whole point is that the word is
-	// yours to pick. Watching it deleted and retyped says "anything goes here"
-	// without a sentence saying so — which is the sentence that was just cut.
-	//
-	// The names are the ordinary ones somebody would actually choose. Naming
-	// services instead (you+markets@) would be a smaller claim and a wrong one:
-	// an agent is not a service, and one per part of your life is the idea.
-	//
-	// It degrades to plain text with no script and holds still for anybody who
-	// asked their system not to animate things.
-	//
-	// The box is a fixed width and the word is not, which is the way round that
-	// looks right. Padding the word to its longest left a hole between it and the
-	// @ — "you+money⎵⎵⎵@micro.mu" — because the gap has to go somewhere. Sizing
-	// the box instead puts the slack after the domain, where there is nothing to
-	// see: the left edge and the rule under it never move, and the tail slides
-	// the way a tail does when you delete a word in front of it. The width is
-	// "you+" and "@" (5) plus the longest role plus the domain, counted here
-	// because only Go knows the domain.
 	return `<div class="lwrap">
 <h2 class="lhead">A personal agent.</h2>
 <p class="lead">Chat with it here or write to it from anywhere. ` +
@@ -201,8 +166,7 @@ weather, places, storage — and it remembers the last conversation.</p>
   <a class="lcta" href="/signup">Get an agent →</a>
 </div>
 
-<div class="laddr"><code>you+<span id="lrole">agent</span><span class="lcaret" aria-hidden="true"></span>@` +
-		html.EscapeString(domain) + `</code></div>
+<div class="laddr"><code>you+agent@` + html.EscapeString(domain) + `</code></div>
 </div>
 
 <style>
@@ -212,38 +176,12 @@ weather, places, storage — and it remembers the last conversation.</p>
 .lead{max-width:560px;text-align:center;color:#555;font-size:17px;line-height:1.6;margin:0 auto 22px}
 .lead a{color:#111}
 .laddr{text-align:center;margin:26px auto 0}
-#lrole{color:#111}
-.lcaret{display:inline-block;width:1px;height:1em;margin:0 1px -.15em 0;background:#bbb;
-  animation:lblink 1.05s step-end infinite}
-@keyframes lblink{0%,100%{opacity:1}50%{opacity:0}}
-@media (prefers-reduced-motion:reduce){.lcaret{display:none}}
 .laddr code{display:inline-block;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
-  font-size:15px;font-weight:400;color:slategray;letter-spacing:-.01em;text-align:left;
-  min-width:` + strconv.Itoa(5+longestRole+len(domain)) + `ch;padding-bottom:6px;border-bottom:1px solid #e8e8ea}
+  font-size:15px;font-weight:400;color:slategray;letter-spacing:-.01em;
+  padding-bottom:6px;border-bottom:1px solid #e8e8ea}
 .lctas{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin:0}
-.lcta{display:inline-block;background:#111;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:700;font-size:15px}
-.lcta-alt{background:#fff;color:#111;border:1px solid #ddd}
-.lcta-alt:hover{border-color:#bbb}
+.lcta{display:inline-block;background:#111;color:#fff;text-decoration:none;padding:12px 24px;
+  border-radius:var(--border-radius,6px);font-weight:700;font-size:15px}
 @media (max-width:640px){.lead{font-size:15px}}
-</style>
-
-<script>
-(function(){
-  var el=document.getElementById('lrole');
-  if(!el)return;
-  if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion:reduce)').matches)return;
-  var words=` + string(roles) + `;
-  var i=0,n=words[0].length,cut=true;
-  function tick(){
-    n+=cut?-1:1;
-    el.textContent=words[i].slice(0,n);
-    var wait;
-    if(cut&&n===0){cut=false;i=(i+1)%words.length;wait=280;}
-    else if(!cut&&n===words[i].length){cut=true;wait=2400;}
-    else{wait=cut?55:90;}
-    setTimeout(tick,wait);
-  }
-  setTimeout(tick,2000);
-})();
-</script>`
+</style>`
 }
