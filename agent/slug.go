@@ -62,13 +62,25 @@ func BySlug(owner, slug string) (id string, ok bool) {
 	if slug == "" || slug == DefaultSlug {
 		return "", true
 	}
-	for _, a := range Agents(owner) {
+	all := Agents(owner)
+	for _, a := range all {
 		if Slug(a) == slug {
 			return a.ID, true
 		}
 		// The id itself, so a link written before names existed still lands.
 		if strings.EqualFold(a.ID, slug) {
 			return a.ID, true
+		}
+	}
+	// A name it used to have. Renaming an agent moves its page and its endpoint
+	// to the new word, and whatever was pointing at the old one — a bookmark, a
+	// cron job, a curl in somebody's notes — keeps working. Checked after every
+	// live name, so an agent that has since taken the word answers to it.
+	for _, a := range all {
+		for _, f := range a.Former {
+			if strings.EqualFold(f, slug) {
+				return a.ID, true
+			}
 		}
 	}
 	// Then this instance's own — news, markets, weather, the rest.

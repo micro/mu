@@ -89,7 +89,22 @@ type Agent struct {
 	// the plus-address convention and inventing a tag by hand.
 	//
 	// Unique per owner, so two agents cannot read each other's mail.
+	//
+	// Follows the name. It used to be assigned once and never revisited, so
+	// renaming an agent moved the label and left the address, the page and the
+	// endpoint on the old word — see Rename.
 	Tag string `json:"tag,omitempty"`
+	// Former is the tags this agent used to answer to, oldest first.
+	//
+	// A tag is an address, and the whole point of renaming it with the name is
+	// that the visible name and the address agree. But the old one is written
+	// down somewhere by then — a cron job, a saved curl, a contact card, mail
+	// already in flight — and changing an address out from under those is how a
+	// rename becomes an outage. So the old ones keep resolving.
+	//
+	// A live tag always wins over a former one, so reusing a name another agent
+	// has since taken cannot hijack it.
+	Former []string `json:"former,omitempty"`
 	// Public offers this agent to everybody on the instance. What is offered is
 	// the recipe — name, description, prompt, tool scope — never the token and
 	// never the owner's account: somebody running your agent runs it on their
@@ -293,6 +308,7 @@ func fields(a *Agent) map[string]any {
 		"description": a.Description,
 		"token_id":    a.TokenID, "services": strings.Join(a.Services, ","),
 		"tag":       a.Tag,
+		"former":    strings.Join(a.Former, ","),
 		"runs":      a.Runs,
 		"forked_of": a.ForkedOf,
 		"created":   a.Created.Format(time.RFC3339),
@@ -459,6 +475,9 @@ func fromRecord(owner string, rec userdb.Record) *Agent {
 	if s := str("services"); s != "" {
 		a.Services = strings.Split(s, ",")
 	}
+	if s := str("former"); s != "" {
+		a.Former = strings.Split(s, ",")
+	}
 	if t, err := time.Parse(time.RFC3339, str("created")); err == nil {
 		a.Created = t
 	} else {
@@ -483,14 +502,83 @@ func (a *Agent) Endpoint(base string) string {
 	return base + "/mcp?tools=" + strings.Join(a.Services, ",")
 }
 
+// formerLimit caps how many old tags one agent carries.
+//
+// Renaming is rare and each entry is a few bytes, but nothing stops somebody
+// renaming an agent a thousand times, and an unbounded list on a record read on
+// every page is a slow leak rather than a bug anybody notices. The oldest go
+// first: a tag five renames ago is not the one anybody has written down.
+const formerLimit = 8
+
+// retag moves an agent onto the tag its new name implies, keeping the old one
+// resolving.
+//
+// Nothing happens when the name produces the tag the agent already has, which
+// is the common case — editing the prompt, changing the tool scope, fixing a
+// typo in the description all arrive here and must not churn the address.
+func (a *Agent) retag(all []*Agent) {
+	// Every name already spoken for by one of this owner's other agents. Self is
+	// excluded, or an agent would rename itself to research2. Their former tags
+	// count as taken: an old link to somebody else's old name still resolves,
+	// and handing that word to this agent would make it ambiguous.
+	var taken []*Agent
+	for _, o := range all {
+		if o.ID == a.ID {
+			continue
+		}
+		taken = append(taken, o)
+		for _, f := range o.Former {
+			taken = append(taken, &Agent{Tag: f})
+		}
+	}
+	next := tagFor(a.Owner, a.Name, taken)
+	if next == a.Tag || next == "" {
+		return
+	}
+	old := a.Tag
+	a.Tag = next
+	// Reclaiming a name this agent used before: it is live again, so it is not
+	// also a former one.
+	a.Former = without(a.Former, next)
+	if old != "" {
+		a.Former = append(a.Former, old)
+	}
+	if n := len(a.Former); n > formerLimit {
+		a.Former = a.Former[n-formerLimit:]
+	}
+}
+
+// without returns list with tag removed.
+func without(list []string, tag string) []string {
+	out := list[:0:0]
+	for _, s := range list {
+		if !strings.EqualFold(s, tag) {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
 // UpdateAgent rewrites an agent the owner owns, keeping its id and token.
 func UpdateAgent(owner, id, name, prompt, description string, services []string) (*Agent, error) {
-	a := For(owner, id)
+	all := Agents(owner)
+	var a *Agent
+	for _, x := range all {
+		if x.ID == id {
+			a = x
+			break
+		}
+	}
 	if a == nil {
 		return nil, fmt.Errorf("no such agent")
 	}
 	if n := strings.TrimSpace(name); n != "" {
 		a.Name = n
+		// The tag follows the name, so the address, the page and the endpoint
+		// say what the agent is called. Renaming used to move the label alone:
+		// /agents said "Research" and the thing you were told to POST to was
+		// still /agent/test.
+		a.retag(all)
 	}
 	a.Prompt = strings.TrimSpace(prompt)
 	a.Description = strings.TrimSpace(description)
@@ -710,9 +798,21 @@ func ForTag(owner, tag string) *Agent {
 	if owner == "" || tag == "" {
 		return nil
 	}
-	for _, a := range Agents(owner) {
+	all := Agents(owner)
+	for _, a := range all {
 		if strings.EqualFold(a.Tag, tag) {
 			return a
+		}
+	}
+	// Then a name it used to answer to, so mail addressed before a rename — or
+	// sent by somebody working from an old contact card — still arrives. A live
+	// tag is checked first, above, so an agent that took the word since cannot
+	// be shadowed by whoever had it before.
+	for _, a := range all {
+		for _, f := range a.Former {
+			if strings.EqualFold(f, tag) {
+				return a
+			}
 		}
 	}
 	return nil
