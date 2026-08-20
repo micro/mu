@@ -1090,7 +1090,7 @@ func serveFlowPage(w http.ResponseWriter, r *http.Request, id string) {
 		history := getConversationHistory(f.ParentID, 5)
 		for _, h := range history {
 			b.WriteString(`<div class="card" style="border-left:3px solid #007bff;margin-bottom:8px;opacity:0.8;">`)
-			b.WriteString(`<div style="font-size:12px;color:#888;margin-bottom:6px;">Previous question:</div>`)
+			b.WriteString(`<div class="text-xs text-muted mb-2">Previous question:</div>`)
 			b.WriteString(`<div class="text-base semibold mb-3">` + htmlEsc(h.Prompt) + `</div>`)
 			b.WriteString(`<div class="text-base">` + app.RenderString(h.Answer) + `</div>`)
 			b.WriteString(`</div>`)
@@ -2153,7 +2153,7 @@ func renderToolCallRef(name string, args map[string]any, formattedResult string)
 			label += ` — ` + htmlEsc(cat)
 		}
 	}
-	return `<details style="margin-bottom:4px;">` +
+	return `<details class="mb-1">` +
 		`<summary style="cursor:pointer;color:#555;font-size:13px;list-style:none;padding:4px 0;">` +
 		label + `</summary>` +
 		`<pre style="margin:6px 0 0;font-size:12px;color:#444;white-space:pre-wrap;background:#f9f9f9;` +

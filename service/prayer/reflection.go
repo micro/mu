@@ -487,7 +487,7 @@ func renderReflectionPage(rd *ReminderData) string {
 	section("Saying", rd.Hadith, "hadith", "Read the hadith")
 	section("Name", rd.Name, "name", "The 99 names of Allah")
 	if strings.TrimSpace(rd.Message) != "" {
-		b.WriteString(`<div class="card"><h3>Reflection</h3><p style="margin:0;line-height:1.6">` + html.EscapeString(rd.Message) + `</p></div>`)
+		b.WriteString(`<div class="card"><h3>Reflection</h3><p class="m-0">` + html.EscapeString(rd.Message) + `</p></div>`)
 	}
 	b.WriteString(`<p class="text-xs text-muted">A daily verse of the Quran, a hadith and a name of Allah, via <a href="https://reminder.dev">reminder.dev</a>. Ask the agent to look up any verse or hadith.</p>`)
 	return b.String()

@@ -88,7 +88,7 @@ func RenderContextHTML(ctx *SocialContext) string {
 			content = content[:300] + "..."
 		}
 		html += fmt.Sprintf(`<blockquote style="border-left:3px solid #ccc;margin:8px 0;padding:8px 12px;background:#fafafa;border-radius:0 4px 4px 0;">
-  <div style="font-size:12px;color:#666;margin-bottom:4px;"><b>@%s</b> · %s</div>
+  <div class="text-xs text-secondary mb-1"><b>@%s</b> · %s</div>
   <div class="text-sm">%s</div>
   <a href="%s" target="_blank" rel="noopener noreferrer" class="text-xs text-muted">View original</a>
 </blockquote>`, htmlpkg.EscapeString(p.Handle), p.Platform, htmlpkg.EscapeString(content), htmlpkg.EscapeString(p.URL))

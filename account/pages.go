@@ -254,9 +254,9 @@ func renderRequestInvitePage(w http.ResponseWriter, r *http.Request, message str
 	body := fmt.Sprintf(`<div class="card" style="max-width:440px;margin:0 auto">
 <h3>Request an invite</h3>
 %s
-<form method="POST" action="/request-invite" style="margin-top:12px">
-  <input type="email" name="email" placeholder="your@email.com" required style="width:100%%;margin-bottom:8px">
-  <input type="text" name="reason" placeholder="Why you'd like to join (optional)" maxlength="500" style="width:100%%;margin-bottom:8px">
+<form method="POST" action="/request-invite" class="mt-3">
+  <input type="email" name="email" placeholder="your@email.com" required class="w-full mb-2">
+  <input type="text" name="reason" placeholder="Why you'd like to join (optional)" maxlength="500" class="w-full mb-2">
   %s
   <button type="submit">Request invite</button>
 </form>

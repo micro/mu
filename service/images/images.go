@@ -294,7 +294,7 @@ func CardHTML() string {
 	}
 	theme := html.EscapeString(strings.Title(d.Theme))
 	return `<a href="/images" style="text-decoration:none;color:inherit">
-<img src="` + html.EscapeString(d.displayURL()) + `" alt="Daily ` + theme + ` image" style="width:100%;border-radius:8px;display:block" loading="lazy">
+<img src="` + html.EscapeString(d.displayURL()) + `" alt="Daily ` + theme + ` image" class="w-full rounded-lg d-block" loading="lazy">
 <p style="font-size:13px;color:#888;margin:8px 0 0">Daily image · ` + theme + `</p></a>`
 }
 
@@ -394,7 +394,7 @@ func imageGrid(recs []userdb.Record) string {
 			continue
 		}
 		url := DisplayURL(rec.ID)
-		b.WriteString(`<a href="` + html.EscapeString(url) + `" target="_blank" title="` + html.EscapeString(prompt) + `"><img src="` + html.EscapeString(url) + `" alt="" style="width:100%;border-radius:8px;display:block" loading="lazy"></a>`)
+		b.WriteString(`<a href="` + html.EscapeString(url) + `" target="_blank" title="` + html.EscapeString(prompt) + `"><img src="` + html.EscapeString(url) + `" alt="" class="w-full rounded-lg d-block" loading="lazy"></a>`)
 	}
 	b.WriteString(`</div>`)
 	return b.String()
@@ -454,8 +454,8 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 		for _, e := range past {
 			title := strings.Title(e.Theme) + " · " + e.Date
 			b.WriteString(`<a href="` + html.EscapeString(e.displayURL()) + `" target="_blank" title="` + html.EscapeString(title) + `">`)
-			b.WriteString(`<img src="` + html.EscapeString(e.displayURL()) + `" alt="Daily image for ` + html.EscapeString(e.Date) + `" style="width:100%;border-radius:8px;display:block" loading="lazy">`)
-			b.WriteString(`<span style="display:block;font-size:12px;color:#888;margin-top:4px">` + html.EscapeString(e.Date) + `</span></a>`)
+			b.WriteString(`<img src="` + html.EscapeString(e.displayURL()) + `" alt="Daily image for ` + html.EscapeString(e.Date) + `" class="w-full rounded-lg d-block" loading="lazy">`)
+			b.WriteString(`<span class="d-block text-xs text-muted mt-1">` + html.EscapeString(e.Date) + `</span></a>`)
 		}
 		b.WriteString(`</div></div>`)
 	}
@@ -470,7 +470,7 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`<textarea id="img-prompt" rows="3" placeholder="a cat astronaut drifting past Saturn, watercolour" style="width:100%;padding:8px;font-size:14px;border:1px solid #ddd;border-radius:6px;box-sizing:border-box;font-family:inherit;resize:vertical"></textarea>`)
 		b.WriteString(`<button id="img-go" onclick="imgGenerate()" style="margin-top:8px;padding:8px 20px;font-size:14px">Generate</button>`)
 		b.WriteString(`<span id="img-status" class="ml-3 text-sm text-muted"></span>`)
-		b.WriteString(`<div id="img-result" style="margin-top:12px"></div>`)
+		b.WriteString(`<div id="img-result" class="mt-3"></div>`)
 	}
 	b.WriteString(`</div>`)
 
@@ -495,7 +495,7 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 				label, next = "Shared ✓", "false"
 			}
 			b.WriteString(`<div style="position:relative">`)
-			b.WriteString(`<a href="` + html.EscapeString(url) + `" target="_blank" title="` + html.EscapeString(prompt) + `"><img src="` + html.EscapeString(url) + `" alt="" style="width:100%;border-radius:8px;display:block" loading="lazy"></a>`)
+			b.WriteString(`<a href="` + html.EscapeString(url) + `" target="_blank" title="` + html.EscapeString(prompt) + `"><img src="` + html.EscapeString(url) + `" alt="" class="w-full rounded-lg d-block" loading="lazy"></a>`)
 			b.WriteString(`<button data-id="` + html.EscapeString(rec.ID) + `" data-next="` + next + `" onclick="imgShare(this)" style="position:absolute;bottom:6px;right:6px;font-size:11px;padding:3px 8px;border:none;border-radius:5px;background:rgba(0,0,0,.6);color:#fff;cursor:pointer">` + label + `</button>`)
 			b.WriteString(`</div>`)
 		}
@@ -539,7 +539,7 @@ function imgGenerate(){
   var g=document.getElementById('img-gallery'),e=document.getElementById('img-empty');if(e)e.remove();
   if(g){
    var d=document.createElement('div');d.style.position='relative';
-   d.innerHTML='<a href="'+res.j.url+'" target="_blank"><img src="'+res.j.url+'" alt="" style="width:100%;border-radius:8px;display:block"></a>';
+   d.innerHTML='<a href="'+res.j.url+'" target="_blank"><img src="'+res.j.url+'" alt="" class="w-full rounded-lg d-block"></a>';
    g.insertBefore(d,g.firstChild);
   }
   document.getElementById('img-prompt').value='';

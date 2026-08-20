@@ -78,7 +78,7 @@ func ReadHandler(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`<div id="news-article">`)
 		if cached != nil && cached.Title != "" {
 			if cached.Description != "" {
-				b.WriteString(fmt.Sprintf(`<p style="color:#555;line-height:1.6;margin:0 0 12px">%s</p>`, html.EscapeString(cached.Description)))
+				b.WriteString(fmt.Sprintf(`<p class="text-secondary m-0 mb-3">%s</p>`, html.EscapeString(cached.Description)))
 			}
 			b.WriteString(`<p class="text-muted text-sm m-0 mb-3">The full page content couldn't be loaded. You can visit the original site below.</p>`)
 		} else {

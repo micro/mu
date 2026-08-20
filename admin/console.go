@@ -108,7 +108,7 @@ func InviteHandler(w http.ResponseWriter, r *http.Request) {
 					req.Email, req.Email)
 			} else {
 				actions = fmt.Sprintf(
-					`<div style="margin-top:6px"><form method="POST" onsubmit="return confirm('Resend?')"><input type="hidden" name="email" value="%s"><button type="submit" style="font-size:12px;padding:4px 10px">Resend</button></form></div>`,
+					`<div class="mt-1"><form method="POST" onsubmit="return confirm('Resend?')"><input type="hidden" name="email" value="%s"><button type="submit" style="font-size:12px;padding:4px 10px">Resend</button></form></div>`,
 					req.Email)
 			}
 			sb.WriteString(fmt.Sprintf(`<div style="padding:10px 0;border-bottom:1px solid #f0f0f0"><div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap"><strong class="text-base">%s</strong>%s<span style="color:#bbb;font-size:12px">%s</span></div>%s%s</div>`,

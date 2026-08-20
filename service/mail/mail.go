@@ -1303,10 +1303,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				if len(body) > 100 {
 					body = body[:100] + "..."
 				}
-				content += fmt.Sprintf(`<div class="card" style="margin-bottom:8px;cursor:pointer" onclick="window.location.href='/mail?id=%s'">
+				content += fmt.Sprintf(`<div class="card mb-2 clickable" onclick="window.location.href='/mail?id=%s'">
 <div class="semibold text-base">%s</div>
 <div class="text-sm text-secondary">%s</div>
-<div style="font-size:13px;color:#999;margin-top:4px">%s</div>
+<div class="text-sm text-muted mt-1">%s</div>
 </div>`, msg.ID, html.EscapeString(subject), html.EscapeString(from), html.EscapeString(body))
 			}
 		}

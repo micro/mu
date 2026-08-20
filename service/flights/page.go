@@ -256,7 +256,7 @@ for(var i=0;i<Math.min(3,ac.length);i++){var a=ac[i];
 h+='<div class="d-flex between gap-2"><span>'+
 (a.callsign||a.reg||a.hex)+'</span><span style="color:#aaa">'+
 (a.on_ground?'ground':(a.altitude||0).toLocaleString()+' ft')+'</span></div>'}
-h+='<div style="margin-top:6px"><a href="/flights?lat='+lat+'&lon='+lon+'" class="text-muted">More</a></div>';
+h+='<div class="mt-1"><a href="/flights?lat='+lat+'&lon='+lon+'" class="text-muted">More</a></div>';
 el.innerHTML=h}).catch(function(){});
 }
 if(lat&&lon){show(lat,lon);return}

@@ -33,6 +33,9 @@
   --btn-danger: #c00;
   --btn-danger-hover: #a00;
   --btn-success: #1a7f37;
+  /* The third state. Danger and success were tokens; amber was written as
+     #c60 wherever a page needed "not fine, not broken". */
+  --btn-warning: #c60;
   --btn-success-hover: #156b2d;
   
   /* Spacing - consistent scale */
@@ -2874,6 +2877,113 @@ a.highlight {
 
 /* Surface */
 .bg-soft { background: var(--hover-background, #f5f5f5); }
+.bg-white { background: var(--card-background, #fff); }
+.bg-black { background: var(--accent-color, #000); }
+.text-white { color: #fff; }
+.no-border { border: none; }
+.rounded-lg { border-radius: 8px; }
+.clickable { cursor: pointer; }
+.p-tight { padding: 4px 8px; }
+
+/* A row of filter pills over a list. Named once because /apps, /mail, /inbox
+   and /archive were each drawing the same strip. */
+.app-filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+
+/* A bordered box that is not a card: a row in a list, a nested panel. The card
+   is the page's unit; this is the thing inside one. */
+.tile {
+  border: var(--border-width, 1px) solid var(--card-border, #eee);
+  border-radius: var(--border-radius, 6px);
+  padding: 12px;
+}
+.tile-row { position: relative; display: flex; gap: 12px; align-items: flex-start; }
+
+/* A small dark label on a light row — a count, a state, a price. */
+.badge-dark {
+  background: var(--accent-color, #000);
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: var(--border-radius, 6px);
+  font-size: 11px;
+}
+
+/* The secondary button: same shape as .btn, drawn as an outline. */
+.btn-plain, a.btn-plain, a.btn-plain:visited {
+  background: var(--card-background, #fff);
+  color: var(--text-primary, #111);
+  border: var(--border-width, 1px) solid var(--card-border, #e0e0e0);
+}
+.btn-plain:hover { border-color: var(--text-muted, #bbb); }
+
+/* Amber, for a state that is neither fine nor an error. --btn-danger and
+   --btn-success already exist; this was the missing third. */
+.text-warn { color: var(--btn-warning, #c60); }
+
+.w-auto { width: auto; }
+.align-middle { vertical-align: middle; }
+.gap-1 { gap: 6px; }
+.my-3 { margin-top: 12px; margin-bottom: 12px; }
+.mt-px { margin-top: 2px; }
+/* A column narrower than the page, for a form nobody should have to track
+   across 720px. */
+.col-narrow { max-width: 600px; }
+
+/* A textarea for prose you type: full width, growable, in the page's own face
+   rather than the browser's monospace default. */
+.form-area {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px;
+  border: var(--border-width, 1px) solid var(--card-border, #ddd);
+  border-radius: var(--border-radius, 6px);
+  font: inherit;
+  font-size: 14px;
+  resize: vertical;
+}
+
+/* Text this instance did not write — a post, a link somebody pasted, a mail
+   preview. One unbroken token has nowhere to wrap and drags the page sideways
+   on a phone; the same reason .card carries overflow-wrap. */
+.breakable { overflow-wrap: break-word; word-break: break-word; }
+
+/* A row in a feed: separated by a rule rather than boxed. */
+.feed-row { padding: 12px 0; border-bottom: var(--border-width, 1px) solid var(--divider, #f0f0f0); }
+
+/* A quiet panel: a note, an empty state, a summary under a list. */
+.panel {
+  margin: 16px 0;
+  padding: 12px;
+  background: var(--hover-background, #f9f9f9);
+  border-radius: var(--border-radius, 6px);
+  text-align: center;
+}
+
+/* A card that is a link — a preview of somewhere else. */
+.link-card {
+  display: block;
+  border: var(--border-width, 1px) solid var(--card-border, #e1e1e1);
+  border-radius: var(--border-radius, 6px);
+  margin-top: 8px;
+  text-decoration: none;
+  color: inherit;
+  overflow: hidden;
+}
+.link-card-pad { padding: 12px; }
+
+/* The social feed. These were inline on every post; they are page furniture,
+   so they live with the rest of it. */
+.so-head { align-items: baseline; padding-right: 20px; }
+.so-name { color: var(--text-primary, #000); font-weight: 700; }
+.so-image { width: 100%; max-height: 200px; object-fit: cover; display: block; }
+.so-pad { padding: 10px 12px; }
+.so-body { font-size: 15px; line-height: 1.5; }
+.so-title { line-height: 1.3; }
+.so-sub { margin-bottom: 2px; }
+.so-desc { line-height: 1.4; }
+.so-url { color: var(--link-color, #06c); word-break: break-all; }
+.so-rule { border-bottom: 2px solid var(--card-border, #eee); }
+.my-4 { margin-top: 16px; margin-bottom: 16px; }
+.border-box { box-sizing: border-box; }
 .mb-2 { margin-bottom: 8px; }
 
 .m-0 { margin: 0; }

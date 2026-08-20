@@ -89,14 +89,14 @@ func DiagnosticsHandler(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Query().Get("diagnose") == "1" {
 			diagnosis := aiDiagnose(checks)
 			b.WriteString(`<div class="card"><h3>AI Diagnosis</h3>`)
-			b.WriteString(fmt.Sprintf(`<div style="font-size:14px;line-height:1.6">%s</div>`, app.RenderString(diagnosis)))
+			b.WriteString(fmt.Sprintf(`<div class="text-base">%s</div>`, app.RenderString(diagnosis)))
 			b.WriteString(`</div>`)
 		} else {
 			b.WriteString(`<div style="margin:12px 0"><a href="/admin/diagnostics?diagnose=1" class="btn">Run AI Diagnosis</a></div>`)
 		}
 	}
 
-	b.WriteString(`<p style="margin-top:12px"><a href="/admin">← Back to Admin</a></p>`)
+	b.WriteString(`<p class="mt-3"><a href="/admin">← Back to Admin</a></p>`)
 
 	app.Respond(w, r, app.Response{Title: "Diagnostics", Description: "System health", HTML: b.String()})
 }

@@ -65,7 +65,7 @@ func SysLogHandler(w http.ResponseWriter, r *http.Request) {
 		content.WriteString(`<tr><th>Time</th><th>Package</th><th>Message</th></tr>`)
 		for i, e := range entries {
 			rowID := fmt.Sprintf("syslog-row-%d", i)
-			content.WriteString(fmt.Sprintf(`<tr style="cursor:pointer;" onclick="muToggleSyslog('%s')" title="Click to expand">
+			content.WriteString(fmt.Sprintf(`<tr class="clickable" onclick="muToggleSyslog('%s')" title="Click to expand">
 				<td class="nowrap">%s</td>
 				<td style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">%s</td>
 				<td style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">%s</td>

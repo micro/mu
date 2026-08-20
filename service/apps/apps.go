@@ -5,6 +5,7 @@ import (
 	"fmt"
 	htmlpkg "html"
 	"net/http"
+	"net/url"
 	"os"
 	"regexp"
 	"sort"
@@ -290,9 +291,9 @@ func Preview() string {
 		limit = len(public)
 	}
 	for _, a := range public[:limit] {
-		priceTag := `<span style="color:#090;font-size:12px;">Free</span>`
+		priceTag := `<span class="text-success text-xs">Free</span>`
 		if a.Price > 0 {
-			priceTag = fmt.Sprintf(`<span style="color:#c60;font-size:12px;">%d credits</span>`, a.Price)
+			priceTag = fmt.Sprintf(`<span class="text-warn text-xs">%d credits</span>`, a.Price)
 		}
 		sb.WriteString(fmt.Sprintf(`<p class="d-flex items-center gap-2"><img src="/apps/%s/icon.svg" width="20" height="20"><a href="/apps/%s">%s</a> — %s %s</p>`,
 			htmlpkg.EscapeString(a.Slug),
@@ -413,7 +414,7 @@ func pinControl(r *http.Request, userID, slug string, isPinned bool) string {
 	if isPinned {
 		action, label, cls = "unpin", "Unpin from home", "pin-btn pinned"
 	}
-	return fmt.Sprintf(`<form method="POST" action="/account" style="display:inline-block;vertical-align:middle;margin:0">`+
+	return fmt.Sprintf(`<form method="POST" action="/account" class="d-inline-block align-middle m-0">`+
 		`<input type="hidden" name="_csrf" value="%s">`+
 		`<input type="hidden" name="%s" value="%s">`+
 		`<input type="hidden" name="return" value="%s">`+
@@ -518,16 +519,15 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if len(tagSet) > 0 {
-		sb.WriteString(`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">`)
-		sb.WriteString(fmt.Sprintf(`<a href="/apps" style="padding:4px 12px;border-radius:6px;font-size:12px;text-decoration:none;%s">All</a>`, pillStyle(tag == "")))
+		sb.WriteString(`<div class="app-filters">`)
+		sb.WriteString(app.PillLink("All", "/apps", tag == ""))
 		var sortedTags []string
 		for t := range tagSet {
 			sortedTags = append(sortedTags, t)
 		}
 		sort.Strings(sortedTags)
 		for _, t := range sortedTags {
-			sb.WriteString(fmt.Sprintf(`<a href="/apps?tag=%s" style="padding:4px 12px;border-radius:6px;font-size:12px;text-decoration:none;%s">%s</a>`,
-				htmlpkg.EscapeString(t), pillStyle(strings.EqualFold(tag, t)), htmlpkg.EscapeString(t)))
+			sb.WriteString(app.PillLink(t, "/apps?tag="+url.QueryEscape(t), strings.EqualFold(tag, t)))
 		}
 		sb.WriteString(`</div>`)
 	}
@@ -543,10 +543,10 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if hasPaid && hasFree {
-		sb.WriteString(`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">`)
-		sb.WriteString(fmt.Sprintf(`<a href="/apps" style="padding:4px 12px;border-radius:6px;font-size:12px;text-decoration:none;%s">All</a>`, pillStyle(pricing == "")))
-		sb.WriteString(fmt.Sprintf(`<a href="/apps?pricing=free" style="padding:4px 12px;border-radius:6px;font-size:12px;text-decoration:none;%s">Free</a>`, pillStyle(pricing == "free")))
-		sb.WriteString(fmt.Sprintf(`<a href="/apps?pricing=paid" style="padding:4px 12px;border-radius:6px;font-size:12px;text-decoration:none;%s">Paid</a>`, pillStyle(pricing == "paid")))
+		sb.WriteString(`<div class="app-filters">`)
+		sb.WriteString(app.PillLink("All", "/apps", pricing == ""))
+		sb.WriteString(app.PillLink("Free", "/apps?pricing=free", pricing == "free"))
+		sb.WriteString(app.PillLink("Paid", "/apps?pricing=paid", pricing == "paid"))
 		sb.WriteString(`</div>`)
 	}
 
@@ -593,16 +593,16 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 			}
 			priceHTML := ""
 			if a.Price > 0 {
-				priceHTML = fmt.Sprintf(` · <span style="color:#c60;font-weight:600;">%d credits/use</span>`, a.Price)
+				priceHTML = fmt.Sprintf(` · <span class="text-warn semibold">%d credits/use</span>`, a.Price)
 			} else {
-				priceHTML = ` · <span style="color:#090;">Free</span>`
+				priceHTML = ` · <span class="text-success">Free</span>`
 			}
 			controls := app.ItemControls(userID, isAdmin, "app", a.Slug, a.AuthorID, "/apps/"+a.Slug+"/edit", "/apps/"+a.Slug+"/delete")
-			sb.WriteString(fmt.Sprintf(`<div style="position:relative;border:1px solid #eee;border-radius:8px;padding:12px;margin-bottom:12px;display:flex;gap:12px;align-items:flex-start;">
-<img src="/apps/%s/icon.svg" width="32" height="32" style="flex-shrink:0;margin-top:2px;">
+			sb.WriteString(fmt.Sprintf(`<div class="tile tile-row mb-3">
+<img src="/apps/%s/icon.svg" width="32" height="32" class="fixed-w mt-px">
 <div>
-<h3 style="margin:0 0 4px 0;"><a href="/apps/%s">%s</a></h3>
-<p style="margin:0 0 4px 0;color:#666;">%s</p>
+<h3 class="m-0 mb-1"><a href="/apps/%s">%s</a></h3>
+<p class="m-0 mb-1 text-secondary">%s</p>
 <p class="m-0 text-sm text-muted">by %s%s%s · %d launches · <a href="/apps/%s">Launch</a> · <a href="/apps/%s/fork">Fork</a>%s%s</p>
 </div>
 </div>`,
@@ -647,13 +647,13 @@ func handleNew(w http.ResponseWriter, r *http.Request) {
 	// AI describe box — the primary path. Describe an app in plain language
 	// and the constrained micro-app generator builds a working tool.
 	sb.WriteString(`<p class="card-desc">Describe an app and we'll build it — a tracker, checklist, or counter that just works.</p>`)
-	sb.WriteString(`<form method="POST" action="/apps/generate" style="max-width:600px;margin-bottom:8px;">`)
+	sb.WriteString(`<form method="POST" action="/apps/generate" class="col-narrow mb-2">`)
 	sb.WriteString(`<div class="d-flex gap-2">`)
-	sb.WriteString(`<input type="text" name="description" required maxlength="200" style="flex:1;padding:10px;border:1px solid #ccc;border-radius:6px;" placeholder="an expense tracker, a packing checklist, a water counter…">`)
+	sb.WriteString(`<input type="text" name="description" required maxlength="200" class="form-input grow" placeholder="an expense tracker, a packing checklist, a water counter…">`)
 	sb.WriteString(`<button type="submit" class="btn">Build it</button>`)
 	sb.WriteString(`</div>`)
 	sb.WriteString(`</form>`)
-	sb.WriteString(`<details style="max-width:600px;margin-top:20px;"><summary style="cursor:pointer;color:#666;font-size:14px;">Write the HTML yourself</summary>`)
+	sb.WriteString(`<details class="col-narrow mt-5"><summary class="clickable text-secondary text-base">Write the HTML yourself</summary>`)
 	sb.WriteString(`<form method="POST" action="/apps/new" class="mt-4">`)
 	sb.WriteString(`<div class="mb-3"><label>Name</label><br>`)
 	sb.WriteString(`<input type="text" name="name" required maxlength="60" class="form-input w-full" placeholder="Pomodoro Timer"></div>`)
@@ -665,7 +665,7 @@ func handleNew(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`<textarea name="html" required class="form-input w-full text-sm mono-tall" placeholder="<h1>Hello World</h1>"></textarea></div>`)
 	sb.WriteString(`<div class="mb-3"><label>Price per use <span class="text-muted text-xs">(credits, 0 = free)</span></label><br>`)
 	sb.WriteString(`<input type="number" name="price" min="0" max="1000" value="0" class="form-input w-full" placeholder="0"></div>`)
-	sb.WriteString(`<div class="mb-3"><label style="display:flex;align-items:center;gap:6px"><input type="checkbox" name="public" value="1" checked style="width:auto;margin:0"> Public</label></div>`)
+	sb.WriteString(`<div class="mb-3"><label class="d-flex items-center gap-1"><input type="checkbox" name="public" value="1" checked class="w-auto m-0"> Public</label></div>`)
 	sb.WriteString(`<p class="mb-3 text-sm text-muted">Set a price and earn 90% of every sale. Free apps cost nothing to use.</p>`)
 	sb.WriteString(`<button type="submit" class="btn">Create App</button>`)
 	sb.WriteString(`</form>`)
@@ -848,7 +848,7 @@ func handleView(w http.ResponseWriter, r *http.Request, slug string) {
 	}
 
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf(`<div style="display:flex;gap:12px;align-items:center;margin-bottom:12px;"><img src="/apps/%s/icon.svg" width="32" height="32"><div><p class="card-desc m-0">%s</p></div></div>`,
+	sb.WriteString(fmt.Sprintf(`<div class="d-flex gap-3 items-center mb-3"><img src="/apps/%s/icon.svg" width="32" height="32"><div><p class="card-desc m-0">%s</p></div></div>`,
 		htmlpkg.EscapeString(a.Slug), htmlpkg.EscapeString(a.Description)))
 	tagsInfo := ""
 	if a.Tags != "" {
@@ -868,9 +868,9 @@ func handleView(w http.ResponseWriter, r *http.Request, slug string) {
 	}
 	priceInfo := ""
 	if a.Price > 0 {
-		priceInfo = fmt.Sprintf(` · <span style="color:#c60;font-weight:600;">%d credits/use</span>`, a.Price)
+		priceInfo = fmt.Sprintf(` · <span class="text-warn semibold">%d credits/use</span>`, a.Price)
 	} else {
-		priceInfo = ` · <span style="color:#090;">Free</span>`
+		priceInfo = ` · <span class="text-success">Free</span>`
 	}
 	sb.WriteString(fmt.Sprintf(`<p class="text-sm text-muted">by %s%s%s · %d launches%s%s%s</p>`,
 		htmlpkg.EscapeString(a.Author),
@@ -887,11 +887,11 @@ func handleView(w http.ResponseWriter, r *http.Request, slug string) {
 	if a.Price > 0 {
 		launchLabel = fmt.Sprintf("Launch App (%d credits)", a.Price)
 	}
-	sb.WriteString(fmt.Sprintf(`<div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0;">
-<a href="/apps/%s/run" style="display:inline-block;padding:8px 24px;background:#000;color:#fff;border-radius:6px;text-decoration:none;font-size:14px;">%s</a>`, htmlpkg.EscapeString(a.Slug), launchLabel))
+	sb.WriteString(fmt.Sprintf(`<div class="d-flex gap-2 flex-wrap my-3">
+<a href="/apps/%s/run" class="btn">%s</a>`, htmlpkg.EscapeString(a.Slug), launchLabel))
 	_, detailAcc, detailErr := auth.RequireSession(r)
 	if detailErr == nil {
-		sb.WriteString(fmt.Sprintf(`<a href="/apps/%s/fork" style="display:inline-block;padding:8px 24px;background:#fff;color:#333;border:1px solid #e0e0e0;border-radius:6px;text-decoration:none;font-size:14px;">Fork</a>`,
+		sb.WriteString(fmt.Sprintf(`<a href="/apps/%s/fork" class="btn btn-plain">Fork</a>`,
 			htmlpkg.EscapeString(a.Slug)))
 	}
 	sb.WriteString(`</div>`)
@@ -1043,14 +1043,14 @@ func handleVersions(w http.ResponseWriter, r *http.Request, slug string) {
 			isCurrent := i == len(a.Versions)-1
 			currentBadge := ""
 			if isCurrent {
-				currentBadge = ` <span style="background:#000;color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;">current</span>`
+				currentBadge = ` <span class="badge-dark">current</span>`
 			}
 			restoreBtn := ""
 			if isAuthor && !isCurrent {
-				restoreBtn = fmt.Sprintf(` · <form method="POST" action="/apps/%s/versions" class="d-inline"><input type="hidden" name="version" value="%d"><button type="submit" style="background:none;border:none;color:#0066cc;cursor:pointer;padding:0;font-family:inherit;font-size:13px;" onclick="return confirm('Restore version %d?')">Restore</button></form>`,
+				restoreBtn = fmt.Sprintf(` · <form method="POST" action="/apps/%s/versions" class="d-inline"><input type="hidden" name="version" value="%d"><button type="submit" class="link-button text-sm" onclick="return confirm('Restore version %d?')">Restore</button></form>`,
 					htmlpkg.EscapeString(a.Slug), v.Number, v.Number)
 			}
-			sb.WriteString(fmt.Sprintf(`<div style="border:1px solid #eee;border-radius:6px;padding:12px;margin-bottom:8px;">
+			sb.WriteString(fmt.Sprintf(`<div class="tile mb-2">
 <div class="d-flex between items-center">
 <div><strong>v%d</strong>%s — %s</div>
 <span class="text-sm text-muted">%s%s</span>
@@ -1808,13 +1808,6 @@ func hasTag(tags, tag string) bool {
 		}
 	}
 	return false
-}
-
-func pillStyle(active bool) string {
-	if active {
-		return "background:#111;color:#fff;"
-	}
-	return "background:#f0f0f0;color:#333;"
 }
 
 func truncate(s string, n int) string {

@@ -88,7 +88,7 @@ func mcpPageHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<button id="mcp-run" onclick="mcpRun()" disabled style="margin-top:8px;padding:8px 20px;font-size:14px">Run</button>`)
 
 	// Output area
-	b.WriteString(`<div id="mcp-output" style="display:none;margin-top:12px">`)
+	b.WriteString(`<div id="mcp-output" class="d-none mt-3">`)
 	b.WriteString(`<div class="d-flex between items-center">`)
 	b.WriteString(`<strong class="text-sm text-secondary">Response</strong>`)
 	b.WriteString(`<span id="mcp-time" class="text-xs text-muted"></span>`)
@@ -114,7 +114,7 @@ func mcpPageHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`for(var i=0;i<t.params.length;i++){var p=t.params[i];`)
 	b.WriteString(`h+='<div class="mb-2">';`)
 	b.WriteString(`h+='<label style="display:block;font-size:13px;font-weight:500;margin-bottom:2px">'+p.name+(p.required?' <span style=\"color:#e55\">*</span>':'')+'</label>';`)
-	b.WriteString(`h+='<div style="font-size:12px;color:#888;margin-bottom:4px">'+p.description+'</div>';`)
+	b.WriteString(`h+='<div class="text-xs text-muted mb-1">'+p.description+'</div>';`)
 	b.WriteString(`if(p.type==='string'&&(p.name==='prompt'||p.name==='body'||p.name==='content'||p.name==='message'||p.name==='text')){`)
 	b.WriteString(`h+='<textarea name="'+p.name+'" rows="3" style="width:100%;padding:6px 8px;font-size:13px;border:1px solid #ddd;border-radius:4px;box-sizing:border-box;font-family:inherit;resize:vertical" placeholder="'+p.name+'"></textarea>';`)
 	b.WriteString(`}else{`)
@@ -269,7 +269,7 @@ func mcpToolsHTML() string {
 		// Example JSON-RPC request - use data attribute to avoid JS escaping issues
 		example := exampleRequest(t)
 		exampleEscaped := html.EscapeString(example)
-		b.WriteString(`<pre style="background:#f5f5f5;padding:8px;font-size:12px;overflow-x:auto;cursor:pointer" data-json="` + exampleEscaped + `" onclick="fillAndSend(this.dataset.json)">` + exampleEscaped + `</pre>`)
+		b.WriteString(`<pre class="bg-soft p-2 text-xs scroll-x clickable" data-json="` + exampleEscaped + `" onclick="fillAndSend(this.dataset.json)">` + exampleEscaped + `</pre>`)
 		b.WriteString(`</div>`)
 	}
 	return b.String()

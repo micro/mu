@@ -594,7 +594,7 @@ func handleCreateReply(w http.ResponseWriter, r *http.Request) {
 
 func generateThreadHTML(p *Message, replies []*Message, r *http.Request) string {
 	var sb strings.Builder
-	sb.WriteString(`<div style="max-width:600px;">`)
+	sb.WriteString(`<div class="col-narrow">`)
 
 	// Back link
 	sb.WriteString(`<div class="mb-4"><a href="/social" class="text-muted no-underline">&larr; Back to threads</a></div>`)
@@ -626,13 +626,13 @@ func generateThreadHTML(p *Message, replies []*Message, r *http.Request) string 
 	if p.AuthorID == "_system" {
 		threadAuthorHTML = fmt.Sprintf(`<span class="category">%s</span>`, htmlpkg.EscapeString(p.Author))
 	}
-	sb.WriteString(fmt.Sprintf(`<div class="headline" style="border-bottom:2px solid #eee;">
+	sb.WriteString(fmt.Sprintf(`<div class="headline" class="so-rule">
   %s
-  <div style="display:flex;justify-content:space-between;align-items:baseline;padding-right:20px">
+  <div class="d-flex between so-head">
     <div>%s</div>
     <div><span data-timestamp="%d" class="text-muted text-sm">%s</span></div>
   </div>
-  <div style="margin-top:8px;font-size:15px;line-height:1.5;overflow-wrap:break-word;word-break:break-word;">%s</div>%s
+  <div class="mt-2 so-body breakable">%s</div>%s
 </div>`,
 		controls,
 		threadAuthorHTML,
@@ -648,19 +648,19 @@ func generateThreadHTML(p *Message, replies []*Message, r *http.Request) string 
 		msgLabel = "message"
 	}
 	if len(replies) > 0 {
-		sb.WriteString(fmt.Sprintf(`<div style="padding:12px 0;color:#888;font-size:13px;border-bottom:1px solid #f0f0f0;">%d %s</div>`, len(replies), msgLabel))
+		sb.WriteString(fmt.Sprintf(`<div class="feed-row text-muted text-sm">%d %s</div>`, len(replies), msgLabel))
 	}
 
 	// Reply form (for logged-in users)
 	if acc != nil {
-		sb.WriteString(fmt.Sprintf(`<div style="margin:16px 0;">
+		sb.WriteString(fmt.Sprintf(`<div class="my-4">
   <form method="POST" action="/social/thread" id="reply-form">
     <input type="hidden" name="reply_to" value="%s">
     <textarea name="content" id="reply-content" rows="2" placeholder="Write a message..." required
-      style="width:100%%;box-sizing:border-box;padding:10px;border:1px solid #ddd;border-radius:8px;font-family:inherit;font-size:14px;resize:vertical;"></textarea>
+      class="form-area"></textarea>
     <div class="d-flex between items-center mt-2">
       <span id="reply-char-count" class="text-sm text-muted">0/500</span>
-      <button type="submit" style="padding:6px 16px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;">Send</button>
+      <button type="submit" class="btn">Send</button>
     </div>
   </form>
   <script>
@@ -673,8 +673,8 @@ func generateThreadHTML(p *Message, replies []*Message, r *http.Request) string 
   </script>
 </div>`, p.ID))
 	} else {
-		sb.WriteString(`<div style="margin:16px 0;padding:12px;background:#f9f9f9;border-radius:8px;text-align:center;">
-  <a href="/login" style="color:#000;font-weight:bold;">Log in</a> to join the conversation
+		sb.WriteString(`<div class="panel">
+  <a href="/login" class="so-name">Log in</a> to join the conversation
 </div>`)
 	}
 
@@ -689,12 +689,12 @@ func generateThreadHTML(p *Message, replies []*Message, r *http.Request) string 
 		replyControls := app.ItemControls(threadUserID, threadIsAdmin, "social", reply.ID, reply.AuthorID, "", "/social?id="+reply.ID)
 
 		rts := reply.PostedAt.Unix()
-		sb.WriteString(fmt.Sprintf(`<div style="padding:12px 0;border-bottom:1px solid #f5f5f5;">
-  <div style="display:flex;justify-content:space-between;align-items:baseline;">
+		sb.WriteString(fmt.Sprintf(`<div class="feed-row">
+  <div class="d-flex between so-head">
     <div class="text-sm"><b>%s</b></div>
     <div><span data-timestamp="%d" class="text-muted text-sm">%s</span>%s</div>
   </div>
-  <div style="margin-top:4px;overflow-wrap:break-word;word-break:break-word;">%s</div>
+  <div class="mt-1 breakable">%s</div>
 </div>`,
 			htmlpkg.EscapeString(reply.Author),
 			rts,
@@ -787,7 +787,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 		}
 		sb.WriteString(fmt.Sprintf(`<div class="headline">
   <div><b>%s</b></div>
-  <div style="margin-top:4px;font-size:13px;">%s</div>
+  <div class="mt-1 text-sm">%s</div>
 </div>`, htmlpkg.EscapeString(entry.Title), htmlpkg.EscapeString(content)))
 	}
 
@@ -890,7 +890,7 @@ func generateCardHTML(allMessages []*Message) string {
   <a href="/social/thread?id=%s">
     <span class="title">%s</span>
   </a>
-  <span class="description" style="overflow-wrap:break-word;word-break:break-word;">%s</span>%s
+  <span class="description" class="breakable">%s</span>%s
   <div class="summary"><span data-timestamp="%d">%s</span>%s</div>
 </div>`,
 			p.ID,
@@ -908,7 +908,7 @@ func generateCardHTML(allMessages []*Message) string {
 
 func generatePageHTML(visible []*Message, counts map[string]int, nav string, r *http.Request) string {
 	var sb strings.Builder
-	sb.WriteString(`<div style="max-width:600px;">`)
+	sb.WriteString(`<div class="col-narrow">`)
 
 	// Compose box (shown to logged-in users)
 	_, acc := auth.TrySession(r)
@@ -916,10 +916,10 @@ func generatePageHTML(visible []*Message, counts map[string]int, nav string, r *
 		sb.WriteString(`<div class="mb-5">
   <form method="POST" action="/social" id="social-form">
     <textarea name="content" id="social-content" rows="3" placeholder="Start a thread..." required
-      style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #ddd;border-radius:8px;font-family:inherit;font-size:14px;resize:vertical;"></textarea>
+      class="form-area"></textarea>
     <div class="d-flex between items-center mt-2">
       <span id="social-char-count" class="text-sm text-muted">0/500</span>
-      <button type="submit" style="padding:8px 20px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;">Start Thread</button>
+      <button type="submit" class="btn">Start Thread</button>
     </div>
   </form>
   <script>
@@ -932,8 +932,8 @@ func generatePageHTML(visible []*Message, counts map[string]int, nav string, r *
   </script>
 </div>`)
 	} else {
-		sb.WriteString(`<div style="margin-bottom:20px;padding:16px;background:#f9f9f9;border-radius:8px;text-align:center;">
-  <a href="/login" style="color:#000;font-weight:bold;">Log in</a> to start a thread
+		sb.WriteString(`<div class="panel mb-5">
+  <a href="/login" class="so-name">Log in</a> to start a thread
 </div>`)
 	}
 
@@ -986,12 +986,12 @@ func generatePageHTML(visible []*Message, counts map[string]int, nav string, r *
 		}
 		sb.WriteString(fmt.Sprintf(`<div class="headline">
   %s
-  <div style="display:flex;justify-content:space-between;align-items:baseline;padding-right:20px">
+  <div class="d-flex between so-head">
     <div>%s</div>
     <div><span data-timestamp="%d" class="text-muted text-sm">%s</span></div>
   </div>
-  <div style="margin-top:4px;overflow-wrap:break-word;word-break:break-word;">%s</div>%s
-  <div style="margin-top:6px;">%s</div>
+  <div class="mt-1 breakable">%s</div>%s
+  <div class="mt-1">%s</div>
 </div>`,
 			controls,
 			authorHTML,
@@ -1033,7 +1033,7 @@ func extractURLFromEscaped(u string) (href, display string) {
 func linkifyURLs(escaped string) string {
 	return urlRegex.ReplaceAllStringFunc(escaped, func(u string) string {
 		href, display := extractURLFromEscaped(u)
-		return fmt.Sprintf(`<a href="%s" target="_blank" rel="noopener noreferrer" style="color:#06c;word-break:break-all;">%s</a>`, htmlpkg.EscapeString(href), htmlpkg.EscapeString(display))
+		return fmt.Sprintf(`<a href="%s" target="_blank" rel="noopener noreferrer" class="so-url">%s</a>`, htmlpkg.EscapeString(href), htmlpkg.EscapeString(display))
 	})
 }
 
@@ -1046,23 +1046,23 @@ func renderLinkCard(rawURL string) string {
 		if err != nil {
 			return ""
 		}
-		return fmt.Sprintf(`<a href="%s" target="_blank" rel="noopener noreferrer" style="display:block;border:1px solid #e1e1e1;border-radius:12px;padding:12px;margin-top:8px;text-decoration:none;color:inherit;">
+		return fmt.Sprintf(`<a href="%s" target="_blank" rel="noopener noreferrer" class="link-card link-card-pad">
   <div class="text-sm text-muted">%s</div>
 </a>`, htmlpkg.EscapeString(rawURL), htmlpkg.EscapeString(parsed.Hostname()))
 	}
 
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf(`<a href="%s" target="_blank" rel="noopener noreferrer" style="display:block;border:1px solid #e1e1e1;border-radius:12px;overflow:hidden;margin-top:8px;text-decoration:none;color:inherit;">`, htmlpkg.EscapeString(rawURL)))
+	sb.WriteString(fmt.Sprintf(`<a href="%s" target="_blank" rel="noopener noreferrer" class="link-card">`, htmlpkg.EscapeString(rawURL)))
 
 	if md.Image != "" {
 		// Through the proxy: the publisher's CDN gets asked once by us rather
 		// than once per reader, and the card stops depending on whether that
 		// CDN, or the reader's blocker, feels like allowing a cross-origin
 		// embed today. See internal/imageproxy.
-		sb.WriteString(fmt.Sprintf(`<div style="width:100%%;background:#f5f5f5;"><img src="%s" style="width:100%%;max-height:200px;object-fit:cover;display:block;" loading="lazy" onerror="this.parentElement.style.display='none'"></div>`, htmlpkg.EscapeString(imageproxy.URL(md.Image))))
+		sb.WriteString(fmt.Sprintf(`<div class="w-full bg-soft"><img src="%s" class="so-image" loading="lazy" onerror="this.parentElement.style.display='none'"></div>`, htmlpkg.EscapeString(imageproxy.URL(md.Image))))
 	}
 
-	sb.WriteString(`<div style="padding:10px 12px;">`)
+	sb.WriteString(`<div class="so-pad">`)
 
 	site := md.Site
 	if site == "" {
@@ -1071,7 +1071,7 @@ func renderLinkCard(rawURL string) string {
 		}
 	}
 	if site != "" {
-		sb.WriteString(fmt.Sprintf(`<div style="font-size:13px;color:#888;margin-bottom:2px;">%s</div>`, htmlpkg.EscapeString(site)))
+		sb.WriteString(fmt.Sprintf(`<div class="text-sm text-muted so-sub">%s</div>`, htmlpkg.EscapeString(site)))
 	}
 
 	if md.Title != "" {
@@ -1079,7 +1079,7 @@ func renderLinkCard(rawURL string) string {
 		if len(title) > 100 {
 			title = title[:97] + "..."
 		}
-		sb.WriteString(fmt.Sprintf(`<div style="font-size:14px;font-weight:600;line-height:1.3;">%s</div>`, htmlpkg.EscapeString(title)))
+		sb.WriteString(fmt.Sprintf(`<div class="text-base semibold so-title">%s</div>`, htmlpkg.EscapeString(title)))
 	}
 
 	if md.Description != "" {
@@ -1087,7 +1087,7 @@ func renderLinkCard(rawURL string) string {
 		if len(desc) > 150 {
 			desc = desc[:147] + "..."
 		}
-		sb.WriteString(fmt.Sprintf(`<div style="font-size:13px;color:#666;margin-top:4px;line-height:1.4;">%s</div>`, htmlpkg.EscapeString(desc)))
+		sb.WriteString(fmt.Sprintf(`<div class="text-sm text-secondary mt-1 so-desc">%s</div>`, htmlpkg.EscapeString(desc)))
 	}
 
 	sb.WriteString(`</div></a>`)
