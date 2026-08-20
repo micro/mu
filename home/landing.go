@@ -231,7 +231,7 @@ func developerBand(base string) string {
 <pre class="dev-endpoint">` + endpoint + `</pre>
 <ul class="dev-facts">
   <li>MCP, or plain HTTP for anything that cannot speak it.</li>
-  <li>One account instead of six. Or none — an agent can pay per request.</li>
+  <li>One account. Or none — agents can pay via <a href="https://x402.org">x402</a> without one.</li>
   <li>Priced per call. Cached answers are not charged.</li>
   <li>One Go binary. Self-host it and callers pay you.</li>
 </ul>

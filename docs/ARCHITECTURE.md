@@ -483,7 +483,8 @@ are not one thing, and the file reads as though they were:
 | What it is | Roughly | Verdict |
 |---|---|---|
 | `internal/` needing something from the product — `app.EmailSender`, `auth.HasCredit`, `api.WalletPayer`, `profile.GetUserPosts`, `quota.LimitOverride`, `service.Gate.*` | 22 | **Correct.** Rule 1 leaves no alternative, and this is what the exception costs |
-| A service needing another service — `news.FetchSocialContext`, `email.SendVia`, `events.OnCreate`, `events.OnFire`, `mail.OnNewMail` | 5 | **Rule 3 in letter only.** There is no import, and the two packages still change together |
+| A service needing another service — `news.FetchSocialContext`, `email.SendVia`, `events.OnCreate`, `events.OnFire` | 4 | **Rule 3 in letter only.** There is no import, and the two packages still change together |
+| `mail.OnNewMail` | 0 | **Gone.** Mail arriving is a fact, not a call: `service/mail` publishes `event.EventMailReceived` and knows nothing about who listens. The pattern the other four should follow |
 | A service needing the agent — `tasks.RunAgent`, `events.RunAgent`, `events.OnFireEvent`, `stream.AIReplyHook` | 4 | **Rule 4 broken.** The direction is inverted; the hook is what makes it compile |
 | A service needing the money — `apps.QuotaCheck`, `apps.ChargeQuota`, `apps.ChargeUse` | 3 | **Correct.** Rule 5, same shape as the first row |
 | A service needing Google — `events.External*`, `contacts.External*` | 6 | **Not debt at all.** `internal/google` imports only `data` and `settings`; either service could import it directly under rule 2. The indirection buys provider-neutrality, which is a design choice and not a layering one |

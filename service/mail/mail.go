@@ -21,6 +21,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
+	"mu/internal/event"
 	"mu/internal/service"
 
 	"mu/internal/quota"
@@ -1782,17 +1783,16 @@ func SendMessageTo(from, fromID, to, toID, tag, subject, body, replyTo, messageI
 		updateStats(msg)
 	}
 
-	// Notify on new inbound mail (non-spam, to a local user)
-	if !spam && toID != "" && OnNewMail != nil {
-		go OnNewMail(toID, from, subject, body)
+	// Say that mail arrived. Who cares about that is not this service's
+	// business — see internal/event.
+	if !spam && toID != "" {
+		event.Publish(event.Event{Type: event.EventMailReceived, Data: map[string]interface{}{
+			"account": toID, "from": from, "subject": subject, "body": body,
+		}})
 	}
 
 	return err
 }
-
-// OnNewMail is called when a new non-spam message is delivered to a user.
-// Set by main.go to trigger notifications and summaries.
-var OnNewMail func(accountID, from, subject, body string)
 
 // GetUnreadCount returns the number of unread messages for a user
 func GetUnreadCount(userID string) int {

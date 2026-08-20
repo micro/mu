@@ -26,6 +26,21 @@ const (
 	EventSummaryGenerated   = "summary_generated"
 	EventGenerateTag        = "generate_tag"
 	EventTagGenerated       = "tag_generated"
+
+	// EventMailReceived is a non-spam message delivered to a local account.
+	//
+	// service/mail publishes it and knows nothing about who cares. It used to
+	// be mail.OnNewMail, a function variable the service declared and
+	// internal/server filled in — one of six hooks that existed so a service
+	// could reach up into the agent, which is the direction the layering
+	// forbids: a service answers a question about state, an agent decides
+	// which question to ask.
+	//
+	// Mail arriving is a fact, not a call. Anything that wants to act on it
+	// subscribes.
+	//
+	// Data: account, from, subject, body.
+	EventMailReceived = "mail_received"
 )
 
 // Event represents a data event.

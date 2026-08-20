@@ -34,6 +34,7 @@ import (
 	"mu/internal/auth"
 	"mu/internal/backup"
 	"mu/internal/data"
+	"mu/internal/event"
 	"mu/internal/google"
 	"mu/internal/notes"
 	"mu/internal/origin"
@@ -145,7 +146,7 @@ func wireHooks() {
 		// the moment it fired. That was cut back to a contentless line, which
 		// was the wrong repair: /stream is served with no session, so even a
 		// bare "a reminder fired" tells anybody watching that somebody here was
-		// reminded of something, at that minute. See mail.OnNewMail below.
+		// reminded of something, at that minute.
 		push.Send(accountID, push.Notification{Title: "⏰ " + title, Body: note, URL: "/events"})
 	}
 	// A standing instruction: when an event carrying a prompt comes due, run it
@@ -231,37 +232,44 @@ func wireHooks() {
 	}
 	app.ToolCountFunc = api.ToolCount
 
-	mail.OnNewMail = func(accountID, from, subject, body string) {
-		// Nothing goes to the public timeline.
-		//
-		// It used to publish the sender and the subject, which was plainly
-		// wrong and was cut back to a contentless "mail arrived". That was the
-		// wrong repair: the event itself is the private part. /stream is served
-		// with no session, so a bare line still tells anybody watching that
-		// somebody here was written to, at that minute — and correlated with a
-		// message you sent yourself, that it was delivered. Nobody reading a
-		// public console learns anything from it either.
-		//
-		// The notifications below go to the owner's own linked channels, which
-		// is where any of this belongs.
-		// The device itself, which needs nothing linked and works with the page
-		// closed. See internal/push.
-		//
-		// There were three more: mail and a Meta WhatsApp bot, and
-		// feeding them cost a model call on every arriving message — discord's
-		// own SummariseEmail, to write a line the other two then reused. Push
-		// does the job without one.
-		title := subject
-		if strings.TrimSpace(title) == "" {
-			title = "New mail"
+	// Mail arriving is a fact on the bus, not a call into the agent.
+	//
+	// service/mail used to declare OnNewMail and this filled it in — a service
+	// reaching up into the product, which is the direction the layering
+	// forbids. It publishes event.EventMailReceived now and knows nothing
+	// about who listens. This is the listener.
+	go func() {
+		sub := event.Subscribe(event.EventMailReceived)
+		for e := range sub.Chan {
+			accountID, _ := e.Data["account"].(string)
+			from, _ := e.Data["from"].(string)
+			subject, _ := e.Data["subject"].(string)
+			if accountID == "" {
+				continue
+			}
+			// Nothing goes to the public timeline.
+			//
+			// /stream is served with no session, so even a bare "mail arrived"
+			// tells anybody watching that somebody here was written to, at that
+			// minute — and correlated with a message you sent yourself, that it
+			// was delivered.
+			//
+			// The device, which needs nothing linked and works with the page
+			// closed. See internal/push. There were three other notifiers here
+			// and feeding them cost a model call on every arriving message, to
+			// write a summary line they shared. Push does the job without one.
+			title := subject
+			if strings.TrimSpace(title) == "" {
+				title = "New mail"
+			}
+			push.Send(accountID, push.Notification{
+				Title: title,
+				Body:  "From " + from,
+				URL:   "/inbox",
+				Tag:   "mail-" + from,
+			})
 		}
-		push.Send(accountID, push.Notification{
-			Title: title,
-			Body:  "From " + from,
-			URL:   "/inbox",
-			Tag:   "mail-" + from,
-		})
-	}
+	}()
 
 	// Where a push service should complain.
 	//

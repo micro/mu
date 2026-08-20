@@ -28,8 +28,10 @@ import (
 // the fold is a different situation: anybody reading there has scrolled past
 // the button, which means they did not want it.
 //
-// So the markers below stay banned. They are the parts that teach and the parts
-// that pitch a rail, and both belong on the pages about them.
+// So the markers below stay banned on the first screen. They are the parts that
+// teach and the parts that pitch a rail; below the fold, x402 is named on
+// purpose, because a reader who scrolled past the button wants to know how an
+// agent pays without an account.
 func TestTheLandingIsOneScreenAboutOneThing(t *testing.T) {
 	rec := httptest.NewRecorder()
 	Landing(rec, httptest.NewRequest("GET", "/", nil))
@@ -49,8 +51,18 @@ func TestTheLandingIsOneScreenAboutOneThing(t *testing.T) {
 		t.Error("the landing has no path to /signup")
 	}
 
-	// What it must not carry any more. Each of these was a section arguing for
-	// something else on a page that should argue for one thing.
+	// What the *hero* must not carry. Each was a section arguing for something
+	// else on the screen that should argue for one thing.
+	//
+	// Scoped to the hero rather than the page. x402 is named in the developer
+	// band below the fold, deliberately: a reader who has scrolled past the
+	// button is being told how to pay without an account, which is a fact they
+	// came looking for rather than a rail being pitched at somebody deciding
+	// whether they want an agent at all.
+	hero := body
+	if i := strings.Index(body, `class="dev"`); i > 0 {
+		hero = body[:i]
+	}
 	for what, marker := range map[string]string{
 		"a chat box":           "mu-chat-form",
 		"feature cards":        `class="lcards"`,
@@ -64,9 +76,10 @@ func TestTheLandingIsOneScreenAboutOneThing(t *testing.T) {
 		// you+agent@ until there is a you.
 		"an email address": `class="laddr"`,
 	} {
-		if strings.Contains(body, marker) {
-			t.Errorf("the landing still carries %s — that is a second thing to "+
-				"decide about, and it belongs on the page about it", what)
+		if strings.Contains(hero, marker) {
+			t.Errorf("the first screen still carries %s — that is a second thing "+
+				"to decide about, and it belongs further down or on the page "+
+				"about it", what)
 		}
 	}
 }
