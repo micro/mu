@@ -111,6 +111,23 @@ func WroteToUs(owner, addr string) bool {
 // gone whatever we decide, and the charge lands before rather than after —
 // mail that has left cannot be recalled when a charge fails.
 func SendOut(owner, displayName, to, subject, bodyPlain, bodyHTML, replyTo string) (string, error) {
+	return ReplyOut(owner, displayName, to, subject, bodyPlain, bodyHTML, replyTo, "")
+}
+
+// ReplyOut is SendOut for a message that continues a thread.
+//
+// Same gate, same charge, same provider — the difference is two headers.
+// In-Reply-To names the message being answered and References carries the whole
+// chain, and a receiving client needs both: Gmail threads on References, and one
+// that sees only In-Reply-To files a long conversation as a run of unrelated
+// messages.
+//
+// It exists because /inbox's reply had nowhere to put them. It called SendOut
+// with an empty replyTo — SendOut had no references parameter at all — so every
+// answer sent from the inbox arrived at the other end as a brand new
+// conversation, next to the thread it was answering. The reply was correct in
+// this instance's own record and wrong in everybody else's.
+func ReplyOut(owner, displayName, to, subject, bodyPlain, bodyHTML, inReplyTo, references string) (string, error) {
 	to = strings.TrimSpace(to)
 	if !IsExternalEmail(to) {
 		return "", fmt.Errorf("%s is on this instance — that is not mail leaving it", to)
@@ -130,7 +147,8 @@ func SendOut(owner, displayName, to, subject, bodyPlain, bodyHTML, replyTo strin
 		bodyHTML = convertPlainTextToHTML(bodyPlain)
 	}
 	from := EmailForUser(owner, ConfiguredDomain())
-	messageID, err := SendExternalEmail(displayName, from, to, subject, bodyPlain, bodyHTML, replyTo)
+	messageID, err := SendExternalReply(displayName, from, to, subject, bodyPlain, bodyHTML,
+		inReplyTo, references)
 	if err != nil {
 		return "", err
 	}

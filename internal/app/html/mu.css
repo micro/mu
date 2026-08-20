@@ -4274,14 +4274,16 @@ a.btn-secondary:hover, .btn-secondary:hover {
 .recent-search-item:hover {
   background-color: #e0e0e0;
 }
-.recent-search-item.active {
+.recent-search-item.active,
+.recent-search-item.active:visited {
   background-color: #333;
   color: white;
 }
 .recent-search-item.active .recent-search-close {
   color: #ccc;
 }
-.recent-search-item.active .recent-search-close:hover {
+.recent-search-item.active .recent-search-close:hover,
+.recent-search-item.active:visited .recent-search-close:hover {
   color: white;
 }
 .recent-search-label {
@@ -5355,7 +5357,7 @@ a.btn-secondary:hover, .btn-secondary:hover {
   display: inline-block;
   padding: 6px 12px;
   background: var(--bg-secondary, #f5f5f5);
-  border-radius: 20px;
+  border-radius: var(--border-radius, 6px);
   text-decoration: none;
   color: inherit;
   font-size: 0.9em;
@@ -5363,7 +5365,8 @@ a.btn-secondary:hover, .btn-secondary:hover {
   transition: background 0.15s;
 }
 
-.city-link:hover {
+.city-link:hover,
+.city-link:visited:hover {
   background: var(--accent-color);
   color: #fff;
   border-color: var(--accent-color);
@@ -5823,11 +5826,14 @@ body.display-mode .card h4 {
   flex: none;
 }
 
+a.pill:visited { color: var(--text-muted, #888) }
+
 /* A pill that does something is a touch larger, because it has to be hit with
    a thumb. Buttons carry font:inherit because a <button> otherwise arrives
    with the browser's own face and is the one control on the page in a
    different typeface. */
 a.pill,
+a.pill:visited,
 button.pill {
   font: inherit;
   font-size: 12px;
@@ -5844,7 +5850,13 @@ button.pill:hover {
   color: var(--text-primary, #1a1a1a);
 }
 
+/* :visited spelled out, or the global a:visited:not(.btn) — 0-2-1 — outranks
+   .pill.on at 0-2-0 and the selected pill goes black on black the moment it has
+   been clicked, which for the selected one is always. Third time this rule has
+   caught something; anything drawing a filled control needs its visited state
+   named here rather than left to specificity. */
 .pill.on,
+.pill.on:visited,
 .pill.on:hover {
   background: var(--accent-color, #000);
   border-color: var(--accent-color, #000);
@@ -6006,8 +6018,18 @@ button.pill:hover {
   color: var(--text-muted, #888);
 }
 
-.ib-msg { border-left: 2px solid var(--divider, #f0f0f0); padding-left: 14px; margin-bottom: var(--spacing-md, 16px) }
-.ib-from { font-size: 12px; color: var(--text-muted, #888); margin-bottom: 4px }
+/* A rule between messages, not a quote bar beside them.
+   Each message carried a 2px left border and 16px of margin, which reads as a
+   blockquote — the mark for "somebody else said this" — on every message in
+   the thread including your own. A thread is a stack of messages and what
+   separates them is a line across, the way every mail client draws it: the
+   eye needs to know where one ends, not that all of them are quotations. */
+.ib-msg { padding: 16px 0; border-top: var(--border-width, 1px) solid var(--divider, #f0f0f0) }
+.ib-msg:first-child { border-top: none; padding-top: 0 }
+.ib-msg:last-child { padding-bottom: 0 }
+.ib-from { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px }
+.ib-who-l { font-size: 13px; font-weight: var(--font-weight-medium, 500); color: var(--text-primary, #1a1a1a) }
+.ib-at { margin-left: auto; flex: none; font-size: 11px; color: var(--text-muted, #888); white-space: nowrap }
 .ib-body { font-size: 14px; line-height: var(--line-height, 1.6) }
 .ib-body p:first-child { margin-top: 0 }
 .ib-body p:last-child { margin-bottom: 0 }

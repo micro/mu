@@ -21,6 +21,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"mu/internal/app"
 	"mu/internal/auth"
@@ -209,8 +210,7 @@ func messageBlock(accountID string, t *thread.Thread, m thread.Message) string {
 		if m.Workflow != "" {
 			ran = runTools(m.Workflow)
 		}
-		return `<div class="ib-msg ib-agent"><div class="ib-from">Agent · ` +
-			html.EscapeString(app.TimeAgo(m.At)) + `</div>` +
+		return `<div class="ib-msg ib-agent">` + fromLine("Agent", m.At) +
 			`<div class="ib-body">` + app.RenderString(m.Text) + `</div>` + ran + `</div>`
 	}
 	// The author, by the name the conversation knows them under rather than the
@@ -226,9 +226,21 @@ func messageBlock(accountID string, t *thread.Thread, m thread.Message) string {
 			}
 		}
 	}
-	return `<div class="ib-msg ib-person"><div class="ib-from">` + html.EscapeString(who) + ` · ` +
-		html.EscapeString(app.TimeAgo(m.At)) + `</div>` + addressLine(m) +
+	return `<div class="ib-msg ib-person">` + fromLine(who, m.At) + addressLine(m) +
 		`<div class="ib-body ib-typed">` + html.EscapeString(m.Text) + `</div></div>`
+}
+
+// fromLine is who wrote a message and when, on one line with the time pushed to
+// the right.
+//
+// It was "Henrik · 2 hours ago" in one muted grey run, which reads as a single
+// caption rather than as two facts — and the name, which is what you scan a
+// thread for, was the same weight as everything around it. The name is the
+// text colour and the time is muted at the far end, the way a mail client sets
+// it, so a thread reads down its left edge.
+func fromLine(who string, at time.Time) string {
+	return `<div class="ib-from"><span class="ib-who-l">` + html.EscapeString(who) +
+		`</span><span class="ib-at">` + html.EscapeString(app.TimeAgo(at)) + `</span></div>`
 }
 
 // Tools renders which tools produced an answer, and is filled in by the agent

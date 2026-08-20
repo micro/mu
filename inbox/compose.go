@@ -224,7 +224,14 @@ func sent(w http.ResponseWriter, r *http.Request, accountID string, f form) {
 	if acc, err := auth.GetAccount(accountID); err == nil {
 		name = acc.Name
 	}
-	messageID, err := mail.SendOut(accountID, name, f.To, f.Subject, f.Body, "", "")
+	// The chain, when this is a reply. Without it the answer arrives at the
+	// other end as a brand new conversation sitting next to the thread it
+	// answers — which is what /inbox did: it called SendOut with an empty
+	// replyTo and there was no references argument to pass anyway.
+	inReplyTo, references := threadChain(accountID, f.On)
+	f.Subject = replySubject(f.Subject, inReplyTo)
+	messageID, err := mail.ReplyOut(accountID, name, f.To, f.Subject,
+		f.Body, "", inReplyTo, references)
 	if err != nil {
 		f.Problem = err.Error()
 		compose(w, r, accountID, f)
@@ -266,6 +273,62 @@ func record(accountID, messageID string, f form) {
 	// a bounce or a copy of this arriving back and being recorded twice.
 	thread.Add(thread.Message{Thread: th.ID, Account: accountID, Text: text, Ref: messageID})
 	thread.Join(accountID, th.ID, thread.Party{Kind: thread.RolePerson, Key: f.To})
+}
+
+// threadChain is what a reply has to name to be threaded by the other side:
+// the Message-ID of the message being answered, and every id the conversation
+// has carried, oldest first.
+//
+// It comes off thread.Message.Ref, which is where the mail client records the
+// Message-ID of anything that arrived or was sent. A conversation with no mail
+// in it — a chat, a WhatsApp exchange — has no refs, and both come back empty,
+// which is the right answer: there is no chain to join.
+//
+// The parent is the newest message that has an id — not the newest message,
+// which may be the agent's own answer recorded without one, and not the oldest,
+// which would thread the whole conversation under its opening message and lose
+// the ordering a client draws from the chain.
+//
+// thread.Messages is oldest first, and a limit takes the newest N of them in
+// that order — so the slice is already the order a References header wants, and
+// the parent is the last id in it.
+func threadChain(accountID, threadID string) (inReplyTo, references string) {
+	if threadID == "" {
+		return "", ""
+	}
+	var refs []string
+	for _, m := range thread.Messages(accountID, threadID, chainDepth) {
+		if m.Ref != "" {
+			refs = append(refs, m.Ref)
+		}
+	}
+	if len(refs) == 0 {
+		return "", ""
+	}
+	return refs[len(refs)-1], strings.Join(refs, " ")
+}
+
+// chainDepth bounds how far back a References header reaches. Long enough for
+// any conversation somebody is actually reading; short enough that a header
+// does not grow without limit on a thread that has run for months — which is
+// the failure mode References has, and why clients truncate it too.
+const chainDepth = 40
+
+// replySubject keeps a thread's subject recognisable.
+//
+// A client threads on the headers, not the subject — but a person scanning a
+// mailbox reads the subject, and an answer titled the same as the question
+// reads as a separate message from the same person. One "Re: ", never stacked:
+// "Re: Re: Re:" is what happens when each end adds its own.
+func replySubject(subject, inReplyTo string) string {
+	subject = strings.TrimSpace(subject)
+	if inReplyTo == "" || subject == "" {
+		return subject
+	}
+	if strings.HasPrefix(strings.ToLower(subject), "re:") {
+		return subject
+	}
+	return "Re: " + subject
 }
 
 // replyTarget is the conversation a reply belongs on, or nil for a new message.
