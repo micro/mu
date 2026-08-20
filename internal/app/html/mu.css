@@ -36,6 +36,12 @@
   /* The third state. Danger and success were tokens; amber was written as
      #c60 wherever a page needed "not fine, not broken". */
   --btn-warning: #c60;
+  /* The wash behind a cell that passed or failed a check — a DMARC row, a
+     diagnostics line. Written as literal greens and reds in the one page that
+     had them, which made a report the only page whose colours did not move
+     with the palette. */
+  --pass-background: #d4edda;
+  --fail-background: #f8d7da;
   --btn-success-hover: #156b2d;
   
   /* Spacing - consistent scale */
@@ -2868,6 +2874,7 @@ a.highlight {
 .d-none { display: none; }
 
 /* Type */
+.medium { font-weight: 500; }
 .semibold { font-weight: 600; }
 .bold { font-weight: 700; }
 .nowrap { white-space: nowrap; }
@@ -2884,6 +2891,53 @@ a.highlight {
 .rounded-lg { border-radius: 8px; }
 .clickable { cursor: pointer; }
 .p-tight { padding: 4px 8px; }
+
+/* A small outlined action in a table row — Ban, Grant, Verify on /admin/users.
+   The colour is the only thing that varies, so it is a modifier rather than
+   four near-identical rules. */
+.mini-btn {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: var(--border-radius, 6px);
+  border: var(--border-width, 1px) solid var(--card-border, #ddd);
+  background: var(--card-background, #fff);
+  color: var(--text-secondary, #555);
+  cursor: pointer;
+  font-family: inherit;
+}
+.mini-btn.danger { border-color: var(--btn-danger, #c00); color: var(--btn-danger, #c00); }
+.mini-btn.good { border-color: var(--btn-success, #22c55e); color: var(--btn-success, #22c55e); }
+.mini-btn.info { border-color: var(--link-color, #06b); color: var(--link-color, #06b); }
+
+/* A count on a label — unread, flagged, over quota. */
+.count-badge {
+  background: var(--accent-color, #000);
+  color: #fff;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-size: 11px;
+}
+.count-badge.info { background: var(--link-color, #06b); }
+.count-badge.good { background: var(--btn-success, #22c55e); }
+.count-badge.quiet { background: var(--text-secondary, #555); }
+
+/* A row that needs to shout — a banned account, a failed job. */
+.row-danger { background: var(--btn-danger, #c00); color: #fff; }
+.row-danger a { color: #fff; }
+
+/* A few widths, for a table column that should not grow with its content. */
+.w-60 { width: 60px; }
+.w-100 { width: 100px; }
+.inline-row { display: inline-flex; gap: 2px; align-items: center; }
+
+/* A narrow number field in a table row. */
+.num-field {
+  width: 64px;
+  font-size: 12px;
+  padding: 2px 4px;
+  border: var(--border-width, 1px) solid var(--card-border, #ddd);
+  border-radius: var(--border-radius, 6px);
+}
 
 /* A row of filter pills over a list. Named once because /apps, /mail, /inbox
    and /archive were each drawing the same strip. */
@@ -3034,6 +3088,11 @@ a.highlight {
 
 /* A field you paste code or a long body into: monospaced and tall enough to
    see the shape of what is in it. */
+.mono { font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace); }
+
+/* A field label above its input. */
+.field-label { font-weight: 500; }
+
 .mono-tall {
   min-height: 300px;
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
@@ -3078,6 +3137,49 @@ a.highlight {
 
 .data-table th {
   text-align: left;
+}
+
+/* A table with a rule round every cell, for a report you read across as much
+   as down — a DMARC digest, a diagnostics dump. .data-table is the other kind:
+   rows separated, no vertical rules, for a list you scan down. Both were being
+   drawn cell by cell with padding:8px;border:1px solid #ddd on every th and td.
+   .tight makes the cells narrow enough for a dense report. */
+.grid-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.grid-table th,
+.grid-table td {
+  padding: 8px;
+  border: var(--border-width, 1px) solid var(--card-border, #ddd);
+  text-align: left;
+}
+.grid-table th { background: var(--hover-background, #f5f5f5); }
+.grid-table.tight th,
+.grid-table.tight td { padding: 4px 8px; }
+/* A cell that passed or failed a check. */
+.cell-pass { background: var(--pass-background, #d4edda); }
+.cell-fail { background: var(--fail-background, #f8d7da); }
+
+/* A table whose rows are separated by a hairline and nothing else. */
+.rule-table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 8px 0; }
+.rule-table th,
+.rule-table td { padding: 4px 8px; text-align: left; }
+.rule-table th { border-bottom: var(--border-width, 1px) solid var(--card-border, #eee); }
+
+/* Output you did not write: a tool's answer, a raw report. Preformatted,
+   scrollable, and it must not push the page sideways. */
+.output {
+  white-space: pre-wrap;
+  word-break: break-all;
+  background: var(--hover-background, #f5f5f5);
+  padding: 10px;
+  margin-top: 6px;
+  font-size: 12px;
+  max-height: 400px;
+  overflow-y: auto;
+  border-radius: var(--border-radius, 6px);
 }
 
 .data-table td:last-child,

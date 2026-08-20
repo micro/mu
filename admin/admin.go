@@ -60,7 +60,7 @@ func alertBadge() string {
 	if n == 0 {
 		return ""
 	}
-	return fmt.Sprintf(` <span class="count" style="background:#c00;color:#fff">%d</span>`, n)
+	return fmt.Sprintf(` <span class="count" class="row-danger">%d</span>`, n)
 }
 
 // balanceCell is what an account holds, on the row beside the button that adds
@@ -162,13 +162,9 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var sb strings.Builder
 	sb.WriteString(`<p><a href="/admin">← Admin</a></p><h2>Users</h2>`)
-	sb.WriteString(`<div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap">`)
+	sb.WriteString(`<div class="app-filters">`)
 	for _, t := range []struct{ id, label string }{{"all", "All"}, {"banned", "Banned"}, {"new", "New (24h)"}} {
-		style := "padding:4px 14px;border-radius:14px;font-size:13px;text-decoration:none;color:#555"
-		if t.id == tab {
-			style = "padding:4px 14px;border-radius:14px;font-size:13px;text-decoration:none;background:#000;color:#fff"
-		}
-		sb.WriteString(fmt.Sprintf(`<a href="/admin/users?tab=%s" style="%s">%s</a>`, t.id, style, t.label))
+		sb.WriteString(app.PillLink(t.label, "/admin/users?tab="+t.id, t.id == tab))
 	}
 	sb.WriteString(`</div>`)
 	var filtered []*auth.Account
@@ -192,19 +188,19 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 		created := u.Created.Format("2006-01-02")
 		var badges []string
 		if u.Admin {
-			badges = append(badges, `<span style="background:#000;color:#fff;padding:1px 6px;border-radius:8px;font-size:11px">admin</span>`)
+			badges = append(badges, `<span class="count-badge">admin</span>`)
 		}
 		if u.Agent {
-			badges = append(badges, `<span style="background:#555;color:#fff;padding:1px 6px;border-radius:8px;font-size:11px">agent</span>`)
+			badges = append(badges, `<span class="count-badge quiet">agent</span>`)
 		}
 		if u.Banned {
-			badges = append(badges, `<span style="background:#c00;color:#fff;padding:1px 6px;border-radius:8px;font-size:11px">banned</span>`)
+			badges = append(badges, `<span class="count-badge">banned</span>`)
 		}
 		if u.EmailVerified {
-			badges = append(badges, `<span style="background:#22c55e;color:#fff;padding:1px 6px;border-radius:8px;font-size:11px">verified</span>`)
+			badges = append(badges, `<span class="count-badge good">verified</span>`)
 		}
 		if u.Approved {
-			badges = append(badges, `<span style="background:#06b;color:#fff;padding:1px 6px;border-radius:8px;font-size:11px">approved</span>`)
+			badges = append(badges, `<span class="count-badge info">approved</span>`)
 		}
 		statusHTML := strings.Join(badges, " ")
 		if statusHTML == "" {
@@ -215,15 +211,15 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 		if u.Agent {
 			agentLabel, agentTitle = "Mark human", "Mark as a person: charged like any other account"
 		}
-		actions = append(actions, fmt.Sprintf(`<form method="POST" class="d-inline"><input type="hidden" name="action" value="toggle_agent"><input type="hidden" name="user_id" value="%s"><input type="hidden" name="tab" value="%s"><button type="submit" title="%s" style="font-size:12px;padding:2px 8px;border-radius:4px;border:1px solid #555;background:#fff;color:#555;cursor:pointer">%s</button></form>`,
+		actions = append(actions, fmt.Sprintf(`<form method="POST" class="d-inline"><input type="hidden" name="action" value="toggle_agent"><input type="hidden" name="user_id" value="%s"><input type="hidden" name="tab" value="%s"><button type="submit" title="%s" class="mini-btn">%s</button></form>`,
 			u.ID, tab, agentTitle, agentLabel))
 		if u.ID != acc.ID {
 			if u.Banned {
-				actions = append(actions, fmt.Sprintf(`<form method="POST" class="d-inline"><input type="hidden" name="action" value="unban"><input type="hidden" name="user_id" value="%s"><input type="hidden" name="tab" value="%s"><button type="submit" style="font-size:12px;padding:2px 8px;border-radius:4px;border:1px solid #22c55e;background:#fff;color:#22c55e;cursor:pointer">Unban</button></form>`, u.ID, tab))
+				actions = append(actions, fmt.Sprintf(`<form method="POST" class="d-inline"><input type="hidden" name="action" value="unban"><input type="hidden" name="user_id" value="%s"><input type="hidden" name="tab" value="%s"><button type="submit" class="mini-btn good">Unban</button></form>`, u.ID, tab))
 			} else {
-				actions = append(actions, fmt.Sprintf(`<form method="POST" class="d-inline"><input type="hidden" name="action" value="ban"><input type="hidden" name="user_id" value="%s"><input type="hidden" name="tab" value="%s"><button type="submit" style="font-size:12px;padding:2px 8px;border-radius:4px;border:1px solid #c00;background:#fff;color:#c00;cursor:pointer" onclick="return confirm('Ban %s?')">Ban</button></form>`, u.ID, tab, u.ID))
+				actions = append(actions, fmt.Sprintf(`<form method="POST" class="d-inline"><input type="hidden" name="action" value="ban"><input type="hidden" name="user_id" value="%s"><input type="hidden" name="tab" value="%s"><button type="submit" class="mini-btn danger" onclick="return confirm('Ban %s?')">Ban</button></form>`, u.ID, tab, u.ID))
 			}
-			actions = append(actions, fmt.Sprintf(`<form method="POST" class="d-inline" onsubmit="return confirm('Delete %s?')"><input type="hidden" name="action" value="delete"><input type="hidden" name="user_id" value="%s"><input type="hidden" name="tab" value="%s"><button type="submit" class="btn-danger" style="font-size:12px;padding:2px 8px">Delete</button></form>`, u.ID, u.ID, tab))
+			actions = append(actions, fmt.Sprintf(`<form method="POST" class="d-inline" onsubmit="return confirm('Delete %s?')"><input type="hidden" name="action" value="delete"><input type="hidden" name="user_id" value="%s"><input type="hidden" name="tab" value="%s"><button type="submit" class="btn-danger" class="text-xs p-tight">Delete</button></form>`, u.ID, u.ID, tab))
 		}
 		// Credit, on the row, because that is where somebody wanting to comp an
 		// account is looking. An amount box rather than fixed buttons: the
@@ -231,14 +227,14 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 		// is what you feel like giving — and three preset buttons would be
 		// wrong for most of them.
 		actions = append(actions, fmt.Sprintf(
-			`<form method="POST" class="d-inline" style="display:inline-flex;gap:2px;align-items:center">`+
+			`<form method="POST" class="d-inline" class="inline-row">`+
 				`<input type="hidden" name="action" value="credit">`+
 				`<input type="hidden" name="user_id" value="%s">`+
 				`<input type="hidden" name="tab" value="%s">`+
 				`<input name="amount" inputmode="numeric" pattern="[0-9]*" placeholder="credits" `+
-				`style="width:64px;font-size:12px;padding:2px 4px;border:1px solid #ddd;border-radius:4px">`+
+				`class="num-field">`+
 				`<button type="submit" title="Add credits to this account" `+
-				`style="font-size:12px;padding:2px 8px;border-radius:4px;border:1px solid #06b;background:#fff;color:#06b;cursor:pointer">Credit</button></form>`,
+				`class="mini-btn info">Credit</button></form>`,
 			u.ID, tab))
 
 		sb.WriteString(fmt.Sprintf(`<tr><td><strong><a href="/@%s">%s</a></strong></td><td>%s</td><td class="created-col">%s</td><td>%s</td><td class="center">%s</td><td class="center nowrap">%s</td></tr>`, u.ID, u.ID, u.Name, created, statusHTML, balanceCell(u.ID), strings.Join(actions, " ")))
@@ -329,7 +325,7 @@ func BlocklistHandler(w http.ResponseWriter, r *http.Request) {
 			<thead>
 				<tr>
 					<th>Email</th>
-					<th class="text-center" style="width: 100px;">Action</th>
+					<th class="text-center" class="w-100">Action</th>
 				</tr>
 			</thead>
 			<tbody>`
@@ -360,7 +356,7 @@ func BlocklistHandler(w http.ResponseWriter, r *http.Request) {
 			<thead>
 				<tr>
 					<th>IP Address</th>
-					<th class="text-center" style="width: 100px;">Action</th>
+					<th class="text-center" class="w-100">Action</th>
 				</tr>
 			</thead>
 			<tbody>`
@@ -537,7 +533,7 @@ func SpamFilterHandler(w http.ResponseWriter, r *http.Request) {
 				<td>
 					<form method="POST" class="d-inline">
 						<input type="hidden" name="action" value="set_threshold">
-						<input type="number" name="value" value="%d" min="1" max="100" style="width:60px">
+						<input type="number" name="value" value="%d" min="1" max="100" class="w-60">
 						<button type="submit">Set</button>
 					</form>
 				</td>

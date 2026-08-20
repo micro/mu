@@ -261,23 +261,23 @@ func renderDMARCReport(xmlData string) string {
 
 	// Report metadata
 	html.WriteString(`<div class="mb-5">`)
-	html.WriteString(fmt.Sprintf(`<h4 style="margin: 0 0 10px 0;">DMARC Report from %s</h4>`, report.ReportMetadata.OrgName))
-	html.WriteString(`<table style="border-collapse: collapse; width: 100%; font-size: 13px;">`)
-	html.WriteString(fmt.Sprintf(`<tr><td style="padding: 4px 8px; background: #f5f5f5;"><strong>Report ID:</strong></td><td style="padding: 4px 8px;">%s</td></tr>`, report.ReportMetadata.ReportID))
-	html.WriteString(fmt.Sprintf(`<tr><td style="padding: 4px 8px; background: #f5f5f5;"><strong>Domain:</strong></td><td style="padding: 4px 8px;">%s</td></tr>`, report.PolicyPublished.Domain))
-	html.WriteString(fmt.Sprintf(`<tr><td style="padding: 4px 8px; background: #f5f5f5;"><strong>Policy:</strong></td><td style="padding: 4px 8px;">%s</td></tr>`, report.PolicyPublished.P))
+	html.WriteString(fmt.Sprintf(`<h4 class="m-0 mb-3">DMARC Report from %s</h4>`, report.ReportMetadata.OrgName))
+	html.WriteString(`<table class="grid-table">`)
+	html.WriteString(fmt.Sprintf(`<tr><td><strong>Report ID:</strong></td><td>%s</td></tr>`, report.ReportMetadata.ReportID))
+	html.WriteString(fmt.Sprintf(`<tr><td><strong>Domain:</strong></td><td>%s</td></tr>`, report.PolicyPublished.Domain))
+	html.WriteString(fmt.Sprintf(`<tr><td><strong>Policy:</strong></td><td>%s</td></tr>`, report.PolicyPublished.P))
 	html.WriteString(`</table></div>`)
 
 	// Records table
 	if len(report.Records) > 0 {
-		html.WriteString(`<h4 style="margin: 0 0 10px 0;">Email Results</h4>`)
-		html.WriteString(`<table style="border-collapse: collapse; width: 100%; font-size: 12px; border: 1px solid #ddd;">`)
+		html.WriteString(`<h4 class="m-0 mb-3">Email Results</h4>`)
+		html.WriteString(`<table class="grid-table tight">`)
 		html.WriteString(`<thead><tr class="bg-soft">`)
-		html.WriteString(`<th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Source IP</th>`)
-		html.WriteString(`<th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Count</th>`)
-		html.WriteString(`<th style="padding: 8px; text-align: left; border: 1px solid #ddd;">DKIM</th>`)
-		html.WriteString(`<th style="padding: 8px; text-align: left; border: 1px solid #ddd;">SPF</th>`)
-		html.WriteString(`<th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Disposition</th>`)
+		html.WriteString(`<th >Source IP</th>`)
+		html.WriteString(`<th >Count</th>`)
+		html.WriteString(`<th >DKIM</th>`)
+		html.WriteString(`<th >SPF</th>`)
+		html.WriteString(`<th >Disposition</th>`)
 		html.WriteString(`</tr></thead><tbody>`)
 
 		for _, record := range report.Records {
@@ -290,22 +290,23 @@ func renderDMARCReport(xmlData string) string {
 				spfResult = record.AuthResults.SPF[0].Result
 			}
 
-			// Color code results
-			dkimColor := "#d4edda" // green
-			if dkimResult != "pass" {
-				dkimColor = "#f8d7da" // red
-			}
-			spfColor := "#d4edda"
-			if spfResult != "pass" {
-				spfColor = "#f8d7da"
+			// Pass or fail, as a class rather than a literal green and red — the
+			// two shades were written here and nowhere else, so a report was the
+			// one page whose colours did not move with the palette.
+			cell := func(result string) string {
+				cls := "cell-fail"
+				if result == "pass" {
+					cls = "cell-pass"
+				}
+				return fmt.Sprintf(`<td class="%s">%s</td>`, cls, result)
 			}
 
 			html.WriteString(`<tr>`)
-			html.WriteString(fmt.Sprintf(`<td style="padding: 8px; border: 1px solid #ddd;">%s</td>`, record.Row.SourceIP))
-			html.WriteString(fmt.Sprintf(`<td style="padding: 8px; border: 1px solid #ddd;">%d</td>`, record.Row.Count))
-			html.WriteString(fmt.Sprintf(`<td style="padding: 8px; border: 1px solid #ddd; background: %s;">%s</td>`, dkimColor, dkimResult))
-			html.WriteString(fmt.Sprintf(`<td style="padding: 8px; border: 1px solid #ddd; background: %s;">%s</td>`, spfColor, spfResult))
-			html.WriteString(fmt.Sprintf(`<td style="padding: 8px; border: 1px solid #ddd;">%s</td>`, record.Row.PolicyEvaluated.Disposition))
+			html.WriteString(fmt.Sprintf(`<td>%s</td>`, record.Row.SourceIP))
+			html.WriteString(fmt.Sprintf(`<td>%d</td>`, record.Row.Count))
+			html.WriteString(cell(dkimResult))
+			html.WriteString(cell(spfResult))
+			html.WriteString(fmt.Sprintf(`<td>%s</td>`, record.Row.PolicyEvaluated.Disposition))
 			html.WriteString(`</tr>`)
 		}
 

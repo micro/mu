@@ -67,7 +67,7 @@ func mcpPageHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<p class="card-desc">Pick a tool, fill in parameters, and run it.</p>`)
 
 	// Tool selector
-	b.WriteString(`<select id="mcp-tool" onchange="mcpSelectTool()" style="width:100%;padding:8px;font-size:14px;border:1px solid #ddd;border-radius:4px;margin-bottom:12px">`)
+	b.WriteString(`<select id="mcp-tool" onchange="mcpSelectTool()" class="form-input w-full text-base mb-3">`)
 	b.WriteString(`<option value="">Select a tool...</option>`)
 	for _, t := range mcpTools() {
 		metered := ""
@@ -79,13 +79,13 @@ func mcpPageHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`</select>`)
 
 	// Tool description
-	b.WriteString(`<p id="mcp-tool-desc" style="color:#666;font-size:13px;margin:0 0 12px 0;display:none"></p>`)
+	b.WriteString(`<p id="mcp-tool-desc" class="text-secondary text-sm m-0 mb-3 d-none"></p>`)
 
 	// Dynamic params form
 	b.WriteString(`<div id="mcp-params"></div>`)
 
 	// Run button
-	b.WriteString(`<button id="mcp-run" onclick="mcpRun()" disabled style="margin-top:8px;padding:8px 20px;font-size:14px">Run</button>`)
+	b.WriteString(`<button id="mcp-run" onclick="mcpRun()" disabled class="mt-2">Run</button>`)
 
 	// Output area
 	b.WriteString(`<div id="mcp-output" class="d-none mt-3">`)
@@ -93,7 +93,7 @@ func mcpPageHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<strong class="text-sm text-secondary">Response</strong>`)
 	b.WriteString(`<span id="mcp-time" class="text-xs text-muted"></span>`)
 	b.WriteString(`</div>`)
-	b.WriteString(`<pre id="mcp-result" style="white-space:pre-wrap;word-break:break-all;background:#f5f5f5;padding:10px;margin-top:6px;font-size:12px;max-height:400px;overflow-y:auto;border-radius:4px"></pre>`)
+	b.WriteString(`<pre id="mcp-result" class="output"></pre>`)
 	b.WriteString(`</div>`)
 
 	// Tool metadata as JSON for JS
@@ -113,12 +113,12 @@ func mcpPageHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`if(t.params&&t.params.length){`)
 	b.WriteString(`for(var i=0;i<t.params.length;i++){var p=t.params[i];`)
 	b.WriteString(`h+='<div class="mb-2">';`)
-	b.WriteString(`h+='<label style="display:block;font-size:13px;font-weight:500;margin-bottom:2px">'+p.name+(p.required?' <span style=\"color:#e55\">*</span>':'')+'</label>';`)
+	b.WriteString(`h+='<label class="d-block text-sm mb-1 field-label">'+p.name+(p.required?' <span style=\"color:#e55\">*</span>':'')+'</label>';`)
 	b.WriteString(`h+='<div class="text-xs text-muted mb-1">'+p.description+'</div>';`)
 	b.WriteString(`if(p.type==='string'&&(p.name==='prompt'||p.name==='body'||p.name==='content'||p.name==='message'||p.name==='text')){`)
-	b.WriteString(`h+='<textarea name="'+p.name+'" rows="3" style="width:100%;padding:6px 8px;font-size:13px;border:1px solid #ddd;border-radius:4px;box-sizing:border-box;font-family:inherit;resize:vertical" placeholder="'+p.name+'"></textarea>';`)
+	b.WriteString(`h+='<textarea name="'+p.name+'" rows="3" class="form-area text-sm" placeholder="'+p.name+'"></textarea>';`)
 	b.WriteString(`}else{`)
-	b.WriteString(`h+='<input name="'+p.name+'" type="'+(p.type==='number'||p.type==='integer'?'number':'text')+'" style="width:100%;padding:6px 8px;font-size:13px;border:1px solid #ddd;border-radius:4px;box-sizing:border-box" placeholder="'+p.name+'">';`)
+	b.WriteString(`h+='<input name="'+p.name+'" type="'+(p.type==='number'||p.type==='integer'?'number':'text')+'" class="form-input w-full text-sm" placeholder="'+p.name+'">';`)
 	b.WriteString(`}`)
 	b.WriteString(`h+='</div>';}`)
 	b.WriteString(`}else{h='<p class="text-muted text-sm">No parameters needed</p>';}`)
@@ -158,13 +158,13 @@ func mcpPageHandler(w http.ResponseWriter, r *http.Request) {
 	// Raw JSON-RPC panel (collapsed)
 	b.WriteString(`<div class="card">`)
 	b.WriteString(`<details>`)
-	b.WriteString(`<summary style="cursor:pointer;font-weight:500">Raw JSON-RPC</summary>`)
+	b.WriteString(`<summary class="clickable medium">Raw JSON-RPC</summary>`)
 	b.WriteString(`<div class="mt-3">`)
 	b.WriteString(`<form id="mcp-test-form" onsubmit="return sendMCP(event)">`)
-	b.WriteString(`<textarea id="mcp-input" rows="5" style="width:100%;font-family:monospace;font-size:13px;padding:8px;box-sizing:border-box;" placeholder='{"jsonrpc":"2.0","id":1,"method":"tools/list"}'></textarea>`)
+	b.WriteString(`<textarea id="mcp-input" rows="5" class="form-input w-full text-sm mono" placeholder='{"jsonrpc":"2.0","id":1,"method":"tools/list"}'></textarea>`)
 	b.WriteString(`<button type="submit" class="mt-2">Send</button>`)
 	b.WriteString(`</form>`)
-	b.WriteString(`<pre id="mcp-raw-output" style="display:none;white-space:pre-wrap;word-break:break-all;background:#f5f5f5;padding:10px;margin-top:10px;font-size:12px;max-height:300px;overflow-y:auto;"></pre>`)
+	b.WriteString(`<pre id="mcp-raw-output" class="output d-none"></pre>`)
 	b.WriteString(`</div>`)
 	b.WriteString(`<script>`)
 	b.WriteString(`function sendMCP(e){e.preventDefault();var inp=document.getElementById('mcp-input');var out=document.getElementById('mcp-raw-output');out.style.display='block';out.textContent='Sending...';fetch('/mcp',{method:'POST',headers:{'Content-Type':'application/json'},body:inp.value}).then(function(r){return r.text();}).then(function(t){try{out.textContent=JSON.stringify(JSON.parse(t),null,2);}catch(ex){out.textContent=t;}}).catch(function(err){out.textContent='Error: '+err;});return false;}`)
@@ -251,14 +251,14 @@ func mcpToolsHTML() string {
 			b.WriteString(`<p class="card-meta">Draws ` + strconv.Itoa(cost) + ` ` + creditWord(cost) + ` from your balance per call.</p>`)
 		}
 		if len(t.Params) > 0 {
-			b.WriteString(`<table style="width:100%;border-collapse:collapse;font-size:13px;margin:8px 0">`)
-			b.WriteString(`<tr><th style="text-align:left;padding:4px 8px;border-bottom:1px solid #eee">Param</th><th style="text-align:left;padding:4px 8px;border-bottom:1px solid #eee">Type</th><th style="text-align:left;padding:4px 8px;border-bottom:1px solid #eee">Description</th></tr>`)
+			b.WriteString(`<table class="rule-table">`)
+			b.WriteString(`<tr><th >Param</th><th >Type</th><th >Description</th></tr>`)
 			for _, p := range t.Params {
 				req := ""
 				if p.Required {
 					req = " <span style=\"color:#e55\">*</span>"
 				}
-				b.WriteString(fmt.Sprintf(`<tr><td style="padding:4px 8px">%s%s</td><td style="padding:4px 8px;color:#888">%s</td><td style="padding:4px 8px">%s</td></tr>`,
+				b.WriteString(fmt.Sprintf(`<tr><td >%s%s</td><td class="text-muted">%s</td><td >%s</td></tr>`,
 					html.EscapeString(p.Name), req,
 					html.EscapeString(p.Type),
 					html.EscapeString(p.Description),
