@@ -363,7 +363,6 @@ var Template = `
                what pinning is for. -->
           <a href="/home"><img src="/home.png?` + Version + `"><span class="label">Home</span></a>
           <a href="/inbox"><img src="/mail.png?` + Version + `"><span class="label">Inbox</span></a>
-          %s
           <a href="/agents"><img src="/agent.svg?` + Version + `"><span class="label">Agents</span></a>
           <a href="/tools"><img src="/tools.svg?` + Version + `"><span class="label">Tools</span></a>
           <a href="/services"><img src="/services.svg?` + Version + `"><span class="label">Services</span></a>
