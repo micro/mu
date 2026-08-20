@@ -52,8 +52,10 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 		 this instance money: a model call, or a third party billed per request.
 		 Everything else is 0.`),
 		para(`No subscription, no minimum, no expiry. Top up any amount at
-		 <a href="/account">your account</a>. An agent can pay per request instead,
-		 with no account here — see <a href="/api">the API</a>.`))
+		 <a href="/account">your account</a>.`),
+		para(`An agent can skip the account: call without a token and a priced tool
+		 answers <code>402</code> with an <a href="https://x402.org">x402</a>
+		 challenge, payable in USDC on Base. See <a href="/api">the API</a>.`))
 
 	section("The agent is free",
 		para(`Chatting, email, your inbox, your files: no credits. You pay for the

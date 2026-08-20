@@ -51,6 +51,14 @@ func mcpPageHandler(w http.ResponseWriter, r *http.Request) {
 		`<code>recall_search</code> read what arrived here, so a client on the other end sees the ` +
 		`conversations as well as the capabilities.</p>`)
 	b.WriteString(`<p>Endpoint: <code>POST /mcp</code> &mdash; calls carry <code>Authorization: Bearer</code>.</p>`)
+	// Or pay instead of signing up, which is the point of the rail and was
+	// stated on /api and nowhere else — including here, the door an agent
+	// actually uses. Every tool below carries its price; this says how a caller
+	// with no account settles it.
+	b.WriteString(`<p>Or no token: a priced tool answers an unauthenticated call ` +
+		`with <code>402</code> and an <a href="https://x402.org">x402</a> challenge. ` +
+		`Pay it in USDC on Base and the same request succeeds. No signup. ` +
+		`<a href="/pricing">Pricing</a>.</p>`)
 	b.WriteString(`<p class="card-meta">Not connected yet? <a href="/tools#connect">Connect your agent &rarr;</a> ` +
 		`&middot; <a href="/help/mcp">Auth and protocol detail</a> &middot; <a href="/tools">What calls cost</a></p>`)
 	// Not everybody arriving here is building an agent. Somebody writing a

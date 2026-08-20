@@ -291,7 +291,7 @@ func connectSection(r *http.Request) string {
 
 	if acc == nil {
 		b.WriteString(`<p class="card-desc">Every tool below becomes available to your agent, ` +
-			`and calls are charged to your credits. You need an account either way.</p>`)
+			`and calls are charged to your credits.</p>`)
 		b.WriteString(`<p><a class="connect-cta" href="/signup">Create an account →</a> ` +
 			`<span class="connect-note">it is the same account you sign into the app with</span></p>`)
 	} else {
@@ -320,6 +320,10 @@ func connectSection(r *http.Request) string {
 		`command-line servers.</p>`)
 	b.WriteString(`</div>`)
 
+	// No x402 here, deliberately — see TestConnectOffersOneWayIn. This card is
+	// somebody wiring up Cursor or Claude Desktop, and a reader choosing between
+	// two of everything connects to neither. Paying instead of signing up is on
+	// /mcp, which is the door an agent uses, and on /pricing.
 	b.WriteString(`<p class="card-desc">Anything else that speaks ` +
 		`<a href="https://modelcontextprotocol.io">MCP</a> takes one or the other. Try a call ` +
 		`first in the <a href="/mcp">playground</a>.</p>`)
