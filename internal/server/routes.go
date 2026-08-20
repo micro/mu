@@ -111,8 +111,6 @@ func authRequired() map[string]bool {
 		// reason as /sms: this map is matched by prefix and /whatsapp/twilio is
 		// the provider posting an inbound message with no session at all.
 		"/whatsapp":          false,
-		"/runs":              true,  // What your agents did (redirects to /agent/runs)
-		"/agent/runs":        true,  // What your agents did
 		"/agent/session/":    true,  // Deleting one of your conversations
 		"/recall":            true,  // Your own past — sign-in required
 		"/agent/connect":     true,  // How to reach one agent
@@ -736,15 +734,12 @@ func registerRoutes() {
 	// conversations the rail lists, the other listed the workflow records behind
 	// them. Both are on /agent now — the conversation, and the tools each answer
 	// came from beside the answer.
-	http.HandleFunc("/agent/threads", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/inbox", http.StatusMovedPermanently)
-	})
-	http.HandleFunc("/agent/runs", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/inbox", http.StatusMovedPermanently)
-	})
-	http.HandleFunc("/runs", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/inbox", http.StatusMovedPermanently)
-	})
+	// /runs, /agent/runs and /agent/threads are gone. They were three routes
+	// redirecting to /inbox — the remains of a page listing every workflow
+	// record, prompt by prompt, which was a fourth name on a surface that
+	// already had three. A redirect kept for links that existed is worth
+	// keeping; three of them for one deleted page, long after anything linked
+	// to it, is a route table remembering something nobody does.
 	// A service rendered at a glance — see internal/api/card.go.
 	http.HandleFunc("/card", api.CardHandler)
 	http.HandleFunc("/card/", api.CardHandler)

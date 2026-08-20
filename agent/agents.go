@@ -383,15 +383,13 @@ func NewAgentHandler(w http.ResponseWriter, r *http.Request) {
 	// page when you want one, not a second species of agent chosen before you
 	// have written a word.
 
-	// What it has actually done. An agent is a scope — a name, a system prompt
-	// and the tools it may reach — and the page where you set that scope said
-	// nothing about whether any of it worked. Its runs are the only evidence
-	// the scope is right, and they were a page away with no filter to get here.
-	runsHTML := ""
-	if editID != "" {
-		runsHTML = agentRunsSummary(acc.ID, editID)
-	}
-
+	// No run list here.
+	//
+	// The builder showed the last three workflow records for this agent, which
+	// was the last thing left of /agent/runs after the page went. It answered
+	// "is this scope right" with a list of prompts, which is the question but
+	// not an answer to it — and what an answer actually called is now beside
+	// the answer in the conversation, where somebody looking at an odd one is.
 	b := `<div class="builder">
   <p class="builder-sub">Describe an agent and Mu will draft it, or write the system prompt yourself. Pick what it may reach — it will be refused everything else, even though it is your account behind it.</p>
   <form id="bform" onsubmit="return bSave(event)">
@@ -410,7 +408,7 @@ func NewAgentHandler(w http.ResponseWriter, r *http.Request) {
     <textarea id="b-prompt" rows="9" required>` + html.EscapeString(prompt) + `</textarea>
     <label class="b-label">What may it reach? <span class="b-hint">— none selected means everything you can</span></label>
     <div class="b-tools">` + toolsHTML.String() + `</div>
-    ` + runsHTML + `
+    
     <div class="b-actions">
       <button type="submit" class="b-save">Save agent</button>
       <a class="b-cancel" href="/agents">Cancel</a>
