@@ -58,7 +58,7 @@ func TestTheAgentIsAskedTheMessageNotTheMarkup(t *testing.T) {
 	if strings.Contains(src, "strings.TrimSpace(m.Body)\n") && !strings.Contains(src, "m.Text") {
 		t.Fatal("the prompt is built from m.Body")
 	}
-	if !strings.Contains(src, "body := strings.TrimSpace(m.Text)") {
+	if !strings.Contains(src, "if b := strings.TrimSpace(m.Text); b != \"\"") {
 		t.Error(`the prompt is not built from m.Text — a mail composed on a phone arrives as ` +
 			`<div dir="auto">…</div>, and that went to the agent as the question and into the ` +
 			`record as the conversation's name`)

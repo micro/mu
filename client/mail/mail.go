@@ -86,17 +86,49 @@ func Load() {
 // Body is what the inbox renders; Text is what was said.
 func asked(m mail.InboundMail) string {
 	out := m.Subject
-	body := strings.TrimSpace(m.Text)
-	if body == "" {
-		body = strings.TrimSpace(m.Body)
-	}
-	if body != "" {
+	if b := body(m); b != "" {
 		if out != "" {
 			out += "\n\n"
 		}
-		out += body
+		out += b
 	}
 	return strings.TrimSpace(out)
+}
+
+// body is what somebody actually wrote, without the subject in front of it.
+//
+// asked() is what the agent is handed, where the subject is part of the
+// question. The record wants this: the subject belongs to the conversation, and
+// putting it at the top of every message means the reader meets it once as the
+// heading and again on every message under it. See recordDelivery.
+func body(m mail.InboundMail) string {
+	if b := strings.TrimSpace(m.Text); b != "" {
+		return b
+	}
+	return strings.TrimSpace(m.Body)
+}
+
+// cleanSubject is the subject with the reply and forward markers off the front,
+// so a thread is named once and not renamed "Re: Re: Lunch" on the third turn.
+//
+// thread.Name keeps the first name a conversation is given, so this only
+// matters when the first message in is itself a reply — mail forwarded into an
+// agent, or a chain this instance joined halfway.
+func cleanSubject(s string) string {
+	s = strings.TrimSpace(s)
+	for {
+		l := strings.ToLower(s)
+		switch {
+		case strings.HasPrefix(l, "re:"):
+			s = strings.TrimSpace(s[3:])
+		case strings.HasPrefix(l, "fwd:"):
+			s = strings.TrimSpace(s[4:])
+		case strings.HasPrefix(l, "fw:"):
+			s = strings.TrimSpace(s[3:])
+		default:
+			return s
+		}
+	}
 }
 
 // Mail addressed to an agent wakes it, and it answers in the thread.

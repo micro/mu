@@ -667,6 +667,32 @@ func SetAgent(account, id, agentID string) {
 	save()
 }
 
+// Name says what a conversation is about, when the client knows better than the
+// first line of its first message does.
+//
+// Mail knows: a message has a Subject header, and it is not part of what the
+// person wrote. Without this the only way to give a conversation a subject was
+// to prepend it to the body of the first message — which is exactly what the
+// mail paths did, so every message on a mail thread opened with the subject and
+// a reader saw it once as the heading and again at the top of every message.
+//
+// First one wins, like the derived subject it replaces: a thread is named by
+// how it started, and "Re: Re: Lunch" arriving on message nine is not a rename.
+func Name(account, id, subject string) {
+	subject = strings.TrimSpace(subject)
+	if subject == "" {
+		return
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	t := threads[id]
+	if t == nil || t.Account != account || t.Subject != "" {
+		return
+	}
+	t.Subject = subject
+	save()
+}
+
 // Delete removes a conversation and everything said on it.
 //
 // The record is memory and trimming it is forgetting, which is why nothing

@@ -81,7 +81,7 @@ func ConversationView(accountID string, t *thread.Thread) string {
 	}
 
 	for _, m := range msgs {
-		b.WriteString(messageBlock(accountID, t, m))
+		b.WriteString(messageBlock(accountID, t, m, subject))
 	}
 
 	// Replying, where replying is a thing this page can do.
@@ -188,6 +188,38 @@ func partyLine(accountID string, t *thread.Thread) string {
 		` and the agent</div>`
 }
 
+// withoutSubject drops a leading line that is only the conversation's subject.
+//
+// Mail used to be recorded as "Subject\n\nbody", because that was the only way
+// a thread learned what it was about — see thread.Name, which is how a client
+// says so now. Messages written before that are still on disk with the subject
+// inside them, and a reader of an old conversation should not see it once as
+// the heading and again on every message under it.
+//
+// Only an exact match, with or without a reply marker, and only as the first
+// line. A message that happens to begin with the same words as its subject is
+// somebody writing that, and cutting it would be deleting what they said.
+func withoutSubject(text, subject string) string {
+	subject = strings.TrimSpace(subject)
+	if subject == "" {
+		return text
+	}
+	first, rest, ok := strings.Cut(text, "\n")
+	if !ok {
+		return text
+	}
+	head := strings.TrimSpace(first)
+	for _, prefix := range []string{"re:", "fwd:", "fw:"} {
+		if strings.HasPrefix(strings.ToLower(head), prefix) {
+			head = strings.TrimSpace(head[len(prefix):])
+		}
+	}
+	if !strings.EqualFold(head, subject) {
+		return text
+	}
+	return strings.TrimLeft(rest, "\n")
+}
+
 // partyName is what to call somebody: the name the client knew, the address
 // they wrote from, or "You" for the account this conversation belongs to.
 func partyName(p thread.Party) string {
@@ -204,7 +236,8 @@ func partyName(p thread.Party) string {
 // typed; what an agent wrote is markdown, rendered the way the chat renders it —
 // through the untrusted renderer, because model output is exactly what that
 // renderer is for.
-func messageBlock(accountID string, t *thread.Thread, m thread.Message) string {
+func messageBlock(accountID string, t *thread.Thread, m thread.Message, subject string) string {
+	m.Text = withoutSubject(m.Text, subject)
 	if m.Role == thread.RoleAgent {
 		ran := ""
 		if m.Workflow != "" {

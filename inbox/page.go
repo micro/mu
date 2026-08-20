@@ -174,9 +174,13 @@ func row(r *http.Request, accountID string, t thread.Thread) string {
 	// who you are corresponding with, and it does not change because the last
 	// word happened to be yours.
 	who, full := party(accountID, t)
+	// The preview, with the subject taken off the front of it. Mail recorded
+	// before thread.Name existed has the subject inside the message, so the
+	// preview read "Invoice 4021 Attached is this month's…" — the subject
+	// twice, once as the subject. See withoutSubject.
 	snippet := ""
 	if msgs := thread.Messages(accountID, t.ID, 1); len(msgs) > 0 {
-		snippet = trimTo(msgs[0].Text, 110)
+		snippet = trimTo(withoutSubject(msgs[0].Text, subject), 110)
 	}
 
 	// The labels, before the subject rather than after it.
@@ -216,8 +220,16 @@ func row(r *http.Request, accountID string, t thread.Thread) string {
 	return `<div class="ib-item">` +
 		`<a class="` + cls + `" href="/inbox?id=` + url.QueryEscape(t.ID) + `">` +
 		`<span class="ib-who"` + titleAttr(full) + `>` + html.EscapeString(who) + `</span>` +
-		`<span class="ib-mid">` + labels + `<span class="ib-subject">` +
-		html.EscapeString(trimTo(subject, 70)) + `</span>` +
+		// The labels and the subject are one line, and the preview is the next.
+		//
+		// They were three siblings of .ib-mid, which is a flex row on a wide
+		// screen and a column on a phone — so on a phone each got a line of its
+		// own and the labels were pushed under the preview by an order:3 that
+		// existed to stop them being first. A label is how you decide whether to
+		// read the line, so it belongs beside what it labels on every width.
+		`<span class="ib-mid"><span class="ib-line">` + labels +
+		`<span class="ib-subject">` + html.EscapeString(trimTo(subject, 70)) +
+		`</span></span>` +
 		`<span class="ib-snip">` + html.EscapeString(snippet) + `</span></span>` +
 		`<span class="ib-when">` + html.EscapeString(app.TimeAgo(t.Updated)) + `</span></a>` +
 		rowDelete(r, t.ID) + `</div>`

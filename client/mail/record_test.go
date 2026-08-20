@@ -38,9 +38,17 @@ func TestOrdinaryMailIsInTheRecord(t *testing.T) {
 	if len(msgs) != 1 {
 		t.Fatalf("%d messages, want 1", len(msgs))
 	}
-	if !strings.Contains(msgs[0].Text, "Invoice 4021") ||
-		!strings.Contains(msgs[0].Text, "this month's invoice") {
+	// What was written, without the subject in front of it. The subject is the
+	// conversation's, not every message's — see thread.Name.
+	if msgs[0].Text != "Attached is this month's invoice." {
 		t.Errorf("the message is not what arrived: %q", msgs[0].Text)
+	}
+	if strings.Contains(msgs[0].Text, "Invoice 4021") {
+		t.Error("the subject is inside the message, so a reader meets it as the " +
+			"heading and again at the top of every message under it")
+	}
+	if threads[0].Subject != "Invoice 4021" {
+		t.Errorf("the conversation is called %q, not what the mail was about", threads[0].Subject)
 	}
 	// Its own id, so a reply to it finds this conversation and so that the
 	// agent recording the same arrival does not record it twice.

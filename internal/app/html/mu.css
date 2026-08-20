@@ -5990,12 +5990,16 @@ button.pill:hover {
 
 .ib-mid { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 8px; overflow: hidden }
 
+/* The labels and the subject, together. One box so a phone can stack the
+   preview under them without breaking them apart — see the media query. */
+.ib-line { display: flex; align-items: baseline; gap: 8px; flex: none; max-width: 60%; min-width: 0; overflow: hidden }
+
 .ib-subject {
   font-size: 14px;
   color: var(--text-primary, #1a1a1a);
   white-space: nowrap;
   flex: none;
-  max-width: 60%;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -6145,9 +6149,13 @@ button.pill:hover {
   .ib-who { flex: none; grid-column: 1; font-size: 13px }
   .ib-when { grid-column: 2; grid-row: 1; font-size: 11px }
   .ib-mid { grid-column: 1 / -1; flex-direction: column; align-items: flex-start; gap: 2px }
-  .ib-subject { max-width: 100%; white-space: normal; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical }
+  /* The labels stay beside the subject; only the preview drops below. There
+     was an order:3 here pushing the pills past the preview, which put a
+     label — the thing you read to decide whether to read the row — at the
+     bottom of the row it labels. */
+  .ib-line { max-width: 100%; flex-wrap: wrap; row-gap: 2px }
+  .ib-subject { white-space: normal; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical }
   .ib-snip { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.45 }
-  .ib-mid .pill { order: 3 }
   .ib-addr { gap: 6px }
   .ib-addr-note { font-size: 11px }
 }

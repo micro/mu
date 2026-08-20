@@ -36,7 +36,15 @@ import (
 // Keyed the same way answerMail keys it, so a chain that gets answered and a
 // chain that does not are the same conversation rather than two — see chainKey.
 func recordDelivery(m mail.InboundMail) {
-	text := asked(m)
+	// The body, not the subject and the body.
+	//
+	// asked() joins them because that is what the *agent* is handed: to a model
+	// the subject is part of the question. The record is a different job — the
+	// subject belongs to the conversation, and prepending it to every message
+	// meant a reader saw it as the heading and again at the top of every message
+	// in the thread. thread.Name is how a client says what a conversation is
+	// about without writing it into what somebody said.
+	text := body(m)
 	if m.Owner == "" || text == "" {
 		return
 	}
@@ -44,6 +52,7 @@ func recordDelivery(m mail.InboundMail) {
 	if th == nil {
 		return
 	}
+	thread.Name(m.Owner, th.ID, cleanSubject(m.Subject))
 	agent.SaidTo(m.Owner, th.ID, text, m.MessageID, m.From, m.To)
 	// The name behind the address, which a message cannot carry — it belongs to
 	// whoever wrote in, not to each line they wrote.

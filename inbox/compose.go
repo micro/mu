@@ -264,14 +264,15 @@ func record(accountID, messageID string, f form) {
 	if th == nil {
 		return
 	}
-	text := f.Body
-	if f.Subject != "" {
-		text = f.Subject + "\n\n" + f.Body
-	}
+	// The body alone. The subject went in front of it, so a conversation showed
+	// its subject as the heading and again at the top of every message — see
+	// thread.Name, which is how a conversation is named without writing the name
+	// into what somebody said.
+	thread.Name(accountID, th.ID, strings.TrimPrefix(f.Subject, "Re: "))
 	// No From, so it is the owner speaking and is read the moment it is
 	// written — see thread.Add. Ref is the Message-ID, which is also what stops
 	// a bounce or a copy of this arriving back and being recorded twice.
-	thread.Add(thread.Message{Thread: th.ID, Account: accountID, Text: text, Ref: messageID})
+	thread.Add(thread.Message{Thread: th.ID, Account: accountID, Text: f.Body, Ref: messageID})
 	thread.Join(accountID, th.ID, thread.Party{Kind: thread.RolePerson, Key: f.To})
 }
 
