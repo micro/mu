@@ -44,7 +44,6 @@ import (
 	"bufio"
 	"fmt"
 	"net"
-	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -113,15 +112,9 @@ func StartIMAPServer(addr string) error {
 // default that cannot start is a feature nobody finds. IMAP_PORT=off is the way
 // to have none.
 func StartIMAPServerIfEnabled() {
-	addr := os.Getenv("IMAP_PORT")
-	switch strings.ToLower(strings.TrimSpace(addr)) {
-	case "off", "false", "0", "no":
+	addr, on := app.ListenAddr("IMAP_PORT", ":1143")
+	if !on {
 		return
-	case "":
-		addr = ":1143"
-	}
-	if !strings.Contains(addr, ":") {
-		addr = ":" + addr
 	}
 	go func() {
 		if err := StartIMAPServer(addr); err != nil {

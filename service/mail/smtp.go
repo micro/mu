@@ -5,14 +5,12 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"log"
 	"mime"
 	"mime/multipart"
 	"mime/quotedprintable"
 	"net"
 	"net/mail"
 	"net/smtp"
-	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -1025,30 +1023,26 @@ func StartSMTPServer(addr string) error {
 	app.Log("mail", "Rate limits: %d connections/hour per IP, %d messages/day per sender",
 		maxIPConnections, maxSenderMessages)
 
-	if err := s.ListenAndServe(); err != nil {
-		log.Fatal(err)
-		return err
-	}
-
-	return nil
+	// Returned, not fatal. This was log.Fatal, so anything that stopped the
+	// listener binding — port 25 without the privilege to take it, 2525 already
+	// held by something else, a hostname that does not resolve — took the web
+	// server down with it. A mail server that cannot start is a mail server that
+	// cannot start; it is not a reason for the rest of the instance to stop.
+	return s.ListenAndServe()
 }
 
-// StartSMTPServerIfEnabled starts the SMTP server
+// StartSMTPServerIfEnabled starts the SMTP server unless it is turned off.
+//
+// MAIL_PORT=off is the way to run the web server with no MTA — see
+// app.ListenAddr, and StartIMAPServerIfEnabled, which is the same shape.
 func StartSMTPServerIfEnabled() bool {
-	// Get server port from environment
-	smtpServerAddr := os.Getenv("MAIL_PORT")
-	if smtpServerAddr == "" {
-		smtpServerAddr = ":2525" // Default to 2525 for local testing
+	addr, on := app.ListenAddr("MAIL_PORT", ":2525") // 2525 for local testing
+	if !on {
+		return false
 	}
 
-	// Add : prefix if not present
-	if !strings.HasPrefix(smtpServerAddr, ":") {
-		smtpServerAddr = ":" + smtpServerAddr
-	}
-
-	// Start server in goroutine
 	go func() {
-		if err := StartSMTPServer(smtpServerAddr); err != nil {
+		if err := StartSMTPServer(addr); err != nil {
 			app.Log("mail", "SMTP server error: %v", err)
 		}
 	}()

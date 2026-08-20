@@ -526,7 +526,7 @@ that.
 | Variable | Default | What it does |
 |---|---|---|
 | `MAIL_DOMAIN` | — | The domain you send and receive as |
-| `MAIL_PORT` | `2525` | SMTP listener — `25` in production |
+| `MAIL_PORT` | `2525` | SMTP listener — `25` in production, `off` to have none |
 | `IMAP_PORT` | `1143` | IMAP listener — `143` in production, `off` to have none. See [Reading your mail in a mail client](#reading-your-mail-in-a-mail-client) |
 | `MAIL_SELECTOR` | `default` | DKIM selector, the `<selector>._domainkey` DNS record |
 | `DKIM_PRIVATE_KEY` | — | DKIM signing key |

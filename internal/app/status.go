@@ -197,16 +197,20 @@ func buildStatus() StatusResponse {
 		})
 	}
 
-	// Check SMTP server (port configured)
-	smtpPort := os.Getenv("MAIL_PORT")
-	if smtpPort == "" {
-		smtpPort = "2525"
+	// The listeners, off included. This read MAIL_PORT raw and reported
+	// "Port off" with a tick beside it, because any non-empty string counted as
+	// running — which is the one answer a status page must not give.
+	for _, l := range []struct{ name, key, fallback string }{
+		{"SMTP Server", "MAIL_PORT", ":2525"},
+		{"IMAP Server", "IMAP_PORT", ":1143"},
+	} {
+		addr, on := ListenAddr(l.key, l.fallback)
+		details := "Off"
+		if on {
+			details = fmt.Sprintf("Port %s", strings.TrimPrefix(addr, ":"))
+		}
+		services = append(services, StatusCheck{Name: l.name, Status: on, Details: details})
 	}
-	services = append(services, StatusCheck{
-		Name:    "SMTP Server",
-		Status:  smtpPort != "",
-		Details: fmt.Sprintf("Port %s", smtpPort),
-	})
 
 	// Check LLM provider
 	llmProvider, llmConfigured := checkLLMConfig()
