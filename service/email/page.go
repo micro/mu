@@ -86,7 +86,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var b strings.Builder
-	b.WriteString(`<div style="max-width:760px">`)
+	b.WriteString(`<div class="w-760">`)
 
 	if miss := Missing(); len(miss) > 0 {
 		b.WriteString(`<div class="card"><h3>Not configured</h3>`)
@@ -108,7 +108,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// about it is answering a question nobody has asked yet.
 	b.WriteString(`<div class="card">`)
 	b.WriteString(`<h3>You send as</h3>`)
-	b.WriteString(`<p style="font-size:15px;margin:0 0 4px"><code>` +
+	b.WriteString(`<p class="lead-15 m-0 mb-1"><code>` +
 		html.EscapeString(SenderFor(acc.ID)) + `</code></p>`)
 	b.WriteString(`<p class="text-base text-secondary m-0 mb-3">Carried by ` +
 		html.EscapeString(Provider()) + `.</p>`)
@@ -137,9 +137,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// One message, to see that it works.
 	b.WriteString(`<div class="card mt-4"><h3>Send one</h3>`)
 	b.WriteString(`<form method="POST" action="/email">`)
-	b.WriteString(`<input name="to" type="email" required placeholder="to@example.com" style="width:100%;padding:8px;margin:0 0 8px;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box">`)
-	b.WriteString(`<input name="subject" required placeholder="Subject" style="width:100%;padding:8px;margin:0 0 8px;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box">`)
-	b.WriteString(`<textarea name="body" required rows="6" placeholder="Message" style="width:100%;padding:8px;margin:0 0 8px;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box;font-family:inherit"></textarea>`)
+	b.WriteString(`<input name="to" type="email" required placeholder="to@example.com" class="form-input w-full text-base mb-2">`)
+	b.WriteString(`<input name="subject" required placeholder="Subject" class="form-input w-full text-base mb-2">`)
+	b.WriteString(`<textarea name="body" required rows="6" placeholder="Message" class="form-input w-full text-base mb-2"></textarea>`)
 	b.WriteString(`<button type="submit" class="btn">Send</button>`)
 	b.WriteString(`</form></div>`)
 
@@ -157,7 +157,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	if len(yours) == 0 {
 		b.WriteString(`<p class="text-base text-muted m-0 mb-3">None yet.</p>`)
 	} else {
-		b.WriteString(`<ul style="font-size:14px;margin:0 0 12px;padding-left:18px">`)
+		b.WriteString(`<ul class="text-base m-0 mb-3 indent">`)
 		for _, a := range yours {
 			b.WriteString(`<li class="m-0 mb-1"><code>` + html.EscapeString(a) + `</code>`)
 			if acc.EmailVerified && strings.EqualFold(acc.Email, a) {
@@ -177,12 +177,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`<input type="hidden" name="address" value="` + html.EscapeString(pending) + `">`)
 		b.WriteString(`<p class="text-base text-secondary m-0 mb-2">A code went to <code>` +
 			html.EscapeString(pending) + `</code>.</p>`)
-		b.WriteString(`<input name="code" required inputmode="numeric" autocomplete="one-time-code" placeholder="6-digit code" style="width:160px;padding:8px;margin:0 8px 0 0;border:1px solid #ddd;border-radius:6px;font-size:14px">`)
+		b.WriteString(`<input name="code" required inputmode="numeric" autocomplete="one-time-code" placeholder="6-digit code" class="form-input w-160 text-base mr-2">`)
 		b.WriteString(`<button type="submit" class="btn">Confirm</button>`)
 	} else {
-		b.WriteString(`<input name="address" type="email" required placeholder="you@example.com" style="width:260px;padding:8px;margin:0 8px 0 0;border:1px solid #ddd;border-radius:6px;font-size:14px">`)
+		b.WriteString(`<input name="address" type="email" required placeholder="you@example.com" class="form-input w-260 text-base mr-2">`)
 		b.WriteString(`<button type="submit" class="btn">Send a code</button>`)
-		b.WriteString(`<p style="font-size:13px;color:#888;margin:8px 0 0">The code is emailed there, so it costs one send and counts against today's allowance. An agent runs the same check on <em>its</em> users with <code>email_verify</code> — a code under your product's name, and an answer saying whether it came back.</p>`)
+		b.WriteString(`<p class="text-sm text-muted mt-2 m-0">The code is emailed there, so it costs one send and counts against today's allowance. An agent runs the same check on <em>its</em> users with <code>email_verify</code> — a code under your product's name, and an answer saying whether it came back.</p>`)
 	}
 	b.WriteString(`</form></div>`)
 
@@ -225,7 +225,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// there.
 		for _, m := range msgs {
 			if !m.OK() {
-				b.WriteString(`<p style="font-size:13px;color:#c00;margin:8px 0 0">` +
+				b.WriteString(`<p class="text-sm text-error mt-2 m-0">` +
 					html.EscapeString(m.Sent.Format("2 Jan 15:04")) + ` — ` +
 					html.EscapeString(m.Error) + `</p>`)
 				break

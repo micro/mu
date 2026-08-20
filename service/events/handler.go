@@ -48,17 +48,17 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Add form. The datetime-local value is local to the browser; a tiny script
 	// converts it to an RFC3339 UTC instant on submit so 3pm means the user's
 	// 3pm regardless of the server's timezone.
-	b.WriteString(`<div style="max-width:640px">`)
+	b.WriteString(`<div class="w-640">`)
 	b.WriteString(`<form method="POST" action="/events" onsubmit="var d=this.whenlocal.value;if(d){this.when.value=new Date(d).toISOString()}" style="display:flex;flex-direction:column;gap:8px;margin:0 0 24px">`)
 	b.WriteString(`<input type="hidden" name="_csrf" value="` + html.EscapeString(csrf) + `">`)
 	b.WriteString(`<input type="hidden" name="action" value="create">`)
 	b.WriteString(`<input type="hidden" name="when" value="">`)
-	b.WriteString(`<input type="text" name="title" placeholder="Remind me to…" required maxlength="140" style="padding:9px 11px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;font-family:inherit">`)
+	b.WriteString(`<input type="text" name="title" placeholder="Remind me to…" required maxlength="140" class="form-input text-base">`)
 	b.WriteString(`<div class="d-flex gap-2 flex-wrap">`)
-	b.WriteString(`<input type="datetime-local" name="whenlocal" required style="flex:1;min-width:200px;padding:9px 11px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;font-family:inherit">`)
+	b.WriteString(`<input type="datetime-local" name="whenlocal" required class="form-input text-base grow">`)
 	b.WriteString(`<button type="submit">Schedule</button>`)
 	b.WriteString(`</div>`)
-	b.WriteString(`<input type="text" name="note" placeholder="Note (optional)" maxlength="280" style="padding:9px 11px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;font-family:inherit">`)
+	b.WriteString(`<input type="text" name="note" placeholder="Note (optional)" maxlength="280" class="form-input text-base">`)
 	b.WriteString(`</form>`)
 
 	up := Upcoming(owner)
@@ -68,7 +68,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	if len(up) == 0 && len(ext) == 0 {
 		b.WriteString(`<p class="text-muted text-base">Nothing scheduled. Add a reminder above, or just ask the agent: <em>"remind me to call the dentist tomorrow at 3pm"</em>.</p>`)
 	} else {
-		b.WriteString(`<h3 style="font-size:15px;margin:0 0 10px">Upcoming</h3>`)
+		b.WriteString(`<h3 class="lead-15 m-0 mb-3">Upcoming</h3>`)
 		b.WriteString(`<div class="d-flex flex-column gap-2">`)
 		for _, row := range mergedRows(up, ext) {
 			if row.Event != nil {
@@ -94,7 +94,7 @@ func eventRow(e *Event, csrf string) string {
 	return fmt.Sprintf(`<div style="display:flex;align-items:center;gap:12px;border:1px solid #eee;border-radius:8px;padding:10px 14px">
 <div class="grow">
   <div class="semibold text-base">%s</div>
-  <div style="font-size:13px;color:var(--link,#0066cc)">%s</div>
+  <div class="text-sm link-colour">%s</div>
   %s
 </div>
 <a href="%s" target="_blank" rel="noopener" title="Add to Google Calendar" class="text-xs text-muted no-underline nowrap">+ Calendar</a>
@@ -155,10 +155,10 @@ func externalRow(x External) string {
 	return fmt.Sprintf(`<div style="display:flex;align-items:center;gap:12px;border:1px solid #eee;border-radius:8px;padding:10px 14px;background:#fafafa">
 <div class="grow">
   <div class="semibold text-base">%s</div>
-  <div style="font-size:13px;color:var(--link,#0066cc)">%s</div>
+  <div class="text-sm link-colour">%s</div>
   %s
 </div>
-<span style="font-size:11px;color:#aaa;white-space:nowrap">%s</span>
+<span class="text-2xs text-muted nowrap">%s</span>
 </div>`, html.EscapeString(x.Title), html.EscapeString(when), where, html.EscapeString(source))
 }
 
@@ -175,17 +175,17 @@ func calendarCard(owner, status, csrf string) string {
 	note := ""
 	switch status {
 	case "connected":
-		note = `<p style="font-size:13px;color:#0a7d33;margin:0 0 8px">Connected. Your calendar is now included in what's scheduled and when you're free.</p>`
+		note = `<p class="notice ok">Connected. Your calendar is now included in what's scheduled and when you're free.</p>`
 	case "disconnected":
 		note = `<p class="text-sm text-muted m-0 mb-2">Disconnected. The access was revoked at Google and forgotten here.</p>`
 	case "declined":
 		note = `<p class="text-sm text-muted m-0 mb-2">No calendar access granted — nothing changed.</p>`
 	case "failed":
-		note = `<p style="font-size:13px;color:#b00;margin:0 0 8px">That didn't complete. Try again.</p>`
+		note = `<p class="notice bad">That didn't complete. Try again.</p>`
 	}
 
 	var b strings.Builder
-	b.WriteString(`<div class="card" style="margin-top:24px">`)
+	b.WriteString(`<div class="card" class="mt-6">`)
 	b.WriteString(note)
 
 	if HasExternal(owner) {
@@ -206,7 +206,7 @@ func calendarCard(owner, status, csrf string) string {
 	} else {
 		b.WriteString(`<h4 class="m-0 mb-2 text-base">Connect your ` + html.EscapeString(ExternalName) + `</h4>`)
 		b.WriteString(`<p class="text-sm text-secondary m-0 mb-3">Right now "when am I free" only counts what you scheduled here. Connect your calendar and it counts everything. Read-only — Mu can see what's on it, and cannot change it.</p>`)
-		b.WriteString(`<a href="/oauth2/google/calendar" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:8px 16px;border-radius:8px;font-weight:600;font-size:13px">Connect ` + html.EscapeString(ExternalName) + `</a>`)
+		b.WriteString(`<a href="/oauth2/google/calendar" class="btn">Connect ` + html.EscapeString(ExternalName) + `</a>`)
 	}
 	b.WriteString(`</div>`)
 	return b.String()

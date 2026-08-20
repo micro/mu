@@ -1127,7 +1127,7 @@ func serveFlowPage(w http.ResponseWriter, r *http.Request, id string) {
 	}
 
 	// Actions — no card wrapper, just links
-	b.WriteString(`<div style="display:flex;gap:12px;align-items:center;margin-top:12px;font-size:13px;">`)
+	b.WriteString(`<div class="d-flex gap-3 items-center mt-3 text-sm">`)
 	b.WriteString(`<a href="/agent?continue=` + f.ID + `">Continue →</a>`)
 	b.WriteString(`<a href="#" onclick="var u=location.href;if(navigator.share){navigator.share({url:u})}else if(navigator.clipboard){navigator.clipboard.writeText(u).then(function(){this.textContent='Copied!'}.bind(this))}else{prompt('Copy:',u)};return false;">Share</a>`)
 	b.WriteString(`</div>`)
@@ -2251,7 +2251,7 @@ func renderNewsCard(result string) string {
 	var b strings.Builder
 	b.WriteString(`<div class="card"><h4>📰 News</h4>`)
 	if notice := strings.TrimSpace(data.Freshness.Notice); notice != "" && (data.Freshness.Status == "stale" || data.Freshness.Status == "mostly_stale" || data.Freshness.Status == "no_dated_results") {
-		b.WriteString(`<div style="margin:0 0 8px;padding:8px;border-radius:4px;background:#fff7ed;color:#7c2d12;font-size:12px;">`)
+		b.WriteString(`<div class="notice warn">`)
 		b.WriteString(htmlEsc(newsFreshnessCardNotice(data.Freshness.Status, notice)))
 		b.WriteString(`</div>`)
 	}
@@ -2260,11 +2260,11 @@ func renderNewsCard(result string) string {
 		if item.ID != "" {
 			link = "/news?id=" + item.ID
 		}
-		b.WriteString(`<div style="padding:8px 0;border-bottom:1px solid #f0f0f0;">`)
+		b.WriteString(`<div class="thin-row row-pad">`)
 		if item.Category != "" {
-			b.WriteString(`<a href="/news#` + htmlEsc(item.Category) + `" class="category" style="font-size:11px;margin-right:6px;">` + htmlEsc(item.Category) + `</a>`)
+			b.WriteString(`<a href="/news#` + htmlEsc(item.Category) + `" class="category" class="text-2xs mr-1">` + htmlEsc(item.Category) + `</a>`)
 		}
-		b.WriteString(`<a href="` + htmlEsc(link) + `" style="font-size:14px;font-weight:600;display:block;color:#111;">` + htmlEsc(item.Title) + `</a>`)
+		b.WriteString(`<a href="` + htmlEsc(link) + `" class="text-base semibold d-block">` + htmlEsc(item.Title) + `</a>`)
 		b.WriteString(`</div>`)
 	}
 	b.WriteString(`<a href="/news" class="link d-inline-block mt-2">More news →</a></div>`)
@@ -2380,11 +2380,11 @@ func renderVideoCard(result string) string {
 	for _, v := range items {
 		b.WriteString(`<div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #f0f0f0;align-items:flex-start;">`)
 		if v.Thumbnail != "" {
-			b.WriteString(`<img src="` + htmlEsc(v.Thumbnail) + `" style="width:80px;height:45px;object-fit:cover;border-radius:3px;flex-shrink:0;" loading="lazy">`)
+			b.WriteString(`<img src="` + htmlEsc(v.Thumbnail) + `" class="thumb-sm" loading="lazy">`)
 		}
-		b.WriteString(`<div class="min-w-0"><a href="` + htmlEsc(v.URL) + `" style="font-size:13px;font-weight:600;display:block;color:#111;">` + htmlEsc(v.Title) + `</a>`)
+		b.WriteString(`<div class="min-w-0"><a href="` + htmlEsc(v.URL) + `" class="text-sm semibold d-block">` + htmlEsc(v.Title) + `</a>`)
 		if v.Channel != "" {
-			b.WriteString(`<div style="font-size:11px;color:#888;margin-top:2px;">` + htmlEsc(v.Channel) + `</div>`)
+			b.WriteString(`<div class="text-2xs text-muted mt-px">` + htmlEsc(v.Channel) + `</div>`)
 		}
 		b.WriteString(`</div></div>`)
 	}
@@ -2421,7 +2421,7 @@ func renderPlacesCard(result string, args map[string]any) string {
 	var b strings.Builder
 	b.WriteString(`<div class="card"><h4>📍 Places</h4>`)
 	for _, p := range items {
-		b.WriteString(`<div style="padding:6px 0;border-bottom:1px solid #f0f0f0;">`)
+		b.WriteString(`<div class="thin-row">`)
 		b.WriteString(`<div class="semibold">` + htmlEsc(p.Name) + `</div>`)
 		if p.Category != "" || p.Address != "" {
 			meta := p.Category
@@ -3208,7 +3208,7 @@ func renderRunCard(result string) string {
 	}
 	return `<div class="card"><h4>⚡ Result</h4>` +
 		`<iframe src="` + htmlEsc(data.Run) + `" sandbox="allow-scripts" allow="geolocation" ` +
-		`style="width:100%;min-height:120px;border:1px solid #eee;border-radius:6px;background:#fff;"></iframe>` +
+		`class="frame"></iframe>` +
 		`</div>`
 }
 
@@ -3233,7 +3233,7 @@ func renderAppsCard(result string) string {
 	var b strings.Builder
 	b.WriteString(`<div class="card"><h4>📱 Apps</h4>`)
 	for _, a := range apps {
-		b.WriteString(`<div style="padding:6px 0;border-bottom:1px solid #f0f0f0;">`)
+		b.WriteString(`<div class="thin-row">`)
 		b.WriteString(`<a href="/apps/` + htmlEsc(a.Slug) + `" class="semibold">` + htmlEsc(a.Name) + `</a>`)
 		b.WriteString(`<div class="text-xs text-muted">` + htmlEsc(a.Description) + `</div>`)
 		b.WriteString(`</div>`)

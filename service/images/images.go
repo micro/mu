@@ -293,9 +293,9 @@ func CardHTML() string {
 		return ""
 	}
 	theme := html.EscapeString(strings.Title(d.Theme))
-	return `<a href="/images" style="text-decoration:none;color:inherit">
+	return `<a href="/images" class="no-underline inherit-color">
 <img src="` + html.EscapeString(d.displayURL()) + `" alt="Daily ` + theme + ` image" class="w-full rounded-lg d-block" loading="lazy">
-<p style="font-size:13px;color:#888;margin:8px 0 0">Daily image · ` + theme + `</p></a>`
+<p class="text-sm text-muted mt-2 m-0">Daily image · ` + theme + `</p></a>`
 }
 
 // Handler serves /images: GET renders the page (or JSON), POST generates.
@@ -387,7 +387,7 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 // prompt as the hover title). Used for search results and the stock pool.
 func imageGrid(recs []userdb.Record) string {
 	var b strings.Builder
-	b.WriteString(`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:8px">`)
+	b.WriteString(`<div class="thumb-grid">`)
 	for _, rec := range recs {
 		prompt, _ := rec.Data["prompt"].(string)
 		if !hasImage(rec) {
@@ -414,7 +414,7 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 	// Search box — searches your images plus the public stock pool.
 	b.WriteString(`<div class="card"><form method="GET" action="/images" class="d-flex gap-2 m-0">`)
 	b.WriteString(`<input name="q" value="` + html.EscapeString(q) + `" placeholder="Search images by description…" style="flex:1;padding:8px;font-size:14px;border:1px solid #ddd;border-radius:6px">`)
-	b.WriteString(`<button type="submit" style="padding:8px 16px;font-size:14px">Search</button>`)
+	b.WriteString(`<button type="submit" class="text-base">Search</button>`)
 	b.WriteString(`</form></div>`)
 
 	// Search results.
@@ -437,7 +437,7 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<div class="card">`)
 	b.WriteString(`<h3>Image of the day</h3>`)
 	if d.URL != "" {
-		b.WriteString(`<img src="` + html.EscapeString(d.displayURL()) + `" alt="Daily image" style="width:100%;border-radius:10px;display:block;margin:8px 0">`)
+		b.WriteString(`<img src="` + html.EscapeString(d.displayURL()) + `" alt="Daily image" class="img-full my-2">`)
 		b.WriteString(`<p class="card-meta text-muted text-sm">` + html.EscapeString(strings.Title(d.Theme)) + ` · generated ` + html.EscapeString(d.Date) + `</p>`)
 	} else {
 		b.WriteString(`<p class="text-muted">Today's image is being generated — check back shortly.</p>`)
@@ -450,7 +450,7 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`<div class="card">`)
 		b.WriteString(`<h3>Past dailies</h3>`)
 		b.WriteString(`<p class="card-desc">Every daily image Mu has generated, kept on this server.</p>`)
-		b.WriteString(`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:8px">`)
+		b.WriteString(`<div class="thumb-grid">`)
 		for _, e := range past {
 			title := strings.Title(e.Theme) + " · " + e.Date
 			b.WriteString(`<a href="` + html.EscapeString(e.displayURL()) + `" target="_blank" title="` + html.EscapeString(title) + `">`)
@@ -467,8 +467,8 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 	if acc == nil {
 		b.WriteString(`<p><a href="/login">Sign in</a> to generate images.</p>`)
 	} else {
-		b.WriteString(`<textarea id="img-prompt" rows="3" placeholder="a cat astronaut drifting past Saturn, watercolour" style="width:100%;padding:8px;font-size:14px;border:1px solid #ddd;border-radius:6px;box-sizing:border-box;font-family:inherit;resize:vertical"></textarea>`)
-		b.WriteString(`<button id="img-go" onclick="imgGenerate()" style="margin-top:8px;padding:8px 20px;font-size:14px">Generate</button>`)
+		b.WriteString(`<textarea id="img-prompt" rows="3" placeholder="a cat astronaut drifting past Saturn, watercolour" class="form-area"></textarea>`)
+		b.WriteString(`<button id="img-go" onclick="imgGenerate()" class="mt-2 text-base">Generate</button>`)
 		b.WriteString(`<span id="img-status" class="ml-3 text-sm text-muted"></span>`)
 		b.WriteString(`<div id="img-result" class="mt-3"></div>`)
 	}
@@ -494,9 +494,9 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 			if rec.Public {
 				label, next = "Shared ✓", "false"
 			}
-			b.WriteString(`<div style="position:relative">`)
+			b.WriteString(`<div class="relative">`)
 			b.WriteString(`<a href="` + html.EscapeString(url) + `" target="_blank" title="` + html.EscapeString(prompt) + `"><img src="` + html.EscapeString(url) + `" alt="" class="w-full rounded-lg d-block" loading="lazy"></a>`)
-			b.WriteString(`<button data-id="` + html.EscapeString(rec.ID) + `" data-next="` + next + `" onclick="imgShare(this)" style="position:absolute;bottom:6px;right:6px;font-size:11px;padding:3px 8px;border:none;border-radius:5px;background:rgba(0,0,0,.6);color:#fff;cursor:pointer">` + label + `</button>`)
+			b.WriteString(`<button data-id="` + html.EscapeString(rec.ID) + `" data-next="` + next + `" onclick="imgShare(this)" class="overlay-btn">` + label + `</button>`)
 			b.WriteString(`</div>`)
 		}
 		b.WriteString(`</div></div>`)
@@ -530,7 +530,7 @@ function imgGenerate(){
   // image and then immediately reload the page, so nobody ever saw it —
   // you landed back on /images and had to scroll to find your own picture.
   var r=document.getElementById('img-result');
-  r.innerHTML='<a href="'+res.j.url+'" target="_blank"><img src="'+res.j.url+'" alt="" style="width:100%;border-radius:10px;display:block"></a>'+
+  r.innerHTML='<a href="'+res.j.url+'" target="_blank"><img src="'+res.j.url+'" alt="" class="img-full"></a>'+
               '<p style="font-size:13px;color:#888;margin:6px 0 0">'+
               '<button data-id="'+res.j.id+'" data-next="true" onclick="imgShare(this)" style="font-size:12px;padding:3px 10px;margin-right:8px">Share</button>'+
               'Saved to your images.</p>';

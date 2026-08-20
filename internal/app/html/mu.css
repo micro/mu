@@ -42,6 +42,8 @@
      with the palette. */
   --pass-background: #d4edda;
   --fail-background: #f8d7da;
+  --warn-background: #fff7ed;
+  --warn-text: #7c2d12;
   --btn-success-hover: #156b2d;
   
   /* Spacing - consistent scale */
@@ -2825,6 +2827,73 @@ a.highlight {
 .w-60 { width: 60px; }
 .w-100 { width: 100px; }
 .inline-row { display: inline-flex; gap: 2px; align-items: center; }
+
+/* A grid of thumbnails that reflows: images, apps, tiles. */
+.thumb-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+  margin-top: 8px;
+}
+
+/* A one-line message about what just happened, above the thing it is about.
+   Three states, and they were being written as literal greens, reds and ambers
+   in five different files. */
+.notice {
+  font-size: 13px;
+  margin: 0 0 8px;
+  padding: 8px;
+  border-radius: var(--border-radius, 6px);
+}
+.notice.ok { color: var(--btn-success, #0a7d33); }
+.notice.bad { color: var(--btn-danger, #b00); }
+.notice.warn { background: var(--warn-background, #fff7ed); color: var(--warn-text, #7c2d12); }
+
+/* An action laid over the corner of an image. */
+.overlay-btn {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  font-size: 11px;
+  padding: 3px 8px;
+  border: none;
+  border-radius: var(--border-radius, 6px);
+  background: rgba(0, 0, 0, .6);
+  color: #fff;
+  cursor: pointer;
+}
+.relative { position: relative; }
+
+/* A picture that fills its column. */
+.img-full { width: 100%; border-radius: var(--border-radius, 6px); display: block; }
+.thumb-sm { width: 80px; height: 45px; object-fit: cover; border-radius: 3px; flex: none; }
+
+/* Fixed field widths, for a form whose inputs should not all be one length. */
+.w-160 { width: 160px; }
+.w-260 { width: 260px; }
+.w-640 { max-width: 640px; }
+.w-760 { max-width: 760px; }
+
+/* A row separated from the next by a hairline and nothing else. .feed-row is
+   the roomier version; this is for a dense list. */
+.thin-row { padding: 6px 0; border-bottom: var(--border-width, 1px) solid var(--divider, #f0f0f0); }
+.thin-row.row-pad { padding: 8px 0; }
+
+/* A bordered area holding something rendered — a preview, an embed. */
+.frame {
+  width: 100%;
+  min-height: 120px;
+  border: var(--border-width, 1px) solid var(--card-border, #eee);
+  border-radius: var(--border-radius, 6px);
+  background: var(--card-background, #fff);
+}
+
+.inherit-color { color: inherit; }
+.link-colour { color: var(--link-color, #0066cc); }
+.lead-15 { font-size: 15px; }
+.indent { padding-left: 18px; }
+.my-2 { margin-top: 8px; margin-bottom: 8px; }
+.mr-2 { margin-right: 8px; }
 
 /* A narrow number field in a table row. */
 .num-field {
