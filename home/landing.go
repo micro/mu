@@ -235,9 +235,6 @@ func developerBand(base string) string {
   <li>Priced per call. Cached answers are not charged.</li>
   <li>One Go binary. Self-host it and callers pay you.</li>
 </ul>
-<p class="dev-links">` + app.TextLink("Tools", "/tools") + ` · ` +
-		app.TextLink("API", "/api") + ` · ` +
-		app.TextLink("Pricing", "/pricing") + `</p>
 </div>
 
 <style>
@@ -257,12 +254,7 @@ func developerBand(base string) string {
   overflow-x:auto}
 .dev-facts{font-size:14px;color:#555;line-height:1.6;margin:0 0 14px;padding-left:18px}
 .dev-facts li{margin:0 0 6px}
-/* The landing shell does not load mu.css, so app.TextLink's class means nothing
-   here and these came out as browser-default blue and underlined, on a page
-   where every other word is #111 or #555. */
-.dev-links{font-size:14px;margin:0;color:#888}
-.dev-links a{color:#111;text-decoration:none;font-weight:600}
-.dev-links a:hover{text-decoration:underline}
+.dev-facts li:last-child{margin:0}
 </style>`
 }
 

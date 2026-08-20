@@ -269,7 +269,12 @@ func FooterLinks() string {
 	// answers what one call costs and never what this is going to cost you, and
 	// somebody deciding whether to sign up is asking the second question. It is
 	// not the plan chooser that was deleted — see home.PricingHandler.
-	return `<a href="/about">About</a> · <a href="/tools">Tools</a> · <a href="/pricing">Pricing</a> · <a href="/privacy">Privacy</a> · <a href="/status">Status</a>` + torFooterLink()
+	//
+	// API is here rather than in the landing's developer band, which used to end
+	// with its own row of Tools · API · Pricing — two of the three repeated from
+	// this line, a few centimetres above it. A footer is where a site keeps its
+	// destinations; a second copy of most of one is furniture.
+	return `<a href="/about">About</a> · <a href="/tools">Tools</a> · <a href="/api">API</a> · <a href="/pricing">Pricing</a> · <a href="/privacy">Privacy</a> · <a href="/status">Status</a>` + torFooterLink()
 }
 
 func torFooterLink() string {

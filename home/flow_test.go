@@ -177,11 +177,23 @@ func TestTheDeveloperBandIsBelowTheCallToAction(t *testing.T) {
 			"with the one thing a first-time visitor is being asked to do")
 	}
 
-	// It points somewhere rather than teaching. The walkthrough lives on /tools
-	// and the endpoints on /api; this says what is here and links out.
-	for _, want := range []string{`href="/tools"`, `href="/api"`, `href="/pricing"`, "/mcp"} {
-		if !strings.Contains(body[band:], want) {
-			t.Errorf("the band does not offer %s", want)
+	// What the band gives you is the endpoint, which is the actionable thing and
+	// the one fact not available anywhere else on the page.
+	if !strings.Contains(body[band:], "/mcp") {
+		t.Error("the band does not give the endpoint")
+	}
+
+	// And no link row of its own. It ended with Tools · API · Pricing, two of
+	// which were already in the footer a few centimetres below and the third of
+	// which belongs there. A footer is where a site keeps its destinations; a
+	// second copy of most of one is furniture.
+	if strings.Contains(body[band:], `class="dev-links"`) {
+		t.Error("the developer band has grown its own link row again — those " +
+			"destinations belong in the footer, which is right below it")
+	}
+	for _, want := range []string{`href="/tools"`, `href="/api"`, `href="/pricing"`} {
+		if !strings.Contains(app.FooterLinks(), want) {
+			t.Errorf("the footer does not carry %s", want)
 		}
 	}
 }
