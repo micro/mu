@@ -2184,14 +2184,11 @@ func resolveAgent(accountID, id string) *micro.Agent {
 	if a := For(accountID, id); a != nil {
 		return a.AsMicro()
 	}
-	// Somebody else's, published. RunPublic charges its price and counts the
-	// run, and returns nil for anything not published — so knowing the id of a
-	// private agent gets you the default assistant, the same as knowing
-	// nothing. What comes back is the recipe; it still runs here, on this
-	// account, against this account's scope and credits.
-	if a := RunPublic(accountID, id); a != nil {
-		return a.AsMicro()
-	}
+	// Somebody else's published agent used to resolve here, running on this
+	// account with the author's standing instruction. It was the read half of a
+	// directory nothing linked to — see the note on Agent in roster.go — and it
+	// is gone with the rest of it. An id that is not yours resolves to nothing,
+	// which is what an id you were never given should do.
 	if a := micro.UserAgentFor(accountID, id); a != nil {
 		return a
 	}

@@ -23,6 +23,13 @@ import (
 //
 //	GET  → { agents: [user agents], builtins: [{id,name,description}] }
 //	POST action=save   (name, prompt, description, id?, fork?) → saved agent
+//
+// ?fork= copies one of *your own* agents into a new one. It is the last thing
+// called fork here: the Fork that copied somebody else's published agent went
+// with the directory, and the ⑂ on the rail went with it — offering to copy an
+// agent is noise on a page where most people have not made one yet. The query
+// parameter keeps its name because links to it exist.
+//
 //	POST action=delete (id)                                    → { ok: true }
 func AgentsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -281,7 +288,7 @@ function muAgentsLoad(){
     var list=document.getElementById('agents-list');if(!list)return;
     var h='<div class="'+(window.muActiveAgent?'':'on')+'" data-id="" onclick="muAgentPick(\'\')">Micro <span class="agents-def">default</span></div>';
     (d.agents||[]).forEach(function(a){var id=muAgentEsc(a.id);
-      h+='<div class="'+(window.muActiveAgent===a.id?'on':'')+'" data-id="'+id+'" onclick="muAgentOpen(\''+id+'\',false)" title="'+muAgentEsc(a.description||'')+'"><span>'+muAgentEsc(a.name)+'</span><span class="agents-actions"><a title="Edit" href="/agent/new?id='+id+'" onclick="event.stopPropagation()">✎</a><a title="Fork" href="/agent/new?fork='+id+'" onclick="event.stopPropagation()">⑂</a><button type="button" title="Delete" onclick="muAgentDelete(\''+id+'\',event)">✕</button></span></div>';
+      h+='<div class="'+(window.muActiveAgent===a.id?'on':'')+'" data-id="'+id+'" onclick="muAgentOpen(\''+id+'\',false)" title="'+muAgentEsc(a.description||'')+'"><span>'+muAgentEsc(a.name)+'</span><span class="agents-actions"><a title="Edit" href="/agent/new?id='+id+'" onclick="event.stopPropagation()">✎</a><button type="button" title="Delete" onclick="muAgentDelete(\''+id+'\',event)">✕</button></span></div>';
     });
     list.innerHTML=h;
     muAgentChip();
@@ -317,7 +324,7 @@ func NewAgentHandler(w http.ResponseWriter, r *http.Request) {
 	//
 	// The check lived only where an agent is made, so the way to discover the
 	// limit was to fill the whole thing in and have an alert say no. Editing is
-	// exempt because editing adds nothing; forking is not, because a fork is a
+	// exempt because editing adds nothing; copying is not, because a copy is a
 	// new agent with a head start.
 	if editID == "" {
 		if full, have, max := AtAgentLimit(acc.ID); full {
@@ -343,7 +350,7 @@ func NewAgentHandler(w http.ResponseWriter, r *http.Request) {
 		name, desc, prompt, selTools = cur.Name, cur.Description, cur.SystemPrompt, cur.Tools
 		if forkFrom != "" {
 			name = "Copy of " + name
-			title = "Fork agent"
+			title = "Copy agent"
 		} else {
 			title = "Edit agent"
 		}

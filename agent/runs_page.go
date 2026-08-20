@@ -171,11 +171,8 @@ func findAgent(accountID, ref string) *Agent {
 			return a
 		}
 	}
-	// A published agent somebody else owns, by id. Same rules as the web path:
-	// it runs here, on this account, with this account's scope.
-	if a := RunPublic(accountID, ref); a != nil {
-		return a
-	}
+	// A published agent somebody else owns used to resolve here too. The
+	// directory it read from had no page and no callers; see roster.go.
 	return nil
 }
 

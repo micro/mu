@@ -115,26 +115,23 @@ type Agent struct {
 	//
 	// A live tag always wins over a former one, so reusing a name another agent
 	// has since taken cannot hijack it.
-	Former []string `json:"former,omitempty"`
-	// Public offers this agent to everybody on the instance. What is offered is
-	// the recipe — name, description, prompt, tool scope — never the token and
-	// never the owner's account: somebody running your agent runs it on their
-	// own account, with their own credits, confined to their own scope. Your
-	// standing instruction is the product; their account is where it executes.
-	//
-	// Free, always. Publishing carried a price per question for a while, and a
-	// price is a second question on top of an idea people had not yet met — a
-	// shared agent already asks you to hold "it runs on my account with their
-	// instructions", and "and it costs 5 a go, plus the ordinary query cost"
-	// on top of that is where it stopped being explicable. Sharing something
-	// useful is the thing worth having first.
-	Public bool `json:"public,omitempty"`
-	// Runs is what this agent has actually done for other people. A directory
-	// with no usage on it is a list of claims.
-	Runs     int       `json:"runs,omitempty"`
-	ForkedOf string    `json:"forked_of,omitempty"`
+	Former   []string  `json:"former,omitempty"`
 	Created  time.Time `json:"created"`
 	LastUsed time.Time `json:"last_used,omitempty"`
+
+	// There were three more: Public, Runs and ForkedOf, for publishing an agent
+	// to everybody on the instance and running somebody else's. It was a
+	// marketplace with no sellers — Fork came off the roster page a while back
+	// for offering to copy an agent to people who had never made one, and
+	// nothing else ever linked to the directory, so PublicAgents, PublicAgent,
+	// Publish and Fork had no callers at all. What is left of a directory
+	// nobody can reach is a public flag on a record and a counter that only
+	// counts.
+	//
+	// Sharing an agent is a real idea and this is not an argument against it.
+	// It is an argument against keeping the half of it that shipped: a recipe
+	// somebody can run on their own account is worth building when there is a
+	// page to find one on.
 }
 
 // Address is the mail address this agent can be written at, or "" if it has no
@@ -318,11 +315,9 @@ func fields(a *Agent) map[string]any {
 		"name": a.Name, "kind": a.Kind, "prompt": a.Prompt,
 		"description": a.Description,
 		"token_id":    a.TokenID, "services": strings.Join(a.Services, ","),
-		"tag":       a.Tag,
-		"former":    strings.Join(a.Former, ","),
-		"runs":      a.Runs,
-		"forked_of": a.ForkedOf,
-		"created":   a.Created.Format(time.RFC3339),
+		"tag":     a.Tag,
+		"former":  strings.Join(a.Former, ","),
+		"created": a.Created.Format(time.RFC3339),
 	}
 }
 
@@ -330,7 +325,7 @@ func fields(a *Agent) map[string]any {
 // public flag is what makes the directory work: every account's agents live in
 // one collection, so a published agent is simply one a stranger's read can see.
 func (a *Agent) save() error {
-	_, err := userdb.Update(ns, a.Owner, collection, a.ID, fields(a), a.Public)
+	_, err := userdb.Update(ns, a.Owner, collection, a.ID, fields(a), false)
 	return err
 }
 
@@ -465,20 +460,10 @@ func fromRecord(owner string, rec userdb.Record) *Agent {
 	if rec.ID == "" || str("name") == "" {
 		return nil
 	}
-	num := func(k string) int {
-		switch v := rec.Data[k].(type) {
-		case float64:
-			return int(v)
-		case int:
-			return v
-		}
-		return 0
-	}
 	a := &Agent{
 		ID: rec.ID, Owner: owner, Name: str("name"), Kind: str("kind"),
 		Prompt: str("prompt"), Description: str("description"), TokenID: str("token_id"),
-		Tag: str("tag"), Public: rec.Public,
-		Runs: num("runs"), ForkedOf: str("forked_of"),
+		Tag: str("tag"),
 	}
 	// Records written before the distinction went carry kind:"external". They
 	// are ordinary agents: normalised on read, so nothing downstream has to know
@@ -686,119 +671,6 @@ func (a *Agent) AsMicro() *micro.Agent {
 		ID: a.ID, Name: a.Name, Description: desc,
 		SystemPrompt: a.Prompt, Tools: a.Services, OwnerAccountID: a.Owner,
 	}
-}
-
-// ── Sharing ─────────────────────────────────────────────────────
-//
-// What is shared is the recipe, never the account.
-//
-// An app is inert HTML, so running somebody's app is just rendering it. An
-// agent calls tools, and whose tools it calls is the whole question. So a
-// published agent runs on the *asker's* account: their credits pay for the
-// model and the tool calls, their scope bounds it, their mail is what mail
-// tools reach. What comes from the author is the standing instruction and the
-// tool list — the part that took thought. Nothing else crosses, and in
-// particular the author's token never does.
-//
-// It is free, deliberately. Publishing carried a price per question for a
-// while, and a price is a second unfamiliar idea stacked on the first: a shared
-// agent already asks you to hold "it runs on my account, with their
-// instructions", and "and it costs 5 a go, on top of the ordinary query cost"
-// is where that stopped being explicable. Sharing something useful is worth
-// having on its own; charging for it is a separate question for a later day.
-
-// PublicAgents returns every agent published on this instance, most used first.
-// Naming it a directory would overstate it: it is one collection, read with the
-// store's own public scope.
-func PublicAgents(viewer string) []*Agent {
-	records, err := userdb.List(ns, viewer, collection, "public", nil, "", "", 200)
-	if err != nil {
-		return nil
-	}
-	var out []*Agent
-	for i := range records {
-		if a := fromRecord(records[i].Owner, records[i]); a != nil && a.Public {
-			out = append(out, a)
-		}
-	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].Runs != out[j].Runs {
-			return out[i].Runs > out[j].Runs
-		}
-		return out[i].Name < out[j].Name
-	})
-	return out
-}
-
-// PublicAgent returns one published agent by id, whoever owns it.
-func PublicAgent(viewer, id string) *Agent {
-	for _, a := range PublicAgents(viewer) {
-		if a.ID == id {
-			return a
-		}
-	}
-	return nil
-}
-
-// Publish offers an agent to everybody, or withdraws it.
-//
-// An agent with no standing instruction has nothing to offer — the recipe is
-// the prompt, so publishing an empty one puts a name in a list and gives
-// whoever runs it the default assistant.
-func Publish(owner, id string, public bool) error {
-	a := For(owner, id)
-	if a == nil {
-		return fmt.Errorf("no such agent")
-	}
-	if public && strings.TrimSpace(a.Prompt) == "" {
-		return fmt.Errorf("give it a system prompt first — that is what you are sharing")
-	}
-	a.Public = public
-	return a.save()
-}
-
-// Fork copies a published agent into your own roster, so you can change it.
-func Fork(viewer, id string) (*Agent, error) {
-	src := PublicAgent(viewer, id)
-	if src == nil {
-		return nil, fmt.Errorf("no such agent")
-	}
-	if src.Owner == viewer {
-		return nil, fmt.Errorf("that one is already yours")
-	}
-	name := src.Name
-	have := map[string]bool{}
-	for _, a := range Agents(viewer) {
-		have[strings.ToLower(a.Name)] = true
-	}
-	for i := 2; have[strings.ToLower(name)]; i++ {
-		name = fmt.Sprintf("%s %d", src.Name, i)
-	}
-	// Hosted and tokenless: a copy is something you talk to until you decide
-	// otherwise, and minting a credential on somebody's behalf is a decision.
-	a, _, err := CreateAgent(viewer, name, Hosted, src.Prompt, src.Description, src.Services, false)
-	if err != nil {
-		return nil, err
-	}
-	a.ForkedOf = src.ID
-	_ = a.save()
-	return a, nil
-}
-
-// RunPublic resolves a published agent for somebody who does not own it, and
-// counts the run.
-//
-// Returns nil for an agent that is not published, which is what makes an id
-// alone useless: knowing the id of a private agent gets you the default
-// assistant, the same as knowing nothing.
-func RunPublic(asker, id string) *Agent {
-	a := PublicAgent(asker, id)
-	if a == nil || a.Owner == asker {
-		return nil
-	}
-	a.Runs++
-	_ = a.save()
-	return a
 }
 
 // ForTag finds an agent by the mail tag it answers on: the part after the
