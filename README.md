@@ -1,6 +1,6 @@
 # mu
 
-**A personal agent.** 
+A personal agent.
 
 ## Overview
 
