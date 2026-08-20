@@ -210,19 +210,6 @@ it ends, not totted up from what the agent believes it authorised.
 `--server` points it at any x402 instance; a name from `X402_SERVERS` works too.
 `--seed` uses a different key.
 
-## Discord & Telegram
-
-Talk to the agent from Discord or Telegram — questions, markets, news, all from
-chat. [Join the Discord](https://discord.gg/WeMU5AGxD)
-
-Every tool is a command on both, in the same two-word shape as the CLI:
-`/news list`, `/markets list category:stocks`, `/prayer times`. Discord gets one
-slash command per service with the methods as subcommands; on Telegram you type
-`/news list`. Both also take `/agent <question>` for anything that needs
-composing, and `/usage` for your own stats.
-
-Setup for both is in [Install](docs/INSTALL.md).
-
 ## Credits & Payments
 
 A person tops up by card and spends one credit balance. A credit is 1p.
