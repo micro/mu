@@ -154,9 +154,9 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	sb.WriteString(`<h3>Tokens</h3>`)
 	sb.WriteString(`<p class="text-secondary text-sm">For API authentication. Use with <code>Authorization: Bearer TOKEN</code> header.</p>`)
 
-	sb.WriteString(`<div id="token-result" style="display:none;margin:20px 0;padding:15px;background:#d4edda;border:1px solid #c3e6cb;border-radius:5px">`)
+	sb.WriteString(`<div id="token-result" class="success-panel d-none">`)
 	sb.WriteString(`<strong>Token Created</strong><p>Copy this token now — you won't see it again:</p>`)
-	sb.WriteString(`<pre id="new-token" style="background:#fff;padding:10px;border:1px solid #c3e6cb;border-radius:3px;overflow-x:auto;white-space:pre-wrap;word-break:break-all"></pre></div>`)
+	sb.WriteString(`<pre id="new-token" ></pre></div>`)
 
 	// Created, beside Last Used.
 	//
@@ -224,7 +224,7 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 
 	sb.WriteString(`<button type="submit">Generate Token</button></form>`)
 	sb.WriteString(tokenScopeCSS)
-	sb.WriteString(`<hr style="margin:30px 0;border:none;border-top:1px solid #eee">`)
+	sb.WriteString(`<hr class="hr-soft">`)
 
 	// This asked for every client on the instance. Anyone signed in saw the
 	// names other people's MCP clients had registered under, their client ids
@@ -237,11 +237,11 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 		`appear here — they belong to no account, and nothing needs doing about them.</p>`)
 
 	if newClientID != "" {
-		sb.WriteString(fmt.Sprintf(`<div style="margin:15px 0;padding:15px;background:#d4edda;border:1px solid #c3e6cb;border-radius:6px;overflow:hidden">
+		sb.WriteString(fmt.Sprintf(`<div class="success-panel">
 			<strong>Client Created</strong>
 			<p>Copy these now — the secret won't be shown again.</p>
-			<p><strong>Client ID:</strong><br><code style="font-size:12px;word-break:break-all">%s</code></p>
-			<p><strong>Client Secret:</strong><br><code style="font-size:12px;word-break:break-all">%s</code></p>
+			<p><strong>Client ID:</strong><br><code class="text-xs break-all">%s</code></p>
+			<p><strong>Client Secret:</strong><br><code class="text-xs break-all">%s</code></p>
 		</div>`, newClientID, newClientSecret))
 	}
 

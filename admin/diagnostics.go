@@ -51,13 +51,13 @@ func DiagnosticsHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Summary
 	if errors == 0 && warnings == 0 {
-		b.WriteString(`<div class="card" style="border-left:4px solid #27ae60"><h3 style="color:#27ae60">All systems operational</h3></div>`)
+		b.WriteString(`<div class="card" class="edge good"><h3 class="text-success">All systems operational</h3></div>`)
 	} else {
 		color := "#f39c12"
 		if errors > 0 {
 			color = "#e74c3c"
 		}
-		b.WriteString(fmt.Sprintf(`<div class="card" style="border-left:4px solid %s"><h3 style="color:%s">%d issue(s) detected</h3></div>`, color, color, errors+warnings))
+		b.WriteString(fmt.Sprintf(`<div class="card" class="edge" style="border-left-color:%s"><h3 style="color:%s">%d issue(s) detected</h3></div>`, color, color, errors+warnings))
 	}
 
 	// Individual checks
@@ -72,14 +72,14 @@ func DiagnosticsHandler(w http.ResponseWriter, r *http.Request) {
 			color = "#e74c3c"
 		}
 
-		b.WriteString(`<div class="card" style="padding:12px 16px;margin-bottom:8px">`)
+		b.WriteString(`<div class="card" class="pad-row mb-2">`)
 		b.WriteString(fmt.Sprintf(`<div class="d-flex between items-center">
 			<strong>%s</strong>
-			<span style="color:%s;font-size:18px">%s</span>
+			<span class="text-18" style="color:%s">%s</span>
 		</div>`, c.Name, color, icon))
-		b.WriteString(fmt.Sprintf(`<p style="font-size:13px;color:#666;margin:4px 0 0">%s</p>`, c.Detail))
+		b.WriteString(fmt.Sprintf(`<p class="text-sm text-secondary mt-1 m-0">%s</p>`, c.Detail))
 		if c.Fix != "" {
-			b.WriteString(fmt.Sprintf(`<p style="font-size:12px;color:%s;margin:4px 0 0">→ %s</p>`, color, c.Fix))
+			b.WriteString(fmt.Sprintf(`<p class="text-xs mt-1 m-0" style="color:%s">→ %s</p>`, color, c.Fix))
 		}
 		b.WriteString(`</div>`)
 	}
@@ -92,7 +92,7 @@ func DiagnosticsHandler(w http.ResponseWriter, r *http.Request) {
 			b.WriteString(fmt.Sprintf(`<div class="text-base">%s</div>`, app.RenderString(diagnosis)))
 			b.WriteString(`</div>`)
 		} else {
-			b.WriteString(`<div style="margin:12px 0"><a href="/admin/diagnostics?diagnose=1" class="btn">Run AI Diagnosis</a></div>`)
+			b.WriteString(`<div class="my-3"><a href="/admin/diagnostics?diagnose=1" class="btn">Run AI Diagnosis</a></div>`)
 		}
 	}
 

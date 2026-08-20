@@ -264,7 +264,7 @@ func EnvHandler(w http.ResponseWriter, r *http.Request) {
 	var b strings.Builder
 
 	if r.URL.Query().Get("saved") == "1" {
-		b.WriteString(`<div class="card" style="background:#f0fff0;border-color:#a3d9a5"><p style="color:#27ae60;margin:0">Saved. Anything read once at start-up needs a restart to take effect.</p></div>`)
+		b.WriteString(`<div class="card" class="card-ok"><p class="text-success m-0">Saved. Anything read once at start-up needs a restart to take effect.</p></div>`)
 	}
 
 	// The count first, because "which of these is coming from where" is asked
@@ -307,16 +307,16 @@ func EnvHandler(w http.ResponseWriter, r *http.Request) {
 			var badge string
 			switch source {
 			case "env":
-				badge = `<span style="font-size:11px;color:#27ae60">environment</span>`
+				badge = `<span class="text-2xs text-success">environment</span>`
 			case "saved":
-				badge = `<span style="font-size:11px;color:#2980b9">saved here</span>`
+				badge = `<span class="text-2xs link-colour">saved here</span>`
 			default:
-				badge = `<span style="font-size:11px;color:#bbb">not set</span>`
+				badge = `<span class="text-2xs text-faint">not set</span>`
 			}
 
 			b.WriteString(`<div class="mb-3">`)
 			b.WriteString(fmt.Sprintf(
-				`<label style="font-size:12px;color:#888;display:block;margin-bottom:2px"><code>%s</code> %s`,
+				`<label class="text-xs text-muted d-block mb-1"><code>%s</code> %s`,
 				html.EscapeString(key), badge))
 			// Revealing is a round trip rather than a script, so a secret is not
 			// sitting in the page source of every visit waiting to be read.
@@ -338,7 +338,7 @@ func EnvHandler(w http.ResponseWriter, r *http.Request) {
 				}
 				b.WriteString(fmt.Sprintf(
 					`<input type="text" value="%s" readonly
-						style="width:100%%;padding:6px 8px;border:1px solid #eee;border-radius:4px;font-size:13px;box-sizing:border-box;font-family:monospace;background:#fafafa;color:#666">`,
+						class="form-input w-full text-sm mono readonly">`,
 					html.EscapeString(display)))
 			case isSecret:
 				// Empty box, so the value is not in the page and typing means
@@ -352,7 +352,7 @@ func EnvHandler(w http.ResponseWriter, r *http.Request) {
 				}
 				b.WriteString(fmt.Sprintf(
 					`<input type="text" name="%s" value="" placeholder="%s" autocomplete="off"
-						style="width:100%%;padding:6px 8px;border:1px solid #ddd;border-radius:4px;font-size:13px;box-sizing:border-box;font-family:monospace">`,
+						class="form-input w-full text-sm mono">`,
 					html.EscapeString(key), html.EscapeString(ph)))
 				if val != "" {
 					b.WriteString(fmt.Sprintf(
@@ -362,7 +362,7 @@ func EnvHandler(w http.ResponseWriter, r *http.Request) {
 			default:
 				b.WriteString(fmt.Sprintf(
 					`<input type="text" name="%s" value="%s" placeholder="not set" autocomplete="off"
-						style="width:100%%;padding:6px 8px;border:1px solid #ddd;border-radius:4px;font-size:13px;box-sizing:border-box;font-family:monospace">`,
+						class="form-input w-full text-sm mono">`,
 					html.EscapeString(key), html.EscapeString(val)))
 			}
 			b.WriteString(`</div>`)

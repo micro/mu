@@ -670,7 +670,7 @@ func renderNearbyFormHTML(address, lat, lon, radius string) string {
 // It auto-detects the user's current location via geolocation and shows a marker.
 // City clicks will recenter this map and update the nearby form.
 func renderIndexMap() string {
-	return `<div style="height:280px;margin:1rem 0;border-radius:8px;overflow:hidden;position:relative;z-index:0;"><div id="places-index-map" style="height:100%;width:100%;"></div></div>
+	return `<div class="map-box"><div id="places-index-map" class="fill"></div></div>
 <script>
 var placesIndexMap = null;
 var placesIndexMarker = null;
@@ -735,7 +735,7 @@ func renderCitiesSection() string {
 	sb.WriteString(`<h3>Browse by City</h3><div class="city-grid">`)
 	for _, c := range cs {
 		sb.WriteString(fmt.Sprintf(
-			`<a href="#" onclick="selectCity(%f,%f,%s,%s);return false;" class="city-link">%s <span class="text-muted" style="font-size:0.8em;">%s</span></a>`,
+			`<a href="#" onclick="selectCity(%f,%f,%s,%s);return false;" class="city-link">%s <span class="text-muted" class="text-08">%s</span></a>`,
 			c.Lat, c.Lon, escapeHTML(jsonStr(c.Name)), escapeHTML(jsonStr(c.Country)),
 			escapeHTML(c.Name), escapeHTML(c.Country),
 		))
@@ -929,7 +929,7 @@ func renderLeafletMap(centerLat, centerLon float64, places []*Place) string {
 		markers = append(markers, fmt.Sprintf(`{"lat":%f,"lon":%f,"name":%s}`, p.Lat, p.Lon, jsonStr(p.Name)))
 	}
 	markersJSON := "[" + strings.Join(markers, ",") + "]"
-	return fmt.Sprintf(`<div style="height:280px;margin:1rem 0;border-radius:8px;overflow:hidden;position:relative;z-index:0;"><div id="places-map" style="height:100%%;width:100%%;"></div></div>
+	return fmt.Sprintf(`<div class="map-box"><div id="places-map" class="fill"></div></div>
 <script>
 (function(){
   function initPlacesMap(){
@@ -965,7 +965,7 @@ func renderLeafletMap(centerLat, centerLon float64, places []*Place) string {
 
 // renderSaveSearchForm returns a small "Save this search" form
 func renderSaveSearchForm(searchType, q, near, nearLat, nearLon, radius, sortBy string) string {
-	return fmt.Sprintf(`<form action="/places/save" method="POST" style="display:inline-block;margin-bottom:0.5rem;">
+	return fmt.Sprintf(`<form action="/places/save" method="POST" class="d-inline-block mb-2">
   <input type="hidden" name="type" value="%s">
   <input type="hidden" name="q" value="%s">
   <input type="hidden" name="near" value="%s">

@@ -47,6 +47,12 @@
   --warn-text: #7c2d12;
   --console-background: #1a1a1a;
   --console-text: #e0e0e0;
+  --pass-border: #c3e6cb;
+  --warn-wash: #fff3cd;
+  --warn-border: #ffc107;
+  --warn-ink: #856404;
+  --ok-wash: #f0fff0;
+  --ok-border: #a3d9a5;
   --btn-success-hover: #156b2d;
   
   /* Spacing - consistent scale */
@@ -2984,6 +2990,107 @@ a.highlight {
    the only row set in the text colour. */
 .pr-row td { padding: 4px 0; color: var(--text-secondary, #666); font-weight: 400; }
 .pr-row.pr-next td { color: var(--text-primary, #111); font-weight: 600; }
+
+/* A panel saying something worked — a token just issued, a setting saved.
+   Green wash, green border, and it holds the thing you are meant to copy. */
+.success-panel {
+  margin: 15px 0;
+  padding: 15px;
+  background: var(--pass-background, #d4edda);
+  border: var(--border-width, 1px) solid var(--pass-border, #c3e6cb);
+  border-radius: var(--border-radius, 6px);
+  overflow: hidden;
+}
+.success-panel pre {
+  background: var(--card-background, #fff);
+  padding: 10px;
+  border: var(--border-width, 1px) solid var(--pass-border, #c3e6cb);
+  border-radius: var(--border-radius, 6px);
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* A strip across the top of a page asking for something — verify your address,
+   finish setting up. Amber, and it sits above what it is about. */
+.banner {
+  padding: 12px 16px;
+  background: var(--warn-wash, #fff3cd);
+  border: var(--border-width, 1px) solid var(--warn-border, #ffc107);
+  border-radius: var(--border-radius, 6px);
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.banner-text { font-size: 14px; color: var(--warn-ink, #856404); }
+
+/* A build log: dark, monospaced, scrolling, and it starts hidden. */
+.build-log {
+  background: #1e1e1e;
+  color: #d4d4d4;
+  padding: 16px;
+  border-radius: var(--border-radius, 6px);
+  min-height: 200px;
+  max-height: 500px;
+  overflow-y: auto;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+.log-ok { color: #6a9955; }
+.log-bad { color: #f44747; }
+
+/* A card whose left edge says how it went. */
+.edge { border-left: 4px solid var(--card-border, #e8e8e8); }
+.edge.good { border-left-color: var(--btn-success, #27ae60); }
+
+/* A menu that drops from the corner of the thing that opens it. */
+.dropdown {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: 24px;
+  background: var(--card-background, #fff);
+  border: var(--border-width, 1px) solid var(--card-border, #e0e0e0);
+  border-radius: var(--border-radius, 6px);
+  box-shadow: var(--shadow-sm, 0 2px 8px rgba(0,0,0,0.1));
+  z-index: 100;
+  min-width: 130px;
+  padding: 4px 0;
+}
+.corner { position: absolute; top: 10px; right: 10px; }
+.corner-x { text-decoration: none; font-size: 18px; color: var(--text-muted, #888); line-height: 1; }
+
+/* A form narrow enough to read in one column, centred. */
+.form-col { max-width: 520px; margin: 0 auto; }
+.hr-soft { margin: 30px 0; border: none; border-top: var(--border-width, 1px) solid var(--card-border, #eee); }
+
+/* A card that reports something is fine. */
+.card-ok { background: var(--ok-wash, #f0fff0); border-color: var(--ok-border, #a3d9a5); }
+
+/* A field showing a value you may read and not change. */
+.form-input.readonly { border-color: var(--divider, #eee); background: var(--hover-background, #fafafa); color: var(--text-secondary, #666); }
+
+.text-1em { font-size: 1em; }
+.text-08 { font-size: 0.8em; }
+.text-18 { font-size: 18px; }
+.break-all { word-break: break-all; }
+.pad-row { padding: 12px 16px; }
+.fill { height: 100%; width: 100%; }
+
+/* A map, drawn into a fixed box. z-index 0 so the tiles' own stacking does not
+   climb over the page around them. */
+.map-box {
+  height: 280px;
+  margin: 1rem 0;
+  border-radius: var(--border-radius, 6px);
+  overflow: hidden;
+  position: relative;
+  z-index: 0;
+}
 
 /* A narrow number field in a table row. */
 .num-field {

@@ -1177,18 +1177,18 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		if msg.Spam {
 			backToMail = "/mail?view=filtered"
 			spamActions = fmt.Sprintf(`
-			<div style="padding:12px 16px;background:#fff3cd;border:1px solid #ffc107;border-radius:6px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-				<span style="font-size:14px;color:#856404">This message was filtered as spam (score: %d)</span>
+			<div class="banner">
+				<span class="banner-text">This message was filtered as spam (score: %d)</span>
 				<div class="d-flex gap-2">
 					<form method="POST" action="/mail?view=filtered" class="d-inline">
 						<input type="hidden" name="action" value="not_spam">
 						<input type="hidden" name="msg_id" value="%s">
-						<button type="submit" style="padding:6px 16px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-family:inherit">Not Spam</button>
+						<button type="submit" class="btn text-sm">Not Spam</button>
 					</form>
 					<form method="POST" action="/mail?view=filtered" class="d-inline">
 						<input type="hidden" name="action" value="delete_spam">
 						<input type="hidden" name="msg_id" value="%s">
-						<button type="submit" style="padding:6px 16px;background:#fff;color:#c00;border:1px solid #e0e0e0;border-radius:6px;cursor:pointer;font-size:13px;font-family:inherit">Delete</button>
+						<button type="submit" class="btn btn-plain text-error text-sm">Delete</button>
 					</form>
 				</div>
 			</div>`, msg.SpamScore, msg.ID, msg.ID)
@@ -1312,8 +1312,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 		searchQuery := q
 		searchBar := fmt.Sprintf(`<form action="/mail" method="GET" class="mb-3 d-flex gap-2">
-<input type="text" name="q" value="%s" placeholder="Search mail..." style="flex:1;padding:8px 12px;border:1px solid #e0e0e0;border-radius:6px;font-family:inherit;font-size:14px">
-<button type="submit" style="padding:8px 16px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-size:14px">Search</button>
+<input type="text" name="q" value="%s" placeholder="Search mail..." class="form-input grow text-base">
+<button type="submit" class="btn">Search</button>
 </form>`, html.EscapeString(searchQuery))
 		pageHTML := app.Page(app.PageOpts{
 			Action:  "/mail?compose=true",
@@ -1581,8 +1581,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Search bar
 	searchQuery := r.URL.Query().Get("q")
 	searchBar := fmt.Sprintf(`<form action="/mail" method="GET" class="mb-3 d-flex gap-2">
-<input type="text" name="q" value="%s" placeholder="Search mail..." style="flex:1;padding:8px 12px;border:1px solid #e0e0e0;border-radius:6px;font-family:inherit;font-size:14px">
-<button type="submit" style="padding:8px 16px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-size:14px">Search</button>
+<input type="text" name="q" value="%s" placeholder="Search mail..." class="form-input grow text-base">
+<button type="submit" class="btn">Search</button>
 </form>`, html.EscapeString(searchQuery))
 
 	pageHTML := app.Page(app.PageOpts{

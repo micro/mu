@@ -71,7 +71,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		<button id="digest-btn" onclick="runAction('digest')">Generate Digest</button>
 		` + sweepButton() + `
 	</div>
-	<pre id="deploy-output" style="background:#1e1e1e;color:#d4d4d4;padding:16px;border-radius:6px;min-height:200px;max-height:500px;overflow-y:auto;font-size:13px;line-height:1.6;white-space:pre-wrap;display:none;"></pre>
+	<pre id="deploy-output" class="build-log d-none"></pre>
 	<script>
 	// One table, so a fourth action is a row rather than another branch in three
 	// places. It was written as three named variables and an if/else chain whose
@@ -119,17 +119,17 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 				});
 			}
 			if (data.message) {
-				lines += '<span style="color:#6a9955;">' + data.message + '</span>\n';
+				lines += '<span class="log-ok">' + data.message + '</span>\n';
 			}
 			if (data.success) {
-				lines += '\n<span style="color:#6a9955;font-weight:bold;">' + spec.done + ' complete.</span>\n';
+				lines += '\n<span class="log-ok bold">' + spec.done + ' complete.</span>\n';
 			} else if (!data.message) {
-				lines += '\n<span style="color:#f44747;font-weight:bold;">' + spec.done + ' failed.</span>\n';
+				lines += '\n<span class="log-bad bold">' + spec.done + ' failed.</span>\n';
 			}
 			output.innerHTML = lines;
 			actionButtons().forEach(function(b) { b.el.disabled = false; b.el.textContent = b.spec.idle; });
 		}).catch(function(err) {
-			output.innerHTML = '<span style="color:#f44747;">Error: ' + err.message + '</span>';
+			output.innerHTML = '<span class="log-bad">Error: ' + err.message + '</span>';
 			actionButtons().forEach(function(b) { b.el.disabled = false; b.el.textContent = b.spec.idle; });
 		});
 	}

@@ -140,7 +140,7 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	// Remove, because neither is a thing you can do to it.
 	EnsureTags(owner)
 	roster := Agents(owner)
-	b.WriteString(`<div style="display:flex;flex-direction:column;gap:8px;margin:0 0 24px">`)
+	b.WriteString(`<div class="col m-0 mb-6">`)
 	b.WriteString(platformRow(DefaultPlatformAgent))
 	for _, a := range roster {
 		b.WriteString(agentRow(a, csrf, app.BaseURL(r)))
@@ -159,7 +159,7 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	if full, have, max := AtAgentLimit(owner); full {
 		b.WriteString(app.ActionLink("/account/topup", "Add credit to lift the limit"))
 		b.WriteString(fmt.Sprintf(
-			`<p class="text-sm" style="color:#666;margin:8px 0 0">Your plan runs %d agent%s and you have %d. `+
+			`<p class="text-sm" class="text-secondary mt-2 m-0">Your plan runs %d agent%s and you have %d. `+
 				`Verify your address or put credit on <a href="/account">your account</a>, or delete one first.</p>`,
 			max, plural(max), have))
 	} else {
@@ -219,11 +219,11 @@ func secretPanel(secret string, a *Agent, base string) string {
 	if a != nil {
 		name, endpoint = a.Name, a.Endpoint(base)
 	}
-	return `<div class="card" style="border-color:#0a7d33;margin:0 0 20px">` +
+	return `<div class="card" class="card-ok m-0 mb-5">` +
 		`<h4 class="m-0 mb-2 text-base">` + html.EscapeString(name) + ` is ready</h4>` +
 		`<p class="text-sm text-muted m-0 mb-2">Copy this token now — it is stored hashed and cannot be shown again.</p>` +
 		`<pre class="agent-secret">` + html.EscapeString(secret) + `</pre>` +
-		`<p class="text-sm text-muted" style="margin:8px 0 0">Point it at <code>` + html.EscapeString(endpoint) + `</code></p>` +
+		`<p class="text-sm text-muted" class="mt-2 m-0">Point it at <code>` + html.EscapeString(endpoint) + `</code></p>` +
 		`</div>`
 }
 
@@ -370,10 +370,10 @@ func agentRow(a *Agent, csrf, base string) string {
 // to build your own tools.
 func defaultRow() string {
 	var b strings.Builder
-	b.WriteString(`<h3 style="font-size:15px;margin:0 0 4px">Our agents</h3>`)
+	b.WriteString(`<h3 class="lead-15 m-0 mb-1">Our agents</h3>`)
 	b.WriteString(`<p class="agent-note">Provided by this instance, nothing to set up. ` +
 		`Each has its own address and reaches only what it needs.</p>`)
-	b.WriteString(`<div style="display:flex;flex-direction:column;gap:8px;margin:0 0 24px">`)
+	b.WriteString(`<div class="col m-0 mb-6">`)
 
 	b.WriteString(platformRow(DefaultPlatformAgent))
 	for _, name := range PlatformNames() {

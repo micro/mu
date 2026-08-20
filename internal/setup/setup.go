@@ -122,30 +122,30 @@ func render(errMsg string) string {
 	if errMsg != "" {
 		errHTML = `<p class="text-error m-0 mb-3">` + html.EscapeString(errMsg) + `</p>`
 	}
-	body := `<div class="card" style="max-width:520px;margin:0 auto">
+	body := `<div class="card" class="form-col">
   <h1 class="m-0 mb-2">Welcome to Mu</h1>
   <p class="text-secondary m-0 mb-5">Two quick things and you're running your own instance.</p>
   ` + errHTML + `
   <form method="POST" action="/setup">
-    <h3 style="margin:0 0 8px;font-size:1em">1 · Admin account</h3>
+    <h3 class="m-0 mb-2 text-1em">1 · Admin account</h3>
     <input name="username" placeholder="username" autocomplete="username" required
-      style="width:100%;padding:10px;margin:0 0 8px;border:1px solid #ddd;border-radius:6px;font-size:15px">
+      class="form-input w-full lead-15 mb-2">
     <input name="password" type="password" placeholder="password (min 6 chars)" autocomplete="new-password" required
-      style="width:100%;padding:10px;margin:0 0 20px;border:1px solid #ddd;border-radius:6px;font-size:15px">
+      class="form-input w-full lead-15 mb-5">
 
-    <h3 style="margin:0 0 8px;font-size:1em">2 · AI provider</h3>
+    <h3 class="m-0 mb-2 text-1em">2 · AI provider</h3>
     <label class="d-block m-0 mb-2"><input type="radio" name="provider" value="claude" checked> Anthropic Claude</label>
     <label class="d-block m-0 mb-2"><input type="radio" name="provider" value="atlas"> Atlas Cloud / DeepSeek</label>
     <label class="d-block m-0 mb-2"><input type="radio" name="provider" value="openrouter"> OpenRouter</label>
     <label class="d-block m-0 mb-3"><input type="radio" name="provider" value="ollama"> Ollama / OpenAI-compatible (local)</label>
     <input name="key" placeholder="API key (Claude, Atlas or OpenRouter)"
-      style="width:100%;padding:10px;margin:0 0 8px;border:1px solid #ddd;border-radius:6px;font-size:15px">
+      class="form-input w-full lead-15 mb-2">
     <input name="base_url" placeholder="Ollama base URL (default http://localhost:11434/v1)"
-      style="width:100%;padding:10px;margin:0 0 20px;border:1px solid #ddd;border-radius:6px;font-size:15px">
+      class="form-input w-full lead-15 mb-5">
 
-    <button type="submit" style="width:100%;padding:12px;background:#111;color:#fff;border:none;border-radius:6px;font-size:15px;cursor:pointer">Start Mu</button>
+    <button type="submit" class="btn w-full lead-15">Start Mu</button>
   </form>
-  <p style="color:#888;font-size:13px;margin:16px 0 0">You can change any of this later at <code>/admin/env</code>. Prefer the terminal? Run <code>mu setup</code>.</p>
+  <p class="text-muted text-sm mt-4 m-0">You can change any of this later at <code>/admin/env</code>. Prefer the terminal? Run <code>mu setup</code>.</p>
 </div>`
 	return app.RenderHTML("Setup", "Set up your Mu instance", body, nil)
 }

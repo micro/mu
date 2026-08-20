@@ -98,8 +98,8 @@ func renderMenu(actions []Action) string {
 	id := fmt.Sprintf("cm%d", menuCounter.Add(1))
 
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf(`<span style="position:absolute;top:10px;right:10px"><a href="#" style="text-decoration:none;font-size:18px;color:#888;line-height:1" onclick="var m=document.getElementById('%s');m.style.display=m.style.display==='block'?'none':'block';event.stopPropagation();return false;">⋯</a>`, id))
-	sb.WriteString(fmt.Sprintf(`<div id="%s" class="ctrl-menu" style="display:none;position:absolute;right:0;top:24px;background:#fff;border:1px solid #e0e0e0;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,0.1);z-index:100;min-width:130px;padding:4px 0">`, id))
+	sb.WriteString(fmt.Sprintf(`<span class="corner"><a href="#" class="corner-x" onclick="var m=document.getElementById('%s');m.style.display=m.style.display==='block'?'none':'block';event.stopPropagation();return false;">⋯</a>`, id))
+	sb.WriteString(fmt.Sprintf(`<div id="%s" class="ctrl-menu" class="dropdown">`, id))
 
 	itemStyle := "display:block;padding:8px 16px;font-size:13px;text-decoration:none;white-space:nowrap;cursor:pointer;color:#555"
 
