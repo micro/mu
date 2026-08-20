@@ -29,7 +29,7 @@ package mail
 //
 // Mu has no password. Sign-in is a passkey or a link, and an IMAP client needs
 // something it can put in a text field — so the password is an access token, the
-// same one an agent calls the API with, minted at /account/tokens. That is the
+// same one an agent calls the API with, minted at /token. That is the
 // app-password pattern every provider ended up at, and it has the property that
 // matters: a client is revoked on its own without touching how you sign in.
 //
@@ -318,15 +318,23 @@ func (s *imapSession) signIn(tag, user, pass string) {
 		s.no(tag, "that username or token was not accepted")
 		return
 	}
+	// Against the ID, which is the username. Name is a display name — free
+	// text, not unique, not validated, and whatever the Google profile said at
+	// sign-in — so it is not what a mail address's local part is, and this
+	// compared against it. Anybody whose display name differed from their
+	// username, which is everybody who signed in with Google, was refused IMAP
+	// with a message saying their token was wrong. See auth.AccountByUsername,
+	// where the same mistake is written up: a display name must never resolve
+	// an identifier.
 	acc, err := auth.GetAccount(accountID)
-	if err != nil || acc == nil || !strings.EqualFold(acc.Name, local) {
+	if err != nil || acc == nil || !strings.EqualFold(acc.ID, local) {
 		app.Log("mail", "IMAP sign-in refused for %q", user)
 		s.no(tag, "that username or token was not accepted")
 		return
 	}
 
-	s.account, s.name = accountID, acc.Name
-	app.Log("mail", "IMAP: %s signed in", acc.Name)
+	s.account, s.name = accountID, acc.ID
+	app.Log("mail", "IMAP: %s signed in", acc.ID)
 	s.send(tag + " OK [CAPABILITY " + imapCapability(true) + "] signed in")
 }
 

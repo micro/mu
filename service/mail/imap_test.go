@@ -124,6 +124,54 @@ func TestIMAPRefusesABadToken(t *testing.T) {
 	}
 }
 
+// The username is the username, not the display name.
+//
+// This was the first thing a real mail client hit. `signIn` compared the local
+// part against `acc.Name`, and Name is a display name — free text, not unique,
+// not validated, and at Google sign-in whatever the Google profile said. So
+// everybody whose display name differed from their username, which is everybody
+// who signed in with Google, was told their token was not accepted. The suite
+// missed it because its own fixture had the two fields swapped.
+//
+// Both directions are the test. The username must work, and the display name
+// must not: a display name resolving an identifier is the mistake written up at
+// auth.AccountByUsername, and an IMAP server is not the place to reintroduce it.
+func TestIMAPSignsYouInByUsernameNotDisplayName(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	acc := &auth.Account{ID: "imapname", Name: "Someone Else", Created: time.Now()}
+	if err := auth.Create(acc); err != nil {
+		if have, err := auth.GetAccount(acc.ID); err == nil {
+			acc = have
+		} else {
+			t.Fatal(err)
+		}
+	}
+	_, token, err := auth.CreateToken(acc.ID, "mail client", nil, time.Time{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, tc := range []struct {
+		what, user string
+		want       bool
+	}{
+		{"the username", acc.ID, true},
+		{"the full address", acc.ID + "@micro.mu", true},
+		{"a plus address", acc.ID + "+research@micro.mu", true},
+		{"the display name", acc.Name, false},
+	} {
+		c := dial(t)
+		out := c.do("LOGIN " + quoteIMAP(tc.user) + " " + token)
+		last := out[len(out)-1]
+		if got := strings.Contains(last, " OK"); got != tc.want {
+			t.Errorf("LOGIN with %s: %s", tc.what, last)
+		}
+	}
+}
+
+func quoteIMAP(s string) string { return `"` + s + `"` }
+
 // The wire format of a sequence set, which is where an IMAP server goes wrong
 // quietly: a client asks for 2:4 and gets 1:3, or asks for * and gets nothing.
 func TestASequenceSetMeansWhatTheProtocolSaysItMeans(t *testing.T) {
@@ -420,7 +468,13 @@ func TestAClientCanReadItsMail(t *testing.T) {
 	// Created if it is not there. Tests in this package share the account store
 	// with whatever ran before them, so insisting on a fresh one fails on the
 	// second run rather than proving anything.
-	acc := &auth.Account{ID: "imap-live", Name: "imapreader", Created: time.Now()}
+	// The ID is the username and Name is a display name, which is how signup
+	// writes an account and how the two differ for everybody who signed in with
+	// Google. This fixture used to have them the other way round — ID
+	// "imap-live", Name "imapreader" — and the test then signed in with the
+	// display name, so the whole suite agreed with a server that refused every
+	// real account. See signIn.
+	acc := &auth.Account{ID: "imapreader", Name: "IMAP Reader", Created: time.Now()}
 	if err := auth.Create(acc); err != nil {
 		if have, err := auth.GetAccount(acc.ID); err == nil {
 			acc = have
@@ -446,7 +500,7 @@ func TestAClientCanReadItsMail(t *testing.T) {
 	t.Cleanup(func() { mutex.Lock(); messages = nil; mutex.Unlock() })
 
 	c := dial(t)
-	c.ok("LOGIN " + acc.Name + " " + token)
+	c.ok("LOGIN " + acc.ID + " " + token)
 
 	folders := joined(c.ok(`LIST "" *`))
 	for _, want := range []string{`"INBOX"`, `"INBOX/research"`, `"Junk"`} {

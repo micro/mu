@@ -181,6 +181,16 @@ client files the answer under the message you sent rather than starting a new
 conversation. Everything that arrives is in the record and readable at `/inbox`,
 alongside conversations from the web — see [`internal/thread`](internal/thread).
 
+**It speaks IMAP too**, so the mailbox opens in Thunderbird, Mail.app or your
+phone rather than only on a page this instance draws. The username is your
+account name and the password is an access token from `/token` — Mu has no
+password, so a token stands in, and it is revocable on its own. Folders are your
+addresses: mail to `you+research@` is the folder *INBOX/research*, which is how
+one agent's mail gets subscribed to on its own.
+[examples/imap-client](examples/imap-client) is a working client against it,
+written with [emersion/go-imap](https://github.com/emersion/go-imap) so the
+server is proved against somebody else's library rather than its own tests.
+
 Self-hosting this needs `MAIL_DOMAIN`, an MX record, and inbound SMTP —
 `MAIL_PORT` defaults to 2525 for local testing and is 25 in production. See
 [Install](#install).

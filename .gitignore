@@ -6,6 +6,7 @@ mu.log
 # The example agent's binary. `go build` inside examples/x402-agent drops it
 # beside the source, named after the directory, where nothing else catches it.
 /examples/x402-agent/x402-agent
+/examples/imap-client/imap-client
 # If you prefer the allow list template instead of the deny list, see community template:
 # https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
 #

@@ -169,7 +169,7 @@ replies appear in the thread there.
 | Server | your domain |
 | Port | `IMAP_PORT`, `1143` by default; set it to `143` in production |
 | Username | your Mu username, or your full address |
-| Password | an access token from `/account/tokens` |
+| Password | an access token from `/token` |
 
 Mu has no password — sign-in is a passkey or a link — so an access token is what
 goes in the password field. That is the app-password pattern, and it has the
@@ -191,6 +191,12 @@ Folders cannot be created, renamed or deleted from the client, and a client
 cannot upload mail into one. Folders here follow your addresses and your mail,
 so there is nothing for those commands to do that would still be true a minute
 later.
+
+To check the listener before pointing a real client at it,
+[`examples/imap-client`](../examples/imap-client) signs in, lists the folders and
+prints the newest messages. It is written against
+[emersion/go-imap](https://github.com/emersion/go-imap) rather than anything in
+this repo, so it fails the way a real client would.
 
 ### Outbound deliverability
 
