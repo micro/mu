@@ -183,9 +183,61 @@ on its own. *Junk* is what the spam filter caught, where you can see it and
 disagree with it.
 
 **TLS is the proxy's job.** Nothing in Mu terminates TLS; the web server runs
-behind something that does, and IMAP is the same. Point your terminator at the
-IMAP port and offer 993, or use `stunnel`. Do not expose the plaintext port to
-the internet — a token would cross it in the clear.
+behind something that does, and IMAP is the same. Bind the listener to loopback
+so only the proxy can reach it, and never expose the plaintext port — a token
+would cross it in the clear.
+
+```
+IMAP_PORT=127.0.0.1:1143
+```
+
+nginx does this with the **stream** module, not the mail one. `ngx_mail` speaks
+IMAP itself and wants an `auth_http` endpoint to tell it which backend to use
+for each user; Mu authenticates its own sessions, so there is nothing for that
+endpoint to decide. `ngx_stream` is a TCP proxy with TLS on the front, which is
+exactly the missing piece.
+
+```nginx
+# At the TOP LEVEL of nginx.conf — a sibling of http {}, not inside it.
+# conf.d/*.conf and sites-enabled/* are both included from within http {},
+# so a stream block dropped there fails to load.
+stream {
+    upstream mu_imap {
+        server 127.0.0.1:1143;
+    }
+
+    server {
+        listen 993 ssl;
+
+        ssl_certificate     /etc/letsencrypt/live/your-domain.com/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/your-domain.com/privkey.pem;
+        ssl_protocols       TLSv1.2 TLSv1.3;
+
+        proxy_pass    mu_imap;
+
+        # Longer than the server's own 30-minute idle timeout. nginx defaults
+        # to 10 minutes here, which silently drops every client sitting on
+        # IDLE — the mail arrives and nobody is told.
+        proxy_timeout 35m;
+    }
+}
+```
+
+The same certificate as the web server. On Debian and Ubuntu the module is a
+separate package (`apt install libnginx-mod-stream`); elsewhere nginx needs
+`--with-stream --with-stream_ssl_module`, which `nginx -V` will tell you.
+
+This is 993, implicit TLS — the port every client offers first. There is no
+STARTTLS on 143: the server does not advertise it, so a client asked to use it
+there would be sending a token in the clear believing otherwise.
+
+To check the whole path:
+
+```bash
+printf 'a1 LOGIN you TOKEN\r\na2 LOGOUT\r\n' | openssl s_client -quiet -crlf -connect your-domain.com:993
+```
+
+`stunnel` and Traefik do the same job if nginx is not what is in front.
 
 Folders cannot be created, renamed or deleted from the client, and a client
 cannot upload mail into one. Folders here follow your addresses and your mail,
