@@ -1,6 +1,7 @@
 // Package images is Mu's image service: on-demand text-to-image generation via
-// Atlas Cloud (google/nano-banana-2-lite), plus a calming daily image (nature,
-// space, or something mindful) generated once a day and shown on the home card.
+// Atlas Cloud (google/nano-banana-2-lite), plus a calming daily image generated
+// once a day and shown on the home card. See dailyThemes for what it is a
+// picture of — weather, water, sky, land, geometry, material.
 package images
 
 import (
@@ -48,14 +49,72 @@ var (
 )
 
 // dailyThemes rotate day to day — always calm, never ragebait.
+//
+// There were five and they were the same picture: a serene landscape at soft
+// light, in five locations. Rotating them changed the subject and not the
+// image, and with five in the list the same one came round every five days, so
+// somebody who opens the home page most mornings saw it repeat within a week.
+//
+// The families below are meant to differ from each other rather than within
+// themselves. Light and weather, water, sky, land — those are the original
+// idea, done properly. Then the ones that are not photographs at all: geometry,
+// pattern and material, which are calm for a different reason. A Voronoi field
+// and a beach at dawn have nothing in common except that neither is asking you
+// for anything, and that is the actual brief.
+//
+// Two rules hold across all of them. Calm, because this sits on the home screen
+// and nobody needs a jolt with their coffee. And "no text", because a model
+// asked for a spiral or a contour map will letter it — axis labels, a caption,
+// a signature — and a picture with words in it is a picture that says something
+// nobody wrote.
 var dailyThemes = []struct {
 	name, prompt string
 }{
-	{"nature", "A serene natural landscape at golden hour — misty mountains, still water, soft light. Peaceful, cinematic, high detail, no text."},
-	{"space", "A quiet, awe-inspiring view of deep space — a nebula and distant galaxies in soft colour. Calm, contemplative, high detail, no text."},
-	{"mindful", "A minimal, mindful scene evoking calm — a single tree, gentle fog, muted tones, negative space. Meditative, high detail, no text."},
+	// Light and weather. What the sky is doing, which is the oldest reason to
+	// look out of a window.
+	{"sunshine", "Warm sunshine falling across an open meadow, long grass, clear air, deep blue above. Bright, joyful, unhurried, high detail, no text."},
+	{"dawn", "First light over low hills, cool blue giving way to warm gold, mist in the hollows. Quiet, expectant, cinematic, high detail, no text."},
+	{"dusk", "The last of the light after sunset, deep violet sky, a thin band of amber on the horizon. Still, spacious, cinematic, high detail, no text."},
+	{"rain", "Soft rain on a still surface, concentric rings spreading and overlapping, muted greens and greys. Calm, close, high detail, no text."},
+	{"snow", "Fresh snow over open ground under a pale sky, blue shadows, every edge softened. Silent, weightless, high detail, no text."},
+	{"fog", "Thick fog thinning at the edges, shapes suggested rather than shown, almost monochrome. Hushed, minimal, high detail, no text."},
+
+	// Water, in its several moods, all of them slow.
+	{"beach", "An empty beach at low tide, wet sand holding the sky, gentle surf, pale warm light. Open, restful, cinematic, high detail, no text."},
 	{"ocean", "A tranquil ocean horizon at dawn, gentle waves, soft pastel sky. Serene, cinematic, high detail, no text."},
+	{"lake", "A still mountain lake at first light, a perfect reflection, faint mist on the water. Mirror-calm, high detail, no text."},
+	{"tide pools", "Shallow tide pools between dark rocks, clear water, anemones and weed, low sun. Intricate, quiet, high detail, no text."},
+
+	// Sky and space. Far away and indifferent, which is restful.
+	{"stars", "A dense field of stars over a dark horizon, the Milky Way arching across, no light pollution. Vast, still, high detail, no text."},
+	{"space", "A quiet, awe-inspiring view of deep space — a nebula and distant galaxies in soft colour. Calm, contemplative, high detail, no text."},
+	{"aurora", "Green and violet aurora drifting over a snowbound landscape, reflected in ice. Slow, luminous, high detail, no text."},
+	{"moon", "A full moon low over calm water, its light laid across the surface in a long path. Cool, spare, high detail, no text."},
+	{"clouds", "Towering cumulus in late afternoon light, seen from above, gold on white. Immense, gentle, high detail, no text."},
+
+	// Land. Somewhere to be, with nobody in it.
+	{"nature", "A serene natural landscape at golden hour — misty mountains, still water, soft light. Peaceful, cinematic, high detail, no text."},
 	{"forest", "Sunlight filtering through a quiet forest, moss and ferns, soft focus. Peaceful, immersive, high detail, no text."},
+	{"desert", "Wind-carved dunes at low sun, long shadows, one clean curve after another. Minimal, warm, high detail, no text."},
+	{"mountains", "A range of peaks above the cloud line, cold blue distance, snow catching the light. Remote, still, high detail, no text."},
+	{"mindful", "A minimal, mindful scene evoking calm — a single tree, gentle fog, muted tones, negative space. Meditative, high detail, no text."},
+
+	// Geometry. Not photographs of anything: the pleasure is the rule being
+	// followed, which is a different kind of quiet.
+	{"fractals", "A fractal in soft natural colour, self-similar detail receding inward, organic rather than neon. Intricate, hypnotic, high detail, no text, no labels, no numbers."},
+	{"spirals", "Nested logarithmic spirals in fine lines, the golden ratio made visible, muted ink on warm paper. Precise, meditative, high detail, no text, no labels, no numbers."},
+	{"waves", "Interference patterns from two wave sources, smooth bands crossing and cancelling, soft gradients. Rhythmic, calm, high detail, no text, no labels, no numbers."},
+	{"contours", "A topographic contour field in fine concentric lines, elevation implied by spacing alone, two muted colours. Quiet, exact, high detail, no text, no labels, no numbers."},
+	{"tessellation", "A tessellation of interlocking shapes drifting slowly out of true, muted earth tones. Ordered, absorbing, high detail, no text, no labels, no numbers."},
+	{"voronoi", "A Voronoi field of irregular cells, thin borders, gently varied fill, like dried mud or a leaf. Natural, orderly, quiet, high detail, no text, no labels, no numbers."},
+	{"flow", "A flow field of thousands of fine curved lines following an invisible current, single hue on off-white. Smooth, absorbing, calm, high detail, no text, no labels, no numbers."},
+
+	// Material. Close up, where the pattern is something real doing what it
+	// does on its own.
+	{"ink", "A drop of ink blooming in still water, filaments unfurling, dark against pale. Slow, organic, high detail, no text."},
+	{"marble", "Veined marble in cool greys and one thread of gold, polished, lit softly from one side. Rich, still, high detail, no text."},
+	{"glass", "Light refracting through thick textured glass, soft caustics thrown on a plain surface. Luminous, quiet, high detail, no text."},
+	{"textile", "Handwoven cloth in undyed fibres, the weave visible, raking light across the texture. Warm, tactile, high detail, no text."},
 }
 
 // Load restores the last daily image and starts the daily generator.
@@ -79,6 +138,24 @@ func Load() {
 
 // today returns the current UTC date as YYYY-MM-DD.
 func today() string { return time.Now().UTC().Format("2006-01-02") }
+
+// themeStride is how far along the list one day moves.
+//
+// Not one. The themes are grouped into families so the list can be read and
+// added to, and stepping one at a time means six weather days in a row and then
+// four of water — a bigger list that is less varied day to day than the small
+// one it replaced. Striding jumps families, and any stride coprime with the
+// length visits every theme exactly once before repeating any.
+//
+// TestEveryThemeComesRound holds that, which is the part that breaks silently:
+// a stride sharing a factor with the length quietly reduces the rotation to a
+// handful of themes and everything still runs.
+const themeStride = 7
+
+// themeFor is which theme a day of the year gets.
+func themeFor(day int) struct{ name, prompt string } {
+	return dailyThemes[(day*themeStride)%len(dailyThemes)]
+}
 
 // scheduler generates today's image if missing, then wakes each day at 06:00 UTC.
 func scheduler() {
@@ -116,8 +193,7 @@ func generateDaily() {
 	if !aiReady() {
 		return // no provider configured — try again next cycle
 	}
-	day := time.Now().UTC().YearDay()
-	theme := dailyThemes[day%len(dailyThemes)]
+	theme := themeFor(time.Now().UTC().YearDay())
 	url, err := ai.GenerateImage(theme.prompt)
 	if err != nil {
 		app.Log("images", "daily image generation failed: %v", err)
