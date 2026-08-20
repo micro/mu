@@ -2568,8 +2568,21 @@ a.highlight {
     display: block;
   }
   
-  /* Buttons on mobile */
+  /* Buttons on mobile: 36px is a thumb, not a design.
+     
+     It was min-height alone, which grows the box and leaves the label at the
+     top of it — fine on a filled .btn where the fill shows you the target, and
+     wrong on a borderless text button, where all you see is a word with
+     twenty-two pixels of nothing under it. That is the gap in the agent card
+     before Remove, and the same gap under the inbox's delete cross.
+     
+     Centring the label inside the target fixes it without giving the target
+     back: the button is still 36px to a thumb and looks like its own height to
+     an eye. */
   button, a.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     min-height: 36px;
     padding: 6px 12px;
   }
@@ -5406,6 +5419,15 @@ button.pill:hover {
 .ib-row.unseen { border-left: 2px solid var(--accent-color, #000); padding-left: 9px; margin-left: -11px }
 /* No pointer to hover with, so the cross is simply there. */
 @media (hover: none) { .ib-del-go { opacity: 1 } }
+
+/* On a phone a row is two lines and the cross belongs beside the first of
+   them. .ib-item aligns on the baseline, which is right when the row is one
+   line and drifts down the card when it is two — so on a narrow screen the
+   cross is pinned to the top and nudged to sit on the name's line. */
+@media (max-width: 640px) {
+  .ib-item { align-items: flex-start }
+  .ib-del { padding-top: 12px }
+}
 .ib-row.unseen .ib-who,
 .ib-row.unseen .ib-subject { font-weight: var(--font-weight-bold, 700) }
 .ib-row.unseen .ib-snip { color: var(--text-secondary, #555) }

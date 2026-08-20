@@ -263,7 +263,7 @@ type entry struct {
 	For   string // one line: what it is for
 	ID    string // for the links that need it
 	Admin bool   // whether Edit and Fork apply, which is only to your own
-	Extra string // owner-only controls, appended after the links
+	Extra string // owner-only controls, in the strip with the links
 }
 
 // entryRow draws one.
@@ -286,6 +286,14 @@ func entryRow(e entry) string {
 	// does from a list: an address is something you copy once, from the page
 	// about that agent, and a mailto opens a client with an empty message in
 	// it. The list is for picking which agent; Connect is where its address is.
+	// Every action on the row is in one strip, Remove included.
+	//
+	// Remove used to be a second child of the row, beside the block holding
+	// everything else. On a wide screen that put it out to the right, which was
+	// fine; on a phone the row stacks, so it became a block under the card with
+	// a 36px mobile touch target around a 14px word — a hand's width of nothing
+	// between the last link and the button. It is a link like its neighbours and
+	// it now sits with them.
 	b.WriteString(`<div class="agent-links">`)
 	if e.Chat != "" {
 		b.WriteString(`<a href="` + e.Chat + `">Chat</a>`)
@@ -294,7 +302,8 @@ func entryRow(e entry) string {
 	if e.Admin {
 		b.WriteString(`<a href="/agent/new?id=` + html.EscapeString(e.ID) + `">Edit</a>`)
 	}
-	b.WriteString(`</div></div>` + e.Extra + `</div>`)
+	b.WriteString(e.Extra)
+	b.WriteString(`</div></div></div>`)
 	return b.String()
 }
 
@@ -451,9 +460,11 @@ const agentsCSS = `<style>
    scope, 13px for the buttons beside them, and the name at 14px semibold. A
    row is one thing to read, so the parts that are the same rank look the
    same. */
-.agent-links{display:flex;flex-wrap:wrap;gap:14px;margin-top:8px}
+.agent-links{display:flex;flex-wrap:wrap;align-items:center;gap:14px;margin-top:8px}
 .agent-links a{font-size:13px;color:#666;text-decoration:none}
 .agent-links a:hover{color:var(--text-primary,#111);text-decoration:underline}
+/* The form holding Remove is one item in the strip, not a block that breaks it. */
+.agent-links form{display:inline;margin:0}
 /* What it is for. One line, and it truncates rather than wrapping — a list you
    are scanning stops being a list the moment the rows are different heights. */
 .agent-for{font-size:13px;color:#666;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -487,12 +498,15 @@ const agentsCSS = `<style>
    line rather than pushing the page sideways. */
 @media(max-width:600px){
   .agent-row{flex-direction:column;align-items:stretch;gap:8px;padding:12px 14px}
-  .agent-row>form,.agent-row>div:last-child{align-self:flex-start}
   .agent-name{font-size:15px}
     .agent-meta{white-space:normal;overflow-wrap:anywhere}
-  .agent-links{gap:14px;margin-top:8px}
-  .agent-links a{font-size:13px;padding:2px 0}
-  .agent-act,.agent-remove{font-size:14px;padding:4px 0}
+  /* Every action in the strip is a tap target, so they are all one height.
+     Buttons take min-height:36px from the mobile rule above and links did
+     not, so Remove stood 16px taller than Chat beside it and the strip grew
+     to fit it. */
+  .agent-links{gap:16px;margin-top:10px}
+  .agent-links a,.agent-act,.agent-remove{
+    display:inline-flex;align-items:center;min-height:36px;font-size:14px;padding:0}
 }
 .agent-input{display:block;width:100%;padding:9px 11px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;font-family:inherit;margin:0 0 10px}
 .agent-scope-pick{border-top:1px solid #eee;padding-top:12px;margin:0 0 14px}
