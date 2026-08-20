@@ -5882,6 +5882,18 @@ select.field { max-width: 220px }
   margin: 10px 0 0;
 }
 .signout { margin: 12px 0 0 }
+
+/* About, Privacy and Status at the foot of /account. A line rather than a
+   card: they have to be reachable — the footer is not rendered once you are
+   signed in — and giving them a titled card put a marketing nav at the same
+   weight as the balance. */
+.account-legal {
+  margin: 24px 0 0;
+  font-size: 13px;
+  color: var(--text-muted, #888);
+}
+.account-legal a { font-weight: var(--font-weight-normal, 400); color: var(--text-muted, #888) }
+.account-legal a:hover { color: var(--text-primary, #111) }
 .link-code code { font-size: 18px; font-weight: var(--font-weight-bold, 700); background: var(--hover-background, #fafafa); border: var(--border-width, 1px) solid var(--card-border, #e8e8e8); border-radius: var(--border-radius, 6px); padding: 4px 12px }
 
 /* Addresses this account has proved, on /account. */

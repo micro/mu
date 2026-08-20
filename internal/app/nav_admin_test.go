@@ -34,19 +34,65 @@ func TestAnAdminGetsTheLinkInTheNav(t *testing.T) {
 	if strings.Contains(nav, "display: none") {
 		t.Error("the admin's own link is hidden, so it needs JavaScript to appear")
 	}
-	// And it is drawn where it now claims to be: directly under Account, with
-	// nothing between them and Support after.
+	// And it is drawn in the menu with the other destinations: after Account,
+	// before Log out.
+	//
+	// This used to assert "directly under Account, nothing in the gap, Support
+	// after". Both halves have gone. Support was removed from the product and
+	// this menu went on linking to a route that no longer exists; and Saved and
+	// Tokens moved here off /account, where they had been filed under a section
+	// called "Settings" on the settings page. So there is something in the gap
+	// now, by design.
+	//
+	// What survives is the claim worth holding: admin is a destination in the
+	// menu rather than a line of text three clicks down a settings page, and it
+	// is above Log out, which is last because it ends the session.
 	page := renderWithLang("t", "d", "", "en", &auth.Account{ID: "boss", Admin: true})
-	acct, adm, support := strings.Index(page, `id="nav-account"`), strings.Index(page, `id="nav-admin"`),
-		strings.Index(page, `id="nav-support"`)
-	if adm < acct || adm > support {
-		t.Errorf("admin is not between Account and Support (account %d, admin %d, support %d)",
-			acct, adm, support)
+	acct, adm, out := strings.Index(page, `id="nav-account"`), strings.Index(page, `id="nav-admin"`),
+		strings.Index(page, `id="nav-logout"`)
+	if acct < 0 || adm < 0 || out < 0 {
+		t.Fatalf("the account menu is missing an item (account %d, admin %d, logout %d)", acct, adm, out)
 	}
-	// Directly under: nothing else is drawn in the gap. This is what the last
-	// arrangement lost — Admin was in the right group and at the wrong end of it.
-	if between := page[acct:adm]; strings.Count(between, "<a ") != 1 {
-		t.Errorf("something has been added between Account and Admin: %q", between)
+	if adm < acct || adm > out {
+		t.Errorf("admin is not between Account and Log out (account %d, admin %d, logout %d)",
+			acct, adm, out)
+	}
+}
+
+// The menu holds what is yours, and Log out is last.
+//
+// Saved, Tokens and About were cards on /account — a credential list, three
+// piles of things you kept, and the footer in a card, all filed next to the
+// balance because two sections there were named "Settings" and "About Mu" and a
+// name that broad absorbs anything.
+func TestTheAccountMenuHoldsWhatIsYours(t *testing.T) {
+	menu := navBottom(&auth.Account{ID: "someone"})
+
+	for _, want := range []struct{ id, href string }{
+		{"nav-account", "/account"},
+		{"nav-saved", "/user"},
+		{"nav-token", "/token"},
+		{"nav-about", "/about"},
+		{"nav-logout", "/logout"},
+	} {
+		if !strings.Contains(menu, `id="`+want.id+`" href="`+want.href+`"`) {
+			t.Errorf("the account menu has no %s pointing at %s", want.id, want.href)
+		}
+	}
+
+	// Log out ends the session, so nothing is drawn after it — a control below
+	// it reads as being on a page that has already finished. That is exactly
+	// what happened to the notifications card on /account.
+	if out := strings.Index(menu, `id="nav-logout"`); strings.Count(menu[out:], "<a ") != 1 {
+		t.Errorf("something is drawn after Log out:\n%s", menu[out:])
+	}
+
+	// Support was removed from the product — the page, the mailbox, the
+	// settings — and this menu went on linking to /support, which does not
+	// route. A dead link in the menu is worse than no link: it is the one place
+	// somebody looks when something has gone wrong.
+	if strings.Contains(menu, "/support") {
+		t.Error("the account menu still links to /support, which no longer exists")
 	}
 }
 
@@ -100,11 +146,14 @@ func TestTheAccountPageHoldsNoOperatorErrands(t *testing.T) {
 			"change your language")
 	}
 	// Not vacuous: the handler is still building the page it is supposed to.
-	// The links are app.Links pairs rather than hand-written anchors now, so
-	// this looks for the path. What it is guarding is unchanged: that the scan
-	// above ran over a handler that is actually building the account page.
-	if !strings.Contains(page, `"/token"`) {
-		t.Error("the account page no longer offers API credentials, so this scan " +
+	//
+	// This used to anchor on "/token", which has left for the account menu along
+	// with Saved and About — so the anchor went with the thing it was anchoring
+	// to, and the guard reported the account page as missing rather than the
+	// test as needing repointing. The balance is a better hook: it is the first
+	// card on /account and the last thing that would ever move off it.
+	if !strings.Contains(page, "BalanceCard(") {
+		t.Error("the account page no longer draws the balance, so this scan " +
 			"is reading the wrong function")
 	}
 }

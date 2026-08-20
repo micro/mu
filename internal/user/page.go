@@ -75,9 +75,16 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(card("Hidden", hideRows.String(), "Nothing hidden. Hiding an item removes it from your view and nobody else's."))
 	b.WriteString(card("Blocked", blockRows.String(), "Nobody blocked."))
 	b.WriteString(undoScript)
-	// "Saved and blocked", not "User". A page title is read in a tab and a
-	// history list, where "User" names nobody and nothing.
-	app.Respond(w, r, app.Response{Title: "Saved and blocked",
+	// "Saved", not "User" and not "Saved and blocked". A page title is read in a
+	// tab, a history list and a menu, where "User" names nobody and nothing and
+	// a title with an "and" in it is a list of the sections rather than a name.
+	//
+	// One word, and it is the affirmative third of what is here: hiding and
+	// blocking are the same act pointed the other way, and saving is the pile
+	// somebody comes looking for. The first card below is called Saved too,
+	// which is the cost of the shorter name and the right way round — the page
+	// is named for what it is mostly for.
+	app.Respond(w, r, app.Response{Title: "Saved",
 		Description: "What you have saved, hidden and blocked", HTML: b.String()})
 }
 

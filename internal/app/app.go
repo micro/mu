@@ -1118,11 +1118,26 @@ func navBottom(acc *auth.Account) string {
 		return `<a id="nav-login" href="/login"><img src="/account.png?` + Version + `"><span class="label">Login</span></a>`
 	}
 	username := htmlpkg.EscapeString(acc.ID)
-	// Support is in here rather than only in the footer, because the footer is
-	// not rendered for somebody signed in — see footerFor. So the one link a
-	// person needs when something has gone wrong disappeared at exactly the
-	// moment they had an account, a balance and therefore something to go
-	// wrong with. A signed-out visitor still has the footer.
+	// What is yours, in the menu with your name on it.
+	//
+	// Saved, Tokens and About were cards on /account, and none of them is an
+	// account setting. /account had become the place things go when nobody
+	// decided where they belonged — the tell was two of its sections being
+	// named "Settings", on the settings page, and "About Mu", holding Privacy
+	// and Status. A name that broad absorbs anything, which is how a credential
+	// list, three piles of saved items and a marketing nav ended up filed next
+	// to the balance.
+	//
+	// They are destinations, and a menu is a list of destinations. /account goes
+	// back to being about the account: who you are, what you owe, what can reach
+	// you.
+	//
+	// Support is gone rather than moved. It was here on the reasoning that the
+	// footer is not rendered for somebody signed in, so the one link a person
+	// needs when something has gone wrong disappeared exactly when they had a
+	// balance to have something go wrong with. Sound reasoning, dead link: the
+	// support page and its mailbox were removed and this went on pointing at
+	// /support, which no longer routes.
 	return `<details class="nav-me" id="nav-me">
             <summary class="nav-me-btn">
               <span class="nav-me-av" id="nav-me-av">` + initial(acc.ID) + `</span>
@@ -1131,8 +1146,10 @@ func navBottom(acc *auth.Account) string {
             </summary>
             <div class="nav-me-menu">
               <a id="nav-account" href="/account"><img src="/account.png?` + Version + `"><span class="label">Account</span></a>
+              <a id="nav-saved" href="/user"><img src="/saved.svg?` + Version + `"><span class="label">Saved</span></a>
+              <a id="nav-token" href="/token"><img src="/token.svg?` + Version + `"><span class="label">Tokens</span></a>
               ` + navAdmin(acc) + `
-              <a id="nav-support" href="/support"><img src="/help.svg?` + Version + `"><span class="label">Support</span></a>
+              <a id="nav-about" href="/about"><img src="/help.svg?` + Version + `"><span class="label">About</span></a>
               <a id="nav-logout" href="/logout"><img src="/logout.png?` + Version + `"><span class="label">Log out</span></a>
             </div>
           </details>

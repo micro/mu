@@ -779,19 +779,29 @@ func Account(w http.ResponseWriter, r *http.Request) {
 			Fields: []app.Field{{Name: "language", Options: langs}},
 			Submit: "Save"}.HTML())
 
-	settings := app.Section("Settings",
-		// "Saved and blocked", not "User preferences". The page is three lists —
-		// what you starred, what you hid, who you blocked — and none of them is
-		// a preference: a preference is a setting you choose once, and these are
-		// piles that accumulate as you use the product. Somebody looking for the
-		// thing they starred would not have opened a page called Preferences.
-		app.Links([2]string{"/token", "Tokens"}, [2]string{"/user", "Saved and blocked"}),
-		`<p class="signout"><a class="text-error" href="/logout">Log out</a></p>`)
+	// No Settings section, and no About card.
+	//
+	// "Settings" was a section named after the page it was on, which is a name
+	// that can absorb anything — and it had: a link to your tokens, a link to
+	// the three piles you accumulate by using the product, and Log out. Nothing
+	// they share, and not one of them a setting. "About Mu" was the footer in a
+	// card, titled for one of its four links while holding Privacy and Status,
+	// and one of the four (Tools) is a sidebar item already.
+	//
+	// Both are the same tell: a card whose name means "miscellaneous" is where
+	// things go when nobody decided where they belong. They are destinations,
+	// and destinations belong in the menu with your name on it — see
+	// app.navBottom. Log out was already there.
 
 	// Under the balance, because it is the picture of what drained it. Usage was
 	// a sidebar entry until it was not: it is a view of money, and the money is
 	// here. See usage.Card — it draws nothing at all for an account that has
 	// never called anything, so a new account is not shown an empty graph.
+	// Notifications last, because it is a thing you do rather than a thing you
+	// read, and on a phone it is what makes the product work with the page
+	// closed. It used to render below the Settings section — which ended with
+	// Log out, so the control sat under the link that ends the session, where a
+	// page has plainly finished.
 	content := notice + profile +
 		BalanceCard(acc.ID) +
 		usage.Card(acc.ID) +
@@ -802,27 +812,22 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		language +
 		PasskeyListHTML(acc.ID) +
 		clientsCard +
-		settings
+		push.Card(r, acc.ID)
 
-	// About, Pricing, Help, Privacy, Status and the API reference live in the
-	// footer, and there is no footer once you are signed in — deliberately, on
-	// the argument that everything in it is in the sidebar or on /account. It
-	// was not: Tools was, and the rest were nowhere, so a person with an account
-	// could not reach the pricing page or the API docs from anywhere in the
-	// product. Support had already been noticed and patched into the sidebar on
-	// its own, one link at a time.
+	// About, Privacy, Status — a line, not a card.
 	//
-	// Here rather than back under every screen, because the reasoning for
-	// dropping the footer was sound — a marketing nav under an app screen is the
-	// clearest tell that this is a website. Settings is where an app keeps
-	// About and Legal, and /account is in the sidebar for everybody.
-	// Notifications on this device. Above About because it is a thing you do
-	// rather than a thing you read, and because on a phone it is the setting
-	// that makes the product work when the page is closed.
-	content += push.Card(r, acc.ID)
-
-	content += `<div class="card"><span class="card-title">About Mu</span>` +
-		`<p class="card-meta">` + app.FooterLinks() + `</p></div>`
+	// These have to be reachable and are worth very little. They were a card
+	// headed "About Mu", which titled the group for one of its four links while
+	// two of the others were Privacy and Status, and gave a marketing nav the
+	// same weight as the balance. About is in the account menu now; this is the
+	// rest of it at the weight it deserves, at the foot of the page where a
+	// footer would be if there were one.
+	//
+	// It is here rather than nowhere because the footer is not rendered for a
+	// signed-in account — see footerFor — so with no line at all /privacy and
+	// /status become unreachable from inside the product. TestEveryFooterLink-
+	// IsReachableSignedIn caught exactly that when About left for the menu.
+	content += `<p class="account-legal">` + app.FooterLinks() + `</p>`
 
 	// app.RenderHTMLForRequest, not app.RenderHTML: the latter hard-codes a nil account,
 	// so every part of the chrome that depends on knowing who is signed in went
