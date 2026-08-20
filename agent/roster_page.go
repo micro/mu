@@ -497,16 +497,25 @@ const agentsCSS = `<style>
    where they are reachable with a thumb, and the endpoint scrolls inside its own
    line rather than pushing the page sideways. */
 @media(max-width:600px){
-  .agent-row{flex-direction:column;align-items:stretch;gap:8px;padding:12px 14px}
+  /* The strip's tap targets stand taller than their labels, so the card gives
+     back the space below them — see .agent-links. */
+  .agent-row{flex-direction:column;align-items:stretch;gap:8px;padding:12px 14px 4px}
   .agent-name{font-size:15px}
     .agent-meta{white-space:normal;overflow-wrap:anywhere}
   /* Every action in the strip is a tap target, so they are all one height.
-     Buttons take min-height:36px from the mobile rule above and links did
-     not, so Remove stood 16px taller than Chat beside it and the strip grew
-     to fit it. */
-  .agent-links{gap:16px;margin-top:10px}
+     Buttons take min-height from the mobile rule in mu.css and links did not,
+     so Remove stood 16px taller than Chat beside it and the strip grew to fit
+     it.
+
+     A 14px label centred in a 32px target carries 9px of its own space above
+     and below. That is the spacing, not an addition to it: with a margin on
+     top of it the description sat 21px clear of Chat where the desktop row
+     sits 8px clear, which is the gap you can see before the buttons. The
+     margin and the card's bottom padding give theirs back and the target
+     keeps its height. */
+  .agent-links{gap:16px;margin-top:0}
   .agent-links a,.agent-act,.agent-remove{
-    display:inline-flex;align-items:center;min-height:36px;font-size:14px;padding:0}
+    display:inline-flex;align-items:center;min-height:32px;font-size:14px;padding:0}
 }
 .agent-input{display:block;width:100%;padding:9px 11px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;font-family:inherit;margin:0 0 10px}
 .agent-scope-pick{border-top:1px solid #eee;padding-top:12px;margin:0 0 14px}
