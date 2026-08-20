@@ -96,3 +96,48 @@ func TestThereIsOneTagline(t *testing.T) {
 			"sentence in a smaller font", "A personal agent", n)
 	}
 }
+
+// Install app is on the page, and hidden until the browser says it can.
+//
+// The browser decides whether a site can be installed and announces it by
+// firing beforeinstallprompt. Nothing on the page can ask. So the button ships
+// with the hidden attribute and the script reveals it — and the attribute has
+// to survive the stylesheet, because .lcta sets display:inline-block and an
+// author rule beats the browser's own [hidden]{display:none} whatever its
+// specificity. Without the override the button is on the page in Firefox, where
+// pressing it does nothing at all.
+func TestTheInstallButtonWaitsToBeOffered(t *testing.T) {
+	rec := httptest.NewRecorder()
+	Landing(rec, httptest.NewRequest("GET", "/", nil))
+	body := rec.Body.String()
+
+	if !strings.Contains(body, `id="install-app"`) {
+		t.Fatal("no install button on the landing")
+	}
+	i := strings.Index(body, `id="install-app"`)
+	tag := body[strings.LastIndex(body[:i], "<"):]
+	if j := strings.Index(tag, ">"); j > 0 {
+		tag = tag[:j]
+	}
+	if !strings.Contains(tag, "hidden") {
+		t.Errorf("the install button ships visible: %s", tag)
+	}
+	if !strings.Contains(body, ".lcta[hidden]") {
+		t.Error("nothing stops .lcta{display:inline-block} overriding the hidden " +
+			"attribute, so the button shows on browsers that cannot install")
+	}
+
+	// It listens for the one signal there is, and it registers the worker: a
+	// browser will not offer to install a site that has no service worker, and
+	// this page is the only one that never registered it.
+	for _, want := range []string{"beforeinstallprompt", "serviceWorker", "appinstalled"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the install script does not mention %s", want)
+		}
+	}
+
+	// The primary action is still signing up.
+	if strings.Index(body, `href="/signup"`) > strings.Index(body, `id="install-app"`) {
+		t.Error("Install app comes before Get started")
+	}
+}

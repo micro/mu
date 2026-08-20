@@ -1,7 +1,7 @@
 {
   "name": "Mu",
   "short_name": "Mu",
-  "description": "Tools for agents. Real-world access — news, mail, search, weather, markets, flights — and the assistant that uses them.",
+  "description": "A personal agent. Chat with it here or write to it from anywhere, with news, web search, mail, markets, weather, places and storage behind it.",
   "scope": "/",
   "start_url": "/",
   "background_color": "#ffffff",

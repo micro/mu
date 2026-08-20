@@ -57,6 +57,7 @@ func Landing(w http.ResponseWriter, r *http.Request) {
 		TopRight: `<a href="/login">Sign in →</a>`,
 		Body:     body,
 		Footer:   app.FooterLinks(),
+		Tail:     installScript(),
 	})
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -85,7 +86,14 @@ func Landing(w http.ResponseWriter, r *http.Request) {
 // "Browse the tools", which answers a question a first-time visitor has not
 // asked; then "Browse the agents", which sends somebody signed out to a page
 // that lists the agents they have not made. A second button is a choice, and
-// there is only one thing to do here.
+// there was only one thing to do here.
+//
+// Install app is the exception, and the reason is the thing both of those got
+// wrong: they were other destinations, so the page asked you to pick where to
+// go. This one is not a destination at all — it is the same page, made
+// resident — and it appears only when the browser has told us it can be
+// installed, so on a browser that cannot it is not a choice on the page at
+// all. See installScript.
 //
 // And it has to actually fit, which is a measurement rather than an intention.
 // The first version of this centred the block with min-height:calc(100vh -
@@ -135,7 +143,9 @@ weather, places, storage — and it remembers the last conversation.</p>
 
 <div class="lctas">
   <a class="lcta" href="/signup">Get started →</a>
+  <button type="button" class="lcta lcta-second" id="install-app" hidden>Install app</button>
 </div>
+<p class="linstall" id="install-how" hidden>In Safari: Share, then Add to Home Screen.</p>
 </div>
 
 <style>
@@ -145,8 +155,83 @@ weather, places, storage — and it remembers the last conversation.</p>
 .lead{max-width:560px;text-align:center;color:#555;font-size:17px;line-height:1.6;margin:0 auto 22px}
 .lead a{color:#111}
 .lctas{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin:0}
+/* An explicit line-height on both, or they are different heights side by side:
+   a <button> and an <a> take different defaults, and 3px of it shows. */
 .lcta,.lcta:visited{display:inline-block;background:#111;color:#fff;text-decoration:none;padding:12px 24px;
-  border-radius:var(--border-radius,6px);font-weight:700;font-size:15px}
+  border-radius:var(--border-radius,6px);font-weight:700;font-size:15px;line-height:17px}
+/* The rule above is display:inline-block, and an author rule beats the browser's
+   own [hidden]{display:none} whatever its specificity. Without this line the
+   install button is on the page for everybody, including the browsers that
+   cannot install anything. */
+.lcta[hidden],.linstall[hidden]{display:none}
+/* Second, and it looks it: the primary action on this page is signing up.
+   The outline is a shadow rather than a border so it costs no height — a border
+   makes this button 2px taller than the link beside it. */
+.lcta-second{background:#fff;color:#111;border:0;box-shadow:inset 0 0 0 1px #ddd;
+  cursor:pointer;font-family:inherit;font-size:15px}
+.lcta-second:hover{box-shadow:inset 0 0 0 1px #111}
+.linstall{text-align:center;color:#666;font-size:14px;margin:12px auto 0}
 @media (max-width:640px){.lead{font-size:15px}}
 </style>`
+}
+
+// installScript makes the Install app button work, and decides whether it is
+// there at all.
+//
+// A web app is installed by the browser, not by the page. Chromium browsers
+// announce that they are willing by firing beforeinstallprompt, which is the
+// only signal there is — so the button ships hidden and appears when that
+// arrives. A button that is always on the page would do nothing in Firefox and
+// nothing in an installed window, and a control that does nothing is worse than
+// no control.
+//
+// iOS is the exception worth handling. There is no API at all — the only way in
+// is Share, then Add to Home Screen — so on an iPhone the button says where
+// that is instead of pretending it can do it.
+//
+// It registers the service worker too. The app shell does that and this page
+// does not, and a browser will not offer to install a site that has none — so
+// the first page a visitor sees was the one page that could never be installed
+// from.
+func installScript() string {
+	return `<script>
+(function () {
+  var btn = document.getElementById('install-app');
+  if (!btn) return;
+  var how = document.getElementById('install-how');
+
+  // Already installed: this is the app, running in its own window.
+  if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true) return;
+
+  if (navigator.serviceWorker) {
+    navigator.serviceWorker.register('/mu.js', {scope: '/'});
+  }
+
+  var offer = null;
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    offer = e;
+    btn.hidden = false;
+  });
+  window.addEventListener('appinstalled', function () {
+    offer = null;
+    btn.hidden = true;
+    if (how) how.hidden = true;
+  });
+
+  // An iPad reports itself as a Mac, so the touch points are the tell.
+  var ios = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if (ios && how) btn.hidden = false;
+
+  btn.addEventListener('click', function () {
+    if (offer) {
+      offer.prompt();
+      offer.userChoice.then(function () { offer = null; btn.hidden = true; });
+      return;
+    }
+    if (how) how.hidden = !how.hidden;
+  });
+})();
+</script>`
 }
