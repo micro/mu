@@ -7,6 +7,12 @@ A personal agent.
 There's lots of agents. Here's another one. Chat or email it. It has access to 100+ tools: news, mail, search, weather, markets, video, places,
 files, contacts, calendar, documents, etc. Still a work in progress.
 
+One binary, four ways to reach it. The **web app** and **email** are for you;
+**MCP** and the **CLI** are for programs. A fifth mode, `mu agent`, is the
+binary acting as a client of somebody else's instance rather than serving one —
+see [Agent](#agent-bring-your-own-model), which is a different thing from the
+`mu` subcommands and is the part people mix up.
+
 ## Tools
 
 Here are the tools
@@ -139,6 +145,33 @@ platform through a fixed set of operations rather than your session.
 
 Sign in with a username and password, a passkey (WebAuthn), or Google.
 
+## Email
+
+The server is an MTA: it listens for SMTP, delivers outbound to the recipient's
+MX signed with DKIM, and filters what arrives. An account is an address, so
+there is nothing to install and nothing to authorise — write to it from whatever
+mail client you already use.
+
+```
+asim@micro.mu             your address; mail here reaches your agent
+asim+research@micro.mu    your agent named "research"
+agent@micro.mu            the instance's shared agent, open to anyone
+agent+research@micro.mu   the shared agent, naming one
+```
+
+The part after the `+` picks which agent answers; without one you get the
+default. Writing to the shared address needs no account — one is created for the
+sender, which is how somebody who has never been here gets an answer.
+
+The reply threads: `In-Reply-To` and `References` are set from the chain, so a
+client files the answer under the message you sent rather than starting a new
+conversation. Everything that arrives is in the record and readable at `/inbox`,
+alongside conversations from the web — see [`internal/thread`](internal/thread).
+
+Self-hosting this needs `MAIL_DOMAIN`, an MX record, and inbound SMTP —
+`MAIL_PORT` defaults to 2525 for local testing and is 25 in production. See
+[Install](#install).
+
 ## CLI
 
 Every tool is a `mu` subcommand. The same binary runs the server (`mu --serve`)
@@ -149,7 +182,6 @@ mu news list                            # latest headlines
 mu news search "ai safety"              # search news
 mu web search "claude code"             # search the web
 mu markets list --category stocks       # live prices
-mu agent "what is the btc price?"       # run the full agent
 mu weather forecast --lat 51.5 --lon -0.12
 mu docs list --collection notes         # your own documents
 mu x402                                 # paying per call: config, and your key
@@ -171,11 +203,20 @@ export MU_TOKEN=xxx       # or use the environment
 
 Run `mu --help` for the list — it reads the same catalogue the agent does.
 
-## Agent
+These are tool calls, not agent runs: one command, one tool, no model involved.
+`mu agent` is not among them — it is the mode below, and it needs a model key
+and a wallet rather than a token.
 
-The same binary is also an agent. `mu agent` brings your own model and your own
-wallet, reads its tools from a running instance, and pays per call — no account
-on that instance and no signup.
+## Agent (bring your own model)
+
+`mu agent` is the binary as a *client* of an instance, not a caller of one you
+are signed into. It holds your model key and a private key, reads the tool
+catalogue from a running instance, and pays per call over x402 — no account on
+that instance and no signup.
+
+The distinction that matters: `mu news list` uses your account on an instance,
+`mu agent` uses your wallet on somebody else's. They share a binary and nothing
+else.
 
 ```bash
 # 1. A model. The tools are rented; the thinking is yours.
