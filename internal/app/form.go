@@ -50,7 +50,7 @@ func SectionID(id, title string, body ...string) string {
 
 // Note is the quiet line under a control saying what it does.
 //
-// It was `<p class="text-sm text-muted" style="margin:6px 0 0">` written out
+// It was `<p class="text-sm text-muted mt-half m-0">` written out
 // 159 times with the margin guessed each time.
 func Note(text string) string {
 	return `<p class="note">` + htmlpkg.EscapeString(text) + `</p>`

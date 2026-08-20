@@ -53,6 +53,9 @@
   --warn-ink: #856404;
   --ok-wash: #f0fff0;
   --ok-border: #a3d9a5;
+  --banner-wash: #fff8e1;
+  --banner-border: #f1d68c;
+  --banner-ink: #5b4a00;
   --btn-success-hover: #156b2d;
   
   /* Spacing - consistent scale */
@@ -3080,6 +3083,168 @@ a.highlight {
 .break-all { word-break: break-all; }
 .pad-row { padding: 12px 16px; }
 .fill { height: 100%; width: 100%; }
+.w-320 { max-width: 320px; }
+.w-440 { max-width: 440px; }
+.w-820 { max-width: 820px; }
+.centered { margin: 0 auto; }
+.mt-half { margin-top: 6px; }
+.mt-14 { margin-top: 14px; }
+.mt-24 { margin-top: 24px; }
+.mt-2em { margin-top: 2em; }
+.pull-up { margin-top: -8px; }
+.text-22 { font-size: 22px; }
+.text-24 { font-size: 24px; }
+.text-28 { font-size: 28px; }
+.cell-right { padding: 6px 8px; text-align: right; }
+.raw-sm { white-space: pre-wrap; word-break: break-all; font-size: 0.8em; }
+.push-right { margin-left: auto; }
+.span-all { grid-column: 1 / -1; }
+.icon-24 { width: 24px; height: 24px; vertical-align: bottom; margin-right: 6px; }
+/* An iframe filling the box it was given. */
+.fill-abs { position: absolute; top: 0; left: 0; right: 0; width: 100%; height: 100%; border: none; }
+
+/* Sign in with Google. Not a .btn: it carries a mark and has to read as
+   somebody else's control, which is what the outline is for. */
+.oauth-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: var(--border-width, 1px) solid var(--card-border, #ddd);
+  border-radius: var(--border-radius, 6px);
+  padding: 10px 12px;
+  text-decoration: none;
+  color: var(--text-primary, #111);
+  font-weight: 600;
+  margin: 0 0 14px;
+}
+.oauth-btn.inline { display: inline-flex; justify-content: flex-start; padding: 8px 14px; margin: 8px 0 0; }
+
+/* A button that is a link: no chrome, just the label. */
+.plain-btn {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  color: var(--text-secondary, #555);
+}
+.plain-btn.danger { color: var(--btn-danger, #c00); }
+.plain-btn.faint { color: var(--text-faint, #bbb); font-size: 18px; line-height: 1; }
+
+/* The strip across the top of the app asking for one thing. Amber, one line,
+   and the action is pushed to the right of it. */
+.app-banner {
+  background: var(--banner-wash, #fff8e1);
+  border: var(--border-width, 1px) solid var(--banner-border, #f1d68c);
+  border-radius: var(--border-radius, 6px);
+  padding: 10px 14px;
+  margin: 0 0 14px;
+  font-size: 14px;
+  color: var(--banner-ink, #5b4a00);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.app-banner a { color: var(--banner-ink, #5b4a00); }
+
+/* A small round tick beside a name. */
+.verified {
+  display: inline-block;
+  vertical-align: middle;
+  width: 16px;
+  height: 16px;
+  background: var(--btn-success, #22c55e);
+  color: #fff;
+  border-radius: 50%;
+  text-align: center;
+  line-height: 16px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* A step in a run: what the agent did, quoted off to one side. */
+.step-quote { border-left: 3px solid var(--link-color, #007bff); margin-bottom: 8px; opacity: .8; }
+.step-toggle { cursor: pointer; color: var(--text-secondary, #555); font-size: 13px; list-style: none; padding: 4px 0; }
+.step-out {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--text-secondary, #444);
+  white-space: pre-wrap;
+  background: var(--hover-background, #f9f9f9);
+  border-radius: var(--border-radius, 6px);
+  padding: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  font-family: inherit;
+}
+
+.status-warn { color: #ff9800; }
+.page-head { padding-bottom: 20px; border-bottom: 2px solid #333; }
+.w-230 { width: 230px; }
+.gap-xs { gap: 4px; }
+.pl-1 { padding-left: 6px; }
+.collapse { border-collapse: collapse; }
+.corner-tr { position: absolute; top: 0; right: 0; }
+.frame.frame-tall { min-height: 200px; }
+
+/* One line in a dropdown. */
+.menu-item, a.menu-item, a.menu-item:visited {
+  display: block;
+  padding: 8px 16px;
+  font-size: 13px;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  color: var(--text-secondary, #555);
+}
+.menu-item:hover { background: var(--hover-background, #f5f5f5); }
+.menu-item.danger, a.menu-item.danger, a.menu-item.danger:visited { color: var(--btn-danger, #c00); }
+
+/* A row that is a choice: a saved place, a connected calendar. */
+.pick-row-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: var(--border-width, 1px) solid var(--card-border, #eee);
+  border-radius: var(--border-radius, 6px);
+  padding: 10px 14px;
+}
+.pick-row-box.soft { background: var(--hover-background, #fafafa); }
+
+/* Something somebody else said, quoted into a page. */
+.quote {
+  border-left: 3px solid var(--card-border, #ccc);
+  margin: 8px 0;
+  padding: 8px 12px;
+  background: var(--hover-background, #fafafa);
+  border-radius: 0 var(--border-radius, 6px) var(--border-radius, 6px) 0;
+}
+
+/* A block of preformatted output inside prose — a header dump, a raw body. */
+.pre-block {
+  background: var(--hover-background, #f5f5f5);
+  padding: 10px;
+  border-radius: var(--border-radius, 6px);
+  overflow-x: auto;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 12px;
+}
+.warn-block {
+  background: var(--warn-wash, #fff3cd);
+  padding: 10px;
+  border-radius: var(--border-radius, 6px);
+  margin-bottom: 10px;
+  border-left: 4px solid var(--warn-border, #ffc107);
+}
+
+.thumb-grid.wide { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+.text-gold { color: #b7791f; }
+.cell { padding: 6px 8px; }
+.cell.nested { padding-left: 24px; }
+.sep { margin: 0 8px; color: var(--card-border, #ddd); }
+.underlined { color: var(--link-color, #0066cc); text-decoration: underline; }
 
 /* A map, drawn into a fixed box. z-index 0 so the tiles' own stacking does not
    climb over the page around them. */
@@ -3130,6 +3295,7 @@ a.highlight {
   border: var(--border-width, 1px) solid var(--card-border, #e0e0e0);
 }
 .btn-plain:hover { border-color: var(--text-muted, #bbb); }
+button.btn-plain { padding: 6px 12px; font: inherit; cursor: pointer; color: var(--text-secondary, #666); }
 
 /* Amber, for a state that is neither fine nor an error. --btn-danger and
    --btn-success already exist; this was the missing third. */

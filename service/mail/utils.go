@@ -381,7 +381,7 @@ func linkifyURLs(text string) string {
 			}
 
 			// Create clickable link
-			result += fmt.Sprintf(`<a href="%s" target="_blank" rel="noopener noreferrer" style="color: #0066cc; text-decoration: underline;">%s</a>`, href, html.EscapeString(url))
+			result += fmt.Sprintf(`<a href="%s" target="_blank" rel="noopener noreferrer" class="underlined">%s</a>`, href, html.EscapeString(url))
 
 			lastIndex = end
 			i = end - 1 // -1 because loop will increment
@@ -428,11 +428,11 @@ func renderEmailBody(body string, isAttachment bool) string {
 		if err != nil {
 			app.Log("mail", "PGP decryption failed: %v", err)
 			// Return original body with error notice
-			return fmt.Sprintf(`<div style="background: #fff3cd; padding: 10px; border-radius: 5px; margin-bottom: 10px; border-left: 4px solid #ffc107;">
+			return fmt.Sprintf(`<div class="warn-block">
 				<strong>🔒 PGP Encrypted Message</strong><br>
 				Decryption failed: %s
 			</div>
-			<pre style="background: #f5f5f5; padding: 10px; border-radius: 5px; overflow-x: auto; font-family: monospace; font-size: 12px;">%s</pre>`,
+			<pre class="pre-block">%s</pre>`,
 				html.EscapeString(err.Error()),
 				html.EscapeString(body))
 		}

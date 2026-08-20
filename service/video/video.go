@@ -642,7 +642,7 @@ func embedVideoWithAutoplay(id string, autoplay bool) string {
 	if autoplay {
 		u += "&autoplay=1"
 	}
-	style := `style="position: absolute; top: 0; left: 0; right: 0; width: 100%; height: 100%; border: none;"`
+	style := `class="fill-abs"`
 	return `<iframe id="ytplayer" width="560" height="315" ` + style + ` src="` + u + `" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" playsinline allowfullscreen></iframe>`
 }
 

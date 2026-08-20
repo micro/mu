@@ -60,7 +60,7 @@ func alertBadge() string {
 	if n == 0 {
 		return ""
 	}
-	return fmt.Sprintf(` <span class="count" class="row-danger">%d</span>`, n)
+	return fmt.Sprintf(` <span class="count row-danger">%d</span>`, n)
 }
 
 // balanceCell is what an account holds, on the row beside the button that adds
@@ -219,7 +219,7 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 			} else {
 				actions = append(actions, fmt.Sprintf(`<form method="POST" class="d-inline"><input type="hidden" name="action" value="ban"><input type="hidden" name="user_id" value="%s"><input type="hidden" name="tab" value="%s"><button type="submit" class="mini-btn danger" onclick="return confirm('Ban %s?')">Ban</button></form>`, u.ID, tab, u.ID))
 			}
-			actions = append(actions, fmt.Sprintf(`<form method="POST" class="d-inline" onsubmit="return confirm('Delete %s?')"><input type="hidden" name="action" value="delete"><input type="hidden" name="user_id" value="%s"><input type="hidden" name="tab" value="%s"><button type="submit" class="btn-danger" class="text-xs p-tight">Delete</button></form>`, u.ID, u.ID, tab))
+			actions = append(actions, fmt.Sprintf(`<form method="POST" class="d-inline" onsubmit="return confirm('Delete %s?')"><input type="hidden" name="action" value="delete"><input type="hidden" name="user_id" value="%s"><input type="hidden" name="tab" value="%s"><button type="submit" class="btn-danger text-xs p-tight">Delete</button></form>`, u.ID, u.ID, tab))
 		}
 		// Credit, on the row, because that is where somebody wanting to comp an
 		// account is looking. An amount box rather than fixed buttons: the
@@ -227,7 +227,7 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 		// is what you feel like giving — and three preset buttons would be
 		// wrong for most of them.
 		actions = append(actions, fmt.Sprintf(
-			`<form method="POST" class="d-inline" class="inline-row">`+
+			`<form method="POST" class="d-inline inline-row">`+
 				`<input type="hidden" name="action" value="credit">`+
 				`<input type="hidden" name="user_id" value="%s">`+
 				`<input type="hidden" name="tab" value="%s">`+
@@ -325,7 +325,7 @@ func BlocklistHandler(w http.ResponseWriter, r *http.Request) {
 			<thead>
 				<tr>
 					<th>Email</th>
-					<th class="text-center" class="w-100">Action</th>
+					<th class="text-center w-100">Action</th>
 				</tr>
 			</thead>
 			<tbody>`
@@ -356,7 +356,7 @@ func BlocklistHandler(w http.ResponseWriter, r *http.Request) {
 			<thead>
 				<tr>
 					<th>IP Address</th>
-					<th class="text-center" class="w-100">Action</th>
+					<th class="text-center w-100">Action</th>
 				</tr>
 			</thead>
 			<tbody>`

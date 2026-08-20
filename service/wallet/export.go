@@ -113,7 +113,7 @@ func exportForm(r *http.Request, errMsg string) string {
 	b.WriteString(`<input type="hidden" name="_csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `">`)
 	b.WriteString(`<p><label class="text-sm">Confirm your password</label><br>`)
 	b.WriteString(`<input type="password" name="password" required autocomplete="current-password" ` +
-		`class="form-input" style="max-width:320px"></p>`)
+		`class="form-input w-320"></p>`)
 	b.WriteString(`<button type="submit">Show my key</button> `)
 	b.WriteString(`<a href="/wallet" class="text-sm text-muted ml-2">Cancel</a>`)
 	b.WriteString(`</form></div>`)
@@ -130,11 +130,11 @@ func exportedKey(bw *BaseWallet) string {
   come back through the form. Anyone with this key owns the address below.</p>
   <p class="text-sm text-muted m-0 mb-1">Address (public, safe to share)</p>
   <div class="cw-mono">%s</div>
-  <p class="text-sm text-muted" style="margin:14px 0 4px">Private key (secret)</p>
+  <p class="text-sm text-muted mt-14 mb-1">Private key (secret)</p>
   <div class="cw-mono cw-secret">%s</div>
-  <p class="text-sm text-muted" style="margin-top:14px">It imports into any EVM wallet —
+  <p class="text-sm text-muted mt-14">It imports into any EVM wallet —
   MetaMask, Rabby, Coinbase Wallet — as a raw private key on <b>%s</b>.</p>
-  <p style="margin-top:14px"><a href="/wallet">Back to your wallet</a></p>
+  <p class="mt-14"><a href="/wallet">Back to your wallet</a></p>
 </div>
 <style>
 .cw-mono{font-family:ui-monospace,Menlo,monospace;font-size:13px;word-break:break-all;background:#f5f5f5;padding:11px;border:1px solid #e2e2e2;border-radius:6px;color:#222}

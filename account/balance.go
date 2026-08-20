@@ -320,7 +320,7 @@ func renderStripeDeposit(userID, errMsg string) string {
 	if errMsg != "" {
 		sb.WriteString(fmt.Sprintf(`<p class="text-error">%s</p>`, errMsg))
 	}
-	sb.WriteString(`<hr style="border:none;border-top:1px solid #eee;margin:16px 0">`)
+	sb.WriteString(`<hr class="hr-soft my-4">`)
 
 	sb.WriteString("<h4>One-time top-up</h4>")
 	sb.WriteString(`<form method="POST" action="/account/stripe/checkout">`)

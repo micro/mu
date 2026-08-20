@@ -49,7 +49,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// converts it to an RFC3339 UTC instant on submit so 3pm means the user's
 	// 3pm regardless of the server's timezone.
 	b.WriteString(`<div class="w-640">`)
-	b.WriteString(`<form method="POST" action="/events" onsubmit="var d=this.whenlocal.value;if(d){this.when.value=new Date(d).toISOString()}" style="display:flex;flex-direction:column;gap:8px;margin:0 0 24px">`)
+	b.WriteString(`<form method="POST" action="/events" onsubmit="var d=this.whenlocal.value;if(d){this.when.value=new Date(d).toISOString()}" class="col m-0 mb-6">`)
 	b.WriteString(`<input type="hidden" name="_csrf" value="` + html.EscapeString(csrf) + `">`)
 	b.WriteString(`<input type="hidden" name="action" value="create">`)
 	b.WriteString(`<input type="hidden" name="when" value="">`)
@@ -91,7 +91,7 @@ func eventRow(e *Event, csrf string) string {
 	if e.Note != "" {
 		note = `<div class="text-xs text-muted">` + html.EscapeString(e.Note) + `</div>`
 	}
-	return fmt.Sprintf(`<div style="display:flex;align-items:center;gap:12px;border:1px solid #eee;border-radius:8px;padding:10px 14px">
+	return fmt.Sprintf(`<div class="pick-row-box">
 <div class="grow">
   <div class="semibold text-base">%s</div>
   <div class="text-sm link-colour">%s</div>
@@ -102,7 +102,7 @@ func eventRow(e *Event, csrf string) string {
   <input type="hidden" name="_csrf" value="%s">
   <input type="hidden" name="action" value="cancel">
   <input type="hidden" name="id" value="%s">
-  <button type="submit" title="Cancel" style="background:none;border:0;color:#bbb;font-size:18px;cursor:pointer;line-height:1">&times;</button>
+  <button type="submit" title="Cancel" class="plain-btn faint">&times;</button>
 </form>
 </div>`,
 		html.EscapeString(e.Title),
@@ -152,7 +152,7 @@ func externalRow(x External) string {
 	if source == "" {
 		source = ExternalName
 	}
-	return fmt.Sprintf(`<div style="display:flex;align-items:center;gap:12px;border:1px solid #eee;border-radius:8px;padding:10px 14px;background:#fafafa">
+	return fmt.Sprintf(`<div class="pick-row-box soft">
 <div class="grow">
   <div class="semibold text-base">%s</div>
   <div class="text-sm link-colour">%s</div>
@@ -185,7 +185,7 @@ func calendarCard(owner, status, csrf string) string {
 	}
 
 	var b strings.Builder
-	b.WriteString(`<div class="card" class="mt-6">`)
+	b.WriteString(`<div class="card mt-6">`)
 	b.WriteString(note)
 
 	if HasExternal(owner) {

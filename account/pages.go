@@ -251,7 +251,7 @@ func renderRequestInvitePage(w http.ResponseWriter, r *http.Request, message str
 	if msg == "" {
 		msg = `<p>Mu is currently invite-only. Leave your email and we'll send you an invite when we open up more seats.</p>`
 	}
-	body := fmt.Sprintf(`<div class="card" style="max-width:440px;margin:0 auto">
+	body := fmt.Sprintf(`<div class="card w-440 centered">
 <h3>Request an invite</h3>
 %s
 <form method="POST" action="/request-invite" class="mt-3">
@@ -351,7 +351,7 @@ func RequestInvite(w http.ResponseWriter, r *http.Request) {
 	}
 	app.Log("auth", "Invite request from %s (%s)", email, ip)
 
-	body := fmt.Sprintf(`<div class="card" style="max-width:440px;margin:0 auto">
+	body := fmt.Sprintf(`<div class="card w-440 centered">
 <h3>Thanks — we got your request</h3>
 <p>We'll email <strong>%s</strong> if we have a seat for you.</p>
 <p class="mt-3"><a href="/">← Back</a></p>

@@ -234,9 +234,9 @@ func renderConnectionsCard(r *http.Request, acc *auth.Account, status string) st
 
 	switch status {
 	case "disconnected":
-		b.WriteString(`<p class="text-sm" style="color:#0a7d33">Disconnected. The access was revoked at Google and forgotten here.</p>`)
+		b.WriteString(`<p class="text-sm text-success">Disconnected. The access was revoked at Google and forgotten here.</p>`)
 	case "connected":
-		b.WriteString(`<p class="text-sm" style="color:#0a7d33">Connected.</p>`)
+		b.WriteString(`<p class="text-sm text-success">Connected.</p>`)
 	}
 
 	list := google.Grants(acc.ID)
@@ -252,7 +252,7 @@ func renderConnectionsCard(r *http.Request, acc *auth.Account, status string) st
 		b.WriteString(`<p class="text-sm text-muted">Granted from <strong>` +
 			htmlpkg.EscapeString(who) + `</strong>. All read-only.</p>`)
 	}
-	b.WriteString(`<ul style="margin:8px 0 12px;padding-left:18px">`)
+	b.WriteString(`<ul class="mt-2 mb-3 indent">`)
 	for _, g := range list {
 		b.WriteString(`<li class="text-sm">` + htmlpkg.EscapeString(google.Label(g.Scope)) + `</li>`)
 	}
@@ -261,8 +261,7 @@ func renderConnectionsCard(r *http.Request, acc *auth.Account, status string) st
 	b.WriteString(`<form method="POST" action="/oauth2/google/disconnect" class="m-0">` +
 		`<input type="hidden" name="_csrf" value="` + htmlpkg.EscapeString(auth.CSRFToken(r)) + `">` +
 		`<input type="hidden" name="return" value="/account">` +
-		`<button type="submit" style="background:none;border:1px solid #ddd;border-radius:6px;padding:6px 12px;` +
-		`font-size:13px;color:#666;cursor:pointer">Disconnect Google</button>` +
+		`<button type="submit" class="btn-plain text-sm">Disconnect Google</button>` +
 		`</form>`)
 	b.WriteString(`<p class="text-sm text-muted mt-2">Revoking takes all of it: ` +
 		`Google withdraws the whole grant at once, so there is no way to hand back one and keep another.</p>`)

@@ -626,7 +626,7 @@ func generateThreadHTML(p *Message, replies []*Message, r *http.Request) string 
 	if p.AuthorID == "_system" {
 		threadAuthorHTML = fmt.Sprintf(`<span class="category">%s</span>`, htmlpkg.EscapeString(p.Author))
 	}
-	sb.WriteString(fmt.Sprintf(`<div class="headline" class="so-rule">
+	sb.WriteString(fmt.Sprintf(`<div class="headline so-rule">
   %s
   <div class="d-flex between so-head">
     <div>%s</div>
@@ -890,7 +890,7 @@ func generateCardHTML(allMessages []*Message) string {
   <a href="/social/thread?id=%s">
     <span class="title">%s</span>
   </a>
-  <span class="description" class="breakable">%s</span>%s
+  <span class="description breakable">%s</span>%s
   <div class="summary"><span data-timestamp="%d">%s</span>%s</div>
 </div>`,
 			p.ID,

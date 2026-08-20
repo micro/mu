@@ -221,15 +221,15 @@ func connectCard(owner, status string) string {
 	note := ""
 	switch status {
 	case "connected":
-		note = `<p style="font-size:13px;color:#0a7d33;margin:0 0 8px">Connected. Names are now resolved against ` + html.EscapeString(ExternalName) + ` too.</p>`
+		note = `<p class="text-sm text-success m-0 mb-2">Connected. Names are now resolved against ` + html.EscapeString(ExternalName) + ` too.</p>`
 	case "declined":
 		note = `<p class="text-sm text-muted m-0 mb-2">No access granted — nothing changed.</p>`
 	case "failed":
-		note = `<p style="font-size:13px;color:#b00;margin:0 0 8px">That didn't complete. Try again.</p>`
+		note = `<p class="notice bad">That didn't complete. Try again.</p>`
 	}
 
 	var b strings.Builder
-	b.WriteString(`<div class="card" style="margin-top:24px">`)
+	b.WriteString(`<div class="card mt-24">`)
 	b.WriteString(note)
 	if HasExternal(owner) {
 		b.WriteString(`<h4 class="m-0 mb-2 text-base">` + html.EscapeString(ExternalName) + `</h4>`)
@@ -240,7 +240,7 @@ func connectCard(owner, status string) string {
 		b.WriteString(`<p class="text-sm text-secondary m-0 mb-3">Right now a name only resolves if you typed it in above. ` +
 			`Connect your address book and "email Sarah about Thursday" works without teaching Mu who Sarah is. ` +
 			`Read-only, and nothing is copied — names are looked up when you ask.</p>`)
-		b.WriteString(`<a href="/oauth2/google/contacts" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:8px 16px;border-radius:8px;font-weight:600;font-size:13px">Connect ` + html.EscapeString(ExternalName) + `</a>`)
+		b.WriteString(`<a href="/oauth2/google/contacts" class="btn">Connect ` + html.EscapeString(ExternalName) + `</a>`)
 	}
 	b.WriteString(`</div>`)
 	return b.String()

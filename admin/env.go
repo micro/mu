@@ -264,7 +264,7 @@ func EnvHandler(w http.ResponseWriter, r *http.Request) {
 	var b strings.Builder
 
 	if r.URL.Query().Get("saved") == "1" {
-		b.WriteString(`<div class="card" class="card-ok"><p class="text-success m-0">Saved. Anything read once at start-up needs a restart to take effect.</p></div>`)
+		b.WriteString(`<div class="card card-ok"><p class="text-success m-0">Saved. Anything read once at start-up needs a restart to take effect.</p></div>`)
 	}
 
 	// The count first, because "which of these is coming from where" is asked

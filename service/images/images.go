@@ -413,7 +413,7 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 
 	// Search box — searches your images plus the public stock pool.
 	b.WriteString(`<div class="card"><form method="GET" action="/images" class="d-flex gap-2 m-0">`)
-	b.WriteString(`<input name="q" value="` + html.EscapeString(q) + `" placeholder="Search images by description…" style="flex:1;padding:8px;font-size:14px;border:1px solid #ddd;border-radius:6px">`)
+	b.WriteString(`<input name="q" value="` + html.EscapeString(q) + `" placeholder="Search images by description…" class="form-input grow text-base">`)
 	b.WriteString(`<button type="submit" class="text-base">Search</button>`)
 	b.WriteString(`</form></div>`)
 
@@ -480,9 +480,9 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`<div class="card">`)
 		b.WriteString(`<h3>Your images</h3>`)
 		b.WriteString(`<p class="card-desc">Share an image to the public stock pool so others (and their agents) can find and reuse it.</p>`)
-		b.WriteString(`<div id="img-gallery" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-top:8px">`)
+		b.WriteString(`<div id="img-gallery" class="thumb-grid wide">`)
 		if len(recs) == 0 {
-			b.WriteString(`<p style="color:#888;font-size:14px;grid-column:1/-1" id="img-empty">Nothing yet — generate your first image above.</p>`)
+			b.WriteString(`<p class="text-muted text-base span-all" id="img-empty">Nothing yet — generate your first image above.</p>`)
 		}
 		for _, rec := range recs {
 			prompt, _ := rec.Data["prompt"].(string)
@@ -531,8 +531,8 @@ function imgGenerate(){
   // you landed back on /images and had to scroll to find your own picture.
   var r=document.getElementById('img-result');
   r.innerHTML='<a href="'+res.j.url+'" target="_blank"><img src="'+res.j.url+'" alt="" class="img-full"></a>'+
-              '<p style="font-size:13px;color:#888;margin:6px 0 0">'+
-              '<button data-id="'+res.j.id+'" data-next="true" onclick="imgShare(this)" style="font-size:12px;padding:3px 10px;margin-right:8px">Share</button>'+
+              '<p class="text-sm text-muted mt-half m-0">'+
+              '<button data-id="'+res.j.id+'" data-next="true" onclick="imgShare(this)" class="text-xs mr-2">Share</button>'+
               'Saved to your images.</p>';
   r.scrollIntoView({block:'nearest'});
   // Add it to the gallery too, so the page matches what a reload would show.

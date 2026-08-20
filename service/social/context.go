@@ -81,13 +81,13 @@ func RenderContextHTML(ctx *SocialContext) string {
 		return ""
 	}
 
-	html := `<div class="social-context" style="margin:12px 0;">`
+	html := `<div class="social-context my-3">`
 	for _, p := range ctx.Posts {
 		content := p.Content
 		if len(content) > 300 {
 			content = content[:300] + "..."
 		}
-		html += fmt.Sprintf(`<blockquote style="border-left:3px solid #ccc;margin:8px 0;padding:8px 12px;background:#fafafa;border-radius:0 4px 4px 0;">
+		html += fmt.Sprintf(`<blockquote class="quote">
   <div class="text-xs text-secondary mb-1"><b>@%s</b> · %s</div>
   <div class="text-sm">%s</div>
   <a href="%s" target="_blank" rel="noopener noreferrer" class="text-xs text-muted">View original</a>

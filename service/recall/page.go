@@ -55,7 +55,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var b strings.Builder
-	b.WriteString(`<div style="max-width:760px">`)
+	b.WriteString(`<div class="w-760">`)
 	b.WriteString(`<p class="lens-lead">Everything you and your agents have said to each other, ` +
 		`wherever you said it — here, by email, on Discord, Telegram or WhatsApp. Search it. ` +
 		`Your conversations as a list, to carry one on, are on ` + app.TextLink("your inbox", "/inbox") + `.</p>`)

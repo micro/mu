@@ -136,22 +136,22 @@ func editPageHTML(a *App) string {
           <button onclick="copyCode()">Copy</button>
         </div>
       </div>
-      <textarea class="code-editor" id="code" spellcheck="false" class="ed-tall"></textarea>
+      <textarea class="code-editor ed-tall" id="code" spellcheck="false"></textarea>
     </div>
     <div class="ed-grow">
       <div class="preview-header mb-2">
         <h3>Preview</h3>
         <button class="code-toggle" onclick="updatePreview()">Refresh</button>
       </div>
-      <iframe id="preview" class="preview-frame" allow="geolocation" class="ed-tall"></iframe>
+      <iframe id="preview" class="preview-frame ed-tall" allow="geolocation"></iframe>
     </div>
   </div>
 
-  <div class="save-bar" class="ed-grid">
+  <div class="save-bar ed-grid">
     <div class="ed-row-wrap">
       <div class="ed-grow-150">
         <label for="appName" class="ed-label">Name</label>
-        <input class="name" type="text" id="appName" placeholder="App name" class="ed-field">
+        <input class="name ed-field" type="text" id="appName" placeholder="App name">
       </div>
       <div class="ed-w-140">
         <label for="appSlugInput" class="ed-label">Slug</label>

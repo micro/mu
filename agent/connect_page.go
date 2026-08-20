@@ -89,7 +89,7 @@ func ConnectHandler(w http.ResponseWriter, r *http.Request) {
 		// "← Agents →" is pointing both ways at once.
 		app.TextLink("← Agents", back) +
 		`<button type="button" class="chat-open-list" onclick="muPane('agents')">Agents</button></p>` +
-		`<div style="max-width:820px">` + notice + body + `</div></div></div>` +
+		`<div class="w-820">` + notice + body + `</div></div></div>` +
 		chatLayoutCSS + connectCSS + paneJS +
 		`<script>window.muSeedAgent(` + app.JSString(id) + `);</script>`
 	app.Respond(w, r, app.Response{Title: title, Description: desc, HTML: page})

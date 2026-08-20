@@ -126,11 +126,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		note = "Removed."
 	}
 	if note != "" {
-		b.WriteString(`<div class="card" style="background:#f0fff0;border-color:#a3d9a5;margin-top:16px"><p style="color:#27ae60;margin:0">` +
+		b.WriteString(`<div class="card card-ok mt-4"><p class="text-success m-0">` +
 			html.EscapeString(note) + `</p></div>`)
 	}
 	if msg := r.URL.Query().Get("error"); msg != "" {
-		b.WriteString(`<div class="card" style="border-color:#e0a3a3;margin-top:16px"><p class="text-error m-0">` +
+		b.WriteString(`<div class="card border-bad mt-4"><p class="text-error m-0">` +
 			html.EscapeString(msg) + `</p></div>`)
 	}
 
@@ -166,7 +166,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				b.WriteString(` <form method="POST" action="/email" class="d-inline">` +
 					`<input type="hidden" name="do" value="forget">` +
 					`<input type="hidden" name="address" value="` + html.EscapeString(a) + `">` +
-					`<button type="submit" style="background:none;border:0;color:#c00;cursor:pointer;font-size:13px;padding:0 0 0 6px">remove</button></form>`)
+					`<button type="submit" class="plain-btn danger text-sm pl-1">remove</button></form>`)
 			}
 			b.WriteString(`</li>`)
 		}

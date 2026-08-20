@@ -265,14 +265,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				`" class="card-title">` +
 				html.EscapeString(result.Title) + `</a></div>`)
 			if result.Description != "" {
-				b.WriteString(`<p class="card-desc" style="margin:4px 0 0;">` +
+				b.WriteString(`<p class="card-desc mt-1 m-0">` +
 					html.EscapeString(stripHTML(result.Description)) + `</p>`)
 			}
 			meta := `<a href="` + html.EscapeString(result.URL) + `" target="_blank" rel="noopener noreferrer" class="text-muted">` + html.EscapeString(result.URL) + `</a>`
 			if result.Age != "" {
 				meta += ` · ` + html.EscapeString(result.Age)
 			}
-			b.WriteString(`<div style="font-size:13px;color:#888;margin-top:2px;">` + meta + `</div>`)
+			b.WriteString(`<div class="text-sm text-muted mt-px">` + meta + `</div>`)
 			b.WriteString(`</div>`)
 		}
 	}

@@ -743,7 +743,7 @@ func CardWithIcon(id, title, icon, content string) string {
 	if icon == "" {
 		return Card(id, title, content)
 	}
-	titleHTML := `<img src="` + htmlpkg.EscapeString(icon) + `" style="width:24px;height:24px;vertical-align:bottom;margin-right:6px;">` + htmlpkg.EscapeString(title)
+	titleHTML := `<img src="` + htmlpkg.EscapeString(icon) + `" class="icon-24">` + htmlpkg.EscapeString(title)
 	return fmt.Sprintf(CardTemplate, id, id, titleHTML, content)
 }
 
@@ -1005,12 +1005,12 @@ func VerifyBanner(r *http.Request) string {
 		{"your Balance", "/account#balance"},
 	} {
 		said = strings.ReplaceAll(said, l.phrase,
-			`your <a href="`+l.href+`" style="color:#5b4a00">`+strings.TrimPrefix(l.phrase, "your ")+`</a>`)
+			`your <a href="`+l.href+`" >`+strings.TrimPrefix(l.phrase, "your ")+`</a>`)
 	}
-	return `<div class="verify-banner" style="background:#fff8e1;border:1px solid #f1d68c;border-radius:6px;padding:10px 14px;margin:0 0 14px;font-size:14px;color:#5b4a00;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+	return `<div class="verify-banner app-banner">
 <strong>You cannot post yet.</strong>
 <span>` + said + `</span>
-<a href="` + href + `" style="margin-left:auto;background:#000;color:#fff;text-decoration:none;padding:6px 14px;border-radius:6px">` + action + `</a>
+<a href="` + href + `" class="btn push-right">` + action + `</a>
 </div>`
 }
 

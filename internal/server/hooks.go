@@ -227,7 +227,7 @@ func wireHooks() {
 			return
 		}
 		when := e.When.Local().Format("Mon 2 Jan 2006, 15:04 MST")
-		body := fmt.Sprintf(`<p>You asked Mu to remind you:</p><p style="font-size:16px"><strong>%s</strong><br>%s</p>`,
+		body := fmt.Sprintf(`<p>You asked Mu to remind you:</p><p class="status-icon"><strong>%s</strong><br>%s</p>`,
 			html.EscapeString(e.Title), html.EscapeString(when))
 		if e.Note != "" {
 			body += `<p>` + html.EscapeString(e.Note) + `</p>`

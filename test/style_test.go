@@ -163,22 +163,30 @@ func walkGo(t *testing.T, f func(path, src string)) {
 // inlineStyles is how many style="..." attributes the product may carry.
 //
 // A ratchet, like styleBlocks above, and for the same reason: hundreds of these
-// is not a design somebody chose, it is what happens when a page has no way to
-// say "the usual button". Every one is a decision made once, in one file, that
-// nothing else can inherit — and worse than verbose: a literal #888 does not
-// follow --text-muted, so a page that hard-codes it will not follow the palette
-// anywhere it moves.
+// was not a design somebody chose, it was what happens when a page has no way
+// to say "the usual button". Every one is a decision made once, in one file,
+// that nothing else can inherit — and worse than verbose: a literal #888 does
+// not follow --text-muted, so a page that hard-codes it will not follow the
+// palette anywhere it moves.
 //
-// It goes down as surfaces move onto the components in internal/app/form.go and
-// the type scale in mu.css. Raising it means a page invented a look again.
+// It started at 771 and it is now thirteen, and those thirteen are not a
+// backlog. They are the cases where a style attribute is the right answer:
 //
-// The bulk of what is left is page-specific layout — a flex row here, a border
-// there — which is not one shape repeated but forty pages each laying
-// themselves out. That is per-page work rather than a sweep, which is why this
-// number is coming down in steps.
-const inlineStyles = 110
+//   - A value computed per row. The colour of an author's avatar on /stream,
+//     the width of a bar on the usage chart, the colour of a status on
+//     /email — these are data, not design. The class carries the shape and
+//     the attribute carries the one number that varies.
+//   - An email body. service/mail/client.go builds a message, and mail
+//     clients strip <style> blocks — an inline attribute is the only styling
+//     that survives delivery.
+//
+// So this number should not go to zero, and raising it means a page invented a
+// look again rather than asking mu.css for one.
+const inlineStyles = 13
 
-var styleAttr = regexp.MustCompile(`style="`)
+// A style attribute, not any occurrence of the characters. /tiles has a query
+// parameter called style= and it is not markup.
+var styleAttr = regexp.MustCompile(`<[a-zA-Z][^<>]{0,300}?\sstyle="`)
 
 func TestInlineStylesAreGoingDown(t *testing.T) {
 	total := 0
@@ -207,4 +215,30 @@ func TestInlineStylesAreGoingDown(t *testing.T) {
 			"internal/app/form.go for the components that replace them.\nHeaviest: %s",
 			total, inlineStyles, strings.Join(over, ", "))
 	}
+}
+
+// One class attribute per element.
+//
+// A browser keeps the first and discards the rest, silently — so an element
+// carrying two is an element where half the styling never applied, and it looks
+// exactly like an element that is styled. Forty of these appeared during the
+// sweep that moved inline styles onto classes: the replacement added a class to
+// markup that already had one, and nothing complained.
+//
+// This is the kind of mistake that is invisible in review and invisible on the
+// screen too, because the thing you are looking at renders — just not the way
+// the source says it should.
+func TestAnElementHasOneClassAttribute(t *testing.T) {
+	// A tag, then a class attribute, then anything that is not the end of the
+	// tag, then a second class attribute.
+	dupe := regexp.MustCompile(`<[a-zA-Z][^<>]{0,200}?class="[^"]*"[^<>]{0,200}?\sclass="`)
+	walkGo(t, func(path, src string) {
+		if strings.HasSuffix(path, "_test.go") {
+			return
+		}
+		for _, m := range dupe.FindAllString(stripComments(src), -1) {
+			t.Errorf("%s: two class attributes on one element — the browser keeps "+
+				"the first and drops the rest:\n  %s", path, strings.TrimSpace(m))
+		}
+	})
 }

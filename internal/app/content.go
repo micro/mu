@@ -99,29 +99,30 @@ func renderMenu(actions []Action) string {
 
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf(`<span class="corner"><a href="#" class="corner-x" onclick="var m=document.getElementById('%s');m.style.display=m.style.display==='block'?'none':'block';event.stopPropagation();return false;">⋯</a>`, id))
-	sb.WriteString(fmt.Sprintf(`<div id="%s" class="ctrl-menu" class="dropdown">`, id))
+	sb.WriteString(fmt.Sprintf(`<div id="%s" class="ctrl-menu dropdown">`, id))
 
-	itemStyle := "display:block;padding:8px 16px;font-size:13px;text-decoration:none;white-space:nowrap;cursor:pointer;color:#555"
-
+	// The menu item's look is .menu-item, not a style string assembled here and
+	// interpolated into six format calls. The one thing that varied was the
+	// colour of a destructive action, which is a modifier.
 	for _, a := range actions {
-		style := itemStyle
+		style := "menu-item"
 		if a.Class == "text-error" {
-			style = strings.Replace(style, "color:#555", "color:#c00", 1)
+			style += " danger"
 		}
 
 		switch {
 		case a.Label == "Share":
-			sb.WriteString(fmt.Sprintf(`<a href="#" style="%s" onclick="var u=location.origin+'%s';if(navigator.share){navigator.share({url:u})}else if(navigator.clipboard){navigator.clipboard.writeText(u).then(function(){this.textContent='Copied!'}.bind(this))}else{prompt('Copy link:',u)};return false;">Share</a>`, style, a.URL))
+			sb.WriteString(fmt.Sprintf(`<a href="#" class="%s" onclick="var u=location.origin+'%s';if(navigator.share){navigator.share({url:u})}else if(navigator.clipboard){navigator.clipboard.writeText(u).then(function(){this.textContent='Copied!'}.bind(this))}else{prompt('Copy link:',u)};return false;">Share</a>`, style, a.URL))
 		case a.Label == "Edit":
-			sb.WriteString(fmt.Sprintf(`<a href="%s" style="%s">Edit</a>`, a.URL, style))
+			sb.WriteString(fmt.Sprintf(`<a href="%s" class="%s">Edit</a>`, a.URL, style))
 		case a.Label == "Delete" && a.Confirm != "":
 			// Use POST (not DELETE) — handlers check for POST.
 			// Redirect to the parent listing page, derived from the URL pattern.
-			sb.WriteString(fmt.Sprintf(`<a href="#" style="%s" onclick="if(confirm('%s')){var h={};var t=(document.cookie.match(/(?:^|; )csrf_token=([^;]+)/)||[])[1];if(t)h['X-CSRF-Token']=decodeURIComponent(t);fetch('%s',{method:'POST',credentials:'same-origin',headers:h}).then(function(){var p='%s';if(p.indexOf('/apps/')===0)window.location='/apps';else if(p.indexOf('/social')===0)window.location='/social';else window.location=document.referrer||'/'})};return false;">%s</a>`, style, a.Confirm, a.URL, a.URL, a.Label))
+			sb.WriteString(fmt.Sprintf(`<a href="#" class="%s" onclick="if(confirm('%s')){var h={};var t=(document.cookie.match(/(?:^|; )csrf_token=([^;]+)/)||[])[1];if(t)h['X-CSRF-Token']=decodeURIComponent(t);fetch('%s',{method:'POST',credentials:'same-origin',headers:h}).then(function(){var p='%s';if(p.indexOf('/apps/')===0)window.location='/apps';else if(p.indexOf('/social')===0)window.location='/social';else window.location=document.referrer||'/'})};return false;">%s</a>`, style, a.Confirm, a.URL, a.URL, a.Label))
 		case a.Confirm != "":
-			sb.WriteString(fmt.Sprintf(`<a href="#" style="%s" onclick="if(confirm('%s')){fetch('%s',{method:'POST'}).then(function(){location.reload()})};return false;">%s</a>`, style, a.Confirm, a.URL, a.Label))
+			sb.WriteString(fmt.Sprintf(`<a href="#" class="%s" onclick="if(confirm('%s')){fetch('%s',{method:'POST'}).then(function(){location.reload()})};return false;">%s</a>`, style, a.Confirm, a.URL, a.Label))
 		default:
-			sb.WriteString(fmt.Sprintf(`<a href="#" style="%s" onclick="var el=this;fetch('%s',{method:'POST'}).then(function(){el.textContent='Done';el.style.color='#1a7f37'});event.stopPropagation();return false;">%s</a>`, style, a.URL, a.Label))
+			sb.WriteString(fmt.Sprintf(`<a href="#" class="%s" onclick="var el=this;fetch('%s',{method:'POST'}).then(function(){el.textContent='Done';el.style.color='#1a7f37'});event.stopPropagation();return false;">%s</a>`, style, a.URL, a.Label))
 		}
 	}
 

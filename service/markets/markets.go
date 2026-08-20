@@ -428,16 +428,16 @@ func generateMarketsCardHTML(prices map[string]float64) string {
 	}
 
 	var sb strings.Builder
-	sb.WriteString(`<table style="width:100%;border-collapse:collapse;">`)
+	sb.WriteString(`<table class="w-full">`)
 	for i := 0; i < rows; i++ {
 		sb.WriteString(`<tr>`)
 		if i < len(left) {
-			fmt.Fprintf(&sb, `<td style="padding:6px 8px;"><span class="market-symbol">%s</span></td><td style="padding:6px 8px;text-align:right;"><span class="market-price">$%.2f</span></td>`, left[i], prices[left[i]])
+			fmt.Fprintf(&sb, `<td class="cell"><span class="market-symbol">%s</span></td><td class="cell-right"><span class="market-price">$%.2f</span></td>`, left[i], prices[left[i]])
 		} else {
 			sb.WriteString(`<td></td><td></td>`)
 		}
 		if i < len(right) {
-			fmt.Fprintf(&sb, `<td style="padding:6px 8px;padding-left:24px;"><span class="market-symbol">%s</span></td><td style="padding:6px 8px;text-align:right;"><span class="market-price">$%.2f</span></td>`, right[i], prices[right[i]])
+			fmt.Fprintf(&sb, `<td class="cell nested"><span class="market-symbol">%s</span></td><td class="cell-right"><span class="market-price">$%.2f</span></td>`, right[i], prices[right[i]])
 		} else {
 			sb.WriteString(`<td></td><td></td>`)
 		}

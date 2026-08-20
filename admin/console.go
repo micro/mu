@@ -167,7 +167,7 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 	prevOutput := r.URL.Query().Get("output")
 
 	var sb strings.Builder
-	sb.WriteString(`<div class="card" class="console">`)
+	sb.WriteString(`<div class="card console">`)
 
 	// Output area
 	sb.WriteString(`<div id="cout" class="text-sm whitespace-pre-wrap tall-scroll mb-3">`)

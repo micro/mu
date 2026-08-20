@@ -1089,7 +1089,7 @@ func serveFlowPage(w http.ResponseWriter, r *http.Request, id string) {
 	if f.ParentID != "" {
 		history := getConversationHistory(f.ParentID, 5)
 		for _, h := range history {
-			b.WriteString(`<div class="card" style="border-left:3px solid #007bff;margin-bottom:8px;opacity:0.8;">`)
+			b.WriteString(`<div class="card step-quote">`)
 			b.WriteString(`<div class="text-xs text-muted mb-2">Previous question:</div>`)
 			b.WriteString(`<div class="text-base semibold mb-3">` + htmlEsc(h.Prompt) + `</div>`)
 			b.WriteString(`<div class="text-base">` + app.RenderString(h.Answer) + `</div>`)
@@ -2154,10 +2154,9 @@ func renderToolCallRef(name string, args map[string]any, formattedResult string)
 		}
 	}
 	return `<details class="mb-1">` +
-		`<summary style="cursor:pointer;color:#555;font-size:13px;list-style:none;padding:4px 0;">` +
+		`<summary class="step-toggle">` +
 		label + `</summary>` +
-		`<pre style="margin:6px 0 0;font-size:12px;color:#444;white-space:pre-wrap;background:#f9f9f9;` +
-		`border-radius:4px;padding:8px;max-height:200px;overflow-y:auto;font-family:inherit;">` +
+		`<pre class="step-out">` +
 		htmlEsc(formattedResult) + `</pre>` +
 		`</details>`
 }
@@ -2262,7 +2261,7 @@ func renderNewsCard(result string) string {
 		}
 		b.WriteString(`<div class="thin-row row-pad">`)
 		if item.Category != "" {
-			b.WriteString(`<a href="/news#` + htmlEsc(item.Category) + `" class="category" class="text-2xs mr-1">` + htmlEsc(item.Category) + `</a>`)
+			b.WriteString(`<a href="/news#` + htmlEsc(item.Category) + `" class="category text-2xs mr-1">` + htmlEsc(item.Category) + `</a>`)
 		}
 		b.WriteString(`<a href="` + htmlEsc(link) + `" class="text-base semibold d-block">` + htmlEsc(item.Title) + `</a>`)
 		b.WriteString(`</div>`)
@@ -2378,7 +2377,7 @@ func renderVideoCard(result string) string {
 	var b strings.Builder
 	b.WriteString(`<div class="card"><h4>🎬 Videos</h4>`)
 	for _, v := range items {
-		b.WriteString(`<div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #f0f0f0;align-items:flex-start;">`)
+		b.WriteString(`<div class="thin-row row-pad d-flex gap-3 row-top">`)
 		if v.Thumbnail != "" {
 			b.WriteString(`<img src="` + htmlEsc(v.Thumbnail) + `" class="thumb-sm" loading="lazy">`)
 		}

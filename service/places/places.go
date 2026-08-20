@@ -735,7 +735,7 @@ func renderCitiesSection() string {
 	sb.WriteString(`<h3>Browse by City</h3><div class="city-grid">`)
 	for _, c := range cs {
 		sb.WriteString(fmt.Sprintf(
-			`<a href="#" onclick="selectCity(%f,%f,%s,%s);return false;" class="city-link">%s <span class="text-muted" class="text-08">%s</span></a>`,
+			`<a href="#" onclick="selectCity(%f,%f,%s,%s);return false;" class="city-link">%s <span class="text-muted text-08">%s</span></a>`,
 			c.Lat, c.Lon, escapeHTML(jsonStr(c.Name)), escapeHTML(jsonStr(c.Country)),
 			escapeHTML(c.Name), escapeHTML(c.Country),
 		))

@@ -331,12 +331,12 @@ func NewAgentHandler(w http.ResponseWriter, r *http.Request) {
 			app.Respond(w, r, app.Response{
 				Title:       "Agent limit",
 				Description: "Build a custom agent",
-				HTML: fmt.Sprintf(`<div class="card" style="max-width:600px">`+
+				HTML: fmt.Sprintf(`<div class="card col-narrow">`+
 					`<h3 class="m-0 mb-2">You are running %d of %d agent%s</h3>`+
-					`<p style="color:#666;font-size:15px;margin:0 0 16px">Your plan runs %d. `+
+					`<p class="text-secondary lead-15 m-0 mb-4">Your plan runs %d. `+
 					`Change your plan to add more, or delete one you are not using.</p>`+
 					`<a href="/account/topup" class="btn">Add credit</a> `+
-					`<a href="/agents" class="btn" style="background:#fff;color:#111;border:1px solid #ddd">Your agents</a>`+
+					`<a href="/agents" class="btn btn-plain">Your agents</a>`+
 					`</div>`, have, max, plural(max), max),
 			})
 			return

@@ -122,7 +122,7 @@ func render(errMsg string) string {
 	if errMsg != "" {
 		errHTML = `<p class="text-error m-0 mb-3">` + html.EscapeString(errMsg) + `</p>`
 	}
-	body := `<div class="card" class="form-col">
+	body := `<div class="card form-col">
   <h1 class="m-0 mb-2">Welcome to Mu</h1>
   <p class="text-secondary m-0 mb-5">Two quick things and you're running your own instance.</p>
   ` + errHTML + `

@@ -272,6 +272,9 @@ func buildExternalTo(displayName, from, replyTo, to string, cc []string, subject
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #333; max-width: 100%%;">
+<!-- Inline, deliberately: this is an email body, and mail clients strip
+     <style> blocks. mu.css never reaches it, so the style attribute is the
+     only styling that survives delivery. -->
 %s
 </body>
 </html>`, bodyHTML)

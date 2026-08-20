@@ -208,7 +208,7 @@ func verifier(r *http.Request, who, csrf string) string {
 			`<input name="code" inputmode="numeric" autocomplete="one-time-code" required ` +
 			`placeholder="123456" class="sms-in" aria-label="The code that was texted to you">` +
 			`<button type="submit">Confirm</button></form>` +
-			`<form method="POST" action="/sms" style="margin:8px 0 0">` +
+			`<form method="POST" action="/sms" class="mt-2 m-0">` +
 			`<input type="hidden" name="_csrf" value="` + csrf + `">` +
 			`<input type="hidden" name="start" value="` + html.EscapeString(number) + `">` +
 			`<button type="submit" class="link-button">Send another code</button></form>`)

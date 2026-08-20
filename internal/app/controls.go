@@ -240,7 +240,7 @@ func renderSavedPage(w http.ResponseWriter, r *http.Request, userID string) {
 			if typeLabel == "" {
 				typeLabel = it.Type
 			}
-			sb.WriteString(fmt.Sprintf(`<div style="padding:8px 0;border-bottom:1px solid #f0f0f0">
+			sb.WriteString(fmt.Sprintf(`<div class="thin-row row-pad">
 				<a href="%s">%s</a>
 				<span class="text-sm text-muted"> · %s · %s · <a href="#" onclick="fetch('/app/unsave?type=%s&id=%s',{method:'POST'}).then(function(){location.reload()});return false;">remove</a></span>
 			</div>`, it.URL, it.Title, typeLabel, it.SavedAt.Format("2 Jan 15:04"), it.Type, it.ID))
@@ -261,7 +261,7 @@ func renderBlockedPage(w http.ResponseWriter, r *http.Request, userID string) {
 	} else {
 		sb.WriteString(`<div class="card">`)
 		for uid, t := range blocked {
-			sb.WriteString(fmt.Sprintf(`<div style="padding:8px 0;border-bottom:1px solid #f0f0f0">
+			sb.WriteString(fmt.Sprintf(`<div class="thin-row row-pad">
 				<a href="/@%s">%s</a>
 				<span class="text-sm text-muted"> · %s · <a href="#" onclick="fetch('/app/unblock?user=%s',{method:'POST'}).then(function(){location.reload()});return false;">unblock</a></span>
 			</div>`, uid, uid, t.Format("2 Jan 2006"), uid))

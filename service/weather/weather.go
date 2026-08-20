@@ -113,7 +113,7 @@ fetchWeather(lat,lon);
 },function(){},{timeout:5000});
 }
 function renderWeather(h){
-h='<div style="position:relative">'+h+'<a href="#" onclick="muWeatherRefresh();return false" style="position:absolute;top:0;right:0;font-size:11px;color:#aaa">Refresh</a></div>';
+h='<div class="relative">'+h+'<a href="#" onclick="muWeatherRefresh();return false" class="corner-tr text-2xs text-faint">Refresh</a></div>';
 el.innerHTML=h;
 localStorage.setItem(KEY,h);
 localStorage.setItem(KEY_TS,String(Date.now()));
@@ -136,12 +136,12 @@ if(!f||!f.Current){return}
 var c=f.Current;
 try{localStorage.setItem('mu_weather_now',JSON.stringify({temp:Math.round(c.TempC),desc:c.Description||''}))}catch(e){}
 var h='<div class="d-flex items-center gap-2">';
-h+='<span style="font-size:22px;font-weight:600;color:#333">'+Math.round(c.TempC)+'°C</span>';
+h+='<span class="text-22 semibold">'+Math.round(c.TempC)+'°C</span>';
 h+='<span class="text-secondary">'+c.Description+'</span>';
 h+='</div>';
-if(f.Location)h+='<div style="font-size:12px;color:#999;margin-top:2px">'+f.Location+'</div>';
+if(f.Location)h+='<div class="text-xs text-muted mt-px">'+f.Location+'</div>';
 if(f.DailyItems&&f.DailyItems.length>0){
-h+='<div style="display:flex;gap:12px;margin-top:6px;font-size:12px;color:#888">';
+h+='<div class="d-flex gap-3 mt-half text-xs text-muted">';
 for(var i=0;i<Math.min(3,f.DailyItems.length);i++){
 var day=f.DailyItems[i];
 var name=new Date(day.Date).toLocaleDateString('en',{weekday:'short'});

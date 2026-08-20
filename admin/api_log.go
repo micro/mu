@@ -69,10 +69,10 @@ func APILogHandler(w http.ResponseWriter, r *http.Request) {
 			if e.RequestBody != "" || e.ResponseBody != "" {
 				content.WriteString(`<tr><td colspan="7">`)
 				if e.RequestBody != "" {
-					content.WriteString(fmt.Sprintf(`<details><summary>Request</summary><pre style="white-space:pre-wrap;word-break:break-all;font-size:0.8em">%s</pre></details>`, html.EscapeString(e.RequestBody)))
+					content.WriteString(fmt.Sprintf(`<details><summary>Request</summary><pre class="raw-sm">%s</pre></details>`, html.EscapeString(e.RequestBody)))
 				}
 				if e.ResponseBody != "" {
-					content.WriteString(fmt.Sprintf(`<details><summary>Response</summary><pre style="white-space:pre-wrap;word-break:break-all;font-size:0.8em">%s</pre></details>`, html.EscapeString(e.ResponseBody)))
+					content.WriteString(fmt.Sprintf(`<details><summary>Response</summary><pre class="raw-sm">%s</pre></details>`, html.EscapeString(e.ResponseBody)))
 				}
 				content.WriteString(`</td></tr>`)
 			}

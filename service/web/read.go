@@ -86,7 +86,7 @@ func ReadHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		b.WriteString(fmt.Sprintf(`<div class="article-actions mt-4">
 			<a href="%s" target="_blank" rel="noopener noreferrer" class="semibold">Visit original site →</a>
-			<span style="margin:0 8px;color:#ddd">·</span>
+			<span class="sep">·</span>
 			<a href="javascript:history.back()">← Back to results</a>
 		</div>`, html.EscapeString(rawURL)))
 		b.WriteString(`</div>`)

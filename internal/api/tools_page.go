@@ -81,7 +81,7 @@ func ToolsPageHandler(w http.ResponseWriter, r *http.Request) {
 		// It is here at all because every reference page lived behind the
 		// footer, and there is no footer once you are signed in: a person with
 		// an account could not reach /api from anywhere in the product.
-		b.WriteString(`<p class="card-meta" style="margin-top:-8px">` +
+		b.WriteString(`<p class="card-meta pull-up">` +
 			`Not connecting an agent? Every method is a plain HTTP call too — ` +
 			`<a href="/api">the HTTP API &rarr;</a></p>`)
 		b.WriteString(toolGrid())

@@ -159,7 +159,7 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	if full, have, max := AtAgentLimit(owner); full {
 		b.WriteString(app.ActionLink("/account/topup", "Add credit to lift the limit"))
 		b.WriteString(fmt.Sprintf(
-			`<p class="text-sm" class="text-secondary mt-2 m-0">Your plan runs %d agent%s and you have %d. `+
+			`<p class="text-sm text-secondary mt-2 m-0">Your plan runs %d agent%s and you have %d. `+
 				`Verify your address or put credit on <a href="/account">your account</a>, or delete one first.</p>`,
 			max, plural(max), have))
 	} else {
@@ -219,11 +219,11 @@ func secretPanel(secret string, a *Agent, base string) string {
 	if a != nil {
 		name, endpoint = a.Name, a.Endpoint(base)
 	}
-	return `<div class="card" class="card-ok m-0 mb-5">` +
+	return `<div class="card card-ok m-0 mb-5">` +
 		`<h4 class="m-0 mb-2 text-base">` + html.EscapeString(name) + ` is ready</h4>` +
 		`<p class="text-sm text-muted m-0 mb-2">Copy this token now — it is stored hashed and cannot be shown again.</p>` +
 		`<pre class="agent-secret">` + html.EscapeString(secret) + `</pre>` +
-		`<p class="text-sm text-muted" class="mt-2 m-0">Point it at <code>` + html.EscapeString(endpoint) + `</code></p>` +
+		`<p class="text-sm text-muted mt-2 m-0">Point it at <code>` + html.EscapeString(endpoint) + `</code></p>` +
 		`</div>`
 }
 

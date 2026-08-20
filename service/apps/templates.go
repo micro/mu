@@ -893,7 +893,7 @@ h2 { font-size: 18px; font-weight: 600; margin-bottom: 12px; }
     <h3>Weather</h3>
     <div class="loading">Getting location...</div>
   </div>
-  <div class="panel" style="grid-column: 1 / -1;" id="news-panel">
+  <div class="panel span-all" id="news-panel">
     <h3>News</h3>
     <div class="loading">Loading headlines...</div>
   </div>
@@ -1173,7 +1173,7 @@ h2 { font-size: 20px; font-weight: 600; margin-bottom: 16px; }
 <div id="holdings"></div>
 <div class="add-form">
   <select id="addSymbol"><option value="">Add coin...</option></select>
-  <input type="number" id="addAmount" placeholder="Amount" step="any" style="width:100px;">
+  <input type="number" id="addAmount" placeholder="Amount" step="any" class="w-100">
   <button onclick="addHolding()">Add</button>
 </div>
 <div class="news-section">

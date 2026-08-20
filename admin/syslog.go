@@ -60,7 +60,7 @@ func SysLogHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		content.WriteString(`<script>function muToggleSyslog(id){var d=document.getElementById(id);if(d){d.style.display=d.style.display==='none'?'table-row':'none';}}</script>`)
 		content.WriteString(`<div class="scroll-x">`)
-		content.WriteString(`<table class="email-log" class="fixed-table">`)
+		content.WriteString(`<table class="email-log fixed-table">`)
 		content.WriteString(`<colgroup><col class="w-110"><col class="w-90"><col></colgroup>`)
 		content.WriteString(`<tr><th>Time</th><th>Package</th><th>Message</th></tr>`)
 		for i, e := range entries {
@@ -111,12 +111,12 @@ func alertsCard() string {
 		return ""
 	}
 	var b strings.Builder
-	b.WriteString(`<div class="card" class="border-bad">`)
+	b.WriteString(`<div class="card border-bad">`)
 	fmt.Fprintf(&b, `<h3 class="text-error">Alerts <span class="count">%d</span></h3>`, len(alerts))
 	b.WriteString(`<p class="text-sm text-muted">Things this instance did that it should ` +
 		`not have had to, or refused in order to protect itself. Kept apart from the log ` +
 		`below, which rolls over.</p>`)
-	b.WriteString(`<div class="scroll-x"><table class="email-log" class="fixed-table">`)
+	b.WriteString(`<div class="scroll-x"><table class="email-log fixed-table">`)
 	b.WriteString(`<colgroup><col class="w-130"><col class="w-90"><col></colgroup>`)
 	b.WriteString(`<tr><th>When</th><th>Where</th><th>What</th></tr>`)
 	for _, a := range alerts {

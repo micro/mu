@@ -51,13 +51,13 @@ func DiagnosticsHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Summary
 	if errors == 0 && warnings == 0 {
-		b.WriteString(`<div class="card" class="edge good"><h3 class="text-success">All systems operational</h3></div>`)
+		b.WriteString(`<div class="card edge good"><h3 class="text-success">All systems operational</h3></div>`)
 	} else {
 		color := "#f39c12"
 		if errors > 0 {
 			color = "#e74c3c"
 		}
-		b.WriteString(fmt.Sprintf(`<div class="card" class="edge" style="border-left-color:%s"><h3 style="color:%s">%d issue(s) detected</h3></div>`, color, color, errors+warnings))
+		b.WriteString(fmt.Sprintf(`<div class="card edge" style="border-left-color:%s"><h3 style="color:%s">%d issue(s) detected</h3></div>`, color, color, errors+warnings))
 	}
 
 	// Individual checks
@@ -72,7 +72,7 @@ func DiagnosticsHandler(w http.ResponseWriter, r *http.Request) {
 			color = "#e74c3c"
 		}
 
-		b.WriteString(`<div class="card" class="pad-row mb-2">`)
+		b.WriteString(`<div class="card pad-row mb-2">`)
 		b.WriteString(fmt.Sprintf(`<div class="d-flex between items-center">
 			<strong>%s</strong>
 			<span class="text-18" style="color:%s">%s</span>

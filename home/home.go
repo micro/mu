@@ -300,7 +300,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// Logged out: the home screen IS the landing, so once a visitor has
 		// used it, offer a clear free sign-up (primary) plus log in.
-		inviteHTML = `<span id="home-date-actions"><a href="/signup" style="color:#111;text-decoration:none;font-weight:700">Sign up</a> <a href="/login" class="text-muted no-underline ml-3">Log in</a></span>`
+		inviteHTML = `<span id="home-date-actions"><a href="/signup" class="no-underline bold">Sign up</a> <a href="/login" class="text-muted no-underline ml-3">Log in</a></span>`
 	}
 	// No cog. It toggled a card picker, and there is no card selection to pick
 	// any more — the instance chooses the cards and everybody gets the same

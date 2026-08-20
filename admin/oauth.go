@@ -90,11 +90,11 @@ func OAuthHandler(w http.ResponseWriter, r *http.Request) {
 		// row offers the one thing that fixes it. Every client the /token form
 		// made before it asked for an address is in this state, and none of
 		// them ever worked.
-		where := `<form method="POST" action="/admin/oauth" style="margin:0;display:flex;gap:4px">` +
+		where := `<form method="POST" action="/admin/oauth" class="m-0 d-flex gap-xs">` +
 			`<input type="hidden" name="action" value="redirect">` +
 			`<input type="hidden" name="client_id" value="` + html.EscapeString(c.ClientID) + `">` +
 			`<input type="text" name="redirect_uri" placeholder="https://… or http://localhost:0/callback" ` +
-			`style="font-size:11px;width:230px" value="` + html.EscapeString(firstURI(c.RedirectURIs)) + `">` +
+			`class="text-2xs w-230" value="` + html.EscapeString(firstURI(c.RedirectURIs)) + `">` +
 			`<button type="submit" class="text-2xs">Set</button></form>`
 		if len(c.RedirectURIs) == 0 {
 			where = `<span class="text-muted text-2xs">none — cannot sign anybody in</span><br>` + where

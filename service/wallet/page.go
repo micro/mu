@@ -62,7 +62,7 @@ func Page(accountID string) string {
 		// somebody who has just sent money: one says wait, the other says go
 		// and look at the chain yourself.
 		human = "—"
-		unreadable = ` <span style="color:#b7791f;font-size:13px">· could not reach ` +
+		unreadable = ` <span class="text-gold text-sm">· could not reach ` +
 			html.EscapeString(chainName()) + ` to read this, so it may not be zero</span>`
 		app.Log("wallet", "could not read the USDC balance of %s: %v", bw.Address, balErr)
 	}
@@ -78,7 +78,7 @@ func Page(accountID string) string {
   <h2>Wallet</h2>
   <p class="text-sm text-muted">A key of your own. Your agent can spend it on priced
   endpoints anywhere, capped per call and per day.</p>
-  <p style="font-size:28px;margin:8px 0 10px"><b>$%s</b> <span class="text-muted text-base">USDC</span>%s</p>
+  <p class="text-28 mt-2 mb-3"><b>$%s</b> <span class="text-muted text-base">USDC</span>%s</p>
   <p class="cw-net"><b>%s only.</b> USDC sent on Ethereum, Arbitrum or any other
   chain lands at this same address on that chain, where this instance cannot see it
   or move it.</p>
@@ -89,10 +89,10 @@ func Page(accountID string) string {
     <p class="cw-qrnote">Scans as <b>USDC on %s</b> — your wallet should already
     have the network and token filled in. If it offers a different network, stop.</p>
   </details>
-  <p class="text-sm text-muted" style="margin:12px 0 0"><a href="/wallet/export">Export your
+  <p class="text-sm text-muted mt-3 m-0"><a href="/wallet/export">Export your
   private key →</a> The key is held on this instance; a copy you hold yourself is the only
   thing that makes losing it here survivable.</p>
-  <p class="text-sm text-muted" style="margin:6px 0 0">Credits for this instance are a
+  <p class="text-sm text-muted mt-half m-0">Credits for this instance are a
   separate thing and are bought with a card — <a href="/account#balance">your balance</a>.</p>
 </div>
 %s

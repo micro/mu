@@ -364,12 +364,12 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 	// email verification configured.
 	verifiedBadge := ""
 	if acc.Admin || acc.Approved || acc.EmailVerified {
-		verifiedBadge = ` <span title="Verified" aria-label="Verified" style="display:inline-block;vertical-align:middle;width:16px;height:16px;background:#22c55e;color:#fff;border-radius:50%;text-align:center;line-height:16px;font-size:11px;font-weight:700">✓</span>`
+		verifiedBadge = ` <span title="Verified" aria-label="Verified" class="verified">✓</span>`
 	}
 
 	// Build the profile page content
 	content := fmt.Sprintf(`<div class="max-w-xl">
-<div class="mb-6" style="padding-bottom: 20px; border-bottom: 2px solid #333;">
+<div class="mb-6 page-head">
 <p class="info m-0">@%s%s</p>
 <p class="info mt-3">Joined %s</p>
 %s

@@ -130,8 +130,8 @@ func renderPublicStatusHTML(status PublicStatusResponse) string {
 
 	// Header
 	sb.WriteString(fmt.Sprintf(`<div class="status-header">
-<span class="status-icon %s" style="font-size:24px;">●</span>
-<span style="font-size:18px;">%s</span>
+<span class="status-icon %s text-24">●</span>
+<span class="text-18">%s</span>
 </div>`, statusClass, statusText))
 
 	// Services
@@ -504,15 +504,15 @@ func renderStatusHTML(status StatusResponse) string {
 	// Header
 	sb.WriteString(fmt.Sprintf(`<div class="status-header">
 <span class="%s status-icon">%s</span>
-<span style="font-size: 18px;">%s</span>
+<span class="text-18">%s</span>
 </div>`, statusClass, statusIcon, statusText))
 
 	// Disk warning
 	diskWarning := ""
 	if status.Disk.Percent > 90 {
-		diskWarning = ` style="color: #f44336;"`
+		diskWarning = ` class="status-error"`
 	} else if status.Disk.Percent > 75 {
-		diskWarning = ` style="color: #ff9800;"`
+		diskWarning = ` class="status-warn"`
 	}
 
 	// System Info
