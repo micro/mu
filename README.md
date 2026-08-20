@@ -259,14 +259,6 @@ Customise feeds, prompts and cards by editing JSON files:
 
 See [Install](docs/INSTALL.md) for every setting the code reads.
 
-## Documentation
-
-- [About](https://micro.mu/about)
-- [Install](https://micro.mu/install)
-- [Tools](https://micro.mu/tools)
-
-For the code, [Architecture](docs/ARCHITECTURE.md).
-
 ## License
 
 AGPL 3.0
