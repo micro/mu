@@ -134,7 +134,7 @@ func landingBody() string {
 weather, places, storage — and it remembers the last conversation.</p>
 
 <div class="lctas">
-  <a class="lcta" href="/signup">Get an agent →</a>
+  <a class="lcta" href="/signup">Get started →</a>
 </div>
 </div>
 
