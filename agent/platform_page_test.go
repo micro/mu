@@ -139,17 +139,21 @@ func TestAgentNamesDoNotEndInAgent(t *testing.T) {
 	}
 }
 
-// Yours comes before ours.
+// The page is about the agents you made.
 //
-// This page listed only the agents you had made until the instance's own were
-// added to it, and a new section goes at the top — so six things nobody made sat
-// above the one thing they did, on the page named for what they made. The empty
-// state gave it away: "That is the only one so far" was a sentence about the row
-// above it, and only made sense in that order.
+// It listed this instance's eleven as well, under "Our agents", on the argument
+// that they had been reachable at agent+news@ and nowhere else. True, and the
+// cure was worse: /agents is where somebody works out what an agent *is*, and
+// six rows of things nobody made — with no stated principle behind why news but
+// not sport — taught that an agent is something the product hands you rather
+// than something you make.
 //
-// Read off the rendered page, because the bug was an ordering one and ordering
-// is the one thing a unit test of either section cannot see.
-func TestYourAgentsComeFirst(t *testing.T) {
+// This test used to hold their order relative to yours. What it holds now is
+// that they are not there, and that the page leads with making one.
+//
+// The registry is untouched: platformRow still exists and agent+news@ still
+// routes. It is the page that changed, not the roster.
+func TestTheRosterIsYourOwnAgents(t *testing.T) {
 	const who = "roster-order"
 	if err := auth.Create(&auth.Account{ID: who}); err != nil {
 		t.Fatalf("creating the account: %v", err)
@@ -165,18 +169,17 @@ func TestYourAgentsComeFirst(t *testing.T) {
 	RosterHandler(rec, req)
 	page := rec.Body.String()
 
-	yours, ours := strings.Index(page, "Your agents"), strings.Index(page, "Our agents")
-	if yours < 0 || ours < 0 {
-		t.Fatalf("the roster did not draw both sections (yours %d, ours %d)", yours, ours)
+	if strings.Contains(page, "Our agents") {
+		t.Error("the instance's own agents are listed again, above or below the " +
+			"ones somebody made — the page is for what you made")
 	}
-	if yours > ours {
-		t.Errorf("Our agents (%d) is drawn above Your agents (%d) — the page is named "+
-			"for the ones somebody made, so those go first", ours, yours)
+	// And the way to make one is on it.
+	if !strings.Contains(page, "New agent") {
+		t.Error("there is no way to make an agent on the page about agents")
 	}
-	// And the button that makes one belongs to the section it adds to, so it is
-	// above the instance's own list rather than under it.
-	if made := strings.Index(page, "New agent"); made >= 0 && made > ours {
-		t.Error("+ New agent is drawn under Our agents, which is a button pointing " +
-			"at a list nobody can add to")
+	// Fork is gone: it offered to copy an agent as a first-class action, on a
+	// page where most people have never made one.
+	if strings.Contains(page, "?fork=") {
+		t.Error("Fork is back on the roster")
 	}
 }

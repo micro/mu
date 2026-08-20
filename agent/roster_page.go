@@ -66,18 +66,16 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	csrf := auth.CSRFToken(r)
 	var b strings.Builder
 	b.WriteString(`<div style="max-width:720px">`)
-	// The first line of the same three-page sentence: an agent acts for you,
-	// tools are what it can call, services are what runs behind them.
-	// What you can do with one, in the order you can do it.
+	// The model, in one sentence: you make one, it gets an address, you talk
+	// to it — and a token lets something else use its tools.
 	//
-	// This said "Each one gets an address people can write to, a standing
-	// instruction, and the services it may reach — then talk to it in your
-	// inbox, or hand it a token and run it from Claude, Cursor or your own
-	// program." Three things an agent *has* before one thing you can do, and
-	// the two ways to use it were a subordinate clause at the end. There are
-	// two: chat with it here, or email it. Everything else is configuration.
-	b.WriteString(`<p class="lens-lead">Chat with one here, or email it. Each has its own ` +
-		`address, its own standing instruction, and only the services you gave it.</p>`)
+	// The page has been led by three other sentences. One listed what an agent
+	// *has* before saying what you can do with it. One promised an inbox. This
+	// one is what somebody has to understand to use the page, and it is in the
+	// order they will do it.
+	b.WriteString(`<p class="lens-lead">Make an agent: give it a name, an instruction and ` +
+		`the services it may use. It gets its own address, you can chat with it here, and a ` +
+		`token lets Claude, Cursor or your own code use the tools you gave it.</p>`)
 
 	if msg := r.URL.Query().Get("error"); msg != "" {
 		// The way out is a link, because it reads as one. Hitting the agent limit
@@ -119,14 +117,14 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	// The heading is drawn either way now. "Your agents / none yet" is the
 	// account saying something true about itself; skipping it when the list is
 	// empty means the page tells you what it has and not what you have.
+	// No heading over an empty list. "Your agents" above "None yet" is the page
+	// telling you it has nothing, twice; the empty state is the whole message.
 	EnsureTags(owner)
 	roster := Agents(owner)
-	b.WriteString(`<h3 style="font-size:15px;margin:0 0 10px">Your agents</h3>`)
 	if len(roster) == 0 {
-		b.WriteString(`<p class="agent-note" style="margin:0 0 16px">None yet. An agent of ` +
-			`your own is a name, a scope, and a token — so what you hand a credential to reaches the ` +
-			`services you chose and no others. Ours are below and need nothing set up.</p>`)
+		b.WriteString(`<p class="agent-note" style="margin:0 0 16px">You have not made one yet.</p>`)
 	} else {
+		b.WriteString(`<h3 style="font-size:15px;margin:0 0 10px">Your agents</h3>`)
 		b.WriteString(`<div style="display:flex;flex-direction:column;gap:8px;margin:0 0 24px">`)
 		for _, a := range roster {
 			b.WriteString(agentRow(a, csrf, app.BaseURL(r)))
@@ -153,17 +151,19 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(app.ActionLink("/agent/new", "+ New agent"))
 	}
 
-	// And then the ones that came with the instance. Below the button that makes
-	// one of yours, because that button belongs to the section above it — a
-	// "+ New agent" sitting under a list nobody can add to is a button pointing
-	// at the wrong list.
+	// The instance's own agents are not listed here.
 	//
-	// This section exists because eleven agents had been in the registry since
-	// the router was written, each reachable at agent+news@ and nowhere else: not
-	// a page, not a link, not this list.
-	b.WriteString(`<div style="margin-top:28px">`)
-	b.WriteString(defaultRow())
-	b.WriteString(`</div>`)
+	// They were, for a while, on the argument that eleven had been in the
+	// registry since the router was written and were reachable at agent+news@
+	// and nowhere else. True, and the cure was worse: this page is where you
+	// understand what an agent *is*, and eleven things nobody made, with no
+	// stated principle behind why news but not sport, taught that an agent is
+	// something the product hands you rather than something you make. Six rows
+	// of somebody else's things above the one thing that is yours.
+	//
+	// The model is one sentence now: you make an agent, it gets an address, you
+	// talk to it. The registry is untouched — it still routes, and agent+news@
+	// still answers — it is just not what this page is about.
 
 	// Close the column this page opened. Without it the footer was swallowed
 	// into a 720px div and rendered halfway up the page: #content is a flex
@@ -270,7 +270,6 @@ func entryRow(e entry) string {
 	b.WriteString(`<a href="/agent/connect?id=` + html.EscapeString(e.ID) + `">Connect</a>`)
 	if e.Admin {
 		b.WriteString(`<a href="/agent/new?id=` + html.EscapeString(e.ID) + `">Edit</a>`)
-		b.WriteString(`<a href="/agent/new?fork=` + html.EscapeString(e.ID) + `">Fork</a>`)
 	}
 	b.WriteString(`</div></div>` + e.Extra + `</div>`)
 	return b.String()
