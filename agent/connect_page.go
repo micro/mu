@@ -101,6 +101,32 @@ func ConnectHandler(w http.ResponseWriter, r *http.Request) {
 	app.Respond(w, r, app.Response{Title: title, Description: desc, HTML: page})
 }
 
+// connRow is one labelled fact on this page.
+//
+// The three panels each wrote their own, which is how the same thing ended up
+// with three names — "Email", "Message it", "Write to it" — and how only one of
+// them grew a Chat row. One order for all three now: what it may reach, its
+// address, where to chat with it, the endpoint, its token.
+func connRow(k, v string) string {
+	return `<div class="conn-row"><span class="conn-k">` + k + `</span>` + v + `</div>`
+}
+
+// connChat is the row linking to an agent's own chat page.
+//
+// Every agent gets one, which is the whole point of the fix: the default had
+// "Talk to it" and nobody else did, so the page about one agent offered a way
+// in that the page about the next agent did not.
+//
+// Empty for an agent that runs elsewhere. There is no conversation with it
+// here — it is called over MCP by something outside this instance — and a link
+// to a chat box it will never use is the thing its page used to open on.
+func connChat(base, path string) string {
+	if path == "" {
+		return ""
+	}
+	return connRow("Chat", `<span class="conn-v">`+app.TextLink(base+path, path)+`</span>`)
+}
+
 // defaultPanel is the same page for Micro, which is nobody's roster entry.
 //
 // The default agent used to have no Connect tab at all, on the reasoning that it
@@ -121,20 +147,17 @@ func defaultPanel(base string) string {
 		`identity, so it uses your account rather than a token of its own. ` +
 		app.Link("Make one that is", "/agent/new") + `</p>`)
 
-	b.WriteString(`<div class="conn-row"><span class="conn-k">May reach</span>` +
-		`<span class="conn-scope wide">everything you can reach</span></div>`)
+	b.WriteString(connRow("May reach", `<span class="conn-scope wide">everything you can reach</span>`))
 
-	b.WriteString(`<div class="conn-row"><span class="conn-k">Endpoint</span>` +
-		`<code class="conn-v">` + html.EscapeString(strings.TrimSuffix(base, "/")+"/mcp") + `</code></div>`)
-
+	// The address, with no paragraph under it. This carried three lines about
+	// verified addresses, what is filed rather than answered, and which
+	// conversation list it shows up in — rules, on a page whose job is to hand
+	// you the things you copy somewhere else.
 	if addr := mail.SharedAgentAddress(); addr != "" {
-		// The address, with no paragraph under it. This carried three lines
-		// about verified addresses, what is filed rather than answered, and
-		// which conversation list it shows up in — rules, on a page whose job
-		// is to hand you the four things you copy somewhere else.
-		b.WriteString(`<div class="conn-row"><span class="conn-k">Email</span>` +
-			`<code class="conn-v">` + html.EscapeString(addr) + `</code></div>`)
+		b.WriteString(connRow("Email", `<code class="conn-v">`+html.EscapeString(addr)+`</code>`))
 	}
+
+	b.WriteString(connChat(base, "/agent/"+DefaultPlatformAgent))
 
 	b.WriteString(`<div class="conn-row"><span class="conn-k">Token</span>` +
 		`<span class="conn-v">Your account's. ` + app.TextLink("Issue one", "/token") +
@@ -142,7 +165,17 @@ func defaultPanel(base string) string {
 		`hand to somebody else should be ` + app.TextLink("its own", "/agent/new") +
 		`, with a scope.</span></div>`)
 
+	// What this block is, said once, because it is not what the page is
+	// otherwise about.
+	//
+	// There was an "Endpoint" row above, showing .../mcp, and it made no sense
+	// next to Email and Chat: those reach the agent, and that reaches its
+	// *tools*. Pointing Claude at it does not talk to your agent at all — Claude
+	// brings its own instruction and uses the services you scoped this one to.
+	// The row also duplicated the url in the JSON directly below it.
 	b.WriteString(`<h3 class="conn-head">Configuration</h3>`)
+	b.WriteString(`<p class="conn-note">For giving something else the tools this agent may ` +
+		`use — Claude, Cursor, your own code. It calls the tools; it does not talk to the agent.</p>`)
 	b.WriteString(`<pre class="conn-pre">` + html.EscapeString(`{
   "mcpServers": {
     "mu": {
@@ -188,11 +221,6 @@ func connectPanel(a *Agent, base, csrf string) string {
 
 	b.WriteString(`<div class="conn-row"><span class="conn-k">May reach</span>` +
 		`<span class="` + cls + `">` + html.EscapeString(scope) + `</span></div>`)
-
-	// The endpoint carries the scope in the query string, so pointing a client
-	// at it lists exactly what this agent may call.
-	b.WriteString(`<div class="conn-row"><span class="conn-k">Endpoint</span>` +
-		`<code class="conn-v">` + html.EscapeString(a.Endpoint(base)) + `</code></div>`)
 
 	// The address, and who it listens to. Knowing the address is not permission
 	// to use it — mail from anyone else is filed and ignored — and a reader who
@@ -260,7 +288,17 @@ func connectPanel(a *Agent, base, csrf string) string {
 
 	// How to actually wire it up, with this agent's own endpoint in it rather
 	// than the generic one /tools shows.
+	// What this block is, said once, because it is not what the page is
+	// otherwise about.
+	//
+	// There was an "Endpoint" row above, showing .../mcp, and it made no sense
+	// next to Email and Chat: those reach the agent, and that reaches its
+	// *tools*. Pointing Claude at it does not talk to your agent at all — Claude
+	// brings its own instruction and uses the services you scoped this one to.
+	// The row also duplicated the url in the JSON directly below it.
 	b.WriteString(`<h3 class="conn-head">Configuration</h3>`)
+	b.WriteString(`<p class="conn-note">For giving something else the tools this agent may ` +
+		`use — Claude, Cursor, your own code. It calls the tools; it does not talk to the agent.</p>`)
 	b.WriteString(`<pre class="conn-pre">` + html.EscapeString(`{
   "mcpServers": {
     "`+strings.ToLower(a.Name)+`": {
@@ -324,11 +362,6 @@ func platformPanel(a *micro.Agent, base string) string {
 			`thread, which turns up in your inbox.</span></span></div>`)
 	}
 
-	b.WriteString(`<div class="conn-row"><span class="conn-k">Endpoint</span>` +
-		`<code class="conn-v">` + html.EscapeString(strings.TrimSuffix(base, "/")+"/mcp") + `</code></div>`)
-
-	b.WriteString(`<div class="conn-row"><span class="conn-k">Talk to it</span>` +
-		`<span class="conn-v">` + app.TextLink(base+"/agent/"+html.EscapeString(a.ID),
-		"/agent/"+html.EscapeString(a.ID)) + `</span></div>`)
+	b.WriteString(connChat(base, "/agent/"+html.EscapeString(a.ID)))
 	return b.String()
 }
