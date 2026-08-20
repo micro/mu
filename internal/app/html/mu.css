@@ -5432,8 +5432,15 @@ button.pill:hover {
    preview under them without breaking them apart — see the media query. */
 .ib-line { display: flex; align-items: baseline; gap: 8px; flex: none; max-width: 60%; min-width: 0; overflow: hidden }
 
+/* An explicit weight, because the row is a link and `a` is bold app-wide.
+   Anything inside a link that does not declare a weight inherits that, so the
+   subject was bold on every row and .ib-row.unseen had nothing left to say —
+   read or unread, the page looked the same, which is the one distinction a
+   mailbox exists to draw. .ib-who declares 500 and escaped it; this did not.
+   TestAStatefulWeightHasABaseWeight now holds it for every such pair. */
 .ib-subject {
   font-size: 14px;
+  font-weight: var(--font-weight-normal, 400);
   color: var(--text-primary, #1a1a1a);
   white-space: nowrap;
   flex: none;
