@@ -81,7 +81,10 @@ func TestToolWordsNamesServicesNotTools(t *testing.T) {
 	if got != "news, web" {
 		t.Errorf("toolWords = %q", got)
 	}
-	if got := toolWords(nil); got != "everything you can reach" {
+	// One word for the unconfined case. It read "everything you can reach",
+	// which is a sentence answering a question nobody asked in a cell beside
+	// "news, web".
+	if got := toolWords(nil); got != "Everything" {
 		t.Errorf("an agent with every tool reads %q", got)
 	}
 }

@@ -20,8 +20,6 @@ package home
 // not guess at an answer it does not have.
 
 import (
-	"fmt"
-	"html"
 	"net/http"
 	"sort"
 	"strings"
@@ -108,39 +106,28 @@ func spendSection(id string, admin bool) string {
 	}
 	sb.WriteString(`</div>`)
 
-	sb.WriteString(`<div class="traffic-grid">`)
-	usage.Table(&sb, "What you spent on", rows)
-
-	// The last few movements, so a surprising number has something to check it
-	// against without leaving the page.
-	sb.WriteString(`<div class="card"><h3>Recent</h3>`)
-	if len(txs) == 0 {
-		sb.WriteString(`<p class="text-sm text-muted">Nothing yet. ` +
+	// One table, not two.
+	//
+	// There was a "Recent" beside this one — the last twelve movements, in
+	// order — and the two were hard to tell apart because they are the same
+	// ledger read twice. They answer different questions, but only one of those
+	// questions is this page's: what is costing me. The other is "what happened
+	// at 14:32", which is a receipt, and the receipts are the History table on
+	// /account where they can carry a running balance. The copy here could not,
+	// so a free call rendered as "+0" and a column of those down the page said
+	// nothing at all.
+	if len(rows) == 0 {
+		sb.WriteString(`<div class="card"><h3>What you spent on</h3>` +
+			`<p class="text-sm text-muted">Nothing yet. ` +
 			`A credit is charged when a call costs this instance something to run — ` +
-			`a model call, or a paid third party. Reading and listing are free.</p>`)
-	} else {
-		sb.WriteString(`<table class="traffic-table usage-recent">`)
-		for i, tx := range txs {
-			if i >= 12 {
-				break
-			}
-			amount := fmt.Sprintf("%+d", tx.Amount)
-			class := "usage-spend"
-			if tx.Amount > 0 {
-				class = "usage-topup"
-			}
-			fmt.Fprintf(&sb, `<tr><td>%s</td><td class="usage-when">%s</td><td class="traffic-n %s">%s</td></tr>`,
-				html.EscapeString(tx.Operation), html.EscapeString(usage.Since(tx.CreatedAt)), class, amount)
-		}
-		sb.WriteString(`</table><p class="text-sm text-muted"><a href="/account">Full ledger →</a></p>`)
+			`a model call, or a paid third party. Reading and listing are free.</p></div>`)
+		return sb.String()
 	}
-	sb.WriteString(`</div></div>`)
+	usage.Table(&sb, "What you spent on", rows)
+	sb.WriteString(`<p class="text-sm text-muted"><a href="/account#ledger">Every charge, in order →</a></p>`)
 	return sb.String()
 }
 
 const usagePageCSS = `<style>
-.usage-recent td{vertical-align:baseline}
 .usage-when{color:var(--text-muted);font-size:12px;white-space:nowrap;padding-left:10px!important}
-.usage-spend{color:var(--text-primary)}
-.usage-topup{color:#1a7f37}
 </style>`

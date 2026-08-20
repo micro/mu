@@ -325,7 +325,7 @@ func agentRow(a *Agent, csrf, base string) string {
 	for_ := strings.TrimSpace(a.Description)
 	if for_ == "" {
 		if a.Unscoped() {
-			for_ = "Everything you can reach"
+			for_ = "Everything"
 		} else {
 			labels := make([]string, 0, len(a.Services))
 			for _, sv := range a.Services {
@@ -409,7 +409,7 @@ func platformRow(name string) string {
 		for_ = toolWords(a.Tools)
 	}
 	if len(a.Tools) == 0 {
-		for_ = "Everything you can reach"
+		for_ = "Everything"
 	}
 	// The default says so, because nothing else on the row does. It has no Edit
 	// and no Remove, which is a difference you notice only by comparing it with
@@ -446,7 +446,7 @@ func toolWords(tools []string) string {
 		out = append(out, name)
 	}
 	if len(out) == 0 {
-		return "everything you can reach"
+		return "Everything"
 	}
 	return strings.Join(out, ", ")
 }

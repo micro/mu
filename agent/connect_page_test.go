@@ -63,9 +63,15 @@ func TestTheConnectPageCarriesTheScopeTheEndpointAndTheTokenState(t *testing.T) 
 
 	panel := connectPanel(a, "https://mu.example", "csrf")
 	// The scope goes above the token, because it is the thing that makes
-	// handing a token out safe.
-	if !strings.Contains(panel, "May reach") || strings.Contains(panel, "everything you can reach") {
+	// handing a token out safe. Labelled "Tools", which is what it is a list
+	// of — "May reach" named the same thing in words that could equally have
+	// meant the mail address two rows down.
+	if !strings.Contains(panel, `conn-k">Tools<`) || !strings.Contains(panel, "Probealpha") {
 		t.Errorf("a scoped agent's page does not say what it is confined to:\n%s", panel)
+	}
+	// And a confined agent must not read as an unconfined one.
+	if strings.Contains(panel, "Everything") {
+		t.Errorf("a scoped agent's page says it reaches everything:\n%s", panel)
 	}
 	if !strings.Contains(panel, a.Endpoint("https://mu.example")) {
 		t.Errorf("the endpoint is missing, so the scope is not reachable:\n%s", panel)
@@ -96,7 +102,8 @@ func TestTheConnectPageCarriesTheScopeTheEndpointAndTheTokenState(t *testing.T) 
 func TestTheDefaultAgentSaysHowToReachIt(t *testing.T) {
 	panel := defaultPanel("https://mu.example")
 	for _, want := range []string{
-		"everything you can reach",              // its scope, which is the widest one
+		`conn-k">Tools<`,                        // what it reaches, and the label for it
+		"Everything",                            // its scope, which is the widest one
 		"https://mu.example/mcp",                // where something points at it
 		`href="/token"`,                         // the credential it actually uses
 		html.EscapeString(`"url": "https://mu`), // a config block to copy

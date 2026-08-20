@@ -69,16 +69,17 @@ func BalanceCard(userID string) string {
 	if isAdmin {
 		admin = app.Note("You are an admin on this instance, so your own calls are never charged.")
 	}
-	// Usage is on this line because the sidebar no longer carries it: what an
-	// account has spent is a view of the money above it, not a fourth level of
-	// the product beside Tools and Services, which is where it sat.
+	// Two links, and both go somewhere else. Usage and History were here too,
+	// and the usage graph is the next card down and the history the one after
+	// that — a link is a promise that there is somewhere to go, and scrolling
+	// four hundred pixels is not somewhere. What is on the page does not need
+	// announcing on the page.
 	return app.SectionID("balance", "Balance",
 		`<p class="balance-figure"><b>`+thousands(c.Balance)+`</b> <span>credits</span></p>`,
 		app.Note(money(c.Balance)+" · 1 credit = 1p"),
 		admin,
 		`<p class="balance-links"><a href="/account/topup">Add credits &rarr;</a> · `+
-			`<a href="/account/transfer">Transfer &rarr;</a> · <a href="/usage">Usage &rarr;</a> · `+
-			`<a href="#ledger">History &rarr;</a></p>`)
+			`<a href="/account/transfer">Transfer &rarr;</a></p>`)
 }
 
 // LedgerSection is the receipts: what things cost, and what this account has
@@ -106,8 +107,10 @@ func LedgerSection(userID string) string {
 			app.NoteHTML(`You keep 90% of every sale. <a href="/apps">Manage your apps &rarr;</a>`)))
 	}
 
-	sb.WriteString(app.SectionID("ledger", "Costs", PricingTableHTML()))
-
+	// No price table here. It was a second copy of what /tools already says
+	// beside each tool, where somebody asks the question — and a price list
+	// kept in two places is one that drifts. /pricing points at /tools for the
+	// same reason.
 	if len(transactions) > 0 {
 		var rows strings.Builder
 		rows.WriteString(`<table class="data-table">`)
@@ -122,7 +125,7 @@ func LedgerSection(userID string) string {
 				transactionAmount(tx), tx.Balance))
 		}
 		rows.WriteString(`</table>`)
-		sb.WriteString(app.Section("History", rows.String()))
+		sb.WriteString(app.SectionID("ledger", "History", rows.String()))
 	}
 
 	return sb.String()

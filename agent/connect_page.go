@@ -129,7 +129,10 @@ func connEndpoint(base, path string) string {
 		return ""
 	}
 	url := strings.TrimSuffix(base, "/") + path
-	return `<h3 class="conn-head">Endpoint</h3>` +
+	// "API endpoint", not "Endpoint". The other block on this page is the MCP
+	// configuration, which is also an endpoint, so the bare word named one of
+	// two things and distinguished neither.
+	return `<h3 class="conn-head">API endpoint</h3>` +
 		`<p class="conn-note">Ask it a question from a program. Same agent, same ` +
 		`instruction, same conversation as the chat above.</p>` +
 		`<pre class="conn-pre">` + html.EscapeString(`curl -X POST `+url+` \
@@ -182,7 +185,7 @@ func defaultPanel(base string) string {
 		`identity, so it uses your account rather than a token of its own. ` +
 		app.Link("Make one that is", "/agent/new") + `</p>`)
 
-	b.WriteString(connRow("May reach", `<span class="conn-scope wide">everything you can reach</span>`))
+	b.WriteString(connRow("Tools", `<span class="conn-scope wide">Everything</span>`))
 
 	// The address, with no paragraph under it. This carried three lines about
 	// verified addresses, what is filed rather than answered, and which
@@ -210,7 +213,7 @@ func defaultPanel(base string) string {
 	// The row also duplicated the url in the JSON directly below it.
 	b.WriteString(connEndpoint(base, "/agent/"+DefaultPlatformAgent))
 
-	b.WriteString(`<h3 class="conn-head">Configuration</h3>`)
+	b.WriteString(`<h3 class="conn-head">MCP configuration</h3>`)
 	b.WriteString(`<p class="conn-note">For giving something else the tools this agent may ` +
 		`use — Claude, Cursor, your own code. It calls the tools; it does not talk to the agent.</p>`)
 	b.WriteString(`<pre class="conn-pre">` + html.EscapeString(`{
@@ -236,7 +239,7 @@ func connectPanel(a *Agent, base, csrf string) string {
 
 	// What it may reach, first. The scope is the thing that makes handing out a
 	// token safe, so it goes above the token rather than below it.
-	scope := "everything you can reach"
+	scope := "Everything"
 	cls := "conn-scope wide"
 	if !a.Unscoped() {
 		labels := make([]string, 0, len(a.Services))
@@ -256,7 +259,7 @@ func connectPanel(a *Agent, base, csrf string) string {
 	b.WriteString(`<p class="lens-lead"><strong>` + html.EscapeString(a.Name) + `</strong> — ` +
 		html.EscapeString(kind) + `. ` + html.EscapeString(kindNote) + `</p>`)
 
-	b.WriteString(`<div class="conn-row"><span class="conn-k">May reach</span>` +
+	b.WriteString(`<div class="conn-row"><span class="conn-k">Tools</span>` +
 		`<span class="` + cls + `">` + html.EscapeString(scope) + `</span></div>`)
 
 	// The address, and who it listens to. Knowing the address is not permission
@@ -348,7 +351,7 @@ func connectPanel(a *Agent, base, csrf string) string {
 		b.WriteString(connEndpoint(base, Path(a.Owner, a.ID)))
 	}
 
-	b.WriteString(`<h3 class="conn-head">Configuration</h3>`)
+	b.WriteString(`<h3 class="conn-head">MCP configuration</h3>`)
 	b.WriteString(`<p class="conn-note">For giving something else the tools this agent may ` +
 		`use — Claude, Cursor, your own code. It calls the tools; it does not talk to the agent.</p>`)
 	b.WriteString(`<pre class="conn-pre">` + html.EscapeString(`{
@@ -403,7 +406,7 @@ func platformPanel(a *micro.Agent, base string) string {
 		`instance, so there is nothing to create and no token to hold: it answers as your ` +
 		`account, against your credits. ` + app.Link("Make one of your own", "/agent/new") + `</p>`)
 
-	b.WriteString(`<div class="conn-row"><span class="conn-k">May reach</span>` +
+	b.WriteString(`<div class="conn-row"><span class="conn-k">Tools</span>` +
 		`<span class="conn-scope">` + html.EscapeString(toolWords(a.Tools)) + `</span></div>`)
 
 	if addr := PlatformAddress(a.ID); addr != "" {

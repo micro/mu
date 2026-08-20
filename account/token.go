@@ -528,7 +528,7 @@ const tokenScopeCSS = `<style>
 func tokenScope(t *auth.Token) string {
 	names := t.Services()
 	if len(names) == 0 {
-		return "Everything you can reach"
+		return "Everything"
 	}
 	out := make([]string, 0, len(names))
 	for _, n := range names {

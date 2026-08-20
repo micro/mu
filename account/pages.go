@@ -788,14 +788,14 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	content := notice + profile +
 		BalanceCard(acc.ID) +
 		usage.Card(acc.ID) +
+		LedgerSection(acc.ID) +
 		PlaceCard(r, acc.ID) +
 		emailCard +
 		googleCard +
 		language +
 		PasskeyListHTML(acc.ID) +
 		clientsCard +
-		settings +
-		LedgerSection(acc.ID)
+		settings
 
 	// About, Pricing, Help, Privacy, Status and the API reference live in the
 	// footer, and there is no footer once you are signed in — deliberately, on
