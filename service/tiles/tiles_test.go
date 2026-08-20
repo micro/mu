@@ -5,6 +5,7 @@ package tiles
 import (
 	"context"
 	"math"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
@@ -227,5 +228,30 @@ func TestNothingChargesForATile(t *testing.T) {
 	}
 	if strings.Contains(string(src), "ConsumeQuota") {
 		t.Error("something here consumes quota, so tiles are not free after all")
+	}
+}
+
+// The tile URL on the page names the instance's public address.
+//
+// It was built from r.Host, and Mu runs behind a reverse proxy that forwards to
+// a loopback port — so the page told everybody to point MapLibre at
+// https://localhost:8081/tiles/road/{z}/{x}/{y}.png. That URL is the whole
+// output of this page: a raster tile template you copy into somebody else's map
+// library, where an address no client can reach is not a cosmetic mistake.
+func TestTheTileURLNamesTheInstance(t *testing.T) {
+	r := httptest.NewRequest("GET", "/tiles", nil)
+	r.Host = "localhost:8081" // what the proxy actually passes through
+	r.Header.Set("X-Forwarded-Host", "micro.mu")
+	r.Header.Set("X-Forwarded-Proto", "https")
+
+	w := httptest.NewRecorder()
+	Handler(w, r)
+	body := w.Body.String()
+
+	if !strings.Contains(body, "https://micro.mu/tiles/road/{z}/{x}/{y}.png") {
+		t.Errorf("the tile URL does not name the public address:\n%s", body)
+	}
+	if strings.Contains(body, "localhost:8081") {
+		t.Error("the page is handing out a loopback address to paste into a map")
 	}
 }

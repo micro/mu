@@ -4,6 +4,7 @@ package tiles
 
 import (
 	"fmt"
+	"html"
 	"io"
 	"math"
 	"net/http"
@@ -145,8 +146,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(preview(style))
 
 	b.WriteString(`<h2 class="svc-h">Pointing a map at it</h2>`)
-	b.WriteString(`<pre class="tool-call">https://` + hostOf(r) + `/tiles/` + style +
-		`/{z}/{x}/{y}.png</pre>`)
+	// app.BaseURL, not r.Host. Mu runs behind a reverse proxy that forwards to a
+	// loopback port, so r.Host is "localhost:8081" and the URL this page hands
+	// somebody to paste into MapLibre named an address no client can reach. See
+	// internal/origin, which is where this question has one answer.
+	b.WriteString(`<pre class="tool-call">` + html.EscapeString(app.BaseURL(r)) + `/tiles/` +
+		style + `/{z}/{x}/{y}.png</pre>`)
 	b.WriteString(app.NoteHTML(`That is a raster tile URL — give it to MapLibre, Leaflet or ` +
 		`OpenLayers as-is. Free: a tile is fetched once, ever, and served from here ` +
 		`afterwards. Signing in is only needed for a tile this instance has never seen, ` +
@@ -196,14 +201,6 @@ func preview(style string) string {
 	}
 	b.WriteString(`</div>`)
 	return b.String()
-}
-
-// hostOf is what this instance is called, for a URL somebody copies.
-func hostOf(r *http.Request) string {
-	if r.Host != "" {
-		return r.Host
-	}
-	return "your-instance"
 }
 
 // Card is the service at a glance: whether it can fetch, and how much it holds.
