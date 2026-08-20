@@ -62,7 +62,7 @@ func TestBothDoorsAreRecognised(t *testing.T) {
 				"wallet check, the auth challenge and the payment gate all skip it", p)
 		}
 	}
-	for _, p := range []string{"/news", "/home", "/apiv1/news/list", "/api", "/a2a"} {
+	for _, p := range []string{"/news", "/home", "/apiv1/news/list", "/api"} {
 		if api.ToolDispatch(p) {
 			t.Errorf("ToolDispatch(%q) = true — an ordinary page would be handed a 402", p)
 		}

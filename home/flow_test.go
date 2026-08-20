@@ -19,24 +19,25 @@ import (
 // point Cursor at the endpoint is a real question asked by somebody who has
 // already decided, and it belongs on /tools, which is the page about tools.
 //
-// So: a headline, a sentence, the address, and two ways on. It fits on a screen
-// and there is nothing below it.
+// So: a headline, a sentence and one way on. It fits on a screen and there is
+// nothing below it.
 func TestTheLandingIsOneScreenAboutOneThing(t *testing.T) {
 	rec := httptest.NewRecorder()
 	Landing(rec, httptest.NewRequest("GET", "/", nil))
 	body := rec.Body.String()
 
-	// What it is, and the one fact that makes it different.
-	for _, want := range []string{"A personal agent", "@", `class="laddr"`} {
+	// What it is, and what is behind it.
+	for _, want := range []string{"A personal agent", "Chat with it here", "tools behind it"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the landing is missing %q", want)
 		}
 	}
-	// And two ways on, no more.
-	for _, want := range []string{`href="/signup"`, `href="/tools"`} {
-		if !strings.Contains(body, want) {
-			t.Errorf("the landing has no path to %s", want)
-		}
+	// One way on. There were two, and the second kept being the wrong one —
+	// "Browse the tools" answers a question a first-time visitor has not asked,
+	// "Browse the agents" sends somebody signed out to a list of the agents they
+	// have not made.
+	if !strings.Contains(body, `href="/signup"`) {
+		t.Error("the landing has no path to /signup")
 	}
 
 	// What it must not carry any more. Each of these was a section arguing for
@@ -46,6 +47,13 @@ func TestTheLandingIsOneScreenAboutOneThing(t *testing.T) {
 		"feature cards":        `class="lcards"`,
 		"the MCP setup steps":  "Connect via MCP",
 		"a payment rail pitch": "x402",
+		// The address had every position on this page — the largest element, a
+		// retyping animation, a line under the button — and each move was an
+		// attempt to say "you can email it too" without the page becoming about
+		// email. A landing gets one call to action, and an address beside a
+		// button is a second one nobody signed out can use: there is no
+		// you+agent@ until there is a you.
+		"an email address": `class="laddr"`,
 	} {
 		if strings.Contains(body, marker) {
 			t.Errorf("the landing still carries %s — that is a second thing to "+

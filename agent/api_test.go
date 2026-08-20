@@ -4,8 +4,9 @@ package agent
 //
 // The Connect page offered an "Endpoint" and it was /mcp, which reaches this
 // agent's *tools* for something else's agent to call. Nothing reached the agent
-// itself: /a2a runs a generic account-less orchestration and email is
-// asynchronous. This is the door that was missing.
+// itself — email is asynchronous, and /a2a, since deleted, ran a generic
+// account-less orchestration that was nobody's agent. This is the door that was
+// missing.
 
 import (
 	"encoding/json"

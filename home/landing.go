@@ -1,13 +1,11 @@
 package home
 
 import (
-	"html"
 	"net/http"
 	"strconv"
 
 	"mu/internal/api"
 	"mu/internal/app"
-	"mu/service/mail"
 )
 
 // Landing is the front door for anyone not signed in: something to try, then
@@ -42,11 +40,11 @@ import (
 //
 // The description still follows. It reads better as a caption than as a pitch.
 func Landing(w http.ResponseWriter, r *http.Request) {
-	body := landingBody(app.BaseURL(r))
+	body := landingBody()
 
 	page := app.RenderLanding(app.Landing{
 		Title:       "Mu — A personal agent",
-		Description: "Give your agent an address. Write to it and it answers — with news, web search, mail, markets, weather, places and storage behind it. Open source and self-hostable.",
+		Description: "Chat with it here or write to it from anywhere — with news, web search, mail, markets, weather, places and storage behind it. Open source and self-hostable.",
 		Brand:       "Mu",
 		// No tagline in the chrome. This slot held "An Inbox for Agents" — the
 		// line this positioning replaced — sitting directly above a headline
@@ -107,16 +105,19 @@ func Landing(w http.ResponseWriter, r *http.Request) {
 // a comment inside the <style> block is served to every visitor — which is how
 // a test looking for "Connect via MCP" on the page found it in the note saying
 // the section had been removed.
-// No animation on the address.
+// No address on the page.
 //
-// The word after the plus used to delete and retype itself through research,
-// work, family, money, travel — an argument that the word is yours to pick,
-// made without a sentence saying so. It was the right trick for a page whose
-// thesis was the address. It is not that page any more: the address sits under
-// the button now as one fact among several, and a fact that moves while you
-// read the rest of the page is asking for attention its position says it does
-// not want. A landing gets one thing that moves at most, and this is not it.
-func landingBody(host string) string {
+// It has been through every position: the largest element on the page, then a
+// retyping animation, then a static line under the button. Each move was an
+// attempt to say "and you can email it too" without the page becoming about
+// email. The move that works is not making it smaller — it is that a landing
+// gets one call to action, and an address printed beside a button is a second
+// one that nobody signed out can use. You cannot write to you+agent@ until
+// there is a you.
+//
+// The lead still says you can write to it from anywhere, which is the fact. The
+// address is on the pages where it is actionable — /agents, Connect, the inbox.
+func landingBody() string {
 	// The tool count is counted, not claimed. This said "67 real tools" as a
 	// literal and the endpoint was serving 72 by the time anyone checked.
 	//
@@ -126,36 +127,6 @@ func landingBody(host string) string {
 	// second number that had to be kept in step with the list beside it by hand.
 	// The list is the proof; it does not need a claim after it.
 	//
-	// The address is set as text, not as a black pill. It was drawn with the
-	// same background, radius and white-on-#111 as .lcta immediately below it,
-	// so the page showed two identical black rectangles of which only the lower
-	// one did anything — the address read as the primary button and the primary
-	// button read as its twin. It is a thing to read and copy, so it is
-	// monospaced and underscored with a hairline instead.
-	//
-	// The address after the button, not before it.
-	//
-	// It led the page for a while, on the argument that an address is the only
-	// handle needing nothing on the other side — no SDK, no OAuth, no protocol
-	// to adopt — which is true and is still why it is here at all. But a page
-	// whose largest element is an email address is a page about email, and this
-	// is not a mail product. Two of the three things above it said "write to
-	// it", so a reader arrived thinking the way in was to compose a message,
-	// when the way in for almost everybody is to sign up and type.
-	//
-	// So the order is what you do first: chat, then the fact that you can also
-	// write to it from anywhere. Same address, a third of the weight — and it
-	// reads as a detail about the agent rather than the definition of one.
-	//
-	// It is shown as you+agent@ rather than agent@, and the paragraph explaining
-	// the difference has gone with it. That paragraph was three sentences doing
-	// the work the address does by itself: agent@ is this instance's shared one,
-	// yours are you+something@, and a reader who has to be told that in prose is
-	// a reader looking at the wrong address. The form is the explanation.
-	domain := mail.ConfiguredDomain()
-	if domain == "" {
-		domain = host
-	}
 	return `<div class="lwrap">
 <h2 class="lhead">A personal agent.</h2>
 <p class="lead">Chat with it here or write to it from anywhere. ` +
@@ -165,8 +136,6 @@ weather, places, storage — and it remembers the last conversation.</p>
 <div class="lctas">
   <a class="lcta" href="/signup">Get an agent →</a>
 </div>
-
-<div class="laddr"><code>you+agent@` + html.EscapeString(domain) + `</code></div>
 </div>
 
 <style>
@@ -175,10 +144,6 @@ weather, places, storage — and it remembers the last conversation.</p>
   letter-spacing:-.01em;font-weight:700;color:#111}
 .lead{max-width:560px;text-align:center;color:#555;font-size:17px;line-height:1.6;margin:0 auto 22px}
 .lead a{color:#111}
-.laddr{text-align:center;margin:26px auto 0}
-.laddr code{display:inline-block;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
-  font-size:15px;font-weight:400;color:slategray;letter-spacing:-.01em;
-  padding-bottom:6px;border-bottom:1px solid #e8e8ea}
 .lctas{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin:0}
 .lcta{display:inline-block;background:#111;color:#fff;text-decoration:none;padding:12px 24px;
   border-radius:var(--border-radius,6px);font-weight:700;font-size:15px}

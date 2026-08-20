@@ -16,7 +16,6 @@ import (
 
 	"mu/admin"
 	"mu/agent"
-	"mu/agent/a2a"
 	"mu/agent/digest"
 	"mu/agent/micro"
 	"mu/client/whatsapp"
@@ -169,9 +168,7 @@ func authRequired() map[string]bool {
 		"/mcp":                           false, // Public - MCP tools page
 		"/whatsapp/webhook":              false, // Public - WhatsApp webhook
 		"/sms/webhook":                   false, // Public - inbound SMS; the provider's signature is the credential
-		"/.well-known/agent.json":        false, // Public - A2A agent card
 		"/.well-known/mcp-registry-auth": false, // Public - registry domain proof
-		"/a2a":                           false, // Public - A2A protocol
 		// Public at the door, decided per tool inside. The same answer /mcp
 		// gives, for the same reason: news and weather must not need an account.
 		"/api/v1":     false,
@@ -319,18 +316,6 @@ func registerRoutes() {
 
 	// serve whatsapp webhook
 	http.HandleFunc("/whatsapp/webhook", whatsapp.Handler)
-
-	// A2A protocol endpoints
-	domain := settings.Get("MU_DOMAIN")
-	if domain == "" {
-		domain = "localhost:8080"
-	}
-	if !strings.HasPrefix(domain, "http") {
-		domain = "https://" + domain
-	}
-	a2a.BaseURL = domain
-	http.HandleFunc("/.well-known/agent.json", a2a.AgentCardHandler)
-	http.HandleFunc("/a2a", a2a.Handler)
 
 	// serve search page (local + Brave web search)
 	// serve search page

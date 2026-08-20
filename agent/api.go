@@ -9,10 +9,11 @@ package agent
 // Over MCP an agent is a scoped API key, and the page implying otherwise was
 // the honest complaint that started this.
 //
-// The other two doors are no better an answer. /a2a runs a generic
-// account-less orchestration, so it is not your agent either; and email reaches
-// exactly the right agent but is asynchronous, which is right for a person and
-// wrong for a program waiting on a reply.
+// The other door was no better an answer: email reaches exactly the right agent
+// but is asynchronous, which is right for a person and wrong for a program
+// waiting on a reply. There was a third, /a2a, running a generic account-less
+// orchestration that was nobody's agent — it has been deleted rather than
+// explained.
 //
 // So: POST /agent/<name>, with the account's token. Same agent, same standing
 // instruction, same scope, same conversation record as the chat page at that
@@ -23,8 +24,8 @@ package agent
 // A service answers a question about state and tools are derived from it. This
 // consumes tools, so it declares no Spec and appears in no catalogue — the rule
 // in CLAUDE.md, which is also why agent_ask was removed as a tool. It is a door
-// onto the agent, next to /mcp and /a2a, and it lives here because the agent is
-// what it serves.
+// onto the agent, next to /mcp, and it lives here because the agent is what it
+// serves.
 
 import (
 	"encoding/json"

@@ -25,7 +25,6 @@ mu/
 │     safefetch  safety  server  service  settings  setup  snapshot  thread
 │     twilio  usage  user  userdb  version  x402
 ├── agent/                  # the agent pipeline and micro-agents
-│   ├── a2a/                #   the A2A door onto them
 │   ├── blog/               #   writes the daily opinion
 │   ├── digest/             #   writes the daily digest
 │   ├── local/              #   models running on this machine
@@ -408,7 +407,7 @@ Four levels, and everything points down.
                     └───────────┼───────────┘
                                 ▼
               ┌───────────────────────────────────────────────┐
-   DECIDERS   │  agent/    micro/  a2a/  blog/  social/       │
+   DECIDERS   │  agent/    micro/  blog/  social/             │
               │            digest/                            │
               │  Takes a goal, reads the catalogue, chooses    │
               │  which questions to ask. Cannot be in the      │
@@ -472,9 +471,9 @@ stopped at the first directory level. `TestServicesDoNotImportEachOther` globbed
 `"mu/service/markets"` matched but `"mu/service/news/digest"` did not look like
 a service import at all. `TestInternalNeverImportsTheProduct` matched `"mu/agent"`
 and missed `"mu/agent/micro"`. Two real violations lived in exactly that gap:
-`internal/a2a` imported the micro agent, and `service/news/digest` imported
+The since-deleted `internal/a2a` imported the micro agent, and `service/news/digest` imported
 `markets` and `video`. Both tests now walk the whole subtree, and both
-violations are fixed — `a2a` and `digest` are under `agent/`, where the imports
+violations are fixed — `digest` is under `agent/`, where the imports
 they need are legal.
 
 **`internal/server/hooks.go` is the bill.** Around 880 lines and 47 function

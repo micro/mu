@@ -20,9 +20,9 @@ Built on go-micro: every capability is a go-micro service, the assistant is a go
 
 - **Single Go binary** — `mu --serve` starts the web server, `mu <command>` runs CLI
 - **Services** — each domain is a package under `service/`, one directory per service
-- **Agents** — `agent/micro/` contains specialised micro-agents per domain, routed by keyword + LLM. `agent/<name>/` is an agent that writes into the service of the same name: `agent/blog` composes the daily opinion by asking the registry what exists rather than naming services in code, `agent/social` surfaces breaking stories, `agent/digest` writes the daily briefing. The service stores; the agent decides what is worth storing. `agent/a2a` is the A2A door onto them — it belongs here rather than beside the MCP server, because /mcp serves tools derived from services and /a2a serves the thing that consumes them
+- **Agents** — `agent/micro/` contains specialised micro-agents per domain, routed by keyword + LLM. `agent/<name>/` is an agent that writes into the service of the same name: `agent/blog` composes the daily opinion by asking the registry what exists rather than naming services in code, `agent/social` surfaces breaking stories, `agent/digest` writes the daily briefing. The service stores; the agent decides what is worth storing
 - **Channels** — Discord (`client/discord/`), Telegram (`client/telegram/`), WhatsApp (`client/whatsapp/`)
-- **Protocols** — MCP server at `/mcp`, A2A at `/a2a`, REST at `/api/v1/`, x402 crypto payments. Everything upstream of the mux that a tool door needs — wallet signature, auth challenge, payment gate — asks `api.ToolDispatch(path)` rather than naming a path, because a second door otherwise starts out unpriced
+- **Protocols** — MCP server at `/mcp`, an agent endpoint at `POST /agent/<name>`, REST at `/api/v1/`, x402 crypto payments. There was an A2A door at `/a2a`; it ran a generic account-less orchestration that was nobody's agent, so it was deleted rather than reconciled with the other three. Everything upstream of the mux that a tool door needs — wallet signature, auth challenge, payment gate — asks `api.ToolDispatch(path)` rather than naming a path, because a second door otherwise starts out unpriced
 - **AI** — `internal/ai/` supports Anthropic Claude, Atlas Cloud (DeepSeek), OpenRouter, and local models (Ollama)
 - **Config** — `internal/settings/` for live-reloadable settings, admin UI at `/admin/env`
 
@@ -235,7 +235,7 @@ directory per service" is only checkable while it is true. Enforced by
 way. Both it and `TestInternalNeverImportsTheProduct` used to stop at the first
 directory level — a glob of `service/<name>/*.go`, a pattern ending at the
 closing quote — so a package one level deeper was invisible to the rule about
-it. `internal/a2a` imported the micro agent and `service/news/digest` imported
+it. The since-deleted `internal/a2a` imported the micro agent and `service/news/digest` imported
 markets and video, for a year, under tests whose whole subject was those edges.
 Both now walk the subtree. A rule you can get out of by making a subdirectory is
 not a rule.

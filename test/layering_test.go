@@ -36,7 +36,7 @@ import (
 //
 // The nested group is not decoration. This used to end each alternative at the
 // closing quote — `client/[a-z]+`, `service/[a-z]+` — which matches "mu/agent"
-// and misses "mu/agent/micro". internal/a2a imported the micro agent for a year
+// and misses "mu/agent/micro". The since-deleted internal/a2a imported the micro agent for a year
 // under that regex, and the test that exists to notice said nothing, because a
 // package one directory deeper is invisible to a pattern that stops at the
 // first level. Anything under a product directory is the product.
