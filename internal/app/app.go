@@ -263,7 +263,13 @@ func FooterLinks() string {
 	// No Help. It was a second page about pointing an agent at this instance,
 	// which is what /tools is for — two pages answering one question, and the
 	// one nobody maintained was the one in the footer.
-	return `<a href="/about">About</a> · <a href="/tools">Tools</a> · <a href="/privacy">Privacy</a> · <a href="/status">Status</a>` + torFooterLink()
+	//
+	// Pricing is here because a signed-out visitor had no way to learn the
+	// terms. /tools carries a price on each of a hundred-odd entries, which
+	// answers what one call costs and never what this is going to cost you, and
+	// somebody deciding whether to sign up is asking the second question. It is
+	// not the plan chooser that was deleted — see home.PricingHandler.
+	return `<a href="/about">About</a> · <a href="/tools">Tools</a> · <a href="/pricing">Pricing</a> · <a href="/privacy">Privacy</a> · <a href="/status">Status</a>` + torFooterLink()
 }
 
 func torFooterLink() string {

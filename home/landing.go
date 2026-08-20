@@ -1,8 +1,10 @@
 package home
 
 import (
+	"html"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"mu/internal/api"
 	"mu/internal/app"
@@ -56,6 +58,7 @@ func Landing(w http.ResponseWriter, r *http.Request) {
 		// except the page, which is why neither reading caught it.
 		TopRight: `<a href="/login">Sign in →</a>`,
 		Body:     body,
+		Below:    developerBand(app.BaseURL(r)),
 		Footer:   app.FooterLinks(),
 		Tail:     installScript(),
 	})
@@ -172,6 +175,72 @@ weather, places, storage — and it remembers the last conversation.</p>
 .lcta-second:hover{box-shadow:inset 0 0 0 1px #111}
 .linstall{text-align:center;color:#666;font-size:14px;margin:12px auto 0}
 @media (max-width:640px){.lead{font-size:15px}}
+</style>`
+}
+
+// developerBand is the section under the fold, for somebody who already has an
+// agent and wants to point it at this.
+//
+// Below rather than beside, and that distinction is the whole design. The hero
+// is one screen with one thing to do, because a first-time visitor is deciding
+// whether they want an agent at all — and a second call to action there is a
+// choice offered to somebody who has not made the first one yet. Two earlier
+// attempts at a developer pitch went above the fold and both had to come out.
+//
+// Under it is a different situation. Anybody reading this has scrolled past the
+// button, which means they did not want it, and the most likely reason a
+// technical visitor does that is that they already have an agent. This is the
+// answer to what they are looking for.
+//
+// It says what is here and links out. It does not teach: the four-step "point
+// your client at this" walkthrough belongs on /tools and was on this page once,
+// and no protocol is named in the copy — the endpoint is a URL you can read,
+// and the payment rail's name is jargon that means nothing to somebody meeting
+// it in a hero. Both are one click away.
+func developerBand(base string) string {
+	endpoint := html.EscapeString(strings.TrimSuffix(base, "/")) + "/mcp"
+
+	return `<div class="dev">
+<h2 class="dev-head">Tools for agents</h2>
+<p class="dev-lead">Already have an agent? Point it here. ` +
+		strconv.Itoa(api.ToolCount()) + ` tools — news, web search, mail, markets,
+weather, places, files — behind one endpoint.</p>
+<pre class="dev-endpoint">` + endpoint + `</pre>
+<ul class="dev-facts">
+  <li>One account instead of six, or no account at all — an agent can pay per
+      request as it calls.</li>
+  <li>Every tool is also plain HTTP, so a cron job or a script can use them
+      without speaking anything special.</li>
+  <li>One Go binary. Run your own and whoever calls your tools pays you.</li>
+</ul>
+<p class="dev-links">` + app.TextLink("Browse the tools", "/tools") + ` · ` +
+		app.TextLink("API reference", "/api") + ` · ` +
+		app.TextLink("What it costs", "/pricing") + `</p>
+</div>
+
+<style>
+/* A band, not a second hero: a rule across the top, ordinary text sizes, and
+   the same column width as the copy above it. It has to read as somewhere the
+   page continues rather than as a competing offer. */
+/* The colour and alignment are stated rather than inherited. This sits in the
+   shell's Below slot, which wraps it in .also — centred, 14px, #888, written
+   for a one-line "also on Discord" — and anything here that did not set its own
+   would come out as small grey centred text. */
+.dev{max-width:560px;margin:0 auto;padding:28px 0 0;border-top:1px solid #eee;
+  text-align:left;color:#111}
+.dev-head{font-size:15px;font-weight:700;color:#111;margin:0 0 8px}
+.dev-lead{font-size:15px;color:#555;line-height:1.6;margin:0 0 14px}
+.dev-endpoint{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;
+  color:#333;background:#f6f6f6;border-radius:6px;padding:10px 12px;margin:0 0 14px;
+  overflow-x:auto}
+.dev-facts{font-size:14px;color:#555;line-height:1.6;margin:0 0 14px;padding-left:18px}
+.dev-facts li{margin:0 0 6px}
+/* The landing shell does not load mu.css, so app.TextLink's class means nothing
+   here and these came out as browser-default blue and underlined, on a page
+   where every other word is #111 or #555. */
+.dev-links{font-size:14px;margin:0;color:#888}
+.dev-links a{color:#111;text-decoration:none;font-weight:600}
+.dev-links a:hover{text-decoration:underline}
 </style>`
 }
 

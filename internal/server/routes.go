@@ -158,8 +158,8 @@ func authRequired() map[string]bool {
 		"/web/read":  false, // Public page, auth checked in handler (proxied reader)
 
 		"/status":                        false, // Public - server health status
-		"/plans":                         false, // Public - redirects to /tools
-		"/pricing":                       false, // Public - redirects to /tools
+		"/plans":                         false, // Public - redirects to /pricing
+		"/pricing":                       false, // Public - what a credit is and what things cost
 		"/privacy":                       false, // Public - privacy policy
 		"/install":                       false, // Public - run your own instance
 		"/whitepaper":                    false, // Public - whitepaper
@@ -358,11 +358,16 @@ func registerRoutes() {
 	// where somebody actually is when the question occurs to them. These two
 	// names redirect rather than 404 because they are in server.json, in the
 	// README and in three years of links.
-	plansGone := func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/tools", http.StatusMovedPermanently)
-	}
-	http.HandleFunc("/plans", plansGone)
-	http.HandleFunc("/pricing", plansGone)
+	// /plans still redirects, because plans are the thing that was wrong. What
+	// came back at /pricing is the price list rather than a chooser — see
+	// home.PricingHandler, which reads quota.json and states no tiers. A
+	// signed-out visitor otherwise has no way to learn the terms: /tools carries
+	// a price on each of a hundred-odd entries, which answers what one call
+	// costs and never what this is going to cost you.
+	http.HandleFunc("/plans", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/pricing", http.StatusMovedPermanently)
+	})
+	http.HandleFunc("/pricing", home.PricingHandler)
 	// Every MCP directory submission asks for a privacy policy URL, and this
 	// instance runs a mail server — so there is real correspondence to account
 	// for, not just a formality.

@@ -4,9 +4,11 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"mu/internal/app"
 )
 
-// The landing is one screen about one thing.
+// The first screen is about one thing.
 //
 // It has been three different pages. Three buttons and three cards, all about
 // the tools and nothing you could do with them. Then a working chat box, on the
@@ -19,8 +21,15 @@ import (
 // point Cursor at the endpoint is a real question asked by somebody who has
 // already decided, and it belongs on /tools, which is the page about tools.
 //
-// So: a headline, a sentence and one way on. It fits on a screen and there is
-// nothing below it.
+// This used to say "and there is nothing below it", and now there is: a band
+// for somebody who already has an agent — see developerBand. The rule it was
+// protecting survives the change, because the rule was never about length. What
+// must not come back is a second thing competing for the *first* screen. Below
+// the fold is a different situation: anybody reading there has scrolled past
+// the button, which means they did not want it.
+//
+// So the markers below stay banned. They are the parts that teach and the parts
+// that pitch a rail, and both belong on the pages about them.
 func TestTheLandingIsOneScreenAboutOneThing(t *testing.T) {
 	rec := httptest.NewRecorder()
 	Landing(rec, httptest.NewRequest("GET", "/", nil))
@@ -139,5 +148,78 @@ func TestTheInstallButtonWaitsToBeOffered(t *testing.T) {
 	// The primary action is still signing up.
 	if strings.Index(body, `href="/signup"`) > strings.Index(body, `id="install-app"`) {
 		t.Error("Install app comes before Get started")
+	}
+}
+
+// The developer band is under the hero, not in it.
+//
+// Two earlier attempts at a developer pitch went above the fold and both came
+// out: "Browse the tools" answers a question a first-time visitor has not
+// asked, and a four-step MCP walkthrough is for somebody who already decided.
+// The situation below the fold is the opposite — a reader there has scrolled
+// past the button, and the likeliest reason a technical visitor does that is
+// that they already have an agent.
+//
+// So the ordering is the test. Everything the band offers must come after the
+// one call to action, or it is the same mistake in a longer page.
+func TestTheDeveloperBandIsBelowTheCallToAction(t *testing.T) {
+	rec := httptest.NewRecorder()
+	Landing(rec, httptest.NewRequest("GET", "/", nil))
+	body := rec.Body.String()
+
+	signup := strings.Index(body, `href="/signup"`)
+	band := strings.Index(body, `class="dev"`)
+	if signup < 0 || band < 0 {
+		t.Fatalf("landing is missing the CTA or the band (signup %d, band %d)", signup, band)
+	}
+	if band < signup {
+		t.Error("the developer band is drawn before Get started, so it competes " +
+			"with the one thing a first-time visitor is being asked to do")
+	}
+
+	// It points somewhere rather than teaching. The walkthrough lives on /tools
+	// and the endpoints on /api; this says what is here and links out.
+	for _, want := range []string{`href="/tools"`, `href="/api"`, `href="/pricing"`, "/mcp"} {
+		if !strings.Contains(body[band:], want) {
+			t.Errorf("the band does not offer %s", want)
+		}
+	}
+}
+
+// The price list is reachable without an account.
+//
+// /pricing redirected to /tools, which carries a price on each of a hundred-odd
+// entries — that answers what one call costs and never what this is going to
+// cost you. Somebody deciding whether to sign up is asking the second question
+// and had nowhere to read the answer.
+//
+// It is not the plan chooser that was deleted. Plans were rebuilt three times
+// and came apart on the same fact every time: a credit is a penny and every
+// operation costs what quota.json says, whoever is asking, so there is nothing
+// to choose.
+func TestPricingIsAPriceListAndNotAPlanChooser(t *testing.T) {
+	rec := httptest.NewRecorder()
+	PricingHandler(rec, httptest.NewRequest("GET", "/pricing", nil))
+	body := rec.Body.String()
+
+	if !strings.Contains(body, "One credit is one penny") {
+		t.Error("the pricing page does not say what a credit is")
+	}
+	// Rendered from quota.json rather than written here, which is the only way a
+	// price list stays true. Four hand-maintained tables drifted before.
+	if !strings.Contains(body, "stats-table") {
+		t.Error("the pricing page carries no cost table")
+	}
+
+	// No tiers, and nothing recommended.
+	for _, banned := range []string{"Most popular", "Recommended", "/month", "per month"} {
+		if strings.Contains(body, banned) {
+			t.Errorf("the pricing page is offering a plan again: %q", banned)
+		}
+	}
+
+	// And it is in the footer, so a signed-out visitor can find it.
+	if !strings.Contains(app.FooterLinks(), `href="/pricing"`) {
+		t.Error("pricing is not in the footer, so nobody signed out will find it")
 	}
 }
