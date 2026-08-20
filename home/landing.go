@@ -8,7 +8,19 @@ import (
 
 	"mu/internal/api"
 	"mu/internal/app"
+	"mu/internal/quota"
 )
+
+// pence renders what an operation costs, for the one line on the landing that
+// names a price.
+//
+// Read rather than written. Two numbers in marketing copy are two numbers that
+// go stale the moment an operator edits quota.json, and this page has been
+// through that before: it said "67 real tools" as a literal while the endpoint
+// served 72.
+func pence(op string) string {
+	return strconv.Itoa(quota.OperationCost(op)) + "p"
+}
 
 // Landing is the front door for anyone not signed in: something to try, then
 // what this is and how to connect to it.
@@ -140,15 +152,18 @@ func landingBody() string {
 	//
 	return `<div class="lwrap">
 <h2 class="lhead">A personal agent.</h2>
-<p class="lead">Chat with it here or write to it from anywhere. ` +
-		strconv.Itoa(api.ToolCount()) + ` tools behind it — news, web search, markets,
-weather, places, storage — and it remembers the last conversation.</p>
+<p class="lead">Chat with it here, or email it from anywhere. ` +
+		strconv.Itoa(api.ToolCount()) + ` tools behind it — news, search, markets, weather,
+places, files — and it remembers the last conversation.</p>
 
 <div class="lctas">
   <a class="lcta" href="/signup">Get started →</a>
   <button type="button" class="lcta lcta-second" id="install-app" hidden>Install app</button>
 </div>
 <p class="linstall" id="install-how" hidden>In Safari: Share, then Add to Home Screen.</p>
+<p class="lcost">The agent is free. Tools that cost us are priced —
+search ` + pence(quota.OpWebSearch) + `, an image ` + pence(quota.OpImageGenerate) + `.
+<a href="/pricing">Pricing</a></p>
 </div>
 
 <style>
@@ -158,6 +173,15 @@ weather, places, storage — and it remembers the last conversation.</p>
 .lead{max-width:560px;text-align:center;color:#555;font-size:17px;line-height:1.6;margin:0 auto 22px}
 .lead a{color:#111}
 .lctas{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin:0}
+/* The money question, answered before it is asked.
+   A line rather than a third button: "will this cost me anything" is the second
+   thing a visitor wonders and it wants a fact, not a decision. It is here at all
+   because the answer finally fits in a sentence — while the agent was metered
+   and an allowance paid the meter back, it took a page. */
+.lcost{max-width:560px;text-align:center;color:#888;font-size:13px;line-height:1.6;
+  margin:16px auto 0}
+.lcost a{color:#555;font-weight:600;text-decoration:none;white-space:nowrap}
+.lcost a:hover{text-decoration:underline}
 /* An explicit line-height on both, or they are different heights side by side:
    a <button> and an <a> take different defaults, and 3px of it shows. */
 .lcta,.lcta:visited{display:inline-block;background:#111;color:#fff;text-decoration:none;padding:12px 24px;
@@ -202,22 +226,18 @@ func developerBand(base string) string {
 
 	return `<div class="dev">
 <h2 class="dev-head">Tools for agents</h2>
-<p class="dev-lead">Already have an agent? Point it here. ` +
-		strconv.Itoa(api.ToolCount()) + ` tools — news, web search, mail, markets,
-weather, places, files — behind one endpoint.</p>
+<p class="dev-lead">Already have an agent? Point it at one endpoint for ` +
+		strconv.Itoa(api.ToolCount()) + ` tools.</p>
 <pre class="dev-endpoint">` + endpoint + `</pre>
 <ul class="dev-facts">
-  <li>The agent costs nothing. You pay for a tool only when calling it costs a
-      third party — and not when this instance already had the answer.</li>
-  <li>One account instead of six, or no account at all — an agent can pay per
-      request as it calls.</li>
-  <li>Every tool is also plain HTTP, so a cron job or a script can use them
-      without speaking anything special.</li>
-  <li>One Go binary. Run your own and whoever calls your tools pays you.</li>
+  <li>MCP, or plain HTTP for anything that cannot speak it.</li>
+  <li>One account instead of six. Or none — an agent can pay per request.</li>
+  <li>Priced per call. Cached answers are not charged.</li>
+  <li>One Go binary. Self-host it and callers pay you.</li>
 </ul>
-<p class="dev-links">` + app.TextLink("Browse the tools", "/tools") + ` · ` +
-		app.TextLink("API reference", "/api") + ` · ` +
-		app.TextLink("What it costs", "/pricing") + `</p>
+<p class="dev-links">` + app.TextLink("Tools", "/tools") + ` · ` +
+		app.TextLink("API", "/api") + ` · ` +
+		app.TextLink("Pricing", "/pricing") + `</p>
 </div>
 
 <style>
