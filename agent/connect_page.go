@@ -111,22 +111,35 @@ func connRow(k, v string) string {
 	return `<div class="conn-row"><span class="conn-k">` + k + `</span>` + v + `</div>`
 }
 
-// connEndpoint is the agent's own API endpoint.
+// connEndpoint is how to ask this agent a question from a program.
 //
-// POST it a question with the account's token and the same agent answers, with
-// the same standing instruction, the same scope and the same conversation
-// record as the chat page at that address. This is what "Endpoint" should
-// always have meant: the row used to show .../mcp, which reaches this agent's
-// *tools* for something else's agent to use, and sat next to Email and Chat as
-// though it were a third way to reach the agent itself.
+// A worked example rather than a row with a URL in it. "POST
+// https://micro.mu/agent/test" tells you the address and nothing about what to
+// send, so it is a fact you cannot act on — which is the same failure the old
+// Endpoint row had for a different reason.
+//
+// The answer is shown too, because the thread id in it is the part nobody would
+// guess: passing it back is what makes a second call a conversation rather than
+// a fresh question. That is the whole difference between this and a completion
+// endpoint, and it is invisible from the request alone.
 //
 // Empty for an agent with nowhere to run. See connChat.
 func connEndpoint(base, path string) string {
 	if path == "" {
 		return ""
 	}
-	return connRow("Endpoint",
-		`<code class="conn-v">POST `+html.EscapeString(strings.TrimSuffix(base, "/")+path)+`</code>`)
+	url := strings.TrimSuffix(base, "/") + path
+	return `<h3 class="conn-head">Endpoint</h3>` +
+		`<p class="conn-note">Ask it a question from a program. Same agent, same ` +
+		`instruction, same conversation as the chat above.</p>` +
+		`<pre class="conn-pre">` + html.EscapeString(`curl -X POST `+url+` \
+  -H "Authorization: Bearer $MU_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"text": "what is the weather in London?"}'`) + `</pre>` +
+		`<pre class="conn-pre">` + html.EscapeString(`{"text": "…", "thread": "t_a1b2c3", "agent": "`+
+		strings.TrimPrefix(path, "/agent/")+`"}`) + `</pre>` +
+		`<p class="conn-note">Send <code>thread</code> back on the next call and it ` +
+		`continues the same conversation.</p>`
 }
 
 // connChat is the row linking to an agent's own chat page.
@@ -142,7 +155,11 @@ func connChat(base, path string) string {
 	if path == "" {
 		return ""
 	}
-	return connRow("Chat", `<span class="conn-v">`+app.TextLink(base+path, path)+`</span>`)
+	// The same code style as Email, because it is the same kind of thing — a
+	// value on this page you read — and a bare link beside two boxed ones read
+	// as three rows with two designs.
+	return connRow("Chat", `<a href="`+path+`"><code class="conn-v">`+
+		html.EscapeString(strings.TrimSuffix(base, "/")+path)+`</code></a>`)
 }
 
 // defaultPanel is the same page for Micro, which is nobody's roster entry.
@@ -176,7 +193,6 @@ func defaultPanel(base string) string {
 	}
 
 	b.WriteString(connChat(base, "/agent/"+DefaultPlatformAgent))
-	b.WriteString(connEndpoint(base, "/agent/"+DefaultPlatformAgent))
 
 	b.WriteString(`<div class="conn-row"><span class="conn-k">Token</span>` +
 		`<span class="conn-v">Your account's. ` + app.TextLink("Issue one", "/token") +
@@ -192,6 +208,8 @@ func defaultPanel(base string) string {
 	// *tools*. Pointing Claude at it does not talk to your agent at all — Claude
 	// brings its own instruction and uses the services you scoped this one to.
 	// The row also duplicated the url in the JSON directly below it.
+	b.WriteString(connEndpoint(base, "/agent/"+DefaultPlatformAgent))
+
 	b.WriteString(`<h3 class="conn-head">Configuration</h3>`)
 	b.WriteString(`<p class="conn-note">For giving something else the tools this agent may ` +
 		`use — Claude, Cursor, your own code. It calls the tools; it does not talk to the agent.</p>`)
@@ -282,7 +300,6 @@ func connectPanel(a *Agent, base, csrf string) string {
 	if a.Kind == Hosted {
 		path := Path(a.Owner, a.ID)
 		b.WriteString(connChat(base, path))
-		b.WriteString(connEndpoint(base, path))
 	}
 
 	// The token. A secret is shown once and never again, so this reports state
@@ -327,6 +344,10 @@ func connectPanel(a *Agent, base, csrf string) string {
 	// *tools*. Pointing Claude at it does not talk to your agent at all — Claude
 	// brings its own instruction and uses the services you scoped this one to.
 	// The row also duplicated the url in the JSON directly below it.
+	if a.Kind == Hosted {
+		b.WriteString(connEndpoint(base, Path(a.Owner, a.ID)))
+	}
+
 	b.WriteString(`<h3 class="conn-head">Configuration</h3>`)
 	b.WriteString(`<p class="conn-note">For giving something else the tools this agent may ` +
 		`use — Claude, Cursor, your own code. It calls the tools; it does not talk to the agent.</p>`)

@@ -137,6 +137,89 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	// === OAuth Clients ===
 	// Yours, and only yours.
 	//
+	// Tokens first.
+	//
+	// OAuth clients were, because they were written first. Almost nobody
+	// registers one — a client that connects registers itself and does not
+	// appear here — while a token is what you come to this page for, and it was
+	// below a form most people will never fill in.
+
+	// === Personal Access Tokens ===
+	sb.WriteString(`<h3>Personal Access Tokens</h3>`)
+	sb.WriteString(`<p style="color:#666;font-size:13px">For API authentication. Use with <code>Authorization: Bearer TOKEN</code> header.</p>`)
+
+	sb.WriteString(`<div id="token-result" style="display:none;margin:20px 0;padding:15px;background:#d4edda;border:1px solid #c3e6cb;border-radius:5px">`)
+	sb.WriteString(`<strong>Token Created</strong><p>Copy this token now — you won't see it again:</p>`)
+	sb.WriteString(`<pre id="new-token" style="background:#fff;padding:10px;border:1px solid #c3e6cb;border-radius:3px;overflow-x:auto;white-space:pre-wrap;word-break:break-all"></pre></div>`)
+
+	// Created, beside Last Used.
+	//
+	// The table showed a name and three dates, none of them the one people
+	// reach for: "when did this appear". So a token whose Last Used had just
+	// moved read as a token that had just been issued, which is an alarming
+	// thing to misread about a credential.
+	// "May reach", not "Permissions".
+	//
+	// The column read Permissions and rendered token.Permissions verbatim,
+	// which is two different things in one field: a hardcoded ["read","write"]
+	// the create form always sent and nothing on the instance enforces, and the
+	// real scope, stored with a service: prefix — so the cell said
+	// "read, write, service:news, service:markets" and the only settable half
+	// was the one whose prefix was showing. Nothing could set the other half,
+	// which is exactly what it looked like.
+	sb.WriteString(`<table class="token-table"><thead><tr><th>Name</th><th>May reach</th><th>Created</th><th>Last Used</th><th>Expires</th><th></th></tr></thead><tbody>`)
+	tokens := auth.ListTokens(accountID)
+	if len(tokens) == 0 {
+		sb.WriteString(`<tr><td colspan="6" style="padding:20px;text-align:center;color:#666">No tokens yet.</td></tr>`)
+	}
+	for _, token := range tokens {
+		expires := "Never"
+		if !token.ExpiresAt.IsZero() {
+			expires = app.TimeAgo(token.ExpiresAt)
+		}
+		lastUsed := "Never"
+		if !token.LastUsed.IsZero() {
+			lastUsed = app.TimeAgo(token.LastUsed)
+		}
+		created := "Unknown"
+		if !token.Created.IsZero() {
+			created = app.TimeAgo(token.Created)
+		}
+		sb.WriteString(fmt.Sprintf(`<tr><td data-label="Name">%s</td><td data-label="Permissions">%s</td><td data-label="Created">%s</td><td data-label="Last Used">%s</td><td data-label="Expires">%s</td><td>
+			<form method="POST" action="/token?id=%s" style="display:inline" onsubmit="return confirm('Delete?')">
+			<input type="hidden" name="_method" value="DELETE"><button type="submit" style="font-size:13px">Delete</button></form></td></tr>`,
+			token.Name, tokenScope(token), created, lastUsed, expires, token.ID))
+	}
+	sb.WriteString(`</tbody></table>`)
+
+	sb.WriteString(`<h4 style="margin-top:20px">Create Token</h4>`)
+	sb.WriteString(`<form id="create-token-form" onsubmit="createToken(event)">`)
+	sb.WriteString(`<div style="margin-bottom:10px"><input type="text" name="name" required placeholder="e.g. CI/CD"></div>`)
+	sb.WriteString(`<div style="margin-bottom:10px"><select name="expires_in">`)
+	sb.WriteString(`<option value="0">Never</option><option value="7">7 days</option><option value="30">30 days</option>`)
+	sb.WriteString(`<option value="90" selected>90 days</option><option value="365">1 year</option></select></div>`)
+
+	// What it may reach, on the page that hands out the credential.
+	//
+	// This page had a name and an expiry and nothing else, so every token
+	// created here carried the whole account: eighty-odd tools, the mail, the
+	// wallet. The scoped path existed on /agents and the README pointed here —
+	// so the documented road was the unsafe one and the safe one was
+	// undocumented. Same control, same meaning, on both pages now.
+	sb.WriteString(`<div id="tok-scope"><p class="tok-scope-head">What may it reach?</p>`)
+	sb.WriteString(`<p class="tok-scope-sub">Choose nothing and it reaches everything you can — ` +
+		`which is rarely what you meant for a credential you are about to paste somewhere.</p>`)
+	sb.WriteString(`<div class="tok-chips">`)
+	for _, sp := range tokenScopeChoices() {
+		sb.WriteString(`<label class="tok-chip"><input type="checkbox" name="services" value="` +
+			htmlpkg.EscapeString(sp.Name) + `"><span>` + htmlpkg.EscapeString(sp.NavLabel()) + `</span></label>`)
+	}
+	sb.WriteString(`</div></div>`)
+
+	sb.WriteString(`<button type="submit">Generate Token</button></form>`)
+	sb.WriteString(tokenScopeCSS)
+	sb.WriteString(`<hr style="margin:30px 0;border:none;border-top:1px solid #eee">`)
+
 	// This asked for every client on the instance. Anyone signed in saw the
 	// names other people's MCP clients had registered under, their client ids
 	// and when they appeared — with a Delete beside each that worked. A client
@@ -195,76 +278,6 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 		`<code>http://localhost:0/callback</code>, which suits a command-line or desktop client.</p>`)
 	sb.WriteString(`<button type="submit">Create Client</button></form>`)
 
-	sb.WriteString(`<hr style="margin:30px 0;border:none;border-top:1px solid #eee">`)
-
-	// === Personal Access Tokens ===
-	sb.WriteString(`<h3>Personal Access Tokens</h3>`)
-	sb.WriteString(`<p style="color:#666;font-size:13px">For API authentication. Use with <code>Authorization: Bearer TOKEN</code> header.</p>`)
-
-	sb.WriteString(`<div id="token-result" style="display:none;margin:20px 0;padding:15px;background:#d4edda;border:1px solid #c3e6cb;border-radius:5px">`)
-	sb.WriteString(`<strong>Token Created</strong><p>Copy this token now — you won't see it again:</p>`)
-	sb.WriteString(`<pre id="new-token" style="background:#fff;padding:10px;border:1px solid #c3e6cb;border-radius:3px;overflow-x:auto;white-space:pre-wrap;word-break:break-all"></pre></div>`)
-
-	// Created, beside Last Used.
-	//
-	// The table showed a name and three dates, none of them the one people
-	// reach for: "when did this appear". So a token whose Last Used had just
-	// moved read as a token that had just been issued, which is an alarming
-	// thing to misread about a credential.
-	sb.WriteString(`<table class="token-table"><thead><tr><th>Name</th><th>Permissions</th><th>Created</th><th>Last Used</th><th>Expires</th><th></th></tr></thead><tbody>`)
-	tokens := auth.ListTokens(accountID)
-	if len(tokens) == 0 {
-		sb.WriteString(`<tr><td colspan="6" style="padding:20px;text-align:center;color:#666">No tokens yet.</td></tr>`)
-	}
-	for _, token := range tokens {
-		expires := "Never"
-		if !token.ExpiresAt.IsZero() {
-			expires = app.TimeAgo(token.ExpiresAt)
-		}
-		lastUsed := "Never"
-		if !token.LastUsed.IsZero() {
-			lastUsed = app.TimeAgo(token.LastUsed)
-		}
-		created := "Unknown"
-		if !token.Created.IsZero() {
-			created = app.TimeAgo(token.Created)
-		}
-		sb.WriteString(fmt.Sprintf(`<tr><td data-label="Name">%s</td><td data-label="Permissions">%s</td><td data-label="Created">%s</td><td data-label="Last Used">%s</td><td data-label="Expires">%s</td><td>
-			<form method="POST" action="/token?id=%s" style="display:inline" onsubmit="return confirm('Delete?')">
-			<input type="hidden" name="_method" value="DELETE"><button type="submit" style="font-size:13px">Delete</button></form></td></tr>`,
-			token.Name, strings.Join(token.Permissions, ", "), created, lastUsed, expires, token.ID))
-	}
-	sb.WriteString(`</tbody></table>`)
-
-	sb.WriteString(`<h4 style="margin-top:20px">Create Token</h4>`)
-	sb.WriteString(`<form id="create-token-form" onsubmit="createToken(event)">`)
-	sb.WriteString(`<div style="margin-bottom:10px"><input type="text" name="name" required placeholder="e.g. CI/CD"></div>`)
-	sb.WriteString(`<div style="margin-bottom:10px"><select name="expires_in">`)
-	sb.WriteString(`<option value="0">Never</option><option value="7">7 days</option><option value="30">30 days</option>`)
-	sb.WriteString(`<option value="90" selected>90 days</option><option value="365">1 year</option></select></div>`)
-
-	// What it may reach, on the page that hands out the credential.
-	//
-	// This page had a name and an expiry and nothing else, so every token
-	// created here carried the whole account: eighty-odd tools, the mail, the
-	// wallet. The scoped path existed on /agents and the README pointed here —
-	// so the documented road was the unsafe one and the safe one was
-	// undocumented. Same control, same meaning, on both pages now.
-	sb.WriteString(`<div id="tok-scope"><p class="tok-scope-head">What may it reach?</p>`)
-	sb.WriteString(`<p class="tok-scope-sub">Choose nothing and it reaches everything you can — ` +
-		`which is rarely what you meant for a credential you are about to paste somewhere.</p>`)
-	sb.WriteString(`<div class="tok-chips">`)
-	for _, sp := range tokenScopeChoices() {
-		sb.WriteString(`<label class="tok-chip"><input type="checkbox" name="services" value="` +
-			htmlpkg.EscapeString(sp.Name) + `"><span>` + htmlpkg.EscapeString(sp.NavLabel()) + `</span></label>`)
-	}
-	sb.WriteString(`</div></div>`)
-
-	sb.WriteString(`<button type="submit">Generate Token</button></form>`)
-	sb.WriteString(tokenScopeCSS)
-
-	sb.WriteString(`<p style="margin-top:20px"><a href="/account">← Account</a> · <a href="/mcp">MCP server</a></p>`)
-
 	sb.WriteString(`<script>
 async function createToken(e) {
 	e.preventDefault();
@@ -273,7 +286,6 @@ async function createToken(e) {
 		method: 'POST',
 		headers: {'Content-Type': 'application/json'},
 		body: JSON.stringify({name: form.name.value, expires_in: parseInt(form.expires_in.value),
-			permissions: ['read', 'write'],
 			services: Array.from(form.querySelectorAll('input[name="services"]:checked')).map(function(c){return c.value})})
 	});
 	var result = await res.json();
@@ -507,3 +519,20 @@ const tokenScopeCSS = `<style>
 .tok-chip input:checked+span{background:#111;border-color:#111;color:#fff}
 .tok-chip input:focus-visible+span{outline:2px solid #111;outline-offset:2px}
 </style>`
+
+// tokenScope is what a token may reach, for the list.
+//
+// The service names it was confined to, or the truth when it was not: an
+// unscoped token reaches everything the account can, which is the thing worth
+// saying out loud on the page that hands out credentials.
+func tokenScope(t *auth.Token) string {
+	names := t.Services()
+	if len(names) == 0 {
+		return "Everything you can reach"
+	}
+	out := make([]string, 0, len(names))
+	for _, n := range names {
+		out = append(out, service.Label(n))
+	}
+	return htmlpkg.EscapeString(strings.Join(out, ", "))
+}
