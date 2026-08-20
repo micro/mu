@@ -42,16 +42,20 @@ func TestAnUnknownNameIsNotTheDefaultAgent(t *testing.T) {
 	}
 }
 
-// A guest has no roster, so the only agent they can be on a page about is the
-// default one.
-func TestAGuestOnlyHasTheDefaultAgent(t *testing.T) {
+// No account, no roster — so a name that is not the default names nothing.
+//
+// These pages redirect a signed-out visitor to the login now, so this is about
+// the empty account id rather than about a guest. It still has to hold:
+// resolving somebody's private agent from an empty id would be the same bug
+// whichever caller arrived with one.
+func TestAnEmptyAccountResolvesOnlyTheDefault(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 
-	if _, ok := agentSlugTarget("", DefaultSlug, true); !ok {
-		t.Error("a signed-out visitor cannot reach the default agent")
+	if _, ok := agentSlugTarget("", DefaultSlug); !ok {
+		t.Error("the default agent does not resolve for an empty account")
 	}
-	if _, ok := agentSlugTarget("", "someones-private-agent", true); ok {
-		t.Error("a signed-out visitor resolved somebody's agent by name")
+	if _, ok := agentSlugTarget("", "someones-private-agent"); ok {
+		t.Error("an empty account resolved somebody's agent by name")
 	}
 }
 

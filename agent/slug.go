@@ -122,16 +122,11 @@ func Path(owner, id string) string { return "/agent/" + SlugFor(owner, id) }
 
 // agentSlugTarget resolves a path name for whoever is looking.
 //
-// A guest has no roster, so the only agent they can be on a page about is the
-// default one. Anything else is not "forbidden" so much as not a thing that
-// exists for them, and 404 is the honest answer.
-func agentSlugTarget(accountID, slug string, guest bool) (string, bool) {
-	if guest {
-		if strings.EqualFold(slug, DefaultSlug) {
-			return "", true
-		}
-		return "", false
-	}
+// It took a guest flag: a signed-out visitor had no roster, so the only agent
+// they could be on a page about was the default one. There are no signed-out
+// visitors on these pages now — /agent redirects to the login — so there is one
+// answer.
+func agentSlugTarget(accountID, slug string) (string, bool) {
 	return BySlug(accountID, slug)
 }
 

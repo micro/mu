@@ -55,7 +55,7 @@ func TestAnAgentBuiltHereIsTheAgentThatAnswers(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = RemoveAgent(owner, a.ID) })
 
-	got := resolveAgent(owner, a.ID, false)
+	got := resolveAgent(owner, a.ID)
 	if got == nil {
 		t.Fatal("an agent in the roster was not found by the path that answers questions")
 	}
@@ -77,14 +77,10 @@ func TestAnotherAccountsAgentDoesNotResolve(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = RemoveAgent(owner, a.ID) })
 
-	if got := resolveAgent(stranger, a.ID, false); got != nil {
+	if got := resolveAgent(stranger, a.ID); got != nil {
 		t.Fatalf("a stranger resolved somebody else's agent: %+v", got)
 	}
-	// And a guest gets the house assistant, never a named one.
-	if got := resolveAgent(owner, a.ID, true); got != nil {
-		t.Fatal("a guest resolved an account's agent")
-	}
-	if got := resolveAgent(owner, "", false); got != nil {
+	if got := resolveAgent(owner, ""); got != nil {
 		t.Fatal("an empty id resolved to something")
 	}
 }

@@ -163,21 +163,23 @@ func RunHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// An account, or nothing.
+	//
+	// A signed-out visitor used to get three agent runs a day against a
+	// per-IP counter and an instance-wide ceiling — a demonstration, so the
+	// landing could show the tools being used rather than described. The
+	// landing has no chat box on it any more, and every account now gets a
+	// daily allowance of its own (internal/quota/allowance.go), so what was a
+	// second free tier with different rules is just the first one, reached by
+	// signing up.
 	_, acc := auth.TrySession(r)
-	isGuest := acc == nil
-
-	if isGuest {
-		ip := app.ClientIP(r)
-		if !guestQueryAllowed(ip) {
-			w.WriteHeader(401)
-			app.RespondJSON(w, RunResponse{Error: "Sign up to keep using the AI agent. 3 free queries per day."})
-			return
-		}
-		guestQueryRecord(ip)
+	if acc == nil {
+		w.WriteHeader(401)
+		app.RespondJSON(w, RunResponse{Error: "Sign in to ask the agent."})
+		return
 	}
 
-	// Check quota (authenticated users only)
-	if !isGuest && QuotaCheck != nil {
+	if QuotaCheck != nil {
 		canProceed, _, err := QuotaCheck(r, quota.OpAgentQuery)
 		if !canProceed {
 			w.WriteHeader(402)
@@ -195,13 +197,10 @@ func RunHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Step 1: Plan
 	userCtx := ""
-	if !isGuest && UserContextFunc != nil {
+	if UserContextFunc != nil {
 		userCtx = UserContextFunc(acc.ID)
 	}
 	toolsForPlan := agentToolsDesc
-	if isGuest {
-		toolsForPlan = guestToolsDesc
-	}
 	planSystem := "You are an AI agent. Given a user question, output ONLY a JSON array of tool calls.\n\n" +
 		toolsForPlan +
 		"\n\nOutput format: [{\"tool\":\"tool_name\",\"args\":{}}]\nUse at most 5 tool calls. Output [] if no tools needed." +
@@ -249,7 +248,7 @@ func RunHandler(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		seenToolCalls[key] = true
-		text, isErr, execErr := api.RunPlanned(r, isGuest, tc.Tool, tc.Args)
+		text, isErr, execErr := api.RunPlanned(r, false, tc.Tool, tc.Args)
 		if errors.Is(execErr, api.ErrRefused) {
 			app.Log("agent", "refused %s: %v", tc.Tool, execErr)
 			continue
@@ -301,11 +300,6 @@ func RunHandler(w http.ResponseWriter, r *http.Request) {
 
 	answer = app.StripLatexDollars(answer)
 	answer = completeToolAnswer(answer, ragParts)
-
-	if isGuest {
-		app.RespondJSON(w, RunResponse{Answer: answer, Tools: toolsUsed})
-		return
-	}
 
 	// No scope: /agent/run names no agent, so there is no specialist for a
 	// fact to belong to and it goes in the shared pool, which is where a fact

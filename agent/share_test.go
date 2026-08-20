@@ -41,7 +41,7 @@ func TestAPublishedAgentAnswersForSomebodyElse(t *testing.T) {
 		t.Fatal("a published agent was not in the directory")
 	}
 
-	got := resolveAgent(stranger, a.ID, false)
+	got := resolveAgent(stranger, a.ID)
 	if got == nil {
 		t.Fatal("a stranger could not run a published agent")
 	}
@@ -60,7 +60,7 @@ func TestAPrivateAgentIsNotReachableById(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = RemoveAgent(owner, a.ID) })
 
-	if got := resolveAgent(stranger, a.ID, false); got != nil {
+	if got := resolveAgent(stranger, a.ID); got != nil {
 		t.Fatalf("a stranger ran a private agent by knowing its id: %+v", got)
 	}
 	for _, p := range PublicAgents(stranger) {
@@ -73,13 +73,13 @@ func TestAPrivateAgentIsNotReachableById(t *testing.T) {
 	if err := Publish(owner, a.ID, true); err != nil {
 		t.Fatal(err)
 	}
-	if resolveAgent(stranger, a.ID, false) == nil {
+	if resolveAgent(stranger, a.ID) == nil {
 		t.Fatal("publishing did not make it reachable")
 	}
 	if err := Publish(owner, a.ID, false); err != nil {
 		t.Fatal(err)
 	}
-	if got := resolveAgent(stranger, a.ID, false); got != nil {
+	if got := resolveAgent(stranger, a.ID); got != nil {
 		t.Fatal("withdrawing did not make it unreachable again")
 	}
 }

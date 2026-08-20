@@ -91,7 +91,7 @@ func APIHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// The same lookup the page does, so /agent/research and POST /agent/research
 	// cannot disagree about which agent that is.
-	agentID, ok := agentSlugTarget(accountID, slug, false)
+	agentID, ok := agentSlugTarget(accountID, slug)
 	if !ok {
 		app.NotFound(w, r, "no agent called "+slug)
 		return

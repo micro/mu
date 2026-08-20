@@ -62,7 +62,7 @@ func TestAPlatformAgentHasAPage(t *testing.T) {
 // published ones and the legacy store — not this instance's own — so the page
 // said News and the default answered with every tool.
 func TestTheChatRunsThePlatformAgent(t *testing.T) {
-	a := resolveAgent("somebody", "markets", false)
+	a := resolveAgent("somebody", "markets")
 	if a == nil {
 		t.Fatal("the markets agent does not resolve for a run")
 	}

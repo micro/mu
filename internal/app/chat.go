@@ -18,8 +18,6 @@ func JSString(s string) string {
 
 // ChatConfig configures the shared chat component.
 type ChatConfig struct {
-	// Guest renders the sign-up CTA on the free-query limit (401).
-	Guest bool
 	// ContextID seeds the conversation's server-side thread id, so follow-up
 	// messages continue the same session. Empty starts a new session.
 	ContextID string
@@ -63,13 +61,9 @@ type ChatConfig struct {
 // pills and a conversation log, plus scoped styles and a small script). The
 // script POSTs to /agent and renders the SSE stream inline, tracks the server
 // thread id (context_id) so a session continues across turns, and keeps the
-// conversation in the DOM + sessionStorage for guests. window.muChatAsk(text)
+// conversation in the DOM + sessionStorage. window.muChatAsk(text)
 // submits a query; window.muChatNew() starts a fresh session.
 func ChatComponent(cfg ChatConfig) string {
-	guestJS := "false"
-	if cfg.Guest {
-		guestJS = "true"
-	}
 	// The cards go with the question, always.
 	//
 	// This was a checkbox — "use live context" — off by default, remembered in
@@ -181,7 +175,6 @@ func ChatComponent(cfg ChatConfig) string {
 
 <script>
 (function(){
-var GUEST=` + guestJS + `;
 var contextId=` + JSString(cfg.ContextID) + `;
 var SESSION=` + boolJS(cfg.InitialConvHTML != "") + `;
 var HIDE_SUGGEST=` + boolJS(cfg.HideSuggestions) + `;
@@ -270,13 +263,13 @@ function ask(q){
   u.scrollIntoView({behavior:'smooth',block:'start'});
   var streamText='';
   var streaming=false;
-  var body=JSON.stringify({prompt:q,model:'standard',history:history.slice(-6),context_id:contextId||'',agent:(window.muActiveAgent||''),cards:true});
+  var body=JSON.stringify({prompt:q,history:history.slice(-6),context_id:contextId||'',agent:(window.muActiveAgent||''),cards:true});
   fetch('/agent',{method:'POST',headers:{'Content-Type':'application/json'},body:body,credentials:'same-origin'})
   .then(function(resp){
     if(resp.status===401){
       return resp.json().catch(function(){return {};}).then(function(j){
         stopWork();
-        var msg=esc(j.error||'Sign up to keep using the AI agent.');
+        var msg=esc(j.error||'Sign in to ask the agent.');
         a.innerHTML='<div class="mu-cta">'+msg+' <a href="/signup">Sign up →</a> <a href="/login?redirect=/agent" style="margin-left:10px">Log in</a></div>';
         save();
         throw 'handled';

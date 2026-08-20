@@ -109,11 +109,11 @@ func TestSpecsReproduceTheOldPolicy(t *testing.T) {
 		}
 	}
 	// index is deliberately not scoped, and this is a change. The old
-	// accountScoped map marked it scoped, which closed it to guests in the
-	// agent — while the micro-agent's own allowlist let guests use it. Two
+	// accountScoped map marked it scoped, which closed it in the agent — while
+	// the micro-agent's own allowlist let it through. Two
 	for _, tool := range []string{"mail_inbox", "tasks_list", "notes_list"} {
-		if service.GuestAllowedTool(tool) {
-			t.Errorf("%s must stay closed to guests", tool)
+		if service.PublicTool(tool) {
+			t.Errorf("%s reaches one person's data and must not run in a group channel", tool)
 		}
 	}
 	// destructiveTools, deleted from agent/native.go

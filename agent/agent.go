@@ -272,7 +272,7 @@ func QueryWithOpts(accountID, prompt string, opts QueryOpts) (string, error) {
 		}
 		toolsDesc := agentToolsDesc
 		if opts.Public {
-			toolsDesc = guestToolsDesc
+			toolsDesc = publicToolsDesc
 		}
 		planSystem := "You are an AI agent. Given a user question, output ONLY a JSON array of tool calls (no other text, no markdown).\n\n" +
 			toolsDesc +
@@ -336,7 +336,7 @@ func QueryWithOpts(accountID, prompt string, opts QueryOpts) (string, error) {
 			unavailableTools = append(unavailableTools, tc.Tool)
 			if fallback, ok := fallbackNewsSearchToolCall(prompt, tc.Tool, tc.Args); ok {
 				key := toolCallKey(fallback.Tool, fallback.Args)
-				if !seenToolCalls[key] && (!opts.Public || isGuestAllowedTool(fallback.Tool)) {
+				if !seenToolCalls[key] && (!opts.Public || publicTool(fallback.Tool)) {
 					toolCalls = append(toolCalls, toolCall{Tool: fallback.Tool, Args: fallback.Args})
 				}
 			}
@@ -478,22 +478,28 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 // servePage renders the unified chat surface: a sessions rail (logged-in users)
 // beside the shared chat component, in the standard app shell. Reopening a saved
 // session loads its turns in place and continues the same conversation. This is
-// the single AI surface — the home assistant and guest landing render the same
-// chat component.
+// the single AI surface — the home assistant and /agent render the same chat
+// component.
+//
+// Signed in, or not at all. A signed-out visitor used to get this page with
+// three free runs a day and a paragraph explaining what they were looking at;
+// that was the landing's demonstration, and the landing does not have a chat
+// box on it any more. Every account gets a daily allowance of its own, so the
+// way to try this is to sign up — which is what the landing's one button does.
 func servePage(w http.ResponseWriter, r *http.Request) {
 	_, acc := auth.TrySession(r)
-	guest := acc == nil
-	accountID := ""
-	if acc != nil {
-		accountID = acc.ID
+	if acc == nil {
+		app.RedirectToLogin(w, r)
+		return
 	}
+	accountID := acc.ID
 
 	// Reopen a saved session (?session=, or legacy ?continue=).
 	sessionID := r.URL.Query().Get("session")
 	if sessionID == "" {
 		sessionID = r.URL.Query().Get("continue")
 	}
-	cfg := app.ChatConfig{Guest: guest, StorageNS: "agent"}
+	cfg := app.ChatConfig{StorageNS: "agent"}
 	activeRoot := "" // the reopened conversation, for the rail highlight
 	reopened := false
 	reopenAgent := "" // agent the reopened conversation is with
@@ -502,7 +508,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	// nothing, because the thread it belongs to is an email chain or a WhatsApp
 	// exchange and the way to carry it on is to reply there.
 	elsewhere := ""
-	if sessionID != "" && !guest {
+	if sessionID != "" {
 		// A conversation is a conversation in the record. It used to be a chain
 		// of workflow records linked by ParentID, which is why the chat and the
 		// conversation list disagreed about what had been said, and why an
@@ -548,7 +554,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	named := false
 	if slug := strings.TrimPrefix(r.URL.Path, "/agent/"); r.URL.Path != "/agent" &&
 		slug != "" && !strings.Contains(slug, "/") {
-		id, ok := agentSlugTarget(accountID, slug, guest)
+		id, ok := agentSlugTarget(accountID, slug)
 		if !ok {
 			app.NotFound(w, r, "no agent called "+slug)
 			return
@@ -558,7 +564,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	if reopened {
 		// A reopened conversation decides its own agent; the rail filters to it.
 		selAgent = reopenAgent
-	} else if selAgent != "" && !guest && prefill == "" {
+	} else if selAgent != "" && prefill == "" {
 		// Land in the last conversation with this agent, if there is one.
 		if last := latestThreadFor(accountID, selAgent); last != "" {
 			cfg.ContextID = last
@@ -579,7 +585,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	// chatLayoutCSS. Each is its own pane so one can be open without the other:
 	// picking an agent and picking a conversation are separate errands.
 	rail := ""
-	if !guest {
+	{
 		// The roster, except on a page that is about one agent. A room does not
 		// carry the list of rooms — the same reason /mail has no services list
 		// down the side of it.
@@ -593,7 +599,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	chip := ""
-	if !guest {
+	{
 		// The chip alone said "Agent: Micro" and nothing else, which leaves the
 		// obvious question unanswered — what is this, and is it the same thing
 		// as the agent I came here to connect? It is not: this one is Mu's,
@@ -638,18 +644,6 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 			where + connect + `</div>` + paneJS
 	}
 
-	// A signed-out visitor arrives here from the landing's "See it working",
-	// and used to meet a bare chat box: the same one on any site, with nothing
-	// saying the answers come from tools running on this instance rather than
-	// from a model's memory. That is the whole claim, and the page was letting
-	// it go unsaid. Two sentences and a link close the loop back to /tools.
-	if guest {
-		chip = `<div class="agent-intro">` +
-			`<b>This is the agent, using the tools.</b> Ask it something and it calls them on this ` +
-			`instance — the news feeds, the search index, the markets data. ` +
-			`<a href="/signup">Sign up</a> and it gets an address people can write to, and remembers ` +
-			`what was said last time. <a href="/tools">See what it can reach &rarr;</a></div>`
-	}
 	// No tabs. There were four — Chat, Threads, Runs, Connect — for one thing:
 	// you, an agent, and what you have said to each other. Two of them listed
 	// the same conversations under different headings, one listed the workflow
@@ -683,9 +677,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	// selection in charge on a bare /agent: the rail listed every agent's
 	// conversations while the chip named one of them, and the next message went
 	// to the agent the chip named. The URL is the state.
-	if !guest {
-		content += `<script>window.muSeedAgent(` + app.JSString(selAgent) + `);</script>`
-	}
+	content += `<script>window.muSeedAgent(` + app.JSString(selAgent) + `);</script>`
 	if prefill != "" {
 		content += `<script>(function(){var i=document.getElementById('mu-chat-input');if(i&&window.muChatAsk){i.value=` + app.JSString(prefill) + `;window.muChatAsk(i.value);}history.replaceState(null,'',` + app.JSString(Path(accountID, selAgent)) + `);})()</script>`
 	}
@@ -696,11 +688,8 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	// page called that. There is now — /inbox is the mailbox, and this is where
 	// you talk to an agent — so the title was the clearest possible statement
 	// that the two had not been told apart.
-	title, desc := "Agent", "Talk to your agent, and the address it answers on"
-	if !guest {
-		title = agentTitle(accountID, selAgent)
-		desc = "Talk to " + title + ", and the address it answers on"
-	}
+	title := agentTitle(accountID, selAgent)
+	desc := "Talk to " + title + ", and the address it answers on"
 	app.Respond(w, r, app.Response{Title: title, Description: desc, HTML: content})
 }
 
@@ -1178,7 +1167,7 @@ func sse(w http.ResponseWriter, event map[string]any) {
 // failed before producing any user-visible output — in which case nothing but
 // the already-sent flow_id was emitted, so the caller can fall back to the
 // hand-rolled pipeline cleanly.
-func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts QueryOpts, flow *Flow, isGuest bool, threadID string) bool {
+func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts QueryOpts, flow *Flow, threadID string) bool {
 	streaming := false
 	emitted := false
 	var captured strings.Builder
@@ -1316,7 +1305,14 @@ const agentToolsDesc = `Available tools (use exact name):
 - wallet_balance: What that address holds in USDC (no args). This is not credits — credits are this instance's own meter, and there is no tool for topping them up; point the user at /account/topup.
 - stream: Read the public event stream (no args)`
 
-const guestToolsDesc = `Available tools (use exact name):
+// publicToolsDesc is the tool list for a run with no private context — a
+// Discord or Telegram group, where mail, the wallet and the address book are
+// not this conversation's to reach.
+//
+// It was named for guests, because a signed-out visitor was the other caller
+// with no private context. There are no signed-out runs any more; a group
+// channel is what this is for now, and QueryOpts.Public is what selects it.
+const publicToolsDesc = `Available tools (use exact name):
 - news_headlines: Get recent news headlines + short summaries balanced across ALL topics (args optional: {"topic":"tech","limit":30}). PREFER this for general news and briefing requests so coverage isn't dominated by one topic like crypto. Then use news_read for any article worth expanding.
 - news_read: Read one news article in full by its id from news_headlines (args: {"id":"<article id>"})
 - news: Get the raw latest news feed grouped by category (no args)
@@ -1355,7 +1351,8 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		Cards bool `json:"cards"`
 		// History is an optional client-supplied conversation thread used by
 		// the inline chat (landing + assistant). It gives multi-turn context
-		// without server-side persistence, so guests get follow-up memory too.
+		// without server-side persistence, so a conversation that predates the
+		// record keeps its follow-up memory too.
 		History []struct {
 			Prompt string `json:"prompt"`
 			Answer string `json:"answer"`
@@ -1366,25 +1363,19 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// An account, or nothing. See RunHandler in run.go for why the signed-out
+	// demonstration went.
 	_, acc := auth.TrySession(r)
-	isGuest := acc == nil
-
-	if isGuest {
-		ip := app.ClientIP(r)
-		if !guestQueryAllowed(ip) {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(`{"error":"Sign up to keep using the AI agent. 3 free queries per day."}`))
-			return
-		}
-		guestQueryRecord(ip)
+	if acc == nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte(`{"error":"Sign in to ask the agent."}`)) //nolint:errcheck
+		return
 	}
 
-	// Resolve model
-
-	// Check wallet quota (authenticated users only), then charge up-front: the
-	// agent is our most expensive op, so it's metered like web_fetch and chat.
-	if !isGuest && QuotaCheck != nil {
+	// Charge up-front: the agent is our most expensive op, so it is metered
+	// like web_fetch and chat.
+	if QuotaCheck != nil {
 		canProceed, _, err := QuotaCheck(r, quota.OpAgentQuery)
 		if !canProceed {
 			msg := "Insufficient credits for agent query. Top up at /account/topup."
@@ -1399,10 +1390,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	accountID := ""
-	if acc != nil {
-		accountID = acc.ID
-	}
+	accountID := acc.ID
 
 	// The conversation this message continues, in the system of record.
 	//
@@ -1411,10 +1399,8 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	// workflow records, or any turn in one — resolves through the same door the
 	// rail links through, so an open tab keeps working.
 	//
-	// Guests have no account, so there is nobody to remember and nothing to
-	// record against; their history comes up with the request instead.
 	threadID := ""
-	if !isGuest && req.ContextID != "" {
+	if req.ContextID != "" {
 		threadID = openThread(accountID, req.ContextID)
 	}
 
@@ -1456,7 +1442,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	// The web drives its own run because it streams, so it cannot hand the whole
 	// turn to Ask and wait — but it must not write its own version of the record
 	// either, which is why it goes through the same three calls Ask uses.
-	if !isGuest {
+	{
 		if err := saveFlow(flow); err != nil {
 			app.Log("agent", "Failed to create flow: %v", err)
 		}
@@ -1493,24 +1479,18 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	// emitting tool start/end events. Falls through to the hand-rolled
 	// pipeline below if disabled, no provider is configured, or it fails
 	// before producing any output.
-	// Guest starter/live-data prompts with deterministic tool shortcuts should
-	// skip the native agent's initial model planning turn. The hand-rolled
-	// pipeline below can start the relevant tool immediately, which improves
-	// first visible progress for the first-run core loop without changing any
-	// public endpoint or tool contract.
-	preferPlanner := isGuest && (len(shortcutToolCalls(req.Prompt)) > 0 || isSimpleWeatherPrompt(req.Prompt))
-	if nativeStreamEnabled() && !preferPlanner {
-		nopts := QueryOpts{Public: isGuest}
-		if req.Cards && !isGuest && CardContextFunc != nil {
+	if nativeStreamEnabled() {
+		nopts := QueryOpts{}
+		if req.Cards && CardContextFunc != nil {
 			nopts.Extra = CardContextFunc(accountID)
 		}
-		if ua := resolveAgent(accountID, req.Agent, isGuest); ua != nil {
+		if ua := resolveAgent(accountID, req.Agent); ua != nil {
 			nopts.System = ua.SystemPrompt
 			nopts.Tools = ua.Tools
 		}
 		// What was already said, from the record rather than from workflow
-		// records. Guests have no record, so they keep the history the page
-		// sent up with the request.
+		// records. The history the page sent up is the fallback, for a
+		// conversation that predates the record.
 		if h := History(accountID, threadID, historyTurns); len(h) > 0 {
 			nopts.History = h
 		} else {
@@ -1529,7 +1509,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		// options rather than diverting into a pipeline of its own, a routed
 		// question still streams.
 		routedPrompt, nopts := Routed(req.Prompt, nopts)
-		if streamNativeSSE(w, accountID, routedPrompt, nopts, flow, isGuest, threadID) {
+		if streamNativeSSE(w, accountID, routedPrompt, nopts, flow, threadID) {
 			return
 		}
 	}
@@ -1562,9 +1542,6 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 			planQuestion = convCtx.String()
 		}
 		toolsForPlan := agentToolsDesc
-		if isGuest {
-			toolsForPlan = guestToolsDesc
-		}
 		planPrompt := &ai.Prompt{
 			System: "You are an AI agent. Given a user question, output ONLY a JSON array of tool calls (no other text, no markdown).\n\n" +
 				toolsForPlan +
@@ -1615,14 +1592,14 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		}
 		// Asked before the tool_start frame, so a refusal is not announced to
 		// the user as a step that then fails.
-		if err := api.AllowPlanned(tc.Tool, isGuest); err != nil {
+		if err := api.AllowPlanned(tc.Tool, false); err != nil {
 			app.Log("agent", "refused %s: %v", tc.Tool, err)
 			continue
 		}
 		msg := toolLabel(tc.Tool)
 		sse(w, map[string]any{"type": "tool_start", "name": tc.Tool, "message": msg})
 
-		text, isErr, execErr := api.RunPlanned(r, isGuest, tc.Tool, tc.Args)
+		text, isErr, execErr := api.RunPlanned(r, false, tc.Tool, tc.Args)
 		if execErr != nil || isErr {
 			app.Log("agent", "Tool %s failed: err=%v isErr=%v response=%.200s", tc.Tool, execErr, isErr, text)
 			unavailableTools = append(unavailableTools, tc.Tool)
@@ -1633,7 +1610,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 			})
 			if fallback, ok := fallbackNewsSearchToolCall(req.Prompt, tc.Tool, tc.Args); ok {
 				key := toolCallKey(fallback.Tool, fallback.Args)
-				if !seenToolCalls[key] && (!isGuest || isGuestAllowedTool(fallback.Tool)) {
+				if !seenToolCalls[key] {
 					toolCalls = append(toolCalls, toolCall{Tool: fallback.Tool, Args: fallback.Args})
 				}
 			}
@@ -1683,57 +1660,13 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		ragParts = append(ragParts, fmt.Sprintf("### %s\n%s", tool, unavailableToolMessage(tool)))
 	}
 
-	hasMarketsTool := false
-	hasWeatherTool := false
-	hasWebSearchTool := false
-	hasNewsSearchTool := false
-	for _, tc := range toolCalls {
-		switch tc.Tool {
-		case "markets", "markets_list":
-			hasMarketsTool = true
-		case "weather_forecast":
-			hasWeatherTool = true
-		case "web_search", "search_web":
-			hasWebSearchTool = true
-		case "news_search":
-			hasNewsSearchTool = true
-		}
-	}
-	hasUnavailableNewsSearch := false
-	for _, tool := range unavailableTools {
-		if tool == "news_search" {
-			hasUnavailableNewsSearch = true
-			break
-		}
-	}
-	if useFastToolFallback(req.Prompt, isGuest, hasMarketsTool, hasWeatherTool, hasWebSearchTool, hasNewsSearchTool, hasUnavailableNewsSearch, ragParts) {
-		answer := app.NormalizeAnswerMarkdown(app.StripLatexDollars(synthesizeToolFallback(ragParts)))
-		rendered := app.RenderString(answer)
-		html := `<div class="card" id="agent-response">` + rendered + `</div>`
-		for _, res := range results {
-			if card := renderResultCard(accountID, res.Name, res.Result, res.Args); card != "" {
-				html += card
-			}
-		}
-		if len(results) > 0 {
-			html += `<div class="card" style="font-size:13px;"><h4 style="margin:0 0 8px;font-size:13px;color:#888;">References</h4>`
-			for _, res := range results {
-				html += renderToolCallRef(res.Name, res.Args, res.Formatted)
-			}
-			html += `</div>`
-		}
-		updateFlow(flow.ID, func(f *Flow) {
-			f.Answer = answer
-			f.HTML = html
-			f.Status = "done"
-		})
-		sse(w, map[string]any{"type": "stream_start"})
-		sse(w, map[string]any{"type": "stream_token", "token": answer})
-		sse(w, map[string]any{"type": "response", "html": html, "flow_id": flow.ID})
-		sse(w, map[string]any{"type": "done"})
-		return
-	}
-
+	// There was a fast path here that skipped synthesis and returned the tool
+	// output raw, for a market-mover or a simple weather question. It fired only
+	// for a signed-out visitor: it existed so the landing's demonstration showed
+	// something on screen sooner, at the cost of an answer that was a data dump.
+	// There are no signed-out runs, so it fires for nobody — and turning it on
+	// for everybody would be trading every account's answer quality for a
+	// latency win that was only ever worth it to somebody who had not signed up.
 	today := currentDateContext(time.Now().UTC())
 
 	var synthSystem string
@@ -1769,7 +1702,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	// Micro, so an agent whose whole point is a voice or a standing instruction
 	// lost both the moment a question needed a tool.
 	customAgent := false
-	if ua := resolveAgent(accountID, req.Agent, isGuest); ua != nil &&
+	if ua := resolveAgent(accountID, req.Agent); ua != nil &&
 		strings.TrimSpace(ua.SystemPrompt) != "" {
 		synthSystem = strings.TrimSpace(ua.SystemPrompt) + "\n\n" + synthSystem
 		customAgent = true
@@ -2048,22 +1981,6 @@ func isLatestTechnologyNewsPrompt(lower string) bool {
 	return false
 }
 
-func useFastToolFallback(prompt string, isGuest bool, hasMarketsTool bool, hasWeatherTool bool, hasWebSearchTool bool, hasNewsSearchTool bool, hasUnavailableNewsSearch bool, ragParts []string) bool {
-	if !isGuest || len(ragParts) == 0 {
-		return false
-	}
-	if hasMarketsTool && isMarketMoverPrompt(prompt) && !wantsMarketMoverExplanation(prompt) {
-		return true
-	}
-	if hasWeatherTool && isSimpleWeatherPrompt(prompt) {
-		return true
-	}
-	if isLatestTechnologyNewsPrompt(strings.ToLower(prompt)) {
-		return hasNewsSearchTool || (hasWebSearchTool && hasUnavailableNewsSearch)
-	}
-	return false
-}
-
 func shouldReplayFinalNativeAnswer(prompt string, nativeTools []string, capturedLen int) bool {
 	if capturedLen > 0 {
 		return true
@@ -2260,8 +2177,8 @@ func renderToolCallRef(name string, args map[string]any, formattedResult string)
 //
 // The old store is still consulted second, for anything the one-way import has
 // not carried over.
-func resolveAgent(accountID, id string, isGuest bool) *micro.Agent {
-	if isGuest || accountID == "" || id == "" {
+func resolveAgent(accountID, id string) *micro.Agent {
+	if accountID == "" || id == "" {
 		return nil
 	}
 	if a := For(accountID, id); a != nil {
@@ -2775,7 +2692,7 @@ func formatNewsResult(result string) string {
 		return "No news available."
 	}
 
-	// Freshness-sensitive searches feed both the fast guest fallback and the
+	// Freshness-sensitive searches feed both the fast tool fallback and the
 	// native streaming/final synthesis paths. Keep dated current items ahead of
 	// older replayed context before any model sees the result list.
 	if data.Query != "" && (data.Freshness.Status == "mostly_stale" || data.Freshness.Status == "stale" || strings.TrimSpace(data.Freshness.Notice) != "") {

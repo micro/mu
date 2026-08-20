@@ -365,10 +365,10 @@ function fetchW(la,lo){
 
 	// Inline agent — Home answers here rather than navigating away, and it renders
 	// for everyone: logged out, this is the public face of the product. Signed-in
-	// users get personalised chips; guests get generic starters and the guest chat.
+	// users get personalised chips.
 	{
 		b.WriteString(`<div id="home-agent">`)
-		b.WriteString(app.ChatComponent(app.ChatConfig{Guest: viewerID == "", HideSuggestions: true,
+		b.WriteString(app.ChatComponent(app.ChatConfig{HideSuggestions: true,
 			OfferAgentPicker: viewerID != ""}))
 
 		// The address, under the box. Quiet, because it is a fact about the

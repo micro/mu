@@ -63,7 +63,8 @@ func Mode() string {
 }
 
 // nativeServices are the registered go-micro domain services the native agent
-// may use as tools. Guests get the public subset. Derived from the live
+// may use as tools. A run with no private context — a group channel — gets
+// the public subset. Derived from the live
 // registry so a newly registered service becomes available to the agent (and
 // the /agent/new tool picker) without editing a hardcoded list here.
 func nativeServices(public bool) []string {
@@ -71,7 +72,7 @@ func nativeServices(public bool) []string {
 	sort.Strings(all)
 	out := make([]string, 0, len(all))
 	for _, s := range all {
-		// Guests can't reach account-scoped or metered services; the policy
+		// A public run can't reach account-scoped or metered services; the policy
 		// lives in internal/service so the agent and the app SDK share it.
 		if public && service.AccountScoped(s) {
 			continue
@@ -124,7 +125,7 @@ func filterServices(all, allow []string) []string {
 // service.AccountFrom(ctx) and nothing else, so there is no argument to forge.
 // Any account_id the model invents is stripped rather than passed through, both
 // because it means nothing now and so a handler can never start trusting it.
-// For a guest the identity is empty, which clears any inherited account instead
+// For a run with no account the identity is empty, which clears any inherited account instead
 // of borrowing the previous caller's.
 func injectAccount(accountID string) gmai.ToolWrapper {
 	return func(next gmai.ToolHandler) gmai.ToolHandler {
@@ -259,7 +260,7 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 
 	// Use a fresh named agent for each request. Some go-micro providers keep
 	// per-agent conversation state keyed by name, so reusing a stable "assistant"
-	// name can leak prior independent prompts into fresh guest requests.
+	// name can leak prior independent prompts into fresh requests.
 	toolWrappers := append([]gmai.ToolWrapper{blockDestructiveTools(), injectAccount(accountID), dedupeNativeToolCalls()}, wrappers...)
 	a = service.NewAgent(nativeAgentInstanceName(), sys, provider, key, filterServices(nativeServices(opts.Public), opts.Tools),
 		gmagent.Model(model),

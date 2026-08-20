@@ -106,9 +106,10 @@ func activeByDay() (map[string]map[string]bool, map[string]bool) {
 		set := map[string]bool{}
 		for who := range b.Users {
 			if who == "guest" {
-				// Every signed-out visitor counts under one name, so guests
-				// cannot be told apart and a landing-page bounce is not
-				// answerable from here.
+				// Rows written while signed-out runs existed, all under one
+				// name: they cannot be told apart, so they were never a cohort.
+				// There are no new ones — every run belongs to an account now —
+				// and the old rows stay on disk until they age out.
 				continue
 			}
 			if who == usage.Other {

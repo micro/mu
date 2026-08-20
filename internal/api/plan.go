@@ -34,13 +34,13 @@ import (
 // "unavailable" invites a retry, and this is not a transient condition.
 var ErrRefused = errors.New("withheld from the model")
 
-// guestToolExtras are the guest-usable tools with no service behind them, so
+// publicToolExtras are the guest-usable tools with no service behind them, so
 // service.GuestAllowedTool cannot answer for them. Anything service-backed is
 // derived from whether that service is account-scoped.
 //
 // One copy. There were two, in agent/guest.go and agent/micro/execute.go, both
 // carrying the comment about the two hand-written allowlists they had replaced.
-var guestToolExtras = map[string]bool{
+var publicToolExtras = map[string]bool{
 	"quran":         true,
 	"quran_search":  true,
 	"hadith":        true,
@@ -50,9 +50,14 @@ var guestToolExtras = map[string]bool{
 	"apps_run":      true,
 }
 
-// GuestTool reports whether a caller with no account may use a tool.
-func GuestTool(name string) bool {
-	return service.GuestAllowedTool(name) || guestToolExtras[name]
+// PublicTool reports whether a tool may run in a context with nothing private
+// in it — a group channel, where the conversation is not one person's.
+//
+// It was GuestTool, for a caller with no account. There are none: every run
+// belongs to an account now. What survives is the group case, which asks the
+// same question about the same set of tools.
+func PublicTool(name string) bool {
+	return service.PublicTool(name) || publicToolExtras[name]
 }
 
 // AllowPlanned reports whether a tool a model named may be offered to it or run
@@ -65,8 +70,8 @@ func AllowPlanned(name string, guest bool) error {
 	if service.DestructiveTool(name) {
 		return fmt.Errorf("%w: %s is destructive", ErrRefused, name)
 	}
-	if guest && !GuestTool(name) {
-		return fmt.Errorf("%w: %s needs an account", ErrRefused, name)
+	if guest && !PublicTool(name) {
+		return fmt.Errorf("%w: %s is not available in a group", ErrRefused, name)
 	}
 	return nil
 }

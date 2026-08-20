@@ -518,18 +518,18 @@ func EndpointDescriptions(name string) map[string]string {
 	return out
 }
 
-// GuestAllowedTool reports whether a caller with no account may use a tool,
-// derived from the service behind it.
+// PublicTool reports whether a tool may run where there is nothing private —
+// a group channel — derived from the service behind it.
 //
 // A tool name is service_method (news_search) or the native service.Handler.Method
-// form, so the first segment names the service. A scoped service is closed to
-// guests entirely; anything else is public.
+// form, so the first segment names the service. A scoped service is closed
+// there entirely; anything else is public.
 //
 // This replaced two hand-written allowlists — one in agent, one in agent/micro
 // — that had to be edited in step with each other and with accountScoped, and
 // were not. Tools with no service behind them (quran, blog_read) are not
 // covered here; their callers keep a short explicit list.
-func GuestAllowedTool(name string) bool {
+func PublicTool(name string) bool {
 	parts := strings.FieldsFunc(strings.ToLower(strings.TrimSpace(name)), func(r rune) bool {
 		return r == '.' || r == '_'
 	})

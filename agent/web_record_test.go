@@ -67,8 +67,9 @@ func TestATurnIsRecordedOnce(t *testing.T) {
 	}
 }
 
-// A guest has no account, so there is nothing to record against.
-func TestNothingIsRecordedForAGuest(t *testing.T) {
+// No account, nothing to record against. Every run belongs to one now, so this
+// is the defensive half: the writes are no-ops rather than panics.
+func TestNothingIsRecordedWithoutAnAccount(t *testing.T) {
 	if got := Opened("", thread.WebClient, "some-key", "", ""); got != "" {
 		t.Errorf("a conversation was opened for an account-less caller (%q)", got)
 	}

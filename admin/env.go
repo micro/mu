@@ -132,7 +132,6 @@ var settingGroups = []settingGroup{
 		"EMAIL_DAILY_LIMIT",
 		"SMS_DAILY_LIMIT",
 		"WHATSAPP_DAILY_LIMIT",
-		"GUEST_DAILY_TOTAL",
 	}},
 	{"Sign-in", []string{
 		"GOOGLE_CLIENT_ID",
