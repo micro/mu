@@ -194,9 +194,6 @@ var SignupTemplate = `<html lang="en">
       <div id="content">
 	<form id="signup" action="/signup%s" method="POST">
 	  <h1>Create your account</h1>
-	  <p class="auth-lede">One account, and your agents get every tool on this
-	  instance &mdash; news, web search, mail, markets, weather, storage &mdash;
-	  over a single MCP server. Free to start.</p>
 	  %s
 	  %s
 	  <input id="id" name="id" placeholder="Username (4-24 chars, lowercase)" required>
