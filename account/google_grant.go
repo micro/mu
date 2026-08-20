@@ -218,19 +218,26 @@ func googleExchangeFull(code, redirectURI string) (*googleToken, error) {
 	return &t, nil
 }
 
-// renderConnectionsCard is the audit screen: everything this account has handed
-// over, in one place, with a way to take it back.
+// renderGoogleCard is everything about Google in one card: whether you can sign
+// in with it, and what of it this account has handed over, with a way to take
+// that back.
 //
-// Shown even when empty, because "nothing" is the answer somebody checking
-// their permissions wants to be able to read. A card that appears only once you
-// have granted something can never be used to confirm you have not.
-func renderConnectionsCard(r *http.Request, acc *auth.Account, status string) string {
+// It was two cards. One headed "Google", which was only about sign-in, and
+// directly under it one headed "Connected accounts", which was only about
+// Google. Somebody reading the card called Google reasonably expected the
+// connections to be in it, and they were in the next card down under a name
+// that did not say Google at all.
+//
+// Shown even when nothing is granted, because "nothing" is the answer somebody
+// checking their permissions wants to be able to read. A card that appears only
+// once you have granted something can never be used to confirm you have not.
+func renderGoogleCard(r *http.Request, acc *auth.Account, status string) string {
 	if !GoogleConfigured() || acc == nil {
 		return ""
 	}
 
 	var b strings.Builder
-	b.WriteString(`<div class="card"><h4>Connected accounts</h4>`)
+	b.WriteString(`<div class="card"><h4>Google</h4>`)
 
 	switch status {
 	case "disconnected":
@@ -239,17 +246,23 @@ func renderConnectionsCard(r *http.Request, acc *auth.Account, status string) st
 		b.WriteString(`<p class="text-sm text-success">Connected.</p>`)
 	}
 
+	b.WriteString(googleSignIn(acc))
+
 	list := google.Grants(acc.ID)
 	if len(list) == 0 {
-		b.WriteString(`<p class="text-sm text-muted">Mu has no access to anything in your Google account. ` +
-			`You can attach your calendar from <a href="/events">events</a> or your contacts from ` +
-			`<a href="/contacts">contacts</a>, and it will be listed here.</p></div>`)
+		b.WriteString(`<p class="text-sm text-muted mt-2">Mu has no access to anything else in ` +
+			`your Google account. You can attach your calendar from <a href="/events">events</a> ` +
+			`or your contacts from <a href="/contacts">contacts</a>, and it will be listed ` +
+			`here.</p></div>`)
 		return b.String()
 	}
 
+	// Which Google account the access came from. Usually the one you sign in
+	// with and not necessarily — they are two separate grants and a person can
+	// have two accounts, so this says whose rather than assuming.
 	who := list[0].Email
 	if who != "" {
-		b.WriteString(`<p class="text-sm text-muted">Granted from <strong>` +
+		b.WriteString(`<p class="text-sm text-muted mt-2">Granted from <strong>` +
 			htmlpkg.EscapeString(who) + `</strong>. All read-only.</p>`)
 	}
 	b.WriteString(`<ul class="mt-2 mb-3 indent">`)
