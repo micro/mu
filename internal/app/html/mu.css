@@ -113,16 +113,22 @@ a:hover {
   text-decoration: underline;
 }
 
-/* Not on a filled button. This rule is one element plus one pseudo-class, so it
-   outranks any plain class selector — which means every button-shaped anchor on
-   the site turns black-on-black the moment somebody uses it. a.btn survived it
-   only by carrying `color: #fff !important`, and the inbox's Reply, drawn by
-   hand as a black pill, did not: it was legible until you clicked it.
-
-   Excluding the button here is the fix; the !important below is now belt as
-   well as braces. Anything that wants to look like a call to action should be
-   an a.btn (app.ActionLink) rather than a new class that has to re-learn this. */
-a:visited:not(.btn) {
+/* A visited link is the same colour as an unvisited one — but this rule must
+   not outrank the components.
+ 
+   It used to read `a:visited:not(.btn)`. That is one element, one pseudo-class
+   and one class: 0-2-1, which beats any two-class selector — so .pill.on,
+   .mail-tag.on, .ar-chip.on and every other "selected filter" drawn as white
+   text on a dark fill turned black-on-black the moment it had been clicked,
+   which for the selected one is always. It was found and patched five separate
+   times, on five different classes, because each fix was to the class rather
+   than to this.
+ 
+   Without the :not() it is 0-1-1, which loses to any two-class selector and
+   still wins over a bare one. a.btn does not need the exclusion: it carries
+   `color: #fff !important` and has since before this rule existed. The
+   exclusion was belt over braces, and the belt was the thing catching. */
+a:visited {
   color: #000;
 }
 

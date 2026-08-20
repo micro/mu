@@ -145,7 +145,7 @@ weather, places, storage — and it remembers the last conversation.</p>
 .lead{max-width:560px;text-align:center;color:#555;font-size:17px;line-height:1.6;margin:0 auto 22px}
 .lead a{color:#111}
 .lctas{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin:0}
-.lcta{display:inline-block;background:#111;color:#fff;text-decoration:none;padding:12px 24px;
+.lcta,.lcta:visited{display:inline-block;background:#111;color:#fff;text-decoration:none;padding:12px 24px;
   border-radius:var(--border-radius,6px);font-weight:700;font-size:15px}
 @media (max-width:640px){.lead{font-size:15px}}
 </style>`

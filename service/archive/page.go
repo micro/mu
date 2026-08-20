@@ -112,7 +112,7 @@ func row(e *data.IndexEntry) string {
 	}
 
 	return `<div class="ar-row">` +
-		`<div class="ar-meta"><span class="ar-kind">` + html.EscapeString(e.Type) + `</span>` +
+		`<div class="ar-meta">` + app.Pill(e.Type) +
 		html.EscapeString(app.TimeAgo(e.IndexedAt)) + `</div>` + head +
 		`<div class="ar-body">` + html.EscapeString(trim(e.Content, 260)) + `</div></div>`
 }
@@ -124,11 +124,15 @@ func kindChips(kinds []data.Kind, query, active string) string {
 	if len(kinds) == 0 {
 		return ""
 	}
+	// app.PillLink, not a fifth hand-drawn chip.
+	//
+	// This was .ar-chip: a border, a radius, a padding and a white-on-#111
+	// selected state, which is app.Pill with different numbers. It had the bug
+	// every hand-drawn copy had — a:visited outranked .ar-chip.on, so the
+	// selected category was black on black once clicked, which for the selected
+	// one is always. That is fixed at the source now (see the a:visited rule in
+	// mu.css), and this stops being a fifth place for it to come back.
 	chip := func(label, kind string, count int) string {
-		cls := "ar-chip"
-		if kind == active {
-			cls += " on"
-		}
 		q := url.Values{}
 		if query != "" {
 			q.Set("q", query)
@@ -140,11 +144,11 @@ func kindChips(kinds []data.Kind, query, active string) string {
 		if len(q) > 0 {
 			href += "?" + q.Encode()
 		}
-		out := `<a class="` + cls + `" href="` + href + `">` + html.EscapeString(label)
+		text := label
 		if count > 0 {
-			out += ` <span class="ar-n">` + app.Count(count) + `</span>`
+			text += " " + app.Count(count)
 		}
-		return out + `</a>`
+		return app.PillLink(text, href, kind == active)
 	}
 
 	total := 0
@@ -153,7 +157,7 @@ func kindChips(kinds []data.Kind, query, active string) string {
 	}
 
 	var b strings.Builder
-	b.WriteString(`<div class="ar-chips">` + chip("Everything", "", total))
+	b.WriteString(`<div class="app-filters">` + chip("Everything", "", total))
 	for _, k := range kinds {
 		b.WriteString(chip(k.Name, k.Name, k.Count))
 	}
@@ -167,15 +171,9 @@ const pageCSS = `<style>
 .ar-input{flex:1;font:inherit;font-size:15px;padding:9px 13px;border:1px solid #e2e2e2;border-radius:8px}
 .ar-input:focus{outline:none;border-color:#bbb}
 .ar-go{font:inherit;font-size:14px;padding:8px 18px;border:1px solid #111;background:#111;color:#fff;border-radius:8px;cursor:pointer}
-.ar-chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 18px}
-.ar-chip{border:1px solid #eee;border-radius:6px;padding:4px 12px;font-size:12px;color:#666;text-decoration:none;white-space:nowrap}
-.ar-chip:hover{border-color:#ddd;color:#111}
-.ar-chip.on{background:#111;border-color:#111;color:#fff}
-.ar-n{opacity:.6}
 .ar-empty{font-size:14px;color:#888;line-height:1.6}
 .ar-row{padding:12px 0;border-bottom:1px solid #f4f4f4}
 .ar-meta{font-size:11px;color:#bbb;margin-bottom:3px}
-.ar-kind{border:1px solid #eee;border-radius:6px;padding:1px 7px;margin-right:7px;color:#777}
 .ar-title{font-size:15px;color:#111;font-weight:500;text-decoration:none;display:block}
 a.ar-title:hover{text-decoration:underline}
 .ar-body{font-size:13px;color:#888;line-height:1.55;margin-top:3px}

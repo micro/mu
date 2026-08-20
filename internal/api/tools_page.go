@@ -484,7 +484,7 @@ const toolsPageCSS = `<style>
    a black button. Scope the rule the same way to outrank it. */
 .card a.connect-cta,.card a.connect-cta:visited{display:inline-block;background:#111;color:#fff;
   text-decoration:none;padding:9px 18px;border-radius:8px;font-weight:700;font-size:14px}
-.card a.connect-cta:hover{background:#333;color:#fff}
+.card a.connect-cta:hover,.card a.connect-cta:visited:hover{background:#333;color:#fff}
 .connect-note{font-size:13px;color:#888;margin-left:8px}
 .connect-cfg{background:#f5f5f5;padding:10px 12px;font-size:12px;overflow-x:auto;border-radius:6px;margin:12px 0}
 .connect-way{border-top:1px solid #eee;padding-top:12px;margin-top:14px}

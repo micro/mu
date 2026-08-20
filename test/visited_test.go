@@ -2,15 +2,23 @@ package test
 
 // A filled link has to name its visited state.
 //
-// mu.css carries `a:visited:not(.btn) { color: #000 }`, which is 0-2-1. A class
-// drawing a dark background with white text on it is usually 0-1-0 or 0-2-0, so
-// the visited rule wins and the control goes black on black the moment somebody
-// clicks it — which, for a *selected* filter chip, is always.
+// mu.css carries `a:visited { color: #000 }`. It is 0-1-1, so it beats any
+// single-class selector — and a class drawing white text on a dark fill is
+// usually exactly that. The control goes black on black the moment somebody
+// clicks it, which for a *selected* filter chip is always.
 //
-// It has caught three things: the inbox's hand-drawn Reply pill, the mail
-// page's selected tag, and .pill.on, the shared primitive under every filter
-// row on the site. Each was found by a person looking at a black rectangle with
-// nothing in it, which is the worst way to find a bug a regex can find.
+// It used to read `a:visited:not(.btn)`, which is 0-2-1 and beat two-class
+// selectors as well. That is why this was found and patched five separate
+// times on five different classes — .ib-reply-go, .mail-tag.on, .pill.on,
+// .recent-search-item.active, .ar-chip.on — each time by fixing the class
+// rather than the rule. The :not() is gone (a.btn carries color:#fff !important
+// and never needed it), so two-class controls are safe by construction and this
+// test covers the rest.
+//
+// It scans every stylesheet the product ships, not only mu.css. That was the
+// hole: this test existed when /archive turned black-on-black, and missed it
+// because .ar-chip.on lives in the page's own <style> block. A guard that only
+// looks where the last bug was is a guard that catches the last bug.
 //
 // Only classes this repo actually puts on an <a> are checked. A badge on a
 // span cannot lose to a:visited, and demanding a :visited variant of every
@@ -54,12 +62,27 @@ func TestAFilledLinkNamesItsVisitedState(t *testing.T) {
 		t.Fatalf("only %d anchor classes found — this scan is broken, not the CSS", len(onLinks))
 	}
 
-	css, err := os.ReadFile(filepath.Join("..", "internal", "app", "html", "mu.css"))
+	// Every stylesheet the product ships: mu.css, and the <style> block each
+	// page still carries.
+	var sheets []string
+	shared, err := os.ReadFile(filepath.Join("..", "internal", "app", "html", "mu.css"))
 	if err != nil {
 		t.Fatal(err)
 	}
+	sheets = append(sheets, string(shared))
+	walkGo(t, func(path, src string) {
+		if strings.HasSuffix(path, "_test.go") {
+			return
+		}
+		for _, b := range styleBlocksIn(src) {
+			sheets = append(sheets, b)
+		}
+	})
+	if len(sheets) < 20 {
+		t.Fatalf("only %d stylesheets found — this scan is broken, not the CSS", len(sheets))
+	}
 
-	for _, block := range strings.Split(stripCSSComments(string(css)), "}") {
+	for _, block := range strings.Split(stripCSSComments(strings.Join(sheets, "\n")), "}") {
 		i := strings.Index(block, "{")
 		if i < 0 {
 			continue
@@ -83,12 +106,32 @@ func TestAFilledLinkNamesItsVisitedState(t *testing.T) {
 				continue
 			}
 			t.Errorf("%q sets white text and never names :visited, and .%s is put on "+
-				"an <a> in this repo.\na:visited:not(.btn) is 0-2-1 and will outrank "+
-				"it, so this turns black-on-black once it has been clicked. Add a "+
-				":visited variant to the selector list, or use a.btn (app.ActionLink).",
+				"an <a> in this repo.\na:visited is 0-1-1 and outranks a single-class "+
+				"selector, so this turns black-on-black once it has been clicked. Add "+
+				"a :visited variant to the selector list, or use a.btn "+
+				"(app.ActionLink), which is immune.",
 				selector, class)
 			break
 		}
+	}
+}
+
+// styleBlocksIn is the CSS inside every <style> a page ships.
+func styleBlocksIn(src string) []string {
+	var out []string
+	rest := src
+	for {
+		i := strings.Index(rest, "<style>")
+		if i < 0 {
+			return out
+		}
+		rest = rest[i+len("<style>"):]
+		j := strings.Index(rest, "</style>")
+		if j < 0 {
+			return append(out, rest)
+		}
+		out = append(out, rest[:j])
+		rest = rest[j:]
 	}
 }
 

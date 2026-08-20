@@ -199,9 +199,9 @@ func urlArg(s string) string { return url.QueryEscape(s) }
 
 const pageCSS = `<style>
 .note-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 14px}
-.note-new{display:inline-block;background:#111;color:#fff;text-decoration:none;padding:7px 14px;
+.note-new,.note-new:visited{display:inline-block;background:#111;color:#fff;text-decoration:none;padding:7px 14px;
   border-radius:8px;font-size:13px;font-weight:600;white-space:nowrap}
-.note-new:hover{background:#333;color:#fff}
+.note-new:hover,.note-new:visited:hover{background:#333;color:#fff}
 .note-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
 .note-card{display:flex;flex-direction:column;gap:5px;padding:14px;border:1px solid var(--border-color,#e5e5e5);
   border-radius:10px;text-decoration:none;min-height:110px}
