@@ -91,6 +91,12 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
+// agentName is who the agent is in a room: the name on its messages, and the
+// name in the list of who is here. It was spelled out at five call sites, and
+// the one that mattered was the list — a room where the agent answers every
+// message showed nobody in it but you.
+const agentName = "micro"
+
 // Room represents a discussion room for a specific item.
 // Room state is ephemeral - messages exist only in memory while the server runs.
 // The last 20 messages are kept in memory for new joiners.
@@ -577,23 +583,32 @@ func getOrCreateRoom(id string) *Room {
 	return room
 }
 
-// broadcastUserList sends the current list of usernames to all clients
-func (room *Room) broadcastUserList() {
+// roster is who is in the room: everybody connected, and the agent.
+//
+// The agent is in every room because it answers in every room. This listed it
+// for chat_ rooms only, and the rule about when it answers lives in another
+// function and says something else — an item room (news, video, post,
+// reminder) always gets a reply. So "Discuss with AI" on a news article showed
+// one person present, nobody else, and then the AI answered. Two conditions
+// about the same fact, written apart, disagreeing.
+//
+// Split out from broadcastUserList so that fact can be tested without a
+// websocket on the other end of it.
+func (room *Room) roster() []string {
 	room.mutex.RLock()
-	usernames := make([]string, 0, len(room.Clients)+1)
+	names := make([]string, 0, len(room.Clients)+1)
 	for _, client := range room.Clients {
-		usernames = append(usernames, client.UserID)
+		names = append(names, client.UserID)
 	}
 	room.mutex.RUnlock()
+	return append(names, agentName)
+}
 
-	// Always include micro in topic chat rooms
-	if strings.HasPrefix(room.ID, "chat_") {
-		usernames = append(usernames, "micro")
-	}
-
+// broadcastUserList sends the current list of usernames to all clients
+func (room *Room) broadcastUserList() {
 	userListMsg := map[string]interface{}{
 		"type":  "user_list",
-		"users": usernames,
+		"users": room.roster(),
 	}
 
 	room.mutex.RLock()
@@ -741,7 +756,7 @@ func (room *Room) sendAIGreeting() {
 	}
 
 	msg := RoomMessage{
-		UserID:    "micro",
+		UserID:    agentName,
 		Content:   resp,
 		Timestamp: time.Now(),
 		IsLLM:     true,
@@ -840,7 +855,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 							app.Log("chat", "Pattern match hit, skipping LLM")
 							client.LastMicroReply = time.Now()
 							llmMsg := RoomMessage{
-								UserID:    "micro",
+								UserID:    agentName,
 								Content:   response,
 								Timestamp: time.Now(),
 								IsLLM:     true,
@@ -1014,7 +1029,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 						if err == nil && len(resp) > 0 {
 							client.LastMicroReply = time.Now()
 							llmMsg := RoomMessage{
-								UserID:    "micro",
+								UserID:    agentName,
 								Content:   resp,
 								Timestamp: time.Now(),
 								IsLLM:     true,

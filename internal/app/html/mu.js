@@ -858,16 +858,20 @@ function displayRoomMessage(msg, shouldScroll = true) {
   
   let content;
   if (msg.is_llm) {
-    // Render markdown for AI messages
+    // Markdown, which brings its own <p>, <ul> and headings — so no wrapper of
+    // our own. It used to be wrapped in one, which was fine while the renderer
+    // only produced inline tags and became <p><h4>…</h4></p> the moment it
+    // produced a block: invalid, and the browser takes the message apart to
+    // fix it.
     content = renderMarkdown(msg.content);
   } else {
     // Escape HTML and linkify URLs for user messages
-    content = msg.content.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    content = msg.content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     content = linkifyText(content);
-    content = content.replace(/\n/g, '<br>');
+    content = '<p>' + content.replace(/\n/g, '<br>') + '</p>';
   }
-  
-  msgDiv.innerHTML = userSpan + '<p>' + content + '</p>';
+
+  msgDiv.innerHTML = userSpan + content;
   messagesDiv.appendChild(msgDiv);
   
   if (shouldScroll) {
@@ -881,21 +885,104 @@ function linkifyText(text) {
   return text.replace(urlRegex, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
 }
 
-// Simple markdown renderer for common patterns
+// Markdown, as much of it as a model actually writes.
+//
+// The old renderer did bold, italic, code, links and line breaks — and a model
+// answering a question about a news article writes headings, bullet lists and
+// numbered steps, none of which were handled. Those came through as literal
+// "##" and "-" down the left of the message, which is what "it's in markdown
+// and not formatted" meant.
+//
+// It also went straight to innerHTML without escaping. The text is written by a
+// model that has just been handed whatever somebody typed in a shared room, so
+// "reply with exactly <img src=x onerror=...>" was a live path to script in
+// another person's page. Escaping is first now, and every rule below runs on
+// text that can no longer contain a tag of its own.
 function renderMarkdown(text) {
-  return text
-    // Bold
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    // Italic
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    // Code blocks
-    .replace(/```(.+?)```/gs, '<pre><code>$1</code></pre>')
-    // Inline code
-    .replace(/`(.+?)`/g, '<code>$1</code>')
-    // Links
-    .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank">$1</a>')
-    // Line breaks
-    .replace(/\n/g, '<br>');
+  var esc = function (s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  };
+
+  // Fenced code comes out first and goes back last, so nothing below rewrites
+  // what is inside it — a hash in a shell comment is not a heading.
+  var fences = [];
+  var src = esc(text).replace(/```[a-z]*\n?([\s\S]*?)```/g, function (_, code) {
+    fences.push(code);
+    return ' FENCE' + (fences.length - 1) + ' ';
+  });
+
+  var inline = function (s) {
+    return s
+      .replace(/`([^`]+?)`/g, '<code>$1</code>')
+      .replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/(^|[^*])\*([^*]+?)\*/g, '$1<em>$2</em>')
+      // Only http(s), so a [click](javascript:...) is left as the text it is.
+      .replace(/\[([^\]]+?)\]\((https?:\/\/[^)\s]+?)\)/g,
+        '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+  };
+
+  var out = [];
+  var list = null; // 'ul' or 'ol' while one is open
+  var closeList = function () {
+    if (list) { out.push('</' + list + '>'); list = null; }
+  };
+  var openList = function (kind) {
+    if (list !== kind) { closeList(); out.push('<' + kind + '>'); list = kind; }
+  };
+
+  var lines = src.split('\n');
+  var para = [];
+  var flushPara = function () {
+    if (para.length) { out.push('<p>' + inline(para.join('<br>')) + '</p>'); para = []; }
+  };
+
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i];
+    var fence = line.match(/^ FENCE(\d+) $/);
+    if (fence) {
+      flushPara(); closeList();
+      out.push('<pre><code>' + fences[+fence[1]] + '</code></pre>');
+      continue;
+    }
+    if (!line.trim()) { flushPara(); closeList(); continue; }
+
+    var heading = line.match(/^(#{1,6})\s+(.*)$/);
+    if (heading) {
+      flushPara(); closeList();
+      // Capped at h4: these sit inside a message, not at the top of a page.
+      var level = Math.min(heading[1].length + 2, 4);
+      out.push('<h' + level + '>' + inline(heading[2]) + '</h' + level + '>');
+      continue;
+    }
+    var bullet = line.match(/^\s*[-*+]\s+(.*)$/);
+    if (bullet) {
+      flushPara(); openList('ul');
+      out.push('<li>' + inline(bullet[1]) + '</li>');
+      continue;
+    }
+    var numbered = line.match(/^\s*\d+[.)]\s+(.*)$/);
+    if (numbered) {
+      flushPara(); openList('ol');
+      out.push('<li>' + inline(numbered[1]) + '</li>');
+      continue;
+    }
+    // &gt; rather than >, because escaping has already happened by here.
+    var quote = line.match(/^&gt;\s?(.*)$/);
+    if (quote) {
+      flushPara(); closeList();
+      out.push('<blockquote>' + inline(quote[1]) + '</blockquote>');
+      continue;
+    }
+    if (/^\s*([-*_])\s*\1\s*\1[\s\-*_]*$/.test(line)) {
+      flushPara(); closeList();
+      out.push('<hr>');
+      continue;
+    }
+    para.push(line);
+  }
+  flushPara(); closeList();
+
+  return out.join('');
 }
 
 function updateUserList(users) {

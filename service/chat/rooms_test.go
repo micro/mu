@@ -12,6 +12,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/gorilla/websocket"
 )
 
 // Without a room id there is nobody to talk to, so the page answers the only
@@ -132,5 +134,27 @@ func TestAQuietInstanceRendersNoChatCard(t *testing.T) {
 
 	if got := Card(); got != "" {
 		t.Errorf("card on a quiet instance = %q, want nothing rendered", got)
+	}
+}
+
+// The agent is in the room it answers in.
+//
+// "Discuss with AI" on a news article listed one person present — you — and
+// then the AI answered. The list included it for chat_ rooms only, while the
+// rule about when it replies is written elsewhere and says an item room always
+// gets one. Two conditions about the same fact, apart, disagreeing.
+func TestTheAgentIsInEveryRoom(t *testing.T) {
+	for _, id := range []string{"news_123", "video_123", "post_123", "reminder_daily", "chat_Dev"} {
+		room := &Room{ID: id, Clients: map[*websocket.Conn]*Client{}}
+		found := false
+		for _, name := range room.roster() {
+			if name == agentName {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("%s lists %v — the agent answers here and is not in the room",
+				id, room.roster())
+		}
 	}
 }
