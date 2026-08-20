@@ -170,8 +170,21 @@ func TestTheRosterIsYourOwnAgents(t *testing.T) {
 	page := rec.Body.String()
 
 	if strings.Contains(page, "Our agents") {
-		t.Error("the instance's own agents are listed again, above or below the " +
-			"ones somebody made — the page is for what you made")
+		t.Error("the instance's specialists are listed again — the page is for the " +
+			"agent you have and the ones you made")
+	}
+	// The default is on it, and it is the only one of the instance's that is.
+	// Micro is not one of the eleven in the sense the specialists were: it is the
+	// agent this account already has, it answers agent@, and it is who the chat
+	// talks to. Leaving it off told a new account it had no agents, which is
+	// false.
+	if !strings.Contains(page, ">Micro</a>") {
+		t.Error("the default agent is missing, so a new account is told it has none")
+	}
+	for _, specialist := range []string{"agent+news@", "agent+markets@", ">Weather</a>"} {
+		if strings.Contains(page, specialist) {
+			t.Errorf("%s is back on the roster", specialist)
+		}
 	}
 	// And the way to make one is on it.
 	if !strings.Contains(page, "New agent") {

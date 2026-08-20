@@ -125,20 +125,27 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	// The heading is drawn either way now. "Your agents / none yet" is the
 	// account saying something true about itself; skipping it when the list is
 	// empty means the page tells you what it has and not what you have.
-	// No heading over an empty list. "Your agents" above "None yet" is the page
-	// telling you it has nothing, twice; the empty state is the whole message.
+	// One list, with the default first.
+	//
+	// Micro is not one of "our agents" in the sense the ten specialists were —
+	// it is the agent this account already has. It answers agent@, it is who the
+	// chat talks to, and it exists before anybody makes anything. Leaving it off
+	// meant a new account opened /agents and was told it had none, which is
+	// false, and meant the only row on the page after making one was a thing you
+	// had to make to see anything at all.
+	//
+	// No headings. "Your agents" over a list that also contains the default
+	// would be wrong, and two headings for two rows is furniture. What
+	// distinguishes them is already on the row: the default has no Edit and no
+	// Remove, because neither is a thing you can do to it.
 	EnsureTags(owner)
 	roster := Agents(owner)
-	if len(roster) == 0 {
-		b.WriteString(`<p class="agent-note" style="margin:0 0 16px">You have not made one yet.</p>`)
-	} else {
-		b.WriteString(`<h3 style="font-size:15px;margin:0 0 10px">Your agents</h3>`)
-		b.WriteString(`<div style="display:flex;flex-direction:column;gap:8px;margin:0 0 24px">`)
-		for _, a := range roster {
-			b.WriteString(agentRow(a, csrf, app.BaseURL(r)))
-		}
-		b.WriteString(`</div>`)
+	b.WriteString(`<div style="display:flex;flex-direction:column;gap:8px;margin:0 0 24px">`)
+	b.WriteString(platformRow(DefaultPlatformAgent))
+	for _, a := range roster {
+		b.WriteString(agentRow(a, csrf, app.BaseURL(r)))
 	}
+	b.WriteString(`</div>`)
 
 	// One way to make an agent. This page used to carry its own create form
 	// alongside the builder at /agent/new, and the two disagreed: one asked for
@@ -404,9 +411,16 @@ func platformRow(name string) string {
 	if len(a.Tools) == 0 {
 		for_ = "Everything you can reach"
 	}
+	// The default says so, because nothing else on the row does. It has no Edit
+	// and no Remove, which is a difference you notice only by comparing it with
+	// a row underneath — and on an account with no agents of its own there is
+	// nothing to compare it to.
+	if strings.EqualFold(name, DefaultPlatformAgent) {
+		for_ = "The default — " + strings.ToLower(for_[:1]) + for_[1:]
+	}
 
-	// No Edit and no Fork: these are the instance's, not yours. Making one of
-	// your own starts from the builder rather than from somebody else's row.
+	// No Edit and no Remove: this one is the instance's, not yours. Making one
+	// of your own starts from the builder rather than from this row.
 	path := "/agent/" + strings.ToLower(name)
 	return entryRow(entry{
 		Name: a.Name,
