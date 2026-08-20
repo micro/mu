@@ -45,7 +45,6 @@ func TestGetOperationCost(t *testing.T) {
 		{quota.OpWebSearch, quota.OperationCost(quota.OpWebSearch)},
 		{quota.OpWebFetch, quota.OperationCost(quota.OpWebFetch)},
 		{quota.OpAgentQuery, quota.OperationCost(quota.OpAgentQuery)},
-		{quota.OpAgentQueryPremium, quota.OperationCost(quota.OpAgentQueryPremium)},
 		{"unknown_op", 1}, // default
 	}
 	for _, tt := range tests {
@@ -63,7 +62,7 @@ func TestOperationConstants(t *testing.T) {
 		quota.OpMailSend, quota.OpExternalEmail, quota.OpPlacesSearch,
 		quota.OpPlacesNearby, quota.OpWeatherForecast, quota.OpWeatherPollen,
 		quota.OpWebSearch, quota.OpWebFetch, quota.OpAgentQuery,
-		quota.OpAgentQueryPremium, quota.OpTopup, quota.OpRefund,
+		quota.OpTopup, quota.OpRefund,
 	}
 	seen := make(map[string]bool)
 	for _, op := range ops {
@@ -89,12 +88,11 @@ func TestTransactionTypeConstants(t *testing.T) {
 func TestDefaultCosts(t *testing.T) {
 	// A model call always costs something.
 	for name, cost := range map[string]int{
-		"chat":          quota.OperationCost(quota.OpChatQuery),
-		"agent":         quota.OperationCost(quota.OpAgentQuery),
-		"agent premium": quota.OperationCost(quota.OpAgentQueryPremium),
-		"image":         quota.OperationCost(quota.OpImageGenerate),
-		"app build":     quota.OperationCost(quota.OpAppBuild),
-		"app edit":      quota.OperationCost(quota.OpAppEdit),
+		"chat":      quota.OperationCost(quota.OpChatQuery),
+		"agent":     quota.OperationCost(quota.OpAgentQuery),
+		"image":     quota.OperationCost(quota.OpImageGenerate),
+		"app build": quota.OperationCost(quota.OpAppBuild),
+		"app edit":  quota.OperationCost(quota.OpAppEdit),
 	} {
 		if cost < 1 {
 			t.Errorf("%s calls a model, so it cannot be free", name)
@@ -116,10 +114,12 @@ func TestDefaultCosts(t *testing.T) {
 		}
 	}
 
-	// The premium tier routes to a materially more expensive provider, and was
-	// priced 29% above standard for roughly 10-20x the cost.
-	if quota.OperationCost(quota.OpAgentQueryPremium) < 2*quota.OperationCost(quota.OpAgentQuery) {
-		t.Error("premium agent should cost enough more than standard to cover a different provider")
+	// An agent run is more model than a chat turn — a plan and a synthesis
+	// against one call — so it cannot be priced below it. There was a premium
+	// tier above both, on Anthropic at twenty credits; nothing sent the field
+	// that selected it, so it went with the machinery.
+	if quota.OperationCost(quota.OpAgentQuery) < quota.OperationCost(quota.OpChatQuery) {
+		t.Error("an agent run is more model than a chat turn and cannot cost less")
 	}
 	// An app build is one generation. It was 100 — six times the next most
 	// expensive thing on the menu, and more than an agent run that may make

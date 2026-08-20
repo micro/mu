@@ -10,7 +10,6 @@ import (
 	htmlpkg "html"
 	"net/http"
 	"net/url"
-	"os"
 	"sort"
 	"strings"
 	"time"
@@ -27,39 +26,20 @@ import (
 	"mu/service/mail"
 )
 
-// Model represents an available LLM model tier for agent queries.
-type Model struct {
-	ID       string
-	Name     string
-	WalletOp string
-	Provider string // ai provider constant, empty = default
-	Model    string // ai model override, empty = provider default
-}
-
-// defaultPremiumModel is the Anthropic model used for premium agent queries.
-var defaultPremiumModel = func() string {
-	if v := os.Getenv("ANTHROPIC_PREMIUM_MODEL"); v != "" {
-		return v
-	}
-	return "claude-opus-4-20250514"
-}()
-
-// Models lists the available model tiers.
-var Models = []Model{
-	{
-		ID:       "standard",
-		Name:     "Fast",
-		WalletOp: quota.OpAgentQuery,
-		Provider: ai.ProviderDefault,
-	},
-	{
-		ID:       "premium",
-		Name:     "Best",
-		WalletOp: quota.OpAgentQueryPremium,
-		Provider: ai.ProviderAnthropic,
-		Model:    defaultPremiumModel,
-	},
-}
+// There is one model tier.
+//
+// There were two — Fast on the default provider and Best routed to Anthropic at
+// twenty credits — selected by a "model" field in the request JSON. Nothing sent
+// it. The Fast/Best select that did was on a second agent form on the home
+// screen, deleted a while back for being a duplicate of the prompt box beside
+// it, and the tier machinery outlived the only control that set it: a slice, a
+// lookup loop in two places, a second priced operation and an environment
+// variable naming an Anthropic model, all to choose the one entry that was
+// always chosen.
+//
+// If a premium tier comes back it needs a control, a price somebody has decided
+// on, and something on the page saying what the difference buys. That is a
+// feature to build, not a switch to leave lying around.
 
 // QuotaCheck is set by main.go to wire in the wallet quota check without an
 // import cycle. Signature matches api.QuotaCheck.
@@ -250,8 +230,6 @@ func QueryWithOpts(accountID, prompt string, opts QueryOpts) (string, error) {
 	}
 
 	// Fall through to the existing monolithic agent for "micro" (catch-all)
-	model := Models[0] // standard
-
 	// Build conversation context for the planner
 	var convContext string
 	if len(opts.History) > 0 {
@@ -437,8 +415,7 @@ func QueryWithOpts(accountID, prompt string, opts QueryOpts) (string, error) {
 		Rag:      ragParts,
 		Question: prompt,
 		Priority: ai.PriorityHigh,
-		Provider: model.Provider,
-		Model:    model.Model,
+		Provider: ai.ProviderDefault,
 		Caller:   "agent-synth",
 	}
 
@@ -1404,18 +1381,11 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Resolve model
-	model := Models[0] // default: standard
-	for _, m := range Models {
-		if m.ID == req.Model {
-			model = m
-			break
-		}
-	}
 
 	// Check wallet quota (authenticated users only), then charge up-front: the
 	// agent is our most expensive op, so it's metered like web_fetch and chat.
 	if !isGuest && QuotaCheck != nil {
-		canProceed, _, err := QuotaCheck(r, model.WalletOp)
+		canProceed, _, err := QuotaCheck(r, quota.OpAgentQuery)
 		if !canProceed {
 			msg := "Insufficient credits for agent query. Top up at /account/topup."
 			if err != nil {
@@ -1425,7 +1395,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if ChargeQuota != nil {
-			ChargeQuota(r, model.WalletOp)
+			ChargeQuota(r, quota.OpAgentQuery)
 		}
 	}
 
@@ -1810,8 +1780,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		Rag:      ragParts,
 		Question: req.Prompt,
 		Priority: ai.PriorityHigh,
-		Provider: model.Provider,
-		Model:    model.Model,
+		Provider: ai.ProviderDefault,
 		Caller:   "agent-synth",
 	}
 

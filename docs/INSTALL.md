@@ -421,7 +421,7 @@ one, the agent, chat and AI summaries are off and everything else works.
 | Variable | What it does |
 |---|---|
 | `ANTHROPIC_API_KEY` | Claude |
-| `ANTHROPIC_MODEL` · `ANTHROPIC_PREMIUM_MODEL` | Override the default models |
+| `ANTHROPIC_MODEL` | Override the default model |
 | `ATLAS_API_KEY` | Atlas Cloud (DeepSeek, Qwen) — also image generation |
 | `ATLAS_MODEL` | Override the Atlas model used when the caller did not name one (default `deepseek-ai/deepseek-v4-pro`) |
 | `OPENROUTER_API_KEY` | OpenRouter — one key for Claude, GPT, Gemini and the rest of their catalogue |

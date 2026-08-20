@@ -14,6 +14,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/notes"
+	"mu/internal/quota"
 )
 
 // extractMemory checks if the user's prompt contains something to
@@ -176,15 +177,8 @@ func RunHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check quota (authenticated users only)
-	model := Models[0]
-	for _, m := range Models {
-		if m.ID == req.Model {
-			model = m
-			break
-		}
-	}
 	if !isGuest && QuotaCheck != nil {
-		canProceed, _, err := QuotaCheck(r, model.WalletOp)
+		canProceed, _, err := QuotaCheck(r, quota.OpAgentQuery)
 		if !canProceed {
 			w.WriteHeader(402)
 			msg := "Insufficient credits"
@@ -195,7 +189,7 @@ func RunHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if ChargeQuota != nil {
-			ChargeQuota(r, model.WalletOp)
+			ChargeQuota(r, quota.OpAgentQuery)
 		}
 	}
 
@@ -297,8 +291,7 @@ func RunHandler(w http.ResponseWriter, r *http.Request) {
 		Rag:      ragParts,
 		Question: req.Prompt,
 		Priority: ai.PriorityHigh,
-		Provider: model.Provider,
-		Model:    model.Model,
+		Provider: ai.ProviderDefault,
 		Caller:   "agent-run-synth",
 	})
 	if err != nil {

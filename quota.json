@@ -122,13 +122,6 @@
       "note": "The model calls in one run — a plan and a synthesis where a chat turn is one call — and nothing else. This said the price covered the fan-out across tools, which stopped being true when the gateway began charging every endpoint that declares a Cost: the tools in a run now pay for themselves, one line each on the receipt. The number survives that; the reason written beside it did not, and a stale reason is how a price gets counted twice by the next person to read it"
     },
     {
-      "op": "agent_query_premium",
-      "cost": 20,
-      "label": "Agent (premium)",
-      "env": "CREDIT_COST_AGENT_PREMIUM",
-      "note": "Routes to Anthropic where the rest use the default provider, an order of magnitude more per token. At 9 it was priced 29% above standard for 10-20x the cost"
-    },
-    {
       "op": "image_generate",
       "cost": 15,
       "label": "Image generation",

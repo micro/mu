@@ -61,8 +61,8 @@ func PrivacyHandler(w http.ResponseWriter, r *http.Request) {
 	section("Agents and third parties",
 		`Some tools reach outside this instance, and when they do, the request goes
 		 to that provider: web search to Brave, places and travel time to Google,
-		 image generation and most model calls to Atlas Cloud, with Anthropic for
-		 the premium model tier. Those requests carry the query, not your identity.`,
+		 image generation and model calls to Atlas Cloud. Those requests carry the
+		 query, not your identity.`,
 		`A question you ask the agent is sent to a model provider to be answered.
 		 If that matters for something you are about to ask, it is worth knowing
 		 before you ask it.`)
