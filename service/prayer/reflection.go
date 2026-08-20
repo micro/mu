@@ -273,7 +273,7 @@ func prayerTimesHTML() string {
 	}
 	return `<div class="card" id="prayer-card">
   <h3>Prayer times</h3>
-  <div id="prayer-body"><p class="text-muted" style="margin:0;font-size:14px">Loading…</p></div>
+  <div id="prayer-body"><p class="text-muted m-0 text-base">Loading…</p></div>
   <p style="margin:12px 0 0;font-size:12px;color:#999">
     Calculation
     <select id="prayer-method" style="font-family:inherit;font-size:12px;padding:2px 4px;margin-left:4px;border:1px solid #ddd;border-radius:4px;background:#fff">` + opts.String() + `</select>
@@ -299,7 +299,7 @@ func prayerTimesHTML() string {
     var t=d.times||{};
     var rows=[['Fajr',t.fajr],['Sunrise',t.sunrise],['Dhuhr',t.dhuhr],['Asr',t.asr],['Maghrib',t.maghrib],['Isha',t.isha]];
     var h='';
-    if(d.next){h+='<p style="margin:0 0 10px;font-size:14px">Next: <strong>'+d.next+'</strong> at '+d.next_at+'</p>';}
+    if(d.next){h+='<p class="m-0 mb-3 text-base">Next: <strong>'+d.next+'</strong> at '+d.next_at+'</p>';}
     h+='<table style="width:100%;font-size:14px;border-collapse:collapse">';
     rows.forEach(function(r){
       if(!r[1])return;
@@ -309,14 +309,14 @@ func prayerTimesHTML() string {
     });
     h+='</table>';
     if(t.date){h+='<p style="margin:10px 0 0;font-size:12px;color:#999">'+t.date+'</p>';}
-    if(!t.fajr){h='<p class="text-muted" style="margin:0 0 10px;font-size:14px">Prayer times unavailable right now.</p>';}
+    if(!t.fajr){h='<p class="text-muted m-0 mb-3 text-base">Prayer times unavailable right now.</p>';}
     if(d.qibla){h+=qiblaHTML(d.qibla);}
     body.innerHTML=h;
     if(d.qibla){placeMarks(d.qibla.bearing,0);startCompass(d.qibla.bearing);}
   }
   function qiblaHTML(q){
     return '<div style="margin-top:16px;padding-top:14px;border-top:1px solid #eee">'+
-      '<p style="margin:0 0 10px;font-size:14px">Qibla: <strong>'+q.bearing+'\u00B0 '+q.point+'</strong>'+
+      '<p class="m-0 mb-3 text-base">Qibla: <strong>'+q.bearing+'\u00B0 '+q.point+'</strong>'+
       ' <span class="text-muted">\u00B7 '+q.distance+'km to Mecca</span></p>'+
       '<div style="display:flex;align-items:center;gap:14px">'+
       '<svg id="qibla-dial" width="96" height="96" viewBox="0 0 96 96" style="flex:0 0 auto">'+
@@ -324,7 +324,7 @@ func prayerTimesHTML() string {
         // else is world-referenced and turns beneath it, so aligning is
         // "bring Q up to the marker". Hidden until a live heading exists,
         // because without one the dial is a north-up diagram, not a compass.
-        '<line id="qibla-index" x1="48" y1="2" x2="48" y2="9" stroke="#111" stroke-width="2" stroke-linecap="round" style="display:none"/>'+
+        '<line id="qibla-index" x1="48" y1="2" x2="48" y2="9" stroke="#111" stroke-width="2" stroke-linecap="round" class="d-none"/>'+
         '<circle cx="48" cy="48" r="38" fill="none" stroke="#e0e0e0" stroke-width="1.5"/>'+
         // Just the needle. Tick marks collided with the N label and added
         // nothing the labels don't already say.
@@ -423,22 +423,22 @@ func prayerTimesHTML() string {
   function load(lat,lon){
     fetch('/prayer?lat='+lat+'&lon='+lon+'&tz='+encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone||'')+'&method='+encodeURIComponent(method()),{headers:{'Accept':'application/json'},credentials:'same-origin'})
       .then(function(r){return r.ok?r.json():null})
-      .then(function(d){ if(d&&(d.times||d.qibla)){render(d)} else {body.innerHTML='<p class="text-muted" style="margin:0;font-size:14px">Prayer times unavailable right now.</p>'} })
-      .catch(function(){body.innerHTML='<p class="text-muted" style="margin:0;font-size:14px">Prayer times unavailable right now.</p>'});
+      .then(function(d){ if(d&&(d.times||d.qibla)){render(d)} else {body.innerHTML='<p class="text-muted m-0 text-base">Prayer times unavailable right now.</p>'} })
+      .catch(function(){body.innerHTML='<p class="text-muted m-0 text-base">Prayer times unavailable right now.</p>'});
   }
   var lat=localStorage.getItem(KEY_LAT),lon=localStorage.getItem(KEY_LON);
   if(lat&&lon){load(lat,lon);return}
   if(!navigator.geolocation){
-    body.innerHTML='<p class="text-muted" style="margin:0;font-size:14px">Location unavailable, so prayer times can\'t be shown.</p>';return;
+    body.innerHTML='<p class="text-muted m-0 text-base">Location unavailable, so prayer times can\'t be shown.</p>';return;
   }
-  body.innerHTML='<p class="text-muted" style="margin:0;font-size:14px">Allow location to see prayer times for where you are.</p>';
+  body.innerHTML='<p class="text-muted m-0 text-base">Allow location to see prayer times for where you are.</p>';
   navigator.geolocation.getCurrentPosition(function(pos){
     var la=pos.coords.latitude.toFixed(4),lo=pos.coords.longitude.toFixed(4);
     localStorage.setItem(KEY_LAT,la);localStorage.setItem(KEY_LON,lo);
-    body.innerHTML='<p class="text-muted" style="margin:0;font-size:14px">Loading…</p>';
+    body.innerHTML='<p class="text-muted m-0 text-base">Loading…</p>';
     load(la,lo);
   },function(){
-    body.innerHTML='<p class="text-muted" style="margin:0;font-size:14px">Location declined, so prayer times can\'t be shown.</p>';
+    body.innerHTML='<p class="text-muted m-0 text-base">Location declined, so prayer times can\'t be shown.</p>';
   },{timeout:8000});
 })();
 </script>`
@@ -473,7 +473,7 @@ func renderReflectionPage(rd *ReminderData) string {
 		head, body := splitTitleBody(content)
 		b.WriteString(`<div class="card"><h3>` + title + `</h3>`)
 		if head != "" {
-			b.WriteString(`<p style="font-weight:600;margin:0 0 6px">` + html.EscapeString(head) + `</p>`)
+			b.WriteString(`<p class="semibold m-0 mb-2">` + html.EscapeString(head) + `</p>`)
 		}
 		b.WriteString(`<p style="white-space:pre-line;margin:0;line-height:1.6">` + html.EscapeString(body) + `</p>`)
 		if linkKey != "" && rd.Links != nil {

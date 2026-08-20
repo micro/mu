@@ -120,11 +120,11 @@ func ApplyProvider(provider, key, baseURL string) error {
 func render(errMsg string) string {
 	errHTML := ""
 	if errMsg != "" {
-		errHTML = `<p style="color:#c00;margin:0 0 12px">` + html.EscapeString(errMsg) + `</p>`
+		errHTML = `<p class="text-error m-0 mb-3">` + html.EscapeString(errMsg) + `</p>`
 	}
 	body := `<div class="card" style="max-width:520px;margin:0 auto">
-  <h1 style="margin:0 0 6px">Welcome to Mu</h1>
-  <p style="color:#666;margin:0 0 20px">Two quick things and you're running your own instance.</p>
+  <h1 class="m-0 mb-2">Welcome to Mu</h1>
+  <p class="text-secondary m-0 mb-5">Two quick things and you're running your own instance.</p>
   ` + errHTML + `
   <form method="POST" action="/setup">
     <h3 style="margin:0 0 8px;font-size:1em">1 · Admin account</h3>
@@ -134,10 +134,10 @@ func render(errMsg string) string {
       style="width:100%;padding:10px;margin:0 0 20px;border:1px solid #ddd;border-radius:6px;font-size:15px">
 
     <h3 style="margin:0 0 8px;font-size:1em">2 · AI provider</h3>
-    <label style="display:block;margin:0 0 6px"><input type="radio" name="provider" value="claude" checked> Anthropic Claude</label>
-    <label style="display:block;margin:0 0 6px"><input type="radio" name="provider" value="atlas"> Atlas Cloud / DeepSeek</label>
-    <label style="display:block;margin:0 0 6px"><input type="radio" name="provider" value="openrouter"> OpenRouter</label>
-    <label style="display:block;margin:0 0 12px"><input type="radio" name="provider" value="ollama"> Ollama / OpenAI-compatible (local)</label>
+    <label class="d-block m-0 mb-2"><input type="radio" name="provider" value="claude" checked> Anthropic Claude</label>
+    <label class="d-block m-0 mb-2"><input type="radio" name="provider" value="atlas"> Atlas Cloud / DeepSeek</label>
+    <label class="d-block m-0 mb-2"><input type="radio" name="provider" value="openrouter"> OpenRouter</label>
+    <label class="d-block m-0 mb-3"><input type="radio" name="provider" value="ollama"> Ollama / OpenAI-compatible (local)</label>
     <input name="key" placeholder="API key (Claude, Atlas or OpenRouter)"
       style="width:100%;padding:10px;margin:0 0 8px;border:1px solid #ddd;border-radius:6px;font-size:15px">
     <input name="base_url" placeholder="Ollama base URL (default http://localhost:11434/v1)"

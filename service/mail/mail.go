@@ -1179,13 +1179,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			spamActions = fmt.Sprintf(`
 			<div style="padding:12px 16px;background:#fff3cd;border:1px solid #ffc107;border-radius:6px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
 				<span style="font-size:14px;color:#856404">This message was filtered as spam (score: %d)</span>
-				<div style="display:flex;gap:8px">
-					<form method="POST" action="/mail?view=filtered" style="display:inline">
+				<div class="d-flex gap-2">
+					<form method="POST" action="/mail?view=filtered" class="d-inline">
 						<input type="hidden" name="action" value="not_spam">
 						<input type="hidden" name="msg_id" value="%s">
 						<button type="submit" style="padding:6px 16px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-family:inherit">Not Spam</button>
 					</form>
-					<form method="POST" action="/mail?view=filtered" style="display:inline">
+					<form method="POST" action="/mail?view=filtered" class="d-inline">
 						<input type="hidden" name="action" value="delete_spam">
 						<input type="hidden" name="msg_id" value="%s">
 						<button type="submit" style="padding:6px 16px;background:#fff;color:#c00;border:1px solid #e0e0e0;border-radius:6px;cursor:pointer;font-size:13px;font-family:inherit">Delete</button>
@@ -1289,7 +1289,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		if len(results) == 0 {
 			content = fmt.Sprintf(`<p class="text-muted">No results for "%s"</p>`, html.EscapeString(q))
 		} else {
-			content = fmt.Sprintf(`<p class="text-muted" style="margin-bottom:12px">%d results for "%s"</p>`, len(results), html.EscapeString(q))
+			content = fmt.Sprintf(`<p class="text-muted mb-3">%d results for "%s"</p>`, len(results), html.EscapeString(q))
 			for _, msg := range results {
 				from := msg.From
 				if from == "" {
@@ -1304,14 +1304,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 					body = body[:100] + "..."
 				}
 				content += fmt.Sprintf(`<div class="card" style="margin-bottom:8px;cursor:pointer" onclick="window.location.href='/mail?id=%s'">
-<div style="font-weight:600;font-size:14px">%s</div>
+<div class="semibold text-base">%s</div>
 <div class="text-sm text-secondary">%s</div>
 <div style="font-size:13px;color:#999;margin-top:4px">%s</div>
 </div>`, msg.ID, html.EscapeString(subject), html.EscapeString(from), html.EscapeString(body))
 			}
 		}
 		searchQuery := q
-		searchBar := fmt.Sprintf(`<form action="/mail" method="GET" style="margin-bottom:12px;display:flex;gap:8px">
+		searchBar := fmt.Sprintf(`<form action="/mail" method="GET" class="mb-3 d-flex gap-2">
 <input type="text" name="q" value="%s" placeholder="Search mail..." style="flex:1;padding:8px 12px;border:1px solid #e0e0e0;border-radius:6px;font-family:inherit;font-size:14px">
 <button type="submit" style="padding:8px 16px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-size:14px">Search</button>
 </form>`, html.EscapeString(searchQuery))
@@ -1580,7 +1580,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	// Search bar
 	searchQuery := r.URL.Query().Get("q")
-	searchBar := fmt.Sprintf(`<form action="/mail" method="GET" style="margin-bottom:12px;display:flex;gap:8px">
+	searchBar := fmt.Sprintf(`<form action="/mail" method="GET" class="mb-3 d-flex gap-2">
 <input type="text" name="q" value="%s" placeholder="Search mail..." style="flex:1;padding:8px 12px;border:1px solid #e0e0e0;border-radius:6px;font-family:inherit;font-size:14px">
 <button type="submit" style="padding:8px 16px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-size:14px">Search</button>
 </form>`, html.EscapeString(searchQuery))

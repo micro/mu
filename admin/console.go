@@ -117,7 +117,7 @@ func InviteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	sb.WriteString(`</div>`)
 
-	sb.WriteString(`<div class="card" style="margin-top:16px">
+	sb.WriteString(`<div class="card mt-4">
 <h4>Invite someone directly</h4>
 <p class="text-sm">Enter an email — they'll get a single-use signup link.</p>
 <form method="POST" action="/admin/invite" class="mt-4">
@@ -178,13 +178,13 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`</div>`)
 
 	// Input — form for fallback, JS for interactive
-	sb.WriteString(`<form method="POST" action="/admin/console" id="cf" style="display:flex;gap:8px">`)
+	sb.WriteString(`<form method="POST" action="/admin/console" id="cf" class="d-flex gap-2">`)
 	sb.WriteString(`<span style="color:#888;line-height:32px">&gt;</span>`)
 	sb.WriteString(`<input type="text" name="cmd" id="ci" autocomplete="off" autofocus style="flex:1;background:transparent;border:none;color:#e0e0e0;font-family:inherit;font-size:13px;outline:none;padding:6px 0">`)
 	sb.WriteString(`<button type="submit" id="cb" style="background:#333;color:#e0e0e0;border:none;border-radius:4px;padding:4px 12px;font-family:inherit;font-size:12px;cursor:pointer">run</button>`)
 	sb.WriteString(`</form>`)
 
-	sb.WriteString(`<div style="margin-top:8px;font-size:11px;color:#555">help · users · apps · search · stats</div>`)
+	sb.WriteString(`<div class="mt-2 text-2xs text-secondary">help · users · apps · search · stats</div>`)
 	sb.WriteString(`</div>`)
 
 	// JS: intercept form, use fetch, append output inline
@@ -210,7 +210,7 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
       out.scrollTop=out.scrollHeight;
     })
     .catch(function(e){
-      out.innerHTML+='<span style="color:#c00">Error: '+esc(e.message)+'</span>\n';
+      out.innerHTML+='<span class="text-error">Error: '+esc(e.message)+'</span>\n';
     });
   }
 

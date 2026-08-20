@@ -78,7 +78,7 @@ func runRow(f *Flow, csrf string) string {
 
 	del := ""
 	if csrf != "" {
-		del = fmt.Sprintf(`<form method="POST" action="/agents" style="margin:0" onsubmit="return confirm('Delete this run?')">
+		del = fmt.Sprintf(`<form method="POST" action="/agents" class="m-0" onsubmit="return confirm('Delete this run?')">
     <input type="hidden" name="_csrf" value="%s"><input type="hidden" name="action" value="delete-run">
     <input type="hidden" name="id" value="%s">
     <button type="submit" class="run-del">Delete</button></form>`,
@@ -104,7 +104,7 @@ func runRow(f *Flow, csrf string) string {
 	}
 
 	return fmt.Sprintf(`<div class="run-row">
-  <div style="flex:1;min-width:0">
+  <div class="grow min-w-0">
     <a class="run-prompt" href="/agent?session=%s">%s</a>
     <div class="run-meta"><span class="%s">%s</span> · as %s · %s %s</div>
     <div class="run-tools">%s</div>

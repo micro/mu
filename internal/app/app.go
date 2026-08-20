@@ -1133,7 +1133,7 @@ func navBottom(acc *auth.Account) string {
               <a id="nav-logout" href="/logout"><img src="/logout.png?` + Version + `"><span class="label">Log out</span></a>
             </div>
           </details>
-          <a id="nav-login" href="/login" style="display: none;"><img src="/account.png?` + Version + `"><span class="label">Login</span></a>`
+          <a id="nav-login" href="/login" class="d-none"><img src="/account.png?` + Version + `"><span class="label">Login</span></a>`
 }
 
 // initial is the letter in the avatar: the first of the account name, upper

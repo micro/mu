@@ -292,7 +292,7 @@ func connectPanel(a *Agent, base, csrf string) string {
 	if a.TokenID == "" {
 		b.WriteString(`<div class="conn-row"><span class="conn-k">Token</span>` +
 			`<span class="conn-v">None yet. ` +
-			fmt.Sprintf(`<form method="POST" action="/agents" style="display:inline">`+
+			fmt.Sprintf(`<form method="POST" action="/agents" class="d-inline">`+
 				`<input type="hidden" name="_csrf" value="%s">`+
 				`<input type="hidden" name="action" value="token">`+
 				`<input type="hidden" name="id" value="%s">`+
@@ -308,7 +308,7 @@ func connectPanel(a *Agent, base, csrf string) string {
 		b.WriteString(`<div class="conn-row"><span class="conn-k">Token</span>` +
 			`<span class="conn-v">Issued · ` + html.EscapeString(used) +
 			`. The secret was shown once and is stored hashed — ` +
-			fmt.Sprintf(`<form method="POST" action="/agents" style="display:inline" `+
+			fmt.Sprintf(`<form method="POST" action="/agents" class="d-inline" `+
 				`onsubmit="return confirm('Replace this token? Anything using the old one stops working.')">`+
 				`<input type="hidden" name="_csrf" value="%s">`+
 				`<input type="hidden" name="action" value="token">`+

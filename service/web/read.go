@@ -80,12 +80,12 @@ func ReadHandler(w http.ResponseWriter, r *http.Request) {
 			if cached.Description != "" {
 				b.WriteString(fmt.Sprintf(`<p style="color:#555;line-height:1.6;margin:0 0 12px">%s</p>`, html.EscapeString(cached.Description)))
 			}
-			b.WriteString(`<p style="color:#888;font-size:13px;margin:0 0 12px">The full page content couldn't be loaded. You can visit the original site below.</p>`)
+			b.WriteString(`<p class="text-muted text-sm m-0 mb-3">The full page content couldn't be loaded. You can visit the original site below.</p>`)
 		} else {
 			b.WriteString(fmt.Sprintf(`<p class="text-muted">This page couldn't be loaded.</p>`))
 		}
-		b.WriteString(fmt.Sprintf(`<div class="article-actions" style="margin-top:16px">
-			<a href="%s" target="_blank" rel="noopener noreferrer" style="font-weight:600">Visit original site →</a>
+		b.WriteString(fmt.Sprintf(`<div class="article-actions mt-4">
+			<a href="%s" target="_blank" rel="noopener noreferrer" class="semibold">Visit original site →</a>
 			<span style="margin:0 8px;color:#ddd">·</span>
 			<a href="javascript:history.back()">← Back to results</a>
 		</div>`, html.EscapeString(rawURL)))

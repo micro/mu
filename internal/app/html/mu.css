@@ -2841,6 +2841,41 @@ a.highlight {
 .max-w-xl { max-width: 750px; }
 
 /* Margins */
+/* The shapes pages were writing by hand.
+   Every one of these was measured off the inline styles in the product rather
+   than guessed at: .row alone (display:flex + align-items:center + gap:8px)
+   accounted for over a hundred of them, written out longhand each time. The
+   set is deliberately small and deliberately named for what it does — the
+   layer this replaced was a Tailwind-shaped vocabulary of a hundred classes
+   the app never learned, which is why it was all dead. */
+
+/* Layout */
+.row { display: flex; align-items: center; gap: 8px; }
+.row-top { display: flex; align-items: flex-start; gap: 8px; }
+.col { display: flex; flex-direction: column; gap: 8px; }
+.between { justify-content: space-between; }
+.grow { flex: 1; min-width: 0; }
+.fixed-w { flex: none; }
+.min-w-0 { min-width: 0; }
+.scroll-x { overflow-x: auto; }
+
+/* Display */
+.d-block { display: block; }
+.d-inline-block { display: inline-block; }
+.d-none { display: none; }
+
+/* Type */
+.semibold { font-weight: 600; }
+.bold { font-weight: 700; }
+.nowrap { white-space: nowrap; }
+.text-left { text-align: left; }
+.no-underline { text-decoration: none; }
+.font-inherit { font-family: inherit; font-size: inherit; }
+
+/* Surface */
+.bg-soft { background: var(--hover-background, #f5f5f5); }
+.mb-2 { margin-bottom: 8px; }
+
 .m-0 { margin: 0; }
 .mt-0 { margin-top: 0; }
 .mt-1 { margin-top: 5px; }

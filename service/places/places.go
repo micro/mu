@@ -814,7 +814,7 @@ func renderSavedSearchesSection(userID string) string {
 		}
 		sb.WriteString(fmt.Sprintf(
 			`<li><a href="#" onclick="runSavedSearch(%s,%s,%s,%s,%s,%s,%s);return false;">%s</a> `+
-				`<form style="display:inline" action="/places/save/delete" method="POST">`+
+				`<form class="d-inline" action="/places/save/delete" method="POST">`+
 				`<input type="hidden" name="id" value="%s">`+
 				`<button type="submit" class="btn-link text-muted" title="Remove">&#x2715;</button></form></li>`,
 			escapeHTML(jsonStr(s.Type)), escapeHTML(jsonStr(s.Query)), escapeHTML(jsonStr(s.Location)),

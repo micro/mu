@@ -101,7 +101,7 @@ func OAuthHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		fmt.Fprintf(&b, `<tr><td>%s</td><td><code class="text-2xs">%s</code></td>`+
 			`<td>%s</td><td>%s</td><td class="created-col">%s</td><td class="center">`+
-			`<form method="POST" action="/admin/oauth" style="display:inline" `+
+			`<form method="POST" action="/admin/oauth" class="d-inline" `+
 			`onsubmit="return confirm('Remove this client?')">`+
 			`<input type="hidden" name="client_id" value="%s">`+
 			`<button type="submit" class="text-sm">Remove</button></form></td></tr>`,

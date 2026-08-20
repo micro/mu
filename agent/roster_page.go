@@ -220,8 +220,8 @@ func secretPanel(secret string, a *Agent, base string) string {
 		name, endpoint = a.Name, a.Endpoint(base)
 	}
 	return `<div class="card" style="border-color:#0a7d33;margin:0 0 20px">` +
-		`<h4 style="margin:0 0 6px;font-size:14px">` + html.EscapeString(name) + ` is ready</h4>` +
-		`<p class="text-sm text-muted" style="margin:0 0 8px">Copy this token now — it is stored hashed and cannot be shown again.</p>` +
+		`<h4 class="m-0 mb-2 text-base">` + html.EscapeString(name) + ` is ready</h4>` +
+		`<p class="text-sm text-muted m-0 mb-2">Copy this token now — it is stored hashed and cannot be shown again.</p>` +
 		`<pre class="agent-secret">` + html.EscapeString(secret) + `</pre>` +
 		`<p class="text-sm text-muted" style="margin:8px 0 0">Point it at <code>` + html.EscapeString(endpoint) + `</code></p>` +
 		`</div>`
@@ -274,7 +274,7 @@ type entry struct {
 // the feature rather than offering it.
 func entryRow(e entry) string {
 	var b strings.Builder
-	b.WriteString(`<div class="agent-row"><div style="flex:1;min-width:0">`)
+	b.WriteString(`<div class="agent-row"><div class="grow min-w-0">`)
 	b.WriteString(`<a class="agent-name" href="` + e.Path + `">` + html.EscapeString(e.Name) + `</a>`)
 	if e.For != "" {
 		b.WriteString(`<div class="agent-for">` + html.EscapeString(e.For) + `</div>`)
@@ -325,7 +325,7 @@ func agentRow(a *Agent, csrf, base string) string {
 
 	// Remove stays on the row, because it is the one thing you do to an entry
 	// without opening it — and it is the reason the row has a right-hand side.
-	extra := fmt.Sprintf(`<form method="POST" action="/agents" style="margin:0" onsubmit="return confirm('Remove this agent?')">
+	extra := fmt.Sprintf(`<form method="POST" action="/agents" class="m-0" onsubmit="return confirm('Remove this agent?')">
     <input type="hidden" name="_csrf" value="%s">
     <input type="hidden" name="action" value="delete">
     <input type="hidden" name="id" value="%s">

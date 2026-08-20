@@ -145,7 +145,7 @@ func EmailLogHandler(w http.ResponseWriter, r *http.Request) {
 				<td class="addr" title="%s">%s</td>
 				<td class="subject" title="%s">%s</td>
 			</tr>
-			<tr id="%s" style="display:none"><td colspan="5" class="email-detail">
+			<tr id="%s" class="d-none"><td colspan="5" class="email-detail">
 				<strong>From:</strong> %s &nbsp;
 				<strong>To:</strong> %s &nbsp;
 				<strong>Subject:</strong> %s<br>

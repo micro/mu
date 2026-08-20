@@ -412,7 +412,7 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 	var b strings.Builder
 
 	// Search box — searches your images plus the public stock pool.
-	b.WriteString(`<div class="card"><form method="GET" action="/images" style="display:flex;gap:8px;margin:0">`)
+	b.WriteString(`<div class="card"><form method="GET" action="/images" class="d-flex gap-2 m-0">`)
 	b.WriteString(`<input name="q" value="` + html.EscapeString(q) + `" placeholder="Search images by description…" style="flex:1;padding:8px;font-size:14px;border:1px solid #ddd;border-radius:6px">`)
 	b.WriteString(`<button type="submit" style="padding:8px 16px;font-size:14px">Search</button>`)
 	b.WriteString(`</form></div>`)
@@ -427,7 +427,7 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 			b.WriteString(imageGrid(res))
 		}
 		b.WriteString(`</div>`)
-		b.WriteString(`<p style="margin:0 0 12px"><a href="/images">← Back to Images</a></p>`)
+		b.WriteString(`<p class="m-0 mb-3"><a href="/images">← Back to Images</a></p>`)
 		app.Respond(w, r, app.Response{Title: "Images", Description: "Search generated images", HTML: b.String()})
 		return
 	}
@@ -469,7 +469,7 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 	} else {
 		b.WriteString(`<textarea id="img-prompt" rows="3" placeholder="a cat astronaut drifting past Saturn, watercolour" style="width:100%;padding:8px;font-size:14px;border:1px solid #ddd;border-radius:6px;box-sizing:border-box;font-family:inherit;resize:vertical"></textarea>`)
 		b.WriteString(`<button id="img-go" onclick="imgGenerate()" style="margin-top:8px;padding:8px 20px;font-size:14px">Generate</button>`)
-		b.WriteString(`<span id="img-status" style="margin-left:10px;font-size:13px;color:#888"></span>`)
+		b.WriteString(`<span id="img-status" class="ml-3 text-sm text-muted"></span>`)
 		b.WriteString(`<div id="img-result" style="margin-top:12px"></div>`)
 	}
 	b.WriteString(`</div>`)

@@ -597,7 +597,7 @@ func generateThreadHTML(p *Message, replies []*Message, r *http.Request) string 
 	sb.WriteString(`<div style="max-width:600px;">`)
 
 	// Back link
-	sb.WriteString(`<div style="margin-bottom:16px;"><a href="/social" style="color:#888;text-decoration:none;">&larr; Back to threads</a></div>`)
+	sb.WriteString(`<div class="mb-4"><a href="/social" class="text-muted no-underline">&larr; Back to threads</a></div>`)
 
 	// Original message (full, no truncation)
 	content := htmlpkg.EscapeString(p.Content)
@@ -658,7 +658,7 @@ func generateThreadHTML(p *Message, replies []*Message, r *http.Request) string 
     <input type="hidden" name="reply_to" value="%s">
     <textarea name="content" id="reply-content" rows="2" placeholder="Write a message..." required
       style="width:100%%;box-sizing:border-box;padding:10px;border:1px solid #ddd;border-radius:8px;font-family:inherit;font-size:14px;resize:vertical;"></textarea>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
+    <div class="d-flex between items-center mt-2">
       <span id="reply-char-count" class="text-sm text-muted">0/500</span>
       <button type="submit" style="padding:6px 16px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;">Send</button>
     </div>
@@ -878,7 +878,7 @@ func generateCardHTML(allMessages []*Message) string {
 			if rc == 1 {
 				noun = "message"
 			}
-			replyInfo = fmt.Sprintf(` · <a href="/social/thread?id=%s" style="color:#888;text-decoration:none;">%d %s</a>`, p.ID, rc, noun)
+			replyInfo = fmt.Sprintf(` · <a href="/social/thread?id=%s" class="text-muted no-underline">%d %s</a>`, p.ID, rc, noun)
 		}
 
 		ts := p.PostedAt.Unix()
@@ -913,11 +913,11 @@ func generatePageHTML(visible []*Message, counts map[string]int, nav string, r *
 	// Compose box (shown to logged-in users)
 	_, acc := auth.TrySession(r)
 	if acc != nil {
-		sb.WriteString(`<div style="margin-bottom:20px;">
+		sb.WriteString(`<div class="mb-5">
   <form method="POST" action="/social" id="social-form">
     <textarea name="content" id="social-content" rows="3" placeholder="Start a thread..." required
       style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #ddd;border-radius:8px;font-family:inherit;font-size:14px;resize:vertical;"></textarea>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
+    <div class="d-flex between items-center mt-2">
       <span id="social-char-count" class="text-sm text-muted">0/500</span>
       <button type="submit" style="padding:8px 20px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;">Start Thread</button>
     </div>
@@ -970,13 +970,13 @@ func generatePageHTML(visible []*Message, counts map[string]int, nav string, r *
 
 		// Message count, counted once for the whole page rather than per row.
 		rc := counts[p.ID]
-		replyLink := fmt.Sprintf(`<a href="/social/thread?id=%s" style="color:#888;text-decoration:none;font-size:13px;">open thread</a>`, p.ID)
+		replyLink := fmt.Sprintf(`<a href="/social/thread?id=%s" class="text-muted no-underline text-sm">open thread</a>`, p.ID)
 		if rc > 0 {
 			noun := "messages"
 			if rc == 1 {
 				noun = "message"
 			}
-			replyLink = fmt.Sprintf(`<a href="/social/thread?id=%s" style="color:#888;text-decoration:none;font-size:13px;">%d %s</a>`, p.ID, rc, noun)
+			replyLink = fmt.Sprintf(`<a href="/social/thread?id=%s" class="text-muted no-underline text-sm">%d %s</a>`, p.ID, rc, noun)
 		}
 
 		ts := p.PostedAt.Unix()

@@ -73,7 +73,7 @@ func DiagnosticsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		b.WriteString(`<div class="card" style="padding:12px 16px;margin-bottom:8px">`)
-		b.WriteString(fmt.Sprintf(`<div style="display:flex;justify-content:space-between;align-items:center">
+		b.WriteString(fmt.Sprintf(`<div class="d-flex between items-center">
 			<strong>%s</strong>
 			<span style="color:%s;font-size:18px">%s</span>
 		</div>`, c.Name, color, icon))

@@ -36,7 +36,7 @@ func AIUsageHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Usage by service table
 	sb.WriteString(`<h3>By Service</h3>`)
-	sb.WriteString(`<div style="overflow-x:auto;"><table class="ai-usage-table"><thead><tr>
+	sb.WriteString(`<div class="scroll-x"><table class="ai-usage-table"><thead><tr>
 		<th>Service</th><th>Calls</th><th>Cost</th>
 	</tr></thead><tbody>`)
 
@@ -49,7 +49,7 @@ func AIUsageHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Recent calls
 	sb.WriteString(`<h3>Recent Calls</h3>`)
-	sb.WriteString(`<div style="overflow-x:auto;"><table class="ai-usage-table"><thead><tr>
+	sb.WriteString(`<div class="scroll-x"><table class="ai-usage-table"><thead><tr>
 		<th>Time</th><th>Service</th><th>Caller</th><th>Detail</th><th>Cost</th>
 	</tr></thead><tbody>`)
 

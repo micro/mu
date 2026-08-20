@@ -43,7 +43,7 @@ func RESTPageHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<h2>HTTP API</h2>`)
 	b.WriteString(`<p class="card-desc">Every service method as a plain HTTP call. ` +
 		`JSON in, JSON out, one URL per method.</p>`)
-	b.WriteString(`<pre style="background:#f5f5f5;padding:8px;font-size:13px;overflow-x:auto">` +
+	b.WriteString(`<pre class="bg-soft p-2 text-sm scroll-x">` +
 		html.EscapeString("GET  "+base+RESTPrefix+"<service>/<method>?arg=value\n"+
 			"POST "+base+RESTPrefix+"<service>/<method>   {\"arg\":\"value\"}") +
 		`</pre>`)
@@ -77,7 +77,7 @@ func restAuthCard(base string) string {
 	b.WriteString(`<p><b>A token.</b> Make one at <a href="/token">/token</a> and send it ` +
 		`as a header. A token can be scoped to named services, and the scope is enforced ` +
 		`on every call.</p>`)
-	b.WriteString(`<pre style="background:#f5f5f5;padding:8px;font-size:12px;overflow-x:auto">` +
+	b.WriteString(`<pre class="bg-soft p-2 text-xs scroll-x">` +
 		html.EscapeString(`curl -H "Authorization: Bearer $MU_TOKEN" \
   `+base+RESTPrefix+`notes/list`) + `</pre>`)
 
@@ -260,7 +260,7 @@ func restMethodCard(m restMethod, base string) string {
 		b.WriteString(`</table>`)
 	}
 
-	b.WriteString(`<pre style="background:#f5f5f5;padding:8px;font-size:12px;overflow-x:auto">` +
+	b.WriteString(`<pre class="bg-soft p-2 text-xs scroll-x">` +
 		html.EscapeString(restCurl(m, base)) + `</pre>`)
 	b.WriteString(`</div>`)
 	return b.String()

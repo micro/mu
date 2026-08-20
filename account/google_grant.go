@@ -258,13 +258,13 @@ func renderConnectionsCard(r *http.Request, acc *auth.Account, status string) st
 	}
 	b.WriteString(`</ul>`)
 
-	b.WriteString(`<form method="POST" action="/oauth2/google/disconnect" style="margin:0">` +
+	b.WriteString(`<form method="POST" action="/oauth2/google/disconnect" class="m-0">` +
 		`<input type="hidden" name="_csrf" value="` + htmlpkg.EscapeString(auth.CSRFToken(r)) + `">` +
 		`<input type="hidden" name="return" value="/account">` +
 		`<button type="submit" style="background:none;border:1px solid #ddd;border-radius:6px;padding:6px 12px;` +
 		`font-size:13px;color:#666;cursor:pointer">Disconnect Google</button>` +
 		`</form>`)
-	b.WriteString(`<p class="text-sm text-muted" style="margin-top:8px">Revoking takes all of it: ` +
+	b.WriteString(`<p class="text-sm text-muted mt-2">Revoking takes all of it: ` +
 		`Google withdraws the whole grant at once, so there is no way to hand back one and keep another.</p>`)
 	b.WriteString(`</div>`)
 	return b.String()

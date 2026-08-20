@@ -118,7 +118,7 @@ func FetchHandler(w http.ResponseWriter, r *http.Request) {
 		if title != "" {
 			b.WriteString(`<h2>` + html.EscapeString(title) + `</h2>`)
 		}
-		b.WriteString(`<p style="font-size:12px;color:#888;margin-bottom:12px;">`)
+		b.WriteString(`<p class="text-xs text-muted mb-3">`)
 		b.WriteString(`<a href="` + html.EscapeString(rawURL) + `" target="_blank" rel="noopener noreferrer">` + html.EscapeString(rawURL) + `</a>`)
 		b.WriteString(`</p>`)
 		// Render cleaned content as paragraphs

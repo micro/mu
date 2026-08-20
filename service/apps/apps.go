@@ -294,7 +294,7 @@ func Preview() string {
 		if a.Price > 0 {
 			priceTag = fmt.Sprintf(`<span style="color:#c60;font-size:12px;">%d credits</span>`, a.Price)
 		}
-		sb.WriteString(fmt.Sprintf(`<p style="display:flex;align-items:center;gap:8px;"><img src="/apps/%s/icon.svg" width="20" height="20"><a href="/apps/%s">%s</a> — %s %s</p>`,
+		sb.WriteString(fmt.Sprintf(`<p class="d-flex items-center gap-2"><img src="/apps/%s/icon.svg" width="20" height="20"><a href="/apps/%s">%s</a> — %s %s</p>`,
 			htmlpkg.EscapeString(a.Slug),
 			htmlpkg.EscapeString(a.Slug),
 			htmlpkg.EscapeString(a.Name),
@@ -502,7 +502,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 	// stylesheet outrank a plain class and turn a white label on a black button
 	// black on black. There is a comment about it on connect-cta too. Third
 	// time; hence using the shared thing.
-	sb.WriteString(`<p style="margin:0 0 16px">` + app.ActionLink("/apps/new", "+ New app") + `</p>`)
+	sb.WriteString(`<p class="m-0 mb-4">` + app.ActionLink("/apps/new", "+ New app") + `</p>`)
 
 	// Pricing filter
 	pricing := r.URL.Query().Get("pricing")
@@ -603,7 +603,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 <div>
 <h3 style="margin:0 0 4px 0;"><a href="/apps/%s">%s</a></h3>
 <p style="margin:0 0 4px 0;color:#666;">%s</p>
-<p style="margin:0;font-size:13px;color:#999;">by %s%s%s · %d launches · <a href="/apps/%s">Launch</a> · <a href="/apps/%s/fork">Fork</a>%s%s</p>
+<p class="m-0 text-sm text-muted">by %s%s%s · %d launches · <a href="/apps/%s">Launch</a> · <a href="/apps/%s/fork">Fork</a>%s%s</p>
 </div>
 </div>`,
 				htmlpkg.EscapeString(a.Slug),
@@ -648,25 +648,25 @@ func handleNew(w http.ResponseWriter, r *http.Request) {
 	// and the constrained micro-app generator builds a working tool.
 	sb.WriteString(`<p class="card-desc">Describe an app and we'll build it — a tracker, checklist, or counter that just works.</p>`)
 	sb.WriteString(`<form method="POST" action="/apps/generate" style="max-width:600px;margin-bottom:8px;">`)
-	sb.WriteString(`<div style="display:flex;gap:8px;">`)
+	sb.WriteString(`<div class="d-flex gap-2">`)
 	sb.WriteString(`<input type="text" name="description" required maxlength="200" style="flex:1;padding:10px;border:1px solid #ccc;border-radius:6px;" placeholder="an expense tracker, a packing checklist, a water counter…">`)
 	sb.WriteString(`<button type="submit" class="btn">Build it</button>`)
 	sb.WriteString(`</div>`)
 	sb.WriteString(`</form>`)
 	sb.WriteString(`<details style="max-width:600px;margin-top:20px;"><summary style="cursor:pointer;color:#666;font-size:14px;">Write the HTML yourself</summary>`)
-	sb.WriteString(`<form method="POST" action="/apps/new" style="margin-top:16px;">`)
-	sb.WriteString(`<div style="margin-bottom:12px;"><label>Name</label><br>`)
+	sb.WriteString(`<form method="POST" action="/apps/new" class="mt-4">`)
+	sb.WriteString(`<div class="mb-3"><label>Name</label><br>`)
 	sb.WriteString(`<input type="text" name="name" required maxlength="60" class="form-input w-full" placeholder="Pomodoro Timer"></div>`)
-	sb.WriteString(`<div style="margin-bottom:12px;"><label>Description</label><br>`)
+	sb.WriteString(`<div class="mb-3"><label>Description</label><br>`)
 	sb.WriteString(`<input type="text" name="description" maxlength="200" class="form-input w-full" placeholder="A simple 25-minute focus timer"></div>`)
-	sb.WriteString(`<div style="margin-bottom:12px;"><label>Tags <span class="text-muted text-xs">(comma-separated, optional)</span></label><br>`)
+	sb.WriteString(`<div class="mb-3"><label>Tags <span class="text-muted text-xs">(comma-separated, optional)</span></label><br>`)
 	sb.WriteString(`<input type="text" name="tags" maxlength="200" class="form-input w-full" placeholder="productivity, timer"></div>`)
-	sb.WriteString(`<div style="margin-bottom:12px;"><label>HTML (your app — max 256KB)</label><br>`)
+	sb.WriteString(`<div class="mb-3"><label>HTML (your app — max 256KB)</label><br>`)
 	sb.WriteString(`<textarea name="html" required class="form-input w-full text-sm mono-tall" placeholder="<h1>Hello World</h1>"></textarea></div>`)
-	sb.WriteString(`<div style="margin-bottom:12px;"><label>Price per use <span class="text-muted text-xs">(credits, 0 = free)</span></label><br>`)
+	sb.WriteString(`<div class="mb-3"><label>Price per use <span class="text-muted text-xs">(credits, 0 = free)</span></label><br>`)
 	sb.WriteString(`<input type="number" name="price" min="0" max="1000" value="0" class="form-input w-full" placeholder="0"></div>`)
-	sb.WriteString(`<div style="margin-bottom:12px;"><label style="display:flex;align-items:center;gap:6px"><input type="checkbox" name="public" value="1" checked style="width:auto;margin:0"> Public</label></div>`)
-	sb.WriteString(`<p style="margin-bottom:12px;font-size:13px;color:#999;">Set a price and earn 90% of every sale. Free apps cost nothing to use.</p>`)
+	sb.WriteString(`<div class="mb-3"><label style="display:flex;align-items:center;gap:6px"><input type="checkbox" name="public" value="1" checked style="width:auto;margin:0"> Public</label></div>`)
+	sb.WriteString(`<p class="mb-3 text-sm text-muted">Set a price and earn 90% of every sale. Free apps cost nothing to use.</p>`)
 	sb.WriteString(`<button type="submit" class="btn">Create App</button>`)
 	sb.WriteString(`</form>`)
 	sb.WriteString(`</details>`)
@@ -848,7 +848,7 @@ func handleView(w http.ResponseWriter, r *http.Request, slug string) {
 	}
 
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf(`<div style="display:flex;gap:12px;align-items:center;margin-bottom:12px;"><img src="/apps/%s/icon.svg" width="32" height="32"><div><p class="card-desc" style="margin:0;">%s</p></div></div>`,
+	sb.WriteString(fmt.Sprintf(`<div style="display:flex;gap:12px;align-items:center;margin-bottom:12px;"><img src="/apps/%s/icon.svg" width="32" height="32"><div><p class="card-desc m-0">%s</p></div></div>`,
 		htmlpkg.EscapeString(a.Slug), htmlpkg.EscapeString(a.Description)))
 	tagsInfo := ""
 	if a.Tags != "" {
@@ -905,8 +905,8 @@ func handleView(w http.ResponseWriter, r *http.Request, slug string) {
 	}
 	if detailAdmin || detailUserID == a.AuthorID {
 		sb.WriteString(`<p class="text-sm">`)
-		sb.WriteString(fmt.Sprintf(`<a href="/apps/%s/edit" style="color:#888;text-decoration:none">Edit</a>`, htmlpkg.EscapeString(a.Slug)))
-		sb.WriteString(fmt.Sprintf(` · <a href="#" style="color:#c00;text-decoration:none" onclick="if(confirm('Delete this app?')){fetch('/apps/%s/delete',{method:'POST'}).then(function(){window.location='/apps'})}return false;">Delete</a>`, htmlpkg.EscapeString(a.Slug)))
+		sb.WriteString(fmt.Sprintf(`<a href="/apps/%s/edit" class="text-muted no-underline">Edit</a>`, htmlpkg.EscapeString(a.Slug)))
+		sb.WriteString(fmt.Sprintf(` · <a href="#" class="text-error no-underline" onclick="if(confirm('Delete this app?')){fetch('/apps/%s/delete',{method:'POST'}).then(function(){window.location='/apps'})}return false;">Delete</a>`, htmlpkg.EscapeString(a.Slug)))
 		sb.WriteString(`</p>`)
 	}
 
@@ -1028,7 +1028,7 @@ func handleVersions(w http.ResponseWriter, r *http.Request, slug string) {
 
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf(`<p><a href="/apps/%s">&larr; %s</a></p>`, htmlpkg.EscapeString(a.Slug), htmlpkg.EscapeString(a.Name)))
-	sb.WriteString(`<h2 style="margin-bottom:16px;">Version History</h2>`)
+	sb.WriteString(`<h2 class="mb-4">Version History</h2>`)
 
 	if len(a.Versions) == 0 {
 		sb.WriteString(`<p class="text-muted">No version history yet.</p>`)
@@ -1047,11 +1047,11 @@ func handleVersions(w http.ResponseWriter, r *http.Request, slug string) {
 			}
 			restoreBtn := ""
 			if isAuthor && !isCurrent {
-				restoreBtn = fmt.Sprintf(` · <form method="POST" action="/apps/%s/versions" style="display:inline;"><input type="hidden" name="version" value="%d"><button type="submit" style="background:none;border:none;color:#0066cc;cursor:pointer;padding:0;font-family:inherit;font-size:13px;" onclick="return confirm('Restore version %d?')">Restore</button></form>`,
+				restoreBtn = fmt.Sprintf(` · <form method="POST" action="/apps/%s/versions" class="d-inline"><input type="hidden" name="version" value="%d"><button type="submit" style="background:none;border:none;color:#0066cc;cursor:pointer;padding:0;font-family:inherit;font-size:13px;" onclick="return confirm('Restore version %d?')">Restore</button></form>`,
 					htmlpkg.EscapeString(a.Slug), v.Number, v.Number)
 			}
 			sb.WriteString(fmt.Sprintf(`<div style="border:1px solid #eee;border-radius:6px;padding:12px;margin-bottom:8px;">
-<div style="display:flex;justify-content:space-between;align-items:center;">
+<div class="d-flex between items-center">
 <div><strong>v%d</strong>%s — %s</div>
 <span class="text-sm text-muted">%s%s</span>
 </div>

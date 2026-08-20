@@ -332,7 +332,7 @@ func NewAgentHandler(w http.ResponseWriter, r *http.Request) {
 				Title:       "Agent limit",
 				Description: "Build a custom agent",
 				HTML: fmt.Sprintf(`<div class="card" style="max-width:600px">`+
-					`<h3 style="margin:0 0 8px">You are running %d of %d agent%s</h3>`+
+					`<h3 class="m-0 mb-2">You are running %d of %d agent%s</h3>`+
 					`<p style="color:#666;font-size:15px;margin:0 0 16px">Your plan runs %d. `+
 					`Change your plan to add more, or delete one you are not using.</p>`+
 					`<a href="/account/topup" class="btn">Add credit</a> `+

@@ -701,7 +701,7 @@ func PricingTableHTML() string {
 	// every free operation, which is long enough to squeeze this one until the
 	// browser broke the word — the costs table read "include" on one line and
 	// "d" on the next.
-	const price = `<td style="white-space:nowrap">`
+	const price = `<td class="nowrap">`
 	sb.WriteString(`<tr><td>Reading news, blogs, videos, markets, weather</td>` + price + `included</td></tr>`)
 	// Zero-cost operations are listed as included rather than as "0p" rows —
 	// a price of zero is not a price.

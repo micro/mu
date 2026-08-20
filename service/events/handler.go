@@ -54,7 +54,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<input type="hidden" name="action" value="create">`)
 	b.WriteString(`<input type="hidden" name="when" value="">`)
 	b.WriteString(`<input type="text" name="title" placeholder="Remind me to…" required maxlength="140" style="padding:9px 11px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;font-family:inherit">`)
-	b.WriteString(`<div style="display:flex;gap:8px;flex-wrap:wrap">`)
+	b.WriteString(`<div class="d-flex gap-2 flex-wrap">`)
 	b.WriteString(`<input type="datetime-local" name="whenlocal" required style="flex:1;min-width:200px;padding:9px 11px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;font-family:inherit">`)
 	b.WriteString(`<button type="submit">Schedule</button>`)
 	b.WriteString(`</div>`)
@@ -69,7 +69,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`<p class="text-muted text-base">Nothing scheduled. Add a reminder above, or just ask the agent: <em>"remind me to call the dentist tomorrow at 3pm"</em>.</p>`)
 	} else {
 		b.WriteString(`<h3 style="font-size:15px;margin:0 0 10px">Upcoming</h3>`)
-		b.WriteString(`<div style="display:flex;flex-direction:column;gap:8px">`)
+		b.WriteString(`<div class="d-flex flex-column gap-2">`)
 		for _, row := range mergedRows(up, ext) {
 			if row.Event != nil {
 				b.WriteString(eventRow(row.Event, csrf))
@@ -92,13 +92,13 @@ func eventRow(e *Event, csrf string) string {
 		note = `<div class="text-xs text-muted">` + html.EscapeString(e.Note) + `</div>`
 	}
 	return fmt.Sprintf(`<div style="display:flex;align-items:center;gap:12px;border:1px solid #eee;border-radius:8px;padding:10px 14px">
-<div style="flex:1">
-  <div style="font-weight:600;font-size:14px">%s</div>
+<div class="grow">
+  <div class="semibold text-base">%s</div>
   <div style="font-size:13px;color:var(--link,#0066cc)">%s</div>
   %s
 </div>
-<a href="%s" target="_blank" rel="noopener" title="Add to Google Calendar" style="font-size:12px;color:#888;text-decoration:none;white-space:nowrap">+ Calendar</a>
-<form method="POST" action="/events" style="margin:0">
+<a href="%s" target="_blank" rel="noopener" title="Add to Google Calendar" class="text-xs text-muted no-underline nowrap">+ Calendar</a>
+<form method="POST" action="/events" class="m-0">
   <input type="hidden" name="_csrf" value="%s">
   <input type="hidden" name="action" value="cancel">
   <input type="hidden" name="id" value="%s">
@@ -153,8 +153,8 @@ func externalRow(x External) string {
 		source = ExternalName
 	}
 	return fmt.Sprintf(`<div style="display:flex;align-items:center;gap:12px;border:1px solid #eee;border-radius:8px;padding:10px 14px;background:#fafafa">
-<div style="flex:1">
-  <div style="font-weight:600;font-size:14px">%s</div>
+<div class="grow">
+  <div class="semibold text-base">%s</div>
   <div style="font-size:13px;color:var(--link,#0066cc)">%s</div>
   %s
 </div>
@@ -177,9 +177,9 @@ func calendarCard(owner, status, csrf string) string {
 	case "connected":
 		note = `<p style="font-size:13px;color:#0a7d33;margin:0 0 8px">Connected. Your calendar is now included in what's scheduled and when you're free.</p>`
 	case "disconnected":
-		note = `<p style="font-size:13px;color:#888;margin:0 0 8px">Disconnected. The access was revoked at Google and forgotten here.</p>`
+		note = `<p class="text-sm text-muted m-0 mb-2">Disconnected. The access was revoked at Google and forgotten here.</p>`
 	case "declined":
-		note = `<p style="font-size:13px;color:#888;margin:0 0 8px">No calendar access granted — nothing changed.</p>`
+		note = `<p class="text-sm text-muted m-0 mb-2">No calendar access granted — nothing changed.</p>`
 	case "failed":
 		note = `<p style="font-size:13px;color:#b00;margin:0 0 8px">That didn't complete. Try again.</p>`
 	}
@@ -195,17 +195,17 @@ func calendarCard(owner, status, csrf string) string {
 				who = " (" + html.EscapeString(e) + ")"
 			}
 		}
-		b.WriteString(`<h4 style="margin:0 0 6px;font-size:14px">` + html.EscapeString(ExternalName) + who + `</h4>`)
-		b.WriteString(`<p style="font-size:13px;color:#666;margin:0 0 10px">Read-only. Mu can see what's on it, and cannot change it.</p>`)
+		b.WriteString(`<h4 class="m-0 mb-2 text-base">` + html.EscapeString(ExternalName) + who + `</h4>`)
+		b.WriteString(`<p class="text-sm text-secondary m-0 mb-3">Read-only. Mu can see what's on it, and cannot change it.</p>`)
 		// No disconnect here. Withdrawing access is one action covering
 		// everything granted — Google revokes the whole grant at once — so it
 		// belongs with the rest of the inventory rather than repeated on every
 		// page that happens to use a piece of it.
-		b.WriteString(`<p style="font-size:13px;color:#888;margin:0">Manage it in ` +
+		b.WriteString(`<p class="text-sm text-muted m-0">Manage it in ` +
 			`<a href="/account">your account</a>.</p>`)
 	} else {
-		b.WriteString(`<h4 style="margin:0 0 6px;font-size:14px">Connect your ` + html.EscapeString(ExternalName) + `</h4>`)
-		b.WriteString(`<p style="font-size:13px;color:#666;margin:0 0 10px">Right now "when am I free" only counts what you scheduled here. Connect your calendar and it counts everything. Read-only — Mu can see what's on it, and cannot change it.</p>`)
+		b.WriteString(`<h4 class="m-0 mb-2 text-base">Connect your ` + html.EscapeString(ExternalName) + `</h4>`)
+		b.WriteString(`<p class="text-sm text-secondary m-0 mb-3">Right now "when am I free" only counts what you scheduled here. Connect your calendar and it counts everything. Read-only — Mu can see what's on it, and cannot change it.</p>`)
 		b.WriteString(`<a href="/oauth2/google/calendar" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:8px 16px;border-radius:8px;font-weight:600;font-size:13px">Connect ` + html.EscapeString(ExternalName) + `</a>`)
 	}
 	b.WriteString(`</div>`)

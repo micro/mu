@@ -270,7 +270,7 @@ function ask(q){
       return resp.json().catch(function(){return {};}).then(function(j){
         stopWork();
         var msg=esc(j.error||'Sign in to ask the agent.');
-        a.innerHTML='<div class="mu-cta">'+msg+' <a href="/signup">Sign up →</a> <a href="/login?redirect=/agent" style="margin-left:10px">Log in</a></div>';
+        a.innerHTML='<div class="mu-cta">'+msg+' <a href="/signup">Sign up →</a> <a href="/login?redirect=/agent" class="ml-3">Log in</a></div>';
         save();
         throw 'handled';
       });
@@ -317,7 +317,7 @@ function ask(q){
               streamText+=ev.token;
               if(!streaming){
                 streaming=true;stopWork();
-                a.innerHTML='<div style="white-space:pre-wrap"><span id="mu-stream-out"></span><span class="mu-cursor"></span></div>';
+                a.innerHTML='<div class="whitespace-pre-wrap"><span id="mu-stream-out"></span><span class="mu-cursor"></span></div>';
               }
               var el=document.getElementById('mu-stream-out');
               if(el)el.textContent=protectCurrencyDollars(streamText);

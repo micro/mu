@@ -99,8 +99,8 @@ func editPageHTML(a *App) string {
 
 <div class="builder">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;flex-wrap:wrap;gap:8px">
-    <p class="card-desc" style="margin:0">Edit your app</p>
-    <div style="display:flex;gap:8px;align-items:center;font-size:13px">
+    <p class="card-desc m-0">Edit your app</p>
+    <div class="d-flex gap-2 items-center text-sm">
       <a href="/apps/%s" style="color:#333;text-decoration:none;padding:4px 12px;border:1px solid #e0e0e0;border-radius:6px">Open App</a>
       <button onclick="deleteApp()" style="padding:4px 12px;border:1px solid #e0e0e0;border-radius:6px;background:#fff;color:#c00;cursor:pointer;font-size:13px;font-family:inherit">Delete</button>
     </div>
@@ -155,10 +155,10 @@ func editPageHTML(a *App) string {
       <button onclick="saveApp()" style="padding:8px 20px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;white-space:nowrap;">Save</button>
     </div>
   </div>
-  <div style="display:flex;justify-content:space-between;align-items:center;">
+  <div class="d-flex between items-center">
     <span class="status-msg" id="statusMsg"></span>
   </div>
-  <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;color:#999;">
+  <div class="d-flex between items-center text-sm text-muted">
     <span id="savedAt">%s</span>
     <span>%s</span>
   </div>

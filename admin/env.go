@@ -283,10 +283,10 @@ func EnvHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	b.WriteString(`<div class="card"><h3>Where these come from</h3>`)
-	b.WriteString(fmt.Sprintf(`<p style="font-size:14px;color:#666;margin:0 0 8px">`+
+	b.WriteString(fmt.Sprintf(`<p class="text-base text-secondary m-0 mb-2">`+
 		`<b>%d</b> from the environment · <b>%d</b> saved here · <b>%d</b> not set</p>`,
 		fromEnv, saved, unset))
-	b.WriteString(`<p style="font-size:13px;color:#888;margin:0">` +
+	b.WriteString(`<p class="text-sm text-muted m-0">` +
 		`The environment wins. A value set in the shell, a <code>.env</code> file or a ` +
 		`systemd unit cannot be changed from this page — it is shown, and marked, and its ` +
 		`box is locked, because saving over it would store something nothing reads.</p>`)
@@ -314,7 +314,7 @@ func EnvHandler(w http.ResponseWriter, r *http.Request) {
 				badge = `<span style="font-size:11px;color:#bbb">not set</span>`
 			}
 
-			b.WriteString(`<div style="margin-bottom:12px">`)
+			b.WriteString(`<div class="mb-3">`)
 			b.WriteString(fmt.Sprintf(
 				`<label style="font-size:12px;color:#888;display:block;margin-bottom:2px"><code>%s</code> %s`,
 				html.EscapeString(key), badge))
@@ -370,7 +370,7 @@ func EnvHandler(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`</div>`)
 	}
 
-	b.WriteString(`<button type="submit" class="btn" style="margin-bottom:16px">Save</button>`)
+	b.WriteString(`<button type="submit" class="btn mb-4">Save</button>`)
 	b.WriteString(`</form>`)
 
 	b.WriteString(`<p><a href="/admin">← Back to Admin</a></p>`)

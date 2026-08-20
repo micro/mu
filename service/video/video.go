@@ -1205,7 +1205,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
     <div class="video-bar">
       <button id="audioBtn" onclick="toggleAudio()">♫ Audio only</button>
       <span id="audioTime"></span>
-      <button id="playBtn" onclick="togglePlay()" style="display:none">▶</button>
+      <button id="playBtn" onclick="togglePlay()" class="d-none">▶</button>
     </div>
     <script>
     var player, apiReady=false, tInt;

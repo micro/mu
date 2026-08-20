@@ -135,7 +135,7 @@ var f=d.forecast;
 if(!f||!f.Current){return}
 var c=f.Current;
 try{localStorage.setItem('mu_weather_now',JSON.stringify({temp:Math.round(c.TempC),desc:c.Description||''}))}catch(e){}
-var h='<div style="display:flex;align-items:center;gap:8px">';
+var h='<div class="d-flex items-center gap-2">';
 h+='<span style="font-size:22px;font-weight:600;color:#333">'+Math.round(c.TempC)+'°C</span>';
 h+='<span class="text-secondary">'+c.Description+'</span>';
 h+='</div>';

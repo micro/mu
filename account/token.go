@@ -176,7 +176,7 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	sb.WriteString(`<table class="token-table"><thead><tr><th>Name</th><th>May reach</th><th>Created</th><th>Last Used</th><th>Expires</th><th></th></tr></thead><tbody>`)
 	tokens := auth.ListTokens(accountID)
 	if len(tokens) == 0 {
-		sb.WriteString(`<tr><td colspan="6" style="padding:20px;text-align:center;color:#666">No tokens yet.</td></tr>`)
+		sb.WriteString(`<tr><td colspan="6" class="p-5 text-center text-secondary">No tokens yet.</td></tr>`)
 	}
 	for _, token := range tokens {
 		expires := "Never"
@@ -192,16 +192,16 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 			created = app.TimeAgo(token.Created)
 		}
 		sb.WriteString(fmt.Sprintf(`<tr><td data-label="Name">%s</td><td data-label="Permissions">%s</td><td data-label="Created">%s</td><td data-label="Last Used">%s</td><td data-label="Expires">%s</td><td>
-			<form method="POST" action="/token?id=%s" style="display:inline" onsubmit="return confirm('Delete?')">
+			<form method="POST" action="/token?id=%s" class="d-inline" onsubmit="return confirm('Delete?')">
 			<input type="hidden" name="_method" value="DELETE"><button type="submit" class="text-sm">Delete</button></form></td></tr>`,
 			token.Name, tokenScope(token), created, lastUsed, expires, token.ID))
 	}
 	sb.WriteString(`</tbody></table>`)
 
-	sb.WriteString(`<h4 style="margin-top:20px">Create Token</h4>`)
+	sb.WriteString(`<h4 class="mt-5">Create Token</h4>`)
 	sb.WriteString(`<form id="create-token-form" onsubmit="createToken(event)">`)
-	sb.WriteString(`<div style="margin-bottom:10px"><input type="text" name="name" required placeholder="e.g. CI/CD"></div>`)
-	sb.WriteString(`<div style="margin-bottom:10px"><select name="expires_in">`)
+	sb.WriteString(`<div class="mb-3"><input type="text" name="name" required placeholder="e.g. CI/CD"></div>`)
+	sb.WriteString(`<div class="mb-3"><select name="expires_in">`)
 	sb.WriteString(`<option value="0">Never</option><option value="7">7 days</option><option value="30">30 days</option>`)
 	sb.WriteString(`<option value="90" selected>90 days</option><option value="365">1 year</option></select></div>`)
 
@@ -248,19 +248,19 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	sb.WriteString(`<table class="token-table"><thead><tr><th>Name</th><th>Client ID</th><th>Created</th><th></th></tr></thead><tbody>`)
 	oauthClients := auth.OAuthClientsFor(accountID)
 	if len(oauthClients) == 0 {
-		sb.WriteString(`<tr><td colspan="4" style="padding:20px;text-align:center;color:#666">No OAuth clients yet.</td></tr>`)
+		sb.WriteString(`<tr><td colspan="4" class="p-5 text-center text-secondary">No OAuth clients yet.</td></tr>`)
 	}
 	for _, c := range oauthClients {
 		sb.WriteString(fmt.Sprintf(`<tr><td data-label="Name">%s</td><td data-label="Client ID"><code>%s</code></td><td data-label="Created">%s</td><td>
-			<form method="POST" action="/token?delete_client=%s" style="display:inline" onsubmit="return confirm('Delete?')">
+			<form method="POST" action="/token?delete_client=%s" class="d-inline" onsubmit="return confirm('Delete?')">
 			<input type="hidden" name="_method" value="DELETE"><button type="submit" class="text-sm">Delete</button></form></td></tr>`,
 			c.Name, c.ClientID, c.CreatedAt.Format("2 Jan 2006"), c.ClientID))
 	}
 	sb.WriteString(`</tbody></table>`)
 
-	sb.WriteString(`<h4 style="margin-top:20px">Create OAuth Client</h4>`)
+	sb.WriteString(`<h4 class="mt-5">Create OAuth Client</h4>`)
 	sb.WriteString(`<form method="POST" action="/token?create_client=1">`)
-	sb.WriteString(`<div style="margin-bottom:10px"><input type="text" name="client_name" placeholder="e.g. Claude" required></div>`)
+	sb.WriteString(`<div class="mb-3"><input type="text" name="client_name" placeholder="e.g. Claude" required></div>`)
 	// The address is half of what a client is. Without it there is nowhere a
 	// code may be sent, and a client registered without one can never complete
 	// a sign-in — which is what every client made on this form used to be.
@@ -272,14 +272,14 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	// naming the old one would have been confidently wrong for months. What
 	// helps is showing the shape and saving the typing for the two that are
 	// actually common.
-	sb.WriteString(`<div style="margin-bottom:10px"><input type="text" name="redirect_uri" ` +
+	sb.WriteString(`<div class="mb-3"><input type="text" name="redirect_uri" ` +
 		`list="redirect-suggestions" placeholder="Redirect URL, e.g. https://example.com/callback" ` +
-		`style="width:100%;box-sizing:border-box">` +
+		` class="w-full">` +
 		`<datalist id="redirect-suggestions">` +
 		`<option value="http://localhost:0/callback">Command-line or desktop client</option>` +
 		`<option value="https://claude.ai/api/mcp/auth_callback">Claude custom connector</option>` +
 		`</datalist></div>`)
-	sb.WriteString(`<p style="color:#666;font-size:12px;margin:0 0 10px">Where the client receives ` +
+	sb.WriteString(`<p class="text-secondary text-xs m-0 mb-3">Where the client receives ` +
 		`its code. Must be https, or http on localhost. Left empty it is ` +
 		`<code>http://localhost:0/callback</code>, which suits a command-line or desktop client.</p>`)
 	sb.WriteString(`<button type="submit">Create Client</button></form>`)

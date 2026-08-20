@@ -59,18 +59,18 @@ func SysLogHandler(w http.ResponseWriter, r *http.Request) {
 		content.WriteString(`<p class="text-muted">No log entries yet.</p>`)
 	} else {
 		content.WriteString(`<script>function muToggleSyslog(id){var d=document.getElementById(id);if(d){d.style.display=d.style.display==='none'?'table-row':'none';}}</script>`)
-		content.WriteString(`<div style="overflow-x:auto;">`)
+		content.WriteString(`<div class="scroll-x">`)
 		content.WriteString(`<table class="email-log" style="width:100%;table-layout:fixed;">`)
 		content.WriteString(`<colgroup><col style="width:110px"><col style="width:90px"><col></colgroup>`)
 		content.WriteString(`<tr><th>Time</th><th>Package</th><th>Message</th></tr>`)
 		for i, e := range entries {
 			rowID := fmt.Sprintf("syslog-row-%d", i)
 			content.WriteString(fmt.Sprintf(`<tr style="cursor:pointer;" onclick="muToggleSyslog('%s')" title="Click to expand">
-				<td style="white-space:nowrap;">%s</td>
+				<td class="nowrap">%s</td>
 				<td style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">%s</td>
 				<td style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">%s</td>
 			</tr>
-			<tr id="%s" style="display:none;">
+			<tr id="%s" class="d-none">
 				<td colspan="3" style="background:#f9f9f9;padding:8px;word-break:break-all;white-space:pre-wrap;font-size:12px;">%s</td>
 			</tr>`,
 				rowID,
@@ -112,15 +112,15 @@ func alertsCard() string {
 	}
 	var b strings.Builder
 	b.WriteString(`<div class="card" style="border-color:#e0a3a3">`)
-	fmt.Fprintf(&b, `<h3 style="color:#c00">Alerts <span class="count">%d</span></h3>`, len(alerts))
+	fmt.Fprintf(&b, `<h3 class="text-error">Alerts <span class="count">%d</span></h3>`, len(alerts))
 	b.WriteString(`<p class="text-sm text-muted">Things this instance did that it should ` +
 		`not have had to, or refused in order to protect itself. Kept apart from the log ` +
 		`below, which rolls over.</p>`)
-	b.WriteString(`<div style="overflow-x:auto"><table class="email-log" style="width:100%;table-layout:fixed">`)
+	b.WriteString(`<div class="scroll-x"><table class="email-log" style="width:100%;table-layout:fixed">`)
 	b.WriteString(`<colgroup><col style="width:130px"><col style="width:90px"><col></colgroup>`)
 	b.WriteString(`<tr><th>When</th><th>Where</th><th>What</th></tr>`)
 	for _, a := range alerts {
-		fmt.Fprintf(&b, `<tr><td style="white-space:nowrap">%s</td><td>%s</td>`+
+		fmt.Fprintf(&b, `<tr><td class="nowrap">%s</td><td>%s</td>`+
 			`<td style="word-break:break-word;white-space:pre-wrap">%s</td></tr>`,
 			a.Time.Format("Jan 2 15:04:05"),
 			html.EscapeString(a.Package),

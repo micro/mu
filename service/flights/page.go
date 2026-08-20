@@ -253,7 +253,7 @@ var ac=(d&&d.aircraft)||[];
 if(!ac.length){el.innerHTML='<a href="/flights" class="text-muted">Nothing overhead</a>';return}
 var h='';
 for(var i=0;i<Math.min(3,ac.length);i++){var a=ac[i];
-h+='<div style="display:flex;justify-content:space-between;gap:8px"><span>'+
+h+='<div class="d-flex between gap-2"><span>'+
 (a.callsign||a.reg||a.hex)+'</span><span style="color:#aaa">'+
 (a.on_ground?'ground':(a.altitude||0).toLocaleString()+' ft')+'</span></div>'}
 h+='<div style="margin-top:6px"><a href="/flights?lat='+lat+'&lon='+lon+'" class="text-muted">More</a></div>';

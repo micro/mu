@@ -340,19 +340,19 @@ func PasskeyListHTML(accountID string) string {
 	}
 
 	if rows == "" {
-		rows = `<tr><td colspan="4" style="padding: 20px; text-align: center; color: #666;">No passkeys registered. Add one below.</td></tr>`
+		rows = `<tr><td colspan="4" class="p-5 text-center text-secondary">No passkeys registered. Add one below.</td></tr>`
 	}
 
 	return fmt.Sprintf(`<div class="card">
 <h4>Passkeys</h4>
 <p>Sign in without a password using your device's biometrics or security key.</p>
-<div style="overflow-x: auto;">
+<div class="scroll-x">
 <table>
 <thead><tr><th>Name</th><th>Created</th><th>Last Used</th><th></th></tr></thead>
 <tbody>%s</tbody>
 </table>
 </div>
-<button onclick="registerPasskey()" style="margin-top: 15px;">Add Passkey</button>
+<button onclick="registerPasskey()" class="mt-4">Add Passkey</button>
 <script>
 async function registerPasskey() {
   try {

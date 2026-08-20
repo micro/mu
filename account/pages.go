@@ -94,7 +94,7 @@ var LoginTemplate = `<html lang="en">
 	  <br>
 	  <button>Login</button>
 	</form>
-	<div id="passkey-login" style="display:none; text-align:center; margin-top:20px;">
+	<div id="passkey-login" class="d-none text-center mt-5">
 	  <p class="text-muted">or</p>
 	  <button onclick="loginWithPasskey()">Login with Passkey</button>
 	</div>
@@ -304,8 +304,8 @@ func InviteHandler(w http.ResponseWriter, r *http.Request) {
 <div class="card">
 <h4>Invite someone to Mu</h4>
 <p class="text-sm">Enter their email — they'll get a signup link.</p>
-<form method="POST" action="/invite" style="margin-top:8px">
-	<input type="email" name="email" placeholder="friend@example.com" required class="form-input" style="width:100%">
+<form method="POST" action="/invite" class="mt-2">
+	<input type="email" name="email" placeholder="friend@example.com" required class="form-input w-full">
 	<button type="submit" class="mt-2">Send invite</button>
 </form>
 </div>`

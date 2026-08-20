@@ -223,7 +223,7 @@ func connectCard(owner, status string) string {
 	case "connected":
 		note = `<p style="font-size:13px;color:#0a7d33;margin:0 0 8px">Connected. Names are now resolved against ` + html.EscapeString(ExternalName) + ` too.</p>`
 	case "declined":
-		note = `<p style="font-size:13px;color:#888;margin:0 0 8px">No access granted — nothing changed.</p>`
+		note = `<p class="text-sm text-muted m-0 mb-2">No access granted — nothing changed.</p>`
 	case "failed":
 		note = `<p style="font-size:13px;color:#b00;margin:0 0 8px">That didn't complete. Try again.</p>`
 	}
@@ -232,12 +232,12 @@ func connectCard(owner, status string) string {
 	b.WriteString(`<div class="card" style="margin-top:24px">`)
 	b.WriteString(note)
 	if HasExternal(owner) {
-		b.WriteString(`<h4 style="margin:0 0 6px;font-size:14px">` + html.EscapeString(ExternalName) + `</h4>`)
-		b.WriteString(`<p style="font-size:13px;color:#666;margin:0">Attached and read-only. Names are looked up when you ask; ` +
+		b.WriteString(`<h4 class="m-0 mb-2 text-base">` + html.EscapeString(ExternalName) + `</h4>`)
+		b.WriteString(`<p class="text-sm text-secondary m-0">Attached and read-only. Names are looked up when you ask; ` +
 			`nothing from it is copied here. Manage it in <a href="/account">your account</a>.</p>`)
 	} else {
-		b.WriteString(`<h4 style="margin:0 0 6px;font-size:14px">Connect your ` + html.EscapeString(ExternalName) + `</h4>`)
-		b.WriteString(`<p style="font-size:13px;color:#666;margin:0 0 10px">Right now a name only resolves if you typed it in above. ` +
+		b.WriteString(`<h4 class="m-0 mb-2 text-base">Connect your ` + html.EscapeString(ExternalName) + `</h4>`)
+		b.WriteString(`<p class="text-sm text-secondary m-0 mb-3">Right now a name only resolves if you typed it in above. ` +
 			`Connect your address book and "email Sarah about Thursday" works without teaching Mu who Sarah is. ` +
 			`Read-only, and nothing is copied — names are looked up when you ask.</p>`)
 		b.WriteString(`<a href="/oauth2/google/contacts" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:8px 16px;border-radius:8px;font-weight:600;font-size:13px">Connect ` + html.EscapeString(ExternalName) + `</a>`)

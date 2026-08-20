@@ -241,7 +241,7 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 				`style="font-size:12px;padding:2px 8px;border-radius:4px;border:1px solid #06b;background:#fff;color:#06b;cursor:pointer">Credit</button></form>`,
 			u.ID, tab))
 
-		sb.WriteString(fmt.Sprintf(`<tr><td><strong><a href="/@%s">%s</a></strong></td><td>%s</td><td class="created-col">%s</td><td>%s</td><td class="center">%s</td><td class="center" style="white-space:nowrap">%s</td></tr>`, u.ID, u.ID, u.Name, created, statusHTML, balanceCell(u.ID), strings.Join(actions, " ")))
+		sb.WriteString(fmt.Sprintf(`<tr><td><strong><a href="/@%s">%s</a></strong></td><td>%s</td><td class="created-col">%s</td><td>%s</td><td class="center">%s</td><td class="center nowrap">%s</td></tr>`, u.ID, u.ID, u.Name, created, statusHTML, balanceCell(u.ID), strings.Join(actions, " ")))
 	}
 	sb.WriteString(`</tbody></table>`)
 	app.Respond(w, r, app.Response{Title: "Admin", Description: "Users", HTML: sb.String()})

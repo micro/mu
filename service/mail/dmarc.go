@@ -260,7 +260,7 @@ func renderDMARCReport(xmlData string) string {
 	var html strings.Builder
 
 	// Report metadata
-	html.WriteString(`<div style="margin-bottom: 20px;">`)
+	html.WriteString(`<div class="mb-5">`)
 	html.WriteString(fmt.Sprintf(`<h4 style="margin: 0 0 10px 0;">DMARC Report from %s</h4>`, report.ReportMetadata.OrgName))
 	html.WriteString(`<table style="border-collapse: collapse; width: 100%; font-size: 13px;">`)
 	html.WriteString(fmt.Sprintf(`<tr><td style="padding: 4px 8px; background: #f5f5f5;"><strong>Report ID:</strong></td><td style="padding: 4px 8px;">%s</td></tr>`, report.ReportMetadata.ReportID))
@@ -272,7 +272,7 @@ func renderDMARCReport(xmlData string) string {
 	if len(report.Records) > 0 {
 		html.WriteString(`<h4 style="margin: 0 0 10px 0;">Email Results</h4>`)
 		html.WriteString(`<table style="border-collapse: collapse; width: 100%; font-size: 12px; border: 1px solid #ddd;">`)
-		html.WriteString(`<thead><tr style="background: #f5f5f5;">`)
+		html.WriteString(`<thead><tr class="bg-soft">`)
 		html.WriteString(`<th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Source IP</th>`)
 		html.WriteString(`<th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Count</th>`)
 		html.WriteString(`<th style="padding: 8px; text-align: left; border: 1px solid #ddd;">DKIM</th>`)

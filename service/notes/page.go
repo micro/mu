@@ -76,7 +76,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 func list(entries []*notes.Entry) string {
 	var b strings.Builder
 	b.WriteString(`<div class="note-head">` +
-		`<p class="text-sm text-muted" style="margin:0">Notes you keep, and notes your agents keep ` +
+		`<p class="text-sm text-muted m-0">Notes you keep, and notes your agents keep ` +
 		`for you. All of them are read back into the questions you ask.</p>` +
 		`<a class="note-new" href="/notes?new=1">New note</a></div>`)
 

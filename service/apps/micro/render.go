@@ -94,7 +94,7 @@ li:last-child{border-bottom:none}
     if(state.entries.length===0)list.appendChild(el('li',{'class':'empty'},'No entries yet.'));
     state.entries.forEach(function(row,i){
       var parts=SPEC.fields.map(function(f){return '<b>'+esc(f.name)+':</b> '+esc(row[f.name])}).join(' &middot; ');
-      var li=el('li',null,'<span style="flex:1">'+parts+'</span>');
+      var li=el('li',null,'<span class="grow">'+parts+'</span>');
       var del=el('button',{'class':'icon'},'×');del.onclick=function(){state.entries.splice(i,1);save();draw();};
       li.appendChild(del);list.appendChild(li);
     });

@@ -444,10 +444,10 @@ button.ghost { background: #fff; color: #555; border: 1px solid #e0e0e0; }
       <label><input type="checkbox" id="public"> Public</label>
       <button class="act" id="save" onclick="saveNote()">Save</button>
       <button class="ghost" onclick="newNote()">New</button>
-      <button class="ghost" id="del" onclick="delNote()" style="display:none">Delete</button>
+      <button class="ghost d-none" id="del" onclick="delNote()">Delete</button>
       <span class="status" id="status"></span>
     </div>
-    <div class="ro" id="ro" style="display:none">Read-only — this note belongs to another user.</div>
+    <div class="ro d-none" id="ro">Read-only — this note belongs to another user.</div>
   </div>
 </div>
 <script>
@@ -749,7 +749,7 @@ function load(category, btn) {
       var cls = change >= 0 ? 'up' : 'down';
       var sign = change >= 0 ? '+' : '';
       var price = item.price >= 1 ? '$' + item.price.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) : '$' + item.price.toFixed(4);
-      html += '<div class="coin"><div><span class="coin-name">' + item.symbol + '</span></div><div style="text-align:right"><div class="coin-price">' + price + '</div><div class="coin-change ' + cls + '">' + sign + change.toFixed(2) + '%</div></div></div>';
+      html += '<div class="coin"><div><span class="coin-name">' + item.symbol + '</span></div><div class="right"><div class="coin-price">' + price + '</div><div class="coin-change ' + cls + '">' + sign + change.toFixed(2) + '%</div></div></div>';
     });
     document.getElementById('content').innerHTML = html;
   }).catch(function(e) { showError(e.message); });
@@ -826,7 +826,7 @@ button:disabled { background: #ccc; cursor: not-allowed; }
 <h2>AI Tool</h2>
 <p class="desc">Enter text and let AI process it — summarise, translate, explain, or anything else.</p>
 <textarea id="input" placeholder="Paste text here..."></textarea>
-<div style="display:flex;gap:8px;flex-wrap:wrap;">
+<div class="d-flex gap-2 flex-wrap">
   <button onclick="run('Summarise this concisely')">Summarise</button>
   <button onclick="run('Translate this to French')">→ French</button>
   <button onclick="run('Explain this simply')">Explain</button>

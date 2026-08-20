@@ -110,9 +110,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<h3>You send as</h3>`)
 	b.WriteString(`<p style="font-size:15px;margin:0 0 4px"><code>` +
 		html.EscapeString(SenderFor(acc.ID)) + `</code></p>`)
-	b.WriteString(`<p style="font-size:14px;color:#666;margin:0 0 12px">Carried by ` +
+	b.WriteString(`<p class="text-base text-secondary m-0 mb-3">Carried by ` +
 		html.EscapeString(Provider()) + `.</p>`)
-	b.WriteString(`<p style="font-size:14px;color:#666;margin:0">` +
+	b.WriteString(`<p class="text-base text-secondary m-0">` +
 		html.EscapeString(strings.ToUpper(Allowance(acc.ID)[:1])+Allowance(acc.ID)[1:]) + `.</p>`)
 	b.WriteString(`</div>`)
 
@@ -130,12 +130,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			html.EscapeString(note) + `</p></div>`)
 	}
 	if msg := r.URL.Query().Get("error"); msg != "" {
-		b.WriteString(`<div class="card" style="border-color:#e0a3a3;margin-top:16px"><p style="color:#c00;margin:0">` +
+		b.WriteString(`<div class="card" style="border-color:#e0a3a3;margin-top:16px"><p class="text-error m-0">` +
 			html.EscapeString(msg) + `</p></div>`)
 	}
 
 	// One message, to see that it works.
-	b.WriteString(`<div class="card" style="margin-top:16px"><h3>Send one</h3>`)
+	b.WriteString(`<div class="card mt-4"><h3>Send one</h3>`)
 	b.WriteString(`<form method="POST" action="/email">`)
 	b.WriteString(`<input name="to" type="email" required placeholder="to@example.com" style="width:100%;padding:8px;margin:0 0 8px;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box">`)
 	b.WriteString(`<input name="subject" required placeholder="Subject" style="width:100%;padding:8px;margin:0 0 8px;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box">`)
@@ -150,20 +150,20 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// to, since the domain above has no inbox. The one on the account is shown
 	// too, greyed and without a remove button, so the list is every address this
 	// instance believes is yours rather than only the ones added here.
-	b.WriteString(`<div class="card" style="margin-top:16px"><h3>Your addresses</h3>`)
-	b.WriteString(`<p style="font-size:14px;color:#666;margin:0 0 12px">Mail you send from one of these is recognised here — it reaches your agent rather than a spam folder. Nobody can reply to <code>` +
+	b.WriteString(`<div class="card mt-4"><h3>Your addresses</h3>`)
+	b.WriteString(`<p class="text-base text-secondary m-0 mb-3">Mail you send from one of these is recognised here — it reaches your agent rather than a spam folder. Nobody can reply to <code>` +
 		html.EscapeString(SenderFor(acc.ID)) + `</code>, so this is where to ask for an answer.</p>`)
 	yours := Addresses(acc.ID)
 	if len(yours) == 0 {
-		b.WriteString(`<p style="font-size:14px;color:#888;margin:0 0 12px">None yet.</p>`)
+		b.WriteString(`<p class="text-base text-muted m-0 mb-3">None yet.</p>`)
 	} else {
 		b.WriteString(`<ul style="font-size:14px;margin:0 0 12px;padding-left:18px">`)
 		for _, a := range yours {
-			b.WriteString(`<li style="margin:0 0 4px"><code>` + html.EscapeString(a) + `</code>`)
+			b.WriteString(`<li class="m-0 mb-1"><code>` + html.EscapeString(a) + `</code>`)
 			if acc.EmailVerified && strings.EqualFold(acc.Email, a) {
 				b.WriteString(` <span class="text-muted">— the address on your account</span>`)
 			} else {
-				b.WriteString(` <form method="POST" action="/email" style="display:inline">` +
+				b.WriteString(` <form method="POST" action="/email" class="d-inline">` +
 					`<input type="hidden" name="do" value="forget">` +
 					`<input type="hidden" name="address" value="` + html.EscapeString(a) + `">` +
 					`<button type="submit" style="background:none;border:0;color:#c00;cursor:pointer;font-size:13px;padding:0 0 0 6px">remove</button></form>`)
@@ -175,7 +175,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<form method="POST" action="/email"><input type="hidden" name="do" value="verify">`)
 	if pending, ok := Pending(acc.ID); ok {
 		b.WriteString(`<input type="hidden" name="address" value="` + html.EscapeString(pending) + `">`)
-		b.WriteString(`<p style="font-size:14px;color:#666;margin:0 0 8px">A code went to <code>` +
+		b.WriteString(`<p class="text-base text-secondary m-0 mb-2">A code went to <code>` +
 			html.EscapeString(pending) + `</code>.</p>`)
 		b.WriteString(`<input name="code" required inputmode="numeric" autocomplete="one-time-code" placeholder="6-digit code" style="width:160px;padding:8px;margin:0 8px 0 0;border:1px solid #ddd;border-radius:6px;font-size:14px">`)
 		b.WriteString(`<button type="submit" class="btn">Confirm</button>`)
@@ -186,14 +186,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	b.WriteString(`</form></div>`)
 
-	b.WriteString(`<div class="card" style="margin-top:16px">`)
+	b.WriteString(`<div class="card mt-4">`)
 	b.WriteString(`<h3>Sent</h3>`)
 	msgs := History(acc.ID, 50)
 	if len(msgs) == 0 {
-		b.WriteString(`<p style="font-size:14px;color:#888;margin:0">Nothing yet. An agent with the <code>email_send</code> tool can send on your behalf.</p>`)
+		b.WriteString(`<p class="text-base text-muted m-0">Nothing yet. An agent with the <code>email_send</code> tool can send on your behalf.</p>`)
 	} else {
 		b.WriteString(`<table class="stats-table text-base">`)
-		b.WriteString(`<tr><th style="text-align:left">To</th><th style="text-align:left">Subject</th><th style="text-align:left">Result</th><th style="text-align:right">When</th></tr>`)
+		b.WriteString(`<tr><th class="text-left">To</th><th class="text-left">Subject</th><th class="text-left">Result</th><th class="right">When</th></tr>`)
 		for _, m := range msgs {
 			// The outcome, in the row. Without it the table answers "what did I
 			// try to send" and the question anybody actually has after wiring up
@@ -213,11 +213,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			}
 			result := `<span style="color:` + colour + `">` + html.EscapeString(m.Status()) + `</span>`
 			if !m.OK() {
-				result = `<span style="color:#c00" title="` + html.EscapeString(m.Error) + `">failed</span>`
+				result = `<span class="text-error" title="` + html.EscapeString(m.Error) + `">failed</span>`
 			}
 			b.WriteString(`<tr><td>` + html.EscapeString(m.To) + `</td><td>` +
 				html.EscapeString(clip(m.Subject, 50)) + `</td><td>` + result +
-				`</td><td style="text-align:right;color:#888">` +
+				`</td><td class="right text-muted">` +
 				m.Sent.Format("2 Jan 15:04") + `</td></tr>`)
 		}
 		// The reason, under the table, for anything that failed — a title

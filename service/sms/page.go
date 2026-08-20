@@ -229,7 +229,7 @@ func verifier(r *http.Request, who, csrf string) string {
 			b.WriteString(`</p>`)
 			for _, n := range mine {
 				b.WriteString(`<form method="POST" action="/sms" id="forget-` +
-					html.EscapeString(n) + `" style="display:none">` +
+					html.EscapeString(n) + `" class="d-none">` +
 					`<input type="hidden" name="_csrf" value="` + csrf + `">` +
 					`<input type="hidden" name="forget" value="` + html.EscapeString(n) + `"></form>`)
 			}

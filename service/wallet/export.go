@@ -115,7 +115,7 @@ func exportForm(r *http.Request, errMsg string) string {
 	b.WriteString(`<input type="password" name="password" required autocomplete="current-password" ` +
 		`class="form-input" style="max-width:320px"></p>`)
 	b.WriteString(`<button type="submit">Show my key</button> `)
-	b.WriteString(`<a href="/wallet" class="text-sm text-muted" style="margin-left:8px">Cancel</a>`)
+	b.WriteString(`<a href="/wallet" class="text-sm text-muted ml-2">Cancel</a>`)
 	b.WriteString(`</form></div>`)
 	return b.String()
 }
@@ -128,7 +128,7 @@ func exportedKey(bw *BaseWallet) string {
   <h2>Your private key</h2>
   <p class="cw-net"><b>Shown once.</b> Reloading this page will not show it again —
   come back through the form. Anyone with this key owns the address below.</p>
-  <p class="text-sm text-muted" style="margin:0 0 4px">Address (public, safe to share)</p>
+  <p class="text-sm text-muted m-0 mb-1">Address (public, safe to share)</p>
   <div class="cw-mono">%s</div>
   <p class="text-sm text-muted" style="margin:14px 0 4px">Private key (secret)</p>
   <div class="cw-mono cw-secret">%s</div>
