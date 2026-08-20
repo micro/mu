@@ -578,7 +578,6 @@ plain HTTP, except on `localhost`.
 
 | Variable | Default | What it does |
 |---|---|---|
-| `DIGEST_INBOX` | on | The daily briefing arrives in every account's inbox as a conversation. Set `false` to publish it to the blog only. Nothing is sent over SMTP either way — it lands in the record, on the instance the account already signed up for |
 
 DNS records are above, and [Who is allowed to send you mail](#who-is-allowed-to-send-you-mail) is the whole inbound rule — including why `support@` bypasses the whitelist.
 

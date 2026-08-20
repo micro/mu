@@ -154,8 +154,6 @@ func ClientName(client string) string {
 		return "CLI"
 	case "a2a":
 		return "A2A"
-	case "digest":
-		return "Briefing"
 	}
 	return client
 }

@@ -199,11 +199,16 @@ func createDigest() {
 		return
 	}
 
-	// And into the inbox, which is where somebody actually meets it. The blog
-	// post is the public record; this is the thing that turns up whether or not
-	// anybody went looking. See inbox.go.
-	deliver(title, response)
-
+	// The blog post is the whole of it.
+	//
+	// This also opened a conversation in every account's inbox each morning and
+	// pushed a notification about it. The argument was that an inbox holding
+	// only conversations you started is a chat history rather than an inbox —
+	// which is true, and this was the wrong thing to fill it with. The brief is
+	// the same text for everybody: it is not addressed to you, it is not about
+	// anything you asked for, and it cannot be replied to usefully. A daily
+	// arrival that is identical for every account is a feed, and it has one —
+	// the blog. What belongs in an inbox is what arrived *for you*.
 	setSuccess()
 	app.Log("digest", "Daily digest published as blog post: %s", title)
 }
