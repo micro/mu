@@ -408,7 +408,7 @@ const templateNotes = `<!DOCTYPE html>
 body { font-family: 'Nunito Sans', -apple-system, BlinkMacSystemFont, sans-serif; padding: 20px; background: #fff; color: #222; }
 h2 { font-size: 20px; font-weight: 700; margin-bottom: 12px; }
 .tabs { display: flex; gap: 6px; margin-bottom: 14px; }
-.tabs button { padding: 6px 14px; border: 1px solid #e0e0e0; background: #fff; border-radius: 999px; cursor: pointer; font: inherit; font-size: 13px; color: #555; }
+.tabs button { padding: 6px 14px; border: 1px solid #e0e0e0; background: #fff; border-radius:6px; cursor: pointer; font: inherit; font-size: 13px; color: #555; }
 .tabs button.active { background: #111; color: #fff; border-color: #111; }
 .layout { display: grid; grid-template-columns: 220px 1fr; gap: 18px; }
 .list { display: flex; flex-direction: column; gap: 4px; max-height: 420px; overflow-y: auto; }
@@ -544,7 +544,7 @@ const templateBookmarks = `<!DOCTYPE html>
 body { font-family: 'Nunito Sans', -apple-system, sans-serif; padding: 20px; background: #fff; color: #222; max-width: 640px; margin: 0 auto; }
 h2 { font-size: 20px; font-weight: 700; margin-bottom: 12px; }
 .tabs { display: flex; gap: 6px; margin-bottom: 14px; }
-.tabs button { padding: 6px 14px; border: 1px solid #e0e0e0; background: #fff; border-radius: 999px; cursor: pointer; font: inherit; font-size: 13px; color: #555; }
+.tabs button { padding: 6px 14px; border: 1px solid #e0e0e0; background: #fff; border-radius:6px; cursor: pointer; font: inherit; font-size: 13px; color: #555; }
 .tabs button.active { background: #111; color: #fff; border-color: #111; }
 .add { display: flex; gap: 8px; margin-bottom: 8px; }
 .add input[type=url] { flex: 1; padding: 9px; border: 1px solid #e0e0e0; border-radius: 6px; font: inherit; font-size: 14px; }

@@ -58,7 +58,7 @@ func UsageHandler(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(spendSection(account, acc.Admin))
 	sb.WriteString(`<p class="text-sm text-muted">Your calls only. Counts are kept for ` +
 		`2 hours by the minute, 7 days by the hour and 90 days by the day — nothing about ` +
-		`a request itself is stored. <a href="/tools">Connect an agent →</a></p>`)
+		`a request itself is stored.</p>`)
 
 	app.Respond(w, r, app.Response{Title: "Usage", Description: "What you have used, and what it cost", HTML: sb.String()})
 }

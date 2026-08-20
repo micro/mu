@@ -123,11 +123,11 @@ func itoa(n int) string {
 }
 
 const cardCSS = `<style>
-.push-card{border:1px solid #eee;border-radius:10px;padding:14px 16px;margin:0 0 16px}
+.push-card{border:1px solid #eee;border-radius:6px;padding:14px 16px;margin:0 0 16px}
 .push-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
 .push-state{font-size:12px;color:#888}
 .push-note{font-size:13px;color:#888;line-height:1.55;margin:6px 0 10px}
-.push-go{font:inherit;font-size:13px;padding:7px 16px;border:1px solid #111;background:#111;color:#fff;border-radius:999px;cursor:pointer}
+.push-go{font:inherit;font-size:13px;padding:7px 16px;border:1px solid #111;background:#111;color:#fff;border-radius:6px;cursor:pointer}
 .push-go[disabled]{opacity:.5;cursor:default}
 </style>`
 

@@ -1000,11 +1000,11 @@ const chatLayoutCSS = `<style>
 .agent-connect{margin-left:auto;font-size:13px;color:var(--text-muted,#666);text-decoration:none;white-space:nowrap}
 .agent-connect:hover{color:var(--text-primary,#111)}
 @media only screen and (max-width:600px){.agent-connect{margin-left:0}}
-.agent-addr{font-size:12px;background:var(--hover-background,#f5f5f5);border-radius:999px;
+.agent-addr{font-size:12px;background:var(--hover-background,#f5f5f5);border-radius:6px;
   padding:3px 10px;color:var(--text-secondary,#555);overflow-wrap:anywhere}
 .chat-sess-head{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
   color:var(--text-muted,#999);padding:0 10px 6px}
-.agent-chip{display:inline-block;padding:3px 10px;border-radius:999px;background:var(--hover-background,#f5f5f5);color:var(--text-primary,#111);font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+.agent-chip{display:inline-block;padding:3px 10px;border-radius:6px;background:var(--hover-background,#f5f5f5);color:var(--text-primary,#111);font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
 .agent-intro{margin:0 0 14px;padding:12px 14px;border:1px solid var(--border-color,#e5e5e5);border-radius:8px;font-size:14px;line-height:1.55;color:var(--text-secondary,#555)}
 .agent-intro b{color:var(--text-primary,#111)}
 .agent-intro a{color:var(--text-primary,#111)}
@@ -1040,7 +1040,7 @@ button.agent-chip{border:0;font-family:inherit;cursor:default}
   .chat-main{width:100%;min-width:0;max-width:100%}
   .chat-open-list{display:inline-block;border:1px solid var(--border-color,#e5e5e5);
     background:var(--card-background,#fff);color:var(--text-primary,#111);
-    border-radius:999px;padding:3px 12px;font-size:12px;font-weight:600;
+    border-radius:6px;padding:3px 12px;font-size:12px;font-weight:600;
     font-family:inherit;cursor:pointer}
   button.agent-chip{cursor:pointer}
   button.agent-chip::after{content:" ▾";color:#999}

@@ -139,11 +139,20 @@ func landingBody(host string) string {
 	// button read as its twin. It is a thing to read and copy, so it is
 	// monospaced and underscored with a hairline instead.
 	//
-	// The address first, because it is what is actually differentiated. Every
-	// provider ships an MCP server now; what none of them ship is an agent that
-	// is permanently reachable and remembers. An address is the only handle that
-	// needs nothing on the other side — no SDK, no OAuth, no protocol to adopt —
-	// so a person can use it, another agent can use it, a form can use it.
+	// The address after the button, not before it.
+	//
+	// It led the page for a while, on the argument that an address is the only
+	// handle needing nothing on the other side — no SDK, no OAuth, no protocol
+	// to adopt — which is true and is still why it is here at all. But a page
+	// whose largest element is an email address is a page about email, and this
+	// is not a mail product. Two of the three things above it said "write to
+	// it", so a reader arrived thinking the way in was to compose a message,
+	// when the way in for almost everybody is to sign up and type.
+	//
+	// So the order is what you do first: chat, then the fact that you can also
+	// write to it from anywhere. Same address, same animation, a third of the
+	// weight — and it reads as a detail about the agent rather than the
+	// definition of one.
 	//
 	// It is shown as you+agent@ rather than agent@, and the paragraph explaining
 	// the difference has gone with it. That paragraph was three sentences doing
@@ -184,16 +193,16 @@ func landingBody(host string) string {
 	// because only Go knows the domain.
 	return `<div class="lwrap">
 <h2 class="lhead">A personal agent.</h2>
-<p class="lead">It has an email address. Write to it and it answers — with
-` + strconv.Itoa(api.ToolCount()) + ` tools behind it: news, web search, mail, markets,
-weather, places, storage.</p>
-
-<div class="laddr"><code>you+<span id="lrole">agent</span><span class="lcaret" aria-hidden="true"></span>@` +
-		html.EscapeString(domain) + `</code></div>
+<p class="lead">Chat with it here or write to it from anywhere. ` +
+		strconv.Itoa(api.ToolCount()) + ` tools behind it — news, web search, markets,
+weather, places, storage — and it remembers the last conversation.</p>
 
 <div class="lctas">
   <a class="lcta" href="/signup">Get an agent →</a>
 </div>
+
+<div class="laddr"><code>you+<span id="lrole">agent</span><span class="lcaret" aria-hidden="true"></span>@` +
+		html.EscapeString(domain) + `</code></div>
 </div>
 
 <style>
@@ -202,14 +211,14 @@ weather, places, storage.</p>
   letter-spacing:-.01em;font-weight:700;color:#111}
 .lead{max-width:560px;text-align:center;color:#555;font-size:17px;line-height:1.6;margin:0 auto 22px}
 .lead a{color:#111}
-.laddr{text-align:center;margin:0 auto 12px}
+.laddr{text-align:center;margin:26px auto 0}
 #lrole{color:#111}
 .lcaret{display:inline-block;width:1px;height:1em;margin:0 1px -.15em 0;background:#bbb;
   animation:lblink 1.05s step-end infinite}
 @keyframes lblink{0%,100%{opacity:1}50%{opacity:0}}
 @media (prefers-reduced-motion:reduce){.lcaret{display:none}}
 .laddr code{display:inline-block;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
-  font-size:20px;font-weight:400;color:slategray;letter-spacing:-.01em;text-align:left;
+  font-size:15px;font-weight:400;color:slategray;letter-spacing:-.01em;text-align:left;
   min-width:` + strconv.Itoa(5+longestRole+len(domain)) + `ch;padding-bottom:6px;border-bottom:1px solid #e8e8ea}
 .lctas{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin:0}
 .lcta{display:inline-block;background:#111;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:700;font-size:15px}

@@ -168,14 +168,14 @@ const pageCSS = `<style>
 .ar-input:focus{outline:none;border-color:#bbb}
 .ar-go{font:inherit;font-size:14px;padding:8px 18px;border:1px solid #111;background:#111;color:#fff;border-radius:8px;cursor:pointer}
 .ar-chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 18px}
-.ar-chip{border:1px solid #eee;border-radius:999px;padding:4px 12px;font-size:12px;color:#666;text-decoration:none;white-space:nowrap}
+.ar-chip{border:1px solid #eee;border-radius:6px;padding:4px 12px;font-size:12px;color:#666;text-decoration:none;white-space:nowrap}
 .ar-chip:hover{border-color:#ddd;color:#111}
 .ar-chip.on{background:#111;border-color:#111;color:#fff}
 .ar-n{opacity:.6}
 .ar-empty{font-size:14px;color:#888;line-height:1.6}
 .ar-row{padding:12px 0;border-bottom:1px solid #f4f4f4}
 .ar-meta{font-size:11px;color:#bbb;margin-bottom:3px}
-.ar-kind{border:1px solid #eee;border-radius:999px;padding:1px 7px;margin-right:7px;color:#777}
+.ar-kind{border:1px solid #eee;border-radius:6px;padding:1px 7px;margin-right:7px;color:#777}
 .ar-title{font-size:15px;color:#111;font-weight:500;text-decoration:none;display:block}
 a.ar-title:hover{text-decoration:underline}
 .ar-body{font-size:13px;color:#888;line-height:1.55;margin-top:3px}

@@ -513,7 +513,7 @@ const tokenScopeCSS = `<style>
 .tok-scope-sub{font-size:12px;color:#999;margin:0 0 8px;max-width:520px}
 .tok-chips{display:flex;flex-wrap:wrap;gap:6px}
 .tok-chip input{position:absolute;opacity:0;width:0;height:0}
-.tok-chip span{display:block;border:1px solid #ddd;border-radius:999px;padding:5px 12px;
+.tok-chip span{display:block;border:1px solid #ddd;border-radius:6px;padding:5px 12px;
   cursor:pointer;font-size:13px;color:#444;white-space:nowrap}
 .tok-chip span:hover{border-color:#bbb}
 .tok-chip input:checked+span{background:#111;border-color:#111;color:#fff}

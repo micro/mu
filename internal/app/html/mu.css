@@ -549,7 +549,7 @@ td {
   font-weight: var(--font-weight-semibold, 600);
   color: var(--text-primary, #111);
   background: var(--hover-background, #f0f0f0);
-  border-radius: 999px;
+  border-radius:6px;
   padding: 0 7px;
   line-height: 1.6;
 }
@@ -5710,7 +5710,7 @@ body.display-mode .card h4 {
    where the index rail is hidden. Neutral, not shouty. */
 .tool-price { position: absolute; top: 14px; right: 14px; z-index: 1;
   font-size: 12px; color: #6b7280; background: #f4f4f5; border: 1px solid #e5e7eb;
-  border-radius: 999px; padding: 3px 10px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  border-radius:6px; padding: 3px 10px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .tool-price b { color: #111; font-weight: 600; }
 .tool-price span { color: #9ca3af; }
 .api-method { display: inline-block; padding: 1px 7px; border-radius: 4px; font-size: 11px;
@@ -5803,10 +5803,18 @@ body.display-mode .card h4 {
    Everything below is written in tokens, so the palette reaches the pages that
    use it — which is the only thing that makes it a palette. */
 
+/* Square-ish, like every other control.
+
+   This was 999px, and so was every shape hand-drawn to look like it — the
+   notification button, the app tabs, the mail tag filter, the token scope
+   chips. Meanwhile buttons, inputs, cards and .btn are all --border-radius,
+   which is 6px. Two shape languages on one page, and the lozenge one turned up
+   wherever somebody built a control that was not a <button>. One radius now:
+   anything that wants to look like a control gets the control's shape. */
 .pill {
   display: inline-block;
   border: var(--border-width, 1px) solid var(--card-border, #e8e8e8);
-  border-radius: 999px;
+  border-radius: var(--border-radius, 6px);
   padding: 2px 9px;
   font-size: 11px;
   line-height: 1.55;
@@ -5902,15 +5910,49 @@ button.pill:hover {
 .ib-boxes { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px }
 .ib-empty { font-size: 14px; color: var(--text-muted, #888); line-height: var(--line-height, 1.6) }
 
+/* A row is the link plus the thing that deletes it. The rule under the row
+   moved here, because it belongs to the pair rather than to the link. */
+.ib-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  border-bottom: var(--border-width, 1px) solid var(--divider, #f0f0f0);
+}
+
 .ib-row {
   display: flex;
   align-items: baseline;
   gap: 12px;
+  flex: 1;
+  min-width: 0;
   padding: 11px 0;
-  border-bottom: var(--border-width, 1px) solid var(--divider, #f0f0f0);
   text-decoration: none;
   color: inherit;
 }
+
+/* Hidden until the row is under the pointer, so twenty crosses are not the
+   loudest thing on the page. Not hidden from the keyboard: :focus-within
+   brings it back, or it would be a control nothing but a mouse could reach.
+   Always shown where there is no pointer to hover with — see the media query
+   at the bottom of this file. */
+.ib-del { display: flex; align-items: center; flex: none }
+
+.ib-del-go {
+  font: inherit;
+  font-size: 17px;
+  line-height: 1;
+  padding: 2px 6px;
+  border: none;
+  background: none;
+  color: var(--text-muted, #888);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--transition-fast, .15s ease), color var(--transition-fast, .15s ease);
+}
+
+.ib-item:hover .ib-del-go,
+.ib-del-go:focus { opacity: 1 }
+.ib-del-go:hover { color: var(--btn-danger, #c00) }
 
 .ib-row:hover .ib-subject { text-decoration: underline }
 
@@ -5918,6 +5960,8 @@ button.pill:hover {
    and a heavier subject, so the eye finds the two that need answering without
    reading the twenty that do not. */
 .ib-row.unseen { border-left: 2px solid var(--accent-color, #000); padding-left: 9px; margin-left: -11px }
+/* No pointer to hover with, so the cross is simply there. */
+@media (hover: none) { .ib-del-go { opacity: 1 } }
 .ib-row.unseen .ib-who,
 .ib-row.unseen .ib-subject { font-weight: var(--font-weight-bold, 700) }
 .ib-row.unseen .ib-snip { color: var(--text-secondary, #555) }
@@ -6206,7 +6250,7 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
   border: var(--border-width, 1px) solid var(--btn-primary, #000);
   background: var(--btn-primary, #000);
   color: #fff;
-  border-radius: 999px;
+  border-radius:6px;
   cursor: pointer;
 }
 .place-form button[type=submit]:hover { background: var(--btn-primary-hover, #333); border-color: var(--btn-primary-hover, #333) }
@@ -6302,7 +6346,7 @@ select.field { max-width: 220px }
   font-size: 13px;
   line-height: 1.5;
   padding: 7px 18px;
-  border-radius: 999px;
+  border-radius:6px;
   border: var(--border-width, 1px) solid var(--btn-primary, #000);
   background: var(--btn-primary, #000);
   color: #fff;

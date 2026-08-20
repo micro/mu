@@ -148,7 +148,7 @@ func list(w http.ResponseWriter, r *http.Request, accountID, box string) {
 
 	pager := app.Paginate(r, len(threads), shown)
 	for i := pager.From; i < pager.To; i++ {
-		b.WriteString(row(accountID, threads[i]))
+		b.WriteString(row(r, accountID, threads[i]))
 	}
 	b.WriteString(pager.Nav(boxPath(box)))
 	b.WriteString(`</div>`)
@@ -159,7 +159,7 @@ func list(w http.ResponseWriter, r *http.Request, accountID, box string) {
 // row is one conversation: who it is with, what it is about, the last thing
 // said, and when. The shape of a mail client's list, because a list of
 // conversations is what a mail client shows.
-func row(accountID string, t thread.Thread) string {
+func row(r *http.Request, accountID string, t thread.Thread) string {
 	subject := strings.TrimSpace(t.Subject)
 	if subject == "" {
 		subject = "Untitled"
@@ -203,12 +203,38 @@ func row(accountID string, t thread.Thread) string {
 		cls += " unseen"
 	}
 
-	return `<a class="` + cls + `" href="/inbox?id=` + url.QueryEscape(t.ID) + `">` +
+	// Delete, on the row.
+	//
+	// It was only on the conversation, so throwing away a thread you can see is
+	// junk meant opening it — which marks it read on the way in, and reading
+	// something in order to discard it is the one interaction a mailbox exists
+	// to save you. Every mail client puts it on the row for that reason.
+	//
+	// Beside the link rather than inside it: a form cannot live in an <a>, and
+	// nesting a submit inside a navigation target means a click has two
+	// meanings. So the row is a flex pair — the link, which fills it, and this.
+	return `<div class="ib-item">` +
+		`<a class="` + cls + `" href="/inbox?id=` + url.QueryEscape(t.ID) + `">` +
 		`<span class="ib-who"` + titleAttr(full) + `>` + html.EscapeString(who) + `</span>` +
 		`<span class="ib-mid">` + labels + `<span class="ib-subject">` +
 		html.EscapeString(trimTo(subject, 70)) + `</span>` +
 		`<span class="ib-snip">` + html.EscapeString(snippet) + `</span></span>` +
-		`<span class="ib-when">` + html.EscapeString(app.TimeAgo(t.Updated)) + `</span></a>`
+		`<span class="ib-when">` + html.EscapeString(app.TimeAgo(t.Updated)) + `</span></a>` +
+		rowDelete(r, t.ID) + `</div>`
+}
+
+// rowDelete is the cross at the end of a row.
+//
+// A glyph rather than the word, because it repeats down the page and twenty
+// "Delete"s is a column of warnings. It is labelled for anything not reading
+// the shape, and it asks first — thread.Delete is not recoverable.
+func rowDelete(r *http.Request, id string) string {
+	return `<form class="ib-del" method="post" action="/inbox/delete" ` +
+		`onsubmit="return confirm('Delete this conversation? What was said in it is gone.')">` +
+		`<input type="hidden" name="id" value="` + html.EscapeString(id) + `">` +
+		`<input type="hidden" name="_csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `">` +
+		`<button class="ib-del-go" type="submit" title="Delete" aria-label="Delete this conversation">` +
+		`&times;</button></form>`
 }
 
 // party is who a conversation is with, and the address behind the name.

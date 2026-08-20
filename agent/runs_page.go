@@ -124,7 +124,7 @@ const runsCSS = `<style>
 .run-prompt:hover{text-decoration:underline}
 .run-meta{font-size:12px;color:#999;margin-top:3px}
 .run-tools{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
-.run-from{border:1px solid #e6e0cf;background:#fdfbf3;border-radius:999px;padding:1px 8px;font-size:11px;color:#8a7a4a;white-space:nowrap}
+.run-from{border:1px solid #e6e0cf;background:#fdfbf3;border-radius:6px;padding:1px 8px;font-size:11px;color:#8a7a4a;white-space:nowrap}
 .run-none{font-size:11px;color:#bbb}
 .run-err{font-size:12px;color:#b00;margin-top:5px}
 .run-ok{color:#0a7d33}

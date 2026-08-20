@@ -1636,10 +1636,15 @@ func tagFilter(inbox *Inbox, accountID, active string) string {
 	b.WriteString(`</div>
 <style>
 .mail-tags{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
-.mail-tag{border:1px solid #e5e5e5;border-radius:999px;padding:4px 11px;font-size:12px;
-  color:#555;text-decoration:none;background:#fff}
+/* :visited on both, or the global a:visited rule takes them. It is
+   a:visited:not(.btn) — 0-2-1 — which outranks a plain .mail-tag.on at 0-2-0,
+   so the selected tag went black on black the moment it had been clicked,
+   which for the selected tag is always. Same reason the inbox's Reply pill had
+   to be rebuilt as an a.btn. */
+.mail-tag,.mail-tag:visited{border:1px solid #e5e5e5;border-radius:6px;padding:4px 11px;
+  font-size:12px;color:#555;text-decoration:none;background:#fff}
 .mail-tag:hover{border-color:#bbb}
-.mail-tag.on{background:#111;border-color:#111;color:#fff}
+.mail-tag.on,.mail-tag.on:visited{background:#111;border-color:#111;color:#fff}
 .mail-tag span{color:#999;font-variant-numeric:tabular-nums}
 .mail-tag.on span{color:#ccc}
 </style>`)

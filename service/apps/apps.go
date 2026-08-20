@@ -519,14 +519,14 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(tagSet) > 0 {
 		sb.WriteString(`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">`)
-		sb.WriteString(fmt.Sprintf(`<a href="/apps" style="padding:4px 12px;border-radius:12px;font-size:12px;text-decoration:none;%s">All</a>`, pillStyle(tag == "")))
+		sb.WriteString(fmt.Sprintf(`<a href="/apps" style="padding:4px 12px;border-radius:6px;font-size:12px;text-decoration:none;%s">All</a>`, pillStyle(tag == "")))
 		var sortedTags []string
 		for t := range tagSet {
 			sortedTags = append(sortedTags, t)
 		}
 		sort.Strings(sortedTags)
 		for _, t := range sortedTags {
-			sb.WriteString(fmt.Sprintf(`<a href="/apps?tag=%s" style="padding:4px 12px;border-radius:12px;font-size:12px;text-decoration:none;%s">%s</a>`,
+			sb.WriteString(fmt.Sprintf(`<a href="/apps?tag=%s" style="padding:4px 12px;border-radius:6px;font-size:12px;text-decoration:none;%s">%s</a>`,
 				htmlpkg.EscapeString(t), pillStyle(strings.EqualFold(tag, t)), htmlpkg.EscapeString(t)))
 		}
 		sb.WriteString(`</div>`)
@@ -544,9 +544,9 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 	}
 	if hasPaid && hasFree {
 		sb.WriteString(`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">`)
-		sb.WriteString(fmt.Sprintf(`<a href="/apps" style="padding:4px 12px;border-radius:12px;font-size:12px;text-decoration:none;%s">All</a>`, pillStyle(pricing == "")))
-		sb.WriteString(fmt.Sprintf(`<a href="/apps?pricing=free" style="padding:4px 12px;border-radius:12px;font-size:12px;text-decoration:none;%s">Free</a>`, pillStyle(pricing == "free")))
-		sb.WriteString(fmt.Sprintf(`<a href="/apps?pricing=paid" style="padding:4px 12px;border-radius:12px;font-size:12px;text-decoration:none;%s">Paid</a>`, pillStyle(pricing == "paid")))
+		sb.WriteString(fmt.Sprintf(`<a href="/apps" style="padding:4px 12px;border-radius:6px;font-size:12px;text-decoration:none;%s">All</a>`, pillStyle(pricing == "")))
+		sb.WriteString(fmt.Sprintf(`<a href="/apps?pricing=free" style="padding:4px 12px;border-radius:6px;font-size:12px;text-decoration:none;%s">Free</a>`, pillStyle(pricing == "free")))
+		sb.WriteString(fmt.Sprintf(`<a href="/apps?pricing=paid" style="padding:4px 12px;border-radius:6px;font-size:12px;text-decoration:none;%s">Paid</a>`, pillStyle(pricing == "paid")))
 		sb.WriteString(`</div>`)
 	}
 

@@ -215,7 +215,7 @@ const pageCSS = `<style>
 .rc-input{flex:1;padding:9px 12px;font-size:14px;font-family:inherit;border:1px solid var(--border-color,#ddd);border-radius:6px;background:var(--card-background,#fff);color:var(--text-primary,#111)}
 .rc-go{padding:9px 16px;background:#111;color:#fff;border:0;border-radius:6px;font-size:14px;font-family:inherit;cursor:pointer}
 .rc-chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 16px}
-.rc-chip{border:1px solid #eee;border-radius:999px;padding:3px 11px;font-size:12px;color:#666;text-decoration:none}
+.rc-chip{border:1px solid #eee;border-radius:6px;padding:3px 11px;font-size:12px;color:#666;text-decoration:none}
 .rc-chip:hover{border-color:#ccc}
 .rc-chip.on{background:var(--text-primary,#111);border-color:var(--text-primary,#111);color:#fff}
 .rc-count{font-size:13px;color:#888;margin:0 0 10px}
@@ -223,7 +223,7 @@ const pageCSS = `<style>
 .rc-hit{display:block;border:1px solid #eee;border-radius:8px;padding:10px 14px;text-decoration:none;color:inherit}
 .rc-hit:hover{border-color:#ddd;background:#fcfcfc}
 .rc-meta{font-size:12px;color:#999}
-.rc-where{border:1px solid #eee;border-radius:999px;padding:1px 8px;font-size:11px}
+.rc-where{border:1px solid #eee;border-radius:6px;padding:1px 8px;font-size:11px}
 .rc-text{font-size:14px;line-height:1.55;margin:5px 0 4px}
 .rc-text mark{background:#fdf3c3;color:inherit;padding:0 1px}
 .rc-subject{font-size:12px;color:#aaa}

@@ -458,7 +458,7 @@ const agentsCSS = `<style>
    centring left Remove floating in the middle of the card beside nothing. */
 .agent-row{display:flex;align-items:flex-start;gap:12px;border:1px solid #eee;border-radius:8px;padding:12px 14px}
 .agent-kind{display:inline-block;font-size:11px;font-weight:600;margin-left:8px;
-  padding:1px 7px;border-radius:999px;vertical-align:middle}
+  padding:1px 7px;border-radius:6px;vertical-align:middle}
 .agent-kind.here{color:#0a7d33;background:#eaf6ee}
 .agent-kind.away{color:#a86400;background:#fdf3e3}
 /* One size, one colour, one weight for every link on a row.
@@ -533,7 +533,7 @@ const chipCSS = `<style>
 .pick input,.chip input{position:absolute;opacity:0;width:0;height:0}
 .pick input:focus-visible+span,.chip input:focus-visible+span{outline:2px solid #111;outline-offset:2px}
 .agent-services{display:flex;flex-wrap:wrap;gap:6px}
-.chip span{display:block;border:1px solid #ddd;border-radius:999px;padding:6px 12px;
+.chip span{display:block;border:1px solid #ddd;border-radius:6px;padding:6px 12px;
   cursor:pointer;font-size:13px;color:#444;white-space:nowrap}
 .chip span:hover{border-color:#bbb}
 .chip input:checked+span{background:#111;border-color:#111;color:#fff}
