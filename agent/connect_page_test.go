@@ -34,7 +34,7 @@ func TestAnExternalAgentOpensOnHowToReachItAndAHostedOneOnTalkingToIt(t *testing
 	// By name, not by id in a query string. An agent is a place — /agent/<name>,
 	// the way /mail and /news are — and the roster is the one thing building
 	// those links, so it and the redirect cannot disagree about where an agent
-	// lives. See slug.go and DIRECTION §8.
+	// lives. See slug.go.
 	if row := agentRow(in, "csrf", "http://localhost"); !strings.Contains(row,
 		`class="agent-name" href="`+Path(id, in.ID)+`"`) {
 		t.Errorf("a hosted agent's name no longer opens a conversation with it:\n%s", row)

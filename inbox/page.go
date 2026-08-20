@@ -18,7 +18,7 @@ package inbox
 // Boxes are agents. An alias is an agent's address, so what arrives at
 // you+research@ is the research agent's mail and /inbox/research is that box.
 // The switcher is the reader's own mailboxes rather than a roster of somebody
-// else's things, which is why it does not break the rule in DIRECTION §8.
+// else's things.
 
 import (
 	"html"

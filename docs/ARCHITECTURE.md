@@ -387,8 +387,7 @@ mu.apps.list();  mu.apps.read(slug);
 
 ## Layering
 
-Four levels, and everything points down. Why they are these four, and where the
-product is taking them, is `DIRECTION.md`.
+Four levels, and everything points down.
 
 ```
               ┌───────────────────────────────────────────────┐

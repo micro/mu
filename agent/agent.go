@@ -484,6 +484,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	case "GET":
 		servePage(w, r)
 	case "POST":
+		// /agent/<name> is a place: GET reads the conversation, POST asks a
+		// question. /agent itself is the page's own streaming box, which is a
+		// different shape — SSE, a session, a browser at the other end — so it
+		// keeps handleQuery. See api.go.
+		if strings.TrimPrefix(path, "/agent/") != "" && path != "/agent" {
+			APIHandler(w, r)
+			return
+		}
 		handleQuery(w, r)
 	default:
 		app.MethodNotAllowed(w, r)
@@ -559,7 +567,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	//
 	// named is what removes the roster from the room: on a page about one agent
 	// the list of the others is the same furniture as a services list down the
-	// side of /mail. See docs/DIRECTION.md §8.
+	// side of /mail.
 	named := false
 	if slug := strings.TrimPrefix(r.URL.Path, "/agent/"); r.URL.Path != "/agent" &&
 		slug != "" && !strings.Contains(slug, "/") {

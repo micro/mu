@@ -304,7 +304,7 @@ func TestTheSidebarIsTheProductsNouns(t *testing.T) {
 	//
 	// Tools sat above Agents when tools were the lead, on the reasoning that
 	// the product was named for them and Agents was what you built on top. The
-	// thesis moved (DIRECTION §1 and §8) and so does this: the inbox and the
+	// thesis moved and so does this: the inbox and the
 	// agents are the product, and the catalogue is what they reach for. Putting
 	// the two personal lists together also keeps the rail readable as two
 	// levels rather than as six equal destinations.

@@ -23,11 +23,9 @@
 //
 // # Where it is going
 //
-// Today /inbox is still the chat — see agent/agent.go — and what lives here is
-// the part that was already inbox-shaped: the block on Home, and reading a
-// conversation that happened somewhere you cannot reply from. docs/DIRECTION.md
-// §8 has the rest: /inbox becomes the mailbox, the chat moves to /agent/<name>,
-// and an agent's own page stops carrying the roster it came from.
+// /inbox is the mailbox: what arrived, whichever channel carried it. The chat
+// is /agent/<name>, which is a different thing — a room you talk in, rather
+// than where things turn up whether or not you are in it.
 //
 // # What it may import
 //

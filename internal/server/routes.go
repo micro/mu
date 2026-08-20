@@ -414,14 +414,14 @@ func registerRoutes() {
 	// that is a change to the component every page embeds and it can follow.
 	// The inbox is the mailbox. It was agent.Handler — the chat — which is why
 	// ordinary mail never appeared on the page called Inbox; the chat is
-	// /agent/<name> now. See DIRECTION §8.
+	// /agent/<name> now.
 	http.HandleFunc("/inbox", inbox.Handler)
 	// /inbox/<box> — one alias's mail. An alias is a mailbox: asim+research@
 	// goes to the research agent, so what arrives there is that agent's mail.
 	http.HandleFunc("/inbox/", inbox.Handler)
 	// /agent — the chat with no agent named. A GET goes to the one it is about,
 	// which is /agent/<name>: an agent is a place, and a place has an address
-	// rather than a query parameter. See agent/slug.go and DIRECTION §8.
+	// rather than a query parameter. See agent/slug.go.
 	//
 	// ?id= and ?agent= still resolve, because links to them exist and breaking a
 	// URL to tidy a parameter is a bad trade — they redirect to the name, which

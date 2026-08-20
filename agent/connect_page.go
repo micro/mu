@@ -111,6 +111,24 @@ func connRow(k, v string) string {
 	return `<div class="conn-row"><span class="conn-k">` + k + `</span>` + v + `</div>`
 }
 
+// connEndpoint is the agent's own API endpoint.
+//
+// POST it a question with the account's token and the same agent answers, with
+// the same standing instruction, the same scope and the same conversation
+// record as the chat page at that address. This is what "Endpoint" should
+// always have meant: the row used to show .../mcp, which reaches this agent's
+// *tools* for something else's agent to use, and sat next to Email and Chat as
+// though it were a third way to reach the agent itself.
+//
+// Empty for an agent with nowhere to run. See connChat.
+func connEndpoint(base, path string) string {
+	if path == "" {
+		return ""
+	}
+	return connRow("Endpoint",
+		`<code class="conn-v">POST `+html.EscapeString(strings.TrimSuffix(base, "/")+path)+`</code>`)
+}
+
 // connChat is the row linking to an agent's own chat page.
 //
 // Every agent gets one, which is the whole point of the fix: the default had
@@ -158,6 +176,7 @@ func defaultPanel(base string) string {
 	}
 
 	b.WriteString(connChat(base, "/agent/"+DefaultPlatformAgent))
+	b.WriteString(connEndpoint(base, "/agent/"+DefaultPlatformAgent))
 
 	b.WriteString(`<div class="conn-row"><span class="conn-k">Token</span>` +
 		`<span class="conn-v">Your account's. ` + app.TextLink("Issue one", "/token") +
@@ -252,6 +271,18 @@ func connectPanel(a *Agent, base, csrf string) string {
 			b.WriteString(`<div class="conn-row"><span class="conn-k">Email</span>` +
 				`<code class="conn-v">` + html.EscapeString(addr) + `</code></div>`)
 		}
+	}
+
+	// Chat and the endpoint, which an agent of your own was missing entirely —
+	// the default had a "Talk to it" link and the one you made had nothing.
+	//
+	// Neither for an agent that runs elsewhere: there is no conversation with it
+	// here, and POSTing a question to a name that runs on somebody else's
+	// machine would be this instance answering as an agent it does not run.
+	if a.Kind == Hosted {
+		path := Path(a.Owner, a.ID)
+		b.WriteString(connChat(base, path))
+		b.WriteString(connEndpoint(base, path))
 	}
 
 	// The token. A secret is shown once and never again, so this reports state
@@ -363,5 +394,6 @@ func platformPanel(a *micro.Agent, base string) string {
 	}
 
 	b.WriteString(connChat(base, "/agent/"+html.EscapeString(a.ID)))
+	b.WriteString(connEndpoint(base, "/agent/"+html.EscapeString(a.ID)))
 	return b.String()
 }
