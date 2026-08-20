@@ -1,6 +1,10 @@
 # mu
 
-**A personal agent.** Chat or email it. It has access to 100+ tools: news, mail, search, weather, markets, video, places,
+**A personal agent.** 
+
+## Overview
+
+There's lots of agents. Here's another one. Chat or email it. It has access to 100+ tools: news, mail, search, weather, markets, video, places,
 files, contacts, calendar, documents, etc. Still a work in progress.
 
 ## Tools
