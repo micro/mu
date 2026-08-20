@@ -20,7 +20,6 @@ import (
 	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
-	"mu/internal/quota"
 	"mu/internal/service"
 	"mu/internal/thread"
 	"mu/service/mail"
@@ -1375,21 +1374,6 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 
 	// Charge up-front: the agent is our most expensive op, so it is metered
 	// like web_fetch and chat.
-	if QuotaCheck != nil {
-		canProceed, _, err := QuotaCheck(r, quota.OpAgentQuery)
-		if !canProceed {
-			msg := "Insufficient credits for agent query. Top up at /account/topup."
-			if err != nil {
-				msg = err.Error()
-			}
-			http.Error(w, `{"error":"`+msg+`"}`, http.StatusPaymentRequired)
-			return
-		}
-		if ChargeQuota != nil {
-			ChargeQuota(r, quota.OpAgentQuery)
-		}
-	}
-
 	accountID := acc.ID
 
 	// The conversation this message continues, in the system of record.

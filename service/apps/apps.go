@@ -19,7 +19,6 @@ import (
 	"mu/internal/data"
 	"mu/internal/event"
 	"mu/internal/flag"
-	"mu/internal/quota"
 	"mu/internal/service"
 	"mu/service/apps/micro"
 
@@ -1519,19 +1518,6 @@ func handleSDKAI(w http.ResponseWriter, r *http.Request, slug string) {
 	if strings.TrimSpace(req.Prompt) == "" {
 		app.RespondError(w, http.StatusBadRequest, "Prompt is required")
 		return
-	}
-
-	// Check quota — uses chat query credits
-	if QuotaCheck != nil {
-		canProceed, _, err := QuotaCheck(r, quota.OpChatQuery)
-		if !canProceed {
-			msg := "Insufficient credits"
-			if err != nil {
-				msg = err.Error()
-			}
-			app.RespondError(w, http.StatusPaymentRequired, msg)
-			return
-		}
 	}
 
 	system := "You are an AI assistant embedded in an app called '" + slug + "'. Be concise and helpful."

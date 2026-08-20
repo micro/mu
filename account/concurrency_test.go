@@ -90,7 +90,7 @@ func TestConcurrentSpendsCannotOverdraw(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			DeductCredits(id, 1, quota.OpAgentQuery, nil) //nolint:errcheck
+			DeductCredits(id, 1, quota.OpWebSearch, nil) //nolint:errcheck
 		}()
 	}
 	wg.Wait()

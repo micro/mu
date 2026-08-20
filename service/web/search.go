@@ -235,7 +235,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Only charge on success, so a provider outage is not something the caller
 	// pays for.
 	if braveErr == nil {
-		app.Charge(caller, quota.OpWebSearch)
+		quota.Charge(caller, quota.OpWebSearch, nil) //nolint:errcheck
 	}
 
 	// JSON response for API/MCP callers

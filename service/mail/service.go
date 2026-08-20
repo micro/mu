@@ -284,7 +284,7 @@ func charge(owner, op string) error {
 	if !ok || quota.BalanceOf(owner) < price {
 		return fmt.Errorf("sending that costs %d credits and there are not enough on this account", price)
 	}
-	return quota.ConsumeQuota(owner, op)
+	return quota.Charge(owner, op, nil)
 }
 
 // sender resolves the caller and checks the message is complete.

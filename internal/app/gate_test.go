@@ -98,15 +98,10 @@ func TestAMeteredCallStillNeedsAnAccount(t *testing.T) {
 	}
 }
 
-// TestChargeIsSafeToCallWithNobodyToCharge covers both ways this went wrong
-// before it was one function: an empty caller reaches the wallet as "account
-// not found", and a zero cost reaches it as "amount must be positive", which
-// the write gate turns into a 402 for credit nobody was asking for.
-func TestChargeIsSafeToCallWithNobodyToCharge(t *testing.T) {
-	withCharging(t, true)
-	Charge("", quota.OpWebSearch)                 // a guest on a free path
-	Charge("nobody-in-particular", "free_op_xyz") // an operation with no price
-
-	withCharging(t, false)
-	Charge("someone", quota.OpWebSearch) // an instance that cannot bill
-}
+// app.Charge is gone. It was a second way to take payment sitting beside
+// quota.ConsumeQuota, and the pair of them is how the same operation came to be
+// charged through one door and not the other. quota.Charge is the only one now,
+// and it makes both of the checks this used to test — an empty caller and a
+// zero cost — for every caller rather than only for pages.
+//
+// TestOneWayToCharge holds that.

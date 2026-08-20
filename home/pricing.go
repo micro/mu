@@ -56,13 +56,13 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 		 touches storage here is free, and free means free rather than
 		 included-up-to-a-limit.`))
 
-	section("Talking to your agent is free",
-		para(`No credits, no allowance to keep an eye on, nothing to cancel. Chat
-		 here, write to it from anywhere, read your inbox, keep files — the agent
-		 is what this is, and metering the thing you came for is a toll booth at
-		 your own front door.`),
-		para(`It is bounded by a count rather than a price, so a runaway loop stops
-		 and a person never does.`))
+	section("The agent has no price",
+		para(`Not a low one — none. Chat here, write to it from anywhere, read your
+		 inbox, keep files: none of it costs credits. The agent is what this is,
+		 and metering the thing you came for is a toll booth at your own front
+		 door.`),
+		para(`What a run costs is whatever tools it reached for, one line each on
+		 your receipt. Most answers reach for nothing.`))
 
 	section("What you pay for is fetching",
 		para(`Credits buy the calls that cost somebody money: a web search, an

@@ -122,7 +122,7 @@ func TestAnOverrideReplacesOneEntryNotTheList(t *testing.T) {
 		t.Errorf("a one-line override left %d prices, was %d — the rest were dropped",
 			after, before)
 	}
-	if OperationCost(OpAgentQuery) == 1 && webBefore != 1 {
+	if OperationCost(OpWebSearch) == 1 && webBefore != 1 {
 		t.Error("agent_query fell back to the unpriced default, so the override " +
 			"replaced the list rather than one entry")
 	}

@@ -72,23 +72,19 @@ func TestOnlyOutboundOrFreeIsCapped(t *testing.T) {
 	}
 }
 
-// And the free ones that call a model are capped, because nothing else bounds
-// them.
+// There is no agent operation to cap, because the agent is not a service.
 //
-// Named rather than derived: most free operations only touch this instance's own
-// storage and are bounded by auth.CheckPostRate, which is a rate and not a
-// count. These two spend somebody else's model on every call, so a loop here is
-// a bill rather than a busy disk.
-func TestTheFreeModelCallsAreCapped(t *testing.T) {
+// It was agent_query, priced at 7, then priced at 0 with a daily count. Both
+// were the same mistake in different clothes: the agent reads the catalogue, so
+// it cannot be in it, and it has no more business having a price than a price
+// list has. What a run costs is what the tools it called cost, one line each on
+// the receipt.
+func TestTheAgentHasNoPrice(t *testing.T) {
 	loadPrices(t)
-	for _, op := range []string{quota.OpAgentQuery, quota.OpChatQuery} {
-		if quota.OperationCost(op) != 0 {
-			t.Errorf("%s is priced again — it is the conversation, not a tool", op)
-			continue
-		}
-		if n := quota.DailyLimit(op); n == quota.NoLimit {
-			t.Errorf("%s is free and uncapped, so a loop is bounded by nothing at "+
-				"all — it calls a model on every run", op)
+	for _, op := range []string{"agent_query", "chat_query"} {
+		if quota.Published(op) {
+			t.Errorf("%s is in the price list — the agent consumes the catalogue "+
+				"and cannot be in it", op)
 		}
 	}
 }

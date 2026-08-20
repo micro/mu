@@ -35,7 +35,6 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/auth"
-	"mu/internal/quota"
 	"mu/internal/thread"
 )
 
@@ -118,16 +117,6 @@ func APIHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Priced like every other run, and checked before the model is asked so a
-	// run that cannot be paid for does not spend one first. The door is new;
-	// what a run costs is not, and a door with its own price is how two doors
-	// end up disagreeing.
-	if ok, _, cost, err := quota.CheckQuota(accountID, quota.OpAgentQuery); err != nil || !ok {
-		app.Error(w, r, http.StatusPaymentRequired,
-			"that costs "+credits(cost)+" and the account is short")
-		return
-	}
-
 	res, err := Ask(AskRequest{
 		Account: accountID,
 		Client:  thread.WebClient,
@@ -140,7 +129,6 @@ func APIHandler(w http.ResponseWriter, r *http.Request) {
 		app.ServerError(w, r, "that one did not work")
 		return
 	}
-	quota.ConsumeQuota(accountID, quota.OpAgentQuery) //nolint:errcheck
 
 	app.RespondJSON(w, apiAnswer{
 		Text:   res.Text,

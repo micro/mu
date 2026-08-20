@@ -19,7 +19,7 @@ Measured, not remembered.
 | One credit is | **£0.01** |
 | Ways to pay | **top up** any amount at 1p a credit · **x402** per request, no account · **self-host**, nothing metered |
 | Plans on offer | **none** — `/plans` redirects to `/pricing`, which is a price list and not a chooser |
-| Talking to the agent | **free** — bounded by a daily count, not a price |
+| Talking to the agent | **not priced at all** — the agent is not a service, so it has no operation |
 | Daily grant of credits | **none** — there was one; see "The allowance that cancelled itself out" |
 | A call served from cache | **not charged** — the price is what a *fetch* costs |
 | Operations priced at 0 | 17 of 32 |
@@ -40,12 +40,20 @@ own package comment that "the price does the rest of the work" — an allowance
 that zeroes the price for the first five texts takes that work away, and the
 three operations that reach a stranger were reachable for nothing.
 
-Both are gone. **The agent is free**, because it is the product rather than a
-tool it calls, and metering the thing somebody came for is a toll booth at their
-own front door. It is bounded by `limit` in quota.json — a count of runs a day,
-which is abuse control and not a tariff. **Credits buy what a third party bills
-us for**: a search, an image, a place, a text. A new account needs none, because
-there is nothing it has to buy in order to start.
+Both are gone, and so is `agent_query` itself. The agent reads the catalogue, so
+it cannot be in it — and it has no more business having a price than the price
+list does. What a run costs is what the tools it called cost, one line each on
+the receipt.
+
+**Credits buy what a third party bills us for**: a search, an image, a place, a
+text. A new account needs none, because there is nothing it has to buy in order
+to start.
+
+**And there is one way to charge.** `quota.Charge`, and nothing else. There were
+four — `ConsumeQuota`, `ConsumeWith`, `app.Charge` and a `charge()` of
+service/mail's own — over twenty-nine call sites, which is how the same
+operation came to be charged through one door and not another. `TestOneWayToCharge`
+holds it at one.
 
 ## You pay for a fetch, not for a call
 

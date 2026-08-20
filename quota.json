@@ -80,24 +80,6 @@
       "note": "Brave, ~0.4p \u2014 was 5, a 12x markup"
     },
     {
-      "op": "chat_query",
-      "cost": 0,
-      "label": "Chat room reply",
-      "env": "CREDIT_COST_CHAT",
-      "limit": 200,
-      "limit_env": "CHAT_DAILY_LIMIT",
-      "note": "Free for the same reason as agent_query: answering in a room is the agent talking, not a tool being called."
-    },
-    {
-      "op": "agent_query",
-      "cost": 0,
-      "label": "Talking to your agent",
-      "env": "CREDIT_COST_AGENT",
-      "note": "Free, because the agent is the product rather than a tool it calls. It was 7, and a new account started at zero \u2014 so it could not ask a question until it had paid, and a daily grant of credits existed to cancel that charge back out. Two mechanisms undoing each other, and a number a person had to understand before they could speak to their own agent. What bounds it now is limit, which is a count and not a price. The tools a run calls still pay for themselves, one line each on the receipt.",
-      "limit": 200,
-      "limit_env": "AGENT_DAILY_LIMIT"
-    },
-    {
       "op": "image_generate",
       "cost": 15,
       "label": "Image generation",

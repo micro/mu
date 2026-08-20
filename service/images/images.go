@@ -447,7 +447,7 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 	}
 	// Charged here rather than inside Generate, which the tool door also calls
 	// and which the gateway now charges for. Only once we have an image.
-	if err := quota.ConsumeQuota(acc.ID, quota.OpImageGenerate); err != nil {
+	if err := quota.Charge(acc.ID, quota.OpImageGenerate, nil); err != nil {
 		app.Log("images", "image generated but not charged: %v", err)
 	}
 	// id lets the page show the new image with its share button without

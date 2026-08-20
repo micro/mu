@@ -732,7 +732,7 @@ func handleAPISearch(w http.ResponseWriter, r *http.Request, query string) {
 		return
 	}
 
-	quota.ConsumeQuota(sess.Account, quota.OpSocialSearch)
+	quota.Charge(sess.Account, quota.OpSocialSearch, nil)
 
 	results := data.Search(query, 50)
 	var socialResults []map[string]interface{}
@@ -769,7 +769,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 		return
 	}
 
-	quota.ConsumeQuota(sess.Account, quota.OpSocialSearch)
+	quota.Charge(sess.Account, quota.OpSocialSearch, nil)
 
 	results := data.Search(query, 50)
 	var sb strings.Builder

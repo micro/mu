@@ -176,7 +176,7 @@ func StartVerify(owner, addr, app string) (Verification, error) {
 		verifyBody(code, product)); err != nil {
 		return Verification{}, err
 	}
-	if err := quota.ConsumeWith(owner, quota.OpExternalEmail, map[string]interface{}{
+	if err := quota.Charge(owner, quota.OpExternalEmail, map[string]interface{}{
 		"to": address, "verification": true,
 	}); err != nil {
 		// The message is gone; refusing now would only hide that.

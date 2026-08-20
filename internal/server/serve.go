@@ -261,7 +261,7 @@ func serve(addr string) {
 								fmt.Sprintf("This costs %d credit(s). Top up at /account/topup", cost))
 							return
 						}
-						if err := quota.ConsumeQuota(sess.Account, op); err != nil {
+						if err := quota.Charge(sess.Account, op, nil); err != nil {
 							app.Error(w, r, http.StatusPaymentRequired, err.Error())
 							return
 						}
@@ -316,7 +316,7 @@ func serve(addr string) {
 				// 5xx) are rare enough that the lost credit is
 				// acceptable — and it's the only way to guarantee
 				// we never forget to charge.
-				if err := quota.ConsumeQuota(sess.Account, op); err != nil {
+				if err := quota.Charge(sess.Account, op, nil); err != nil {
 					app.Error(w, r, http.StatusPaymentRequired, err.Error())
 					return
 				}

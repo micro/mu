@@ -46,19 +46,6 @@ type Price struct {
 	Env   string `json:"env,omitempty"`
 	Note  string `json:"note,omitempty"`
 
-	// Free is how many of this operation an account may do each day before the
-	// cost applies. Zero means the price applies from the first call.
-	//
-	// The providers we pay do exactly this — Google gives 10,000 Routes calls a
-	// month before billing a penny — and it is the honest shape for a product
-	// too: somebody trying the thing out should not meet a paywall on their
-	// first question, and somebody running a job through it should pay for the
-	// job. A price with no free allowance is a toll booth at the front door.
-	Free int `json:"free,omitempty"`
-
-	// FreeEnv is the variable that overrides Free, the way Env overrides Cost.
-	FreeEnv string `json:"free_env,omitempty"`
-
 	// Limit is the most of this operation an account may do in a day, whatever
 	// its balance. Absent means no limit; an explicit 0 means nobody may do it,
 	// which is the kill switch.
@@ -170,7 +157,6 @@ func apply(f priceFile) {
 	list := make([]Price, 0, len(f.Operations))
 	for _, p := range f.Operations {
 		p.Cost = envOverride(p.Env, p.Cost)
-		p.Free = envOverride(p.FreeEnv, p.Free)
 		// A limit believes a zero, where a price does not. envOverride rejects
 		// it because an unset variable and one set to "0" look the same to a
 		// container and a price silently dropping to free is the wrong way to
@@ -240,17 +226,6 @@ func OperationCost(operation string) int {
 		return p.Cost
 	}
 	return 1
-}
-
-// FreeAllowance is how many of this operation an account gets each day before
-// the price applies. Zero means it is charged from the first call.
-func FreeAllowance(operation string) int {
-	priceMu.RLock()
-	defer priceMu.RUnlock()
-	if p, ok := prices[operation]; ok {
-		return p.Free
-	}
-	return 0
 }
 
 // Label is what the price table calls an operation, or "" if it is unpublished.

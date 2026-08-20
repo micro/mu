@@ -44,7 +44,6 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/auth"
-	"mu/internal/quota"
 	"mu/internal/thread"
 	"mu/service/mail"
 )
@@ -145,23 +144,12 @@ func drafted(accountID string, f form) form {
 		f.Problem = "say what it should say, and the agent will write it"
 		return f
 	}
-	// Charged like any other agent run, and before the model is asked so a run
-	// that cannot be paid for does not spend one first.
-	if ok, _, _, err := quota.CheckQuota(accountID, quota.OpAgentQuery); err != nil || !ok {
-		f.Problem = "there are not enough credits for that"
-		if err != nil {
-			f.Problem = err.Error()
-		}
-		return f
-	}
-
 	out, err := Draft(accountID, f.Ask, f.To, f.Subject, f.Body)
 	if err != nil {
 		app.Log("inbox", "drafting a message failed: %v", err)
 		f.Problem = "that one did not work. Try asking a different way."
 		return f
 	}
-	quota.ConsumeQuota(accountID, quota.OpAgentQuery) //nolint:errcheck
 
 	subject, body := split(out)
 	if subject != "" {

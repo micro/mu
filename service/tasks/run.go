@@ -16,7 +16,6 @@ import (
 	"sync"
 
 	"mu/internal/app"
-	"mu/internal/quota"
 )
 
 // RunAgent is set by main() to run a prompt through the agent as an account.
@@ -62,17 +61,6 @@ func Run(owner, id string) error {
 	running[t.ID] = true
 	runMu.Unlock()
 
-	// An agent run is a model call, which is the one thing here that costs
-	// real money. Check before starting rather than after: a task that cannot
-	// be paid for should not move to "doing".
-	canProceed, _, cost, err := quota.CheckQuota(owner, quota.OpAgentQuery)
-	if err != nil || !canProceed {
-		runMu.Lock()
-		delete(running, t.ID)
-		runMu.Unlock()
-		return fmt.Errorf("this costs %d credits — top up at /account/topup", cost)
-	}
-
 	if _, err := Update(owner, t.ID, "", "", StatusDoing, Agent, ""); err != nil {
 		runMu.Lock()
 		delete(running, t.ID)
@@ -108,9 +96,6 @@ func Run(owner, id string) error {
 			app.Log("tasks", "task %q failed for %s: %v", t.Title, t.Owner, err)
 			Update(t.Owner, t.ID, "", "", StatusTodo, "", "Last run failed: "+err.Error(), done) //nolint:errcheck
 			return
-		}
-		if err := quota.ConsumeQuota(t.Owner, quota.OpAgentQuery); err != nil {
-			app.Log("tasks", "could not charge task run for %s: %v", t.Owner, err)
 		}
 		Update(t.Owner, t.ID, "", "", StatusDone, "", strings.TrimSpace(answer), done) //nolint:errcheck
 	}(*t)

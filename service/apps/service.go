@@ -134,7 +134,7 @@ var Spec = service.Spec{
 			Cost: quota.OpAppEdit, Needs: service.Caller},
 		"Fork": {Doc: "Fork an app into your own account, to change independently of the original", Needs: service.Caller},
 		"Run": {Doc: "Publish a snippet of JavaScript and get back a URL that runs it in a browser. It returns a link rather than output — the code runs in a sandbox when somebody opens it, not here",
-			Cost: quota.OpAgentQuery, Needs: service.Caller},
+			Needs: service.Caller},
 		"Test": {Doc: "Test an app by checking its HTML and running its mu.api calls server-side, so an author finds out what is broken without opening it", Needs: service.Caller},
 	},
 }

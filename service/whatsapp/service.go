@@ -105,7 +105,7 @@ func Send(owner, to, text string) (*Message, error) {
 		return nil, err
 	}
 	if fresh {
-		if err := quota.ConsumeWith(owner, quota.OpWhatsAppSend, map[string]interface{}{"to": num}); err != nil {
+		if err := quota.Charge(owner, quota.OpWhatsAppSend, map[string]interface{}{"to": num}); err != nil {
 			app.Log("whatsapp", "charging %s for a sent message: %v", owner, err)
 		}
 		// Counted against the cap only once it has actually gone, so a refusal

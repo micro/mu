@@ -457,7 +457,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 
 	// Charge, if there is anything to charge and anyone to charge it to.
 	if caller != "" && quota.Metered(quota.OpPlacesSearch) {
-		quota.ConsumeWith(caller, quota.OpPlacesSearch, map[string]interface{}{"query": query})
+		quota.Charge(caller, quota.OpPlacesSearch, map[string]interface{}{"query": query})
 	}
 
 	if app.WantsJSON(r) {
@@ -556,7 +556,7 @@ func handleNearby(w http.ResponseWriter, r *http.Request) {
 
 	// Deduct credits
 	if caller != "" && quota.Metered(quota.OpPlacesNearby) {
-		quota.ConsumeWith(caller, quota.OpPlacesNearby, map[string]interface{}{
+		quota.Charge(caller, quota.OpPlacesNearby, map[string]interface{}{
 			"lat": lat, "lon": lon, "radius": radius,
 		})
 	}

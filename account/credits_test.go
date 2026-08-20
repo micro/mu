@@ -34,7 +34,6 @@ func TestGetOperationCost(t *testing.T) {
 	}{
 		{quota.OpNewsSearch, quota.OperationCost(quota.OpNewsSearch)},
 		{quota.OpVideoSearch, quota.OperationCost(quota.OpVideoSearch)},
-		{quota.OpChatQuery, quota.OperationCost(quota.OpChatQuery)},
 		{quota.OpBlogCreate, quota.OperationCost(quota.OpBlogCreate)},
 		{quota.OpMailSend, quota.OperationCost(quota.OpMailSend)},
 		{quota.OpExternalEmail, quota.OperationCost(quota.OpExternalEmail)},
@@ -42,9 +41,8 @@ func TestGetOperationCost(t *testing.T) {
 		{quota.OpPlacesNearby, quota.OperationCost(quota.OpPlacesNearby)},
 		{quota.OpWeatherForecast, quota.OperationCost(quota.OpWeatherForecast)},
 		{quota.OpWeatherPollen, quota.OperationCost(quota.OpWeatherPollen)},
-		{quota.OpWebSearch, quota.OperationCost(quota.OpWebSearch)},
 		{quota.OpWebFetch, quota.OperationCost(quota.OpWebFetch)},
-		{quota.OpAgentQuery, quota.OperationCost(quota.OpAgentQuery)},
+		{quota.OpWebSearch, quota.OperationCost(quota.OpWebSearch)},
 		{"unknown_op", 1}, // default
 	}
 	for _, tt := range tests {
@@ -58,10 +56,10 @@ func TestGetOperationCost(t *testing.T) {
 func TestOperationConstants(t *testing.T) {
 	// Ensure all operation constants are unique
 	ops := []string{
-		quota.OpNewsSearch, quota.OpVideoSearch, quota.OpChatQuery, quota.OpBlogCreate,
+		quota.OpNewsSearch, quota.OpVideoSearch, quota.OpBlogCreate,
 		quota.OpMailSend, quota.OpExternalEmail, quota.OpPlacesSearch,
 		quota.OpPlacesNearby, quota.OpWeatherForecast, quota.OpWeatherPollen,
-		quota.OpWebSearch, quota.OpWebFetch, quota.OpAgentQuery,
+		quota.OpWebSearch, quota.OpWebFetch,
 		quota.OpTopup, quota.OpRefund,
 	}
 	seen := make(map[string]bool)
@@ -104,15 +102,6 @@ func TestDefaultCosts(t *testing.T) {
 			t.Errorf("%s calls a model, so it cannot be free", name)
 		}
 	}
-	// And the conversation is free, on both surfaces that carry one.
-	for name, cost := range map[string]int{
-		"agent": quota.OperationCost(quota.OpAgentQuery),
-		"chat":  quota.OperationCost(quota.OpChatQuery),
-	} {
-		if cost != 0 {
-			t.Errorf("%s costs %d — the conversation is the product, not a tool", name, cost)
-		}
-	}
 
 	// Nothing bills this instance for these, so they are not priced. Searching
 	// news is a local index query; fetching a page is an http.Get and a
@@ -133,9 +122,6 @@ func TestDefaultCosts(t *testing.T) {
 	// against one call — so it cannot be priced below it. There was a premium
 	// tier above both, on Anthropic at twenty credits; nothing sent the field
 	// that selected it, so it went with the machinery.
-	if quota.OperationCost(quota.OpAgentQuery) < quota.OperationCost(quota.OpChatQuery) {
-		t.Error("an agent run is more model than a chat turn and cannot cost less")
-	}
 	// An app build is one generation. It was 100 — six times the next most
 	// expensive thing on the menu, and more than an agent run that may make
 	// several model calls.
@@ -148,12 +134,6 @@ func TestDefaultCosts(t *testing.T) {
 	}
 	if quota.OperationCost(quota.OpExternalEmail) <= quota.OperationCost(quota.OpMailSend) {
 		t.Error("external email should cost more than internal mail")
-	}
-	// Talking to the agent is free, which is what makes an account usable at a
-	// balance of zero. It was 7, and the daily grant of credits that existed to
-	// pay that 7 back is gone with it.
-	if c := quota.OperationCost(quota.OpAgentQuery); c != 0 {
-		t.Errorf("talking to the agent costs %d — it is the product, not a tool it calls", c)
 	}
 }
 
@@ -276,7 +256,7 @@ func TestDeductCredits(t *testing.T) {
 		mutex.Unlock()
 	}()
 
-	err := DeductCredits("deduct-user", 30, quota.OpChatQuery, nil)
+	err := DeductCredits("deduct-user", 30, quota.OpImageGenerate, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -298,7 +278,7 @@ func TestDeductCredits_InsufficientBalance(t *testing.T) {
 		mutex.Unlock()
 	}()
 
-	err := DeductCredits("poor-user", 10, quota.OpChatQuery, nil)
+	err := DeductCredits("poor-user", 10, quota.OpImageGenerate, nil)
 	if err == nil {
 		t.Error("expected error for insufficient balance")
 	}
@@ -315,7 +295,7 @@ func TestDeductCredits_NonexistentUser(t *testing.T) {
 		mutex.Unlock()
 	}()
 
-	err := DeductCredits("nobody", 10, quota.OpChatQuery, nil)
+	err := DeductCredits("nobody", 10, quota.OpImageGenerate, nil)
 	if err == nil {
 		t.Error("expected error for nonexistent user")
 	}
@@ -358,7 +338,7 @@ func TestDailyTransferTotalIgnoresIncomingAndOldTransfers(t *testing.T) {
 			{Type: TxTransfer, Operation: quota.OpTransfer, Amount: -25, CreatedAt: now},
 			{Type: TxTransfer, Operation: quota.OpTransfer, Amount: 15, CreatedAt: now},
 			{Type: TxTransfer, Operation: quota.OpTransfer, Amount: -40, CreatedAt: now.AddDate(0, 0, -1)},
-			{Type: TxSpend, Operation: quota.OpAgentQuery, Amount: -3, CreatedAt: now},
+			{Type: TxSpend, Operation: quota.OpWebSearch, Amount: -3, CreatedAt: now},
 		},
 	}
 	mutex.Unlock()
@@ -379,7 +359,7 @@ func TestGetTransactions(t *testing.T) {
 	transactions = map[string][]*Transaction{
 		"tx-user": {
 			{ID: "1", Amount: 100, Operation: quota.OpTopup},
-			{ID: "2", Amount: -5, Operation: quota.OpChatQuery},
+			{ID: "2", Amount: -5, Operation: quota.OpImageGenerate},
 			{ID: "3", Amount: -3, Operation: quota.OpNewsSearch},
 		},
 	}

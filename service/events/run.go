@@ -12,11 +12,10 @@ package events
 // import the agent and the agent knows nothing about events.
 
 import (
-	"fmt"
 	"strings"
 
 	"mu/internal/app"
-	"mu/internal/quota"
+	"mu/internal/auth"
 )
 
 // RunAgent is set by main() to run a prompt through the agent as an account.
@@ -37,28 +36,21 @@ func RunPrompt(e *Event) string {
 	if RunAgent == nil {
 		return "This scheduled task did not run: no agent is configured on this instance."
 	}
-
-	// Charged before the model is asked, so a run that cannot be paid for does
-	// not spend one first.
-	canProceed, _, cost, err := quota.CheckQuota(e.Owner, quota.OpAgentQuery)
-	if err != nil {
-		app.Log("events", "standing instruction %q could not be checked for %s: %v", e.Title, e.Owner, err)
-		return "This scheduled task did not run: " + err.Error()
-	}
-	if !canProceed {
-		return fmt.Sprintf("This scheduled task did not run: it costs %d credits and your balance is short. "+
-			"Top up at /account/topup and it will run at its next time.", cost)
+	// Whose instruction it is, checked because it is a real question and not
+	// because of money. It used to fall out of the credit check — an unknown
+	// account could not be charged, so it could not run — and that guard left
+	// with the charge when running the agent stopped costing credits. A rule
+	// that only worked as a side effect of another rule is one nobody was
+	// holding.
+	if _, err := auth.GetAccount(e.Owner); err != nil {
+		return "This scheduled task did not run: there is no account here to run it for."
 	}
 
 	answer, err := RunAgent(e.Owner, prompt)
 	if err != nil {
-		// Not charged: nothing was produced.
 		app.Log("events", "standing instruction %q failed for %s: %v", e.Title, e.Owner, err)
 		return "This scheduled task failed: " + err.Error()
 	}
 
-	if err := quota.ConsumeQuota(e.Owner, quota.OpAgentQuery); err != nil {
-		app.Log("events", "could not charge a scheduled run for %s: %v", e.Owner, err)
-	}
 	return answer
 }

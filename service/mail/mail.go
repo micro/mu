@@ -457,7 +457,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 				if !acc.Admin {
-					quota.ConsumeQuota(acc.ID, quota.OpMailSend) //nolint:errcheck
+					quota.Charge(acc.ID, quota.OpMailSend, nil) //nolint:errcheck
 				}
 			}
 			app.RespondJSON(w, map[string]bool{"success": true})
@@ -580,7 +580,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			if !acc.Admin {
-				quota.ConsumeQuota(acc.ID, quota.OpMailSend) //nolint:errcheck
+				quota.Charge(acc.ID, quota.OpMailSend, nil) //nolint:errcheck
 			}
 		}
 

@@ -1689,7 +1689,7 @@ func handleAPISearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	payload := newsSearchPayload(query, 20)
-	app.Charge(caller, quota.OpNewsSearch)
+	quota.Charge(caller, quota.OpNewsSearch, nil) //nolint:errcheck
 
 	app.RespondJSON(w, payload)
 }
@@ -2579,7 +2579,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request, query string) {
 	}
 
 	results := data.Search(query, 20, data.WithType("news"), data.WithKeywordOnly())
-	app.Charge(caller, quota.OpNewsSearch)
+	quota.Charge(caller, quota.OpNewsSearch, nil) //nolint:errcheck
 
 	var searchResults []byte
 	searchResults = append(searchResults, []byte(`<form id="news-search" class="search-bar" action="/news" method="GET">

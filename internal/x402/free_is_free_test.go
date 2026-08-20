@@ -82,7 +82,7 @@ func TestWithoutPaymentsNothingIsMetered(t *testing.T) {
 	quota.Enabled = func() bool { return false }
 	t.Cleanup(func() { quota.Enabled = prev })
 
-	for _, op := range []string{quota.OpWebSearch, quota.OpImageGenerate, quota.OpAgentQuery} {
+	for _, op := range []string{quota.OpWebSearch, quota.OpImageGenerate, quota.OpWebSearch} {
 		if quota.Metered(op) {
 			t.Errorf("%s reads as metered on an instance that cannot charge", op)
 		}

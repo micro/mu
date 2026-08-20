@@ -676,17 +676,6 @@ func wireHooks() {
 			return false, fmt.Errorf("%s", why)
 		}
 
-		// A free allowance is spent before a credit is. Checking it here rather
-		// than inside CheckQuota keeps the two ideas apart: what an operation
-		// costs is arithmetic about providers, and how much of it somebody gets
-		// for nothing is an operator's commercial choice.
-		if quota.WithinAllowance(account, op) {
-			// Inside the allowance: allowed, recorded, not charged. Recorded
-			// because /usage should show what an account actually did, and a
-			// free call is still something it did.
-			quota.Record(account, op)
-			return false, nil
-		}
 		ok, _, cost, err := quota.CheckQuota(account, op)
 		if err != nil {
 			return false, err
@@ -698,7 +687,7 @@ func wireHooks() {
 		return true, nil
 	}
 	service.Gate.Charge = func(account, op string) {
-		if err := quota.ConsumeWith(account, op, nil); err != nil {
+		if err := quota.Charge(account, op, nil); err != nil {
 			app.Log("wallet", "charging %s for %s: %v", account, op, err)
 		}
 	}
@@ -844,7 +833,7 @@ func wireHooks() {
 	// Deduct credits from the acting user for a metered call (SDK or the agent).
 	chargeUser := func(r *http.Request, op string) {
 		if sess, err := auth.GetSession(r); err == nil {
-			_ = quota.ConsumeQuota(sess.Account, op)
+			_ = quota.Charge(sess.Account, op, nil)
 		}
 	}
 	apps.ChargeQuota = chargeUser

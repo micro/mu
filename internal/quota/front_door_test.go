@@ -44,21 +44,26 @@ func charging(t *testing.T, id string) {
 	t.Cleanup(ResetAllowances)
 }
 
-// A new account can talk to its agent. This is the whole point.
-func TestANewAccountCanTalkToItsAgent(t *testing.T) {
+// A new account can use the free half of the product.
+//
+// Talking to the agent is not in the price list at all — the agent is not a
+// service, so it has no operation and no price. What this holds is the rule
+// underneath: an operation that costs this instance nothing is not refused for
+// want of credit, which is what made a zero balance useless before.
+func TestANewAccountCanUseWhatIsFree(t *testing.T) {
 	const id = "door-new"
 	charging(t, id)
 
 	if BalanceOf(id) != 0 {
 		t.Fatal("this account is supposed to have no money")
 	}
-	if c := OperationCost(OpAgentQuery); c != 0 {
-		t.Fatalf("talking to the agent costs %d credits — it is the product, not "+
-			"a tool it calls, and pricing it is what made a new account useless", c)
+	if c := OperationCost(OpNewsSearch); c != 0 {
+		t.Fatalf("reading the news costs %d credits — it touches nothing we pay "+
+			"for, and charging for it taxes the behaviour the product wants", c)
 	}
-	ok, _, cost, err := CheckQuota(id, OpAgentQuery)
+	ok, _, cost, err := CheckQuota(id, OpNewsSearch)
 	if !ok {
-		t.Fatalf("an account with no credits was refused an agent question "+
+		t.Fatalf("an account with no credits was refused a free operation "+
 			"(costs %d): %v", cost, err)
 	}
 }
@@ -110,7 +115,7 @@ func TestAFreeOperationStaysFree(t *testing.T) {
 	const id = "door-free"
 	charging(t, id)
 
-	if ok, _, cost, err := CheckQuota(id, OpAgentQuery); !ok || cost != 0 {
+	if ok, _, cost, err := CheckQuota(id, OpNewsSearch); !ok || cost != 0 {
 		t.Errorf("a free operation was refused or priced: ok=%v cost=%d err=%v", ok, cost, err)
 	}
 	if ok, _, _, _ := CheckQuota(id, OpImageGenerate); ok {

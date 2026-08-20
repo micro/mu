@@ -49,7 +49,7 @@ func ReadHandler(w http.ResponseWriter, r *http.Request) {
 	title, body, fetchErr := FetchAndExtractHTMLProxied(rawURL)
 
 	if fetchErr == nil {
-		app.Charge(caller, quota.OpWebFetch)
+		quota.Charge(caller, quota.OpWebFetch, nil) //nolint:errcheck
 	}
 
 	// JSON response for API callers

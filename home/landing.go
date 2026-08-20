@@ -207,8 +207,8 @@ func developerBand(base string) string {
 weather, places, files — behind one endpoint.</p>
 <pre class="dev-endpoint">` + endpoint + `</pre>
 <ul class="dev-facts">
-  <li>Talking to the agent is free. You pay only when a call costs a third
-      party — and not when this instance already had the answer.</li>
+  <li>The agent costs nothing. You pay for a tool only when calling it costs a
+      third party — and not when this instance already had the answer.</li>
   <li>One account instead of six, or no account at all — an agent can pay per
       request as it calls.</li>
   <li>Every tool is also plain HTTP, so a cron job or a script can use them

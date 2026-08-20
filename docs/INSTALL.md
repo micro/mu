@@ -687,8 +687,6 @@ that same file, so this page does not repeat twenty-six rows.
 
 | Variable | Default | What it does |
 |---|---|---|
-| `AGENT_DAILY_LIMIT` | `200` | Agent runs one account may make in a day. Talking to the agent costs no credits — it is the product rather than a tool it calls — so this count is what bounds it. It is `limit_env` on `agent_query` in `quota.json`, where the number lives. Set it to `0` to stop the agent answering at all |
-| `CHAT_DAILY_LIMIT` | `200` | The same, for replies in a discussion room (`chat_query`) |
 | `POST_LIMIT_PER_HOUR` · `NEW_POST_LIMIT_PER_HOUR` | — | Posting rate limit, and the tighter one for new accounts |
 | `VIDEO_SEARCH_PER_HOUR` | 20 | YouTube searches one account may run per hour |
 | `VIDEO_SEARCH_PER_DAY` | 80 | YouTube searches this instance may run per day, kept under the API's own quota |

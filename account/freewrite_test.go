@@ -49,7 +49,7 @@ func TestFreeOperationsAreNotRefused(t *testing.T) {
 		if cost := quota.OperationCost(op); cost != 0 {
 			t.Fatalf("%s is priced at %d, not free — update this test or the price", op, cost)
 		}
-		if err := quota.ConsumeQuota(id, op); err != nil {
+		if err := quota.Charge(id, op, nil); err != nil {
 			t.Fatalf("charging a free operation failed: %s: %v", op, err)
 		}
 	}
@@ -60,7 +60,7 @@ func TestFreeOperationsAreNotRefused(t *testing.T) {
 	quota.ResetAllowances()
 	t.Cleanup(quota.ResetAllowances)
 	if quota.OperationCost(quota.OpImageGenerate) > 0 {
-		if err := quota.ConsumeQuota(id, quota.OpImageGenerate); err == nil {
+		if err := quota.Charge(id, quota.OpImageGenerate, nil); err == nil {
 			t.Fatal("a priced operation was allowed through on an empty wallet " +
 				"with no allowance left")
 		}

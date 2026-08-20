@@ -86,18 +86,3 @@ func BillableCaller(w http.ResponseWriter, r *http.Request, op string) (id strin
 	}
 	return id, true
 }
-
-// Charge records what an operation cost, after it succeeded.
-//
-// Both guards matter and both were got wrong somewhere before this existed.
-// An empty caller is a guest on a free path, and handing that to the wallet
-// gets "account not found" back. An unmetered operation has nothing to deduct,
-// and handing a zero to DeductCredits gets "amount must be positive", which the
-// write gate turns into a 402 — a refusal for want of credit nobody was asking
-// for.
-func Charge(caller, op string) {
-	if caller == "" || !quota.Metered(op) {
-		return
-	}
-	quota.ConsumeQuota(caller, op)
-}

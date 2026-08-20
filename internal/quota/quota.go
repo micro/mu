@@ -75,7 +75,6 @@ const (
 	OpNewsSearch    = "news_search"
 	OpQuranSearch   = "quran_search"
 	OpVideoSearch   = "video_search"
-	OpChatQuery     = "chat_query"
 	OpBlogCreate    = "blog_create"
 	OpMailSend      = "mail_send"
 	OpExternalEmail = "external_email"
@@ -101,7 +100,6 @@ const (
 	OpTextExtract      = "text_extract"
 	OpTextClassify     = "text_classify"
 	OpTextTranslate    = "text_translate"
-	OpAgentQuery       = "agent_query"
 	OpSocialSearch     = "social_search"
 	OpSocialPost       = "social_post"
 	OpSocialReply      = "social_reply"
@@ -197,13 +195,21 @@ func TopupURL() string {
 	return "/account/topup"
 }
 
-// ConsumeQuota consumes quota for an operation (call after successful operation)
-func ConsumeQuota(userID string, operation string) error {
-	return ConsumeWith(userID, operation, nil)
-}
-
-// ConsumeWith is ConsumeQuota with something to say on the receipt.
-func ConsumeWith(userID, operation string, meta map[string]interface{}) error {
+// Charge takes payment for an operation that has already happened.
+//
+// The one way credits move. There were four — ConsumeQuota, ConsumeWith,
+// app.Charge and a charge() of service/mail's own — spread over twenty-nine
+// call sites, and which one a service used was historical accident. That is how
+// the same operation came to be charged twice through one door and not at all
+// through another, and it is why nobody could say what anything cost without
+// reading five files.
+//
+// One name. Nothing outside this package may take payment, and
+// TestOneWayToCharge holds it.
+//
+// meta is what the receipt says beyond the operation's name — the query that
+// was searched, the number that was texted. Nil where there is nothing to add.
+func Charge(userID, operation string, meta map[string]interface{}) error {
 	// Get account to check admin status
 	acc, err := auth.GetAccount(userID)
 	if err != nil {

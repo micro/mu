@@ -89,7 +89,7 @@ func FetchHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Only charge on success
 	if fetchErr == nil {
-		app.Charge(caller, quota.OpWebFetch)
+		quota.Charge(caller, quota.OpWebFetch, nil) //nolint:errcheck
 	}
 
 	// JSON response for API/MCP callers

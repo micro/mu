@@ -207,7 +207,7 @@ func handleJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	app.Charge(caller, quota.OpWeatherForecast)
+	quota.Charge(caller, quota.OpWeatherForecast, nil) //nolint:errcheck
 
 	result := map[string]interface{}{
 		"forecast": forecast,
@@ -243,7 +243,7 @@ func handleJSON(w http.ResponseWriter, r *http.Request) {
 		if affordable {
 			if pollen, err := FetchPollen(r.Context(), lat, lon); err == nil {
 				result["pollen"] = pollen
-				app.Charge(caller, quota.OpWeatherPollen)
+				quota.Charge(caller, quota.OpWeatherPollen, nil) //nolint:errcheck
 			}
 		}
 	}

@@ -29,7 +29,6 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/auth"
-	"mu/internal/quota"
 	"mu/internal/thread"
 )
 
@@ -73,23 +72,11 @@ func action(w http.ResponseWriter, r *http.Request, accountID string) {
 		return
 	}
 
-	// Charged like any other agent run, checked before the model is asked so a
-	// run that cannot be paid for does not spend one first.
-	if ok, _, _, err := quota.CheckQuota(accountID, quota.OpAgentQuery); err != nil || !ok {
-		reason := "there are not enough credits for that"
-		if err != nil {
-			reason = err.Error()
-		}
-		http.Redirect(w, r, back+"&problem="+url.QueryEscape(reason), http.StatusSeeOther)
-		return
-	}
-
 	if err := Act(accountID, id, ask); err != nil {
 		app.Log("inbox", "acting on a conversation failed: %v", err)
 		http.Redirect(w, r, back+"&problem="+url.QueryEscape("that one did not work. Try asking a different way."), http.StatusSeeOther)
 		return
 	}
-	quota.ConsumeQuota(accountID, quota.OpAgentQuery) //nolint:errcheck
 
 	http.Redirect(w, r, back, http.StatusSeeOther)
 }

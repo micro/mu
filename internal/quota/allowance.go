@@ -60,42 +60,6 @@ var used struct {
 // arranging to be woken.
 func today() string { return time.Now().UTC().Format("2006-01-02") }
 
-// FreeCallsLeft is how many more of this operation the account may make today
-// before it starts costing credits.
-func FreeCallsLeft(account, operation string) int {
-	allowance := FreeAllowance(operation)
-	if allowance <= 0 {
-		return 0
-	}
-	used.Lock()
-	defer used.Unlock()
-	rollLocked()
-	if n := used.count[account+"\x00"+operation]; n < allowance {
-		return allowance - n
-	}
-	return 0
-}
-
-// WithinAllowance reports whether this call is free because the account has not
-// used up its allowance today.
-//
-// It used to count as well as ask, on the argument that a caller who asked and
-// then forgot to say it happened would hand out the same allowance for ever.
-// That was true and the fix was in the wrong place: it counted before the call
-// ran, so a call that failed still spent an allowance, and it meant one counter
-// was incremented from here while the limits below needed it incremented after
-// success. One counter, moved once, by Done.
-func WithinAllowance(account, operation string) bool {
-	allowance := FreeAllowance(operation)
-	if allowance <= 0 || account == "" {
-		return false
-	}
-	used.Lock()
-	defer used.Unlock()
-	rollLocked()
-	return used.count[account+"\x00"+operation] < allowance
-}
-
 // UsedToday is how many of an operation this account has done today.
 func UsedToday(account, operation string) int {
 	used.Lock()

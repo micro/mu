@@ -95,7 +95,7 @@ func TestAFreeOperationDoesNotMoveTheBalance(t *testing.T) {
 		if cost != 0 {
 			t.Errorf("%s is 0 in quota.json and the gate quoted %d", p.op, cost)
 		}
-		if err := quota.ConsumeWith(acc.ID, p.op, nil); err != nil {
+		if err := quota.Charge(acc.ID, p.op, nil); err != nil {
 			t.Errorf("%s is priced free and charging it failed: %v — this is the shape "+
 				"that turned every blog post into a 402", p.op, err)
 		}

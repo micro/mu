@@ -98,7 +98,7 @@ func Send(owner, to, text string) (*Message, error) {
 	}
 
 	for i := 0; i < segments; i++ {
-		if err := quota.ConsumeWith(owner, quota.OpSMSSend, map[string]interface{}{
+		if err := quota.Charge(owner, quota.OpSMSSend, map[string]interface{}{
 			"to": number, "segments": segments,
 		}); err != nil {
 			// The message is gone; refusing now would only hide that. Say so in

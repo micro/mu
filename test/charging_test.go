@@ -39,8 +39,10 @@ import (
 func consumesOps(t *testing.T, pkgDir string) map[string]bool {
 	t.Helper()
 	out := map[string]bool{}
-	// app.Charge is the page door's wrapper around the same debit, so it counts.
-	re := regexp.MustCompile(`(?:Consume(?:Quota|With)|app\.Charge)\([^,]+,\s*quota\.(\w+)`)
+	// One name. There were four — ConsumeQuota, ConsumeWith, app.Charge and a
+	// charge() of service/mail's own — and this pattern had to know all of them,
+	// which is the tell that the pile was real. See TestOneWayToCharge.
+	re := regexp.MustCompile(`quota\.Charge\([^,]+,\s*quota\.(\w+)`)
 	filepath.Walk(pkgDir, func(path string, info os.FileInfo, err error) error { //nolint:errcheck
 		if err != nil || info.IsDir() || !strings.HasSuffix(path, ".go") ||
 			strings.HasSuffix(path, "_test.go") {

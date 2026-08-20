@@ -14,7 +14,6 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/notes"
-	"mu/internal/quota"
 )
 
 // extractMemory checks if the user's prompt contains something to
@@ -177,22 +176,6 @@ func RunHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(401)
 		app.RespondJSON(w, RunResponse{Error: "Sign in to ask the agent."})
 		return
-	}
-
-	if QuotaCheck != nil {
-		canProceed, _, err := QuotaCheck(r, quota.OpAgentQuery)
-		if !canProceed {
-			w.WriteHeader(402)
-			msg := "Insufficient credits"
-			if err != nil {
-				msg = err.Error()
-			}
-			app.RespondJSON(w, RunResponse{Error: msg})
-			return
-		}
-		if ChargeQuota != nil {
-			ChargeQuota(r, quota.OpAgentQuery)
-		}
 	}
 
 	// Step 1: Plan

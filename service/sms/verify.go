@@ -82,7 +82,7 @@ func StartVerify(owner, number string) error {
 	if _, err := send(number, "Your code is "+code+". It is good for ten minutes."); err != nil {
 		return err
 	}
-	if err := quota.ConsumeWith(owner, quota.OpSMSSend, map[string]interface{}{
+	if err := quota.Charge(owner, quota.OpSMSSend, map[string]interface{}{
 		"to": number, "verification": true,
 	}); err != nil {
 		logCharge(owner, err)
