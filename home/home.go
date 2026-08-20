@@ -386,16 +386,13 @@ function fetchW(la,lo){
 		//
 		// The other three chips had already gone for a related reason: they
 		// asked the agent to fetch things the cards below already show.
-		if viewerID != "" {
-			// The address of whichever agent is answering. The id is the
-			// contract with the picker in the chat component, which rewrites it
-			// when the selection changes — this said agent@ while the control
-			// directly above it said "answering as Test".
-			if addr := mail.SharedAgentAddress(); addr != "" {
-				b.WriteString(`<p class="home-inbox">Or write to it at <code id="mu-agent-addr">` +
-					html.EscapeString(addr) + `</code> — from your mail, your phone, anywhere.</p>`)
-			}
-		}
+		// No address under the box.
+		//
+		// It said "Or write to it at agent@… — from your mail, your phone,
+		// anywhere", directly beneath the thing you type into. Somebody on this
+		// screen is already talking to the agent; the address is for reaching it
+		// when you are not here, which is exactly the moment this line is not on
+		// the screen.
 		b.WriteString(`</div>`)
 
 		// What arrived, under a heading that looks like one.
