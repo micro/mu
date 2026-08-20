@@ -37,10 +37,20 @@ func TestEverythingThatLeavesTheBuildingIsCapped(t *testing.T) {
 	}
 }
 
-// TestOnlyOutboundIsCapped — a cap on a read would be a paywall wearing a
-// safety label. Reading costs credits and nothing else; there is no reputation
-// to spend and no reason to stop somebody who is paying.
-func TestOnlyOutboundIsCapped(t *testing.T) {
+// TestOnlyOutboundOrFreeIsCapped — a cap on a *priced* read would be a paywall
+// wearing a safety label. Somebody paying for each call is already bounded by
+// what they are willing to pay, there is no reputation being spent, and there is
+// no reason to stop them.
+//
+// A free operation is the other case, and it is why this rule has two halves
+// now. Talking to your agent costs nothing — it is the product rather than a
+// tool it calls — so no price bounds it and a loop would run until the model
+// bill did. There the count is the only control there is, which is the same
+// argument the outbound three make, arrived at from the opposite direction.
+//
+// So: capped if it leaves the building, capped if it is free, and never
+// otherwise.
+func TestOnlyOutboundOrFreeIsCapped(t *testing.T) {
 	loadPrices(t)
 	outbound := map[string]bool{
 		quota.OpExternalEmail: true,
@@ -51,10 +61,34 @@ func TestOnlyOutboundIsCapped(t *testing.T) {
 		if outbound[p.op] {
 			continue
 		}
-		if n := quota.DailyLimit(p.op); n != quota.NoLimit {
-			t.Errorf("%s is capped at %d a day and nothing it does leaves this "+
-				"instance — a limit on a read is a paywall with a safety label on it",
-				p.op, n)
+		capped := quota.DailyLimit(p.op) != quota.NoLimit
+		free := quota.OperationCost(p.op) == 0
+
+		if capped && !free {
+			t.Errorf("%s is capped at %d a day, costs %d, and nothing it does leaves "+
+				"this instance — a limit on a priced read is a paywall with a safety "+
+				"label on it", p.op, quota.DailyLimit(p.op), quota.OperationCost(p.op))
+		}
+	}
+}
+
+// And the free ones that call a model are capped, because nothing else bounds
+// them.
+//
+// Named rather than derived: most free operations only touch this instance's own
+// storage and are bounded by auth.CheckPostRate, which is a rate and not a
+// count. These two spend somebody else's model on every call, so a loop here is
+// a bill rather than a busy disk.
+func TestTheFreeModelCallsAreCapped(t *testing.T) {
+	loadPrices(t)
+	for _, op := range []string{quota.OpAgentQuery, quota.OpChatQuery} {
+		if quota.OperationCost(op) != 0 {
+			t.Errorf("%s is priced again — it is the conversation, not a tool", op)
+			continue
+		}
+		if n := quota.DailyLimit(op); n == quota.NoLimit {
+			t.Errorf("%s is free and uncapped, so a loop is bounded by nothing at "+
+				"all — it calls a model on every run", op)
 		}
 	}
 }

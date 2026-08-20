@@ -1,6 +1,7 @@
 package weather
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -71,7 +72,7 @@ func TestValidCoordinates(t *testing.T) {
 }
 
 func TestForecastTextInvalidCoordinatesDoesNotFetch(t *testing.T) {
-	got := ForecastText(91, 0)
+	got := ForecastText(context.Background(), 91, 0)
 	want := "Weather is unavailable because the requested coordinates are invalid."
 	if got != want {
 		t.Fatalf("ForecastText invalid coordinates = %q, want %q", got, want)
@@ -85,7 +86,7 @@ func TestForecastTextProviderUnavailableIsClear(t *testing.T) {
 	t.Cleanup(server.Close)
 	restoreNWSBaseURL(t, server.URL)
 
-	got := ForecastText(51.5074, -0.1278)
+	got := ForecastText(context.Background(), 51.5074, -0.1278)
 	if got != weatherUnavailableMessage {
 		t.Fatalf("ForecastText provider unavailable = %q, want %q", got, weatherUnavailableMessage)
 	}
@@ -135,7 +136,7 @@ func TestForecastTextUsesNWSFallbackWithoutGoogleKey(t *testing.T) {
 		}`))
 	})
 
-	got := ForecastText(40.7128, -74.0060)
+	got := ForecastText(context.Background(), 40.7128, -74.0060)
 	for _, want := range []string{
 		"Weather for New York, NY.",
 		"Freshness/source: source National Weather Service",

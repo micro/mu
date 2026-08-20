@@ -258,6 +258,19 @@ func (Server) Send(ctx context.Context, req *SendRequest, rsp *SendResponse) err
 // cannot be recalled if the charge then fails, and refusing up front is the
 // only point at which "there is not enough on this account" is still true.
 func charge(owner, op string) error {
+	// The daily cap first, because it is not about money.
+	//
+	// service/email checked this and service/mail did not, for the same
+	// operation — so email_send was capped at ten a day and a reply sent from
+	// the inbox, which comes through here, was bounded only by the balance. Two
+	// paths to one operation with two enforcement stories, and the uncapped one
+	// was the path a person actually uses.
+	//
+	// What a loop spends here is a sending domain's reputation, which no balance
+	// repairs. See the limit block in quota.json.
+	if over, why := quota.OverLimit(owner, op); over {
+		return fmt.Errorf("%s", why)
+	}
 	if !quota.Metered(op) {
 		return nil
 	}

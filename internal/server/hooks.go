@@ -702,6 +702,10 @@ func wireHooks() {
 			app.Log("wallet", "charging %s for %s: %v", account, op, err)
 		}
 	}
+	// Served without reaching a paid provider: recorded, because /usage should
+	// show what an account did, and not charged, because it cost nothing to
+	// answer. See internal/service/meter.go.
+	service.Gate.Free = func(account, op string) { quota.Record(account, op) }
 	// One counter, moved once, after the call succeeded — it is what both the
 	// free allowance and the daily limit read.
 	service.Gate.Done = quota.Done

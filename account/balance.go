@@ -70,22 +70,14 @@ func BalanceCard(userID string) string {
 		admin = app.Note("You are an admin on this instance, so your own calls are never charged.")
 	}
 
-	// Today's allowance, when there is one and this account is not exempt from
-	// needing it. Said here because it is the reason the balance is not the
-	// whole story: somebody watching a balance of zero and using the product
-	// anyway is owed an explanation, and somebody about to be charged is owed
-	// the warning that the free part has run out.
+	// No note about a daily allowance, because there is not one any more.
+	//
+	// A balance of zero used to need explaining: the agent cost credits, an
+	// allowance covered it, and somebody watching zero while the product worked
+	// was owed a reason. Talking to your agent is free now, so zero is the
+	// ordinary state of an account that has not reached for anything a third
+	// party bills us for — and it needs no note.
 	free := ""
-	if !isAdmin && quota.DailyQuota > 0 && quota.Charging() {
-		if left := quota.FreeCreditsLeft(userID); left > 0 {
-			free = app.Note(fmt.Sprintf("%d of today's %d free credits left. Resets at midnight.",
-				left, quota.DailyQuota))
-		} else {
-			free = app.Note(fmt.Sprintf("Today's %d free credits are spent — "+
-				"further calls come out of the balance above. Resets at midnight.",
-				quota.DailyQuota))
-		}
-	}
 	// Two links, and both go somewhere else. Usage and History were here too,
 	// and the usage graph is the next card down and the history the one after
 	// that — a link is a promise that there is somewhere to go, and scrolling

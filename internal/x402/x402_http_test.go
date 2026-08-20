@@ -18,8 +18,13 @@ func TestWritePaymentRequiredHTTP(t *testing.T) {
 	t.Setenv("X402_NETWORK", "eip155:8453")
 	defer func() { x402PayTo = "" }()
 
-	const op = "agent_query"
-	const resource = "https://micro.mu/agent/run"
+	// A priced operation, because the challenge is built from the price and
+	// there is nothing to charge for a free one. This said agent_query, which
+	// stopped being priced when the agent stopped being a metered capability —
+	// see quota.json. Any of the third-party operations does; web search is the
+	// one the README uses.
+	const op = "web_search"
+	const resource = "https://micro.mu/mcp"
 
 	rec := httptest.NewRecorder()
 	WritePaymentRequired(rec, op, resource, nil, "")

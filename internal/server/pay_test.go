@@ -39,15 +39,13 @@ func broke(t *testing.T, id string, balance int) string {
 	quota.Balance = func(account string) int { return balances[account] }
 	t.Cleanup(func() { quota.Enabled, quota.Balance = prevEnabled, prevBalance })
 
-	// And today's free allowance spent, so the balance is the only thing left
-	// deciding. Every account gets quota.DailyQuota credits a day whether or
-	// not it has ever paid — see internal/quota/allowance.go — so without this
-	// an account with a balance of zero is not broke, it is new, and these
-	// tests are about what happens to somebody who has run out.
+	// The balance is the only thing deciding. There used to be a daily grant of
+	// credits to spend down here first, because an account with a balance of
+	// zero was not broke, it was new — and these tests are about somebody who
+	// has run out. The grant is gone: talking to the agent costs nothing, so
+	// zero is simply zero.
 	quota.ResetAllowances()
 	t.Cleanup(quota.ResetAllowances)
-	for quota.FreeCreditsLeft(id) > 0 && quota.SpendFreeCredits(id, 1) {
-	}
 
 	return secret
 }

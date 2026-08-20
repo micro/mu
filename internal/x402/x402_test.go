@@ -89,7 +89,10 @@ func TestBuildPaymentRequirementsShape(t *testing.T) {
 	t.Setenv("X402_NETWORK", "eip155:8453")
 	defer func() { x402PayTo = "" }()
 
-	reqs := BuildPaymentRequirements("chat_query", "https://m3o.com/mcp")
+	// A priced operation: chat_query is free now — answering in a room is the
+	// agent talking, not a tool being called — and a free one has no price to
+	// build a requirement from.
+	reqs := BuildPaymentRequirements("web_search", "https://m3o.com/mcp")
 	if len(reqs) == 0 {
 		t.Fatal("expected at least one requirement")
 	}

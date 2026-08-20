@@ -86,16 +86,31 @@ func TestTransactionTypeConstants(t *testing.T) {
 }
 
 func TestDefaultCosts(t *testing.T) {
-	// A model call always costs something.
+	// A model call a caller *chose to make as a tool* costs something.
+	//
+	// This used to include chat and agent, on the flat rule that a model call is
+	// never free. The rule was about arithmetic and the answer is a product
+	// decision: talking to your agent is the thing you came for, and metering it
+	// meant a new account could not ask a question until it had paid — which is
+	// why a daily grant of credits existed to pay the charge straight back. The
+	// agent is free and bounded by a count instead; a tool it calls still pays
+	// for itself.
 	for name, cost := range map[string]int{
-		"chat":      quota.OperationCost(quota.OpChatQuery),
-		"agent":     quota.OperationCost(quota.OpAgentQuery),
 		"image":     quota.OperationCost(quota.OpImageGenerate),
 		"app build": quota.OperationCost(quota.OpAppBuild),
 		"app edit":  quota.OperationCost(quota.OpAppEdit),
 	} {
 		if cost < 1 {
 			t.Errorf("%s calls a model, so it cannot be free", name)
+		}
+	}
+	// And the conversation is free, on both surfaces that carry one.
+	for name, cost := range map[string]int{
+		"agent": quota.OperationCost(quota.OpAgentQuery),
+		"chat":  quota.OperationCost(quota.OpChatQuery),
+	} {
+		if cost != 0 {
+			t.Errorf("%s costs %d — the conversation is the product, not a tool", name, cost)
 		}
 	}
 
@@ -124,14 +139,21 @@ func TestDefaultCosts(t *testing.T) {
 	// An app build is one generation. It was 100 — six times the next most
 	// expensive thing on the menu, and more than an agent run that may make
 	// several model calls.
-	if quota.OperationCost(quota.OpAppBuild) > 3*quota.OperationCost(quota.OpAgentQuery) {
-		t.Errorf("app build at %d is out of proportion to an agent run at %d", quota.OperationCost(quota.OpAppBuild), quota.OperationCost(quota.OpAgentQuery))
+	// The agent is free now, so there is no agent price to be in proportion to.
+	// Image generation is the yardstick instead: both are one expensive model
+	// call, and a build that costs several times an image is out of step.
+	if quota.OperationCost(quota.OpAppBuild) > 2*quota.OperationCost(quota.OpImageGenerate) {
+		t.Errorf("app build at %d is out of proportion to an image at %d",
+			quota.OperationCost(quota.OpAppBuild), quota.OperationCost(quota.OpImageGenerate))
 	}
 	if quota.OperationCost(quota.OpExternalEmail) <= quota.OperationCost(quota.OpMailSend) {
 		t.Error("external email should cost more than internal mail")
 	}
-	if quota.DailyQuota < 1 {
-		t.Error("daily quota should be >= 1")
+	// Talking to the agent is free, which is what makes an account usable at a
+	// balance of zero. It was 7, and the daily grant of credits that existed to
+	// pay that 7 back is gone with it.
+	if c := quota.OperationCost(quota.OpAgentQuery); c != 0 {
+		t.Errorf("talking to the agent costs %d — it is the product, not a tool it calls", c)
 	}
 }
 

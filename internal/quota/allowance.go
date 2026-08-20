@@ -27,75 +27,33 @@ import (
 	"time"
 )
 
-// used counts calls per account per operation for the current day, and — under
-// the one key an operation name cannot spell — credits spent from the daily
-// allowance. One map so there is one mutex and one midnight.
+// used counts calls per account per operation for the current day. One map so
+// there is one mutex and one midnight.
 var used struct {
 	sync.Mutex
 	day   string
 	count map[string]int
 }
 
-// creditsKey is where the day's free spend is counted. An operation name is
-// [a-z_]+, so nothing can collide with it.
-const creditsKey = "\x00credits"
-
-// FreeCreditsLeft is how much of today's allowance this account has not spent.
+// There was a daily allowance of credits here — a hundred a day, spent against
+// any priced operation before the balance was touched — and it is gone.
 //
-// The allowance is in credits rather than calls because a call's cost varies by
-// a factor of twenty — one weather lookup against an image — and "100 free
-// calls" would mean something different every day. Credits are the unit the
-// prices are already in.
-func FreeCreditsLeft(account string) int {
-	if account == "" || DailyQuota <= 0 {
-		return 0
-	}
-	used.Lock()
-	defer used.Unlock()
-	rollLocked()
-	if spent := used.count[account+"\x00"+creditsKey]; spent < DailyQuota {
-		return DailyQuota - spent
-	}
-	return 0
-}
-
-// SpendFreeCredits takes cost out of today's allowance and reports whether it
-// fitted. Nothing is taken when it does not.
+// It existed for one reason: a new account started at zero, talking to the agent
+// cost seven, so a fresh signup could do nothing at all. That is a real problem
+// and this was the wrong fix for it. Charging for the agent and then handing
+// back credits to cover the charge is two mechanisms cancelling out, and what
+// they left behind was a number a person had to understand before they could
+// ask a question.
 //
-// Checked and spent under one lock, or two calls landing together would each
-// see room for the last credit and both take it.
+// The agent is the product, not a metered capability. It is free and bounded by
+// a daily count, like the outbound operations below. Credits are for what a
+// third party bills us per request — a search, an image, a text — and an account
+// needs none until it reaches for one of those. Nothing to grant, nothing to
+// cancel out, nothing to explain.
 //
-// All-or-nothing on purpose: a call that half fits is not half made. Somebody
-// with 2 credits left asking for a 7-credit agent run pays the 7 from their
-// balance, and the 2 stay there for something cheaper. Draining the remainder
-// first would leave them paying 5 for a run priced at 7, which is a bill nobody
-// can reconcile against the price list.
-func SpendFreeCredits(account string, cost int) bool {
-	if account == "" || cost <= 0 || DailyQuota <= 0 {
-		return false
-	}
-	used.Lock()
-	defer used.Unlock()
-	rollLocked()
-	k := account + "\x00" + creditsKey
-	if used.count[k]+cost > DailyQuota {
-		return false
-	}
-	used.count[k] += cost
-	return true
-}
-
-// FreeCreditsUsed is how much of today's allowance has gone, for the pages that
-// show it.
-func FreeCreditsUsed(account string) int {
-	if account == "" {
-		return 0
-	}
-	used.Lock()
-	defer used.Unlock()
-	rollLocked()
-	return used.count[account+"\x00"+creditsKey]
-}
+// It also quietly undid a control: service/sms says in its own package comment
+// that "the price does the rest of the work", and an allowance that zeroes the
+// price for the first five texts takes that work away.
 
 // today is the date the counters belong to. A string rather than a timer: the
 // process may be asleep at midnight, and comparing the date is cheaper than
@@ -184,7 +142,9 @@ func OverLimit(account, operation string) (bool, string) {
 	if UsedToday(account, operation) < limit {
 		return false, ""
 	}
-	return true, fmt.Sprintf("that is %d today, which is this account's limit for %s — it resets at midnight, and a plan raises it",
+	// No mention of a plan. There are none, and offering one that does not
+	// exist to somebody who has just been refused is worse than the refusal.
+	return true, fmt.Sprintf("that is %d today, which is this account's limit for %s — it resets at midnight",
 		limit, Describe(operation))
 }
 

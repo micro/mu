@@ -1,6 +1,7 @@
 package weather
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -51,7 +52,7 @@ func nwsProvider(t *testing.T) *int {
 func TestTheSamePlaceIsFetchedOnce(t *testing.T) {
 	calls := nwsProvider(t)
 
-	if _, err := FetchWeather(51.5074, -0.1278); err != nil {
+	if _, err := FetchWeather(context.Background(), 51.5074, -0.1278); err != nil {
 		t.Fatal(err)
 	}
 	if *calls != 1 {
@@ -59,7 +60,7 @@ func TestTheSamePlaceIsFetchedOnce(t *testing.T) {
 	}
 
 	for i := 0; i < 5; i++ {
-		if _, err := FetchWeather(51.5074, -0.1278); err != nil {
+		if _, err := FetchWeather(context.Background(), 51.5074, -0.1278); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -72,13 +73,13 @@ func TestTheSamePlaceIsFetchedOnce(t *testing.T) {
 func TestNearbyCoordinatesShareAnAnswer(t *testing.T) {
 	calls := nwsProvider(t)
 
-	FetchWeather(51.5074, -0.1278)
-	FetchWeather(51.5081, -0.1275) // ~80 metres away
+	FetchWeather(context.Background(), 51.5074, -0.1278)
+	FetchWeather(context.Background(), 51.5081, -0.1275) // ~80 metres away
 	if *calls != 1 {
 		t.Errorf("neighbouring coordinates made %d calls, want 1", *calls)
 	}
 
-	FetchWeather(48.8566, 2.3522) // Paris is not London
+	FetchWeather(context.Background(), 48.8566, 2.3522) // Paris is not London
 	if *calls != 2 {
 		t.Errorf("a different city made %d calls in total, want 2", *calls)
 	}
@@ -92,9 +93,9 @@ func TestAStaleForecastIsFetchedAgain(t *testing.T) {
 	now = func() time.Time { return at }
 	t.Cleanup(func() { now = time.Now })
 
-	FetchWeather(51.5074, -0.1278)
+	FetchWeather(context.Background(), 51.5074, -0.1278)
 	at = at.Add(forecastTTL + time.Minute)
-	FetchWeather(51.5074, -0.1278)
+	FetchWeather(context.Background(), 51.5074, -0.1278)
 
 	if *calls != 2 {
 		t.Errorf("a stale forecast was reused: %d calls, want 2", *calls)
@@ -138,13 +139,13 @@ func TestFailuresAreNotCached(t *testing.T) {
 			{"name":"Today","startTime":"2026-08-04T06:00:00Z","isDaytime":true,"temperature":20,"temperatureUnit":"C","shortForecast":"Sunny"}]}}`))
 	})
 
-	if _, err := FetchWeather(10, 10); err == nil {
+	if _, err := FetchWeather(context.Background(), 10, 10); err == nil {
 		t.Fatal("expected the first fetch to fail")
 	}
 	before := calls
 
 	fail = false
-	if _, err := FetchWeather(10, 10); err != nil {
+	if _, err := FetchWeather(context.Background(), 10, 10); err != nil {
 		t.Fatalf("the retry failed: %v", err)
 	}
 	if calls <= before {

@@ -1,6 +1,7 @@
 package weather
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -9,12 +10,12 @@ import (
 
 // ForecastText returns a compact, model-ready weather summary for a location.
 // It is the AI-first accessor behind the weather_forecast agent tool.
-func ForecastText(lat, lon float64) string {
+func ForecastText(ctx context.Context, lat, lon float64) string {
 	if !validCoordinates(lat, lon) {
 		return "Weather is unavailable because the requested coordinates are invalid."
 	}
 
-	wf, err := FetchWeather(lat, lon)
+	wf, err := FetchWeather(ctx, lat, lon)
 	if err != nil || wf == nil {
 		return weatherUnavailableMessage
 	}

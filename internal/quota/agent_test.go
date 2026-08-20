@@ -38,25 +38,19 @@ func TestAnAgentAccountIsRecordedNotCharged(t *testing.T) {
 	}
 
 	// A person with the same empty balance is refused, which is the half that
-	// must not have been loosened. Once their day's allowance is gone: an empty
-	// balance on its own is no longer a refusal, because an account that has
-	// never paid still gets DailyQuota credits a day — see allowance.go. The
-	// agent's exemption is that it is never charged at all, which is a different
-	// thing and the thing under test.
+	// must not have been loosened. There used to be a daily grant of credits to
+	// spend down first before this held; it is gone, so an empty balance is an
+	// empty balance. The agent's exemption is that it is never charged at all,
+	// which is a different thing and the thing under test.
 	const human = "some-person"
 	auth.SetAccountForTest(&auth.Account{ID: human, Name: "Some person"})
 	t.Cleanup(func() { auth.RemoveAccountForTest(human) })
 	ResetAllowances()
 	t.Cleanup(ResetAllowances)
-	for FreeCreditsLeft(human) > 0 {
-		if !SpendFreeCredits(human, 1) {
-			break
-		}
-	}
 	if ok, _, _, _ := CheckQuota(human, OpWebSearch); ok {
-		t.Error("a person with no credits and no allowance left was allowed a metered call")
+		t.Error("a person with no credits was allowed a metered call")
 	}
-	// And the agent still is not, allowance or no allowance.
+	// And the agent still is not.
 	if ok, _, _, _ := CheckQuota(id, OpWebSearch); !ok {
 		t.Error("an agent account was refused once a person's allowance ran out")
 	}

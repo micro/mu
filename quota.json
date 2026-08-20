@@ -3,62 +3,33 @@
     "What each operation costs, in credits. One credit is one penny.",
     "",
     "An operation is charged when it costs this instance something to run: a",
-    "model call, or a third party we are billed for per request. Anything that",
-    "only touches this instance's own storage is 0, because it has no marginal",
-    "cost and charging for it taxed exactly the behaviour the product wants",
-    "more of. Abuse control for those is auth.CheckPostRate, not the price.",
+    "model call to somebody we pay, or a third party billed per request.",
+    "Anything that only touches this instance's own storage is 0, because it",
+    "has no marginal cost and charging for it taxed exactly the behaviour the",
+    "product wants more of. Abuse control for those is auth.CheckPostRate,",
+    "not the price.",
     "",
-    "This is an operator's file. Edit it, or drop a pricing.json in the data",
-    "directory to override without rebuilding, or set the env var named on any",
-    "line to override that one. Env wins, then the data directory, then this.",
+    "Talking to your agent is 0 as well, and that is a product decision rather",
+    "than an arithmetic one. The agent is the thing you came for; metering it",
+    "meant a new account could not ask a question until it had paid, which is",
+    "why there used to be a daily grant of credits here to cancel the charge",
+    "back out. Both are gone. What bounds it now is `limit` \u2014 a count of runs",
+    "a day, which is abuse control and not a price.",
     "",
-    "label is what the cost table on /pricing and /wallet says. An operation",
-    "with no entry here is not published and charges 1 credit, which a test",
-    "catches — see TestEveryChargedOperationIsPublished.",
+    "A price is what a *fetch* costs. A call the instance answered from",
+    "something it already had \u2014 a cached forecast, a stored tile \u2014 is not",
+    "charged; see internal/service/meter.go. So the busier a shared instance",
+    "is, the less its callers pay.",
     "",
-    "free is how many of an operation an account gets each day before the cost",
-    "applies, and free_env overrides it the way env overrides cost. Zero, or",
-    "absent, means the price applies from the first call.",
+    "`limit` is a hard count per account per day, separate from money and",
+    "checked before it. It is the second control for the three operations that",
+    "reach a stranger \u2014 a price stops somebody who has to pay and does nothing",
+    "about a loop, and what a loop spends there is a domain's or a number's",
+    "reputation, which no balance repairs.",
     "",
-    "limit is the most of an operation one account may do in a day, whatever",
-    "its balance, and limit_env overrides it. Absent means no limit; an",
-    "explicit 0 means nobody may do it at all, which is the kill switch. A",
-    "price and a limit fail differently, which is why both exist: a price stops",
-    "somebody who has to pay and does nothing about a loop, and a runaway agent",
-    "with a funded balance is the case that costs real money. The three",
-    "operations carrying one are the three that leave this instance — an email,",
-    "a text, a WhatsApp conversation — because what those spend is a domain's",
-    "or a number's reputation, and no refund repairs that. A plan raises them;",
-    "the number here is the floor everybody gets.",
-    "",
-    "This is the shape the providers underneath already use — Google gives ten",
-    "thousand Routes calls a month before billing anything — and it separates two",
-    "decisions that were stuck together. What a call costs us is arithmetic about",
-    "providers. How much of it somebody gets for nothing is a commercial choice,",
-    "and it belongs to whoever runs the instance. Before this the only way to let",
-    "people try something was to price it at zero, which then gave it away for",
-    "ever.",
-    "",
-    "Every per-operation allowance is 0 today. The one that is set is",
-    "daily_quota below, which is the same idea for the account as a whole.",
-    "",
-    "daily_quota is how many credits of activity an account gets each day",
-    "before its balance is touched. It is the front door: nothing grants an",
-    "account credits at signup, so without this a new account can do nothing",
-    "at all, and the first question anybody asked was answered with a link to",
-    "a top-up page. In credits rather than calls because a call's cost varies",
-    "twentyfold — a weather lookup against an image — so a number of calls",
-    "would mean something different every day.",
-    "",
-    "At 100 that is roughly ten agent questions a day, which is enough to find",
-    "out whether the thing is any use. Spent before the balance, all or",
-    "nothing per call, and forgotten at midnight UTC. Set it to 0 to run an",
-    "instance where everything is paid for from the first call."
+    "This is an operator's file. Edit it, or drop a quota.json in the data",
+    "directory to override without rebuilding."
   ],
-  "daily_quota": {
-    "value": 100,
-    "env": "DAILY_QUOTA"
-  },
   "operations": [
     {
       "op": "places_search",
@@ -79,14 +50,14 @@
       "cost": 2,
       "label": "Travel time between two places",
       "env": "CREDIT_COST_PLACES_ETA",
-      "note": "routes_eta. Google Routes, 0.38p at Essentials (£3.76/1k after 10k free), 0.75p at Pro. We ask for traffic, which may bill at Pro — priced to cover it. The op id keeps the old name so an operator's existing override and usage history survive the rename"
+      "note": "routes_eta. Google Routes, 0.38p at Essentials (\u00a33.76/1k after 10k free), 0.75p at Pro. We ask for traffic, which may bill at Pro \u2014 priced to cover it. The op id keeps the old name so an operator's existing override and usage history survive the rename"
     },
     {
       "op": "routes_directions",
       "cost": 3,
       "label": "Turn-by-turn directions",
       "env": "CREDIT_COST_ROUTES_DIRECTIONS",
-      "note": "Google Routes asking for steps and the road's shape, which is more than an ETA and bills higher — 1.14p at Enterprise"
+      "note": "Google Routes asking for steps and the road's shape, which is more than an ETA and bills higher \u2014 1.14p at Enterprise"
     },
     {
       "op": "weather_forecast",
@@ -106,20 +77,25 @@
       "cost": 2,
       "label": "Web search",
       "env": "CREDIT_COST_SEARCH",
-      "note": "Brave, ~0.4p — was 5, a 12x markup"
+      "note": "Brave, ~0.4p \u2014 was 5, a 12x markup"
     },
     {
       "op": "chat_query",
-      "cost": 5,
-      "label": "Chat query",
-      "env": "CREDIT_COST_CHAT"
+      "cost": 0,
+      "label": "Chat room reply",
+      "env": "CREDIT_COST_CHAT",
+      "limit": 200,
+      "limit_env": "CHAT_DAILY_LIMIT",
+      "note": "Free for the same reason as agent_query: answering in a room is the agent talking, not a tool being called."
     },
     {
       "op": "agent_query",
-      "cost": 7,
-      "label": "Agent (standard)",
+      "cost": 0,
+      "label": "Talking to your agent",
       "env": "CREDIT_COST_AGENT",
-      "note": "The model calls in one run — a plan and a synthesis where a chat turn is one call — and nothing else. This said the price covered the fan-out across tools, which stopped being true when the gateway began charging every endpoint that declares a Cost: the tools in a run now pay for themselves, one line each on the receipt. The number survives that; the reason written beside it did not, and a stale reason is how a price gets counted twice by the next person to read it"
+      "note": "Free, because the agent is the product rather than a tool it calls. It was 7, and a new account started at zero \u2014 so it could not ask a question until it had paid, and a daily grant of credits existed to cancel that charge back out. Two mechanisms undoing each other, and a number a person had to understand before they could speak to their own agent. What bounds it now is limit, which is a count and not a price. The tools a run calls still pay for themselves, one line each on the receipt.",
+      "limit": 200,
+      "limit_env": "AGENT_DAILY_LIMIT"
     },
     {
       "op": "image_generate",
@@ -160,7 +136,7 @@
       "cost": 15,
       "label": "App build (AI)",
       "env": "CREDIT_COST_APP_BUILD",
-      "note": "Was 100 — a pound, six times the next most expensive thing on the menu, for less model than an agent run"
+      "note": "Was 100 \u2014 a pound, six times the next most expensive thing on the menu, for less model than an agent run"
     },
     {
       "op": "app_edit",
@@ -185,7 +161,7 @@
       "limit_env": "WHATSAPP_DAILY_LIMIT",
       "label": "WhatsApp conversation",
       "env": "CREDIT_COST_WHATSAPP",
-      "note": "Twilio bills WhatsApp by the 24-hour conversation rather than the message, so this is charged once per window and the rest of the thread is free. Cheaper than a text because it costs us less and cannot be sent cold — the other person has to write first"
+      "note": "Twilio bills WhatsApp by the 24-hour conversation rather than the message, so this is charged once per window and the rest of the thread is free. Cheaper than a text because it costs us less and cannot be sent cold \u2014 the other person has to write first"
     },
     {
       "op": "sms_send",
@@ -194,7 +170,7 @@
       "limit_env": "SMS_DAILY_LIMIT",
       "label": "Text message (per segment)",
       "env": "CREDIT_COST_SMS",
-      "note": "Twilio: under a penny to a US mobile, ~4p to a UK one, and charged per 160-character segment. A markup that would be silly on a search is the point here — a text cannot be unsent, and the number's reputation is shared by everybody on the instance. Ten pence makes a spam run cost real money before any of the other limits are reached"
+      "note": "Twilio: under a penny to a US mobile, ~4p to a UK one, and charged per 160-character segment. A markup that would be silly on a search is the point here \u2014 a text cannot be unsent, and the number's reputation is shared by everybody on the instance. Ten pence makes a spam run cost real money before any of the other limits are reached"
     },
     {
       "op": "news_search",

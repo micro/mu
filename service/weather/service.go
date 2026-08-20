@@ -27,8 +27,10 @@ type ForecastResponse struct {
 // Forecast returns the weather forecast for a location (current conditions
 // plus the next few days).
 // @example {"lat": 51.5074, "lon": -0.1278}
-func (Server) Forecast(_ context.Context, req *ForecastRequest, rsp *ForecastResponse) error {
-	rsp.Summary = ForecastText(req.Lat, req.Lon)
+func (Server) Forecast(ctx context.Context, req *ForecastRequest, rsp *ForecastResponse) error {
+	// ctx carries the call's meter: a forecast served from the shared cache
+	// costs this instance nothing and is not charged for. See FetchWeather.
+	rsp.Summary = ForecastText(ctx, req.Lat, req.Lon)
 	return nil
 }
 

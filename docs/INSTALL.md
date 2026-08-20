@@ -484,7 +484,7 @@ says so; nothing else is affected.
 | `TWILIO_FROM` | — | The numbers texts are sent from and received on, in E.164 (`+447700900123`), comma-separated. **One per country you serve.** The sender is chosen to match the destination — a US long code texting a UK handset is filtered by UK carriers, and a UK number texting a US handset is blocked outright, so a country with no number of its own is refused rather than sent from the wrong one |
 | `TWILIO_MESSAGING_SERVICE_SID` | — | A Twilio Messaging Service to send through instead of picking a number here. With **Geomatch** enabled it chooses the sender whose country matches the handset, which is the same rule applied by the party that knows which of your numbers are registered for what. Set `TWILIO_FROM` as well so the page can say what a reply will come from |
 | `SMS_COUNTRIES` | `1,44,353,33,49,34,39,31` | Country codes this instance will text, comma-separated. An allowlist rather than a blocklist: a text to a premium range can cost fifty times what one to a mobile does, and those ranges are where revenue-share fraud lives |
-| `SMS_DAILY_LIMIT` | `5` | Messages one account may send in a day, on top of the per-message price. It is `limit_env` on `sms_send` in `quota.json`, where the number lives. A plan raises it. **Set it to `0` to stop sending entirely** — that is the kill switch, and it is the same setting rather than a second one because an operator reaching for it is in a hurry |
+| `SMS_DAILY_LIMIT` | `5` | Messages one account may send in a day, on top of the per-message price. It is `limit_env` on `sms_send` in `quota.json`, where the number lives. **Set it to `0` to stop sending entirely** — that is the kill switch, and it is the same setting rather than a second one because an operator reaching for it is in a hurry |
 | `WHATSAPP_DAILY_LIMIT` | `50` | Conversations one account may open in a day. `limit_env` on `whatsapp_send` in `quota.json`. Twilio bills WhatsApp by the 24-hour conversation rather than the message, so this counts windows opened, not replies sent |
 | `SMS_NEW_ACCOUNT_LIMIT` | `3` | The same cap for an account less than a day old. Signing up is free and takes a minute, so this is the only thing between a script and the full allowance |
 | `SMS_KNOWN_ONLY` | off | Restrict sending to numbers the caller already knows — someone in their contacts, a number they verified as their own, or one that texted them first. Off, because `contacts_add` takes any number and defeats it in one call, and because it stopped an agent doing the ordinary thing. On, it is a real brake for an instance that wants one |
@@ -687,7 +687,8 @@ that same file, so this page does not repeat twenty-six rows.
 
 | Variable | Default | What it does |
 |---|---|---|
-| `DAILY_QUOTA` · `FREE_DAILY_QUOTA` | — | Credits granted per day, paid and free tiers |
+| `AGENT_DAILY_LIMIT` | `200` | Agent runs one account may make in a day. Talking to the agent costs no credits — it is the product rather than a tool it calls — so this count is what bounds it. It is `limit_env` on `agent_query` in `quota.json`, where the number lives. Set it to `0` to stop the agent answering at all |
+| `CHAT_DAILY_LIMIT` | `200` | The same, for replies in a discussion room (`chat_query`) |
 | `POST_LIMIT_PER_HOUR` · `NEW_POST_LIMIT_PER_HOUR` | — | Posting rate limit, and the tighter one for new accounts |
 | `VIDEO_SEARCH_PER_HOUR` | 20 | YouTube searches one account may run per hour |
 | `VIDEO_SEARCH_PER_DAY` | 80 | YouTube searches this instance may run per day, kept under the API's own quota |

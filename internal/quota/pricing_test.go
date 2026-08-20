@@ -163,7 +163,10 @@ func TestTheShippedFileParses(t *testing.T) {
 	if len(f.Operations) == 0 {
 		t.Fatal("the price list is empty")
 	}
-	if f.DailyQuota.Value <= 0 {
-		t.Error("quota.json sets no daily quota")
+	// No daily_quota key any more. It granted every account a hundred credits a
+	// day to spend on anything priced, which existed only to pay back the charge
+	// for talking to the agent — and the agent is free now.
+	if strings.Contains(string(b), "daily_quota") {
+		t.Error("quota.json is granting a daily allowance again")
 	}
 }

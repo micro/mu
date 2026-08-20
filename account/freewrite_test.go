@@ -55,13 +55,10 @@ func TestFreeOperationsAreNotRefused(t *testing.T) {
 	}
 
 	// Free must not have become a bypass: a priced operation on an empty wallet
-	// is still refused — once the day's allowance is gone. An empty wallet on
-	// its own is not a refusal any more, because every account gets
-	// quota.DailyQuota credits a day whether or not it has ever paid.
+	// is still refused. There used to be a daily grant of credits to spend down
+	// before this held, and there is not any more.
 	quota.ResetAllowances()
 	t.Cleanup(quota.ResetAllowances)
-	for quota.FreeCreditsLeft(id) > 0 && quota.SpendFreeCredits(id, 1) {
-	}
 	if quota.OperationCost(quota.OpImageGenerate) > 0 {
 		if err := quota.ConsumeQuota(id, quota.OpImageGenerate); err == nil {
 			t.Fatal("a priced operation was allowed through on an empty wallet " +

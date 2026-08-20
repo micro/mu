@@ -18,10 +18,53 @@ Measured, not remembered.
 | A new account starts with | **0 credits** |
 | One credit is | **£0.01** |
 | Ways to pay | **top up** any amount at 1p a credit · **x402** per request, no account · **self-host**, nothing metered |
-| Plans on offer | **Starter £10 → 1,000 credits, Pro £100 → 10,000** — rolling, at the same 1p, `/plans` |
-| `daily_quota: 100` in quota.json | **dead** — declared, documented, configurable, read by nothing |
-| Operations priced at 0 | 15 of 27 |
+| Plans on offer | **none** — `/plans` redirects to `/pricing`, which is a price list and not a chooser |
+| Talking to the agent | **free** — bounded by a daily count, not a price |
+| Daily grant of credits | **none** — there was one; see "The allowance that cancelled itself out" |
+| A call served from cache | **not charged** — the price is what a *fetch* costs |
+| Operations priced at 0 | 17 of 32 |
 | Charging path | one gateway, since `127a326` |
+
+## The allowance that cancelled itself out
+
+Two things were true at once and they were undoing each other.
+
+Talking to the agent cost 7 credits, and nothing grants credits at signup — so a
+new account could not ask its own agent a question. The fix was a daily grant of
+100 credits, spendable on anything priced. Which is to say: the product charged
+for itself and then handed you the money to pay the charge.
+
+What that left behind was a number a person had to understand before they could
+speak to their agent, and it quietly removed a control. `service/sms` says in its
+own package comment that "the price does the rest of the work" — an allowance
+that zeroes the price for the first five texts takes that work away, and the
+three operations that reach a stranger were reachable for nothing.
+
+Both are gone. **The agent is free**, because it is the product rather than a
+tool it calls, and metering the thing somebody came for is a toll booth at their
+own front door. It is bounded by `limit` in quota.json — a count of runs a day,
+which is abuse control and not a tariff. **Credits buy what a third party bills
+us for**: a search, an image, a place, a text. A new account needs none, because
+there is nothing it has to buy in order to start.
+
+## You pay for a fetch, not for a call
+
+A price is the marginal cost of *going and getting* something. A great many calls
+do not incur it: `service/weather` keeps one forecast per place per half hour and
+serves it to everybody, `service/tiles` fetches a tile once, ever.
+
+Those were charged at full price anyway, so the instance banked the saving and
+the second person to ask for London's weather paid the same as the first. That is
+backwards for a shared instance — the reason to call a tool here rather than hold
+your own API key is that somebody may already have asked.
+
+A handler that answered without reaching a paid provider says so
+(`service.ServedFromCache`) and the gateway settles nothing. Reserved before the
+call, settled after: a caller who cannot afford the worst case is still refused up
+front. The default is to charge, so a handler that forgets costs a caller a
+credit rather than costing the instance its revenue.
+
+It means the busier a shared instance is, the less any one caller pays.
 
 ## Why there are plans again, and what they are
 

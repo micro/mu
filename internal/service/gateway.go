@@ -60,6 +60,14 @@ var Gate struct {
 	// failed.
 	Charge func(account, operation string)
 
+	// Free records that the operation happened and cost nothing to serve.
+	//
+	// A call the handler answered without reaching a paid provider — a cache
+	// hit, a stored file, a keyless fallback. It is still something the account
+	// did and still belongs in /usage; what it is not is a purchase. See
+	// meter.go for why the saving belongs to the caller and not the operator.
+	Free func(account, operation string)
+
 	// Done says one succeeded, whether or not it was charged for.
 	//
 	// Separate from Charge because a call can succeed and cost nothing — an
@@ -133,6 +141,11 @@ func gateway(spec Spec) server.HandlerWrapper {
 				retErr = err
 				return retErr
 			}
+
+			// Reserved above, settled below, and in between the handler gets a
+			// meter to say what the call actually cost us. See meter.go.
+			ctx, m := withMeter(ctx)
+
 			if err := next(ctx, req, rsp); err != nil {
 				retErr = err
 				return retErr
@@ -140,7 +153,18 @@ func gateway(spec Spec) server.HandlerWrapper {
 			// Charged after the fact, so a call that failed is not billed. The
 			// provider may still have cost us; charging for a failure loses an
 			// account rather than a credit.
-			if charge && Gate.Charge != nil {
+			//
+			// And not billed at all when the handler never had to fetch
+			// anything. The price of an operation is the price of going and
+			// getting it; on a shared instance the second person to ask for
+			// London's weather is served from the first person's call, and
+			// charging them for it hands the saving to the operator.
+			switch {
+			case charge && m.servedFromCache():
+				if Gate.Free != nil {
+					Gate.Free(who, op)
+				}
+			case charge && Gate.Charge != nil:
 				Gate.Charge(who, op)
 			}
 			// Counted whether or not it was billed, because a free allowance

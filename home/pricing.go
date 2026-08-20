@@ -2,12 +2,10 @@ package home
 
 import (
 	"net/http"
-	"strconv"
 	"strings"
 
 	"mu/account"
 	"mu/internal/app"
-	"mu/internal/quota"
 )
 
 // PricingHandler serves /pricing.
@@ -31,11 +29,10 @@ import (
 // here as a fact and not as three columns with a recommended one in the middle.
 //
 // Every number is read rather than written: the table comes from
-// account.PricingTableHTML, which renders quota.json, and the allowance is
-// quota.DailyQuota. An operator who changes the file changes this page, which
-// is the only way a price list stays true — the last one drifted because four
-// tables were maintained by hand and three of them had lost the most expensive
-// operation in the product.
+// account.PricingTableHTML, which renders quota.json. An operator who changes
+// the file changes this page, which is the only way a price list stays true —
+// the last one drifted because four tables were maintained by hand and three of
+// them had lost the most expensive operation in the product.
 func PricingHandler(w http.ResponseWriter, r *http.Request) {
 	var b strings.Builder
 	b.WriteString(app.Column())
@@ -59,22 +56,32 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 		 touches storage here is free, and free means free rather than
 		 included-up-to-a-limit.`))
 
-	if quota.DailyQuota > 0 {
-		section("Free every day",
-			para(`Every account gets <strong>`+strconv.Itoa(quota.DailyQuota)+
-				` credits a day</strong>, renewed daily, with no card and nothing to
-			 cancel. It is enough to use the agent properly rather than enough to
-			 look at it, and it is what most people will ever need.`),
-			para(`This is an allowance, not a tier: the operator of an instance sets
-			 the number, and running your own means setting it yourself.`))
-	}
+	section("Talking to your agent is free",
+		para(`No credits, no allowance to keep an eye on, nothing to cancel. Chat
+		 here, write to it from anywhere, read your inbox, keep files — the agent
+		 is what this is, and metering the thing you came for is a toll booth at
+		 your own front door.`),
+		para(`It is bounded by a count rather than a price, so a runaway loop stops
+		 and a person never does.`))
+
+	section("What you pay for is fetching",
+		para(`Credits buy the calls that cost somebody money: a web search, an
+		 image, a text message, a place looked up. You need none until you reach
+		 for one of those, and a new account starts at zero because there is
+		 nothing it has to buy first.`),
+		para(`And a price is what it costs to <em>go and get</em> something. If this
+		 instance already has the answer — a forecast somebody else asked for in
+		 the last half hour, a map tile it fetched once — you are not charged for
+		 a fetch that did not happen. That is the point of a shared instance
+		 rather than your own API key: the more people use it, the less any of
+		 them pays.`))
 
 	section("What things cost",
 		para(`Every operation, and what it charges. This is the same table the
 		 product renders on your account, from the same file.`),
 		account.PricingTableHTML())
 
-	section("Paying past the allowance",
+	section("Paying for what does cost",
 		para(`Top up in whatever amount suits you from <a href="/account">your
 		 account</a> and it is drawn down as you go. There is no subscription, no
 		 minimum, and credits do not expire.`),

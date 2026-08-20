@@ -1,6 +1,7 @@
 package weather
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"mu/internal/app"
+	"mu/internal/service"
 )
 
 const (
@@ -203,9 +205,14 @@ type googlePollenTypeInfo struct {
 
 // FetchWeather retrieves weather forecast from the Google Weather API.
 // Returns an error when GOOGLE_API_KEY is not set.
-func FetchWeather(lat, lon float64) (*WeatherForecast, error) {
+func FetchWeather(ctx context.Context, lat, lon float64) (*WeatherForecast, error) {
 	// Paid call. Reuse a recent one for the same place first — see cache.go.
+	//
+	// And say so, because a hit costs this instance nothing and the caller
+	// should not be charged the price of a fetch that did not happen. See
+	// internal/service/meter.go.
 	if f, ok := cachedForecast(lat, lon); ok {
+		service.ServedFromCache(ctx)
 		return f, nil
 	}
 	f, err := fetchWeather(lat, lon)
@@ -461,8 +468,9 @@ func parseNWSWindKph(wind string) float64 {
 
 // FetchPollen retrieves pollen forecast from the Google Pollen API.
 // Returns an error when GOOGLE_API_KEY is not set.
-func FetchPollen(lat, lon float64) ([]PollenForecast, error) {
+func FetchPollen(ctx context.Context, lat, lon float64) ([]PollenForecast, error) {
 	if p, ok := cachedPollen(lat, lon); ok {
+		service.ServedFromCache(ctx)
 		return p, nil
 	}
 	p, err := fetchPollen(lat, lon)

@@ -85,10 +85,6 @@ type Price struct {
 }
 
 type priceFile struct {
-	DailyQuota struct {
-		Value int    `json:"value"`
-		Env   string `json:"env"`
-	} `json:"daily_quota"`
 	Operations []Price `json:"operations"`
 }
 
@@ -96,20 +92,19 @@ var (
 	priceMu sync.RWMutex
 	prices  = map[string]Price{}
 	ordered []Price
-
-	// DailyQuota is how many credits of activity an account gets each day
-	// before its balance is touched. Zero turns it off.
-	//
-	// It said "free calls a day" and nothing read it, which is how the product
-	// came to have a price list, a balance, a top-up page and no free tier at
-	// all: an account started at zero and was refused its first question. The
-	// name and the env var are kept so an operator's existing DAILY_QUOTA
-	// override survives; the unit is credits, because a call's cost varies
-	// twentyfold and a count of calls means something different every day.
-	//
-	// See allowance.go for where it is spent.
-	DailyQuota = 100
 )
+
+// There was a DailyQuota here: a hundred credits an account got each day before
+// its balance was touched, spendable on anything priced.
+//
+// It was a patch for charging for the product. An account started at zero, the
+// agent cost seven, so a new signup could do nothing — and rather than stop
+// charging for the agent, the fix granted credits to pay the charge. Two
+// mechanisms cancelling out, leaving a number a person had to understand before
+// asking a question.
+//
+// The agent is free now and credits buy only what a third party bills us for,
+// so there is nothing to grant. See allowance.go.
 
 // defaults are the bytes of quota.json as main handed them over. Kept so
 // ReloadPrices can re-apply the data directory and the environment on top of
@@ -154,9 +149,6 @@ func apply(f priceFile) {
 	if b, err := data.LoadFile("quota.json"); err == nil && len(b) > 0 {
 		var override priceFile
 		if err := json.Unmarshal(b, &override); err == nil {
-			if override.DailyQuota.Value > 0 {
-				f.DailyQuota.Value = override.DailyQuota.Value
-			}
 			at := map[string]int{}
 			for i, p := range f.Operations {
 				at[p.Op] = i
@@ -192,16 +184,8 @@ func apply(f priceFile) {
 	}
 	sort.SliceStable(list, func(i, j int) bool { return list[i].Cost < list[j].Cost })
 
-	quotaValue := envOverride(f.DailyQuota.Env, f.DailyQuota.Value)
-	if f.DailyQuota.Env == "DAILY_QUOTA" {
-		// The older name, still honoured for instances configured before the
-		// rename.
-		quotaValue = envOverride("FREE_DAILY_QUOTA", quotaValue)
-		quotaValue = envOverride("DAILY_QUOTA", quotaValue)
-	}
-
 	priceMu.Lock()
-	prices, ordered, DailyQuota = byOp, list, quotaValue
+	prices, ordered = byOp, list
 	priceMu.Unlock()
 }
 

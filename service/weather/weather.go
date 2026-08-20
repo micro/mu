@@ -1,6 +1,7 @@
 package weather
 
 import (
+	"context"
 	"html"
 	"math"
 	"net/http"
@@ -40,7 +41,7 @@ func Load() {
 // forecast.
 func CardHTML(who service.Viewer) string {
 	if lat, lon, ok := auth.Located(who.Account); ok {
-		if f, err := FetchWeather(lat, lon); err == nil && f != nil && f.Current != nil {
+		if f, err := FetchWeather(context.Background(), lat, lon); err == nil && f != nil && f.Current != nil {
 			return serverCard(f, auth.PlaceName(who.Account))
 		}
 	}
@@ -200,7 +201,7 @@ func handleJSON(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Fetch weather
-	forecast, err := FetchWeather(lat, lon)
+	forecast, err := FetchWeather(r.Context(), lat, lon)
 	if err != nil {
 		app.RespondError(w, http.StatusServiceUnavailable, weatherUnavailableMessage)
 		return
@@ -240,7 +241,7 @@ func handleJSON(w http.ResponseWriter, r *http.Request) {
 			affordable, _, _, _ = quota.CheckQuota(caller, quota.OpWeatherPollen)
 		}
 		if affordable {
-			if pollen, err := FetchPollen(lat, lon); err == nil {
+			if pollen, err := FetchPollen(r.Context(), lat, lon); err == nil {
 				result["pollen"] = pollen
 				app.Charge(caller, quota.OpWeatherPollen)
 			}
