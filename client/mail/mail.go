@@ -7,7 +7,7 @@ package mail
 // not make the two the same thing. service/mail is the capability — an inbox,
 // an address, delivery — and this is a client of it: it speaks the shape mail
 // arrives in, hands the message to the agent, and turns the answer back into a
-// reply. The same job discord does, against a different protocol.
+// reply.
 //
 // It lived in internal/server/hooks.go, which is the file that exists to hold
 // cycles nothing else could avoid. This was never one of those: a client may
@@ -26,7 +26,7 @@ import (
 	"mu/service/mail"
 )
 
-// Client names this client in a run record. See discord.Client.
+// Client names this client in a run record.
 const Client = "mail"
 
 // historyTurns is how much of an email thread an agent is reminded of.

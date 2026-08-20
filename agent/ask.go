@@ -42,7 +42,7 @@ var errNoConversation = errors.New("no conversation with that id")
 // AskRequest is one message arriving from a client.
 type AskRequest struct {
 	Account string
-	// Client is which one: discord, telegram, whatsapp, mail, web, cli. Named
+	// Client is which one: web, cli, mail. Named
 	// for the directory rather than for an abstraction, because that is the
 	// word anybody would use for it.
 	Client string

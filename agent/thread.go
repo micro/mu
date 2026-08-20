@@ -17,7 +17,8 @@ import (
 // mail's message ids for a while, which made a workflow record the place a
 // reply looked for its history.
 type Via struct {
-	// Client is discord, telegram, whatsapp, mail, web, cli.
+	// Client is web, cli or mail. Records written before the chat clients
+	// were deleted also carry discord, telegram and whatsapp.
 	Client string
 	// Thread is the conversation in the record, where there is one.
 	Thread string

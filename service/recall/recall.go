@@ -65,7 +65,7 @@ func caller(ctx context.Context) (string, error) {
 
 type SearchRequest struct {
 	Query  string `json:"query" required:"true" description:"What to look for — a word or phrase that was said"`
-	Client string `json:"client" description:"Narrow to where it was said: web, mail, discord, telegram, whatsapp. Omit for everywhere"`
+	Client string `json:"client" description:"Narrow to where it was said: web, mail, cli. Omit for everywhere"`
 	Limit  int    `json:"limit" description:"Max results (default 20, max 200)"`
 }
 
@@ -176,7 +176,7 @@ func (Server) Conversation(ctx context.Context, req *ConversationRequest, rsp *C
 // ── List ────────────────────────────────────────────────────────
 
 type ListRequest struct {
-	Client string `json:"client" description:"Only conversations on one client: web, mail, discord, telegram, whatsapp"`
+	Client string `json:"client" description:"Only conversations on one client: web, mail, cli"`
 	Limit  int    `json:"limit" description:"Max conversations (default 20)"`
 }
 

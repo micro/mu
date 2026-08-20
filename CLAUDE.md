@@ -127,8 +127,9 @@ agent holds, and listing your agents is a page, which exists.
 
 ## Clients, and the record between them
 
-Five ways in — web, CLI, mail, mail, the web — and the agent is
-the same one behind all of them. What differs is protocol and nothing else, so a
+Three ways in — the web page, the CLI, and mail — and the agent is
+the same one behind all of them. There were six; Discord, Telegram and a Meta
+WhatsApp bot are deleted, and `/a2a` before them. What differs is protocol and nothing else, so a
 client's whole job is to translate: parse what arrived, hand it over, render what
 comes back, and name an agent where the address or the command already chose one
 (`agent+news@`, a slash command).

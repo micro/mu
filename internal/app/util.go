@@ -142,6 +142,8 @@ func ClientName(client string) string {
 		return "Web"
 	case "mail":
 		return "Email"
+	// The chat clients are deleted; these stay so a conversation recorded
+	// before that still says where it happened rather than showing a raw value.
 	case "discord":
 		return "Discord"
 	case "telegram":
