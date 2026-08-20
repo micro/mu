@@ -1,32 +1,7 @@
 # mu
 
-**A personal agent.** It has an email address. Write to it — from your mail,
-your phone, or anything that can send a message — and it answers in the thread
-and remembers the last one.
-
-Behind it are the tools: news, mail, search, weather, markets, video, places,
-files, contacts, calendar and your own documents, reachable over one MCP server
-and token. One Go binary, your domain, your data.
-
-## How it works
-
-**It has an address.** `agent@yourdomain` reaches the default one; each agent
-you make gets its own, `you+research@yourdomain`.
-
-**Write to it and it answers.** In the thread, from your mail client, your
-phone, a form, a cron job, or another agent — anything that can send an email.
-It replies where it was written to.
-
-**One inbox, whichever way it arrived.** Every conversation — the address, the
-web, Discord, Telegram, WhatsApp — is one record, read at `/inbox`. An agent
-remembers the last one whichever channel it came through.
-
-**Tools behind it.** News, web search, mail, markets, weather, places, transit,
-files, contacts, calendar and your own notes and documents, over one MCP server
-and token. Your agent uses them; so can Claude, Cursor or your own program.
-
-**Yours to run.** One Go binary. Self-host it and nothing is metered; run it for
-other people and anyone paying to call your tools pays you.
+**A personal agent.** Chat or email it. It has access to 100+ tools: news, mail, search, weather, markets, video, places,
+files, contacts, calendar, documents, etc.
 
 ## Install
 
