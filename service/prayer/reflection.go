@@ -317,7 +317,7 @@ func prayerTimesHTML() string {
   function qiblaHTML(q){
     return '<div style="margin-top:16px;padding-top:14px;border-top:1px solid #eee">'+
       '<p style="margin:0 0 10px;font-size:14px">Qibla: <strong>'+q.bearing+'\u00B0 '+q.point+'</strong>'+
-      ' <span style="color:#999">\u00B7 '+q.distance+'km to Mecca</span></p>'+
+      ' <span class="text-muted">\u00B7 '+q.distance+'km to Mecca</span></p>'+
       '<div style="display:flex;align-items:center;gap:14px">'+
       '<svg id="qibla-dial" width="96" height="96" viewBox="0 0 96 96" style="flex:0 0 auto">'+
         // Fixed index at the top: the way the phone is pointing. Everything
@@ -489,7 +489,7 @@ func renderReflectionPage(rd *ReminderData) string {
 	if strings.TrimSpace(rd.Message) != "" {
 		b.WriteString(`<div class="card"><h3>Reflection</h3><p style="margin:0;line-height:1.6">` + html.EscapeString(rd.Message) + `</p></div>`)
 	}
-	b.WriteString(`<p style="font-size:12px;color:#999">A daily verse of the Quran, a hadith and a name of Allah, via <a href="https://reminder.dev">reminder.dev</a>. Ask the agent to look up any verse or hadith.</p>`)
+	b.WriteString(`<p class="text-xs text-muted">A daily verse of the Quran, a hadith and a name of Allah, via <a href="https://reminder.dev">reminder.dev</a>. Ask the agent to look up any verse or hadith.</p>`)
 	return b.String()
 }
 

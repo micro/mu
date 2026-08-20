@@ -78,7 +78,7 @@ func Page(accountID string) string {
   <h2>Wallet</h2>
   <p class="text-sm text-muted">A key of your own. Your agent can spend it on priced
   endpoints anywhere, capped per call and per day.</p>
-  <p style="font-size:28px;margin:8px 0 10px"><b>$%s</b> <span style="color:#999;font-size:14px">USDC</span>%s</p>
+  <p style="font-size:28px;margin:8px 0 10px"><b>$%s</b> <span class="text-muted text-base">USDC</span>%s</p>
   <p class="cw-net"><b>%s only.</b> USDC sent on Ethereum, Arbitrum or any other
   chain lands at this same address on that chain, where this instance cannot see it
   or move it.</p>

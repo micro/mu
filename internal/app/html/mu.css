@@ -2814,14 +2814,23 @@ a.highlight {
 .gap-3 { gap: 10px; }
 .gap-4 { gap: 15px; }
 .text-center { text-align: center; }
-/* Text colors */
+/* The type scale and the greys, in one place.
+   These are what pages were writing by hand: font-size:13px and color:#888
+   between them account for a sixth of every inline style in the product. The
+   inline versions are also worse than the class, not merely more verbose — a
+   literal #888 does not follow --text-muted, so a page that hard-codes it is a
+   page that will not follow the palette anywhere it moves.
+   Sizes are named for what they are used for rather than numbered, and the
+   scale is deliberately short: four sizes is a scale, nine is a habit. */
+.text-2xs { font-size: 11px; }
+.text-xs  { font-size: 12px; }
+.text-sm  { font-size: 13px; }
+.text-base { font-size: 14px; }
+
 .text-error { color: var(--btn-danger); }
 .text-success { color: var(--btn-success); }
 .text-muted { color: var(--text-muted, #888); }
 .text-secondary { color: var(--text-secondary, #666); }
-/* Font size */
-
-.text-sm { font-size: 13px; }
 /* Font style */
 .italic { font-style: italic; }
 
@@ -2861,15 +2870,28 @@ a.highlight {
 .center-card-md { max-width: 500px; margin: 50px auto; text-align: center; }
 
 /* Form elements */
+/* The text field. Pages were drawing it by hand —
+   width:100%;box-sizing:border-box;padding:8px;border:1px solid #ccc;
+   border-radius:4px — which is this rule with a different radius and a border
+   that does not follow the palette. Tokenised, so it moves with everything
+   else; pair it with .w-full where the field should fill its row. */
 .form-input {
   padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
+  border: var(--border-width, 1px) solid var(--card-border, #ccc);
+  border-radius: var(--border-radius, 6px);
   box-sizing: border-box;
+  font: inherit;
 }
 
 .form-input::placeholder {
-  color: #aaa;
+  color: var(--text-muted, #aaa);
+}
+
+/* A field you paste code or a long body into: monospaced and tall enough to
+   see the shape of what is in it. */
+.mono-tall {
+  min-height: 300px;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
 }
 
 /* Message/alert boxes */
@@ -3160,10 +3182,6 @@ a.btn-secondary:hover, .btn-secondary:hover {
   background: white;
 }
 
-/* Additional text utilities */
-.text-xs {
-  font-size: 12px;
-}
 .mr-1 { margin-right: 4px; }
 .py-2 {
   padding-top: 8px;

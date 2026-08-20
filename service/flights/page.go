@@ -239,8 +239,8 @@ func CardHTML(who service.Viewer) string {
 			return nearestHTML(found)
 		}
 	}
-	return `<div id="flights-card"><div id="flights-card-content" style="font-size:13px;color:#888">
-<a href="/flights" style="color:#888">See what's overhead</a></div>
+	return `<div id="flights-card"><div id="flights-card-content" class="text-sm text-muted">
+<a href="/flights" class="text-muted">See what's overhead</a></div>
 <script>
 (function(){
 var el=document.getElementById('flights-card-content');
@@ -250,18 +250,18 @@ function show(lat,lon){
 fetch('/flights?lat='+lat+'&lon='+lon+'&radius=25',{headers:{'Accept':'application/json'}})
 .then(function(r){return r.json()}).then(function(d){
 var ac=(d&&d.aircraft)||[];
-if(!ac.length){el.innerHTML='<a href="/flights" style="color:#888">Nothing overhead</a>';return}
+if(!ac.length){el.innerHTML='<a href="/flights" class="text-muted">Nothing overhead</a>';return}
 var h='';
 for(var i=0;i<Math.min(3,ac.length);i++){var a=ac[i];
 h+='<div style="display:flex;justify-content:space-between;gap:8px"><span>'+
 (a.callsign||a.reg||a.hex)+'</span><span style="color:#aaa">'+
 (a.on_ground?'ground':(a.altitude||0).toLocaleString()+' ft')+'</span></div>'}
-h+='<div style="margin-top:6px"><a href="/flights?lat='+lat+'&lon='+lon+'" style="color:#888">More</a></div>';
+h+='<div style="margin-top:6px"><a href="/flights?lat='+lat+'&lon='+lon+'" class="text-muted">More</a></div>';
 el.innerHTML=h}).catch(function(){});
 }
 if(lat&&lon){show(lat,lon);return}
 if(!navigator.geolocation){return}
-el.innerHTML='<a href="#" onclick="muFlightsCard();return false" style="color:#555">Enable location for what\'s overhead</a>';
+el.innerHTML='<a href="#" onclick="muFlightsCard();return false" class="text-secondary">Enable location for what\'s overhead</a>';
 window.muFlightsCard=function(){navigator.geolocation.getCurrentPosition(function(p){
 var la=p.coords.latitude.toFixed(4),lo=p.coords.longitude.toFixed(4);
 localStorage.setItem(KEY,la);localStorage.setItem(KEY2,lo);show(la,lo)},function(){},{timeout:8000})};

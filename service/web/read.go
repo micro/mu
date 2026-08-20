@@ -82,7 +82,7 @@ func ReadHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			b.WriteString(`<p style="color:#888;font-size:13px;margin:0 0 12px">The full page content couldn't be loaded. You can visit the original site below.</p>`)
 		} else {
-			b.WriteString(fmt.Sprintf(`<p style="color:#888">This page couldn't be loaded.</p>`))
+			b.WriteString(fmt.Sprintf(`<p class="text-muted">This page couldn't be loaded.</p>`))
 		}
 		b.WriteString(fmt.Sprintf(`<div class="article-actions" style="margin-top:16px">
 			<a href="%s" target="_blank" rel="noopener noreferrer" style="font-weight:600">Visit original site →</a>

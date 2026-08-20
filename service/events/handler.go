@@ -66,7 +66,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	ext := externalEntries(owner, now, now.Add(30*24*time.Hour))
 
 	if len(up) == 0 && len(ext) == 0 {
-		b.WriteString(`<p style="color:#888;font-size:14px">Nothing scheduled. Add a reminder above, or just ask the agent: <em>"remind me to call the dentist tomorrow at 3pm"</em>.</p>`)
+		b.WriteString(`<p class="text-muted text-base">Nothing scheduled. Add a reminder above, or just ask the agent: <em>"remind me to call the dentist tomorrow at 3pm"</em>.</p>`)
 	} else {
 		b.WriteString(`<h3 style="font-size:15px;margin:0 0 10px">Upcoming</h3>`)
 		b.WriteString(`<div style="display:flex;flex-direction:column;gap:8px">`)
@@ -89,7 +89,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 func eventRow(e *Event, csrf string) string {
 	note := ""
 	if e.Note != "" {
-		note = `<div style="font-size:12px;color:#888">` + html.EscapeString(e.Note) + `</div>`
+		note = `<div class="text-xs text-muted">` + html.EscapeString(e.Note) + `</div>`
 	}
 	return fmt.Sprintf(`<div style="display:flex;align-items:center;gap:12px;border:1px solid #eee;border-radius:8px;padding:10px 14px">
 <div style="flex:1">
@@ -146,7 +146,7 @@ func externalRow(x External) string {
 	}
 	where := ""
 	if x.Location != "" {
-		where = `<div style="font-size:12px;color:#888">` + html.EscapeString(x.Location) + `</div>`
+		where = `<div class="text-xs text-muted">` + html.EscapeString(x.Location) + `</div>`
 	}
 	source := x.Source
 	if source == "" {

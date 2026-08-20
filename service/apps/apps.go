@@ -313,7 +313,7 @@ func Preview() string {
 		sb.WriteString(fmt.Sprintf(` · %d paid`, paidCount))
 	}
 	sb.WriteString(`</p>`)
-	sb.WriteString(`<p style="font-size:12px;color:#999;">Build apps, set your price, earn 90%% of every sale.</p>`)
+	sb.WriteString(`<p class="text-xs text-muted">Build apps, set your price, earn 90%% of every sale.</p>`)
 	return sb.String()
 }
 
@@ -650,24 +650,24 @@ func handleNew(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`<form method="POST" action="/apps/generate" style="max-width:600px;margin-bottom:8px;">`)
 	sb.WriteString(`<div style="display:flex;gap:8px;">`)
 	sb.WriteString(`<input type="text" name="description" required maxlength="200" style="flex:1;padding:10px;border:1px solid #ccc;border-radius:6px;" placeholder="an expense tracker, a packing checklist, a water counter…">`)
-	sb.WriteString(`<button type="submit" style="padding:10px 20px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;">Build it</button>`)
+	sb.WriteString(`<button type="submit" class="btn">Build it</button>`)
 	sb.WriteString(`</div>`)
 	sb.WriteString(`</form>`)
 	sb.WriteString(`<details style="max-width:600px;margin-top:20px;"><summary style="cursor:pointer;color:#666;font-size:14px;">Write the HTML yourself</summary>`)
 	sb.WriteString(`<form method="POST" action="/apps/new" style="margin-top:16px;">`)
 	sb.WriteString(`<div style="margin-bottom:12px;"><label>Name</label><br>`)
-	sb.WriteString(`<input type="text" name="name" required maxlength="60" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #ccc;border-radius:4px;" placeholder="Pomodoro Timer"></div>`)
+	sb.WriteString(`<input type="text" name="name" required maxlength="60" class="form-input w-full" placeholder="Pomodoro Timer"></div>`)
 	sb.WriteString(`<div style="margin-bottom:12px;"><label>Description</label><br>`)
-	sb.WriteString(`<input type="text" name="description" maxlength="200" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #ccc;border-radius:4px;" placeholder="A simple 25-minute focus timer"></div>`)
-	sb.WriteString(`<div style="margin-bottom:12px;"><label>Tags <span style="color:#999;font-size:12px;">(comma-separated, optional)</span></label><br>`)
-	sb.WriteString(`<input type="text" name="tags" maxlength="200" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #ccc;border-radius:4px;" placeholder="productivity, timer"></div>`)
+	sb.WriteString(`<input type="text" name="description" maxlength="200" class="form-input w-full" placeholder="A simple 25-minute focus timer"></div>`)
+	sb.WriteString(`<div style="margin-bottom:12px;"><label>Tags <span class="text-muted text-xs">(comma-separated, optional)</span></label><br>`)
+	sb.WriteString(`<input type="text" name="tags" maxlength="200" class="form-input w-full" placeholder="productivity, timer"></div>`)
 	sb.WriteString(`<div style="margin-bottom:12px;"><label>HTML (your app — max 256KB)</label><br>`)
-	sb.WriteString(`<textarea name="html" required style="width:100%;min-height:300px;padding:8px;border:1px solid #ccc;border-radius:4px;font-family:monospace;font-size:13px;" placeholder="<h1>Hello World</h1>"></textarea></div>`)
-	sb.WriteString(`<div style="margin-bottom:12px;"><label>Price per use <span style="color:#999;font-size:12px;">(credits, 0 = free)</span></label><br>`)
-	sb.WriteString(`<input type="number" name="price" min="0" max="1000" value="0" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #ccc;border-radius:4px;" placeholder="0"></div>`)
+	sb.WriteString(`<textarea name="html" required class="form-input w-full text-sm mono-tall" placeholder="<h1>Hello World</h1>"></textarea></div>`)
+	sb.WriteString(`<div style="margin-bottom:12px;"><label>Price per use <span class="text-muted text-xs">(credits, 0 = free)</span></label><br>`)
+	sb.WriteString(`<input type="number" name="price" min="0" max="1000" value="0" class="form-input w-full" placeholder="0"></div>`)
 	sb.WriteString(`<div style="margin-bottom:12px;"><label style="display:flex;align-items:center;gap:6px"><input type="checkbox" name="public" value="1" checked style="width:auto;margin:0"> Public</label></div>`)
 	sb.WriteString(`<p style="margin-bottom:12px;font-size:13px;color:#999;">Set a price and earn 90% of every sale. Free apps cost nothing to use.</p>`)
-	sb.WriteString(`<button type="submit" style="padding:8px 24px;background:#000;color:#fff;border:none;border-radius:4px;cursor:pointer;">Create App</button>`)
+	sb.WriteString(`<button type="submit" class="btn">Create App</button>`)
 	sb.WriteString(`</form>`)
 	sb.WriteString(`</details>`)
 
@@ -872,7 +872,7 @@ func handleView(w http.ResponseWriter, r *http.Request, slug string) {
 	} else {
 		priceInfo = ` · <span style="color:#090;">Free</span>`
 	}
-	sb.WriteString(fmt.Sprintf(`<p style="font-size:13px;color:#999;">by %s%s%s · %d launches%s%s%s</p>`,
+	sb.WriteString(fmt.Sprintf(`<p class="text-sm text-muted">by %s%s%s · %d launches%s%s%s</p>`,
 		htmlpkg.EscapeString(a.Author),
 		tagsInfo,
 		priceInfo,
@@ -904,7 +904,7 @@ func handleView(w http.ResponseWriter, r *http.Request, slug string) {
 		detailAdmin = detailAcc.Admin
 	}
 	if detailAdmin || detailUserID == a.AuthorID {
-		sb.WriteString(`<p style="font-size:13px">`)
+		sb.WriteString(`<p class="text-sm">`)
 		sb.WriteString(fmt.Sprintf(`<a href="/apps/%s/edit" style="color:#888;text-decoration:none">Edit</a>`, htmlpkg.EscapeString(a.Slug)))
 		sb.WriteString(fmt.Sprintf(` · <a href="#" style="color:#c00;text-decoration:none" onclick="if(confirm('Delete this app?')){fetch('/apps/%s/delete',{method:'POST'}).then(function(){window.location='/apps'})}return false;">Delete</a>`, htmlpkg.EscapeString(a.Slug)))
 		sb.WriteString(`</p>`)
@@ -1031,7 +1031,7 @@ func handleVersions(w http.ResponseWriter, r *http.Request, slug string) {
 	sb.WriteString(`<h2 style="margin-bottom:16px;">Version History</h2>`)
 
 	if len(a.Versions) == 0 {
-		sb.WriteString(`<p style="color:#999;">No version history yet.</p>`)
+		sb.WriteString(`<p class="text-muted">No version history yet.</p>`)
 	} else {
 		// Show newest first
 		for i := len(a.Versions) - 1; i >= 0; i-- {
@@ -1053,7 +1053,7 @@ func handleVersions(w http.ResponseWriter, r *http.Request, slug string) {
 			sb.WriteString(fmt.Sprintf(`<div style="border:1px solid #eee;border-radius:6px;padding:12px;margin-bottom:8px;">
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <div><strong>v%d</strong>%s — %s</div>
-<span style="font-size:13px;color:#999;">%s%s</span>
+<span class="text-sm text-muted">%s%s</span>
 </div>
 </div>`,
 				v.Number,

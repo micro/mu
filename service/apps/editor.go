@@ -59,7 +59,7 @@ func editPageHTML(a *App) string {
 	versionLink := ""
 	if len(a.Versions) > 0 {
 		v := a.Versions[len(a.Versions)-1]
-		versionLink = fmt.Sprintf(`<a href="/apps/%s/versions" style="color:#999;">v%d · %d versions</a>`,
+		versionLink = fmt.Sprintf(`<a href="/apps/%s/versions" class="text-muted">v%d · %d versions</a>`,
 			htmlpkg.EscapeString(a.Slug), v.Number, len(a.Versions))
 	}
 

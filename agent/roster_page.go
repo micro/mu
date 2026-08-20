@@ -97,7 +97,7 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`<p class="text-error">` + said + `</p>`)
 	}
 	if r.URL.Query().Get("removed") != "" {
-		b.WriteString(`<p class="text-sm" style="color:#666">Agent removed and its token revoked.</p>`)
+		b.WriteString(`<p class="text-sm text-secondary">Agent removed and its token revoked.</p>`)
 	}
 	created := r.URL.Query().Get("created")
 	if secret := r.URL.Query().Get("secret"); secret != "" {
@@ -109,7 +109,7 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 		if a := For(owner, created); a != nil {
 			name = html.EscapeString(a.Name)
 		}
-		b.WriteString(`<p class="text-sm" style="color:#666">` + name + ` is ready. Open its name below ` +
+		b.WriteString(`<p class="text-sm text-secondary">` + name + ` is ready. Open its name below ` +
 			`to talk to it here — it has no token, so nothing outside this instance can call it.</p>`)
 	}
 

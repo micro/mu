@@ -73,9 +73,9 @@ func alertBadge() string {
 func balanceCell(userID string) string {
 	n := account.Balance(userID)
 	if n == 0 {
-		return `<span class="text-muted" style="font-size:12px">—</span>`
+		return `<span class="text-muted text-xs">—</span>`
 	}
-	return fmt.Sprintf(`<span style="font-size:13px">%d</span>`, n)
+	return fmt.Sprintf(`<span class="text-sm">%d</span>`, n)
 }
 
 // UsersHandler shows and manages users with tabs: All, Banned, New.
@@ -208,7 +208,7 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		statusHTML := strings.Join(badges, " ")
 		if statusHTML == "" {
-			statusHTML = `<span class="text-muted" style="font-size:12px">—</span>`
+			statusHTML = `<span class="text-muted text-xs">—</span>`
 		}
 		var actions []string
 		agentLabel, agentTitle := "Mark agent", "Mark as a program: recorded, not charged"

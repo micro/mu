@@ -90,7 +90,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	if miss := Missing(); len(miss) > 0 {
 		b.WriteString(`<div class="card"><h3>Not configured</h3>`)
-		b.WriteString(`<p style="font-size:14px;color:#666">Nothing can be sent until an operator sets these at <a href="/admin/env">/admin/env</a>:</p><ul style="font-size:14px;color:#666">`)
+		b.WriteString(`<p class="text-base text-secondary">Nothing can be sent until an operator sets these at <a href="/admin/env">/admin/env</a>:</p><ul class="text-base text-secondary">`)
 		for _, m := range miss {
 			b.WriteString(`<li>` + html.EscapeString(m) + `</li>`)
 		}
@@ -161,7 +161,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		for _, a := range yours {
 			b.WriteString(`<li style="margin:0 0 4px"><code>` + html.EscapeString(a) + `</code>`)
 			if acc.EmailVerified && strings.EqualFold(acc.Email, a) {
-				b.WriteString(` <span style="color:#888">— the address on your account</span>`)
+				b.WriteString(` <span class="text-muted">— the address on your account</span>`)
 			} else {
 				b.WriteString(` <form method="POST" action="/email" style="display:inline">` +
 					`<input type="hidden" name="do" value="forget">` +
@@ -192,7 +192,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	if len(msgs) == 0 {
 		b.WriteString(`<p style="font-size:14px;color:#888;margin:0">Nothing yet. An agent with the <code>email_send</code> tool can send on your behalf.</p>`)
 	} else {
-		b.WriteString(`<table class="stats-table" style="font-size:14px">`)
+		b.WriteString(`<table class="stats-table text-base">`)
 		b.WriteString(`<tr><th style="text-align:left">To</th><th style="text-align:left">Subject</th><th style="text-align:left">Result</th><th style="text-align:right">When</th></tr>`)
 		for _, m := range msgs {
 			// The outcome, in the row. Without it the table answers "what did I

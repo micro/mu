@@ -268,7 +268,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				b.WriteString(`<p class="card-desc" style="margin:4px 0 0;">` +
 					html.EscapeString(stripHTML(result.Description)) + `</p>`)
 			}
-			meta := `<a href="` + html.EscapeString(result.URL) + `" target="_blank" rel="noopener noreferrer" style="color:#888;">` + html.EscapeString(result.URL) + `</a>`
+			meta := `<a href="` + html.EscapeString(result.URL) + `" target="_blank" rel="noopener noreferrer" class="text-muted">` + html.EscapeString(result.URL) + `</a>`
 			if result.Age != "" {
 				meta += ` · ` + html.EscapeString(result.Age)
 			}

@@ -422,7 +422,7 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 		res := Search(caller, q)
 		b.WriteString(`<div class="card"><h3>Results for &ldquo;` + html.EscapeString(q) + `&rdquo;</h3>`)
 		if len(res) == 0 {
-			b.WriteString(`<p style="color:#888;font-size:14px">No matching images.</p>`)
+			b.WriteString(`<p class="text-muted text-base">No matching images.</p>`)
 		} else {
 			b.WriteString(imageGrid(res))
 		}
@@ -438,9 +438,9 @@ func handleHTML(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<h3>Image of the day</h3>`)
 	if d.URL != "" {
 		b.WriteString(`<img src="` + html.EscapeString(d.displayURL()) + `" alt="Daily image" style="width:100%;border-radius:10px;display:block;margin:8px 0">`)
-		b.WriteString(`<p class="card-meta" style="color:#888;font-size:13px">` + html.EscapeString(strings.Title(d.Theme)) + ` · generated ` + html.EscapeString(d.Date) + `</p>`)
+		b.WriteString(`<p class="card-meta text-muted text-sm">` + html.EscapeString(strings.Title(d.Theme)) + ` · generated ` + html.EscapeString(d.Date) + `</p>`)
 	} else {
-		b.WriteString(`<p style="color:#888">Today's image is being generated — check back shortly.</p>`)
+		b.WriteString(`<p class="text-muted">Today's image is being generated — check back shortly.</p>`)
 	}
 	b.WriteString(`</div>`)
 

@@ -1305,7 +1305,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				}
 				content += fmt.Sprintf(`<div class="card" style="margin-bottom:8px;cursor:pointer" onclick="window.location.href='/mail?id=%s'">
 <div style="font-weight:600;font-size:14px">%s</div>
-<div style="font-size:13px;color:#666">%s</div>
+<div class="text-sm text-secondary">%s</div>
 <div style="font-size:13px;color:#999;margin-top:4px">%s</div>
 </div>`, msg.ID, html.EscapeString(subject), html.EscapeString(from), html.EscapeString(body))
 			}

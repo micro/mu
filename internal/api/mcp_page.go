@@ -90,8 +90,8 @@ func mcpPageHandler(w http.ResponseWriter, r *http.Request) {
 	// Output area
 	b.WriteString(`<div id="mcp-output" style="display:none;margin-top:12px">`)
 	b.WriteString(`<div style="display:flex;justify-content:space-between;align-items:center">`)
-	b.WriteString(`<strong style="font-size:13px;color:#666">Response</strong>`)
-	b.WriteString(`<span id="mcp-time" style="font-size:12px;color:#999"></span>`)
+	b.WriteString(`<strong class="text-sm text-secondary">Response</strong>`)
+	b.WriteString(`<span id="mcp-time" class="text-xs text-muted"></span>`)
 	b.WriteString(`</div>`)
 	b.WriteString(`<pre id="mcp-result" style="white-space:pre-wrap;word-break:break-all;background:#f5f5f5;padding:10px;margin-top:6px;font-size:12px;max-height:400px;overflow-y:auto;border-radius:4px"></pre>`)
 	b.WriteString(`</div>`)
@@ -121,7 +121,7 @@ func mcpPageHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`h+='<input name="'+p.name+'" type="'+(p.type==='number'||p.type==='integer'?'number':'text')+'" style="width:100%;padding:6px 8px;font-size:13px;border:1px solid #ddd;border-radius:4px;box-sizing:border-box" placeholder="'+p.name+'">';`)
 	b.WriteString(`}`)
 	b.WriteString(`h+='</div>';}`)
-	b.WriteString(`}else{h='<p style="color:#999;font-size:13px">No parameters needed</p>';}`)
+	b.WriteString(`}else{h='<p class="text-muted text-sm">No parameters needed</p>';}`)
 	b.WriteString(`params.innerHTML=h;`)
 	b.WriteString(`}`)
 

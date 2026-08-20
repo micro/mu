@@ -1019,7 +1019,7 @@ function doSearch() {
       html += '<div class="url">' + esc(r.url || '') + '</div></div>';
     });
 
-    document.getElementById('results').innerHTML = html || '<p style="color:#999">No results found.</p>';
+    document.getElementById('results').innerHTML = html || '<p class="text-muted">No results found.</p>';
     document.getElementById('loading').style.display = 'none';
     btn.disabled = false;
 
@@ -1203,7 +1203,7 @@ function render() {
     html += '<div class="holding-right"><div class="holding-value">$' + val.toLocaleString(undefined,{maximumFractionDigits:2}) + '</div>';
     html += '<div class="holding-change ' + cls + '">' + sign + (p.change_24h||0).toFixed(1) + '%</div></div></div>';
   });
-  document.getElementById('holdings').innerHTML = html || '<p style="color:#999;font-size:14px">No holdings yet. Add some below.</p>';
+  document.getElementById('holdings').innerHTML = html || '<p class="text-muted text-base">No holdings yet. Add some below.</p>';
   document.getElementById('totalValue').textContent = '$' + totalVal.toLocaleString(undefined,{maximumFractionDigits:2});
   var totalChange = totalPrev > 0 ? ((totalVal - totalPrev) / totalPrev * 100) : 0;
   var tcCls = totalChange >= 0 ? 'up' : 'down';
@@ -1237,7 +1237,7 @@ mu.markets({category: 'crypto'}).then(function(data) {
 
 // Load news
 mu.news().then(function(data) {
-  if (!data || !data.feed) { document.getElementById('news').innerHTML = '<p style="color:#999">No news</p>'; return; }
+  if (!data || !data.feed) { document.getElementById('news').innerHTML = '<p class="text-muted">No news</p>'; return; }
   var crypto = data.feed.filter(function(a) { return (a.category || '').toLowerCase().indexOf('crypto') >= 0 || (a.title || '').toLowerCase().match(/bitcoin|crypto|eth|defi/); });
   if (crypto.length === 0) crypto = data.feed.slice(0, 5);
   var html = '';

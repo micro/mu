@@ -79,7 +79,7 @@ func serverCard(f *WeatherForecast, place string) string {
 
 func browserCard() string {
 	return `<div id="weather-card">
-<div id="weather-card-content" style="font-size:13px;color:#888">
+<div id="weather-card-content" class="text-sm text-muted">
 <span id="weather-card-loading"></span>
 </div>
 <script>
@@ -88,7 +88,7 @@ var el=document.getElementById('weather-card-content');
 var load=document.getElementById('weather-card-loading');
 var KEY='mu_weather',KEY_TS='mu_weather_ts',KEY_LAT='mu_weather_lat',KEY_LON='mu_weather_lon',TTL=3600000;
 function isLoggedIn(){return document.cookie.indexOf('csrf_token=')!==-1}
-if(!isLoggedIn()){load.innerHTML='<a href="/login" style="color:#888">Log in</a> for weather';return}
+if(!isLoggedIn()){load.innerHTML='<a href="/login" class="text-muted">Log in</a> for weather';return}
 var cached=localStorage.getItem(KEY);
 var ts=parseInt(localStorage.getItem(KEY_TS)||'0');
 var stale=!cached||(Date.now()-ts)>=TTL;
@@ -99,7 +99,7 @@ var savedLon=localStorage.getItem(KEY_LON);
 if(savedLat&&savedLon){fetchWeather(savedLat,savedLon);return}
 if(!navigator.geolocation){if(!cached){load.textContent='Location not available'};return}
 if(!cached){
-load.innerHTML='<a href="#" onclick="muWeatherEnable();return false" style="color:#555">Enable location for weather</a>';
+load.innerHTML='<a href="#" onclick="muWeatherEnable();return false" class="text-secondary">Enable location for weather</a>';
 window.muWeatherEnable=function(){load.textContent='Checking weather...';getLocation()};
 return}
 getLocation();
@@ -120,12 +120,12 @@ localStorage.setItem(KEY_TS,String(Date.now()));
 }
 window.muWeatherRefresh=function(){
 localStorage.removeItem(KEY);localStorage.removeItem(KEY_TS);localStorage.removeItem(KEY_LAT);localStorage.removeItem(KEY_LON);
-el.innerHTML='<span style="color:#888">Refreshing weather...</span>';
+el.innerHTML='<span class="text-muted">Refreshing weather...</span>';
 if(navigator.geolocation){navigator.geolocation.getCurrentPosition(function(pos){
 var lat=pos.coords.latitude.toFixed(4);var lon=pos.coords.longitude.toFixed(4);
 localStorage.setItem(KEY_LAT,lat);localStorage.setItem(KEY_LON,lon);
 fetchWeather(lat,lon);
-},function(){el.innerHTML='<span style="color:#888">Location not available</span>'},{timeout:5000})}
+},function(){el.innerHTML='<span class="text-muted">Location not available</span>'},{timeout:5000})}
 };
 function fetchWeather(lat,lon){
 fetch('/weather?lat='+lat+'&lon='+lon,{headers:{'Accept':'application/json'}})
@@ -137,7 +137,7 @@ var c=f.Current;
 try{localStorage.setItem('mu_weather_now',JSON.stringify({temp:Math.round(c.TempC),desc:c.Description||''}))}catch(e){}
 var h='<div style="display:flex;align-items:center;gap:8px">';
 h+='<span style="font-size:22px;font-weight:600;color:#333">'+Math.round(c.TempC)+'°C</span>';
-h+='<span style="color:#666">'+c.Description+'</span>';
+h+='<span class="text-secondary">'+c.Description+'</span>';
 h+='</div>';
 if(f.Location)h+='<div style="font-size:12px;color:#999;margin-top:2px">'+f.Location+'</div>';
 if(f.DailyItems&&f.DailyItems.length>0){
@@ -150,7 +150,7 @@ h+='<span>'+name+' '+Math.round(day.MaxTempC)+'°/'+Math.round(day.MinTempC)+'°
 h+='</div>';
 }
 renderWeather(h);
-}).catch(function(){if(!cached){el.innerHTML='<span style="color:#888">Weather unavailable</span>';}});
+}).catch(function(){if(!cached){el.innerHTML='<span class="text-muted">Weather unavailable</span>';}});
 }
 })();
 </script>

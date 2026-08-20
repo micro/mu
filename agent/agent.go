@@ -1092,7 +1092,7 @@ func serveFlowPage(w http.ResponseWriter, r *http.Request, id string) {
 			b.WriteString(`<div class="card" style="border-left:3px solid #007bff;margin-bottom:8px;opacity:0.8;">`)
 			b.WriteString(`<div style="font-size:12px;color:#888;margin-bottom:6px;">Previous question:</div>`)
 			b.WriteString(`<div style="font-size:14px;font-weight:600;margin-bottom:10px;">` + htmlEsc(h.Prompt) + `</div>`)
-			b.WriteString(`<div style="font-size:14px;">` + app.RenderString(h.Answer) + `</div>`)
+			b.WriteString(`<div class="text-base">` + app.RenderString(h.Answer) + `</div>`)
 			b.WriteString(`</div>`)
 		}
 	}
@@ -1100,7 +1100,7 @@ func serveFlowPage(w http.ResponseWriter, r *http.Request, id string) {
 	b.WriteString(`<div class="card">`)
 	b.WriteString(`<p style="font-size:12px;color:#888;margin:0 0 4px;">Saved query</p>`)
 	b.WriteString(`<h3 style="margin:0 0 12px;">` + htmlEsc(f.Prompt) + `</h3>`)
-	b.WriteString(`<p style="font-size:12px;color:#888;">` + f.CreatedAt.Format("2 January 2006, 15:04 UTC") + `</p>`)
+	b.WriteString(`<p class="text-xs text-muted">` + f.CreatedAt.Format("2 January 2006, 15:04 UTC") + `</p>`)
 	b.WriteString(`</div>`)
 
 	// Render the stored answer
@@ -1118,7 +1118,7 @@ func serveFlowPage(w http.ResponseWriter, r *http.Request, id string) {
 
 	// References
 	if len(f.Steps) > 0 {
-		b.WriteString(`<div class="card" style="font-size:13px;"><h4 style="margin:0 0 8px;font-size:13px;color:#888;">References</h4>`)
+		b.WriteString(`<div class="card text-sm"><h4 style="margin:0 0 8px;font-size:13px;color:#888;">References</h4>`)
 		for _, step := range f.Steps {
 			formatted := formatToolResult(step.Tool, step.Result, step.Args)
 			b.WriteString(renderToolCallRef(step.Tool, step.Args, formatted))
@@ -1773,7 +1773,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(results) > 0 {
-		html += `<div class="card" style="font-size:13px;"><h4 style="margin:0 0 8px;font-size:13px;color:#888;">References</h4>`
+		html += `<div class="card text-sm"><h4 style="margin:0 0 8px;font-size:13px;color:#888;">References</h4>`
 		for _, res := range results {
 			html += renderToolCallRef(res.Name, res.Args, res.Formatted)
 		}
@@ -2431,7 +2431,7 @@ func renderPlacesCard(result string, args map[string]any) string {
 				}
 				meta += p.Address
 			}
-			b.WriteString(`<div style="font-size:12px;color:#888;">` + htmlEsc(meta) + `</div>`)
+			b.WriteString(`<div class="text-xs text-muted">` + htmlEsc(meta) + `</div>`)
 		}
 		b.WriteString(`</div>`)
 	}
@@ -3235,7 +3235,7 @@ func renderAppsCard(result string) string {
 	for _, a := range apps {
 		b.WriteString(`<div style="padding:6px 0;border-bottom:1px solid #f0f0f0;">`)
 		b.WriteString(`<a href="/apps/` + htmlEsc(a.Slug) + `" style="font-weight:600;">` + htmlEsc(a.Name) + `</a>`)
-		b.WriteString(`<div style="font-size:12px;color:#888;">` + htmlEsc(a.Description) + `</div>`)
+		b.WriteString(`<div class="text-xs text-muted">` + htmlEsc(a.Description) + `</div>`)
 		b.WriteString(`</div>`)
 	}
 	b.WriteString(`<a href="/apps" class="link" style="display:inline-block;margin-top:8px;">Browse all apps →</a></div>`)

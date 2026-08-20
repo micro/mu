@@ -111,7 +111,7 @@ func InviteHandler(w http.ResponseWriter, r *http.Request) {
 					`<div style="margin-top:6px"><form method="POST" onsubmit="return confirm('Resend?')"><input type="hidden" name="email" value="%s"><button type="submit" style="font-size:12px;padding:4px 10px">Resend</button></form></div>`,
 					req.Email)
 			}
-			sb.WriteString(fmt.Sprintf(`<div style="padding:10px 0;border-bottom:1px solid #f0f0f0"><div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap"><strong style="font-size:14px">%s</strong>%s<span style="color:#bbb;font-size:12px">%s</span></div>%s%s</div>`,
+			sb.WriteString(fmt.Sprintf(`<div style="padding:10px 0;border-bottom:1px solid #f0f0f0"><div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap"><strong class="text-base">%s</strong>%s<span style="color:#bbb;font-size:12px">%s</span></div>%s%s</div>`,
 				req.Email, status, req.RequestedAt.Format("2 Jan 15:04"), reason, actions))
 		}
 	}
@@ -172,7 +172,7 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 	// Output area
 	sb.WriteString(`<div id="cout" style="font-size:13px;white-space:pre-wrap;max-height:60vh;overflow-y:auto;margin-bottom:12px">`)
 	if prevOutput != "" {
-		sb.WriteString(fmt.Sprintf(`<span style="color:#888">&gt; %s</span>
+		sb.WriteString(fmt.Sprintf(`<span class="text-muted">&gt; %s</span>
 %s`, esc(prevCmd), esc(prevOutput)))
 	}
 	sb.WriteString(`</div>`)
@@ -201,7 +201,7 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
     if(!cmd)return;
     hist.unshift(cmd);
     hi=-1;
-    out.innerHTML+='<span style="color:#888">&gt; '+esc(cmd)+'</span>\n';
+    out.innerHTML+='<span class="text-muted">&gt; '+esc(cmd)+'</span>\n';
     input.value='';
     fetch('/admin/console',{method:'POST',body:JSON.stringify({cmd:cmd}),headers:{'Content-Type':'application/json'}})
     .then(function(r){return r.json()})

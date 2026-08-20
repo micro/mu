@@ -232,7 +232,7 @@ func wireHooks() {
 		if e.Note != "" {
 			body += `<p>` + html.EscapeString(e.Note) + `</p>`
 		}
-		body += `<p style="color:#888;font-size:13px">Added to your calendar from the attached invite.</p>`
+		body += `<p class="text-muted text-sm">Added to your calendar from the attached invite.</p>`
 		ics := events.ICS(e, acc.Email)
 		if _, err := mail.SendCalendarInvite("Mu Events", "no-reply@"+domain, acc.Email, "Event: "+e.Title, body, ics); err != nil {
 			app.Log("events", "calendar invite to %s failed: %v", acc.Email, err)

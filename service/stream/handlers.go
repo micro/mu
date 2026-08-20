@@ -176,7 +176,7 @@ func streamBody(events []*Event, viewerID string) string {
 // full page and the fragment endpoint).
 func RenderEventList(events []*Event, viewerID string) string {
 	if len(events) == 0 {
-		return `<p style="color:#999;font-size:14px">Nothing here yet. Post something or ask @micro a question.</p>`
+		return `<p class="text-muted text-base">Nothing here yet. Post something or ask @micro a question.</p>`
 	}
 
 	var sb strings.Builder
@@ -258,7 +258,7 @@ func renderEvent(e *Event, viewerID string) string {
 	// link if the URL isn't already in the content text.
 	if e.Metadata != nil {
 		if u, ok := e.Metadata["url"].(string); ok && u != "" && !strings.Contains(e.Content, u) {
-			linked += fmt.Sprintf(` <a href="%s" target="_blank" rel="noopener" style="color:#999;font-size:12px">→ read</a>`, htmlpkg.EscapeString(u))
+			linked += fmt.Sprintf(` <a href="%s" target="_blank" rel="noopener" class="text-muted text-xs">→ read</a>`, htmlpkg.EscapeString(u))
 		}
 	}
 

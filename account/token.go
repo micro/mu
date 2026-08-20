@@ -152,7 +152,7 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	// where one is unambiguous. PAT stays in the code, where it distinguishes
 	// this from a session and an OAuth grant.
 	sb.WriteString(`<h3>Tokens</h3>`)
-	sb.WriteString(`<p style="color:#666;font-size:13px">For API authentication. Use with <code>Authorization: Bearer TOKEN</code> header.</p>`)
+	sb.WriteString(`<p class="text-secondary text-sm">For API authentication. Use with <code>Authorization: Bearer TOKEN</code> header.</p>`)
 
 	sb.WriteString(`<div id="token-result" style="display:none;margin:20px 0;padding:15px;background:#d4edda;border:1px solid #c3e6cb;border-radius:5px">`)
 	sb.WriteString(`<strong>Token Created</strong><p>Copy this token now — you won't see it again:</p>`)
@@ -193,7 +193,7 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 		}
 		sb.WriteString(fmt.Sprintf(`<tr><td data-label="Name">%s</td><td data-label="Permissions">%s</td><td data-label="Created">%s</td><td data-label="Last Used">%s</td><td data-label="Expires">%s</td><td>
 			<form method="POST" action="/token?id=%s" style="display:inline" onsubmit="return confirm('Delete?')">
-			<input type="hidden" name="_method" value="DELETE"><button type="submit" style="font-size:13px">Delete</button></form></td></tr>`,
+			<input type="hidden" name="_method" value="DELETE"><button type="submit" class="text-sm">Delete</button></form></td></tr>`,
 			token.Name, tokenScope(token), created, lastUsed, expires, token.ID))
 	}
 	sb.WriteString(`</tbody></table>`)
@@ -232,7 +232,7 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	// that registered itself at /oauth/register has no owner to compare
 	// against, so it belongs to nobody and appears here for nobody.
 	sb.WriteString(`<h3>OAuth Clients</h3>`)
-	sb.WriteString(`<p style="color:#666;font-size:13px">For connecting Claude, MCP clients, or ` +
+	sb.WriteString(`<p class="text-secondary text-sm">For connecting Claude, MCP clients, or ` +
 		`other apps via OAuth 2.1. Clients that register themselves when they connect do not ` +
 		`appear here — they belong to no account, and nothing needs doing about them.</p>`)
 
@@ -253,7 +253,7 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	for _, c := range oauthClients {
 		sb.WriteString(fmt.Sprintf(`<tr><td data-label="Name">%s</td><td data-label="Client ID"><code>%s</code></td><td data-label="Created">%s</td><td>
 			<form method="POST" action="/token?delete_client=%s" style="display:inline" onsubmit="return confirm('Delete?')">
-			<input type="hidden" name="_method" value="DELETE"><button type="submit" style="font-size:13px">Delete</button></form></td></tr>`,
+			<input type="hidden" name="_method" value="DELETE"><button type="submit" class="text-sm">Delete</button></form></td></tr>`,
 			c.Name, c.ClientID, c.CreatedAt.Format("2 Jan 2006"), c.ClientID))
 	}
 	sb.WriteString(`</tbody></table>`)

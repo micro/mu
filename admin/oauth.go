@@ -95,16 +95,16 @@ func OAuthHandler(w http.ResponseWriter, r *http.Request) {
 			`<input type="hidden" name="client_id" value="` + html.EscapeString(c.ClientID) + `">` +
 			`<input type="text" name="redirect_uri" placeholder="https://… or http://localhost:0/callback" ` +
 			`style="font-size:11px;width:230px" value="` + html.EscapeString(firstURI(c.RedirectURIs)) + `">` +
-			`<button type="submit" style="font-size:11px">Set</button></form>`
+			`<button type="submit" class="text-2xs">Set</button></form>`
 		if len(c.RedirectURIs) == 0 {
-			where = `<span class="text-muted" style="font-size:11px">none — cannot sign anybody in</span><br>` + where
+			where = `<span class="text-muted text-2xs">none — cannot sign anybody in</span><br>` + where
 		}
-		fmt.Fprintf(&b, `<tr><td>%s</td><td><code style="font-size:11px">%s</code></td>`+
+		fmt.Fprintf(&b, `<tr><td>%s</td><td><code class="text-2xs">%s</code></td>`+
 			`<td>%s</td><td>%s</td><td class="created-col">%s</td><td class="center">`+
 			`<form method="POST" action="/admin/oauth" style="display:inline" `+
 			`onsubmit="return confirm('Remove this client?')">`+
 			`<input type="hidden" name="client_id" value="%s">`+
-			`<button type="submit" style="font-size:13px">Remove</button></form></td></tr>`,
+			`<button type="submit" class="text-sm">Remove</button></form></td></tr>`,
 			html.EscapeString(c.Name), html.EscapeString(c.ClientID), where, owner,
 			c.CreatedAt.Format("2006-01-02"), html.EscapeString(c.ClientID))
 	}

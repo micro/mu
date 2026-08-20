@@ -322,9 +322,9 @@ func EnvHandler(w http.ResponseWriter, r *http.Request) {
 			// sitting in the page source of every visit waiting to be read.
 			if isSecret && val != "" && !shown {
 				b.WriteString(` <a href="/admin/env?reveal=` + url.QueryEscape(key) +
-					`" style="font-size:11px;color:#888">show</a>`)
+					`" class="text-2xs text-muted">show</a>`)
 			} else if isSecret && shown {
-				b.WriteString(` <a href="/admin/env" style="font-size:11px;color:#888">hide</a>`)
+				b.WriteString(` <a href="/admin/env" class="text-2xs text-muted">hide</a>`)
 			}
 			b.WriteString(`</label>`)
 
@@ -356,7 +356,7 @@ func EnvHandler(w http.ResponseWriter, r *http.Request) {
 					html.EscapeString(key), html.EscapeString(ph)))
 				if val != "" {
 					b.WriteString(fmt.Sprintf(
-						`<label style="font-size:11px;color:#888"><input type="checkbox" name="clear_%s" value="1"> clear</label>`,
+						`<label class="text-2xs text-muted"><input type="checkbox" name="clear_%s" value="1"> clear</label>`,
 						html.EscapeString(key)))
 				}
 			default:
