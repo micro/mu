@@ -3373,12 +3373,22 @@ a.highlight {
 /* A button that reads as a link. For a row action — Share, Remove, Delete —
    where a filled button would shout, and where the thing being acted on is the
    row rather than the page. */
+/* A button that sits inside a sentence, so it has to look like the links
+   beside it — .link-text above. It was --text-secondary at a fixed 13px with
+   no underline, which inside prose is a slightly grey word: "the secret was
+   shown once and is stored hashed — replace it to get a new one" had no
+   visible control in it at all.
+
+   Size and colour inherit, so it matches whatever sentence it lands in rather
+   than being 13px in a 15px line. */
 .link-button {
   background: none;
   border: 0;
-  padding: 0 6px;
-  font-size: 13px;
-  color: var(--text-secondary);
+  padding: 0;
+  font-size: inherit;
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
   cursor: pointer;
   font-family: inherit;
 }
@@ -6378,3 +6388,10 @@ select.field { max-width: 220px }
   font-size: 10px;
   color: var(--text-muted, #888);
 }
+
+/* One text column, one width. See app.Column.
+
+   Pages chose their own — 600, 640, 680, 700, 720, 760, 820 — so the text
+   changed width as you walked between them, and /privacy centred itself on top
+   of that, which moved it sideways as well. */
+.page-col { max-width: 720px }

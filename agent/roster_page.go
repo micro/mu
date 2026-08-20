@@ -20,7 +20,6 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/service"
-	"mu/service/mail"
 )
 
 // Handler serves /agents.
@@ -46,12 +45,21 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/agents", http.StatusSeeOther)
 			return
 		case "token":
+			// Back to where it was asked for.
+			//
+			// Both token forms post here, because this is where the action
+			// lives — so pressing "Issue one" on an agent's Connect page landed
+			// you on the roster, looking at a different page than the one you
+			// were reading, with the secret somewhere on it. The form says
+			// where it came from and this honours it.
+			back := localPath(r.FormValue("back"))
 			secret, err := IssueToken(owner, r.FormValue("id"))
 			if err != nil {
-				http.Redirect(w, r, "/agents?error="+urlSafe(err.Error()), http.StatusSeeOther)
+				http.Redirect(w, r, back+query(back, "error="+urlSafe(err.Error())), http.StatusSeeOther)
 				return
 			}
-			http.Redirect(w, r, "/agents?created="+r.FormValue("id")+"&secret="+urlSafe(secret), http.StatusSeeOther)
+			http.Redirect(w, r, back+query(back,
+				"created="+r.FormValue("id")+"&secret="+urlSafe(secret)), http.StatusSeeOther)
 			return
 		}
 		http.Redirect(w, r, "/agents", http.StatusSeeOther)
@@ -65,7 +73,7 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 
 	csrf := auth.CSRFToken(r)
 	var b strings.Builder
-	b.WriteString(`<div style="max-width:720px">`)
+	b.WriteString(app.Column())
 	// The model, in one sentence: you make one, it gets an address, you talk
 	// to it — and a token lets something else use its tools.
 	//
@@ -176,6 +184,27 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 
 func urlSafe(s string) string { return strings.ReplaceAll(html.EscapeString(s), " ", "%20") }
 
+// localPath is a redirect target this instance is willing to send somebody to.
+//
+// A path on this host, nothing else. It arrives in a form field, so without
+// this an open redirect is one hidden input away — and the roster is the safe
+// default because it is where the agent is either way.
+func localPath(s string) string {
+	s = strings.TrimSpace(s)
+	if !strings.HasPrefix(s, "/") || strings.HasPrefix(s, "//") {
+		return "/agents"
+	}
+	return s
+}
+
+// query appends parameters to a path that may already have some.
+func query(path, params string) string {
+	if strings.Contains(path, "?") {
+		return "&" + params
+	}
+	return "?" + params
+}
+
 // issuesToken says whether creating an agent of this kind should mint a
 // credential.
 //
@@ -237,7 +266,6 @@ type entry struct {
 	// that will never be used. Its name opens the page it does have.
 	Chat  string
 	For   string // one line: what it is for
-	Addr  string // its address, empty where it has none
 	ID    string // for the links that need it
 	Admin bool   // whether Edit and Fork apply, which is only to your own
 	Extra string // owner-only controls, appended after the links
@@ -256,16 +284,16 @@ func entryRow(e entry) string {
 	if e.For != "" {
 		b.WriteString(`<div class="agent-for">` + html.EscapeString(e.For) + `</div>`)
 	}
-	if e.Addr != "" {
-		b.WriteString(`<div class="agent-mail"><code>` + html.EscapeString(e.Addr) + `</code></div>`)
-	}
-
+	// No address on the row, and no Email link.
+	//
+	// Both were here on the argument that writing to the thing is what it is
+	// for. They made every row two lines longer and neither is what somebody
+	// does from a list: an address is something you copy once, from the page
+	// about that agent, and a mailto opens a client with an empty message in
+	// it. The list is for picking which agent; Connect is where its address is.
 	b.WriteString(`<div class="agent-links">`)
 	if e.Chat != "" {
 		b.WriteString(`<a href="` + e.Chat + `">Chat</a>`)
-	}
-	if e.Addr != "" {
-		b.WriteString(`<a href="mailto:` + html.EscapeString(e.Addr) + `">Email</a>`)
 	}
 	b.WriteString(`<a href="/agent/connect?id=` + html.EscapeString(e.ID) + `">Connect</a>`)
 	if e.Admin {
@@ -323,7 +351,6 @@ func agentRow(a *Agent, csrf, base string) string {
 		Path:  open,
 		Chat:  chat,
 		For:   for_,
-		Addr:  a.Address(),
 		ID:    a.ID,
 		Admin: true,
 		Extra: extra,
@@ -369,14 +396,6 @@ func platformRow(name string) string {
 	if a == nil {
 		return ""
 	}
-	// The default answers at the bare agent@, the rest at agent+<name>@ — the
-	// tag names the agent rather than the owner, which is the whole difference
-	// from you+research@: one thing to remember instead of two, and the one you
-	// actually chose.
-	tag := name
-	if name == DefaultPlatformAgent {
-		tag = ""
-	}
 
 	for_ := strings.TrimSpace(a.Description)
 	if for_ == "" {
@@ -394,7 +413,6 @@ func platformRow(name string) string {
 		Path: path,
 		Chat: path,
 		For:  for_,
-		Addr: mail.SharedAgentAddressFor(tag),
 		ID:   strings.ToLower(name),
 	})
 }

@@ -73,12 +73,29 @@ func ConnectHandler(w http.ResponseWriter, r *http.Request) {
 	// The same picker the conversation has, and on a phone the same sheet: the
 	// column is fixed off-screen there, so without the button it would be a
 	// panel nothing could open.
+	// The secret, on the page that asked for it.
+	//
+	// Issuing a token posts to /agents, which is where the action lives, and it
+	// used to redirect there too — so you pressed a button on this page and
+	// were shown a different one. It comes back here now, and the panel that
+	// shows a secret once has to be drawn here as well or the round trip ends
+	// with the token nowhere.
+	notice := ""
+	if secret := r.URL.Query().Get("secret"); secret != "" {
+		notice = secretPanel(secret, a, app.BaseURL(r))
+	} else if msg := strings.TrimSpace(r.URL.Query().Get("error")); msg != "" {
+		notice = `<p class="text-error">` + html.EscapeString(msg) + `</p>`
+	}
+
 	page := `<div class="chat-layout"><div class="chat-side">` +
 		`<div class="chat-pane" id="pane-agents">` + renderAgentsPanel() + `</div></div>` +
 		`<div class="chat-main"><p class="conn-back">` +
-		app.Link("← Agents", back) +
+		// TextLink, not Link: app.Link appends a → because it points at a
+		// destination you are going on to, and a back link that reads
+		// "← Agents →" is pointing both ways at once.
+		app.TextLink("← Agents", back) +
 		`<button type="button" class="chat-open-list" onclick="muPane('agents')">Agents</button></p>` +
-		`<div style="max-width:820px">` + body + `</div></div></div>` +
+		`<div style="max-width:820px">` + notice + body + `</div></div></div>` +
 		chatLayoutCSS + connectCSS + paneJS +
 		`<script>window.muSeedAgent(` + app.JSString(id) + `);</script>`
 	app.Respond(w, r, app.Response{Title: title, Description: desc, HTML: page})
@@ -125,7 +142,7 @@ func defaultPanel(base string) string {
 		`hand to somebody else should be ` + app.TextLink("its own", "/agent/new") +
 		`, with a scope.</span></div>`)
 
-	b.WriteString(`<h3 class="conn-head">Point a client at it</h3>`)
+	b.WriteString(`<h3 class="conn-head">Configuration</h3>`)
 	b.WriteString(`<pre class="conn-pre">` + html.EscapeString(`{
   "mcpServers": {
     "mu": {
@@ -218,8 +235,9 @@ func connectPanel(a *Agent, base, csrf string) string {
 				`<input type="hidden" name="_csrf" value="%s">`+
 				`<input type="hidden" name="action" value="token">`+
 				`<input type="hidden" name="id" value="%s">`+
+				`<input type="hidden" name="back" value="/agent/connect?id=%s">`+
 				`<button type="submit" class="link-button">Issue one</button></form>`,
-				html.EscapeString(csrf), html.EscapeString(a.ID)) +
+				html.EscapeString(csrf), html.EscapeString(a.ID), html.EscapeString(a.ID)) +
 			`</span></div>`)
 	} else {
 		used := "not called yet"
@@ -234,14 +252,15 @@ func connectPanel(a *Agent, base, csrf string) string {
 				`<input type="hidden" name="_csrf" value="%s">`+
 				`<input type="hidden" name="action" value="token">`+
 				`<input type="hidden" name="id" value="%s">`+
+				`<input type="hidden" name="back" value="/agent/connect?id=%s">`+
 				`<button type="submit" class="link-button">replace it</button></form>`,
-				html.EscapeString(csrf), html.EscapeString(a.ID)) +
+				html.EscapeString(csrf), html.EscapeString(a.ID), html.EscapeString(a.ID)) +
 			` to get a new one.</span></div>`)
 	}
 
 	// How to actually wire it up, with this agent's own endpoint in it rather
 	// than the generic one /tools shows.
-	b.WriteString(`<h3 class="conn-head">Point a client at it</h3>`)
+	b.WriteString(`<h3 class="conn-head">Configuration</h3>`)
 	b.WriteString(`<pre class="conn-pre">` + html.EscapeString(`{
   "mcpServers": {
     "`+strings.ToLower(a.Name)+`": {
@@ -297,7 +316,7 @@ func platformPanel(a *micro.Agent, base string) string {
 	b.WriteString(`<div class="conn-row"><span class="conn-k">May reach</span>` +
 		`<span class="conn-scope">` + html.EscapeString(toolWords(a.Tools)) + `</span></div>`)
 
-	if addr := mail.SharedAgentAddressFor(a.ID); addr != "" {
+	if addr := PlatformAddress(a.ID); addr != "" {
 		b.WriteString(`<div class="conn-row"><span class="conn-k">Write to it</span>` +
 			`<span class="conn-v"><code>` + html.EscapeString(addr) + `</code><br>` +
 			`<span class="conn-sub">From your verified address. The tag names the agent ` +

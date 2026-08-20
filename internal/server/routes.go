@@ -165,7 +165,6 @@ func authRequired() map[string]bool {
 		"/pricing":                       false, // Public - redirects to /tools
 		"/privacy":                       false, // Public - privacy policy
 		"/support":                       false, // Public - how to reach the operator
-		"/help":                          false, // Public - how to connect an agent
 		"/install":                       false, // Public - run your own instance
 		"/whitepaper":                    false, // Public - whitepaper
 		"/mcp":                           false, // Public - MCP tools page
@@ -658,7 +657,6 @@ func registerRoutes() {
 	// whichever of the two replaced it — an exact pattern outranks the /docs
 	// the service owns now.
 	http.HandleFunc("/about", help.AboutHandler)
-	http.HandleFunc("/help", help.Handler)
 	http.HandleFunc("/install", help.InstallHandler)
 	for from, to := range help.Redirects {
 		if from == "/docs" {

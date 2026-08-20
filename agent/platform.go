@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"mu/agent/micro"
+	"mu/service/mail"
 )
 
 // DefaultPlatformAgent is who answers the untagged address. Micro is the
@@ -111,4 +112,22 @@ func examplesFor(agentID string) []string {
 		return a.Examples
 	}
 	return nil
+}
+
+// PlatformAddress is where one of this instance's own agents is written to.
+//
+// agent+news@ for the specialists, and the bare agent@ for the default —
+// because the default is what an untagged message already reaches, so
+// agent+micro@ is the same mailbox spelled longer. It was published that way on
+// its own Connect page: "Connect to Micro / agent+micro@micro.mu", naming a tag
+// whose only effect is to select the agent you get anyway.
+//
+// Here rather than in service/mail, because which agent is the default is this
+// package's fact and a service may not import an agent. Four call sites were
+// each deciding it for themselves, and three of them got it right.
+func PlatformAddress(id string) string {
+	if strings.EqualFold(id, DefaultPlatformAgent) {
+		id = ""
+	}
+	return mail.SharedAgentAddressFor(id)
 }

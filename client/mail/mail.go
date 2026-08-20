@@ -178,7 +178,7 @@ func answerMail(m mail.InboundMail) {
 		from = mail.SharedAgentAddress()
 		switch {
 		case platID != "":
-			from = mail.SharedAgentAddressFor(platID)
+			from = agent.PlatformAddress(platID)
 		case a != nil && a.Address() != "":
 			from = a.Address()
 		}

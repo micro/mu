@@ -20,11 +20,13 @@ import (
 func PrivacyHandler(w http.ResponseWriter, r *http.Request) {
 	var b strings.Builder
 
-	b.WriteString(`<div style="max-width:680px;margin:0 auto">`)
-	b.WriteString(`<div class="card">`)
-	b.WriteString(`<h2>Privacy</h2>`)
-	b.WriteString(`<p class="text-sm text-muted">What this instance stores, why, and what it never does.</p>`)
-	b.WriteString(`</div>`)
+	// Left-aligned in a column of the same width as every other page.
+	//
+	// It was the one page that centred itself — max-width with margin:0 auto —
+	// so walking from /support to /privacy moved the text sideways under you.
+	// A column that is a different width on every page is the same fault in a
+	// slower form; see app.Column.
+	b.WriteString(app.Column())
 
 	section := func(title string, paras ...string) {
 		b.WriteString(`<div class="card"><h3>` + title + `</h3>`)

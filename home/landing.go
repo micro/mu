@@ -82,13 +82,13 @@ func Landing(w http.ResponseWriter, r *http.Request) {
 // configure Cursor is a question asked by somebody who already decided. That
 // one belongs on /tools, which is the page about tools.
 //
-// What is left: a headline, a sentence, the address, two ways on.
+// What is left: a headline, a sentence, the address, one way on.
 //
-// The second way on is /agents rather than /tools. A visitor who has just read
-// "a personal agent" and an address wants to know which agents there are, and
-// the tool catalogue answers a question they have not asked yet — it is the page
-// for somebody who has decided to build on this, which is a later moment and a
-// different person. Tools are still one click on from there.
+// There were two buttons and the second kept being the wrong one. It was
+// "Browse the tools", which answers a question a first-time visitor has not
+// asked; then "Browse the agents", which sends somebody signed out to a page
+// that lists the agents they have not made. A second button is a choice, and
+// there is only one thing to do here.
 //
 // And it has to actually fit, which is a measurement rather than an intention.
 // The first version of this centred the block with min-height:calc(100vh -
@@ -193,7 +193,6 @@ weather, places, storage.</p>
 
 <div class="lctas">
   <a class="lcta" href="/signup">Get an agent →</a>
-  <a class="lcta lcta-alt" href="/agents">Browse the agents</a>
 </div>
 </div>
 

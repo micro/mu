@@ -623,18 +623,13 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 			connect = `<a class="agent-connect" href="/agent/connect?id=` +
 				url.QueryEscape(selAgent) + `">Connect &rarr;</a>`
 		}
-		// The address, in the bar, for the agent this page is about.
+		// No address in the bar.
 		//
-		// Picking an agent changed a chip and nothing else you could act on:
-		// its address, its scope and its token were one page away behind a link
-		// called "How to reach this one", and the first question anybody has
-		// about an agent is where to write to it. It is the product's whole
-		// claim, and it was the one fact not on the screen.
+		// It was here on the argument that the first question anybody has about
+		// an agent is where to write to it. Maybe — but not on the page where
+		// you are already talking to it. This is the chat; the address is a
+		// thing you copy once, from Connect, which is the link next to it.
 		where := ""
-		if a := inboxAddress(accountID, selAgent); a != "" {
-			where = `<code class="agent-addr" title="Write to it here — it answers in the thread">` +
-				htmlEsc(a) + `</code>`
-		}
 		// On a phone this bar is the whole of the navigation: the chip opens the
 		// agent picker and the button beside it opens your conversations. Both
 		// were columns above the chat before, so the first thing on the page was
@@ -825,7 +820,7 @@ func inboxAddress(accountID, agentID string) string {
 		// agent's own page said to write to the catch-all. Two addresses for
 		// one agent, and the one on its page reaches a different agent.
 		if platformName(agentID) != "" {
-			if at := mail.SharedAgentAddressFor(agentID); at != "" {
+			if at := PlatformAddress(agentID); at != "" {
 				return at
 			}
 		}

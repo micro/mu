@@ -28,19 +28,18 @@ import (
 func SupportHandler(w http.ResponseWriter, r *http.Request) {
 	var b strings.Builder
 
-	b.WriteString(`<div style="max-width:680px">`)
-	b.WriteString(`<div class="card"><h2>Support</h2>`)
-	b.WriteString(`<p style="color:#666;font-size:15px;margin:0">Something not working, a payment that did not land, or a question the docs do not answer.</p>`)
-	b.WriteString(`</div>`)
+	// No card restating the page title. "Support / Something not working, a
+	// payment that did not land, or a question the docs do not answer" was a
+	// heading and a list of reasons somebody has already had before arriving —
+	// nobody opens this page to find out whether their problem qualifies.
+	b.WriteString(app.Column())
 
 	addr := mail.SupportAddress()
 	if addr != "" {
-		b.WriteString(`<div class="card" style="margin-top:16px"><h3>Email</h3>`)
+		b.WriteString(`<div class="card"><h3>Email</h3>`)
 		b.WriteString(`<p style="font-size:15px;margin:0 0 6px"><a href="mailto:` +
 			html.EscapeString(addr) + `"><code>` + html.EscapeString(addr) + `</code></a></p>`)
-		b.WriteString(`<p style="font-size:14px;color:#666;margin:0">Reaches this instance's operator. ` +
-			`If it is about money, say what you tried to buy and roughly when — the payment can be ` +
-			`found from that.</p>`)
+		b.WriteString(`<p style="font-size:14px;color:#666;margin:0">For any issues, contact us.</p>`)
 		b.WriteString(`</div>`)
 	}
 
@@ -54,9 +53,9 @@ func SupportHandler(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(`</div>`)
 	}
 
-	b.WriteString(`<div class="card" style="margin-top:16px"><h3>Bugs</h3>`)
+	b.WriteString(`<div class="card" style="margin-top:16px"><h3>Issues</h3>`)
 	b.WriteString(`<p style="font-size:15px;margin:0 0 6px"><a href="https://github.com/micro/mu/issues" rel="noopener">github.com/micro/mu/issues</a></p>`)
-	b.WriteString(`<p style="font-size:14px;color:#666;margin:0">The code is open. If you can describe what you did and what happened, that is a bug report.</p>`)
+	b.WriteString(`<p style="font-size:14px;color:#666;margin:0">Open an issue or file a PR on GitHub.</p>`)
 	b.WriteString(`</div>`)
 
 	if addr == "" {

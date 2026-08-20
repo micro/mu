@@ -7,15 +7,19 @@ import (
 	"testing"
 )
 
-// Three pages, and each one is a file that exists.
+// Two pages, and each one is a file that exists.
 //
 // There were nine, behind a categorised index. The index was the tell: a set of
 // documents large enough to need navigating is a manual, and the product was
 // meant to explain itself — the tools are at /tools, the protocol is a URL, and
 // the price list is a page.
+//
+// Then three, and now two: /help was a second page about pointing an agent at
+// this instance, which is what /tools is for. Two pages answering one question,
+// and the one nobody maintained was the one in the footer.
 func TestEveryPageServes(t *testing.T) {
-	if len(pages) != 3 {
-		t.Fatalf("%d pages — three is the whole site's documentation: about, help, install", len(pages))
+	if len(pages) != 2 {
+		t.Fatalf("%d pages — two is the whole site's documentation: about and install", len(pages))
 	}
 	for i, p := range pages {
 		if _, err := docsFS.ReadFile(p.Filename); err != nil {
@@ -48,8 +52,12 @@ func TestServedPageDoesNotRepeatItsTitle(t *testing.T) {
 }
 
 // Every address the old nine answered on still goes somewhere.
+//
+// Not necessarily to a doc. When /help went, everything that pointed at it was
+// repointed to /tools — which is a page in the product rather than a file in
+// this package, and is the page that actually answers what /help was for.
 func TestOldAddressesLand(t *testing.T) {
-	known := map[string]bool{}
+	known := map[string]bool{"/tools": true}
 	for _, p := range pages {
 		known[p.Path] = true
 	}

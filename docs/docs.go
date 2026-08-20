@@ -42,8 +42,6 @@ type page struct {
 var pages = []page{
 	{Path: "/about", Filename: "ABOUT.md", Title: "About",
 		Description: "A personal agent — what Mu is and why"},
-	{Path: "/help", Filename: "HELP.md", Title: "Help",
-		Description: "How to point an agent at this instance, and what it costs"},
 	{Path: "/install", Filename: "INSTALL.md", Title: "Install",
 		Description: "Run your own instance"},
 }
@@ -52,18 +50,19 @@ var pages = []page{
 // that replaced it. The router registers one exact pattern each, which is what
 // lets them survive /docs belonging to a service now.
 var Redirects = map[string]string{
-	"/docs":              "/help",
+	"/docs":              "/tools",
 	"/docs/about":        "/about",
-	"/docs/usecases":     "/help",
-	"/docs/mcp":          "/help",
-	"/docs/cli":          "/help",
-	"/docs/architecture": "/help",
-	"/docs/security":     "/help",
-	"/docs/principles":   "/help",
+	"/docs/usecases":     "/tools",
+	"/docs/mcp":          "/tools",
+	"/docs/cli":          "/tools",
+	"/docs/architecture": "/tools",
+	"/docs/security":     "/tools",
+	"/docs/principles":   "/tools",
 	"/docs/installation": "/install",
 	"/docs/environment":  "/install",
-	"/help/mcp":          "/help",
-	"/help/cli":          "/help",
+	"/help":              "/tools",
+	"/help/mcp":          "/tools",
+	"/help/cli":          "/tools",
 	"/help/about":        "/about",
 	"/help/installation": "/install",
 	"/help/environment":  "/install",
@@ -72,14 +71,23 @@ var Redirects = map[string]string{
 // Load initializes the docs building block.
 func Load() {}
 
-// AboutHandler serves /about.
-func AboutHandler(w http.ResponseWriter, r *http.Request) { serve(w, r, pages[0]) }
+// Indexed rather than positional. These were pages[0], pages[1], pages[2], so
+// removing a page silently repointed the handlers after it — deleting /help
+// would have made /install serve nothing and /about serve Install.
+func pageAt(path string) page {
+	for _, p := range pages {
+		if p.Path == path {
+			return p
+		}
+	}
+	return page{}
+}
 
-// Handler serves /help.
-func Handler(w http.ResponseWriter, r *http.Request) { serve(w, r, pages[1]) }
+// AboutHandler serves /about.
+func AboutHandler(w http.ResponseWriter, r *http.Request) { serve(w, r, pageAt("/about")) }
 
 // InstallHandler serves /install.
-func InstallHandler(w http.ResponseWriter, r *http.Request) { serve(w, r, pages[2]) }
+func InstallHandler(w http.ResponseWriter, r *http.Request) { serve(w, r, pageAt("/install")) }
 
 func serve(w http.ResponseWriter, r *http.Request, p page) {
 	content, err := docsFS.ReadFile(p.Filename)
