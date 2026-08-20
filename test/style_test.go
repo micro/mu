@@ -176,7 +176,7 @@ func walkGo(t *testing.T, f func(path, src string)) {
 // there — which is not one shape repeated but forty pages each laying
 // themselves out. That is per-page work rather than a sweep, which is why this
 // number is coming down in steps.
-const inlineStyles = 222
+const inlineStyles = 167
 
 var styleAttr = regexp.MustCompile(`style="`)
 

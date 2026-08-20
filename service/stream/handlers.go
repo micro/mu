@@ -156,8 +156,8 @@ func streamBody(events []*Event, viewerID string) string {
 	// Compose box (logged-in only).
 	if viewerID != "" {
 		sb.WriteString(fmt.Sprintf(`<form id="stream-form" method="POST" action="/stream" class="mb-3 d-flex gap-2">
-<input type="text" name="content" id="stream-input" placeholder="Ask @micro anything or post an update..." maxlength="%d" autocomplete="off" style="flex:1;padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:14px">
-<button type="submit" style="padding:8px 16px;background:#000;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px">Send</button>
+<input type="text" name="content" id="stream-input" placeholder="Ask @micro anything or post an update..." maxlength="%d" autocomplete="off" class="form-input grow text-base">
+<button type="submit" class="btn">Send</button>
 </form>`, MaxContentLength))
 	}
 
@@ -200,7 +200,7 @@ func renderEvent(e *Event, viewerID string) string {
 	var avatar, name, nameColor, bubbleBg string
 	switch e.Type {
 	case TypeAgent:
-		avatar = `<div style="width:28px;height:28px;border-radius:50%;background:#1f7a4a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">M</div>`
+		avatar = `<div class="avatar filled" style="background:#1f7a4a">M</div>`
 		name = "Micro"
 		nameColor = "#1f7a4a"
 		bubbleBg = "#f0faf5"
@@ -216,7 +216,7 @@ func renderEvent(e *Event, viewerID string) string {
 		case TypeSystem:
 			icon = "⚙️"
 		}
-		avatar = fmt.Sprintf(`<div style="width:28px;height:28px;border-radius:50%%;background:#f5f5f5;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">%s</div>`, icon)
+		avatar = fmt.Sprintf(`<div class="avatar">%s</div>`, icon)
 		name = "Micro"
 		nameColor = "#999"
 		bubbleBg = "#fafafa"
@@ -234,7 +234,7 @@ func renderEvent(e *Event, viewerID string) string {
 			colorIdx += int(c)
 		}
 		bg := avatarColors[colorIdx%len(avatarColors)]
-		avatar = fmt.Sprintf(`<div style="width:28px;height:28px;border-radius:50%%;background:%s;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">%s</div>`, bg, htmlpkg.EscapeString(initial))
+		avatar = fmt.Sprintf(`<div class="avatar filled" style="background:%s">%s</div>`, bg, htmlpkg.EscapeString(initial))
 		name = nm
 		nameColor = "#333"
 		bubbleBg = "#fff"
@@ -269,10 +269,10 @@ func renderEvent(e *Event, viewerID string) string {
 		nameLink = fmt.Sprintf(`<span style="color:%s;font-weight:600">%s</span>`, nameColor, htmlpkg.EscapeString(name))
 	}
 
-	return fmt.Sprintf(`<div style="display:flex;gap:8px;padding:8px 0">%s
+	return fmt.Sprintf(`<div class="d-flex gap-2 row-pad">%s
 <div class="grow min-w-0">
-<div style="display:flex;align-items:baseline;gap:6px">%s<span style="color:#bbb;font-size:11px">%s</span></div>
-<div style="margin-top:3px;padding:8px 10px;background:%s;border-radius:0 12px 12px 12px;font-size:14px;line-height:1.5;word-wrap:break-word;overflow-wrap:anywhere">%s</div>
+<div class="baseline-row gap-1">%s<span class="text-faint text-2xs">%s</span></div>
+<div class="bubble" style="background:%s">%s</div>
 </div></div>`, avatar, nameLink, app.TimeAgo(e.CreatedAt), bubbleBg, linked)
 }
 

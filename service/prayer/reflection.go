@@ -274,9 +274,9 @@ func prayerTimesHTML() string {
 	return `<div class="card" id="prayer-card">
   <h3>Prayer times</h3>
   <div id="prayer-body"><p class="text-muted m-0 text-base">Loading…</p></div>
-  <p style="margin:12px 0 0;font-size:12px;color:#999">
+  <p class="mt-3 m-0 text-xs text-muted">
     Calculation
-    <select id="prayer-method" style="font-family:inherit;font-size:12px;padding:2px 4px;margin-left:4px;border:1px solid #ddd;border-radius:4px;background:#fff">` + opts.String() + `</select>
+    <select id="prayer-method" class="num-field ml-1">` + opts.String() + `</select>
   </p>
 </div>
 <script>
@@ -300,26 +300,26 @@ func prayerTimesHTML() string {
     var rows=[['Fajr',t.fajr],['Sunrise',t.sunrise],['Dhuhr',t.dhuhr],['Asr',t.asr],['Maghrib',t.maghrib],['Isha',t.isha]];
     var h='';
     if(d.next){h+='<p class="m-0 mb-3 text-base">Next: <strong>'+d.next+'</strong> at '+d.next_at+'</p>';}
-    h+='<table style="width:100%;font-size:14px;border-collapse:collapse">';
+    h+='<table class="rule-table text-base">';
     rows.forEach(function(r){
       if(!r[1])return;
       var isNext=(r[0]===d.next);
-      h+='<tr><td style="padding:4px 0;color:'+(isNext?'#111':'#666')+';font-weight:'+(isNext?'600':'400')+'">'+r[0]+'</td>'+
-         '<td style="padding:4px 0;text-align:right;font-weight:'+(isNext?'600':'400')+'">'+r[1]+'</td></tr>';
+      var cls=isNext?' pr-next':'';
+      h+='<tr class="pr-row'+cls+'"><td>'+r[0]+'</td><td class="right">'+r[1]+'</td></tr>';
     });
     h+='</table>';
-    if(t.date){h+='<p style="margin:10px 0 0;font-size:12px;color:#999">'+t.date+'</p>';}
+    if(t.date){h+='<p class="mt-3 m-0 text-xs text-muted">'+t.date+'</p>';}
     if(!t.fajr){h='<p class="text-muted m-0 mb-3 text-base">Prayer times unavailable right now.</p>';}
     if(d.qibla){h+=qiblaHTML(d.qibla);}
     body.innerHTML=h;
     if(d.qibla){placeMarks(d.qibla.bearing,0);startCompass(d.qibla.bearing);}
   }
   function qiblaHTML(q){
-    return '<div style="margin-top:16px;padding-top:14px;border-top:1px solid #eee">'+
+    return '<div class="mt-4 top-rule">'+
       '<p class="m-0 mb-3 text-base">Qibla: <strong>'+q.bearing+'\u00B0 '+q.point+'</strong>'+
       ' <span class="text-muted">\u00B7 '+q.distance+'km to Mecca</span></p>'+
-      '<div style="display:flex;align-items:center;gap:14px">'+
-      '<svg id="qibla-dial" width="96" height="96" viewBox="0 0 96 96" style="flex:0 0 auto">'+
+      '<div class="d-flex items-center gap-4">'+
+      '<svg id="qibla-dial" width="96" height="96" viewBox="0 0 96 96" class="fixed-w">'+
         // Fixed index at the top: the way the phone is pointing. Everything
         // else is world-referenced and turns beneath it, so aligning is
         // "bring Q up to the marker". Hidden until a live heading exists,
@@ -336,7 +336,7 @@ func prayerTimesHTML() string {
         '<text id="qibla-q" text-anchor="middle" font-size="11" font-weight="700" fill="#111">Q</text>'+
         '<text id="qibla-n" text-anchor="middle" font-size="10" fill="#bbb">N</text>'+
       '</svg>'+
-      '<p id="qibla-hint" style="margin:0;font-size:12px;color:#999;line-height:1.5">'+
+      '<p id="qibla-hint" class="m-0 text-xs text-muted lh-15">'+
         'Q marks the qibla, N is true north.</p>'+
       '</div></div>';
   }
@@ -475,10 +475,10 @@ func renderReflectionPage(rd *ReminderData) string {
 		if head != "" {
 			b.WriteString(`<p class="semibold m-0 mb-2">` + html.EscapeString(head) + `</p>`)
 		}
-		b.WriteString(`<p style="white-space:pre-line;margin:0;line-height:1.6">` + html.EscapeString(body) + `</p>`)
+		b.WriteString(`<p class="pre-line m-0">` + html.EscapeString(body) + `</p>`)
 		if linkKey != "" && rd.Links != nil {
 			if p, ok := rd.Links[linkKey].(string); ok && p != "" {
-				b.WriteString(`<p style="margin:10px 0 0"><a href="https://reminder.dev` + html.EscapeString(p) + `" target="_blank">` + linkLabel + ` &rarr;</a></p>`)
+				b.WriteString(`<p class="mt-3 m-0"><a href="https://reminder.dev` + html.EscapeString(p) + `" target="_blank">` + linkLabel + ` &rarr;</a></p>`)
 			}
 		}
 		b.WriteString(`</div>`)

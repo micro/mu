@@ -95,23 +95,23 @@ func InviteHandler(w http.ResponseWriter, r *http.Request) {
 		for _, req := range requests {
 			reason := ""
 			if req.Reason != "" {
-				reason = fmt.Sprintf(`<p style="font-size:13px;color:#666;margin:4px 0">%s</p>`, req.Reason)
+				reason = fmt.Sprintf(`<p class="text-sm text-secondary my-1">%s</p>`, req.Reason)
 			}
-			status := `<span style="color:#c90;font-size:12px">pending</span>`
+			status := `<span class="text-warn text-xs">pending</span>`
 			if req.Invited {
-				status = fmt.Sprintf(`<span style="color:#22c55e;font-size:12px">invited %s</span>`, req.InvitedAt.Format("2 Jan"))
+				status = fmt.Sprintf(`<span class="text-success text-xs">invited %s</span>`, req.InvitedAt.Format("2 Jan"))
 			}
 			actions := ""
 			if !req.Invited {
 				actions = fmt.Sprintf(
-					`<div style="display:flex;gap:6px;margin-top:6px"><form method="POST"><input type="hidden" name="email" value="%s"><button type="submit" style="font-size:12px;padding:4px 10px;border-radius:4px;border:1px solid #22c55e;background:#fff;color:#22c55e;cursor:pointer">Send invite</button></form><form method="POST" onsubmit="return confirm('Reject?')"><input type="hidden" name="action" value="reject"><input type="hidden" name="email" value="%s"><button type="submit" style="font-size:12px;padding:4px 10px;border-radius:4px;border:1px solid #c00;background:#fff;color:#c00;cursor:pointer">Reject</button></form></div>`,
+					`<div class="d-flex gap-1 mt-1"><form method="POST"><input type="hidden" name="email" value="%s"><button type="submit" class="mini-btn good">Send invite</button></form><form method="POST" onsubmit="return confirm('Reject?')"><input type="hidden" name="action" value="reject"><input type="hidden" name="email" value="%s"><button type="submit" class="mini-btn danger">Reject</button></form></div>`,
 					req.Email, req.Email)
 			} else {
 				actions = fmt.Sprintf(
-					`<div class="mt-1"><form method="POST" onsubmit="return confirm('Resend?')"><input type="hidden" name="email" value="%s"><button type="submit" style="font-size:12px;padding:4px 10px">Resend</button></form></div>`,
+					`<div class="mt-1"><form method="POST" onsubmit="return confirm('Resend?')"><input type="hidden" name="email" value="%s"><button type="submit" class="text-xs p-tight">Resend</button></form></div>`,
 					req.Email)
 			}
-			sb.WriteString(fmt.Sprintf(`<div style="padding:10px 0;border-bottom:1px solid #f0f0f0"><div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap"><strong class="text-base">%s</strong>%s<span style="color:#bbb;font-size:12px">%s</span></div>%s%s</div>`,
+			sb.WriteString(fmt.Sprintf(`<div class="thin-row row-pad"><div class="baseline-row flex-wrap"><strong class="text-base">%s</strong>%s<span class="text-faint text-xs">%s</span></div>%s%s</div>`,
 				req.Email, status, req.RequestedAt.Format("2 Jan 15:04"), reason, actions))
 		}
 	}
@@ -167,10 +167,10 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 	prevOutput := r.URL.Query().Get("output")
 
 	var sb strings.Builder
-	sb.WriteString(`<div class="card" style="background:#1a1a1a;color:#e0e0e0;font-family:'SF Mono','Fira Code',monospace;padding:16px;border:none">`)
+	sb.WriteString(`<div class="card" class="console">`)
 
 	// Output area
-	sb.WriteString(`<div id="cout" style="font-size:13px;white-space:pre-wrap;max-height:60vh;overflow-y:auto;margin-bottom:12px">`)
+	sb.WriteString(`<div id="cout" class="text-sm whitespace-pre-wrap tall-scroll mb-3">`)
 	if prevOutput != "" {
 		sb.WriteString(fmt.Sprintf(`<span class="text-muted">&gt; %s</span>
 %s`, esc(prevCmd), esc(prevOutput)))
@@ -179,9 +179,9 @@ func ConsoleHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Input — form for fallback, JS for interactive
 	sb.WriteString(`<form method="POST" action="/admin/console" id="cf" class="d-flex gap-2">`)
-	sb.WriteString(`<span style="color:#888;line-height:32px">&gt;</span>`)
-	sb.WriteString(`<input type="text" name="cmd" id="ci" autocomplete="off" autofocus style="flex:1;background:transparent;border:none;color:#e0e0e0;font-family:inherit;font-size:13px;outline:none;padding:6px 0">`)
-	sb.WriteString(`<button type="submit" id="cb" style="background:#333;color:#e0e0e0;border:none;border-radius:4px;padding:4px 12px;font-family:inherit;font-size:12px;cursor:pointer">run</button>`)
+	sb.WriteString(`<span class="text-muted line-32">&gt;</span>`)
+	sb.WriteString(`<input type="text" name="cmd" id="ci" autocomplete="off" autofocus class="console-input">`)
+	sb.WriteString(`<button type="submit" id="cb" class="console-btn">run</button>`)
 	sb.WriteString(`</form>`)
 
 	sb.WriteString(`<div class="mt-2 text-2xs text-secondary">help · users · apps · search · stats</div>`)

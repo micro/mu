@@ -109,10 +109,10 @@ func restErrorsCard() string {
 	b.WriteString(`<h3>Responses</h3>`)
 	b.WriteString(`<p class="card-desc">A refusal says which kind it is, so a client knows ` +
 		`whether to retry, re-authenticate or give up.</p>`)
-	b.WriteString(`<table style="width:100%;border-collapse:collapse;font-size:13px">`)
+	b.WriteString(`<table class="rule-table">`)
 	for _, row := range rows {
-		b.WriteString(`<tr><td style="padding:4px 8px;vertical-align:top"><code>` + row.code +
-			`</code></td><td style="padding:4px 8px">` + row.when + `</td></tr>`)
+		b.WriteString(`<tr><td class="align-top"><code>` + row.code +
+			`</code></td><td >` + row.when + `</td></tr>`)
 	}
 	b.WriteString(`</table>`)
 	b.WriteString(`<p class="card-meta">Errors are ` +
@@ -240,19 +240,19 @@ func restMethodCard(m restMethod, base string) string {
 	}
 
 	if len(m.Params) > 0 {
-		b.WriteString(`<table style="width:100%;border-collapse:collapse;font-size:13px;margin:8px 0">`)
-		b.WriteString(`<tr><th style="text-align:left;padding:4px 8px;border-bottom:1px solid #eee">Argument</th>` +
-			`<th style="text-align:left;padding:4px 8px;border-bottom:1px solid #eee">Type</th>` +
-			`<th style="text-align:left;padding:4px 8px;border-bottom:1px solid #eee">Description</th></tr>`)
+		b.WriteString(`<table class="rule-table">`)
+		b.WriteString(`<tr><th >Argument</th>` +
+			`<th >Type</th>` +
+			`<th >Description</th></tr>`)
 		for _, p := range m.Params {
 			req := ""
 			if p.Required {
-				req = ` <span style="color:#e55">*</span>`
+				req = ` <span class="text-error">*</span>`
 			}
 			b.WriteString(fmt.Sprintf(
-				`<tr><td style="padding:4px 8px"><code>%s</code>%s</td>`+
-					`<td style="padding:4px 8px;color:#888">%s</td>`+
-					`<td style="padding:4px 8px">%s</td></tr>`,
+				`<tr><td ><code>%s</code>%s</td>`+
+					`<td class="text-muted">%s</td>`+
+					`<td >%s</td></tr>`,
 				html.EscapeString(p.Name), req,
 				html.EscapeString(p.Type),
 				html.EscapeString(p.Description)))
