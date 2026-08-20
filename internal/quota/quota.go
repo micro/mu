@@ -171,6 +171,20 @@ func CheckQuota(userID string, operation string) (bool, bool, int, error) {
 
 	cost := OperationCost(operation)
 
+	// Today's allowance is spent before the balance is.
+	//
+	// Without this an account starts at zero and can do nothing: there is no
+	// signup grant anywhere, so the first question anybody asked on the web met
+	// "top up at /account/topup". A price with no allowance is a toll booth at
+	// the front door — the argument allowance.go already makes about individual
+	// operations, which was never made about the account as a whole.
+	//
+	// Asked, not spent. The spending happens in ConsumeWith, after the call
+	// worked, so a run that fails does not cost somebody their allowance.
+	if cost > 0 && cost <= FreeCreditsLeft(userID) {
+		return true, false, cost, nil
+	}
+
 	// Check if user has sufficient credits
 	balance := BalanceOf(userID)
 	if balance >= cost {
@@ -235,6 +249,20 @@ func ConsumeWith(userID, operation string, meta map[string]interface{}) error {
 	// was ordinary established users, on every single write.
 	cost := OperationCost(operation)
 	if cost <= 0 {
+		record(userID, operation)
+		return nil
+	}
+
+	// Inside today's allowance: recorded, not charged. This is the only place
+	// the allowance is actually spent — CheckQuota asks, this takes — so a call
+	// that was refused or failed on its way here has not cost anybody a credit
+	// they never used.
+	//
+	// The gap between the two is a real race and a harmless one: two calls can
+	// both be told yes and only one fit, and the loser falls through to the
+	// balance below. It has already run by then, so refusing it is not on the
+	// table; charging for it is what the price list says it costs.
+	if SpendFreeCredits(userID, cost) {
 		record(userID, operation)
 		return nil
 	}

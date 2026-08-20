@@ -39,7 +39,21 @@
     "people try something was to price it at zero, which then gave it away for",
     "ever.",
     "",
-    "Every allowance is 0 today, so nothing changes until an operator sets one."
+    "Every per-operation allowance is 0 today. The one that is set is",
+    "daily_quota below, which is the same idea for the account as a whole.",
+    "",
+    "daily_quota is how many credits of activity an account gets each day",
+    "before its balance is touched. It is the front door: nothing grants an",
+    "account credits at signup, so without this a new account can do nothing",
+    "at all, and the first question anybody asked was answered with a link to",
+    "a top-up page. In credits rather than calls because a call's cost varies",
+    "twentyfold — a weather lookup against an image — so a number of calls",
+    "would mean something different every day.",
+    "",
+    "At 100 that is roughly ten agent questions a day, which is enough to find",
+    "out whether the thing is any use. Spent before the balance, all or",
+    "nothing per call, and forgotten at midnight UTC. Set it to 0 to run an",
+    "instance where everything is paid for from the first call."
   ],
   "daily_quota": {
     "value": 100,

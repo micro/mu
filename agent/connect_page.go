@@ -182,8 +182,7 @@ func defaultPanel(base string) string {
 
 	b.WriteString(`<p class="lens-lead"><strong>Micro</strong> — Runs here. The default agent: ` +
 		`every tool on this instance, no setup, and nothing to remember. It is not a separate ` +
-		`identity, so it uses your account rather than a token of its own. ` +
-		app.Link("Make one that is", "/agent/new") + `</p>`)
+		`identity, so it uses your account rather than a token of its own.</p>`)
 
 	b.WriteString(connRow("Tools", `<span class="conn-scope wide">Everything</span>`))
 
@@ -226,7 +225,7 @@ func defaultPanel(base string) string {
 }`) + `</pre>`)
 	b.WriteString(`<p class="conn-note">Claude Desktop takes the URL on its own — Settings → ` +
 		`Connectors → Add custom connector — and signs you in instead of using a token. ` +
-		app.Link("Full setup", "/tools") + `</p>`)
+		app.Link("See the tools", "/tools") + `</p>`)
 
 	return b.String()
 }
@@ -364,7 +363,7 @@ func connectPanel(a *Agent, base, csrf string) string {
 }`) + `</pre>`)
 	b.WriteString(`<p class="conn-note">Claude Desktop takes the URL on its own — Settings → ` +
 		`Connectors → Add custom connector — and signs you in instead of using a token. ` +
-		app.Link("Full setup", "/tools") + `</p>`)
+		app.Link("See the tools", "/tools") + `</p>`)
 
 	return b.String()
 }

@@ -1,7 +1,7 @@
 # About
 
-**A personal agent.** It has an email address; write to it and it answers — in
-the thread, remembering the last one.
+**A personal agent.** Chat with it here or email it from anywhere. It has tools,
+it keeps the thread, and it remembers what you told it last time.
 
 ## Agents
 

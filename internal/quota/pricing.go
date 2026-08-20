@@ -97,8 +97,17 @@ var (
 	prices  = map[string]Price{}
 	ordered []Price
 
-	// DailyQuota is how many free calls a day an account gets where this
-	// instance grants any.
+	// DailyQuota is how many credits of activity an account gets each day
+	// before its balance is touched. Zero turns it off.
+	//
+	// It said "free calls a day" and nothing read it, which is how the product
+	// came to have a price list, a balance, a top-up page and no free tier at
+	// all: an account started at zero and was refused its first question. The
+	// name and the env var are kept so an operator's existing DAILY_QUOTA
+	// override survives; the unit is credits, because a call's cost varies
+	// twentyfold and a count of calls means something different every day.
+	//
+	// See allowance.go for where it is spent.
 	DailyQuota = 100
 )
 
