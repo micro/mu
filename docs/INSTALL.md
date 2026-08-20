@@ -252,27 +252,6 @@ hearing from people you have never heard of. That also made it the one address
 here that spam could reach, and a per-sender cap does nothing about a thousand
 senders. The address, the page and the rule are gone.
 
-## Discord
-
-1. Create an application at [discord.com/developers/applications](https://discord.com/developers/applications).
-2. **Bot → Reset Token**, copy it.
-3. Enable **Message Content Intent** under Privileged Gateway Intents.
-4. Paste it at `/admin/env` under `DISCORD_BOT_TOKEN`, or set the env var.
-5. Invite the bot to your server with the OAuth2 URL generator — scopes `bot`
-   and `applications.commands`.
-
-Slash commands: `/agent`, `/news`, `/markets`, `/weather`, `/mail`, `/social`,
-`/blog`, `/video`, `/search`, `/apps`, `/balance`, `/usage`.
-
-## Telegram
-
-1. Message [@BotFather](https://t.me/BotFather), send `/newbot`, follow the
-   prompts and copy the token.
-2. Paste it at `/admin/env` under `TELEGRAM_BOT_TOKEN`, or set the env var.
-
-Commands: `/start`, `/agent` (also `/ask`, `/mu`), `/news`, `/markets`,
-`/weather`, `/usage`.
-
 ## Taking payments
 
 Callers pay in credits, prepaid against an account. Set the `STRIPE_*` keys to
@@ -488,7 +467,7 @@ says so; nothing else is affected.
 | `WHATSAPP_DAILY_LIMIT` | `50` | Conversations one account may open in a day. `limit_env` on `whatsapp_send` in `quota.json`. Twilio bills WhatsApp by the 24-hour conversation rather than the message, so this counts windows opened, not replies sent |
 | `SMS_NEW_ACCOUNT_LIMIT` | `3` | The same cap for an account less than a day old. Signing up is free and takes a minute, so this is the only thing between a script and the full allowance |
 | `SMS_KNOWN_ONLY` | off | Restrict sending to numbers the caller already knows — someone in their contacts, a number they verified as their own, or one that texted them first. Off, because `contacts_add` takes any number and defeats it in one call, and because it stopped an agent doing the ordinary thing. On, it is a real brake for an instance that wants one |
-| `TWILIO_WHATSAPP_FROM` | — | The WhatsApp sender, in E.164 (`+14155238886` is Twilio's sandbox). Inbound arrives at `/sms/webhook` or `/whatsapp/twilio` — either works, because a Twilio Messaging Service carries a number and a WhatsApp sender together and posts both to one webhook, and the payload says which channel it is. Neither is `/whatsapp/webhook`, which belongs to the Meta client and speaks a different protocol |
+| `TWILIO_WHATSAPP_FROM` | — | The WhatsApp sender, in E.164 (`+14155238886` is Twilio's sandbox). Inbound arrives at `/sms/webhook` or `/whatsapp/twilio` — either works, because a Twilio Messaging Service carries a number and a WhatsApp sender together and posts both to one webhook, and the payload says which channel it is. Inbound arrives at `/sms/webhook` or `/whatsapp/twilio` |
 | `SMS_VERIFY_INBOUND` | on | Require an arriving message to carry a valid Twilio signature. Turn it **off** if this instance authenticates with an API key, because then there is no account auth token and nothing a signature can be checked against — the cost is that anybody who knows the webhook URL can write into somebody's message history and opt numbers out |
 | `SMS_DEFAULT_COUNTRY` | — | Country code assumed for a number written without one. Unset, a number with no `+` is refused rather than guessed |
 
@@ -608,9 +587,6 @@ press release, and both look identical to it.
 
 | Variable | What it does |
 |---|---|
-| `DISCORD_BOT_TOKEN` | Discord bot |
-| `TELEGRAM_BOT_TOKEN` | Telegram bot |
-| `WHATSAPP_TOKEN` · `WHATSAPP_PHONE_ID` · `WHATSAPP_APP_SECRET` · `WHATSAPP_VERIFY_TOKEN` | WhatsApp Business API |
 
 ### Sign-in
 

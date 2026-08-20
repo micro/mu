@@ -6,7 +6,7 @@ The line has moved before — *building blocks for life*, *tools for agents*, *a
 
 The lead was *tools for agents* and the tools are still what is behind it. What changed is which fact goes first: every provider ships an MCP server now, and none of them ship an agent that is permanently reachable and remembers. **An address is the smallest interface there is** — no SDK, no OAuth, no protocol to adopt, nothing on the other side — so a person, another agent, a form or a cron job can all write to one. That is what makes an agent something you have rather than something you visit.
 
-The inbox is not email. It is `internal/thread` — every conversation this account has had with an agent, on whichever client it arrived, in one record read at `/inbox`. Email is the channel we lead with because it is the only one that needs nothing from anybody to start using; Discord, Telegram and WhatsApp write to the same record, and a new one joins it rather than starting a second.
+The inbox is not email. It is `internal/thread` — every conversation this account has had with an agent, on whichever client it arrived, in one record read at `/inbox`. Email is the channel we lead with because it is the only one that needs nothing from anybody to start using; mail and the web write to the same record, and a new one joins it rather than starting a second.
 
 The claim underneath is still *one account instead of a hundred*. An agent that wants news, mail, search, weather, markets, places and somewhere to keep records otherwise needs six or seven providers: six signups, six cards on file, six tokens to rotate. Mu is one balance and one protocol, and for an agent paying per request over x402, no signup at all. **Removing the barrier is the product.** Sometimes that means running the thing ourselves; sometimes it means paying a provider so the caller doesn't have to hold that relationship. Both are legitimate; the test is whether the caller is spared an account, not whether we wrote the backend. Which half of that a given service falls on is an implementation detail and never the pitch — running our own SMTP server kept getting written down as though it were the differentiator, and it is not. It is good plumbing for messaging, and an inbox an agent can use.
 
@@ -21,7 +21,7 @@ Built on go-micro: every capability is a go-micro service, the assistant is a go
 - **Single Go binary** — `mu --serve` starts the web server, `mu <command>` runs CLI
 - **Services** — each domain is a package under `service/`, one directory per service
 - **Agents** — `agent/micro/` contains specialised micro-agents per domain, routed by keyword + LLM. `agent/<name>/` is an agent that writes into the service of the same name: `agent/blog` composes the daily opinion by asking the registry what exists rather than naming services in code, `agent/social` surfaces breaking stories, `agent/digest` writes the daily briefing. The service stores; the agent decides what is worth storing
-- **Channels** — Discord (`client/discord/`), Telegram (`client/telegram/`), WhatsApp (`client/whatsapp/`)
+- **Channels** — Mail (`client/mail/`). There were three more — Discord, Telegram and a Meta WhatsApp bot — and they are deleted: 2,100 lines and three third-party APIs carrying no traffic, against `agent.Ask` at 362. A client is meant to be a thin translation and Discord had grown its own identity store, its own usage tracking and a model call of its own
 - **Protocols** — MCP server at `/mcp`, an agent endpoint at `POST /agent/<name>`, REST at `/api/v1/`, x402 crypto payments. There was an A2A door at `/a2a`; it ran a generic account-less orchestration that was nobody's agent, so it was deleted rather than reconciled with the other three. Everything upstream of the mux that a tool door needs — wallet signature, auth challenge, payment gate — asks `api.ToolDispatch(path)` rather than naming a path, because a second door otherwise starts out unpriced
 - **AI** — `internal/ai/` supports Anthropic Claude, Atlas Cloud (DeepSeek), OpenRouter, and local models (Ollama)
 - **Config** — `internal/settings/` for live-reloadable settings, admin UI at `/admin/env`
@@ -49,9 +49,6 @@ Built on go-micro: every capability is a go-micro service, the assistant is a go
 | `client/mail/` | Mail as a client: the shape a message arrives in, handed to the agent, and the answer turned back into a reply. `service/mail` is the capability underneath — the inbox, the address, the SMTP server |
 | `internal/settings/` | Live-reloadable configuration |
 | `home/` | Landing page, assistant, home dashboard, summary |
-| `client/discord/` | Discord bot with slash commands, embeds, briefings |
-| `client/telegram/` | Telegram bot with commands and groups |
-| `client/whatsapp/` | WhatsApp Business API integration |
 | `account/` | Who you are and what you can afford: sign-in, passkeys, tokens, Google, and the credit ledger with Stripe behind it. The balance is the first card on /account. Account furniture, not a service — no Spec and no tools |
 | `service/wallet/` | A key of your own on Base: an address that holds USDC, and paying an x402-priced tool on another server with it. Capped per call and per day, because the agent reads text strangers wrote |
 | `internal/x402/` | The toll on the door: price a request, write the challenge, verify and settle the payment. A protocol, not a capability — no page, no tool, no state |
@@ -64,7 +61,7 @@ Built on go-micro: every capability is a go-micro service, the assistant is a go
 | `service/docs/` | The caller's own documents: a title and a markdown body. It was a record store wearing the word — the tool took a collection and a bag of JSON, so the page asked a person to type JSON. A service is named for a kind of thing somebody makes, never for how it is stored; the record store stays underneath as `internal/userdb`, reached by apps as `mu.db`, with no page and no tools |
 | `service/files/` | Per-user file storage — keep a file, get a URL, read it back |
 | `service/contacts/` | The caller's address book, so a name resolves to an address |
-| `service/whatsapp/` | Reply to people on WhatsApp, through Twilio. Bounded by Meta's 24-hour window, so it answers rather than initiates. The Meta bot in `client/whatsapp/` is the other half — a door, not a capability |
+| `service/whatsapp/` | Reply to people on WhatsApp, through Twilio. Bounded by Meta's 24-hour window, so it answers rather than initiates. Twilio is the only WhatsApp here; the Meta bot that used to sit in `client/whatsapp` is gone |
 | `service/sms/` | A phone number: text somebody, read what they text back. Twilio. The rules about who you may text are the service, not decoration — see the package comment |
 | `service/web/` | The open web: search it (`web.Search`), fetch a URL (`web.Fetch`). The Brave provider, the readability reader and the /search page live here too — they were `service/search`, a directory under `service/` that was not a service |
 | `service/routes/` | Getting from one place to another: time with traffic, turn-by-turn, and which of several is nearest. It was one ETA inside `places`, whose own package comment gave the game away — "places could already tell an agent what is nearby and where it is, but not whether it is worth going". Those are two questions: `places` is the Places API's domain, this is the Routes API's. Not `routing`, which is what it does; a service is named for a domain. The page draws the route from the polyline Google already returned, so there is no map tile to buy |
@@ -130,7 +127,7 @@ agent holds, and listing your agents is a page, which exists.
 
 ## Clients, and the record between them
 
-Five ways in — web, CLI, mail, Discord, Telegram, WhatsApp — and the agent is
+Five ways in — web, CLI, mail, mail, the web — and the agent is
 the same one behind all of them. What differs is protocol and nothing else, so a
 client's whole job is to translate: parse what arrived, hand it over, render what
 comes back, and name an agent where the address or the command already chose one

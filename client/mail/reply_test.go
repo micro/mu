@@ -2,7 +2,7 @@ package mail
 
 // An agent answers in markdown, and mail has to render it.
 //
-// Every other surface already did: the web page renders, Discord and Telegram
+// Every other surface already did: the web page renders, mail
 // normalise, and the inbox itself runs markdown through app.RenderString when it
 // arrives the other way. Mail was the one place an answer went out raw, so a
 // reply with a list or a bold word arrived with its asterisks showing.

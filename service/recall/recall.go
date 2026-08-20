@@ -253,7 +253,7 @@ var Spec = service.Spec{
 	Scoped:      true,
 	Endpoints: map[string]service.Endpoint{
 		"Search": {Aliases: []string{"history_search", "recall_history"},
-			Doc: "Search everything the caller has said to an agent and been told, across every client — the web chat, email, Discord, Telegram, WhatsApp. Use it when something was mentioned and you need to find where; notes_get is for a fact somebody wrote down on purpose"},
+			Doc: "Search everything the caller has said to an agent and been told, across every client — the web chat, email, mail, the web. Use it when something was mentioned and you need to find where; notes_get is for a fact somebody wrote down on purpose"},
 		"Conversation": {Aliases: []string{"recall_thread"},
 			Doc: "Read one whole conversation back by id, as recall_search and recall_list report it"},
 		"List": {Aliases: []string{"recall_conversations"},

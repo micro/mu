@@ -2,7 +2,7 @@ package agent
 
 // What a run with no private context may reach.
 //
-// QueryOpts.Public is set for a Discord, Telegram or WhatsApp *group*: the
+// QueryOpts.Public is set for a mail or the web *group*: the
 // conversation is not one person's, so mail, the wallet and the address book
 // are not this conversation's to reach. The tool list for that case is
 // publicToolsDesc, and this is the check behind it.

@@ -2,7 +2,7 @@ package agent
 
 // One way in, for every client.
 //
-// Discord, Telegram, WhatsApp, mail and the web page all ended up at
+// mail and the web page all ended up at
 // QueryWithOpts, so the agent itself was never the problem. Everything around
 // it was written five times and diverged: three clients kept conversation
 // history in a map in memory, keyed by whatever id that service happened to
@@ -113,8 +113,7 @@ type AskRequest struct {
 	// in from the fields above, so a caller cannot set one and mean another.
 	Via Via
 	// Stream reports the answer as it is produced, for a client that can show
-	// it arriving — the web streams to the page, Telegram could edit a message
-	// in place, Discord could type. An option for the caller and not a fork in
+	// it arriving — the web streams to the page. An option for the caller and not a fork in
 	// the implementation: with nobody listening the same run happens and the
 	// same answer comes back, so a streaming client and a quiet one cannot
 	// drift apart.
@@ -288,7 +287,7 @@ func Said(account, threadID, text, ref, from string) {
 //
 // A separate function rather than a sixth argument on Said, because Said has
 // five callers across the clients and only mail has a "to" worth recording —
-// a Discord message arrives at a channel, not at one of your addresses.
+// a message in a shared room arrives at the room, not at one of your addresses.
 func SaidTo(account, threadID, text, ref, from, to string) {
 	if threadID == "" {
 		return

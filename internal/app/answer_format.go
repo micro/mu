@@ -10,7 +10,7 @@ import (
 // NormalizeAnswerMarkdown prepares assistant answers for every Mu surface before
 // they are rendered as HTML or sent to chat clients. It keeps markdown intact,
 // but removes accidental spacing drift that makes the same answer look different
-// across web, Discord, Telegram, and WhatsApp.
+// across web, mail, and WhatsApp.
 func NormalizeAnswerMarkdown(answer string) string {
 	answer = strings.ReplaceAll(answer, "\r\n", "\n")
 	answer = strings.ReplaceAll(answer, "\r", "\n")

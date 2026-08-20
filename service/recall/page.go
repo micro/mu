@@ -57,7 +57,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	var b strings.Builder
 	b.WriteString(`<div class="w-760">`)
 	b.WriteString(`<p class="lens-lead">Everything you and your agents have said to each other, ` +
-		`wherever you said it — here, by email, on Discord, Telegram or WhatsApp. Search it. ` +
+		`wherever you said it — here, by email, on mail or the web. Search it. ` +
 		`Your conversations as a list, to carry one on, are on ` + app.TextLink("your inbox", "/inbox") + `.</p>`)
 
 	b.WriteString(`<form method="GET" action="/recall" class="rc-form">` +
@@ -65,8 +65,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		`value="` + html.EscapeString(query) + `" autofocus>` +
 		`<button class="rc-go" type="submit">Search</button></form>`)
 
-	// The clients this account has actually used, so an instance with no Discord
-	// bot does not offer to narrow to Discord.
+	// The clients this account has actually used, so an instance that has only ever seen
+	// mail does not offer to narrow to anything else.
 	if query != "" {
 		b.WriteString(clientChips(owner, query, only))
 	}

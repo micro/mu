@@ -243,7 +243,7 @@ func developerBand(base string) string {
    page continues rather than as a competing offer. */
 /* The colour and alignment are stated rather than inherited. This sits in the
    shell's Below slot, which wraps it in .also — centred, 14px, #888, written
-   for a one-line "also on Discord" — and anything here that did not set its own
+   for a one-line note — and anything here that did not set its own
    would come out as small grey centred text. */
 .dev{max-width:560px;margin:0 auto;padding:28px 0 0;border-top:1px solid #eee;
   text-align:left;color:#111}

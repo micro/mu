@@ -46,7 +46,7 @@ import (
 	"mu/service/wallet"
 	"mu/service/weather"
 	"mu/service/web"
-	whatsappsvc "mu/service/whatsapp"
+	"mu/service/whatsapp"
 )
 
 // boot starts the runtime core and loads every service.
@@ -105,7 +105,7 @@ func boot() {
 	docs.LoadService()
 	notes.LoadService()
 	sms.LoadService()
-	whatsappsvc.LoadService()
+	whatsapp.LoadService()
 	email.Load()
 	images.Load()
 	// The cache behind /img, which serves article images from here instead of

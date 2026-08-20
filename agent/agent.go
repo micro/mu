@@ -1305,7 +1305,7 @@ const agentToolsDesc = `Available tools (use exact name):
 - stream: Read the public event stream (no args)`
 
 // publicToolsDesc is the tool list for a run with no private context — a
-// Discord or Telegram group, where mail, the wallet and the address book are
+// shared room, where mail, the wallet and the address book are
 // not this conversation's to reach.
 //
 // It was named for guests, because a signed-out visitor was the other caller
@@ -1489,7 +1489,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		}
 		// The same routing decision every other client gets. It used to be
 		// skipped entirely here, so the web answered as the generalist while
-		// mail and Discord got specialists — and because routing now sets the
+		// mail got a specialist — and because routing now sets the
 		// options rather than diverting into a pipeline of its own, a routed
 		// question still streams.
 		routedPrompt, nopts := Routed(req.Prompt, nopts)

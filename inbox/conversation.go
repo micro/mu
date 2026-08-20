@@ -93,8 +93,8 @@ func ConversationView(accountID string, t *thread.Thread) string {
 	// a box captioned "This is not a reply", and the reasonable thing to do with
 	// the other was press it and hope.
 	//
-	// Mail only. The rest are somebody else's transport — a Discord thread is
-	// answered in Discord — and that is what the note underneath still says.
+	// Mail only. The rest are somebody else's transport — a room thread is
+	// answered in the room — and that is what the note underneath still says.
 	if to := replyTo(accountID, t, msgs); to != "" {
 		b.WriteString(replyBar(t, to))
 	} else {
@@ -114,7 +114,7 @@ func ConversationView(accountID string, t *thread.Thread) string {
 // spoke last — and because the party list has no order in it, so it cannot tell
 // you that.
 //
-// Only mail. A conversation from Discord or the web has an address on nothing.
+// Only mail. A conversation from the web has an address on nothing.
 func replyTo(accountID string, t *thread.Thread, msgs []thread.Message) string {
 	if t.Client != mailClient {
 		return ""

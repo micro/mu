@@ -18,7 +18,6 @@ import (
 	"mu/agent"
 	"mu/agent/digest"
 	"mu/agent/micro"
-	"mu/client/whatsapp"
 	help "mu/docs"
 	"mu/home"
 	"mu/inbox"
@@ -61,7 +60,7 @@ import (
 	"mu/service/wallet"
 	"mu/service/weather"
 	"mu/service/web"
-	whatsappsvc "mu/service/whatsapp"
+	"mu/service/whatsapp"
 )
 
 // authRequired reports, per path, whether a caller must be signed in.
@@ -313,7 +312,6 @@ func registerRoutes() {
 	http.HandleFunc("/stripe/webhook", account.HandleStripeWebhook)
 
 	// serve whatsapp webhook
-	http.HandleFunc("/whatsapp/webhook", whatsapp.Handler)
 
 	// serve search page (local + Brave web search)
 	// serve search page
@@ -468,7 +466,7 @@ func registerRoutes() {
 	http.HandleFunc("/docs", docs.Handler)
 	http.HandleFunc("/notes", notes.Handler)
 	http.HandleFunc("/sms", sms.Handler)
-	http.HandleFunc("/whatsapp", whatsappsvc.Handler)
+	http.HandleFunc("/whatsapp", whatsapp.Handler)
 
 	// One inbound endpoint for both, because Twilio uses one.
 	//
@@ -484,7 +482,7 @@ func registerRoutes() {
 		r.ParseForm() //nolint:errcheck — the handlers parse again and report it
 		if strings.HasPrefix(r.PostForm.Get("From"), "whatsapp:") ||
 			strings.HasPrefix(r.PostForm.Get("To"), "whatsapp:") {
-			whatsappsvc.WebhookHandler(w, r)
+			whatsapp.WebhookHandler(w, r)
 			return
 		}
 		sms.WebhookHandler(w, r)

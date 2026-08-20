@@ -13,7 +13,7 @@ those three are the interesting ones.
 | Trigger | How |
 |---|---|
 | **A schedule** | `events_create` with a `prompt` and a `repeat`. When it comes due the agent runs and the answer is mailed to you. |
-| **A message** | Ask it here, or from Discord, Telegram or WhatsApp. |
+| **A message** | Ask it here, or from mail or the web. |
 | **Mail** | Write to `you+agent@` and that agent answers. |
 | **Another agent** | It calls in over MCP with a scoped token. |
 | **You** | Hand it a task on `/tasks` and press run. |

@@ -3,7 +3,7 @@ package agent
 // Which agent answers must not depend on how you arrived.
 //
 // The router lived inside QueryWithOpts, and the web's streaming handler never
-// went through it — so the same question got a specialist on mail and Discord
+// went through it — so the same question got a specialist on mail
 // and the generalist on the web, and nobody noticed because both answers were
 // plausible. The fix is that routing sets the options rather than diverting
 // into a pipeline of its own, which is also what lets a routed question stream.

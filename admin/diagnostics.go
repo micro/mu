@@ -7,9 +7,6 @@ import (
 	"time"
 
 	"mu/agent/digest"
-	"mu/client/discord"
-	"mu/client/telegram"
-	"mu/client/whatsapp"
 	"mu/internal/ai"
 	"mu/internal/app"
 	"mu/internal/auth"
@@ -115,15 +112,6 @@ func runHealthChecks(testDigest bool) []healthCheck {
 
 	// Daily Digest
 	checks = append(checks, checkDigest(testDigest))
-
-	// Discord Bot
-	checks = append(checks, checkDiscord())
-
-	// Telegram Bot
-	checks = append(checks, checkTelegram())
-
-	// WhatsApp Bot
-	checks = append(checks, checkWhatsApp())
 
 	// Mail
 	checks = append(checks, checkMail())
@@ -248,57 +236,6 @@ func checkDigest(test bool) healthCheck {
 		Status: "error",
 		Detail: details,
 		Fix:    fix,
-	}
-}
-
-func checkDiscord() healthCheck {
-	if !discord.Enabled() {
-		return healthCheck{
-			Name:   "Discord Bot",
-			Status: "warning",
-			Detail: "Not configured",
-			Fix:    "Set DISCORD_BOT_TOKEN in /admin/env",
-		}
-	}
-
-	return healthCheck{
-		Name:   "Discord Bot",
-		Status: "ok",
-		Detail: "Connected",
-	}
-}
-
-func checkTelegram() healthCheck {
-	if !telegram.Enabled() {
-		return healthCheck{
-			Name:   "Telegram Bot",
-			Status: "warning",
-			Detail: "Not configured",
-			Fix:    "Set TELEGRAM_BOT_TOKEN in /admin/env",
-		}
-	}
-
-	return healthCheck{
-		Name:   "Telegram Bot",
-		Status: "ok",
-		Detail: "Connected",
-	}
-}
-
-func checkWhatsApp() healthCheck {
-	if !whatsapp.Enabled() {
-		return healthCheck{
-			Name:   "WhatsApp Bot",
-			Status: "warning",
-			Detail: "Not configured",
-			Fix:    "Set WHATSAPP_TOKEN and WHATSAPP_PHONE_ID in /admin/env",
-		}
-	}
-
-	return healthCheck{
-		Name:   "WhatsApp Bot",
-		Status: "ok",
-		Detail: "Configured",
 	}
 }
 

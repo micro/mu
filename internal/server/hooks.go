@@ -24,10 +24,7 @@ import (
 	"mu/agent/digest"
 	"mu/agent/micro"
 	agentsocial "mu/agent/social"
-	"mu/client/discord"
 	mailclient "mu/client/mail"
-	"mu/client/telegram"
-	"mu/client/whatsapp"
 	help "mu/docs"
 	"mu/home"
 	"mu/inbox"
@@ -65,7 +62,7 @@ import (
 	"mu/service/tasks"
 	"mu/service/wallet"
 	"mu/service/web"
-	whatsappsvc "mu/service/whatsapp"
+	"mu/service/whatsapp"
 )
 
 // mailHistoryTurns is how much of an email thread an agent is reminded of.
@@ -149,13 +146,7 @@ func wireHooks() {
 		// was the wrong repair: /stream is served with no session, so even a
 		// bare "a reminder fired" tells anybody watching that somebody here was
 		// reminded of something, at that minute. See mail.OnNewMail below.
-		msg := "⏰ Event: " + title
-		if note != "" {
-			msg += "\n" + note
-		}
-		discord.NotifyUser(accountID, msg)
-		telegram.NotifyUser(accountID, msg)
-		whatsapp.NotifyUser(accountID, msg)
+		push.Send(accountID, push.Notification{Title: "⏰ " + title, Body: note, URL: "/events"})
 	}
 	// A standing instruction: when an event carrying a prompt comes due, run it
 	// through the agent and deliver the answer.
@@ -210,7 +201,7 @@ func wireHooks() {
 		}(*e)
 	}
 
-	// Mail is a client like Discord or Telegram: it speaks its own protocol and
+	// Mail is a client like another client: it speaks its own protocol and
 	// hands what arrives to the agent. See client/mail.
 	mailclient.Load()
 
@@ -238,12 +229,8 @@ func wireHooks() {
 			app.Log("events", "calendar invite to %s failed: %v", acc.Email, err)
 		}
 	}
-	app.LinkCodeFunc = auth.GenerateLinkCode
 	app.ToolCountFunc = api.ToolCount
 
-	discord.Load()
-	telegram.Load()
-	whatsapp.Load()
 	mail.OnNewMail = func(accountID, from, subject, body string) {
 		// Nothing goes to the public timeline.
 		//
@@ -257,12 +244,13 @@ func wireHooks() {
 		//
 		// The notifications below go to the owner's own linked channels, which
 		// is where any of this belongs.
-		summary := discord.SummariseEmail(from, subject, body)
-		discord.NotifyNewMail(accountID, from, subject, summary)
-		telegram.NotifyUser(accountID, fmt.Sprintf("📬 *New email from %s*\n%s", from, summary))
-		whatsapp.NotifyUser(accountID, fmt.Sprintf("📬 *New email from %s*\n%s", from, summary))
-		// And the device itself, which is the one channel that needs nothing
-		// linked and works on a phone with the page closed. See internal/push.
+		// The device itself, which needs nothing linked and works with the page
+		// closed. See internal/push.
+		//
+		// There were three more: mail and a Meta WhatsApp bot, and
+		// feeding them cost a model call on every arriving message — discord's
+		// own SummariseEmail, to write a line the other two then reused. Push
+		// does the job without one.
 		title := subject
 		if strings.TrimSpace(title) == "" {
 			title = "New mail"
@@ -552,9 +540,6 @@ func wireHooks() {
 		func(id string) { account.DeleteCredits(id) },
 		func(id string) { wallet.DeleteBaseWallet(id) },
 		func(id string) { micro.DeleteUserAgents(id) },
-		func(id string) { discord.DeleteLinks(id) },
-		func(id string) { telegram.DeleteLinks(id) },
-		func(id string) { whatsapp.DeleteLinks(id) },
 		func(id string) { user.Delete(id) },
 		// The devices they told us to notify. A subscription outliving the
 		// account is a stranger's phone still receiving somebody's mail.
@@ -575,7 +560,7 @@ func wireHooks() {
 		docs.DeleteAll,
 		sms.DeleteAll,
 		email.DeleteAll,
-		whatsappsvc.DeleteAll,
+		whatsapp.DeleteAll,
 
 		// Everything that was ever said, on any client. The record is written
 		// by the machinery rather than by a service, so nothing owned it and

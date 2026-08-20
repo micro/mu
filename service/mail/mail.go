@@ -1791,7 +1791,7 @@ func SendMessageTo(from, fromID, to, toID, tag, subject, body, replyTo, messageI
 }
 
 // OnNewMail is called when a new non-spam message is delivered to a user.
-// Set by main.go to trigger Discord notifications, email summaries, etc.
+// Set by main.go to trigger notifications and summaries.
 var OnNewMail func(accountID, from, subject, body string)
 
 // GetUnreadCount returns the number of unread messages for a user

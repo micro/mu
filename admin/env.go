@@ -94,18 +94,6 @@ var settingGroups = []settingGroup{
 		"OS_MAPS_KEY",
 		"TILE_FETCH_PER_HOUR",
 	}},
-	{"Discord", []string{
-		"DISCORD_BOT_TOKEN",
-	}},
-	{"Telegram", []string{
-		"TELEGRAM_BOT_TOKEN",
-	}},
-	{"WhatsApp", []string{
-		"WHATSAPP_TOKEN",
-		"WHATSAPP_PHONE_ID",
-		"WHATSAPP_VERIFY_TOKEN",
-		"WHATSAPP_APP_SECRET",
-	}},
 	// SMS and WhatsApp-over-Twilio. These were absent, and /sms and /whatsapp
 	// both send an operator here by name to set them — a page pointing at a
 	// page that could not help, which is worse than no pointer at all.

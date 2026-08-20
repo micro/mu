@@ -20,9 +20,10 @@ import (
 // there are two answers to where history lives.
 func TestNoClientKeepsItsOwnHistory(t *testing.T) {
 	for _, c := range []struct{ path, name string }{
-		{"../client/discord/discord.go", "discord"},
-		{"../client/telegram/telegram.go", "telegram"},
-		{"../client/whatsapp/whatsapp.go", "whatsapp"},
+		// mail and the Meta WhatsApp bot were here. They are
+		// deleted — 2,100 lines and three third-party APIs carrying no traffic.
+		// Mail is the client that is left and the one the product rests on.
+		{"../client/mail/mail.go", "mail"},
 	} {
 		b, err := os.ReadFile(c.path)
 		if err != nil {
@@ -53,23 +54,11 @@ func TestEveryClientTeachesMemory(t *testing.T) {
 	}
 }
 
-// A thread key identifies a conversation, not a room.
+// There was a test here that a client keys a conversation on the person and not
+// the room, because a another client channel is many people talking and
+// keying on the channel handed each of them the others' history as context.
 //
-// Keying on the channel alone made everything ever said in a shared channel one
-// conversation, and handed each person the others' history as context. That is
-// somebody else's mail, arriving as if the agent already knew them.
-func TestAThreadKeySeparatesPeopleInASharedRoom(t *testing.T) {
-	for _, c := range []struct{ path, name string }{
-		{"../client/discord/discord.go", "discord"},
-		{"../client/telegram/telegram.go", "telegram"},
-	} {
-		b, err := os.ReadFile(c.path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !strings.Contains(string(b), "func threadKey(") {
-			t.Errorf("%s has no threadKey, so a shared channel is one conversation "+
-				"and everyone in it shares a history", c.name)
-		}
-	}
-}
+// It has no subject any more. Those clients are deleted, and mail has no shared
+// room: a thread is identified by the References chain it belongs to, which is
+// per-conversation by construction. If a many-people client ever comes back, so
+// does this.

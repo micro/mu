@@ -1,7 +1,7 @@
 // Package events is Mu's personal scheduling service. A user asks — via the
 // agent ("remind me to call the dentist at 3pm") or the /events page — and Mu
 // stores the event and fires it at the appointed time, delivering the reminder
-// over the user's linked channels (Discord, Telegram, WhatsApp) via the OnFire
+// over the user's linked channels (mail, the web) via the OnFire
 // hook. "Schedule a reminder" and "create an event" are the same thing here.
 package events
 

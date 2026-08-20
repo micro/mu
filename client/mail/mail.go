@@ -2,7 +2,7 @@ package mail
 
 // Mail as a client.
 //
-// Discord connects to Discord and Telegram to Telegram; here the protocol is
+// Other clients connect to their own network; here the protocol is
 // SMTP and this instance runs the server, which service/mail owns. That does
 // not make the two the same thing. service/mail is the capability — an inbox,
 // an address, delivery — and this is a client of it: it speaks the shape mail

@@ -674,15 +674,6 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Chat channel link code generation
-		if r.Form.Get("channel_link") != "" {
-			if app.LinkCodeFunc != nil {
-				code := app.LinkCodeFunc(acc.ID)
-				http.Redirect(w, r, "/account?link_code="+code, http.StatusSeeOther)
-			} else {
-				http.Redirect(w, r, "/account", http.StatusSeeOther)
-			}
-			return
-		}
 
 		http.Redirect(w, r, "/account", http.StatusSeeOther)
 		return
@@ -711,29 +702,10 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		googleCard = app.Notice("Google connected. You can now sign in with Google.") + googleCard
 	}
 
-	// The clients that reach the agent from somewhere else — Discord, Telegram,
-	// WhatsApp, which is what client/ holds. One code works on any of them.
-	//
-	// This card was headed "Chat", which is a different thing on this instance:
-	// chat is the service behind /chat, the live discussion rooms attached to an
-	// item. Two unrelated things under one word, and the one on /account was not
-	// the one with a page.
-	clientsCard := ""
-	if app.LinkCodeFunc != nil {
-		if code := r.URL.Query().Get("link_code"); code != "" {
-			clientsCard = app.Section("Clients",
-				`<p class="link-code"><code>`+htmlpkg.EscapeString(code)+`</code></p>`,
-				app.NoteHTML(`Send <code>link `+htmlpkg.EscapeString(code)+`</code> to the Mu bot on `+
-					`Discord, Telegram or WhatsApp. Expires in five minutes, and works once.`))
-		} else {
-			clientsCard = app.Section("Clients",
-				app.NoteHTML(`Use the agent from Discord, Telegram or WhatsApp. Generate a code, `+
-					`then send <code>link &lt;code&gt;</code> to the bot. Never send your password `+
-					`to a chat app.`),
-				app.Form{Action: "/account", Hidden: map[string]string{"channel_link": "1"},
-					Submit: "Generate a link code"}.HTML())
-		}
-	}
+	// No Clients card. It offered a link code to send to a Mu bot on Discord,
+	// Telegram or WhatsApp, and all three are gone — 2,100 lines and three
+	// third-party APIs carrying no traffic. Mail is the client that matters and
+	// needs no linking: the address is the account.
 
 	notice := ""
 	switch r.URL.Query().Get("saved") {
@@ -811,7 +783,6 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		googleCard +
 		language +
 		PasskeyListHTML(acc.ID) +
-		clientsCard +
 		push.Card(r, acc.ID)
 
 	// About, Privacy, Status — a line, not a card.

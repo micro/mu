@@ -17,7 +17,7 @@ import (
 // ── Asking a named agent from anywhere ──────────────────────────
 //
 // Agents were reachable only through this instance's own web chat. Every other
-// caller — MCP, Discord, Telegram, the CLI, a cron job — got the default
+// caller — MCP, mail, the CLI, a cron job — got the default
 // assistant however many you had built, because the only place that resolved a
 // named agent was the SSE handler. An agent you cannot invoke from outside is a
 // preset on a settings page.

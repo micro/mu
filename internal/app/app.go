@@ -699,14 +699,6 @@ var CardTemplate = `
 </div>
 `
 
-// LinkCodeFunc issues a one-time code for attaching a chat channel to an
-// account. Set by main() to auth.GenerateLinkCode.
-//
-// One code, any channel: the code proves who the caller is, and which chat app
-// they carry it to is their business. It replaced a per-channel "link <username>
-// <password>", which asked people to type a password into a chat window.
-var LinkCodeFunc func(accountID string) string
-
 // Link is a call to action: its own line, with an arrow. `.link` is
 // display:block globally, which is what makes it one.
 func Link(name, ref string) string {
