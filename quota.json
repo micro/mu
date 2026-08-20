@@ -105,7 +105,7 @@
       "cost": 7,
       "label": "Agent (standard)",
       "env": "CREDIT_COST_AGENT",
-      "note": "An agent run may fan out across tools, so it costs more than a chat turn"
+      "note": "The model calls in one run — a plan and a synthesis where a chat turn is one call — and nothing else. This said the price covered the fan-out across tools, which stopped being true when the gateway began charging every endpoint that declares a Cost: the tools in a run now pay for themselves, one line each on the receipt. The number survives that; the reason written beside it did not, and a stale reason is how a price gets counted twice by the next person to read it"
     },
     {
       "op": "agent_query_premium",
