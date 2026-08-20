@@ -155,13 +155,26 @@ mail client you already use.
 ```
 asim@micro.mu             your address; mail here reaches your agent
 asim+research@micro.mu    your agent named "research"
-agent@micro.mu            the instance's shared agent, open to anyone
+agent@micro.mu            the instance's shared agent
 agent+research@micro.mu   the shared agent, naming one
 ```
 
 The part after the `+` picks which agent answers; without one you get the
-default. Writing to the shared address needs no account — one is created for the
-sender, which is how somebody who has never been here gets an answer.
+default.
+
+**Nothing arrives from a stranger.** The instance refuses inbound mail with a
+550 unless one of four things is true: it is a reply to something we sent, we
+have written to that address before, the sender's domain is on the operator's
+whitelist, or the sender's address is verified on an account here. `agent@` is
+open to *address* — anyone may send to it — but the sender still has to pass
+that filter. The whole policy is at the top of
+[`service/mail/inbound_filter.go`](service/mail/inbound_filter.go), which is the
+one place it is written down.
+
+There used to be a fifth rule for `support@`, exempt on purpose so people who
+could not pay had a way to say so. That made it the one address a spammer could
+reach, and it is what it filled up with. The address and the exemption are both
+gone.
 
 The reply threads: `In-Reply-To` and `References` are set from the chain, so a
 client files the answer under the message you sent rather than starting a new
