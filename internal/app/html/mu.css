@@ -5870,10 +5870,16 @@ select.field { max-width: 220px }
 .balance-figure { font-size: 28px; margin: 4px 0 2px }
 .balance-figure span { color: var(--text-muted, #888); font-size: 14px }
 .balance-links { margin: 10px 0 0; font-size: 14px }
+/* The saved coordinates, under the form.
+   margin-left:4px was written for a span sitting after something on the same
+   line. It is appended after a <form>, which is a block, so it landed hard
+   against the Save button with four pixels of left margin and nothing above
+   it. It is a caption for the form, so it is a line of its own with room. */
 .place-at {
+  display: block;
   font-size: 12px;
   color: var(--text-muted, #888);
-  margin-left: 4px;
+  margin: 10px 0 0;
 }
 .signout { margin: 12px 0 0 }
 .link-code code { font-size: 18px; font-weight: var(--font-weight-bold, 700); background: var(--hover-background, #fafafa); border: var(--border-width, 1px) solid var(--card-border, #e8e8e8); border-radius: var(--border-radius, 6px); padding: 4px 12px }

@@ -93,20 +93,27 @@ func save() {
 	data.SaveJSON(storeFile, snapshot) //nolint:errcheck
 }
 
-// Subscribe records a device, or updates the one already there.
+// Subscribe records a device, or updates the one already there. It reports
+// whether this device is new to the account.
 //
 // Matched on the endpoint, because that is what the browser regenerates: a
 // device that re-subscribes — after a permission change, a reinstall, a key
 // rotation — must not become a second entry that gets every notification twice.
-func Subscribe(account string, s Subscription) error {
+//
+// The bool is for the caller that greets a new device. The page re-registers
+// whatever subscription the browser is holding every time it loads, which is
+// what makes this survive the server forgetting; without a way to tell a
+// re-registration from a first one, that greeting would arrive on every page
+// view.
+func Subscribe(account string, s Subscription) (bool, error) {
 	if account == "" || s.Endpoint == "" || s.P256dh == "" || s.Auth == "" {
-		return fmt.Errorf("that subscription is missing its endpoint or its keys")
+		return false, fmt.Errorf("that subscription is missing its endpoint or its keys")
 	}
 	if _, err := b64.DecodeString(s.P256dh); err != nil {
-		return fmt.Errorf("the subscription key is not base64url")
+		return false, fmt.Errorf("the subscription key is not base64url")
 	}
 	if _, err := b64.DecodeString(s.Auth); err != nil {
-		return fmt.Errorf("the subscription secret is not base64url")
+		return false, fmt.Errorf("the subscription secret is not base64url")
 	}
 	s.Account = account
 	if s.Added.IsZero() {
@@ -121,12 +128,25 @@ func Subscribe(account string, s Subscription) error {
 			s.Added = have.Added
 			subs[account][i] = &s
 			save()
-			return nil
+			return false, nil
 		}
 	}
 	subs[account] = append(subs[account], &s)
 	save()
-	return nil
+	return true, nil
+}
+
+// Knows reports whether an account already has this exact device.
+func Knows(account, endpoint string) bool {
+	load()
+	mu.RLock()
+	defer mu.RUnlock()
+	for _, have := range subs[account] {
+		if have.Endpoint == endpoint {
+			return true
+		}
+	}
+	return false
 }
 
 // Unsubscribe removes one device, by endpoint.

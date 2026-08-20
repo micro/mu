@@ -26,18 +26,28 @@ func TestResubscribingIsTheSameDevice(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	const who = "push-dupe"
 
-	if err := Subscribe(who, device("https://fcm.example/x")); err != nil {
+	added, err := Subscribe(who, device("https://fcm.example/x"))
+	if err != nil {
 		t.Fatal(err)
 	}
-	if err := Subscribe(who, device("https://fcm.example/x")); err != nil {
+	if !added {
+		t.Error("the first device is not reported as new, so nothing greets it")
+	}
+	// The same browser again, which is what the page does on every load now.
+	added, err = Subscribe(who, device("https://fcm.example/x"))
+	if err != nil {
 		t.Fatal(err)
+	}
+	if added {
+		t.Error("a device the account already has is reported as new, so it is " +
+			"greeted with a notification every time the page loads")
 	}
 	if got := Devices(who); len(got) != 1 {
 		t.Errorf("%d devices after subscribing twice, want 1", len(got))
 	}
 
 	// A different endpoint is a different device — a phone as well as a laptop.
-	if err := Subscribe(who, device("https://fcm.example/y")); err != nil {
+	if _, err := Subscribe(who, device("https://fcm.example/y")); err != nil {
 		t.Fatal(err)
 	}
 	if got := Devices(who); len(got) != 2 {
@@ -60,7 +70,7 @@ func TestAnIncompleteSubscriptionIsRefused(t *testing.T) {
 		{Endpoint: "https://fcm.example/z", P256dh: "x"},
 		{Endpoint: "https://fcm.example/z", P256dh: "not base64!!", Auth: "BTBZMqHH6r4Tts7J_aSIgg"},
 	} {
-		if err := Subscribe("push-bad", s); err == nil {
+		if _, err := Subscribe("push-bad", s); err == nil {
 			t.Errorf("accepted %+v", s)
 		}
 	}
@@ -174,5 +184,48 @@ func TestALogLineDoesNotCarryTheSubscription(t *testing.T) {
 	}
 	if strings.Contains(short(endpoint), "secret") {
 		t.Error("the subscription is in the log line")
+	}
+}
+
+// A subscription the server has forgotten comes back on its own.
+//
+// The server can stop knowing about a device in several ordinary ways: the
+// browser rotates its endpoint and the old one starts returning 410, which
+// prunes it; an instance is restored from a backup taken before you subscribed;
+// a deploy goes out from a machine with a stale store. None of them touch the
+// browser, which is still holding a good subscription — so the only way back
+// used to be a person noticing the card had gone quiet and pressing the button
+// again. That is "every time I turn on notifications it gets reset".
+//
+// The page now re-posts whatever the browser holds on every load. This is the
+// property that makes that safe and sufficient: re-registering restores the
+// device, and says it is not new, so nobody is greeted twice.
+func TestAForgottenDeviceComesBack(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	const who = "push-forgotten"
+	held := device("https://fcm.example/held")
+
+	if _, err := Subscribe(who, held); err != nil {
+		t.Fatal(err)
+	}
+	// The server loses it — a 410 from the push service is exactly this call.
+	Unsubscribe(who, held.Endpoint)
+	if Knows(who, held.Endpoint) {
+		t.Fatal("the device was not removed, so this proves nothing")
+	}
+
+	// The page loads and hands over what the browser still has.
+	added, err := Subscribe(who, held)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !added {
+		t.Error("a device the server had forgotten is not treated as new")
+	}
+	if !Knows(who, held.Endpoint) {
+		t.Error("re-registering did not restore the device")
+	}
+	if got := Devices(who); len(got) != 1 {
+		t.Errorf("%d devices, want the one that came back", len(got))
 	}
 }

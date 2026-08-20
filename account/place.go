@@ -103,7 +103,10 @@ func PlaceCard(r *http.Request, accountID string) string {
 	}
 	at := ""
 	if acc.Lat != 0 || acc.Lon != 0 {
-		at = `<span class="place-at">` + fmt.Sprintf("%.2f, %.2f", acc.Lat, acc.Lon) + `</span>`
+		// Said, not just shown: two numbers under a button are not self-evidently
+		// the thing that was saved.
+		at = `<span class="place-at">Saved: ` +
+			fmt.Sprintf("%.2f, %.2f", acc.Lat, acc.Lon) + `</span>`
 	}
 
 	form := app.Form{

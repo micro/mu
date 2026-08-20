@@ -53,23 +53,30 @@ func SubscribeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := Subscribe(acc.ID, Subscription{
+	added, err := Subscribe(acc.ID, Subscription{
 		Endpoint: body.Endpoint,
 		P256dh:   body.Keys.P256dh,
 		Auth:     body.Keys.Auth,
 		Label:    strings.TrimSpace(body.Label),
-	}); err != nil {
+	})
+	if err != nil {
 		app.RespondJSON(w, map[string]any{"ok": false, "error": err.Error()})
 		return
 	}
 	// Proof it works, immediately, on the device that just asked. A permission
 	// prompt somebody accepted and then saw nothing from is one they turn off.
-	Send(acc.ID, Notification{
-		Title: "Notifications are on",
-		Body:  "Mail, briefings and answers will turn up here.",
-		URL:   "/inbox",
-		Tag:   "mu-welcome",
-	})
+	//
+	// Only for a device that was not already here. The page re-posts whatever
+	// subscription the browser holds on every load, so without this the greeting
+	// would arrive every time somebody opened /account.
+	if added {
+		Send(acc.ID, Notification{
+			Title: "Notifications are on",
+			Body:  "Mail, briefings and answers will turn up here.",
+			URL:   "/inbox",
+			Tag:   "mu-welcome",
+		})
+	}
 	app.RespondJSON(w, map[string]any{"ok": true})
 }
 
@@ -82,9 +89,15 @@ func Card(r *http.Request, accountID string) string {
 	if key == "" || accountID == "" {
 		return ""
 	}
-	state := "Not on this device."
+	// What the server knows, which is not the same question as "is it on here".
+	//
+	// This said "Not on this device" / "On." from an account-wide check, so a
+	// laptop that had never been subscribed read "On. One device." because the
+	// phone had. The page corrects it once it has asked the browser — only the
+	// browser knows about this device — and this is what renders before that.
+	state := "Off."
 	if Subscribed(accountID) {
-		state = "On. " + devicesLine(accountID)
+		state = devicesLine(accountID)
 	}
 
 	return `<div class="push-card">` +
@@ -104,9 +117,9 @@ func Card(r *http.Request, accountID string) string {
 func devicesLine(accountID string) string {
 	switch n := len(Devices(accountID)); n {
 	case 1:
-		return "One device."
+		return "On for one device."
 	default:
-		return strings.TrimSpace(itoa(n) + " devices.")
+		return strings.TrimSpace("On for " + strings.ToLower(itoa(n)) + " devices.")
 	}
 }
 
@@ -131,7 +144,21 @@ const cardCSS = `<style>
 .push-go[disabled]{opacity:.5;cursor:default}
 </style>`
 
-// cardJS is the three steps, in the order the browser insists on.
+// cardJS is the three steps, in the order the browser insists on — plus the
+// step that keeps it on.
+//
+// Turning it on used to be the only time a subscription reached the server, and
+// there are several ordinary ways for the server to stop having it: a browser
+// rotates its endpoint and the old one starts returning 410, which prunes the
+// device; an instance is restored from a backup taken before you subscribed; a
+// deploy goes out from a machine with a stale store. None of those touch the
+// browser, which is still holding a perfectly good subscription and will go on
+// holding it — so the only way back was a person noticing the card had gone
+// quiet and pressing the button again. That is the "it keeps getting reset".
+//
+// So the page re-posts whatever the browser is holding, every load. It is
+// matched on the endpoint and so is idempotent, it costs one request, and it
+// closes the loop without anybody having to notice anything.
 const cardJS = `<script>
 (function(){
   var go = document.getElementById('push-go');
@@ -164,6 +191,45 @@ const cardJS = `<script>
     return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   }
 
+  // Hand one subscription to the server. Idempotent: it is matched on the
+  // endpoint, so sending the same one twice updates it rather than doubling it.
+  function tell(sub){
+    var raw = sub.toJSON();
+    return fetch('/push/subscribe', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.getElementById('push-csrf').value
+      },
+      body: JSON.stringify({
+        endpoint: sub.endpoint,
+        keys: {p256dh: raw.keys.p256dh, auth: raw.keys.auth},
+        label: navigator.platform || ''
+      })
+    }).then(function(res){ return res.json(); });
+  }
+
+  function on(){
+    say('On for this device.');
+    go.textContent = 'On';
+    go.disabled = true;
+  }
+
+  // What the browser is already holding, told to the server again.
+  //
+  // This is the half that was missing. It also answers the question the server
+  // cannot: "on" for the account is not "on here", and only this browser knows
+  // whether this device is one of them.
+  if (Notification.permission === 'granted') {
+    navigator.serviceWorker.ready.then(function(reg){
+      return reg.pushManager.getSubscription();
+    }).then(function(sub){
+      if (!sub) return;
+      return tell(sub).then(function(data){ if (data && data.ok) on(); });
+    }).catch(function(){ /* leave the button as it is */ });
+  }
+
   go.addEventListener('click', function(){
     go.disabled = true;
     say('Asking…');
@@ -174,23 +240,8 @@ const cardJS = `<script>
           userVisibleOnly: true,
           applicationServerKey: keyBytes(document.getElementById('push-key').value)
         });
-      }).then(function(sub){
-        var raw = sub.toJSON();
-        return fetch('/push/subscribe', {
-          method: 'POST',
-          credentials: 'same-origin',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-Token': document.getElementById('push-csrf').value
-          },
-          body: JSON.stringify({
-            endpoint: sub.endpoint,
-            keys: {p256dh: raw.keys.p256dh, auth: raw.keys.auth},
-            label: navigator.platform || ''
-          })
-        });
-      }).then(function(res){ return res.json(); }).then(function(data){
-        if (data && data.ok) { say('On for this device.'); go.textContent = 'On'; }
+      }).then(tell).then(function(data){
+        if (data && data.ok) { on(); }
         else { go.disabled = false; say((data && data.error) || 'That did not work.'); }
       });
     }).catch(function(err){
