@@ -1414,19 +1414,17 @@ func ValidEmail(s string) bool {
 
 // renderShell fills the app shell.
 //
-// One place, because the Template gained the lists under Inbox and Agents and
-// three call sites each filling eleven positional slots is a shape where adding
-// one silently shifts the rest. path is what the rail highlights against, and
-// is empty where the caller has no request to read it from.
+// One place, because three call sites each filling eleven positional slots is a
+// shape where adding one silently shifts the rest.
+//
+// path is what the rail highlights against, and is empty where the caller has
+// no request to read it from. It was also what the nested mailbox list under
+// Inbox matched itself against; that list is gone — see navlist.go — and the
+// parameter stays because the pinned items still use it.
 func renderShell(lang, title, desc, bodyAttr, body string, acc *auth.Account, path string) string {
-	account := ""
-	if acc != nil {
-		account = acc.ID
-	}
 	return fmt.Sprintf(Template,
 		lang, title, desc, bodyAttr,
 		headBalance(acc),
-		navMailboxes(account, path),
 		navPinned(acc),
 		navBottom(acc),
 		title, body, footerFor(acc))

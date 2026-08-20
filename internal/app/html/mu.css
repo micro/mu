@@ -464,97 +464,6 @@ td {
 #nav .label {
   font-size: 1.1em;
 }
-/* The lists under Inbox and Agents. Your mailboxes and your agents belong in
-   the rail — see internal/app/navlist.go — and they hang off the heading they
-   belong to rather than sitting flush with it, so the rail reads as two levels
-   and not as ten equal destinations.
-
-   Every selector here is #nav-scoped on purpose. This block was written as
-   plain `.nav-kid`, which loses to `#nav a` on specificity — an id beats a
-   class — so not one line of it applied and the children rendered as
-   full-weight top-level entries. The rail had ten identical rows and no
-   hierarchy at all, which is exactly what it was written to avoid. (It was also
-   prefixed `#nav-container > `, a selector that matches nothing: the lists are
-   inside #nav.) */
-#nav .nav-kids {
-  display: flex;
-  flex-direction: column;
-  /* Indented to about where the heading's label starts, with a hairline down
-     the group. The rule is what says "these belong to the row above" without
-     needing a second font size to carry the whole argument. */
-  margin: 2px 0 10px 25px;
-  padding: 0 0 10px 11px;
-  border-left: 1px solid var(--divider, #ececec);
-  /* And a line under the group, so Inbox-and-its-boxes reads as one block and
-     Agents-and-its-roster as the next. On a phone, where the rail is the whole
-     screen and there is nothing else giving it structure, this is most of what
-     makes it legible. It sits on the group rather than on the next heading so
-     that a heading which happens to be the current page keeps its own shape. */
-  border-bottom: 1px solid var(--divider, #f0f0f0);
-}
-
-#nav a.nav-kid {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  padding: 5px 9px;
-  font-size: 0.9em;
-  font-weight: var(--font-weight-normal, 400);
-  color: var(--text-muted, #888);
-  text-decoration: none;
-  border-radius: var(--border-radius);
-  background: none;
-  box-shadow: none;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  #nav a.nav-kid:hover {
-    color: var(--text-primary, #111);
-    background: var(--hover-background);
-  }
-}
-
-/* How many are waiting, against the mailbox they are in. A number rather than a
-   dot, because "three" and "forty" are different situations and a dot says the
-   same thing for both. Absent at zero — a badge reading 0 is one that has
-   stopped meaning anything. */
-#nav a.nav-kid .label {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-#nav .nav-badge {
-  flex: none;
-  font-size: 0.8em;
-  font-weight: var(--font-weight-semibold, 600);
-  color: var(--text-primary, #111);
-  background: var(--hover-background, #f0f0f0);
-  border-radius:6px;
-  padding: 0 7px;
-  line-height: 1.6;
-}
-
-/* The one you are in. Filled rather than bar-marked: the heading above already
-   carries the inset bar, and repeating it would say the two rows are the same
-   kind of thing. */
-#nav a.nav-kid.on {
-  color: var(--text-primary, #111);
-  font-weight: var(--font-weight-semibold, 600);
-  background: var(--active-background, var(--hover-background));
-  box-shadow: none;
-}
-
-/* A heading with a list under it is a heading. Nothing structural changes —
-   it is still the link to its own page — but the label is set apart from the
-   plain destinations below it so the eye can find the two groups. */
-#nav a:has(+ .nav-kids) .label {
-  font-weight: var(--font-weight-semibold, 600);
-}
-
 /* A pinned group inside the scrolling part of the nav. The divider above it
    separates what the product is (agents, tools, services) from what this
    reader uses, which are different kinds of thing and were previously the same
@@ -2450,19 +2359,6 @@ a.highlight {
     margin-right: 14px;
     height: 22px;
     width: 22px;
-  }
-
-  /* The drawer is 260px wide with 20px of padding either side, so the desktop
-     indent plus a long mailbox name runs out of room and every label ends in an
-     ellipsis. Less indent, and the hairline carries the hierarchy instead. */
-  #nav .nav-kids {
-    margin-left: 14px;
-    padding-left: 12px;
-  }
-
-  #nav a.nav-kid {
-    padding: 7px 8px;
-    font-size: 0.95em;
   }
 
   .nav-divider {

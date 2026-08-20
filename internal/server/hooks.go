@@ -381,29 +381,6 @@ func wireHooks() {
 		return agent.Path("", a.ID), a.Examples
 	}
 
-	// The rail lists your things. Your mailboxes and your agents are yours,
-	// there are a handful, and they are what you move between — so they sit
-	// under their headings in the sidebar rather than behind a page. Tools and
-	// Services stay single entries: that catalogue is the instance's, it runs
-	// to dozens, and it is something you browse. See internal/app/navlist.go.
-	app.NavMailboxes = inbox.Mailboxes
-	app.NavAgents = func(account string) []app.NavItem {
-		var out []app.NavItem
-		// The default first, because it is the one nearly every account uses
-		// and the roster page already leads with it.
-		out = append(out, app.NavItem{Label: "Micro", Href: "/agent/" + agent.DefaultSlug,
-			Key: agent.DefaultSlug})
-		for _, a := range agent.Agents(account) {
-			if a.Kind != agent.Hosted {
-				// One that runs elsewhere has no conversation here to open.
-				continue
-			}
-			out = append(out, app.NavItem{Label: a.Name, Href: agent.Path(account, a.ID),
-				Key: agent.Slug(a)})
-		}
-		return out
-	}
-
 	home.Load()
 
 	// load agent

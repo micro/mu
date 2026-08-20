@@ -32,49 +32,29 @@ func stylesheet(t *testing.T) string {
 	}
 }
 
-// The rules for a child item must outrank the rules for a nav link.
+// Nothing in the rail nests any more.
 //
-// They were written as bare `.nav-kid`, which loses to `#nav a` — an id beats a
-// class, whatever the source order — so not one line of them applied. Your
-// mailboxes and your agents rendered as full-weight top-level entries, and a
-// rail written to read as two levels showed ten identical rows. They were also
-// prefixed `#nav-container > `, a selector that matches nothing at all, since
-// the lists live inside #nav.
+// It had a level under Inbox — your mailboxes, with unread counts — and the
+// rules for it were written as bare `.nav-kid`, which loses to `#nav a`: an id
+// beats a class whatever the source order, so not one line of them applied and
+// a rail meant to read as two levels showed ten identical rows. That was fixed
+// by scoping them, and then the level itself was removed: the sidebar is four
+// nouns, and a fifth unfolding into a sub-list makes it a table of contents.
 //
-// This is exactly the kind of thing that is invisible in review and obvious on
-// the screen, so it is asserted rather than remembered.
-func TestTheRailsChildItemsOutrankItsLinks(t *testing.T) {
+// What is held here is that the level does not come back by accident, and that
+// the dead rules went with it.
+func TestTheRailDoesNotNest(t *testing.T) {
 	css := stylesheet(t)
 
-	for _, sel := range []string{"#nav .nav-kids {", "#nav a.nav-kid {", "#nav a.nav-kid.on {"} {
-		if !strings.Contains(css, sel) {
-			t.Errorf("%s is not in the stylesheet, so #nav a wins and the rail is flat", sel)
+	for _, gone := range []string{".nav-kid", ".nav-kids", ".nav-badge"} {
+		if strings.Contains(css, gone) {
+			t.Errorf("%s is still in the stylesheet, and nothing renders it", gone)
 		}
 	}
-	// The selector that matched nothing.
+	// The selector that matched nothing, from when the lists were thought to
+	// live outside #nav.
 	if strings.Contains(css, "#nav-container > ") {
-		t.Error("a rule is scoped to a direct child of #nav-container; the rail's lists are inside #nav")
-	}
-	// And a bare .nav-kid rule would be one that never applies.
-	for _, dead := range []string{"\n.nav-kid {", "\n.nav-kid.on {", "\n.nav-kids {"} {
-		if strings.Contains(css, dead) {
-			t.Errorf("%q is unscoped, so #nav a outranks it", strings.TrimSpace(dead))
-		}
-	}
-}
-
-// A group is separated from the next one. On a phone the rail is the whole
-// screen and there is nothing else to give it structure.
-func TestTheRailSeparatesOneGroupFromTheNext(t *testing.T) {
-	css := stylesheet(t)
-	block, ok := ruleBody(css, "#nav .nav-kids {")
-	if !ok {
-		t.Fatal("no rule for the rail's groups")
-	}
-	for _, want := range []string{"border-left", "border-bottom"} {
-		if !strings.Contains(block, want) {
-			t.Errorf("the group has no %s, so it does not read as a group", want)
-		}
+		t.Error("a rule is scoped to a direct child of #nav-container, which matches nothing")
 	}
 }
 
