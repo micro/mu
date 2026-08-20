@@ -878,7 +878,17 @@ body.page-home #page-title ~ #customize-link {
   margin-left: auto;
   font-size: 13px;
 }
+/* Two columns on desktop; the media queries below flip it to one.
+   
+   display:flex was missing here and only here. .home-left carries flex:1 and
+   .home-right a fixed 370px with flex-shrink:0, which need a flex parent to
+   mean anything — without one they are two blocks, so the right column dropped
+   under the left and home became a single stack at every width. Both media
+   queries set flex-direction:column on this element, which is what gave it
+   away: nothing sets a direction on something that was never a flex container. */
 #home {
+  display: flex;
+  gap: 20px;
   height: 100%;
 }
 
@@ -5385,12 +5395,36 @@ button.pill:hover {
 
 /* A row is the link plus the thing that deletes it. The rule under the row
    moved here, because it belongs to the pair rather than to the link. */
+/* The whole row is the target, so the whole row lights up.
+   
+   Hovering used to underline the subject and nothing else, which says "this
+   word is a link" when the thing you are pointing at is a conversation. Every
+   mail client highlights the row, because that is the shape of what a click
+   selects — and here a row is a link plus a delete cross, so an underline on
+   one word of it described a third of the target.
+   
+   The bleed is padding plus a matching negative margin, so the highlight
+   reaches past the text without moving anything. */
 .ib-item {
   display: flex;
   align-items: baseline;
   gap: 8px;
+  padding: 0 10px;
+  margin: 0 -10px;
+  border-radius: var(--border-radius, 6px);
   border-bottom: var(--border-width, 1px) solid var(--divider, #f0f0f0);
 }
+
+.ib-item:hover { background: var(--hover-background, #fafafa) }
+
+/* And no underline, which is where the row was actually getting one.
+   
+   Removing the rule that underlined .ib-subject did nothing visible, because
+   the row is an <a> and the global a:hover underlines it — and text-decoration
+   inherits, so the whole row lit up: the sender, the subject, the snippet and
+   the timestamp. That is what made hovering look like the text was the link
+   rather than the row. */
+.ib-row:hover { text-decoration: none }
 
 .ib-row {
   display: flex;
@@ -5427,7 +5461,6 @@ button.pill:hover {
 .ib-del-go:focus { opacity: 1 }
 .ib-del-go:hover { color: var(--btn-danger, #c00) }
 
-.ib-row:hover .ib-subject { text-decoration: underline }
 
 /* Unread is what makes this a mailbox rather than a log: a rule down the left
    and a heavier subject, so the eye finds the two that need answering without
@@ -5590,7 +5623,10 @@ button.pill:hover {
 }
 
 .peek-row:last-of-type { border-bottom: 0 }
-.peek-row:hover .peek-title { text-decoration: underline }
+/* The row, not the title — see .ib-item. */
+.peek-row { padding-left: 10px; padding-right: 10px; margin: 0 -10px;
+  border-radius: var(--border-radius, 6px) }
+.peek-row:hover { background: var(--hover-background, #fafafa); text-decoration: none }
 .peek-row.unseen .peek-title { font-weight: var(--font-weight-bold, 700) }
 .peek-row.unseen .peek-line { color: var(--text-secondary, #555) }
 .peek-head { display: flex; align-items: baseline; gap: 10px }
