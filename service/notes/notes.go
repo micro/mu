@@ -169,7 +169,7 @@ var Spec = service.Spec{
 		// Two rounds of renaming happened before this one, and every name is
 		// still callable: an agent written against memory_set or cache_set
 		// should not break because the label above it changed.
-		"Add": {Aliases: []string{"cache_set", "memory_set"},
+		"Add": {Writes: true, Aliases: []string{"cache_set", "memory_set"},
 			Doc: "Write a note under a title, so it is there next conversation. Writing a title that exists rewrites that note"},
 		"Get": {Aliases: []string{"cache_get"},
 			Doc: "Read one note by title. Use it when you know the title; notes_list when you do not"},

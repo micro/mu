@@ -184,7 +184,7 @@ var Spec = service.Spec{
 			Doc: "Read the texts this account has sent and received, newest first. Both directions, which is why it is not called an inbox"},
 		"Number": {Needs: service.Account,
 			Doc: "The number texts are sent from, which numbers are verified as yours, and how many messages are left today"},
-		"Verify": {Needs: service.Account,
+		"Verify": {Writes: true, Needs: service.Account,
 			Doc: "Claim a number as your own, so texts arriving from it reach this account. Call it with just the number to have a code texted there, then again with the code"},
 	},
 }

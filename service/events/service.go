@@ -236,7 +236,7 @@ var Spec = service.Spec{
 	Scoped:      true,
 	Icon:        "events.svg",
 	Endpoints: map[string]service.Endpoint{
-		"Create": {Doc: "Schedule a reminder or event at a given time; optionally repeating, and optionally running a prompt through the agent when it fires"},
+		"Create": {Writes: true, Doc: "Schedule a reminder or event at a given time; optionally repeating, and optionally running a prompt through the agent when it fires"},
 		"Free":   {Doc: "Find when the caller has nothing booked — open slots of a given length, within working hours"},
 		"List":   {Doc: "List the caller's upcoming events and reminders, each with its id"},
 		"Delete": {Doc: "Cancel an event by id", Destructive: true},

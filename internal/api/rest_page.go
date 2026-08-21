@@ -131,8 +131,11 @@ type restMethod struct {
 	Doc         string
 	Cost        int
 	Destructive bool
-	NeedsAuth   bool
-	Params      []ToolParam
+	// Changes is whether the method alters state, which decides the verb. Not
+	// the same question as Destructive — see service.Endpoint.Writes.
+	Changes   bool
+	NeedsAuth bool
+	Params    []ToolParam
 }
 
 // restMethods is every method that can be called here, in the order a reader
@@ -163,6 +166,7 @@ func restMethods() []restMethod {
 				Doc:         ep.Doc,
 				Cost:        cost,
 				Destructive: ep.Destructive,
+				Changes:     ep.Writes || ep.Destructive,
 				NeedsAuth:   ToolNeedsAuth(tool),
 				Params:      t.Params,
 			})
@@ -218,7 +222,7 @@ func restMethodCard(m restMethod, base string) string {
 	}
 
 	verb := "GET"
-	if m.Destructive {
+	if m.Changes {
 		verb = "POST"
 	}
 	b.WriteString(`<span class="card-title"><code>` + verb + ` ` + html.EscapeString(m.Path) + `</code></span>`)
@@ -228,8 +232,15 @@ func restMethodCard(m restMethod, base string) string {
 	if m.NeedsAuth {
 		notes = append(notes, "Needs an account.")
 	}
-	if m.Destructive {
+	if m.Changes {
 		notes = append(notes, "Changes something, so <code>POST</code> only.")
+	}
+	if m.Destructive {
+		// Worth saying, because it is the one difference between this door and
+		// the tool door: an agent cannot call this. It reads text strangers
+		// wrote, and an irreversible effect nobody asked for is what that flag
+		// is for.
+		notes = append(notes, "Withheld from the agent — a person or a program only.")
 	}
 	if m.Cost > 0 {
 		notes = append(notes, "Draws "+strconv.Itoa(m.Cost)+" "+creditWord(m.Cost)+
@@ -275,7 +286,7 @@ func restCurl(m restMethod, base string) string {
 		auth = " \\\n  -H \"Authorization: Bearer $MU_TOKEN\""
 	}
 
-	if m.Destructive {
+	if m.Changes {
 		body, _ := json.Marshal(exampleArgs(m.Params))
 		return "curl -X POST" + auth + " \\\n  -H \"Content-Type: application/json\" \\\n" +
 			"  -d '" + string(body) + "' \\\n  " + base + m.Path

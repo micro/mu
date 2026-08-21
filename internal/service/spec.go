@@ -218,7 +218,24 @@ type Endpoint struct {
 	// Destructive withholds the method from the model. The agent reads
 	// attacker-controlled text, so a tool it holds is a tool prompt injection
 	// holds; what earns this flag is an irreversible effect nobody asked for.
+	//
+	// It is not "this method writes" — see Writes, which is the other job this
+	// flag was doing.
 	Destructive bool
+	// Writes says the method changes something, so the HTTP door refuses to
+	// take it as a GET.
+	//
+	// Separate from Destructive because they answer different questions and
+	// one flag was answering both. Destructive asks whether the *model* may
+	// hold this tool; Writes asks whether a *GET* may perform it. notes_add
+	// writes a note and is perfectly safe to hand an agent, so it was not
+	// destructive — and therefore went out as a GET with the note in the query
+	// string, which is a URL that changes your data when something follows it.
+	//
+	// Anything Destructive writes by definition; ask Changes rather than this
+	// field. What earns Writes on its own is every ordinary mutation:
+	// creating, updating, sending, storing, paying.
+	Writes bool
 	// Needs is who may call this: nobody in particular, somebody, or somebody
 	// with an account.
 	//
@@ -395,6 +412,30 @@ func Destructive(service, method string) bool {
 	return false
 }
 
+// Changes reports whether a method alters state, so it may not be a GET.
+// Anything destructive changes something; the reverse is not true.
+func Changes(service, method string) bool {
+	s, ok := SpecFor(service)
+	if !ok {
+		return false
+	}
+	for name, ep := range s.Endpoints {
+		if strings.EqualFold(name, method) {
+			return ep.Writes || ep.Destructive
+		}
+	}
+	return false
+}
+
+// ChangingTool is Changes asked the way a tool call arrives, as one flat name.
+func ChangingTool(name string) bool {
+	svc, method, ok := splitToolName(name)
+	if !ok {
+		return false
+	}
+	return Changes(svc, method)
+}
+
 // DestructiveTool reports whether a flat tool name is withheld from the model.
 //
 // The same question as Destructive, asked the way a tool call arrives: one
@@ -407,13 +448,24 @@ func Destructive(service, method string) bool {
 // copy and the micro-agents had none at all, which is exactly the shape of that
 // mistake: a rule enforced at one door and unknown at the next.
 func DestructiveTool(name string) bool {
+	svc, method, ok := splitToolName(name)
+	if !ok {
+		return false
+	}
+	return Destructive(svc, method)
+}
+
+// splitToolName pulls the service and the method out of a flat tool name.
+// Accepts "service.Method", "service_method" and the multi-word middles that
+// come of a method like SurfaceBreaking.
+func splitToolName(name string) (service, method string, ok bool) {
 	parts := strings.FieldsFunc(strings.ToLower(strings.TrimSpace(name)), func(r rune) bool {
 		return r == '.' || r == '_'
 	})
 	if len(parts) < 2 {
-		return false
+		return "", "", false
 	}
-	return Destructive(parts[0], parts[len(parts)-1])
+	return parts[0], parts[len(parts)-1], true
 }
 
 // CostOf returns the wallet operation a method charges, or "" if it is free.

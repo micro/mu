@@ -141,10 +141,10 @@ var Spec = service.Spec{
 	Icon:        "tasks.svg",
 	Scoped:      true,
 	Endpoints: map[string]service.Endpoint{
-		"Create": {Doc: "Add a task. Assign it to the agent and it can pick the task up itself"},
+		"Create": {Writes: true, Doc: "Add a task. Assign it to the agent and it can pick the task up itself"},
 		"List":   {Doc: "List the caller's tasks, open ones first; optionally filtered by state"},
 		"Next":   {Doc: "The next task assigned to the agent — what to work on now"},
-		"Update": {Doc: "Change a task: its state, or the result of doing it"},
+		"Update": {Writes: true, Doc: "Change a task: its state, or the result of doing it"},
 		"Delete": {Doc: "Remove a task", Destructive: true},
 	},
 }

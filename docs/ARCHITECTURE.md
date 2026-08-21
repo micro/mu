@@ -159,6 +159,17 @@ deriving from the registry — register a service and the model can use it.
 The guard is per *method*, not per service: `Destructive: true` on the endpoint
 in the service's own Spec, read back through `service.Destructive`.
 
+**`Destructive` is not "this method writes".** That is `Writes`, and they were
+one flag until a note could be written by a GET. Destructive asks whether the
+*model* may hold the tool; Writes asks whether a *GET* may perform it.
+`notes.Add` writes and is perfectly safe to hand an agent, so it is `Writes`
+and not `Destructive` — and before the split it was neither, which meant
+`/api/v1/notes/add?title=x&text=y` was a URL that changed your data when
+anything followed it. Anything destructive writes, so ask `service.Changes`
+rather than either field. `TestAMethodNamedForAMutationSaysItWrites` holds the
+rule, off the naming convention: a method called Add, Create, Send or Pay
+changes something by construction.
+
 **Withheld from the model, not from the caller.** The check runs in
 `blockDestructiveTools` (`agent/native.go`), which wraps the tool loop the model
 drives — so the model cannot reach these, and an MCP client holding a token
@@ -216,9 +227,12 @@ behaviour, so turning this on can only improve a page, never empty it.
 3. Declare `var Spec = service.Spec{…}` with an entry for every method, and
    `service.Register(Spec)` from a `Load()` called in `main.go`.
 4. If it holds per-user data or spends credits, set `Scoped: true`.
-5. If a method is irreversible and should only follow from a user's own action,
-   set `Destructive: true` on it.
-6. Add a row above.
+5. If a method changes anything — creates, updates, sends, stores, pays — set
+   `Writes: true` on it, so the HTTP door refuses to perform it on a GET.
+6. If a method is irreversible and should only follow from a user's own action,
+   set `Destructive: true` on it as well, which also withholds it from the
+   model.
+7. Add a row above.
 
 Nothing else is needed. The agent, the picker, the app SDK and the status page
 all read the registry.

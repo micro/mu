@@ -358,7 +358,7 @@ var Spec = service.Spec{
 	Icon:        "docs.svg",
 	Scoped:      true,
 	Endpoints: map[string]service.Endpoint{
-		"Write":  {Doc: "Write a document — a title and a markdown body. Pass an id to replace one you already have. Private unless you set public. For something long enough to re-read; for a short thing to remember, use notes"},
+		"Write":  {Writes: true, Doc: "Write a document — a title and a markdown body. Pass an id to replace one you already have. Private unless you set public. For something long enough to re-read; for a short thing to remember, use notes"},
 		"Read":   {Doc: "Read one of your documents in full, by id or by exact title"},
 		"List":   {Doc: "List your documents, most recently changed first, with an optional search over titles and bodies. Use this to find an id"},
 		"Delete": {Doc: "Delete one of your documents, by id", Destructive: true},

@@ -188,10 +188,10 @@ var Spec = service.Spec{
 	Icon:        "files.svg",
 	Scoped:      true,
 	Endpoints: map[string]service.Endpoint{
-		"Put":    {Doc: "Store a file and get a URL for it — a report, a CSV, a transcript"},
+		"Put":    {Writes: true, Doc: "Store a file and get a URL for it — a report, a CSV, a transcript"},
 		"Get":    {Doc: "Read a stored file back by its id"},
 		"List":   {Doc: "List the caller's stored files, newest first"},
 		"Delete": {Doc: "Delete a file you own", Destructive: true},
-		"Share":  {Doc: "Make a file readable by anyone with its URL, or private again"},
+		"Share":  {Writes: true, Doc: "Make a file readable by anyone with its URL, or private again"},
 	},
 }

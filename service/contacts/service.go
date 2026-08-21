@@ -154,7 +154,7 @@ var Spec = service.Spec{
 	Icon:        "contacts.svg",
 	Scoped:      true,
 	Endpoints: map[string]service.Endpoint{
-		"Add": {Doc: "Save someone to the address book. Adding a name already there updates it rather than making a second card"},
+		"Add": {Writes: true, Doc: "Save someone to the address book. Adding a name already there updates it rather than making a second card"},
 		"Find": {Doc: "Look someone up in the address book by name, part of a name, or address. " +
 			"Use this before sending mail to a person named rather than addressed"},
 		"List":   {Doc: "List everyone in the caller's address book"},

@@ -224,7 +224,7 @@ var Spec = service.Spec{
 			Doc: "Which priced servers this wallet is allowed to pay, by name. " +
 				"Pass one of these names to wallet_pay",
 		},
-		"Pay": {
+		"Pay": {Writes: true,
 			Needs: service.Account,
 			Doc: "Call a tool on one of those servers and pay for it from your wallet if it " +
 				"asks. Nothing is spent when the tool is free. Every payment is capped per " +

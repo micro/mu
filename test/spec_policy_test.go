@@ -271,3 +271,68 @@ func TestSendingMailNeedsAnAccountNotAWallet(t *testing.T) {
 			"it now gets a tool-not-found for something it used yesterday")
 	}
 }
+
+// A method named for a mutation declares that it mutates.
+//
+// Writes is a flag somebody has to remember, which is exactly how the thing it
+// replaced went wrong: Destructive was asked to mean both "withhold from the
+// model" and "refuse a GET", and every method that wrote but was safe for an
+// agent to hold fell through the gap. Replacing one forgettable flag with
+// another would be no fix at all.
+//
+// So the rule is checkable, and it is checkable because the naming convention
+// in CLAUDE.md is real: "An action is a verb, and says what it changes." A
+// method named Add, Create, Send or Pay changes something by construction. The
+// list below is the mutating half of that convention.
+//
+// It cannot catch a writer named for a question — a Fetch that stores what it
+// fetched — and that is not a reason to skip the ones it does catch. A rule you
+// can only follow by remembering is the one that was just removed.
+func TestAMethodNamedForAMutationSaysItWrites(t *testing.T) {
+	registerAll(t)
+
+	mutating := []string{
+		"add", "build", "cancel", "clear", "create", "delete", "edit", "fork",
+		"generate", "import", "move", "pay", "post", "publish", "put", "remove",
+		"rename", "revoke", "run", "save", "send", "set", "share", "update",
+		"upload", "verify", "write",
+	}
+
+	is := map[string]bool{}
+	for _, v := range mutating {
+		is[v] = true
+	}
+
+	var checked int
+	for _, sp := range service.Specs() {
+		for name, ep := range sp.Endpoints {
+			// The first word, not a prefix. "add" is a prefix of Address, and
+			// places.Address is a geocoder.
+			if !is[firstWord(name)] {
+				continue
+			}
+			checked++
+			if !ep.Writes && !ep.Destructive {
+				t.Errorf("%s.%s is named for a mutation but declares neither "+
+					"Writes nor Destructive, so the HTTP door will serve it on a "+
+					"GET — a URL that changes your data when something follows it",
+					sp.Name, name)
+			}
+		}
+	}
+
+	if checked < 15 {
+		t.Fatalf("only %d endpoints matched a mutating verb — this scan is broken", checked)
+	}
+}
+
+// firstWord is the leading CamelCase word of a method name, lowered:
+// SurfaceBreaking is "surface", Address is "address".
+func firstWord(name string) string {
+	for i, r := range name {
+		if i > 0 && r >= 'A' && r <= 'Z' {
+			return strings.ToLower(name[:i])
+		}
+	}
+	return strings.ToLower(name)
+}

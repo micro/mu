@@ -40,9 +40,9 @@ var Spec = service.Spec{
 
 		// One post at a time. Implemented in posts.go.
 		"Read": {Doc: "Read one blog post in full, by id or by title. Use after blog_list has found a candidate and the summary is not enough"},
-		"Create": {Doc: "Publish a post to the caller's blog. For anything meant to be read later by other people — notes, write-ups, announcements. For a private note to yourself, prefer files or memory",
+		"Create": {Writes: true, Doc: "Publish a post to the caller's blog. For anything meant to be read later by other people — notes, write-ups, announcements. For a private note to yourself, prefer files or memory",
 			Cost: quota.OpBlogCreate, Needs: service.Caller},
-		"Update": {Doc: "Edit one of the caller's own posts. Fields left out keep their current value", Needs: service.Caller},
+		"Update": {Writes: true, Doc: "Edit one of the caller's own posts. Fields left out keep their current value", Needs: service.Caller},
 		"Delete": {Doc: "Delete one of the caller's own blog posts, by id or title. Refuses posts written by anyone else, and refuses an ambiguous title rather than guessing. Irreversible, so confirm with the user first",
 			Destructive: true, Needs: service.Caller},
 	},

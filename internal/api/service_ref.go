@@ -182,7 +182,7 @@ func refMethodCard(m restMethod, base string) string {
 func tryForm(m restMethod) string {
 	var b strings.Builder
 	b.WriteString(`<form class="try" data-path="` + html.EscapeString(m.Path) +
-		`" data-method="` + map[bool]string{true: "POST", false: "GET"}[m.Destructive] + `">`)
+		`" data-method="` + map[bool]string{true: "POST", false: "GET"}[m.Changes] + `">`)
 
 	for _, p := range m.Params {
 		req := ""

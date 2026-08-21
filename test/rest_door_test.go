@@ -14,6 +14,7 @@ package test
 // cannot be fired by a GET.
 
 import (
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -115,32 +116,47 @@ func TestTheTwoDoorsAgreeAboutEveryTool(t *testing.T) {
 	}
 }
 
-// A destructive method needs a POST.
+// A method that changes something needs a POST.
 //
 // GET is offered because a REST API where reads are GETs is what every client
 // library expects. The cost of that is a URL that acts, and a URL that acts
 // gets fired by a link, a prefetch, a crawler or an <img src>. So the two are
 // separated: read with either, change with POST.
-func TestADestructiveMethodIsNotAGET(t *testing.T) {
+//
+// This used to ask Destructive, which is a different question — whether the
+// *model* may hold the tool — and the two were one flag. Everything that wrote
+// but was safe to hand an agent fell through: notes_add went out as a GET with
+// the note in the query string, and so did docs_write, files_put, blog_create,
+// chat_send and wallet_pay. Writes is the flag for this question now, and
+// Changes is the two of them together.
+func TestAMethodThatChangesSomethingIsNotAGET(t *testing.T) {
 	registerAll(t)
 	loadTools(t)
 
-	var found int
+	var changing, destructive int
 	for _, sp := range service.Specs() {
 		for name, ep := range sp.Endpoints {
-			if !ep.Destructive {
+			if !ep.Writes && !ep.Destructive {
 				continue
 			}
-			found++
+			changing++
+			if ep.Destructive {
+				destructive++
+			}
 			tool := sp.Name + "_" + strings.ToLower(name)
-			if !service.DestructiveTool(tool) {
-				t.Errorf("service.DestructiveTool(%q) is false, so the REST door would "+
+			if !service.ChangingTool(tool) {
+				t.Errorf("service.ChangingTool(%q) is false, so the REST door would "+
 					"serve it on a GET", tool)
 			}
 		}
 	}
-	if found < 5 {
-		t.Fatalf("only %d destructive endpoints — this scan is broken", found)
+	if destructive < 5 {
+		t.Fatalf("only %d destructive endpoints — this scan is broken", destructive)
+	}
+	if changing <= destructive {
+		t.Fatalf("%d endpoints change something and %d of them are destructive, so "+
+			"nothing is relying on Writes — which is the half that was missing",
+			changing, destructive)
 	}
 
 	// And the handler asks. A door that had the list and did not consult it
@@ -155,9 +171,9 @@ func TestADestructiveMethodIsNotAGET(t *testing.T) {
 	if get < 0 || post < 0 {
 		t.Fatal("the REST handler no longer branches on method")
 	}
-	if d := strings.Index(src, "service.DestructiveTool("); d < get || d > post {
-		t.Error("internal/api/rest.go does not refuse a destructive tool inside its GET " +
-			"branch — an <img src> can fire files_delete")
+	if d := strings.Index(src, "service.ChangingTool("); d < get || d > post {
+		t.Error("internal/api/rest.go does not refuse a changing tool inside its GET " +
+			"branch — an <img src> can fire files_delete, or write a note")
 	}
 }
 
@@ -196,5 +212,46 @@ func TestTheCatalogueIsNotATool(t *testing.T) {
 	if api.ToolNeedsAuth("") || api.ToolWalletOp("") != "" {
 		t.Error("the empty tool name needs auth or has a price, so any request that " +
 			"names no tool is challenged")
+	}
+}
+
+// The handler itself refuses the GET, not the middleware in front of it.
+//
+// Reading the source above proves the check is written in the GET branch; this
+// proves it fires. The distinction matters because of what the door answers
+// unauthenticated: a scoped service refuses first, so /api/v1/notes/add?title=x
+// comes back 401 whether or not the verb rule exists, and the case that
+// actually needs guarding is the opposite one — a signed-in person's browser
+// following an <img src> with their session on it. RESTHandler is what runs
+// once that middleware has said yes.
+func TestTheHandlerItselfRefusesAWritingGET(t *testing.T) {
+	registerAll(t)
+	loadTools(t)
+
+	for _, path := range []string{
+		"/api/v1/notes/add?title=x&text=y",
+		"/api/v1/docs/write?title=x&body=y",
+		"/api/v1/files/put?name=x",
+		"/api/v1/blog/create?title=x",
+		"/api/v1/wallet/pay?server=x",
+		"/api/v1/images/generate?prompt=x",
+	} {
+		w := httptest.NewRecorder()
+		api.RESTHandler(w, httptest.NewRequest("GET", path, nil))
+		if w.Code != 405 {
+			t.Errorf("GET %s answered %d, want 405 — a URL that writes", path, w.Code)
+		}
+		if got := w.Header().Get("Allow"); got != "POST" {
+			t.Errorf("GET %s refused without Allow: POST (got %q)", path, got)
+		}
+	}
+
+	// And a read is still a read, or the rule has eaten the API.
+	for _, path := range []string{"/api/v1/notes/list", "/api/v1/news/list"} {
+		w := httptest.NewRecorder()
+		api.RESTHandler(w, httptest.NewRequest("GET", path, nil))
+		if w.Code == 405 {
+			t.Errorf("GET %s was refused as a write", path)
+		}
 	}
 }

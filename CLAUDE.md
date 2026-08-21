@@ -40,7 +40,7 @@ Built on go-micro: every capability is a go-micro service, the assistant is a go
 | `service/mail/` | SMTP server, DKIM, inbound filtering |
 | `service/blog/` | Microblogging with AI-generated daily digests |
 | `internal/ai/` | LLM abstraction — Anthropic, Atlas Cloud, OpenRouter, local models |
-| `internal/api/` | MCP server, tool registry, and the HTTP API. `/api/v1/<service>/<method>` turns a path into a tool name and hands it to the same `ExecuteTool` `/mcp` calls, so it has no auth story or price table of its own; `/api` is its reference, derived from the specs. Not a second agent door — `/mcp` is that, and the two pages link to each other. Two deliberate differences: a destructive method refuses `GET`, and a `POST` resting on the session cookie needs `X-CSRF-Token` (`auth.StrictCSRF`, because `ValidCSRF` lets a request omit the token entirely for pages already in the wild) |
+| `internal/api/` | MCP server, tool registry, and the HTTP API. `/api/v1/<service>/<method>` turns a path into a tool name and hands it to the same `ExecuteTool` `/mcp` calls, so it has no auth story or price table of its own; `/api` is its reference, derived from the specs. Not a second agent door — `/mcp` is that, and the two pages link to each other. Two deliberate differences: a method that changes something refuses `GET` (`Writes` on the Endpoint, which is a different question from `Destructive` — that one withholds a tool from the model, and the two were one flag until a note could be written by a URL), and a `POST` resting on the session cookie needs `X-CSRF-Token` (`auth.StrictCSRF`, because `ValidCSRF` lets a request omit the token entirely for pages already in the wild) |
 | `internal/app/` | Web UI framework, templates, middleware |
 | `internal/auth/` | Account system, sessions, passkeys |
 | `internal/notes/` | The store behind `service/notes` — a title, its text, and nothing that expires |
@@ -261,6 +261,13 @@ any other.
 - No external dependencies for crypto (secp256k1, RLP, ECDSA implemented in pure Go in `service/wallet/evm.go`)
 - Settings via `internal/settings/` — reads env vars first, falls back to stored values
 - Background loops use goroutines started in `Load()` or `main.go`
+- **An embedded file lives with the package that owns it**, never in a shared
+  `embed/` or `assets/` directory. That is what the twelve already do —
+  `service/news/feeds.json`, `service/flights/airports.json`, `docs/*.md`,
+  `internal/app/html/*`, `quota.json` beside `main.go` — and it is the same
+  rule as one directory per service: a central pile separates an asset from the
+  only code that reads it, and nothing then says which of the two to delete.
+  The `//go:embed` sits in the file that uses the bytes
 - Agent tools registered in `internal/api/mcp.go` (static) and `main.go` (dynamic with handlers)
 - All client integrations follow the same pattern: auto-create accounts, conversation history, public/private mode
 - The main branch is `main`

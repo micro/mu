@@ -118,8 +118,11 @@ func RequestTool(path string, body []byte) string {
 // GET and POST both work and mean the same thing. A REST API where reads are
 // GETs is what every client library and every curl in a bug report expects, and
 // refusing that to keep one code path would be a purity nobody asked for. What
-// is not offered is a GET that changes something: a tool the catalogue marks
-// destructive needs a POST, so a link, a prefetch or a crawler cannot fire one.
+// is not offered is a GET that changes something: a method the catalogue marks
+// as writing needs a POST, so a link, a prefetch or a crawler cannot fire one.
+// That is Writes on the Endpoint, and it is a wider set than Destructive —
+// notes_add is safe to hand an agent and is still not something a URL should
+// do.
 func RESTHandler(w http.ResponseWriter, r *http.Request) {
 	if strings.Trim(strings.TrimPrefix(r.URL.Path, RESTRoot), "/") == "" {
 		restCatalogue(w, r)
@@ -136,7 +139,11 @@ func RESTHandler(w http.ResponseWriter, r *http.Request) {
 	var args map[string]any
 	switch r.Method {
 	case http.MethodGet:
-		if service.DestructiveTool(name) {
+		// Changes, not Destructive. The two were one flag, so a method that
+		// wrote but was safe for the model to hold — notes_add, docs_write,
+		// files_put — went out as a GET, and a URL that changes your data when
+		// something follows it is the oldest mistake on the web.
+		if service.ChangingTool(name) {
 			w.Header().Set("Allow", "POST")
 			app.RespondError(w, http.StatusMethodNotAllowed,
 				name+" changes something and cannot be a GET")
