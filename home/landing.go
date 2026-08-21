@@ -235,6 +235,8 @@ func developerBand(base string) string {
   <li>Priced per call. Cached answers are not charged.</li>
   <li>One Go binary. Self-host it and callers pay you.</li>
 </ul>
+<p class="dev-stack">SMTP in, IMAP out, HTTP for the app, MCP for agents,
+x402 for payments. No protocol here is ours.</p>
 </div>
 
 <style>
@@ -255,6 +257,10 @@ func developerBand(base string) string {
 .dev-facts{font-size:14px;color:#555;line-height:1.6;margin:0 0 14px;padding-left:18px}
 .dev-facts li{margin:0 0 6px}
 .dev-facts li:last-child{margin:0}
+/* The one line that says what the whole thing is, so it is set apart from the
+   list of facts above it rather than being a fifth one. */
+.dev-stack{font-size:14px;color:#111;line-height:1.6;margin:0;
+  padding-top:14px;border-top:1px solid #eee}
 </style>`
 }
 

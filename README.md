@@ -21,6 +21,12 @@ One binary, four ways in:
 client of somebody else's instance rather than serving one. See
 [Agent](#agent-bring-your-own-model).
 
+**SMTP in, IMAP out, HTTP for the app, MCP for agents, x402 for payments.** No
+protocol here is ours. A billion people can already reach an instance from the
+mail client they have open, without installing anything or agreeing to
+anything, because the address is a real address and the standards behind it are
+forty years old.
+
 ## Tools
 
 | Service | Tools |
