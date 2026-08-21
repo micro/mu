@@ -247,13 +247,13 @@ func Load() {
 var Spec = service.Spec{
 	Name:        "recall",
 	Handler:     new(Server),
-	Description: "Your own past: search what was said, on any client, and read a conversation back",
+	Description: "Search what you have said to an agent and been told, and read any conversation back",
 	Page:        "/recall",
 	Icon:        "saved.svg",
 	Scoped:      true,
 	Endpoints: map[string]service.Endpoint{
 		"Search": {Aliases: []string{"history_search", "recall_history"},
-			Doc: "Search everything the caller has said to an agent and been told, across every client — the web chat, email, mail, the web. Use it when something was mentioned and you need to find where; notes_get is for a fact somebody wrote down on purpose"},
+			Doc: "Search everything the caller has said to an agent and been told, wherever they said it — the browser, email, or the command line. Use it when something was mentioned and you need to find where; notes_get is for a fact somebody wrote down on purpose"},
 		"Conversation": {Aliases: []string{"recall_thread"},
 			Doc: "Read one whole conversation back by id, as recall_search and recall_list report it"},
 		"List": {Aliases: []string{"recall_conversations"},

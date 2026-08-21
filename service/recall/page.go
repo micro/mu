@@ -56,9 +56,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	var b strings.Builder
 	b.WriteString(`<div class="w-760">`)
-	b.WriteString(`<p class="lens-lead">Everything you and your agents have said to each other, ` +
-		`wherever you said it — here, by email, on mail or the web. Search it. ` +
-		`Your conversations as a list, to carry one on, are on ` + app.TextLink("your inbox", "/inbox") + `.</p>`)
+	b.WriteString(`<p class="lens-lead">Search everything you have said to an agent and been ` +
+		`told, whether you said it in the browser, by email, or from the command line. ` +
+		`To read a conversation and carry it on, go to ` + app.TextLink("your inbox", "/inbox") + `.</p>`)
 
 	b.WriteString(`<form method="GET" action="/recall" class="rc-form">` +
 		`<input class="rc-input" type="search" name="q" placeholder="A word or phrase somebody said" ` +
@@ -90,7 +90,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	b.WriteString(`</div>` + pageCSS)
-	app.Respond(w, r, app.Response{Title: "Recall", Description: "Search everything you have said to an agent", HTML: b.String()})
+	app.Respond(w, r, app.Response{Title: "Recall", Description: "Search everything you have said to an agent and been told", HTML: b.String()})
 }
 
 // hitRow is one match: who said it, when, where, and the way into the rest of
