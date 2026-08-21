@@ -263,3 +263,81 @@ func TestTheGuardIsStillInThePath(t *testing.T) {
 		t.Error("agent@<domain> no longer works out whose mail it is from who sent it")
 	}
 }
+
+// A machine writing on its own account must not wake an agent.
+//
+// RFC 3834 exists because two automatic responders will talk to each other
+// until somebody notices, and an agent is the most expensive possible
+// participant: a model call per turn, forever.
+//
+// A DMARC report is the case that made this obvious. It is DKIM-signed by
+// Google, so it passes every other check here, and there is nobody on the other
+// end to answer.
+func TestMailAMachineSentDoesNotWakeAnAgent(t *testing.T) {
+	t.Setenv("MAIL_DOMAIN", "mu.example")
+	// mayDispatch declines to reason about who may wake what on an instance
+	// where nothing is listening, so there has to be something listening.
+	Inbound(AgentMailbox, func(InboundMail) {})
+
+	base := wakeRequest{
+		Owner: "alice", Tag: "news", From: "known@example.com",
+		To: "alice+news@mu.example", Authenticated: true, Owned: true,
+	}
+	if !mayDispatch(base) {
+		t.Fatal("the control case does not dispatch, so this test proves nothing")
+	}
+
+	machine := base
+	machine.Machine = true
+	if mayDispatch(machine) {
+		t.Error("mail a machine sent woke the agent")
+	}
+
+	// Owned is the strongest evidence there is — a token was presented before
+	// the message was accepted — and it still must not override this. A mail
+	// client set to forward reports is signed in as you.
+	if !machine.Owned {
+		t.Fatal("this case is only interesting while Owned is set")
+	}
+}
+
+// The headers that say so, and the ones that do not.
+func TestMachineMailReadsTheStandardHeaders(t *testing.T) {
+	for _, tt := range []struct {
+		name   string
+		header map[string]string
+		want   bool
+	}{
+		{"a person", map[string]string{"From": "someone@example.com"}, false},
+		{"RFC 3834", map[string]string{"Auto-Submitted": "auto-generated"}, true},
+		{"a DMARC report", map[string]string{"Auto-Submitted": "auto-generated",
+			"Content-Type": "multipart/report; report-type=disposition-notification"}, true},
+		// "no" is the value RFC 3834 reserves for mail a person actually sent,
+		// so a sender being explicit about it must not be punished for saying so.
+		{"explicitly not", map[string]string{"Auto-Submitted": "no"}, false},
+		{"bulk", map[string]string{"Precedence": "bulk"}, true},
+		{"a mailing list", map[string]string{"List-Id": "<dev.example.com>"}, true},
+		{"unsubscribable", map[string]string{"List-Unsubscribe": "<mailto:x@example.com>"}, true},
+		{"an Exchange auto-reply", map[string]string{"X-Auto-Response-Suppress": "All"}, true},
+		{"an empty header is not a header", map[string]string{"List-Id": "  "}, false},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := machineMail(testHeader(tt.header)); got != tt.want {
+				t.Errorf("machineMail(%v) = %v, want %v", tt.header, got, tt.want)
+			}
+		})
+	}
+}
+
+// testHeader is the one method machineMail needs, so the test does not have to
+// build a whole parsed message to ask about four headers.
+type testHeader map[string]string
+
+func (h testHeader) Get(k string) string {
+	for name, v := range h {
+		if strings.EqualFold(name, k) {
+			return v
+		}
+	}
+	return ""
+}

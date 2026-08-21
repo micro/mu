@@ -827,6 +827,7 @@ func (s *Session) Data(r io.Reader) error {
 			To:            toAddr.Address,
 			IsSpam:        spamResult.IsSpam,
 			Authenticated: dkimPass || s.spfPass,
+			Machine:       machineMail(msg.Header),
 		})
 	}
 

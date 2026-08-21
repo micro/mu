@@ -110,6 +110,10 @@ type wakeRequest struct {
 	// From header claiming to be it. Only submission sets it, where a token
 	// was presented before the message was accepted. See mayDispatch.
 	Owned bool
+
+	// Machine is mail a machine sent without a person asking: a DMARC report,
+	// a bounce, a mailing list, an out-of-office. See machineMail.
+	Machine bool
 }
 
 // mayDispatch is the whole rule, in one place, so it can be read and tested
@@ -140,6 +144,19 @@ func mayDispatch(r wakeRequest) bool {
 	if !r.Authenticated {
 		return false
 	}
+	// Nothing a machine sent on its own. RFC 3834 exists because two automatic
+	// responders will talk to each other until somebody notices, and an agent
+	// is the most expensive possible participant in that: a model call per
+	// turn, forever. A DMARC report is the case that made this obvious — it is
+	// DKIM-signed by Google, so it authenticates, and there is nobody on the
+	// other end to answer.
+	//
+	// After the authentication check rather than before, because the headers
+	// are a claim like any other and cost nothing to forge — this narrows what
+	// authenticated mail may do, it is not a filter on its own.
+	if r.Machine {
+		return false
+	}
 	// Signed in as this account, rather than claiming to be it.
 	//
 	// senderKnownTo answers "is the From header really this account's owner"
@@ -165,4 +182,29 @@ func senderKnownTo(owner, from string) bool {
 		return true
 	}
 	return KnownSender != nil && KnownSender(owner, from)
+}
+
+// machineMail reports whether a message was sent by a machine on its own
+// account, from the headers standardised for exactly this question.
+//
+// Auto-Submitted is RFC 3834: any value but "no" means automatic, and a
+// well-behaved responder must not reply. Precedence is the older convention
+// and still what most bulk senders set. List-Id and List-Unsubscribe mark a
+// mailing list, which is not a correspondent. X-Auto-Response-Suppress is
+// Microsoft's, and worth reading because Exchange is where most of the
+// auto-replies in the world come from.
+func machineMail(header interface{ Get(string) string }) bool {
+	if v := strings.TrimSpace(strings.ToLower(header.Get("Auto-Submitted"))); v != "" && v != "no" {
+		return true
+	}
+	switch strings.TrimSpace(strings.ToLower(header.Get("Precedence"))) {
+	case "bulk", "junk", "list", "auto_reply":
+		return true
+	}
+	for _, h := range []string{"List-Id", "List-Unsubscribe", "X-Auto-Response-Suppress", "X-Autoreply", "X-Autorespond"} {
+		if strings.TrimSpace(header.Get(h)) != "" {
+			return true
+		}
+	}
+	return false
 }
