@@ -63,7 +63,7 @@ var bridgeOps = map[string]bridgeOp{
 	"markets":       {Method: "GET", Path: "/markets", Query: true},
 	"video":         {Method: "GET", Path: "/video", Query: true},
 	"social":        {Method: "GET", Path: "/social", Query: true},
-	"search":        {Method: "GET", Path: "/search", Query: true},
+	"search":        {Method: "GET", Path: "/web", Query: true},
 	"blog.list":     {Method: "GET", Path: "/blog", Query: true},
 	"blog.read":     {Method: "GET", Path: "/blog/post", Query: true},
 	"apps.list":     {Method: "GET", Path: "/apps", Query: true},

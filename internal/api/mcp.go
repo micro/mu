@@ -406,7 +406,7 @@ var tools = []Tool{
 		RESTOnly:    true,
 		Description: "Search the web",
 		Method:      "GET",
-		Path:        "/search",
+		Path:        "/web",
 		Params: []ToolParam{
 			{Name: "query", Type: "string", Description: "Search query", Required: true},
 		},

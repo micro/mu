@@ -152,8 +152,8 @@ func authRequired() map[string]bool {
 
 		"/apps":      false, // Public - apps directory; auth checked in handler for create/edit
 		"/work":      false, // Public - task bounties; auth checked in handler for post/claim
-		"/search":    false, // Public - web search
-		"/web":       false, // Redirect to /search
+		"/search":    false, // Public - redirect to /web, the address people have
+		"/web":       false, // Public - the open web: search it, read a page from it
 		"/web/fetch": false, // Public page, auth checked in handler (paid web fetch)
 		"/web/read":  false, // Public page, auth checked in handler (proxied reader)
 
@@ -318,11 +318,21 @@ func registerRoutes() {
 	// names this one.
 	http.HandleFunc("/stripe/webhook", account.HandleStripeWebhook)
 
-	// serve search page (local + Brave web search)
-	// serve search page
-	http.HandleFunc("/search", web.Handler)
-	http.HandleFunc("/web", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/search?"+r.URL.RawQuery, http.StatusMovedPermanently)
+	// The service is web — searching the open web is one of the things it does,
+	// and a service is named for a domain rather than an action. Its page was
+	// at /search and everything under it at /web/fetch, /web/read,
+	// /web/preview, so one service had its URL tree split in half and was the
+	// only exception to service name == route in the catalogue.
+	//
+	// /search still answers, permanently redirected, because it is the address
+	// people have and search engines hold.
+	http.HandleFunc("/web", web.Handler)
+	http.HandleFunc("/search", func(w http.ResponseWriter, r *http.Request) {
+		to := "/web"
+		if r.URL.RawQuery != "" {
+			to += "?" + r.URL.RawQuery
+		}
+		http.Redirect(w, r, to, http.StatusMovedPermanently)
 	})
 	http.HandleFunc("/web/preview", web.PreviewHandler)
 

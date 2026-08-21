@@ -17,8 +17,7 @@ import (
 //		Name:        "web",
 //		Handler:     new(Server),
 //		Description: "The open web: search it, read a page from it",
-//		Page:        "/search",
-//		Label:       "Search",
+//		Page:        "/web",
 //		Endpoints: map[string]service.Endpoint{
 //			"Search": {Doc: "Search the web…", Cost: wallet.OpWebSearch},
 //			"Fetch":  {Doc: "Fetch a web page…", Cost: wallet.OpWebFetch},

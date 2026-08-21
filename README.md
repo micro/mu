@@ -51,7 +51,6 @@ forty years old.
 | **Prayer** | `prayer_times` · `prayer_qibla` · `prayer_reflection` · `prayer_verse` · `prayer_saying` · `prayer_search` — Islamic prayer times, qibla, a daily verse and saying, and the sources by reference or by question |
 | **Recall** | `recall_search` · `recall_conversation` · `recall_list` — everything you have ever said to an agent and been told, on any client: search it, and read a conversation back |
 | **Routes** | `routes_eta` · `routes_directions` · `routes_nearest` — travel time with traffic, turn-by-turn, and which of several places is quickest to reach |
-| **Search** | `web_search` · `web_fetch` — search the web, read a page as clean text |
 | **SMS** | `sms_send` · `sms_history` · `sms_number` · `sms_verify` — text somebody and read what they text back, from a real number. Priced per segment, capped per day, and STOP is honoured |
 | **Social** | `social_list` · `social_search` — public threads and replies |
 | **Stream** | `stream_list` — what has been happening here |
@@ -62,6 +61,7 @@ forty years old.
 | **Video** | `video_list` · `video_search` — curated channels, no ads or recommendations |
 | **Wallet** | `wallet_address` · `wallet_balance` · `wallet_list` · `wallet_pay` — a key of your own on Base: an address that holds USDC, and paying for a tool on another x402 server with it. Capped per call and per day |
 | **Weather** | `weather_forecast` · `weather_air` · `weather_marine` · `weather_history` — conditions and the days ahead; air quality, pollutants, UV and pollen; wave height, period and direction at a coastal point; and what the weather actually was between two dates. Everything but the forecast is keyless |
+| **Web** | `web_search` · `web_fetch` — search the web, read a page as clean text |
 
 [Open an issue](https://github.com/micro/mu/issues/new?labels=enhancement&title=Tool%20request%3A%20&body=What%20should%20it%20do%3F%0A%0AWhat%20would%20you%20use%20it%20for%3F%0A) to request a tool.
 

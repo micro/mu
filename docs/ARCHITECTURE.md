@@ -128,7 +128,7 @@ guessable.
 | `video` | /video | ✅ |  | Curated channels, without ads or recommendations |
 | `wallet` | /wallet | ✅ | ✅ | A key of your own on Base: an address that holds USDC, and paying an x402-priced tool on another server with it |
 | `weather` | /services/weather | ✅ |  | Forecast and pollen through Google, keyed. Air quality, sea state and the historical record through Open-Meteo, keyless — the part that still works on a clone |
-| `web` | /search | ✅ |  | Search the web; fetch a URL and return readable content |
+| `web` | /web | ✅ |  | Search the web; fetch a URL and return readable content |
 
 ## Account-scoped
 

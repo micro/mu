@@ -120,9 +120,14 @@ func TestSpecsReproduceTheOldPolicy(t *testing.T) {
 	if service.Destructive("blog", "Read") || service.Destructive("tasks", "List") {
 		t.Error("a read was marked destructive")
 	}
-	// agentToolLabels, deleted from agent/native.go
-	if got := service.Label("web"); got != "Search" {
-		t.Errorf("web label = %q, want Search", got)
+	// agentToolLabels, deleted from agent/native.go.
+	//
+	// web was labelled "Search" here, which is what it was called before it was
+	// renamed for its domain rather than its main action. Reproducing the old
+	// policy is the job of this test and that part of the old policy was the
+	// bug — see TestAServiceLabelIsItsOwnName.
+	if got := service.Label("web"); got != "Web" {
+		t.Errorf("web label = %q, want Web", got)
 	}
 	if got := service.Label("mail"); got != "Mail" {
 		t.Errorf("mail label = %q, want Mail", got)
@@ -335,4 +340,56 @@ func firstWord(name string) string {
 		}
 	}
 	return strings.ToLower(name)
+}
+
+// A service's page is at its own name.
+//
+// "service name == directory == route == nav label == tool prefix, with no
+// exceptions in it" is in CLAUDE.md and was not checkable, so there was one:
+// service/web served its page at /search while everything else under it —
+// /web/fetch, /web/read, /web/preview — was already at /web. One service, its
+// URL tree split in half, and the only way to know was to notice.
+//
+// /services/<name> is the other legal answer, for a service whose page is its
+// reference because it had nothing its card did not: weather and hazards.
+//
+// Nothing here says the old address must stop working. /search is a permanent
+// redirect, which is what an address people have and search engines hold is
+// worth.
+func TestAServicePageIsAtItsOwnName(t *testing.T) {
+	registerAll(t)
+
+	var checked int
+	for _, s := range service.Specs() {
+		if s.Page == "" {
+			continue // headless: reachable at /services/<name> like everything else
+		}
+		checked++
+		if s.Page != "/"+s.Name && s.Page != "/services/"+s.Name {
+			t.Errorf("service %q has its page at %q, want /%s or /services/%s",
+				s.Name, s.Page, s.Name, s.Name)
+		}
+	}
+	if checked < 20 {
+		t.Fatalf("only %d services have pages — this scan is broken", checked)
+	}
+}
+
+// And the label a person reads is the name too, unless it is only capitalising
+// it. Docs, Routes and SMS set one and all three are their own name typed the
+// way it should look; web set "Search", which was the name it had before it was
+// renamed for its domain rather than its main action, and it left the sidebar
+// disagreeing with the route and the tool prefix.
+func TestAServiceLabelIsItsOwnName(t *testing.T) {
+	registerAll(t)
+
+	for _, s := range service.Specs() {
+		if s.Label == "" {
+			continue
+		}
+		if !strings.EqualFold(strings.ReplaceAll(s.Label, " ", ""), s.Name) {
+			t.Errorf("service %q is labelled %q, which is a different word — a "+
+				"Label may capitalise the name and nothing else", s.Name, s.Label)
+		}
+	}
 }

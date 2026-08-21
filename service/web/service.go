@@ -85,9 +85,12 @@ var Spec = service.Spec{
 	Name:        "web",
 	Handler:     new(Server),
 	Description: "The open web: search it, read a page from it",
-	Page:        "/search",
-	Label:       "Search",
-	Icon:        "search.svg",
+	Page:        "/web",
+	// No Label. It said "Search", which is what the service was called before
+	// it was renamed for its domain rather than its main action — and it left
+	// the nav disagreeing with the name, the route and the tool prefix. The
+	// icon stays search.svg; a file name is not a user-facing string.
+	Icon: "search.svg",
 	Endpoints: map[string]service.Endpoint{
 		"Fetch": {
 			Aliases: []string{"search_fetch"},
