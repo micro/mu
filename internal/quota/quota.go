@@ -112,7 +112,6 @@ const (
 	OpSocialPost       = "social_post"
 	OpSocialReply      = "social_reply"
 	OpAppCreate        = "app_create"
-	OpStreamPost       = "stream_post"
 	OpBlogComment      = "blog_comment"
 	OpAppBuild         = "app_build"
 	OpAppEdit          = "app_edit"

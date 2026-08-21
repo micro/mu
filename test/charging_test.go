@@ -129,7 +129,6 @@ var pageCharged = map[string]bool{
 	"social_post": true, "social_reply": true, "social_search": true,
 	"blog_create": true, "blog_comment": true,
 	"app_create": true, "app_build": true, "app_edit": true,
-	"stream_post":   true,
 	"places_search": true, "places_nearby": true,
 	"image_generate": true,
 	"weather_pollen": true, "weather_forecast": true,

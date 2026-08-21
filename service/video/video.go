@@ -22,6 +22,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
+	"mu/internal/event"
 	"mu/internal/service"
 	"mu/internal/snapshot"
 )
@@ -40,6 +41,11 @@ var channels = map[string]string{}
 
 // latest videos from channels
 var videos = map[string]Channel{}
+
+// announcedLatest is the id of the newest video the last refresh announced, so
+// an hourly refresh that finds nothing new says nothing. Guarded by mutex,
+// which the announcing site already holds.
+var announcedLatest string
 
 // latest video
 var latestHtml string
@@ -611,6 +617,14 @@ func loadVideos() {
 	<div class="thumbnail"><a href="%s"><img src="%s" loading="lazy" alt=""><h3>%s</h3></a><div class="info">%s</div></div>`,
 			res.URL, thumbnailURL, res.Title, info)
 		data.SaveFile("latest.html", latestHtml)
+
+		// One announcement a refresh, and only when the newest video is
+		// actually a different one. Every video found would be a few hundred
+		// lines an hour on a timeline meant to be read.
+		if res.ID != announcedLatest {
+			announcedLatest = res.ID
+			event.Announce("video", res.Title, res.URL, "")
+		}
 	}
 	videos = vids
 	videosHtml = vidHtml

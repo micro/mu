@@ -1,114 +1,123 @@
 package stream
 
-// The console is public. /stream serves it with no session and stream_list
+// The timeline is public. /stream serves it with no session and stream_list
 // answers an unauthenticated MCP caller, which is deliberate — it is the
 // instance's own timeline, the sign that something is running here.
 //
-// That makes every write to it a publication. Three call sites in main.go
-// forgot: a fired reminder posted its title, a standing instruction posted
-// its title, and inbound mail posted the sender and the subject. A reminder
-// somebody had written down privately — "Dentist about the biopsy results" —
-// went to the open internet the moment it fired, along with the account id of
-// whoever owned it.
+// That makes every entry on it a publication. Three call sites forgot: a fired
+// reminder posted its title, a standing instruction posted its title, and
+// inbound mail posted the sender and the subject. A reminder somebody had
+// written down privately — "Dentist about the biopsy results" — went to the
+// open internet the moment it fired, along with the account id of whoever
+// owned it.
 //
-// This test cannot reach into main.go, so it guards the property from this
-// side: whatever is posted, a system event must not carry an account id in its
-// metadata. The content half is guarded by the reviewer and by the comments at
-// the call sites; the identity half is guarded here, because an event with no
-// title but a named owner still tells a reader who is awake at 3am.
+// The old fix was to guard the *metadata*: whatever gets posted, do not let a
+// public entry name whose it was. That was a guard against the symptom. There
+// was no way to say "this one is theirs", so anything personal reaching the
+// timeline was a leak by construction, and the only defence was every call
+// site remembering.
+//
+// Entry.Account is the fix: whoever announces a fact says at that moment
+// whether it belongs to somebody, and Recent never shows one account's entries
+// to another. These tests hold that.
 
 import (
 	"strings"
 	"testing"
 )
 
-func TestASystemEventCarriesNoAccountIdentity(t *testing.T) {
-	resetStreamForTest(t)
-	e := PostSystem("⏰ A reminder fired", map[string]any{"kind": TypeReminder})
+func TestAnEntryWithAnAccountIsInvisibleToEveryoneElse(t *testing.T) {
+	reset(t)
+	add(&Entry{Service: "mail", Text: "lawyer@example.com — Re: the settlement", Account: "alice"})
+	add(&Entry{Service: "news", Text: "Something happened"})
 
-	for key := range e.Metadata {
-		switch strings.ToLower(key) {
-		case "account", "account_id", "accountid", "owner", "user", "user_id", "from", "email":
-			t.Errorf("a public system event carries %q=%v, which identifies whose it was",
-				key, e.Metadata[key])
-		}
-	}
-}
-
-// Whatever else is true of the timeline, an event that reached it is readable
-// by somebody with no account — so this asserts the shape a caller sees rather
-// than trusting that every future call site remembers.
-func TestEventsOnTheTimelineAreVisibleToEveryone(t *testing.T) {
-	// System events are throttled per type, so a fresh timeline is needed for
-	// the post below to land at all.
-	resetStreamForTest(t)
-	before := len(Recent(100, ""))
-	PostSystem("📬 Mail arrived", map[string]any{"kind": TypeSystem})
-
-	got := Recent(100, "")
-	if len(got) <= before {
-		t.Fatal("a posted system event did not reach the timeline")
-	}
-	// The point of the assertion: a signed-out reader sees it. Anything put
-	// here is published, which is why the call sites must post no content that
-	// belongs to one person.
-	found := false
-	for _, e := range got {
-		if e.Content == "📬 Mail arrived" {
-			found = true
-			if e.Type != TypeSystem {
-				t.Errorf("a system event has type %q", e.Type)
+	for _, viewer := range []string{"", "bob"} {
+		for _, e := range Recent(100, viewer) {
+			if strings.Contains(e.Text, "settlement") {
+				t.Errorf("viewer %q can see alice's mail: %q", viewer, e.Text)
 			}
 		}
 	}
-	if !found {
-		t.Error("the event is not visible to a viewer with no account")
+
+	var sawOwn bool
+	for _, e := range Recent(100, "alice") {
+		if strings.Contains(e.Text, "settlement") {
+			sawOwn = true
+		}
+	}
+	if !sawOwn {
+		t.Error("alice cannot see her own entry")
+	}
+}
+
+// The public half of the same property: an entry with no account is meant to
+// be read by somebody with no session, so nothing personal may be announced
+// without one.
+func TestAnEntryWithNoAccountIsVisibleToEveryone(t *testing.T) {
+	reset(t)
+	add(&Entry{Service: "news", Text: "Headline"})
+
+	got := Recent(100, "")
+	if len(got) != 1 || got[0].Text != "Headline" {
+		t.Fatalf("a signed-out reader sees %v, want the one public entry", got)
+	}
+}
+
+// Deleting an account takes their own entries with it. The public ones stay:
+// a post that was published still was, and whether it survives is the blog
+// service's decision, not this one's.
+func TestDeletingAnAccountLeavesThePublicEntries(t *testing.T) {
+	reset(t)
+	add(&Entry{Service: "mail", Text: "theirs", Account: "alice"})
+	add(&Entry{Service: "news", Text: "everyone's"})
+
+	DeleteByAccount("alice")
+
+	got := Recent(100, "alice")
+	if len(got) != 1 || got[0].Text != "everyone's" {
+		t.Fatalf("after deletion the timeline holds %v, want the public entry alone", got)
 	}
 }
 
 // Fixing the call sites stops new leaks; it does not unpublish the old ones,
-// which sit in stream.json and go on being served to anybody with no session.
-// They are removed on the way in.
-func TestHistoricalLeaksArePurgedOnLoad(t *testing.T) {
-	loaded := []*Event{
-		// The three that leaked, each tagged with whose it was.
-		{Type: TypeReminder, Content: "⏰ PRIVATE Dentist about the biopsy results",
-			Metadata: map[string]any{"kind": TypeReminder, "account": "someone"}},
-		{Type: TypeSystem, Content: "📬 Mail from lawyer@example.com — Re: the settlement",
-			Metadata: map[string]any{"kind": TypeSystem, "account": "someone"}},
-		{Type: TypeReminder, Content: "⏰ Therapy",
-			Metadata: map[string]any{"owner": "someone"}},
-
-		// Legitimate console entries, which name nobody and must survive.
-		{Type: TypeSystem, Content: "⏰ A reminder fired", Metadata: map[string]any{"kind": TypeReminder}},
-		{Type: TypeSystem, Content: "📬 Mail arrived", Metadata: map[string]any{"kind": TypeSystem}},
-		{Type: TypeSystem, Content: "Headlines updated"},
-
-		// A person's own post is theirs to publish and is not touched.
-		{Type: TypeUser, AuthorID: "someone", Content: "hello everyone",
-			Metadata: map[string]any{"account": "someone"}},
-	}
-
-	kept := purgePrivate(loaded)
-
-	for _, e := range kept {
-		for _, secret := range []string{"biopsy", "settlement", "Therapy"} {
-			if strings.Contains(e.Content, secret) {
-				t.Errorf("a leaked entry survived the purge: %q", e.Content)
-			}
+// which sit in stream.json and go on being served. They cannot survive the
+// move, because a console event had a type and a content where an entry has a
+// service and a text — so they arrive empty in the fields that matter, and
+// valid drops them.
+func TestConsoleEntriesDoNotSurviveTheMove(t *testing.T) {
+	// What json.Unmarshal makes of {"type":"reminder","content":"⏰ PRIVATE
+	// Dentist about the biopsy results","author_id":"someone"}: no service, no
+	// text, no time.
+	for _, e := range []*Entry{
+		{},
+		{Service: "reminder"},
+		{Text: "⏰ PRIVATE Dentist about the biopsy results"},
+	} {
+		if valid(e) {
+			t.Errorf("a console event survived as %+v", e)
 		}
 	}
-	if len(kept) != 4 {
-		t.Fatalf("purge kept %d entries, want the 3 anonymous ones plus the user's own post", len(kept))
-	}
+}
 
-	var sawUserPost bool
-	for _, e := range kept {
-		if e.Type == TypeUser && e.Content == "hello everyone" {
-			sawUserPost = true
-		}
+// Text is escaped, never rendered. The console ran everything through the
+// markdown renderer because the agent answered in markdown into it; nothing
+// writes prose here now, and a service's one-line fact has no reason to carry
+// markup.
+func TestEntryTextIsEscaped(t *testing.T) {
+	out := renderEntry(&Entry{Service: "news", Text: `<img src=x onerror=alert(1)>`})
+	if strings.Contains(out, "<img src=x") {
+		t.Errorf("rendered output carries live markup:\n%s", out)
 	}
-	if !sawUserPost {
-		t.Error("somebody's own public post was purged; it was theirs to publish")
+	if !strings.Contains(out, "&lt;img src=x onerror=alert(1)&gt;") {
+		t.Errorf("text was not escaped:\n%s", out)
+	}
+}
+
+// The URL is an attribute, and an entry announcing one is announcing a link
+// somebody else wrote — a feed item, a fetched page.
+func TestEntryURLCannotBreakOutOfItsAttribute(t *testing.T) {
+	out := renderEntry(&Entry{Service: "news", Text: "story", URL: `" onmouseover="alert(1)`})
+	if strings.Contains(out, `onmouseover="alert`) {
+		t.Errorf("url escaped its attribute:\n%s", out)
 	}
 }

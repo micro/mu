@@ -75,6 +75,10 @@ type Feed struct {
 	Backoff  time.Time
 }
 
+// announcedTop is the URL of the headline the last refresh announced, so an
+// hourly parse that turns up nothing new stays quiet.
+var announcedTop string
+
 type Post struct {
 	ID          string    `json:"id"`
 	Title       string    `json:"title"`
@@ -1296,6 +1300,18 @@ func parseFeed() {
 	// Publish the new snapshot to the go-micro store + broker; Headlines serves
 	// it from a mirror (see internal/snapshot, docs/GO_MICRO_ARCHITECTURE.md).
 	cardSnap.Publish(headlineHtml)
+
+	// The top headline, once an hour, and only when it has changed. Every
+	// article ingested would be several hundred an hour, which is a feed
+	// reader rather than a timeline — /news is already that and does it
+	// better.
+	if len(filteredHeadlines) > 0 {
+		top := filteredHeadlines[0]
+		if top.URL != announcedTop {
+			announcedTop = top.URL
+			event.Announce("news", top.Title, top.URL, "")
+		}
+	}
 
 	// Wait an hour and go again
 	time.Sleep(time.Hour)

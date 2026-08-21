@@ -10,349 +10,132 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/service"
 )
 
-// AIReplyHook is wired from main.go. Receives (askerID, prompt), runs
-// the agent, and calls PostAgent with the answer. Kept as a callback
-// to avoid a stream→agent import cycle.
-var AIReplyHook func(askerID, prompt string)
+// Limit is how many entries a page shows.
+const Limit = 50
 
-// StreamLimit is the default number of events shown.
-const StreamLimit = 50
-
-// Handler serves GET /stream (HTML or JSON) and POST /stream.
+// Handler serves GET /stream, as HTML or JSON.
+//
+// There is no POST. The console had one and it was the only thing that ever
+// wrote here; a timeline of what happened is not somewhere you type.
 func Handler(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case "GET":
-		handleGet(w, r)
-	case "POST":
-		handlePost(w, r)
-	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	if r.Method != "GET" {
+		app.MethodNotAllowed(w, r)
+		return
 	}
-}
+	viewer := viewerOf(r)
 
-func handleGet(w http.ResponseWriter, r *http.Request) {
-	viewerID := ""
-	if sess, _ := auth.TrySession(r); sess != nil {
-		viewerID = sess.Account
-	}
-
-	// JSON mode — for polling and the CLI.
 	if app.WantsJSON(r) || r.URL.Query().Get("format") == "json" {
-		since := r.URL.Query().Get("since")
-		var items []*Event
-		if since != "" {
+		items := Recent(Limit, viewer)
+		if s := r.URL.Query().Get("since"); s != "" {
 			var n int64
-			fmt.Sscanf(since, "%d", &n)
-			items = Since(time.Unix(n, 0))
-		} else {
-			items = Recent(StreamLimit, viewerID)
+			fmt.Sscanf(s, "%d", &n)
+			items = Since(time.Unix(n, 0), viewer)
 		}
-		items = DedupeAdjacent(items)
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Cache-Control", "no-store")
 		json.NewEncoder(w).Encode(map[string]any{
-			"events": items,
-			"ts":     time.Now().Unix(),
+			"entries": items,
+			"ts":      time.Now().Unix(),
 		})
 		return
 	}
 
-	// HTML page — the console view.
-	events := Recent(StreamLimit, viewerID)
-	events = DedupeAdjacent(events)
-	app.Respond(w, r, app.Response{Title: "Stream", Description: "Console",
-		HTML: streamBody(events, viewerID)})
+	app.Respond(w, r, app.Response{
+		Title:       "Stream",
+		Description: "What has been happening here",
+		HTML:        body(Recent(Limit, viewer)),
+	})
 }
 
-func handlePost(w http.ResponseWriter, r *http.Request) {
-	sess, _, err := auth.RequireSession(r)
-	if err != nil {
-		if app.WantsJSON(r) {
-			app.RespondError(w, http.StatusUnauthorized, "authentication required")
-		} else {
-			app.Unauthorized(w, r)
-		}
-		return
-	}
-
-	var content string
-	if app.SendsJSON(r) {
-		var body struct {
-			Content string `json:"content"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			app.RespondError(w, http.StatusBadRequest, "invalid JSON")
-			return
-		}
-		content = body.Content
-	} else {
-		r.ParseForm()
-		content = r.FormValue("content")
-	}
-	content = strings.TrimSpace(content)
-	if content == "" {
-		if app.WantsJSON(r) {
-			app.RespondError(w, http.StatusBadRequest, "content is required")
-		} else {
-			http.Redirect(w, r, "/stream", http.StatusSeeOther)
-		}
-		return
-	}
-
-	e := PostUser(sess.Account, content)
-
-	// Async moderation — same LLM check as status.
-	go moderateEvent(sess.Account, content)
-
-	// @micro mention → agent reply.
-	if ContainsMicro(content) && AIReplyHook != nil && sess.Account != app.SystemUserID {
-		go AIReplyHook(sess.Account, content)
-	}
-
-	if app.WantsJSON(r) || app.SendsJSON(r) {
-		app.RespondJSON(w, e)
-		return
-	}
-	http.Redirect(w, r, "/stream", http.StatusSeeOther)
-}
-
-func moderateEvent(authorID, text string) {
-	if acc, err := auth.GetAccount(authorID); err == nil && acc.Admin {
-		return
-	}
-	// Reuse the flag package's LLM classifier.
-	// Import cycle prevention: the caller in main.go wires this via
-	// a callback if needed. For now, inline a simple check.
-}
-
-// FragmentHandler returns just the event list as an HTML fragment at
-// GET /stream/fragment — polled by the console JS for live updates.
+// FragmentHandler returns the list alone at GET /stream/fragment, so a page
+// showing the timeline can refresh it without redrawing itself.
 func FragmentHandler(w http.ResponseWriter, r *http.Request) {
-	viewerID := ""
-	if sess, _ := auth.TrySession(r); sess != nil {
-		viewerID = sess.Account
-	}
-	events := Recent(StreamLimit, viewerID)
-	events = DedupeAdjacent(events)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
-	w.Write([]byte(RenderEventList(events, viewerID)))
+	w.Write([]byte(RenderList(Recent(Limit, viewerOf(r)))))
+}
+
+func viewerOf(r *http.Request) string {
+	if sess, _ := auth.TrySession(r); sess != nil {
+		return sess.Account
+	}
+	return ""
 }
 
 // ── Rendering ───────────────────────────────────────────────
 
-// streamBody renders the console, without the page around it.
-//
-// It used to call app.RenderHTMLForRequest itself and hand back a whole
-// document, which is what made it the only page-rendering function outside
-// internal/app. A body is what every other surface returns; the shell is
-// app.Respond's business and nobody else's.
-func streamBody(events []*Event, viewerID string) string {
-	var sb strings.Builder
-	sb.WriteString(`<div id="console">`)
-
-	// Compose box (logged-in only).
-	if viewerID != "" {
-		sb.WriteString(fmt.Sprintf(`<form id="stream-form" method="POST" action="/stream" class="mb-3 d-flex gap-2">
-<input type="text" name="content" id="stream-input" placeholder="Ask @micro anything or post an update..." maxlength="%d" autocomplete="off" class="form-input grow text-base">
-<button type="submit" class="btn">Send</button>
-</form>`, MaxContentLength))
-	}
-
-	sb.WriteString(`<div id="stream-events">`)
-	sb.WriteString(RenderEventList(events, viewerID))
-	sb.WriteString(`</div>`)
-
-	// Polling + form submit JS.
-	sb.WriteString(streamScript)
-
-	sb.WriteString(`</div>`)
-	return sb.String()
+func body(items []*Entry) string {
+	return `<div id="stream-entries">` + RenderList(items) + `</div>` + script
 }
 
-// RenderEventList renders just the event entries (used by both the
-// full page and the fragment endpoint).
-func RenderEventList(events []*Event, viewerID string) string {
-	if len(events) == 0 {
-		return `<p class="text-muted text-base">Nothing here yet. Post something or ask @micro a question.</p>`
+// RenderList renders the entries alone, used by the page and the fragment.
+func RenderList(items []*Entry) string {
+	if len(items) == 0 {
+		return `<p class="text-muted text-base">Nothing yet. When a post is published, a video found or a headline breaks, it turns up here.</p>`
 	}
-
-	var sb strings.Builder
-	for _, e := range events {
-		sb.WriteString(renderEvent(e, viewerID))
+	var b strings.Builder
+	for _, e := range items {
+		b.WriteString(renderEntry(e))
 	}
-	return sb.String()
+	return b.String()
 }
 
-var avatarColors = []string{
-	"#56a8a1", "#8e7cc3", "#e8a87c", "#5c9ecf",
-	"#e06c75", "#c2785c", "#7bab6e", "#9e7db8",
+// source is what a service is called and where its icon lives, read off the
+// registry so a new service needs nothing here. Falls back to the bare name,
+// because an entry outliving the service that announced it should still say
+// where it came from.
+func source(name string) (label, icon, page string) {
+	for _, s := range service.Specs() {
+		if s.Name == name {
+			return s.NavLabel(), s.NavIcon(), s.Page
+		}
+	}
+	return name, "", ""
 }
 
-// renderEvent produces the chat-bubble HTML for a single event. Every
-// event type uses the same bubble layout (avatar + name + content) so
-// the stream reads like a chat. System events get a compact variant.
-// URLs in content are linkified and news/system events with a URL in
-// metadata get an OG-preview embed via a lazy-loading iframe.
-func renderEvent(e *Event, viewerID string) string {
-	var avatar, name, nameColor, bubbleBg string
-	switch e.Type {
-	case TypeAgent:
-		avatar = `<div class="avatar filled" style="background:#1f7a4a">M</div>`
-		name = "Micro"
-		nameColor = "#1f7a4a"
-		bubbleBg = "#f0faf5"
-	case TypeSystem, TypeMarket, TypeNews, TypeReminder:
-		icon := "•"
-		switch e.Type {
-		case TypeMarket:
-			icon = "📊"
-		case TypeNews:
-			icon = "📰"
-		case TypeReminder:
-			icon = "🕌"
-		case TypeSystem:
-			icon = "⚙️"
-		}
-		avatar = fmt.Sprintf(`<div class="avatar">%s</div>`, icon)
-		name = "Micro"
-		nameColor = "#999"
-		bubbleBg = "#fafafa"
-	default: // TypeUser
-		initial := "?"
-		nm := e.Author
-		if nm == "" {
-			nm = e.AuthorID
-		}
-		if nm != "" {
-			initial = strings.ToUpper(nm[:1])
-		}
-		colorIdx := 0
-		for _, c := range e.AuthorID {
-			colorIdx += int(c)
-		}
-		bg := avatarColors[colorIdx%len(avatarColors)]
-		avatar = fmt.Sprintf(`<div class="avatar filled" style="background:%s">%s</div>`, bg, htmlpkg.EscapeString(initial))
-		name = nm
-		nameColor = "#333"
-		bubbleBg = "#fff"
+func renderEntry(e *Entry) string {
+	label, icon, page := source(e.Service)
+
+	avatar := `<div class="avatar">•</div>`
+	if icon != "" {
+		avatar = `<div class="avatar"><img src="/` + htmlpkg.EscapeString(icon) + `?` + app.Version + `" alt=""></div>`
 	}
 
-	// Render the content as markdown. The agent answers in markdown, so
-	// without this its replies arrive as literal ** and - characters. app.Render
-	// is the safe renderer — raw HTML is dropped and link schemes are
-	// restricted — which matters because user-typed events go through here too.
-	// It also autolinks bare URLs, so no separate linkify pass is needed.
-	linked := strings.TrimSpace(string(app.Render([]byte(e.Content))))
-
-	// Unwrap a lone paragraph so a one-line message stays tight in its bubble.
-	// The console is conversational, not a feed.
-	if strings.HasPrefix(linked, "<p>") && strings.HasSuffix(linked, "</p>") &&
-		!strings.Contains(linked[3:len(linked)-4], "<p>") {
-		linked = linked[3 : len(linked)-4]
+	src := htmlpkg.EscapeString(label)
+	if page != "" {
+		src = `<a href="` + htmlpkg.EscapeString(page) + `">` + src + `</a>`
 	}
 
-	// For news/system events with a URL in metadata, append a subtle
-	// link if the URL isn't already in the content text.
-	if e.Metadata != nil {
-		if u, ok := e.Metadata["url"].(string); ok && u != "" && !strings.Contains(e.Content, u) {
-			linked += fmt.Sprintf(` <a href="%s" target="_blank" rel="noopener" class="text-muted text-xs">→ read</a>`, htmlpkg.EscapeString(u))
-		}
-	}
-
-	nameLink := htmlpkg.EscapeString(name)
-	if e.AuthorID != "" && e.Type == TypeUser {
-		nameLink = fmt.Sprintf(`<a href="/@%s" style="color:%s;text-decoration:none;font-weight:600">%s</a>`, htmlpkg.EscapeString(e.AuthorID), nameColor, htmlpkg.EscapeString(name))
-	} else {
-		nameLink = fmt.Sprintf(`<span style="color:%s;font-weight:600">%s</span>`, nameColor, htmlpkg.EscapeString(name))
+	text := htmlpkg.EscapeString(e.Text)
+	if e.URL != "" {
+		text = `<a href="` + htmlpkg.EscapeString(e.URL) + `">` + text + `</a>`
 	}
 
 	return fmt.Sprintf(`<div class="d-flex gap-2 row-pad">%s
 <div class="grow min-w-0">
-<div class="baseline-row gap-1">%s<span class="text-faint text-2xs">%s</span></div>
-<div class="bubble" style="background:%s">%s</div>
-</div></div>`, avatar, nameLink, app.TimeAgo(e.CreatedAt), bubbleBg, linked)
+<div class="baseline-row gap-1"><span class="text-muted text-xs">%s</span><span class="text-faint text-2xs">%s</span></div>
+<div class="text-base">%s</div>
+</div></div>`, avatar, src, app.TimeAgo(e.At), text)
 }
 
-const streamScript = `<script>
+const script = `<script>
 (function(){
-  var eventsEl = document.getElementById('stream-events');
-  var formEl = document.getElementById('stream-form');
-  if (!eventsEl) return;
-
-  var pollInterval = 10000;
+  var el = document.getElementById('stream-entries');
+  if (!el) return;
   var inflight = false;
-
-  function csrfToken() {
-    var m = document.cookie.match(/(?:^|; )csrf_token=([^;]+)/);
-    return m ? decodeURIComponent(m[1]) : '';
-  }
-
-  function showStreamError(msg) {
-    var el = document.getElementById('stream-error');
-    if (!el) {
-      el = document.createElement('div');
-      el.id = 'stream-error';
-      el.className = 'notice';
-      formEl.parentNode.insertBefore(el, formEl.nextSibling);
-    }
-    el.textContent = String(msg).trim();
-  }
-
-  function refresh(clear) {
+  function refresh() {
     if (inflight) return;
     inflight = true;
     fetch('/stream/fragment', { credentials: 'same-origin', cache: 'no-store' })
       .then(function(r){ return r.ok ? r.text() : null; })
-      .then(function(html){
-        if (html == null) return;
-        var scroll = eventsEl.scrollTop;
-        eventsEl.innerHTML = html;
-        if (!clear) eventsEl.scrollTop = scroll;
-      })
+      .then(function(html){ if (html != null) el.innerHTML = html; })
       .catch(function(){})
       .then(function(){ inflight = false; });
   }
-
-  if (formEl) {
-    formEl.addEventListener('submit', function(ev){
-      ev.preventDefault();
-      var input = document.getElementById('stream-input');
-      if (!input) return;
-      var text = input.value.trim();
-      if (!text) return;
-      var body = new URLSearchParams();
-      body.set('content', text);
-      var headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
-      var tok = csrfToken();
-      if (tok) headers['X-CSRF-Token'] = tok;
-      input.value = '';
-      fetch('/stream', {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: headers,
-        body: body.toString()
-      }).then(function(r){
-        // A refusal is a response, not a network error, so the old .then(ok)
-        // swallowed it: the post was rejected, the box had already been
-        // cleared, and the page redrew as if nothing had happened. Whatever
-        // the server said is the most useful thing on the screen at that
-        // moment — and the text goes back in the box so it is not lost.
-        if (!r.ok) {
-          return r.text().then(function(msg){
-            input.value = text;
-            try { var j = JSON.parse(msg); if (j && j.error) msg = j.error; } catch (e) {}
-            showStreamError(msg || ('Could not post (' + r.status + ')'));
-          });
-        }
-        refresh(true);
-      }).catch(function(){ input.value = text; formEl.submit(); });
-    });
-  }
-
-  setInterval(function(){ if (!document.hidden) refresh(); }, pollInterval);
+  setInterval(function(){ if (!document.hidden) refresh(); }, 30000);
   document.addEventListener('visibilitychange', function(){ if (!document.hidden) refresh(); });
 })();
 </script>`

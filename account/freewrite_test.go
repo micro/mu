@@ -43,7 +43,7 @@ func TestFreeOperationsAreNotRefused(t *testing.T) {
 
 	free := []string{
 		quota.OpBlogCreate, quota.OpBlogComment, quota.OpSocialPost,
-		quota.OpSocialReply, quota.OpAppCreate, quota.OpStreamPost,
+		quota.OpSocialReply, quota.OpAppCreate,
 	}
 	for _, op := range free {
 		if cost := quota.OperationCost(op); cost != 0 {

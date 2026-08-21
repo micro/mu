@@ -137,7 +137,7 @@ func updatesHandler(w http.ResponseWriter, r *http.Request) {
 		result["stream"] = 0
 	} else {
 		result["social"] = social.CountSince(since)
-		result["stream"] = stream.CountSince(since)
+		result["stream"] = stream.CountSince(since, viewerID)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -173,9 +173,6 @@ func chargedWriteOp(r *http.Request) string {
 		return quota.OpAppBuild
 	case strings.HasPrefix(path, "/apps/") && strings.HasSuffix(path, "/ai-edit"):
 		return quota.OpAppEdit
-	// Stream (console)
-	case path == "/stream":
-		return quota.OpStreamPost
 	}
 	return ""
 }

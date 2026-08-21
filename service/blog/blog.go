@@ -993,6 +993,14 @@ func CreatePost(title, content, author, authorID, tags string, private bool) err
 		go autoTagPost(post.ID, title, content)
 	}
 
+	// A private post is announced to its author alone, so the timeline shows
+	// them their own writing without publishing it.
+	owner := ""
+	if private {
+		owner = authorID
+	}
+	event.Announce("blog", "New post: "+post.Title, "/blog/post?id="+post.ID, owner)
+
 	return nil
 }
 

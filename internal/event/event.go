@@ -41,7 +41,42 @@ const (
 	//
 	// Data: account, from, subject, body.
 	EventMailReceived = "mail_received"
+
+	// EventActivity is one thing that happened, in a line, with somewhere to
+	// go and read it: a post published, a video found, a headline broken, an
+	// image generated.
+	//
+	// It is what service/stream renders, and the reason it is a fact on the
+	// bus rather than a call into stream is the rule about sideways imports —
+	// a service that called stream would be two services read together,
+	// changed together and moved together. Announcing costs the publisher
+	// nothing and names nobody: stream is one subscriber and there is room
+	// for others.
+	//
+	// Data: service, text, url, account. An empty account means everybody may
+	// see it; a set one means only that account may.
+	EventActivity = "activity"
 )
+
+// Announce records one thing that happened, for whoever is listening.
+//
+// service is the name it came from, which is what the timeline shows it under
+// and where the icon comes from. url may be empty. account should be set only
+// when the fact is somebody's own — a message that arrived, an image they
+// generated — and then only that account ever sees it. Getting that wrong is
+// how a public timeline came to be carrying people's mail; see purgePrivate in
+// service/stream.
+func Announce(service, text, url, account string) {
+	if service == "" || text == "" {
+		return
+	}
+	Publish(Event{Type: EventActivity, Data: map[string]interface{}{
+		"service": service,
+		"text":    text,
+		"url":     url,
+		"account": account,
+	}})
+}
 
 // Event represents a data event.
 type Event struct {

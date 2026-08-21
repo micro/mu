@@ -118,7 +118,7 @@ guessable.
 | `recall` | /recall | ✅ | ✅ | The caller's own past: search what was said on any client, and read a conversation back. The read over `internal/thread`, which every client writes to on every turn and which is deliberately not a service — a record is not a choice, going looking in it is. Its page is a search box: `/inbox` browses your conversations, this searches every message in all of them. Delete this service and nothing breaks: clients still record, the agent still gets its history, the page still renders |
 | `sms` | /sms | ✅ | ✅ | A phone number: text somebody, read what they text back. Twilio. Account-only even when paid: what an anonymous sender spends is the number's reputation |
 | `social` | /social | ✅ |  | Threads, replies, status |
-| `stream` | /stream | ✅ |  | The console: this instance's own timeline |
+| `stream` | /stream | ✅ |  | What has been happening here, announced by the services it happened in |
 | `tasks` | /tasks | ✅ | ✅ | What is to be done, and work handed to the agent |
 | `text` | /text | ✅ |  | Language work at a fixed price per call: summarise, extract JSON to a schema, classify, translate. Capped at 30,000 characters, because our cost varies with length and the price does not |
 | `food` | /food | ✅ |  | Ingredients, allergens and nutrition by barcode from Open Food Facts; UK hygiene ratings from the FSA. Both keyless and both authoritative rather than plausible |

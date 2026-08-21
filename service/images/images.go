@@ -18,6 +18,7 @@ import (
 	"mu/internal/auth"
 	"mu/internal/blob"
 	"mu/internal/data"
+	"mu/internal/event"
 	"mu/internal/quota"
 	"mu/internal/safety"
 	"mu/internal/service"
@@ -286,6 +287,11 @@ func Generate(owner, prompt string) (string, error) {
 			app.Log("images", "failed to record stored image for %s: %v", owner, err)
 		}
 	}
+
+	// Theirs, so the timeline shows it to them and to nobody else. The prompt
+	// is the only description there is and people put private things in it.
+	event.Announce("images", "Generated an image: "+prompt, DisplayURL(rec.ID), owner)
+
 	return DisplayURL(rec.ID), nil
 }
 

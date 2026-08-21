@@ -2,40 +2,36 @@ package stream
 
 import (
 	"context"
-	"fmt"
-	"strings"
 	"time"
 
 	"mu/internal/app"
-	"mu/internal/quota"
 	"mu/internal/service"
 )
 
-// Server exposes the console timeline as a service, so the agent and apps can
-// read what has been happening and post into it rather than only the web
-// handler being able to.
+// Server exposes the timeline as a service, so an agent can ask what has been
+// happening here rather than only a browser being able to see it.
 type Server struct{}
 
-// Entry is one timeline event, flattened for transport.
-type Entry struct {
-	ID        string    `json:"id"`
-	Type      string    `json:"type" description:"user, agent, system, market, news or reminder"`
-	Author    string    `json:"author"`
-	Content   string    `json:"content"`
-	CreatedAt time.Time `json:"created_at"`
+// Item is one timeline entry, flattened for transport.
+type Item struct {
+	ID      string    `json:"id"`
+	Service string    `json:"service" description:"Which service this came from"`
+	Text    string    `json:"text"`
+	URL     string    `json:"url,omitempty"`
+	At      time.Time `json:"at"`
 }
 
 // ── List ────────────────────────────────────────────────────────
 
 type ListRequest struct {
-	Limit int `json:"limit,omitempty" description:"How many events to return (default 20, max 100)"`
+	Limit int `json:"limit,omitempty" description:"How many entries to return (default 20, max 100)"`
 }
 
 type ListResponse struct {
-	Events []Entry `json:"events" description:"Recent console events, newest first"`
+	Entries []Item `json:"entries" description:"Recent activity, newest first"`
 }
 
-// List returns recent events from the console timeline.
+// List returns what has happened here recently.
 // @example {"limit": 10}
 func (Server) List(ctx context.Context, req *ListRequest, rsp *ListResponse) error {
 	limit := req.Limit
@@ -45,68 +41,47 @@ func (Server) List(ctx context.Context, req *ListRequest, rsp *ListResponse) err
 	if limit > 100 {
 		limit = 100
 	}
-	// Recent filters by viewer, so a guest sees only what is public to them.
+	// Recent filters by viewer, so a caller with no account sees only what is
+	// public and never anybody else's.
 	for _, e := range Recent(limit, service.AccountFrom(ctx)) {
-		rsp.Events = append(rsp.Events, Entry{
-			ID: e.ID, Type: e.Type, Author: e.Author,
-			Content: e.Content, CreatedAt: e.CreatedAt,
+		rsp.Entries = append(rsp.Entries, Item{
+			ID: e.ID, Service: e.Service, Text: e.Text, URL: e.URL, At: e.At,
 		})
 	}
-	if rsp.Events == nil {
-		rsp.Events = []Entry{}
+	if rsp.Entries == nil {
+		rsp.Entries = []Item{}
 	}
 	return nil
 }
 
-// ── Post ────────────────────────────────────────────────────────
-
-type PostRequest struct {
-	Content string `json:"content" required:"true" description:"What to post to the console"`
-}
-
-type PostResponse struct {
-	ID string `json:"id" description:"The new event's id"`
-}
-
-// Post adds an entry to the caller's console timeline.
-// @example {"content": "Deployed the new build"}
-func (Server) Post(ctx context.Context, req *PostRequest, rsp *PostResponse) error {
-	who := service.AccountFrom(ctx)
-	if who == "" {
-		return fmt.Errorf("sign in to post to the console")
-	}
-	content := strings.TrimSpace(req.Content)
-	if content == "" {
-		return fmt.Errorf("content is required")
-	}
-	e := PostUser(who, content)
-	if e == nil {
-		return fmt.Errorf("could not post")
-	}
-	rsp.ID = e.ID
-	return nil
-}
-
-// LoadService registers the console as a service. Separate from Load, which
-// already restores the timeline and starts its background work.
+// LoadService registers the timeline as a service. Separate from Load, which
+// restores it and subscribes to the bus.
 func LoadService() {
 	if err := service.Register(Spec); err != nil {
 		app.Log("stream", "service register failed: %v", err)
 	}
 }
 
+// Card shows the last few things that happened, to whoever is looking.
+func Card(v service.Viewer) string {
+	items := Recent(5, v.Account)
+	if len(items) == 0 {
+		return `<p class="text-muted text-base">Nothing yet.</p>`
+	}
+	return RenderList(items)
+}
+
 var Spec = service.Spec{
 	Name:        "stream",
 	Handler:     new(Server),
-	Description: "The console: this instance's own event timeline",
+	Description: "What has been happening here — posts, headlines, video, mail",
 	Page:        "/stream",
 	Icon:        "stream.svg",
+	Card:        service.Personal(Card),
 	Endpoints: map[string]service.Endpoint{
-		"List": {Aliases: []string{"stream"}, Doc: "Read recent events from the console timeline"},
-		// Account, because posting needs a caller while reading does not. The
-		// hand-written stream_post in internal/api/mcp.go currently overrides
-		// this one and forwards the session; declaring it here means the derived
-		// tool works on its own if that registration ever goes.
-		"Post": {Doc: "Post an entry to the console timeline", Cost: quota.OpStreamPost, Needs: service.Caller},
+		// Reading only. There was a Post, and it was the console: the one way
+		// anything ever reached this timeline was somebody typing into it. What
+		// happened here is announced by the services it happened in.
+		"List": {Aliases: []string{"stream"}, Doc: "Read what has happened here recently"},
 	},
 }

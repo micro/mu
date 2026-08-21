@@ -99,7 +99,7 @@ func TestAnonymousCallerIsStillRefused(t *testing.T) {
 func TestOtherScopedToolsAcceptAPaidWallet(t *testing.T) {
 	withPayer(t, "0xfeed000000000000000000000000000000001234")
 
-	for _, name := range []string{"mail_inbox", "stream_post"} {
+	for _, name := range []string{"mail_inbox", "notes_list"} {
 		var tool *Tool
 		for i := range tools {
 			if toolMatches(tools[i], name) {

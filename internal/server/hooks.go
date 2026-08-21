@@ -493,31 +493,6 @@ func wireHooks() {
 	}
 	user.LinkifyContent = blog.Linkify
 
-	// Wire @micro replies in the stream: run the agent against the sender's
-	// wallet and post the answer back into the timeline. Async, so the POST
-	// returns immediately. The same hook existed for statuses; the stream is
-	// the timeline that survived.
-	stream.AIReplyHook = func(askerID, prompt string) {
-		if auth.IsBanned(askerID) {
-			return
-		}
-		answer, err := agent.Query(askerID, prompt)
-		if err != nil {
-			app.Log("stream", "@micro agent error for %s: %v", askerID, err)
-			stream.PostAgent("I couldn't answer that one — try again in a moment.")
-			return
-		}
-		answer = strings.TrimSpace(answer)
-		if answer == "" {
-			return
-		}
-		if !user.AIResponseAllowed(askerID, answer) {
-			app.Log("stream", "AI response for %s blocked by moderation", askerID)
-			return
-		}
-		stream.PostAgent(answer)
-	}
-
 	user.GetUserApps = func(authorID string) []user.UserApp {
 		appList := apps.ByAuthor(authorID)
 		result := make([]user.UserApp, len(appList))
@@ -541,7 +516,7 @@ func wireHooks() {
 		blog.DeletePostsByAuthor,
 		social.DeleteByAuthor,
 		apps.DeleteAppsByAuthor,
-		stream.ClearByAuthor,
+		stream.DeleteByAccount,
 		mail.DeleteInbox,
 		func(id string) { account.DeleteCredits(id) },
 		func(id string) { wallet.DeleteBaseWallet(id) },

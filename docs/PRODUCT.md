@@ -250,8 +250,12 @@ Each of these was learned by getting it wrong:
   for the lack of it. The acceptance rate is then a real signal.
 - **Audit permissions in one place.** `/account` lists every grant. A permission
   you can only find on the page that happens to use it is one nobody reviews.
-- **The console is public.** Anything written to `/stream` is published — no
-  titles, no subjects, no senders, no account ids.
+- **The stream is public unless an entry says whose it is.** `/stream` answers
+  a reader with no session, so an entry announced without an account is a
+  publication — no titles, no subjects, no senders. Whoever announces a fact
+  decides which it is, at the point where they still know: `event.Announce`
+  takes an account, and `Entry.Account` is checked on every read. It was
+  guarded by asking call sites to remember, and three of them did not.
 - **Scoped means enforced.** If a scope is not checked at the boundary, it is a
   label, and a label that looks like a control is worse than no control.
 - **Never ship a control that does nothing.** A "runs here" option that stored a

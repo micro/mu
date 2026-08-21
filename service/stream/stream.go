@@ -1,232 +1,174 @@
-// Package stream is the platform-level event stream. Every building
-// block publishes to it. Users interact with it via the console.
-// The agent responds in it. It is the operational surface of Mu.
+// Package stream is the timeline of what this instance has been doing: a post
+// published, a video found, a headline broken, an image generated, a message
+// that arrived. Your stream.
 //
-// This is NOT status updates (profile feature) and NOT social
-// (threaded forum). It's a single append-only timeline of typed
-// events that powers the home console.
+// Nobody posts to it. That is the whole difference from what it was, which was
+// a console — a box you typed in and the agent answered, on the home page,
+// beside an /agents page and an /inbox that already do that better. Five of its
+// six event types had no publisher at all, so the only thing that ever reached
+// the timeline was the chat.
+//
+// It owns nothing. Every entry is a fact some service announced on the bus
+// (event.EventActivity) and still owns; this holds a bounded tail of them and
+// renders it. Delete the package and the news is still news, the posts are
+// still posts — you lose the one place they were shown together. That is the
+// same test service/recall passes over internal/thread.
+//
+// It is not social, which is what people write, and not the inbox, which is
+// what arrived for you.
 package stream
 
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
 	"mu/internal/app"
-	"mu/internal/auth"
 	"mu/internal/data"
+	"mu/internal/event"
 )
 
-// Event types.
-const (
-	TypeUser     = "user"     // human typed in the console
-	TypeAgent    = "agent"    // @micro response
-	TypeSystem   = "system"   // mail notification, account event
-	TypeMarket   = "market"   // price movement
-	TypeNews     = "news"     // breaking headline
-	TypeReminder = "reminder" // daily reminder
-)
-
-// Event is a single entry in the stream.
-type Event struct {
-	ID        string         `json:"id"`
-	Type      string         `json:"type"`
-	AuthorID  string         `json:"author_id"`
-	Author    string         `json:"author"`
-	Content   string         `json:"content"`
-	Metadata  map[string]any `json:"metadata,omitempty"`
-	CreatedAt time.Time      `json:"created_at"`
+// Entry is one thing that happened.
+//
+// Account is the whole privacy model: empty means anybody may see it, set
+// means only that account ever does. The old timeline had no such field and
+// three call sites published somebody's private content to a page served
+// without a session — a fired reminder's title, a standing instruction's
+// title, and an inbound sender and subject. Whoever announces a fact decides
+// which of the two it is, at the point where they still know.
+type Entry struct {
+	ID      string    `json:"id"`
+	Service string    `json:"service"`
+	Text    string    `json:"text"`
+	URL     string    `json:"url,omitempty"`
+	Account string    `json:"account,omitempty"`
+	At      time.Time `json:"at"`
 }
 
-// MaxEvents is the number of events kept in memory / on disk.
-const MaxEvents = 500
+// MaxEntries is how many are kept, in memory and on disk.
+const MaxEntries = 500
 
-// MaxContentLength caps event content.
-const MaxContentLength = 1024
+// MaxTextLength caps one entry's text.
+const MaxTextLength = 512
 
 var (
-	mu     sync.RWMutex
-	events []*Event // newest first
-
-	// lastSystemEvent tracks the last time each system event type was
-	// published. Used to throttle — the console is conversational, not
-	// a news ticker. No lock needed, only accessed from Publish which
-	// holds mu.
-	lastSystemEvent = map[string]time.Time{}
+	mu      sync.RWMutex
+	entries []*Entry // newest first
 )
 
-// systemCooldown is the minimum interval between system events of the
-// same type. Prevents flooding the stream with e.g. 10 headlines at
-// once. User and agent events are never throttled.
-var systemCooldown = 30 * time.Minute
-
-func init() {
-	b, err := data.LoadFile("stream.json")
-	if err != nil {
-		return
-	}
-	var loaded []*Event
-	if json.Unmarshal(b, &loaded) == nil {
-		mu.Lock()
-		events = purgePrivate(loaded)
-		mu.Unlock()
-		save()
-	}
-}
-
-// purgePrivate drops system events that published somebody's private content
-// to this public timeline.
+// Load restores the timeline and subscribes to the bus.
 //
-// Three call sites used to post one: a fired reminder posted its title, a
-// standing instruction posted its title, and inbound mail posted the sender and
-// the subject — each tagged with the owner's account id. The console is served
-// to anyone with no session, and stream_list answers unauthenticated MCP
-// callers, so those were publications.
-//
-// Fixing the call sites stops new ones. It does not unpublish the old ones,
-// which sit in this file and are still being served, so they are removed on the
-// way in. Identified by the account key in their metadata: no legitimate public
-// timeline entry names whose it was, which is exactly why that key marks the
-// ones that should never have been here.
-//
-// Deleting rather than redacting, because a console entry stripped of its
-// content says nothing worth keeping, and a half-scrubbed record is the kind of
-// thing that gets un-scrubbed later by somebody restoring a field.
-func purgePrivate(loaded []*Event) []*Event {
-	kept := make([]*Event, 0, len(loaded))
-	for _, e := range loaded {
-		if e != nil && e.Type != TypeUser && e.Type != TypeAgent && namesAnAccount(e.Metadata) {
-			continue
-		}
-		kept = append(kept, e)
-	}
-	return kept
-}
-
-// namesAnAccount reports whether metadata identifies whose event this was.
-func namesAnAccount(meta map[string]any) bool {
-	for k, v := range meta {
-		switch strings.ToLower(k) {
-		case "account", "account_id", "accountid", "owner", "user", "user_id":
-			if s, ok := v.(string); ok && strings.TrimSpace(s) != "" {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-// Load initialises the stream package.
+// The stored file is the same stream.json the console wrote, and its entries
+// do not fit this shape — they had a type and a content, not a service and a
+// text — so they arrive with nothing in the fields that matter and are dropped
+// by valid. Saving straight after is what actually removes them, which is
+// wanted: some of them were people's mail.
 func Load() {
-	app.Log("stream", "Loaded %d events", len(events))
-}
-
-func save() {
-	data.SaveJSON("stream.json", events)
-}
-
-// Publish appends an event to the stream. This is the single entry
-// point — every publisher (user, agent, system, markets, news,
-// reminder) calls this. System events are throttled per type so the
-// console doesn't flood with automated content.
-func Publish(e *Event) {
-	if e.Content == "" {
-		return
+	var loaded []*Entry
+	if b, err := data.LoadFile("stream.json"); err == nil {
+		_ = json.Unmarshal(b, &loaded)
 	}
-	// Throttle system event types — max one per cooldown period.
-	// User and agent events are never throttled.
-	if e.Type != TypeUser && e.Type != TypeAgent {
-		mu.RLock()
-		last, exists := lastSystemEvent[e.Type]
-		mu.RUnlock()
-		if exists && time.Since(last) < systemCooldown {
-			return // too soon, skip silently
+
+	mu.Lock()
+	for _, e := range loaded {
+		if valid(e) {
+			entries = append(entries, e)
 		}
 	}
-	if len(e.Content) > MaxContentLength {
-		e.Content = e.Content[:MaxContentLength-1] + "…"
+	save()
+	n := len(entries)
+	mu.Unlock()
+
+	sub := event.Subscribe(event.EventActivity)
+	go func() {
+		for e := range sub.Chan {
+			add(fromEvent(e.Data))
+		}
+	}()
+
+	// Mail already announces itself as a fact, and has since the day the hook
+	// into the agent was deleted. Subscribing to it here rather than asking
+	// service/mail to announce a second time keeps one fact for one event.
+	mails := event.Subscribe(event.EventMailReceived)
+	go func() {
+		for e := range mails.Chan {
+			str := func(k string) string { s, _ := e.Data[k].(string); return s }
+			from, subject, account := str("from"), str("subject"), str("account")
+			if account == "" {
+				continue // an entry nobody owns would be public, and this is mail
+			}
+			if subject == "" {
+				subject = "(no subject)"
+			}
+			add(&Entry{Service: "mail", Text: from + " — " + subject, URL: "/inbox", Account: account})
+		}
+	}()
+
+	app.Log("stream", "Loaded %d entries", n)
+}
+
+func valid(e *Entry) bool {
+	return e != nil && e.Service != "" && e.Text != "" && !e.At.IsZero()
+}
+
+// fromEvent flattens an announced fact into an entry.
+func fromEvent(data map[string]any) *Entry {
+	str := func(k string) string {
+		s, _ := data[k].(string)
+		return s
+	}
+	return &Entry{
+		Service: str("service"),
+		Text:    str("text"),
+		URL:     str("url"),
+		Account: str("account"),
+	}
+}
+
+// add appends an entry, newest first, and trims to MaxEntries.
+func add(e *Entry) {
+	if e == nil || e.Service == "" || e.Text == "" {
+		return
+	}
+	if len(e.Text) > MaxTextLength {
+		e.Text = e.Text[:MaxTextLength-1] + "…"
 	}
 	if e.ID == "" {
 		e.ID = fmt.Sprintf("%d", time.Now().UnixNano())
 	}
-	if e.CreatedAt.IsZero() {
-		e.CreatedAt = time.Now()
-	}
-	if e.Author == "" && e.AuthorID != "" {
-		if acc, err := auth.GetAccount(e.AuthorID); err == nil {
-			e.Author = acc.Name
-		} else if e.AuthorID == app.SystemUserID {
-			e.Author = app.SystemUserName
-		} else {
-			e.Author = e.AuthorID
-		}
+	if e.At.IsZero() {
+		e.At = time.Now()
 	}
 
 	mu.Lock()
-	if e.Type != TypeUser && e.Type != TypeAgent {
-		lastSystemEvent[e.Type] = time.Now()
-	}
-	events = append([]*Event{e}, events...)
-	if len(events) > MaxEvents {
-		events = events[:MaxEvents]
+	entries = append([]*Entry{e}, entries...)
+	if len(entries) > MaxEntries {
+		entries = entries[:MaxEntries]
 	}
 	save()
 	mu.Unlock()
 }
 
-// PostUser is a convenience for human messages from the console.
-func PostUser(accountID, content string) *Event {
-	name := accountID
-	if acc, err := auth.GetAccount(accountID); err == nil {
-		name = acc.Name
-	}
-	e := &Event{
-		Type:     TypeUser,
-		AuthorID: accountID,
-		Author:   name,
-		Content:  content,
-	}
-	Publish(e)
-	return e
+// save writes the timeline. Callers hold mu.
+func save() {
+	data.SaveJSON("stream.json", entries)
 }
 
-// PostAgent is a convenience for @micro responses.
-func PostAgent(content string) *Event {
-	e := &Event{
-		Type:     TypeAgent,
-		AuthorID: app.SystemUserID,
-		Author:   app.SystemUserName,
-		Content:  content,
-	}
-	Publish(e)
-	return e
+// visible reports whether viewer may see this entry. An entry with no account
+// is public; one with an account is that account's alone.
+func visible(e *Entry, viewer string) bool {
+	return e.Account == "" || e.Account == viewer
 }
 
-// PostSystem posts a system notification (mail, account events).
-func PostSystem(content string, meta map[string]any) *Event {
-	e := &Event{
-		Type:     TypeSystem,
-		AuthorID: app.SystemUserID,
-		Author:   app.SystemUserName,
-		Content:  content,
-		Metadata: meta,
-	}
-	Publish(e)
-	return e
-}
-
-// Recent returns the most recent events, newest first, up to max.
-// viewerID is used to include banned users' own posts.
-func Recent(max int, viewerID string) []*Event {
+// Recent returns the newest entries visible to viewer, newest first.
+func Recent(max int, viewer string) []*Entry {
 	mu.RLock()
 	defer mu.RUnlock()
 
-	var result []*Event
-	for _, e := range events {
-		// Banned users' events are hidden from everyone except themselves.
-		if e.Type == TypeUser && e.AuthorID != viewerID && auth.IsBanned(e.AuthorID) {
+	var result []*Entry
+	for _, e := range entries {
+		if !visible(e, viewer) {
 			continue
 		}
 		result = append(result, e)
@@ -237,106 +179,51 @@ func Recent(max int, viewerID string) []*Event {
 	return result
 }
 
-// Since returns events newer than the given time.
-func Since(since time.Time) []*Event {
+// Since returns entries newer than the given time, visible to viewer.
+func Since(since time.Time, viewer string) []*Entry {
 	mu.RLock()
 	defer mu.RUnlock()
 
-	var result []*Event
-	for _, e := range events {
-		if !e.CreatedAt.After(since) {
-			break // events are newest-first, so once we pass since we're done
+	var result []*Entry
+	for _, e := range entries {
+		if !e.At.After(since) {
+			break // newest-first, so once we pass since we are done
 		}
-		result = append(result, e)
+		if visible(e, viewer) {
+			result = append(result, e)
+		}
 	}
 	return result
 }
 
-// CountSince returns the number of events newer than since.
-func CountSince(since time.Time) int {
-	mu.RLock()
-	defer mu.RUnlock()
-
-	count := 0
-	for _, e := range events {
-		if !e.CreatedAt.After(since) {
-			break
-		}
-		count++
-	}
-	return count
+// CountSince returns how many entries are newer than since, for viewer.
+func CountSince(since time.Time, viewer string) int {
+	return len(Since(since, viewer))
 }
 
-// DedupeAdjacent removes consecutive identical user+content pairs
-// from a slice (display-time, doesn't modify storage).
-func DedupeAdjacent(events []*Event) []*Event {
-	if len(events) <= 1 {
-		return events
+// DeleteByAccount removes the entries that were somebody's own, when their
+// account goes. Public entries are unaffected: a post that was published still
+// was, and the blog service is what decides whether it survives.
+func DeleteByAccount(id string) {
+	if id == "" {
+		return
 	}
-	result := []*Event{events[0]}
-	for i := 1; i < len(events); i++ {
-		prev := result[len(result)-1]
-		cur := events[i]
-		if cur.AuthorID == prev.AuthorID && cur.Content == prev.Content {
-			continue
+	mu.Lock()
+	var kept []*Entry
+	for _, e := range entries {
+		if e.Account != id {
+			kept = append(kept, e)
 		}
-		result = append(result, cur)
 	}
-	return result
+	entries = kept
+	save()
+	mu.Unlock()
 }
 
-// Clear wipes all events. Admin use only.
+// Clear wipes the timeline. Admin use only.
 func Clear() {
 	mu.Lock()
-	events = nil
-	lastSystemEvent = map[string]time.Time{}
+	entries = nil
 	save()
 	mu.Unlock()
-}
-
-// ClearByAuthor removes all events from a specific author.
-func ClearByAuthor(authorID string) {
-	mu.Lock()
-	var filtered []*Event
-	for _, e := range events {
-		if e.AuthorID != authorID {
-			filtered = append(filtered, e)
-		}
-	}
-	events = filtered
-	save()
-	mu.Unlock()
-}
-
-// MicroMention is the trigger token for AI responses in the stream.
-const MicroMention = "@micro"
-
-// ContainsMicro checks for @micro mention with word boundaries.
-func ContainsMicro(text string) bool {
-	lower := strings.ToLower(text)
-	idx := 0
-	for {
-		i := strings.Index(lower[idx:], MicroMention)
-		if i < 0 {
-			return false
-		}
-		pos := idx + i
-		if pos > 0 {
-			c := lower[pos-1]
-			if isWordChar(c) {
-				idx = pos + len(MicroMention)
-				continue
-			}
-		}
-		after := pos + len(MicroMention)
-		if after < len(lower) && isWordChar(lower[after]) {
-			idx = after
-			continue
-		}
-		return true
-	}
-}
-
-func isWordChar(c byte) bool {
-	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '-'
 }

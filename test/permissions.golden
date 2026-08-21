@@ -81,7 +81,6 @@ sms_verify                   needsAccount=true  destructive=false bound accountO
 social_list                  needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 social_search                needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 stream_list                  needsAccount=false destructive=false open accountOnly=false optionalAuth=false
-stream_post                  needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 tasks_create                 needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 tasks_delete                 needsAccount=true  destructive=true  bound accountOnly=false optionalAuth=false
 tasks_list                   needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false

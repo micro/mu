@@ -205,12 +205,6 @@
       "env": "CREDIT_COST_APP_CREATE"
     },
     {
-      "op": "stream_post",
-      "cost": 0,
-      "label": "Console post",
-      "env": "CREDIT_COST_STREAM_POST"
-    },
-    {
       "op": "mail_send",
       "cost": 0,
       "label": "Send message",

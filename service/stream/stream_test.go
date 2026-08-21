@@ -2,76 +2,81 @@ package stream
 
 import (
 	"fmt"
+	"strings"
 	"testing"
-	"time"
 )
 
-func resetStreamForTest(t *testing.T) {
+func reset(t *testing.T) {
 	t.Helper()
 	mu.Lock()
-	events = nil
-	lastSystemEvent = map[string]time.Time{}
+	entries = nil
 	mu.Unlock()
 }
 
-func TestClearResetsSystemThrottle(t *testing.T) {
-	resetStreamForTest(t)
+func TestTheTimelineTrimsToMaxEntries(t *testing.T) {
+	reset(t)
 
-	Publish(&Event{Type: TypeSystem, AuthorID: "system", Content: "before clear"})
-	if got := len(Recent(10, "")); got != 1 {
-		t.Fatalf("after first publish Recent returned %d events, want 1", got)
+	for i := range MaxEntries + 5 {
+		add(&Entry{Service: "news", Text: fmt.Sprintf("entry-%03d", i)})
 	}
 
+	got := Recent(MaxEntries+10, "")
+	if len(got) != MaxEntries {
+		t.Fatalf("Recent returned %d entries, want %d", len(got), MaxEntries)
+	}
+	if got[0].Text != "entry-504" {
+		t.Fatalf("newest = %q, want entry-504", got[0].Text)
+	}
+	if got[len(got)-1].Text != "entry-005" {
+		t.Fatalf("oldest retained = %q, want entry-005", got[len(got)-1].Text)
+	}
+}
+
+func TestClearEmptiesTheTimeline(t *testing.T) {
+	reset(t)
+	add(&Entry{Service: "news", Text: "before clear"})
 	Clear()
-	Publish(&Event{Type: TypeSystem, AuthorID: "system", Content: "after clear"})
+	add(&Entry{Service: "news", Text: "after clear"})
 
 	got := Recent(10, "")
-	if len(got) != 1 {
-		t.Fatalf("after clear and republish Recent returned %d events, want 1", len(got))
-	}
-	if got[0].Content != "after clear" {
-		t.Fatalf("published event content = %q, want %q", got[0].Content, "after clear")
+	if len(got) != 1 || got[0].Text != "after clear" {
+		t.Fatalf("after clear the timeline holds %v, want the one entry", got)
 	}
 }
 
-func TestPublishTrimsToMaxEvents(t *testing.T) {
-	resetStreamForTest(t)
-
-	for i := range MaxEvents + 5 {
-		Publish(&Event{Type: TypeUser, AuthorID: "user", Content: fmt.Sprintf("event-%03d", i)})
-	}
-
-	got := Recent(MaxEvents+10, "user")
-	if len(got) != MaxEvents {
-		t.Fatalf("Recent returned %d events, want %d", len(got), MaxEvents)
-	}
-	if got[0].Content != "event-504" {
-		t.Fatalf("newest content = %q, want event-504", got[0].Content)
-	}
-	if got[len(got)-1].Content != "event-005" {
-		t.Fatalf("oldest retained content = %q, want event-005", got[len(got)-1].Content)
+// An announced fact arrives as a map off the bus. The three fields that decide
+// what a reader sees — where it came from, what it says, and whose it is —
+// have to survive that trip, because there is no type on the other side to
+// catch a renamed key.
+func TestAnAnnouncedFactBecomesAnEntry(t *testing.T) {
+	e := fromEvent(map[string]any{
+		"service": "blog",
+		"text":    "New post: Hello",
+		"url":     "/blog/post?id=1",
+		"account": "alice",
+	})
+	if e.Service != "blog" || e.Text != "New post: Hello" ||
+		e.URL != "/blog/post?id=1" || e.Account != "alice" {
+		t.Fatalf("announced fact flattened to %+v", e)
 	}
 }
 
-func TestContainsMicroRequiresTokenBoundary(t *testing.T) {
-	tests := []struct {
-		name string
-		text string
-		want bool
-	}{
-		{name: "standalone", text: "hey @micro can you help?", want: true},
-		{name: "case insensitive", text: "HEY @MICRO", want: true},
-		{name: "punctuation boundary", text: "(@micro): status", want: true},
-		{name: "suffix word char", text: "@microservice", want: false},
-		{name: "prefix word char", text: "email@micro", want: false},
-		{name: "hyphen suffix", text: "@micro-agent", want: false},
+// A fact with nothing to say is dropped rather than stored as a blank row.
+func TestAnEmptyFactIsNotStored(t *testing.T) {
+	reset(t)
+	add(fromEvent(map[string]any{"service": "blog"}))
+	add(fromEvent(map[string]any{"text": "orphan"}))
+	if got := Recent(10, ""); len(got) != 0 {
+		t.Fatalf("timeline holds %v, want nothing", got)
 	}
+}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := ContainsMicro(tt.text); got != tt.want {
-				t.Fatalf("ContainsMicro(%q) = %v, want %v", tt.text, got, tt.want)
-			}
-		})
+// An entry rendered before its service exists — or after it has gone — still
+// says where it came from. The label is read off the registry, and a timeline
+// outlives the thing that wrote to it.
+func TestAnUnknownServiceStillNamesItself(t *testing.T) {
+	out := renderEntry(&Entry{Service: "gone", Text: "something happened"})
+	if !strings.Contains(out, "gone") {
+		t.Errorf("rendered entry does not name its source:\n%s", out)
 	}
 }

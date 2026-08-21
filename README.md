@@ -54,7 +54,7 @@ forty years old.
 | **Search** | `web_search` · `web_fetch` — search the web, read a page as clean text |
 | **SMS** | `sms_send` · `sms_history` · `sms_number` · `sms_verify` — text somebody and read what they text back, from a real number. Priced per segment, capped per day, and STOP is honoured |
 | **Social** | `social_list` · `social_search` — public threads and replies |
-| **Stream** | `stream_list` · `stream_post` — this instance's own timeline |
+| **Stream** | `stream_list` — what has been happening here |
 | **Tasks** | `tasks_create` · `tasks_list` · `tasks_next` · `tasks_update` · `tasks_delete` — what is to be done, and work you can hand to the agent |
 | **Text** | `text_summarise` · `text_extract` · `text_classify` · `text_translate` — language work at a fixed price per call: shorten it, turn it into JSON matching a schema you give, sort it into one of your labels, or put it in another language. Capped at 30,000 characters, and priced because each one is a model call we pay for |
 | **Tiles** | `tiles_tile` · `tiles_area` — Ordnance Survey map tiles for Britain, as URLs a map library takes directly: road, outdoor (rights of way and contours) and light. Ask for one tile or for every tile covering a bounding box. Free — a tile is fetched once, ever, and served from here afterwards, because a tile does not change |
@@ -247,7 +247,7 @@ mu agent "what happened in markets today?"
 
 ```
 model: anthropic/claude-sonnet-4-6
-113 tools from https://micro.mu
+112 tools from https://micro.mu
 wallet: 0x4160a863… (1.27 USDC)
 
 > what are the top news headlines today?
