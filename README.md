@@ -8,24 +8,21 @@ An agent with an address. Chat to it in a browser or write to it by email, and
 it can reach 100+ tools: news, mail, search, weather, markets, video, places,
 files, contacts, calendar, documents. Work in progress.
 
-One binary, four ways in:
+## Clients
+
+Ways to access it.
 
 | | |
 |---|---|
-| **Web app** | sign in and use it |
-| **Email** | write to your address; it answers in the thread |
-| **Mail client** | IMAP and SMTP, so the mailbox opens in Thunderbird or your phone |
-| **MCP and the CLI** | for programs — the same tools over a protocol or a shell |
+| **Web** | sign in and use it in a browser |
+| **Email** | write to an address from anywhere; it answers in the thread |
+| **API or CLI** | for programs — the same tools over a protocol or a shell |
 
-`mu agent` is a fifth thing and the one people mix up: the binary acting as a
-client of somebody else's instance rather than serving one. See
-[Agent](#agent-bring-your-own-model).
+## Strategy
 
-**SMTP in, IMAP out, HTTP for the app, MCP for agents, x402 for payments.** No
-protocol here is ours. A billion people can already reach an instance from the
-mail client they have open, without installing anything or agreeing to
-anything, because the address is a real address and the standards behind it are
-forty years old.
+**SMTP in, IMAP out, HTTP for the app, MCP for agents, x402 for payments.**
+
+Maybe protocols are the winning strategy?
 
 ## Tools
 
