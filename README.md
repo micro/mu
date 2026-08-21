@@ -10,15 +10,13 @@ files, contacts, calendar, documents. Work in progress.
 
 ## Clients
 
-Ways to access it.
-
 | | |
 |---|---|
 | **Web** | sign in and use it in a browser |
 | **Email** | write to an address from anywhere; it answers in the thread |
 | **API or CLI** | for programs — the same tools over a protocol or a shell |
 
-## Strategy
+## Protocols
 
 **SMTP in, IMAP out, HTTP for the app, MCP for agents, x402 for payments.**
 
