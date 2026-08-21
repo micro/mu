@@ -13,8 +13,8 @@ files, contacts, calendar, documents. Work in progress.
 | | |
 |---|---|
 | **Web** | sign in and use it in a browser |
-| **Email** | write to an address from anywhere; it answers in the thread |
-| **API or CLI** | for programs — the same tools over a protocol or a shell |
+| **Email** | write to it via email from anywhere |
+| **API or CLI** | the same tools via HTTP, MCP or CLI |
 
 ## Protocols
 
