@@ -207,8 +207,17 @@ stream {
     }
 
     server {
+        # Both, on a host with an AAAA record. A stream block takes no IPv6
+        # listener by default, so `listen 993 ssl` alone binds 0.0.0.0 and a
+        # client that resolves AAAA finds nothing. The web server does not
+        # show this because the packaged default site carries a listen [::]
+        # line of its own.
         listen 993 ssl;
+        listen [::]:993 ssl;
 
+        # fullchain.pem, not cert.pem. A browser will fetch a missing
+        # intermediate and a mail client will not, so half a chain is a site
+        # that works in Firefox and fails in Gmail with the same message.
         ssl_certificate     /etc/letsencrypt/live/your-domain.com/fullchain.pem;
         ssl_certificate_key /etc/letsencrypt/live/your-domain.com/privkey.pem;
         ssl_protocols       TLSv1.2 TLSv1.3;
@@ -230,6 +239,22 @@ separate package (`apt install libnginx-mod-stream`); elsewhere nginx needs
 This is 993, implicit TLS — the port every client offers first. There is no
 STARTTLS on 143: the server does not advertise it, so a client asked to use it
 there would be sending a token in the clear believing otherwise.
+
+**Check it from somewhere else.** Every test run on the server itself passes
+while the port is unreachable from the internet, which is how an afternoon
+goes. `ss -lntp` showing `0.0.0.0:993` means nginx is bound, and nothing more.
+
+What the failure looks like tells you where it is. *Connection refused*, at
+once, means the packets arrived and nothing was listening — nginx is not up, or
+not on that port. *Nothing at all*, until it times out, means they were dropped
+before they got there: a firewall. A mail client reports both as the same
+unhelpful sentence, so the distinction has to come from `openssl`.
+
+Cloud firewalls are the usual culprit, because they are default-deny and
+typically opened for 80, 443 and 22 alone — DigitalOcean's Cloud Firewalls
+drop rather than reject, so they produce the timeout above. Check the
+provider's rules and the host's own (`ufw status`, `iptables -L INPUT -n`):
+having both, with only one of them open, is easy to do.
 
 To check the whole path:
 
