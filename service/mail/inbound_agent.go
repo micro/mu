@@ -105,6 +105,11 @@ type wakeRequest struct {
 	// legitimate mail has only one, and requiring both would drop more real
 	// mail than it stops.
 	Authenticated bool
+
+	// Owned is the sender having signed in as this account, rather than the
+	// From header claiming to be it. Only submission sets it, where a token
+	// was presented before the message was accepted. See mayDispatch.
+	Owned bool
 }
 
 // mayDispatch is the whole rule, in one place, so it can be read and tested
@@ -134,6 +139,20 @@ func mayDispatch(r wakeRequest) bool {
 	}
 	if !r.Authenticated {
 		return false
+	}
+	// Signed in as this account, rather than claiming to be it.
+	//
+	// senderKnownTo answers "is the From header really this account's owner"
+	// for mail arriving off the network, where From is only a claim and a
+	// verified external address is the strongest evidence available. Over
+	// submission the question was already answered, by a token, before the
+	// message was accepted at all — and asking it again returns no, because
+	// the From on a submitted message is necessarily the *instance* address
+	// (ownsAddress requires it) while a verified address is somebody's
+	// external one. So writing to agent@ from a mail client filed the mail and
+	// woke nothing, which is the same silence as not having built it.
+	if r.Owned {
+		return true
 	}
 	return senderKnownTo(r.Owner, r.From)
 }

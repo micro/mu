@@ -374,3 +374,75 @@ func TestTheEnvelopeNamesASenderAClientCanDraw(t *testing.T) {
 		}
 	}
 }
+
+// Neither listener relays for a stranger.
+//
+// The property, stated where it cannot rot. There was an open relay here: the
+// MTA allowed any recipient from localhost, on the reasoning that a trusted
+// internal client was the only thing that could be connecting, and the comment
+// beside it said "but still require SMTP AUTH to prevent abuse" — which never
+// happened, because AUTH on that listener has never worked. So anything that
+// could open a socket on the host could send mail anywhere, and putting any
+// proxy in front would have made that the whole internet, since every
+// connection then arrives from 127.0.0.1.
+//
+// The rule now has no exception in it: port 25 accepts mail for local users
+// and relays for nobody, and sending is submission's job, where the sender
+// authenticates first.
+func TestNeitherListenerRelaysForAStranger(t *testing.T) {
+	src := readSource(t, "smtp.go")
+
+	// The exemption is gone, and the localhost test that granted it with it.
+	for _, banned := range []string{
+		"if s.isLocalhost {\n\t\ts.to = append(s.to, to)",
+		"isExternal && s.isLocalhost",
+	} {
+		if strings.Contains(src, banned) {
+			t.Errorf("the MTA still relays for localhost:\n\t%s\nAnything on the host "+
+				"can send mail anywhere, and a proxy in front makes that everybody.", banned)
+		}
+	}
+
+	// And the rule it was standing on top of is still there.
+	if !strings.Contains(src, "Relay access denied") {
+		t.Error("the MTA no longer refuses external recipients at all")
+	}
+}
+
+// Sending from a mail client leaves a record.
+//
+// ReplyOut sends and does not record — every other caller files its own copy
+// afterwards. This one did not, so mail sent from Thunderbird existed nowhere
+// on the instance: not in /inbox, not in the Sent view, and not in what the
+// agent can see, so it had no idea what you had already said. IMAP has no
+// APPEND either, so the client cannot file the copy itself the way it would
+// against any other server, which makes this the only place it can come from.
+func TestSubmissionRecordsWhatItSent(t *testing.T) {
+	src := readSource(t, "submission.go")
+	i := strings.Index(src, "ReplyOut(")
+	if i < 0 {
+		t.Fatal("submission no longer sends through ReplyOut")
+	}
+	if !strings.Contains(src[i:], "SendMessage(") {
+		t.Error("nothing files a copy after ReplyOut, so mail sent from a client " +
+			"leaves no trace on the instance")
+	}
+}
+
+// Writing to agent@ from a mail client reaches the agent.
+//
+// agent@ is not an account — it is a reserved name that resolves to whoever
+// wrote to it — so looking it up as one refuses it. smtp.go's Rcpt already
+// carries a comment about that exact mistake: "the account lookup below
+// refuses them... which is how agent@ was unreachable while the code answering
+// it sat there working." This reproduced it, so the mail filed and nothing
+// woke.
+func TestSubmissionWakesTheAgent(t *testing.T) {
+	src := readSource(t, "submission.go")
+	for _, want := range []string{"AgentMailbox", "deliverInbound("} {
+		if !strings.Contains(src, want) {
+			t.Errorf("submission does not mention %s, so mail sent to the agent from "+
+				"a mail client is filed and never answered", want)
+		}
+	}
+}

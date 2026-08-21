@@ -216,15 +216,24 @@ func (s *Session) Rcpt(to string, opts *smtpd.RcptOptions) error {
 	// plus-address is rejected as a non-existent user.
 	username, _ := SplitAlias(parts[0])
 
-	// If from localhost (trusted internal client), allow any recipient
-	// But still require SMTP AUTH to prevent abuse
-	if s.isLocalhost {
-		s.to = append(s.to, to)
-		app.Log("mail", "Accepting recipient %s from localhost (authenticated internal client)", to)
-		return nil
-	}
+	// This listener accepts mail for local users and relays for nobody, whoever
+	// is connecting.
+	//
+	// It used to make an exception for localhost — "allow any recipient, but
+	// still require SMTP AUTH to prevent abuse" — and the second half of that
+	// sentence never happened, because AUTH on this server has never worked
+	// (Backend.Login satisfies no interface go-smtp calls). So it was an
+	// unauthenticated relay to anywhere for anything that could open a socket
+	// from the host: another process, another container on the same network,
+	// anyone with a shell. And it fails open the moment a proxy is put in
+	// front, because then *every* connection arrives from 127.0.0.1 and the
+	// exception covers the whole internet.
+	//
+	// Nothing needed it. Mu's own outbound goes through RelayToExternal —
+	// direct to MX, or a configured relay host — and never through its own
+	// MTA. Sending from a client is submission's job, on its own port, where
+	// the sender authenticates. See submission.go.
 
-	// Not from localhost - ONLY accept mail for LOCAL users (not an open relay)
 	// First check if recipient domain matches our domain
 	if len(parts) < 2 {
 		app.Log("mail", "Rejected mail: no domain specified in recipient")
@@ -597,14 +606,13 @@ func (s *Session) Data(r io.Reader) error {
 		// Check if this is an external recipient
 		isExternal := toDomain != ConfiguredDomain()
 
-		if isExternal && s.isLocalhost {
-			// Relay to external SMTP server
-			app.Log("mail", "Relaying to external address: %s", toAddr.Address)
-			if err := RelayToExternal(s.from, toAddr.Address, buf.Bytes()); err != nil {
-				app.Log("mail", "Error relaying to %s: %v", toAddr.Address, err)
-				continue
-			}
-			app.Log("mail", "✓ Successfully relayed to %s", toAddr.Address)
+		if isExternal {
+			// Rcpt refuses every external recipient, so this is unreachable —
+			// kept as the second half of the same rule rather than deleted,
+			// because the relay this replaced was reached exactly when the
+			// check above was wrong.
+			app.Log("mail", "refusing to relay to %s: this server accepts mail for "+
+				"local users only, and sending is submission's job", toAddr.Address)
 			continue
 		}
 
