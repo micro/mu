@@ -50,10 +50,16 @@ func TestEverythingThatLeavesTheBuildingIsCapped(t *testing.T) {
 //
 // So: capped if it leaves the building, capped if it is free, and never
 // otherwise.
+//
+// Four leave the building, not three. mail_email is the mailbox answering
+// somebody outside and external_email is the channel sending from its own
+// domain — they were one operation, so they shared one daily cap, and ten sends
+// through the channel left an account unable to answer its own correspondence.
 func TestOnlyOutboundOrFreeIsCapped(t *testing.T) {
 	loadPrices(t)
 	outbound := map[string]bool{
 		quota.OpExternalEmail: true,
+		quota.OpMailEmail:     true,
 		quota.OpSMSSend:       true,
 		quota.OpWhatsAppSend:  true,
 	}

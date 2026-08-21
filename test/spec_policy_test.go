@@ -250,7 +250,7 @@ func TestSendingMailNeedsAnAccountNotAWallet(t *testing.T) {
 	// are applied once rather than copied three times.
 	for file, op := range map[string]string{
 		"../service/mail/service.go":  "quota.OpMailSend",
-		"../service/mail/outbound.go": "quota.OpExternalEmail",
+		"../service/mail/outbound.go": "quota.OpMailEmail",
 	} {
 		src, err := os.ReadFile(file)
 		if err != nil {

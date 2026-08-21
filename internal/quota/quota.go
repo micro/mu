@@ -72,11 +72,22 @@ func record(account, operation string) {
 
 // Operation types
 const (
-	OpNewsSearch    = "news_search"
-	OpQuranSearch   = "quran_search"
-	OpVideoSearch   = "video_search"
-	OpBlogCreate    = "blog_create"
-	OpMailSend      = "mail_send"
+	OpNewsSearch  = "news_search"
+	OpQuranSearch = "quran_search"
+	OpVideoSearch = "video_search"
+	OpBlogCreate  = "blog_create"
+	OpMailSend    = "mail_send"
+	// OpMailEmail is the mailbox answering somebody outside: a reply sent from
+	// your own address on this instance, from the web or from a mail client.
+	//
+	// Its own operation because service/mail and service/email are deliberately
+	// separate — a mailbox and a channel, on different domains, and the split
+	// "is the same one the pricing argument turns on" per service/email's own
+	// package comment. They shared OpExternalEmail anyway, so they shared its
+	// daily cap: ten email_send calls left an account unable to answer its own
+	// correspondence, and answering correspondence left it unable to send. One
+	// meter across two services is two products competing for one budget.
+	OpMailEmail     = "mail_email"
 	OpExternalEmail = "external_email"
 	OpSMSSend       = "sms_send"
 	OpWhatsAppSend  = "whatsapp_send"

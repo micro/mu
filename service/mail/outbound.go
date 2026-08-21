@@ -139,7 +139,7 @@ func ReplyOut(owner, displayName, to, subject, bodyPlain, bodyHTML, inReplyTo, r
 	if ok, why := MaySendOut(owner, to); !ok {
 		return "", fmt.Errorf("%s", why)
 	}
-	if err := charge(owner, quota.OpExternalEmail); err != nil {
+	if err := charge(owner, quota.OpMailEmail); err != nil {
 		return "", err
 	}
 

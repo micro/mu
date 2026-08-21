@@ -134,7 +134,15 @@
       "limit_env": "EMAIL_DAILY_LIMIT",
       "label": "External email",
       "env": "CREDIT_COST_EMAIL",
-      "note": "Leaves the instance over SMTP"
+      "note": "Leaves the instance from the sending domain \u2014 service/email, a channel like sms and whatsapp"
+    },
+    {
+      "op": "mail_email",
+      "cost": 4,
+      "label": "Mail to an outside address",
+      "env": "CREDIT_COST_MAIL_EMAIL",
+      "limit": 50,
+      "note": "Your own address answering somebody outside, from the web or a mail client. Same price as the channel, its own cap: this is gated by MaySendOut \u2014 a trusted account, or a reply to somebody who wrote first \u2014 so the cap is a loop stop and not a volume control, and a person answering their mail must never reach it"
     },
     {
       "op": "whatsapp_send",

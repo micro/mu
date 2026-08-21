@@ -180,7 +180,7 @@ type ToolParam struct {
 // for having no account. Money for nothing, and nowhere to complain, since the
 // payer has no account to complain from.
 //
-// The charge still happens: service/mail checks and consumes external_email
+// The charge still happens: service/mail checks and consumes mail_email
 // itself once it knows who is sending. What is dropped is only the offer to
 // sell entry to somebody who will be turned away at the door.
 func MCPWalletOp(body []byte) string { return ToolWalletOp(mcpToolName(body)) }

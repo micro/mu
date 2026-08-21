@@ -39,10 +39,20 @@ import (
 func consumesOps(t *testing.T, pkgDir string) map[string]bool {
 	t.Helper()
 	out := map[string]bool{}
-	// One name. There were four — ConsumeQuota, ConsumeWith, app.Charge and a
-	// charge() of service/mail's own — and this pattern had to know all of them,
-	// which is the tell that the pile was real. See TestOneWayToCharge.
-	re := regexp.MustCompile(`quota\.Charge\([^,]+,\s*quota\.(\w+)`)
+	// Two names, and the second is not a return of the pile. There were four —
+	// ConsumeQuota, ConsumeWith, app.Charge and a charge() of service/mail's
+	// own — and this pattern having to know all of them was the tell that the
+	// pile was real. Three are gone; service/mail's charge() is not, because it
+	// is a wrapper rather than a rival: it checks the daily limit and then calls
+	// quota.Charge, which is still the one thing that debits.
+	//
+	// The scan has to see through it or it reports the wrapper's callers as
+	// unpriced. That was hidden while every operation charged there was also
+	// charged directly somewhere else — mail_send from mail.go, external_email
+	// from service/email — and surfaced the moment mail_email was charged only
+	// through the wrapper. See TestOneWayToCharge, which is what actually holds
+	// the rule.
+	re := regexp.MustCompile(`(?:quota\.Charge|charge)\([^,]+,\s*quota\.(\w+)`)
 	filepath.Walk(pkgDir, func(path string, info os.FileInfo, err error) error { //nolint:errcheck
 		if err != nil || info.IsDir() || !strings.HasSuffix(path, ".go") ||
 			strings.HasSuffix(path, "_test.go") {

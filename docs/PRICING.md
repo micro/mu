@@ -52,15 +52,22 @@ underlying cost for each, so the markup is visible rather than folklore.
 
 ## The one price that is not a cost
 
-`external_email` is 4p and capped at 10 a day. Sending it costs this instance
+`mail_email` — your own address answering somebody outside — is 4p and capped
+per day. Sending it costs this instance
 nothing — it is our own SMTP server and our own domain — so by the rule above it
 should be 0.
 
 It is not, and the reason is worth stating plainly rather than hiding: what a
 loop spends there is the sending domain's reputation, and no balance repairs
 that. The same domain carries password resets and sign-in links for everybody on
-the instance. `whatsapp_send` and `sms_send` are the other two that reach a
-stranger, and those have a real provider bill as well.
+the instance. `external_email`, `whatsapp_send` and `sms_send` are the other three that reach
+a stranger, and those have a real provider bill as well — all three are Twilio.
+
+The mailbox and the channel had one operation between them until now, so they
+shared its daily cap: ten `email_send` calls left an account unable to answer
+its own correspondence, and answering correspondence left it unable to send.
+Two products competing for one budget is what one meter across two services
+buys you.
 
 The price and the cap do different jobs and both are wanted. A price stops
 somebody who has to pay and does nothing about a loop; a cap stops the loop and
