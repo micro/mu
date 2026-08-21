@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 
-	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/quota"
@@ -278,14 +277,19 @@ func handleJSON(w http.ResponseWriter, r *http.Request) {
 	app.RespondJSON(w, result)
 }
 
-// handleHTML renders the weather page.
-// handleHTML is the page, derived from the Spec.
+// handleHTML sends /weather to the page it has, which is its reference.
 //
 // It was 297 lines of hand-written HTML — a location box, a forecast table, an
 // hourly strip, a pollen panel, a guest variant — and none of it said anything
-// the card does not, in a layout only this page used. See api.ServicePage for
-// the argument; the short version is that a service you look at and leave
-// should be shown by its card, and one you do something in is an app.
+// the card does not, in a layout only this page used. See
+// internal/api/service_page.go for the argument; the short version is that a
+// service you look at and leave should be shown by its card, and one you do
+// something in is an app.
+//
+// That derived page turned out to be /services/weather — the card, every
+// method with its arguments and its price, and a form that calls it. Two
+// derived renderings of one service would be the drift that argument exists to
+// stop, so there is one, and this is the way to it from the old address.
 func handleHTML(w http.ResponseWriter, r *http.Request) {
-	api.ServicePage(w, r, Spec)
+	http.Redirect(w, r, Spec.Page, http.StatusMovedPermanently)
 }

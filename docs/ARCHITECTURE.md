@@ -122,12 +122,12 @@ guessable.
 | `tasks` | /tasks | ✅ | ✅ | What is to be done, and work handed to the agent |
 | `text` | /text | ✅ |  | Language work at a fixed price per call: summarise, extract JSON to a schema, classify, translate. Capped at 30,000 characters, because our cost varies with length and the price does not |
 | `food` | /food | ✅ |  | Ingredients, allergens and nutrition by barcode from Open Food Facts; UK hygiene ratings from the FSA. Both keyless and both authoritative rather than plausible |
-| `hazards` | /hazards | ✅ |  | What is going wrong physically: earthquakes live from the USGS, disasters from GDACS. No key, and authoritative rather than plausible — the point of it is that a model would otherwise guess. Flood warnings in force in England come from the Environment Agency, keyless like the rest — the one forecast among them |
+| `hazards` | /services/hazards | ✅ |  | What is going wrong physically: earthquakes live from the USGS, disasters from GDACS. No key, and authoritative rather than plausible — the point of it is that a model would otherwise guess. Flood warnings in force in England come from the Environment Agency, keyless like the rest — the one forecast among them |
 | `transit` | /transit | ✅ |  | Public transport: stops near you, what is due, which lines are down. London live from TfL; everywhere else from published GTFS timetables via `internal/gtfs`. No key either way — it works on a fresh install, which is the point. Live outside London comes from two more, both free to register for: `BODS_API_KEY` for where the buses are, `LDBWS_TOKEN` for the board at a station |
 | `tiles` | /tiles | ✅ |  | Ordnance Survey raster tiles for Britain — the basemap under anything spatial. Free. Fetched once and served from `internal/blob` forever after, so a region costs this instance one look however many people use it — what bounds it is `TILE_FETCH_PER_HOUR` cold fetches per account, not a price. `OS_MAPS_KEY` to fetch; without one it still serves what it holds |
 | `video` | /video | ✅ |  | Curated channels, without ads or recommendations |
 | `wallet` | /wallet | ✅ | ✅ | A key of your own on Base: an address that holds USDC, and paying an x402-priced tool on another server with it |
-| `weather` | /weather | ✅ |  | Forecast and pollen through Google, keyed. Air quality, sea state and the historical record through Open-Meteo, keyless — the part that still works on a clone |
+| `weather` | /services/weather | ✅ |  | Forecast and pollen through Google, keyed. Air quality, sea state and the historical record through Open-Meteo, keyless — the part that still works on a clone |
 | `web` | /search | ✅ |  | Search the web; fetch a URL and return readable content |
 
 ## Account-scoped

@@ -180,13 +180,16 @@ func serviceGrid(r *http.Request) string {
 	b.WriteString(`<div class="tool-grid service-grid">`)
 	for _, s := range service.Nav() {
 		b.WriteString(`<div class="service-tile-wrap">`)
-		// A headless service has no page to open, so its tile is not a link.
-		// It is still listed: the catalogue is what this instance runs.
-		open, close := `<div class="tool-tile service-tile">`, `</div>`
-		if s.Page != "" {
-			open = `<a class="tool-tile service-tile" href="` + html.EscapeString(s.Page) + `">`
-			close = `</a>`
-		}
+		// Every tile leads to /services/<name> — what the service is, what it
+		// knows right now, and every method with its arguments and its price.
+		// It used to lead straight to the service's own page, which meant a
+		// headless service was a tile you could not click and every other one
+		// skipped the question a reader on this page is asking: not "show me
+		// the weather" but "what is this and how do I call it". The page itself
+		// is one button away at the top of it.
+		open := `<a class="tool-tile service-tile" href="/services/` +
+			html.EscapeString(s.Name) + `">`
+		close := `</a>`
 		b.WriteString(open)
 		b.WriteString(`<span class="service-tile-head">` +
 			`<img src="/` + html.EscapeString(s.NavIcon()) + `?` + app.Version + `" alt="">` +

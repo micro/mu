@@ -68,6 +68,7 @@ func authRequired() map[string]bool {
 		"/tools":                  false, // Public — the catalogue, agent lens
 		"/tools/":                 false, // Public — one tool, same as the catalogue
 		"/services":               false, // Public — the catalogue, person lens
+		"/services/":              false, // Public — one service, what it is and how to call it
 		"/card/":                  false, // Public — a service rendered at a glance
 		"/usage":                  true,  // Your own calls and spend
 		"/video":                  false, // Public viewing, auth for interactive features
@@ -693,6 +694,10 @@ func registerRoutes() {
 	// the playground. See internal/api/tool_page.go.
 	http.HandleFunc("/tools/", api.ToolPageHandler)
 	http.HandleFunc("/services", api.ToolsPageHandler)
+	// /services/<name> — one service as the thing you call: what it knows right
+	// now, every method with its arguments and its price, and a form that makes
+	// the call for real. See internal/api/service_ref.go.
+	http.HandleFunc("/services/", api.ServiceRefHandler)
 	// What your agents did. Flows were recorded and never served.
 	// Runs belong to the agent, so they live under it and the agent surface
 	// tabs between them. /runs still works — links to it exist.

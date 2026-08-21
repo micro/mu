@@ -16,7 +16,6 @@ import (
 	"strconv"
 	"strings"
 
-	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/service"
 )
@@ -169,7 +168,7 @@ var Spec = service.Spec{
 	Name:        "hazards",
 	Handler:     new(Server),
 	Description: "What is going wrong in the physical world: earthquakes and disaster alerts, live",
-	Page:        "/hazards",
+	Page:        "/services/hazards",
 	Icon:        "hazards.svg",
 	Card:        service.Glance(Card),
 	Endpoints: map[string]service.Endpoint{
@@ -193,15 +192,15 @@ var Spec = service.Spec{
 	},
 }
 
-// Handler serves /hazards.
-// Handler is the page, derived from the Spec — see api.ServicePage.
+// Handler sends /hazards to the page it has, which is its reference.
 //
 // It was a magnitude picker, a period picker, a table and a stylesheet: a form
 // over hazards_quakes with one argument, drawn by hand. The card is the same
 // answer and the tool takes the same argument, so the page had nothing of its
-// own except the layout, which is now everybody's.
+// own — and the derived page it got instead is /services/hazards, which is the
+// card plus every method with its arguments and a form that calls them.
 func Handler(w http.ResponseWriter, r *http.Request) {
-	api.ServicePage(w, r, Spec)
+	http.Redirect(w, r, Spec.Page, http.StatusMovedPermanently)
 }
 
 func Card() string {

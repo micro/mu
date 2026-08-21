@@ -19,6 +19,17 @@ package api
 // right now, what it can be asked, and how to ask it. Four things, all read off
 // the Spec and the tool registry, none of them typed out per service.
 //
+// The rendering lives in service_ref.go, because it turned out to be the same
+// page /services/<name> wants: the card, every method with its arguments and
+// its price, and a form that calls it. So a derived service has no page of its
+// own at all — its Page *is* /services/<name>, and /weather and /hazards
+// redirect there. There was briefly an api.ServicePage rendering a second,
+// near-identical page at the old address, which is the drift this file exists
+// to stop, one level up.
+//
+// What stays here is the rule below for which services get it, and the offer
+// of the specialist agent that goes on every one.
+//
 // # When a service keeps its page
 //
 // The rule, arrived at by converting one and getting the next one wrong: a
@@ -59,15 +70,8 @@ package api
 
 import (
 	"html"
-	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
-
-	"mu/internal/app"
-	"mu/internal/auth"
-	"mu/internal/quota"
-	"mu/internal/service"
 )
 
 // AgentPrompts is the agent that specialises in this service and what is worth
@@ -78,95 +82,6 @@ import (
 // so the dependency only runs one way and a door onto the catalogue must not
 // import the thing that reads it. Empty path means there is no such agent.
 var AgentPrompts func(service string) (path string, examples []string)
-
-// ServicePage renders one service: its card, its tools, its doors.
-//
-// Takes the Spec rather than a name so a service calls it with its own — the
-// declaration is already in that package and a lookup by string would be a
-// second way to get it wrong.
-func ServicePage(w http.ResponseWriter, r *http.Request, spec service.Spec) {
-	// Who is looking, so a card that can answer for them does. Empty for a
-	// signed-out reader, which every card must still render for — most of
-	// these pages are public and are the funnel.
-	who := service.Anyone()
-	if _, acc := auth.TrySession(r); acc != nil {
-		who = service.For(acc.ID)
-	}
-	app.Respond(w, r, app.Response{
-		Title:       spec.NavLabel(),
-		Description: spec.Description,
-		HTML:        servicePage(spec, who),
-	})
-}
-
-func servicePage(spec service.Spec, who service.Viewer) string {
-	var b strings.Builder
-	b.WriteString(`<div class="svc-page">`)
-	b.WriteString(`<p class="svc-lead">` + html.EscapeString(spec.Description) + `</p>`)
-
-	// What it knows right now. The whole page, really — everything below is
-	// about how to ask for more of it.
-	if spec.Card != nil {
-		b.WriteString(`<div class="svc-card">` + spec.Card(who).HTML + `</div>`)
-	}
-
-	// Somewhere to go for a person, which the card cannot always be.
-	//
-	// This is what rendering the derived page first showed: a signed-out
-	// visitor to /weather gets "Log in for weather" and a list of tool names,
-	// which is a real answer for a developer and a dead end for everybody
-	// else. The old hand-written page had a line pointing at the agent. It was
-	// right, and it was right on one page out of thirty-two — this is the same
-	// line, derived, on all of them.
-	b.WriteString(askTheAgent(spec.Name))
-
-	b.WriteString(serviceToolList(spec.Name))
-
-	b.WriteString(`<p class="svc-doors">Every one of these is callable — by your agent, ` +
-		`by an agent you point at this instance over <a href="/mcp">MCP</a>, or by a program ` +
-		`over <a href="/api">REST</a>. Same method, same answer, same price.</p>`)
-
-	b.WriteString(`</div>`)
-	return b.String()
-}
-
-// serviceToolList is what this service can be asked, one row per tool.
-//
-// Derived from the registry rather than from the Spec's own Endpoints, because
-// the tool is what a caller actually names and the two are not quite the same
-// list — an endpoint can be REST-only, and an alias resolves without appearing.
-// This is the list you can act on.
-func serviceToolList(name string) string {
-	var rows strings.Builder
-	n := 0
-	for _, t := range Tools() {
-		if t.RESTOnly {
-			continue
-		}
-		prefix, _, ok := strings.Cut(t.Name, "_")
-		if !ok || prefix != name {
-			continue
-		}
-		n++
-		cost := 0
-		if t.WalletOp != "" {
-			cost = quota.OperationCost(t.WalletOp)
-		}
-		price := `<span class="svc-free">Free</span>`
-		if cost > 0 {
-			price = `<span class="svc-price">` + strconv.Itoa(cost) + ` ` + creditWord(cost) + `</span>`
-		}
-		rows.WriteString(`<a class="svc-tool" href="/tools/` + html.EscapeString(t.Name) + `">` +
-			`<span class="svc-tool-name">` + html.EscapeString(t.Name) + `</span>` +
-			`<span class="svc-tool-desc">` + html.EscapeString(t.Description) + `</span>` +
-			price + `</a>`)
-	}
-	if n == 0 {
-		return ""
-	}
-	return `<h2 class="svc-h">What it can be asked</h2><div class="svc-tools">` +
-		rows.String() + `</div>`
-}
 
 // askTheAgent offers the specialist, in its own words.
 //

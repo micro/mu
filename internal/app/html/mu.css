@@ -5740,6 +5740,49 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
 .svc-price, .svc-free { flex: none; font-size: 11px; color: var(--text-muted, #888); white-space: nowrap }
 .svc-doors { font-size: 13px; color: var(--text-muted, #888); margin: var(--spacing-lg, 24px) 0 0; line-height: var(--line-height, 1.6) }
 
+/* The way out to the service's own page, from its reference. */
+.svc-open { margin: 0 0 var(--spacing-lg, 24px) }
+
+/* Try it: the declared parameters as inputs, on a method card. The call goes
+   through /api/v1 like any other. See internal/api/service_ref.go. */
+.try {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 12px 0 0;
+  border-top: var(--border-width, 1px) solid var(--divider, #f0f0f0);
+}
+
+.try-field { display: flex; align-items: center; gap: 10px }
+.try-field > span {
+  flex: 0 0 130px;
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--text-muted, #888);
+}
+
+.try-field input, .try-field select {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 8px;
+  border: var(--border-width, 1px) solid var(--card-border, #e8e8e8);
+  border-radius: var(--border-radius, 6px);
+  background: var(--card-background, #fff);
+  color: var(--text-primary, #1a1a1a);
+}
+
+.try-actions { display: flex; align-items: center; gap: 12px }
+.try-actions .card-meta { margin: 0 }
+.try-out { margin: 0; max-height: 320px; overflow: auto; white-space: pre-wrap }
+
+@media (max-width: 640px) {
+  .try-field { flex-wrap: wrap; gap: 4px }
+  .try-field > span { flex: 1 0 100% }
+}
+
 @media (max-width: 640px) {
   .svc-tool { flex-wrap: wrap; gap: 2px 10px }
   .svc-tool-desc { flex: 1 0 100%; white-space: normal }

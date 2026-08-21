@@ -176,7 +176,7 @@ var Spec = service.Spec{
 	Name:        "weather",
 	Handler:     new(Server),
 	Description: "Forecast, air quality, sea state and what the weather actually was",
-	Page:        "/weather",
+	Page:        "/services/weather",
 	Icon:        "weather.svg",
 	Card:        service.Personal(CardHTML),
 	Endpoints: map[string]service.Endpoint{
