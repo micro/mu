@@ -84,7 +84,7 @@ func stopsJSON(stops []stop) []map[string]any {
 // is.
 func page() string {
 	var b strings.Builder
-	b.WriteString(`<div class="xwrap">`)
+	b.WriteString(app.Column())
 	b.WriteString(`<div class="card"><h2>Transit</h2>`)
 	b.WriteString(`<p class="xlede">Live London transport — stops near you, what is due, ` +
 		`and which lines are in trouble. Free, and callable by an agent: see <a href="/tools">Tools</a>.</p></div>`)
@@ -162,7 +162,6 @@ func Card() string {
 }
 
 const pageStyle = `<style>
-.xwrap{max-width:680px;margin:0 auto}
 .xlede{color:#666;font-size:15px;margin:0}
 .xmuted{color:#888;font-size:14px;margin:0}
 .xgood{color:#0f7a52;font-size:15px;margin:0;font-weight:600}

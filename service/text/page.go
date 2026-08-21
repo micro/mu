@@ -129,7 +129,7 @@ func result(which, body, second, out string) string {
 // page renders the form, with any answer above it.
 func page(answer string) string {
 	var b strings.Builder
-	b.WriteString(`<div class="twrap">`)
+	b.WriteString(app.Column())
 	b.WriteString(`<div class="card"><h2>Text</h2>`)
 	b.WriteString(`<p class="tlede">Four things done to a piece of text, each a fixed price ` +
 		`per call. An agent can call these over MCP with no account — see <a href="/tools">Tools</a>.</p></div>`)
@@ -165,7 +165,6 @@ func page(answer string) string {
 }
 
 const pageStyle = `<style>
-.twrap{max-width:720px;margin:0 auto}
 .tlede{color:#666;font-size:15px;margin:0}
 .tjobs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
 .tjob{display:flex;align-items:center;gap:6px;border:1px solid var(--border-color,#e3e3e3);
