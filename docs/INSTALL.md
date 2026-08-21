@@ -1,6 +1,6 @@
 # Install
 
-Self-hosting Mu gives you complete control over your data and platform.
+Run your own instance. One Go binary, one data directory.
 
 ## Requirements
 

@@ -4,18 +4,24 @@ A personal agent.
 
 ## Overview
 
-There's lots of agents. Here's another one. Chat or email it. It has access to 100+ tools: news, mail, search, weather, markets, video, places,
-files, contacts, calendar, documents, etc. Still a work in progress.
+An agent with an address. Chat to it in a browser or write to it by email, and
+it can reach 100+ tools: news, mail, search, weather, markets, video, places,
+files, contacts, calendar, documents. Work in progress.
 
-One binary, four ways to reach it. The **web app** and **email** are for you;
-**MCP** and the **CLI** are for programs. A fifth mode, `mu agent`, is the
-binary acting as a client of somebody else's instance rather than serving one —
-see [Agent](#agent-bring-your-own-model), which is a different thing from the
-`mu` subcommands and is the part people mix up.
+One binary, four ways in:
+
+| | |
+|---|---|
+| **Web app** | sign in and use it |
+| **Email** | write to your address; it answers in the thread |
+| **Mail client** | IMAP and SMTP, so the mailbox opens in Thunderbird or your phone |
+| **MCP and the CLI** | for programs — the same tools over a protocol or a shell |
+
+`mu agent` is a fifth thing and the one people mix up: the binary acting as a
+client of somebody else's instance rather than serving one. See
+[Agent](#agent-bring-your-own-model).
 
 ## Tools
-
-Here are the tools
 
 | Service | Tools |
 |---|---|
@@ -285,6 +291,16 @@ it ends, not totted up from what the agent believes it authorised.
 ## Credits & Payments
 
 A person tops up by card and spends one credit balance. A credit is 1p.
+
+A credit is charged when a call costs this instance money: a model call, or a
+third party billed per request. Everything else is 0 — the agent itself, your
+inbox, your files, and reading or sending mail from a mail client. Prices are
+[`quota.json`](quota.json), which is the one place they are set.
+
+The exception is mail addressed outside the instance. It is priced and capped
+per day, and not because it costs anything to send: what a loop spends there is
+the sending domain's reputation, and no balance repairs that. A price stops
+somebody who has to pay; the cap is what stops a loop.
 
 **An agent can pay with USDC over [x402](https://x402.org) and never sign
 up.** A priced call with no credentials answers `402 Payment Required` naming

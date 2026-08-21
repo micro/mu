@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"mu/internal/app"
+	"mu/internal/quota"
 )
 
 // The first screen is about one thing.
@@ -246,5 +247,61 @@ func TestPricingIsAPriceListAndNotAPlanChooser(t *testing.T) {
 	// And it is in the footer, so a signed-out visitor can find it.
 	if !strings.Contains(app.FooterLinks(), `href="/pricing"`) {
 		t.Error("pricing is not in the footer, so nobody signed out will find it")
+	}
+}
+
+// The pricing page says what the mailbox costs, and reads the numbers.
+//
+// The page said "Chatting, email, your inbox, your files: no credits" while
+// external_email was charged and capped. That was not a wording problem: it is
+// the one operation priced for something other than what it costs to run, so it
+// is exactly the one a reader must not be told is free.
+//
+// It matters more now than it did. IMAP and SMTP mean a person can live in
+// their own mail client all day, and the natural question — what does that
+// cost — had no answer on the page that exists to answer it.
+func TestPricingSaysWhatTheMailboxCosts(t *testing.T) {
+	rec := httptest.NewRecorder()
+	PricingHandler(rec, httptest.NewRequest("GET", "/pricing", nil))
+	body := rec.Body.String()
+
+	// The free half, named, because a reader assumes a mailbox is metered.
+	for _, want := range []string{"IMAP", "SMTP", "Receiving costs nothing"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the pricing page does not mention %q, so somebody deciding "+
+				"whether to point a mail client at this has to guess", want)
+		}
+	}
+
+	// And the paid half, not described as free.
+	if strings.Contains(body, "Chatting, email,") {
+		t.Error("the pricing page says email is free while mail leaving the " +
+			"instance is charged")
+	}
+	if !strings.Contains(body, "Mail addressed outside the instance") {
+		t.Error("the pricing page does not say that mail leaving the instance costs")
+	}
+
+	// The number is read from quota.json rather than typed here. A price
+	// written into a sentence is a price that drifts.
+	if !strings.Contains(body, pence(quota.OpExternalEmail)) {
+		t.Errorf("the mailbox section does not carry the configured price (%s)",
+			pence(quota.OpExternalEmail))
+	}
+}
+
+// A cap of "none" is not a cap of minus one.
+//
+// quota.DailyLimit returns NoLimit — a negative — for an operation with no cap,
+// and quota.json is an operator's file. Dropping that straight into a sentence
+// published "capped at -1 a day".
+func TestPricingNeverPublishesANegativeCap(t *testing.T) {
+	rec := httptest.NewRecorder()
+	PricingHandler(rec, httptest.NewRequest("GET", "/pricing", nil))
+	if body := rec.Body.String(); strings.Contains(body, "-1 a day") {
+		t.Error("the pricing page publishes a negative daily cap")
+	}
+	if got := dailyCap("an_operation_with_no_limit"); got != "" {
+		t.Errorf("an operation with no cap renders %q, want nothing", got)
 	}
 }

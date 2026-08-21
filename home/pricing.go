@@ -2,11 +2,26 @@ package home
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 
 	"mu/account"
 	"mu/internal/app"
+	"mu/internal/quota"
 )
+
+// dailyCap is the sentence about a daily limit, or nothing when there is none.
+//
+// Conditional rather than a number dropped into a sentence, because
+// quota.DailyLimit returns NoLimit — a negative — for an operation with no cap,
+// and an operator who removes one would otherwise publish "capped at -1 a day".
+// The limits are quota.json's, and quota.json is an operator's file.
+func dailyCap(op string) string {
+	if n := quota.DailyLimit(op); n > 0 {
+		return ", capped at " + strconv.Itoa(n) + " a day"
+	}
+	return ""
+}
 
 // PricingHandler serves /pricing.
 //
@@ -58,9 +73,20 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 		 challenge, payable in USDC on Base. See <a href="/api">the API</a>.`))
 
 	section("The agent is free",
-		para(`Chatting, email, your inbox, your files: no credits. You pay for the
-		 tools a run reaches for, one line each on your receipt. Most answers reach
-		 for none.`))
+		para(`Chatting, your inbox, your files: no credits. You pay for the tools a
+		 run reaches for, one line each on your receipt. Most answers reach for
+		 none.`))
+
+	section("Your mailbox",
+		para(`Receiving costs nothing, however much arrives. Reading it costs nothing
+		 — the address works in Thunderbird, Mail.app or your phone over IMAP, and
+		 you can reply from there over SMTP, with an access token as the password.`),
+		para(`Mail addressed outside the instance is `+pence(quota.OpExternalEmail)+
+			dailyCap(quota.OpExternalEmail)+`. It is the one price here that is not a
+		 cost: sending costs us nothing, but what a loop spends is this domain's
+		 reputation, and no balance repairs that.`),
+		para(`Local mail — one account on this instance to another — is free, and so
+		 is anything the agent answers.`))
 
 	section("You pay for a fetch",
 		para(`A price is what it costs to go and get something. If this instance
