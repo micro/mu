@@ -60,7 +60,6 @@ import (
 	"mu/service/wallet"
 	"mu/service/weather"
 	"mu/service/web"
-	"mu/service/whatsapp"
 )
 
 // authRequired reports, per path, whether a caller must be signed in.
@@ -163,7 +162,6 @@ func authRequired() map[string]bool {
 		"/install":                       false, // Public - run your own instance
 		"/whitepaper":                    false, // Public - whitepaper
 		"/mcp":                           false, // Public - MCP tools page
-		"/whatsapp/webhook":              false, // Public - WhatsApp webhook
 		"/sms/webhook":                   false, // Public - inbound SMS; the provider's signature is the credential
 		"/.well-known/mcp-registry-auth": false, // Public - registry domain proof
 		// Public at the door, decided per tool inside. The same answer /mcp
@@ -310,8 +308,6 @@ func registerRoutes() {
 	// was lost between the deploy and the dashboard edit; the dashboard now
 	// names this one.
 	http.HandleFunc("/stripe/webhook", account.HandleStripeWebhook)
-
-	// serve whatsapp webhook
 
 	// serve search page (local + Brave web search)
 	// serve search page
@@ -466,29 +462,11 @@ func registerRoutes() {
 	http.HandleFunc("/docs", docs.Handler)
 	http.HandleFunc("/notes", notes.Handler)
 	http.HandleFunc("/sms", sms.Handler)
-	http.HandleFunc("/whatsapp", whatsapp.Handler)
 
-	// One inbound endpoint for both, because Twilio uses one.
-	//
-	// A Messaging Service carries a phone number and a WhatsApp sender
-	// together and posts everything that arrives to the one webhook on it, so
-	// a WhatsApp message turned up at /sms/webhook and was refused there for
-	// not being a phone number. Two paths were registered on the belief that
-	// one endpoint would mean guessing which channel had called, and the
-	// payload settles it without guessing: WhatsApp addresses carry a
-	// whatsapp: prefix. Both paths still answer, so whichever is configured
-	// works.
-	inbound := func(w http.ResponseWriter, r *http.Request) {
-		r.ParseForm() //nolint:errcheck — the handlers parse again and report it
-		if strings.HasPrefix(r.PostForm.Get("From"), "whatsapp:") ||
-			strings.HasPrefix(r.PostForm.Get("To"), "whatsapp:") {
-			whatsapp.WebhookHandler(w, r)
-			return
-		}
-		sms.WebhookHandler(w, r)
-	}
-	http.HandleFunc("/whatsapp/twilio", inbound)
-	http.HandleFunc("/sms/webhook", inbound)
+	// Twilio posts everything arriving on a Messaging Service to one webhook,
+	// so both paths answer and whichever is configured works.
+	http.HandleFunc("/whatsapp/twilio", sms.WebhookHandler)
+	http.HandleFunc("/sms/webhook", sms.WebhookHandler)
 	http.HandleFunc("/contacts/", contacts.Handler)
 	http.HandleFunc("/tasks", tasks.Handler)
 	http.HandleFunc("/tasks/", tasks.Handler)

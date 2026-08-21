@@ -49,7 +49,6 @@ import (
 	"mu/service/blog"
 	"mu/service/contacts"
 	"mu/service/docs"
-	"mu/service/email"
 	"mu/service/events"
 	"mu/service/files"
 	"mu/service/images"
@@ -63,7 +62,6 @@ import (
 	"mu/service/tasks"
 	"mu/service/wallet"
 	"mu/service/web"
-	"mu/service/whatsapp"
 )
 
 // mailHistoryTurns is how much of an email thread an agent is reminded of.
@@ -567,8 +565,6 @@ func wireHooks() {
 		images.DeleteAll,
 		docs.DeleteAll,
 		sms.DeleteAll,
-		email.DeleteAll,
-		whatsapp.DeleteAll,
 
 		// Everything that was ever said, on any client. The record is written
 		// by the machinery rather than by a service, so nothing owned it and
@@ -714,7 +710,6 @@ func wireHooks() {
 	// subdomain of a domain this instance already signs for — DMARC alignment
 	// is relaxed by default, so a signature for MAIL_DOMAIN covers a From on a
 	// subdomain of it.
-	email.SendVia = mail.SendExternalAs
 
 	// Who is not capped at all. quota.json holds the number everybody else
 	// takes.

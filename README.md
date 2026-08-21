@@ -31,7 +31,6 @@ client of somebody else's instance rather than serving one. See
 | **Chat** | `chat_rooms` · `chat_messages` · `chat_send` — the live discussion rooms attached to an item, and saying something in one |
 | **Contacts** | `contacts_add` · `contacts_find` · `contacts_list` · `contacts_delete` — turn a name into an address |
 | **Docs** | `docs_write` · `docs_read` · `docs_list` · `docs_delete` — your own documents: a title and a markdown body, private by default. `docs_write` with an `id` replaces one. For something short to remember, use notes; apps persist through `mu.db`, which is a record store rather than documents |
-| **Email** | `email_send` · `email_history` · `email_sender` · `email_verify` — email people outside, from a sending domain of its own. Capped per day, and the history says delivered or bounced rather than only accepted. `email_verify` is the signup code check, under your product's name |
 | **Events** | `events_create` · `events_list` · `events_delete` · `events_free` — schedule, cancel, and find when you are free, counting the Google Calendar you already keep |
 | **Files** | `files_put` · `files_get` · `files_list` · `files_share` · `files_delete` — keep a file, get a URL |
 | **Flights** | `flights_overhead` · `flights_track` · `flights_airport` — where aircraft are, live from the positions they broadcast themselves. No schedule behind it, so it says where an aeroplane is and never why it is late |
@@ -57,7 +56,6 @@ client of somebody else's instance rather than serving one. See
 | **Video** | `video_list` · `video_search` — curated channels, no ads or recommendations |
 | **Wallet** | `wallet_address` · `wallet_balance` · `wallet_list` · `wallet_pay` — a key of your own on Base: an address that holds USDC, and paying for a tool on another x402 server with it. Capped per call and per day |
 | **Weather** | `weather_forecast` · `weather_air` · `weather_marine` · `weather_history` — conditions and the days ahead; air quality, pollutants, UV and pollen; wave height, period and direction at a coastal point; and what the weather actually was between two dates. Everything but the forecast is keyless |
-| **WhatsApp** | `whatsapp_send` · `whatsapp_history` · `whatsapp_open` — reply to people on WhatsApp. Only within 24 hours of their message, which is WhatsApp's rule and not ours: `whatsapp_open` says who can be written to and until when |
 
 [Open an issue](https://github.com/micro/mu/issues/new?labels=enhancement&title=Tool%20request%3A%20&body=What%20should%20it%20do%3F%0A%0AWhat%20would%20you%20use%20it%20for%3F%0A) to request a tool.
 
@@ -154,60 +152,32 @@ Sign in with a username and password, a passkey (WebAuthn), or Google.
 ## Email
 
 The server is an MTA: it listens for SMTP, delivers outbound to the recipient's
-MX signed with DKIM, and filters what arrives. An account is an address, so
-there is nothing to install and nothing to authorise — write to it from whatever
-mail client you already use.
+MX signed with DKIM, and filters what arrives. An account is an address.
 
 ```
 asim@micro.mu             your address; mail here reaches your agent
 asim+research@micro.mu    your agent named "research"
 agent@micro.mu            the instance's shared agent
-agent+research@micro.mu   the shared agent, naming one
 ```
 
-The part after the `+` picks which agent answers; without one you get the
-default.
+The part after the `+` picks which agent answers. Replies thread — `In-Reply-To`
+and `References` are set from the chain — and everything that arrives is
+readable at `/inbox`.
 
-**Nothing arrives from a stranger.** The instance refuses inbound mail with a
-550 unless one of four things is true: it is a reply to something we sent, we
-have written to that address before, the sender's domain is on the operator's
-whitelist, or the sender's address is verified on an account here. `agent@` is
-open to *address* — anyone may send to it — but the sender still has to pass
-that filter. The whole policy is at the top of
-[`service/mail/inbound_filter.go`](service/mail/inbound_filter.go), which is the
-one place it is written down.
+**Nothing arrives from a stranger.** Inbound is refused with a 550 unless it is
+a reply to something we sent, we have written to that address before, the
+sender's domain is whitelisted, or the sender is verified on an account here.
+The policy is at the top of
+[`service/mail/inbound_filter.go`](service/mail/inbound_filter.go).
 
-There used to be a fifth rule for `support@`, exempt on purpose so people who
-could not pay had a way to say so. That made it the one address a spammer could
-reach, and it is what it filled up with. The address and the exemption are both
-gone.
+**IMAP and SMTP submission** mean the mailbox opens in Thunderbird, Mail.app or
+your phone, and you can reply from there. Username is your account name,
+password is an access token from `/token`. Ports, TLS and a worked nginx config
+are in [Install](docs/INSTALL.md#reading-your-mail-in-a-mail-client);
+[examples/imap-client](examples/imap-client) is a working client.
 
-The reply threads: `In-Reply-To` and `References` are set from the chain, so a
-client files the answer under the message you sent rather than starting a new
-conversation. Everything that arrives is in the record and readable at `/inbox`,
-alongside conversations from the web — see [`internal/thread`](internal/thread).
-
-**It speaks IMAP and SMTP submission**, so the mailbox opens in Thunderbird,
-Mail.app or your phone rather than only on a page this instance draws, and you
-can reply from there. The username is your account name and the password is an
-access token from `/token` — Mu has no password, so a token stands in, and it is
-revocable on its own; the same token is both halves. Folders are your addresses:
-mail to `you+research@` is the folder *INBOX/research*, which is how one agent's
-mail gets subscribed to on its own.
-
-Sending is a listener of its own, separate from the MTA that receives on port
-25: nothing happens on it before AUTH, and `From` must be an address your
-account owns, so a token cannot send as somebody else. What goes out is the same
-mail the web compose sends, priced and gated the same way — see
-[`service/mail/outbound.go`](service/mail/outbound.go), the one way mail leaves
-an instance.
-[examples/imap-client](examples/imap-client) is a working client against it,
-written with [emersion/go-imap](https://github.com/emersion/go-imap) so the
-server is proved against somebody else's library rather than its own tests.
-
-Self-hosting this needs `MAIL_DOMAIN`, an MX record, and inbound SMTP —
-`MAIL_PORT` defaults to 2525 for local testing and is 25 in production. See
-[Install](#install).
+Self-hosting needs `MAIL_DOMAIN`, an MX record and inbound SMTP. See
+[Install](docs/INSTALL.md).
 
 ## CLI
 
@@ -271,7 +241,7 @@ mu agent "what happened in markets today?"
 
 ```
 model: anthropic/claude-sonnet-4-6
-120 tools from https://micro.mu
+113 tools from https://micro.mu
 wallet: 0x4160a863… (1.27 USDC)
 
 > what are the top news headlines today?

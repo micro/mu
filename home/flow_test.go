@@ -284,9 +284,9 @@ func TestPricingSaysWhatTheMailboxCosts(t *testing.T) {
 
 	// The number is read from quota.json rather than typed here. A price
 	// written into a sentence is a price that drifts.
-	if !strings.Contains(body, pence(quota.OpExternalEmail)) {
+	if !strings.Contains(body, pence(quota.OpMailEmail)) {
 		t.Errorf("the mailbox section does not carry the configured price (%s)",
-			pence(quota.OpExternalEmail))
+			pence(quota.OpMailEmail))
 	}
 }
 

@@ -70,9 +70,7 @@ func MaySendOut(owner, to string) (bool, string) {
 	// leaves the sentence readable everywhere else.
 	return false, fmt.Sprintf("this account cannot send mail out as itself yet — %s has not "+
 		"written to you, and mail leaving here goes out under this instance's own domain. "+
-		"Verify your email address in your Account, or add credit to your Balance, and it will. "+
-		"To send from this instance's sending domain instead, which needs none of that, "+
-		"use email_send", to)
+		"Verify your email address in your Account, or add credit to your Balance, and it will", to)
 }
 
 // WroteToUs reports whether this address has written to this account before.
@@ -134,7 +132,7 @@ func ReplyOut(owner, displayName, to, subject, bodyPlain, bodyHTML, inReplyTo, r
 	}
 	if !Reachable() {
 		return "", fmt.Errorf("%s is outside this instance, and there is no mail domain here to "+
-			"send it from — use email_send, which sends from this instance's own sending domain", to)
+			"send it from — set MAIL_DOMAIN and this instance can send as itself", to)
 	}
 	if ok, why := MaySendOut(owner, to); !ok {
 		return "", fmt.Errorf("%s", why)

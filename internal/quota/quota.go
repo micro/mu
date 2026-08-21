@@ -80,19 +80,16 @@ const (
 	// OpMailEmail is the mailbox answering somebody outside: a reply sent from
 	// your own address on this instance, from the web or from a mail client.
 	//
-	// Its own operation because service/mail and service/email are deliberately
-	// separate — a mailbox and a channel, on different domains, and the split
-	// "is the same one the pricing argument turns on" per service/email's own
-	// package comment. They shared OpExternalEmail anyway, so they shared its
-	// daily cap: ten email_send calls left an account unable to answer its own
-	// correspondence, and answering correspondence left it unable to send. One
-	// meter across two services is two products competing for one budget.
-	OpMailEmail     = "mail_email"
-	OpExternalEmail = "external_email"
-	OpSMSSend       = "sms_send"
-	OpWhatsAppSend  = "whatsapp_send"
-	OpPlacesSearch  = "places_search"
-	OpPlacesNearby  = "places_nearby"
+	// It had to be split out from an external_email shared with service/email,
+	// which meant one daily cap between them — ten sends through that service
+	// left an account unable to answer its own correspondence. That service is
+	// gone now and this is the only way mail leaves the instance, but the name
+	// stays: mail_email says which service charges it, and external_email never
+	// did.
+	OpMailEmail    = "mail_email"
+	OpSMSSend      = "sms_send"
+	OpPlacesSearch = "places_search"
+	OpPlacesNearby = "places_nearby"
 	// OpRoutesETA keeps the operation id "places_eta" although the service is
 	// now routes. The id is what quota.json, every operator's
 	// CREDIT_COST_PLACES_ETA and every row of recorded usage are keyed on;

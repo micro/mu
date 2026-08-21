@@ -15,7 +15,6 @@ import (
 	"mu/service/chat"
 	"mu/service/contacts"
 	"mu/service/docs"
-	"mu/service/email"
 	"mu/service/events"
 	"mu/service/files"
 	"mu/service/flights"
@@ -41,7 +40,6 @@ import (
 	"mu/service/wallet"
 	"mu/service/weather"
 	"mu/service/web"
-	whatsappsvc "mu/service/whatsapp"
 )
 
 // allSpecs is every service main() registers. Keep it complete: a Spec missing
@@ -55,13 +53,12 @@ import (
 func allSpecs() []service.Spec {
 	return []service.Spec{
 		apps.Spec, archive.Spec, blog.Spec, chat.Spec, contacts.Spec, docs.Spec, events.Spec,
-		email.Spec, files.Spec, flights.Spec, food.Spec, hazards.Spec, images.Spec, mail.Spec, markets.Spec,
+		files.Spec, flights.Spec, food.Spec, hazards.Spec, images.Spec, mail.Spec, markets.Spec,
 		notes.Spec, news.Spec, places.Spec, prayer.Spec, recall.Spec, routes.Spec,
 		sms.Spec,
 		social.Spec,
 		stream.Spec, tasks.Spec, text.Spec, tiles.Spec, transit.Spec, video.Spec,
 		wallet.Spec, weather.Spec, web.Spec,
-		whatsappsvc.Spec,
 	}
 }
 

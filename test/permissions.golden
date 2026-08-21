@@ -24,10 +24,6 @@ docs_delete                  needsAccount=true  destructive=true  bound accountO
 docs_list                    needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 docs_read                    needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 docs_write                   needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
-email_history                needsAccount=true  destructive=false bound accountOnly=true  optionalAuth=false
-email_send                   needsAccount=true  destructive=true  bound accountOnly=true  optionalAuth=false
-email_sender                 needsAccount=true  destructive=false bound accountOnly=true  optionalAuth=false
-email_verify                 needsAccount=true  destructive=false bound accountOnly=true  optionalAuth=false
 events_create                needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 events_delete                needsAccount=true  destructive=true  bound accountOnly=false optionalAuth=false
 events_free                  needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
@@ -115,6 +111,3 @@ weather_history              needsAccount=false destructive=false open accountOn
 weather_marine               needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 web_fetch                    needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 web_search                   needsAccount=false destructive=false bound accountOnly=false optionalAuth=true
-whatsapp_history             needsAccount=true  destructive=false bound accountOnly=true  optionalAuth=false
-whatsapp_open                needsAccount=true  destructive=false bound accountOnly=true  optionalAuth=false
-whatsapp_send                needsAccount=true  destructive=true  bound accountOnly=true  optionalAuth=false

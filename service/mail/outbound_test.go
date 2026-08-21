@@ -49,7 +49,7 @@ func TestAnUnaccountableAccountCannotColdMailOut(t *testing.T) {
 	//
 	// Named as places rather than as routes: a path written into a sentence
 	// reads as a link and is not one, wherever the sentence ends up.
-	for _, want := range []string{"your Account", "email_send"} {
+	for _, want := range []string{"your Account", "Balance"} {
 		if !strings.Contains(why, want) {
 			t.Errorf("the refusal does not mention %s: %s", want, why)
 		}
@@ -150,7 +150,7 @@ func TestWithNoMailDomainNothingLeavesAndItSaysWhy(t *testing.T) {
 	if err == nil {
 		t.Fatal("mail left an instance with no domain to send it from")
 	}
-	if !strings.Contains(err.Error(), "email_send") {
+	if !strings.Contains(err.Error(), "MAIL_DOMAIN") {
 		t.Errorf("the refusal does not say where to go instead: %v", err)
 	}
 }

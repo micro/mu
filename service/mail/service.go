@@ -147,9 +147,10 @@ var Spec = service.Spec{
 		// catalogue. That was true and it was not worth what it cost: a caller
 		// had to know whether the recipient happened to hold an account here
 		// before choosing which tool to call, which is a fact about our database
-		// that has nothing to do with writing to somebody. Three ways to send a
-		// message — mail_send, mail_email, email_send — and the first two
-		// differed by a lookup the caller could not perform.
+		// that has nothing to do with writing to somebody. There were three ways
+		// to send a message — mail_send, mail_email and a separate email service
+		// since deleted — and the first two differed by a lookup the caller
+		// could not perform.
 		//
 		// So it routes, and charges itself for what it actually did. sms_send
 		// already does exactly this because a text is priced per segment; a
@@ -164,9 +165,8 @@ var Spec = service.Spec{
 			Doc: "Write to somebody, as you. A username reaches them on this instance and is " +
 				"free; a full email address leaves over SMTP under this instance's domain, so a " +
 				"reply comes back to your inbox, and is charged. Resolve a name with " +
-				"contacts_find first. Mail that leaves needs a mail domain configured — without " +
-				"one use email_send, which sends from this instance's own sending domain and " +
-				"expects no reply",
+				"contacts_find first. Mail that leaves needs MAIL_DOMAIN configured on the " +
+				"instance",
 			Needs:       service.Account,
 			Destructive: true,
 		},

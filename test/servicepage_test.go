@@ -40,8 +40,8 @@ var keptItsPage = map[string]string{
 	// 1. It is your data.
 	"mail": "your inbox", "notes": "your notes", "files": "your files",
 	"contacts": "your address book", "tasks": "your tasks", "images": "your images",
-	"docs": "your documents", "events": "your calendar", "email": "your sending domain",
-	"recall": "your own past", "sms": "your messages", "whatsapp": "your messages",
+	"docs": "your documents", "events": "your calendar",
+	"recall": "your own past", "sms": "your messages",
 	"wallet": "your key",
 
 	// 2. It takes an argument to say anything.

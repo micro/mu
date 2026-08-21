@@ -36,7 +36,7 @@ func TestGetOperationCost(t *testing.T) {
 		{quota.OpVideoSearch, quota.OperationCost(quota.OpVideoSearch)},
 		{quota.OpBlogCreate, quota.OperationCost(quota.OpBlogCreate)},
 		{quota.OpMailSend, quota.OperationCost(quota.OpMailSend)},
-		{quota.OpExternalEmail, quota.OperationCost(quota.OpExternalEmail)},
+		{quota.OpMailEmail, quota.OperationCost(quota.OpMailEmail)},
 		{quota.OpPlacesSearch, quota.OperationCost(quota.OpPlacesSearch)},
 		{quota.OpPlacesNearby, quota.OperationCost(quota.OpPlacesNearby)},
 		{quota.OpWeatherForecast, quota.OperationCost(quota.OpWeatherForecast)},
@@ -57,7 +57,7 @@ func TestOperationConstants(t *testing.T) {
 	// Ensure all operation constants are unique
 	ops := []string{
 		quota.OpNewsSearch, quota.OpVideoSearch, quota.OpBlogCreate,
-		quota.OpMailSend, quota.OpExternalEmail, quota.OpPlacesSearch,
+		quota.OpMailSend, quota.OpMailEmail, quota.OpPlacesSearch,
 		quota.OpPlacesNearby, quota.OpWeatherForecast, quota.OpWeatherPollen,
 		quota.OpWebSearch, quota.OpWebFetch,
 		quota.OpTopup, quota.OpRefund,
@@ -132,7 +132,7 @@ func TestDefaultCosts(t *testing.T) {
 		t.Errorf("app build at %d is out of proportion to an image at %d",
 			quota.OperationCost(quota.OpAppBuild), quota.OperationCost(quota.OpImageGenerate))
 	}
-	if quota.OperationCost(quota.OpExternalEmail) <= quota.OperationCost(quota.OpMailSend) {
+	if quota.OperationCost(quota.OpMailEmail) <= quota.OperationCost(quota.OpMailSend) {
 		t.Error("external email should cost more than internal mail")
 	}
 }

@@ -26,9 +26,7 @@ import (
 func TestEverythingThatLeavesTheBuildingIsCapped(t *testing.T) {
 	loadPrices(t)
 	for _, op := range []string{
-		quota.OpExternalEmail,
 		quota.OpSMSSend,
-		quota.OpWhatsAppSend,
 	} {
 		if n := quota.DailyLimit(op); n == quota.NoLimit {
 			t.Errorf("%s puts a message in front of somebody outside this instance "+
@@ -58,10 +56,8 @@ func TestEverythingThatLeavesTheBuildingIsCapped(t *testing.T) {
 func TestOnlyOutboundOrFreeIsCapped(t *testing.T) {
 	loadPrices(t)
 	outbound := map[string]bool{
-		quota.OpExternalEmail: true,
-		quota.OpMailEmail:     true,
-		quota.OpSMSSend:       true,
-		quota.OpWhatsAppSend:  true,
+		quota.OpMailEmail: true,
+		quota.OpSMSSend:   true,
 	}
 	for _, p := range quotaPrices(t) {
 		if outbound[p.op] {

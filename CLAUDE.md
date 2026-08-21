@@ -54,14 +54,13 @@ Built on go-micro: every capability is a go-micro service, the assistant is a go
 | `internal/x402/` | The toll on the door: price a request, write the challenge, verify and settle the payment. A protocol, not a capability — no page, no tool, no state |
 | `internal/contacts/` | The address book itself. `service/contacts` is the tools, the page and the Google People bridge over it; `service/sms` asks it whether a number is known before texting a stranger |
 | `internal/linkmeta/` | What a link looks like when you show it: the Open Graph tags behind a URL, cached on disk. News fills it, social reads it, and it belongs to neither — the files stay at `news/metadata/` because that is where every instance already has them |
-| `internal/phone/` | Who a phone number belongs to: normalising it, and the proof that an account owns it. Shared by `service/sms` and `service/whatsapp`, because a number is a number whichever message it carries |
-| `internal/twilio/` | The provider under `service/sms` and `service/whatsapp`: credentials, the send, and the webhook signature. It holds no opinion about what may be sent |
+| `internal/phone/` | Who a phone number belongs to: normalising it, and the proof that an account owns it. Under `service/sms`, and separate from it because ownership of a number is a fact about an account rather than about texting |
+| `internal/twilio/` | The provider under `service/sms`: credentials, the send, and the webhook signature. It holds no opinion about what may be sent. Kept separate from the service so a second provider is an adapter rather than a rewrite |
 | `internal/gtfs/` | Published transit timetables — the format almost every agency in the world uses, so `transit` speaks one thing and answers everywhere. Nothing is ever unpacked: Berlin is 75MB zipped and 590MB open, so the zip is streamed into a fixed-width array of departures, eight bytes each, seeked into rather than held. Times are the agency's own zone, which is the bug that empties a feed if you get it wrong |
 | `internal/quota/` | What things cost and who may do them. The only thing a service knows about money — it holds prices, not balances. Prices are `quota.json` at the top level, not Go |
 | `service/docs/` | The caller's own documents: a title and a markdown body. It was a record store wearing the word — the tool took a collection and a bag of JSON, so the page asked a person to type JSON. A service is named for a kind of thing somebody makes, never for how it is stored; the record store stays underneath as `internal/userdb`, reached by apps as `mu.db`, with no page and no tools |
 | `service/files/` | Per-user file storage — keep a file, get a URL, read it back |
 | `service/contacts/` | The caller's address book, so a name resolves to an address |
-| `service/whatsapp/` | Reply to people on WhatsApp, through Twilio. Bounded by Meta's 24-hour window, so it answers rather than initiates. Twilio is the only WhatsApp here; the Meta bot that used to sit in `client/whatsapp` is gone |
 | `service/sms/` | A phone number: text somebody, read what they text back. Twilio. The rules about who you may text are the service, not decoration — see the package comment |
 | `service/web/` | The open web: search it (`web.Search`), fetch a URL (`web.Fetch`). The Brave provider, the readability reader and the /search page live here too — they were `service/search`, a directory under `service/` that was not a service |
 | `service/routes/` | Getting from one place to another: time with traffic, turn-by-turn, and which of several is nearest. It was one ETA inside `places`, whose own package comment gave the game away — "places could already tell an agent what is nearby and where it is, but not whether it is worth going". Those are two questions: `places` is the Places API's domain, this is the Routes API's. Not `routing`, which is what it does; a service is named for a domain. The page draws the route from the polyline Google already returned, so there is no map tile to buy |
@@ -224,7 +223,8 @@ something.
 
 **Services never import each other.** Product may import `internal/`, and that
 says nothing about sideways: `flights` imported `places` for a geocoder,
-`whatsapp` imported `sms` for phone-number ownership. A sideways import makes two
+`whatsapp` imported `sms` for phone-number ownership, before both that service and
+the email one were deleted. A sideways import makes two
 services one unit — read together, changed together, moved together — and the
 catalogue stops being a list of independent things. Whatever they share goes in
 `internal/`, never in a non-service directory under `service/`, because "one

@@ -11,11 +11,11 @@ Three rules, and everything follows from them.
 **A credit is a penny, and a credit is charged when a call costs this instance
 money.** A model call to a provider we pay, or a third party billed per request:
 Atlas for inference and images, Brave for web search, Google for places, routes
-and weather, Twilio for SMS and WhatsApp. Nothing else is charged, because
+and weather, Twilio for SMS. Nothing else is charged, because
 nothing else has a marginal cost.
 
 **Anything that only touches this instance's own storage is 0.** Notes,
-documents, files, the blog, apps, the inbox, local mail, the record. 13 of 30
+documents, files, the blog, apps, the inbox, local mail, the record. 13 of 29
 operations are 0. Charging for them taxed exactly the behaviour the product
 wants more of, and the control they need is abuse control, which is
 `auth.CheckPostRate` and not a price.
@@ -38,8 +38,8 @@ day.
 | A new account starts with | **0 credits** |
 | One credit is | **£0.01** |
 | Ways to pay | **top up** any amount at 1p a credit · **x402** per request, no account · **self-host**, nothing metered |
-| Priced operations | **17 of 30** |
-| Operations at 0 | **13 of 30** |
+| Priced operations | **16 of 29** |
+| Operations at 0 | **13 of 29** |
 | Plans | **none** |
 | Daily grant of credits | **none** |
 | A call served from cache | **not charged** |
@@ -60,14 +60,16 @@ should be 0.
 It is not, and the reason is worth stating plainly rather than hiding: what a
 loop spends there is the sending domain's reputation, and no balance repairs
 that. The same domain carries password resets and sign-in links for everybody on
-the instance. `external_email`, `whatsapp_send` and `sms_send` are the other three that reach
-a stranger, and those have a real provider bill as well — all three are Twilio.
+the instance. `sms_send` is the other one that reaches a stranger, and it has a real provider
+bill behind it.
 
-The mailbox and the channel had one operation between them until now, so they
-shared its daily cap: ten `email_send` calls left an account unable to answer
-its own correspondence, and answering correspondence left it unable to send.
-Two products competing for one budget is what one meter across two services
-buys you.
+There were two more. `service/email` sent from a Twilio domain and
+`service/whatsapp` could reply inside Meta's 24-hour window — both deleted,
+because a half-built way to reach a person is worse than none: an agent tries
+it, it fails in a way the agent cannot reason about, and the failure costs a
+turn. The mailbox and that email service had shared one operation and therefore
+one daily cap, so ten sends through the channel left an account unable to
+answer its own correspondence.
 
 The price and the cap do different jobs and both are wanted. A price stops
 somebody who has to pay and does nothing about a loop; a cap stops the loop and
@@ -77,7 +79,7 @@ second one is ever proposed, that is the moment to check whether the rule still
 holds or whether it has quietly become "we charge for what we like".
 
 An operator relaying through a paid smarthost — SES, Postmark — does have a
-per-message bill, and `CREDIT_COST_EXTERNAL_EMAIL` is theirs to set.
+per-message bill, and `CREDIT_COST_MAIL_EMAIL` is theirs to set.
 
 ## The mailbox
 

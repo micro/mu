@@ -128,30 +128,12 @@
       "note": "The model call only. Manual editing at /apps/<slug>/edit is free"
     },
     {
-      "op": "external_email",
-      "cost": 4,
-      "limit": 10,
-      "limit_env": "EMAIL_DAILY_LIMIT",
-      "label": "External email",
-      "env": "CREDIT_COST_EMAIL",
-      "note": "Leaves the instance from the sending domain \u2014 service/email, a channel like sms and whatsapp"
-    },
-    {
       "op": "mail_email",
       "cost": 4,
       "label": "Mail to an outside address",
       "env": "CREDIT_COST_MAIL_EMAIL",
       "limit": 50,
       "note": "Your own address answering somebody outside, from the web or a mail client. Same price as the channel, its own cap: this is gated by MaySendOut \u2014 a trusted account, or a reply to somebody who wrote first \u2014 so the cap is a loop stop and not a volume control, and a person answering their mail must never reach it"
-    },
-    {
-      "op": "whatsapp_send",
-      "cost": 5,
-      "limit": 50,
-      "limit_env": "WHATSAPP_DAILY_LIMIT",
-      "label": "WhatsApp conversation",
-      "env": "CREDIT_COST_WHATSAPP",
-      "note": "Twilio bills WhatsApp by the 24-hour conversation rather than the message, so this is charged once per window and the rest of the thread is free. Cheaper than a text because it costs us less and cannot be sent cold \u2014 the other person has to write first"
     },
     {
       "op": "sms_send",

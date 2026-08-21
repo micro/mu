@@ -535,33 +535,6 @@ still work.
 | `YOUTUBE_API_KEY` | `video_list`, `video_search` |
 | `GOOGLE_API_KEY` | `places_search`, `places_nearby`, `places_eta` — open-data fallback without it. `places_eta` also needs the **Routes API** enabled on the key, not just Places |
 
-### Email that leaves the instance
-
-A verified sending domain on the Twilio account you already have. Twilio has a
-native email API — `comms.twilio.com/v1/Emails`, HTTP basic with the same
-credentials the texts use — so there is **no second key**: verify the domain in
-the Twilio console and set `EMAIL_DOMAIN`. Without it the `email_*` tools refuse
-and `/email` says so; the mail service, its inbox and `mail_email` are
-unaffected — they send over this instance's own SMTP under `MAIL_DOMAIN`.
-
-With no Twilio account at all, this falls back to that same SMTP server, so a
-self-hosted instance can send from its own subdomain with nothing bought.
-
-Sending only. Nothing here needs an MX record on the sending domain — that is
-how a domain *receives*, and Twilio's verification is CNAMEs.
-
-The two are separate on purpose. `mail_email` goes out as `you@MAIL_DOMAIN`,
-which is the address with an inbox behind it and the one a reply has to come
-from for a thread to hold together. `email_send` goes out from a domain that
-carries nothing else, so a bad month of agent mail cannot take the deliverability
-of password resets with it.
-
-| Variable | Default | What it does |
-|---|---|---|
-| `EMAIL_DOMAIN` | — | The verified sending domain — `email.example.com`, not the root domain. Verify it in the Twilio console, which gives you CNAMEs to add; the hostname it generates (`em1234.email.example.com`) is the CNAME target and **not** what goes here. Deliberately has no default: falling back to `MAIL_DOMAIN` would quietly undo the separation, on the instance where somebody forgot to set this rather than the one where they thought about it |
-| `EMAIL_REPLY_DOMAIN` | `MAIL_DOMAIN` | Where replies are pointed, on the SMTP path only. Twilio cannot carry a `Reply-To` — there is no field for it and the header is refused — so mail sent through Twilio is answered at its `From`. Receiving at the sending domain is a separate problem with separate DNS and is not needed to send |
-| `EMAIL_DAILY_LIMIT` | `10` | Messages one account may send in a day, on top of the per-message price. It is `limit_env` on `external_email` in `quota.json`, which is where the number itself lives — beside the price, because what a thing costs and how much of it somebody may do are the same kind of decision. A plan raises it. **Set it to `0` to stop sending entirely** — the kill switch, and the same setting rather than a second one because an operator reaching for it is in a hurry |
-
 ### Texts
 
 An SMS number, from Twilio. Without these the `sms_*` tools refuse and `/sms`
@@ -576,10 +549,8 @@ says so; nothing else is affected.
 | `TWILIO_MESSAGING_SERVICE_SID` | — | A Twilio Messaging Service to send through instead of picking a number here. With **Geomatch** enabled it chooses the sender whose country matches the handset, which is the same rule applied by the party that knows which of your numbers are registered for what. Set `TWILIO_FROM` as well so the page can say what a reply will come from |
 | `SMS_COUNTRIES` | `1,44,353,33,49,34,39,31` | Country codes this instance will text, comma-separated. An allowlist rather than a blocklist: a text to a premium range can cost fifty times what one to a mobile does, and those ranges are where revenue-share fraud lives |
 | `SMS_DAILY_LIMIT` | `5` | Messages one account may send in a day, on top of the per-message price. It is `limit_env` on `sms_send` in `quota.json`, where the number lives. **Set it to `0` to stop sending entirely** — that is the kill switch, and it is the same setting rather than a second one because an operator reaching for it is in a hurry |
-| `WHATSAPP_DAILY_LIMIT` | `50` | Conversations one account may open in a day. `limit_env` on `whatsapp_send` in `quota.json`. Twilio bills WhatsApp by the 24-hour conversation rather than the message, so this counts windows opened, not replies sent |
 | `SMS_NEW_ACCOUNT_LIMIT` | `3` | The same cap for an account less than a day old. Signing up is free and takes a minute, so this is the only thing between a script and the full allowance |
 | `SMS_KNOWN_ONLY` | off | Restrict sending to numbers the caller already knows — someone in their contacts, a number they verified as their own, or one that texted them first. Off, because `contacts_add` takes any number and defeats it in one call, and because it stopped an agent doing the ordinary thing. On, it is a real brake for an instance that wants one |
-| `TWILIO_WHATSAPP_FROM` | — | The WhatsApp sender, in E.164 (`+14155238886` is Twilio's sandbox). Inbound arrives at `/sms/webhook` or `/whatsapp/twilio` — either works, because a Twilio Messaging Service carries a number and a WhatsApp sender together and posts both to one webhook, and the payload says which channel it is. Inbound arrives at `/sms/webhook` or `/whatsapp/twilio` |
 | `SMS_VERIFY_INBOUND` | on | Require an arriving message to carry a valid Twilio signature. Turn it **off** if this instance authenticates with an API key, because then there is no account auth token and nothing a signature can be checked against — the cost is that anybody who knows the webhook URL can write into somebody's message history and opt numbers out |
 | `SMS_DEFAULT_COUNTRY` | — | Country code assumed for a number written without one. Unset, a number with no `+` is refused rather than guessed |
 
