@@ -88,8 +88,11 @@ func serverCard(f *WeatherForecast, place string) string {
 	}
 	if len(f.DailyItems) > 0 {
 		b.WriteString(`<div class="wx-days">`)
+		// Five days. It was three, which is right for a card in a column on
+		// Home and wrong for the page named after the forecast — that page is
+		// the one place somebody came to look further ahead than tomorrow.
 		for i, d := range f.DailyItems {
-			if i >= 3 {
+			if i >= 5 {
 				break
 			}
 			b.WriteString(`<span class="wx-day">` + html.EscapeString(d.Date.Format("Mon")) + ` ` +
