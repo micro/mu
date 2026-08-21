@@ -64,6 +64,24 @@ func TestTheCatalogueHasBothLenses(t *testing.T) {
 		t.Error("a service was rendered as a link to nowhere")
 	}
 
+	// A tile has three targets: what it is, the thing itself, and its tools.
+	// The reference answers "what is this and how do I call it", which is what
+	// a reader on this page is asking — and somebody who already knows should
+	// not have to read it again to reach the service. A second target on the
+	// tile rather than a second grid on the page.
+	if !strings.Contains(svc, `class="service-tile-open" href="/catpaged"`) {
+		t.Errorf("a paged service has no way from its tile to its own page:\n%s", svc)
+	}
+	// A headless service has nothing to open, so it offers nothing.
+	if strings.Contains(svc, `class="service-tile-open" href="/cathidden"`) {
+		t.Error("a headless service offers a way to a page it does not have")
+	}
+	// And a service whose page is its reference — weather, hazards — must not
+	// offer a way to where the tile already goes.
+	if strings.Contains(svc, `class="service-tile-open" href="/services/`) {
+		t.Error("a tile offers Open pointing back at the reference it already links to")
+	}
+
 	// The two lenses are reached from the sidebar, so neither renders a switch
 	// of its own — the tools lens lists tools and nothing else.
 	if strings.Contains(toolGrid(), "service-tile") {

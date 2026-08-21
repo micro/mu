@@ -211,6 +211,18 @@ func serviceGrid(r *http.Request) string {
 			b.WriteString(`<a class="service-tile-tools" href="/tools#svc-` +
 				html.EscapeString(groupAnchor(s.NavLabel())) + `">` + label + `</a>`)
 		}
+		// And the way to the thing itself, because the tile answers "what is
+		// this" and a reader who already knows should not have to read it
+		// again to get there. Same move as the count above: a second target on
+		// the tile rather than a second grid on the page.
+		//
+		// Skipped when the service's page *is* its reference — weather and
+		// hazards, whose pages were derived — since that is where the tile
+		// already goes.
+		if s.Page != "" && s.Page != "/services/"+s.Name {
+			b.WriteString(`<a class="service-tile-open" href="` +
+				html.EscapeString(s.Page) + `">Open &rarr;</a>`)
+		}
 		// Nothing to pin without a page — the sidebar is a list of places.
 		if s.Page != "" {
 			b.WriteString(pinControl(r, s.Name, isPinned[s.Name]))
@@ -472,6 +484,9 @@ const toolsPageCSS = `<style>
 .service-tile-tools{position:absolute;left:14px;bottom:10px;font-size:12px;color:#6b7280;
   text-decoration:none;font-variant-numeric:tabular-nums}
 .service-tile-tools:hover{color:#111;text-decoration:underline}
+.service-tile-open{position:absolute;right:14px;bottom:10px;font-size:12px;color:#6b7280;
+  text-decoration:none}
+.service-tile-open:hover{color:#111;text-decoration:underline}
 /* The pin sits on the tile here; .pin-btn itself is in mu.css, because /apps
    pins an app to home with the same control and a shared control cannot live
    in one page's style block. */
