@@ -4,5 +4,6 @@
   "description": "Search the web + AI summarise results",
   "tags": "composite",
   "order": 2,
-  "seed": false
+  "seed": false,
+  "note": "Held: it calls mu.get(), which was removed on purpose \u2014 an app runs sandboxed and cannot call arbitrary endpoints. Use mu.search and mu.ai, then ship it."
 }

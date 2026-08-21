@@ -4,5 +4,5 @@
   "description": "Find places nearby + local weather",
   "tags": "composite",
   "order": 1,
-  "seed": false
+  "seed": true
 }

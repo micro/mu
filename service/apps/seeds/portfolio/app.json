@@ -4,5 +4,6 @@
   "description": "Track crypto portfolio with live prices + news",
   "tags": "composite",
   "order": 3,
-  "seed": false
+  "seed": false,
+  "note": "Held: it keeps the portfolio in localStorage, which the app sandbox blocks \u2014 allow-scripts without allow-same-origin. Use mu.store or mu.db, then ship it."
 }

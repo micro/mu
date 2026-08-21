@@ -52,6 +52,11 @@ type seed struct {
 	// Seed is whether it ships. See the note at the top of this file.
 	Seed bool `json:"seed"`
 
+	// Note says why one is held back, for whoever opens the directory
+	// wondering. Read by nothing; the point is that it sits beside the app
+	// rather than in a commit message somebody has to go looking for.
+	Note string `json:"note,omitempty"`
+
 	html string
 	icon string
 }

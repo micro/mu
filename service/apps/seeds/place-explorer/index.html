@@ -84,7 +84,11 @@ function searchFor(query) {
       if (p.address) html += '<p>' + esc(p.address) + '</p>';
       var meta = [];
       if (p.rating) meta.push('Rating: ' + p.rating);
-      if (p.distance) meta.push(p.distance);
+      // The service answers in metres, at full float precision — "54.7646592295"
+      // beside a coffee shop is a number nobody reads.
+      if (p.distance) meta.push(p.distance < 1000
+        ? Math.round(p.distance) + ' m'
+        : (p.distance / 1000).toFixed(1) + ' km');
       if (meta.length) html += '<div class="meta">' + esc(meta.join(' · ')) + '</div>';
       html += '</div>';
     });
