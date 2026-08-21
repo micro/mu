@@ -18,6 +18,12 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 	os.Setenv("HOME", dir)
+
+	// Subscribe once for the whole binary. Load is what wires the bus to the
+	// timeline, and calling it per test would stack a second subscriber on
+	// every topic — every announced fact would then arrive twice.
+	Load()
+
 	code := m.Run()
 	os.RemoveAll(dir)
 	os.Exit(code)

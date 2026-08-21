@@ -10,6 +10,9 @@ func reset(t *testing.T) {
 	t.Helper()
 	mu.Lock()
 	entries = nil
+	// And on disk. Load reads stream.json back, so a test leaving entries
+	// there is a test the next one inherits.
+	save()
 	mu.Unlock()
 }
 
