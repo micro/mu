@@ -914,14 +914,15 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 		// Show posts list with conditional write link
 		var actions string
 		_, acc := auth.TrySession(r)
-		if acc != nil && acc.Admin {
-			// Admin: show write and moderate links
-			actions = `<div class="mb-4">
-				<a href="/blog?write=true" class="btn">+ Write</a>
-				<a href="/admin/moderate" class="text-muted text-sm ml-4">Moderate</a>
-			</div>`
-		} else if acc != nil {
-			// Regular user: show only write link
+		if acc != nil {
+			// Everybody who can post sees the same thing.
+			//
+			// An admin used to get a Moderate link here too. Moderation is not a
+			// blog feature: readers flag a post from the post itself, and the
+			// queue that lands in is at /admin/moderate, linked from /admin
+			// where the rest of the operator's work is. A second door to it on
+			// a reading page put the operator's job in front of everybody
+			// else's page, and made the one place moderation lives two.
 			actions = `<div class="mb-4">
 				<a href="/blog?write=true" class="btn">+ Write</a>
 			</div>`
