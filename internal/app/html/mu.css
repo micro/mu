@@ -5772,6 +5772,7 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
 /* The forecast, rendered here rather than in a browser, for somebody whose
    place this instance knows. See service/weather. */
 .wx-now { display: flex; align-items: baseline; gap: 8px }
+.wx-none { font-size: 13px; color: var(--text-muted, #888); line-height: 1.55; margin: 0 }
 .wx-temp { font-size: 22px; font-weight: var(--font-weight-semibold, 600); color: var(--text-primary, #1a1a1a) }
 .wx-desc { color: var(--text-secondary, #555) }
 .wx-where { font-size: 12px; color: var(--text-muted, #888); margin-top: 2px }

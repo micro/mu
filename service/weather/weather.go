@@ -40,12 +40,36 @@ func Load() {
 // could not say whether you needed a coat while the home screen showed your
 // forecast.
 func CardHTML(who service.Viewer) string {
-	if lat, lon, ok := auth.Located(who.Account); ok {
-		if f, err := FetchWeather(context.Background(), lat, lon); err == nil && f != nil && f.Current != nil {
-			return serverCard(f, auth.PlaceName(who.Account))
-		}
+	lat, lon, located := auth.Located(who.Account)
+	if !located {
+		// Nobody has told us where they are, so the browser is the only one who
+		// knows. This is also the signed-out path, and most of these pages are
+		// public.
+		return browserCard()
 	}
-	return browserCard()
+
+	f, err := FetchWeather(context.Background(), lat, lon)
+	if err == nil && f != nil && f.Current != nil {
+		return serverCard(f, auth.PlaceName(who.Account))
+	}
+
+	// Located, and the forecast did not come back.
+	//
+	// This used to fall through to browserCard, which asks the browser for a
+	// location we already have and then, if the reader has not granted that
+	// permission, shows nothing at all. So an instance whose weather provider
+	// was misconfigured or out of quota looked exactly like an instance that
+	// had stopped showing the forecast, on the page named after it.
+	//
+	// Say what happened instead. The place is known, so it is named: that is
+	// what tells a reader the setting worked and the fetch did not.
+	where := strings.TrimSpace(auth.PlaceName(who.Account))
+	if where == "" {
+		where = "your location"
+	}
+	return `<div class="wx"><p class="wx-none">No forecast for ` +
+		html.EscapeString(where) + ` right now — the weather provider did not answer. ` +
+		`It is set in <a href="/admin/config">configuration</a>.</p></div>`
 }
 
 // serverCard is the forecast for somebody whose place we know, as plain markup.

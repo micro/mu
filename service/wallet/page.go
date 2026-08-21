@@ -29,7 +29,7 @@ import (
 func Handler(w http.ResponseWriter, r *http.Request) {
 	sess, _ := auth.TrySession(r)
 	if sess == nil {
-		body := `<div class="card"><h2>Wallet</h2>` +
+		body := `<div class="card">` +
 			`<p>A key of your own on Base: an address that holds USDC, and an agent that can ` +
 			`spend it on priced endpoints anywhere — no account with those servers, no card ` +
 			`on file, no key to rotate.</p>` +
@@ -50,7 +50,7 @@ func Page(accountID string) string {
 	// and a QR code of nothing is worse than no card: it looks like the feature
 	// half-works, and there is nothing to go on.
 	if err != nil || bw == nil || bw.Address == "" {
-		return `<div class="card"><h2>Wallet</h2>` +
+		return `<div class="card">` +
 			`<p class="text-sm text-muted">Your wallet could not be opened, so there is no ` +
 			`address to show. The server log under <code>wallet</code> says why.</p></div>`
 	}
@@ -74,8 +74,9 @@ func Page(accountID string) string {
 	payURI := fmt.Sprintf("ethereum:%s@%d/transfer?address=%s", baseUSDC, chainID, bw.Address)
 	net := html.EscapeString(chainName())
 
+	// No heading: app.Respond already titles the page "Wallet", and the card
+	// repeating it printed the word twice down the left of the screen.
 	return fmt.Sprintf(`<div class="card">
-  <h2>Wallet</h2>
   <p class="text-sm text-muted">A key of your own. Your agent can spend it on priced
   endpoints anywhere, capped per call and per day.</p>
   <p class="text-28 mt-2 mb-3"><b>$%s</b> <span class="text-muted text-base">USDC</span>%s</p>
