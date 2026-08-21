@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Nunito Sans', -apple-system, BlinkMacSystemFont, sans-serif; padding: 24px; background: #fff; color: #333; max-width: 600px; margin: 0 auto; }
+h2 { font-size: 20px; font-weight: 600; margin-bottom: 16px; }
+.search-bar { display: flex; gap: 8px; margin-bottom: 16px; }
+.search-bar input { flex: 1; padding: 10px 14px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 15px; font-family: inherit; }
+.search-bar button { padding: 10px 20px; background: #000; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; }
+.weather-bar { padding: 12px 16px; background: #f8f8f8; border-radius: 8px; margin-bottom: 16px; display: none; font-size: 14px; }
+.weather-bar .temp { font-size: 24px; font-weight: 700; }
+.place { padding: 12px; border: 1px solid #eee; border-radius: 6px; margin-bottom: 8px; }
+.place h3 { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+.place p { font-size: 13px; color: #666; }
+.place .meta { font-size: 12px; color: #999; margin-top: 4px; }
+.loading { text-align: center; color: #999; padding: 24px; }
+.quick-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+.quick-tags button { padding: 4px 12px; border: 1px solid #e0e0e0; border-radius: 12px; background: #fff; cursor: pointer; font-size: 12px; font-family: inherit; }
+.quick-tags button:hover { background: #f5f5f5; }
+</style>
+</head>
+<body>
+<h2>Place Explorer</h2>
+<div class="search-bar">
+  <input type="text" id="location" placeholder="Enter a city or address..." value="">
+  <button onclick="explore()">Explore</button>
+</div>
+<div class="quick-tags">
+  <button onclick="searchFor('coffee')">Coffee</button>
+  <button onclick="searchFor('restaurant')">Food</button>
+  <button onclick="searchFor('park')">Parks</button>
+  <button onclick="searchFor('mosque')">Mosques</button>
+  <button onclick="searchFor('gym')">Gyms</button>
+  <button onclick="searchFor('library')">Libraries</button>
+</div>
+<div class="weather-bar" id="weather"></div>
+<div id="results"></div>
+<script>
+function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+var currentLocation = '';
+var currentQuery = 'coffee';
+
+function explore() {
+  currentLocation = document.getElementById('location').value.trim();
+  if (!currentLocation) return;
+  loadWeather();
+  searchFor(currentQuery);
+}
+
+function loadWeather() {
+  mu.places.search({q: currentLocation, near: currentLocation}).then(function(data) {
+    if (data && data.results && data.results.length > 0) {
+      var p = data.results[0];
+      var lat = p.lat || p.latitude;
+      var lon = p.lon || p.longitude;
+      if (lat && lon) {
+        mu.weather({lat: lat, lon: lon}).then(function(w) {
+          if (w && w.forecast && w.forecast.Current) {
+            var c = w.forecast.Current;
+            var el = document.getElementById('weather');
+            el.innerHTML = '<span class="temp">' + Math.round(c.TempC) + '°C</span> · ' + esc(c.Description || '') + ' · Humidity ' + c.Humidity + '%';
+            el.style.display = 'block';
+          }
+        });
+      }
+    }
+  });
+}
+
+function searchFor(query) {
+  currentQuery = query;
+  if (!currentLocation) { document.getElementById('results').innerHTML = '<div class="loading">Enter a location above</div>'; return; }
+  document.getElementById('results').innerHTML = '<div class="loading">Searching for ' + esc(query) + '...</div>';
+  mu.places.search({q: query, near: currentLocation}).then(function(data) {
+    if (!data || data.error) { document.getElementById('results').innerHTML = '<div class="loading">' + esc(data && data.error || 'No results') + '</div>'; return; }
+    var places = data.results || [];
+    if (places.length === 0) { document.getElementById('results').innerHTML = '<div class="loading">No places found</div>'; return; }
+    var html = '';
+    places.slice(0, 10).forEach(function(p) {
+      html += '<div class="place"><h3>' + esc(p.name) + '</h3>';
+      if (p.address) html += '<p>' + esc(p.address) + '</p>';
+      var meta = [];
+      if (p.rating) meta.push('Rating: ' + p.rating);
+      if (p.distance) meta.push(p.distance);
+      if (meta.length) html += '<div class="meta">' + esc(meta.join(' · ')) + '</div>';
+      html += '</div>';
+    });
+    document.getElementById('results').innerHTML = html;
+  }).catch(function(e) { document.getElementById('results').innerHTML = '<div class="loading">' + esc(e.message) + '</div>'; });
+}
+</script>
+</body>
+</html>

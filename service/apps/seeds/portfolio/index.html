@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Nunito Sans', -apple-system, BlinkMacSystemFont, sans-serif; padding: 24px; background: #fff; color: #333; max-width: 600px; margin: 0 auto; }
+h2 { font-size: 20px; font-weight: 600; margin-bottom: 16px; }
+.total { font-size: 32px; font-weight: 700; margin-bottom: 4px; }
+.total-change { font-size: 14px; margin-bottom: 20px; }
+.up { color: #16a34a; } .down { color: #dc2626; }
+.holding { display: flex; justify-content: space-between; align-items: center; padding: 12px; border: 1px solid #eee; border-radius: 6px; margin-bottom: 8px; }
+.holding-left { display: flex; align-items: center; gap: 12px; }
+.holding-symbol { font-weight: 600; }
+.holding-amount { font-size: 13px; color: #888; }
+.holding-right { text-align: right; }
+.holding-value { font-weight: 500; font-variant-numeric: tabular-nums; }
+.holding-change { font-size: 13px; }
+.add-form { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+.add-form input, .add-form select { padding: 8px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-family: inherit; font-size: 14px; }
+.add-form button { padding: 8px 16px; background: #000; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; }
+.news-section { margin-top: 24px; }
+.news-section h3 { font-size: 14px; font-weight: 600; color: #555; margin-bottom: 10px; }
+.news-item { padding: 8px 0; border-bottom: 1px solid #f5f5f5; font-size: 14px; }
+.news-item a { color: #333; text-decoration: none; }
+.news-item a:hover { color: #000; }
+.news-item .meta { font-size: 12px; color: #999; }
+.loading { text-align: center; color: #999; padding: 24px; }
+</style>
+</head>
+<body>
+<h2>Portfolio</h2>
+<div class="total" id="totalValue">$0.00</div>
+<div class="total-change" id="totalChange"></div>
+<div id="holdings"></div>
+<div class="add-form">
+  <select id="addSymbol"><option value="">Add coin...</option></select>
+  <input type="number" id="addAmount" placeholder="Amount" step="any" class="w-100">
+  <button onclick="addHolding()">Add</button>
+</div>
+<div class="news-section">
+  <h3>Crypto News</h3>
+  <div id="news"><div class="loading">Loading...</div></div>
+</div>
+<script>
+function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+var portfolio = JSON.parse(localStorage.getItem('mu_portfolio') || '[]');
+var prices = {};
+
+function savePortfolio() { localStorage.setItem('mu_portfolio', JSON.stringify(portfolio)); }
+
+function render() {
+  var html = '';
+  var totalVal = 0, totalPrev = 0;
+  portfolio.forEach(function(h, i) {
+    var p = prices[h.symbol];
+    if (!p) { html += '<div class="holding"><span>' + h.symbol + ': ' + h.amount + '</span><span>—</span></div>'; return; }
+    var val = h.amount * p.price;
+    var prevVal = h.amount * (p.price / (1 + (p.change_24h || 0) / 100));
+    totalVal += val;
+    totalPrev += prevVal;
+    var cls = p.change_24h >= 0 ? 'up' : 'down';
+    var sign = p.change_24h >= 0 ? '+' : '';
+    html += '<div class="holding"><div class="holding-left"><div><div class="holding-symbol">' + h.symbol + '</div><div class="holding-amount">' + h.amount + '</div></div></div>';
+    html += '<div class="holding-right"><div class="holding-value">$' + val.toLocaleString(undefined,{maximumFractionDigits:2}) + '</div>';
+    html += '<div class="holding-change ' + cls + '">' + sign + (p.change_24h||0).toFixed(1) + '%</div></div></div>';
+  });
+  document.getElementById('holdings').innerHTML = html || '<p class="text-muted text-base">No holdings yet. Add some below.</p>';
+  document.getElementById('totalValue').textContent = '$' + totalVal.toLocaleString(undefined,{maximumFractionDigits:2});
+  var totalChange = totalPrev > 0 ? ((totalVal - totalPrev) / totalPrev * 100) : 0;
+  var tcCls = totalChange >= 0 ? 'up' : 'down';
+  var tcSign = totalChange >= 0 ? '+' : '';
+  document.getElementById('totalChange').innerHTML = '<span class="' + tcCls + '">' + tcSign + totalChange.toFixed(2) + '% today</span>';
+}
+
+function addHolding() {
+  var sym = document.getElementById('addSymbol').value;
+  var amt = parseFloat(document.getElementById('addAmount').value);
+  if (!sym || isNaN(amt) || amt <= 0) return;
+  var existing = portfolio.find(function(h) { return h.symbol === sym; });
+  if (existing) { existing.amount += amt; } else { portfolio.push({symbol: sym, amount: amt}); }
+  savePortfolio();
+  document.getElementById('addAmount').value = '';
+  render();
+}
+
+// Load prices
+mu.markets({category: 'crypto'}).then(function(data) {
+  if (!data || !data.data) return;
+  var sel = document.getElementById('addSymbol');
+  data.data.forEach(function(item) {
+    prices[item.symbol] = item;
+    var opt = document.createElement('option');
+    opt.value = item.symbol; opt.textContent = item.symbol + ' ($' + (item.price >= 1 ? item.price.toFixed(2) : item.price.toFixed(4)) + ')';
+    sel.appendChild(opt);
+  });
+  render();
+});
+
+// Load news
+mu.news().then(function(data) {
+  if (!data || !data.feed) { document.getElementById('news').innerHTML = '<p class="text-muted">No news</p>'; return; }
+  var crypto = data.feed.filter(function(a) { return (a.category || '').toLowerCase().indexOf('crypto') >= 0 || (a.title || '').toLowerCase().match(/bitcoin|crypto|eth|defi/); });
+  if (crypto.length === 0) crypto = data.feed.slice(0, 5);
+  var html = '';
+  crypto.slice(0, 5).forEach(function(a) {
+    html += '<div class="news-item"><a href="' + esc(a.url || '#') + '" target="_blank">' + esc(a.title) + '</a><div class="meta">' + esc(a.category || '') + '</div></div>';
+  });
+  document.getElementById('news').innerHTML = html;
+});
+</script>
+</body>
+</html>

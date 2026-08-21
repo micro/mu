@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Nunito Sans', -apple-system, BlinkMacSystemFont, sans-serif; padding: 24px; background: #fff; color: #333; }
+h2 { font-size: 20px; font-weight: 600; margin-bottom: 16px; }
+.item { display: flex; align-items: center; justify-content: space-between; padding: 12px; border: 1px solid #e0e0e0; border-radius: 6px; margin-bottom: 8px; }
+.item-name { font-weight: 500; }
+.item-count { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.item-controls { display: flex; gap: 8px; align-items: center; }
+.item-controls button { width: 32px; height: 32px; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; }
+.item-controls button:hover { background: #f5f5f5; }
+.add-form { display: flex; gap: 8px; margin-top: 16px; }
+.add-form input { flex: 1; padding: 8px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-family: inherit; font-size: 14px; }
+.add-form button { padding: 8px 16px; background: #000; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; }
+</style>
+</head>
+<body>
+<h2>Tracker</h2>
+<div id="items"></div>
+<div class="add-form">
+  <input type="text" id="name" placeholder="Add item to track...">
+  <button onclick="addItem()">Add</button>
+</div>
+<script>
+var items = [{ name: 'Water (glasses)', count: 0 }, { name: 'Exercise (minutes)', count: 0 }];
+function render() {
+  var html = '';
+  items.forEach(function(item, i) {
+    html += '<div class="item"><span class="item-name">' + item.name + '</span><div class="item-controls"><button onclick="dec(' + i + ')">-</button><span class="item-count">' + item.count + '</span><button onclick="inc(' + i + ')">+</button></div></div>';
+  });
+  document.getElementById('items').innerHTML = html;
+}
+function inc(i) { items[i].count++; render(); }
+function dec(i) { if (items[i].count > 0) items[i].count--; render(); }
+function addItem() { var n = document.getElementById('name'); if (n.value.trim()) { items.push({ name: n.value.trim(), count: 0 }); n.value = ''; render(); } }
+render();
+</script>
+</body>
+</html>

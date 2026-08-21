@@ -1,0 +1,8 @@
+{
+  "slug": "unit-converter",
+  "name": "Unit Converter",
+  "description": "Convert between units \u2014 temperature, weight, distance",
+  "tags": "tools, converter",
+  "order": 7,
+  "seed": true
+}

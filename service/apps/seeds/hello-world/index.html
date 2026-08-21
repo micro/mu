@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hello World</title>
+<style>
+  body{font-family:system-ui,-apple-system,sans-serif;display:grid;place-items:center;min-height:100vh;margin:0;background:#fafafa;color:#111}
+  .card{text-align:center;padding:40px}
+  h1{font-size:32px;margin:0 0 8px}
+  p{color:#666;margin:0 0 20px}
+  button{font:inherit;padding:8px 18px;border:1px solid #111;border-radius:8px;background:#111;color:#fff;cursor:pointer}
+  button:hover{opacity:.85}
+  #out{margin-top:16px;color:#333;min-height:20px}
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>Hello, World 👋</h1>
+    <p>A minimal Mu app.</p>
+    <button id="btn">Say hello</button>
+    <div id="out"></div>
+  </div>
+  <script>
+    var n=0;
+    document.getElementById('btn').addEventListener('click',function(){
+      n++;
+      document.getElementById('out').textContent='Hello #'+n+' — '+new Date().toLocaleTimeString();
+    });
+  </script>
+</body>
+</html>

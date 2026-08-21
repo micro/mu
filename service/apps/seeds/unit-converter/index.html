@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Nunito Sans', -apple-system, BlinkMacSystemFont, sans-serif; padding: 24px; background: #fff; color: #333; max-width: 400px; margin: 0 auto; }
+h2 { font-size: 20px; font-weight: 600; margin-bottom: 16px; }
+.tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+.tabs button { padding: 6px 16px; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; cursor: pointer; font-size: 13px; font-family: inherit; }
+.tabs button.active { background: #000; color: #fff; border-color: #000; }
+.field { margin-bottom: 12px; }
+.field label { display: block; font-size: 13px; color: #666; margin-bottom: 4px; }
+.field input { width: 100%; padding: 10px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 16px; font-family: inherit; }
+.result { padding: 16px; background: #f8f8f8; border-radius: 6px; font-size: 20px; font-weight: 600; text-align: center; margin-top: 8px; }
+</style>
+</head>
+<body>
+<h2>Converter</h2>
+<div class="tabs" id="tabs"></div>
+<div id="fields"></div>
+<div class="result" id="result">—</div>
+<script>
+var conversions = {
+  'Temp': { from: '°C', to: '°F', convert: function(v) { return (v * 9/5 + 32).toFixed(1) + ' °F'; }, reverse: function(v) { return ((v - 32) * 5/9).toFixed(1) + ' °C'; } },
+  'Weight': { from: 'kg', to: 'lb', convert: function(v) { return (v * 2.20462).toFixed(2) + ' lb'; }, reverse: function(v) { return (v / 2.20462).toFixed(2) + ' kg'; } },
+  'Distance': { from: 'km', to: 'mi', convert: function(v) { return (v * 0.621371).toFixed(2) + ' mi'; }, reverse: function(v) { return (v / 0.621371).toFixed(2) + ' km'; } },
+  'Volume': { from: 'L', to: 'gal', convert: function(v) { return (v * 0.264172).toFixed(2) + ' gal'; }, reverse: function(v) { return (v / 0.264172).toFixed(2) + ' L'; } }
+};
+var current = 'Temp';
+function init() {
+  var tabsHTML = '';
+  Object.keys(conversions).forEach(function(k) {
+    tabsHTML += '<button class="' + (k === current ? 'active' : '') + '" onclick="switchTab(\'' + k + '\')">' + k + '</button>';
+  });
+  document.getElementById('tabs').innerHTML = tabsHTML;
+  var c = conversions[current];
+  document.getElementById('fields').innerHTML = '<div class="field"><label>From (' + c.from + ')</label><input type="number" id="fromVal" oninput="convert()" placeholder="Enter value"></div>';
+}
+function switchTab(k) { current = k; init(); document.getElementById('result').textContent = '—'; }
+function convert() { var v = parseFloat(document.getElementById('fromVal').value); if (isNaN(v)) { document.getElementById('result').textContent = '—'; return; } document.getElementById('result').textContent = conversions[current].convert(v); }
+init();
+</script>
+</body>
+</html>

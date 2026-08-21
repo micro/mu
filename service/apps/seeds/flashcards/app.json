@@ -1,0 +1,8 @@
+{
+  "slug": "flashcards",
+  "name": "Flashcards",
+  "description": "Study flashcards \u2014 click to flip, arrow keys to navigate",
+  "tags": "education, study",
+  "order": 8,
+  "seed": true
+}

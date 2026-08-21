@@ -1,0 +1,8 @@
+{
+  "slug": "dashboard",
+  "name": "Dashboard",
+  "description": "Markets + news + weather in a single view",
+  "tags": "composite",
+  "order": 0,
+  "seed": false
+}

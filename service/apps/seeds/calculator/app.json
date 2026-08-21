@@ -1,0 +1,8 @@
+{
+  "slug": "calculator",
+  "name": "Calculator",
+  "description": "Simple calculator with basic arithmetic operations",
+  "tags": "tools, calculator",
+  "order": 10,
+  "seed": true
+}

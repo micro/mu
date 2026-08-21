@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Nunito Sans', -apple-system, BlinkMacSystemFont, sans-serif; padding: 24px; background: #fff; color: #333; max-width: 640px; margin: 0 auto; }
+h2 { font-size: 20px; font-weight: 600; margin-bottom: 16px; }
+.search-bar { display: flex; gap: 8px; margin-bottom: 16px; }
+.search-bar input { flex: 1; padding: 10px 14px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 15px; font-family: inherit; }
+.search-bar button { padding: 10px 20px; background: #000; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 15px; }
+.search-bar button:disabled { background: #ccc; }
+.summary { padding: 16px; background: #f8f8f8; border-radius: 8px; margin-bottom: 16px; line-height: 1.6; font-size: 14px; display: none; }
+.summary h3 { font-size: 14px; font-weight: 600; margin-bottom: 8px; color: #555; }
+.results { display: flex; flex-direction: column; gap: 12px; }
+.result { padding: 12px; border: 1px solid #eee; border-radius: 6px; }
+.result a { color: #333; text-decoration: none; font-weight: 500; font-size: 15px; }
+.result a:hover { color: #000; }
+.result p { font-size: 13px; color: #666; margin-top: 4px; line-height: 1.4; }
+.result .url { font-size: 12px; color: #999; margin-top: 4px; }
+.loading { text-align: center; color: #999; padding: 24px; display: none; }
+</style>
+</head>
+<body>
+<h2>Search Hub</h2>
+<div class="search-bar">
+  <input type="text" id="query" placeholder="Search anything..." onkeydown="if(event.key==='Enter')doSearch()">
+  <button id="btn" onclick="doSearch()">Search</button>
+</div>
+<div class="summary" id="summary"></div>
+<div class="loading" id="loading">Searching...</div>
+<div class="results" id="results"></div>
+<script>
+function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+function doSearch() {
+  var q = document.getElementById('query').value.trim();
+  if (!q) return;
+  var btn = document.getElementById('btn');
+  btn.disabled = true;
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('results').innerHTML = '';
+  document.getElementById('summary').style.display = 'none';
+
+  // Search platform content and web in parallel
+  Promise.all([
+    mu.search(q).catch(function() { return {results: []}; }),
+    mu.get('/web?q=' + encodeURIComponent(q)).catch(function() { return {results: []}; })
+  ]).then(function(responses) {
+    var local = responses[0];
+    var web = responses[1];
+    var html = '';
+
+    // Show local results
+    var localItems = (local && local.results) || [];
+    localItems.slice(0, 5).forEach(function(r) {
+      html += '<div class="result"><a href="' + esc(r.url || '#') + '">' + esc(r.title || r.name || 'Result') + '</a>';
+      if (r.description) html += '<p>' + esc(r.description.slice(0, 150)) + '</p>';
+      html += '</div>';
+    });
+
+    // Show web results
+    var webItems = (web && web.results) || [];
+    webItems.slice(0, 5).forEach(function(r) {
+      html += '<div class="result"><a href="' + esc(r.url || '#') + '" target="_blank">' + esc(r.title || 'Result') + '</a>';
+      if (r.description) html += '<p>' + esc(r.description.slice(0, 150)) + '</p>';
+      html += '<div class="url">' + esc(r.url || '') + '</div></div>';
+    });
+
+    document.getElementById('results').innerHTML = html || '<p class="text-muted">No results found.</p>';
+    document.getElementById('loading').style.display = 'none';
+    btn.disabled = false;
+
+    // AI summary
+    if (localItems.length > 0 || webItems.length > 0) {
+      var context = (localItems.concat(webItems)).slice(0, 5).map(function(r) { return (r.title || '') + ': ' + (r.description || ''); }).join('\n');
+      mu.ai('Based on these search results, give a brief 2-3 sentence summary answering: ' + q + '\n\nResults:\n' + context).then(function(answer) {
+        var el = document.getElementById('summary');
+        el.innerHTML = '<h3>AI Summary</h3>' + esc(typeof answer === 'string' ? answer : JSON.stringify(answer));
+        el.style.display = 'block';
+      });
+    }
+  });
+}
+</script>
+</body>
+</html>

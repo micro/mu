@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="/apps/sdk.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Nunito Sans', -apple-system, BlinkMacSystemFont, sans-serif; padding: 24px; background: #fff; color: #333; }
+h2 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+.desc { color: #666; font-size: 14px; margin-bottom: 16px; }
+textarea { width: 100%; min-height: 120px; padding: 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-family: inherit; font-size: 14px; resize: vertical; margin-bottom: 12px; }
+button { padding: 10px 24px; background: #000; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 15px; }
+button:disabled { background: #ccc; cursor: not-allowed; }
+.output { margin-top: 16px; padding: 16px; background: #f8f8f8; border-radius: 6px; line-height: 1.6; white-space: pre-wrap; min-height: 60px; }
+.output.loading { color: #999; }
+</style>
+</head>
+<body>
+<h2>AI Tool</h2>
+<p class="desc">Enter text and let AI process it — summarise, translate, explain, or anything else.</p>
+<textarea id="input" placeholder="Paste text here..."></textarea>
+<div class="d-flex gap-2 flex-wrap">
+  <button onclick="run('Summarise this concisely')">Summarise</button>
+  <button onclick="run('Translate this to French')">→ French</button>
+  <button onclick="run('Explain this simply')">Explain</button>
+  <button onclick="run(prompt('Custom instruction:'))">Custom</button>
+</div>
+<div class="output" id="output">Results will appear here.</div>
+<script>
+function run(instruction) {
+  if (!instruction) return;
+  var text = document.getElementById('input').value;
+  if (!text.trim()) { alert('Please enter some text first.'); return; }
+  var out = document.getElementById('output');
+  out.className = 'output loading';
+  out.textContent = 'Thinking...';
+  mu.ai(instruction + ':\n\n' + text).then(function(r) {
+    out.className = 'output';
+    out.textContent = typeof r === 'string' ? r : JSON.stringify(r);
+  }).catch(function(e) {
+    out.className = 'output';
+    out.textContent = 'Error: ' + e.message;
+  });
+}
+</script>
+</body>
+</html>

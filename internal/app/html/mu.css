@@ -5740,6 +5740,18 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
 .svc-price, .svc-free { flex: none; font-size: 11px; color: var(--text-muted, #888); white-space: nowrap }
 .svc-doors { font-size: 13px; color: var(--text-muted, #888); margin: var(--spacing-lg, 24px) 0 0; line-height: var(--line-height, 1.6) }
 
+/* A section in the apps directory: what ships with the instance, and what
+   people uploaded. See sortForDirectory. */
+.app-section {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--text-muted, #888);
+  font-weight: var(--font-weight-semibold, 600);
+  margin: var(--spacing-lg, 24px) 0 10px;
+}
+.app-section:first-of-type { margin-top: 0 }
+
 /* The timeline at /stream. Its own classes, because it borrowed the chat
    bubble's and inherited a padding rule that only applies inside .thin-row —
    so every entry sat flush against the next with no gap at all. A feed is a

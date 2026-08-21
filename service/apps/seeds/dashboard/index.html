@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Nunito Sans', -apple-system, BlinkMacSystemFont, sans-serif; padding: 16px; background: #fff; color: #333; }
+h2 { font-size: 18px; font-weight: 600; margin-bottom: 12px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
+.panel { border: 1px solid #eee; border-radius: 8px; padding: 16px; }
+.panel h3 { font-size: 14px; font-weight: 600; margin-bottom: 10px; color: #555; }
+.loading { color: #999; font-size: 13px; }
+.error { color: #c00; font-size: 13px; }
+.coin { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f5f5f5; font-size: 14px; }
+.coin:last-child { border-bottom: none; }
+.up { color: #16a34a; } .down { color: #dc2626; }
+.article { padding: 8px 0; border-bottom: 1px solid #f5f5f5; }
+.article:last-child { border-bottom: none; }
+.article a { color: #333; text-decoration: none; font-size: 14px; font-weight: 500; }
+.article a:hover { color: #000; }
+.article .meta { font-size: 12px; color: #999; margin-top: 2px; }
+.weather-current { text-align: center; padding: 12px 0; }
+.weather-temp { font-size: 36px; font-weight: 700; }
+.weather-desc { color: #666; font-size: 14px; }
+.weather-details { display: flex; justify-content: center; gap: 16px; font-size: 12px; color: #888; margin-top: 8px; }
+</style>
+</head>
+<body>
+<h2>Dashboard</h2>
+<div class="grid">
+  <div class="panel" id="markets-panel">
+    <h3>Markets</h3>
+    <div class="loading">Loading prices...</div>
+  </div>
+  <div class="panel" id="weather-panel">
+    <h3>Weather</h3>
+    <div class="loading">Getting location...</div>
+  </div>
+  <div class="panel span-all" id="news-panel">
+    <h3>News</h3>
+    <div class="loading">Loading headlines...</div>
+  </div>
+</div>
+<script>
+function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+// Markets
+mu.markets({category: 'crypto'}).then(function(data) {
+  if (!data || data.error || !data.data) { document.querySelector('#markets-panel .loading').className = 'error'; document.querySelector('#markets-panel .error').textContent = 'Failed to load'; return; }
+  var html = '';
+  data.data.slice(0, 8).forEach(function(item) {
+    var change = item.change_24h || 0;
+    var cls = change >= 0 ? 'up' : 'down';
+    var sign = change >= 0 ? '+' : '';
+    var price = item.price >= 1 ? '$' + item.price.toLocaleString(undefined, {maximumFractionDigits:2}) : '$' + item.price.toFixed(4);
+    html += '<div class="coin"><span>' + item.symbol + '</span><span>' + price + ' <span class="' + cls + '">' + sign + change.toFixed(1) + '%</span></span></div>';
+  });
+  document.getElementById('markets-panel').innerHTML = '<h3>Markets</h3>' + html;
+}).catch(function(e) { document.querySelector('#markets-panel .loading').textContent = e.message; });
+
+// Weather
+function loadWeather(lat, lon) {
+  mu.weather({lat: lat, lon: lon}).then(function(data) {
+    if (!data || data.error || !data.forecast) { document.querySelector('#weather-panel .loading').textContent = 'No forecast'; return; }
+    var c = data.forecast.Current;
+    var html = '<h3>Weather</h3><div class="weather-current">';
+    html += '<div class="weather-temp">' + Math.round(c.TempC) + '°C</div>';
+    html += '<div class="weather-desc">' + esc(c.Description || '') + '</div>';
+    html += '<div class="weather-details"><span>Feels ' + Math.round(c.FeelsLikeC) + '°</span><span>' + c.Humidity + '% humidity</span></div>';
+    html += '</div>';
+    document.getElementById('weather-panel').innerHTML = html;
+  }).catch(function(e) { document.querySelector('#weather-panel .loading').textContent = e.message; });
+}
+if (navigator.geolocation) {
+  navigator.geolocation.getCurrentPosition(
+    function(pos) { loadWeather(pos.coords.latitude, pos.coords.longitude); },
+    function() { loadWeather(51.5, -0.12); } // Default London
+  );
+} else { loadWeather(51.5, -0.12); }
+
+// News
+mu.news().then(function(data) {
+  if (!data || data.error || !data.feed) { document.querySelector('#news-panel .loading').textContent = 'Failed to load'; return; }
+  var html = '<h3>News</h3>';
+  data.feed.slice(0, 8).forEach(function(item) {
+    html += '<div class="article"><a href="' + esc(item.url || '#') + '" target="_blank">' + esc(item.title) + '</a>';
+    html += '<div class="meta">' + esc(item.category || '') + '</div></div>';
+  });
+  document.getElementById('news-panel').innerHTML = html;
+}).catch(function(e) { document.querySelector('#news-panel .loading').textContent = e.message; });
+</script>
+</body>
+</html>

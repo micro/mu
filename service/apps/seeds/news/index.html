@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Nunito Sans', -apple-system, BlinkMacSystemFont, sans-serif; padding: 24px; background: #fff; color: #333; max-width: 600px; margin: 0 auto; }
+h2 { font-size: 20px; font-weight: 600; margin-bottom: 16px; }
+.article { padding: 12px 0; border-bottom: 1px solid #eee; }
+.article:last-child { border-bottom: none; }
+.article h3 { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+.article h3 a { color: #333; text-decoration: none; }
+.article h3 a:hover { color: #000; }
+.article p { font-size: 14px; color: #666; line-height: 1.5; margin-bottom: 4px; }
+.article .meta { font-size: 12px; color: #999; }
+.loading { text-align: center; color: #999; padding: 32px; }
+.error { color: #c00; padding: 16px; text-align: center; }
+</style>
+</head>
+<body>
+<h2>News</h2>
+<div id="content"><div class="loading">Loading...</div></div>
+<script>
+mu.news().then(function(data) {
+  if (!data || data.error) { showError(data && data.error || 'Failed to load'); return; }
+  var items = data.feed;
+  if (!items || !items.length) { showError('No news available'); return; }
+  var html = '';
+  items.slice(0, 20).forEach(function(item) {
+    html += '<div class="article">';
+    html += '<h3><a href="' + (item.url || '#') + '" target="_blank">' + esc(item.title) + '</a></h3>';
+    if (item.description) html += '<p>' + esc(item.description.slice(0, 200)) + '</p>';
+    html += '<div class="meta">' + esc(item.category || '') + (item.published ? ' · ' + new Date(item.published).toLocaleDateString() : '') + '</div>';
+    html += '</div>';
+  });
+  document.getElementById('content').innerHTML = html;
+}).catch(function(e) { showError(e.message); });
+function showError(msg) { document.getElementById('content').innerHTML = '<div class="error">' + msg + '</div>'; }
+function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+</script>
+</body>
+</html>

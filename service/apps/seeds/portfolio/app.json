@@ -1,0 +1,8 @@
+{
+  "slug": "portfolio",
+  "name": "Portfolio",
+  "description": "Track crypto portfolio with live prices + news",
+  "tags": "composite",
+  "order": 3,
+  "seed": false
+}

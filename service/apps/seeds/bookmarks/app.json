@@ -1,0 +1,8 @@
+{
+  "slug": "bookmarks",
+  "name": "Bookmarks",
+  "description": "Save links privately or publicly \u2014 an example app on mu.db and mu.web.fetch",
+  "tags": "productivity, bookmarks, example",
+  "order": 5,
+  "seed": true
+}

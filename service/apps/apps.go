@@ -84,19 +84,27 @@ type App struct {
 	// Spec is the micro-app spec the HTML was rendered from. Kept so the app
 	// can be edited structurally instead of by re-deriving intent from markup.
 	// Nil for apps built before specs were stored, and for raw HTML apps.
-	Spec       *micro.Spec `json:"spec,omitempty"`
-	Mode       string      `json:"mode,omitempty"`   // "" or "raw" = HTML blob, "framework" = blocks
-	Config     *AppConfig  `json:"config,omitempty"` // Framework mode config
-	Blocks     []Block     `json:"blocks,omitempty"` // Framework mode blocks
-	Tags       string      `json:"tags"`
-	Price      int         `json:"price"`    // Credits per request (0 = free)
-	Earnings   int         `json:"earnings"` // Total credits earned by author
-	Public     bool        `json:"public"`
-	Installs   int         `json:"installs"`
-	ForkedFrom string      `json:"forked_from,omitempty"`
-	Versions   []Version   `json:"versions,omitempty"`
-	CreatedAt  time.Time   `json:"created_at"`
-	UpdatedAt  time.Time   `json:"updated_at"`
+	Spec   *micro.Spec `json:"spec,omitempty"`
+	Mode   string      `json:"mode,omitempty"`   // "" or "raw" = HTML blob, "framework" = blocks
+	Config *AppConfig  `json:"config,omitempty"` // Framework mode config
+	Blocks []Block     `json:"blocks,omitempty"` // Framework mode blocks
+	Tags   string      `json:"tags"`
+	// Official marks an app that ships with the instance. Set from the seed on
+	// every start and never from a request — see ensureBuiltins — because it
+	// is the difference between "we wrote this" and "somebody did", and a flag
+	// a user can set says nothing.
+	Official bool `json:"official,omitempty"`
+	// Order is where an official app sits in the directory, low first. Zero for
+	// everything else, which is sorted by its own rules underneath.
+	Order      int       `json:"order,omitempty"`
+	Price      int       `json:"price"`    // Credits per request (0 = free)
+	Earnings   int       `json:"earnings"` // Total credits earned by author
+	Public     bool      `json:"public"`
+	Installs   int       `json:"installs"`
+	ForkedFrom string    `json:"forked_from,omitempty"`
+	Versions   []Version `json:"versions,omitempty"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
 }
 
 // QuotaCheck is set by main.go to check wallet credits before a metered call.
@@ -429,6 +437,35 @@ func pinControl(r *http.Request, userID, slug string, isPinned bool) string {
 	)
 }
 
+// sortForDirectory orders the apps directory: ours first, in the order we
+// chose, then everybody else's by installs and then by recency.
+//
+// One comparator because there were two, character for character, in
+// handleList and Public — and a list that is ordered twice is a list that will
+// eventually be ordered two ways.
+//
+// Official leads because the question a first-time reader is asking is what
+// this thing can do, and a calculator somebody uploaded is not the answer.
+// Order within that is explicit: see service/apps/seeds.
+func sortForDirectory(list []*App) {
+	sort.Slice(list, func(i, j int) bool {
+		a, b := list[i], list[j]
+		if a.Official != b.Official {
+			return a.Official
+		}
+		if a.Official {
+			if a.Order != b.Order {
+				return a.Order < b.Order
+			}
+			return a.Slug < b.Slug
+		}
+		if a.Installs != b.Installs {
+			return a.Installs > b.Installs
+		}
+		return a.CreatedAt.After(b.CreatedAt)
+	})
+}
+
 // handleList shows all public apps.
 func handleList(w http.ResponseWriter, r *http.Request) {
 	mutex.RLock()
@@ -440,12 +477,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 	}
 	mutex.RUnlock()
 
-	sort.Slice(list, func(i, j int) bool {
-		if list[i].Installs != list[j].Installs {
-			return list[i].Installs > list[j].Installs
-		}
-		return list[i].CreatedAt.After(list[j].CreatedAt)
-	})
+	sortForDirectory(list)
 
 	if app.WantsJSON(r) {
 		// Strip HTML from JSON response
@@ -582,9 +614,26 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 	if len(list) == 0 {
 		sb.WriteString(`<p>No apps yet. <a href="/apps/new">Create the first one</a>.</p>`)
 	} else {
+		// Two sections, because the list is already sorted ours-first and a
+		// reader otherwise cannot tell which is which. Emitted from the run
+		// rather than by partitioning the slice, so a filter that leaves no
+		// official apps leaves no heading either.
+		var saidOurs, saidTheirs bool
 		for _, a := range list {
 			if userID != "" && (app.IsBlocked(userID, a.AuthorID) || app.IsDismissed(userID, "app", a.Slug)) {
 				continue
+			}
+			if a.Official && !saidOurs {
+				saidOurs = true
+				sb.WriteString(`<h2 class="app-section">Built in</h2>`)
+			}
+			if !a.Official && !saidTheirs {
+				saidTheirs = true
+				heading := "From the community"
+				if !saidOurs {
+					heading = "Apps"
+				}
+				sb.WriteString(`<h2 class="app-section">` + heading + `</h2>`)
 			}
 			tagsHTML := ""
 			if a.Tags != "" {
@@ -1712,12 +1761,7 @@ func Public() []*App {
 		}
 		list = append(list, a)
 	}
-	sort.Slice(list, func(i, j int) bool {
-		if list[i].Installs != list[j].Installs {
-			return list[i].Installs > list[j].Installs
-		}
-		return list[i].CreatedAt.After(list[j].CreatedAt)
-	})
+	sortForDirectory(list)
 	return list
 }
 

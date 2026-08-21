@@ -1,6 +1,32 @@
 package apps
 
+// The apps that ship with every instance, as files.
+//
+// They were Go string literals — templates.go was 1,351 lines of HTML in
+// backticks — and there is no formatter, no diff worth reading and no way to
+// open one in a browser. An embedded file lives with the package that owns it,
+// which is what the other twelve embeds in this repo do, so a seed is a
+// directory: app.json, index.html, and icon.svg where it has one.
+//
+// Adding an app is adding a directory. That matters more than the tidiness,
+// because the ones worth shipping next are composites over several services —
+// Maps, Groups, a wallet you can send from — and those are not things anybody
+// writes inside a quoted string.
+//
+// templates.go also held ten apps nothing could reach. GetTemplate had one
+// caller, this file, and it named seven of the seventeen; the other ten had
+// been written and never shipped, four of them composites over the very
+// services the app SDK exists to reach. They are here now, in git, with
+// "seed": false — an app nobody has run is not something to put our name on,
+// and flipping that flag is a one-line change once one has been.
+
 import (
+	"embed"
+	"encoding/json"
+	"io/fs"
+	"path"
+	"sort"
+	"strings"
 	"time"
 
 	"mu/internal/app"
@@ -8,40 +34,82 @@ import (
 	"github.com/google/uuid"
 )
 
-// helloWorldHTML is the complete page for the built-in "Hello World" app — a
-// self-contained raw-mode example with no dependencies.
-const helloWorldHTML = `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Hello World</title>
-<style>
-  body{font-family:system-ui,-apple-system,sans-serif;display:grid;place-items:center;min-height:100vh;margin:0;background:#fafafa;color:#111}
-  .card{text-align:center;padding:40px}
-  h1{font-size:32px;margin:0 0 8px}
-  p{color:#666;margin:0 0 20px}
-  button{font:inherit;padding:8px 18px;border:1px solid #111;border-radius:8px;background:#111;color:#fff;cursor:pointer}
-  button:hover{opacity:.85}
-  #out{margin-top:16px;color:#333;min-height:20px}
-</style>
-</head>
-<body>
-  <div class="card">
-    <h1>Hello, World 👋</h1>
-    <p>A minimal Mu app.</p>
-    <button id="btn">Say hello</button>
-    <div id="out"></div>
-  </div>
-  <script>
-    var n=0;
-    document.getElementById('btn').addEventListener('click',function(){
-      n++;
-      document.getElementById('out').textContent='Hello #'+n+' — '+new Date().toLocaleTimeString();
-    });
-  </script>
-</body>
-</html>`
+//go:embed seeds
+var seedFS embed.FS
+
+// seed is one shipped app, read from its directory.
+type seed struct {
+	Slug        string `json:"slug"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Tags        string `json:"tags"`
+
+	// Order is where it sits in the directory, low first. Explicit rather than
+	// alphabetical, because what leads the list is a decision — ours are the
+	// answer to "what can this thing do", and a calculator is not it.
+	Order int `json:"order"`
+
+	// Seed is whether it ships. See the note at the top of this file.
+	Seed bool `json:"seed"`
+
+	html string
+	icon string
+}
+
+// seeds reads every shipped app off the embedded tree, in the order they are
+// meant to be shown.
+func seeds() []seed {
+	entries, err := fs.ReadDir(seedFS, "seeds")
+	if err != nil {
+		app.Log("apps", "no seeds: %v", err)
+		return nil
+	}
+
+	var out []seed
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		dir := path.Join("seeds", e.Name())
+
+		b, err := seedFS.ReadFile(path.Join(dir, "app.json"))
+		if err != nil {
+			app.Log("apps", "seed %s has no app.json", e.Name())
+			continue
+		}
+		var s seed
+		if err := json.Unmarshal(b, &s); err != nil {
+			app.Log("apps", "seed %s: %v", e.Name(), err)
+			continue
+		}
+		if s.Slug == "" {
+			s.Slug = e.Name()
+		}
+		if !s.Seed {
+			continue
+		}
+
+		h, err := seedFS.ReadFile(path.Join(dir, "index.html"))
+		if err != nil || len(strings.TrimSpace(string(h))) == 0 {
+			app.Log("apps", "seed %s has no page", s.Slug)
+			continue
+		}
+		s.html = string(h)
+
+		if ic, err := seedFS.ReadFile(path.Join(dir, "icon.svg")); err == nil {
+			s.icon = strings.TrimSpace(string(ic))
+		}
+		out = append(out, s)
+	}
+
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Order != out[j].Order {
+			return out[i].Order < out[j].Order
+		}
+		return out[i].Slug < out[j].Slug
+	})
+	return out
+}
 
 // ensureBuiltins makes sure every built-in ("mu"-authored) app exists. It runs
 // on every startup — not just first run — so a newly-added built-in appears on
@@ -51,11 +119,27 @@ const helloWorldHTML = `<!DOCTYPE html>
 func ensureBuiltins() {
 	added := 0
 	mutex.Lock()
+
+	// Official is decided here, on every start, and nowhere else.
+	//
+	// Cleared first, so the only thing that can make it true is being in this
+	// directory right now. apps.json is a file on disk an operator can edit and
+	// an app can be forked, renamed and made public; a flag meaning "we wrote
+	// this" that survives either of those means nothing. It is also why an app
+	// that shipped in an older release and has since been dropped loses the
+	// badge on the next start rather than keeping it forever.
+	for _, a := range apps {
+		a.Official = false
+		a.Order = 0
+	}
+
 	for _, a := range builtinApps() {
 		if _, exists := apps[a.Slug]; !exists {
 			apps[a.Slug] = a
 			added++
 		}
+		apps[a.Slug].Official = true
+		apps[a.Slug].Order = a.Order
 	}
 	mutex.Unlock()
 	if added > 0 {
@@ -64,144 +148,11 @@ func ensureBuiltins() {
 	}
 }
 
-// builtinApps returns the definitions of the apps that ship with every instance.
+// builtinApps returns the apps that ship with every instance.
 func builtinApps() []*App {
-	seeds := []struct {
-		Slug        string
-		Name        string
-		Description string
-		Tags        string
-		TemplateID  string
-		Icon        string
-	}{
-		{
-			Slug:        "timer",
-			Name:        "Timer",
-			Description: "Countdown timer with start, pause, and reset",
-			Tags:        "productivity, timer",
-			TemplateID:  "timer",
-			Icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
-  <circle cx="16" cy="18" r="11" fill="none" stroke="#555" stroke-width="2"/>
-  <line x1="16" y1="18" x2="16" y2="11" stroke="#555" stroke-width="2" stroke-linecap="round"/>
-  <line x1="16" y1="18" x2="21" y2="18" stroke="#555" stroke-width="2" stroke-linecap="round"/>
-  <line x1="16" y1="5" x2="16" y2="7" stroke="#555" stroke-width="2" stroke-linecap="round"/>
-  <line x1="13" y1="4" x2="19" y2="4" stroke="#555" stroke-width="2" stroke-linecap="round"/>
-</svg>`,
-		},
-		{
-			Slug:        "calculator",
-			Name:        "Calculator",
-			Description: "Simple calculator with basic arithmetic operations",
-			Tags:        "tools, calculator",
-			TemplateID:  "calculator",
-			Icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
-  <rect x="6" y="3" width="20" height="26" rx="3" fill="none" stroke="#555" stroke-width="2"/>
-  <rect x="9" y="6" width="14" height="6" rx="1" fill="none" stroke="#555" stroke-width="1.5"/>
-  <circle cx="11" cy="17" r="1.5" fill="#555"/>
-  <circle cx="16" cy="17" r="1.5" fill="#555"/>
-  <circle cx="21" cy="17" r="1.5" fill="#555"/>
-  <circle cx="11" cy="22" r="1.5" fill="#555"/>
-  <circle cx="16" cy="22" r="1.5" fill="#555"/>
-  <circle cx="21" cy="22" r="1.5" fill="#555"/>
-</svg>`,
-		},
-		{
-			Slug:        "unit-converter",
-			Name:        "Unit Converter",
-			Description: "Convert between units — temperature, weight, distance",
-			Tags:        "tools, converter",
-			TemplateID:  "converter",
-			Icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
-  <polyline points="8,12 12,8 16,12" fill="none" stroke="#555" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-  <line x1="12" y1="8" x2="12" y2="24" stroke="#555" stroke-width="2" stroke-linecap="round"/>
-  <polyline points="16,20 20,24 24,20" fill="none" stroke="#555" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-  <line x1="20" y1="8" x2="20" y2="24" stroke="#555" stroke-width="2" stroke-linecap="round"/>
-</svg>`,
-		},
-		{
-			Slug:        "flashcards",
-			Name:        "Flashcards",
-			Description: "Study flashcards — click to flip, arrow keys to navigate",
-			Tags:        "education, study",
-			TemplateID:  "flashcards",
-			Icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
-  <rect x="3" y="7" width="20" height="16" rx="2" fill="none" stroke="#555" stroke-width="2" transform="rotate(-5 13 15)"/>
-  <rect x="7" y="8" width="20" height="16" rx="2" fill="none" stroke="#555" stroke-width="2"/>
-  <line x1="12" y1="14" x2="22" y2="14" stroke="#555" stroke-width="1.5" stroke-linecap="round"/>
-  <line x1="12" y1="18" x2="19" y2="18" stroke="#555" stroke-width="1.5" stroke-linecap="round"/>
-</svg>`,
-		},
-		{
-			Slug:        "bookmarks",
-			Name:        "Bookmarks",
-			Description: "Save links privately or publicly — an example app on mu.db and mu.web.fetch",
-			Tags:        "productivity, bookmarks, example",
-			TemplateID:  "bookmarks",
-			Icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
-  <path d="M9 5h14a1 1 0 0 1 1 1v21l-8-5-8 5V6a1 1 0 0 1 1-1z" fill="none" stroke="#555" stroke-width="2" stroke-linejoin="round"/>
-</svg>`,
-		},
-		{
-			Slug:        "notes",
-			Name:        "Notes",
-			Description: "Quick notes that save automatically",
-			Tags:        "productivity, notes",
-			TemplateID:  "notes",
-			Icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
-  <path d="M8 4h12l4 4v20a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" fill="none" stroke="#555" stroke-width="2"/>
-  <polyline points="20,4 20,8 24,8" fill="none" stroke="#555" stroke-width="2" stroke-linejoin="round"/>
-  <line x1="10" y1="14" x2="22" y2="14" stroke="#555" stroke-width="1.5" stroke-linecap="round"/>
-  <line x1="10" y1="18" x2="22" y2="18" stroke="#555" stroke-width="1.5" stroke-linecap="round"/>
-  <line x1="10" y1="22" x2="17" y2="22" stroke="#555" stroke-width="1.5" stroke-linecap="round"/>
-</svg>`,
-		},
-		{
-			Slug:        "habit-tracker",
-			Name:        "Habit Tracker",
-			Description: "Track daily habits with a simple counter",
-			Tags:        "productivity, habits",
-			TemplateID:  "tracker",
-			Icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
-  <rect x="4" y="6" width="24" height="22" rx="3" fill="none" stroke="#555" stroke-width="2"/>
-  <line x1="4" y1="12" x2="28" y2="12" stroke="#555" stroke-width="2"/>
-  <line x1="10" y1="6" x2="10" y2="3" stroke="#555" stroke-width="2" stroke-linecap="round"/>
-  <line x1="22" y1="6" x2="22" y2="3" stroke="#555" stroke-width="2" stroke-linecap="round"/>
-  <polyline points="10,19 13,22 18,16" fill="none" stroke="#555" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>`,
-		},
-	}
-
 	now := time.Now()
-	out := make([]*App, 0, len(seeds)+1)
-
-	// A minimal raw-HTML app — the "hello world" of the apps platform. Unlike the
-	// template-backed seeds above, it ships its own complete HTML page, so it also
-	// serves as the simplest possible example of a raw-mode app.
-	out = append(out, &App{
-		ID:          uuid.New().String(),
-		Slug:        "hello-world",
-		Name:        "Hello World",
-		Description: "A minimal example app — the hello world of Mu apps",
-		AuthorID:    "mu",
-		Author:      "mu",
-		Icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
-  <circle cx="16" cy="16" r="12" fill="none" stroke="#555" stroke-width="2"/>
-  <ellipse cx="16" cy="16" rx="5" ry="12" fill="none" stroke="#555" stroke-width="2"/>
-  <line x1="4" y1="16" x2="28" y2="16" stroke="#555" stroke-width="2"/>
-</svg>`,
-		Mode:      "raw",
-		HTML:      helloWorldHTML,
-		Tags:      "example, hello-world",
-		Public:    true,
-		CreatedAt: now,
-		UpdatedAt: now,
-	})
-
-	for _, s := range seeds {
-		t := GetTemplate(s.TemplateID)
-		if t == nil {
-			continue
-		}
+	var out []*App
+	for _, s := range seeds() {
 		out = append(out, &App{
 			ID:          uuid.New().String(),
 			Slug:        s.Slug,
@@ -209,14 +160,16 @@ func builtinApps() []*App {
 			Description: s.Description,
 			AuthorID:    "mu",
 			Author:      "mu",
-			Icon:        s.Icon,
-			HTML:        t.HTML,
+			Icon:        s.icon,
+			Mode:        "raw",
+			HTML:        s.html,
 			Tags:        s.Tags,
+			Order:       s.Order,
+			Official:    true,
 			Public:      true,
 			CreatedAt:   now,
 			UpdatedAt:   now,
 		})
 	}
-
 	return out
 }

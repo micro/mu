@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Nunito Sans', -apple-system, BlinkMacSystemFont, sans-serif; padding: 24px; color: #333; background: #fff; display: flex; flex-direction: column; align-items: center; }
+.timer { font-size: 64px; font-weight: 700; margin: 32px 0; font-variant-numeric: tabular-nums; }
+.controls { display: flex; gap: 12px; }
+button { padding: 10px 24px; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; cursor: pointer; font-size: 15px; font-family: inherit; }
+button:hover { background: #f5f5f5; }
+button.primary { background: #000; color: #fff; border-color: #000; }
+button.primary:hover { background: #333; }
+.presets { margin-top: 24px; display: flex; gap: 8px; }
+.presets button { padding: 6px 16px; font-size: 13px; }
+</style>
+</head>
+<body>
+<h2>Timer</h2>
+<div class="timer" id="display">25:00</div>
+<div class="controls">
+  <button class="primary" id="toggle" onclick="toggle()">Start</button>
+  <button onclick="reset()">Reset</button>
+</div>
+<div class="presets">
+  <button onclick="setTime(5)">5m</button>
+  <button onclick="setTime(15)">15m</button>
+  <button onclick="setTime(25)">25m</button>
+  <button onclick="setTime(60)">60m</button>
+</div>
+<script>
+var seconds = 1500, interval = null, running = false;
+function render() {
+  var m = Math.floor(seconds / 60), s = seconds % 60;
+  document.getElementById('display').textContent = (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+}
+function toggle() {
+  if (running) { clearInterval(interval); running = false; document.getElementById('toggle').textContent = 'Start'; }
+  else { interval = setInterval(function() { if (--seconds <= 0) { clearInterval(interval); running = false; seconds = 0; render(); document.getElementById('toggle').textContent = 'Start'; } render(); }, 1000); running = true; document.getElementById('toggle').textContent = 'Pause'; }
+}
+function reset() { clearInterval(interval); running = false; seconds = 1500; render(); document.getElementById('toggle').textContent = 'Start'; }
+function setTime(m) { clearInterval(interval); running = false; seconds = m * 60; render(); document.getElementById('toggle').textContent = 'Start'; }
+render();
+</script>
+</body>
+</html>

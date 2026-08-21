@@ -1,0 +1,8 @@
+{
+  "slug": "news",
+  "name": "News",
+  "description": "Latest news feed using mu.news()",
+  "tags": "data",
+  "order": 13,
+  "seed": false
+}

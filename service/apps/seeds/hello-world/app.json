@@ -1,0 +1,8 @@
+{
+  "slug": "hello-world",
+  "name": "Hello World",
+  "description": "A minimal example app \u2014 the hello world of Mu apps",
+  "tags": "example, hello-world",
+  "order": 16,
+  "seed": true
+}

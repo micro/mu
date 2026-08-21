@@ -1,0 +1,8 @@
+{
+  "slug": "timer",
+  "name": "Timer",
+  "description": "Countdown timer with start, pause, and reset",
+  "tags": "productivity, timer",
+  "order": 9,
+  "seed": true
+}

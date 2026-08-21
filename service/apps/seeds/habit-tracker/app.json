@@ -1,0 +1,8 @@
+{
+  "slug": "habit-tracker",
+  "name": "Habit Tracker",
+  "description": "Track daily habits with a simple counter",
+  "tags": "productivity, habits",
+  "order": 6,
+  "seed": true
+}

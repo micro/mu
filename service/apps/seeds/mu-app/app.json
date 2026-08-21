@@ -1,0 +1,8 @@
+{
+  "slug": "mu-app",
+  "name": "Mu App",
+  "description": "Mini app framework \u2014 declare data, the runtime handles everything else",
+  "tags": "framework",
+  "order": 15,
+  "seed": false
+}

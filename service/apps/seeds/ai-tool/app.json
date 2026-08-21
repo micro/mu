@@ -1,0 +1,8 @@
+{
+  "slug": "ai-tool",
+  "name": "AI Tool",
+  "description": "An AI-powered tool using mu.ai() \u2014 summariser, translator, etc.",
+  "tags": "tools",
+  "order": 14,
+  "seed": false
+}

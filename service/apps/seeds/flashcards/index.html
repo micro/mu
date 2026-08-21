@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Nunito Sans', -apple-system, BlinkMacSystemFont, sans-serif; padding: 24px; background: #fff; color: #333; display: flex; flex-direction: column; align-items: center; }
+h2 { font-size: 20px; font-weight: 600; margin-bottom: 16px; }
+.card { width: 320px; min-height: 200px; border: 1px solid #e0e0e0; border-radius: 6px; display: flex; align-items: center; justify-content: center; padding: 32px; cursor: pointer; text-align: center; font-size: 18px; transition: box-shadow 0.15s; user-select: none; }
+.card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.card.flipped { background: #f8f8f8; }
+.nav { display: flex; gap: 12px; margin-top: 16px; align-items: center; }
+.nav button { padding: 8px 20px; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; cursor: pointer; font-family: inherit; }
+.nav button:hover { background: #f5f5f5; }
+.counter { color: #999; font-size: 13px; }
+.hint { margin-top: 12px; font-size: 13px; color: #999; }
+</style>
+</head>
+<body>
+<h2>Flashcards</h2>
+<div class="card" id="card" onclick="flip()"></div>
+<div class="nav">
+  <button onclick="prev()">← Prev</button>
+  <span class="counter" id="counter"></span>
+  <button onclick="next()">Next →</button>
+</div>
+<p class="hint">Click card to flip · Arrow keys to navigate</p>
+<script>
+var cards = [
+  { q: 'What is the speed of light?', a: '299,792,458 m/s' },
+  { q: 'What is the chemical symbol for gold?', a: 'Au' },
+  { q: 'Who wrote "1984"?', a: 'George Orwell' },
+  { q: 'What is the largest planet?', a: 'Jupiter' },
+  { q: 'What year was the web invented?', a: '1989 (Tim Berners-Lee)' }
+];
+var idx = 0, flipped = false;
+function render() {
+  var el = document.getElementById('card');
+  el.textContent = flipped ? cards[idx].a : cards[idx].q;
+  el.className = 'card' + (flipped ? ' flipped' : '');
+  document.getElementById('counter').textContent = (idx + 1) + ' / ' + cards.length;
+}
+function flip() { flipped = !flipped; render(); }
+function next() { idx = (idx + 1) % cards.length; flipped = false; render(); }
+function prev() { idx = (idx - 1 + cards.length) % cards.length; flipped = false; render(); }
+document.addEventListener('keydown', function(e) { if (e.key === 'ArrowRight') next(); if (e.key === 'ArrowLeft') prev(); if (e.key === ' ') { e.preventDefault(); flip(); } });
+render();
+</script>
+</body>
+</html>

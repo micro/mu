@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Nunito Sans', -apple-system, BlinkMacSystemFont, sans-serif; padding: 24px; background: #fff; display: flex; justify-content: center; }
+.calc { width: 280px; }
+.display { background: #f8f8f8; border: 1px solid #e0e0e0; border-radius: 6px; padding: 16px; text-align: right; font-size: 28px; font-weight: 600; margin-bottom: 12px; min-height: 60px; word-break: break-all; font-variant-numeric: tabular-nums; }
+.grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.grid button { padding: 14px; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; cursor: pointer; font-size: 18px; font-family: inherit; }
+.grid button:hover { background: #f5f5f5; }
+.grid button.op { background: #f0f0f0; font-weight: 600; }
+.grid button.eq { background: #000; color: #fff; }
+.grid button.eq:hover { background: #333; }
+.grid button.wide { grid-column: span 2; }
+</style>
+</head>
+<body>
+<div class="calc">
+  <div class="display" id="display">0</div>
+  <div class="grid">
+    <button onclick="clear_()">C</button><button class="op" onclick="input('(')">(</button><button class="op" onclick="input(')')">)</button><button class="op" onclick="input('/')">÷</button>
+    <button onclick="input('7')">7</button><button onclick="input('8')">8</button><button onclick="input('9')">9</button><button class="op" onclick="input('*')">×</button>
+    <button onclick="input('4')">4</button><button onclick="input('5')">5</button><button onclick="input('6')">6</button><button class="op" onclick="input('-')">−</button>
+    <button onclick="input('1')">1</button><button onclick="input('2')">2</button><button onclick="input('3')">3</button><button class="op" onclick="input('+')">+</button>
+    <button class="wide" onclick="input('0')">0</button><button onclick="input('.')">.</button><button class="eq" onclick="calc()">=</button>
+  </div>
+</div>
+<script>
+var expr = '';
+function input(v) { expr += v; document.getElementById('display').textContent = expr; }
+function clear_() { expr = ''; document.getElementById('display').textContent = '0'; }
+function calc() { try { var r = Function('"use strict"; return (' + expr + ')')(); document.getElementById('display').textContent = r; expr = String(r); } catch(e) { document.getElementById('display').textContent = 'Error'; expr = ''; } }
+</script>
+</div>
+</body>
+</html>

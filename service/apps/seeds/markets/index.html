@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Nunito Sans', -apple-system, BlinkMacSystemFont, sans-serif; padding: 24px; background: #fff; color: #333; max-width: 600px; margin: 0 auto; }
+h2 { font-size: 20px; font-weight: 600; margin-bottom: 16px; }
+.tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+.tabs button { padding: 6px 16px; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; cursor: pointer; font-family: inherit; font-size: 13px; }
+.tabs button.active { background: #000; color: #fff; border-color: #000; }
+.coin { display: flex; justify-content: space-between; align-items: center; padding: 12px; border: 1px solid #eee; border-radius: 6px; margin-bottom: 8px; }
+.coin-name { font-weight: 600; }
+.coin-price { font-variant-numeric: tabular-nums; }
+.coin-change { font-size: 13px; font-weight: 500; }
+.up { color: #16a34a; }
+.down { color: #dc2626; }
+.loading { text-align: center; color: #999; padding: 32px; }
+.error { color: #c00; padding: 16px; text-align: center; }
+</style>
+</head>
+<body>
+<h2>Markets</h2>
+<div class="tabs">
+  <button class="active" onclick="load('crypto',this)">Crypto</button>
+  <button onclick="load('futures',this)">Futures</button>
+  <button onclick="load('commodities',this)">Commodities</button>
+</div>
+<div id="content"><div class="loading">Loading...</div></div>
+<script>
+function load(category, btn) {
+  if (btn) { document.querySelectorAll('.tabs button').forEach(function(b){b.className='';}); btn.className='active'; }
+  document.getElementById('content').innerHTML = '<div class="loading">Loading...</div>';
+  mu.markets({category: category}).then(function(data) {
+    if (!data || data.error) { showError(data && data.error || 'Failed to load'); return; }
+    var items = data.data;
+    if (!items || !items.length) { showError('No data available'); return; }
+    var html = '';
+    items.forEach(function(item) {
+      var change = item.change_24h || 0;
+      var cls = change >= 0 ? 'up' : 'down';
+      var sign = change >= 0 ? '+' : '';
+      var price = item.price >= 1 ? '$' + item.price.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) : '$' + item.price.toFixed(4);
+      html += '<div class="coin"><div><span class="coin-name">' + item.symbol + '</span></div><div class="right"><div class="coin-price">' + price + '</div><div class="coin-change ' + cls + '">' + sign + change.toFixed(2) + '%</div></div></div>';
+    });
+    document.getElementById('content').innerHTML = html;
+  }).catch(function(e) { showError(e.message); });
+}
+function showError(msg) { document.getElementById('content').innerHTML = '<div class="error">' + msg + '</div>'; }
+load('crypto', null);
+</script>
+</body>
+</html>
