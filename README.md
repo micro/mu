@@ -181,12 +181,20 @@ client files the answer under the message you sent rather than starting a new
 conversation. Everything that arrives is in the record and readable at `/inbox`,
 alongside conversations from the web — see [`internal/thread`](internal/thread).
 
-**It speaks IMAP too**, so the mailbox opens in Thunderbird, Mail.app or your
-phone rather than only on a page this instance draws. The username is your
-account name and the password is an access token from `/token` — Mu has no
-password, so a token stands in, and it is revocable on its own. Folders are your
-addresses: mail to `you+research@` is the folder *INBOX/research*, which is how
-one agent's mail gets subscribed to on its own.
+**It speaks IMAP and SMTP submission**, so the mailbox opens in Thunderbird,
+Mail.app or your phone rather than only on a page this instance draws, and you
+can reply from there. The username is your account name and the password is an
+access token from `/token` — Mu has no password, so a token stands in, and it is
+revocable on its own; the same token is both halves. Folders are your addresses:
+mail to `you+research@` is the folder *INBOX/research*, which is how one agent's
+mail gets subscribed to on its own.
+
+Sending is a listener of its own, separate from the MTA that receives on port
+25: nothing happens on it before AUTH, and `From` must be an address your
+account owns, so a token cannot send as somebody else. What goes out is the same
+mail the web compose sends, priced and gated the same way — see
+[`service/mail/outbound.go`](service/mail/outbound.go), the one way mail leaves
+an instance.
 [examples/imap-client](examples/imap-client) is a working client against it,
 written with [emersion/go-imap](https://github.com/emersion/go-imap) so the
 server is proved against somebody else's library rather than its own tests.

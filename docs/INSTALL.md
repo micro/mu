@@ -167,14 +167,25 @@ replies appear in the thread there.
 | | |
 |---|---|
 | Server | your domain |
-| Port | `IMAP_PORT`, `1143` by default; set it to `143` in production |
+| Incoming (IMAP) | `IMAP_PORT`, `1143` by default; set it to `143` in production |
+| Outgoing (SMTP) | `SUBMISSION_PORT`, `1587` by default; set it to `587` in production |
 | Username | your Mu username, or your full address |
 | Password | an access token from `/token` |
 
 Mu has no password — sign-in is a passkey or a link — so an access token is what
 goes in the password field. That is the app-password pattern, and it has the
 property that matters: a client is revoked on its own without touching how you
-sign in.
+sign in. The same token is both halves; a client asks twice.
+
+**Outgoing is a separate listener from the MTA.** `MAIL_PORT` is the server that
+receives mail from the internet and authenticates nobody, which is what port 25
+is for. `SUBMISSION_PORT` is where *you* send from, and it authenticates
+everybody: nothing happens on it before AUTH, and the address in `From` must be
+one your account owns, so a token is not a way to send as somebody else.
+
+What goes out through it is the same mail the compose form sends — same
+allowance, same price, same rules about who you may write to. See
+`service/mail/outbound.go`, which is the only way mail leaves an instance.
 
 **Folders are your addresses.** The inbox holds everything. Each plus-address
 tag you have received mail at is a folder of its own — mail to `you+research@`
@@ -205,6 +216,9 @@ stream {
     upstream mu_imap {
         server 127.0.0.1:1143;
     }
+    upstream mu_submission {
+        server 127.0.0.1:1587;
+    }
 
     server {
         # Both, on a host with an AAAA record. A stream block takes no IPv6
@@ -228,6 +242,21 @@ stream {
         # to 10 minutes here, which silently drops every client sitting on
         # IDLE — the mail arrives and nobody is told.
         proxy_timeout 35m;
+    }
+
+    # Outgoing, so the client can reply. 465 is implicit TLS, the same as 993:
+    # this listener offers no STARTTLS, so a client told to use it on 587 would
+    # send the token in the clear believing otherwise.
+    server {
+        listen 465 ssl;
+        listen [::]:465 ssl;
+
+        ssl_certificate     /etc/letsencrypt/live/your-domain.com/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/your-domain.com/privkey.pem;
+        ssl_protocols       TLSv1.2 TLSv1.3;
+
+        proxy_pass    mu_submission;
+        proxy_timeout 5m;
     }
 }
 ```
@@ -605,6 +634,7 @@ that.
 | `MAIL_DOMAIN` | — | The domain you send and receive as |
 | `MAIL_PORT` | `2525` | SMTP listener — `25` in production, `off` to have none |
 | `IMAP_PORT` | `1143` | IMAP listener — `143` in production, `off` to have none. See [Reading your mail in a mail client](#reading-your-mail-in-a-mail-client) |
+| `SUBMISSION_PORT` | `1587` | SMTP submission, so a mail client can send — `587` in production, `off` to have none |
 | `MAIL_SELECTOR` | `default` | DKIM selector, the `<selector>._domainkey` DNS record |
 | `DKIM_PRIVATE_KEY` | — | DKIM signing key |
 | `SMTP_RELAY_HOST` | — | Hand outbound mail to a submission server instead of delivering it to the recipient's MX. `host` or `host:port`, 587 assumed. See [Outbound deliverability](#outbound-deliverability) |

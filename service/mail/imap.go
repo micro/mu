@@ -50,7 +50,6 @@ import (
 	"time"
 
 	"mu/internal/app"
-	"mu/internal/auth"
 )
 
 // imapIdleTick is how often an idling connection looks for new mail.
@@ -294,39 +293,16 @@ func (s *imapSession) signIn(tag, user, pass string) {
 		s.no(tag, "a username and an access token are needed")
 		return
 	}
-	local := user
-	if i := strings.Index(local, "@"); i > 0 {
-		local = local[:i]
-	}
-	// A plus address is still the same account. Somebody typing
-	// asim+research@ into a mail client means their own mailbox, and refusing
-	// it would be refusing the address the product told them to use.
-	local, _ = SplitAlias(local)
-
-	accountID, err := auth.ValidatePAT(pass)
-	if err != nil || accountID == "" {
-		// One message for both halves. Which of the two was wrong is
-		// information about somebody else's account.
+	// Shared with submission, so the two protocols cannot answer the same
+	// question differently — see credentials.go, which is where they did.
+	acc, err := accountForToken(user, pass)
+	if err != nil {
 		app.Log("mail", "IMAP sign-in refused for %q", user)
-		s.no(tag, "that username or token was not accepted")
-		return
-	}
-	// Against the ID, which is the username. Name is a display name — free
-	// text, not unique, not validated, and whatever the Google profile said at
-	// sign-in — so it is not what a mail address's local part is, and this
-	// compared against it. Anybody whose display name differed from their
-	// username, which is everybody who signed in with Google, was refused IMAP
-	// with a message saying their token was wrong. See auth.AccountByUsername,
-	// where the same mistake is written up: a display name must never resolve
-	// an identifier.
-	acc, err := auth.GetAccount(accountID)
-	if err != nil || acc == nil || !strings.EqualFold(acc.ID, local) {
-		app.Log("mail", "IMAP sign-in refused for %q", user)
-		s.no(tag, "that username or token was not accepted")
+		s.no(tag, err.Error())
 		return
 	}
 
-	s.account, s.name = accountID, acc.ID
+	s.account, s.name = acc.ID, acc.ID
 	app.Log("mail", "IMAP: %s signed in", acc.ID)
 	s.send(tag + " OK [CAPABILITY " + imapCapability(true) + "] signed in")
 }

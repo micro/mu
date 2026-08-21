@@ -437,6 +437,10 @@ func serve(addr string) {
 	// client somebody already has open. See service/mail/imap.go.
 	mail.StartIMAPServerIfEnabled()
 
+	// And submission, so that client can reply. IMAP on its own is a mailbox
+	// you can read and not answer, which is half an address.
+	mail.StartSubmissionServerIfEnabled()
+
 	// Log initial memory usage
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)

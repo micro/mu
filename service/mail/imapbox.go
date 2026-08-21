@@ -409,19 +409,44 @@ func imapLooksHTML(s string) bool {
 // imapEnvelope is the ENVELOPE a client asks for when it wants a list without
 // downloading the mail: date, subject, and the addresses.
 func imapEnvelope(m *Message) string {
-	addr := func(a string) string {
-		a = strings.TrimSpace(a)
-		if a == "" {
+	// name is a display name, addr is an address, and the two fields on a
+	// Message do not divide that way — From is whatever the sender called
+	// themselves and FromID is where the message actually came from. This took
+	// From alone and treated it as an address, which is true for mail that
+	// arrived over SMTP with no display name on it and false for everything
+	// delivered locally: the agent's own replies are filed as From "Mu",
+	// FromID "agent@…", so every one of them reached a mail client with an
+	// address of "Mu" and no domain — which a client draws as a blank sender.
+	addr := func(name, address string) string {
+		address = strings.TrimSpace(address)
+		name = strings.TrimSpace(name)
+		if address == "" {
+			// Nothing better to offer: use the name as the address, which is
+			// what a bare SMTP sender looks like anyway.
+			address, name = name, ""
+		}
+		if address == "" {
 			return "NIL"
 		}
-		name, mailbox, host := "NIL", a, "NIL"
-		if i := strings.LastIndex(a, "@"); i > 0 {
-			mailbox, host = a[:i], imapQuoted(a[i+1:])
+		// A local sender is an account id rather than an address. It is one
+		// here, and this is the only place that knows the domain to finish it
+		// with.
+		if !strings.Contains(address, "@") {
+			address = EmailForUser(address, ConfiguredDomain())
 		}
-		return "((" + name + " NIL " + imapQuoted(mailbox) + " " + host + "))"
+		mailbox, host := address, "NIL"
+		if i := strings.LastIndex(address, "@"); i > 0 {
+			mailbox, host = address[:i], imapQuoted(address[i+1:])
+		}
+		// A display name that is just the address again is not a display name.
+		display := "NIL"
+		if name != "" && !strings.EqualFold(name, address) {
+			display = imapQuoted(name)
+		}
+		return "((" + display + " NIL " + imapQuoted(mailbox) + " " + host + "))"
 	}
-	from := addr(m.From)
-	to := addr(m.To)
+	from := addr(m.From, m.FromID)
+	to := addr("", m.To)
 	return "(" + imapQuoted(m.CreatedAt.Format(time.RFC1123Z)) + " " +
 		imapQuoted(m.Subject) + " " + from + " " + from + " " + from + " " +
 		to + " NIL NIL " + imapQuoted(m.ReplyTo) + " " + imapQuoted(m.MessageID) + ")"
