@@ -55,16 +55,13 @@ type Message struct {
 }
 
 // addMessage adds a message to the feed (prepend, dedup, cap, save)
-// addMessage stores a message and reports whether it was new. The dedupe is by
-// id, so a story reaching two sources is one message — and callers that
-// announce it need to know which of the two happened.
-func addMessage(p *Message) bool {
+func addMessage(p *Message) {
 	mutex.Lock()
 	// Dedup by ID
 	for _, existing := range messages {
 		if existing.ID == p.ID {
 			mutex.Unlock()
-			return false
+			return
 		}
 	}
 	messages = append([]*Message{p}, messages...)
@@ -78,7 +75,6 @@ func addMessage(p *Message) bool {
 	save()
 
 	event.Publish(event.Event{Type: "social_updated"})
-	return true
 }
 
 func Load() {
@@ -139,16 +135,27 @@ func SurfaceBreaking(category, title, link string) {
 	}
 	id := fmt.Sprintf("%x", md5.Sum([]byte("breaking:"+key)))[:16]
 
-	if addMessage(&Message{
+	addMessage(&Message{
 		ID:       id,
 		Author:   category,
 		AuthorID: "_system",
 		Content:  content,
 		PostedAt: time.Now(),
-	}) {
-		event.Announce("social", category+": "+title, link, "")
-	}
+	})
 }
+
+// Nothing is announced from here, and it is worth saying why rather than
+// leaving the absence to be read as an oversight.
+//
+// service/stream showed each surfaced story for about a day. The detector in
+// agent/social compares every recent article against every other and surfaces
+// any pair sharing two keywords, so a run produces stories by the dozen — and
+// the timeline stopped being what has been happening here and became a second
+// copy of this feed, which already has a page and a card.
+//
+// The rule it broke is the one news follows: a service that publishes a feed
+// announces at most the top of it, once, and only when it changes. Breaking
+// stories are news by another name, and news is already announcing.
 
 func save() error {
 	mutex.RLock()

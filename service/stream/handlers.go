@@ -99,26 +99,36 @@ func source(name string) (label, icon, page string) {
 func renderEntry(e *Entry) string {
 	label, icon, page := source(e.Service)
 
-	avatar := `<div class="avatar">•</div>`
+	var b strings.Builder
+	b.WriteString(`<div class="stream-row">`)
+
 	if icon != "" {
-		avatar = `<div class="avatar"><img src="/` + htmlpkg.EscapeString(icon) + `?` + app.Version + `" alt=""></div>`
+		b.WriteString(`<img class="stream-icon" src="/` + htmlpkg.EscapeString(icon) +
+			`?` + app.Version + `" alt="">`)
+	} else {
+		b.WriteString(`<span class="stream-icon"></span>`)
 	}
 
-	src := htmlpkg.EscapeString(label)
-	if page != "" {
-		src = `<a href="` + htmlpkg.EscapeString(page) + `">` + src + `</a>`
-	}
+	b.WriteString(`<div class="stream-body">`)
 
 	text := htmlpkg.EscapeString(e.Text)
 	if e.URL != "" {
-		text = `<a href="` + htmlpkg.EscapeString(e.URL) + `">` + text + `</a>`
+		text = `<a class="stream-link" href="` + htmlpkg.EscapeString(e.URL) + `">` + text + `</a>`
 	}
+	b.WriteString(`<div class="stream-text">` + text + `</div>`)
 
-	return fmt.Sprintf(`<div class="d-flex gap-2 row-pad">%s
-<div class="grow min-w-0">
-<div class="baseline-row gap-1"><span class="text-muted text-xs">%s</span><span class="text-faint text-2xs">%s</span></div>
-<div class="text-base">%s</div>
-</div></div>`, avatar, src, app.TimeAgo(e.At), text)
+	b.WriteString(`<div class="stream-meta">`)
+	if page != "" {
+		b.WriteString(`<a href="` + htmlpkg.EscapeString(page) + `">` +
+			htmlpkg.EscapeString(label) + `</a>`)
+	} else {
+		b.WriteString(htmlpkg.EscapeString(label))
+	}
+	b.WriteString(`<span>` + app.TimeAgo(e.At) + `</span>`)
+	b.WriteString(`</div>`)
+
+	b.WriteString(`</div></div>`)
+	return b.String()
 }
 
 const script = `<script>

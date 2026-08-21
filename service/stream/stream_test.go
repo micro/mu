@@ -83,3 +83,55 @@ func TestAnUnknownServiceStillNamesItself(t *testing.T) {
 		t.Errorf("rendered entry does not name its source:\n%s", out)
 	}
 }
+
+// A restart must not repeat what is already there.
+//
+// news and video each announce the top of their feed and remember what they
+// last said in a package variable, which is empty again after a restart — so a
+// redeploy re-announced the current headline and the current video. Five
+// restarts in an afternoon put five identical rows on the timeline, which is
+// how this was found.
+func TestAnEntryAlreadyOnTheTimelineIsNotAddedTwice(t *testing.T) {
+	reset(t)
+
+	add(&Entry{Service: "news", Text: "A headline", URL: "https://example.test/a"})
+	add(&Entry{Service: "news", Text: "A headline", URL: "https://example.test/a"})
+	if got := Recent(10, ""); len(got) != 1 {
+		t.Fatalf("the same story is on the timeline %d times", len(got))
+	}
+
+	// The link identifies the story, so the same one retitled is still the same
+	// one — a feed that rewrites a headline in place must not produce a row per
+	// rewrite.
+	add(&Entry{Service: "news", Text: "A headline, updated", URL: "https://example.test/a"})
+	if got := Recent(10, ""); len(got) != 1 {
+		t.Fatalf("a retitled story was added again: %d rows", len(got))
+	}
+
+	// A different story is a different row.
+	add(&Entry{Service: "news", Text: "Another", URL: "https://example.test/b"})
+	if got := Recent(10, ""); len(got) != 2 {
+		t.Fatalf("a new story did not reach the timeline: %d rows", len(got))
+	}
+
+	// And the same text from a different service is not the same fact.
+	add(&Entry{Service: "video", Text: "A headline", URL: "https://example.test/a"})
+	if got := Recent(10, ""); len(got) != 3 {
+		t.Fatalf("two services announcing one link collapsed into %d rows", len(got))
+	}
+}
+
+// Two accounts are two people. A personal entry has no link, so it keys on its
+// text — and "Generated an image: a cat" from two accounts is two facts.
+func TestTheSameTextForTwoAccountsIsTwoEntries(t *testing.T) {
+	reset(t)
+	add(&Entry{Service: "images", Text: "Generated an image: a cat", Account: "alice"})
+	add(&Entry{Service: "images", Text: "Generated an image: a cat", Account: "bob"})
+
+	if got := Recent(10, "alice"); len(got) != 1 {
+		t.Fatalf("alice sees %d, want her own", len(got))
+	}
+	if got := Recent(10, "bob"); len(got) != 1 {
+		t.Fatalf("bob's entry was dropped as a repeat of alice's")
+	}
+}

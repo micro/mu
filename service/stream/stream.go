@@ -127,8 +127,19 @@ func fromEvent(data map[string]any) *Entry {
 }
 
 // add appends an entry, newest first, and trims to MaxEntries.
+//
+// A repeat is dropped. news and video each announce the top of their feed and
+// remember what they last said in a package variable, which is empty again
+// after a restart — so a redeploy re-announced the current headline and the
+// current video, and five restarts in an afternoon put five identical rows on
+// the timeline. Guarding it here rather than in each announcer is the same
+// choice as everywhere else in this package: whoever announces a fact should
+// not have to know how the timeline is kept.
 func add(e *Entry) {
 	if e == nil || e.Service == "" || e.Text == "" {
+		return
+	}
+	if repeat(e) {
 		return
 	}
 	if len(e.Text) > MaxTextLength {
@@ -148,6 +159,31 @@ func add(e *Entry) {
 	}
 	save()
 	mu.Unlock()
+}
+
+// repeat reports whether the timeline already carries this entry.
+//
+// Keyed on the service and the link, because the link is what identifies a
+// story; on the text when there is no link, which is what a personal entry has.
+// The whole tail is searched rather than the last few: a headline that stays
+// top of the feed all day would otherwise come back every time something else
+// pushed it down the list.
+func repeat(e *Entry) bool {
+	key := e.URL
+	if key == "" {
+		key = e.Text
+	}
+	mu.RLock()
+	defer mu.RUnlock()
+	for _, x := range entries {
+		if x.Service != e.Service || x.Account != e.Account {
+			continue
+		}
+		if x.URL == key || (x.URL == "" && x.Text == key) {
+			return true
+		}
+	}
+	return false
 }
 
 // save writes the timeline. Callers hold mu.
