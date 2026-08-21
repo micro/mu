@@ -183,7 +183,7 @@ var (
 // it — no page, no setting, no command — so "add a domain" meant knowing that
 // file existed, finding it under ~/.mu/data, hand-editing JSON and restarting.
 // That is not a policy an operator can hold. A setting is live-reloadable and
-// appears at /admin/env beside everything else.
+// appears at /admin/config beside everything else.
 //
 // The file still works: both are consulted, so an instance that already had one
 // keeps it.

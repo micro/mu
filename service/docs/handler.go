@@ -164,7 +164,7 @@ func editor(r *http.Request, d *Doc) string {
 <input type="hidden" name="id" value="` + html.EscapeString(d.ID) + `">
 <input type="hidden" name="csrf_token" value="` + html.EscapeString(auth.CSRFToken(r)) + `">
 <input class="doc-title-input" type="text" name="title" value="` + html.EscapeString(d.Title) + `" placeholder="Title" autocomplete="off" autofocus>
-<textarea class="doc-body" name="content" rows="24" placeholder="Write. Markdown works.">` + html.EscapeString(d.Content) + `</textarea>
+<textarea class="doc-body" name="content" rows="32" placeholder="Write. Markdown works.">` + html.EscapeString(d.Content) + `</textarea>
 <div class="doc-actions">
 <label class="doc-public"><input type="checkbox" name="public"` + checked + `> Anyone with the link can read it</label>
 <button type="submit">Save</button>
@@ -177,10 +177,14 @@ func notice(msg string) string {
 }
 
 const pageCSS = `<style>
-.doc-head{display:flex;align-items:center;gap:12px;margin:0 0 16px;flex-wrap:wrap}
-.doc-search{display:flex;gap:8px;flex:1;min-width:220px}
+/* A column, so New document sits on its own line under the search rather than
+   at the far end of it. margin-left:auto pushed it to the right edge, which on
+   a wide screen put the one action on the page as far from the reading column
+   as it could be, and on a narrow one wrapped it anyway. */
+.doc-head{display:flex;flex-direction:column;align-items:flex-start;gap:12px;margin:0 0 16px}
+.doc-search{display:flex;gap:8px;width:100%}
 .doc-search input{flex:1;min-width:0}
-.doc-new{margin-left:auto;font-size:14px;padding:6px 14px;border:1px solid #ccc;border-radius:6px;color:#111;text-decoration:none;white-space:nowrap}
+.doc-new{font-size:14px;padding:6px 14px;border:1px solid #ccc;border-radius:6px;color:#111;text-decoration:none;white-space:nowrap}
 .doc-back{font-size:14px;color:#888;text-decoration:none}
 .doc-list{border:1px solid #eee;border-radius:8px;overflow:hidden}
 .doc-row{display:flex;align-items:baseline;gap:10px;padding:12px 14px;border-bottom:1px solid #f4f4f4;text-decoration:none;color:inherit}
@@ -194,9 +198,13 @@ const pageCSS = `<style>
 .doc-meta{font-size:12px;color:#888;display:flex;align-items:center;gap:10px;margin:10px 2px 0}
 .doc-meta form{display:inline;margin:0}
 .doc-delete{background:none;border:none;color:#c00;font-size:12px;padding:0;cursor:pointer}
-.doc-editor{display:flex;flex-direction:column;gap:10px}
+/* A page, roughly. 794px is 210mm at 96dpi, so the column is A4's width and
+   the text wraps where it would on paper; the height is the viewport rather
+   than A4's 1123px, because a box taller than the screen is scrolled twice —
+   once inside the textarea and once in the page around it. */
+.doc-editor{display:flex;flex-direction:column;gap:10px;max-width:794px}
 .doc-title-input{font-size:1.15rem;font-weight:600;border:none;border-bottom:1px solid #eee;padding:6px 0;outline:none}
-.doc-body{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;line-height:1.6;border:1px solid #eee;border-radius:6px;padding:12px;resize:vertical}
+.doc-body{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;line-height:1.7;border:1px solid #eee;border-radius:6px;padding:24px 28px;resize:vertical;min-height:70vh}
 .doc-actions{display:flex;align-items:center;gap:12px}
 .doc-public{font-size:13px;color:#888;display:flex;align-items:center;gap:6px}
 .doc-actions button{margin-left:auto}

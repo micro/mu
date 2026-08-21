@@ -42,7 +42,7 @@ func adminRequest(t *testing.T, path string) *httptest.ResponseRecorder {
 	req := httptest.NewRequest("GET", path, nil)
 	req.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
 	w := httptest.NewRecorder()
-	EnvHandler(w, req)
+	ConfigHandler(w, req)
 	if w.Code != http.StatusOK {
 		t.Fatalf("the settings page answered %d", w.Code)
 	}
@@ -55,7 +55,7 @@ func TestAValueSetHereIsShown(t *testing.T) {
 	settings.Set("MAIL_DOMAIN", "shown.example.com")
 	t.Cleanup(func() { settings.Set("MAIL_DOMAIN", old) })
 
-	body := adminRequest(t, "/admin/env").Body.String()
+	body := adminRequest(t, "/admin/config").Body.String()
 	if !strings.Contains(body, "shown.example.com") {
 		t.Error("a setting saved here is not shown on the page that saved it, so " +
 			"there is no way to find out what this instance is configured with")
@@ -71,7 +71,7 @@ func TestAValueSetHereIsShown(t *testing.T) {
 func TestAnEnvironmentValueCannotBeEditedHere(t *testing.T) {
 	t.Setenv("MU_DOMAIN", "fixed.example.com")
 
-	body := adminRequest(t, "/admin/env").Body.String()
+	body := adminRequest(t, "/admin/config").Body.String()
 	if !strings.Contains(body, "fixed.example.com") {
 		t.Fatal("a value from the environment is not shown at all")
 	}
@@ -104,7 +104,7 @@ func TestSavingDoesNotOverwriteWhatTheEnvironmentFixed(t *testing.T) {
 	stored := settings.All()["MU_DOMAIN"]
 	t.Cleanup(func() { settings.Set("MU_DOMAIN", stored) })
 
-	req := httptest.NewRequest("POST", "/admin/env",
+	req := httptest.NewRequest("POST", "/admin/config",
 		strings.NewReader("MU_DOMAIN=sneaky.example.com"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	const id = "settings-admin-post"
@@ -121,7 +121,7 @@ func TestSavingDoesNotOverwriteWhatTheEnvironmentFixed(t *testing.T) {
 	t.Cleanup(func() { auth.EndSession(sess.Token) })
 	req.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
 
-	EnvHandler(httptest.NewRecorder(), req)
+	ConfigHandler(httptest.NewRecorder(), req)
 
 	if got := settings.All()["MU_DOMAIN"]; got == "sneaky.example.com" {
 		t.Error("a POST stored a value for a setting the environment fixes — it will " +
@@ -137,7 +137,7 @@ func TestASecretIsNotPrintedInFull(t *testing.T) {
 	settings.Set("STRIPE_SECRET_KEY", key)
 	t.Cleanup(func() { settings.Set("STRIPE_SECRET_KEY", old) })
 
-	body := adminRequest(t, "/admin/env").Body.String()
+	body := adminRequest(t, "/admin/config").Body.String()
 	if strings.Contains(body, key) {
 		t.Error("a secret is printed in full on a page somebody may be sharing")
 	}
@@ -158,7 +158,7 @@ func TestASecretCanBeRevealedDeliberately(t *testing.T) {
 	settings.Set("STRIPE_SECRET_KEY", key)
 	t.Cleanup(func() { settings.Set("STRIPE_SECRET_KEY", old) })
 
-	body := adminRequest(t, "/admin/env?reveal=STRIPE_SECRET_KEY").Body.String()
+	body := adminRequest(t, "/admin/config?reveal=STRIPE_SECRET_KEY").Body.String()
 	if !strings.Contains(body, key) {
 		t.Error("asking to see a secret does not show it, so the only way to check " +
 			"which key is configured is to read the disk")
@@ -169,7 +169,7 @@ func TestASecretCanBeRevealedDeliberately(t *testing.T) {
 // is asked about the whole instance and a per-row badge answers it one row at a
 // time.
 func TestThePageSaysHowManyComeFromWhere(t *testing.T) {
-	body := adminRequest(t, "/admin/env").Body.String()
+	body := adminRequest(t, "/admin/config").Body.String()
 	for _, want := range []string{"from the environment", "saved here", "not set"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the page does not summarise %q", want)

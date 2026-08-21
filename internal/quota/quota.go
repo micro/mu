@@ -161,7 +161,7 @@ func CheckQuota(userID string, operation string) (bool, bool, int, error) {
 	// is visible in /usage, not that it is invisible.
 	//
 	// This used to be got by making the agent an admin, which is exempt for its
-	// own reasons. That granted /admin/env, the console and the power to ban, to
+	// own reasons. That granted /admin/config, the console and the power to ban, to
 	// avoid a balance check. Only an admin can set the flag (see /admin/users),
 	// so it is the operator deciding what the instance pays for on its own
 	// behalf, not a caller declaring itself free.

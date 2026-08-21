@@ -53,7 +53,7 @@ can self-host: the name should belong to whoever runs the instance.
 
 Ownership is proved either way round, and Mu serves the easier one.
 
-**By file (no DNS access needed).** Set `MCP_REGISTRY_PROOF` — at `/admin/env`
+**By file (no DNS access needed).** Set `MCP_REGISTRY_PROOF` — at `/admin/config`
 under Platform, or in the environment — and Mu serves it at
 `/.well-known/mcp-registry-auth`. Unset, that path 404s, which is how to tell
 whether it has been configured:

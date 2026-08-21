@@ -128,12 +128,12 @@ func searchBraveCachedWithTTL(query string, limit int, ttl time.Duration) ([]Bra
 // ErrNotConfigured means this instance has no web search provider, which is a
 // different thing from web search failing — and the difference matters to
 // whoever has to fix it. "Unavailable right now" reads as an outage and sends a
-// self-hoster looking for a bug; the answer is a Brave key in /admin/env.
+// self-hoster looking for a bug; the answer is a Brave key in /admin/config.
 var ErrNotConfigured = errors.New("no web search provider configured on this instance")
 
 // searchBrave calls the Brave Search API and returns up to limit results.
 func searchBrave(query string, limit int) ([]BraveResult, error) {
-	// settings, not os.Getenv: a key set from /admin/env is stored, not exported
+	// settings, not os.Getenv: a key set from /admin/config is stored, not exported
 	// into the process, so a self-hoster who configured web search in the
 	// browser still got "not set" here.
 	apiKey := settings.Get("BRAVE_API_KEY")

@@ -47,7 +47,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	if !Configured() {
 		b.WriteString(`<div class="card"><h3>Not set up</h3>` +
 			`<p class="text-sm text-muted">This instance cannot send or receive texts yet. ` +
-			`An operator sets these at <a href="/admin/env">/admin/env</a>:</p><ul class="text-sm">`)
+			`An operator sets these at <a href="/admin/config">/admin/config</a>:</p><ul class="text-sm">`)
 		for _, m := range Missing() {
 			b.WriteString(`<li><code>` + html.EscapeString(m) + `</code></li>`)
 		}

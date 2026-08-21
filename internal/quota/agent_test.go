@@ -11,7 +11,7 @@ import (
 //
 // The agent needs not to be *charged* — a billing property. It was got by
 // granting admin, which is exempt for entirely different reasons and carries
-// /admin/env, the console and the power to ban. Same outcome, wildly different
+// /admin/config, the console and the power to ban. Same outcome, wildly different
 // authority.
 func TestAnAgentAccountIsRecordedNotCharged(t *testing.T) {
 	if err := LoadFromTree(); err != nil {

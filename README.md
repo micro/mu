@@ -91,7 +91,7 @@ mu --serve
 ```
 
 Everything else — mail and DKIM, Google sign-in, Stripe, x402 — is optional,
-and configurable from `/admin/env` once you are signed in as admin.
+and configurable from `/admin/config` once you are signed in as admin.
 
 Other ways to run it:
 

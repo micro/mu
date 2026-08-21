@@ -120,7 +120,7 @@ func offBox() string {
 			`<p class="card-desc">Not configured. Everything above is on the same ` +
 			`disk as the data it protects, so none of it survives losing this ` +
 			`machine. Set <code>S3_BUCKET</code> and the keys beside it in ` +
-			`<a href="/admin/env">Environment</a>, then <code>BACKUP_S3</code>, ` +
+			`<a href="/admin/config">Environment</a>, then <code>BACKUP_S3</code>, ` +
 			`and an archive goes out daily — the data, the search index, and the ` +
 			`encryption keys, because a restore without them is an inbox nobody ` +
 			`can read.</p>` + endpointNote() + `</div>`

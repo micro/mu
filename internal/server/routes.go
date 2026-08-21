@@ -137,6 +137,7 @@ func authRequired() map[string]bool {
 		"/admin/email":       true,
 		"/admin/api":         true,
 		"/admin/log":         true,
+		"/admin/config":      true,
 		"/admin/env":         true,
 		"/admin/server":      true,
 		"/admin/usage":       true,
@@ -257,7 +258,14 @@ func registerRoutes() {
 	http.HandleFunc("/admin/log", admin.SysLogHandler)
 
 	// environment variables status
-	http.HandleFunc("/admin/env", admin.EnvHandler)
+	http.HandleFunc("/admin/config", admin.ConfigHandler)
+	// It was /admin/env. An operator has it bookmarked and every instance
+	// already deployed links to it from its own pages, so the old path still
+	// answers rather than 404ing on the one page you go to when something is
+	// misconfigured.
+	http.HandleFunc("/admin/env", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/admin/config", http.StatusMovedPermanently)
+	})
 
 	// server update and restart
 	http.HandleFunc("/admin/server", admin.UpdateHandler)

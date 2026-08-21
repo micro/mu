@@ -24,7 +24,7 @@ Built on go-micro: every capability is a go-micro service, the assistant is a go
 - **Channels** — Mail (`client/mail/`). There were three more — Discord, Telegram and a Meta WhatsApp bot — and they are deleted: 2,100 lines and three third-party APIs carrying no traffic, against `agent.Ask` at 362. A client is meant to be a thin translation and Discord had grown its own identity store, its own usage tracking and a model call of its own
 - **Protocols** — MCP server at `/mcp`, an agent endpoint at `POST /agent/<name>`, REST at `/api/v1/`, x402 crypto payments. There was an A2A door at `/a2a`; it ran a generic account-less orchestration that was nobody's agent, so it was deleted rather than reconciled with the other three. Everything upstream of the mux that a tool door needs — wallet signature, auth challenge, payment gate — asks `api.ToolDispatch(path)` rather than naming a path, because a second door otherwise starts out unpriced
 - **AI** — `internal/ai/` supports Anthropic Claude, Atlas Cloud (DeepSeek), OpenRouter, and local models (Ollama)
-- **Config** — `internal/settings/` for live-reloadable settings, admin UI at `/admin/env`
+- **Config** — `internal/settings/` for live-reloadable settings, admin UI at `/admin/config`
 
 ## Key Packages
 

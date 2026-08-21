@@ -26,7 +26,7 @@ func withAccounts(t *testing.T, seed map[string]*Account) {
 //
 // Account creation bootstraps the first account on an empty instance as admin,
 // so creating Micro at boot on a fresh install would hand the instance to the
-// agent and leave the person who runs it locked out of /admin/env.
+// agent and leave the person who runs it locked out of /admin/config.
 func TestMicroWaitsForAHuman(t *testing.T) {
 	withAccounts(t, map[string]*Account{})
 
@@ -38,7 +38,7 @@ func TestMicroWaitsForAHuman(t *testing.T) {
 }
 
 // TestMicroIsAnAgentAndNotAnAdmin — it was an admin, briefly, to get the
-// billing exemption that admins happen to carry. That granted /admin/env, the
+// billing exemption that admins happen to carry. That granted /admin/config, the
 // console and the power to ban, to avoid a balance check. The exemption is now
 // its own rule in internal/quota and this account has no more privilege than it
 // needs.
@@ -53,7 +53,7 @@ func TestMicroIsAnAgentAndNotAnAdmin(t *testing.T) {
 		t.Fatalf("Micro was not created once a human admin existed: %v", err)
 	}
 	if acc.Admin {
-		t.Error("Micro is an admin — that is /admin/env, the console and the " +
+		t.Error("Micro is an admin — that is /admin/config, the console and the " +
 			"power to ban, granted to a program to avoid a balance check")
 	}
 	if !acc.Agent {

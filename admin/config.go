@@ -197,7 +197,7 @@ func hint(v string) string {
 	return v[:4] + "…" + v[len(v)-4:]
 }
 
-// EnvHandler is /admin/env: what this instance is configured with, where each
+// ConfigHandler is /admin/config: what this instance is configured with, where each
 // value came from, and which of them this page can change.
 //
 // It used to answer none of those. Every value that was set at all rendered as
@@ -212,7 +212,7 @@ func hint(v string) string {
 // there and pressing Save stored something that would never be read — and the
 // page said "Settings saved". The environment is now shown as what it is: in
 // force here, changeable where it was set.
-func EnvHandler(w http.ResponseWriter, r *http.Request) {
+func ConfigHandler(w http.ResponseWriter, r *http.Request) {
 	_, _, err := auth.RequireAdmin(r)
 	if err != nil {
 		app.Forbidden(w, r, "Admin access required")
@@ -243,7 +243,7 @@ func EnvHandler(w http.ResponseWriter, r *http.Request) {
 				settings.Set(key, val)
 			}
 		}
-		http.Redirect(w, r, "/admin/env?saved=1", http.StatusSeeOther)
+		http.Redirect(w, r, "/admin/config?saved=1", http.StatusSeeOther)
 		return
 	}
 
@@ -280,7 +280,7 @@ func EnvHandler(w http.ResponseWriter, r *http.Request) {
 		`box is locked, because saving over it would store something nothing reads.</p>`)
 	b.WriteString(`</div>`)
 
-	b.WriteString(`<form method="POST" action="/admin/env">`)
+	b.WriteString(`<form method="POST" action="/admin/config">`)
 
 	for _, group := range settingGroups {
 		b.WriteString(`<div class="card">`)
@@ -309,10 +309,10 @@ func EnvHandler(w http.ResponseWriter, r *http.Request) {
 			// Revealing is a round trip rather than a script, so a secret is not
 			// sitting in the page source of every visit waiting to be read.
 			if isSecret && val != "" && !shown {
-				b.WriteString(` <a href="/admin/env?reveal=` + url.QueryEscape(key) +
+				b.WriteString(` <a href="/admin/config?reveal=` + url.QueryEscape(key) +
 					`" class="text-2xs text-muted">show</a>`)
 			} else if isSecret && shown {
-				b.WriteString(` <a href="/admin/env" class="text-2xs text-muted">hide</a>`)
+				b.WriteString(` <a href="/admin/config" class="text-2xs text-muted">hide</a>`)
 			}
 			b.WriteString(`</label>`)
 

@@ -40,7 +40,7 @@ const mcpTransport = "streamable-http"
 // instance behind a company firewall should not start publishing its tool
 // catalogue because it upgraded.
 //
-// Read through settings, not os.Getenv, so /admin/env can set it and it takes
+// Read through settings, not os.Getenv, so /admin/config can set it and it takes
 // effect without a restart. It was
 // os.Getenv first, which made it the one payment setting an operator could not
 // reach from the page where every other payment setting lives, and turning it

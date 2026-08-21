@@ -26,7 +26,7 @@ func TestOrdinaryValuesAreNotMasked(t *testing.T) {
 func TestTheChainSettingsAreReachable(t *testing.T) {
 	for _, k := range []string{"BASE_RPC_URL", "TRADE_RPC_URL"} {
 		if !Settable(k) {
-			t.Errorf("%s cannot be set from /admin/env, so pointing this instance at "+
+			t.Errorf("%s cannot be set from /admin/config, so pointing this instance at "+
 				"the right chain needs shell access", k)
 		}
 	}

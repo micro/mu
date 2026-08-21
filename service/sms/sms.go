@@ -380,7 +380,7 @@ func DailyLimit() int {
 // limitSetting reads a cap, and unlike app.EnvInt it believes a zero.
 //
 // EnvInt treats 0 as "not set" and hands back the default, which is right for
-// a size and wrong for a limit: an operator typing zero into /admin/env to stop
+// a size and wrong for a limit: an operator typing zero into /admin/config to stop
 // the texts would have been told twenty.
 func limitSetting(key string, def int) int {
 	v := strings.TrimSpace(settings.Get(key))

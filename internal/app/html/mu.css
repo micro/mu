@@ -4639,9 +4639,10 @@ a.btn-secondary:hover, .btn-secondary:hover {
   max-width: 110px;
 }
 
+/* Wider than the text box it replaced, because a select spends part of its
+   width on the arrow and 80px cropped five-letter codes behind it. */
 .fx-code {
-  max-width: 80px;
-  text-transform: uppercase;
+  max-width: 110px;
 }
 
 .fx-date {

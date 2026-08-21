@@ -33,7 +33,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		<a href="/admin/backup">Backup</a>
 		<a href="/admin/blocklist">Blocklist</a>
 		<a href="/admin/console">Console</a>
-		<a href="/admin/env">Environment</a>
+		<a href="/admin/config">Configuration</a>
 		<a href="/admin/invite">Invites</a>
 		<a href="/admin/email">Mail Log</a>
 		<a href="/admin/oauth">OAuth Clients</a>

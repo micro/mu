@@ -16,6 +16,49 @@ import (
 	"strings"
 )
 
+// convertibleFor is what the From box should offer on this tab.
+//
+// The tab's own tickers where they can be converted, and currencies otherwise.
+// Only fiat and crypto have a unit price in USD — see unitInUSD — so a dropdown
+// built blindly from getAssetsForCategory would fill the stocks tab with eleven
+// options that all answer "we do not price AAPL against anything", which is
+// worse than the text box it replaced. Currencies are always appended, because
+// converting a thing into money is the question people actually have.
+func convertibleFor(category string) []string {
+	var out []string
+	switch category {
+	case CategoryCrypto, "":
+		out = append(out, cryptoAssets...)
+	case CategoryCurrencies:
+		// Currencies alone; they are added below.
+	default:
+		// Stocks, futures, commodities: nothing on the tab converts.
+	}
+	return append(out, currencyAssets...)
+}
+
+// codeOptions renders a select, keeping whatever was chosen even when it is not
+// on the list — somebody may have typed a code into the URL, and a form that
+// silently changes what was asked for is worse than one showing an odd value.
+func codeOptions(name, label, chosen string, codes []string) string {
+	var sb strings.Builder
+	fmt.Fprintf(&sb, `<select class="fx-code" name="%s" aria-label="%s">`, name, label)
+	seen := false
+	for _, c := range codes {
+		sel := ""
+		if c == chosen {
+			sel, seen = ` selected`, true
+		}
+		fmt.Fprintf(&sb, `<option value="%s"%s>%s</option>`, html.EscapeString(c), sel, html.EscapeString(c))
+	}
+	if !seen && chosen != "" {
+		fmt.Fprintf(&sb, `<option value="%s" selected>%s</option>`,
+			html.EscapeString(chosen), html.EscapeString(chosen))
+	}
+	sb.WriteString(`</select>`)
+	return sb.String()
+}
+
 // converterHTML renders the converter, and its answer when one was asked for.
 func converterHTML(r *http.Request) string {
 	q := r.URL.Query()
@@ -26,8 +69,13 @@ func converterHTML(r *http.Request) string {
 
 	// Defaults that make the empty form look like an example rather than a
 	// puzzle: somebody who presses Convert without typing gets a real answer.
+	category := strings.TrimSpace(q.Get("category"))
+	codes := convertibleFor(category)
 	if from == "" {
-		from = "GBP"
+		// The first thing on this tab, so the form is already asking the
+		// question the tab is about. It was always GBP, which on the crypto tab
+		// offered to convert pounds while ten coins were listed above it.
+		from = codes[0]
 	}
 	if to == "" {
 		to = "USD"
@@ -39,14 +87,12 @@ func converterHTML(r *http.Request) string {
 	var sb strings.Builder
 	sb.WriteString(`<form class="fx-form" method="get" action="/markets">`)
 	fmt.Fprintf(&sb, `<input type="hidden" name="category" value="%s">`,
-		html.EscapeString(q.Get("category")))
+		html.EscapeString(category))
 	fmt.Fprintf(&sb, `<input class="fx-amount" type="text" name="amount" value="%s" aria-label="Amount">`,
 		html.EscapeString(amountStr))
-	fmt.Fprintf(&sb, `<input class="fx-code" type="text" name="from" value="%s" aria-label="From currency" maxlength="5">`,
-		html.EscapeString(from))
+	sb.WriteString(codeOptions("from", "From", from, codes))
 	sb.WriteString(`<span class="fx-in">to</span>`)
-	fmt.Fprintf(&sb, `<input class="fx-code" type="text" name="to" value="%s" aria-label="To currency" maxlength="5">`,
-		html.EscapeString(to))
+	sb.WriteString(codeOptions("to", "To", to, currencyAssets))
 	fmt.Fprintf(&sb, `<input class="fx-date" type="date" name="on" value="%s" aria-label="On this date">`,
 		html.EscapeString(date))
 	sb.WriteString(`<button class="btn" type="submit">Convert</button>`)

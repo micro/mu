@@ -1,8 +1,8 @@
 package test
 
-// A page that sends somebody to /admin/env has to be right about it.
+// A page that sends somebody to /admin/config has to be right about it.
 //
-// /sms lists what is missing and says "an operator sets these at /admin/env".
+// /sms lists what is missing and says "an operator sets these at /admin/config".
 // /whatsapp names TWILIO_WHATSAPP_FROM and does the same. Neither variable was
 // on that page — every Twilio setting was absent from it — so the instruction
 // was a dead end, and the only way to find that out was to follow it.
@@ -29,14 +29,14 @@ func TestWhatSMSAsksForCanBeSetWhereItSaysToSetIt(t *testing.T) {
 	for _, line := range sms.Missing() {
 		for _, name := range namesIn(line) {
 			if !admin.Settable(name) {
-				t.Errorf("/sms tells an operator to set %s at /admin/env, and it is not there", name)
+				t.Errorf("/sms tells an operator to set %s at /admin/config, and it is not there", name)
 			}
 		}
 	}
 }
 
 // TestEveryVariableAPageNamesIsSettable scans for a variable named in the same
-// breath as /admin/env and checks the page can actually set it.
+// breath as /admin/config and checks the page can actually set it.
 func TestEveryVariableAPageNamesIsSettable(t *testing.T) {
 	// Read by the code but deliberately not offered: a secret that must exist
 	// before the store it protects can be opened, addresses fixed at start-up,
@@ -67,7 +67,7 @@ func TestEveryVariableAPageNamesIsSettable(t *testing.T) {
 			return nil
 		}
 		for _, line := range strings.Split(string(b), "\n") {
-			if !strings.Contains(line, "/admin/env") {
+			if !strings.Contains(line, "/admin/config") {
 				continue
 			}
 			for _, m := range pattern.FindAllString(line, -1) {
@@ -80,7 +80,7 @@ func TestEveryVariableAPageNamesIsSettable(t *testing.T) {
 					continue
 				}
 				rel, _ := filepath.Rel(root, path)
-				problems = append(problems, rel+" points at /admin/env for "+m)
+				problems = append(problems, rel+" points at /admin/config for "+m)
 			}
 		}
 		return nil
@@ -119,7 +119,7 @@ func readsAsSetting(root, name string) bool {
 // as living on a page that did not offer it.
 func TestTheOperatorCanTurnTheNetworkWatcherOn(t *testing.T) {
 	if !admin.Settable("SOCIAL_ATPROTO") {
-		t.Error("watching the open network cannot be turned on from /admin/env, " +
+		t.Error("watching the open network cannot be turned on from /admin/config, " +
 			"which is where INSTALL.md says to turn it on")
 	}
 }

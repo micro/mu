@@ -1,7 +1,7 @@
 // Package setup provides the first-run configuration flow for a self-hosted
 // instance: a guided web page (and a companion `mu setup` CLI wizard) that
 // creates the admin account and selects an AI provider, so a fresh `mu --serve`
-// goes from "boots" to "works" without a treasure hunt through /admin/env.
+// goes from "boots" to "works" without a treasure hunt through /admin/config.
 package setup
 
 import (
@@ -145,7 +145,7 @@ func render(errMsg string) string {
 
     <button type="submit" class="btn w-full lead-15">Start Mu</button>
   </form>
-  <p class="text-muted text-sm mt-4 m-0">You can change any of this later at <code>/admin/env</code>. Prefer the terminal? Run <code>mu setup</code>.</p>
+  <p class="text-muted text-sm mt-4 m-0">You can change any of this later at <code>/admin/config</code>. Prefer the terminal? Run <code>mu setup</code>.</p>
 </div>`
 	return app.RenderHTML("Setup", "Set up your Mu instance", body, nil)
 }

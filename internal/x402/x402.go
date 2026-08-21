@@ -70,7 +70,7 @@ var (
 // Read live rather than fixed at init. These decide what every payer is told to
 // sign, so a wrong pair stops paid calls working — and as os.Getenv the fix was
 // an environment edit and a restart. Through settings they change from
-// /admin/env and take effect on the next request, which is the difference
+// /admin/config and take effect on the next request, which is the difference
 // between a minute of broken payments and however long a deploy takes.
 // X402_NETWORK=base + X402_VERSION=1 goes back.
 func Network() string {

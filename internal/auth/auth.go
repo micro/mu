@@ -185,7 +185,7 @@ func Create(acc *Account) error {
 	acc.Secret = string(hash)
 
 	// Admin bootstrap for self-hosting: without this a fresh instance has no
-	// admin and /admin/env is unreachable. The operator named in the ADMIN env
+	// admin and /admin/config is unreachable. The operator named in the ADMIN env
 	// var (comma-separated ids/usernames/emails) is made an admin; if ADMIN is
 	// unset, the very first account on a fresh instance becomes admin.
 	if shouldBootstrapAdmin(acc, len(accounts) == 0) {
@@ -201,7 +201,7 @@ func Create(acc *Account) error {
 // shouldBootstrapAdmin reports whether a newly created account should be granted
 // admin. ADMIN (or MU_ADMIN) explicitly lists admins; when neither is set the
 // first account on an empty instance is bootstrapped so the operator can reach
-// /admin/env. An existing admin is never demoted (this only runs at creation).
+// /admin/config. An existing admin is never demoted (this only runs at creation).
 func shouldBootstrapAdmin(acc *Account, isFirst bool) bool {
 	list := os.Getenv("ADMIN")
 	if list == "" {

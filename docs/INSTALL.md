@@ -30,7 +30,7 @@ first account — it becomes admin — and pick an AI provider.
 ## Configuration
 
 Nothing is required to start. Each key below switches on the feature next to it,
-and every one of them can also be set at `/admin/env` in the browser once you are
+and every one of them can also be set at `/admin/config` in the browser once you are
 admin, so the environment is for the things you want fixed at deploy time.
 
 ```bash
@@ -351,7 +351,7 @@ of domains:
 MAIL_WHITELIST=acme.com, partner.co.uk, supplier.example
 ```
 
-It is live — change it at `/admin/env` and the next message is judged by the new
+It is live — change it at `/admin/config` and the next message is judged by the new
 list, no restart. There is also a built-in list of common company and
 infrastructure domains. Consumer domains (`gmail.com`, `outlook.com`,
 `hotmail.com`) are deliberately **not** on it: they are where unsolicited mail
@@ -490,7 +490,7 @@ go run . --serve
 Every variable below is one the code actually reads — `TestEveryConfigVarIsDocumented`
 checks this page against every `settings.Get` and `os.Getenv` in the source, in both
 directions, so it can neither fall behind nor accumulate settings that no longer
-exist. Any of them can also be set at `/admin/env` in the browser.
+exist. Any of them can also be set at `/admin/config` in the browser.
 
 ### Core
 
@@ -498,7 +498,7 @@ exist. Any of them can also be set at `/admin/env` in the browser.
 |---|---|---|
 | `ADMIN` / `MU_ADMIN` | first account | Who is admin — comma-separated ids, usernames or emails |
 | `MU_DOMAIN` | `localhost` | Public domain. Used for the OAuth issuer an MCP client discovers, Stripe returns, ActivityPub actor URLs and mail. Set this if you run behind a proxy |
-| `MU_ENV_FILE` | `~/.env`, then `~/.mu/.env` | A dotenv file read at startup; the first that exists wins. Settings saved at `/admin/env` go to `~/.mu/data/settings.json` instead |
+| `MU_ENV_FILE` | `~/.env`, then `~/.mu/.env` | A dotenv file read at startup; the first that exists wins. Settings saved at `/admin/config` go to `~/.mu/data/settings.json` instead |
 | `MCP_REGISTRY_PROOF` | — | Domain-ownership proof served at `/.well-known/mcp-registry-auth` when publishing to the MCP registry — see the MCP registry listing notes in the repository |
 | `MU_ENCRYPTION_KEY` | — | Encrypts stored settings at rest |
 | `INVITE_ONLY` | off | Require an invite code to sign up |
@@ -701,7 +701,7 @@ token.
 | Variable | What it does |
 |---|---|
 | `X402_PAY_TO` | Your wallet address — receives x402 payments |
-| `X402_NETWORK` · `X402_VERSION` | The advertised pair. Default `eip155:8453` + `2`. CDP settles `base`+`1` too, and that pair works — but the discovery index carries only v2 entries, so a v1 server is payable and unfindable. Both are live: change them at `/admin/env` and the next request uses them |
+| `X402_NETWORK` · `X402_VERSION` | The advertised pair. Default `eip155:8453` + `2`. CDP settles `base`+`1` too, and that pair works — but the discovery index carries only v2 entries, so a v1 server is payable and unfindable. Both are live: change them at `/admin/config` and the next request uses them |
 | `X402_ASSETS` | Accepted tokens (default USDC) |
 | `TFL_APP_KEY` | Optional. Transit works with no key at all — this only raises TfL's rate limit, and one is free to register at api-portal.tfl.gov.uk |
 | `TRANSIT_FEEDS` | Optional. Published timetables to load, comma separated, named by agency or place: `reading buses, bart, vbb`. Matched against the Mobility Database catalogue, which lists about 1,160 keyless feeds. Nothing is downloaded that is not named here — a feed is tens of megabytes. Each is checked once a day and only re-fetched when it has actually changed, and a feed that fails to download or build leaves the previous one serving |

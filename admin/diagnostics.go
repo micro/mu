@@ -128,7 +128,7 @@ func checkAI() healthCheck {
 			Name:   "AI Provider",
 			Status: "error",
 			Detail: "No AI provider configured",
-			Fix:    "Set ANTHROPIC_API_KEY, ATLAS_API_KEY, OPENROUTER_API_KEY or OPENAI_BASE_URL in /admin/env, or install Ollama",
+			Fix:    "Set ANTHROPIC_API_KEY, ATLAS_API_KEY, OPENROUTER_API_KEY or OPENAI_BASE_URL in /admin/config, or install Ollama",
 		}
 	}
 
@@ -246,7 +246,7 @@ func checkMail() healthCheck {
 			Name:   "Mail",
 			Status: "warning",
 			Detail: "Not configured",
-			Fix:    "Set MAIL_DOMAIN in /admin/env",
+			Fix:    "Set MAIL_DOMAIN in /admin/config",
 		}
 	}
 

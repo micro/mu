@@ -38,7 +38,7 @@ var (
 	mu      sync.Mutex
 	current Store
 	// configured remembers the settings the current store was built from, so a
-	// change at /admin/env takes effect without a restart.
+	// change at /admin/config takes effect without a restart.
 	configured string
 )
 

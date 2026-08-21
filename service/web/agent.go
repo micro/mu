@@ -26,7 +26,7 @@ func SearchText(query string, limit int) string {
 		// coming.
 		if errors.Is(err, ErrNotConfigured) {
 			return "Web search is not configured on this instance. The operator needs to set a " +
-				"Brave Search API key — it is one field on /admin/env."
+				"Brave Search API key — it is one field on /admin/config."
 		}
 		return "Web search failed just now. Try again, or ask for something else."
 	}

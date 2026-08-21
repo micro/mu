@@ -203,11 +203,17 @@ const pageCSS = `<style>
   border-radius:8px;font-size:13px;font-weight:600;white-space:nowrap}
 .note-new:hover,.note-new:visited:hover{background:#333;color:#fff}
 .note-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+/* min-width:0 because a grid track sized 1fr will not shrink below its
+   content, so one long unbroken run — a URL, a token, a hash — widens the
+   column instead of wrapping in it. */
 .note-card{display:flex;flex-direction:column;gap:5px;padding:14px;border:1px solid var(--border-color,#e5e5e5);
-  border-radius:10px;text-decoration:none;min-height:110px}
+  border-radius:10px;text-decoration:none;min-height:110px;min-width:0}
 .note-card:hover{border-color:#bbb}
-.note-card-title{font-size:14px;font-weight:600;color:var(--text-color,#111)}
-.note-card-body{font-size:13px;color:var(--text-muted,#666);line-height:1.45;flex:1}
+/* anywhere rather than break-word: break-word only breaks a word when the line
+   has nothing else on it, which leaves a long URL sitting beside a short word
+   and still overflowing. Notes are where somebody pastes a link. */
+.note-card-title{font-size:14px;font-weight:600;color:var(--text-color,#111);overflow-wrap:anywhere}
+.note-card-body{font-size:13px;color:var(--text-muted,#666);line-height:1.45;flex:1;overflow-wrap:anywhere}
 .note-card-when{font-size:12px;color:var(--text-muted,#999)}
 .note-editor{display:flex;flex-direction:column;gap:10px}
 .note-title-in{padding:9px 12px;border:1px solid var(--border-color,#d1d5db);border-radius:8px;

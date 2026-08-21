@@ -125,7 +125,7 @@ func TestBrokenConfigurationFallsBackRatherThanFailing(t *testing.T) {
 	}
 }
 
-// Changing the setting at /admin/env takes effect without a restart.
+// Changing the setting at /admin/config takes effect without a restart.
 func TestConfigurationChangeIsPickedUp(t *testing.T) {
 	unconfigure(t)
 	if _, ok := Default().(Local); !ok {

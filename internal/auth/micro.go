@@ -17,7 +17,7 @@ package auth
 // Not an admin. It was, briefly, and that was the wrong instinct: what this
 // account needs is not to be *charged*, which is a billing property, and admin
 // was reached for because admins happen to be exempt. That trade granted
-// /admin/env — every secret on the instance — /admin/console and the power to
+// /admin/config — every secret on the instance — /admin/console and the power to
 // delete and ban, all to avoid a balance check. The exemption is now its own
 // rule in internal/quota, expressed as itself.
 //
@@ -41,7 +41,7 @@ const MicroID = "micro"
 // After a human admin exists, never before. Account creation bootstraps the
 // first account on an empty instance as admin, so creating this at boot on a
 // fresh install would hand the instance to the agent and leave the person who
-// runs it unable to reach /admin/env. On a new instance this simply does
+// runs it unable to reach /admin/config. On a new instance this simply does
 // nothing until somebody signs up, which is the correct order: an instance with
 // no people does not need an agent acting for them.
 //
