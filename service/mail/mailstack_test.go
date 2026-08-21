@@ -522,3 +522,62 @@ func allMessages() []*Message {
 	copy(out, messages)
 	return out
 }
+
+// A quoted reply does not arrive as a screen of nothing.
+//
+// Every block element becomes a newline, which is right for text and wrong for
+// how a mail client builds a message: an empty paragraph is <div><br></div>, so
+// one blank line a person left becomes two, and the wrappers Gmail puts round a
+// quoted reply turn three into nine. A two-word note read as a screenful of
+// white space with a "Hi" at the bottom of it.
+//
+// The rule is one blank line, never a run: the gap between two paragraphs is
+// something the writer meant, and everything past it is markup.
+func TestAQuotedReplyIsNotMostlyBlankLines(t *testing.T) {
+	// What Gmail sends when you reply: the answer, then the attribution line,
+	// then the quote — with empty divs for the blank lines that were there.
+	gmail := `<div dir="auto">All good</div><br>` +
+		`<div class="gmail_quote gmail_quote_container">` +
+		`<div dir="ltr" class="gmail_attr">On Fri, 21 Aug 2026, 07:12 Asim, ` +
+		`&lt;asim@micro.mu&gt; wrote:<br></div>` +
+		`<blockquote class="gmail_quote">` +
+		`<div><div><div><br></div><div><br></div><div><br></div></div></div>` +
+		`<div dir="ltr">Hi</div></blockquote></div>`
+
+	out := stripHTMLTags(gmail)
+
+	// Nothing is lost.
+	for _, want := range []string{"All good", "wrote:", "Hi"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("stripping the markup lost %q:\n%q", want, out)
+		}
+	}
+
+	// And no run of empty lines survives.
+	run, worst := 0, 0
+	for _, line := range strings.Split(out, "\n") {
+		if strings.TrimSpace(line) == "" {
+			if run++; run > worst {
+				worst = run
+			}
+			continue
+		}
+		run = 0
+	}
+	if worst > 1 {
+		t.Errorf("a quoted reply carries a run of %d blank lines, want at most 1:\n%q",
+			worst, out)
+	}
+}
+
+// A paragraph break is not markup, and survives.
+func TestAParagraphBreakSurvives(t *testing.T) {
+	out := stripHTMLTags("<p>First.</p><p>Second.</p>")
+	if !strings.Contains(out, "First.") || !strings.Contains(out, "Second.") {
+		t.Fatalf("lost a paragraph: %q", out)
+	}
+	if strings.Contains(out, "First.\nSecond.") {
+		t.Errorf("two paragraphs were run together, so the writing reads as one "+
+			"block: %q", out)
+	}
+}

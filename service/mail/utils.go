@@ -260,7 +260,13 @@ func stripHTMLTags(s string) string {
 	s = strings.ReplaceAll(s, "<br>", "\n")
 	s = strings.ReplaceAll(s, "<br/>", "\n")
 	s = strings.ReplaceAll(s, "<br />", "\n")
-	s = strings.ReplaceAll(s, "</p>", "\n")
+	// A paragraph is two newlines and a div is one. They are not the same
+	// thing: a div is how a mail client ends a line, a <p> is how somebody ends
+	// a thought — and mapping both to one newline ran every paragraph of a
+	// newsletter into the one after it. Safe to separate now that a run of
+	// blank lines is collapsed below; before, it would have doubled the
+	// white space it was trying to fix.
+	s = strings.ReplaceAll(s, "</p>", "\n\n")
 	s = strings.ReplaceAll(s, "</div>", "\n")
 	s = strings.ReplaceAll(s, "</blockquote>", "\n")
 	s = strings.ReplaceAll(s, "</li>", "\n")
@@ -296,14 +302,35 @@ func stripHTMLTags(s string) string {
 	text = strings.ReplaceAll(text, "&quot;", "\"")
 	text = strings.ReplaceAll(text, "&#39;", "'")
 
-	// Trim leading whitespace from each line to remove HTML indentation
+	// Trim leading whitespace from each line to remove HTML indentation, and
+	// collapse the blank lines that come with it.
+	//
+	// Every block element above becomes a newline, which is right for text and
+	// wrong for the way a mail client builds a message: an empty paragraph is
+	// <div><br></div>, so one blank line a person left becomes two, and the
+	// nested wrappers Gmail puts round a quoted reply turn three of them into
+	// nine. What arrived as a short note read as a screen of nothing with a
+	// "Hi" at the bottom.
+	//
+	// One blank line survives, because the gap between two paragraphs is
+	// something the writer meant. A run of them is an artefact of the markup
+	// and never of the writing.
 	lines := strings.Split(text, "\n")
-	for i, line := range lines {
-		lines[i] = strings.TrimLeft(line, " \t")
+	out := lines[:0]
+	blank := 0
+	for _, line := range lines {
+		line = strings.TrimLeft(line, " \t")
+		if strings.TrimSpace(line) == "" {
+			if blank++; blank > 1 {
+				continue
+			}
+			line = ""
+		} else {
+			blank = 0
+		}
+		out = append(out, line)
 	}
-	text = strings.Join(lines, "\n")
-
-	return text
+	return strings.Join(out, "\n")
 }
 
 // looksLikeQuotedPrintable detects if content appears to be quoted-printable encoded
