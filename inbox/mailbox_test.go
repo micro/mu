@@ -138,6 +138,14 @@ func TestNothingToPutBackOnSomethingAlreadyRead(t *testing.T) {
 
 // The rail carries the count, per mailbox and for the whole inbox — a number
 // rather than a dot, because three and forty are different situations.
+//
+// Per mailbox, and nowhere else. There was a global count on the home page and
+// a badge on the header envelope, from two different sources — home counted
+// unread *messages* through the mail store, the header counted unread
+// *conversations* through the record — so they disagreed with each other and
+// with the list. Both are gone. This one stays because it is navigation inside
+// the page you are already looking at rather than a number following you
+// around the app.
 func TestTheRailCountsWhatIsWaiting(t *testing.T) {
 	const who = "mailbox-count"
 	AgentName = func(owner, id string) string {
@@ -152,10 +160,6 @@ func TestTheRailCountsWhatIsWaiting(t *testing.T) {
 	read := arrived(t, who, "mail", "<f@example.com>", "a1", "them@example.com", "and one more")
 	thread.MarkSeen(who, read.ID)
 	arrived(t, who, "whatsapp", "44700900000", "", "44700900000", "are you around")
-
-	if got := Unread(who); got != 2 {
-		t.Errorf("%d unread, want the two nobody has opened", got)
-	}
 
 	boxes := Mailboxes(who)
 	if len(boxes) == 0 {

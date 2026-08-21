@@ -100,7 +100,11 @@ func Card(r *http.Request, accountID string) string {
 		state = devicesLine(accountID)
 	}
 
-	return `<div class="push-card">` +
+	// .card first, because that is what every other section on /account is and
+	// what constrains the column. This was a bare .push-card drawing its own
+	// border and padding, so it inherited no width at all and ran the full
+	// width of the page beside cards that did not.
+	return `<div class="card push-card">` +
 		`<div class="push-head"><strong>Notifications</strong>` +
 		`<span class="push-state" id="push-state">` + html.EscapeString(state) + `</span></div>` +
 		`<p class="push-note">Mail, briefings and answers turn up on this device when the ` +
@@ -136,7 +140,6 @@ func itoa(n int) string {
 }
 
 const cardCSS = `<style>
-.push-card{border:1px solid #eee;border-radius:6px;padding:14px 16px;margin:0 0 16px}
 .push-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
 .push-state{font-size:12px;color:#888}
 .push-note{font-size:13px;color:#888;line-height:1.55;margin:6px 0 10px}

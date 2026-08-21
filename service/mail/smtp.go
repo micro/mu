@@ -813,6 +813,7 @@ func (s *Session) Data(r io.Reader) error {
 			Subject:    subject,
 			Body:       body,
 			Text:       stripHTMLTags(body),
+			Attachment: attachmentName(inboundAttachment),
 			Others:     Others(headerTo, headerCc, fromAddr.Address, toAddr.Address),
 			ToAgent:    inList(headerTo, toAddr.Address),
 			MessageID:  messageID,
@@ -1372,6 +1373,16 @@ type InboundMail struct {
 	// already had people in it. That is the whole difference between answering
 	// somebody and joining a thread, and everything downstream keys on it. See
 	// cc.go.
+	// Attachment is what came with it, by name, where anything did.
+	//
+	// The name only: a record of what arrived does not need the bytes, and the
+	// message itself already holds them. It is here because a message can have
+	// an attachment and no text at all — a DMARC report is the common one, and
+	// there are calendar invites and scanned documents behind it — and without
+	// this the record had nothing to say about such a message, so it said
+	// nothing and the message never reached the inbox.
+	Attachment string
+
 	Others []string
 
 	// ToAgent is whether the agent's address was in To rather than only Cc.
@@ -1391,3 +1402,11 @@ type InboundMail struct {
 
 // Handlers register with Inbound, in inbound.go. There used to be a function
 // variable here for the agent specifically.
+
+// attachmentName is what to call what came with a message, or nothing.
+func attachmentName(a *Attachment) string {
+	if a == nil {
+		return ""
+	}
+	return a.Name
+}

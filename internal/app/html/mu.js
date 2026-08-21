@@ -400,46 +400,6 @@ function getCookie(name) {
   if (match) return match[2];
 }
 
-// refreshInboxBadge asks how many conversations are waiting and draws it on the
-// envelope in the header.
-//
-// The inbox, not the mail store: the envelope opens /inbox, so a count taken
-// from /mail would be a number you click and cannot find.
-//
-// Two things it has to do that the old inline version did not.
-//
-// It clears. The old one only ever set the badge, on the assumption that a
-// number going down would be followed by a page load that redrew the header —
-// so reading your last unread conversation left the count sitting there, and
-// nothing in the app could take it off.
-//
-// And it is a function, so it can be called again. The header is outside
-// #content and a soft navigation only swaps #content, which means the badge was
-// drawn once when the session was checked and then never touched: click the
-// envelope, open a conversation, and the count stayed where it was until a full
-// reload. That is the whole bug — the number was right when it was fetched and
-// nothing ever fetched it again.
-function refreshInboxBadge() {
-  var icon = document.getElementById("head-inbox");
-  var badge = document.getElementById("head-inbox-badge");
-  if (!icon || !badge) return;
-  fetch('/inbox?unread=count', { credentials: 'same-origin' })
-    .then(res => res.json())
-    .then(data => {
-      var n = (data && data.count) || 0;
-      badge.textContent = n > 0 ? (n > 9 ? '9+' : String(n)) : '';
-      icon.classList.toggle('has-unread', n > 0);
-    })
-    .catch(() => {});
-}
-
-// The count changes because of something you did on the page — opening a
-// conversation reads it, deleting one takes it away — and the header is not
-// part of what a soft navigation replaces. So it is asked again on arrival.
-document.addEventListener('mu:navigated', function () {
-  if (document.body.classList.contains('signed-in')) refreshInboxBadge();
-});
-
 function setSession() {
   fetch("/session", {
     method: "POST",
@@ -487,7 +447,6 @@ function setSession() {
       // Show the wallet link and badge its credit balance for logged-in users.
       document.body.classList.add('signed-in');
       // How many conversations are waiting, for the envelope in the header.
-      refreshInboxBadge();
       // Initialize card customization for home page
       if (window.location.pathname === '/home') {
         initCardCustomization();

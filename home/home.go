@@ -18,7 +18,6 @@ import (
 	"mu/internal/event"
 	"mu/internal/service"
 	"mu/service/apps"
-	"mu/service/mail"
 	"mu/service/news"
 )
 
@@ -403,7 +402,7 @@ function fetchW(la,lo){
 		// conversations came to look like loose links under the address line.
 		if viewerID != "" {
 			if peek := inbox.Preview(viewerID); peek != "" {
-				b.WriteString(sectionRule("Inbox") + unreadLine(viewerID) + peek)
+				b.WriteString(sectionRule("Inbox") + peek)
 			}
 		}
 	}
@@ -541,23 +540,6 @@ func htmlEsc(s string) string { return html.EscapeString(s) }
 // which is why the sections did not look like sections.
 func sectionRule(label string) string {
 	return `<p class="home-section"><small>` + htmlEsc(label) + `</small></p>`
-}
-
-// unreadLine is what is waiting, said once, in the section it is about.
-//
-// This was a chip under the chat box that asked the agent to read your mail.
-// Here it is a sentence with a link, which is the same offer without a model
-// call and without a lone pill floating under a text field.
-func unreadLine(viewerID string) string {
-	n := mail.GetUnreadCount(viewerID)
-	if n <= 0 {
-		return ""
-	}
-	word := "messages"
-	if n == 1 {
-		word = "message"
-	}
-	return fmt.Sprintf(`<p class="home-unread"><a href="/inbox">%d unread %s</a></p>`, n, word)
 }
 
 // CardsHTML renders the cards a reader watches: the live view of each

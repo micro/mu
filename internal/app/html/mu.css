@@ -684,10 +684,10 @@ td {
   gap: 14px;
 }
 
-/* The header's inbox indicator. Hidden on desktop, where the sidebar carries
-   Inbox; on a phone the sidebar is behind a hamburger, so this is the only
-   way to see that something arrived. Shown only when something has — see
-   .has-unread in the mobile block. */
+/* The header's inbox link. Hidden on desktop, where the sidebar carries Inbox;
+   on a phone the sidebar is behind a hamburger, so this is the way to reach it.
+   It carried a count once, from a different source than the one on Home, and
+   the two disagreed with each other and with the list. */
 #head-inbox {
   display: none;
   position: relative;
@@ -697,25 +697,6 @@ td {
 }
 #head-inbox svg {
   vertical-align: middle;
-}
-#head-inbox-badge {
-  display: none;
-}
-#head-inbox-badge:not(:empty) {
-  display: block;
-  position: absolute;
-  top: -6px;
-  right: -8px;
-  background: #555;
-  color: white;
-  font-size: 10px;
-  min-width: 14px;
-  height: 14px;
-  line-height: 14px;
-  text-align: center;
-  padding: 0 3px;
-  border-radius: 7px;
-  font-weight: 600;
 }
 
 /* Credit balance in the top bar, beside Tools. The only place it appears: it
@@ -865,8 +846,6 @@ body.page-home #page-title ~ #customize-link {
 
 /* What is waiting, said once, in the section it is about. It was a suggestion
    chip under the chat box that spent a model call to read your own mail. */
-.home-unread { margin: 0 0 10px; font-size: 13px }
-.home-unread a { font-weight: var(--font-weight-semibold, 600); text-decoration: none }
 #home-date-text {
   white-space: nowrap;
 }
@@ -2339,9 +2318,6 @@ a.highlight {
     box-sizing: border-box;
   }
 
-  #head-inbox.has-unread {
-    display: block;
-  }
   
   #brand a {
     font-size: 1em;

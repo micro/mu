@@ -45,8 +45,27 @@ func recordDelivery(m mail.InboundMail) {
 	// in the thread. thread.Name is how a client says what a conversation is
 	// about without writing it into what somebody said.
 	text := body(m)
-	if m.Owner == "" || text == "" {
+	if m.Owner == "" {
 		return
+	}
+	// A message with no text is still a message that arrived.
+	//
+	// This returned on an empty body, so mail carrying only an attachment was
+	// delivered, stored, and never written to the record — which is what
+	// /inbox reads. DMARC reports are the ones you notice, because they arrive
+	// daily and several senders ship the report with no covering text at all,
+	// but calendar invites and scanned documents land the same way. The mail
+	// was in the mailbox and the page whose whole claim is that things turn up
+	// in it did not show them.
+	//
+	// What is recorded says what arrived rather than pretending to be prose.
+	// Not the subject: thread.Name already carries that, and putting it in the
+	// message body too is the duplication removed above.
+	if text == "" {
+		if m.Attachment == "" {
+			return // genuinely nothing: no words, nothing attached
+		}
+		text = "(no message — attached: " + m.Attachment + ")"
 	}
 	th := thread.Open(m.Owner, Client, chainKey(m))
 	if th == nil {

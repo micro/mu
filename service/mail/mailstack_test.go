@@ -581,3 +581,69 @@ func TestAParagraphBreakSurvives(t *testing.T) {
 			"block: %q", out)
 	}
 }
+
+// Mail with an attachment and no text still reaches the record.
+//
+// DMARC reports are the ones you notice — they arrive daily and several
+// senders ship the XML with no covering text at all — but calendar invites and
+// scanned documents land the same way. recordDelivery returned early on an
+// empty body, so the message was delivered and stored and never written to
+// internal/thread, which is what /inbox reads. The mail was in the mailbox and
+// the page whose whole claim is that things turn up in it did not show it.
+//
+// Asserted on InboundMail rather than on the record, because the handler lives
+// in client/mail and a service may not import a client. What is checked here
+// is the half that broke first: that the attachment's name reaches the handler
+// at all, since without it there is nothing to write down.
+func TestAnAttachmentOnlyMessageCarriesItsName(t *testing.T) {
+	s := newStack(t, "dmarc")
+
+	got := make(chan InboundMail, 1)
+	restore := onlyDeliveredHandler(func(m InboundMail) { got <- m })
+	t.Cleanup(restore)
+
+	raw := "From: noreply-dmarc-support@google.com\n" +
+		"To: " + s.address() + "\n" +
+		"Subject: Report domain: mu.test Submitter: google.com\n" +
+		"Content-Type: multipart/mixed; boundary=BOUND\n" +
+		"\n" +
+		"--BOUND\n" +
+		"Content-Type: application/zip\n" +
+		"Content-Transfer-Encoding: base64\n" +
+		"Content-Disposition: attachment; filename=\"google.com!mu.test!123.zip\"\n" +
+		"\n" +
+		"UEsDBBQAAAAIAA==\n" +
+		"--BOUND--\n"
+	if err := s.arrive("noreply-dmarc-support@google.com", s.address(), raw); err != nil {
+		t.Fatal(err)
+	}
+
+	select {
+	case m := <-got:
+		if strings.TrimSpace(m.Text) != "" && strings.TrimSpace(m.Body) != "" {
+			t.Logf("this sender did include text: %q", m.Text)
+		}
+		if m.Attachment == "" {
+			t.Error("the attachment's name did not reach the handler, so a message " +
+				"with no text has nothing to be recorded as and never reaches /inbox")
+		}
+		if !strings.Contains(m.Attachment, ".zip") {
+			t.Errorf("attachment name is %q", m.Attachment)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the message was never delivered to a handler")
+	}
+}
+
+// onlyDeliveredHandler replaces the Delivered handlers with one.
+func onlyDeliveredHandler(h InboundHandler) func() {
+	inboundMu.Lock()
+	saved := deliverHandlers
+	deliverHandlers = []InboundHandler{h}
+	inboundMu.Unlock()
+	return func() {
+		inboundMu.Lock()
+		deliverHandlers = saved
+		inboundMu.Unlock()
+	}
+}

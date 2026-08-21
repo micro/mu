@@ -65,13 +65,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		action(w, r, acc.ID)
 		return
 	}
-	// How many are waiting, for the envelope in the header. A fetch rather than
-	// a number rendered into the shell, because the shell is cached and the next
-	// viewer must not be handed this one's count.
-	if r.URL.Query().Get("unread") == "count" {
-		app.RespondJSON(w, map[string]int{"count": Unread(acc.ID)})
-		return
-	}
 	if id := r.URL.Query().Get("id"); id != "" {
 		conversation(w, r, acc.ID, id)
 		return
@@ -503,19 +496,6 @@ func Mailboxes(accountID string) []app.NavItem {
 			Badge: badge(unread[s])})
 	}
 	return out
-}
-
-// Unread is how many conversations have arrived and not been read, for the
-// sidebar. Only arrivals: a chat you had here five minutes ago is not something
-// waiting for you.
-func Unread(accountID string) int {
-	n := 0
-	for _, t := range arrivals(accountID) {
-		if thread.Unread(t) {
-			n++
-		}
-	}
-	return n
 }
 
 // senderName is what to call whoever wrote, in a column 130px wide.
