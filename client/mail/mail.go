@@ -23,6 +23,7 @@ import (
 	"mu/agent"
 	"mu/internal/app"
 	"mu/internal/thread"
+	"mu/internal/trial"
 	"mu/service/mail"
 )
 
@@ -347,13 +348,12 @@ func answerMail(m mail.InboundMail) {
 	// turns, because it belongs to somebody who has not signed up and does not
 	// know it exists. A claimed account is not checked here at all: running the
 	// agent costs nothing, and the tools it reaches for are charged where they
-	// are called. See trial.go.
-	trial, allowed, why := trialRun(m.Owner)
-	if trial && !allowed {
+	// are called. See internal/trial.
+	onTrial, allowed, why := trial.Allowed(m.Owner)
+	if onTrial && !allowed {
 		deliver("", prompt, why)
 		return
 	}
-	_ = why
 
 	// The same entry point every client uses: history, the run record and
 	// anything worth remembering are its business. What is passed is what only
@@ -386,8 +386,8 @@ func answerMail(m mail.InboundMail) {
 	// A trial turn is spent now the run has happened. Nothing else is: running
 	// the agent costs no credits, and the tools it reached for were charged
 	// where they were called.
-	if trial {
-		defer trialSpent(m.Owner)
+	if onTrial {
+		defer trial.Spend(m.Owner)
 	}
 	if strings.TrimSpace(answer) == "" {
 		// Distinct from the error above, because it is a different

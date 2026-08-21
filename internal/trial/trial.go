@@ -1,6 +1,5 @@
-package mail
-
-// The free exchanges somebody gets before they have an account.
+// Package trial is the free exchanges somebody gets before they have an
+// account.
 //
 // Somebody writes to agent@ from an address nobody here knows. They get an
 // account they did not ask for and cannot sign in to (auth.Unclaimed), and this
@@ -20,20 +19,19 @@ package mail
 // credits, an unclaimed one spends turns. Nothing on this path touches the
 // ledger.
 //
-// # What bounds it
+// # Why it is not in the mail client
 //
-// Two limits, which is the argument agent/guest.go already makes about guests.
-// Per sender, so no one person takes the lot; and instance-wide per day, because
-// a per-sender allowance is unbounded in aggregate — it costs whatever arrives,
-// and the busier the day the more it costs. The ceiling makes it a marketing
-// budget an operator chose rather than an open tab.
+// It was, and it is a policy about accounts rather than about mail. Every word
+// of it is "set up an account at /signup"; none of it is about SMTP, threading
+// or who may wake an agent, which is what the rest of that package decides.
+// Mail is only where it is reached from because mail is the only channel that
+// reaches a stranger — and the moment a second one does, a policy sitting in
+// one channel's package gets copied rather than shared.
 //
-// # Why the answer comes first
-//
-// The turn is spent after the run, not before, and the invitation goes out
-// attached to a real answer. A limit that swallows the message it was reached on
-// looks like a fault, and the pitch is that this thing answers — being cut off
-// mid-sentence teaches the opposite of what the free turns were spent proving.
+// The state it reads is already underneath it, in internal/auth: TurnsLeft,
+// SpendTurn, Invited. What is here is the decision made out of them, the
+// instance's own daily ceiling, and what somebody is told.
+package trial
 
 import (
 	"fmt"
@@ -47,11 +45,11 @@ import (
 	"mu/internal/settings"
 )
 
-// trialDailyTotal is the instance-wide ceiling on free exchanges per day.
+// dailyTotal is the instance-wide ceiling on free exchanges per day.
 //
 // Zero turns them off, which is the right setting for an instance somebody runs
 // for themselves: there is nobody to demonstrate to.
-func trialDailyTotal() int {
+func dailyTotal() int {
 	v := strings.TrimSpace(settings.Get("TRIAL_DAILY_TOTAL"))
 	if v == "" {
 		return 500
@@ -64,32 +62,32 @@ func trialDailyTotal() int {
 }
 
 var (
-	trialMu    sync.Mutex
-	trialDay   string
-	trialToday int
+	dayMu    sync.Mutex
+	dayStamp string
+	dayCount int
 )
 
 // dayTaken counts one against today's ceiling and reports whether there was room.
 func dayTaken() bool {
-	trialMu.Lock()
-	defer trialMu.Unlock()
+	dayMu.Lock()
+	defer dayMu.Unlock()
 	today := time.Now().UTC().Format("2006-01-02")
-	if trialDay != today {
-		trialDay, trialToday = today, 0
+	if dayStamp != today {
+		dayStamp, dayCount = today, 0
 	}
-	if trialToday >= trialDailyTotal() {
+	if dayCount >= dailyTotal() {
 		return false
 	}
-	trialToday++
+	dayCount++
 	return true
 }
 
-// trialRun reports whether this is an unclaimed account's free exchange, and
+// Allowed reports whether this is an unclaimed account's free exchange, and
 // what to say instead when it is not.
 //
 // The empty string with ok=false means this is an ordinary account and the
 // credit path applies — the caller carries on to quota as before.
-func trialRun(ownerID string) (trial bool, ok bool, why string) {
+func Allowed(ownerID string) (trial bool, ok bool, why string) {
 	acc, err := auth.GetAccount(ownerID)
 	if err != nil || acc == nil || !acc.Unclaimed {
 		return false, false, ""
@@ -107,13 +105,13 @@ func trialRun(ownerID string) (trial bool, ok bool, why string) {
 	return true, true, ""
 }
 
-// trialSpent records the exchange and invites them in if it was the last.
+// Spend records the exchange and invites them in if it was the last.
 //
 // Called after the answer has gone out. The invitation is a second mail rather
 // than a footer on the first, because it is a different message with a link in
 // it — appending it to every answer near the limit would put a sales line under
 // somebody's weather forecast.
-func trialSpent(ownerID string) {
+func Spend(ownerID string) {
 	acc, err := auth.GetAccount(ownerID)
 	if err != nil || acc == nil || !acc.Unclaimed {
 		return
@@ -143,7 +141,7 @@ func invite(ownerID string) {
 	// this one — the sender earned it by using the thing.
 	code, err := auth.CreateInvite(acc.Email, acc.ID)
 	if err != nil {
-		app.Log("mail", "could not create an invite for %s: %v", acc.ID, err)
+		app.Log("trial", "could not create an invite for %s: %v", acc.ID, err)
 		return
 	}
 	auth.MarkInvited(ownerID)
