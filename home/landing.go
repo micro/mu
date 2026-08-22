@@ -170,10 +170,26 @@ func landingBody() string {
 	// second number that had to be kept in step with the list beside it by hand.
 	// The list is the proof; it does not need a claim after it.
 	//
+	// What you get, not what you must do.
+	//
+	// It read "Make one, give it an address, hand it a job" — three imperatives,
+	// two of them false. You do not make one: every account already has an agent
+	// and roster_page.go says so, because leaving it off "meant a new account
+	// opened /agents and was told it had none, which is false". And you do not
+	// give it an address: agent.tagFor assigns one. So the first two steps of a
+	// three-step flow were a thing nobody needs to do and a thing that happens
+	// by itself, which put the hardest instruction on the page first and made
+	// the product contradict the pitch a minute after signing up.
+	//
+	// The third was the only true one and it is the promise the headline makes,
+	// so it stays — as a verb in a sentence rather than as step three of a
+	// setup. What is left is what somebody gets: an agent, an address, and
+	// somewhere for work to come back to.
+	//
 	return `<div class="lwrap">
 <h2 class="lhead">Work with Agents.</h2>
-<p class="lead">Make one, give it an address, hand it a job. It gets on with it
-while you are elsewhere, and answers where you asked. ` +
+<p class="lead">An agent with an address. Write to it from anywhere, hand it work,
+and it answers where you asked. ` +
 		tools() + ` tools behind it — news, search, markets,
 weather, places, files.</p>
 
