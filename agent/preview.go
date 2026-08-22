@@ -17,6 +17,16 @@ package agent
 // expires, a conversation is what was said and does not. "Last spoke about X,
 // two hours ago" survives an eviction; "ran six tools in 4.2s" does not, and
 // was never the thing anybody wanted to know from the front page.
+//
+// # The default is on it
+//
+// This listed Agents(owner), which is an account's *own* agents — so the one
+// every account already has was missing, on the page whose whole job is to say
+// what you have working. /agents had the same bug once and its fix is recorded
+// there: leaving Micro off "meant a new account opened /agents and was told it
+// had none, which is false". Both pages prepend it now, from the same place,
+// because two lists of your agents that disagree about how many there are is
+// worse than either.
 
 import (
 	"html"
@@ -40,14 +50,35 @@ const previewShown = 5
 // previewSubject bounds the line of text under a name.
 const previewSubject = 60
 
+// entry is one row: an agent, however it came to exist.
+type entryOf struct {
+	ID   string
+	Name string
+	Path string
+}
+
 // Preview is your agents and what they last dealt with, for Home. Empty when
 // there are none — a heading over nothing says less than no heading.
 func Preview(accountID string) string {
 	if accountID == "" {
 		return ""
 	}
-	agents := Agents(accountID)
-	if len(agents) == 0 {
+
+	// The default first, and pinned there rather than sorted with the rest.
+	// It is the one the chat talks to and the one that answers agent@, so it is
+	// what somebody is looking for; /agents puts it in the same place for the
+	// same reason.
+	var rows []entryOf
+	if a := Platform(DefaultPlatformAgent); a != nil {
+		rows = append(rows, entryOf{
+			ID:   DefaultPlatformAgent,
+			Name: a.Name,
+			Path: "/agent/" + DefaultPlatformAgent,
+		})
+	}
+
+	own := Agents(accountID)
+	if len(rows) == 0 && len(own) == 0 {
 		return ""
 	}
 
@@ -56,35 +87,43 @@ func Preview(accountID string) string {
 	// the first thread naming an agent is that agent's latest.
 	latest := map[string]lastSeen{}
 	for _, t := range thread.List(accountID, previewHistory) {
-		if t.Agent == "" {
+		// A conversation with nobody named is the default's: the chat records
+		// whichever agent answered, and for the one that answers when none was
+		// asked for that is empty.
+		who := t.Agent
+		if who == "" {
+			who = DefaultPlatformAgent
+		}
+		if _, have := latest[who]; have {
 			continue
 		}
-		if _, have := latest[t.Agent]; have {
-			continue
-		}
-		latest[t.Agent] = lastSeen{subject: strings.TrimSpace(t.Subject), at: t.Updated}
+		latest[who] = lastSeen{subject: strings.TrimSpace(t.Subject), at: t.Updated}
 	}
 
 	// Busiest first, which on this page means most recently used — an agent you
 	// have not touched in a month is not what you came to look at. Ones that
-	// have done nothing keep their roster order underneath.
-	sorted := make([]*Agent, len(agents))
-	copy(sorted, agents)
+	// have done nothing keep their roster order underneath. The default is
+	// already at the top and does not join this.
+	sorted := make([]*Agent, len(own))
+	copy(sorted, own)
 	sortByRecent(sorted, latest)
-
-	if len(sorted) > previewShown {
-		sorted = sorted[:previewShown]
-	}
-
-	var b strings.Builder
-	b.WriteString(`<div class="agent-peek">`)
 	for _, a := range sorted {
 		name := strings.TrimSpace(a.Name)
 		if name == "" {
 			name = a.ID
 		}
-		b.WriteString(`<a class="agent-peek-row" href="` + html.EscapeString(Path("", a.ID)) + `">`)
-		b.WriteString(`<span class="agent-peek-name">` + html.EscapeString(name) + `</span>`)
+		rows = append(rows, entryOf{ID: a.ID, Name: name, Path: Path("", a.ID)})
+	}
+
+	if len(rows) > previewShown {
+		rows = rows[:previewShown]
+	}
+
+	var b strings.Builder
+	b.WriteString(`<div class="agent-peek">`)
+	for _, a := range rows {
+		b.WriteString(`<a class="agent-peek-row" href="` + html.EscapeString(a.Path) + `">`)
+		b.WriteString(`<span class="agent-peek-name">` + html.EscapeString(a.Name) + `</span>`)
 
 		if s, ok := latest[a.ID]; ok {
 			what := s.subject

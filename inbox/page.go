@@ -37,6 +37,11 @@ import (
 // shown is how many conversations one page of the inbox is.
 const shown = 25
 
+// labelChars is how much of an agent's name fits in the label column beside
+// the channel it arrived on. Two pills wide, and the names people give agents
+// are one word.
+const labelChars = 14
+
 // held is how far back the list reaches. Going further back on purpose is what
 // /recall is for — a mailbox is somewhere you glance, not a search index.
 const held = 500
@@ -230,10 +235,18 @@ func row(r *http.Request, accountID string, t thread.Thread) string {
 	// with, where it is with one. "Agent" as a bare word was the other half of
 	// the confusion: it named a role rather than saying which of them, and
 	// there are eleven.
+	// In a column of their own, so every subject on the page starts at the same
+	// place. They were inline before the subject, and a label is one pill or two
+	// and "Here" or "WhatsApp" wide — so the subject began somewhere different
+	// on every row and the eye had nothing to run down.
+	//
+	// Trimmed, because the column only holds so much and a name clipped
+	// mid-pill looks like a rendering fault rather than a long name.
 	labels := app.Pill(app.ClientName(t.Client))
 	if name := agentLabel(accountID, t.Agent); name != "" {
-		labels += app.Pill(name)
+		labels += app.Pill(trimTo(name, labelChars))
 	}
+	labels = `<span class="ib-tags">` + labels + `</span>`
 
 	// Unread, which is what makes this a mailbox rather than a log. Without it
 	// every row looks the same and the page has to be read top to bottom every

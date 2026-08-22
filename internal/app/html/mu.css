@@ -5502,6 +5502,14 @@ button.pill:hover {
    preview under them without breaking them apart — see the media query. */
 .ib-line { display: flex; align-items: baseline; gap: 8px; flex: none; max-width: 60%; min-width: 0; overflow: hidden }
 
+/* The labels get a column, so every subject on the page starts at the same
+   place. They were inline: one pill or two, "Here" or "WhatsApp" wide, so the
+   subject began somewhere different on every row and there was no edge for the
+   eye to run down. A fixed basis costs a little empty space on the rows with
+   one label and buys alignment on all of them, which is the trade every mail
+   client makes. */
+.ib-tags { flex: 0 0 150px; display: flex; gap: 6px; overflow: hidden }
+
 /* An explicit weight, because the row is a link and `a` is bold app-wide.
    Anything inside a link that does not declare a weight inherits that, so the
    subject was bold on every row and .ib-row.unseen had nothing left to say —
@@ -5715,6 +5723,10 @@ button.pill:hover {
      label — the thing you read to decide whether to read the row — at the
      bottom of the row it labels. */
   .ib-line { max-width: 100%; flex-wrap: wrap; row-gap: 2px }
+  /* No column on a phone: 150px of the 320px available is most of the row, and
+     the subject wraps to its own line here anyway, so there is nothing left to
+     line up. */
+  .ib-tags { flex: 0 0 auto }
   .ib-subject { white-space: normal; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical }
   .ib-snip { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.45 }
   .ib-addr { gap: 6px }
