@@ -39,7 +39,7 @@ func TestTheLandingIsOneScreenAboutOneThing(t *testing.T) {
 	body := rec.Body.String()
 
 	// What it is, and what is behind it.
-	for _, want := range []string{"A personal agent", "Chat with it here", "tools behind it"} {
+	for _, want := range []string{"Work with Agents", "hand it a job", "tools behind it"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the landing is missing %q", want)
 		}
@@ -85,38 +85,45 @@ func TestTheLandingIsOneScreenAboutOneThing(t *testing.T) {
 	}
 }
 
-// The line is said once.
+// The line is said once, and the retired ones are not said at all.
 //
-// The page carried "An Inbox for Agents" in the chrome and "A personal agent."
-// as its headline — the line this positioning replaced, surviving in the one
-// place nothing rendered next to the other. Retiring the old line by writing
-// the new one into the same slot fixed the contradiction and left the
-// duplication: the same sentence twice, once at 18px and once at 38px, on a
-// page whose whole argument is that it says one thing.
+// The page carried "An Inbox for Agents" in the chrome and its headline below
+// it — two different pitches stacked, the older one surviving in the one place
+// nothing rendered next to the other. Retiring a line by writing the new one
+// into the same slot fixed the contradiction and left the duplication: the same
+// sentence twice, once at 18px and once at 38px, on a page whose whole argument
+// is that it says one thing.
 //
-// So the rule is a count, not an absence — an absent old line is what the
-// previous version of this test checked, and it passed the whole time the page
-// said it twice. The <head> is excluded on purpose: the <title> and the og
-// description are allowed to repeat the pitch, because nobody reads them
-// beside it.
+// So the rule is a count, not an absence — an absent old line is what an
+// earlier version of this checked, and it passed the whole time the page said
+// the new one twice. Both halves are here now. The <head> is excluded on
+// purpose: the <title> and the og description are allowed to repeat the pitch,
+// because nobody reads them beside it.
 func TestThereIsOneTagline(t *testing.T) {
 	rec := httptest.NewRecorder()
 	Landing(rec, httptest.NewRequest("GET", "/", nil))
 	page := rec.Body.String()
 
-	if strings.Contains(page, "An Inbox for Agents") {
-		t.Error("the landing still carries the old tagline above the new headline, " +
-			"so a visitor reads two different pitches stacked")
+	// Every line this positioning has moved past. CLAUDE.md keeps the list;
+	// this keeps them off the page, because the way they survive is by living
+	// somewhere nothing renders beside them.
+	for _, gone := range []string{
+		"An Inbox for Agents", "A personal agent", "building blocks for life",
+	} {
+		if strings.Contains(page, gone) {
+			t.Errorf("the landing still carries the retired line %q, so a visitor "+
+				"reads two different pitches", gone)
+		}
 	}
 
 	body := page
 	if i := strings.Index(page, "<body>"); i >= 0 {
 		body = page[i:]
 	}
-	if n := strings.Count(body, "A personal agent"); n != 1 {
+	if n := strings.Count(body, "Work with Agents"); n != 1 {
 		t.Errorf("the landing says %q %d times on one screen, want once — it is the "+
 			"headline, and a second copy in the chrome above it is the same "+
-			"sentence in a smaller font", "A personal agent", n)
+			"sentence in a smaller font", "Work with Agents", n)
 	}
 }
 

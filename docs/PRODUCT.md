@@ -10,10 +10,11 @@ answer to "what is this and who arrives how".
 
 ## The product in one sentence
 
-**Mu is a personal agent: one with an email address, that answers where it was
-written to and remembers — with the everyday internet behind it. News, mail,
-calendar, search, weather, markets, places, storage — as tools it can call over MCP, paid per
-request, with no account in the way.**
+**Mu is where you work with agents: make one, give it an address, hand it a
+job. It gets on with it while you are elsewhere and answers where you asked —
+with the everyday internet behind it. News, mail, calendar, search, weather,
+markets, places, storage — as tools it can call over MCP, paid per request,
+with no account in the way.**
 
 The claim that matters is *one account instead of a hundred*.
 

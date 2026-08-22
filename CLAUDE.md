@@ -1,8 +1,14 @@
 # Mu
 
-**A personal agent.** It has an email address; write to it and it answers — in the thread, remembering the last one. Behind it is the everyday internet — news, mail, search, weather, markets, video, storage — as tools it can call over MCP and REST, paid per request in USDC via x402, with no account in the way.
+**Work with Agents.** Make one, give it an address, hand it a job. It picks the work up while you are elsewhere and answers on the conversation you asked in. Behind it is the everyday internet — news, mail, search, weather, markets, video, storage — as tools it can call over MCP and REST, paid per request in USDC via x402, with no account in the way.
 
-The line has moved before — *building blocks for life*, *tools for agents*, *an inbox for agents* — and this one is meant to stop moving, because it is a category rather than a claim. The others were arguments about why Mu matters, and an argument has to be remade every time the emphasis shifts. "A personal agent" is what it *is*, in a category a reader already holds, and the proof follows it rather than replacing it: it has an address, you can email it, and there are a hundred-odd tools behind it. Underneath, structurally, this is a personal server with a messenger at the front — that is the thesis. Do not rewrite the first sentence when the emphasis moves; move the sentence after it.
+The line has moved before — *building blocks for life*, *tools for agents*, *an inbox for agents*, *a personal agent* — and the reason it kept moving is that each one described a different true thing about an artefact that is genuinely more than one thing. It was built for people first: every capability had to render a page, which is why the services are coherent, and the tools were derived from them afterwards. So it is both a catalogue and an agent, and the argument was never which one it *is* — only which one goes at the front.
+
+"A personal agent" put the singular at the front, and the product is not singular: you make several, they have addresses, they hold work. That line also described something you talk to, and talking is the least of it.
+
+This one is a verb, and it is a promise rather than a category — which means it can be false. It is only true while you can actually hand work over and get it back: `service/tasks` holds the work, `agent/work` runs it, and the answer returns to the thread it was asked on. Before that existed the line would have been a lie. Keep it honest: if work stops being something you can give away and collect, this sentence has to change again.
+
+Underneath, structurally, this is a personal server with a messenger at the front — that is unchanged. Do not rewrite the first sentence when the emphasis moves; move the sentence after it.
 
 The lead was *tools for agents* and the tools are still what is behind it. What changed is which fact goes first: every provider ships an MCP server now, and none of them ship an agent that is permanently reachable and remembers. **An address is the smallest interface there is** — no SDK, no OAuth, no protocol to adopt, nothing on the other side — so a person, another agent, a form or a cron job can all write to one. That is what makes an agent something you have rather than something you visit.
 

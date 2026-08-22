@@ -1,7 +1,9 @@
 # About
 
-**A personal agent.** Chat with it here or email it from anywhere. It has tools,
-it keeps the thread, and it remembers what you told it last time.
+**Work with Agents.** Make one, give it an address, hand it a job. It picks the
+work up while you are elsewhere and answers on the conversation you asked in —
+here, or wherever you wrote from. It has tools, it keeps the thread, and it
+remembers what you told it last time.
 
 ## Agents
 

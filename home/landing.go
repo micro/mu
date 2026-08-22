@@ -57,13 +57,13 @@ func Landing(w http.ResponseWriter, r *http.Request) {
 	body := landingBody()
 
 	page := app.RenderLanding(app.Landing{
-		Title:       "Mu — A personal agent",
-		Description: "Chat with it here or write to it from anywhere — with news, web search, mail, markets, weather, places and storage behind it. Open source and self-hostable.",
+		Title:       "Mu — Work with Agents",
+		Description: "Make an agent, give it an address, hand it a job — with news, web search, mail, markets, weather, places and storage behind it. Open source and self-hostable.",
 		Brand:       "Mu",
 		// No tagline in the chrome. This slot held "An Inbox for Agents" — the
 		// line this positioning replaced — sitting directly above a headline
 		// that said something else, and swapping it for the new line only made
-		// the page say "A personal agent" twice in three centimetres. The
+		// the page say the headline twice in three centimetres. The
 		// headline is where the line belongs: it is set at 38px and the tagline
 		// slot is 18px, so the chrome copy was a smaller, duplicate version of
 		// the thing immediately below it. Nothing renders the two together
@@ -151,10 +151,11 @@ func landingBody() string {
 	// The list is the proof; it does not need a claim after it.
 	//
 	return `<div class="lwrap">
-<h2 class="lhead">A personal agent.</h2>
-<p class="lead">Chat with it here, or email it from anywhere. ` +
-		strconv.Itoa(api.ToolCount()) + ` tools behind it — news, search, markets, weather,
-places, files — and it remembers the last conversation.</p>
+<h2 class="lhead">Work with Agents.</h2>
+<p class="lead">Make one, give it an address, hand it a job. It gets on with it
+while you are elsewhere, and answers where you asked. ` +
+		strconv.Itoa(api.ToolCount()) + ` tools behind it — news, search, markets,
+weather, places, files.</p>
 
 <div class="lctas">
   <a class="lcta" href="/signup">Get started →</a>
@@ -225,7 +226,7 @@ func developerBand(base string) string {
 	endpoint := html.EscapeString(strings.TrimSuffix(base, "/")) + "/mcp"
 
 	return `<div class="dev">
-<h2 class="dev-head">Tools for agents</h2>
+<h2 class="dev-head">Tools for Agents</h2>
 <p class="dev-lead">Already have an agent? Point it at one endpoint for ` +
 		strconv.Itoa(api.ToolCount()) + ` tools.</p>
 <pre class="dev-endpoint">` + endpoint + `</pre>
@@ -235,8 +236,7 @@ func developerBand(base string) string {
   <li>Priced per call. Cached answers are not charged.</li>
   <li>One Go binary. Self-host it and callers pay you.</li>
 </ul>
-<p class="dev-stack">SMTP in, IMAP out, HTTP for the app, MCP for agents,
-x402 for payments. No protocol here is ours.</p>
+<p class="dev-go"><a class="lcta lcta-second" href="/tools">See the tools</a></p>
 </div>
 
 <style>
@@ -249,18 +249,27 @@ x402 for payments. No protocol here is ours.</p>
    would come out as small grey centred text. */
 .dev{max-width:560px;margin:0 auto;padding:28px 0 0;border-top:1px solid #eee;
   text-align:left;color:#111}
-.dev-head{font-size:15px;font-weight:700;color:#111;margin:0 0 8px}
-.dev-lead{font-size:15px;color:#555;line-height:1.6;margin:0 0 14px}
+/* The heading and its line are centred and the facts under them are not. The
+   two halves are doing different jobs: the top says what this band is, which
+   is read the way the hero above it is read, and the list is scanned. */
+.dev-head{font-size:15px;font-weight:700;color:#111;margin:0 0 8px;text-align:center}
+.dev-lead{font-size:15px;color:#555;line-height:1.6;margin:0 0 14px;text-align:center}
 .dev-endpoint{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;
   color:#333;background:#f6f6f6;border-radius:6px;padding:10px 12px;margin:0 0 14px;
   overflow-x:auto}
 .dev-facts{font-size:14px;color:#555;line-height:1.6;margin:0 0 14px;padding-left:18px}
 .dev-facts li{margin:0 0 6px}
 .dev-facts li:last-child{margin:0}
-/* The one line that says what the whole thing is, so it is set apart from the
-   list of facts above it rather than being a fifth one. */
-.dev-stack{font-size:14px;color:#111;line-height:1.6;margin:0;
-  padding-top:14px;border-top:1px solid #eee}
+/* The way through, under the facts. A protocol list stood here — "SMTP in,
+   IMAP out, HTTP for the app, MCP for agents, x402 for payments" — which named
+   five things a visitor has to already care about to feel anything about, on
+   the page where they are deciding whether to care at all. The endpoint above
+   is a URL they can read and /tools is the catalogue; both say it better by
+   being the thing rather than describing it.
+
+   The same button as the hero's second action, because it is the same kind of
+   thing: somewhere to go that is not the primary one. */
+.dev-go{margin:0;text-align:center}
 </style>`
 }
 
