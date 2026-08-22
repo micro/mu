@@ -173,7 +173,13 @@ const pageCSS = `<style>
 .ar-go{font:inherit;font-size:14px;padding:8px 18px;border:1px solid #111;background:#111;color:#fff;border-radius:8px;cursor:pointer}
 .ar-empty{font-size:14px;color:#888;line-height:1.6}
 .ar-row{padding:12px 0;border-bottom:1px solid #f4f4f4}
-.ar-meta{font-size:11px;color:#bbb;margin-bottom:3px}
+/* A kind and a time are two facts, and this had nothing between them — the pill
+   and the text were adjacent nodes in a block, so the line read "news2 hours
+   ago". A gap on the row rather than a margin on .pill: that primitive is
+   shared with the inbox and the agent, it already declares flex:none for
+   exactly this, and every other place it is used sits in a flex row with a gap.
+   This was the one that did not. */
+.ar-meta{display:flex;align-items:center;gap:7px;font-size:11px;color:#bbb;margin-bottom:3px}
 .ar-title{font-size:15px;color:#111;font-weight:500;text-decoration:none;display:block}
 a.ar-title:hover{text-decoration:underline}
 .ar-body{font-size:13px;color:#888;line-height:1.55;margin-top:3px}
