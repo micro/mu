@@ -177,3 +177,29 @@ func TestAThreadWithBothKindsOfRecipientReachesBoth(t *testing.T) {
 			len(after), before)
 	}
 }
+
+// A delivered answer is one a mail client can see.
+//
+// The web inbox and IMAP read different stores, and that is what made the
+// original report confusing: /inbox renders internal/thread, which agent.Said
+// writes whether or not the mail went anywhere, so the agent's answer was on
+// the page while the relay was failing. The mailbox is service/mail, and only a
+// real delivery reaches it. Two surfaces disagreeing was the symptom.
+func TestAnAnsweredMessageReachesTheMailbox(t *testing.T) {
+	withDomain(t, "mu.test")
+	if err := auth.Create(&auth.Account{ID: "imapasim", Name: "Imap Asim", Secret: "s"}); err != nil {
+		t.Fatalf("creating the account: %v", err)
+	}
+
+	before, _ := imapFolder("imapasim", "INBOX")
+
+	if _, err := SendReplyAll("imapasim", "Agent", "agent@mu.test", "imapasim@mu.test", nil,
+		"Re: is this working", "yes", "<p>yes</p>", "<in@reply.to>", ""); err != nil {
+		t.Fatalf("answering: %v", err)
+	}
+
+	after, ok := imapFolder("imapasim", "INBOX")
+	if !ok || len(after) != len(before)+1 {
+		t.Fatalf("INBOX holds %d messages, want one more than %d", len(after), len(before))
+	}
+}

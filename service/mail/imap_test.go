@@ -280,18 +280,37 @@ func TestFoldersAreTheAccountsAliases(t *testing.T) {
 		{ID: "2", ToID: who, Tag: "research", Subject: "tagged", CreatedAt: time.Now().Add(-2 * time.Hour)},
 		{ID: "3", ToID: who, Spam: true, Subject: "junk", CreatedAt: time.Now().Add(-time.Hour)},
 		{ID: "4", ToID: "somebody-else", Subject: "not yours", CreatedAt: time.Now()},
+		{ID: "5", FromID: who, ToID: "somebody-else", Subject: "one you sent", CreatedAt: time.Now()},
 	}
 	mutex.Unlock()
 	t.Cleanup(func() { mutex.Lock(); messages = nil; mutex.Unlock() })
 
 	folders := imapFolders(who)
-	if fmt.Sprint(folders) != "[INBOX INBOX/research Junk]" {
+	if fmt.Sprint(folders) != "[INBOX INBOX/research Sent Junk]" {
 		t.Errorf("folders are %v", folders)
 	}
 
 	inbox, ok := imapFolder(who, "INBOX")
 	if !ok || len(inbox) != 2 {
 		t.Fatalf("INBOX holds %d messages, want the plain one and the tagged one", len(inbox))
+	}
+
+	// Sent is the mail this account wrote, which no folder could show before:
+	// every one of them filters on ToID and a sent message is stored under
+	// whoever received it. A client's Sent was its own local copy, and nothing
+	// on the server ever appeared in it.
+	sent, ok := imapFolder(who, "Sent")
+	if !ok || len(sent) != 1 {
+		t.Fatalf("Sent holds %d messages, want the one this account sent", len(sent))
+	}
+	if sent[0].Subject != "one you sent" {
+		t.Errorf("Sent holds %q", sent[0].Subject)
+	}
+	// And it is not also in the inbox, or a message appears twice.
+	for _, m := range inbox {
+		if m.ID == "5" {
+			t.Error("a sent message is in INBOX as well as Sent")
+		}
 	}
 	// Oldest first: the order UIDs are assigned in. Every page in the product
 	// lists the reverse, and taking that order would hand a client a mailbox

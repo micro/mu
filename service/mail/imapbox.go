@@ -55,6 +55,9 @@ const (
 	// can see them can disagree with them, which is the only way a filter ever
 	// gets corrected.
 	imapJunk = "Junk"
+
+	// imapSent is what a client calls the mail you sent. See folderSent.
+	imapSent = "Sent"
 	// imapDelimiter separates a folder from its parent. "/" rather than "."
 	// because a tag may contain neither, and "/" is what a person reads as a
 	// path.
@@ -215,7 +218,7 @@ func imapFolders(accountID string) []string {
 		names = append(names, imapInbox+imapDelimiter+tag)
 	}
 	sort.Strings(names)
-	return append(append([]string{imapInbox}, names...), imapJunk)
+	return append(append([]string{imapInbox}, names...), imapSent, imapJunk)
 }
 
 // imapFolder returns a folder's messages, oldest first, and whether the name
@@ -229,16 +232,21 @@ func imapFolder(accountID, name string) ([]*Message, bool) {
 	mutex.RLock()
 	var out []*Message
 	for _, m := range messages {
-		if m.ToID != accountID {
-			continue
-		}
+		// Which end of the message decides is the folder's business, not this
+		// loop's. It used to filter on ToID before the switch, which is why
+		// there could be no Sent: a message you sent is stored under whoever
+		// received it, so it was gone before any folder could ask.
 		switch kind {
 		case folderJunk:
-			if !m.Spam {
+			if m.ToID != accountID || !m.Spam {
+				continue
+			}
+		case folderSent:
+			if m.Spam || !strings.EqualFold(m.FromID, accountID) || strings.EqualFold(m.ToID, accountID) {
 				continue
 			}
 		default:
-			if m.Spam {
+			if m.ToID != accountID || m.Spam {
 				continue
 			}
 			if tag != "" && !strings.EqualFold(m.Tag, tag) {
@@ -260,6 +268,19 @@ type folderKind int
 const (
 	folderMail folderKind = iota
 	folderJunk
+
+	// folderSent is the mail this account sent.
+	//
+	// It did not exist, and could not have: every folder filters on
+	// ToID == accountID and a sent message is stored with ToID set to whoever
+	// received it. So a mail client could read everything that arrived and
+	// nothing you had written, and what it showed under Sent was its own local
+	// copy — IMAP has no APPEND here, so it never reached the server at all.
+	//
+	// Matched the other way round, on FromID, and excluding anything addressed
+	// back to yourself so a note to your own agent is in one folder rather
+	// than two.
+	folderSent
 )
 
 // imapParse reads a folder name: its tag, if it names one, and what kind of
@@ -272,6 +293,8 @@ func imapParse(name string) (tag string, kind folderKind, ok bool) {
 		return "", folderMail, true
 	case strings.EqualFold(name, imapJunk):
 		return "", folderJunk, true
+	case strings.EqualFold(name, imapSent):
+		return "", folderSent, true
 	}
 	prefix := imapInbox + imapDelimiter
 	if len(name) > len(prefix) && strings.EqualFold(name[:len(prefix)], prefix) {
@@ -292,6 +315,8 @@ func imapName(accountID, name string) string {
 	switch {
 	case kind == folderJunk:
 		return imapJunk
+	case kind == folderSent:
+		return imapSent
 	case tag == "":
 		return imapInbox
 	}

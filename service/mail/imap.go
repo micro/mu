@@ -153,11 +153,17 @@ func (s *imapSession) send(line string) {
 
 // imapCapability is what this server can do. Authenticated and not are
 // different answers: LOGINDISABLED and AUTH= only mean anything before.
+// imapCapability is what this server can do.
+//
+// SPECIAL-USE (RFC 6154) is advertised so a client asks for the attributes on
+// LIST and files its sent mail in Sent rather than keeping a local copy the
+// server never sees. Announcing the folder without announcing the capability
+// leaves a well-behaved client ignoring it.
 func imapCapability(authenticated bool) string {
 	if authenticated {
-		return "IMAP4rev1 IDLE UIDPLUS"
+		return "IMAP4rev1 IDLE UIDPLUS SPECIAL-USE"
 	}
-	return "IMAP4rev1 IDLE UIDPLUS AUTH=PLAIN"
+	return "IMAP4rev1 IDLE UIDPLUS SPECIAL-USE AUTH=PLAIN"
 }
 
 // command handles one line. It returns false when the connection is finished.
@@ -326,13 +332,36 @@ func (s *imapSession) list(tag, name, args string) {
 		return
 	}
 
-	for _, folder := range imapFolders(s.account) {
+	folders := imapFolders(s.account)
+
+	// INBOX has children only when a tag folder sits under it. The test was
+	// "more than two folders", which counted Junk — and once Sent existed as
+	// well every account claimed children it did not have, so a client drew an
+	// expander that opened onto nothing.
+	tagged := false
+	for _, folder := range folders {
+		if strings.HasPrefix(folder, imapInbox+imapDelimiter) {
+			tagged = true
+			break
+		}
+	}
+
+	for _, folder := range folders {
 		if !imapMatch(pattern, folder) {
 			continue
 		}
 		attrs := `\HasNoChildren`
-		if folder == imapInbox && len(imapFolders(s.account)) > 2 {
+		if folder == imapInbox && tagged {
 			attrs = `\HasChildren`
+		}
+		// SPECIAL-USE (RFC 6154), which is what makes a client file its sent
+		// mail here and treat Junk as junk rather than drawing two more plain
+		// folders and putting its own copies somewhere local.
+		switch folder {
+		case imapSent:
+			attrs += ` \Sent`
+		case imapJunk:
+			attrs += ` \Junk`
 		}
 		s.send(`* ` + name + ` (` + attrs + `) "` + imapDelimiter + `" ` + imapQuoted(folder))
 	}
