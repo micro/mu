@@ -32,39 +32,41 @@ func TestAnAnnouncedFactReachesTheTimeline(t *testing.T) {
 	}
 }
 
-// The same trip for the one fact stream did not have to ask for: mail has
-// announced its own arrival since the hook into the agent was deleted, and an
-// entry made from it must be its owner's alone.
-func TestMailArrivingIsTheOwnersAlone(t *testing.T) {
+// Mail arriving is not this page's business, on either topic.
+//
+// There were two tests here and they asserted the opposite: that mail reached
+// the timeline, and that ownerless mail did not. Both passed while the feature
+// was dead, because each hand-wrote the event in the shape the *subscriber*
+// expected rather than the shape service/mail actually publishes — and the
+// publisher had moved to a single "message" key. The comment at the top of this
+// file describes that failure exactly ("a renamed key... fails by the timeline
+// simply staying empty") and then the tests wrote the key themselves, which is
+// the one thing that makes the round trip unable to prove anything.
+//
+// So this asserts the rule instead of the wiring, and it does it with the real
+// payload: nothing about somebody's mail belongs on a page served without a
+// session. See theirsAlone.
+func TestMailDoesNotReachTheTimeline(t *testing.T) {
 	reset(t)
 
-	event.Publish(event.Event{Type: event.EventMailReceived, Data: map[string]interface{}{
-		"account": "alice",
-		"from":    "lawyer@example.com",
-		"subject": "Re: the settlement",
-	}})
-
-	if !eventually(func() bool { return len(Recent(10, "alice")) > 0 }) {
-		t.Fatal("mail arriving never reached the timeline")
+	for _, topic := range []string{event.EventMailReceived, event.EventMailForAgent} {
+		// The shape service/mail sends, and the shape it used to send. Neither
+		// may put a row on the timeline.
+		event.Publish(event.Event{Type: topic, Data: map[string]interface{}{
+			"message": `{"To":"alice","From":"lawyer@example.com","Subject":"Re: the settlement"}`,
+		}})
+		event.Publish(event.Event{Type: topic, Data: map[string]interface{}{
+			"account": "alice",
+			"from":    "lawyer@example.com",
+			"subject": "Re: the settlement",
+		}})
 	}
-	if got := Recent(10, "bob"); len(got) != 0 {
-		t.Fatalf("somebody else can see alice's mail: %v", got)
-	}
-}
-
-// An announcement with no account owner is a publication, so mail with no
-// account named must not become one.
-func TestMailWithNoOwnerIsNotPublished(t *testing.T) {
-	reset(t)
-
-	event.Publish(event.Event{Type: event.EventMailReceived, Data: map[string]interface{}{
-		"from":    "lawyer@example.com",
-		"subject": "Re: the settlement",
-	}})
 
 	time.Sleep(200 * time.Millisecond)
-	if got := Recent(10, ""); len(got) != 0 {
-		t.Fatalf("ownerless mail was published to everybody: %v", got)
+	for _, viewer := range []string{"", "alice"} {
+		if got := Recent(10, viewer); len(got) != 0 {
+			t.Fatalf("mail reached the timeline for viewer %q: %v", viewer, got)
+		}
 	}
 }
 

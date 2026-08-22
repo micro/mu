@@ -64,6 +64,9 @@ var (
 // text — so they arrive with nothing in the fields that matter and are dropped
 // by valid. Saving straight after is what actually removes them, which is
 // wanted: some of them were people's mail.
+//
+// The same save takes out the mail rows this package wrote itself. See
+// theirsAlone.
 func Load() {
 	var loaded []*Entry
 	if b, err := data.LoadFile("stream.json"); err == nil {
@@ -72,7 +75,7 @@ func Load() {
 
 	mu.Lock()
 	for _, e := range loaded {
-		if valid(e) {
+		if valid(e) && !theirsAlone(e) {
 			entries = append(entries, e)
 		}
 	}
@@ -87,26 +90,32 @@ func Load() {
 		}
 	}()
 
-	// Mail already announces itself as a fact, and has since the day the hook
-	// into the agent was deleted. Subscribing to it here rather than asking
-	// service/mail to announce a second time keeps one fact for one event.
-	mails := event.Subscribe(event.EventMailReceived)
-	go func() {
-		for e := range mails.Chan {
-			str := func(k string) string { s, _ := e.Data[k].(string); return s }
-			from, subject, account := str("from"), str("subject"), str("account")
-			if account == "" {
-				continue // an entry nobody owns would be public, and this is mail
-			}
-			if subject == "" {
-				subject = "(no subject)"
-			}
-			add(&Entry{Service: "mail", Text: from + " — " + subject, URL: "/inbox", Account: account})
-		}
-	}()
-
 	app.Log("stream", "Loaded %d entries", n)
 }
+
+// theirsAlone is an entry that was never this page's to show.
+//
+// Mail was a row here: sender, subject, and a link to /inbox. Three things were
+// wrong with it and they compound.
+//
+// It is a duplicate of somewhere better. Mail has unread state, a thread and a
+// reply, and a timeline row carries none of them — the URL was literally
+// "/inbox", so the row's whole content was a pointer at the page that already
+// holds it, rendered worse.
+//
+// It is a notification, and this instance deliberately has none. "Something
+// arrived, go and look" is what a notification says; correspondence is read
+// when you come back, which is the reason a reply to it is considered rather
+// than reflexive.
+//
+// And it is the one private thing on a public timeline. Everything else here
+// is a headline, a post, a video — ownerless by nature. Account exists because
+// mail did, and the note on that field records what it cost the first time.
+//
+// Dropped on load rather than left to age out, because 500 entries is however
+// many months on a quiet instance, and no operator should have to be told to
+// delete a file.
+func theirsAlone(e *Entry) bool { return e.Service == "mail" }
 
 func valid(e *Entry) bool {
 	return e != nil && e.Service != "" && e.Text != "" && !e.At.IsZero()

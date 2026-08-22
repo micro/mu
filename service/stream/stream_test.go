@@ -1,9 +1,13 @@
 package stream
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
+	"time"
+
+	"mu/internal/data"
 )
 
 func reset(t *testing.T) {
@@ -118,6 +122,53 @@ func TestAnEntryAlreadyOnTheTimelineIsNotAddedTwice(t *testing.T) {
 	add(&Entry{Service: "video", Text: "A headline", URL: "https://example.test/a"})
 	if got := Recent(10, ""); len(got) != 3 {
 		t.Fatalf("two services announcing one link collapsed into %d rows", len(got))
+	}
+}
+
+// Mail is not on the timeline, and the rows that are there go.
+//
+// It was a row: sender, subject, and a link to /inbox — a worse rendering of
+// something one click away, a notification on an instance that has none, and
+// the one private item on a page of headlines. It was also broken: the
+// subscriber read "from", "subject" and "account" off the event, and the mail
+// bus migration moved the payload to a single "message" key, so every arrival
+// hit the guard and was dropped. That failed closed, which is why nothing
+// leaked — but nothing worked either, and the rows still on disk outlived the
+// code that wrote them.
+func TestMailIsNotOnTheTimeline(t *testing.T) {
+	reset(t)
+
+	mu.Lock()
+	entries = []*Entry{
+		{ID: "1", Service: "mail", Text: "someone@example.com — Invoice",
+			URL: "/inbox", Account: "alice", At: time.Now()},
+		{ID: "2", Service: "news", Text: "A headline",
+			URL: "https://example.test/a", At: time.Now()},
+	}
+	save()
+	entries = nil
+	mu.Unlock()
+
+	Load()
+
+	got := Recent(10, "alice")
+	if len(got) != 1 {
+		t.Fatalf("timeline holds %d entries, want the one that is not mail", len(got))
+	}
+	if got[0].Service != "news" {
+		t.Fatalf("the surviving entry is %q, want news", got[0].Service)
+	}
+
+	// And it is gone from disk, not merely hidden — an operator should not have
+	// to be told to delete a file.
+	var onDisk []*Entry
+	if b, err := data.LoadFile("stream.json"); err == nil {
+		_ = json.Unmarshal(b, &onDisk)
+	}
+	for _, e := range onDisk {
+		if e.Service == "mail" {
+			t.Errorf("a mail row is still in stream.json: %+v", e)
+		}
 	}
 }
 
