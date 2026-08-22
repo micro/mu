@@ -136,7 +136,11 @@ func hand(accountID string, t *thread.Thread, ask string) error {
 			} else if strings.TrimSpace(m.From) == "" || m.From == accountID {
 				who = "The owner"
 			}
-			detail.WriteString(who + ": " + strings.TrimSpace(m.Text) + "\n\n")
+			// Without the quoted tail. Six messages each carrying the two before
+			// them is the same conversation three times over in one prompt, and
+			// the agent is being handed all six anyway. See quoted.go.
+			text, _ := unquoted(m.Text)
+			detail.WriteString(who + ": " + strings.TrimSpace(text) + "\n\n")
 		}
 	}
 	detail.WriteString("What they have asked for: " + ask)

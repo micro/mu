@@ -259,8 +259,27 @@ func messageBlock(accountID string, t *thread.Thread, m thread.Message, subject 
 			}
 		}
 	}
+	// What they wrote, and — folded away — the part of it that is this
+	// conversation quoted back at itself. See quoted.go.
+	body, quote := unquoted(m.Text)
 	return `<div class="ib-msg ib-person">` + fromLine(who, m.At) + addressLine(m) +
-		`<div class="ib-body ib-typed">` + html.EscapeString(m.Text) + `</div></div>`
+		`<div class="ib-body ib-typed">` + html.EscapeString(body) + `</div>` +
+		quotedBlock(quote) + `</div>`
+}
+
+// quotedBlock is the fold: a control that says there is more and shows it.
+//
+// A <details>, so it needs no script and no state kept anywhere — the browser
+// already has this element and every reader already knows the shape from the
+// same three dots in Gmail. Closed by default, because the thing behind it is
+// the messages above.
+func quotedBlock(quoted string) string {
+	if strings.TrimSpace(quoted) == "" {
+		return ""
+	}
+	return `<details class="ib-quoted"><summary title="Show quoted text" ` +
+		`aria-label="Show quoted text">&middot;&middot;&middot;</summary>` +
+		`<div class="ib-quoted-text">` + html.EscapeString(quoted) + `</div></details>`
 }
 
 // fromLine is who wrote a message and when, on one line with the time pushed to

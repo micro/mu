@@ -219,9 +219,13 @@ func row(r *http.Request, accountID string, t thread.Thread) string {
 	// before thread.Name existed has the subject inside the message, so the
 	// preview read "Invoice 4021 Attached is this month's…" — the subject
 	// twice, once as the subject. See withoutSubject.
+	// And with the quoted tail off it too, so a reply that says "Yes, do that"
+	// above three exchanges of history previews as "Yes, do that" — see
+	// quoted.go.
 	snippet := ""
 	if msgs := thread.Messages(accountID, t.ID, 1); len(msgs) > 0 {
-		snippet = trimTo(withoutSubject(msgs[0].Text, subject), 110)
+		text, _ := unquoted(withoutSubject(msgs[0].Text, subject))
+		snippet = trimTo(text, 110)
 	}
 
 	// The labels, before the subject rather than after it.

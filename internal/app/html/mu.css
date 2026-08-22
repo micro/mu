@@ -5561,6 +5561,46 @@ button.pill:hover {
 .ib-body p:first-child { margin-top: 0 }
 .ib-body p:last-child { margin-bottom: 0 }
 .ib-typed { white-space: pre-wrap }
+
+/* The quoted tail of a reply, folded. See inbox/quoted.go.
+
+   Three dots and nothing else, because what is behind them is the messages
+   already on this page: a mail client quotes what it answers, so a thread of
+   six short replies renders as six screens of itself. The summary is a small
+   grey pill rather than a word — a caption saying "quoted text" on every
+   message down a thread is more furniture than the quote it hides. */
+.ib-quoted { margin-top: 10px }
+
+.ib-quoted > summary {
+  display: inline-block;
+  list-style: none;
+  cursor: pointer;
+  padding: 0 8px;
+  line-height: 16px;
+  font-size: 12px;
+  letter-spacing: .5px;
+  color: var(--text-muted, #888);
+  background: var(--hover-background, #fafafa);
+  border: var(--border-width, 1px) solid var(--card-border, #e8e8e8);
+  border-radius: var(--border-radius, 6px);
+}
+
+.ib-quoted > summary::-webkit-details-marker { display: none }
+.ib-quoted > summary:hover { border-color: #bbb }
+
+/* The quote itself reads as a quote: indented behind a rule, muted, and in the
+   whitespace it arrived with. This is the one place .ib-msg's own rule about
+   not drawing quote bars does not apply — here it is genuinely a quotation. */
+.ib-quoted-text {
+  margin-top: 10px;
+  padding-left: 12px;
+  border-left: 2px solid var(--card-border, #e8e8e8);
+  font-size: 13px;
+  line-height: var(--line-height, 1.6);
+  color: var(--text-muted, #888);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 .ib-ran { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px }
 .ib-failed { font-size: 12px; color: var(--btn-danger, #c00) }
 
