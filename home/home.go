@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"mu/agent"
 	"mu/inbox"
 	"mu/internal/app"
 	"mu/internal/auth"
@@ -423,6 +424,23 @@ function fetchW(la,lo){
 	// is a receipt for something you just watched happen, and an inbox preview
 	// is three subject lines beside a Mail page one click away. /runs and /mail
 	// are the pages for them, and the header already carries an unread badge.
+
+	// Your agents, between what arrived and what the instance knows.
+	//
+	// Which is the order the three read in: something came in, here is who you
+	// have working on it, here is what they can reach. Without this the page
+	// was a mailbox above a content grid and the agents were somewhere else
+	// entirely — on a roster you had to go and find, on the one screen whose
+	// job is to say how things are.
+	//
+	// Not the runs block that was removed above. A run is an event and ages
+	// out; an agent is a standing thing, and this is the roster with a sign of
+	// life against each. See agent.Preview.
+	if viewerID != "" {
+		if who := agent.Preview(viewerID); who != "" {
+			b.WriteString(sectionRule("Agents") + who)
+		}
+	}
 
 	if viewerAcc != nil && len(viewerAcc.Widgets) > 0 {
 		var tiles string

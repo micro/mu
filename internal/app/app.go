@@ -375,11 +375,19 @@ var Template = `
                others, so a permanent entry above the fold was the spine
                claiming something the rest of the product does not agree with.
                Anyone who lives in Apps can pin it and it comes back, which is
-               what pinning is for. -->
+               what pinning is for.
+
+               Tools was here and is not. The page stays — /tools is the whole
+               catalogue at the granularity an agent calls it, and it is worth
+               having — but a tool is not a destination, it is a property of
+               something. An agent's tools are what it may reach for, and that
+               is on /agents; a service's are its methods, and those are on
+               /services/<name> with the form to try one. So the two rows that
+               went to one catalogue are one row to the noun, and the verbs are
+               reached through whatever has them. /agents links to it. -->
           <a href="/home"><img src="/home.png?` + Version + `"><span class="label">Home</span></a>
           <a href="/inbox"><img src="/mail.png?` + Version + `"><span class="label">Inbox</span></a>
           <a href="/agents"><img src="/agent.svg?` + Version + `"><span class="label">Agents</span></a>
-          <a href="/tools"><img src="/tools.svg?` + Version + `"><span class="label">Tools</span></a>
           <a href="/services"><img src="/services.svg?` + Version + `"><span class="label">Services</span></a>
           %s
         </div>

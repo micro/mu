@@ -5614,12 +5614,52 @@ button.pill:hover {
    In a card, like everything else on that screen. It was the one block not in
    one — naked rows between bordered cards, which is most of why it read as
    unfinished rather than as a section. */
-.inbox-peek {
+/* Your agents and your inbox are the two "what is yours" blocks on Home, so
+   they are the same object: same border, same background, same inset. Drawing
+   the second one differently would say they are different kinds of thing. */
+.inbox-peek,
+.agent-peek {
   border: var(--border-width, 1px) solid var(--card-border, #e8e8e8);
   border-radius: var(--border-radius, 6px);
   background: var(--card-background, #fff);
   padding: 4px var(--item-padding, 16px) 12px;
   margin: 0;
+}
+
+/* One agent: its name, what it last dealt with, and when. Three columns rather
+   than a stack, because the name is what you scan for and the rest is context
+   on the same line. The middle takes the slack and truncates. */
+.agent-peek-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 11px 0;
+  text-decoration: none;
+  color: inherit;
+  border-bottom: var(--border-width, 1px) solid var(--card-border, #f4f4f4);
+}
+.agent-peek-row:last-child { border-bottom: 0 }
+.agent-peek-row:visited { color: inherit }
+.agent-peek-row:hover .agent-peek-name { text-decoration: underline }
+
+.agent-peek-name { font-weight: 500; flex: none }
+.agent-peek-last {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--text-muted, #888);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.agent-peek-idle { font-style: italic; opacity: .7 }
+.agent-peek-when { flex: none; font-size: 12px; color: var(--text-muted, #bbb) }
+
+@media (max-width: 640px) {
+  /* The name over the rest, because three columns in 320px leaves the middle
+     one with nothing to show. */
+  .agent-peek-row { flex-wrap: wrap; row-gap: 2px }
+  .agent-peek-name { flex-basis: 100% }
 }
 
 .peek-row {

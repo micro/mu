@@ -1,0 +1,142 @@
+package agent
+
+// Your agents, on the screen you arrive at.
+//
+// Home had the inbox and the services and nothing between them, and the two
+// are the wrong pair on their own: what arrived, and what the instance knows.
+// The thing missing was what you have working on it.
+//
+// A runs block was here once and was removed for a good reason — "one run is a
+// receipt for something you just watched happen". This is not that. A run is an
+// event and ages out; an agent is a standing thing, and what belongs on Home is
+// the roster with a sign of life against each one: who you have, what they last
+// dealt with, and a way straight into any of them.
+//
+// Last activity comes from internal/thread rather than from a workflow record,
+// which is the same distinction: agent.Flow is how an answer was produced and
+// expires, a conversation is what was said and does not. "Last spoke about X,
+// two hours ago" survives an eviction; "ran six tools in 4.2s" does not, and
+// was never the thing anybody wanted to know from the front page.
+
+import (
+	"html"
+	"strings"
+	"time"
+
+	"mu/internal/app"
+	"mu/internal/thread"
+)
+
+// lastSeen is the most recent conversation an agent is on.
+type lastSeen struct {
+	subject string
+	at      time.Time
+}
+
+// previewShown is how many agents Home carries. Enough to see what you have,
+// short of turning the front page into the roster.
+const previewShown = 5
+
+// previewSubject bounds the line of text under a name.
+const previewSubject = 60
+
+// Preview is your agents and what they last dealt with, for Home. Empty when
+// there are none — a heading over nothing says less than no heading.
+func Preview(accountID string) string {
+	if accountID == "" {
+		return ""
+	}
+	agents := Agents(accountID)
+	if len(agents) == 0 {
+		return ""
+	}
+
+	// The last conversation each one is on. One pass over the record rather
+	// than a lookup per agent: thread.List is already sorted newest first, so
+	// the first thread naming an agent is that agent's latest.
+	latest := map[string]lastSeen{}
+	for _, t := range thread.List(accountID, previewHistory) {
+		if t.Agent == "" {
+			continue
+		}
+		if _, have := latest[t.Agent]; have {
+			continue
+		}
+		latest[t.Agent] = lastSeen{subject: strings.TrimSpace(t.Subject), at: t.Updated}
+	}
+
+	// Busiest first, which on this page means most recently used — an agent you
+	// have not touched in a month is not what you came to look at. Ones that
+	// have done nothing keep their roster order underneath.
+	sorted := make([]*Agent, len(agents))
+	copy(sorted, agents)
+	sortByRecent(sorted, latest)
+
+	if len(sorted) > previewShown {
+		sorted = sorted[:previewShown]
+	}
+
+	var b strings.Builder
+	b.WriteString(`<div class="agent-peek">`)
+	for _, a := range sorted {
+		name := strings.TrimSpace(a.Name)
+		if name == "" {
+			name = a.ID
+		}
+		b.WriteString(`<a class="agent-peek-row" href="` + html.EscapeString(Path("", a.ID)) + `">`)
+		b.WriteString(`<span class="agent-peek-name">` + html.EscapeString(name) + `</span>`)
+
+		if s, ok := latest[a.ID]; ok {
+			what := s.subject
+			if what == "" {
+				what = "a conversation"
+			}
+			b.WriteString(`<span class="agent-peek-last">` +
+				html.EscapeString(trimTo(what, previewSubject)) + `</span>`)
+			b.WriteString(`<span class="agent-peek-when">` +
+				html.EscapeString(app.TimeAgo(s.at)) + `</span>`)
+		} else {
+			// Nothing yet, said as a state rather than left blank — a row with
+			// an empty middle reads as a render that failed.
+			b.WriteString(`<span class="agent-peek-last agent-peek-idle">Nothing yet</span>`)
+		}
+		b.WriteString(`</a>`)
+	}
+	b.WriteString(`</div>`)
+	return b.String()
+}
+
+// previewHistory is how far back to look for the last thing each agent did. Far
+// enough that an agent used last week still shows one, short of walking the
+// whole record to render a front page.
+const previewHistory = 200
+
+// sortByRecent puts the agents that have done something most recently first,
+// and leaves the rest in the order the roster gave them.
+func sortByRecent(agents []*Agent, latest map[string]lastSeen) {
+	// A stable insertion sort: the list is at most a few dozen, and stability
+	// is what keeps the untouched ones in roster order rather than shuffling
+	// them every load.
+	for i := 1; i < len(agents); i++ {
+		for j := i; j > 0; j-- {
+			a, ok := latest[agents[j].ID]
+			b, okPrev := latest[agents[j-1].ID]
+			if !ok {
+				break // nothing to rank it by, so it stays where it is
+			}
+			if okPrev && !a.at.After(b.at) {
+				break
+			}
+			agents[j], agents[j-1] = agents[j-1], agents[j]
+		}
+	}
+}
+
+// trimTo cuts a line to n runes, with an ellipsis where it cut.
+func trimTo(s string, n int) string {
+	r := []rune(strings.TrimSpace(s))
+	if len(r) <= n {
+		return string(r)
+	}
+	return strings.TrimSpace(string(r[:n])) + "…"
+}

@@ -298,16 +298,16 @@ func TestTheBottomGroupIsTheAccount(t *testing.T) {
 func TestTheSidebarIsTheProductsNouns(t *testing.T) {
 	result := renderWithLang("Test", "d", "<p>c</p>", "en", &auth.Account{ID: "alice"})
 
-	// The order somebody meets them in, and it has moved: what is yours first —
-	// Inbox and the mailboxes under it, then Agents and the roster under it —
-	// and the catalogue after, Tools then Services.
+	// The order somebody meets them in: what is yours first — Inbox, then
+	// Agents — and the catalogue after.
 	//
 	// Tools sat above Agents when tools were the lead, on the reasoning that
 	// the product was named for them and Agents was what you built on top. The
-	// thesis moved and so does this: the inbox and the
-	// agents are the product, and the catalogue is what they reach for. Putting
-	// the two personal lists together also keeps the rail readable as two
-	// levels rather than as six equal destinations.
+	// thesis moved and so did this, and then Tools left the rail entirely: a
+	// tool is a property of something rather than a destination. An agent's
+	// tools are what it may reach for and live on /agents; a service's are its
+	// methods and live on /services/<name>. The page stays and /agents links
+	// to it — see the sidebar comment in app.go.
 	// The sidebar, not the whole page: the header carries an envelope that opens
 	// the inbox, and a search over the document finds that first and calls the
 	// rail out of order.
@@ -321,7 +321,7 @@ func TestTheSidebarIsTheProductsNouns(t *testing.T) {
 		nav = nav[:j]
 	}
 
-	want := []string{`href="/home"`, `href="/inbox"`, `href="/agents"`, `href="/tools"`, `href="/services"`}
+	want := []string{`href="/home"`, `href="/inbox"`, `href="/agents"`, `href="/services"`}
 	at := -1
 	for _, w := range want {
 		i := strings.Index(nav, w)
@@ -342,6 +342,10 @@ func TestTheSidebarIsTheProductsNouns(t *testing.T) {
 	}
 	// A service reaches the sidebar by being pinned, never by being a service —
 	// and apps is a service.
+	// And Tools is not a row any more, though the page is still there.
+	if strings.Contains(nav, `href="/tools"`) {
+		t.Error("Tools is back in the sidebar")
+	}
 	for _, gone := range []string{`href="/apps"`, `href="/tasks"`, `href="/events"`, `href="/news"`} {
 		if strings.Contains(result, gone) {
 			t.Errorf("%s is in the sidebar of an account that pinned nothing", gone)

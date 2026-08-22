@@ -83,7 +83,14 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	// order they will do it.
 	b.WriteString(`<p class="lens-lead">Make an agent: give it a name, an instruction and ` +
 		`the services it may use. It gets its own address, you can chat with it here, and a ` +
-		`token lets Claude, Cursor or your own code use the tools you gave it.</p>`)
+		`token lets Claude, Cursor or your own code use the tools you gave it. ` +
+		// The catalogue, from the page that scopes it.
+		//
+		// /tools left the sidebar, because a tool is a property of something
+		// rather than a destination: an agent's tools are what it may reach
+		// for, and this is the page where that is decided. So the way in is
+		// from here, next to the sentence that says an agent is given services.
+		app.TextLink("See the tools", "/tools") + `.</p>`)
 
 	if msg := r.URL.Query().Get("error"); msg != "" {
 		// The way out is a link, because it reads as one. Hitting the agent limit
