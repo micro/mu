@@ -87,6 +87,22 @@ func Preview(accountID string) string {
 	// the first thread naming an agent is that agent's latest.
 	latest := map[string]lastSeen{}
 	for _, t := range thread.List(accountID, previewHistory) {
+		// Something an agent actually did.
+		//
+		// This read every conversation, and most conversations have no agent
+		// recorded on them — so the line below filed all of them under the
+		// default and Micro's row reported, as the last thing it dealt with, a
+		// DMARC aggregate report from Google that nothing had read. Mail the
+		// agent deliberately stayed quiet on did the same: it is on a thread
+		// between other people and says so, and the front page turned that
+		// silence into activity.
+		//
+		// A party of RoleAgent is the exact fact wanted, and it is already
+		// there: parties accrete from who spoke, so an agent is on a
+		// conversation when it has answered on it and not before.
+		if !answered(accountID, t) {
+			continue
+		}
 		// A conversation with nobody named is the default's: the chat records
 		// whichever agent answered, and for the one that answers when none was
 		// asked for that is empty.
@@ -143,6 +159,21 @@ func Preview(accountID string) string {
 	}
 	b.WriteString(`</div>`)
 	return b.String()
+}
+
+// answered says whether an agent has spoken on a conversation.
+//
+// Not whether one is named on it. t.Agent is who a conversation is *with*,
+// which is set from whoever would answer — an email addressed to an agent is
+// with that agent from the moment it lands, answered or not. What Home is
+// reporting is activity, and "arrived" is not activity.
+func answered(accountID string, t thread.Thread) bool {
+	for _, p := range thread.Parties(accountID, t.ID) {
+		if p.Kind == thread.RoleAgent {
+			return true
+		}
+	}
+	return false
 }
 
 // previewHistory is how far back to look for the last thing each agent did. Far

@@ -5,6 +5,9 @@ package agent
 import (
 	"strings"
 	"testing"
+
+	"mu/internal/auth"
+	"mu/internal/thread"
 )
 
 // The agent every account already has is on the list.
@@ -31,5 +34,47 @@ func TestThePreviewIncludesTheDefaultAgent(t *testing.T) {
 	// point at two.
 	if !strings.Contains(got, `href="/agent/`+DefaultPlatformAgent+`"`) {
 		t.Errorf("the default agent does not link to its own page:\n%s", got)
+	}
+}
+
+// A conversation nothing answered is not an agent's activity.
+//
+// Most conversations have no agent recorded on them, and this read all of
+// them — so Micro's row on the front page reported, as the last thing it dealt
+// with, a DMARC aggregate report from Google that nothing had read. Mail the
+// agent deliberately stayed quiet on did the same: it is on a thread between
+// other people and says so, and the front page turned that silence into
+// activity.
+func TestAConversationNothingAnsweredIsNotActivity(t *testing.T) {
+	const who = "preview-silent"
+	auth.Create(&auth.Account{ID: who, Name: who, Secret: "test-secret"}) //nolint:errcheck
+
+	// A report that arrived and was filed. Nobody answered it.
+	quiet := thread.Open(who, "mail", "<dmarc@google.com>")
+	if quiet == nil {
+		t.Fatal("no thread")
+	}
+	thread.Name(who, quiet.ID, "Report domain: micro.mu Submitter: google.com")
+	thread.Add(thread.Message{Thread: quiet.ID, Account: who, Role: thread.RolePerson,
+		Text: "An aggregate report is attached.", From: "noreply-dmarc@google.com"})
+
+	got := Preview(who)
+	if strings.Contains(got, "Report domain") {
+		t.Error("a conversation nothing answered was reported as an agent's last activity")
+	}
+	if !strings.Contains(got, "Nothing yet") {
+		t.Errorf("an agent that has done nothing does not say so:\n%s", got)
+	}
+
+	// And once it has answered on one, that is what it last dealt with.
+	live := thread.Open(who, "mail", "<henrik@example.com>")
+	thread.Name(who, live.ID, "Tuesday")
+	thread.Add(thread.Message{Thread: live.ID, Account: who, Role: thread.RolePerson,
+		Text: "Are you free Tuesday?", From: "henrik@example.com"})
+	thread.Add(thread.Message{Thread: live.ID, Account: who, Role: thread.RoleAgent,
+		Text: "I have replied."})
+
+	if got := Preview(who); !strings.Contains(got, "Tuesday") {
+		t.Errorf("a conversation the agent answered is not reported:\n%s", got)
 	}
 }
