@@ -11,6 +11,26 @@ import (
 	"mu/internal/quota"
 )
 
+// tools is how many there are, rounded down to something a person reads.
+//
+// Still counted rather than claimed, which is the rule the exact number was
+// there to keep: this page once said "67 real tools" as a literal while the
+// endpoint served 72. Rounding down cannot overstate — 112 reads as "100+" and
+// 210 as "200+" — so the claim stays true without a number that changes under
+// the reader for no reason they can see. An exact count is a fact nobody
+// wanted; what it is doing on a landing page is saying "a lot", and it should
+// say that.
+//
+// Under a hundred it says the number, because "0+" is not a claim and a small
+// instance rounding to nothing would be worse than the truth.
+func tools() string {
+	n := api.ToolCount()
+	if n < 100 {
+		return strconv.Itoa(n)
+	}
+	return strconv.Itoa(n/100*100) + "+"
+}
+
 // pence renders what an operation costs, for the one line on the landing that
 // names a price.
 //
@@ -154,7 +174,7 @@ func landingBody() string {
 <h2 class="lhead">Work with Agents.</h2>
 <p class="lead">Make one, give it an address, hand it a job. It gets on with it
 while you are elsewhere, and answers where you asked. ` +
-		strconv.Itoa(api.ToolCount()) + ` tools behind it — news, search, markets,
+		tools() + ` tools behind it — news, search, markets,
 weather, places, files.</p>
 
 <div class="lctas">
@@ -228,7 +248,7 @@ func developerBand(base string) string {
 	return `<div class="dev">
 <h2 class="dev-head">Tools for Agents</h2>
 <p class="dev-lead">Already have an agent? Point it at one endpoint for ` +
-		strconv.Itoa(api.ToolCount()) + ` tools.</p>
+		tools() + ` tools.</p>
 <pre class="dev-endpoint">` + endpoint + `</pre>
 <ul class="dev-facts">
   <li>MCP, or plain HTTP for anything that cannot speak it.</li>
