@@ -1,20 +1,26 @@
 package inbox
 
-// Writing one yourself, with the agent.
+// Writing one yourself.
 //
 // The inbox could read and it could answer, and it could not start anything.
-// That is a strange mailbox: half of what anybody does in one is write the first
-// message. And it is a stranger agentic inbox, because the moment worth having
-// the agent for is precisely the one where the page was blank — you know who to
-// write to and roughly what to say, and the writing is the part you were putting
-// off.
+// That is a strange mailbox: half of what anybody does in one is write the
+// first message.
 //
-// So there are two buttons and they are not variations of each other. **Draft**
-// runs the agent, costs a credit, and fills the box; **Send** puts it in the
-// post. Nothing is ever sent by the agent on its own — the draft lands in a
-// textarea you are looking at, and the send is a second, separate act by a
-// person. An agent that could do both from one press is a different product with
-// a different risk, and not one anybody asked for.
+// # It does not write it for you
+//
+// There was a second button here. **Draft** ran the agent over an instruction
+// and filled the boxes; **Send** put it in the post. The argument was that the
+// moment worth having an agent for is the one where the page is blank.
+//
+// It is gone, and the reason is what this page is for. The inbox is triage —
+// read what came in, say something, hand work to an agent, send mail out. Every
+// one of those is a decision. Writing the words is not the part anybody was
+// stuck on, and a text box asking what to say, above four suggestion chips,
+// made a page about deciding look like a page about composition. It also cost a
+// credit and a model call to produce a paragraph you then edited.
+//
+// Handing work to an agent is still here and is the thing that was actually
+// wanted: it is act.go, on a conversation, where there is something to act on.
 //
 // # Why this imports the mail service
 //
@@ -24,9 +30,6 @@ package inbox
 // but internal/, so there is no cycle to break and no hook to justify.
 // hooks.go's own rule applies: prefer a plain import, and take the hook only
 // when you cannot have one. Here we can.
-//
-// The agent is the other half and stays a hook, because agent/ is the one import
-// this package may not have. See Draft.
 //
 // # Where the sent message goes
 //
@@ -48,24 +51,9 @@ import (
 	"mu/service/mail"
 )
 
-// Draft asks the agent to write a message, and is filled in by the server
-// because this package may not import agent/.
-//
-// It is handed what is already in the form — who it is to, and whatever has been
-// typed — because "make it shorter" and "add the address" are instructions about
-// a draft rather than requests for a new one. What comes back is the whole
-// message: a subject on the first line, a blank line, then the body.
-//
-// Nil on a build with no agent, which hides the button rather than offering one
-// that does nothing.
-var Draft func(accountID, instruction, to, subject, body string) (string, error)
-
-// draftLimit bounds one instruction to the agent, and bodyLimit one message.
-// A mail nobody would read is not a mail this form needs to be able to send.
-const (
-	draftLimit = 2000
-	bodyLimit  = 40000
-)
+// bodyLimit bounds one message. A mail nobody would read is not a mail this
+// form needs to be able to send.
+const bodyLimit = 40000
 
 // ComposeHandler serves /inbox/compose.
 func ComposeHandler(w http.ResponseWriter, r *http.Request) {
@@ -79,7 +67,6 @@ func ComposeHandler(w http.ResponseWriter, r *http.Request) {
 		To:      strings.TrimSpace(r.FormValue("to")),
 		Subject: strings.TrimSpace(r.FormValue("subject")),
 		Body:    r.FormValue("body"),
-		Ask:     strings.TrimSpace(r.FormValue("ask")),
 		On:      strings.TrimSpace(r.FormValue("on")),
 	}
 	// A conversation somebody else's id names is not a conversation. Checked on
@@ -91,9 +78,6 @@ func ComposeHandler(w http.ResponseWriter, r *http.Request) {
 	if len(f.Body) > bodyLimit {
 		f.Body = f.Body[:bodyLimit]
 	}
-	if len(f.Ask) > draftLimit {
-		f.Ask = f.Ask[:draftLimit]
-	}
 
 	if r.Method != http.MethodPost {
 		compose(w, r, acc.ID, f)
@@ -104,25 +88,17 @@ func ComposeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Which button. Draft rewrites the form; send empties it.
-	if r.FormValue("draft") != "" {
-		f = drafted(acc.ID, f)
-		compose(w, r, acc.ID, f)
-		return
-	}
 	sent(w, r, acc.ID, f)
 }
 
-// form is what is in the boxes, carried across a draft round trip.
+// form is what is in the boxes, carried back when a send is refused.
 //
-// A struct rather than four arguments because every one of them survives a
-// draft: an instruction that replaced the recipient you had typed would be a
-// form that eats your work, which is the reason people stop pressing the button.
+// A struct rather than four arguments because every one of them survives that:
+// a form that empties itself on a bad address is a form that eats your work.
 type form struct {
 	To      string
 	Subject string
 	Body    string
-	Ask     string
 	Problem string
 	Done    string
 	// On is the conversation this answers, when it is one.
@@ -132,63 +108,6 @@ type form struct {
 	// conversation and the page showed two: what they wrote, and what you sent
 	// back, side by side, neither knowing about the other.
 	On string
-}
-
-// drafted runs the agent over what is in the form and puts the answer back.
-func drafted(accountID string, f form) form {
-	switch {
-	case Draft == nil:
-		f.Problem = "there is no agent on this instance to write it"
-		return f
-	case f.Ask == "":
-		f.Problem = "say what it should say, and the agent will write it"
-		return f
-	}
-	out, err := Draft(accountID, f.Ask, f.To, f.Subject, f.Body)
-	if err != nil {
-		app.Log("inbox", "drafting a message failed: %v", err)
-		f.Problem = "that one did not work. Try asking a different way."
-		return f
-	}
-
-	subject, body := split(out)
-	if subject != "" {
-		f.Subject = subject
-	}
-	if body != "" {
-		f.Body = body
-	}
-	// The instruction has been carried out, so the box is empty for the next
-	// one — which is nearly always "shorter" or "less formal", and typing that
-	// after the first is what makes this a collaboration rather than a button.
-	f.Ask = ""
-	return f
-}
-
-// split reads a drafted message: subject on the first line, body after the
-// blank one.
-//
-// The agent is told to answer in that shape. When it does not — and a model
-// asked for two paragraphs will sometimes send three — the whole thing is the
-// body and whatever subject was already typed stands. A wrong subject is worse
-// than no subject, because it is the line the recipient reads first.
-func split(out string) (subject, body string) {
-	out = strings.TrimSpace(strings.ReplaceAll(out, "\r\n", "\n"))
-	if out == "" {
-		return "", ""
-	}
-	head, rest, found := strings.Cut(out, "\n\n")
-	head = strings.TrimSpace(head)
-	// A first line that is a paragraph is a paragraph. Subjects are short and
-	// have no sentence in them; this is the same length a subject line is
-	// truncated to everywhere else.
-	if !found || head == "" || len(head) > 90 || strings.Contains(head, "\n") {
-		return "", out
-	}
-	// "Subject: x" is what a model writes when told to put the subject first,
-	// often enough that leaving it in would ship it to the recipient.
-	head = strings.TrimSpace(strings.TrimPrefix(head, "Subject:"))
-	return head, strings.TrimSpace(rest)
 }
 
 // sent puts it in the post and writes it down.
@@ -371,31 +290,9 @@ func compose(w http.ResponseWriter, r *http.Request, accountID string, f form) {
 		html.EscapeString(f.To) + `">`)
 	b.WriteString(`<input class="ib-field" type="text" name="subject" placeholder="Subject" value="` +
 		html.EscapeString(f.Subject) + `">`)
-	b.WriteString(`<textarea class="ib-field" name="body" rows="12" placeholder="Write it, or ask ` +
-		`the agent to below">` + html.EscapeString(f.Body) + `</textarea>`)
-
-	// The agent's half, under the message rather than beside it: it is a way of
-	// filling the box above, so it reads in the order it is used.
-	if Draft != nil {
-		b.WriteString(`<div class="ib-draft">`)
-		b.WriteString(`<input class="ib-field" type="text" name="ask" maxlength="2000" value="` +
-			html.EscapeString(f.Ask) + `" placeholder="Tell the agent what to write — it fills the boxes above">`)
-		b.WriteString(`<div class="ib-ask-row"><button type="submit" name="draft" value="1" class="pill">Draft</button>`)
-		for _, s := range []string{
-			"Write a short, friendly note",
-			"Make it shorter",
-			"Make it more formal",
-			"Add what I know about them",
-		} {
-			b.WriteString(`<button type="button" class="pill" onclick="this.form.ask.value='` +
-				html.EscapeString(s) + `';this.form.ask.focus()">` + html.EscapeString(s) + `</button>`)
-		}
-		b.WriteString(`</div></div>`)
-	}
+	b.WriteString(`<textarea class="ib-field" name="body" rows="12" placeholder="Write it">` + html.EscapeString(f.Body) + `</textarea>`)
 
 	b.WriteString(`<div class="ib-ask-row"><button type="submit">Send</button>`)
-	b.WriteString(`<span class="ib-ask-note">Nothing is sent until you press Send. ` +
-		`The agent writes; you post it.</span></div>`)
 	b.WriteString(`</form></div>`)
 
 	app.Respond(w, r, app.Response{Title: "Compose", Description: "Write one, with the agent",

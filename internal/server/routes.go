@@ -724,7 +724,7 @@ func registerRoutes() {
 	// is the instruction box and the two are not variations of each other.
 	http.HandleFunc("/inbox/unread", inbox.UnreadHandler)
 	http.HandleFunc("/inbox/delete", inbox.DeleteHandler)
-	// Writing one yourself, with the agent drafting. An exact route, because
+	// Writing one yourself. An exact route, because
 	// /inbox/<box> is a mailbox name and a box could be called anything.
 	http.HandleFunc("/inbox/compose", inbox.ComposeHandler)
 	// Where you are, which every specialist needs and nothing server-side
