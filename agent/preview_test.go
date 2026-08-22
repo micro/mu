@@ -78,3 +78,28 @@ func TestAConversationNothingAnsweredIsNotActivity(t *testing.T) {
 		t.Errorf("a conversation the agent answered is not reported:\n%s", got)
 	}
 }
+
+// Each agent on Home links to itself.
+//
+// Path takes the owner and was given "", so SlugFor looked every id up in
+// nobody's roster, found nothing, decided it must be one of the instance's own,
+// found nothing again, and fell back to the default slug. Every agent on the
+// page linked to /agent/micro. The links worked; they went somewhere else.
+func TestEachAgentOnHomeLinksToItself(t *testing.T) {
+	const who = "preview-links"
+	auth.Create(&auth.Account{ID: who, Name: who, Secret: "test-secret"}) //nolint:errcheck
+
+	made, _, err := CreateAgent(who, "Research", "", "", "", nil, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got := Preview(who)
+	want := `href="` + Path(who, made.ID) + `"`
+	if !strings.Contains(got, want) {
+		t.Errorf("the agent's row does not link to it (want %s):\n%s", want, got)
+	}
+	if n := strings.Count(got, `href="/agent/micro"`); n != 1 {
+		t.Errorf("%d rows link to the default agent, want only its own", n)
+	}
+}

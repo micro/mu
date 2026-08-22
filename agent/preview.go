@@ -128,7 +128,13 @@ func Preview(accountID string) string {
 		if name == "" {
 			name = a.ID
 		}
-		rows = append(rows, entryOf{ID: a.ID, Name: name, Path: Path("", a.ID)})
+		// Path takes the owner, and it was given "". SlugFor then looks the id up
+		// in Agents(""), which is nobody's roster, finds nothing, decides it must
+		// be one of the instance's own, finds nothing again, and falls back to the
+		// default slug — so every agent on this page linked to /agent/micro. A
+		// lookup miss that resolves to a different agent rather than to an error
+		// is the shape of it: the link worked, it just went somewhere else.
+		rows = append(rows, entryOf{ID: a.ID, Name: name, Path: Path(accountID, a.ID)})
 	}
 
 	if len(rows) > previewShown {
