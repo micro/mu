@@ -49,14 +49,14 @@ func CardContext(acc *auth.Account) string {
 
 	var b strings.Builder
 	for _, id := range order {
-		body := textOf(cardBody(id))
+		body := textOf(cardHTML(id))
 		if body == "" {
 			continue
 		}
 		if len(body) > perCardCap {
 			body = strings.TrimSpace(body[:perCardCap]) + "…"
 		}
-		entry := "## " + cardTitle(id) + "\n" + body + "\n\n"
+		entry := "## " + cardName(id) + "\n" + body + "\n\n"
 		if b.Len()+len(entry) > contextCap {
 			break
 		}
@@ -69,8 +69,10 @@ func CardContext(acc *auth.Account) string {
 		"directly rather than fetching the same thing again:\n\n" + strings.TrimSpace(b.String())
 }
 
-// cardBody is the rendered content of one card, or "" if it has none.
-func cardBody(id string) string {
+// cardHTML is the rendered content of one card, or "" if it has none. Named
+// for what it returns rather than for the card, because cardBody is the body as
+// the page shows it — with the way through to the service on the end of it.
+func cardHTML(id string) string {
 	for _, c := range Cards {
 		if c.ID == id {
 			return c.CachedHTML
@@ -79,7 +81,7 @@ func cardBody(id string) string {
 	return ""
 }
 
-func cardTitle(id string) string {
+func cardName(id string) string {
 	for _, c := range Cards {
 		if c.ID == id {
 			return c.Title

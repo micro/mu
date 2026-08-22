@@ -264,13 +264,18 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 		var result []cardData
 		for _, card := range Cards {
-			if strings.TrimSpace(card.CachedHTML) == "" {
+			// The same two halves the page builds, from the same two
+			// functions. Sending CachedHTML raw is what took the More link off
+			// every card on the first refresh, and sending the bare Title is
+			// why the age on a card never moved while its contents did.
+			body := cardBody(card)
+			if body == "" {
 				continue
 			}
 			result = append(result, cardData{
 				ID:     card.ID,
-				Title:  card.Title,
-				HTML:   card.CachedHTML,
+				Title:  cardHead(card),
+				HTML:   body,
 				Column: card.column(),
 			})
 		}
@@ -492,6 +497,10 @@ function fetchW(la,lo){
         if(el){
           var content = el.querySelector('.card-body');
           if(content) content.innerHTML = c.html;
+          // The head too, or the age on a card stands still while its
+          // contents move. c.title was sent and never used.
+          var head = el.querySelector('h4');
+          if(head) head.innerHTML = c.title;
         }
       });
     }).catch(function(){});
@@ -542,6 +551,65 @@ func sectionRule(label string) string {
 	return `<p class="home-section"><small>` + htmlEsc(label) + `</small></p>`
 }
 
+// cardTips is the one-line explanation behind the "?" on a card.
+//
+// Package-level because both the page and the refresh build a card's title now,
+// and the two disagreeing about what a card is called is the bug below.
+var cardTips = map[string]string{
+	"blog":    "Microblog posts with daily AI-generated digests",
+	"news":    "Headlines from RSS feeds, sorted by time",
+	"markets": "Live crypto, futures, and commodity prices",
+	"prayer":  "Islamic prayer times, and a daily verse, saying and name",
+	"social":  "Public discussion threads",
+	"video":   "Latest videos from curated channels",
+	"images":  "A picture a day, generated here",
+}
+
+// cardBody is a card's contents as a reader sees them: what the service
+// rendered, and the way through to the whole of it.
+//
+// One builder, because there were two. The page appended the More link to
+// CachedHTML; the JSON the page polls itself with sent CachedHTML alone, and
+// the script replaces .card-body with it wholesale. So every card lost its More
+// link on the first refresh and got it back on the next full page load, which
+// is exactly what "sometimes the More buttons disappear" looks like from the
+// outside.
+func cardBody(c Card) string {
+	body := strings.TrimSpace(c.CachedHTML)
+	if body == "" {
+		return ""
+	}
+	if c.Link != "" {
+		body += app.Link("More", c.Link)
+	}
+	return body
+}
+
+// cardHead is a card's title: its name, a way through to the service, what it
+// is, and how old what it shows is.
+//
+// The name is a link where the card has somewhere to go, which is all of them.
+// A card is a window onto a service and the title is the name of that service —
+// it was the one part of the card that looked like a label and behaved like
+// one, so the only way through was the More link at the very bottom, past
+// whatever the card was showing.
+func cardHead(c Card) string {
+	title := htmlEsc(c.Title)
+	if c.Link != "" {
+		title = `<a class="card-head-link" href="` + htmlEsc(c.Link) + `">` + title + `</a>`
+	}
+	if tip, ok := cardTips[c.ID]; ok {
+		title += fmt.Sprintf(` <span class="card-tooltip" data-tip="%s" onclick="event.stopPropagation();document.querySelectorAll('.card-tooltip.show').forEach(function(e){e.classList.remove('show')});this.classList.toggle('show')">?</span>`, htmlEsc(tip))
+	}
+	// When it is from, on the card, which is the whole point of the stream:
+	// a row of headlines with no age on it reads as "now" whether it is an
+	// hour old or a week.
+	if c.Streamed() {
+		title += ` <span class="card-when">` + htmlEsc(app.TimeAgo(c.At)) + `</span>`
+	}
+	return title
+}
+
 // CardsHTML renders the cards a reader watches: the live view of each
 // service they chose to keep an eye on.
 //
@@ -554,16 +622,6 @@ func CardsHTML(r *http.Request, viewerAcc *auth.Account) string {
 	var b strings.Builder
 
 	// Order and column come from cards.json.
-
-	tooltips := map[string]string{
-		"blog":    "Microblog posts with daily AI-generated digests",
-		"news":    "Headlines from RSS feeds, sorted by time",
-		"markets": "Live crypto, futures, and commodity prices",
-		"prayer":  "Islamic prayer times, and a daily verse, saying and name",
-		"social":  "Public discussion threads",
-		"video":   "Latest videos from curated channels",
-		"images":  "A picture a day, generated here",
-	}
 
 	// Each card renders in the column cards.json puts it in, in the order the
 	// file lists it. That is the third answer this has had.
@@ -583,24 +641,11 @@ func CardsHTML(r *http.Request, viewerAcc *auth.Account) string {
 	// landed yet.
 	var leftHTML, rightHTML []string
 	for _, card := range Cards {
-		content := card.CachedHTML
-		if strings.TrimSpace(content) == "" {
+		body := cardBody(card)
+		if body == "" {
 			continue
 		}
-		if card.Link != "" {
-			content += app.Link("More", card.Link)
-		}
-		title := card.Title
-		if tip, ok := tooltips[card.ID]; ok {
-			title += fmt.Sprintf(` <span class="card-tooltip" data-tip="%s" onclick="event.stopPropagation();document.querySelectorAll('.card-tooltip.show').forEach(function(e){e.classList.remove('show')});this.classList.toggle('show')">?</span>`, htmlEsc(tip))
-		}
-		// When it is from, on the card, which is the whole point of the stream:
-		// a row of headlines with no age on it reads as "now" whether it is an
-		// hour old or a week.
-		if card.Streamed() {
-			title += ` <span class="card-when">` + htmlEsc(app.TimeAgo(card.At)) + `</span>`
-		}
-		rendered := fmt.Sprintf(app.CardTemplate, card.ID, card.ID, title, content)
+		rendered := fmt.Sprintf(app.CardTemplate, card.ID, card.ID, cardHead(card), body)
 		if card.column() == "left" {
 			leftHTML = append(leftHTML, rendered)
 		} else {

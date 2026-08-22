@@ -1073,6 +1073,24 @@ body.page-home #page-title ~ #customize-link {
   color: var(--text-primary);
 }
 
+/* A card's title is the name of the service it is a window onto, so it goes
+   there. It was the one part of a card that looked like a label and behaved
+   like one, which left the More link at the very bottom as the only way
+   through — past whatever the card happened to be showing.
+
+   It inherits the heading's colour and weight rather than looking like a link,
+   because a card has one visible call to action and that is More; this is the
+   title doing what a title in a window already does. The explicit :visited is
+   the global a:visited{color:#000} again, which outranks a plain class and has
+   turned two other controls unreadable after first use. */
+.card h4 a.card-head-link,
+.card h4 a.card-head-link:visited {
+  color: inherit;
+  font-weight: inherit;
+  text-decoration: none;
+}
+.card h4 a.card-head-link:hover { text-decoration: underline }
+
 .card form {
   margin-bottom: 0;
 }
