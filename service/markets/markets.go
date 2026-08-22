@@ -195,9 +195,19 @@ func TopMovers(n int) string {
 }
 
 func refreshMarkets() {
+	// A failed fetch used to cost a full cycle: fetchPrices returns nil on any
+	// error, the loop slept the whole interval and served the old price again,
+	// and the only sign was a "Last refresh" line quietly ageing in small print
+	// at the bottom of the page. An instance was found serving a price from
+	// 04:54 UTC — BTC 2% out and ETH 3% — with nothing on the card saying so.
+	//
+	// So a failure retries soon and backs off, rather than waiting out the
+	// interval as though nothing had happened.
+	fail := 0
 	for {
 		prices, priceData := fetchPrices()
 		if prices != nil {
+			fail = 0
 			html := generateMarketsCardHTML(prices)
 			marketsMutex.Lock()
 			cachedPrices = prices
@@ -216,7 +226,16 @@ func refreshMarkets() {
 			data.SaveJSON("price_data.json", cachedPriceData)
 		}
 
-		time.Sleep(refreshEvery)
+		wait := refreshEvery
+		if prices == nil {
+			fail++
+			wait = retryAfter << min(fail-1, 4) // 30s, 1m, 2m, 4m, 8m, then hold
+			if wait > refreshEvery {
+				wait = refreshEvery
+			}
+			app.Log("markets", "fetch failed (%d in a row); retrying in %s", fail, wait)
+		}
+		time.Sleep(wait)
 	}
 }
 
@@ -233,6 +252,11 @@ func refreshMarkets() {
 // gives away, and nothing here is charged to a caller: the fetch is the
 // instance's, and every read is served from the snapshot.
 const refreshEvery = 5 * time.Minute
+
+// retryAfter is the first wait after a failed fetch, doubling from there up to
+// refreshEvery. A provider having a bad minute should not cost the whole
+// interval; a provider that is down should not be hammered either.
+const retryAfter = 30 * time.Second
 
 func fetchPrices() (map[string]float64, map[string]PriceData) {
 	app.Log("markets", "Fetching prices")
@@ -549,7 +573,10 @@ func marketsFreshness(priceData map[string]PriceData, assets []string) (time.Tim
 		latest = lastPriceRefresh
 		marketsMutex.RUnlock()
 	}
-	stale := latest.IsZero() || time.Since(latest) > 2*time.Hour
+	// Stale is relative to how often it is meant to refresh. Two hours was the
+	// old figure and it never fired: a price could be an hour and fifty-nine
+	// minutes old and still call itself current.
+	stale := latest.IsZero() || time.Since(latest) > 4*refreshEvery
 	return latest, stale, missing
 }
 
@@ -558,9 +585,10 @@ func marketsFreshnessText(updatedAt time.Time, stale, missing bool) string {
 	if updatedAt.IsZero() {
 		parts = append(parts, "Last refresh: unavailable (cached fallback may be stale)")
 	} else {
-		parts = append(parts, fmt.Sprintf("Last refresh: %s UTC", updatedAt.UTC().Format("2006-01-02 15:04")))
+		parts = append(parts, fmt.Sprintf("Updated %s (%s UTC)",
+			app.TimeAgo(updatedAt), updatedAt.UTC().Format("15:04")))
 		if stale {
-			parts = append(parts, "data may be stale")
+			parts = append(parts, "this is older than it should be — the last fetch did not get through")
 		}
 	}
 	if missing {
@@ -802,7 +830,7 @@ func generateMarketsPage(priceData map[string]PriceData, activeCategory, convert
 	sb.WriteString(`<div class="markets-footer">`)
 	sb.WriteString(`<p class="markets-source">Data sources: Coinbase, CoinGecko, Yahoo Finance</p>`)
 	updatedAt, stale, missing := marketsFreshness(priceData, assets)
-	fmt.Fprintf(&sb, `<p class="markets-note">%s. Prices update hourly. For real-time trading, visit official exchanges.</p>`, marketsFreshnessText(updatedAt, stale, missing))
+	fmt.Fprintf(&sb, `<p class="markets-note">%s. Prices refresh every few minutes. For real-time trading, visit official exchanges.</p>`, marketsFreshnessText(updatedAt, stale, missing))
 	sb.WriteString(`</div>`)
 
 	sb.WriteString(`</div>`)

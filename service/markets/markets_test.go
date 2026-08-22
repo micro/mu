@@ -206,8 +206,16 @@ func TestMarketsTextIncludesFreshnessDisclosure(t *testing.T) {
 	marketsMutex.Unlock()
 
 	got := Text(CategoryCrypto)
-	if !strings.Contains(got, "Last refresh: 2026-07-01 12:00 UTC") {
+	// How old, in words, because that is what a reader can act on — an
+	// absolute UTC stamp makes them do the subtraction, and an instance was
+	// found serving a price hours out with nobody noticing.
+	if !strings.Contains(got, "Updated ") || !strings.Contains(got, "12:00 UTC") {
 		t.Fatalf("expected freshness disclosure, got %q", got)
+	}
+	// And it says so plainly when it is out of date, rather than leaving the
+	// reader to judge a timestamp.
+	if !strings.Contains(got, "older than it should be") {
+		t.Fatalf("a month-old price did not say it was stale, got %q", got)
 	}
 	if !strings.Contains(got, "some symbols are unavailable") {
 		t.Fatalf("expected partial-data disclosure, got %q", got)
@@ -222,8 +230,11 @@ func TestGenerateMarketsPageIncludesFreshnessDisclosure(t *testing.T) {
 	}
 
 	html := generateMarketsPage(priceData, CategoryCrypto, "")
-	if !strings.Contains(html, "Last refresh: 2026-07-01 12:00 UTC") {
+	if !strings.Contains(html, "Updated ") || !strings.Contains(html, "12:00 UTC") {
 		t.Fatalf("expected last-refresh metadata in markets page, got %q", html)
+	}
+	if !strings.Contains(html, "older than it should be") {
+		t.Fatalf("a month-old price did not say it was stale in the page")
 	}
 	if !strings.Contains(html, "some symbols are unavailable") {
 		t.Fatalf("expected partial-source disclosure in markets page, got %q", html)
@@ -325,5 +336,33 @@ func TestMarketsTextAcceptsStocks(t *testing.T) {
 	}
 	if strings.Contains(got, "BTC") {
 		t.Errorf("asking for stocks returned crypto: %q", got)
+	}
+}
+
+// Stale is relative to how often prices are meant to refresh.
+//
+// It was a flat two hours against an hourly refresh, so a price could be an
+// hour and fifty-nine minutes old and still call itself current. That is how an
+// instance came to serve BTC 2% out and ETH 3% out with nothing on the page
+// saying anything was wrong.
+func TestStaleIsRelativeToTheRefreshInterval(t *testing.T) {
+	fresh := map[string]PriceData{
+		"BTC": {Price: 1, UpdatedAt: time.Now().UTC().Add(-refreshEvery / 2)},
+	}
+	if _, stale, _ := marketsFreshness(fresh, []string{"BTC"}); stale {
+		t.Error("a price newer than one interval called itself stale")
+	}
+
+	old := map[string]PriceData{
+		"BTC": {Price: 1, UpdatedAt: time.Now().UTC().Add(-10 * refreshEvery)},
+	}
+	if _, stale, _ := marketsFreshness(old, []string{"BTC"}); !stale {
+		t.Errorf("a price ten intervals old did not call itself stale")
+	}
+
+	// The interval itself has to stay short enough for crypto to be worth
+	// showing. An hour is not: the 24h change alone moves several points.
+	if refreshEvery > 15*time.Minute {
+		t.Errorf("prices refresh every %s, which is too slow to put a crypto price on a page", refreshEvery)
 	}
 }
