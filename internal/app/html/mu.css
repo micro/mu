@@ -5656,6 +5656,74 @@ button.pill:hover {
    carries color:#fff !important for exactly that reason. */
 .ib-reply-who { font-size: 12px; color: var(--text-muted, #888) }
 
+/* Two panels: the correspondence, and the agent on it. See inbox/page.go.
+
+   One conversation holds both — what arrived, and what the owner told the
+   agent to do about it — and they were one column, so a mail thread read with
+   your own instructions interleaved through it and the sender's name beside
+   none of them. Side by side, each column is one exchange.
+
+   The reading column takes the slack; the agent column is fixed, because a
+   chat that reflows with the window is a chat whose line length depends on
+   somebody else's mail. */
+.ib-wide { max-width: 1140px }
+.ib-panels { display: flex; align-items: flex-start; gap: var(--spacing-lg, 24px) }
+.ib-pane { min-width: 0 }
+.ib-pane-conv { flex: 1 1 auto }
+
+/* The agent column stays put while the thread scrolls past it, and holds its
+   own scroll so the box to type in is always the last thing in it rather than
+   somewhere below the fold of a long exchange. */
+.ib-pane-agent {
+  flex: 0 0 330px;
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: var(--spacing-md, 16px);
+  max-height: calc(100vh - 120px);
+  box-sizing: border-box;
+  padding: 12px var(--item-padding, 16px) var(--item-padding, 16px);
+  border: var(--border-width, 1px) solid var(--card-border, #e8e8e8);
+  border-radius: var(--border-radius, 6px);
+  background: var(--card-background, #fff);
+}
+
+/* Which agent, by name. "Agent" is a role and there are eleven of them. */
+.ib-pane-head {
+  flex: none;
+  font-size: 13px;
+  font-weight: var(--font-weight-medium, 500);
+  color: var(--text-primary, #1a1a1a);
+  padding-bottom: 10px;
+  border-bottom: var(--border-width, 1px) solid var(--divider, #f0f0f0);
+}
+
+.ib-chat { flex: 1 1 auto; min-height: 0; overflow-y: auto }
+.ib-chat-empty { font-size: 13px; color: var(--text-muted, #888); margin: 14px 0 0 }
+
+/* A turn, not a message. .ib-msg draws a line in a mail thread — a rule
+   across the top, the sender, the addresses it went between — and none of
+   those are facts about a line typed into the box below. */
+.ib-turn { padding: 14px 0 0 }
+.ib-turn .ib-body { font-size: 13px }
+
+/* The box is the last thing in the column and does not scroll with the turns
+   above it, so it is reachable on a conversation of any length. */
+.ib-pane-agent .ib-ask { flex: none; margin-top: 14px; padding-top: 14px }
+
+/* A phone has one column, and the agent goes under the thread rather than
+   over it: what arrived is what you opened the page to read. */
+@media (max-width: 900px) {
+  .ib-panels { display: block }
+  .ib-pane-agent {
+    position: static;
+    max-height: none;
+    width: 100%;
+    margin-top: var(--spacing-lg, 24px);
+  }
+  .ib-chat { overflow-y: visible }
+}
+
 /* The inbox on Home. Same conversations, narrower column. */
 /* The inbox on Home.
    

@@ -180,6 +180,72 @@ func AgentSaid(f func(accountID, threadID, text string)) {
 	}
 }
 
+// agentPane is the agent's half of the page: what you have asked it about this
+// conversation, what it said, and the box to ask again.
+//
+// A panel beside the correspondence rather than a box under it. Under it, the
+// agent was a footer on somebody else's email — you scrolled past the whole
+// thread to reach it, and the answers it had already given were mixed into the
+// thread above with the sender's name next to none of them. Alongside, the two
+// exchanges are two columns and each reads as itself: the mail on the left, the
+// conversation about it on the right.
+//
+// Nothing when there is no agent wired in, which is what askBox already did:
+// a column headed Agent with an inert box in it is worse than no column.
+func agentPane(r *http.Request, accountID string, t *thread.Thread, aside []thread.Message, replyWho string) string {
+	if Act == nil {
+		return ""
+	}
+
+	// Which agent, by name. "Agent" is a role and there are eleven of them, so
+	// a panel headed with the role says less than the rail already did.
+	who := agentLabel(accountID, t.Agent)
+	if who == "" {
+		who = "Agent"
+	}
+
+	var b strings.Builder
+	b.WriteString(`<aside class="ib-pane ib-pane-agent">`)
+	b.WriteString(`<div class="ib-pane-head">` + html.EscapeString(who) + `</div>`)
+
+	b.WriteString(`<div class="ib-chat">`)
+	if len(aside) == 0 {
+		// The empty state says what the column is for. A blank panel beside a
+		// mail thread reads as something that failed to load.
+		b.WriteString(`<p class="ib-chat-empty">Nothing yet. Ask about this ` +
+			`message, or hand it over and close the tab.</p>`)
+	}
+	subject := strings.TrimSpace(t.Subject)
+	for _, m := range aside {
+		b.WriteString(chatTurn(who, m, subject))
+	}
+	b.WriteString(`</div>`)
+
+	b.WriteString(askBox(r, t.ID, replyWho))
+	b.WriteString(`</aside>`)
+	return b.String()
+}
+
+// chatTurn is one turn in that column: what you asked, or what came back.
+//
+// Not messageBlock. That draws a message in a mail thread — a rule across the
+// top, the sender's name, the addresses it went between — and none of those are
+// facts about a line typed into a box on this page. This is a chat, so it is
+// drawn as one.
+func chatTurn(agent string, m thread.Message, subject string) string {
+	m.Text = withoutSubject(m.Text, subject)
+	if m.Role == thread.RoleAgent {
+		ran := ""
+		if m.Workflow != "" {
+			ran = runTools(m.Workflow)
+		}
+		return `<div class="ib-turn ib-turn-agent">` + fromLine(agent, m.At) +
+			`<div class="ib-body">` + app.RenderString(m.Text) + `</div>` + ran + `</div>`
+	}
+	return `<div class="ib-turn ib-turn-you">` + fromLine("You", m.At) +
+		`<div class="ib-body ib-typed">` + html.EscapeString(m.Text) + `</div></div>`
+}
+
 // askBox is the control itself: somewhere to type, and three things that are
 // true of any message.
 //

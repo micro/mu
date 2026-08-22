@@ -360,17 +360,29 @@ func conversation(w http.ResponseWriter, r *http.Request, accountID, id string) 
 	thread.MarkSeen(accountID, t.ID)
 
 	var b strings.Builder
-	b.WriteString(`<div class="ib">`)
+	// Wider than the list, because this page is two columns. See .ib-panels.
+	b.WriteString(`<div class="ib ib-wide">`)
 	// Where you came from, and what you can do to this — one bar rather than
 	// three loose things stacked above the conversation. See app.Actions.
 	b.WriteString(app.Actions(app.TextLink("← Inbox", "/inbox"),
 		unreadButton(r, t.ID, wasUnread), deleteButton(r, t.ID)))
-	b.WriteString(ConversationView(accountID, t))
-	// The agent, on the thing you are reading. See act.go. It is told who a
-	// reply would go to, so its caption can point at the Reply button rather
-	// than only saying what it is not.
-	b.WriteString(askBox(r, t.ID, replyTo(accountID, t, thread.Messages(accountID, t.ID, MessagesShown))))
-	b.WriteString(`</div>`)
+
+	// Two panels: the correspondence, and the agent on it.
+	//
+	// One conversation holds both — what arrived, and what you told the agent to
+	// do about it — and they were one column, so a mail thread read with your own
+	// instructions interleaved through it. Side by side, each column is one
+	// exchange. See split.
+	//
+	// The agent is told who a reply would go to, so its caption can point at the
+	// Reply button rather than only saying what it is not.
+	msgs := thread.Messages(accountID, t.ID, MessagesShown)
+	conv, aside := split(msgs)
+	b.WriteString(`<div class="ib-panels">`)
+	b.WriteString(`<div class="ib-pane ib-pane-conv">` +
+		conversationPane(accountID, t, conv, len(msgs) >= MessagesShown) + `</div>`)
+	b.WriteString(agentPane(r, accountID, t, aside, replyTo(accountID, t, msgs)))
+	b.WriteString(`</div></div>`)
 
 	app.Respond(w, r, app.Response{Title: subject, Description: "A conversation", HTML: b.String()})
 }

@@ -60,9 +60,23 @@ func SessionHandler(w http.ResponseWriter, r *http.Request) {
 const MessagesShown = 100
 
 // ConversationView renders a conversation from another client, read-only.
+//
+// Everything on it, in one column, which is what a reader who is not in their
+// inbox wants — the chat page opens a mail thread this way and there is no
+// agent panel beside it there to put the agent's turns in.
 func ConversationView(accountID string, t *thread.Thread) string {
 	msgs := thread.Messages(accountID, t.ID, MessagesShown)
+	return conversationPane(accountID, t, msgs, len(msgs) >= MessagesShown)
+}
 
+// conversationPane is the correspondence: a heading, who is on it, and the
+// messages given to it.
+//
+// It takes the messages rather than reading them, because the inbox shows it a
+// subset. There, the agent's turns and the owner's instructions to it are the
+// panel on the right and this column is what actually passed between people —
+// see aside.
+func conversationPane(accountID string, t *thread.Thread, msgs []thread.Message, trimmed bool) string {
 	subject := t.Subject
 	if subject == "" {
 		subject = "Untitled"
@@ -74,7 +88,7 @@ func ConversationView(accountID string, t *thread.Thread) string {
 		html.EscapeString(app.TimeAgo(t.Started)) + `</span></div>`)
 	b.WriteString(`<h2 class="ib-title">` + html.EscapeString(subject) + `</h2>`)
 	b.WriteString(partyLine(accountID, t))
-	if len(msgs) >= MessagesShown {
+	if trimmed {
 		b.WriteString(`<p class="ib-trimmed">Showing the most recent ` +
 			strconv.Itoa(MessagesShown) + `. ` +
 			app.Link("Search the whole conversation", "/recall") + `</p>`)
@@ -104,6 +118,48 @@ func ConversationView(accountID string, t *thread.Thread) string {
 	}
 	b.WriteString(`</div>`)
 	return b.String()
+}
+
+// split divides a conversation into the correspondence and the aside with the
+// agent.
+//
+// One thread holds both. Somebody emails in; you read it and tell the agent to
+// summarise it; the agent answers. All three are recorded on the same
+// conversation and that is right — a month later it reads as what arrived, what
+// you asked for, and what was done, which is a better record than the mail
+// alone. It is also two different exchanges, and stacking them in one column
+// meant reading a mail thread with your own instructions interleaved through it
+// and the sender's name next to none of them.
+//
+// So they are drawn side by side: what passed between people on the left, what
+// passed between you and the agent on the right.
+//
+// # How they are told apart
+//
+// Nothing on a message says "this was an instruction", and nothing needs to.
+// What was sent has an identifier and what was said to the agent has none:
+//
+//   - From set — somebody else wrote it, so it is correspondence
+//   - Ref set — it went out over SMTP with that Message-ID, so it is
+//     correspondence, and it is how a reply to it finds this thread
+//   - neither — it was typed into the box on this page, which is the aside
+//
+// A conversation that would leave nothing on the left is not split at all. A
+// chat started here is every message in that third case, and a two-column
+// layout with an empty left column is a bug that looks like a design.
+func split(msgs []thread.Message) (conv, aside []thread.Message) {
+	for _, m := range msgs {
+		if m.Role == thread.RoleAgent ||
+			(strings.TrimSpace(m.From) == "" && strings.TrimSpace(m.Ref) == "") {
+			aside = append(aside, m)
+			continue
+		}
+		conv = append(conv, m)
+	}
+	if len(conv) == 0 {
+		return msgs, nil
+	}
+	return conv, aside
 }
 
 // replyTo is the address a reply goes to, or empty where there is nobody to
