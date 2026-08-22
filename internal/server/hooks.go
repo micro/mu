@@ -194,8 +194,11 @@ func wireHooks() {
 			// and this instance runs the inbox. Tagged so an agent can read
 			// back only its own scheduled results.
 			if acc, err := auth.GetAccount(e.Owner); err == nil {
-				_ = mail.SendMessageTo("Mu", "agent@"+mail.ConfiguredDomain(),
-					acc.Name, acc.ID, "scheduled", e.Title, answer, "", "", false, 0, nil, "", "", nil)
+				_ = mail.SendMessageTo(mail.Delivery{
+					From: "Mu", FromID: "agent@" + mail.ConfiguredDomain(),
+					To: acc.Name, ToID: acc.ID, Tag: "scheduled",
+					Subject: e.Title, Body: answer,
+				})
 			}
 		}(*e)
 	}

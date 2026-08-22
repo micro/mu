@@ -1724,41 +1724,83 @@ func SendMessage(from, fromID, to, toID, subject, body, replyTo, messageID strin
 	return err
 }
 
-// SendMessageTo is SendMessageTagged with the plus-address tag the mail arrived
-// on, so an agent reading asim+research@ sees only its own mail.
-// SendMessageTo files an inbound message. att is what the message carried
-// besides its text, or nil — kept out of body so a binary attachment does not
-// end up in previews, the index and mail_inbox. See Message.Attachment.
-func SendMessageTo(from, fromID, to, toID, tag, subject, body, replyTo, messageID string, spam bool, spamScore int, spamReasons []string, senderIP, rawHeaders string, att *Attachment) error {
+// Delivery is a message arriving for an account on this instance.
+//
+// A struct rather than the fifteen positional arguments this used to take. That
+// signature was `(from, fromID, to, toID, tag, subject, body, replyTo,
+// messageID string, spam bool, spamScore int, spamReasons []string, senderIP,
+// rawHeaders string, att *Attachment)` — five pairs of adjacent strings, any
+// two of which could be swapped and still compile. DeliverHere had the same
+// shape with eleven and one of them was dead before anybody noticed.
+//
+// It is also what lets References through. The old signature had nowhere to put
+// it, so the one caller that had it — inbound SMTP — dropped it here and passed
+// it separately to the agent, which is why the record and the mailbox disagreed
+// about which conversation a reply belonged to.
+type Delivery struct {
+	From   string // what the sender called themselves
+	FromID string // where it actually came from: an address, or an account
+	To     string // the recipient's display name
+	ToID   string // the account it belongs to
+	Tag    string // the part after the plus, if the address carried one
+
+	Subject string
+	Body    string
+
+	// Threading as the message carried it. ReplyTo is the id of the message
+	// being replied to; MessageID and References are the mail headers.
+	ReplyTo    string
+	MessageID  string
+	References string
+
+	Spam        bool
+	SpamScore   int
+	SpamReasons []string
+
+	SenderIP   string
+	RawHeaders string
+
+	// Attachment is what the message carried besides its text, or nil — kept
+	// out of Body so a binary does not end up in previews, the index and
+	// mail_inbox. See Message.Attachment.
+	Attachment *Attachment
+}
+
+// SendMessageTo files a message for a local account.
+//
+// This is the one place a message is stored, and every delivery path reaches
+// it: inbound SMTP, submission from a mail client, the web compose, the
+// mail_send tool and the agent's own replies.
+func SendMessageTo(d Delivery) error {
 	msg := &Message{
 		ID:          fmt.Sprintf("%d", time.Now().UnixNano()),
-		From:        from,
-		FromID:      fromID,
-		To:          to,
-		ToID:        toID,
-		Subject:     subject,
-		Body:        body,
+		From:        d.From,
+		FromID:      d.FromID,
+		To:          d.To,
+		ToID:        d.ToID,
+		Subject:     d.Subject,
+		Body:        d.Body,
 		Read:        false,
-		ReplyTo:     replyTo,
-		MessageID:   messageID,
-		Spam:        spam,
-		SpamScore:   spamScore,
-		SpamReasons: spamReasons,
-		SenderIP:    senderIP,
-		RawHeaders:  rawHeaders,
-		Tag:         tag,
+		ReplyTo:     d.ReplyTo,
+		MessageID:   d.MessageID,
+		Spam:        d.Spam,
+		SpamScore:   d.SpamScore,
+		SpamReasons: d.SpamReasons,
+		SenderIP:    d.SenderIP,
+		RawHeaders:  d.RawHeaders,
+		Tag:         d.Tag,
 		CreatedAt:   time.Now(),
 	}
-	if att != nil && len(att.Content) > 0 {
-		msg.Attachment = base64.StdEncoding.EncodeToString(att.Content)
-		msg.AttachmentType = att.Type
-		msg.AttachmentName = att.Name
+	if d.Attachment != nil && len(d.Attachment.Content) > 0 {
+		msg.Attachment = base64.StdEncoding.EncodeToString(d.Attachment.Content)
+		msg.AttachmentType = d.Attachment.Type
+		msg.AttachmentName = d.Attachment.Name
 	}
 
 	// Compute ThreadID
 	mutex.Lock()
-	if replyTo != "" {
-		parent := MessageUnlocked(replyTo)
+	if d.ReplyTo != "" {
+		parent := MessageUnlocked(d.ReplyTo)
 		if parent != nil {
 			msg.ThreadID = computeThreadID(parent)
 		} else {
@@ -1774,15 +1816,15 @@ func SendMessageTo(from, fromID, to, toID, tag, subject, body, replyTo, messageI
 	mutex.Unlock()
 
 	// Update stats (outside lock) — only for non-spam
-	if !spam {
+	if !d.Spam {
 		updateStats(msg)
 	}
 
 	// Say that mail arrived. Who cares about that is not this service's
 	// business — see internal/event.
-	if !spam && toID != "" {
+	if !d.Spam && d.ToID != "" {
 		event.Publish(event.Event{Type: event.EventMailReceived, Data: map[string]interface{}{
-			"account": toID, "from": from, "subject": subject, "body": body,
+			"account": d.ToID, "from": d.From, "subject": d.Subject, "body": d.Body,
 		}})
 	}
 

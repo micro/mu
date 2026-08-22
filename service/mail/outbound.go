@@ -200,7 +200,13 @@ type Local struct {
 	Body      string
 	ReplyTo   string
 	MessageID string
-	SenderIP  string
+	// References is the chain this message continues, as the mail header
+	// spells it. Carried so the stored message threads the same way an
+	// inbound one does — a reply delivered locally used to arrive with
+	// nothing to key on but its own id, so it started a conversation
+	// instead of joining one.
+	References string
+	SenderIP   string
 }
 
 func DeliverHere(m Local) error {
@@ -227,6 +233,11 @@ func DeliverHere(m Local) error {
 		}
 	}
 
-	return SendMessageTo(m.Display, m.From, acc.Name, acc.ID, m.Tag, m.Subject, m.Body,
-		m.ReplyTo, m.MessageID, false, 0, nil, m.SenderIP, "", nil)
+	return SendMessageTo(Delivery{
+		From: m.Display, FromID: m.From,
+		To: acc.Name, ToID: acc.ID, Tag: m.Tag,
+		Subject: m.Subject, Body: m.Body,
+		ReplyTo: m.ReplyTo, MessageID: m.MessageID, References: m.References,
+		SenderIP: m.SenderIP,
+	})
 }

@@ -752,23 +752,28 @@ func (s *Session) Data(r io.Reader) error {
 			}
 		}
 
-		if err := SendMessageTo(
-			senderName,
-			fromAddr.Address, // Use email as sender ID
-			toAcc.Name,
-			toAcc.ID,
-			toTag,
-			subject,
-			body,
-			replyToID,
-			messageID,
-			spamResult.IsSpam,
-			spamResult.Score,
-			spamResult.Reasons,
-			s.remoteIP,
-			rawHeaderStr,
-			inboundAttachment,
-		); err != nil {
+		if err := SendMessageTo(Delivery{
+			From:   senderName,
+			FromID: fromAddr.Address, // the address it came from is the sender's id
+			To:     toAcc.Name,
+			ToID:   toAcc.ID,
+			Tag:    toTag,
+
+			Subject: subject,
+			Body:    body,
+
+			ReplyTo:    replyToID,
+			MessageID:  messageID,
+			References: references,
+
+			Spam:        spamResult.IsSpam,
+			SpamScore:   spamResult.Score,
+			SpamReasons: spamResult.Reasons,
+
+			SenderIP:   s.remoteIP,
+			RawHeaders: rawHeaderStr,
+			Attachment: inboundAttachment,
+		}); err != nil {
 			app.Log("mail", "Error saving message: %v", err)
 			continue
 		}

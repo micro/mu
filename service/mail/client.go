@@ -514,14 +514,15 @@ func SendReplyAll(fromID, displayName, from, to string, cc []string, subject, bo
 	// from the accounts, not from a flag passed in here.
 	for _, addr := range here {
 		if err := DeliverHere(Local{
-			FromID:    fromID,
-			Display:   displayName,
-			From:      from,
-			To:        addr,
-			Subject:   subject,
-			Body:      bodyHTML,
-			ReplyTo:   inReplyTo,
-			MessageID: messageID,
+			FromID:     fromID,
+			Display:    displayName,
+			From:       from,
+			To:         addr,
+			Subject:    subject,
+			Body:       bodyHTML,
+			ReplyTo:    inReplyTo,
+			MessageID:  messageID,
+			References: references,
 		}); err != nil {
 			app.Log("mail", "could not deliver the answer to %s: %v", addr, err)
 		}
