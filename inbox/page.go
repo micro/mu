@@ -115,7 +115,7 @@ func list(w http.ResponseWriter, r *http.Request, accountID, box string) {
 
 	var b strings.Builder
 	b.WriteString(`<div class="ib">`)
-	b.WriteString(addressBar(accountID))
+	b.WriteString(addressBar(accountID, box))
 	// What just happened, when something did. A message you sent appears in the
 	// list below as a conversation, which is right and is also indistinguishable
 	// from a message that failed to send — so the page says so once.
@@ -423,10 +423,28 @@ func boxes(accountID string, all []thread.Thread, current string) string {
 // Same page, because they arrive in the same place. A stranger writing to your
 // address and a stranger writing to your agent are both things that turned up
 // while you were elsewhere, which is what this page is.
-func addressBar(accountID string) string {
+//
+// # The agent address follows the box
+//
+// A box is an agent — /inbox/research is what arrived at you+research@ — and
+// this showed the instance agent's address on every one of them. So the
+// switcher above changed which mail you were looking at and the line above it
+// went on naming a different agent, which is the address you would have copied.
+// It takes the box now: All shows the instance agent, and a named box shows the
+// alias that reaches it.
+//
+// And the address is a link into compose with it already filled in, because
+// "write to the agent" is what somebody reading this line is trying to do and
+// the alternative was copying it by hand into a form two clicks away.
+func addressBar(accountID, box string) string {
 	mine := mail.EmailForUser(accountID, mail.ConfiguredDomain())
+
+	// The agent this box belongs to. A named box is the account's own alias for
+	// it; All is the instance's agent, which is the one a stranger can reach.
 	theirs := ""
-	if Address != nil {
+	if box != "" {
+		theirs = mail.EmailForUser(accountID+"+"+box, mail.ConfiguredDomain())
+	} else if Address != nil {
 		theirs = Address()
 	}
 	if mine == "" && theirs == "" {
@@ -441,12 +459,28 @@ func addressBar(accountID string) string {
 	}
 	if theirs != "" && !strings.EqualFold(theirs, mine) {
 		b.WriteString(`<span class="ib-addr-one"><span class="ib-addr-k">Agent</span>` +
-			`<code>` + html.EscapeString(theirs) + `</code></span>`)
+			writeTo(theirs) + `</span>`)
 	}
-	b.WriteString(`<span class="ib-addr-note">Mail to either lands here. Write to the agent ` +
-		`from anywhere and it answers in the thread. ` + app.TextLink("Your agents", "/agents") +
+	b.WriteString(`<span class="ib-addr-note">Work with agents from your inbox. ` +
+		app.TextLink("Your agents", "/agents") +
 		`</span>` + composeLink() + `</div>`)
 	return b.String()
+}
+
+// writeTo is an address you can write to: the address, and a click that opens
+// compose with it in the To box.
+//
+// Not a button beside it. The address is the thing on the page a reader is
+// already looking at when they decide to write, and a second control next to it
+// asks them to notice two things where there is one.
+func writeTo(addr string) string {
+	code := `<code>` + html.EscapeString(addr) + `</code>`
+	if !mail.Reachable() {
+		return code
+	}
+	return `<a class="ib-addr-write" href="/inbox/compose?to=` +
+		html.EscapeString(url.QueryEscape(addr)) + `" title="Write to ` +
+		html.EscapeString(addr) + `">` + code + `</a>`
 }
 
 // Mailboxes is the rail's view of this account's boxes: All, and one per agent

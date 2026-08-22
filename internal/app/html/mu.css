@@ -6072,6 +6072,21 @@ select.field { max-width: 220px }
   color: var(--text-muted, #888);
 }
 
+/* The agent's address is a way to write to it, so it reads as one. The
+   underline is on hover rather than always: it sits beside the account's own
+   address, which is not a link, and two <code> runs where one is permanently
+   underlined reads as one of them being wrong.
+
+   color:inherit and the explicit visited rule because mu.css carries a global
+   a:visited{color:#000} that outranks a plain class — the same rule that turned
+   the inbox reply button black on black once it had been used. */
+a.ib-addr-write,
+a.ib-addr-write:visited {
+  color: inherit;
+  text-decoration: none;
+}
+a.ib-addr-write:hover { text-decoration: underline }
+
 /* One text column, one width. See app.Column.
 
    Pages chose their own — 600, 640, 680, 700, 720, 760, 820 — so the text
