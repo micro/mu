@@ -55,8 +55,14 @@ import (
 // form needs to be able to send.
 const bodyLimit = 40000
 
-// ComposeHandler serves /inbox/compose.
-func ComposeHandler(w http.ResponseWriter, r *http.Request) {
+// NewHandler serves /inbox/new.
+//
+// Not a constructor, despite the shape. A handler is named for the page it
+// serves — see the naming rules — and the page is /inbox/new, which is what a
+// mail client calls the thing this does. It was Compose, which is the verb for
+// the half that has gone: there is no drafting here any more, only a blank
+// message and a Send.
+func NewHandler(w http.ResponseWriter, r *http.Request) {
 	_, acc, err := auth.RequireSession(r)
 	if err != nil {
 		app.RedirectToLogin(w, r)
@@ -71,7 +77,7 @@ func ComposeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// A conversation somebody else's id names is not a conversation. Checked on
 	// the way in rather than at the point it is written, so a forged id is a
-	// blank compose form and never a message filed onto a stranger's thread.
+	// blank form and never a message filed onto a stranger's thread.
 	if f.On != "" && thread.Get(acc.ID, f.On) == nil {
 		f.On = ""
 	}
@@ -80,7 +86,7 @@ func ComposeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method != http.MethodPost {
-		compose(w, r, acc.ID, f)
+		writeOne(w, r, acc.ID, f)
 		return
 	}
 	if !auth.StrictCSRF(r) {
@@ -115,11 +121,11 @@ func sent(w http.ResponseWriter, r *http.Request, accountID string, f form) {
 	switch {
 	case f.To == "":
 		f.Problem = "who is it to?"
-		compose(w, r, accountID, f)
+		writeOne(w, r, accountID, f)
 		return
 	case strings.TrimSpace(f.Body) == "":
 		f.Problem = "there is nothing in it yet"
-		compose(w, r, accountID, f)
+		writeOne(w, r, accountID, f)
 		return
 	}
 
@@ -141,7 +147,7 @@ func sent(w http.ResponseWriter, r *http.Request, accountID string, f form) {
 		f.Body, "", inReplyTo, references)
 	if err != nil {
 		f.Problem = err.Error()
-		compose(w, r, accountID, f)
+		writeOne(w, r, accountID, f)
 		return
 	}
 
@@ -242,7 +248,7 @@ func replySubject(subject, inReplyTo string) string {
 // replyTarget is the conversation a reply belongs on, or nil for a new message.
 //
 // Re-checked here rather than trusted from the form, because this is the call
-// that writes: ComposeHandler cleared a bad id on the way in, and a second look
+// that writes: NewHandler cleared a bad id on the way in, and a second look
 // costs a map lookup and means the write cannot be reached with an id that was
 // never checked.
 func replyTarget(accountID string, f form) *thread.Thread {
@@ -258,8 +264,8 @@ func replyTarget(accountID string, f form) *thread.Thread {
 // because agent/mail consumes tools and this package does not import those.
 const mailClient = "mail"
 
-// compose renders the form.
-func compose(w http.ResponseWriter, r *http.Request, accountID string, f form) {
+// writeOne renders the form.
+func writeOne(w http.ResponseWriter, r *http.Request, accountID string, f form) {
 	var b strings.Builder
 	b.WriteString(`<div class="ib">`)
 	// Back where you came from. A reply reached from a conversation that offers
@@ -281,7 +287,7 @@ func compose(w http.ResponseWriter, r *http.Request, accountID string, f form) {
 		b.WriteString(`<p class="ib-ask-problem">` + html.EscapeString(f.Problem) + `</p>`)
 	}
 
-	b.WriteString(`<form class="ib-compose" method="post" action="/inbox/compose">`)
+	b.WriteString(`<form class="ib-new" method="post" action="/inbox/new">`)
 	b.WriteString(`<input type="hidden" name="_csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `">`)
 	if f.On != "" {
 		b.WriteString(`<input type="hidden" name="on" value="` + html.EscapeString(f.On) + `">`)
@@ -295,20 +301,20 @@ func compose(w http.ResponseWriter, r *http.Request, accountID string, f form) {
 	b.WriteString(`<div class="ib-ask-row"><button type="submit">Send</button>`)
 	b.WriteString(`</form></div>`)
 
-	app.Respond(w, r, app.Response{Title: "Compose", Description: "Write one, with the agent",
+	app.Respond(w, r, app.Response{Title: "New message", Description: "Write one",
 		HTML: b.String()})
 }
 
-// composeLink is the way in, on the inbox itself.
+// newLink is the way in, on the inbox itself.
 //
 // Drawn only where mail can actually leave: an instance with no mail domain
-// configured has nowhere to send from, and a Compose button that always ends in
+// configured has nowhere to send from, and a New button that always ends in
 // "there is no mail domain here" is worse than no button. MaySendOut is the
 // other half and is deliberately not checked — it depends on the recipient, and
 // refusing before somebody has typed one would be guessing.
-func composeLink() string {
+func newLink() string {
 	if !mail.Reachable() {
 		return ""
 	}
-	return `<a class="pill ib-compose-link" href="/inbox/compose">Compose</a>`
+	return `<a class="pill ib-new-link" href="/inbox/new">New</a>`
 }

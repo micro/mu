@@ -726,7 +726,7 @@ func registerRoutes() {
 	http.HandleFunc("/inbox/delete", inbox.DeleteHandler)
 	// Writing one yourself. An exact route, because
 	// /inbox/<box> is a mailbox name and a box could be called anything.
-	http.HandleFunc("/inbox/compose", inbox.ComposeHandler)
+	http.HandleFunc("/inbox/new", inbox.NewHandler)
 	// Where you are, which every specialist needs and nothing server-side
 	// held — see account/place.go.
 	http.HandleFunc("/account/place", account.PlaceHandler)

@@ -133,7 +133,7 @@ func replyTo(accountID string, t *thread.Thread, msgs []thread.Message) string {
 
 // replyBar is the way to answer, next to the way to ask the agent about it.
 //
-// A link rather than a box, because the compose page is where a message is
+// A link rather than a box, because the New page is where a message is
 // written and there is no reason for a second half-sized version of it here.
 // It arrives with the recipient and the subject filled in and the conversation
 // attached, so what comes back joins this thread instead of starting one.
@@ -156,7 +156,7 @@ func replyBar(t *thread.Thread, to string) string {
 	}
 	q := url.Values{"to": {to}, "subject": {subject}, "on": {t.ID}}
 	return `<div class="ib-reply">` +
-		app.ActionLink("/inbox/compose?"+q.Encode(), "Reply") +
+		app.ActionLink("/inbox/new?"+q.Encode(), "Reply") +
 		`<span class="ib-reply-who">to ` + html.EscapeString(to) + `</span>` +
 		`</div>`
 }

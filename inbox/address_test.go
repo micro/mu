@@ -42,13 +42,13 @@ func TestTheAgentAddressFollowsTheBox(t *testing.T) {
 // The agent's address is a way to write to it. "Write to the agent" is what
 // somebody reading that line is trying to do, and the alternative was copying
 // it by hand into a form two clicks away.
-func TestTheAgentAddressOpensCompose(t *testing.T) {
+func TestTheAgentAddressOpensTheNewMessagePage(t *testing.T) {
 	t.Setenv("MAIL_DOMAIN", "micro.mu")
 	Address = func() string { return "agent@micro.mu" }
 	t.Cleanup(func() { Address = nil })
 
 	got := addressBar("asim", "research")
-	if !strings.Contains(got, "/inbox/compose?to=asim%2Bresearch%40micro.mu") {
+	if !strings.Contains(got, "/inbox/new?to=asim%2Bresearch%40micro.mu") {
 		t.Errorf("the address does not open compose with itself filled in:\n%s", got)
 	}
 }

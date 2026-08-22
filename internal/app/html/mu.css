@@ -5733,10 +5733,10 @@ button.pill:hover {
   .ib-addr-note { font-size: 11px }
 }
 
-/* Composing one, with the agent drafting. See inbox/compose.go. */
+/* Writing one yourself, at /inbox/new. See inbox/new.go. */
 .ib-from-line { font-size: 13px; color: var(--text-muted, #888); margin: 0 0 14px }
 .ib-from-line code { font-size: 13px; background: var(--hover-background, #fafafa); border: var(--border-width, 1px) solid var(--card-border, #e8e8e8); border-radius: var(--border-radius, 6px); padding: 2px 7px }
-.ib-compose { display: flex; flex-direction: column; gap: 8px }
+.ib-new { display: flex; flex-direction: column; gap: 8px }
 
 .ib-field {
   width: 100%;
@@ -5753,7 +5753,7 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
 
 /* Under the message rather than beside it, because it is a way of filling the
    boxes above and reads in the order it is used. */
-.ib-compose-link { margin-left: auto }
+.ib-new-link { margin-left: auto }
 .ib-sent { font-size: 13px; color: var(--btn-success, #1a7f37); margin: 0 0 12px }
 
 /* One tool, at an address of its own. See internal/api/tool_page.go. */

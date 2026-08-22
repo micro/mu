@@ -180,7 +180,7 @@ func list(w http.ResponseWriter, r *http.Request, accountID, box string) {
 				`agent reads what arrives and answers in the thread.</p>` +
 				`<p class="ib-empty">This is what came in. Chats you started here are with ` +
 				`the agent, on ` + app.TextLink("Agents", "/agents") + `. Or ` +
-				app.TextLink("write one yourself", "/inbox/compose") + ` — the agent will draft it.</p>`)
+				app.TextLink("write one yourself", "/inbox/new") + `.</p>`)
 		}
 		b.WriteString(`</div>`)
 		app.Respond(w, r, app.Response{Title: "Inbox", Description: "What arrived", HTML: b.String()})
@@ -450,12 +450,12 @@ func boxes(accountID string, all []thread.Thread, current string) string {
 
 // addressBar is the two addresses this page is about.
 //
-// It showed one — the agent's — and then compose sent as a different one, with
+// It showed one — the agent's — and then New sent as a different one, with
 // nothing saying why. Both are real and they are for different things, and the
 // order matters: yours first, because this is your inbox and the agent is in
 // it rather than the other way round.
 //
-//	you@       mail to you lands here, and this is what compose sends as
+//	you@       mail to you lands here, and this is what New sends as
 //	agent@     write to it and it answers, in the thread
 //
 // Same page, because they arrive in the same place. A stranger writing to your
@@ -471,7 +471,7 @@ func boxes(accountID string, all []thread.Thread, current string) string {
 // It takes the box now: All shows the instance agent, and a named box shows the
 // alias that reaches it.
 //
-// And the address is a link into compose with it already filled in, because
+// And the address is a link into New with it already filled in, because
 // "write to the agent" is what somebody reading this line is trying to do and
 // the alternative was copying it by hand into a form two clicks away.
 func addressBar(accountID, box string) string {
@@ -505,12 +505,12 @@ func addressBar(accountID, box string) string {
 	}
 	b.WriteString(`<span class="ib-addr-note">Work with agents from your inbox. ` +
 		app.TextLink("Your agents", "/agents") +
-		`</span>` + composeLink() + `</div>`)
+		`</span>` + newLink() + `</div>`)
 	return b.String()
 }
 
 // writeTo is an address you can write to: the address, and a click that opens
-// compose with it in the To box.
+// New with it in the To box.
 //
 // Not a button beside it. The address is the thing on the page a reader is
 // already looking at when they decide to write, and a second control next to it
@@ -520,7 +520,7 @@ func writeTo(addr string) string {
 	if !mail.Reachable() {
 		return code
 	}
-	return `<a class="ib-addr-write" href="/inbox/compose?to=` +
+	return `<a class="ib-addr-write" href="/inbox/new?to=` +
 		html.EscapeString(url.QueryEscape(addr)) + `" title="Write to ` +
 		html.EscapeString(addr) + `">` + code + `</a>`
 }

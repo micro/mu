@@ -81,7 +81,7 @@ func TestAConversationFromElsewhereStillPointsThere(t *testing.T) {
 	thread.Add(thread.Message{Thread: th.ID, Account: who, Text: "hello", From: "someone"})
 
 	page := ConversationView(who, th)
-	if strings.Contains(page, "/inbox/compose?") {
+	if strings.Contains(page, "/inbox/new?") {
 		t.Error("a conversation that did not arrive by mail is offering to send an email")
 	}
 }
