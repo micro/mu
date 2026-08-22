@@ -72,7 +72,7 @@ const (
 	// whoever wants to act on it subscribes. See agent/work, which is the
 	// subscriber, and agent/mail, which is the worked example.
 	//
-	// Data: account, kind, id, title, prompt. kind and id name the record the
+	// Data: account, kind, id, title, prompt, thread. kind and id name the record the
 	// work belongs to, so the subscriber knows where the answer goes — a task
 	// keeps its result, a standing instruction is mailed. That knowledge is the
 	// agent layer's: an agent may import a service, and the service must not
@@ -122,10 +122,16 @@ func Announce(service, text, url, account string) {
 // so the answer can be put back where it came from. title is what to call it;
 // prompt is what to do.
 //
+// thread is the conversation the work came out of, where there was one. Work
+// does not usually start on a page: somebody writes in and asks for something
+// that takes an hour, and the answer belongs where they asked rather than on a
+// record they have no reason to check. Empty for work nobody asked for in
+// conversation — a task written down on the page, a schedule falling due.
+//
 // Nothing here knows what an agent is, which is the point: a service that
 // called one would be asking the model what its own answer should be. See
 // EventWorkForAgent.
-func RequestWork(account, kind, id, title, prompt string) {
+func RequestWork(account, kind, id, title, prompt, thread string) {
 	if account == "" || prompt == "" {
 		return
 	}
@@ -135,6 +141,7 @@ func RequestWork(account, kind, id, title, prompt string) {
 		"id":      id,
 		"title":   title,
 		"prompt":  prompt,
+		"thread":  thread,
 	}})
 }
 

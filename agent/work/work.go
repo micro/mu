@@ -23,6 +23,13 @@
 // instruction is mailed, because it ran while you were elsewhere and an answer
 // on a page you are not looking at is an answer nobody gets.
 //
+// And where the work came out of a conversation, the outcome goes back to it as
+// well as to the record it belongs to. Work does not usually start on a page:
+// somebody writes in, it turns out to take an hour, and a result on a task page
+// is a result nobody reads — they asked in a thread and that is where they are
+// looking. Both, not either: the task is what the work *is*, the thread is
+// where it was asked for.
+//
 // # It always says something
 //
 // service/events had a rule worth keeping: a run that could not happen is news
@@ -77,6 +84,9 @@ type request struct {
 	ID      string
 	Title   string
 	Prompt  string
+	// Thread is the conversation it came out of, empty when nobody asked for
+	// it in one. See answered.
+	Thread string
 }
 
 // requestFrom reads a work request, and reports false when there is nothing to
@@ -85,7 +95,7 @@ func requestFrom(data map[string]interface{}) (request, bool) {
 	str := func(k string) string { s, _ := data[k].(string); return s }
 	r := request{
 		Account: str("account"), Kind: str("kind"), ID: str("id"),
-		Title: str("title"), Prompt: str("prompt"),
+		Title: str("title"), Prompt: str("prompt"), Thread: str("thread"),
 	}
 	return r, r.Account != "" && r.Prompt != ""
 }
@@ -112,6 +122,34 @@ func run(r request) {
 	default:
 		app.Log("work", "nothing knows what to do with a %q", r.Kind)
 	}
+
+	// And back to whoever asked, where they asked in a conversation.
+	//
+	// Work does not usually start on a page. Somebody writes in, it turns out
+	// to take an hour, and a result sitting on a task page is a result nobody
+	// reads — they asked in a thread and that is where they are looking. The
+	// record is the same one every client renders, so this lands in /inbox
+	// beside what they wrote.
+	answered(r, answer, err)
+}
+
+// answered puts the outcome back on the conversation the work came out of.
+//
+// Through agent.Answered, which is what every client uses to write down what an
+// agent said — there is no version of this special enough to reach past it.
+// Silent when there was no conversation: a task somebody wrote on the page and
+// a schedule falling due have nowhere to go back to, and that is not a failure.
+func answered(r request, answer string, err error) {
+	if r.Thread == "" {
+		return
+	}
+	text := strings.TrimSpace(answer)
+	if err != nil {
+		// Said rather than swallowed, for the reason in the package comment:
+		// silence is indistinguishable from work nobody picked up.
+		text = "That did not work: " + err.Error()
+	}
+	agent.Answered(r.Account, r.Thread, text, "")
 }
 
 // finishTask writes the result back onto the task.

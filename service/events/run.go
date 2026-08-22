@@ -54,5 +54,5 @@ func requestWork(e *Event) {
 	if _, err := auth.GetAccount(e.Owner); err != nil {
 		return
 	}
-	event.RequestWork(e.Owner, Kind, e.ID, e.Title, prompt)
+	event.RequestWork(e.Owner, Kind, e.ID, e.Title, prompt, "")
 }

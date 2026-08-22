@@ -26,10 +26,12 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/thread"
+	"mu/service/tasks"
 )
 
 // Act runs the agent on a conversation the reader is looking at, and is filled
@@ -67,8 +69,20 @@ func action(w http.ResponseWriter, r *http.Request, accountID string) {
 	}
 	// Whose conversation it is, before anything is charged or run. Scoped to
 	// the reader, so somebody else's id is not a conversation.
-	if thread.Get(accountID, id) == nil {
+	t := thread.Get(accountID, id)
+	if t == nil {
 		app.NotFound(w, r, "no conversation here with that id")
+		return
+	}
+
+	// Handing it over rather than waiting for it. See hand.
+	if r.FormValue("hand") != "" {
+		if err := hand(accountID, t, ask); err != nil {
+			app.Log("inbox", "handing a conversation to an agent failed: %v", err)
+			http.Redirect(w, r, back+"&problem="+url.QueryEscape(err.Error()), http.StatusSeeOther)
+			return
+		}
+		http.Redirect(w, r, back, http.StatusSeeOther)
 		return
 	}
 
@@ -79,6 +93,87 @@ func action(w http.ResponseWriter, r *http.Request, accountID string) {
 	}
 
 	http.Redirect(w, r, back, http.StatusSeeOther)
+}
+
+// hand turns the conversation into work and gives it away.
+//
+// Two buttons on one box, and the difference is not how long it takes — it is
+// whether you are waiting. Ask runs now and the answer is here when the page
+// comes back; Hand over makes a task, and you can close the tab.
+//
+// No hook and no agent. tasks.Run announces that work was asked for and
+// agent/work subscribes, so starting work needs nothing from agent/ — which is
+// what inverting those three hooks bought. The import is the plain one this
+// package's doc already argues for with service/mail: a service is neither
+// internal/ nor a consumer of tools, so there is no cycle and no hook to
+// justify.
+//
+// The thread goes on the task, so the answer comes back to the conversation
+// somebody is actually reading rather than onto a page they have no reason to
+// open. See tasks.Task.Thread.
+//
+// And the conversation goes in the detail. A task run starts cold — a title and
+// a line, no history — which is exactly why work handed off in one sentence
+// comes back worse than the same request in a conversation that already has the
+// context. This carries what was said, so it does not.
+func hand(accountID string, t *thread.Thread, ask string) error {
+	title := ask
+	if len(title) > handTitle {
+		title = strings.TrimSpace(title[:handTitle]) + "…"
+	}
+
+	var detail strings.Builder
+	if subject := strings.TrimSpace(t.Subject); subject != "" {
+		detail.WriteString("This is about a conversation titled " + subject + ".\n\n")
+	}
+	msgs := thread.Messages(accountID, t.ID, handContext)
+	if len(msgs) > 0 {
+		detail.WriteString("What was said, oldest first:\n\n")
+		for _, m := range msgs {
+			who := "They"
+			if m.Role == thread.RoleAgent {
+				who = "The agent"
+			} else if strings.TrimSpace(m.From) == "" || m.From == accountID {
+				who = "The owner"
+			}
+			detail.WriteString(who + ": " + strings.TrimSpace(m.Text) + "\n\n")
+		}
+	}
+	detail.WriteString("What they have asked for: " + ask)
+
+	task, err := tasks.CreateOn(accountID, t.ID, title, detail.String(), tasks.Agent, time.Time{})
+	if err != nil {
+		return err
+	}
+	// Said on the conversation, because a task made silently is a task nobody
+	// knows was made — and because inferring that somebody wanted work rather
+	// than an answer is a claim about what they meant, which they should be
+	// able to see and correct.
+	agentSaid(accountID, t.ID, "Taking that on — I will answer here when it is done.")
+	return tasks.Run(accountID, task.ID)
+}
+
+// handTitle bounds a task's title, and handContext how much of the conversation
+// travels with it. Six messages is three exchanges, which is what the mail
+// agent is reminded of for the same reason.
+const (
+	handTitle   = 70
+	handContext = 6
+)
+
+// agentSaid records a line from the agent on a conversation, filled in by the
+// server because this package may not import agent/.
+//
+// One line rather than the whole of agent.Answered: what is needed here is
+// "say this on that thread", and the agent owns how anything it says is
+// written down.
+var agentSaid = func(accountID, threadID, text string) {}
+
+// AgentSaid is how the server hands that over. See agentSaid.
+func AgentSaid(f func(accountID, threadID, text string)) {
+	if f != nil {
+		agentSaid = f
+	}
 }
 
 // askBox is the control itself: somewhere to type, and three things that are
@@ -126,10 +221,21 @@ func askBox(r *http.Request, threadID, replyWho string) string {
 	// not cancelled — disabling a submit button in its own handler would stop
 	// the POST — so the click goes through and the second one has nothing to
 	// click.
-	b.WriteString(`<div class="ib-ask-row"><button type="submit" ` +
-		`onclick="var f=this.form;setTimeout(function(){f.querySelectorAll('button').forEach(` +
-		`function(b){b.disabled=true});f.querySelector('button[type=submit]').textContent='Working…'},0)"` +
-		`>Ask</button>`)
+	// Two buttons, and the difference is whether you are waiting.
+	//
+	// Ask runs now and the answer is here when the page comes back. Hand over
+	// makes a task and you can close the tab — which is the move this page is
+	// for, because the inbox is where you decide what happens to things rather
+	// than where you sit through them.
+	//
+	// The disable-on-click is on both: the run takes tens of seconds with
+	// nothing on the screen, and somebody who read that as a press that had not
+	// registered pressed again and paid for two.
+	press := `onclick="var f=this.form;setTimeout(function(){f.querySelectorAll('button').forEach(` +
+		`function(b){b.disabled=true});this.textContent='Working…'}.bind(this),0)"`
+	b.WriteString(`<div class="ib-ask-row"><button type="submit" ` + press + `>Ask</button>`)
+	b.WriteString(`<button type="submit" name="hand" value="1" class="pill" ` + press +
+		`>Hand over</button>`)
 	for _, s := range []string{
 		"Summarise this",
 		"Draft a reply",
@@ -140,16 +246,19 @@ func askBox(r *http.Request, threadID, replyWho string) string {
 		b.WriteString(`<button type="button" class="pill" onclick="this.form.ask.value='` +
 			html.EscapeString(s) + `';this.form.ask.focus()">` + html.EscapeString(s) + `</button>`)
 	}
-	// What this box is not, and — where there is one — where the other thing is.
+	// What the two buttons do, and what neither of them is.
 	//
-	// "This is not a reply" was the whole caption, and on a page with no reply
-	// button anywhere it read as a statement that replying was not possible. It
-	// is a distinction now rather than a refusal.
-	note := `This is not a reply — nothing here is sent to anybody. What you ask ` +
-		`and what it does are kept on this conversation.`
+	// A box under a message looks like a reply, so it says it is not one. That
+	// sentence used to be the whole caption — "This is not a reply" — on a page
+	// with no reply button anywhere, which read as a statement that replying was
+	// not possible. It is a distinction now rather than a refusal.
+	note := `Ask and the answer comes back here. Hand over makes it a task and ` +
+		`the agent answers here when it is done. It is not a reply — nothing ` +
+		`typed here is sent to anybody.`
 	if canReply {
-		note = `Not a reply — nothing typed here is sent. Use Reply above to answer ` +
-			`` + html.EscapeString(replyWho) + ` yourself, or ask the agent to draft it.`
+		note = `Ask and the answer comes back here. Hand over makes it a task and ` +
+			`the agent answers here when it is done. It is not a reply — use ` +
+			`Reply above to answer ` + html.EscapeString(replyWho) + ` yourself.`
 	}
 	b.WriteString(`</div><p class="ib-ask-note">` + note + `</p>`)
 	b.WriteString(`</form>`)

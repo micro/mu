@@ -271,6 +271,12 @@ func wireHooks() {
 	// record; the roster is the agent's and the mail domain is the mail
 	// service's, and neither is a reason for a page over internal/thread to
 	// depend on them. See inbox/doc.go.
+	// One line from the agent onto a conversation — the acknowledgement when
+	// work is handed over. The agent owns how anything it says is written
+	// down, so the inbox asks rather than writing to the record itself.
+	inbox.AgentSaid(func(accountID, threadID, text string) {
+		agent.Answered(accountID, threadID, text, "")
+	})
 	inbox.AgentName = agent.NameOf
 	inbox.Address = mail.SharedAgentAddress
 	// The roster, so the inbox can offer a box per agent rather than only the

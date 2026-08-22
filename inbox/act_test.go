@@ -12,6 +12,7 @@ import (
 
 	"mu/internal/auth"
 	"mu/internal/thread"
+	"mu/service/tasks"
 )
 
 // reader is an account that exists, which the quota check needs before it will
@@ -49,6 +50,11 @@ func TestAConversationCarriesTheAskBox(t *testing.T) {
 	// reply and is not one.
 	if !strings.Contains(body, "not a reply") {
 		t.Error("nothing says this is not a reply")
+	}
+	// Two buttons, and the difference is whether you are waiting: Ask answers
+	// now, Hand over makes a task and you can close the tab.
+	if !strings.Contains(body, `name="hand"`) {
+		t.Errorf("there is no way to hand the conversation over:\n%s", body)
 	}
 }
 
@@ -144,5 +150,65 @@ func TestTheInstructionLandsOnTheConversation(t *testing.T) {
 	}
 	if !strings.Contains(msgs[1].Text, "calendar") || msgs[2].Role != thread.RoleAgent {
 		t.Errorf("the record reads wrong: %+v", msgs)
+	}
+}
+
+// Handing a conversation over makes a task that answers back to it.
+//
+// The difference between the two buttons is not how long it takes — it is
+// whether you are waiting. Ask runs now; Hand over makes work and you can close
+// the tab, and the answer arrives on the conversation you were reading.
+func TestHandingOverMakesATaskOnTheConversation(t *testing.T) {
+	const who = "inbox-hand"
+	reader(t, who)
+
+	said := ""
+	AgentSaid(func(accountID, threadID, text string) { said = text })
+	t.Cleanup(func() { AgentSaid(func(string, string, string) {}) })
+
+	th := thread.Open(who, "mail", "<hand@example.com>")
+	if th == nil {
+		t.Fatal("no thread")
+	}
+	thread.Name(who, th.ID, "The quarterly numbers")
+	agentSaidNothing := thread.Add(thread.Message{
+		Thread: th.ID, Account: who, Role: thread.RolePerson,
+		Text: "Can you pull together the quarterly numbers?", From: "them@example.com",
+	})
+	_ = agentSaidNothing
+
+	if err := hand(who, th, "Pull the numbers and summarise them"); err != nil {
+		t.Fatal(err)
+	}
+
+	// Found by the conversation rather than by counting: this package has no
+	// TestMain, so its store is the real one and outlives a run.
+	var got *tasks.Task
+	for _, candidate := range tasks.List(who, "") {
+		if candidate.Thread == th.ID {
+			got = candidate
+			break
+		}
+	}
+	if got == nil {
+		t.Fatal("no task was made for the conversation")
+	}
+	if got.Assignee != tasks.Agent {
+		t.Errorf("the task was not given to the agent: %q", got.Assignee)
+	}
+	// The conversation travels with it, or the run starts cold — which is why
+	// work handed off in one sentence comes back worse than the same request
+	// made in a conversation that already has the context.
+	for _, want := range []string{"The quarterly numbers", "quarterly numbers?",
+		"Pull the numbers and summarise them"} {
+		if !strings.Contains(got.Detail, want) {
+			t.Errorf("the task lost %q from the conversation:\n%s", want, got.Detail)
+		}
+	}
+	// And it says so, because a task made silently is a task nobody knows was
+	// made — and because deciding this was work rather than a question is a
+	// claim about what somebody meant.
+	if !strings.Contains(said, "Taking that on") {
+		t.Errorf("nothing was said on the conversation: %q", said)
 	}
 }

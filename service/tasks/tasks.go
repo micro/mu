@@ -71,6 +71,19 @@ type Task struct {
 	// each worked. Without it a finished task is a paragraph with no way to
 	// tell whether it was researched or invented.
 	Steps []Step `json:"steps,omitempty"`
+
+	// Thread is the conversation this came out of, where there was one.
+	//
+	// Work does not usually start on a task page. Somebody writes in and asks
+	// for something that takes an hour, and what should happen is that a task
+	// is made and the answer comes back where they asked — not onto a page
+	// they were not looking at and have no reason to check.
+	//
+	// A thread id and nothing else, because this service does not know what a
+	// conversation is. internal/thread holds that, whoever put the answer
+	// there reads it, and a task with no origin is an ordinary task somebody
+	// wrote down.
+	Thread string `json:"thread,omitempty"`
 }
 
 // Open reports whether the task is still to be done.
@@ -78,6 +91,12 @@ func (t *Task) Open() bool { return t.Status != StatusDone }
 
 // Create adds a task.
 func Create(owner, title, detail, assignee string, due time.Time) (*Task, error) {
+	return CreateOn(owner, "", title, detail, assignee, due)
+}
+
+// CreateOn adds a task that came out of a conversation, so the answer can go
+// back to it. See Task.Thread.
+func CreateOn(owner, threadID, title, detail, assignee string, due time.Time) (*Task, error) {
 	if owner == "" {
 		return nil, fmt.Errorf("sign in to use tasks")
 	}
@@ -95,6 +114,9 @@ func Create(owner, title, detail, assignee string, due time.Time) (*Task, error)
 	}
 	if detail = strings.TrimSpace(detail); detail != "" {
 		fields["detail"] = detail
+	}
+	if threadID = strings.TrimSpace(threadID); threadID != "" {
+		fields["thread"] = threadID
 	}
 	if !due.IsZero() {
 		fields["due"] = stamp(due)
@@ -198,9 +220,14 @@ func Update(owner, id, title, detail, status, assignee, result string, runSteps 
 	if !existing.Due.IsZero() {
 		fields["due"] = stamp(existing.Due)
 	}
-	// Carried forward: an edit is not a reason to forget what the agent did.
+	// Carried forward: an edit is not a reason to forget what the agent did,
+	// or where the work came from. Both are written once and never sent again,
+	// so a field left out here is a field an ordinary edit deletes.
 	if enc := encodeSteps(existing.Steps); enc != "" {
 		fields["steps"] = enc
+	}
+	if existing.Thread != "" {
+		fields["thread"] = existing.Thread
 	}
 	if len(runSteps) > 0 {
 		fields["steps"] = encodeSteps(runSteps[0])
@@ -295,7 +322,7 @@ func toTask(id, owner string, d map[string]any) *Task {
 		Status: status, Assignee: normaliseAssignee(str("assignee")),
 		Result: str("result"), Due: when("due"),
 		Created: when("created"), Updated: when("updated"), Owner: owner,
-		Steps: decodeSteps(str("steps")),
+		Steps: decodeSteps(str("steps")), Thread: str("thread"),
 	}
 }
 
