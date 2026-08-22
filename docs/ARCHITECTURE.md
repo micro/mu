@@ -497,7 +497,7 @@ are not one thing, and the file reads as though they were:
 | A service needing another service — `news.FetchSocialContext` | 1 | **Rule 3 in letter only.** There is no import, and the two packages still change together. `email.SendVia` went with the email service |
 | A service announcing something happened — `events.OnCreate`, `events.OnFire` | 2 | **Right direction, wrong shape.** Outward rather than upward, so not a leak — but a hook takes exactly one listener and `internal/event` takes any number |
 | `mail.OnNewMail` | 0 | **Gone.** Mail arriving is a fact, not a call: `service/mail` publishes `event.EventMailReceived` and knows nothing about who listens. The pattern the other four should follow |
-| A service needing the agent — `tasks.RunAgent`, `events.RunAgent`, `events.OnFireEvent` | 3 | **Rule 4 broken.** The direction is inverted; the hook is what makes it compile. `stream.AIReplyHook` was a fourth and is gone |
+| A service needing the agent | 0 | **Gone.** `tasks.RunAgent`, `events.RunAgent` and `events.OnFireEvent` were three; a fourth, `stream.AIReplyHook`, went earlier. Asking an agent for work is a fact now — `event.EventWorkForAgent`, published by the service holding the record and subscribed by `agent/work`. Same inversion as `mail.OnNewMail` above |
 | A service needing the money — `apps.QuotaCheck`, `apps.ChargeQuota`, `apps.ChargeUse` | 3 | **Was filed as correct; it is not.** Rule 5 says a service asks `internal/quota` what an operation costs, and `TestNoServiceImportsTheAccount` asserts zero imports and passes — these are how that is avoided. Two of the three are metering, which belongs at the door and not in the service; the third pays an app's author out of a payer's balance, which quota genuinely cannot express. That is a gap in quota, not a licence here |
 | A service needing Google — `events.External*`, `contacts.External*` | 6 | **Not debt at all.** `internal/google` imports only `data` and `settings`; either service could import it directly under rule 2. The indirection buys provider-neutrality, which is a design choice and not a layering one |
 
@@ -522,12 +522,15 @@ Google bridge over it. Rule 3 was never in the way and rule 2 always allowed the
 import. Before reaching for a hook, check whether the thing being reached for
 already has a home in the substrate.
 
-The rest do not have that escape. `tasks.RunAgent` and its two siblings want
-the agent, and inverting them means moving "run this now" out of the services
-that hold the schedule — a design change with live background loops attached,
-not an import cleanup. The shape of the fix is known and already built once:
-`service/mail` publishes that a message arrived and knows nothing about who
-listens, and `agent/mail` subscribes. Assigning a task is the same fact.
+The agent row is empty because that inversion has been done. It was three
+hooks, and counting them is what showed they were one thing: four doors ask an
+agent for work — a chat message, mail arriving, a task assigned, a schedule
+firing — and three of them reached upward. The services announce now.
+
+What is left is `news.FetchSocialContext`, which wants another service and
+belongs in `internal/`, and the three `apps` hooks, of which two are metering
+that belongs at the door and one is a transfer `internal/quota` cannot
+express.
 
 **One door for a tool a model named.** Two questions have to be asked before a
 model's chosen tool runs — may a caller with no account use it, and is it one of

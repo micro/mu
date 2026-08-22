@@ -59,6 +59,26 @@ const (
 	// Data: message, holding the whole InboundMail as JSON.
 	EventMailForAgent = "mail_for_agent"
 
+	// EventWorkForAgent is a piece of work somebody has asked an agent to do.
+	//
+	// Four things ask: a chat message, an email arriving, a task assigned, a
+	// schedule firing. They were four mechanisms — and three of them were
+	// hooks, a service reaching up into the agent through a function variable
+	// somebody filled in at boot, because a service may not import an agent.
+	// The hook is how that rule was avoided rather than kept.
+	//
+	// This is the same inversion service/mail already made, for the same
+	// reason. A service does not run an agent; it says what happened, and
+	// whoever wants to act on it subscribes. See agent/work, which is the
+	// subscriber, and agent/mail, which is the worked example.
+	//
+	// Data: account, kind, id, title, prompt. kind and id name the record the
+	// work belongs to, so the subscriber knows where the answer goes — a task
+	// keeps its result, a standing instruction is mailed. That knowledge is the
+	// agent layer's: an agent may import a service, and the service must not
+	// know an agent exists.
+	EventWorkForAgent = "work_for_agent"
+
 	// EventActivity is one thing that happened, in a line, with somewhere to
 	// go and read it: a post published, a video found, a headline broken, an
 	// image generated.
@@ -92,6 +112,29 @@ func Announce(service, text, url, account string) {
 		"text":    text,
 		"url":     url,
 		"account": account,
+	}})
+}
+
+// RequestWork asks an agent to do a piece of work, for whoever is listening.
+//
+// account is whose work it is, and the run is charged to them. kind and id name
+// the record it belongs to — "task" and a task id, "event" and an event id —
+// so the answer can be put back where it came from. title is what to call it;
+// prompt is what to do.
+//
+// Nothing here knows what an agent is, which is the point: a service that
+// called one would be asking the model what its own answer should be. See
+// EventWorkForAgent.
+func RequestWork(account, kind, id, title, prompt string) {
+	if account == "" || prompt == "" {
+		return
+	}
+	Publish(Event{Type: EventWorkForAgent, Data: map[string]interface{}{
+		"account": account,
+		"kind":    kind,
+		"id":      id,
+		"title":   title,
+		"prompt":  prompt,
 	}})
 }
 

@@ -97,16 +97,11 @@ var hooks = map[string]why{
 	"apps.QuotaCheck":  reachesAccount,
 
 	// service/events
-	"events.OnCreate":    announces,
-	"events.OnFire":      announces,
-	"events.OnFireEvent": reachesAgent,
-	"events.RunAgent":    reachesAgent,
+	"events.OnCreate": announces,
+	"events.OnFire":   announces,
 
 	// service/news
 	"news.FetchSocialContext": reachesService,
-
-	// service/tasks
-	"tasks.RunAgent": reachesAgent,
 }
 
 // Every hook is on the ledger, and everything on the ledger still exists.
@@ -138,18 +133,18 @@ func TestEveryServiceHookIsOnTheLedger(t *testing.T) {
 	}
 }
 
-// A service must not reach up into an agent, and the count must not grow.
+// No service calls an agent.
 //
-// Not zero, because it is three today and a test that fails on the current tree
-// is a test somebody deletes. The number is the number; the assertion is that
-// it only ever goes down.
+// This was written expecting three — tasks.RunAgent, events.RunAgent and
+// events.OnFireEvent, the list CLAUDE.md carried as "not yet enforced" — and
+// they went in the same change that added this test. Writing the count down was
+// what made it obvious they were one thing: four ways to ask an agent for work,
+// three of them a service reaching upward through a function variable.
 //
-// CLAUDE.md's own note on this: "Not yet enforced — tasks.RunAgent,
-// events.RunAgent, events.OnFireEvent and stream.AIReplyHook are four hooks
-// that exist to make that direction compile." Three of those four are real and
-// the fourth is gone.
+// Zero, and it stays zero. A service announces that work was asked for and
+// agent/work subscribes; see internal/event.EventWorkForAgent.
 func TestNoNewServiceCallsAnAgent(t *testing.T) {
-	const known = 3
+	const known = 0
 
 	var up []string
 	for name, kind := range hooks {
@@ -160,17 +155,12 @@ func TestNoNewServiceCallsAnAgent(t *testing.T) {
 	sort.Strings(up)
 
 	if len(up) > known {
-		t.Errorf("%d services now call an agent, up from %d: %s\n"+
+		t.Errorf("%d services now call an agent, want %d: %s\n"+
 			"A service answers a question about state; an agent decides which\n"+
 			"question to ask. A service calling an agent is asking the model what\n"+
 			"its own answer should be. Publish the fact instead — see\n"+
 			"internal/event, EventMailForAgent, and agent/mail as the worked\n"+
 			"example.", len(up), known, strings.Join(up, ", "))
-	}
-	if len(up) < known {
-		t.Errorf("only %d services call an agent, down from %d: %s\n"+
-			"Good — lower the constant in this test so it cannot go back up.",
-			len(up), known, strings.Join(up, ", "))
 	}
 }
 

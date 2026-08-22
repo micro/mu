@@ -57,10 +57,6 @@ var (
 // not import the client packages (and to avoid an import cycle).
 var OnFire func(accountID, title, note string)
 
-// OnFireEvent is called with the whole event when it comes due. main.go sets it
-// to run a standing instruction's prompt through the agent.
-var OnFireEvent func(*Event)
-
 // OnCreate is called when an event is scheduled. main.go sets it to email the
 // owner an .ics calendar invite (if they have a verified email — e.g. from
 // Google sign-in), so the event also lands in their real calendar. Kept as a
@@ -230,12 +226,10 @@ func fireDue() {
 		if OnFire != nil {
 			OnFire(e.Owner, e.Title, e.Note)
 		}
-		// OnFireEvent sees the whole event, which is how a standing
-		// instruction's prompt reaches the agent. OnFire is kept as it was so
-		// notification does not depend on this.
-		if OnFireEvent != nil {
-			OnFireEvent(e)
-		}
+		// And the work, where the event carries an instruction. Announced
+		// rather than called: see run.go. OnFire stays as it was, so being
+		// told a reminder fired does not depend on any of this.
+		requestWork(e)
 	}
 }
 

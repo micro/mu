@@ -25,6 +25,7 @@ import (
 	mailagent "mu/agent/mail"
 	"mu/agent/micro"
 	agentsocial "mu/agent/social"
+	"mu/agent/work"
 	help "mu/docs"
 	"mu/home"
 	"mu/inbox"
@@ -147,61 +148,20 @@ func wireHooks() {
 		// reminded of something, at that minute.
 		push.Send(accountID, push.Notification{Title: "⏰ " + title, Body: note, URL: "/events"})
 	}
-	// A standing instruction: when an event carrying a prompt comes due, run it
-	// through the agent and deliver the answer.
+	// Work an agent is asked to do — a task assigned, a standing instruction
+	// falling due — reaches it on the bus rather than through this file.
 	//
-	// This is the thing a server that stays up can do and a stdio MCP process
-	// cannot — "every morning, brief me and mail it" has nowhere to live in a
-	// process that only exists while a client is attached. Every piece was
-	// already here (a scheduler, an agent, an inbox); nothing joined them.
+	// tasks.RunAgent, events.RunAgent and events.OnFireEvent were three
+	// function variables filled in here, which is a service running an agent
+	// with the import hidden from the compiler. They are gone; agent/work
+	// subscribes, and both services announce and know nothing about who
+	// listens.
 	//
-	// It runs in a goroutine because the agent may take tens of seconds and the
-	// scheduler fires every event due in the same pass; one slow briefing must
-	// not hold up the rest.
-	// A task handed to the agent reaches it the same way a standing instruction
-	// does: through a hook, so tasks does not import the agent.
-	// A task run reports what it did; a scheduled one does not need to, and
-	// keeps the simpler hook.
-	tasks.RunAgent = func(accountID, prompt string, onStep func(tasks.Step)) (string, error) {
-		opts := agent.QueryOpts{}
-		if onStep != nil {
-			opts.OnStep = func(s agent.Step) {
-				onStep(tasks.Step{
-					Tool:    s.Tool,
-					Detail:  tasks.StepDetail(s.Args),
-					OK:      s.OK,
-					Seconds: s.Took.Seconds(),
-				})
-			}
-		}
-		return agent.QueryWithOpts(accountID, prompt, opts)
-	}
-	events.RunAgent = func(accountID, prompt string) (string, error) {
-		return agent.Query(accountID, prompt)
-	}
-
-	events.OnFireEvent = func(e *events.Event) {
-		if strings.TrimSpace(e.Prompt) == "" {
-			return
-		}
-		go func(e events.Event) {
-			// Charged like any other agent run — see service/events/run.go.
-			// Always returns something to deliver, including the reason when it
-			// could not run at all.
-			answer := events.RunPrompt(&e)
-
-			// Mail is the delivery that survives being away from the screen,
-			// and this instance runs the inbox. Tagged so an agent can read
-			// back only its own scheduled results.
-			if acc, err := auth.GetAccount(e.Owner); err == nil {
-				_ = mail.SendMessageTo(mail.Delivery{
-					From: "Mu", FromID: "agent@" + mail.ConfiguredDomain(),
-					To: acc.Name, ToID: acc.ID, Tag: "scheduled",
-					Subject: e.Title, Body: answer,
-				})
-			}
-		}(*e)
-	}
+	// The thing that made them worth having is unchanged and is what a server
+	// that stays up can do where a stdio MCP process cannot: "every morning,
+	// brief me and mail it" has nowhere to live in a process that only exists
+	// while a client is attached.
+	work.Load()
 
 	// Mail is a client like another client: it speaks its own protocol and
 	// hands what arrives to the agent. See agent/mail.

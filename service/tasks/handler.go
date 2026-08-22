@@ -145,7 +145,7 @@ func listPage(w http.ResponseWriter, r *http.Request) {
 
 	running := 0
 	for _, t := range list {
-		if Running(t.ID) {
+		if Running(t) {
 			running++
 		}
 		b.WriteString(taskRow(t, csrf))
@@ -195,7 +195,7 @@ func taskRow(t *Task, csrf string) string {
 	if !t.Due.IsZero() {
 		meta = append(meta, "due "+html.EscapeString(t.Due.Local().Format("2 Jan 15:04")))
 	}
-	if Running(t.ID) {
+	if Running(t) {
 		meta = append(meta, `<span class="task-running">working…</span>`)
 	}
 	fmt.Fprintf(&b, `<div class="task-meta">%s</div>`, strings.Join(meta, " · "))

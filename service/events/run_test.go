@@ -1,85 +1,96 @@
 package events
 
+// A standing instruction reaching the agent.
+//
+// These used to set a RunAgent hook and assert on what RunPrompt returned. The
+// hook is gone — a service does not run an agent — so what is asserted is the
+// fact going on the bus, over the real broker, because a renamed key or an
+// unsubscribed topic fails by nothing ever happening, which looks exactly like
+// an instruction nobody set.
+//
+// What the agent does with it, including telling the owner when a run fails, is
+// agent/work's and is tested there.
+
 import (
-	"fmt"
-	"strings"
 	"testing"
+	"time"
 
 	"mu/internal/auth"
+	"mu/internal/event"
 )
 
-// A standing instruction is the agent working while nobody is watching. It is
-// the same model call as any other and has to be charged like one — this was
-// the one model call the instance gave away.
-func TestAScheduledRunCharges(t *testing.T) {
-	auth.Create(&auth.Account{ID: "runner", Name: "runner", Secret: "test-secret"})
+// asked collects the work requested while f runs.
+func asked(t *testing.T, f func()) []map[string]interface{} {
+	t.Helper()
+	sub := event.Subscribe(event.EventWorkForAgent)
+	defer sub.Close()
 
-	asked := ""
-	RunAgent = func(accountID, prompt string) (string, error) {
-		asked = prompt
-		return "Here is your briefing.", nil
-	}
-	defer func() { RunAgent = nil }()
+	f()
 
-	got := RunPrompt(&Event{Owner: "runner", Title: "Morning brief", Prompt: "brief me on the news"})
-	if got != "Here is your briefing." {
-		t.Errorf("delivered %q", got)
-	}
-	if asked != "brief me on the news" {
-		t.Errorf("the agent was asked %q", asked)
-	}
-}
-
-// Nothing to run is not an error, it is a plain reminder.
-func TestAnEventWithNoPromptRunsNothing(t *testing.T) {
-	RunAgent = func(string, string) (string, error) {
-		t.Error("the agent was called for a plain reminder")
-		return "", nil
-	}
-	defer func() { RunAgent = nil }()
-
-	if got := RunPrompt(&Event{Owner: "runner", Title: "Dentist", Prompt: "  "}); got != "" {
-		t.Errorf("a plain reminder produced %q", got)
+	var got []map[string]interface{}
+	deadline := time.After(time.Second)
+	for {
+		select {
+		case e := <-sub.Chan:
+			got = append(got, e.Data)
+			// Nothing here asks for more than one, so the first is the answer;
+			// waiting for the timeout on every test costs a second each.
+			return got
+		case <-deadline:
+			return got
+		}
 	}
 }
 
-// A run that fails must not be charged, and the owner has to be told: a
-// standing instruction that goes quiet looks like it was forgotten.
-func TestAFailedRunSaysSoAndIsNotCharged(t *testing.T) {
-	auth.Create(&auth.Account{ID: "runner2", Name: "runner2", Secret: "test-secret"})
+// A standing instruction is the agent working while nobody is watching, and
+// what it is asked is the prompt on the event.
+func TestAScheduledInstructionAsksForWork(t *testing.T) {
+	auth.Create(&auth.Account{ID: "runner", Name: "runner", Secret: "test-secret"}) //nolint:errcheck
 
-	RunAgent = func(string, string) (string, error) {
-		return "", fmt.Errorf("the model is unavailable")
+	got := asked(t, func() {
+		requestWork(&Event{ID: "e1", Owner: "runner", Title: "Morning brief",
+			Prompt: "brief me on the news"})
+	})
+	if len(got) != 1 {
+		t.Fatalf("%d work requests, want one", len(got))
 	}
-	defer func() { RunAgent = nil }()
-
-	got := RunPrompt(&Event{Owner: "runner2", Title: "Brief", Prompt: "brief me"})
-	if !strings.Contains(got, "failed") || !strings.Contains(got, "unavailable") {
-		t.Errorf("the owner was told %q", got)
+	if got[0]["prompt"] != "brief me on the news" {
+		t.Errorf("the agent was asked %q", got[0]["prompt"])
 	}
-}
-
-// An unknown account cannot be charged, so it cannot run — and says why rather
-// than silently doing nothing.
-func TestAnUnchargeableRunSaysWhy(t *testing.T) {
-	RunAgent = func(string, string) (string, error) {
-		t.Error("the agent ran for an account that cannot be charged")
-		return "", nil
+	if got[0]["account"] != "runner" {
+		t.Errorf("the work belongs to %q", got[0]["account"])
 	}
-	defer func() { RunAgent = nil }()
-
-	got := RunPrompt(&Event{Owner: "nobody-at-all", Title: "Brief", Prompt: "brief me"})
-	if !strings.Contains(got, "did not run") {
-		t.Errorf("delivered %q, want an explanation", got)
+	// The kind is how a subscriber knows the answer is mailed rather than
+	// written back onto a task.
+	if got[0]["kind"] != Kind {
+		t.Errorf("announced as kind %q, want %q", got[0]["kind"], Kind)
+	}
+	if got[0]["id"] != "e1" {
+		t.Errorf("the request names %q, not the event", got[0]["id"])
 	}
 }
 
-// With no agent wired there is nothing to run, and the owner should hear that
-// rather than nothing.
-func TestNoAgentIsReported(t *testing.T) {
-	RunAgent = nil
-	got := RunPrompt(&Event{Owner: "runner", Title: "Brief", Prompt: "brief me"})
-	if !strings.Contains(got, "no agent") {
-		t.Errorf("delivered %q", got)
+// Nothing to run is not an error, it is a plain reminder — and OnFire has
+// already delivered it.
+func TestAnEventWithNoPromptAsksForNothing(t *testing.T) {
+	if got := asked(t, func() {
+		requestWork(&Event{ID: "e2", Owner: "runner", Title: "Dentist", Prompt: "  "})
+	}); len(got) != 0 {
+		t.Errorf("a plain reminder asked for work: %v", got)
+	}
+}
+
+// An instruction belonging to no account never reaches the bus.
+//
+// Checked because it is a real question and not because of money. It used to
+// fall out of the credit check — an unknown account could not be charged, so it
+// could not run — and that guard left with the charge when running the agent
+// stopped costing credits. A rule that only worked as a side effect of another
+// rule is one nobody was holding.
+func TestAnInstructionWithNoAccountAsksForNothing(t *testing.T) {
+	if got := asked(t, func() {
+		requestWork(&Event{ID: "e3", Owner: "nobody-at-all", Title: "Brief", Prompt: "brief me"})
+	}); len(got) != 0 {
+		t.Errorf("work was requested for an account that does not exist: %v", got)
 	}
 }

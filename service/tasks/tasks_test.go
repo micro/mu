@@ -1,13 +1,13 @@
 package tasks
 
 import (
-	"fmt"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
 	"mu/internal/auth"
+	"mu/internal/event"
 )
 
 func TestMain(m *testing.M) {
@@ -217,19 +217,19 @@ func TestRenderIsReadableByAModel(t *testing.T) {
 	}
 }
 
-// Running is what makes this more than a to-do list: the agent does the work
-// and the answer lands back on the task.
-func TestRunHandsTheTaskToTheAgent(t *testing.T) {
+// Running is what makes this more than a to-do list: the work is given away.
+//
+// It used to be given away by calling a RunAgent hook this package declared,
+// which is a service running an agent. It announces now, and what happens to
+// the answer is agent/work's — including a failed run reopening the task,
+// which is tested there.
+func TestRunAsksForTheWork(t *testing.T) {
 	account(t, "alice")
 	clear("alice")
 	defer clear("alice")
 
-	done := make(chan string, 1)
-	RunAgent = func(accountID, prompt string, onStep func(Step)) (string, error) {
-		done <- prompt
-		return "Here is the summary.", nil
-	}
-	defer func() { RunAgent = nil }()
+	sub := event.Subscribe(event.EventWorkForAgent)
+	defer sub.Close()
 
 	task, _ := Create("alice", "Summarise the news", "Top five", "agent", time.Time{})
 	if err := Run("alice", task.ID); err != nil {
@@ -237,66 +237,52 @@ func TestRunHandsTheTaskToTheAgent(t *testing.T) {
 	}
 
 	select {
-	case prompt := <-done:
+	case e := <-sub.Chan:
 		// Title and detail both reach the agent: the title is the instruction,
 		// the detail is the context.
+		prompt, _ := e.Data["prompt"].(string)
 		if !strings.Contains(prompt, "Summarise the news") || !strings.Contains(prompt, "Top five") {
 			t.Errorf("the agent was asked %q", prompt)
+		}
+		// The kind and the id are how the answer finds its way back.
+		if e.Data["kind"] != Kind || e.Data["id"] != task.ID {
+			t.Errorf("the request does not name this task: %v", e.Data)
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("the agent was never asked")
 	}
 
-	// The goroutine writes the result; wait for it to land.
-	for i := 0; i < 100; i++ {
-		if got, _ := Get("alice", task.ID); got.Status == StatusDone {
-			if got.Result != "Here is the summary." {
-				t.Errorf("the result was not stored: %q", got.Result)
-			}
-			return
-		}
-		time.Sleep(20 * time.Millisecond)
+	// And it is marked before it is announced, so the page says what is
+	// happening the moment the press returns.
+	if got, _ := Get("alice", task.ID); got.Status != StatusDoing {
+		t.Errorf("the task is %q, want doing", got.Status)
 	}
-	t.Fatal("the task never finished")
 }
 
-// A failed run leaves the work to be done rather than marking it finished
-// badly, and says why where someone will see it.
-func TestAFailedRunReopensTheTask(t *testing.T) {
+// A second press does not start a second run.
+//
+// The status is the lock, and it is the one a reader can see. There was an
+// in-memory map beside it doing the same job, which meant two answers to "is
+// this running" and only one survived a restart — a task left doing by a crash
+// could never be run again.
+func TestATaskAlreadyWithTheAgentIsNotRunTwice(t *testing.T) {
 	account(t, "alice")
 	clear("alice")
 	defer clear("alice")
 
-	RunAgent = func(accountID, prompt string, onStep func(Step)) (string, error) {
-		return "", fmt.Errorf("the model is unavailable")
-	}
-	defer func() { RunAgent = nil }()
-
-	task, _ := Create("alice", "Something hard", "", "agent", time.Time{})
+	task, _ := Create("alice", "Once", "", "agent", time.Time{})
 	if err := Run("alice", task.ID); err != nil {
 		t.Fatal(err)
 	}
-
-	for i := 0; i < 100; i++ {
-		got, _ := Get("alice", task.ID)
-		if got.Status == StatusTodo && got.Result != "" {
-			if !strings.Contains(got.Result, "unavailable") {
-				t.Errorf("the reason was not recorded: %q", got.Result)
-			}
-			return
-		}
-		time.Sleep(20 * time.Millisecond)
+	if err := Run("alice", task.ID); err == nil {
+		t.Error("a second run was accepted while the first was still going")
 	}
-	t.Fatal("a failed run did not leave the task to be done")
 }
 
 func TestRunRefusesWhatCannotBeRun(t *testing.T) {
 	account(t, "alice")
 	clear("alice")
 	defer clear("alice")
-
-	RunAgent = func(string, string, func(Step)) (string, error) { return "ok", nil }
-	defer func() { RunAgent = nil }()
 
 	task, _ := Create("alice", "Already done", "", "agent", time.Time{})
 	Update("alice", task.ID, "", "", StatusDone, "", "done")

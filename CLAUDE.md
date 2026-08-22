@@ -243,9 +243,17 @@ not a rule.
 rule one level up, and this one has a reason rather than a convention behind it:
 a service answers a question about state, an agent decides which question to
 ask, and a service calling an agent is asking the model what its own answer
-should be. Three hooks exist to make that direction compile —
-`tasks.RunAgent`, `events.RunAgent`, `events.OnFireEvent`. See "Where it leaks"
-in `docs/ARCHITECTURE.md`.
+should be. Enforced by `TestNoNewServiceCallsAnAgent`, which asserts zero.
+
+There were three — `tasks.RunAgent`, `events.RunAgent`, `events.OnFireEvent` —
+and counting them is what showed they were one thing. Four things ask an agent
+for work: a chat message, an email arriving, a task assigned, a schedule
+firing. Three of the four were a service reaching upward through a function
+variable somebody filled in at boot. They are one fact now —
+`event.EventWorkForAgent`, published by whichever service holds the record,
+subscribed by `agent/work`, which knows where the answer goes because a task
+keeps its result and a standing instruction is mailed. That knowledge is the
+agent layer's; the services no longer know an agent exists.
 
 **A function variable is an import the compiler cannot see.** Every rule above
 is checked by reading import statements, and every edge they forbid has been

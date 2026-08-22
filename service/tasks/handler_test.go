@@ -45,33 +45,25 @@ func mustGet(t *testing.T, owner, id string) *Task {
 	return got
 }
 
-// A run takes seconds to a minute. While one is in flight the row has to say
-// so, and the page has to notice when it lands — it was static, so the only way
-// to find out was to reload and guess.
+// A task with the agent says so, and the page finds out without being asked.
+//
+// The run is somewhere else — it takes tens of seconds, nothing streams, and
+// the only way to find out used to be to reload and guess.
 func TestARunningTaskSaysSoAndThePageWatchesForIt(t *testing.T) {
 	account(t, "watch")
 	clear("watch")
 	defer clear("watch")
 
-	release := make(chan struct{})
-	started := make(chan struct{})
-	RunAgent = func(string, string, func(Step)) (string, error) {
-		close(started)
-		<-release
-		return "done", nil
-	}
-	defer func() { RunAgent = nil }()
-
 	task, _ := Create("watch", "Slow thing", "", "agent", time.Time{})
 	if err := Run("watch", task.ID); err != nil {
 		t.Fatal(err)
 	}
-	<-started
 
-	if !Running(task.ID) {
+	got := mustGet(t, "watch", task.ID)
+	if !Running(got) {
 		t.Fatal("a task with the agent does not report as running")
 	}
-	row := taskRow(mustGet(t, "watch", task.ID), "csrf")
+	row := taskRow(got, "csrf")
 	if !strings.Contains(row, "task-running") {
 		t.Errorf("a running task does not say it is working:\n%s", row)
 	}
@@ -83,37 +75,28 @@ func TestARunningTaskSaysSoAndThePageWatchesForIt(t *testing.T) {
 	if !strings.Contains(taskPollJS, "'doing'") {
 		t.Error("the poll does not look at whether anything is still running")
 	}
-
-	close(release)
 }
 
 // A finished task shows what the agent did, not only what it concluded. A
 // paragraph on its own gives no way to tell research from invention.
-func TestARunRecordsAndShowsItsSteps(t *testing.T) {
+//
+// The steps arrive through Update, which is how agent/work writes a run back —
+// so this is the same path a real run takes, without needing a model.
+func TestAFinishedRunShowsItsSteps(t *testing.T) {
 	account(t, "steps")
 	clear("steps")
 	defer clear("steps")
 
-	RunAgent = func(_, _ string, onStep func(Step)) (string, error) {
-		onStep(Step{Tool: "web_search", Detail: "latest AI news", OK: true, Seconds: 1.2})
-		onStep(Step{Tool: "mail_send", OK: false, Seconds: 0.3})
-		return "Here is the summary.", nil
-	}
-	defer func() { RunAgent = nil }()
-
 	task, _ := Create("steps", "Summarise", "", "agent", time.Time{})
-	if err := Run("steps", task.ID); err != nil {
+	steps := []Step{
+		{Tool: "web_search", Detail: "latest AI news", OK: true, Seconds: 1.2},
+		{Tool: "mail_send", OK: false, Seconds: 0.3},
+	}
+	if _, err := Update("steps", task.ID, "", "", StatusDone, "", "Here is the summary.", steps); err != nil {
 		t.Fatal(err)
 	}
 
-	var got *Task
-	for i := 0; i < 100; i++ {
-		got = mustGet(t, "steps", task.ID)
-		if got.Status == StatusDone {
-			break
-		}
-		time.Sleep(20 * time.Millisecond)
-	}
+	got := mustGet(t, "steps", task.ID)
 	if len(got.Steps) != 2 {
 		t.Fatalf("recorded %d steps, want 2: %+v", len(got.Steps), got.Steps)
 	}
