@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"mu/internal/app"
+	"mu/internal/auth"
 
 	"github.com/emersion/go-msgauth/dkim"
 )
@@ -449,4 +450,82 @@ func DKIMStatus() (enabled bool, domain, selector string) {
 		return false, "", ""
 	}
 	return true, dkimConfig.Domain, dkimConfig.Selector
+}
+
+// SendReplyAll answers a message, reaching each recipient the way that
+// recipient can actually be reached.
+//
+// Writing to your own agent from your own address on your own instance did not
+// work. agent@micro.mu answered asim@micro.mu, agent/mail called
+// SendExternalReplyAll whatever the address was, and a local mailbox went out
+// through an MX lookup for our own domain, came back to our own SMTP server and
+// was refused by the anti-spoofing check:
+//
+//	550 5.0.0 Sender address rejected: not authorized to send from this domain
+//
+// The answer was written, recorded and visible on /inbox, and never delivered.
+// Worse than a silent failure, because everything except the mail said it had
+// worked.
+//
+// IsExternalAddress already exists and its own comment is about this exact
+// mistake made once before — "the send path used the wrong one". The send path
+// this time did not ask at all. A name beginning SendExternal should never have
+// been the only way to answer somebody, so this is the way to answer somebody
+// and it asks per recipient: a thread with one local person and one outside is
+// both, which is the case a single branch at the call site would get wrong.
+func SendReplyAll(displayName, from, to string, cc []string, subject, bodyPlain, bodyHTML,
+	inReplyTo, references string) (string, error) {
+
+	var outside []string
+	var here []string
+	for _, addr := range append([]string{to}, cc...) {
+		addr = strings.TrimSpace(addr)
+		if addr == "" {
+			continue
+		}
+		if IsExternalAddress(addr) {
+			outside = append(outside, addr)
+		} else {
+			here = append(here, addr)
+		}
+	}
+
+	// Everybody outside, in one message, so a thread stays one thread for them.
+	//
+	// A failure here is remembered rather than returned, because the people on
+	// this instance are still owed their copy — the relay being down is not
+	// their problem, and returning early meant one bad address on a thread
+	// silenced the answer for everybody on it.
+	var messageID string
+	var relayErr error
+	if len(outside) > 0 {
+		id, err := SendExternalReplyAll(displayName, from, outside[0], outside[1:], subject,
+			bodyPlain, bodyHTML, inReplyTo, references)
+		if err != nil {
+			relayErr = err
+		}
+		messageID = id
+	}
+
+	// And everybody here, delivered rather than relayed. Each on their own,
+	// because a local message belongs to one mailbox.
+	for _, addr := range here {
+		owner := LocalRecipient(addr)
+		acc, err := auth.GetAccount(owner)
+		if err != nil || acc == nil {
+			app.Log("mail", "no account here called %q, so the answer was not delivered", addr)
+			continue
+		}
+		if err := SendMessage(displayName, from, acc.Name, acc.ID, subject,
+			bodyHTML, inReplyTo, messageID); err != nil {
+			app.Log("mail", "could not deliver the answer to %s: %v", addr, err)
+		}
+	}
+
+	if messageID == "" && len(here) > 0 {
+		// Nothing left the instance, so there is no external id to thread on.
+		// The local copy carries In-Reply-To, which is what /inbox reads.
+		messageID = inReplyTo
+	}
+	return messageID, relayErr
 }

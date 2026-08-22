@@ -325,9 +325,20 @@ func TestFinishedCallsAreForgotten(t *testing.T) {
 
 // waitFor spins until cond, or fails the test. Used instead of a fixed sleep so
 // a slow machine does not turn a passing test into a flake.
+// waitFor blocks until cond holds, or fails the test.
+//
+// The deadline is generous on purpose. It was five seconds, and these two
+// tests went red under `go test ./...` and passed alone or on a re-run — twice
+// blamed on the machine, once on a full disk, when what is actually happening
+// is that thirty-odd packages each stand up go-micro services and two RPCs
+// through the memory transport take longer than five seconds to both arrive.
+//
+// A wait-for-condition costs nothing when the condition is met quickly, so a
+// long deadline only changes how long a genuine hang takes to report. A short
+// one buys nothing and spends the suite's credibility.
 func waitFor(t *testing.T, cond func() bool) {
 	t.Helper()
-	deadline := time.Now().Add(5 * time.Second)
+	deadline := time.Now().Add(30 * time.Second)
 	for !cond() {
 		if time.Now().After(deadline) {
 			t.Fatal("timed out waiting for the calls to arrive")

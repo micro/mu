@@ -17,6 +17,8 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"mu/internal/auth"
 )
 
 func withDomain(t *testing.T, d string) {
@@ -97,5 +99,81 @@ func TestWithNoDomainEverythingAddressedIsExternal(t *testing.T) {
 	}
 	if IsExternalEmail("asim") {
 		t.Error("a bare username is always local")
+	}
+}
+
+// Answering somebody on this instance delivers; it does not relay.
+//
+// This is the same bug one layer up, and it was live. Writing to agent@ from
+// your own address on your own instance produced an answer that was written,
+// recorded, and visible on /inbox — and never delivered, because agent/mail
+// called SendExternalReplyAll whatever the address was. The relay looked up the
+// MX for our own domain, arrived at our own SMTP server, and was refused:
+//
+//	550 5.0.0 Sender address rejected: not authorized to send from this domain
+//
+// IsExternalAddress was right; nothing on that path asked it.
+func TestAnsweringSomebodyHereDeliversRatherThanRelaying(t *testing.T) {
+	withDomain(t, "mu.test")
+	if err := auth.Create(&auth.Account{ID: "localasim", Name: "Local Asim", Secret: "s"}); err != nil {
+		t.Fatalf("creating the account: %v", err)
+	}
+
+	before := len(ListMessages("localasim", 100))
+
+	// No relay host and no MX for mu.test, so any attempt to relay fails. A nil
+	// error is the assertion: nothing was relayed.
+	_, err := SendReplyAll("Agent", "agent@mu.test", "localasim@mu.test", nil,
+		"Re: is this working", "yes", "<p>yes</p>", "<in@reply.to>", "")
+	if err != nil {
+		t.Fatalf("answering somebody on this instance failed: %v", err)
+	}
+
+	after := ListMessages("localasim", 100)
+	if len(after) != before+1 {
+		t.Fatalf("the answer was not delivered: %d messages before, %d after",
+			before, len(after))
+	}
+	if got := after[0].Subject; got != "Re: is this working" {
+		t.Errorf("the delivered message is %q", got)
+	}
+}
+
+// And somebody outside still goes out. A router that delivered everything
+// locally would pass the test above and break every real reply.
+func TestAnsweringSomebodyOutsideStillRelays(t *testing.T) {
+	withDomain(t, "mu.test")
+
+	// Nothing can relay in a test, so the proof that it tried is that it
+	// failed. Silence would mean the message was quietly dropped.
+	_, err := SendReplyAll("Agent", "agent@mu.test", "someone@example.com", nil,
+		"Re: hello", "hi", "<p>hi</p>", "", "")
+	if err == nil {
+		t.Error("an external reply reported success with no relay configured, so it " +
+			"went nowhere and said nothing")
+	}
+}
+
+// A thread with one person here and one outside is both.
+//
+// The fix that suggests itself is a branch at the call site — if the recipient
+// is local, deliver — and it gets this wrong: the local person is in Cc, the
+// branch looks at To, and one of the two never hears back.
+func TestAThreadWithBothKindsOfRecipientReachesBoth(t *testing.T) {
+	withDomain(t, "mu.test")
+	if err := auth.Create(&auth.Account{ID: "ccasim", Name: "Cc Asim", Secret: "s"}); err != nil {
+		t.Fatalf("creating the account: %v", err)
+	}
+
+	before := len(ListMessages("ccasim", 100))
+
+	// To is outside, so the relay is attempted and fails — but the local
+	// recipient in Cc must still be delivered to.
+	_, _ = SendReplyAll("Agent", "agent@mu.test", "someone@example.com",
+		[]string{"ccasim@mu.test"}, "Re: both", "hi", "<p>hi</p>", "", "")
+
+	if after := ListMessages("ccasim", 100); len(after) != before+1 {
+		t.Errorf("the local person on a mixed thread got %d messages, want one more than %d",
+			len(after), before)
 	}
 }

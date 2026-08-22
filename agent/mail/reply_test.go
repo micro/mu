@@ -28,9 +28,9 @@ func replySource(t *testing.T) string {
 	// threads and a reply to the sender alone leaves the rest of the room
 	// watching half a conversation. What these tests hold is unchanged: what
 	// goes out is rendered, has a plain alternative, and is not trusted.
-	i := strings.Index(s, "mail.SendExternalReplyAll(")
+	i := strings.Index(s, "mail.SendReplyAll(")
 	if i < 0 {
-		t.Fatal("the agent no longer replies to mail through SendExternalReplyAll")
+		t.Fatal("the agent no longer replies to mail through SendReplyAll")
 	}
 	end := strings.Index(s[i:], ")")
 	if end < 0 {

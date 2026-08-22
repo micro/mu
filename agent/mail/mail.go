@@ -329,7 +329,7 @@ func answerMail(m mail.InboundMail) {
 		// every message from somebody writing to their own agent.
 		to, cc := replyTo(m)
 		plain = introduction(m.Owner, m, from) + plain
-		sent, err := mail.SendExternalReplyAll(name, from, to, cc, subject,
+		sent, err := mail.SendReplyAll(name, from, to, cc, subject,
 			plain, app.RenderString(plain), m.MessageID, m.References)
 		// The id the answer went out under, so the reply to *it* finds this
 		// turn. Recorded even when delivery failed below, because a message
