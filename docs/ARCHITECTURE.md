@@ -494,14 +494,25 @@ are not one thing, and the file reads as though they were:
 | What it is | Roughly | Verdict |
 |---|---|---|
 | `internal/` needing something from the product — `app.EmailSender`, `auth.HasCredit`, `api.WalletPayer`, `profile.GetUserPosts`, `quota.LimitOverride`, `service.Gate.*` | 22 | **Correct.** Rule 1 leaves no alternative, and this is what the exception costs |
-| A service needing another service — `news.FetchSocialContext`, `email.SendVia`, `events.OnCreate`, `events.OnFire` | 4 | **Rule 3 in letter only.** There is no import, and the two packages still change together |
+| A service needing another service — `news.FetchSocialContext` | 1 | **Rule 3 in letter only.** There is no import, and the two packages still change together. `email.SendVia` went with the email service |
+| A service announcing something happened — `events.OnCreate`, `events.OnFire` | 2 | **Right direction, wrong shape.** Outward rather than upward, so not a leak — but a hook takes exactly one listener and `internal/event` takes any number |
 | `mail.OnNewMail` | 0 | **Gone.** Mail arriving is a fact, not a call: `service/mail` publishes `event.EventMailReceived` and knows nothing about who listens. The pattern the other four should follow |
-| A service needing the agent — `tasks.RunAgent`, `events.RunAgent`, `events.OnFireEvent`, `stream.AIReplyHook` | 4 | **Rule 4 broken.** The direction is inverted; the hook is what makes it compile |
-| A service needing the money — `apps.QuotaCheck`, `apps.ChargeQuota`, `apps.ChargeUse` | 3 | **Correct.** Rule 5, same shape as the first row |
+| A service needing the agent — `tasks.RunAgent`, `events.RunAgent`, `events.OnFireEvent` | 3 | **Rule 4 broken.** The direction is inverted; the hook is what makes it compile. `stream.AIReplyHook` was a fourth and is gone |
+| A service needing the money — `apps.QuotaCheck`, `apps.ChargeQuota`, `apps.ChargeUse` | 3 | **Was filed as correct; it is not.** Rule 5 says a service asks `internal/quota` what an operation costs, and `TestNoServiceImportsTheAccount` asserts zero imports and passes — these are how that is avoided. Two of the three are metering, which belongs at the door and not in the service; the third pays an app's author out of a payer's balance, which quota genuinely cannot express. That is a gap in quota, not a licence here |
 | A service needing Google — `events.External*`, `contacts.External*` | 6 | **Not debt at all.** `internal/google` imports only `data` and `settings`; either service could import it directly under rule 2. The indirection buys provider-neutrality, which is a design choice and not a layering one |
 
-The middle two rows are the ones worth acting on, and they are nine hooks, not
-fifty. The first and fourth rows are the price of rules that are working.
+Rows two, four and five are the ones worth acting on. The first is the price of
+rule 1 working, and the last is a design choice rather than a layering one.
+
+**A function variable is an import the compiler cannot see.** That is what all
+of this has in common, and it is why the table was wrong for a year: every
+layering test here reads import statements, and every edge they forbid has been
+made anyway as a `var X func(...)` that `hooks.go` fills in at boot. The import
+is gone, the dependency is not, and the test reports clean.
+`test/service_hooks_test.go` counts them instead — it pins the list, classifies
+each one, and fails when the number goes up or when the ledger stops matching
+the tree. Both had already happened: this table named `stream.AIReplyHook` and
+`email.SendVia` long after both were deleted.
 
 One of the second row is already gone, and it is worth saying which and why.
 `mail.KnownSender` was wired to `service/contacts` so mail could ask whether a
@@ -511,12 +522,12 @@ Google bridge over it. Rule 3 was never in the way and rule 2 always allowed the
 import. Before reaching for a hook, check whether the thing being reached for
 already has a home in the substrate.
 
-The remaining nine do not have that escape. `email.SendVia` wants the SMTP
-server, which mail genuinely owns; `tasks.RunAgent` and its three siblings want
-the agent, and inverting those means moving "run this now" out of the services
-that hold the schedule. Both are design changes with live background loops
-attached, not import cleanups, and they should be done deliberately rather than
-in passing.
+The rest do not have that escape. `tasks.RunAgent` and its two siblings want
+the agent, and inverting them means moving "run this now" out of the services
+that hold the schedule — a design change with live background loops attached,
+not an import cleanup. The shape of the fix is known and already built once:
+`service/mail` publishes that a message arrived and knows nothing about who
+listens, and `agent/mail` subscribes. Assigning a task is the same fact.
 
 **One door for a tool a model named.** Two questions have to be asked before a
 model's chosen tool runs — may a caller with no account use it, and is it one of

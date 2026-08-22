@@ -243,9 +243,40 @@ not a rule.
 rule one level up, and this one has a reason rather than a convention behind it:
 a service answers a question about state, an agent decides which question to
 ask, and a service calling an agent is asking the model what its own answer
-should be. Not yet enforced — `tasks.RunAgent`, `events.RunAgent`,
-`events.OnFireEvent` and `stream.AIReplyHook` are four hooks that exist to make
-that direction compile. See "Where it leaks" in `docs/ARCHITECTURE.md`.
+should be. Three hooks exist to make that direction compile —
+`tasks.RunAgent`, `events.RunAgent`, `events.OnFireEvent`. See "Where it leaks"
+in `docs/ARCHITECTURE.md`.
+
+**A function variable is an import the compiler cannot see.** Every rule above
+is checked by reading import statements, and every edge they forbid has been
+made anyway, as an exported `func` variable a service declares and
+`internal/server/hooks.go` fills in at boot. The import is gone; the dependency
+is not; the test passes. `TestNoServiceImportsTheAccount` passes while
+`service/apps` is wired to `account.ChargeAppUse`, and
+`TestServicesDoNotImportEachOther` passes with an empty allowlist while
+`service/news` calls `service/social`.
+
+So the hooks are counted, classified and pinned by
+`test/service_hooks_test.go`. Not forbidden — some are the cheapest honest
+answer today, and a test that failed on the whole list would be deleted within
+a week. What is asserted is that the number does not go up quietly, and that
+the ledger matches the tree in both directions. It did not: this file said four
+hooks, there were nine, and one of the four it named had already been deleted.
+
+**What a service may know is the runtime, not the product.** A service is a
+building block and it is also something that runs inside something — so it
+knows the platform: `internal/data` to store, `internal/auth` for who is
+calling, `internal/quota` for what an operation costs, `internal/event` to say
+something happened. That is a utility layer and using it is the point of having
+one.
+
+What it may not know is a *product requirement* — that agents exist, that there
+is a roster, that an inbox has a switcher, that an app's author gets paid.
+Those are decisions made above it, and a building block that encodes one stops
+being reusable by anything that decides differently. Metering is the useful
+edge case: what something costs is a fact a service declares (`Cost` on its
+Endpoint), and who may afford it is a judgement made at the door — which is why
+`quota` holds prices and deliberately does not know what a balance is.
 
 A service never imports `account/`. What a service needs to know about money is
 `internal/quota` — what an operation costs and whether this caller may do it.
