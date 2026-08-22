@@ -13,7 +13,7 @@ files, contacts, calendar, documents. Work in progress.
 | | |
 |---|---|
 | **Web** | sign in and use it in a browser |
-| **Email** | write to it via email from anywhere |
+| **Mail** | send it an email from anywhere |
 | **API or CLI** | the same tools via HTTP, MCP or CLI |
 
 ## Protocols
