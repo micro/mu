@@ -1,12 +1,12 @@
 # mu
 
-A personal agent.
+Work with Agents.
 
 ## Overview
 
-An agent with an address. Chat to it in a browser or write to it by email, and
+An agent with an inbox. Chat to it in a browser or write to it by email, and
 it can reach 100+ tools: news, mail, search, weather, markets, video, places,
-files, contacts, calendar, documents. Work in progress.
+files, contacts, calendar, documents. A work in progress.
 
 ## Clients
 
