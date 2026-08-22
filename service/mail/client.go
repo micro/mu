@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"mu/internal/app"
-	"mu/internal/auth"
 
 	"github.com/emersion/go-msgauth/dkim"
 )
@@ -473,7 +472,7 @@ func DKIMStatus() (enabled bool, domain, selector string) {
 // been the only way to answer somebody, so this is the way to answer somebody
 // and it asks per recipient: a thread with one local person and one outside is
 // both, which is the case a single branch at the call site would get wrong.
-func SendReplyAll(displayName, from, to string, cc []string, subject, bodyPlain, bodyHTML,
+func SendReplyAll(fromID, displayName, from, to string, cc []string, subject, bodyPlain, bodyHTML,
 	inReplyTo, references string) (string, error) {
 
 	var outside []string
@@ -508,16 +507,22 @@ func SendReplyAll(displayName, from, to string, cc []string, subject, bodyPlain,
 	}
 
 	// And everybody here, delivered rather than relayed. Each on their own,
-	// because a local message belongs to one mailbox.
+	// because a local message belongs to one mailbox — and through DeliverHere,
+	// so an agent answering a third party on a copied-in thread is charged and
+	// capped like anybody else putting a message in somebody's inbox. Answering
+	// its own owner is not a send and costs nothing; DeliverHere decides that
+	// from the accounts, not from a flag passed in here.
 	for _, addr := range here {
-		owner := LocalRecipient(addr)
-		acc, err := auth.GetAccount(owner)
-		if err != nil || acc == nil {
-			app.Log("mail", "no account here called %q, so the answer was not delivered", addr)
-			continue
-		}
-		if err := SendMessage(displayName, from, acc.Name, acc.ID, subject,
-			bodyHTML, inReplyTo, messageID); err != nil {
+		if err := DeliverHere(Local{
+			FromID:    fromID,
+			Display:   displayName,
+			From:      from,
+			To:        addr,
+			Subject:   subject,
+			Body:      bodyHTML,
+			ReplyTo:   inReplyTo,
+			MessageID: messageID,
+		}); err != nil {
 			app.Log("mail", "could not deliver the answer to %s: %v", addr, err)
 		}
 	}

@@ -56,8 +56,8 @@ func TestEverythingThatLeavesTheBuildingIsCapped(t *testing.T) {
 func TestOnlyOutboundOrFreeIsCapped(t *testing.T) {
 	loadPrices(t)
 	outbound := map[string]bool{
-		quota.OpMailEmail: true,
-		quota.OpSMSSend:   true,
+		quota.OpMailSend: true,
+		quota.OpSMSSend:  true,
 	}
 	for _, p := range quotaPrices(t) {
 		if outbound[p.op] {

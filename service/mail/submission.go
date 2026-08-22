@@ -254,9 +254,11 @@ func (s *submissionSession) Data(r io.Reader) error {
 // deliverLocally files a message for somebody on this instance, and wakes
 // whatever was listening for it.
 //
-// It never goes near the network, so there is nothing for MaySendOut to gate
-// and nothing to charge: this is the same act as sending a message from one
-// page of this instance to another.
+// It used to say there was nothing to charge, "the same act as sending a
+// message from one page of this instance to another" — which was true and was
+// the hole: that act was free everywhere, so a signed-in account with a mail
+// client could write to every username here at no cost and no cap. DeliverHere
+// is the gate now, and it is the same one the page and the tool go through.
 //
 // The two halves matter equally. Filing it was the easy half and the only one
 // this did at first, so writing to agent@ from a mail client put a message in
@@ -290,8 +292,11 @@ func (s *submissionSession) deliverLocally(to, display, subject, plain, html, re
 
 	from := EmailForUser(s.acc.ID, ConfiguredDomain())
 	messageID := fmt.Sprintf("<%d.submitted@%s>", time.Now().UnixNano(), ConfiguredDomain())
-	if err := SendMessageTo(display, from, owner.Name, owner.ID, tag, subject, plain,
-		replyTo, messageID, false, 0, nil, s.remoteIP, "", nil); err != nil {
+	if err := DeliverHere(Local{
+		FromID: s.acc.ID, Display: display, From: from, To: owner.ID, Tag: tag,
+		Subject: subject, Body: plain, ReplyTo: replyTo, MessageID: messageID,
+		SenderIP: s.remoteIP,
+	}); err != nil {
 		return err
 	}
 

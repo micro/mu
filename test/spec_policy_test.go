@@ -245,21 +245,30 @@ func TestSendingMailNeedsAnAccountNotAWallet(t *testing.T) {
 	// because there is no other way to state it: an endpoint with no Cost that
 	// forgot to charge looks exactly like one that meant to be free.
 	//
-	// Two files, and which is which is the point. Local delivery is charged
-	// where the endpoint routes; mail that leaves is charged in outbound.go,
-	// which is the single path everything that leaves goes through — the tool,
-	// the JSON API and the compose form all reach it, so the price and the gate
-	// are applied once rather than copied three times.
-	for file, op := range map[string]string{
-		"../service/mail/service.go":  "quota.OpMailSend",
-		"../service/mail/outbound.go": "quota.OpMailEmail",
-	} {
-		src, err := os.ReadFile(file)
+	// One file, and that is the point. Both halves of sending — a message that
+	// leaves the instance and one that stays on it — are charged in
+	// outbound.go, at ReplyOut and at DeliverHere. There were two prices and
+	// two enforcement stories, and the local one was free on every door: the
+	// tool charged, the compose form charged after it had already sent, and
+	// submission did not charge at all.
+	src, err := os.ReadFile("../service/mail/outbound.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(src), "quota.OpMailSend") {
+		t.Error("outbound.go never charges quota.OpMailSend, so sending is free")
+	}
+
+	// And nothing else charges it, because nothing else is allowed to decide.
+	for _, other := range []string{"../service/mail/service.go", "../service/mail/mail.go",
+		"../service/mail/submission.go", "../service/mail/client.go"} {
+		b, err := os.ReadFile(other)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !strings.Contains(string(src), op) {
-			t.Errorf("%s never charges %s, so that route is free", file, op)
+		if strings.Contains(string(b), "quota.OpMailSend") {
+			t.Errorf("%s charges for sending on terms of its own — that is DeliverHere's "+
+				"job, and a second charge is a second set of rules to keep in step", other)
 		}
 	}
 

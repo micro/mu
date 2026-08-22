@@ -603,6 +603,7 @@ that.
 | Variable | Default | What it does |
 |---|---|---|
 | `MAIL_DOMAIN` | — | The domain you send and receive as |
+| `MAIL_DAILY_LIMIT` | `50` | Messages one account may send in a day — to somebody here or outside, since there is one price for both. It is `limit_env` on `mail_send` in `quota.json`. Writing to yourself or to your own agent is not a send and does not count against it. A self-hosted instance that wants no ceiling raises it here; one that wants no charge sets `CREDIT_COST_MAIL=0`, and one with no Stripe and no x402 is never charged anyway |
 | `MAIL_PORT` | `2525` | SMTP listener — `25` in production, `off` to have none |
 | `IMAP_PORT` | `1143` | IMAP listener — `143` in production, `off` to have none. See [Reading your mail in a mail client](#reading-your-mail-in-a-mail-client) |
 | `SUBMISSION_PORT` | `1587` | SMTP submission, so a mail client can send — `587` in production, `off` to have none |

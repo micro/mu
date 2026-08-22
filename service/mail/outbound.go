@@ -45,6 +45,7 @@ import (
 	"fmt"
 	"strings"
 
+	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/quota"
 )
@@ -137,7 +138,7 @@ func ReplyOut(owner, displayName, to, subject, bodyPlain, bodyHTML, inReplyTo, r
 	if ok, why := MaySendOut(owner, to); !ok {
 		return "", fmt.Errorf("%s", why)
 	}
-	if err := charge(owner, quota.OpMailEmail); err != nil {
+	if err := charge(owner, quota.OpMailSend); err != nil {
 		return "", err
 	}
 
@@ -151,4 +152,81 @@ func ReplyOut(owner, displayName, to, subject, bodyPlain, bodyHTML, inReplyTo, r
 		return "", err
 	}
 	return messageID, nil
+}
+
+// DeliverHere files a message for somebody else on this instance, charged and
+// capped the same as one leaving it.
+//
+// # Why this exists
+//
+// Local mail was free on every door and gated on none. mail_send cost 0 and
+// carried no daily limit, so charge() returned early twice over and the calls
+// that did make it read like a gate while doing nothing. The paths that did not
+// call it at all were worse: submission's deliverLocally said so in as many
+// words — "nothing to charge: this is the same act as sending a message from
+// one page of this instance to another" — which meant a signed-in account with
+// a mail client could write to every username here, at any rate, for nothing.
+// The agent's own reply path had no gate either.
+//
+// Spam is not a fact about which network the recipient is on. An inbox full of
+// junk from the account next door is the same failure as one full of junk from
+// outside, and the instance not having paid to carry it is beside the point.
+//
+// # What is not a send
+//
+// Writing to yourself, or to your own agent, is not reaching anybody — it is
+// the product's main loop, and charging it would put a price on the thing
+// people came for. Same for the agent answering you. Those are free and
+// uncapped, and the test for it is that the message stays inside one account.
+//
+// Everything else — you to somebody else here, an agent to a third party on a
+// copied-in thread — is a send.
+// Local is a message for somebody on this instance.
+//
+// A struct because there are ten fields and they are all strings: the shape
+// where adding one silently shifts the rest, which internal/app's renderShell
+// has its own comment about. Everything that files a local message fills this
+// in, so a new field is a compile error at every call site rather than a
+// misaligned argument at one.
+type Local struct {
+	// FromID is the account sending. Empty only for the instance's own
+	// notices, which have nobody to charge.
+	FromID    string
+	Display   string // the name the recipient sees
+	From      string // the address it comes from
+	To        string // an account id, a username, or a local address
+	Tag       string // the part after the plus, where there was one
+	Subject   string
+	Body      string
+	ReplyTo   string
+	MessageID string
+	SenderIP  string
+}
+
+func DeliverHere(m Local) error {
+	acc, err := auth.GetAccount(LocalRecipient(m.To))
+	if err != nil || acc == nil {
+		return fmt.Errorf("no account here called %q", m.To)
+	}
+
+	// Your own mailbox, your own agent, or your agent answering you. Not a
+	// send: it is the product's main loop, and putting a price on it would
+	// charge people for the thing they came for.
+	own := m.FromID != "" && strings.EqualFold(m.FromID, acc.ID)
+
+	switch {
+	case own:
+	case m.FromID == "":
+		// Nobody to charge and nobody to hold responsible. The instance's own
+		// notices come through here and are the only legitimate case, so
+		// anything else arriving without a sender is worth seeing in the log.
+		app.Log("mail", "delivering to %s with no sender to charge", acc.ID)
+	default:
+		if err := charge(m.FromID, quota.OpMailSend); err != nil {
+			return err
+		}
+	}
+
+	return SendMessageTo(m.Display, m.From, acc.Name, acc.ID, m.Tag, m.Subject, m.Body,
+		m.ReplyTo, m.MessageID, false, 0, nil, m.SenderIP, "", nil)
 }

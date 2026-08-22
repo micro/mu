@@ -278,15 +278,19 @@ func TestPricingSaysWhatTheMailboxCosts(t *testing.T) {
 		t.Error("the pricing page says email is free while mail leaving the " +
 			"instance is charged")
 	}
-	if !strings.Contains(body, "Mail addressed outside the instance") {
-		t.Error("the pricing page does not say that mail leaving the instance costs")
+	// One price for sending, wherever it is going — the page has to say so,
+	// because a reader who has been told local mail is free will assume it
+	// still is.
+	if !strings.Contains(body, "wherever it is going") {
+		t.Error("the pricing page does not say that sending costs the same " +
+			"whether the recipient is here or outside")
 	}
 
 	// The number is read from quota.json rather than typed here. A price
 	// written into a sentence is a price that drifts.
-	if !strings.Contains(body, pence(quota.OpMailEmail)) {
+	if !strings.Contains(body, pence(quota.OpMailSend)) {
 		t.Errorf("the mailbox section does not carry the configured price (%s)",
-			pence(quota.OpMailEmail))
+			pence(quota.OpMailSend))
 	}
 }
 

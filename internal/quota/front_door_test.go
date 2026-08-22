@@ -77,7 +77,7 @@ func TestANewAccountIsRefusedWhatCostsMoney(t *testing.T) {
 	const id = "door-broke"
 	charging(t, id)
 
-	for _, op := range []string{OpWebSearch, OpImageGenerate, OpSMSSend, OpMailEmail} {
+	for _, op := range []string{OpWebSearch, OpImageGenerate, OpSMSSend, OpMailSend} {
 		if OperationCost(op) == 0 {
 			t.Errorf("%s is free — it is a third party's bill and should not be", op)
 			continue

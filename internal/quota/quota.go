@@ -76,17 +76,19 @@ const (
 	OpQuranSearch = "quran_search"
 	OpVideoSearch = "video_search"
 	OpBlogCreate  = "blog_create"
-	OpMailSend    = "mail_send"
-	// OpMailEmail is the mailbox answering somebody outside: a reply sent from
-	// your own address on this instance, from the web or from a mail client.
+	// OpMailSend is sending a message, wherever it is going.
 	//
-	// It had to be split out from an external_email shared with service/email,
-	// which meant one daily cap between them — ten sends through that service
-	// left an account unable to answer its own correspondence. That service is
-	// gone now and this is the only way mail leaves the instance, but the name
-	// stays: mail_email says which service charges it, and external_email never
-	// did.
-	OpMailEmail    = "mail_email"
+	// There were two. mail_email was the mailbox answering somebody outside,
+	// and mail_send was one account writing to another here, at 0 — on the
+	// reasoning that a local message costs this instance nothing to carry.
+	// True, and it made spam free: over submission a signed-in account could
+	// write to every username on the instance at no cost, no cap, and no
+	// filter. Spam is not a fact about which network the recipient is on.
+	//
+	// So one operation and one price. Writing to yourself, or to your own
+	// agent, is not a send and is not charged — see mail.DeliverHere.
+	OpMailSend = "mail_send"
+
 	OpSMSSend      = "sms_send"
 	OpPlacesSearch = "places_search"
 	OpPlacesNearby = "places_nearby"

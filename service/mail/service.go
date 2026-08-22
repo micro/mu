@@ -224,11 +224,13 @@ func (Server) Send(ctx context.Context, req *SendRequest, rsp *SendResponse) err
 		if err != nil {
 			return fmt.Errorf("no account here called %q", to)
 		}
-		if err := charge(acc.ID, quota.OpMailSend); err != nil {
+		// One door, so this cannot charge on terms of its own. It did — the
+		// charge was written here, and the same act over submission had none.
+		if err := DeliverHere(Local{
+			FromID: acc.ID, Display: acc.Name, From: acc.ID, To: toAcc.ID,
+			Subject: req.Subject, Body: req.Body,
+		}); err != nil {
 			return err
-		}
-		if err := SendMessage(acc.Name, acc.ID, toAcc.Name, toAcc.ID, req.Subject, req.Body, "", ""); err != nil {
-			return fmt.Errorf("failed to send: %w", err)
 		}
 		rsp.Result = "Sent to " + toAcc.Name + " on this instance."
 		return nil

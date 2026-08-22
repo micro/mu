@@ -23,8 +23,6 @@ import (
 	"mu/internal/data"
 	"mu/internal/event"
 	"mu/internal/service"
-
-	"mu/internal/quota"
 )
 
 var mutex sync.RWMutex
@@ -436,14 +434,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				}
 				SendMessage(acc.Name, acc.ID, to, to, subject, body, replyTo, messageID) //nolint:errcheck
 			} else {
-				// Internal mail costs credits
-				if !acc.Admin {
-					canProceed, _, cost, _ := quota.CheckQuota(acc.ID, quota.OpMailSend)
-					if !canProceed {
-						app.RespondError(w, http.StatusPaymentRequired, fmt.Sprintf("sending mail requires %d credits", cost))
-						return
-					}
-				}
+				// No pre-flight check here. DeliverHere decides whether this is
+				// a send at all — writing to your own agent is not — and it
+				// charges before it delivers. Asking quota first refused people
+				// for messages that were never going to be charged.
 				// The address the product handed out, in the form it handed it
 				// out in. mail_address returns asim@micro.mu; GetAccount takes a
 				// username, so writing to what you were told to write to came
@@ -453,12 +447,18 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 					app.RespondError(w, http.StatusNotFound, "recipient not found")
 					return
 				}
-				if err := SendMessage(acc.Name, acc.ID, toAcc.Name, toAcc.ID, subject, body, replyTo, ""); err != nil {
-					app.RespondError(w, http.StatusInternalServerError, "failed to send message")
+				// Through the one door, which charges before it delivers. This
+				// charged afterwards and ignored the result, so a refusal —
+				// out of credit, over the day's cap — cost nothing and the
+				// message went anyway. The admin exemption is gone from here
+				// because quota has always had one; two of them is one that
+				// can disagree.
+				if err := DeliverHere(Local{
+					FromID: acc.ID, Display: acc.Name, From: acc.ID, To: toAcc.ID,
+					Subject: subject, Body: body, ReplyTo: replyTo,
+				}); err != nil {
+					app.RespondError(w, http.StatusForbidden, err.Error())
 					return
-				}
-				if !acc.Admin {
-					quota.Charge(acc.ID, quota.OpMailSend, nil) //nolint:errcheck
 				}
 			}
 			app.RespondJSON(w, map[string]bool{"success": true})
@@ -556,14 +556,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				app.Log("mail", "Warning: Failed to store sent message: %v", err)
 			}
 		} else {
-			// Internal message - store plain text, render at display time
-			if !acc.Admin {
-				canProceed, _, cost, _ := quota.CheckQuota(acc.ID, quota.OpMailSend)
-				if !canProceed {
-					http.Error(w, fmt.Sprintf("Sending mail requires %d credits. Top up at /account/topup", cost), http.StatusPaymentRequired)
-					return
-				}
-			}
+			// Internal message - store plain text, render at display time.
+			// The gate is DeliverHere's, below: it knows whether this is a send
+			// or somebody writing to their own agent, and this did not.
 			// The recipient may be a bare username or a full local address,
 			// with or without a +tag: asim, asim@micro.mu, asim+claude@micro.mu
 			// all reach the same inbox. Only the bare form resolved before, so
@@ -576,12 +571,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			app.Log("mail", "Sending internal message from %s to %s with replyTo=%s", acc.Name, toAcc.Name, replyTo)
-			if err := SendMessage(acc.Name, acc.ID, toAcc.Name, toAcc.ID, subject, bodyPlain, replyTo, ""); err != nil {
-				http.Error(w, "Failed to send message", http.StatusInternalServerError)
+			if err := DeliverHere(Local{
+				FromID: acc.ID, Display: acc.Name, From: acc.ID, To: toAcc.ID,
+				Subject: subject, Body: bodyPlain, ReplyTo: replyTo,
+			}); err != nil {
+				http.Error(w, err.Error(), http.StatusForbidden)
 				return
-			}
-			if !acc.Admin {
-				quota.Charge(acc.ID, quota.OpMailSend, nil) //nolint:errcheck
 			}
 		}
 

@@ -128,14 +128,6 @@
       "note": "The model call only. Manual editing at /apps/<slug>/edit is free"
     },
     {
-      "op": "mail_email",
-      "cost": 4,
-      "label": "Mail to an outside address",
-      "env": "CREDIT_COST_MAIL_EMAIL",
-      "limit": 50,
-      "note": "Your own address answering somebody outside, from the web or a mail client. Same price as the channel, its own cap: this is gated by MaySendOut \u2014 a trusted account, or a reply to somebody who wrote first \u2014 so the cap is a loop stop and not a volume control, and a person answering their mail must never reach it"
-    },
-    {
       "op": "sms_send",
       "cost": 10,
       "limit": 5,
@@ -206,10 +198,12 @@
     },
     {
       "op": "mail_send",
-      "cost": 0,
-      "label": "Send message",
+      "cost": 4,
+      "label": "Send a message",
       "env": "CREDIT_COST_MAIL",
-      "note": "Local user to local user. \"Message\" not \"mail\": sending a real email is charged as external_email"
+      "note": "One price for sending, wherever it is going. It was two \u2014 mail_email for an address outside and mail_send at 0 for one here \u2014 and the free one was free on every door: over submission a signed-in account could write to every username on the instance at no cost and no cap. Spam is not a fact about which network the recipient is on. Writing to yourself or to your own agent is not a send and is not charged. The cap and the price are both an operator's: CREDIT_COST_MAIL sets what it costs and MAIL_DAILY_LIMIT how many a day, so a self-hosted instance that does not want either can say so without rebuilding \u2014 and one with no Stripe and no x402 is never charged anyway, because quota.Charging is false and Metered follows it",
+      "limit": 50,
+      "limit_env": "MAIL_DAILY_LIMIT"
     },
     {
       "op": "db_write",

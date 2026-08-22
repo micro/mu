@@ -81,13 +81,16 @@ func PricingHandler(w http.ResponseWriter, r *http.Request) {
 		para(`Receiving costs nothing, however much arrives. Reading it costs nothing
 		 — the address works in Thunderbird, Mail.app or your phone over IMAP, and
 		 you can reply from there over SMTP, with an access token as the password.`),
-		para(`Mail addressed outside the instance is `+pence(quota.OpMailEmail)+
-			dailyCap(quota.OpMailEmail)+`. It is the one price here that is not a
-		 cost: sending costs us nothing, but what a loop spends is this domain's
-		 reputation, and no balance repairs that. The Email tool is a different
-		 thing on a different domain, with a cap of its own — see the table.`),
-		para(`Local mail — one account on this instance to another — is free, and so
-		 is anything the agent answers.`))
+		para(`Sending is `+pence(quota.OpMailSend)+dailyCap(quota.OpMailSend)+
+			`, wherever it is going — an address outside or somebody on this
+		 instance. It is the one price here that is not a cost. Nothing is spent
+		 carrying a message to the account next door, but an inbox full of junk
+		 from inside is the same failure as one full of junk from outside, and
+		 what a loop spends on an address outside is this domain's reputation,
+		 which no balance repairs.`),
+		para(`Writing to yourself or to your own agent is not sending, and neither
+		 is your agent answering you. Those are free and uncapped: they are what
+		 you came for.`))
 
 	section("You pay for a fetch",
 		para(`A price is what it costs to go and get something. If this instance

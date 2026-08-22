@@ -123,7 +123,7 @@ func TestAnsweringSomebodyHereDeliversRatherThanRelaying(t *testing.T) {
 
 	// No relay host and no MX for mu.test, so any attempt to relay fails. A nil
 	// error is the assertion: nothing was relayed.
-	_, err := SendReplyAll("Agent", "agent@mu.test", "localasim@mu.test", nil,
+	_, err := SendReplyAll("localasim", "Agent", "agent@mu.test", "localasim@mu.test", nil,
 		"Re: is this working", "yes", "<p>yes</p>", "<in@reply.to>", "")
 	if err != nil {
 		t.Fatalf("answering somebody on this instance failed: %v", err)
@@ -146,7 +146,7 @@ func TestAnsweringSomebodyOutsideStillRelays(t *testing.T) {
 
 	// Nothing can relay in a test, so the proof that it tried is that it
 	// failed. Silence would mean the message was quietly dropped.
-	_, err := SendReplyAll("Agent", "agent@mu.test", "someone@example.com", nil,
+	_, err := SendReplyAll("someone", "Agent", "agent@mu.test", "someone@example.com", nil,
 		"Re: hello", "hi", "<p>hi</p>", "", "")
 	if err == nil {
 		t.Error("an external reply reported success with no relay configured, so it " +
@@ -169,7 +169,7 @@ func TestAThreadWithBothKindsOfRecipientReachesBoth(t *testing.T) {
 
 	// To is outside, so the relay is attempted and fails — but the local
 	// recipient in Cc must still be delivered to.
-	_, _ = SendReplyAll("Agent", "agent@mu.test", "someone@example.com",
+	_, _ = SendReplyAll("ccasim", "Agent", "agent@mu.test", "someone@example.com",
 		[]string{"ccasim@mu.test"}, "Re: both", "hi", "<p>hi</p>", "", "")
 
 	if after := ListMessages("ccasim", 100); len(after) != before+1 {
