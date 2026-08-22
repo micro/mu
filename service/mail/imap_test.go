@@ -11,6 +11,7 @@ import (
 	"bufio"
 	"fmt"
 	"net"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -172,6 +173,89 @@ func TestIMAPSignsYouInByUsernameNotDisplayName(t *testing.T) {
 
 func quoteIMAP(s string) string { return `"` + s + `"` }
 
+// The opening moves of a real mail client, over the wire.
+//
+// Apple Mail and Thunderbird do not start with LOGIN. They announce themselves
+// with ID, ask for the namespace, and — once they have seen SPECIAL-USE in the
+// capability list — ask for folders with the extended forms of LIST. Every one
+// of those was answered BAD or with an empty list, so a client that had
+// connected, authenticated and been told the server supported SPECIAL-USE was
+// then told it had no mailboxes: not an empty inbox, no inbox.
+//
+// Driven over a socket because that is the only place the fault was visible.
+// imapFolder returned the right folders the whole time.
+func TestAClientsOpeningMovesAreAnswered(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	acc := &auth.Account{ID: "imapopening", Name: "Opening", Created: time.Now()}
+	if err := auth.Create(acc); err != nil {
+		if have, err := auth.GetAccount(acc.ID); err == nil {
+			acc = have
+		} else {
+			t.Fatal(err)
+		}
+	}
+	_, token, err := auth.CreateToken(acc.ID, "mail client", nil, time.Time{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mutex.Lock()
+	messages = []*Message{
+		{ID: "1", ToID: acc.ID, From: "a@example.com", To: "imapopening@micro.mu",
+			Subject: "Older than the client", Body: "still here",
+			CreatedAt: time.Now().Add(-72 * time.Hour)},
+	}
+	mutex.Unlock()
+	t.Cleanup(func() { mutex.Lock(); messages = nil; mutex.Unlock() })
+
+	c := dial(t)
+
+	// Before it has said who it is.
+	c.ok(`ID ("name" "Mac OS X Mail" "version" "16.0")`)
+	c.ok("LOGIN " + acc.ID + " " + token)
+	c.ok(`ID ("name" "Mac OS X Mail")`)
+	c.ok("NAMESPACE")
+	c.ok("ENABLE QRESYNC")
+
+	// Whatever it advertises, it must be able to answer.
+	caps := joined(c.ok("CAPABILITY"))
+	for _, want := range []string{"SPECIAL-USE", "LIST-EXTENDED", "ID", "NAMESPACE"} {
+		if !strings.Contains(caps, want) {
+			t.Errorf("CAPABILITY does not name %s:\n%s", want, caps)
+		}
+	}
+
+	// The three ways a client asks for the folder list. All of them find INBOX,
+	// or there is nothing to open.
+	for _, cmd := range []string{
+		`LIST "" "*"`,
+		`LIST "" "%"`,
+		`LIST "" "*" RETURN (SPECIAL-USE)`,
+	} {
+		if got := joined(c.ok(cmd)); !strings.Contains(got, `"INBOX"`) {
+			t.Errorf("%s did not list INBOX:\n%s", cmd, got)
+		}
+	}
+
+	// And the one that asks for only the special folders answers with those and
+	// not with everything.
+	special := joined(c.ok(`LIST (SPECIAL-USE) "" "*"`))
+	for _, want := range []string{`\Sent`, `\Junk`} {
+		if !strings.Contains(special, want) {
+			t.Errorf("LIST (SPECIAL-USE) is missing %s:\n%s", want, special)
+		}
+	}
+	if strings.Contains(special, `"INBOX"`) {
+		t.Errorf("LIST (SPECIAL-USE) listed INBOX, which has no special use:\n%s", special)
+	}
+
+	// Then the mail that was there before the client was.
+	if got := joined(c.ok(`SELECT "INBOX"`)); !strings.Contains(got, "* 1 EXISTS") {
+		t.Errorf("SELECT INBOX found no mail:\n%s", got)
+	}
+}
+
 // The wire format of a sequence set, which is where an IMAP server goes wrong
 // quietly: a client asks for 2:4 and gets 1:3, or asks for * and gets nothing.
 func TestASequenceSetMeansWhatTheProtocolSaysItMeans(t *testing.T) {
@@ -221,6 +305,45 @@ func TestListWildcards(t *testing.T) {
 	} {
 		if got := imapMatch(tc.pattern, tc.name); got != tc.want {
 			t.Errorf("%q against %q: %v, want %v", tc.pattern, tc.name, got, tc.want)
+		}
+	}
+}
+
+// The arguments to LIST, in the forms clients actually send them.
+//
+// The extended ones (RFC 5258) put selection options before the reference and
+// return options after the pattern. This was read as "first word is the
+// reference, the rest is the pattern", so both forms produced a pattern that
+// matches no folder at all — and no folders is not a short list, it is a client
+// with no INBOX to open. See list.
+func TestListArgumentsInEveryFormAClientSendsThem(t *testing.T) {
+	for _, tc := range []struct {
+		args     string
+		sel      []string
+		ref      string
+		patterns []string
+	}{
+		{`"" "*"`, nil, "", []string{"*"}},
+		{`"" "%"`, nil, "", []string{"%"}},
+		{`"" ""`, nil, "", []string{""}},
+		{`"INBOX" "%"`, nil, "INBOX", []string{"%"}},
+		// What a client sends once SPECIAL-USE is advertised.
+		{`(SPECIAL-USE) "" "*"`, []string{"SPECIAL-USE"}, "", []string{"*"}},
+		{`"" "*" RETURN (SPECIAL-USE)`, nil, "", []string{"*"}},
+		{`(SUBSCRIBED REMOTE) "" "*" RETURN (CHILDREN)`,
+			[]string{"SUBSCRIBED", "REMOTE"}, "", []string{"*"}},
+		// Several patterns in one command, which LIST-EXTENDED allows.
+		{`"" ("INBOX" "INBOX/%")`, nil, "", []string{"INBOX", "INBOX/%"}},
+	} {
+		sel, ref, patterns := imapListArgs(tc.args)
+		if !slices.Equal(sel, tc.sel) {
+			t.Errorf("LIST %s: options %v, want %v", tc.args, sel, tc.sel)
+		}
+		if ref != tc.ref {
+			t.Errorf("LIST %s: reference %q, want %q", tc.args, ref, tc.ref)
+		}
+		if !slices.Equal(patterns, tc.patterns) {
+			t.Errorf("LIST %s: patterns %v, want %v", tc.args, patterns, tc.patterns)
 		}
 	}
 }

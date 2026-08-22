@@ -159,11 +159,16 @@ func (s *imapSession) send(line string) {
 // LIST and files its sent mail in Sent rather than keeping a local copy the
 // server never sees. Announcing the folder without announcing the capability
 // leaves a well-behaved client ignoring it.
+// LIST-EXTENDED is named because SPECIAL-USE is: RFC 6154 says a server
+// advertising the one must answer the selection option, which is the other.
+// They were not separable, and claiming the half that draws the nicer folder
+// icons while breaking on the half that asks for them is how a client came to
+// be told it had no mailboxes.
 func imapCapability(authenticated bool) string {
 	if authenticated {
-		return "IMAP4rev1 IDLE UIDPLUS SPECIAL-USE"
+		return "IMAP4rev1 IDLE UIDPLUS SPECIAL-USE LIST-EXTENDED ID NAMESPACE"
 	}
-	return "IMAP4rev1 IDLE UIDPLUS SPECIAL-USE AUTH=PLAIN"
+	return "IMAP4rev1 IDLE UIDPLUS SPECIAL-USE LIST-EXTENDED ID NAMESPACE AUTH=PLAIN"
 }
 
 // command handles one line. It returns false when the connection is finished.
@@ -193,6 +198,25 @@ func (s *imapSession) command(line string) bool {
 		s.send("* BYE Mu IMAP signing off")
 		s.ok(tag, "LOGOUT completed")
 		return false
+	case "ID":
+		// RFC 2971. Apple Mail sends this before it sends anything else and
+		// Thunderbird sends it again after login, so a server that does not
+		// answer it makes a BAD the first thing a client ever hears. Nothing is
+		// kept from what the client says about itself; answering is the point.
+		s.send(`* ID ("name" "Mu")`)
+		s.ok(tag, "ID completed")
+	case "NAMESPACE":
+		// RFC 2342. One personal namespace and no others: an account here has
+		// its own mail and no way to see anybody else's, which is what an empty
+		// shared and other-users namespace says.
+		s.send(`* NAMESPACE (("" "` + imapDelimiter + `")) NIL NIL`)
+		s.ok(tag, "NAMESPACE completed")
+	case "ENABLE":
+		// RFC 5161. Nothing here needs enabling, and the answer to that is an
+		// empty ENABLED line — a client told its command was malformed may
+		// retry it, where one told nothing was enabled carries on.
+		s.send("* ENABLED")
+		s.ok(tag, "ENABLE completed")
 	case "LOGIN":
 		s.login(tag, args)
 	case "AUTHENTICATE":
@@ -313,24 +337,40 @@ func (s *imapSession) signIn(tag, user, pass string) {
 	s.send(tag + " OK [CAPABILITY " + imapCapability(true) + "] signed in")
 }
 
-// list is LIST and LSUB. Both answer the same thing here — every folder exists
-// because there is mail in it, so there is nothing to be subscribed to
-// separately.
+// list is LIST and LSUB, in every form a client sends them. Both answer the
+// same thing here — every folder exists because there is mail in it, so there
+// is nothing to be subscribed to separately.
+//
+// The plain form is `LIST "" "*"`. The extended ones (RFC 5258) put selection
+// options in parentheses before the reference and return options after the
+// pattern, and a client starts sending those the moment it sees SPECIAL-USE in
+// the capability list — which this server advertises, and RFC 6154 says
+// advertising it obliges answering them.
+//
+// This read the arguments as "the first word is the reference and everything
+// after it is the pattern", so `LIST (SPECIAL-USE) "" "*"` asked for the
+// pattern `" "*` and `LIST "" "*" RETURN (SPECIAL-USE)` asked for
+// `"*" RETURN (SPECIAL-USE)`. Neither matches a folder, and a folder list is
+// not a page that comes back short: a client told it has no mailboxes has no
+// INBOX to open, so the account draws empty — no error, no inbox, nothing.
 func (s *imapSession) list(tag, name, args string) {
 	if s.needAuth(tag) {
 		return
 	}
-	ref, rest := imapCut(args)
-	pattern := imapUnquote(strings.TrimSpace(rest))
-	_ = ref
+	sel, _, patterns := imapListArgs(args)
 
 	// The one query that is not about folders: a client asks for the delimiter
 	// before it asks for anything else.
-	if pattern == "" {
+	if len(patterns) == 1 && patterns[0] == "" {
 		s.send(`* ` + name + ` (\Noselect) "` + imapDelimiter + `" ""`)
 		s.ok(tag, name+" completed")
 		return
 	}
+
+	// SPECIAL-USE as a selection option means "only the folders that have one".
+	// Every other option a client may send — SUBSCRIBED, REMOTE — is either
+	// true of everything here or true of nothing, so it changes no answer.
+	onlySpecial := imapHas(sel, "SPECIAL-USE")
 
 	folders := imapFolders(s.account)
 
@@ -347,25 +387,80 @@ func (s *imapSession) list(tag, name, args string) {
 	}
 
 	for _, folder := range folders {
-		if !imapMatch(pattern, folder) {
+		if !imapMatchAny(patterns, folder) {
+			continue
+		}
+		// SPECIAL-USE (RFC 6154), which is what makes a client file its sent
+		// mail here and treat Junk as junk rather than drawing two more plain
+		// folders and putting its own copies somewhere local.
+		special := ""
+		switch folder {
+		case imapSent:
+			special = ` \Sent`
+		case imapJunk:
+			special = ` \Junk`
+		}
+		if onlySpecial && special == "" {
 			continue
 		}
 		attrs := `\HasNoChildren`
 		if folder == imapInbox && tagged {
 			attrs = `\HasChildren`
 		}
-		// SPECIAL-USE (RFC 6154), which is what makes a client file its sent
-		// mail here and treat Junk as junk rather than drawing two more plain
-		// folders and putting its own copies somewhere local.
-		switch folder {
-		case imapSent:
-			attrs += ` \Sent`
-		case imapJunk:
-			attrs += ` \Junk`
-		}
-		s.send(`* ` + name + ` (` + attrs + `) "` + imapDelimiter + `" ` + imapQuoted(folder))
+		s.send(`* ` + name + ` (` + attrs + special + `) "` + imapDelimiter + `" ` + imapQuoted(folder))
 	}
 	s.ok(tag, name+" completed")
+}
+
+// imapListArgs reads the arguments to LIST or LSUB: the selection options that
+// may come before the reference, the reference, and one or more patterns.
+//
+// Return options after the pattern are read and dropped. Everything a client
+// can ask for with them — the child attributes, the special-use ones — is on
+// every line this server sends already, so honouring them is sending what it
+// was going to send.
+func imapListArgs(args string) (sel []string, ref string, patterns []string) {
+	// imapSplit rather than imapCut: a parenthesised group is one argument, and
+	// imapCut stops at the first space inside it.
+	words := imapSplit(strings.TrimSpace(args))
+
+	i := 0
+	if i < len(words) && strings.HasPrefix(words[i], "(") {
+		sel = imapGroup(words[i])
+		i++
+	}
+	if i < len(words) {
+		ref = imapUnquote(words[i])
+		i++
+	}
+	if i < len(words) {
+		if strings.HasPrefix(words[i], "(") {
+			for _, p := range imapGroup(words[i]) {
+				patterns = append(patterns, imapUnquote(p))
+			}
+		} else {
+			patterns = []string{imapUnquote(words[i])}
+		}
+	}
+	return sel, ref, patterns
+}
+
+// imapGroup reads a parenthesised list into its words.
+func imapGroup(s string) []string {
+	s = strings.TrimSpace(s)
+	s = strings.TrimSuffix(strings.TrimPrefix(s, "("), ")")
+	return imapSplit(strings.TrimSpace(s))
+}
+
+// imapMatchAny reports whether a folder matches any of the patterns a client
+// asked for. LIST-EXTENDED lets it send several in one command.
+func imapMatchAny(patterns []string, folder string) bool {
+	for _, p := range patterns {
+		if imapMatch(p, folder) {
+			return true
+		}
+	}
+	return false
 }
 
 // selectFolder is SELECT and EXAMINE — the same thing, one of them read-only.
