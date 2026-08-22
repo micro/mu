@@ -344,9 +344,18 @@ func imapRender(m *Message) []byte {
 		}
 		b.WriteString(k + ": " + imapHeaderValue(v) + "\r\n")
 	}
+	// An address header is built rather than written, because the name and the
+	// address are two fields here and neither one alone is a header a client
+	// can read. Written unencoded because imapAddress has already encoded the
+	// half of it that needs encoding — see there.
+	addrHeader := func(k, v string) {
+		if v != "" {
+			b.WriteString(k + ": " + v + "\r\n")
+		}
+	}
 
-	header("From", m.From)
-	header("To", m.To)
+	addrHeader("From", imapAddress(m.From, m.FromID))
+	addrHeader("To", imapAddress(imapDelivered(m)))
 	header("Subject", m.Subject)
 	b.WriteString("Date: " + m.CreatedAt.Format(time.RFC1123Z) + "\r\n")
 	header("Message-ID", m.MessageID)
@@ -389,6 +398,67 @@ func imapRender(m *Message) []byte {
 	b.WriteString(imapWrap(m.Attachment))
 	b.WriteString("\r\n--" + boundary + "--\r\n")
 	return []byte(b.String())
+}
+
+// imapDelivered is the address a message was delivered to, and the name to
+// show against it.
+//
+// Message.To is a *username* — the display name off the account, and empty for
+// an account that has not set one. Message.ToID is where it actually went. That
+// is the same split as From and FromID, and both the envelope and the rendered
+// headers read it the other way round: they passed To as the address and no
+// name at all. So a client was handed a display name where an address belongs,
+// or — for an account with no display name — nothing, and drew no To field.
+//
+// The tag goes back on, because asim+research@ is the address the message
+// arrived at, the one that says which agent it was for, and the one a reply
+// should quote.
+func imapDelivered(m *Message) (name, address string) {
+	name = strings.TrimSpace(m.To)
+	local := strings.TrimSpace(m.ToID)
+	if local == "" {
+		// Nothing to build an address out of. If the name is one, it is all
+		// there is; otherwise there is no honest To to state.
+		if strings.Contains(name, "@") {
+			return "", name
+		}
+		return "", ""
+	}
+	if strings.EqualFold(name, local) {
+		name = ""
+	}
+	if m.Tag != "" {
+		local += "+" + m.Tag
+	}
+	return name, EmailForUser(local, ConfiguredDomain())
+}
+
+// imapAddress is one address as a header carries it: "Name <box@host>", or the
+// address on its own where there is no name worth showing.
+//
+// The name is encoded here rather than by imapHeaderValue, which encodes what
+// it is given whole — and a Q-encoded "Name <box@host>" is one word to a
+// parser, not an address.
+func imapAddress(name, address string) string {
+	name, address = strings.TrimSpace(name), strings.TrimSpace(address)
+	if address == "" {
+		// Nothing better to offer: use the name as the address, which is what a
+		// bare SMTP sender looks like anyway. Same fallback the envelope makes,
+		// because the two must not disagree about who a message is from.
+		address, name = name, ""
+	}
+	if address == "" {
+		return ""
+	}
+	// A local sender is an account id rather than an address, and this is where
+	// the domain it belongs to is known.
+	if !strings.Contains(address, "@") {
+		address = EmailForUser(address, ConfiguredDomain())
+	}
+	if name == "" || strings.EqualFold(name, address) {
+		return address
+	}
+	return imapHeaderValue(name) + " <" + address + ">"
 }
 
 // imapHeaderValue encodes anything that is not plain ASCII, because a raw
@@ -471,7 +541,10 @@ func imapEnvelope(m *Message) string {
 		return "((" + display + " NIL " + imapQuoted(mailbox) + " " + host + "))"
 	}
 	from := addr(m.From, m.FromID)
-	to := addr("", m.To)
+	// The same split, on the other end. To is the display name and ToID is the
+	// account — this passed To as the address and no name, which is the mistake
+	// written up above made on the recipient. See imapDelivered.
+	to := addr(imapDelivered(m))
 	return "(" + imapQuoted(m.CreatedAt.Format(time.RFC1123Z)) + " " +
 		imapQuoted(m.Subject) + " " + from + " " + from + " " + from + " " +
 		to + " NIL NIL " + imapQuoted(m.ReplyTo) + " " + imapQuoted(m.MessageID) + ")"

@@ -450,6 +450,84 @@ func TestARenderedMessageIsWellFormed(t *testing.T) {
 	}
 }
 
+// Who a message was addressed to.
+//
+// Message.To is a username — the display name off the account, and empty for an
+// account that never set one. Message.ToID is where the mail actually went.
+// Both the rendered headers and the ENVELOPE passed To as the address and no
+// name at all, so a client got a display name where an address belongs, or
+// nothing, and drew no To field. The From side had the same split and had
+// already been fixed; the other end was not looked at.
+func TestAMessageSaysWhoItWasAddressedTo(t *testing.T) {
+	t.Setenv("MAIL_DOMAIN", "micro.mu")
+
+	for _, tc := range []struct {
+		what    string
+		m       *Message
+		want    string
+		mailbox string
+	}{
+		{
+			what:    "a display name and an account",
+			m:       &Message{ID: "1", To: "Asim Aslam", ToID: "asim"},
+			want:    "To: Asim Aslam <asim@micro.mu>",
+			mailbox: `"asim"`,
+		},
+		{
+			// The common one, and the one that showed nothing: an account with
+			// no display name set.
+			what:    "an account and no display name",
+			m:       &Message{ID: "2", ToID: "asim"},
+			want:    "To: asim@micro.mu",
+			mailbox: `"asim"`,
+		},
+		{
+			// The address it actually arrived at, which is what says which
+			// agent it was for and what a reply should quote.
+			what:    "a tagged address",
+			m:       &Message{ID: "3", To: "Asim Aslam", ToID: "asim", Tag: "research"},
+			want:    "To: Asim Aslam <asim+research@micro.mu>",
+			mailbox: `"asim+research"`,
+		},
+		{
+			what:    "a display name that is only the account again",
+			m:       &Message{ID: "4", To: "asim", ToID: "asim"},
+			want:    "To: asim@micro.mu",
+			mailbox: `"asim"`,
+		},
+		{
+			// Nothing stored but an address, which is what an old message looks
+			// like.
+			what:    "an address and nothing else",
+			m:       &Message{ID: "5", To: "you@micro.mu"},
+			want:    "To: you@micro.mu",
+			mailbox: `"you"`,
+		},
+	} {
+		tc.m.CreatedAt = time.Now()
+
+		if got := string(imapRender(tc.m)); !strings.Contains(got, tc.want+"\r\n") {
+			t.Errorf("%s: headers are missing %q:\n%s", tc.what, tc.want, got)
+		}
+		// And the envelope, which is what a client draws the list from — it
+		// must not disagree with the headers about the same message.
+		if got := imapEnvelope(tc.m); !strings.Contains(got, tc.mailbox) {
+			t.Errorf("%s: the envelope has no mailbox %s:\n%s", tc.what, tc.mailbox, got)
+		}
+	}
+}
+
+// A message with no recipient stored says nothing rather than inventing one. A
+// display name is not an address, and completing it with the domain would make
+// up a mailbox that does not exist.
+func TestAMessageWithNoRecipientHasNoToHeader(t *testing.T) {
+	t.Setenv("MAIL_DOMAIN", "micro.mu")
+	m := &Message{ID: "1", From: "a@example.com", To: "Asim Aslam", CreatedAt: time.Now()}
+	if got := string(imapRender(m)); strings.Contains(got, "To:") {
+		t.Errorf("a display name was written out as an address:\n%s", got)
+	}
+}
+
 // A subject with an accent in it is encoded, because a raw UTF-8 byte in a
 // header is not a header.
 func TestANonASCIISubjectIsEncoded(t *testing.T) {
