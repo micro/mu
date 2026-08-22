@@ -1,6 +1,11 @@
 package agent
 
-import "testing"
+import (
+	"strings"
+	"testing"
+
+	"mu/internal/auth"
+)
 
 // An agent is a place, with an address you can say out loud.
 //
@@ -71,5 +76,42 @@ func TestThePathToAnAgentIsTheOneThingLinksUse(t *testing.T) {
 	// into a 404 — a stale link should land somewhere usable.
 	if got, want := Path("nobody", "gone"), "/agent/"+DefaultSlug; got != want {
 		t.Errorf("Path for a removed agent = %q, want %q", got, want)
+	}
+}
+
+// The link and the lookup are inverses, and nothing checked that they were.
+//
+// Path builds /agent/<slug> and BySlug reads it back. Each was tested alone and
+// both passed, while Path was being called with an empty owner from the front
+// page — so every agent's link came out as /agent/micro, BySlug read "micro"
+// as the default, and an agent called Claude opened Micro's chat with Micro's
+// conversations beside it. A round trip is the only test that could have caught
+// it, because neither half is wrong on its own.
+func TestALinkToAnAgentResolvesBackToIt(t *testing.T) {
+	const who = "slug-round-trip"
+	auth.Create(&auth.Account{ID: who, Name: who, Secret: "test-secret"}) //nolint:errcheck
+
+	for _, name := range []string{"Claude", "Research", "Night Shift", "Ops 2"} {
+		made, _, err := CreateAgent(who, name, "", "", "", nil, false)
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+
+		path := Path(who, made.ID)
+		if path == "/agent/"+DefaultSlug {
+			t.Errorf("%s links to the default agent (%s)", name, path)
+		}
+
+		got, ok := BySlug(who, strings.TrimPrefix(path, "/agent/"))
+		if !ok {
+			t.Errorf("%s: %s resolves to nothing", name, path)
+			continue
+		}
+		if got != made.ID {
+			t.Errorf("%s: %s resolves to %q, want %q", name, path, got, made.ID)
+		}
+		if title := agentTitle(who, got); title != name {
+			t.Errorf("%s: the page at %s is titled %q", name, path, title)
+		}
 	}
 }

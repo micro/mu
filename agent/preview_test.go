@@ -102,4 +102,18 @@ func TestEachAgentOnHomeLinksToItself(t *testing.T) {
 	if n := strings.Count(got, `href="/agent/micro"`); n != 1 {
 		t.Errorf("%d rows link to the default agent, want only its own", n)
 	}
+
+	// And the link resolves back to the agent it was drawn for. Building the
+	// link and reading it back are two halves that were each right alone: Path
+	// was called with an empty owner, BySlug read the "micro" that came out of
+	// it as the default, and the page opened somebody else's chat with somebody
+	// else's conversations beside it. Only the round trip says so.
+	slug := strings.TrimPrefix(Path(who, made.ID), "/agent/")
+	id, ok := BySlug(who, slug)
+	if !ok || id != made.ID {
+		t.Errorf("/agent/%s resolves to %q (ok=%v), want %q", slug, id, ok, made.ID)
+	}
+	if title := agentTitle(who, id); title != "Research" {
+		t.Errorf("the page at /agent/%s is titled %q", slug, title)
+	}
 }
