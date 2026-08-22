@@ -215,6 +215,15 @@ func imapPartial(s string) (from, count int, ok bool) {
 // text term somebody typed. Anything not understood is ignored rather than
 // refused, so a criterion this does not know narrows nothing instead of
 // answering nothing — the failure a person can see and correct.
+//
+// That last rule has one exception it took a real client to find, and it is
+// why the parser below is a parser rather than a list. Ignoring a *criterion*
+// is safe; ignoring a *modifier* inverts the query. Android's mail sync — the
+// AOSP engine Gmail uses for a third-party IMAP account — asks for a mailbox
+// with `UID SEARCH 1:50 NOT DELETED`, and with NOT dropped that reads as
+// "deleted", which nothing here is. So the answer was an empty SEARCH, on the
+// one command the client builds its message list from: the folders were right,
+// the counts were right, and every mailbox was empty.
 func (s *imapSession) search(tag, args string, byUID bool) {
 	if s.needFolder(tag) {
 		return
@@ -223,12 +232,16 @@ func (s *imapSession) search(tag, args string, byUID bool) {
 
 	var hits []string
 	for i, m := range s.msgs {
-		if !s.matches(m, terms) {
+		var uid uint32
+		if i < len(s.uids) {
+			uid = s.uids[i]
+		}
+		if !s.matches(m, i+1, uid, terms) {
 			continue
 		}
 		n := uint64(i + 1)
 		if byUID {
-			n = uint64(s.uids[i])
+			n = uint64(uid)
 		}
 		hits = append(hits, strconv.FormatUint(n, 10))
 	}
@@ -240,17 +253,19 @@ func (s *imapSession) search(tag, args string, byUID bool) {
 	s.ok(tag, "SEARCH completed")
 }
 
-// matches is one message against every term, all of which must hold.
-func (s *imapSession) matches(m *Message, terms []imapTerm) bool {
+// matches is one message against every term, all of which must hold. seq is its
+// place in the folder, counting from one, and uid its number there — both are
+// what a sequence set in the query is asking about.
+func (s *imapSession) matches(m *Message, seq int, uid uint32, terms []imapTerm) bool {
 	for _, t := range terms {
-		if !s.matchesOne(m, t) {
+		if !s.matchesOne(m, seq, uid, t) {
 			return false
 		}
 	}
 	return true
 }
 
-func (s *imapSession) matchesOne(m *Message, t imapTerm) bool {
+func (s *imapSession) matchesOne(m *Message, seq int, uid uint32, t imapTerm) bool {
 	has := func(fields ...string) bool {
 		want := strings.ToLower(t.value)
 		for _, f := range fields {
@@ -263,6 +278,32 @@ func (s *imapSession) matchesOne(m *Message, t imapTerm) bool {
 	switch t.name {
 	case "ALL":
 		return true
+
+	// The three that are made of other terms.
+	case "AND":
+		return s.matches(m, seq, uid, t.sub)
+	case "NOT":
+		return len(t.sub) == 1 && !s.matchesOne(m, seq, uid, t.sub[0])
+	case "OR":
+		for _, sub := range t.sub {
+			if s.matchesOne(m, seq, uid, sub) {
+				return true
+			}
+		}
+		return false
+
+	// A bare set is sequence numbers; UID <set> is the numbers this server
+	// handed out. Both are how a client asks for a window of a mailbox rather
+	// than all of it.
+	case "SET":
+		return imapInSet(t.value, uint64(seq), uint64(len(s.msgs)))
+	case "UID":
+		high := uint64(0)
+		if len(s.uids) > 0 {
+			high = uint64(s.uids[len(s.uids)-1])
+		}
+		return imapInSet(t.value, uint64(uid), high)
+
 	case "SEEN":
 		return m.Read
 	case "UNSEEN", "NEW", "RECENT":
@@ -290,47 +331,144 @@ func (s *imapSession) matchesOne(m *Message, t imapTerm) bool {
 	case "ON", "SENTON":
 		when, ok := imapDate(t.value)
 		return ok && m.CreatedAt.YearDay() == when.YearDay() && m.CreatedAt.Year() == when.Year()
+	case "LARGER":
+		n, err := strconv.Atoi(t.value)
+		return err == nil && len(imapRender(m)) > n
+	case "SMALLER":
+		n, err := strconv.Atoi(t.value)
+		return err == nil && len(imapRender(m)) < n
+
+	// Flags this server does not keep. Answered honestly rather than left to
+	// the permissive default, because ANSWERED matching everything is a worse
+	// answer than ANSWERED matching nothing — there is no such flag here.
+	case "ANSWERED", "FLAGGED", "DRAFT", "KEYWORD":
+		return false
+	case "UNANSWERED", "UNFLAGGED", "UNDRAFT", "UNKEYWORD", "OLD":
+		return true
 	}
 	return true
 }
 
-// imapTerm is one search criterion.
+// imapTerm is one search criterion. NOT, OR and a parenthesised group are made
+// of other terms and hold them in sub.
 type imapTerm struct {
 	name  string
 	value string
+	sub   []imapTerm
 }
 
-// imapTerms reads a search query. Terms that take an argument take exactly one.
+// imapTerms reads a search query.
+//
+// A parser rather than a scan over a list, because IMAP's search grammar nests:
+// NOT takes a term, OR takes two, and either may be a parenthesised group of
+// more. A scan sees those as three unknown words and drops them, which is fine
+// for a criterion and wrong for a modifier — see search, where a dropped NOT
+// emptied every mailbox on Android.
 func imapTerms(args string) []imapTerm {
-	fields := imapSplit(args)
-	var out []imapTerm
-	for i := 0; i < len(fields); i++ {
-		name := strings.ToUpper(imapUnquote(fields[i]))
-		switch name {
-		case "CHARSET":
-			i++ // and its value, which is always UTF-8 and never useful
-			continue
-		case "FROM", "TO", "CC", "BCC", "SUBJECT", "BODY", "TEXT",
-			"SINCE", "BEFORE", "ON", "SENTSINCE", "SENTBEFORE", "SENTON":
-			if i+1 < len(fields) {
-				out = append(out, imapTerm{name: name, value: imapUnquote(fields[i+1])})
-				i++
-			}
-		case "HEADER":
-			// HEADER <name> <value>: only the value is matched, against
-			// everything, which is closer to right than ignoring it.
-			if i+2 < len(fields) {
-				out = append(out, imapTerm{name: "TEXT", value: imapUnquote(fields[i+2])})
-				i += 2
-			}
-		default:
-			out = append(out, imapTerm{name: name})
-		}
-	}
+	out, _ := imapParseTerms(imapSplit(args), 0)
 	if len(out) == 0 {
-		out = append(out, imapTerm{name: "ALL"})
+		return []imapTerm{{name: "ALL"}}
 	}
 	return out
+}
+
+// imapParseTerms reads terms from i until the words run out.
+func imapParseTerms(f []string, i int) ([]imapTerm, int) {
+	var out []imapTerm
+	for i < len(f) {
+		t, next, ok := imapParseTerm(f, i)
+		if next <= i {
+			break // no progress: a malformed tail, and better dropped than looped on
+		}
+		i = next
+		if ok {
+			out = append(out, t)
+		}
+	}
+	return out, i
+}
+
+// imapParseTerm reads one term and says where the next one starts.
+func imapParseTerm(f []string, i int) (t imapTerm, next int, ok bool) {
+	if i >= len(f) {
+		return imapTerm{}, i, false
+	}
+	raw := f[i]
+
+	// A parenthesised group is every term inside it, all of which must hold.
+	if strings.HasPrefix(raw, "(") {
+		inner, _ := imapParseTerms(imapGroup(raw), 0)
+		return imapTerm{name: "AND", sub: inner}, i + 1, len(inner) > 0
+	}
+
+	name := strings.ToUpper(imapUnquote(raw))
+	switch name {
+	case "CHARSET":
+		// And its value, which is always UTF-8 and never useful.
+		return imapParseTerm(f, i+2)
+	case "NOT":
+		sub, next, ok := imapParseTerm(f, i+1)
+		if !ok {
+			return imapTerm{}, next, false
+		}
+		return imapTerm{name: "NOT", sub: []imapTerm{sub}}, next, true
+	case "OR":
+		a, afterA, okA := imapParseTerm(f, i+1)
+		b, afterB, okB := imapParseTerm(f, afterA)
+		if !okA || !okB {
+			return imapTerm{}, max(afterB, i+1), false
+		}
+		return imapTerm{name: "OR", sub: []imapTerm{a, b}}, afterB, true
+	case "FROM", "TO", "CC", "BCC", "SUBJECT", "BODY", "TEXT",
+		"SINCE", "BEFORE", "ON", "SENTSINCE", "SENTBEFORE", "SENTON",
+		"LARGER", "SMALLER", "KEYWORD", "UNKEYWORD", "UID":
+		if i+1 >= len(f) {
+			return imapTerm{}, i + 1, false
+		}
+		return imapTerm{name: name, value: imapUnquote(f[i+1])}, i + 2, true
+	case "HEADER":
+		// HEADER <name> <value>: only the value is matched, against everything,
+		// which is closer to right than ignoring it.
+		if i+2 >= len(f) {
+			return imapTerm{}, i + 3, false
+		}
+		return imapTerm{name: "TEXT", value: imapUnquote(f[i+2])}, i + 3, true
+	}
+
+	// A bare sequence set — "1:50", "2,4:7", "*" — which is how a client asks
+	// for a window of a mailbox. Recognised by its shape, since it is the one
+	// term with no keyword in front of it.
+	if imapIsSet(name) {
+		return imapTerm{name: "SET", value: name}, i + 1, true
+	}
+
+	// Anything else narrows nothing. See the note on search.
+	return imapTerm{name: name}, i + 1, true
+}
+
+// imapIsSet reports whether a word is a sequence set rather than a criterion.
+func imapIsSet(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		if c := s[i]; (c < '0' || c > '9') && c != ':' && c != ',' && c != '*' {
+			return false
+		}
+	}
+	return strings.ContainsAny(s, "0123456789*")
+}
+
+// imapInSet reports whether n falls in a sequence set, with high standing in
+// for "*".
+func imapInSet(set string, n, high uint64) bool {
+	for _, part := range strings.Split(set, ",") {
+		lo, hi, ok := imapRange(part, high)
+		if ok && n >= lo && n <= hi {
+			return true
+		}
+	}
+	return false
 }
 
 // imapDate reads the date format IMAP searches use: 18-Aug-2026.

@@ -256,6 +256,78 @@ func TestAClientsOpeningMovesAreAnswered(t *testing.T) {
 	}
 }
 
+// How Android fills a mailbox, over the wire.
+//
+// The Gmail app on a third-party IMAP account uses the AOSP sync engine, and
+// that engine does not read a mailbox by fetching 1:*. It asks
+// `UID SEARCH <window> NOT DELETED` for the UIDs, then fetches those. So the
+// whole message list rests on one SEARCH — and NOT was parsed as an unknown
+// criterion and dropped, leaving `DELETED`, which nothing is. Every folder was
+// present, every count was right, and every mailbox was empty.
+//
+// The suite could not have caught it: it drove SEARCH by calling matches
+// directly, on queries this server was already known to understand.
+func TestAndroidsSyncFindsTheMail(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	acc := &auth.Account{ID: "imapandroid", Name: "Android", Created: time.Now()}
+	if err := auth.Create(acc); err != nil {
+		if have, err := auth.GetAccount(acc.ID); err == nil {
+			acc = have
+		} else {
+			t.Fatal(err)
+		}
+	}
+	_, token, err := auth.CreateToken(acc.ID, "mail client", nil, time.Time{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mutex.Lock()
+	messages = []*Message{
+		{ID: "1", ToID: acc.ID, From: "a@example.com", To: "imapandroid@micro.mu",
+			Subject: "First", Body: "one", CreatedAt: time.Now().Add(-48 * time.Hour)},
+		{ID: "2", ToID: acc.ID, From: "b@example.com", To: "imapandroid@micro.mu",
+			Subject: "Second", Body: "two", CreatedAt: time.Now().Add(-time.Hour)},
+	}
+	mutex.Unlock()
+	t.Cleanup(func() { mutex.Lock(); messages = nil; mutex.Unlock() })
+
+	c := dial(t)
+	c.ok("LOGIN " + acc.ID + " " + token)
+	c.ok(`SELECT "INBOX"`)
+
+	// The search the message list is built from, in the forms the engine sends
+	// it: a window, a window with a date bound, and the bare form.
+	for _, cmd := range []string{
+		`UID SEARCH 1:50 NOT DELETED`,
+		`UID SEARCH NOT DELETED`,
+		`UID SEARCH 1:* NOT DELETED`,
+		`UID SEARCH ALL`,
+	} {
+		got := joined(c.ok(cmd))
+		if !strings.Contains(got, "* SEARCH 1 2") {
+			t.Errorf("%s found no mail — the message list would be empty:\n%s", cmd, got)
+		}
+	}
+
+	// A window that names one message names one, or the search is matching
+	// everything and the window means nothing.
+	if got := joined(c.ok(`UID SEARCH 2:2 NOT DELETED`)); !strings.Contains(got, "* SEARCH 2") ||
+		strings.Contains(got, "* SEARCH 1") {
+		t.Errorf("a one-message window did not narrow:\n%s", got)
+	}
+
+	// And then the fetch it makes off the back of those UIDs.
+	list := joined(c.ok("UID FETCH 1,2 (UID FLAGS INTERNALDATE RFC822.SIZE " +
+		"BODY.PEEK[HEADER.FIELDS (date subject from to message-id)])"))
+	for _, want := range []string{"Subject: First", "Subject: Second", "INTERNALDATE"} {
+		if !strings.Contains(list, want) {
+			t.Errorf("the message list is missing %q:\n%s", want, list)
+		}
+	}
+}
+
 // The wire format of a sequence set, which is where an IMAP server goes wrong
 // quietly: a client asks for 2:4 and gets 1:3, or asks for * and gets nothing.
 func TestASequenceSetMeansWhatTheProtocolSaysItMeans(t *testing.T) {
@@ -544,7 +616,11 @@ func TestExamineChangesNothing(t *testing.T) {
 func TestSearchTerms(t *testing.T) {
 	read := &Message{ID: "1", Read: true, Subject: "Invoice", From: "a@example.com"}
 	unread := &Message{ID: "2", Subject: "Lunch", From: "b@example.com", Body: "thursday"}
-	s := &imapSession{msgs: []*Message{read, unread}, deleted: map[string]bool{}}
+	s := &imapSession{
+		msgs:    []*Message{read, unread},
+		uids:    []uint32{10, 20},
+		deleted: map[string]bool{},
+	}
 
 	for _, tc := range []struct {
 		query string
@@ -558,11 +634,41 @@ func TestSearchTerms(t *testing.T) {
 		{`BODY "thursday"`, []string{"2"}},
 		{`UNSEEN SUBJECT "lunch"`, []string{"2"}},
 		{`UNSEEN SUBJECT "invoice"`, nil},
+
+		// What Android's mail sync asks for, and the reason this is a parser.
+		// Nothing here is marked deleted, so NOT DELETED is the whole mailbox —
+		// and with NOT dropped it was none of it.
+		{"NOT DELETED", []string{"1", "2"}},
+		{"1:50 NOT DELETED", []string{"1", "2"}},
+		{"UNDELETED", []string{"1", "2"}},
+		{"NOT SEEN", []string{"2"}},
+		{"NOT NOT SEEN", []string{"1"}},
+
+		// A sequence set is a window on the folder, not a criterion that
+		// matches everything.
+		{"1", []string{"1"}},
+		{"2:*", []string{"2"}},
+		{"1,2", []string{"1", "2"}},
+		{"UID 20", []string{"2"}},
+
+		// OR takes two terms, and either may be a group.
+		{`OR SEEN UNSEEN`, []string{"1", "2"}},
+		{`OR SUBJECT "invoice" SUBJECT "lunch"`, []string{"1", "2"}},
+		{`OR (SEEN SUBJECT "invoice") (SUBJECT "nothing")`, []string{"1"}},
+		{`NOT (SEEN SUBJECT "invoice")`, []string{"2"}},
+
+		// A charset preamble is skipped along with its value, and does not
+		// leave the value behind as a term of its own.
+		{`CHARSET UTF-8 UNSEEN`, []string{"2"}},
+
+		// Flags this server does not keep say so, rather than matching all.
+		{"ANSWERED", nil},
+		{"UNANSWERED", []string{"1", "2"}},
 	} {
 		terms := imapTerms(tc.query)
 		var got []string
-		for _, m := range s.msgs {
-			if s.matches(m, terms) {
+		for i, m := range s.msgs {
+			if s.matches(m, i+1, s.uids[i], terms) {
 				got = append(got, m.ID)
 			}
 		}
