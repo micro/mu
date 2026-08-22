@@ -37,6 +37,7 @@ import (
 	"time"
 
 	"mu/internal/auth"
+	"mu/internal/event"
 
 	smtpd "github.com/emersion/go-smtp"
 )
@@ -485,25 +486,14 @@ func TestAStolenTokenCannotSendAsAnybodyElse(t *testing.T) {
 
 // ── helpers ─────────────────────────────────────────────────────
 
-// onlyHandler replaces the registered inbound handlers with one, and returns
-// the function that puts the real ones back.
+// onlyHandler runs h for every message that may wake an agent, and returns the
+// function that stops it.
 //
-// Registered under both keys — the shared address and the tagged one — because
-// what is being tested is whether anything is woken at all, not which of the
-// two lists the dispatcher picked.
-func onlyHandler(h InboundHandler) func() {
-	inboundMu.Lock()
-	saved := inboundHandlers
-	inboundHandlers = map[string][]InboundHandler{
-		AgentMailbox: {h},
-		Tagged:       {h},
-	}
-	inboundMu.Unlock()
-	return func() {
-		inboundMu.Lock()
-		inboundHandlers = saved
-		inboundMu.Unlock()
-	}
+// One topic covers both addresses — the shared one and the tagged one — because
+// what is being tested is whether anything is woken at all, not which address
+// it arrived at.
+func onlyHandler(h func(InboundMail)) func() {
+	return reactTo(event.EventMailForAgent, h)
 }
 
 // firstLines is the head of a message, for a readable failure.
@@ -635,15 +625,20 @@ func TestAnAttachmentOnlyMessageCarriesItsName(t *testing.T) {
 	}
 }
 
-// onlyDeliveredHandler replaces the Delivered handlers with one.
-func onlyDeliveredHandler(h InboundHandler) func() {
-	inboundMu.Lock()
-	saved := deliverHandlers
-	deliverHandlers = []InboundHandler{h}
-	inboundMu.Unlock()
-	return func() {
-		inboundMu.Lock()
-		deliverHandlers = saved
-		inboundMu.Unlock()
-	}
+// onlyDeliveredHandler runs h for every delivery, woken or not.
+func onlyDeliveredHandler(h func(InboundMail)) func() {
+	return reactTo(event.EventMailReceived, h)
+}
+
+// reactTo subscribes h to a topic for the duration of a test.
+func reactTo(topic string, h func(InboundMail)) func() {
+	sub := event.Subscribe(topic)
+	go func() {
+		for e := range sub.Chan {
+			if m, ok := MessageFrom(e.Data); ok {
+				h(m)
+			}
+		}
+	}()
+	return sub.Close
 }

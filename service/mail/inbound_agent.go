@@ -123,7 +123,7 @@ type wakeRequest struct {
 // will be woken, which is the registry's business and used to be a special case
 // for agents right here.
 func mayDispatch(r wakeRequest) bool {
-	if !anyRegistered() || r.IsSpam {
+	if r.IsSpam {
 		return false
 	}
 	// Either a tagged address or the shared one. Untagged mail to your own

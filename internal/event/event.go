@@ -39,8 +39,25 @@ const (
 	// Mail arriving is a fact, not a call. Anything that wants to act on it
 	// subscribes.
 	//
-	// Data: account, from, subject, body.
+	// Data: message, holding the whole InboundMail as JSON.
 	EventMailReceived = "mail_received"
+
+	// EventMailForAgent is a message that may wake an agent.
+	//
+	// A second topic rather than a flag on the first, and that is the whole
+	// security design. service/mail decides — it is the only place that has the
+	// SPF and DKIM results, and the rule is mayDispatch — and it publishes here
+	// only when the answer is yes. A subscriber cannot see a message that
+	// failed the gate, because it was never published.
+	//
+	// The alternative was one topic carrying "mayWake": true, which turns a
+	// guarantee into a convention. Forgetting to check a field is a normal
+	// mistake and it fails open, on the path where a stranger's mail drives
+	// somebody's agent and spends their credits. Forgetting to subscribe to a
+	// topic fails closed.
+	//
+	// Data: message, holding the whole InboundMail as JSON.
+	EventMailForAgent = "mail_for_agent"
 
 	// EventActivity is one thing that happened, in a line, with somewhere to
 	// go and read it: a post published, a video found, a headline broken, an

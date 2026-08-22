@@ -21,7 +21,7 @@ Built on go-micro: every capability is a go-micro service, the assistant is a go
 - **Single Go binary** — `mu --serve` starts the web server, `mu <command>` runs CLI
 - **Services** — each domain is a package under `service/`, one directory per service
 - **Agents** — `agent/micro/` contains specialised micro-agents per domain, routed by keyword + LLM. `agent/<name>/` is an agent that writes into the service of the same name: `agent/blog` composes the daily opinion by asking the registry what exists rather than naming services in code, `agent/social` surfaces breaking stories, `agent/digest` writes the daily briefing. The service stores; the agent decides what is worth storing
-- **Channels** — Mail (`client/mail/`). There were three more — Discord, Telegram and a Meta WhatsApp bot — and they are deleted: 2,100 lines and three third-party APIs carrying no traffic, against `agent.Ask` at 362. A client is meant to be a thin translation and Discord had grown its own identity store, its own usage tracking and a model call of its own
+- **Channels** — Mail (`agent/mail/`), which is the agent reacting to a message arriving rather than a client of anything: `service/mail` publishes that mail came in and knows nothing about who listens. There were three more — Discord, Telegram and a Meta WhatsApp bot — and they are deleted: 2,100 lines and three third-party APIs carrying no traffic, against `agent.Ask` at 362. There was a top-level `client/` holding them and it is gone with them
 - **Protocols** — MCP server at `/mcp`, an agent endpoint at `POST /agent/<name>`, REST at `/api/v1/`, x402 crypto payments. There was an A2A door at `/a2a`; it ran a generic account-less orchestration that was nobody's agent, so it was deleted rather than reconciled with the other three. Everything upstream of the mux that a tool door needs — wallet signature, auth challenge, payment gate — asks `api.ToolDispatch(path)` rather than naming a path, because a second door otherwise starts out unpriced
 - **AI** — `internal/ai/` supports Anthropic Claude, Atlas Cloud (DeepSeek), OpenRouter, and local models (Ollama)
 - **Config** — `internal/settings/` for live-reloadable settings, admin UI at `/admin/config`
@@ -46,8 +46,8 @@ Built on go-micro: every capability is a go-micro service, the assistant is a go
 | `internal/notes/` | The store behind `service/notes` — a title, its text, and nothing that expires |
 | `internal/thread/` | The system of record: what was said, to whom, on which conversation. Written on every turn from every client, by nobody's decision — see "Clients, and the record between them". Not a service, and not a workflow. `service/recall` is the read over it and `inbox/` is the pages over it — one list of conversations, whichever client each happened on. The record owns the value a client is stored under (`thread.WebClient`); what it is *called* in front of somebody is presentation and lives with `TimeAgo` in `internal/app` — there were two copies of that switch and they had already drifted, labelling the same conversation "Web" on one page and "Here" on another |
 | `service/recall/` | Going looking in your own past on purpose: search what was said on any client, read a conversation back. Its page at `/recall` is a search box, not a second list — `/inbox` browses conversations, this searches every message in them. It owns none of what it reads, which is the point: delete it and the record is unaffected |
-| `client/mail/` | Mail as a client: the shape a message arrives in, handed to the agent, and the answer turned back into a reply. Which agent answers, how much of the thread it is reminded of, what it does when it is Cc'd into somebody else's conversation, and that every delivery reaches the record whether or not it is answered. `service/mail` is the capability underneath — the inbox, the address, the SMTP server |
-| `internal/trial/` | The free exchanges somebody gets before they have an account, and what they are told when those run out. A policy about accounts, not about mail — every word of it is "set up an account at /signup" — so it left `client/mail`, where it was only because mail is the only channel that reaches a stranger. The state is underneath it in `internal/auth` (`TurnsLeft`, `SpendTurn`, `Invited`); what is here is the decision made out of them and the instance's own daily ceiling. Not credits: an unclaimed account has never been near a card, so charging it would answer "top up" to somebody who has not signed up |
+| `agent/mail/` | What the agent does when mail arrives: which agent answers, how much of the thread it is reminded of, what it does when it is Cc'd into somebody else's conversation, and that every delivery reaches the record whether or not it is answered. It subscribes rather than registering — `service/mail` publishes two facts, one that a message arrived and one that a message may wake an agent, and the gate is which topic a message is published on rather than a flag on it. It was `client/mail`, under a top-level `client/` with one member, and the package comment argued with its own name: a client connects to somebody else's network and this instance runs the server. `service/mail` is the capability underneath — the inbox, the address, the SMTP server |
+| `internal/trial/` | The free exchanges somebody gets before they have an account, and what they are told when those run out. A policy about accounts, not about mail — every word of it is "set up an account at /signup" — so it left the mail package, where it was only because mail is the only channel that reaches a stranger. The state is underneath it in `internal/auth` (`TurnsLeft`, `SpendTurn`, `Invited`); what is here is the decision made out of them and the instance's own daily ceiling. Not credits: an unclaimed account has never been near a card, so charging it would answer "top up" to somebody who has not signed up |
 | `internal/settings/` | Live-reloadable configuration |
 | `home/` | Landing page, assistant, home dashboard, summary |
 | `account/` | Who you are and what you can afford: sign-in, passkeys, tokens, Google, and the credit ledger with Stripe behind it. The balance is the first card on /account. Account furniture, not a service — no Spec and no tools |
@@ -100,7 +100,7 @@ questions to ask — it consumes the catalogue, so it cannot be in it.
   many: the moment a Spec lives elsewhere, "what is a service" stops being
   checkable and starts being something you have to remember.
 - Nothing that consumes tools declares a Spec — not `agent/`, not `account/`,
-  not `home/`, `client/` or `admin/`.
+  not `home/` or `admin/`.
 - Nothing registers a tool by hand. A tool with nowhere to come from is a
   service that has not been written yet.
 
@@ -194,8 +194,8 @@ was governing both, which is why it was wrong for each.
 
 ## Layering
 
-The top level is the product — `home/`, `agent/`, `service/`, `client/`,
-`admin/`, `account/`. Each is a staple: it owns something nothing else owns, and
+The top level is the product — `home/`, `agent/`, `service/`, `admin/`,
+`account/`. Each is a staple: it owns something nothing else owns, and
 a user can name it. Underneath is `internal/`, which is everything with no name
 a user would recognise.
 

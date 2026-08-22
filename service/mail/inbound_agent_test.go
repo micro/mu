@@ -28,7 +28,6 @@ func req(t *testing.T, r wakeRequest, known ...string) bool {
 	withDomain(t, "micro.mu")
 
 	prevKnown := KnownSender
-	restore := withHandler(t)
 	KnownSender = func(_, addr string) bool {
 		for _, k := range known {
 			if strings.EqualFold(k, addr) {
@@ -37,7 +36,7 @@ func req(t *testing.T, r wakeRequest, known ...string) bool {
 		}
 		return false
 	}
-	t.Cleanup(func() { restore(); KnownSender = prevKnown })
+	t.Cleanup(func() { KnownSender = prevKnown })
 
 	if r.Owner == "" {
 		r.Owner = "wakeowner"
@@ -163,52 +162,14 @@ func TestWithNoAddressBookOnlyTheOwnerGetsThrough(t *testing.T) {
 	withDomain(t, "micro.mu")
 
 	prevKnown := KnownSender
-	restore := withHandler(t)
 	KnownSender = nil
-	defer func() { restore(); KnownSender = prevKnown }()
+	defer func() { KnownSender = prevKnown }()
 
 	if !mayDispatch(tagged("asim@aslam.me")) {
 		t.Error("the owner cannot reach their agent when no address book is wired")
 	}
 	if mayDispatch(tagged("stranger@example.com")) {
 		t.Error("an unwired address book lets everybody in")
-	}
-}
-
-func TestAnInstanceWithNothingListeningNeverWakesAnything(t *testing.T) {
-	wakeOwner(t)
-	withDomain(t, "micro.mu")
-
-	inboundMu.Lock()
-	prev := inboundHandlers
-	inboundHandlers = map[string][]InboundHandler{}
-	inboundMu.Unlock()
-	defer func() {
-		inboundMu.Lock()
-		inboundHandlers = prev
-		inboundMu.Unlock()
-	}()
-
-	if mayDispatch(tagged("asim@aslam.me")) {
-		t.Error("an instance with nothing registered still decides to wake something")
-	}
-}
-
-// withHandler registers a do-nothing handler so the guard has something to
-// dispatch to, and hands back the undo.
-func withHandler(t *testing.T) func() {
-	t.Helper()
-	inboundMu.Lock()
-	prev := inboundHandlers
-	inboundHandlers = map[string][]InboundHandler{
-		Tagged:       {func(InboundMail) {}},
-		AgentMailbox: {func(InboundMail) {}},
-	}
-	inboundMu.Unlock()
-	return func() {
-		inboundMu.Lock()
-		inboundHandlers = prev
-		inboundMu.Unlock()
 	}
 }
 
@@ -275,9 +236,6 @@ func TestTheGuardIsStillInThePath(t *testing.T) {
 // end to answer.
 func TestMailAMachineSentDoesNotWakeAnAgent(t *testing.T) {
 	t.Setenv("MAIL_DOMAIN", "mu.example")
-	// mayDispatch declines to reason about who may wake what on an instance
-	// where nothing is listening, so there has to be something listening.
-	Inbound(AgentMailbox, func(InboundMail) {})
 
 	base := wakeRequest{
 		Owner: "alice", Tag: "news", From: "known@example.com",

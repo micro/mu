@@ -1,144 +1,189 @@
 package mail
 
-// What registering for an address has to guarantee.
+// What arrived, and what may wake something, are two questions — and they are
+// two topics, so the second cannot be answered by forgetting to ask.
 
 import (
-	"sync"
 	"testing"
 	"time"
+
+	"mu/internal/event"
 )
 
-// noHandlers clears the registry for the duration of a test.
-func noHandlers(t *testing.T) {
+// onTopic collects the messages published to a topic during a test.
+func onTopic(t *testing.T, topic string) <-chan InboundMail {
 	t.Helper()
-	inboundMu.Lock()
-	prev := inboundHandlers
-	inboundHandlers = map[string][]InboundHandler{}
-	inboundMu.Unlock()
-	t.Cleanup(func() {
-		inboundMu.Lock()
-		inboundHandlers = prev
-		inboundMu.Unlock()
-	})
-}
+	sub := event.Subscribe(topic)
+	t.Cleanup(sub.Close)
 
-func TestTwoHandlersForOneAddressBothRun(t *testing.T) {
-	// Nothing owns an address. Registering second must not silently displace
-	// whatever was there first, which is the failure mode of the function
-	// variable this replaced.
-	noHandlers(t)
-
-	var mu sync.Mutex
-	var got []string
-	done := make(chan struct{}, 2)
-	Inbound(Tagged, func(InboundMail) {
-		mu.Lock()
-		got = append(got, "first")
-		mu.Unlock()
-		done <- struct{}{}
-	})
-	Inbound(Tagged, func(InboundMail) {
-		mu.Lock()
-		got = append(got, "second")
-		mu.Unlock()
-		done <- struct{}{}
-	})
-
-	hs := handlersFor(InboundMail{Tag: "research"})
-	if len(hs) != 2 {
-		t.Fatalf("registered two handlers, found %d", len(hs))
-	}
-	for _, h := range hs {
-		go h(InboundMail{})
-	}
-	for i := 0; i < 2; i++ {
-		select {
-		case <-done:
-		case <-time.After(2 * time.Second):
-			t.Fatal("a handler never ran")
+	out := make(chan InboundMail, 8)
+	go func() {
+		for e := range sub.Chan {
+			if m, ok := MessageFrom(e.Data); ok {
+				out <- m
+			}
 		}
-	}
-	if len(got) != 2 {
-		t.Errorf("ran %v, want both", got)
+	}()
+	return out
+}
+
+func waited(ch <-chan InboundMail) (InboundMail, bool) {
+	select {
+	case m := <-ch:
+		return m, true
+	case <-time.After(2 * time.Second):
+		return InboundMail{}, false
 	}
 }
 
-func TestTaggedAndSharedAreDifferentAddresses(t *testing.T) {
-	noHandlers(t)
-
-	Inbound(Tagged, func(InboundMail) {})
-	if hs := handlersFor(InboundMail{Shared: true}); len(hs) != 0 {
-		t.Errorf("mail to agent@ reached a handler registered for tagged mail")
-	}
-	if hs := handlersFor(InboundMail{Tag: "research"}); len(hs) != 1 {
-		t.Errorf("tagged mail did not reach its handler")
-	}
-
-	Inbound(AgentMailbox, func(InboundMail) {})
-	if hs := handlersFor(InboundMail{Shared: true}); len(hs) != 1 {
-		t.Errorf("mail to agent@ did not reach its handler")
+func quiet(ch <-chan InboundMail) bool {
+	select {
+	case <-ch:
+		return false
+	case <-time.After(300 * time.Millisecond):
+		return true
 	}
 }
 
-func TestRegisteringNonsenseIsIgnored(t *testing.T) {
-	noHandlers(t)
+// A stranger's mail is still mail you were sent.
+//
+// The gate is about trust: nobody who is not in your address book gets to drive
+// your agent and spend your credits. It was also, by accident, the only way
+// anything ever reached the record — so an account with a full mailbox had an
+// empty /inbox, and the agent could not see the thing it was supposed to be
+// working on.
+func TestEveryDeliveryIsAnnouncedEvenWhenNothingMayBeWoken(t *testing.T) {
+	arrived := onTopic(t, event.EventMailReceived)
+	wake := onTopic(t, event.EventMailForAgent)
 
-	Inbound("", func(InboundMail) {})
-	Inbound("agent", nil)
-	if anyRegistered() {
-		t.Error("an empty address or a nil handler was registered")
-	}
-}
-
-func TestAHandlerThatPanicsDoesNotTakeTheServerWithIt(t *testing.T) {
-	// A handler is somebody else's code running on the mail path.
-	noHandlers(t)
-
-	survived := make(chan struct{})
-	Inbound(Tagged, func(InboundMail) { panic("handler is broken") })
-	Inbound(Tagged, func(InboundMail) { close(survived) })
-
-	withDomain(t, "micro.mu")
-	prevKnown := KnownSender
-	KnownSender = func(string, string) bool { return true }
-	t.Cleanup(func() { KnownSender = prevKnown })
-
+	// Untagged mail from somebody this account has never heard of: exactly the
+	// message mayDispatch refuses.
 	deliverInbound(
-		InboundMail{Owner: "o", Tag: "research", From: "asim@aslam.me"},
-		wakeRequest{Owner: "o", Tag: "research", From: "asim@aslam.me", Authenticated: true},
+		InboundMail{Owner: "acc", From: "stranger@example.com", Subject: "hello"},
+		wakeRequest{Owner: "acc", From: "stranger@example.com"},
 	)
 
-	select {
-	case <-survived:
-	case <-time.After(2 * time.Second):
-		t.Fatal("one handler panicking stopped the others")
+	m, ok := waited(arrived)
+	if !ok {
+		t.Fatal("a delivery nothing may act on was never announced")
+	}
+	if m.Subject != "hello" {
+		t.Errorf("the message arrived as %q", m.Subject)
+	}
+	if !quiet(wake) {
+		t.Error("a stranger's mail was published as wakeable")
 	}
 }
 
-func TestNothingIsDispatchedToWhenTheGuardSaysNo(t *testing.T) {
-	noHandlers(t)
+// Spam is the one thing that does not go in. It was refused at the door in
+// every sense that matters, and a record full of it is not a record.
+func TestSpamIsNotAnnouncedAtAll(t *testing.T) {
+	arrived := onTopic(t, event.EventMailReceived)
+	wake := onTopic(t, event.EventMailForAgent)
 
-	ran := make(chan struct{}, 1)
-	Inbound(Tagged, func(InboundMail) { ran <- struct{}{} })
+	deliverInbound(
+		InboundMail{Owner: "acc", From: "spam@example.com"},
+		wakeRequest{Owner: "acc", From: "spam@example.com", IsSpam: true},
+	)
 
+	if !quiet(arrived) {
+		t.Error("spam reached the record")
+	}
+	if !quiet(wake) {
+		t.Error("spam was published as wakeable")
+	}
+}
+
+// The gate decides what is published, not what a subscriber does about it.
+// Nothing downstream can answer a message the guard refused, because the
+// message never reached the topic it would have to arrive on.
+func TestTheGuardDecidesWhatIsPublished(t *testing.T) {
 	withDomain(t, "micro.mu")
 	// Everybody is known, so only the guard's other reasons can refuse.
 	prevKnown := KnownSender
 	KnownSender = func(string, string) bool { return true }
 	t.Cleanup(func() { KnownSender = prevKnown })
-	// Spam, and an unauthenticated sender: either is enough on its own.
-	deliverInbound(
-		InboundMail{Owner: "o", Tag: "research"},
-		wakeRequest{Owner: "o", Tag: "research", From: "spammer@example.com", IsSpam: true, Authenticated: true},
-	)
+
+	wake := onTopic(t, event.EventMailForAgent)
+
+	// An unauthenticated sender — enough on its own.
 	deliverInbound(
 		InboundMail{Owner: "o", Tag: "research"},
 		wakeRequest{Owner: "o", Tag: "research", From: "stranger@example.com", Authenticated: false},
 	)
+	if !quiet(wake) {
+		t.Error("unauthenticated mail was published as wakeable")
+	}
 
-	select {
-	case <-ran:
-		t.Error("a handler ran for mail the guard refused")
-	case <-time.After(300 * time.Millisecond):
+	// And the same message, authenticated, is.
+	deliverInbound(
+		InboundMail{Owner: "o", Tag: "research", Subject: "let through"},
+		wakeRequest{Owner: "o", Tag: "research", From: "asim@aslam.me", Authenticated: true},
+	)
+	m, ok := waited(wake)
+	if !ok {
+		t.Fatal("authenticated tagged mail from a known sender was refused too, so " +
+			"this test is asserting that nothing ever passes")
+	}
+	if m.Subject != "let through" {
+		t.Errorf("the wrong message came through: %q", m.Subject)
+	}
+}
+
+// Two subscribers on one topic both get the message. Nothing owns a topic,
+// which is what the registry this replaced had to be careful about — the
+// function variable *it* replaced silently displaced whatever was there first.
+func TestTwoSubscribersBothGetIt(t *testing.T) {
+	first := onTopic(t, event.EventMailReceived)
+	second := onTopic(t, event.EventMailReceived)
+
+	deliverInbound(
+		InboundMail{Owner: "acc", From: "someone@example.com", Subject: "both"},
+		wakeRequest{Owner: "acc", From: "someone@example.com"},
+	)
+
+	for i, ch := range []<-chan InboundMail{first, second} {
+		if m, ok := waited(ch); !ok || m.Subject != "both" {
+			t.Errorf("subscriber %d did not get the message", i+1)
+		}
+	}
+}
+
+// The message survives the trip. It travels as JSON on a bus that carries
+// map[string]interface{}, so a field is one missing tag away from arriving
+// zeroed — and Others being dropped would turn a Cc'd thread back into a
+// one-to-one reply, silently.
+func TestTheWholeMessageSurvivesTheBus(t *testing.T) {
+	arrived := onTopic(t, event.EventMailReceived)
+
+	sent := InboundMail{
+		Owner: "acc", Tag: "research", Shared: true,
+		From: "asim@aslam.me", To: "acc+research@mu.test", FromName: "Asim",
+		Subject: "the whole thing", Body: "<p>hi</p>", Text: "hi",
+		Attachment: "report.zip",
+		Others:     []string{"someone@example.com", "other@example.com"},
+		MessageID:  "<a@b>", InReplyTo: "<c@d>", References: "<e@f>",
+	}
+	deliverInbound(sent, wakeRequest{Owner: "acc", From: sent.From})
+
+	got, ok := waited(arrived)
+	if !ok {
+		t.Fatal("nothing arrived")
+	}
+	if got.Owner != sent.Owner || got.Tag != sent.Tag || got.Shared != sent.Shared ||
+		got.From != sent.From || got.To != sent.To || got.FromName != sent.FromName ||
+		got.Subject != sent.Subject || got.Body != sent.Body || got.Text != sent.Text ||
+		got.Attachment != sent.Attachment || got.MessageID != sent.MessageID ||
+		got.InReplyTo != sent.InReplyTo || got.References != sent.References {
+		t.Errorf("the message changed on the way:\nsent %+v\ngot  %+v", sent, got)
+	}
+	if len(got.Others) != len(sent.Others) {
+		t.Fatalf("Others arrived as %v, want %v — a Cc'd thread would answer one person",
+			got.Others, sent.Others)
+	}
+	for i := range sent.Others {
+		if got.Others[i] != sent.Others[i] {
+			t.Errorf("Others[%d] = %q, want %q", i, got.Others[i], sent.Others[i])
+		}
 	}
 }

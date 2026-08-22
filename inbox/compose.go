@@ -31,7 +31,7 @@ package inbox
 // # Where the sent message goes
 //
 // Into internal/thread, keyed on the Message-ID it went out with. That is the
-// same key client/mail derives from a reply's In-Reply-To, so when they write
+// same key agent/mail derives from a reply's In-Reply-To, so when they write
 // back the answer lands on this conversation rather than starting a second one.
 // Sending is how a thread begins; nothing else had to change for the reply to
 // find it.
@@ -334,9 +334,9 @@ func replyTarget(accountID string, f form) *thread.Thread {
 }
 
 // mailClient is what the record calls a mail conversation. The same string
-// client/mail uses, so a sent message and the reply to it are one conversation
+// agent/mail uses, so a sent message and the reply to it are one conversation
 // on one client rather than two — it is a constant here rather than an import
-// because client/mail consumes tools and this package does not import those.
+// because agent/mail consumes tools and this package does not import those.
 const mailClient = "mail"
 
 // compose renders the form.

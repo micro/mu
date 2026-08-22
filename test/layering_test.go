@@ -2,7 +2,7 @@ package test
 
 // The direction things are allowed to point.
 //
-// The top level is the product: home, agent, service, client, admin, wallet.
+// The top level is the product: home, agent, service, admin, account.
 // Underneath it is internal/, which is everything that has no name a user would
 // recognise. The rule is one-way — the product may reach down into internal/,
 // and internal/ may never reach back up — with one exception, which is the
@@ -35,12 +35,12 @@ import (
 // The top-level product packages, in import-path form.
 //
 // The nested group is not decoration. This used to end each alternative at the
-// closing quote — `client/[a-z]+`, `service/[a-z]+` — which matches "mu/agent"
+// closing quote — `agent/[a-z]+`, `service/[a-z]+` — which matches "mu/agent"
 // and misses "mu/agent/micro". The since-deleted internal/a2a imported the micro agent for a year
 // under that regex, and the test that exists to notice said nothing, because a
 // package one directory deeper is invisible to a pattern that stops at the
 // first level. Anything under a product directory is the product.
-var productImport = regexp.MustCompile(`"mu/(home|agent|admin|account|client|service|tool)(/[a-z0-9/]+)?"`)
+var productImport = regexp.MustCompile(`"mu/(home|agent|admin|account|service|tool)(/[a-z0-9/]+)?"`)
 
 // The programs. They assemble everything, so they import everything.
 var assembly = map[string]bool{

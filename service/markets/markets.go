@@ -216,9 +216,23 @@ func refreshMarkets() {
 			data.SaveJSON("price_data.json", cachedPriceData)
 		}
 
-		time.Sleep(time.Hour)
+		time.Sleep(refreshEvery)
 	}
 }
+
+// refreshEvery is how often prices are re-fetched.
+//
+// It was an hour, which is fine for a commodity future and wrong for crypto:
+// the price on the card could be an hour old, and the 24h change worse than
+// that, because it is a rolling window measured at fetch time rather than a
+// figure that ages gracefully. A card reading +6.6% while the market says
+// +2.2% is not a stale number, it reads as a wrong one.
+//
+// Five minutes against two keyless endpoints — Coinbase exchange-rates and
+// CoinGecko's free tier — is 288 calls a day to each, well inside what either
+// gives away, and nothing here is charged to a caller: the fetch is the
+// instance's, and every read is served from the snapshot.
+const refreshEvery = 5 * time.Minute
 
 func fetchPrices() (map[string]float64, map[string]PriceData) {
 	app.Log("markets", "Fetching prices")

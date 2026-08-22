@@ -30,7 +30,6 @@ mu/
 │   ├── local/              #   models running on this machine
 │   ├── micro/              #   registry, router, executor, orchestrator
 │   └── social/             #   surfaces breaking stories
-├── client/                 # discord, mail, telegram, whatsapp
 ├── account/                # sign-in, tokens, the credit ledger
 ├── home/                   # landing, home screen, pricing
 ├── tool/                   # service.Spec → api.Tool
@@ -409,7 +408,7 @@ Four levels, and everything points down.
                                       │ constructs and wires
    ═══════════════════════════════════▼═══════════════════════════  the product
               ┌───────────┬───────────┬───────────┬───────────┐
-   DOORS      │  home/    │  client/  │  admin/   │ account/  │
+   DOORS      │  home/    │  admin/   │ account/  │           │
               │  the web  │  Discord  │  ops and  │ who you   │
               │  UI       │  Telegram │  moder-   │ are, what │
               │           │  WhatsApp │  ation    │ you can   │

@@ -23,7 +23,7 @@ func TestNoClientKeepsItsOwnHistory(t *testing.T) {
 		// mail and the Meta WhatsApp bot were here. They are
 		// deleted — 2,100 lines and three third-party APIs carrying no traffic.
 		// Mail is the client that is left and the one the product rests on.
-		{"../client/mail/mail.go", "mail"},
+		{"mail/mail.go", "mail"},
 	} {
 		b, err := os.ReadFile(c.path)
 		if err != nil {

@@ -1,19 +1,23 @@
 package mail
 
-// Mail as a client.
+// The agent's mail behaviour: what it does when a message arrives.
 //
-// Other clients connect to their own network; here the protocol is
-// SMTP and this instance runs the server, which service/mail owns. That does
-// not make the two the same thing. service/mail is the capability — an inbox,
-// an address, delivery — and this is a client of it: it speaks the shape mail
-// arrives in, hands the message to the agent, and turns the answer back into a
-// reply.
+// It was client/mail, a top-level directory called client with one member in
+// it, and the package comment argued with its own name — a client connects to
+// somebody else's network, and here this instance runs the server. What it
+// actually does is react: which agent answers, how much of the thread it is
+// reminded of, what it says when it has been copied into somebody else's
+// conversation, and that every delivery reaches the record. That is agent
+// behaviour parameterised by a channel, so it lives under the agent.
 //
-// It lived in internal/server/hooks.go, which is the file that exists to hold
-// cycles nothing else could avoid. This was never one of those: a client may
-// import the agent and the service freely, and only the registration had to
-// happen at wiring time. Two hundred lines of deciding which agent answers and
-// what it says were sitting in the wiring.
+// It reacts by subscribing. service/mail publishes two facts — one that a
+// message arrived, one that a message may wake an agent — and knows nothing
+// about who listens. There used to be a registry there as well as the bus,
+// which is two mechanisms for one fact; see service/mail/inbound.go.
+//
+// The gate is not this package's to apply and it never sees a message that
+// failed it: EventMailForAgent is only published when mayDispatch passes. See
+// event.EventMailForAgent for why that is a topic rather than a flag.
 
 import (
 	"fmt"
@@ -22,6 +26,7 @@ import (
 
 	"mu/agent"
 	"mu/internal/app"
+	"mu/internal/event"
 	"mu/internal/thread"
 	"mu/internal/trial"
 	"mu/service/mail"
@@ -72,9 +77,41 @@ func chainKey(m mail.InboundMail) string {
 // The recorder is registered separately and answers a different question — see
 // mail.Delivered and record.go.
 func Load() {
-	mail.Delivered(recordDelivery)
-	mail.Inbound(mail.Tagged, answerMail)
-	mail.Inbound(mail.AgentMailbox, answerMail)
+	// What arrived, whoever sent it. No gate: mail from somebody you have never
+	// met is still mail you were sent, and leaving it out of the record is how
+	// /inbox came to show an empty list to an account with a full mailbox.
+	react(event.EventMailReceived, recordDelivery)
+
+	// And what may be answered. A separate topic, so this cannot see a message
+	// the gate refused.
+	react(event.EventMailForAgent, answerMail)
+}
+
+// react runs f for every message on a topic.
+//
+// One goroutine per message, because answering takes a model call and the
+// subscription channel is small and drops when full. Recovered, because a
+// panic in here must not take the process down — it is the same guarantee the
+// registry's dispatch used to give.
+func react(topic string, f func(mail.InboundMail)) {
+	sub := event.Subscribe(topic)
+	go func() {
+		for e := range sub.Chan {
+			m, ok := mail.MessageFrom(e.Data)
+			if !ok {
+				app.Log("mail", "%s carried no message", topic)
+				continue
+			}
+			go func(m mail.InboundMail) {
+				defer func() {
+					if rec := recover(); rec != nil {
+						app.Log("mail", "reacting to %s panicked: %v", topic, rec)
+					}
+				}()
+				f(m)
+			}(m)
+		}
+	}()
 }
 
 // asked is the message as a question: its subject and its text, in the shape

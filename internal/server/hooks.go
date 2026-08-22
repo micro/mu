@@ -22,9 +22,9 @@ import (
 	"mu/agent"
 	agentblog "mu/agent/blog"
 	"mu/agent/digest"
+	mailagent "mu/agent/mail"
 	"mu/agent/micro"
 	agentsocial "mu/agent/social"
-	mailclient "mu/client/mail"
 	help "mu/docs"
 	"mu/home"
 	"mu/inbox"
@@ -201,8 +201,8 @@ func wireHooks() {
 	}
 
 	// Mail is a client like another client: it speaks its own protocol and
-	// hands what arrives to the agent. See client/mail.
-	mailclient.Load()
+	// hands what arrives to the agent. See agent/mail.
+	mailagent.Load()
 
 	// When an event is scheduled, email the owner an .ics invite so it also
 	// lands in their real calendar. Only for users with a verified email (e.g.

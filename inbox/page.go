@@ -12,7 +12,7 @@ package inbox
 //
 // Not the mail store. service/mail is the MTA and holds what SMTP delivered;
 // /mail is its page and this does not touch it. A message becomes a
-// conversation when a client hands it over — see client/mail — and this is the
+// conversation when a client hands it over — see agent/mail — and this is the
 // view over the conversations, not over the envelopes.
 //
 // Boxes are agents. An alias is an agent's address, so what arrives at

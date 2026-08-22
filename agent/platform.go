@@ -87,7 +87,7 @@ func platformName(id string) string {
 //
 // Two strings rather than the agent itself, because the callers are clients and
 // a client has no business importing the registry: naming the type meant
-// client/mail imported agent/micro to hold a variable. What a client needs is
+// agent/mail imported agent/micro to hold a variable. What a client needs is
 // which agent answered and what to call it.
 func PlatformNamed(name string) (id, display string, ok bool) {
 	a := Platform(name)

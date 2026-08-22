@@ -76,9 +76,6 @@ func TestAnAgentNeverWakesOnAnotherAgent(t *testing.T) {
 	t.Setenv("MAIL_DOMAIN", "mu.example")
 	KnownSender = func(string, string) bool { return true }
 	defer func() { KnownSender = nil }()
-	// mayDispatch declines to reason about who may wake what on an instance
-	// where nothing is listening, so there has to be something listening.
-	Inbound(AgentMailbox, func(InboundMail) {})
 
 	from := wakeRequest{
 		Owner: "someone", Shared: true, Tag: "markets",

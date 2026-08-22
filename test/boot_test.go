@@ -149,7 +149,7 @@ func TestEveryServiceIsInThePolicyList(t *testing.T) {
 	list := string(b)
 
 	// The name a Spec is reached by is the import alias where there is one:
-	// whatsapp is imported as whatsappsvc, because client/whatsapp already
+	// whatsapp is imported as whatsappsvc, because the deleted whatsapp client already
 	// holds the plain name.
 	imported := regexp.MustCompile(`(?m)^\s*(?:([a-z][a-zA-Z0-9_]*)\s+)?"mu/service/([a-z/]+)"`)
 	name := map[string]string{}
