@@ -242,3 +242,59 @@ func TestAnElementHasOneClassAttribute(t *testing.T) {
 		}
 	})
 }
+
+// A directional margin utility beats .m-0, because it is written after it.
+//
+// They all have the same specificity, so the winner is decided by order in
+// mu.css and not by order in the class attribute. class="mt-half m-0" reads as
+// "6px on top and nothing else" and produced nothing at all: .m-0 was three
+// hundred lines further down, so it clobbered the top margin, and a generated
+// image sat flush against its own Share button.
+//
+// .mb-2 lost the same way, in eight files, quietly — a heading that asked for
+// 8px underneath and got none. The pattern m-0 plus one directional override is
+// everywhere and is the right way to write it; what was wrong was where .m-0
+// sat.
+func TestMarginZeroComesBeforeTheDirectionalMargins(t *testing.T) {
+	b, err := os.ReadFile(at("internal/app/html/mu.css"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(string(b), "\n")
+
+	zero := -1
+	directional := map[string]int{}
+	rule := regexp.MustCompile(`^\.(m-0|m[trbl]-[a-z0-9]+)\s*\{`)
+	for i, l := range lines {
+		m := rule.FindStringSubmatch(l)
+		if m == nil {
+			continue
+		}
+		if m[1] == "m-0" {
+			if zero >= 0 {
+				t.Errorf(".m-0 is declared twice, at lines %d and %d", zero+1, i+1)
+			}
+			zero = i
+			continue
+		}
+		if _, seen := directional[m[1]]; !seen {
+			directional[m[1]] = i
+		}
+	}
+
+	if zero < 0 {
+		t.Fatal("no .m-0 in mu.css — this scan is broken")
+	}
+	if len(directional) < 10 {
+		t.Fatalf("only %d directional margin utilities found — this scan is broken",
+			len(directional))
+	}
+
+	for name, line := range directional {
+		if line < zero {
+			t.Errorf(".%s is declared at line %d, before .m-0 at line %d — so "+
+				"class=\"%s m-0\" loses its margin and looks like it was never asked for",
+				name, line+1, zero+1, name)
+		}
+	}
+}

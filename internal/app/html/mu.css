@@ -2926,6 +2926,17 @@ a.highlight {
 .lead-15 { font-size: 15px; }
 .indent { padding-left: 18px; }
 .my-2 { margin-top: 8px; margin-bottom: 8px; }
+/* .m-0 comes before every directional margin utility on purpose.
+   
+   These all have the same specificity, so the one written later in this file
+   wins — not the one written later in the class attribute. class="mt-half m-0"
+   reads as "6px on top and nothing else" and produced nothing at all, because
+   .m-0 was three hundred lines further down; a generated image sat flush
+   against its own Share button. .mb-2 lost the same way, in eight files.
+   
+   Held by TestMarginZeroComesBeforeTheDirectionalMargins. */
+.m-0 { margin: 0; }
+
 .mr-2 { margin-right: 8px; }
 
 /* A terminal: dark, monospaced, and scrolling on its own. */
@@ -3389,7 +3400,6 @@ button.btn-plain { padding: 6px 12px; font: inherit; cursor: pointer; color: var
 .border-box { box-sizing: border-box; }
 .mb-2 { margin-bottom: 8px; }
 
-.m-0 { margin: 0; }
 .mt-0 { margin-top: 0; }
 .mt-1 { margin-top: 5px; }
 .mt-2 { margin-top: 8px; }
