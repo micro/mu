@@ -148,13 +148,7 @@ func TestNothingToPutBackOnSomethingAlreadyRead(t *testing.T) {
 // around the app.
 func TestTheRailCountsWhatIsWaiting(t *testing.T) {
 	const who = "mailbox-count"
-	AgentName = func(owner, id string) string {
-		if id == "a1" {
-			return "Research"
-		}
-		return ""
-	}
-	t.Cleanup(func() { AgentName = nil })
+	withRoster(t, who, Agent{ID: "a1", Name: "Research", Tag: "research"})
 
 	arrived(t, who, "mail", "<e@example.com>", "a1", "them@example.com", "found three papers")
 	read := arrived(t, who, "mail", "<f@example.com>", "a1", "them@example.com", "and one more")

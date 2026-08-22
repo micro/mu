@@ -47,16 +47,9 @@ func TestTheInboxListsEveryConversation(t *testing.T) {
 // slice of yours, so it gets a box of its own with a way in and out.
 func TestEachAgentIsItsOwnMailbox(t *testing.T) {
 	const who = "inbox-boxes"
-	AgentName = func(owner, id string) string {
-		switch id {
-		case "a1":
-			return "Research"
-		case "a2":
-			return "Briefer"
-		}
-		return ""
-	}
-	t.Cleanup(func() { AgentName = nil })
+	withRoster(t, who,
+		Agent{ID: "a1", Name: "Research", Tag: "research"},
+		Agent{ID: "a2", Name: "Briefer", Tag: "briefer"})
 
 	said(t, who, "mail", "<r@example.com>", "a1", "found three papers")
 	said(t, who, "mail", "<b@example.com>", "a2", "your morning brief")

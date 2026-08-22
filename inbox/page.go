@@ -51,6 +51,42 @@ var AgentName func(owner, id string) string
 // this package to depend on the mail service.
 var Address func() string
 
+// Agent is what this page needs to know about one of the account's agents:
+// what to call it, and the alias its mail arrives at.
+type Agent struct {
+	ID   string
+	Name string
+	// Tag is the part after the plus. It is the agent's identity in an address
+	// and therefore the name of its box — see roster.
+	Tag string
+}
+
+// Agents is the account's roster, filled in by the server because this package
+// may not import agent/. Nil on a build with no agents, which draws no switcher
+// rather than an empty one.
+var Agents func(owner string) []Agent
+
+// roster is the account's agents, or none.
+func roster(accountID string) []Agent {
+	if Agents == nil || accountID == "" {
+		return nil
+	}
+	return Agents(accountID)
+}
+
+// boxTag is the box an agent's mail belongs in, which is its address tag.
+func boxTag(accountID, agentID string) string {
+	if agentID == "" {
+		return ""
+	}
+	for _, a := range roster(accountID) {
+		if a.ID == agentID {
+			return a.Tag
+		}
+	}
+	return ""
+}
+
 // Handler serves /inbox and /inbox/<box>.
 func Handler(w http.ResponseWriter, r *http.Request) {
 	_, acc, err := auth.RequireSession(r)
@@ -324,10 +360,7 @@ func conversation(w http.ResponseWriter, r *http.Request, accountID, id string) 
 
 // boxOfThread is which mailbox a conversation belongs in: the agent it is with.
 func boxOfThread(accountID string, t thread.Thread) string {
-	if t.Agent == "" {
-		return ""
-	}
-	return slugOf(agentLabel(accountID, t.Agent))
+	return boxTag(accountID, t.Agent)
 }
 
 // agentLabel is what to call an agent, and empty when there is nothing to call
@@ -347,19 +380,6 @@ func agentLabel(accountID, id string) string {
 	return strings.TrimSpace(AgentName(accountID, id))
 }
 
-// slugOf is a box's name in a path — lowercase, letters and digits only, the
-// same shape an agent's own address tag takes, so /inbox/research and
-// you+research@ are the same word.
-func slugOf(s string) string {
-	var b strings.Builder
-	for _, r := range strings.ToLower(s) {
-		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
-			b.WriteRune(r)
-		}
-	}
-	return b.String()
-}
-
 // boxPath is a mailbox's own address.
 func boxPath(box string) string {
 	if box == "" {
@@ -368,34 +388,32 @@ func boxPath(box string) string {
 	return "/inbox/" + box
 }
 
-// boxes is the switcher: one per agent that has a conversation, and All.
+// boxes is the switcher: one per agent, and All.
 //
-// Derived from what has arrived rather than from the roster. A box that appears
-// the moment it has something in it is a truer statement than one that appears
-// because an agent exists and has never been written to — and this package does
-// not import agent/, which is the other half of the reason.
+// It was derived from what had arrived, on the argument that "a box that
+// appears the moment it has something in it is a truer statement than one that
+// appears because an agent exists and has never been written to". That was
+// right while a box was only a filter over this list, and it stopped being
+// right when the box began carrying the agent's address: the agent you have
+// never written to is exactly the one whose address you need, and it was the
+// one with no box to select.
 //
-// Silent when there is only one, because a switcher with a single destination
-// is a control that cannot do anything.
+// So it is the roster, and a box with nothing in it says so rather than being
+// missing. The other half of the old reason — that this package may not import
+// agent/ — is answered by the hook, the same way AgentName already was.
+//
+// Silent when there are no agents, because a switcher with one destination is a
+// control that cannot do anything.
 func boxes(accountID string, all []thread.Thread, current string) string {
-	seen := map[string]string{} // slug -> label
-	for _, t := range all {
-		if t.Agent == "" {
-			continue
-		}
-		label := agentLabel(accountID, t.Agent)
-		if s := slugOf(label); s != "" {
-			seen[s] = label
-		}
-	}
-	if len(seen) == 0 {
+	agents := roster(accountID)
+	if len(agents) == 0 {
 		return ""
 	}
-	slugs := make([]string, 0, len(seen))
-	for s := range seen {
-		slugs = append(slugs, s)
-	}
-	sort.Strings(slugs)
+
+	// Newest first is how the roster comes back, which is an order for a page
+	// about making agents rather than one about reading their mail. Here they
+	// are a row of chips somebody scans for a name.
+	sort.Slice(agents, func(i, j int) bool { return agents[i].Name < agents[j].Name })
 
 	chip := func(label, box string) string {
 		return app.PillLink(label, boxPath(box), strings.EqualFold(box, current))
@@ -403,8 +421,15 @@ func boxes(accountID string, all []thread.Thread, current string) string {
 
 	var b strings.Builder
 	b.WriteString(`<div class="ib-boxes">` + chip("All", ""))
-	for _, s := range slugs {
-		b.WriteString(chip(seen[s], s))
+	for _, a := range agents {
+		if a.Tag == "" {
+			continue // no alias, so nothing arrives at one: it is only in All
+		}
+		label := strings.TrimSpace(a.Name)
+		if label == "" {
+			label = a.Tag
+		}
+		b.WriteString(chip(label, a.Tag))
 	}
 	b.WriteString(`</div>`)
 	return b.String()
@@ -441,9 +466,13 @@ func addressBar(accountID, box string) string {
 
 	// The agent this box belongs to. A named box is the account's own alias for
 	// it; All is the instance's agent, which is the one a stranger can reach.
+	//
+	// mail.Handle rather than accountID + "+" + box, which is the same string
+	// until it is not: Handle cleans the tag by the service's own rule, and the
+	// service is what decides which addresses it will accept.
 	theirs := ""
 	if box != "" {
-		theirs = mail.EmailForUser(accountID+"+"+box, mail.ConfiguredDomain())
+		theirs = mail.EmailForUser(mail.Handle(accountID, box), mail.ConfiguredDomain())
 	} else if Address != nil {
 		theirs = Address()
 	}
@@ -490,32 +519,23 @@ func Mailboxes(accountID string) []app.NavItem {
 	if accountID == "" {
 		return nil
 	}
-	all := arrivals(accountID)
-	seen := map[string]string{} // slug -> label
-	unread := map[string]int{}  // slug -> how many, "" for the whole inbox
-	for _, t := range all {
-		box := ""
-		if t.Agent != "" {
-			label := agentLabel(accountID, t.Agent)
-			if s := slugOf(label); s != "" {
-				seen[s], box = label, s
-			}
-		}
-		if thread.Unread(t) {
-			unread[""]++
-			if box != "" {
-				unread[box]++
-			}
-		}
-	}
-	if len(seen) == 0 {
+	agents := roster(accountID)
+	if len(agents) == 0 {
 		return nil
 	}
-	slugs := make([]string, 0, len(seen))
-	for s := range seen {
-		slugs = append(slugs, s)
+
+	unread := map[string]int{} // tag -> how many, "" for the whole inbox
+	for _, t := range arrivals(accountID) {
+		if !thread.Unread(t) {
+			continue
+		}
+		unread[""]++
+		if box := boxOfThread(accountID, t); box != "" {
+			unread[box]++
+		}
 	}
-	sort.Strings(slugs)
+
+	sort.Slice(agents, func(i, j int) bool { return agents[i].Name < agents[j].Name })
 
 	badge := func(n int) string {
 		if n == 0 {
@@ -525,9 +545,16 @@ func Mailboxes(accountID string) []app.NavItem {
 	}
 
 	out := []app.NavItem{{Label: "All", Href: "/inbox", Badge: badge(unread[""])}}
-	for _, s := range slugs {
-		out = append(out, app.NavItem{Label: seen[s], Href: boxPath(s), Key: s,
-			Badge: badge(unread[s])})
+	for _, a := range agents {
+		if a.Tag == "" {
+			continue
+		}
+		label := strings.TrimSpace(a.Name)
+		if label == "" {
+			label = a.Tag
+		}
+		out = append(out, app.NavItem{Label: label, Href: boxPath(a.Tag), Key: a.Tag,
+			Badge: badge(unread[a.Tag])})
 	}
 	return out
 }

@@ -18,13 +18,7 @@ import (
 // mailboxes named after rows in a file.
 func TestAVanishedAgentGetsNoMailbox(t *testing.T) {
 	const who = "inbox-vanished"
-	AgentName = func(owner, id string) string {
-		if id == "here" {
-			return "Research"
-		}
-		return "" // deleted, or never resolvable
-	}
-	t.Cleanup(func() { AgentName = nil })
+	withRoster(t, who, Agent{ID: "here", Name: "Research", Tag: "research"})
 
 	said(t, who, "mail", "<a@example.com>", "here", "found three papers")
 	said(t, who, "mail", "<b@example.com>", "47b6428c-fa8a-4610-a302-45dbc992ad5d", "an older conversation")
@@ -52,7 +46,7 @@ func TestAVanishedAgentGetsNoMailbox(t *testing.T) {
 // per raw id.
 func TestWithoutTheRosterThereAreNoMailboxes(t *testing.T) {
 	const who = "inbox-no-roster"
-	AgentName = nil
+	Agents, AgentName = nil, nil
 
 	said(t, who, thread.WebClient, "chat", "some-agent-id", "hello")
 

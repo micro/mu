@@ -313,6 +313,16 @@ func wireHooks() {
 	// depend on them. See inbox/doc.go.
 	inbox.AgentName = agent.NameOf
 	inbox.Address = mail.SharedAgentAddress
+	// The roster, so the inbox can offer a box per agent rather than only the
+	// ones that already have mail — and so a box is the agent's address tag
+	// rather than a second slug derived from its name. See inbox.Agents.
+	inbox.Agents = func(owner string) []inbox.Agent {
+		var out []inbox.Agent
+		for _, a := range agent.Agents(owner) {
+			out = append(out, inbox.Agent{ID: a.ID, Name: a.Name, Tag: a.Tag})
+		}
+		return out
+	}
 
 	// The agent, on the conversation somebody is reading. The same entry point
 	// every client uses — what is different is that the conversation already
