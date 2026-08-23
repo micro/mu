@@ -359,7 +359,7 @@ func handleDepositPage(w http.ResponseWriter, r *http.Request) {
 		sb.WriteString(`<div class="card"><p class="text-error">No payment methods available.</p></div>`)
 	}
 
-	app.Respond(w, r, app.Response{Title: "Add Credits", Description: "Top up your wallet", HTML: sb.String()})
+	app.Respond(w, r, app.Response{Title: "Top up", Description: "Buy credits", HTML: sb.String()})
 }
 
 func renderStripeDeposit(userID, errMsg string) string {
@@ -469,7 +469,7 @@ func handleTransferPage(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(fmt.Sprintf(`<p class="text-sm text-muted">1 credit = 1p. Transfers are instant and non-reversible. Daily transfer limit: %d credits.</p>`, DailyTransferCap))
 	sb.WriteString(`</div>`)
 
-	app.Respond(w, r, app.Response{Title: "Transfer Credits", Description: "Send credits to another user", HTML: sb.String()})
+	app.Respond(w, r, app.Response{Title: "Transfer", Description: "Send credits to somebody else", HTML: sb.String()})
 }
 
 func handleTransfer(w http.ResponseWriter, r *http.Request) {

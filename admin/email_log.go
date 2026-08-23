@@ -163,8 +163,6 @@ func mailLogCard() string {
 	}
 	content.WriteString(`</div>`)
 
-	content.WriteString(`<p><a href="/admin">← Back to Admin</a></p>`)
-
 	return content.String()
 }
 

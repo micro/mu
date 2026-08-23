@@ -57,10 +57,9 @@ func SpamHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	content := spamSettings() + blocklistSection() +
-		`<div class="mt-6"><p><a href="/admin">← Back to Admin</a></p></div>`
+	content := back() + spamSettings() + blocklistSection()
 
-	app.Respond(w, r, app.Response{Title: "Admin", Description: "Spam and blocked senders", HTML: content})
+	app.Respond(w, r, app.Response{Title: "Spam", Description: "What is filtered, and who is refused outright", HTML: content})
 }
 
 // BlocklistMoved sends the old address to the page that absorbed it.
@@ -262,8 +261,7 @@ func spamSettings() string {
 		autoBlockBtn = "Disable"
 	}
 
-	content := fmt.Sprintf(`<h2>Spam and blocked senders</h2>
-
+	content := fmt.Sprintf(`
 	<div class="spam-settings">
 		<h3>Settings</h3>
 		<table class="blacklist-table">

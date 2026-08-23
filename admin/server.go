@@ -26,19 +26,19 @@ import (
 	"mu/internal/data"
 )
 
-// UpdateHandler shows the server page.
-func UpdateHandler(w http.ResponseWriter, r *http.Request) {
+// ServerHandler shows the server page. It was UpdateHandler, which named the
+// button that used to be on it — the one that ran git pull and restarted the
+// process from a web request.
+func ServerHandler(w http.ResponseWriter, r *http.Request) {
 	_, _, err := auth.RequireAdmin(r)
 	if err != nil {
 		app.Forbidden(w, r, "Admin access required")
 		return
 	}
 
-	content := `<p><a href="/admin">← Admin</a></p>
-	<h2>Server</h2>
-	` + app.RenderInternalStatusHTML() + storesTable()
+	content := back() + app.RenderInternalStatusHTML() + storesTable()
 
-	app.Respond(w, r, app.Response{Title: "Admin", Description: "Server", HTML: content})
+	app.Respond(w, r, app.Response{Title: "Server", Description: "What this process is doing and what it is sitting on", HTML: content})
 }
 
 // storesShown is how much of the data directory the table lists. The question

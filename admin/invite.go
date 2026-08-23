@@ -95,7 +95,7 @@ func InviteHandler(w http.ResponseWriter, r *http.Request) {
 
 	// GET: show pending requests + ad-hoc invite form.
 	var sb strings.Builder
-	sb.WriteString(`<p><a href="/admin">← Admin</a></p>`)
+	sb.WriteString(back())
 
 	requests := auth.ListInviteRequests()
 	pending := 0

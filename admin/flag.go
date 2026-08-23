@@ -269,20 +269,20 @@ func ModerateHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	content := fmt.Sprintf(`<div id="moderation">
-		<div class="info-banner">
-			<strong>Community Moderation</strong><br>
-			Review content that has been flagged by users. Content is automatically hidden after 3 flags.
-			You can approve (clear flags) or delete the content permanently.
-		</div>
-		<h2>Flagged Content</h2>
+	// No <h2>Flagged Content</h2>, and no banner repeating the page's own name
+	// above it. The shell draws the title; what is left here is the one thing a
+	// reader does not already know — the rule that hides something at three
+	// flags — said once, in a sentence.
+	content := fmt.Sprintf(back()+`<div id="moderation">
+		<p class="text-sm text-muted">Flagged by other people. Three flags hides
+		something automatically; approving clears them, deleting is permanent.</p>
 		<div id="flagged-content">
 			%s
 		</div>
 		%s
 	</div>`, listHTML, newAccountPostsHTML)
 
-	app.Respond(w, r, app.Response{Title: "Moderate", Description: "Review flagged content", HTML: content})
+	app.Respond(w, r, app.Response{Title: "Moderation", Description: "Content other people flagged", HTML: content})
 }
 
 func getViewPath(contentType string) string {

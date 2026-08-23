@@ -45,6 +45,7 @@ func LogHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var content strings.Builder
+	content.WriteString(back())
 	content.WriteString(alertsCard())
 	content.WriteString(logTabs(tab))
 	switch {
@@ -55,7 +56,6 @@ func LogHandler(w http.ResponseWriter, r *http.Request) {
 	default:
 		content.WriteString(sysLogCard())
 	}
-	content.WriteString(`<p><a href="/admin">← Back to Admin</a></p>`)
 
 	title := "System Log"
 	switch {

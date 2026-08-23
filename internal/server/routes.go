@@ -274,7 +274,7 @@ func registerRoutes() {
 	})
 
 	// server update and restart
-	http.HandleFunc("/admin/server", admin.UpdateHandler)
+	http.HandleFunc("/admin/server", admin.ServerHandler)
 
 	// AI usage tracking
 	http.HandleFunc("/admin/usage", admin.SpendMoved)
