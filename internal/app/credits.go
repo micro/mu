@@ -85,7 +85,7 @@ func headBalance(acc *auth.Account) string {
 	if v.Unlimited {
 		badge = "∞"
 	}
-	return fmt.Sprintf(`<a id="head-wallet" class="head-wallet%s" href="/account#balance" aria-label="Credits">`+
+	return fmt.Sprintf(`<a id="head-wallet" class="head-wallet%s" href="/billing#balance" aria-label="Credits">`+
 		`<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" `+
 		`stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>`+
 		`<path d="M16 12h.01"/></svg><span id="head-wallet-badge">%s</span></a>`,

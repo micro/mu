@@ -275,6 +275,6 @@ func ExceededPage(cost int) string {
 		`<h2>Credits Required</h2>` +
 		fmt.Sprintf(`<p>This costs %d credit%s. `, cost, plural) +
 		`<a href="/billing/topup">Top up</a> to continue.</p>` +
-		`<p class="text-sm text-muted">1 credit = 1p · <a href="/account#balance">Your balance</a></p>` +
+		`<p class="text-sm text-muted">1 credit = 1p · <a href="/billing#balance">Your balance</a></p>` +
 		`</div>`
 }
