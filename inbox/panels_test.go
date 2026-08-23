@@ -1,11 +1,18 @@
 package inbox
 
-// The two columns, and which messages belong in each.
+// One column, and everything said on the conversation in it.
 //
-// One conversation holds two exchanges — the mail, and what the owner told the
-// agent to do about it — and the thing that must not break is the second one
-// swallowing the first. A split that empties the reading column is a page with
-// nothing on it, so that case is asserted rather than trusted.
+// This file used to assert the opposite: two columns, and a split() that pulled
+// the agent's messages out of the thread to fill the second one. The argument
+// was that a mail thread reads badly with your own instructions interleaved
+// through it — which was true of the control they were interleaved by, a box
+// you typed in and waited at. That control is gone, so there is nothing left to
+// hold apart: an agent's answer is a message on the conversation, like every
+// other message on it.
+//
+// What must not come back is a second panel. Not because two columns are ugly,
+// but because the panel was a chat, and a chat on this page argues against the
+// page — the inbox is where things turn up whether or not you are in it.
 
 import (
 	"net/http/httptest"
@@ -16,48 +23,7 @@ import (
 	"mu/internal/thread"
 )
 
-// A mail thread with an instruction on it: what arrived goes left, what was
-// said to the agent goes right.
-func TestTheAgentAsideIsSplitFromTheCorrespondence(t *testing.T) {
-	msgs := []thread.Message{
-		{Role: thread.RolePerson, Text: "Are you free Tuesday?", From: "henrik@example.com", Ref: "<1@example.com>"},
-		{Role: thread.RolePerson, Text: "Yes, Tuesday works.", Ref: "<2@micro.mu>"},
-		{Role: thread.RolePerson, Text: "Summarise this"},
-		{Role: thread.RoleAgent, Text: "Henrik is asking about Tuesday."},
-	}
-
-	conv, aside := split(msgs)
-	if len(conv) != 2 {
-		t.Fatalf("the correspondence is %d messages, want the two that were sent: %+v", len(conv), conv)
-	}
-	if conv[0].Text != "Are you free Tuesday?" || conv[1].Text != "Yes, Tuesday works." {
-		t.Errorf("the wrong messages are in the reading column: %+v", conv)
-	}
-	if len(aside) != 2 {
-		t.Fatalf("the aside is %d messages, want the instruction and the answer: %+v", len(aside), aside)
-	}
-	if aside[0].Text != "Summarise this" || aside[1].Role != thread.RoleAgent {
-		t.Errorf("the wrong messages are in the agent column: %+v", aside)
-	}
-}
-
-// A conversation that is only you and the agent — a chat, or a thread nothing
-// was ever sent on — is not split. Two columns with an empty one is a bug that
-// looks like a design.
-func TestAConversationWithNoCorrespondenceIsNotSplit(t *testing.T) {
-	msgs := []thread.Message{
-		{Role: thread.RolePerson, Text: "brief me"},
-		{Role: thread.RoleAgent, Text: "Here is the briefing."},
-	}
-	conv, aside := split(msgs)
-	if len(conv) != 2 || aside != nil {
-		t.Errorf("a chat was split: conv=%+v aside=%+v", conv, aside)
-	}
-}
-
-// And the page draws both, with the agent's own name on its column rather than
-// the word for its role.
-func TestTheConversationPageDrawsBothPanels(t *testing.T) {
+func TestTheConversationPageIsOneColumn(t *testing.T) {
 	const who = "panels-reader"
 	auth.Create(&auth.Account{ID: who, Name: who, Secret: "test-secret"}) //nolint:errcheck
 
@@ -73,20 +39,16 @@ func TestTheConversationPageDrawsBothPanels(t *testing.T) {
 	thread.Add(thread.Message{Thread: th.ID, Account: who, Role: thread.RoleAgent,
 		Text: "Henrik is asking about Tuesday."})
 
-	old := Act
-	Act = func(accountID, threadID, ask string) error { return nil }
-	defer func() { Act = old }()
-
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("GET", "/inbox?id="+th.ID, nil)
 	conversation(w, r, who, th.ID)
 	page := w.Body.String()
 
+	// Everything said on the conversation is on the page, whoever said it.
+	// The agent's answer is not filed somewhere else — it is what arrived back.
 	for _, want := range []string{
-		`class="ib-panels"`,
-		`class="ib-pane ib-pane-conv"`,
-		`class="ib-pane ib-pane-agent"`,
 		"Are you free Tuesday?",
+		"Book the meeting room",
 		"Henrik is asking about Tuesday.",
 	} {
 		if !strings.Contains(page, want) {
@@ -94,16 +56,17 @@ func TestTheConversationPageDrawsBothPanels(t *testing.T) {
 		}
 	}
 
-	// The instruction is in the agent column and not in the mail thread, which
-	// is the whole point of splitting them.
-	left, right, ok := strings.Cut(page, `ib-pane ib-pane-agent`)
-	if !ok {
-		t.Fatal("no agent panel to cut at")
+	// And there is no second panel to put any of it in.
+	for _, gone := range []string{`ib-panels`, `ib-pane-agent`, `ib-chat`} {
+		if strings.Contains(page, gone) {
+			t.Errorf("the agent panel is back (%q) — it was a chat on the page "+
+				"that exists so nobody has to wait at one", gone)
+		}
 	}
-	if strings.Contains(left, "Book the meeting room") {
-		t.Error("the instruction was drawn in the mail thread")
-	}
-	if !strings.Contains(right, "Book the meeting room") {
-		t.Error("the instruction is not in the agent panel")
+
+	// The way to hand it over is still there, because that is the half worth
+	// having: it makes work and you close the tab.
+	if !strings.Contains(page, "Hand over") {
+		t.Error("there is no way to hand the conversation to an agent")
 	}
 }

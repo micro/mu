@@ -34,9 +34,6 @@ func reader(t *testing.T, id string) {
 // The box is on the conversation, because that is where the work is. The whole
 // move is that the details are already in the messages above it.
 func TestAConversationCarriesTheAskBox(t *testing.T) {
-	Act = func(accountID, threadID, ask string) error { return nil }
-	t.Cleanup(func() { Act = nil })
-
 	r := httptest.NewRequest("GET", "/inbox?id=x", nil)
 	body := askBox(r, "x", "")
 
@@ -51,32 +48,25 @@ func TestAConversationCarriesTheAskBox(t *testing.T) {
 	if !strings.Contains(body, "not a reply") {
 		t.Error("nothing says this is not a reply")
 	}
-	// Two buttons, and the difference is whether you are waiting: Ask answers
-	// now, Hand over makes a task and you can close the tab.
-	if !strings.Contains(body, `name="hand"`) {
+	// One button, and it is the async one. The other ran the agent inside the
+	// POST and made you wait at a dead page for a model call — a chat with the
+	// streaming taken out, on the page that exists so you do not have to wait.
+	if !strings.Contains(body, "Hand over") {
 		t.Errorf("there is no way to hand the conversation over:\n%s", body)
 	}
-}
-
-// With no agent wired in there is no box. An instruction nothing can carry out
-// is a control that does nothing.
-func TestNoAgentMeansNoBox(t *testing.T) {
-	Act = nil
-	if got := askBox(httptest.NewRequest("GET", "/inbox?id=x", nil), "x", ""); got != "" {
-		t.Errorf("a box was drawn with nothing behind it: %s", got)
+	if strings.Contains(body, ">Ask<") {
+		t.Errorf("the synchronous button is back:\n%s", body)
+	}
+	// And the caption says the thing the page is for.
+	if !strings.Contains(body, "close the tab") {
+		t.Errorf("nothing says you can walk away:\n%s", body)
 	}
 }
 
 // Somebody else's conversation is not a conversation. Scoped by account, so an
 // id from elsewhere is not "forbidden" — there is no such thing here.
 func TestYouCanOnlyActOnYourOwnConversation(t *testing.T) {
-	var ran string
-	Act = func(accountID, threadID, ask string) error {
-		ran = threadID
-		return nil
-	}
-	t.Cleanup(func() { Act = nil })
-
+	reader(t, "act-me")
 	theirs := thread.Open("act-somebody-else", "mail", "<x@example.com>")
 	if theirs == nil {
 		t.Fatal("no conversation")
@@ -88,21 +78,32 @@ func TestYouCanOnlyActOnYourOwnConversation(t *testing.T) {
 	w := httptest.NewRecorder()
 	action(w, r, "act-me")
 
-	if ran != "" {
-		t.Errorf("the agent was run on somebody else's conversation (%s)", ran)
-	}
 	if w.Code != 404 {
 		t.Errorf("answered %d", w.Code)
 	}
+	if taskOn(t, "act-me", theirs.ID) != nil || taskOn(t, "act-somebody-else", theirs.ID) != nil {
+		t.Error("work was made out of somebody else's conversation")
+	}
+}
+
+// taskOn is the task made for a conversation, or nil.
+//
+// Found by the conversation rather than by counting: this package has no
+// TestMain, so its store is the real one and outlives a run.
+func taskOn(t *testing.T, who, threadID string) *tasks.Task {
+	t.Helper()
+	for _, candidate := range tasks.List(who, "") {
+		if candidate.Thread == threadID {
+			return candidate
+		}
+	}
+	return nil
 }
 
 // An empty instruction runs nothing and costs nothing. Somebody pressed the
 // button.
 func TestAnEmptyInstructionDoesNothing(t *testing.T) {
-	var ran bool
-	Act = func(accountID, threadID, ask string) error { ran = true; return nil }
-	t.Cleanup(func() { Act = nil })
-
+	reader(t, "act-empty")
 	mine := thread.Open("act-empty", "mail", "<y@example.com>")
 	form := url.Values{"id": {mine.ID}, "ask": {"   "}}
 	r := httptest.NewRequest("POST", "/inbox", strings.NewReader(form.Encode()))
@@ -110,16 +111,21 @@ func TestAnEmptyInstructionDoesNothing(t *testing.T) {
 	w := httptest.NewRecorder()
 	action(w, r, "act-empty")
 
-	if ran {
-		t.Error("an empty instruction was run")
+	if taskOn(t, "act-empty", mine.ID) != nil {
+		t.Error("an empty instruction made work")
 	}
 	if w.Code != 303 {
 		t.Errorf("answered %d, want a redirect back", w.Code)
 	}
 }
 
-// The instruction and what came of it are recorded on the conversation they are
-// about, so the thread reads as what arrived, what was asked, and what was done.
+// The POST hands the conversation over, and the thread says so.
+//
+// This used to assert the other half: an instruction ran the agent inside the
+// request and the answer was on the thread when the page came back. That
+// control is gone — it was a chat with the streaming taken out, on the page
+// that exists so nobody has to wait — so what the POST does now is make work,
+// and what somebody sees immediately is the agent saying it has been taken on.
 func TestTheInstructionLandsOnTheConversation(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	// A fresh account per run. The record loads from disk at package init,
@@ -130,26 +136,27 @@ func TestTheInstructionLandsOnTheConversation(t *testing.T) {
 	mine := thread.Open(who, "mail", "<z@example.com>")
 	thread.Add(thread.Message{Thread: mine.ID, Account: who, Text: "dinner on the 4th at 8"})
 
-	Act = func(accountID, threadID, ask string) error {
-		// What the wiring does: the agent's own door, on this conversation.
-		thread.Add(thread.Message{Thread: threadID, Account: accountID, Text: ask})
-		thread.Add(thread.Message{Thread: threadID, Account: accountID,
-			Role: thread.RoleAgent, Text: "Added — Dinner, 4th, 20:00."})
-		return nil
-	}
-	t.Cleanup(func() { Act = nil })
+	said := ""
+	AgentSaid(func(accountID, threadID, text string) { said = text })
+	t.Cleanup(func() { AgentSaid(func(string, string, string) {}) })
 
 	form := url.Values{"id": {mine.ID}, "ask": {"add this to my calendar"}}
 	r := httptest.NewRequest("POST", "/inbox", strings.NewReader(form.Encode()))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	action(httptest.NewRecorder(), r, who)
 
-	msgs := thread.Messages(who, mine.ID, 10)
-	if len(msgs) != 3 {
-		t.Fatalf("the conversation holds %d messages, want what arrived, the ask and the answer", len(msgs))
+	task := taskOn(t, who, mine.ID)
+	if task == nil {
+		t.Fatal("the POST made no work out of the conversation")
 	}
-	if !strings.Contains(msgs[1].Text, "calendar") || msgs[2].Role != thread.RoleAgent {
-		t.Errorf("the record reads wrong: %+v", msgs)
+	// The conversation travels with it, so the run does not start cold.
+	for _, want := range []string{"dinner on the 4th at 8", "add this to my calendar"} {
+		if !strings.Contains(task.Detail, want) {
+			t.Errorf("the task lost %q:\n%s", want, task.Detail)
+		}
+	}
+	if said == "" {
+		t.Error("nothing was said on the conversation, so the press left no trace")
 	}
 }
 

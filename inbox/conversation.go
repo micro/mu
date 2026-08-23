@@ -120,48 +120,6 @@ func conversationPane(accountID string, t *thread.Thread, msgs []thread.Message,
 	return b.String()
 }
 
-// split divides a conversation into the correspondence and the aside with the
-// agent.
-//
-// One thread holds both. Somebody emails in; you read it and tell the agent to
-// summarise it; the agent answers. All three are recorded on the same
-// conversation and that is right — a month later it reads as what arrived, what
-// you asked for, and what was done, which is a better record than the mail
-// alone. It is also two different exchanges, and stacking them in one column
-// meant reading a mail thread with your own instructions interleaved through it
-// and the sender's name next to none of them.
-//
-// So they are drawn side by side: what passed between people on the left, what
-// passed between you and the agent on the right.
-//
-// # How they are told apart
-//
-// Nothing on a message says "this was an instruction", and nothing needs to.
-// What was sent has an identifier and what was said to the agent has none:
-//
-//   - From set — somebody else wrote it, so it is correspondence
-//   - Ref set — it went out over SMTP with that Message-ID, so it is
-//     correspondence, and it is how a reply to it finds this thread
-//   - neither — it was typed into the box on this page, which is the aside
-//
-// A conversation that would leave nothing on the left is not split at all. A
-// chat started here is every message in that third case, and a two-column
-// layout with an empty left column is a bug that looks like a design.
-func split(msgs []thread.Message) (conv, aside []thread.Message) {
-	for _, m := range msgs {
-		if m.Role == thread.RoleAgent ||
-			(strings.TrimSpace(m.From) == "" && strings.TrimSpace(m.Ref) == "") {
-			aside = append(aside, m)
-			continue
-		}
-		conv = append(conv, m)
-	}
-	if len(conv) == 0 {
-		return msgs, nil
-	}
-	return conv, aside
-}
-
 // replyTo is the address a reply goes to, or empty where there is nobody to
 // reply to.
 //

@@ -1,14 +1,29 @@
 package inbox
 
-// Telling the agent what to do about the thing you are reading.
+// Handing the thing you are reading to an agent.
 //
 // The inbox is where the work arrives and where the agent already is, and until
 // now those were two facts that never met: you could read a conversation here
 // and you could talk to an agent on another page, and moving from one to the
-// other meant retyping what the message said. The interesting move — the one
-// worth copying — is a box on the message itself: "add that to my calendar",
-// and it does, because the details are in the messages above and the tools are
-// already there.
+// other meant retyping what the message said. The move worth having is on the
+// message itself: "add that to my calendar", and it does, because the details
+// are in the messages above and the tools are already there.
+//
+// # One button, and why the other one went
+//
+// There were two, and they were opposites. Hand over makes a task and you close
+// the tab. Ask ran the agent inside the POST — a full model run with no
+// streaming, then a redirect — so you sat on a dead page for half a minute.
+//
+// That is a chat with the streaming taken out, which is strictly worse than the
+// chat, and it argued against the page it was on. This is an inbox: things turn
+// up here whether or not you are in it. A box you wait at is the chat leaking
+// into the one place defined as not being the chat — see inbox/doc.go, and the
+// panel that held it, which went with it.
+//
+// So what is left is the async half, which was always the better one and was
+// already built: the conversation travels into the task, agent/work picks it up,
+// and the answer arrives on this thread like any other message. Nothing to watch.
 //
 // It is not a reply. Nothing typed here is sent to anybody: the conversation is
 // what arrived, and this is the owner standing over it giving an instruction.
@@ -34,13 +49,6 @@ import (
 	"mu/service/tasks"
 )
 
-// Act runs the agent on a conversation the reader is looking at, and is filled
-// in by the server because this package may not import agent/ — see doc.go.
-//
-// Nil on a build with no agent, which is what hides the box: an instruction
-// nothing can carry out is a control that does nothing.
-var Act func(accountID, threadID, ask string) error
-
 // askLimit bounds one instruction. Long enough for a sentence with a date in
 // it, short enough that a pasted document is not a prompt.
 const askLimit = 2000
@@ -62,8 +70,7 @@ func action(w http.ResponseWriter, r *http.Request, accountID string) {
 		back = "/inbox?id=" + url.QueryEscape(id)
 	}
 
-	switch {
-	case Act == nil, id == "", ask == "":
+	if id == "" || ask == "" {
 		http.Redirect(w, r, back, http.StatusSeeOther)
 		return
 	}
@@ -75,31 +82,15 @@ func action(w http.ResponseWriter, r *http.Request, accountID string) {
 		return
 	}
 
-	// Handing it over rather than waiting for it. See hand.
-	if r.FormValue("hand") != "" {
-		if err := hand(accountID, t, ask); err != nil {
-			app.Log("inbox", "handing a conversation to an agent failed: %v", err)
-			http.Redirect(w, r, back+"&problem="+url.QueryEscape(err.Error()), http.StatusSeeOther)
-			return
-		}
-		http.Redirect(w, r, back, http.StatusSeeOther)
+	if err := hand(accountID, t, ask); err != nil {
+		app.Log("inbox", "handing a conversation to an agent failed: %v", err)
+		http.Redirect(w, r, back+"&problem="+url.QueryEscape(err.Error()), http.StatusSeeOther)
 		return
 	}
-
-	if err := Act(accountID, id, ask); err != nil {
-		app.Log("inbox", "acting on a conversation failed: %v", err)
-		http.Redirect(w, r, back+"&problem="+url.QueryEscape("that one did not work. Try asking a different way."), http.StatusSeeOther)
-		return
-	}
-
 	http.Redirect(w, r, back, http.StatusSeeOther)
 }
 
 // hand turns the conversation into work and gives it away.
-//
-// Two buttons on one box, and the difference is not how long it takes — it is
-// whether you are waiting. Ask runs now and the answer is here when the page
-// comes back; Hand over makes a task, and you can close the tab.
 //
 // No hook and no agent. tasks.Run announces that work was asked for and
 // agent/work subscribes, so starting work needs nothing from agent/ — which is
@@ -180,72 +171,6 @@ func AgentSaid(f func(accountID, threadID, text string)) {
 	}
 }
 
-// agentPane is the agent's half of the page: what you have asked it about this
-// conversation, what it said, and the box to ask again.
-//
-// A panel beside the correspondence rather than a box under it. Under it, the
-// agent was a footer on somebody else's email — you scrolled past the whole
-// thread to reach it, and the answers it had already given were mixed into the
-// thread above with the sender's name next to none of them. Alongside, the two
-// exchanges are two columns and each reads as itself: the mail on the left, the
-// conversation about it on the right.
-//
-// Nothing when there is no agent wired in, which is what askBox already did:
-// a column headed Agent with an inert box in it is worse than no column.
-func agentPane(r *http.Request, accountID string, t *thread.Thread, aside []thread.Message, replyWho string) string {
-	if Act == nil {
-		return ""
-	}
-
-	// Which agent, by name. "Agent" is a role and there are eleven of them, so
-	// a panel headed with the role says less than the rail already did.
-	who := agentLabel(accountID, t.Agent)
-	if who == "" {
-		who = "Agent"
-	}
-
-	var b strings.Builder
-	b.WriteString(`<aside class="ib-pane ib-pane-agent">`)
-	b.WriteString(`<div class="ib-pane-head">` + html.EscapeString(who) + `</div>`)
-
-	b.WriteString(`<div class="ib-chat">`)
-	if len(aside) == 0 {
-		// The empty state says what the column is for. A blank panel beside a
-		// mail thread reads as something that failed to load.
-		b.WriteString(`<p class="ib-chat-empty">Nothing yet. Ask about this ` +
-			`message, or hand it over and close the tab.</p>`)
-	}
-	subject := strings.TrimSpace(t.Subject)
-	for _, m := range aside {
-		b.WriteString(chatTurn(who, m, subject))
-	}
-	b.WriteString(`</div>`)
-
-	b.WriteString(askBox(r, t.ID, replyWho))
-	b.WriteString(`</aside>`)
-	return b.String()
-}
-
-// chatTurn is one turn in that column: what you asked, or what came back.
-//
-// Not messageBlock. That draws a message in a mail thread — a rule across the
-// top, the sender's name, the addresses it went between — and none of those are
-// facts about a line typed into a box on this page. This is a chat, so it is
-// drawn as one.
-func chatTurn(agent string, m thread.Message, subject string) string {
-	m.Text = withoutSubject(m.Text, subject)
-	if m.Role == thread.RoleAgent {
-		ran := ""
-		if m.Workflow != "" {
-			ran = runTools(m.Workflow)
-		}
-		return `<div class="ib-turn ib-turn-agent">` + fromLine(agent, m.At) +
-			`<div class="ib-body">` + app.RenderString(m.Text) + `</div>` + ran + `</div>`
-	}
-	return `<div class="ib-turn ib-turn-you">` + fromLine("You", m.At) +
-		`<div class="ib-body ib-typed">` + html.EscapeString(m.Text) + `</div></div>`
-}
-
 // askBox is the control itself: somewhere to type, and three things that are
 // true of any message.
 //
@@ -264,9 +189,6 @@ func chatTurn(agent string, m thread.Message, subject string) string {
 // which is a model call to decide what to offer before anybody has asked for
 // anything.
 func askBox(r *http.Request, threadID, replyWho string) string {
-	if Act == nil {
-		return ""
-	}
 	canReply := replyWho != ""
 	var b strings.Builder
 	b.WriteString(`<form class="ib-ask" method="post" action="/inbox">`)
@@ -279,33 +201,17 @@ func askBox(r *http.Request, threadID, replyWho string) string {
 		`placeholder="Tell the agent what to do about this"></textarea>`)
 	// Pressed once, and it says so.
 	//
-	// This posts, runs a model for as long as a model takes, and redirects back
-	// to a page that looks exactly like the one it left. Nothing moved, nothing
-	// spun, and the button was still there to press — so the honest reading of
-	// the screen was that the press had not registered. Somebody asked their
-	// inbox to turn a sender down politely, pressed Ask twice on that reading,
-	// and paid for two runs.
+	// Making the task is quick, but the page it returns to looks exactly like
+	// the one it left — so without this the honest reading of the screen is that
+	// the press did not register, and the second press makes a second task.
 	//
-	// Inline rather than in mu.js because the whole behaviour is three
-	// assignments on one form and it belongs where the form is. The submit is
-	// not cancelled — disabling a submit button in its own handler would stop
-	// the POST — so the click goes through and the second one has nothing to
-	// click.
-	// Two buttons, and the difference is whether you are waiting.
-	//
-	// Ask runs now and the answer is here when the page comes back. Hand over
-	// makes a task and you can close the tab — which is the move this page is
-	// for, because the inbox is where you decide what happens to things rather
-	// than where you sit through them.
-	//
-	// The disable-on-click is on both: the run takes tens of seconds with
-	// nothing on the screen, and somebody who read that as a press that had not
-	// registered pressed again and paid for two.
+	// Inline rather than in mu.js because the whole behaviour is two assignments
+	// on one form and it belongs where the form is. The submit is not cancelled
+	// — disabling a submit button in its own handler would stop the POST — so
+	// the click goes through and the second one has nothing to click.
 	press := `onclick="var f=this.form;setTimeout(function(){f.querySelectorAll('button').forEach(` +
-		`function(b){b.disabled=true});this.textContent='Working…'}.bind(this),0)"`
-	b.WriteString(`<div class="ib-ask-row"><button type="submit" ` + press + `>Ask</button>`)
-	b.WriteString(`<button type="submit" name="hand" value="1" class="pill" ` + press +
-		`>Hand over</button>`)
+		`function(b){b.disabled=true});this.textContent='Handed over'}.bind(this),0)"`
+	b.WriteString(`<div class="ib-ask-row"><button type="submit" ` + press + `>Hand over</button>`)
 	for _, s := range []string{
 		"Summarise this",
 		"Draft a reply",
@@ -316,19 +222,22 @@ func askBox(r *http.Request, threadID, replyWho string) string {
 		b.WriteString(`<button type="button" class="pill" onclick="this.form.ask.value='` +
 			html.EscapeString(s) + `';this.form.ask.focus()">` + html.EscapeString(s) + `</button>`)
 	}
-	// What the two buttons do, and what neither of them is.
+	// What the button does, and what it is not.
 	//
 	// A box under a message looks like a reply, so it says it is not one. That
 	// sentence used to be the whole caption — "This is not a reply" — on a page
 	// with no reply button anywhere, which read as a statement that replying was
 	// not possible. It is a distinction now rather than a refusal.
-	note := `Ask and the answer comes back here. Hand over makes it a task and ` +
-		`the agent answers here when it is done. It is not a reply — nothing ` +
-		`typed here is sent to anybody.`
+	//
+	// "Close the tab" is the whole claim of the page and is worth saying out
+	// loud. The control it replaced sat you in front of a model run.
+	note := `This makes it a task. The agent answers here when it is done, so ` +
+		`you can close the tab. It is not a reply — nothing typed here is sent ` +
+		`to anybody.`
 	if canReply {
-		note = `Ask and the answer comes back here. Hand over makes it a task and ` +
-			`the agent answers here when it is done. It is not a reply — use ` +
-			`Reply above to answer ` + html.EscapeString(replyWho) + ` yourself.`
+		note = `This makes it a task. The agent answers here when it is done, so ` +
+			`you can close the tab. It is not a reply — use Reply above to answer ` +
+			html.EscapeString(replyWho) + ` yourself.`
 	}
 	b.WriteString(`</div><p class="ib-ask-note">` + note + `</p>`)
 	b.WriteString(`</form>`)

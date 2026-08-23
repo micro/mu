@@ -108,22 +108,19 @@ func TestAReplyCannotBeFiledOntoSomebodyElsesThread(t *testing.T) {
 	}
 }
 
-// The instruction box cannot be fired twice by pressing it twice.
+// The handover cannot be fired twice by pressing it twice.
 //
-// The run takes as long as a model takes and then redirects to a page that looks
-// identical, so the only feedback that the press registered has to come from the
-// button.
-func TestAskSaysItIsWorking(t *testing.T) {
+// Making the task is quick, but it redirects to a page that looks identical —
+// so the only feedback that the press registered has to come from the button,
+// and without it the second press makes a second task.
+func TestHandingOverSaysItRegistered(t *testing.T) {
 	r := httptest.NewRequest("GET", "/inbox?id=x", nil)
-	Act = func(string, string, string) error { return nil }
-	defer func() { Act = nil }()
 
 	box := askBox(r, "x", "henrik@example.com")
 	if !strings.Contains(box, "disabled=true") {
-		t.Error("Ask can be pressed again while the first one is still running, " +
-			"which is two runs and two charges for one instruction")
+		t.Error("it can be pressed again, which is two tasks for one instruction")
 	}
-	if !strings.Contains(box, "Working") {
+	if !strings.Contains(box, "Handed over") {
 		t.Error("nothing on the page says the press registered")
 	}
 	// And with a reply available, the caption points at it rather than only

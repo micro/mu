@@ -103,7 +103,26 @@ func requestFrom(data map[string]interface{}) (request, bool) {
 // run does the work and puts the answer where it belongs.
 func run(r request) {
 	var steps []tasks.Step
+
+	// Work that came out of a conversation is framed as acting on one.
+	//
+	// The distinction the framing carries is who the words belong to: the thread
+	// is what arrived, and the instruction is the owner standing over it saying
+	// what to do about it. Without it the specific failure is that the agent
+	// reads "add that to my calendar", takes it for a message from whoever sent
+	// the email, and replies to them about calendars — see agent.InboxPrompt.
+	//
+	// It used to be applied by the inbox, on a control that ran the agent inside
+	// the POST and made you wait for it. That control is gone and the framing is
+	// not: handing a conversation over is the same act, done properly, so it
+	// belongs here where the handing-over is run.
+	system := ""
+	if r.Thread != "" {
+		system = agent.InboxPrompt("")
+	}
+
 	answer, err := agent.QueryWithOpts(r.Account, r.Prompt, agent.QueryOpts{
+		System: system,
 		OnStep: func(s agent.Step) {
 			steps = append(steps, tasks.Step{
 				Tool:    s.Tool,

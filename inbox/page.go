@@ -361,29 +361,35 @@ func conversation(w http.ResponseWriter, r *http.Request, accountID, id string) 
 	thread.MarkSeen(accountID, t.ID)
 
 	var b strings.Builder
-	// Wider than the list, because this page is two columns. See .ib-panels.
-	b.WriteString(`<div class="ib ib-wide">`)
+	// The same width as the list. It was wider to hold a second column, and
+	// there is no second column.
+	b.WriteString(`<div class="ib">`)
 	// Where you came from, and what you can do to this — one bar rather than
 	// three loose things stacked above the conversation. See app.Actions.
 	b.WriteString(app.Actions(app.TextLink("← Inbox", "/inbox"),
 		unreadButton(r, t.ID, wasUnread), deleteButton(r, t.ID)))
 
-	// Two panels: the correspondence, and the agent on it.
+	// One column, and the agent's answers in it.
 	//
-	// One conversation holds both — what arrived, and what you told the agent to
-	// do about it — and they were one column, so a mail thread read with your own
-	// instructions interleaved through it. Side by side, each column is one
-	// exchange. See split.
+	// There were two: the correspondence on the left and a chat with the agent
+	// on the right, with split() pulling the agent's messages out of the thread
+	// to fill the second one. Both are gone.
 	//
-	// The agent is told who a reply would go to, so its caption can point at the
-	// Reply button rather than only saying what it is not.
+	// The argument for the split was that a mail thread read badly with your own
+	// instructions interleaved through it. That was true of the control they
+	// were interleaved by — a box you typed in and waited at, which is a chat,
+	// on the page that exists precisely so you do not have to wait. With the
+	// waiting gone there is nothing to hold apart: you hand the thing over and
+	// the answer arrives later as a message, which is what every other message
+	// on this thread is.
+	//
+	// So the conversation gets the width back, and the agent is told who a reply
+	// would go to so its caption can point at the Reply button rather than only
+	// saying what it is not.
 	msgs := thread.Messages(accountID, t.ID, MessagesShown)
-	conv, aside := split(msgs)
-	b.WriteString(`<div class="ib-panels">`)
-	b.WriteString(`<div class="ib-pane ib-pane-conv">` +
-		conversationPane(accountID, t, conv, len(msgs) >= MessagesShown) + `</div>`)
-	b.WriteString(agentPane(r, accountID, t, aside, replyTo(accountID, t, msgs)))
-	b.WriteString(`</div></div>`)
+	b.WriteString(conversationPane(accountID, t, msgs, len(msgs) >= MessagesShown))
+	b.WriteString(askBox(r, t.ID, replyTo(accountID, t, msgs)))
+	b.WriteString(`</div>`)
 
 	app.Respond(w, r, app.Response{Title: subject, Description: "A conversation", HTML: b.String()})
 }

@@ -295,28 +295,6 @@ func wireHooks() {
 		return out
 	}
 
-	// The agent, on the conversation somebody is reading. The same entry point
-	// every client uses — what is different is that the conversation already
-	// exists and the caller is holding it, which is AskRequest.On, and that the
-	// last message is an instruction about the thread rather than part of it,
-	// which is InboxPrompt.
-	inbox.Act = func(accountID, threadID, ask string) error {
-		th := thread.Get(accountID, threadID)
-		if th == nil {
-			return fmt.Errorf("no conversation with that id")
-		}
-		_, err := agent.Ask(agent.AskRequest{
-			Account: accountID,
-			Client:  th.Client,
-			On:      threadID,
-			Text:    ask,
-			Agent:   th.Agent,
-			System:  agent.InboxPrompt(""),
-			Trigger: "asked in the inbox",
-		})
-		return err
-	}
-
 	// The specialist for a service, on that service's page. Names match by
 	// design — the weather agent is the one that calls the weather tools — so
 	// this is a lookup rather than a table, and a service with no specialist
