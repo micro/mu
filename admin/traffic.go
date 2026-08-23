@@ -2,10 +2,14 @@ package admin
 
 // The operator's answer to "what is this instance doing?".
 //
-// /admin/usage is money out — what Mu spends on third-party APIs. This is the
-// other direction: what people and agents are asking of it, over time and
-// broken down by endpoint, tool, caller and surface. Both are usage; only one
-// of them was here.
+// Two directions of one question, and they were two nav entries. Requests is
+// what people and agents ask of it, over time and broken down by endpoint,
+// tool, caller and surface. Spend is what that costs us in third-party APIs.
+// An operator seeing a spike wants both at once — the traffic that caused it
+// and the bill it is running up — and had to open two pages to get them.
+//
+// One page, two tabs, the same shape as Logs. Requests first because it is the
+// one that is looked at daily.
 //
 // The chart is a server-rendered SVG. A page of bars needs no library, no CDN
 // (the CSP would refuse one anyway) and no client-side fetching, and it is the
@@ -32,10 +36,19 @@ func TrafficHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	win := usage.WindowFor(r.URL.Query().Get("window"))
+	spend := r.URL.Query().Get("tab") == "spend"
 
 	var sb strings.Builder
 	sb.WriteString(usage.CSS)
+	sb.WriteString(trafficTabs(spend))
+	if spend {
+		sb.WriteString(spendCard())
+		app.Respond(w, r, app.Response{Title: "Spend",
+			Description: "What this instance spends on third parties", HTML: sb.String()})
+		return
+	}
+
+	win := usage.WindowFor(r.URL.Query().Get("window"))
 
 	// Headline numbers, so the first thing on the page is the answer to "how
 	// busy is it".
@@ -62,5 +75,26 @@ func TrafficHandler(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`<p class="text-sm text-muted">Counts only — no request is stored. ` +
 		`Minutes are kept for 2 hours, hours for 7 days, days for 90.</p>`)
 
-	app.Respond(w, r, app.Response{Title: "Traffic", Description: "What this instance is being asked to do", HTML: sb.String()})
+	app.Respond(w, r, app.Response{Title: "Usage",
+		Description: "What this instance is being asked to do", HTML: sb.String()})
+}
+
+// trafficTabs is the switch between what came in and what it cost.
+func trafficTabs(spend bool) string {
+	tab := func(href, label string, on bool) string {
+		class := "pill"
+		if on {
+			class = "pill pill-on"
+		}
+		return `<a class="` + class + `" href="` + href + `">` + label + `</a>`
+	}
+	return `<div class="d-flex gap-2 mb-3">` +
+		tab("/admin/traffic", "Requests", !spend) +
+		tab("/admin/traffic?tab=spend", "Spend", spend) +
+		`</div>`
+}
+
+// SpendMoved sends the old address to its tab.
+func SpendMoved(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, "/admin/traffic?tab=spend", http.StatusSeeOther)
 }

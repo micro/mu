@@ -27,7 +27,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// sorted is one nobody has to scan twice.
 	content := `<div class="admin-links">
 		<a href="/admin/alerts">Alerts</a>
-		<a href="/admin/usage">API Spend</a>
 		<a href="/admin/backup">Backup</a>
 		<a href="/admin/config">Configuration</a>
 		<a href="/admin/log">Logs` + alertBadge() + `</a>
@@ -35,7 +34,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		<a href="/admin/moderate">Moderation</a>
 		<a href="/admin/server">Server</a>
 		<a href="/admin/spam">Spam &amp; blocked</a>
-		<a href="/admin/traffic">Traffic</a>
+		<a href="/admin/traffic">Usage</a>
 		<a href="/admin/users">Users <span class="count">` + fmt.Sprintf("%d", len(users)) + `</span></a>
 	</div>`
 

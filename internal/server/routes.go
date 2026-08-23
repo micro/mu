@@ -277,7 +277,7 @@ func registerRoutes() {
 	http.HandleFunc("/admin/server", admin.UpdateHandler)
 
 	// AI usage tracking
-	http.HandleFunc("/admin/usage", admin.AIUsageHandler)
+	http.HandleFunc("/admin/usage", admin.SpendMoved)
 	http.HandleFunc("/admin/traffic", admin.TrafficHandler)
 
 	// admin delete (any content type)
