@@ -39,16 +39,18 @@ import (
 
 // lastSeen is the most recent conversation an agent is on.
 type lastSeen struct {
-	subject string
-	at      time.Time
+	// said is the last thing said on it, not what the conversation is called.
+	// See lastSaid.
+	said string
+	at   time.Time
 }
 
 // previewShown is how many agents Home carries. Enough to see what you have,
 // short of turning the front page into the roster.
 const previewShown = 5
 
-// previewSubject bounds the line of text under a name.
-const previewSubject = 60
+// previewSaid bounds the line of text under a name.
+const previewSaid = 60
 
 // entry is one row: an agent, however it came to exist.
 type entryOf struct {
@@ -113,7 +115,7 @@ func Preview(accountID string) string {
 		if _, have := latest[who]; have {
 			continue
 		}
-		latest[who] = lastSeen{subject: strings.TrimSpace(t.Subject), at: t.Updated}
+		latest[who] = lastSeen{said: lastSaid(accountID, t), at: t.Updated}
 	}
 
 	// Busiest first, which on this page means most recently used — an agent you
@@ -148,12 +150,12 @@ func Preview(accountID string) string {
 		b.WriteString(`<span class="agent-peek-name">` + html.EscapeString(a.Name) + `</span>`)
 
 		if s, ok := latest[a.ID]; ok {
-			what := s.subject
+			what := s.said
 			if what == "" {
 				what = "a conversation"
 			}
 			b.WriteString(`<span class="agent-peek-last">` +
-				html.EscapeString(trimTo(what, previewSubject)) + `</span>`)
+				html.EscapeString(trimTo(what, previewSaid)) + `</span>`)
 			b.WriteString(`<span class="agent-peek-when">` +
 				html.EscapeString(app.TimeAgo(s.at)) + `</span>`)
 		} else {
@@ -165,6 +167,32 @@ func Preview(accountID string) string {
 	}
 	b.WriteString(`</div>`)
 	return b.String()
+}
+
+// lastSaid is the most recent thing said on a conversation.
+//
+// Not the subject. A thread is named by how it *started* — thread.Add derives
+// one from the first message and thread.Name takes a mail Subject once, both
+// deliberately first-one-wins — so this row paired a label describing the
+// opening of a conversation with a timestamp describing its end. Say hello on
+// Monday and ask something real on Friday, and Home reported "Hello, 2 minutes
+// ago".
+//
+// The two halves of the row have to be about the same moment, and the moment
+// the row is about is the last one. This is the same read the inbox row makes
+// for its preview, so the two pages agree about what a conversation is up to.
+//
+// Falls back to the subject for a conversation with nothing in it yet, which is
+// how a thread opened by a client that has not written its first message reads.
+func lastSaid(accountID string, t thread.Thread) string {
+	// Oldest first, and a limit takes the newest N in that order — so one is the
+	// newest. See thread.Messages.
+	if m := thread.Messages(accountID, t.ID, 1); len(m) > 0 {
+		if said := strings.TrimSpace(m[0].Text); said != "" {
+			return said
+		}
+	}
+	return strings.TrimSpace(t.Subject)
 }
 
 // answered says whether an agent has spoken on a conversation.
