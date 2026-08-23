@@ -51,23 +51,29 @@ import (
 // Asked once — the answer does not change while the process runs, and it costs
 // a subprocess.
 func Available() bool {
-	availableOnce.Do(func() {
-		if _, err := exec.LookPath(binary); err != nil {
-			return
-		}
-		ctx, cancel := context.WithTimeout(context.Background(), probeWait)
-		defer cancel()
-		// `info` rather than `version`: version answers from the client alone
-		// and succeeds with no daemon running, which is the exact failure this
-		// is meant to catch.
-		available = exec.CommandContext(ctx, binary, "info", "--format", "{{.ServerVersion}}").Run() == nil
-	})
+	hostOnce.Do(hostFacts)
 	return available
 }
 
+// Reason is why there is no container runtime, for a page to show. Empty when
+// there is one.
+//
+// Because the two ways of not having one need different things done about them
+// and look identical from here. "Install Docker" is the wrong instruction for a
+// machine that has Docker running and a server process that cannot reach its
+// socket — which is the common one, since the socket is root-owned and mode 660
+// and nothing puts a service account in the docker group for you.
+func Reason() string {
+	hostOnce.Do(hostFacts)
+	return unreachable
+}
+
 var (
-	availableOnce sync.Once
-	available     bool
+	hostOnce    sync.Once
+	available   bool
+	unreachable string
+	hostMemory  int64
+	hostCPUs    int
 )
 
 const binary = "docker"
@@ -91,22 +97,88 @@ func HostMemory() int64 {
 	return hostMemory
 }
 
-// hostFacts asks the daemon what the machine has. One call for both, because
-// they are one question and it is a subprocess.
+// hostFacts asks the daemon whether it is there and what the machine has.
+//
+// One probe for both, because "is there a runtime" and "how big is it" are the
+// same question asked of the same subprocess.
+//
+// # Why the exit code is not the answer
+//
+// This checked `docker info`'s exit status and nothing else, on the reasoning
+// that a client with no daemon behind it fails. Some versions of the CLI do
+// exit non-zero; others print the error and exit 0, and the deployed instance
+// had one of those. So the probe passed, every method sailed through the gate,
+// and the first sign of trouble was a raw socket path in an agent's face.
+//
+// The daemon's own version is the fact that cannot be faked by a client on its
+// own: it renders empty unless something answered. Anything that does not put
+// three fields on a line is a failure whatever it exited with, and what it said
+// instead becomes Reason.
 func hostFacts() {
-	if !Available() {
+	if _, err := exec.LookPath(binary); err != nil {
+		unreachable = "there is no docker command on this machine"
 		return
 	}
-	out, err := run(context.Background(), probeWait, "info", "--format", "{{.MemTotal}} {{.NCPU}}")
+	out, err := run(context.Background(), probeWait,
+		"info", "--format", "{{.ServerVersion}}|{{.MemTotal}}|{{.NCPU}}")
+
+	if _, mem, cpus, ok := readFacts(out); ok {
+		hostMemory, hostCPUs, available = mem, cpus, true
+		return
+	}
+	unreachable = whyNot(out, err)
+}
+
+// readFacts pulls the daemon's answer out of a probe's output.
+//
+// Scanned line by line rather than parsed whole, because run combines stdout
+// and stderr: a warning, or the error itself, may share the output with the
+// answer. A line with three fields and a version in the first is the daemon
+// having replied, and nothing else counts however the command exited.
+func readFacts(out string) (version string, memory int64, cpus int, ok bool) {
+	for _, line := range strings.Split(out, "\n") {
+		parts := strings.Split(strings.TrimSpace(line), "|")
+		if len(parts) != 3 || parts[0] == "" {
+			continue
+		}
+		memory, _ = strconv.ParseInt(parts[1], 10, 64)
+		cpus, _ = strconv.Atoi(parts[2])
+		return parts[0], memory, cpus, true
+	}
+	return "", 0, 0, false
+}
+
+// whyNot turns a failed probe into something an admin can act on.
+func whyNot(out string, err error) string {
+	text := strings.ToLower(out)
 	if err != nil {
-		return
+		text += " " + strings.ToLower(err.Error())
 	}
-	parts := strings.Fields(out)
-	if len(parts) != 2 {
-		return
+	switch {
+	case strings.Contains(text, "permission denied"):
+		return "this server cannot reach the container runtime's socket — it is running " +
+			"as a user that is not in the docker group. Adding it and restarting the " +
+			"server is the fix; the group is read once when a process starts, so the " +
+			"restart is not optional"
+	case strings.Contains(text, "cannot connect"), strings.Contains(text, "is the docker daemon running"):
+		return "docker is installed but its daemon is not running"
+	case strings.TrimSpace(out) != "":
+		return "the container runtime did not answer: " + trimLine(out)
 	}
-	hostMemory, _ = strconv.ParseInt(parts[0], 10, 64)
-	hostCPUs, _ = strconv.Atoi(parts[1])
+	return "the container runtime did not answer"
+}
+
+// trimLine is the first useful line of a command's output, bounded.
+func trimLine(out string) string {
+	for _, line := range strings.Split(out, "\n") {
+		if line = strings.TrimSpace(line); line != "" {
+			if len(line) > 200 {
+				line = line[:200] + "…"
+			}
+			return line
+		}
+	}
+	return ""
 }
 
 // HostCPUs is how many cores the daemon has, or 0 if it will not say.
@@ -114,12 +186,6 @@ func HostCPUs() int {
 	hostOnce.Do(hostFacts)
 	return hostCPUs
 }
-
-var (
-	hostOnce   sync.Once
-	hostMemory int64
-	hostCPUs   int
-)
 
 // Limits are what one container may have.
 //
@@ -147,7 +213,7 @@ type Limits struct {
 // somebody's files. It is created on demand by the daemon.
 func Start(ctx context.Context, name, image, volume string, l Limits) error {
 	if !Available() {
-		return fmt.Errorf("this machine has no container runtime")
+		return fmt.Errorf("%s", Reason())
 	}
 	if l.Memory == "" || l.CPUs == "" || l.PIDs <= 0 {
 		return fmt.Errorf("refusing to start %s with no limits set", name)

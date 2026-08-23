@@ -35,8 +35,11 @@ func caller(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("sign in to use a sandbox")
 	}
 	if !Configured() {
-		return "", fmt.Errorf("this instance has no container runtime, so it cannot " +
-			"give you a machine — an admin installs Docker and restarts")
+		// The runtime's own reason, not a guess at it. "Install Docker" is the
+		// wrong instruction for a box that has Docker running and a server that
+		// cannot reach its socket, which is the common case — see
+		// container.Reason.
+		return "", fmt.Errorf("no machine available: %s", container.Reason())
 	}
 	return id, nil
 }

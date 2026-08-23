@@ -19,6 +19,7 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/container"
 	"mu/internal/quota"
 )
 
@@ -31,9 +32,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		`and nothing you run can reach this machine.</p>`)
 
 	if !Configured() {
-		b.WriteString(app.Problem("This instance has no container runtime, so there is " +
-			"nothing to give you. Docker is not built into the binary — it is a separate " +
-			"program with a daemon — so an admin installs one and restarts."))
+		// The reason rather than a guess at it. This said "an admin installs
+		// one and restarts", which is the wrong instruction for the common
+		// failure: Docker installed and running, and this server running as a
+		// user that cannot open its socket.
+		b.WriteString(app.Problem("No machine available — " + container.Reason() + "."))
 		b.WriteString(`</div>`)
 		app.Respond(w, r, app.Response{Title: "Sandbox", Description: Spec.Description, HTML: b.String()})
 		return
