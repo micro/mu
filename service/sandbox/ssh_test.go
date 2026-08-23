@@ -237,3 +237,86 @@ func TestTheHostKeyIsKept(t *testing.T) {
 			"report the server as impersonated on the second connection")
 	}
 }
+
+// The credential belongs to the session, and to nothing else in the box.
+//
+// This is the rule the whole feature rests on. The sandbox is safe today
+// because it holds nothing — no capabilities, tight limits, no secrets — and
+// an agent runs code in there that it fetched off the internet. A token
+// sitting in the container would end that: one `cat` and a `curl` in a script
+// the agent was talked into running, and the account's API access is gone.
+//
+// So it travels in one exec's environment and never in the container's, never
+// on the volume, and never on a command an agent runs.
+func TestTheCredentialNeverOutlivesTheSession(t *testing.T) {
+	src := read(t, "ssh.go") + read(t, "equip.go") + read(t, "box.go")
+
+	// Not baked into the container at start: --env on `docker run` would give
+	// it to everything that ever runs in there.
+	if strings.Contains(src, `"--env"`) {
+		t.Error("something sets an environment variable on the container itself; " +
+			"a credential there is visible to every command an agent ever runs")
+	}
+	// Not written to the volume, which persists and which the agent shares.
+	for _, onDisk := range []string{"MU_TOKEN", ".mu/token"} {
+		if strings.Contains(read(t, "equip.go"), "WriteFile") && strings.Contains(src, onDisk) {
+			t.Errorf("%s looks like it is written to disk — the session's "+
+				"credential must exist only in the exec's environment", onDisk)
+		}
+	}
+	// And it is taken away again.
+	if !strings.Contains(read(t, "ssh.go"), "defer revoke(") {
+		t.Error("the session token is not revoked when the shell exits")
+	}
+	if !strings.Contains(read(t, "ssh.go"), "time.Now().Add(sessionLimit)") {
+		t.Error("the session token has no expiry — revocation is code that has " +
+			"to run, and a process killed mid-session never reaches its defer")
+	}
+}
+
+// The binary goes in every box; the credential does not.
+//
+// Capability by default, credential by authentication. A CLI with no URL and
+// no token cannot reach anything, so mounting it is free and hiding it behind
+// a setting would only mean nobody finds it.
+func TestEveryMachineGetsTheBinaryAndNoSecret(t *testing.T) {
+	mounts := equipment()
+	if len(mounts) != 1 {
+		t.Fatalf("equipment() gave %d mounts, want the binary", len(mounts))
+	}
+	m := mounts[0]
+	if !strings.HasSuffix(m, ":"+muPath+":ro") {
+		t.Errorf("the binary is not mounted read-only at %s: %q", muPath, m)
+	}
+	// Both paths that make a machine equip it, or a shared-pool instance has
+	// no CLI and the difference is invisible until somebody complains.
+	for _, f := range []string{"box.go", "shared.go"} {
+		if !strings.Contains(read(t, f), "equipment()...") {
+			t.Errorf("%s starts a container without equipping it", f)
+		}
+	}
+}
+
+// Without a public address there is no credential, because there is nowhere
+// to spend it.
+func TestNoAddressMeansNoCredential(t *testing.T) {
+	t.Setenv("MU_DOMAIN", "")
+	t.Setenv("PUBLIC_URL", "")
+	t.Setenv("APP_URL", "")
+
+	if env := sessionEnv("a-real-looking-token"); len(env) != 0 {
+		t.Errorf("a token was handed out on an instance with no address: %v", env)
+	}
+	if env := sessionEnv(""); len(env) != 0 {
+		t.Errorf("an empty token produced an environment: %v", env)
+	}
+}
+
+func read(t *testing.T, name string) string {
+	t.Helper()
+	b, err := os.ReadFile(name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
+}

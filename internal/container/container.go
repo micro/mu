@@ -38,6 +38,7 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -211,7 +212,7 @@ type Limits struct {
 // The volume is mounted at /work and outlives the container: an image is
 // replaced, a container is thrown away and rebuilt, and neither should lose
 // somebody's files. It is created on demand by the daemon.
-func Start(ctx context.Context, name, image, volume string, l Limits) error {
+func Start(ctx context.Context, name, image, volume string, l Limits, mounts ...string) error {
 	if !Available() {
 		return fmt.Errorf("%s", Reason())
 	}
@@ -238,7 +239,7 @@ func Start(ctx context.Context, name, image, volume string, l Limits) error {
 	// --rm is deliberately absent. A container that removes itself on exit
 	// takes its own logs with it, and the failure worth debugging here is the
 	// one where it died on its own.
-	_, err := run(ctx, startWait,
+	argv := []string{
 		"run", "--detach",
 		"--name", name,
 		"--memory", l.Memory,
@@ -257,13 +258,25 @@ func Start(ctx context.Context, name, image, volume string, l Limits) error {
 		// what lets somebody apk add a compiler.
 		"--security-opt", "no-new-privileges",
 		"--cap-drop", "ALL",
-		"--volume", volume+":/work",
+		"--volume", volume + ":/work",
 		"--workdir", "/work",
-		image,
+	}
+	// Anything else the caller wants in the box, in docker's own --volume
+	// syntax. Variadic, so every existing call site is unchanged, and a
+	// mechanism rather than a policy: this package has no opinion about what
+	// belongs in a container, only about how one is made.
+	for _, m := range mounts {
+		if strings.TrimSpace(m) != "" {
+			argv = append(argv, "--volume", m)
+		}
+	}
+	argv = append(argv, image,
 		// Something that does not exit. The container is a place to exec into;
 		// its own process is not the work.
 		"sleep", "infinity",
 	)
+
+	_, err := run(ctx, startWait, argv...)
 	return err
 }
 
@@ -322,6 +335,16 @@ type Run struct {
 	// and asking for one merges stderr into stdout at the pty rather than in
 	// the code that knows why.
 	TTY bool
+	// Env is set on this exec and on nothing else.
+	//
+	// The distinction is the whole point and is a security property rather
+	// than a convenience: a variable given to the *container* is visible to
+	// everything that ever runs in it, including code an agent fetched off the
+	// internet and ran. A variable given to one exec belongs to that exec.
+	//
+	// So a credential may travel this way and must never travel the other. See
+	// service/sandbox's SSH session, which is the only caller that sets one.
+	Env map[string]string
 }
 
 // argv is the docker invocation up to the command itself.
@@ -340,6 +363,18 @@ func (r Run) argv() []string {
 	// second place that builds a docker exec is a second place to forget it.
 	if r.TTY {
 		argv = append(argv, "--interactive", "--tty")
+	}
+	// Sorted, so the same Run produces the same command line. A map's order is
+	// random and an argv that shuffles is one no test can assert on.
+	if len(r.Env) > 0 {
+		keys := make([]string, 0, len(r.Env))
+		for k := range r.Env {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			argv = append(argv, "--env", k+"="+r.Env[k])
+		}
 	}
 	return append(argv, r.Name)
 }

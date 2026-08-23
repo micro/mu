@@ -267,10 +267,20 @@ func session(newCh ssh.NewChannel, accountID string) {
 		return
 	}
 
+	// A credential for this session and nothing else.
+	//
+	// Minted here, carried in this exec's environment, revoked below when the
+	// shell exits. Never written into the volume, and never given to an
+	// agent's command in the same box — see equip.go for why that line is the
+	// whole security argument.
+	token, tokenID := sessionToken(accountID)
+	defer revoke(accountID, tokenID)
+
 	sh, err := container.Shell(ctx, container.Run{
 		Name: machineFor(accountID),
 		Dir:  home(accountID),
 		User: runAs(accountID),
+		Env:  sessionEnv(token),
 	}, ch, ch)
 	if err != nil {
 		fmt.Fprintf(ch, "%s\r\n", err)
@@ -341,4 +351,36 @@ func be32(b []byte) uint32 {
 		return 0
 	}
 	return uint32(b[0])<<24 | uint32(b[1])<<16 | uint32(b[2])<<8 | uint32(b[3])
+}
+
+// sessionToken mints a credential that lives as long as this session.
+//
+// Named for what it is, so an account looking at /token sees "ssh session"
+// rather than a mystery — and since it is revoked on disconnect, that list
+// shows the sessions open right now, which is a better answer than a
+// permanent token nobody remembers making.
+//
+// Expiry as well as revocation, because revocation is code that has to run: a
+// process killed mid-session never reaches the defer, and a token with no
+// expiry would then outlive the shell it was made for.
+func sessionToken(accountID string) (raw, id string) {
+	t, secret, err := auth.CreateToken(accountID, "ssh session", nil,
+		time.Now().Add(sessionLimit))
+	if err != nil {
+		// A shell with no credential still works — the CLI is on the path and
+		// says it is not signed in. Better than refusing the session.
+		app.Log("sandbox", "no session token for %s: %v", accountID, err)
+		return "", ""
+	}
+	return secret, t.ID
+}
+
+// revoke takes the session's credential away when the shell exits.
+func revoke(accountID, tokenID string) {
+	if tokenID == "" {
+		return
+	}
+	if err := auth.DeleteToken(tokenID, accountID); err != nil {
+		app.Log("sandbox", "could not revoke the session token for %s: %v", accountID, err)
+	}
 }
