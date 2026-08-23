@@ -13,6 +13,18 @@ var (
 
 // ScanApp checks app HTML for security issues before saving.
 // Returns a list of issues found. Empty = safe.
+//
+// Advisory, and until recently unused: this had a test suite and no caller
+// anywhere in the tree, which is worse than having no scanner, because a
+// scanner nothing runs reads as protection. It is the build loop's first
+// question now — see buildProblems, where what it finds is handed back to the
+// model as something to fix.
+//
+// Still not a gate on create or edit. What stops an app doing damage is the
+// sandbox: an opaque origin with connect-src 'none', so it cannot read a
+// cookie or reach anything. These patterns are the ones worth refusing to
+// *write* rather than merely to contain, and turning them into a refusal on
+// every save would reject working apps for a resemblance.
 func ScanApp(html string) []string {
 	var issues []string
 	lower := strings.ToLower(html)

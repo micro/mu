@@ -34,7 +34,7 @@ func (Server) Build(ctx context.Context, req *BuildRequest, rsp *BuildResponse) 
 	if strings.TrimSpace(account) == "" {
 		return fmt.Errorf("authentication required to build an app")
 	}
-	a, err := BuildMicroApp(req.Prompt, account, AuthorNameFor(account))
+	a, err := BuildApp(req.Prompt, account, AuthorNameFor(account))
 	if err != nil {
 		return err
 	}
