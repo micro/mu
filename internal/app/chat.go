@@ -53,6 +53,20 @@ type ChatConfig struct {
 	// each other's. When empty the component is ephemeral: it neither restores
 	// nor saves, so it always starts clean (used for Home's quick-ask box).
 	StorageNS string
+	// Transcript makes this a conversation rather than a box.
+	//
+	// The difference is where the input is. On Home you arrive at a box and
+	// type into it: the box is the whole point and it belongs at the top. On
+	// /agent you are reading an exchange that already has turns in it, and
+	// every chat ever built puts the input under them — because what you are
+	// looking at is the last thing said, and what you do next is say the next
+	// thing.
+	//
+	// This was one shape for both. The comment in the script called it reading
+	// "top-down", which is a reasonable thing to want and is not what a
+	// conversation is: it left the newest turn at the top, the input above it,
+	// and everything older stretching away below.
+	Transcript bool
 }
 
 // ChatComponent returns the single, shared chat UI used everywhere Mu talks to
@@ -108,16 +122,26 @@ func ChatComponent(cfg ChatConfig) string {
 		suggestJS = []byte("[]")
 	}
 
-	html := `<div id="mu-chat">
-  <form id="mu-chat-form">
+	form := `<form id="mu-chat-form">
     <textarea id="mu-chat-input" placeholder="` + htmlpkg.EscapeString(placeholder) + `" maxlength="1024" rows="1"
       onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();document.getElementById('mu-chat-form').dispatchEvent(new Event('submit'))}"
       oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,140)+'px'"></textarea>
     <button type="submit" aria-label="Send">&#x2192;</button>
-  </form>
-  <div id="mu-chat-opts">` + agentPicker + `</div>
-  <div id="mu-chat-suggest"></div>
-  <div id="mu-chat-conv">` + initialConv + `</div>
+  </form>`
+	opts := `<div id="mu-chat-opts">` + agentPicker + `</div>`
+	suggest := `<div id="mu-chat-suggest"></div>`
+	conv := `<div id="mu-chat-conv">` + initialConv + `</div>`
+
+	// Two orders, one component. See ChatConfig.Transcript.
+	body := form + opts + suggest + conv
+	shell := `<div id="mu-chat">`
+	if cfg.Transcript {
+		body = conv + suggest + form + opts
+		shell = `<div id="mu-chat" class="mu-chat-transcript">`
+	}
+
+	html := shell + `
+  ` + body + `
 </div>
 
 <style>
@@ -136,6 +160,13 @@ func ChatComponent(cfg ChatConfig) string {
 .mu-pills a:hover{background:#f5f5f5}
 #mu-chat-conv{margin-top:24px;font-size:15px;line-height:1.7;text-align:left}
 #mu-chat-conv:empty{margin-top:0}
+/* A conversation, not a box. The input sticks to the bottom of the viewport
+   with the turns above it, which is what every chat does and what the top
+   sticky was not. */
+.mu-chat-transcript #mu-chat-form{position:sticky;top:auto;bottom:8px;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+.mu-chat-transcript #mu-chat-conv{margin-top:0;margin-bottom:16px}
+.mu-chat-transcript #mu-chat-opts{margin:6px 0 0}
+.mu-chat-transcript #mu-chat-suggest{margin:0 0 16px}
 .mu-user{margin:0 0 12px;padding:10px 14px;background:#f5f5f5;border-radius:8px;font-size:14px;color:#333;scroll-margin-top:64px}
 .mu-agent{margin-bottom:24px;scroll-margin-top:64px}
 .mu-think{color:#888;font-size:14px}
@@ -181,6 +212,23 @@ var HIDE_SUGGEST=` + boolJS(cfg.HideSuggestions) + `;
 var form=document.getElementById('mu-chat-form');
 var input=document.getElementById('mu-chat-input');
 var conv=document.getElementById('mu-chat-conv');
+// A transcript keeps its input at the bottom and its newest turn above it.
+// See ChatConfig.Transcript.
+var transcript=!!document.querySelector('#mu-chat.mu-chat-transcript');
+// nearBottom is the difference between "following the answer" and "reading
+// something further up". Scrolling to the bottom in the second case is the
+// thing that makes a chat unusable while a long answer streams.
+function nearBottom(){
+  return (window.innerHeight+window.scrollY)>=(document.body.scrollHeight-nearEnough);
+}
+var nearEnough=120;
+function toBottom(force,smooth){
+  if(!transcript) return;
+  if(!force && !nearBottom()) return;
+  requestAnimationFrame(function(){
+    window.scrollTo({top:document.body.scrollHeight,behavior:smooth?'smooth':'auto'});
+  });
+}
 var sugDiv=document.getElementById('mu-chat-suggest');
 if(!form)return;
 var NS=` + JSString(cfg.StorageNS) + `;
@@ -258,9 +306,17 @@ function ask(q){
   startWork('Processing');
 
   save();
-  // Anchor the new exchange just under the sticky input so it reads top-down;
-  // don't chase the bottom as the answer streams in.
-  u.scrollIntoView({behavior:'smooth',block:'start'});
+  // Where to look after asking.
+  //
+  // In a transcript the newest turn is at the bottom, so that is where the eye
+  // goes — and it keeps going there while the answer streams, but only while
+  // the reader has not scrolled away. Chasing the bottom when somebody has
+  // deliberately scrolled up to read something is the behaviour every chat gets
+  // wrong once.
+  //
+  // In a box the exchange is anchored under the input instead, which is what
+  // Home wants: you typed at the top and the answer appears under it.
+  if(transcript){ toBottom(true,true); } else { u.scrollIntoView({behavior:'smooth',block:'start'}); }
   var streamText='';
   var streaming=false;
   var body=JSON.stringify({prompt:q,history:history.slice(-6),context_id:contextId||'',agent:(window.muActiveAgent||''),cards:true});
@@ -321,11 +377,15 @@ function ask(q){
               }
               var el=document.getElementById('mu-stream-out');
               if(el)el.textContent=protectCurrencyDollars(streamText);
+              // Follow the answer down, unless the reader has scrolled away to
+              // look at something else.
+              toBottom(false);
             }else if(ev.type==='response'){
               stopWork();
               a.innerHTML=ev.html;
               history.push({prompt:q,answer:streamText});
               save();
+              toBottom(false);
             }else if(ev.type==='error'){
               stopWork();
               a.innerHTML='<div class="mu-err">'+esc(ev.message)+'</div>';
@@ -429,6 +489,10 @@ window.muChatNew=function(){
     .catch(function(){ var l=document.getElementById('mu-chat-agent'); if(l) l.remove(); });
 })();
 window.muChatAsk=ask;
+// A reopened conversation opens at its end, which is where the reading is.
+// Instant rather than smooth: this is the position the page should have loaded
+// in, not a movement to watch.
+toBottom(true);
 })();
 </script>`
 

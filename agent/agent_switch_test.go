@@ -41,7 +41,7 @@ func TestPickingAnAgentNavigatesRatherThanRelabelling(t *testing.T) {
 func TestARailForOneAgentIsEmptyUntilThatAgentHasBeenUsed(t *testing.T) {
 	acc := owner(t, "rail-reader")
 
-	rail := renderSessionsRail(acc, "", "agent-with-no-history")
+	rail := renderSessionsRail(acc, "", "agent-with-no-history", true)
 	if !strings.Contains(rail, "Nothing here yet. Ask this agent something.") {
 		t.Errorf("a fresh agent's inbox does not read as empty:\n%s", rail)
 	}
@@ -56,7 +56,7 @@ func TestARailForOneAgentIsEmptyUntilThatAgentHasBeenUsed(t *testing.T) {
 
 	// The account-wide rail is a different sentence, because it means
 	// something different: nothing has been asked at all.
-	if all := renderSessionsRail(acc, "", ""); !strings.Contains(all, "Nothing here yet. Ask something") {
+	if all := renderSessionsRail(acc, "", "", false); !strings.Contains(all, "Nothing here yet. Ask something") {
 		t.Errorf("the unfiltered inbox lost its empty state:\n%s", all)
 	}
 }

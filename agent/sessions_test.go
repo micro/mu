@@ -35,7 +35,7 @@ func TestTheRailIsWhatYouStartedNotWhatArrived(t *testing.T) {
 	Said(acc, byMail, "What's happening", "", "someone@example.com")
 	Answered(acc, byMail, "Not much.", "")
 
-	rail := chatThreads(acc, "")
+	rail := chatThreads(acc, "", false)
 	if len(rail) != 1 {
 		t.Fatalf("the rail lists %d conversations, want only the one started here: %+v", len(rail), rail)
 	}
@@ -69,13 +69,13 @@ func TestDeletingAConversationTakesTheWholeThing(t *testing.T) {
 	Said(acc, id, "friday", "", "")
 	Answered(acc, id, "done", "flow-2")
 
-	if n := len(chatThreads(acc, "")); n != 1 {
+	if n := len(chatThreads(acc, "", false)); n != 1 {
 		t.Fatalf("two turns made %d conversations, want 1", n)
 	}
 
 	thread.Delete(acc, id)
 
-	if n := len(chatThreads(acc, "")); n != 0 {
+	if n := len(chatThreads(acc, "", false)); n != 0 {
 		t.Errorf("%d conversations left in the rail after deleting the only one", n)
 	}
 	if got := thread.Messages(acc, id, 0); len(got) != 0 {
@@ -94,7 +94,7 @@ func TestOldConversationsAreAdoptedIntoTheRecord(t *testing.T) {
 	if first == "" || second == "" {
 		t.Fatal("nothing recorded")
 	}
-	if n := len(chatThreads(acc, "")); n != 0 {
+	if n := len(chatThreads(acc, "", false)); n != 0 {
 		t.Fatalf("a workflow chain is already in the record (%d) — this test proves nothing", n)
 	}
 
@@ -111,7 +111,7 @@ func TestOldConversationsAreAdoptedIntoTheRecord(t *testing.T) {
 	if msgs[0].Text != "book me a table" || msgs[3].Text != "done" {
 		t.Errorf("the conversation was adopted out of order: %+v", msgs)
 	}
-	if n := len(chatThreads(acc, "")); n != 1 {
+	if n := len(chatThreads(acc, "", false)); n != 1 {
 		t.Errorf("the rail lists %d conversations after adoption, want 1", n)
 	}
 	// Twice is once: opening it again must not duplicate it.
@@ -177,5 +177,53 @@ func TestAConversationRemembersWhichAgentItIsWith(t *testing.T) {
 	}
 	if th := thread.Get(acc, other); th == nil || th.Agent != "agent-42" {
 		t.Error("a conversation continued with a different agent still names the old one")
+	}
+}
+
+// A page about one agent shows that agent's conversations — including Micro's.
+//
+// The filter was `agentID != ""`, and the default agent's id *is* the empty
+// string. So /agent/micro, which is one agent's page, filtered nothing and
+// listed every conversation on the account: opening a chat with Micro showed
+// somebody else's history first, and clicking it switched the agent, because a
+// reopened conversation carries its own.
+//
+// Same shape as the scope fail-open in filterServices. Empty meant both "no
+// restriction" and "the default", and those are different statements.
+func TestOneAgentsPageShowsOneAgentsConversations(t *testing.T) {
+	const acc = "rail-scoped"
+
+	mine := Opened(acc, thread.WebClient, "rail-micro", "", "")
+	theirs := Opened(acc, thread.WebClient, "rail-foobar", "", "foobar")
+	if mine == "" || theirs == "" {
+		t.Fatal("no conversations")
+	}
+
+	// Micro's page: Micro's conversations, and not Foobar's.
+	onMicro := chatThreads(acc, "", true)
+	for _, got := range onMicro {
+		if got.Agent != "" {
+			t.Errorf("Micro's page lists a conversation with %q", got.Agent)
+		}
+	}
+	if len(onMicro) == 0 {
+		t.Error("Micro's page lists none of its own conversations")
+	}
+
+	// Foobar's page: Foobar's.
+	onFoobar := chatThreads(acc, "foobar", true)
+	for _, got := range onFoobar {
+		if got.Agent != "foobar" {
+			t.Errorf("Foobar's page lists a conversation with %q", got.Agent)
+		}
+	}
+	if len(onFoobar) == 0 {
+		t.Error("Foobar's page lists none of its own conversations")
+	}
+
+	// And a bare /agent, which is about no agent in particular, lists them all.
+	// "No restriction" is still a thing somebody can mean.
+	if all := chatThreads(acc, "", false); len(all) < 2 {
+		t.Errorf("a page about no agent lists %d conversations, want all of them", len(all))
 	}
 }

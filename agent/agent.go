@@ -565,7 +565,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 		selAgent = reopenAgent
 	} else if selAgent != "" && prefill == "" {
 		// Land in the last conversation with this agent, if there is one.
-		if last := latestThreadFor(accountID, selAgent); last != "" {
+		if last := latestThreadFor(accountID, selAgent, named); last != "" {
 			cfg.ContextID = last
 			cfg.InitialConvHTML = renderThreadTurns(accountID, last)
 			activeRoot = last
@@ -594,7 +594,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 		}
 		rail = `<div class="chat-side">` + agents +
 			`<div class="chat-pane" id="pane-chats">` +
-			renderSessionsRail(accountID, activeRoot, selAgent) + `</div></div>`
+			renderSessionsRail(accountID, activeRoot, selAgent, named) + `</div></div>`
 	}
 
 	chip := ""
@@ -649,6 +649,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	// records behind them, and the strip changed shape as you moved between
 	// agents. This is the page; Connect is the link in the bar above, which was
 	// already there and says what it does.
+	cfg.Transcript = true
 	main := app.ChatComponent(cfg)
 	if elsewhere != "" {
 		main = elsewhere
@@ -731,8 +732,8 @@ func renderThreadTurns(accountID, threadID string) string {
 }
 
 // latestThreadFor is the most recent conversation with an agent on this page.
-func latestThreadFor(accountID, agentID string) string {
-	for _, t := range chatThreads(accountID, agentID) { // newest first
+func latestThreadFor(accountID, agentID string, named bool) string {
+	for _, t := range chatThreads(accountID, agentID, named) { // newest first
 		return t.ID
 	}
 	return ""
@@ -760,16 +761,24 @@ const railShown = 40
 // /inbox, where you deal with what came in. What is here is the chat: the
 // conversations you opened on this instance's own screens, were present for,
 // and watched the answer to.
-func chatThreads(accountID, agentID string) []thread.Thread {
+func chatThreads(accountID, agentID string, named bool) []thread.Thread {
 	var out []thread.Thread
 	for _, t := range thread.List(accountID, 0) {
 		if thread.Arrived(t) {
 			continue
 		}
-		// One agent's conversations, when a page is about one agent. The rail
-		// listed every conversation regardless, so a brand-new agent opened
-		// showing somebody else's history and looked like it had been used.
-		if agentID != "" && t.Agent != agentID {
+		// One agent's conversations, when the page is about one agent.
+		//
+		// The filter used to be `agentID != ""`, and the default agent's id *is*
+		// the empty string — so on /agent/micro, which is one agent's page, it
+		// filtered nothing and listed every conversation on the account. Opening
+		// a chat with Micro showed Foobar's history first, and clicking it
+		// switched the agent, because a reopened conversation carries its own.
+		//
+		// Same shape as the scope bug in filterServices: empty meant both "no
+		// restriction" and "the default", and the two are different statements.
+		// named is which one this is — the path said an agent, whoever it is.
+		if named && t.Agent != agentID {
 			continue
 		}
 		out = append(out, t)
@@ -808,8 +817,8 @@ func inboxAddress(accountID, agentID string) string {
 // calling it one is not a rename for its own sake. The rail was a list of chats
 // on a page, and what it actually holds is every conversation this account has
 // had with an agent, on any client, most of which did not start here.
-func renderSessionsRail(accountID, currentID, agentID string) string {
-	sessions := chatThreads(accountID, agentID)
+func renderSessionsRail(accountID, currentID, agentID string, named bool) string {
+	sessions := chatThreads(accountID, agentID, named)
 	// A new chat with the agent whose rail this is. It used to rewrite the URL
 	// to a bare /agent, which dropped the agent out of the address bar while
 	// the page went on talking to it — so a reload landed you on the default
