@@ -264,7 +264,7 @@ func developerBand(base string) string {
 <h2 class="dev-head">Tools for Agents</h2>
 <p class="dev-lead">Already have an agent? Point it at one endpoint for ` +
 		tools() + ` tools.</p>
-<p class="dev-endpoint"><span class="dev-bot">🤖</span><span class="dev-arrow">→</span><code>` +
+<p class="dev-endpoint"><span class="dev-mark">⚒</span><span class="dev-arrow">→</span><code>` +
 		endpoint + `</code></p>
 <ul class="dev-facts">
   <li>MCP, or plain HTTP for anything that cannot speak it.</li>
@@ -300,9 +300,11 @@ func developerBand(base string) string {
 .dev-endpoint{display:flex;align-items:center;justify-content:center;gap:10px;
   background:#f6f6f6;border-radius:6px;padding:10px 14px;margin:0 auto 14px;
   width:fit-content;max-width:100%;overflow-x:auto}
-/* Sized off the line rather than set: the emoji is the subject of the pair and
-   a 13px robot beside 13px text reads as punctuation. */
-.dev-bot{font-size:18px;line-height:1}
+/* Sized off the line rather than set: the mark is the subject of the pair and
+   a 13px glyph beside 13px text reads as punctuation. U+2692 has no colour
+   presentation in most fonts, which is wanted here — it takes the text colour
+   and reads as an icon rather than as a sticker dropped into the sentence. */
+.dev-mark{font-size:18px;line-height:1}
 .dev-arrow{color:#999;flex:none}
 .dev-endpoint code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
   font-size:13px;color:#333;white-space:nowrap}
