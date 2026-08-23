@@ -19,7 +19,6 @@ import (
 	"mu/internal/auth"
 	"mu/internal/data"
 	"mu/internal/event"
-	"mu/internal/flag"
 )
 
 //go:embed *.json
@@ -1059,8 +1058,13 @@ func Load() {
 	// Generate head with topics (rooms will be added dynamically)
 	head = app.Head("chat", topics)
 
-	// Register LLM analyzer for content moderation
-	flag.SetAnalyzer(&llmAnalyzer{})
+	// No moderation analyzer registered here any more.
+	//
+	// This service used to fill in internal/flag's `analyzer` variable, which
+	// meant content moderation for the whole instance — social, blog, apps —
+	// depended on the chat service loading, and was silently off if it did
+	// not. Nothing about chat made it the right place; it was where somebody
+	// had an LLM call handy. See agent/moderate.
 
 	// Load existing summaries from disk
 	if b, err := data.LoadFile("chat_summaries.json"); err == nil {
@@ -1547,18 +1551,6 @@ func guestChatAuthNotice() string {
   <p>This room keeps conversation history for your account, so sending here needs a login. You can still try Mu without an account in the public agent.</p>
   <p><a class="link" href="/agent">Try Mu without an account</a> · <a class="link" href="/login?redirect=/chat">Log in</a> · <a class="link" href="/signup?redirect=/chat">Sign up</a></p>
 </div>`
-}
-
-// llmAnalyzer implements the flag.LLMAnalyzer interface
-type llmAnalyzer struct{}
-
-func (a *llmAnalyzer) Analyze(promptText, question string) (string, error) {
-	prompt := &ai.Prompt{
-		System:   promptText,
-		Question: question,
-		Model:    ai.BackgroundModel(),
-	}
-	return askLLM(prompt)
 }
 
 // cleanupIdleRooms periodically removes idle chat rooms to prevent memory leaks

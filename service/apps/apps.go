@@ -830,7 +830,7 @@ func handleCreate(w http.ResponseWriter, r *http.Request) {
 	// before being sent to the classifier. Auto-bans on detection.
 	go func(authorID, appSlug, appName, appDesc, appHTML string) {
 		// Moderate name + description.
-		flag.CheckContent("app", appSlug, appName, appDesc)
+		event.Published("app", appSlug, appName, appDesc)
 		if item := flag.Item("app", appSlug); item != nil && item.Flagged {
 			app.Log("moderation", "Auto-banning %s after app %q name/desc flagged", authorID, appName)
 			auth.BanAccount(authorID)
@@ -839,7 +839,7 @@ func handleCreate(w http.ResponseWriter, r *http.Request) {
 		// Moderate the HTML body — extract readable text + URLs.
 		body := extractAppText(appHTML)
 		if body != "" {
-			flag.CheckContent("app_content", appSlug, appName, body)
+			event.Published("app_content", appSlug, appName, body)
 			if item := flag.Item("app_content", appSlug); item != nil && item.Flagged {
 				app.Log("moderation", "Auto-banning %s after app %q content flagged", authorID, appName)
 				auth.BanAccount(authorID)

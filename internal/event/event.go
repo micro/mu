@@ -10,6 +10,7 @@ package event
 
 import (
 	"encoding/json"
+	"strings"
 	"sync"
 
 	"go-micro.dev/v6/broker"
@@ -109,7 +110,45 @@ const (
 	//
 	// Data: account, name, first ("true" when it is the instance's first).
 	EventAccountCreated = "account_created"
+
+	// EventContentPublished is something somebody wrote that is now visible: a
+	// post, a reply, an app description, an answer the agent gave in public.
+	//
+	// A fact, and deliberately not a request to moderate it. Whether it should
+	// be hidden is a judgement made by a model, and a service asking for that
+	// judgement is a service asking the model what its own answer should be —
+	// the rule agent/work exists to honour and the one this replaces a
+	// violation of. service/social, service/blog and service/apps each called
+	// a classifier through a function variable filled in at boot by, of all
+	// things, service/chat: an import the compiler could not see, from three
+	// services to a fourth, and moderation for the whole instance silently off
+	// if that fourth one ever failed to load.
+	//
+	// Now they say what happened and stop. agent/moderate subscribes.
+	//
+	// Data: kind (the content type — "post", "social", "app"), id, title, text.
+	EventContentPublished = "content_published"
 )
+
+// Published says something somebody wrote is now visible, for whoever is
+// listening.
+//
+// kind and id name it the way internal/flag names it, because whatever acts on
+// this has to be able to point back at the thing — "social" and a thread id,
+// "post" and a post id. title may be empty; text is what was written.
+//
+// Nothing here knows what moderation is, which is the point.
+func Published(kind, id, title, text string) {
+	if kind == "" || id == "" || strings.TrimSpace(text) == "" {
+		return
+	}
+	Publish(Event{Type: EventContentPublished, Data: map[string]interface{}{
+		"kind":  kind,
+		"id":    id,
+		"title": title,
+		"text":  text,
+	}})
+}
 
 // Announce records one thing that happened, for whoever is listening.
 //

@@ -341,7 +341,7 @@ func handleCreateThread(w http.ResponseWriter, r *http.Request) {
 	addMessage(p)
 
 	// Async content moderation
-	go flag.CheckContent("social", threadID, "", content)
+	event.Published("social", threadID, "", content)
 
 	app.Log("social", "New thread by %s (%s)", acc.Name, acc.ID)
 
@@ -400,7 +400,7 @@ func handleJSONRequest(w http.ResponseWriter, r *http.Request) {
 
 	addMessage(p)
 
-	go flag.CheckContent("social", threadID, "", content)
+	event.Published("social", threadID, "", content)
 
 	app.RespondJSON(w, map[string]interface{}{"success": true, "id": threadID})
 }
@@ -579,7 +579,7 @@ func handleCreateReply(w http.ResponseWriter, r *http.Request) {
 
 	addMessage(reply)
 
-	go flag.CheckContent("social", replyID, "", content)
+	event.Published("social", replyID, "", content)
 
 	app.Log("social", "Message by %s in thread %s", acc.Name, parentID)
 

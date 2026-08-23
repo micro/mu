@@ -15,7 +15,6 @@ import (
 type PostContent = flag.PostContent
 type FlaggedItem = flag.FlaggedItem
 type ContentDeleter = flag.ContentDeleter
-type LLMAnalyzer = flag.LLMAnalyzer
 
 // Import blog to get new account blog posts - will be set by blog package to avoid circular import
 var GetNewAccountBlog func() []PostContent
@@ -23,12 +22,16 @@ var GetNewAccountBlog func() []PostContent
 // RefreshBlogCache is set by blog package to refresh cache after account approval
 var RefreshBlogCache func()
 
-// Delegated functions — building blocks should import internal/moderation directly.
+// Delegated functions — building blocks should import internal/flag directly.
 // These exist only so admin's own handlers can call them.
+//
+// SetAnalyzer and CheckContent are gone with the analyzer: deciding that a
+// paragraph is spam is a judgement and lives in agent/moderate now, while this
+// package and internal/flag keep the record. The comment above said
+// "internal/moderation", which no package has ever been called — a re-export
+// list is exactly where a name goes stale unnoticed.
 var (
 	RegisterDeleter = flag.RegisterDeleter
-	SetAnalyzer     = flag.SetAnalyzer
-	CheckContent    = flag.CheckContent
 	IsHidden        = flag.IsHidden
 	AdminFlag       = flag.AdminFlag
 )

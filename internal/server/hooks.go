@@ -24,6 +24,7 @@ import (
 	"mu/agent/digest"
 	mailagent "mu/agent/mail"
 	"mu/agent/micro"
+	"mu/agent/moderate"
 	agentsocial "mu/agent/social"
 	"mu/agent/work"
 	help "mu/docs"
@@ -173,6 +174,12 @@ func wireHooks() {
 	// hand work to an agent and it answers where you asked, and the way to make
 	// that claim is to do it before anything else does. See agent/mail/welcome.go.
 	mailagent.Welcome()
+
+	// And whether what people publish should stay up. A judgement, so it is an
+	// agent — it was a function variable inside internal/flag that service/chat
+	// filled in, which put content moderation for the whole instance behind an
+	// unrelated service loading. See agent/moderate.
+	moderate.Load()
 
 	// Telling the operator when something is worth knowing. After the mail
 	// agent, because it delivers to an inbox here. See admin/alert.go.
