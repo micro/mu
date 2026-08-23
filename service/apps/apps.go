@@ -581,9 +581,6 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 		// official apps leaves no heading either.
 		var saidOurs, saidTheirs bool
 		for _, a := range list {
-			if userID != "" && (app.IsBlocked(userID, a.AuthorID) || app.IsDismissed(userID, "app", a.Slug)) {
-				continue
-			}
 			if a.Official && !saidOurs {
 				saidOurs = true
 				sb.WriteString(`<h2 class="app-section">Built in</h2>`)

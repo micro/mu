@@ -452,7 +452,6 @@ func wireHooks() {
 		func(id string) { account.DeleteCredits(id) },
 		func(id string) { wallet.DeleteBaseWallet(id) },
 		func(id string) { micro.DeleteUserAgents(id) },
-		func(id string) { user.Delete(id) },
 		// The devices they told us to notify. A subscription outliving the
 		// account is a stranger's phone still receiving somebody's mail.
 		push.Forget,

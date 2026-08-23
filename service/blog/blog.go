@@ -674,16 +674,13 @@ func visibleTo(viewer string, items []listItem) []listItem {
 	if viewer == "" || len(items) == 0 {
 		return items
 	}
+	// Nothing per-reader is filtered out here any more. Hide and Block author
+	// are gone — they are the controls of a feed, and a blog anybody may read
+	// is not one. What is still filtered is what an operator hid and who they
+	// banned, above, which is a fact about the instance rather than about the
+	// person looking.
 	kept := make([]listItem, 0, len(items))
-	for _, it := range items {
-		if app.IsDismissed(viewer, "post", it.ID) {
-			continue
-		}
-		if it.AuthorID != "" && app.IsBlocked(viewer, it.AuthorID) {
-			continue
-		}
-		kept = append(kept, it)
-	}
+	kept = append(kept, items...)
 	return kept
 }
 
@@ -732,21 +729,11 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 		isAdmin := acc != nil && acc.Admin
 
 		// Filter out flagged posts and private posts (unless admin)
-		viewer := ""
-		if acc != nil {
-			viewer = acc.ID
-		}
 		var visiblePosts []*Post
 		for _, post := range posts {
 			if !flag.IsHidden("post", post.ID) || auth.IsBanned(post.AuthorID) {
 				// Skip private posts for non-admins
 				if post.Private && !isAdmin {
-					continue
-				}
-				// And what this caller has hidden or blocked, the same as the
-				// HTML list: one answer, two encodings.
-				if viewer != "" && (app.IsDismissed(viewer, "post", post.ID) ||
-					(post.AuthorID != "" && app.IsBlocked(viewer, post.AuthorID))) {
 					continue
 				}
 				visiblePosts = append(visiblePosts, post)

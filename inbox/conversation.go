@@ -66,7 +66,7 @@ const MessagesShown = 100
 // agent panel beside it there to put the agent's turns in.
 func ConversationView(accountID string, t *thread.Thread) string {
 	msgs := thread.Messages(accountID, t.ID, MessagesShown)
-	return conversationPane(accountID, t, msgs, len(msgs) >= MessagesShown)
+	return conversationPane(accountID, t, msgs, len(msgs) >= MessagesShown, true)
 }
 
 // conversationPane is the correspondence: a heading, who is on it, and the
@@ -76,7 +76,15 @@ func ConversationView(accountID string, t *thread.Thread) string {
 // subset. There, the agent's turns and the owner's instructions to it are the
 // panel on the right and this column is what actually passed between people —
 // see aside.
-func conversationPane(accountID string, t *thread.Thread, msgs []thread.Message, trimmed bool) string {
+// titled says whether the pane draws the subject itself.
+//
+// It always did, and on its own page that is the subject twice: app.Respond
+// renders the page's Title as the heading, and /inbox?id= passes the subject as
+// the Title — so the conversation opened with its name, then the Inbox and
+// Delete bar, then its name again. Embedded in somebody else's page it is the
+// other way round: the heading is that page's, and without this the pane is a
+// conversation with nothing saying which.
+func conversationPane(accountID string, t *thread.Thread, msgs []thread.Message, trimmed, titled bool) string {
 	subject := t.Subject
 	if subject == "" {
 		subject = "Untitled"
@@ -86,7 +94,9 @@ func conversationPane(accountID string, t *thread.Thread, msgs []thread.Message,
 	b.WriteString(`<div class="ib-conv"><div class="ib-head"><span class="pill">` +
 		html.EscapeString(app.ClientName(t.Client)) + `</span><span class="ib-started">started ` +
 		html.EscapeString(app.TimeAgo(t.Started)) + `</span></div>`)
-	b.WriteString(`<h2 class="ib-title">` + html.EscapeString(subject) + `</h2>`)
+	if titled {
+		b.WriteString(`<h2 class="ib-title">` + html.EscapeString(subject) + `</h2>`)
+	}
 	b.WriteString(partyLine(accountID, t))
 	if trimmed {
 		b.WriteString(`<p class="ib-trimmed">Showing the most recent ` +

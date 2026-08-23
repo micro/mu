@@ -471,21 +471,6 @@ func handleGetFeed(w http.ResponseWriter, r *http.Request) {
 		visible = append(visible, p)
 	}
 
-	// And what this viewer has hidden or blocked, before the page is cut rather
-	// than after — otherwise a page of twenty-five shows however many of them
-	// survive, and the count on the pager is a number about somebody else's
-	// feed. This was inside the rendering loop, which is why it had to be.
-	if _, acc := auth.TrySession(r); acc != nil {
-		var kept []*Message
-		for _, p := range visible {
-			if app.IsBlocked(acc.ID, p.AuthorID) || app.IsDismissed(acc.ID, "social", p.ID) {
-				continue
-			}
-			kept = append(kept, p)
-		}
-		visible = kept
-	}
-
 	pager := app.Paginate(r, len(visible), feedPerPage)
 
 	if app.WantsJSON(r) {

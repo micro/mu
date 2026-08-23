@@ -24,26 +24,23 @@ func ItemControls(userID string, isAdmin bool, contentType, contentID, authorID,
 
 	var actions []Action
 
-	// What anybody signed in can do with somebody else's item.
+	// Reporting it, and nothing else somebody can do to another person's item.
 	//
-	// These existed as tools and as a page listing what you had saved, hidden
-	// and blocked, and nothing in the interface ever wrote any of it — so the
-	// lists were empty by construction and /user was a room with nothing in it.
-	// The menu is where the item is, which is the only place a decision about
-	// an item gets made.
-	actions = append(actions,
-		Action{Label: "Save", URL: "/user/save?type=" + contentType + "&id=" + contentID},
-		Action{Label: "Hide", URL: "/user/hide?type=" + contentType + "&id=" + contentID})
+	// Save, Hide and Block author were here, with a page at /user listing what
+	// you had chosen. They are gone, and the reason is what they are for: those
+	// three are the controls of a feed — somewhere strangers' content is put in
+	// front of you by default and you need a way to push it back. Mu has no
+	// feed. Its surfaces are your inbox, your agents and your tools, so nothing
+	// arrives unasked and there is nothing to hide from. They were not
+	// underused; they were unmotivated.
+	//
+	// Report survives because it is not one of those three. It is not about
+	// what you see — it is telling an operator that something here should not
+	// be, which stays true on an instance with a blog and public threads on it.
 	if !isOwner {
 		actions = append(actions,
-			Action{Label: "Report", URL: "/user/flag?type=" + contentType + "&id=" + contentID,
+			Action{Label: "Report", URL: "/report?type=" + contentType + "&id=" + contentID,
 				Confirm: "Report this for a moderator to look at?"})
-		if authorID != "" {
-			actions = append(actions, Action{Label: "Block author",
-				URL:     "/user/block?user=" + authorID,
-				Confirm: "Block this account? You will stop seeing everything they post.",
-				Class:   "text-error"})
-		}
 	}
 
 	// And what only its owner, or an operator, can.

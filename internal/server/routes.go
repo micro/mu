@@ -128,8 +128,7 @@ func authRequired() map[string]bool {
 		"/mail":              true,  // Require auth for inbox
 		"/logout":            true,
 		"/account":           true,
-		"/user":              true, // Your own saved, hidden and blocked
-		"/user/":             true,
+		"/report":            true,  // Telling an operator about somebody else's item
 		"/verify":            false, // Public — token in URL is the credential
 		"/token":             true,  // PAT token management
 		"/passkey":           false, // Passkey login/register (auth checked in handler)
@@ -566,7 +565,6 @@ func registerRoutes() {
 	// serve work (task bounties)
 
 	// content controls (flag, save, dismiss, block, share)
-	http.HandleFunc("/app/", app.ControlsHandler)
 
 	// auth
 	http.HandleFunc("/login", account.Login)
@@ -574,8 +572,7 @@ func registerRoutes() {
 	http.HandleFunc("/signup", account.Signup)
 	http.HandleFunc("/request-invite", account.RequestInvite)
 	http.HandleFunc("/invite", account.InviteHandler)
-	http.HandleFunc("/user", user.Handler)
-	http.HandleFunc("/user/", user.UndoHandler)
+	http.HandleFunc("/report", app.ReportHandler)
 	http.HandleFunc("/account", account.Account)
 	http.HandleFunc("/verify", account.Verify)
 	http.HandleFunc("/session", account.Session)
