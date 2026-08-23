@@ -309,7 +309,7 @@ async function createToken(e) {
 	// part of the chrome that depends on knowing who is signed in — the nav,
 	// the account menu, the balance — went missing on a page you can only
 	// reach by being signed in. Same bug /account had.
-	app.Respond(w, r, app.Response{Title: "API Credentials", Description: "Manage API credentials", HTML: sb.String()})
+	app.Respond(w, r, app.Response{Title: "Tokens", Description: "Tokens for calling this instance", HTML: sb.String()})
 }
 
 func handleListTokensJSON(w http.ResponseWriter, r *http.Request, accountID string) {

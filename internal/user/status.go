@@ -140,12 +140,26 @@ func statusBlock(accountID string, own bool, csrf string) string {
 // that cannot carry it.
 //
 // Their address, not their agent's. See the package comment.
+//
+// # It does not say what the address is
+//
+// This printed it — `<code class="pf-addr">asim@micro.mu</code>` beside the
+// button, and the button's own href carried it as a query parameter. /@somebody
+// is a public page, so that published every account's mailbox to anybody who
+// opened it, and to anything crawling. Nobody asked for that: the address is
+// how the product works, not something a person chose to advertise.
+//
+// The link names the person instead — /inbox/new?to=@username — and the address
+// is resolved on the way out, inside the send, where the sender never sees it.
+// A stranger cannot turn the page into a mailing list, and writing still takes
+// one click.
 func writeLink(accountID string) string {
-	addr := addressOf(accountID)
-	if addr == "" {
+	// Mail has to be able to leave here at all. addressOf answers that by
+	// producing the address, which is not shown — asking the question is the
+	// whole use of the answer.
+	if addressOf(accountID) == "" {
 		return ""
 	}
 	return `<p class="pf-write"><a class="lcta lcta-second" href="/inbox/new?to=` +
-		html.EscapeString(url.QueryEscape(addr)) + `">Write</a>` +
-		`<code class="pf-addr">` + html.EscapeString(addr) + `</code></p>`
+		html.EscapeString(url.QueryEscape("@"+accountID)) + `">Write</a></p>`
 }

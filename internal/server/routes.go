@@ -250,13 +250,13 @@ func registerRoutes() {
 	http.HandleFunc("/admin/moderate", admin.ModerateHandler)
 
 	// mail blocklist management
-	http.HandleFunc("/admin/blocklist", admin.BlocklistHandler)
+	http.HandleFunc("/admin/blocklist", admin.BlocklistMoved)
 
 	// spam filter management
-	http.HandleFunc("/admin/spam", admin.SpamFilterHandler)
+	http.HandleFunc("/admin/spam", admin.SpamHandler)
 
 	// email log
-	http.HandleFunc("/admin/email", admin.EmailLogHandler)
+	http.HandleFunc("/admin/email", admin.MailLogMoved)
 
 	// external API call log
 

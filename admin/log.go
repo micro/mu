@@ -2,15 +2,19 @@ package admin
 
 // What this instance has been saying, in one place.
 //
-// There were two pages and they were the same page: /admin/log printed the
+// There were three pages and they were the same page: /admin/log printed the
 // lines this process wrote, /admin/api printed the calls it made to somebody
-// else, and the only way to correlate "the news service logged an error" with
-// "the feed returned 502" was to open both in two tabs and compare
-// timestamps. Two nav entries for one question — what happened just now — and
-// the answer split across them.
+// else, /admin/email printed what the mail server did — and the only way to
+// correlate "the news service logged an error" with "the feed returned 502",
+// or "the alert was raised" with "the relay failed", was to open them in three
+// tabs and compare timestamps. Three nav entries for one question — what
+// happened just now — and the answer split across them.
 //
-// So: one page, two tabs. Alerts stay above both, because an alert is a thing
-// to look at whichever log you came for.
+// So: one page, three tabs. Alerts stay above all of them, because an alert is
+// a thing to look at whichever log you came for.
+//
+// The mail *rules* did not come here. What may be sent and who is refused is a
+// setting rather than an event, and it is on /admin/spam with the filter.
 
 import (
 	"fmt"
@@ -30,7 +34,8 @@ func LogHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	api := r.URL.Query().Get("tab") == "api"
+	tab := r.URL.Query().Get("tab")
+	api, mailTab := tab == "api", tab == "mail"
 
 	// JSON is the system log only. Nothing asks for the API calls that way, and
 	// a shape that changes with a query parameter is not an API.
@@ -41,33 +46,49 @@ func LogHandler(w http.ResponseWriter, r *http.Request) {
 
 	var content strings.Builder
 	content.WriteString(alertsCard())
-	content.WriteString(logTabs(api))
-	if api {
+	content.WriteString(logTabs(tab))
+	switch {
+	case api:
 		content.WriteString(apiLogCard())
-	} else {
+	case mailTab:
+		content.WriteString(mailLogCard())
+	default:
 		content.WriteString(sysLogCard())
 	}
 	content.WriteString(`<p><a href="/admin">← Back to Admin</a></p>`)
 
 	title := "System Log"
-	if api {
+	switch {
+	case api:
 		title = "API Log"
+	case mailTab:
+		title = "Mail Log"
 	}
 	app.Respond(w, r, app.Response{Title: title, Description: "Logs", HTML: content.String()})
 }
 
-// logTabs is the switch between the two.
-func logTabs(api bool) string {
-	tab := func(href, label string, on bool) string {
+// MailLogMoved sends the old mail-log address to its tab.
+func MailLogMoved(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, "/admin/log?tab=mail", http.StatusSeeOther)
+}
+
+// logTabs is the switch between the three.
+func logTabs(on string) string {
+	tab := func(slug, label string) string {
 		class := "pill"
-		if on {
+		if on == slug {
 			class = "pill pill-on"
+		}
+		href := "/admin/log"
+		if slug != "" {
+			href += "?tab=" + slug
 		}
 		return `<a class="` + class + `" href="` + href + `">` + label + `</a>`
 	}
 	return `<div class="d-flex gap-2 mb-3">` +
-		tab("/admin/log", "System", !api) +
-		tab("/admin/log?tab=api", "External calls", api) +
+		tab("", "System") +
+		tab("api", "External calls") +
+		tab("mail", "Mail") +
 		`</div>`
 }
 

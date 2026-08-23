@@ -6048,7 +6048,6 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
 /* The way to say something, and the address it goes to beside it — the address
    is the interface, so it is shown rather than hidden behind the button. */
 .pf-write { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 16px 0 0 }
-.pf-addr { font-size: 13px; color: var(--text-muted, #888) }
 
 /* One tool, at an address of its own. See internal/api/tool_page.go. */
 .tool-page { max-width: 760px }

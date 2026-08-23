@@ -1003,7 +1003,7 @@ func VerifyBanner(r *http.Request) string {
 	action, href := "Verify →", "/account"
 	if auth.VerificationRequired == nil || !auth.VerificationRequired() {
 		// No mail on this instance, so verifying is not on offer: credit is.
-		action, href = "Add credit →", "/billing/topup"
+		action, href = "Top up →", "/billing/topup"
 	}
 	// The places named in the sentence are links, because they read as ones.
 	//
@@ -1174,7 +1174,7 @@ func navBottom(acc *auth.Account) string {
             <div class="nav-me-menu">
               <a id="nav-account" href="/account"><img src="/account.png?` + Version + `"><span class="label">Account</span></a>
               <a id="nav-profile" href="/@` + username + `"><img src="/account.png?` + Version + `"><span class="label">Profile</span></a>
-              <a id="nav-billing" href="/billing"><img src="/credits.svg?` + Version + `"><span class="label">Billing</span></a>
+              <a id="nav-billing" href="/billing"><img src="/billing.svg?` + Version + `"><span class="label">Billing</span></a>
               <a id="nav-token" href="/token"><img src="/token.svg?` + Version + `"><span class="label">Tokens</span></a>
               ` + navAdmin(acc) + `
               <a id="nav-logout" href="/logout"><img src="/logout.png?` + Version + `"><span class="label">Log out</span></a>

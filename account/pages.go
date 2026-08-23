@@ -747,8 +747,12 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	// reasoning was right and the conclusion was wrong: the answer to "this
 	// matters more than the rest of the page" is its own page, not the top of
 	// this one. /billing is that page and Billing is in the menu beside Account.
-	// What is left here is one line saying what you have, so the number is still
-	// a glance away from the page named after your account.
+	//
+	// Not even a line pointing at it. There was one for a few minutes, on the
+	// reasoning that somebody would look for money here first — and Billing is
+	// in the same menu this page is reached from, one item below it. A section
+	// whose only content is a link to its neighbour is the thing being removed
+	// everywhere else on this page.
 	//
 	// Notifications last, because it is a thing you do rather than a thing you
 	// read, and on a phone it is what makes the product work with the page
@@ -756,7 +760,6 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	// Log out, so the control sat under the link that ends the session, where a
 	// page has plainly finished.
 	content := notice + profile +
-		billingLink(acc.ID) +
 		PlaceCard(r, acc.ID) +
 		emailCard +
 		googleCard +

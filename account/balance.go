@@ -89,7 +89,7 @@ func BalanceCard(userID string) string {
 		app.Note(money(c.Balance)+" · 1 credit = 1p"),
 		free,
 		admin,
-		`<p class="balance-links"><a href="/billing/topup">Add credits &rarr;</a> · `+
+		`<p class="balance-links"><a href="/billing/topup">Top up &rarr;</a> · `+
 			`<a href="/billing/transfer">Transfer &rarr;</a></p>`)
 }
 
@@ -210,20 +210,6 @@ func abs(n int) int {
 		return -n
 	}
 	return n
-}
-
-// billingLink is the balance on /account, as a line rather than a card.
-//
-// Not nothing, and not the card either. Somebody who opens the page named
-// after their account and finds no mention of money at all will look for it
-// under Language before they look in the menu; one line with the number on it
-// answers the glance and points at the page that answers the rest.
-func billingLink(userID string) string {
-	c := CreditsOf(userID)
-	return app.Section("Billing",
-		`<p><strong>`+thousands(c.Balance)+`</strong> credits · `+money(c.Balance)+
-			` &nbsp; <a href="/billing">Billing &rarr;</a></p>`,
-		app.Note("Top up, transfer, and what you have been charged for."))
 }
 
 // Billing is the money page: what you have, what you have spent it on, and the
