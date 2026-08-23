@@ -400,6 +400,22 @@ function fetchW(la,lo){
 		// the screen.
 		b.WriteString(`</div>`)
 
+		// The apps you pinned, first, because they are the only block on this
+		// screen you chose.
+		//
+		// Everything else here is derived — what arrived, who you have working,
+		// what the instance knows — and this is somebody having gone to /apps and
+		// said "keep that one where I can reach it". It was below Agents and
+		// above Services with no heading and no argument for the slot, which is
+		// how it read as a stray row of links between two sections rather than as
+		// one. Its own stylesheet still described it as "a quick-launch strip at
+		// the top of home", which is where it started and where it belongs.
+		//
+		// Labelled like the rest. Every other block on this page is a rule and a
+		// word; the one that was not looked unfinished, which is the same note
+		// the inbox peek already carries.
+		b.WriteString(pinned(viewerAcc))
+
 		// What arrived, under a heading that looks like one.
 		//
 		// Both halves of this screen are labelled the same way and each label
@@ -439,20 +455,6 @@ function fetchW(la,lo){
 	if viewerID != "" {
 		if who := agent.Preview(viewerID); who != "" {
 			b.WriteString(sectionRule("Agents") + who)
-		}
-	}
-
-	if viewerAcc != nil && len(viewerAcc.Widgets) > 0 {
-		var tiles string
-		for _, slug := range viewerAcc.Widgets {
-			a := apps.GetApp(slug)
-			if a == nil {
-				continue
-			}
-			tiles += fmt.Sprintf(`<a class="home-app" href="/apps/%s">%s</a>`, htmlEsc(a.Slug), htmlEsc(a.Name))
-		}
-		if tiles != "" {
-			b.WriteString(fmt.Sprintf(`<div id="home-apps">%s</div>`, tiles))
 		}
 	}
 
@@ -565,6 +567,30 @@ func htmlEsc(s string) string { return html.EscapeString(s) }
 // know — and it carried two words in small caps to tell them apart. That reads
 // as a caption on the thing below it rather than as a break between two things,
 // which is why the sections did not look like sections.
+// pinned is the quick-launch strip: the apps this account keeps to hand.
+//
+// Nothing at all when none are pinned, rather than a heading over an empty
+// row — a section that says only that you have not used a feature is an advert
+// with a rule over it.
+func pinned(acc *auth.Account) string {
+	if acc == nil || len(acc.Widgets) == 0 {
+		return ""
+	}
+	var tiles string
+	for _, slug := range acc.Widgets {
+		a := apps.GetApp(slug)
+		if a == nil {
+			continue
+		}
+		tiles += fmt.Sprintf(`<a class="home-app" href="/apps/%s">%s</a>`,
+			htmlEsc(a.Slug), htmlEsc(a.Name))
+	}
+	if tiles == "" {
+		return ""
+	}
+	return sectionRule("Apps") + fmt.Sprintf(`<div id="home-apps">%s</div>`, tiles)
+}
+
 func sectionRule(label string) string {
 	return `<p class="home-section"><small>` + htmlEsc(label) + `</small></p>`
 }
