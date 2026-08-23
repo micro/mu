@@ -217,7 +217,9 @@ are in [Install](docs/INSTALL.md#reading-your-mail-in-a-mail-client);
 Self-hosting needs `MAIL_DOMAIN`, an MX record and inbound SMTP. See
 [Install](docs/INSTALL.md).
 
-## Agent (bring your own model)
+## Agent
+
+Agents are baked into the app but you can also use them in the CLI standalone. 
 
 `mu agent` is the binary as a *client* of an instance, not a caller of one you
 are signed into. It holds your model key and a private key, reads the tool
@@ -261,9 +263,9 @@ it ends, not totted up from what the agent believes it authorised.
 `--server` points it at any x402 instance; a name from `X402_SERVERS` works too.
 `--seed` uses a different key.
 
-## Credits & Payments
+## Payments
 
-A person tops up by card and spends one credit balance. A credit is 1p.
+If you enable payments a person tops up by card and spends out of a credit balance. A credit is 1p. The integration uses stripe.
 
 A credit is charged when a call costs this instance money: a model call, or a
 third party billed per request. Everything else is 0 — the agent itself, your
@@ -292,7 +294,7 @@ To watch it work, `mu` is its own client too. Put a funded Base wallet's key in
 mu x402 call web_search query="x402"   # 402 → signs → pays → returns the result
 ```
 
-Self-host with neither Stripe nor x402 and nothing is metered: every tool is
+Self-host with neither Stripe nor x402 and nothing is metered: everything is
 free.
 
 ## Configuration
