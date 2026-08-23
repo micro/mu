@@ -58,6 +58,9 @@ func formatForecastText(wf *WeatherForecast, now time.Time) string {
 			rain = fmt.Sprintf(", rain %.0fmm", d.RainMM)
 		}
 		fmt.Fprintf(&sb, "Today: %s: %.0f–%.0f°C, %s%s.\n", d.Date.Format("Monday, 2 January 2006 (2006-01-02)"), d.MinTempC, d.MaxTempC, d.Description, rain)
+		if line := lightToday(d, now); line != "" {
+			sb.WriteString(line + "\n")
+		}
 	} else if len(wf.DailyItems) > 0 {
 		fmt.Fprintf(&sb, "Today: forecast unavailable for the request date %s.\n", now.Format("Monday, 2 January 2006 (2006-01-02)"))
 	}
@@ -110,4 +113,40 @@ func dailyItemForDate(items []DailyItem, date time.Time) (DailyItem, bool) {
 func validCoordinates(lat, lon float64) bool {
 	return lat == lat && lon == lon &&
 		lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180
+}
+
+// lightToday is when the sun rises and sets, and how much of it is left.
+//
+// The remaining-light part is the point. For anything outdoors it is the fact
+// that decides the afternoon — "18°C and cloudy" does not tell you whether to
+// set off and "the light goes in forty minutes" does — and it is arithmetic
+// over a field the provider was already returning and this was parsing past.
+//
+// Nothing at all where the sun does neither, which is a real place for part of
+// the year rather than an error, and nothing after dark: "0 minutes of daylight
+// left" at ten at night is a true sentence nobody needs.
+func lightToday(d DailyItem, now time.Time) string {
+	if d.Sunrise.IsZero() && d.Sunset.IsZero() {
+		return ""
+	}
+	var parts []string
+	if !d.Sunrise.IsZero() {
+		parts = append(parts, "sunrise "+d.Sunrise.Format("15:04")+" UTC")
+	}
+	if !d.Sunset.IsZero() {
+		parts = append(parts, "sunset "+d.Sunset.Format("15:04")+" UTC")
+	}
+	line := "Light: " + strings.Join(parts, ", ")
+
+	if !d.Sunset.IsZero() && now.Before(d.Sunset) && (d.Sunrise.IsZero() || now.After(d.Sunrise)) {
+		left := d.Sunset.Sub(now).Round(time.Minute)
+		switch {
+		case left >= time.Hour:
+			line += fmt.Sprintf(" — %.0fh %.0fm of daylight left", left.Hours(),
+				left.Minutes()-float64(int(left.Hours()))*60)
+		default:
+			line += fmt.Sprintf(" — %.0f minutes of daylight left", left.Minutes())
+		}
+	}
+	return line + "."
 }

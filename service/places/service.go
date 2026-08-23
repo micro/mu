@@ -246,7 +246,15 @@ func renderPlaces(label string, places []*Place, withDistance bool) string {
 		if withDistance && p.Distance > 0 {
 			fmt.Fprintf(&b, " (%s away)", formatDistance(p.Distance))
 		}
+		// Open first, because it is the answer and the rest is reference. A
+		// caller deciding whether to walk somewhere reads this and stops.
 		var extra []string
+		if p.Open != "" {
+			extra = append(extra, "open now")
+			if p.Open != "open" {
+				extra[len(extra)-1] = "closed now"
+			}
+		}
 		if p.OpeningHours != "" {
 			extra = append(extra, p.OpeningHours)
 		}
@@ -282,7 +290,12 @@ var Spec = service.Spec{
 		"Address":   {Doc: "Name the place at a latitude and longitude — the reverse of places_geocode. Use it whenever you have coordinates and need to say where that is"},
 		"Elevation": {Doc: "How high a place is above sea level, in metres and feet. Sampled from a 90-metre global elevation model, so a summit reads a little under its surveyed height"},
 		"Geocode":   {Doc: "Resolve a place name or address to coordinates"},
-		"Nearby":    {Doc: "List points of interest near a location", Cost: quota.OpPlacesNearby},
-		"Search":    {Doc: "Find places by name or category, optionally near a location", Cost: quota.OpPlacesSearch},
+		"Nearby": {Doc: "List points of interest near a location. Each one says whether it is " +
+			"open right now where that is known, so \"is anything open near me\" is one call",
+			Cost: quota.OpPlacesNearby},
+		"Search": {Doc: "Find places by name or category, optionally near a location. Each one says " +
+			"whether it is open right now where that is known, rather than raw opening-hours text " +
+			"to interpret",
+			Cost: quota.OpPlacesSearch},
 	},
 }

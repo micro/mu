@@ -71,6 +71,15 @@ type DailyItem struct {
 	Description string
 	RainMM      float64
 	WillRain    bool
+	// Sunrise and Sunset, which Google returns on every day of the forecast and
+	// this was parsing past.
+	//
+	// For anything outdoors it is the fact that decides the afternoon. "18°C
+	// and cloudy" does not tell you whether to set off; "the light goes in
+	// forty minutes" does, and it is the same request either way — the field is
+	// already in the response.
+	Sunrise time.Time
+	Sunset  time.Time
 }
 
 // PollenForecast holds pollen data for a location.
@@ -273,6 +282,15 @@ func fetchWeather(lat, lon float64) (*WeatherForecast, error) {
 		}
 
 		item := DailyItem{Date: t}
+		// Sunrise and sunset come as RFC 3339 and are absent above the Arctic
+		// circle in the right season, where the sun does neither. A zero time
+		// means exactly that and readers check for it.
+		if when, err := time.Parse(time.RFC3339, day.SunriseTime); err == nil {
+			item.Sunrise = when.UTC()
+		}
+		if when, err := time.Parse(time.RFC3339, day.SunsetTime); err == nil {
+			item.Sunset = when.UTC()
+		}
 		if day.MaxTemperature != nil {
 			item.MaxTempC = toCelsius(day.MaxTemperature.Degrees, day.MaxTemperature.Unit)
 		}

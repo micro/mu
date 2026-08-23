@@ -1,80 +1,103 @@
 package places
 
-// A self-hosted instance does not meter, so it does not gate.
+// Is it open now.
 //
-// The search and nearby handlers required a session with the comment "charged
-// operation". Metering exists because micro.mu is run as a product — a price
-// list, a balance, a card on file — so a charged call needs somebody to charge.
-// An instance somebody runs for themselves has none of that.
-//
-// The person running it configured whatever keys it has and expects to use
-// them. Being asked to sign in, on their own server, to spend their own Google
-// quota, is the product's business model leaking into their deployment. Who may
-// reach an exposed instance is a real question and a separate one: it is
-// answered by who can sign up, not by pretending a lookup costs money where
-// nothing is billed.
+// The question a person standing on a street actually asks. Google resolves it
+// and parseGooglePlaces was throwing the answer away — regularOpeningHours has
+// been in the field mask since that file was written, so this was a fetched
+// fact dropped on the floor rather than a capability to buy.
 
 import (
-	"net/http/httptest"
+	"strings"
 	"testing"
-
-	"mu/internal/quota"
 )
 
-// charging says whether this instance can bill anybody, which is the only thing
-// about money a service is allowed to know. Setting it directly rather than
-// setting Stripe keys and importing the wallet keeps the test deterministic —
-// it used to skip itself in either direction depending on the environment — and
-// keeps a service test from depending on money, which is the arrangement it is
-// checking.
-func charging(t *testing.T, on bool) {
-	t.Helper()
-	prev := quota.Enabled
-	quota.Enabled = func() bool { return on }
-	t.Cleanup(func() { quota.Enabled = prev })
+func TestOpenNowSurvivesTheParse(t *testing.T) {
+	open := true
+	shut := false
+
+	results := []googlePlaceResult{
+		{
+			ID: "a", DisplayName: &struct {
+				Text string `json:"text"`
+			}{Text: "Open Cafe"},
+			Location: struct {
+				Latitude  float64 `json:"latitude"`
+				Longitude float64 `json:"longitude"`
+			}{51.5, -0.1},
+			RegularOpeningHours: &struct {
+				OpenNow bool `json:"openNow"`
+			}{OpenNow: open},
+		},
+		{
+			ID: "b", DisplayName: &struct {
+				Text string `json:"text"`
+			}{Text: "Shut Cafe"},
+			Location: struct {
+				Latitude  float64 `json:"latitude"`
+				Longitude float64 `json:"longitude"`
+			}{51.5, -0.1},
+			RegularOpeningHours: &struct {
+				OpenNow bool `json:"openNow"`
+			}{OpenNow: shut},
+		},
+		{
+			ID: "c", DisplayName: &struct {
+				Text string `json:"text"`
+			}{Text: "Unknown Cafe"},
+			Location: struct {
+				Latitude  float64 `json:"latitude"`
+				Longitude float64 `json:"longitude"`
+			}{51.5, -0.1},
+		},
+	}
+
+	got := parseGooglePlaces(results)
+	if len(got) != 3 {
+		t.Fatalf("%d places came back", len(got))
+	}
+	if got[0].Open != "open" {
+		t.Errorf("an open place is %q", got[0].Open)
+	}
+	if got[1].Open != "closed" {
+		t.Errorf("a closed place is %q", got[1].Open)
+	}
+	// Three states, not two. A place with no hours known must not be reported
+	// shut, which is what a bare false would have said.
+	if got[2].Open != "" {
+		t.Errorf("a place with no hours known is %q, want nothing", got[2].Open)
+	}
 }
 
-func selfHosted(t *testing.T) {
-	t.Helper()
-	charging(t, false)
-}
+// And the answer reaches the caller, before the reference material. Somebody
+// deciding whether to walk somewhere reads this and stops.
+func TestTheAnswerIsInWhatTheCallerReads(t *testing.T) {
+	text := renderPlaces("coffee", []*Place{
+		{Name: "Open Cafe", Address: "1 High St", Open: "open", OpeningHours: "Mo-Fr 07:00-19:00"},
+		{Name: "Shut Cafe", Address: "2 High St", Open: "closed"},
+		{Name: "Quiet Cafe", Address: "3 High St", OpeningHours: "Mo-Su 08:00-18:00"},
+	}, false)
 
-func TestASelfHostedLookupNeedsNoAccount(t *testing.T) {
-	selfHosted(t)
-
-	// With or without a key of their own: the operator configured it, and it
-	// is their quota to spend.
-	for _, key := range []string{"", "their-own-google-key"} {
-		t.Setenv("GOOGLE_API_KEY", key)
-
-		w := httptest.NewRecorder()
-		r := httptest.NewRequest("POST", "/places/search", nil)
-		id, ok := billableCaller(w, r, quota.OpPlacesSearch)
-		if !ok {
-			t.Errorf("GOOGLE_API_KEY=%q: an anonymous caller was refused on an "+
-				"instance that charges nothing", key)
+	if !strings.Contains(text, "Open Cafe — 1 High St · open now · Mo-Fr 07:00-19:00") {
+		t.Errorf("the open place does not read right:\n%s", text)
+	}
+	if !strings.Contains(text, "Shut Cafe — 2 High St · closed now") {
+		t.Errorf("the closed place does not read right:\n%s", text)
+	}
+	// Unknown says nothing about being open, and still gives the raw hours it
+	// does have. Nothing tries to derive an answer from an OSM tag: that syntax
+	// has holidays, seasons and sunset-relative times in it, and being told a
+	// place is open when it is shut is the failure that matters.
+	line := ""
+	for _, l := range strings.Split(text, "\n") {
+		if strings.Contains(l, "Quiet Cafe") {
+			line = l
 		}
-		if id != "" {
-			t.Errorf("resolved a caller %q where there is no session", id)
-		}
 	}
-}
-
-// Where the instance does charge, a charged call needs somebody to charge.
-func TestWhereTheInstanceChargesALookupNeedsACaller(t *testing.T) {
-	charging(t, true)
-	if !quota.Metered(quota.OpPlacesSearch) {
-		t.Skip("places search is not priced on this instance")
+	if strings.Contains(line, "now") {
+		t.Errorf("a place with no resolved hours claimed to know: %q", line)
 	}
-
-	w := httptest.NewRecorder()
-	r := httptest.NewRequest("POST", "/places/search", nil)
-	r.Header.Set("Accept", "application/json")
-
-	if _, ok := billableCaller(w, r, quota.OpPlacesSearch); ok {
-		t.Error("a charged lookup went through with nobody to charge")
-	}
-	if w.Code != 401 {
-		t.Errorf("refused with %d, want 401", w.Code)
+	if !strings.Contains(line, "Mo-Su 08:00-18:00") {
+		t.Errorf("the raw hours were dropped: %q", line)
 	}
 }

@@ -180,7 +180,10 @@ var Spec = service.Spec{
 	Icon:        "weather.svg",
 	Card:        service.Personal(CardHTML),
 	Endpoints: map[string]service.Endpoint{
-		"Forecast": {Doc: "Get the weather forecast for a location — current conditions and the days ahead", Cost: quota.OpWeatherForecast},
+		"Forecast": {Doc: "Get the weather forecast for a location — current conditions, the days " +
+			"ahead, and today's sunrise, sunset and how much daylight is left, which is the fact " +
+			"that decides an afternoon outdoors",
+			Cost: quota.OpWeatherForecast},
 		"Air": {Doc: "Air quality at a location right now — AQI, PM2.5, PM10, ozone, nitrogen dioxide, " +
 			"UV index, and pollen where it is counted"},
 		"Marine": {Doc: "Sea state at a coastal or offshore point — wave height, period and direction now " +

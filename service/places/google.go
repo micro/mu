@@ -167,6 +167,17 @@ func parseGooglePlaces(results []googlePlaceResult) []*Place {
 		}
 		category = strings.ReplaceAll(category, "_", " ")
 
+		// Whether it is open, which Google has already worked out and this was
+		// dropping on the floor — regularOpeningHours has been in the field
+		// mask since this file was written. See Place.Open.
+		open := ""
+		if r.RegularOpeningHours != nil {
+			open = "closed"
+			if r.RegularOpeningHours.OpenNow {
+				open = "open"
+			}
+		}
+
 		places = append(places, &Place{
 			ID:       "gpl:" + r.ID,
 			Name:     r.DisplayName.Text,
@@ -176,6 +187,7 @@ func parseGooglePlaces(results []googlePlaceResult) []*Place {
 			Lon:      lon,
 			Phone:    r.NationalPhoneNumber,
 			Website:  r.WebsiteUri,
+			Open:     open,
 		})
 	}
 	return places

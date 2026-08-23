@@ -58,7 +58,26 @@ type Place struct {
 	Phone        string  `json:"phone,omitempty"`
 	Website      string  `json:"website,omitempty"`
 	OpeningHours string  `json:"opening_hours,omitempty"`
-	Cuisine      string  `json:"cuisine,omitempty"`
+	// Open is whether it is open right now: "open", "closed", or empty when
+	// nobody knows.
+	//
+	// The question a person standing on a street actually asks, answered rather
+	// than described. OpeningHours above is a raw OpenStreetMap tag —
+	// "Mo-Fr 09:00-17:00; Sa 10:00-16:00; PH off" — and handing that to a
+	// caller is handing them a specification to implement. Google resolves it
+	// and we were already asking for the answer and throwing it away: the field
+	// mask has requested regularOpeningHours since this was written.
+	//
+	// Three states, not two, because "we do not know" is the common one and a
+	// bare false would say the shop is shut.
+	//
+	// Nothing derives this from the OSM tag. That syntax has public holidays,
+	// seasons, sunset-relative times and exceptions, and a parser that is right
+	// most of the time is worse here than no parser: being told a place is open
+	// when it is not is the failure that matters, and it is the one a partial
+	// implementation produces.
+	Open    string `json:"open,omitempty"`
+	Cuisine string `json:"cuisine,omitempty"`
 }
 
 // nominatimResult represents a result from the Nominatim API
