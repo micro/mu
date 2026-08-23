@@ -12,6 +12,7 @@ import (
 	"crypto/rand"
 	"net"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -274,26 +275,59 @@ func TestTheCredentialNeverOutlivesTheSession(t *testing.T) {
 	}
 }
 
-// The binary goes in every box; the credential does not.
+// The binary goes in every box that can run it; the credential never does.
 //
-// Capability by default, credential by authentication. A CLI with no URL and
-// no token cannot reach anything, so mounting it is free and hiding it behind
-// a setting would only mean nobody finds it.
+// Capability by default, credential by authentication. Asserted as a rule
+// rather than an outcome, because whether this test binary is statically
+// linked depends on how it was compiled — `go test` produces a dynamic one on
+// an ordinary Linux host, and the live tests are run from a CGO_ENABLED=0
+// build precisely so the mounted path is exercised.
 func TestEveryMachineGetsTheBinaryAndNoSecret(t *testing.T) {
+	self, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
 	mounts := equipment()
-	if len(mounts) != 1 {
-		t.Fatalf("equipment() gave %d mounts, want the binary", len(mounts))
+
+	// The rule: equipped exactly when the binary would run in the box.
+	if want := static(self); (len(mounts) > 0) != want {
+		t.Errorf("equipment() gave %d mounts and static(%s) is %v — a binary "+
+			"that cannot run in the box must not be mounted, and one that can "+
+			"must be", len(mounts), self, want)
 	}
-	m := mounts[0]
-	if !strings.HasSuffix(m, ":"+muPath+":ro") {
-		t.Errorf("the binary is not mounted read-only at %s: %q", muPath, m)
+
+	// And when it is mounted, it is mounted read-only in the right place. A
+	// writable CLI in a shared container is one account editing everybody's.
+	if len(mounts) > 0 {
+		if !strings.HasSuffix(mounts[0], ":"+muPath+":ro") {
+			t.Errorf("the binary is not mounted read-only at %s: %q", muPath, mounts[0])
+		}
 	}
+
 	// Both paths that make a machine equip it, or a shared-pool instance has
 	// no CLI and the difference is invisible until somebody complains.
 	for _, f := range []string{"box.go", "shared.go"} {
 		if !strings.Contains(read(t, f), "equipment()...") {
 			t.Errorf("%s starts a container without equipping it", f)
 		}
+	}
+}
+
+// static says no to things that are not a Linux executable at all.
+//
+// The interesting case — a dynamically linked ELF — is what this whole check
+// exists for and cannot be synthesised here without shipping a fixture. What
+// can be checked is that the function is not simply optimistic.
+func TestNothingButAnELFIsMountable(t *testing.T) {
+	notELF := filepath.Join(t.TempDir(), "script")
+	if err := os.WriteFile(notELF, []byte("#!/bin/sh\necho hello\n"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if static(notELF) {
+		t.Error("a shell script was judged mountable into a container")
+	}
+	if static(filepath.Join(t.TempDir(), "nothing-here")) {
+		t.Error("a file that does not exist was judged mountable")
 	}
 }
 
