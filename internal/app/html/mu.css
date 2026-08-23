@@ -5884,6 +5884,28 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
 .embed-warn, .embed-no { font-size: 12px; color: var(--text-muted, #888); margin: 8px 0 0; line-height: 1.5 }
 .embed-warn code { font-size: 12px }
 
+/* How things are, between the box and the inbox. See home/brief.go.
+
+   A sentence, not a section: no rule, no small-caps label, and no border. The
+   two blocks either side of it are labelled because they are lists; this is one
+   line, and a heading over one line is furniture. */
+.home-brief {
+  margin: var(--spacing-md, 16px) 0 var(--spacing-lg, 24px);
+  font-size: 15px;
+  line-height: var(--line-height, 1.6);
+  color: var(--text-secondary, #555);
+}
+
+/* The counts are the part somebody scans for, so they carry the weight the
+   sentence around them does not. They are links, and a.btn-free link colour
+   already applies; this is only about not having them read as body text. */
+.home-brief a {
+  font-weight: var(--font-weight-medium, 500);
+  color: var(--text-primary, #1a1a1a);
+}
+
+.home-brief a:hover { text-decoration: underline }
+
 /* One tool, at an address of its own. See internal/api/tool_page.go. */
 .tool-page { max-width: 760px }
 .tool-name { font-size: 24px; margin: 0 0 6px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace }

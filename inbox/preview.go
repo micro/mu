@@ -124,3 +124,24 @@ func trimTo(s string, n int) string {
 	}
 	return cut + "…"
 }
+
+// Waiting is what has arrived and not been read: how many, and who the newest
+// is from.
+//
+// Exported because Home says it in a sentence and this package is what knows
+// what "arrived" means — see arrivals. A second definition on the front page
+// would drift from this one, and the two would disagree about a number sitting
+// six inches apart on the same screen.
+func Waiting(accountID string) (unread int, newest string) {
+	for _, t := range arrivals(accountID) {
+		if !thread.Unread(t) {
+			continue
+		}
+		if unread == 0 {
+			// arrivals is newest first, so the first unread one is the newest.
+			newest, _ = party(accountID, t)
+		}
+		unread++
+	}
+	return unread, newest
+}

@@ -399,6 +399,17 @@ function fetchW(la,lo){
 		// the screen.
 		b.WriteString(`</div>`)
 
+		// How things are, before you look anywhere.
+		//
+		// Between the box and the inbox on purpose: somebody arrives with one
+		// question — is there anything I need to know — and answering it used
+		// to mean three pages. Unlabelled and un-ruled, because it is a
+		// sentence rather than a section, and a heading over one line is
+		// furniture. See brief.go, including why it does not call a model.
+		if viewerID != "" {
+			b.WriteString(brief(viewerID))
+		}
+
 		// What arrived, under a heading that looks like one.
 		//
 		// Both halves of this screen are labelled the same way and each label
