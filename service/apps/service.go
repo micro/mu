@@ -41,7 +41,7 @@ func (Server) Build(ctx context.Context, req *BuildRequest, rsp *BuildResponse) 
 	rsp.Name = a.Name
 	rsp.Slug = a.Slug
 	rsp.URL = "/apps/" + a.Slug
-	rsp.Run = "/apps/" + a.Slug + "/run"
+	rsp.Run = "/apps/" + a.Slug
 	return nil
 }
 

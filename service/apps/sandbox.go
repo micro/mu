@@ -422,11 +422,25 @@ func sandboxPage(slug, title string) string {
 	b.WriteString(`<!doctype html><html><head><meta charset="utf-8">`)
 	b.WriteString(`<meta name="viewport" content="width=device-width, initial-scale=1">`)
 	b.WriteString(`<title>` + html.EscapeString(title) + `</title>`)
-	b.WriteString(`<style>html,body{margin:0;padding:0;height:100%;background:#fff}
-#app-frame{display:block;width:100%;height:100%;border:0}</style>`)
+	// The white flash between the two documents.
+	//
+	// Opening an app is two paints and cannot be one: this page arrives first
+	// and the app inside it arrives after, because inlining the app would put
+	// untrusted HTML in this origin, which is the whole thing the frame exists
+	// to prevent. What can go is the *colour* of that gap — it was a hard #fff,
+	// so a reader in dark mode got a full-screen white flash on every app they
+	// opened, which reads as the page breaking rather than as it loading.
+	//
+	// Canvas is the system background and color-scheme is what tells the
+	// browser which one to use. Two words, no media query, and it follows the
+	// reader rather than a guess made here.
+	b.WriteString(`<style>html,body{margin:0;padding:0;height:100%;background:Canvas;color-scheme:light dark}
+#app-frame{display:block;width:100%;height:100%;border:0;background:Canvas}</style>`)
 	b.WriteString(`</head><body>`)
+	// The app itself, not /run. That word is retired — see embed.go — and the
+	// document is at the app's own address with raw=1.
 	b.WriteString(`<iframe id="app-frame" src="/apps/` + html.EscapeString(slug) +
-		`/run?raw=1" sandbox="allow-scripts allow-forms allow-popups allow-modals" ` +
+		`?raw=1" sandbox="allow-scripts allow-forms allow-popups allow-modals" ` +
 		`allow="geolocation"></iframe>`)
 	b.WriteString(appBridgeJS(slug))
 	b.WriteString(`</body></html>`)

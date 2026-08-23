@@ -360,9 +360,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	case strings.HasSuffix(path, "/icon.svg"):
 		slug := strings.TrimSuffix(strings.TrimPrefix(path, "/"), "/icon.svg")
 		handleIcon(w, r, slug)
+	// /apps/<slug>/run was an alias for the app's own address, from when "run"
+	// was this service's word for showing one. It redirects rather than serving,
+	// so the app has one URL and links written against the old one still land.
 	case strings.HasSuffix(path, "/run"):
 		slug := strings.TrimSuffix(strings.TrimPrefix(path, "/"), "/run")
-		handleApp(w, r, slug)
+		http.Redirect(w, r, "/apps/"+slug, http.StatusMovedPermanently)
 	case strings.HasSuffix(path, "/sdk/ai"):
 		slug := strings.TrimSuffix(strings.TrimPrefix(path, "/"), "/sdk/ai")
 		handleSDKAI(w, r, slug)

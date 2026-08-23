@@ -44,8 +44,20 @@ func TestTheFrameDoesNotGrantSameOrigin(t *testing.T) {
 	if strings.Contains(page, "allow-same-origin") {
 		t.Error("the iframe grants same-origin")
 	}
-	if !strings.Contains(page, `src="/apps/notes/run?raw=1"`) {
+	if !strings.Contains(page, `src="/apps/notes?raw=1"`) {
 		t.Error("the frame does not load the app's own document")
+	}
+
+	// No white flash between the two documents. Opening an app is two paints
+	// and cannot be one — inlining the app would put untrusted HTML in this
+	// origin — so what is left is making the gap the reader's own background
+	// rather than a hard white, which in dark mode was a full-screen flash on
+	// every app opened.
+	if strings.Contains(page, "background:#fff") {
+		t.Error("the frame flashes white while the app loads")
+	}
+	if !strings.Contains(page, "color-scheme:light dark") {
+		t.Error("the frame does not follow the reader's colour scheme")
 	}
 }
 
