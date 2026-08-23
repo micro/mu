@@ -4,7 +4,7 @@ Work with Agents.
 
 ## Overview
 
-An agent with an inbox and tools. Chat with it in a browser or write to it by email, and
+An agent with an inbox and tools. Chat with it in a browser or by email, and
 it can reach 100+ tools: news, mail, search, weather, markets, video, places,
 files, contacts, calendar, documents. A work in progress.
 
@@ -299,7 +299,12 @@ free.
 
 ## Configuration
 
-Customise feeds, prompts and cards by editing JSON files:
+What things cost is data, not code — `quota.json` at the top of the repo is the
+one price list, and the gate reads it and every cost table renders from it. Drop
+a `quota.json` in the data directory to override any entry without rebuilding;
+it replaces the entries it names and leaves the rest.
+
+The rest are embedded in the binary, so editing one means rebuilding:
 
 - `service/news/feeds.json` — RSS news feeds
 - `service/chat/prompts.json` — chat topics
