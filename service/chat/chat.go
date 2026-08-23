@@ -1088,6 +1088,15 @@ func Load() {
 			eventType, okType := evt.Data["type"].(string)
 
 			if okUri && okContent && okType {
+				// Nothing to ask, so nothing to report. A fresh instance has no
+				// provider — the install guide says so and means it — and every
+				// article that arrived then produced its own red line saying the
+				// same sentence, so a first run looked like a broken one. The
+				// topic loop above already skips with a single line; this is the
+				// same decision one event at a time.
+				if !ai.Configured() {
+					continue
+				}
 				app.Log("chat", "Received summary generation request for %s (%s)", uri, eventType)
 
 				// Generate summary using LLM (low priority - background task, Haiku for cost)

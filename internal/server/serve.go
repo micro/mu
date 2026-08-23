@@ -479,6 +479,7 @@ func serve(addr string) {
 
 	// Wait for interrupt signal
 	<-quit
+	stopping := time.Now()
 	app.Log("main", "Shutting down server...")
 
 	// Flush the usage counters. They are saved on a slow cadence to keep the
@@ -495,5 +496,11 @@ func serve(addr string) {
 		app.Log("main", "Server forced to shutdown: %v", err)
 	}
 
-	app.Log("main", "Server stopped")
+	// How long it took, because this is the other half of a slow restart and
+	// the half nobody measures. Shutdown waits for in-flight requests to
+	// finish, and an agent run is a model call — so one chat open when a deploy
+	// lands holds this for as long as the answer takes, up to the timeout
+	// above. Seeing that number is what tells an operator whether the pause is
+	// the old process leaving or the new one arriving.
+	app.Log("main", "Server stopped in %s", time.Since(stopping).Round(time.Millisecond))
 }

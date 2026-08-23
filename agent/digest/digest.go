@@ -127,7 +127,7 @@ func scheduler() {
 	// Wait for blog callbacks to be wired in main.go
 	time.Sleep(5 * time.Second)
 	// Only create a digest on startup if one doesn't exist for today
-	if Today() == nil {
+	if Today() == nil && ready() {
 		generate()
 	}
 	for {
@@ -138,8 +138,28 @@ func scheduler() {
 			next = next.Add(24 * time.Hour)
 		}
 		time.Sleep(time.Until(next))
-		generate()
+		if ready() {
+			generate()
+		}
 	}
+}
+
+// ready reports whether there is anybody to write a briefing for.
+//
+// The digest runs as the instance's own agent, and that account deliberately
+// does not exist until a human admin does — see auth.EnsureMicro, which will
+// not bootstrap it on an empty instance because the first account created
+// becomes admin and it must be a person's. So on a fresh install every source
+// here failed with "account does not exist", six lines of it, five seconds
+// after the first boot. Nothing was wrong; there was simply nobody here yet.
+//
+// Asked each time rather than once, because the answer changes the moment
+// somebody signs up and this loop outlives that.
+func ready() bool {
+	if _, err := auth.GetAccount(auth.MicroID); err != nil {
+		return false
+	}
+	return true
 }
 
 func generate() {

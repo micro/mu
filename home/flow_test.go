@@ -39,7 +39,12 @@ func TestTheLandingIsOneScreenAboutOneThing(t *testing.T) {
 	body := rec.Body.String()
 
 	// What it is, and what is behind it.
-	for _, want := range []string{"Work with Agents", "hand it a job", "tools behind it"} {
+	//
+	// "tools behind it" was the wording once and the marker was the wording.
+	// The lead is copy and copy gets rewritten; what has to survive a rewrite
+	// is that the first screen still names what the agent can reach, so the
+	// marker is the list rather than the sentence around it.
+	for _, want := range []string{"Work with Agents", "hand it a job", "tools: news, mail"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the landing is missing %q", want)
 		}

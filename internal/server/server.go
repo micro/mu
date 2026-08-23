@@ -1,6 +1,9 @@
 package server
 
 import (
+	"time"
+
+	"mu/internal/app"
 	"mu/internal/service"
 	"mu/tool"
 )
@@ -29,8 +32,21 @@ import (
 // thousand lines: every tool that could not be derived because its capability
 // was not declared on a service. They all are now.
 func Run(addr string) {
+	// Timed, per phase, because "the restart takes ages" is not answerable
+	// without it. Boot is a tenth of a second on an empty data directory and
+	// nobody deploys one of those — what scales is whatever reads what is on
+	// disk, and until this was here the only way to find out which phase that
+	// was is to guess. One log line per phase, at startup only.
+	started := time.Now()
+	phase := started
+
 	boot()
+	app.Log("main", "boot: services in %s", time.Since(phase).Round(time.Millisecond))
+	phase = time.Now()
+
 	wireHooks()
+	app.Log("main", "boot: hooks in %s", time.Since(phase).Round(time.Millisecond))
+	phase = time.Now()
 
 	// The catalogue: everything declared on a Spec that was not written out by
 	// hand above. Six endpoints had drifted out of reach before this existed —
@@ -42,8 +58,13 @@ func Run(addr string) {
 	// — are waiting on that; without it they race the wiring and publish a
 	// partial one.
 	tool.Load(service.Specs())
+	app.Log("main", "boot: catalogue in %s", time.Since(phase).Round(time.Millisecond))
+	phase = time.Now()
 
 	registerRoutes()
+	app.Log("main", "boot: routes in %s, ready in %s",
+		time.Since(phase).Round(time.Millisecond), time.Since(started).Round(time.Millisecond))
+
 	serve(addr)
 }
 

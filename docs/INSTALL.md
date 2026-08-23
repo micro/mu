@@ -4,7 +4,7 @@ Run your own instance. One Go binary, one data directory.
 
 ## Requirements
 
-- **Go 1.25+** — [golang.org/dl](https://golang.org/dl/)
+- **Go 1.26+** — [golang.org/dl](https://golang.org/dl/). `go.mod` says 1.26 and every build here is pinned to it. An older toolchain does not simply work: depending on how Go's toolchain setting is configured it either downloads 1.26 in the middle of your build or refuses outright
 - **Linux/macOS** — Windows via WSL2
 - A server with a public IP, if you want inbound mail
 
@@ -91,6 +91,60 @@ sudo systemctl daemon-reload
 sudo systemctl enable mu
 sudo systemctl start mu
 ```
+
+### Restarts without a gap
+
+The unit above drops the listening socket while the binary restarts, so every
+deploy is a few seconds of refused connections — nginx turns those into 502s,
+and it looks like "the server takes ages to come back" even when the process
+itself starts in well under a second.
+
+Mu already knows how to adopt a socket systemd is holding for it. Give it one:
+
+```ini
+# /etc/systemd/system/mu.socket
+[Unit]
+Description=Mu web socket
+
+[Socket]
+ListenStream=8080
+# Keep the socket across restarts of mu.service — this is the line that
+# turns a refused connection into a queued one.
+FileDescriptorName=mu
+
+[Install]
+WantedBy=sockets.target
+```
+
+and tell the service to use it, by adding to `mu.service`:
+
+```ini
+[Unit]
+Requires=mu.socket
+After=mu.socket
+
+[Service]
+# Not needed with a socket, and 5 seconds of nothing on every crash-restart.
+RestartSec=1
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now mu.socket
+sudo systemctl restart mu
+```
+
+The kernel keeps accepting and queueing connections on the held socket while the
+process is away, so a restart is latency rather than an error. The log says which
+mode it is in on every start — `Serving on systemd-activated socket` or
+`Starting server on :8080`.
+
+The other half of a slow restart is the old process leaving rather than the new
+one arriving. Shutdown waits for in-flight requests, and an agent run is a model
+call, so one chat open when a deploy lands holds it until that answer finishes
+(up to ten seconds). Both halves are logged — `Server stopped in …` and
+`boot: … ready in …` — so it is worth reading those before changing anything
+else.
 
 ### Using Docker
 

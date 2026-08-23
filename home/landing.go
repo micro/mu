@@ -188,13 +188,12 @@ func landingBody() string {
 	//
 	return `<div class="lwrap">
 <h2 class="lhead">Work with Agents.</h2>
-<p class="lead">An agent with an address. Write to it from anywhere, hand it work,
-and it answers where you asked. ` +
-		tools() + ` tools behind it — news, search, markets,
-weather, places, files.</p>
+<p class="lead">An agent with an inbox and tools. Chat with it in a browser or write
+to it by email, and it can reach ` + tools() + ` tools: news, mail, search, weather,
+markets, video, places, files, contacts, calendar, documents. A work in progress.</p>
 
 <div class="lctas">
-  <a class="lcta" href="/signup">Get started →</a>
+  <a class="lcta" href="/signup">Get started</a>
   <button type="button" class="lcta lcta-second" id="install-app" hidden>Install app</button>
 </div>
 <p class="linstall" id="install-how" hidden>In Safari: Share, then Add to Home Screen.</p>
@@ -290,9 +289,16 @@ func developerBand(base string) string {
    is read the way the hero above it is read, and the list is scanned. */
 .dev-head{font-size:15px;font-weight:700;color:#111;margin:0 0 8px;text-align:center}
 .dev-lead{font-size:15px;color:#555;line-height:1.6;margin:0 0 14px;text-align:center}
+/* Centred, with the heading and lead above it rather than with the facts
+   below. It is the one thing on this band somebody copies, so it reads as the
+   band's subject — and a left-aligned monospace line under two centred ones
+   looked like the start of the list rather than the endpoint.
+   text-align on a <pre> centres the line inside its own box; the box is
+   narrowed to its content and centred so the grey does not run the full width
+   with a short URL floating in the middle of it. */
 .dev-endpoint{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;
-  color:#333;background:#f6f6f6;border-radius:6px;padding:10px 12px;margin:0 0 14px;
-  overflow-x:auto}
+  color:#333;background:#f6f6f6;border-radius:6px;padding:10px 14px;margin:0 auto 14px;
+  width:fit-content;max-width:100%;text-align:center;overflow-x:auto}
 .dev-facts{font-size:14px;color:#555;line-height:1.6;margin:0 0 14px;padding-left:18px}
 .dev-facts li{margin:0 0 6px}
 .dev-facts li:last-child{margin:0}
