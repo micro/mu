@@ -154,21 +154,22 @@ func Query(accountID, prompt string, history ...QueryMessage) (string, error) {
 	return QueryWithOpts(accountID, prompt, QueryOpts{History: history})
 }
 
-// Routed applies the router when the caller has not already chosen an agent,
-// and returns the prompt and options to run with.
+// Routed honours an agent named in the prompt, and returns the prompt and
+// options to run with.
 //
-// Picking a specialist *sets the options* rather than diverting into a separate
-// pipeline. That is what makes the choice survive: micro.Orchestrate takes no
-// system prompt and builds its own from the registry, so diverting there
-// discarded whatever the caller had said — and it could not stream, which is
-// why the web skipped routing altogether and quietly became the one client
-// answering as the generalist while the other four got specialists. Same
-// question, different agent, depending on how you happened to arrive.
+// Naming one *sets the options* rather than diverting into a separate pipeline.
+// That is what makes the choice survive: micro.Orchestrate took no system prompt
+// and built its own from the registry, so diverting there discarded whatever the
+// caller had said — and it could not stream, which is why the web skipped
+// routing altogether and quietly became the one client answering as the
+// generalist while the other four got specialists. Same question, different
+// agent, depending on how you happened to arrive. Orchestrate is deleted; this
+// shape is why, and is worth keeping stated.
 //
-// One specialist, not several. The router may name more than one and the old
-// path ran them in parallel and merged the answers; a single question wants a
-// single answerer, and fanning out multiplies the cost of every turn for a
-// synthesis nobody asked for.
+// One agent, not several. The old path could name three and ran them in
+// parallel and merged the answers; a single question wants a single answerer,
+// and fanning out multiplies the cost of every turn for a synthesis nobody
+// asked for.
 func Routed(prompt string, opts QueryOpts) (string, QueryOpts) {
 	// A caller who supplied a system prompt has already chosen the agent, and
 	// the router must not choose a different one.
@@ -179,13 +180,16 @@ func Routed(prompt string, opts QueryOpts) (string, QueryOpts) {
 		return prompt, opts
 	}
 
+	// Addressed, or nothing. The keyword router that used to guess a specialist
+	// out of the words went with the specialists: it named ten agents that no
+	// longer exist, so every question it "routed" landed on the fallback anyway.
+	// Asking for an agent by name is the one signal that was never a guess.
 	id := micro.MatchDirectAddress(prompt)
-	if id != "" {
-		prompt = micro.StripAddress(prompt)
-	} else if ids := micro.Route(prompt); len(ids) > 0 {
-		id = ids[0]
+	if id == "" {
+		return prompt, opts
 	}
-	if id == "" || id == DefaultPlatformAgent {
+	prompt = micro.StripAddress(prompt)
+	if id == DefaultPlatformAgent {
 		return prompt, opts
 	}
 	if o := PlatformOpts(Platform(id)); o.System != "" {

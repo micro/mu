@@ -389,7 +389,6 @@ func wireHooks() {
 		}
 		return home.CardContext(acc)
 	}
-	micro.UserContextFunc = userCtxFunc
 
 	// Three hooks stood here handing the digest a way to publish. They were the
 	// cost of a service that could not import the blog; the digest is an agent

@@ -1,170 +1,91 @@
 package micro
 
-import (
-	"reflect"
-	"testing"
-)
+// Addressing an agent by name.
+//
+// These used to be router tests: a keyword table, an LLM fallback, and a
+// three-way merge, all of them asserting that "what's the weather in London?"
+// reached the weather agent. There is no weather agent. What survives is the
+// half that was never a guess — somebody naming the agent they want — and it is
+// tested against a registered fixture rather than against whatever this
+// instance happens to ship, so it keeps working when that is one.
 
-func TestRouteDirectAddressAvoidsLLM(t *testing.T) {
-	tests := []struct {
-		name   string
-		prompt string
-		want   []string
-	}{
-		{
-			name:   "at mention",
-			prompt: "@markets what is ETH doing today?",
-			want:   []string{"markets"},
-		},
-		{
-			name:   "at mention with punctuation",
-			prompt: "@markets, what is ETH doing today?",
-			want:   []string{"markets"},
-		},
-		{
-			name:   "at mention with leading whitespace",
-			prompt: "  @markets what is ETH doing today?",
-			want:   []string{"markets"},
-		},
-		{
-			name:   "ask the agent",
-			prompt: "ask the weather agent about Lisbon tomorrow",
-			want:   []string{"weather"},
-		},
-		{
-			name:   "use agent",
-			prompt: "use mail to summarize unread messages",
-			want:   []string{"mail"},
-		},
+import "testing"
+
+// withAgent registers an agent for the duration of one test.
+//
+// The registry is a package-level map with no removal, which is fine for a
+// thing filled in at init and never touched again — and means a test that adds
+// to it has to take it back out itself, or the next one sees an agent nobody
+// registered.
+func withAgent(t *testing.T, id string) {
+	t.Helper()
+	if _, taken := Registry[id]; taken {
+		t.Fatalf("%q is already registered, so this fixture would replace a real agent", id)
 	}
+	Register(&Agent{
+		ID:           id,
+		Name:         "Probe",
+		SystemPrompt: "You are a fixture.",
+		Tools:        []string{"news_list", "news_search"},
+	})
+	t.Cleanup(func() { delete(Registry, id) })
+}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := Route(tt.prompt); !reflect.DeepEqual(got, tt.want) {
-				t.Fatalf("Route(%q) = %v, want %v", tt.prompt, got, tt.want)
-			}
-		})
+func TestAnAddressNamesARegisteredAgent(t *testing.T) {
+	withAgent(t, "probe")
+
+	for _, prompt := range []string{
+		"@probe what is ETH doing today?",
+		"@probe, what is ETH doing today?",
+		"  @probe what is ETH doing today?",
+		"ask the probe agent about Lisbon tomorrow",
+		"use probe to summarize unread messages",
+	} {
+		if got := MatchDirectAddress(prompt); got != "probe" {
+			t.Errorf("MatchDirectAddress(%q) = %q", prompt, got)
+		}
+	}
+}
+
+// A name that names nothing is not an address.
+//
+// This is the property that let the keyword router be deleted safely: an
+// unaddressed prompt and a prompt addressed to an agent that does not exist are
+// the same thing, and both run as the default rather than as a guess.
+func TestAnUnknownNameIsNotAnAddress(t *testing.T) {
+	for _, prompt := range []string{
+		"@markets what is ETH doing today?",
+		"ask the weather agent about Lisbon tomorrow",
+		"what's the weather in London?",
+		"use mail to summarize unread messages",
+	} {
+		if got := MatchDirectAddress(prompt); got != "" {
+			t.Errorf("MatchDirectAddress(%q) = %q, and no such agent is registered", prompt, got)
+		}
 	}
 }
 
 func TestStripAddress(t *testing.T) {
+	withAgent(t, "probe")
+
 	tests := []struct {
 		name   string
 		prompt string
 		want   string
 	}{
-		{
-			name:   "at mention",
-			prompt: "@markets what is ETH doing today?",
-			want:   "what is ETH doing today?",
-		},
-		{
-			name:   "ask agent about",
-			prompt: "ask the weather agent about Lisbon tomorrow",
-			want:   "Lisbon tomorrow",
-		},
-		{
-			name:   "at mention with leading whitespace",
-			prompt: "  @markets what is ETH doing today?",
-			want:   "what is ETH doing today?",
-		},
-		{
-			name:   "use agent",
-			prompt: "use mail summarize unread messages",
-			want:   "summarize unread messages",
-		},
-		{
-			name:   "unaddressed prompt",
-			prompt: "summarize unread messages",
-			want:   "summarize unread messages",
-		},
+		{"at mention", "@probe what is ETH doing today?", "what is ETH doing today?"},
+		{"leading whitespace", "  @probe what is ETH doing today?", "what is ETH doing today?"},
+		{"ask agent about", "ask the probe agent about Lisbon tomorrow", "Lisbon tomorrow"},
+		{"use agent", "use probe summarize unread messages", "summarize unread messages"},
+		{"unaddressed", "summarize unread messages", "summarize unread messages"},
+		// Addressed to nobody, so nothing comes off: the words are the question.
+		{"unknown name", "use mail summarize unread messages", "use mail summarize unread messages"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := StripAddress(tt.prompt); got != tt.want {
 				t.Fatalf("StripAddress(%q) = %q, want %q", tt.prompt, got, tt.want)
-			}
-		})
-	}
-}
-
-func TestKeywordRouteMultiSignalOrdering(t *testing.T) {
-	got := keywordRoute("give me weather, BTC price, news headlines, and youtube videos")
-	want := []string{"weather", "news", "markets"}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("keywordRoute() = %v, want %v", got, want)
-	}
-}
-
-func TestKeywordRouteRequiresTermBoundaries(t *testing.T) {
-	falsePositivePrompts := []string{
-		"please postpone the team lunch",
-		"this surprise party is busy",
-		"watchtower status update",
-	}
-
-	for _, prompt := range falsePositivePrompts {
-		t.Run(prompt, func(t *testing.T) {
-			if got := keywordRoute(prompt); len(got) != 0 {
-				t.Fatalf("keywordRoute(%q) = %v, want no keyword route", prompt, got)
-			}
-		})
-	}
-}
-
-func TestAllExcludesFallbackAgent(t *testing.T) {
-	for _, agent := range All() {
-		if agent.ID == "micro" {
-			t.Fatal("All() included the micro fallback agent")
-		}
-	}
-}
-
-func TestValidateAgentIDsDeduplicatesAndLimits(t *testing.T) {
-	got := validateAgentIDs([]string{"markets", "bogus", "markets", "news", "weather", "mail"})
-	want := []string{"markets", "news", "weather"}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("validateAgentIDs() = %v, want %v", got, want)
-	}
-}
-
-func TestValidateAgentIDsFallsBackToMicro(t *testing.T) {
-	got := validateAgentIDs([]string{"bogus"})
-	want := []string{"micro"}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("validateAgentIDs() = %v, want %v", got, want)
-	}
-}
-
-func TestKeywordRouteSingleDomainPriorityIsDeterministic(t *testing.T) {
-	prompt := "summarize unread email about the team lunch restaurant"
-	want := []string{"mail"}
-
-	for i := 0; i < 100; i++ {
-		if got := keywordRoute(prompt); !reflect.DeepEqual(got, want) {
-			t.Fatalf("keywordRoute() iteration %d = %v, want %v", i, got, want)
-		}
-	}
-}
-
-func TestKeywordRouteCoreAskAnswerSmokeCoverage(t *testing.T) {
-	tests := []struct {
-		name   string
-		prompt string
-		want   []string
-	}{
-		{name: "weather", prompt: "what's the weather in London?", want: []string{"weather"}},
-		{name: "news", prompt: "what's happening in the news today?", want: []string{"news"}},
-		{name: "markets", prompt: "what is the BTC price?", want: []string{"markets"}},
-		{name: "mail", prompt: "do I have unread mail?", want: []string{"mail"}},
-		{name: "search", prompt: "search the web for go-micro agents", want: []string{"search"}},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := keywordRoute(tt.prompt); !reflect.DeepEqual(got, tt.want) {
-				t.Fatalf("keywordRoute(%q) = %v, want %v", tt.prompt, got, tt.want)
 			}
 		})
 	}

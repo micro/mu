@@ -41,17 +41,18 @@ func TestTheUntaggedAddressIsTheCatchAll(t *testing.T) {
 }
 
 func TestASpecialistIsReachableByItsOwnName(t *testing.T) {
-	a := Platform("news")
+	withProbe(t)
+	a := Platform(probeID)
 	if a == nil {
-		t.Fatal("agent+news@ resolves to nothing")
+		t.Fatalf("agent+%s@ resolves to nothing", probeID)
 	}
-	if a.ID != "news" {
-		t.Fatalf("agent+news@ resolved to %q", a.ID)
+	if a.ID != probeID {
+		t.Fatalf("agent+%s@ resolved to %q", probeID, a.ID)
 	}
 	// Case and spacing come off the wire however the sender's client felt.
-	for _, spelling := range []string{"News", "NEWS", " news "} {
-		if got := Platform(spelling); got == nil || got.ID != "news" {
-			t.Errorf("agent+%q@ did not resolve to news — a local part is not "+
+	for _, spelling := range []string{"Probe", "PROBE", " probe "} {
+		if got := Platform(spelling); got == nil || got.ID != probeID {
+			t.Errorf("agent+%q@ did not resolve — a local part is not "+
 				"case-sensitive and senders do not agree on whitespace", spelling)
 		}
 	}
@@ -99,19 +100,16 @@ func TestEveryRegisteredAgentIsAddressable(t *testing.T) {
 // If the allow-list did not travel with it, both addresses would reach the same
 // general-purpose agent wearing a different name.
 func TestASpecialistCarriesItsOwnPromptAndTools(t *testing.T) {
-	markets := Platform("markets")
-	if markets == nil {
-		t.Fatal("no markets agent")
-	}
-	opts := PlatformOpts(markets)
+	withProbe(t)
+	opts := PlatformOpts(Platform(probeID))
 	if opts.System == "" {
-		t.Error("the markets agent runs with no system prompt, so it is not the markets agent")
+		t.Error("a registered agent runs with no system prompt, so it is not that agent")
 	}
 	if len(opts.Tools) == 0 {
-		t.Fatal("the markets agent runs with every tool, which is the catch-all wearing a name")
+		t.Fatal("it runs with every tool, which is the catch-all wearing a name")
 	}
-	if !strings.Contains(strings.Join(opts.Tools, " "), "markets") {
-		t.Errorf("the markets agent's tools are %v, none of which is a markets tool", opts.Tools)
+	if !strings.Contains(strings.Join(opts.Tools, " "), "news") {
+		t.Errorf("its tools are %v, none of which is the scope it was given", opts.Tools)
 	}
 
 	// The catch-all is the deliberate exception: no allow-list means all.

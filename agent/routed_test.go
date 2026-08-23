@@ -29,9 +29,10 @@ func TestAChosenAgentIsNotRerouted(t *testing.T) {
 // way every time. The keyword router may consult a model, which a test cannot
 // depend on.
 func TestRoutingSetsTheOptionsItPicked(t *testing.T) {
-	prompt, got := Routed("@markets what is bitcoin trading at?", QueryOpts{})
+	withProbe(t)
+	prompt, got := Routed("@"+probeID+" what is bitcoin trading at?", QueryOpts{})
 
-	if strings.HasPrefix(prompt, "@markets") {
+	if strings.HasPrefix(prompt, "@"+probeID) {
 		t.Error("the address was left in the prompt, so the agent is asked to " +
 			"answer a question addressed to itself")
 	}
@@ -42,8 +43,8 @@ func TestRoutingSetsTheOptionsItPicked(t *testing.T) {
 		t.Error("a specialist was chosen with no tool allow-list, so it is the " +
 			"catch-all wearing a name")
 	}
-	if !strings.Contains(strings.Join(got.Tools, " "), "markets") {
-		t.Errorf("tools are %v, none of which is a markets tool", got.Tools)
+	if !strings.Contains(strings.Join(got.Tools, " "), "news") {
+		t.Errorf("tools are %v, none of which is the scope it was given", got.Tools)
 	}
 }
 
@@ -55,8 +56,8 @@ func TestTheDefaultAgentIsNotTreatedAsASpecialist(t *testing.T) {
 		t.Error("the catch-all has a tool allow-list")
 	}
 	_, got := Routed("hello", QueryOpts{})
-	if got.System != "" && len(got.Tools) == 0 {
-		t.Error("a plain greeting was equipped as a specialist with no tools")
+	if got.System != "" || len(got.Tools) != 0 {
+		t.Error("a plain greeting was equipped as a specialist")
 	}
 }
 

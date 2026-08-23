@@ -114,25 +114,29 @@ func TestTheNativePathAsksTheSameFunction(t *testing.T) {
 	}
 }
 
-// The specialists check twice, and both halves matter.
+// The agent checks twice, and both halves matter.
 //
 // Filtering the list is not a control: a model can name a tool nobody told it
 // about, from its training or from a suggestion in something it just read. The
 // refusal at the point of execution is what actually stops it. Leaving only the
 // list would look right in review and hold nothing.
-func TestTheSpecialistsRefuseAsWellAsWithhold(t *testing.T) {
-	b, err := os.ReadFile(filepath.Join(at(""), "agent/micro/execute.go"))
+//
+// This was written against agent/micro/execute.go, which was a second agent
+// loop — plan, execute, synthesise — behind the ten specialists. Both are
+// deleted and the property is not: it moved to the loop that was always the
+// real one.
+func TestTheAgentRefusesAsWellAsWithholds(t *testing.T) {
+	b, err := os.ReadFile(filepath.Join(at(""), "agent/agent.go"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	src := string(b)
 	if !strings.Contains(src, "api.AllowPlanned(") {
-		t.Error("agent/micro/execute.go does not filter the list it shows the planner — " +
-			"the general agent has Tools: nil, meaning every tool, and the router " +
-			"falls back to it whenever it is unsure")
+		t.Error("agent/agent.go does not filter the tools it shows the model — " +
+			"the default agent has Tools: nil, meaning every one of them")
 	}
 	if !strings.Contains(src, "api.RunPlannedAs(") {
-		t.Error("agent/micro/execute.go does not refuse at the point of execution — a " +
+		t.Error("agent/agent.go does not refuse at the point of execution — a " +
 			"model can name a tool nobody listed for it")
 	}
 }

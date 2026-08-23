@@ -359,10 +359,17 @@ func answerMail(m mail.InboundMail) {
 	// waiting for that agent and a typo should say so rather than look like
 	// the agent having nothing to say.
 	if unknownTag != "" {
-		answer := fmt.Sprintf("There is no agent called %q here. The ones on "+
-			"this instance are: %s — write to agent+<name>@%s, or to agent@%s "+
-			"for Micro, which handles anything.",
-			unknownTag, strings.Join(agent.PlatformNames(), ", "), domain, domain)
+		// The instance's own agents, named only when there is more than the
+		// default. This listed them all and then said "or agent@ for Micro",
+		// which since there is one of them read: "the ones here are: micro —
+		// or write to agent@ for Micro".
+		here := ""
+		if names := agent.PlatformNames(); len(names) > 1 {
+			here = fmt.Sprintf("The ones on this instance are: %s — write to "+
+				"agent+<name>@%s, or ", strings.Join(names, ", "), domain)
+		}
+		answer := fmt.Sprintf("There is no agent called %q here. %swrite to agent@%s "+
+			"for Micro, which handles anything.", unknownTag, here, domain)
 		// Your own agents are a different namespace and a different
 		// address, so naming them here is the difference between a dead end
 		// and a correction — the name they wanted may well exist, one

@@ -24,11 +24,11 @@ mu/
 │     geo  google  gtfs  imageproxy  linkmeta  notes  origin  phone  quota
 │     safefetch  safety  server  service  settings  setup  snapshot  thread
 │     twilio  usage  user  userdb  version  x402
-├── agent/                  # the agent pipeline and micro-agents
+├── agent/                  # the agent pipeline and the agent registry
 │   ├── blog/               #   writes the daily opinion
 │   ├── digest/             #   writes the daily digest
 │   ├── local/              #   models running on this machine
-│   ├── micro/              #   registry, router, executor, orchestrator
+│   ├── micro/              #   the Agent type, the registry, addressing by name
 │   └── social/             #   surfaces breaking stories
 ├── account/                # sign-in, tokens, the credit ledger
 ├── home/                   # landing, home screen, pricing

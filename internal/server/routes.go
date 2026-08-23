@@ -616,13 +616,6 @@ func registerRoutes() {
 	if n := agent.ImportUserAgents(micro.AllUserAgents()); n > 0 {
 		app.Log("agents", "imported %d agent(s) into the roster", n)
 	}
-	micro.UserAgentResolver = func(accountID, id string) *micro.Agent {
-		if a := agent.For(accountID, id); a != nil {
-			return a.AsMicro()
-		}
-		return nil
-	}
-
 	// /agents is a page, not a service, and deliberately has no RPC surface.
 	// A tool that created agents would let a scoped agent mint an unscoped one,
 	// which is privilege escalation dressed as a feature. Agents are created by

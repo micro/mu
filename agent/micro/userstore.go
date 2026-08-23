@@ -2,7 +2,8 @@ package micro
 
 // User-defined agents: an account can create its own micro-agents (name +
 // system prompt + tool set) that run through the same executor as the built-ins.
-// Stored per account and resolved by the executor via UserAgentResolver.
+// Stored per account; the roster in agent/ is the live store and imports these
+// once at boot.
 
 import (
 	"crypto/rand"
@@ -20,8 +21,6 @@ var (
 	uaFile     = "user_agents.json"
 	uaOnce     sync.Once
 )
-
-func init() { UserAgentResolver = UserAgentFor }
 
 func loadUserAgents() {
 	uaOnce.Do(func() {

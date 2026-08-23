@@ -403,39 +403,6 @@ func agentRow(a *Agent, csrf, base string) string {
 	})
 }
 
-// defaultRow is Micro on the roster: the same shape as an agent you made,
-// saying the things that are true about this one.
-//
-// No Remove and no Issue token, because neither is a thing you can do to it —
-// it is not a separate identity, it is this account. Everything else a row
-// carries it has: where it runs, what it may reach, an address, and the four
-// ways into it.
-//
-// And the specialists beside it. Eleven agents have been in the registry since
-// the router was written — news, markets, mail, weather, places, social, video,
-// apps, faith, search — each with its own instruction and its own tools, and
-// every one was reachable at agent+news@ and nowhere else. Not a page, not a
-// link, not this list. A product that provides services and tools and then
-// expects you to build your own agents has the same gap as one that expects you
-// to build your own tools.
-func defaultRow() string {
-	var b strings.Builder
-	b.WriteString(`<h3 class="lead-15 m-0 mb-1">Our agents</h3>`)
-	b.WriteString(`<p class="agent-note">Provided by this instance, nothing to set up. ` +
-		`Each has its own address and reaches only what it needs.</p>`)
-	b.WriteString(`<div class="col m-0 mb-6">`)
-
-	b.WriteString(platformRow(DefaultPlatformAgent))
-	for _, name := range PlatformNames() {
-		if name == DefaultPlatformAgent {
-			continue
-		}
-		b.WriteString(platformRow(name))
-	}
-	b.WriteString(`</div>`)
-	return b.String()
-}
-
 // platformRow is one of this instance's own agents.
 // platformSeenRow is platformRow with the account's own history against it.
 //

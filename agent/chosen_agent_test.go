@@ -13,13 +13,10 @@ import (
 
 // And the mail framing survives being composed with a specialist's prompt.
 func TestTheMailFramingKeepsTheAgentsOwnInstructions(t *testing.T) {
-	markets := Platform("markets")
-	if markets == nil {
-		t.Fatal("no markets agent")
-	}
-	base := PlatformOpts(markets).System
+	withProbe(t)
+	base := PlatformOpts(Platform(probeID)).System
 	if base == "" {
-		t.Fatal("the markets agent has no system prompt to preserve")
+		t.Fatal("the agent has no system prompt to preserve")
 	}
 
 	got := MailPrompt(base)

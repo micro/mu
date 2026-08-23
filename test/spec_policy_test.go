@@ -114,6 +114,15 @@ func TestSpecsReproduceTheOldPolicy(t *testing.T) {
 			t.Errorf("%s reaches one person's data and must not run in a group channel", tool)
 		}
 	}
+	// And the other half of the rule, which lived in agent/micro and went with
+	// the executor there. A gate that says no to everything passes every test
+	// phrased as "this must not be public", so the ones that must be are named
+	// here beside them.
+	for _, tool := range []string{"weather_forecast", "news_list", "markets_list", "web_search"} {
+		if !service.PublicTool(tool) {
+			t.Errorf("%s has nothing private in it and should run in a group channel", tool)
+		}
+	}
 	// destructiveTools, deleted from agent/native.go
 	if !service.Destructive("blog", "Delete") || !service.Destructive("tasks", "Delete") {
 		t.Error("a destructive method lost its guard")

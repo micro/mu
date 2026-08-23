@@ -69,17 +69,3 @@ func TestALinkInASentenceStaysInTheSentence(t *testing.T) {
 		t.Errorf("the call-to-action form changed: %s", cta)
 	}
 }
-
-// The two lists on /agents answer the same question about different agents.
-//
-// It read "The default" over Micro and "Your agents" over the ones you made —
-// one heading naming a position in a dropdown, the other naming an owner.
-func TestTheAgentListsAreNamedForWhoseTheyAre(t *testing.T) {
-	row := defaultRow()
-	if !strings.Contains(row, "Our agents") {
-		t.Errorf("the instance's own agents are not named as such:\n%s", row)
-	}
-	if strings.Contains(row, "The default</h3>") {
-		t.Error("the heading still names a dropdown position")
-	}
-}

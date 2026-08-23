@@ -11,44 +11,19 @@ import (
 	"mu/internal/auth"
 )
 
-// Eleven agents have been in the registry since the router was written, and
-// every one was reachable at agent+news@ and nowhere else — not on a page, not
-// at a URL, not in the picker. A product that provides services and tools and
-// then expects you to build your own agents has the same gap as one that
-// expects you to build your own tools.
-func TestOurAgentsListsTheOnesWeProvide(t *testing.T) {
-	got := defaultRow()
-
-	for _, name := range PlatformNames() {
-		a := Platform(name)
-		if a == nil {
-			t.Fatalf("%s is registered and does not resolve", name)
-		}
-		if !strings.Contains(got, ">"+a.Name+"<") {
-			t.Errorf("%s is not on the page", a.Name)
-		}
-		if !strings.Contains(got, `href="/agent/`+strings.ToLower(name)+`"`) {
-			t.Errorf("%s has no page to open", name)
-		}
-	}
-	// More than the one it listed before.
-	if n := strings.Count(got, "agent-row"); n < 5 {
-		t.Errorf("only %d agents are listed", n)
-	}
-}
-
 // A name in a path reaches one of them. /agent/news 404ed while agent+news@
 // answered, which is the same agent unreachable by the address people can
 // actually see.
 func TestAPlatformAgentHasAPage(t *testing.T) {
-	id, ok := BySlug("nobody", "news")
+	withProbe(t)
+	id, ok := BySlug("nobody", probeID)
 	if !ok {
-		t.Fatal("/agent/news does not resolve")
+		t.Fatal("/agent/" + probeID + " does not resolve")
 	}
-	if id != "news" {
+	if id != probeID {
 		t.Errorf("it resolved to %q", id)
 	}
-	if got := agentTitle("nobody", "news"); got != "News" {
+	if got := agentTitle("nobody", probeID); got != "Probe" {
 		t.Errorf("the page would be titled %q", got)
 	}
 	// And a name that is nothing is still a 404 rather than the default, or a
@@ -62,11 +37,12 @@ func TestAPlatformAgentHasAPage(t *testing.T) {
 // published ones and the legacy store — not this instance's own — so the page
 // said News and the default answered with every tool.
 func TestTheChatRunsThePlatformAgent(t *testing.T) {
-	a := resolveAgent("somebody", "markets")
+	withProbe(t)
+	a := resolveAgent("somebody", probeID)
 	if a == nil {
-		t.Fatal("the markets agent does not resolve for a run")
+		t.Fatal("the agent the page names does not resolve for a run")
 	}
-	if a.ID != "markets" {
+	if a.ID != probeID {
 		t.Errorf("resolved to %q", a.ID)
 	}
 	if len(a.Tools) == 0 {
@@ -97,8 +73,9 @@ func TestToolWordsNamesServicesNotTools(t *testing.T) {
 func TestAPlatformAgentPageSaysItsOwnAddress(t *testing.T) {
 	t.Setenv("MAIL_DOMAIN", "example.test")
 
-	if got := inboxAddress("nobody", "weather"); got != "agent+weather@example.test" {
-		t.Errorf("the weather agent's page says %q", got)
+	withProbe(t)
+	if got := inboxAddress("nobody", probeID); got != "agent+"+probeID+"@example.test" {
+		t.Errorf("the agent's own page says %q", got)
 	}
 	// The default keeps the bare address, which is what it answers at.
 	if got := inboxAddress("nobody", ""); got != "agent@example.test" {
@@ -109,16 +86,10 @@ func TestAPlatformAgentPageSaysItsOwnAddress(t *testing.T) {
 // And "How to reach it" is about the agent it was clicked from. Every row's
 // link fell through to the default panel and said Micro.
 func TestConnectKnowsThePlatformAgent(t *testing.T) {
-	a := Platform("markets")
-	if a == nil {
-		t.Fatal("no markets agent")
-	}
-	got := platformPanel(a, "https://example.test")
-	for _, want := range []string{"Markets", "markets_list", "/agent/markets"} {
-		if want == "markets_list" {
-			// Named as its service rather than its tool.
-			want = "markets"
-		}
+	a := withProbe(t)
+	got := platformPanel(Platform(probeID), "https://example.test")
+	// Named as its service rather than its tool: "news", not "news_list".
+	for _, want := range []string{a.Name, "news", "/agent/" + probeID} {
 		if !strings.Contains(got, want) {
 			t.Errorf("the panel is missing %q", want)
 		}

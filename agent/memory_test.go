@@ -2,14 +2,17 @@ package agent
 
 // Whether an agent knows anything an agent beside it does not.
 //
-// The registry has declared a MemoryScope per agent since the multi-agent
+// The registry declared a MemoryScope per agent from the day the multi-agent
 // system was written — "weather", "markets", "faith" — and notes.ForScopedContext
-// has read it. Nothing ever wrote one. So eleven agents had eleven namespaces,
-// every one of them empty, and each fell back to the same shared pool: separate
-// agents with identical memories, which is one agent with eleven names.
+// read it. Nothing ever wrote one. So eleven agents had eleven namespaces, every
+// one of them empty, and each fell back to the same shared pool: separate agents
+// with identical memories, which is one agent with eleven names.
 //
-// These tests are about the two ends of that wire, because a scope that only
-// one side of the code believes in is exactly what was there before.
+// That was one of the reasons the ten went. The wire is still here, because an
+// agent with a scope is still a thing this instance can register and an account
+// can be given — so these tests are about the two ends of it, against a fixture
+// rather than against a shipped agent, since a scope only one side of the code
+// believes in is exactly what was there before.
 
 import (
 	"strings"
@@ -23,11 +26,12 @@ import (
 // everybody's memory. Micro is the deliberate exception: it is the catch-all,
 // and the shared pool is its pool.
 func TestEverySpecialistHasSomewhereToPutWhatItLearns(t *testing.T) {
+	withProbe(t)
 	for id, a := range micro.Registry {
-		if id == "micro" {
+		if id == DefaultPlatformAgent {
 			if a.MemoryScope != "" {
 				t.Errorf("the catch-all has a scope (%q), so what it learns is "+
-					"hidden from the specialists it routes to", a.MemoryScope)
+					"hidden from anything registered beside it", a.MemoryScope)
 			}
 			continue
 		}
@@ -41,8 +45,9 @@ func TestEverySpecialistHasSomewhereToPutWhatItLearns(t *testing.T) {
 // The scope of the agent that answered, which is what makes a fact land in one
 // place rather than the other.
 func TestWhereAFactGoesIsDecidedByWhoWasAsked(t *testing.T) {
-	if got := scopeOf("weather"); got != "weather" {
-		t.Errorf("the weather agent's scope is %q", got)
+	withProbe(t)
+	if got := scopeOf(probeID); got != "news" {
+		t.Errorf("the fixture agent's scope is %q", got)
 	}
 	// The catch-all, and an agent somebody made themselves. Both go in the
 	// shared pool: one because it is the pool, the other because there is no
