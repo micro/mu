@@ -129,6 +129,7 @@ func authRequired() map[string]bool {
 		"/logout":            true,
 		"/account":           true,
 		"/report":            true,  // Telling an operator about somebody else's item
+		"/profile/status":    true,  // Setting what you are doing, on your own profile
 		"/verify":            false, // Public — token in URL is the credential
 		"/token":             true,  // PAT token management
 		"/passkey":           false, // Passkey login/register (auth checked in handler)
@@ -574,7 +575,7 @@ func registerRoutes() {
 	http.HandleFunc("/invite", account.InviteHandler)
 	http.HandleFunc("/report", app.ReportHandler)
 	// What you are doing, set on your own profile. See internal/user/status.go.
-	http.HandleFunc("/status", user.StatusHandler)
+	http.HandleFunc("/profile/status", user.StatusHandler)
 	http.HandleFunc("/account", account.Account)
 	http.HandleFunc("/verify", account.Verify)
 	http.HandleFunc("/session", account.Session)

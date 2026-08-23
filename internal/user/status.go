@@ -93,6 +93,12 @@ func SetStatus(accountID, text string) {
 }
 
 // StatusHandler serves the POST from the box on your own profile.
+//
+// At /profile/status and not /status. /status is this instance's health page
+// and has been for a long time; registering a second handler on it did not
+// fail a test or a build — net/http panics at boot on a duplicate pattern, so
+// the whole server went down on the next deploy with everything green behind
+// it. A route is not checked by anything until it is registered.
 func StatusHandler(w http.ResponseWriter, r *http.Request) {
 	sess, _, err := auth.RequireSession(r)
 	if err != nil {
@@ -122,7 +128,7 @@ func statusBlock(accountID string, own bool, csrf string) string {
 
 	// Your own: the same line, editable in place. No separate settings page for
 	// one field — the place you change what your profile says is your profile.
-	return `<form class="pf-status-form" method="post" action="/status">` +
+	return `<form class="pf-status-form" method="post" action="/profile/status">` +
 		`<input type="hidden" name="csrf_token" value="` + html.EscapeString(csrf) + `">` +
 		`<input class="pf-status-in" type="text" name="status" maxlength="` +
 		strconv.Itoa(statusLimit) + `" placeholder="What are you up to?" value="` +

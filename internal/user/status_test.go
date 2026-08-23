@@ -89,7 +89,7 @@ func TestOnlyYouCanSetYourOwnStatus(t *testing.T) {
 	person(t, who)
 	SetStatus(who, "Reading")
 
-	if mine := statusBlock(who, true, "tok"); !strings.Contains(mine, `action="/status"`) ||
+	if mine := statusBlock(who, true, "tok"); !strings.Contains(mine, `action="/profile/status"`) ||
 		!strings.Contains(mine, "Reading") {
 		t.Errorf("your own status is not editable where it is read:\n%s", mine)
 	}
