@@ -47,7 +47,6 @@ var publicToolExtras = map[string]bool{
 	"blog_read":     true,
 	"social_search": true,
 	"video_search":  true,
-	"apps_run":      true,
 }
 
 // PublicTool reports whether a tool may run in a context with nothing private
