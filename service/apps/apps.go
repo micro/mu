@@ -1300,7 +1300,14 @@ func handleApp(w http.ResponseWriter, r *http.Request, slug string) {
 		rawHTML := a.RenderHTML()
 		rawHTML = strings.ReplaceAll(rawHTML, `<script src="/apps/sdk.js"></script>`, "")
 		rawHTML = strings.ReplaceAll(rawHTML, `<script src='/apps/sdk.js'></script>`, "")
+		// The saved values first, then the shim that reads them. Order matters:
+		// localStorage answers synchronously, so what it answers with has to be
+		// in the document before anything can ask. injectSDK puts each block
+		// straight after <head>, so the last one injected ends up first.
 		rawHTML = injectSDK(rawHTML, appShimJS)
+		if _, acc := auth.TrySession(r); acc != nil {
+			rawHTML = injectSDK(rawHTML, appSeedJS(a.Slug, acc.ID))
+		}
 		rawHTML = injectSDK(rawHTML, `<meta name="viewport" content="width=device-width, initial-scale=1">`)
 		w.Write([]byte(rawHTML))
 		return

@@ -244,6 +244,8 @@ Answer with the metadata line, then the document, and nothing else — no prose,
 
 Rules for the document:
 - Everything inline. No external scripts, stylesheets, fonts or images — they are blocked, and the app will simply fail.
+- localStorage works and is per-user: it survives a reload and follows the person, not the browser. Use it the ordinary way.
+- fetch works for this instance only: fetch('/api/v1/<service>/<method>') with query string or JSON body, and it returns JSON. Any other URL is refused.
 - No <script src="/apps/sdk.js">. The API below is injected for you.
 - Plain JavaScript. No build step, no framework, no import from a CDN.
 - Works on a phone first. It runs in a frame, so size to the width it is given.
@@ -251,21 +253,15 @@ Rules for the document:
 - Style it yourself, simply and legibly. A system font stack, generous spacing, one accent colour.
 - Handle the empty state: an app with nothing in it yet should say what to do.
 
-The window.mu API is available inside the app. Use it only when the app needs it — a calculator needs nothing:
+Beyond those two there is a window.mu API, for the things the web has no name for. Use it only when the app needs it — a calculator needs none of this:
 
-  mu.store.get(k) / set(k,v) / del(k) / keys()   per-user key/value, survives reloads
   mu.db.create(coll,data) / get(coll,id) / list(coll,{scope,where,sort,limit}) / update(coll,id,data) / del(coll,id)
   mu.user()                                      the signed-in user
   mu.ai(prompt)                                  a model call, returns text
   mu.agent(prompt)                               the agent, with tools, returns an answer
-  mu.news() / mu.markets({category}) / mu.weather({lat,lon}) / mu.video() / mu.social()
-  mu.search(q)                                   web search
-  mu.blog.list() / read(id) / create({...})
-  mu.places.search({...}) / nearby({...})
-  mu.web.fetch(url,{method,headers,body})
-  mu.service(name, method, args)                 any other service on this instance
-  mu.services()                                  what services exist
+  mu.web.fetch(url,{method,headers,body})        fetch a page from the open web
+  mu.services()                                  what services exist here
 
-Every one of them returns a Promise. They only work while the app is open on this site, so an app that must work anywhere should keep its state in mu.store or in memory rather than requiring a service.
+Every one returns a Promise. localStorage and fetch, and everything above, only work while the app is open on this site — an app meant to work anywhere should hold its state in memory and do its own work.
 
 Prefer doing the work in the page. Reach for mu.ai or mu.agent only when the app genuinely needs a model — a converter, a timer and a tracker do not.`

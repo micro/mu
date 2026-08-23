@@ -36,6 +36,7 @@ package apps
 
 import (
 	"encoding/json"
+	"fmt"
 	"html"
 	"strings"
 )
@@ -208,10 +209,135 @@ const appShimJS = `<script>
       catch(e){return{ok:false,error:e.message}}
     },
   };
+  // ── The web platform, over the same bridge ──────────────────────
+  //
+  // An app runs in an opaque origin, so localStorage throws and fetch is dead
+  // — connect-src 'none'. Everything an app can do therefore had to be spelled
+  // mu.something, and that is a real cost rather than a matter of taste: a
+  // model has seen localStorage.setItem a billion times and mu.store.set never.
+  // Every generated app paid for the difference, and the fix is not a longer
+  // prompt.
+  //
+  // So the two names that matter are put back, implemented over the bridge that
+  // was already there. An app written the ordinary way now works, and mu.*
+  // stays as the shorthand for the things the web has no name for.
+
+  // localStorage, answering synchronously because that is its contract.
+  //
+  // The values are already in the page: handleApp inlines this app's saved
+  // store into the document before this script runs, so a read is a lookup in
+  // a map rather than a round trip. Writes go both ways — into the map now, so
+  // the next read is right, and to the server after, so a reload keeps it.
+  (function(){
+    var mem={}, seed=window.__muStore||{};
+    try{ delete window.__muStore; }catch(e){ window.__muStore=undefined; }
+    for(var k in seed){
+      mem[k] = typeof seed[k]==='string' ? seed[k] : JSON.stringify(seed[k]);
+    }
+    function quiet(){}
+    var saved={
+      getItem:function(k){k=String(k);return Object.prototype.hasOwnProperty.call(mem,k)?mem[k]:null},
+      setItem:function(k,v){k=String(k);mem[k]=String(v);mu.store.set(k,mem[k]).catch(quiet)},
+      removeItem:function(k){k=String(k);delete mem[k];mu.store.del(k).catch(quiet)},
+      clear:function(){for(var k in mem){mu.store.del(k).catch(quiet)}mem={}},
+      key:function(i){var ks=Object.keys(mem);return i<ks.length?ks[i]:null},
+    };
+    Object.defineProperty(saved,'length',{get:function(){return Object.keys(mem).length}});
+
+    // sessionStorage keeps nothing. It is the same shape and the same tab-only
+    // promise it makes everywhere else, so it stays in memory rather than
+    // quietly becoming permanent.
+    var temp={}, session={
+      getItem:function(k){k=String(k);return Object.prototype.hasOwnProperty.call(temp,k)?temp[k]:null},
+      setItem:function(k,v){temp[String(k)]=String(v)},
+      removeItem:function(k){delete temp[String(k)]},
+      clear:function(){temp={}},
+      key:function(i){var ks=Object.keys(temp);return i<ks.length?ks[i]:null},
+    };
+    Object.defineProperty(session,'length',{get:function(){return Object.keys(temp).length}});
+
+    try{ Object.defineProperty(window,'localStorage',{value:saved,configurable:true}); }catch(e){}
+    try{ Object.defineProperty(window,'sessionStorage',{value:session,configurable:true}); }catch(e){}
+  })();
+
+  // fetch, for this instance's API and nothing else.
+  //
+  // /api/v1/<service>/<method> is the door already built for callers who are
+  // not trusted — it turns a path into a tool name and hands it to the same
+  // ExecuteTool /mcp uses, with that door's auth and price gate. So this is not
+  // the hole mu.get(path) was: it is not "any path on this origin with the
+  // viewer's cookies", it is the one door designed to be pointed at.
+  //
+  // Anything else is refused in words rather than by hanging, because an app
+  // that tried to reach an external API should be told why it cannot.
+  (function(){
+    var API=/^\/api\/v1\/([a-z0-9_-]+)\/([a-zA-Z0-9_]+)\/?$/;
+    function answer(d){
+      var body=JSON.stringify(d);
+      return {ok:true,status:200,statusText:'OK',url:'',redirected:false,type:'basic',
+        headers:{get:function(n){return String(n).toLowerCase()==='content-type'?'application/json':null}},
+        json:function(){return Promise.resolve(d)},
+        text:function(){return Promise.resolve(body)},
+        clone:function(){return answer(d)}};
+    }
+    window.fetch=function(input,init){
+      var url = typeof input==='string' ? input : (input && input.url) || '';
+      var cut = String(url).split('#')[0].split('?');
+      var m = API.exec(cut[0]);
+      if(!m){
+        return Promise.reject(new TypeError(
+          'An app can only fetch this instance: /api/v1/<service>/<method>. '+
+          'Anything else is blocked by the sandbox. mu.services() lists what is here.'));
+      }
+      var args={};
+      if(cut[1]){
+        cut[1].split('&').forEach(function(pair){
+          if(!pair) return;
+          var kv=pair.split('=');
+          args[decodeURIComponent(kv[0])]=decodeURIComponent((kv[1]||'').replace(/\+/g,' '));
+        });
+      }
+      init=init||{};
+      if(init.body){ try{ var b=JSON.parse(init.body); for(var k in b){ args[k]=b[k]; } }catch(e){} }
+      return mu.service(m[1],m[2],args).then(answer);
+    };
+  })();
+
   window.onerror=function(msg,src,line){mu.errors.push({type:'error',message:msg,source:src,line:line});};
   window.onunhandledrejection=function(e){mu.errors.push({type:'promise',message:String(e.reason)});};
 })();
 </script>`
+
+// appSeedJS carries this app's saved values into the document.
+//
+// localStorage is synchronous and the bridge is not, and no amount of cleverness
+// bridges that gap after the page has started: an app that reads a key in its
+// first line cannot be made to wait for a postMessage. So the values are already
+// there when the script runs, put in by the server that knows both the app and
+// who is looking at it.
+//
+// Nothing at all for a signed-out reader or an app with nothing saved, and
+// nothing past seedLimit either — a store that large is one an app should be
+// reading through mu.db, and a megabyte of JSON in front of the document is a
+// page that takes a second to parse.
+func appSeedJS(slug, accountID string) string {
+	if slug == "" || accountID == "" {
+		return ""
+	}
+	store := loadStore(fmt.Sprintf("apps/%s/%s.json", slug, accountID))
+	if len(store) == 0 {
+		return ""
+	}
+	b, err := json.Marshal(store)
+	if err != nil || len(b) > seedLimit {
+		return ""
+	}
+	return `<script>window.__muStore=` + string(b) + `;</script>`
+}
+
+// seedLimit bounds what is inlined. The store allows a hundred keys of 64KB,
+// which is six megabytes nobody wants in front of a page.
+const seedLimit = 256 << 10
 
 // appBridgeJS runs on the parent page — our origin, our code — and is the only
 // thing that touches the session on an app's behalf.
