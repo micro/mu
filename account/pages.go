@@ -610,29 +610,6 @@ func Account(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// App widget preferences — which apps are pinned to the top of home.
-		// Posted one app at a time from /apps, where the pin sits next to the
-		// app it pins; `pin` and `unpin` name the app rather than restating the
-		// whole set, so two tabs cannot silently undo each other.
-		if slug := r.Form.Get("pin"); slug != "" {
-			acc.Widgets = addWidget(acc.Widgets, slug)
-			auth.UpdateAccount(acc)
-			http.Redirect(w, r, app.ReturnTo(r, "/account"), http.StatusSeeOther)
-			return
-		}
-		if slug := r.Form.Get("unpin"); slug != "" {
-			acc.Widgets = removeWidget(acc.Widgets, slug)
-			auth.UpdateAccount(acc)
-			http.Redirect(w, r, app.ReturnTo(r, "/account"), http.StatusSeeOther)
-			return
-		}
-		if r.Form.Get("save_widgets") != "" {
-			acc.Widgets = r.Form["widgets"]
-			auth.UpdateAccount(acc)
-			http.Redirect(w, r, app.ReturnTo(r, "/account"), http.StatusSeeOther)
-			return
-		}
-
 		// The display name, which had no way to be changed.
 		//
 		// It is set once at signup — optionally — and then shown on the profile,
@@ -991,27 +968,6 @@ func safeRedirect(r *http.Request) string {
 		return "/home"
 	}
 	return to
-}
-
-// addWidget and removeWidget edit the pinned-app list by name. Order is the
-// order they were pinned in, which is the order they render.
-func addWidget(have []string, slug string) []string {
-	for _, w := range have {
-		if w == slug {
-			return have
-		}
-	}
-	return append(have, slug)
-}
-
-func removeWidget(have []string, slug string) []string {
-	out := make([]string, 0, len(have))
-	for _, w := range have {
-		if w != slug {
-			out = append(out, w)
-		}
-	}
-	return out
 }
 
 // handleVerifyStart processes the email submission on /account, generates

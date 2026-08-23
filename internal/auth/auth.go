@@ -58,7 +58,6 @@ type Account struct {
 	Lat             float64   `json:"lat,omitempty"`
 	Lon             float64   `json:"lon,omitempty"`
 	Zone            string    `json:"zone,omitempty"`
-	Widgets         []string  `json:"widgets,omitempty"`  // App IDs to show as home widgets
 	Pinned          []string  `json:"pinned,omitempty"`   // Service names pinned to the sidebar, in the order shown
 	Approved        bool      `json:"approved,omitempty"` // Admin-approved, bypasses new account restrictions
 	Email           string    `json:"email,omitempty"`

@@ -72,22 +72,3 @@ func TestSavingAPreferenceReturnsToThePageItWasEditedOn(t *testing.T) {
 		}
 	}
 }
-
-func TestPinningAndUnpinningAnAppByName(t *testing.T) {
-	// By name rather than by restating the whole set, so a stale tab cannot
-	// unpin what another one just pinned.
-	have := addWidget(nil, "pomodoro")
-	have = addWidget(have, "packing")
-	have = addWidget(have, "pomodoro") // already there
-	if strings.Join(have, ",") != "pomodoro,packing" {
-		t.Errorf("pinning gave %v", have)
-	}
-
-	have = removeWidget(have, "pomodoro")
-	if strings.Join(have, ",") != "packing" {
-		t.Errorf("unpinning gave %v", have)
-	}
-	if got := removeWidget(have, "never-pinned"); strings.Join(got, ",") != "packing" {
-		t.Errorf("unpinning something that was not pinned gave %v", got)
-	}
-}

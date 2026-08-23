@@ -871,34 +871,6 @@ body.page-home #page-title ~ #customize-link {
   height: 100%;
 }
 
-/* Pinned apps: the quick-launch strip on Home, under its own heading. See
-   home.pinned. It sat below Agents with no heading for a while and read as a
-   stray row of links between two sections. */
-#home-apps {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 0 0 16px;
-}
-
-/* Tokens, not literals. This was #e0e0e0 on #fff with #333 text, so the one
-   block on Home somebody had chosen for themselves was also the one that
-   stayed white in dark mode. */
-.home-app {
-  display: inline-flex;
-  align-items: center;
-  padding: 6px 12px;
-  border: var(--border-width, 1px) solid var(--card-border, #e0e0e0);
-  border-radius: var(--border-radius, 8px);
-  background: var(--card-background, #fff);
-  font-size: 13px;
-  color: var(--text-primary, #333);
-  text-decoration: none;
-}
-.home-app:hover {
-  border-color: #bbb;
-}
-
 .card-tooltip {
   display: inline-block;
   position: relative;

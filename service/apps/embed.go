@@ -32,10 +32,10 @@ package apps
 // themselves: the absolute URL, and which apps it will not work for.
 
 import (
-	"fmt"
 	"html"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"mu/internal/app"
@@ -75,65 +75,61 @@ func bridged(html string) bool { return bridgeCallRe.MatchString(html) }
 // positive costs a sentence.
 var bridgeCallRe = regexp.MustCompile(`(?i)\b(?:window\.)?mu\.[a-z]`)
 
-// handleEmbed is the page at /apps/embed: pick one of your apps, copy the tag.
+// handleEmbed is the page at /apps/<slug>/embed: the tag for one app.
 //
-// Yours rather than every app on the instance. Embedding somebody else's app on
-// your site is a link away — the URL is public and the tag is four attributes —
-// and a page that offers a directory of other people's work to paste into your
-// own reads as a syndication feature, which is a different product decision and
-// nobody has made it.
-func handleEmbed(w http.ResponseWriter, r *http.Request) {
-	_, acc, err := auth.RequireSession(r)
-	if err != nil {
-		app.RedirectToLogin(w, r)
+// It was a page of its own listing every app you own, reached from a link
+// beside "+ New app". That is one more place to go and one more list to read,
+// when the row you are looking at already names the app you mean — so it took
+// the slot Launch had, which was the app's own title link said twice.
+//
+// Anybody's app, not only your own. The tag points at a public URL that anybody
+// can already open, and the earlier restriction was about a page offering a
+// directory of other people's work to paste; a button on the row of the thing
+// you are reading about is not that.
+func handleEmbed(w http.ResponseWriter, r *http.Request, slug string) {
+	a := GetApp(slug)
+	if a == nil {
+		app.NotFound(w, r, "no app called "+slug)
+		return
+	}
+	_, acc := auth.TrySession(r)
+	if !a.Public && (acc == nil || acc.ID != a.AuthorID) {
+		app.NotFound(w, r, "no app called "+slug)
 		return
 	}
 
-	mine := OwnedBy(acc.ID)
-	base := app.BaseURL(r)
-
 	var b strings.Builder
 	b.WriteString(`<div class="embed-page">`)
-	b.WriteString(app.Actions(app.TextLink("← Apps", "/apps")))
-	b.WriteString(`<h2 class="embed-title">Embed an app</h2>`)
+	b.WriteString(app.Actions(app.TextLink("← Apps", "/apps"),
+		app.TextLink("Open "+a.Name, "/apps/"+a.Slug)))
+	b.WriteString(`<h2 class="embed-title">Embed ` + html.EscapeString(a.Name) + `</h2>`)
 	b.WriteString(`<p class="embed-lead">An app is a page at a URL. Put this on ` +
 		`any site and it runs there, sandboxed, the same way it runs here.</p>`)
 
-	if len(mine) == 0 {
-		b.WriteString(`<p class="embed-empty">You have not made an app yet. ` +
-			app.TextLink("Make one", "/apps/new") + ` and it will be here.</p></div>`)
+	// Paid apps are not offered. ?raw=1 is what the tag points at and it is the
+	// path that does not charge — see handleApp, where the count and the charge
+	// are both skipped for the raw document. Handing out a tag that bypasses
+	// the price is worse than not offering one.
+	if a.Price > 0 {
+		b.WriteString(`<p class="embed-no">This app charges ` + strconv.Itoa(a.Price) +
+			` credits a use, and an embedded copy would not charge anything. ` +
+			`Set its price to nothing to embed it.</p></div>`)
 		app.Respond(w, r, app.Response{Title: "Embed", Description: "Put an app on another page",
 			HTML: b.String()})
 		return
 	}
 
-	for _, a := range mine {
-		b.WriteString(`<div class="embed-one">`)
-		b.WriteString(`<div class="embed-name">` + html.EscapeString(a.Name) +
-			`<a class="embed-open" href="/apps/` + html.EscapeString(a.Slug) + `">Open</a></div>`)
-		// Paid apps are not offered. ?raw=1 is what the tag points at and it is
-		// the path that does not charge — see handleApp, where the count and the
-		// charge are both skipped for the raw document. Handing out a tag that
-		// bypasses the price is worse than not offering one.
-		if a.Price > 0 {
-			b.WriteString(`<p class="embed-no">This app charges ` +
-				fmt.Sprintf("%d", a.Price) + ` credits a use, and an embedded copy ` +
-				`would not charge anything. Set its price to nothing to embed it.</p></div>`)
-			continue
-		}
-		snippet := EmbedHTML(base, a.Slug, a.Name)
-		b.WriteString(`<textarea class="embed-code" rows="3" readonly ` +
-			`onclick="this.select()">` + html.EscapeString(snippet) + `</textarea>`)
-		if bridged(a.RenderHTML()) {
-			b.WriteString(`<p class="embed-warn">This one calls <code>mu.</code> — ` +
-				`the store, a service, the agent. Those work on this site, where the ` +
-				`page around the frame answers them, and nowhere else: elsewhere they ` +
-				`wait and then fail. Everything that does not need Mu still works.</p>`)
-		}
-		b.WriteString(`</div>`)
+	b.WriteString(`<textarea class="embed-code" rows="4" readonly ` +
+		`onclick="this.select()">` + html.EscapeString(EmbedHTML(app.BaseURL(r), a.Slug, a.Name)) +
+		`</textarea>`)
+	if bridged(a.RenderHTML()) {
+		b.WriteString(`<p class="embed-warn">This one calls <code>mu.</code> — the store, ` +
+			`a service, the agent. Those work on this site, where the page around the frame ` +
+			`answers them, and nowhere else: elsewhere they wait and then fail. Everything ` +
+			`that does not need Mu still works.</p>`)
 	}
-
 	b.WriteString(`</div>`)
+
 	app.Respond(w, r, app.Response{Title: "Embed", Description: "Put an app on another page",
 		HTML: b.String()})
 }

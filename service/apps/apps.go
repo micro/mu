@@ -338,8 +338,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		handleNew(w, r)
 	case path == "/generate":
 		handleMicroGenerate(w, r)
-	case path == "/embed":
-		handleEmbed(w, r)
 	case path == "/sdk.js":
 		handleSDK(w, r)
 	case path == "/sdk.css":
@@ -353,6 +351,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	case strings.HasSuffix(path, "/versions"):
 		slug := strings.TrimSuffix(strings.TrimPrefix(path, "/"), "/versions")
 		handleVersions(w, r, slug)
+	case strings.HasSuffix(path, "/embed"):
+		slug := strings.TrimSuffix(strings.TrimPrefix(path, "/"), "/embed")
+		handleEmbed(w, r, slug)
 	case strings.HasSuffix(path, "/fork"):
 		slug := strings.TrimSuffix(strings.TrimPrefix(path, "/"), "/fork")
 		handleFork(w, r, slug)
@@ -396,45 +397,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			handleApp(w, r, slug)
 		}
 	}
-}
-
-// pinControl is the "pin this app to the top of home" switch, on the row of
-// the app it pins.
-//
-// It used to be a checkbox list of every public app, inside a card-picker
-// panel, under a heading that said "Apps — pin apps to the top of your home
-// screen". It was there because it is also a list of checkboxes, which is a
-// resemblance and not a reason. Here you are already looking at the app and
-// deciding about it, and there is no second list of app names to keep in step
-// with this one.
-//
-// It posts to /account because that is where the account is written; `return`
-// carries the page back. See app.ReturnTo.
-// The star and the .pin-btn class are the ones /services uses to pin a service
-// to the sidebar. Same gesture, same meaning, so it has to be the same control
-// — two pins that look different are two features to a reader.
-func pinControl(r *http.Request, userID, slug string, isPinned bool) string {
-	if userID == "" {
-		return ""
-	}
-	action, label, cls := "pin", "Pin to home", "pin-btn"
-	if isPinned {
-		action, label, cls = "unpin", "Unpin from home", "pin-btn pinned"
-	}
-	return fmt.Sprintf(`<form method="POST" action="/account" class="d-inline-block align-middle m-0">`+
-		`<input type="hidden" name="_csrf" value="%s">`+
-		`<input type="hidden" name="%s" value="%s">`+
-		`<input type="hidden" name="return" value="%s">`+
-		`<button type="submit" class="%s" title="%s" aria-label="%s">`+
-		`<svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" `+
-		`stroke-linejoin="round"><polygon points="12,3 14.6,9 21,9.5 16.2,13.8 17.6,20 12,16.8 6.4,20 7.8,13.8 3,9.5 9.4,9"/></svg>`+
-		`</button></form>`,
-		htmlpkg.EscapeString(auth.CSRFToken(r)),
-		action,
-		htmlpkg.EscapeString(slug),
-		htmlpkg.EscapeString(r.URL.RequestURI()),
-		cls, label, label,
-	)
 }
 
 // sortForDirectory orders the apps directory: ours first, in the order we
@@ -509,13 +471,9 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 	sess, acc := auth.TrySession(r)
 	var userID string
 	var isAdmin bool
-	pinned := map[string]bool{}
 	if sess != nil {
 		userID = sess.Account
 		isAdmin = acc.Admin
-		for _, w := range acc.Widgets {
-			pinned[w] = true
-		}
 	}
 
 	// HTML
@@ -534,15 +492,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 	// stylesheet outrank a plain class and turn a white label on a black button
 	// black on black. There is a comment about it on connect-cta too. Third
 	// time; hence using the shared thing.
-	// And beside it, where to put one once it exists. Embed is the second half
-	// of what you do with an app and had no way in from the page listing them —
-	// a link rather than a second call to action, because making one is the
-	// thing this page is for and there is only ever one primary action.
-	sb.WriteString(`<p class="m-0 mb-4">` + app.ActionLink("/apps/new", "+ New app"))
-	if userID != "" {
-		sb.WriteString(` ` + app.TextLink("Embed an app", "/apps/embed"))
-	}
-	sb.WriteString(`</p>`)
+	sb.WriteString(`<p class="m-0 mb-4">` + app.ActionLink("/apps/new", "+ New app") + `</p>`)
 
 	// Pricing filter
 	pricing := r.URL.Query().Get("pricing")
@@ -653,13 +603,34 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 			} else {
 				priceHTML = ` · <span class="text-success">Free</span>`
 			}
-			controls := app.ItemControls(userID, isAdmin, "app", a.Slug, a.AuthorID, "/apps/"+a.Slug+"/edit", "/apps/"+a.Slug+"/delete")
+			// What you can do with it, inline.
+			//
+			// Launch was here and did what the title above it already does, so
+			// the slot went to Embed — the other half of what you do with an
+			// app, and the thing that had no way in from this page.
+			//
+			// Edit and Delete are words on the row rather than entries in a
+			// menu behind three dots. On your own app they are the two things
+			// you came for, and a dropdown to reach them is a click spent
+			// hiding two links. The menu stays on everybody else's, where it
+			// carries Save, Hide, Report and Block — which are decisions about
+			// somebody else's work and belong tucked away.
+			mine := userID != "" && (userID == a.AuthorID || isAdmin)
+			controls := ""
+			if mine {
+				controls = fmt.Sprintf(` · <a href="/apps/%s/edit">Edit</a>`+
+					` · <a href="/apps/%s/delete" class="text-error" `+
+					`onclick="return confirm('Delete this app?')">Delete</a>`,
+					htmlpkg.EscapeString(a.Slug), htmlpkg.EscapeString(a.Slug))
+			} else {
+				controls = app.ItemControls(userID, isAdmin, "app", a.Slug, a.AuthorID, "", "")
+			}
 			sb.WriteString(fmt.Sprintf(`<div class="tile tile-row mb-3">
 <img src="/apps/%s/icon.svg" width="32" height="32" class="fixed-w mt-px">
 <div>
 <h3 class="m-0 mb-1"><a href="/apps/%s">%s</a></h3>
 <p class="m-0 mb-1 text-secondary">%s</p>
-<p class="m-0 text-sm text-muted">by %s%s%s · %d launches · <a href="/apps/%s">Launch</a> · <a href="/apps/%s/fork">Fork</a>%s%s</p>
+<p class="m-0 text-sm text-muted">by %s%s%s · %d launches · <a href="/apps/%s/embed">Embed</a> · <a href="/apps/%s/fork">Fork</a>%s</p>
 </div>
 </div>`,
 				htmlpkg.EscapeString(a.Slug),
@@ -672,7 +643,6 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 				a.Installs,
 				htmlpkg.EscapeString(a.Slug),
 				htmlpkg.EscapeString(a.Slug),
-				pinControl(r, userID, a.Slug, pinned[a.Slug]),
 				controls,
 			))
 		}
