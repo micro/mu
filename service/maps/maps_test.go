@@ -177,7 +177,7 @@ func TestThePageIsAMapYouCanMove(t *testing.T) {
 
 	// It opens somewhere in Britain rather than at 0,0 in the Atlantic, and
 	// within the zooms the service will serve.
-	if !strings.Contains(pane, `data-lat="54"`) || !strings.Contains(pane, `data-lon="-2.5"`) {
+	if !strings.Contains(pane, `data-lat="51.5074"`) || !strings.Contains(pane, `data-lon="-0.1278"`) {
 		t.Error("the map does not open over Britain")
 	}
 	if homeZoom < minZoom || homeZoom > maxZoom {

@@ -99,7 +99,7 @@ guessable.
 |---|---|---|---|---|
 | `apps` | /apps | ✅ |  | User apps: build, run, edit |
 | `blog` | /blog | ✅ |  | Microblogging, daily digests, ActivityPub |
-| `browser` | /browser | ✅ |  | A real browser over chromedp: read a page after its JavaScript has run, or photograph it. Needs Chromium — `BROWSER_URL` for a DevTools endpoint anywhere, or `CHROME_PATH` for one on this machine; without either it says so and serves nothing. Priced, because it runs a browser: 3 credits to read, 4 to photograph. Every URL goes through `internal/hosts` first, because an agent pointing it at 127.0.0.1 or the cloud metadata endpoint is the risk |
+| `browser` | /browser | ✅ |  | A real browser over chromedp: read a page after its JavaScript has run, or photograph it. Needs Chromium, which cannot be built into the binary — it looks on the PATH first, so an installed browser needs no configuration; `CHROME_PATH` names a particular one and `BROWSER_URL` points at a DevTools endpoint elsewhere. With none of the three it says so and serves nothing. Priced, because it runs a browser: 3 credits to read, 4 to photograph. Every URL goes through `internal/hosts` first, because an agent pointing it at 127.0.0.1 or the cloud metadata endpoint is the risk |
 | `chat` | /chat | ✅ |  | Live discussion rooms attached to an item |
 | `contacts` | /contacts | ✅ | ✅ | The caller's address book: turn a name into an address |
 | `docs` | /docs | ✅ | ✅ | The caller's own documents: named collections that outlive a conversation. Apps keep a separate store each through `mu.db` |

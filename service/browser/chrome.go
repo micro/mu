@@ -47,6 +47,10 @@ func allocator() context.Context {
 			app.Log("browser", "using the DevTools endpoint at %s", url)
 			return
 		}
+		// binary() is either what an operator named or what was found on the
+		// PATH, and it is never empty here — Configured() gates every path in.
+		// Passing an empty ExecPath would defeat chromedp's own search, which
+		// is what this was doing before it looked for one itself.
 		opts := append(chromedp.DefaultExecAllocatorOptions[:],
 			chromedp.ExecPath(binary()),
 			// Headless, and told not to give itself away as automation any more

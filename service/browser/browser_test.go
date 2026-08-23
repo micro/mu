@@ -49,28 +49,61 @@ func TestItWillNotOpenTheMachineItRunsOn(t *testing.T) {
 
 // An instance with no browser says so, in words an operator can act on, rather
 // than failing somewhere inside a websocket.
+// An instance with no browser says so, in words an operator can act on, rather
+// than failing somewhere inside a websocket.
+//
+// Skipped where a browser is actually installed, which is the case this test
+// cannot create — and the case that needs no configuration at all, which is the
+// point of found().
 func TestWithNoBrowserItSaysSo(t *testing.T) {
 	t.Setenv("BROWSER_URL", "")
 	t.Setenv("CHROME_PATH", "")
+	if found() != "" {
+		t.Skip("a browser is installed here, so there is no unconfigured case to test")
+	}
 
 	if Configured() {
-		t.Fatal("an instance with neither setting reports a browser")
+		t.Fatal("an instance with no browser anywhere reports one")
 	}
 	_, err := checked("https://example.com")
 	if err == nil {
 		t.Fatal("a page was accepted with no browser to open it in")
 	}
-	for _, want := range []string{"BROWSER_URL", "CHROME_PATH"} {
+	for _, want := range []string{"BROWSER_URL", "CHROME_PATH", "install"} {
 		if !strings.Contains(err.Error(), want) {
-			t.Errorf("the refusal does not name %s: %v", want, err)
+			t.Errorf("the refusal does not mention %s: %v", want, err)
 		}
 	}
 
 	// The page says the same thing rather than offering a box that cannot work.
 	w := httptest.NewRecorder()
 	Handler(w, httptest.NewRequest("GET", "/browser", nil))
-	if body := w.Body.String(); !strings.Contains(body, "no browser configured") {
+	if body := w.Body.String(); !strings.Contains(body, "could not find one") {
 		t.Errorf("the page does not say the browser is missing:\n%s", body)
+	}
+}
+
+// A machine with a browser on it needs no settings. Configuration that exists
+// only because nobody looked is configuration worth deleting.
+func TestAnInstalledBrowserNeedsNoSettings(t *testing.T) {
+	t.Setenv("BROWSER_URL", "")
+	t.Setenv("CHROME_PATH", "")
+	if found() == "" {
+		t.Skip("no browser installed here")
+	}
+	if !Configured() {
+		t.Errorf("a browser at %s was not used", found())
+	}
+	if binary() != found() {
+		t.Errorf("binary() is %q, want the one found at %q", binary(), found())
+	}
+}
+
+// And a named one wins, because naming it is how you choose between two.
+func TestANamedBrowserWinsOverTheFoundOne(t *testing.T) {
+	t.Setenv("CHROME_PATH", "/opt/my/chrome")
+	if got := binary(); got != "/opt/my/chrome" {
+		t.Errorf("CHROME_PATH was ignored: %q", got)
 	}
 }
 

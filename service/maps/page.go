@@ -181,10 +181,15 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 // refuses the location prompt or is in Berlin gets a map rather than an
 // apology. Geolocation moves it when the browser offers one and it lands
 // inside the tiles that exist.
+// A region rather than the whole country. Ordnance Survey holds Britain and
+// nothing else, so the further out you go the more of the square is sea with no
+// tile behind it — at zoom 6 most of what is on screen is water OS has never
+// been asked about, which looks exactly like a map that failed to load. Nine is
+// a county, which is a map.
 const (
-	homeLat  = 54.0
-	homeLon  = -2.5
-	homeZoom = 6
+	homeLat  = 51.5074
+	homeLon  = -0.1278
+	homeZoom = 9
 )
 
 // mapPane is the map: a viewport, a layer of tiles positioned inside it, and
@@ -246,7 +251,8 @@ const mapJS = `<script>
   if(!el||!layer) return;
   var SIZE=256, style=el.dataset.style, where=document.getElementById('map-where');
   var z=+el.dataset.zoom, minZ=+el.dataset.min, maxZ=+el.dataset.max;
-  var live={};
+  var live={}, arrived=0, missing=0, asked=0;
+  function done(){ say(); }
 
   // Web Mercator, the same formula the service uses server-side. Kept as a
   // float so the centre can sit anywhere in a tile rather than snapping.
@@ -280,7 +286,8 @@ const mapJS = `<script>
           img.src='/maps/tiles/'+style+'/'+z+'/'+wx+'/'+y+'.png';
           // A tile outside Britain is a 404 and that is normal here, so it
           // fades out rather than showing a broken image.
-          img.onerror=function(){ this.classList.add('map-gap'); };
+          img.onerror=function(){ this.classList.add('map-gap'); missing++; done(); };
+          img.onload=function(){ arrived++; done(); };
           layer.appendChild(img);
           live[k]=img;
         }
@@ -291,7 +298,24 @@ const mapJS = `<script>
     for(var have in live){
       if(!seen[have]){ layer.removeChild(live[have]); delete live[have]; }
     }
-    if(where) where.textContent=latOf(cy,z).toFixed(4)+', '+lonOf(cx,z).toFixed(4)+'  ·  zoom '+z;
+    asked=Object.keys(live).length;
+    say();
+  }
+
+  // What the map is looking at, and — when nothing came back — why that might
+  // be. A tile that fails is hidden, which is right for the sea around Britain
+  // and wrong when every tile fails: a map where nothing loaded then looks
+  // exactly like a map still loading, which is how "tiles do not load" becomes
+  // a report with nothing in it. So it says so.
+  function say(){
+    if(!where) return;
+    var at=latOf(cy,z).toFixed(4)+', '+lonOf(cx,z).toFixed(4)+'  ·  zoom '+z;
+    if(asked>0 && arrived===0 && missing>=asked){
+      where.textContent=at+'  ·  no tiles came back. Ordnance Survey covers Britain only, '+
+        'so this may be outside it — or this instance has no OS_MAPS_KEY and holds none of these yet.';
+      return;
+    }
+    where.textContent=at;
   }
 
   function zoomTo(next){
@@ -300,7 +324,7 @@ const mapJS = `<script>
     var lat=latOf(cy,z), lon=lonOf(cx,z);
     z=next; cx=xOf(lon,z); cy=yOf(lat,z);
     // Every tile is the wrong size now, so start again rather than reposition.
-    layer.innerHTML=''; live={};
+    layer.innerHTML=''; live={}; arrived=0; missing=0;
     render();
   }
 
@@ -339,7 +363,7 @@ const mapJS = `<script>
       here.disabled=false;
       z=Math.max(z,14);
       cx=xOf(p.coords.longitude,z); cy=yOf(p.coords.latitude,z);
-      layer.innerHTML=''; live={}; render();
+      layer.innerHTML=''; live={}; arrived=0; missing=0; render();
     },function(){ here.disabled=false; },{timeout:10000});
   };
 

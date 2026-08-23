@@ -46,7 +46,10 @@ package browser
 import (
 	"context"
 	"fmt"
+	"os"
+	"os/exec"
 	"strings"
+	"sync"
 	"time"
 
 	"mu/internal/app"
@@ -74,15 +77,69 @@ const maxText = 40000
 
 // Configured reports whether this instance has a browser to drive.
 //
-// Named for the question rather than the setting, because there are two ways to
-// answer it and a caller should not have to know which one an operator chose.
+// Named for the question rather than the setting, because there are three ways
+// to answer it and a caller should not have to know which one applies.
 func Configured() bool { return endpoint() != "" || binary() != "" }
 
 // endpoint is a DevTools address to connect to, if one is set.
 func endpoint() string { return strings.TrimSpace(settings.Get("BROWSER_URL")) }
 
-// binary is a local Chromium to start, if one is set.
-func binary() string { return strings.TrimSpace(settings.Get("CHROME_PATH")) }
+// binary is the Chromium to start: the one an operator named, or one already on
+// this machine.
+//
+// The second half is the point. Chromium cannot be embedded in a Go binary in
+// any useful sense — it is two hundred megabytes of C++ and it has to exist as
+// a file to be executed — so "just embed it" is not on the table. What is on
+// the table is not making somebody configure a thing that is already there:
+// most machines that would run this have a browser on the PATH, and asking them
+// to set CHROME_PATH to a path the program could have found is the kind of
+// configuration that exists only because nobody looked.
+//
+// So it looks. An instance with a browser installed needs no settings at all;
+// CHROME_PATH is for choosing a particular one, and BROWSER_URL for pointing at
+// a browser somewhere else entirely.
+func binary() string {
+	if set := strings.TrimSpace(settings.Get("CHROME_PATH")); set != "" {
+		return set
+	}
+	return found()
+}
+
+// found is a Chromium on this machine, or nothing.
+//
+// The names in the order a machine is likely to have them: the two Chromium
+// packages Linux ships, then Chrome, then the macOS bundle path, which is not
+// on any PATH and is where it always is.
+//
+// Looked up once. exec.LookPath walks the PATH on every call and this is asked
+// on every page render.
+func found() string {
+	foundOnce.Do(func() {
+		for _, name := range []string{
+			"chromium", "chromium-browser", "google-chrome", "google-chrome-stable", "chrome",
+		} {
+			if path, err := exec.LookPath(name); err == nil {
+				foundPath = path
+				return
+			}
+		}
+		for _, path := range []string{
+			"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+			"/Applications/Chromium.app/Contents/MacOS/Chromium",
+		} {
+			if info, err := os.Stat(path); err == nil && !info.IsDir() {
+				foundPath = path
+				return
+			}
+		}
+	})
+	return foundPath
+}
+
+var (
+	foundOnce sync.Once
+	foundPath string
+)
 
 // ── Read ────────────────────────────────────────────────────────
 
@@ -160,8 +217,8 @@ func checked(raw string) (string, error) {
 		return "", err
 	}
 	if !Configured() {
-		return "", fmt.Errorf("this instance has no browser configured, so it cannot open pages: " +
-			"an admin sets BROWSER_URL to a DevTools endpoint, or CHROME_PATH to a local Chromium")
+		return "", fmt.Errorf("this instance has no browser and could not find one: install Chromium, " +
+			"or set CHROME_PATH to one, or BROWSER_URL to a DevTools endpoint elsewhere")
 	}
 	return raw, nil
 }

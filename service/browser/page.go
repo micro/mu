@@ -71,9 +71,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		`empty box — this is what the page actually says once its scripts have run.</p>`)
 
 	if !Configured() {
-		b.WriteString(app.Problem("This instance has no browser configured, so it cannot " +
-			"open pages. An admin sets BROWSER_URL to a DevTools endpoint — a Chromium " +
-			"container, or a hosted one — or CHROME_PATH to a Chromium on this machine."))
+		b.WriteString(app.Problem("This instance has no browser and could not find one on " +
+			"this machine. Chromium cannot be built into the binary — it is a separate " +
+			"program — so an admin installs one, or sets CHROME_PATH to a particular one, " +
+			"or BROWSER_URL to a DevTools endpoint somewhere else."))
 		b.WriteString(`</div>`)
 		app.Respond(w, r, app.Response{Title: "Browser", Description: Spec.Description, HTML: b.String()})
 		return
