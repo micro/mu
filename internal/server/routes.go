@@ -573,6 +573,8 @@ func registerRoutes() {
 	http.HandleFunc("/request-invite", account.RequestInvite)
 	http.HandleFunc("/invite", account.InviteHandler)
 	http.HandleFunc("/report", app.ReportHandler)
+	// What you are doing, set on your own profile. See internal/user/status.go.
+	http.HandleFunc("/status", user.StatusHandler)
 	http.HandleFunc("/account", account.Account)
 	http.HandleFunc("/verify", account.Verify)
 	http.HandleFunc("/session", account.Session)

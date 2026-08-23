@@ -284,6 +284,17 @@ func wireHooks() {
 	})
 	inbox.AgentName = agent.NameOf
 	inbox.Address = mail.SharedAgentAddress
+
+	// Somebody's own address, for the Write button on their profile.
+	//
+	// internal/user is below the mail service and may not import it — see the
+	// layering rule — and inbox.Address above is the same hook for the same
+	// reason. Their address without a tag, which is the person: service/mail
+	// will not wake an agent on untagged mail, so writing to somebody here is
+	// writing to them.
+	user.AddressFor = func(accountID string) string {
+		return mail.EmailForUser(accountID, mail.ConfiguredDomain())
+	}
 	// The roster, so the inbox can offer a box per agent rather than only the
 	// ones that already have mail — and so a box is the agent's address tag
 	// rather than a second slug derived from its name. See inbox.Agents.

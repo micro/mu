@@ -6017,6 +6017,39 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
 .sbx-code { font-size: 12px; color: var(--btn-danger, #c00); margin: 6px 0 0 }
 .sbx-problem { font-size: 13px; color: var(--btn-danger, #c00); margin: var(--spacing-md, 16px) 0 0 }
 
+/* A profile: what somebody is doing, and how to write to them.
+   
+   The two things that make /@somebody worth opening twice. It had a name and a
+   join date, which is a record — and a record is read once. */
+.pf-status {
+  font-size: 15px;
+  color: var(--text-primary, #1a1a1a);
+  margin: 10px 0 0;
+  line-height: var(--line-height, 1.6);
+}
+.pf-status-when { font-size: 12px; color: var(--text-muted, #bbb); margin-left: 10px }
+
+/* Your own, editable where it is read. One field does not earn a settings
+   page, and the place you change what your profile says is your profile. */
+.pf-status-form { display: flex; gap: 8px; align-items: center; margin: 10px 0 0 }
+.pf-status-in {
+  flex: 1 1 auto;
+  min-width: 0;
+  font: inherit;
+  font-size: 15px;
+  padding: 7px 10px;
+  border: var(--border-width, 1px) solid var(--card-border, #e8e8e8);
+  border-radius: var(--border-radius, 6px);
+  background: var(--card-background, #fff);
+  color: var(--text-primary, #1a1a1a);
+}
+.pf-status-in:focus { outline: none; border-color: #bbb }
+
+/* The way to say something, and the address it goes to beside it — the address
+   is the interface, so it is shown rather than hidden behind the button. */
+.pf-write { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 16px 0 0 }
+.pf-addr { font-size: 13px; color: var(--text-muted, #888) }
+
 /* One tool, at an address of its own. See internal/api/tool_page.go. */
 .tool-page { max-width: 760px }
 .tool-name { font-size: 24px; margin: 0 0 6px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace }

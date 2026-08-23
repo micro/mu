@@ -79,13 +79,17 @@ var LinkifyContent func(text string) string
 var profileMutex sync.RWMutex
 var profiles = map[string]*Profile{}
 
-// Profile stores additional user information beyond the Account
-// Profile is what an account looks like to other people. It used to also hold
-// a status message and a hundred entries of status history, which fed a stream
-// on the home screen — see the comment on Handler.
+// Profile is what an account looks like to other people.
+//
+// It held a status and a hundred entries of status history, feeding a stream on
+// the home screen. The history and the stream went; the status went with them,
+// which was one thing too many — a profile with a name and a join date on it is
+// a record, and nobody opens a record twice. One line, no history, and nothing
+// reads it but the profile page. See status.go.
 type Profile struct {
 	UserID    string    `json:"user_id"`
-	UpdatedAt time.Time `json:"updated_at"` // When the profile was last updated
+	Status    string    `json:"status,omitempty"`
+	UpdatedAt time.Time `json:"updated_at"` // When the status was last set
 }
 
 // Presence tracking
@@ -331,11 +335,20 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 	sess, _ := auth.TrySession(r)
 	isOwnProfile := sess != nil && sess.Account == username
 
-	// Build message link (only show if not own profile)
+	// Somewhere to write to them, and what they are doing.
+	//
+	// The link used to be /mail?compose=true, a screen that no longer exists —
+	// so the one action on a profile went nowhere. It is /inbox/new at their
+	// address now, which is the person rather than their agent. See status.go.
 	messageLink := ""
 	if !isOwnProfile {
-		messageLink = fmt.Sprintf(`<p class="mt-4"><a href="/mail?compose=true&to=%s">Send a message</a></p>`, acc.ID)
+		messageLink = writeLink(acc.ID)
 	}
+	csrf := ""
+	if sess != nil {
+		csrf = auth.CSRFToken(r)
+	}
+	status := statusBlock(acc.ID, isOwnProfile, csrf)
 
 	// Apps section
 	appsSection := ""
@@ -371,6 +384,7 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 	content := fmt.Sprintf(`<div class="max-w-xl">
 <div class="mb-6 page-head">
 <p class="info m-0">@%s%s</p>
+%s
 <p class="info mt-3">Joined %s</p>
 %s
 </div>
@@ -379,7 +393,7 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 
 <h3 class="mb-5">Posts (%d)</h3>
 %s
-</div>`, acc.ID, verifiedBadge, acc.Created.Format("January 2006"), messageLink, appsSection, postCount, userPosts)
+</div>`, acc.ID, verifiedBadge, status, acc.Created.Format("January 2006"), messageLink, appsSection, postCount, userPosts)
 
 	// Use name as page title
 	app.Respond(w, r, app.Response{Title: acc.Name, Description: fmt.Sprintf("Profile of %s", acc.Name), HTML: content})
