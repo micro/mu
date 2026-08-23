@@ -38,3 +38,33 @@ func TestNativeToolNameMatchesTheToolCallersUse(t *testing.T) {
 		}
 	}
 }
+
+// A scope that matches nothing leaves an agent with nothing.
+//
+// filterServices returned the whole set when the intersection was empty,
+// commented "never leave an agent with no tools" — a convenience overriding a
+// boundary. It is reachable: nativeServices(public) is a smaller set in a
+// shared room, so an agent scoped to mail and contacts there fell past its own
+// scope to everything public.
+//
+// Failing open on a permission check is the one place the helpful answer is the
+// wrong one.
+func TestAScopeThatMatchesNothingGrantsNothing(t *testing.T) {
+	all := []string{"news", "markets", "weather"}
+
+	if got := filterServices(all, []string{"mail", "contacts"}); len(got) != 0 {
+		t.Errorf("an agent scoped to services that are not here got %v", got)
+	}
+
+	// An unscoped agent still gets everything — empty means "no restriction",
+	// which is a different statement from "restricted to nothing".
+	if got := filterServices(all, nil); len(got) != len(all) {
+		t.Errorf("an unscoped agent was restricted to %v", got)
+	}
+
+	// And a scope that matches some of them gets exactly those.
+	got := filterServices(all, []string{"news", "mail"})
+	if len(got) != 1 || got[0] != "news" {
+		t.Errorf("the intersection is %v, want just news", got)
+	}
+}

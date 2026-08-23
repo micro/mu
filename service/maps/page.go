@@ -63,7 +63,13 @@ func tileAt(lat, lon float64, z int) (x, y int) {
 // z/x/y template and nothing else, so a tool that returned base64 in JSON would
 // be a tool nobody could point a map at.
 func TileHandler(w http.ResponseWriter, r *http.Request) {
-	parts := strings.Split(strings.Trim(strings.TrimPrefix(r.URL.Path, "/tiles"), "/"), "/")
+	// Under the service, like everything else this service serves. It was at
+	// /tiles, kept there when the service was renamed on the argument that the
+	// URL was pasted into map configs somewhere — which was a guess about a
+	// service days old, and it left a top-level route with no service behind
+	// it. That is exactly the orphan "service name == route" exists to prevent.
+	// /tiles/ still answers, as a redirect: see routes.go.
+	parts := strings.Split(strings.Trim(strings.TrimPrefix(r.URL.Path, "/maps/tiles"), "/"), "/")
 	if len(parts) != 4 {
 		Handler(w, r)
 		return
@@ -155,7 +161,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// loopback port, so r.Host is "localhost:8081" and the URL this page hands
 	// somebody to paste into MapLibre named an address no client can reach. See
 	// internal/origin, which is where this question has one answer.
-	b.WriteString(`<pre class="tool-call">` + html.EscapeString(app.BaseURL(r)) + `/tiles/` +
+	b.WriteString(`<pre class="tool-call">` + html.EscapeString(app.BaseURL(r)) + `/maps/tiles/` +
 		style + `/{z}/{x}/{y}.png</pre>`)
 	b.WriteString(app.NoteHTML(`That is a raster tile URL — give it to MapLibre, Leaflet or ` +
 		`OpenLayers as-is. Free: a tile is fetched once, ever, and served from here ` +
@@ -271,7 +277,7 @@ const mapJS = `<script>
           img=new Image();
           img.className='map-tile';
           img.alt='';
-          img.src='/tiles/'+style+'/'+z+'/'+wx+'/'+y+'.png';
+          img.src='/maps/tiles/'+style+'/'+z+'/'+wx+'/'+y+'.png';
           // A tile outside Britain is a 404 and that is normal here, so it
           // fades out rather than showing a broken image.
           img.onerror=function(){ this.classList.add('map-gap'); };

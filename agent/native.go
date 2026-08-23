@@ -108,9 +108,18 @@ func filterServices(all, allow []string) []string {
 			out = append(out, s)
 		}
 	}
-	if len(out) == 0 {
-		return all // never leave an agent with no tools
-	}
+	// Nothing is nothing.
+	//
+	// This returned `all` here, commented "never leave an agent with no tools",
+	// which is a convenience overriding a boundary: an agent scoped to two
+	// services and matching neither got every service on the instance. It is
+	// reachable — nativeServices(public) is a smaller set in a shared room, so
+	// an agent scoped to mail and contacts there fell through to everything
+	// public rather than to nothing.
+	//
+	// A scope that resolves to nothing is an agent that can do nothing, and it
+	// says so when asked. Failing open on a permission check is the one place
+	// where the helpful answer is the wrong one.
 	return out
 }
 

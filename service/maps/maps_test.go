@@ -195,8 +195,8 @@ func TestThePageIsAMapYouCanMove(t *testing.T) {
 // The tiles it asks for are the ones this instance serves. The page and the
 // service agreeing on that URL is the only reason any of it draws.
 func TestTheMapAsksForTilesAtTheServedPath(t *testing.T) {
-	if !strings.Contains(mapJS, "'/tiles/'+style+'/'+z+'/'+wx+'/'+y+'.png'") {
-		t.Error("the map builds a tile URL that is not /tiles/<style>/<z>/<x>/<y>.png — " +
+	if !strings.Contains(mapJS, "'/maps/tiles/'+style+'/'+z+'/'+wx+'/'+y+'.png'") {
+		t.Error("the map builds a tile URL that is not /maps/tiles/<style>/<z>/<x>/<y>.png — " +
 			"which is the path TileHandler serves and the shape every map library takes")
 	}
 }
@@ -263,11 +263,11 @@ func TestNothingChargesForATile(t *testing.T) {
 //
 // It was built from r.Host, and Mu runs behind a reverse proxy that forwards to
 // a loopback port — so the page told everybody to point MapLibre at
-// https://localhost:8081/tiles/road/{z}/{x}/{y}.png. That URL is the whole
+// https://localhost:8081/maps/tiles/road/{z}/{x}/{y}.png. That URL is the whole
 // output of this page: a raster tile template you copy into somebody else's map
 // library, where an address no client can reach is not a cosmetic mistake.
 func TestTheTileURLNamesTheInstance(t *testing.T) {
-	r := httptest.NewRequest("GET", "/tiles", nil)
+	r := httptest.NewRequest("GET", "/maps", nil)
 	r.Host = "localhost:8081" // what the proxy actually passes through
 	r.Header.Set("X-Forwarded-Host", "micro.mu")
 	r.Header.Set("X-Forwarded-Proto", "https")
@@ -276,7 +276,7 @@ func TestTheTileURLNamesTheInstance(t *testing.T) {
 	Handler(w, r)
 	body := w.Body.String()
 
-	if !strings.Contains(body, "https://micro.mu/tiles/road/{z}/{x}/{y}.png") {
+	if !strings.Contains(body, "https://micro.mu/maps/tiles/road/{z}/{x}/{y}.png") {
 		t.Errorf("the tile URL does not name the public address:\n%s", body)
 	}
 	if strings.Contains(body, "localhost:8081") {

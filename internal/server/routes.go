@@ -83,7 +83,8 @@ func authRequired() map[string]bool {
 		"/transit":                false, // Public transport data is public
 		"/hazards":                false, // Public hazard data, published to be redistributed
 		"/maps":                   false, // Public — the page, and any tile already held
-		"/tiles/":                 false, // A held tile is free to anybody; a cold one needs a session
+		"/maps/":                  false, // A held tile is free to anybody; a cold one needs a session
+		"/tiles/":                 false, // The old tile path, which redirects
 		"/prayer":                 false, // Public prayer times, daily verse and hadith
 		"/about":                  false, // Public "what is Mu" pitch
 		"/oauth2/google":          false, // Google sign-in start (no session yet)
@@ -469,12 +470,21 @@ func registerRoutes() {
 	// /tiles/<style>/<z>/<x>/<y>.png, which is the shape every map library
 	// takes and the only shape any of them take. See service/maps.
 	//
-	// The image path keeps the old word deliberately. It is pasted into MapLibre
-	// and Leaflet configs this instance cannot see, and renaming the service is
-	// not a reason to break somebody else's map. The page moved because a page
-	// is ours; the tile URL is theirs.
+	// Everything the service serves lives under the service's route, which is
+	// what "service name == route" means and what /apps/<slug>/icon.svg already
+	// does. The tile path was left at /tiles when the service was renamed, on
+	// the argument that map configs somewhere point at it — a guess about a
+	// service days old, which bought a top-level route with no service behind
+	// it.
+	//
+	// /tiles/ still answers, permanently redirected. Browsers and map libraries
+	// cache a 301, so a config that has not been updated costs one extra round
+	// trip and then stops costing anything.
 	http.HandleFunc("/maps", maps.Handler)
-	http.HandleFunc("/tiles/", maps.TileHandler)
+	http.HandleFunc("/maps/", maps.TileHandler)
+	http.HandleFunc("/tiles/", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/maps"+r.URL.Path, http.StatusMovedPermanently)
+	})
 	http.HandleFunc("/wallet", wallet.Handler)
 	// Taking your key with you. A page action and never a tool: an agent that
 	// can read a private key is a prompt injection away from posting it
