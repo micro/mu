@@ -48,12 +48,14 @@ package admin
 
 import (
 	"fmt"
+	"html"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"mu/account"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
@@ -266,15 +268,70 @@ func newCallers() {
 		known[acc.ID] = true
 		changed = true
 		raise(alert{
-			Key:   "firstcall:" + acc.ID,
-			What:  acc.ID + " started using the API",
-			Why:   "Their first tool call. Signing up and using it are different things, and this is the second one.",
-			Where: "/admin/usage",
+			Key:  "firstcall:" + acc.ID,
+			What: acc.ID + " started using the API",
+			Why: "Their first tool call. Signing up and using it are different things, " +
+				"and this is the second one." + whatTheyDid(acc.ID),
+			Where: "/admin/traffic",
 		})
 	}
 	if changed {
 		data.SaveJSON(callersFile, known) //nolint:errcheck
 	}
+}
+
+// whatTheyDid is as much as can honestly be said about a first call.
+//
+// "Somebody started using the API" and nothing else leaves the operator to go
+// and look, and going to look does not answer it either: internal/usage keeps
+// counts per account and counts per tool and deliberately not the cross of the
+// two — see SeriesFor, which says so and says why. So the counters cannot name
+// the tool, and pretending otherwise here would mean inventing the key that
+// package refuses to keep.
+//
+// What can be said is what they were charged for, because the ledger itemises
+// every paid operation by name, and whether they have minted a token, because
+// that is the step between signing up and calling anything. A free call — the
+// weather, a listing, anything this instance stores itself — leaves no ledger
+// row, and saying so is more useful than silence: it means they did something
+// that cost us nothing, which is a different fact from doing nothing.
+func whatTheyDid(accountID string) string {
+	var out strings.Builder
+
+	// What it cost, by operation, most recent first and deduplicated — five
+	// calls to the same tool is one line, not five.
+	seen := map[string]bool{}
+	var ops []string
+	for _, tx := range account.Transactions(accountID, 20) {
+		if tx == nil || tx.Amount >= 0 || tx.Operation == "" || seen[tx.Operation] {
+			continue
+		}
+		seen[tx.Operation] = true
+		ops = append(ops, tx.Operation)
+		if len(ops) == 5 {
+			break
+		}
+	}
+	if len(ops) > 0 {
+		out.WriteString(" They have been charged for: " + strings.Join(ops, ", ") + ".")
+	} else {
+		out.WriteString(" Nothing they did was charged for, so it was a free " +
+			"operation — a listing, the weather, something this instance stores " +
+			"itself. The counters cannot say which: usage is kept per account " +
+			"and per tool, never both at once.")
+	}
+
+	// And whether they went through the front door or the API door.
+	switch n := len(auth.ListTokens(accountID)); {
+	case n == 0:
+		out.WriteString(" No token minted, so this was the web or a signed-in session.")
+	case n == 1:
+		out.WriteString(" They have minted a token.")
+	default:
+		out.WriteString(fmt.Sprintf(" They have minted %d tokens.", n))
+	}
+
+	return out.String()
 }
 
 const (
@@ -334,9 +391,23 @@ func raise(a alert) {
 	}
 	app.Log("alert", "%s", a.What)
 
-	body := a.Why
+	// HTML, with an absolute link. Two faults with one symptom, both reported
+	// as "links are not clickable in any of the emails I got":
+	//
+	// A bare URL in a text/plain body is linked by some mail clients and not
+	// others, and the ones that do not leave you selecting and copying. And a
+	// relative href in an email points at wherever the mail client thinks it
+	// is, which is nowhere — links in mail are absolute or they are decoration.
+	//
+	// The anchor text is the URL itself rather than a word, so the plain-text
+	// version that reaches internal/thread still carries the address: strip the
+	// tags off "<a href=X>X</a>" and X survives, off "<a href=X>look</a>" and
+	// it does not.
+	body := "<p>" + html.EscapeString(a.Why) + "</p>"
 	if a.Where != "" {
-		body += "\n\n" + strings.TrimSuffix(origin.Self(), "/") + a.Where
+		link := strings.TrimSuffix(origin.Self(), "/") + a.Where
+		body += `<p><a href="` + html.EscapeString(link) + `">` +
+			html.EscapeString(link) + `</a></p>`
 	}
 	for _, id := range admins {
 		if err := mail.DeliverHere(mail.Local{

@@ -168,6 +168,12 @@ func wireHooks() {
 	// hands what arrives to the agent. See agent/mail.
 	mailagent.Load()
 
+	// And the agent introduces itself to a new account, in that account's
+	// inbox. Onboarding as a message rather than a page: the claim is that you
+	// hand work to an agent and it answers where you asked, and the way to make
+	// that claim is to do it before anything else does. See agent/mail/welcome.go.
+	mailagent.Welcome()
+
 	// Telling the operator when something is worth knowing. After the mail
 	// agent, because it delivers to an inbox here. See admin/alert.go.
 	admin.Watch()

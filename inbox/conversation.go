@@ -286,8 +286,12 @@ func messageBlock(accountID string, t *thread.Thread, m thread.Message, subject 
 	// What they wrote, and — folded away — the part of it that is this
 	// conversation quoted back at itself. See quoted.go.
 	body, quote := unquoted(m.Text)
+	// Escaped, then linked. The agent's own answers go through the markdown
+	// renderer above and come out with working links, and what a person wrote
+	// came out as text — so the same URL in the same conversation was clickable
+	// on one line and not on the next. See app.Linkify for the ordering.
 	return `<div class="ib-msg ib-person">` + fromLine(who, m.At) + addressLine(m) +
-		`<div class="ib-body ib-typed">` + html.EscapeString(body) + `</div>` +
+		`<div class="ib-body ib-typed">` + app.Linkify(html.EscapeString(body)) + `</div>` +
 		quotedBlock(quote) + `</div>`
 }
 
@@ -303,7 +307,7 @@ func quotedBlock(quoted string) string {
 	}
 	return `<details class="ib-quoted"><summary title="Show quoted text" ` +
 		`aria-label="Show quoted text">&middot;&middot;&middot;</summary>` +
-		`<div class="ib-quoted-text">` + html.EscapeString(quoted) + `</div></details>`
+		`<div class="ib-quoted-text">` + app.Linkify(html.EscapeString(quoted)) + `</div></details>`
 }
 
 // fromLine is who wrote a message and when, on one line with the time pushed to
