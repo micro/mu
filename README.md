@@ -15,7 +15,7 @@ files, contacts, calendar, documents. A work in progress.
 | **Web** | sign in and use it in a browser |
 | **Mail** | send it an email from anywhere |
 | **API or CLI** | the same tools via HTTP, MCP or CLI |
-| **SSH** | a shell in your own machine, from a terminal |
+| **Shell** | SSH into your own machine, from a terminal |
 
 ## Protocols
 
