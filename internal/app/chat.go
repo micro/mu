@@ -160,13 +160,27 @@ func ChatComponent(cfg ChatConfig) string {
 .mu-pills a:hover{background:#f5f5f5}
 #mu-chat-conv{margin-top:24px;font-size:15px;line-height:1.7;text-align:left}
 #mu-chat-conv:empty{margin-top:0}
-/* A conversation, not a box. The input sticks to the bottom of the viewport
-   with the turns above it, which is what every chat does and what the top
-   sticky was not. */
-.mu-chat-transcript #mu-chat-form{position:sticky;top:auto;bottom:8px;box-shadow:0 2px 12px rgba(0,0,0,.06)}
-.mu-chat-transcript #mu-chat-conv{margin-top:0;margin-bottom:16px}
-.mu-chat-transcript #mu-chat-opts{margin:6px 0 0}
-.mu-chat-transcript #mu-chat-suggest{margin:0 0 16px}
+/* A conversation, not a box.
+
+   The turns scroll in their own region and the input sits under them, which is
+   what every chat does. A sticky input over a page that scrolls was the first
+   attempt and it is wrong in the way stickiness always is: mid-scroll it floats
+   over the message you are reading, and "scroll to the bottom" means the bottom
+   of the document rather than the bottom of the conversation.
+
+   The max-height here is a fallback for the moment before the script measures
+   the real one — 100dvh so a phone's collapsing chrome is accounted for. See
+   fitConv, which replaces it with the exact figure and keeps it right on
+   resize, so there is no constant to be wrong on somebody's screen. */
+.mu-chat-transcript{display:flex;flex-direction:column}
+.mu-chat-transcript #mu-chat-form{position:static;flex:none}
+.mu-chat-transcript #mu-chat-opts{margin:6px 0 0;flex:none}
+.mu-chat-transcript #mu-chat-suggest{margin:0 0 12px;flex:none}
+.mu-chat-transcript #mu-chat-conv{
+  flex:1 1 auto;min-height:0;max-height:calc(100dvh - 260px);
+  overflow-y:auto;overscroll-behavior:contain;
+  margin:0 0 12px;padding-right:4px
+}
 .mu-user{margin:0 0 12px;padding:10px 14px;background:#f5f5f5;border-radius:8px;font-size:14px;color:#333;scroll-margin-top:64px}
 .mu-agent{margin-bottom:24px;scroll-margin-top:64px}
 .mu-think{color:#888;font-size:14px}
@@ -219,16 +233,39 @@ var transcript=!!document.querySelector('#mu-chat.mu-chat-transcript');
 // something further up". Scrolling to the bottom in the second case is the
 // thing that makes a chat unusable while a long answer streams.
 function nearBottom(){
-  return (window.innerHeight+window.scrollY)>=(document.body.scrollHeight-nearEnough);
+  if(!conv) return true;
+  return (conv.scrollTop+conv.clientHeight)>=(conv.scrollHeight-nearEnough);
 }
 var nearEnough=120;
 function toBottom(force,smooth){
   if(!transcript) return;
   if(!force && !nearBottom()) return;
   requestAnimationFrame(function(){
-    window.scrollTo({top:document.body.scrollHeight,behavior:smooth?'smooth':'auto'});
+    conv.scrollTo({top:conv.scrollHeight,behavior:smooth?'smooth':'auto'});
   });
 }
+// The conversation is as tall as what is left of the window under it.
+//
+// Measured rather than guessed: the page above this has a header, a chip and
+// whatever the host put there, and every constant anybody writes for that is
+// wrong on some screen. getBoundingClientRect knows where the region starts and
+// the form knows how tall it is, so the arithmetic is exact and it is redone
+// whenever the window changes — including when the textarea grows as somebody
+// types a long message.
+function fitConv(){
+  if(!transcript||!conv) return;
+  var top=conv.getBoundingClientRect().top;
+  var below=0;
+  var form=document.getElementById('mu-chat-form');
+  var opts=document.getElementById('mu-chat-opts');
+  var sug=document.getElementById('mu-chat-suggest');
+  [form,opts,sug].forEach(function(el){ if(el) below+=el.offsetHeight; });
+  var h=Math.max(minConv, window.innerHeight-top-below-convGap);
+  conv.style.maxHeight=h+'px';
+}
+// minConv keeps the region usable on a short window rather than collapsing it
+// to nothing; convGap is the breathing room under the input.
+var minConv=220, convGap=28;
 var sugDiv=document.getElementById('mu-chat-suggest');
 if(!form)return;
 var NS=` + JSString(cfg.StorageNS) + `;
@@ -492,7 +529,10 @@ window.muChatAsk=ask;
 // A reopened conversation opens at its end, which is where the reading is.
 // Instant rather than smooth: this is the position the page should have loaded
 // in, not a movement to watch.
+fitConv();
 toBottom(true);
+window.addEventListener('resize',function(){ fitConv(); toBottom(false); });
+if(input) input.addEventListener('input',fitConv);
 })();
 </script>`
 

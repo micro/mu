@@ -279,15 +279,20 @@ type entry struct {
 	ID    string // for the links that need it
 	Admin bool   // whether Edit and Fork apply, which is only to your own
 	Extra string // owner-only controls, in the strip with the links
-	// Seen is what it last dealt with and when, or empty for one that has not
-	// answered anything yet.
+	// Seen is what it last dealt with, and When is how long ago.
 	//
 	// The roster was a directory: name, purpose, three links, and nothing
 	// saying whether any of them were alive. A list you are scanning to decide
-	// who to talk to needs a sign of life against each one — "Tuesday · 2 hours
-	// ago" turns an entry into somebody you are about to write to, and "Not used
-	// yet" is the honest version of the same fact.
+	// who to talk to needs a sign of life against each one.
+	//
+	// Two fields because they go in two places. The subject reads as a line
+	// under the name, where the description already is; the time is a
+	// right-hand column, the way it is on every list of conversations here and
+	// everywhere else. It was one string reading "Last: Tuesday · 2 hours ago",
+	// which put a label nobody needs in front of the only interesting word and
+	// buried the timestamp mid-sentence.
 	Seen string
+	When string
 }
 
 // entryRow draws one.
@@ -299,7 +304,14 @@ type entry struct {
 func entryRow(e entry) string {
 	var b strings.Builder
 	b.WriteString(`<div class="agent-row"><div class="grow min-w-0">`)
+	// The name, and how long ago it last spoke out to the right of it — the
+	// same pair, in the same places, as a row in the inbox.
+	b.WriteString(`<div class="agent-head">`)
 	b.WriteString(`<a class="agent-name" href="` + e.Path + `">` + html.EscapeString(e.Name) + `</a>`)
+	if e.When != "" {
+		b.WriteString(`<span class="agent-when">` + html.EscapeString(e.When) + `</span>`)
+	}
+	b.WriteString(`</div>`)
 	if e.For != "" {
 		b.WriteString(`<div class="agent-for">` + html.EscapeString(e.For) + `</div>`)
 	}
@@ -384,6 +396,7 @@ func agentRow(a *Agent, csrf, base string) string {
 		Chat:  chat,
 		For:   for_,
 		Seen:  seenLine(a.Owner, a.ID),
+		When:  seenWhen(a.Owner, a.ID),
 		ID:    a.ID,
 		Admin: true,
 		Extra: extra,
@@ -431,11 +444,21 @@ func defaultRow() string {
 // in, where "last used 2 hours ago" would be a fact about a stranger.
 func platformSeenRow(name, accountID string) string {
 	row := platformRow(name)
+
+	// How long ago, beside the name.
+	if when := seenWhen(accountID, name); when != "" {
+		if i := strings.Index(row, `</a>`); i >= 0 {
+			cut := i + len(`</a>`)
+			row = row[:cut] + `<span class="agent-when">` + html.EscapeString(when) + `</span>` + row[cut:]
+		}
+	}
+
+	// And what it was about, under the description where every other row puts
+	// it.
 	line := seenLine(accountID, name)
 	if line == "" {
 		return row
 	}
-	// Under the description, where every other row puts it.
 	const at = `</div>`
 	if i := strings.Index(row, `class="agent-for">`); i >= 0 {
 		if j := strings.Index(row[i:], at); j >= 0 {
@@ -479,7 +502,12 @@ func platformRow(name string) string {
 	})
 }
 
-// seenLine is the sign of life on a row: what it last dealt with, and when.
+// seenLine is what an agent last dealt with, and seenWhen is how long ago.
+//
+// Two functions because they go in two places on the row: the subject under the
+// name, the time out to the right. No "Last:" in front of either — a label on a
+// line that is obviously the last thing is a word the reader has to step over
+// to get to the only part that says anything.
 //
 // "Not used yet" rather than nothing, because a blank where every other row has
 // a line reads as a render that failed — and because an agent you made and
@@ -490,9 +518,16 @@ func seenLine(accountID, agentID string) string {
 		return "Not used yet"
 	}
 	if about == "" {
-		about = "a conversation"
+		return "a conversation"
 	}
-	return "Last: " + trimTo(about, seenChars) + " · " + app.TimeAgo(at)
+	return trimTo(about, seenChars)
+}
+
+func seenWhen(accountID, agentID string) string {
+	if _, at := LastSeen(accountID, agentID); !at.IsZero() {
+		return app.TimeAgo(at)
+	}
+	return ""
 }
 
 // seenChars bounds the subject on a row. Long enough to recognise a
@@ -530,6 +565,10 @@ const agentsCSS = `<style>
    what an agent is for is why you would pick it and when it last spoke is
    whether it is alive — the second is a check, not a heading. */
 .agent-seen{color:#999;font-size:12px;margin:2px 0 0}
+/* The name and how long ago it last spoke, on one line with the time out to
+   the right — the same pair in the same places as a row in the inbox. */
+.agent-head{display:flex;align-items:baseline;gap:10px}
+.agent-when{margin-left:auto;flex:none;color:#aaa;font-size:11px;white-space:nowrap}
 .agent-row .agent-seen{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* Top-aligned, not centred. A row is three or four lines tall now, and
    centring left Remove floating in the middle of the card beside nothing. */

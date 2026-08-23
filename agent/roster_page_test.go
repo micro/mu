@@ -42,17 +42,27 @@ func TestARosterRowSaysWhenItLastSpoke(t *testing.T) {
 	thread.Add(thread.Message{Thread: th.ID, Account: who, Role: thread.RoleAgent,
 		Text: "Down across the board."})
 
-	got := seenLine(who, made.ID)
-	if !strings.HasPrefix(got, "Last: ") {
-		t.Errorf("a used agent reads %q", got)
+	// The subject and nothing else — no "Last:" in front of it. A label on a
+	// line that is obviously the last thing is a word the reader steps over to
+	// reach the only part that says anything.
+	if got := seenLine(who, made.ID); got != "What is happening in the markets?" {
+		t.Errorf("the line reads %q", got)
 	}
-	if !strings.Contains(got, "ago") {
-		t.Errorf("the row does not say when: %q", got)
+	if got := seenWhen(who, made.ID); !strings.Contains(got, "ago") {
+		t.Errorf("the time reads %q", got)
 	}
 
-	// And it is on the row itself, under the description.
+	// Both on the row: the subject under the name, the time out to the right.
 	row := agentRow(made, "csrf", "https://example.test")
 	if !strings.Contains(row, `class="agent-seen"`) {
 		t.Errorf("the row carries no sign of life:\n%s", row)
+	}
+	if !strings.Contains(row, `class="agent-when"`) {
+		t.Errorf("the row does not say when:\n%s", row)
+	}
+	head := row[strings.Index(row, `class="agent-head"`):]
+	head = head[:strings.Index(head, `class="agent-for"`)]
+	if !strings.Contains(head, `class="agent-when"`) {
+		t.Error("the time is not on the name's line")
 	}
 }

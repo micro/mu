@@ -28,8 +28,23 @@ func TestATranscriptPutsTheInputUnderTheTurns(t *testing.T) {
 	if form < conv {
 		t.Error("the input is above the conversation in a transcript")
 	}
-	if !strings.Contains(chat, "bottom:8px") {
-		t.Error("the input does not stick to the bottom")
+	// The turns scroll in their own region and the input sits under them. A
+	// sticky input over a scrolling page floats over the message you are
+	// reading, and "the bottom" then means the bottom of the document rather
+	// than the bottom of the conversation.
+	if !strings.Contains(chat, "overflow-y:auto") {
+		t.Error("the conversation has no scroll region of its own")
+	}
+	if strings.Contains(chat, "#mu-chat-form{position:sticky") {
+		t.Error("the input is sticky over the conversation")
+	}
+	// Measured, not guessed. Every constant anybody writes for the height of
+	// the page above this is wrong on some screen.
+	if !strings.Contains(chat, "function fitConv()") {
+		t.Error("nothing measures the region")
+	}
+	if !strings.Contains(chat, "conv.getBoundingClientRect().top") {
+		t.Error("the height is not measured from where the region actually starts")
 	}
 
 	// A box keeps the old order: you arrive at it and type into it, and the
@@ -55,5 +70,12 @@ func TestItFollowsTheAnswerButDoesNotChaseIt(t *testing.T) {
 	}
 	if !strings.Contains(chat, "if(!force && !nearBottom()) return;") {
 		t.Error("the scroll is not conditional on the reader being at the bottom")
+	}
+	// And it is the conversation that scrolls, not the window.
+	if !strings.Contains(chat, "conv.scrollTo(") {
+		t.Error("the scroll moves the page rather than the conversation")
+	}
+	if !strings.Contains(chat, "conv.scrollTop+conv.clientHeight") {
+		t.Error("being at the bottom is measured against the page, not the conversation")
 	}
 }
