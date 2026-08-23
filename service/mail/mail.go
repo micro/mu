@@ -1748,9 +1748,17 @@ type Delivery struct {
 	Body    string
 
 	// Threading as the message carried it. ReplyTo is the id of the message
-	// being replied to; MessageID and References are the mail headers.
+	// being replied to; MessageID, InReplyTo and References are the mail
+	// headers.
+	//
+	// InReplyTo is here because ReplyTo is not the same thing and the two were
+	// being used as though they were: ReplyTo is this instance's own id for
+	// the parent message, resolved by looking the header up, and it is empty
+	// whenever the parent is not one we hold. What keys a conversation in the
+	// record is the header itself. See chainKey in agent/mail.
 	ReplyTo    string
 	MessageID  string
+	InReplyTo  string
 	References string
 
 	Spam        bool
@@ -1822,10 +1830,44 @@ func SendMessageTo(d Delivery) error {
 
 	// Say that mail arrived. Who cares about that is not this service's
 	// business — see internal/event.
+	//
+	// # One shape, and why there were two
+	//
+	// This published a bag of four strings — account, from, subject, body — and
+	// deliverInbound published the whole message as JSON under "message", both
+	// on event.EventMailReceived. Two shapes on one topic, and each subscriber
+	// understood exactly one of them: the push notifier read the bag, and the
+	// recorder that writes mail into internal/thread read the JSON and logged
+	// "carried no message" for everything else.
+	//
+	// So mail that arrived by SMTP was recorded, because that path publishes
+	// twice and one of the two was the right shape — and mail delivered
+	// locally was not. Admin alerts, invites and verification mails went to
+	// /mail and to IMAP and never appeared in /inbox, which is the page whose
+	// whole claim is that things turn up in it. announce says this will happen
+	// in its own comment: "one of them eventually spells a key differently".
+	//
+	// It is announced here now, from the one place a message is stored, so
+	// every delivery path reaches it by definition. deliverInbound keeps
+	// EventMailForAgent, which is the fact it alone knows — the sender passed
+	// SPF or DKIM and is somebody this account has heard of.
 	if !d.Spam && d.ToID != "" {
-		event.Publish(event.Event{Type: event.EventMailReceived, Data: map[string]interface{}{
-			"account": d.ToID, "from": d.From, "subject": d.Subject, "body": d.Body,
-		}})
+		announce(event.EventMailReceived, InboundMail{
+			Owner:    d.ToID,
+			Tag:      d.Tag,
+			From:     d.FromID,
+			To:       deliveredTo(d.ToID, d.Tag),
+			FromName: d.From,
+			Subject:  d.Subject,
+			Body:     d.Body,
+			Text:     stripHTMLTags(d.Body),
+			// Named rather than carried: the record wants to know something
+			// arrived, not the bytes, and the message above holds those.
+			Attachment: attachmentName(d.Attachment),
+			MessageID:  d.MessageID,
+			InReplyTo:  d.InReplyTo,
+			References: d.References,
+		})
 	}
 
 	return err

@@ -764,6 +764,7 @@ func (s *Session) Data(r io.Reader) error {
 
 			ReplyTo:    replyToID,
 			MessageID:  messageID,
+			InReplyTo:  inReplyTo,
 			References: references,
 
 			Spam:        spamResult.IsSpam,

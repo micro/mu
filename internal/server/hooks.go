@@ -207,9 +207,19 @@ func wireHooks() {
 	go func() {
 		sub := event.Subscribe(event.EventMailReceived)
 		for e := range sub.Chan {
-			accountID, _ := e.Data["account"].(string)
-			from, _ := e.Data["from"].(string)
-			subject, _ := e.Data["subject"].(string)
+			// mail.MessageFrom, not four type assertions on a bag of strings.
+			//
+			// The bag is what this used to read, and it was one of two shapes
+			// being published on this topic — the other being the whole message
+			// as JSON, which the recorder that writes mail into internal/thread
+			// reads. Every subscriber understood one of the two, so which mail
+			// reached the record depended on which door it came in by. There is
+			// one shape now and this is how it is decoded.
+			m, ok := mail.MessageFrom(e.Data)
+			if !ok {
+				continue
+			}
+			accountID, from, subject := m.Owner, m.From, m.Subject
 			if accountID == "" {
 				continue
 			}

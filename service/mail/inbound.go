@@ -54,10 +54,27 @@ func deliverInbound(m InboundMail, r wakeRequest) {
 	if r.IsSpam {
 		return
 	}
-	announce(event.EventMailReceived, m)
+	// Only the second of the two. "It arrived" is announced by SendMessageTo,
+	// which is the one place a message is stored and so the one place every
+	// delivery path reaches — this was announcing it as well, for the SMTP
+	// path alone, which is how mail delivered locally came to be absent from
+	// the record while mail from outside was in it. See SendMessageTo.
+	//
+	// What is left here is the fact only this path knows: the sender passed
+	// SPF or DKIM, and this account has heard of them.
 	if mayDispatch(r) {
 		announce(event.EventMailForAgent, m)
 	}
+}
+
+// deliveredTo is the address a local delivery arrived at, which a Delivery
+// carries as an account and a tag rather than as a string.
+func deliveredTo(accountID, tag string) string {
+	local := accountID
+	if tag != "" {
+		local += Tagged + tag
+	}
+	return EmailForUser(local, ConfiguredDomain())
 }
 
 // announce puts a whole message on a topic.

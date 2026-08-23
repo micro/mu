@@ -200,6 +200,9 @@ type Local struct {
 	Body      string
 	ReplyTo   string
 	MessageID string
+	// InReplyTo is the header, where ReplyTo is our own id for the parent.
+	// Carried separately because the record keys on the header — see Delivery.
+	InReplyTo string
 	// References is the chain this message continues, as the mail header
 	// spells it. Carried so the stored message threads the same way an
 	// inbound one does — a reply delivered locally used to arrive with
@@ -237,7 +240,8 @@ func DeliverHere(m Local) error {
 		From: m.Display, FromID: m.From,
 		To: acc.Name, ToID: acc.ID, Tag: m.Tag,
 		Subject: m.Subject, Body: m.Body,
-		ReplyTo: m.ReplyTo, MessageID: m.MessageID, References: m.References,
+		ReplyTo: m.ReplyTo, MessageID: m.MessageID,
+		InReplyTo: m.InReplyTo, References: m.References,
 		SenderIP: m.SenderIP,
 	})
 }
