@@ -226,18 +226,25 @@ func session(newCh ssh.NewChannel, accountID string) {
 	// prompt, and a one-shot command over SSH is the tool call that already
 	// exists, with an authentication path of its own.
 	wantsShell := make(chan bool, 1)
+	var size window
+	var resized *container.Session
 	go func() {
 		for req := range reqs {
 			switch req.Type {
 			case "pty-req":
+				// The payload is TERM, then the size. The size is what is
+				// wanted; a shell started at the default 80x24 when the client
+				// said otherwise draws everything in the wrong place until the
+				// first resize.
+				size = ptySize(req.Payload)
 				req.Reply(true, nil) //nolint:errcheck
 			case "shell":
 				req.Reply(true, nil) //nolint:errcheck
 				wantsShell <- true
 			case "window-change":
-				// Accepted and not acted on. The terminal belongs to docker's
-				// exec, which this process cannot resize from here; saying no
-				// would make some clients print an error on every drag.
+				w := changeSize(req.Payload)
+				size = w
+				resized.Resize(w.rows, w.cols)
 				req.Reply(true, nil) //nolint:errcheck
 			default:
 				req.Reply(false, nil) //nolint:errcheck
@@ -260,7 +267,7 @@ func session(newCh ssh.NewChannel, accountID string) {
 		return
 	}
 
-	cmd, err := container.Shell(ctx, container.Run{
+	sh, err := container.Shell(ctx, container.Run{
 		Name: machineFor(accountID),
 		Dir:  home(accountID),
 		User: runAs(accountID),
@@ -269,9 +276,12 @@ func session(newCh ssh.NewChannel, accountID string) {
 		fmt.Fprintf(ch, "%s\r\n", err)
 		return
 	}
+	// The size the client asked for, and every change after it.
+	sh.Resize(size.rows, size.cols)
+	resized = sh
 
 	app.Log("sandbox", "ssh session for %s", accountID)
-	err = cmd.Wait()
+	err = sh.Wait()
 	// The exit status, so the client's own shell sees what happened rather
 	// than treating every disconnection as success.
 	code := 0
@@ -295,3 +305,40 @@ const (
 	// not be cut off for being quiet.
 	sessionLimit = 4 * time.Hour
 )
+
+// window is a terminal's size in characters.
+type window struct{ rows, cols uint16 }
+
+// ptySize reads the size out of a pty-req payload.
+//
+// The wire format is a string (TERM), then four uint32s: columns, rows, and
+// the size in pixels, which nothing uses. Sizes arrive as 32-bit and are used
+// as 16-bit because that is what the ioctl takes — a terminal claiming more
+// than 65535 columns is not one worth accommodating.
+func ptySize(payload []byte) window {
+	if len(payload) < 4 {
+		return window{}
+	}
+	n := int(be32(payload))
+	if len(payload) < 4+n+8 {
+		return window{}
+	}
+	rest := payload[4+n:]
+	return window{cols: uint16(be32(rest)), rows: uint16(be32(rest[4:]))}
+}
+
+// changeSize reads the size out of a window-change payload, which is the same
+// four numbers with no string in front.
+func changeSize(payload []byte) window {
+	if len(payload) < 8 {
+		return window{}
+	}
+	return window{cols: uint16(be32(payload)), rows: uint16(be32(payload[4:]))}
+}
+
+func be32(b []byte) uint32 {
+	if len(b) < 4 {
+		return 0
+	}
+	return uint32(b[0])<<24 | uint32(b[1])<<16 | uint32(b[2])<<8 | uint32(b[3])
+}

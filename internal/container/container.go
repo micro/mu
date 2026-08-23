@@ -354,7 +354,7 @@ func (r Run) argv() []string {
 // no new privileges, the memory, CPU and PID caps, and whatever network it was
 // given. A shell is not a way past any of that; it is the same box with a
 // person at the keyboard instead of an agent.
-func Shell(ctx context.Context, r Run, in io.Reader, out io.Writer) (*exec.Cmd, error) {
+func Shell(ctx context.Context, r Run, in io.Reader, out io.Writer) (*Session, error) {
 	if !Available() {
 		return nil, fmt.Errorf("%s", Reason())
 	}
@@ -363,17 +363,60 @@ func Shell(ctx context.Context, r Run, in io.Reader, out io.Writer) (*exec.Cmd, 
 	}
 	r.TTY = true
 
+	// A real terminal, because docker checks for one.
+	//
+	// `docker exec -t` calls isatty() on its own stdin and refuses a pipe:
+	// "the input device is not a TTY". The first version of this handed the
+	// SSH channel straight through and got exactly that. So the slave end goes
+	// to docker, which is satisfied, and the master is what the bytes flow
+	// over. See pty.go.
+	tty, err := openPTY()
+	if err != nil {
+		return nil, err
+	}
+
 	// The shell is named rather than taken from the caller. A Run carries a
 	// Command for Exec's benefit and letting it through here would make the
 	// login shell somebody else's choice — which, for a session that is
 	// supposed to be a person at a prompt, is a way to run one command as if
 	// it were a login.
 	cmd := exec.CommandContext(ctx, "docker", append(r.argv(), "sh", "-l")...)
-	cmd.Stdin, cmd.Stdout, cmd.Stderr = in, out, out
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = tty.slave, tty.slave, tty.slave
 	if err := cmd.Start(); err != nil {
+		tty.close()
 		return nil, err
 	}
-	return cmd, nil
+	// The slave is the child's now. Holding our copy open means the master
+	// never reports EOF when the shell exits, and the session hangs on a
+	// terminal nobody is attached to.
+	tty.slave.Close()
+	tty.slave = nil
+
+	s := &Session{cmd: cmd, tty: tty}
+	go func() { io.Copy(tty.master, in) }()  //nolint:errcheck — ends when the channel closes
+	go func() { io.Copy(out, tty.master) }() //nolint:errcheck — ends when the shell exits
+	return s, nil
+}
+
+// Session is a shell somebody is attached to.
+type Session struct {
+	cmd *exec.Cmd
+	tty *pty
+}
+
+// Resize tells the shell how big the window is, so a full-screen program
+// redraws when somebody drags the corner.
+func (s *Session) Resize(rows, cols uint16) {
+	if s != nil && rows > 0 && cols > 0 {
+		s.tty.resize(rows, cols)
+	}
+}
+
+// Wait blocks until the shell exits, then releases the terminal.
+func (s *Session) Wait() error {
+	err := s.cmd.Wait()
+	s.tty.close()
+	return err
 }
 
 // Exec runs a command inside a container and waits for it.
