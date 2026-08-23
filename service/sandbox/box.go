@@ -73,6 +73,37 @@ func slug(accountID string) string {
 	return clean + "-" + hex.EncodeToString(sum[:4])
 }
 
+// home is where an account's files are, and machineFor which container holds
+// them. The two modes differ in exactly these two answers and nowhere else,
+// which is what keeps shared mode from being a second copy of the service.
+func home(accountID string) string {
+	if shared() {
+		return sharedHome(accountID)
+	}
+	return work
+}
+
+func machineFor(accountID string) string {
+	if shared() {
+		return poolOf(accountID)
+	}
+	return boxOf(accountID)
+}
+
+// runAs is the Unix user a command runs as: nobody in particular on a machine
+// of your own, and the account's own uid on a shared one.
+//
+// The one place that decides. A shared container where one path sets the user
+// and another forgets is a container with no isolation and no symptom — see
+// container.Run.argv, which is the matching single place on the other side.
+func runAs(accountID string) string {
+	if !shared() {
+		return ""
+	}
+	uid := strconv.Itoa(uidOf(accountID))
+	return uid + ":" + uid
+}
+
 // ready makes sure the caller's machine is up.
 //
 // Called by every method rather than once at sign-in, because there is no
@@ -80,6 +111,11 @@ func slug(accountID string) string {
 // this account has ever done, and the machine has to exist by the time the
 // command runs. Starting one that is already running costs one inspect.
 func ready(ctx context.Context, accountID string) error {
+	if shared() {
+		// No eviction here: the pool is sized to fit and its members serve
+		// everybody, so there is never a machine to take away to make room.
+		return readyShared(ctx, accountID)
+	}
 	name := boxOf(accountID)
 	// Somewhere to put it, before starting anything. On a small box the
 	// machines do not all fit, and the honest answer is to stop the one nobody
@@ -107,14 +143,20 @@ func exec(ctx context.Context, accountID, command, dir string, wait time.Duratio
 	if command == "" {
 		return container.Result{}, fmt.Errorf("a command is required")
 	}
-	where, err := under(dir)
+	where, err := under(accountID, dir)
 	if err != nil {
 		return container.Result{}, err
 	}
 	if err := ready(ctx, accountID); err != nil {
 		return container.Result{}, err
 	}
-	return container.Exec(ctx, boxOf(accountID), command, where, allowed(wait))
+	return container.Exec(ctx, container.Run{
+		Name:    machineFor(accountID),
+		Command: command,
+		Dir:     where,
+		User:    runAs(accountID),
+		Wait:    allowed(wait),
+	})
 }
 
 // paidRun is exec with the gate and the charge the door would have applied.
@@ -143,24 +185,30 @@ func paidRun(ctx context.Context, accountID, command, dir string) (container.Res
 	return res, nil
 }
 
-// under is a path inside /work, or why it is not one.
+// under is a path inside the caller's own directory, or why it is not one.
 //
-// Every path an agent gives is resolved against /work and checked to still be
-// inside it afterwards. The container is the real boundary — there is nothing
-// out there worth having — but a caller that can read /etc/passwd out of its
-// own image gets a confusing answer rather than a useful one, and "the paths
-// mean what they look like" is worth more than the alternative.
-func under(p string) (string, error) {
+// It took no account once, because there was one place files could be. On a
+// shared pool there is one per caller, and a path check that still resolved
+// against /work would let anybody name /work/<somebody-else> — which the file
+// permissions would then refuse, with an error about permissions rather than
+// about whose files those are. The permissions are the boundary; this is what
+// makes the paths mean what they look like.
+//
+// Relative paths are resolved against the caller's home and absolute ones are
+// taken as given, so /work/x still works on a private machine and is refused on
+// a shared one, where the caller's home is /work/<slug>.
+func under(accountID, p string) (string, error) {
+	base := home(accountID)
 	p = strings.TrimSpace(p)
 	if p == "" || p == "." {
-		return work, nil
+		return base, nil
 	}
 	if !strings.HasPrefix(p, "/") {
-		p = work + "/" + p
+		p = base + "/" + p
 	}
 	clean := path.Clean(p)
-	if clean != work && !strings.HasPrefix(clean, work+"/") {
-		return "", fmt.Errorf("%s is outside /work, which is the only place your files live", p)
+	if clean != base && !strings.HasPrefix(clean, base+"/") {
+		return "", fmt.Errorf("%s is outside %s, which is where your files live", p, base)
 	}
 	return clean, nil
 }

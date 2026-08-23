@@ -27,8 +27,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	var b strings.Builder
 	b.WriteString(`<div class="sbx">`)
 	b.WriteString(`<p class="svc-lead">` + Spec.Description + `. A container of your ` +
-		`own with a shell in it: what you put in <code>/work</code> stays there between ` +
-		`commands, and nothing you run can reach this machine.</p>`)
+		`own with a shell in it: what you put in it stays there between commands, ` +
+		`and nothing you run can reach this machine.</p>`)
 
 	if !Configured() {
 		b.WriteString(app.Problem("This instance has no container runtime, so there is " +
@@ -80,14 +80,31 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// the defaults would be wrong on most machines — and "why did my build
 		// get killed" is answered by the number, not by the feature.
 		l := limits()
-		b.WriteString(app.NoteHTML(`Running a command costs ` +
+		note := `Running a command costs ` +
 			credits(quota.OperationCost(quota.OpSandboxRun)) + `, because it is CPU and ` +
-			`memory here. Keeping and reading files is free. This instance gives each ` +
-			`machine <code>` + html.EscapeString(l.Memory) + `</code> of memory and ` +
-			`<code>` + html.EscapeString(l.CPUs) + `</code> CPU, from ` +
-			html.EscapeString(image()) + `, and runs at most ` +
-			strconv.Itoa(machineBudget()) + ` at once — yours is stopped when it has been ` +
-			`idle a while, or to make room, and your files are kept either way.`))
+			`memory here. Keeping and reading files is free. `
+		if shared() {
+			// Said, because it changes what somebody should put in there. A
+			// person who thinks they have a machine to themselves will leave a
+			// token in it.
+			note += `This instance shares ` + strconv.Itoa(machineBudget()) +
+				` machine(s) between everyone, each with <code>` +
+				html.EscapeString(l.Memory) + `</code> of memory and <code>` +
+				html.EscapeString(l.CPUs) + `</code> CPU, from ` +
+				html.EscapeString(image()) + `. <code>` + html.EscapeString(home(acc.ID)) +
+				`</code> is yours and nobody else can read it, delete it or list it. ` +
+				`What is not private is the machine itself: other people's ` +
+				`processes are visible in <code>ps</code>, and a heavy build by ` +
+				`somebody else will slow yours down.`
+		} else {
+			note += `This instance gives each machine <code>` +
+				html.EscapeString(l.Memory) + `</code> of memory and <code>` +
+				html.EscapeString(l.CPUs) + `</code> CPU, from ` +
+				html.EscapeString(image()) + `, and runs at most ` +
+				strconv.Itoa(machineBudget()) + ` at once — yours is stopped when it ` +
+				`has been idle a while, or to make room, and your files are kept either way.`
+		}
+		b.WriteString(app.NoteHTML(note))
 	}
 
 	b.WriteString(`</div>`)

@@ -169,6 +169,32 @@ func DeleteMachine(accountID string) {
 	ctx, cancel := context.WithTimeout(context.Background(), startWait)
 	defer cancel()
 
+	if shared() {
+		// A directory, never the container. The pool member holding this
+		// account's files is holding everybody else's too, and removing it
+		// because one person left would take the rest with them — which is the
+		// bug this branch exists to not have.
+		//
+		// As the account rather than as root, which is the opposite of the
+		// obvious answer and is forced by the same hardening that removed the
+		// chown: with CAP_DAC_OVERRIDE dropped, uid 0 is checked against the
+		// permission bits like anybody else, so root cannot even enter a 0700
+		// directory it does not own. The account can, because everything in
+		// there is its own, and the sticky bit on /work lets an owner remove
+		// their own entry.
+		home := sharedHome(accountID)
+		if _, err := container.Exec(ctx, container.Run{
+			Name:    poolOf(accountID),
+			Dir:     work,
+			User:    runAs(accountID),
+			Wait:    startWait,
+			Command: "rm -rf -- " + quoted(home),
+		}); err != nil {
+			app.Log("sandbox", "removing the files of %s: %v", accountID, err)
+		}
+		return
+	}
+
 	name := boxOf(accountID)
 	usedMu.Lock()
 	delete(used, name)

@@ -125,7 +125,7 @@ func (Server) Write(ctx context.Context, req *WriteRequest, rsp *WriteResponse) 
 	if err != nil {
 		return err
 	}
-	path, err := under(req.Path)
+	path, err := under(who, req.Path)
 	if err != nil {
 		return err
 	}
@@ -135,7 +135,7 @@ func (Server) Write(ctx context.Context, req *WriteRequest, rsp *WriteResponse) 
 	if err := ready(ctx, who); err != nil {
 		return err
 	}
-	if err := container.WriteFile(ctx, boxOf(who), path, []byte(req.Content)); err != nil {
+	if err := container.WriteFile(ctx, fileRun(who), path, []byte(req.Content)); err != nil {
 		return err
 	}
 	rsp.Path, rsp.Bytes = path, len(req.Content)
@@ -160,14 +160,14 @@ func (Server) Read(ctx context.Context, req *ReadRequest, rsp *ReadResponse) err
 	if err != nil {
 		return err
 	}
-	path, err := under(req.Path)
+	path, err := under(who, req.Path)
 	if err != nil {
 		return err
 	}
 	if err := ready(ctx, who); err != nil {
 		return err
 	}
-	b, err := container.ReadFile(ctx, boxOf(who), path)
+	b, err := container.ReadFile(ctx, fileRun(who), path)
 	if err != nil {
 		return err
 	}
@@ -196,7 +196,7 @@ func (Server) List(ctx context.Context, req *ListRequest, rsp *ListResponse) err
 	if err != nil {
 		return err
 	}
-	dir, err := under(req.Dir)
+	dir, err := under(who, req.Dir)
 	if err != nil {
 		return err
 	}
@@ -206,12 +206,29 @@ func (Server) List(ctx context.Context, req *ListRequest, rsp *ListResponse) err
 	// Not charged and not through Run, so it does not go through the meter: a
 	// listing costs this instance nothing and a caller finding its way around
 	// should not be billed for looking.
-	res, err := container.Exec(ctx, boxOf(who), "ls -la -- "+quoted(dir), work, quickWait)
+	res, err := container.Exec(ctx, container.Run{
+		Name:    machineFor(who),
+		Command: "ls -la -- " + quoted(dir),
+		Dir:     home(who),
+		User:    runAs(who),
+		Wait:    quickWait,
+	})
 	if err != nil {
 		return err
 	}
 	rsp.Dir, rsp.Entries = dir, res.Out
 	return nil
+}
+
+// fileRun is how the file operations reach the caller's machine: their
+// container, their directory, and their own Unix user on a shared one.
+func fileRun(accountID string) container.Run {
+	return container.Run{
+		Name: machineFor(accountID),
+		Dir:  home(accountID),
+		User: runAs(accountID),
+		Wait: quickWait,
+	}
 }
 
 // quickWait bounds the operations that are not the caller's own command.

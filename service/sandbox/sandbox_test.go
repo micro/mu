@@ -10,6 +10,7 @@ package sandbox
 
 import (
 	"context"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -26,7 +27,7 @@ import (
 // useful one.
 func TestEveryPathIsUnderWork(t *testing.T) {
 	for _, in := range []string{"", ".", "a.go", "proj/a.go", "/work", "/work/x", "./x"} {
-		got, err := under(in)
+		got, err := under("anybody", in)
 		if err != nil {
 			t.Errorf("under(%q) refused a path inside /work: %v", in, err)
 			continue
@@ -36,7 +37,7 @@ func TestEveryPathIsUnderWork(t *testing.T) {
 		}
 	}
 	for _, in := range []string{"/etc/passwd", "../etc", "/work/../etc", "a/../../b", "/"} {
-		if got, err := under(in); err == nil {
+		if got, err := under("anybody", in); err == nil {
 			t.Errorf("under(%q) = %q — it should have been refused", in, got)
 		}
 	}
@@ -223,5 +224,167 @@ func TestAMachineKeepsItsFiles(t *testing.T) {
 	}
 	if strings.TrimSpace(rd.Content) != "kept" {
 		t.Errorf("the file did not survive the call: %q", rd.Content)
+	}
+}
+
+// On a shared pool, a path is inside the caller's own directory.
+//
+// The permissions are the real boundary — see TestOneAccountCannotReadAnother —
+// but a path check that still resolved against /work would let anybody name
+// /work/<somebody-else> and get an error about permissions rather than one
+// about whose files those are.
+func TestOnASharedPoolAPathIsInsideYourOwnDirectory(t *testing.T) {
+	t.Setenv("SANDBOX_SHARED", "on")
+
+	mine := home("alice")
+	if mine == work {
+		t.Fatalf("alice's home is %s, which is everybody's", mine)
+	}
+	got, err := under("alice", "proj/main.go")
+	if err != nil {
+		t.Fatalf("alice cannot reach her own files: %v", err)
+	}
+	if !strings.HasPrefix(got, mine+"/") {
+		t.Errorf("under() = %q, which is not under %q", got, mine)
+	}
+	// Somebody else's, and the top of the volume, are both outside.
+	for _, in := range []string{home("bob"), home("bob") + "/x", work, "/work/../work/bob"} {
+		if _, err := under("alice", in); err == nil {
+			t.Errorf("alice was allowed to name %q", in)
+		}
+	}
+	// And two accounts never get the same directory or the same user.
+	if home("alice") == home("bob") {
+		t.Error("two accounts share a directory")
+	}
+	if uidOf("alice") == uidOf("bob") {
+		t.Error("two accounts share a uid, so the permissions separate nothing")
+	}
+}
+
+// Every path onto a shared machine runs as the caller's own user.
+//
+// The isolation is POSIX file permissions, so a command that ran as root would
+// have none. One path setting the user and another forgetting is a container
+// with no isolation and no symptom, which is why runAs is the only place that
+// decides and why this checks the callers rather than the function.
+func TestEveryPathOntoASharedMachineRunsAsTheCaller(t *testing.T) {
+	t.Setenv("SANDBOX_SHARED", "on")
+	if runAs("alice") == "" {
+		t.Fatal("a shared machine runs commands as nobody in particular, so it is root")
+	}
+	if runAs("alice") == runAs("bob") {
+		t.Error("two accounts run as the same user")
+	}
+	if fileRun("alice").User != runAs("alice") {
+		t.Error("reading and writing files does not go through the caller's user")
+	}
+	if fileRun("alice").Dir != home("alice") {
+		t.Error("reading and writing files does not start in the caller's directory")
+	}
+
+	// And a machine of your own has no such user — it is not shared, so there
+	// is nobody to be separated from.
+	t.Setenv("SANDBOX_SHARED", "")
+	if runAs("alice") != "" {
+		t.Error("a private machine runs as a synthetic user for no reason")
+	}
+}
+
+// The pool is bounded and every account lands somewhere in it.
+func TestEveryAccountLandsInThePool(t *testing.T) {
+	t.Setenv("SANDBOX_SHARED", "on")
+	seen := map[string]bool{}
+	for i := 0; i < 200; i++ {
+		name := poolOf("account-" + strconv.Itoa(i))
+		if !strings.HasPrefix(name, namePrefix) {
+			t.Fatalf("%q is not named so the reaper can find it", name)
+		}
+		seen[name] = true
+	}
+	if n := machineBudget(); len(seen) > n {
+		t.Errorf("200 accounts spread over %d containers, but the budget is %d", len(seen), n)
+	}
+	// The same account goes to the same place every time, so a process it
+	// started stays reachable.
+	if poolOf("alice") != poolOf("alice") {
+		t.Error("an account moves between containers")
+	}
+}
+
+// The thing the whole mode rests on: one account cannot read another's files.
+func TestOneAccountCannotReadAnother(t *testing.T) {
+	if testing.Short() {
+		t.Skip("starts a container")
+	}
+	if !Configured() {
+		t.Skip("no container runtime on this machine")
+	}
+	t.Setenv("SANDBOX_SHARED", "on")
+
+	s := Server{}
+	alice := service.WithAccount(context.Background(), "share-alice")
+	bob := service.WithAccount(context.Background(), "share-bob")
+	t.Cleanup(func() { DeleteMachine("share-alice"); DeleteMachine("share-bob") })
+
+	// A marker that cannot turn up in a path or an error message, because the
+	// first version of this test asserted on the word "alice" and a refusal
+	// naming /work/share-alice-.../secret contains it — the isolation worked
+	// and the test called it a leak.
+	const marker = "SQUIRRELPARADE"
+	var w WriteResponse
+	if err := s.Write(alice, &WriteRequest{Path: "secret", Content: marker}, &w); err != nil {
+		t.Fatalf("alice cannot write: %v", err)
+	}
+	var r RunResponse
+	if err := s.Run(bob, &RunRequest{Command: "echo bobs > secret"}, &r); err != nil {
+		t.Fatalf("bob cannot write: %v", err)
+	}
+
+	// Each reads their own.
+	var rd ReadResponse
+	if err := s.Read(alice, &ReadRequest{Path: "secret"}, &rd); err != nil || rd.Content != marker {
+		t.Errorf("alice got %q (%v) reading her own file", rd.Content, err)
+	}
+
+	// And neither reads the other's, by the absolute path, from a shell.
+	if err := s.Run(bob, &RunRequest{
+		Command: "cat " + quoted(sharedHome("share-alice")+"/secret"),
+	}, &r); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if r.Code == 0 || strings.Contains(r.Output, marker) {
+		t.Errorf("bob read alice's file: code=%d output=%q", r.Code, r.Output)
+	}
+	// Nor list her directory.
+	if err := s.Run(bob, &RunRequest{
+		Command: "ls -la " + quoted(sharedHome("share-alice")),
+	}, &r); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if r.Code == 0 {
+		t.Errorf("bob listed alice's directory: %q", r.Output)
+	}
+
+	// And cannot delete them, which is the sharper worry: reading somebody's
+	// files is a leak, and rm -rf on them is their afternoon gone. The
+	// directory is 0700 and owned by its account, so the kernel refuses both.
+	if err := s.Run(bob, &RunRequest{
+		Command: "rm -rf " + quoted(sharedHome("share-alice")) + " 2>&1; echo done",
+	}, &r); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if err := s.Read(alice, &ReadRequest{Path: "secret"}, &rd); err != nil || rd.Content != marker {
+		t.Errorf("bob deleted alice's files: she now reads %q (%v)", rd.Content, err)
+	}
+
+	// Deleting one account leaves the other's files alone, because the thing
+	// removed is a directory and not the container they share.
+	DeleteMachine("share-alice")
+	if err := s.Run(bob, &RunRequest{Command: "cat secret"}, &r); err != nil {
+		t.Fatalf("bob lost his machine when alice was deleted: %v", err)
+	}
+	if !strings.Contains(r.Output, "bobs") {
+		t.Errorf("bob lost his files when alice was deleted: %q", r.Output)
 	}
 }

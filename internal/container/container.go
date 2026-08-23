@@ -240,6 +240,32 @@ type Result struct {
 	Code int
 }
 
+// Run is one command to run somewhere.
+//
+// A struct rather than six positional arguments, and User is why it exists: a
+// shared container serves more than one caller, and which Unix user a command
+// runs as is the only thing separating them. See service/sandbox's shared mode.
+type Run struct {
+	Name    string // the container
+	Command string // a shell command
+	Dir     string // where to run it
+	User    string // uid[:gid]; empty is the image's own user, which is root
+	Wait    time.Duration
+}
+
+// argv is the docker invocation up to the command itself.
+//
+// One place, so that "who is this running as" cannot be set in one path and
+// forgotten in another — which is exactly the mistake that turns a shared
+// container's isolation off without any visible symptom.
+func (r Run) argv() []string {
+	argv := []string{"exec", "--workdir", r.Dir}
+	if r.User != "" {
+		argv = append(argv, "--user", r.User)
+	}
+	return append(argv, r.Name)
+}
+
 // Exec runs a command inside a container and waits for it.
 //
 // A shell, deliberately. The caller is an agent that writes `cd cmd && go build
@@ -251,14 +277,14 @@ type Result struct {
 // Output is combined. Anything worth reading writes to both, and a caller
 // holding two strings has to decide how to interleave them, which it cannot do
 // correctly — the ordering is lost the moment they are separated.
-func Exec(ctx context.Context, name, command, workdir string, wait time.Duration) (Result, error) {
-	if strings.TrimSpace(command) == "" {
+func Exec(ctx context.Context, r Run) (Result, error) {
+	if strings.TrimSpace(r.Command) == "" {
 		return Result{}, fmt.Errorf("no command")
 	}
-	if workdir == "" {
-		workdir = "/work"
+	if r.Dir == "" {
+		r.Dir = "/work"
 	}
-	out, err := run(ctx, wait, "exec", "--workdir", workdir, name, "sh", "-c", command)
+	out, err := run(ctx, r.Wait, append(r.argv(), "sh", "-c", r.Command)...)
 	if err == nil {
 		return Result{Out: out}, nil
 	}
@@ -276,22 +302,24 @@ func Exec(ctx context.Context, name, command, workdir string, wait time.Duration
 // tar stream and a temporary file on this side. The path arrives as $0 rather
 // than inside the script, so a name with a quote or a space in it is a name and
 // not an injection — this takes paths an agent chose.
-func WriteFile(ctx context.Context, name, path string, content []byte) error {
+func WriteFile(ctx context.Context, r Run, path string, content []byte) error {
 	if strings.TrimSpace(path) == "" {
 		return fmt.Errorf("no path")
 	}
-	_, err := runIn(ctx, fileWait, bytes.NewReader(content),
-		"exec", "--interactive", name,
-		"sh", "-c", `mkdir -p "$(dirname "$0")" && cat > "$0"`, path)
+	argv := append(r.argv(), "sh", "-c", `mkdir -p "$(dirname "$0")" && cat > "$0"`, path)
+	// --interactive has to reach docker before the container name, so it goes
+	// in ahead of the shared argv rather than being appended to it.
+	argv = append([]string{argv[0], "--interactive"}, argv[1:]...)
+	_, err := runIn(ctx, fileWait, bytes.NewReader(content), argv...)
 	return err
 }
 
 // ReadFile reads a file out of a container.
-func ReadFile(ctx context.Context, name, path string) ([]byte, error) {
+func ReadFile(ctx context.Context, r Run, path string) ([]byte, error) {
 	if strings.TrimSpace(path) == "" {
 		return nil, fmt.Errorf("no path")
 	}
-	out, err := run(ctx, fileWait, "exec", name, "sh", "-c", `cat -- "$0"`, path)
+	out, err := run(ctx, fileWait, append(r.argv(), "sh", "-c", `cat -- "$0"`, path)...)
 	if err != nil {
 		var exit *exec.ExitError
 		if errors.As(err, &exit) {
