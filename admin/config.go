@@ -87,7 +87,7 @@ var settingGroups = []settingGroup{
 		"BODS_API_KEY",
 		"LDBWS_TOKEN",
 	}},
-	// The basemap. /tiles sends an operator here by name when it has no key,
+	// The basemap. /maps sends an operator here by name when it has no key,
 	// so this group has to exist for that sentence to be true — see the note
 	// on the Twilio group, which is the same mistake found the same way.
 	{"Maps", []string{

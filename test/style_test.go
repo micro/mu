@@ -184,7 +184,7 @@ func walkGo(t *testing.T, f func(path, src string)) {
 // look again rather than asking mu.css for one.
 const inlineStyles = 13
 
-// A style attribute, not any occurrence of the characters. /tiles has a query
+// A style attribute, not any occurrence of the characters. /maps has a query
 // parameter called style= and it is not markup.
 var styleAttr = regexp.MustCompile(`<[a-zA-Z][^<>]{0,300}?\sstyle="`)
 

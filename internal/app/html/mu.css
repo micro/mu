@@ -6244,24 +6244,85 @@ select.field { max-width: 220px }
 .addr-drop .form-actions { display: inline-flex }
 .addr-drop .btn { border: 0; background: none; padding: 0 0 0 8px; font-size: 13px }
 
-/* The tile preview on /tiles: a grid of images and no map library, because the
-   page is the demonstration and the app somebody builds brings its own. */
-.tiles-page { max-width: 760px }
-.tiles-styles { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px }
+/* The map on /maps. See service/maps/page.go.
 
-.tiles-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 0;
+   It was a fixed grid of twenty-five images centred on Scafell Pike, defended
+   on the grounds that "a pannable map means a JavaScript dependency and this
+   page is the demonstration rather than the product". A page you cannot use is
+   a screenshot, and a slippy map is a hundred lines of plain JavaScript. */
+.maps-page { max-width: 760px }
+.maps-styles { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px }
+
+.map-wrap { position: relative; margin: 0 0 var(--spacing-lg, 24px) }
+
+/* The viewport. overflow:hidden is what makes the layer inside it a window
+   rather than a very large page, and touch-action:none stops a phone taking a
+   drag as a scroll before the pointer handler sees it. */
+.map {
+  position: relative;
+  height: 460px;
+  overflow: hidden;
+  touch-action: none;
+  cursor: grab;
   border: var(--border-width, 1px) solid var(--card-border, #e8e8e8);
   border-radius: var(--border-radius, 6px);
-  overflow: hidden;
-  margin: 0 0 var(--spacing-lg, 24px);
   background: var(--hover-background, #fafafa);
+  user-select: none;
 }
 
-.tiles-img, .tiles-blank { display: block; width: 100%; aspect-ratio: 1 / 1 }
-.tiles-blank { background: var(--divider, #f0f0f0) }
+.map-dragging { cursor: grabbing }
+.map-layer { position: absolute; inset: 0 }
+
+/* Every tile is absolutely positioned by the script. The size is fixed because
+   the projection maths assumes 256, and a tile scaled by CSS would put the
+   coordinates and the pixels out of step. */
+.map-tile {
+  position: absolute;
+  width: 256px;
+  height: 256px;
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+
+/* Outside Britain there is no tile, and that is normal here rather than an
+   error — a broken-image glyph would say something untrue about the service. */
+.map-gap { visibility: hidden }
+
+.map-controls {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.map-controls button {
+  width: auto;
+  min-width: 32px;
+  padding: 4px 8px;
+  font-size: 14px;
+  line-height: 22px;
+  background: var(--card-background, #fff);
+  color: var(--text-primary, #1a1a1a);
+  border: var(--border-width, 1px) solid var(--card-border, #e8e8e8);
+  border-radius: var(--border-radius, 6px);
+  cursor: pointer;
+}
+
+.map-controls button:hover { border-color: #bbb }
+.map-controls button[disabled] { opacity: .5; cursor: default }
+
+.map-note {
+  font-size: 11px;
+  color: var(--text-muted, #888);
+  margin: 6px 0 0;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 640px) {
+  .map { height: 320px }
+}
 
 /* Who a message was from and who it was sent to, in full, under the name.
    The addresses were nowhere: the sender was truncated into a 130px column and

@@ -1,10 +1,9 @@
-package tiles
+package maps
 
 // What a tile service gets wrong silently.
 
 import (
 	"context"
-	"math"
 	"net/http/httptest"
 	"os"
 	"strings"
@@ -156,20 +155,49 @@ func TestTheCacheIsSharedByEverybody(t *testing.T) {
 	}
 }
 
-// The preview grid is what the constants say, so changing the span cannot
-// silently produce a grid the stylesheet is not laid out for.
-func TestThePreviewIsTheGridTheStylesheetExpects(t *testing.T) {
-	const across = previewSpan*2 + 1
-	if across != 7 {
-		t.Errorf("the preview is %d tiles across and .tiles-grid in mu.css is 7", across)
+// The map is a map: a viewport, a layer inside it, and the script that moves
+// them. It was a fixed grid of twenty-five images centred on a hill, which is a
+// picture of the service rather than the service.
+func TestThePageIsAMapYouCanMove(t *testing.T) {
+	pane := mapPane("road")
+
+	for _, want := range []string{
+		`id="map"`, `id="map-layer"`, `id="map-in"`, `id="map-out"`, `id="map-here"`,
+	} {
+		if !strings.Contains(pane, want) {
+			t.Errorf("the map has no %s", want)
+		}
 	}
-	if got := strings.Count(preview("road"), "<img"); got != across*across {
-		t.Errorf("%d images in a %d×%d grid", got, across, across)
+
+	// The style it was asked for, because the pills above it are the only way
+	// to choose one and a map that ignores them is three identical pages.
+	if !strings.Contains(pane, `data-style="road"`) {
+		t.Errorf("the map did not take the style: %s", pane)
 	}
-	// And it is centred where the comment says, which is the point of choosing
-	// a hill rather than a city: Outdoor shows paths and contours there.
-	if math.Abs(previewLat-54.4542) > 0.001 {
-		t.Error("the preview moved off Scafell Pike without the comment moving with it")
+
+	// It opens somewhere in Britain rather than at 0,0 in the Atlantic, and
+	// within the zooms the service will serve.
+	if !strings.Contains(pane, `data-lat="54"`) || !strings.Contains(pane, `data-lon="-2.5"`) {
+		t.Error("the map does not open over Britain")
+	}
+	if homeZoom < minZoom || homeZoom > maxZoom {
+		t.Errorf("it opens at zoom %d, outside the %d-%d it can serve", homeZoom, minZoom, maxZoom)
+	}
+
+	// No library. The whole argument for writing this by hand is that a map
+	// does not need one, and a script tag pointing anywhere else would be
+	// blocked by the site's own policy anyway.
+	if strings.Contains(pane, "script src=") {
+		t.Error("the map loads a script from somewhere")
+	}
+}
+
+// The tiles it asks for are the ones this instance serves. The page and the
+// service agreeing on that URL is the only reason any of it draws.
+func TestTheMapAsksForTilesAtTheServedPath(t *testing.T) {
+	if !strings.Contains(mapJS, "'/tiles/'+style+'/'+z+'/'+wx+'/'+y+'.png'") {
+		t.Error("the map builds a tile URL that is not /tiles/<style>/<z>/<x>/<y>.png — " +
+			"which is the path TileHandler serves and the shape every map library takes")
 	}
 }
 
@@ -222,7 +250,7 @@ func TestNothingChargesForATile(t *testing.T) {
 			t.Errorf("an endpoint declares Cost %q, but tiles are free", e.Cost)
 		}
 	}
-	src, err := os.ReadFile("tiles.go")
+	src, err := os.ReadFile("maps.go")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,5 +1,24 @@
-// Package tiles is the map under a spatial app: Ordnance Survey raster tiles,
-// fetched once and served from disk forever after.
+// Package maps is the map: Ordnance Survey tiles for Britain, fetched once and
+// served from disk forever after, with a page you can move around.
+//
+// # It was called tiles
+//
+// Which is the unit of the implementation rather than the domain — the same
+// mistake as naming a service after rows instead of records. A service is named
+// for a noun somebody would look for, and nobody scanning a list of services
+// for a map looks for Tiles. It also quietly broke the rule about a method not
+// repeating its service: tiles.Tile derives the tool name tiles_tile, which is
+// the search.Search fault, and TestNoMethodRepeatsItsService only missed it
+// because the plural is not the singular. maps_tile and maps_area read
+// correctly.
+//
+// Places, Routes and Maps is how Google splits the same three things, and the
+// three services here answer to the same three questions: what is there, how do
+// I get there, and what does it look like.
+//
+// /tiles/<style>/<z>/<x>/<y>.png still serves. That URL is pasted into MapLibre
+// and Leaflet configs that this instance cannot see, and a rename is not a
+// reason to break somebody else's map.
 //
 // The one thing Mu deliberately did not have. service/routes says so in its own
 // comment — "the page draws the route from the polyline Google already
@@ -13,7 +32,7 @@
 // test in CLAUDE.md is whether the caller is spared an account rather than
 // whether we wrote the backend.
 //
-// # Why a tile is a service
+// # Why this is a service
 //
 // By the definition: request in, response out, deterministic given the data,
 // callable by anything. z/x/y names exactly one image and always the same one.
@@ -38,7 +57,7 @@
 // Ordnance Survey. That is CLAUDE.md's own division of labour — credits price
 // real cost, rate limits stop bots — applied to a case where the real cost is
 // bounded and the bot is the risk. See limit.go.
-package tiles
+package maps
 
 import (
 	"context"
@@ -60,6 +79,11 @@ type Server struct{}
 // maxZoom is as far in as the OS raster styles go. Past it a client should
 // scale the last tile rather than ask for one that does not exist.
 const maxZoom = 20
+
+// minZoom is as far out as the page lets you go. Zero is the whole world as
+// one tile and this basemap is Britain, so everything past about 5 is a small
+// island in a large blank square.
+const minZoom = 5
 
 // styles are the OS raster layers, by the name a caller uses.
 //
@@ -243,11 +267,11 @@ func Load() {
 
 // Spec declares the service.
 var Spec = service.Spec{
-	Name:        "tiles",
+	Name:        "maps",
 	Handler:     new(Server),
-	Description: "Ordnance Survey map tiles for Britain — the basemap under anything spatial",
-	Page:        "/tiles",
-	Icon:        "tiles.svg",
+	Description: "A map of Britain you can move around, and the tiles under it — Ordnance Survey, free",
+	Page:        "/maps",
+	Icon:        "maps.svg",
 	Endpoints: map[string]service.Endpoint{
 		// Neither declares a Cost, because tiles are free — see the package
 		// comment. What bounds them is a limit on cold fetches per account per

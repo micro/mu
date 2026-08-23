@@ -22,6 +22,7 @@ import (
 	"mu/service/hazards"
 	"mu/service/images"
 	"mu/service/mail"
+	"mu/service/maps"
 	"mu/service/markets"
 	"mu/service/news"
 	"mu/service/notes"
@@ -34,7 +35,6 @@ import (
 	"mu/service/stream"
 	"mu/service/tasks"
 	"mu/service/text"
-	"mu/service/tiles"
 	"mu/service/transit"
 	"mu/service/video"
 	"mu/service/wallet"
@@ -57,7 +57,7 @@ func allSpecs() []service.Spec {
 		notes.Spec, news.Spec, places.Spec, prayer.Spec, recall.Spec, routes.Spec,
 		sms.Spec,
 		social.Spec,
-		stream.Spec, tasks.Spec, text.Spec, tiles.Spec, transit.Spec, video.Spec,
+		stream.Spec, tasks.Spec, text.Spec, maps.Spec, transit.Spec, video.Spec,
 		wallet.Spec, weather.Spec, web.Spec,
 	}
 }

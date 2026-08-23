@@ -1,4 +1,4 @@
-package tiles
+package maps
 
 // How many tiles one account may make this instance go and fetch.
 //

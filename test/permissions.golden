@@ -48,6 +48,8 @@ mail_inbox                   needsAccount=true  destructive=false bound accountO
 mail_info                    needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 mail_search                  needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 mail_send                    needsAccount=true  destructive=true  bound accountOnly=true  optionalAuth=false
+maps_area                    needsAccount=false destructive=false open accountOnly=false optionalAuth=false
+maps_tile                    needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 markets_convert              needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 markets_list                 needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 news_list                    needsAccount=false destructive=false open accountOnly=false optionalAuth=false
@@ -90,8 +92,6 @@ text_classify                needsAccount=false destructive=false bound accountO
 text_extract                 needsAccount=false destructive=false bound accountOnly=false optionalAuth=true
 text_summarise               needsAccount=false destructive=false bound accountOnly=false optionalAuth=true
 text_translate               needsAccount=false destructive=false bound accountOnly=false optionalAuth=true
-tiles_area                   needsAccount=false destructive=false open accountOnly=false optionalAuth=false
-tiles_tile                   needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 transit_arrivals             needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 transit_buses                needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 transit_feeds                needsAccount=false destructive=false open accountOnly=false optionalAuth=false
