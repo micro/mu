@@ -15,7 +15,7 @@ files, contacts, calendar, documents. A work in progress.
 | **Web** | sign in and use it in a browser |
 | **Mail** | send it an email from anywhere |
 | **API or CLI** | the same tools via HTTP, MCP or CLI |
-| **SSH** | `ssh -p 2222 you@host` — a shell in your own machine, from a terminal |
+| **SSH** | a shell in your own machine, from a terminal |
 
 ## Protocols
 
