@@ -317,6 +317,11 @@ type Run struct {
 	Dir     string // where to run it
 	User    string // uid[:gid]; empty is the image's own user, which is root
 	Wait    time.Duration
+	// TTY allocates a terminal, for an interactive session. Set by Shell and
+	// not by callers of Exec: a command run for its output does not want one,
+	// and asking for one merges stderr into stdout at the pty rather than in
+	// the code that knows why.
+	TTY bool
 }
 
 // argv is the docker invocation up to the command itself.
@@ -329,7 +334,46 @@ func (r Run) argv() []string {
 	if r.User != "" {
 		argv = append(argv, "--user", r.User)
 	}
+	// An interactive session is the same exec with a terminal on it. Through
+	// here rather than assembled at the call site, for the reason above: the
+	// --user flag is what separates two accounts in a shared container, and a
+	// second place that builds a docker exec is a second place to forget it.
+	if r.TTY {
+		argv = append(argv, "--interactive", "--tty")
+	}
 	return append(argv, r.Name)
+}
+
+// Shell attaches a terminal to a container and runs an interactive shell.
+//
+// It hands back the process with its pipes already wired, rather than waiting
+// for it: the caller is a protocol server copying bytes in both directions
+// until somebody types exit, which is not a shape Exec can express.
+//
+// Everything the container was started with still applies — no capabilities,
+// no new privileges, the memory, CPU and PID caps, and whatever network it was
+// given. A shell is not a way past any of that; it is the same box with a
+// person at the keyboard instead of an agent.
+func Shell(ctx context.Context, r Run, in io.Reader, out io.Writer) (*exec.Cmd, error) {
+	if !Available() {
+		return nil, fmt.Errorf("%s", Reason())
+	}
+	if r.Dir == "" {
+		r.Dir = "/work"
+	}
+	r.TTY = true
+
+	// The shell is named rather than taken from the caller. A Run carries a
+	// Command for Exec's benefit and letting it through here would make the
+	// login shell somebody else's choice — which, for a session that is
+	// supposed to be a person at a prompt, is a way to run one command as if
+	// it were a login.
+	cmd := exec.CommandContext(ctx, "docker", append(r.argv(), "sh", "-l")...)
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = in, out, out
+	if err := cmd.Start(); err != nil {
+		return nil, err
+	}
+	return cmd, nil
 }
 
 // Exec runs a command inside a container and waits for it.

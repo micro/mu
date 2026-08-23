@@ -368,6 +368,11 @@ func DeleteAccount(id string) error {
 	data.SaveJSON("sessions.json", sessions)
 	data.SaveJSON("tokens.json", tokens)
 
+	// And the SSH keys, which are the same kind of thing as a token: a
+	// credential that says "this is them". One left behind is a way into
+	// nothing at all, right up until somebody signs up with the same name.
+	DeleteSSHKeysFor(id)
+
 	// Run all registered cleanup hooks outside the lock.
 	go func() {
 		for _, hook := range AccountDeleteHooks {
