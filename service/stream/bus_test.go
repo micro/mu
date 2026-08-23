@@ -49,7 +49,7 @@ func TestAnAnnouncedFactReachesTheTimeline(t *testing.T) {
 func TestMailDoesNotReachTheTimeline(t *testing.T) {
 	reset(t)
 
-	for _, topic := range []string{event.EventMailReceived, event.EventMailForAgent} {
+	for _, topic := range []string{event.MailReceived, event.MailForAgent} {
 		// The shape service/mail sends, and the shape it used to send. Neither
 		// may put a row on the timeline.
 		event.Publish(event.Event{Type: topic, Data: map[string]interface{}{

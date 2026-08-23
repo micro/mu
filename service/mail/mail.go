@@ -1835,7 +1835,7 @@ func SendMessageTo(d Delivery) error {
 	//
 	// This published a bag of four strings — account, from, subject, body — and
 	// deliverInbound published the whole message as JSON under "message", both
-	// on event.EventMailReceived. Two shapes on one topic, and each subscriber
+	// on event.MailReceived. Two shapes on one topic, and each subscriber
 	// understood exactly one of them: the push notifier read the bag, and the
 	// recorder that writes mail into internal/thread read the JSON and logged
 	// "carried no message" for everything else.
@@ -1852,7 +1852,7 @@ func SendMessageTo(d Delivery) error {
 	// EventMailForAgent, which is the fact it alone knows — the sender passed
 	// SPF or DKIM and is somebody this account has heard of.
 	if !d.Spam && d.ToID != "" {
-		announce(event.EventMailReceived, InboundMail{
+		announce(event.MailReceived, InboundMail{
 			Owner:    d.ToID,
 			Tag:      d.Tag,
 			From:     d.FromID,

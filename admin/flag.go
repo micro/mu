@@ -33,8 +33,15 @@ var RefreshBlogCache func()
 var (
 	RegisterDeleter = flag.RegisterDeleter
 	IsHidden        = flag.IsHidden
-	AdminFlag       = flag.AdminFlag
 )
+
+// AdminFlag is not re-exported. It stuttered — admin.AdminFlag says the
+// package twice at the call site — and it had no callers at all: the only
+// thing that hides content without a person pressing a button is
+// agent/moderate, which calls flag.AdminFlag directly.
+//
+// A re-export with no callers is the easiest kind of stutter to make and the
+// easiest to miss, because nothing reads it.
 
 func Load() {
 	flag.Load()

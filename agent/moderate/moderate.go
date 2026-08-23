@@ -51,7 +51,7 @@ import (
 // Load subscribes to what gets published. Called at boot.
 func Load() {
 	go func() {
-		sub := event.Subscribe(event.EventContentPublished)
+		sub := event.Subscribe(event.ContentPublished)
 		for e := range sub.Chan {
 			kind, _ := e.Data["kind"].(string)
 			id, _ := e.Data["id"].(string)

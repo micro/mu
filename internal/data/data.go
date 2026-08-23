@@ -472,7 +472,7 @@ func processIndexWork(work IndexWork) {
 
 	// Publish event that indexing is complete
 	event.Publish(event.Event{
-		Type: event.EventIndexComplete,
+		Type: event.IndexComplete,
 		Data: map[string]interface{}{
 			"id":   work.ID,
 			"type": work.Type,

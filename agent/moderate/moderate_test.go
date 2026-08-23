@@ -57,7 +57,7 @@ func TestNoServiceClassifiesItsOwnContent(t *testing.T) {
 		t.Errorf("a service is deciding, or supplying the means to decide, "+
 			"whether content is acceptable — that is a model forming an opinion "+
 			"and it belongs in agent/moderate. Publish "+
-			"event.EventContentPublished instead:\n\t%s", strings.Join(found, "\n\t"))
+			"event.ContentPublished instead:\n\t%s", strings.Join(found, "\n\t"))
 	}
 }
 
@@ -75,7 +75,7 @@ func TestModerationDoesNotDependOnAnotherService(t *testing.T) {
 	}
 	src := string(b)
 
-	if !strings.Contains(src, "event.Subscribe(event.EventContentPublished)") {
+	if !strings.Contains(src, "event.Subscribe(event.ContentPublished)") {
 		t.Error("nothing subscribes to published content, so nothing is classified")
 	}
 	// Its own model call, rather than one handed in from outside.

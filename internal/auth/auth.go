@@ -198,9 +198,9 @@ func Create(acc *Account) error {
 	data.SaveJSON("accounts.json", accounts)
 
 	// Said, not sent. Whether anybody wants to know is not this package's
-	// question — see event.EventAccountCreated. Published after the save, so a
+	// question — see event.AccountCreated. Published after the save, so a
 	// subscriber that goes looking for the account finds it.
-	event.Publish(event.Event{Type: event.EventAccountCreated, Data: map[string]interface{}{
+	event.Publish(event.Event{Type: event.AccountCreated, Data: map[string]interface{}{
 		"account": acc.ID,
 		"name":    acc.Name,
 		"first":   strconv.FormatBool(first),

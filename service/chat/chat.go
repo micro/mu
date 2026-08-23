@@ -504,7 +504,7 @@ func getOrCreateRoom(id string) *Room {
 
 	// Subscribe to index complete events via channel
 	go func() {
-		sub := event.Subscribe(event.EventIndexComplete)
+		sub := event.Subscribe(event.IndexComplete)
 		defer sub.Close()
 
 		// Wait for either index event or timeout
@@ -877,7 +877,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 
 								app.Log("chat", "Publishing refresh event for: %s", room.URL)
 								event.Publish(event.Event{
-									Type: event.EventRefreshHNComments,
+									Type: event.RefreshHNComments,
 									Data: map[string]interface{}{
 										"url": room.URL,
 									},
@@ -1084,7 +1084,7 @@ func Load() {
 	}
 
 	// Subscribe to summary generation requests
-	summaryRequestSub := event.Subscribe(event.EventGenerateSummary)
+	summaryRequestSub := event.Subscribe(event.GenerateSummary)
 	go func() {
 		for evt := range summaryRequestSub.Chan {
 			uri, okUri := evt.Data["uri"].(string)
@@ -1120,7 +1120,7 @@ func Load() {
 
 				// Publish the generated summary
 				event.Publish(event.Event{
-					Type: event.EventSummaryGenerated,
+					Type: event.SummaryGenerated,
 					Data: map[string]interface{}{
 						"uri":     uri,
 						"summary": summary,
@@ -1134,7 +1134,7 @@ func Load() {
 	}()
 
 	// Subscribe to tag generation requests
-	tagRequestSub := event.Subscribe(event.EventGenerateTag)
+	tagRequestSub := event.Subscribe(event.GenerateTag)
 	go func() {
 		for evt := range tagRequestSub.Chan {
 			title, _ := evt.Data["title"].(string)
@@ -1195,7 +1195,7 @@ func Load() {
 				}
 
 				event.Publish(event.Event{
-					Type: event.EventTagGenerated,
+					Type: event.TagGenerated,
 					Data: map[string]interface{}{
 						"post_id": postID,
 						"tag":     tag,
@@ -1241,7 +1241,7 @@ func Load() {
 				}
 
 				event.Publish(event.Event{
-					Type: event.EventTagGenerated,
+					Type: event.TagGenerated,
 					Data: map[string]interface{}{
 						"note_id": noteID,
 						"user_id": userID,

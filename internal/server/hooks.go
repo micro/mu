@@ -215,10 +215,10 @@ func wireHooks() {
 	//
 	// service/mail used to declare OnNewMail and this filled it in — a service
 	// reaching up into the product, which is the direction the layering
-	// forbids. It publishes event.EventMailReceived now and knows nothing
+	// forbids. It publishes event.MailReceived now and knows nothing
 	// about who listens. This is the listener.
 	go func() {
-		sub := event.Subscribe(event.EventMailReceived)
+		sub := event.Subscribe(event.MailReceived)
 		for e := range sub.Chan {
 			// mail.MessageFrom, not four type assertions on a bag of strings.
 			//

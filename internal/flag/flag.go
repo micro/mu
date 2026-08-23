@@ -75,7 +75,7 @@ func Deleter(contentType string) (ContentDeleter, bool) {
 // unrelated service loading, and CheckContent opened by returning silently
 // when it had not. "A function variable is an import the compiler cannot see."
 //
-// The services publish event.EventContentPublished now and agent/moderate
+// The services publish event.ContentPublished now and agent/moderate
 // subscribes, which is the same shape as service/mail and agent/mail. What
 // reaches this package is AdminFlag, exactly as it does when a person presses
 // the flag button.

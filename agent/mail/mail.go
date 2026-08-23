@@ -17,7 +17,7 @@ package mail
 //
 // The gate is not this package's to apply and it never sees a message that
 // failed it: EventMailForAgent is only published when mayDispatch passes. See
-// event.EventMailForAgent for why that is a topic rather than a flag.
+// event.MailForAgent for why that is a topic rather than a flag.
 
 import (
 	"fmt"
@@ -80,11 +80,11 @@ func Load() {
 	// What arrived, whoever sent it. No gate: mail from somebody you have never
 	// met is still mail you were sent, and leaving it out of the record is how
 	// /inbox came to show an empty list to an account with a full mailbox.
-	react(event.EventMailReceived, recordDelivery)
+	react(event.MailReceived, recordDelivery)
 
 	// And what may be answered. A separate topic, so this cannot see a message
 	// the gate refused.
-	react(event.EventMailForAgent, answerMail)
+	react(event.MailForAgent, answerMail)
 }
 
 // react runs f for every message on a topic.

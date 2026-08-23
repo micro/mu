@@ -6,18 +6,18 @@ import (
 )
 
 func TestSubscribeAndPublish(t *testing.T) {
-	sub := Subscribe(EventIndexComplete)
+	sub := Subscribe(IndexComplete)
 	defer sub.Close()
 
 	Publish(Event{
-		Type: EventIndexComplete,
+		Type: IndexComplete,
 		Data: map[string]interface{}{"id": "test-1"},
 	})
 
 	select {
 	case e := <-sub.Chan:
-		if e.Type != EventIndexComplete {
-			t.Errorf("expected event type %q, got %q", EventIndexComplete, e.Type)
+		if e.Type != IndexComplete {
+			t.Errorf("expected event type %q, got %q", IndexComplete, e.Type)
 		}
 		if e.Data["id"] != "test-1" {
 			t.Errorf("expected data id 'test-1', got %v", e.Data["id"])
@@ -28,12 +28,12 @@ func TestSubscribeAndPublish(t *testing.T) {
 }
 
 func TestSubscribe_OnlyReceivesMatchingType(t *testing.T) {
-	sub := Subscribe(EventGenerateSummary)
+	sub := Subscribe(GenerateSummary)
 	defer sub.Close()
 
 	// Publish a different event type
 	Publish(Event{
-		Type: EventIndexComplete,
+		Type: IndexComplete,
 		Data: map[string]interface{}{"id": "other"},
 	})
 
@@ -47,13 +47,13 @@ func TestSubscribe_OnlyReceivesMatchingType(t *testing.T) {
 }
 
 func TestMultipleSubscribers(t *testing.T) {
-	sub1 := Subscribe(EventGenerateTag)
-	sub2 := Subscribe(EventGenerateTag)
+	sub1 := Subscribe(GenerateTag)
+	sub2 := Subscribe(GenerateTag)
 	defer sub1.Close()
 	defer sub2.Close()
 
 	Publish(Event{
-		Type: EventGenerateTag,
+		Type: GenerateTag,
 		Data: map[string]interface{}{"tag": "tech"},
 	})
 
@@ -70,24 +70,24 @@ func TestMultipleSubscribers(t *testing.T) {
 }
 
 func TestClose_RemovesSubscription(t *testing.T) {
-	sub := Subscribe(EventSummaryGenerated)
+	sub := Subscribe(SummaryGenerated)
 	sub.Close()
 
 	// Publishing should not panic after close
 	Publish(Event{
-		Type: EventSummaryGenerated,
+		Type: SummaryGenerated,
 		Data: map[string]interface{}{},
 	})
 }
 
 func TestPublish_NonBlockingOnFullChannel(t *testing.T) {
-	sub := Subscribe(EventTagGenerated)
+	sub := Subscribe(TagGenerated)
 	defer sub.Close()
 
 	// Fill the buffer (capacity 10)
 	for i := 0; i < 15; i++ {
 		Publish(Event{
-			Type: EventTagGenerated,
+			Type: TagGenerated,
 			Data: map[string]interface{}{"i": i},
 		})
 	}
@@ -111,13 +111,13 @@ done:
 func TestEventConstants(t *testing.T) {
 	// Ensure event constants are unique
 	constants := []string{
-		EventRefreshHNComments,
-		EventIndexComplete,
-		EventNewArticleMetadata,
-		EventGenerateSummary,
-		EventSummaryGenerated,
-		EventGenerateTag,
-		EventTagGenerated,
+		RefreshHNComments,
+		IndexComplete,
+		NewArticleMetadata,
+		GenerateSummary,
+		SummaryGenerated,
+		GenerateTag,
+		TagGenerated,
 	}
 	seen := make(map[string]bool)
 	for _, c := range constants {

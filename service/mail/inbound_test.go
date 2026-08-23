@@ -58,8 +58,8 @@ func quiet(ch <-chan InboundMail) bool {
 // stored, which announces the arrival, and then the gate is asked separately
 // whether anything may act on it.
 func TestEveryDeliveryIsAnnouncedEvenWhenNothingMayBeWoken(t *testing.T) {
-	arrived := onTopic(t, event.EventMailReceived)
-	wake := onTopic(t, event.EventMailForAgent)
+	arrived := onTopic(t, event.MailReceived)
+	wake := onTopic(t, event.MailForAgent)
 
 	if err := SendMessageTo(Delivery{
 		FromID: "stranger@example.com", ToID: "acc", Subject: "hello", Body: "hi",
@@ -98,7 +98,7 @@ func TestEveryDeliveryIsAnnouncedEvenWhenNothingMayBeWoken(t *testing.T) {
 // were different questions.
 func TestLocalDeliveryReachesTheRecord(t *testing.T) {
 	withDomain(t, "mu.test")
-	arrived := onTopic(t, event.EventMailReceived)
+	arrived := onTopic(t, event.MailReceived)
 
 	if err := SendMessageTo(Delivery{
 		From: "Mu", FromID: "no-reply@mu.test",
@@ -141,8 +141,8 @@ func TestLocalDeliveryReachesTheRecord(t *testing.T) {
 // Spam is the one thing that does not go in. It was refused at the door in
 // every sense that matters, and a record full of it is not a record.
 func TestSpamIsNotAnnouncedAtAll(t *testing.T) {
-	arrived := onTopic(t, event.EventMailReceived)
-	wake := onTopic(t, event.EventMailForAgent)
+	arrived := onTopic(t, event.MailReceived)
+	wake := onTopic(t, event.MailForAgent)
 
 	deliverInbound(
 		InboundMail{Owner: "acc", From: "spam@example.com"},
@@ -167,7 +167,7 @@ func TestTheGuardDecidesWhatIsPublished(t *testing.T) {
 	KnownSender = func(string, string) bool { return true }
 	t.Cleanup(func() { KnownSender = prevKnown })
 
-	wake := onTopic(t, event.EventMailForAgent)
+	wake := onTopic(t, event.MailForAgent)
 
 	// An unauthenticated sender — enough on its own.
 	deliverInbound(
@@ -197,8 +197,8 @@ func TestTheGuardDecidesWhatIsPublished(t *testing.T) {
 // which is what the registry this replaced had to be careful about — the
 // function variable *it* replaced silently displaced whatever was there first.
 func TestTwoSubscribersBothGetIt(t *testing.T) {
-	first := onTopic(t, event.EventMailReceived)
-	second := onTopic(t, event.EventMailReceived)
+	first := onTopic(t, event.MailReceived)
+	second := onTopic(t, event.MailReceived)
 
 	if err := SendMessageTo(Delivery{
 		FromID: "someone@example.com", ToID: "acc", Subject: "both", Body: "x",
@@ -223,7 +223,7 @@ func TestTheWholeMessageSurvivesTheBus(t *testing.T) {
 	KnownSender = func(string, string) bool { return true }
 	t.Cleanup(func() { KnownSender = prevKnown })
 
-	arrived := onTopic(t, event.EventMailForAgent)
+	arrived := onTopic(t, event.MailForAgent)
 
 	sent := InboundMail{
 		Owner: "acc", Tag: "research", Shared: true,

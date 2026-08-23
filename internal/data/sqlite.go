@@ -126,7 +126,7 @@ func IndexSQLite(id, entryType, title, content, owner string, metadata map[strin
 		db.Exec(`INSERT INTO index_fts(rowid, title, content) SELECT rowid, title, content FROM index_entries WHERE id = ?`, id)
 		// Publish event
 		event.Publish(event.Event{
-			Type: event.EventIndexComplete,
+			Type: event.IndexComplete,
 			Data: map[string]interface{}{
 				"id":   id,
 				"type": entryType,

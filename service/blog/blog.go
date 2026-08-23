@@ -177,7 +177,7 @@ func Load() {
 	}
 
 	// Subscribe to tag generation responses
-	tagSub := event.Subscribe(event.EventTagGenerated)
+	tagSub := event.Subscribe(event.TagGenerated)
 	go func() {
 		for evt := range tagSub.Chan {
 			postID, okID := evt.Data["post_id"].(string)
@@ -997,7 +997,7 @@ func autoTagPost(postID, title, content string) {
 
 	// Publish tag generation request
 	event.Publish(event.Event{
-		Type: event.EventGenerateTag,
+		Type: event.GenerateTag,
 		Data: map[string]interface{}{
 			"post_id": postID,
 			"title":   title,

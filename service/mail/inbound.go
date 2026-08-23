@@ -9,7 +9,7 @@ package mail
 // handled mail at an address and this dispatched to it.
 //
 // A registration is still a call, and it left two mechanisms for one fact —
-// this registry, and event.EventMailReceived on the bus, which internal/event
+// this registry, and event.MailReceived on the bus, which internal/event
 // already describes correctly: "Mail arriving is a fact, not a call. Anything
 // that wants to act on it subscribes." So the registry is gone and there is one
 // mechanism. Nothing here knows whether anything is listening.
@@ -20,7 +20,7 @@ package mail
 // inside the SMTP session, and it is the same question whoever is listening.
 //
 // It is enforced by which topic a message is published on rather than by a
-// field on it. See event.EventMailForAgent for why.
+// field on it. See event.MailForAgent for why.
 
 import (
 	"encoding/json"
@@ -63,7 +63,7 @@ func deliverInbound(m InboundMail, r wakeRequest) {
 	// What is left here is the fact only this path knows: the sender passed
 	// SPF or DKIM, and this account has heard of them.
 	if mayDispatch(r) {
-		announce(event.EventMailForAgent, m)
+		announce(event.MailForAgent, m)
 	}
 }
 

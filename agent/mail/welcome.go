@@ -51,7 +51,7 @@ import (
 // Welcome starts the greeter. Called at boot, beside Load.
 func Welcome() {
 	go func() {
-		sub := event.Subscribe(event.EventAccountCreated)
+		sub := event.Subscribe(event.AccountCreated)
 		for e := range sub.Chan {
 			id, _ := e.Data["account"].(string)
 			name, _ := e.Data["name"].(string)

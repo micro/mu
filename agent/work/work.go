@@ -54,7 +54,7 @@ import (
 
 // Load subscribes to the work agents are asked to do.
 func Load() {
-	sub := event.Subscribe(event.EventWorkForAgent)
+	sub := event.Subscribe(event.WorkForAgent)
 	go func() {
 		for e := range sub.Chan {
 			r, ok := requestFrom(e.Data)

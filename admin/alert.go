@@ -12,7 +12,7 @@ package admin
 //
 // Nothing under service/ or internal/ decides that something is notable.
 // internal/auth publishes that an account was created and knows nothing about
-// who cares — see event.EventAccountCreated, and the note there about why a
+// who cares — see event.AccountCreated, and the note there about why a
 // building block must not encode a product requirement. This package is where
 // "an account was created" becomes "wake somebody", because the operator is a
 // product decision and admin is where the operator lives.
@@ -70,7 +70,7 @@ import (
 // Watch starts the watcher. Called at boot.
 func Watch() {
 	go func() {
-		sub := event.Subscribe(event.EventAccountCreated)
+		sub := event.Subscribe(event.AccountCreated)
 		for e := range sub.Chan {
 			id, _ := e.Data["account"].(string)
 			name, _ := e.Data["name"].(string)
