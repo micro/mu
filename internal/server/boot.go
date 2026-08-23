@@ -36,6 +36,7 @@ import (
 	"mu/service/prayer"
 	"mu/service/recall"
 	"mu/service/routes"
+	"mu/service/sandbox"
 	"mu/service/sms"
 	"mu/service/social"
 	"mu/service/stream"
@@ -93,6 +94,7 @@ func boot() {
 	// write to that index and every reader over it was filtered to one type.
 	archive.Load()
 	browser.Load()
+	sandbox.Load()
 	web.Load()
 	text.Load()
 	food.Load()

@@ -161,6 +161,13 @@
       "env": "CREDIT_COST_FETCH"
     },
     {
+      "op": "sandbox_run",
+      "cost": 2,
+      "label": "Run a command",
+      "env": "CREDIT_COST_SANDBOX_RUN",
+      "note": "A shell command in a container: CPU and memory on this machine, capped per container by SANDBOX_MEMORY and SANDBOX_CPUS. One flat price rather than a meter on seconds, because the two ends are an `ls` that costs nothing and a build that costs a minute of a core, and metering the difference would need a second endpoint and a unit — see docs/PRICING.md. Priced low rather than like a browser page, because a coding session is hundreds of commands and 3p each would make the loop this exists for unaffordable. No daily count: a priced call is bounded by a balance already, and capping one is a paywall with a safety label on it — see TestOnlyOutboundOrFreeIsCapped. What a count would not have bounded anyway is the idle container, which is memory rather than calls; that is reaped, not priced. Keeping files and reading them is 0, because that is this instance's own storage"
+    },
+    {
       "op": "browser_read",
       "cost": 3,
       "label": "Browser read",

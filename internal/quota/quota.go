@@ -106,6 +106,7 @@ const (
 	OpWebFetch         = "web_fetch"
 	OpBrowserRead      = "browser_read"
 	OpBrowserShot      = "browser_shot"
+	OpSandboxRun       = "sandbox_run"
 	OpDBWrite          = "db_write"
 	OpImageGenerate    = "image_generate"
 	OpTextSummarise    = "text_summarise"

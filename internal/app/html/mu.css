@@ -6017,6 +6017,62 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
   border-radius: var(--border-radius, 6px);
 }
 
+/* A machine of your own: the prompt, and what came back. Monospace on both,
+   because this is the one page where alignment carries meaning — a directory
+   listing and a compiler's caret both stop working in a proportional font. */
+.sbx-form { margin: 0 0 var(--spacing-md, 16px) }
+
+.sbx-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 11px;
+  margin: 0 0 10px;
+  border: var(--border-width, 1px) solid var(--card-border, #e8e8e8);
+  border-radius: var(--border-radius, 6px);
+  background: var(--card-background, #fff);
+}
+.sbx-line:focus-within { border-color: #bbb }
+
+.sbx-prompt {
+  flex: none;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  color: var(--text-muted, #888);
+  user-select: none;
+}
+
+/* Unbordered inside the bordered line, so the prompt and what you type read as
+   one thing rather than as a label beside a box. */
+.sbx-cmd {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: none;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  color: var(--text-primary, #1a1a1a);
+}
+
+.sbx-text {
+  margin: 0;
+  padding: 14px 16px;
+  max-height: 640px;
+  overflow: auto;
+  white-space: pre;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary, #555);
+  background: var(--hover-background, #fafafa);
+  border: var(--border-width, 1px) solid var(--card-border, #e8e8e8);
+  border-radius: var(--border-radius, 6px);
+}
+
+.sbx-code { font-size: 12px; color: var(--btn-danger, #c00); margin: 6px 0 0 }
+.sbx-problem { font-size: 13px; color: var(--btn-danger, #c00); margin: var(--spacing-md, 16px) 0 0 }
+
 /* One tool, at an address of its own. See internal/api/tool_page.go. */
 .tool-page { max-width: 760px }
 .tool-name { font-size: 24px; margin: 0 0 6px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace }

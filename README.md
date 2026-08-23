@@ -48,6 +48,7 @@ Maybe protocols are the winning strategy?
 | **Prayer** | `prayer_times` · `prayer_qibla` · `prayer_reflection` · `prayer_verse` · `prayer_saying` · `prayer_search` — Islamic prayer times, qibla, a daily verse and saying, and the sources by reference or by question |
 | **Recall** | `recall_search` · `recall_conversation` · `recall_list` — everything you have ever said to an agent and been told, on any client: search it, and read a conversation back |
 | **Routes** | `routes_eta` · `routes_directions` · `routes_nearest` — travel time with traffic, turn-by-turn, and which of several places is quickest to reach |
+| **Sandbox** | `sandbox_run` · `sandbox_write` · `sandbox_read` · `sandbox_list` — a machine of your own: a container with a shell, and a `/work` directory that keeps what you put in it between calls. Build things, run tests, clone a repo, move files about. Running a command costs, because it is CPU and memory here; keeping and reading files is free. Needs Docker on the instance |
 | **SMS** | `sms_send` · `sms_history` · `sms_number` · `sms_verify` — text somebody and read what they text back, from a real number. Priced per segment, capped per day, and STOP is honoured |
 | **Social** | `social_list` · `social_search` — public threads and replies |
 | **Stream** | `stream_list` — what has been happening here |
@@ -243,7 +244,7 @@ mu agent "what happened in markets today?"
 
 ```
 model: anthropic/claude-sonnet-4-6
-114 tools from https://micro.mu
+118 tools from https://micro.mu
 wallet: 0x4160a863… (1.27 USDC)
 
 > what are the top news headlines today?

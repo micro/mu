@@ -1,0 +1,245 @@
+package sandbox
+
+// One machine per account: what it is called, what it may have, and the rules
+// about what may be run on it.
+//
+// The rules are the service. internal/container knows how to start a container
+// and nothing about who deserves one; everything about paths, limits,
+// timeouts, charging and who is asking is here, in the same way service/sms
+// holds the rules about who may be texted and internal/twilio holds the send.
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
+	"path"
+	"strconv"
+	"strings"
+	"time"
+
+	"mu/internal/container"
+	"mu/internal/quota"
+	"mu/internal/service"
+	"mu/internal/settings"
+)
+
+// caller resolves the authenticated account from call metadata.
+//
+// No owner field on any request, for the same reason notes has none: an
+// argument is chosen by whoever makes the call and context metadata is not, and
+// a machine with your files on it is yours.
+func caller(ctx context.Context) (string, error) {
+	id := service.AccountFrom(ctx)
+	if id == "" {
+		return "", fmt.Errorf("sign in to use a sandbox")
+	}
+	if !Configured() {
+		return "", fmt.Errorf("this instance has no container runtime, so it cannot " +
+			"give you a machine — an admin installs Docker and restarts")
+	}
+	return id, nil
+}
+
+// boxOf is an account's container name, and volumeOf its files.
+//
+// The account id is in the name because a name somebody can read is worth
+// having when they are looking at `docker ps` trying to work out whose process
+// is spinning. The hash is what makes it correct: an id may contain characters
+// docker will not take, two different ids may clean to the same string, and a
+// collision here would hand one account another's files.
+func boxOf(accountID string) string    { return namePrefix + slug(accountID) }
+func volumeOf(accountID string) string { return "mu-work-" + slug(accountID) }
+
+// namePrefix is what every machine this instance starts is called. One place,
+// because the reaper finds them by it — see idle.go.
+const namePrefix = "mu-sandbox-"
+
+func slug(accountID string) string {
+	var b strings.Builder
+	for _, r := range strings.ToLower(accountID) {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '-' {
+			b.WriteRune(r)
+		}
+	}
+	sum := sha256.Sum256([]byte(accountID))
+	clean := b.String()
+	if len(clean) > 24 {
+		clean = clean[:24]
+	}
+	if clean == "" {
+		clean = "acct"
+	}
+	return clean + "-" + hex.EncodeToString(sum[:4])
+}
+
+// ready makes sure the caller's machine is up.
+//
+// Called by every method rather than once at sign-in, because there is no
+// sign-in here — a tool call arrives from an agent that may be the first thing
+// this account has ever done, and the machine has to exist by the time the
+// command runs. Starting one that is already running costs one inspect.
+func ready(ctx context.Context, accountID string) error {
+	name := boxOf(accountID)
+	if err := container.Start(ctx, name, image(), volumeOf(accountID), limits()); err != nil {
+		return err
+	}
+	// Every path in goes through here, which is what makes this the one place
+	// that has to record use. A machine touched only by Run would be reaped out
+	// from under somebody reading and writing files all afternoon.
+	touched(name)
+	return nil
+}
+
+// exec runs the caller's own command on their machine.
+//
+// It does not charge. The tool door charges what the Endpoint declares, so a
+// charge here would bill a tool call twice — which is what
+// TestNoOperationIsChargedTwice exists to catch, and it caught this. The page
+// does not go through the door, so the page charges itself: see paidRun, and
+// /browser, which is split the same way for the same reason.
+func exec(ctx context.Context, accountID, command, dir string, wait time.Duration) (container.Result, error) {
+	command = strings.TrimSpace(command)
+	if command == "" {
+		return container.Result{}, fmt.Errorf("a command is required")
+	}
+	where, err := under(dir)
+	if err != nil {
+		return container.Result{}, err
+	}
+	if err := ready(ctx, accountID); err != nil {
+		return container.Result{}, err
+	}
+	return container.Exec(ctx, boxOf(accountID), command, where, allowed(wait))
+}
+
+// paidRun is exec with the gate and the charge the door would have applied.
+//
+// For the page only. The page is not a way round the price — it does the work
+// the tool does, so it costs what the tool costs.
+func paidRun(ctx context.Context, accountID, command, dir string) (container.Result, error) {
+	ok, _, cost, qerr := quota.CheckQuota(accountID, quota.OpSandboxRun)
+	if qerr != nil {
+		return container.Result{}, qerr
+	}
+	if !ok {
+		return container.Result{}, fmt.Errorf("that would cost %d credits and this "+
+			"account cannot cover it", cost)
+	}
+	res, err := exec(ctx, accountID, command, dir, 0)
+	if err != nil {
+		// Nothing ran, so nothing is owed. The failures that reach here are this
+		// instance's — a daemon that went away, a container that would not start
+		// — and charging for them would bill somebody for our outage.
+		return container.Result{}, err
+	}
+	quota.Charge(accountID, quota.OpSandboxRun, map[string]interface{}{ //nolint:errcheck
+		"command": trimTo(command, 200),
+	})
+	return res, nil
+}
+
+// under is a path inside /work, or why it is not one.
+//
+// Every path an agent gives is resolved against /work and checked to still be
+// inside it afterwards. The container is the real boundary — there is nothing
+// out there worth having — but a caller that can read /etc/passwd out of its
+// own image gets a confusing answer rather than a useful one, and "the paths
+// mean what they look like" is worth more than the alternative.
+func under(p string) (string, error) {
+	p = strings.TrimSpace(p)
+	if p == "" || p == "." {
+		return work, nil
+	}
+	if !strings.HasPrefix(p, "/") {
+		p = work + "/" + p
+	}
+	clean := path.Clean(p)
+	if clean != work && !strings.HasPrefix(clean, work+"/") {
+		return "", fmt.Errorf("%s is outside /work, which is the only place your files live", p)
+	}
+	return clean, nil
+}
+
+const work = "/work"
+
+// allowed is how long a command may have: what was asked for, bounded by what
+// this instance will give, and a sensible number when nothing was asked.
+func allowed(asked time.Duration) time.Duration {
+	max := time.Duration(number(settings.Get("SANDBOX_MAX_SECONDS"), 600)) * time.Second
+	if asked <= 0 {
+		asked = defaultWait
+	}
+	if asked > max {
+		return max
+	}
+	return asked
+}
+
+// defaultWait is what a command gets when the caller did not say. Long enough
+// for a test run, short enough that a mistake is not a hung request.
+const defaultWait = 120 * time.Second
+
+// image is what a machine is made of.
+//
+// A small default rather than a useful one, deliberately. Somebody who wants Go
+// and git on it says so — SANDBOX_IMAGE — and an operator who has not thought
+// about it does not silently get a gigabyte pulled onto their disk the first
+// time an agent tries something.
+func image() string {
+	if set := strings.TrimSpace(settings.Get("SANDBOX_IMAGE")); set != "" {
+		return set
+	}
+	return "alpine:3.20"
+}
+
+// limits are what one machine may have. Every one is an operator's decision,
+// and none of them may be absent — see container.Limits.
+func limits() container.Limits {
+	network := strings.TrimSpace(settings.Get("SANDBOX_NETWORK"))
+	if network == "" {
+		network = "bridge"
+	}
+	return container.Limits{
+		Memory:  text(settings.Get("SANDBOX_MEMORY"), "2g"),
+		CPUs:    text(settings.Get("SANDBOX_CPUS"), "1"),
+		PIDs:    number(settings.Get("SANDBOX_PIDS"), 512),
+		Network: network,
+	}
+}
+
+// text and number take a setting's value rather than its key, so every key in
+// this package is a literal in the source. docs/config_test.go scans for that
+// literal to hold the configuration page honest in both directions, and a key
+// reaching settings.Get as a variable is invisible to it — fairly, since it is
+// invisible to a person with grep too.
+func text(value, fallback string) string {
+	if set := strings.TrimSpace(value); set != "" {
+		return set
+	}
+	return fallback
+}
+
+func number(value string, fallback int) int {
+	if n, err := strconv.Atoi(strings.TrimSpace(value)); err == nil && n > 0 {
+		return n
+	}
+	return fallback
+}
+
+// trimTo shortens a line for the usage record.
+func trimTo(s string, n int) string {
+	r := []rune(s)
+	if len(r) <= n {
+		return string(r)
+	}
+	return string(r[:n]) + "…"
+}
+
+// quoted is a string a shell will take as one word, whatever is in it.
+//
+// Single quotes, with the only character they cannot hold spliced in. Used for
+// paths an agent chose, which is the whole reason it is here.
+func quoted(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+}
