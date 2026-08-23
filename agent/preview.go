@@ -98,39 +98,7 @@ func Preview(accountID string) string {
 		return ""
 	}
 
-	// The last conversation each one is on. One pass over the record rather
-	// than a lookup per agent: thread.List is already sorted newest first, so
-	// the first thread naming an agent is that agent's latest.
-	latest := map[string]lastSeen{}
-	for _, t := range thread.List(accountID, previewHistory) {
-		// Something an agent actually did.
-		//
-		// This read every conversation, and most conversations have no agent
-		// recorded on them — so the line below filed all of them under the
-		// default and Micro's row reported, as the last thing it dealt with, a
-		// DMARC aggregate report from Google that nothing had read. Mail the
-		// agent deliberately stayed quiet on did the same: it is on a thread
-		// between other people and says so, and the front page turned that
-		// silence into activity.
-		//
-		// A party of RoleAgent is the exact fact wanted, and it is already
-		// there: parties accrete from who spoke, so an agent is on a
-		// conversation when it has answered on it and not before.
-		if !answered(accountID, t) {
-			continue
-		}
-		// A conversation with nobody named is the default's: the chat records
-		// whichever agent answered, and for the one that answers when none was
-		// asked for that is empty.
-		who := t.Agent
-		if who == "" {
-			who = DefaultPlatformAgent
-		}
-		if _, have := latest[who]; have {
-			continue
-		}
-		latest[who] = lastSeen{subject: strings.TrimSpace(t.Subject), at: t.Updated}
-	}
+	latest := latestByAgent(accountID)
 
 	// Busiest first, which on this page means most recently used — an agent you
 	// have not touched in a month is not what you came to look at. Ones that
@@ -181,6 +149,70 @@ func Preview(accountID string) string {
 	}
 	b.WriteString(`</div>`)
 	return b.String()
+}
+
+// latestByAgent is the last conversation each agent actually spoke on.
+//
+// One pass over the record rather than a lookup per agent: thread.List is
+// already sorted newest first, so the first thread naming an agent is that
+// agent's latest.
+//
+// Shared with /agents, which asks the same question about the same agents —
+// two lists of what your agents have been doing that disagreed about it would
+// be worse than either.
+func latestByAgent(accountID string) map[string]lastSeen {
+	latest := map[string]lastSeen{}
+	for _, t := range thread.List(accountID, previewHistory) {
+		// Something an agent actually did.
+		//
+		// This read every conversation, and most conversations have no agent
+		// recorded on them — so the line below filed all of them under the
+		// default and Micro's row reported, as the last thing it dealt with, a
+		// DMARC aggregate report from Google that nothing had read. Mail the
+		// agent deliberately stayed quiet on did the same: it is on a thread
+		// between other people and says so, and the front page turned that
+		// silence into activity.
+		//
+		// A party of RoleAgent is the exact fact wanted, and it is already
+		// there: parties accrete from who spoke, so an agent is on a
+		// conversation when it has answered on it and not before.
+		if !answered(accountID, t) {
+			continue
+		}
+		// A conversation with nobody named is the default's: the chat records
+		// whichever agent answered, and for the one that answers when none was
+		// asked for that is empty.
+		who := t.Agent
+		if who == "" {
+			who = DefaultPlatformAgent
+		}
+		if _, have := latest[who]; have {
+			continue
+		}
+		latest[who] = lastSeen{subject: strings.TrimSpace(t.Subject), at: t.Updated}
+	}
+	return latest
+}
+
+// LastSeen is what an agent last dealt with and when, for a list that is about
+// picking one to talk to. Empty when it has not answered anything yet.
+//
+// Exported for /agents. The roster there was a token inventory — name, purpose,
+// three links — and nothing on it said whether any of them were alive. "Last:
+// Tuesday · 2 hours ago" is what turns a directory entry into somebody you are
+// about to talk to.
+func LastSeen(accountID, agentID string) (about string, at time.Time) {
+	if accountID == "" {
+		return "", time.Time{}
+	}
+	if agentID == "" {
+		agentID = DefaultPlatformAgent
+	}
+	s, ok := latestByAgent(accountID)[agentID]
+	if !ok {
+		return "", time.Time{}
+	}
+	return s.subject, s.at
 }
 
 // answered says whether an agent has spoken on a conversation.

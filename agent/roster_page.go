@@ -153,7 +153,10 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	EnsureTags(owner)
 	roster := Agents(owner)
 	b.WriteString(`<div class="col m-0 mb-6">`)
-	b.WriteString(platformRow(DefaultPlatformAgent))
+	// The default carries the same sign of life as the rest. It is the one most
+	// accounts have actually used, so a roster where every row but that one says
+	// when it last spoke is a roster missing the row that would say the most.
+	b.WriteString(platformSeenRow(DefaultPlatformAgent, owner))
 	for _, a := range roster {
 		b.WriteString(agentRow(a, csrf, app.BaseURL(r)))
 	}
@@ -276,6 +279,15 @@ type entry struct {
 	ID    string // for the links that need it
 	Admin bool   // whether Edit and Fork apply, which is only to your own
 	Extra string // owner-only controls, in the strip with the links
+	// Seen is what it last dealt with and when, or empty for one that has not
+	// answered anything yet.
+	//
+	// The roster was a directory: name, purpose, three links, and nothing
+	// saying whether any of them were alive. A list you are scanning to decide
+	// who to talk to needs a sign of life against each one — "Tuesday · 2 hours
+	// ago" turns an entry into somebody you are about to write to, and "Not used
+	// yet" is the honest version of the same fact.
+	Seen string
 }
 
 // entryRow draws one.
@@ -290,6 +302,9 @@ func entryRow(e entry) string {
 	b.WriteString(`<a class="agent-name" href="` + e.Path + `">` + html.EscapeString(e.Name) + `</a>`)
 	if e.For != "" {
 		b.WriteString(`<div class="agent-for">` + html.EscapeString(e.For) + `</div>`)
+	}
+	if e.Seen != "" {
+		b.WriteString(`<div class="agent-seen">` + html.EscapeString(e.Seen) + `</div>`)
 	}
 	// No address on the row, and no Email link.
 	//
@@ -368,6 +383,7 @@ func agentRow(a *Agent, csrf, base string) string {
 		Path:  open,
 		Chat:  chat,
 		For:   for_,
+		Seen:  seenLine(a.Owner, a.ID),
 		ID:    a.ID,
 		Admin: true,
 		Extra: extra,
@@ -408,6 +424,28 @@ func defaultRow() string {
 }
 
 // platformRow is one of this instance's own agents.
+// platformSeenRow is platformRow with the account's own history against it.
+//
+// A second function rather than a parameter on platformRow, because /tools uses
+// that one to describe the instance's agents to somebody who may not be signed
+// in, where "last used 2 hours ago" would be a fact about a stranger.
+func platformSeenRow(name, accountID string) string {
+	row := platformRow(name)
+	line := seenLine(accountID, name)
+	if line == "" {
+		return row
+	}
+	// Under the description, where every other row puts it.
+	const at = `</div>`
+	if i := strings.Index(row, `class="agent-for">`); i >= 0 {
+		if j := strings.Index(row[i:], at); j >= 0 {
+			cut := i + j + len(at)
+			return row[:cut] + `<div class="agent-seen">` + html.EscapeString(line) + `</div>` + row[cut:]
+		}
+	}
+	return row
+}
+
 func platformRow(name string) string {
 	a := Platform(name)
 	if a == nil {
@@ -441,6 +479,26 @@ func platformRow(name string) string {
 	})
 }
 
+// seenLine is the sign of life on a row: what it last dealt with, and when.
+//
+// "Not used yet" rather than nothing, because a blank where every other row has
+// a line reads as a render that failed — and because an agent you made and
+// never wrote to is a real state worth seeing on the list that would let you.
+func seenLine(accountID, agentID string) string {
+	about, at := LastSeen(accountID, agentID)
+	if at.IsZero() {
+		return "Not used yet"
+	}
+	if about == "" {
+		about = "a conversation"
+	}
+	return "Last: " + trimTo(about, seenChars) + " · " + app.TimeAgo(at)
+}
+
+// seenChars bounds the subject on a row. Long enough to recognise a
+// conversation, short enough that the line stays one.
+const seenChars = 50
+
 func toolWords(tools []string) string {
 	var out []string
 	seen := map[string]bool{}
@@ -468,6 +526,11 @@ const agentsCSS = `<style>
    one place /tools is reachable from since it left the sidebar. */
 .lens-go{font-size:14px;margin:0 0 18px}
 .agent-note{color:#999;font-size:12px;margin:0 0 12px;max-width:640px}
+/* The sign of life on a row. Quieter than the description above it, because
+   what an agent is for is why you would pick it and when it last spoke is
+   whether it is alive — the second is a check, not a heading. */
+.agent-seen{color:#999;font-size:12px;margin:2px 0 0}
+.agent-row .agent-seen{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* Top-aligned, not centred. A row is three or four lines tall now, and
    centring left Remove floating in the middle of the card beside nothing. */
 .agent-row{display:flex;align-items:flex-start;gap:12px;border:1px solid #eee;border-radius:8px;padding:12px 14px}
