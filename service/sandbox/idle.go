@@ -80,6 +80,53 @@ func reap() {
 	}
 }
 
+// room makes space for a machine about to start.
+//
+// The cap is on how many run at once, and what it is really bounding is memory:
+// each one holds its cap whether or not anybody is using it, so a box that fits
+// two cannot host five however cheap a command is.
+//
+// Stopping the idlest rather than refusing the caller. A refusal makes the
+// person who turned up last pay for the person who wandered off first, and the
+// thing being taken away is not their files — the volume is untouched and their
+// next command starts it again. Which is the same trade the reaper makes, on a
+// shorter fuse.
+func room(ctx context.Context, starting string) {
+	budget := machineBudget()
+
+	usedMu.Lock()
+	if _, live := used[starting]; live || len(used) < budget {
+		// Already running, or there is space. Nothing to take.
+		usedMu.Unlock()
+		return
+	}
+	// The victim is picked under the lock and removed from the map here, so two
+	// callers arriving at once cannot choose the same one.
+	var victim string
+	var oldest time.Time
+	for name, at := range used {
+		if name == starting {
+			continue
+		}
+		if victim == "" || at.Before(oldest) {
+			victim, oldest = name, at
+		}
+	}
+	if victim != "" {
+		delete(used, victim)
+	}
+	usedMu.Unlock()
+
+	if victim == "" {
+		return
+	}
+	// Outside the lock: stopping takes seconds, and holding it would serialise
+	// every caller behind one docker stop.
+	if err := container.Stop(ctx, victim); err != nil {
+		app.Log("sandbox", "could not stop %s to make room: %v", victim, err)
+	}
+}
+
 // reapEvery is how often to look. Coarse: the thing being reclaimed is memory
 // held by something nobody is waiting on.
 const reapEvery = 5 * time.Minute

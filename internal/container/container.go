@@ -76,6 +76,51 @@ const binary = "docker"
 // this long is one no caller wants to wait for either.
 const probeWait = 10 * time.Second
 
+// HostMemory is how much memory the daemon has to hand out, in bytes, or 0 if
+// it will not say.
+//
+// The daemon's view rather than this process's. Mu may itself be in a container
+// with a cgroup limit of its own, and reading /proc/meminfo from in there
+// answers a different question than the one being asked — the sandboxes are
+// siblings on the host, so what bounds them is what the host has.
+//
+// Asked once. It does not change while the machine is up, and it costs a
+// subprocess.
+func HostMemory() int64 {
+	hostOnce.Do(hostFacts)
+	return hostMemory
+}
+
+// hostFacts asks the daemon what the machine has. One call for both, because
+// they are one question and it is a subprocess.
+func hostFacts() {
+	if !Available() {
+		return
+	}
+	out, err := run(context.Background(), probeWait, "info", "--format", "{{.MemTotal}} {{.NCPU}}")
+	if err != nil {
+		return
+	}
+	parts := strings.Fields(out)
+	if len(parts) != 2 {
+		return
+	}
+	hostMemory, _ = strconv.ParseInt(parts[0], 10, 64)
+	hostCPUs, _ = strconv.Atoi(parts[1])
+}
+
+// HostCPUs is how many cores the daemon has, or 0 if it will not say.
+func HostCPUs() int {
+	hostOnce.Do(hostFacts)
+	return hostCPUs
+}
+
+var (
+	hostOnce   sync.Once
+	hostMemory int64
+	hostCPUs   int
+)
+
 // Limits are what one container may have.
 //
 // Every field has a value by the time it reaches here — the service fills them
@@ -131,6 +176,12 @@ func Start(ctx context.Context, name, image, volume string, l Limits) error {
 		"run", "--detach",
 		"--name", name,
 		"--memory", l.Memory,
+		// The same number again, which is how docker is told "no swap".
+		// Without it a container gets swap equal to its memory for free, so a
+		// 2g cap is really 2g of RAM plus 2g of the host's swap — and the
+		// symptom is not an OOM kill, it is the whole box thrashing while the
+		// container stays inside its limit.
+		"--memory-swap", l.Memory,
 		"--cpus", l.CPUs,
 		"--pids-limit", strconv.Itoa(l.PIDs),
 		"--network", network,

@@ -81,6 +81,10 @@ func slug(accountID string) string {
 // command runs. Starting one that is already running costs one inspect.
 func ready(ctx context.Context, accountID string) error {
 	name := boxOf(accountID)
+	// Somewhere to put it, before starting anything. On a small box the
+	// machines do not all fit, and the honest answer is to stop the one nobody
+	// is using rather than to refuse the person who is here.
+	room(ctx, name)
 	if err := container.Start(ctx, name, image(), volumeOf(accountID), limits()); err != nil {
 		return err
 	}
@@ -201,11 +205,105 @@ func limits() container.Limits {
 		network = "bridge"
 	}
 	return container.Limits{
-		Memory:  text(settings.Get("SANDBOX_MEMORY"), "2g"),
-		CPUs:    text(settings.Get("SANDBOX_CPUS"), "1"),
+		Memory:  text(settings.Get("SANDBOX_MEMORY"), defaultMemory()),
+		CPUs:    text(settings.Get("SANDBOX_CPUS"), defaultCPUs()),
 		PIDs:    number(settings.Get("SANDBOX_PIDS"), 512),
 		Network: network,
 	}
+}
+
+// defaultMemory is a share of what the host has, rather than a number.
+//
+// It was a flat 2g, which is the bug this is fixing. On a 2GB VM that is the
+// whole machine: the container stays inside its own cgroup while taking every
+// free page, and the host's OOM killer then picks the largest process — which
+// is the Mu server, not the sandbox. A default that can kill the thing serving
+// it is not a default.
+//
+// A quarter, so the server, the daemon and a second machine all still fit.
+// Floored at 256m because nothing useful builds in less, and capped at the old
+// 2g because past that the constraint stops being memory. An operator who wants
+// a different answer sets SANDBOX_MEMORY and gets exactly it — this only decides
+// what to do when nobody has said.
+func defaultMemory() string {
+	host := container.HostMemory()
+	if host <= 0 {
+		// The daemon would not say. The old flat default is the wrong guess on
+		// a small box, so guess small: a machine that is too small says so the
+		// first time somebody builds in it, and one that is too big takes the
+		// server down.
+		return "512m"
+	}
+	share := host / 4
+	if share < 256*megabyte {
+		share = 256 * megabyte
+	}
+	if share > 2048*megabyte {
+		share = 2048 * megabyte
+	}
+	return strconv.FormatInt(share/megabyte, 10) + "m"
+}
+
+const megabyte = 1024 * 1024
+
+// defaultCPUs leaves one core for everything that is not a sandbox.
+//
+// Same argument as the memory: a single-core box that hands its only core to a
+// build has nothing left to answer requests with. On anything larger this is 1,
+// which is what it always was.
+func defaultCPUs() string {
+	if container.HostCPUs() <= 1 {
+		return "0.5"
+	}
+	return "1"
+}
+
+// machineBudget is how many machines may run at once.
+//
+// Not a queue and not a refusal: see room, which stops the idlest machine to
+// make space. What this bounds is total memory, which is the cost the price on
+// a command deliberately does not cover — a command is CPU, and an idle
+// container is memory somebody stopped paying for the moment they walked away.
+func machineBudget() int {
+	if n := number(settings.Get("SANDBOX_MAX_MACHINES"), 0); n > 0 {
+		return n
+	}
+	host := container.HostMemory()
+	if host <= 0 {
+		return 2
+	}
+	// Half the box for sandboxes, over what one of them takes. The other half
+	// is the server, the daemon and the page cache.
+	per := parseSize(limits().Memory)
+	if per <= 0 {
+		return 2
+	}
+	if n := int((host / 2) / per); n > 1 {
+		return n
+	}
+	return 1
+}
+
+// parseSize reads docker's own size syntax back into bytes. Only the suffixes
+// docker takes, because it is reading a value docker was given.
+func parseSize(s string) int64 {
+	s = strings.TrimSpace(strings.ToLower(s))
+	mult := int64(1)
+	switch {
+	case strings.HasSuffix(s, "g"):
+		mult, s = 1024*megabyte, strings.TrimSuffix(s, "g")
+	case strings.HasSuffix(s, "m"):
+		mult, s = megabyte, strings.TrimSuffix(s, "m")
+	case strings.HasSuffix(s, "k"):
+		mult, s = 1024, strings.TrimSuffix(s, "k")
+	case strings.HasSuffix(s, "b"):
+		s = strings.TrimSuffix(s, "b")
+	}
+	n, err := strconv.ParseInt(strings.TrimSpace(s), 10, 64)
+	if err != nil {
+		return 0
+	}
+	return n * mult
 }
 
 // text and number take a setting's value rather than its key, so every key in

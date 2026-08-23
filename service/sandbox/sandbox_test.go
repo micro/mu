@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"mu/internal/container"
 	"mu/internal/service"
 )
 
@@ -111,6 +112,62 @@ func TestAMachineNeedsAnAccount(t *testing.T) {
 	}
 	if !Spec.Scoped {
 		t.Error("the spec is not scoped, so the door would let an anonymous caller in")
+	}
+}
+
+// A machine may not be the size of the whole box.
+//
+// This was a flat 2g, which on a 2GB VM is every page the host has. The
+// container stays inside its own cgroup while taking them, and the host's OOM
+// killer then picks the largest process — the Mu server. A default that can
+// kill the thing serving it is not a default.
+func TestAMachineIsAShareOfTheHostRatherThanAllOfIt(t *testing.T) {
+	host := container.HostMemory()
+	if host <= 0 {
+		t.Skip("the daemon will not say how much memory this machine has")
+	}
+	got := parseSize(defaultMemory())
+	if got <= 0 {
+		t.Fatalf("defaultMemory() = %q, which is not a size", defaultMemory())
+	}
+	if got > host/2 {
+		t.Errorf("one machine gets %d of %d bytes — the server has to fit too", got, host)
+	}
+	if got < 256*megabyte {
+		t.Errorf("one machine gets %d bytes, which is too little to build in", got)
+	}
+}
+
+// And they do not all fit, so there is a cap on how many run at once.
+func TestTheMachinesFitInTheBox(t *testing.T) {
+	host := container.HostMemory()
+	if host <= 0 {
+		t.Skip("the daemon will not say how much memory this machine has")
+	}
+	n := machineBudget()
+	if n < 1 {
+		t.Fatalf("machineBudget() = %d, so nobody may have a machine", n)
+	}
+	if total := int64(n) * parseSize(limits().Memory); total > host {
+		t.Errorf("%d machines at %s is %d bytes on a %d byte box", n, limits().Memory, total, host)
+	}
+}
+
+// docker's size syntax, read back.
+func TestASizeIsReadBackAsDockerWroteIt(t *testing.T) {
+	for in, want := range map[string]int64{
+		"512m":     512 * megabyte,
+		"2g":       2048 * megabyte,
+		"2G":       2048 * megabyte,
+		" 1g ":     1024 * megabyte,
+		"1024":     1024,
+		"1024b":    1024,
+		"nonsense": 0,
+		"":         0,
+	} {
+		if got := parseSize(in); got != want {
+			t.Errorf("parseSize(%q) = %d, want %d", in, got, want)
+		}
 	}
 }
 

@@ -75,11 +75,19 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	if command != "" {
 		b.WriteString(running(r, acc.ID, command))
 	} else {
+		// What this instance actually gives, rather than what the service can
+		// give. The numbers are derived from the host, so a page that quoted
+		// the defaults would be wrong on most machines — and "why did my build
+		// get killed" is answered by the number, not by the feature.
+		l := limits()
 		b.WriteString(app.NoteHTML(`Running a command costs ` +
 			credits(quota.OperationCost(quota.OpSandboxRun)) + `, because it is CPU and ` +
-			`memory on this machine. Reading and writing files is free. This is ` +
-			html.EscapeString(image()) + ` — an admin picks the image, so what is on it ` +
-			`is up to them.`))
+			`memory here. Keeping and reading files is free. This instance gives each ` +
+			`machine <code>` + html.EscapeString(l.Memory) + `</code> of memory and ` +
+			`<code>` + html.EscapeString(l.CPUs) + `</code> CPU, from ` +
+			html.EscapeString(image()) + `, and runs at most ` +
+			strconv.Itoa(machineBudget()) + ` at once — yours is stopped when it has been ` +
+			`idle a while, or to make room, and your files are kept either way.`))
 	}
 
 	b.WriteString(`</div>`)
