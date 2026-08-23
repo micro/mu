@@ -36,7 +36,18 @@ jobs:
             cd ~/src/mu
             git pull origin main
             source ~/.env
-            go install
+            # Static, so the binary can be mounted into a sandbox container.
+            #
+            # The sandbox image is Alpine, which has musl and no glibc loader,
+            # and a Go binary built the ordinary way on this host is
+            # dynamically linked against one. Mount that into a box and the
+            # shell answers "not found" about a file `ls -l` has just listed.
+            #
+            # The release workflow has always built this way; this deploy did
+            # not, and this is the build that runs on the server. See
+            # service/sandbox/equip.go, which refuses to mount a binary the
+            # box could not run.
+            CGO_ENABLED=0 go install
             # One-time: switch to socket activation for zero-downtime restarts.
             # Idempotent, self-verifying, and guarded so it can never fail a deploy.
             sh scripts/deploy/enable-zero-downtime.sh || true
