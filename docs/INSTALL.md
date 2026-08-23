@@ -839,7 +839,6 @@ that same file, so this page does not repeat twenty-six rows.
 | `MU_REGISTRY` | in-process | `mdns` puts services on the local network — note it *announces* every service this process hosts |
 | `MU_ADVERTISE` | loopback | Address to advertise when the registry is networked |
 | `MU_USE_SQLITE` | — | SQLite with FTS5 for the search index, instead of the file store |
-| `MU_SOURCE_DIR` | — | Source tree, for the admin source viewer |
 | `MCP_GATEWAY_ADDR` | — | Run go-micro's MCP gateway on its own port |
 | `PUBLIC_URL` · `APP_URL` | — | Public origin, when it can't be derived |
 | `TOR_ONION` | — | Onion address, shown in the footer |

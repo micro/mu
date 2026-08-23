@@ -194,7 +194,7 @@ func (c *Client) call(method string, params any, out any) error {
 	}
 
 	if resp.StatusCode == http.StatusPaymentRequired {
-		return fmt.Errorf("payment required (HTTP 402): insufficient credits. Top up at %s/account/topup", c.URL)
+		return fmt.Errorf("payment required (HTTP 402): insufficient credits. Top up at %s/billing/topup", c.URL)
 	}
 	if resp.StatusCode >= 400 {
 		// An HTTP-level refusal is not JSON-RPC. The MCP authorization spec

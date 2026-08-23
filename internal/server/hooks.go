@@ -591,7 +591,7 @@ func wireHooks() {
 			return false, err
 		}
 		if !ok {
-			return false, fmt.Errorf("this costs %d credits and your balance is %d — top up at /account/topup",
+			return false, fmt.Errorf("this costs %d credits and your balance is %d — top up at /billing/topup",
 				cost, quota.BalanceOf(account))
 		}
 		return true, nil

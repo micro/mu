@@ -26,7 +26,7 @@ func csp(t *testing.T) string {
 // A form may leave this origin for exactly one place.
 //
 // form-action is checked against where a form ends up, not only against its
-// action attribute. Paying posts to /account/stripe/checkout — this host — and
+// action attribute. Paying posts to /billing/stripe/checkout — this host — and
 // that handler answers 303 to a checkout URL Stripe has just minted, so 'self'
 // alone blocks a POST it has already accepted. The failure is invisible from
 // the server: the request arrives, the session is created, and the browser

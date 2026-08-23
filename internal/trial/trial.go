@@ -11,7 +11,7 @@
 // A credit is charged when an operation costs this instance something to run,
 // and it is spent from a balance an account tops up. An unclaimed account has
 // never been near a card, so every one of these runs would fail the quota check
-// and answer "top up at /account/topup and send it again" — to somebody who has
+// and answer "top up at /billing/topup and send it again" — to somebody who has
 // not signed up, about an account they do not know exists. Wrong answer, and it
 // would make the first experience of the product a bill.
 //

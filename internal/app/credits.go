@@ -143,9 +143,9 @@ func creditsBannerFor(acc *auth.Account, path string) string {
 		return ""
 	}
 	balance := v.Balance
-	// Not on the account pages: the balance and the top-up form are already
-	// there, and a banner above them pointing at them reads as a fault.
-	if strings.HasPrefix(path, "/account") {
+	// Not on the account or billing pages: the balance and the top-up form are
+	// already there, and a banner above them pointing at them reads as a fault.
+	if strings.HasPrefix(path, "/account") || strings.HasPrefix(path, "/billing") {
 		return ""
 	}
 
@@ -160,7 +160,7 @@ func creditsBannerFor(acc *auth.Account, path string) string {
 	return `<div class="credits-banner">
 <strong>` + headline + `</strong>
 <span>` + detail + `</span>
-<a href="/account/topup">Top up →</a>
+<a href="/billing/topup">Top up →</a>
 </div>`
 }
 

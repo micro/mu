@@ -302,7 +302,14 @@ func ConfigHandler(w http.ResponseWriter, r *http.Request) {
 				badge = `<span class="text-2xs text-faint">not set</span>`
 			}
 
-			b.WriteString(`<div class="mb-3">`)
+			// The row is addressable, which is what makes show and hide usable.
+			//
+			// Revealing is a round trip rather than a script — see below — and a
+			// round trip on a page of a hundred settings lands you at the top,
+			// hunting for the one you clicked. The anchor brings the browser back
+			// to the row instead. Cheap, and it keeps the reason the round trip
+			// exists.
+			b.WriteString(`<div class="mb-3" id="` + html.EscapeString(key) + `">`)
 			b.WriteString(fmt.Sprintf(
 				`<label class="text-xs text-muted d-block mb-1"><code>%s</code> %s`,
 				html.EscapeString(key), badge))
@@ -310,9 +317,10 @@ func ConfigHandler(w http.ResponseWriter, r *http.Request) {
 			// sitting in the page source of every visit waiting to be read.
 			if isSecret && val != "" && !shown {
 				b.WriteString(` <a href="/admin/config?reveal=` + url.QueryEscape(key) +
-					`" class="text-2xs text-muted">show</a>`)
+					`#` + url.QueryEscape(key) + `" class="text-2xs text-muted">show</a>`)
 			} else if isSecret && shown {
-				b.WriteString(` <a href="/admin/config" class="text-2xs text-muted">hide</a>`)
+				b.WriteString(` <a href="/admin/config#` + url.QueryEscape(key) +
+					`" class="text-2xs text-muted">hide</a>`)
 			}
 			b.WriteString(`</label>`)
 

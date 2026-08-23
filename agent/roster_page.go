@@ -172,7 +172,7 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	// form you cannot submit. It becomes the thing that would actually change
 	// the answer.
 	if full, have, max := AtAgentLimit(owner); full {
-		b.WriteString(app.ActionLink("/account/topup", "Add credit to lift the limit"))
+		b.WriteString(app.ActionLink("/billing/topup", "Add credit to lift the limit"))
 		b.WriteString(fmt.Sprintf(
 			`<p class="text-sm text-secondary mt-2 m-0">Your plan runs %d agent%s and you have %d. `+
 				`Verify your address or put credit on <a href="/account">your account</a>, or delete one first.</p>`,

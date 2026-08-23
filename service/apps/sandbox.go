@@ -27,7 +27,7 @@ package apps
 //
 // The parent is ours, the app cannot reach into it, and the only things it will
 // do are the operations the SDK documents. An app asking for anything else —
-// /account/transfer, /account, an endpoint invented tomorrow — is refused,
+// /billing/transfer, /account, an endpoint invented tomorrow — is refused,
 // because the bridge dispatches from a fixed table rather than a path.
 //
 // Not WASM. WASM bounds CPU and memory for code you execute yourself; the

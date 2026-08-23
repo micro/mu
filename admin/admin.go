@@ -28,21 +28,17 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// Alphabetical. There is no ranking to express here, and a list that is
 	// sorted is one nobody has to scan twice.
 	content := `<div class="admin-links">
-		<a href="/admin/api">API Log</a>
+		<a href="/admin/alerts">Alerts</a>
 		<a href="/admin/usage">API Spend</a>
 		<a href="/admin/backup">Backup</a>
 		<a href="/admin/blocklist">Blocklist</a>
-		<a href="/admin/console">Console</a>
 		<a href="/admin/config">Configuration</a>
-		<a href="/admin/invite">Invites</a>
+		<a href="/admin/log">Logs` + alertBadge() + `</a>
 		<a href="/admin/email">Mail Log</a>
 		<a href="/admin/oauth">OAuth Clients</a>
 		<a href="/admin/moderate">Moderation</a>
-		<a href="/admin/alerts">Alerts</a>
-		<a href="/admin/retention">Retention</a>
 		<a href="/admin/server">Server</a>
 		<a href="/admin/spam">Spam Filter</a>
-		<a href="/admin/log">System Log` + alertBadge() + `</a>
 		<a href="/admin/traffic">Traffic</a>
 		<a href="/admin/users">Users <span class="count">` + fmt.Sprintf("%d", len(users)) + `</span></a>
 	</div>`
@@ -162,7 +158,13 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 		tab = "all"
 	}
 	var sb strings.Builder
-	sb.WriteString(`<p><a href="/admin">← Admin</a></p><h2>Users</h2>`)
+	// Invites are on this page rather than in the dashboard list, because the
+	// question "who is here" and the question "who should be" are the same
+	// errand, and an operator looking at a list of accounts is one click from
+	// wanting to add one. It kept its own nav entry only because it had its own
+	// handler.
+	sb.WriteString(`<p><a href="/admin">← Admin</a></p><h2>Users</h2>` +
+		`<p><a href="/admin/invite">Invites` + pendingInvites() + ` &rarr;</a></p>`)
 	sb.WriteString(`<div class="app-filters">`)
 	for _, t := range []struct{ id, label string }{{"all", "All"}, {"banned", "Banned"}, {"new", "New (24h)"}} {
 		sb.WriteString(app.PillLink(t.label, "/admin/users?tab="+t.id, t.id == tab))

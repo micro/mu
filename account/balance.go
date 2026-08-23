@@ -13,6 +13,7 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/usage"
 )
 
 // htmlEsc escapes text for HTML.
@@ -88,8 +89,8 @@ func BalanceCard(userID string) string {
 		app.Note(money(c.Balance)+" · 1 credit = 1p"),
 		free,
 		admin,
-		`<p class="balance-links"><a href="/account/topup">Add credits &rarr;</a> · `+
-			`<a href="/account/transfer">Transfer &rarr;</a></p>`)
+		`<p class="balance-links"><a href="/billing/topup">Add credits &rarr;</a> · `+
+			`<a href="/billing/transfer">Transfer &rarr;</a></p>`)
 }
 
 // LedgerSection is the receipts: what things cost, and what this account has
@@ -211,15 +212,68 @@ func abs(n int) int {
 	return n
 }
 
-// BalanceHandler serves everything under /account that involves money.
+// billingLink is the balance on /account, as a line rather than a card.
 //
-// The paths were /wallet/* and moved with the ledger; the old ones redirect.
+// Not nothing, and not the card either. Somebody who opens the page named
+// after their account and finds no mention of money at all will look for it
+// under Language before they look in the menu; one line with the number on it
+// answers the glance and points at the page that answers the rest.
+func billingLink(userID string) string {
+	c := CreditsOf(userID)
+	return app.Section("Billing",
+		`<p><strong>`+thousands(c.Balance)+`</strong> credits · `+money(c.Balance)+
+			` &nbsp; <a href="/billing">Billing &rarr;</a></p>`,
+		app.Note("Top up, transfer, and what you have been charged for."))
+}
+
+// Billing is the money page: what you have, what you have spent it on, and the
+// two ways to change the first number.
+//
+// It was three cards on /account, above a display name and a language picker,
+// and that is the wrong company for it. Money is the thing on this account
+// somebody comes back to look at — the balance runs out and the agent stops
+// mid-errand — while a display name is set once and never opened again. Under
+// a heading on a settings page it was, in the user's word, hidden.
+//
+// So it is its own destination with its own entry in the menu, and the actions
+// moved with it: /billing/topup, /billing/transfer, /billing/pricing and the
+// Stripe round trip. A page called Billing whose buttons post to /account/*
+// would be the split done halfway.
+func Billing(w http.ResponseWriter, r *http.Request) {
+	sess, acc, err := auth.RequireSession(r)
+	if err != nil {
+		app.RedirectToLogin(w, r)
+		return
+	}
+	_ = sess
+
+	content := BalanceCard(acc.ID) +
+		usage.Card(acc.ID) +
+		LedgerSection(acc.ID)
+
+	app.Respond(w, r, app.Response{Title: "Billing", Description: "Billing", HTML: content})
+}
+
+// BalanceHandler serves everything under /billing that involves money, and
+// sends the paths that used to live under /account to where they went.
+//
+// The paths were /wallet/* before that; each move leaves a redirect, because a
+// link somebody bookmarked for their balance has to land on their balance.
 //
 // The Stripe webhook is not among them and is not routed through here at all.
 // It is a contract with somebody outside this process rather than a page, so it
 // is registered on its own at /stripe/webhook — see routes.go.
 func BalanceHandler(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
+
+	// Anything money-shaped still asked for under /account.
+	if moved, ok := movedToBilling(path); ok {
+		if q := r.URL.RawQuery; q != "" {
+			moved += "?" + q
+		}
+		http.Redirect(w, r, moved, http.StatusSeeOther)
+		return
+	}
 
 	// The balance, as data.
 	//
@@ -242,23 +296,40 @@ func BalanceHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	switch {
-	case path == "/account/topup" && r.Method == "GET" && app.WantsJSON(r):
+	case path == "/billing/topup" && r.Method == "GET" && app.WantsJSON(r):
 		handleTopupJSON(w, r)
-	case path == "/account/topup" && r.Method == "GET":
+	case path == "/billing/topup" && r.Method == "GET":
 		handleDepositPage(w, r)
-	case path == "/account/stripe/checkout" && r.Method == "POST":
+	case path == "/billing/stripe/checkout" && r.Method == "POST":
 		handleStripeCheckout(w, r)
-	case path == "/account/stripe/success" && r.Method == "GET":
+	case path == "/billing/stripe/success" && r.Method == "GET":
 		handleStripeSuccess(w, r)
-	case path == "/account/transfer" && r.Method == "POST":
+	case path == "/billing/transfer" && r.Method == "POST":
 		handleTransfer(w, r)
-	case path == "/account/transfer" && r.Method == "GET":
+	case path == "/billing/transfer" && r.Method == "GET":
 		handleTransferPage(w, r)
-	case path == "/account/pricing":
+	case path == "/billing/pricing":
 		handlePricing(w, r)
 	default:
 		http.NotFound(w, r)
 	}
+}
+
+// movedToBilling names the money paths that used to be under /account.
+func movedToBilling(path string) (string, bool) {
+	switch strings.TrimSuffix(path, "/") {
+	case "/account/topup":
+		return "/billing/topup", true
+	case "/account/transfer":
+		return "/billing/transfer", true
+	case "/account/pricing":
+		return "/billing/pricing", true
+	case "/account/stripe/checkout":
+		return "/billing/stripe/checkout", true
+	case "/account/stripe/success":
+		return "/billing/stripe/success", true
+	}
+	return "", false
 }
 
 // MovedToAccount sends the old money URLs to the page that now holds them.
@@ -271,15 +342,15 @@ func MovedToAccount(w http.ResponseWriter, r *http.Request) {
 	to := "/account"
 	switch strings.TrimSuffix(r.URL.Path, "/") {
 	case "/wallet/topup":
-		to = "/account/topup"
+		to = "/billing/topup"
 	case "/wallet/transfer":
-		to = "/account/transfer"
+		to = "/billing/transfer"
 	case "/wallet/pricing":
-		to = "/account/pricing"
+		to = "/billing/pricing"
 	case "/wallet/stripe/checkout":
-		to = "/account/stripe/checkout"
+		to = "/billing/stripe/checkout"
 	case "/wallet/stripe/success":
-		to = "/account/stripe/success"
+		to = "/billing/stripe/success"
 	}
 	if q := r.URL.RawQuery; q != "" {
 		to += "?" + q
@@ -315,7 +386,7 @@ func renderStripeDeposit(userID, errMsg string) string {
 	sb.WriteString(`<hr class="hr-soft my-4">`)
 
 	sb.WriteString("<h4>One-time top-up</h4>")
-	sb.WriteString(`<form method="POST" action="/account/stripe/checkout">`)
+	sb.WriteString(`<form method="POST" action="/billing/stripe/checkout">`)
 
 	// Preset quick-select buttons
 	sb.WriteString(`<div class="d-flex gap-2 mb-3 mt-2">`)
@@ -395,7 +466,7 @@ func handleTransferPage(w http.ResponseWriter, r *http.Request) {
 	}
 	sb.WriteString(`</datalist>`)
 
-	sb.WriteString(`<form method="POST" action="/account/transfer">`)
+	sb.WriteString(`<form method="POST" action="/billing/transfer">`)
 	sb.WriteString(`<div>`)
 	sb.WriteString(`<label for="transfer-to" class="text-sm">Recipient</label>`)
 	sb.WriteString(`<input type="text" id="transfer-to" name="to" placeholder="username" required class="form-input w-full mt-1" list="user-list" autocomplete="off">`)
@@ -446,7 +517,7 @@ func handleTransfer(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// Form submission
 		if err := r.ParseForm(); err != nil {
-			http.Redirect(w, r, "/account/transfer?error=Invalid+form", http.StatusSeeOther)
+			http.Redirect(w, r, "/billing/transfer?error=Invalid+form", http.StatusSeeOther)
 			return
 		}
 		to = r.FormValue("to")
@@ -502,7 +573,7 @@ func handleTransfer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	msg := fmt.Sprintf("Transferred %d credits to %s", amount, recipient.Name)
-	http.Redirect(w, r, "/account/transfer?success="+neturl.QueryEscape(msg), http.StatusSeeOther)
+	http.Redirect(w, r, "/billing/transfer?success="+neturl.QueryEscape(msg), http.StatusSeeOther)
 }
 
 func respondTransferError(w http.ResponseWriter, r *http.Request, msg string) {
@@ -510,7 +581,7 @@ func respondTransferError(w http.ResponseWriter, r *http.Request, msg string) {
 		app.RespondJSON(w, map[string]string{"error": msg})
 		return
 	}
-	http.Redirect(w, r, "/account/transfer?error="+neturl.QueryEscape(msg), http.StatusSeeOther)
+	http.Redirect(w, r, "/billing/transfer?error="+neturl.QueryEscape(msg), http.StatusSeeOther)
 }
 
 // maxTopupPounds is the maximum allowed top-up amount in whole pounds
@@ -550,7 +621,7 @@ func handleStripeCheckout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := r.ParseForm(); err != nil {
-		http.Redirect(w, r, "/account/topup?error=Invalid+form+submission", http.StatusSeeOther)
+		http.Redirect(w, r, "/billing/topup?error=Invalid+form+submission", http.StatusSeeOther)
 		return
 	}
 
@@ -560,11 +631,11 @@ func handleStripeCheckout(w http.ResponseWriter, r *http.Request) {
 	fmt.Sscanf(amountStr, "%d", &pounds)
 
 	if pounds < 1 {
-		http.Redirect(w, r, "/account/topup?error=Please+enter+an+amount", http.StatusSeeOther)
+		http.Redirect(w, r, "/billing/topup?error=Please+enter+an+amount", http.StatusSeeOther)
 		return
 	}
 	if pounds > maxTopupPounds {
-		http.Redirect(w, r, fmt.Sprintf("/account/topup?error=Maximum+top-up+is+%%C2%%A3%d", maxTopupPounds), http.StatusSeeOther)
+		http.Redirect(w, r, fmt.Sprintf("/billing/topup?error=Maximum+top-up+is+%%C2%%A3%d", maxTopupPounds), http.StatusSeeOther)
 		return
 	}
 
@@ -573,14 +644,14 @@ func handleStripeCheckout(w http.ResponseWriter, r *http.Request) {
 	// Success/cancel URLs must name the public origin — see app.BaseURL, which
 	// is the single answer to "what is this instance's address".
 	baseURL := app.BaseURL(r)
-	successURL := baseURL + "/account/stripe/success?session_id={CHECKOUT_SESSION_ID}"
-	cancelURL := baseURL + "/account/topup"
+	successURL := baseURL + "/billing/stripe/success?session_id={CHECKOUT_SESSION_ID}"
+	cancelURL := baseURL + "/billing/topup"
 
 	// Create checkout session
 	checkoutURL, err := CreateCheckoutSession(sess.Account, amount, successURL, cancelURL)
 	if err != nil {
 		app.Log("stripe", "checkout error: %v", err)
-		content := `<div class="card"><h2>Payment Error</h2><p>Failed to create checkout session. Please try again.</p><p><a href="/account/topup" class="btn">Back</a></p></div>`
+		content := `<div class="card"><h2>Payment Error</h2><p>Failed to create checkout session. Please try again.</p><p><a href="/billing/topup" class="btn">Back</a></p></div>`
 		w.WriteHeader(http.StatusInternalServerError)
 		app.Respond(w, r, app.Response{Title: "Payment Error", Description: "Checkout failed", HTML: content})
 		return
@@ -644,7 +715,7 @@ type pricingItem = PricingItem
 
 // Pricing returns every billable operation, cheapest first. This is the single
 // source of truth for what things cost: the wallet page, the signed-out wallet
-// page, the /account/pricing API and the public pricing page all render from it.
+// page, the /billing/pricing API and the public pricing page all render from it.
 // They each used to carry their own hardcoded table, which drifted — image
 // generation was the most expensive op a user could trigger and three of the
 // four tables omitted it entirely.
@@ -753,7 +824,7 @@ func handlePricing(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`<p class="info mt-3"><a href="/apps/new">Build an app →</a></p>`)
 	sb.WriteString(`</div>`)
 
-	sb.WriteString(`<p class="info mt-3">JSON: <code>curl -H "Accept: application/json" /account/pricing</code></p>`)
+	sb.WriteString(`<p class="info mt-3">JSON: <code>curl -H "Accept: application/json" /billing/pricing</code></p>`)
 	sb.WriteString(`</div>`)
 
 	app.Respond(w, r, app.Response{Title: "Pricing", Description: "Platform pricing and costs", HTML: sb.String()})
