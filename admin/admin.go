@@ -28,12 +28,12 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	content := `<div class="admin-links">
 		<a href="/admin/alerts">Alerts</a>
 		<a href="/admin/backup">Backup</a>
-		<a href="/admin/config">Configuration</a>
+		<a href="/admin/config">Config</a>
 		<a href="/admin/log">Logs` + alertBadge() + `</a>
 		<a href="/admin/oauth">OAuth Clients</a>
 		<a href="/admin/moderate">Moderation</a>
 		<a href="/admin/server">Server</a>
-		<a href="/admin/spam">Spam &amp; blocked</a>
+		<a href="/admin/spam">Spam</a>
 		<a href="/admin/traffic">Usage</a>
 		<a href="/admin/users">Users <span class="count">` + fmt.Sprintf("%d", len(users)) + `</span></a>
 	</div>`

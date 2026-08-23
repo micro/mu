@@ -371,5 +371,5 @@ func ConfigHandler(w http.ResponseWriter, r *http.Request) {
 
 	b.WriteString(back())
 
-	app.Respond(w, r, app.Response{Title: "Settings", Description: "What this instance is configured with", HTML: b.String()})
+	app.Respond(w, r, app.Response{Title: "Config", Description: "What this instance is configured with", HTML: b.String()})
 }
