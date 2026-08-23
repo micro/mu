@@ -1483,11 +1483,66 @@ func handleIcon(w http.ResponseWriter, r *http.Request, slug string) {
 		return
 	}
 
-	icon := cleanIcon(a.Icon)
+	// An SVG is a document, not a picture.
+	//
+	// This served model- and user-authored markup as image/svg+xml on this
+	// origin with no CSP, no sandbox and no nosniff. Loaded in an <img> that is
+	// inert; navigated to directly it is not — an SVG opened as a top-level
+	// document runs its own <script>, in micro.mu's origin, with the viewer's
+	// session. HttpOnly does not help: the script does not need to read the
+	// cookie, it can just make same-origin requests that carry it.
+	//
+	// Nothing stopped it. ScanApp reads an app's HTML and refuses
+	// document.cookie; the icon is a different field and never went through it.
+	// internal/imageproxy already refuses image/svg+xml for exactly this reason
+	// and that knowledge had not reached here.
+	//
+	// Two locks, because either alone is a single point of failure for a
+	// stored cross-site script. The header is the one that actually holds:
+	// sandbox with no allow-scripts means no scripting at all, in an opaque
+	// origin, and default-src 'none' means nothing loads. safeIcon is the
+	// second, so a copy of these bytes served by some future path that forgets
+	// the header is still not a program.
+	icon := safeIcon(cleanIcon(a.Icon))
 	w.Header().Set("Content-Type", "image/svg+xml")
+	w.Header().Set("Content-Security-Policy",
+		"sandbox; default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Cache-Control", "public, max-age=86400")
 	w.Write([]byte(icon))
 }
+
+// safeIcon takes the executable parts out of an SVG.
+//
+// Not a general sanitiser and not trying to be — the header above is what makes
+// the document inert, and this is the second lock. It removes the three ways
+// markup runs: a <script> element, an on* handler attribute, and a javascript:
+// URL. <foreignObject> goes too, because it is how arbitrary HTML gets into an
+// SVG.
+//
+// Anything it cannot parse confidently becomes the default icon rather than
+// being served with a guess. An app whose icon does not draw is a cosmetic
+// fault; one that runs is not.
+func safeIcon(icon string) string {
+	lower := strings.ToLower(icon)
+	for _, bad := range []string{"<script", "</script", "<foreignobject", "javascript:", "<use", "<iframe", "<embed", "<object", "<animate", "<set "} {
+		if strings.Contains(lower, bad) {
+			return defaultAppIcon
+		}
+	}
+	// on*= — an event handler on any element. Matched on the attribute shape
+	// rather than on a list of names, because the list is long and grows.
+	if svgHandlerRe.MatchString(icon) {
+		return defaultAppIcon
+	}
+	return icon
+}
+
+// svgHandlerRe matches an inline event handler attribute: whitespace, "on",
+// letters, then "=". Deliberately loose — this decides whether to fall back to
+// the default icon, so a false positive costs a picture and a false negative
+// costs the origin.
+var svgHandlerRe = regexp.MustCompile(`(?i)[\s"'/]on[a-z]+\s*=`)
 
 // handleSDK serves the SDK JavaScript file.
 // cleanIcon fixes common AI-generated SVG issues and falls back to default.
