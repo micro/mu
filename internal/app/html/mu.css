@@ -5730,9 +5730,15 @@ button.pill:hover {
   padding: 11px 0;
   text-decoration: none;
   color: inherit;
-  border-bottom: var(--border-width, 1px) solid var(--card-border, #f4f4f4);
 }
-.agent-peek-row:last-child { border-bottom: 0 }
+/* The rule goes between rows rather than under each. Under-each plus
+   :last-child works only while a row is the last thing in the block, and the
+   "Go to agents" link underneath made every row a not-last one — so the block
+   grew a line across its foot. Between-rows cannot be wrong about what follows
+   the list. */
+.agent-peek-row + .agent-peek-row {
+  border-top: var(--border-width, 1px) solid var(--card-border, #f4f4f4);
+}
 .agent-peek-row:visited { color: inherit }
 .agent-peek-row:hover .agent-peek-name { text-decoration: underline }
 

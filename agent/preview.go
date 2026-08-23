@@ -147,6 +147,12 @@ func Preview(accountID string) string {
 		}
 		b.WriteString(`</a>`)
 	}
+	// Where the rest of them are, said the same way the inbox block says it.
+	// Home shows five; an account with six had no way on from here except the
+	// sidebar, and a block that lists some of a thing should say where all of it
+	// is. Same class as the inbox's, because it is the same affordance — two
+	// blocks that end in a link out should not end differently.
+	b.WriteString(`<a class="peek-more" href="/agents">Go to agents &rarr;</a>`)
 	b.WriteString(`</div>`)
 	return b.String()
 }

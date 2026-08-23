@@ -479,7 +479,15 @@ function fetchW(la,lo){
 	// to go next. Naming the parts after the parts is the rule everywhere else
 	// in this repo; the cards were the exception.
 	b.WriteString(sectionRule("Services"))
-	b.WriteString(CardsHTML(r, viewerAcc))
+	if cards := CardsHTML(r, viewerAcc); cards != "" {
+		b.WriteString(cards)
+		// And the way to the rest of them. The cards are a handful of services
+		// answering, not the catalogue — the same relationship the three inbox
+		// rows and the five agents above have to their pages, so it ends the
+		// same way. Only when there are cards: a link out from under a heading
+		// with nothing beneath it reads as the block having failed to render.
+		b.WriteString(`<a class="peek-more" href="/services">Go to services &rarr;</a>`)
+	}
 
 	b.WriteString(`</div>`) // close #home-cards
 
