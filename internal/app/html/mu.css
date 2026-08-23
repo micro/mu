@@ -5376,6 +5376,47 @@ button.pill:hover {
 .ib-boxes { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px }
 .ib-empty { font-size: 14px; color: var(--text-muted, #888); line-height: var(--line-height, 1.6) }
 
+/* How to use the inbox: four lines, read once. Muted and small, because it
+   sits above the mail and must not out-weigh it — the same grey the row
+   snippets use, so it reads as page furniture rather than as content. */
+.ib-howto {
+  margin: 4px 0 14px;
+  padding-left: 20px;
+  font-size: 13px;
+  line-height: var(--line-height, 1.6);
+  color: var(--text-muted, #888);
+}
+.ib-howto li { margin: 0 0 3px }
+.ib-howto li::marker { color: var(--text-muted, #bbb) }
+
+/* What to type into a mail client. A settings form's own shape: the label on
+   the left, the value on the right, values in code because every one of them
+   is typed somewhere exactly. */
+.ib-imap-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 18px;
+  font-size: 14px;
+}
+.ib-imap-table th,
+.ib-imap-table td {
+  text-align: left;
+  vertical-align: top;
+  padding: 9px 12px 9px 0;
+  border-bottom: var(--border-width, 1px) solid var(--card-border, #f0f0f0);
+}
+.ib-imap-table th { width: 120px; font-weight: 500; color: var(--text-secondary, #555) }
+.ib-imap-table tr:last-child th,
+.ib-imap-table tr:last-child td { border-bottom: 0 }
+.ib-imap-note { font-size: 13px; color: var(--text-muted, #888); margin: 0 0 10px }
+.ib-imap-list {
+  padding-left: 20px;
+  font-size: 14px;
+  line-height: var(--line-height, 1.6);
+  color: var(--text-secondary, #555);
+}
+.ib-imap-list li { margin: 0 0 5px }
+
 /* A row is the link plus the thing that deletes it. The rule under the row
    moved here, because it belongs to the pair rather than to the link. */
 /* The whole row is the target, so the whole row lights up.

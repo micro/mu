@@ -164,6 +164,7 @@ func list(w http.ResponseWriter, r *http.Request, accountID, box string) {
 		b.WriteString(`<p class="ib-sent">Sent to ` + html.EscapeString(trimTo(to, 80)) +
 			`. Their reply lands on the same conversation.</p>`)
 	}
+	b.WriteString(howTo())
 	b.WriteString(boxes(accountID, all, box))
 
 	if len(threads) == 0 {
@@ -522,6 +523,36 @@ func addressBar(accountID, box string) string {
 	b.WriteString(`<span class="ib-addr-note">Work with agents from your inbox. ` +
 		app.TextLink("Your agents", "/agents") +
 		`</span>` + newLink() + `</div>`)
+	return b.String()
+}
+
+// howTo is what to do with this page, in four lines.
+//
+// The address bar above says "Work with agents from your inbox", which is a
+// claim rather than an instruction: it tells somebody what the page is for and
+// nothing about how. Everything underneath is a list of conversations, and a
+// list of conversations teaches you nothing you did not already know about
+// mailboxes — the parts that are not a mailbox (an agent answers, Cc works,
+// each agent is a folder, a client can open it) are invisible until somebody
+// tries them.
+//
+// Quiet, and above the filters rather than below them. It is orientation, which
+// is read once and then never again, so it must not compete with the mail: same
+// muted grey the row snippets use, numbers rather than bullets because these
+// are four separate things and not four aspects of one.
+func howTo() string {
+	var b strings.Builder
+	b.WriteString(`<ol class="ib-howto">`)
+	b.WriteString(`<li>Write to the agent address above from anywhere — your own ` +
+		`mail, your phone. It answers on the same thread.</li>`)
+	b.WriteString(`<li>Give it a job rather than a question. It picks the work up ` +
+		`while you are elsewhere and replies here when it is done.</li>`)
+	b.WriteString(`<li>Cc an agent into a conversation with somebody else and it ` +
+		`follows along without taking it over.</li>`)
+	b.WriteString(`<li>Or connect a mail client over ` +
+		app.TextLink("imap", "/inbox/imap") +
+		` and read all of it where you already read mail.</li>`)
+	b.WriteString(`</ol>`)
 	return b.String()
 }
 

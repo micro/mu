@@ -743,6 +743,9 @@ func registerRoutes() {
 	// Writing one yourself. An exact route, because
 	// /inbox/<box> is a mailbox name and a box could be called anything.
 	http.HandleFunc("/inbox/new", inbox.NewHandler)
+	// What to type into a mail client, for the same reason and by the same
+	// rule: an exact route, because a box could be called imap.
+	http.HandleFunc("/inbox/imap", inbox.ImapHandler)
 	// Where you are, which every specialist needs and nothing server-side
 	// held — see account/place.go.
 	http.HandleFunc("/account/place", account.PlaceHandler)

@@ -172,6 +172,10 @@ replies appear in the thread there.
 | Username | your Mu username, or your full address |
 | Password | an access token from `/token` |
 
+Signed in, `/inbox/imap` says all of this filled in for the account reading it.
+Set `IMAP_PUBLIC` and `SUBMISSION_PUBLIC` to `host:port` if what you put in
+front of these listeners answers somewhere other than the defaults below.
+
 Mu has no password — sign-in is a passkey or a link — so an access token is what
 goes in the password field. That is the app-password pattern, and it has the
 property that matters: a client is revoked on its own without touching how you
@@ -607,6 +611,8 @@ that.
 | `MAIL_PORT` | `2525` | SMTP listener — `25` in production, `off` to have none |
 | `IMAP_PORT` | `1143` | IMAP listener — `143` in production, `off` to have none. See [Reading your mail in a mail client](#reading-your-mail-in-a-mail-client) |
 | `SUBMISSION_PORT` | `1587` | SMTP submission, so a mail client can send — `587` in production, `off` to have none |
+| `IMAP_PUBLIC` | — | What `/inbox/imap` tells people to connect to, `host:port`. The listener runs in the clear behind a terminator, so the bound port is usually not the port a client dials; unset, the page offers `993` and names the local port beside it |
+| `SUBMISSION_PUBLIC` | — | The same for outgoing. Unset, the page offers `465` |
 | `MAIL_SELECTOR` | `default` | DKIM selector, the `<selector>._domainkey` DNS record |
 | `DKIM_PRIVATE_KEY` | — | DKIM signing key |
 | `SMTP_RELAY_HOST` | — | Hand outbound mail to a submission server instead of delivering it to the recipient's MX. `host` or `host:port`, 587 assumed. See [Outbound deliverability](#outbound-deliverability) |
