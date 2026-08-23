@@ -132,9 +132,8 @@ var Spec = service.Spec{
 			Cost: quota.OpAppCreate, Needs: service.Caller},
 		"Edit": {Writes: true, Doc: "Edit an app you own — its name, description, tags, icon, HTML or price. Fields left out keep their value",
 			Cost: quota.OpAppEdit, Needs: service.Caller},
-		"Fork": {Writes: true, Doc: "Fork an app into your own account, to change independently of the original", Needs: service.Caller},
-		"Run": {Writes: true, Doc: "Publish a snippet of JavaScript and get back a URL that runs it in a browser. It returns a link rather than output — the code runs in a sandbox when somebody opens it, not here",
-			Needs: service.Caller},
-		"Test": {Writes: true, Doc: "Test an app by checking its HTML and running its mu.api calls server-side, so an author finds out what is broken without opening it", Needs: service.Caller},
+		"Fork":  {Writes: true, Doc: "Fork an app into your own account, to change independently of the original", Needs: service.Caller},
+		"Embed": {Needs: service.Caller, Doc: "Get the HTML that puts an app on another page — an iframe tag pointing at the app, which runs there sandboxed the same way it runs here. Apps that charge cannot be embedded, and an app that calls mu. only reaches this instance from a page on it"},
+		"Test":  {Writes: true, Doc: "Test an app by checking its HTML and running its mu.api calls server-side, so an author finds out what is broken without opening it", Needs: service.Caller},
 	},
 }

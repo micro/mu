@@ -22,6 +22,7 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/auth"
+	"mu/internal/origin"
 	"mu/internal/service"
 
 	"github.com/google/uuid"
@@ -185,30 +186,48 @@ func (Server) Fork(ctx context.Context, req *ForkRequest, rsp *ForkResponse) err
 	return nil
 }
 
-// ── Run ─────────────────────────────────────────────────────────
+// ── Embed ───────────────────────────────────────────────────────
 
-type RunRequest struct {
-	Code string `json:"code" required:"true" description:"JavaScript to run in the page. It runs as a module, in a sandbox, with no access to the caller's account"`
+type EmbedRequest struct {
+	Slug string `json:"slug" required:"true" description:"The app's URL slug"`
 }
 
-type RunResponse struct {
-	Result string `json:"result" description:"A URL that runs the snippet in a browser"`
+type EmbedResponse struct {
+	Result string `json:"result" description:"An <iframe> tag that puts the app on another page, and a note where the app will not work off this site"`
 }
 
-// Run publishes a snippet of JavaScript and returns a URL that runs it.
+// Embed returns the markup that puts an app on somebody else's page.
 //
-// It returns a link rather than output: the code runs in a browser, in a
-// sandbox, when somebody opens it. Nothing executes here.
-// @example {"code": "document.body.textContent = new Date()"}
-func (Server) Run(ctx context.Context, req *RunRequest, rsp *RunResponse) error {
+// This replaced Run, which took a snippet of JavaScript, kept it in memory for
+// an hour and handed back an id while promising a URL. Nothing ran — these are
+// static pages, the browser runs them — so the verb was wrong about what the
+// service does. Create and embed are the two things you do with an app.
+// @example {"slug": "pomodoro-timer"}
+func (Server) Embed(ctx context.Context, req *EmbedRequest, rsp *EmbedResponse) error {
 	who, err := author(ctx)
 	if err != nil {
 		return err
 	}
-	if strings.TrimSpace(req.Code) == "" {
-		return fmt.Errorf("code is required")
+	a := GetApp(req.Slug)
+	// GetApp does not check Public, so a private app is one slug guess away from
+	// anybody. Said as "no app called that" rather than "you may not", because
+	// the second answer confirms the app exists.
+	if a == nil || (!a.Public && a.AuthorID != who) {
+		return fmt.Errorf("no app called %q", req.Slug)
 	}
-	rsp.Result = CreateRun(req.Code, who)
+	// The raw document does not charge — see handleApp — so a tag pointing at
+	// it is a way round the price. Refused rather than quietly given away.
+	if a.Price > 0 {
+		return fmt.Errorf("%s charges %d credits a use and cannot be embedded: "+
+			"the embedded copy would not charge anything", a.Slug, a.Price)
+	}
+	out := EmbedHTML(origin.Self(), a.Slug, a.Name)
+	if bridged(a.RenderHTML()) {
+		out += "\n\nThis app calls mu. — the store, a service, the agent. Those " +
+			"work on this site, where the page around the frame answers them, and " +
+			"nowhere else: elsewhere they wait and then fail."
+	}
+	rsp.Result = out
 	return nil
 }
 

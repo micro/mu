@@ -1,9 +1,9 @@
 apps_build                   needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 apps_create                  needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 apps_edit                    needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
+apps_embed                   needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 apps_fork                    needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 apps_read                    needsAccount=false destructive=false open accountOnly=false optionalAuth=false
-apps_run                     needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 apps_search                  needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 apps_test                    needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 archive_list                 needsAccount=false destructive=false open accountOnly=false optionalAuth=false

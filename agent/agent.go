@@ -1299,7 +1299,7 @@ const agentToolsDesc = `Available tools (use exact name):
 - apps_read: Read details of a specific app (args: {"slug":"app-slug"})
 - apps_build: build a small app (a tracker, checklist, or counter) from a description (args: {"prompt":"an expense tracker"})
 - apps_edit: Edit an existing app (args: {"slug":"app-slug","html":"<new html>","name":"New Name"})
-- apps_run: publish a snippet of JavaScript and get a URL that runs it in a browser. Returns a link, not an answer — not for calculations (args: {"code":"return \u003ch1\u003ehello\u003c/h1\u003e"})
+- apps_embed: get the HTML that puts an app on another page (args: {"slug":"app-slug"})
 - wallet_address: The caller's own address on Base, for receiving USDC (no args).
 - wallet_balance: What that address holds in USDC (no args). This is not credits — credits are this instance's own meter, and there is no tool for topping them up; point the user at /account/topup.
 - stream: Read the public event stream (no args)`
@@ -2116,8 +2116,8 @@ func toolLabel(tool string) string {
 		return "🔨 Building app"
 	case "apps_edit":
 		return "✏️ Editing app"
-	case "apps_run":
-		return "⚡ Running code"
+	case "apps_embed":
+		return "📱 Getting the embed code"
 	default:
 		return "⚙ Calling " + tool
 	}
@@ -2191,8 +2191,6 @@ func renderResultCard(accountID, toolName, result string, args map[string]any) s
 		return renderPlacesCard(result, args)
 	case "apps_search":
 		return renderAppsCard(result)
-	case "apps_run":
-		return renderRunCard(result)
 	}
 	// Service-sourced dashboard cards (markets, news_headlines, social, …),
 	// pulled from the same tool registry, attached via api.SetCard in main.go.
@@ -2491,8 +2489,6 @@ func formatToolResult(toolName, result string, args map[string]any) string {
 		return formatAppsBuildResult(result)
 	case "apps_edit":
 		return formatAppsBuildResult(result) // same format: returns app details
-	case "apps_run":
-		return formatAppsRunResult(result)
 	}
 	return plainToolText(result)
 }
@@ -3165,34 +3161,6 @@ func formatAppsBuildResult(result string) string {
 		snippet = snippet[:200] + "…"
 	}
 	return fmt.Sprintf("Generated app HTML (%d bytes). Preview:\n%s", len(data.HTML), snippet)
-}
-
-// formatAppsRunResult converts a raw JSON run result into
-// human-readable text for the AI synthesis RAG context.
-func formatAppsRunResult(result string) string {
-	var data struct {
-		ID  string `json:"id"`
-		URL string `json:"url"`
-	}
-	if err := json.Unmarshal([]byte(result), &data); err != nil {
-		return result
-	}
-	return fmt.Sprintf("Code sandbox created. URL: %s\nThe code will execute in the user's browser and display results.", data.URL)
-}
-
-// renderRunCard renders a live code execution iframe for apps_run results.
-func renderRunCard(result string) string {
-	var data struct {
-		ID  string `json:"id"`
-		Run string `json:"run"`
-	}
-	if err := json.Unmarshal([]byte(result), &data); err != nil || data.Run == "" {
-		return ""
-	}
-	return `<div class="card"><h4>⚡ Result</h4>` +
-		`<iframe src="` + htmlEsc(data.Run) + `" sandbox="allow-scripts" allow="geolocation" ` +
-		`class="frame"></iframe>` +
-		`</div>`
 }
 
 // renderAppsCard renders an HTML card for apps search results.

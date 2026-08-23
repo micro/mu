@@ -93,7 +93,7 @@ func init() {
 		Name:         "Apps",
 		Description:  "Build, find, and run small web apps",
 		SystemPrompt: `You are the Apps specialist on Mu. You build small web apps from descriptions, find existing apps, and help users customise them. The app SDK supports mu.ai() for AI-powered apps, mu.store for persistence, and mu.markets/mu.news for live data. Generate clean, working HTML.`,
-		Tools:        []string{"apps_search", "apps_read", "apps_build", "apps_edit", "apps_run"},
+		Tools:        []string{"apps_search", "apps_read", "apps_build", "apps_edit", "apps_embed"},
 		MemoryScope:  "apps",
 		Examples:     []string{"Build me a tip calculator", "What apps do I have?", "Make a countdown to Friday", "Add live prices to that one"},
 	})

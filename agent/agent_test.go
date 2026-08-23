@@ -745,69 +745,6 @@ func TestNewFlowID_Unique(t *testing.T) {
 	}
 }
 
-func TestFormatAppsRunResult_ValidJSON(t *testing.T) {
-	result := `{"id":"abc123","url":"/apps/run?id=abc123","run":"/apps/run?id=abc123&raw=1"}`
-	got := formatAppsRunResult(result)
-	if !strings.Contains(got, "/apps/run?id=abc123") {
-		t.Errorf("expected URL in formatted result, got %q", got)
-	}
-	if !strings.Contains(got, "sandbox") {
-		t.Errorf("expected sandbox mention, got %q", got)
-	}
-}
-
-func TestFormatAppsRunResult_InvalidJSON(t *testing.T) {
-	result := `not json`
-	got := formatAppsRunResult(result)
-	if got != result {
-		t.Errorf("expected original result as fallback, got %q", got)
-	}
-}
-
-func TestRenderRunCard_ValidJSON(t *testing.T) {
-	result := `{"id":"abc123","url":"/apps/run?id=abc123","run":"/apps/run?id=abc123&raw=1"}`
-	card := renderRunCard(result)
-	if !strings.Contains(card, "<iframe") {
-		t.Errorf("expected iframe in card, got %q", card)
-	}
-	if !strings.Contains(card, `sandbox="allow-scripts" allow="geolocation"`) {
-		t.Errorf("expected sandboxed iframe with geolocation, got %q", card)
-	}
-	if !strings.Contains(card, "Result") {
-		t.Errorf("expected Result heading, got %q", card)
-	}
-}
-
-func TestRenderRunCard_InvalidJSON(t *testing.T) {
-	got := renderRunCard(`not json`)
-	if got != "" {
-		t.Errorf("expected empty string for invalid JSON, got %q", got)
-	}
-}
-
-func TestRenderRunCard_EmptyRun(t *testing.T) {
-	got := renderRunCard(`{"id":"abc","run":""}`)
-	if got != "" {
-		t.Errorf("expected empty string for missing run URL, got %q", got)
-	}
-}
-
-func TestFormatToolResult_AppsRunDispatch(t *testing.T) {
-	result := `{"id":"abc","url":"/apps/run?id=abc","run":"/apps/run?id=abc&raw=1"}`
-	got := formatToolResult("apps_run", result, nil)
-	if !strings.Contains(got, "sandbox") {
-		t.Errorf("expected apps_run formatter to be called, got %q", got)
-	}
-}
-
-func TestRenderResultCard_AppsRun(t *testing.T) {
-	result := `{"id":"abc","run":"/apps/run?id=abc&raw=1"}`
-	card := renderResultCard("", "apps_run", result, nil)
-	if !strings.Contains(card, "<iframe") {
-		t.Errorf("expected iframe in result card, got %q", card)
-	}
-}
-
 func TestCompleteToolAnswerReplacesProgressOnlyWithResults(t *testing.T) {
 	rag := []string{"### markets\nBTC: $100,000", "### news\n- Bitcoin reaches new high"}
 	got := completeToolAnswer("Let me pull the latest market and news data for you.", rag)

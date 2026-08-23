@@ -5870,6 +5870,48 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
 .ib-new-link { margin-left: auto }
 .ib-sent { font-size: 13px; color: var(--btn-success, #1a7f37); margin: 0 0 12px }
 
+/* Putting an app on somebody else's page. See service/apps/embed.go. */
+.embed-page { max-width: 760px }
+.embed-title { font-size: 20px; margin: 0 0 6px }
+.embed-lead { font-size: 14px; color: var(--text-secondary, #555); margin: 0 0 var(--spacing-lg, 24px); line-height: var(--line-height, 1.6) }
+.embed-empty { font-size: 14px; color: var(--text-muted, #888) }
+
+.embed-one {
+  padding: 14px 0;
+  border-top: var(--border-width, 1px) solid var(--divider, #f0f0f0);
+}
+.embed-one:first-of-type { border-top: none }
+
+.embed-name {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: var(--font-weight-medium, 500);
+  margin-bottom: 8px;
+}
+.embed-open { margin-left: auto; font-size: 12px }
+
+/* Readonly and selected on click, because the only thing anybody does with it
+   is copy it. A button that writes to the clipboard needs script and a
+   permission; selecting the text needs neither and works everywhere. */
+.embed-code {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 9px 11px;
+  border: var(--border-width, 1px) solid var(--card-border, #e8e8e8);
+  border-radius: var(--border-radius, 6px);
+  background: var(--hover-background, #fafafa);
+  color: var(--text-primary, #1a1a1a);
+  resize: vertical;
+}
+
+.embed-warn, .embed-no { font-size: 12px; color: var(--text-muted, #888); margin: 8px 0 0; line-height: 1.5 }
+.embed-warn code { font-size: 12px }
+
 /* One tool, at an address of its own. See internal/api/tool_page.go. */
 .tool-page { max-width: 760px }
 .tool-name { font-size: 24px; margin: 0 0 6px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace }

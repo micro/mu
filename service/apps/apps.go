@@ -338,8 +338,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		handleNew(w, r)
 	case path == "/generate":
 		handleMicroGenerate(w, r)
-	case path == "/run":
-		handleCodeRun(w, r)
+	case path == "/embed":
+		handleEmbed(w, r)
 	case path == "/sdk.js":
 		handleSDK(w, r)
 	case path == "/sdk.css":
@@ -361,7 +361,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		handleIcon(w, r, slug)
 	case strings.HasSuffix(path, "/run"):
 		slug := strings.TrimSuffix(strings.TrimPrefix(path, "/"), "/run")
-		handleRun(w, r, slug)
+		handleApp(w, r, slug)
 	case strings.HasSuffix(path, "/sdk/ai"):
 		slug := strings.TrimSuffix(strings.TrimPrefix(path, "/"), "/sdk/ai")
 		handleSDKAI(w, r, slug)
@@ -393,7 +393,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			handleView(w, r, slug)
 		} else {
 			// /apps/slug serves the app directly
-			handleRun(w, r, slug)
+			handleApp(w, r, slug)
 		}
 	}
 }
@@ -534,7 +534,15 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 	// stylesheet outrank a plain class and turn a white label on a black button
 	// black on black. There is a comment about it on connect-cta too. Third
 	// time; hence using the shared thing.
-	sb.WriteString(`<p class="m-0 mb-4">` + app.ActionLink("/apps/new", "+ New app") + `</p>`)
+	// And beside it, where to put one once it exists. Embed is the second half
+	// of what you do with an app and had no way in from the page listing them —
+	// a link rather than a second call to action, because making one is the
+	// thing this page is for and there is only ever one primary action.
+	sb.WriteString(`<p class="m-0 mb-4">` + app.ActionLink("/apps/new", "+ New app"))
+	if userID != "" {
+		sb.WriteString(` ` + app.TextLink("Embed an app", "/apps/embed"))
+	}
+	sb.WriteString(`</p>`)
 
 	// Pricing filter
 	pricing := r.URL.Query().Get("pricing")
@@ -1225,8 +1233,13 @@ func ForkApp(slug, newSlug, authorID, authorName string) (*App, error) {
 	return forked, nil
 }
 
-// handleRun renders the app in a sandboxed iframe.
-func handleRun(w http.ResponseWriter, r *http.Request, slug string) {
+// handleApp renders the app in a sandboxed iframe.
+//
+// It was handleRun, from when "run" was this service's word for two different
+// things: showing an app, and parking a snippet of JavaScript at a temporary
+// URL. The second is gone — see embed.go — and this one is not running
+// anything either. These are static pages; the browser runs them.
+func handleApp(w http.ResponseWriter, r *http.Request, slug string) {
 	mutex.RLock()
 	a, ok := apps[slug]
 	mutex.RUnlock()
@@ -1277,7 +1290,13 @@ func handleRun(w http.ResponseWriter, r *http.Request, slug string) {
 	if r.URL.Query().Get("raw") == "1" {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Header().Set("Content-Security-Policy", sandboxCSP)
-		w.Header().Set("X-Frame-Options", "SAMEORIGIN")
+		// Framed from anywhere, which is what makes an app embeddable — see
+		// embed.go. X-Frame-Options: SAMEORIGIN stood here and is what a page
+		// with a session needs; this one has neither. sandboxCSP puts the
+		// document in an opaque origin with connect-src 'none', so a site that
+		// frames it gets a page that cannot read a cookie, cannot reach this
+		// instance, and cannot talk to the page around it. That is no more than
+		// it would get by copying the HTML.
 		rawHTML := a.RenderHTML()
 		rawHTML = strings.ReplaceAll(rawHTML, `<script src="/apps/sdk.js"></script>`, "")
 		rawHTML = strings.ReplaceAll(rawHTML, `<script src='/apps/sdk.js'></script>`, "")
@@ -1834,6 +1853,26 @@ func ByAuthor(authorID string) []*App {
 	sort.Slice(list, func(i, j int) bool {
 		return list[i].Name < list[j].Name
 	})
+	return list
+}
+
+// OwnedBy is every app an account owns, public or not, sorted by name.
+//
+// ByAuthor above is the directory's view and takes only the public ones — that
+// is what a profile shows. This is the owner's own view, which has to include
+// the ones nobody else can see: an app kept private is still one you can put on
+// your own site. See handleEmbed.
+func OwnedBy(authorID string) []*App {
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	var list []*App
+	for _, a := range apps {
+		if a.AuthorID == authorID {
+			list = append(list, a)
+		}
+	}
+	sort.Slice(list, func(i, j int) bool { return list[i].Name < list[j].Name })
 	return list
 }
 

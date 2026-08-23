@@ -26,7 +26,7 @@ Maybe protocols are the winning strategy?
 
 | Service | Tools |
 |---|---|
-| **Apps** | `apps_build` · `apps_create` · `apps_edit` · `apps_fork` · `apps_read` · `apps_run` · `apps_search` · `apps_test` — build and run small web tools |
+| **Apps** | `apps_build` · `apps_create` · `apps_edit` · `apps_fork` · `apps_embed` · `apps_read` · `apps_search` · `apps_test` — build small web tools and put them anywhere |
 | **Archive** | `archive_search` · `archive_list` — everything this instance has collected, across news, video, markets and posts at once. Use it when the question crosses a service, or when you do not know which one would hold the answer |
 | **Blog** | `blog_create` · `blog_read` · `blog_list` · `blog_update` · `blog_delete` — publish, with AI-generated daily digests |
 | **Chat** | `chat_rooms` · `chat_messages` · `chat_send` — the live discussion rooms attached to an item, and saying something in one |
