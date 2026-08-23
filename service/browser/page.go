@@ -80,15 +80,30 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	target := strings.TrimSpace(r.URL.Query().Get("url"))
+	// Two buttons on one form, because they are two things to do with the same
+	// URL and asking somebody to choose a mode before typing one is a question
+	// nobody has an answer to yet. GET, so the answer has an address: a page
+	// somebody read or photographed is a link they can send.
+	q := r.URL.Query()
+	target := strings.TrimSpace(q.Get("url"))
+	full := q.Get("full") != ""
 	b.WriteString(`<form class="browser-form" method="get" action="/browser">`)
 	b.WriteString(`<input class="browser-url" type="text" name="url" placeholder="https://example.com" ` +
 		`value="` + html.EscapeString(target) + `">`)
-	b.WriteString(`<button type="submit">Read</button></form>`)
+	b.WriteString(`<button type="submit">Read</button>`)
+	b.WriteString(`<button type="submit" name="shot" value="1" class="pill">Screenshot</button>`)
+	// Inside the form, because it is an argument to the screenshot rather than a
+	// setting: a checkbox outside the form it modifies submits nothing.
+	b.WriteString(`<label class="browser-full"><input type="checkbox" name="full" value="1"` +
+		checkedIf(full) + `> whole page</label>`)
+	b.WriteString(`</form>`)
 
-	if target != "" {
+	switch {
+	case target != "" && q.Get("shot") != "":
+		b.WriteString(shooting(r, target, full))
+	case target != "":
 		b.WriteString(reading(r, target))
-	} else {
+	default:
 		b.WriteString(app.NoteHTML(`Reading a page costs ` +
 			credits(quota.OperationCost(quota.OpBrowserRead)) + ` and a picture of one costs ` +
 			credits(quota.OperationCost(quota.OpBrowserShot)) + `, because both run a browser. ` +
@@ -98,6 +113,62 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	b.WriteString(`</div>`)
 	app.Respond(w, r, app.Response{Title: "Browser", Description: Spec.Description, HTML: b.String()})
+}
+
+// shooting photographs the page somebody asked for and shows the picture.
+//
+// The same gate and the same charge as reading, at the screenshot's own price,
+// for the same reason: the page does the work the tool does, so it costs what
+// the tool costs.
+func shooting(r *http.Request, target string, full bool) string {
+	_, acc, err := auth.RequireSession(r)
+	if err != nil {
+		return `<p class="browser-problem">` +
+			app.TextLink("Sign in", "/login?redirect=/browser") +
+			` to photograph a page — running a browser costs, so it needs an account to bill.</p>`
+	}
+
+	checkedURL, err := checked(target)
+	if err != nil {
+		return `<p class="browser-problem">` + html.EscapeString(err.Error()) + `</p>`
+	}
+	ok, _, cost, qerr := quota.CheckQuota(acc.ID, quota.OpBrowserShot)
+	if qerr != nil {
+		return `<p class="browser-problem">` + html.EscapeString(qerr.Error()) + `</p>`
+	}
+	if !ok {
+		return quota.ExceededPage(cost)
+	}
+
+	pic, err := capture(r.Context(), checkedURL, "", full)
+	if err != nil {
+		return `<p class="browser-problem">` + html.EscapeString(err.Error()) + `</p>`
+	}
+	quota.Charge(acc.ID, quota.OpBrowserShot, map[string]interface{}{"url": checkedURL}) //nolint:errcheck
+
+	title := pic.Title
+	if strings.TrimSpace(title) == "" {
+		title = checkedURL
+	}
+	var b strings.Builder
+	b.WriteString(`<div class="browser-out">`)
+	b.WriteString(`<h2 class="browser-title">` + html.EscapeString(title) + `</h2>`)
+	// The relative path, not the absolute one the tool hands out. Both name the
+	// same picture; this one cannot be wrong behind a proxy.
+	b.WriteString(`<a class="browser-shot-link" href="` + html.EscapeString(pic.Path) + `">` +
+		`<img class="browser-shot" src="` + html.EscapeString(pic.Path) + `" alt="` +
+		html.EscapeString(title) + `"></a>`)
+	b.WriteString(`<p class="browser-where">` + html.EscapeString(pic.URL) + `</p>`)
+	b.WriteString(`</div>`)
+	return b.String()
+}
+
+// checkedIf is the attribute or nothing.
+func checkedIf(on bool) string {
+	if on {
+		return " checked"
+	}
+	return ""
 }
 
 // credits writes a price the way a person reads one.

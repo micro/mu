@@ -153,3 +153,31 @@ func TestBlankRunsAreSqueezedOut(t *testing.T) {
 		t.Errorf("tidy gave %q", got)
 	}
 }
+
+// The page can photograph, not only read. Both endpoints existed and only one
+// of them had a way in from the page, which is the same fault as a capability
+// with no page: something the product can do and nobody can find.
+func TestThePageOffersBothThings(t *testing.T) {
+	t.Setenv("BROWSER_URL", "ws://browser:9222")
+
+	w := httptest.NewRecorder()
+	Handler(w, httptest.NewRequest("GET", "/browser", nil))
+	body := w.Body.String()
+
+	for _, want := range []string{
+		`>Read</button>`,
+		`name="shot" value="1"`,
+		`name="full" value="1"`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the page is missing %s:\n%s", want, body)
+		}
+	}
+
+	// The checkbox is inside the form it modifies, or it submits nothing.
+	form := body[strings.Index(body, `class="browser-form"`):]
+	form = form[:strings.Index(form, "</form>")]
+	if !strings.Contains(form, `name="full"`) {
+		t.Error("the whole-page checkbox is outside the form, so it is never sent")
+	}
+}

@@ -5909,7 +5909,7 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
 /* A real browser, at /browser. See service/browser/page.go. */
 .browser-page { max-width: 860px }
 
-.browser-form { display: flex; gap: 8px; margin: 0 0 var(--spacing-md, 16px) }
+.browser-form { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 var(--spacing-md, 16px) }
 
 .browser-url {
   flex: 1 1 auto;
@@ -5924,7 +5924,30 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
 }
 
 .browser-url:focus { outline: none; border-color: #bbb }
+/* The one argument the screenshot takes, beside the buttons it belongs to. */
+.browser-full {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-muted, #888);
+  white-space: nowrap;
+}
+
 .browser-title { font-size: 18px; margin: var(--spacing-lg, 24px) 0 4px }
+
+/* A picture of a page. Bordered, because a screenshot of a white page on a
+   white page has no edge and reads as part of ours. */
+.browser-shot-link { display: block; margin: 0 0 8px }
+
+.browser-shot {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: var(--border-width, 1px) solid var(--card-border, #e8e8e8);
+  border-radius: var(--border-radius, 6px);
+  background: #fff;
+}
 .browser-where { font-size: 12px; color: var(--text-muted, #888); margin: 0 0 12px }
 .browser-problem { font-size: 13px; color: var(--btn-danger, #c00); margin: var(--spacing-md, 16px) 0 0 }
 

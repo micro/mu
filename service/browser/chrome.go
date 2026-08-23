@@ -175,8 +175,14 @@ func read(parent context.Context, target, selector string) (page, error) {
 }
 
 // shot is a picture that was taken and where it went.
+//
+// Both addresses, because they are for different readers. A tool answers an
+// agent that may be on another machine and needs the whole URL; the page is
+// already on this origin and a relative path is one fewer thing that can be
+// wrong behind a proxy.
 type shot struct {
 	URL   string
+	Path  string
 	Title string
 }
 
@@ -212,7 +218,8 @@ func capture(parent context.Context, target, selector string, full bool) (shot, 
 	if err := blob.Put(key, buf, "image/png"); err != nil {
 		return shot{}, fmt.Errorf("the picture could not be stored: %w", err)
 	}
-	return shot{URL: origin.Self() + "/browser/shot/" + strings.TrimPrefix(key, shotPrefix), Title: title}, nil
+	path := "/browser/shot/" + strings.TrimPrefix(key, shotPrefix)
+	return shot{URL: origin.Self() + path, Path: path, Title: title}, nil
 }
 
 // shotQuality is the JPEG quality chromedp asks for on a full-page capture. It
