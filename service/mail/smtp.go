@@ -847,6 +847,15 @@ func parseMultipart(body io.Reader, boundary string) (string, *Attachment) {
 	return parseMultipartRecursive(body, boundary, 0)
 }
 
+// isTextPart is whether a part is text somebody could read.
+//
+// text/plain and text/html are handled before this; what is left is the rest of
+// the text tree — calendar invitations, csv, vcard — which are worth keeping in
+// the body because they are legible. Anything else is bytes with a label on it.
+func isTextPart(contentType string) bool {
+	return strings.HasPrefix(strings.ToLower(strings.TrimSpace(contentType)), "text/")
+}
+
 // parseMultipartRecursive handles nested multipart with depth tracking to prevent infinite loops
 func parseMultipartRecursive(body io.Reader, boundary string, depth int) (string, *Attachment) {
 	// Prevent infinite recursion
@@ -953,14 +962,31 @@ func parseMultipartRecursive(body io.Reader, boundary string, depth int) (string
 			attachmentContentType = contentType
 			attachmentName = partFilename(part.Header.Get("Content-Disposition"), contentType)
 			app.Log("mail", "Found attachment: %s (%d bytes)", contentType, len(partBody))
+		} else if isTextPart(contentType) && utf8.Valid(partBody) {
+			// A text part of some other kind — text/calendar, text/csv. Worth
+			// keeping, because it is readable and it is what the message said.
+			app.Log("mail", "Text part: %s (%d bytes) - preserving", contentType, len(partBody))
+			allParts = append(allParts, fmt.Sprintf("\n\n[%s]\n%s", contentType, string(partBody)))
 		} else {
-			// Unknown part type - skip binary content, preserve text-like parts only
-			if utf8.Valid(partBody) {
-				app.Log("mail", "Unknown part type: %s (%d bytes) - preserving", contentType, len(partBody))
-				allParts = append(allParts, fmt.Sprintf("\n\n[%s]\n%s", contentType, string(partBody)))
-			} else {
-				app.Log("mail", "Unknown part type: %s (%d bytes) - skipping (binary)", contentType, len(partBody))
-			}
+			// Everything else gets described rather than pasted in.
+			//
+			// This used to append any part that was valid UTF-8, verbatim. The
+			// case that breaks is message/rfc822 — a bounce or a DMARC failure
+			// report embedding the original message — whose *content is a MIME
+			// entity*: From, Subject, Content-Disposition, a blank line and a
+			// block of base64. All of that went into the body, so an IMAP
+			// client showed raw headers and base64 where the message should be,
+			// and so did the inbox, the index and anything an agent read.
+			//
+			// An unparsed multipart/ part lands here for the same reason and
+			// with the same result.
+			//
+			// It is the rule this function already states about attachments a
+			// few lines down: if we cannot render it, we do not paste it in —
+			// say what arrived.
+			app.Log("mail", "Part %s (%d bytes) - described, not inlined", contentType, len(partBody))
+			allParts = append(allParts, "\n\n"+describeAttachment(
+				partFilename(contentDisposition, contentType), contentType, len(partBody)))
 		}
 	}
 
