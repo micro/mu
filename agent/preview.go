@@ -152,8 +152,11 @@ func Preview(accountID string) string {
 	// sidebar, and a block that lists some of a thing should say where all of it
 	// is. Same class as the inbox's, because it is the same affordance — two
 	// blocks that end in a link out should not end differently.
-	b.WriteString(`<a class="peek-more" href="/agents">Go to agents &rarr;</a>`)
+	//
+	// Under the card rather than in it: the card is the agents, and the way on
+	// is not one of them.
 	b.WriteString(`</div>`)
+	b.WriteString(`<a class="peek-more" href="/agents">Go to agents &rarr;</a>`)
 	return b.String()
 }
 

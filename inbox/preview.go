@@ -103,8 +103,12 @@ func Preview(accountID string) string {
 			`</span><span class="peek-when">` + html.EscapeString(app.TimeAgo(t.Updated)) + `</span></span>` +
 			`<span class="peek-line">` + line + where + `</span></a>`)
 	}
-	b.WriteString(`<a class="peek-more" href="/inbox">Go to inbox &rarr;</a>`)
+	// Under the card, not in it. The card is the conversations; the way on is
+	// not one of them, and inside the border it read as a last row you could
+	// not tell from the three above it. Same place the services grid puts its
+	// own — see home.CardsHTML.
 	b.WriteString(`</div>`)
+	b.WriteString(`<a class="peek-more" href="/inbox">Go to inbox &rarr;</a>`)
 	return b.String()
 }
 
