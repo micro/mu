@@ -168,6 +168,10 @@ func wireHooks() {
 	// hands what arrives to the agent. See agent/mail.
 	mailagent.Load()
 
+	// Telling the operator when something is worth knowing. After the mail
+	// agent, because it delivers to an inbox here. See admin/alert.go.
+	admin.Watch()
+
 	// When an event is scheduled, email the owner an .ics invite so it also
 	// lands in their real calendar. Only for users with a verified email (e.g.
 	// via Google sign-in) and only when this instance can send mail.

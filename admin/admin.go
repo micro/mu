@@ -38,6 +38,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		<a href="/admin/email">Mail Log</a>
 		<a href="/admin/oauth">OAuth Clients</a>
 		<a href="/admin/moderate">Moderation</a>
+		<a href="/admin/alerts">Alerts</a>
 		<a href="/admin/retention">Retention</a>
 		<a href="/admin/server">Server</a>
 		<a href="/admin/spam">Spam Filter</a>

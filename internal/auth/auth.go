@@ -10,11 +10,13 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"mu/internal/data"
+	"mu/internal/event"
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
@@ -187,12 +189,22 @@ func Create(acc *Account) error {
 	// admin and /admin/config is unreachable. The operator named in the ADMIN env
 	// var (comma-separated ids/usernames/emails) is made an admin; if ADMIN is
 	// unset, the very first account on a fresh instance becomes admin.
-	if shouldBootstrapAdmin(acc, len(accounts) == 0) {
+	first := len(accounts) == 0
+	if shouldBootstrapAdmin(acc, first) {
 		acc.Admin = true
 	}
 
 	accounts[acc.ID] = acc
 	data.SaveJSON("accounts.json", accounts)
+
+	// Said, not sent. Whether anybody wants to know is not this package's
+	// question — see event.EventAccountCreated. Published after the save, so a
+	// subscriber that goes looking for the account finds it.
+	event.Publish(event.Event{Type: event.EventAccountCreated, Data: map[string]interface{}{
+		"account": acc.ID,
+		"name":    acc.Name,
+		"first":   strconv.FormatBool(first),
+	}})
 
 	return nil
 }

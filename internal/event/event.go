@@ -93,6 +93,22 @@ const (
 	// Data: service, text, url, account. An empty account means everybody may
 	// see it; a set one means only that account may.
 	EventActivity = "activity"
+
+	// EventAccountCreated is a new account on this instance.
+	//
+	// A fact, deliberately, and not a notification. internal/auth knows an
+	// account was made and has no business knowing that somebody wants to be
+	// told about it — that is a product requirement, and a building block that
+	// encodes one stops being reusable by anything that decides differently.
+	// Whether it is worth waking an operator for is admin's judgement; see
+	// admin/alert.go, which subscribes.
+	//
+	// The same inversion mail.OnNewMail made, for the same reason: the
+	// alternative is a function variable somebody fills in at boot, which is an
+	// import the compiler cannot see.
+	//
+	// Data: account, name, first ("true" when it is the instance's first).
+	EventAccountCreated = "account_created"
 )
 
 // Announce records one thing that happened, for whoever is listening.

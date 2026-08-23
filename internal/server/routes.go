@@ -152,6 +152,7 @@ func authRequired() map[string]bool {
 		"/admin/console":     true,
 		"/admin/diagnostics": true,
 		"/admin/retention":   true,
+		"/admin/alerts":      true,
 		"/admin/backup":      true,
 		"/admin/invite":      true,
 		"/account/":          true, // Money: top-up, transfer, the ledger
@@ -288,6 +289,8 @@ func registerRoutes() {
 	http.HandleFunc("/admin/console", admin.ConsoleHandler)
 	http.HandleFunc("/admin/diagnostics", admin.DiagnosticsHandler)
 	http.HandleFunc("/admin/retention", admin.RetentionHandler)
+	// What this instance will wake you for. See admin/alert.go.
+	http.HandleFunc("/admin/alerts", admin.AlertsHandler)
 	http.HandleFunc("/admin/backup", admin.BackupHandler)
 	http.HandleFunc("/admin/invite", admin.InviteHandler)
 

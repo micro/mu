@@ -365,6 +365,14 @@ func checkLLMConfig() (provider string, configured bool) {
 	return "Not configured", false
 }
 
+// DiskUsage is how full the disk holding the data directory is.
+//
+// Exported because the status page is no longer the only reader: admin's
+// watcher asks the same question on a timer, and two implementations of "how
+// full is the disk" would eventually disagree about it. Zeroes when the
+// filesystem will not say.
+func DiskUsage() (used, total uint64, percent float64) { return getDiskUsage() }
+
 // getDiskUsage returns disk usage for the data directory
 func getDiskUsage() (used, total uint64, percent float64) {
 	dir := os.ExpandEnv("$HOME/.mu/data")
