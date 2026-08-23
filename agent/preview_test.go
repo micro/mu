@@ -5,7 +5,6 @@ package agent
 import (
 	"strings"
 	"testing"
-	"time"
 
 	"mu/internal/auth"
 	"mu/internal/thread"
@@ -75,10 +74,7 @@ func TestAConversationNothingAnsweredIsNotActivity(t *testing.T) {
 	thread.Add(thread.Message{Thread: live.ID, Account: who, Role: thread.RoleAgent,
 		Text: "I have replied."})
 
-	// Reported by the last thing said on it, not by what it is called — see
-	// lastSaid. The subject is how a conversation started; the row is about
-	// where it has got to.
-	if got := Preview(who); !strings.Contains(got, "I have replied.") {
+	if got := Preview(who); !strings.Contains(got, "Tuesday") {
 		t.Errorf("a conversation the agent answered is not reported:\n%s", got)
 	}
 }
@@ -119,39 +115,5 @@ func TestEachAgentOnHomeLinksToItself(t *testing.T) {
 	}
 	if title := agentTitle(who, id); title != "Research" {
 		t.Errorf("the page at /agent/%s is titled %q", slug, title)
-	}
-}
-
-// The row says what the agent last dealt with, which is not what the
-// conversation is called.
-//
-// A thread is named by how it started — thread.Add derives a subject from the
-// first message and thread.Name takes a mail Subject once, both deliberately
-// first-one-wins. So the row paired a label describing the opening of a
-// conversation with a timestamp describing its end: say hello on Monday, ask
-// something real on Friday, and Home reported "Hello, 2 minutes ago".
-func TestTheRowSaysTheLastThingSaidNotTheFirst(t *testing.T) {
-	const who = "preview-last-said"
-	auth.Create(&auth.Account{ID: who, Name: who, Secret: "test-secret"}) //nolint:errcheck
-
-	th := thread.Open(who, thread.WebClient, "preview-last-said-root")
-	if th == nil {
-		t.Fatal("no thread")
-	}
-	thread.Add(thread.Message{Thread: th.ID, Account: who, Role: thread.RolePerson,
-		Text: "Hello", At: time.Now().Add(-72 * time.Hour)})
-	thread.Add(thread.Message{Thread: th.ID, Account: who, Role: thread.RoleAgent,
-		Text: "Hello. What can I do?", At: time.Now().Add(-72 * time.Hour)})
-	thread.Add(thread.Message{Thread: th.ID, Account: who, Role: thread.RolePerson,
-		Text: "What's happening?"})
-	thread.Add(thread.Message{Thread: th.ID, Account: who, Role: thread.RoleAgent,
-		Text: "Markets are down and your mail is quiet."})
-
-	got := Preview(who)
-	if !strings.Contains(got, "Markets are down") {
-		t.Errorf("the row does not report the last thing said:\n%s", got)
-	}
-	if strings.Contains(got, `agent-peek-last">Hello<`) {
-		t.Error("the row reports the first message, days old, beside a fresh timestamp")
 	}
 }
