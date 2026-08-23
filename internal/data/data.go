@@ -176,7 +176,11 @@ func SaveJSON(key string, val interface{}) error {
 	if err != nil {
 		return err
 	}
-	keepIfShrinking(key, file, len(b))
+	saveMu.Lock()
+	defer saveMu.Unlock()
+	if err := keepIfShrinking(key, file, len(b)); err != nil {
+		return err
+	}
 	return writeAtomic(file, b)
 }
 
@@ -198,25 +202,26 @@ const shrinkFloor = 0.5
 // Detecting *why* would need the callers to change. Noticing that a store just
 // lost most of itself does not, and one kept copy is the difference between an
 // afternoon and a year.
-func keepIfShrinking(key, file string, size int) {
+func keepIfShrinking(key, file string, size int) error {
 	info, err := os.Stat(file)
 	if err != nil || info.Size() < 1024 {
 		// Nothing there yet, or too small for the ratio to mean anything.
-		return
+		return nil
 	}
 	if float64(size) >= float64(info.Size())*shrinkFloor {
-		return
+		return nil
 	}
 	prev := file + ".prev"
 	b, err := os.ReadFile(file)
 	if err != nil {
-		return
+		return fmt.Errorf("data: cannot preserve %s before shrinking: %w", key, err)
 	}
 	if err := writeAtomic(prev, b); err != nil {
-		return
+		return fmt.Errorf("data: cannot preserve %s at %s: %w", key, prev, err)
 	}
 	fmt.Fprintf(os.Stderr, "[data] %s shrank from %d to %d bytes in one write; "+
 		"the previous contents are in %s\n", key, info.Size(), size, prev)
+	return fmt.Errorf("data: refusing to shrink %s from %d to %d bytes", key, info.Size(), size)
 }
 
 func LoadJSON(key string, val interface{}) error {
@@ -249,6 +254,12 @@ func LoadJSON(key string, val interface{}) error {
 	}
 	return nil
 }
+
+// saveMu serializes the read/check/backup/replace sequence used by file
+// stores. writeAtomic protects readers from partial files, while this lock
+// prevents concurrent writers from interleaving the shrink check with the
+// replacement of the live store.
+var saveMu sync.Mutex
 
 var (
 	badMu sync.Mutex

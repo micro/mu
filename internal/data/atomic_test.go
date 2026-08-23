@@ -100,3 +100,30 @@ func TestSaveJSONRoundTripLeavesNoTempFiles(t *testing.T) {
 		t.Errorf("stored bytes are not valid JSON: %q", b)
 	}
 }
+
+func TestSaveJSONRejectsShrinkWhenPreviousCopyCannotBeWritten(t *testing.T) {
+	withTempHome(t)
+
+	full := make(map[string]string, 100)
+	for i := 0; i < 100; i++ {
+		full[strings.Repeat("k", 3)+string(rune(i))] = strings.Repeat("value", 10)
+	}
+	if err := SaveJSON("store.json", full); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	file, _ := dataPath("store.json")
+	if err := os.Mkdir(file+".prev", 0700); err != nil {
+		t.Fatalf("block previous copy: %v", err)
+	}
+
+	if err := SaveJSON("store.json", map[string]string{"one": "value"}); err == nil {
+		t.Fatal("SaveJSON accepted a shrink without a recovery copy")
+	}
+	var got map[string]string
+	if err := LoadJSON("store.json", &got); err != nil {
+		t.Fatalf("LoadJSON: %v", err)
+	}
+	if len(got) != len(full) {
+		t.Fatalf("store changed after failed protection: got %d entries, want %d", len(got), len(full))
+	}
+}
