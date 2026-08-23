@@ -17,6 +17,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -26,6 +27,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/quota"
+	"mu/internal/settings"
 	"mu/internal/setup"
 	"mu/internal/usage"
 	"mu/internal/user"
@@ -487,8 +489,24 @@ func serve(addr string) {
 	// time — would drop the last minute of counts on every push.
 	usage.Save()
 
-	// Create shutdown context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	// How long to let in-flight requests finish.
+	//
+	// This is downtime unless systemd is holding the socket. Go's Shutdown
+	// closes the listeners first and drains second, so from the moment it is
+	// called nothing new can connect — and systemd will not start the
+	// replacement until this process exits. Ten seconds of draining is
+	// therefore ten seconds of refused connections, which is most of what "the
+	// restart takes ages" is.
+	//
+	// With mu.socket in front of it none of that is true: the socket outlives
+	// the process, connections queue, and a long drain costs latency rather
+	// than errors. See docs/INSTALL.md — setting this low is the workaround,
+	// holding the socket is the fix.
+	//
+	// The trade is real either way. An agent run is a model call, so a short
+	// drain cuts somebody's answer off mid-sentence to save a few seconds of a
+	// deploy.
+	ctx, cancel := context.WithTimeout(context.Background(), drainFor())
 	defer cancel()
 
 	// Attempt graceful shutdown
@@ -503,4 +521,16 @@ func serve(addr string) {
 	// above. Seeing that number is what tells an operator whether the pause is
 	// the old process leaving or the new one arriving.
 	app.Log("main", "Server stopped in %s", time.Since(stopping).Round(time.Millisecond))
+}
+
+// drainFor is how long in-flight requests get when the server is stopping.
+//
+// An operator's decision because the right answer depends on something this
+// process cannot see: whether something in front of it is holding the listening
+// socket. See the note where it is used.
+func drainFor() time.Duration {
+	if n, err := strconv.Atoi(strings.TrimSpace(settings.Get("SHUTDOWN_SECONDS"))); err == nil && n > 0 {
+		return time.Duration(n) * time.Second
+	}
+	return 10 * time.Second
 }

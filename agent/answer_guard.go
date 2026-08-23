@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"encoding/json"
 	"regexp"
 	"sort"
 	"strings"
@@ -615,6 +616,71 @@ func hasLowConfidenceWebEvidence(body string) bool {
 	return false
 }
 
+// isPayloadLine reports whether a line is a tool's own JSON rather than
+// something to read.
+//
+// The guard below this exists to notice when the *model* handed back a raw tool
+// payload instead of an answer, and to replace it with a summary built from the
+// results. The summary was built by bulleting whatever lines the results
+// contained — with no check that a line was prose — so for a tool that answers
+// in one JSON object the replacement was the same failure it was catching, now
+// with a bullet in front of it. Somebody asking a question in their inbox got
+// back `* {"files":[{"id":"ca9fa0…","checksum":"492d5ea…"`.
+//
+// A safety net must not be woven from the thing it is catching. The test is
+// deliberately cheap and one-sided: a line that opens like a JSON object or
+// array, or that is mostly quoted keys, is not a sentence. Prose that merely
+// mentions a brace is kept, because dropping a real answer is the worse error.
+func isPayloadLine(line string) bool {
+	trimmed := strings.TrimSpace(line)
+	if trimmed == "" {
+		return false
+	}
+	// Curly and square quotes too: an answer that has been through a smart-quote
+	// pass still carries the shape, and that is exactly how it reached somebody.
+	for _, open := range []string{"{", "[", `{"`, `{“`} {
+		if strings.HasPrefix(trimmed, open) {
+			return true
+		}
+	}
+	// Or a line that is mostly key-value pairs however it starts.
+	keys := strings.Count(trimmed, `":`) + strings.Count(trimmed, `”:`)
+	return keys >= 3
+}
+
+// readableFromPayload is the sentence inside a JSON wrapper, or "".
+//
+// A lot of tools answer with prose in a field — {"summary": "…"} — and treating
+// that as unreadable throws away the answer to avoid showing the braces around
+// it. A record set like {"files":[{"id":…}]} has no sentence in it and comes
+// back empty, which is the case that has to stay dropped.
+func readableFromPayload(line string) string {
+	var any map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(line), &any); err != nil {
+		return ""
+	}
+	// The fields a tool puts prose in. Ordered, so a payload carrying more than
+	// one is read the same way every time.
+	for _, key := range []string{"summary", "answer", "text", "message", "content", "result", "description"} {
+		if raw, ok := any[key]; ok {
+			var text string
+			if json.Unmarshal(raw, &text) == nil && strings.TrimSpace(text) != "" {
+				return strings.TrimSpace(text)
+			}
+		}
+	}
+	// Or a single field that happens to be a string, whatever it is called.
+	if len(any) == 1 {
+		for _, raw := range any {
+			var text string
+			if json.Unmarshal(raw, &text) == nil && strings.TrimSpace(text) != "" {
+				return strings.TrimSpace(text)
+			}
+		}
+	}
+	return ""
+}
+
 func meaningfulLines(body string, limit int) []string {
 	var primary []string
 	var context []string
@@ -628,6 +694,13 @@ func meaningfulLines(body string, limit int) []string {
 			continue
 		}
 		line = cleanFallbackLine(line)
+		if isPayloadLine(line) {
+			// A payload is not always noise. Plenty of tools answer with one
+			// readable sentence in a JSON wrapper, and dropping those loses the
+			// answer to save the reader from the braces around it. Unwrap what
+			// can be unwrapped; drop what cannot.
+			line = readableFromPayload(line)
+		}
 		if line == "" {
 			continue
 		}
@@ -1170,24 +1243,20 @@ func isRawToolPayloadAnswer(answer string) bool {
 	}
 
 	lower := strings.ToLower(trimmed)
+	// A whole answer that is one JSON object or array is a payload, whatever is
+	// in it.
+	//
+	// This used to require one of ten hard-coded keys — "results", "feed",
+	// "title" and so on — which is a list of the tools somebody happened to
+	// have hit at the time. files_list answers `{"files":[…]}` and matched none
+	// of them, so a payload went out as the answer with nothing noticing. The
+	// shape is the fact; the keys are a guess at which tool produced it.
 	if (strings.HasPrefix(trimmed, "{") && strings.HasSuffix(trimmed, "}")) ||
 		(strings.HasPrefix(trimmed, "[") && strings.HasSuffix(trimmed, "]")) {
-		jsonMarkers := []string{
-			`"results"`,
-			`"feed"`,
-			`"items"`,
-			`"title"`,
-			`"url"`,
-			`"error"`,
-			`"text"`,
-			`"summary"`,
-			`"source"`,
-			`"status"`,
-		}
-		for _, marker := range jsonMarkers {
-			if strings.Contains(lower, marker) {
-				return true
-			}
+		// Quoted keys, so that prose in braces is not caught by the shape
+		// alone — an answer may legitimately be `{a set}` or `[see below]`.
+		if strings.Contains(trimmed, `":`) || strings.Contains(trimmed, `": `) {
+			return true
 		}
 	}
 

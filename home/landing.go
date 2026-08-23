@@ -188,8 +188,8 @@ func landingBody() string {
 	//
 	return `<div class="lwrap">
 <h2 class="lhead">Work with Agents.</h2>
-<p class="lead">An agent with an inbox and tools. Chat with it in a browser or write
-to it by email, and it can reach ` + tools() + ` tools: news, mail, search, weather,
+<p class="lead">An agent with an inbox and tools. Chat with it in a browser or by
+email, and it can reach ` + tools() + ` tools: news, mail, search, weather,
 markets, video, places, files, contacts, calendar, documents. A work in progress.</p>
 
 <div class="lctas">
@@ -264,7 +264,8 @@ func developerBand(base string) string {
 <h2 class="dev-head">Tools for Agents</h2>
 <p class="dev-lead">Already have an agent? Point it at one endpoint for ` +
 		tools() + ` tools.</p>
-<pre class="dev-endpoint">` + endpoint + `</pre>
+<p class="dev-endpoint"><span class="dev-bot">🤖</span><span class="dev-arrow">→</span><code>` +
+		endpoint + `</code></p>
 <ul class="dev-facts">
   <li>MCP, or plain HTTP for anything that cannot speak it.</li>
   <li>One account. Or none — agents can pay via <a href="https://x402.org">x402</a> without one.</li>
@@ -289,16 +290,22 @@ func developerBand(base string) string {
    is read the way the hero above it is read, and the list is scanned. */
 .dev-head{font-size:15px;font-weight:700;color:#111;margin:0 0 8px;text-align:center}
 .dev-lead{font-size:15px;color:#555;line-height:1.6;margin:0 0 14px;text-align:center}
-/* Centred, with the heading and lead above it rather than with the facts
-   below. It is the one thing on this band somebody copies, so it reads as the
-   band's subject — and a left-aligned monospace line under two centred ones
-   looked like the start of the list rather than the endpoint.
-   text-align on a <pre> centres the line inside its own box; the box is
-   narrowed to its content and centred so the grey does not run the full width
+/* A URL on its own says where, not what. An agent, an arrow and the address
+   says the whole sentence without one: point that at this. It is the one thing
+   on this band somebody copies, so it is centred with the heading and lead
+   above it rather than left-aligned with the facts below, where a monospace
+   line read as the first bullet of the list.
+   The box is narrowed to its content so the grey does not run the full width
    with a short URL floating in the middle of it. */
-.dev-endpoint{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;
-  color:#333;background:#f6f6f6;border-radius:6px;padding:10px 14px;margin:0 auto 14px;
-  width:fit-content;max-width:100%;text-align:center;overflow-x:auto}
+.dev-endpoint{display:flex;align-items:center;justify-content:center;gap:10px;
+  background:#f6f6f6;border-radius:6px;padding:10px 14px;margin:0 auto 14px;
+  width:fit-content;max-width:100%;overflow-x:auto}
+/* Sized off the line rather than set: the emoji is the subject of the pair and
+   a 13px robot beside 13px text reads as punctuation. */
+.dev-bot{font-size:18px;line-height:1}
+.dev-arrow{color:#999;flex:none}
+.dev-endpoint code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:13px;color:#333;white-space:nowrap}
 .dev-facts{font-size:14px;color:#555;line-height:1.6;margin:0 0 14px;padding-left:18px}
 .dev-facts li{margin:0 0 6px}
 .dev-facts li:last-child{margin:0}
