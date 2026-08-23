@@ -13,6 +13,8 @@ blog_delete                  needsAccount=true  destructive=true  bound accountO
 blog_list                    needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 blog_read                    needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 blog_update                  needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
+browser_read                 needsAccount=false destructive=false bound accountOnly=false optionalAuth=true
+browser_shot                 needsAccount=false destructive=false bound accountOnly=false optionalAuth=true
 chat_messages                needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 chat_rooms                   needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 chat_send                    needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false

@@ -14,6 +14,7 @@ import (
 	"unicode/utf8"
 
 	"mu/internal/app"
+	"mu/internal/hosts"
 	"mu/internal/quota"
 )
 
@@ -546,30 +547,12 @@ func validateRawFetchURL(rawURL string) error {
 	return validateFetchURL(parsed)
 }
 
-func validateFetchURL(parsed *url.URL) error {
-	if parsed == nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
-		return fmt.Errorf("invalid URL: must use http or https")
-	}
-	if isPrivateHost(strings.ToLower(parsed.Hostname())) {
-		return fmt.Errorf("cannot fetch private or internal URL")
-	}
-	return nil
-}
+// The guard itself moved to internal/hosts, because service/browser has to ask
+// the same question for the same reason and a service may not import another
+// service. These are the names this file already used; the answer is one
+// function now rather than two copies that will eventually differ.
+func validateFetchURL(parsed *url.URL) error { return hosts.Fetchable(parsed) }
 
-// isPrivateHost returns true if the host looks like a private/internal address.
-func isPrivateHost(host string) bool {
-	host = strings.TrimSpace(strings.Trim(host, "[]"))
-	if host == "" || strings.EqualFold(host, "localhost") {
-		return true
-	}
+func isPrivateHost(host string) bool { return hosts.Private(host) }
 
-	if ip := net.ParseIP(host); ip != nil {
-		return isPrivateIP(ip)
-	}
-
-	return strings.EqualFold(host, "metadata.google.internal")
-}
-
-func isPrivateIP(ip net.IP) bool {
-	return ip == nil || ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified()
-}
+func isPrivateIP(ip net.IP) bool { return hosts.PrivateIP(ip) }

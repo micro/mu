@@ -5906,6 +5906,47 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
 
 .home-brief a:hover { text-decoration: underline }
 
+/* A real browser, at /browser. See service/browser/page.go. */
+.browser-page { max-width: 860px }
+
+.browser-form { display: flex; gap: 8px; margin: 0 0 var(--spacing-md, 16px) }
+
+.browser-url {
+  flex: 1 1 auto;
+  min-width: 0;
+  font: inherit;
+  font-size: 14px;
+  padding: 9px 11px;
+  border: var(--border-width, 1px) solid var(--card-border, #e8e8e8);
+  border-radius: var(--border-radius, 6px);
+  background: var(--card-background, #fff);
+  color: var(--text-primary, #1a1a1a);
+}
+
+.browser-url:focus { outline: none; border-color: #bbb }
+.browser-title { font-size: 18px; margin: var(--spacing-lg, 24px) 0 4px }
+.browser-where { font-size: 12px; color: var(--text-muted, #888); margin: 0 0 12px }
+.browser-problem { font-size: 13px; color: var(--btn-danger, #c00); margin: var(--spacing-md, 16px) 0 0 }
+
+/* What the page says, as it said it. innerText keeps the line breaks a reader
+   saw, so this is pre-wrapped rather than reflowed — the shape of a page is
+   part of what somebody came here to check. */
+.browser-text {
+  margin: 0;
+  padding: 14px 16px;
+  max-height: 640px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: var(--line-height, 1.6);
+  color: var(--text-secondary, #555);
+  background: var(--hover-background, #fafafa);
+  border: var(--border-width, 1px) solid var(--card-border, #e8e8e8);
+  border-radius: var(--border-radius, 6px);
+}
+
 /* One tool, at an address of its own. See internal/api/tool_page.go. */
 .tool-page { max-width: 760px }
 .tool-name { font-size: 24px; margin: 0 0 6px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace }

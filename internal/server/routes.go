@@ -32,6 +32,7 @@ import (
 	"mu/service/apps"
 	"mu/service/archive"
 	"mu/service/blog"
+	"mu/service/browser"
 	"mu/service/chat"
 	"mu/service/contacts"
 	"mu/service/docs"
@@ -82,6 +83,8 @@ func authRequired() map[string]bool {
 		"/food":                   false, // Public food data is public
 		"/transit":                false, // Public transport data is public
 		"/hazards":                false, // Public hazard data, published to be redistributed
+		"/browser":                false, // Public — the page; reading one costs and needs a session
+		"/browser/shot/":          false, // A picture already taken, of a page anybody could open
 		"/maps":                   false, // Public — the page, and any tile already held
 		"/maps/":                  false, // A held tile is free to anybody; a cold one needs a session
 		"/tiles/":                 false, // The old tile path, which redirects
@@ -327,6 +330,11 @@ func registerRoutes() {
 	//
 	// /search still answers, permanently redirected, because it is the address
 	// people have and search engines hold.
+	// A real browser, for the pages a fetch cannot read. /browser is the page;
+	// the pictures it takes are at /browser/shot/<id>.png. See service/browser.
+	http.HandleFunc("/browser", browser.Handler)
+	http.HandleFunc("/browser/shot/", browser.ShotHandler)
+
 	http.HandleFunc("/web", web.Handler)
 	http.HandleFunc("/search", func(w http.ResponseWriter, r *http.Request) {
 		to := "/web"

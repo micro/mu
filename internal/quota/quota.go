@@ -104,6 +104,8 @@ const (
 	OpWeatherPollen    = "weather_pollen"
 	OpWebSearch        = "web_search"
 	OpWebFetch         = "web_fetch"
+	OpBrowserRead      = "browser_read"
+	OpBrowserShot      = "browser_shot"
 	OpDBWrite          = "db_write"
 	OpImageGenerate    = "image_generate"
 	OpTextSummarise    = "text_summarise"

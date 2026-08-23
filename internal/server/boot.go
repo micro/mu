@@ -17,6 +17,7 @@ import (
 	"mu/service/apps"
 	"mu/service/archive"
 	"mu/service/blog"
+	"mu/service/browser"
 	"mu/service/chat"
 	"mu/service/contacts"
 	"mu/service/docs"
@@ -91,6 +92,7 @@ func boot() {
 	// One search across everything this instance has collected. Six services
 	// write to that index and every reader over it was filtered to one type.
 	archive.Load()
+	browser.Load()
 	web.Load()
 	text.Load()
 	food.Load()

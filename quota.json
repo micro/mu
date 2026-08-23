@@ -13,17 +13,17 @@
     "than an arithmetic one. The agent is the thing you came for; metering it",
     "meant a new account could not ask a question until it had paid, which is",
     "why there used to be a daily grant of credits here to cancel the charge",
-    "back out. Both are gone. What bounds it now is `limit` \u2014 a count of runs",
+    "back out. Both are gone. What bounds it now is `limit` — a count of runs",
     "a day, which is abuse control and not a price.",
     "",
     "A price is what a *fetch* costs. A call the instance answered from",
-    "something it already had \u2014 a cached forecast, a stored tile \u2014 is not",
+    "something it already had — a cached forecast, a stored tile — is not",
     "charged; see internal/service/meter.go. So the busier a shared instance",
     "is, the less its callers pay.",
     "",
     "`limit` is a hard count per account per day, separate from money and",
     "checked before it. It is the second control for the three operations that",
-    "reach a stranger \u2014 a price stops somebody who has to pay and does nothing",
+    "reach a stranger — a price stops somebody who has to pay and does nothing",
     "about a loop, and what a loop spends there is a domain's or a number's",
     "reputation, which no balance repairs.",
     "",
@@ -50,14 +50,14 @@
       "cost": 2,
       "label": "Travel time between two places",
       "env": "CREDIT_COST_PLACES_ETA",
-      "note": "routes_eta. Google Routes, 0.38p at Essentials (\u00a33.76/1k after 10k free), 0.75p at Pro. We ask for traffic, which may bill at Pro \u2014 priced to cover it. The op id keeps the old name so an operator's existing override and usage history survive the rename"
+      "note": "routes_eta. Google Routes, 0.38p at Essentials (£3.76/1k after 10k free), 0.75p at Pro. We ask for traffic, which may bill at Pro — priced to cover it. The op id keeps the old name so an operator's existing override and usage history survive the rename"
     },
     {
       "op": "routes_directions",
       "cost": 3,
       "label": "Turn-by-turn directions",
       "env": "CREDIT_COST_ROUTES_DIRECTIONS",
-      "note": "Google Routes asking for steps and the road's shape, which is more than an ETA and bills higher \u2014 1.14p at Enterprise"
+      "note": "Google Routes asking for steps and the road's shape, which is more than an ETA and bills higher — 1.14p at Enterprise"
     },
     {
       "op": "weather_forecast",
@@ -77,7 +77,7 @@
       "cost": 2,
       "label": "Web search",
       "env": "CREDIT_COST_SEARCH",
-      "note": "Brave, ~0.4p \u2014 was 5, a 12x markup"
+      "note": "Brave, ~0.4p — was 5, a 12x markup"
     },
     {
       "op": "image_generate",
@@ -90,35 +90,35 @@
       "cost": 2,
       "label": "Summarise text",
       "env": "CREDIT_COST_TEXT_SUMMARISE",
-      "note": "Atlas deepseek-v4-flash ($0.14/$0.28 per M). 0.10p at the 30k cap \u2014 a 21x markup, 160x on a typical call"
+      "note": "Atlas deepseek-v4-flash ($0.14/$0.28 per M). 0.10p at the 30k cap — a 21x markup, 160x on a typical call"
     },
     {
       "op": "text_extract",
       "cost": 5,
       "label": "Extract structure from text",
       "env": "CREDIT_COST_TEXT_EXTRACT",
-      "note": "Atlas deepseek-v4-pro ($1.68/$3.38 per M) because a wrong field is silent. 1.28p at the 30k cap \u2014 was 3, which left only 2.4x"
+      "note": "Atlas deepseek-v4-pro ($1.68/$3.38 per M) because a wrong field is silent. 1.28p at the 30k cap — was 3, which left only 2.4x"
     },
     {
       "op": "text_classify",
       "cost": 1,
       "label": "Classify text",
       "env": "CREDIT_COST_TEXT_CLASSIFY",
-      "note": "Atlas deepseek-v4-flash, output is one word. 0.09p at the 30k cap \u2014 the cheapest real model call here"
+      "note": "Atlas deepseek-v4-flash, output is one word. 0.09p at the 30k cap — the cheapest real model call here"
     },
     {
       "op": "text_translate",
       "cost": 3,
       "label": "Translate text",
       "env": "CREDIT_COST_TEXT_TRANSLATE",
-      "note": "Atlas deepseek-v4-flash. Output is as long as the input, so on pro this cost 3.46p at the cap against a 3p price \u2014 the one loss-making path. On flash, 0.29p and a 10x markup"
+      "note": "Atlas deepseek-v4-flash. Output is as long as the input, so on pro this cost 3.46p at the cap against a 3p price — the one loss-making path. On flash, 0.29p and a 10x markup"
     },
     {
       "op": "app_build",
       "cost": 15,
       "label": "App build (AI)",
       "env": "CREDIT_COST_APP_BUILD",
-      "note": "Was 100 \u2014 a pound, six times the next most expensive thing on the menu, for less model than an agent run"
+      "note": "Was 100 — a pound, six times the next most expensive thing on the menu, for less model than an agent run"
     },
     {
       "op": "app_edit",
@@ -134,7 +134,7 @@
       "limit_env": "SMS_DAILY_LIMIT",
       "label": "Text message (per segment)",
       "env": "CREDIT_COST_SMS",
-      "note": "Twilio: under a penny to a US mobile, ~4p to a UK one, and charged per 160-character segment. A markup that would be silly on a search is the point here \u2014 a text cannot be unsent, and the number's reputation is shared by everybody on the instance. Ten pence makes a spam run cost real money before any of the other limits are reached"
+      "note": "Twilio: under a penny to a US mobile, ~4p to a UK one, and charged per 160-character segment. A markup that would be silly on a search is the point here — a text cannot be unsent, and the number's reputation is shared by everybody on the instance. Ten pence makes a spam run cost real money before any of the other limits are reached"
     },
     {
       "op": "news_search",
@@ -159,6 +159,20 @@
       "cost": 0,
       "label": "Web fetch",
       "env": "CREDIT_COST_FETCH"
+    },
+    {
+      "op": "browser_read",
+      "cost": 3,
+      "label": "Browser read",
+      "env": "CREDIT_COST_BROWSER_READ",
+      "note": "A Chromium page load: seconds of CPU and a few hundred MB here, or a hosted browser billed around 1-3p a page. web_fetch is 0 and is the right first try; this is what a page that builds itself in the browser costs"
+    },
+    {
+      "op": "browser_shot",
+      "cost": 4,
+      "label": "Browser screenshot",
+      "env": "CREDIT_COST_BROWSER_SHOT",
+      "note": "The same page load, plus rendering and storing a PNG. A full-page capture scrolls the whole document, which is why it is not the same price as reading it"
     },
     {
       "op": "social_search",
@@ -201,7 +215,7 @@
       "cost": 4,
       "label": "Send a message",
       "env": "CREDIT_COST_MAIL",
-      "note": "One price for sending, wherever it is going. It was two \u2014 mail_email for an address outside and mail_send at 0 for one here \u2014 and the free one was free on every door: over submission a signed-in account could write to every username on the instance at no cost and no cap. Spam is not a fact about which network the recipient is on. Writing to yourself or to your own agent is not a send and is not charged. The cap and the price are both an operator's: CREDIT_COST_MAIL sets what it costs and MAIL_DAILY_LIMIT how many a day, so a self-hosted instance that does not want either can say so without rebuilding \u2014 and one with no Stripe and no x402 is never charged anyway, because quota.Charging is false and Metered follows it",
+      "note": "One price for sending, wherever it is going. It was two — mail_email for an address outside and mail_send at 0 for one here — and the free one was free on every door: over submission a signed-in account could write to every username on the instance at no cost and no cap. Spam is not a fact about which network the recipient is on. Writing to yourself or to your own agent is not a send and is not charged. The cap and the price are both an operator's: CREDIT_COST_MAIL sets what it costs and MAIL_DAILY_LIMIT how many a day, so a self-hosted instance that does not want either can say so without rebuilding — and one with no Stripe and no x402 is never charged anyway, because quota.Charging is false and Metered follows it",
       "limit": 50,
       "limit_env": "MAIL_DAILY_LIMIT"
     },

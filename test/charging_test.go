@@ -133,7 +133,10 @@ var pageCharged = map[string]bool{
 	"image_generate": true,
 	"weather_pollen": true, "weather_forecast": true,
 	"web_search": true, "web_fetch": true,
-	"news_search": true,
+	// /browser's page opens a page itself rather than calling its own endpoint,
+	// so it charges its own read. Same debt, same list.
+	"browser_read": true,
+	"news_search":  true,
 	// /mail's Handler charges for both, for the same reason: the page sends
 	// mail without going through the endpoint.
 	"mail_send": true, "external_email": true,

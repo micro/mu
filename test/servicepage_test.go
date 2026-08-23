@@ -49,6 +49,9 @@ var keptItsPage = map[string]string{
 	"markets": "one of five categories", "routes": "two endpoints",
 	"transit": "a stop", "flights": "a callsign, and a scope the card cannot draw",
 	"maps": "a map you move around, which is the one thing a card cannot be",
+	"browser": "a box you put a URL in and a page that comes back — the claim is " +
+		"that it reads what a fetch cannot, and the only way to show that is to let " +
+		"somebody try a page a fetch cannot read",
 	"text": "the text to work on",
 
 	// 3. It is browsable.
