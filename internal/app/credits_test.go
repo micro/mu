@@ -170,7 +170,7 @@ func TestTheHeadBalanceShowsEveryState(t *testing.T) {
 	if !strings.Contains(got, ">1,200<") {
 		t.Errorf("head balance rendered %q", got)
 	}
-	if !strings.Contains(got, `href="/billing#balance"`) {
+	if !strings.Contains(got, `href="/billing"`) {
 		t.Error("the balance is not a link to where the balance lives")
 	}
 
