@@ -164,7 +164,33 @@ func Ask(r AskRequest) (Answer, error) {
 			th = thread.ByRef(r.Account, r.Ref)
 		}
 		if th == nil {
-			th = thread.Open(r.Account, r.Client, r.Thread)
+			// A client with no key of its own is starting a conversation, so
+			// give it one.
+			//
+			// thread.Open returns nil for an empty key, and a nil thread means
+			// every recording call below quietly does nothing: Said, SetAgent
+			// and Answered all no-op on an empty id. So POST /agent/<name> —
+			// which has no key until it has been told one — wrote nothing to
+			// the record on a first call and returned no thread id, which is
+			// the field its own documentation calls "returned always, because
+			// a caller that wants a second turn needs it and has no other way
+			// to learn it".
+			//
+			// Two things were broken by one missing string. A program could
+			// never hold a conversation, so the door was a completion endpoint
+			// wearing an agent's name; and the turn never reached
+			// internal/thread, so an API conversation appeared in neither
+			// /inbox nor /recall. "Written on every turn from every client" was
+			// false for the one client that is a program.
+			//
+			// Minted here rather than in the door, because this is the surround
+			// every client shares and the next client to arrive without a key
+			// should not have to know this.
+			key := r.Thread
+			if strings.TrimSpace(key) == "" {
+				key = newFlowID()
+			}
+			th = thread.Open(r.Account, r.Client, key)
 		}
 	}
 	// Who the conversation is with, so a surface that has an agent selected can

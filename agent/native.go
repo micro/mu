@@ -621,3 +621,18 @@ func nativeToolNameParts(name string) []string {
 		return r == '_' || r == '.' || r == '/'
 	})
 }
+
+// Status is which model the agent's loop runs on, for the status page.
+//
+// nativeLLM's answer rather than internal/ai's, because they are different
+// questions and the page was answering the wrong one — see app.AgentStatus.
+// It reports the fallback honestly too: no provider here means the native
+// agent is skipped and run.go's one-shot planner answers instead, which is a
+// materially worse agent and should not look like a healthy one.
+func Status() (string, bool) {
+	provider, _, model, ok := nativeLLM()
+	if !ok {
+		return "Not configured — falling back to the one-shot planner", false
+	}
+	return provider + "/" + model, true
+}

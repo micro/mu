@@ -822,6 +822,7 @@ func wireHooks() {
 	// The status page asks the AI package what the model is doing rather than
 	// guessing from one env var.
 	app.LLMStatus = ai.Status
+	app.AgentStatus = agent.Status
 
 	// Signup and login are not tools. Creating an account and exchanging
 	// credentials for a session are how a caller comes to exist, not something

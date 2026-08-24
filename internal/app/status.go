@@ -220,6 +220,16 @@ func buildStatus() StatusResponse {
 		Details: llmProvider,
 	})
 
+	// And the agent's, which is the one most people mean.
+	if AgentStatus != nil {
+		agentModel, agentOK := AgentStatus()
+		services = append(services, StatusCheck{
+			Name:    "Agent model",
+			Status:  agentOK,
+			Details: agentModel,
+		})
+	}
+
 	// Add cache stats if Anthropic is configured (stats injected via CacheStatsFunc)
 	if os.Getenv("ANTHROPIC_API_KEY") != "" && CacheStatsFunc != nil {
 		hits, misses, readTokens, _ := CacheStatsFunc()
@@ -357,6 +367,22 @@ func formatDKIMDetails(enabled bool, domain, selector string) string {
 // provider a question would go to, and whether it is answering. A hook because
 // internal/ai imports this package, so the dependency cannot run the other way.
 var LLMStatus func() (string, bool)
+
+// AgentStatus is which model the agent runs on, which is a different question
+// from LLMStatus and was being answered by it.
+//
+// Two independent resolutions exist: ai.resolveProvider decides where a chat
+// message, a summary or a moderation call goes, and agent.nativeLLM decides
+// where the tool-calling loop goes. They disagreed for months — the agent had
+// no Anthropic branch at all, so an instance with both keys ran the agent on
+// DeepSeek while this page reported anthropic/claude-sonnet-4-6 and nothing
+// anywhere named the model that had actually answered.
+//
+// They agree again, and the point of reporting both is that nothing stops them
+// diverging: setting AGENT_MODEL is supposed to diverge them, and an operator
+// who has done that deliberately should be able to see it rather than read a
+// line about the wrong path.
+var AgentStatus func() (string, bool)
 
 func checkLLMConfig() (provider string, configured bool) {
 	if LLMStatus != nil {
