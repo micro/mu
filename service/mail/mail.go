@@ -712,7 +712,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		mutex.RLock()
 		var msg *Message
 		for _, m := range messages {
-			if m.ID == msgID && (m.ToID == acc.ID || m.FromID == acc.ID) {
+			if m.ID == msgID && (m.ToID == acc.ID || sentBy(m, acc.ID)) {
 				msg = m
 				break
 			}
@@ -768,7 +768,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		mutex.RLock()
 		var msg *Message
 		for _, m := range messages {
-			if m.ID == msgID && (m.ToID == acc.ID || m.FromID == acc.ID) {
+			if m.ID == msgID && (m.ToID == acc.ID || sentBy(m, acc.ID)) {
 				msg = m
 				break
 			}
@@ -839,7 +839,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		mutex.RLock()
 		var msg *Message
 		for _, m := range messages {
-			if m.ID == msgID && (m.ToID == acc.ID || m.FromID == acc.ID) {
+			if m.ID == msgID && (m.ToID == acc.ID || sentBy(m, acc.ID)) {
 				msg = m
 				break
 			}
@@ -1226,7 +1226,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			// Process email body - renders markdown if detected, otherwise linkifies URLs
 			msgBody = renderEmailBody(msgBody, msgIsAttachment)
 
-			isSent := m.FromID == acc.ID
+			isSent := sentBy(m, acc.ID)
 			authorDisplay := m.FromID
 			if isSent {
 				authorDisplay = "You"
@@ -1256,7 +1256,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		// Determine the other party in the thread
 		otherParty := msg.FromID
-		if msg.FromID == acc.ID {
+		if sentBy(msg, acc.ID) {
 			otherParty = msg.ToID
 		}
 		// Format other party with profile link if internal user
@@ -1616,7 +1616,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			// Check if user has sent any message in this thread
 			hasSent := false
 			for _, msg := range thread.Messages {
-				if msg.FromID == acc.ID {
+				if sentBy(msg, acc.ID) {
 					hasSent = true
 					break
 				}
@@ -2036,7 +2036,7 @@ func Search(userID, query string, limit int) []*Message {
 		if msg.Spam {
 			continue
 		}
-		if msg.ToID != userID && msg.FromID != userID {
+		if msg.ToID != userID && !sentBy(msg, userID) {
 			continue
 		}
 		subject := strings.ToLower(msg.Subject)
@@ -2172,7 +2172,7 @@ func searchMail(userID, query string) []*Message {
 	var results []*Message
 	seen := map[string]bool{}
 	for _, msg := range messages {
-		if msg.ToID != userID && msg.FromID != userID {
+		if msg.ToID != userID && !sentBy(msg, userID) {
 			continue
 		}
 		if msg.Spam {
@@ -2355,7 +2355,7 @@ func DeleteMessage(msgID, userID string) error {
 
 	for i, msg := range messages {
 		// Allow deletion if user is sender or recipient
-		if msg.ID == msgID && (msg.FromID == userID || msg.ToID == userID) {
+		if msg.ID == msgID && (sentBy(msg, userID) || msg.ToID == userID) {
 			messages = append(messages[:i], messages[i+1:]...)
 			rebuildInboxes()
 			return save()
@@ -2372,7 +2372,7 @@ func DeleteThread(msgID, userID string) error {
 	// Find the message
 	var msg *Message
 	for _, m := range messages {
-		if m.ID == msgID && (m.FromID == userID || m.ToID == userID) {
+		if m.ID == msgID && (sentBy(m, userID) || m.ToID == userID) {
 			msg = m
 			break
 		}
@@ -2538,13 +2538,67 @@ func RecentMessages(limit int) []*Message {
 }
 
 // DeleteInbox removes all mail for a user.
+//
+// It deleted the entry in `inboxes` and nothing else. That map is derived —
+// rebuildInboxes reconstructs the whole of it from `messages` — so the next
+// delivery to anybody on the instance rebuilt the deleted account's inbox from
+// mail that had never been removed. Every message they had ever sent or
+// received was still on disk, and still readable by anyone who signed up with
+// the same name afterwards.
+//
+// The same shape of bug as the one internal/thread had: a record written by the
+// machinery rather than owned by a service, so nothing deleted it.
 func DeleteInbox(userID string) {
 	mutex.Lock()
+	kept := messages[:0]
+	for _, msg := range messages {
+		if theirMail(msg, userID) {
+			continue
+		}
+		kept = append(kept, msg)
+	}
+	messages = kept
 	delete(inboxes, userID)
+	// From `messages`, which has just changed — and which is what made the
+	// original bug survive: rebuilding without deleting puts it all back.
+	rebuildInboxes()
+	err := save()
 	mutex.Unlock()
+	if err != nil {
+		app.Log("mail", "could not save after deleting %s's mail: %v", userID, err)
+	}
+
 	// And the IMAP numbering, which is a record of which of this account's
 	// messages was number four — about their mail, so it goes with their mail.
 	imapForget(userID)
-	// Re-save all mail data.
-	save()
+}
+
+// theirMail reports whether a message goes when an account does.
+//
+// Their mailbox, and the copies of what they sent to people who are not here.
+// Not a message they sent to somebody else on this instance: that one is in the
+// recipient's mailbox and is their correspondence now. Deleting an account does
+// not unsend, any more than closing a mail account takes messages back out of
+// the inboxes they reached.
+//
+// Must be called with the mutex held.
+func theirMail(msg *Message, userID string) bool {
+	if msg == nil || userID == "" {
+		return false
+	}
+	if strings.EqualFold(msg.ToID, userID) {
+		return true
+	}
+	if !sentBy(msg, userID) {
+		return false
+	}
+	// A sent copy is filed under the address it went to. Somebody here holds
+	// their own copy of it; an address elsewhere does not, so this is the only
+	// one and it was theirs.
+	if !IsExternalAddress(msg.ToID) {
+		if acc, err := GetAccountByAddress(msg.ToID); err == nil && acc != nil {
+			return false
+		}
+	}
+	return true
 }

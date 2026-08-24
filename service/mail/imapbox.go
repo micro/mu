@@ -38,7 +38,6 @@ package mail
 import (
 	"encoding/base64"
 	"fmt"
-	"mime"
 	"sort"
 	"strings"
 	"sync"
@@ -481,15 +480,11 @@ func imapAddress(name, address string) string {
 
 // imapHeaderValue encodes anything that is not plain ASCII, because a raw
 // UTF-8 byte in a header is not a header.
-func imapHeaderValue(v string) string {
-	v = strings.ReplaceAll(strings.ReplaceAll(v, "\r", " "), "\n", " ")
-	for i := 0; i < len(v); i++ {
-		if v[i] > 126 || v[i] < 32 {
-			return mime.QEncoding.Encode("utf-8", v)
-		}
-	}
-	return v
-}
+//
+// This was the only place that rule existed, and the send path — the one
+// talking to other people's servers — did not have it. It is header.go now and
+// this is the same call the message builders make.
+func imapHeaderValue(v string) string { return headerText(v) }
 
 func imapQuoteSafe(s string) string {
 	s = strings.ReplaceAll(s, `"`, "")
