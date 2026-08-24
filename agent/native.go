@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -277,7 +278,25 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 	toolWrappers := append([]gmai.ToolWrapper{blockDestructiveTools(), injectAccount(accountID), dedupeNativeToolCalls()}, wrappers...)
 	a = service.NewAgent(nativeAgentInstanceName(), sys, provider, key, filterServices(nativeServices(opts.Public), opts.Tools),
 		gmagent.Model(model),
-		gmagent.MaxSteps(6),
+		gmagent.MaxSteps(maxSteps()),
+		// A no-progress guard instead of a low step cap.
+		//
+		// The two are not the same bound and were being asked to do one job.
+		// Six steps stops a runaway loop and also stops "read my mail, find the
+		// invoice, put it in the calendar" — which is four tools before it has
+		// done anything wrong. What actually needs stopping is the model
+		// calling the same tool with the same arguments forever, and that is
+		// this: repeat it three times and it is refused.
+		gmagent.LoopLimit(3),
+		// Bounds on the provider rather than on the work.
+		//
+		// Neither of these was set, so a provider that accepted the connection
+		// and then went quiet held the turn until something upstream gave up,
+		// and a single transient failure lost the whole question. Shelley has
+		// the same pair for the same reason — an idle bound plus a retry budget
+		// — arrived at from running one in production.
+		gmagent.ModelCallTimeout(90*time.Second),
+		gmagent.ModelRetry(3, 2*time.Second),
 		gmagent.WrapTool(toolWrappers...))
 	return a, question, true
 }
@@ -368,6 +387,40 @@ func nativeLLM() (provider, key, model string, ok bool) {
 	return "", "", "", false
 }
 
+// maxSteps is how many tools one question may use.
+//
+// Six was the number and it was too few for the questions this is for. A step
+// is one tool call, so "check my mail, find the invoice from Henrik, add the
+// due date to my calendar" spends four before anything has gone wrong, and the
+// seventh is refused with an instruction to stop and summarise — which reads
+// as an agent that gave up rather than one that hit a limit.
+//
+// Shelley has no step cap at all: the model ends the turn by not asking for
+// another tool, and what bounds the work is time and a no-progress check. That
+// is the right shape and unbounded is still the wrong default for an instance
+// paying per call, so this is a ceiling high enough not to be met by ordinary
+// work, with LoopLimit doing the job the low cap was really being asked to do.
+//
+// Settable, because what it really bounds is cost per question and that is an
+// operator's decision. 0 means unbounded, which is go-micro's own meaning.
+func maxSteps() int {
+	if v := strings.TrimSpace(settings.Get("AGENT_MAX_STEPS")); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+			return n
+		}
+	}
+	return 20
+}
+
+// turnTimeout is the longest one question may take, whatever it is doing.
+//
+// Five minutes is chosen against the work rather than the transport: twenty
+// steps of ordinary tool calls finish inside one, and the questions this is
+// for — read the mail, search the web, put it in the calendar — are seconds of
+// model time and seconds of network. A run still going at five minutes is
+// stuck, not thorough.
+const turnTimeout = 5 * time.Minute
+
 func nativeAgentInstanceName() string {
 	return fmt.Sprintf("assistant-%d-%d", time.Now().UTC().UnixNano(), nativeAgentSeq.Add(1))
 }
@@ -419,14 +472,31 @@ func runNative(accountID, prompt string, opts QueryOpts) (string, bool, error) {
 	// everything back on the plain ask without disabling the native agent. A
 	// caller says whether anyone is listening; the operator says what is
 	// trusted.
+	// An absolute bound on the whole turn, over the top of the per-call one.
+	//
+	// ModelCallTimeout bounds one call to the provider; nothing bounded the run
+	// it is part of, so twenty steps of a tool that is merely slow — a web
+	// fetch of a page that never finishes sending — held the question open with
+	// no ceiling at all, and the caller found out when its own layer gave up.
+	// Shelley has the pair for this reason: an idle bound catches a stall, and
+	// only a wall-clock backstop catches work that is progressing and will
+	// still not finish.
+	//
+	// Not a setting. What an operator wants to bound is what a question may
+	// cost, and that is AGENT_MAX_STEPS; this is the guard that stops a run
+	// hanging, and a value low enough to cut off honest work would be a bug
+	// rather than a policy.
+	ctx, cancel := context.WithTimeout(context.Background(), turnTimeout)
+	defer cancel()
+
 	final := ""
 	if opts.Stream.wants() && nativeStreamEnabled() {
 		var err error
-		if final, err = askStreaming(a, question, recorder, opts.Stream); err != nil {
+		if final, err = askStreaming(ctx, a, question, recorder, opts.Stream); err != nil {
 			return "", true, err
 		}
 	} else {
-		resp, err := a.Ask(context.Background(), question)
+		resp, err := a.Ask(ctx, question)
 		if err != nil {
 			return "", true, fmt.Errorf("native agent: %w", err)
 		}
@@ -440,8 +510,8 @@ func runNative(accountID, prompt string, opts QueryOpts) (string, bool, error) {
 
 // askStreaming runs the agent with StreamAsk, reporting tools and tokens as
 // they arrive, and returns the whole answer.
-func askStreaming(a gmagent.Agent, question string, recorder *nativeToolRecorder, hooks StreamHooks) (string, error) {
-	stream, err := gmagent.StreamAsk(context.Background(), a, question)
+func askStreaming(ctx context.Context, a gmagent.Agent, question string, recorder *nativeToolRecorder, hooks StreamHooks) (string, error) {
+	stream, err := gmagent.StreamAsk(ctx, a, question)
 	if err != nil {
 		return "", fmt.Errorf("native agent stream: %w", err)
 	}

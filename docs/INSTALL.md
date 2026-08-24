@@ -583,6 +583,7 @@ one, the agent, chat and AI summaries are off and everything else works.
 | `X402_BAZAAR` | `true` to advertise your priced tools to the [x402 Bazaar](https://docs.x402.org/extensions/bazaar) index. Each 402 then carries a listing — tool name, description, arguments — and the facilitator catalogues it. Off by default: listing tells a third party this instance exists and what it sells, which is not a decision to inherit from an upgrade |
 | `AGENT_NATIVE` | `off` falls back to the hand-rolled planner |
 | `AGENT_NATIVE_STREAM` | `off` forces the streaming UI onto the planner |
+| `AGENT_MAX_STEPS` | How many tools one question may use before the agent is told to stop and summarise (default `20`, `0` for no limit). This is a cost ceiling, not a safety one — a runaway loop is caught separately, by refusing the same call with the same arguments a fourth time. Raise it if you ask for work that chains many tools; lower it to cap what a single question can spend |
 
 ### Service keys
 

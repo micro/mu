@@ -209,6 +209,7 @@ var settingGroups = []settingGroup{
 		"MCP_GATEWAY_ADDR",
 		"AGENT_NATIVE",
 		"AGENT_NATIVE_STREAM",
+		"AGENT_MAX_STEPS",
 	}},
 }
 
