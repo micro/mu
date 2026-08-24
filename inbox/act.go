@@ -196,7 +196,7 @@ func AgentSaid(f func(accountID, threadID, text string)) {
 // reply. Making them depend on the content would mean reading the content,
 // which is a model call to decide what to offer before anybody has asked for
 // anything.
-func assignDialog(r *http.Request, threadID, replyWho string) string {
+func assignDialog(r *http.Request, accountID string, t *thread.Thread, replyWho string) string {
 	canReply := replyWho != ""
 	var b strings.Builder
 	// A native <dialog>, so Escape closes it, focus is trapped and the backdrop
@@ -209,13 +209,14 @@ func assignDialog(r *http.Request, threadID, replyWho string) string {
 	b.WriteString(`<dialog id="ib-assign" class="ib-assign">`)
 	b.WriteString(`<h3 class="ib-assign-head">Assign to agent</h3>`)
 	b.WriteString(`<form class="ib-ask" method="post" action="/inbox">`)
-	b.WriteString(`<input type="hidden" name="id" value="` + html.EscapeString(threadID) + `">`)
+	b.WriteString(`<input type="hidden" name="id" value="` + html.EscapeString(t.ID) + `">`)
 	b.WriteString(`<input type="hidden" name="_csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `">`)
 	if problem := strings.TrimSpace(r.URL.Query().Get("problem")); problem != "" {
 		b.WriteString(`<p class="ib-ask-problem">` + html.EscapeString(problem) + `</p>`)
 	}
 	b.WriteString(`<textarea name="ask" rows="2" maxlength="` + strconv.Itoa(askLimit) + `" ` +
 		`placeholder="Tell the agent what to do about this"></textarea>`)
+	b.WriteString(agentPicker(accountID, t))
 	// The suggestions come before the button, not beside it.
 	//
 	// They were on the same row as Assign, which read as four things to press
@@ -274,6 +275,89 @@ func assignDialog(r *http.Request, threadID, replyWho string) string {
 	b.WriteString(`</form></dialog>`)
 	b.WriteString(assignJS)
 	return b.String()
+}
+
+// agentPicker is which of your agents gets it.
+//
+// Nothing asked before this: the conversation's own agent was used, falling
+// back to the default. That is the right *default* and it was silently the only
+// answer — and it is only ever set when an agent has already answered on the
+// thread, which for mail to your bare address is never. So somebody with four
+// agents handed everything to the general one and nothing on the page said so,
+// which is the question "who am I assigning to?" having no answer on screen.
+//
+// Drawn only when there is a choice. One agent is not a choice, and a select
+// with a single option is furniture that teaches nothing.
+//
+// The roster comes through the Agents hook rather than an import, because this
+// package may not import agent/ — the same hook the mailbox switcher uses.
+func agentPicker(accountID string, t *thread.Thread) string {
+	agents := roster(accountID)
+	if len(agents) == 0 {
+		return ""
+	}
+	// Whoever the conversation is already with, which is what would have
+	// happened anyway. Selecting it rather than defaulting to the general agent
+	// keeps the old behaviour visible instead of quietly changing it.
+	on := ""
+	if t != nil {
+		on = t.Agent
+	}
+	sel := func(id string) string {
+		if id == on {
+			return ` selected`
+		}
+		return ""
+	}
+
+	var b strings.Builder
+	b.WriteString(`<label class="ib-assign-who">Give it to`)
+	b.WriteString(`<select name="agent">`)
+	// The default first, and named rather than called "default": it is an agent
+	// like the others and the list should read as a list of agents.
+	b.WriteString(`<option value=""` + sel("") + `>` +
+		html.EscapeString(defaultAgentName()) + `</option>`)
+	for _, a := range agents {
+		b.WriteString(`<option value="` + html.EscapeString(a.ID) + `"` + sel(a.ID) + `>` +
+			html.EscapeString(a.Name) + `</option>`)
+	}
+	b.WriteString(`</select></label>`)
+	return b.String()
+}
+
+// defaultAgentName is what to call the agent an account gets without making
+// one. A hook would be a third one for a single word; the roster hook does not
+// carry it because the default is not on the roster.
+func defaultAgentName() string {
+	if DefaultAgentName != "" {
+		return DefaultAgentName
+	}
+	return "the default agent"
+}
+
+// DefaultAgentName is the instance's own agent, filled in by the server for the
+// same reason Agents is: this package may not import agent/.
+var DefaultAgentName string
+
+// chosenAgent is the agent an assignment names, validated against the roster.
+//
+// A form field is chosen by whoever posts it, so an id that is not one of this
+// account's agents is not an agent — it becomes the default rather than an
+// error, which is what agent/work does with an unknown name for the same
+// reason. Nothing downstream could reach somebody else's agent with it either
+// (AskAs is account-scoped), but a task should not be stored carrying a value
+// that means nothing.
+func chosenAgent(accountID, want string) string {
+	want = strings.TrimSpace(want)
+	if want == "" {
+		return ""
+	}
+	for _, a := range roster(accountID) {
+		if a.ID == want {
+			return want
+		}
+	}
+	return ""
 }
 
 // assignJS opens the dialog, and degrades rather than breaking.

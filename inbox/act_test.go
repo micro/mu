@@ -35,7 +35,7 @@ func reader(t *testing.T, id string) {
 // move is that the details are already in the messages above it.
 func TestAConversationCarriesTheAssignDialog(t *testing.T) {
 	r := httptest.NewRequest("GET", "/inbox?id=x", nil)
-	body := assignDialog(r, "x", "")
+	body := assignDialog(r, "dlg-x", &thread.Thread{ID: "x"}, "")
 
 	for _, want := range []string{`method="post"`, `action="/inbox"`,
 		`name="id" value="x"`, `name="_csrf"`, `name="ask"`} {

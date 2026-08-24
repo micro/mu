@@ -116,7 +116,7 @@ func TestAReplyCannotBeFiledOntoSomebodyElsesThread(t *testing.T) {
 func TestHandingOverSaysItRegistered(t *testing.T) {
 	r := httptest.NewRequest("GET", "/inbox?id=x", nil)
 
-	box := assignDialog(r, "x", "henrik@example.com")
+	box := assignDialog(r, "dlg-x", &thread.Thread{ID: "x"}, "henrik@example.com")
 	if !strings.Contains(box, "disabled=true") {
 		t.Error("it can be pressed again, which is two tasks for one instruction")
 	}

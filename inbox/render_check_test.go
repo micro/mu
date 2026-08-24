@@ -34,7 +34,7 @@ func TestTheAssignButtonAlwaysHasItsDialog(t *testing.T) {
 	// Offered: both halves.
 	r := httptest.NewRequest("GET", "/inbox?id="+th.ID, nil)
 	with := conversationPane(who, live, msgs, false, false,
-		assignDialog(r, th.ID, replyTo(who, live, msgs)))
+		assignDialog(r, who, live, replyTo(who, live, msgs)))
 	if !strings.Contains(with, "Assign to agent") {
 		t.Error("no way to assign on the page that offers one")
 	}

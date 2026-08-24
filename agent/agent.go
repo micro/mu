@@ -818,7 +818,7 @@ func renderSessionsRail(accountID, currentID, agentID string, named bool) string
 	}
 	var b strings.Builder
 	b.WriteString(`<aside class="chat-rail"><button class="chat-new" onclick="if(window.muChatNew){muChatNew();history.replaceState(null,''` +
-		`,` + app.JSString(newURL) + `);document.querySelectorAll('.chat-sess.active').forEach(function(e){e.classList.remove('active')});}">+ New</button>` +
+		`,` + app.JSAttr(newURL) + `);document.querySelectorAll('.chat-sess.active').forEach(function(e){e.classList.remove('active')});}">+ New</button>` +
 		`<div class="chat-sess-head">Conversations</div><div class="chat-sess-list">`)
 	if len(sessions) == 0 {
 		// An empty inbox says how to fill it, and the answer is an address.
@@ -866,7 +866,7 @@ func renderSessionsRail(accountID, currentID, agentID string, named bool) string
 			`" class="` + cls + `">` + htmlEsc(title) + where + `</a>` +
 			`<button type="button" class="row-del" title="Delete conversation" ` +
 			`aria-label="Delete this conversation" ` +
-			`onclick="muSessionDelete(` + app.JSString(s.ID) + `,event)">&times;</button></div>`)
+			`onclick="muSessionDelete(` + app.JSAttr(s.ID) + `,event)">&times;</button></div>`)
 	}
 	if len(sessions) >= railShown {
 		b.WriteString(`<a class="chat-sess-more" href="/recall">Older conversations →</a>`)

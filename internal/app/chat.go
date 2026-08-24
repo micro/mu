@@ -8,12 +8,36 @@ import (
 
 // JSString returns s as a safely-quoted JavaScript string literal (with
 // surrounding quotes) for embedding in inline scripts.
+//
+// In a <script> block only. The quotes it produces are double quotes, so
+// putting one inside a double-quoted HTML attribute ends the attribute — see
+// JSAttr, which is for that and exists because this was used there twice.
 func JSString(s string) string {
 	b, err := json.Marshal(s)
 	if err != nil {
 		return `""`
 	}
 	return string(b)
+}
+
+// JSAttr is JSString for an inline handler: onclick="f(<here>)".
+//
+// The same literal with its quotes HTML-escaped, so the attribute survives.
+// The parser turns &#34; back into a quote before the JavaScript is compiled,
+// so what runs is exactly what JSString produced.
+//
+// This exists because the plain one was used in two attributes and both were
+// broken in a way nothing catches by reading:
+//
+//	onclick="muSessionDelete("fe3918b6…",event)"
+//
+// The attribute ends at the first quote, so the handler is the fragment
+// `muSessionDelete(` — a syntax error, and the browser's complaint is
+// "Unexpected end of input", which names neither the button nor the id. The
+// delete cross on a conversation did nothing at all, and so did + New, for as
+// long as both have existed.
+func JSAttr(s string) string {
+	return htmlpkg.EscapeString(JSString(s))
 }
 
 // ChatConfig configures the shared chat component.

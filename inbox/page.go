@@ -388,7 +388,7 @@ func conversation(w http.ResponseWriter, r *http.Request, accountID, id string) 
 	// saying what it is not.
 	msgs := thread.Messages(accountID, t.ID, MessagesShown)
 	b.WriteString(conversationPane(accountID, t, msgs, len(msgs) >= MessagesShown, false,
-		assignDialog(r, t.ID, replyTo(accountID, t, msgs))))
+		assignDialog(r, accountID, t, replyTo(accountID, t, msgs))))
 	b.WriteString(`</div>`)
 
 	app.Respond(w, r, app.Response{Title: subject, Description: "A conversation", HTML: b.String()})
