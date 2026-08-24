@@ -82,7 +82,8 @@ func action(w http.ResponseWriter, r *http.Request, accountID string) {
 		return
 	}
 
-	if err := hand(accountID, t, ask); err != nil {
+	// Which agent, validated against the roster before anything is stored.
+	if err := hand(accountID, t, ask, chosenAgent(accountID, r.FormValue("agent"))); err != nil {
 		app.Log("inbox", "handing a conversation to an agent failed: %v", err)
 		http.Redirect(w, r, back+"&problem="+url.QueryEscape(err.Error()), http.StatusSeeOther)
 		return
@@ -107,7 +108,7 @@ func action(w http.ResponseWriter, r *http.Request, accountID string) {
 // a line, no history — which is exactly why work handed off in one sentence
 // comes back worse than the same request in a conversation that already has the
 // context. This carries what was said, so it does not.
-func hand(accountID string, t *thread.Thread, ask string) error {
+func hand(accountID string, t *thread.Thread, ask, agentID string) error {
 	title := ask
 	if len(title) > handTitle {
 		title = strings.TrimSpace(title[:handTitle]) + "…"
@@ -136,15 +137,18 @@ func hand(accountID string, t *thread.Thread, ask string) error {
 	}
 	detail.WriteString("What they have asked for: " + ask)
 
-	// t.Agent, so the conversation is handed to the agent it is already with.
+	// Whoever was picked, and the conversation's own agent when nothing was.
 	//
-	// Without it every hand-over ran the default agent, whatever the thread was.
-	// A conversation that arrived at asim+research@ is research's — answering it
-	// as the general agent is the wrong agent with the wrong tools, and it made
-	// having more than one pointless in the one place work is actually given
-	// away. Empty for a thread with no agent, which is the ordinary case and
-	// means the default.
-	task, err := tasks.CreateOn(accountID, t.ID, t.Agent, title, detail.String(), tasks.Agent, time.Time{})
+	// The picker defaults to t.Agent, so an unchanged form hands the thread to
+	// the agent it is already with — and a thread that has never been answered
+	// by one goes to the default, which is what happened to everything before
+	// any of this. A conversation that arrived at asim+research@ is research's;
+	// answering it as the general agent is the wrong instruction and the wrong
+	// tool scope.
+	if agentID == "" {
+		agentID = t.Agent
+	}
+	task, err := tasks.CreateOn(accountID, t.ID, agentID, title, detail.String(), tasks.Agent, time.Time{})
 	if err != nil {
 		return err
 	}

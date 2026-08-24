@@ -847,11 +847,48 @@ that same file, so this page does not repeat twenty-six rows.
 
 ### CLI
 
+The same binary is the client. `mu --serve` runs an instance; `mu news list`,
+`mu ask`, `mu agent` call one — and **which one is a separate question from
+whether this machine is running a server.**
+
+By default the CLI calls **https://micro.mu**, the instance this project runs.
+That is deliberate: the first thing anybody does with a command-line tool is
+run it, and "no server configured" is a worse first answer than a result. It
+does mean that if you have just installed your own instance and typed
+`mu news list`, you have called somebody else's — so point it at yours:
+
+```bash
+mu login https://your.host      # saves the address and a token, for good
+```
+
+Everything after that goes to your instance: the tool commands, `mu ask`,
+`mu agent` renting tools over x402, and `mu x402 call`.
+
+To check what is in force, and what decided it:
+
+```bash
+$ mu config get
+url=https://your.host (/home/you/.config/mu/config.json)
+token=***
+```
+
+The four sources, strongest first:
+
+| Source | Example | Scope |
+|---|---|---|
+| `--url` | `mu --url https://other.host news list` | One command. Must come *before* the tool name — `mu web fetch --url …` is the fetch tool's own argument |
+| `MU_URL` | `MU_URL=https://other.host mu news list` | One shell |
+| Config file | written by `mu login <url>` | Permanent, per user |
+| Default | `https://micro.mu` | When nothing else says |
+
 | Variable | What it does |
 |---|---|
-| `MU_TOKEN` | Personal Access Token |
-| `MU_URL` | Instance to talk to — defaults to the hosted one |
+| `MU_TOKEN` | Personal Access Token. Overrides the saved one |
+| `MU_URL` | Instance to talk to. Overrides the saved one |
 | `MU_NO_COLOR` | Disable colour output |
+
+A token belongs to the instance that issued it, so changing the address
+without changing the token gets you a 401 — `mu login <url>` does both.
 
 ### Object storage and generation policy
 

@@ -95,6 +95,18 @@ mu --serve
 Everything else — mail and DKIM, Google sign-in, Stripe, x402 — is optional,
 and configurable from `/admin/config` once you are signed in as admin.
 
+The same binary is the client, and by default it calls **https://micro.mu** —
+the instance this project runs. Running your own? Point it there once:
+
+```bash
+mu login https://your.host   # saves the address and a token
+mu config get                # says which instance is in use, and why
+```
+
+Without that, `mu news list` on the machine you just installed calls the
+hosted instance rather than the one you are running. `MU_URL` and `--url`
+override per shell and per command.
+
 Other ways to run it:
 
 ```bash

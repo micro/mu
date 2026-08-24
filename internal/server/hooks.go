@@ -321,6 +321,12 @@ func wireHooks() {
 	// The roster, so the inbox can offer a box per agent rather than only the
 	// ones that already have mail — and so a box is the agent's address tag
 	// rather than a second slug derived from its name. See inbox.Agents.
+	// What to call the agent an account gets without making one, so the assign
+	// picker reads as a list of agents rather than "default" and some names.
+	if a := agent.Platform(""); a != nil {
+		inbox.DefaultAgentName = a.Name
+	}
+
 	inbox.Agents = func(owner string) []inbox.Agent {
 		var out []inbox.Agent
 		for _, a := range agent.Agents(owner) {

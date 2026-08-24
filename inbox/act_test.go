@@ -190,7 +190,7 @@ func TestHandingOverMakesATaskOnTheConversation(t *testing.T) {
 	})
 	_ = agentSaidNothing
 
-	if err := hand(who, th, "Pull the numbers and summarise them"); err != nil {
+	if err := hand(who, th, "Pull the numbers and summarise them", ""); err != nil {
 		t.Fatal(err)
 	}
 
@@ -281,5 +281,96 @@ func TestHandingOverWithoutAnAgentIsStillTheDefault(t *testing.T) {
 	}
 	if task.Agent != "" {
 		t.Errorf("Agent = %q, want empty so the default answers", task.Agent)
+	}
+}
+
+// Picking an agent in the dialog sends the work to that one.
+//
+// Before the picker there was no question asked: the conversation's own agent
+// was used, and that is only ever set once an agent has answered on the thread
+// — which for mail to a bare address is never. So an account with four agents
+// handed everything to the default one and nothing on the page said so.
+func TestThePickerDecidesWhoGetsTheWork(t *testing.T) {
+	const who = "act-picker"
+	reader(t, who)
+	Agents = func(owner string) []Agent {
+		return []Agent{{ID: "research", Name: "Research", Tag: "research"},
+			{ID: "money", Name: "Money", Tag: "money"}}
+	}
+	t.Cleanup(func() { Agents = nil })
+
+	th := thread.Open(who, "mail", "<picker@example.com>")
+	if th == nil {
+		t.Fatal("no conversation")
+	}
+
+	form := url.Values{"id": {th.ID}, "ask": {"deal with this"}, "agent": {"money"}}
+	r := httptest.NewRequest("POST", "/inbox", strings.NewReader(form.Encode()))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	action(httptest.NewRecorder(), r, who)
+
+	task := taskOn(t, who, th.ID)
+	if task == nil {
+		t.Fatal("no task was made")
+	}
+	if task.Agent != "money" {
+		t.Errorf("the work went to %q, want money — the picker was ignored", task.Agent)
+	}
+}
+
+// An agent id that is not one of yours is not an agent.
+//
+// The field is posted by whoever submits the form. Nothing downstream could
+// reach somebody else's agent with it — AskAs is account-scoped — but a task
+// should not be stored carrying a value that means nothing, and falling back
+// to the default is what agent/work does with an unknown name anyway.
+func TestAForgedAgentFallsBackToTheDefault(t *testing.T) {
+	const who = "act-forged"
+	reader(t, who)
+	Agents = func(owner string) []Agent {
+		return []Agent{{ID: "research", Name: "Research", Tag: "research"}}
+	}
+	t.Cleanup(func() { Agents = nil })
+
+	th := thread.Open(who, "mail", "<forged@example.com>")
+	if th == nil {
+		t.Fatal("no conversation")
+	}
+
+	form := url.Values{"id": {th.ID}, "ask": {"deal with this"},
+		"agent": {"somebody-elses-agent"}}
+	r := httptest.NewRequest("POST", "/inbox", strings.NewReader(form.Encode()))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	action(httptest.NewRecorder(), r, who)
+
+	task := taskOn(t, who, th.ID)
+	if task == nil {
+		t.Fatal("no task was made")
+	}
+	if task.Agent != "" {
+		t.Errorf("Agent = %q, want empty so the default answers", task.Agent)
+	}
+}
+
+// The dialog offers a choice only when there is one to make.
+func TestThePickerIsOnlyDrawnWhenThereAreAgents(t *testing.T) {
+	r := httptest.NewRequest("GET", "/inbox?id=x", nil)
+	th := &thread.Thread{ID: "x"}
+
+	Agents = nil
+	if got := assignDialog(r, "nobody", th, ""); strings.Contains(got, `name="agent"`) {
+		t.Error("a picker with nothing in it is furniture that teaches nothing")
+	}
+
+	Agents = func(owner string) []Agent {
+		return []Agent{{ID: "research", Name: "Research", Tag: "research"}}
+	}
+	t.Cleanup(func() { Agents = nil })
+	got := assignDialog(r, "somebody", th, "")
+	if !strings.Contains(got, `name="agent"`) {
+		t.Error("no way to choose which agent gets it")
+	}
+	if !strings.Contains(got, `>Research</option>`) {
+		t.Errorf("the roster is not offered:\n%s", got)
 	}
 }

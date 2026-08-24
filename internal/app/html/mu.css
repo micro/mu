@@ -5874,6 +5874,28 @@ button.pill:hover {
    them, which is the one button that does something. */
 .ib-assign .ib-ask-hints { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px }
 .ib-assign .ib-ask-row { margin-top: 14px; gap: 12px }
+
+/* Which agent gets it. A label and its select on one line, because it is one
+   short question and stacking it would give it more weight than the box above
+   that actually says what to do. */
+.ib-assign-who {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--text-muted, #888);
+}
+.ib-assign-who select {
+  font: inherit;
+  font-size: 13px;
+  color: var(--text-primary, #111);
+  padding: 5px 8px;
+  border: var(--border-width, 1px) solid var(--card-border, #ddd);
+  border-radius: var(--border-radius, 6px);
+  background: var(--card-background, #fff);
+  max-width: 220px;
+}
 /* No rule above the box: inside a dialog there is nothing to separate it from. */
 .ib-assign .ib-ask { margin-top: 0; padding-top: 0; border-top: 0 }
 .ib-assign-cancel {
