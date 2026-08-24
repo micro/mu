@@ -110,7 +110,9 @@ mu --serve
 
 See the [installation guide](docs/INSTALL.md).
 
-## Connect via MCP
+## Use the Tools
+
+If you just want to use the tools with an existing agent.
 
 **Cursor, and clients with a config file.** Create a token at
 [/token](https://micro.mu/token):
