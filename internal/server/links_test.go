@@ -24,7 +24,7 @@ package server
 //
 // # What this does not check
 //
-// Fragments. /billing#balance resolves to /billing here whether or not
+// Fragments. /billing resolves to /billing here whether or not
 // anything on that page has id="balance", because knowing that means
 // rendering the page for an account that does not exist. The path is the half
 // that breaks when a page moves; the anchor is the half that breaks when a

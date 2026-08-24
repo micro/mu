@@ -221,6 +221,88 @@ func TestARegisteredKeyGetsThroughTheHandshake(t *testing.T) {
 	}
 }
 
+// A plus sign in the username survives the handshake.
+//
+// Worth a test rather than an opinion, because the obvious guess is that it
+// does not — a `+` is illegal in a POSIX username on most systems, which is
+// where the instinct comes from. It is not a POSIX username. SSH carries the
+// user as an arbitrary UTF-8 string, the OpenSSH client splits `user@host` on
+// the last `@` and treats everything before it as opaque, and nothing on this
+// side maps it to an account on the host.
+//
+// So `ssh asim+research@micro.mu` reaches this server with the user set to
+// "asim+research", intact, which is what an address-shaped username would need
+// in order to mean anything. Whether it should mean anything is a separate
+// question — see TestTheUsernameDecidesNothing, which is the reason it means
+// nothing today.
+func TestAPlusInTheUsernameReachesTheServer(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	signer, err := ssh.NewSignerFromKey(priv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sshPub, err := ssh.NewPublicKey(pub)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := auth.AddSSHKey("asim", "test",
+		strings.TrimSpace(string(ssh.MarshalAuthorizedKey(sshPub))),
+		ssh.FingerprintSHA256(sshPub)); err != nil {
+		t.Fatal(err)
+	}
+
+	// The real server's callback, wrapped only to record what it was handed.
+	// Wrapping rather than reimplementing: a test that built its own
+	// PublicKeyCallback would prove x/crypto works, not that this server does.
+	cfg, err := sshConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := make(chan string, 1)
+	inner := cfg.PublicKeyCallback
+	cfg.PublicKeyCallback = func(c ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
+		select {
+		case seen <- c.User():
+		default:
+		}
+		return inner(c, key)
+	}
+
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ln.Close()
+	go accept(ln, cfg)
+
+	const addressed = "asim+research"
+	client, err := ssh.Dial("tcp", ln.Addr().String(), &ssh.ClientConfig{
+		User:            addressed,
+		Auth:            []ssh.AuthMethod{ssh.PublicKeys(signer)},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		Timeout:         10 * time.Second,
+	})
+	if err != nil {
+		t.Fatalf("a username with a + in it could not connect: %v", err)
+	}
+	defer client.Close()
+
+	select {
+	case got := <-seen:
+		if got != addressed {
+			t.Errorf("the server saw %q, not %q — something rewrote the username "+
+				"on the way in, and an address-shaped one would arrive mangled", got, addressed)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the callback never ran")
+	}
+}
+
 // The host key survives a restart, or every client shouts about it.
 func TestTheHostKeyIsKept(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())

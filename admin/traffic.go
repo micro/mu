@@ -81,16 +81,11 @@ func TrafficHandler(w http.ResponseWriter, r *http.Request) {
 
 // trafficTabs is the switch between what came in and what it cost.
 func trafficTabs(spend bool) string {
-	tab := func(href, label string, on bool) string {
-		class := "pill"
-		if on {
-			class = "pill pill-on"
-		}
-		return `<a class="` + class + `" href="` + href + `">` + label + `</a>`
-	}
+	// app.PillLink — see the note on the Logs tabs, which had the same
+	// invented class and the same invisible selected state.
 	return `<div class="d-flex gap-2 mb-3">` +
-		tab("/admin/traffic", "Requests", !spend) +
-		tab("/admin/traffic?tab=spend", "Spend", spend) +
+		app.PillLink("Requests", "/admin/traffic", !spend) +
+		app.PillLink("Spend", "/admin/traffic?tab=spend", spend) +
 		`</div>`
 }
 

@@ -331,11 +331,15 @@ func PasskeyListHTML(accountID string) string {
 		if !pk.LastUsed.IsZero() {
 			lastUsed = app.TimeAgo(pk.LastUsed)
 		}
+		// data-label on every cell, because under 640px .data-table.stacked
+		// turns the row into a card and the label is what says which date is
+		// which. Four columns of passkey do not fit across a phone, and a
+		// table that is width:100% squashes rather than scrolling.
 		rows += fmt.Sprintf(`<tr>
-<td>%s</td>
-<td>%s</td>
-<td>%s</td>
-<td><form method="POST" action="/passkey/delete" onsubmit="return confirm('Remove this passkey?')"><input type="hidden" name="id" value="%s"><button type="submit">Remove</button></form></td>
+<td data-label="Name">%s</td>
+<td data-label="Created">%s</td>
+<td data-label="Last used">%s</td>
+<td><form method="POST" action="/passkey/delete" onsubmit="return confirm('Remove this passkey?')"><input type="hidden" name="id" value="%s"><button type="submit" class="mini-btn danger">Remove</button></form></td>
 </tr>`, pk.Name, created, lastUsed, pk.ID)
 	}
 
@@ -346,13 +350,11 @@ func PasskeyListHTML(accountID string) string {
 	return fmt.Sprintf(`<div class="card">
 <h4>Passkeys</h4>
 <p>Sign in without a password using your device's biometrics or security key.</p>
-<div class="scroll-x">
-<table>
-<thead><tr><th>Name</th><th>Created</th><th>Last Used</th><th></th></tr></thead>
+<table class="data-table stacked">
+<thead><tr><th>Name</th><th>Created</th><th>Last used</th><th></th></tr></thead>
 <tbody>%s</tbody>
 </table>
-</div>
-<button onclick="registerPasskey()" class="mt-4">Add Passkey</button>
+<button onclick="registerPasskey()">Add a passkey</button>
 <script>
 async function registerPasskey() {
   try {

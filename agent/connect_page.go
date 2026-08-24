@@ -121,12 +121,25 @@ func connEndpoint(base, path string) string {
 		return ""
 	}
 	url := strings.TrimSuffix(base, "/") + path
-	// "API endpoint", not "Endpoint". The other block on this page is the MCP
-	// configuration, which is also an endpoint, so the bare word named one of
-	// two things and distinguished neither.
-	return `<h3 class="conn-head">API endpoint</h3>` +
+	// "HTTP endpoint", not "API endpoint". The other block on this page is the
+	// MCP configuration, which is also an endpoint, so the bare word named one
+	// of two things and distinguished neither — but "API" was the wrong repair,
+	// because this instance has an API and this is not part of it.
+	//
+	// /api/v1/<service>/<method> is derived: it turns a path into a tool name
+	// and hands it to the same ExecuteTool that /mcp calls, so it has no route
+	// table of its own and nothing appears in it that is not a service. An
+	// agent is not a service — it reads the catalogue rather than sitting in
+	// it — so there is no /api/v1/agent and there should not be one.
+	//
+	// Calling this "API endpoint" set the opposite expectation, and the first
+	// thing anybody does with an expectation like that is go looking for the
+	// path that would satisfy it. This is the third door, beside /mcp and
+	// /api/v1/, and naming it for its protocol says so.
+	return `<h3 class="conn-head">HTTP endpoint</h3>` +
 		`<p class="conn-note">Ask it a question from a program. Same agent, same ` +
-		`instruction, same conversation as the chat above.</p>` +
+		`instruction, same conversation as the chat above. This is the agent's own ` +
+		`door — the tools have their own at ` + app.TextLink("/api", "/api") + `.</p>` +
 		`<pre class="conn-pre">` + html.EscapeString(`curl -X POST `+url+` \
   -H "Authorization: Bearer $MU_TOKEN" \
   -H "Content-Type: application/json" \

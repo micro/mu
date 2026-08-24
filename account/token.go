@@ -151,7 +151,12 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	// GitHub's name for the thing rather than a description of it — three words
 	// where one is unambiguous. PAT stays in the code, where it distinguishes
 	// this from a session and an OAuth grant.
-	sb.WriteString(`<h3>Tokens</h3>`)
+	// "API tokens" and not "Tokens", because the page is /token and is titled
+	// Tokens — so a section heading of the same one word said nothing about
+	// what was under it. There are two kinds of credential on this page and
+	// this is the one you paste into an Authorization header; the other is an
+	// OAuth client, further down, and now the two headings tell them apart.
+	sb.WriteString(`<h3>API tokens</h3>`)
 	sb.WriteString(`<p class="text-secondary text-sm">For API authentication. Use with <code>Authorization: Bearer TOKEN</code> header.</p>`)
 
 	sb.WriteString(`<div id="token-result" class="success-panel d-none">`)
@@ -173,7 +178,11 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	// "read, write, service:news, service:markets" and the only settable half
 	// was the one whose prefix was showing. Nothing could set the other half,
 	// which is exactly what it looked like.
-	sb.WriteString(`<table class="token-table"><thead><tr><th>Name</th><th>May reach</th><th>Created</th><th>Last Used</th><th>Expires</th><th></th></tr></thead><tbody>`)
+	// .data-table.stacked, not .token-table. There is no .token-table anywhere
+	// in mu.css — it was a class name invented at the call site, so both tables
+	// on this page were unstyled browser defaults, and on a phone six columns
+	// squashed to a few characters each.
+	sb.WriteString(`<table class="data-table stacked"><thead><tr><th>Name</th><th>May reach</th><th>Created</th><th>Last Used</th><th>Expires</th><th></th></tr></thead><tbody>`)
 	tokens := auth.ListTokens(accountID)
 	if len(tokens) == 0 {
 		sb.WriteString(`<tr><td colspan="6" class="p-5 text-center text-secondary">No tokens yet.</td></tr>`)
@@ -191,19 +200,34 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 		if !token.Created.IsZero() {
 			created = app.TimeAgo(token.Created)
 		}
-		sb.WriteString(fmt.Sprintf(`<tr><td data-label="Name">%s</td><td data-label="Permissions">%s</td><td data-label="Created">%s</td><td data-label="Last Used">%s</td><td data-label="Expires">%s</td><td>
+		sb.WriteString(fmt.Sprintf(`<tr><td data-label="Name">%s</td><td data-label="May reach">%s</td><td data-label="Created">%s</td><td data-label="Last used">%s</td><td data-label="Expires">%s</td><td>
 			<form method="POST" action="/token?id=%s" class="d-inline" onsubmit="return confirm('Delete?')">
 			<input type="hidden" name="_method" value="DELETE"><button type="submit" class="text-sm">Delete</button></form></td></tr>`,
 			token.Name, tokenScope(token), created, lastUsed, expires, token.ID))
 	}
 	sb.WriteString(`</tbody></table>`)
 
-	sb.WriteString(`<h4 class="mt-5">Create Token</h4>`)
+	// Every field says what it is.
+	//
+	// The form was a heading and then three unlabelled controls, so "Create
+	// Token" was sitting directly above the name box doing a field label's job
+	// — read as one, it is the wrong word. A placeholder is not a label either:
+	// it disappears the moment you type, and "e.g. CI/CD" over an empty box is
+	// the only thing that ever said what the box was for.
+	sb.WriteString(`<h4 class="mt-5">Create a token</h4>`)
 	sb.WriteString(`<form id="create-token-form" onsubmit="createToken(event)">`)
-	sb.WriteString(`<div class="mb-3"><input type="text" name="name" required placeholder="e.g. CI/CD"></div>`)
-	sb.WriteString(`<div class="mb-3"><select name="expires_in">`)
-	sb.WriteString(`<option value="0">Never</option><option value="7">7 days</option><option value="30">30 days</option>`)
-	sb.WriteString(`<option value="90" selected>90 days</option><option value="365">1 year</option></select></div>`)
+	sb.WriteString(`<div class="mb-3">` + app.Field{
+		Name: "name", Label: "Name", Placeholder: "e.g. CI/CD", Required: true, Wide: true,
+	}.HTML() + `</div>`)
+	sb.WriteString(`<div class="mb-3">` + app.Field{
+		Name: "expires_in", Label: "Expires", Options: []app.Option{
+			{Value: "0", Label: "Never"},
+			{Value: "7", Label: "7 days"},
+			{Value: "30", Label: "30 days"},
+			{Value: "90", Label: "90 days", On: true},
+			{Value: "365", Label: "1 year"},
+		},
+	}.HTML() + `</div>`)
 
 	// What it may reach, on the page that hands out the credential.
 	//
@@ -245,7 +269,7 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 		</div>`, newClientID, newClientSecret))
 	}
 
-	sb.WriteString(`<table class="token-table"><thead><tr><th>Name</th><th>Client ID</th><th>Created</th><th></th></tr></thead><tbody>`)
+	sb.WriteString(`<table class="data-table stacked"><thead><tr><th>Name</th><th>Client ID</th><th>Created</th><th></th></tr></thead><tbody>`)
 	oauthClients := auth.OAuthClientsFor(accountID)
 	if len(oauthClients) == 0 {
 		sb.WriteString(`<tr><td colspan="4" class="p-5 text-center text-secondary">No OAuth clients yet.</td></tr>`)
@@ -258,9 +282,11 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	}
 	sb.WriteString(`</tbody></table>`)
 
-	sb.WriteString(`<h4 class="mt-5">Create OAuth Client</h4>`)
+	sb.WriteString(`<h4 class="mt-5">Create an OAuth client</h4>`)
 	sb.WriteString(`<form method="POST" action="/token?create_client=1">`)
-	sb.WriteString(`<div class="mb-3"><input type="text" name="client_name" placeholder="e.g. Claude" required></div>`)
+	sb.WriteString(`<div class="mb-3">` + app.Field{
+		Name: "client_name", Label: "Name", Placeholder: "e.g. Claude", Required: true, Wide: true,
+	}.HTML() + `</div>`)
 	// The address is half of what a client is. Without it there is nowhere a
 	// code may be sent, and a client registered without one can never complete
 	// a sign-in — which is what every client made on this form used to be.
@@ -272,9 +298,10 @@ func handleTokenPage(w http.ResponseWriter, r *http.Request, accountID, sessionI
 	// naming the old one would have been confidently wrong for months. What
 	// helps is showing the shape and saving the typing for the two that are
 	// actually common.
-	sb.WriteString(`<div class="mb-3"><input type="text" name="redirect_uri" ` +
-		`list="redirect-suggestions" placeholder="Redirect URL, e.g. https://example.com/callback" ` +
-		` class="w-full">` +
+	sb.WriteString(`<div class="mb-3"><label class="field-label">Redirect URL` +
+		`<input type="text" name="redirect_uri" ` +
+		`list="redirect-suggestions" placeholder="https://example.com/callback" ` +
+		`class="field field-wide"></label>` +
 		`<datalist id="redirect-suggestions">` +
 		`<option value="http://localhost:0/callback">Command-line or desktop client</option>` +
 		`<option value="https://claude.ai/api/mcp/auth_callback">Claude custom connector</option>` +

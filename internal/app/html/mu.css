@@ -2821,6 +2821,17 @@ a.highlight {
 .min-w-0 { min-width: 0; }
 .scroll-x { overflow-x: auto; }
 
+/* A table inside a horizontal scroller has to be allowed to be wider than the
+ * scroller. Every one of them is width:100%, which means it fits by definition,
+ * which means overflow-x never has anything to overflow — so on a phone the
+ * columns squash to a few characters each and the scrollbar the wrapper exists
+ * to provide never appears. Seven columns of admin log in 390px is unreadable
+ * and looks like a layout bug, which is exactly what it is.
+ *
+ * A floor rather than a fixed width: on a desktop it is under the container and
+ * changes nothing, and on a phone it is over it and the table scrolls. */
+.scroll-x > table { min-width: 560px; }
+
 /* Display */
 .d-block { display: block; }
 .d-inline-block { display: inline-block; }
@@ -3572,6 +3583,48 @@ button.btn-plain { padding: 6px 12px; font: inherit; cursor: pointer; color: var
   background: var(--hover-background);
 }
 
+/* On a phone, a row becomes a card.
+ *
+ * Six columns of token — name, scope, created, last used, expires, delete —
+ * do not fit across 390px, and a table that is width:100% does not overflow,
+ * so it squashes instead: five characters a column and a header row of single
+ * letters. Scrolling sideways is the other answer and it is the wrong one for
+ * a list you read down.
+ *
+ * The markup for this has been in place the whole time. Every cell carries a
+ * data-label attribute — written for exactly this and never given a rule, so
+ * the attributes sat in the HTML doing nothing. This is that rule. */
+@media (max-width: 640px) {
+  .data-table.stacked thead { display: none; }
+  .data-table.stacked tbody tr {
+    display: block;
+    padding: 10px 0;
+    border-bottom: var(--border-width, 1px) solid var(--card-border, #eee);
+    background: none;
+  }
+  .data-table.stacked td {
+    display: flex;
+    gap: 16px;
+    align-items: baseline;
+    justify-content: space-between;
+    text-align: right;
+    border: 0;
+    padding: 3px 0;
+  }
+  /* The label is the column header, said per row. A cell with no data-label
+     is an action — the Delete button — and gets the row to itself. */
+  .data-table.stacked td[data-label]::before {
+    content: attr(data-label);
+    flex: none;
+    color: var(--text-muted, #888);
+    font-size: 12px;
+    text-align: left;
+  }
+  .data-table.stacked td:not([data-label]) { justify-content: flex-start; padding-top: 8px; }
+  /* The empty-state row spans the table and has no labels to lay out. */
+  .data-table.stacked td[colspan] { display: table-cell; text-align: center; }
+}
+
 /* A button that reads as a link. For a row action — Share, Remove, Delete —
    where a filled button would shout, and where the thing being acted on is the
    row rather than the page. */
@@ -3893,7 +3946,6 @@ a.btn-secondary:hover, .btn-secondary:hover {
   border-radius: var(--border-radius, 6px);
   padding: 16px;
   margin-bottom: 12px;
-  padding-bottom: var(--spacing-lg);
   background: var(--card-background, #fff);
   box-shadow: var(--shadow-sm);
   transition: box-shadow 0.15s;
@@ -3901,6 +3953,20 @@ a.btn-secondary:hover, .btn-secondary:hover {
 .card:hover {
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
+
+/* The last thing in a card does not add its own margin to the card's padding.
+ *
+ * Reported as "a lot of the cards in /account have too much pad at the bottom",
+ * and it was two things stacked. The card set padding:16px and then
+ * padding-bottom:24px over it, so the bottom was already eight pixels deeper
+ * than the sides for no stated reason; and a card whose last element is a
+ * paragraph or a table adds that element's own margin-bottom underneath —
+ * 32px for .data-table — which padding does not collapse away. A card ending
+ * in a table had 56px of nothing under it.
+ *
+ * One rule rather than a class to remember, because the shape is universal:
+ * whatever is last, the card's own padding is the space below it. */
+.card > :last-child { margin-bottom: 0; }
 
 /* Card elements */
 .card-title {

@@ -105,15 +105,37 @@ func PlaceCard(r *http.Request, accountID string) string {
 	if acc.Lat != 0 || acc.Lon != 0 {
 		// Said, not just shown: two numbers under a button are not self-evidently
 		// the thing that was saved.
-		at = `<span class="place-at">Saved: ` +
-			fmt.Sprintf("%.2f, %.2f", acc.Lat, acc.Lon) + `</span>`
+		saved := fmt.Sprintf("%.2f, %.2f", acc.Lat, acc.Lon)
+		if acc.Zone != "" {
+			saved += " (" + acc.Zone + ")"
+		}
+		at = `<span class="place-at">Saved: ` + saved + `</span>`
+	}
+
+	// A way back out.
+	//
+	// SetPlace has always cleared on empty input — that is what its own comment
+	// says is "how somebody takes it back" — but nothing on the page could
+	// produce empty input. The coordinates and the timezone are in hidden
+	// fields carrying whatever was saved last, so clearing the visible name box
+	// and pressing Save kept both, and the button that fills them in has no
+	// opposite. Somebody who let a browser locate them once was located for
+	// good.
+	//
+	// Only offered when there is something to forget.
+	var extra []app.Button
+	extra = append(extra, app.Button{Label: "Use my location", Kind: app.Quiet,
+		Type: "button", OnClick: "muUseMyLocation(this)"})
+	if acc.Place != "" || acc.Lat != 0 || acc.Lon != 0 || acc.Zone != "" {
+		extra = append(extra, app.Button{Label: "Forget it", Kind: app.Quiet,
+			Type: "button", OnClick: "muForgetLocation(this)"})
 	}
 
 	form := app.Form{
 		Action: "/account/place",
 		CSRF:   auth.CSRFToken(r),
 		Fields: []app.Field{
-			{Name: "place", Value: acc.Place, Max: 120, Placeholder: "London"},
+			{Name: "place", Label: "Town or city", Value: acc.Place, Max: 120, Placeholder: "London"},
 			{Name: "lat", ID: "place-lat", Type: "hidden",
 				Value: strconv.FormatFloat(acc.Lat, 'f', -1, 64)},
 			{Name: "lon", ID: "place-lon", Type: "hidden",
@@ -121,8 +143,7 @@ func PlaceCard(r *http.Request, accountID string) string {
 			{Name: "zone", ID: "place-zone", Type: "hidden", Value: acc.Zone},
 		},
 		Submit: "Save",
-		Extra: []app.Button{{Label: "Use my location", Kind: app.Quiet,
-			Type: "button", OnClick: "muUseMyLocation(this)"}},
+		Extra:  extra,
 	}
 
 	return app.SectionID("place", "Where you are",
@@ -146,6 +167,17 @@ function muUseMyLocation(btn){
     try{document.getElementById('place-zone').value=Intl.DateTimeFormat().resolvedOptions().timeZone||''}catch(e){}
     btn.textContent='Got it — press Save';
   },function(){btn.textContent='Could not locate'},{timeout:8000});
+}
+// The opposite. Empties every field, including the hidden ones, and posts —
+// which is the input SetPlace already treats as "forget where I am".
+function muForgetLocation(btn){
+  if(!confirm('Forget where you are? Your agents stop knowing — no forecast, no trains, no prayer times.'))return;
+  var f=btn.form||btn.closest('form');if(!f)return;
+  var name=f.querySelector('[name="place"]');if(name)name.value='';
+  ['place-lat','place-lon','place-zone'].forEach(function(id){
+    var e=document.getElementById(id);if(e)e.value='';
+  });
+  f.submit();
 }
 </script>`
 

@@ -18,7 +18,8 @@ import (
 	"mu/internal/auth"
 )
 
-// SubscribeHandler serves POST /push/subscribe and POST /push/unsubscribe.
+// SubscribeHandler serves POST /push/subscribe, /push/unsubscribe and
+// /push/test.
 func SubscribeHandler(w http.ResponseWriter, r *http.Request) {
 	_, acc, err := auth.RequireSession(r)
 	if err != nil {
@@ -31,6 +32,28 @@ func SubscribeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if !auth.StrictCSRF(r) {
 		app.Forbidden(w, r, "that request did not carry a valid token")
+		return
+	}
+
+	// A notification you asked for, now, on demand.
+	//
+	// The card can say "On for this device" and be telling the truth while
+	// nothing has ever arrived, because the things that send one — mail, a
+	// reminder firing — are all somebody else doing something. That leaves no
+	// way to tell a working subscription from a broken one except waiting, and
+	// waiting for a negative is not a test. This is the button.
+	if strings.HasSuffix(r.URL.Path, "/test") {
+		if !Subscribed(acc.ID) {
+			app.RespondJSON(w, map[string]any{"ok": false, "error": "no device is registered yet"})
+			return
+		}
+		Send(acc.ID, Notification{
+			Title: "Test notification",
+			Body:  "This is what mail and reminders will look like.",
+			URL:   "/account",
+			Tag:   "mu-test",
+		})
+		app.RespondJSON(w, map[string]any{"ok": true})
 		return
 	}
 
@@ -107,10 +130,19 @@ func Card(r *http.Request, accountID string) string {
 	return `<div class="card push-card">` +
 		`<div class="push-head"><strong>Notifications</strong>` +
 		`<span class="push-state" id="push-state">` + html.EscapeString(state) + `</span></div>` +
-		`<p class="push-note">Mail, briefings and answers turn up on this device when the ` +
-		`page is closed. The text is encrypted on its way through — the push service ` +
-		`forwards bytes it cannot read.</p>` +
+		// One line, and a true one.
+		//
+		// It said "Mail, briefings and answers turn up on this device" plus a
+		// sentence about the push service forwarding bytes it cannot read.
+		// Two of those three are wrong — nothing sends a push for a briefing
+		// or for an answer, only mail arriving, a reminder firing and an
+		// operator alert — and the encryption sentence answers a question
+		// nobody standing at this card was asking. Somebody who reads a claim
+		// about what will turn up, turns it on, and then sees none of it,
+		// concludes the feature is broken rather than that the sentence was.
+		`<p class="push-note">Mail and reminders reach this device with the page closed.</p>` +
 		`<button class="push-go" id="push-go" type="button">Turn on for this device</button>` +
+		`<button class="push-test d-none" id="push-test" type="button">Send a test</button>` +
 		`<input type="hidden" id="push-key" value="` + html.EscapeString(key) + `">` +
 		`<input type="hidden" id="push-csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `">` +
 		`</div>` + cardCSS + cardJS
@@ -145,6 +177,9 @@ const cardCSS = `<style>
 .push-note{font-size:13px;color:#888;line-height:1.55;margin:6px 0 10px}
 .push-go{font:inherit;font-size:13px;padding:7px 16px;border:1px solid #111;background:#111;color:#fff;border-radius:6px;cursor:pointer}
 .push-go[disabled]{opacity:.5;cursor:default}
+.push-test{font:inherit;font-size:13px;padding:7px 16px;border:1px solid var(--card-border,#ddd);
+  background:var(--card-background,#fff);color:var(--text-primary,#111);border-radius:6px;cursor:pointer}
+.push-test[disabled]{opacity:.5;cursor:default}
 </style>`
 
 // cardJS is the three steps, in the order the browser insists on — plus the
@@ -213,11 +248,32 @@ const cardJS = `<script>
     }).then(function(res){ return res.json(); });
   }
 
+  var test = document.getElementById('push-test');
+
   function on(){
     say('On for this device.');
-    go.textContent = 'On';
-    go.disabled = true;
+    go.classList.add('d-none');
+    if (test) test.classList.remove('d-none');
   }
+
+  // Proof, on demand. Only offered once this device is actually subscribed —
+  // before that there is nothing for it to arrive on.
+  if (test) test.addEventListener('click', function(){
+    test.disabled = true;
+    test.textContent = 'Sending…';
+    fetch('/push/test', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {'X-CSRF-Token': document.getElementById('push-csrf').value}
+    }).then(function(res){ return res.json(); }).then(function(data){
+      test.disabled = false;
+      test.textContent = 'Send a test';
+      if (!(data && data.ok)) say((data && data.error) || 'That did not work.');
+    }).catch(function(){
+      test.disabled = false;
+      test.textContent = 'Send a test';
+    });
+  });
 
   // What the browser is already holding, told to the server again.
   //

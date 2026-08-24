@@ -633,14 +633,17 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 		// The same markup on a desktop, where the panels are always open and
 		// these two do nothing — so they are hidden there rather than made a
 		// second way to do what the sidebar already does.
-		// The chip is the switcher on a page listing every agent, and a label on
-		// a page about one. A control that opens a picker you have already used
-		// is a way back out of the room you just walked into.
-		agentChip := `<button type="button" id="active-agent-chip" class="agent-chip" ` +
-			`onclick="muPane('agents')">Agent: Micro</button>`
-		if named {
-			agentChip = `<span id="active-agent-chip" class="agent-chip agent-chip-fixed">` +
-				htmlEsc(agentTitle(accountID, selAgent)) + `</span>`
+		// The chip is the switcher, and only that. On a page about one agent
+		// there is nothing to switch, so there is no chip.
+		//
+		// It used to become a plain label there, showing agentTitle — which is
+		// the page's own title, rendered by the shell a few lines above it. Two
+		// copies of the same word, one under the other, the lower one styled
+		// like a control that does nothing.
+		agentChip := ""
+		if !named {
+			agentChip = `<button type="button" id="active-agent-chip" class="agent-chip" ` +
+				`onclick="muPane('agents')">Agent: Micro</button>`
 		}
 		chip = `<div class="agent-bar">` + agentChip +
 			`<button type="button" class="chat-open-list" onclick="muPane('chats')">Chats</button>` +
@@ -887,8 +890,8 @@ func renderSessionsRail(accountID, currentID, agentID string, named bool) string
 		// that only grows, and the rail is the one place somebody looks at it.
 		b.WriteString(`<div class="chat-sess-row"><a href="` + base + `?session=` + url.QueryEscape(s.ID) +
 			`" class="` + cls + `">` + htmlEsc(title) + where + `</a>` +
-			`<button class="chat-sess-del" title="Delete conversation" ` +
-			`onclick="muSessionDelete(` + app.JSString(s.ID) + `,event)">×</button></div>`)
+			`<button type="button" class="chat-sess-del mini-btn danger" ` +
+			`onclick="muSessionDelete(` + app.JSString(s.ID) + `,event)">Delete</button></div>`)
 	}
 	if len(sessions) >= railShown {
 		b.WriteString(`<a class="chat-sess-more" href="/recall">Older conversations →</a>`)
@@ -926,8 +929,8 @@ window.muSessionStarted=function(id,title){
   list.querySelectorAll('.chat-sess.active').forEach(function(e){e.classList.remove('active');});
   var row=document.createElement('div');row.className='chat-sess-row';
   var a=document.createElement('a');a.className='chat-sess active';a.href=href;a.textContent=title;
-  var b=document.createElement('button');b.className='chat-sess-del';b.type='button';
-  b.title='Delete conversation';b.textContent='×';
+  var b=document.createElement('button');b.className='chat-sess-del mini-btn danger';b.type='button';
+  b.title='Delete conversation';b.textContent='Delete';
   b.onclick=function(e){muSessionDelete(id,e);};
   row.appendChild(a);row.appendChild(b);
   list.insertBefore(row,list.firstChild);
@@ -986,23 +989,38 @@ const chatLayoutCSS = `<style>
 .agent-intro{margin:0 0 14px;padding:12px 14px;border:1px solid var(--border-color,#e5e5e5);border-radius:8px;font-size:14px;line-height:1.55;color:var(--text-secondary,#555)}
 .agent-intro b{color:var(--text-primary,#111)}
 .agent-intro a{color:var(--text-primary,#111)}
-.chat-new{width:100%;padding:9px 12px;background:#111;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;font-family:inherit;margin-bottom:12px}
+/* Tokens, not hex.
+   Every colour in this rail was a literal — #444 on no background at all for a
+   row, #eef0ff under #111 for the selected one — so the rail did not move with
+   the rest of the palette, and a row that declares a text colour and inherits
+   its background is the exact shape that goes unreadable when anything
+   underneath it changes. */
+.chat-new{width:100%;padding:9px 12px;background:var(--accent-color,#111);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;font-family:inherit;margin-bottom:12px}
 .chat-sess-list{display:flex;flex-direction:column;gap:2px}
-.chat-sess-row{display:flex;align-items:center;gap:2px}
-.chat-sess{display:block;flex:1;min-width:0;padding:8px 10px;border-radius:6px;color:#444;text-decoration:none;font-size:13px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.chat-sess:hover{background:#f5f5f5}
-.chat-sess.active{background:#eef0ff;color:#111;font-weight:600}
-.chat-sess-del{border:0;background:none;color:#ccc;font-size:15px;line-height:1;cursor:pointer;padding:2px 6px;opacity:0}
-.chat-sess-row:hover .chat-sess-del{opacity:1}
-.chat-sess-del:hover{color:#b00}
-.chat-sess-more{display:block;padding:8px 10px;font-size:12px;color:#888;text-decoration:none}
+.chat-sess-row{display:flex;align-items:center;gap:6px;min-width:0}
+.chat-sess{display:block;flex:1;min-width:0;padding:8px 10px;border-radius:6px;
+  background:var(--card-background,#fff);color:var(--text-secondary,#444);
+  text-decoration:none;font-size:13px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chat-sess:hover{background:var(--hover-background,#f5f5f5)}
+.chat-sess.active{background:var(--active-background,#eef0ff);color:var(--text-primary,#111);font-weight:600}
+/* The way to be rid of a conversation is the button this site already has.
+   It was a bare × — a borderless glyph at 15px in a 24px box, which is under
+   any touch target anybody recommends and did not look like a control at all.
+   .mini-btn.danger carries the border, the colour and the padding, so all
+   that is left here is when it shows. */
+.chat-sess-del{flex:none;opacity:0;transition:opacity .12s ease}
+.chat-sess-row:hover .chat-sess-del,.chat-sess-del:focus-visible{opacity:1}
+/* No hover to reveal it with. */
+@media(hover:none){.chat-sess-del{opacity:1}}
+.chat-sess-more{display:block;padding:8px 10px;font-size:12px;color:var(--text-muted,#888);text-decoration:none}
 .chat-sess-more:hover{color:var(--text-primary,#111)}
-.chat-sess-empty{color:#999;font-size:13px;padding:8px 10px;line-height:1.5}
-.chat-sess-empty code{background:#f4f4f5;border-radius:4px;padding:1px 5px;font-size:11px;overflow-wrap:anywhere}
+.chat-sess-empty{color:var(--text-muted,#999);font-size:13px;padding:8px 10px;line-height:1.5}
+.chat-sess-empty code{background:var(--hover-background,#f4f4f5);border-radius:4px;padding:1px 5px;font-size:11px;overflow-wrap:anywhere}
 /* The two buttons in the bar are for phones. On a desktop the panels are always
-   there, so a control that opens them is a second way to do nothing. */
+   there, so a control that opens them is a second way to do nothing — and
+   "Agent: Micro" beside a page whose title is Micro is the same word twice. */
 .chat-open-list{display:none}
-button.agent-chip{border:0;font-family:inherit;cursor:default}
+button.agent-chip{display:none;border:0;font-family:inherit}
 
 /* On a phone the conversation is the page.
    It was a stacked column: the agent picker first, then every conversation as a
@@ -1020,8 +1038,8 @@ button.agent-chip{border:0;font-family:inherit;cursor:default}
     background:var(--card-background,#fff);color:var(--text-primary,#111);
     border-radius:6px;padding:3px 12px;font-size:12px;font-weight:600;
     font-family:inherit;cursor:pointer}
-  button.agent-chip{cursor:pointer}
-  button.agent-chip::after{content:" ▾";color:#999}
+  button.agent-chip{display:inline-block;cursor:pointer}
+  button.agent-chip::after{content:" ▾";color:var(--text-muted,#999)}
   .chat-open-list::after{content:" ▾";color:#999}
   /* The sheet. Off-screen rather than display:none, so opening it animates and
      so the panels inside keep their state. */
@@ -1042,7 +1060,7 @@ button.agent-chip{border:0;font-family:inherit;cursor:default}
   .chat-sess-list{flex-direction:column;overflow:visible;flex-wrap:nowrap;max-height:52vh;overflow-y:auto}
   .chat-sess-row{flex-shrink:0;max-width:none}
   .chat-sess{font-size:14px;padding:10px}
-  .chat-sess-del{opacity:1;padding:6px 10px;font-size:18px}
+  .chat-sess-del{opacity:1;padding:6px 10px;font-size:13px}
   .agents-list>div{padding:10px 8px;font-size:14px}
   .agents-actions{opacity:1}
   .agents-actions a,.agents-actions button{padding:4px 6px;font-size:14px}
