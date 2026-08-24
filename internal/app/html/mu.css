@@ -3946,7 +3946,6 @@ a.btn-secondary:hover, .btn-secondary:hover {
   border-radius: var(--border-radius, 6px);
   padding: 16px;
   margin-bottom: 12px;
-  padding-bottom: var(--spacing-lg);
   background: var(--card-background, #fff);
   box-shadow: var(--shadow-sm);
   transition: box-shadow 0.15s;
@@ -3954,6 +3953,20 @@ a.btn-secondary:hover, .btn-secondary:hover {
 .card:hover {
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
+
+/* The last thing in a card does not add its own margin to the card's padding.
+ *
+ * Reported as "a lot of the cards in /account have too much pad at the bottom",
+ * and it was two things stacked. The card set padding:16px and then
+ * padding-bottom:24px over it, so the bottom was already eight pixels deeper
+ * than the sides for no stated reason; and a card whose last element is a
+ * paragraph or a table adds that element's own margin-bottom underneath —
+ * 32px for .data-table — which padding does not collapse away. A card ending
+ * in a table had 56px of nothing under it.
+ *
+ * One rule rather than a class to remember, because the shape is universal:
+ * whatever is last, the card's own padding is the space below it. */
+.card > :last-child { margin-bottom: 0; }
 
 /* Card elements */
 .card-title {
