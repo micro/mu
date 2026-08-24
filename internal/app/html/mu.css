@@ -208,6 +208,12 @@ button:hover {
  * not grow a dark fill on hover. Each of these declares a background in its own
  * rule and would lose it to the line above.
  *
+ * **Background and colour together, always.** The rule above is the cautionary
+ * tale and so was the first version of this one: it took the dark fill away and
+ * left `color: #fff` in place, so the Chats button went from dark-on-dark to
+ * white-on-white — the same bug, the other way up, introduced by the fix for
+ * it. A rule that touches one half of a contrast pair has to touch the other.
+ *
  * Separate from the list further down because that one also flattens padding,
  * border and font-size, which these have their own opinions about. */
 .row-del:hover,
@@ -216,9 +222,15 @@ button:hover {
 .push-test:hover {
   background: none;
   border-color: var(--card-border, #ddd);
+  color: var(--text-primary, #111);
 }
+/* The two glyphs go red rather than staying put: they are the destructive one,
+   and their border is not a border. */
 .row-del:hover,
-.ib-del-go:hover { border-color: transparent; }
+.ib-del-go:hover {
+  border-color: transparent;
+  color: var(--btn-danger, #c00);
+}
 
 /* Buttons that are controls rather than buttons: a word you click, no fill.
    These exist because a destructive or secondary action in a list row should
@@ -249,6 +261,12 @@ button:hover {
   background: none;
   border-color: transparent;
   text-decoration: underline;
+  /* These take their colour from the sentence they sit in, so hover has to put
+     it back rather than leave them whatever button:hover last said. Without
+     this line all five went white-on-white the moment that rule started naming
+     a colour — found by TestAHoverThatRemovesAFillNamesItsText on the day it
+     was written, which is the whole reason it exists. */
+  color: inherit;
 }
 
 /* .btn class for links styled as buttons */
