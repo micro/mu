@@ -4,11 +4,13 @@ Work with Agents.
 
 ## Overview
 
-An agent with an inbox and tools. Chat with it in a browser or by email, and
-it can reach 100+ tools: news, mail, search, weather, markets, video, places,
+Build agents with an inbox and tools. Chat with them in a browser or by email, and
+they can reach 100+ tools: news, mail, search, weather, markets, video, places,
 files, contacts, calendar, documents. A work in progress.
 
 ## Clients
+
+The front door for humans
 
 | | |
 |---|---|
@@ -22,16 +24,11 @@ files, contacts, calendar, documents. A work in progress.
 **SMTP in, IMAP out, HTTP for the app, MCP for agents, SSH for a shell,
 x402 for payments.**
 
-Every one of those is a listening socket in this one binary, answering a
-protocol somebody's existing client already speaks. No sshd, no dovecot, no
-postfix — the mail server, the IMAP server and the SSH server are this
-process.
-
-That is the part that is hard to copy. Aggregating tools behind one account
-removes real overhead, and anybody can do it. Running the protocols is what
-people stopped doing.
+Protocols for the win!
 
 ## Tools
+
+The tools for the agents 
 
 | Service | Tools |
 |---|---|
@@ -322,6 +319,10 @@ The rest are embedded in the binary, so editing one means rebuilding:
 - `service/places/locations.json` — saved locations
 
 See [Install](docs/INSTALL.md) for every setting the code reads.
+
+## Note
+
+If you made it to the bottom well done!
 
 ## License
 
