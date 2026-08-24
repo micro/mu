@@ -51,7 +51,7 @@ import (
 	"mu/service/prayer"
 	"mu/service/recall"
 	"mu/service/routes"
-	"mu/service/sandbox"
+	"mu/service/shell"
 	"mu/service/sms"
 	"mu/service/social"
 	"mu/service/stream"
@@ -85,7 +85,7 @@ func authRequired() map[string]bool {
 		"/transit":                false, // Public transport data is public
 		"/hazards":                false, // Public hazard data, published to be redistributed
 		"/browser":                false, // Public — the page; reading one costs and needs a session
-		"/sandbox":                true,  // A machine with your files on it, so it needs a session
+		"/shell":                  true,  // A machine with your files on it, so it needs a session
 		"/browser/shot/":          false, // A picture already taken, of a page anybody could open
 		"/maps":                   false, // Public — the page, and any tile already held
 		"/maps/":                  false, // A held tile is free to anybody; a cold one needs a session
@@ -335,8 +335,12 @@ func registerRoutes() {
 	// people have and search engines hold.
 	// A real browser, for the pages a fetch cannot read. /browser is the page;
 	// the pictures it takes are at /browser/shot/<id>.png. See service/browser.
-	// A machine of your own, in a container. See service/sandbox.
-	http.HandleFunc("/sandbox", sandbox.Handler)
+	// A machine of your own, in a container. See service/shell.
+	http.HandleFunc("/shell", shell.Handler)
+	// The address this had until it was renamed. Kept because links to it
+	// exist — in mail this instance has already sent, and in anybody's
+	// bookmarks — and breaking a URL to tidy a name is a bad trade.
+	http.HandleFunc("/sandbox", shell.Moved)
 	http.HandleFunc("/browser", browser.Handler)
 	http.HandleFunc("/browser/shot/", browser.ShotHandler)
 

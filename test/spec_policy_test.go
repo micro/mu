@@ -31,7 +31,7 @@ import (
 	"mu/service/prayer"
 	"mu/service/recall"
 	"mu/service/routes"
-	"mu/service/sandbox"
+	"mu/service/shell"
 	"mu/service/sms"
 	"mu/service/social"
 	"mu/service/stream"
@@ -60,7 +60,7 @@ func allSpecs() []service.Spec {
 		sms.Spec,
 		social.Spec,
 		stream.Spec, tasks.Spec, text.Spec, maps.Spec, transit.Spec, video.Spec,
-		wallet.Spec, weather.Spec, web.Spec, browser.Spec, sandbox.Spec,
+		wallet.Spec, weather.Spec, web.Spec, browser.Spec, shell.Spec,
 	}
 }
 

@@ -1,4 +1,4 @@
-package sandbox
+package shell
 
 // What is in the box besides a shell.
 //
@@ -66,7 +66,7 @@ func equipment() []string {
 		// is otherwise baffling: the file is there, `ls` shows it executable,
 		// and the shell answers "not found".
 		notStatic.Do(func() {
-			app.Log("sandbox", "not mounting the CLI into machines: %s is "+
+			app.Log("shell", "not mounting the CLI into machines: %s is "+
 				"dynamically linked and the sandbox image has no loader for it. "+
 				"Build with CGO_ENABLED=0", self)
 		})

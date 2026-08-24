@@ -1,4 +1,4 @@
-package sandbox
+package shell
 
 // Machines nobody is using.
 //
@@ -23,7 +23,6 @@ import (
 
 	"mu/internal/app"
 	"mu/internal/container"
-	"mu/internal/settings"
 )
 
 var (
@@ -42,7 +41,7 @@ func touched(name string) {
 // somebody thinking between commands does not pay the restart, short enough
 // that a forgotten machine is not a permanent cost.
 func idleAfter() time.Duration {
-	return time.Duration(number(settings.Get("SANDBOX_IDLE_MINUTES"), 30)) * time.Minute
+	return time.Duration(number(setting("SHELL_IDLE_MINUTES"), 30)) * time.Minute
 }
 
 // reap stops the machines nothing has used lately. Started by Load.
@@ -56,7 +55,7 @@ func reap() {
 	// a previous process is not in this one's memory, so it would never be
 	// reaped — and a restart is exactly when nobody is using one.
 	if err := stopAll(); err != nil {
-		app.Log("sandbox", "could not tidy up machines from a previous run: %v", err)
+		app.Log("shell", "could not tidy up machines from a previous run: %v", err)
 	}
 	for range time.Tick(reapEvery) {
 		cutoff := time.Now().Add(-idleAfter())
@@ -73,7 +72,7 @@ func reap() {
 		for _, name := range cold {
 			ctx, cancel := context.WithTimeout(context.Background(), quickWait)
 			if err := container.Stop(ctx, name); err != nil {
-				app.Log("sandbox", "could not stop the idle machine %s: %v", name, err)
+				app.Log("shell", "could not stop the idle machine %s: %v", name, err)
 			}
 			cancel()
 		}
@@ -123,7 +122,7 @@ func room(ctx context.Context, starting string) {
 	// Outside the lock: stopping takes seconds, and holding it would serialise
 	// every caller behind one docker stop.
 	if err := container.Stop(ctx, victim); err != nil {
-		app.Log("sandbox", "could not stop %s to make room: %v", victim, err)
+		app.Log("shell", "could not stop %s to make room: %v", victim, err)
 	}
 }
 
@@ -138,13 +137,19 @@ func stopAll() error {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), startWait)
 	defer cancel()
-	names, err := container.Running(ctx, namePrefix)
-	if err != nil {
-		return err
-	}
-	for _, name := range names {
-		if err := container.Stop(ctx, name); err != nil {
+	// Both names. The previous run may have been a build from before this
+	// service was renamed, and its machines are called mu-sandbox-* — see
+	// oldNamePrefix. A sweep that knows only the current name leaves them
+	// running with nothing left to stop them.
+	for _, p := range []string{namePrefix, oldNamePrefix} {
+		names, err := container.Running(ctx, p)
+		if err != nil {
 			return err
+		}
+		for _, name := range names {
+			if err := container.Stop(ctx, name); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -190,7 +195,7 @@ func DeleteMachine(accountID string) {
 			Wait:    startWait,
 			Command: "rm -rf -- " + quoted(home),
 		}); err != nil {
-			app.Log("sandbox", "removing the files of %s: %v", accountID, err)
+			app.Log("shell", "removing the files of %s: %v", accountID, err)
 		}
 		return
 	}
@@ -204,9 +209,9 @@ func DeleteMachine(accountID string) {
 	// there is no machine when an account never used one, which is the common
 	// case and not a failure.
 	if err := container.Remove(ctx, name); err != nil {
-		app.Log("sandbox", "removing %s: %v", name, err)
+		app.Log("shell", "removing %s: %v", name, err)
 	}
 	if err := container.RemoveVolume(ctx, volumeOf(accountID)); err != nil {
-		app.Log("sandbox", "removing the files of %s: %v", accountID, err)
+		app.Log("shell", "removing the files of %s: %v", accountID, err)
 	}
 }

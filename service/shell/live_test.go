@@ -1,4 +1,4 @@
-package sandbox
+package shell
 
 // A real container, from the real daemon, through the real code path.
 // Skipped where there is no Docker.

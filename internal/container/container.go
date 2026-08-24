@@ -323,7 +323,7 @@ type Result struct {
 //
 // A struct rather than six positional arguments, and User is why it exists: a
 // shared container serves more than one caller, and which Unix user a command
-// runs as is the only thing separating them. See service/sandbox's shared mode.
+// runs as is the only thing separating them. See service/shell's shared mode.
 type Run struct {
 	Name    string // the container
 	Command string // a shell command
@@ -343,7 +343,7 @@ type Run struct {
 	// internet and ran. A variable given to one exec belongs to that exec.
 	//
 	// So a credential may travel this way and must never travel the other. See
-	// service/sandbox's SSH session, which is the only caller that sets one.
+	// service/shell's SSH session, which is the only caller that sets one.
 	Env map[string]string
 }
 

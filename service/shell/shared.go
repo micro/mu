@@ -1,4 +1,4 @@
-package sandbox
+package shell
 
 // A pool of machines everybody shares, instead of one machine each.
 //
@@ -36,7 +36,7 @@ package sandbox
 //
 // None of that matters on an instance with one user, which is why it is worth
 // having. All of it matters on an instance with strangers on it, which is why it
-// is off by default and why SANDBOX_SHARED is a decision an operator makes
+// is off by default and why SHELL_SHARED is a decision an operator makes
 // rather than something that happens quietly when memory is short. A security
 // model that depends on how much RAM the box has is not a security model.
 
@@ -48,13 +48,12 @@ import (
 	"strings"
 
 	"mu/internal/container"
-	"mu/internal/settings"
 )
 
 // shared reports whether this instance pools machines rather than giving one
 // per account.
 func shared() bool {
-	switch strings.ToLower(strings.TrimSpace(settings.Get("SANDBOX_SHARED"))) {
+	switch strings.ToLower(setting("SHELL_SHARED")) {
 	case "on", "true", "1", "yes", "shared":
 		return true
 	}

@@ -32,7 +32,7 @@
 // # The network is on, and that is a decision
 //
 // A machine that cannot fetch a dependency or push a branch cannot do the thing
-// this was built for. So it has one by default, and SANDBOX_NETWORK=none is
+// this was built for. So it has one by default, and SHELL_NETWORK=none is
 // there for an operator who wants the other trade. Say it plainly rather than
 // implying isolation this does not have: what is bounded is the host, not the
 // internet.
@@ -49,7 +49,7 @@
 // runtime serves a page that explains what is missing, and every method refuses
 // with a sentence an operator can act on. Nothing about building or running Mu
 // requires it.
-package sandbox
+package shell
 
 import (
 	"context"
@@ -241,7 +241,7 @@ const maxFile = 256 * 1024
 // Load registers the service.
 func Load() {
 	if err := service.Register(Spec); err != nil {
-		app.Log("sandbox", "service register failed: %v", err)
+		app.Log("shell", "service register failed: %v", err)
 	}
 	// Machines nobody is using cost memory and nothing else. See idle.go.
 	//
@@ -254,18 +254,18 @@ func Load() {
 }
 
 var Spec = service.Spec{
-	Name:        "sandbox",
+	Name:        "shell",
 	Handler:     new(Server),
 	Description: "A machine of your own: run commands, keep files, build things",
-	Page:        "/sandbox",
-	Icon:        "sandbox.svg",
+	Page:        "/shell",
+	Icon:        "shell.svg",
 	// One container and one volume per account, so there is no such thing as
 	// an unattributed call here — and a caller with no account has nowhere for
 	// its files to live.
 	Scoped: true,
 	Endpoints: map[string]service.Endpoint{
 		"Run": {
-			Cost:   quota.OpSandboxRun,
+			Cost:   quota.OpShellRun,
 			Writes: true,
 			Doc: "Run a shell command on your own machine and get back what it wrote. " +
 				"A real shell in a container: pipes, redirection and && all work, the " +

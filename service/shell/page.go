@@ -1,4 +1,4 @@
-package sandbox
+package shell
 
 // The page: a prompt, and what came back.
 //
@@ -24,6 +24,16 @@ import (
 )
 
 // Handler serves /sandbox.
+// Moved sends the address this service had before it was called shell.
+//
+// The page is /shell now; /sandbox was its name for as long as the service
+// was, and links to it exist in mail this instance has already sent. A rename
+// that breaks a URL somebody already holds has cost somebody something to save
+// the repository a word.
+func Moved(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, "/shell", http.StatusMovedPermanently)
+}
+
 func Handler(w http.ResponseWriter, r *http.Request) {
 	var b strings.Builder
 	b.WriteString(`<div class="sbx">`)
@@ -97,7 +107,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// get killed" is answered by the number, not by the feature.
 		l := limits()
 		note := `Running a command costs ` +
-			credits(quota.OperationCost(quota.OpSandboxRun)) + `, because it is CPU and ` +
+			credits(quota.OperationCost(quota.OpShellRun)) + `, because it is CPU and ` +
 			`memory here. Keeping and reading files is free. `
 		if shared() {
 			// Said, because it changes what somebody should put in there. A

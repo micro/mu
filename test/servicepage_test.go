@@ -53,7 +53,7 @@ var keptItsPage = map[string]string{
 		"that it reads what a fetch cannot, and the only way to show that is to let " +
 		"somebody try a page a fetch cannot read",
 	"text": "the text to work on",
-	"sandbox": "a command, and what it printed — the claim is that you get a " +
+	"shell": "a command, and what it printed — the claim is that you get a " +
 		"machine, and the only way to show that is to let somebody run something on it",
 
 	// 3. It is browsable.

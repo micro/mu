@@ -58,7 +58,7 @@ import (
 	"mu/service/markets"
 	"mu/service/news"
 	"mu/service/recall"
-	"mu/service/sandbox"
+	"mu/service/shell"
 	"mu/service/sms"
 	"mu/service/social"
 	"mu/service/stream"
@@ -508,7 +508,7 @@ func wireHooks() {
 		// and a volume. Nothing else in this list reaches outside the data
 		// directory; this one has to, because that is where the caller's work
 		// actually is.
-		sandbox.DeleteMachine,
+		shell.DeleteMachine,
 
 		// Everything that was ever said, on any client. The record is written
 		// by the machinery rather than by a service, so nothing owned it and

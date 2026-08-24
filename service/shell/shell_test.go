@@ -1,4 +1,4 @@
-package sandbox
+package shell
 
 // Two kinds of test here, and the split is deliberate.
 //

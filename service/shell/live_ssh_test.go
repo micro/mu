@@ -1,4 +1,4 @@
-package sandbox
+package shell
 
 // The whole chain, live: an SSH client, a real handshake, a real container,
 // the CLI on the path, and a credential only this session has.

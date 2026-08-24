@@ -1,4 +1,4 @@
-package sandbox
+package shell
 
 // The two things that must be true about the SSH door.
 //

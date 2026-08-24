@@ -1,4 +1,4 @@
-package sandbox
+package shell
 
 // One machine per account: what it is called, what it may have, and the rules
 // about what may be run on it.
@@ -21,7 +21,6 @@ import (
 	"mu/internal/container"
 	"mu/internal/quota"
 	"mu/internal/service"
-	"mu/internal/settings"
 )
 
 // caller resolves the authenticated account from call metadata.
@@ -56,7 +55,23 @@ func volumeOf(accountID string) string { return "mu-work-" + slug(accountID) }
 
 // namePrefix is what every machine this instance starts is called. One place,
 // because the reaper finds them by it — see idle.go.
-const namePrefix = "mu-sandbox-"
+const namePrefix = "mu-shell-"
+
+// oldNamePrefix is what they were called when this service was called sandbox.
+//
+// Nothing is started under it any more; it is here because the boot sweep finds
+// containers from a previous run by prefix, and the first boot of the renamed
+// build is a run whose predecessor used the other name. Without this those
+// containers match nothing, so they are never stopped and hold their memory
+// caps until somebody notices by hand.
+//
+// The files are not at risk either way — a machine's volume is mu-work-<slug>,
+// which has never carried the service's name — so the new container mounts the
+// same work directory the old one had. Only the container leaks, and only once.
+//
+// Deletable when no instance is still being upgraded from a build older than
+// the rename.
+const oldNamePrefix = "mu-sandbox-"
 
 func slug(accountID string) string {
 	var b strings.Builder
@@ -167,7 +182,7 @@ func exec(ctx context.Context, accountID, command, dir string, wait time.Duratio
 // For the page only. The page is not a way round the price — it does the work
 // the tool does, so it costs what the tool costs.
 func paidRun(ctx context.Context, accountID, command, dir string) (container.Result, error) {
-	ok, _, cost, qerr := quota.CheckQuota(accountID, quota.OpSandboxRun)
+	ok, _, cost, qerr := quota.CheckQuota(accountID, quota.OpShellRun)
 	if qerr != nil {
 		return container.Result{}, qerr
 	}
@@ -182,7 +197,7 @@ func paidRun(ctx context.Context, accountID, command, dir string) (container.Res
 		// — and charging for them would bill somebody for our outage.
 		return container.Result{}, err
 	}
-	quota.Charge(accountID, quota.OpSandboxRun, map[string]interface{}{ //nolint:errcheck
+	quota.Charge(accountID, quota.OpShellRun, map[string]interface{}{ //nolint:errcheck
 		"command": trimTo(command, 200),
 	})
 	return res, nil
@@ -221,7 +236,7 @@ const work = "/work"
 // allowed is how long a command may have: what was asked for, bounded by what
 // this instance will give, and a sensible number when nothing was asked.
 func allowed(asked time.Duration) time.Duration {
-	max := time.Duration(number(settings.Get("SANDBOX_MAX_SECONDS"), 600)) * time.Second
+	max := time.Duration(number(setting("SHELL_MAX_SECONDS"), 600)) * time.Second
 	if asked <= 0 {
 		asked = defaultWait
 	}
@@ -238,11 +253,11 @@ const defaultWait = 120 * time.Second
 // image is what a machine is made of.
 //
 // A small default rather than a useful one, deliberately. Somebody who wants Go
-// and git on it says so — SANDBOX_IMAGE — and an operator who has not thought
+// and git on it says so — SHELL_IMAGE — and an operator who has not thought
 // about it does not silently get a gigabyte pulled onto their disk the first
 // time an agent tries something.
 func image() string {
-	if set := strings.TrimSpace(settings.Get("SANDBOX_IMAGE")); set != "" {
+	if set := setting("SHELL_IMAGE"); set != "" {
 		return set
 	}
 	return "alpine:3.20"
@@ -251,14 +266,14 @@ func image() string {
 // limits are what one machine may have. Every one is an operator's decision,
 // and none of them may be absent — see container.Limits.
 func limits() container.Limits {
-	network := strings.TrimSpace(settings.Get("SANDBOX_NETWORK"))
+	network := setting("SHELL_NETWORK")
 	if network == "" {
 		network = "bridge"
 	}
 	return container.Limits{
-		Memory:  text(settings.Get("SANDBOX_MEMORY"), defaultMemory()),
-		CPUs:    text(settings.Get("SANDBOX_CPUS"), defaultCPUs()),
-		PIDs:    number(settings.Get("SANDBOX_PIDS"), 512),
+		Memory:  text(setting("SHELL_MEMORY"), defaultMemory()),
+		CPUs:    text(setting("SHELL_CPUS"), defaultCPUs()),
+		PIDs:    number(setting("SHELL_PIDS"), 512),
 		Network: network,
 	}
 }
@@ -274,7 +289,7 @@ func limits() container.Limits {
 // A quarter, so the server, the daemon and a second machine all still fit.
 // Floored at 256m because nothing useful builds in less, and capped at the old
 // 2g because past that the constraint stops being memory. An operator who wants
-// a different answer sets SANDBOX_MEMORY and gets exactly it — this only decides
+// a different answer sets SHELL_MEMORY and gets exactly it — this only decides
 // what to do when nobody has said.
 func defaultMemory() string {
 	host := container.HostMemory()
@@ -316,7 +331,7 @@ func defaultCPUs() string {
 // a command deliberately does not cover — a command is CPU, and an idle
 // container is memory somebody stopped paying for the moment they walked away.
 func machineBudget() int {
-	if n := number(settings.Get("SANDBOX_MAX_MACHINES"), 0); n > 0 {
+	if n := number(setting("SHELL_MAX_MACHINES"), 0); n > 0 {
 		return n
 	}
 	host := container.HostMemory()

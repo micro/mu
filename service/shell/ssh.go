@@ -1,4 +1,4 @@
-package sandbox
+package shell
 
 // The sandbox, over SSH.
 //
@@ -52,7 +52,7 @@ package sandbox
 //
 // # Off unless somebody turns it on
 //
-// SANDBOX_SSH_PORT is unset by default and then nothing listens. An operator
+// SHELL_SSH_PORT is unset by default and then nothing listens. An operator
 // who wants it picks the port, which is a decision rather than a default: 22
 // on the host is the host's own sshd, and taking it by accident is how a
 // deploy locks somebody out of their own machine.
@@ -73,12 +73,11 @@ import (
 	"mu/internal/auth"
 	"mu/internal/container"
 	"mu/internal/data"
-	"mu/internal/settings"
 )
 
 // LoadSSH starts the SSH door if this instance has been given a port.
 func LoadSSH() {
-	addr := strings.TrimSpace(settings.Get("SANDBOX_SSH_PORT"))
+	addr := setting("SHELL_SSH_PORT")
 	if addr == "" || strings.EqualFold(addr, "off") {
 		return
 	}
@@ -88,16 +87,16 @@ func LoadSSH() {
 
 	cfg, err := sshConfig()
 	if err != nil {
-		app.Log("sandbox", "no ssh: %v", err)
+		app.Log("shell", "no ssh: %v", err)
 		return
 	}
 
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
-		app.Log("sandbox", "ssh cannot listen on %s: %v", addr, err)
+		app.Log("shell", "ssh cannot listen on %s: %v", addr, err)
 		return
 	}
-	app.Log("sandbox", "ssh on %s", addr)
+	app.Log("shell", "ssh on %s", addr)
 	go accept(ln, cfg)
 }
 
@@ -144,7 +143,7 @@ func sshConfig() (*ssh.ServerConfig, error) {
 		// half-open handshake is not a way to hold resources.
 		AuthLogCallback: func(c ssh.ConnMetadata, method string, err error) {
 			if err != nil {
-				app.Log("sandbox", "ssh refused %s from %s", method, c.RemoteAddr())
+				app.Log("shell", "ssh refused %s from %s", method, c.RemoteAddr())
 			}
 		},
 	}
@@ -290,7 +289,7 @@ func session(newCh ssh.NewChannel, accountID string) {
 	sh.Resize(size.rows, size.cols)
 	resized = sh
 
-	app.Log("sandbox", "ssh session for %s", accountID)
+	app.Log("shell", "ssh session for %s", accountID)
 	err = sh.Wait()
 	// The exit status, so the client's own shell sees what happened rather
 	// than treating every disconnection as success.
@@ -369,7 +368,7 @@ func sessionToken(accountID string) (raw, id string) {
 	if err != nil {
 		// A shell with no credential still works — the CLI is on the path and
 		// says it is not signed in. Better than refusing the session.
-		app.Log("sandbox", "no session token for %s: %v", accountID, err)
+		app.Log("shell", "no session token for %s: %v", accountID, err)
 		return "", ""
 	}
 	return secret, t.ID
@@ -381,6 +380,6 @@ func revoke(accountID, tokenID string) {
 		return
 	}
 	if err := auth.DeleteToken(tokenID, accountID); err != nil {
-		app.Log("sandbox", "could not revoke the session token for %s: %v", accountID, err)
+		app.Log("shell", "could not revoke the session token for %s: %v", accountID, err)
 	}
 }

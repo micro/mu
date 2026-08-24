@@ -36,7 +36,7 @@ import (
 	"mu/service/prayer"
 	"mu/service/recall"
 	"mu/service/routes"
-	"mu/service/sandbox"
+	"mu/service/shell"
 	"mu/service/sms"
 	"mu/service/social"
 	"mu/service/stream"
@@ -94,12 +94,12 @@ func boot() {
 	// write to that index and every reader over it was filtered to one type.
 	archive.Load()
 	browser.Load()
-	sandbox.Load()
+	shell.Load()
 
 	// And the SSH door onto it, when an operator has named a port. Off
 	// otherwise — see service/sandbox/ssh.go for why the port is a decision
 	// rather than a default.
-	sandbox.LoadSSH()
+	shell.LoadSSH()
 	web.Load()
 	text.Load()
 	food.Load()

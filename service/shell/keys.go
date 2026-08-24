@@ -1,4 +1,4 @@
-package sandbox
+package shell
 
 // Registering the key you connect with.
 //
@@ -23,7 +23,6 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/origin"
-	"mu/internal/settings"
 )
 
 // addedKey registers what somebody pasted, and says what happened.
@@ -61,14 +60,14 @@ func keysCard(r *http.Request, accountID string) string {
 	var b strings.Builder
 	b.WriteString(`<div class="card mt-4"><h3>Shell access</h3>`)
 
-	port := strings.TrimSpace(settings.Get("SANDBOX_SSH_PORT"))
+	port := setting("SHELL_SSH_PORT")
 	if port == "" || strings.EqualFold(port, "off") {
 		// Said rather than hidden. A form that registers a key for a server
 		// nobody is running collects credentials for nothing, and the person
 		// filling it in has no way to find that out.
 		b.WriteString(app.Note("This instance is not running the SSH door, so " +
 			"there is nothing to connect to yet. An operator turns it on by " +
-			"setting SANDBOX_SSH_PORT."))
+			"setting SHELL_SSH_PORT."))
 		b.WriteString(`</div>`)
 		return b.String()
 	}

@@ -149,20 +149,25 @@ var settingGroups = []settingGroup{
 	// these was readable by the code and settable nowhere — the fourth time
 	// this file has recorded that sentence, which is why there is now a test
 	// rather than another comment. See TestEverySettingIsSettable.
-	{"Sandbox", []string{
-		"SANDBOX_IMAGE",
-		"SANDBOX_MEMORY",
-		"SANDBOX_CPUS",
-		"SANDBOX_PIDS",
-		"SANDBOX_NETWORK",
-		"SANDBOX_SHARED",
-		"SANDBOX_MAX_MACHINES",
-		"SANDBOX_MAX_SECONDS",
-		"SANDBOX_IDLE_MINUTES",
+	// SHELL_*, and the service reads SANDBOX_* as a fallback so a running
+	// instance keeps its settings across the rename — see service/shell/
+	// setting.go. Only the new names are offered here: this page is where a
+	// value is set, and offering both would invite an operator to set one of
+	// each and then wonder which won.
+	{"Shell", []string{
+		"SHELL_IMAGE",
+		"SHELL_MEMORY",
+		"SHELL_CPUS",
+		"SHELL_PIDS",
+		"SHELL_NETWORK",
+		"SHELL_SHARED",
+		"SHELL_MAX_MACHINES",
+		"SHELL_MAX_SECONDS",
+		"SHELL_IDLE_MINUTES",
 		// Read once at boot, so changing it here needs a restart before
 		// anything listens. Shown anyway: an operator has to be able to see
 		// what it is set to without shelling onto the box.
-		"SANDBOX_SSH_PORT",
+		"SHELL_SSH_PORT",
 	}},
 	// What this instance tells its operator about, and when. Added the same
 	// day as the checks themselves and left off this page, which is the bug

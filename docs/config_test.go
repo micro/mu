@@ -22,7 +22,7 @@ var systemVars = map[string]bool{
 // Config is read directly and through a handful of small typed helpers. Each
 // of those wraps os.Getenv, so scanning only for os.Getenv missed the settings
 // they read — X402_NETWORK among them.
-var configRead = regexp.MustCompile(`(?:settings\.Get|os\.Getenv|os\.LookupEnv|envOr|envInt|EnvInt|envIntAuth|getEnvInt|envOverride|limitSetting|ListenAddr)\("([A-Z][A-Z0-9_]*)"`)
+var configRead = regexp.MustCompile(`(?:settings\.Get|os\.Getenv|os\.LookupEnv|envOr|envInt|EnvInt|envIntAuth|getEnvInt|envOverride|limitSetting|ListenAddr|setting)\("([A-Z][A-Z0-9_]*)"`)
 
 // Prices are data now, so the variables that override them are named in
 // quota.json rather than in any Go source. The loader reads
