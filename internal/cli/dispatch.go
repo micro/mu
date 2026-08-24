@@ -112,6 +112,12 @@ func Run(args []string) int {
 		return runSetup(rest)
 	case "x402":
 		return runX402(rest)
+	// Two commands, and the difference between them is worth the sentence:
+	// `ask` talks to the agent you made on an instance, and `agent` runs one on
+	// this machine that rents tools from an instance. Same word in English,
+	// opposite directions.
+	case "ask":
+		return runAsk(rest, &rc)
 	case "agent":
 		return runAgent(rest)
 	case "version", "--version":
@@ -160,14 +166,19 @@ func runTool(name string, rest []string, rc *ResolvedConfig) int {
 	var second string
 	var secondRest []string
 
+	// The two-word reading is always tried first, and the whole-word reading is
+	// the fallback.
+	//
+	// There used to be a third case: a single word that is itself a tool taking
+	// one positional argument — `mu chat "hello"` — which was tried the other
+	// way round. Its two members were `chat` and `agent`, and neither is a
+	// tool: tools are derived as service_method, always, so a one-word tool
+	// name cannot exist. The branch was not merely empty, it was unreachable by
+	// construction, and `mu chat hello` was a documented invocation that
+	// resolved to nothing. Talking to an agent from here is `mu ask`.
 	if joined, remainder, ok := splitCommand(name, rest); ok {
-		if takesOnePositional(name, rest) {
-			// The word after the tool is its argument: mu chat "hello".
-			second, secondRest = joined, remainder
-		} else {
-			first, firstRest = joined, remainder
-			second, secondRest = name, rest
-		}
+		first, firstRest = joined, remainder
+		second, secondRest = name, rest
 	}
 
 	// A fallback is only worth trying if the leftover words could be arguments
@@ -252,17 +263,6 @@ func canTakeArgs(name string, rest []string) bool {
 		return ok
 	}
 	return false
-}
-
-// takesOnePositional reports whether this looks like a tool being handed its
-// one obvious argument — mu chat "hello", mu agent "why" — rather than a
-// two-word tool name.
-func takesOnePositional(name string, rest []string) bool {
-	if len(rest) != 1 {
-		return false
-	}
-	_, ok := defaultArgKey(name)
-	return ok
 }
 
 // callTool performs one interpretation of the command line. unknown reports
@@ -489,7 +489,14 @@ func coerce(s string) any {
 // ("", false) when there is no default.
 func defaultArgKey(tool string) (string, bool) {
 	switch tool {
-	case "chat", "agent", "apps_build":
+	// "chat" and "agent" were here and are gone. Neither is a tool: `chat` is
+	// the discussion-rooms service, whose tools are chat_send and chat_rooms
+	// and which has no prompt field, and `agent` stopped being a tool when
+	// agent_ask was removed — an agent consumes the catalogue, so it is not in
+	// it. Both entries mapped a positional argument onto a parameter of a tool
+	// that does not exist, which is a lookup that could only ever fail. Talking
+	// to an agent from here is `mu ask`.
+	case "apps_build":
 		return "prompt", true
 	case "news_search", "video_search", "social_search", "quran_search", "apps_search":
 		return "query", true

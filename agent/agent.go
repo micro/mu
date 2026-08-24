@@ -583,72 +583,46 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 		cfg.Suggestions = ex
 	}
 
-	// The two panels beside the conversation. On a phone they are folded away
-	// behind the bar below and the chat is the first thing on the page — see
-	// chatLayoutCSS. Each is its own pane so one can be open without the other:
-	// picking an agent and picking a conversation are separate errands.
-	rail := ""
-	{
-		// The roster, except on a page that is about one agent. A room does not
-		// carry the list of rooms — the same reason /mail has no services list
-		// down the side of it.
-		agents := ""
-		if !named {
-			agents = `<div class="chat-pane" id="pane-agents">` + renderAgentsPanel() + `</div>`
-		}
-		rail = `<div class="chat-side">` + agents +
-			`<div class="chat-pane" id="pane-chats">` +
-			renderSessionsRail(accountID, activeRoot, selAgent, named) + `</div></div>`
-	}
+	// One panel beside the conversation: the conversations. On a phone it folds
+	// away behind the bar below and the chat is the first thing on the page —
+	// see chatLayoutCSS.
+	//
+	// The roster used to be the other one, and it is gone from here. /agents is
+	// the page that lists them and links to each one's chat, connect and edit;
+	// carrying a second copy of it down the side of every agent's own page is
+	// the room holding the list of rooms. The back link above the conversation
+	// is how you leave, which is the same shape /agent/connect already had.
+	//
+	// It was also load-bearing in a way nothing said out loud: renderAgentsPanel
+	// carried the <script> defining muAgentCsrf and window.muSeedAgent, and it
+	// was only emitted when !named — while this page calls muSeedAgent
+	// unconditionally and the conversation rail calls muAgentCsrf to delete. So
+	// on /agent/<name> both threw ReferenceError, which is why the delete cross
+	// did nothing and why a named agent's page did not look like the default
+	// one. What this page needs it now defines itself, in chatPageJS.
+	rail := `<div class="chat-side">` +
+		`<div class="chat-pane" id="pane-chats">` +
+		renderSessionsRail(accountID, activeRoot, selAgent, named) + `</div></div>`
 
-	chip := ""
-	{
-		// The chip alone said "Agent: Micro" and nothing else, which leaves the
-		// obvious question unanswered — what is this, and is it the same thing
-		// as the agent I came here to connect? It is not: this one is Mu's,
-		// running on the tools. Yours reaches the same tools over MCP.
-		//
-		// The link beside it used to be a generic "Connect your own agent"
-		// pointing at /tools, on a page that already knows which agent you are
-		// looking at. When it knows, it points at that one's endpoint, scope and
-		// token rather than at the catalogue.
-		connect := `<a class="agent-connect" href="/agent/connect">Connect &rarr;</a>`
-		if selAgent != "" {
-			connect = `<a class="agent-connect" href="/agent/connect?id=` +
-				url.QueryEscape(selAgent) + `">Connect &rarr;</a>`
-		}
-		// No address in the bar.
-		//
-		// It was here on the argument that the first question anybody has about
-		// an agent is where to write to it. Maybe — but not on the page where
-		// you are already talking to it. This is the chat; the address is a
-		// thing you copy once, from Connect, which is the link next to it.
-		where := ""
-		// On a phone this bar is the whole of the navigation: the chip opens the
-		// agent picker and the button beside it opens your conversations. Both
-		// were columns above the chat before, so the first thing on the page was
-		// a list of agents, then a list of conversations, and the box you came to
-		// type in was somewhere below the fold.
-		//
-		// The same markup on a desktop, where the panels are always open and
-		// these two do nothing — so they are hidden there rather than made a
-		// second way to do what the sidebar already does.
-		// The chip is the switcher, and only that. On a page about one agent
-		// there is nothing to switch, so there is no chip.
-		//
-		// It used to become a plain label there, showing agentTitle — which is
-		// the page's own title, rendered by the shell a few lines above it. Two
-		// copies of the same word, one under the other, the lower one styled
-		// like a control that does nothing.
-		agentChip := ""
-		if !named {
-			agentChip = `<button type="button" id="active-agent-chip" class="agent-chip" ` +
-				`onclick="muPane('agents')">Agent: Micro</button>`
-		}
-		chip = `<div class="agent-bar">` + agentChip +
-			`<button type="button" class="chat-open-list" onclick="muPane('chats')">Chats</button>` +
-			where + connect + `</div>` + paneJS
-	}
+	// The bar above the conversation: how you got here, and how to see the
+	// other conversations on a phone. Nothing else.
+	//
+	// It held three more things and all three have gone the same way — they
+	// were a second copy of something /agents already does better.
+	//
+	//   - A chip naming the agent, which is the page's own title one line up.
+	//   - A Connect link. /agents lists every agent with chat, connect and edit
+	//     beside each, so the way to reach this agent's Connect page is the way
+	//     you reached this one.
+	//   - A picker opening the roster in the rail, which is the room carrying
+	//     the list of rooms.
+	//
+	// What replaces them is a back link, the same one /agent/connect has, so
+	// the two pages about an agent leave the same way.
+	chip := `<div class="agent-bar">` +
+		app.TextLink("← Agents", "/agents") +
+		`<button type="button" class="chat-open-list" onclick="muPane('chats')">Chats</button>` +
+		`</div>` + paneJS
 
 	// No tabs. There were four — Chat, Threads, Runs, Connect — for one thing:
 	// you, an agent, and what you have said to each other. Two of them listed
@@ -661,7 +635,8 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	if elsewhere != "" {
 		main = elsewhere
 	}
-	content := `<div class="chat-layout">` + rail + `<div class="chat-main">` + chip + main + `</div></div>` + chatLayoutCSS
+	content := `<div class="chat-layout">` + rail + `<div class="chat-main">` + chip + main +
+		`</div></div>` + chatLayoutCSS + chatPageJS
 
 	// Seed the active agent so the panel highlights it and follow-ups continue
 	// with it: an explicit ?id= selection (deep link) wins; otherwise a reopened
@@ -679,11 +654,10 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	//
 	// Seeded unconditionally, including the empty default. selAgent is what the
 	// rail was filtered by and what the conversation was loaded for, so it is
-	// the page's answer to "which agent is this" and the chip has to give the
-	// same one. Seeding only when it was non-empty left the tab's remembered
-	// selection in charge on a bare /agent: the rail listed every agent's
-	// conversations while the chip named one of them, and the next message went
-	// to the agent the chip named. The URL is the state.
+	// the page's answer to "which agent is this". Seeding only when it was
+	// non-empty left the tab's remembered selection in charge on a bare /agent:
+	// the rail listed every agent's conversations while the next message went to
+	// whichever agent the tab remembered. The URL is the state.
 	content += `<script>window.muSeedAgent(` + app.JSString(selAgent) + `);</script>`
 	if prefill != "" {
 		content += `<script>(function(){var i=document.getElementById('mu-chat-input');if(i&&window.muChatAsk){i.value=` + app.JSString(prefill) + `;window.muChatAsk(i.value);}history.replaceState(null,'',` + app.JSString(Path(accountID, selAgent)) + `);})()</script>`
@@ -888,10 +862,11 @@ func renderSessionsRail(accountID, currentID, agentID string, named bool) string
 		}
 		// Deletable. A conversation you can start and never be rid of is a list
 		// that only grows, and the rail is the one place somebody looks at it.
-		b.WriteString(`<div class="chat-sess-row"><a href="` + base + `?session=` + url.QueryEscape(s.ID) +
+		b.WriteString(`<div class="chat-sess-row has-row-del"><a href="` + base + `?session=` + url.QueryEscape(s.ID) +
 			`" class="` + cls + `">` + htmlEsc(title) + where + `</a>` +
-			`<button type="button" class="chat-sess-del mini-btn danger" ` +
-			`onclick="muSessionDelete(` + app.JSString(s.ID) + `,event)">Delete</button></div>`)
+			`<button type="button" class="row-del" title="Delete conversation" ` +
+			`aria-label="Delete this conversation" ` +
+			`onclick="muSessionDelete(` + app.JSString(s.ID) + `,event)">&times;</button></div>`)
 	}
 	if len(sessions) >= railShown {
 		b.WriteString(`<a class="chat-sess-more" href="/recall">Older conversations →</a>`)
@@ -927,10 +902,10 @@ window.muSessionStarted=function(id,title){
   title=(title||'Untitled').trim();
   if(title.length>60)title=title.slice(0,60)+'…';
   list.querySelectorAll('.chat-sess.active').forEach(function(e){e.classList.remove('active');});
-  var row=document.createElement('div');row.className='chat-sess-row';
+  var row=document.createElement('div');row.className='chat-sess-row has-row-del';
   var a=document.createElement('a');a.className='chat-sess active';a.href=href;a.textContent=title;
-  var b=document.createElement('button');b.className='chat-sess-del mini-btn danger';b.type='button';
-  b.title='Delete conversation';b.textContent='Delete';
+  var b=document.createElement('button');b.className='row-del';b.type='button';
+  b.title='Delete conversation';b.textContent='×';
   b.onclick=function(e){muSessionDelete(id,e);};
   row.appendChild(a);row.appendChild(b);
   list.insertBefore(row,list.firstChild);
@@ -962,9 +937,65 @@ function muPane(which){
 function muPaneClose(){
   document.querySelectorAll('.chat-pane.open').forEach(function(p){p.classList.remove('open')});
   var side=document.querySelector('.chat-side');if(side)side.classList.remove('up');
-  var scrim=document.querySelector('.chat-scrim');if(scrim)scrim.classList.remove('up');
+  // Removed, not un-classed.
+  //
+  // The scrim is appended to document.body, which outlives the page: this site
+  // navigates softly, replacing #content and leaving body's other children
+  // alone. So a sheet opened on a phone and then left by tapping a
+  // conversation took its grey overlay to the next page and kept it there,
+  // with nothing on screen to dismiss it — reported as "once I select a chat
+  // the screen stays grey". Taking it out of the DOM cannot leave it behind.
+  var scrim=document.querySelector('.chat-scrim');if(scrim)scrim.remove();
 }
 document.addEventListener('keydown',function(e){if(e.key==='Escape')muPaneClose()});
+// Picking anything inside a sheet closes it. A conversation is a link, and a
+// link that navigates while the sheet is still up leaves both behind.
+document.addEventListener('click',function(e){
+  var a=e.target.closest&&e.target.closest('.chat-pane a');
+  if(a)muPaneClose();
+},true);
+</script>`
+
+// chatPageJS is what the conversation page calls, on the page that calls it.
+//
+// These two lived in renderAgentsPanel's <script>, which this page emitted only
+// when it was not about a named agent — while calling both regardless. On
+// /agent/<name> that was three failures from one missing script:
+//
+//   - window.muSeedAgent threw, so window.muActiveAgent was never set. The chat
+//     component sends it with every message (see internal/app/chat.go) and the
+//     server has no fallback to the URL, so a question asked on an agent's own
+//     page was answered by the default agent.
+//   - muAgentCsrf threw, so the delete cross on a conversation did nothing.
+//   - The throw aborted the rest of that inline script, which is why a named
+//     agent's page did not lay out like the default one.
+//
+// Guarded rather than unconditional, because /agents and /agent/connect still
+// render the panel and its versions know about things this page does not have
+// — a roster to highlight, a chip to relabel. Where both are present the
+// richer one wins; where only this is, the page still works.
+const chatPageJS = `<script>
+(function(){
+  var K='mu_active_agent';
+  if(typeof window.muActiveAgent==='undefined'){
+    try{window.muActiveAgent=sessionStorage.getItem(K)||'';}catch(e){window.muActiveAgent='';}
+  }
+  if(typeof window.muSeedAgent!=='function'){
+    window.muSeedAgent=function(id){
+      window.muActiveAgent=id||'';
+      try{sessionStorage.setItem(K,window.muActiveAgent);}catch(e){}
+    };
+  }
+  if(typeof window.muAgentCsrf!=='function'){
+    window.muAgentCsrf=function(){
+      var m=document.cookie.match(/(?:^|; )csrf_token=([^;]+)/);
+      return m?decodeURIComponent(m[1]):'';
+    };
+  }
+  // A scrim left behind by the page before this one. Soft navigation keeps
+  // body's children, so without this the grey survives a reload of the layout.
+  document.querySelectorAll('.chat-scrim').forEach(function(s){s.remove();});
+})();
 </script>`
 
 const chatLayoutCSS = `<style>
@@ -976,16 +1007,15 @@ const chatLayoutCSS = `<style>
 /* The conversation fills the main pane here (the 760px readability cap only
    applies to the chat embedded on the landing/home page). */
 .chat-main #mu-chat{max-width:none}
-/* Which agent is answering — always visible above the conversation. */
-.agent-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
-.agent-connect{margin-left:auto;font-size:13px;color:var(--text-muted,#666);text-decoration:none;white-space:nowrap}
-.agent-connect:hover{color:var(--text-primary,#111)}
-@media only screen and (max-width:600px){.agent-connect{margin-left:0}}
+/* The bar above the conversation: the way back, and on a phone the way to the
+   other conversations. It held a chip naming this agent and a Connect link
+   too; both were a second copy of what /agents does, so both are gone and the
+   rules for them with them. Same shape as .conn-back on /agent/connect. */
+.agent-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 14px;font-size:13px}
 .agent-addr{font-size:12px;background:var(--hover-background,#f5f5f5);border-radius:6px;
   padding:3px 10px;color:var(--text-secondary,#555);overflow-wrap:anywhere}
 .chat-sess-head{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
   color:var(--text-muted,#999);padding:0 10px 6px}
-.agent-chip{display:inline-block;padding:3px 10px;border-radius:6px;background:var(--hover-background,#f5f5f5);color:var(--text-primary,#111);font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
 .agent-intro{margin:0 0 14px;padding:12px 14px;border:1px solid var(--border-color,#e5e5e5);border-radius:8px;font-size:14px;line-height:1.55;color:var(--text-secondary,#555)}
 .agent-intro b{color:var(--text-primary,#111)}
 .agent-intro a{color:var(--text-primary,#111)}
@@ -1003,15 +1033,10 @@ const chatLayoutCSS = `<style>
   text-decoration:none;font-size:13px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .chat-sess:hover{background:var(--hover-background,#f5f5f5)}
 .chat-sess.active{background:var(--active-background,#eef0ff);color:var(--text-primary,#111);font-weight:600}
-/* The way to be rid of a conversation is the button this site already has.
-   It was a bare × — a borderless glyph at 15px in a 24px box, which is under
-   any touch target anybody recommends and did not look like a control at all.
-   .mini-btn.danger carries the border, the colour and the padding, so all
-   that is left here is when it shows. */
-.chat-sess-del{flex:none;opacity:0;transition:opacity .12s ease}
-.chat-sess-row:hover .chat-sess-del,.chat-sess-del:focus-visible{opacity:1}
-/* No hover to reveal it with. */
-@media(hover:none){.chat-sess-del{opacity:1}}
+/* Deleting a conversation is .row-del in mu.css — the same control the inbox
+   draws, rather than a third private one. The row marks itself with
+   .has-row-del so the generic hover rule finds it; nothing else is needed
+   here. */
 .chat-sess-more{display:block;padding:8px 10px;font-size:12px;color:var(--text-muted,#888);text-decoration:none}
 .chat-sess-more:hover{color:var(--text-primary,#111)}
 .chat-sess-empty{color:var(--text-muted,#999);font-size:13px;padding:8px 10px;line-height:1.5}
@@ -1020,7 +1045,6 @@ const chatLayoutCSS = `<style>
    there, so a control that opens them is a second way to do nothing — and
    "Agent: Micro" beside a page whose title is Micro is the same word twice. */
 .chat-open-list{display:none}
-button.agent-chip{display:none;border:0;font-family:inherit}
 
 /* On a phone the conversation is the page.
    It was a stacked column: the agent picker first, then every conversation as a
@@ -1038,8 +1062,6 @@ button.agent-chip{display:none;border:0;font-family:inherit}
     background:var(--card-background,#fff);color:var(--text-primary,#111);
     border-radius:6px;padding:3px 12px;font-size:12px;font-weight:600;
     font-family:inherit;cursor:pointer}
-  button.agent-chip{display:inline-block;cursor:pointer}
-  button.agent-chip::after{content:" ▾";color:var(--text-muted,#999)}
   .chat-open-list::after{content:" ▾";color:#999}
   /* The sheet. Off-screen rather than display:none, so opening it animates and
      so the panels inside keep their state. */
@@ -1060,7 +1082,6 @@ button.agent-chip{display:none;border:0;font-family:inherit}
   .chat-sess-list{flex-direction:column;overflow:visible;flex-wrap:nowrap;max-height:52vh;overflow-y:auto}
   .chat-sess-row{flex-shrink:0;max-width:none}
   .chat-sess{font-size:14px;padding:10px}
-  .chat-sess-del{opacity:1;padding:6px 10px;font-size:13px}
   .agents-list>div{padding:10px 8px;font-size:14px}
   .agents-actions{opacity:1}
   .agents-actions a,.agents-actions button{padding:4px 6px;font-size:14px}

@@ -184,10 +184,41 @@ button {
   transition: all var(--transition-fast);
 }
 
+/* A fill and the colour that has to sit on it, together.
+ *
+ * This set the background and not the text colour, which is only safe for a
+ * button that kept the default white text. Any button whose class declares its
+ * own light background and dark text loses the background here — a class is
+ * 0,0,1,0 and this is 0,0,1,1 — and keeps its dark text, so the moment you
+ * point at it the pair goes dark-on-dark. On a phone :hover sticks after a tap,
+ * which is why it was reported as happening "when selected".
+ *
+ * Naming the colour here means the worst case is now white on the hover fill,
+ * which is legible everywhere even where it is not what the author wanted. The
+ * list below is for the buttons that should not take a fill at all. */
 button:hover {
   background: var(--btn-primary-hover);
   border-color: var(--btn-primary-hover);
+  color: #fff;
 }
+
+/* Buttons that keep their own look when pointed at.
+ *
+ * A control that is a glyph or a quiet outline is not a call to action and must
+ * not grow a dark fill on hover. Each of these declares a background in its own
+ * rule and would lose it to the line above.
+ *
+ * Separate from the list further down because that one also flattens padding,
+ * border and font-size, which these have their own opinions about. */
+.row-del:hover,
+.ib-del-go:hover,
+.chat-open-list:hover,
+.push-test:hover {
+  background: none;
+  border-color: var(--card-border, #ddd);
+}
+.row-del:hover,
+.ib-del-go:hover { border-color: transparent; }
 
 /* Buttons that are controls rather than buttons: a word you click, no fill.
    These exist because a destructive or secondary action in a list row should
@@ -5560,6 +5591,21 @@ button.pill:hover {
    at the bottom of this file. */
 .ib-del { display: flex; align-items: center; flex: none }
 
+/* The way to be rid of one row of a list.
+ *
+ * .row-del is the shape and .ib-del-go is the inbox's name for it, kept
+ * because the inbox's own markup and tests use it. They were one design and
+ * two implementations: the conversations rail on the agent page had
+ * .chat-sess-del, hand-written, and an attempt to "fix" it by promoting it to
+ * a bordered .mini-btn.danger reading "Delete" was the wrong direction —
+ * a destructive control that repeats down a list wants to be quiet. The inbox
+ * comment already said so: twenty Deletes is a column of warnings.
+ *
+ * So: a glyph, muted, revealed on hover of the row, red when you are actually
+ * on it, and simply present where there is no pointer to hover with. Anything
+ * that lists rows and lets you remove one should use this rather than invent
+ * a fourth. */
+.row-del,
 .ib-del-go {
   font: inherit;
   font-size: 17px;
@@ -5569,6 +5615,7 @@ button.pill:hover {
   background: none;
   color: var(--text-muted, #888);
   cursor: pointer;
+  flex: none;
   opacity: 0;
   transition: opacity var(--transition-fast, .15s ease), color var(--transition-fast, .15s ease);
 }
@@ -5576,6 +5623,12 @@ button.pill:hover {
 .ib-item:hover .ib-del-go,
 .ib-del-go:focus { opacity: 1 }
 .ib-del-go:hover { color: var(--btn-danger, #c00) }
+
+/* The generic half: any row marked .has-row-del reveals its own. */
+.has-row-del:hover .row-del,
+.row-del:focus { opacity: 1 }
+.row-del:hover { color: var(--btn-danger, #c00) }
+@media (hover: none) { .row-del { opacity: 1 } }
 
 
 /* Unread is what makes this a mailbox rather than a log: a rule down the left
