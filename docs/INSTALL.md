@@ -584,6 +584,8 @@ one, the agent, chat and AI summaries are off and everything else works.
 | `AGENT_NATIVE` | `off` falls back to the hand-rolled planner |
 | `AGENT_NATIVE_STREAM` | `off` forces the streaming UI onto the planner |
 | `AGENT_MAX_STEPS` | How many tools one question may use before the agent is told to stop and summarise (default `20`, `0` for no limit). This is a cost ceiling, not a safety one — a runaway loop is caught separately, by refusing the same call with the same arguments a fourth time. Raise it if you ask for work that chains many tools; lower it to cap what a single question can spend |
+| `MU_LOG_FILE` | Where the log is written (default `~/.mu/logs/mu.log`). Startup printed 313 lines, a hundred of them the framework announcing its own in-memory transport, and the line that mattered — "no model configured" — was third from the top and gone before the scroll stopped. The log goes to a file so the screen can say the address, what is still unconfigured, and where the rest went. Everything still reaches `/admin/logs` either way |
+| `MU_LOG_STDOUT` | `true` puts the whole log back on stdout. For Docker and systemd, which capture stdout and expect the log to be there — `docker logs` and `journalctl -u mu` are how an operator reads it, and a file inside a container is not. A choice about where this instance runs rather than about what it should say, which is why it is set rather than guessed |
 
 ### Service keys
 

@@ -474,6 +474,9 @@ func serve(addr string) {
 		} else {
 			app.Log("main", "Starting server on %s", addr)
 		}
+		// And on the screen, which is a different audience with a different
+		// question — see ready.go.
+		ready(addr, activated)
 		if err := server.Serve(ln); err != nil && err != http.ErrServerClosed {
 			app.Log("main", "Server error: %v", err)
 		}

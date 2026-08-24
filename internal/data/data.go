@@ -488,7 +488,6 @@ func StartIndexing() {
 	if !indexWorkersStarted {
 		indexWorkersStarted = true
 		numWorkers := 4
-		fmt.Printf("[data] Starting %d index workers\n", numWorkers)
 		for i := 0; i < numWorkers; i++ {
 			go indexWorker(i)
 		}

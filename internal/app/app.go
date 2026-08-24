@@ -1371,10 +1371,17 @@ func logLine(pkg string, format string, args ...interface{}) {
 		color = colorWhite
 	}
 	timestamp := time.Now().Format("15:04:05")
-	prefix := fmt.Sprintf("%s[%s %s]%s ", color, timestamp, pkg, colorReset)
-	if !cliMode {
-		fmt.Printf(prefix+format+"\n", args...)
+	if cliMode {
+		return
 	}
+	// To the file, where there is room for it. Colour is for a terminal and a
+	// file is not one — see logfile.go for why the log moved off the screen.
+	if w := logDest(); w != os.Stdout {
+		fmt.Fprintf(w, "[%s %s] "+format+"\n", append([]interface{}{timestamp, pkg}, args...)...)
+		return
+	}
+	prefix := fmt.Sprintf("%s[%s %s]%s ", color, timestamp, pkg, colorReset)
+	fmt.Printf(prefix+format+"\n", args...)
 }
 
 // Error writes an error response: JSON if the client expects it, otherwise a

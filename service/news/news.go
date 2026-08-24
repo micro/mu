@@ -1220,7 +1220,7 @@ func parseFeed() {
 		}
 	}()
 
-	fmt.Println("Parsing feed at", time.Now().String())
+	app.Log("news", "parsing feeds")
 	p := gofeed.NewParser()
 	p.UserAgent = "Mu/0.1"
 

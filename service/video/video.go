@@ -103,14 +103,18 @@ var Client *youtube.Service
 func Configured() bool { return strings.TrimSpace(Key) != "" && Client != nil }
 
 func init() {
-	var err error
-	Client, err = youtube.NewService(context.TODO(), option.WithAPIKey(Key))
-	if err != nil {
-		app.Log("video", "Failed to initialize YouTube client: %v", err)
-	}
-	if Key == "" {
-		app.Log("video", "WARNING: YOUTUBE_API_KEY environment variable not set")
-	}
+	// Quietly. This runs at package init, before the log has been opened, so
+	// anything said here goes to the screen no matter what — and both things it
+	// said were noise at best. The missing key is reported once, in one place,
+	// by the startup summary (internal/server/ready.go), which says it beside
+	// everything else that is missing.
+	//
+	// The client error was worse than noise. With no key the library reports
+	// "could not find default credentials" and points at Google's application
+	// default credentials documentation, which is not how this is configured
+	// and sends an operator somewhere that cannot help them. The answer is
+	// YOUTUBE_API_KEY, and Configured() is what the tools ask.
+	Client, _ = youtube.NewService(context.TODO(), option.WithAPIKey(Key))
 }
 
 // Video styles are in mu.css
