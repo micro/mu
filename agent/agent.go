@@ -617,10 +617,15 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	//   - A picker opening the roster in the rail, which is the room carrying
 	//     the list of rooms.
 	//
-	// What replaces them is a back link, the same one /agent/connect has, so
-	// the two pages about an agent leave the same way.
+	// Nothing replaces them. The bar is the phone control for the conversations
+	// and nothing else, so on a desktop it is empty and takes no room — which
+	// is the point: the box you came to type in starts at the top of the page.
+	//
+	// A back link went here briefly and it was the wrong shape for this page.
+	// Leaving is what the sidebar is for, on every other page too; a link that
+	// only exists here put a row of chrome above the conversation to say
+	// something the nav already says.
 	chip := `<div class="agent-bar">` +
-		app.TextLink("← Agents", "/agents") +
 		`<button type="button" class="chat-open-list" onclick="muPane('chats')">Chats</button>` +
 		`</div>` + paneJS
 
@@ -1001,6 +1006,37 @@ const chatPageJS = `<script>
 const chatLayoutCSS = `<style>
 .chat-layout{display:flex;gap:24px;align-items:flex-start}
 .chat-side{width:250px;flex-shrink:0;display:flex;flex-direction:column}
+
+/* On a desktop the page does not scroll; the two columns do.
+ *
+ * A conversation and a list of conversations both grow without limit, and when
+ * the page carries that growth the box you came to type in leaves the screen.
+ * So the layout is one screen high and each column keeps its own overflow,
+ * which is what every mail client does and for this reason.
+ *
+ * All of it in a min-width block, and none of it in the base rules. Height on
+ * a flex chain is all-or-nothing — .chat-sess-list scrolls only if every
+ * ancestor between it and .chat-layout refuses to grow — and putting those
+ * properties in the base rules applied them to the phone sheet too, where the
+ * chain is different and a min-height:0 collapsed the list to nothing. The
+ * sheet sizes itself; it wants none of this.
+ */
+@media(min-width:761px){
+  .chat-layout{height:calc(100vh - var(--chat-chrome, 120px));min-height:420px}
+  .chat-side{min-height:0;max-height:100%;overflow:hidden}
+  /* The link that was missing: a plain div between the column and the rail,
+     which grew to its content and pushed the page down while the list below it
+     carried an overflow rule that could never fire. */
+  .chat-side>.chat-pane{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+  /* flex-shrink:0 on the rail is about the horizontal axis — it is a column
+     beside the conversation and must not be squeezed narrow. As a column child
+     of the pane it applies to height instead, which pinned the rail at its full
+     content height and let it be clipped rather than scrolled: the rows past
+     the fold were unreachable, which is worse than a long page. */
+  .chat-side .chat-rail{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+  .chat-main{min-height:0;display:flex;flex-direction:column;overflow-y:auto}
+  .chat-sess-list{min-height:0;overflow-y:auto}
+}
 .chat-side .chat-rail{width:auto}
 .chat-rail{width:250px;flex-shrink:0}
 .chat-main{flex:1;min-width:0}
