@@ -128,17 +128,23 @@ func history(turns []QueryMessage) *threadMemory {
 		m.msgs = append(m.msgs, kept[i])
 	}
 
-	// Say that something is missing, rather than letting the conversation
-	// appear to begin where it was cut. A model that knows it has been given
-	// the tail can say so; one that does not will answer as though the
-	// beginning never happened.
+	// What the dropped turns were about, in front of what is left.
+	//
+	// The beginning is where somebody says what they are trying to do, so a
+	// long working conversation that simply drops its oldest turns forgets its
+	// own purpose while remembering the last twenty exchanges of detail. See
+	// compact.go.
+	//
+	// The note is the fallback rather than the answer: a model told that
+	// something is missing can only say so, which is honest and no use.
 	if m.dropped > 0 {
-		m.msgs = append([]gmai.Message{{
-			Role: "user",
-			Content: fmt.Sprintf("[%d earlier messages in this conversation are not "+
+		opening := summarise(turns[:m.dropped])
+		if opening == "" {
+			opening = fmt.Sprintf("[%d earlier messages in this conversation are not "+
 				"shown. If the answer depends on them, say so rather than guessing.]",
-				m.dropped),
-		}}, m.msgs...)
+				m.dropped)
+		}
+		m.msgs = append([]gmai.Message{{Role: "user", Content: opening}}, m.msgs...)
 	}
 	return m
 }
