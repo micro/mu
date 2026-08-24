@@ -179,7 +179,7 @@ func AgentSaid(f func(accountID, threadID, text string)) {
 	}
 }
 
-// askBox is the control itself: somewhere to type, and three things that are
+// assignDialog is the control itself: somewhere to type, and three things that are
 // true of any message.
 //
 // The suggestions exist because an empty box on a page nobody has seen before
@@ -196,9 +196,18 @@ func AgentSaid(f func(accountID, threadID, text string)) {
 // reply. Making them depend on the content would mean reading the content,
 // which is a model call to decide what to offer before anybody has asked for
 // anything.
-func askBox(r *http.Request, threadID, replyWho string) string {
+func assignDialog(r *http.Request, threadID, replyWho string) string {
 	canReply := replyWho != ""
 	var b strings.Builder
+	// A native <dialog>, so Escape closes it, focus is trapped and the backdrop
+	// is the browser's rather than a scrim this page has to remember to remove
+	// — which is the bug the agent page's sheet had.
+	//
+	// It opens on a press and is otherwise not on the page at all. Rendered
+	// last, outside the conversation, because a dialog inside a flex row
+	// inherits that row's layout.
+	b.WriteString(`<dialog id="ib-assign" class="ib-assign">`)
+	b.WriteString(`<h3 class="ib-assign-head">Assign to agent</h3>`)
 	b.WriteString(`<form class="ib-ask" method="post" action="/inbox">`)
 	b.WriteString(`<input type="hidden" name="id" value="` + html.EscapeString(threadID) + `">`)
 	b.WriteString(`<input type="hidden" name="_csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `">`)
@@ -207,19 +216,13 @@ func askBox(r *http.Request, threadID, replyWho string) string {
 	}
 	b.WriteString(`<textarea name="ask" rows="2" maxlength="` + strconv.Itoa(askLimit) + `" ` +
 		`placeholder="Tell the agent what to do about this"></textarea>`)
-	// Pressed once, and it says so.
+	// The suggestions come before the button, not beside it.
 	//
-	// Making the task is quick, but the page it returns to looks exactly like
-	// the one it left — so without this the honest reading of the screen is that
-	// the press did not register, and the second press makes a second task.
-	//
-	// Inline rather than in mu.js because the whole behaviour is two assignments
-	// on one form and it belongs where the form is. The submit is not cancelled
-	// — disabling a submit button in its own handler would stop the POST — so
-	// the click goes through and the second one has nothing to click.
-	press := `onclick="var f=this.form;setTimeout(function(){f.querySelectorAll('button').forEach(` +
-		`function(b){b.disabled=true});this.textContent='Handed over'}.bind(this),0)"`
-	b.WriteString(`<div class="ib-ask-row"><button type="submit" ` + press + `>Hand over</button>`)
+	// They were on the same row as Assign, which read as four things to press
+	// with no order between them — and one of the four does something and three
+	// fill in a box. Under the textarea they are what they are: ways to fill it
+	// in. The action row is last, which is where a dialog's actions go.
+	b.WriteString(`<div class="ib-ask-hints">`)
 	for _, s := range []string{
 		"Summarise this",
 		"Draft a reply",
@@ -230,6 +233,8 @@ func askBox(r *http.Request, threadID, replyWho string) string {
 		b.WriteString(`<button type="button" class="pill" onclick="this.form.ask.value='` +
 			html.EscapeString(s) + `';this.form.ask.focus()">` + html.EscapeString(s) + `</button>`)
 	}
+	b.WriteString(`</div>`)
+
 	// What the button does, and what it is not.
 	//
 	// A box under a message looks like a reply, so it says it is not one. That
@@ -247,7 +252,41 @@ func askBox(r *http.Request, threadID, replyWho string) string {
 			`you can close the tab. It is not a reply — use Reply above to answer ` +
 			html.EscapeString(replyWho) + ` yourself.`
 	}
-	b.WriteString(`</div><p class="ib-ask-note">` + note + `</p>`)
-	b.WriteString(`</form>`)
+	b.WriteString(`<p class="ib-ask-note">` + note + `</p>`)
+
+	// Pressed once, and it says so.
+	//
+	// Making the task is quick, but the page it returns to looks exactly like
+	// the one it left — so without this the honest reading of the screen is that
+	// the press did not register, and the second press makes a second task.
+	//
+	// Inline rather than in mu.js because the whole behaviour is two assignments
+	// on one form and it belongs where the form is. The submit is not cancelled
+	// — disabling a submit button in its own handler would stop the POST — so
+	// the click goes through and the second one has nothing to click.
+	press := `onclick="var f=this.form;setTimeout(function(){f.querySelectorAll('button').forEach(` +
+		`function(b){b.disabled=true});this.textContent='Assigned'}.bind(this),0)"`
+	// Cancel is inside the form and is formmethod=dialog, which closes without
+	// submitting — the one native way to have a button in a form that is not a
+	// submit and needs no script.
+	b.WriteString(`<div class="ib-ask-row"><button type="submit" ` + press + `>Assign</button>` +
+		`<button type="submit" formmethod="dialog" class="ib-assign-cancel">Cancel</button></div>`)
+	b.WriteString(`</form></dialog>`)
+	b.WriteString(assignJS)
 	return b.String()
 }
+
+// assignJS opens the dialog, and degrades rather than breaking.
+//
+// showModal is what gives the backdrop and the focus trap; a browser without it
+// still gets the dialog through the open attribute, which is worse-looking and
+// works. The empty check is the useful part: pressing Assign with nothing typed
+// is the most likely first move, and the server would bounce it back to a page
+// that looks unchanged.
+const assignJS = `<script>
+function muAssignOpen(){
+  var d=document.getElementById('ib-assign');if(!d)return;
+  if(d.showModal){d.showModal();}else{d.setAttribute('open','');}
+  var box=d.querySelector('textarea');if(box)box.focus();
+}
+</script>`

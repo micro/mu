@@ -33,9 +33,9 @@ func reader(t *testing.T, id string) {
 
 // The box is on the conversation, because that is where the work is. The whole
 // move is that the details are already in the messages above it.
-func TestAConversationCarriesTheAskBox(t *testing.T) {
+func TestAConversationCarriesTheAssignDialog(t *testing.T) {
 	r := httptest.NewRequest("GET", "/inbox?id=x", nil)
-	body := askBox(r, "x", "")
+	body := assignDialog(r, "x", "")
 
 	for _, want := range []string{`method="post"`, `action="/inbox"`,
 		`name="id" value="x"`, `name="_csrf"`, `name="ask"`} {
@@ -51,8 +51,14 @@ func TestAConversationCarriesTheAskBox(t *testing.T) {
 	// One button, and it is the async one. The other ran the agent inside the
 	// POST and made you wait at a dead page for a model call — a chat with the
 	// streaming taken out, on the page that exists so you do not have to wait.
-	if !strings.Contains(body, "Hand over") {
+	if !strings.Contains(body, ">Assign</button>") {
 		t.Errorf("there is no way to hand the conversation over:\n%s", body)
+	}
+	// And it is a dialog rather than a permanent box under the thread, which is
+	// what "clutters the view" was about: a textarea, three pills and a caption
+	// on every conversation whether or not you meant to hand it over.
+	if !strings.Contains(body, "<dialog") {
+		t.Errorf("the box is not in a dialog, so it is on the page always:\n%s", body)
 	}
 	if strings.Contains(body, ">Ask<") {
 		t.Errorf("the synchronous button is back:\n%s", body)

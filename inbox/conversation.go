@@ -66,7 +66,7 @@ const MessagesShown = 100
 // agent panel beside it there to put the agent's turns in.
 func ConversationView(accountID string, t *thread.Thread) string {
 	msgs := thread.Messages(accountID, t.ID, MessagesShown)
-	return conversationPane(accountID, t, msgs, len(msgs) >= MessagesShown, true)
+	return conversationPane(accountID, t, msgs, len(msgs) >= MessagesShown, true, "")
 }
 
 // conversationPane is the correspondence: a heading, who is on it, and the
@@ -84,7 +84,17 @@ func ConversationView(accountID string, t *thread.Thread) string {
 // Delete bar, then its name again. Embedded in somebody else's page it is the
 // other way round: the heading is that page's, and without this the pane is a
 // conversation with nothing saying which.
-func conversationPane(accountID string, t *thread.Thread, msgs []thread.Message, trimmed, titled bool) string {
+// assign is the Assign dialog, already rendered, or "" for a caller that is
+// not offering one.
+//
+// Passed in rather than built here so the button and the dialog cannot come
+// apart: actionBar draws the button only when there is a dialog to open, and
+// the dialog is emitted by this function at the end. They were separate for
+// one commit and that was enough — ConversationView drew the button and the
+// inbox page drew the dialog, so opening a mail thread from /agent got a
+// button that did nothing. Same shape as the agent page calling a function
+// defined in a panel it had stopped rendering.
+func conversationPane(accountID string, t *thread.Thread, msgs []thread.Message, trimmed, titled bool, assign string) string {
 	subject := t.Subject
 	if subject == "" {
 		subject = "Untitled"
@@ -108,25 +118,24 @@ func conversationPane(accountID string, t *thread.Thread, msgs []thread.Message,
 		b.WriteString(messageBlock(accountID, t, m, subject))
 	}
 
-	// Replying, where replying is a thing this page can do.
+	// The two things you can do with a conversation, on one line.
 	//
-	// It could not, and said so: "This happened on Mail, so a reply carries on
-	// there — answer it the way it arrived." That sentence described the product
-	// accurately and described an inbox you cannot answer from, which is not an
-	// inbox. Somebody reading a message here had two controls, one of which was
-	// a box captioned "This is not a reply", and the reasonable thing to do with
-	// the other was press it and hope.
-	//
-	// Mail only. The rest are somebody else's transport — a room thread is
-	// answered in the room — and that is what the note underneath still says.
-	if to := replyTo(accountID, t, msgs); to != "" {
-		b.WriteString(replyBar(t, to))
-	} else {
+	// Replying is mail only: the rest are somebody else's transport — a room
+	// thread is answered in the room — which is what the note underneath says.
+	// It could not reply at all once, and said so, which described an inbox you
+	// cannot answer from. Assign is offered wherever the caller has a dialog for
+	// it to open.
+	to := replyTo(accountID, t, msgs)
+	b.WriteString(actionBar(t, to, assign != ""))
+	if to == "" {
 		b.WriteString(`<p class="ib-note">This happened on ` +
 			html.EscapeString(app.ClientName(t.Client)) + `, so a reply carries on there — answer it ` +
 			`the way it arrived and the agent picks it up in the same thread.</p>`)
 	}
 	b.WriteString(`</div>`)
+	// Last, and outside .ib-conv: a <dialog> inside the conversation would sit
+	// inside its column and inherit its width.
+	b.WriteString(assign)
 	return b.String()
 }
 
@@ -155,10 +164,8 @@ func replyTo(accountID string, t *thread.Thread, msgs []thread.Message) string {
 	return ""
 }
 
-// replyBar is the way to answer, next to the way to ask the agent about it.
-//
-// A link rather than a box, because the New page is where a message is
-// written and there is no reason for a second half-sized version of it here.
+// A link rather than a box for Reply, because the New page is where a message
+// is written and there is no reason for a second half-sized version of it here.
 // It arrives with the recipient and the subject filled in and the conversation
 // attached, so what comes back joins this thread instead of starting one.
 //
@@ -169,20 +176,49 @@ func replyTo(accountID string, t *thread.Thread, msgs []thread.Message) string {
 // the exact bug `a.btn` already carries `color: #fff !important` to prevent:
 // the site has one button and it has been fixed once. Drawing a second one
 // re-earns every bug the first one has already had.
-func replyBar(t *thread.Thread, to string) string {
-	subject := strings.TrimSpace(t.Subject)
-	if subject == "" {
-		subject = "your message"
+// actionBar is what you can do with the conversation you are reading: answer
+// it yourself, or give it to an agent.
+//
+// One row, and Assign is on it rather than under the thread.
+//
+// The instruction box used to sit permanently below the conversation — a
+// two-row textarea, three suggestion pills and a paragraph of caption, on every
+// conversation whether or not you had any intention of handing it over. That
+// is a lot of furniture for something you do occasionally, and it pushed the
+// thing you came to read up the page. Reported as "clutters the view", and the
+// deeper complaint was that assigning did not read as one of the things you do
+// with a message: it read as a second, stranger reply box.
+//
+// So it is a button beside Reply, and the box it opens is a dialog. Same two
+// verbs, same weight, one row.
+func actionBar(t *thread.Thread, to string, canAssign bool) string {
+	var b strings.Builder
+	b.WriteString(`<div class="ib-reply">`)
+	if to != "" {
+		subject := strings.TrimSpace(t.Subject)
+		if subject == "" {
+			subject = "your message"
+		}
+		// One Re:, however many times a subject has been round.
+		if !strings.HasPrefix(strings.ToLower(subject), "re:") {
+			subject = "Re: " + subject
+		}
+		q := url.Values{"to": {to}, "subject": {subject}, "on": {t.ID}}
+		b.WriteString(app.ActionLink("/inbox/new?"+q.Encode(), "Reply"))
 	}
-	// One Re:, however many times a subject has been round.
-	if !strings.HasPrefix(strings.ToLower(subject), "re:") {
-		subject = "Re: " + subject
+	// The button only opens the dialog, so it carries no state and needs no
+	// form — and it is drawn only where there is a dialog to open. See
+	// conversationPane's assign parameter.
+	if canAssign {
+		b.WriteString(`<button type="button" class="ib-assign-open" ` +
+			`onclick="muAssignOpen()">Assign to agent</button>`)
 	}
-	q := url.Values{"to": {to}, "subject": {subject}, "on": {t.ID}}
-	return `<div class="ib-reply">` +
-		app.ActionLink("/inbox/new?"+q.Encode(), "Reply") +
-		`<span class="ib-reply-who">to ` + html.EscapeString(to) + `</span>` +
-		`</div>`
+	if to != "" {
+		b.WriteString(`<span class="ib-reply-who">Reply goes to ` +
+			html.EscapeString(to) + `</span>`)
+	}
+	b.WriteString(`</div>`)
+	return b.String()
 }
 
 // partyLine says who is on a conversation.

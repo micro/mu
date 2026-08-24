@@ -5838,6 +5838,56 @@ button.pill:hover {
    carries color:#fff !important for exactly that reason. */
 .ib-reply-who { font-size: 12px; color: var(--text-muted, #888) }
 
+/* Assign sits beside Reply as the other thing you do with a message, so it is
+   the same size and the quieter of the two: replying is the ordinary act and
+   handing work over is the deliberate one. */
+.ib-assign-open {
+  font: inherit;
+  font-size: 14px;
+  padding: 6px 14px;
+  border: var(--border-width, 1px) solid var(--card-border, #ddd);
+  border-radius: var(--border-radius, 6px);
+  background: var(--card-background, #fff);
+  color: var(--text-primary, #111);
+  cursor: pointer;
+}
+.ib-assign-open:hover {
+  background: var(--hover-background, #fafafa);
+  color: var(--text-primary, #111);
+  border-color: var(--text-muted, #999);
+}
+
+/* The dialog it opens. Native, so the backdrop, Escape and the focus trap are
+   the browser's — see assignJS, and see the agent page's sheet for what a
+   hand-rolled scrim costs when a page navigates out from under it. */
+.ib-assign {
+  width: min(560px, calc(100vw - 32px));
+  padding: 20px 22px;
+  border: var(--border-width, 1px) solid var(--card-border, #ddd);
+  border-radius: 10px;
+  background: var(--card-background, #fff);
+  color: var(--text-primary, #111);
+}
+.ib-assign::backdrop { background: rgba(0, 0, 0, .3) }
+.ib-assign-head { margin: 0 0 10px; font-size: 16px }
+/* Ways to fill the box in, under the box. Quieter than the action row below
+   them, which is the one button that does something. */
+.ib-assign .ib-ask-hints { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px }
+.ib-assign .ib-ask-row { margin-top: 14px; gap: 12px }
+/* No rule above the box: inside a dialog there is nothing to separate it from. */
+.ib-assign .ib-ask { margin-top: 0; padding-top: 0; border-top: 0 }
+.ib-assign-cancel {
+  font: inherit;
+  font-size: 13px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-muted, #888);
+  cursor: pointer;
+  text-decoration: underline;
+}
+.ib-assign-cancel:hover { background: none; color: var(--text-primary, #111) }
+
 /* A conversation is one column, and the width is the reading width.
    
    There were two — the correspondence and a chat with the agent beside it —

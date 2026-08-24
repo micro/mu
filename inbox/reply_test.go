@@ -63,7 +63,7 @@ func TestASubjectIsNotReprefixed(t *testing.T) {
 		t.Fatal("no conversation")
 	}
 	th.Subject = "Re: Mu has a listing"
-	if got := replyBar(th, "henrik@example.com"); strings.Contains(got, "Re%3A+Re%3A") {
+	if got := actionBar(th, "henrik@example.com", true); strings.Contains(got, "Re%3A+Re%3A") {
 		t.Errorf("the subject picked up a second Re: — %s", got)
 	}
 }
@@ -116,11 +116,11 @@ func TestAReplyCannotBeFiledOntoSomebodyElsesThread(t *testing.T) {
 func TestHandingOverSaysItRegistered(t *testing.T) {
 	r := httptest.NewRequest("GET", "/inbox?id=x", nil)
 
-	box := askBox(r, "x", "henrik@example.com")
+	box := assignDialog(r, "x", "henrik@example.com")
 	if !strings.Contains(box, "disabled=true") {
 		t.Error("it can be pressed again, which is two tasks for one instruction")
 	}
-	if !strings.Contains(box, "Handed over") {
+	if !strings.Contains(box, "Assigned") {
 		t.Error("nothing on the page says the press registered")
 	}
 	// And with a reply available, the caption points at it rather than only

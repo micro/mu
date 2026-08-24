@@ -65,8 +65,9 @@ func TestTheConversationPageIsOneColumn(t *testing.T) {
 	}
 
 	// The way to hand it over is still there, because that is the half worth
-	// having: it makes work and you close the tab.
-	if !strings.Contains(page, "Hand over") {
+	// having: it makes work and you close the tab. It is a button beside Reply
+	// now rather than a permanent textarea under the thread — see actionBar.
+	if !strings.Contains(page, "Assign to agent") {
 		t.Error("there is no way to hand the conversation to an agent")
 	}
 }
