@@ -278,13 +278,52 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 	return a, question, true
 }
 
-// nativeLLM picks the go-micro provider the native agent talks to. Atlas
-// stays first — that is today's hosted default. OpenRouter is the other
-// first-class cloud option. Local Ollama is not wired here: the go-micro
-// agent cannot set a BaseURL, so a local server would hit api.openai.com.
+// nativeLLM picks the go-micro provider the native agent talks to.
+//
+// This is the agent's model — the one running the tool-calling loop, which is
+// every question anybody asks it. It is worth being exact about, because it was
+// wrong in a way nothing on screen said.
+//
+// Atlas came first with no Anthropic branch at all, so an instance with both
+// keys set ran the agent on DeepSeek while ANTHROPIC_API_KEY sat there serving
+// chat, summaries and moderation. Every other path in the codebase prefers
+// Anthropic when its key is present — see ai.resolveProvider — so the agent was
+// the one place that silently did the opposite, and the symptom was the agent
+// feeling worse than the rest of the product while looking identically
+// configured.
+//
+// Same order as everywhere else now: Anthropic, then Atlas, then OpenRouter.
+//
+// AGENT_MODEL overrides the model without changing the provider choice, which
+// is how an operator spends credit they already have — set it to a
+// deepseek-ai/… id and the Atlas branch is chosen for it, or to claude-opus-5
+// to put the hardest reasoning on the loop. Naming a model is a decision about
+// cost per question, so it is an operator's to make and not a constant here.
+//
+// Local Ollama is still not wired: the go-micro agent cannot set a BaseURL, so
+// a local server would hit api.openai.com.
 func nativeLLM() (provider, key, model string, ok bool) {
+	want := strings.TrimSpace(settings.Get("AGENT_MODEL"))
+
+	// A named model picks its own provider, so an operator naming a DeepSeek id
+	// on an instance that also has an Anthropic key gets DeepSeek.
+	if want != "" {
+		if k := settings.Get("ATLAS_API_KEY"); k != "" && ai.AtlasHosted(want) {
+			return "atlascloud", k, want, true
+		}
+		if k := ai.OpenRouterKey(); k != "" && strings.Contains(want, "/") {
+			return "openrouter", k, want, true
+		}
+		if k := settings.Get("ANTHROPIC_API_KEY"); k != "" {
+			return "anthropic", k, want, true
+		}
+	}
+
+	if key := settings.Get("ANTHROPIC_API_KEY"); key != "" {
+		return "anthropic", key, ai.DefaultModel(), true
+	}
 	if key := settings.Get("ATLAS_API_KEY"); key != "" {
-		return "atlascloud", key, ai.ModelDeepSeekPro, true
+		return "atlascloud", key, ai.AtlasModel(), true
 	}
 	if key := ai.OpenRouterKey(); key != "" {
 		return "openrouter", key, ai.OpenRouterModel(), true

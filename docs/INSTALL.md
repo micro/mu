@@ -571,6 +571,7 @@ one, the agent, chat and AI summaries are off and everything else works.
 |---|---|
 | `ANTHROPIC_API_KEY` | Claude |
 | `ANTHROPIC_MODEL` | Override the default model |
+| `AGENT_MODEL` | Optional. The model the **agent** runs on — the tool-calling loop, which is every question anybody asks it. Separate from `ANTHROPIC_MODEL` because it is a different cost decision: the agent makes several model calls per question while a summary makes one. Naming a model also picks its provider, so `deepseek-ai/deepseek-v4-pro-0813` runs the agent on Atlas Cloud even on an instance with an Anthropic key, and `claude-opus-5` puts the hardest reasoning on the loop. Unset, the agent uses the same provider order as everything else: Anthropic, then Atlas, then OpenRouter |
 | `ATLAS_API_KEY` | Atlas Cloud (DeepSeek, Qwen) — also image generation |
 | `ATLAS_MODEL` | Override the Atlas model used when the caller did not name one (default `deepseek-ai/deepseek-v4-pro`) |
 | `OPENROUTER_API_KEY` | OpenRouter — one key for Claude, GPT, Gemini and the rest of their catalogue |

@@ -21,6 +21,8 @@ var settingGroups = []settingGroup{
 	{"AI", []string{
 		"ANTHROPIC_API_KEY",
 		"ANTHROPIC_MODEL",
+		// The agent's own model, which is the one running the tool loop.
+		"AGENT_MODEL",
 		"ATLAS_API_KEY",
 		"ATLAS_MODEL",
 		"OPENROUTER_API_KEY",

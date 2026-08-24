@@ -74,7 +74,12 @@ func DefaultModel() string {
 	if getOpenRouterAPIKey() != "" && settings.Get("ANTHROPIC_API_KEY") == "" {
 		return OpenRouterModel()
 	}
-	return "claude-sonnet-4-6"
+	// Current generation. This said claude-sonnet-4-6 — a generation behind,
+	// pinned in a constant nobody revisits, on an instance whose operator
+	// assumed it was getting the current model. A default model is a decision
+	// with a shelf life; ANTHROPIC_MODEL is how an operator overrides it and
+	// AGENT_MODEL is how they change only the agent's.
+	return "claude-sonnet-5"
 }
 
 // AtlasModel is the model to send Atlas Cloud when the caller did not name one
@@ -99,6 +104,14 @@ func BackgroundModel() string {
 	}
 	return "claude-haiku-4-5-20251001"
 }
+
+// AtlasHosted reports whether a model id is one Atlas Cloud serves.
+//
+// Exported because the agent has to make the same judgement when an operator
+// names a model in AGENT_MODEL: which provider a model belongs to is this
+// package's knowledge, and a second copy of the prefix list in agent/ would be
+// the kind that drifts.
+func AtlasHosted(model string) bool { return isAtlasModel(model) }
 
 // isAtlasModel returns true if the model should be routed to Atlas Cloud.
 func isAtlasModel(model string) bool {

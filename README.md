@@ -264,7 +264,7 @@ mu agent "what happened in markets today?"
 ```
 
 ```
-model: anthropic/claude-sonnet-4-6
+model: anthropic/claude-sonnet-5
 118 tools from https://micro.mu
 wallet: 0x4160a863… (1.27 USDC)
 
