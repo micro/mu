@@ -73,3 +73,49 @@ func TestTwoKeylessCallsAreTwoConversations(t *testing.T) {
 		t.Error("two unrelated questions were filed on one conversation")
 	}
 }
+
+// Passing the thread id back continues that conversation.
+//
+// This is the endpoint's whole claim over a completion API — "send thread back
+// on the next call and it continues the same conversation" — and it did not
+// hold. The door validated the value with thread.Get, treating it as a record
+// id, then handed it to Ask as AskRequest.Thread, which is the client's own
+// *key* and is resolved with thread.Open. It matched no key, so a new
+// conversation was opened whose key happened to be the previous conversation's
+// id: a different thread id came back and the agent had never heard of the
+// first question.
+//
+// Found by calling the live endpoint twice, not by reading it. The first call
+// looked perfect.
+func TestPassingTheThreadBackContinuesIt(t *testing.T) {
+	const who = "api-continue"
+	first, _ := Ask(AskRequest{
+		Account: who, Client: thread.WebClient, Text: "what is the weather", Trigger: "api",
+	})
+	if first.Thread == "" {
+		t.Fatal("no conversation to continue")
+	}
+
+	// What the door does with a returned id.
+	second, _ := Ask(AskRequest{
+		Account: who, Client: thread.WebClient, On: first.Thread,
+		Text: "and what did I just ask", Trigger: "api",
+	})
+	if second.Thread != first.Thread {
+		t.Fatalf("the second turn opened %q instead of continuing %q",
+			second.Thread, first.Thread)
+	}
+
+	// Both questions on one conversation, which is what makes the history the
+	// agent is given actually contain the first one.
+	msgs := thread.Messages(who, first.Thread, 10)
+	var asked []string
+	for _, m := range msgs {
+		if m.Role != thread.RoleAgent {
+			asked = append(asked, m.Text)
+		}
+	}
+	if len(asked) < 2 {
+		t.Errorf("the conversation holds %d questions, want both: %v", len(asked), asked)
+	}
+}

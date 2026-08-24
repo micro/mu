@@ -117,10 +117,25 @@ func APIHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// On, not Thread. They are different fields for different things and this
+	// used the wrong one, six lines below validating it as the other.
+	//
+	// AskRequest.Thread is the *client's own* key for a conversation — mail's
+	// chain key, a channel id — which Ask resolves with thread.Open. On is a
+	// conversation in the record the caller is already holding, by id, which
+	// Ask resolves with thread.Get. What this door hands back is an id, and the
+	// check above looks it up with thread.Get, so an id is what comes in.
+	//
+	// Passed as Thread it was searched for as a key, matched nothing, and
+	// opened a *new* conversation whose key happened to be the previous
+	// conversation's id. So the second call came back with a different thread
+	// id and an agent that had never heard of the first question — the exact
+	// failure the field exists to prevent, on the exact endpoint whose whole
+	// claim is that passing the id back continues the conversation.
 	res, err := Ask(AskRequest{
 		Account: accountID,
 		Client:  thread.WebClient,
-		Thread:  req.Thread,
+		On:      req.Thread,
 		Text:    req.Text,
 		Agent:   agentID,
 		Trigger: "api",
