@@ -12,143 +12,208 @@ import (
 	"mu/internal/settings"
 )
 
+// settingGroup is one capability and the values that switch it on.
+//
+// Does and Needs were added because the page answered the wrong question. It
+// grouped 112 settings by vendor — AI, Twilio, S3 — which answers "what are my
+// Twilio settings", and nobody has ever asked that. What an operator arrives
+// wanting to know is "why doesn't SMS work", and the page could not say: a row
+// was a name, a badge and a box, with nothing to explain what the name was for
+// or whether the thing it belongs to was working.
 type settingGroup struct {
 	Name string
-	Vars []string
+	// Does is what this capability is, in the words somebody would use for it.
+	Does string
+	// Needs is the values without which it does not work at all. Everything
+	// else in Vars tunes it; these switch it on. Empty means the capability
+	// works unconfigured and these only adjust it.
+	Needs []string
+	Vars  []string
+}
+
+// on reports whether a capability's required values are all present, and names
+// whichever are not.
+func (g settingGroup) on() (bool, []string) {
+	var missing []string
+	for _, k := range g.Needs {
+		if strings.TrimSpace(settings.Get(k)) == "" {
+			missing = append(missing, k)
+		}
+	}
+	return len(missing) == 0, missing
 }
 
 var settingGroups = []settingGroup{
-	{"AI", []string{
-		"ANTHROPIC_API_KEY",
-		// Which provider, when there are keys for more than one.
-		"AI_PROVIDER",
-		"ANTHROPIC_MODEL",
-		// The agent's own model, which is the one running the tool loop.
-		"AGENT_MODEL",
-		"ATLAS_API_KEY",
-		"ATLAS_MODEL",
-		"OPENROUTER_API_KEY",
-		"OPENROUTER_MODEL",
-		"OPENAI_BASE_URL",
-		"OPENAI_API_KEY",
-		"OPENAI_MODEL",
-		"IMAGE_MODEL",
-	}},
-	{"Search", []string{
-		"BRAVE_API_KEY",
-		"YOUTUBE_API_KEY",
-		"GOOGLE_API_KEY",
-	}},
-	{"Mail", []string{
-		"MAIL_DOMAIN",
-		"MAIL_WHITELIST",
-		"MAIL_PORT",
-		"MAIL_SELECTOR",
-		"DKIM_PRIVATE_KEY",
-		"SMTP_HOST",
-		"SMTP_PORT",
-		"SMTP_USER",
-		"SMTP_PASS",
-		"SMTP_RELAY_HOST",
-		"SMTP_RELAY_USER",
-		"SMTP_RELAY_PASS",
-		"IMAP_PUBLIC",
-		"SUBMISSION_PUBLIC",
-	}},
+	{Name: "AI",
+		Does:  "The model behind the agent, chat and summaries. Nothing that thinks works without one of these keys.",
+		Needs: []string{"ANTHROPIC_API_KEY"},
+		Vars: []string{
+			"ANTHROPIC_API_KEY",
+			// Which provider, when there are keys for more than one.
+			"AI_PROVIDER",
+			"ANTHROPIC_MODEL",
+			// The agent's own model, which is the one running the tool loop.
+			"AGENT_MODEL",
+			"ATLAS_API_KEY",
+			"ATLAS_MODEL",
+			"OPENROUTER_API_KEY",
+			"OPENROUTER_MODEL",
+			"OPENAI_BASE_URL",
+			"OPENAI_API_KEY",
+			"OPENAI_MODEL",
+			"IMAGE_MODEL",
+		}},
+	{Name: "Search",
+		Does:  "Searching the web, and video and places lookups.",
+		Needs: []string{"BRAVE_API_KEY"},
+		Vars: []string{
+			"BRAVE_API_KEY",
+			"YOUTUBE_API_KEY",
+			"GOOGLE_API_KEY",
+		}},
+	{Name: "Mail",
+		Does:  "This instance as a mail server: the address people write to, and what it sends as.",
+		Needs: []string{"MAIL_DOMAIN"},
+		Vars: []string{
+			"MAIL_DOMAIN",
+			"MAIL_WHITELIST",
+			"MAIL_PORT",
+			"MAIL_SELECTOR",
+			"DKIM_PRIVATE_KEY",
+			"SMTP_HOST",
+			"SMTP_PORT",
+			"SMTP_USER",
+			"SMTP_PASS",
+			"SMTP_RELAY_HOST",
+			"SMTP_RELAY_USER",
+			"SMTP_RELAY_PASS",
+			"IMAP_PUBLIC",
+			"SUBMISSION_PUBLIC",
+		}},
 	// Object storage. Backups go here first, because a copy on the same disk
 	// does not survive losing the disk — and later the same bucket is where
 	// files and generated images belong, which is why these are named for the
 	// storage rather than for the backup.
-	{"Object storage (S3)", []string{
-		"S3_BUCKET",
-		"S3_REGION",
-		"S3_ENDPOINT",
-		"S3_ACCESS_KEY_ID",
-		"S3_SECRET_ACCESS_KEY",
-		"S3_PREFIX",
-		"BACKUP_S3",
-	}},
-	{"Payments", []string{
-		"STRIPE_SECRET_KEY",
-		"STRIPE_PUBLISHABLE_KEY",
-		"STRIPE_WEBHOOK_SECRET",
-		"X402_PAY_TO",
-		"X402_BAZAAR",
-		"X402_NETWORK",
-		"X402_VERSION",
-		"X402_SERVERS",
-	}},
+	{Name: "Object storage (S3)",
+		Does:  "Somewhere off this disk for backups, files and generated images.",
+		Needs: []string{"S3_BUCKET", "S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY"},
+		Vars: []string{
+			"S3_BUCKET",
+			"S3_REGION",
+			"S3_ENDPOINT",
+			"S3_ACCESS_KEY_ID",
+			"S3_SECRET_ACCESS_KEY",
+			"S3_PREFIX",
+			"BACKUP_S3",
+		}},
+	{Name: "Payments",
+		Does:  "Taking money: a card through Stripe, or per-request from an agent over x402.",
+		Needs: nil,
+		Vars: []string{
+			"STRIPE_SECRET_KEY",
+			"STRIPE_PUBLISHABLE_KEY",
+			"STRIPE_WEBHOOK_SECRET",
+			"X402_PAY_TO",
+			"X402_BAZAAR",
+			"X402_NETWORK",
+			"X402_VERSION",
+			"X402_SERVERS",
+		}},
 	// The node this instance reads balances from. BASE_RPC_URL was readable by
 	// the code and settable nowhere, so the only way to point it at Base was an
 	// environment edit and a restart — and until it was set, BaseRPCURL fell
 	// back to TRADE_RPC_URL, which is for trading and may be on another chain
 	// entirely. That silently reported every balance as zero.
-	{"Chain", []string{
-		"BASE_RPC_URL",
-		"TRADE_RPC_URL",
-		"TRADE_CHAIN",
-	}},
-	{"Transit", []string{
-		"TRANSIT_FEEDS",
-		// Optional everywhere: transit answers with no key at all. This only
-		// raises TfL's rate limit, and it was readable by the code and
-		// settable nowhere — the same gap the Twilio group below records.
-		"TFL_APP_KEY",
-		// The two that make transit live outside London: buses from the DfT,
-		// trains from National Rail. Both are free to register for and both
-		// were the reason /transit could only say what the timetable promised.
-		"BODS_API_KEY",
-		"LDBWS_TOKEN",
-	}},
+	{Name: "Chain",
+		Does:  "The node balances are read from. Wrong or unset reports every wallet as empty.",
+		Needs: nil,
+		Vars: []string{
+			"BASE_RPC_URL",
+			"TRADE_RPC_URL",
+			"TRADE_CHAIN",
+		}},
+	{Name: "Transit",
+		Does:  "Departure boards and live buses. Answers from published timetables with no key; these make it live.",
+		Needs: nil,
+		Vars: []string{
+			"TRANSIT_FEEDS",
+			// Optional everywhere: transit answers with no key at all. This only
+			// raises TfL's rate limit, and it was readable by the code and
+			// settable nowhere — the same gap the Twilio group below records.
+			"TFL_APP_KEY",
+			// The two that make transit live outside London: buses from the DfT,
+			// trains from National Rail. Both are free to register for and both
+			// were the reason /transit could only say what the timetable promised.
+			"BODS_API_KEY",
+			"LDBWS_TOKEN",
+		}},
 	// The basemap. /maps sends an operator here by name when it has no key,
 	// so this group has to exist for that sentence to be true — see the note
 	// on the Twilio group, which is the same mistake found the same way.
-	{"Maps", []string{
-		"OS_MAPS_KEY",
-		"TILE_FETCH_PER_HOUR",
-	}},
+	{Name: "Maps",
+		Does:  "The basemap tiles behind /maps.",
+		Needs: []string{"OS_MAPS_KEY"},
+		Vars: []string{
+			"OS_MAPS_KEY",
+			"TILE_FETCH_PER_HOUR",
+		}},
 	// SMS and WhatsApp-over-Twilio. These were absent, and /sms and /whatsapp
 	// both send an operator here by name to set them — a page pointing at a
 	// page that could not help, which is worse than no pointer at all.
-	{"Twilio — SMS and WhatsApp", []string{
-		"TWILIO_ACCOUNT_SID",
-		"TWILIO_AUTH_TOKEN",
-		"TWILIO_API_KEY",
-		"TWILIO_API_SECRET",
-		"TWILIO_FROM",
-		"TWILIO_MESSAGING_SERVICE_SID",
-		"TWILIO_WHATSAPP_FROM",
-		"TWILIO_WEBHOOK_URL",
-		"SMS_DEFAULT_COUNTRY",
-		"SMS_COUNTRIES",
-		"SMS_KNOWN_ONLY",
-		"SMS_VERIFY_INBOUND",
-	}},
+	{Name: "Twilio — SMS and WhatsApp",
+		Does:  "A phone number, so an agent can text somebody and read what they text back.",
+		Needs: []string{"TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_FROM"},
+		Vars: []string{
+			"TWILIO_ACCOUNT_SID",
+			"TWILIO_AUTH_TOKEN",
+			"TWILIO_API_KEY",
+			"TWILIO_API_SECRET",
+			"TWILIO_FROM",
+			"TWILIO_MESSAGING_SERVICE_SID",
+			"TWILIO_WHATSAPP_FROM",
+			"TWILIO_WEBHOOK_URL",
+			"SMS_DEFAULT_COUNTRY",
+			"SMS_COUNTRIES",
+			"SMS_KNOWN_ONLY",
+			"SMS_VERIFY_INBOUND",
+		}},
 	// Email that leaves the instance, which is a different thing from the
 	// mailbox — see service/email. /email names all of these and sends an
 	// operator here, so they have to be here.
-	{"Sending limits and email out", []string{
-		"EMAIL_DOMAIN",
-		"EMAIL_REPLY_DOMAIN",
-		"EMAIL_DAILY_LIMIT",
-		"SMS_DAILY_LIMIT",
-		"WHATSAPP_DAILY_LIMIT",
-	}},
-	{"Sign-in", []string{
-		"GOOGLE_CLIENT_ID",
-		"GOOGLE_CLIENT_SECRET",
-		"GOOGLE_REDIRECT_URI",
-	}},
-	{"Storage", []string{
-		"S3_ENDPOINT",
-		"S3_BUCKET",
-		"S3_REGION",
-		"S3_ACCESS_KEY",
-		"S3_SECRET_KEY",
-	}},
-	{"Social", []string{
-		"SOCIAL_ATPROTO",
-	}},
+	{Name: "Sending limits and email out",
+		Does:  "Mail that leaves the instance, and the daily ceilings on anything that costs per message.",
+		Needs: nil,
+		Vars: []string{
+			"EMAIL_DOMAIN",
+			"EMAIL_REPLY_DOMAIN",
+			"EMAIL_DAILY_LIMIT",
+			"SMS_DAILY_LIMIT",
+			"WHATSAPP_DAILY_LIMIT",
+		}},
+	{Name: "Sign-in",
+		Does:  "Signing in with Google, as well as with a password or a passkey.",
+		Needs: []string{"GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"},
+		Vars: []string{
+			"GOOGLE_CLIENT_ID",
+			"GOOGLE_CLIENT_SECRET",
+			"GOOGLE_REDIRECT_URI",
+		}},
+	{Name: "Storage",
+		Does:  "The older S3 names, kept so a configured instance keeps working. Set the group above instead.",
+		Needs: nil,
+		Vars: []string{
+			"S3_ENDPOINT",
+			"S3_BUCKET",
+			"S3_REGION",
+			"S3_ACCESS_KEY",
+			"S3_SECRET_KEY",
+		}},
+	{Name: "Social",
+		Does:  "Posting out to the ATProto network.",
+		Needs: nil,
+		Vars: []string{
+			"SOCIAL_ATPROTO",
+		}},
 	// The machine an account gets, and the shell door onto it. Every one of
 	// these was readable by the code and settable nowhere — the fourth time
 	// this file has recorded that sentence, which is why there is now a test
@@ -158,59 +223,71 @@ var settingGroups = []settingGroup{
 	// setting.go. Only the new names are offered here: this page is where a
 	// value is set, and offering both would invite an operator to set one of
 	// each and then wonder which won.
-	{"Shell", []string{
-		"SHELL_IMAGE",
-		"SHELL_MEMORY",
-		"SHELL_CPUS",
-		"SHELL_PIDS",
-		"SHELL_NETWORK",
-		"SHELL_SHARED",
-		"SHELL_MAX_MACHINES",
-		"SHELL_MAX_SECONDS",
-		"SHELL_IDLE_MINUTES",
-		// Read once at boot, so changing it here needs a restart before
-		// anything listens. Shown anyway: an operator has to be able to see
-		// what it is set to without shelling onto the box.
-		"SHELL_SSH_PORT",
-	}},
+	{Name: "Shell",
+		Does:  "The machine each account gets: how big it may be, how long it may run, and the SSH door onto it.",
+		Needs: nil,
+		Vars: []string{
+			"SHELL_IMAGE",
+			"SHELL_MEMORY",
+			"SHELL_CPUS",
+			"SHELL_PIDS",
+			"SHELL_NETWORK",
+			"SHELL_SHARED",
+			"SHELL_MAX_MACHINES",
+			"SHELL_MAX_SECONDS",
+			"SHELL_IDLE_MINUTES",
+			// Read once at boot, so changing it here needs a restart before
+			// anything listens. Shown anyway: an operator has to be able to see
+			// what it is set to without shelling onto the box.
+			"SHELL_SSH_PORT",
+		}},
 	// What this instance tells its operator about, and when. Added the same
 	// day as the checks themselves and left off this page, which is the bug
 	// this group exists to fix — see admin/alert.go.
-	{"Alerts", []string{
-		"ALERTS",
-		"ALERT_COOLDOWN_MINUTES",
-		"ALERT_CALLS_PER_HOUR",
-		"ALERT_ACCOUNT_CALLS_PER_HOUR",
-		"ALERT_DISK_PERCENT",
-	}},
+	{Name: "Alerts",
+		Does:  "What this instance tells you about, and how often it is allowed to.",
+		Needs: nil,
+		Vars: []string{
+			"ALERTS",
+			"ALERT_COOLDOWN_MINUTES",
+			"ALERT_CALLS_PER_HOUR",
+			"ALERT_ACCOUNT_CALLS_PER_HOUR",
+			"ALERT_DISK_PERCENT",
+		}},
 	// What somebody gets before they have paid for anything, and the ceilings
 	// on the things that cost us per call.
-	{"Limits and trial", []string{
-		"FREE_TURNS",
-		"TRIAL_DAILY_TOTAL",
-		"VIDEO_SEARCH_PER_HOUR",
-		"VIDEO_SEARCH_PER_DAY",
-		"GENERATE_ADULT",
-	}},
-	{"Platform", []string{
-		"MU_DOMAIN",
-		// Proof of domain ownership for the MCP registry, served at
-		// /.well-known/mcp-registry-auth. It was readable by the code and
-		// settable nowhere, so publishing meant an environment edit and a
-		// restart on a box somebody had to have shell on.
-		"MCP_REGISTRY_PROOF",
-		"PASSKEY_ORIGIN",
-		"PASSKEY_RP_ID",
-		"APP_URL",
-		"SHUTDOWN_SECONDS",
-		"NOTES",
-		"BROWSER_URL",
-		"CHROME_PATH",
-		"MCP_GATEWAY_ADDR",
-		"AGENT_NATIVE",
-		"AGENT_NATIVE_STREAM",
-		"AGENT_MAX_STEPS",
-	}},
+	{Name: "Limits and trial",
+		Does:  "What somebody gets before they have paid, and the ceilings on what costs us per call.",
+		Needs: nil,
+		Vars: []string{
+			"FREE_TURNS",
+			"TRIAL_DAILY_TOTAL",
+			"VIDEO_SEARCH_PER_HOUR",
+			"VIDEO_SEARCH_PER_DAY",
+			"GENERATE_ADULT",
+		}},
+	{Name: "Platform",
+		Does:  "This instance itself: its domain, the agent loop, and where the browser lives.",
+		Needs: nil,
+		Vars: []string{
+			"MU_DOMAIN",
+			// Proof of domain ownership for the MCP registry, served at
+			// /.well-known/mcp-registry-auth. It was readable by the code and
+			// settable nowhere, so publishing meant an environment edit and a
+			// restart on a box somebody had to have shell on.
+			"MCP_REGISTRY_PROOF",
+			"PASSKEY_ORIGIN",
+			"PASSKEY_RP_ID",
+			"APP_URL",
+			"SHUTDOWN_SECONDS",
+			"NOTES",
+			"BROWSER_URL",
+			"CHROME_PATH",
+			"MCP_GATEWAY_ADDR",
+			"AGENT_NATIVE",
+			"AGENT_NATIVE_STREAM",
+			"AGENT_MAX_STEPS",
+		}},
 }
 
 // Settable reports whether a setting can be changed from this page.
@@ -345,11 +422,63 @@ func ConfigHandler(w http.ResponseWriter, r *http.Request) {
 		`box is locked, because saving over it would store something nothing reads.</p>`)
 	b.WriteString(`</div>`)
 
+	// What is off, at the top, named.
+	//
+	// A hundred and twelve settings in seventeen groups is a page nobody reads
+	// to the bottom of, and the one thing worth knowing — which capabilities
+	// are not working — was distributed across all of it one row at a time.
+	// Counted here, and linked, so the answer is above the fold.
+	var off []settingGroup
+	for _, g := range settingGroups {
+		if len(g.Needs) == 0 {
+			continue
+		}
+		if ok, _ := g.on(); !ok {
+			off = append(off, g)
+		}
+	}
+	if len(off) > 0 {
+		b.WriteString(`<div class="card"><h3>Not working yet</h3>`)
+		b.WriteString(`<p class="text-sm text-secondary m-0 mb-2">` +
+			`These need a value before they do anything. Everything not listed is ` +
+			`either working or optional.</p>`)
+		b.WriteString(`<ul class="text-sm m-0">`)
+		for _, g := range off {
+			_, missing := g.on()
+			b.WriteString(fmt.Sprintf(`<li><b>%s</b> — %s<br><span class="text-muted">Needs %s</span></li>`,
+				html.EscapeString(g.Name), html.EscapeString(g.Does),
+				html.EscapeString(strings.Join(missing, ", "))))
+		}
+		b.WriteString(`</ul></div>`)
+	}
+
 	b.WriteString(`<form method="POST" action="/admin/config">`)
 
 	for _, group := range settingGroups {
 		b.WriteString(`<div class="card">`)
 		b.WriteString(fmt.Sprintf(`<h3>%s</h3>`, html.EscapeString(group.Name)))
+
+		// What this is for, before the values that configure it. A name and a
+		// box asks somebody to already know what TWILIO_MESSAGING_SERVICE_SID
+		// is for; a sentence lets them decide whether they care.
+		if group.Does != "" {
+			b.WriteString(fmt.Sprintf(`<p class="text-sm text-secondary m-0 mb-2">%s</p>`,
+				html.EscapeString(group.Does)))
+		}
+
+		// And whether it works, which is the question the page is actually
+		// opened to answer. "Why doesn't SMS work" was unanswerable here: every
+		// row said env, saved or not set, and none of them said whether the
+		// thing they belong to was on.
+		if len(group.Needs) > 0 {
+			if ok, missing := group.on(); ok {
+				b.WriteString(`<p class="text-sm text-success m-0 mb-3">On.</p>`)
+			} else {
+				b.WriteString(fmt.Sprintf(
+					`<p class="text-sm m-0 mb-3">Not working yet — needs %s.</p>`,
+					html.EscapeString(strings.Join(missing, ", "))))
+			}
+		}
 
 		for _, key := range group.Vars {
 			source := settings.Source(key)
