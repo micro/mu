@@ -186,7 +186,7 @@ func Announce(service, text, url, account string) {
 // Nothing here knows what an agent is, which is the point: a service that
 // called one would be asking the model what its own answer should be. See
 // WorkForAgent.
-func RequestWork(account, kind, id, title, prompt, thread string) {
+func RequestWork(account, kind, id, title, prompt, thread, agent string) {
 	if account == "" || prompt == "" {
 		return
 	}
@@ -197,6 +197,11 @@ func RequestWork(account, kind, id, title, prompt, thread string) {
 		"title":   title,
 		"prompt":  prompt,
 		"thread":  thread,
+		// Which agent, when the work was given to a particular one. An opaque
+		// name here: nothing in this package knows what an agent is, and the
+		// subscriber is what resolves it. Empty means whichever one the
+		// instance runs by default, which is every caller but the inbox today.
+		"agent": agent,
 	}})
 }
 

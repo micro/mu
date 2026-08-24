@@ -84,6 +84,22 @@ type Task struct {
 	// there reads it, and a task with no origin is an ordinary task somebody
 	// wrote down.
 	Thread string `json:"thread,omitempty"`
+
+	// Agent is which agent this was given to, when it was given to a
+	// particular one.
+	//
+	// Assignee already says whether a person or an agent is doing this, and it
+	// is deliberately not this field: it has two values that the page and the
+	// tools both read, and overloading it to sometimes hold an id would change
+	// what an existing task means. So this is separate and empty is the
+	// ordinary case — whichever agent an instance runs by default.
+	//
+	// An opaque string here, like Thread. This service does not know what an
+	// agent is and must not: it records who the work is for and says so on the
+	// bus, and the agent layer is what resolves a name to an instruction and a
+	// tool scope. A service that looked one up would be a service calling an
+	// agent.
+	Agent string `json:"agent,omitempty"`
 }
 
 // Open reports whether the task is still to be done.
@@ -91,12 +107,15 @@ func (t *Task) Open() bool { return t.Status != StatusDone }
 
 // Create adds a task.
 func Create(owner, title, detail, assignee string, due time.Time) (*Task, error) {
-	return CreateOn(owner, "", title, detail, assignee, due)
+	return CreateOn(owner, "", "", title, detail, assignee, due)
 }
 
 // CreateOn adds a task that came out of a conversation, so the answer can go
-// back to it. See Task.Thread.
-func CreateOn(owner, threadID, title, detail, assignee string, due time.Time) (*Task, error) {
+// back to it, and optionally names the agent it was handed to.
+//
+// See Task.Thread and Task.Agent. Both are empty for a task somebody wrote on
+// the page, which is what Create passes.
+func CreateOn(owner, threadID, agentID, title, detail, assignee string, due time.Time) (*Task, error) {
 	if owner == "" {
 		return nil, fmt.Errorf("sign in to use tasks")
 	}
@@ -117,6 +136,9 @@ func CreateOn(owner, threadID, title, detail, assignee string, due time.Time) (*
 	}
 	if threadID = strings.TrimSpace(threadID); threadID != "" {
 		fields["thread"] = threadID
+	}
+	if agentID = strings.TrimSpace(agentID); agentID != "" {
+		fields["agent"] = agentID
 	}
 	if !due.IsZero() {
 		fields["due"] = stamp(due)
@@ -229,6 +251,15 @@ func Update(owner, id, title, detail, status, assignee, result string, runSteps 
 	if existing.Thread != "" {
 		fields["thread"] = existing.Thread
 	}
+	if existing.Agent != "" {
+		fields["agent"] = existing.Agent
+	}
+	// Including who it was given to. Run's first act is to move the task to
+	// "doing" through here, so a field this does not carry is one that never
+	// survives being started — the agent reached the bus, because Run read the
+	// task before updating it, and the stored task forgot immediately. What
+	// that loses is the record: /tasks could not say which agent did the work,
+	// and finishTask writing the result would have dropped it again.
 	if len(runSteps) > 0 {
 		fields["steps"] = encodeSteps(runSteps[0])
 	}
@@ -323,6 +354,7 @@ func toTask(id, owner string, d map[string]any) *Task {
 		Result: str("result"), Due: when("due"),
 		Created: when("created"), Updated: when("updated"), Owner: owner,
 		Steps: decodeSteps(str("steps")), Thread: str("thread"),
+		Agent: str("agent"),
 	}
 }
 

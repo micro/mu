@@ -136,7 +136,15 @@ func hand(accountID string, t *thread.Thread, ask string) error {
 	}
 	detail.WriteString("What they have asked for: " + ask)
 
-	task, err := tasks.CreateOn(accountID, t.ID, title, detail.String(), tasks.Agent, time.Time{})
+	// t.Agent, so the conversation is handed to the agent it is already with.
+	//
+	// Without it every hand-over ran the default agent, whatever the thread was.
+	// A conversation that arrived at asim+research@ is research's — answering it
+	// as the general agent is the wrong agent with the wrong tools, and it made
+	// having more than one pointless in the one place work is actually given
+	// away. Empty for a thread with no agent, which is the ordinary case and
+	// means the default.
+	task, err := tasks.CreateOn(accountID, t.ID, t.Agent, title, detail.String(), tasks.Agent, time.Time{})
 	if err != nil {
 		return err
 	}

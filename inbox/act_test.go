@@ -219,3 +219,61 @@ func TestHandingOverMakesATaskOnTheConversation(t *testing.T) {
 		t.Errorf("nothing was said on the conversation: %q", said)
 	}
 }
+
+// The conversation is handed to the agent it is already with.
+//
+// Every hand-over made a task with no agent on it, so agent/work ran whichever
+// agent the instance runs by default — whatever the thread was. A conversation
+// that arrived at asim+research@ is research's, and answering it as the general
+// agent is the wrong instruction and the wrong tool scope. It is also the one
+// place work is actually given away, so having more than one agent bought
+// nothing exactly where it should have counted.
+func TestHandingOverKeepsTheConversationsAgent(t *testing.T) {
+	const who = "act-agentful"
+	reader(t, who)
+
+	th := thread.Open(who, "mail", "<agentful@example.com>")
+	if th == nil {
+		t.Fatal("no conversation")
+	}
+	thread.SetAgent(who, th.ID, "research")
+
+	form := url.Values{"id": {th.ID}, "ask": {"deal with this"}}
+	r := httptest.NewRequest("POST", "/inbox", strings.NewReader(form.Encode()))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	action(httptest.NewRecorder(), r, who)
+
+	task := taskOn(t, who, th.ID)
+	if task == nil {
+		t.Fatal("no task was made")
+	}
+	if task.Agent != "research" {
+		t.Errorf("the task was handed to %q, want %q — the conversation's own "+
+			"agent did not travel with the work", task.Agent, "research")
+	}
+}
+
+// And a conversation with no agent stays with the default, which is what
+// almost every thread is.
+func TestHandingOverWithoutAnAgentIsStillTheDefault(t *testing.T) {
+	const who = "act-agentless"
+	reader(t, who)
+
+	th := thread.Open(who, "mail", "<agentless@example.com>")
+	if th == nil {
+		t.Fatal("no conversation")
+	}
+
+	form := url.Values{"id": {th.ID}, "ask": {"deal with this"}}
+	r := httptest.NewRequest("POST", "/inbox", strings.NewReader(form.Encode()))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	action(httptest.NewRecorder(), r, who)
+
+	task := taskOn(t, who, th.ID)
+	if task == nil {
+		t.Fatal("no task was made")
+	}
+	if task.Agent != "" {
+		t.Errorf("Agent = %q, want empty so the default answers", task.Agent)
+	}
+}
