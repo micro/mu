@@ -38,7 +38,22 @@ else
   fi
   URL="https://github.com/${REPO}/releases/download/${LATEST}/mu-${OS}-${ARCH}"
   mkdir -p "$BIN_DIR"
-  curl -fsSL "$URL" -o "$BIN_DIR/mu"
+  # Say what went wrong. A release can exist and still have no binary attached
+  # to it — v1.5.0 did, because the cross-compile step failed before the upload
+  # ran — and with -s and set -e the only thing on screen was "Downloading
+  # prebuilt binary..." followed by nothing at all. The person then has a
+  # working internet connection, a real release, and no idea why they have no
+  # mu. Every branch here now ends in a sentence and a way forward.
+  if ! curl -fsSL "$URL" -o "$BIN_DIR/mu"; then
+    rm -f "$BIN_DIR/mu"
+    echo ""
+    echo "No ${OS}/${ARCH} binary in ${LATEST}."
+    echo "  ${URL}"
+    echo ""
+    echo "Install Go 1.26+ and run:  go install github.com/${REPO}@latest"
+    echo "Or report it:              https://github.com/${REPO}/issues"
+    exit 1
+  fi
   chmod +x "$BIN_DIR/mu"
 fi
 
