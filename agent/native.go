@@ -24,6 +24,10 @@ import (
 
 var nativeAgentSeq atomic.Uint64
 
+// unservedModel keeps the AGENT_MODEL warning to once per process rather than
+// once per question.
+var unservedModel sync.Once
+
 // nativeEnabled reports whether the native go-micro agent path is on. mu is an
 // agent platform, so the go-micro agent is the default. Set AGENT_NATIVE to a
 // falsey value (off/false/0/no) to fall back to the hand-rolled
@@ -307,16 +311,40 @@ func nativeLLM() (provider, key, model string, ok bool) {
 
 	// A named model picks its own provider, so an operator naming a DeepSeek id
 	// on an instance that also has an Anthropic key gets DeepSeek.
+	//
+	// One provider per shape, and only the one that serves it. The first
+	// version of this tried each in turn and fell through on a missing key,
+	// which recreates the bug ai.modelFor exists to prevent: an Atlas slug and
+	// an OpenRouter slug are both provider/model, so a DeepSeek id with no
+	// Atlas key went to OpenRouter, and with neither key it went to Anthropic —
+	// which answers a deepseek-ai/… id with a 400 on every question asked.
+	//
+	// A name whose provider has no key is a misconfiguration, not an
+	// instruction. It is ignored, said once, and the default choice runs — an
+	// agent that still answers beats one that fails closed because of a typo,
+	// and the log line is what makes the typo findable.
 	if want != "" {
-		if k := settings.Get("ATLAS_API_KEY"); k != "" && ai.AtlasHosted(want) {
-			return "atlascloud", k, want, true
+		switch {
+		case ai.AtlasHosted(want):
+			if k := settings.Get("ATLAS_API_KEY"); k != "" {
+				return "atlascloud", k, want, true
+			}
+		case strings.Contains(want, "/"):
+			// provider/model and not one of Atlas's, so OpenRouter's shape.
+			if k := ai.OpenRouterKey(); k != "" {
+				return "openrouter", k, want, true
+			}
+		default:
+			// A bare id is Anthropic's shape.
+			if k := settings.Get("ANTHROPIC_API_KEY"); k != "" {
+				return "anthropic", k, want, true
+			}
 		}
-		if k := ai.OpenRouterKey(); k != "" && strings.Contains(want, "/") {
-			return "openrouter", k, want, true
-		}
-		if k := settings.Get("ANTHROPIC_API_KEY"); k != "" {
-			return "anthropic", k, want, true
-		}
+		unservedModel.Do(func() {
+			app.Log("agent", "AGENT_MODEL is %q and no key is set for the provider "+
+				"that serves it, so it is being ignored; the agent is using the "+
+				"default model instead", want)
+		})
 	}
 
 	if key := settings.Get("ANTHROPIC_API_KEY"); key != "" {

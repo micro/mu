@@ -65,3 +65,35 @@ func TestAtlasAloneStillRunsTheAgent(t *testing.T) {
 		t.Errorf("provider = %q, want atlascloud", provider)
 	}
 }
+
+// A named model only ever reaches a provider that serves it.
+//
+// An Atlas slug and an OpenRouter slug are both provider/model, so trying each
+// provider in turn and falling through on a missing key sends a DeepSeek id
+// wherever a key happens to exist. ai.modelFor has a paragraph about this; the
+// first version of nativeLLM recreated it one layer up, and the worst case is
+// the quiet one — a deepseek-ai/… id handed to Anthropic, which answers with a
+// 400 on every question anybody asks.
+func TestANamedModelNeverReachesAProviderThatCannotServeIt(t *testing.T) {
+	// A DeepSeek id, no Atlas key, but both other providers available.
+	t.Setenv("ATLAS_API_KEY", "")
+	t.Setenv("ANTHROPIC_API_KEY", "sk-test")
+	t.Setenv("OPENROUTER_API_KEY", "or-test")
+	t.Setenv("AGENT_MODEL", "deepseek-ai/deepseek-v4-pro-0813")
+	settings.Set("ATLAS_API_KEY", "")
+	t.Cleanup(func() { settings.Set("ATLAS_API_KEY", "") })
+
+	provider, _, model, ok := nativeLLM()
+	if !ok {
+		t.Fatal("no provider chosen at all")
+	}
+	if model == "deepseek-ai/deepseek-v4-pro-0813" && provider != "atlascloud" {
+		t.Errorf("a DeepSeek id was sent to %q, which cannot serve it", provider)
+	}
+	// It falls back to the default choice rather than failing closed: an agent
+	// that answers beats one taken down by a typo.
+	if provider != "anthropic" {
+		t.Errorf("provider = %q, want the default choice (anthropic) once the "+
+			"named model was ignored", provider)
+	}
+}
