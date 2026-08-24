@@ -4,9 +4,8 @@ Work with Agents.
 
 ## Overview
 
-Build agents with an inbox and tools. Chat with them in a browser or by email, and
-they can reach 100+ tools: news, mail, search, weather, markets, video, places,
-files, contacts, calendar, documents. A work in progress.
+Build agents with an inbox and tools. Chat with them in a browser, via API, CLI or by email. They have access to 100+ tools: news, mail, search, weather, markets, video, places,
+files, contacts, calendar, documents. It's a work in progress.
 
 ## Clients
 
