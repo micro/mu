@@ -434,28 +434,18 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				}
 				SendMessage(acc.Name, acc.ID, to, to, subject, body, replyTo, messageID) //nolint:errcheck
 			} else {
-				// No pre-flight check here. DeliverHere decides whether this is
-				// a send at all — writing to your own agent is not — and it
+				// No pre-flight check here. Deliver decides whether this is a
+				// send at all — writing to your own agent is not — and it
 				// charges before it delivers. Asking quota first refused people
 				// for messages that were never going to be charged.
-				// The address the product handed out, in the form it handed it
-				// out in. mail_address returns asim@micro.mu; GetAccount takes a
-				// username, so writing to what you were told to write to came
-				// back "recipient not found".
-				toAcc, err := auth.GetAccount(LocalRecipient(to))
-				if err != nil {
-					app.RespondError(w, http.StatusNotFound, "recipient not found")
-					return
-				}
-				// Through the one door, which charges before it delivers. This
-				// charged afterwards and ignored the result, so a refusal —
-				// out of credit, over the day's cap — cost nothing and the
-				// message went anyway. The admin exemption is gone from here
-				// because quota has always had one; two of them is one that
-				// can disagree.
-				if err := DeliverHere(Local{
-					FromID: acc.ID, Display: acc.Name, From: acc.ID, To: toAcc.ID,
-					Subject: subject, Body: body, ReplyTo: replyTo,
+				//
+				// Through the one door, which also carries the +tag: this had
+				// its own copy of the local branch, and the copy resolved the
+				// address to an account and threw the tag away, so mail sent
+				// from here to asim+research@ was filed and woke nothing.
+				if _, err := Deliver(Outgoing{
+					FromID: acc.ID, Display: acc.Name, To: to,
+					Subject: subject, Body: body, InReplyTo: replyTo,
 				}); err != nil {
 					app.RespondError(w, http.StatusForbidden, err.Error())
 					return
@@ -557,23 +547,19 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			}
 		} else {
 			// Internal message - store plain text, render at display time.
-			// The gate is DeliverHere's, below: it knows whether this is a send
-			// or somebody writing to their own agent, and this did not.
+			// The gate is Deliver's: it knows whether this is a send or
+			// somebody writing to their own agent, and this did not.
+			//
 			// The recipient may be a bare username or a full local address,
 			// with or without a +tag: asim, asim@micro.mu, asim+claude@micro.mu
-			// all reach the same inbox. Only the bare form resolved before, so
-			// a caller who wrote the address the product shows them —
-			// mail_address returns the full one — got "Recipient not found".
-			toAcc, err := auth.GetAccount(LocalRecipient(to))
-			if err != nil {
-				http.Error(w, "Recipient not found", http.StatusNotFound)
-				return
-			}
-
-			app.Log("mail", "Sending internal message from %s to %s with replyTo=%s", acc.Name, toAcc.Name, replyTo)
-			if err := DeliverHere(Local{
-				FromID: acc.ID, Display: acc.Name, From: acc.ID, To: toAcc.ID,
-				Subject: subject, Body: bodyPlain, ReplyTo: replyTo,
+			// all reach the same inbox — and only the last of those wakes an
+			// agent, which is what this lost. It resolved the address to an
+			// account and passed no Tag, so mail to an agent here filed and
+			// nothing ran.
+			app.Log("mail", "Sending internal message from %s to %s with replyTo=%s", acc.Name, to, replyTo)
+			if _, err := Deliver(Outgoing{
+				FromID: acc.ID, Display: acc.Name, To: to,
+				Subject: subject, Body: bodyPlain, HTML: bodyHTML, InReplyTo: replyTo,
 			}); err != nil {
 				http.Error(w, err.Error(), http.StatusForbidden)
 				return

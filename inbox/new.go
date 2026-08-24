@@ -151,10 +151,16 @@ func sent(w http.ResponseWriter, r *http.Request, accountID string, f form) {
 		f.To = to
 	}
 
-	// SendOut is the one way mail leaves this instance, and every rule about
-	// who may send what is inside it — the gate, the charge, the provider. A
-	// second path here that skipped one of them would not look like a bug until
-	// the damage was done. See service/mail/outbound.go.
+	// Deliver is the one way a message goes anywhere, and every rule about who
+	// may send what is inside it — the gate, the charge, the provider, and the
+	// branch on where the recipient actually is. A second path here that
+	// skipped one of them would not look like a bug until the damage was done.
+	// See service/mail/deliver.go.
+	//
+	// This called ReplyOut, which is the half of it for mail *leaving* — so
+	// writing to somebody on this instance, or to your own agent, was refused
+	// with "that is on this instance, that is not mail leaving it". Every other
+	// door routed; the one a person types into did not.
 	name := ""
 	if acc, err := auth.GetAccount(accountID); err == nil {
 		name = acc.Name
@@ -165,8 +171,11 @@ func sent(w http.ResponseWriter, r *http.Request, accountID string, f form) {
 	// replyTo and there was no references argument to pass anyway.
 	inReplyTo, references := threadChain(accountID, f.On)
 	f.Subject = replySubject(f.Subject, inReplyTo)
-	messageID, err := mail.ReplyOut(accountID, name, f.To, f.Subject,
-		f.Body, "", inReplyTo, references)
+	messageID, err := mail.Deliver(mail.Outgoing{
+		FromID: accountID, Display: name, To: f.To,
+		Subject: f.Subject, Body: f.Body,
+		InReplyTo: inReplyTo, References: references,
+	})
 	if err != nil {
 		f.Problem = err.Error()
 		writeOne(w, r, accountID, f)
