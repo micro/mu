@@ -114,7 +114,10 @@ func deliverHere(m Outgoing, to string) (string, error) {
 
 	if err := DeliverHere(Local{
 		FromID: m.FromID, Display: m.Display, From: from, To: owner, Tag: tag,
-		Subject: m.Subject, Body: m.Body, ReplyTo: m.InReplyTo, MessageID: messageID,
+		// The header goes in the field for headers and nowhere else. ReplyTo is
+		// this instance's own id for the parent, which a sender does not hold
+		// and must not be handed a header in place of — see parentOf.
+		Subject: m.Subject, Body: m.Body, MessageID: messageID,
 		InReplyTo: m.InReplyTo, References: m.References,
 		SenderIP: m.SenderIP,
 	}); err != nil {

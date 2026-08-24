@@ -512,26 +512,33 @@ func SendReplyAll(fromID, displayName, from, to string, cc []string, subject, bo
 	// capped like anybody else putting a message in somebody's inbox. Answering
 	// its own owner is not a send and costs nothing; DeliverHere decides that
 	// from the accounts, not from a flag passed in here.
+	// An id of our own when nothing left the instance, minted before the loop
+	// rather than after it. It was assigned afterwards, so every purely local
+	// answer was filed with no Message-ID at all — nothing for the next reply
+	// in the conversation to name, which is how a thread came apart one turn
+	// later.
+	if messageID == "" && len(here) > 0 {
+		messageID = fmt.Sprintf("<%d.reply@%s>", time.Now().UnixNano(), ConfiguredDomain())
+	}
+
 	for _, addr := range here {
 		if err := DeliverHere(Local{
-			FromID:     fromID,
-			Display:    displayName,
-			From:       from,
-			To:         addr,
-			Subject:    subject,
-			Body:       bodyHTML,
-			ReplyTo:    inReplyTo,
+			FromID:  fromID,
+			Display: displayName,
+			From:    from,
+			To:      addr,
+			Subject: subject,
+			Body:    bodyHTML,
+			// The header, in the field for headers. It was going into ReplyTo,
+			// which is this instance's own id for the parent — a different
+			// namespace, so the lookup found nothing and the answer started a
+			// conversation of its own next to the one it was answering.
+			InReplyTo:  inReplyTo,
 			MessageID:  messageID,
 			References: references,
 		}); err != nil {
 			app.Log("mail", "could not deliver the answer to %s: %v", addr, err)
 		}
-	}
-
-	if messageID == "" && len(here) > 0 {
-		// Nothing left the instance, so there is no external id to thread on.
-		// The local copy carries In-Reply-To, which is what /inbox reads.
-		messageID = inReplyTo
 	}
 	return messageID, relayErr
 }

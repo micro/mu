@@ -242,11 +242,22 @@ func imapFolder(accountID, name string) ([]*Message, bool) {
 				continue
 			}
 		case folderSent:
-			if m.Spam || !strings.EqualFold(m.FromID, accountID) || strings.EqualFold(m.ToID, accountID) {
+			if m.Spam || !sentBy(m, accountID) {
 				continue
 			}
 		default:
 			if m.ToID != accountID || m.Spam {
+				continue
+			}
+			// Not what you wrote. Writing to your own agent files the message
+			// in your own inbox, because that is where the conversation is —
+			// and it was landing in INBOX as though it had arrived, so a client
+			// showed the question beside its own answer as two pieces of mail.
+			// "One from myself and one from the agent" is the report.
+			//
+			// It is in Sent instead, which is where the same message from a
+			// mail client would already have been if IMAP here had APPEND.
+			if sentBy(m, accountID) {
 				continue
 			}
 			if tag != "" && !strings.EqualFold(m.Tag, tag) {
@@ -277,11 +288,45 @@ const (
 	// nothing you had written, and what it showed under Sent was its own local
 	// copy — IMAP has no APPEND here, so it never reached the server at all.
 	//
-	// Matched the other way round, on FromID, and excluding anything addressed
-	// back to yourself so a note to your own agent is in one folder rather
-	// than two.
+	// Matched the other way round, on FromID — see sentBy, which is the one
+	// predicate INBOX and Sent now split on, so a message lands in exactly one
+	// of them.
+	//
+	// A note to your own agent used to be excluded from here and left in
+	// INBOX, on the reasoning that it belongs in one folder rather than two.
+	// One folder was right and it was the wrong one: you wrote it, so it is
+	// sent mail, and leaving it in INBOX is what made a client ring for a
+	// message the person had just sent from that same client and show it
+	// beside the agent's answer as two unrelated pieces of mail.
 	folderSent
 )
+
+// sentBy reports whether this account is the one that wrote m.
+//
+// FromID is documented as "an address, or an account" and really is both: the
+// local paths store an address and the sent-copy path stores an account id.
+// That ambiguity had already cost a folder — Sent compared FromID to the
+// account id directly, so nothing stored in the address form ever appeared in
+// it.
+//
+// An address from off this instance names nobody here whatever its local part
+// spells, which is why the external check comes before the local part is read:
+// mail from asim@somewhere-else.com is not mail from asim.
+func sentBy(m *Message, accountID string) bool {
+	if m == nil || accountID == "" {
+		return false
+	}
+	from := strings.TrimSpace(m.FromID)
+	switch {
+	case from == "":
+		return false
+	case strings.EqualFold(from, accountID):
+		return true
+	case IsExternalAddress(from):
+		return false
+	}
+	return strings.EqualFold(LocalRecipient(from), accountID)
+}
 
 // imapParse reads a folder name: its tag, if it names one, and what kind of
 // folder it is. Names are matched case-insensitively, which the protocol

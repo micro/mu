@@ -101,6 +101,83 @@ func TestYourOwnMessageDoesNotArriveUnread(t *testing.T) {
 	}
 }
 
+// Asking your agent and being answered is one conversation, in the two folders
+// a mail client expects.
+//
+// The whole reported symptom, end to end: "my inbox now has two mails of
+// similar kind in the inbox, one from myself and one from the agent", and "it's
+// like it responded to its own response". Three separate faults produced it.
+//
+// The question landed in INBOX rather than Sent, so a client rang for a message
+// the person had sent from that same client. The answer was filed with the
+// In-Reply-To header in ReplyTo — which is this instance's own id for the
+// parent, a different namespace — so the parent lookup found nothing and the
+// answer opened a conversation of its own. And a purely local answer was filed
+// with no Message-ID at all, because one was minted after the delivery loop
+// rather than before, so nothing later in the conversation had anything to
+// name.
+func TestAskingYourAgentIsOneConversation(t *testing.T) {
+	t.Setenv("MAIL_DOMAIN", "example.test")
+	me := account(t, "asker2")
+
+	asked, err := Deliver(Outgoing{FromID: me, Display: "Me", To: "agent@example.test",
+		Subject: "what is the weather", Body: "in London"})
+	if err != nil {
+		t.Fatalf("write to the agent: %v", err)
+	}
+	question := storedByMessageID(asked)
+	if question == nil {
+		t.Fatal("the question was not filed")
+	}
+
+	// The agent answering, by the path agent/mail actually uses: it holds the
+	// header it is replying to and no id of ours for it.
+	answered := "<answer.1@example.test>"
+	if err := DeliverHere(Local{
+		FromID: me, Display: "Micro", From: SharedAgentAddress(), To: me,
+		Subject: "Re: what is the weather", Body: "raining",
+		InReplyTo: asked, MessageID: answered,
+	}); err != nil {
+		t.Fatalf("the agent could not answer: %v", err)
+	}
+	answer := storedByMessageID(answered)
+	if answer == nil {
+		t.Fatal("the answer was not filed")
+	}
+
+	if answer.ThreadID != question.ThreadID {
+		t.Errorf("the answer is its own conversation (%s) rather than part of the "+
+			"one it answers (%s)", answer.ThreadID, question.ThreadID)
+	}
+
+	inbox, ok := imapFolder(me, "INBOX")
+	if !ok {
+		t.Fatal("no INBOX")
+	}
+	sent, ok := imapFolder(me, "Sent")
+	if !ok {
+		t.Fatal("no Sent")
+	}
+	if !holds(inbox, answered) {
+		t.Error("the agent's answer is not in INBOX")
+	}
+	if holds(inbox, asked) {
+		t.Error("what I wrote to my agent is in my INBOX, as though it had arrived")
+	}
+	if !holds(sent, asked) {
+		t.Error("what I wrote to my agent is not in Sent either, so it is nowhere")
+	}
+}
+
+func holds(msgs []*Message, messageID string) bool {
+	for _, m := range msgs {
+		if m != nil && m.MessageID == messageID {
+			return true
+		}
+	}
+	return false
+}
+
 // Writing to an agent here wakes it, and writing to a person does not.
 //
 // The wake is the half that filing quietly leaves out, and the half nobody

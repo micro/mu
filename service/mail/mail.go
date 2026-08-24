@@ -218,6 +218,64 @@ func computeThreadID(msg *Message) string {
 	return current.ID
 }
 
+// parentOf is the message a delivery answers, or nil.
+//
+// Two names for the same thing and a caller normally holds one of them: our own
+// id for the parent (ReplyTo), or the Message-ID header it is answering
+// (InReplyTo). Anything arriving off the network has only the header, and so
+// does an agent replying to a message it was handed — which is why the id-only
+// lookup lost the thread every time an agent answered somebody here.
+//
+// Must be called with the mutex held.
+func parentOf(d Delivery) *Message {
+	if d.ReplyTo != "" {
+		if parent := MessageUnlocked(d.ReplyTo); parent != nil {
+			return parent
+		}
+	}
+	if d.InReplyTo != "" {
+		if parent := byMessageIDUnlocked(d.InReplyTo); parent != nil {
+			return parent
+		}
+	}
+	// The oldest id in the chain that we still hold. A client that dropped
+	// In-Reply-To still sends References, and threading onto the conversation
+	// is better than starting a second one beside it.
+	for _, ref := range referenceIDs(d.References) {
+		if parent := byMessageIDUnlocked(ref); parent != nil {
+			return parent
+		}
+	}
+	return nil
+}
+
+// byMessageIDUnlocked finds a stored message by its mail header id.
+//
+// Must be called with the mutex held.
+func byMessageIDUnlocked(headerID string) *Message {
+	headerID = strings.TrimSpace(headerID)
+	if headerID == "" {
+		return nil
+	}
+	for _, msg := range messages {
+		if msg != nil && strings.EqualFold(strings.TrimSpace(msg.MessageID), headerID) {
+			return msg
+		}
+	}
+	return nil
+}
+
+// referenceIDs splits a References header, newest last as the header is
+// written. Walked newest first here: the nearest parent we still hold makes
+// the shortest correct chain.
+func referenceIDs(references string) []string {
+	fields := strings.Fields(references)
+	for i, j := 0, len(fields)-1; i < j; i, j = i+1, j-1 {
+		fields[i], fields[j] = fields[j], fields[i]
+	}
+	return fields
+}
+
 // MessageUnlocked finds a message without locking (for internal use when lock is held)
 func MessageUnlocked(msgID string) *Message {
 	for _, msg := range messages {
@@ -1806,17 +1864,26 @@ func SendMessageTo(d Delivery) error {
 		msg.AttachmentName = d.Attachment.Name
 	}
 
-	// Compute ThreadID
+	// The conversation this joins, found by whichever of the two names for its
+	// parent the caller actually holds.
+	//
+	// ReplyTo is this instance's own id for the parent and InReplyTo is the
+	// mail header, and only the first was ever looked up — so a caller holding
+	// the header and not the id got no parent and started a new conversation.
+	// That is every reply an agent makes to somebody here: it has the header
+	// it is answering and no reason to know our id for it.
+	//
+	// The symptom is two rows where there should be one thread — "my inbox now
+	// has two mails of similar kind, one from myself and one from the agent" —
+	// and Delivery's own comment already said the two fields were not the same
+	// thing and were being used as though they were.
 	mutex.Lock()
-	if d.ReplyTo != "" {
-		parent := MessageUnlocked(d.ReplyTo)
-		if parent != nil {
-			msg.ThreadID = computeThreadID(parent)
-		} else {
-			msg.ThreadID = msg.ID
-		}
-	} else {
-		msg.ThreadID = msg.ID
+	msg.ThreadID = msg.ID
+	if parent := parentOf(d); parent != nil {
+		msg.ThreadID = computeThreadID(parent)
+		// And our own id for it, so computeThreadID can walk the chain from
+		// here next time without resolving the header again.
+		msg.ReplyTo = parent.ID
 	}
 
 	messages = append([]*Message{msg}, messages...)
