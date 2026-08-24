@@ -757,6 +757,7 @@ func registerRoutes() {
 	// endpoints, one handler — see internal/push.
 	http.HandleFunc("/push/subscribe", push.SubscribeHandler)
 	http.HandleFunc("/push/unsubscribe", push.SubscribeHandler)
+	http.HandleFunc("/push/test", push.SubscribeHandler)
 	// Two pages that were tabs and are not any more: one listed the same
 	// conversations the rail lists, the other listed the workflow records behind
 	// them. Both are on /agent now — the conversation, and the tools each answer

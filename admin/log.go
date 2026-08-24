@@ -98,8 +98,13 @@ func sysLogCard() string {
 	entries := app.SysLog()
 
 	var content strings.Builder
+	// No heading. The page is titled "System Log" and the selected tab says
+	// System, so a third copy of the same two words is the only thing above
+	// the table. It also carried a `<span class="count">` — a class defined
+	// nowhere but under .admin-links, so it rendered as a bare number stuck to
+	// the end of the title, and the number was the ring buffer's capacity
+	// rather than anything about this instance.
 	content.WriteString(`<div class="card">`)
-	content.WriteString(fmt.Sprintf(`<h3>System Log <span class="count">%d</span></h3>`, len(entries)))
 
 	if len(entries) == 0 {
 		content.WriteString(`<p class="text-muted">No log entries yet.</p></div>`)
@@ -139,7 +144,6 @@ func apiLogCard() string {
 
 	var content strings.Builder
 	content.WriteString(`<div class="card">`)
-	content.WriteString(fmt.Sprintf(`<h3>External API Calls <span class="count">%d</span></h3>`, len(entries)))
 
 	if len(entries) == 0 {
 		content.WriteString(`<p class="text-muted">No API calls recorded yet.</p></div>`)
