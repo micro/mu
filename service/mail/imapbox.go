@@ -301,33 +301,6 @@ const (
 	folderSent
 )
 
-// sentBy reports whether this account is the one that wrote m.
-//
-// FromID is documented as "an address, or an account" and really is both: the
-// local paths store an address and the sent-copy path stores an account id.
-// That ambiguity had already cost a folder — Sent compared FromID to the
-// account id directly, so nothing stored in the address form ever appeared in
-// it.
-//
-// An address from off this instance names nobody here whatever its local part
-// spells, which is why the external check comes before the local part is read:
-// mail from asim@somewhere-else.com is not mail from asim.
-func sentBy(m *Message, accountID string) bool {
-	if m == nil || accountID == "" {
-		return false
-	}
-	from := strings.TrimSpace(m.FromID)
-	switch {
-	case from == "":
-		return false
-	case strings.EqualFold(from, accountID):
-		return true
-	case IsExternalAddress(from):
-		return false
-	}
-	return strings.EqualFold(LocalRecipient(from), accountID)
-}
-
 // imapParse reads a folder name: its tag, if it names one, and what kind of
 // folder it is. Names are matched case-insensitively, which the protocol
 // requires for INBOX and every client assumes for everything else.

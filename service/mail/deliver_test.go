@@ -167,6 +167,30 @@ func TestAskingYourAgentIsOneConversation(t *testing.T) {
 	if !holds(sent, asked) {
 		t.Error("what I wrote to my agent is not in Sent either, so it is nowhere")
 	}
+
+	// And the same for the flat list the mail_inbox tool renders, which is what
+	// the agent reads back when somebody asks it to check their mail. IMAP has
+	// folders and this has none, so the question would otherwise sit in it
+	// beside its own answer with nothing to say which was which.
+	listed := ListMessages(me, 20)
+	if holds(listed, asked) {
+		t.Error("mail_inbox lists what I wrote to my agent as mail I received")
+	}
+	if !holds(listed, answered) {
+		t.Error("mail_inbox does not list the agent's answer")
+	}
+
+	// One conversation on /mail, which renders threads rather than messages —
+	// so both belong to it, and it is one row rather than two.
+	mutex.RLock()
+	box := inboxes[me]
+	mutex.RUnlock()
+	if box == nil {
+		t.Fatal("no inbox was built for the account")
+	}
+	if n := len(box.Threads[question.ThreadID].Messages); n != 2 {
+		t.Errorf("the conversation holds %d messages, want the question and the answer", n)
+	}
 }
 
 func holds(msgs []*Message, messageID string) bool {

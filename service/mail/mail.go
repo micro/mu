@@ -296,16 +296,22 @@ func rebuildInboxes() {
 			continue
 		}
 
-		// Add to sender's inbox (sent messages)
-		if msg.FromID != "" {
-			if inboxes[msg.FromID] == nil {
-				inboxes[msg.FromID] = &Inbox{Threads: make(map[string]*Thread), UnreadCount: 0}
+		// Add to sender's inbox (sent messages).
+		//
+		// Keyed on the account rather than on FromID, which is an account id
+		// on one path and an address on another — so the address form built an
+		// inbox called "asim@micro.mu" that nothing ever reads, and the thread
+		// went missing from the one belonging to asim.
+		sender := senderAccount(msg)
+		if sender != "" {
+			if inboxes[sender] == nil {
+				inboxes[sender] = &Inbox{Threads: make(map[string]*Thread), UnreadCount: 0}
 			}
-			addMessageToInbox(inboxes[msg.FromID], msg, msg.FromID)
+			addMessageToInbox(inboxes[sender], msg, sender)
 		}
 
 		// Add to recipient's inbox
-		if msg.ToID != "" && msg.ToID != msg.FromID {
+		if msg.ToID != "" && msg.ToID != sender {
 			if inboxes[msg.ToID] == nil {
 				inboxes[msg.ToID] = &Inbox{Threads: make(map[string]*Thread), UnreadCount: 0}
 			}
@@ -343,18 +349,75 @@ func markSelfSentRead() {
 	}
 }
 
-// selfAddressed reports whether a message's sender and recipient are the same
-// account, whichever way the sender was recorded — an account id for local
-// delivery, an email address for anything that arrived over SMTP.
-func selfAddressed(msg *Message) bool {
-	if msg.FromID == "" {
+// senderAccount is the account here that wrote a message, or "" when nobody
+// here did.
+//
+// FromID carries three different kinds of string and always has: an account id
+// where one local path stored one, an address on this instance where another
+// did, and an external address for anything that arrived over SMTP. Its own
+// doc says so — "an address, or an account" — and every one of those is a
+// legitimate answer to "where did this come from".
+//
+// None of them is the same question as "who here wrote it", which is the
+// question three callers were actually asking and each answered differently.
+// Sent compared FromID to an account id, so nothing stored in the address form
+// ever appeared in it. rebuildInboxes keyed a whole inbox on it, so the address
+// form built a phantom one nobody reads. selfAddressed asked auth for the
+// owner of the address, which only knows *external* addresses somebody has
+// verified, so it never recognised this instance's own.
+func senderAccount(msg *Message) string {
+	if msg == nil {
+		return ""
+	}
+	from := strings.TrimSpace(msg.FromID)
+	if from == "" {
+		return ""
+	}
+	// An account id or an address on this instance. LocalRecipient takes the
+	// part before the @ and before any +tag, and leaves a bare id alone, so
+	// both forms arrive at the same lookup.
+	if !IsExternalAddress(from) {
+		if acc, err := GetAccountByAddress(from); err == nil && acc != nil {
+			return acc.ID
+		}
+		return ""
+	}
+	// An external address names somebody here only when they have proved it is
+	// theirs. Anything else is mail from a stranger who happens to share a
+	// local part with an account.
+	if acc := auth.AccountForAddress(from); acc != nil {
+		return acc.ID
+	}
+	return ""
+}
+
+// GetAccountByAddress resolves an account id or an address on this instance.
+func GetAccountByAddress(addr string) (*auth.Account, error) {
+	return auth.GetAccount(LocalRecipient(addr))
+}
+
+// sentBy reports whether this account is the one that wrote a message.
+//
+// The one predicate INBOX and Sent split on, so a message lands in exactly one
+// of them.
+func sentBy(msg *Message, accountID string) bool {
+	if msg == nil || accountID == "" {
 		return false
 	}
-	if msg.FromID == msg.ToID {
+	// The account-id form, answered without needing the account record to be
+	// loadable — a message says who wrote it whether or not that account still
+	// exists, and this is the form the sent-copy path stores.
+	if strings.EqualFold(strings.TrimSpace(msg.FromID), accountID) {
 		return true
 	}
-	acc := auth.AccountForAddress(msg.FromID)
-	return acc != nil && acc.ID == msg.ToID
+	return strings.EqualFold(senderAccount(msg), accountID)
+}
+
+// selfAddressed reports whether a message's sender and recipient are the same
+// account — writing to your own agent, or to agent@, which resolves to whoever
+// wrote to it.
+func selfAddressed(msg *Message) bool {
+	return msg != nil && msg.ToID != "" && sentBy(msg, msg.ToID)
 }
 
 // addMessageToInbox adds a message to an inbox's thread structure
@@ -1816,21 +1879,6 @@ type Delivery struct {
 	// out of Body so a binary does not end up in previews, the index and
 	// mail_inbox. See Message.Attachment.
 	Attachment *Attachment
-
-	// Own marks a message the recipient wrote themselves.
-	//
-	// Writing to your own agent files the message in your own inbox, because
-	// that is where the conversation is — and agent@ resolves to whoever wrote
-	// to it, so it goes there too. What it is not is mail that *arrived*: it
-	// was landing unread, so a mail client rang for a message the person had
-	// just sent from that same client, and /inbox counted it against them.
-	// "I sent to agent@micro.mu and I got my own email back" is the report.
-	//
-	// It stays in the inbox, because the reply threads onto it and a
-	// conversation missing its opening line is worse. It is read the moment it
-	// is written, which is the same rule internal/thread already applies to
-	// the owner's own turn.
-	Own bool
 }
 
 // SendMessageTo files a message for a local account.
@@ -1847,7 +1895,6 @@ func SendMessageTo(d Delivery) error {
 		ToID:        d.ToID,
 		Subject:     d.Subject,
 		Body:        d.Body,
-		Read:        d.Own,
 		ReplyTo:     d.ReplyTo,
 		MessageID:   d.MessageID,
 		Spam:        d.Spam,
@@ -1863,6 +1910,16 @@ func SendMessageTo(d Delivery) error {
 		msg.AttachmentType = d.Attachment.Type
 		msg.AttachmentName = d.Attachment.Name
 	}
+
+	// A message you wrote yourself has not arrived.
+	//
+	// Writing to your own agent files it in your own inbox, because that is
+	// where the conversation is — and agent@ resolves to whoever wrote to it,
+	// so it goes there too. What it is not is mail that turned up: it was
+	// landing unread, so a client rang for a message the person had just sent
+	// from that same client. Read the moment it is written, which is the rule
+	// internal/thread has always applied to the owner's own turn.
+	msg.Read = selfAddressed(msg)
 
 	// The conversation this joins, found by whichever of the two names for its
 	// parent the caller actually holds.
@@ -2040,6 +2097,14 @@ func ListMessages(userID string, limit int) []*Message {
 	var out []*Message
 	for _, msg := range messages {
 		if msg.Spam || msg.ToID != userID {
+			continue
+		}
+		// Not what you wrote. Writing to agent@ files the message in your own
+		// inbox because that is where the conversation is, and this is a flat
+		// list of messages rather than a thread — so it showed the question
+		// beside its own answer as two pieces of mail, which is what the agent
+		// reads back when somebody asks it to check their inbox.
+		if selfAddressed(msg) {
 			continue
 		}
 		out = append(out, msg)

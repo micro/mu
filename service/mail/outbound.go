@@ -238,7 +238,7 @@ func DeliverHere(m Local) error {
 
 	return SendMessageTo(Delivery{
 		From: m.Display, FromID: m.From,
-		To: acc.Name, ToID: acc.ID, Tag: m.Tag, Own: own,
+		To: acc.Name, ToID: acc.ID, Tag: m.Tag,
 		Subject: m.Subject, Body: m.Body,
 		ReplyTo: m.ReplyTo, MessageID: m.MessageID,
 		InReplyTo: m.InReplyTo, References: m.References,
