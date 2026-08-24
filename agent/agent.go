@@ -1012,13 +1012,8 @@ const chatLayoutCSS = `<style>
    too; both were a second copy of what /agents does, so both are gone and the
    rules for them with them. Same shape as .conn-back on /agent/connect. */
 .agent-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 14px;font-size:13px}
-.agent-addr{font-size:12px;background:var(--hover-background,#f5f5f5);border-radius:6px;
-  padding:3px 10px;color:var(--text-secondary,#555);overflow-wrap:anywhere}
 .chat-sess-head{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
   color:var(--text-muted,#999);padding:0 10px 6px}
-.agent-intro{margin:0 0 14px;padding:12px 14px;border:1px solid var(--border-color,#e5e5e5);border-radius:8px;font-size:14px;line-height:1.55;color:var(--text-secondary,#555)}
-.agent-intro b{color:var(--text-primary,#111)}
-.agent-intro a{color:var(--text-primary,#111)}
 /* Tokens, not hex.
    Every colour in this rail was a literal — #444 on no background at all for a
    row, #eef0ff under #111 for the selected one — so the rail did not move with

@@ -551,8 +551,22 @@ func howTo() string {
 	b.WriteString(`<ol class="ib-howto">`)
 	b.WriteString(`<li>Write to the agent address above from anywhere — your own ` +
 		`mail, your phone. It answers on the same thread.</li>`)
-	b.WriteString(`<li>Give it a job rather than a question. It picks the work up ` +
-		`while you are elsewhere and replies here when it is done.</li>`)
+	// Not "give it a job rather than a question".
+	//
+	// That said the agent picks work up while you are elsewhere and replies
+	// when it is done, and nothing on this page does that. Mail arriving runs
+	// exactly one turn — service/mail publishes, agent/mail calls agent.Ask,
+	// the answer goes back on the thread — and there is no queue behind it, no
+	// resumption and nothing that outlives the reply. Writing "do this over the
+	// next hour" to the address gets an answer immediately, about the request.
+	//
+	// Work that outlives a message is real, and it is somewhere else:
+	// service/tasks and service/events publish event.WorkForAgent, agent/work
+	// runs it, and the answer returns to the thread it was asked on. So the
+	// line now points at the thing that does it rather than promising it here.
+	b.WriteString(`<li>For work that should happen later or on a schedule, make a ` +
+		app.TextLink("task", "/tasks") +
+		` — it runs while you are elsewhere and the answer arrives on this thread.</li>`)
 	b.WriteString(`<li>Cc an agent into a conversation with somebody else and it ` +
 		`follows along without taking it over.</li>`)
 	b.WriteString(`<li>Or connect a mail client over ` +
