@@ -102,6 +102,11 @@ func Run(args []string) int {
 	switch command {
 	case "help", "--help", "-h":
 		return runHelp(rest, &rc)
+	// The catalogue, as its own command. `mu help` is about the binary and
+	// this is about the instance — see runHelp for why they were one thing and
+	// why that hid how to sign in.
+	case "tools":
+		return runToolList(&rc)
 	case "login":
 		return runLogin(rest, &rc)
 	case "logout":

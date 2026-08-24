@@ -16,23 +16,38 @@ USAGE
   mu <command> [flags]
   mu <service> <method> [--arg value ...]
 
+START HERE
+  mu login [url]                 Sign in to an instance (default: https://micro.mu)
+  mu tools                       Everything this instance can do
+  mu ask "what is on my calendar?"
+                                 Ask the agent on the instance — it has your
+                                 mail, your notes and the tools below
+
+TALKING TO AN AGENT
+  Two commands, and the difference is worth a sentence: "ask" talks to the
+  agent you made on an instance; "agent" runs one on this machine that rents
+  tools from an instance. Same word in English, opposite directions.
+
+  mu ask "summarise my unread mail"
+  mu agent "what is the btc price?"
+
 COMMON COMMANDS
   mu news                        Latest news feed
   mu news search "ai safety"     Search news
   mu blog list                   List blog posts
-  mu chat "hello"                Chat with the AI
-  mu agent "what is the btc price?"
   mu web search "claude code"    Search the web
   mu weather forecast --lat 51.5 --lon -0.12
   mu apps search "pomodoro"      Search the apps directory
-  mu x402                        Paying per call: config, and this machine's key
   mu wallet balance              What your wallet holds on the server
 
 MANAGEMENT
-  mu login [url]                 Log in to an instance (default: https://micro.mu)
+  mu setup                       Configure a model and keys for "mu agent"
   mu logout                      Forget the saved token
   mu config get|set|path         Show which instance is being called, or change it
-  mu help [tool]                 Full tool list, or help for a tool
+  mu x402                        Paying per call: config, and this machine's key
+  mu tools                       Every tool on the instance, grouped by service
+  mu help <tool>                 Parameters for one tool
+  mu version                     Which build this is
 
 FLAGS (any command)
   --url URL        Mu instance URL (env: MU_URL, default: https://micro.mu)
@@ -66,9 +81,23 @@ func printShortHelp(w io.Writer) {
 	fmt.Fprint(w, shortHelp)
 }
 
-// runHelp handles `mu help` and `mu help <tool>`.
+// runHelp handles `mu help`, `mu help tools` and `mu help <tool>`.
+//
+// Bare help is about the program: how to sign in, how to reach the agent, what
+// the flags are. It used to be the tool list — two hundred lines of catalogue,
+// fetched from the server — and the summary that says how to *log in* was
+// printed only when the fetch failed. So the half somebody needs first was
+// reachable only when something was already broken, and the working case
+// scrolled the answer off the top of the terminal.
+//
+// The catalogue is a command, because that is what it is: a question about the
+// instance rather than about the binary.
 func runHelp(args []string, rc *ResolvedConfig) int {
 	if len(args) == 0 {
+		printShortHelp(os.Stdout)
+		return 0
+	}
+	if len(args) == 1 && (args[0] == "tools" || args[0] == "--all") {
 		return runToolList(rc)
 	}
 	// `mu help news list` names one tool in two words.
