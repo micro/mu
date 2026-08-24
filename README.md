@@ -15,12 +15,21 @@ files, contacts, calendar, documents. A work in progress.
 | **Web** | sign in and use it in a browser |
 | **Mail** | send it an email from anywhere |
 | **API or CLI** | the same tools via HTTP, MCP or CLI |
+| **Shell** | SSH into your own machine, from a terminal |
 
 ## Protocols
 
-**SMTP in, IMAP out, HTTP for the app, MCP for agents, x402 for payments.**
+**SMTP in, IMAP out, HTTP for the app, MCP for agents, SSH for a shell,
+x402 for payments.**
 
-Maybe protocols are the winning strategy?
+Every one of those is a listening socket in this one binary, answering a
+protocol somebody's existing client already speaks. No sshd, no dovecot, no
+postfix — the mail server, the IMAP server and the SSH server are this
+process.
+
+That is the part that is hard to copy. Aggregating tools behind one account
+removes real overhead, and anybody can do it. Running the protocols is what
+people stopped doing.
 
 ## Tools
 

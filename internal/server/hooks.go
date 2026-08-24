@@ -24,6 +24,7 @@ import (
 	"mu/agent/digest"
 	mailagent "mu/agent/mail"
 	"mu/agent/micro"
+	"mu/agent/moderate"
 	agentsocial "mu/agent/social"
 	"mu/agent/work"
 	help "mu/docs"
@@ -168,6 +169,18 @@ func wireHooks() {
 	// hands what arrives to the agent. See agent/mail.
 	mailagent.Load()
 
+	// And the agent introduces itself to a new account, in that account's
+	// inbox. Onboarding as a message rather than a page: the claim is that you
+	// hand work to an agent and it answers where you asked, and the way to make
+	// that claim is to do it before anything else does. See agent/mail/welcome.go.
+	mailagent.Welcome()
+
+	// And whether what people publish should stay up. A judgement, so it is an
+	// agent — it was a function variable inside internal/flag that service/chat
+	// filled in, which put content moderation for the whole instance behind an
+	// unrelated service loading. See agent/moderate.
+	moderate.Load()
+
 	// Telling the operator when something is worth knowing. After the mail
 	// agent, because it delivers to an inbox here. See admin/alert.go.
 	admin.Watch()
@@ -202,14 +215,24 @@ func wireHooks() {
 	//
 	// service/mail used to declare OnNewMail and this filled it in — a service
 	// reaching up into the product, which is the direction the layering
-	// forbids. It publishes event.EventMailReceived now and knows nothing
+	// forbids. It publishes event.MailReceived now and knows nothing
 	// about who listens. This is the listener.
 	go func() {
-		sub := event.Subscribe(event.EventMailReceived)
+		sub := event.Subscribe(event.MailReceived)
 		for e := range sub.Chan {
-			accountID, _ := e.Data["account"].(string)
-			from, _ := e.Data["from"].(string)
-			subject, _ := e.Data["subject"].(string)
+			// mail.MessageFrom, not four type assertions on a bag of strings.
+			//
+			// The bag is what this used to read, and it was one of two shapes
+			// being published on this topic — the other being the whole message
+			// as JSON, which the recorder that writes mail into internal/thread
+			// reads. Every subscriber understood one of the two, so which mail
+			// reached the record depended on which door it came in by. There is
+			// one shape now and this is how it is decoded.
+			m, ok := mail.MessageFrom(e.Data)
+			if !ok {
+				continue
+			}
+			accountID, from, subject := m.Owner, m.From, m.Subject
 			if accountID == "" {
 				continue
 			}
@@ -591,7 +614,7 @@ func wireHooks() {
 			return false, err
 		}
 		if !ok {
-			return false, fmt.Errorf("this costs %d credits and your balance is %d — top up at /account/topup",
+			return false, fmt.Errorf("this costs %d credits and your balance is %d — top up at /billing/topup",
 				cost, quota.BalanceOf(account))
 		}
 		return true, nil

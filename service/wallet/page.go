@@ -94,7 +94,7 @@ func Page(accountID string) string {
   private key →</a> The key is held on this instance; a copy you hold yourself is the only
   thing that makes losing it here survivable.</p>
   <p class="text-sm text-muted mt-half m-0">Credits for this instance are a
-  separate thing and are bought with a card — <a href="/account#balance">your balance</a>.</p>
+  separate thing and are bought with a card — <a href="/billing#balance">your balance</a>.</p>
 </div>
 %s
 <style>

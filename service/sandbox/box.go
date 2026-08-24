@@ -124,7 +124,7 @@ func ready(ctx context.Context, accountID string) error {
 	// machines do not all fit, and the honest answer is to stop the one nobody
 	// is using rather than to refuse the person who is here.
 	room(ctx, name)
-	if err := container.Start(ctx, name, image(), volumeOf(accountID), limits()); err != nil {
+	if err := container.Start(ctx, name, image(), volumeOf(accountID), limits(), equipment()...); err != nil {
 		return err
 	}
 	// Every path in goes through here, which is what makes this the one place

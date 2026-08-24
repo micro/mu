@@ -2,22 +2,18 @@ package admin
 
 import (
 	"fmt"
-	"net/http"
 	"strings"
 	"time"
 
 	"mu/internal/app"
-	"mu/internal/auth"
 )
 
-// AIUsageHandler shows external API usage and cost breakdown
-func AIUsageHandler(w http.ResponseWriter, r *http.Request) {
-	_, _, err := auth.RequireAdmin(r)
-	if err != nil {
-		app.Forbidden(w, r, "Admin access required")
-		return
-	}
-
+// spendCard is what this instance has paid third parties: a total, a breakdown
+// by service, and the recent calls behind it.
+//
+// The other half of /admin/traffic — see the tabs there for why the two are
+// one page.
+func spendCard() string {
 	summary := app.GetUsageSummary()
 	uptime := time.Since(summary.Since).Round(time.Minute)
 
@@ -61,7 +57,7 @@ func AIUsageHandler(w http.ResponseWriter, r *http.Request) {
 
 	sb.WriteString(`</tbody></table></div>`)
 
-	app.Respond(w, r, app.Response{Title: "API Usage", Description: "API Usage", HTML: sb.String()})
+	return sb.String()
 }
 
 // formatDetail renders service-specific details into a short string.

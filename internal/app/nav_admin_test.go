@@ -65,18 +65,32 @@ func TestAnAdminGetsTheLinkInTheNav(t *testing.T) {
 // piles of things you kept, and the footer in a card, all filed next to the
 // balance because two sections there were named "Settings" and "About Mu" and a
 // name that broad absorbs anything.
+//
+// Two of the three have since left the menu as well, and for the rule this test
+// is named after rather than despite it. Saved pointed at /user, which was
+// deleted with the feed controls it held, so it was a dead link of exactly the
+// kind the /support check below exists to catch. About is not yours — it is a
+// page about us, it is in the footer, and the menu under your own name is the
+// wrong place for it. Profile took the slot: your own page, which until then
+// could only be reached by typing it.
 func TestTheAccountMenuHoldsWhatIsYours(t *testing.T) {
 	menu := navBottom(&auth.Account{ID: "someone"})
 
 	for _, want := range []struct{ id, href string }{
 		{"nav-account", "/account"},
-		{"nav-saved", "/user"},
+		{"nav-profile", "/@someone"},
 		{"nav-token", "/token"},
-		{"nav-about", "/about"},
 		{"nav-logout", "/logout"},
 	} {
 		if !strings.Contains(menu, `id="`+want.id+`" href="`+want.href+`"`) {
 			t.Errorf("the account menu has no %s pointing at %s", want.id, want.href)
+		}
+	}
+
+	// The two that left, named so that putting either back is a decision.
+	for _, gone := range []string{"/user", "/about"} {
+		if strings.Contains(menu, `href="`+gone+`"`) {
+			t.Errorf("the account menu links to %s again", gone)
 		}
 	}
 
@@ -150,10 +164,14 @@ func TestTheAccountPageHoldsNoOperatorErrands(t *testing.T) {
 	// This used to anchor on "/token", which has left for the account menu along
 	// with Saved and About — so the anchor went with the thing it was anchoring
 	// to, and the guard reported the account page as missing rather than the
-	// test as needing repointing. The balance is a better hook: it is the first
-	// card on /account and the last thing that would ever move off it.
-	if !strings.Contains(page, "BalanceCard(") {
-		t.Error("the account page no longer draws the balance, so this scan " +
+	// test as needing repointing. Then it anchored on BalanceCard, "the last
+	// thing that would ever move off it", and the money moved to /billing.
+	//
+	// Twice now, which says something about the anchor rather than the page: a
+	// card is a product decision and product decisions move. The profile is
+	// what /account cannot stop drawing without ceasing to be the account page.
+	if !strings.Contains(page, `app.Section("Profile"`) {
+		t.Error("the account page no longer draws the profile, so this scan " +
 			"is reading the wrong function")
 	}
 }

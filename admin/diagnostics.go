@@ -93,7 +93,7 @@ func DiagnosticsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	b.WriteString(`<p class="mt-3"><a href="/admin">← Back to Admin</a></p>`)
+	b.WriteString(back())
 
 	app.Respond(w, r, app.Response{Title: "Diagnostics", Description: "System health", HTML: b.String()})
 }

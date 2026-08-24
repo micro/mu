@@ -19,10 +19,9 @@ package server
 import "testing"
 
 func TestEveryRouteRegistersWithoutConflict(t *testing.T) {
-	defer func() {
-		if r := recover(); r != nil {
-			t.Fatalf("registering the routes panics, so this instance cannot boot:\n%v", r)
-		}
-	}()
-	registerRoutes()
+	// Through the same once as links_test.go, because net/http answers a second
+	// registration with exactly the panic this test exists to catch — so two
+	// tests each calling registerRoutes would make one of them fail whatever
+	// the code did.
+	routesReady(t)
 }

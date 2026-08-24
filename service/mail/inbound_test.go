@@ -4,6 +4,7 @@ package mail
 // two topics, so the second cannot be answered by forgetting to ask.
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -52,10 +53,19 @@ func quiet(ch <-chan InboundMail) bool {
 // anything ever reached the record — so an account with a full mailbox had an
 // empty /inbox, and the agent could not see the thing it was supposed to be
 // working on.
+//
+// Both halves of the SMTP path, because that is what it does: the message is
+// stored, which announces the arrival, and then the gate is asked separately
+// whether anything may act on it.
 func TestEveryDeliveryIsAnnouncedEvenWhenNothingMayBeWoken(t *testing.T) {
-	arrived := onTopic(t, event.EventMailReceived)
-	wake := onTopic(t, event.EventMailForAgent)
+	arrived := onTopic(t, event.MailReceived)
+	wake := onTopic(t, event.MailForAgent)
 
+	if err := SendMessageTo(Delivery{
+		FromID: "stranger@example.com", ToID: "acc", Subject: "hello", Body: "hi",
+	}); err != nil {
+		t.Fatalf("storing the message: %v", err)
+	}
 	// Untagged mail from somebody this account has never heard of: exactly the
 	// message mayDispatch refuses.
 	deliverInbound(
@@ -75,11 +85,64 @@ func TestEveryDeliveryIsAnnouncedEvenWhenNothingMayBeWoken(t *testing.T) {
 	}
 }
 
+// Storing a message is what announces it, whichever door it came in by.
+//
+// This is the bug that made the split worth finding: an admin alert, an invite
+// and a verification mail are all delivered locally, never touch SMTP, and so
+// never reached internal/thread. They were in /mail and in IMAP and absent from
+// /inbox — the page whose whole claim is that things turn up in it.
+//
+// The assertion is about the shape as much as the fact. Two publishers were
+// putting two different payloads on this one topic, and each subscriber
+// understood one of them, so "was it announced" and "could anyone read it"
+// were different questions.
+func TestLocalDeliveryReachesTheRecord(t *testing.T) {
+	withDomain(t, "mu.test")
+	arrived := onTopic(t, event.MailReceived)
+
+	if err := SendMessageTo(Delivery{
+		From: "Mu", FromID: "no-reply@mu.test",
+		ToID: "acc", Tag: "research",
+		Subject: "Disk is 91% full", Body: "<p>go and look</p>",
+		MessageID: "<alert@mu.test>", InReplyTo: "<earlier@mu.test>",
+	}); err != nil {
+		t.Fatalf("delivering: %v", err)
+	}
+
+	m, ok := waited(arrived)
+	if !ok {
+		t.Fatal("mail delivered locally was never announced, so it cannot reach /inbox")
+	}
+	// Everything the recorder needs: whose it is, what it says, and enough to
+	// put it on the conversation it belongs to.
+	if m.Owner != "acc" {
+		t.Errorf("Owner = %q, so the record does not know whose mail this is", m.Owner)
+	}
+	if m.Subject != "Disk is 91% full" {
+		t.Errorf("Subject = %q", m.Subject)
+	}
+	// Trimmed here, as the recorder trims it: what matters is that the prose
+	// is what travels and not the markup the message was stored as.
+	if strings.TrimSpace(m.Text) != "go and look" {
+		t.Errorf("Text = %q, want the prose — the agent is handed this one", m.Text)
+	}
+	if m.From != "no-reply@mu.test" || m.FromName != "Mu" {
+		t.Errorf("sender arrived as %q/%q", m.FromName, m.From)
+	}
+	if m.To != "acc+research@mu.test" {
+		t.Errorf("To = %q, want the address it was delivered to", m.To)
+	}
+	if m.MessageID != "<alert@mu.test>" || m.InReplyTo != "<earlier@mu.test>" {
+		t.Errorf("threading arrived as %q/%q — a reply would start a new "+
+			"conversation instead of joining one", m.MessageID, m.InReplyTo)
+	}
+}
+
 // Spam is the one thing that does not go in. It was refused at the door in
 // every sense that matters, and a record full of it is not a record.
 func TestSpamIsNotAnnouncedAtAll(t *testing.T) {
-	arrived := onTopic(t, event.EventMailReceived)
-	wake := onTopic(t, event.EventMailForAgent)
+	arrived := onTopic(t, event.MailReceived)
+	wake := onTopic(t, event.MailForAgent)
 
 	deliverInbound(
 		InboundMail{Owner: "acc", From: "spam@example.com"},
@@ -104,7 +167,7 @@ func TestTheGuardDecidesWhatIsPublished(t *testing.T) {
 	KnownSender = func(string, string) bool { return true }
 	t.Cleanup(func() { KnownSender = prevKnown })
 
-	wake := onTopic(t, event.EventMailForAgent)
+	wake := onTopic(t, event.MailForAgent)
 
 	// An unauthenticated sender — enough on its own.
 	deliverInbound(
@@ -134,13 +197,14 @@ func TestTheGuardDecidesWhatIsPublished(t *testing.T) {
 // which is what the registry this replaced had to be careful about — the
 // function variable *it* replaced silently displaced whatever was there first.
 func TestTwoSubscribersBothGetIt(t *testing.T) {
-	first := onTopic(t, event.EventMailReceived)
-	second := onTopic(t, event.EventMailReceived)
+	first := onTopic(t, event.MailReceived)
+	second := onTopic(t, event.MailReceived)
 
-	deliverInbound(
-		InboundMail{Owner: "acc", From: "someone@example.com", Subject: "both"},
-		wakeRequest{Owner: "acc", From: "someone@example.com"},
-	)
+	if err := SendMessageTo(Delivery{
+		FromID: "someone@example.com", ToID: "acc", Subject: "both", Body: "x",
+	}); err != nil {
+		t.Fatalf("storing the message: %v", err)
+	}
 
 	for i, ch := range []<-chan InboundMail{first, second} {
 		if m, ok := waited(ch); !ok || m.Subject != "both" {
@@ -154,7 +218,12 @@ func TestTwoSubscribersBothGetIt(t *testing.T) {
 // zeroed — and Others being dropped would turn a Cc'd thread back into a
 // one-to-one reply, silently.
 func TestTheWholeMessageSurvivesTheBus(t *testing.T) {
-	arrived := onTopic(t, event.EventMailReceived)
+	withDomain(t, "micro.mu")
+	prevKnown := KnownSender
+	KnownSender = func(string, string) bool { return true }
+	t.Cleanup(func() { KnownSender = prevKnown })
+
+	arrived := onTopic(t, event.MailForAgent)
 
 	sent := InboundMail{
 		Owner: "acc", Tag: "research", Shared: true,
@@ -164,7 +233,8 @@ func TestTheWholeMessageSurvivesTheBus(t *testing.T) {
 		Others:     []string{"someone@example.com", "other@example.com"},
 		MessageID:  "<a@b>", InReplyTo: "<c@d>", References: "<e@f>",
 	}
-	deliverInbound(sent, wakeRequest{Owner: "acc", From: sent.From})
+	deliverInbound(sent, wakeRequest{Owner: "acc", Tag: "research",
+		From: sent.From, Authenticated: true})
 
 	got, ok := waited(arrived)
 	if !ok {

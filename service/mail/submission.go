@@ -295,6 +295,7 @@ func (s *submissionSession) deliverLocally(to, display, subject, plain, html, re
 	if err := DeliverHere(Local{
 		FromID: s.acc.ID, Display: display, From: from, To: owner.ID, Tag: tag,
 		Subject: subject, Body: plain, ReplyTo: replyTo, MessageID: messageID,
+		InReplyTo: replyTo, References: references,
 		SenderIP: s.remoteIP,
 	}); err != nil {
 		return err

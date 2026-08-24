@@ -41,6 +41,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
+	"mu/internal/event"
 	"mu/internal/flag"
 )
 
@@ -239,7 +240,7 @@ func AIResponseAllowed(askerID, response string) bool {
 	if acc, err := auth.GetAccount(askerID); err == nil && acc.Admin {
 		return true
 	}
-	flag.CheckContent("ai_response", askerID, "", response)
+	event.Published("ai_response", askerID, "", response)
 	item := flag.Item("ai_response", askerID)
 	if item != nil && item.Flagged {
 		app.Log("moderation", "AI response flagged for %s — banning asker", askerID)

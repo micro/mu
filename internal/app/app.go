@@ -984,7 +984,7 @@ func VerifyBanner(r *http.Request) string {
 	// Not on the pages that are the way out of it — the form is right there —
 	// and not on money at all.
 	//
-	// This was a list of four exact paths, so /account/transfer was not on it,
+	// This was a list of four exact paths, so /billing/transfer was not on it,
 	// and moving your own credit between accounts was met with "You cannot post
 	// yet. Verify your email address before posting." Nothing on that page is a
 	// post, so the banner read as a refusal of the transfer. A prefix rather
@@ -995,11 +995,15 @@ func VerifyBanner(r *http.Request) string {
 		return ""
 	case p == "/account" || strings.HasPrefix(p, "/account/"):
 		return ""
+	case p == "/billing" || strings.HasPrefix(p, "/billing/"):
+		// The money moved out of /account and this prefix went with it. The
+		// same bug as the one above, one rename later.
+		return ""
 	}
 	action, href := "Verify →", "/account"
 	if auth.VerificationRequired == nil || !auth.VerificationRequired() {
 		// No mail on this instance, so verifying is not on offer: credit is.
-		action, href = "Add credit →", "/account/topup"
+		action, href = "Top up →", "/billing/topup"
 	}
 	// The places named in the sentence are links, because they read as ones.
 	//
@@ -1016,7 +1020,7 @@ func VerifyBanner(r *http.Request) string {
 	said := htmlpkg.EscapeString(reason)
 	for _, l := range []struct{ phrase, href string }{
 		{"your Account", "/account"},
-		{"your Balance", "/account#balance"},
+		{"your Balance", "/billing#balance"},
 	} {
 		said = strings.ReplaceAll(said, l.phrase,
 			`your <a href="`+l.href+`" >`+strings.TrimPrefix(l.phrase, "your ")+`</a>`)
@@ -1131,6 +1135,11 @@ func navBottom(acc *auth.Account) string {
 	username := htmlpkg.EscapeString(acc.ID)
 	// What is yours, in the menu with your name on it.
 	//
+	// About is gone too, and it is the clearest case of the three: the menu
+	// under your own name is what is yours, and /about is a page about us. It
+	// is in the footer, which is where a signed-out visitor finds it, and a
+	// signed-in one is past needing it.
+	//
 	// Saved, Tokens and About were cards on /account, and none of them is an
 	// account setting. /account had become the place things go when nobody
 	// decided where they belonged — the tell was two of its sections being
@@ -1149,6 +1158,13 @@ func navBottom(acc *auth.Account) string {
 	// balance to have something go wrong with. Sound reasoning, dead link: the
 	// support page and its mailbox were removed and this went on pointing at
 	// /support, which no longer routes.
+	//
+	// Saved went the same way and left the same dead link. It pointed at /user —
+	// saved, hidden and blocked, the three controls of a feed — and that page
+	// was deleted along with the idea, because Mu puts nothing in front of you
+	// by default and so has nothing to push back. Profile takes the slot: it is
+	// what somebody was actually looking for under their own name, and until now
+	// the only way to reach your own page was to type it.
 	return `<details class="nav-me" id="nav-me">
             <summary class="nav-me-btn">
               <span class="nav-me-av" id="nav-me-av">` + initial(acc.ID) + `</span>
@@ -1157,10 +1173,10 @@ func navBottom(acc *auth.Account) string {
             </summary>
             <div class="nav-me-menu">
               <a id="nav-account" href="/account"><img src="/account.png?` + Version + `"><span class="label">Account</span></a>
-              <a id="nav-saved" href="/user"><img src="/saved.svg?` + Version + `"><span class="label">Saved</span></a>
+              <a id="nav-profile" href="/@` + username + `"><img src="/account.png?` + Version + `"><span class="label">Profile</span></a>
+              <a id="nav-billing" href="/billing"><img src="/billing.svg?` + Version + `"><span class="label">Billing</span></a>
               <a id="nav-token" href="/token"><img src="/token.svg?` + Version + `"><span class="label">Tokens</span></a>
               ` + navAdmin(acc) + `
-              <a id="nav-about" href="/about"><img src="/help.svg?` + Version + `"><span class="label">About</span></a>
               <a id="nav-logout" href="/logout"><img src="/logout.png?` + Version + `"><span class="label">Log out</span></a>
             </div>
           </details>

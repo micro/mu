@@ -10,6 +10,7 @@ package event
 
 import (
 	"encoding/json"
+	"strings"
 	"sync"
 
 	"go-micro.dev/v6/broker"
@@ -19,15 +20,15 @@ import (
 
 // Event types
 const (
-	EventRefreshHNComments  = "refresh_hn_comments"
-	EventIndexComplete      = "index_complete"
-	EventNewArticleMetadata = "new_article_metadata"
-	EventGenerateSummary    = "generate_summary"
-	EventSummaryGenerated   = "summary_generated"
-	EventGenerateTag        = "generate_tag"
-	EventTagGenerated       = "tag_generated"
+	RefreshHNComments  = "refresh_hn_comments"
+	IndexComplete      = "index_complete"
+	NewArticleMetadata = "new_article_metadata"
+	GenerateSummary    = "generate_summary"
+	SummaryGenerated   = "summary_generated"
+	GenerateTag        = "generate_tag"
+	TagGenerated       = "tag_generated"
 
-	// EventMailReceived is a non-spam message delivered to a local account.
+	// MailReceived is a non-spam message delivered to a local account.
 	//
 	// service/mail publishes it and knows nothing about who cares. It used to
 	// be mail.OnNewMail, a function variable the service declared and
@@ -40,9 +41,9 @@ const (
 	// subscribes.
 	//
 	// Data: message, holding the whole InboundMail as JSON.
-	EventMailReceived = "mail_received"
+	MailReceived = "mail_received"
 
-	// EventMailForAgent is a message that may wake an agent.
+	// MailForAgent is a message that may wake an agent.
 	//
 	// A second topic rather than a flag on the first, and that is the whole
 	// security design. service/mail decides — it is the only place that has the
@@ -57,9 +58,9 @@ const (
 	// topic fails closed.
 	//
 	// Data: message, holding the whole InboundMail as JSON.
-	EventMailForAgent = "mail_for_agent"
+	MailForAgent = "mail_for_agent"
 
-	// EventWorkForAgent is a piece of work somebody has asked an agent to do.
+	// WorkForAgent is a piece of work somebody has asked an agent to do.
 	//
 	// Four things ask: a chat message, an email arriving, a task assigned, a
 	// schedule firing. They were four mechanisms — and three of them were
@@ -77,9 +78,9 @@ const (
 	// keeps its result, a standing instruction is mailed. That knowledge is the
 	// agent layer's: an agent may import a service, and the service must not
 	// know an agent exists.
-	EventWorkForAgent = "work_for_agent"
+	WorkForAgent = "work_for_agent"
 
-	// EventActivity is one thing that happened, in a line, with somewhere to
+	// Activity is one thing that happened, in a line, with somewhere to
 	// go and read it: a post published, a video found, a headline broken, an
 	// image generated.
 	//
@@ -92,9 +93,9 @@ const (
 	//
 	// Data: service, text, url, account. An empty account means everybody may
 	// see it; a set one means only that account may.
-	EventActivity = "activity"
+	Activity = "activity"
 
-	// EventAccountCreated is a new account on this instance.
+	// AccountCreated is a new account on this instance.
 	//
 	// A fact, deliberately, and not a notification. internal/auth knows an
 	// account was made and has no business knowing that somebody wants to be
@@ -108,8 +109,46 @@ const (
 	// import the compiler cannot see.
 	//
 	// Data: account, name, first ("true" when it is the instance's first).
-	EventAccountCreated = "account_created"
+	AccountCreated = "account_created"
+
+	// ContentPublished is something somebody wrote that is now visible: a
+	// post, a reply, an app description, an answer the agent gave in public.
+	//
+	// A fact, and deliberately not a request to moderate it. Whether it should
+	// be hidden is a judgement made by a model, and a service asking for that
+	// judgement is a service asking the model what its own answer should be —
+	// the rule agent/work exists to honour and the one this replaces a
+	// violation of. service/social, service/blog and service/apps each called
+	// a classifier through a function variable filled in at boot by, of all
+	// things, service/chat: an import the compiler could not see, from three
+	// services to a fourth, and moderation for the whole instance silently off
+	// if that fourth one ever failed to load.
+	//
+	// Now they say what happened and stop. agent/moderate subscribes.
+	//
+	// Data: kind (the content type — "post", "social", "app"), id, title, text.
+	ContentPublished = "content_published"
 )
+
+// Published says something somebody wrote is now visible, for whoever is
+// listening.
+//
+// kind and id name it the way internal/flag names it, because whatever acts on
+// this has to be able to point back at the thing — "social" and a thread id,
+// "post" and a post id. title may be empty; text is what was written.
+//
+// Nothing here knows what moderation is, which is the point.
+func Published(kind, id, title, text string) {
+	if kind == "" || id == "" || strings.TrimSpace(text) == "" {
+		return
+	}
+	Publish(Event{Type: ContentPublished, Data: map[string]interface{}{
+		"kind":  kind,
+		"id":    id,
+		"title": title,
+		"text":  text,
+	}})
+}
 
 // Announce records one thing that happened, for whoever is listening.
 //
@@ -123,7 +162,7 @@ func Announce(service, text, url, account string) {
 	if service == "" || text == "" {
 		return
 	}
-	Publish(Event{Type: EventActivity, Data: map[string]interface{}{
+	Publish(Event{Type: Activity, Data: map[string]interface{}{
 		"service": service,
 		"text":    text,
 		"url":     url,
@@ -146,12 +185,12 @@ func Announce(service, text, url, account string) {
 //
 // Nothing here knows what an agent is, which is the point: a service that
 // called one would be asking the model what its own answer should be. See
-// EventWorkForAgent.
+// WorkForAgent.
 func RequestWork(account, kind, id, title, prompt, thread string) {
 	if account == "" || prompt == "" {
 		return
 	}
-	Publish(Event{Type: EventWorkForAgent, Data: map[string]interface{}{
+	Publish(Event{Type: WorkForAgent, Data: map[string]interface{}{
 		"account": account,
 		"kind":    kind,
 		"id":      id,

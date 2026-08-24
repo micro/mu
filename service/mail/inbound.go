@@ -9,7 +9,7 @@ package mail
 // handled mail at an address and this dispatched to it.
 //
 // A registration is still a call, and it left two mechanisms for one fact —
-// this registry, and event.EventMailReceived on the bus, which internal/event
+// this registry, and event.MailReceived on the bus, which internal/event
 // already describes correctly: "Mail arriving is a fact, not a call. Anything
 // that wants to act on it subscribes." So the registry is gone and there is one
 // mechanism. Nothing here knows whether anything is listening.
@@ -20,7 +20,7 @@ package mail
 // inside the SMTP session, and it is the same question whoever is listening.
 //
 // It is enforced by which topic a message is published on rather than by a
-// field on it. See event.EventMailForAgent for why.
+// field on it. See event.MailForAgent for why.
 
 import (
 	"encoding/json"
@@ -54,10 +54,27 @@ func deliverInbound(m InboundMail, r wakeRequest) {
 	if r.IsSpam {
 		return
 	}
-	announce(event.EventMailReceived, m)
+	// Only the second of the two. "It arrived" is announced by SendMessageTo,
+	// which is the one place a message is stored and so the one place every
+	// delivery path reaches — this was announcing it as well, for the SMTP
+	// path alone, which is how mail delivered locally came to be absent from
+	// the record while mail from outside was in it. See SendMessageTo.
+	//
+	// What is left here is the fact only this path knows: the sender passed
+	// SPF or DKIM, and this account has heard of them.
 	if mayDispatch(r) {
-		announce(event.EventMailForAgent, m)
+		announce(event.MailForAgent, m)
 	}
+}
+
+// deliveredTo is the address a local delivery arrived at, which a Delivery
+// carries as an account and a tag rather than as a string.
+func deliveredTo(accountID, tag string) string {
+	local := accountID
+	if tag != "" {
+		local += Tagged + tag
+	}
+	return EmailForUser(local, ConfiguredDomain())
 }
 
 // announce puts a whole message on a topic.

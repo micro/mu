@@ -39,7 +39,7 @@ func TestAChallengeSaysWhyThisCallerWasRefused(t *testing.T) {
 
 	// A reason: used as given, and the accepts block still rides along, because
 	// paying is the way forward that the words are pointing at.
-	const mine = "This costs 2 credits and your balance is 0. Top up at https://micro.mu/account/topup"
+	const mine = "This costs 2 credits and your balance is 0. Top up at https://micro.mu/billing/topup"
 	out := body(mine)
 	if got, _ := out["error"].(string); got != mine {
 		t.Errorf("error = %q, want %q", got, mine)

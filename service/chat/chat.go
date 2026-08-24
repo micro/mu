@@ -19,7 +19,6 @@ import (
 	"mu/internal/auth"
 	"mu/internal/data"
 	"mu/internal/event"
-	"mu/internal/flag"
 )
 
 //go:embed *.json
@@ -505,7 +504,7 @@ func getOrCreateRoom(id string) *Room {
 
 	// Subscribe to index complete events via channel
 	go func() {
-		sub := event.Subscribe(event.EventIndexComplete)
+		sub := event.Subscribe(event.IndexComplete)
 		defer sub.Close()
 
 		// Wait for either index event or timeout
@@ -878,7 +877,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 
 								app.Log("chat", "Publishing refresh event for: %s", room.URL)
 								event.Publish(event.Event{
-									Type: event.EventRefreshHNComments,
+									Type: event.RefreshHNComments,
 									Data: map[string]interface{}{
 										"url": room.URL,
 									},
@@ -1059,8 +1058,13 @@ func Load() {
 	// Generate head with topics (rooms will be added dynamically)
 	head = app.Head("chat", topics)
 
-	// Register LLM analyzer for content moderation
-	flag.SetAnalyzer(&llmAnalyzer{})
+	// No moderation analyzer registered here any more.
+	//
+	// This service used to fill in internal/flag's `analyzer` variable, which
+	// meant content moderation for the whole instance — social, blog, apps —
+	// depended on the chat service loading, and was silently off if it did
+	// not. Nothing about chat made it the right place; it was where somebody
+	// had an LLM call handy. See agent/moderate.
 
 	// Load existing summaries from disk
 	if b, err := data.LoadFile("chat_summaries.json"); err == nil {
@@ -1080,7 +1084,7 @@ func Load() {
 	}
 
 	// Subscribe to summary generation requests
-	summaryRequestSub := event.Subscribe(event.EventGenerateSummary)
+	summaryRequestSub := event.Subscribe(event.GenerateSummary)
 	go func() {
 		for evt := range summaryRequestSub.Chan {
 			uri, okUri := evt.Data["uri"].(string)
@@ -1116,7 +1120,7 @@ func Load() {
 
 				// Publish the generated summary
 				event.Publish(event.Event{
-					Type: event.EventSummaryGenerated,
+					Type: event.SummaryGenerated,
 					Data: map[string]interface{}{
 						"uri":     uri,
 						"summary": summary,
@@ -1130,7 +1134,7 @@ func Load() {
 	}()
 
 	// Subscribe to tag generation requests
-	tagRequestSub := event.Subscribe(event.EventGenerateTag)
+	tagRequestSub := event.Subscribe(event.GenerateTag)
 	go func() {
 		for evt := range tagRequestSub.Chan {
 			title, _ := evt.Data["title"].(string)
@@ -1191,7 +1195,7 @@ func Load() {
 				}
 
 				event.Publish(event.Event{
-					Type: event.EventTagGenerated,
+					Type: event.TagGenerated,
 					Data: map[string]interface{}{
 						"post_id": postID,
 						"tag":     tag,
@@ -1237,7 +1241,7 @@ func Load() {
 				}
 
 				event.Publish(event.Event{
-					Type: event.EventTagGenerated,
+					Type: event.TagGenerated,
 					Data: map[string]interface{}{
 						"note_id": noteID,
 						"user_id": userID,
@@ -1547,18 +1551,6 @@ func guestChatAuthNotice() string {
   <p>This room keeps conversation history for your account, so sending here needs a login. You can still try Mu without an account in the public agent.</p>
   <p><a class="link" href="/agent">Try Mu without an account</a> · <a class="link" href="/login?redirect=/chat">Log in</a> · <a class="link" href="/signup?redirect=/chat">Sign up</a></p>
 </div>`
-}
-
-// llmAnalyzer implements the flag.LLMAnalyzer interface
-type llmAnalyzer struct{}
-
-func (a *llmAnalyzer) Analyze(promptText, question string) (string, error) {
-	prompt := &ai.Prompt{
-		System:   promptText,
-		Question: question,
-		Model:    ai.BackgroundModel(),
-	}
-	return askLLM(prompt)
 }
 
 // cleanupIdleRooms periodically removes idle chat rooms to prevent memory leaks

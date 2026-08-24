@@ -128,7 +128,7 @@ func sharedHome(accountID string) string { return work + "/" + slug(accountID) }
 // which is the one place that decides.
 func readyShared(ctx context.Context, accountID string) error {
 	name := poolOf(accountID)
-	if err := container.Start(ctx, name, image(), sharedVolume, limits()); err != nil {
+	if err := container.Start(ctx, name, image(), sharedVolume, limits(), equipment()...); err != nil {
 		return err
 	}
 	touched(name)

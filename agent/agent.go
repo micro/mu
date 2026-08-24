@@ -1314,7 +1314,7 @@ const agentToolsDesc = `Available tools (use exact name):
 - apps_edit: Edit an existing app (args: {"slug":"app-slug","html":"<new html>","name":"New Name"})
 - apps_embed: get the HTML that puts an app on another page (args: {"slug":"app-slug"})
 - wallet_address: The caller's own address on Base, for receiving USDC (no args).
-- wallet_balance: What that address holds in USDC (no args). This is not credits — credits are this instance's own meter, and there is no tool for topping them up; point the user at /account/topup.
+- wallet_balance: What that address holds in USDC (no args). This is not credits — credits are this instance's own meter, and there is no tool for topping them up; point the user at /billing/topup.
 - stream: Read the public event stream (no args)`
 
 // publicToolsDesc is the tool list for a run with no private context — a
@@ -3081,7 +3081,7 @@ func formatWalletBalanceResult(result string) string {
 		} else {
 			n = *data.Balance
 		}
-		fmt.Fprintf(&sb, "Credit balance: %d credits (£%d.%02d). Top up at /account/topup.\n", n, n/100, n%100)
+		fmt.Fprintf(&sb, "Credit balance: %d credits (£%d.%02d). Top up at /billing/topup.\n", n, n/100, n%100)
 	}
 	switch {
 	case data.USDC != "":

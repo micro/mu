@@ -142,7 +142,7 @@ func TestEveryServiceHookIsOnTheLedger(t *testing.T) {
 // three of them a service reaching upward through a function variable.
 //
 // Zero, and it stays zero. A service announces that work was asked for and
-// agent/work subscribes; see internal/event.EventWorkForAgent.
+// agent/work subscribes; see internal/event.WorkForAgent.
 func TestNoNewServiceCallsAnAgent(t *testing.T) {
 	const known = 0
 

@@ -821,7 +821,7 @@ func requestArticleSummary(uri string, md *Metadata) {
 
 	// Publish summary generation request
 	event.Publish(event.Event{
-		Type: event.EventGenerateSummary,
+		Type: event.GenerateSummary,
 		Data: map[string]interface{}{
 			"uri":     uri,
 			"content": contentToSummarize,
@@ -1325,7 +1325,7 @@ func Load() {
 	}
 
 	// Subscribe to refresh events
-	sub := event.Subscribe(event.EventRefreshHNComments)
+	sub := event.Subscribe(event.RefreshHNComments)
 	go func() {
 		for evt := range sub.Chan {
 			if url, ok := evt.Data["url"].(string); ok {
@@ -1336,7 +1336,7 @@ func Load() {
 	}()
 
 	// Subscribe to summary generation responses
-	summarySub := event.Subscribe(event.EventSummaryGenerated)
+	summarySub := event.Subscribe(event.SummaryGenerated)
 	go func() {
 		for evt := range summarySub.Chan {
 			uri, okUri := evt.Data["uri"].(string)

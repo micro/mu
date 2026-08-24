@@ -22,7 +22,7 @@ import (
 // asked collects the work requested while f runs.
 func asked(t *testing.T, f func()) []map[string]interface{} {
 	t.Helper()
-	sub := event.Subscribe(event.EventWorkForAgent)
+	sub := event.Subscribe(event.WorkForAgent)
 	defer sub.Close()
 
 	f()

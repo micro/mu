@@ -95,6 +95,11 @@ func boot() {
 	archive.Load()
 	browser.Load()
 	sandbox.Load()
+
+	// And the SSH door onto it, when an operator has named a port. Off
+	// otherwise — see service/sandbox/ssh.go for why the port is a decision
+	// rather than a default.
+	sandbox.LoadSSH()
 	web.Load()
 	text.Load()
 	food.Load()

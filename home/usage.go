@@ -124,7 +124,7 @@ func spendSection(id string, admin bool) string {
 		return sb.String()
 	}
 	usage.Table(&sb, "What you spent on", rows)
-	sb.WriteString(`<p class="text-sm text-muted"><a href="/account#ledger">Every charge, in order →</a></p>`)
+	sb.WriteString(`<p class="text-sm text-muted"><a href="/billing#ledger">Every charge, in order →</a></p>`)
 	return sb.String()
 }
 

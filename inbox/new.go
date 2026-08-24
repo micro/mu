@@ -129,6 +129,28 @@ func sent(w http.ResponseWriter, r *http.Request, accountID string, f form) {
 		return
 	}
 
+	// A person, resolved to an address at the last moment.
+	//
+	// The To box may hold @someone, which is what the Write button on a profile
+	// puts there. That button used to carry the address itself — printed on the
+	// page beside it and again in the link — and /@somebody is public, so every
+	// account's mailbox was published to anybody who opened it or anything that
+	// crawled it. The shortcut is worth keeping; publishing the address is not.
+	//
+	// Resolved here rather than when the form is drawn, so the address never
+	// reaches the sender's browser at all. An @name nobody here answers to is
+	// refused by name — an unhelpful "no such address" would be about a string
+	// the sender never typed.
+	if strings.HasPrefix(f.To, "@") {
+		to, ok := addressOfPerson(f.To)
+		if !ok {
+			f.Problem = "nobody here is called " + f.To
+			writeOne(w, r, accountID, f)
+			return
+		}
+		f.To = to
+	}
+
 	// SendOut is the one way mail leaves this instance, and every rule about
 	// who may send what is inside it — the gate, the charge, the provider. A
 	// second path here that skipped one of them would not look like a bug until
@@ -160,6 +182,24 @@ func sent(w http.ResponseWriter, r *http.Request, accountID string, f form) {
 		return
 	}
 	http.Redirect(w, r, "/inbox?sent="+url.QueryEscape(f.To), http.StatusSeeOther)
+}
+
+// addressOfPerson turns @someone into the address their mail arrives at.
+//
+// Only for accounts on this instance, which is the only kind of name an @
+// could refer to. It is deliberately not exposed anywhere a page can call it:
+// the point of naming people rather than addressing them is that the address
+// stays on the server.
+func addressOfPerson(at string) (string, bool) {
+	id := strings.ToLower(strings.TrimSpace(strings.TrimPrefix(at, "@")))
+	if id == "" {
+		return "", false
+	}
+	acc, err := auth.GetAccount(id)
+	if err != nil || acc == nil {
+		return "", false
+	}
+	return mail.EmailForUser(acc.ID, mail.ConfiguredDomain()), true
 }
 
 // record files what was sent as a conversation, keyed so the reply joins it.

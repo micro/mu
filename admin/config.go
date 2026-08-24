@@ -27,6 +27,7 @@ var settingGroups = []settingGroup{
 		"OPENROUTER_MODEL",
 		"OPENAI_BASE_URL",
 		"OPENAI_API_KEY",
+		"OPENAI_MODEL",
 		"IMAGE_MODEL",
 	}},
 	{"Search", []string{
@@ -44,6 +45,11 @@ var settingGroups = []settingGroup{
 		"SMTP_PORT",
 		"SMTP_USER",
 		"SMTP_PASS",
+		"SMTP_RELAY_HOST",
+		"SMTP_RELAY_USER",
+		"SMTP_RELAY_PASS",
+		"IMAP_PUBLIC",
+		"SUBMISSION_PUBLIC",
 	}},
 	// Object storage. Backups go here first, because a copy on the same disk
 	// does not survive losing the disk — and later the same bucket is where
@@ -64,6 +70,9 @@ var settingGroups = []settingGroup{
 		"STRIPE_WEBHOOK_SECRET",
 		"X402_PAY_TO",
 		"X402_BAZAAR",
+		"X402_NETWORK",
+		"X402_VERSION",
+		"X402_SERVERS",
 	}},
 	// The node this instance reads balances from. BASE_RPC_URL was readable by
 	// the code and settable nowhere, so the only way to point it at Base was an
@@ -136,6 +145,44 @@ var settingGroups = []settingGroup{
 	{"Social", []string{
 		"SOCIAL_ATPROTO",
 	}},
+	// The machine an account gets, and the shell door onto it. Every one of
+	// these was readable by the code and settable nowhere — the fourth time
+	// this file has recorded that sentence, which is why there is now a test
+	// rather than another comment. See TestEverySettingIsSettable.
+	{"Sandbox", []string{
+		"SANDBOX_IMAGE",
+		"SANDBOX_MEMORY",
+		"SANDBOX_CPUS",
+		"SANDBOX_PIDS",
+		"SANDBOX_NETWORK",
+		"SANDBOX_SHARED",
+		"SANDBOX_MAX_MACHINES",
+		"SANDBOX_MAX_SECONDS",
+		"SANDBOX_IDLE_MINUTES",
+		// Read once at boot, so changing it here needs a restart before
+		// anything listens. Shown anyway: an operator has to be able to see
+		// what it is set to without shelling onto the box.
+		"SANDBOX_SSH_PORT",
+	}},
+	// What this instance tells its operator about, and when. Added the same
+	// day as the checks themselves and left off this page, which is the bug
+	// this group exists to fix — see admin/alert.go.
+	{"Alerts", []string{
+		"ALERTS",
+		"ALERT_COOLDOWN_MINUTES",
+		"ALERT_CALLS_PER_HOUR",
+		"ALERT_ACCOUNT_CALLS_PER_HOUR",
+		"ALERT_DISK_PERCENT",
+	}},
+	// What somebody gets before they have paid for anything, and the ceilings
+	// on the things that cost us per call.
+	{"Limits and trial", []string{
+		"FREE_TURNS",
+		"TRIAL_DAILY_TOTAL",
+		"VIDEO_SEARCH_PER_HOUR",
+		"VIDEO_SEARCH_PER_DAY",
+		"GENERATE_ADULT",
+	}},
 	{"Platform", []string{
 		"MU_DOMAIN",
 		// Proof of domain ownership for the MCP registry, served at
@@ -145,6 +192,14 @@ var settingGroups = []settingGroup{
 		"MCP_REGISTRY_PROOF",
 		"PASSKEY_ORIGIN",
 		"PASSKEY_RP_ID",
+		"APP_URL",
+		"SHUTDOWN_SECONDS",
+		"NOTES",
+		"BROWSER_URL",
+		"CHROME_PATH",
+		"MCP_GATEWAY_ADDR",
+		"AGENT_NATIVE",
+		"AGENT_NATIVE_STREAM",
 	}},
 }
 
@@ -302,7 +357,14 @@ func ConfigHandler(w http.ResponseWriter, r *http.Request) {
 				badge = `<span class="text-2xs text-faint">not set</span>`
 			}
 
-			b.WriteString(`<div class="mb-3">`)
+			// The row is addressable, which is what makes show and hide usable.
+			//
+			// Revealing is a round trip rather than a script — see below — and a
+			// round trip on a page of a hundred settings lands you at the top,
+			// hunting for the one you clicked. The anchor brings the browser back
+			// to the row instead. Cheap, and it keeps the reason the round trip
+			// exists.
+			b.WriteString(`<div class="mb-3" id="` + html.EscapeString(key) + `">`)
 			b.WriteString(fmt.Sprintf(
 				`<label class="text-xs text-muted d-block mb-1"><code>%s</code> %s`,
 				html.EscapeString(key), badge))
@@ -310,9 +372,10 @@ func ConfigHandler(w http.ResponseWriter, r *http.Request) {
 			// sitting in the page source of every visit waiting to be read.
 			if isSecret && val != "" && !shown {
 				b.WriteString(` <a href="/admin/config?reveal=` + url.QueryEscape(key) +
-					`" class="text-2xs text-muted">show</a>`)
+					`#` + url.QueryEscape(key) + `" class="text-2xs text-muted">show</a>`)
 			} else if isSecret && shown {
-				b.WriteString(` <a href="/admin/config" class="text-2xs text-muted">hide</a>`)
+				b.WriteString(` <a href="/admin/config#` + url.QueryEscape(key) +
+					`" class="text-2xs text-muted">hide</a>`)
 			}
 			b.WriteString(`</label>`)
 
@@ -361,7 +424,7 @@ func ConfigHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<button type="submit" class="btn mb-4">Save</button>`)
 	b.WriteString(`</form>`)
 
-	b.WriteString(`<p><a href="/admin">← Back to Admin</a></p>`)
+	b.WriteString(back())
 
-	app.Respond(w, r, app.Response{Title: "Settings", Description: "What this instance is configured with", HTML: b.String()})
+	app.Respond(w, r, app.Response{Title: "Config", Description: "What this instance is configured with", HTML: b.String()})
 }

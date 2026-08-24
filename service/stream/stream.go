@@ -9,7 +9,7 @@
 // the timeline was the chat.
 //
 // It owns nothing. Every entry is a fact some service announced on the bus
-// (event.EventActivity) and still owns; this holds a bounded tail of them and
+// (event.Activity) and still owns; this holds a bounded tail of them and
 // renders it. Delete the package and the news is still news, the posts are
 // still posts — you lose the one place they were shown together. That is the
 // same test service/recall passes over internal/thread.
@@ -83,7 +83,7 @@ func Load() {
 	n := len(entries)
 	mu.Unlock()
 
-	sub := event.Subscribe(event.EventActivity)
+	sub := event.Subscribe(event.Activity)
 	go func() {
 		for e := range sub.Chan {
 			add(fromEvent(e.Data))

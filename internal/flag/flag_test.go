@@ -11,7 +11,6 @@ func resetFlags(t *testing.T) {
 	mutex.Lock()
 	flags = make(map[string]*FlaggedItem)
 	deleters = make(map[string]ContentDeleter)
-	analyzer = nil
 	mutex.Unlock()
 }
 
@@ -249,53 +248,11 @@ func TestRegisterDeleter(t *testing.T) {
 	}
 }
 
-type stubAnalyzer struct {
-	response string
-	err      error
-}
-
-func (s stubAnalyzer) Analyze(prompt, question string) (string, error) {
-	return s.response, s.err
-}
-
-func TestCheckContent_AutoFlagsSuspiciousContent(t *testing.T) {
-	resetFlags(t)
-	SetAnalyzer(stubAnalyzer{response: " spam "})
-
-	CheckContent("post", "spam-post", "Cheap stuff", "Buy now")
-
-	item := Item("post", "spam-post")
-	if item == nil {
-		t.Fatal("expected suspicious content to be flagged")
-	}
-	if !item.Flagged {
-		t.Error("expected suspicious content to be hidden immediately")
-	}
-	if got, want := item.FlagCount, 3; got != want {
-		t.Errorf("expected flag count %d, got %d", want, got)
-	}
-	if got, want := item.FlaggedBy[0], "system:spam (admin)"; got != want {
-		t.Errorf("expected flagger %q, got %q", want, got)
-	}
-}
-
-func TestCheckContent_OKDoesNotFlag(t *testing.T) {
-	resetFlags(t)
-	SetAnalyzer(stubAnalyzer{response: "OK"})
-
-	CheckContent("post", "normal-post", "Daily update", "Working on tests")
-
-	if item := Item("post", "normal-post"); item != nil {
-		t.Fatalf("expected OK content to remain unflagged, got %#v", item)
-	}
-}
-
-func TestCheckContent_NilAnalyzer(t *testing.T) {
-	resetFlags(t)
-	SetAnalyzer(nil)
-	// Should not panic
-	CheckContent("post", "1", "title", "content")
-}
+// The classifier tests have gone to agent/moderate with the classifier.
+//
+// What is left here is the record — Add, AdminFlag, Item, IsHidden, the
+// deleters — and it is testable without a model, which it was not while this
+// package held an `analyzer` variable somebody had to stub.
 
 type recordingDeleter struct {
 	deleted      []string

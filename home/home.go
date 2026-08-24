@@ -546,10 +546,17 @@ function fetchW(la,lo){
 		bodyClass = ` class="page-home display-mode"`
 	}
 
-	// The home screen is where someone lands after signing up, so it is the one
-	// page that must carry the invitation to connect an agent.
+	// No ConnectBanner here. This page prepended one itself, from when it was
+	// the only page that carried the invitation — and the shell prepends it to
+	// every page now, so /home drew it twice, one directly under the other,
+	// with the same words and the same button. On the screen somebody lands on
+	// after signing up.
+	//
+	// That is what a banner moving from one page into the chrome looks like
+	// when the call site it left behind is not removed. See app.renderForRequest,
+	// which is the only place any of the three banners is added.
 	app.Respond(w, r, app.Response{Title: "Home", Description: "The home screen",
-		HTML: app.ConnectBanner(r) + b.String(), BodyClass: bodyClass})
+		HTML: b.String(), BodyClass: bodyClass})
 }
 
 // htmlEsc escapes text for HTML.

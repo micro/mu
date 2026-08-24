@@ -483,7 +483,7 @@ func processIndexWork(work IndexWork) {
 
 	// Publish event that indexing is complete
 	event.Publish(event.Event{
-		Type: event.EventIndexComplete,
+		Type: event.IndexComplete,
 		Data: map[string]interface{}{
 			"id":   work.ID,
 			"type": work.Type,
@@ -730,6 +730,28 @@ func Load() {
 			fmt.Printf("[data] Migration error: %v\n", err)
 		}
 		EnsureFTS()
+
+		// Clear up after the migration, here rather than by hand.
+		//
+		// This was a button on /admin/server labelled "Remove superseded
+		// stores", which is a sentence about our implementation offered to
+		// somebody who only runs the thing: to know whether to press it you had
+		// to know that the index used to be JSON, that it is SQLite now, and
+		// which of the two a given file belongs to. Nobody has that, so the
+		// button was either ignored or pressed on faith.
+		//
+		// Superseded() is already the narrow question — the migration ran, the
+		// index is not empty, so these files are a copy of what SQLite holds —
+		// and TestSupersededNeverNamesTheOnlyCopy is the guard on it. If that
+		// is true it is true at boot, and a fact that safe does not need a
+		// person to confirm it.
+		if removed, freed, err := RemoveSuperseded(); err != nil {
+			fmt.Printf("[data] Could not remove migrated stores: %v\n", err)
+		} else if len(removed) > 0 {
+			fmt.Printf("[data] Removed %s left by the migration, freeing %d bytes\n",
+				strings.Join(removed, " and "), freed)
+		}
+
 		// Get stats
 		entries, embCount, err := IndexStats()
 		if err == nil {

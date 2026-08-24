@@ -142,20 +142,19 @@ func authRequired() map[string]bool {
 		"/admin/blocklist":   true,
 		"/admin/spam":        true,
 		"/admin/email":       true,
-		"/admin/api":         true,
 		"/admin/log":         true,
 		"/admin/config":      true,
 		"/admin/env":         true,
 		"/admin/server":      true,
 		"/admin/usage":       true,
 		"/admin/delete":      true,
-		"/admin/console":     true,
 		"/admin/diagnostics": true,
-		"/admin/retention":   true,
 		"/admin/alerts":      true,
 		"/admin/backup":      true,
 		"/admin/invite":      true,
-		"/account/":          true, // Money: top-up, transfer, the ledger
+		"/account/":          true, // Money: the old paths, which redirect
+		"/billing":           true, // Money: balance, usage, the ledger
+		"/billing/":          true, // Money: top-up, transfer, Stripe
 
 		"/apps":      false, // Public - apps directory; auth checked in handler for create/edit
 		"/work":      false, // Public - task bounties; auth checked in handler for post/claim
@@ -251,19 +250,18 @@ func registerRoutes() {
 	http.HandleFunc("/admin/moderate", admin.ModerateHandler)
 
 	// mail blocklist management
-	http.HandleFunc("/admin/blocklist", admin.BlocklistHandler)
+	http.HandleFunc("/admin/blocklist", admin.BlocklistMoved)
 
 	// spam filter management
-	http.HandleFunc("/admin/spam", admin.SpamFilterHandler)
+	http.HandleFunc("/admin/spam", admin.SpamHandler)
 
 	// email log
-	http.HandleFunc("/admin/email", admin.EmailLogHandler)
+	http.HandleFunc("/admin/email", admin.MailLogMoved)
 
 	// external API call log
-	http.HandleFunc("/admin/api", admin.APILogHandler)
 
 	// system log
-	http.HandleFunc("/admin/log", admin.SysLogHandler)
+	http.HandleFunc("/admin/log", admin.LogHandler)
 
 	// environment variables status
 	http.HandleFunc("/admin/config", admin.ConfigHandler)
@@ -276,19 +274,17 @@ func registerRoutes() {
 	})
 
 	// server update and restart
-	http.HandleFunc("/admin/server", admin.UpdateHandler)
+	http.HandleFunc("/admin/server", admin.ServerHandler)
 
 	// AI usage tracking
-	http.HandleFunc("/admin/usage", admin.AIUsageHandler)
+	http.HandleFunc("/admin/usage", admin.SpendMoved)
 	http.HandleFunc("/admin/traffic", admin.TrafficHandler)
 
 	// admin delete (any content type)
 	http.HandleFunc("/admin/delete", admin.DeleteHandler)
 
 	// admin console
-	http.HandleFunc("/admin/console", admin.ConsoleHandler)
 	http.HandleFunc("/admin/diagnostics", admin.DiagnosticsHandler)
-	http.HandleFunc("/admin/retention", admin.RetentionHandler)
 	// What this instance will wake you for. See admin/alert.go.
 	http.HandleFunc("/admin/alerts", admin.AlertsHandler)
 	http.HandleFunc("/admin/backup", admin.BackupHandler)
@@ -297,6 +293,8 @@ func registerRoutes() {
 	// Money: top-up, transfer, Stripe and the price list, all under the account
 	// that holds them.
 	http.HandleFunc("/account/", account.BalanceHandler)
+	http.HandleFunc("/billing", account.Billing)
+	http.HandleFunc("/billing/", account.BalanceHandler)
 
 	// Where the money used to be. /wallet is a service now, so these are not
 	// merely renamed — the old prefix has come to mean something else, and a
@@ -646,7 +644,6 @@ func registerRoutes() {
 	// internal status (injected into admin server page)
 	app.DKIMStatusFunc = mail.DKIMStatus
 	app.DigestStatusFunc = digest.Status
-	admin.GenerateDigestFunc = digest.Generate
 
 	// public status page - service health checks
 	app.HealthCheckFunc = runHealthChecks

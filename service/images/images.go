@@ -257,7 +257,7 @@ func Generate(owner, prompt string) (string, error) {
 		return "", err
 	}
 	if !canProceed {
-		return "", fmt.Errorf("this costs %d credits — top up at /account/topup", cost)
+		return "", fmt.Errorf("this costs %d credits — top up at /billing/topup", cost)
 	}
 
 	url, err := ai.GenerateImage(prompt)

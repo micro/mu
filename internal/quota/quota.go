@@ -192,7 +192,7 @@ func CheckQuota(userID string, operation string) (bool, bool, int, error) {
 	// credits" told neither of them what to do next.
 	//
 	// Where to go is a whole address when this instance knows its own. The
-	// reader here is often a program on another machine, and "/account/topup"
+	// reader here is often a program on another machine, and "/billing/topup"
 	// is only a destination if you already know what it is relative to.
 	return false, false, cost, fmt.Errorf(
 		"this costs %d credits and your balance is %d — top up at %s", cost, balance, TopupURL())
@@ -202,9 +202,9 @@ func CheckQuota(userID string, operation string) (bool, bool, int, error) {
 // address and a path when it does not. See origin.Self.
 func TopupURL() string {
 	if self := origin.Self(); self != "" {
-		return self + "/account/topup"
+		return self + "/billing/topup"
 	}
-	return "/account/topup"
+	return "/billing/topup"
 }
 
 // Charge takes payment for an operation that has already happened.
@@ -274,7 +274,7 @@ func ExceededPage(cost int) string {
 	return `<div class="card center-card-md">` +
 		`<h2>Credits Required</h2>` +
 		fmt.Sprintf(`<p>This costs %d credit%s. `, cost, plural) +
-		`<a href="/account/topup">Add credits</a> to continue.</p>` +
-		`<p class="text-sm text-muted">1 credit = 1p · <a href="/account#balance">Your balance</a></p>` +
+		`<a href="/billing/topup">Top up</a> to continue.</p>` +
+		`<p class="text-sm text-muted">1 credit = 1p · <a href="/billing#balance">Your balance</a></p>` +
 		`</div>`
 }

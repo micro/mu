@@ -11,6 +11,32 @@
    - Consistent spacing using design tokens
    ======================================== */
 :root {
+  /* This product is light. Say so, rather than letting a browser guess.
+   *
+   * Reported as "topup amounts have black text on black background", followed
+   * by "we keep coming across this issue" — and that is the whole point: there
+   * is no dark theme in here. No prefers-color-scheme block, no [data-theme],
+   * no dark palette, not one. Every colour below is a light-theme colour.
+   *
+   * What produces black-on-black is a browser deciding, on its own, to darken
+   * a page that never asked for it. Auto-dark repaints backgrounds and leaves
+   * anything the author declared with !important alone, and eleven rules here
+   * carry `color: ... !important` — most of them white text meant to sit on a
+   * dark fill. Darken the fill underneath and the pair is still "correct" by
+   * every rule in this file and unreadable on screen.
+   *
+   * One line stops all of it: color-scheme tells the browser which themes this
+   * page actually supports, and a browser told "light" does not invent a dark
+   * one. The alternative is patching contrast class by class, which this file
+   * already records happening five times for a related cause — see the note on
+   * a:visited below, "found and patched five separate times, on five different
+   * classes, because each fix was to the class rather than to this".
+   *
+   * If dark mode is wanted it is a real piece of work — a second palette, and
+   * those eleven !important colours are what stands in the way. It is not the
+   * absence of this line. */
+  color-scheme: light;
+
   --topic-gap: 15px;
   
   /* Design System Tokens */
@@ -6048,7 +6074,6 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
 /* The way to say something, and the address it goes to beside it — the address
    is the interface, so it is shown rather than hidden behind the button. */
 .pf-write { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 16px 0 0 }
-.pf-addr { font-size: 13px; color: var(--text-muted, #888) }
 
 /* One tool, at an address of its own. See internal/api/tool_page.go. */
 .tool-page { max-width: 760px }

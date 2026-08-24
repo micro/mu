@@ -3,24 +3,20 @@ package admin
 import (
 	"fmt"
 	"html"
-	"net/http"
 	"sort"
 	"strings"
 
-	"mu/internal/app"
-	"mu/internal/auth"
 	"mu/service/mail"
 )
 
-// EmailLogHandler shows the email log page
-func EmailLogHandler(w http.ResponseWriter, r *http.Request) {
-	// Check if user is admin
-	_, _, err := auth.RequireAdmin(r)
-	if err != nil {
-		app.Forbidden(w, r, "Admin access required")
-		return
-	}
-
+// mailLogCard is what the mail server has been doing: what is stored, what was
+// relayed out, and the last fifty of each.
+//
+// A tab under Logs rather than a nav entry of its own. It is the same kind of
+// thing as the system log and the external calls — what happened, not what the
+// rules are — and an operator looking at a failure wants the three lined up on
+// one timeline. The rules moved the other way, onto /admin/spam.
+func mailLogCard() string {
 	stats := mail.GetEmailStats()
 	messages := mail.RecentMessages(50)
 	relays := mail.RecentRelays(50)
@@ -167,9 +163,7 @@ func EmailLogHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	content.WriteString(`</div>`)
 
-	content.WriteString(`<p><a href="/admin">← Back to Admin</a></p>`)
-
-	app.Respond(w, r, app.Response{Title: "Email", Description: "Email activity", HTML: content.String()})
+	return content.String()
 }
 
 func truncate(s string, max int) string {

@@ -38,6 +38,7 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -211,7 +212,7 @@ type Limits struct {
 // The volume is mounted at /work and outlives the container: an image is
 // replaced, a container is thrown away and rebuilt, and neither should lose
 // somebody's files. It is created on demand by the daemon.
-func Start(ctx context.Context, name, image, volume string, l Limits) error {
+func Start(ctx context.Context, name, image, volume string, l Limits, mounts ...string) error {
 	if !Available() {
 		return fmt.Errorf("%s", Reason())
 	}
@@ -238,7 +239,7 @@ func Start(ctx context.Context, name, image, volume string, l Limits) error {
 	// --rm is deliberately absent. A container that removes itself on exit
 	// takes its own logs with it, and the failure worth debugging here is the
 	// one where it died on its own.
-	_, err := run(ctx, startWait,
+	argv := []string{
 		"run", "--detach",
 		"--name", name,
 		"--memory", l.Memory,
@@ -257,13 +258,25 @@ func Start(ctx context.Context, name, image, volume string, l Limits) error {
 		// what lets somebody apk add a compiler.
 		"--security-opt", "no-new-privileges",
 		"--cap-drop", "ALL",
-		"--volume", volume+":/work",
+		"--volume", volume + ":/work",
 		"--workdir", "/work",
-		image,
+	}
+	// Anything else the caller wants in the box, in docker's own --volume
+	// syntax. Variadic, so every existing call site is unchanged, and a
+	// mechanism rather than a policy: this package has no opinion about what
+	// belongs in a container, only about how one is made.
+	for _, m := range mounts {
+		if strings.TrimSpace(m) != "" {
+			argv = append(argv, "--volume", m)
+		}
+	}
+	argv = append(argv, image,
 		// Something that does not exit. The container is a place to exec into;
 		// its own process is not the work.
 		"sleep", "infinity",
 	)
+
+	_, err := run(ctx, startWait, argv...)
 	return err
 }
 
@@ -317,6 +330,21 @@ type Run struct {
 	Dir     string // where to run it
 	User    string // uid[:gid]; empty is the image's own user, which is root
 	Wait    time.Duration
+	// TTY allocates a terminal, for an interactive session. Set by Shell and
+	// not by callers of Exec: a command run for its output does not want one,
+	// and asking for one merges stderr into stdout at the pty rather than in
+	// the code that knows why.
+	TTY bool
+	// Env is set on this exec and on nothing else.
+	//
+	// The distinction is the whole point and is a security property rather
+	// than a convenience: a variable given to the *container* is visible to
+	// everything that ever runs in it, including code an agent fetched off the
+	// internet and ran. A variable given to one exec belongs to that exec.
+	//
+	// So a credential may travel this way and must never travel the other. See
+	// service/sandbox's SSH session, which is the only caller that sets one.
+	Env map[string]string
 }
 
 // argv is the docker invocation up to the command itself.
@@ -329,7 +357,101 @@ func (r Run) argv() []string {
 	if r.User != "" {
 		argv = append(argv, "--user", r.User)
 	}
+	// An interactive session is the same exec with a terminal on it. Through
+	// here rather than assembled at the call site, for the reason above: the
+	// --user flag is what separates two accounts in a shared container, and a
+	// second place that builds a docker exec is a second place to forget it.
+	if r.TTY {
+		argv = append(argv, "--interactive", "--tty")
+	}
+	// Sorted, so the same Run produces the same command line. A map's order is
+	// random and an argv that shuffles is one no test can assert on.
+	if len(r.Env) > 0 {
+		keys := make([]string, 0, len(r.Env))
+		for k := range r.Env {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			argv = append(argv, "--env", k+"="+r.Env[k])
+		}
+	}
 	return append(argv, r.Name)
+}
+
+// Shell attaches a terminal to a container and runs an interactive shell.
+//
+// It hands back the process with its pipes already wired, rather than waiting
+// for it: the caller is a protocol server copying bytes in both directions
+// until somebody types exit, which is not a shape Exec can express.
+//
+// Everything the container was started with still applies — no capabilities,
+// no new privileges, the memory, CPU and PID caps, and whatever network it was
+// given. A shell is not a way past any of that; it is the same box with a
+// person at the keyboard instead of an agent.
+func Shell(ctx context.Context, r Run, in io.Reader, out io.Writer) (*Session, error) {
+	if !Available() {
+		return nil, fmt.Errorf("%s", Reason())
+	}
+	if r.Dir == "" {
+		r.Dir = "/work"
+	}
+	r.TTY = true
+
+	// A real terminal, because docker checks for one.
+	//
+	// `docker exec -t` calls isatty() on its own stdin and refuses a pipe:
+	// "the input device is not a TTY". The first version of this handed the
+	// SSH channel straight through and got exactly that. So the slave end goes
+	// to docker, which is satisfied, and the master is what the bytes flow
+	// over. See pty.go.
+	tty, err := openPTY()
+	if err != nil {
+		return nil, err
+	}
+
+	// The shell is named rather than taken from the caller. A Run carries a
+	// Command for Exec's benefit and letting it through here would make the
+	// login shell somebody else's choice — which, for a session that is
+	// supposed to be a person at a prompt, is a way to run one command as if
+	// it were a login.
+	cmd := exec.CommandContext(ctx, "docker", append(r.argv(), "sh", "-l")...)
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = tty.slave, tty.slave, tty.slave
+	if err := cmd.Start(); err != nil {
+		tty.close()
+		return nil, err
+	}
+	// The slave is the child's now. Holding our copy open means the master
+	// never reports EOF when the shell exits, and the session hangs on a
+	// terminal nobody is attached to.
+	tty.slave.Close()
+	tty.slave = nil
+
+	s := &Session{cmd: cmd, tty: tty}
+	go func() { io.Copy(tty.master, in) }()  //nolint:errcheck — ends when the channel closes
+	go func() { io.Copy(out, tty.master) }() //nolint:errcheck — ends when the shell exits
+	return s, nil
+}
+
+// Session is a shell somebody is attached to.
+type Session struct {
+	cmd *exec.Cmd
+	tty *pty
+}
+
+// Resize tells the shell how big the window is, so a full-screen program
+// redraws when somebody drags the corner.
+func (s *Session) Resize(rows, cols uint16) {
+	if s != nil && rows > 0 && cols > 0 {
+		s.tty.resize(rows, cols)
+	}
+}
+
+// Wait blocks until the shell exits, then releases the terminal.
+func (s *Session) Wait() error {
+	err := s.cmd.Wait()
+	s.tty.close()
+	return err
 }
 
 // Exec runs a command inside a container and waits for it.

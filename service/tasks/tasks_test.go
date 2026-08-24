@@ -228,7 +228,7 @@ func TestRunAsksForTheWork(t *testing.T) {
 	clear("alice")
 	defer clear("alice")
 
-	sub := event.Subscribe(event.EventWorkForAgent)
+	sub := event.Subscribe(event.WorkForAgent)
 	defer sub.Close()
 
 	task, _ := Create("alice", "Summarise the news", "Top five", "agent", time.Time{})

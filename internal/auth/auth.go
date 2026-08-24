@@ -198,9 +198,9 @@ func Create(acc *Account) error {
 	data.SaveJSON("accounts.json", accounts)
 
 	// Said, not sent. Whether anybody wants to know is not this package's
-	// question — see event.EventAccountCreated. Published after the save, so a
+	// question — see event.AccountCreated. Published after the save, so a
 	// subscriber that goes looking for the account finds it.
-	event.Publish(event.Event{Type: event.EventAccountCreated, Data: map[string]interface{}{
+	event.Publish(event.Event{Type: event.AccountCreated, Data: map[string]interface{}{
 		"account": acc.ID,
 		"name":    acc.Name,
 		"first":   strconv.FormatBool(first),
@@ -367,6 +367,11 @@ func DeleteAccount(id string) error {
 	data.SaveJSON("accounts.json", accounts)
 	data.SaveJSON("sessions.json", sessions)
 	data.SaveJSON("tokens.json", tokens)
+
+	// And the SSH keys, which are the same kind of thing as a token: a
+	// credential that says "this is them". One left behind is a way into
+	// nothing at all, right up until somebody signs up with the same name.
+	DeleteSSHKeysFor(id)
 
 	// Run all registered cleanup hooks outside the lock.
 	go func() {

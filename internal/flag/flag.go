@@ -5,8 +5,6 @@ package flag
 
 import (
 	"encoding/json"
-	"fmt"
-	"strings"
 	"sync"
 	"time"
 
@@ -31,16 +29,10 @@ type ContentDeleter interface {
 	RefreshCache()
 }
 
-// LLMAnalyzer interface for AI-powered content moderation.
-type LLMAnalyzer interface {
-	Analyze(prompt, question string) (string, error)
-}
-
 var (
 	mutex    sync.RWMutex
 	flags    = make(map[string]*FlaggedItem)
 	deleters = make(map[string]ContentDeleter)
-	analyzer LLMAnalyzer
 )
 
 // Load reads persisted flags from disk.
@@ -69,47 +61,24 @@ func Deleter(contentType string) (ContentDeleter, bool) {
 	return d, ok
 }
 
-// SetAnalyzer sets the LLM analyzer for content moderation.
-func SetAnalyzer(a LLMAnalyzer) {
-	analyzer = a
-}
-
-// CheckContent analyzes content using LLM and flags if suspicious.
-func CheckContent(contentType, itemID, title, content string) {
-	if analyzer == nil {
-		return
-	}
-
-	prompt := `You are a strict content moderator for a family-friendly community. Every post should be meaningful and respectful. This is not a place to waste time, troll, or post crude content.
-
-Classify the content with ONLY ONE WORD:
-- SPAM (promotional spam, advertising, repetitive junk, SEO content)
-- LOW_QUALITY (gibberish, random characters, meaningless typing like "asdf", single letters)
-- HARMFUL (vulgar, crude, sexual, obscene, gossip, slander, personal attacks, mocking, trolling, shock content, swear words)
-- OK (everything else — status updates, opinions, questions, short messages, work updates, casual conversation)
-
-IMPORTANT: Short personal status updates like "Working on X", "Good morning", "Just shipped Y", "Having lunch" are ALWAYS OK. They are normal status messages, not spam or low quality. Only flag content that is clearly abusive, vulgar, or spam. When in doubt, say OK.
-
-Respond with just the single word.`
-
-	question := fmt.Sprintf("Title: %s\n\nContent: %s", title, content)
-
-	resp, err := analyzer.Analyze(prompt, question)
-	if err != nil {
-		fmt.Printf("Moderation analysis error: %v\n", err)
-		return
-	}
-
-	resp = strings.TrimSpace(strings.ToUpper(resp))
-	fmt.Printf("Content moderation: %s %s -> %s\n", contentType, itemID, resp)
-
-	if resp == "SPAM" || resp == "LOW_QUALITY" || resp == "HARMFUL" {
-		// System auto-flag immediately hides the content — do NOT wait for
-		// 3 user flags. Otherwise spam stays visible until users find it.
-		AdminFlag(contentType, itemID, "system:"+strings.ToLower(resp))
-		fmt.Printf("Auto-hidden %s: %s (reason: %s)\n", contentType, itemID, resp)
-	}
-}
+// No analyzer here, and no CheckContent.
+//
+// This package used to hold both: an `analyzer` function variable, a
+// SetAnalyzer to fill it in, and a CheckContent that ran a model over a
+// paragraph and decided it was spam. That is a judgement, and this is a
+// record — every other function in this file answers a question about state.
+//
+// It also broke the layering in the way that is hardest to see. service/social,
+// service/blog and service/apps called CheckContent, so three services were
+// asking a model what their own answer should be; the variable was filled in
+// by service/chat, so moderation for the whole instance depended on an
+// unrelated service loading, and CheckContent opened by returning silently
+// when it had not. "A function variable is an import the compiler cannot see."
+//
+// The services publish event.ContentPublished now and agent/moderate
+// subscribes, which is the same shape as service/mail and agent/mail. What
+// reaches this package is AdminFlag, exactly as it does when a person presses
+// the flag button.
 
 // Add adds a flag to content (returns new flag count, already flagged bool, error).
 func Add(contentType, contentID, username string) (int, bool, error) {

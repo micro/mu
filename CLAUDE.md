@@ -39,6 +39,7 @@ Built on go-micro: every capability is a go-micro service, the assistant is a go
 | `agent/` | Main agent pipeline (plan → execute → synthesise) |
 | `inbox/` | The agentic inbox: what arrived, and the agent that works on it. A staple by the usual test — you can name it and click it — and it grew inside `agent/` on the reasonable-looking grounds that both render conversations. They are not the same: the chat is a room you talk in, the inbox is where things turn up whether or not you are in it. Not the mail service (`service/mail` is the MTA and the store) and not the record (`internal/thread` is), so deleting it loses the pages and nothing else. It may not import `agent/`; where it needs the workflow record the agent hands it over — see `inbox.Tools` |
 | `agent/micro/` | What an agent is: name, instruction, tool scope, memory scope — and the registry of the ones this instance ships. Addressing one by name (`@probe`, `ask the probe agent`) lives here too, and consults the registry, so an unknown name is not an address |
+| `agent/moderate/` | Whether what somebody published should stay up. A judgement — a model reading prose and forming an opinion — so it is an agent, and `internal/flag` keeps the record it writes into. It was an `analyzer` function variable *inside* `internal/flag`, filled in at boot by `service/chat`: three services (social, blog, apps) asking a model what their own answer should be, through an edge no layering test could see, with moderation for the whole instance silently off if chat ever failed to load. The services publish `event.ContentPublished` now |
 | `agent/blog/` | Writes the daily opinion. Reads news, markets, video, prayer and the web, and calls `blog.CreatePost` — the five imports the blog service used to carry |
 | `agent/social/` | Decides which headlines are worth surfacing, and calls `social.SurfaceBreaking` |
 | `service/news/` | RSS feed aggregation, sentiment tagging |
@@ -256,7 +257,7 @@ and counting them is what showed they were one thing. Four things ask an agent
 for work: a chat message, an email arriving, a task assigned, a schedule
 firing. Three of the four were a service reaching upward through a function
 variable somebody filled in at boot. They are one fact now —
-`event.EventWorkForAgent`, published by whichever service holds the record,
+`event.WorkForAgent`, published by whichever service holds the record,
 subscribed by `agent/work`, which knows where the answer goes because a task
 keeps its result and a standing instruction is mailed. That knowledge is the
 agent layer's; the services no longer know an agent exists.

@@ -63,7 +63,20 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			app.Respond(w, r, app.Response{Title: "Sandbox", Description: Spec.Description, HTML: b.String()})
 			return
 		}
-		command = strings.TrimSpace(r.FormValue("command"))
+		// Two forms post here: a command, and the SSH keys. They are told
+		// apart by which field arrived rather than by a hidden action field,
+		// because a missing action would otherwise run whichever branch was
+		// written first.
+		switch {
+		case r.FormValue("sshkey") != "":
+			b.WriteString(addedKey(acc.ID, r.FormValue("sshkey"), r.FormValue("keyname")))
+		case r.FormValue("removekey") != "":
+			if err := auth.RemoveSSHKey(acc.ID, r.FormValue("removekey")); err != nil {
+				b.WriteString(app.Problem(err.Error()))
+			}
+		default:
+			command = strings.TrimSpace(r.FormValue("command"))
+		}
 	}
 
 	b.WriteString(`<form class="sbx-form" method="post" action="/sandbox">`)
@@ -110,6 +123,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(app.NoteHTML(note))
 	}
 
+	b.WriteString(keysCard(r, acc.ID))
 	b.WriteString(`</div>`)
 	app.Respond(w, r, app.Response{Title: "Sandbox", Description: Spec.Description, HTML: b.String()})
 }

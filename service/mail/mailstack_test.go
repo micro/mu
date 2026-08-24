@@ -493,7 +493,7 @@ func TestAStolenTokenCannotSendAsAnybodyElse(t *testing.T) {
 // what is being tested is whether anything is woken at all, not which address
 // it arrived at.
 func onlyHandler(h func(InboundMail)) func() {
-	return reactTo(event.EventMailForAgent, h)
+	return reactTo(event.MailForAgent, h)
 }
 
 // firstLines is the head of a message, for a readable failure.
@@ -627,7 +627,7 @@ func TestAnAttachmentOnlyMessageCarriesItsName(t *testing.T) {
 
 // onlyDeliveredHandler runs h for every delivery, woken or not.
 func onlyDeliveredHandler(h func(InboundMail)) func() {
-	return reactTo(event.EventMailReceived, h)
+	return reactTo(event.MailReceived, h)
 }
 
 // reactTo subscribes h to a topic for the duration of a test.

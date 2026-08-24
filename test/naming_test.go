@@ -22,9 +22,54 @@ import (
 	"testing"
 )
 
-// exported finds a package-level exported function. Methods are excluded: a
+// exported finds a package-level exported name. Methods are excluded: a
 // method reads off its receiver, so (*Verified).Settle repeats nothing.
-var exported = regexp.MustCompile(`(?m)^func ([A-Z]\w*)\s*\(`)
+//
+// Three shapes, because for a long time it was one.
+//
+// It matched functions only, and a whole family of constants sat behind that
+// gap: internal/event exported EventMailReceived, EventWorkForAgent,
+// EventAccountCreated and ten more, every one of them saying its package twice
+// at the call site. Nobody noticed for as long as the family was uniform —
+// each new one was copied from the last, which is how a convention violation
+// becomes a convention.
+//
+// A const inside a parenthesised block is indented, so the anchor cannot be
+// ^; it is a tab or spaces, then the name, then whitespace and '='. That is
+// loose enough to match a package-level `var x = ...` too, which is fine —
+// the rule applies to those as well.
+var exported = []*regexp.Regexp{
+	regexp.MustCompile(`(?m)^func ([A-Z]\w*)\s*\(`),
+	regexp.MustCompile(`(?m)^[ \t]+([A-Z]\w*)\s+=\s`),
+}
+
+// Types are not checked yet, and that is a decision rather than an oversight.
+//
+// Adding `^type ([A-Z]\w*)` finds twelve more, and they do not divide cleanly:
+//
+//	service/apps.AppSearchRequest, .AppSearchResponse
+//	service/places.PlacesResponse
+//	service/prayer.PrayerTimes
+//	service/social.SocialContext
+//	service/wallet.WalletAuth
+//	service/weather.WeatherForecast
+//	admin.AdminFlag
+//	internal/user.UserPost, .UserApp
+//	internal/flag.FlaggedItem
+//	internal/cli.Client
+//
+// The first nine are real and the fix is mechanical. The last two are not:
+// "Flagged" is a word rather than "flag" plus a suffix, and cli.Client only
+// matches because "Cli" happens to be the first three letters of "Client" —
+// the check is a prefix test and has no idea where a word ends.
+//
+// CLAUDE.md already says how this repository handles that case, about the
+// nineteen names that stutter at the end: "The rule is the same rule and the
+// fix is the same fix; the reason it is written down rather than done is that
+// some of them are not stutters at all and each needs looking at." Written
+// down here for the same reason, rather than parked in stutterAllowed — that
+// map is for names where the repeat is a word, and burying nine real stutters
+// in it would make the rule mean nothing.
 
 // stutterAllowed are the names where the repeat is a word rather than the
 // package saying itself twice.
@@ -60,8 +105,13 @@ func TestExportedNamesDoNotStutter(t *testing.T) {
 			dir, _ := filepath.Rel(at(""), filepath.Dir(path))
 			pkg := filepath.Base(dir)
 
-			for _, m := range exported.FindAllStringSubmatch(string(b), -1) {
-				name := m[1]
+			var names []string
+			for _, re := range exported {
+				for _, m := range re.FindAllStringSubmatch(string(b), -1) {
+					names = append(names, m[1])
+				}
+			}
+			for _, name := range names {
 				checked++
 
 				if !strings.HasPrefix(strings.ToLower(name), strings.ToLower(pkg)) {

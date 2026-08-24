@@ -177,7 +177,7 @@ func Load() {
 	}
 
 	// Subscribe to tag generation responses
-	tagSub := event.Subscribe(event.EventTagGenerated)
+	tagSub := event.Subscribe(event.TagGenerated)
 	go func() {
 		for evt := range tagSub.Chan {
 			postID, okID := evt.Data["post_id"].(string)
@@ -997,7 +997,7 @@ func autoTagPost(postID, title, content string) {
 
 	// Publish tag generation request
 	event.Publish(event.Event{
-		Type: event.EventGenerateTag,
+		Type: event.GenerateTag,
 		Data: map[string]interface{}{
 			"post_id": postID,
 			"title":   title,
@@ -1285,7 +1285,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Run async LLM-based content moderation
-		go flag.CheckContent("post", postID, title, content)
+		event.Published("post", postID, title, content)
 
 		if app.SendsJSON(r) {
 			app.RespondJSON(w, map[string]interface{}{
@@ -1756,7 +1756,7 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Run async LLM-based content moderation (non-blocking)
-	go flag.CheckContent("post", postID, title, content)
+	event.Published("post", postID, title, content)
 
 	// Redirect back to posts page
 	http.Redirect(w, r, "/blog", http.StatusSeeOther)
@@ -1819,7 +1819,7 @@ func CommentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Async content moderation — uses the comment's ID, not the post's.
-	go flag.CheckContent("comment", comment.ID, "", content)
+	event.Published("comment", comment.ID, "", content)
 
 	// Redirect back to the post
 	http.Redirect(w, r, "/blog/post?id="+postID, http.StatusSeeOther)

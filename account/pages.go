@@ -28,7 +28,6 @@ import (
 
 	"mu/internal/auth"
 	"mu/internal/push"
-	"mu/internal/usage"
 )
 
 // SignupRateLimit returns true if the IP is allowed to sign up.
@@ -742,19 +741,25 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	// and destinations belong in the menu with your name on it — see
 	// app.navBottom. Log out was already there.
 
-	// Under the balance, because it is the picture of what drained it. Usage was
-	// a sidebar entry until it was not: it is a view of money, and the money is
-	// here. See usage.Card — it draws nothing at all for an account that has
-	// never called anything, so a new account is not shown an empty graph.
+	// The money is not here any more. Balance, the usage graph and the ledger
+	// were the three cards under the profile, on the reasoning — written above,
+	// twice — that a balance has a deadline and a language picker does not. That
+	// reasoning was right and the conclusion was wrong: the answer to "this
+	// matters more than the rest of the page" is its own page, not the top of
+	// this one. /billing is that page and Billing is in the menu beside Account.
+	//
+	// Not even a line pointing at it. There was one for a few minutes, on the
+	// reasoning that somebody would look for money here first — and Billing is
+	// in the same menu this page is reached from, one item below it. A section
+	// whose only content is a link to its neighbour is the thing being removed
+	// everywhere else on this page.
+	//
 	// Notifications last, because it is a thing you do rather than a thing you
 	// read, and on a phone it is what makes the product work with the page
 	// closed. It used to render below the Settings section — which ended with
 	// Log out, so the control sat under the link that ends the session, where a
 	// page has plainly finished.
 	content := notice + profile +
-		BalanceCard(acc.ID) +
-		usage.Card(acc.ID) +
-		LedgerSection(acc.ID) +
 		PlaceCard(r, acc.ID) +
 		emailCard +
 		googleCard +

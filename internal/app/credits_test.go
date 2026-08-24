@@ -46,7 +46,7 @@ func TestAnEmptyBalanceSaysHowToStart(t *testing.T) {
 	if !strings.Contains(got, "Top up to get started") {
 		t.Errorf("an empty balance produced %q", got)
 	}
-	if !strings.Contains(got, `href="/account/topup"`) {
+	if !strings.Contains(got, `href="/billing/topup"`) {
 		t.Error("the banner does not say where to go")
 	}
 }
@@ -111,7 +111,7 @@ func TestTheBannerIsNotShownOnThePageItPointsAt(t *testing.T) {
 	withBalance(t, 0, true)
 
 	acc := withToken(t, "newcomer2")
-	for _, path := range []string{"/account", "/account/topup", "/account/transfer"} {
+	for _, path := range []string{"/account", "/billing/topup", "/billing/transfer"} {
 		if got := creditsBannerFor(acc, path); got != "" {
 			t.Errorf("the banner appeared on %s", path)
 		}
@@ -170,7 +170,7 @@ func TestTheHeadBalanceShowsEveryState(t *testing.T) {
 	if !strings.Contains(got, ">1,200<") {
 		t.Errorf("head balance rendered %q", got)
 	}
-	if !strings.Contains(got, `href="/account#balance"`) {
+	if !strings.Contains(got, `href="/billing#balance"`) {
 		t.Error("the balance is not a link to where the balance lives")
 	}
 
