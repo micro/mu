@@ -257,20 +257,10 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 		sys += "\n\n" + opts.Extra
 	}
 
+	// The question, on its own. What was said before it goes to the model as
+	// turns rather than as prose — see memory.go, which is also where the
+	// reason the whole conversation used to be sent twice is written down.
 	question = prompt
-	if len(opts.History) > 0 {
-		var hb strings.Builder
-		hb.WriteString("Conversation so far:\n")
-		for _, m := range opts.History {
-			if m.Role == "user" {
-				hb.WriteString("User: " + m.Text + "\n")
-			} else {
-				hb.WriteString("Assistant: " + truncate(m.Text, 300) + "\n")
-			}
-		}
-		hb.WriteString("\nNew message: " + prompt)
-		question = hb.String()
-	}
 
 	// Use a fresh named agent for each request. Some go-micro providers keep
 	// per-agent conversation state keyed by name, so reusing a stable "assistant"
@@ -278,6 +268,10 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 	toolWrappers := append([]gmai.ToolWrapper{blockDestructiveTools(), injectAccount(accountID), dedupeNativeToolCalls()}, wrappers...)
 	a = service.NewAgent(nativeAgentInstanceName(), sys, provider, key, filterServices(nativeServices(opts.Public), opts.Tools),
 		gmagent.Model(model),
+		// What was said before, as turns. Read-only, which is what stops the
+		// question being counted twice — go-micro adds it to memory and then
+		// reads memory back alongside it. See memory.go.
+		gmagent.WithMemory(history(opts.History)),
 		gmagent.MaxSteps(maxSteps()),
 		// A no-progress guard instead of a low step cap.
 		//
