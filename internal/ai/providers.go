@@ -71,6 +71,14 @@ func DefaultModel() string {
 	if m := settings.Get("ANTHROPIC_MODEL"); m != "" {
 		return m
 	}
+	// A preferred provider answers with its own model rather than being handed
+	// a Claude id and having modelFor swap it. Same result, one less place
+	// where the model on screen is not the model that ran.
+	if p, _, _, ok := PreferredProvider(); ok && p != ProviderAnthropic {
+		if m := PreferredModel(p, false); m != "" {
+			return m
+		}
+	}
 	if getOpenRouterAPIKey() != "" && settings.Get("ANTHROPIC_API_KEY") == "" {
 		return OpenRouterModel()
 	}
@@ -96,6 +104,16 @@ func AtlasModel() string {
 // BackgroundModel is the model used for cheap background tasks
 // (summaries, tags, moderation, topics).
 func BackgroundModel() string {
+	// The preferred provider's cheap end, when one is set.
+	//
+	// This reached for Atlas the moment an Atlas key existed, whatever the
+	// instance preferred — which is how an Anthropic-first instance ended up
+	// doing its summaries on DeepSeek without anybody choosing that.
+	if p, _, _, ok := PreferredProvider(); ok {
+		if m := PreferredModel(p, true); m != "" {
+			return m
+		}
+	}
 	if getAtlasAPIKey() != "" {
 		return ModelDeepSeekFlash
 	}

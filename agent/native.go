@@ -347,6 +347,15 @@ func nativeLLM() (provider, key, model string, ok bool) {
 		})
 	}
 
+	// What the instance prefers, before the built-in order — the same question
+	// internal/ai now asks, so the agent and the chat cannot disagree about
+	// which provider this box uses. They did for months.
+	if p, k, _, ok := ai.PreferredProvider(); ok {
+		if m := ai.PreferredModel(p, false); m != "" {
+			return p, k, m, true
+		}
+	}
+
 	if key := settings.Get("ANTHROPIC_API_KEY"); key != "" {
 		return "anthropic", key, ai.DefaultModel(), true
 	}

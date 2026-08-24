@@ -20,6 +20,8 @@ type settingGroup struct {
 var settingGroups = []settingGroup{
 	{"AI", []string{
 		"ANTHROPIC_API_KEY",
+		// Which provider, when there are keys for more than one.
+		"AI_PROVIDER",
 		"ANTHROPIC_MODEL",
 		// The agent's own model, which is the one running the tool loop.
 		"AGENT_MODEL",
