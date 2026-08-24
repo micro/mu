@@ -52,6 +52,13 @@ type Outgoing struct {
 	SenderIP   string
 }
 
+// One limit on an Outgoing, checked here where every door meets, so size
+// is a fact about a message rather than about how it arrived. Matches the
+// 10MB the SMTP paths already accept: a stored body is re-marshalled,
+// re-encrypted and re-written on every later delivery to anybody, so one
+// oversized message makes every account slower forever.
+const maxOutgoingBytes = 10 << 20
+
 // Deliver sends one message to wherever its recipient is: off this instance
 // over SMTP, or into an inbox here.
 //
@@ -64,6 +71,9 @@ func Deliver(m Outgoing) (string, error) {
 	to := strings.TrimSpace(m.To)
 	if to == "" {
 		return "", errors.New("no recipient")
+	}
+	if n := len(m.Body) + len(m.HTML); n > maxOutgoingBytes {
+		return "", fmt.Errorf("message is %d bytes; the limit is %d", n, maxOutgoingBytes)
 	}
 	if IsExternalEmail(to) {
 		return ReplyOut(m.FromID, m.Display, to, m.Subject, m.Body, m.HTML, m.InReplyTo, m.References)
