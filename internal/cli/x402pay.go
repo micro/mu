@@ -33,17 +33,18 @@ import (
 )
 
 // runX402Pay handles `mu x402 call ...`.
-func runX402Pay(args []string) int {
-	server := "https://micro.mu"
+func runX402Pay(args []string, rc *ResolvedConfig) int {
+	// See runAgent: --server, then whatever the rest of the binary is using.
+	flagServer := ""
 	seedPath := ""
 	var rest []string
 
 	for i := 0; i < len(args); i++ {
 		switch {
 		case args[i] == "--server" && i+1 < len(args):
-			server, i = args[i+1], i+1
+			flagServer, i = args[i+1], i+1
 		case strings.HasPrefix(args[i], "--server="):
-			server = strings.TrimPrefix(args[i], "--server=")
+			flagServer = strings.TrimPrefix(args[i], "--server=")
 		case args[i] == "--seed" && i+1 < len(args):
 			seedPath, i = args[i+1], i+1
 		case strings.HasPrefix(args[i], "--seed="):
@@ -52,6 +53,7 @@ func runX402Pay(args []string) int {
 			rest = append(rest, args[i])
 		}
 	}
+	server := rc.Server(flagServer)
 
 	if len(rest) == 0 {
 		fmt.Println("usage: mu x402 call [--server URL] [--seed PATH] <tool> [key=value ...]")

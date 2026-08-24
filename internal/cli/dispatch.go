@@ -111,7 +111,7 @@ func Run(args []string) int {
 	case "setup":
 		return runSetup(rest)
 	case "x402":
-		return runX402(rest)
+		return runX402(rest, &rc)
 	// Two commands, and the difference between them is worth the sentence:
 	// `ask` talks to the agent you made on an instance, and `agent` runs one on
 	// this machine that rents tools from an instance. Same word in English,
@@ -119,7 +119,7 @@ func Run(args []string) int {
 	case "ask":
 		return runAsk(rest, &rc)
 	case "agent":
-		return runAgent(rest)
+		return runAgent(rest, &rc)
 	case "version", "--version":
 		fmt.Printf("mu %s\n", version.String())
 		return 0

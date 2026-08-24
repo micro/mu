@@ -29,9 +29,9 @@ COMMON COMMANDS
   mu wallet balance              What your wallet holds on the server
 
 MANAGEMENT
-  mu login                       Log in by pasting a token from /token
+  mu login [url]                 Log in to an instance (default: https://micro.mu)
   mu logout                      Forget the saved token
-  mu config get|set|path         Manage the config file
+  mu config get|set|path         Show which instance is being called, or change it
   mu help [tool]                 Full tool list, or help for a tool
 
 FLAGS (any command)
@@ -46,6 +46,10 @@ CONFIG
   Loaded from $XDG_CONFIG_HOME/mu/config.json (default: ~/.config/mu/config.json).
   Environment variables MU_URL and MU_TOKEN override the config file.
   Command-line flags override both.
+
+  Calls go to https://micro.mu unless you say otherwise. Running your own
+  instance? "mu login https://your.host" points everything at it for good, and
+  "mu config get" says which one is in use and what decided that.
 
 EXAMPLES
   mu markets list --category stocks

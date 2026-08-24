@@ -48,17 +48,22 @@ type remoteTool struct {
 }
 
 // runAgent handles `mu agent <question>`.
-func runAgent(args []string) int {
-	server := "https://micro.mu"
+func runAgent(args []string, rc *ResolvedConfig) int {
+	// --server if given, otherwise whatever the rest of the binary is using:
+	// --url, MU_URL, the config file `mu login` wrote, and only then the
+	// default. This had its own hardcoded copy of micro.mu and read none of
+	// those, so `mu login https://their.host` left this command calling
+	// somebody else's instance with no way to tell.
+	flagServer := ""
 	seedPath := ""
 	var words []string
 
 	for i := 0; i < len(args); i++ {
 		switch {
 		case args[i] == "--server" && i+1 < len(args):
-			server, i = args[i+1], i+1
+			flagServer, i = args[i+1], i+1
 		case strings.HasPrefix(args[i], "--server="):
-			server = strings.TrimPrefix(args[i], "--server=")
+			flagServer = strings.TrimPrefix(args[i], "--server=")
 		case args[i] == "--seed" && i+1 < len(args):
 			seedPath, i = args[i+1], i+1
 		case strings.HasPrefix(args[i], "--seed="):
@@ -67,6 +72,7 @@ func runAgent(args []string) int {
 			words = append(words, args[i])
 		}
 	}
+	server := rc.Server(flagServer)
 
 	// No question opens a conversation instead. One-shot is for scripts; a
 	// session is for working, and it is the difference between paying to
