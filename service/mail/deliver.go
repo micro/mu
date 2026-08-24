@@ -124,10 +124,23 @@ func deliverHere(m Outgoing, to string) (string, error) {
 		return "", err
 	}
 
-	// Authenticated and Owned without asking SPF or DKIM. Those decide whether
-	// a sender off the network is who they say they are; this one signed in
-	// before being allowed to say anything at all, which answers the same
-	// question more strongly rather than going round it.
+	// Authenticated without asking SPF or DKIM. Those decide whether a sender
+	// off the network is who they say they are; this one signed in before
+	// being allowed to say anything at all, which answers the same question
+	// more strongly rather than going round it.
+	//
+	// Owned is a narrower claim and has to be checked rather than asserted: it
+	// means the sender signed in as *the account the mail is for*, and
+	// mayDispatch takes it as licence to skip asking whether that account has
+	// ever heard of them. True when writing to your own agent or to agent@,
+	// which resolves to you. Not true when writing to somebody else's — that
+	// wakes their agent and spends their credits, so it goes through
+	// senderKnownTo like mail from outside.
+	//
+	// It was passed as a constant, which was correct in submission where the
+	// only reachable case was your own, and became a hole the moment the rule
+	// was shared with the doors where it is not.
+	owned := strings.EqualFold(m.FromID, owner)
 	deliverInbound(InboundMail{
 		Owner:      owner,
 		Tag:        tag,
@@ -148,7 +161,7 @@ func deliverHere(m Outgoing, to string) (string, error) {
 		From:          from,
 		To:            arrivedAt,
 		Authenticated: true,
-		Owned:         true,
+		Owned:         owned,
 	})
 	return messageID, nil
 }
