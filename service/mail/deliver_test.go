@@ -63,6 +63,44 @@ func TestDeliverRoutesEveryLocalShapeOfAddress(t *testing.T) {
 	}
 }
 
+// A message you wrote yourself is not mail that arrived.
+//
+// Writing to agent@ files it in your own inbox, because that is where the
+// conversation is. It was landing unread, so a mail client rang for a message
+// the person had just sent from that same client — "I sent to agent@micro.mu
+// and I got my own email back to asim@micro.mu" — and /inbox counted it.
+func TestYourOwnMessageDoesNotArriveUnread(t *testing.T) {
+	t.Setenv("MAIL_DOMAIN", "example.test")
+
+	me := account(t, "selfsender")
+	other := account(t, "othersender")
+
+	for _, to := range []string{"agent@example.test", "selfsender+research@example.test"} {
+		id, err := Deliver(Outgoing{FromID: me, Display: "Me", To: to,
+			Subject: "mine", Body: "something"})
+		if err != nil {
+			t.Fatalf("Deliver to %s: %v", to, err)
+		}
+		m := storedByMessageID(id)
+		if m == nil {
+			t.Fatalf("nothing filed for %s", to)
+		}
+		if !m.Read {
+			t.Errorf("what I sent to %s landed unread in my own inbox", to)
+		}
+	}
+
+	// And mail from somebody else is still mail, whatever else changes.
+	id, err := Deliver(Outgoing{FromID: other, Display: "Them", To: "selfsender@example.test",
+		Subject: "theirs", Body: "hello"})
+	if err != nil {
+		t.Fatalf("Deliver from another account: %v", err)
+	}
+	if m := storedByMessageID(id); m == nil || m.Read {
+		t.Error("mail from somebody else arrived already read")
+	}
+}
+
 // Writing to an agent here wakes it, and writing to a person does not.
 //
 // The wake is the half that filing quietly leaves out, and the half nobody

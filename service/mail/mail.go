@@ -1758,6 +1758,21 @@ type Delivery struct {
 	// out of Body so a binary does not end up in previews, the index and
 	// mail_inbox. See Message.Attachment.
 	Attachment *Attachment
+
+	// Own marks a message the recipient wrote themselves.
+	//
+	// Writing to your own agent files the message in your own inbox, because
+	// that is where the conversation is — and agent@ resolves to whoever wrote
+	// to it, so it goes there too. What it is not is mail that *arrived*: it
+	// was landing unread, so a mail client rang for a message the person had
+	// just sent from that same client, and /inbox counted it against them.
+	// "I sent to agent@micro.mu and I got my own email back" is the report.
+	//
+	// It stays in the inbox, because the reply threads onto it and a
+	// conversation missing its opening line is worse. It is read the moment it
+	// is written, which is the same rule internal/thread already applies to
+	// the owner's own turn.
+	Own bool
 }
 
 // SendMessageTo files a message for a local account.
@@ -1774,7 +1789,7 @@ func SendMessageTo(d Delivery) error {
 		ToID:        d.ToID,
 		Subject:     d.Subject,
 		Body:        d.Body,
-		Read:        false,
+		Read:        d.Own,
 		ReplyTo:     d.ReplyTo,
 		MessageID:   d.MessageID,
 		Spam:        d.Spam,
