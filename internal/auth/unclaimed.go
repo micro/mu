@@ -39,35 +39,24 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
-	"strconv"
 	"strings"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
 
 	"mu/internal/data"
-	"mu/internal/settings"
 )
 
 // FreeTurns is how many exchanges an unclaimed account gets before it is asked
 // to sign up.
 //
-// A setting, not a constant in copy. What a demonstration is worth is an
-// operator's decision, and the landing page deliberately stopped naming a
-// number: a page that offers a daily allowance is describing a free plan, and
-// fixes in writing something that is theirs to change. Nothing user-facing says
-// ten; the mail at the end says "that is the free ones".
-func FreeTurns() int {
-	v := strings.TrimSpace(settings.Get("FREE_TURNS"))
-	if v == "" {
-		return 10
-	}
-	n, err := strconv.Atoi(v)
-	if err != nil || n < 0 {
-		return 10
-	}
-	return n
-}
+// Ten, in the code. This was FREE_TURNS on the config page, in a group called
+// "Limits and trial", justified as "what a demonstration is worth is an
+// operator's decision". Nothing user-facing has ever named the number — the
+// landing deliberately stopped, and the mail at the end says "that is the free
+// ones" — so the dial adjusted something invisible, and the group it sat in
+// configured a trial this instance does not offer.
+const FreeTurns = 10
 
 // Unclaimed finds or creates the account behind an email address.
 //
@@ -165,7 +154,7 @@ func TurnsLeft(id string) int {
 	if !ok || !acc.Unclaimed {
 		return 0
 	}
-	if left := FreeTurns() - acc.Turns; left > 0 {
+	if left := FreeTurns - acc.Turns; left > 0 {
 		return left
 	}
 	return 0
@@ -186,7 +175,7 @@ func SpendTurn(id string) (spent bool) {
 	}
 	acc.Turns++
 	data.SaveJSON("accounts.json", accounts)
-	return acc.Turns >= FreeTurns()
+	return acc.Turns >= FreeTurns
 }
 
 // Invited records that the sign-up invitation has gone out, so it goes out once.

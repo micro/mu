@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -246,7 +245,7 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 		// question being counted twice — go-micro adds it to memory and then
 		// reads memory back alongside it. See memory.go.
 		gmagent.WithMemory(history(opts.History)),
-		gmagent.MaxSteps(maxSteps()),
+		gmagent.MaxSteps(maxSteps),
 		// A no-progress guard instead of a low step cap.
 		//
 		// The two are not the same bound and were being asked to do one job.
@@ -369,16 +368,11 @@ func nativeLLM() (provider, key, model string, ok bool) {
 // paying per call, so this is a ceiling high enough not to be met by ordinary
 // work, with LoopLimit doing the job the low cap was really being asked to do.
 //
-// Settable, because what it really bounds is cost per question and that is an
-// operator's decision. 0 means unbounded, which is go-micro's own meaning.
-func maxSteps() int {
-	if v := strings.TrimSpace(settings.Get("AGENT_MAX_STEPS")); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
-			return n
-		}
-	}
-	return 20
-}
+// Not a setting. It was AGENT_MAX_STEPS, on the config page, described as a
+// cost ceiling — but twenty is already past where ordinary work reaches, so
+// raising it changes nothing and lowering it cuts off honest questions. A dial
+// whose useful range is a single value is a decision presented as a choice.
+const maxSteps = 20
 
 // turnTimeout is the longest one question may take, whatever it is doing.
 //

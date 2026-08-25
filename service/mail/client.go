@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"mu/internal/app"
+	"mu/internal/settings"
 
 	"github.com/emersion/go-msgauth/dkim"
 )
@@ -26,14 +27,22 @@ type DKIMConfig struct {
 // Global DKIM config - optional, auto-loaded if keys exist
 var dkimConfig *DKIMConfig
 
-// LoadDKIMConfig loads DKIM configuration from the DKIM_PRIVATE_KEY environment
-// variable or from a file at ~/.mu/keys/dkim.key (env var takes precedence).
+// LoadDKIMConfig loads DKIM configuration from the DKIM_PRIVATE_KEY setting or
+// from a file at ~/.mu/keys/dkim.key (the setting takes precedence).
 // Domain defaults to "localhost" if not specified
+//
+// settings.Get rather than os.Getenv, which is the whole of a bug worth
+// stating. /admin/config offers a DKIM_PRIVATE_KEY box and saves what is typed
+// into it to settings.json; this read only ever looked at the environment, so
+// the box accepted a key, reported it as "saved here", and mail went on signing
+// with whatever was in the file — or not signing at all. settings.Get reads the
+// environment first and then what was saved, so the environment still wins and
+// the box now works.
 func LoadDKIMConfig(domain, selector string) error {
 	var keyData []byte
 
-	// Prefer the environment variable over the key file
-	if envKey := os.Getenv("DKIM_PRIVATE_KEY"); envKey != "" {
+	// Prefer the configured key over the key file
+	if envKey := settings.Get("DKIM_PRIVATE_KEY"); envKey != "" {
 		keyData = []byte(envKey)
 	} else {
 		homeDir, err := os.UserHomeDir()

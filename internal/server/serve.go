@@ -17,7 +17,6 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -27,7 +26,6 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/quota"
-	"mu/internal/settings"
 	"mu/internal/setup"
 	"mu/internal/usage"
 	"mu/internal/user"
@@ -516,7 +514,7 @@ func serve(addr string) {
 	// The trade is real either way. An agent run is a model call, so a short
 	// drain cuts somebody's answer off mid-sentence to save a few seconds of a
 	// deploy.
-	ctx, cancel := context.WithTimeout(context.Background(), drainFor())
+	ctx, cancel := context.WithTimeout(context.Background(), drainFor)
 	defer cancel()
 
 	// Attempt graceful shutdown
@@ -535,12 +533,11 @@ func serve(addr string) {
 
 // drainFor is how long in-flight requests get when the server is stopping.
 //
-// An operator's decision because the right answer depends on something this
-// process cannot see: whether something in front of it is holding the listening
-// socket. See the note where it is used.
-func drainFor() time.Duration {
-	if n, err := strconv.Atoi(strings.TrimSpace(settings.Get("SHUTDOWN_SECONDS"))); err == nil && n > 0 {
-		return time.Duration(n) * time.Second
-	}
-	return 10 * time.Second
-}
+// Ten seconds, and not settable. This was SHUTDOWN_SECONDS, justified as an
+// operator's decision because the right answer depends on whether something in
+// front of the process is holding the listening socket — but the answer to that
+// is the socket, not the drain: systemd socket activation keeps connections
+// queued across a restart, which is what INSTALL.md tells an operator to set up.
+// Ten seconds is longer than any request here except an agent run, and an agent
+// run that has not finished in ten seconds is not going to finish in thirty.
+const drainFor = 10 * time.Second

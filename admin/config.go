@@ -89,10 +89,11 @@ var settingGroups = []settingGroup{
 			"MAIL_PORT",
 			"MAIL_SELECTOR",
 			"DKIM_PRIVATE_KEY",
-			"SMTP_HOST",
-			"SMTP_PORT",
-			"SMTP_USER",
-			"SMTP_PASS",
+			// SMTP_HOST, SMTP_PORT, SMTP_USER and SMTP_PASS were here and
+			// nothing read them: the relay is SMTP_RELAY_*, below. They were
+			// the worst kind of dead setting, because they are exactly what
+			// somebody would fill in to relay mail, and filling them in did
+			// nothing at all.
 			"SMTP_RELAY_HOST",
 			"SMTP_RELAY_USER",
 			"SMTP_RELAY_PASS",
@@ -155,8 +156,15 @@ var settingGroups = []settingGroup{
 		Needs: nil,
 		Vars: []string{
 			"BASE_RPC_URL",
+			// Legacy: service/wallet falls back to this when BASE_RPC_URL is
+			// unset, because it was the name in use when the only thing reading
+			// a node was trading. Shown so an instance that has it set can see
+			// what is actually being used.
 			"TRADE_RPC_URL",
-			"TRADE_CHAIN",
+			// TRADE_CHAIN was here. Its only reader was a "Trading" health
+			// check on /admin/diagnostics reporting on a service that no longer
+			// exists, which returned ok unconditionally — a green light wired
+			// to nothing.
 		}},
 	{Name: "Transit",
 		Does:  "Departure boards and live buses. Answers from published timetables with no key; these make it live.",
@@ -183,10 +191,14 @@ var settingGroups = []settingGroup{
 			"OS_MAPS_KEY",
 			"TILE_FETCH_PER_HOUR",
 		}},
-	// SMS and WhatsApp-over-Twilio. These were absent, and /sms and /whatsapp
-	// both send an operator here by name to set them — a page pointing at a
-	// page that could not help, which is worse than no pointer at all.
-	{Name: "Twilio — SMS and WhatsApp",
+	// SMS over Twilio. These were absent, and /sms sends an operator here by
+	// name to set them — a page pointing at a page that could not help, which
+	// is worse than no pointer at all.
+	//
+	// TWILIO_WHATSAPP_FROM was here too. WhatsApp went with Telegram when those
+	// channels were deleted, and the setting outlived the service by long
+	// enough to be moved into this group during a tidy-up.
+	{Name: "Twilio — SMS",
 		Does:  "A phone number, so an agent can text somebody and read what they text back.",
 		Needs: []string{"TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_FROM"},
 		Vars: []string{
@@ -196,25 +208,24 @@ var settingGroups = []settingGroup{
 			"TWILIO_API_SECRET",
 			"TWILIO_FROM",
 			"TWILIO_MESSAGING_SERVICE_SID",
-			"TWILIO_WHATSAPP_FROM",
 			"TWILIO_WEBHOOK_URL",
 			"SMS_DEFAULT_COUNTRY",
 			"SMS_COUNTRIES",
 			"SMS_KNOWN_ONLY",
 			"SMS_VERIFY_INBOUND",
 		}},
-	// Email that leaves the instance, which is a different thing from the
-	// mailbox — see service/email. /email names all of these and sends an
-	// operator here, so they have to be here.
-	{Name: "Sending limits and email out",
-		Does:  "Mail that leaves the instance, and the daily ceilings on anything that costs per message.",
+	// This group was "Sending limits and email out", and four of its five
+	// settings were read by nothing: EMAIL_DOMAIN and EMAIL_REPLY_DOMAIN, from
+	// before the mailbox settled on MAIL_DOMAIN; EMAIL_DAILY_LIMIT, which
+	// internal/quota names as one of "two names for one idea in two packages";
+	// and WHATSAPP_DAILY_LIMIT, from the deleted channel. Its comment pointed
+	// at service/email, which does not exist. What was actually live is one
+	// ceiling on the one thing here that costs per message.
+	{Name: "SMS limits",
+		Does:  "The daily ceiling on messages that cost per send.",
 		Needs: nil,
 		Vars: []string{
-			"EMAIL_DOMAIN",
-			"EMAIL_REPLY_DOMAIN",
-			"EMAIL_DAILY_LIMIT",
 			"SMS_DAILY_LIMIT",
-			"WHATSAPP_DAILY_LIMIT",
 		}},
 	{Name: "Sign-in",
 		Does:  "Signing in with Google, as well as with a password or a passkey.",
@@ -275,35 +286,23 @@ var settingGroups = []settingGroup{
 			"ALERT_ACCOUNT_CALLS_PER_HOUR",
 			"ALERT_DISK_PERCENT",
 		}},
-	// What somebody gets before they have paid for anything, and the ceilings
-	// on the things that cost us per call.
-	{Name: "Limits and trial",
-		Does:  "What somebody gets before they have paid, and the ceilings on what costs us per call.",
-		Needs: nil,
-		Vars: []string{
-			"FREE_TURNS",
-			"TRIAL_DAILY_TOTAL",
-			"VIDEO_SEARCH_PER_HOUR",
-			"VIDEO_SEARCH_PER_DAY",
-			"GENERATE_ADULT",
-		}},
+	// "Limits and trial" was here. There is no trial — FREE_TURNS and
+	// TRIAL_DAILY_TOTAL configured one this instance does not offer — and
+	// GENERATE_ADULT switched on something it does not generate, which is a
+	// policy and not a dial. The video ceilings that shared the group protect
+	// a paid API quota and keep working from their defaults in
+	// service/video/searchlimit.go, where the numbers can be read next to what
+	// they bound.
 	{Name: "Platform",
-		Does:  "This instance itself: what it is called, and how it shuts down.",
+		Does:  "This instance itself: what it is called.",
 		Needs: nil,
 		Vars: []string{
 			"MU_DOMAIN",
-			"SHUTDOWN_SECONDS",
 		}},
-	{Name: "The agent",
-		Does: "How much one question may spend before the agent stops and summarises.",
-		// AGENT_NATIVE and AGENT_NATIVE_STREAM were here, and between them they
-		// described "which loop" — because there were two, and an operator could
-		// send the instance back to the older one. There is one loop now, so
-		// what is left is the cost ceiling, which is a real decision.
-		Needs: nil,
-		Vars: []string{
-			"AGENT_MAX_STEPS",
-		}},
+	// "The agent" was a group of three and is now a group of none. AGENT_NATIVE
+	// and AGENT_NATIVE_STREAM chose between two agent loops, and there is one.
+	// AGENT_MAX_STEPS was a cost ceiling whose useful range turned out to be a
+	// single value — see maxSteps in agent/native.go.
 	{Name: "Tools for other clients (MCP)",
 		Does:  "The MCP door, and publishing this instance to the registry so other people can find it.",
 		Needs: nil,
@@ -322,13 +321,20 @@ var settingGroups = []settingGroup{
 			"BROWSER_URL",
 			"CHROME_PATH",
 		}},
-	{Name: "Notes and the blog",
-		Does:  "Whether what you write is kept private or published.",
+	// Not your notes. This group was called "Notes and the blog" and described
+	// as "whether what you write is kept private or published", which is a
+	// setting that does not exist and would not belong here if it did —
+	// visibility is a property of a note, decided when it is written.
+	//
+	// What NOTES actually gates is a background loop in service/blog that
+	// posts Mu's own story to Mu's own blog on a low cadence. Two unrelated
+	// things are called notes in this repository — internal/notes is what you
+	// and your agents write down, at /notes — and the label had picked the
+	// wrong one.
+	{Name: "The blog Mu writes about itself",
+		Does:  "Mu posts about its own work to its own blog, occasionally. This is the off switch.",
 		Needs: nil,
 		Vars: []string{
-			// service/blog reads this. It was under "Platform", where nothing
-			// about it said which of the hundred and twelve settings it was
-			// near, or that it belonged to a service with a page of its own.
 			"NOTES",
 		}}}
 

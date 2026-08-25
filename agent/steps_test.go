@@ -15,33 +15,8 @@ import (
 // this one is free to be what it is, a ceiling on what a question may spend.
 func TestOneQuestionGetsMoreThanSixTools(t *testing.T) {
 	t.Setenv("AGENT_MAX_STEPS", "")
-	if n := maxSteps(); n < 10 {
-		t.Fatalf("maxSteps() = %d, too few for work that chains tools", n)
-	}
-}
-
-// What a question may spend is an operator's decision, so it is a setting.
-func TestMaxStepsIsSettable(t *testing.T) {
-	t.Setenv("AGENT_MAX_STEPS", "40")
-	if n := maxSteps(); n != 40 {
-		t.Fatalf("maxSteps() = %d, want 40", n)
-	}
-
-	// 0 is go-micro's own meaning for unbounded, so it must survive the
-	// "empty means default" branch rather than be read as unset.
-	t.Setenv("AGENT_MAX_STEPS", "0")
-	if n := maxSteps(); n != 0 {
-		t.Fatalf("maxSteps() = %d with AGENT_MAX_STEPS=0, want unbounded", n)
-	}
-
-	// Nonsense falls back rather than disabling the ceiling.
-	t.Setenv("AGENT_MAX_STEPS", "lots")
-	if n := maxSteps(); n < 10 {
-		t.Fatalf("maxSteps() = %d for an unparseable value, want the default", n)
-	}
-	t.Setenv("AGENT_MAX_STEPS", "-3")
-	if n := maxSteps(); n < 10 {
-		t.Fatalf("maxSteps() = %d for a negative value, want the default", n)
+	if n := maxSteps; n < 10 {
+		t.Fatalf("maxSteps = %d, too few for work that chains tools", n)
 	}
 }
 

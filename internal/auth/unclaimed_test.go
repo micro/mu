@@ -6,8 +6,6 @@ package auth
 import (
 	"strings"
 	"testing"
-
-	"mu/internal/settings"
 )
 
 // A stranger's address gets an account, and the same address gets the same one.
@@ -52,28 +50,25 @@ func TestAnUnclaimedAccountCannotSignIn(t *testing.T) {
 
 // The turns run out, and the answer that uses the last one is still given.
 func TestTheTurnsRunOut(t *testing.T) {
-	settings.Set("FREE_TURNS", "3")
-	defer settings.Set("FREE_TURNS", "")
-
 	acc, err := Unclaimed("counter@example.com")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := TurnsLeft(acc.ID); got != 3 {
-		t.Fatalf("a new account has %d turns, want 3", got)
+	if got := TurnsLeft(acc.ID); got != FreeTurns {
+		t.Fatalf("a new account has %d turns, want %d", got, FreeTurns)
 	}
 
-	// Two spent, still going.
-	for i := 1; i <= 2; i++ {
+	// All but the last spent, still going.
+	for i := 1; i < FreeTurns; i++ {
 		if last := SpendTurn(acc.ID); last {
-			t.Fatalf("turn %d reported as the last of 3", i)
+			t.Fatalf("turn %d of %d reported as the last", i, FreeTurns)
 		}
 	}
-	// The third is the last, and reports itself so the invitation goes out —
-	// after the answer, not instead of it.
+	// The last one reports itself so the invitation goes out — after the
+	// answer, not instead of it.
 	if last := SpendTurn(acc.ID); !last {
-		t.Error("the third turn of three did not report itself as the last, so " +
-			"nobody is ever invited to sign up")
+		t.Errorf("turn %d of %d did not report itself as the last, so nobody is "+
+			"ever invited to sign up", FreeTurns, FreeTurns)
 	}
 	if got := TurnsLeft(acc.ID); got != 0 {
 		t.Errorf("%d turns left after spending all of them", got)
