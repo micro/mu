@@ -237,7 +237,12 @@ func Billing(w http.ResponseWriter, r *http.Request) {
 		usage.Card(acc.ID) +
 		LedgerSection(acc.ID)
 
-	app.Respond(w, r, app.Response{Title: "Billing", Description: "Billing", HTML: content})
+	// Credits, because that is what is on the page: a number of them, what
+	// they were spent on, and a button to get more. "Billing" is what a
+	// company does to you.
+	app.Respond(w, r, app.Response{Title: "Credits",
+		Description: "What you have, what it went on, and how to top up",
+		HTML:        content})
 }
 
 // BalanceHandler serves everything under /billing that involves money, and

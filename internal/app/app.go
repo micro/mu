@@ -1165,6 +1165,18 @@ func navBottom(acc *auth.Account) string {
 	// by default and so has nothing to push back. Profile takes the slot: it is
 	// what somebody was actually looking for under their own name, and until now
 	// the only way to reach your own page was to type it.
+	// The route is the mechanism; the label is the thing you have.
+	//
+	// /mail is a mail server and the nav says Inbox. /chat is a chat service
+	// and the nav says Agents. /billing is how money is taken and the nav said
+	// Billing, which is the one place the rule was broken — billing is what a
+	// company does to you, and what you have is credits. You top up credits,
+	// you spend credits, the ledger counts credits, and every price in this
+	// product is quoted in them.
+	//
+	// The path stays. It is the mechanism, nobody reads it, and moving it would
+	// break bookmarks to somebody's money for the sake of a word they cannot
+	// see.
 	return `<details class="nav-me" id="nav-me">
             <summary class="nav-me-btn">
               <span class="nav-me-av" id="nav-me-av">` + initial(acc.ID) + `</span>
@@ -1174,7 +1186,7 @@ func navBottom(acc *auth.Account) string {
             <div class="nav-me-menu">
               <a id="nav-account" href="/account"><img src="/account.png?` + Version + `"><span class="label">Account</span></a>
               <a id="nav-profile" href="/@` + username + `"><img src="/account.png?` + Version + `"><span class="label">Profile</span></a>
-              <a id="nav-billing" href="/billing"><img src="/billing.svg?` + Version + `"><span class="label">Billing</span></a>
+              <a id="nav-billing" href="/billing"><img src="/billing.svg?` + Version + `"><span class="label">Credits</span></a>
               <a id="nav-token" href="/token"><img src="/token.svg?` + Version + `"><span class="label">Tokens</span></a>
               ` + navAdmin(acc) + `
               <a id="nav-logout" href="/logout"><img src="/logout.png?` + Version + `"><span class="label">Log out</span></a>
