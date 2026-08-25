@@ -15,12 +15,14 @@ The front door for humans
 |---|---|
 | **Web** | sign in and use it in a browser |
 | **Mail** | send it an email from anywhere |
-| **API or CLI** | the same tools via HTTP, MCP or CLI |
-| **Shell** | SSH into your own machine, from a terminal |
+| **API** | the same tools via HTTP or MCP |
+| **CLI** | execute commands in a terminal |
+| **SSH** | connect into a shell via SSH |
+| **Chat** | use xmpp to chat with anyone |
 
 ## Protocols
 
-**SMTP in, IMAP out, HTTP for the app, MCP for agents, SSH for a shell,
+**SMTP in, IMAP out, HTTP for the app, MCP for agents, SSH for a shell, XMPP to chat, 
 x402 for payments.**
 
 Protocols for the win!
