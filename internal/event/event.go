@@ -80,6 +80,32 @@ const (
 	// know an agent exists.
 	WorkForAgent = "work_for_agent"
 
+	// ChatForAgent is something said in a room where an agent is expected to
+	// answer.
+	//
+	// A second topic rather than a flag, for the reason MailForAgent gives:
+	// service/chat holds the facts that decide — who is in the room, whether
+	// the agent was named, what kind of room it is — and publishes here only
+	// when the answer is yes. A subscriber cannot see a message that failed
+	// the gate.
+	//
+	// It exists because the chat service was composing the replies itself:
+	// its own RAG over the index, its own decision about whether to search the
+	// web, its own history assembled from the room, and a model call, in a
+	// websocket goroutine. That is a hand-rolled agent inside a service, and
+	// the rule it broke is the one with a reason rather than a convention
+	// behind it — a service answers a question about state, an agent decides
+	// which question to ask.
+	//
+	// The replacement is not a smaller version of the same thing. An agent
+	// woken here reaches every tool this instance has rather than the two that
+	// were wired in by hand.
+	//
+	// Data: room, title, summary, url, account, text. The room fields are what
+	// the conversation is about, which the subscriber cannot look up without
+	// importing the service back.
+	ChatForAgent = "chat_for_agent"
+
 	// Activity is one thing that happened, in a line, with somewhere to
 	// go and read it: a post published, a video found, a headline broken, an
 	// image generated.
@@ -186,6 +212,27 @@ func Announce(service, text, url, account string) {
 // Nothing here knows what an agent is, which is the point: a service that
 // called one would be asking the model what its own answer should be. See
 // WorkForAgent.
+// RequestChatReply says something was said in a room and an agent is expected
+// to answer it.
+//
+// Called only once the room has decided — see ChatForAgent. Nothing here knows
+// what an agent is, and nothing in the chat service needs to.
+func RequestChatReply(room, title, summary, url, account, text string) {
+	if room == "" || text == "" {
+		return
+	}
+	Publish(Event{Type: ChatForAgent, Data: map[string]interface{}{
+		"room": room,
+		// What the room is about, carried rather than looked up: a subscriber
+		// that fetched it would be importing the service it is decoupled from.
+		"title":   title,
+		"summary": summary,
+		"url":     url,
+		"account": account,
+		"text":    text,
+	}})
+}
+
 func RequestWork(account, kind, id, title, prompt, thread, agent string) {
 	if account == "" || prompt == "" {
 		return

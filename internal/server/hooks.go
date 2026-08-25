@@ -21,6 +21,7 @@ import (
 	"mu/admin"
 	"mu/agent"
 	agentblog "mu/agent/blog"
+	chatagent "mu/agent/chat"
 	"mu/agent/digest"
 	mailagent "mu/agent/mail"
 	"mu/agent/micro"
@@ -168,6 +169,12 @@ func wireHooks() {
 	// Mail is a client like another client: it speaks its own protocol and
 	// hands what arrives to the agent. See agent/mail.
 	mailagent.Load()
+
+	// And a room is a client too. service/chat decides who is in a room and
+	// whether the agent was named; this is what answers when it was. It used to
+	// be a hundred and ninety lines inside the service composing replies with
+	// its own RAG and its own web search — see agent/chat.
+	chatagent.Load()
 
 	// And the agent introduces itself to a new account, in that account's
 	// inbox. Onboarding as a message rather than a page: the claim is that you
