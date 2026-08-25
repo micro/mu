@@ -46,7 +46,7 @@ import (
 // ExecuteTool directly and gets the destructive tools with an annotation saying
 // so, which is what the annotation is for.
 func TestNoAgentReachesTheRawDoor(t *testing.T) {
-	var planned int
+	var scanned int
 
 	err := filepath.Walk(at("agent"), func(path string, info os.FileInfo, err error) error {
 		if err != nil || info.IsDir() || !strings.HasSuffix(path, ".go") {
@@ -59,11 +59,10 @@ func TestNoAgentReachesTheRawDoor(t *testing.T) {
 		if err != nil {
 			return nil
 		}
+		scanned++
 		rel, _ := filepath.Rel(at(""), path)
 		for i, line := range strings.Split(string(b), "\n") {
 			switch {
-			case strings.Contains(line, "api.RunPlanned"):
-				planned++
 			case strings.Contains(line, "api.ExecuteTool"):
 				// Unless the agent named the tool itself. agent/blog calls
 				// blog_create, web_search and web_fetch as literals — it decided
@@ -90,9 +89,19 @@ func TestNoAgentReachesTheRawDoor(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if planned < 4 {
-		t.Fatalf("found only %d planned execution sites — this scan is broken, not "+
-			"the code", planned)
+	// The scan is only worth anything if it read something.
+	//
+	// This used to count api.RunPlanned sites and demand at least four, as
+	// proof it was not passing vacuously. That number was a census of the
+	// hand-rolled planner's execution sites — there were three copies of it,
+	// each running its own loop — and deleting the planner took it to one, so
+	// the floor started failing while the property it stands for got stronger:
+	// there is now a single agent loop and a single place that dispatches for
+	// it. Counting the files walked is the honest version of the same check,
+	// because what would really break this test is the walk finding nothing.
+	if scanned < 10 {
+		t.Fatalf("walked only %d files under agent/ — this scan is broken, not "+
+			"the code", scanned)
 	}
 }
 
@@ -122,22 +131,42 @@ func TestTheNativePathAsksTheSameFunction(t *testing.T) {
 // list would look right in review and hold nothing.
 //
 // This was written against agent/micro/execute.go, which was a second agent
-// loop — plan, execute, synthesise — behind the ten specialists. Both are
-// deleted and the property is not: it moved to the loop that was always the
-// real one.
+// loop — plan, execute, synthesise — behind the ten specialists. Then against
+// agent/agent.go, which held a third copy of the same pipeline as a fallback.
+// All of them are deleted and the property is not: it moved to the loop that
+// was always the real one, and both halves are now visible in one file.
 func TestTheAgentRefusesAsWellAsWithholds(t *testing.T) {
-	b, err := os.ReadFile(filepath.Join(at(""), "agent/agent.go"))
+	b, err := os.ReadFile(filepath.Join(at(""), "agent/native.go"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	src := string(b)
-	if !strings.Contains(src, "api.AllowPlanned(") {
-		t.Error("agent/agent.go does not filter the tools it shows the model — " +
+	// Declarations stripped, so what is left is call sites.
+	//
+	// Searching the whole file for "filterServices(" matched the line that
+	// defines it, so the check passed with the call deleted — a guard that
+	// tests whether the safety function still exists rather than whether
+	// anything still runs it. Both mutations survived until this was here.
+	var body []string
+	for _, line := range strings.Split(string(b), "\n") {
+		if strings.HasPrefix(line, "func ") {
+			continue
+		}
+		body = append(body, line)
+	}
+	src := strings.Join(body, "\n")
+
+	// Withholding: the model is handed a filtered list, not every service.
+	if !strings.Contains(src, "filterServices(") {
+		t.Error("agent/native.go does not filter the tools it shows the model — " +
 			"the default agent has Tools: nil, meaning every one of them")
 	}
-	if !strings.Contains(src, "api.RunPlannedAs(") {
-		t.Error("agent/agent.go does not refuse at the point of execution — a " +
-			"model can name a tool nobody listed for it")
+	// Refusing: and the call is checked again as it is dispatched, because a
+	// model can name a tool nobody listed for it.
+	if !strings.Contains(src, "blockDestructiveTools()") ||
+		!strings.Contains(src, "gmagent.WrapTool(") {
+		t.Error("agent/native.go does not refuse at the point of execution — a " +
+			"model can name a tool nobody listed for it, and go-micro dispatches " +
+			"the call itself, so the wrapper is the only thing in the way")
 	}
 }
 

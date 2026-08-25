@@ -148,6 +148,27 @@ once and it drifted five ways — history in a map in memory, lost on restart;
 runs unrecorded; memory extracted on the web alone, so an agent remembered what
 you typed in a browser and forgot everything you said anywhere else.
 
+**There is one agent loop, and no fallback behind it.** `runNative` in
+`agent/native.go` is the whole of it: the model does native tool-calling over
+the registered services, and a run that fails returns an error. It used to fall
+through to a hand-rolled plan/execute/synthesize pipeline — one model asked for
+a JSON array of tool calls, another asked to write prose around the results —
+kept as a safety net after go-micro's agent replaced it.
+
+A fallback that behaves differently from the thing it replaces does not make
+failure softer, it makes it quieter. That one had its own tool catalogue
+maintained by hand, its own system prompts, no conversation history and no
+user-defined agent applied; when a run errored the person got an answer from a
+different agent and no way to tell. It hurt most where nobody was watching — a
+scheduled task whose model call timed out came back composed as the generalist,
+from a list of tools that had drifted from the registry.
+
+So: a new door calls `agent.Ask` or `agent.QueryWithOpts`, and when the agent
+cannot answer it says so. Three copies of that pipeline existed at the end, one
+per door, which is the other half of the argument. `test/destructive_test.go`
+holds the safety property that moved with it — the model is handed a filtered
+tool list *and* every dispatched call is checked again, both in `native.go`.
+
 Three words that are not the same thing:
 
 - **History** — the messages of one conversation. Per thread, persisted.

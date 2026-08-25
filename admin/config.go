@@ -295,11 +295,13 @@ var settingGroups = []settingGroup{
 			"SHUTDOWN_SECONDS",
 		}},
 	{Name: "The agent",
-		Does:  "How the agent runs: which loop, whether it streams, and how many steps it may take before it stops.",
+		Does: "How much one question may spend before the agent stops and summarises.",
+		// AGENT_NATIVE and AGENT_NATIVE_STREAM were here, and between them they
+		// described "which loop" — because there were two, and an operator could
+		// send the instance back to the older one. There is one loop now, so
+		// what is left is the cost ceiling, which is a real decision.
 		Needs: nil,
 		Vars: []string{
-			"AGENT_NATIVE",
-			"AGENT_NATIVE_STREAM",
 			"AGENT_MAX_STEPS",
 		}},
 	{Name: "Tools for other clients (MCP)",
