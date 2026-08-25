@@ -167,8 +167,8 @@ func authRequired() map[string]bool {
 		"/web/read":  false, // Public page, auth checked in handler (proxied reader)
 
 		"/status":                        false, // Public - server health status
-		"/plans":                         false, // Public - redirects to /pricing
-		"/pricing":                       false, // Public - what a credit is and what things cost
+		"/plans":                         false, // Public - redirects to /tools
+		"/pricing":                       false, // Public - redirects to /tools
 		"/privacy":                       false, // Public - privacy policy
 		"/install":                       false, // Public - run your own instance
 		"/whitepaper":                    false, // Public - whitepaper
@@ -395,19 +395,27 @@ func registerRoutes() {
 	//
 	// What a call costs belongs beside the call. /tools carries the price on
 	// every tool, /account carries the balance and the same table, and both are
-	// where somebody actually is when the question occurs to them. These two
-	// names redirect rather than 404 because they are in server.json, in the
-	// README and in three years of links.
-	// /plans still redirects, because plans are the thing that was wrong. What
-	// came back at /pricing is the price list rather than a chooser — see
-	// home.PricingHandler, which reads quota.json and states no tiers. A
-	// signed-out visitor otherwise has no way to learn the terms: /tools carries
-	// a price on each of a hundred-odd entries, which answers what one call
-	// costs and never what this is going to cost you.
+	// /pricing and /plans both go to /tools now, and neither is a page here.
+	//
+	// A pricing page is a thing SaaS has. This is a utility somebody runs: an
+	// operator running it privately charges nobody and needs none of it, and an
+	// operator who does charge needs a ledger and a way to top up, which is
+	// /billing. Billing is a mechanism; pricing is marketing.
+	//
+	// Nothing on the page had nowhere else to be. What a credit is worth sits
+	// beside the balance at /billing, where a wallet shows a fee. What one call
+	// costs is on the tool, at /tools, the way a price is on the shelf edge.
+	// The machine-readable list is /billing/pricing. x402 — pay per call with
+	// no account — is on /mcp and /tools, where somebody who would use it is.
+	//
+	// They redirect rather than 404 because both names are in server.json, in
+	// the README and in three years of links.
 	http.HandleFunc("/plans", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/pricing", http.StatusMovedPermanently)
+		http.Redirect(w, r, "/tools", http.StatusMovedPermanently)
 	})
-	http.HandleFunc("/pricing", home.PricingHandler)
+	http.HandleFunc("/pricing", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/tools", http.StatusMovedPermanently)
+	})
 	// Every MCP directory submission asks for a privacy policy URL, and this
 	// instance runs a mail server — so there is real correspondence to account
 	// for, not just a formality.

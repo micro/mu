@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"mu/internal/app"
-	"mu/internal/quota"
 )
 
 // The first screen is about one thing.
@@ -226,113 +225,19 @@ func TestTheDeveloperBandIsBelowTheCallToAction(t *testing.T) {
 	}
 }
 
-// The price list is reachable without an account.
+// The pricing page is gone; /pricing redirects to /tools.
 //
-// /pricing redirected to /tools, which carries a price on each of a hundred-odd
-// entries — that answers what one call costs and never what this is going to
-// cost you. Somebody deciding whether to sign up is asking the second question
-// and had nowhere to read the answer.
+// Two tests lived here — that the page was a price list and not a plan
+// chooser, and that it said what a mailbox costs. Both were holding a page
+// into existence. A pricing page is a thing SaaS has; this is a utility
+// somebody runs, and an operator running it privately charges nobody. What a
+// credit is worth is beside the balance at /billing, what a call costs is on
+// the tool at /tools, and the machine-readable list is /billing/pricing.
+
+// The negative-cap guard went with the page too.
 //
-// It is not the plan chooser that was deleted. Plans were rebuilt three times
-// and came apart on the same fact every time: a credit is a penny and every
-// operation costs what quota.json says, whoever is asking, so there is nothing
-// to choose.
-func TestPricingIsAPriceListAndNotAPlanChooser(t *testing.T) {
-	rec := httptest.NewRecorder()
-	PricingHandler(rec, httptest.NewRequest("GET", "/pricing", nil))
-	body := rec.Body.String()
-
-	if !strings.Contains(body, "One credit is one penny") {
-		t.Error("the pricing page does not say what a credit is")
-	}
-	// The prices are on the tools now, and this points at them.
-	//
-	// It used to print the whole table, rendered from quota.json — which was
-	// the right fix for four hand-maintained tables that had drifted, and still
-	// left two places printing the same numbers, because /tools prices every
-	// tool it lists. A shop puts the price on the shelf edge. This has to send
-	// somebody there.
-	if !strings.Contains(body, `href="/tools"`) {
-		t.Error("the pricing page does not point at the tools, where the prices are")
-	}
-
-	// No tiers, and nothing recommended.
-	for _, banned := range []string{"Most popular", "Recommended", "/month", "per month"} {
-		if strings.Contains(body, banned) {
-			t.Errorf("the pricing page is offering a plan again: %q", banned)
-		}
-	}
-
-	// Not in the footer. Prices belong beside the things they price, and
-	// /tools is in the footer — a standing link to a page about money, on
-	// every page, is a shop with a "our prices" sign at every aisle.
-	if strings.Contains(app.FooterLinks(), `href="/pricing"`) {
-		t.Error("pricing is back in the footer; the prices are on /tools, which " +
-			"is already there")
-	}
-}
-
-// The pricing page says what the mailbox costs, and reads the numbers.
-//
-// The page said "Chatting, email, your inbox, your files: no credits" while
-// external_email was charged and capped. That was not a wording problem: it is
-// the one operation priced for something other than what it costs to run, so it
-// is exactly the one a reader must not be told is free.
-//
-// It matters more now than it did. IMAP and SMTP mean a person can live in
-// their own mail client all day, and the natural question — what does that
-// cost — had no answer on the page that exists to answer it.
-func TestPricingSaysWhatTheMailboxCosts(t *testing.T) {
-	rec := httptest.NewRecorder()
-	PricingHandler(rec, httptest.NewRequest("GET", "/pricing", nil))
-	body := rec.Body.String()
-
-	// The free half, named, because a reader assumes a mailbox is metered.
-	//
-	// Phrases rather than sentences: this pinned whole clauses and failed on a
-	// rewrite that said the same things in fewer words, which is a test holding
-	// the prose rather than the fact. What has to be true is that a reader can
-	// find both protocols and the word "nothing" against receiving.
-	for _, want := range []string{"IMAP", "SMTP", "Receiving costs nothing"} {
-		if !strings.Contains(body, want) {
-			t.Errorf("the pricing page does not mention %q, so somebody deciding "+
-				"whether to point a mail client at this has to guess", want)
-		}
-	}
-
-	// And the paid half, not described as free.
-	if strings.Contains(body, "Chatting, email,") {
-		t.Error("the pricing page says email is free while mail leaving the " +
-			"instance is charged")
-	}
-	// One price for sending, wherever it is going — the page has to say so,
-	// because a reader who has been told local mail is free will assume it
-	// still is.
-	if !strings.Contains(body, "wherever it is going") {
-		t.Error("the pricing page does not say that sending costs the same " +
-			"whether the recipient is here or outside")
-	}
-
-	// The number is read from quota.json rather than typed here. A price
-	// written into a sentence is a price that drifts.
-	if !strings.Contains(body, pence(quota.OpMailSend)) {
-		t.Errorf("the mailbox section does not carry the configured price (%s)",
-			pence(quota.OpMailSend))
-	}
-}
-
-// A cap of "none" is not a cap of minus one.
-//
-// quota.DailyLimit returns NoLimit — a negative — for an operation with no cap,
-// and quota.json is an operator's file. Dropping that straight into a sentence
-// published "capped at -1 a day".
-func TestPricingNeverPublishesANegativeCap(t *testing.T) {
-	rec := httptest.NewRecorder()
-	PricingHandler(rec, httptest.NewRequest("GET", "/pricing", nil))
-	if body := rec.Body.String(); strings.Contains(body, "-1 a day") {
-		t.Error("the pricing page publishes a negative daily cap")
-	}
-	if got := dailyCap("an_operation_with_no_limit"); got != "" {
-		t.Errorf("an operation with no cap renders %q, want nothing", got)
-	}
-}
+// dailyCap lived in pricing.go and turned quota.DailyLimit into a sentence —
+// which published "capped at -1 a day" when an operation had no cap, because
+// NoLimit is a negative sentinel. Nothing formats that value into prose any
+// more; every remaining reader (service/sms, internal/quota/allowance) tests
+// against NoLimit before using it.

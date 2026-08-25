@@ -199,7 +199,7 @@ markets, video, places, files, contacts, calendar, documents. A work in progress
 <p class="linstall" id="install-how" hidden>In Safari: Share, then Add to Home Screen.</p>
 <p class="lcost">The agent is free. Tools that cost us are priced —
 search ` + pence(quota.OpWebSearch) + `, an image ` + pence(quota.OpImageGenerate) + `.
-<a href="/pricing">Pricing</a></p>
+<a href="/tools">See them</a></p>
 </div>
 
 <style>

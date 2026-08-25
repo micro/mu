@@ -96,7 +96,7 @@ func mcpPageHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<p>Or no token: a priced tool answers an unauthenticated call ` +
 		`with <code>402</code> and an <a href="https://x402.org">x402</a> challenge. ` +
 		`Pay it in USDC on Base and the same request succeeds. No signup. ` +
-		`<a href="/pricing">Pricing</a>.</p>`)
+		`Every tool below carries its price.</p>`)
 	b.WriteString(`<p class="card-meta">Not connected yet? <a href="/tools#connect">Connect your agent &rarr;</a> ` +
 		`&middot; <a href="/help/mcp">Auth and protocol detail</a> &middot; <a href="/tools">What calls cost</a></p>`)
 	// Not everybody arriving here is building an agent. Somebody writing a

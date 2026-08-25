@@ -58,7 +58,7 @@ curl -s -X POST https://micro.mu/mcp -H 'Content-Type: application/json' \
 ## Prices
 
 Every priced tool names its own price in the 402, so nothing here is hardcoded.
-The full list is at [/pricing](https://micro.mu/pricing); one credit is £0.01
+The full list is at [/tools](https://micro.mu/tools); one credit is £0.01
 and `web_search` is two of them. Most of the catalogue is free, and a free tool
 returns a result with no 402 at all — which is worth trying first, because it
 needs no wallet.
