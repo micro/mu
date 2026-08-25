@@ -137,6 +137,40 @@ func IndexSQLite(id, entryType, title, content, owner string, metadata map[strin
 	return err
 }
 
+// UnindexSQLite removes an entry from the index.
+//
+// An index with no way to forget is not a cache, it is a second copy that
+// outlives the first. Deleted mail stays findable, a deleted note comes back in
+// a search, and the account-deletion hooks that clear every store leave this one
+// holding what they cleared. Both tables, because the FTS table is content= and
+// is not kept in step by the delete on the one it mirrors.
+func UnindexSQLite(id string) error {
+	db, err := getDB()
+	if err != nil {
+		return err
+	}
+	db.Exec(`DELETE FROM index_fts WHERE rowid = (SELECT rowid FROM index_entries WHERE id = ?)`, id)
+	_, err = db.Exec(`DELETE FROM index_entries WHERE id = ?`, id)
+	return err
+}
+
+// UnindexOwnedSQLite removes everything an account has in the index.
+//
+// For the deletion hooks: a service that clears its own store and leaves the
+// index alone has not deleted anything a search can still find.
+func UnindexOwnedSQLite(owner string) error {
+	db, err := getDB()
+	if err != nil {
+		return err
+	}
+	if owner == "" {
+		return nil
+	}
+	db.Exec(`DELETE FROM index_fts WHERE rowid IN (SELECT rowid FROM index_entries WHERE owner = ?)`, owner)
+	_, err = db.Exec(`DELETE FROM index_entries WHERE owner = ?`, owner)
+	return err
+}
+
 // ByIDSQLite retrieves an entry by ID from SQLite
 func ByIDSQLite(id string) (*IndexEntry, error) {
 	db, err := getDB()

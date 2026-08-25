@@ -518,6 +518,29 @@ func ByID(id string) *IndexEntry {
 }
 
 // Search performs full-text search across indexed content
+// Unindex removes one entry from the search index.
+//
+// The half that was missing. Index and IndexOwned had no opposite, so anything
+// deleted stayed findable — see UnindexSQLite.
+func Unindex(id string) {
+	if id == "" {
+		return
+	}
+	if err := UnindexSQLite(id); err != nil {
+		fmt.Printf("unindex %s: %v\n", id, err)
+	}
+}
+
+// UnindexOwned removes everything an account has in the index.
+func UnindexOwned(owner string) {
+	if owner == "" {
+		return
+	}
+	if err := UnindexOwnedSQLite(owner); err != nil {
+		fmt.Printf("unindex owner %s: %v\n", owner, err)
+	}
+}
+
 func Search(query string, limit int, opts ...SearchOption) []*IndexEntry {
 	if UseSQLite {
 		results, err := SearchSQLite(query, limit, opts...)

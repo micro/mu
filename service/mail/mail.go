@@ -158,6 +158,12 @@ func Load() {
 	if err := LoadDKIMConfig(dkimDomain, dkimSelector); err != nil {
 		app.Log("mail", "DKIM signing disabled: %v", err)
 	}
+
+	// The index is a separate file from the mailbox, so an instance that has
+	// one and not the other answers every search with nothing. In the
+	// background because it is a boot-time cost proportional to the mailbox and
+	// nothing needs it before the first search.
+	go Reindex()
 }
 
 // fixThreading repairs broken threading relationships and computes ThreadID after loading
@@ -1499,6 +1505,10 @@ func SendMessage(from, fromID, to, toID, subject, body, replyTo, messageID strin
 
 	// Update stats (outside lock)
 	updateStats(msg)
+	// And the index, outside the lock for the same reason: it is a separate
+	// file, and a search that cannot find what was just delivered is the
+	// failure this replaced a full scan to avoid.
+	indexMessage(msg)
 
 	return err
 }
@@ -1624,6 +1634,9 @@ func SendMessageTo(d Delivery) error {
 	if !d.Spam {
 		updateStats(msg)
 	}
+	// And the index. Spam included, and filtered when read: a message moved
+	// out of Junk should be findable without waiting for a reindex.
+	indexMessage(msg)
 
 	// Say that mail arrived. Who cares about that is not this service's
 	// business — see internal/event.
@@ -1689,68 +1702,13 @@ func GetUnreadCount(userID string) int {
 // means message bodies never have to be persisted to the shared index in
 // plaintext — but note this is still a scan over at-rest data held in memory,
 // so it is O(all messages) per query, not a lookup.
+// Search finds a caller's mail.
+//
+// Over the index — see index.go. This read every message on the instance and
+// scored it by hand, which was correct and got slower with every message
+// anybody received.
 func Search(userID, query string, limit int) []*Message {
-	query = strings.ToLower(strings.TrimSpace(query))
-	if userID == "" || query == "" {
-		return nil
-	}
-	words := strings.Fields(query)
-
-	mutex.RLock()
-	defer mutex.RUnlock()
-
-	type scored struct {
-		msg   *Message
-		score int
-	}
-	var hits []scored
-	for _, msg := range messages {
-		if msg.Spam {
-			continue
-		}
-		if msg.ToID != userID && !sentBy(msg, userID) {
-			continue
-		}
-		subject := strings.ToLower(msg.Subject)
-		from := strings.ToLower(msg.From)
-		body := strings.ToLower(msg.Body)
-
-		score := 0
-		if strings.Contains(subject, query) {
-			score += 5
-		}
-		if strings.Contains(from, query) {
-			score += 3
-		}
-		if strings.Contains(body, query) {
-			score += 2
-		}
-		// Fall back to per-word matches so multi-word queries still hit.
-		for _, w := range words {
-			if strings.Contains(subject, w) || strings.Contains(from, w) || strings.Contains(body, w) {
-				score++
-			}
-		}
-		if score > 0 {
-			hits = append(hits, scored{msg, score})
-		}
-	}
-
-	sort.Slice(hits, func(i, j int) bool {
-		if hits[i].score != hits[j].score {
-			return hits[i].score > hits[j].score
-		}
-		return hits[i].msg.CreatedAt.After(hits[j].msg.CreatedAt)
-	})
-
-	if limit > 0 && len(hits) > limit {
-		hits = hits[:limit]
-	}
-	out := make([]*Message, len(hits))
-	for i, h := range hits {
-		out[i] = h.msg
-	}
-	return out
+	return searchIndexed(userID, query, limit)
 }
 
 // ListMessages returns up to limit of the user's most recent non-spam received
@@ -1812,6 +1770,7 @@ func DeleteSpamMessage(userID, msgID string) error {
 	for i, msg := range messages {
 		if msg.ID == msgID && msg.ToID == userID && msg.Spam {
 			messages = append(messages[:i], messages[i+1:]...)
+			unindexMessage(msg)
 			return save()
 		}
 	}
@@ -2030,6 +1989,7 @@ func DeleteMessage(msgID, userID string) error {
 		if msg.ID == msgID && (sentBy(msg, userID) || msg.ToID == userID) {
 			messages = append(messages[:i], messages[i+1:]...)
 			rebuildInboxes()
+			unindexMessage(msg)
 			return save()
 		}
 	}
@@ -2061,11 +2021,13 @@ func DeleteThread(msgID, userID string) error {
 	}
 
 	// Delete all messages in this thread
-	var remaining []*Message
+	var remaining, gone []*Message
 	for _, m := range messages {
 		if m.ThreadID != threadID {
 			remaining = append(remaining, m)
+			continue
 		}
+		gone = append(gone, m)
 	}
 
 	deleted := len(messages) - len(remaining)
@@ -2075,6 +2037,9 @@ func DeleteThread(msgID, userID string) error {
 
 	messages = remaining
 	rebuildInboxes()
+	for _, m := range gone {
+		unindexMessage(m)
+	}
 	app.Log("mail", "Deleted %d messages from thread for user %s", deleted, userID)
 	return save()
 }
@@ -2223,8 +2188,10 @@ func RecentMessages(limit int) []*Message {
 func DeleteInbox(userID string) {
 	mutex.Lock()
 	kept := messages[:0]
+	var gone []*Message
 	for _, msg := range messages {
 		if theirMail(msg, userID) {
+			gone = append(gone, msg)
 			continue
 		}
 		kept = append(kept, msg)
@@ -2236,6 +2203,11 @@ func DeleteInbox(userID string) {
 	rebuildInboxes()
 	err := save()
 	mutex.Unlock()
+	// The index too. A store cleared and an index left holding it is not a
+	// deletion — the mail is gone and a search still finds it.
+	for _, msg := range gone {
+		unindexMessage(msg)
+	}
 	if err != nil {
 		app.Log("mail", "could not save after deleting %s's mail: %v", userID, err)
 	}
