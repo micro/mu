@@ -78,6 +78,9 @@ const (
 	nsBind   = "urn:ietf:params:xml:ns:xmpp-bind"
 	nsSess   = "urn:ietf:params:xml:ns:xmpp-session"
 	nsRoster = "jabber:iq:roster"
+	// nsFraming is the WebSocket subprotocol's own namespace: <open/> and
+	// <close/> stand in for the stream tags a socket uses. RFC 7395.
+	nsFraming = "urn:ietf:params:xml:ns:xmpp-framing"
 )
 
 // StartXMPPServer serves XMPP client connections on addr until it fails.
@@ -118,9 +121,40 @@ func StartXMPPServerIfEnabled() {
 	}()
 }
 
+// carrier is how stanzas reach a session.
+//
+// Two of them: a TCP socket, and a WebSocket for the browser. They differ in
+// exactly two ways — how a stanza is framed on the wire, and how a stream is
+// opened — and in nothing else. Everything above this interface is the protocol
+// and does not know which one it is on, which is the point: the browser stops
+// being a second protocol and becomes a second way in to the first.
+type carrier interface {
+	// Read gives the decoder its bytes. A WebSocket delivers one stanza per
+	// message and a socket delivers a stream; both read the same from here.
+	Read(p []byte) (int, error)
+	// writeStanza sends one stanza. Not io.Writer, because a WebSocket has to
+	// know where a stanza ends and a socket does not care.
+	writeStanza(string) error
+	SetReadDeadline(time.Time) error
+	SetWriteDeadline(time.Time) error
+	Close() error
+	// framed reports RFC 7395 framing: <open/> rather than <stream:stream>.
+	framed() bool
+}
+
+// socket is the TCP carrier.
+type socket struct{ net.Conn }
+
+func (c socket) writeStanza(s string) error {
+	_, err := io.WriteString(c.Conn, s)
+	return err
+}
+
+func (socket) framed() bool { return false }
+
 // session is one connected client.
 type session struct {
-	conn     net.Conn
+	conn     carrier
 	dec      *xml.Decoder
 	acc      *auth.Account
 	resource string
@@ -147,11 +181,14 @@ func (s *session) bare() string {
 	return s.acc.ID + "@" + Domain()
 }
 
-// send writes a raw stanza.
+// send writes one stanza.
+//
+// Formatted here rather than written straight out, because a WebSocket carrier
+// needs the whole stanza in one call: a stanza split across two writes is two
+// messages, and RFC 7395 says one message is one stanza.
 func (s *session) send(format string, args ...interface{}) error {
 	_ = s.conn.SetWriteDeadline(time.Now().Add(30 * time.Second))
-	_, err := fmt.Fprintf(s.conn, format, args...)
-	return err
+	return s.conn.writeStanza(fmt.Sprintf(format, args...))
 }
 
 // serveXMPP negotiates a stream and then routes stanzas until the client goes.
@@ -162,7 +199,12 @@ func (s *session) send(format string, args ...interface{}) error {
 // too.
 func serveXMPP(conn net.Conn) {
 	ip, _, _ := net.SplitHostPort(conn.RemoteAddr().String())
-	s := &session{conn: conn, dec: xml.NewDecoder(conn), remote: ip}
+	serve(socket{conn}, ip)
+}
+
+// serve is the protocol, on whichever carrier.
+func serve(conn carrier, remote string) {
+	s := &session{conn: conn, dec: xml.NewDecoder(conn), remote: remote}
 
 	// Two passes over the stream header. The first offers SASL and nothing
 	// else, because an unauthenticated client may not be told what an
@@ -175,7 +217,7 @@ func serveXMPP(conn net.Conn) {
 	}
 	// A new stream after SASL, which the RFC requires: authentication changes
 	// what the stream is, so the client restarts it.
-	s.dec = xml.NewDecoder(conn)
+	s.dec = xml.NewDecoder(s.conn)
 	if !s.openStream(true) {
 		return
 	}
@@ -187,14 +229,26 @@ func serveXMPP(conn net.Conn) {
 func (s *session) openStream(authed bool) bool {
 	_ = s.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 	start, ok := s.nextStart()
-	if !ok || start.Name.Local != "stream" {
+	if !ok || start.Name.Local != s.openTag() {
 		return false
 	}
 
+	// The one place the two carriers differ. A socket opens a stream that stays
+	// open and holds every stanza as a child; a WebSocket sends a self-closing
+	// <open/> and stanzas are siblings after it, because the message boundary
+	// already says where each one ends. See RFC 7395 section 3.4.
 	id := fmt.Sprintf("%d", time.Now().UnixNano())
-	if err := s.send(`<?xml version='1.0'?><stream:stream from='%s' id='%s' `+
-		`version='1.0' xmlns='%s' xmlns:stream='%s'>`,
-		Domain(), id, nsClient, nsStream); err != nil {
+	hello := `<?xml version='1.0'?><stream:stream from='%s' id='%s' ` +
+		`version='1.0' xmlns='%s' xmlns:stream='%s'>`
+	if s.conn.framed() {
+		hello = `<open xmlns='` + nsFraming + `' from='%s' id='%s' ` +
+			`version='1.0' xmlns:stream='%s' xml:lang='en'/>`
+	}
+	if s.conn.framed() {
+		if err := s.send(hello, Domain(), id, nsStream); err != nil {
+			return false
+		}
+	} else if err := s.send(hello, Domain(), id, nsClient, nsStream); err != nil {
 		return false
 	}
 
@@ -208,6 +262,14 @@ func (s *session) openStream(authed bool) bool {
 	}
 	return s.send(`<stream:features><bind xmlns='%s'/><session xmlns='%s'/>`+
 		`</stream:features>`, nsBind, nsSess) == nil
+}
+
+// openTag is what this carrier's client sends to open a stream.
+func (s *session) openTag() string {
+	if s.conn.framed() {
+		return "open"
+	}
+	return "stream"
 }
 
 // nextStart reads to the next start element.

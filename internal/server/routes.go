@@ -67,42 +67,46 @@ import (
 // authRequired reports, per path, whether a caller must be signed in.
 func authRequired() map[string]bool {
 	authenticated := map[string]bool{
-		"/tools":                  false, // Public — the catalogue, agent lens
-		"/tools/":                 false, // Public — one tool, same as the catalogue
-		"/services":               false, // Public — the catalogue, person lens
-		"/services/":              false, // Public — one service, what it is and how to call it
-		"/card/":                  false, // Public — a service rendered at a glance
-		"/usage":                  true,  // Your own calls and spend
-		"/video":                  false, // Public viewing, auth for interactive features
-		"/video/thumb":            false, // Public — thumbnails for the public feed
-		"/news":                   false, // Public viewing, auth for search
-		"/chat":                   false, // Public viewing, auth for chatting
-		"/home":                   false, // Public viewing
-		"/blog":                   false, // Public viewing, auth for posting
-		"/markets":                false, // Public viewing
-		"/text":                   false, // Public: the tools are callable without an account
-		"/food":                   false, // Public food data is public
-		"/transit":                false, // Public transport data is public
-		"/hazards":                false, // Public hazard data, published to be redistributed
-		"/browser":                false, // Public — the page; reading one costs and needs a session
-		"/shell":                  true,  // A machine with your files on it, so it needs a session
-		"/browser/shot/":          false, // A picture already taken, of a page anybody could open
-		"/maps":                   false, // Public — the page, and any tile already held
-		"/maps/":                  false, // A held tile is free to anybody; a cold one needs a session
-		"/tiles/":                 false, // The old tile path, which redirects
-		"/prayer":                 false, // Public prayer times, daily verse and hadith
-		"/oauth2/google":          false, // Google sign-in start (no session yet)
-		"/oauth2/google/connect":  true,  // Link Google to the current account
-		"/agents":                 true,  // Your agents and their tokens — sign-in required
-		"/agents/data":            true,  // JSON behind the chat's agent picker
-		"/oauth2/google/calendar": true,  // Grant calendar access to the current account
-		"/oauth2/google/contacts": true,  // Grant contacts access to the current account
-		"/oauth2/callback":        false, // Google sign-in callback (no session yet)
-		"/images":                 false, // Public daily image; generation needs login
-		"/img":                    false, // Public — cached article images (a prefix of /images, same answer)
-		"/events":                 true,  // Personal scheduled reminders — sign-in required
-		"/contacts":               true,  // Your address book — sign-in required
-		"/notes":                  true,  // What you and your agents wrote down — sign-in required
+		"/tools":       false, // Public — the catalogue, agent lens
+		"/tools/":      false, // Public — one tool, same as the catalogue
+		"/services":    false, // Public — the catalogue, person lens
+		"/services/":   false, // Public — one service, what it is and how to call it
+		"/card/":       false, // Public — a service rendered at a glance
+		"/usage":       true,  // Your own calls and spend
+		"/video":       false, // Public viewing, auth for interactive features
+		"/video/thumb": false, // Public — thumbnails for the public feed
+		"/news":        false, // Public viewing, auth for search
+		"/chat":        false, // Public viewing, auth for chatting
+		// SASL inside the stream, with an access token — so no session is
+		// required to open it and none would be honoured. See xmpp_ws.go.
+		"/xmpp-websocket":             false,
+		"/.well-known/host-meta.json": false, // How a browser finds the above
+		"/home":                       false, // Public viewing
+		"/blog":                       false, // Public viewing, auth for posting
+		"/markets":                    false, // Public viewing
+		"/text":                       false, // Public: the tools are callable without an account
+		"/food":                       false, // Public food data is public
+		"/transit":                    false, // Public transport data is public
+		"/hazards":                    false, // Public hazard data, published to be redistributed
+		"/browser":                    false, // Public — the page; reading one costs and needs a session
+		"/shell":                      true,  // A machine with your files on it, so it needs a session
+		"/browser/shot/":              false, // A picture already taken, of a page anybody could open
+		"/maps":                       false, // Public — the page, and any tile already held
+		"/maps/":                      false, // A held tile is free to anybody; a cold one needs a session
+		"/tiles/":                     false, // The old tile path, which redirects
+		"/prayer":                     false, // Public prayer times, daily verse and hadith
+		"/oauth2/google":              false, // Google sign-in start (no session yet)
+		"/oauth2/google/connect":      true,  // Link Google to the current account
+		"/agents":                     true,  // Your agents and their tokens — sign-in required
+		"/agents/data":                true,  // JSON behind the chat's agent picker
+		"/oauth2/google/calendar":     true,  // Grant calendar access to the current account
+		"/oauth2/google/contacts":     true,  // Grant contacts access to the current account
+		"/oauth2/callback":            false, // Google sign-in callback (no session yet)
+		"/images":                     false, // Public daily image; generation needs login
+		"/img":                        false, // Public — cached article images (a prefix of /images, same answer)
+		"/events":                     true,  // Personal scheduled reminders — sign-in required
+		"/contacts":                   true,  // Your address book — sign-in required
+		"/notes":                      true,  // What you and your agents wrote down — sign-in required
 		// Your own documents. Sign-in required, but checked in the handler
 		// rather than here: the map is matched by prefix, and /docs/<slug> is
 		// still a public redirect to the documentation that used to live there.
@@ -204,6 +208,12 @@ func registerRoutes() {
 	http.HandleFunc("/news", news.Handler)
 	// serve chat
 	http.HandleFunc("/chat", chat.Handler)
+	// XMPP for the browser (RFC 7395), so the web page is a carrier of the chat
+	// protocol rather than a second protocol beside it — and host-meta, which is
+	// how a browser finds this endpoint from a domain, since it cannot look up
+	// the SRV record a desktop client uses.
+	http.HandleFunc("/xmpp-websocket", chat.XMPPWebSocketHandler)
+	http.HandleFunc("/.well-known/host-meta.json", chat.WellKnownHostMeta)
 
 	// serve blog (full list)
 	http.HandleFunc("/blog", blog.Handler)
