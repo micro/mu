@@ -217,7 +217,9 @@ func TestTheDeveloperBandIsBelowTheCallToAction(t *testing.T) {
 		t.Error("the developer band has grown its own link row again — those " +
 			"destinations belong in the footer, which is right below it")
 	}
-	for _, want := range []string{`href="/tools"`, `href="/api"`, `href="/pricing"`} {
+	// Pricing is not among them any more: the prices live on the tools, and
+	// /tools is here.
+	for _, want := range []string{`href="/tools"`, `href="/api"`} {
 		if !strings.Contains(app.FooterLinks(), want) {
 			t.Errorf("the footer does not carry %s", want)
 		}
@@ -243,10 +245,15 @@ func TestPricingIsAPriceListAndNotAPlanChooser(t *testing.T) {
 	if !strings.Contains(body, "One credit is one penny") {
 		t.Error("the pricing page does not say what a credit is")
 	}
-	// Rendered from quota.json rather than written here, which is the only way a
-	// price list stays true. Four hand-maintained tables drifted before.
-	if !strings.Contains(body, "stats-table") {
-		t.Error("the pricing page carries no cost table")
+	// The prices are on the tools now, and this points at them.
+	//
+	// It used to print the whole table, rendered from quota.json — which was
+	// the right fix for four hand-maintained tables that had drifted, and still
+	// left two places printing the same numbers, because /tools prices every
+	// tool it lists. A shop puts the price on the shelf edge. This has to send
+	// somebody there.
+	if !strings.Contains(body, `href="/tools"`) {
+		t.Error("the pricing page does not point at the tools, where the prices are")
 	}
 
 	// No tiers, and nothing recommended.
@@ -256,9 +263,12 @@ func TestPricingIsAPriceListAndNotAPlanChooser(t *testing.T) {
 		}
 	}
 
-	// And it is in the footer, so a signed-out visitor can find it.
-	if !strings.Contains(app.FooterLinks(), `href="/pricing"`) {
-		t.Error("pricing is not in the footer, so nobody signed out will find it")
+	// Not in the footer. Prices belong beside the things they price, and
+	// /tools is in the footer — a standing link to a page about money, on
+	// every page, is a shop with a "our prices" sign at every aisle.
+	if strings.Contains(app.FooterLinks(), `href="/pricing"`) {
+		t.Error("pricing is back in the footer; the prices are on /tools, which " +
+			"is already there")
 	}
 }
 
@@ -278,6 +288,11 @@ func TestPricingSaysWhatTheMailboxCosts(t *testing.T) {
 	body := rec.Body.String()
 
 	// The free half, named, because a reader assumes a mailbox is metered.
+	//
+	// Phrases rather than sentences: this pinned whole clauses and failed on a
+	// rewrite that said the same things in fewer words, which is a test holding
+	// the prose rather than the fact. What has to be true is that a reader can
+	// find both protocols and the word "nothing" against receiving.
 	for _, want := range []string{"IMAP", "SMTP", "Receiving costs nothing"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the pricing page does not mention %q, so somebody deciding "+

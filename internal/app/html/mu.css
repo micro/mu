@@ -6941,3 +6941,16 @@ a.pill {
 }
 /* ─────────────────────────────────────────────────────────────────────────── */
 
+
+/* The free list on /pricing. Things you scan, not paragraphs you read. */
+.price-free {
+  margin: 0;
+  padding-left: 18px;
+  line-height: 1.6;
+}
+.price-free li {
+  margin: 0 0 6px;
+}
+.price-free li:last-child {
+  margin: 0;
+}
