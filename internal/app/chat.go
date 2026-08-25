@@ -220,7 +220,16 @@ func ChatComponent(cfg ChatConfig) string {
    the input off-screen on mobile — the column ends up wider than the viewport.
    Each kind of wide content is contained in its own block instead. */
 #mu-chat,#mu-chat-conv,#mu-chat-form{min-width:0;max-width:100%}
-#mu-chat-conv,.mu-user{overflow-wrap:break-word}
+/* The answer wraps too.
+   
+   This named the transcript and the person's own message and left out the
+   agent's — which is the half that contains long URLs, table rows and fenced
+   code, so it is the only half that could push the page wide. A pre does not
+   wrap at all, so it gets a scroller of its own rather than making one for
+   the whole document. */
+#mu-chat-conv,.mu-user,.mu-agent{overflow-wrap:break-word;min-width:0}
+.mu-agent pre,.mu-agent table{max-width:100%;overflow-x:auto}
+.mu-agent img{max-width:100%;height:auto}
 #mu-chat-conv pre{overflow-x:auto;max-width:100%}
 #mu-chat-conv table{display:block;overflow-x:auto;max-width:100%}
 #mu-chat-conv img{max-width:100%;height:auto}

@@ -27,6 +27,7 @@ import (
 	"mu/internal/auth"
 	"mu/internal/quota"
 	"mu/internal/setup"
+	"mu/internal/thread"
 	"mu/internal/usage"
 	"mu/internal/user"
 	"mu/internal/x402"
@@ -519,6 +520,27 @@ func serve(addr string) {
 	if err := server.Shutdown(ctx); err != nil {
 		app.Log("main", "Server forced to shutdown: %v", err)
 	}
+
+	// What was said, on disk, before this process goes.
+	//
+	// internal/thread does not write on every message — it sets a flag and a
+	// flusher does the work at most once a second, because writing the whole
+	// file per message with the lock held made the UI stop answering while a
+	// few hundred conversations were adopted. The comment on Flush says it is
+	// exported "for the two callers that cannot wait for the tick: a test that
+	// wants to know the file is on disk, and anything shutting down."
+	//
+	// The shutting-down caller was never written. So every restart dropped up
+	// to a second of conversation, and this instance redeploys on a push — ask
+	// a question, have a deploy land in that second, and the message is gone
+	// from the page you reload. That is exactly how it was reported: not there
+	// on refresh, there again later, because a later message flushed the file
+	// with the earlier one still in memory.
+	//
+	// After Shutdown, not before: an agent run finishing during the drain
+	// records its answer, and flushing first would write the file and then let
+	// that answer land in memory only.
+	thread.Flush()
 
 	// How long it took, because this is the other half of a slow restart and
 	// the half nobody measures. Shutdown waits for in-flight requests to
