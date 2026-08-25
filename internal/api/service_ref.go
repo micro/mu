@@ -123,12 +123,27 @@ func restMethodsFor(name string) []restMethod {
 	return out
 }
 
-// refAuthCard says what this particular service needs, rather than restating
-// the whole authentication story. A service where nothing needs an account and
-// nothing costs anything should say so in one line and get out of the way.
+// refAuthCard says what this particular service needs, and shows one real call.
+//
+// Three things were wrong with it, and they were the same thing three times: it
+// described the service instead of demonstrating it.
+//
+// The worked example was printed only when a call needed a token or cost money,
+// so the services easiest to call — news, markets, everything public — were the
+// ones that showed you nothing. An example is most useful precisely where there
+// is nothing standing in the way.
+//
+// The example named /list whatever the service was. markets has no list; its
+// methods are convert and quote. So a page could hand somebody a URL that
+// answers 404 and looks like the product is broken.
+//
+// And it named one door. /tools/<name> calls the same method "three doors,
+// MCP and REST", which is the architecture; this page mentioned curl and left
+// the reader to discover the rest somewhere else.
 func refAuthCard(spec service.Spec, base string) string {
+	methods := restMethodsFor(spec.Name)
 	needsAuth, costs := false, false
-	for _, m := range restMethodsFor(spec.Name) {
+	for _, m := range methods {
 		needsAuth = needsAuth || m.NeedsAuth
 		costs = costs || m.Cost > 0
 	}
@@ -150,14 +165,46 @@ func refAuthCard(spec service.Spec, base string) string {
 			`succeeds, with no account at all. A <a href="/token">token</a> works too.</p>`)
 	}
 
-	if needsAuth || costs {
+	// One real method, always. Read-only where there is one, because an example
+	// somebody pastes into a terminal should not change anything.
+	if m, ok := exampleMethod(methods); ok {
 		b.WriteString(`<pre class="bg-soft p-2 text-xs scroll-x">` +
-			html.EscapeString(`curl -H "Authorization: Bearer $MU_TOKEN" \
-  `+base+RESTPrefix+spec.Name+`/list`) + `</pre>`)
+			html.EscapeString(curlFor(m, base, needsAuth || costs)) + `</pre>`)
+		// And the other door, named here rather than only on the tool page.
+		b.WriteString(`<p class="card-meta">The same method over ` +
+			`<a href="/mcp">MCP</a>, which is what an agent speaks: <code>` +
+			html.EscapeString(m.Tool) + `</code>. The answer is identical.</p>`)
 	}
+
 	b.WriteString(`<p class="card-meta"><a href="/api">How every call behaves &rarr;</a></p>`)
 	b.WriteString(`</div>`)
 	return b.String()
+}
+
+// exampleMethod is the method worth showing: the first that reads rather than
+// writes, falling back to the first of any kind.
+//
+// Reading, because this is an example to paste. Offering "here is how to call
+// this service" and having the paste delete a note is not a demonstration.
+func exampleMethod(methods []restMethod) (restMethod, bool) {
+	for _, m := range methods {
+		if !m.Changes && !m.Destructive {
+			return m, true
+		}
+	}
+	if len(methods) > 0 {
+		return methods[0], true
+	}
+	return restMethod{}, false
+}
+
+// curlFor is the call, with the header only where one is needed.
+func curlFor(m restMethod, base string, auth bool) string {
+	url := base + m.Path
+	if auth {
+		return "curl -H \"Authorization: Bearer $MU_TOKEN\" \\\n  " + url
+	}
+	return "curl " + url
 }
 
 // refMethodCard is restMethodCard with a form under it.
