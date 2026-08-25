@@ -91,7 +91,6 @@ func authRequired() map[string]bool {
 		"/maps/":                  false, // A held tile is free to anybody; a cold one needs a session
 		"/tiles/":                 false, // The old tile path, which redirects
 		"/prayer":                 false, // Public prayer times, daily verse and hadith
-		"/about":                  false, // Public "what is Mu" pitch
 		"/oauth2/google":          false, // Google sign-in start (no session yet)
 		"/oauth2/google/connect":  true,  // Link Google to the current account
 		"/agents":                 true,  // Your agents and their tokens — sign-in required
@@ -371,11 +370,11 @@ func registerRoutes() {
 	// was a pitch and /agents was a second pitch. There is one landing now — the
 	// root — and these two go back to being what their names say.
 	//
-	// /about is the about page, which is the ABOUT doc rather than a second copy
-	// of it — registered with the other documentation pages below. /agents
-	// belongs to the user's agents, not to marketing; it points at the agent
-	// surface until the page that shows what your agents are doing exists to
-	// take it.
+	// /about is gone: the landing is where somebody deciding whether to care
+	// reads what this is, and an About page was the same answer kept somewhere
+	// nothing fails when it goes stale. It redirects here. /agents belongs to
+	// the user's agents, not to marketing; it points at the agent surface until
+	// the page that shows what your agents are doing exists to take it.
 	// There is no pricing page.
 	//
 	// It was rebuilt three times in a day — a cost table, then three columns of
@@ -657,11 +656,10 @@ func registerRoutes() {
 	http.HandleFunc("/whitepaper", help.WhitepaperHandler)
 	http.HandleFunc("/whitepaper.pdf", help.WhitepaperHandler)
 
-	// Documentation. Two pages: how to point an agent at this instance, and
-	// how to run your own. Every address the old nine answered on redirects to
-	// whichever of the two replaced it — an exact pattern outranks the /docs
-	// the service owns now.
-	http.HandleFunc("/about", help.AboutHandler)
+	// Documentation. One page: how to run your own. Every address the old nine
+	// answered on redirects to whatever replaced it — an exact pattern outranks
+	// the /docs the service owns now, and /about is in that map pointing at the
+	// landing, which is the page that answers the question it used to.
 	http.HandleFunc("/install", help.InstallHandler)
 	for from, to := range help.Redirects {
 		if from == "/docs" {

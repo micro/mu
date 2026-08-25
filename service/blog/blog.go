@@ -25,7 +25,7 @@ import (
 var topicsJSON []byte
 
 // cardSnap is the go-micro read-plane channel for the blog preview card (store +
-// broker); see internal/snapshot and docs/GO_MICRO_ARCHITECTURE.md.
+// broker); see internal/snapshot.
 var cardSnap *snapshot.Snapshot
 
 var mutex sync.RWMutex

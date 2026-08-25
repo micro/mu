@@ -37,7 +37,7 @@ package tool
 // than anything reflection produces. What derivation is for is the endpoint
 // nobody remembered, which now cannot go missing.
 //
-// The metering problem that kept this open (docs/ARCHITECTURE.md, #1445) is
+// The metering problem that kept this open (#1445) is
 // already solved: an Endpoint declares its Cost, so a derived tool is charged
 // exactly like a written one instead of being a free path to a paid service.
 
