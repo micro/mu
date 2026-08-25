@@ -71,6 +71,16 @@ var settingGroups = []settingGroup{
 			"YOUTUBE_API_KEY",
 			"GOOGLE_API_KEY",
 		}},
+	{Name: "The search index",
+		Does:  "Where search looks. SQLite with FTS5 is an index; the default is a map read end to end on every query, and it gets slower with everything anybody stores.",
+		Needs: nil,
+		Vars: []string{
+			// Not a preference. FTS5 is better and this should not be a choice
+			// — but turning it on starts an empty index, and only mail rebuilds
+			// itself at boot today. Until every service can, the operator has to
+			// make a decision we would rather make for them. See #1472.
+			"MU_USE_SQLITE",
+		}},
 	{Name: "Mail",
 		Does:  "This instance as a mail server: the address people write to, and what it sends as.",
 		Needs: []string{"MAIL_DOMAIN"},
@@ -197,6 +207,11 @@ var settingGroups = []settingGroup{
 			"GOOGLE_CLIENT_ID",
 			"GOOGLE_CLIENT_SECRET",
 			"GOOGLE_REDIRECT_URI",
+			// Passkeys are sign-in, and were under "Platform" — which is how
+			// somebody looking for why a passkey will not register ends up
+			// reading a list about browsers and shutdown timeouts.
+			"PASSKEY_ORIGIN",
+			"PASSKEY_RP_ID",
 		}},
 	{Name: "Storage",
 		Does:  "The older S3 names, kept so a configured instance keeps working. Set the group above instead.",
@@ -267,28 +282,51 @@ var settingGroups = []settingGroup{
 			"GENERATE_ADULT",
 		}},
 	{Name: "Platform",
-		Does:  "This instance itself: its domain, the agent loop, and where the browser lives.",
+		Does:  "This instance itself: what it is called, and how it shuts down.",
 		Needs: nil,
 		Vars: []string{
 			"MU_DOMAIN",
+			// The same fact as MU_DOMAIN for almost every instance, and kept
+			// because the two differ when something sits in front on another
+			// name. If you are setting both to the same thing, set MU_DOMAIN.
+			"APP_URL",
+			"SHUTDOWN_SECONDS",
+		}},
+	{Name: "The agent",
+		Does:  "How the agent runs: which loop, whether it streams, and how many steps it may take before it stops.",
+		Needs: nil,
+		Vars: []string{
+			"AGENT_NATIVE",
+			"AGENT_NATIVE_STREAM",
+			"AGENT_MAX_STEPS",
+		}},
+	{Name: "Tools for other clients (MCP)",
+		Does:  "The MCP door, and publishing this instance to the registry so other people can find it.",
+		Needs: nil,
+		Vars: []string{
+			"MCP_GATEWAY_ADDR",
 			// Proof of domain ownership for the MCP registry, served at
 			// /.well-known/mcp-registry-auth. It was readable by the code and
 			// settable nowhere, so publishing meant an environment edit and a
 			// restart on a box somebody had to have shell on.
 			"MCP_REGISTRY_PROOF",
-			"PASSKEY_ORIGIN",
-			"PASSKEY_RP_ID",
-			"APP_URL",
-			"SHUTDOWN_SECONDS",
-			"NOTES",
+		}},
+	{Name: "Browser",
+		Does:  "Reading a page the way a person would, for sites that need JavaScript to render.",
+		Needs: nil,
+		Vars: []string{
 			"BROWSER_URL",
 			"CHROME_PATH",
-			"MCP_GATEWAY_ADDR",
-			"AGENT_NATIVE",
-			"AGENT_NATIVE_STREAM",
-			"AGENT_MAX_STEPS",
 		}},
-}
+	{Name: "Notes and the blog",
+		Does:  "Whether what you write is kept private or published.",
+		Needs: nil,
+		Vars: []string{
+			// service/blog reads this. It was under "Platform", where nothing
+			// about it said which of the hundred and twelve settings it was
+			// near, or that it belonged to a service with a page of its own.
+			"NOTES",
+		}}}
 
 // Settable reports whether a setting can be changed from this page.
 //
