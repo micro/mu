@@ -46,6 +46,20 @@ if [ -z "$HOST" ] || [ -z "$USER_ID" ] || [ -z "$TOKEN" ]; then
 	exit 2
 fi
 
+# An access token is 32 random bytes in unpadded base64url, so it is always
+# exactly this long. Checked before anything connects, because a token that
+# picked up a stray character on the way through a terminal fails at SASL and
+# reads as a protocol problem — three checks pass, everything after sign-in
+# fails, and none of it is about XMPP.
+#
+# A warning rather than a refusal: the length is a property of today's token
+# format, and a check that outlived the format should not stop anybody working.
+if [ ${#TOKEN} -ne 43 ]; then
+	printf '\n  note: that token is %d characters and they are normally 43.\n' "${#TOKEN}"
+	printf '        If sign-in fails below, re-copy it from /token rather than\n'
+	printf '        looking for a protocol fault.\n'
+fi
+
 pass=0; fail=0
 ok()   { printf '  \033[32mok\033[0m    %s\n' "$1"; pass=$((pass+1)); }
 bad()  { printf '  \033[31mFAIL\033[0m  %s\n' "$1"; fail=$((fail+1)); }
@@ -231,7 +245,8 @@ if command -v curl >/dev/null 2>&1; then
 		*"(chat,"*|*'"client":"chat"'*|*'"client": "chat"'*)
 			ok "the conversation reached the record — it will be at /inbox" ;;
 		"")  bad "could not read the record back over the API"
-		     note "Only this check needs the HTTP API; XMPP itself is fine." ;;
+		     note "The same token over HTTPS. If sign-in above also failed, this is"
+		     note "one bad credential rather than two broken things." ;;
 		*)   bad "nothing filed under the chat client in the record"
 		     note "The stanza was delivered but not written down, so /inbox will not show it." ;;
 	esac
