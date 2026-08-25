@@ -53,7 +53,7 @@ func TestAPaidWalletIsNotRefusedByTheGate(t *testing.T) {
 // somebody falls through by accident.
 func TestAnOrdinaryAccountIsStillAsked(t *testing.T) {
 	wireOnce()
-	if _, err := service.Gate.Allow("definitely-not-an-account", "web_search"); err == nil {
+	if _, err := service.Gate.Allow("definitely_no_account", "web_search"); err == nil {
 		t.Error("an unknown account was let through a priced call, so the wallet " +
 			"identity exemption is catching more than wallet identities")
 	}

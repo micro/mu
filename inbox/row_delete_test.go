@@ -14,7 +14,7 @@ import (
 
 // Every row offers it, and offers it for its own conversation.
 func TestEveryRowCanBeDeleted(t *testing.T) {
-	const who = "inbox-rowdel"
+	const who = "inbox_rowdel"
 	first := said(t, who, "mail", "<a@example.com>", "", "the first one")
 	second := said(t, who, "mail", "<b@example.com>", "", "the second one")
 
@@ -35,7 +35,7 @@ func TestEveryRowCanBeDeleted(t *testing.T) {
 // what /inbox/delete checks, and a form without one is a button that does
 // nothing.
 func TestTheRowDeleteIsAPostWithAToken(t *testing.T) {
-	const who = "inbox-rowdel-csrf"
+	const who = "inbox_rowdel_csrf"
 	said(t, who, "mail", "<a@example.com>", "", "something")
 
 	body := listBody(t, "/inbox", who, "")
@@ -54,7 +54,7 @@ func TestTheRowDeleteIsAPostWithAToken(t *testing.T) {
 // invalid and a submit inside a navigation target means one click has two
 // meanings — the row would open the conversation it was asked to delete.
 func TestTheDeleteIsNotInsideTheRowLink(t *testing.T) {
-	const who = "inbox-rowdel-nest"
+	const who = "inbox_rowdel_nest"
 	said(t, who, "mail", "<a@example.com>", "", "something")
 
 	body := listBody(t, "/inbox", who, "")

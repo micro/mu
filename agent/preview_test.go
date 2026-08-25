@@ -18,7 +18,7 @@ import (
 // fix is recorded there: leaving Micro off "meant a new account opened /agents
 // and was told it had none, which is false".
 func TestThePreviewIncludesTheDefaultAgent(t *testing.T) {
-	got := Preview("preview-default")
+	got := Preview("preview_default")
 	if got == "" {
 		t.Fatal("an account with the default agent got an empty list")
 	}
@@ -46,8 +46,8 @@ func TestThePreviewIncludesTheDefaultAgent(t *testing.T) {
 // other people and says so, and the front page turned that silence into
 // activity.
 func TestAConversationNothingAnsweredIsNotActivity(t *testing.T) {
-	const who = "preview-silent"
-	auth.Create(&auth.Account{ID: who, Name: who, Secret: "test-secret"}) //nolint:errcheck
+	const who = "preview_silent"
+	auth.Create(&auth.Account{ID: who, Name: who, Secret: "test_secret"}) //nolint:errcheck
 
 	// A report that arrived and was filed. Nobody answered it.
 	quiet := thread.Open(who, "mail", "<dmarc@google.com>")
@@ -86,8 +86,8 @@ func TestAConversationNothingAnsweredIsNotActivity(t *testing.T) {
 // found nothing again, and fell back to the default slug. Every agent on the
 // page linked to /agent/micro. The links worked; they went somewhere else.
 func TestEachAgentOnHomeLinksToItself(t *testing.T) {
-	const who = "preview-links"
-	auth.Create(&auth.Account{ID: who, Name: who, Secret: "test-secret"}) //nolint:errcheck
+	const who = "preview_links"
+	auth.Create(&auth.Account{ID: who, Name: who, Secret: "test_secret"}) //nolint:errcheck
 
 	made, _, err := CreateAgent(who, "Research", "", "", "", nil, false)
 	if err != nil {

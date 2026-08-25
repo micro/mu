@@ -16,7 +16,7 @@ import (
 // arrived and was answered overnight left Home looking exactly as it had the
 // night before.
 func TestHomeShowsWhatIsInTheInbox(t *testing.T) {
-	const who = "preview-owner"
+	const who = "preview_owner"
 
 	byMail := thread.Open(who, "mail", "<invoice@example.com>")
 	if byMail == nil {
@@ -50,7 +50,7 @@ func TestHomeShowsWhatIsInTheInbox(t *testing.T) {
 // An empty inbox shows nothing here. An empty list is worse than the address
 // line on its own, which at least says what to do about it.
 func TestAnEmptyInboxAddsNothingToHome(t *testing.T) {
-	if out := Preview("nobody-has-written-to-this-account"); out != "" {
+	if out := Preview("nobody_wrote_here"); out != "" {
 		t.Errorf("an account with no conversations gets: %s", out)
 	}
 	if out := Preview(""); out != "" {
@@ -60,7 +60,7 @@ func TestAnEmptyInboxAddsNothingToHome(t *testing.T) {
 
 // Home carries a few, not the inbox.
 func TestHomeCarriesOnlyTheMostRecentFew(t *testing.T) {
-	const who = "preview-busy-owner"
+	const who = "preview_busy_owner"
 
 	for i := 0; i < previewShown*3; i++ {
 		n := strconv.Itoa(i)

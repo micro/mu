@@ -34,7 +34,7 @@ func arrived(t *testing.T, owner, client, key, agentID, from, text string) *thre
 // /agent both read the whole record — so neither page could be described in a
 // sentence, which is exactly how it read.
 func TestTheInboxIsWhatArrived(t *testing.T) {
-	const who = "mailbox-arrived"
+	const who = "mailbox_arrived"
 	said(t, who, "mail", "<a@example.com>", "", "about the invoice")
 	said(t, who, thread.WebClient, "chat", "", "what are the markets doing")
 	said(t, who, thread.CLIClient, "term", "", "run the briefing")
@@ -54,7 +54,7 @@ func TestTheInboxIsWhatArrived(t *testing.T) {
 // page is a log — read top to bottom every time, because nothing says which of
 // these you have dealt with.
 func TestUnreadRowsAreMarked(t *testing.T) {
-	const who = "mailbox-unread"
+	const who = "mailbox_unread"
 	th := arrived(t, who, "mail", "<b@example.com>", "", "them@example.com", "the quarterly numbers")
 
 	// The markup, not the stylesheet — mu.css always carries the rule.
@@ -72,7 +72,7 @@ func TestUnreadRowsAreMarked(t *testing.T) {
 // Your own words are read the moment you write them. An agent's answer, and
 // anything somebody else sends, is not.
 func TestWhatCountsAsUnread(t *testing.T) {
-	const who = "mailbox-rule"
+	const who = "mailbox_rule"
 
 	mine := thread.Open(who, "mail", "<mine@example.com>")
 	thread.Add(thread.Message{Thread: mine.ID, Account: who, Text: "I said this"})
@@ -100,7 +100,7 @@ func TestWhatCountsAsUnread(t *testing.T) {
 // the half a mailbox is unusable without, because a thing you meant to come back
 // to otherwise disappears into the pile.
 func TestOpeningReadsItAndItCanBePutBack(t *testing.T) {
-	const who = "mailbox-open"
+	const who = "mailbox_open"
 	th := arrived(t, who, "mail", "<c@example.com>", "", "them@example.com", "please confirm")
 
 	w := httptest.NewRecorder()
@@ -125,7 +125,7 @@ func TestOpeningReadsItAndItCanBePutBack(t *testing.T) {
 // what you had already dealt with is a thing nobody does, and a control shown
 // always is furniture on every page.
 func TestNothingToPutBackOnSomethingAlreadyRead(t *testing.T) {
-	const who = "mailbox-read"
+	const who = "mailbox_read"
 	th := said(t, who, "mail", "<d@example.com>", "", "no action needed")
 	thread.MarkSeen(who, th.ID)
 
@@ -147,7 +147,7 @@ func TestNothingToPutBackOnSomethingAlreadyRead(t *testing.T) {
 // the page you are already looking at rather than a number following you
 // around the app.
 func TestTheRailCountsWhatIsWaiting(t *testing.T) {
-	const who = "mailbox-count"
+	const who = "mailbox_count"
 	withRoster(t, who, Agent{ID: "a1", Name: "Research", Tag: "research"})
 
 	arrived(t, who, "mail", "<e@example.com>", "a1", "them@example.com", "found three papers")
@@ -171,7 +171,7 @@ func TestTheRailCountsWhatIsWaiting(t *testing.T) {
 
 // A mailbox you cannot delete from is a list that only grows.
 func TestAConversationCanBeDeleted(t *testing.T) {
-	const who = "mailbox-delete"
+	const who = "mailbox_delete"
 	th := arrived(t, who, "mail", "<g@example.com>", "", "them@example.com", "delete me")
 
 	w := httptest.NewRecorder()
@@ -204,8 +204,8 @@ func TestAConversationCanBeDeleted(t *testing.T) {
 // person's message only, and the one thing the agent starts on its own is the
 // briefing.
 func TestAConversationTheAgentStartsHasAName(t *testing.T) {
-	const who = "mailbox-subject"
-	th := thread.Open(who, "digest", "digest-2026-08-19")
+	const who = "mailbox_subject"
+	th := thread.Open(who, "digest", "digest_2026_08_19")
 	thread.Add(thread.Message{Thread: th.ID, Account: who, Role: thread.RoleAgent,
 		Text: "Daily Digest — 19 Aug 2026\n\nMarkets were quiet and the news was not."})
 
@@ -221,7 +221,7 @@ func TestAConversationTheAgentStartsHasAName(t *testing.T) {
 // And a mail conversation is named by its subject line, not its subject line
 // plus the opening of the body.
 func TestAMailConversationIsNamedByItsSubject(t *testing.T) {
-	const who = "mailbox-mailsubject"
+	const who = "mailbox_mailsubject"
 	th := thread.Open(who, "mail", "<h@example.com>")
 	thread.Add(thread.Message{Thread: th.ID, Account: who, From: "them@example.com",
 		Text: "Invoice 4021\n\nAttached is this month's invoice, due on the 30th."})
@@ -238,7 +238,7 @@ func TestAMailConversationIsNamedByItsSubject(t *testing.T) {
 // arrived at is the fact that explains why it is in this inbox — you@ is you,
 // you+research@ is one of your agents, agent@ is this instance's.
 func TestAConversationSaysWhoItWasSentTo(t *testing.T) {
-	const who = "mailbox-addresses"
+	const who = "mailbox_addresses"
 	th := thread.Open(who, "mail", "<addr@example.com>")
 	thread.Add(thread.Message{Thread: th.ID, Account: who,
 		From: "henrik@getdirectree.example.com",
@@ -267,7 +267,7 @@ func TestYourOwnMessagesHaveNoAddressLine(t *testing.T) {
 // away. "henrik@getdirectree.co…" tells you nothing "henrik" does not, and the
 // part cut off is the part that would have.
 func TestALongSenderIsReadableInTheList(t *testing.T) {
-	const who = "mailbox-longsender"
+	const who = "mailbox_longsender"
 	th := arrived(t, who, "mail", "<long@example.com>", "",
 		"henrik@getdirectree.example.com", "hello")
 

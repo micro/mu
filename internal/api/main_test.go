@@ -11,7 +11,7 @@ import (
 // and tokens do not write into the real ~/.mu. Same reason as the one in
 // internal/auth: a test in this session minted real tokens on a real account.
 func TestMain(m *testing.M) {
-	dir, err := os.MkdirTemp("", "mu-api-test")
+	dir, err := os.MkdirTemp("", "mu_api_test")
 	if err != nil {
 		panic(err)
 	}

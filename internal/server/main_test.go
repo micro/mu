@@ -18,7 +18,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	home, err := os.MkdirTemp("", "mu-server-test")
+	home, err := os.MkdirTemp("", "mu_server_test")
 	if err != nil {
 		panic("tests need a scratch home: " + err.Error())
 	}

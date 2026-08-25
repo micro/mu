@@ -42,7 +42,7 @@ func withRoster(t *testing.T, owner string, agents ...Agent) {
 // no box — and once the box began carrying that agent's address, no box meant
 // no way to find out where to write. A box with nothing in it says so.
 func TestAnAgentWithNoMailStillHasABox(t *testing.T) {
-	const who = "inbox-unwritten"
+	const who = "inbox_unwritten"
 	t.Setenv("MAIL_DOMAIN", "micro.mu")
 	withRoster(t, who, Agent{ID: "a1", Name: "Research", Tag: "research"})
 
@@ -65,7 +65,7 @@ func TestAnAgentWithNoMailStillHasABox(t *testing.T) {
 // of characters, and knew nothing about the other agent. So the address shown
 // above a box was somebody else's, or nobody's.
 func TestABoxIsTheAddressTag(t *testing.T) {
-	const who = "inbox-tags"
+	const who = "inbox_tags"
 	t.Setenv("MAIL_DOMAIN", "micro.mu")
 	withRoster(t, who,
 		Agent{ID: "a1", Name: "Research", Tag: "research"},

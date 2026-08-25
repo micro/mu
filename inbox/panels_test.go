@@ -24,8 +24,8 @@ import (
 )
 
 func TestTheConversationPageIsOneColumn(t *testing.T) {
-	const who = "panels-reader"
-	auth.Create(&auth.Account{ID: who, Name: who, Secret: "test-secret"}) //nolint:errcheck
+	const who = "panels_reader"
+	auth.Create(&auth.Account{ID: who, Name: who, Secret: "test_secret"}) //nolint:errcheck
 
 	th := thread.Open(who, mailClient, "<panels@example.com>")
 	if th == nil {

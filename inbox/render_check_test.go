@@ -19,7 +19,7 @@ import (
 // So conversationPane takes the dialog and draws the button only when it has
 // one, and this holds both directions of that.
 func TestTheAssignButtonAlwaysHasItsDialog(t *testing.T) {
-	const who = "render-pair"
+	const who = "render_pair"
 	th := thread.Open(who, mailClient, "<pair@example.com>")
 	if th == nil {
 		t.Fatal("no thread")

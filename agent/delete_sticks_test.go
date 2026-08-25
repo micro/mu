@@ -20,11 +20,11 @@ import (
 )
 
 func TestRemovingAnAgentRemovesTheCopyThatWouldResurrectIt(t *testing.T) {
-	acc := owner(t, "delete-sticks")
+	acc := owner(t, "delete_sticks")
 
 	// An agent as it existed before the roster: only in the old store.
 	micro.SaveUserAgent(acc, &micro.Agent{
-		ID: "legacy-foobar", Name: "Foobar", SystemPrompt: "You are Foobar",
+		ID: "legacy_foobar", Name: "Foobar", SystemPrompt: "You are Foobar",
 	})
 
 	// Startup imports it.
@@ -60,16 +60,16 @@ func TestRemovingAnAgentRemovesTheCopyThatWouldResurrectIt(t *testing.T) {
 // to resurrect anything from — including agents it skipped because they were
 // already in the roster.
 func TestTheImportEmptiesTheStoreItMigratesFrom(t *testing.T) {
-	acc := owner(t, "drain-source")
+	acc := owner(t, "drain_source")
 
-	micro.SaveUserAgent(acc, &micro.Agent{ID: "legacy-a", Name: "Alpha", SystemPrompt: "a"})
+	micro.SaveUserAgent(acc, &micro.Agent{ID: "legacy_a", Name: "Alpha", SystemPrompt: "a"})
 	ImportUserAgents(micro.AllUserAgents())
 	if left := micro.UserAgentsFor(acc); len(left) != 0 {
 		t.Errorf("%d agent(s) left in the old store after importing", len(left))
 	}
 
 	// One already in the roster is still cleared out of the old store.
-	micro.SaveUserAgent(acc, &micro.Agent{ID: "legacy-a2", Name: "Alpha", SystemPrompt: "a"})
+	micro.SaveUserAgent(acc, &micro.Agent{ID: "legacy_a2", Name: "Alpha", SystemPrompt: "a"})
 	if n := ImportUserAgents(micro.AllUserAgents()); n != 0 {
 		t.Errorf("imported %d duplicates, want 0", n)
 	}

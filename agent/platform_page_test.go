@@ -128,7 +128,7 @@ func TestAgentNamesDoNotEndInAgent(t *testing.T) {
 // The registry is untouched: platformRow still exists and agent+news@ still
 // routes. It is the page that changed, not the roster.
 func TestTheRosterIsYourOwnAgents(t *testing.T) {
-	const who = "roster-order"
+	const who = "roster_order"
 	if err := auth.Create(&auth.Account{ID: who}); err != nil {
 		t.Fatalf("creating the account: %v", err)
 	}

@@ -13,7 +13,7 @@ import (
 
 func TestTheImapPageSaysWhatAClientAsksFor(t *testing.T) {
 	t.Setenv("MAIL_DOMAIN", "example.test")
-	const who = "imap-reader"
+	const who = "imap_reader"
 	if err := auth.Create(&auth.Account{ID: who}); err != nil && !strings.Contains(err.Error(), "already exists") {
 		t.Fatalf("creating the account: %v", err)
 	}

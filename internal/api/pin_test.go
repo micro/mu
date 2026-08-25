@@ -69,7 +69,7 @@ func TestPinningIsIdempotent(t *testing.T) {
 // renders nothing for a guest, which is correct and not what these check.
 func withSession(t *testing.T, r *http.Request) *http.Request {
 	t.Helper()
-	const id = "pin-tester"
+	const id = "pin_tester"
 	if _, err := auth.GetAccount(id); err != nil {
 		if err := auth.Create(&auth.Account{ID: id, Name: id, Secret: "s"}); err != nil {
 			t.Fatal(err)

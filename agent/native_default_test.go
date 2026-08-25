@@ -29,15 +29,15 @@ func TestNativeLLM_OpenRouter(t *testing.T) {
 		t.Fatal("no cloud key: nativeLLM should be off")
 	}
 
-	settings.Set("OPENROUTER_API_KEY", "sk-or-test")
+	settings.Set("OPENROUTER_API_KEY", "sk_or_test")
 	provider, key, model, ok := nativeLLM()
-	if !ok || provider != "openrouter" || key != "sk-or-test" || model != ai.ModelOpenRouter {
+	if !ok || provider != "openrouter" || key != "sk_or_test" || model != ai.ModelOpenRouter {
 		t.Fatalf("openrouter: provider=%q key=%q model=%q ok=%v", provider, key, model, ok)
 	}
 
-	settings.Set("ATLAS_API_KEY", "atlas-test")
+	settings.Set("ATLAS_API_KEY", "atlas_test")
 	provider, key, model, ok = nativeLLM()
-	if !ok || provider != "atlascloud" || key != "atlas-test" || model != ai.ModelDeepSeekPro {
+	if !ok || provider != "atlascloud" || key != "atlas_test" || model != ai.ModelDeepSeekPro {
 		t.Fatalf("atlas still wins: provider=%q key=%q model=%q ok=%v", provider, key, model, ok)
 	}
 }

@@ -27,7 +27,7 @@ func said(t *testing.T, owner, client, key, agentID, text string) *thread.Thread
 // That is what makes it one inbox rather than five: an email chain, a WhatsApp
 // exchange and a chat on this page are the same kind of thing in the record.
 func TestTheInboxListsEveryConversation(t *testing.T) {
-	const who = "inbox-lister"
+	const who = "inbox_lister"
 	said(t, who, "mail", "<a@example.com>", "", "about the invoice")
 	said(t, who, "whatsapp", "44700900000", "", "are you around")
 
@@ -46,7 +46,7 @@ func TestTheInboxListsEveryConversation(t *testing.T) {
 // An agent is a mailbox. What arrives for the research agent is its mail, not a
 // slice of yours, so it gets a box of its own with a way in and out.
 func TestEachAgentIsItsOwnMailbox(t *testing.T) {
-	const who = "inbox-boxes"
+	const who = "inbox_boxes"
 	withRoster(t, who,
 		Agent{ID: "a1", Name: "Research", Tag: "research"},
 		Agent{ID: "a2", Name: "Briefer", Tag: "briefer"})
@@ -75,7 +75,7 @@ func TestEachAgentIsItsOwnMailbox(t *testing.T) {
 
 // A switcher with one destination is a control that cannot do anything.
 func TestNoSwitcherWhenNothingHasAnAgent(t *testing.T) {
-	const who = "inbox-one-box"
+	const who = "inbox_one_box"
 	said(t, who, thread.WebClient, "only", "", "hello")
 
 	// The markup, not the stylesheet — mu.css always carries the rule.
@@ -87,7 +87,7 @@ func TestNoSwitcherWhenNothingHasAnAgent(t *testing.T) {
 // An empty box says which box is empty. The narrower fact is the true one, and
 // the address is already on the page above it.
 func TestAnEmptyBoxSaysWhichBoxIsEmpty(t *testing.T) {
-	const who = "inbox-empty-box"
+	const who = "inbox_empty_box"
 	// A distinctive phrase: the page shell has prose in it, and a common
 	// word will match a comment rather than a row.
 	said(t, who, "mail", "<x@example.com>", "", "zarquon the invoice")

@@ -13,7 +13,7 @@ package agent
 import "testing"
 
 func TestATagResolvesToTheAgentThatAnswersOnIt(t *testing.T) {
-	acc := owner(t, "tag-lookup")
+	acc := owner(t, "tag_lookup")
 
 	made, _, err := CreateAgent(acc, "Research", Hosted, "You research things", "", nil, false)
 	if err != nil {
@@ -35,7 +35,7 @@ func TestATagResolvesToTheAgentThatAnswersOnIt(t *testing.T) {
 
 // A plus address that is not an agent is an ordinary plus address.
 func TestATagThatIsNotAnAgentWakesNothing(t *testing.T) {
-	acc := owner(t, "tag-quiet")
+	acc := owner(t, "tag_quiet")
 	if _, _, err := CreateAgent(acc, "Research", Hosted, "You research things", "", nil, false); err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +46,7 @@ func TestATagThatIsNotAnAgentWakesNothing(t *testing.T) {
 		}
 	}
 	// And an agent belongs to one account: somebody else's tag is not yours.
-	other := owner(t, "tag-other")
+	other := owner(t, "tag_other")
 	if got := ForTag(other, "research"); got != nil {
 		t.Error("one account's tag resolved on another account")
 	}

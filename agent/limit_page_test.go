@@ -46,7 +46,7 @@ func capped(t *testing.T, id string, allowed, made int) {
 }
 
 func TestAtTheLimitTheAnswerIsKnownBeforeTheFormIsShown(t *testing.T) {
-	const owner = "agent-limit-full"
+	const owner = "agent_limit_full"
 	capped(t, owner, 1, 1)
 
 	full, have, max := AtAgentLimit(owner)
@@ -59,7 +59,7 @@ func TestAtTheLimitTheAnswerIsKnownBeforeTheFormIsShown(t *testing.T) {
 }
 
 func TestBelowTheLimitNothingIsInTheWay(t *testing.T) {
-	const owner = "agent-limit-room"
+	const owner = "agent_limit_room"
 	capped(t, owner, 5, 1)
 
 	if full, have, max := AtAgentLimit(owner); full {
@@ -71,7 +71,7 @@ func TestBelowTheLimitNothingIsInTheWay(t *testing.T) {
 // nothing knows about plans, and a naive check would read that as "no agents
 // allowed" and lock everybody out of the builder.
 func TestNoAllowanceMachineryMeansNoLimitRatherThanNoAgents(t *testing.T) {
-	const owner = "agent-limit-noplan"
+	const owner = "agent_limit_noplan"
 	orig := AgentAllowance
 	AgentAllowance = nil
 	t.Cleanup(func() { AgentAllowance = orig })
@@ -83,7 +83,7 @@ func TestNoAllowanceMachineryMeansNoLimitRatherThanNoAgents(t *testing.T) {
 
 // The builder does not draw a form somebody cannot submit.
 func TestTheBuilderRefusesBeforeAskingForAnything(t *testing.T) {
-	const owner = "agent-limit-builder"
+	const owner = "agent_limit_builder"
 	capped(t, owner, 1, 1)
 
 	sess, err := auth.CreateSession(owner)

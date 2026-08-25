@@ -168,7 +168,18 @@ func init() {
 	}
 }
 
+// Create makes an account, if the username is one this instance allows.
+//
+// The check is here rather than at the signup handlers because this and Claim
+// are the only two functions that put an id into the accounts map, and a rule
+// enforced at the callers is a rule enforced at the callers who remembered.
+// Two of them did; internal/setup and Claim did not, and micro.mu has an
+// account called 3834 to show for it.
 func Create(acc *Account) error {
+	if reason := ValidateUsername(acc.ID); reason != "" {
+		return errors.New(reason)
+	}
+
 	mutex.Lock()
 	defer mutex.Unlock()
 

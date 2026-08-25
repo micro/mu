@@ -64,17 +64,17 @@ func TestTheStoreIsSeededIntoTheDocument(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	defer os.RemoveAll(os.Getenv("HOME"))
 
-	const who = "seed-reader"
-	if err := auth.Create(&auth.Account{ID: who, Name: who, Secret: "test-secret"}); err != nil {
+	const who = "seed_reader"
+	if err := auth.Create(&auth.Account{ID: who, Name: who, Secret: "test_secret"}); err != nil {
 		t.Fatal(err)
 	}
 
 	// Nothing saved, nothing inlined — an empty object in front of every page
 	// is noise.
-	if got := appSeedJS("nothing-here", who); got != "" {
+	if got := appSeedJS("nothing_here", who); got != "" {
 		t.Errorf("an app with no saved values still got a seed: %q", got)
 	}
-	if got := appSeedJS("some-app", ""); got != "" {
+	if got := appSeedJS("some_app", ""); got != "" {
 		t.Error("a signed-out reader got somebody's saved values")
 	}
 

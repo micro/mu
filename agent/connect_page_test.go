@@ -14,7 +14,7 @@ import (
 
 func TestAnAgentsNameOpensAConversationWithIt(t *testing.T) {
 	probes(t)
-	id := owner(t, "connect-reader")
+	id := owner(t, "connect_reader")
 
 	// There were two kinds, and an agent declared "external" opened on the
 	// Connect page instead of a chat, because there was nothing here to talk
@@ -41,7 +41,7 @@ func TestAnAgentsNameOpensAConversationWithIt(t *testing.T) {
 // it may reach, where to send it, and whether it has a credential.
 func TestTheConnectPageCarriesTheScopeTheEndpointAndTheTokenState(t *testing.T) {
 	probes(t)
-	id := owner(t, "connect-panel")
+	id := owner(t, "connect_panel")
 
 	a, _, err := CreateAgent(id, "Scoped", Hosted, "reads probes", "", []string{"probealpha"}, false)
 	if err != nil {

@@ -70,7 +70,7 @@ func TestATurnIsRecordedOnce(t *testing.T) {
 // No account, nothing to record against. Every run belongs to one now, so this
 // is the defensive half: the writes are no-ops rather than panics.
 func TestNothingIsRecordedWithoutAnAccount(t *testing.T) {
-	if got := Opened("", thread.WebClient, "some-key", "", ""); got != "" {
+	if got := Opened("", thread.WebClient, "some_key", "", ""); got != "" {
 		t.Errorf("a conversation was opened for an account-less caller (%q)", got)
 	}
 	// And the writes are no-ops rather than panics when there is no thread.
@@ -83,17 +83,17 @@ func TestNothingIsRecordedWithoutAnAccount(t *testing.T) {
 
 // The record is what history comes from, and it round-trips.
 func TestWhatWasSaidComesBackAsHistory(t *testing.T) {
-	const acc = "web-record"
-	id := Opened(acc, thread.WebClient, "root-flow-1", "", "")
+	const acc = "web_record"
+	id := Opened(acc, thread.WebClient, "root_flow_1", "", "")
 	if id == "" {
 		t.Fatal("no conversation")
 	}
 	Said(acc, id, "book me a table", "", "")
-	Answered(acc, id, "which night?", "flow-1")
+	Answered(acc, id, "which night?", "flow_1")
 
 	// The same key resolves to the same conversation, which is what makes a
 	// second message a continuation rather than a new thread.
-	if again := Opened(acc, thread.WebClient, "root-flow-1", "", ""); again != id {
+	if again := Opened(acc, thread.WebClient, "root_flow_1", "", ""); again != id {
 		t.Fatalf("the same conversation opened twice: %q then %q", id, again)
 	}
 
@@ -109,7 +109,7 @@ func TestWhatWasSaidComesBackAsHistory(t *testing.T) {
 	}
 	// And the answer knows which workflow produced it.
 	msgs := thread.Messages(acc, id, 0)
-	if msgs[1].Workflow != "flow-1" {
+	if msgs[1].Workflow != "flow_1" {
 		t.Errorf("the answer records workflow %q, want flow-1 — without it there is "+
 			"no way back from what was said to how it was produced", msgs[1].Workflow)
 	}

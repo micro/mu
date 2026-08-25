@@ -20,7 +20,7 @@ import (
 // here: it is that the mail service has exactly one (mail.Rendered) and this
 // asks for it.
 func TestAMailMessageRendersTheSameInAThread(t *testing.T) {
-	const who = "inbox-render"
+	const who = "inbox_render"
 	const msgID = "<report-1@dmarc.example>"
 
 	// Stored the way a real report is stored: the description in the body, the
@@ -109,7 +109,7 @@ const dmarcReport = `<?xml version="1.0" encoding="UTF-8" ?>
 // going through the escaped path — what somebody typed is text, and rendering
 // it as markup would be an injection with extra steps.
 func TestAChatMessageIsStillShownAsTyped(t *testing.T) {
-	const who = "inbox-render-chat"
+	const who = "inbox_render_chat"
 	th := thread.Open(who, thread.ChatClient, "xmpp_a_b")
 	if th == nil {
 		t.Fatal("could not open the conversation")

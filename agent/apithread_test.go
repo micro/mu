@@ -17,7 +17,7 @@ import (
 // Verified live before the fix: the response carried text, agent and flow, and
 // no thread at all.
 func TestAKeylessClientStillGetsAConversation(t *testing.T) {
-	const who = "ask-keyless"
+	const who = "ask_keyless"
 	// No provider here, so the model call fails — and that is fine: the
 	// conversation is opened and the question recorded before the model is
 	// asked, and Ask returns the thread id even on error. What is under test is
@@ -63,7 +63,7 @@ func TestAKeylessClientStillGetsAConversation(t *testing.T) {
 // Two fresh calls are two conversations, not one shared by every caller with
 // no key — which is what a fixed placeholder key would have produced.
 func TestTwoKeylessCallsAreTwoConversations(t *testing.T) {
-	const who = "ask-keyless-two"
+	const who = "ask_keyless_two"
 	one, _ := Ask(AskRequest{Account: who, Client: thread.WebClient, Text: "first"})
 	two, _ := Ask(AskRequest{Account: who, Client: thread.WebClient, Text: "second"})
 	if one.Thread == "" || two.Thread == "" {
@@ -88,7 +88,7 @@ func TestTwoKeylessCallsAreTwoConversations(t *testing.T) {
 // Found by calling the live endpoint twice, not by reading it. The first call
 // looked perfect.
 func TestPassingTheThreadBackContinuesIt(t *testing.T) {
-	const who = "api-continue"
+	const who = "api_continue"
 	first, _ := Ask(AskRequest{
 		Account: who, Client: thread.WebClient, Text: "what is the weather", Trigger: "api",
 	})

@@ -32,10 +32,10 @@ func TestInjectAccountBindsCallerToContext(t *testing.T) {
 		input  map[string]any
 		want   string
 	}{
-		{"binds the caller", "acct-me", map[string]any{"query": "x"}, "acct-me"},
-		{"ignores a model-supplied account", "acct-me", map[string]any{"account_id": "acct-victim"}, "acct-me"},
-		{"binds with no input at all", "acct-me", nil, "acct-me"},
-		{"a guest claims nobody", "", map[string]any{"account_id": "acct-victim"}, ""},
+		{"binds the caller", "acct_me", map[string]any{"query": "x"}, "acct_me"},
+		{"ignores a model-supplied account", "acct_me", map[string]any{"account_id": "acct_victim"}, "acct_me"},
+		{"binds with no input at all", "acct_me", nil, "acct_me"},
+		{"a guest claims nobody", "", map[string]any{"account_id": "acct_victim"}, ""},
 		{"a guest stays a guest", "", map[string]any{"query": "x"}, ""},
 	}
 
@@ -65,7 +65,7 @@ func TestInjectAccountClearsInheritedIdentity(t *testing.T) {
 		got = service.AccountFrom(ctx)
 		return gmai.ToolResult{}
 	}
-	inherited := service.WithAccount(context.Background(), "acct-someone-else")
+	inherited := service.WithAccount(context.Background(), "acct_someone_else")
 	injectAccount("")(h)(inherited, gmai.ToolCall{Name: "mail.Inbox"})
 	if got != "" {
 		t.Fatalf("guest inherited account %q", got)

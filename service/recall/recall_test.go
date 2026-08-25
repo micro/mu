@@ -26,8 +26,8 @@ func ctxFor(owner string) context.Context {
 func setup(t *testing.T) (mine, yours string, mineID, yoursID string) {
 	t.Helper()
 	n := time.Now().UnixNano()
-	mine = fmt.Sprintf("recall-mine-%d", n)
-	yours = fmt.Sprintf("recall-yours-%d", n)
+	mine = fmt.Sprintf("recall_mine_%d", n)
+	yours = fmt.Sprintf("recall_yours_%d", n)
 
 	m := thread.Open(mine, "mail", "<root@example.com>")
 	thread.Add(thread.Message{Thread: m.ID, Account: mine,

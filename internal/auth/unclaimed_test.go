@@ -18,7 +18,7 @@ import (
 func unclaimed(t *testing.T, addr string) *Account {
 	t.Helper()
 	addr = NormaliseAddress(addr)
-	id := "unclaimed-" + strings.SplitN(addr, "@", 2)[0]
+	id := "unclaimed_" + strings.SplitN(addr, "@", 2)[0]
 
 	mutex.Lock()
 	acc := &Account{

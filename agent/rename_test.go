@@ -37,7 +37,7 @@ func renamed(t *testing.T, owner, from, to string) *Agent {
 //
 // This is the bug as reported: renamed the agent, the endpoint stayed the same.
 func TestRenamingAnAgentMovesItsEndpoint(t *testing.T) {
-	a := renamed(t, "rename-endpoint", "Test", "Research")
+	a := renamed(t, "rename_endpoint", "Test", "Research")
 
 	if a.Tag != "research" {
 		t.Errorf("tag is %q after renaming Test to Research — the address, the page "+
@@ -54,7 +54,7 @@ func TestRenamingAnAgentMovesItsEndpoint(t *testing.T) {
 // The old name keeps working, because it is an address and somebody wrote it
 // down.
 func TestTheOldNameStillResolves(t *testing.T) {
-	const owner = "rename-old"
+	const owner = "rename_old"
 	a := renamed(t, owner, "Test", "Research")
 
 	id, ok := BySlug(owner, "test")
@@ -77,7 +77,7 @@ func TestTheOldNameStillResolves(t *testing.T) {
 // call. If any of them moved the tag, every save would break the agent's
 // address and pile up a former one.
 func TestEditingWithoutRenamingLeavesTheAddressAlone(t *testing.T) {
-	const owner = "rename-noop"
+	const owner = "rename_noop"
 	a, _, err := CreateAgent(owner, "Research", External, "", "", nil, false)
 	if err != nil {
 		t.Fatal(err)
@@ -102,7 +102,7 @@ func TestEditingWithoutRenamingLeavesTheAddressAlone(t *testing.T) {
 // A rename cannot take a name another agent is using, or the two would share an
 // inbox — which is the thing tagFor exists to prevent.
 func TestARenameCannotTakeAnotherAgentsName(t *testing.T) {
-	const owner = "rename-collide"
+	const owner = "rename_collide"
 	first, _, err := CreateAgent(owner, "Research", External, "", "", nil, false)
 	if err != nil {
 		t.Fatal(err)
@@ -124,7 +124,7 @@ func TestARenameCannotTakeAnotherAgentsName(t *testing.T) {
 // A former name cannot be taken either, or an old link would start landing on a
 // different agent than it was written for.
 func TestARenameCannotTakeAFormerName(t *testing.T) {
-	const owner = "rename-former"
+	const owner = "rename_former"
 	first := renamed(t, owner, "Test", "Research") // "test" is now first's former
 	second := renamed(t, owner, "Scratch", "Test")
 
@@ -141,7 +141,7 @@ func TestARenameCannotTakeAFormerName(t *testing.T) {
 // A live name beats a former one, so an agent that legitimately holds a word is
 // never shadowed by whoever used to.
 func TestALiveNameBeatsAFormerOne(t *testing.T) {
-	const owner = "rename-live"
+	const owner = "rename_live"
 	old := renamed(t, owner, "Research", "Reading") // "research" is now former
 	fresh, _, err := CreateAgent(owner, "Research", External, "", "", nil, false)
 	if err != nil {
@@ -165,7 +165,7 @@ func TestALiveNameBeatsAFormerOne(t *testing.T) {
 
 // Renaming repeatedly does not grow the record without bound.
 func TestFormerNamesAreCapped(t *testing.T) {
-	const owner = "rename-many"
+	const owner = "rename_many"
 	a, _, err := CreateAgent(owner, "n0", External, "", "", nil, false)
 	if err != nil {
 		t.Fatal(err)
@@ -188,7 +188,7 @@ func TestFormerNamesAreCapped(t *testing.T) {
 // The rename survives a round trip through storage, or it only holds until the
 // page is reloaded.
 func TestARenameIsWrittenDown(t *testing.T) {
-	const owner = "rename-persist"
+	const owner = "rename_persist"
 	a := renamed(t, owner, "Test", "Research")
 
 	got := For(owner, a.ID)

@@ -55,7 +55,7 @@ func TestTheEndpointNeedsAnAccount(t *testing.T) {
 // back to the default would mean a typo silently reaching the wrong agent with
 // the wrong scope.
 func TestAnUnknownAgentIsNotFound(t *testing.T) {
-	w, r := signedIn(t, "api-unknown", `{"text":"hello"}`)
+	w, r := signedIn(t, "api_unknown", `{"text":"hello"}`)
 	r.URL.Path = "/agent/nosuchagent"
 	APIHandler(w, r)
 	if w.Code != http.StatusNotFound {
@@ -71,7 +71,7 @@ func TestTheEndpointNeedsAQuestion(t *testing.T) {
 		"no text at all":    `{}`,
 		"not JSON":          `hello`,
 	} {
-		w, r := signedIn(t, "api-empty", body)
+		w, r := signedIn(t, "api_empty", body)
 		APIHandler(w, r)
 		if w.Code != http.StatusBadRequest {
 			t.Errorf("%s: status %d, want 400", what, w.Code)
@@ -85,9 +85,9 @@ func TestTheEndpointNeedsAQuestion(t *testing.T) {
 // answer onto a stranger's thread — and the question with it, since Ask records
 // both.
 func TestTheEndpointRefusesAnotherAccountsThread(t *testing.T) {
-	const mine, theirs = "api-mine", "api-theirs"
+	const mine, theirs = "api_mine", "api_theirs"
 	_ = auth.Create(&auth.Account{ID: theirs})
-	th := thread.Open(theirs, thread.WebClient, "api-1")
+	th := thread.Open(theirs, thread.WebClient, "api_1")
 	if th == nil {
 		t.Fatal("no conversation")
 	}

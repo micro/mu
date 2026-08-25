@@ -263,7 +263,7 @@ func TestMCPHandler_ToolsCallForwardsAuth(t *testing.T) {
 	body := `{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"test_auth","arguments":{}}}`
 	req := httptest.NewRequest("POST", "/mcp", strings.NewReader(body))
 	req.Header.Set("Authorization", "Bearer test-token-123")
-	req.Header.Set(TokenHeader, "micro-token-456")
+	req.Header.Set(TokenHeader, "micro_token_456")
 	w := httptest.NewRecorder()
 
 	MCPHandler(w, req)
@@ -271,7 +271,7 @@ func TestMCPHandler_ToolsCallForwardsAuth(t *testing.T) {
 	if receivedAuth != "Bearer test-token-123" {
 		t.Errorf("Expected Authorization header forwarded, got %q", receivedAuth)
 	}
-	if receivedToken != "micro-token-456" {
+	if receivedToken != "micro_token_456" {
 		t.Errorf("Expected X-Micro-Token header forwarded, got %q", receivedToken)
 	}
 }
@@ -635,7 +635,7 @@ func TestExecuteToolAsUsesDirectNewsSearchProvider(t *testing.T) {
 	}
 	defer func() { GuestNewsSearch = oldGuestNewsSearch }()
 
-	text, isErr, err := ExecuteToolAs("guest-account-without-session", "news_search", map[string]any{"query": " AI news "})
+	text, isErr, err := ExecuteToolAs("guest_no_session", "news_search", map[string]any{"query": " AI news "})
 	if err != nil || isErr {
 		t.Fatalf("expected direct news_search provider to succeed, isErr=%v err=%v", isErr, err)
 	}

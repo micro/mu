@@ -518,8 +518,8 @@ func TestSaveAndGetFlow(t *testing.T) {
 	flowMu.Unlock()
 
 	f := &Flow{
-		ID:        "test-flow-1",
-		AccountID: "user-123",
+		ID:        "test_flow_1",
+		AccountID: "user_123",
 		Prompt:    "What is the weather in London?",
 		Answer:    "It is cloudy.",
 		Steps: []FlowStep{
@@ -534,7 +534,7 @@ func TestSaveAndGetFlow(t *testing.T) {
 	flowStore[f.ID] = f
 	flowMu.Unlock()
 
-	got := getFlow("test-flow-1")
+	got := getFlow("test_flow_1")
 	if got == nil {
 		t.Fatal("expected flow to be found after save")
 	}
@@ -559,9 +559,9 @@ func TestListFlows(t *testing.T) {
 
 	now := time.Now()
 	flows := []*Flow{
-		{ID: "a", AccountID: "user-1", Prompt: "Q1", CreatedAt: now.Add(-2 * time.Hour)},
-		{ID: "b", AccountID: "user-1", Prompt: "Q2", CreatedAt: now.Add(-1 * time.Hour)},
-		{ID: "c", AccountID: "user-2", Prompt: "Q3", CreatedAt: now},
+		{ID: "a", AccountID: "user_1", Prompt: "Q1", CreatedAt: now.Add(-2 * time.Hour)},
+		{ID: "b", AccountID: "user_1", Prompt: "Q2", CreatedAt: now.Add(-1 * time.Hour)},
+		{ID: "c", AccountID: "user_2", Prompt: "Q3", CreatedAt: now},
 	}
 	flowMu.Lock()
 	for _, f := range flows {
@@ -569,7 +569,7 @@ func TestListFlows(t *testing.T) {
 	}
 	flowMu.Unlock()
 
-	got := ListFlows("user-1")
+	got := ListFlows("user_1")
 	if len(got) != 2 {
 		t.Fatalf("expected 2 flows for user-1, got %d", len(got))
 	}
@@ -585,20 +585,20 @@ func TestListFlows(t *testing.T) {
 func TestDeleteFlow(t *testing.T) {
 	flowMu.Lock()
 	flowStore = map[string]*Flow{
-		"del-1": {ID: "del-1", AccountID: "owner"},
-		"del-2": {ID: "del-2", AccountID: "other"},
+		"del_1": {ID: "del_1", AccountID: "owner"},
+		"del_2": {ID: "del_2", AccountID: "other"},
 	}
 	flowMu.Unlock()
 
 	// Should not delete a flow owned by a different account.
-	deleteFlow("owner", "del-2") //nolint:errcheck
-	if getFlow("del-2") == nil {
+	deleteFlow("owner", "del_2") //nolint:errcheck
+	if getFlow("del_2") == nil {
 		t.Error("deleteFlow should not remove a flow owned by a different account")
 	}
 
 	// Should delete the owner's own flow.
-	deleteFlow("owner", "del-1") //nolint:errcheck
-	if getFlow("del-1") != nil {
+	deleteFlow("owner", "del_1") //nolint:errcheck
+	if getFlow("del_1") != nil {
 		t.Error("deleteFlow should remove the owner's flow")
 	}
 }

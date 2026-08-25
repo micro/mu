@@ -76,7 +76,7 @@ func shown(t *testing.T, owner string) []*Doc {
 }
 
 func TestThePageWritesReadsEditsAndDeletes(t *testing.T) {
-	const owner = "page-user"
+	const owner = "page_user"
 
 	loc := post(t, owner, url.Values{
 		"title":   {"A plan"},
@@ -136,17 +136,17 @@ func TestABadWriteKeepsWhatWasTyped(t *testing.T) {
 }
 
 func TestThePageCannotTouchSomebodyElsesDocuments(t *testing.T) {
-	loc := post(t, "owner-a", url.Values{"title": {"Private"}, "content": {"mine"}})
+	loc := post(t, "owner_a", url.Values{"title": {"Private"}, "content": {"mine"}})
 	id := strings.TrimPrefix(loc, "/docs?id=")
 
 	// Another account deleting by id must not work.
-	post(t, "owner-b", url.Values{"delete": {id}})
-	if got := shown(t, "owner-a"); len(got) != 1 {
+	post(t, "owner_b", url.Values{"delete": {id}})
+	if got := shown(t, "owner_a"); len(got) != 1 {
 		t.Fatal("another account deleted this document")
 	}
 	// Nor reading it.
 	w := httptest.NewRecorder()
-	Handler(w, signedIn(t, "owner-b", "GET", "/docs?id="+id, nil))
+	Handler(w, signedIn(t, "owner_b", "GET", "/docs?id="+id, nil))
 	if strings.Contains(w.Body.String(), "mine") {
 		t.Error("another account can read this document's body")
 	}

@@ -39,7 +39,7 @@ func TestPickingAnAgentNavigatesRatherThanRelabelling(t *testing.T) {
 // the page is for, so this is only true if the page is actually re-rendered for
 // the agent that was picked.
 func TestARailForOneAgentIsEmptyUntilThatAgentHasBeenUsed(t *testing.T) {
-	acc := owner(t, "rail-reader")
+	acc := owner(t, "rail_reader")
 
 	rail := renderSessionsRail(acc, "", "agent-with-no-history", true)
 	if !strings.Contains(rail, "Nothing here yet. Ask this agent something.") {

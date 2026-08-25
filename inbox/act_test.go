@@ -35,7 +35,7 @@ func reader(t *testing.T, id string) {
 // move is that the details are already in the messages above it.
 func TestAConversationCarriesTheAssignDialog(t *testing.T) {
 	r := httptest.NewRequest("GET", "/inbox?id=x", nil)
-	body := assignDialog(r, "dlg-x", &thread.Thread{ID: "x"}, "")
+	body := assignDialog(r, "dlg_x", &thread.Thread{ID: "x"}, "")
 
 	for _, want := range []string{`method="post"`, `action="/inbox"`,
 		`name="id" value="x"`, `name="_csrf"`, `name="ask"`} {
@@ -72,8 +72,8 @@ func TestAConversationCarriesTheAssignDialog(t *testing.T) {
 // Somebody else's conversation is not a conversation. Scoped by account, so an
 // id from elsewhere is not "forbidden" — there is no such thing here.
 func TestYouCanOnlyActOnYourOwnConversation(t *testing.T) {
-	reader(t, "act-me")
-	theirs := thread.Open("act-somebody-else", "mail", "<x@example.com>")
+	reader(t, "act_me")
+	theirs := thread.Open("act_somebody_else", "mail", "<x@example.com>")
 	if theirs == nil {
 		t.Fatal("no conversation")
 	}
@@ -82,12 +82,12 @@ func TestYouCanOnlyActOnYourOwnConversation(t *testing.T) {
 	r := httptest.NewRequest("POST", "/inbox", strings.NewReader(form.Encode()))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	w := httptest.NewRecorder()
-	action(w, r, "act-me")
+	action(w, r, "act_me")
 
 	if w.Code != 404 {
 		t.Errorf("answered %d", w.Code)
 	}
-	if taskOn(t, "act-me", theirs.ID) != nil || taskOn(t, "act-somebody-else", theirs.ID) != nil {
+	if taskOn(t, "act_me", theirs.ID) != nil || taskOn(t, "act_somebody_else", theirs.ID) != nil {
 		t.Error("work was made out of somebody else's conversation")
 	}
 }
@@ -109,15 +109,15 @@ func taskOn(t *testing.T, who, threadID string) *tasks.Task {
 // An empty instruction runs nothing and costs nothing. Somebody pressed the
 // button.
 func TestAnEmptyInstructionDoesNothing(t *testing.T) {
-	reader(t, "act-empty")
-	mine := thread.Open("act-empty", "mail", "<y@example.com>")
+	reader(t, "act_empty")
+	mine := thread.Open("act_empty", "mail", "<y@example.com>")
 	form := url.Values{"id": {mine.ID}, "ask": {"   "}}
 	r := httptest.NewRequest("POST", "/inbox", strings.NewReader(form.Encode()))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	w := httptest.NewRecorder()
-	action(w, r, "act-empty")
+	action(w, r, "act_empty")
 
-	if taskOn(t, "act-empty", mine.ID) != nil {
+	if taskOn(t, "act_empty", mine.ID) != nil {
 		t.Error("an empty instruction made work")
 	}
 	if w.Code != 303 {
@@ -137,7 +137,7 @@ func TestTheInstructionLandsOnTheConversation(t *testing.T) {
 	// A fresh account per run. The record loads from disk at package init,
 	// before a test can point HOME somewhere else, so a fixed id accumulates
 	// across runs and the counts below drift.
-	who := fmt.Sprintf("act-record-%d", time.Now().UnixNano())
+	who := fmt.Sprintf("act_rec_%d", time.Now().UnixNano()%100000000)
 	reader(t, who)
 	mine := thread.Open(who, "mail", "<z@example.com>")
 	thread.Add(thread.Message{Thread: mine.ID, Account: who, Text: "dinner on the 4th at 8"})
@@ -172,7 +172,7 @@ func TestTheInstructionLandsOnTheConversation(t *testing.T) {
 // whether you are waiting. Ask runs now; Hand over makes work and you can close
 // the tab, and the answer arrives on the conversation you were reading.
 func TestHandingOverMakesATaskOnTheConversation(t *testing.T) {
-	const who = "inbox-hand"
+	const who = "inbox_hand"
 	reader(t, who)
 
 	said := ""
@@ -235,7 +235,7 @@ func TestHandingOverMakesATaskOnTheConversation(t *testing.T) {
 // place work is actually given away, so having more than one agent bought
 // nothing exactly where it should have counted.
 func TestHandingOverKeepsTheConversationsAgent(t *testing.T) {
-	const who = "act-agentful"
+	const who = "act_agentful"
 	reader(t, who)
 
 	th := thread.Open(who, "mail", "<agentful@example.com>")
@@ -262,7 +262,7 @@ func TestHandingOverKeepsTheConversationsAgent(t *testing.T) {
 // And a conversation with no agent stays with the default, which is what
 // almost every thread is.
 func TestHandingOverWithoutAnAgentIsStillTheDefault(t *testing.T) {
-	const who = "act-agentless"
+	const who = "act_agentless"
 	reader(t, who)
 
 	th := thread.Open(who, "mail", "<agentless@example.com>")
@@ -291,7 +291,7 @@ func TestHandingOverWithoutAnAgentIsStillTheDefault(t *testing.T) {
 // — which for mail to a bare address is never. So an account with four agents
 // handed everything to the default one and nothing on the page said so.
 func TestThePickerDecidesWhoGetsTheWork(t *testing.T) {
-	const who = "act-picker"
+	const who = "act_picker"
 	reader(t, who)
 	Agents = func(owner string) []Agent {
 		return []Agent{{ID: "research", Name: "Research", Tag: "research"},
@@ -325,7 +325,7 @@ func TestThePickerDecidesWhoGetsTheWork(t *testing.T) {
 // should not be stored carrying a value that means nothing, and falling back
 // to the default is what agent/work does with an unknown name anyway.
 func TestAForgedAgentFallsBackToTheDefault(t *testing.T) {
-	const who = "act-forged"
+	const who = "act_forged"
 	reader(t, who)
 	Agents = func(owner string) []Agent {
 		return []Agent{{ID: "research", Name: "Research", Tag: "research"}}
@@ -338,7 +338,7 @@ func TestAForgedAgentFallsBackToTheDefault(t *testing.T) {
 	}
 
 	form := url.Values{"id": {th.ID}, "ask": {"deal with this"},
-		"agent": {"somebody-elses-agent"}}
+		"agent": {"somebody_elses_agent"}}
 	r := httptest.NewRequest("POST", "/inbox", strings.NewReader(form.Encode()))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	action(httptest.NewRecorder(), r, who)

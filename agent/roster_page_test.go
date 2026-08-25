@@ -18,8 +18,8 @@ import (
 // entry into somebody you are about to write to, and "Not used yet" is the
 // honest version of the same fact.
 func TestARosterRowSaysWhenItLastSpoke(t *testing.T) {
-	const who = "roster-seen"
-	auth.Create(&auth.Account{ID: who, Name: who, Secret: "test-secret"}) //nolint:errcheck
+	const who = "roster_seen"
+	auth.Create(&auth.Account{ID: who, Name: who, Secret: "test_secret"}) //nolint:errcheck
 
 	made, _, err := CreateAgent(who, "Research", "", "", "", nil, false)
 	if err != nil {
@@ -32,7 +32,7 @@ func TestARosterRowSaysWhenItLastSpoke(t *testing.T) {
 		t.Errorf("an unused agent reads %q", got)
 	}
 
-	th := thread.Open(who, thread.WebClient, "roster-seen-root")
+	th := thread.Open(who, thread.WebClient, "roster_seen_root")
 	if th == nil {
 		t.Fatal("no thread")
 	}

@@ -60,14 +60,14 @@ func ask(token string) *http.Request {
 
 // The case the whole change is about: known caller, no money.
 func TestASignedInCallerWithNoCreditsIsOfferedThePaymentPath(t *testing.T) {
-	token := broke(t, "skint-agent", 0)
+	token := broke(t, "skint_agent", 0)
 
 	who, blocked, reason := payer(ask(token), token, quota.OpWebSearch)
 
 	if !blocked {
 		t.Fatal("an account with no credits was let through a metered call")
 	}
-	if who != "skint-agent" {
+	if who != "skint_agent" {
 		t.Errorf("the refusal is filed under %q, not the account that made it", who)
 	}
 	if reason == "" {
@@ -84,14 +84,14 @@ func TestASignedInCallerWithNoCreditsIsOfferedThePaymentPath(t *testing.T) {
 // With credits, nothing changes: no challenge, and the call proceeds to be
 // charged the way it always was.
 func TestASignedInCallerWithCreditsIsNotStopped(t *testing.T) {
-	token := broke(t, "funded-agent", 500)
+	token := broke(t, "funded_agent", 500)
 
 	who, blocked, reason := payer(ask(token), token, quota.OpWebSearch)
 
 	if blocked {
 		t.Fatalf("an account with credits was refused: %q", reason)
 	}
-	if who != "funded-agent" {
+	if who != "funded_agent" {
 		t.Errorf("the caller is %q", who)
 	}
 }
@@ -114,7 +114,7 @@ func TestAStrangerStillGetsTheStandardChallenge(t *testing.T) {
 
 // A token that is not a token is a stranger, not an error.
 func TestAnUnusableTokenIsTreatedAsAStranger(t *testing.T) {
-	_, blocked, reason := payer(ask("not-a-real-token"), "not-a-real-token", quota.OpWebSearch)
+	_, blocked, reason := payer(ask("not_a_real_token"), "not_a_real_token", quota.OpWebSearch)
 	if !blocked {
 		t.Fatal("a bad token got through")
 	}

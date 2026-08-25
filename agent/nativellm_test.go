@@ -13,8 +13,8 @@ import (
 // chat, summaries and moderation. Nothing on screen said so, and the symptom
 // was an agent that felt worse than the product around it.
 func TestTheAgentPrefersAnthropicLikeEverythingElse(t *testing.T) {
-	t.Setenv("ANTHROPIC_API_KEY", "sk-test")
-	t.Setenv("ATLAS_API_KEY", "atlas-test")
+	t.Setenv("ANTHROPIC_API_KEY", "sk_test")
+	t.Setenv("ATLAS_API_KEY", "atlas_test")
 	t.Setenv("AGENT_MODEL", "")
 	t.Setenv("ANTHROPIC_MODEL", "")
 
@@ -33,8 +33,8 @@ func TestTheAgentPrefersAnthropicLikeEverythingElse(t *testing.T) {
 
 // And an operator who wants to spend Atlas credit says so, by naming a model.
 func TestNamingAModelPicksItsProvider(t *testing.T) {
-	t.Setenv("ANTHROPIC_API_KEY", "sk-test")
-	t.Setenv("ATLAS_API_KEY", "atlas-test")
+	t.Setenv("ANTHROPIC_API_KEY", "sk_test")
+	t.Setenv("ATLAS_API_KEY", "atlas_test")
 	t.Setenv("AGENT_MODEL", "deepseek-ai/deepseek-v4-pro-0813")
 
 	provider, _, model, ok := nativeLLM()
@@ -52,7 +52,7 @@ func TestNamingAModelPicksItsProvider(t *testing.T) {
 // Atlas alone still works, which is the self-hosted case with free credit.
 func TestAtlasAloneStillRunsTheAgent(t *testing.T) {
 	t.Setenv("ANTHROPIC_API_KEY", "")
-	t.Setenv("ATLAS_API_KEY", "atlas-test")
+	t.Setenv("ATLAS_API_KEY", "atlas_test")
 	t.Setenv("AGENT_MODEL", "")
 	settings.Set("ANTHROPIC_API_KEY", "")
 	t.Cleanup(func() { settings.Set("ANTHROPIC_API_KEY", "") })
@@ -77,8 +77,8 @@ func TestAtlasAloneStillRunsTheAgent(t *testing.T) {
 func TestANamedModelNeverReachesAProviderThatCannotServeIt(t *testing.T) {
 	// A DeepSeek id, no Atlas key, but both other providers available.
 	t.Setenv("ATLAS_API_KEY", "")
-	t.Setenv("ANTHROPIC_API_KEY", "sk-test")
-	t.Setenv("OPENROUTER_API_KEY", "or-test")
+	t.Setenv("ANTHROPIC_API_KEY", "sk_test")
+	t.Setenv("OPENROUTER_API_KEY", "or_test")
 	t.Setenv("AGENT_MODEL", "deepseek-ai/deepseek-v4-pro-0813")
 	settings.Set("ATLAS_API_KEY", "")
 	t.Cleanup(func() { settings.Set("ATLAS_API_KEY", "") })

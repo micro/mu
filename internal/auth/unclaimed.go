@@ -41,6 +41,13 @@ func Claim(oldID, newID, secret string) error {
 	if newID == "" {
 		return errors.New("no username")
 	}
+	// The same rule signup answers to. Claiming was the door that did not ask:
+	// an account created from an inbound address could be claimed under any
+	// name at all, reserved ones included, which would have handed somebody
+	// admin@ or agent@ for the cost of an email.
+	if reason := ValidateUsername(newID); reason != "" {
+		return errors.New(reason)
+	}
 	mutex.Lock()
 	acc, ok := accounts[oldID]
 	if !ok {
