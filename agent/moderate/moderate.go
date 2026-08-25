@@ -17,7 +17,7 @@
 // service/apps each called flag.CheckContent, which ran an LLM. The rule was
 // not broken by an import — it was broken by a function variable, `analyzer`,
 // which internal/flag declared and which was filled in at boot by, of all
-// things, service/chat. CLAUDE.md names that shape: "a function variable is an
+// things, service/chat. AGENTS.md names that shape: "a function variable is an
 // import the compiler cannot see", and every rule in the layering tests is
 // checked by reading import statements.
 //

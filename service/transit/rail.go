@@ -13,7 +13,7 @@ package transit
 // and a connection to hold open, which you then have to store and index before
 // it can answer a question. That is a different kind of program from this one.
 // Everything in this repository is request in, response out — see "What a
-// service is" in CLAUDE.md — and a service that only works while a background
+// service is" in AGENTS.md — and a service that only works while a background
 // consumer has been running is one that answers differently depending on how
 // long the process has been up.
 //

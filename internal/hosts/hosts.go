@@ -11,7 +11,7 @@
 // written. service/browser needs the same answer for the same reason — an
 // agent choosing a URL is an agent acting on text a stranger wrote — and a
 // service may not import another service, so the shared fact moves down here.
-// That is CLAUDE.md's own instruction for exactly this case.
+// That is AGENTS.md's own instruction for exactly this case.
 //
 // # What it is guarding
 //

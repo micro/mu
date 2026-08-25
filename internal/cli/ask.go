@@ -25,7 +25,7 @@ package cli
 // up at /inbox and /recall, it continues in a browser, and an answer you got
 // here is one the agent remembers next time. A terminal client that kept its
 // own history in a file would be the fifth private copy of a conversation, and
-// there is a section of CLAUDE.md about the last four.
+// there is a section of AGENTS.md about the last four.
 //
 // # The thread is the whole point
 //

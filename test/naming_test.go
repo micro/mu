@@ -8,7 +8,7 @@ package test
 // X402Enabled in package x402, a question called Skip that looked like a
 // command.
 //
-// Only one of the rules in CLAUDE.md is mechanically checkable, and it is the
+// Only one of the rules in AGENTS.md is mechanically checkable, and it is the
 // one that goes wrong most quietly — a name that repeats its own package. The
 // call site already says the package, so x402.X402Enabled() says it twice and
 // markets.MarketsHTML() reads like a typo. There is no judgement in it, which
@@ -63,7 +63,7 @@ var exported = []*regexp.Regexp{
 // matches because "Cli" happens to be the first three letters of "Client" —
 // the check is a prefix test and has no idea where a word ends.
 //
-// CLAUDE.md already says how this repository handles that case, about the
+// AGENTS.md already says how this repository handles that case, about the
 // nineteen names that stutter at the end: "The rule is the same rule and the
 // fix is the same fix; the reason it is written down rather than done is that
 // some of them are not stutters at all and each needs looking at." Written

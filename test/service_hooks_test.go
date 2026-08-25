@@ -22,7 +22,7 @@ package test
 // cheaper answer today, and a test that failed on all nine would be deleted
 // within a week. What it does is stop the number going up quietly.
 //
-// The list below is the ledger CLAUDE.md says hooks.go is. It was not: the doc
+// The list below is the ledger AGENTS.md says hooks.go is. It was not: the doc
 // named four hooks, there were nine, and one of the four it named
 // (stream.AIReplyHook) had already been deleted. A ledger that is wrong in both
 // directions tells you the problem is bounded when it is not.
@@ -127,7 +127,7 @@ func TestEveryServiceHookIsOnTheLedger(t *testing.T) {
 	for name := range hooks {
 		if !found[name] {
 			t.Errorf("%s is on the ledger and no longer exists — remove the line.\n"+
-				"CLAUDE.md carried stream.AIReplyHook for exactly this reason, long\n"+
+				"AGENTS.md carried stream.AIReplyHook for exactly this reason, long\n"+
 				"after it was deleted.", name)
 		}
 	}
@@ -136,7 +136,7 @@ func TestEveryServiceHookIsOnTheLedger(t *testing.T) {
 // No service calls an agent.
 //
 // This was written expecting three — tasks.RunAgent, events.RunAgent and
-// events.OnFireEvent, the list CLAUDE.md carried as "not yet enforced" — and
+// events.OnFireEvent, the list AGENTS.md carried as "not yet enforced" — and
 // they went in the same change that added this test. Writing the count down was
 // what made it obvious they were one thing: four ways to ask an agent for work,
 // three of them a service reaching upward through a function variable.

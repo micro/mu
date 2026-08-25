@@ -168,7 +168,7 @@ func toolTitle(t Tool, svc, verb string) string {
 // It is done to the rendered JSON rather than to the tool type because the tool
 // type belongs to go-micro, whose gateway/mcp.Tool carries no annotations
 // field. Adding one there to satisfy Mu is exactly the dependency direction
-// CLAUDE.md rules out: go-micro changes when framework users need something,
+// AGENTS.md rules out: go-micro changes when framework users need something,
 // never because Mu does. So the protocol stays the framework's and this stays
 // ours.
 //

@@ -16,7 +16,7 @@
 // anybody else can observe.
 //
 // That is the same shelf as changing your email or rotating a token: account
-// furniture, which CLAUDE.md already settles for the balance. A service answers
+// furniture, which AGENTS.md already settles for the balance. A service answers
 // a question about state that does not depend on who is asking; "what have I
 // saved" is a question about the asker. The split also cost the obvious thing —
 // two packages named for one person, and the page about you at /@you had no

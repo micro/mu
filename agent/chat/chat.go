@@ -3,7 +3,7 @@
 // Not the chat service — that is service/chat, which holds the rooms, decides
 // who is in them, and is the only thing that knows whether an agent was named.
 // This is the half that answers, and the two are separated for the reason
-// CLAUDE.md gives with a reason rather than a convention behind it: a service
+// AGENTS.md gives with a reason rather than a convention behind it: a service
 // answers a question about state, an agent decides which question to ask, and
 // a service calling a model is asking what its own answer should be.
 //

@@ -17,7 +17,7 @@ package recall
 // this page shows nothing at all until you ask it something.
 //
 // The other option was a flag on the Spec meaning "is a service, but hide it".
-// That was tried, was called Staple, and deleting it was the fix — see CLAUDE.md.
+// That was tried, was called Staple, and deleting it was the fix — see AGENTS.md.
 // A category of half-services is how a catalogue stops being a list of things a
 // person can name.
 

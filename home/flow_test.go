@@ -109,7 +109,7 @@ func TestThereIsOneTagline(t *testing.T) {
 	Landing(rec, httptest.NewRequest("GET", "/", nil))
 	page := rec.Body.String()
 
-	// Every line this positioning has moved past. CLAUDE.md keeps the list;
+	// Every line this positioning has moved past. AGENTS.md keeps the list;
 	// this keeps them off the page, because the way they survive is by living
 	// somewhere nothing renders beside them.
 	for _, gone := range []string{

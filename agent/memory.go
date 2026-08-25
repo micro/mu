@@ -38,7 +38,7 @@ package agent
 //
 // Mu's memory is internal/thread. It is written on every turn from every
 // client by the machinery, not by a decision the agent takes — see "The system
-// of record is not a service" in CLAUDE.md. A go-micro agent here is built for
+// of record is not a service" in AGENTS.md. A go-micro agent here is built for
 // one question and thrown away after it, so anything it wrote to a memory of
 // its own would be discarded unread. Accepting those writes would only put the
 // current question back into the history it is being asked against.

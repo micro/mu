@@ -23,7 +23,7 @@ package agent
 //
 // A service answers a question about state and tools are derived from it. This
 // consumes tools, so it declares no Spec and appears in no catalogue — the rule
-// in CLAUDE.md, which is also why agent_ask was removed as a tool. It is a door
+// in AGENTS.md, which is also why agent_ask was removed as a tool. It is a door
 // onto the agent, next to /mcp, and it lives here because the agent is what it
 // serves.
 

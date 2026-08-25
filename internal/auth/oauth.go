@@ -112,7 +112,7 @@ func OAuthClientsFor(account string) []*OAuthClient {
 }
 
 // GetOAuthClient returns one by id, or nil. The prefix stays because
-// OAuthClient is the type — see the naming rules in CLAUDE.md.
+// OAuthClient is the type — see the naming rules in AGENTS.md.
 func GetOAuthClient(clientID string) *OAuthClient {
 	oauthMu.Lock()
 	defer oauthMu.Unlock()

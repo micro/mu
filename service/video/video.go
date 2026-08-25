@@ -97,7 +97,7 @@ var Client *youtube.Service
 // Configured reports whether this instance can reach YouTube at all.
 //
 // A question, so an adjective — see "Naming what a package exports" in
-// CLAUDE.md. It exists so an empty result can say which of the two things it
+// AGENTS.md. It exists so an empty result can say which of the two things it
 // is: no videos, or no key. Those look identical to a caller and only one of
 // them is worth waiting for.
 func Configured() bool { return strings.TrimSpace(Key) != "" && Client != nil }

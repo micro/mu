@@ -306,7 +306,7 @@ func TestSendingMailNeedsAnAccountNotAWallet(t *testing.T) {
 // another would be no fix at all.
 //
 // So the rule is checkable, and it is checkable because the naming convention
-// in CLAUDE.md is real: "An action is a verb, and says what it changes." A
+// in AGENTS.md is real: "An action is a verb, and says what it changes." A
 // method named Add, Create, Send or Pay changes something by construction. The
 // list below is the mutating half of that convention.
 //
@@ -365,7 +365,7 @@ func firstWord(name string) string {
 // A service's page is at its own name.
 //
 // "service name == directory == route == nav label == tool prefix, with no
-// exceptions in it" is in CLAUDE.md and was not checkable, so there was one:
+// exceptions in it" is in AGENTS.md and was not checkable, so there was one:
 // service/web served its page at /search while everything else under it —
 // /web/fetch, /web/read, /web/preview — was already at /web. One service, its
 // URL tree split in half, and the only way to know was to notice.
