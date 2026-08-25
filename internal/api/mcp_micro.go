@@ -230,6 +230,15 @@ func isToolsList(r *http.Request) bool {
 // tools that do not exist yet.
 const maxResultBytes = 24000
 
+// maxRequestBytes bounds what one call may send in, at both tool doors.
+//
+// Generous for arguments — an app's HTML or a blog post goes through here — and
+// far below what an unauthenticated caller should be able to make this process
+// allocate. It is one constant because /api and /mcp serve the same tools to
+// the same kind of client, and two numbers would be a disagreement waiting to
+// be discovered by whichever door was the smaller.
+const maxRequestBytes = 1 << 20
+
 // bounded truncates on a line boundary, so a list loses whole entries rather
 // than ending mid-record, and says plainly that it did. A silent truncation
 // would be read as the whole answer.

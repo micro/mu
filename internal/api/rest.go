@@ -169,7 +169,7 @@ func RESTHandler(w http.ResponseWriter, r *http.Request) {
 
 		args = map[string]any{}
 		// An empty body is a call with no arguments, not a bad request.
-		dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20))
+		dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxRequestBytes))
 		if err := dec.Decode(&args); err != nil && err.Error() != "EOF" {
 			app.RespondError(w, http.StatusBadRequest, "Body must be a JSON object of arguments")
 			return
