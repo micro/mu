@@ -46,8 +46,15 @@ package chat
 //
 // None here, for the reason imap.go and submission.go both give: nothing in
 // this repository terminates TLS. The operator puts the same proxy in front on
-// 5223 (direct TLS), or terminates and forwards to this port. The port defaults
-// high because an unprivileged process cannot bind 5222.
+// 5223 — direct TLS, the same shape as 993 and 465 — and binds this listener to
+// loopback so the plaintext port is not reachable from outside. There is no
+// STARTTLS on 5222 and none is advertised: a client told to use it there would
+// send its token in the clear believing otherwise. docs/INSTALL.md has the
+// nginx stream block and the two SRV records a client needs to find any of it.
+//
+// # Storage
+//
+// internal/thread, and no store of its own — see xmpp_record.go.
 
 import (
 	"encoding/xml"
@@ -62,10 +69,6 @@ import (
 	"mu/internal/auth"
 	"mu/internal/settings"
 )
-
-// xmppPort is where this answers. Off by default: a listening socket is an
-// operator's decision, and the same rule the SSH door follows.
-const xmppDefaultAddr = ":5222"
 
 // stream namespaces, spelled once.
 const (
@@ -104,7 +107,7 @@ func StartXMPPServer(addr string) error {
 
 // StartXMPPServerIfEnabled starts XMPP unless it is turned off.
 func StartXMPPServerIfEnabled() {
-	addr, on := app.ListenAddr("XMPP_PORT", xmppDefaultAddr)
+	addr, on := app.ListenAddr("XMPP_PORT", app.XMPPPort)
 	if !on {
 		return
 	}

@@ -81,7 +81,7 @@ func StartSubmissionServer(addr string) error {
 
 // StartSubmissionServerIfEnabled starts submission unless it is turned off.
 func StartSubmissionServerIfEnabled() {
-	addr, on := app.ListenAddr("SUBMISSION_PORT", ":1587")
+	addr, on := app.ListenAddr("SUBMISSION_PORT", app.SubmissionPort)
 	if !on {
 		return
 	}

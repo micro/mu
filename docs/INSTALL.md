@@ -323,6 +323,80 @@ The same certificate as the web server. On Debian and Ubuntu the module is a
 separate package (`apt install libnginx-mod-stream`); elsewhere nginx needs
 `--with-stream --with-stream_ssl_module`, which `nginx -V` will tell you.
 
+### XMPP goes in the same block
+
+`XMPP_PORT` is the same arrangement, one more `server` inside the same
+`stream {}`. 5223 is XMPP's implicit-TLS port — the direct-TLS one, the same
+idea as 993 and 465 — and it is what a modern client tries first.
+
+```
+XMPP_PORT=127.0.0.1:5222
+```
+
+```nginx
+    upstream mu_xmpp {
+        server 127.0.0.1:5222;
+    }
+
+    server {
+        listen 5223 ssl;
+        listen [::]:5223 ssl;
+
+        ssl_certificate     /etc/letsencrypt/live/your-domain.com/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/your-domain.com/privkey.pem;
+        ssl_protocols       TLSv1.2 TLSv1.3;
+
+        proxy_pass    mu_xmpp;
+
+        # A chat connection is idle most of the time and closing it is a
+        # reconnect and a re-auth. The server's own read deadline is 10
+        # minutes; nginx must be longer or it is the one hanging up.
+        proxy_timeout 15m;
+    }
+```
+
+There is no STARTTLS on 5222, for the same reason there is none on 143: the
+server does not advertise it, so a client told to use it there would be sending
+a token in the clear believing otherwise. Bind it to loopback and let 5223 be
+the only way in.
+
+**Two DNS records make it findable.** A client given `you@your-domain.com`
+looks up `_xmpps-client._tcp.your-domain.com` before it tries anything, and
+falls back to `_xmpp-client._tcp` for the plaintext port. Without them a client
+guesses the domain itself on 5222, which is not where this is.
+
+```
+_xmpps-client._tcp.your-domain.com. 3600 IN SRV 5 0 5223 your-domain.com.
+_xmpp-client._tcp.your-domain.com.  3600 IN SRV 5 0 5222 your-domain.com.
+```
+
+Server-to-server federation (port 5269) is not built, so there is nothing to
+proxy for it and a message to another domain is refused rather than silently
+dropped.
+
+### SSH does not go through nginx
+
+`SHELL_SSH_PORT` is the exception, and it is worth being explicit about because
+the instinct is to put everything behind the one proxy.
+
+SSH carries its own transport encryption and does its own host-key
+verification. There is no TLS to terminate and no virtual host to pick, so
+nginx would be a plain TCP forwarder adding a hop, a second timeout to get
+wrong, and a source address that is `127.0.0.1` for every session. Open the
+port instead:
+
+```
+SHELL_SSH_PORT=2222
+```
+
+Wrapping it in `stream { server { listen 2222 ssl; ... } }` is the one thing
+that is actively wrong — that offers TLS on the front, and an SSH client does
+not speak TLS, so every connection fails at the handshake with a message about
+neither protocol.
+
+Pick a port other than 22. That one is the host's own `sshd`, and taking it by
+accident locks you out of your own machine.
+
 This is 993, implicit TLS — the port every client offers first. There is no
 STARTTLS on 143: the server does not advertise it, so a client asked to use it
 there would be sending a token in the clear believing otherwise.
@@ -787,7 +861,7 @@ token.
 | `SHELL_MAX_MACHINES` | Optional, default half the host's memory divided by what one machine takes, minimum 1. How many machines may run at once. Each holds its memory cap whether or not anybody is using it, so a box that fits two cannot host five however cheap a command is. Starting one past the cap stops the idlest machine rather than refusing the caller — the volume is untouched and their next command starts it again |
 | `SHELL_NETWORK` | Optional, default `bridge`. `none` gives machines no network at all. The default is on because a machine that cannot fetch a dependency or push a branch cannot do the thing this is for — what the container bounds is the host, not the internet |
 | `SHELL_MAX_SECONDS` | Optional, default 600. The longest one command may run, whatever it asked for. A command with no timeout of its own gets 120 |
-| `XMPP_PORT` | Optional, **off by default**. A port to answer XMPP on, so `asim@your.domain` is a chat address as well as a mailbox — one account, one local part, reachable two ways. Conversations, Dino, Gajim and Monal are clients for it. Sign in with your username and an access token as the password, the same credential IMAP and submission take. The agent addresses work unchanged: `agent@your.domain` and `you+research@your.domain` are valid JIDs as well as valid mail addresses, and it is the same agent at the end of them. `5222` is the standard port and the default here is `:5222`; set it high and put a proxy in front if you cannot bind it, because nothing in Mu terminates TLS — the same arrangement IMAP and submission use. Federation between servers is not built yet, so a message to another domain is refused rather than silently dropped |
+| `XMPP_PORT` | **On by default at `:5222`**; set it to `off` to close the door. A port to answer XMPP on, so `asim@your.domain` is a chat address as well as a mailbox — one account, one local part, reachable two ways. Conversations, Dino, Gajim and Monal are clients for it. Sign in with your username and an access token as the password, the same credential IMAP and submission take. The agent addresses work unchanged: `agent@your.domain` and `you+research@your.domain` are valid JIDs as well as valid mail addresses, and it is the same agent at the end of them. Nothing in Mu terminates TLS, so bind it to loopback and put the proxy on 5223 — see the nginx `stream {}` section above, which is the same arrangement IMAP and submission use, plus the two SRV records a client needs to find it. Federation between servers is not built yet, so a message to another domain is refused rather than silently dropped |
 | `SHELL_SSH_PORT` | Optional, **off by default**. A port to answer SSH on, so somebody with a registered public key can open a shell in their own machine — `ssh -p 2222 you@host`. Mu is the SSH server; no `sshd` runs inside a container and no key is ever put in one, so the session lands in the same box with the same caps, memory, CPU and PID limits as a tool call. Keys only, no passwords, and the username is ignored: which key signed the handshake is what says who you are. There is no default because `22` on the host is the host's own `sshd` and taking it by accident locks you out of your own machine — pick a port and open it deliberately. A shell holds a machine open, so it is the most expensive thing a caller can do; sessions are capped at four hours. Register a key at `/shell` |
 | `SHELL_IDLE_MINUTES` | Optional, default 30. How long a machine may sit doing nothing before it is stopped. Stopping is not deleting: the `/work` volume is untouched and the next command starts it again in about a second. This is what bounds the memory of machines nobody is using, which a price on commands would not have — the cost is the idle container rather than the calls |
 | `OS_MAPS_KEY` | Optional. Ordnance Survey Data Hub key, for `/maps` — the basemap under anything spatial. Free tier at osdatahub.os.uk. Britain only. Without it the service still serves every tile this instance has already fetched, so a lapsed key degrades to the region you have already used rather than to nothing. Tiles are free to callers; what bounds them is `TILE_FETCH_PER_HOUR` |

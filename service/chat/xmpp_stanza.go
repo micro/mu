@@ -160,16 +160,24 @@ func (s *session) presence(st stanza) {
 
 // message delivers what somebody said.
 //
-// Three destinations and the same rule as mail decides between them: an agent
-// address wakes an agent, an account here is delivered to whatever it has
-// connected, and anything else is refused rather than silently dropped.
+// Four destinations and the same rule as mail decides between them: an agent
+// address wakes an agent, an account here is written down and handed to whatever
+// it has connected, an address here that is nobody is refused, and another
+// domain is refused as unreachable.
+//
+// The last two used to be one answer, and it was the wrong one. Whether the
+// recipient happened to have a client running decided the error, so writing to
+// a colleague who was asleep came back as "that server does not exist" — a
+// permanent failure a client will not retry, for a temporary condition that is
+// not a failure at all. Being offline is the ordinary case for chat, which is
+// exactly why the record has to be underneath it.
 func (s *session) message(st stanza) {
 	text := strings.TrimSpace(st.Body)
 	if text == "" || st.To == "" {
 		return
 	}
 	to := strings.ToLower(bareOf(st.To))
-	local, _ := splitJID(to)
+	local, domain := splitJID(to)
 
 	// An agent. Announced rather than answered here, because a service does
 	// not run an agent — see event.ChatForAgent and agent/chat, which is the
@@ -179,17 +187,56 @@ func (s *session) message(st stanza) {
 		return
 	}
 
-	// Somebody here.
-	if deliverXMPP(s.bare(), to, text) {
+	// Federation is not built, so say so rather than accepting a message that
+	// goes nowhere. A stanza error is what a client renders as "not delivered";
+	// silence is what it renders as delivered.
+	if !strings.EqualFold(domain, Domain()) {
+		s.stanzaError(st.To, "cancel", "remote-server-not-found")
 		return
 	}
 
-	// Federation is not built, so say so rather than accepting a message that
-	// goes nowhere. A stanza error is what a client renders as "not
-	// delivered"; silence is what it renders as delivered.
-	s.send(`<message type='error' to='%s' from='%s'><error type='cancel'>`+
-		`<remote-server-not-found xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>`+
-		`</error></message>`, xmlAttr(s.jid()), xmlAttr(st.To)) //nolint:errcheck
+	// Somebody here — or nobody. An address on this domain that names no
+	// account is a typo, and telling the sender that is the whole reason to
+	// separate this case from the one above.
+	if accountFor(to) == nil {
+		s.stanzaError(st.To, "cancel", "item-not-found")
+		return
+	}
+
+	// Written down first, so it survives whether or not anybody is connected —
+	// see xmpp_record.go for why there is no chat store of its own.
+	record(s.bare(), to, text)
+	deliverXMPP(s.bare(), to, text)
+}
+
+// accountFor is whose address this is, or nil for nobody here.
+//
+// Two lookups in the order service/mail uses them, because it is the same
+// question about the same addresses: a custom address somebody has added to
+// their account is theirs, and otherwise the local part is the account id. An
+// instance where chat resolved only one of those would have addresses that take
+// mail and refuse chat, which is the opposite of the point.
+func accountFor(jid string) *auth.Account {
+	jid = strings.ToLower(bareOf(jid))
+	if acc := auth.AccountForAddress(jid); acc != nil {
+		return acc
+	}
+	local, _ := splitJID(jid)
+	if local == "" {
+		return nil
+	}
+	acc, err := auth.GetAccount(local)
+	if err != nil {
+		return nil
+	}
+	return acc
+}
+
+// stanzaError tells the sender their message did not arrive.
+func (s *session) stanzaError(to, kind, condition string) {
+	s.send(`<message type='error' to='%s' from='%s'><error type='%s'>`+
+		`<%s xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>`+
+		`</error></message>`, xmlAttr(s.jid()), xmlAttr(to), kind, condition) //nolint:errcheck
 }
 
 // deliverXMPP hands a message to every resource a local account has open, and

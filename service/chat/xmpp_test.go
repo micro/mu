@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"mu/internal/auth"
+	"mu/internal/thread"
 )
 
 // A real client can connect, authenticate, bind and send a message.
@@ -125,6 +126,97 @@ func TestTwoAccountsHereCanTalk(t *testing.T) {
 	}
 }
 
+// Somebody who is not connected still gets the message.
+//
+// Being offline is the ordinary case for chat, and it used to come back to the
+// sender as remote-server-not-found — a permanent failure, for a temporary
+// condition that is not a failure. What makes accepting it honest is that it
+// lands in the recipient's record, so it is at /inbox when they look.
+func TestAMessageToSomebodyOfflineIsKeptRatherThanRefused(t *testing.T) {
+	t.Setenv("MU_DOMAIN", "example.test")
+	a, atok := accountWithToken(t, "xmppwriter")
+	accountWithToken(t, "xmppsleeper")
+
+	alice := dial(t)
+	defer alice.Close()
+	alice.handshake(t, a.ID, atok)
+
+	alice.write(`<message type='chat' to='xmppsleeper@example.test'>` +
+		`<body>call me when you wake up</body></message>`)
+	if got := alice.silence(t); got != "" {
+		t.Fatalf("writing to somebody offline came back with %q", clip(got))
+	}
+
+	// Both ends, because the record is account-scoped: the sender's copy is
+	// what they sent, the recipient's is what arrived, and neither can read the
+	// other's.
+	for _, who := range []string{"xmppwriter", "xmppsleeper"} {
+		th := thread.Find(who, thread.ChatClient, xmppRoom(
+			"xmppwriter@example.test", "xmppsleeper@example.test"))
+		if th == nil {
+			t.Fatalf("%s has no record of the conversation, so an offline "+
+				"message is simply lost", who)
+		}
+		msgs := thread.Messages(who, th.ID, 10)
+		if len(msgs) != 1 || !strings.Contains(msgs[0].Text, "call me") {
+			t.Errorf("%s's record holds %d messages, want the one that was sent: %+v",
+				who, len(msgs), msgs)
+		}
+	}
+}
+
+// Delivering to several resources records the message once.
+//
+// A phone and a laptop are two places to deliver to, not two things that
+// happened.
+func TestOneMessageIsRecordedOnce(t *testing.T) {
+	t.Setenv("MU_DOMAIN", "example.test")
+	a, atok := accountWithToken(t, "xmppsingle")
+	b, btok := accountWithToken(t, "xmppmulti")
+
+	alice := dial(t)
+	defer alice.Close()
+	alice.handshake(t, a.ID, atok)
+
+	for _, res := range []string{"phone", "laptop"} {
+		c := dial(t)
+		defer c.Close()
+		c.handshakeAs(t, b.ID, btok, res)
+	}
+
+	alice.write(`<message type='chat' to='xmppmulti@example.test'><body>once</body></message>`)
+	time.Sleep(200 * time.Millisecond)
+
+	th := thread.Find("xmppmulti", thread.ChatClient,
+		xmppRoom("xmppsingle@example.test", "xmppmulti@example.test"))
+	if th == nil {
+		t.Fatal("nothing was recorded")
+	}
+	if n := len(thread.Messages("xmppmulti", th.ID, 10)); n != 1 {
+		t.Errorf("one message reached %d resources and was recorded %d times", 2, n)
+	}
+}
+
+// An address here that is nobody says so, and does not claim the server is gone.
+//
+// A typo and an unreachable domain are different problems with different fixes,
+// and a client shows the sender whichever one it is told.
+func TestAnAddressHereThatIsNobodySaysSo(t *testing.T) {
+	t.Setenv("MU_DOMAIN", "example.test")
+	a, atok := accountWithToken(t, "xmpptypist")
+
+	alice := dial(t)
+	defer alice.Close()
+	alice.handshake(t, a.ID, atok)
+
+	alice.write(`<message type='chat' to='nosuchperson@example.test'><body>hello</body></message>`)
+	got := alice.read(t)
+	if !strings.Contains(got, "item-not-found") {
+		t.Errorf("writing to a name that is nobody here reported %q, which does "+
+			"not tell the sender the address is wrong", clip(got))
+	}
+}
+
 // A display name with a quote in it does not end the attribute it is in.
 //
 // The same class of bug as the mail header injection this repository fixed, in
@@ -206,6 +298,24 @@ func dial(t *testing.T) *conn {
 
 func (c *conn) write(s string) { fmt.Fprint(c.Conn, s) }
 
+// silence reads whatever comes back in a moment, and is content with nothing.
+//
+// read fails a test that gets no reply, which is right everywhere a reply is
+// the point and wrong for asserting a message was accepted: acceptance in XMPP
+// is the absence of an error stanza.
+func (c *conn) silence(t *testing.T) string {
+	t.Helper()
+	var b strings.Builder
+	_ = c.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
+	for {
+		n, err := c.Read(c.buf)
+		b.Write(c.buf[:n])
+		if err != nil {
+			return strings.TrimSpace(b.String())
+		}
+	}
+}
+
 func (c *conn) read(t *testing.T) string {
 	t.Helper()
 	return c.until(t, "")
@@ -247,6 +357,12 @@ func (c *conn) until(t *testing.T, want string) string {
 // handshake runs stream, SASL, restart and bind, for tests about what happens
 // afterwards.
 func (c *conn) handshake(t *testing.T, id, token string) {
+	c.handshakeAs(t, id, token, "")
+}
+
+// handshakeAs is the same, binding a named resource — a phone and a laptop are
+// two connections for one account.
+func (c *conn) handshakeAs(t *testing.T, id, token, resource string) {
 	t.Helper()
 	open := `<?xml version='1.0'?><stream:stream to='example.test' ` +
 		`xmlns='jabber:client' xmlns:stream='http://etherx.jabber.org/streams' version='1.0'>`
@@ -257,7 +373,12 @@ func (c *conn) handshake(t *testing.T, id, token string) {
 	c.read(t)
 	c.write(open)
 	c.until(t, "</stream:features>")
-	c.write(`<iq type='set' id='b'><bind xmlns='urn:ietf:params:xml:ns:xmpp-bind'/></iq>`)
+	bind := `<iq type='set' id='b'><bind xmlns='urn:ietf:params:xml:ns:xmpp-bind'/></iq>`
+	if resource != "" {
+		bind = `<iq type='set' id='b'><bind xmlns='urn:ietf:params:xml:ns:xmpp-bind'>` +
+			`<resource>` + resource + `</resource></bind></iq>`
+	}
+	c.write(bind)
 	c.read(t)
 }
 
@@ -270,6 +391,12 @@ func accountWithToken(t *testing.T, id string) (*auth.Account, string) {
 			t.Fatalf("create %s: %v", id, err)
 		}
 	}
+	// The record outlives a test run — it is on disk — so a test that counts
+	// messages counts the last run's too. Cleared at both ends: after, so a run
+	// leaves nothing behind, and before, because a run that failed halfway
+	// never got to its cleanup.
+	thread.Forget(acc.ID)
+	t.Cleanup(func() { thread.Forget(acc.ID) })
 	_, token, err := auth.CreateToken(acc.ID, "xmpp test", nil, time.Time{})
 	if err != nil {
 		t.Fatalf("token for %s: %v", id, err)

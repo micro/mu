@@ -45,7 +45,12 @@ import (
 )
 
 // Client is what the record calls a turn that happened in a room.
-const Client = "chat"
+//
+// The record's own constant rather than a second copy of the word: service/chat
+// writes person-to-person XMPP exchanges into the record too (xmpp_record.go),
+// a service may not import an agent, and two spellings that drifted would file
+// the two halves of one conversation under two clients.
+const Client = thread.ChatClient
 
 // Load subscribes to the rooms.
 func Load() {
@@ -172,7 +177,3 @@ func about(s spoken) string {
 	}
 	return b.String()
 }
-
-// unused keeps the record's client vocabulary honest: the constant above has
-// to be one the record knows, and thread is where that list lives.
-var _ = thread.WebClient

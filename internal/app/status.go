@@ -200,9 +200,14 @@ func buildStatus() StatusResponse {
 	// The listeners, off included. This read MAIL_PORT raw and reported
 	// "Port off" with a tick beside it, because any non-empty string counted as
 	// running — which is the one answer a status page must not give.
+	// The defaults come from the constants the listeners themselves read, not
+	// from copies here: this table held its own and they drifted, so the page
+	// whose job is saying what is running reported a port nothing was on.
 	for _, l := range []struct{ name, key, fallback string }{
-		{"SMTP Server", "MAIL_PORT", ":2525"},
-		{"IMAP Server", "IMAP_PORT", ":1143"},
+		{"SMTP Server", "MAIL_PORT", MailPort},
+		{"IMAP Server", "IMAP_PORT", IMAPPort},
+		{"Submission", "SUBMISSION_PORT", SubmissionPort},
+		{"XMPP Server", "XMPP_PORT", XMPPPort},
 	} {
 		addr, on := ListenAddr(l.key, l.fallback)
 		details := "Off"

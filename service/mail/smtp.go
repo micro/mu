@@ -1078,7 +1078,7 @@ func StartSMTPServer(addr string) error {
 // MAIL_PORT=off is the way to run the web server with no MTA — see
 // app.ListenAddr, and StartIMAPServerIfEnabled, which is the same shape.
 func StartSMTPServerIfEnabled() bool {
-	addr, on := app.ListenAddr("MAIL_PORT", ":2525") // 2525 for local testing
+	addr, on := app.ListenAddr("MAIL_PORT", app.MailPort)
 	if !on {
 		return false
 	}

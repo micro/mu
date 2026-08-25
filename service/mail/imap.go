@@ -111,7 +111,7 @@ func StartIMAPServer(addr string) error {
 // default that cannot start is a feature nobody finds. IMAP_PORT=off is the way
 // to have none.
 func StartIMAPServerIfEnabled() {
-	addr, on := app.ListenAddr("IMAP_PORT", ":1143")
+	addr, on := app.ListenAddr("IMAP_PORT", app.IMAPPort)
 	if !on {
 		return
 	}

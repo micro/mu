@@ -760,10 +760,19 @@ func SetRef(account, messageID, ref string) {
 }
 
 // WebClient names the web page in the record, so a conversation there can be
-// told from one by mail. The other clients declare their own — see
-// discord.Client — and this one is here rather than beside the page because
-// three packages need to say "the web one" and only one of them is the page.
+// told from one by mail. A client that owns its own door declares its own name
+// beside it — see mail.Client; these are here because more than one package has
+// to say the same word and none of them owns it.
 const WebClient = "web"
+
+// ChatClient names a conversation that happened in a room or over XMPP.
+//
+// Two packages write it and neither may import the other: service/chat records
+// a person-to-person XMPP exchange (xmpp_record.go) and agent/chat records the
+// agent answering in a room. A service may not import an agent, so a constant
+// owned by either would have to be copied into the other — and a copy that
+// drifted would file the two halves of one conversation under two clients.
+const ChatClient = "chat"
 
 // Rename moves a whole account's record to a new id.
 //

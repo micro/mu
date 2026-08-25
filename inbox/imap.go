@@ -117,7 +117,7 @@ func imapRow(k, v string) string {
 // imapReach is what to type into a mail client: host, port, security, and
 // whether this instance serves IMAP at all.
 func imapReach() (host, port, secure string, on bool) {
-	addr, listening := app.ListenAddr("IMAP_PORT", ":1143")
+	addr, listening := app.ListenAddr("IMAP_PORT", app.IMAPPort)
 	if !listening {
 		return "", "", "", false
 	}
@@ -127,7 +127,7 @@ func imapReach() (host, port, secure string, on bool) {
 
 // submissionReach is the same question for outgoing mail.
 func submissionReach() (host, port, secure string, on bool) {
-	addr, listening := app.ListenAddr("SUBMISSION_PORT", ":1587")
+	addr, listening := app.ListenAddr("SUBMISSION_PORT", app.SubmissionPort)
 	if !listening {
 		return "", "", "", false
 	}
