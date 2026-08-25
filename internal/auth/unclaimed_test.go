@@ -1,46 +1,46 @@
 package auth
 
-// The front door: somebody writes in, gets answered, and later signs up to keep
-// what they already have.
+// Claiming: an account that was opened on somebody's behalf becomes theirs,
+// keeping everything it already holds.
 
 import (
 	"strings"
 	"testing"
+	"time"
 )
 
-// A stranger's address gets an account, and the same address gets the same one.
+// unclaimed builds the kind of account Claim exists to convert.
 //
-// Two accounts for one person would mean the second message starting a second
-// conversation, which is the failure the whole design exists to avoid.
-func TestOneSenderGetsOneAccount(t *testing.T) {
-	const addr = "stranger@example.com"
-	first, err := Unclaimed(addr)
-	if err != nil {
-		t.Fatalf("opening an account: %v", err)
+// Production stopped creating them — see the package comment — but instances
+// that ran the old path still hold some, and Claim is how the conversation
+// somebody had by email survives their signing up. So the fixture is here
+// rather than the behaviour being deleted along with the door that made them.
+func unclaimed(t *testing.T, addr string) *Account {
+	t.Helper()
+	addr = NormaliseAddress(addr)
+	id := "unclaimed-" + strings.SplitN(addr, "@", 2)[0]
+
+	mutex.Lock()
+	acc := &Account{
+		ID:              id,
+		Name:            strings.SplitN(addr, "@", 2)[0],
+		Created:         time.Now(),
+		Email:           addr,
+		EmailVerified:   true,
+		EmailVerifiedAt: time.Now(),
+		// No secret: bcrypt cannot match a hash of nothing against any input,
+		// which is what stops one of these being signed in to.
+		Unclaimed: true,
 	}
-	if !first.Unclaimed {
-		t.Error("the account is not marked unclaimed, so it is an ordinary account " +
-			"nobody signed up for")
-	}
-	// Address-cased differently, because a mail server is not case sensitive
-	// about the domain and people type what they like.
-	second, err := Unclaimed("Stranger@Example.com")
-	if err != nil {
-		t.Fatalf("second message: %v", err)
-	}
-	if second.ID != first.ID {
-		t.Errorf("the same sender got two accounts (%s, %s) — their second message "+
-			"starts a second conversation", first.ID, second.ID)
-	}
+	accounts[id] = acc
+	mutex.Unlock()
+	return acc
 }
 
 // It cannot sign in. There is no password, and no password must not mean any
 // password.
 func TestAnUnclaimedAccountCannotSignIn(t *testing.T) {
-	acc, err := Unclaimed("nopass@example.com")
-	if err != nil {
-		t.Fatal(err)
-	}
+	acc := unclaimed(t, "nopass@example.com")
 	for _, guess := range []string{"", " ", "password"} {
 		if _, err := Login(acc.ID, guess); err == nil {
 			t.Fatalf("signed in to an unclaimed account with %q", guess)
@@ -48,57 +48,10 @@ func TestAnUnclaimedAccountCannotSignIn(t *testing.T) {
 	}
 }
 
-// The turns run out, and the answer that uses the last one is still given.
-func TestTheTurnsRunOut(t *testing.T) {
-	acc, err := Unclaimed("counter@example.com")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := TurnsLeft(acc.ID); got != FreeTurns {
-		t.Fatalf("a new account has %d turns, want %d", got, FreeTurns)
-	}
-
-	// All but the last spent, still going.
-	for i := 1; i < FreeTurns; i++ {
-		if last := SpendTurn(acc.ID); last {
-			t.Fatalf("turn %d of %d reported as the last", i, FreeTurns)
-		}
-	}
-	// The last one reports itself so the invitation goes out — after the
-	// answer, not instead of it.
-	if last := SpendTurn(acc.ID); !last {
-		t.Errorf("turn %d of %d did not report itself as the last, so nobody is "+
-			"ever invited to sign up", FreeTurns, FreeTurns)
-	}
-	if got := TurnsLeft(acc.ID); got != 0 {
-		t.Errorf("%d turns left after spending all of them", got)
-	}
-}
-
-// The invitation goes out once.
-func TestTheInvitationIsSentOnce(t *testing.T) {
-	acc, err := Unclaimed("once@example.com")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if Invited(acc.ID) {
-		t.Fatal("a new account is already marked as invited")
-	}
-	MarkInvited(acc.ID)
-	if !Invited(acc.ID) {
-		t.Error("marking an account invited did not take, so every message after " +
-			"the limit sends another invitation")
-	}
-}
-
 // Claiming keeps the account and everything filed under it.
 func TestClaimingKeepsWhatWasThere(t *testing.T) {
-	acc, err := Unclaimed("claimer@example.com")
-	if err != nil {
-		t.Fatal(err)
-	}
+	acc := unclaimed(t, "claimer@example.com")
 	old := acc.ID
-	SpendTurn(old)
 
 	// The record follows. Registered the way internal/thread registers it.
 	var renamedFrom, renamedTo string
@@ -121,9 +74,6 @@ func TestClaimingKeepsWhatWasThere(t *testing.T) {
 	if got.Email != "claimer@example.com" {
 		t.Errorf("the address did not come with it: %q", got.Email)
 	}
-	if got.Turns != 0 {
-		t.Errorf("%d turns carried over; a claimed account is governed by credits", got.Turns)
-	}
 	// And it can sign in now, which is the point of claiming it.
 	if _, err := Login("claimer", "a good password"); err != nil {
 		t.Errorf("cannot sign in to the account just claimed: %v", err)
@@ -138,10 +88,7 @@ func TestClaimingKeepsWhatWasThere(t *testing.T) {
 // An account that has been claimed cannot be claimed again, and one person's
 // claim cannot take another's username.
 func TestClaimingIsOnlyEverOnce(t *testing.T) {
-	acc, err := Unclaimed("twice@example.com")
-	if err != nil {
-		t.Fatal(err)
-	}
+	acc := unclaimed(t, "twice@example.com")
 	if err := Claim(acc.ID, "twiceclaimed", "a good password"); err != nil {
 		t.Fatal(err)
 	}
@@ -150,10 +97,7 @@ func TestClaimingIsOnlyEverOnce(t *testing.T) {
 			"the old invite rename somebody's account")
 	}
 
-	other, err := Unclaimed("collide@example.com")
-	if err != nil {
-		t.Fatal(err)
-	}
+	other := unclaimed(t, "collide@example.com")
 	if err := Claim(other.ID, "twiceclaimed", "a password"); err == nil {
 		t.Error("claiming took a username that already belongs to somebody else")
 	}

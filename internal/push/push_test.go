@@ -229,3 +229,68 @@ func TestAForgottenDeviceComesBack(t *testing.T) {
 		t.Errorf("%d devices, want the one that came back", len(got))
 	}
 }
+
+// Notifications can be turned off, and the card offers it.
+//
+// /push/unsubscribe existed from the first version with nothing calling it.
+// The card had "Turn on for this device" and "Send a test" and no way back, so
+// the only way to stop notifications was to revoke the permission in browser
+// settings — which does not tell this instance, leaving a row it goes on
+// sending to until a push service happens to answer 410.
+func TestNotificationsCanBeTurnedOff(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	if _, err := Subscribe("acct", device("https://push.example/one")); err != nil {
+		t.Fatal(err)
+	}
+	if !Subscribed("acct") {
+		t.Fatal("the device was not recorded")
+	}
+
+	Unsubscribe("acct", "https://push.example/one")
+	if Subscribed("acct") {
+		t.Error("the device is still on the list after being turned off")
+	}
+}
+
+// And the card renders the control, so the endpoint is reachable by a person
+// rather than only by curl.
+func TestTheCardOffersAWayToTurnItOff(t *testing.T) {
+	if !strings.Contains(cardJS, "/push/unsubscribe") {
+		t.Error("the notifications card never calls /push/unsubscribe, so it can " +
+			"be turned on and not off")
+	}
+	if !strings.Contains(cardJS, "pushManager.getSubscription") ||
+		!strings.Contains(cardJS, "unsubscribe()") {
+		t.Error("turning it off does not unsubscribe the browser, so the next page " +
+			"load re-registers the device it just removed")
+	}
+}
+
+// What became of the last notification is recorded, because "I turned it on
+// and never received one" was otherwise unanswerable: a row in the store says
+// a device was registered, not that anything reached it.
+func TestTheLastResultIsRemembered(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	if _, err := Subscribe("acct", device("https://push.example/one")); err != nil {
+		t.Fatal(err)
+	}
+	if sent, failed, _ := LastResult("acct"); !sent.IsZero() || !failed.IsZero() {
+		t.Fatal("a device nothing has been sent to reports a result")
+	}
+
+	record("acct", "https://push.example/one", "the push service refused it (403)")
+	sent, failed, reason := LastResult("acct")
+	if !sent.IsZero() {
+		t.Error("a refusal was recorded as a delivery")
+	}
+	if failed.IsZero() || reason == "" {
+		t.Error("a refusal left no trace, so the card still says everything is fine")
+	}
+
+	record("acct", "https://push.example/one", "")
+	if sent, _, _ := LastResult("acct"); sent.IsZero() {
+		t.Error("a successful send was not recorded")
+	}
+}

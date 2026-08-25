@@ -918,7 +918,6 @@ that same file, so this page does not repeat twenty-six rows.
 | `VIDEO_SEARCH_PER_DAY` | 80 | YouTube searches this instance may run per day, kept under the API's own quota |
 | `SIGNUP_MAX_PER_IP` · `SIGNUP_WINDOW_HOURS` | — | Signups allowed per IP, and the window |
 | `GUEST_MAX_PER_IP` · `GUEST_WINDOW_MINUTES` | 120 · 60 | Free tool calls an unauthenticated caller may make per IP. Credits price what a call costs; this is what stops a loop, since a free call is charged nothing |
-| `TRIAL_DAILY_TOTAL` | `500` | Free email exchanges this instance gives away in a day, across everybody. A stranger writing to `agent@` opens an unclaimed account with a small number of turns; that allowance is per sender and so unbounded in aggregate, and this is the ceiling that makes it a budget rather than an open tab. **Set it to `0`** on an instance you run for yourself |
 | `X402_FACILITATOR_URL` | Coinbase | x402 facilitator to settle through |
 
 ### Runtime

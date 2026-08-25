@@ -31,6 +31,21 @@ type Subscription struct {
 	Label   string    `json:"label,omitempty"`
 	Added   time.Time `json:"added"`
 	Account string    `json:"account"`
+
+	// What happened the last time anything was sent here.
+	//
+	// Because "I turned it on and I have never received one" was not a
+	// question this could answer. The card said "On for one device" from the
+	// fact that a row existed, which is a claim about the store rather than
+	// about anything arriving: a browser that rotated its endpoint, an
+	// instance restored from an older backup, a push service quietly refusing
+	// — all of them look identical to a row sitting in a file.
+	//
+	// Sent is when a push service last accepted one. Failed is what it said if
+	// it did not. Whichever is later is the truth about this device.
+	Sent   time.Time `json:"sent,omitempty"`
+	Failed time.Time `json:"failed,omitempty"`
+	Error  string    `json:"error,omitempty"`
 }
 
 // Notification is what a person sees.
@@ -149,6 +164,28 @@ func Knows(account, endpoint string) bool {
 	return false
 }
 
+// record notes what happened when something was sent to one device.
+//
+// Best effort, like the send itself: a notification that arrived matters more
+// than the note saying so, and this must never be the reason one fails.
+func record(account, endpoint string, err string) {
+	load()
+	mu.Lock()
+	defer mu.Unlock()
+	for _, have := range subs[account] {
+		if have.Endpoint != endpoint {
+			continue
+		}
+		if err == "" {
+			have.Sent, have.Error = time.Now().UTC(), ""
+		} else {
+			have.Failed, have.Error = time.Now().UTC(), err
+		}
+		save()
+		return
+	}
+}
+
 // Unsubscribe removes one device, by endpoint.
 func Unsubscribe(account, endpoint string) {
 	load()
@@ -218,6 +255,24 @@ func Send(account string, n Notification) {
 	}
 }
 
+// LastResult is what happened the last time this account was sent anything,
+// across all its devices, for the card on /account to say.
+//
+// Three answers and they are genuinely different: never sent to, sent and
+// accepted, sent and refused. The card used to be able to say only "on", which
+// is the one thing that is true in all three.
+func LastResult(account string) (sent time.Time, failed time.Time, reason string) {
+	for _, d := range Devices(account) {
+		if d.Sent.After(sent) {
+			sent = d.Sent
+		}
+		if d.Failed.After(failed) {
+			failed, reason = d.Failed, d.Error
+		}
+	}
+	return sent, failed, reason
+}
+
 // deliver sends to one device.
 func deliver(account string, d Subscription, payload []byte) {
 	p256dh, err := b64.DecodeString(d.P256dh)
@@ -231,6 +286,7 @@ func deliver(account string, d Subscription, payload []byte) {
 	body, err := encrypt(p256dh, auth, payload)
 	if err != nil {
 		app.Log("push", "could not encrypt for a device: %v", err)
+		record(account, d.Endpoint, "could not encrypt")
 		return
 	}
 	who := contact()
@@ -242,6 +298,7 @@ func deliver(account string, d Subscription, payload []byte) {
 	header, err := authorization(d.Endpoint, who)
 	if err != nil {
 		app.Log("push", "could not sign for %s: %v", short(d.Endpoint), err)
+		record(account, d.Endpoint, "could not sign the request")
 		return
 	}
 
@@ -261,6 +318,7 @@ func deliver(account string, d Subscription, payload []byte) {
 	rsp, err := client.Do(req)
 	if err != nil {
 		app.Log("push", "could not reach %s: %v", short(d.Endpoint), err)
+		record(account, d.Endpoint, "could not reach the push service")
 		return
 	}
 	defer rsp.Body.Close()
@@ -274,6 +332,12 @@ func deliver(account string, d Subscription, payload []byte) {
 		Unsubscribe(account, d.Endpoint)
 	case rsp.StatusCode >= 400:
 		app.Log("push", "%s refused a notification: %d", short(d.Endpoint), rsp.StatusCode)
+		record(account, d.Endpoint, "the push service refused it ("+strconv.Itoa(rsp.StatusCode)+")")
+	default:
+		// Said out loud, because silence on the happy path is what made "I
+		// never receive any" impossible to tell from "none were ever sent".
+		app.Log("push", "sent to %s for %s", short(d.Endpoint), account)
+		record(account, d.Endpoint, "")
 	}
 }
 
