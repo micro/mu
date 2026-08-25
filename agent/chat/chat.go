@@ -127,6 +127,15 @@ func answer(s spoken) {
 	if reply == "" {
 		return
 	}
+	// Back the way it came. A websocket room and an XMPP client are two
+	// different deliveries, and the conversation key says which — see
+	// xmppRoom, which prefixes so the two namespaces cannot collide.
+	if strings.HasPrefix(s.Room, "xmpp_") {
+		if !chat.SayTo(s.Account, chat.AgentAddress(), reply) {
+			app.Log("chat", "answered %s and nobody was connected", s.Account)
+		}
+		return
+	}
 	if !chat.Say(s.Room, chat.AgentName, reply) {
 		app.Log("chat", "answered %s and the room had gone", s.Room)
 	}

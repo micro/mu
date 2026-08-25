@@ -33,6 +33,7 @@ import (
 	"mu/internal/user"
 	"mu/internal/x402"
 	"mu/service/blog"
+	"mu/service/chat"
 	"mu/service/mail"
 	"mu/service/wallet"
 )
@@ -442,6 +443,12 @@ func serve(addr string) {
 	// And submission, so that client can reply. IMAP on its own is a mailbox
 	// you can read and not answer, which is half an address.
 	mail.StartSubmissionServerIfEnabled()
+
+	// And XMPP, which is the same address in real time. asim@here is a mailbox
+	// and a chat address — one account, one local part, reachable two ways —
+	// so Conversations, Dino or Gajim is a client for this instance the same
+	// way Thunderbird already is. See service/chat/xmpp.go.
+	chat.StartXMPPServerIfEnabled()
 
 	// Log initial memory usage
 	var m runtime.MemStats
