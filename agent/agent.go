@@ -626,7 +626,7 @@ func renderSessionsRail(accountID, currentID, agentID string, named bool) string
 		newURL = "/agent?id=" + url.QueryEscape(agentID)
 	}
 	var b strings.Builder
-	b.WriteString(`<aside class="chat-rail"><button class="chat-new" onclick="if(window.muChatNew){muChatNew();history.replaceState(null,''` +
+	b.WriteString(`<aside class="chat-rail"><button class="btn chat-new" onclick="if(window.muChatNew){muChatNew();history.replaceState(null,''` +
 		`,` + app.JSAttr(newURL) + `);document.querySelectorAll('.chat-sess.active').forEach(function(e){e.classList.remove('active')});}">+ New</button>` +
 		`<div class="chat-sess-head">Conversations</div><div class="chat-sess-list">`)
 	if len(sessions) == 0 {
@@ -860,7 +860,9 @@ const chatLayoutCSS = `<style>
    the rest of the palette, and a row that declares a text colour and inherits
    its background is the exact shape that goes unreadable when anything
    underneath it changes. */
-.chat-new{width:100%;padding:9px 12px;background:var(--accent-color,#111);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;font-family:inherit;margin-bottom:12px}
+/* Size comes from the control scale in mu.css; this is the one thing that
+   is particular to it — a new-conversation button spans its column. */
+.chat-new{width:100%;margin-bottom:12px}
 .chat-sess-list{display:flex;flex-direction:column;gap:2px}
 .chat-sess-row{display:flex;align-items:center;gap:6px;min-width:0}
 .chat-sess{display:block;flex:1;min-width:0;padding:8px 10px;border-radius:6px;

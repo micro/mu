@@ -158,14 +158,14 @@ func Card(r *http.Request, accountID string) string {
 		// this on a month ago is really asking. "On for one device" is a fact
 		// about a row in a file and stays true while every send is refused.
 		lastLine(accountID) +
-		`<button class="push-go" id="push-go" type="button">Turn on for this device</button>` +
-		`<button class="push-test d-none" id="push-test" type="button">Send a test</button>` +
+		`<button class="btn" id="push-go" type="button">Turn on for this device</button>` +
+		`<button class="btn btn-quiet push-test d-none" id="push-test" type="button">Send a test</button>` +
 		// And the way out. /push/unsubscribe existed from the beginning with
 		// nothing calling it: the card could be turned on and never off, so
 		// the only way to stop notifications was to revoke the permission in
 		// browser settings — which is a different thing, does not tell this
 		// instance, and leaves the device on the list being sent to forever.
-		`<button class="push-off d-none" id="push-off" type="button">Turn off</button>` +
+		`<button class="btn btn-quiet push-off d-none" id="push-off" type="button">Turn off</button>` +
 		`<input type="hidden" id="push-key" value="` + html.EscapeString(key) + `">` +
 		`<input type="hidden" id="push-csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `">` +
 		`</div>` + cardCSS + cardJS
@@ -232,18 +232,16 @@ func itoa(n int) string {
 }
 
 const cardCSS = `<style>
+/* Layout only. The buttons were three bespoke rules here — their own padding,
+ * their own font-size, their own border — which is how a card ends up with
+ * controls that are a different height from every other control in the product.
+ * They use .btn and .btn-quiet now, and the control scale in mu.css decides
+ * how big a button is. */
 .push-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
 .push-state{font-size:12px;color:#888}
 .push-note{font-size:13px;color:#888;line-height:1.55;margin:6px 0 10px}
-.push-go{font:inherit;font-size:13px;padding:7px 16px;border:1px solid #111;background:#111;color:#fff;border-radius:6px;cursor:pointer}
-.push-go[disabled]{opacity:.5;cursor:default}
-.push-test{font:inherit;font-size:13px;padding:7px 16px;border:1px solid var(--card-border,#ddd);
-  background:var(--card-background,#fff);color:var(--text-primary,#111);border-radius:6px;cursor:pointer}
-.push-test[disabled]{opacity:.5;cursor:default}
-.push-off{font:inherit;font-size:13px;padding:7px 16px;border:1px solid var(--card-border,#ddd);
-  background:transparent;color:var(--text-muted,#888);border-radius:6px;cursor:pointer}
-.push-off[disabled]{opacity:.5;cursor:default}
 .push-bad{color:var(--danger,#c33)}
+.push-card .btn{margin-right:6px}
 </style>`
 
 // cardJS is the three steps, in the order the browser insists on — plus the

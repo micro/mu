@@ -171,15 +171,11 @@ a[rel*="noopener"]:visited {
 
 /* Buttons - slim, consistent padding */
 button {
-  display: inline-block;
   background: var(--btn-primary);
   color: #fff;
   border: 1px solid var(--btn-primary);
   border-radius: var(--border-radius);
-  padding: 6px 12px;
   cursor: pointer;
-  font-size: 14px;
-  line-height: 1.4;
   text-decoration: none;
   transition: all var(--transition-fast);
 }
@@ -271,21 +267,20 @@ button:hover {
 
 /* .btn class for links styled as buttons */
 a.btn {
-  display: inline-flex;
   align-items: center;
   justify-content: center;
   background: var(--btn-primary);
   color: #fff !important;
   border: 1px solid var(--btn-primary);
   border-radius: var(--border-radius);
-  padding: 6px 12px;
   cursor: pointer;
-  font-size: 14px;
   font-weight: normal;
-  line-height: 1.4;
   text-decoration: none;
   transition: all var(--transition-fast);
-  height: 36px;
+  /* height was 36px here, stated outright — and an explicit height beats a
+     min-height whatever the order, so this one rule kept every link-button in
+     the product two pixels taller than every button beside it. The control
+     scale decides. */
   box-sizing: border-box;
 }
 
@@ -450,9 +445,12 @@ td {
   background: none;
   border: none;
   cursor: pointer;
+  /* Sized from the control scale like everything else. It was 36×34, which
+     is a third height nobody chose — it just predates the scale. */
   padding: 8px;
-  width: 36px;
-  height: 34px;
+  width: var(--control-h);
+  height: var(--control-h);
+  min-height: var(--control-h);
   flex-direction: column;
   justify-content: space-between;
   align-items: stretch;
@@ -1472,7 +1470,9 @@ body:has(#messages) #chat-back-link {
 }
 
 #chat-form button {
-  padding: 10px 20px;
+  /* Width and flow only. The padding here was 10px 20px, which made the send
+     arrow taller than the field it sits beside — the height comes from the
+     control scale now. */
   margin: 0;
   width: auto;
   flex-shrink: 0;
@@ -2652,26 +2652,11 @@ a.highlight {
      Centring the label inside the target fixes it without giving the target
      back: the button is still 36px to a thumb and looks like its own height to
      an eye. */
-  button, a.btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 36px;
-    padding: 6px 12px;
-  }
-
-  /* And anything that stands in a row with one.
-   *
-   * This rule gave buttons a thumb-sized target and said nothing about inputs,
-   * so a field beside a button was 26px against 36px — everywhere, on every
-   * page with a control row, not as a bug on any one of them. The two agreed
-   * on font, line-height, padding, border and box-sizing and disagreed on the
-   * one property only half of them were given.
-   *
-   * A number typed on a phone wants the same target as a button anyway. */
-  .num-field {
-    min-height: 36px;
-  }
+  /* The 36px thumb target lived here, on `button, a.btn` and nothing else —
+     so a field beside a button was short by ten pixels, on every page with a
+     control row. The control scale at the end of this file sets one height for
+     both, above the 24px WCAG 2.2 minimum, so there is nothing left to say
+     here about size. */
   
   /* Prevent iOS zoom on input focus */
   input, textarea, select {
@@ -3557,7 +3542,6 @@ button.btn-plain { padding: 6px 12px; font: inherit; cursor: pointer; color: var
    that does not follow the palette. Tokenised, so it moves with everything
    else; pair it with .w-full where the field should fill its row. */
 .form-input {
-  padding: 10px;
   border: var(--border-width, 1px) solid var(--card-border, #ccc);
   border-radius: var(--border-radius, 6px);
   box-sizing: border-box;
@@ -4757,8 +4741,8 @@ a.btn-secondary:hover, .btn-secondary:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: var(--control-h);
+  height: var(--control-h);
   padding: 0;
   border-radius: 50%;
   font-size: 16px;
@@ -5511,12 +5495,8 @@ body.display-mode .card h4 {
    wherever somebody built a control that was not a <button>. One radius now:
    anything that wants to look like a control gets the control's shape. */
 .pill {
-  display: inline-block;
   border: var(--border-width, 1px) solid var(--card-border, #e8e8e8);
   border-radius: var(--border-radius, 6px);
-  padding: 2px 9px;
-  font-size: 11px;
-  line-height: 1.55;
   color: var(--text-muted, #888);
   white-space: nowrap;
   flex: none;
@@ -6615,8 +6595,6 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
 
 .field {
   font: inherit;
-  font-size: 14px;
-  padding: 8px 11px;
   border: var(--border-width, 1px) solid var(--card-border, #e8e8e8);
   border-radius: var(--border-radius, 6px);
   background: var(--card-background, #fff);
@@ -6845,3 +6823,121 @@ a.ib-addr-write:hover { text-decoration: underline }
    changed width as you walked between them, and /privacy centred itself on top
    of that, which moved it sideways as well. */
 .page-col { max-width: 720px }
+
+/* A date or time input carries its own intrinsic sizing, which is why it came
+ * out 32px in a row of 30px controls: the browser lays out its internal
+ * spinner fields and padding alone does not reach them. Stated explicitly. */
+input[type=date],
+input[type=time],
+input[type=datetime-local] {
+  height: var(--control-h);
+}
+
+/* ─── The control scale ──────────────────────────────────────────────────────
+ *
+ * One height for everything you press or type into, and one smaller height for
+ * the things that sit inside a row of content.
+ *
+ * There were seven definitions of "a control" before this, each arrived at
+ * independently: `button` at 14px/6px 12px, `input` at 10px all round, `.btn`
+ * at 13px/7px 18px, `.field` at 14px/8px 11px, `.form-input` at 10px,
+ * `.mini-btn` at 12px/3px 8px, `.pill` at 11px/2px 9px. Measured across
+ * nineteen pages that came to twenty-eight distinct shapes at ten different
+ * heights — 21, 23, 26, 32, 34, 35, 36, 38, 39 and 40 pixels — and a bare
+ * `button` with no class rendered at four of them depending on which page it
+ * was on, because each page's own rules pushed it somewhere different.
+ *
+ * Nobody could see that by reading any one file, which is the argument for the
+ * tokens rather than for any particular number in them.
+ *
+ * min-height rather than padding arithmetic: an input, a select and a button
+ * disagree about line-height, about whether the border counts, and about what
+ * a browser adds on its own, so equal padding does not produce equal height.
+ * A stated height does.
+ *
+ * Compact on purpose. 30px is smaller than anything this replaced, and it is
+ * comfortably above the 24px WCAG 2.2 minimum target — the previous 36px
+ * mobile rule was one person's guess at a thumb, applied to buttons and not to
+ * the fields beside them, which is how a row came to be two heights at once.
+ */
+:root {
+  --control-h: 30px;
+  --control-font: 13px;
+  --control-pad-x: 12px;
+
+  --control-h-sm: 24px;
+  --control-font-sm: 12px;
+  --control-pad-x-sm: 9px;
+}
+
+button,
+input:not([type=checkbox]):not([type=radio]),
+select,
+textarea,
+.btn,
+a.btn,
+.field,
+.form-input {
+  font-family: inherit;
+  font-size: var(--control-font);
+  line-height: 1.4;
+  min-height: var(--control-h);
+  padding: 0 var(--control-pad-x);
+  border-radius: var(--border-radius, 6px);
+  box-sizing: border-box;
+}
+
+/* Buttons and selects centre their own label inside that height. A text field
+ * must not — a centred caret in a multi-line textarea is wrong — so those get
+ * padding instead. */
+button,
+select,
+.btn,
+a.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+input:not([type=checkbox]):not([type=radio]),
+textarea,
+.field,
+.form-input {
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+
+textarea,
+textarea.field,
+textarea.form-input {
+  /* Prose, not a control: it keeps the family and the width and takes its
+   * height from its rows. */
+  line-height: var(--line-height, 1.6);
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+/* The smaller size, for controls that live inside a row of content — an
+ * action on a table row, a filter over a list. */
+.mini-btn,
+.num-field,
+.pill,
+a.pill {
+  font-size: var(--control-font-sm);
+  min-height: var(--control-h-sm);
+  padding: 0 var(--control-pad-x-sm);
+}
+
+.num-field {
+  padding-top: 3px;
+  padding-bottom: 3px;
+}
+
+.pill,
+a.pill {
+  display: inline-flex;
+  align-items: center;
+}
+/* ─────────────────────────────────────────────────────────────────────────── */
+
