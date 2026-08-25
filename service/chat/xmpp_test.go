@@ -410,3 +410,33 @@ func clip(s string) string {
 	}
 	return s
 }
+
+// A note to self is recorded once, not twice.
+//
+// Sending to your own address is ordinary — it is how somebody moves a link
+// between their phone and their laptop, and it is what a client does when it
+// syncs. Both ends of the exchange are the same account, so a record that
+// writes "both sides" without noticing files it twice in one conversation and
+// /inbox shows it duplicated with nothing wrong upstream.
+func TestANoteToSelfIsRecordedOnce(t *testing.T) {
+	t.Setenv("MU_DOMAIN", "example.test")
+	a, atok := accountWithToken(t, "xmppself")
+
+	me := dial(t)
+	defer me.Close()
+	me.handshake(t, a.ID, atok)
+
+	me.write(`<message type='chat' to='xmppself@example.test'><body>note to self</body></message>`)
+	if got := me.read(t); !strings.Contains(got, "note to self") {
+		t.Fatalf("a message to my own address did not come back to me: %q", clip(got))
+	}
+
+	th := thread.Find("xmppself", thread.ChatClient,
+		xmppRoom("xmppself@example.test", "xmppself@example.test"))
+	if th == nil {
+		t.Fatal("a note to self was not recorded at all")
+	}
+	if n := len(thread.Messages("xmppself", th.ID, 10)); n != 1 {
+		t.Errorf("one note to self was recorded %d times", n)
+	}
+}

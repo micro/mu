@@ -54,14 +54,25 @@ func record(from, to, text string) {
 	from, to = strings.ToLower(bareOf(from)), strings.ToLower(bareOf(to))
 	key := xmppRoom(from, to)
 
+	// Whose records this belongs in. Both sides normally; one when they are the
+	// same account, which is not a silly case — a note to self is how somebody
+	// moves a link between their own devices, and it is the case an XMPP client
+	// exercises by syncing. Two sides resolving to one account would file it
+	// twice in one conversation, so the message would appear duplicated at
+	// /inbox with nothing wrong upstream of it.
+	//
+	// Matched on the account, not the address: you+tag@ and you@ are the same
+	// person, so a message from one to the other is still a note to self.
+	seen := map[string]bool{}
 	for _, side := range [...]struct{ owner, other string }{{from, to}, {to, from}} {
 		// The account, not the local part: somebody can add an address to their
 		// account, and a conversation filed under the address rather than the
 		// owner would be one they cannot read.
 		acc := accountFor(side.owner)
-		if acc == nil {
+		if acc == nil || seen[acc.ID] {
 			continue
 		}
+		seen[acc.ID] = true
 		t := thread.Open(acc.ID, thread.ChatClient, key)
 		if t == nil {
 			continue
