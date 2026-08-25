@@ -106,15 +106,15 @@ func TestAWriteThatLosesMostOfAStoreKeepsACopy(t *testing.T) {
 	before, _ := os.Stat(file)
 
 	// A caller with a stale view saves what little it knows.
-	if err := SaveJSON("wallets.json", map[string]string{"one": "left"}); err == nil {
-		t.Fatal("SaveJSON accepted an unexpected store shrink")
+	if err := SaveJSON("wallets.json", map[string]string{"one": "left"}); err != nil {
+		t.Fatalf("SaveJSON rejected a store shrink after preserving it: %v", err)
 	}
 	var current map[string]string
 	if err := LoadJSON("wallets.json", &current); err != nil {
 		t.Fatal(err)
 	}
-	if len(current) != len(full) {
-		t.Errorf("rejected write changed the store: got %d entries, want %d", len(current), len(full))
+	if len(current) != 1 || current["one"] != "left" {
+		t.Errorf("accepted write left store as %#v, want only the current value", current)
 	}
 
 	prev := file + ".prev"

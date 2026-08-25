@@ -221,7 +221,7 @@ func keepIfShrinking(key, file string, size int) error {
 	}
 	fmt.Fprintf(os.Stderr, "[data] %s shrank from %d to %d bytes in one write; "+
 		"the previous contents are in %s\n", key, info.Size(), size, prev)
-	return fmt.Errorf("data: refusing to shrink %s from %d to %d bytes", key, info.Size(), size)
+	return nil
 }
 
 func LoadJSON(key string, val interface{}) error {
