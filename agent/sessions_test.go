@@ -49,7 +49,7 @@ func TestTheRailIsWhatYouStartedNotWhatArrived(t *testing.T) {
 	if mail == nil {
 		t.Fatal("the mail conversation is not in the record")
 	}
-	if got := inbox.ConversationView(acc, mail); !strings.Contains(got, "Email") ||
+	if got := inbox.ConversationView(acc, mail); !strings.Contains(got, "Mail") ||
 		!strings.Contains(got, "What&#39;s happening") {
 		t.Errorf("a conversation from another client does not read back:\n%s", got)
 	}

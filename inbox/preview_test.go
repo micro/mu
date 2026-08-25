@@ -36,7 +36,7 @@ func TestHomeShowsWhatIsInTheInbox(t *testing.T) {
 		t.Error("the row does not open the conversation")
 	}
 	// Where it happened, because it happened without you.
-	if !strings.Contains(out, "Email") {
+	if !strings.Contains(out, "Mail") {
 		t.Error("a conversation that arrived by mail does not say so")
 	}
 	if !strings.Contains(out, "the total is 420") {

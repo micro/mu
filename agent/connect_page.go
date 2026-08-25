@@ -199,7 +199,11 @@ func defaultPanel(base string) string {
 	// conversation list it shows up in — rules, on a page whose job is to hand
 	// you the things you copy somewhere else.
 	if addr := mail.SharedAgentAddress(); addr != "" {
-		b.WriteString(connRow("Email", `<code class="conn-v">`+html.EscapeString(addr)+`</code>`))
+		// "Mail" rather than "Email", to agree with the label the inbox puts on
+		// the same channel — see app.ClientName. This row sits directly above a
+		// Chat row, which is exactly where a second name for one thing reads as
+		// a second channel.
+		b.WriteString(connRow("Mail", `<code class="conn-v">`+html.EscapeString(addr)+`</code>`))
 	}
 
 	b.WriteString(connChat(base, "/agent/"+DefaultPlatformAgent))

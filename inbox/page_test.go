@@ -38,7 +38,7 @@ func TestTheInboxListsEveryConversation(t *testing.T) {
 		}
 	}
 	// Where it happened, when that is not here.
-	if !strings.Contains(body, "Email") || !strings.Contains(body, "WhatsApp") {
+	if !strings.Contains(body, "Mail") || !strings.Contains(body, "WhatsApp") {
 		t.Errorf("the rows do not say where they happened:\n%s", body)
 	}
 }
