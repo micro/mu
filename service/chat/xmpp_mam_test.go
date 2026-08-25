@@ -3,8 +3,6 @@ package chat
 import (
 	"strings"
 	"testing"
-
-	"mu/internal/thread"
 )
 
 // A client that opens a conversation sees what was said before.
@@ -18,16 +16,13 @@ func TestOpeningAConversationShowsWhatWasSaid(t *testing.T) {
 	t.Setenv("MU_DOMAIN", "example.test")
 	acc, token := accountWithToken(t, "mamreader")
 
-	// Yesterday, on any client — this is the record, not a chat fixture.
-	th := thread.Open("mamreader", thread.ChatClient,
-		xmppRoom("mamreader@example.test", "agent@example.test"))
-	if th == nil {
-		t.Fatal("could not open the conversation")
-	}
-	thread.Add(thread.Message{Thread: th.ID, Account: "mamreader",
-		Role: thread.RolePerson, Text: "what is the bitcoin price"})
-	thread.Add(thread.Message{Thread: th.ID, Account: "mamreader",
-		Role: thread.RoleAgent, Text: "about sixty thousand dollars"})
+	// Yesterday. This is the service's own record — what went over the wire,
+	// with the addresses it went between, which is what a client asks for.
+	conv := xmppRoom("mamreader@example.test", "agent@example.test")
+	Keep("mamreader", Said{Conv: conv, From: "mamreader@example.test",
+		To: "agent@example.test", Text: "what is the bitcoin price"})
+	Keep("mamreader", Said{Conv: conv, From: "agent@example.test",
+		To: "mamreader@example.test", Text: "about sixty thousand dollars"})
 
 	c := dial(t)
 	defer c.Close()
@@ -66,15 +61,13 @@ func TestAnArchiveQueryDoesNotLeakAnotherConversation(t *testing.T) {
 	t.Setenv("MU_DOMAIN", "example.test")
 	acc, token := accountWithToken(t, "mamscoped")
 
-	withAgent := thread.Open("mamscoped", thread.ChatClient,
-		xmppRoom("mamscoped@example.test", "agent@example.test"))
-	thread.Add(thread.Message{Thread: withAgent.ID, Account: "mamscoped",
-		Role: thread.RolePerson, Text: "asked the agent something"})
+	convAgent := xmppRoom("mamscoped@example.test", "agent@example.test")
+	Keep("mamscoped", Said{Conv: convAgent, From: "mamscoped@example.test",
+		To: "agent@example.test", Text: "asked the agent something"})
 
-	withPerson := thread.Open("mamscoped", thread.ChatClient,
-		xmppRoom("mamscoped@example.test", "someone@example.test"))
-	thread.Add(thread.Message{Thread: withPerson.ID, Account: "mamscoped",
-		Role: thread.RolePerson, Text: "a private word with someone else"})
+	convPerson := xmppRoom("mamscoped@example.test", "someone@example.test")
+	Keep("mamscoped", Said{Conv: convPerson, From: "mamscoped@example.test",
+		To: "someone@example.test", Text: "a private word with someone else"})
 
 	c := dial(t)
 	defer c.Close()
@@ -99,11 +92,10 @@ func TestAPageSaysWhetherThereIsMore(t *testing.T) {
 	t.Setenv("MU_DOMAIN", "example.test")
 	acc, token := accountWithToken(t, "mampager")
 
-	th := thread.Open("mampager", thread.ChatClient,
-		xmppRoom("mampager@example.test", "agent@example.test"))
+	conv := xmppRoom("mampager@example.test", "agent@example.test")
 	for _, s := range []string{"one", "two", "three", "four", "five"} {
-		thread.Add(thread.Message{Thread: th.ID, Account: "mampager",
-			Role: thread.RolePerson, Text: "message " + s})
+		Keep("mampager", Said{Conv: conv, From: "mampager@example.test",
+			To: "agent@example.test", Text: "message " + s})
 	}
 
 	c := dial(t)

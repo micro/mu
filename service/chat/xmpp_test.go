@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"mu/internal/auth"
-	"mu/internal/thread"
 )
 
 // A real client can connect, authenticate, bind and send a message.
@@ -147,17 +146,12 @@ func TestAMessageToSomebodyOfflineIsKeptRatherThanRefused(t *testing.T) {
 		t.Fatalf("writing to somebody offline came back with %q", clip(got))
 	}
 
-	// Both ends, because the record is account-scoped: the sender's copy is
-	// what they sent, the recipient's is what arrived, and neither can read the
-	// other's.
+	// Both ends, because a copy is kept per account: the sender's is what they
+	// sent, the recipient's is what arrived, and deleting one cannot reach the
+	// other.
+	conv := xmppRoom("xmppwriter@example.test", "xmppsleeper@example.test")
 	for _, who := range []string{"xmppwriter", "xmppsleeper"} {
-		th := thread.Find(who, thread.ChatClient, xmppRoom(
-			"xmppwriter@example.test", "xmppsleeper@example.test"))
-		if th == nil {
-			t.Fatalf("%s has no record of the conversation, so an offline "+
-				"message is simply lost", who)
-		}
-		msgs := thread.Messages(who, th.ID, 10)
+		msgs := Conversation(who, conv, 10)
 		if len(msgs) != 1 || !strings.Contains(msgs[0].Text, "call me") {
 			t.Errorf("%s's record holds %d messages, want the one that was sent: %+v",
 				who, len(msgs), msgs)
@@ -187,12 +181,8 @@ func TestOneMessageIsRecordedOnce(t *testing.T) {
 	alice.write(`<message type='chat' to='xmppmulti@example.test'><body>once</body></message>`)
 	time.Sleep(200 * time.Millisecond)
 
-	th := thread.Find("xmppmulti", thread.ChatClient,
-		xmppRoom("xmppsingle@example.test", "xmppmulti@example.test"))
-	if th == nil {
-		t.Fatal("nothing was recorded")
-	}
-	if n := len(thread.Messages("xmppmulti", th.ID, 10)); n != 1 {
+	conv := xmppRoom("xmppsingle@example.test", "xmppmulti@example.test")
+	if n := len(Conversation("xmppmulti", conv, 10)); n != 1 {
 		t.Errorf("one message reached %d resources and was recorded %d times", 2, n)
 	}
 }
@@ -395,8 +385,8 @@ func accountWithToken(t *testing.T, id string) (*auth.Account, string) {
 	// messages counts the last run's too. Cleared at both ends: after, so a run
 	// leaves nothing behind, and before, because a run that failed halfway
 	// never got to its cleanup.
-	thread.Forget(acc.ID)
-	t.Cleanup(func() { thread.Forget(acc.ID) })
+	Forget(acc.ID)
+	t.Cleanup(func() { Forget(acc.ID) })
 	_, token, err := auth.CreateToken(acc.ID, "xmpp test", nil, time.Time{})
 	if err != nil {
 		t.Fatalf("token for %s: %v", id, err)
@@ -431,12 +421,8 @@ func TestANoteToSelfIsRecordedOnce(t *testing.T) {
 		t.Fatalf("a message to my own address did not come back to me: %q", clip(got))
 	}
 
-	th := thread.Find("xmppself", thread.ChatClient,
-		xmppRoom("xmppself@example.test", "xmppself@example.test"))
-	if th == nil {
-		t.Fatal("a note to self was not recorded at all")
-	}
-	if n := len(thread.Messages("xmppself", th.ID, 10)); n != 1 {
+	conv := xmppRoom("xmppself@example.test", "xmppself@example.test")
+	if n := len(Conversation("xmppself", conv, 10)); n != 1 {
 		t.Errorf("one note to self was recorded %d times", n)
 	}
 }

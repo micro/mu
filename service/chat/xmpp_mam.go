@@ -13,13 +13,16 @@ package chat
 // That is also why this comes before group chat: rooms are a feature some
 // people want, and scrollback is what everybody assumes is there.
 //
-// # It is a read, not a store
+// # It is a read over this service's own record
 //
-// No archive of its own. internal/thread is the system of record and this is a
-// query over it, which is the same relationship service/recall has to the same
-// data from the other side — one of them is a person searching on purpose and
-// this one is a client asking for the last fifty. Delete this file and nothing
-// is lost except the ability to ask over XMPP.
+// store.go holds what was said here, the way service/mail holds mail. This is
+// a query over it and keeps nothing of its own: delete this file and the
+// history is still there, you just cannot ask for it over XMPP.
+//
+// It reads stanzas rather than the prose copy an agent remembers, which is the
+// point of chat owning its record. A client asking for its archive should get
+// what was actually sent, with the addresses it was sent between and the ids it
+// can page from — not a rendering of it made for something else to read.
 //
 // # What is implemented
 //
@@ -32,12 +35,9 @@ package chat
 
 import (
 	"encoding/xml"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
-
-	"mu/internal/thread"
 )
 
 const (
@@ -115,11 +115,9 @@ func (s *session) archive(st stanza) {
 		return
 	}
 
+	// Oldest first already — the store sorts, because the XEP requires that
+	// order and a client renders in it.
 	msgs := s.archived(q.with())
-
-	// Oldest first, which is the order the XEP requires results in and the
-	// order a client renders them.
-	sort.SliceStable(msgs, func(i, j int) bool { return msgs[i].At.Before(msgs[j].At) })
 
 	// Page backwards from the end, because that is what opening a conversation
 	// asks for: the most recent, then earlier when you scroll up.
@@ -147,33 +145,22 @@ func (s *session) archive(st stanza) {
 }
 
 // archived is the messages this query is about.
-func (s *session) archived(with string) []thread.Message {
+//
+// Mail is not in it and cannot be: this reads chat's own record. That used to
+// need saying, because both lived in one store and the filter was the only
+// thing keeping a year of email out of an answer to "what did we say".
+func (s *session) archived(with string) []Said {
 	if s.acc == nil {
 		return nil
 	}
 	if with != "" {
-		th := thread.Find(s.acc.ID, thread.ChatClient, xmppRoom(s.bare(), with))
-		if th == nil {
-			return nil
-		}
-		return thread.Messages(s.acc.ID, th.ID, mamMax)
+		return Conversation(s.acc.ID, xmppRoom(s.bare(), with), mamMax)
 	}
-	// The whole archive: every chat conversation this account has. Mail is not
-	// in it, deliberately — an XMPP client asking for its archive is asking
-	// about chat, and handing it a year of email is not what it meant.
-	var out []thread.Message
-	for _, t := range thread.List(s.acc.ID, mamMax) {
-		if t.Client != thread.ChatClient {
-			continue
-		}
-		out = append(out, thread.Messages(s.acc.ID, t.ID, mamMax)...)
-	}
-	return out
+	return Everything(s.acc.ID, mamMax)
 }
 
 // sendArchived writes one stored message as the XEP wraps it.
-func (s *session) sendArchived(queryID string, m thread.Message) {
-	from, to := s.addressed(m)
+func (s *session) sendArchived(queryID string, m Said) {
 	var b strings.Builder
 	b.WriteString(`<message to='` + xmlAttr(s.jid()) + `'>`)
 	b.WriteString(`<result xmlns='` + nsMAM + `' queryid='` + xmlAttr(queryID) +
@@ -182,38 +169,14 @@ func (s *session) sendArchived(queryID string, m thread.Message) {
 	b.WriteString(`<delay xmlns='` + nsDelay + `' stamp='` +
 		xmlAttr(m.At.UTC().Format(time.RFC3339)) + `'/>`)
 	b.WriteString(`<message xmlns='jabber:client' type='chat' id='` + xmlAttr(m.ID) +
-		`' from='` + xmlAttr(from) + `' to='` + xmlAttr(to) + `'>`)
+		`' from='` + xmlAttr(m.From) + `' to='` + xmlAttr(m.To) + `'>`)
 	b.WriteString(`<body>` + xmlText(m.Text) + `</body>`)
 	b.WriteString(`</message></forwarded></result></message>`)
 	s.send("%s", b.String()) //nolint:errcheck
 }
 
-// addressed is who a stored message was between.
-//
-// The record keeps From where the client knew one — person-to-person XMPP sets
-// it — and leaves it empty otherwise, because for most clients the author is
-// simply the account. So Role is the fallback and it is enough: a conversation
-// has two sides, and an agent's answer came from the address it answers on.
-func (s *session) addressed(m thread.Message) (from, to string) {
-	me := s.bare()
-	if m.Role == thread.RoleAgent {
-		other := strings.TrimSpace(m.From)
-		if other == "" {
-			other = agentJID()
-		}
-		return other, me
-	}
-	if f := strings.TrimSpace(m.From); f != "" && !strings.EqualFold(f, me) {
-		return f, me
-	}
-	if t := strings.TrimSpace(m.To); t != "" {
-		return me, t
-	}
-	return me, agentJID()
-}
-
 // finish closes the query, and says whether there is more behind it.
-func (s *session) finish(id string, msgs []thread.Message, complete bool) {
+func (s *session) finish(id string, msgs []Said, complete bool) {
 	var rsm strings.Builder
 	rsm.WriteString(`<set xmlns='` + nsRSM + `'>`)
 	if len(msgs) > 0 {

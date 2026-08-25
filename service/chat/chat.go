@@ -936,6 +936,9 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 }
 
 func Load() {
+	// This service's own record, the way service/mail loads its mailbox.
+	LoadStore()
+
 	// load the feeds file
 	b, _ := f.ReadFile("prompts.json")
 	if err := json.Unmarshal(b, &prompts); err != nil {

@@ -50,6 +50,7 @@ import (
 	"mu/internal/x402"
 	"mu/service/apps"
 	"mu/service/blog"
+	"mu/service/chat"
 	"mu/service/contacts"
 	"mu/service/docs"
 	"mu/service/events"
@@ -496,6 +497,7 @@ func wireHooks() {
 		apps.DeleteAppsByAuthor,
 		stream.DeleteByAccount,
 		mail.DeleteInbox,
+		chat.Forget,
 		func(id string) { account.DeleteCredits(id) },
 		func(id string) { wallet.DeleteBaseWallet(id) },
 		func(id string) { micro.DeleteUserAgents(id) },
