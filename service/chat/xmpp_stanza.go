@@ -119,6 +119,19 @@ func (s *session) iq(st stanza) {
 	case strings.Contains(string(st.Inner), nsRoster):
 		s.sendRoster(st.ID)
 
+	// What this server can do. Asked once on connecting, and everything
+	// optional is unreachable until it is answered — see xmpp_disco.go.
+	case strings.Contains(string(st.Inner), nsDisco):
+		s.disco(st)
+
+	case strings.Contains(string(st.Inner), nsDiscoItem):
+		s.discoItems(st)
+
+	// The archive. This is what puts yesterday's conversation on the screen
+	// when a client opens it — see xmpp_mam.go.
+	case strings.Contains(string(st.Inner), nsMAM):
+		s.archive(st)
+
 	default:
 		// Anything else is refused rather than ignored: a client waiting on an
 		// iq it never gets hangs, and "not implemented" lets it move on.
