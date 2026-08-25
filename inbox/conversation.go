@@ -26,6 +26,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/thread"
+	"mu/service/mail"
 )
 
 // SessionHandler serves /agent/session/<id>: DELETE removes a conversation.
@@ -319,6 +320,24 @@ func messageBlock(accountID string, t *thread.Thread, m thread.Message, subject 
 			}
 		}
 	}
+	// Mail is rendered by the mail service, not by this page.
+	//
+	// A message that arrived as mail is MIME: HTML, quoted-printable, base64, a
+	// gzipped XML report in a zip. The record holds the prose version, because
+	// prose is what an agent should be handed and what a search should look
+	// through — see body() in agent/mail, where the agent was being asked
+	// `<div dir="auto">What&#39;s happening </div>`. But prose is not what a
+	// reader should be shown: a DMARC report *is* a table, and escaping it
+	// produces the word "table" and some angle brackets.
+	//
+	// So the record says what was said and the mail store says what it looked
+	// like, and this asks the second for the mail it already has. mail.Rendered
+	// is the same function /mail renders through — there is exactly one, and a
+	// test holds that — so the two pages cannot drift.
+	if rendered := mailBody(accountID, m); rendered != "" {
+		return `<div class="ib-msg ib-person">` + fromLine(who, m.At) + addressLine(m) +
+			`<div class="ib-body">` + rendered + `</div></div>`
+	}
 	// What they wrote, and — folded away — the part of it that is this
 	// conversation quoted back at itself. See quoted.go.
 	body, quote := unquoted(m.Text)
@@ -404,4 +423,32 @@ func addressLine(m thread.Message) string {
 		parts = append(parts, `<span class="ib-addr-k">to</span> `+html.EscapeString(to))
 	}
 	return `<div class="ib-addrs">` + strings.Join(parts, `<span class="ib-addr-sep">·</span>`) + `</div>`
+}
+
+// mailBody is the stored mail for a recorded message, rendered — or empty when
+// there is none.
+//
+// Ref is the client's own identifier, which for mail is the Message-ID, so it
+// is the join between the record and the mailbox. Empty for everything that did
+// not arrive as mail, which is how chat and the web fall through to the plain
+// path below without being asked about.
+//
+// Ownership is checked rather than assumed. The Message-ID comes from the
+// caller's own thread so it is already theirs, but FindMessageByMessageID
+// searches every message on the instance, and a lookup that trusts its input
+// because of where it was called from is one refactor away from not being true.
+func mailBody(accountID string, m thread.Message) string {
+	if m.Ref == "" {
+		return ""
+	}
+	stored := mail.FindMessageByMessageID(m.Ref)
+	if stored == nil {
+		// Deleted from the mailbox, or older than the store. The record still
+		// has what was said, so the reader still gets the message.
+		return ""
+	}
+	if stored.ToID != accountID && stored.FromID != accountID {
+		return ""
+	}
+	return mail.Rendered(stored)
 }
