@@ -360,15 +360,28 @@ server does not advertise it, so a client told to use it there would be sending
 a token in the clear believing otherwise. Bind it to loopback and let 5223 be
 the only way in.
 
-**Two DNS records make it findable.** A client given `you@your-domain.com`
-looks up `_xmpps-client._tcp.your-domain.com` before it tries anything, and
-falls back to `_xmpp-client._tcp` for the plaintext port. Without them a client
-guesses the domain itself on 5222, which is not where this is.
+**One DNS record makes it findable.** A client given `you@your-domain.com` has
+only the domain to go on, and looks up SRV records before it tries anything.
+Without one it guesses the domain itself on 5222, which is not where this is.
 
 ```
 _xmpps-client._tcp.your-domain.com. 3600 IN SRV 5 0 5223 your-domain.com.
-_xmpp-client._tcp.your-domain.com.  3600 IN SRV 5 0 5222 your-domain.com.
 ```
+
+`_xmpps-client` is direct TLS (XEP-0368) — the record for 5223. **Do not also
+publish `_xmpp-client._tcp` at 5222.** That is the STARTTLS record, 5222 is
+bound to loopback, and a record pointing at a closed port is worse than no
+record: the client tries it, waits, and reports a timeout rather than telling
+anybody what is wrong.
+
+The cost is that a client too old to do direct TLS cannot connect at all. That
+is the same trade IMAP makes on 143 and it is the right way round — a client
+that cannot do TLS properly should fail to connect rather than succeed in the
+clear. Conversations, Dino, Gajim and Monal all do direct TLS.
+
+The target needs an A record, which the domain already has: it is the web
+server. And open 5223 on the firewall — see *Check it from somewhere else*
+below, which applies here unchanged.
 
 Server-to-server federation (port 5269) is not built, so there is nothing to
 proxy for it and a message to another domain is refused rather than silently
@@ -861,7 +874,7 @@ token.
 | `SHELL_MAX_MACHINES` | Optional, default half the host's memory divided by what one machine takes, minimum 1. How many machines may run at once. Each holds its memory cap whether or not anybody is using it, so a box that fits two cannot host five however cheap a command is. Starting one past the cap stops the idlest machine rather than refusing the caller — the volume is untouched and their next command starts it again |
 | `SHELL_NETWORK` | Optional, default `bridge`. `none` gives machines no network at all. The default is on because a machine that cannot fetch a dependency or push a branch cannot do the thing this is for — what the container bounds is the host, not the internet |
 | `SHELL_MAX_SECONDS` | Optional, default 600. The longest one command may run, whatever it asked for. A command with no timeout of its own gets 120 |
-| `XMPP_PORT` | **On by default at `:5222`**; set it to `off` to close the door. A port to answer XMPP on, so `asim@your.domain` is a chat address as well as a mailbox — one account, one local part, reachable two ways. Conversations, Dino, Gajim and Monal are clients for it. Sign in with your username and an access token as the password, the same credential IMAP and submission take. The agent addresses work unchanged: `agent@your.domain` and `you+research@your.domain` are valid JIDs as well as valid mail addresses, and it is the same agent at the end of them. Nothing in Mu terminates TLS, so bind it to loopback and put the proxy on 5223 — see the nginx `stream {}` section above, which is the same arrangement IMAP and submission use, plus the two SRV records a client needs to find it. Federation between servers is not built yet, so a message to another domain is refused rather than silently dropped |
+| `XMPP_PORT` | **On by default at `:5222`**; set it to `off` to close the door. A port to answer XMPP on, so `asim@your.domain` is a chat address as well as a mailbox — one account, one local part, reachable two ways. Conversations, Dino, Gajim and Monal are clients for it. Sign in with your username and an access token as the password, the same credential IMAP and submission take. The agent addresses work unchanged: `agent@your.domain` and `you+research@your.domain` are valid JIDs as well as valid mail addresses, and it is the same agent at the end of them. Nothing in Mu terminates TLS, so bind it to loopback and put the proxy on 5223 — see the nginx `stream {}` section above, which is the same arrangement IMAP and submission use, plus the `_xmpps-client._tcp` SRV record a client needs to find it. Federation between servers is not built yet, so a message to another domain is refused rather than silently dropped |
 | `SHELL_SSH_PORT` | Optional, **off by default**. A port to answer SSH on, so somebody with a registered public key can open a shell in their own machine — `ssh -p 2222 you@host`. Mu is the SSH server; no `sshd` runs inside a container and no key is ever put in one, so the session lands in the same box with the same caps, memory, CPU and PID limits as a tool call. Keys only, no passwords, and the username is ignored: which key signed the handshake is what says who you are. There is no default because `22` on the host is the host's own `sshd` and taking it by accident locks you out of your own machine — pick a port and open it deliberately. A shell holds a machine open, so it is the most expensive thing a caller can do; sessions are capped at four hours. Register a key at `/shell` |
 | `SHELL_IDLE_MINUTES` | Optional, default 30. How long a machine may sit doing nothing before it is stopped. Stopping is not deleting: the `/work` volume is untouched and the next command starts it again in about a second. This is what bounds the memory of machines nobody is using, which a price on commands would not have — the cost is the idle container rather than the calls |
 | `OS_MAPS_KEY` | Optional. Ordnance Survey Data Hub key, for `/maps` — the basemap under anything spatial. Free tier at osdatahub.os.uk. Britain only. Without it the service still serves every tile this instance has already fetched, so a lapsed key degrades to the region you have already used rather than to nothing. Tiles are free to callers; what bounds them is `TILE_FETCH_PER_HOUR` |

@@ -50,7 +50,7 @@ package chat
 // loopback so the plaintext port is not reachable from outside. There is no
 // STARTTLS on 5222 and none is advertised: a client told to use it there would
 // send its token in the clear believing otherwise. docs/INSTALL.md has the
-// nginx stream block and the two SRV records a client needs to find any of it.
+// nginx stream block and the SRV record a client needs to find any of it.
 //
 // # Storage
 //
