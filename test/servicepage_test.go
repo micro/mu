@@ -57,6 +57,9 @@ var keptItsPage = map[string]string{
 		"machine, and the only way to show that is to let somebody run something on it",
 
 	// 3. It is browsable.
+	"users": "everybody here, online first, each row a way to write to them — a " +
+		"card would say how many there are, which is the one fact about a " +
+		"directory nobody opens it for",
 	"news": "many stories, paged", "video": "many videos", "blog": "many posts",
 	"social": "a feed", "apps": "a directory you run things from",
 	"chat": "rooms you talk in", "archive": "a search over everything kept",

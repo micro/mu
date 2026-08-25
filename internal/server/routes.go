@@ -58,6 +58,7 @@ import (
 	"mu/service/tasks"
 	"mu/service/text"
 	"mu/service/transit"
+	"mu/service/users"
 	"mu/service/video"
 	"mu/service/wallet"
 	"mu/service/weather"
@@ -105,6 +106,7 @@ func authRequired() map[string]bool {
 		"/images":                     false, // Public daily image; generation needs login
 		"/img":                        false, // Public — cached article images (a prefix of /images, same answer)
 		"/events":                     true,  // Personal scheduled reminders — sign-in required
+		"/users":                      true,  // Who is on this instance — sign-in required
 		"/contacts":                   true,  // Your address book — sign-in required
 		"/notes":                      true,  // What you and your agents wrote down — sign-in required
 		// Your own documents. Sign-in required, but checked in the handler
@@ -526,6 +528,10 @@ func registerRoutes() {
 	// either — the handler wants the session *and* the password.
 	http.HandleFunc("/wallet/export", wallet.ExportHandler)
 	http.HandleFunc(imageproxy.Path, imageproxy.Handler)
+	// Who is here. See service/users: the directory that did not exist, so a
+	// person could sign up alongside a hundred and eighty others and meet none
+	// of them.
+	http.HandleFunc("/users", users.Handler)
 	http.HandleFunc("/contacts", contacts.Handler)
 	http.HandleFunc("/docs", docs.Handler)
 	http.HandleFunc("/notes", notes.Handler)

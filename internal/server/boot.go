@@ -43,6 +43,7 @@ import (
 	"mu/service/tasks"
 	"mu/service/text"
 	"mu/service/transit"
+	"mu/service/users"
 	"mu/service/video"
 	"mu/service/wallet"
 	"mu/service/weather"
@@ -124,6 +125,7 @@ func boot() {
 	flights.Load()
 	routes.Load()
 	contacts.Load()
+	users.Load()
 	// Who is here: the presence broadcaster behind /presence. It was started
 	// from wireHooks, which is for breaking cycles rather than standing things
 	// up, and it never needed one.
