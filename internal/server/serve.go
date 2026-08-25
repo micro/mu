@@ -397,14 +397,12 @@ func serve(addr string) {
 						// the body.
 						defer x402.Finish(w)
 					} else if who, blocked, reason := payer(r, token, op); blocked {
-						// Describe what is being refused, so a facilitator
-						// reading this challenge can index the tool. Nil
-						// unless X402_BAZAAR is on.
-						var listing map[string]any
-						if t, ok := api.ToolByName(tool); ok {
-							listing = x402.BazaarExtensions(t.Name, t.Description, api.ToolSchema(t))
-						}
-						if x402.WritePaymentRequired(w, op, resource, listing, reason) {
+						// No listing. A discovery extension used to ride along
+						// in this challenge, describing the refused tool so a
+						// facilitator could index it, behind a setting that was
+						// off by default and never turned on. See
+						// internal/x402/bazaar.go for why the whole idea went.
+						if x402.WritePaymentRequired(w, op, resource, nil, reason) {
 							// Count the refusal. Calls are recorded inside the
 							// dispatcher, which this returns before reaching,
 							// so every call turned away at the door was absent

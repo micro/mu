@@ -15,6 +15,7 @@ import (
 
 	"mu/internal/auth"
 	"mu/internal/data"
+	"mu/internal/settings"
 )
 
 var startTime = time.Now()
@@ -261,7 +262,7 @@ func buildStatus() StatusResponse {
 	})
 
 	// Check Google Places API
-	googleConfigured := os.Getenv("GOOGLE_API_KEY") != ""
+	googleConfigured := settings.Get("GOOGLE_API_KEY") != ""
 	services = append(services, StatusCheck{
 		Name:   "Google Places API",
 		Status: googleConfigured,

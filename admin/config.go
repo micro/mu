@@ -141,7 +141,6 @@ var settingGroups = []settingGroup{
 			"STRIPE_PUBLISHABLE_KEY",
 			"STRIPE_WEBHOOK_SECRET",
 			"X402_PAY_TO",
-			"X402_BAZAAR",
 			"X402_NETWORK",
 			"X402_VERSION",
 			"X402_SERVERS",
@@ -213,20 +212,19 @@ var settingGroups = []settingGroup{
 			"SMS_COUNTRIES",
 			"SMS_KNOWN_ONLY",
 			"SMS_VERIFY_INBOUND",
-		}},
-	// This group was "Sending limits and email out", and four of its five
-	// settings were read by nothing: EMAIL_DOMAIN and EMAIL_REPLY_DOMAIN, from
-	// before the mailbox settled on MAIL_DOMAIN; EMAIL_DAILY_LIMIT, which
-	// internal/quota names as one of "two names for one idea in two packages";
-	// and WHATSAPP_DAILY_LIMIT, from the deleted channel. Its comment pointed
-	// at service/email, which does not exist. What was actually live is one
-	// ceiling on the one thing here that costs per message.
-	{Name: "SMS limits",
-		Does:  "The daily ceiling on messages that cost per send.",
-		Needs: nil,
-		Vars: []string{
 			"SMS_DAILY_LIMIT",
 		}},
+	// "Sending limits and email out" was here, and four of its five settings
+	// were read by nothing: EMAIL_DOMAIN and EMAIL_REPLY_DOMAIN, from before
+	// the mailbox settled on MAIL_DOMAIN; EMAIL_DAILY_LIMIT, which
+	// internal/quota names as one of "two names for one idea in two packages";
+	// and WHATSAPP_DAILY_LIMIT, from the deleted channel. Its comment pointed
+	// at service/email, which does not exist.
+	//
+	// The one live setting was SMS_DAILY_LIMIT, and it is now in the Twilio
+	// group with the number it bounds. A ceiling on SMS filed away from the SMS
+	// settings is how somebody turns SMS on, watches it stop at a hundred
+	// messages, and finds nothing on the page that explains it.
 	{Name: "Sign-in",
 		Does:  "Signing in with Google, as well as with a password or a passkey.",
 		Needs: []string{"GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"},

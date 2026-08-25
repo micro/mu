@@ -19,6 +19,7 @@ import (
 	"mu/internal/data"
 	"mu/internal/event"
 	"mu/internal/service"
+	"mu/internal/settings"
 )
 
 var mutex sync.RWMutex
@@ -150,7 +151,7 @@ func Load() {
 	if dkimDomain == "" {
 		dkimDomain = "localhost"
 	}
-	dkimSelector := os.Getenv("MAIL_SELECTOR")
+	dkimSelector := settings.Get("MAIL_SELECTOR")
 	if dkimSelector == "" {
 		dkimSelector = "default"
 	}

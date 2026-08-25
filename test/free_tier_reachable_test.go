@@ -35,11 +35,14 @@ func TestThePaymentGateAsksWhetherTheToolCostsAnything(t *testing.T) {
 			"so free tools are paywalled to anonymous callers again")
 	}
 	// And when the challenge declines to be written, the request continues
-	// rather than being refused with an empty 402. The call gained a reason
-	// argument — see TestTheGateAsksWhetherTheCallerCanPayNotWhetherTheyExist —
-	// so what is asserted is that the result is still what decides, not the
-	// exact shape of the arguments.
-	if !strings.Contains(body, "if x402.WritePaymentRequired(w, op, resource, listing") {
+	// rather than being refused with an empty 402. What is asserted is that the
+	// result is still what decides — the call is the condition of an if.
+	//
+	// This said so and then pinned the argument list, matching on
+	// "...(w, op, resource, listing". So it failed when the discovery listing
+	// was dropped for nil, which changed no behaviour it was guarding. The
+	// prefix stops where the arguments start.
+	if !strings.Contains(body, "if x402.WritePaymentRequired(w, op, resource") {
 		t.Error("the gate ignores whether a challenge was actually written")
 	}
 }

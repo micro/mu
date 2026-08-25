@@ -4342,20 +4342,64 @@ a.btn-secondary:hover, .btn-secondary:hover {
 .admin-table .center {
   text-align: center;
 }
+/* On a phone this stops being a table.
+ *
+ * Six columns, the last of them four forms wide, do not fit across 390px. It
+ * used to shrink the type and hide the Created column and hope, which left the
+ * actions running off the side of the page with nothing to scroll them back —
+ * the buttons were rendered, and unreachable.
+ *
+ * A row becomes a card and a cell becomes a labelled line. The header row is
+ * what tells you which column you are in, and it is the first casualty of a
+ * narrow screen, so each cell carries its own label in data-label instead. A
+ * cell with no label still stacks; it just has no heading. */
 @media only screen and (max-width: 600px) {
-  .admin-table {
-    font-size: 0.85em;
+  .admin-table, .admin-table tbody, .admin-table tr, .admin-table td {
+    display: block;
+    width: 100%;
   }
-  .admin-table th, .admin-table td {
-    padding: 5px 3px;
-  }
-  .admin-table .created-col {
+  .admin-table thead {
     display: none;
   }
-  .admin-table .delete-btn {
-    padding: 3px 6px !important;
-    font-size: 0.8em !important;
+  .admin-table tr {
+    border: 1px solid var(--border, #e5e5e5);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 12px;
   }
+  .admin-table td {
+    border-bottom: none;
+    padding: 4px 0;
+    /* The label is a fixed column so the values line up down the card. */
+    display: grid;
+    grid-template-columns: 5.5rem 1fr;
+    gap: 8px;
+    align-items: baseline;
+    /* Centring was for a table cell and reads as an accident in a list. */
+    text-align: left;
+  }
+  .admin-table td[data-label]::before {
+    content: attr(data-label);
+    font-size: 0.75em;
+    color: var(--text-muted, #888);
+  }
+  /* The actions are the reason this had to change. They wrap now, and the
+   * nowrap the wide layout needs is overridden rather than removed, because
+   * on a wide screen it is still what keeps a row one line tall. */
+  .admin-table td.actions-cell {
+    display: block;
+    white-space: normal;
+  }
+  .admin-table td.actions-cell::before {
+    display: block;
+    margin-bottom: 6px;
+  }
+  .admin-table td.actions-cell form {
+    margin: 0 6px 6px 0;
+  }
+  /* Created stays. It was hidden to buy width, and there is no width to buy
+   * now that the cells are stacked — hiding it only lost the answer to "when
+   * did this account appear", which is most of why the page is opened. */
 }
 
 /* Blocklist */

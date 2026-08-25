@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"mu/internal/settings"
 )
 
 func TestCreditsToAtomic(t *testing.T) {
@@ -85,9 +87,9 @@ func TestCDPBearer(t *testing.T) {
 }
 
 func TestBuildPaymentRequirementsShape(t *testing.T) {
-	x402PayTo = "0x9a717EFF039622231C65ADbF7B2A002b544b06A9"
+	settings.Set("X402_PAY_TO", "0x9a717EFF039622231C65ADbF7B2A002b544b06A9")
 	t.Setenv("X402_NETWORK", "eip155:8453")
-	defer func() { x402PayTo = "" }()
+	defer settings.Set("X402_PAY_TO", "")
 
 	// A priced operation: chat_query is free now — answering in a room is the
 	// agent talking, not a tool being called — and a free one has no price to
@@ -97,7 +99,7 @@ func TestBuildPaymentRequirementsShape(t *testing.T) {
 		t.Fatal("expected at least one requirement")
 	}
 	r := reqs[0]
-	if r.Scheme != "exact" || r.Network != "eip155:8453" || r.PayTo != x402PayTo {
+	if r.Scheme != "exact" || r.Network != "eip155:8453" || r.PayTo != payTo() {
 		t.Errorf("bad requirement: %+v", r)
 	}
 	if r.AmountAtomic() == "" || strings.Contains(r.AmountAtomic(), "$") {

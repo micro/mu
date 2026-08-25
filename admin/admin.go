@@ -238,7 +238,18 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 				`class="mini-btn info">Credit</button></form>`,
 			u.ID, tab))
 
-		sb.WriteString(fmt.Sprintf(`<tr><td><strong><a href="/@%s">%s</a></strong></td><td>%s</td><td class="created-col">%s</td><td>%s</td><td class="center">%s</td><td class="center nowrap">%s</td></tr>`, u.ID, u.ID, u.Name, created, statusHTML, balanceCell(u.ID), strings.Join(actions, " ")))
+		// data-label on every cell, because on a narrow screen the table stops
+		// being a table — see .admin-table in mu.css. The header row is what
+		// tells you which column you are looking at, and it is the first thing
+		// that has to go when six columns will not fit across a phone.
+		sb.WriteString(fmt.Sprintf(`<tr>`+
+			`<td data-label="Username"><strong><a href="/@%s">%s</a></strong></td>`+
+			`<td data-label="Name">%s</td>`+
+			`<td data-label="Created" class="created-col">%s</td>`+
+			`<td data-label="Status">%s</td>`+
+			`<td data-label="Credits" class="center">%s</td>`+
+			`<td data-label="Actions" class="center actions-cell">%s</td>`+
+			`</tr>`, u.ID, u.ID, u.Name, created, statusHTML, balanceCell(u.ID), strings.Join(actions, " ")))
 	}
 	sb.WriteString(`</tbody></table>`)
 	app.Respond(w, r, app.Response{Title: "Users", Description: "Accounts on this instance", HTML: sb.String()})
