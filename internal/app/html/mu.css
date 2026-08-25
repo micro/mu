@@ -2659,6 +2659,19 @@ a.highlight {
     min-height: 36px;
     padding: 6px 12px;
   }
+
+  /* And anything that stands in a row with one.
+   *
+   * This rule gave buttons a thumb-sized target and said nothing about inputs,
+   * so a field beside a button was 26px against 36px — everywhere, on every
+   * page with a control row, not as a bug on any one of them. The two agreed
+   * on font, line-height, padding, border and box-sizing and disagreed on the
+   * one property only half of them were given.
+   *
+   * A number typed on a phone wants the same target as a button anyway. */
+  .num-field {
+    min-height: 36px;
+  }
   
   /* Prevent iOS zoom on input focus */
   input, textarea, select {
@@ -2908,15 +2921,36 @@ a.highlight {
 /* A small outlined action in a table row — Ban, Grant, Verify on /admin/users.
    The colour is the only thing that varies, so it is a modifier rather than
    four near-identical rules. */
-.mini-btn {
+/* One compact control, whatever element it is.
+ *
+ * A row of buttons with an input among them never lines up by coincidence.
+ * These were two rules that each invented their own padding and font-size —
+ * 2px 8px against 2px 4px — and a browser adds its own border and line-height
+ * to an input on top of that, so the field sat a couple of pixels shorter than
+ * the buttons either side of it. font-family had to be said twice for the same
+ * reason: an input does not inherit it.
+ *
+ * So the metrics are one rule and the colours are separate. Anything else that
+ * belongs in a row of these joins the selector rather than copying the numbers.
+ */
+.mini-btn,
+.num-field {
+  font: inherit;
   font-size: 12px;
-  padding: 2px 8px;
+  line-height: 1.5;
+  padding: 3px 8px;
   border-radius: var(--border-radius, 6px);
   border: var(--border-width, 1px) solid var(--card-border, #ddd);
+  /* Padding and border inside the height, or the two disagree by exactly the
+   * border width — which is the difference somebody sees and cannot name. */
+  box-sizing: border-box;
+  vertical-align: middle;
+}
+
+.mini-btn {
   background: var(--card-background, #fff);
   color: var(--text-secondary, #555);
   cursor: pointer;
-  font-family: inherit;
 }
 .mini-btn.danger { border-color: var(--btn-danger, #c00); color: var(--btn-danger, #c00); }
 .mini-btn.good { border-color: var(--btn-success, #22c55e); color: var(--btn-success, #22c55e); }
@@ -2933,6 +2967,15 @@ a.highlight {
 .count-badge.info { background: var(--link-color, #06b); }
 .count-badge.good { background: var(--btn-success, #22c55e); }
 .count-badge.quiet { background: var(--text-secondary, #555); }
+
+/* Several badges as one value. Wraps within its own column rather than each
+ * badge being placed separately by whatever laid the row out. */
+.badge-row {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
 
 /* A row that needs to shout — a banned account, a failed job. */
 .row-danger { background: var(--btn-danger, #c00); color: #fff; }
@@ -3372,12 +3415,10 @@ a.highlight {
 }
 
 /* A narrow number field in a table row. */
+/* Size comes from the .mini-btn rule it shares a row with. What is left is
+ * how wide it needs to be for the number that goes in it. */
 .num-field {
-  width: 64px;
-  font-size: 12px;
-  padding: 2px 4px;
-  border: var(--border-width, 1px) solid var(--card-border, #ddd);
-  border-radius: var(--border-radius, 6px);
+  width: 72px;
 }
 
 /* A row of filter pills over a list. Named once because /apps, /mail, /inbox
@@ -4369,14 +4410,22 @@ a.btn-secondary:hover, .btn-secondary:hover {
   }
   .admin-table td {
     border-bottom: none;
-    padding: 4px 0;
+    padding: 3px 0;
     /* The label is a fixed column so the values line up down the card. */
     display: grid;
     grid-template-columns: 5.5rem 1fr;
     gap: 8px;
     align-items: baseline;
-    /* Centring was for a table cell and reads as an accident in a list. */
-    text-align: left;
+    /* Centring was for a table cell and reads as an accident in a list. The
+     * !important is against .admin-table .center, which is two classes and so
+     * wins on specificity — the Credits and Actions cells carry it for the
+     * wide layout, and left in place they indented their own labels. */
+    text-align: left !important;
+  }
+  /* A grid item fills its track unless told not to, so a badge that is 40px
+   * of text stretched into a 300px black bar across the row. */
+  .admin-table td > * {
+    justify-self: start;
   }
   .admin-table td[data-label]::before {
     content: attr(data-label);
@@ -4387,15 +4436,23 @@ a.btn-secondary:hover, .btn-secondary:hover {
    * nowrap the wide layout needs is overridden rather than removed, because
    * on a wide screen it is still what keeps a row one line tall. */
   .admin-table td.actions-cell {
-    display: block;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
     white-space: normal;
+    margin-top: 4px;
   }
+  /* The label goes. Five buttons under a heading reading "Actions" is a word
+   * spent on something the buttons already say. */
   .admin-table td.actions-cell::before {
-    display: block;
-    margin-bottom: 6px;
+    content: none;
   }
   .admin-table td.actions-cell form {
-    margin: 0 6px 6px 0;
+    margin: 0;
+    display: flex;
+    gap: 6px;
+    align-items: center;
   }
   /* Created stays. It was hidden to buy width, and there is no width to buy
    * now that the cells are stacked — hiding it only lost the answer to "when

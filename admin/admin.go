@@ -203,8 +203,15 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 		if u.Approved {
 			badges = append(badges, `<span class="count-badge info">approved</span>`)
 		}
-		statusHTML := strings.Join(badges, " ")
-		if statusHTML == "" {
+		// One element, not several.
+		//
+		// On a phone the cell is a two-column grid — label, value — and every
+		// child is a grid item. Two badges meant the second one started a new
+		// grid row in the label's column, so "approved" appeared under
+		// "Status" as if it were a field of its own. Wrapping them makes the
+		// pair one value that wraps inside its own column.
+		statusHTML := `<span class="badge-row">` + strings.Join(badges, " ") + `</span>`
+		if len(badges) == 0 {
 			statusHTML = `<span class="text-muted text-xs">—</span>`
 		}
 		var actions []string
@@ -220,7 +227,7 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 			} else {
 				actions = append(actions, fmt.Sprintf(`<form method="POST" class="d-inline"><input type="hidden" name="action" value="ban"><input type="hidden" name="user_id" value="%s"><input type="hidden" name="tab" value="%s"><button type="submit" class="mini-btn danger" onclick="return confirm('Ban %s?')">Ban</button></form>`, u.ID, tab, u.ID))
 			}
-			actions = append(actions, fmt.Sprintf(`<form method="POST" class="d-inline" onsubmit="return confirm('Delete %s?')"><input type="hidden" name="action" value="delete"><input type="hidden" name="user_id" value="%s"><input type="hidden" name="tab" value="%s"><button type="submit" class="btn-danger text-xs p-tight">Delete</button></form>`, u.ID, u.ID, tab))
+			actions = append(actions, fmt.Sprintf(`<form method="POST" class="d-inline" onsubmit="return confirm('Delete %s?')"><input type="hidden" name="action" value="delete"><input type="hidden" name="user_id" value="%s"><input type="hidden" name="tab" value="%s"><button type="submit" class="mini-btn danger">Delete</button></form>`, u.ID, u.ID, tab))
 		}
 		// Credit, on the row, because that is where somebody wanting to comp an
 		// account is looking. An amount box rather than fixed buttons: the
