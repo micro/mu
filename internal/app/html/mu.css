@@ -3762,19 +3762,10 @@ button.btn-plain { padding: 6px 12px; font: inherit; cursor: pointer; color: var
 .pin-btn.pinned svg { fill: currentColor; }
 .pin-btn.pinned:hover { color: #a87f1f; }
 
-/* The line under the heading on /login and /signup.
-   The landing makes a specific promise — one endpoint, every tool — and the
-   forms used to be a username, a password and the word "Signup", which could
-   belong to any product. Someone who came for tools for agents should still be
-   able to see what they are signing up for at the moment they do it. */
-.auth-lede {
-  max-width: 30rem;
-  margin: 0 auto 18px;
-  text-align: center;
-  font-size: 14px;
-  line-height: 1.55;
-  color: var(--text-secondary, #666);
-}
+/* .auth-lede was here — the line under the heading on /login, pitching the
+   product to somebody already signing in to it. Its own comment said it was
+   for /login and /signup; signup never had one, so it was one line on one
+   page, explaining a thing to the only people who had already decided. */
 
 .auth-foot {
   text-align: center;

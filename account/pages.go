@@ -85,7 +85,6 @@ var LoginTemplate = `<html lang="en">
       <div id="content">
 	<form id="login" action="/login%s" method="POST">
 	  <h1>Log in</h1>
-	  <p class="auth-lede">Your agents, your tools, and the app they share.</p>
 	  %s
 	  %s
 	  <input id="id" name="id" placeholder="Username" required>
