@@ -745,10 +745,10 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	// twice — that a balance has a deadline and a language picker does not. That
 	// reasoning was right and the conclusion was wrong: the answer to "this
 	// matters more than the rest of the page" is its own page, not the top of
-	// this one. /billing is that page and Credits is in the menu beside Account.
+	// this one. /billing is that page and Billing is in the menu beside Account.
 	//
 	// Not even a line pointing at it. There was one for a few minutes, on the
-	// reasoning that somebody would look for money here first — and Credits is
+	// reasoning that somebody would look for money here first — and Billing is
 	// in the same menu this page is reached from, one item below it. A section
 	// whose only content is a link to its neighbour is the thing being removed
 	// everywhere else on this page.
