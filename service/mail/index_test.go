@@ -7,12 +7,13 @@ import (
 	"mu/internal/data"
 )
 
-// indexed turns the real index on for a test.
+// indexed pins the real index on for a test.
 //
-// It is off by default — MU_USE_SQLITE — so a test that did not do this would
-// exercise the in-memory fallback, which is a map scanned with
-// strings.Contains and populated through a queue by background workers. Neither
-// half of that is what these tests are about, and the queue makes them racy.
+// It is the default now, and this stays because the default is a default: an
+// instance can set MU_USE_SQLITE=0, and a test that quietly followed it would
+// exercise the in-memory fallback instead — a map scanned with strings.Contains
+// and populated through a queue by background workers. Neither half is what
+// these tests are about, and the queue makes them racy.
 func indexed(t *testing.T) {
 	t.Helper()
 	was := data.UseSQLite

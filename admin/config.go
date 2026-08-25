@@ -72,13 +72,12 @@ var settingGroups = []settingGroup{
 			"GOOGLE_API_KEY",
 		}},
 	{Name: "The search index",
-		Does:  "Where search looks. SQLite with FTS5 is an index; the default is a map read end to end on every query, and it gets slower with everything anybody stores.",
+		Does:  "Where search looks. SQLite with FTS5, which is an index. Set to 0 for the old one: a map read end to end on every query.",
 		Needs: nil,
 		Vars: []string{
-			// Not a preference. FTS5 is better and this should not be a choice
-			// — but turning it on starts an empty index, and only mail rebuilds
-			// itself at boot today. Until every service can, the operator has to
-			// make a decision we would rather make for them. See #1472.
+			// Here to be turned off, not on. Left visible rather than deleted
+			// because it is the way back if the index misbehaves on somebody's
+			// data, and a default nobody can undo is worse than a dial.
 			"MU_USE_SQLITE",
 		}},
 	{Name: "Mail",
@@ -105,18 +104,35 @@ var settingGroups = []settingGroup{
 	// files and generated images belong, which is why these are named for the
 	// storage rather than for the backup.
 	{Name: "Object storage (S3)",
-		Does:  "Somewhere off this disk for backups, files and generated images.",
-		Needs: []string{"S3_BUCKET", "S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY"},
+		Does:  "Where files and images are kept, instead of this machine's disk.",
+		Needs: []string{"S3_BUCKET", "S3_ACCESS_KEY", "S3_SECRET_KEY"},
 		Vars: []string{
+			"S3_ENDPOINT",
 			"S3_BUCKET",
 			"S3_REGION",
-			"S3_ENDPOINT",
+			// internal/blob reads these two. They were in a group described as
+			// "the older S3 names, kept so a configured instance keeps working —
+			// set the group above instead", which was wrong in the way that
+			// costs somebody something: they are not older names for the backup
+			// credentials, they are a different subsystem's, and neither falls
+			// back to the other. An operator who took the advice configured
+			// backups and left file storage with no credentials at all.
+			"S3_ACCESS_KEY",
+			"S3_SECRET_KEY",
+		}},
+	{Name: "Backups",
+		Does:  "A copy of this instance's data, sent to object storage on a schedule. Uses the endpoint, bucket and region above, with its own credentials.",
+		Needs: []string{"BACKUP_S3", "S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY"},
+		Vars: []string{
+			"BACKUP_S3",
+			// internal/backup reads these. Separate credentials from the ones
+			// above on purpose — a backup key that can only write is the point
+			// of having two — and the names differ by so little that the page
+			// has to say which is which.
 			"S3_ACCESS_KEY_ID",
 			"S3_SECRET_ACCESS_KEY",
 			"S3_PREFIX",
-			"BACKUP_S3",
-		}},
-	{Name: "Payments",
+		}}, {Name: "Payments",
 		Does:  "Taking money: a card through Stripe, or per-request from an agent over x402.",
 		Needs: nil,
 		Vars: []string{
@@ -213,16 +229,6 @@ var settingGroups = []settingGroup{
 			"PASSKEY_ORIGIN",
 			"PASSKEY_RP_ID",
 		}},
-	{Name: "Storage",
-		Does:  "The older S3 names, kept so a configured instance keeps working. Set the group above instead.",
-		Needs: nil,
-		Vars: []string{
-			"S3_ENDPOINT",
-			"S3_BUCKET",
-			"S3_REGION",
-			"S3_ACCESS_KEY",
-			"S3_SECRET_KEY",
-		}},
 	{Name: "Social",
 		Does:  "Posting out to the ATProto network.",
 		Needs: nil,
@@ -286,10 +292,6 @@ var settingGroups = []settingGroup{
 		Needs: nil,
 		Vars: []string{
 			"MU_DOMAIN",
-			// The same fact as MU_DOMAIN for almost every instance, and kept
-			// because the two differ when something sits in front on another
-			// name. If you are setting both to the same thing, set MU_DOMAIN.
-			"APP_URL",
 			"SHUTDOWN_SECONDS",
 		}},
 	{Name: "The agent",

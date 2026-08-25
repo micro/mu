@@ -548,10 +548,20 @@ func MigrateFromJSON() error {
 	}
 
 	var oldIndex map[string]*struct {
-		ID        string                 `json:"id"`
-		Type      string                 `json:"type"`
-		Title     string                 `json:"title"`
-		Content   string                 `json:"content"`
+		ID      string `json:"id"`
+		Type    string `json:"type"`
+		Title   string `json:"title"`
+		Content string `json:"content"`
+		// Owner, and it has to be read.
+		//
+		// This struct left it out, on a comment that said "pre-owner entries
+		// are all public content" — true when the field did not exist, and
+		// false since IndexOwned was added and saveIndex started serialising
+		// it. Every owner-scoped entry in index.json would have migrated with
+		// an empty owner, which is what marks an entry public: somebody's
+		// private notes findable by anybody, once, at the moment the backend
+		// was switched. See WithOwner.
+		Owner     string                 `json:"owner,omitempty"`
 		Metadata  map[string]interface{} `json:"metadata,omitempty"`
 		IndexedAt time.Time              `json:"indexed_at"`
 	}
@@ -584,8 +594,9 @@ func MigrateFromJSON() error {
 			metadataJSON, _ = json.Marshal(entry.Metadata)
 		}
 
-		// Pre-owner entries are all public content.
-		_, err := stmt.Exec(id, entry.Type, entry.Title, entry.Content, "", string(metadataJSON), entry.IndexedAt)
+		// The owner as it was. An entry with none is public, which is what
+		// an empty string means here and everywhere else.
+		_, err := stmt.Exec(id, entry.Type, entry.Title, entry.Content, entry.Owner, string(metadataJSON), entry.IndexedAt)
 		if err != nil {
 			fmt.Printf("[data] Failed to migrate entry %s: %v\n", id, err)
 			continue

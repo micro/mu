@@ -597,9 +597,10 @@ Everything is under `~/.mu/`:
 ```
 
 Back up that directory and you have backed up the instance. It is plain JSON on
-disk, so it is greppable and diffable; `MU_USE_SQLITE=1` moves just the search
-index into `~/.mu/data/index.db`, and setting `S3_*` moves stored file bytes to
-an object store (see Configuration reference below).
+disk, so it is greppable and diffable, with two exceptions: the search index is
+SQLite in `~/.mu/data/index.db` (`MU_USE_SQLITE=0` puts it back in JSON), and
+setting `S3_*` moves stored file bytes to an object store (see Configuration
+reference below).
 
 In Docker, `HOME` is `/data`, so this tree is `/data/.mu` on the mounted volume.
 
@@ -932,7 +933,7 @@ that same file, so this page does not repeat twenty-six rows.
 |---|---|---|
 | `MU_REGISTRY` | in-process | `mdns` puts services on the local network — note it *announces* every service this process hosts |
 | `MU_ADVERTISE` | loopback | Address to advertise when the registry is networked |
-| `MU_USE_SQLITE` | — | SQLite with FTS5 for the search index, instead of the file store |
+| `MU_USE_SQLITE` | `1` | SQLite with FTS5 for the search index. On by default — set it to `0` for the older file store, a map read end to end on every query. Switching decides where the *index* lives and nothing else; the first boot after turning it on migrates `index.json` into it once, so an instance that has been running keeps everything it had indexed |
 | `MCP_GATEWAY_ADDR` | — | Run go-micro's MCP gateway on its own port |
 | `PUBLIC_URL` · `APP_URL` | — | Public origin, when it can't be derived |
 | `TOR_ONION` | — | Onion address, shown in the footer |
