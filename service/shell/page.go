@@ -38,7 +38,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// user that cannot open its socket.
 		b.WriteString(app.Problem("No machine available — " + container.Reason() + "."))
 		b.WriteString(`</div>`)
-		app.Respond(w, r, app.Response{Title: "Sandbox", Description: Spec.Description, HTML: b.String()})
+		app.Respond(w, r, app.Response{Title: "Shell", Description: Spec.Description, HTML: b.String()})
 		return
 	}
 
@@ -48,7 +48,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			app.TextLink("Sign in", "/login?redirect=/shell") +
 			` to get a machine. The files are yours and running things costs, so it ` +
 			`needs an account to keep them under and to bill.</p></div>`)
-		app.Respond(w, r, app.Response{Title: "Sandbox", Description: Spec.Description, HTML: b.String()})
+		app.Respond(w, r, app.Response{Title: "Shell", Description: Spec.Description, HTML: b.String()})
 		return
 	}
 
@@ -60,7 +60,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		if !auth.ValidCSRF(r) {
 			b.WriteString(app.Problem("That form was stale. Reload the page and try again."))
 			b.WriteString(`</div>`)
-			app.Respond(w, r, app.Response{Title: "Sandbox", Description: Spec.Description, HTML: b.String()})
+			app.Respond(w, r, app.Response{Title: "Shell", Description: Spec.Description, HTML: b.String()})
 			return
 		}
 		// Two forms post here: a command, and the SSH keys. They are told
@@ -125,7 +125,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	b.WriteString(keysCard(r, acc.ID))
 	b.WriteString(`</div>`)
-	app.Respond(w, r, app.Response{Title: "Sandbox", Description: Spec.Description, HTML: b.String()})
+	app.Respond(w, r, app.Response{Title: "Shell", Description: Spec.Description, HTML: b.String()})
 }
 
 // running runs what was typed and shows it.

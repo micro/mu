@@ -94,10 +94,6 @@ ExecStart=/home/mu/mu --serve
 Restart=always
 RestartSec=5
 EnvironmentFile=/home/mu/.env
-# systemd gives a service a short PATH that does not include /snap/bin. A
-# snap-installed Docker is invisible to the server without this, while being
-# perfectly present on the machine.
-Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin
 
 [Install]
 WantedBy=multi-user.target
@@ -109,6 +105,39 @@ Then:
 sudo systemctl daemon-reload
 sudo systemctl enable mu
 sudo systemctl start mu
+```
+
+**`EnvironmentFile` is not a shell, and PATH is the line that catches people.**
+systemd reads that file as plain `KEY=value` pairs. There is no `export`, no
+`$VAR` expansion, no command substitution — so this:
+
+```bash
+PATH=$PATH:/usr/local/go/bin
+```
+
+does not append anything. It sets PATH to the eleven literal characters
+`$PATH` followed by `:/usr/local/go/bin`, and the service then has a PATH
+containing no real directory at all. Everything that shells out stops working
+at once: no `docker`, so no shell service and no apps that run commands.
+
+The same line written `export PATH=...` behaves completely differently, and
+not because systemd understands `export` — it cannot parse `export PATH` as a
+variable name, so it skips the line, and the service quietly keeps systemd's
+own default PATH. It works by being ignored, which is worse than failing,
+because removing the word `export` later looks like tidying.
+
+If you need a PATH, write it out in full and put it in the unit rather than
+the env file:
+
+```ini
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/go/bin
+```
+
+To see what the service actually got:
+
+```bash
+systemctl show mu -p Environment
+sudo -u mu sh -c 'command -v docker'
 ```
 
 ### Restarts without a gap

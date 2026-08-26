@@ -31,7 +31,7 @@ import (
 func caller(ctx context.Context) (string, error) {
 	id := service.AccountFrom(ctx)
 	if id == "" {
-		return "", fmt.Errorf("sign in to use a sandbox")
+		return "", fmt.Errorf("sign in to use a shell")
 	}
 	if !Configured() {
 		// The runtime's own reason, not a guess at it. "Install Docker" is the
