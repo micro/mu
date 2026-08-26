@@ -434,6 +434,12 @@ func registerRoutes() {
 	// Registered before the /wallet/ prefix below and matched ahead of it:
 	// net/http picks the longest matching pattern, and this is an exact one.
 	http.HandleFunc("/wallet/export", wallet.ExportHandler)
+	// Turning USDC in the wallet into credits — the one thing the crypto card
+	// could not do, so money sent to your own address here bought nothing here.
+	// Its own route rather than a case in BalanceHandler because it is a POST
+	// that moves money on a chain, and the CSRF and method checks want to be
+	// obvious rather than nested three switches deep.
+	http.HandleFunc("/wallet/convert", account.ConvertUSDC)
 	// The money actions. account/ owns them because it owns the ledger.
 	http.HandleFunc("/wallet/", account.BalanceHandler)
 	http.HandleFunc(imageproxy.Path, imageproxy.Handler)

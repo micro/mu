@@ -93,7 +93,7 @@ func BalanceCard(userID string) string {
 	// announcing on the page.
 	// Balance, on a page titled Wallet. There are two numbers here and both are
 	// balances — this one in credits, and the USDC the key holds — but the
-	// second card names itself "On-chain key", so this one does not have to
+	// second card names itself "Crypto", so this one does not have to
 	// carry the disambiguation in its own title as well.
 	return app.SectionID("balance", "Balance",
 		`<p class="balance-figure"><b>`+thousands(c.Balance)+`</b> <span>credits</span></p>`,
@@ -251,9 +251,24 @@ func Wallet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// What just happened, when something did. Every action on this page — top
+	// up, transfer, convert — leaves by redirect, so without this the page comes
+	// back looking identical whether it worked or not.
+	notice := ""
+	switch r.URL.Query().Get("saved") {
+	case "converted":
+		notice = app.Notice("Converted. Your balance is below.")
+	case "transferred":
+		notice = app.Notice("Sent.")
+	}
+	if msg := r.URL.Query().Get("error"); msg != "" {
+		notice = app.Problem(msg)
+	}
+
 	app.Respond(w, r, app.Response{Title: "Wallet",
 		Description: "What you have, and the key that spends it",
-		HTML: BalanceCard(sess.Account) +
+		HTML: notice +
+			BalanceCard(sess.Account) +
 			usage.Card(sess.Account) +
 			LedgerSection(sess.Account) +
 			wallet.Page(sess.Account)})

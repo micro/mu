@@ -880,3 +880,74 @@ func serviceName() string {
 	}
 	return "mu"
 }
+
+// TopUpRequirement is a payment of an arbitrary number of credits to this
+// instance, for somebody buying credits with USDC rather than a card.
+//
+// BuildPaymentRequirements cannot answer this. It prices a named operation by
+// looking it up in quota, which is right for a tool call and has no meaning for
+// a top-up: the amount is whatever somebody chose to convert. Same shape, same
+// asset list, same payTo — only the amount comes from the caller.
+//
+// One asset rather than a list, because there is nobody to choose. A 402
+// challenge offers several and lets the payer pick; here this instance is both
+// sides, so it takes the first accepted asset and signs against that.
+//
+// Nil when x402 is not configured, or when there is no accepted asset to pay
+// in — the caller must treat that as "this instance cannot be paid this way"
+// rather than as a failure to convert.
+func TopUpRequirement(credits int) *PaymentRequirements {
+	if !Enabled() || credits < 1 {
+		return nil
+	}
+	assets := acceptedAssets()
+	if len(assets) == 0 {
+		return nil
+	}
+	a := assets[0]
+
+	r := PaymentRequirements{
+		Scheme:            "exact",
+		Network:           Network(),
+		PayTo:             payTo(),
+		MaxTimeoutSeconds: 120,
+		Asset:             a.Address,
+		Extra:             map[string]string{"name": a.Name, "version": a.Version},
+	}
+	amount := creditsToAtomic(credits, a.Decimals)
+	if x402Ver() >= 2 {
+		r.Amount = amount
+	} else {
+		r.MaxAmountRequired = amount
+		r.Resource = "credits"
+		r.Description = "Credits on this instance"
+		r.MimeType = "application/json"
+	}
+	return &r
+}
+
+// SettleSigned verifies and settles a payment this instance signed itself.
+//
+// The rest of this file settles payments that arrived: an X-PAYMENT header on
+// an inbound request, matched against the requirements for the operation being
+// called. A top-up has no inbound request — this instance holds the key, signs
+// the authorisation and hands it to the facilitator — so it needs the same two
+// facilitator calls without the HTTP request in front of them.
+//
+// hdr is the base64 header value SignX402Payment returns, so the wallet keeps
+// producing exactly one thing and this decodes it the same way an inbound
+// payment is decoded.
+func SettleSigned(hdr string, req *PaymentRequirements) (*SettleResponse, error) {
+	if req == nil {
+		return nil, fmt.Errorf("no payment requirement")
+	}
+	raw, err := base64.StdEncoding.DecodeString(strings.TrimSpace(hdr))
+	if err != nil {
+		return nil, fmt.Errorf("payment payload is not base64: %w", err)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		return nil, fmt.Errorf("payment payload is not JSON: %w", err)
+	}
+	return settleRequirement(payload, req)
+}

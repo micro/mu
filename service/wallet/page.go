@@ -95,6 +95,7 @@ func Page(accountID string) string {
     <p class="cw-qrnote">Scans as <b>USDC on %s</b> — your wallet should already
     have the network and token filled in. If it offers a different network, stop.</p>
   </details>
+%s
   <p class="text-sm text-muted mt-3 m-0"><a href="/wallet/export">Export your
   private key →</a> The key is held on this instance; a copy you hold yourself is the only
   thing that makes losing it here survivable.</p>
@@ -124,5 +125,34 @@ function cwFallback(a,done){var t=document.createElement('textarea');t.value=a;t
 </script>`,
 		html.EscapeString(human), unreadable, net,
 		html.EscapeString(bw.Address), html.EscapeString(bw.Address),
-		html.EscapeString(payURI), net)
+		html.EscapeString(payURI), net, convertForm())
+}
+
+// convertForm turns what the wallet holds into credits on this instance.
+//
+// The missing half of the card. It offered an address to send USDC to and
+// nothing that could spend what arrived — every path out was outbound, the CLI
+// paying somebody else's priced endpoint — so money sent here bought nothing
+// here.
+//
+// A hundred credits to the dollar and no rate quoted, because there is not one:
+// a credit is a cent and USDC is dollars. That is what the switch off pence was
+// for, and it is why this form can say the number and stop.
+//
+// Absent when the instance takes no USDC. A form that can only fail is worse
+// than no form — it reads as broken rather than as unconfigured.
+func convertForm() string {
+	if !x402.Enabled() {
+		return ""
+	}
+	return `<form class="cw-convert" method="POST" action="/wallet/convert">
+  <label for="cw-amount">Turn into credits</label>
+  <div class="cw-convert-row">
+    <span class="cw-convert-unit">$</span>
+    <input id="cw-amount" class="field" type="number" name="amount" min="1" step="1" placeholder="5" required>
+    <button class="btn" type="submit">Convert</button>
+  </div>
+  <p class="cw-convert-note">Moves USDC from this address to the instance and adds it to your
+  balance. $1 is 100 credits.</p>
+</form>`
 }

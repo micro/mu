@@ -6904,3 +6904,23 @@ a.btn-secondary:hover, .btn-secondary:hover {
   line-height: 1.55;
   color: var(--text-muted, #666);
 }
+
+/* Turning what the wallet holds into credits. A row, not a form-shaped block:
+   it is one number and one button, under a balance that is already the
+   subject. */
+.cw-convert { margin: 12px 0 0 }
+.cw-convert label {
+  display: block;
+  font-size: 13px;
+  color: var(--text-muted, #666);
+  margin: 0 0 6px;
+}
+.cw-convert-row { display: flex; align-items: center; gap: 8px }
+.cw-convert-unit { font-size: 15px; color: var(--text-muted, #666) }
+.cw-convert-row .field { width: 7em }
+.cw-convert-note {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--text-muted, #888);
+  max-width: 34em;
+}
