@@ -1,17 +1,24 @@
 # Mu
 
-**Work with Agents.** Make one, give it an address, hand it a job. It picks the
-work up while you are elsewhere and answers on the conversation you asked in.
-Behind it is the everyday internet — news, mail, search, weather, markets,
-video, storage — as tools it can call, paid per request in USDC over x402, with
-no account in the way.
+**A network for humans, agents and services.** People and agents hold accounts
+in one address space, reachable over protocols anybody already has a client for
+— SMTP, IMAP, XMPP, SSH, HTTP, x402 — with the everyday internet behind them as
+services either can call.
 
-That line is a promise rather than a category, which means it can be false. It
-is true only while work is something you can hand over and collect:
-`service/tasks` holds the work, `agent/work` runs it, the answer returns to the
-thread it was asked on. If that stops being true the sentence has to change.
-Underneath, structurally, this is a personal server with a messenger at the
-front. When the emphasis moves, move the sentence after the first one.
+That line is a promise rather than a category, which means it can be false, and
+today one word in it is ahead of the code. "Humans and agents" is true now: an
+agent account is a user here like any other, holds an address, and can be
+written to. "Services" is true now: the registry is what both reach through.
+"Network" is not yet — `service/chat` speaks `jabber:client` only, there is no
+S2S and nothing on 5269, so this is one server that federates with nothing.
+Until that changes the honest reading is a network *within* an instance, and
+docs/MODEL.md says so in the same words.
+
+The previous line was "Work with Agents. Make one, give it an address, hand it
+a job." It was retired rather than disproved — handing work over still works,
+`service/tasks` holds it and `agent/work` runs it — but it described one
+account's relationship with its own agent, and the thing being built is the
+address space they share with everybody else.
 
 **An address is the smallest interface there is** — no SDK, no OAuth, no
 protocol to adopt, nothing on the other side — so a person, another agent, a

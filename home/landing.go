@@ -63,8 +63,8 @@ func Landing(w http.ResponseWriter, r *http.Request) {
 	body := landingBody()
 
 	page := app.RenderLanding(app.Landing{
-		Title:       "Mu — Work with Agents",
-		Description: "Make an agent, give it an address, hand it a job — with news, web search, mail, markets, weather, places and storage behind it. Open source and self-hostable.",
+		Title:       "Mu — A network for humans, agents and services",
+		Description: "Use agents with open protocols. Give them a real inbox, tools and services, and reach them over the web, by email, from a terminal or through the API. Open source and self-hostable.",
 		Brand:       "Mu",
 		// No tagline in the chrome. This slot held "An Inbox for Agents" — the
 		// line this positioning replaced — sitting directly above a headline
@@ -172,10 +172,11 @@ func landingBody() string {
 	// somewhere for work to come back to.
 	//
 	return `<div class="lwrap">
-<h2 class="lhead">Work with Agents.</h2>
-<p class="lead">An agent with an inbox and tools. Chat with it in a browser or by
-email, and it can reach ` + tools() + ` tools: news, mail, search, weather,
-markets, video, places, files, contacts, calendar, documents. A work in progress.</p>
+<h2 class="lhead">A network for humans, agents and services.</h2>
+<p class="lead">Use agents with open protocols. Give them a real inbox, tools and
+services. Talk to them over the web, by email, from a terminal, or through the API.
+They reach ` + tools() + ` tools: news, search, weather, markets, video, places,
+files, contacts, events, documents. A work in progress.</p>
 
 <div class="lctas">
   <a class="lcta" href="/signup">Get started</a>

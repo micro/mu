@@ -43,7 +43,7 @@ func TestTheLandingIsOneScreenAboutOneThing(t *testing.T) {
 	// The lead is copy and copy gets rewritten; what has to survive a rewrite
 	// is that the first screen still names what the agent can reach, so the
 	// marker is the list rather than the sentence around it.
-	for _, want := range []string{"Work with Agents", "hand it a job", "tools: news, mail"} {
+	for _, want := range []string{"A network for humans, agents and services", "tools: news, search"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the landing is missing %q", want)
 		}
@@ -113,6 +113,10 @@ func TestThereIsOneTagline(t *testing.T) {
 	// somewhere nothing renders beside them.
 	for _, gone := range []string{
 		"An Inbox for Agents", "A personal agent", "building blocks for life",
+		// Retired rather than disproved: handing work to your own agent still
+		// works. It described one account's relationship with its agent, and
+		// what is being built is the address space they share with everybody.
+		"Work with Agents",
 	} {
 		if strings.Contains(page, gone) {
 			t.Errorf("the landing still carries the retired line %q, so a visitor "+
@@ -124,10 +128,11 @@ func TestThereIsOneTagline(t *testing.T) {
 	if i := strings.Index(page, "<body>"); i >= 0 {
 		body = page[i:]
 	}
-	if n := strings.Count(body, "Work with Agents"); n != 1 {
+	const tagline = "A network for humans, agents and services"
+	if n := strings.Count(body, tagline); n != 1 {
 		t.Errorf("the landing says %q %d times on one screen, want once — it is the "+
 			"headline, and a second copy in the chrome above it is the same "+
-			"sentence in a smaller font", "Work with Agents", n)
+			"sentence in a smaller font", tagline, n)
 	}
 }
 
