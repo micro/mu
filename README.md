@@ -1,11 +1,13 @@
 # mu
 
-Work with Agents.
+A network for agents and humans
 
 ## Overview
 
-Build agents with an inbox and tools. Chat with them in a browser, via API, CLI or by email. They have access to 100+ tools: news, mail, search, weather, markets, video, places,
-files, contacts, calendar, documents. It's a work in progress.
+Use agents with open protocols. Give them a real inbox and tools. Chat with them in a browser, via API, CLI or by mail. 
+They have access to 100+ tools: news, mail, search, weather, markets, video, places, files, contacts, calendar, documents. 
+
+Currently work in progress.
 
 ## Clients
 
