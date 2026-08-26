@@ -75,6 +75,16 @@ Create `/etc/systemd/system/mu.service`:
 [Unit]
 Description=Mu Personal AI Platform
 After=network.target
+# Docker, if this instance offers a shell or lets apps run commands. Wants
+# rather than Requires: a machine with no Docker should still serve everything
+# else, and Requires would refuse to start at all.
+#
+# The ordering is the part that matters. Without it, mu can win the race on a
+# reboot, find no runtime, and — before the probe learned to retry — go on
+# saying so for as long as the process lived, on a machine where docker ps
+# worked fine.
+Wants=docker.service
+After=docker.service
 
 [Service]
 Type=simple
@@ -84,6 +94,10 @@ ExecStart=/home/mu/mu --serve
 Restart=always
 RestartSec=5
 EnvironmentFile=/home/mu/.env
+# systemd gives a service a short PATH that does not include /snap/bin. A
+# snap-installed Docker is invisible to the server without this, while being
+# perfectly present on the machine.
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin
 
 [Install]
 WantedBy=multi-user.target

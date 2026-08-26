@@ -37,6 +37,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"sort"
 	"strconv"
@@ -49,11 +50,34 @@ import (
 //
 // Both halves, because they fail differently and only one of them is the
 // operator's fault: the CLI may be absent, or present with no daemon behind it.
-// Asked once — the answer does not change while the process runs, and it costs
-// a subprocess.
+//
+// A success is cached for the life of the process; a failure is retried. That
+// asymmetry is the whole point. This used to be one sync.Once, so the first
+// answer stood forever — an instance that started before Docker was installed,
+// or before its user was added to the docker group, or before the daemon came
+// up, went on saying there was no Docker for as long as it ran. The operator
+// fixes the machine, watches nothing change, and has no reason to guess that
+// the fix is to restart a web server.
+//
+// Retried at an interval rather than per call, because the probe forks docker
+// and waits, and the pages that ask this are ordinary pages.
 func Available() bool {
-	hostOnce.Do(hostFacts)
+	probe()
 	return available
+}
+
+// probe fills in the host facts, retrying while there are none.
+func probe() {
+	hostMu.Lock()
+	defer hostMu.Unlock()
+	if available {
+		return
+	}
+	if !lastProbe.IsZero() && time.Since(lastProbe) < retryEvery {
+		return
+	}
+	lastProbe = time.Now()
+	hostFacts()
 }
 
 // Reason is why there is no container runtime, for a page to show. Empty when
@@ -65,17 +89,24 @@ func Available() bool {
 // socket — which is the common one, since the socket is root-owned and mode 660
 // and nothing puts a service account in the docker group for you.
 func Reason() string {
-	hostOnce.Do(hostFacts)
+	probe()
 	return unreachable
 }
 
 var (
-	hostOnce    sync.Once
+	hostMu      sync.Mutex
+	lastProbe   time.Time
 	available   bool
 	unreachable string
 	hostMemory  int64
 	hostCPUs    int
 )
+
+// retryEvery is how often a machine with no runtime is asked again.
+//
+// Long enough that a page load does not fork docker, short enough that an
+// operator who has just installed it does not conclude it made no difference.
+const retryEvery = 30 * time.Second
 
 const binary = "docker"
 
@@ -94,7 +125,7 @@ const probeWait = 10 * time.Second
 // Asked once. It does not change while the machine is up, and it costs a
 // subprocess.
 func HostMemory() int64 {
-	hostOnce.Do(hostFacts)
+	probe()
 	return hostMemory
 }
 
@@ -117,11 +148,20 @@ func HostMemory() int64 {
 // instead becomes Reason.
 func hostFacts() {
 	if _, err := exec.LookPath(binary); err != nil {
-		// "this server", not "this machine". Every reader of this string is
-		// somewhere else — an SSH session from a laptop, an agent's tool
-		// result, a page in a browser — and "this machine" is the one word
-		// that reads as theirs. Its siblings in whyNot already say server.
-		unreachable = "this server has no docker installed, so it cannot offer a machine"
+		// What was actually tested, which is not what this used to claim.
+		//
+		// LookPath searching PATH and finding nothing does not mean Docker is
+		// absent — it means this process cannot see it. A service started by
+		// systemd gets a short PATH that does not include /snap/bin, so a
+		// snap-installed Docker is invisible to it while being perfectly
+		// present on the machine. Saying "no docker installed" to an operator
+		// who can type `docker ps` sends them to argue with the wrong thing.
+		//
+		// So the PATH is in the message. It is the fact that distinguishes the
+		// two, and the operator has it in front of them either way.
+		unreachable = "no docker on this server's PATH (" + os.Getenv("PATH") + ") — " +
+			"it may not be installed, or may not be on the PATH this process was " +
+			"started with"
 		return
 	}
 	out, err := run(context.Background(), probeWait,
@@ -188,7 +228,7 @@ func trimLine(out string) string {
 
 // HostCPUs is how many cores the daemon has, or 0 if it will not say.
 func HostCPUs() int {
-	hostOnce.Do(hostFacts)
+	probe()
 	return hostCPUs
 }
 
