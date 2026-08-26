@@ -9,10 +9,12 @@ That line is a promise rather than a category, which means it can be false, and
 today one word in it is ahead of the code. "Humans and agents" is true now: an
 agent account is a user here like any other, holds an address, and can be
 written to. "Services" is true now: the registry is what both reach through.
-"Network" is not yet — `service/chat` speaks `jabber:client` only, there is no
-S2S and nothing on 5269, so this is one server that federates with nothing.
-Until that changes the honest reading is a network *within* an instance, and
-docs/MODEL.md says so in the same words.
+"Network" is now true of the code and not yet proved on the wire: S2S with
+dialback is built in both directions — see service/chat/xmpp_s2s.go — and has
+never completed a handshake with somebody else's server. Mail federated all
+along, because SMTP is SMTP and service/mail looks up MX records like anything
+else; chat was the protocol that did not. The claim stands when a message from
+here lands on a Prosody account and one comes back.
 
 The previous line was "Work with Agents. Make one, give it an address, hand it
 a job." It was retired rather than disproved — handing work over still works,

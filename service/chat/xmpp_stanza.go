@@ -200,11 +200,21 @@ func (s *session) message(st stanza) {
 		return
 	}
 
-	// Federation is not built, so say so rather than accepting a message that
-	// goes nowhere. A stanza error is what a client renders as "not delivered";
-	// silence is what it renders as delivered.
+	// Somebody on another server. Sent over a federated link, and the record is
+	// kept here either way — a conversation you had is yours whichever server
+	// the other half was on.
+	//
+	// The error, when it fails, is remote-server-not-found rather than silence,
+	// for the same reason it was that before federation existed: a stanza error
+	// is what a client renders as "not delivered", and silence is what it
+	// renders as delivered.
 	if !strings.EqualFold(domain, Domain()) {
-		s.stanzaError(st.To, "cancel", "remote-server-not-found")
+		if err := SendRemote(s.bare(), to, text); err != nil {
+			app.Log("chat", "s2s: %v", err)
+			s.stanzaError(st.To, "cancel", "remote-server-not-found")
+			return
+		}
+		record(s.bare(), to, text)
 		return
 	}
 

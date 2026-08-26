@@ -446,6 +446,10 @@ func serve(addr string) {
 	// so Conversations, Dino or Gajim is a client for this instance the same
 	// way Thunderbird already is. See service/chat/xmpp.go.
 	chat.StartXMPPServerIfEnabled()
+	// And the federated port. Separate because it is a separate decision: an
+	// operator may want their own people on XMPP without accepting connections
+	// from every other server on the internet.
+	chat.StartS2SIfEnabled()
 
 	// Log initial memory usage
 	var m runtime.MemStats

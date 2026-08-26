@@ -35,7 +35,7 @@ install something we own.
 | **Web** | HTTP | working |
 | **Agents** | MCP, or plain HTTP | working |
 | **Terminal** | SSH | working |
-| **Chat** | XMPP over WebSocket, `jabber:client` | working, single instance |
+| **Chat** | XMPP: C2S, WebSocket, and S2S with dialback | working, federating |
 | **Money** | x402 on Base, and Stripe | working |
 | **Voice** | SIP, Jingle for signalling | not started |
 
@@ -64,9 +64,10 @@ not is rent, whatever its size.
 
 Stated plainly, because a roadmap that only lists strengths is marketing.
 
-- **Instances cannot talk to each other.** `service/chat` speaks `jabber:client`
-  only. No S2S, nothing on 5269. Self-hosting works; federation does not exist,
-  so this is one city rather than a network.
+- **Federation is new and unproven against real servers.** S2S with dialback is
+  built in both directions and tested against its own logic; it has not been run
+  against a Prosody or ejabberd deployment, which is the only test that counts.
+  Presence does not cross servers yet — messages do.
 - **No voice or video.** No SIP, no Jingle, no TURN.
 - **Fiat still arrives through Stripe**, with Stripe's toll.
 - **The upstream rent is still paid.** Model vendors, Google, Twilio, all billed
@@ -78,8 +79,8 @@ Stated plainly, because a roadmap that only lists strengths is marketing.
 
 ## The order of work
 
-1. **Make the protocols actually work.** XMPP first — federation is what turns
-   one server into a network, and nothing else on this list matters as much.
+1. **Prove federation against a real server.** The code is written; what is
+   missing is a handshake with somebody else's deployment, and presence.
 2. **Voice as the sixth protocol.** SIP and Jingle, signalling in the chat
    service where it belongs. TURN relay is the piece worth buying rather than
    hosting. Not voice *with an agent* — that is a different thing and not now.
