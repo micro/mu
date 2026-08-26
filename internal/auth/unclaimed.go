@@ -58,11 +58,9 @@ func Claim(oldID, newID, secret string) error {
 		mutex.Unlock()
 		return errors.New("that account has already been claimed")
 	}
-	if newID != oldID {
-		if reason := availableLocked(newID); reason != "" {
-			mutex.Unlock()
-			return errors.New(reason)
-		}
+	if _, taken := accounts[newID]; taken && newID != oldID {
+		mutex.Unlock()
+		return errors.New("that username is taken")
 	}
 	mutex.Unlock()
 

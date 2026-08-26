@@ -85,14 +85,6 @@ type Account struct {
 	Turns int `json:"turns,omitempty"`
 	// InvitedAt is when the sign-up invitation was mailed, so it is mailed once.
 	InvitedAt time.Time `json:"invited_at,omitempty"`
-	// Former are usernames this account used to have, kept so nobody else can
-	// take one. A username is a mailbox, and a released one receives the mail
-	// still being sent to it — password resets included. See rename.go.
-	Former []string `json:"former,omitempty"`
-	// Renamed is when the username last changed, for the interval between
-	// changes. Zero means never, which is everybody who has only ever had the
-	// name signup derived for them — their first change is free.
-	Renamed time.Time `json:"renamed,omitempty"`
 	// Customer is who Stripe thinks this account is: cus_….
 	//
 	// The only handle on a subscription once it exists. Without it there is no
@@ -191,14 +183,9 @@ func Create(acc *Account) error {
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	if _, exists := accounts[acc.ID]; exists {
+	_, exists := accounts[acc.ID]
+	if exists {
 		return errors.New("Account already exists")
-	}
-	// Not just "is it in the map". A username somebody has moved away from is
-	// still theirs — see rename.go — because handing it on would hand on their
-	// mail.
-	if reason := availableLocked(acc.ID); reason != "" {
-		return errors.New(reason)
 	}
 
 	// hash the secret

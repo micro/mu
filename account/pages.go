@@ -365,18 +365,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		if redirect := r.URL.Query().Get("redirect"); redirect != "" {
 			redirectParam = "?redirect=" + url.QueryEscape(redirect)
 		}
-		// Somebody who just changed their username lands here signed out, which
-		// without a word looks like being thrown out. Say the new name: it is
-		// what they have to type, and seeing it is the confirmation that the
-		// change took.
-		notice := ""
-		if was := r.URL.Query().Get("renamed"); was != "" {
-			if auth.ValidateUsername(was) == "" {
-				notice = `<p class="text-success">Your username is now <strong>` +
-					htmlpkg.EscapeString(was) + `</strong>. Sign in with it.</p>`
-			}
-		}
-		w.Write([]byte(loginPage(redirectParam, notice)))
+		w.Write([]byte(loginPage(redirectParam, "")))
 		return
 	}
 
@@ -593,7 +582,7 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 }
 
 func Account(w http.ResponseWriter, r *http.Request) {
-	sess, acc, err := auth.RequireSession(r)
+	_, acc, err := auth.RequireSession(r)
 	if err != nil {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
@@ -628,7 +617,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		//
 		// Not the username: that is the id, it is in addresses and URLs that
 		// other people hold, and renaming it is a different operation with
-		// different consequences — the one directly below.
+		// different consequences.
 		if r.Form.Get("display_name") != "" || r.Form.Get("save_name") != "" {
 			name := strings.TrimSpace(r.Form.Get("display_name"))
 			if len(name) > 60 {
@@ -642,25 +631,6 @@ func Account(w http.ResponseWriter, r *http.Request) {
 			acc.Name = name
 			auth.UpdateAccount(acc) //nolint:errcheck
 			http.Redirect(w, r, "/account?saved=name", http.StatusSeeOther)
-			return
-		}
-
-		// The username, which is a different operation from the display name
-		// above and says so on the page.
-		//
-		// It changes your address, your page and how people mention you, and
-		// the session goes with it — the cookie names an account id, and after
-		// the rename that id is nobody. Signing back in under the new name is
-		// the honest end to it, and it is also the first time somebody sees
-		// that the name really did change.
-		if want := strings.TrimSpace(r.Form.Get("username")); want != "" && r.Form.Get("save_username") != "" {
-			if err := auth.Rename(acc.ID, want); err != nil {
-				http.Redirect(w, r, "/account?error="+url.QueryEscape(err.Error()), http.StatusSeeOther)
-				return
-			}
-			auth.Logout(sess.Token)
-			clearSessionCookie(w, r)
-			http.Redirect(w, r, "/login?renamed="+url.QueryEscape(strings.ToLower(want)), http.StatusSeeOther)
 			return
 		}
 
@@ -748,23 +718,8 @@ func Account(w http.ResponseWriter, r *http.Request) {
 			Fields: []app.Field{{Name: "display_name", Value: acc.Name, Max: 60,
 				Placeholder: "Display name"}},
 			Submit: "Save"}.HTML(),
-		app.Note("Shown on your posts and your profile."))
-
-	// The username, which used to be a sentence saying it could not change.
-	//
-	// Almost nobody here picked theirs. Google signup derives it from the email
-	// local part, so the instance is full of names like a30006179 and wa400601
-	// that are addresses somebody else's software chose. The note under this
-	// says what it costs, because it does cost something: the address stops
-	// working, and links other people hold stop resolving.
-	username := app.Section("Username",
-		usernameForm(acc),
-		app.Note("This is the local part of your address, the path to your page "+
-			"and how people mention you. Changing it means "+
-			htmlpkg.EscapeString(acc.ID)+"@ stops receiving mail and links to "+
-			"/@"+htmlpkg.EscapeString(acc.ID)+" stop working. Your old username is "+
-			"kept so nobody else can take it. You will be signed out and can sign "+
-			"back in under the new name."))
+		app.Note("Shown on your posts and your profile. Your username, @"+acc.ID+
+			", is the one in addresses and links and does not change."))
 
 	language := app.Section("Language",
 		app.Form{Action: "/account", Inline: true,
@@ -803,7 +758,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	// closed. It used to render below the Settings section — which ended with
 	// Log out, so the control sat under the link that ends the session, where a
 	// page has plainly finished.
-	content := notice + profile + username +
+	content := notice + profile +
 		PlaceCard(r, acc.ID) +
 		emailCard +
 		googleCard +
@@ -943,49 +898,23 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	clearSessionCookie(w, r)
-	auth.Logout(sess.Token)
-	http.Redirect(w, r, "/", 302)
-}
+	var secure bool
 
-// usernameForm is the current username and, when it may be changed, a field to
-// change it in.
-//
-// Not a disabled input. A form you can fill in and submit and be told no is
-// worse than no form: it reads as broken rather than as a rule, and the rule
-// is short enough to state. When the interval has not elapsed this says the
-// date instead, which is the answer somebody actually wants.
-func usernameForm(acc *auth.Account) string {
-	current := `<p><strong>@` + htmlpkg.EscapeString(acc.ID) + `</strong></p>`
-
-	if at := auth.CanRenameAt(acc.ID); !at.IsZero() {
-		return current + app.Note("You changed your username recently. You can "+
-			"change it again on "+at.Format("January 2, 2006")+".")
+	if h := r.Header.Get("X-Forwarded-Proto"); h == "https" {
+		secure = true
 	}
-
-	return current + app.Form{Action: "/account", Inline: true,
-		Hidden: map[string]string{"save_username": "1"},
-		Fields: []app.Field{{Name: "username", Max: auth.MaxUsername,
-			Placeholder: "New username"}},
-		Submit: "Change"}.HTML()
-}
-
-// clearSessionCookie expires the session cookie.
-//
-// Its own function because there are two ways to stop being signed in and they
-// used to write this out separately: logging out, and changing your username,
-// after which the id in the cookie names nobody. A second copy is a second
-// place for the Secure flag to be wrong.
-func clearSessionCookie(w http.ResponseWriter, r *http.Request) {
+	// delete the session cookie
 	http.SetCookie(w, &http.Cookie{
 		Name:     "session",
 		Value:    "",
 		Path:     "/",
 		MaxAge:   -1,
-		Secure:   r.Header.Get("X-Forwarded-Proto") == "https",
+		Secure:   secure,
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
 	})
+	auth.Logout(sess.Token)
+	http.Redirect(w, r, "/", 302)
 }
 
 // Session handler
