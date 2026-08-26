@@ -236,22 +236,45 @@ func TestRenderHTMLGuestNavHidesSignedInActions(t *testing.T) {
 	}
 }
 
-// The account is one control now, with everything about it behind that. It was
-// a caption reading "Signed in as @alice" plus four destinations, which is what
-// made a five-item product render as a ten-item dashboard — so the name is the
-// control's own label rather than a row of its own.
-func TestRenderHTMLWithAuthNavShowsSignedInActions(t *testing.T) {
+// The signed-in rail carries every destination, and the way out is a plain link.
+//
+// This asserted the opposite a version ago: the account was one <details>
+// control with Account, Profile, Wallet, Tokens and Admin folded behind it,
+// because "Signed in as @alice plus four destinations" made a five-item product
+// render as a ten-item dashboard. That reasoning traded reach for tidiness, and
+// the things traded away were the ones a person owns — a wallet one click
+// further from view than a catalogue of services they do not.
+//
+// The no-JavaScript property that <details> was chosen for still holds, and
+// holds better: Log out is an ordinary link, so it needs no disclosure to open
+// and no script to work.
+func TestTheSignedInRailCarriesEveryDestination(t *testing.T) {
 	result := renderWithLang("Test", "A test page", "<p>content</p>", "en", &auth.Account{ID: "alice"})
-	for _, want := range []string{`id="nav-account"`, `id="nav-logout"`, `@alice`, `id="nav-me"`} {
+	for _, want := range []string{
+		`id="nav-home"`, `id="nav-account"`, `id="nav-profile"`, `id="nav-inbox"`,
+		`id="nav-agents"`, `id="nav-services"`, `id="nav-token"`, `id="nav-wallet"`,
+		`id="nav-logout"`, `@alice`,
+	} {
 		if !strings.Contains(result, want) {
-			t.Fatalf("signed-in nav missing %q", want)
+			t.Errorf("signed-in nav missing %q", want)
 		}
 	}
-	// Reachable with no JavaScript: a <details>, not a button waiting on a
-	// handler. Sign out behind a control that needs a script to open is sign out
-	// you cannot reach when the script fails.
-	if !strings.Contains(result, `<details class="nav-me"`) {
-		t.Error("the account menu is not a disclosure, so it needs JavaScript to open")
+	// Nothing is folded away any more.
+	if strings.Contains(result, `<details class="nav-me"`) {
+		t.Error("the account destinations are behind a disclosure again")
+	}
+}
+
+// Signed out, the account's own destinations are not offered.
+func TestSignedOutSeesNoAccountDestinations(t *testing.T) {
+	result := renderWithLang("Test", "d", "<p>c</p>", "en", nil)
+	for _, gone := range []string{`id="nav-account"`, `id="nav-profile"`, `id="nav-token"`, `id="nav-wallet"`} {
+		if strings.Contains(result, gone) {
+			t.Errorf("a signed-out visitor is offered %s", gone)
+		}
+	}
+	if !strings.Contains(result, `id="nav-login"`) {
+		t.Error("no way to sign in")
 	}
 }
 
