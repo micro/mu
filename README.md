@@ -298,7 +298,7 @@ third party billed per request. Everything else is 0 — the agent itself, your
 inbox, your files, and reading or sending mail from a mail client. Prices are
 [`quota.json`](quota.json), which is the one place they are set.
 
-### x402
+### Crypto
 
 **An agent can pay with USDC over [x402](https://x402.org) and never sign
 up.** A priced call with no credentials answers `402 Payment Required` naming
