@@ -126,7 +126,7 @@ func LedgerSection(userID string) string {
 	if totalEarnings > 0 {
 		sb.WriteString(app.Section("App earnings",
 			fmt.Sprintf(`<p>%d credits earned from your apps (recent)</p>`, totalEarnings),
-			app.NoteHTML(`You keep 90% of every sale. <a href="/apps">Manage your apps &rarr;</a>`)))
+			app.NoteHTML(`You keep every penny of every sale. <a href="/apps">Manage your apps &rarr;</a>`)))
 	}
 
 	// No price table here. It was a second copy of what /tools already says
@@ -764,7 +764,7 @@ func PricingTableHTML() string {
 	// it claims to be.
 	sb.WriteString(`<tr><td>Using a paid app</td><td>set by its author</td></tr>`)
 	sb.WriteString(`</table>`)
-	sb.WriteString(`<p class="text-sm text-muted">Most apps are free. Paid ones show their price before you run them; the author keeps 90%.</p>`)
+	sb.WriteString(`<p class="text-sm text-muted">Most apps are free. Paid ones show their price before you run them, and the author keeps all of it.</p>`)
 	return sb.String()
 }
 
@@ -799,7 +799,7 @@ func handlePricing(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`<p class="info">Build apps and charge per use. You set the price, you earn the revenue.</p>`)
 	sb.WriteString(`<table class="stats-table">`)
 	sb.WriteString(`<tr><td>Price range</td><td>0–1000 credits per use</td></tr>`)
-	sb.WriteString(`<tr><td>Creator share</td><td>90%</td></tr>`)
+	sb.WriteString(`<tr><td>Creator share</td><td>100%</td></tr>`)
 	sb.WriteString(`<tr><td>Platform fee</td><td>10%</td></tr>`)
 	sb.WriteString(`<tr><td>Free apps</td><td>No charge</td></tr>`)
 	sb.WriteString(`</table>`)

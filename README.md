@@ -30,6 +30,9 @@ x402 for payments.**
 
 Protocols for the win!
 
+What the parts are, what is missing and what order it gets built in:
+[docs/MODEL.md](docs/MODEL.md).
+
 ## Tools
 
 The tools for the agents 

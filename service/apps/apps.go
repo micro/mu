@@ -321,7 +321,7 @@ func Preview() string {
 		sb.WriteString(fmt.Sprintf(` · %d paid`, paidCount))
 	}
 	sb.WriteString(`</p>`)
-	sb.WriteString(`<p class="text-xs text-muted">Build apps, set your price, earn 90%% of every sale.</p>`)
+	sb.WriteString(`<p class="text-xs text-muted">Build apps, set your price, keep every penny of every sale.</p>`)
 	return sb.String()
 }
 
@@ -475,7 +475,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 
 	// HTML
 	var sb strings.Builder
-	sb.WriteString(`<p class="card-desc">Small, useful apps that do one thing well. Build apps, set your price, earn 90% of every sale.</p>`)
+	sb.WriteString(`<p class="card-desc">Small, useful apps that do one thing well. Build apps, set your price, keep every penny of every sale.</p>`)
 
 	// Building one is the point of the page, so it is a button at the top
 	// rather than a line of text under however many apps happen to be listed —
@@ -686,7 +686,7 @@ func handleNew(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`<div class="mb-3"><label>Price per use <span class="text-muted text-xs">(credits, 0 = free)</span></label><br>`)
 	sb.WriteString(`<input type="number" name="price" min="0" max="1000" value="0" class="form-input w-full" placeholder="0"></div>`)
 	sb.WriteString(`<div class="mb-3"><label class="d-flex items-center gap-1"><input type="checkbox" name="public" value="1" checked class="w-auto m-0"> Public</label></div>`)
-	sb.WriteString(`<p class="mb-3 text-sm text-muted">Set a price and earn 90% of every sale. Free apps cost nothing to use.</p>`)
+	sb.WriteString(`<p class="mb-3 text-sm text-muted">Set a price and keep all of it. Free apps cost nothing to use.</p>`)
 	sb.WriteString(`<button type="submit" class="btn">Create App</button>`)
 	sb.WriteString(`</form>`)
 	sb.WriteString(`</details>`)

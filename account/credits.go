@@ -651,11 +651,24 @@ func chargeAppUse(l *ledger, userID, authorID, appSlug string, price int) error 
 		balances[authorID] = author
 	}
 
-	// Calculate split: author gets 90%, platform gets 10%
-	authorShare := (price * 90) / 100
-	if authorShare < 1 && price > 0 {
-		authorShare = 1 // Minimum 1 credit to author
-	}
+	// The author gets the price. There is no split.
+	//
+	// It was 90/10. Ten points is a smaller toll than a store's thirty and it is
+	// the same kind of thing: a share of what somebody else sells, taken by
+	// whoever controls the listing. The tell is that it scales with their
+	// revenue while the cost of carrying them does not — hosting an app that
+	// sells a million costs this instance exactly what hosting one that sells
+	// ten does.
+	//
+	// What an app actually costs to run is already metered, per operation, in
+	// quota.json: the model calls it makes, the pages it fetches, the storage it
+	// uses. Those are charged where they happen. Charging them again as a
+	// percentage of the sale is charging twice for one thing, once by cost and
+	// once by rent.
+	//
+	// So: the price goes to the author, and the instance is paid for what it did
+	// rather than for what they made.
+	authorShare := price
 
 	// Deduct from user
 	user.Balance -= price
