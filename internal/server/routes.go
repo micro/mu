@@ -165,7 +165,6 @@ func authRequired() map[string]bool {
 		"/status":                        false, // Public - server health status
 		"/privacy":                       false, // Public - privacy policy
 		"/install":                       false, // Public - run your own instance
-		"/whitepaper":                    false, // Public - whitepaper
 		"/mcp":                           false, // Public - MCP tools page
 		"/sms/webhook":                   false, // Public - inbound SMS; the provider's signature is the credential
 		"/.well-known/mcp-registry-auth": false, // Public - registry domain proof
@@ -585,9 +584,6 @@ func registerRoutes() {
 	app.HealthCheckFunc = runHealthChecks
 	http.HandleFunc("/status", app.StatusHandler)
 
-	// whitepaper
-	http.HandleFunc("/whitepaper", help.WhitepaperHandler)
-	http.HandleFunc("/whitepaper.pdf", help.WhitepaperHandler)
 
 	// Documentation. One page: how to run your own. Every address the old nine
 	// answered on redirects to whatever replaced it — an exact pattern outranks

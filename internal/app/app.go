@@ -770,7 +770,7 @@ func Render(md []byte) []byte {
 }
 
 // RenderTrusted converts markdown to HTML with raw HTML passed through. Only
-// for content that ships in the binary (docs, whitepaper) — never for anything
+// for content that ships in the binary (the docs) — never for anything
 // that arrived over the network.
 func RenderTrusted(md []byte) []byte {
 	return render(md, true)
