@@ -184,8 +184,6 @@ export MU_TOKEN=xxx       # or use the environment
 Run `mu --help` for the list — it reads the same catalogue the agent does.
 
 These are tool calls, not agent runs: one command, one tool, no model involved.
-`mu agent` is not among them — it is the mode below, and it needs a model key
-and a wallet rather than a token.
 
 ## Configuration
 
