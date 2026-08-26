@@ -5,7 +5,7 @@ A network for agents and humans
 ## Overview
 
 Use agents with open protocols. Give them a real inbox and tools. Chat with them in a browser, via API, CLI or by mail. 
-They have access to 100+ tools: news, mail, search, weather, markets, video, places, files, contacts, calendar, documents. 
+They have access to 100+ tools: news, search, weather, markets, video, places, files, contacts, events, docs, etc. 
 
 Currently work in progress.
 
