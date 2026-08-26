@@ -65,7 +65,19 @@ import (
 // by omitting something harmless; a copy-and-clear fails by publishing a
 // password hash, and the line that would have cleared it is invisible in review.
 type User struct {
-	ID      string  `json:"id" description:"Their username, which is also the local part of their address"`
+	ID string `json:"id" description:"Their username, which is also the local part of their address"`
+	// Address is the whole point of looking somebody up.
+	//
+	// users_find says it is for turning "a name somebody mentioned into an
+	// address you can write to", and then returned a username and left the
+	// caller to guess the domain. An agent following that documentation had to
+	// know something the answer did not contain.
+	//
+	// Empty on an instance with no mail domain, rather than name@localhost.
+	// The page made the same choice for the same reason: an address that
+	// cannot receive is worse than none, because it is the thing a reader
+	// copies.
+	Address string  `json:"address,omitempty" description:"Where to write to them, when this instance has a mail domain"`
 	Account Account `json:"account" description:"Who they are"`
 	Profile Profile `json:"profile" description:"How they appear, and whether they are here"`
 }
@@ -176,7 +188,8 @@ func Count() int { return len(List()) }
 func publicOf(acc *auth.Account, online map[string]bool) User {
 	status, _ := user.Status(acc.ID)
 	return User{
-		ID: acc.ID,
+		ID:      acc.ID,
+		Address: addressOf(acc.ID),
 		Account: Account{
 			Name:   acc.Name,
 			Agent:  acc.Agent,
@@ -188,6 +201,23 @@ func publicOf(acc *auth.Account, online map[string]bool) User {
 			Page:   "/@" + acc.ID,
 		},
 	}
+}
+
+// addressOf is where to write to somebody, or "" where there is nowhere.
+//
+// Built here rather than reached for from service/mail, which this service may
+// not import — and there is nothing to reach for: EmailForUser is a username, an
+// at sign and a domain. What is worth not duplicating is the judgement about an
+// unset domain, and that judgement is the opposite of mail's. ConfiguredDomain
+// substitutes "localhost" so a local instance can still round-trip a message;
+// here the answer is published to somebody deciding where to write, and
+// "asim@localhost" is a wrong answer wearing the shape of a right one.
+func addressOf(id string) string {
+	d := mailDomain()
+	if d == "" {
+		return ""
+	}
+	return id + "@" + d
 }
 
 // onlineSet is auth.OnlineUsers as a set, so a list of a hundred and eighty
