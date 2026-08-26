@@ -439,6 +439,18 @@ func offersStartTLS(dec *xml.Decoder) bool {
 	if err != nil || start.Name.Local != "features" {
 		return false
 	}
+
+	// Drained to </stream:features> whatever the answer, rather than returning
+	// the moment the offer is found.
+	//
+	// This decoder is the one the rest of the handshake reads from, so leaving
+	// it parked inside an element means the next read returns a child of it.
+	// Prosody offers <starttls><required/></starttls>, so returning early left
+	// <required/> in the buffer and the reply to our <starttls/> was read as
+	// that — "starttls refused: <required>" against a server doing nothing
+	// wrong. Every federated server that requires TLS advertises it that way,
+	// which is most of them.
+	found := false
 	depth := 1
 	for depth > 0 {
 		t, err := dec.Token()
@@ -448,14 +460,14 @@ func offersStartTLS(dec *xml.Decoder) bool {
 		switch el := t.(type) {
 		case xml.StartElement:
 			if el.Name.Local == "starttls" {
-				return true
+				found = true
 			}
 			depth++
 		case xml.EndElement:
 			depth--
 		}
 	}
-	return false
+	return found
 }
 
 // nextStartOf reads to the next start element on a decoder.

@@ -2,6 +2,7 @@ package admin
 
 import (
 	"fmt"
+	"html"
 	"net/http"
 	"strings"
 	"time"
@@ -59,29 +60,7 @@ func DiagnosticsHandler(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(fmt.Sprintf(`<div class="card edge" style="border-left-color:%s"><h3 style="color:%s">%d issue(s) detected</h3></div>`, color, color, errors+warnings))
 	}
 
-	// Individual checks
-	for _, c := range checks {
-		icon := "✓"
-		color := "#27ae60"
-		if c.Status == "warning" {
-			icon = "⚠"
-			color = "#f39c12"
-		} else if c.Status == "error" {
-			icon = "✗"
-			color = "#e74c3c"
-		}
-
-		b.WriteString(`<div class="card pad-row mb-2">`)
-		b.WriteString(fmt.Sprintf(`<div class="d-flex between items-center">
-			<strong>%s</strong>
-			<span class="text-18" style="color:%s">%s</span>
-		</div>`, c.Name, color, icon))
-		b.WriteString(fmt.Sprintf(`<p class="text-sm text-secondary mt-1 m-0">%s</p>`, c.Detail))
-		if c.Fix != "" {
-			b.WriteString(fmt.Sprintf(`<p class="text-xs mt-1 m-0" style="color:%s">→ %s</p>`, color, c.Fix))
-		}
-		b.WriteString(`</div>`)
-	}
+	b.WriteString(renderChecks(checks))
 
 	// AI Diagnosis button
 	if errors > 0 || warnings > 0 {
@@ -98,6 +77,50 @@ func DiagnosticsHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(back())
 
 	app.Respond(w, r, app.Response{Title: "Diagnostics", Description: "System health", HTML: b.String()})
+}
+
+// renderChecks is one card per check.
+//
+// Its own function so that what it does to a string can be tested. It was
+// inline in the handler, which meant the only way to find out how it rendered
+// an error was to cause one in production and read it — and the one error worth
+// reading came out blank, because of this.
+func renderChecks(checks []healthCheck) string {
+	var b strings.Builder
+	for _, c := range checks {
+		icon := "✓"
+		color := "#27ae60"
+		if c.Status == "warning" {
+			icon = "⚠"
+			color = "#f39c12"
+		} else if c.Status == "error" {
+			icon = "✗"
+			color = "#e74c3c"
+		}
+
+		b.WriteString(`<div class="card pad-row mb-2">`)
+		b.WriteString(fmt.Sprintf(`<div class="d-flex between items-center">
+			<strong>%s</strong>
+			<span class="text-18" style="color:%s">%s</span>
+		</div>`, html.EscapeString(c.Name), color, icon))
+		// Escaped, because a Detail is plain text and the interesting ones are
+		// error messages. The federation check reported `starttls refused:
+		// <required>` and the browser rendered that as "starttls refused:" with
+		// nothing after it — the element name, which was the entire diagnosis,
+		// parsed as a tag and disappeared. A diagnostics page that silently
+		// deletes the part of an error naming what went wrong is worse than one
+		// that shows nothing, because it reads as the error being empty.
+		//
+		// Fix stays raw: it carries deliberate links, app.Link being how the
+		// digest and federation checks offer to run themselves.
+		b.WriteString(fmt.Sprintf(`<p class="text-sm text-secondary mt-1 m-0">%s</p>`,
+			html.EscapeString(c.Detail)))
+		if c.Fix != "" {
+			b.WriteString(fmt.Sprintf(`<p class="text-xs mt-1 m-0" style="color:%s">→ %s</p>`, color, c.Fix))
+		}
+		b.WriteString(`</div>`)
+	}
+	return b.String()
 }
 
 func runHealthChecks(testDigest, testFederation bool) []healthCheck {

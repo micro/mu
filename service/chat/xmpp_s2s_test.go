@@ -1,6 +1,7 @@
 package chat
 
 import (
+	"encoding/xml"
 	"strings"
 	"testing"
 )
@@ -105,6 +106,7 @@ func TestThereIsACertificateToOffer(t *testing.T) {
 // dials, and this instance's own domain would exercise a loopback — the far
 // side of a real handshake is the point, and a server agreeing with itself is
 // exactly the test that federation did not have.
+//
 // The error has to name the reason, not merely be an error. Dialling our own
 // domain fails on its own in a test environment, so an assertion that something
 // went wrong passes just as well with the guard deleted — which is the shape of
@@ -141,5 +143,66 @@ func TestAFailedCheckNamesWhatItTried(t *testing.T) {
 		t.Fatal("dialback completed with a domain that does not exist")
 	} else if !strings.Contains(err.Error(), bad+":5269") {
 		t.Errorf("the error does not name the address it tried: %v", err)
+	}
+}
+
+// Reading the offer leaves the decoder after </stream:features>.
+//
+// The position is the whole point, not the answer. offersStartTLS used to
+// return the moment it saw the offer, which left the decoder inside the
+// element — and since the handshake keeps reading from that same decoder, the
+// reply to our <starttls/> was read as whatever child came next. Prosody
+// advertises <starttls><required/></starttls>, so a real server got
+// "starttls refused: <required>" while doing nothing wrong.
+func TestReadingTheStartTLSOfferConsumesTheWholeFeatures(t *testing.T) {
+	const stream = `<stream:stream xmlns:stream='http://etherx.jabber.org/streams'>` +
+		`<stream:features>` +
+		`<starttls xmlns='urn:ietf:params:xml:ns:xmpp-tls'><required/></starttls>` +
+		`<dialback xmlns='urn:xmpp:features:dialback'/>` +
+		`</stream:features>` +
+		`<proceed xmlns='urn:ietf:params:xml:ns:xmpp-tls'/>`
+
+	dec := xml.NewDecoder(strings.NewReader(stream))
+	if _, err := nextStartOf(dec); err != nil { // the stream header
+		t.Fatalf("no stream header: %v", err)
+	}
+	if !offersStartTLS(dec) {
+		t.Fatal("the offer was not seen")
+	}
+
+	// What a real server sends next, and the only thing that should be read
+	// next. Anything else means features was left half-read.
+	next, err := nextStartOf(dec)
+	if err != nil {
+		t.Fatalf("reading past the features: %v", err)
+	}
+	if next.Name.Local != "proceed" {
+		t.Errorf("after the offer the next element is <%s>, want <proceed> — the "+
+			"decoder is still inside stream:features", next.Name.Local)
+	}
+}
+
+// A server offering no TLS is still left in a readable place.
+//
+// The other half of the same property: opportunistic means the handshake
+// carries on unencrypted, and it carries on reading from this decoder.
+func TestFeaturesWithNoOfferAreAlsoConsumed(t *testing.T) {
+	const stream = `<stream:stream xmlns:stream='http://etherx.jabber.org/streams'>` +
+		`<stream:features><dialback xmlns='urn:xmpp:features:dialback'/></stream:features>` +
+		`<db:result xmlns:db='jabber:server:dialback' type='valid'/>`
+
+	dec := xml.NewDecoder(strings.NewReader(stream))
+	if _, err := nextStartOf(dec); err != nil {
+		t.Fatalf("no stream header: %v", err)
+	}
+	if offersStartTLS(dec) {
+		t.Fatal("an offer was found where there is none")
+	}
+	next, err := nextStartOf(dec)
+	if err != nil {
+		t.Fatalf("reading past the features: %v", err)
+	}
+	if next.Name.Local != "result" {
+		t.Errorf("after the features the next element is <%s>, want <result>", next.Name.Local)
 	}
 }
