@@ -401,14 +401,15 @@ and make every peer's source address `127.0.0.1`.
 **One DNS record, and it is optional.**
 
 ```
-_xmpp-server._tcp.your-domain.com. 3600 IN SRV 0 5 5269 your-domain.com.
+_xmpp-server._tcp.your-domain.com. 3600 IN SRV 5 0 5269 your-domain.com.
 ```
 
 Optional because a server with no SRV record to go on falls back to the domain
 itself on 5269, and the domain already has an A record — it is the web server.
 Publish it anyway if the XMPP host is ever going to be somewhere other than the
 web host, which is the whole point of the indirection; it is the same record MX
-is for mail. Priority and weight do not matter with one target.
+is for mail. Priority and weight do nothing with one target — the 5 and the 0
+match the client record above so the two read the same.
 
 What does matter is that `your-domain.com` — or the SRV target, if you publish
 one — resolves to this host on 5269 from the outside. That is where other
