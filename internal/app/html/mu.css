@@ -6281,24 +6281,8 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
 }
 .pf-status-in:focus { outline: none; border-color: #bbb }
 
-/* The address, which is what a profile is for.
-   
-   This block said the address "is shown rather than hidden behind the button"
-   while the page computed it for writeLink and threw it away, leading instead
-   with a count of blog posts. Quiet type: it is the most useful thing here and
-   it does not need to shout to be, and it wants to look like something you
-   copy. */
-.pf-addr { margin: 10px 0 0 }
-.pf-addr code {
-  font-size: 14px;
-  color: var(--text-secondary, #555);
-  background: var(--bg-subtle, rgba(127,127,127,.09));
-  border-radius: 6px;
-  padding: 3px 8px;
-  user-select: all;
-}
-
-/* The way to say something. */
+/* The way to say something, and the address it goes to beside it — the address
+   is the interface, so it is shown rather than hidden behind the button. */
 .pf-write { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 16px 0 0 }
 
 /* One tool, at an address of its own. See internal/api/tool_page.go. */

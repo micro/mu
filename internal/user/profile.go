@@ -31,7 +31,6 @@ package user
 import (
 	"encoding/json"
 	"fmt"
-	htmlpkg "html"
 	"net/http"
 	"strings"
 	"sync"
@@ -276,6 +275,7 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Get all posts by this user via callback (wired in main.go)
 	var userPosts string
+	var postCount int
 	if GetUserPosts != nil {
 		posts := GetUserPosts(acc.ID, acc.Name)
 
@@ -291,30 +291,45 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
+		postCount = len(visiblePosts)
+
 		for _, post := range visiblePosts {
 			title := post.Title
 			if title == "" {
 				title = "Untitled"
 			}
-			// Title and when, and nothing else.
-			//
-			// This printed three hundred characters of the body under every
-			// title, linkified, with a "Read more" after it — which is a feed,
-			// and a feed on a person is the shape this page is getting out of.
-			// What somebody wants here is to see that a thing exists and go to
-			// it; the body of it is at the other end of the link.
-			userPosts += fmt.Sprintf(`<div class="post-item"><h3><a href="/blog/post?id=%s">%s</a></h3>`+
-				`<p class="info">%s</p></div>`,
-				htmlpkg.EscapeString(post.ID), htmlpkg.EscapeString(title), app.TimeAgo(post.CreatedAt))
+
+			// Truncate content
+			content := post.Content
+			if len(content) > 300 {
+				lastSpace := 300
+				for i := 299; i >= 0 && i < len(content); i-- {
+					if content[i] == ' ' {
+						lastSpace = i
+						break
+					}
+				}
+				if lastSpace < len(content) {
+					content = content[:lastSpace] + "..."
+				}
+			}
+
+			// Linkify URLs and embed YouTube videos
+			linkedContent := content
+			if LinkifyContent != nil {
+				linkedContent = LinkifyContent(content)
+			}
+
+			userPosts += fmt.Sprintf(`<div class="post-item">
+<h3><a href="/blog/post?id=%s">%s</a></h3>
+<div class="mb-3">%s</div>
+<div class="info">%s · <a href="/blog/post?id=%s">Read more</a></div>
+</div>`, post.ID, title, linkedContent, app.TimeAgo(post.CreatedAt), post.ID)
 		}
 	}
 
-	// A heading only where there is something under it. "Posts (0)" and "No
-	// blog posts yet" are both the page telling you about an absence, on a page
-	// whose job is to tell you who somebody is and how to reach them.
-	postsSection := ""
-	if userPosts != "" {
-		postsSection = `<h3 class="mb-5">Posts</h3>` + userPosts
+	if userPosts == "" {
+		userPosts = "<p class='info'>No blog posts yet.</p>"
 	}
 
 	// Check if viewing own profile
@@ -342,7 +357,7 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 		userApps := GetUserApps(acc.ID)
 		if len(userApps) > 0 {
 			var appsSB strings.Builder
-			appsSB.WriteString(`<h3 class="mb-5">Apps</h3>`)
+			appsSB.WriteString(fmt.Sprintf(`<h3 class="mb-5">Apps (%d)</h3>`, len(userApps)))
 			for _, a := range userApps {
 				icon := a.Icon
 				if icon == "" {
@@ -366,28 +381,10 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 		verifiedBadge = ` <span title="Verified" aria-label="Verified" class="verified">✓</span>`
 	}
 
-	// The address, which this page has always known and never shown.
-	//
-	// writeLink already asks for it — its comment says "addressOf answers that
-	// by producing the address, which is not shown" — so the one fact a
-	// directory entry exists to carry was computed here and discarded, while
-	// the page led with a count of blog posts.
-	//
-	// A profile is the answer to "who is this and how do I reach them". That is
-	// what users_find says it is for, in its own documentation: turning a name
-	// somebody mentioned into an address you can write to. The rest of this
-	// page is an index of what they have published, underneath, without
-	// tallies — a number beside somebody's name is a scoreboard, and nobody
-	// has ever needed to know how many posts a person has.
-	addr := ""
-	if a := addressOf(acc.ID); a != "" {
-		addr = `<p class="pf-addr"><code>` + htmlpkg.EscapeString(a) + `</code></p>`
-	}
-
+	// Build the profile page content
 	content := fmt.Sprintf(`<div class="max-w-xl">
 <div class="mb-6 page-head">
 <p class="info m-0">@%s%s</p>
-%s
 %s
 <p class="info mt-3">Joined %s</p>
 %s
@@ -395,9 +392,9 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 
 %s
 
+<h3 class="mb-5">Posts (%d)</h3>
 %s
-</div>`, acc.ID, verifiedBadge, status, addr, acc.Created.Format("January 2006"),
-		messageLink, appsSection, postsSection)
+</div>`, acc.ID, verifiedBadge, status, acc.Created.Format("January 2006"), messageLink, appsSection, postCount, userPosts)
 
 	// Use name as page title
 	app.Respond(w, r, app.Response{Title: acc.Name, Description: fmt.Sprintf("Profile of %s", acc.Name), HTML: content})
