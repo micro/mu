@@ -144,7 +144,7 @@ var Spec = service.Spec{
 	Name:        "wallet",
 	Icon:        "wallet.png",
 	Handler:     new(Server),
-	Description: "A key of your own on Base: an address to hold USDC, and what it holds",
+	Description: "Manage your credits and your crypto: what you have, what you have spent, and an address of your own on Base",
 	Page:        "/wallet",
 	// Every method here reads or spends somebody's key. There is no public half.
 	Scoped: true,

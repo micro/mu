@@ -2812,8 +2812,18 @@ a.highlight {
 #status-indicator {
   /* placeholder */
 }
-.d-inline { display: inline; }
-.d-flex { display: flex; }
+/* The display utilities carry !important, which is the one place it is right.
+   A utility exists to override whatever it is put on, and these were losing:
+   .d-none is declared at 2885 and .btn at 6602 sets display:inline-block, so
+   every <button class="btn ... d-none"> rendered visible — the two push
+   notification buttons showed "Turn on for this device" and "Turn off" at the
+   same time whatever the state was. Same cause as .btn-secondary painting
+   black on black: .btn was appended late and quietly beats anything declared
+   above it on order alone. Moving each utility below .btn would fix it until
+   the next component is appended; a utility that cannot be overridden by
+   position is the thing that actually holds. */
+.d-inline { display: inline !important; }
+.d-flex { display: flex !important; }
 
 /* Flex utilities */
 .flex-column { flex-direction: column; }
@@ -2880,9 +2890,9 @@ a.highlight {
 .scroll-x > table { min-width: 560px; }
 
 /* Display */
-.d-block { display: block; }
-.d-inline-block { display: inline-block; }
-.d-none { display: none; }
+.d-block { display: block !important; }
+.d-inline-block { display: inline-block !important; }
+.d-none { display: none !important; }
 
 /* Type */
 .medium { font-weight: 500; }
