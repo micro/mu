@@ -1,6 +1,6 @@
 # mu
 
-A server for humans, agents and services
+A network for humans, agents and services
 
 ## Overview
 
