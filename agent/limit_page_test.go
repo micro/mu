@@ -23,6 +23,13 @@ func capped(t *testing.T, id string, allowed, made int) {
 	t.Helper()
 	if _, err := auth.GetAccount(id); err != nil {
 		if err := auth.Create(&auth.Account{ID: id, Name: id, Secret: "s"}); err != nil {
+			// A username the rules refuse is a bug in this test, not a fact about
+			// the machine it runs on. Skipping on it is how eighteen tests across
+			// this repository quietly stopped running the day usernames became
+			// validated — a red suite would have said so on the first push.
+			if strings.Contains(err.Error(), "username") {
+				t.Fatalf("the test account name is not a valid username: %v", err)
+			}
 			t.Skipf("cannot create an account here: %v", err)
 		}
 		t.Cleanup(func() { auth.DeleteAccount(id) }) //nolint:errcheck
