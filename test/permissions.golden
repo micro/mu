@@ -111,8 +111,6 @@ video_list                   needsAccount=false destructive=false open accountOn
 video_search                 needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 wallet_address               needsAccount=true  destructive=false bound accountOnly=true  optionalAuth=false
 wallet_balance               needsAccount=true  destructive=false bound accountOnly=true  optionalAuth=false
-wallet_list                  needsAccount=true  destructive=false bound accountOnly=true  optionalAuth=false
-wallet_pay                   needsAccount=true  destructive=false bound accountOnly=true  optionalAuth=false
 weather_air                  needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 weather_forecast             needsAccount=false destructive=false bound accountOnly=false optionalAuth=true
 weather_history              needsAccount=false destructive=false open accountOnly=false optionalAuth=false

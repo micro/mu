@@ -40,7 +40,6 @@ import (
 	"mu/service/files"
 	"mu/service/flights"
 	"mu/service/food"
-	"mu/service/hazards"
 	"mu/service/images"
 	"mu/service/mail"
 	"mu/service/maps"
@@ -88,13 +87,11 @@ func authRequired() map[string]bool {
 		"/text":                       false, // Public: the tools are callable without an account
 		"/food":                       false, // Public food data is public
 		"/transit":                    false, // Public transport data is public
-		"/hazards":                    false, // Public hazard data, published to be redistributed
 		"/browser":                    false, // Public — the page; reading one costs and needs a session
 		"/shell":                      true,  // A machine with your files on it, so it needs a session
 		"/browser/shot/":              false, // A picture already taken, of a page anybody could open
 		"/maps":                       false, // Public — the page, and any tile already held
 		"/maps/":                      false, // A held tile is free to anybody; a cold one needs a session
-		"/tiles/":                     false, // The old tile path, which redirects
 		"/prayer":                     false, // Public prayer times, daily verse and hadith
 		"/oauth2/google":              false, // Google sign-in start (no session yet)
 		"/oauth2/google/connect":      true,  // Link Google to the current account
@@ -128,7 +125,7 @@ func authRequired() map[string]bool {
 		"/social":            false, // Public viewing, auth for search
 		"/social/thread":     false, // Public thread view, auth for messaging
 		"/places":            false, // Public map, auth for search
-		"/weather":           false, // Public page, auth for forecast lookup
+		"/weather":           false, // Public — the forecast as JSON
 		"/flights":           false, // Public — aircraft broadcast their positions in clear
 		"/mail":              true,  // Require auth for inbox
 		"/logout":            true,
@@ -149,7 +146,6 @@ func authRequired() map[string]bool {
 		"/admin/email":       true,
 		"/admin/log":         true,
 		"/admin/config":      true,
-		"/admin/env":         true,
 		"/admin/server":      true,
 		"/admin/usage":       true,
 		"/admin/delete":      true,
@@ -162,14 +158,11 @@ func authRequired() map[string]bool {
 
 		"/apps":      false, // Public - apps directory; auth checked in handler for create/edit
 		"/work":      false, // Public - task bounties; auth checked in handler for post/claim
-		"/search":    false, // Public - redirect to /web, the address people have
 		"/web":       false, // Public - the open web: search it, read a page from it
 		"/web/fetch": false, // Public page, auth checked in handler (paid web fetch)
 		"/web/read":  false, // Public page, auth checked in handler (proxied reader)
 
 		"/status":                        false, // Public - server health status
-		"/plans":                         false, // Public - redirects to /tools
-		"/pricing":                       false, // Public - redirects to /tools
 		"/privacy":                       false, // Public - privacy policy
 		"/install":                       false, // Public - run your own instance
 		"/whitepaper":                    false, // Public - whitepaper
@@ -178,15 +171,14 @@ func authRequired() map[string]bool {
 		"/.well-known/mcp-registry-auth": false, // Public - registry domain proof
 		// Public at the door, decided per tool inside. The same answer /mcp
 		// gives, for the same reason: news and weather must not need an account.
-		"/api/v1":     false,
-		"/api/v1/":    false,
-		"/agent":      false, // Redirects to the named page; auth checked in handler
-		"/agent/":     false, // /agent/<name> — one agent's page; auth checked in handler
-		"/push/":      true,  // Subscribing this device to notifications
-		"/inbox":      true,  // The mailbox — yours, so it needs a session
-		"/inbox/":     true,  // One alias's mail
-		"/setup":      false, // First-run setup (open only until an admin exists)
-		"/developers": false, // Legacy alias → /tools (public)
+		"/api/v1":  false,
+		"/api/v1/": false,
+		"/agent":   false, // Redirects to the named page; auth checked in handler
+		"/agent/":  false, // /agent/<name> — one agent's page; auth checked in handler
+		"/push/":   true,  // Subscribing this device to notifications
+		"/inbox":   true,  // The mailbox — yours, so it needs a session
+		"/inbox/":  true,  // One alias's mail
+		"/setup":   false, // First-run setup (open only until an admin exists)
 	}
 	return authenticated
 }
@@ -232,21 +224,6 @@ func registerRoutes() {
 	// handle comments on posts /blog/post/{id}/comment
 	http.HandleFunc("/blog/post/", blog.CommentHandler)
 
-	// Legacy redirects for old URL structure (301 so browsers/crawlers update)
-	legacyRedirect := func(oldPrefix, newPrefix string) http.HandlerFunc {
-		return func(w http.ResponseWriter, r *http.Request) {
-			target := newPrefix + r.URL.Path[len(oldPrefix):]
-			if r.URL.RawQuery != "" {
-				target += "?" + r.URL.RawQuery
-			}
-			http.Redirect(w, r, target, http.StatusFound)
-		}
-	}
-	http.HandleFunc("/post/", legacyRedirect("/post/", "/blog/post/"))
-	http.HandleFunc("/post", legacyRedirect("/post", "/blog/post"))
-	http.HandleFunc("/fetch", legacyRedirect("/fetch", "/web/fetch"))
-	http.HandleFunc("/read", legacyRedirect("/read", "/web/read"))
-
 	// flag content
 	http.HandleFunc("/admin/flag", admin.FlagHandler)
 
@@ -275,13 +252,6 @@ func registerRoutes() {
 
 	// environment variables status
 	http.HandleFunc("/admin/config", admin.ConfigHandler)
-	// It was /admin/env. An operator has it bookmarked and every instance
-	// already deployed links to it from its own pages, so the old path still
-	// answers rather than 404ing on the one page you go to when something is
-	// misconfigured.
-	http.HandleFunc("/admin/env", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/admin/config", http.StatusFound)
-	})
 
 	// server update and restart
 	http.HandleFunc("/admin/server", admin.ServerHandler)
@@ -343,18 +313,10 @@ func registerRoutes() {
 	// The address this had until it was renamed. Kept because links to it
 	// exist — in mail this instance has already sent, and in anybody's
 	// bookmarks — and breaking a URL to tidy a name is a bad trade.
-	http.HandleFunc("/sandbox", shell.Moved)
 	http.HandleFunc("/browser", browser.Handler)
 	http.HandleFunc("/browser/shot/", browser.ShotHandler)
 
 	http.HandleFunc("/web", web.Handler)
-	http.HandleFunc("/search", func(w http.ResponseWriter, r *http.Request) {
-		to := "/web"
-		if r.URL.RawQuery != "" {
-			to += "?" + r.URL.RawQuery
-		}
-		http.Redirect(w, r, to, http.StatusFound)
-	})
 	http.HandleFunc("/web/preview", web.PreviewHandler)
 
 	// serve web fetch page (fetch and clean a URL)
@@ -370,46 +332,6 @@ func registerRoutes() {
 	// home screen is the public face — real cards plus the agent — so a visitor
 	// sees the product rather than a separate marketing page.
 	http.HandleFunc("/home", home.Handler)
-	// Everything used to be a landing: the logged-out root said nothing, /about
-	// was a pitch and /agents was a second pitch. There is one landing now — the
-	// root — and these two go back to being what their names say.
-	//
-	// /about is gone: the landing is where somebody deciding whether to care
-	// reads what this is, and an About page was the same answer kept somewhere
-	// nothing fails when it goes stale. It redirects here. /agents belongs to
-	// the user's agents, not to marketing; it points at the agent surface until
-	// the page that shows what your agents are doing exists to take it.
-	// There is no pricing page.
-	//
-	// It was rebuilt three times in a day — a cost table, then three columns of
-	// plans, then plans without columns — and every version came apart on the
-	// same fact: a credit is 1p and every tool costs what quota.json says,
-	// whoever is asking. There is nothing to choose, so a page asking somebody
-	// to choose was a page inventing a decision to make it feel like a product.
-	//
-	// What a call costs belongs beside the call. /tools carries the price on
-	// every tool, /account carries the balance and the same table, and both are
-	// /pricing and /plans both go to /tools now, and neither is a page here.
-	//
-	// A pricing page is a thing SaaS has. This is a utility somebody runs: an
-	// operator running it privately charges nobody and needs none of it, and an
-	// operator who does charge needs a ledger and a way to top up, which is
-	// /billing. Billing is a mechanism; pricing is marketing.
-	//
-	// Nothing on the page had nowhere else to be. What a credit is worth sits
-	// beside the balance at /billing, where a wallet shows a fee. What one call
-	// costs is on the tool, at /tools, the way a price is on the shelf edge.
-	// The machine-readable list is /billing/pricing. x402 — pay per call with
-	// no account — is on /mcp and /tools, where somebody who would use it is.
-	//
-	// They redirect rather than 404 because both names are in server.json, in
-	// the README and in three years of links.
-	http.HandleFunc("/plans", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/tools", http.StatusFound)
-	})
-	http.HandleFunc("/pricing", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/tools", http.StatusFound)
-	})
 	// Every MCP directory submission asks for a privacy policy URL, and this
 	// instance runs a mail server — so there is real correspondence to account
 	// for, not just a formality.
@@ -417,15 +339,6 @@ func registerRoutes() {
 
 	// first-run setup wizard (open only until an admin exists)
 	http.HandleFunc("/setup", setup.Handler)
-
-	// Redirect the old path so existing links keep working. It used to point at
-	// /agents back when that was a public redirect to /agent; /agents is now the
-	// signed-in page where you create and scope agents, so a developer following
-	// this link would hit a login wall instead of the thing they came for. /tools
-	// is that thing: the endpoint, the config and the token.
-	http.HandleFunc("/developers", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/tools", http.StatusFound)
-	})
 
 	// serve the agent
 	// The inbox is /inbox, and the agent family is /agent*.
@@ -493,7 +406,6 @@ func registerRoutes() {
 	http.HandleFunc("/text", text.Handler)
 	http.HandleFunc("/food", food.Handler)
 	http.HandleFunc("/transit", transit.Handler)
-	http.HandleFunc("/hazards", hazards.Handler)
 	// The basemap under anything spatial. /maps is the page; the images are at
 	// /tiles/<style>/<z>/<x>/<y>.png, which is the shape every map library
 	// takes and the only shape any of them take. See service/maps.
@@ -510,9 +422,6 @@ func registerRoutes() {
 	// trip and then stops costing anything.
 	http.HandleFunc("/maps", maps.Handler)
 	http.HandleFunc("/maps/", maps.TileHandler)
-	http.HandleFunc("/tiles/", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/maps"+r.URL.Path, http.StatusFound)
-	})
 	// What you have, and the key that can spend it. One destination: x402 is a
 	// substrate and a substrate does not get a page of its own, the same way
 	// SMTP has none and its connect details are a section under /inbox.
@@ -562,21 +471,15 @@ func registerRoutes() {
 	http.HandleFunc("/stream", stream.Handler)
 	http.HandleFunc("/stream/fragment", stream.FragmentHandler)
 
+	// JSON only. The page is /services/weather; this no longer bounces there.
+	http.HandleFunc("/weather", weather.Handler)
 	http.HandleFunc("/prayer", prayer.Handler)
-	// Back-compat: the page lived at /reminder, then at /islam. Both are still
-	// in bookmarks and in other people's links, so both keep working.
-	for _, old := range []string{"/reminder", "/islam"} {
-		http.HandleFunc(old, func(w http.ResponseWriter, r *http.Request) {
-			http.Redirect(w, r, "/prayer", http.StatusFound)
-		})
-	}
 
 	// serve places page
 	http.HandleFunc("/places", places.Handler)
 	http.HandleFunc("/places/", places.Handler)
 
 	// serve weather page
-	http.HandleFunc("/weather", weather.Handler)
 
 	// serve flights page
 	http.HandleFunc("/flights", flights.Handler)
@@ -685,15 +588,6 @@ func registerRoutes() {
 	// the /docs the service owns now, and /about is in that map pointing at the
 	// landing, which is the page that answers the question it used to.
 	http.HandleFunc("/install", help.InstallHandler)
-	for from, to := range help.Redirects {
-		if from == "/docs" {
-			continue // the service's page, not a redirect
-		}
-		target := to
-		http.HandleFunc(from, func(w http.ResponseWriter, r *http.Request) {
-			http.Redirect(w, r, target, http.StatusFound)
-		})
-	}
 
 	// ActivityPub: WebFinger discovery
 	http.HandleFunc("/.well-known/webfinger", blog.WebFingerHandler)

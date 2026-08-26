@@ -29,7 +29,7 @@ func StripeEnabled() bool {
 
 // StripeTopupTier is one preset top-up amount.
 type StripeTopupTier struct {
-	Amount  int    `json:"amount"`  // Price in pence (e.g., 500 = £5)
+	Amount  int    `json:"amount"`  // Price in cents (e.g., 500 = $5)
 	Credits int    `json:"credits"` // Credits received (equals Amount, flat rate)
 	Label   string `json:"label"`   // Display label
 }
@@ -38,12 +38,12 @@ type StripeTopupTier struct {
 //
 // Not tiers in the pricing sense — a credit is a penny at every one of them,
 // and any amount can be typed instead. They are there because most people would
-// rather press £10 than think of a number.
+// rather press $10 than think of a number.
 var StripeTopupTiers = []StripeTopupTier{
-	{Amount: 500, Credits: 500, Label: "£5"},
-	{Amount: 1000, Credits: 1000, Label: "£10"},
-	{Amount: 2500, Credits: 2500, Label: "£25"},
-	{Amount: 5000, Credits: 5000, Label: "£50"},
+	{Amount: 500, Credits: 500, Label: "$5"},
+	{Amount: 1000, Credits: 1000, Label: "$10"},
+	{Amount: 2500, Credits: 2500, Label: "$25"},
+	{Amount: 5000, Credits: 5000, Label: "$50"},
 }
 
 // checkoutSession is a completed purchase, however we came to hear about it.
@@ -208,12 +208,12 @@ func CreateCheckoutSession(userID string, amount int, successURL, cancelURL stri
 	}
 
 	if amount < 100 {
-		return "", fmt.Errorf("minimum top-up is £1")
+		return "", fmt.Errorf("minimum top-up is $1")
 	}
 
-	// Flat rate: 1 pence = 1 credit
+	// Flat rate: 1 cent = 1 credit
 	credits := amount
-	label := fmt.Sprintf("£%d", amount/100)
+	label := fmt.Sprintf("$%d", amount/100)
 
 	// Build request body
 	data := map[string]interface{}{
@@ -223,7 +223,7 @@ func CreateCheckoutSession(userID string, amount int, successURL, cancelURL stri
 		"line_items": []map[string]interface{}{
 			{
 				"price_data": map[string]interface{}{
-					"currency":    "gbp",
+					"currency":    "usd",
 					"unit_amount": amount,
 					"product_data": map[string]interface{}{
 						"name":        fmt.Sprintf("%d Credits", credits),

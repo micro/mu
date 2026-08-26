@@ -3790,16 +3790,6 @@ a.btn-primary:hover, .btn-primary:hover {
   border-color: var(--btn-primary-hover, #333);
   color: #fff !important;
 }
-a.btn-secondary, .btn-secondary {
-  background: var(--hover-background, #eee);
-  color: var(--text-primary, #333) !important;
-  border-color: var(--hover-background, #eee);
-}
-
-a.btn-secondary:hover, .btn-secondary:hover {
-  background: #ddd;
-  text-decoration: none;
-}
 
 /* Iframe container with aspect ratio */
 .iframe-container {
@@ -6944,4 +6934,22 @@ a.pill {
 }
 .price-free li:last-child {
   margin: 0;
+}
+
+/* The quiet button, after .btn rather than before it.
+   It was declared 2,800 lines above .btn, and both are one class, so .btn won
+   on order alone: background went to var(--btn-primary, #000) while the colour
+   stayed dark, because only the colour here was marked important. The result
+   was dark text on a black fill everywhere the pair was used — the top-up
+   presets, the wallet's sign-up button, two on the blog.
+   Marking the background important as well would have hidden the cause and
+   left the next property to do the same thing. Order is the cause. */
+a.btn-secondary, .btn-secondary {
+  background: var(--hover-background, #eee);
+  color: var(--text-primary, #333);
+  border-color: var(--border-color, #ddd);
+}
+a.btn-secondary:hover, .btn-secondary:hover {
+  background: var(--border-color, #ddd);
+  text-decoration: none;
 }

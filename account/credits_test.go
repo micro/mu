@@ -12,12 +12,12 @@ func TestFormatCredits(t *testing.T) {
 		credits  int
 		expected string
 	}{
-		{0, "£0.00"},
-		{1, "£0.01"},
-		{50, "£0.50"},
-		{100, "£1.00"},
-		{1550, "£15.50"},
-		{10000, "£100.00"},
+		{0, "$0.00"},
+		{1, "$0.01"},
+		{50, "$0.50"},
+		{100, "$1.00"},
+		{1550, "$15.50"},
+		{10000, "$100.00"},
 	}
 	for _, tt := range tests {
 		got := FormatCredits(tt.credits)
@@ -162,8 +162,8 @@ func TestGetWallet_CreatesNew(t *testing.T) {
 	if w.Balance != 0 {
 		t.Errorf("expected 0 balance, got %d", w.Balance)
 	}
-	if w.Currency != "GBP" {
-		t.Errorf("expected GBP currency, got %q", w.Currency)
+	if w.Currency != "USD" {
+		t.Errorf("expected USD currency, got %q", w.Currency)
 	}
 }
 
@@ -171,7 +171,7 @@ func TestGetWallet_ReturnsCached(t *testing.T) {
 	mutex.Lock()
 	origWallets := balances
 	balances = map[string]*Credits{
-		"cached-user": {UserID: "cached-user", Balance: 500, Currency: "GBP"},
+		"cached-user": {UserID: "cached-user", Balance: 500, Currency: "USD"},
 	}
 	mutex.Unlock()
 	defer func() {
@@ -190,7 +190,7 @@ func TestGetBalance(t *testing.T) {
 	mutex.Lock()
 	origWallets := balances
 	balances = map[string]*Credits{
-		"balance-user": {UserID: "balance-user", Balance: 1000, Currency: "GBP"},
+		"balance-user": {UserID: "balance-user", Balance: 1000, Currency: "USD"},
 	}
 	mutex.Unlock()
 	defer func() {
@@ -209,7 +209,7 @@ func TestAddCredits(t *testing.T) {
 	origWallets := balances
 	origTx := transactions
 	balances = map[string]*Credits{
-		"add-user": {UserID: "add-user", Balance: 100, Currency: "GBP"},
+		"add-user": {UserID: "add-user", Balance: 100, Currency: "USD"},
 	}
 	transactions = map[string][]*Transaction{}
 	mutex.Unlock()
@@ -248,7 +248,7 @@ func TestDeductCredits(t *testing.T) {
 	origWallets := balances
 	origTx := transactions
 	balances = map[string]*Credits{
-		"deduct-user": {UserID: "deduct-user", Balance: 100, Currency: "GBP"},
+		"deduct-user": {UserID: "deduct-user", Balance: 100, Currency: "USD"},
 	}
 	transactions = map[string][]*Transaction{}
 	mutex.Unlock()
@@ -272,7 +272,7 @@ func TestDeductCredits_InsufficientBalance(t *testing.T) {
 	mutex.Lock()
 	origWallets := balances
 	balances = map[string]*Credits{
-		"poor-user": {UserID: "poor-user", Balance: 5, Currency: "GBP"},
+		"poor-user": {UserID: "poor-user", Balance: 5, Currency: "USD"},
 	}
 	mutex.Unlock()
 	defer func() {
@@ -309,8 +309,8 @@ func TestTransferCreditsDailyCap(t *testing.T) {
 	origWallets := balances
 	origTx := transactions
 	balances = map[string]*Credits{
-		"sender":   {UserID: "sender", Balance: DailyTransferCap + 1000, Currency: "GBP"},
-		"receiver": {UserID: "receiver", Balance: 0, Currency: "GBP"},
+		"sender":   {UserID: "sender", Balance: DailyTransferCap + 1000, Currency: "USD"},
+		"receiver": {UserID: "receiver", Balance: 0, Currency: "USD"},
 	}
 	transactions = map[string][]*Transaction{}
 	mutex.Unlock()

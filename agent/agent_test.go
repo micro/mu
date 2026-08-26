@@ -356,8 +356,8 @@ func TestFormatWalletBalanceResult_WithBalance(t *testing.T) {
 	if !strings.Contains(got, "1550 credits") {
 		t.Errorf("expected credits in output, got %q", got)
 	}
-	if !strings.Contains(got, "£15.50") {
-		t.Errorf("expected formatted pounds in output, got %q", got)
+	if !strings.Contains(got, "$15.50") {
+		t.Errorf("expected formatted dollars in output, got %q", got)
 	}
 	if !strings.Contains(got, "/wallet/topup") {
 		t.Errorf("expected topup link in output, got %q", got)
@@ -370,8 +370,8 @@ func TestFormatWalletBalanceResult_ZeroBalance(t *testing.T) {
 	if !strings.Contains(got, "0 credits") {
 		t.Errorf("expected zero credits in output, got %q", got)
 	}
-	if !strings.Contains(got, "£0.00") {
-		t.Errorf("expected £0.00 in output, got %q", got)
+	if !strings.Contains(got, "$0.00") {
+		t.Errorf("expected $0.00 in output, got %q", got)
 	}
 }
 

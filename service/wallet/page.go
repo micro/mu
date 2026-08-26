@@ -36,8 +36,7 @@ func SignedOut() string {
 		`<p>What you have here, and a key of your own on Base: an address that holds ` +
 		`USDC, and an agent that can spend it on priced endpoints anywhere — no account ` +
 		`with those servers, no card on file, no key to rotate.</p>` +
-		`<p><a href="/login" class="btn">Sign in</a> <a href="/signup" class="btn btn-secondary">Sign up</a></p></div>` +
-		toolsCard()
+		`<p><a href="/login" class="btn">Sign in</a> <a href="/signup" class="btn btn-secondary">Sign up</a></p></div>`
 }
 
 // Page renders the signed-in wallet.
@@ -78,11 +77,13 @@ func Page(accountID string) string {
 	// first is credits, which the instance owes you, and this is USDC on a
 	// chain, which it does not. Unlabelled, the two read as one figure
 	// disagreeing with itself.
+	//
+	// "Crypto" rather than a more precise name for what it is. The precise
+	// names — on-chain key, secp256k1 keypair, Base address — all describe the
+	// mechanism, and the reader deciding whether this card is for them is
+	// answering a different question: is this the crypto bit. It is.
 	return fmt.Sprintf(`<div class="card">
-  <h4>On-chain key</h4>
-  <p class="text-sm text-muted">A key of your own on %s. Your agent can spend it on
-  priced endpoints anywhere, capped per call and per day. Separate from the credits
-  above: this is USDC on a chain, and topping up with a card does not touch it.</p>
+  <h4>Crypto</h4>
   <p class="text-28 mt-2 mb-3"><b>$%s</b> <span class="text-muted text-base">USDC</span>%s</p>
   <p class="cw-net"><b>%s only.</b> USDC sent on Ethereum, Arbitrum or any other
   chain lands at this same address on that chain, where this instance cannot see it
@@ -98,7 +99,6 @@ func Page(accountID string) string {
   private key →</a> The key is held on this instance; a copy you hold yourself is the only
   thing that makes losing it here survivable.</p>
 </div>
-%s
 <style>
 .cw-addr{display:block;width:100%%;text-align:left;font-family:ui-monospace,Menlo,monospace;font-size:13px;word-break:break-all;background:#f5f5f5;padding:11px;border:1px solid #e2e2e2;border-radius:6px;color:#222;cursor:pointer}
 .cw-addr:hover{background:var(--hover-background,#f5f5f5);border-color:var(--border-color,#ddd)}
@@ -122,22 +122,7 @@ function cwCopy(el){var a=el.getAttribute('data-addr');function done(){var c=doc
   if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(a).then(done).catch(function(){cwFallback(a,done);});}else{cwFallback(a,done);}}
 function cwFallback(a,done){var t=document.createElement('textarea');t.value=a;t.style.position='fixed';t.style.opacity='0';document.body.appendChild(t);t.select();try{document.execCommand('copy');done();}catch(e){}document.body.removeChild(t);}
 </script>`,
-		net, html.EscapeString(human), unreadable, net,
+		html.EscapeString(human), unreadable, net,
 		html.EscapeString(bw.Address), html.EscapeString(bw.Address),
-		html.EscapeString(payURI), net, toolsCard())
-}
-
-// toolsCard says what an agent holding this wallet can do with it, because that
-// is the reason for the service and it is not visible from an address.
-func toolsCard() string {
-	return `<div class="card"><h3>What an agent can do with it</h3>
-<p class="text-sm text-muted"><code>wallet_address</code> — where to send funds.
-<code>wallet_balance</code> — what it holds.
-<code>wallet_list</code> — which priced servers it may pay.
-<code>wallet_pay</code> — call a tool on one of them and pay for it.</p>
-<p class="text-sm text-muted">Payments are capped per call and per day, so a server
-cannot name any price it likes to an agent that has read something misleading.
-The key is held on this instance, which is what makes it work out of the box and
-also means an operator who can read the disk can spend it — hold what you are
-willing to have on a server.</p></div>`
+		html.EscapeString(payURI), net)
 }

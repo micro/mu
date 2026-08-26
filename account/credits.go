@@ -99,8 +99,8 @@ var dailyUsage = map[string]*DailyUsage{}
 // migration, not an edit. TestTheKeyStoreAndTheLedgerAreSeparate pins it.
 type Credits struct {
 	UserID    string    `json:"user_id"`
-	Balance   int       `json:"balance"`  // Credits (1 credit = 1 penny = £0.01)
-	Currency  string    `json:"currency"` // Always "GBP" for now
+	Balance   int       `json:"balance"`  // Credits (1 credit = 1 cent = $0.01)
+	Currency  string    `json:"currency"` // Always "USD"
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
@@ -205,7 +205,7 @@ func rebuildFromTransactions() {
 			continue
 		}
 		balances[id] = &Credits{
-			UserID: id, Balance: t.Balance, Currency: "GBP", UpdatedAt: t.CreatedAt,
+			UserID: id, Balance: t.Balance, Currency: "USD", UpdatedAt: t.CreatedAt,
 		}
 		restored++
 	}
@@ -254,7 +254,7 @@ func creditsOf(l *ledger, userID string) *Credits {
 	w := &Credits{
 		UserID:    userID,
 		Balance:   0,
-		Currency:  "GBP",
+		Currency:  "USD",
 		UpdatedAt: time.Now(),
 	}
 	balances[userID] = w
@@ -366,7 +366,7 @@ func addCredits(l *ledger, userID string, amount int, operation string, metadata
 		w = &Credits{
 			UserID:   userID,
 			Balance:  0,
-			Currency: "GBP",
+			Currency: "USD",
 		}
 		balances[userID] = w
 	}
@@ -500,7 +500,7 @@ func transferCredits(l *ledger, fromUserID, toUserID string, amount int) error {
 		receiver = &Credits{
 			UserID:   toUserID,
 			Balance:  0,
-			Currency: "GBP",
+			Currency: "USD",
 		}
 		balances[toUserID] = receiver
 	}
@@ -597,7 +597,7 @@ func recordUsage(l *ledger, userID string, operation string) {
 		w = &Credits{
 			UserID:    userID,
 			Balance:   0,
-			Currency:  "GBP",
+			Currency:  "USD",
 			UpdatedAt: time.Now(),
 		}
 		balances[userID] = w
@@ -646,7 +646,7 @@ func chargeAppUse(l *ledger, userID, authorID, appSlug string, price int) error 
 		author = &Credits{
 			UserID:   authorID,
 			Balance:  0,
-			Currency: "GBP",
+			Currency: "USD",
 		}
 		balances[authorID] = author
 	}
@@ -702,9 +702,9 @@ func chargeAppUse(l *ledger, userID, authorID, appSlug string, price int) error 
 
 // FormatCredits formats credits as currency string
 func FormatCredits(credits int) string {
-	pounds := credits / 100
-	pence := credits % 100
-	return fmt.Sprintf("£%d.%02d", pounds, pence)
+	dollars := credits / 100
+	cents := credits % 100
+	return fmt.Sprintf("$%d.%02d", dollars, cents)
 }
 
 // DeleteCredits removes a user's wallet and transaction history.

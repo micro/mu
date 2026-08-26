@@ -2357,7 +2357,7 @@ func formatWalletBalanceResult(result string) string {
 		} else {
 			n = *data.Balance
 		}
-		fmt.Fprintf(&sb, "Credit balance: %d credits (£%d.%02d). Top up at /wallet/topup.\n", n, n/100, n%100)
+		fmt.Fprintf(&sb, "Credit balance: %d credits ($%d.%02d). Top up at /wallet/topup.\n", n, n/100, n%100)
 	}
 	switch {
 	case data.USDC != "":

@@ -29,15 +29,15 @@ func tools() string {
 	return strconv.Itoa(n/100*100) + "+"
 }
 
-// pence renders what an operation costs, for the one line on the landing that
+// cents renders what an operation costs, for the one line on the landing that
 // names a price.
 //
 // Read rather than written. Two numbers in marketing copy are two numbers that
 // go stale the moment an operator edits quota.json, and this page has been
 // through that before: it said "67 real tools" as a literal while the endpoint
 // served 72.
-func pence(op string) string {
-	return strconv.Itoa(quota.OperationCost(op)) + "p"
+func cents(op string) string {
+	return strconv.Itoa(quota.OperationCost(op)) + "¢"
 }
 
 // Landing is the front door for anyone not signed in: something to try, then
@@ -195,7 +195,7 @@ markets, video, places, files, contacts, calendar, documents. A work in progress
 </div>
 <p class="linstall" id="install-how" hidden>In Safari: Share, then Add to Home Screen.</p>
 <p class="lcost">The agent is free. Tools that cost us are priced —
-search ` + pence(quota.OpWebSearch) + `, an image ` + pence(quota.OpImageGenerate) + `.
+search ` + cents(quota.OpWebSearch) + `, an image ` + cents(quota.OpImageGenerate) + `.
 <a href="/tools">See them</a></p>
 </div>
 

@@ -27,13 +27,19 @@ import (
 // the escaper was weaker than it looked.
 func htmlEsc(s string) string { return html.EscapeString(s) }
 
-// money renders pence as £20. Plans are whole pounds; one that is not would be
-// a pricing decision rather than a formatting one.
-func money(pence int) string {
-	if pence%100 == 0 {
-		return fmt.Sprintf("£%d", pence/100)
+// money renders cents as $20.
+//
+// Dollars, not pounds. A credit was a penny and Stripe charged in GBP, while
+// the wallet on the same page holds USDC — so the instance had two currencies
+// and the moment an x402 payment topped up a balance there would have been an
+// exchange rate in the middle of it, with a price list in pence that had to be
+// quoted in USDC and moved daily. A credit is a cent instead, which makes the
+// two 1:1 and takes the rate out of the system rather than managing it.
+func money(cents int) string {
+	if cents%100 == 0 {
+		return fmt.Sprintf("$%d", cents/100)
 	}
-	return fmt.Sprintf("£%.2f", float64(pence)/100)
+	return fmt.Sprintf("$%.2f", float64(cents)/100)
 }
 
 // thousands renders 2000 as 2,000.
@@ -85,17 +91,13 @@ func BalanceCard(userID string) string {
 	// that — a link is a promise that there is somewhere to go, and scrolling
 	// four hundred pixels is not somewhere. What is on the page does not need
 	// announcing on the page.
-	// "Account balance", not "Balance", because there are two numbers on this
-	// page now and both are balances: this one, in credits, which is what the
-	// instance owes you; and the USDC the key below holds, which is on a chain
-	// and is not this. One of them called Balance and the other unlabelled was
-	// worse than the two separate pages it replaced.
-	//
-	// It is also the sentence somebody says out loud: you top up with the
-	// wallet, that adds credit, and what you have is your account balance.
-	return app.SectionID("balance", "Account balance",
+	// Balance, on a page titled Wallet. There are two numbers here and both are
+	// balances — this one in credits, and the USDC the key holds — but the
+	// second card names itself "On-chain key", so this one does not have to
+	// carry the disambiguation in its own title as well.
+	return app.SectionID("balance", "Balance",
 		`<p class="balance-figure"><b>`+thousands(c.Balance)+`</b> <span>credits</span></p>`,
-		app.Note(money(c.Balance)+" · 1 credit = 1p"),
+		app.Note(money(c.Balance)+" · 1 credit = 1¢"),
 		free,
 		admin,
 		`<p class="balance-links"><a href="/wallet/topup">Top up &rarr;</a> · `+
@@ -275,15 +277,6 @@ func Wallet(w http.ResponseWriter, r *http.Request) {
 func BalanceHandler(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 
-	// Anything money-shaped still asked for under an old prefix.
-	if moved, ok := movedToWallet(path); ok {
-		if q := r.URL.RawQuery; q != "" {
-			moved += "?" + q
-		}
-		http.Redirect(w, r, moved, http.StatusSeeOther)
-		return
-	}
-
 	// The balance, as data.
 	//
 	// This used to answer only to ?balance=1, so a caller that asked for JSON
@@ -322,26 +315,6 @@ func BalanceHandler(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.NotFound(w, r)
 	}
-}
-
-// movedToWallet names the money paths that used to be somewhere else.
-//
-// Both older prefixes, not just the most recent one. A bookmark does not know
-// which rearrangement it predates, and a chain of redirects that drops the
-// oldest link is the same as having no redirect for it.
-func movedToWallet(path string) (string, bool) {
-	trimmed := strings.TrimSuffix(path, "/")
-	for _, was := range []string{"/account"} {
-		if !strings.HasPrefix(trimmed, was+"/") {
-			continue
-		}
-		switch strings.TrimPrefix(trimmed, was) {
-		case "/topup", "/transfer", "/pricing",
-			"/stripe/checkout", "/stripe/success":
-			return "/wallet" + strings.TrimPrefix(trimmed, was), true
-		}
-	}
-	return "", false
 }
 
 // MovedToAccount is gone, and the redirects it performed are gone with it.
@@ -391,10 +364,10 @@ func renderStripeDeposit(userID, errMsg string) string {
 	}
 	sb.WriteString(`</div>`)
 
-	// Custom amount input (in whole pounds)
+	// Custom amount input (in whole dollars)
 	sb.WriteString(`<div>`)
-	sb.WriteString(`<label for="topup-amount" class="text-sm">Amount (£)</label>`)
-	sb.WriteString(fmt.Sprintf(`<input type="number" id="topup-amount" name="amount" min="1" max="%d" placeholder="e.g. 10" required class="form-input w-full mt-1">`, maxTopupPounds))
+	sb.WriteString(`<label for="topup-amount" class="text-sm">Amount ($)</label>`)
+	sb.WriteString(fmt.Sprintf(`<input type="number" id="topup-amount" name="amount" min="1" max="%d" placeholder="e.g. 10" required class="form-input w-full mt-1">`, maxTopupDollars))
 	sb.WriteString(`</div>`)
 
 	sb.WriteString(`<button type="submit" class="btn mt-4">Continue to Payment</button>`)
@@ -402,14 +375,14 @@ func renderStripeDeposit(userID, errMsg string) string {
 	sb.WriteString(`</div>`)
 
 	sb.WriteString(`<div class="card">`)
-	sb.WriteString(`<p class="text-sm text-muted">Secure payment via Stripe. 1 credit = 1p.</p>`)
+	sb.WriteString(`<p class="text-sm text-muted">Secure payment via Stripe. 1 credit = 1¢.</p>`)
 	sb.WriteString(`</div>`)
 
 	return sb.String()
 }
 
 // maxTransferCredits is the maximum allowed transfer amount in credits
-const maxTransferCredits = 50000 // £500
+const maxTransferCredits = 50000 // $500
 
 func handleTransferPage(w http.ResponseWriter, r *http.Request) {
 	sess, _, err := auth.RequireSession(r)
@@ -474,7 +447,7 @@ func handleTransferPage(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`</div>`)
 
 	sb.WriteString(`<div class="card">`)
-	sb.WriteString(fmt.Sprintf(`<p class="text-sm text-muted">1 credit = 1p. Transfers are instant and non-reversible. Daily transfer limit: %d credits.</p>`, DailyTransferCap))
+	sb.WriteString(fmt.Sprintf(`<p class="text-sm text-muted">1 credit = 1¢. Transfers are instant and non-reversible. Daily transfer limit: %d credits.</p>`, DailyTransferCap))
 	sb.WriteString(`</div>`)
 
 	app.Respond(w, r, app.Response{Title: "Transfer", Description: "Send credits to somebody else", HTML: sb.String()})
@@ -578,8 +551,8 @@ func respondTransferError(w http.ResponseWriter, r *http.Request, msg string) {
 	http.Redirect(w, r, "/wallet/transfer?error="+neturl.QueryEscape(msg), http.StatusSeeOther)
 }
 
-// maxTopupPounds is the maximum allowed top-up amount in whole pounds
-const maxTopupPounds = 500
+// maxTopupDollars is the maximum allowed top-up amount in whole dollars
+const maxTopupDollars = 500
 
 type TopupMethod struct {
 	Type  string            `json:"type"`            // "card"
@@ -619,21 +592,21 @@ func handleStripeCheckout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Amount is submitted in whole pounds; convert to pence for Stripe
+	// Amount is submitted in whole dollars; convert to cents for Stripe
 	amountStr := r.FormValue("amount")
-	var pounds int
-	fmt.Sscanf(amountStr, "%d", &pounds)
+	var dollars int
+	fmt.Sscanf(amountStr, "%d", &dollars)
 
-	if pounds < 1 {
+	if dollars < 1 {
 		http.Redirect(w, r, "/wallet/topup?error=Please+enter+an+amount", http.StatusSeeOther)
 		return
 	}
-	if pounds > maxTopupPounds {
-		http.Redirect(w, r, fmt.Sprintf("/wallet/topup?error=Maximum+top-up+is+%%C2%%A3%d", maxTopupPounds), http.StatusSeeOther)
+	if dollars > maxTopupDollars {
+		http.Redirect(w, r, fmt.Sprintf("/wallet/topup?error=Maximum+top-up+is+$%d", maxTopupDollars), http.StatusSeeOther)
 		return
 	}
 
-	amount := pounds * 100 // convert to pence
+	amount := dollars * 100 // convert to cents
 
 	// Success/cancel URLs must name the public origin — see app.BaseURL, which
 	// is the single answer to "what is this instance's address".
@@ -738,8 +711,8 @@ func Pricing() []PricingItem {
 
 func getPricingData() []PricingItem { return Pricing() }
 
-// PricingTableHTML renders the shared cost table. Costs are whole pence
-// (1 credit = 1p), so the same figures serve both the credit and the currency
+// PricingTableHTML renders the shared cost table. Costs are whole cents
+// (1 credit = 1¢), so the same figures serve both the credit and the currency
 // framing.
 func PricingTableHTML() string {
 	var free []string
@@ -786,8 +759,8 @@ func handlePricing(w http.ResponseWriter, r *http.Request) {
 	if app.WantsJSON(r) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"currency":     "GBP",
-			"credit_value": "£0.01",
+			"currency":     "USD",
+			"credit_value": "$0.01",
 			"operations":   items,
 		})
 		return
@@ -796,7 +769,7 @@ func handlePricing(w http.ResponseWriter, r *http.Request) {
 	var sb strings.Builder
 	sb.WriteString(`<div class="max-w-xl"><div class="card">`)
 	sb.WriteString(`<h3>Pricing</h3>`)
-	sb.WriteString(`<p class="info">1 credit = £0.01. Browsing included. AI and search use credits.</p>`)
+	sb.WriteString(`<p class="info">1 credit = $0.01. Browsing included. AI and search use credits.</p>`)
 	sb.WriteString(`<table class="stats-table">`)
 	sb.WriteString(`<tr><td>News, blogs, videos</td><td>included</td></tr>`)
 	for _, item := range items {

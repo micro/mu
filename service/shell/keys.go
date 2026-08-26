@@ -90,7 +90,7 @@ func keysCard(r *http.Request, accountID string) string {
 			b.WriteString(`<tr><td>` + html.EscapeString(k.Name) + `</td>` +
 				`<td class="addr">` + html.EscapeString(k.Print) + `</td>` +
 				`<td>` + html.EscapeString(used) + `</td><td>` +
-				`<form method="post" action="/sandbox" class="d-inline">` +
+				`<form method="post" action="/shell" class="d-inline">` +
 				`<input type="hidden" name="csrf_token" value="` +
 				html.EscapeString(auth.CSRFToken(r)) + `">` +
 				`<input type="hidden" name="removekey" value="` +
@@ -101,7 +101,7 @@ func keysCard(r *http.Request, accountID string) string {
 		b.WriteString(`</table>`)
 	}
 
-	b.WriteString(`<form method="post" action="/sandbox" class="mt-3">`)
+	b.WriteString(`<form method="post" action="/shell" class="mt-3">`)
 	b.WriteString(`<input type="hidden" name="csrf_token" value="` +
 		html.EscapeString(auth.CSRFToken(r)) + `">`)
 	b.WriteString(`<input class="form-input w-full" type="text" name="sshkey" ` +

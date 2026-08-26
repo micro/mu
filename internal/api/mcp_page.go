@@ -98,7 +98,7 @@ func mcpPageHandler(w http.ResponseWriter, r *http.Request) {
 		`Pay it in USDC on Base and the same request succeeds. No signup. ` +
 		`Every tool below carries its price.</p>`)
 	b.WriteString(`<p class="card-meta">Not connected yet? <a href="/tools#connect">Connect your agent &rarr;</a> ` +
-		`&middot; <a href="/help/mcp">Auth and protocol detail</a> &middot; <a href="/tools">What calls cost</a></p>`)
+		`&middot; <a href="/tools">Auth, protocol detail and what calls cost</a></p>`)
 	// Not everybody arriving here is building an agent. Somebody writing a
 	// client wants one URL per method, and being handed a tool-calling protocol
 	// because it was the only door documented is how they conclude this is not

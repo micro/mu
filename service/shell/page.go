@@ -23,17 +23,7 @@ import (
 	"mu/internal/quota"
 )
 
-// Handler serves /sandbox.
-// Moved sends the address this service had before it was called shell.
-//
-// The page is /shell now; /sandbox was its name for as long as the service
-// was, and links to it exist in mail this instance has already sent. A rename
-// that breaks a URL somebody already holds has cost somebody something to save
-// the repository a word.
-func Moved(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, "/shell", http.StatusFound)
-}
-
+// Handler serves /shell.
 func Handler(w http.ResponseWriter, r *http.Request) {
 	var b strings.Builder
 	b.WriteString(`<div class="sbx">`)
@@ -55,7 +45,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	_, acc, err := auth.RequireSession(r)
 	if err != nil {
 		b.WriteString(`<p class="sbx-problem">` +
-			app.TextLink("Sign in", "/login?redirect=/sandbox") +
+			app.TextLink("Sign in", "/login?redirect=/shell") +
 			` to get a machine. The files are yours and running things costs, so it ` +
 			`needs an account to keep them under and to bill.</p></div>`)
 		app.Respond(w, r, app.Response{Title: "Sandbox", Description: Spec.Description, HTML: b.String()})
@@ -89,7 +79,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	b.WriteString(`<form class="sbx-form" method="post" action="/sandbox">`)
+	b.WriteString(`<form class="sbx-form" method="post" action="/shell">`)
 	b.WriteString(`<input type="hidden" name="csrf_token" value="` +
 		html.EscapeString(auth.CSRFToken(r)) + `">`)
 	b.WriteString(`<div class="sbx-line"><span class="sbx-prompt">/work $</span>` +
