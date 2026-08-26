@@ -6905,21 +6905,74 @@ a.btn-secondary:hover, .btn-secondary:hover {
   color: var(--text-muted, #666);
 }
 
-/* Turning what the wallet holds into credits. A row, not a form-shaped block:
-   it is one number and one button, under a balance that is already the
-   subject. */
-.cw-convert { margin: 12px 0 0 }
+/* The crypto card: address, QR, and turning what it holds into credits.
+   Here rather than in a <style> block inside service/wallet/page.go, which is
+   where half of it lived while the convert form's half was already here — one
+   card whose rules were in two files, so a change to the spacing between them
+   meant editing both and noticing that. */
+
+/* The address, on one line.
+   It was 13px with word-break:break-all, which does not overflow — it wraps —
+   so every check for "does it fit" reported yes while a 42-character address
+   sat on three lines on every phone. Measuring it took three attempts and the
+   first two lied in different ways: scrollWidth on a <button> does not report
+   text overflow, and a Range over wrapped text returns the widest line rather
+   than the run. Canvas measureText against the computed font is what finally
+   answered.
+   What it answered: the largest size that fits one line is 9px at a 320px
+   viewport, 10.75 at 360, 11.75 at 390 and 12.75 at 414 — near enough a
+   straight line, which is what the calc below is, held under 13px where there
+   is room to spare. break-all stays as the last resort for anything narrower
+   rather than as the normal case. */
+.cw-addr {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: clamp(8.5px, calc(3.9vw - 3.9px), 13px);
+  line-height: 1.5;
+  word-break: break-all;
+  background: var(--hover-background, #f5f5f5);
+  padding: 10px 9px;
+  border: 1px solid var(--border-color, #e2e2e2);
+  border-radius: 6px;
+  color: var(--text-primary, #222);
+  cursor: pointer;
+}
+.cw-addr:hover { background: var(--hover-background, #f5f5f5); border-color: var(--border-color, #ddd) }
+.cw-copied { font-size: 12px; color: #1a7f37; margin-top: 6px }
+.cw-net {
+  font-size: 13px; color: #8a5a00;
+  background: #fff8e6; border: 1px solid #f0dfae;
+  border-radius: 6px; padding: 9px 11px; margin: 0 0 10px;
+}
+.cw-qrnote { font-size: 12px; color: var(--text-muted, #666); margin: 8px 0 0; max-width: 260px }
+.cw-qrwrap { margin-top: 10px; font-size: 13px; color: var(--text-muted, #666) }
+.cw-qrwrap summary { cursor: pointer }
+.cw-qr { margin-top: 8px }
+.cw-qr img { width: 180px; height: 180px; image-rendering: pixelated }
+
+/* Turning what the wallet holds into credits.
+   Its own block with a rule above it, because it is a different kind of thing
+   from everything above: the rest of the card is what your address is, and this
+   spends it. Twelve pixels of margin put the button hard against the QR
+   section, which read as part of it. */
+.cw-convert {
+  margin: 18px 0 0;
+  padding: 16px 0 0;
+  border-top: 1px solid var(--border-color, #eee);
+}
 .cw-convert label {
   display: block;
   font-size: 13px;
   color: var(--text-muted, #666);
-  margin: 0 0 6px;
+  margin: 0 0 8px;
 }
-.cw-convert-row { display: flex; align-items: center; gap: 8px }
+.cw-convert-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap }
 .cw-convert-unit { font-size: 15px; color: var(--text-muted, #666) }
-.cw-convert-row .field { width: 7em }
+.cw-convert-row .field { width: 6.5em; flex: 0 0 auto }
 .cw-convert-note {
-  margin: 8px 0 0;
+  margin: 10px 0 0;
   font-size: 12px;
   color: var(--text-muted, #888);
   max-width: 34em;

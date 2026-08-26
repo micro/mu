@@ -100,16 +100,6 @@ func Page(accountID string) string {
   private key →</a> The key is held on this instance; a copy you hold yourself is the only
   thing that makes losing it here survivable.</p>
 </div>
-<style>
-.cw-addr{display:block;width:100%%;text-align:left;font-family:ui-monospace,Menlo,monospace;font-size:13px;word-break:break-all;background:#f5f5f5;padding:11px;border:1px solid #e2e2e2;border-radius:6px;color:#222;cursor:pointer}
-.cw-addr:hover{background:var(--hover-background,#f5f5f5);border-color:var(--border-color,#ddd)}
-.cw-copied{font-size:12px;color:#1a7f37;margin-top:6px}
-.cw-net{font-size:13px;color:#8a5a00;background:#fff8e6;border:1px solid #f0dfae;border-radius:6px;padding:9px 11px;margin:0 0 10px}
-.cw-qrnote{font-size:12px;color:#666;margin:8px 0 0;max-width:260px}
-.cw-qrwrap{margin-top:10px;font-size:13px;color:#666}
-.cw-qrwrap summary{cursor:pointer}
-.cw-qr{margin-top:8px}.cw-qr img{width:180px;height:180px;image-rendering:pixelated}
-</style>
 <script src="/qrcode.js"></script>
 <script>
 (function(){var q=document.getElementById('cw-qr');if(!q||!window.qrcode)return;
