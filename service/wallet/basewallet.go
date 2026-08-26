@@ -115,18 +115,24 @@ func usable(m map[string]*BaseWallet) map[string]*BaseWallet {
 	return out
 }
 
-// BaseRPCURL returns the Base JSON-RPC endpoint. Honours BASE_RPC_URL, then the
-// legacy TRADE_RPC_URL, then a public default.
+// BaseRPCURL returns the Base JSON-RPC endpoint: BASE_RPC_URL, or a public
+// default that is at least on the right chain.
+//
+// TRADE_RPC_URL was a third option here, inherited from when the only thing
+// reading a node was trading. It is gone, and the reason it had to go is the
+// reason it was set: you trade on Ethereum, where the liquidity and the tokens
+// are, and this instance's money is USDC on Base. So the fallback was not
+// "might be another chain" — it was almost certainly another chain, and an
+// Alchemy key is per-chain, so eth-mainnet and base-mainnet are different
+// hostnames entirely.
+//
+// What that produced was silent: a Base token read against an Ethereum node
+// finds no contract at the address, returns "0x", and hexToBigInt turns that
+// into zero. Every wallet on the instance reads empty, with no error, forever.
+// A public endpoint on the correct chain is worse for rate limits and better
+// for being true.
 func BaseRPCURL() string {
 	if v := settings.Get("BASE_RPC_URL"); v != "" {
-		return v
-	}
-	// TRADE_RPC_URL is a fallback and an assumption: it was set for trading and
-	// nothing says it is on Base. An Alchemy key is per-chain — eth-mainnet and
-	// base-mainnet are different hostnames — so a trading node configured for
-	// Ethereum answers every Base token read with "0x". See checkChain, which
-	// is what turns that into a sentence instead of a zero.
-	if v := settings.Get("TRADE_RPC_URL"); v != "" {
 		return v
 	}
 	return "https://mainnet.base.org"
@@ -194,8 +200,7 @@ func checkChain() error {
 	}
 	if want := expectedChain(); got != want {
 		return fmt.Errorf("%s is on chain %d, but this instance's funds are on chain %d — "+
-			"set BASE_RPC_URL to a node for chain %d (TRADE_RPC_URL is being used as a "+
-			"fallback and is for a different chain)", url, got, want, want)
+			"set BASE_RPC_URL to a node for chain %d", url, got, want, want)
 	}
 	return nil
 }
@@ -362,8 +367,8 @@ func tokenBalance(token, wallet string) (*big.Int, error) {
 	// forever. That is indistinguishable from an empty wallet and it is what
 	// somebody staring at real money on a block explorer is looking at.
 	//
-	// BaseRPCURL falls back to TRADE_RPC_URL, which was set for trading and may
-	// point anywhere, so this is a configuration away rather than a theory.
+	// One wrong value in BASE_RPC_URL does it, so this is a configuration away
+	// rather than a theory.
 	hexed := strings.TrimPrefix(strings.Trim(string(res), `"`), "0x")
 	if hexed == "" {
 		// Ask the node what chain it is on, so the answer is the actual
@@ -375,8 +380,7 @@ func tokenBalance(token, wallet string) (*big.Int, error) {
 		// that decide it — that is the actionable half whatever the cause.
 		return nil, fmt.Errorf("%s returned no data for a balance on %s — that address "+
 			"holds no token contract there, which usually means the node is on the wrong "+
-			"chain (check BASE_RPC_URL, and TRADE_RPC_URL which is used as a fallback)",
-			BaseRPCURL(), token)
+			"chain (check BASE_RPC_URL)", BaseRPCURL(), token)
 	}
 	v, ok := new(big.Int).SetString(hexed, 16)
 	if !ok {

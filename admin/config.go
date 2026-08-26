@@ -147,23 +147,18 @@ var settingGroups = []settingGroup{
 		}},
 	// The node this instance reads balances from. BASE_RPC_URL was readable by
 	// the code and settable nowhere, so the only way to point it at Base was an
-	// environment edit and a restart — and until it was set, BaseRPCURL fell
-	// back to TRADE_RPC_URL, which is for trading and may be on another chain
-	// entirely. That silently reported every balance as zero.
+	// environment edit and a restart.
 	{Name: "Chain",
 		Does:  "The node balances are read from. Wrong or unset reports every wallet as empty.",
 		Needs: nil,
 		Vars: []string{
 			"BASE_RPC_URL",
-			// Legacy: service/wallet falls back to this when BASE_RPC_URL is
-			// unset, because it was the name in use when the only thing reading
-			// a node was trading. Shown so an instance that has it set can see
-			// what is actually being used.
-			"TRADE_RPC_URL",
-			// TRADE_CHAIN was here. Its only reader was a "Trading" health
-			// check on /admin/diagnostics reporting on a service that no longer
-			// exists, which returned ok unconditionally — a green light wired
-			// to nothing.
+			// TRADE_RPC_URL and TRADE_CHAIN were here, from a trading feature
+			// that no longer exists. TRADE_CHAIN's only reader was a "Trading"
+			// health check returning ok unconditionally — a green light wired
+			// to nothing. TRADE_RPC_URL was worse than dead: it was a live
+			// fallback for this one, and a node set up for trading is an
+			// Ethereum node, so it answered every Base balance with zero.
 		}},
 	{Name: "Transit",
 		Does:  "Departure boards and live buses. Answers from published timetables with no key; these make it live.",

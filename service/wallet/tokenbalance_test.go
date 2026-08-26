@@ -40,7 +40,7 @@ func TestAnEmptyCallResultIsAnErrorNotZero(t *testing.T) {
 	}
 	// And it names the thing to go and check, because the reader is looking at
 	// a block explorer that disagrees with us.
-	for _, want := range []string{"BASE_RPC_URL", "TRADE_RPC_URL", "chain"} {
+	for _, want := range []string{"BASE_RPC_URL", "chain"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("the error does not mention %q: %v", want, err)
 		}
@@ -115,7 +115,7 @@ func TestTheWrongChainSaysWhichChain(t *testing.T) {
 	}
 	// The message has to name both chains — the reader is comparing our zero
 	// against a block explorer showing real money.
-	for _, want := range []string{"chain 1", "chain 8453", "BASE_RPC_URL", "TRADE_RPC_URL"} {
+	for _, want := range []string{"chain 1", "chain 8453", "BASE_RPC_URL"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("the error does not mention %q: %v", want, err)
 		}
