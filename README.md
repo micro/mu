@@ -287,17 +287,18 @@ it ends, not totted up from what the agent believes it authorised.
 
 ## Payments
 
-If you enable payments a person tops up by card and spends out of a credit balance. A credit is 1p. The integration uses stripe.
+If you enable payments a person tops up by card and spends out of a credit balance. 
+
+A credit is 1p. The integration uses stripe.
+
+### Credits
 
 A credit is charged when a call costs this instance money: a model call, or a
 third party billed per request. Everything else is 0 — the agent itself, your
 inbox, your files, and reading or sending mail from a mail client. Prices are
 [`quota.json`](quota.json), which is the one place they are set.
 
-The exception is mail addressed outside the instance. It is priced and capped
-per day, and not because it costs anything to send: what a loop spends there is
-the sending domain's reputation, and no balance repairs that. A price stops
-somebody who has to pay; the cap is what stops a loop.
+### x402
 
 **An agent can pay with USDC over [x402](https://x402.org) and never sign
 up.** A priced call with no credentials answers `402 Payment Required` naming
@@ -316,8 +317,7 @@ To watch it work, `mu` is its own client too. Put a funded Base wallet's key in
 mu x402 call web_search query="x402"   # 402 → signs → pays → returns the result
 ```
 
-Self-host with neither Stripe nor x402 and nothing is metered: everything is
-free.
+Only enabled if you have stripe/x402 config.
 
 ## Configuration
 
