@@ -1,33 +1,21 @@
 # mu
 
-A network for humans, agents and services.
+A server for humans, agents and services
 
 ## Overview
 
-Use agents with open protocols. Give them access to a real inbox, tools and services. Chat with them via web, api, cli, email or ssh.
-
+Use agents from anywhere. Give them access to a real inbox, tools and services. Chat with them on the web, via mail or xmpp. 
 They have access to 100+ tools: news, search, weather, markets, video, places, files, contacts, events, docs, etc. 
-
-## Clients
-
-The front door for humans
-
-| | |
-|---|---|
-| **Web** | sign in and use it in a browser |
-| **Mail** | send it an email from anywhere |
-| **API** | the same tools via HTTP or MCP |
-| **CLI** | execute commands in a terminal |
-| **Chat** | use xmpp to chat with anyone |
 
 ## Protocols
 
-**SMTP in, IMAP out, HTTP for the app, MCP for agents, SSH for a shell, XMPP to chat,
-x402 for payments.**
+The way we're thinking about it right now. Protocols are the ideal standard.
+
+**SMTP in, IMAP out, HTTP for the app, MCP for agents, SSH for a shell, XMPP to chat, x402 for payments.**
 
 ## Tools
 
-The tools for the agents 
+The tools for the agents to access via MCP
 
 | Service | Tools |
 |---|---|
@@ -68,64 +56,9 @@ The tools for the agents
 
 [Open an issue](https://github.com/micro/mu/issues/new?labels=enhancement&title=Tool%20request%3A%20&body=What%20should%20it%20do%3F%0A%0AWhat%20would%20you%20use%20it%20for%3F%0A) to request a tool.
 
-## Install
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/micro/mu/main/install.sh | sh
-mu --serve
-```
-
-Open **http://localhost:8080**. The first account you create is the admin.
-
-It runs with no configuration. A few things need an API key.
-
-
-| For | Set | Notes |
-|---|---|---|
-| AI features | `ANTHROPIC_API_KEY`, `ATLAS_API_KEY`, `OPENROUTER_API_KEY`, or `OPENAI_BASE_URL` | free if you run Ollama locally |
-| Web search | `BRAVE_API_KEY` | Brave has a free tier |
-| Video | `YOUTUBE_API_KEY` | free quota |
-
-Follow setup in CLI
-
-```bash
-mu setup        # pick an AI provider, paste a key
-mu --serve
-```
-
-Everything else — mail and DKIM, Google sign-in, Stripe, x402 — is optional,
-and configurable from `/admin/config` once you are signed in as admin.
-
-The same binary is the client, and by default it calls **https://micro.mu** —
-the instance this project runs. Running your own? Point it there once:
-
-```bash
-mu login https://your.host   # saves the address and a token
-mu config get                # says which instance is in use, and why
-```
-
-Without that, `mu news list` on the machine you just installed calls the
-hosted instance rather than the one you are running. `MU_URL` and `--url`
-override per shell and per command.
-
-Other ways to run it:
-
-```bash
-# Docker
-git clone https://github.com/micro/mu && cd mu
-docker compose up
-
-# From source
-git clone https://github.com/micro/mu
-cd mu && go install
-mu --serve
-```
-
-See the [installation guide](docs/INSTALL.md).
-
 ## Use the Tools
 
-If you just want to use the tools with an existing agent.
+If you want to use the tools with an existing agent.
 
 **Cursor, and clients with a config file.** Create a token at
 [/token](https://micro.mu/token):
@@ -163,14 +96,61 @@ https://micro.mu/mcp?tools=news,web,mail
 
 See [micro.mu/tools](https://micro.mu/tools) for all the tools.
 
-## App
+## Install
 
-The server includes a web app. A home screen renders each service at a glance —
-headlines, prices, weather, unread mail — and the agent sits inline to act on
-what you are looking at. Apps run sandboxed, in an opaque origin, and reach the
-platform through a fixed set of operations rather than your session.
+Quick install guide for self hosting (let us know if it's broken).
 
-Sign in with a username and password, a passkey (WebAuthn), or Google.
+```bash
+curl -fsSL https://raw.githubusercontent.com/micro/mu/main/install.sh | sh
+mu --serve
+```
+
+Open **http://localhost:8080**. The first account you create is the admin.
+
+Quite a few things need API keys, but here's some must haves.
+
+
+| For | Set | Notes |
+|---|---|---|
+| AI models | `ANTHROPIC_API_KEY`, `ATLAS_API_KEY`, `OPENROUTER_API_KEY`, or `OPENAI_BASE_URL` | free if you run Ollama locally |
+| Web search | `BRAVE_API_KEY` | Brave has a free tier |
+| Video | `YOUTUBE_API_KEY` | free quota |
+
+Follow setup in CLI
+
+```bash
+mu setup        # pick an AI provider, paste a key
+mu --serve
+```
+
+Everything else — mail, Google sign-in, Stripe for payments, etc — is optional.
+
+The binary is a client, and by default it calls **https://micro.mu** —
+the instance this project runs live. Running your own? Point it there:
+
+```bash
+mu login https://your.host   # saves the address and a token
+mu config get                # says which instance is in use, and why
+```
+
+Without that, `mu news list` on the machine you just installed calls the
+hosted instance rather than the one you are running. `MU_URL` and `--url`
+override per shell and per command.
+
+Other ways to run it:
+
+```bash
+# Docker
+git clone https://github.com/micro/mu && cd mu
+docker compose up
+
+# From source
+git clone https://github.com/micro/mu
+cd mu && go install
+mu --serve
+```
+
+See the [installation guide](docs/INSTALL.md).
 
 ## CLI
 
@@ -237,94 +217,9 @@ are in [Install](docs/INSTALL.md#reading-your-mail-in-a-mail-client);
 Self-hosting needs `MAIL_DOMAIN`, an MX record and inbound SMTP. See
 [Install](docs/INSTALL.md).
 
-## Agent
-
-Agents are baked into the app but you can also use them in the CLI standalone. 
-
-`mu agent` is the binary as a *client* of an instance, not a caller of one you
-are signed into. It holds your model key and a private key, reads the tool
-catalogue from a running instance, and pays per call over x402 — no account on
-that instance and no signup.
-
-The distinction that matters: `mu news list` uses your account on an instance,
-`mu agent` uses your wallet on somebody else's. They share a binary and nothing
-else.
-
-```bash
-# 1. A model. The tools are rented; the thinking is yours.
-export ANTHROPIC_API_KEY=sk-ant-...     # or OPENROUTER_API_KEY
-                                        # or OPENAI_BASE_URL for Ollama etc.
-
-# 2. A wallet. Created for you on first run, or make it yourself:
-mu x402 key new                         # prints an address; send USDC on Base
-                                        # to it. No ETH — you never pay gas.
-
-# 3. Ask.
-mu agent                                # a conversation
-mu agent "what happened in markets today?"
-```
-
-```
-model: anthropic/claude-sonnet-5
-119 tools from https://micro.mu
-wallet: 0x4160a863… (1.27 USDC)
-
-> what are the top news headlines today?
-· news_list
-…
-> of those, which matters most for markets?
-… answered with no tool call, and no charge
-```
-
-Reading the catalogue is free, so it works before the wallet holds anything —
-only priced tools need funds. What a run spent is read back off the chain when
-it ends, not totted up from what the agent believes it authorised.
-
-`--server` points it at any x402 instance; a name from `X402_SERVERS` works too.
-`--seed` uses a different key.
-
-## Payments
-
-If you enable payments a person tops up by card and spends out of a credit balance. 
-
-A credit is 1p. The integration uses stripe.
-
-### Credits
-
-A credit is charged when a call costs this instance money: a model call, or a
-third party billed per request. Everything else is 0 — the agent itself, your
-inbox, your files, and reading or sending mail from a mail client. Prices are
-[`quota.json`](quota.json), which is the one place they are set.
-
-### Crypto
-
-**An agent can pay with USDC over [x402](https://x402.org) and never sign
-up.** A priced call with no credentials answers `402 Payment Required` naming
-the price and where to send it. The payment is the identity.
-
-To write an agent that pays, see
-[examples/x402-agent](examples/x402-agent) — a standalone module that imports
-none of this. It uses the [x402
-Foundation](https://github.com/x402-foundation/x402) SDK, so the same file pays
-any x402 server.
-
-To watch it work, `mu` is its own client too. Put a funded Base wallet's key in
-`~/.mu/keys/wallet.seed`:
-
-```bash
-mu x402 call web_search query="x402"   # 402 → signs → pays → returns the result
-```
-
-Only enabled if you have stripe/x402 config.
-
 ## Configuration
 
-What things cost is data, not code — `quota.json` at the top of the repo is the
-one price list, and the gate reads it and every cost table renders from it. Drop
-a `quota.json` in the data directory to override any entry without rebuilding;
-it replaces the entries it names and leaves the rest.
-
-The rest are embedded in the binary, so editing one means rebuilding:
+Some files are embedded in the binary, so editing means rebuilding:
 
 - `service/news/feeds.json` — RSS news feeds
 - `service/chat/prompts.json` — chat topics
@@ -334,9 +229,7 @@ The rest are embedded in the binary, so editing one means rebuilding:
 
 See [Install](docs/INSTALL.md) for every setting the code reads.
 
-## Note
-
-If you made it to the bottom well done!
+The rest lives in /admin/config on the server.
 
 ## License
 
