@@ -207,8 +207,13 @@ func (s *inStream) dialbackVerify(start xml.StartElement) {
 	if err != nil {
 		return
 	}
+	// The roles are the other way round from the stanza. Whoever is asking is
+	// the receiving server — they hold a key somebody handed them — and we are
+	// the originating server being asked whether we issued it. `from` and `to`
+	// on this stanza therefore mean the opposite of what they mean on the one
+	// that created the key, which is exactly how these came to be swapped.
 	typ := "invalid"
-	if strings.EqualFold(to, Domain()) && verifyKey(Domain(), from, id, key) {
+	if strings.EqualFold(to, Domain()) && verifyKey(from, Domain(), id, key) {
 		typ = "valid"
 	}
 	_, _ = io.WriteString(s.conn, fmt.Sprintf(

@@ -117,23 +117,39 @@ func s2sSecret() []byte {
 // HMAC-SHA256 over the two domains and the stream id, keyed by the SHA-256 of
 // the secret. The stream id is in it so a key is good for one handshake and not
 // for the domain pair forever.
-func dialbackKey(from, to, streamID string) string {
+// Named for the two roles in XEP-0220 rather than for the direction of the
+// stanza carrying them, because the stanza direction reverses halfway through
+// the mechanism and the roles do not.
+//
+// These were `from` and `to`, and it cost a working federation. On the stanza
+// we send, we are `from`; on the verification arriving back about that same
+// key, we are `to`. So the same key was issued over "receiving originating id"
+// and checked over "originating receiving id", and every key we handed out we
+// then refused — jabber.org asked us whether our own key was ours and we said
+// no. A pair of tests covered dialbackKey and verifyKey against each other and
+// passed throughout, because they agreed on a convention that neither call site
+// used.
+func dialbackKey(receiving, originating, streamID string) string {
 	secret := s2sSecret()
 	if len(secret) == 0 {
 		return ""
 	}
 	sum := sha256.Sum256(secret)
 	mac := hmac.New(sha256.New, []byte(hex.EncodeToString(sum[:])))
-	fmt.Fprintf(mac, "%s %s %s", strings.ToLower(to), strings.ToLower(from), streamID)
+	fmt.Fprintf(mac, "%s %s %s",
+		strings.ToLower(receiving), strings.ToLower(originating), streamID)
 	return hex.EncodeToString(mac.Sum(nil))
 }
 
 // verifyKey answers whether a key is one we issued.
 //
+// Takes the roles in the same order dialbackKey does, and does no swapping of
+// its own. The swap was the bug.
+//
 // Constant time, because this is a signature check and the timing of a
 // comparison is a way to learn a signature one byte at a time.
-func verifyKey(from, to, streamID, key string) bool {
-	want := dialbackKey(to, from, streamID)
+func verifyKey(receiving, originating, streamID, key string) bool {
+	want := dialbackKey(receiving, originating, streamID)
 	if want == "" || key == "" {
 		return false
 	}
@@ -396,7 +412,8 @@ func handshakeOut(conn net.Conn, domain string) (*outLink, error) {
 
 	// Dialback. We assert the domain and hand over a key; the far side asks us
 	// — over a connection it opens itself — whether we issued it.
-	key := dialbackKey(Domain(), domain, streamID)
+	// They are receiving, we are originating, and the stream id is theirs.
+	key := dialbackKey(domain, Domain(), streamID)
 	if key == "" {
 		return nil, fmt.Errorf("no dialback secret")
 	}
