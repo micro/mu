@@ -131,7 +131,8 @@ func conversationPane(accountID string, t *thread.Thread, msgs []thread.Message,
 	if to == "" {
 		b.WriteString(`<p class="ib-note">This happened on ` +
 			html.EscapeString(app.ClientName(t.Client)) + `, so a reply carries on there — answer it ` +
-			`the way it arrived and the agent picks it up in the same thread.</p>`)
+			`the way it arrived and the agent picks it up in the same thread.` +
+			backTo(t) + `</p>`)
 	}
 	b.WriteString(`</div>`)
 	// Last, and outside .ib-conv: a <dialog> inside the conversation would sit
@@ -451,4 +452,22 @@ func mailBody(accountID string, m thread.Message) string {
 		return ""
 	}
 	return mail.Rendered(stored)
+}
+
+// backTo is the way back to where a conversation is still happening.
+//
+// The note above tells somebody to answer where it arrived and then does not
+// say where that is. For a room it is knowable exactly: agent/chat opens the
+// thread with the room id as its key — "the room is the conversation, so the
+// room id is the thread key" — so the address is that key, and the only reason
+// it was not a link is that nobody built one.
+//
+// Only for chat. The other clients that land here arrive by SMS or WhatsApp,
+// where "where it arrived" is somebody's phone and this instance has no URL
+// that opens it.
+func backTo(t *thread.Thread) string {
+	if t == nil || t.Client != thread.ChatClient || strings.TrimSpace(t.Key) == "" {
+		return ""
+	}
+	return ` <a href="/chat?id=` + url.QueryEscape(t.Key) + `">Open the room &rarr;</a>`
 }

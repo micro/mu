@@ -525,14 +525,20 @@ func addressBar(accountID, box string) string {
 		b.WriteString(`<span class="ib-addr-one"><span class="ib-addr-k">Agent</span>` +
 			writeTo(theirs) + `</span>`)
 	}
-	// The way into a mail client lives here now.
+	// Two links, and no sentence about what an inbox is for.
 	//
-	// It was one of four numbered lines above the filters, and when those went
-	// this was the only link to /inbox/imap anywhere in the product — the page
-	// would have stayed served and become reachable only by typing the URL.
-	// Nothing would have caught that: the link test asserts every link goes
-	// somewhere, not that every somewhere has a link.
-	b.WriteString(`<span class="ib-addr-note">Work with agents from your inbox. ` +
+	// It said "Work with agents from your inbox", which is a claim about the
+	// product printed above somebody's mail. The two addresses are already
+	// labelled You and Agent, and a reader who can see their own address next
+	// to their agent's does not need to be told what the arrangement is.
+	//
+	// The mail-client link is here because it has nowhere else to be. It was
+	// one of four numbered lines above the filters, and when those went this
+	// became the only link to /inbox/imap in the product — the page would have
+	// stayed served and been reachable only by typing the URL. Nothing would
+	// have caught it: the link test asserts every link goes somewhere, not that
+	// every somewhere has a link.
+	b.WriteString(`<span class="ib-addr-note">` +
 		app.TextLink("Your agents", "/agents") + ` · ` +
 		app.TextLink("Mail client", "/inbox/imap") +
 		`</span>` + newLink() + `</div>`)
