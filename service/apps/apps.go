@@ -907,8 +907,12 @@ func handleView(w http.ResponseWriter, r *http.Request, slug string) {
 	if a.Price > 0 {
 		launchLabel = fmt.Sprintf("Launch App (%d credits)", a.Price)
 	}
+	// /apps/<slug>, not /apps/<slug>/run. "run" is retired — see embed.go — and
+	// nothing routes it: the suffix falls through to the default branch, which
+	// takes the whole tail as the slug, fails to find "<slug>/run" in the map,
+	// and answers 404. This is the Launch button on an app's own page.
 	sb.WriteString(fmt.Sprintf(`<div class="d-flex gap-2 flex-wrap my-3">
-<a href="/apps/%s/run" class="btn">%s</a>`, htmlpkg.EscapeString(a.Slug), launchLabel))
+<a href="/apps/%s" class="btn">%s</a>`, htmlpkg.EscapeString(a.Slug), launchLabel))
 	_, detailAcc, detailErr := auth.RequireSession(r)
 	if detailErr == nil {
 		sb.WriteString(fmt.Sprintf(`<a href="/apps/%s/fork" class="btn btn-plain">Fork</a>`,

@@ -2429,8 +2429,12 @@ func formatAppsReadResult(result string) string {
 	if a.Tags != "" {
 		tagLine = fmt.Sprintf("Tags: %s\n", a.Tags)
 	}
-	return fmt.Sprintf("App: %s\nID: %s\nDescription: %s\nAuthor: %s\n%sInstalls: %d\nURL: /apps/%s\nRun: /apps/%s/run\n",
-		a.Name, a.Slug, a.Description, a.Author, tagLine, a.Installs, a.Slug, a.Slug)
+	// One URL, and it is the app. There was a second line here — "Run:
+	// /apps/<slug>/run" — naming a path that 404s: "run" is retired, and an
+	// agent repeating a dead link to somebody is worse than saying nothing,
+	// because they will click it.
+	return fmt.Sprintf("App: %s\nID: %s\nDescription: %s\nAuthor: %s\n%sInstalls: %d\nURL: /apps/%s\n",
+		a.Name, a.Slug, a.Description, a.Author, tagLine, a.Installs, a.Slug)
 }
 
 // formatAppsBuildResult converts a raw JSON build result into
