@@ -91,7 +91,24 @@ func runAgent(args []string, rc *ResolvedConfig) int {
 		fmt.Println("You need a model. This rents tools, not thinking — the tools")
 		fmt.Println("come from the server, the thinking is yours.")
 		fmt.Println()
-		fmt.Println("Set one of these and run it again:")
+
+		// Somebody holding a token almost certainly meant the other one.
+		//
+		// `ask` and `agent` are the same word in English pointing opposite
+		// ways, and the shell service hands out MU_URL and MU_TOKEN precisely
+		// so that talking to your agent works with no setup — then the command
+		// named after the agent is the one that refuses. Naming `ask` here is
+		// the difference between a dead end and being one line from an answer.
+		if strings.TrimSpace(rc.Token) != "" {
+			fmt.Println("If you meant your agent on the server, that is a different")
+			fmt.Printf("command and it needs no key — you are already signed in:\n\n")
+			fmt.Println("  mu ask \"what is in my inbox?\"")
+			fmt.Println()
+			fmt.Println("This one runs the agent here and rents tools from there, so")
+			fmt.Println("set a model and run it again:")
+		} else {
+			fmt.Println("Set one of these and run it again:")
+		}
 		fmt.Println()
 		fmt.Println("  export ANTHROPIC_API_KEY=sk-ant-...     # console.anthropic.com")
 		fmt.Println("  export OPENROUTER_API_KEY=sk-or-...     # openrouter.ai/keys")

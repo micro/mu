@@ -194,6 +194,19 @@ Run `mu --help` for the list — it reads the same catalogue the agent does.
 These are tool calls: one command, one tool, no model involved and nothing to
 pay for unless the tool itself costs.
 
+To talk to your agent instead, `mu ask` — it runs on the instance, so it needs
+your token and no model key of your own:
+
+```bash
+mu ask "what is in my inbox?"
+mu ask --agent research "anything new this week?"
+```
+
+`mu agent` is the other direction and easy to reach for by mistake: it runs the
+agent *here*, on your machine, with your own model key, renting tools from an
+instance over x402 and paying per call. Same word in English, opposite ways
+round.
+
 ## Configuration
 
 What a call costs is data, not code: `quota.json` at the top of the repo is the
