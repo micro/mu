@@ -534,10 +534,11 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 		}
 		if !claimed {
 			if err := auth.Create(&auth.Account{
-				ID:      id,
-				Secret:  secret,
-				Name:    name,
-				Created: time.Now(),
+				ID:        id,
+				Secret:    secret,
+				SecretSet: true,
+				Name:      name,
+				Created:   time.Now(),
 			}); err != nil {
 				w.Write([]byte(renderSignupTo(fmt.Sprintf(`<p class="text-error">%s</p>`, err.Error()), redirectParam)))
 				return
@@ -631,6 +632,25 @@ func Account(w http.ResponseWriter, r *http.Request) {
 			acc.Name = name
 			auth.UpdateAccount(acc) //nolint:errcheck
 			http.Redirect(w, r, "/account?saved=name", http.StatusSeeOther)
+			return
+		}
+
+		// Setting a password, which nothing could do before — see
+		// internal/auth/password.go for why that mattered more than it sounds.
+		//
+		// No current password asked for. The session is the authority, and it has
+		// to be: the accounts that most need this are the ones whose password is
+		// a random string they were never shown.
+		if pw := r.Form.Get("new_secret"); pw != "" || r.Form.Get("save_secret") != "" {
+			if pw != r.Form.Get("confirm_secret") {
+				http.Redirect(w, r, "/account?error="+url.QueryEscape("Those two passwords are not the same."), http.StatusSeeOther)
+				return
+			}
+			if err := auth.SetSecret(acc.ID, pw); err != nil {
+				http.Redirect(w, r, "/account?error="+url.QueryEscape(err.Error()), http.StatusSeeOther)
+				return
+			}
+			http.Redirect(w, r, "/account?saved=password", http.StatusSeeOther)
 			return
 		}
 
@@ -759,6 +779,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	// Log out, so the control sat under the link that ends the session, where a
 	// page has plainly finished.
 	content := notice + profile +
+		passwordCard(acc) +
 		PlaceCard(r, acc.ID) +
 		emailCard +
 		googleCard +
@@ -889,6 +910,36 @@ func Verify(w http.ResponseWriter, r *http.Request) {
 <p><a href="/home" class="btn">Go home</a> &nbsp; <a href="/account">Account →</a></p>
 </div>`, htmlpkg.EscapeString(acc.Name))
 	app.Respond(w, r, app.Response{Title: "Verified", Description: "Email verified", HTML: body})
+}
+
+// passwordCard is where a password gets set, which was nowhere.
+//
+// Two headings for one form, because the two situations are genuinely
+// different. An account made through Google has a password — a random 24
+// characters it was never told — so the export page asked for it, refused
+// whatever was typed, and suggested setting one, which could not be done. That
+// account needs to be told it has none. An account that chose one needs to know
+// this replaces it.
+func passwordCard(acc *auth.Account) string {
+	title := "Set a password"
+	note := "This account signs in with Google or a passkey and has no password you could type. " +
+		"Setting one lets you sign in with your username, and unlocks exporting your wallet key."
+	if auth.HasSecret(acc.ID) {
+		title = "Change password"
+		note = "Replaces the one you have. You stay signed in here; other devices are unaffected."
+	}
+
+	return app.Section(title,
+		app.Form{Action: "/account",
+			Hidden: map[string]string{"save_secret": "1"},
+			Fields: []app.Field{
+				{Name: "new_secret", Type: "password", Label: "New password", Wide: true,
+					Placeholder: "At least 6 characters"},
+				{Name: "confirm_secret", Type: "password", Label: "Again", Wide: true,
+					Placeholder: "The same one"},
+			},
+			Submit: "Save"}.HTML(),
+		app.Note(note))
 }
 
 func Logout(w http.ResponseWriter, r *http.Request) {

@@ -85,6 +85,11 @@ type Account struct {
 	Turns int `json:"turns,omitempty"`
 	// InvitedAt is when the sign-up invitation was mailed, so it is mailed once.
 	InvitedAt time.Time `json:"invited_at,omitempty"`
+	// SecretSet marks a password its owner chose, as opposed to the random one
+	// a Google signup is created with and never told. See password.go: without
+	// it, "does this account have a password" cannot be answered, because every
+	// account has a hash and only some of them have a password.
+	SecretSet bool `json:"secret_set,omitempty"`
 	// Customer is who Stripe thinks this account is: cus_….
 	//
 	// The only handle on a subscription once it exists. Without it there is no

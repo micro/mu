@@ -74,6 +74,7 @@ func Claim(oldID, newID, secret string) error {
 	mutex.Lock()
 	defer mutex.Unlock()
 	acc.Secret = hashed
+	acc.SecretSet = true
 	acc.Unclaimed = false
 	acc.Turns = 0
 	if newID != oldID {
