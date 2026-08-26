@@ -6,7 +6,6 @@ import (
 
 	"mu/internal/api"
 	"mu/internal/app"
-	"mu/internal/quota"
 )
 
 // tools is how many there are, rounded down to something a person reads.
@@ -27,17 +26,6 @@ func tools() string {
 		return strconv.Itoa(n)
 	}
 	return strconv.Itoa(n/100*100) + "+"
-}
-
-// cents renders what an operation costs, for the one line on the landing that
-// names a price.
-//
-// Read rather than written. Two numbers in marketing copy are two numbers that
-// go stale the moment an operator edits quota.json, and this page has been
-// through that before: it said "67 real tools" as a literal while the endpoint
-// served 72.
-func cents(op string) string {
-	return strconv.Itoa(quota.OperationCost(op)) + "¢"
 }
 
 // Landing is the front door for anyone not signed in: something to try, then
@@ -194,8 +182,7 @@ markets, video, places, files, contacts, calendar, documents. A work in progress
   <button type="button" class="lcta lcta-second" id="install-app" hidden>Install app</button>
 </div>
 <p class="linstall" id="install-how" hidden>In Safari: Share, then Add to Home Screen.</p>
-<p class="lcost">The agent is free. Tools that cost us are priced —
-search ` + cents(quota.OpWebSearch) + `, an image ` + cents(quota.OpImageGenerate) + `.
+<p class="lcost">The agent is free. Tools that cost us are priced.
 <a href="/tools">See them</a></p>
 </div>
 
