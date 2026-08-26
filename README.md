@@ -25,10 +25,48 @@ The front door for humans
 
 ## Protocols
 
-**SMTP in, IMAP out, HTTP for the app, MCP for agents, SSH for a shell, XMPP to chat, 
+**SMTP in, IMAP out, HTTP for the app, MCP for agents, SSH for a shell, XMPP to chat,
 x402 for payments.**
 
-Protocols for the win!
+Every protocol this instance speaks, and which service owns it. Four services
+carry all of it; the other thirty answer over HTTP and MCP like everything else.
+
+### Served — a port or a path something else connects to
+
+| Service | Protocol | Where |
+|---|---|---|
+| **Mail** | SMTP | `MAIL_PORT`, the MTA that accepts mail for your domain |
+| **Mail** | Submission (SMTP AUTH) | `SUBMISSION_PORT`, where a mail client sends |
+| **Mail** | IMAP | `IMAP_PORT`, where a mail client reads |
+| **Mail** | DKIM · SPF · DMARC | signed on the way out, checked on the way in |
+| **Chat** | XMPP C2S | `XMPP_PORT`, for Conversations, Dino, Gajim, Monal |
+| **Chat** | XMPP over WebSocket (RFC 7395) | `/xmpp-websocket`, for a browser |
+| **Chat** | XMPP S2S with dialback (XEP-0220) | `XMPP_S2S_PORT`, where other servers federate |
+| **Chat** | XEP-0030 disco · XEP-0313 MAM · XEP-0156 · XEP-0004 | discovery, history, and forms |
+| **Shell** | SSH | `SHELL_SSH_PORT`, a shell in a sandboxed machine |
+| **Blog** | ActivityPub | the actor at `/@name`, plus its outbox and inbox |
+| **Blog** | WebFinger | `/.well-known/webfinger`, so a fediverse client can find you |
+
+### Spoken — dialled out to somebody else
+
+| Service | Protocol | What for |
+|---|---|---|
+| **Mail** | SMTP | MX lookup and delivery to any domain |
+| **Chat** | XMPP S2S · DNS SRV | `_xmpp-server._tcp`, then the far server |
+| **Wallet** | x402 · EIP-3009 | paying a priced endpoint anywhere, and the transfer that settles it |
+| **Wallet** | JSON-RPC · EIP-681 | reading balances from a Base node, and the payment URI in the QR |
+| **News** | RSS · Atom | the feeds it aggregates |
+| **Events** | iCalendar (RFC 5545) · OAuth 2.0 | `.ics` invitations, and the Google Calendar you already keep |
+| **Mail** | iCalendar (RFC 5545) · MIME | invitations as a `text/calendar` part |
+| **Browser** | Chrome DevTools Protocol | driving a real Chromium for pages a fetch cannot read |
+| **SMS** | — | Twilio's HTTP API and an inbound webhook; the carrier does the rest |
+
+### Everything else
+
+HTTP, MCP, x402 and OAuth 2.0 are not owned by any one service — they are how
+every service is reached. WebAuthn is how you sign in. The remaining
+twenty-five services speak no protocol of their own: they register a spec and
+are reached through those doors like the rest.
 
 What the parts are, what is missing and what order it gets built in:
 [docs/MODEL.md](docs/MODEL.md).
