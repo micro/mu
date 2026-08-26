@@ -117,7 +117,11 @@ func HostMemory() int64 {
 // instead becomes Reason.
 func hostFacts() {
 	if _, err := exec.LookPath(binary); err != nil {
-		unreachable = "there is no docker command on this machine"
+		// "this server", not "this machine". Every reader of this string is
+		// somewhere else — an SSH session from a laptop, an agent's tool
+		// result, a page in a browser — and "this machine" is the one word
+		// that reads as theirs. Its siblings in whyNot already say server.
+		unreachable = "this server has no docker installed, so it cannot offer a machine"
 		return
 	}
 	out, err := run(context.Background(), probeWait,

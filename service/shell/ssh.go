@@ -282,7 +282,17 @@ func session(newCh ssh.NewChannel, accountID string) {
 		Env:  sessionEnv(token),
 	}, ch, ch)
 	if err != nil {
-		fmt.Fprintf(ch, "%s\r\n", err)
+		// Said properly, because this is the entire session. Somebody who has
+		// just authenticated over SSH and been hung up on with one clause of a
+		// sentence has no way to tell whether they typed something wrong,
+		// whether their account lacks something, or whether the instance
+		// simply cannot do this — and it is the last one, always.
+		fmt.Fprintf(ch, "No shell here: %s.\r\n\r\n", err)
+		fmt.Fprint(ch, "A shell runs in a container of your own, so the instance "+
+			"needs a container runtime.\r\nThe operator installs Docker and restarts "+
+			"the server; nothing on your side will change this.\r\n\r\n")
+		fmt.Fprint(ch, "Everything else still works: the web app, the agent, "+
+			"mail, and every tool over MCP.\r\n")
 		return
 	}
 	// The size the client asked for, and every change after it.

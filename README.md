@@ -17,7 +17,7 @@ The way we're thinking about it right now. Protocols are the ideal standard.
 - **IMAP** — the same mailbox opens in Thunderbird, Mail.app or your phone. Your username, and an access token from `/token` as the password.
 - **HTTP** — the web app, and every tool as a plain POST for anything that is not an agent.
 - **MCP** — `/mcp`, for Claude, Cursor, and anything else that speaks it. See below.
-- **SSH** — a shell in a sandboxed machine with a `/work` directory that keeps what you leave in it.
+- **SSH** — a shell in a sandboxed machine with a `/work` directory that keeps what you leave in it. Needs Docker on the instance; without it the port answers and every session ends there.
 - **XMPP** — the same address is also a JID. Conversations, Dino, Gajim and Monal connect to it, and it federates to other servers.
 - **x402** — a priced call with no account gets a `402` naming the price, payable in USDC on Base. The payment is the identity, so an agent never signs up.
 
