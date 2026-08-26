@@ -1346,7 +1346,25 @@ func handleGetChat(w http.ResponseWriter, r *http.Request, roomID string) {
 	// Data rather than code: a JSON block is read, never executed, so there is
 	// no ordering to get right and nothing to leak into the next page. json
 	// escapes < as <, so a room title cannot close the tag.
-	content := fmt.Sprintf(Template, guestNotice) +
+	// What this room is about, on the page.
+	//
+	// The summary was computed by getOrCreateRoom, carried in roomData and
+	// written into the JSON block below, where nothing read it — so a room has
+	// never shown what it is for. What a reader saw instead was the agent's
+	// opening line, which is generated *from* this summary when a room has had
+	// no AI message recently, so it appears on the way in and is gone after a
+	// refresh that finds one already recorded. Two different things, one of them
+	// mistakable for the other, and the one that should have been steady was the
+	// one that was not there.
+	//
+	// Rendered server-side, above the messages, so it is the same on the first
+	// visit and the tenth.
+	about := ""
+	if sum, _ := roomData["summary"].(string); strings.TrimSpace(sum) != "" {
+		about = `<p class="room-about">` + htmlpkg.EscapeString(sum) + `</p>`
+	}
+
+	content := fmt.Sprintf(Template, guestNotice+about) +
 		`<script type="application/json" id="room-data">` + string(roomJSON) + `</script>`
 
 	app.Respond(w, r, app.Response{Title: title, Description: "Live discussion", HTML: content})

@@ -6892,3 +6892,15 @@ a.btn-secondary:hover, .btn-secondary:hover {
   background: var(--border-color, #ddd);
   text-decoration: none;
 }
+
+/* What a room is about, above what has been said in it.
+   Quiet: it is context for the messages, read once on the way in, and it must
+   not compete with them. */
+.room-about {
+  margin: 0 0 14px;
+  padding: 0 0 12px;
+  border-bottom: 1px solid var(--border-color, #eee);
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-muted, #666);
+}
