@@ -76,21 +76,17 @@ func TestTheAdvertisedPortIsTheOneToConnectTo(t *testing.T) {
 	}
 }
 
-// The inbox says how to use itself, and the way into a mail client is on it.
+// The way into a mail client is on the inbox.
 //
-// The address bar's "Work with agents from your inbox" is a claim, not an
-// instruction. Everything below it is a list of conversations, and the parts
-// that are not an ordinary mailbox — an agent answers, Cc works, a folder per
-// agent, IMAP — are invisible to somebody who has not been told.
-func TestTheInboxSaysHowToUseIt(t *testing.T) {
-	got := howTo()
-	if n := strings.Count(got, "<li>"); n < 3 || n > 4 {
-		t.Errorf("%d items: this is orientation read once, not documentation", n)
-	}
+// This used to assert the shape of a four-line "how to use this page" list
+// above the filters. The list is gone — it was rendered to every reader on
+// every visit to teach a thing that is learned once — and the property that
+// mattered is not the list, it is that /inbox/imap can be reached at all. It
+// was the only link to that page in the product.
+func TestTheMailClientPageIsReachable(t *testing.T) {
+	got := addressBar("someone", "")
 	if !strings.Contains(got, `href="/inbox/imap"`) {
-		t.Error("no way through to the mail-client settings")
-	}
-	if !strings.Contains(got, ">imap<") {
-		t.Error("the link is not on the word imap, so it reads as a sentence about a protocol")
+		t.Error("nothing on the inbox links to the mail-client settings, so the " +
+			"page is served and unreachable")
 	}
 }

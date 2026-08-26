@@ -164,7 +164,6 @@ func list(w http.ResponseWriter, r *http.Request, accountID, box string) {
 		b.WriteString(`<p class="ib-sent">Sent to ` + html.EscapeString(trimTo(to, 80)) +
 			`. Their reply lands on the same conversation.</p>`)
 	}
-	b.WriteString(howTo())
 	b.WriteString(boxes(accountID, all, box))
 
 	if len(threads) == 0 {
@@ -526,55 +525,36 @@ func addressBar(accountID, box string) string {
 		b.WriteString(`<span class="ib-addr-one"><span class="ib-addr-k">Agent</span>` +
 			writeTo(theirs) + `</span>`)
 	}
+	// The way into a mail client lives here now.
+	//
+	// It was one of four numbered lines above the filters, and when those went
+	// this was the only link to /inbox/imap anywhere in the product — the page
+	// would have stayed served and become reachable only by typing the URL.
+	// Nothing would have caught that: the link test asserts every link goes
+	// somewhere, not that every somewhere has a link.
 	b.WriteString(`<span class="ib-addr-note">Work with agents from your inbox. ` +
-		app.TextLink("Your agents", "/agents") +
+		app.TextLink("Your agents", "/agents") + ` · ` +
+		app.TextLink("Mail client", "/inbox/imap") +
 		`</span>` + newLink() + `</div>`)
 	return b.String()
 }
 
-// howTo is what to do with this page, in four lines.
+// No howTo, and the reasoning that put it here is the reasoning against it.
 //
-// The address bar above says "Work with agents from your inbox", which is a
-// claim rather than an instruction: it tells somebody what the page is for and
-// nothing about how. Everything underneath is a list of conversations, and a
-// list of conversations teaches you nothing you did not already know about
-// mailboxes — the parts that are not a mailbox (an agent answers, Cc works,
-// each agent is a folder, a client can open it) are invisible until somebody
-// tries them.
+// It was four numbered lines above the filters: write to the address, make a
+// task, Cc an agent, connect IMAP. The argument was that the parts of this page
+// which are not a mailbox are invisible until somebody tries them, so the page
+// should say so — quiet, above the fold, read once and then never again.
 //
-// Quiet, and above the filters rather than below them. It is orientation, which
-// is read once and then never again, so it must not compete with the mail: same
-// muted grey the row snippets use, numbers rather than bullets because these
-// are four separate things and not four aspects of one.
-func howTo() string {
-	var b strings.Builder
-	b.WriteString(`<ol class="ib-howto">`)
-	b.WriteString(`<li>Write to the agent address above from anywhere — your own ` +
-		`mail, your phone. It answers on the same thread.</li>`)
-	// Not "give it a job rather than a question".
-	//
-	// That said the agent picks work up while you are elsewhere and replies
-	// when it is done, and nothing on this page does that. Mail arriving runs
-	// exactly one turn — service/mail publishes, agent/mail calls agent.Ask,
-	// the answer goes back on the thread — and there is no queue behind it, no
-	// resumption and nothing that outlives the reply. Writing "do this over the
-	// next hour" to the address gets an answer immediately, about the request.
-	//
-	// Work that outlives a message is real, and it is somewhere else:
-	// service/tasks and service/events publish event.WorkForAgent, agent/work
-	// runs it, and the answer returns to the thread it was asked on. So the
-	// line now points at the thing that does it rather than promising it here.
-	b.WriteString(`<li>For work that should happen later or on a schedule, make a ` +
-		app.TextLink("task", "/tasks") +
-		` — it runs while you are elsewhere and the answer arrives on this thread.</li>`)
-	b.WriteString(`<li>Cc an agent into a conversation with somebody else and it ` +
-		`follows along without taking it over.</li>`)
-	b.WriteString(`<li>Or connect a mail client over ` +
-		app.TextLink("imap", "/inbox/imap") +
-		` and read all of it where you already read mail.</li>`)
-	b.WriteString(`</ol>`)
-	return b.String()
-}
+// The half of that which is true is that it is read once. The half that is not
+// is "and then never again": it was rendered on every load of the inbox, for
+// everybody, forever, so the cost is paid by every reader on every visit and
+// the benefit lands on one reader once. Three of the four lines pointed at
+// other pages, which is a table of contents for the product printed at the top
+// of the mail.
+//
+// The address bar above still says what this page is for and links to the
+// agents. That is the orientation this needed.
 
 // writeTo is an address you can write to: the address, and a click that opens
 // New with it in the To box.
