@@ -18,7 +18,6 @@ The front door for humans
 | **Mail** | send it an email from anywhere |
 | **API** | the same tools via HTTP or MCP |
 | **CLI** | execute commands in a terminal |
-| **SSH** | connect into a shell via SSH |
 | **Chat** | use xmpp to chat with anyone |
 
 ## Protocols
