@@ -8,8 +8,6 @@ Use agents with open protocols. Give them access to a real inbox, tools and serv
 
 They have access to 100+ tools: news, search, weather, markets, video, places, files, contacts, events, docs, etc. 
 
-A work in progress.
-
 ## Clients
 
 The front door for humans
