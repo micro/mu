@@ -187,36 +187,6 @@ These are tool calls, not agent runs: one command, one tool, no model involved.
 `mu agent` is not among them — it is the mode below, and it needs a model key
 and a wallet rather than a token.
 
-## Email
-
-The server is an MTA: it listens for SMTP, delivers outbound to the recipient's
-MX signed with DKIM, and filters what arrives. An account is an address.
-
-```
-asim@micro.mu             your address; mail here reaches your agent
-asim+research@micro.mu    your agent named "research"
-agent@micro.mu            the instance's shared agent
-```
-
-The part after the `+` picks which agent answers. Replies thread — `In-Reply-To`
-and `References` are set from the chain — and everything that arrives is
-readable at `/inbox`.
-
-**Nothing arrives from a stranger.** Inbound is refused with a 550 unless it is
-a reply to something we sent, we have written to that address before, the
-sender's domain is whitelisted, or the sender is verified on an account here.
-The policy is at the top of
-[`service/mail/inbound_filter.go`](service/mail/inbound_filter.go).
-
-**IMAP and SMTP submission** mean the mailbox opens in Thunderbird, Mail.app or
-your phone, and you can reply from there. Username is your account name,
-password is an access token from `/token`. Ports, TLS and a worked nginx config
-are in [Install](docs/INSTALL.md#reading-your-mail-in-a-mail-client);
-[examples/imap-client](examples/imap-client) is a working client.
-
-Self-hosting needs `MAIL_DOMAIN`, an MX record and inbound SMTP. See
-[Install](docs/INSTALL.md).
-
 ## Configuration
 
 Some files are embedded in the binary, so editing means rebuilding:
