@@ -13,9 +13,17 @@ The way we're thinking about it right now. Protocols are the ideal standard.
 
 **SMTP in, IMAP out, HTTP for the app, MCP for agents, SSH for a shell, XMPP to chat, x402 for payments.**
 
+- **SMTP** — the server is an MTA. `you@your.domain` is a real address, and mail to it reaches your agent. Write to `you+research@` and that agent answers in the thread.
+- **IMAP** — the same mailbox opens in Thunderbird, Mail.app or your phone. Your username, and an access token from `/token` as the password.
+- **HTTP** — the web app, and every tool as a plain POST for anything that is not an agent.
+- **MCP** — `/mcp`, for Claude, Cursor, and anything else that speaks it. See below.
+- **SSH** — a shell in a sandboxed machine with a `/work` directory that keeps what you leave in it.
+- **XMPP** — the same address is also a JID. Conversations, Dino, Gajim and Monal connect to it, and it federates to other servers.
+- **x402** — a priced call with no account gets a `402` naming the price, payable in USDC on Base. The payment is the identity, so an agent never signs up.
+
 ## Tools
 
-The tools for the agents to access via MCP
+The tools, reachable over MCP, as a `mu` command, or from the app
 
 | Service | Tools |
 |---|---|
@@ -183,9 +191,14 @@ export MU_TOKEN=xxx       # or use the environment
 
 Run `mu --help` for the list — it reads the same catalogue the agent does.
 
-These are tool calls, not agent runs: one command, one tool, no model involved.
+These are tool calls: one command, one tool, no model involved and nothing to
+pay for unless the tool itself costs.
 
 ## Configuration
+
+What a call costs is data, not code: `quota.json` at the top of the repo is the
+one price list, and everything that charges or displays a price reads it. Drop a
+`quota.json` into the data directory to override any entry without rebuilding.
 
 Some files are embedded in the binary, so editing means rebuilding:
 

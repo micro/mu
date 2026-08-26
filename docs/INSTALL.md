@@ -11,11 +11,16 @@ Run your own instance. One Go binary, one data directory.
 ## Quick Start
 
 ```bash
-# Clone the repository
+curl -fsSL https://raw.githubusercontent.com/micro/mu/main/install.sh | sh
+mu --serve
+```
+
+That fetches a built binary. To build it yourself instead — which is the only
+way if you want to change anything, and needs the Go version above:
+
+```bash
 git clone https://github.com/micro/mu.git
 cd mu
-
-# Build and run the server
 go build -o mu .
 ./mu --serve
 ```
@@ -188,7 +193,51 @@ server {
 }
 ```
 
-Use [Let's Encrypt](https://letsencrypt.org/) for free SSL certificates with Certbot.
+That block is port 80 only, which is where certbot starts. Once it has a
+certificate — `sudo certbot --nginx -d your-domain.com` rewrites this file for
+you — what you want to end up with is the redirect and the TLS server:
+
+```nginx
+server {
+    listen 80;
+    server_name your-domain.com;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name your-domain.com;
+
+    ssl_certificate     /etc/letsencrypt/live/your-domain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/your-domain.com/privkey.pem;
+
+    # Apps are served from an opaque origin and some of them are large.
+    client_max_body_size 25m;
+
+    location / {
+        proxy_pass http://localhost:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # The agent answers a question with a model call behind it, and the
+        # default 60s cuts long ones off mid-sentence.
+        proxy_read_timeout 300s;
+    }
+}
+```
+
+`X-Forwarded-Proto` matters more than it looks: passkeys will not register over
+a connection the browser thinks is insecure, and it is that header the server
+reads to know it is behind TLS.
+
+Mu terminates no TLS itself. Everything else that needs it — IMAP, submission,
+XMPP for clients — goes in the `stream {}` block below, and the two federated
+ports are the exceptions that want nothing in front of them at all.
 
 ## Mail
 
@@ -383,7 +432,7 @@ The target needs an A record, which the domain already has: it is the web
 server. And open 5223 on the firewall — see *Check it from somewhere else*
 below, which applies here unchanged.
 
-### Federation does not go through nginx
+### XMPP federation does not go through nginx
 
 `XMPP_S2S_PORT` is 5269 and it faces the internet directly. Open the port on
 the firewall; there is no `server {}` block to add.
@@ -567,7 +616,10 @@ metering, which is usually what you want for one you run for yourself.
 Costs are per operation and are set in code — see the cost block in
 `internal/quota/quota.go` for what is charged and why.
 
-## Federation (optional)
+## ActivityPub (optional)
+
+Separate from the XMPP federation above, and a different network: this one
+publishes blog posts to Mastodon and the rest of the fediverse.
 
 Set `MU_DOMAIN` to your public domain and blog posts federate over ActivityPub —
 remote servers resolve your users at `/.well-known/webfinger` and actor URLs
