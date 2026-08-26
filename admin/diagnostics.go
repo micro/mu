@@ -124,29 +124,17 @@ func renderChecks(checks []healthCheck) string {
 }
 
 func runHealthChecks(testDigest, testFederation bool) []healthCheck {
-	var checks []healthCheck
-
-	// AI Provider
-	checks = append(checks, checkAI())
-
-	// News Feed
-	checks = append(checks, checkNews())
-
-	// Markets
-	checks = append(checks, checkMarkets())
-
-	// Daily Digest
-	checks = append(checks, checkDigest(testDigest))
-
-	// Mail
-	checks = append(checks, checkMail())
-
-	// Federation
-	checks = append(checks, checkFederation(testFederation))
-
-	// Trading
-
-	return checks
+	// Each of these answers "is this working", not "how many things are in it".
+	// A count on its own reads as a claim about the product — "612 assets
+	// tracked" on a page showing a dozen — when it is the size of a cache.
+	return []healthCheck{
+		checkAI(),
+		checkNews(),
+		checkMarkets(),
+		checkDigest(testDigest),
+		checkMail(),
+		checkFederation(testFederation),
+	}
 }
 
 // federationPeer is the server the live check dials.
@@ -170,7 +158,7 @@ const federationPeer = "jabber.org"
 func checkFederation(test bool) healthCheck {
 	if _, on := app.ListenAddr("XMPP_S2S_PORT", ":5269"); !on {
 		return healthCheck{
-			Name:   "Federation",
+			Name:   "XMPP federation",
 			Status: "warning",
 			Detail: "XMPP_S2S_PORT is off — this instance talks to nobody else",
 			Fix:    "Set XMPP_S2S_PORT in /admin/config to accept federated connections",
@@ -179,7 +167,7 @@ func checkFederation(test bool) healthCheck {
 
 	if !test {
 		return healthCheck{
-			Name:   "Federation",
+			Name:   "XMPP federation",
 			Status: "ok",
 			Detail: "Listening on 5269. Whether the handshake works is a different question",
 			Fix: "Not checked. " + app.Link("Dial "+federationPeer+" now",
@@ -190,7 +178,7 @@ func checkFederation(test bool) healthCheck {
 	detail, err := chat.CheckFederation(federationPeer)
 	if err != nil {
 		return healthCheck{
-			Name:   "Federation",
+			Name:   "XMPP federation",
 			Status: "error",
 			Detail: "Could not complete dialback with " + federationPeer + ": " + err.Error(),
 			// Named in this order because it is the order they fail in, and the
@@ -202,7 +190,7 @@ func checkFederation(test bool) healthCheck {
 		}
 	}
 	return healthCheck{
-		Name:   "Federation",
+		Name:   "XMPP federation",
 		Status: "ok",
 		Detail: detail,
 	}
@@ -211,32 +199,70 @@ func checkFederation(test bool) healthCheck {
 func checkAI() healthCheck {
 	if !ai.Configured() {
 		return healthCheck{
-			Name:   "AI Provider",
+			Name:   "AI model",
 			Status: "error",
 			Detail: "No AI provider configured",
 			Fix:    "Set ANTHROPIC_API_KEY, ATLAS_API_KEY, OPENROUTER_API_KEY or OPENAI_BASE_URL in /admin/config, or install Ollama",
 		}
 	}
 
-	provider := "Anthropic Claude"
-	switch {
-	case settings.Get("ANTHROPIC_API_KEY") != "":
-		provider = "Anthropic Claude"
-	case settings.Get("ATLAS_API_KEY") != "":
-		provider = "Atlas Cloud"
-	case settings.Get("OPENROUTER_API_KEY") != "":
-		provider = "OpenRouter"
-	case settings.Get("OPENAI_BASE_URL") != "":
-		provider = "Local model (" + settings.Get("OPENAI_BASE_URL") + ")"
-	default:
-		provider = "Ollama (auto-detected)"
+	// The model, not a guess at the provider from which keys happen to be set.
+	//
+	// This used to read the keys itself and say "Anthropic Claude" whenever an
+	// Anthropic key existed — on an instance running DeepSeek, because
+	// AI_PROVIDER is what decides and this never looked at it. A diagnostics
+	// page confidently naming the wrong vendor is worse than one that says
+	// nothing: it ends an investigation instead of starting one.
+	//
+	// Asking the same functions the runtime asks means the answer is the model
+	// that will actually run. Both of them, because they differ on purpose and
+	// the difference is the thing an operator gets surprised by — summaries and
+	// moderation go to the cheap one, and it is not always the same vendor.
+	provider := providerLabel()
+	detail := provider + " · " + ai.DefaultModel()
+	if bg := ai.BackgroundModel(); bg != ai.DefaultModel() {
+		detail += ", and " + bg + " for summaries and moderation"
 	}
 
 	return healthCheck{
-		Name:   "AI Provider",
+		Name:   "AI model",
 		Status: "ok",
-		Detail: provider,
+		Detail: detail,
 	}
+}
+
+// providerLabel is who is actually answering.
+//
+// AI_PROVIDER first, because that is what the runtime honours. Only when it is
+// unset or unreachable does which-key-is-present decide anything, and then in
+// the same order the runtime falls back in.
+func providerLabel() string {
+	if p, _, base, ok := ai.PreferredProvider(); ok {
+		switch p {
+		case ai.ProviderAnthropic:
+			return "Anthropic"
+		case ai.ProviderAtlasCloud:
+			return "Atlas Cloud"
+		case ai.ProviderOpenRouter:
+			return "OpenRouter"
+		case ai.ProviderLocal:
+			if base != "" {
+				return "Local model at " + base
+			}
+			return "Local model"
+		}
+	}
+	switch {
+	case settings.Get("ANTHROPIC_API_KEY") != "":
+		return "Anthropic"
+	case settings.Get("ATLAS_API_KEY") != "" || settings.Get("OPENAI_API_KEY") != "":
+		return "Atlas Cloud"
+	case settings.Get("OPENROUTER_API_KEY") != "":
+		return "OpenRouter"
+	case settings.Get("OPENAI_BASE_URL") != "":
+		return "Local model at " + settings.Get("OPENAI_BASE_URL")
+	}
+	return "Ollama, detected locally"
 }
 
 func checkNews() healthCheck {
@@ -250,21 +276,55 @@ func checkNews() healthCheck {
 		}
 	}
 
-	latest := feed[0]
-	age := time.Since(latest.PostedAt)
+	// A count with the period it covers, because on its own it answers nothing.
+	//
+	// This said "412 articles" and left the reader to wonder over what — an
+	// hour, a week, all time. The number is whatever is in the feed right now,
+	// so the honest version says how far back that reaches. What makes it a
+	// health check is the age of the newest one.
+	newest, oldest := feed[0].PostedAt, feed[0].PostedAt
+	for _, p := range feed {
+		if p.PostedAt.After(newest) {
+			newest = p.PostedAt
+		}
+		if p.PostedAt.Before(oldest) {
+			oldest = p.PostedAt
+		}
+	}
+	age := time.Since(newest)
+	held := fmt.Sprintf("%d articles going back %s", len(feed), roughly(newest.Sub(oldest)))
+
 	if age > 24*time.Hour {
 		return healthCheck{
-			Name:   "News Feed",
+			Name:   "News",
 			Status: "warning",
-			Detail: fmt.Sprintf("%d articles, latest is %s old", len(feed), age.Round(time.Hour)),
+			Detail: held + ", but nothing new for " + roughly(age),
 			Fix:    "Feeds may not be updating — check RSS source availability",
 		}
 	}
 
 	return healthCheck{
-		Name:   "News Feed",
+		Name:   "News",
 		Status: "ok",
-		Detail: fmt.Sprintf("%d articles, latest: %s ago", len(feed), age.Round(time.Minute)),
+		Detail: held + ", newest " + roughly(age) + " ago",
+	}
+}
+
+// roughly is a duration a person would say out loud.
+//
+// time.Duration prints 74h12m30s, which is a number you have to do arithmetic
+// on before it means anything — on a page whose whole job is to be read at a
+// glance when something is wrong.
+func roughly(d time.Duration) string {
+	switch {
+	case d < time.Minute:
+		return "under a minute"
+	case d < time.Hour:
+		return fmt.Sprintf("%dm", int(d.Minutes()))
+	case d < 48*time.Hour:
+		return fmt.Sprintf("%dh", int(d.Hours()))
+	default:
+		return fmt.Sprintf("%dd", int(d.Hours()/24))
 	}
 }
 
@@ -279,10 +339,45 @@ func checkMarkets() healthCheck {
 		}
 	}
 
+	// Prices, and when they last moved.
+	//
+	// This said "612 assets tracked", which is the size of a cache nobody sees
+	// — the markets page shows a handful — so the number read as a claim about
+	// the product rather than about a map. Naming it as prices held says what
+	// it is, and the freshness is the part that can actually be wrong.
+	//
+	// It also reported ok for a price feed that had stopped hours earlier,
+	// because the only failure it knew about was an empty cache. A stale cache
+	// is the ordinary way this breaks: the fetch fails and the last good prices
+	// sit there looking like current ones.
+	var newest time.Time
+	for _, pd := range data {
+		if pd.UpdatedAt.After(newest) {
+			newest = pd.UpdatedAt
+		}
+	}
+	held := fmt.Sprintf("%d prices held", len(data))
+
+	if newest.IsZero() {
+		return healthCheck{
+			Name:   "Markets",
+			Status: "warning",
+			Detail: held + ", none of them stamped with a time",
+			Fix:    "Prices are cached but there is no way to tell how old they are",
+		}
+	}
+	if age := time.Since(newest); age > 2*time.Hour {
+		return healthCheck{
+			Name:   "Markets",
+			Status: "warning",
+			Detail: held + ", but the newest is " + roughly(age) + " old",
+			Fix:    "The price feed has stopped — what is on the markets page is stale",
+		}
+	}
 	return healthCheck{
 		Name:   "Markets",
 		Status: "ok",
-		Detail: fmt.Sprintf("%d assets tracked", len(data)),
+		Detail: held + ", newest " + roughly(time.Since(newest)) + " ago",
 	}
 }
 
@@ -336,10 +431,13 @@ func checkMail() healthCheck {
 		}
 	}
 
+	// What the domain means, not just the domain. A bare "micro.mu" under a
+	// heading that says Mail is a fact with no claim attached — the reader has
+	// to supply "…is the domain mail is accepted for" themselves.
 	return healthCheck{
 		Name:   "Mail",
 		Status: "ok",
-		Detail: domain,
+		Detail: "Accepting mail for " + domain,
 	}
 }
 
