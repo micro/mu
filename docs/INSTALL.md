@@ -383,9 +383,50 @@ The target needs an A record, which the domain already has: it is the web
 server. And open 5223 on the firewall — see *Check it from somewhere else*
 below, which applies here unchanged.
 
-Server-to-server federation (port 5269) is not built, so there is nothing to
-proxy for it and a message to another domain is refused rather than silently
-dropped.
+### Federation does not go through nginx
+
+`XMPP_S2S_PORT` is 5269 and it faces the internet directly. Open the port on
+the firewall; there is no `server {}` block to add.
+
+The reason is the same one that makes federation deployable at all. A server
+connecting here proves which domain it is by dialback, not by its certificate:
+it hands over a key, this instance opens its own connection to the domain being
+claimed and asks whether the key is theirs, and the answer arrives over a link
+to whatever address DNS gave for that domain. So the certificate on 5269 is not
+what establishes identity — every federated server skips verifying it, and this
+one offers a self-signed certificate generated on first use. Putting nginx in
+front would terminate a TLS session whose certificate nobody checks, add a hop,
+and make every peer's source address `127.0.0.1`.
+
+**One DNS record, and it is optional.**
+
+```
+_xmpp-server._tcp.your-domain.com. 3600 IN SRV 0 5 5269 your-domain.com.
+```
+
+Optional because a server with no SRV record to go on falls back to the domain
+itself on 5269, and the domain already has an A record — it is the web server.
+Publish it anyway if the XMPP host is ever going to be somewhere other than the
+web host, which is the whole point of the indirection; it is the same record MX
+is for mail. Priority and weight do not matter with one target.
+
+What does matter is that `your-domain.com` — or the SRV target, if you publish
+one — resolves to this host on 5269 from the outside. That is where other
+servers connect *and* where the dialback verification call comes back to, so a
+name that resolves somewhere else fails the handshake rather than the message.
+
+To check the port from somewhere else, open a stream at it. A working listener
+answers with its own stream header naming your domain:
+
+```bash
+printf "<?xml version='1.0'?><stream:stream xmlns='jabber:server' xmlns:stream='http://etherx.jabber.org/streams' xmlns:db='jabber:server:dialback' to='your-domain.com' version='1.0'>" | nc your-domain.com 5269
+```
+
+Outbound 5269 has to be open too, and it is the half that gets forgotten:
+dialback means this instance dials *out* to every domain that connects to it.
+Egress is usually unrestricted, but a locked-down security group that only
+allows 80 and 443 out will accept federated connections and then fail every one
+of them at verification, which reads like a broken peer rather than a firewall.
 
 ### SSH does not go through nginx
 
