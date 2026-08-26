@@ -36,7 +36,7 @@ type StripeTopupTier struct {
 
 // StripeTopupTiers are the presets on the top-up form.
 //
-// Not tiers in the pricing sense — a credit is a penny at every one of them,
+// Not tiers in the pricing sense — a credit is a cent at every one of them,
 // and any amount can be typed instead. They are there because most people would
 // rather press $10 than think of a number.
 var StripeTopupTiers = []StripeTopupTier{

@@ -33,31 +33,31 @@
   "operations": [
     {
       "op": "places_search",
-      "cost": 5,
+      "cost": 6,
       "label": "Places search",
       "env": "CREDIT_COST_PLACES_SEARCH",
-      "note": "Google Places text search, ~2.5p"
+      "note": "Google Places text search, ~3.2¢"
     },
     {
       "op": "places_nearby",
-      "cost": 4,
+      "cost": 5,
       "label": "Places nearby",
       "env": "CREDIT_COST_PLACES_NEARBY",
-      "note": "Google Places nearby, ~2.5p"
+      "note": "Google Places nearby, ~3.2¢"
     },
     {
       "op": "places_eta",
-      "cost": 2,
+      "cost": 3,
       "label": "Travel time between two places",
       "env": "CREDIT_COST_PLACES_ETA",
-      "note": "routes_eta. Google Routes, 0.38p at Essentials (£3.76/1k after 10k free), 0.75p at Pro. We ask for traffic, which may bill at Pro — priced to cover it. The op id keeps the old name so an operator's existing override and usage history survive the rename"
+      "note": "routes_eta. Google Routes, 0.48¢ at Essentials ($4.78/1k after 10k free), 0.95¢ at Pro. We ask for traffic, which may bill at Pro — priced to cover it. The op id keeps the old name so an operator's existing override and usage history survive the rename"
     },
     {
       "op": "routes_directions",
-      "cost": 3,
+      "cost": 4,
       "label": "Turn-by-turn directions",
       "env": "CREDIT_COST_ROUTES_DIRECTIONS",
-      "note": "Google Routes asking for steps and the road's shape, which is more than an ETA and bills higher — 1.14p at Enterprise"
+      "note": "Google Routes asking for steps and the road's shape, which is more than an ETA and bills higher — 1.45¢ at Enterprise"
     },
     {
       "op": "weather_forecast",
@@ -74,67 +74,67 @@
     },
     {
       "op": "web_search",
-      "cost": 2,
+      "cost": 3,
       "label": "Web search",
       "env": "CREDIT_COST_SEARCH",
-      "note": "Brave, ~0.4p — was 5, a 12x markup"
+      "note": "Brave, ~0.5¢ — about a 6x markup"
     },
     {
       "op": "image_generate",
-      "cost": 15,
+      "cost": 19,
       "label": "Image generation",
       "env": "CREDIT_COST_IMAGE"
     },
     {
       "op": "text_summarise",
-      "cost": 2,
+      "cost": 3,
       "label": "Summarise text",
       "env": "CREDIT_COST_TEXT_SUMMARISE",
-      "note": "Atlas deepseek-v4-flash ($0.14/$0.28 per M). 0.10p at the 30k cap — a 21x markup, 160x on a typical call"
+      "note": "Atlas deepseek-v4-flash ($0.14/$0.28 per M). 0.13¢ at the 30k cap — a 23x markup, and far more on a typical call"
     },
     {
       "op": "text_extract",
-      "cost": 5,
+      "cost": 6,
       "label": "Extract structure from text",
       "env": "CREDIT_COST_TEXT_EXTRACT",
-      "note": "Atlas deepseek-v4-pro ($1.68/$3.38 per M) because a wrong field is silent. 1.28p at the 30k cap — was 3, which left only 2.4x"
+      "note": "Atlas deepseek-v4-pro ($1.68/$3.38 per M) because a wrong field is silent. 1.63¢ at the 30k cap, so about 3.7x"
     },
     {
       "op": "text_classify",
       "cost": 1,
       "label": "Classify text",
       "env": "CREDIT_COST_TEXT_CLASSIFY",
-      "note": "Atlas deepseek-v4-flash, output is one word. 0.09p at the 30k cap — the cheapest real model call here"
+      "note": "Atlas deepseek-v4-flash, output is one word. 0.11¢ at the 30k cap — the cheapest real model call here"
     },
     {
       "op": "text_translate",
-      "cost": 3,
+      "cost": 4,
       "label": "Translate text",
       "env": "CREDIT_COST_TEXT_TRANSLATE",
-      "note": "Atlas deepseek-v4-flash. Output is as long as the input, so on pro this cost 3.46p at the cap against a 3p price — the one loss-making path. On flash, 0.29p and a 10x markup"
+      "note": "Atlas deepseek-v4-flash. Output is as long as the input, so on pro this would cost 4.39¢ at the cap against a 4¢ price — the one loss-making path. On flash, 0.37¢ and a 10x markup"
     },
     {
       "op": "app_build",
-      "cost": 15,
+      "cost": 19,
       "label": "App build (AI)",
       "env": "CREDIT_COST_APP_BUILD",
-      "note": "Was 100 — a pound, six times the next most expensive thing on the menu, for less model than an agent run"
+      "note": "Was 100 — a dollar, six times the next most expensive thing on the menu, for less model than an agent run"
     },
     {
       "op": "app_edit",
-      "cost": 8,
+      "cost": 10,
       "label": "App edit (AI)",
       "env": "CREDIT_COST_APP_EDIT",
       "note": "The model call only. Manual editing at /apps/<slug>/edit is free"
     },
     {
       "op": "sms_send",
-      "cost": 10,
+      "cost": 13,
       "limit": 5,
       "limit_env": "SMS_DAILY_LIMIT",
       "label": "Text message (per segment)",
       "env": "CREDIT_COST_SMS",
-      "note": "Twilio: under a penny to a US mobile, ~4p to a UK one, and charged per 160-character segment. A markup that would be silly on a search is the point here — a text cannot be unsent, and the number's reputation is shared by everybody on the instance. Ten pence makes a spam run cost real money before any of the other limits are reached"
+      "note": "Twilio: about a cent to a US mobile, ~5¢ to a UK one, and charged per 160-character segment. A markup that would be silly on a search is the point here — a text cannot be unsent, and the number's reputation is shared by everybody on the instance. Thirteen cents makes a spam run cost real money before any of the other limits are reached"
     },
     {
       "op": "news_search",
@@ -162,21 +162,21 @@
     },
     {
       "op": "shell_run",
-      "cost": 2,
+      "cost": 3,
       "label": "Run a command",
       "env": "CREDIT_COST_SHELL_RUN",
-      "note": "A shell command in a container: CPU and memory on this machine, capped per container by SHELL_MEMORY and SHELL_CPUS. One flat price rather than a meter on seconds, because the two ends are an `ls` that costs nothing and a build that costs a minute of a core, and metering the difference would need a second endpoint and a unit — see docs/PRICING.md. Priced low rather than like a browser page, because a coding session is hundreds of commands and 3p each would make the loop this exists for unaffordable. No daily count: a priced call is bounded by a balance already, and capping one is a paywall with a safety label on it — see TestOnlyOutboundOrFreeIsCapped. What a count would not have bounded anyway is the idle container, which is memory rather than calls; that is reaped, not priced. Keeping files and reading them is 0, because that is this instance's own storage"
+      "note": "A shell command in a container: CPU and memory on this machine, capped per container by SHELL_MEMORY and SHELL_CPUS. One flat price rather than a meter on seconds, because the two ends are an `ls` that costs nothing and a build that costs a minute of a core, and metering the difference would need a second endpoint and a unit — see docs/PRICING.md. Priced low rather than like a browser page, because a coding session is hundreds of commands and 4¢ each would make the loop this exists for unaffordable. No daily count: a priced call is bounded by a balance already, and capping one is a paywall with a safety label on it — see TestOnlyOutboundOrFreeIsCapped. What a count would not have bounded anyway is the idle container, which is memory rather than calls; that is reaped, not priced. Keeping files and reading them is 0, because that is this instance's own storage"
     },
     {
       "op": "browser_read",
-      "cost": 3,
+      "cost": 4,
       "label": "Browser read",
       "env": "CREDIT_COST_BROWSER_READ",
-      "note": "A Chromium page load: seconds of CPU and a few hundred MB here, or a hosted browser billed around 1-3p a page. web_fetch is 0 and is the right first try; this is what a page that builds itself in the browser costs"
+      "note": "A Chromium page load: seconds of CPU and a few hundred MB here, or a hosted browser billed around 1.3-3.8¢ a page. web_fetch is 0 and is the right first try; this is what a page that builds itself in the browser costs"
     },
     {
       "op": "browser_shot",
-      "cost": 4,
+      "cost": 5,
       "label": "Browser screenshot",
       "env": "CREDIT_COST_BROWSER_SHOT",
       "note": "The same page load, plus rendering and storing a PNG. A full-page capture scrolls the whole document, which is why it is not the same price as reading it"
@@ -219,7 +219,7 @@
     },
     {
       "op": "mail_send",
-      "cost": 4,
+      "cost": 5,
       "label": "Send a message",
       "env": "CREDIT_COST_MAIL",
       "note": "One price for sending, wherever it is going. It was two — mail_email for an address outside and mail_send at 0 for one here — and the free one was free on every door: over submission a signed-in account could write to every username on the instance at no cost and no cap. Spam is not a fact about which network the recipient is on. Writing to yourself or to your own agent is not a send and is not charged. The cap and the price are both an operator's: CREDIT_COST_MAIL sets what it costs and MAIL_DAILY_LIMIT how many a day, so a self-hosted instance that does not want either can say so without rebuilding — and one with no Stripe and no x402 is never charged anyway, because quota.Charging is false and Metered follows it",

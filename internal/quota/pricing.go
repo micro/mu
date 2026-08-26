@@ -103,7 +103,7 @@ var defaults []byte
 //
 // Until it is called there are no prices, and an operation with no price costs
 // the 1-credit default — which is the safe direction to be wrong in, but it is
-// wrong, so a build that forgets this charges a flat penny for everything.
+// wrong, so a build that forgets this charges a flat cent for everything.
 func Load(quotaJSON []byte) error {
 	var f priceFile
 	if err := json.Unmarshal(quotaJSON, &f); err != nil {

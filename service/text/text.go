@@ -15,7 +15,7 @@
 //
 // What is sold is not the model. Anyone can reach a model. What is sold is a
 // fixed price for a finished piece of work, payable in USDC with no signup —
-// three pence to turn a page into JSON, known before the call rather than
+// six cents to turn a page into JSON, known before the call rather than
 // totted up per token afterwards.
 package text
 

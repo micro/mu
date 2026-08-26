@@ -43,7 +43,7 @@ var AddressFlag = flag.String("address", ":8080", "Address for server")
 func main() {
 	// Before anything can be charged for. An operation with no price falls back
 	// to a flat credit, so this failing quietly would mean an instance that
-	// bills a penny for everything.
+	// bills a cent for everything.
 	if err := quota.Load(quotaConfig); err != nil {
 		fmt.Fprintln(os.Stderr, "quota.json is not valid JSON:", err)
 		os.Exit(1)

@@ -172,7 +172,7 @@ var Spec = service.Spec{
 		// AccountOnly, not merely priced. Every other paid tool can be reached
 		// by an anonymous caller who pays over x402, and that is right for a
 		// search: the money covers the cost and nobody else is affected. A text
-		// is not like that — an anonymous spammer paying ten pence a message is
+		// is not like that — an anonymous spammer paying thirteen cents a message is
 		// still a spammer, and what they spend is the number's reputation,
 		// which belongs to everybody on this instance and cannot be topped up.
 		// No Cost: a text is priced per 160-character segment, because that is

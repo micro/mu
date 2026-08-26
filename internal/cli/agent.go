@@ -20,7 +20,7 @@ package cli
 // catalogue, deliberately — a model is the one thing every developer already
 // has, and the thirty provider accounts are the part worth not having. So this
 // brings your own model (Anthropic, OpenRouter, or Ollama on your own machine)
-// and buys everything else two pence at a time.
+// and buys everything else a few cents at a time.
 
 import (
 	"bufio"

@@ -9,7 +9,7 @@
 //
 // What makes this different from every other service in the catalogue is that a
 // mistake costs money and reputation in the same instant. A search that runs
-// twice wastes a fraction of a penny. A text sent to the wrong number cannot be
+// twice wastes a fraction of a cent. A text sent to the wrong number cannot be
 // recalled, is charged either way, and a few thousand of them gets the sending
 // number blocked by carriers — for everybody on the instance, not just whoever
 // sent them. So the rules below are not defensive programming, they are the
@@ -234,7 +234,7 @@ func NumberOwner(num string) string { return phone.Owner(num) }
 
 // allowedCountries is the set of country codes this instance will text.
 //
-// A text to a UK or US mobile costs under a penny to a few pence. A text to
+// A text to a UK or US mobile costs about a cent to a few cents. A text to
 // some destinations costs thirty times that, and those destinations are where
 // revenue-share fraud lives: the attacker owns the range and is paid for the
 // traffic they trick you into sending. An allowlist is the only control that
