@@ -165,7 +165,7 @@ func TestTheAccountPageHoldsNoOperatorErrands(t *testing.T) {
 	// with Saved and About — so the anchor went with the thing it was anchoring
 	// to, and the guard reported the account page as missing rather than the
 	// test as needing repointing. Then it anchored on BalanceCard, "the last
-	// thing that would ever move off it", and the money moved to /billing.
+	// thing that would ever move off it", and the money moved to /wallet.
 	//
 	// Twice now, which says something about the anchor rather than the page: a
 	// card is a product decision and product decisions move. The profile is

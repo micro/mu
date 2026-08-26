@@ -365,7 +365,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	// so the app has one URL and links written against the old one still land.
 	case strings.HasSuffix(path, "/run"):
 		slug := strings.TrimSuffix(strings.TrimPrefix(path, "/"), "/run")
-		http.Redirect(w, r, "/apps/"+slug, http.StatusMovedPermanently)
+		http.Redirect(w, r, "/apps/"+slug, http.StatusFound)
 	case strings.HasSuffix(path, "/sdk/ai"):
 		slug := strings.TrimSuffix(strings.TrimPrefix(path, "/"), "/sdk/ai")
 		handleSDKAI(w, r, slug)

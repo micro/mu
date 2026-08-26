@@ -291,5 +291,5 @@ func handleJSON(w http.ResponseWriter, r *http.Request) {
 // derived renderings of one service would be the drift that argument exists to
 // stop, so there is one, and this is the way to it from the old address.
 func handleHTML(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, Spec.Page, http.StatusMovedPermanently)
+	http.Redirect(w, r, Spec.Page, http.StatusFound)
 }

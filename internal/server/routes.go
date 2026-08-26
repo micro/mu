@@ -157,9 +157,8 @@ func authRequired() map[string]bool {
 		"/admin/alerts":      true,
 		"/admin/backup":      true,
 		"/admin/invite":      true,
-		"/account/":          true, // Money: the old paths, which redirect
-		"/billing":           true, // Money: balance, usage, the ledger
-		"/billing/":          true, // Money: top-up, transfer, Stripe
+		"/account/":          true, // Money: an old prefix, which redirects
+		"/wallet/":           true, // Money: top-up, transfer, Stripe, the price list
 
 		"/apps":      false, // Public - apps directory; auth checked in handler for create/edit
 		"/work":      false, // Public - task bounties; auth checked in handler for post/claim
@@ -240,7 +239,7 @@ func registerRoutes() {
 			if r.URL.RawQuery != "" {
 				target += "?" + r.URL.RawQuery
 			}
-			http.Redirect(w, r, target, http.StatusMovedPermanently)
+			http.Redirect(w, r, target, http.StatusFound)
 		}
 	}
 	http.HandleFunc("/post/", legacyRedirect("/post/", "/blog/post/"))
@@ -281,7 +280,7 @@ func registerRoutes() {
 	// answers rather than 404ing on the one page you go to when something is
 	// misconfigured.
 	http.HandleFunc("/admin/env", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/admin/config", http.StatusMovedPermanently)
+		http.Redirect(w, r, "/admin/config", http.StatusFound)
 	})
 
 	// server update and restart
@@ -301,21 +300,14 @@ func registerRoutes() {
 	http.HandleFunc("/admin/backup", admin.BackupHandler)
 	http.HandleFunc("/admin/invite", admin.InviteHandler)
 
-	// Money: top-up, transfer, Stripe and the price list, all under the account
-	// that holds them.
+	// Money: top-up, transfer, Stripe and the price list, all under /wallet with
+	// the balance they change. The handler lives in account/ because that is
+	// where credits are kept; the destination is /wallet because that is the
+	// word somebody already has for the place their money is.
+	//
+	// /account/ and /billing/ stay registered and only redirect. Both were the
+	// money prefix at some point and somebody has each bookmarked.
 	http.HandleFunc("/account/", account.BalanceHandler)
-	http.HandleFunc("/billing", account.Billing)
-	http.HandleFunc("/billing/", account.BalanceHandler)
-
-	// Where the money used to be. /wallet is a service now, so these are not
-	// merely renamed — the old prefix has come to mean something else, and a
-	// bookmark for a balance must not land on a crypto address.
-	for _, moved := range []string{
-		"/wallet/topup", "/wallet/transfer", "/wallet/pricing",
-		"/wallet/stripe/checkout", "/wallet/stripe/success",
-	} {
-		http.HandleFunc(moved, account.MovedToAccount)
-	}
 
 	// Stripe posts here. Named for the provider, at the top level, and that is
 	// the whole point: a webhook URL is a contract with somebody outside this
@@ -361,7 +353,7 @@ func registerRoutes() {
 		if r.URL.RawQuery != "" {
 			to += "?" + r.URL.RawQuery
 		}
-		http.Redirect(w, r, to, http.StatusMovedPermanently)
+		http.Redirect(w, r, to, http.StatusFound)
 	})
 	http.HandleFunc("/web/preview", web.PreviewHandler)
 
@@ -413,10 +405,10 @@ func registerRoutes() {
 	// They redirect rather than 404 because both names are in server.json, in
 	// the README and in three years of links.
 	http.HandleFunc("/plans", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/tools", http.StatusMovedPermanently)
+		http.Redirect(w, r, "/tools", http.StatusFound)
 	})
 	http.HandleFunc("/pricing", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/tools", http.StatusMovedPermanently)
+		http.Redirect(w, r, "/tools", http.StatusFound)
 	})
 	// Every MCP directory submission asks for a privacy policy URL, and this
 	// instance runs a mail server — so there is real correspondence to account
@@ -432,7 +424,7 @@ func registerRoutes() {
 	// this link would hit a login wall instead of the thing they came for. /tools
 	// is that thing: the endpoint, the config and the token.
 	http.HandleFunc("/developers", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/tools", http.StatusMovedPermanently)
+		http.Redirect(w, r, "/tools", http.StatusFound)
 	})
 
 	// serve the agent
@@ -519,14 +511,22 @@ func registerRoutes() {
 	http.HandleFunc("/maps", maps.Handler)
 	http.HandleFunc("/maps/", maps.TileHandler)
 	http.HandleFunc("/tiles/", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/maps"+r.URL.Path, http.StatusMovedPermanently)
+		http.Redirect(w, r, "/maps"+r.URL.Path, http.StatusFound)
 	})
-	http.HandleFunc("/wallet", wallet.Handler)
+	// What you have, and the key that can spend it. One destination: x402 is a
+	// substrate and a substrate does not get a page of its own, the same way
+	// SMTP has none and its connect details are a section under /inbox.
+	http.HandleFunc("/wallet", account.Wallet)
 	// Taking your key with you. A page action and never a tool: an agent that
 	// can read a private key is a prompt injection away from posting it
 	// somewhere. It re-checks the password, so it is not in authRequired()
 	// either — the handler wants the session *and* the password.
+	//
+	// Registered before the /wallet/ prefix below and matched ahead of it:
+	// net/http picks the longest matching pattern, and this is an exact one.
 	http.HandleFunc("/wallet/export", wallet.ExportHandler)
+	// The money actions. account/ owns them because it owns the ledger.
+	http.HandleFunc("/wallet/", account.BalanceHandler)
 	http.HandleFunc(imageproxy.Path, imageproxy.Handler)
 	// Who is here. See service/users: the directory that did not exist, so a
 	// person could sign up alongside a hundred and eighty others and meet none
@@ -567,7 +567,7 @@ func registerRoutes() {
 	// in bookmarks and in other people's links, so both keep working.
 	for _, old := range []string{"/reminder", "/islam"} {
 		http.HandleFunc(old, func(w http.ResponseWriter, r *http.Request) {
-			http.Redirect(w, r, "/prayer", http.StatusMovedPermanently)
+			http.Redirect(w, r, "/prayer", http.StatusFound)
 		})
 	}
 
@@ -691,7 +691,7 @@ func registerRoutes() {
 		}
 		target := to
 		http.HandleFunc(from, func(w http.ResponseWriter, r *http.Request) {
-			http.Redirect(w, r, target, http.StatusMovedPermanently)
+			http.Redirect(w, r, target, http.StatusFound)
 		})
 	}
 

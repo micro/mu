@@ -65,7 +65,7 @@ func TestTheVerifyBannerStaysOffTheMoneyPages(t *testing.T) {
 	}
 	body := string(src)
 	if !strings.Contains(body, `strings.HasPrefix(p, "/account/")`) {
-		t.Error("the verify banner is exempted by exact path again, so /billing/transfer " +
+		t.Error("the verify banner is exempted by exact path again, so /wallet/transfer " +
 			"tells someone moving their own credit that they cannot post")
 	}
 }

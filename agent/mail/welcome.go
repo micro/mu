@@ -152,7 +152,7 @@ func welcomeBody(accountID, name string) string {
 	// Money, said once and without ceremony.
 	b.WriteString("<p>Talking to me is free. Tools that cost us something to run — " +
 		"a model call, a paid third party — cost credits, and you can top up at " +
-		link("/billing/topup") + " when you need to. Reading and listing and " +
+		link("/wallet/topup") + " when you need to. Reading and listing and " +
 		"anything this instance stores itself stays free.</p>")
 
 	// And a person, when the agent is not the answer.

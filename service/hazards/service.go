@@ -200,7 +200,7 @@ var Spec = service.Spec{
 // own — and the derived page it got instead is /services/hazards, which is the
 // card plus every method with its arguments and a form that calls them.
 func Handler(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, Spec.Page, http.StatusMovedPermanently)
+	http.Redirect(w, r, Spec.Page, http.StatusFound)
 }
 
 func Card() string {

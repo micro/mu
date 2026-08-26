@@ -18,29 +18,26 @@ package wallet
 import (
 	"fmt"
 	"html"
-	"net/http"
 
 	"mu/internal/app"
-	"mu/internal/auth"
 	"mu/internal/x402"
 )
 
-// Handler serves /wallet.
-func Handler(w http.ResponseWriter, r *http.Request) {
-	sess, _ := auth.TrySession(r)
-	if sess == nil {
-		body := `<div class="card">` +
-			`<p>A key of your own on Base: an address that holds USDC, and an agent that can ` +
-			`spend it on priced endpoints anywhere — no account with those servers, no card ` +
-			`on file, no key to rotate.</p>` +
-			`<p class="text-sm text-muted">Credits for this instance are separate and are bought ` +
-			`with a card — see <a href="/account">your account</a>.</p>` +
-			`<p><a href="/login" class="btn">Sign in</a> <a href="/signup" class="btn btn-secondary">Sign up</a></p></div>` +
-			toolsCard()
-		app.Respond(w, r, app.Response{Title: "Wallet", Description: "A key of your own on Base", HTML: body})
-		return
-	}
-	app.Respond(w, r, app.Response{Title: "Wallet", Description: "A key of your own on Base", HTML: Page(sess.Account)})
+// SignedOut is the card for somebody who is not signed in.
+//
+// Exported because account/ draws this page. The route belongs to whoever
+// composes it, and what is composed is the ledger plus this — so the ledger's
+// package owns it. A hook pointing the other way (wallet.Money, filled by the
+// server) was tried first and TestTheRulesAlreadyEnforcedAreNotWalkedAround
+// refused it: a fourth service reaching up into the account, which is the
+// import TestNoServiceImportsTheAccount forbids, wearing a function variable.
+func SignedOut() string {
+	return `<div class="card">` +
+		`<p>What you have here, and a key of your own on Base: an address that holds ` +
+		`USDC, and an agent that can spend it on priced endpoints anywhere — no account ` +
+		`with those servers, no card on file, no key to rotate.</p>` +
+		`<p><a href="/login" class="btn">Sign in</a> <a href="/signup" class="btn btn-secondary">Sign up</a></p></div>` +
+		toolsCard()
 }
 
 // Page renders the signed-in wallet.
@@ -74,11 +71,18 @@ func Page(accountID string) string {
 	payURI := fmt.Sprintf("ethereum:%s@%d/transfer?address=%s", baseUSDC, chainID, bw.Address)
 	net := html.EscapeString(chainName())
 
-	// No heading: app.Respond already titles the page "Wallet", and the card
-	// repeating it printed the word twice down the left of the screen.
+	// Headed again, and it has to be. This card had none, because it was the
+	// only one on a page app.Respond already titles "Wallet" and repeating the
+	// word printed it twice down the left of the screen. It is now the fourth
+	// card on that page and the second number on it that is a balance — the
+	// first is credits, which the instance owes you, and this is USDC on a
+	// chain, which it does not. Unlabelled, the two read as one figure
+	// disagreeing with itself.
 	return fmt.Sprintf(`<div class="card">
-  <p class="text-sm text-muted">A key of your own. Your agent can spend it on priced
-  endpoints anywhere, capped per call and per day.</p>
+  <h4>On-chain key</h4>
+  <p class="text-sm text-muted">A key of your own on %s. Your agent can spend it on
+  priced endpoints anywhere, capped per call and per day. Separate from the credits
+  above: this is USDC on a chain, and topping up with a card does not touch it.</p>
   <p class="text-28 mt-2 mb-3"><b>$%s</b> <span class="text-muted text-base">USDC</span>%s</p>
   <p class="cw-net"><b>%s only.</b> USDC sent on Ethereum, Arbitrum or any other
   chain lands at this same address on that chain, where this instance cannot see it
@@ -93,8 +97,6 @@ func Page(accountID string) string {
   <p class="text-sm text-muted mt-3 m-0"><a href="/wallet/export">Export your
   private key →</a> The key is held on this instance; a copy you hold yourself is the only
   thing that makes losing it here survivable.</p>
-  <p class="text-sm text-muted mt-half m-0">Credits for this instance are a
-  separate thing and are bought with a card — <a href="/billing">your balance</a>.</p>
 </div>
 %s
 <style>
@@ -120,7 +122,7 @@ function cwCopy(el){var a=el.getAttribute('data-addr');function done(){var c=doc
   if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(a).then(done).catch(function(){cwFallback(a,done);});}else{cwFallback(a,done);}}
 function cwFallback(a,done){var t=document.createElement('textarea');t.value=a;t.style.position='fixed';t.style.opacity='0';document.body.appendChild(t);t.select();try{document.execCommand('copy');done();}catch(e){}document.body.removeChild(t);}
 </script>`,
-		html.EscapeString(human), unreadable, net,
+		net, html.EscapeString(human), unreadable, net,
 		html.EscapeString(bw.Address), html.EscapeString(bw.Address),
 		html.EscapeString(payURI), net, toolsCard())
 }

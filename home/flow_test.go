@@ -176,52 +176,39 @@ func TestTheInstallButtonWaitsToBeOffered(t *testing.T) {
 	}
 }
 
-// The developer band is under the hero, not in it.
+// The footer carries the destinations, because nothing above it does any more.
 //
-// Two earlier attempts at a developer pitch went above the fold and both came
-// out: "Browse the tools" answers a question a first-time visitor has not
-// asked, and a four-step MCP walkthrough is for somebody who already decided.
-// The situation below the fold is the opposite — a reader there has scrolled
-// past the button, and the likeliest reason a technical visitor does that is
-// that they already have an agent.
+// This was TestTheDeveloperBandIsBelowTheCallToAction, guarding the ordering of
+// a "Tools for Agents" band under the hero: the endpoint, four facts about MCP
+// and x402, and a button to /tools. Three attempts at a developer pitch have
+// now been made on this page and all three came out. The band was the careful
+// version — below the fold, no protocol names, one link — and it was still a
+// second thing to read on a page whose whole design is one screen with one
+// thing to do.
 //
-// So the ordering is the test. Everything the band offers must come after the
-// one call to action, or it is the same mistake in a longer page.
-func TestTheDeveloperBandIsBelowTheCallToAction(t *testing.T) {
-	rec := httptest.NewRecorder()
-	Landing(rec, httptest.NewRequest("GET", "/", nil))
-	body := rec.Body.String()
-
-	signup := strings.Index(body, `href="/signup"`)
-	band := strings.Index(body, `class="dev"`)
-	if signup < 0 || band < 0 {
-		t.Fatalf("landing is missing the CTA or the band (signup %d, band %d)", signup, band)
-	}
-	if band < signup {
-		t.Error("the developer band is drawn before Get started, so it competes " +
-			"with the one thing a first-time visitor is being asked to do")
-	}
-
-	// What the band gives you is the endpoint, which is the actionable thing and
-	// the one fact not available anywhere else on the page.
-	if !strings.Contains(body[band:], "/mcp") {
-		t.Error("the band does not give the endpoint")
-	}
-
-	// And no link row of its own. It ended with Tools · API · Pricing, two of
-	// which were already in the footer a few centimetres below and the third of
-	// which belongs there. A footer is where a site keeps its destinations; a
-	// second copy of most of one is furniture.
-	if strings.Contains(body[band:], `class="dev-links"`) {
-		t.Error("the developer band has grown its own link row again — those " +
-			"destinations belong in the footer, which is right below it")
-	}
-	// Pricing is not among them any more: the prices live on the tools, and
-	// /tools is here.
+// What it uniquely carried was the endpoint, and that is on /tools and /mcp,
+// both of which the footer links. So the property left to hold is that the
+// footer still does.
+func TestTheFooterCarriesTheDestinations(t *testing.T) {
 	for _, want := range []string{`href="/tools"`, `href="/api"`} {
 		if !strings.Contains(app.FooterLinks(), want) {
 			t.Errorf("the footer does not carry %s", want)
 		}
+	}
+}
+
+// And the landing has one call to action, with nothing after it.
+func TestTheLandingOffersOneThing(t *testing.T) {
+	rec := httptest.NewRecorder()
+	Landing(rec, httptest.NewRequest("GET", "/", nil))
+	body := rec.Body.String()
+
+	if !strings.Contains(body, `href="/signup"`) {
+		t.Fatal("the landing lost its call to action")
+	}
+	if strings.Contains(body, `class="dev"`) {
+		t.Error("the developer band is back — three attempts at a developer " +
+			"pitch on this page have now been removed; the endpoint is on /tools")
 	}
 }
 
@@ -231,8 +218,8 @@ func TestTheDeveloperBandIsBelowTheCallToAction(t *testing.T) {
 // chooser, and that it said what a mailbox costs. Both were holding a page
 // into existence. A pricing page is a thing SaaS has; this is a utility
 // somebody runs, and an operator running it privately charges nobody. What a
-// credit is worth is beside the balance at /billing, what a call costs is on
-// the tool at /tools, and the machine-readable list is /billing/pricing.
+// credit is worth is beside the balance at /wallet, what a call costs is on
+// the tool at /tools, and the machine-readable list is /wallet/pricing.
 
 // The negative-cap guard went with the page too.
 //

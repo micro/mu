@@ -31,7 +31,7 @@ import (
 // that breaks a URL somebody already holds has cost somebody something to save
 // the repository a word.
 func Moved(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, "/shell", http.StatusMovedPermanently)
+	http.Redirect(w, r, "/shell", http.StatusFound)
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {

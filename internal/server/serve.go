@@ -260,7 +260,7 @@ func serve(addr string) {
 						canProceed, _, cost, _ := quota.CheckQuota(sess.Account, op)
 						if !canProceed {
 							app.Error(w, r, http.StatusPaymentRequired,
-								fmt.Sprintf("This costs %d credit(s). Top up at /billing/topup", cost))
+								fmt.Sprintf("This costs %d credit(s). Top up at /wallet/topup", cost))
 							return
 						}
 						if err := quota.Charge(sess.Account, op, nil); err != nil {
@@ -310,7 +310,7 @@ func serve(addr string) {
 				canProceed, _, cost, _ := quota.CheckQuota(sess.Account, op)
 				if !canProceed {
 					app.Error(w, r, http.StatusPaymentRequired,
-						fmt.Sprintf("This costs %d credit(s). Top up at /billing/topup", cost))
+						fmt.Sprintf("This costs %d credit(s). Top up at /wallet/topup", cost))
 					return
 				}
 				// Charge up-front. The handler runs only if the

@@ -984,7 +984,7 @@ func VerifyBanner(r *http.Request) string {
 	// Not on the pages that are the way out of it — the form is right there —
 	// and not on money at all.
 	//
-	// This was a list of four exact paths, so /billing/transfer was not on it,
+	// This was a list of four exact paths, so /wallet/transfer was not on it,
 	// and moving your own credit between accounts was met with "You cannot post
 	// yet. Verify your email address before posting." Nothing on that page is a
 	// post, so the banner read as a refusal of the transfer. A prefix rather
@@ -995,7 +995,7 @@ func VerifyBanner(r *http.Request) string {
 		return ""
 	case p == "/account" || strings.HasPrefix(p, "/account/"):
 		return ""
-	case p == "/billing" || strings.HasPrefix(p, "/billing/"):
+	case p == "/wallet" || strings.HasPrefix(p, "/wallet/"):
 		// The money moved out of /account and this prefix went with it. The
 		// same bug as the one above, one rename later.
 		return ""
@@ -1003,7 +1003,7 @@ func VerifyBanner(r *http.Request) string {
 	action, href := "Verify →", "/account"
 	if auth.VerificationRequired == nil || !auth.VerificationRequired() {
 		// No mail on this instance, so verifying is not on offer: credit is.
-		action, href = "Top up →", "/billing/topup"
+		action, href = "Top up →", "/wallet/topup"
 	}
 	// The places named in the sentence are links, because they read as ones.
 	//
@@ -1020,7 +1020,7 @@ func VerifyBanner(r *http.Request) string {
 	said := htmlpkg.EscapeString(reason)
 	for _, l := range []struct{ phrase, href string }{
 		{"your Account", "/account"},
-		{"your Balance", "/billing"},
+		{"your Balance", "/wallet"},
 	} {
 		said = strings.ReplaceAll(said, l.phrase,
 			`your <a href="`+l.href+`" >`+strings.TrimPrefix(l.phrase, "your ")+`</a>`)
@@ -1174,7 +1174,7 @@ func navBottom(acc *auth.Account) string {
             <div class="nav-me-menu">
               <a id="nav-account" href="/account"><img src="/account.png?` + Version + `"><span class="label">Account</span></a>
               <a id="nav-profile" href="/@` + username + `"><img src="/account.png?` + Version + `"><span class="label">Profile</span></a>
-              <a id="nav-billing" href="/billing"><img src="/billing.svg?` + Version + `"><span class="label">Billing</span></a>
+              <a id="nav-wallet" href="/wallet"><img src="/wallet.png?` + Version + `"><span class="label">Wallet</span></a>
               <a id="nav-token" href="/token"><img src="/token.svg?` + Version + `"><span class="label">Tokens</span></a>
               ` + navAdmin(acc) + `
               <a id="nav-logout" href="/logout"><img src="/logout.png?` + Version + `"><span class="label">Log out</span></a>
