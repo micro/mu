@@ -920,10 +920,26 @@ func Verify(w http.ResponseWriter, r *http.Request) {
 // whatever was typed, and suggested setting one, which could not be done. That
 // account needs to be told it has none. An account that chose one needs to know
 // this replaces it.
+// A third state, because there are three and there were two.
+//
+// HasSecret is false for two different accounts: one made through Google, which
+// genuinely has no password its owner could type, and one made before SecretSet
+// existed, which may well have a chosen password. Nothing distinguishes them —
+// no field records how an account was created, which is the reason the flag was
+// added — so the note for that case has to describe what the form does without
+// asserting which of the two the reader is.
+//
+// It asserted. "This account signs in with Google or a passkey and has no
+// password you could type" is a definite claim about the reader's account, and
+// it is wrong for every account that predates the flag, told to somebody who
+// knows perfectly well they typed a password at signup. Being wrong about
+// somebody's own credentials is a good way to make them doubt the rest of the
+// page.
 func passwordCard(acc *auth.Account) string {
 	title := "Set a password"
-	note := "This account signs in with Google or a passkey and has no password you could type. " +
-		"Setting one lets you sign in with your username, and unlocks exporting your wallet key."
+	note := "Signing up with Google or a passkey leaves no password you could type. " +
+		"Setting one here lets you sign in with your username, and unlocks exporting " +
+		"your wallet key. If you already have a password, this replaces it."
 	if auth.HasSecret(acc.ID) {
 		title = "Change password"
 		note = "Replaces the one you have. You stay signed in here; other devices are unaffected."

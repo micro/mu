@@ -64,7 +64,14 @@ func applySetup(w http.ResponseWriter, r *http.Request) {
 
 	// Create the admin account. auth.Create bootstraps the first account as
 	// admin; promote explicitly too in case ADMIN is set to someone else.
-	if err := auth.Create(&auth.Account{ID: id, Name: id, Secret: secret, Created: time.Now()}); err != nil {
+	// SecretSet, because this password was typed into the form above by a
+	// person. Without it /account tells the first admin of every new instance
+	// that their account "signs in with Google or a passkey and has no password
+	// you could type" — about the one account on the instance that was
+	// definitely created by typing a password.
+	if err := auth.Create(&auth.Account{
+		ID: id, Name: id, Secret: secret, SecretSet: true, Created: time.Now(),
+	}); err != nil {
 		w.Write([]byte(render(err.Error())))
 		return
 	}
