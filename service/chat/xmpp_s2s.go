@@ -41,6 +41,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/hex"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"io"
 	"math/big"
@@ -207,6 +208,64 @@ func SendRemote(from, to, text string) error {
 		return fmt.Errorf("sending to %s: %w", domain, err)
 	}
 	return nil
+}
+
+// CheckFederation completes a handshake with a real server and reports on it.
+//
+// The diagnostic that federation was missing. Everything else here is only
+// reachable by sending a message, which needs an account, a client, and
+// somebody at the other end to receive it — three things that have nothing to
+// do with whether the handshake works, and each of which can fail on its own
+// and look like federation failing.
+//
+// Dialback needs none of them. Authenticating a link to a domain exercises the
+// whole mechanism — SRV, the outbound dial, and the far side's verification
+// call arriving back here — and a domain that has never heard of this instance
+// works as well as one that has. Which is the point: the check is real traffic
+// with a real server, not a loopback.
+//
+// Deliberately not pooled. This is asked for by somebody looking at a page
+// wanting to know the state now, so a cached link from an hour ago is the
+// wrong answer even when it is a true one.
+func CheckFederation(domain string) (string, error) {
+	domain = strings.TrimSpace(strings.ToLower(domain))
+	if domain == "" {
+		return "", errors.New("no domain to check")
+	}
+	if strings.EqualFold(domain, Domain()) {
+		return "", fmt.Errorf("%s is this instance: federation is what happens between two of them", domain)
+	}
+	if _, on := app.ListenAddr("XMPP_S2S_PORT", s2sPort); !on {
+		return "", errors.New("XMPP_S2S_PORT is off, so nothing is federating")
+	}
+
+	addrs := resolveS2S(domain)
+	start := time.Now()
+	var lastErr error
+	for _, addr := range addrs {
+		conn, err := net.DialTimeout("tcp", addr, dialTimeout)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		l, err := handshakeOut(conn, domain)
+		if err != nil {
+			conn.Close()
+			lastErr = err
+			continue
+		}
+		// Closed rather than kept. A link opened to answer a question is not
+		// one anybody is going to send on, and leaving it in the pool means the
+		// next real send inherits a socket the far side may already have timed
+		// out.
+		l.conn.Close()
+		return fmt.Sprintf("dialback with %s completed via %s in %s",
+			domain, addr, time.Since(start).Round(time.Millisecond)), nil
+	}
+	if lastErr == nil {
+		lastErr = fmt.Errorf("no address for %s", domain)
+	}
+	return "", fmt.Errorf("tried %s: %w", strings.Join(addrs, ", "), lastErr)
 }
 
 // linkTo is an authenticated link to a domain, dialling one if there is none.

@@ -98,3 +98,48 @@ func TestThereIsACertificateToOffer(t *testing.T) {
 		t.Error("a fresh certificate is generated per call")
 	}
 }
+
+// The check refuses the two domains that would make it lie.
+//
+// Both would report success without proving anything. An empty domain never
+// dials, and this instance's own domain would exercise a loopback — the far
+// side of a real handshake is the point, and a server agreeing with itself is
+// exactly the test that federation did not have.
+// The error has to name the reason, not merely be an error. Dialling our own
+// domain fails on its own in a test environment, so an assertion that something
+// went wrong passes just as well with the guard deleted — which is the shape of
+// test that lets a guard rot out from under it.
+func TestTheFederationCheckRefusesADomainThatProvesNothing(t *testing.T) {
+	if _, err := CheckFederation("  "); err == nil {
+		t.Error("an empty domain was accepted")
+	} else if !strings.Contains(err.Error(), "no domain") {
+		t.Errorf("an empty domain failed for the wrong reason: %v", err)
+	}
+
+	// Whatever this instance calls itself, in either case.
+	for _, self := range []string{Domain(), strings.ToUpper(Domain())} {
+		_, err := CheckFederation(self)
+		if err == nil {
+			t.Errorf("%q was accepted: the check dialled itself", self)
+			continue
+		}
+		if !strings.Contains(err.Error(), "this instance") {
+			t.Errorf("%q was refused for the wrong reason, so the guard is not "+
+				"what refused it: %v", self, err)
+		}
+	}
+}
+
+// A domain that does not resolve fails, and says what it tried.
+//
+// The error is the whole product of a failed check — it is what an operator
+// reads on /admin/diagnostics — so an error that only says "failed" sends them
+// to the server log to find out which address was involved.
+func TestAFailedCheckNamesWhatItTried(t *testing.T) {
+	const bad = "nonexistent-domain-for-a-test.invalid"
+	if _, err := CheckFederation(bad); err == nil {
+		t.Fatal("dialback completed with a domain that does not exist")
+	} else if !strings.Contains(err.Error(), bad+":5269") {
+		t.Errorf("the error does not name the address it tried: %v", err)
+	}
+}

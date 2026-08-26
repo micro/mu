@@ -423,11 +423,12 @@ answers with its own stream header naming your domain:
 printf "<?xml version='1.0'?><stream:stream xmlns='jabber:server' xmlns:stream='http://etherx.jabber.org/streams' xmlns:db='jabber:server:dialback' to='your-domain.com' version='1.0'>" | nc your-domain.com 5269
 ```
 
-That checks the port. To check that federation *works*, which is a different
-question, [`examples/xmpp-federate`](../examples/xmpp-federate) signs in as one
-of your accounts and messages a JID on somebody else's server — the only path
-that exercises the outbound half, since a stanza addressed off-domain is the
-only thing that reaches it.
+That checks the port is open, which is not the same as federation working.
+For that, **/admin/diagnostics** has a Federation check with a link that dials
+`jabber.org` and completes a real dialback handshake — SRV lookup, outbound
+dial, and their verification call arriving back here. It needs no account and
+no recipient, because dialback does not: proving a domain is a conversation
+between two servers, and nobody has to be listening at either end of it.
 
 Outbound 5269 has to be open too, and it is the half that gets forgotten:
 dialback means this instance dials *out* to every domain that connects to it.

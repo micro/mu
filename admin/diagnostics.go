@@ -11,6 +11,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/settings"
+	"mu/service/chat"
 	"mu/service/markets"
 	"mu/service/news"
 )
@@ -31,7 +32,8 @@ func DiagnosticsHandler(w http.ResponseWriter, r *http.Request) {
 
 	// The digest check can run the pipeline for real to find out why it is
 	// stuck, which is a model call — asked for, never on the way past.
-	checks := runHealthChecks(r.URL.Query().Get("test") == "digest")
+	test := r.URL.Query().Get("test")
+	checks := runHealthChecks(test == "digest", test == "federation")
 
 	// Count issues
 	errors := 0
@@ -98,7 +100,7 @@ func DiagnosticsHandler(w http.ResponseWriter, r *http.Request) {
 	app.Respond(w, r, app.Response{Title: "Diagnostics", Description: "System health", HTML: b.String()})
 }
 
-func runHealthChecks(testDigest bool) []healthCheck {
+func runHealthChecks(testDigest, testFederation bool) []healthCheck {
 	var checks []healthCheck
 
 	// AI Provider
@@ -116,9 +118,71 @@ func runHealthChecks(testDigest bool) []healthCheck {
 	// Mail
 	checks = append(checks, checkMail())
 
+	// Federation
+	checks = append(checks, checkFederation(testFederation))
+
 	// Trading
 
 	return checks
+}
+
+// federationPeer is the server the live check dials.
+//
+// A real, large, long-running deployment somebody else operates, deliberately.
+// Checking against another Mu would prove the two agree with each other, which
+// is what a loopback test proves and it is not the question.
+const federationPeer = "jabber.org"
+
+// checkFederation reports whether the federated port is on, and — only when
+// asked — completes a real handshake with somebody else's server.
+//
+// Behind a click for the same reason the digest test is: it dials out over the
+// public internet and waits up to ten seconds on a domain that may be down,
+// which is not something a page should do because you opened it.
+//
+// This exists because federation had no way to be checked short of an account,
+// a client, and a person at the other end — three things that can each fail on
+// their own and look exactly like federation failing. Dialback needs none of
+// them, so the check does not either.
+func checkFederation(test bool) healthCheck {
+	if _, on := app.ListenAddr("XMPP_S2S_PORT", ":5269"); !on {
+		return healthCheck{
+			Name:   "Federation",
+			Status: "warning",
+			Detail: "XMPP_S2S_PORT is off — this instance talks to nobody else",
+			Fix:    "Set XMPP_S2S_PORT in /admin/config to accept federated connections",
+		}
+	}
+
+	if !test {
+		return healthCheck{
+			Name:   "Federation",
+			Status: "ok",
+			Detail: "Listening on 5269. Whether the handshake works is a different question",
+			Fix: "Not checked. " + app.Link("Dial "+federationPeer+" now",
+				"/admin/diagnostics?test=federation"),
+		}
+	}
+
+	detail, err := chat.CheckFederation(federationPeer)
+	if err != nil {
+		return healthCheck{
+			Name:   "Federation",
+			Status: "error",
+			Detail: "Could not complete dialback with " + federationPeer + ": " + err.Error(),
+			// Named in this order because it is the order they fail in, and the
+			// last is the one that gets forgotten: dialback means dialling out
+			// to every domain that dials in, so egress closed to 5269 fails
+			// every handshake while looking like a broken peer.
+			Fix: "Check that " + chat.Domain() + " resolves to this host from outside, that " +
+				"5269 is open inbound, and that 5269 is open outbound",
+		}
+	}
+	return healthCheck{
+		Name:   "Federation",
+		Status: "ok",
+		Detail: detail,
+	}
 }
 
 func checkAI() healthCheck {
