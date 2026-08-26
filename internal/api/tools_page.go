@@ -305,13 +305,17 @@ func connectSection(r *http.Request) string {
 	b.WriteString(`<span class="card-title">Connect your agent</span>`)
 
 	if acc == nil {
+		// What a credit is, next to the word. Every price below is in credits
+		// and the page never said what one was worth, so the numbers were a
+		// scale with no unit — "12 credits" is not a price until you know.
 		b.WriteString(`<p class="card-desc">Every tool below becomes available to your agent, ` +
-			`and calls are charged to your credits.</p>`)
+			`and calls are charged to your credits. One credit is one cent.</p>`)
 		b.WriteString(`<p><a class="connect-cta" href="/signup">Create an account →</a> ` +
 			`<span class="connect-note">it is the same account you sign into the app with</span></p>`)
 	} else {
 		b.WriteString(`<p class="card-desc">Every tool below becomes available to your agent, ` +
-			`and calls are charged to your credits. Pick the way your client connects.</p>`)
+			`and calls are charged to your credits — one credit is one cent. ` +
+			`Pick the way your client connects.</p>`)
 	}
 
 	// Cursor and anything else that reads a config file.

@@ -1,6 +1,6 @@
 {
   "_comment": [
-    "What each operation costs, in credits. One credit is one penny.",
+    "What each operation costs, in credits. One credit is one cent.",
     "",
     "An operation is charged when it costs this instance something to run: a",
     "model call to somebody we pay, or a third party billed per request.",
