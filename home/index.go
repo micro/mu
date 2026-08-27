@@ -246,7 +246,7 @@ func indexBody() string {
 	// Centred and focused, which is what was particular to this page; the rest
 	// was duplication.
 	return `<div class="lwrap">` +
-		app.SearchBox(app.SearchBoxOpts{Ask: app.AgentIsReady(), Centred: true, Focused: true}) +
+		app.SearchBox(app.SearchBoxOpts{Centred: true, Focused: true}) +
 		`<p class="lwhat">` + whatIsSearchable() + `</p>
 </div>
 

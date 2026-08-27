@@ -231,6 +231,7 @@ func Card(r *http.Request, accountID string) string {
 		// this on a month ago is really asking. "On for one device" is a fact
 		// about a row in a file and stays true while every send is refused.
 		lastLine(accountID) +
+		recentLines(accountID) +
 		`<button class="btn" id="push-go" type="button">Turn on for this device</button>` +
 		`<button class="btn btn-quiet push-test d-none" id="push-test" type="button">Send a test</button>` +
 		// And the way out. /push/unsubscribe existed from the beginning with
@@ -242,6 +243,81 @@ func Card(r *http.Request, accountID string) string {
 		`<input type="hidden" id="push-key" value="` + html.EscapeString(key) + `">` +
 		`<input type="hidden" id="push-csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `">` +
 		`</div>` + cardCSS + cardJS
+}
+
+// recentLines is the record, on the screen.
+//
+// # An instrument nobody can read is not an instrument
+//
+// History has been written on every send and on every receipt for as long as
+// both have existed, it is exported, it has tests — and nothing in the product
+// ever called it. The file filled up and no page showed a line of it. So the
+// only way to answer "did that notification reach the handset" was to ask the
+// person holding the handset, which is exactly the question the receipts were
+// built to stop having to ask, and the reason "notifications don't work" has
+// been going round in circles: two people guessing at a fact the server had
+// already written down.
+//
+// Four states, and telling them apart is the whole point. Which one it stops at
+// says which half of the system to look in:
+//
+//   - refused — the push service would not take it. Ours: keys, signature,
+//     an endpoint that has expired.
+//   - sent, nothing back — the push service took it and the device never woke.
+//     Theirs, or the handset's: battery saver, a killed service worker, a
+//     browser that dropped the subscription without saying so.
+//   - woke, could not show — the device ran the worker and failed to render.
+//     Ours again, and the payload is the suspect.
+//   - arrived — it worked, and if nothing appeared on the screen the problem is
+//     the operating system's notification settings and nothing here.
+//
+// Five rows. This is a receipt, not a log: the question is what happened
+// recently, and a page of history answers it no better while making the card
+// something you scroll past.
+func recentLines(accountID string) string {
+	sent := History(accountID, 5)
+	if len(sent) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString(`<div class="push-log"><div class="push-log-head">Recent</div>`)
+	for i := len(sent) - 1; i >= 0; i-- {
+		s := sent[i]
+		what := strings.TrimSpace(s.Title)
+		if what == "" {
+			what = "A notification"
+		}
+		state, cls := "", ""
+		switch {
+		case !s.OK:
+			state, cls = "refused"+because(s.Error), " push-bad"
+		case s.Got.IsZero():
+			state, cls = "sent — the device has not said it arrived", " push-bad"
+		case !s.Shown:
+			state, cls = "woke the device, which could not show it"+because(s.Why), " push-bad"
+		default:
+			state = "arrived"
+		}
+		from := ""
+		if s.From != "" {
+			from = ` <span class="push-from">` + html.EscapeString(s.From) + `</span>`
+		}
+		b.WriteString(`<div class="push-log-row"><span class="push-log-what">` +
+			html.EscapeString(what) + `</span>` + from +
+			`<span class="push-log-state` + cls + `">` + html.EscapeString(state) + `</span>` +
+			`<span class="push-log-when">` + html.EscapeString(ago(s.At)) + `</span></div>`)
+	}
+	b.WriteString(`</div>`)
+	return b.String()
+}
+
+// because appends a reason when there is one, and nothing when there is not —
+// rather than "refused ()" or a colon with nothing after it.
+func because(why string) string {
+	if strings.TrimSpace(why) == "" {
+		return ""
+	}
+	return ": " + why
 }
 
 // lastLine says what became of the last notification sent to this account.
@@ -314,6 +390,15 @@ const cardCSS = `<style>
 .push-state{font-size:12px;color:#888}
 .push-note{font-size:13px;color:#888;line-height:1.55;margin:6px 0 10px}
 .push-bad{color:var(--danger,#c33)}
+.push-log{margin:10px 0 12px;border-top:1px solid var(--card-border,#eee);padding-top:8px}
+.push-log-head{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--text-muted,#999);margin:0 0 6px}
+.push-log-row{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;font-size:12px;
+  color:var(--text-secondary,#555);padding:3px 0}
+.push-log-what{color:var(--text-primary,#111)}
+.push-from{color:var(--text-muted,#999)}
+.push-log-state{margin-left:auto}
+.push-log-when{color:var(--text-muted,#999);white-space:nowrap}
 .push-card .btn{margin-right:6px}
 </style>`
 
