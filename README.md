@@ -14,8 +14,8 @@ your phone, the command line, email, anywhere.
 
 What's included
 
-- **Services** - 30+ real world services including news, mail, markets, video, etc accessible via API, CLI, MCP or the Web
-- **Tools** - Services automatically become tools which are available to agents via MCP using an auth token or oauth client
+- **Services** - 30+ real world services including news, mail, markets, video, etc accessible via API, CLI or the Web
+- **Tools** - 100+ tools auto created from service endpoints available to agents via MCP using an auth token or oauth client
 - **Agents** - Define an agent by name, prompt and give it specific tools to use, then chat with it on the web, mail or xmpp
 - **Inbox** - A single place to keep track of threads across mail, chat, etc. Use an IMAP client to connect from anywhere
 
