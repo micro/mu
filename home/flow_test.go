@@ -34,7 +34,7 @@ import (
 // agent pays without an account.
 func TestTheLandingIsASearchBox(t *testing.T) {
 	rec := httptest.NewRecorder()
-	Landing(rec, httptest.NewRequest("GET", "/", nil))
+	Index(rec, httptest.NewRequest("GET", "/", nil))
 	body := rec.Body.String()
 
 	// The thing somebody with no account can actually do. /archive is public by
@@ -83,7 +83,7 @@ func TestTheLandingIsASearchBox(t *testing.T) {
 // because nobody reads them beside it.
 func TestThereIsNoTagline(t *testing.T) {
 	rec := httptest.NewRecorder()
-	Landing(rec, httptest.NewRequest("GET", "/", nil))
+	Index(rec, httptest.NewRequest("GET", "/", nil))
 	page := rec.Body.String()
 
 	// This held the tagline to exactly one appearance, because it was in the
@@ -113,7 +113,7 @@ func TestThereIsNoTagline(t *testing.T) {
 // pressing it does nothing at all.
 func TestTheServiceWorkerStillRegistersWithNoInstallButton(t *testing.T) {
 	rec := httptest.NewRecorder()
-	Landing(rec, httptest.NewRequest("GET", "/", nil))
+	Index(rec, httptest.NewRequest("GET", "/", nil))
 	body := rec.Body.String()
 
 	if !strings.Contains(body, "serviceWorker.register('/mu.js'") {
@@ -155,7 +155,7 @@ func TestTheFooterCarriesTheDestinations(t *testing.T) {
 // And the landing has one call to action, with nothing after it.
 func TestTheLandingOffersOneThing(t *testing.T) {
 	rec := httptest.NewRecorder()
-	Landing(rec, httptest.NewRequest("GET", "/", nil))
+	Index(rec, httptest.NewRequest("GET", "/", nil))
 	body := rec.Body.String()
 
 	if !strings.Contains(body, `action="/archive"`) {

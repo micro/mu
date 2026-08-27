@@ -59,10 +59,10 @@ func tools() string {
 // operator sets, and not a tier anybody can plan around.
 //
 // The description still follows. It reads better as a caption than as a pitch.
-func Landing(w http.ResponseWriter, r *http.Request) {
-	body := landingBody()
+func Index(w http.ResponseWriter, r *http.Request) {
+	body := indexBody()
 
-	page := app.RenderLanding(app.Landing{
+	page := app.RenderIndex(app.Index{
 		// What it is, not what to think of it. This said "A network for
 		// humans, agents and services" with a paragraph of positioning under
 		// it — a claim a stranger is invited to weigh, which is a landing
@@ -78,17 +78,29 @@ func Landing(w http.ResponseWriter, r *http.Request) {
 		// slot is 18px, so the chrome copy was a smaller, duplicate version of
 		// the thing immediately below it. Nothing renders the two together
 		// except the page, which is why neither reading caught it.
-		TopRight: `<a href="/login">Sign in →</a>`,
-		Body:     body,
-		Footer:   app.FooterLinks(),
-		Tail:     installScript(),
+		// Two controls, both of them things you do rather than things to
+		// consider. Install ships hidden: the browser decides whether a site
+		// can be installed and says so by firing beforeinstallprompt, and a
+		// button that does nothing in Firefox is worse than no button. See
+		// installScript.
+		//
+		// There is no Get started. Signing up is a thing this instance may or
+		// may not allow — and "Get started" is the phrase for persuading a
+		// stranger, which is not what a server's front door is for. Sign in is
+		// the door; whoever runs this decides who gets a key.
+		TopRight: `<a href="/login">Sign in →</a>` +
+			`<button type="button" id="install-app" hidden>Install</button>` +
+			`<span id="install-how" hidden>Share, then Add to Home Screen</span>`,
+		Body:   body,
+		Footer: app.FooterLinks(),
+		Tail:   installScript(),
 	})
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write([]byte(page)) //nolint:errcheck
 }
 
-// landingBody is the page itself, separate from serving it.
+// indexBody is the page itself, separate from serving it.
 //
 // Separated so it can be read by a test, which is how the duplicated guest
 // note went unnoticed: nothing could look at the whole page at once, so two
@@ -149,7 +161,7 @@ func Landing(w http.ResponseWriter, r *http.Request) {
 //
 // The lead still says you can write to it from anywhere, which is the fact. The
 // address is on the pages where it is actionable — /agents, Connect, the inbox.
-// landingBody is the signed-out page: a search box.
+// indexBody is the signed-out page: a search box.
 //
 // # Why there is no pitch here any more
 //
@@ -177,11 +189,11 @@ func Landing(w http.ResponseWriter, r *http.Request) {
 // That is also the whole of what a utility's front door is. nginx's default
 // page says it is nginx and that it is working. This says what it is, that it
 // is running, and gives you something to do with it.
-func landingBody() string {
+func indexBody() string {
 	return `<div class="lwrap">
 <form class="lsearch" method="GET" action="/archive">
   <input class="lsearch-in" type="search" name="q" placeholder="Search everything here" maxlength="256" autofocus>
-  <button class="lsearch-go" type="submit">Search</button>
+  <button class="lsearch-go" type="submit" aria-label="Search">&#x2192;</button>
 </form>
 <p class="lwhat">` + tools() + ` tools, an inbox with an address, and an agent that reaches them.
 <a href="/tools">See what it runs</a></p>
@@ -193,13 +205,17 @@ func landingBody() string {
 .lsearch-in{flex:1;min-width:0;font:inherit;font-size:16px;padding:12px 14px;border:1px solid #ddd;
   border-radius:var(--border-radius,6px);background:#fff;color:#111}
 .lsearch-in:focus{outline:none;border-color:#999}
-.lsearch-go{flex:none;border:0;background:#111;color:#fff;font:inherit;font-size:15px;font-weight:700;
-  padding:12px 20px;border-radius:var(--border-radius,6px);cursor:pointer}
+/* An arrow, the same control the ask box on Home uses. A word here would be
+   the only labelled button in the product's two search boxes, and "Search"
+   beside a box that says "Search everything here" is the label twice. */
+.lsearch-go{flex:none;border:0;background:#111;color:#fff;font:inherit;font-size:16px;
+  width:44px;height:44px;border-radius:var(--border-radius,6px);cursor:pointer}
 .lwhat{text-align:center;color:#888;font-size:13px;line-height:1.6;margin:16px auto 0}
 .lwhat a{color:#555;font-weight:600;text-decoration:none;white-space:nowrap}
 .lwhat a:hover{text-decoration:underline}
-@media (max-width:640px){.lsearch{flex-direction:column;align-items:stretch}
-  .lsearch-go{width:100%}}
+/* Not stacked on a phone: the box and its arrow are one control, and a
+   full-width button under a full-width input reads as two. */
+@media (max-width:640px){.lsearch-in{font-size:16px}}
 </style>`
 }
 
