@@ -31,19 +31,6 @@ func SubscribeHandler(w http.ResponseWriter, r *http.Request) {
 		app.MethodNotAllowed(w, r)
 		return
 	}
-	if !auth.StrictCSRF(r) {
-		app.Forbidden(w, r, "that request did not carry a valid token")
-		return
-	}
-
-	// A notification you asked for, now, on demand.
-	//
-	// The card can say "On for this device" and be telling the truth while
-	// nothing has ever arrived, because the things that send one — mail, a
-	// reminder firing — are all somebody else doing something. That leaves no
-	// way to tell a working subscription from a broken one except waiting, and
-	// waiting for a negative is not a test. This is the button.
-	//
 	// A device saying it woke up holding one.
 	//
 	// The record ended at "the push service accepted it", which is three
@@ -56,6 +43,20 @@ func SubscribeHandler(w http.ResponseWriter, r *http.Request) {
 	// No CSRF: this is posted by a service worker that may be running with no
 	// page open, it carries a session, and the worst a forged one can do is
 	// mark a notification the account already received as received.
+	//
+	// # Which has to be checked before the CSRF check, not after it
+	//
+	// It was after. The paragraph above described an exemption the code never
+	// reached, because StrictCSRF ran first and answered 403 to every receipt a
+	// service worker ever posted — a worker has no page and so no token to
+	// send. The comment was right, the order was wrong, and the effect was that
+	// the one instrument built to answer "did it reach the handset" recorded
+	// nothing, for every notification, on every device. Hours were then spent
+	// looking at the sending half, which was working.
+	//
+	// Nothing about it is visible either: the worker's receipt() ends in
+	// .catch(function(){}) — deliberately, since a receipt must never break a
+	// notification — so the 403 was swallowed on the device too.
 	if strings.HasSuffix(r.URL.Path, "/received") {
 		var said struct {
 			Tag   string `json:"tag"`
@@ -67,6 +68,19 @@ func SubscribeHandler(w http.ResponseWriter, r *http.Request) {
 		app.RespondJSON(w, map[string]any{"ok": true})
 		return
 	}
+
+	if !auth.StrictCSRF(r) {
+		app.Forbidden(w, r, "that request did not carry a valid token")
+		return
+	}
+
+	// A notification you asked for, now, on demand.
+	//
+	// The card can say "On for this device" and be telling the truth while
+	// nothing has ever arrived, because the things that send one — mail, a
+	// reminder firing — are all somebody else doing something. That leaves no
+	// way to tell a working subscription from a broken one except waiting, and
+	// waiting for a negative is not a test. This is the button.
 
 	// SendNow rather than Send, or it is not a test at all: Send hands each
 	// device to a goroutine and returns, so answering ok after calling it said

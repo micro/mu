@@ -101,7 +101,9 @@ var LoginTemplate = `<html lang="en">
 	<script>
 	if (window.PublicKeyCredential) {
 	  PublicKeyCredential.isConditionalMediationAvailable && PublicKeyCredential.isConditionalMediationAvailable().then(function(){});
-	  document.getElementById('passkey-login').style.display = 'block';
+	  // classList, not style.display: .d-none is display:none !important and an
+	  // inline style loses to it, which is why this button was never once seen.
+	  document.getElementById('passkey-login').classList.remove('d-none');
 	}
 
 	function base64urlToBuffer(b64) {

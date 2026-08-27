@@ -789,7 +789,12 @@ func getChannel(category, handle string) (string, []*Result, error) {
 				"category":   category,
 				"channel":    item.Snippet.ChannelTitle,
 				"channel_id": item.Snippet.ChannelId,
-				"published":  t,
+				// posted_at, not published: the archive reads posted_at and
+				// falls back to when it indexed the row. The upload date was
+				// right here all along under a name nothing looks for, so a
+				// video from 2023 was dated to whenever this instance last
+				// fetched the channel.
+				"posted_at": t,
 				"thumbnail":  thumbnailURL,
 			},
 		)

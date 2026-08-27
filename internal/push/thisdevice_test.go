@@ -282,3 +282,79 @@ func TestAReceiptIsRecordedOnce(t *testing.T) {
 		t.Error("a second receipt overwrote the first")
 	}
 }
+
+// A service worker has no page, so it has no CSRF token, so it must not be
+// asked for one.
+//
+// Every test above calls Received directly, which is why they all passed while
+// the endpoint the worker actually posts to answered 403 to every receipt ever
+// sent. The exemption existed and was documented; it sat below the check that
+// refused the request, so it was never reached. The tests proved the recording
+// worked and nothing proved a device could reach it — the one difference that
+// mattered.
+//
+// This goes through the handler, with a session and no token, exactly as
+// mu.js does.
+func TestAServiceWorkerCanPostAReceiptWithNoCSRFToken(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	const who = "worker"
+	if _, err := auth.GetAccount(who); err != nil {
+		if err := auth.Create(&auth.Account{ID: who, Name: who, Created: time.Now()}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	sess, err := auth.CreateSession(who)
+	if err != nil {
+		t.Fatal(err)
+	}
+	phone, _, _, _ := twoDevices(t, who)
+	if err := SendToDevice(who, phone,
+		Notification{Title: "Test notification", Tag: "mu-test"}); err != nil {
+		t.Fatal(err)
+	}
+
+	r := httptest.NewRequest(http.MethodPost, "/push/received",
+		strings.NewReader(`{"tag":"mu-test","shown":true,"why":""}`))
+	r.Header.Set("Content-Type", "application/json")
+	r.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
+	// No X-CSRF-Token: a worker running with no page open cannot produce one.
+	rec := httptest.NewRecorder()
+	SubscribeHandler(rec, r)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("a receipt from a service worker was refused: %d %s",
+			rec.Code, rec.Body.String())
+	}
+	got := History(who, 1)
+	if len(got) == 0 || got[0].Got.IsZero() {
+		t.Error("the receipt was accepted and the record does not show it")
+	}
+}
+
+// And the exemption is only for receipts: subscribing, unsubscribing and
+// testing are posted by a page, which has a token, so they still need one.
+// Moving the check must not have opened the others.
+func TestTheOtherPushEndpointsStillNeedAToken(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	const who = "guarded"
+	if _, err := auth.GetAccount(who); err != nil {
+		if err := auth.Create(&auth.Account{ID: who, Name: who, Created: time.Now()}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	sess, err := auth.CreateSession(who)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, path := range []string{"/push/subscribe", "/push/unsubscribe", "/push/test"} {
+		r := httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{}`))
+		r.Header.Set("Content-Type", "application/json")
+		r.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
+		rec := httptest.NewRecorder()
+		SubscribeHandler(rec, r)
+		if rec.Code != http.StatusForbidden {
+			t.Errorf("%s accepted a request with no CSRF token: %d", path, rec.Code)
+		}
+	}
+}

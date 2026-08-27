@@ -324,7 +324,7 @@ async function createToken(e) {
 	var result = await res.json();
 	if (result.success) {
 		document.getElementById('new-token').textContent = result.token;
-		document.getElementById('token-result').style.display = 'block';
+		document.getElementById('token-result').classList.remove('d-none');
 		setTimeout(function() { location.reload(); }, 5000);
 	} else {
 		alert('Failed to create token');
