@@ -29,6 +29,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		<a href="/admin/alerts">Alerts</a>
 		<a href="/admin/backup">Backup</a>
 		<a href="/admin/config">Config</a>
+		<a href="/admin/diagnostics">Diagnostics</a>
 		<a href="/admin/log">Logs` + alertBadge() + `</a>
 		<a href="/admin/oauth">OAuth Clients</a>
 		<a href="/admin/moderate">Moderation</a>
@@ -203,8 +204,15 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 		if u.Approved {
 			badges = append(badges, `<span class="count-badge info">approved</span>`)
 		}
-		statusHTML := strings.Join(badges, " ")
-		if statusHTML == "" {
+		// One element, not several.
+		//
+		// On a phone the cell is a two-column grid — label, value — and every
+		// child is a grid item. Two badges meant the second one started a new
+		// grid row in the label's column, so "approved" appeared under
+		// "Status" as if it were a field of its own. Wrapping them makes the
+		// pair one value that wraps inside its own column.
+		statusHTML := `<span class="badge-row">` + strings.Join(badges, " ") + `</span>`
+		if len(badges) == 0 {
 			statusHTML = `<span class="text-muted text-xs">—</span>`
 		}
 		var actions []string
@@ -220,7 +228,7 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 			} else {
 				actions = append(actions, fmt.Sprintf(`<form method="POST" class="d-inline"><input type="hidden" name="action" value="ban"><input type="hidden" name="user_id" value="%s"><input type="hidden" name="tab" value="%s"><button type="submit" class="mini-btn danger" onclick="return confirm('Ban %s?')">Ban</button></form>`, u.ID, tab, u.ID))
 			}
-			actions = append(actions, fmt.Sprintf(`<form method="POST" class="d-inline" onsubmit="return confirm('Delete %s?')"><input type="hidden" name="action" value="delete"><input type="hidden" name="user_id" value="%s"><input type="hidden" name="tab" value="%s"><button type="submit" class="btn-danger text-xs p-tight">Delete</button></form>`, u.ID, u.ID, tab))
+			actions = append(actions, fmt.Sprintf(`<form method="POST" class="d-inline" onsubmit="return confirm('Delete %s?')"><input type="hidden" name="action" value="delete"><input type="hidden" name="user_id" value="%s"><input type="hidden" name="tab" value="%s"><button type="submit" class="mini-btn danger">Delete</button></form>`, u.ID, u.ID, tab))
 		}
 		// Credit, on the row, because that is where somebody wanting to comp an
 		// account is looking. An amount box rather than fixed buttons: the
@@ -238,7 +246,18 @@ func UsersHandler(w http.ResponseWriter, r *http.Request) {
 				`class="mini-btn info">Credit</button></form>`,
 			u.ID, tab))
 
-		sb.WriteString(fmt.Sprintf(`<tr><td><strong><a href="/@%s">%s</a></strong></td><td>%s</td><td class="created-col">%s</td><td>%s</td><td class="center">%s</td><td class="center nowrap">%s</td></tr>`, u.ID, u.ID, u.Name, created, statusHTML, balanceCell(u.ID), strings.Join(actions, " ")))
+		// data-label on every cell, because on a narrow screen the table stops
+		// being a table — see .admin-table in mu.css. The header row is what
+		// tells you which column you are looking at, and it is the first thing
+		// that has to go when six columns will not fit across a phone.
+		sb.WriteString(fmt.Sprintf(`<tr>`+
+			`<td data-label="Username"><strong><a href="/@%s">%s</a></strong></td>`+
+			`<td data-label="Name">%s</td>`+
+			`<td data-label="Created" class="created-col">%s</td>`+
+			`<td data-label="Status">%s</td>`+
+			`<td data-label="Credits" class="center">%s</td>`+
+			`<td data-label="Actions" class="center actions-cell">%s</td>`+
+			`</tr>`, u.ID, u.ID, u.Name, created, statusHTML, balanceCell(u.ID), strings.Join(actions, " ")))
 	}
 	sb.WriteString(`</tbody></table>`)
 	app.Respond(w, r, app.Response{Title: "Users", Description: "Accounts on this instance", HTML: sb.String()})

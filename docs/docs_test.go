@@ -7,19 +7,21 @@ import (
 	"testing"
 )
 
-// Two pages, and each one is a file that exists.
+// One page, and it is a file that exists.
 //
 // There were nine, behind a categorised index. The index was the tell: a set of
 // documents large enough to need navigating is a manual, and the product was
 // meant to explain itself — the tools are at /tools, the protocol is a URL, and
 // the price list is a page.
 //
-// Then three, and now two: /help was a second page about pointing an agent at
-// this instance, which is what /tools is for. Two pages answering one question,
-// and the one nobody maintained was the one in the footer.
+// Then three, then one. /help was a second page about pointing an agent at this
+// instance, which is what /tools is for. /about was a second answer to what the
+// landing already says, and the landing is the page somebody deciding whether to
+// care actually reads. Each time, the page that went was the one nobody
+// maintained.
 func TestEveryPageServes(t *testing.T) {
-	if len(pages) != 2 {
-		t.Fatalf("%d pages — two is the whole site's documentation: about and install", len(pages))
+	if len(pages) != 1 {
+		t.Fatalf("%d pages — Install is the whole site's documentation", len(pages))
 	}
 	for i, p := range pages {
 		if _, err := docsFS.ReadFile(p.Filename); err != nil {
@@ -53,11 +55,12 @@ func TestServedPageDoesNotRepeatItsTitle(t *testing.T) {
 
 // Every address the old nine answered on still goes somewhere.
 //
-// Not necessarily to a doc. When /help went, everything that pointed at it was
-// repointed to /tools — which is a page in the product rather than a file in
-// this package, and is the page that actually answers what /help was for.
+// Not necessarily to a doc. When /help went, everything pointing at it was
+// repointed to /tools; when /about went, to the landing. Both are pages in the
+// product rather than files in this package, and both are what those addresses
+// were actually for — which is the whole reason the pages could go.
 func TestOldAddressesLand(t *testing.T) {
-	known := map[string]bool{"/tools": true}
+	known := map[string]bool{"/tools": true, "/": true}
 	for _, p := range pages {
 		known[p.Path] = true
 	}
@@ -65,11 +68,15 @@ func TestOldAddressesLand(t *testing.T) {
 		if !known[to] {
 			t.Errorf("%s redirects to %s, which is not a page", from, to)
 		}
-		if !strings.HasPrefix(from, "/docs") && !strings.HasPrefix(from, "/help") {
+		// /docs/*, /help/*, and /about, which was a page here until the landing
+		// was agreed to be the one answer to what this is. The prefix rule is to
+		// stop unrelated redirects being dumped in a map named for the
+		// documentation's own addresses.
+		if from != "/about" && !strings.HasPrefix(from, "/docs") && !strings.HasPrefix(from, "/help") {
 			t.Errorf("%s is not an address the documentation ever had", from)
 		}
 	}
-	for _, want := range []string{"/docs/mcp", "/docs/installation", "/docs/about"} {
+	for _, want := range []string{"/docs/mcp", "/docs/installation", "/docs/about", "/about"} {
 		if Redirects[want] == "" {
 			t.Errorf("%s has nowhere to go", want)
 		}

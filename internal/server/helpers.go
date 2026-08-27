@@ -15,7 +15,6 @@ import (
 	"strings"
 	"time"
 
-	"mu/agent"
 	"mu/internal/ai"
 	"mu/internal/app"
 	"mu/internal/auth"
@@ -73,7 +72,7 @@ func setSecurityHeaders(w http.ResponseWriter) {
 		"object-src 'none'",
 		"base-uri 'self'",
 		// Stripe Checkout is the one place a form leaves this origin, and it
-		// leaves by redirect: the form posts to /billing/stripe/checkout, which
+		// leaves by redirect: the form posts to /wallet/stripe/checkout, which
 		// answers 303 to a checkout URL Stripe has just minted. form-action is
 		// enforced against the *redirect target*, not only against the action
 		// attribute, so 'self' alone blocked the POST that had already been
@@ -210,10 +209,12 @@ func serveListener(addr string) (net.Listener, bool, error) {
 // deploy can be verified with `curl micro.mu/version`.
 func versionInfo() map[string]any {
 	info := map[string]any{
-		"version":  version.String(), // release version (tag), or dev+commit
-		"build":    app.Version,      // per-process id (start time), for cache busting
-		"go":       runtime.Version(),
-		"agent":    agent.Mode(),       // "native" (go-micro agent) or "planner"
+		"version": version.String(), // release version (tag), or dev+commit
+		"build":   app.Version,      // per-process id (start time), for cache busting
+		"go":      runtime.Version(),
+		// "agent" was here, reporting "native" or "planner" — which engine was
+		// answering. There is one engine, so the field was a constant that
+		// looked like a reading.
 		"mcp":      "go-micro/gateway", // /mcp served by go-micro's gateway
 		"services": service.Services(), // in-process go-micro services
 		"go_micro": "unknown",

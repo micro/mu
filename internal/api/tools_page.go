@@ -187,7 +187,7 @@ func serviceGrid(r *http.Request) string {
 		// skipped the question a reader on this page is asking: not "show me
 		// the weather" but "what is this and how do I call it". The page itself
 		// is one button away at the top of it.
-		open := `<a class="tool-tile service-tile" href="/services/` +
+		open := `<a class="tool-tile service-tile card-hover" href="/services/` +
 			html.EscapeString(s.Name) + `">`
 		close := `</a>`
 		b.WriteString(open)
@@ -247,7 +247,7 @@ func toolGrid() string {
 		b.WriteString(`<h3 class="tool-group-title">` + html.EscapeString(g.Label) + `</h3>`)
 		b.WriteString(`<div class="tool-grid">`)
 		for _, t := range g.Tools {
-			b.WriteString(`<a class="tool-tile" href="/tools/` + html.EscapeString(t.Name) + `">`)
+			b.WriteString(`<a class="tool-tile card-hover" href="/tools/` + html.EscapeString(t.Name) + `">`)
 			b.WriteString(`<span class="tool-tile-name">` + html.EscapeString(t.Name) + `</span>`)
 			b.WriteString(`<span class="tool-tile-desc">` + html.EscapeString(clipDesc(t.Description)) + `</span>`)
 			b.WriteString(`<span class="tool-tile-price">` + priceLabel(t) + `</span>`)
@@ -305,13 +305,17 @@ func connectSection(r *http.Request) string {
 	b.WriteString(`<span class="card-title">Connect your agent</span>`)
 
 	if acc == nil {
+		// What a credit is, next to the word. Every price below is in credits
+		// and the page never said what one was worth, so the numbers were a
+		// scale with no unit — "12 credits" is not a price until you know.
 		b.WriteString(`<p class="card-desc">Every tool below becomes available to your agent, ` +
-			`and calls are charged to your credits.</p>`)
+			`and calls are charged to your credits. One credit is one cent.</p>`)
 		b.WriteString(`<p><a class="connect-cta" href="/signup">Create an account →</a> ` +
 			`<span class="connect-note">it is the same account you sign into the app with</span></p>`)
 	} else {
 		b.WriteString(`<p class="card-desc">Every tool below becomes available to your agent, ` +
-			`and calls are charged to your credits. Pick the way your client connects.</p>`)
+			`and calls are charged to your credits — one credit is one cent. ` +
+			`Pick the way your client connects.</p>`)
 	}
 
 	// Cursor and anything else that reads a config file.
@@ -497,7 +501,9 @@ const toolsPageCSS = `<style>
 .tool-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
 .tool-tile{display:flex;flex-direction:column;gap:4px;padding:12px 14px;border:1px solid #e5e5e5;
   border-radius:8px;background:#fff;text-decoration:none;color:inherit}
-.tool-tile:hover{border-color:#bbb}
+/* No :hover here. A tile is a card and .card-hover in mu.css is what a card
+   does on hover — this had a grey border of its own, which was a third answer
+   beside the row on /agents and the cards on home. */
 .tool-tile-name{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;font-weight:600;color:#111}
 .tool-tile-desc{font-size:13px;color:#666;line-height:1.4}
 .tool-tile-price{font-size:12px;color:#6b7280;font-variant-numeric:tabular-nums;margin-top:2px}

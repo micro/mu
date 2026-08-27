@@ -1,14 +1,10 @@
 package mail
 
 import (
-	"bytes"
-	"compress/gzip"
-
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"html"
-	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -23,6 +19,7 @@ import (
 	"mu/internal/data"
 	"mu/internal/event"
 	"mu/internal/service"
+	"mu/internal/settings"
 )
 
 var mutex sync.RWMutex
@@ -154,7 +151,7 @@ func Load() {
 	if dkimDomain == "" {
 		dkimDomain = "localhost"
 	}
-	dkimSelector := os.Getenv("MAIL_SELECTOR")
+	dkimSelector := settings.Get("MAIL_SELECTOR")
 	if dkimSelector == "" {
 		dkimSelector = "default"
 	}
@@ -162,6 +159,12 @@ func Load() {
 	if err := LoadDKIMConfig(dkimDomain, dkimSelector); err != nil {
 		app.Log("mail", "DKIM signing disabled: %v", err)
 	}
+
+	// The index is a separate file from the mailbox, so an instance that has
+	// one and not the other answers every search with nothing. In the
+	// background because it is a boot-time cost proportional to the mailbox and
+	// nothing needs it before the first search.
+	go Reindex()
 }
 
 // fixThreading repairs broken threading relationships and computes ThreadID after loading
@@ -218,6 +221,64 @@ func computeThreadID(msg *Message) string {
 	return current.ID
 }
 
+// parentOf is the message a delivery answers, or nil.
+//
+// Two names for the same thing and a caller normally holds one of them: our own
+// id for the parent (ReplyTo), or the Message-ID header it is answering
+// (InReplyTo). Anything arriving off the network has only the header, and so
+// does an agent replying to a message it was handed — which is why the id-only
+// lookup lost the thread every time an agent answered somebody here.
+//
+// Must be called with the mutex held.
+func parentOf(d Delivery) *Message {
+	if d.ReplyTo != "" {
+		if parent := MessageUnlocked(d.ReplyTo); parent != nil {
+			return parent
+		}
+	}
+	if d.InReplyTo != "" {
+		if parent := byMessageIDUnlocked(d.InReplyTo); parent != nil {
+			return parent
+		}
+	}
+	// The oldest id in the chain that we still hold. A client that dropped
+	// In-Reply-To still sends References, and threading onto the conversation
+	// is better than starting a second one beside it.
+	for _, ref := range referenceIDs(d.References) {
+		if parent := byMessageIDUnlocked(ref); parent != nil {
+			return parent
+		}
+	}
+	return nil
+}
+
+// byMessageIDUnlocked finds a stored message by its mail header id.
+//
+// Must be called with the mutex held.
+func byMessageIDUnlocked(headerID string) *Message {
+	headerID = strings.TrimSpace(headerID)
+	if headerID == "" {
+		return nil
+	}
+	for _, msg := range messages {
+		if msg != nil && strings.EqualFold(strings.TrimSpace(msg.MessageID), headerID) {
+			return msg
+		}
+	}
+	return nil
+}
+
+// referenceIDs splits a References header, newest last as the header is
+// written. Walked newest first here: the nearest parent we still hold makes
+// the shortest correct chain.
+func referenceIDs(references string) []string {
+	fields := strings.Fields(references)
+	for i, j := 0, len(fields)-1; i < j; i, j = i+1, j-1 {
+		fields[i], fields[j] = fields[j], fields[i]
+	}
+	return fields
+}
+
 // MessageUnlocked finds a message without locking (for internal use when lock is held)
 func MessageUnlocked(msgID string) *Message {
 	for _, msg := range messages {
@@ -238,16 +299,22 @@ func rebuildInboxes() {
 			continue
 		}
 
-		// Add to sender's inbox (sent messages)
-		if msg.FromID != "" {
-			if inboxes[msg.FromID] == nil {
-				inboxes[msg.FromID] = &Inbox{Threads: make(map[string]*Thread), UnreadCount: 0}
+		// Add to sender's inbox (sent messages).
+		//
+		// Keyed on the account rather than on FromID, which is an account id
+		// on one path and an address on another — so the address form built an
+		// inbox called "asim@micro.mu" that nothing ever reads, and the thread
+		// went missing from the one belonging to asim.
+		sender := senderAccount(msg)
+		if sender != "" {
+			if inboxes[sender] == nil {
+				inboxes[sender] = &Inbox{Threads: make(map[string]*Thread), UnreadCount: 0}
 			}
-			addMessageToInbox(inboxes[msg.FromID], msg, msg.FromID)
+			addMessageToInbox(inboxes[sender], msg, sender)
 		}
 
 		// Add to recipient's inbox
-		if msg.ToID != "" && msg.ToID != msg.FromID {
+		if msg.ToID != "" && msg.ToID != sender {
 			if inboxes[msg.ToID] == nil {
 				inboxes[msg.ToID] = &Inbox{Threads: make(map[string]*Thread), UnreadCount: 0}
 			}
@@ -285,18 +352,75 @@ func markSelfSentRead() {
 	}
 }
 
-// selfAddressed reports whether a message's sender and recipient are the same
-// account, whichever way the sender was recorded — an account id for local
-// delivery, an email address for anything that arrived over SMTP.
-func selfAddressed(msg *Message) bool {
-	if msg.FromID == "" {
+// senderAccount is the account here that wrote a message, or "" when nobody
+// here did.
+//
+// FromID carries three different kinds of string and always has: an account id
+// where one local path stored one, an address on this instance where another
+// did, and an external address for anything that arrived over SMTP. Its own
+// doc says so — "an address, or an account" — and every one of those is a
+// legitimate answer to "where did this come from".
+//
+// None of them is the same question as "who here wrote it", which is the
+// question three callers were actually asking and each answered differently.
+// Sent compared FromID to an account id, so nothing stored in the address form
+// ever appeared in it. rebuildInboxes keyed a whole inbox on it, so the address
+// form built a phantom one nobody reads. selfAddressed asked auth for the
+// owner of the address, which only knows *external* addresses somebody has
+// verified, so it never recognised this instance's own.
+func senderAccount(msg *Message) string {
+	if msg == nil {
+		return ""
+	}
+	from := strings.TrimSpace(msg.FromID)
+	if from == "" {
+		return ""
+	}
+	// An account id or an address on this instance. LocalRecipient takes the
+	// part before the @ and before any +tag, and leaves a bare id alone, so
+	// both forms arrive at the same lookup.
+	if !IsExternalAddress(from) {
+		if acc, err := GetAccountByAddress(from); err == nil && acc != nil {
+			return acc.ID
+		}
+		return ""
+	}
+	// An external address names somebody here only when they have proved it is
+	// theirs. Anything else is mail from a stranger who happens to share a
+	// local part with an account.
+	if acc := auth.AccountForAddress(from); acc != nil {
+		return acc.ID
+	}
+	return ""
+}
+
+// GetAccountByAddress resolves an account id or an address on this instance.
+func GetAccountByAddress(addr string) (*auth.Account, error) {
+	return auth.GetAccount(LocalRecipient(addr))
+}
+
+// sentBy reports whether this account is the one that wrote a message.
+//
+// The one predicate INBOX and Sent split on, so a message lands in exactly one
+// of them.
+func sentBy(msg *Message, accountID string) bool {
+	if msg == nil || accountID == "" {
 		return false
 	}
-	if msg.FromID == msg.ToID {
+	// The account-id form, answered without needing the account record to be
+	// loadable — a message says who wrote it whether or not that account still
+	// exists, and this is the form the sent-copy path stores.
+	if strings.EqualFold(strings.TrimSpace(msg.FromID), accountID) {
 		return true
 	}
-	acc := auth.AccountForAddress(msg.FromID)
-	return acc != nil && acc.ID == msg.ToID
+	return strings.EqualFold(senderAccount(msg), accountID)
+}
+
+// selfAddressed reports whether a message's sender and recipient are the same
+// account — writing to your own agent, or to agent@, which resolves to whoever
+// wrote to it.
+func selfAddressed(msg *Message) bool {
+	return msg != nil && msg.ToID != "" && sentBy(msg, msg.ToID)
 }
 
 // addMessageToInbox adds a message to an inbox's thread structure
@@ -434,28 +558,18 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 				}
 				SendMessage(acc.Name, acc.ID, to, to, subject, body, replyTo, messageID) //nolint:errcheck
 			} else {
-				// No pre-flight check here. DeliverHere decides whether this is
-				// a send at all — writing to your own agent is not — and it
+				// No pre-flight check here. Deliver decides whether this is a
+				// send at all — writing to your own agent is not — and it
 				// charges before it delivers. Asking quota first refused people
 				// for messages that were never going to be charged.
-				// The address the product handed out, in the form it handed it
-				// out in. mail_address returns asim@micro.mu; GetAccount takes a
-				// username, so writing to what you were told to write to came
-				// back "recipient not found".
-				toAcc, err := auth.GetAccount(LocalRecipient(to))
-				if err != nil {
-					app.RespondError(w, http.StatusNotFound, "recipient not found")
-					return
-				}
-				// Through the one door, which charges before it delivers. This
-				// charged afterwards and ignored the result, so a refusal —
-				// out of credit, over the day's cap — cost nothing and the
-				// message went anyway. The admin exemption is gone from here
-				// because quota has always had one; two of them is one that
-				// can disagree.
-				if err := DeliverHere(Local{
-					FromID: acc.ID, Display: acc.Name, From: acc.ID, To: toAcc.ID,
-					Subject: subject, Body: body, ReplyTo: replyTo,
+				//
+				// Through the one door, which also carries the +tag: this had
+				// its own copy of the local branch, and the copy resolved the
+				// address to an account and threw the tag away, so mail sent
+				// from here to asim+research@ was filed and woke nothing.
+				if _, err := Deliver(Outgoing{
+					FromID: acc.ID, Display: acc.Name, To: to,
+					Subject: subject, Body: body, InReplyTo: replyTo,
 				}); err != nil {
 					app.RespondError(w, http.StatusForbidden, err.Error())
 					return
@@ -557,23 +671,19 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			}
 		} else {
 			// Internal message - store plain text, render at display time.
-			// The gate is DeliverHere's, below: it knows whether this is a send
-			// or somebody writing to their own agent, and this did not.
+			// The gate is Deliver's: it knows whether this is a send or
+			// somebody writing to their own agent, and this did not.
+			//
 			// The recipient may be a bare username or a full local address,
 			// with or without a +tag: asim, asim@micro.mu, asim+claude@micro.mu
-			// all reach the same inbox. Only the bare form resolved before, so
-			// a caller who wrote the address the product shows them —
-			// mail_address returns the full one — got "Recipient not found".
-			toAcc, err := auth.GetAccount(LocalRecipient(to))
-			if err != nil {
-				http.Error(w, "Recipient not found", http.StatusNotFound)
-				return
-			}
-
-			app.Log("mail", "Sending internal message from %s to %s with replyTo=%s", acc.Name, toAcc.Name, replyTo)
-			if err := DeliverHere(Local{
-				FromID: acc.ID, Display: acc.Name, From: acc.ID, To: toAcc.ID,
-				Subject: subject, Body: bodyPlain, ReplyTo: replyTo,
+			// all reach the same inbox — and only the last of those wakes an
+			// agent, which is what this lost. It resolved the address to an
+			// account and passed no Tag, so mail to an agent here filed and
+			// nothing ran.
+			app.Log("mail", "Sending internal message from %s to %s with replyTo=%s", acc.Name, to, replyTo)
+			if _, err := Deliver(Outgoing{
+				FromID: acc.ID, Display: acc.Name, To: to,
+				Subject: subject, Body: bodyPlain, HTML: bodyHTML, InReplyTo: replyTo,
 			}); err != nil {
 				http.Error(w, err.Error(), http.StatusForbidden)
 				return
@@ -605,7 +715,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		mutex.RLock()
 		var msg *Message
 		for _, m := range messages {
-			if m.ID == msgID && (m.ToID == acc.ID || m.FromID == acc.ID) {
+			if m.ID == msgID && (m.ToID == acc.ID || sentBy(m, acc.ID)) {
 				msg = m
 				break
 			}
@@ -661,7 +771,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		mutex.RLock()
 		var msg *Message
 		for _, m := range messages {
-			if m.ID == msgID && (m.ToID == acc.ID || m.FromID == acc.ID) {
+			if m.ID == msgID && (m.ToID == acc.ID || sentBy(m, acc.ID)) {
 				msg = m
 				break
 			}
@@ -732,7 +842,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		mutex.RLock()
 		var msg *Message
 		for _, m := range messages {
-			if m.ID == msgID && (m.ToID == acc.ID || m.FromID == acc.ID) {
+			if m.ID == msgID && (m.ToID == acc.ID || sentBy(m, acc.ID)) {
 				msg = m
 				break
 			}
@@ -745,194 +855,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Decode body if it looks base64 encoded
-		displayBody := msg.Body
-		isAttachment := false
-		attachmentName := ""
-
-		// First, check if body contains raw MIME content with headers
-		if strings.Contains(displayBody, "Content-Type:") || strings.Contains(displayBody, "content-type:") {
-			if extracted := extractMIMEBody(displayBody); extracted != displayBody {
-				displayBody = extracted
-			}
-		}
-
-		trimmed := strings.TrimSpace(displayBody)
-
-		// Check if body contains mixed content: base64 gzip data followed by MIME multipart markers
-		// This happens with some DMARC reports from Microsoft that have inline gzip followed by HTML explanation
-		if strings.Contains(trimmed, "[multipart/") || strings.Contains(trimmed, "\n--") {
-			// Split at the first boundary marker or multipart notation
-			var gzipPart string
-			// Check for [multipart/ with various whitespace prefixes
-			if idx := strings.Index(trimmed, "\n\n[multipart/"); idx > 0 {
-				gzipPart = strings.TrimSpace(trimmed[:idx])
-			} else if idx := strings.Index(trimmed, "\n[multipart/"); idx > 0 {
-				gzipPart = strings.TrimSpace(trimmed[:idx])
-			} else if idx := strings.Index(trimmed, "[multipart/"); idx > 0 {
-				gzipPart = strings.TrimSpace(trimmed[:idx])
-			} else if idx := strings.Index(trimmed, "\n--"); idx > 0 {
-				gzipPart = strings.TrimSpace(trimmed[:idx])
-			}
-
-			if gzipPart != "" && looksLikeBase64(gzipPart) {
-				// Try to decode the gzip part
-				if decoded, err := base64.StdEncoding.DecodeString(gzipPart); err == nil {
-					if len(decoded) >= 2 && decoded[0] == 0x1f && decoded[1] == 0x8b {
-						if reader, err := gzip.NewReader(bytes.NewReader(decoded)); err == nil {
-							if content, err := io.ReadAll(reader); err == nil {
-								reader.Close()
-								if isValidUTF8Text(content) {
-									// Try to render as DMARC report
-									if dmarcHTML := renderDMARCReport(string(content)); dmarcHTML != "" {
-										displayBody = dmarcHTML
-										isAttachment = true // Skip linkifyURLs for pre-rendered HTML
-										app.Log("mail", "Rendered DMARC report from mixed content gzip (%d bytes)", len(content))
-									} else {
-										displayBody = fmt.Sprintf(`<pre class="code-block">%s</pre>`, html.EscapeString(string(content)))
-										app.Log("mail", "Displayed raw XML from mixed content gzip (%d bytes)", len(content))
-									}
-									// Skip further processing since we handled this specially
-									goto skipBodyProcessing
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-
-		// Check if body is gzip compressed (DMARC reports are often .xml.gz)
-		if len(trimmed) >= 2 && trimmed[0] == 0x1f && trimmed[1] == 0x8b {
-			if reader, err := gzip.NewReader(strings.NewReader(trimmed)); err == nil {
-				if content, err := io.ReadAll(reader); err == nil {
-					reader.Close()
-					if isValidUTF8Text(content) {
-						// Try to render as DMARC report
-						if dmarcHTML := renderDMARCReport(string(content)); dmarcHTML != "" {
-							displayBody = dmarcHTML
-							isAttachment = true // Skip linkifyURLs for pre-rendered HTML
-							app.Log("mail", "Rendered DMARC report from raw gzip (%d bytes)", len(content))
-						} else {
-							displayBody = string(content)
-							app.Log("mail", "Decompressed gzip body for display (%d bytes)", len(content))
-						}
-					} else {
-						app.Log("mail", "Gzip content is not valid text")
-					}
-				} else {
-					app.Log("mail", "Failed to read gzip: %v", err)
-				}
-			} else {
-				app.Log("mail", "Failed to create gzip reader: %v", err)
-			}
-		} else if len(trimmed) >= 2 && trimmed[0] == 'P' && trimmed[1] == 'K' {
-			// ZIP file - try to extract contents for display
-			if extracted := extractZipContents([]byte(trimmed), msg.FromID); extracted != "" {
-				// Try to render as DMARC report
-				if dmarcHTML := renderDMARCReport(extracted); dmarcHTML != "" {
-					displayBody = dmarcHTML
-					app.Log("mail", "Rendered DMARC report from raw ZIP (%d bytes)", len(trimmed))
-				} else {
-					displayBody = fmt.Sprintf(`<pre class="code-block">%s</pre>`, html.EscapeString(extracted))
-					app.Log("mail", "Extracted and displayed raw ZIP contents (%d bytes)", len(trimmed))
-				}
-			} else {
-				// Extraction failed - show download link
-				isAttachment = true
-				attachmentName = "attachment.zip"
-				if strings.Contains(strings.ToLower(msg.FromID), "dmarc") {
-					attachmentName = "dmarc-report.zip"
-				}
-				displayBody = fmt.Sprintf(`<p>📎 <a href="/mail?action=download_attachment&msg_id=%s" download="%s">%s</a></p>`, msg.ID, attachmentName, attachmentName)
-				app.Log("mail", "Could not extract raw ZIP, showing download link: %s (%d bytes)", attachmentName, len(trimmed))
-			}
-		} else if looksLikeBase64(displayBody) {
-			// Try base64 decode
-			if decoded, err := base64.StdEncoding.DecodeString(trimmed); err == nil {
-				// Log first few bytes for debugging
-				if len(decoded) >= 4 {
-					app.Log("mail", "Decoded body first bytes: %02x %02x %02x %02x", decoded[0], decoded[1], decoded[2], decoded[3])
-				}
-				// Check if decoded data is gzip compressed
-				if len(decoded) >= 2 && decoded[0] == 0x1f && decoded[1] == 0x8b {
-					if reader, err := gzip.NewReader(bytes.NewReader(decoded)); err == nil {
-						if content, err := io.ReadAll(reader); err == nil {
-							reader.Close()
-							if isValidUTF8Text(content) {
-								// Try to render as DMARC report
-								if dmarcHTML := renderDMARCReport(string(content)); dmarcHTML != "" {
-									displayBody = dmarcHTML
-									isAttachment = true // Skip linkifyURLs for pre-rendered HTML
-									app.Log("mail", "Rendered DMARC report from base64-gzip (%d bytes)", len(content))
-								} else {
-									displayBody = string(content)
-									app.Log("mail", "Decompressed base64-encoded gzip body for display (%d bytes)", len(content))
-								}
-							}
-						}
-					}
-				} else if len(decoded) >= 2 && decoded[0] == 'P' && decoded[1] == 'K' {
-					// ZIP file - try to extract contents for display
-					if extracted := extractZipContents(decoded, msg.FromID); extracted != "" {
-						// Try to render as DMARC report
-						if dmarcHTML := renderDMARCReport(extracted); dmarcHTML != "" {
-							displayBody = dmarcHTML
-							isAttachment = true // Skip linkifyURLs for pre-rendered HTML
-							app.Log("mail", "SET displayBody to DMARC HTML (%d bytes)", len(dmarcHTML))
-						} else {
-							displayBody = fmt.Sprintf(`<pre class="code-block">%s</pre>`, html.EscapeString(extracted))
-							app.Log("mail", "SET displayBody to raw XML in pre tags (%d bytes)", len(extracted))
-						}
-					} else {
-						// Extraction failed - show download link
-						isAttachment = true
-						attachmentName = "attachment.zip"
-						if strings.Contains(strings.ToLower(msg.FromID), "dmarc") {
-							attachmentName = "dmarc-report.zip"
-						}
-						displayBody = fmt.Sprintf(`<p>📎 <a href="/mail?action=download_attachment&msg_id=%s" download="%s">%s</a></p>`, msg.ID, attachmentName, attachmentName)
-						app.Log("mail", "Could not extract ZIP, showing download link: %s (%d bytes)", attachmentName, len(decoded))
-					}
-				} else if isValidUTF8Text(decoded) {
-					displayBody = string(decoded)
-					app.Log("mail", "Decoded base64 body for display")
-				}
-			}
-		}
-
-	skipBodyProcessing:
-		// An attachment stored beside the body wins, because it is the thing
-		// the body could not show.
-		//
-		// A DMARC report is a zipped XML attachment with no text part. Its
-		// bytes used to be base64'd into the body and decoded again here to
-		// draw the table — which also put a wall of base64 into the inbox
-		// preview, the index and mail_inbox. Taking it out of the body fixed
-		// those three and broke this one: the view had nothing left to decode,
-		// so a report that used to render as a table showed only "[zip
-		// attachment]". The bytes are kept beside the body now, and this is
-		// where they are read.
-		if rendered, name := renderStoredAttachment(msg); rendered != "" {
-			displayBody = rendered
-			isAttachment = true // already HTML — do not linkify it
-			if attachmentName == "" {
-				attachmentName = name
-			}
-		} else if describedNothing(msg) {
-			// A message that says something arrived and has nothing behind it.
-			//
-			// Every one of these predates the parser keeping single-part bytes:
-			// the body was written, the attachment was dropped, and there is
-			// nothing to recover — the raw message is not stored, only its
-			// headers. Saying so is the point. Without it the message is
-			// indistinguishable from a renderer that has stopped working, which
-			// is precisely the ambiguity that let the bug run for months.
-			displayBody += "\n\n(The attachment itself was not kept — this message " +
-				"arrived before they were stored. A new report supersedes it.)"
-		}
-
-		// Process email body - renders markdown if detected, otherwise linkifies URLs
-		displayBody = renderEmailBody(displayBody, isAttachment)
 
 		// Prepare reply subject (decode MIME encoded subject first)
 		decodedSubject := decodeMIMEHeader(msg.Subject)
@@ -980,146 +902,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		// Render thread
 		var threadHTML strings.Builder
 		for _, m := range thread {
-			msgBody := m.Body
-			msgIsAttachment := false
+			// One decoder, in Rendered — see display.go for why this was two.
+			msgBody := Rendered(m)
 
-			// First, check if body contains raw MIME content with headers
-			if strings.Contains(msgBody, "Content-Type:") || strings.Contains(msgBody, "content-type:") {
-				if extracted := extractMIMEBody(msgBody); extracted != msgBody {
-					msgBody = extracted
-				}
-			}
-
-			// Check for gzip or ZIP file
-			trimmedBody := strings.TrimSpace(msgBody)
-
-			// Check for mixed content: base64 gzip data followed by MIME multipart markers
-			// This happens with some DMARC reports from Microsoft
-			if strings.Contains(trimmedBody, "[multipart/") || strings.Contains(trimmedBody, "\n--") {
-				var gzipPart string
-				if idx := strings.Index(trimmedBody, "\n\n[multipart/"); idx > 0 {
-					gzipPart = strings.TrimSpace(trimmedBody[:idx])
-				} else if idx := strings.Index(trimmedBody, "\n[multipart/"); idx > 0 {
-					gzipPart = strings.TrimSpace(trimmedBody[:idx])
-				} else if idx := strings.Index(trimmedBody, "[multipart/"); idx > 0 {
-					gzipPart = strings.TrimSpace(trimmedBody[:idx])
-				} else if idx := strings.Index(trimmedBody, "\n--"); idx > 0 {
-					gzipPart = strings.TrimSpace(trimmedBody[:idx])
-				}
-
-				if gzipPart != "" && looksLikeBase64(gzipPart) {
-					if decoded, err := base64.StdEncoding.DecodeString(gzipPart); err == nil {
-						if len(decoded) >= 2 && decoded[0] == 0x1f && decoded[1] == 0x8b {
-							if reader, err := gzip.NewReader(bytes.NewReader(decoded)); err == nil {
-								if content, err := io.ReadAll(reader); err == nil {
-									reader.Close()
-									if isValidUTF8Text(content) {
-										if dmarcHTML := renderDMARCReport(string(content)); dmarcHTML != "" {
-											msgBody = dmarcHTML
-											msgIsAttachment = true
-										} else {
-											msgBody = fmt.Sprintf(`<pre class="code-block-sm">%s</pre>`, html.EscapeString(string(content)))
-										}
-										goto threadSkipBodyProcessing
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-
-			if len(trimmedBody) >= 2 && trimmedBody[0] == 0x1f && trimmedBody[1] == 0x8b {
-				// Gzip compressed - decompress and display
-				if reader, err := gzip.NewReader(strings.NewReader(trimmedBody)); err == nil {
-					if content, err := io.ReadAll(reader); err == nil {
-						reader.Close()
-						if isValidUTF8Text(content) {
-							msgBody = fmt.Sprintf(`<pre class="code-block-sm">%s</pre>`, html.EscapeString(string(content)))
-						}
-					}
-				}
-			} else if len(trimmedBody) >= 2 && trimmedBody[0] == 'P' && trimmedBody[1] == 'K' {
-				// ZIP file - try to extract
-				if extracted := extractZipContents([]byte(trimmedBody), m.FromID); extracted != "" {
-					// Try to render as DMARC report
-					if dmarcHTML := renderDMARCReport(extracted); dmarcHTML != "" {
-						msgBody = dmarcHTML
-						msgIsAttachment = true // Skip linkifyURLs for pre-rendered HTML
-					} else {
-						msgBody = fmt.Sprintf(`<pre class="code-block-sm">%s</pre>`, html.EscapeString(extracted))
-					}
-				} else {
-					// Extraction failed - show download link
-					msgIsAttachment = true
-					attachName := "attachment.zip"
-					if strings.Contains(strings.ToLower(m.FromID), "dmarc") {
-						attachName = "dmarc-report.zip"
-					}
-					msgBody = fmt.Sprintf(`📎 <a href="/mail?action=download_attachment&msg_id=%s" download="%s">%s</a>`, m.ID, attachName, attachName)
-				}
-			} else if looksLikeBase64(msgBody) {
-				if decoded, err := base64.StdEncoding.DecodeString(trimmedBody); err == nil {
-					// Check if decoded data is gzip
-					if len(decoded) >= 2 && decoded[0] == 0x1f && decoded[1] == 0x8b {
-						if reader, err := gzip.NewReader(bytes.NewReader(decoded)); err == nil {
-							if content, err := io.ReadAll(reader); err == nil {
-								reader.Close()
-								if isValidUTF8Text(content) {
-									msgBody = fmt.Sprintf(`<pre class="code-block-sm">%s</pre>`, html.EscapeString(string(content)))
-								}
-							}
-						}
-					} else if len(decoded) >= 2 && decoded[0] == 'P' && decoded[1] == 'K' {
-						// ZIP file - try to extract
-						if extracted := extractZipContents(decoded, m.FromID); extracted != "" {
-							// Try to render as DMARC report
-							if dmarcHTML := renderDMARCReport(extracted); dmarcHTML != "" {
-								msgBody = dmarcHTML
-								msgIsAttachment = true // Skip linkifyURLs for pre-rendered HTML
-							} else {
-								msgBody = fmt.Sprintf(`<pre class="code-block-sm">%s</pre>`, html.EscapeString(extracted))
-							}
-						} else {
-							// Extraction failed - show download link
-							msgIsAttachment = true
-							attachName := "attachment.zip"
-							if strings.Contains(strings.ToLower(m.FromID), "dmarc") {
-								attachName = "dmarc-report.zip"
-							}
-							msgBody = fmt.Sprintf(`📎 <a href="/mail?action=download_attachment&msg_id=%s" download="%s">%s</a>`, m.ID, attachName, attachName)
-						}
-					} else if isValidUTF8Text(decoded) {
-						msgBody = string(decoded)
-					}
-				}
-			}
-
-		threadSkipBodyProcessing:
-			// An attachment stored beside the body wins here too.
-			//
-			// This loop is a second body renderer, and it only ever knew the old
-			// scheme: everything above sniffs m.Body for base64, gzip and zip
-			// magic bytes, because that is where attachments used to live. When
-			// they moved out of the body, the single-message view was taught to
-			// read them and this was not — so a DMARC report shown inside a
-			// thread, which is how a conversation of one is shown, ignored the
-			// bytes entirely and printed the line describing them.
-			//
-			// It is why the report rendered nothing and said nothing: the note
-			// about bytes that were never kept lives in the other block, so this
-			// path could not even report its own failure.
-			if rendered, _ := renderStoredAttachment(m); rendered != "" {
-				msgBody, msgIsAttachment = rendered, true
-			} else if describedNothing(m) {
-				msgBody += "\n\n(The attachment itself was not kept — this message " +
-					"arrived before they were stored. A new report supersedes it.)"
-			}
-
-			// Process email body - renders markdown if detected, otherwise linkifies URLs
-			msgBody = renderEmailBody(msgBody, msgIsAttachment)
-
-			isSent := m.FromID == acc.ID
+			isSent := sentBy(m, acc.ID)
 			authorDisplay := m.FromID
 			if isSent {
 				authorDisplay = "You"
@@ -1149,7 +935,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		// Determine the other party in the thread
 		otherParty := msg.FromID
-		if msg.FromID == acc.ID {
+		if sentBy(msg, acc.ID) {
 			otherParty = msg.ToID
 		}
 		// Format other party with profile link if internal user
@@ -1509,7 +1295,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			// Check if user has sent any message in this thread
 			hasSent := false
 			for _, msg := range thread.Messages {
-				if msg.FromID == acc.ID {
+				if sentBy(msg, acc.ID) {
 					hasSent = true
 					break
 				}
@@ -1720,6 +1506,10 @@ func SendMessage(from, fromID, to, toID, subject, body, replyTo, messageID strin
 
 	// Update stats (outside lock)
 	updateStats(msg)
+	// And the index, outside the lock for the same reason: it is a separate
+	// file, and a search that cannot find what was just delivered is the
+	// failure this replaced a full scan to avoid.
+	indexMessage(msg)
 
 	return err
 }
@@ -1788,7 +1578,6 @@ func SendMessageTo(d Delivery) error {
 		ToID:        d.ToID,
 		Subject:     d.Subject,
 		Body:        d.Body,
-		Read:        false,
 		ReplyTo:     d.ReplyTo,
 		MessageID:   d.MessageID,
 		Spam:        d.Spam,
@@ -1805,17 +1594,36 @@ func SendMessageTo(d Delivery) error {
 		msg.AttachmentName = d.Attachment.Name
 	}
 
-	// Compute ThreadID
+	// A message you wrote yourself has not arrived.
+	//
+	// Writing to your own agent files it in your own inbox, because that is
+	// where the conversation is — and agent@ resolves to whoever wrote to it,
+	// so it goes there too. What it is not is mail that turned up: it was
+	// landing unread, so a client rang for a message the person had just sent
+	// from that same client. Read the moment it is written, which is the rule
+	// internal/thread has always applied to the owner's own turn.
+	msg.Read = selfAddressed(msg)
+
+	// The conversation this joins, found by whichever of the two names for its
+	// parent the caller actually holds.
+	//
+	// ReplyTo is this instance's own id for the parent and InReplyTo is the
+	// mail header, and only the first was ever looked up — so a caller holding
+	// the header and not the id got no parent and started a new conversation.
+	// That is every reply an agent makes to somebody here: it has the header
+	// it is answering and no reason to know our id for it.
+	//
+	// The symptom is two rows where there should be one thread — "my inbox now
+	// has two mails of similar kind, one from myself and one from the agent" —
+	// and Delivery's own comment already said the two fields were not the same
+	// thing and were being used as though they were.
 	mutex.Lock()
-	if d.ReplyTo != "" {
-		parent := MessageUnlocked(d.ReplyTo)
-		if parent != nil {
-			msg.ThreadID = computeThreadID(parent)
-		} else {
-			msg.ThreadID = msg.ID
-		}
-	} else {
-		msg.ThreadID = msg.ID
+	msg.ThreadID = msg.ID
+	if parent := parentOf(d); parent != nil {
+		msg.ThreadID = computeThreadID(parent)
+		// And our own id for it, so computeThreadID can walk the chain from
+		// here next time without resolving the header again.
+		msg.ReplyTo = parent.ID
 	}
 
 	messages = append([]*Message{msg}, messages...)
@@ -1827,6 +1635,9 @@ func SendMessageTo(d Delivery) error {
 	if !d.Spam {
 		updateStats(msg)
 	}
+	// And the index. Spam included, and filtered when read: a message moved
+	// out of Junk should be findable without waiting for a reindex.
+	indexMessage(msg)
 
 	// Say that mail arrived. Who cares about that is not this service's
 	// business — see internal/event.
@@ -1892,68 +1703,13 @@ func GetUnreadCount(userID string) int {
 // means message bodies never have to be persisted to the shared index in
 // plaintext — but note this is still a scan over at-rest data held in memory,
 // so it is O(all messages) per query, not a lookup.
+// Search finds a caller's mail.
+//
+// Over the index — see index.go. This read every message on the instance and
+// scored it by hand, which was correct and got slower with every message
+// anybody received.
 func Search(userID, query string, limit int) []*Message {
-	query = strings.ToLower(strings.TrimSpace(query))
-	if userID == "" || query == "" {
-		return nil
-	}
-	words := strings.Fields(query)
-
-	mutex.RLock()
-	defer mutex.RUnlock()
-
-	type scored struct {
-		msg   *Message
-		score int
-	}
-	var hits []scored
-	for _, msg := range messages {
-		if msg.Spam {
-			continue
-		}
-		if msg.ToID != userID && msg.FromID != userID {
-			continue
-		}
-		subject := strings.ToLower(msg.Subject)
-		from := strings.ToLower(msg.From)
-		body := strings.ToLower(msg.Body)
-
-		score := 0
-		if strings.Contains(subject, query) {
-			score += 5
-		}
-		if strings.Contains(from, query) {
-			score += 3
-		}
-		if strings.Contains(body, query) {
-			score += 2
-		}
-		// Fall back to per-word matches so multi-word queries still hit.
-		for _, w := range words {
-			if strings.Contains(subject, w) || strings.Contains(from, w) || strings.Contains(body, w) {
-				score++
-			}
-		}
-		if score > 0 {
-			hits = append(hits, scored{msg, score})
-		}
-	}
-
-	sort.Slice(hits, func(i, j int) bool {
-		if hits[i].score != hits[j].score {
-			return hits[i].score > hits[j].score
-		}
-		return hits[i].msg.CreatedAt.After(hits[j].msg.CreatedAt)
-	})
-
-	if limit > 0 && len(hits) > limit {
-		hits = hits[:limit]
-	}
-	out := make([]*Message, len(hits))
-	for i, h := range hits {
-		out[i] = h.msg
-	}
-	return out
+	return searchIndexed(userID, query, limit)
 }
 
 // ListMessages returns up to limit of the user's most recent non-spam received
@@ -1972,6 +1728,14 @@ func ListMessages(userID string, limit int) []*Message {
 	var out []*Message
 	for _, msg := range messages {
 		if msg.Spam || msg.ToID != userID {
+			continue
+		}
+		// Not what you wrote. Writing to agent@ files the message in your own
+		// inbox because that is where the conversation is, and this is a flat
+		// list of messages rather than a thread — so it showed the question
+		// beside its own answer as two pieces of mail, which is what the agent
+		// reads back when somebody asks it to check their inbox.
+		if selfAddressed(msg) {
 			continue
 		}
 		out = append(out, msg)
@@ -2007,6 +1771,7 @@ func DeleteSpamMessage(userID, msgID string) error {
 	for i, msg := range messages {
 		if msg.ID == msgID && msg.ToID == userID && msg.Spam {
 			messages = append(messages[:i], messages[i+1:]...)
+			unindexMessage(msg)
 			return save()
 		}
 	}
@@ -2039,7 +1804,7 @@ func searchMail(userID, query string) []*Message {
 	var results []*Message
 	seen := map[string]bool{}
 	for _, msg := range messages {
-		if msg.ToID != userID && msg.FromID != userID {
+		if msg.ToID != userID && !sentBy(msg, userID) {
 			continue
 		}
 		if msg.Spam {
@@ -2222,9 +1987,10 @@ func DeleteMessage(msgID, userID string) error {
 
 	for i, msg := range messages {
 		// Allow deletion if user is sender or recipient
-		if msg.ID == msgID && (msg.FromID == userID || msg.ToID == userID) {
+		if msg.ID == msgID && (sentBy(msg, userID) || msg.ToID == userID) {
 			messages = append(messages[:i], messages[i+1:]...)
 			rebuildInboxes()
+			unindexMessage(msg)
 			return save()
 		}
 	}
@@ -2239,7 +2005,7 @@ func DeleteThread(msgID, userID string) error {
 	// Find the message
 	var msg *Message
 	for _, m := range messages {
-		if m.ID == msgID && (m.FromID == userID || m.ToID == userID) {
+		if m.ID == msgID && (sentBy(m, userID) || m.ToID == userID) {
 			msg = m
 			break
 		}
@@ -2256,11 +2022,13 @@ func DeleteThread(msgID, userID string) error {
 	}
 
 	// Delete all messages in this thread
-	var remaining []*Message
+	var remaining, gone []*Message
 	for _, m := range messages {
 		if m.ThreadID != threadID {
 			remaining = append(remaining, m)
+			continue
 		}
+		gone = append(gone, m)
 	}
 
 	deleted := len(messages) - len(remaining)
@@ -2270,6 +2038,9 @@ func DeleteThread(msgID, userID string) error {
 
 	messages = remaining
 	rebuildInboxes()
+	for _, m := range gone {
+		unindexMessage(m)
+	}
 	app.Log("mail", "Deleted %d messages from thread for user %s", deleted, userID)
 	return save()
 }
@@ -2405,13 +2176,74 @@ func RecentMessages(limit int) []*Message {
 }
 
 // DeleteInbox removes all mail for a user.
+//
+// It deleted the entry in `inboxes` and nothing else. That map is derived —
+// rebuildInboxes reconstructs the whole of it from `messages` — so the next
+// delivery to anybody on the instance rebuilt the deleted account's inbox from
+// mail that had never been removed. Every message they had ever sent or
+// received was still on disk, and still readable by anyone who signed up with
+// the same name afterwards.
+//
+// The same shape of bug as the one internal/thread had: a record written by the
+// machinery rather than owned by a service, so nothing deleted it.
 func DeleteInbox(userID string) {
 	mutex.Lock()
+	kept := messages[:0]
+	var gone []*Message
+	for _, msg := range messages {
+		if theirMail(msg, userID) {
+			gone = append(gone, msg)
+			continue
+		}
+		kept = append(kept, msg)
+	}
+	messages = kept
 	delete(inboxes, userID)
+	// From `messages`, which has just changed — and which is what made the
+	// original bug survive: rebuilding without deleting puts it all back.
+	rebuildInboxes()
+	err := save()
 	mutex.Unlock()
+	// The index too. A store cleared and an index left holding it is not a
+	// deletion — the mail is gone and a search still finds it.
+	for _, msg := range gone {
+		unindexMessage(msg)
+	}
+	if err != nil {
+		app.Log("mail", "could not save after deleting %s's mail: %v", userID, err)
+	}
+
 	// And the IMAP numbering, which is a record of which of this account's
 	// messages was number four — about their mail, so it goes with their mail.
 	imapForget(userID)
-	// Re-save all mail data.
-	save()
+}
+
+// theirMail reports whether a message goes when an account does.
+//
+// Their mailbox, and the copies of what they sent to people who are not here.
+// Not a message they sent to somebody else on this instance: that one is in the
+// recipient's mailbox and is their correspondence now. Deleting an account does
+// not unsend, any more than closing a mail account takes messages back out of
+// the inboxes they reached.
+//
+// Must be called with the mutex held.
+func theirMail(msg *Message, userID string) bool {
+	if msg == nil || userID == "" {
+		return false
+	}
+	if strings.EqualFold(msg.ToID, userID) {
+		return true
+	}
+	if !sentBy(msg, userID) {
+		return false
+	}
+	// A sent copy is filed under the address it went to. Somebody here holds
+	// their own copy of it; an address elsewhere does not, so this is the only
+	// one and it was theirs.
+	if !IsExternalAddress(msg.ToID) {
+		if acc, err := GetAccountByAddress(msg.ToID); err == nil && acc != nil {
+			return false
+		}
+	}
+	return true
 }

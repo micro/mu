@@ -269,19 +269,41 @@ func threads(r *http.Request, who string, history []Message) string {
 		return ""
 	}
 	csrf := html.EscapeString(auth.CSRFToken(r))
-	order := []string{}
-	byNumber := map[string][]Message{}
+
+	// Grouped by the other end *and* the channel, not by the number alone.
+	//
+	// One person can be at the same number on both, and they are two
+	// conversations: a text and a WhatsApp message arrive in different apps on
+	// their phone, from different senders, and answering one in the other
+	// starts a third. Merging them here showed the two interleaved under one
+	// heading with one reply box, which could only pick a channel and be wrong
+	// about half the thread.
+	type key struct {
+		number  string
+		channel Channel
+	}
+	order := []key{}
+	byWhom := map[key][]Message{}
 	for _, m := range history {
-		if _, ok := byNumber[m.Number]; !ok {
-			order = append(order, m.Number)
+		k := key{number: m.Number, channel: Channel(m.Channel)}
+		if _, ok := byWhom[k]; !ok {
+			order = append(order, k)
 		}
-		byNumber[m.Number] = append(byNumber[m.Number], m)
+		byWhom[k] = append(byWhom[k], m)
 	}
 
 	var b strings.Builder
-	for _, number := range order {
-		b.WriteString(`<div class="card"><h3 class="sms-who">` + html.EscapeString(number) + `</h3>`)
-		msgs := byNumber[number]
+	for _, k := range order {
+		number, channel := k.number, k.channel
+		b.WriteString(`<div class="card"><h3 class="sms-who">` + html.EscapeString(number))
+		// Which channel, but only where there is a choice. An instance with no
+		// WhatsApp sender has one kind of conversation and does not need every
+		// heading labelled with it.
+		if ConfiguredFor(ChannelWhatsApp) {
+			b.WriteString(app.Pill(channel.Label()))
+		}
+		b.WriteString(`</h3>`)
+		msgs := byWhom[k]
 		// Oldest first inside a conversation, which is how a conversation reads.
 		for i := len(msgs) - 1; i >= 0; i-- {
 			m := msgs[i]
@@ -299,12 +321,19 @@ func threads(r *http.Request, who string, history []Message) string {
 			b.WriteString(`<p class="sms-closed">They asked not to be texted. ` +
 				`Nothing more goes to this number.</p>`)
 		} else {
+			// The channel travels with the reply, so an answer goes back the
+			// way it came. Without it this replied by text to a WhatsApp
+			// conversation: a second thread on the other person's phone, from a
+			// number they do not recognise, with nothing on it to say why.
 			b.WriteString(`<form method="POST" action="/sms" class="sms-reply">` +
 				`<input type="hidden" name="_csrf" value="` + csrf + `">` +
 				`<input type="hidden" name="send" value="1">` +
 				`<input type="hidden" name="to" value="` + html.EscapeString(number) + `">` +
-				`<input name="text" required maxlength="` + itoa(maxBody) + `" class="sms-reply-box" ` +
-				`placeholder="Reply" aria-label="Reply to ` + html.EscapeString(number) + `">` +
+				`<input type="hidden" name="channel" value="` + html.EscapeString(string(channel)) + `">` +
+				`<input name="text" required maxlength="` + itoa(maxBodyFor(channel)) + `" class="sms-reply-box" ` +
+				`placeholder="Reply on ` + html.EscapeString(channel.Label()) + `" ` +
+				`aria-label="Reply to ` + html.EscapeString(number) + ` on ` +
+				html.EscapeString(channel.Label()) + `">` +
 				`<button type="submit">Send</button></form>`)
 		}
 		b.WriteString(`</div>`)
@@ -326,13 +355,14 @@ func handlePost(w http.ResponseWriter, r *http.Request, who string) {
 	done := ""
 	switch {
 	case r.Form.Get("send") != "":
-		_, err = Send(who, r.Form.Get("to"), r.Form.Get("text"))
+		channel := Channel(strings.TrimSpace(r.Form.Get("channel")))
+		_, err = SendOn(channel, who, r.Form.Get("to"), r.Form.Get("text"))
 		done = "sent"
 	case strings.TrimSpace(r.Form.Get("start")) != "":
-		err = StartVerify(who, e164(r.Form.Get("start")))
+		err = StartVerify(who, r.Form.Get("start"))
 		done = "code"
 	case strings.TrimSpace(r.Form.Get("confirm")) != "":
-		err = Confirm(who, e164(r.Form.Get("confirm")), r.Form.Get("code"))
+		err = Confirm(who, r.Form.Get("confirm"), r.Form.Get("code"))
 		done = "verified"
 	case strings.TrimSpace(r.Form.Get("forget")) != "":
 		Forget(who, r.Form.Get("forget"))

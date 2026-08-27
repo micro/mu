@@ -9,7 +9,7 @@
 //
 // What makes this different from every other service in the catalogue is that a
 // mistake costs money and reputation in the same instant. A search that runs
-// twice wastes a fraction of a penny. A text sent to the wrong number cannot be
+// twice wastes a fraction of a cent. A text sent to the wrong number cannot be
 // recalled, is charged either way, and a few thousand of them gets the sending
 // number blocked by carriers — for everybody on the instance, not just whoever
 // sent them. So the rules below are not defensive programming, they are the
@@ -73,12 +73,16 @@ const (
 
 // Message is one text, in or out.
 type Message struct {
-	ID        string    `json:"id"`
-	Direction string    `json:"direction"` // "out" or "in"
-	Number    string    `json:"number"`    // the other end, always E.164
-	Text      string    `json:"text"`
-	Segments  int       `json:"segments"`
-	At        time.Time `json:"at"`
+	ID        string `json:"id"`
+	Direction string `json:"direction"` // "out" or "in"
+	Number    string `json:"number"`    // the other end, always E.164
+	Text      string `json:"text"`
+	Segments  int    `json:"segments"`
+	// Channel is which carrier this rode on: empty for a text, "whatsapp" for
+	// WhatsApp. Empty rather than "sms" so every message written before there
+	// was more than one channel reads correctly.
+	Channel string    `json:"channel,omitempty"`
+	At      time.Time `json:"at"`
 }
 
 // ── Numbers ─────────────────────────────────────────────────────
@@ -224,6 +228,20 @@ func CanReceive() string {
 // e164 is internal/phone's, and so is everything below about who a number
 // belongs to. A phone number is a phone number whether it is carrying a text or
 // a WhatsApp message, and service/whatsapp had to import this package to say so.
+// e164 is the one way a number becomes a number here.
+//
+// Every entry point runs it — Send, StartVerify, Confirm — rather than each
+// caller remembering to. The page did remember and /account did not, so a UK
+// number typed as 07700900123 reached countryAllowed as "0…" and came back
+// "this instance does not send to 0…". One implementation, several doors, and
+// the door that forgot was the newest one.
+//
+// A number with no country code is refused unless SMS_DEFAULT_COUNTRY says
+// which one to assume. Deriving it from the number this instance texts from
+// was tried and is wrong: an instance may send from more than one country —
+// TWILIO_FROM is a list — and picking the first turned 07700900123 into
+// +17700900123, which is a real US number belonging to somebody else.
+// TestNumbersAreOneNumberHoweverTheyAreWritten was already holding that line.
 func e164(s string) string { return phone.Normalise(s) }
 
 // Normalise is e164 for anything outside this package.
@@ -234,7 +252,7 @@ func NumberOwner(num string) string { return phone.Owner(num) }
 
 // allowedCountries is the set of country codes this instance will text.
 //
-// A text to a UK or US mobile costs under a penny to a few pence. A text to
+// A text to a UK or US mobile costs about a cent to a few cents. A text to
 // some destinations costs thirty times that, and those destinations are where
 // revenue-share fraud lives: the attacker owns the range and is paid for the
 // traffic they trick you into sending. An allowlist is the only control that
@@ -496,6 +514,16 @@ func Segments(text string) int {
 
 // Record stores a message. Direction is "out" or "in".
 func Record(owner, direction, number, text string, segments int) *Message {
+	return RecordOn(ChannelSMS, owner, direction, number, text, segments)
+}
+
+// RecordOn is Record, saying which channel carried it.
+//
+// The channel is on the message because the reply has to go back the same way.
+// A WhatsApp conversation answered by text is a different conversation to the
+// person on the other end — a second thread on their phone, from a number they
+// do not recognise — and the record is the only thing that knows which it was.
+func RecordOn(channel Channel, owner, direction, number, text string, segments int) *Message {
 	if direction == "out" {
 		route(owner, e164(number))
 	}
@@ -504,6 +532,7 @@ func Record(owner, direction, number, text string, segments int) *Message {
 		Number:    e164(number),
 		Text:      text,
 		Segments:  segments,
+		Channel:   string(channel),
 		At:        time.Now(),
 	}
 	rec, err := userdb.Create(ns, owner, msgs, map[string]interface{}{
@@ -511,6 +540,7 @@ func Record(owner, direction, number, text string, segments int) *Message {
 		"number":    m.Number,
 		"text":      m.Text,
 		"segments":  m.Segments,
+		"channel":   m.Channel,
 		"at":        m.At.Format(time.RFC3339),
 	}, false)
 	if err != nil {
@@ -536,6 +566,9 @@ func History(owner string, limit int) []Message {
 		m.Direction, _ = r.Data["direction"].(string)
 		m.Number, _ = r.Data["number"].(string)
 		m.Text, _ = r.Data["text"].(string)
+		// Which channel carried it. Absent on every message written before
+		// there was more than one, which reads correctly as a text.
+		m.Channel, _ = r.Data["channel"].(string)
 		if f, ok := r.Data["segments"].(float64); ok {
 			m.Segments = int(f)
 		} else if n, ok := r.Data["segments"].(int); ok {
@@ -595,6 +628,34 @@ func OwnerOf(number string) string {
 		}
 	}
 	return Fallback()
+}
+
+// KnownSender is who a number belongs to, and whether it proved it.
+//
+// OwnerOf answers "whose history does this go in" and falls back to the
+// operator so that nothing is lost. That is the right answer for filing and
+// the wrong one for waking an agent: the fallback is a real account with real
+// credits, and a number nobody here has ever heard of would be talking to it.
+//
+// So this is the same lookup without the fallback. Known means the number was
+// verified by its owner, or this instance texted it first — the two ways a
+// stranger cannot arrange for themselves.
+func KnownSender(number string) (owner string, known bool) {
+	number = e164(number)
+	if number == "" {
+		return "", false
+	}
+	if owner := phone.Owner(number); owner != "" {
+		return owner, true
+	}
+	recs, err := userdb.List(ns, instance, routes, "mine",
+		map[string]interface{}{"number": number}, "", "", 1)
+	if err == nil && len(recs) > 0 {
+		if owner, _ := recs[0].Data["owner"].(string); owner != "" {
+			return owner, true
+		}
+	}
+	return "", false
 }
 
 // DeleteAll removes everything sms holds for an owner (account deletion).

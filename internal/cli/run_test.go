@@ -74,8 +74,6 @@ func TestTwoWordToolNames(t *testing.T) {
 		{[]string{"web", "search", "claude code"}, "web_search", map[string]any{"q": "claude code"}},
 		// The underscore form is the same call.
 		{[]string{"news_list"}, "news_list", map[string]any{}},
-		// A single word plus a sentence is a tool and its argument.
-		{[]string{"chat", "hello there"}, "chat", map[string]any{"prompt": "hello there"}},
 	}
 
 	for _, tc := range cases {
@@ -96,17 +94,27 @@ func TestTwoWordToolNames(t *testing.T) {
 	}
 }
 
-// "mu chat hello" must not cost a wasted round trip guessing at chat_hello:
-// a tool with one obvious argument is tried that way first.
-func TestASingleArgumentIsNotMistakenForAMethod(t *testing.T) {
+// Asking an agent something is not a tool call.
+//
+// This test was `mu chat hello`, asserting it reached a one-word tool called
+// chat in a single round trip. There is no such tool — tool names are derived
+// as service_method — so what it really asserted was that a lookup which could
+// only fail failed efficiently. `mu ask` is the command for this now, and the
+// property worth holding is that it does not go near the tool dispatcher at
+// all: it posts to the agent's own door.
+func TestAskDoesNotGoThroughTheToolDispatcher(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", dir)
-	srv, calls := fakeServer(t, map[string]bool{"chat": true})
+	srv, calls := fakeServer(t, map[string]bool{})
 	t.Setenv("MU_URL", srv.URL)
+	t.Setenv("MU_TOKEN", "t")
 
-	run(t, "chat", "hello")
-	if len(*calls) != 1 {
-		t.Errorf("took %d calls to run `mu chat hello`, want 1: %+v", len(*calls), *calls)
+	run(t, "ask", "hello")
+	for _, c := range *calls {
+		if c.Name != "" {
+			t.Errorf("`mu ask hello` called the tool %q; it should post to the "+
+				"agent endpoint instead", c.Name)
+		}
 	}
 }
 

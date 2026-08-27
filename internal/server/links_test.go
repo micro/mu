@@ -11,7 +11,7 @@ package server
 //     the name was picked by reading the only line that referenced it, which
 //     was the same line.
 //   - The credits indicator in the header pointed at /account#balance after
-//     the balance moved to /billing.
+//     the balance moved to /wallet.
 //
 // A link is the one piece of the product with no compiler behind it: it is a
 // string, it is right or wrong at the moment somebody clicks it, and the only
@@ -24,7 +24,7 @@ package server
 //
 // # What this does not check
 //
-// Fragments. /billing resolves to /billing here whether or not
+// Fragments. /wallet resolves to /wallet here whether or not
 // anything on that page has id="balance", because knowing that means
 // rendering the page for an account that does not exist. The path is the half
 // that breaks when a page moves; the anchor is the half that breaks when a

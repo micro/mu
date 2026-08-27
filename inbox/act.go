@@ -82,7 +82,8 @@ func action(w http.ResponseWriter, r *http.Request, accountID string) {
 		return
 	}
 
-	if err := hand(accountID, t, ask); err != nil {
+	// Which agent, validated against the roster before anything is stored.
+	if err := hand(accountID, t, ask, chosenAgent(accountID, r.FormValue("agent"))); err != nil {
 		app.Log("inbox", "handing a conversation to an agent failed: %v", err)
 		http.Redirect(w, r, back+"&problem="+url.QueryEscape(err.Error()), http.StatusSeeOther)
 		return
@@ -107,7 +108,7 @@ func action(w http.ResponseWriter, r *http.Request, accountID string) {
 // a line, no history — which is exactly why work handed off in one sentence
 // comes back worse than the same request in a conversation that already has the
 // context. This carries what was said, so it does not.
-func hand(accountID string, t *thread.Thread, ask string) error {
+func hand(accountID string, t *thread.Thread, ask, agentID string) error {
 	title := ask
 	if len(title) > handTitle {
 		title = strings.TrimSpace(title[:handTitle]) + "…"
@@ -136,7 +137,18 @@ func hand(accountID string, t *thread.Thread, ask string) error {
 	}
 	detail.WriteString("What they have asked for: " + ask)
 
-	task, err := tasks.CreateOn(accountID, t.ID, title, detail.String(), tasks.Agent, time.Time{})
+	// Whoever was picked, and the conversation's own agent when nothing was.
+	//
+	// The picker defaults to t.Agent, so an unchanged form hands the thread to
+	// the agent it is already with — and a thread that has never been answered
+	// by one goes to the default, which is what happened to everything before
+	// any of this. A conversation that arrived at asim+research@ is research's;
+	// answering it as the general agent is the wrong instruction and the wrong
+	// tool scope.
+	if agentID == "" {
+		agentID = t.Agent
+	}
+	task, err := tasks.CreateOn(accountID, t.ID, agentID, title, detail.String(), tasks.Agent, time.Time{})
 	if err != nil {
 		return err
 	}
@@ -171,7 +183,7 @@ func AgentSaid(f func(accountID, threadID, text string)) {
 	}
 }
 
-// askBox is the control itself: somewhere to type, and three things that are
+// assignDialog is the control itself: somewhere to type, and three things that are
 // true of any message.
 //
 // The suggestions exist because an empty box on a page nobody has seen before
@@ -188,30 +200,34 @@ func AgentSaid(f func(accountID, threadID, text string)) {
 // reply. Making them depend on the content would mean reading the content,
 // which is a model call to decide what to offer before anybody has asked for
 // anything.
-func askBox(r *http.Request, threadID, replyWho string) string {
+func assignDialog(r *http.Request, accountID string, t *thread.Thread, replyWho string) string {
 	canReply := replyWho != ""
 	var b strings.Builder
+	// A native <dialog>, so Escape closes it, focus is trapped and the backdrop
+	// is the browser's rather than a scrim this page has to remember to remove
+	// — which is the bug the agent page's sheet had.
+	//
+	// It opens on a press and is otherwise not on the page at all. Rendered
+	// last, outside the conversation, because a dialog inside a flex row
+	// inherits that row's layout.
+	b.WriteString(`<dialog id="ib-assign" class="ib-assign">`)
+	b.WriteString(`<h3 class="ib-assign-head">Assign to agent</h3>`)
 	b.WriteString(`<form class="ib-ask" method="post" action="/inbox">`)
-	b.WriteString(`<input type="hidden" name="id" value="` + html.EscapeString(threadID) + `">`)
+	b.WriteString(`<input type="hidden" name="id" value="` + html.EscapeString(t.ID) + `">`)
 	b.WriteString(`<input type="hidden" name="_csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `">`)
 	if problem := strings.TrimSpace(r.URL.Query().Get("problem")); problem != "" {
 		b.WriteString(`<p class="ib-ask-problem">` + html.EscapeString(problem) + `</p>`)
 	}
 	b.WriteString(`<textarea name="ask" rows="2" maxlength="` + strconv.Itoa(askLimit) + `" ` +
 		`placeholder="Tell the agent what to do about this"></textarea>`)
-	// Pressed once, and it says so.
+	b.WriteString(agentPicker(accountID, t))
+	// The suggestions come before the button, not beside it.
 	//
-	// Making the task is quick, but the page it returns to looks exactly like
-	// the one it left — so without this the honest reading of the screen is that
-	// the press did not register, and the second press makes a second task.
-	//
-	// Inline rather than in mu.js because the whole behaviour is two assignments
-	// on one form and it belongs where the form is. The submit is not cancelled
-	// — disabling a submit button in its own handler would stop the POST — so
-	// the click goes through and the second one has nothing to click.
-	press := `onclick="var f=this.form;setTimeout(function(){f.querySelectorAll('button').forEach(` +
-		`function(b){b.disabled=true});this.textContent='Handed over'}.bind(this),0)"`
-	b.WriteString(`<div class="ib-ask-row"><button type="submit" ` + press + `>Hand over</button>`)
+	// They were on the same row as Assign, which read as four things to press
+	// with no order between them — and one of the four does something and three
+	// fill in a box. Under the textarea they are what they are: ways to fill it
+	// in. The action row is last, which is where a dialog's actions go.
+	b.WriteString(`<div class="ib-ask-hints">`)
 	for _, s := range []string{
 		"Summarise this",
 		"Draft a reply",
@@ -222,6 +238,8 @@ func askBox(r *http.Request, threadID, replyWho string) string {
 		b.WriteString(`<button type="button" class="pill" onclick="this.form.ask.value='` +
 			html.EscapeString(s) + `';this.form.ask.focus()">` + html.EscapeString(s) + `</button>`)
 	}
+	b.WriteString(`</div>`)
+
 	// What the button does, and what it is not.
 	//
 	// A box under a message looks like a reply, so it says it is not one. That
@@ -239,7 +257,124 @@ func askBox(r *http.Request, threadID, replyWho string) string {
 			`you can close the tab. It is not a reply — use Reply above to answer ` +
 			html.EscapeString(replyWho) + ` yourself.`
 	}
-	b.WriteString(`</div><p class="ib-ask-note">` + note + `</p>`)
-	b.WriteString(`</form>`)
+	b.WriteString(`<p class="ib-ask-note">` + note + `</p>`)
+
+	// Pressed once, and it says so.
+	//
+	// Making the task is quick, but the page it returns to looks exactly like
+	// the one it left — so without this the honest reading of the screen is that
+	// the press did not register, and the second press makes a second task.
+	//
+	// Inline rather than in mu.js because the whole behaviour is two assignments
+	// on one form and it belongs where the form is. The submit is not cancelled
+	// — disabling a submit button in its own handler would stop the POST — so
+	// the click goes through and the second one has nothing to click.
+	press := `onclick="var f=this.form;setTimeout(function(){f.querySelectorAll('button').forEach(` +
+		`function(b){b.disabled=true});this.textContent='Assigned'}.bind(this),0)"`
+	// Cancel is inside the form and is formmethod=dialog, which closes without
+	// submitting — the one native way to have a button in a form that is not a
+	// submit and needs no script.
+	b.WriteString(`<div class="ib-ask-row"><button type="submit" ` + press + `>Assign</button>` +
+		`<button type="submit" formmethod="dialog" class="ib-assign-cancel">Cancel</button></div>`)
+	b.WriteString(`</form></dialog>`)
+	b.WriteString(assignJS)
 	return b.String()
 }
+
+// agentPicker is which of your agents gets it.
+//
+// Nothing asked before this: the conversation's own agent was used, falling
+// back to the default. That is the right *default* and it was silently the only
+// answer — and it is only ever set when an agent has already answered on the
+// thread, which for mail to your bare address is never. So somebody with four
+// agents handed everything to the general one and nothing on the page said so,
+// which is the question "who am I assigning to?" having no answer on screen.
+//
+// Drawn only when there is a choice. One agent is not a choice, and a select
+// with a single option is furniture that teaches nothing.
+//
+// The roster comes through the Agents hook rather than an import, because this
+// package may not import agent/ — the same hook the mailbox switcher uses.
+func agentPicker(accountID string, t *thread.Thread) string {
+	agents := roster(accountID)
+	if len(agents) == 0 {
+		return ""
+	}
+	// Whoever the conversation is already with, which is what would have
+	// happened anyway. Selecting it rather than defaulting to the general agent
+	// keeps the old behaviour visible instead of quietly changing it.
+	on := ""
+	if t != nil {
+		on = t.Agent
+	}
+	sel := func(id string) string {
+		if id == on {
+			return ` selected`
+		}
+		return ""
+	}
+
+	var b strings.Builder
+	b.WriteString(`<label class="ib-assign-who">Give it to`)
+	b.WriteString(`<select name="agent">`)
+	// The default first, and named rather than called "default": it is an agent
+	// like the others and the list should read as a list of agents.
+	b.WriteString(`<option value=""` + sel("") + `>` +
+		html.EscapeString(defaultAgentName()) + `</option>`)
+	for _, a := range agents {
+		b.WriteString(`<option value="` + html.EscapeString(a.ID) + `"` + sel(a.ID) + `>` +
+			html.EscapeString(a.Name) + `</option>`)
+	}
+	b.WriteString(`</select></label>`)
+	return b.String()
+}
+
+// defaultAgentName is what to call the agent an account gets without making
+// one. A hook would be a third one for a single word; the roster hook does not
+// carry it because the default is not on the roster.
+func defaultAgentName() string {
+	if DefaultAgentName != "" {
+		return DefaultAgentName
+	}
+	return "the default agent"
+}
+
+// DefaultAgentName is the instance's own agent, filled in by the server for the
+// same reason Agents is: this package may not import agent/.
+var DefaultAgentName string
+
+// chosenAgent is the agent an assignment names, validated against the roster.
+//
+// A form field is chosen by whoever posts it, so an id that is not one of this
+// account's agents is not an agent — it becomes the default rather than an
+// error, which is what agent/work does with an unknown name for the same
+// reason. Nothing downstream could reach somebody else's agent with it either
+// (AskAs is account-scoped), but a task should not be stored carrying a value
+// that means nothing.
+func chosenAgent(accountID, want string) string {
+	want = strings.TrimSpace(want)
+	if want == "" {
+		return ""
+	}
+	for _, a := range roster(accountID) {
+		if a.ID == want {
+			return want
+		}
+	}
+	return ""
+}
+
+// assignJS opens the dialog, and degrades rather than breaking.
+//
+// showModal is what gives the backdrop and the focus trap; a browser without it
+// still gets the dialog through the open attribute, which is worse-looking and
+// works. The empty check is the useful part: pressing Assign with nothing typed
+// is the most likely first move, and the server would bounce it back to a page
+// that looks unchanged.
+const assignJS = `<script>
+function muAssignOpen(){
+  var d=document.getElementById('ib-assign');if(!d)return;
+  if(d.showModal){d.showModal();}else{d.setAttribute('open','');}
+  var box=d.querySelector('textarea');if(box)box.focus();
+}
+</script>`

@@ -68,51 +68,6 @@ func tableRows(t *testing.T, file, heading string) [][]string {
 
 var backticked = regexp.MustCompile("`([a-z0-9_]+)`")
 
-// The architecture doc's registry table is the list a reader trusts for what
-// this instance can do. Every registered service must have a row, every row
-// must be a registered service, and the page and account-scoped columns must
-// say what the Spec says.
-func TestArchitectureTableMatchesTheRegistry(t *testing.T) {
-	registerAll(t)
-
-	documented := map[string]bool{}
-	for _, cells := range tableRows(t, at("docs/ARCHITECTURE.md"), "## What is registered") {
-		if len(cells) < 4 {
-			t.Errorf("malformed row: %v", cells)
-			continue
-		}
-		name := strings.Trim(cells[0], "`")
-		documented[name] = true
-
-		spec, ok := service.SpecFor(name)
-		if !ok {
-			t.Errorf("the table lists %q, which is not a registered service", name)
-			continue
-		}
-
-		page := cells[1]
-		if page == "—" {
-			page = ""
-		}
-		if page != spec.Page {
-			t.Errorf("%s: table says page %q, Spec says %q", name, cells[1], spec.Page)
-		}
-
-		scoped := cells[3] != ""
-		if scoped != spec.Scoped {
-			t.Errorf("%s: table says account-scoped=%v, Spec says %v — a wrong answer here "+
-				"tells a reader a service is closed to guests when it is open, or the reverse",
-				name, scoped, spec.Scoped)
-		}
-	}
-
-	for _, s := range allSpecs() {
-		if !documented[s.Name] {
-			t.Errorf("%s is registered but has no row in docs/ARCHITECTURE.md", s.Name)
-		}
-	}
-}
-
 // The README's tool table is grouped by service, and the group names have to be
 // the names those services go by everywhere else — the sidebar, /tools, the
 // tool prefix. They drifted once already: Calendar for events, Faith for what

@@ -1,7 +1,10 @@
 package server
 
 import (
+	"io"
 	"time"
+
+	gmlogger "go-micro.dev/v6/logger"
 
 	"mu/internal/app"
 	"mu/internal/service"
@@ -32,6 +35,21 @@ import (
 // thousand lines: every tool that could not be derived because its capability
 // was not declared on a service. They all are now.
 func Run(addr string) {
+	// Before anything logs, because the point of it is that the log stops
+	// going to the screen — a service that boots first and logs first would
+	// otherwise print to the surface this is clearing. See
+	// internal/app/logfile.go.
+	//
+	// The framework's logger is pointed at the same file from here rather than
+	// from internal/app, which may not import it: app is the bottom of the
+	// product and a dependency added there is a dependency everywhere.
+	app.Quieten(func(w io.Writer) {
+		if err := gmlogger.Init(gmlogger.WithOutput(w)); err != nil {
+			app.Log("main", "could not redirect the framework log: %v", err)
+		}
+	})
+	app.OpenLog()
+
 	// Timed, per phase, because "the restart takes ages" is not answerable
 	// without it. Boot is a tenth of a second on an empty data directory and
 	// nobody deploys one of those — what scales is whatever reads what is on

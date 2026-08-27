@@ -38,7 +38,6 @@ package mail
 import (
 	"encoding/base64"
 	"fmt"
-	"mime"
 	"sort"
 	"strings"
 	"sync"
@@ -203,9 +202,13 @@ func imapForget(accountID string) {
 // because there is mail in it is a truer statement than one that exists because
 // a tag was configured once.
 func imapFolders(accountID string) []string {
+	var bridged []*Message
+	if Bridged != nil {
+		bridged = Bridged(accountID)
+	}
 	mutex.RLock()
 	tags := map[string]bool{}
-	for _, m := range messages {
+	for _, m := range append(bridged, messages...) {
 		if m.ToID != accountID || m.Spam || m.Tag == "" {
 			continue
 		}
@@ -221,6 +224,44 @@ func imapFolders(accountID string) []string {
 	return append(append([]string{imapInbox}, names...), imapSent, imapJunk)
 }
 
+// Bridged is the conversations this account has had somewhere other than mail,
+// rendered as messages, filled in from above.
+//
+// IMAP is not mail's protocol the way SMTP is. SMTP delivers; IMAP delivers
+// nothing — it is a reader over a message store, and the store worth reading is
+// the record every channel writes to. A mail client is the one client most
+// people already have on every device they own, and pointing it at only the
+// mail is what made a text invisible in it.
+//
+// A hook rather than an import because this package must not read
+// internal/thread: a delivery mechanism keeps its own record and knows nothing
+// about anybody else's. Nothing here knows what a text is. It is handed
+// messages and it serves them, and the package that fills this in — inbox/,
+// which already reads both — is the one that knows how a conversation becomes
+// a message.
+//
+// Nil on an instance that has not wired it, which serves mail alone and is what
+// this did before.
+var Bridged func(accountID string) []*Message
+
+// BridgedReply sends a reply to a conversation that did not arrive by mail, and
+// reports whether the address was one of those at all.
+//
+// The other half of Bridged. A client that can read a text and not answer it is
+// a client showing somebody a conversation with the reply button greyed out,
+// which is worse than not showing it.
+//
+// It is a reply and only ever a reply. The filler resolves the address against
+// conversations this account already has, so an address that names no
+// conversation sends nothing — see inbox/imapbridge.go. Composed addresses are
+// guessable by anybody who has seen one, and if the address alone were enough
+// to send, then knowing the pattern would be permission to text any number in
+// the world from this instance's number.
+//
+// Nil on an instance that has not wired it, which answers "not mine" to every
+// address and leaves local delivery to decide.
+var BridgedReply func(accountID, to, text string) (bool, error)
+
 // imapFolder returns a folder's messages, oldest first, and whether the name
 // names a folder at all.
 func imapFolder(accountID, name string) ([]*Message, bool) {
@@ -229,9 +270,17 @@ func imapFolder(accountID, name string) ([]*Message, bool) {
 		return nil, false
 	}
 
+	// Gathered before the lock, because it reads a store this one knows nothing
+	// about and holding mail's mutex across it would be holding a lock while
+	// calling out of the package.
+	var bridged []*Message
+	if Bridged != nil {
+		bridged = Bridged(accountID)
+	}
+
 	mutex.RLock()
 	var out []*Message
-	for _, m := range messages {
+	for _, m := range append(bridged, messages...) {
 		// Which end of the message decides is the folder's business, not this
 		// loop's. It used to filter on ToID before the switch, which is why
 		// there could be no Sent: a message you sent is stored under whoever
@@ -242,11 +291,22 @@ func imapFolder(accountID, name string) ([]*Message, bool) {
 				continue
 			}
 		case folderSent:
-			if m.Spam || !strings.EqualFold(m.FromID, accountID) || strings.EqualFold(m.ToID, accountID) {
+			if m.Spam || !sentBy(m, accountID) {
 				continue
 			}
 		default:
 			if m.ToID != accountID || m.Spam {
+				continue
+			}
+			// Not what you wrote. Writing to your own agent files the message
+			// in your own inbox, because that is where the conversation is —
+			// and it was landing in INBOX as though it had arrived, so a client
+			// showed the question beside its own answer as two pieces of mail.
+			// "One from myself and one from the agent" is the report.
+			//
+			// It is in Sent instead, which is where the same message from a
+			// mail client would already have been if IMAP here had APPEND.
+			if sentBy(m, accountID) {
 				continue
 			}
 			if tag != "" && !strings.EqualFold(m.Tag, tag) {
@@ -277,9 +337,16 @@ const (
 	// nothing you had written, and what it showed under Sent was its own local
 	// copy — IMAP has no APPEND here, so it never reached the server at all.
 	//
-	// Matched the other way round, on FromID, and excluding anything addressed
-	// back to yourself so a note to your own agent is in one folder rather
-	// than two.
+	// Matched the other way round, on FromID — see sentBy, which is the one
+	// predicate INBOX and Sent now split on, so a message lands in exactly one
+	// of them.
+	//
+	// A note to your own agent used to be excluded from here and left in
+	// INBOX, on the reasoning that it belongs in one folder rather than two.
+	// One folder was right and it was the wrong one: you wrote it, so it is
+	// sent mail, and leaving it in INBOX is what made a client ring for a
+	// message the person had just sent from that same client and show it
+	// beside the agent's answer as two unrelated pieces of mail.
 	folderSent
 )
 
@@ -463,15 +530,11 @@ func imapAddress(name, address string) string {
 
 // imapHeaderValue encodes anything that is not plain ASCII, because a raw
 // UTF-8 byte in a header is not a header.
-func imapHeaderValue(v string) string {
-	v = strings.ReplaceAll(strings.ReplaceAll(v, "\r", " "), "\n", " ")
-	for i := 0; i < len(v); i++ {
-		if v[i] > 126 || v[i] < 32 {
-			return mime.QEncoding.Encode("utf-8", v)
-		}
-	}
-	return v
-}
+//
+// This was the only place that rule existed, and the send path — the one
+// talking to other people's servers — did not have it. It is header.go now and
+// this is the same call the message builders make.
+func imapHeaderValue(v string) string { return headerText(v) }
 
 func imapQuoteSafe(s string) string {
 	s = strings.ReplaceAll(s, `"`, "")

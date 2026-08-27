@@ -43,6 +43,9 @@ var keptItsPage = map[string]string{
 	"docs": "your documents", "events": "your calendar",
 	"recall": "your own past", "sms": "your messages",
 	"wallet": "your key",
+	"notify": "what you were told, and the devices it went to — a derived page " +
+		"would draw a form for sending yourself a notification, which is the one " +
+		"thing nobody needs a page for",
 
 	// 2. It takes an argument to say anything.
 	"food": "a barcode or a product name", "places": "a search", "web": "a query",
@@ -53,10 +56,13 @@ var keptItsPage = map[string]string{
 		"that it reads what a fetch cannot, and the only way to show that is to let " +
 		"somebody try a page a fetch cannot read",
 	"text": "the text to work on",
-	"sandbox": "a command, and what it printed — the claim is that you get a " +
+	"shell": "a command, and what it printed — the claim is that you get a " +
 		"machine, and the only way to show that is to let somebody run something on it",
 
 	// 3. It is browsable.
+	"users": "everybody here, online first, each row a way to write to them — a " +
+		"card would say how many there are, which is the one fact about a " +
+		"directory nobody opens it for",
 	"news": "many stories, paged", "video": "many videos", "blog": "many posts",
 	"social": "a feed", "apps": "a directory you run things from",
 	"chat": "rooms you talk in", "archive": "a search over everything kept",

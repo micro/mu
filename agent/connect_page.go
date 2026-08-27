@@ -81,16 +81,23 @@ func ConnectHandler(w http.ResponseWriter, r *http.Request) {
 		notice = `<p class="text-error">` + html.EscapeString(msg) + `</p>`
 	}
 
-	page := `<div class="chat-layout"><div class="chat-side">` +
-		`<div class="chat-pane" id="pane-agents">` + renderAgentsPanel() + `</div></div>` +
-		`<div class="chat-main"><p class="conn-back">` +
+	// No roster down the side.
+	//
+	// It went from the conversation page for this reason and this page had the
+	// same copy of it: /agents lists every agent with chat, connect and edit
+	// beside each, so a second list here is the room carrying the list of
+	// rooms. The back link is how you leave, and it was already here.
+	//
+	// Losing the panel also loses the <script> it carried, which is where
+	// window.muSeedAgent was defined — see chatPageJS in agent.go, which this
+	// now uses for the same reason that page does.
+	page := `<div class="chat-main"><p class="conn-back">` +
 		// TextLink, not Link: app.Link appends a → because it points at a
 		// destination you are going on to, and a back link that reads
 		// "← Agents →" is pointing both ways at once.
-		app.TextLink("← Agents", back) +
-		`<button type="button" class="chat-open-list" onclick="muPane('agents')">Agents</button></p>` +
-		`<div class="w-820">` + notice + body + `</div></div></div>` +
-		chatLayoutCSS + connectCSS + paneJS +
+		app.TextLink("← Agents", back) + `</p>` +
+		`<div class="w-820">` + notice + body + `</div></div>` +
+		connectCSS + chatPageJS +
 		`<script>window.muSeedAgent(` + app.JSString(id) + `);</script>`
 	app.Respond(w, r, app.Response{Title: title, Description: desc, HTML: page})
 }
@@ -192,7 +199,11 @@ func defaultPanel(base string) string {
 	// conversation list it shows up in — rules, on a page whose job is to hand
 	// you the things you copy somewhere else.
 	if addr := mail.SharedAgentAddress(); addr != "" {
-		b.WriteString(connRow("Email", `<code class="conn-v">`+html.EscapeString(addr)+`</code>`))
+		// "Mail" rather than "Email", to agree with the label the inbox puts on
+		// the same channel — see app.ClientName. This row sits directly above a
+		// Chat row, which is exactly where a second name for one thing reads as
+		// a second channel.
+		b.WriteString(connRow("Mail", `<code class="conn-v">`+html.EscapeString(addr)+`</code>`))
 	}
 
 	b.WriteString(connChat(base, "/agent/"+DefaultPlatformAgent))

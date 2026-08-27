@@ -12,7 +12,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	dir, err := os.MkdirTemp("", "mu-agents-test")
+	dir, err := os.MkdirTemp("", "mu_agents_test")
 	if err != nil {
 		panic(err)
 	}
@@ -269,7 +269,7 @@ func TestATokenlessAgentCanBeIssuedOne(t *testing.T) {
 // at POST /agent/<name> — so creation mints nothing, and a token is what you
 // ask for on the Connect page when something outside needs to call in.
 func TestCreatingAnAgentIssuesNoToken(t *testing.T) {
-	id := owner(t, "roster-notoken")
+	id := owner(t, "roster_notoken")
 	a, secret, err := CreateAgent(id, "Research", Hosted, "read the news", "", nil, false)
 	if err != nil {
 		t.Fatal(err)

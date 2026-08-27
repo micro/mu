@@ -99,8 +99,8 @@ var dailyUsage = map[string]*DailyUsage{}
 // migration, not an edit. TestTheKeyStoreAndTheLedgerAreSeparate pins it.
 type Credits struct {
 	UserID    string    `json:"user_id"`
-	Balance   int       `json:"balance"`  // Credits (1 credit = 1 penny = £0.01)
-	Currency  string    `json:"currency"` // Always "GBP" for now
+	Balance   int       `json:"balance"`  // Credits (1 credit = 1 cent = $0.01)
+	Currency  string    `json:"currency"` // Always "USD"
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
@@ -205,7 +205,7 @@ func rebuildFromTransactions() {
 			continue
 		}
 		balances[id] = &Credits{
-			UserID: id, Balance: t.Balance, Currency: "GBP", UpdatedAt: t.CreatedAt,
+			UserID: id, Balance: t.Balance, Currency: "USD", UpdatedAt: t.CreatedAt,
 		}
 		restored++
 	}
@@ -254,7 +254,7 @@ func creditsOf(l *ledger, userID string) *Credits {
 	w := &Credits{
 		UserID:    userID,
 		Balance:   0,
-		Currency:  "GBP",
+		Currency:  "USD",
 		UpdatedAt: time.Now(),
 	}
 	balances[userID] = w
@@ -366,7 +366,7 @@ func addCredits(l *ledger, userID string, amount int, operation string, metadata
 		w = &Credits{
 			UserID:   userID,
 			Balance:  0,
-			Currency: "GBP",
+			Currency: "USD",
 		}
 		balances[userID] = w
 	}
@@ -500,7 +500,7 @@ func transferCredits(l *ledger, fromUserID, toUserID string, amount int) error {
 		receiver = &Credits{
 			UserID:   toUserID,
 			Balance:  0,
-			Currency: "GBP",
+			Currency: "USD",
 		}
 		balances[toUserID] = receiver
 	}
@@ -597,7 +597,7 @@ func recordUsage(l *ledger, userID string, operation string) {
 		w = &Credits{
 			UserID:    userID,
 			Balance:   0,
-			Currency:  "GBP",
+			Currency:  "USD",
 			UpdatedAt: time.Now(),
 		}
 		balances[userID] = w
@@ -646,16 +646,29 @@ func chargeAppUse(l *ledger, userID, authorID, appSlug string, price int) error 
 		author = &Credits{
 			UserID:   authorID,
 			Balance:  0,
-			Currency: "GBP",
+			Currency: "USD",
 		}
 		balances[authorID] = author
 	}
 
-	// Calculate split: author gets 90%, platform gets 10%
-	authorShare := (price * 90) / 100
-	if authorShare < 1 && price > 0 {
-		authorShare = 1 // Minimum 1 credit to author
-	}
+	// The author gets the price. There is no split.
+	//
+	// It was 90/10. Ten points is a smaller toll than a store's thirty and it is
+	// the same kind of thing: a share of what somebody else sells, taken by
+	// whoever controls the listing. The tell is that it scales with their
+	// revenue while the cost of carrying them does not — hosting an app that
+	// sells a million costs this instance exactly what hosting one that sells
+	// ten does.
+	//
+	// What an app actually costs to run is already metered, per operation, in
+	// quota.json: the model calls it makes, the pages it fetches, the storage it
+	// uses. Those are charged where they happen. Charging them again as a
+	// percentage of the sale is charging twice for one thing, once by cost and
+	// once by rent.
+	//
+	// So: the price goes to the author, and the instance is paid for what it did
+	// rather than for what they made.
+	authorShare := price
 
 	// Deduct from user
 	user.Balance -= price
@@ -702,9 +715,9 @@ func chargeAppUse(l *ledger, userID, authorID, appSlug string, price int) error 
 
 // FormatCredits formats credits as currency string
 func FormatCredits(credits int) string {
-	pounds := credits / 100
-	pence := credits % 100
-	return fmt.Sprintf("£%d.%02d", pounds, pence)
+	dollars := credits / 100
+	cents := credits % 100
+	return fmt.Sprintf("$%d.%02d", dollars, cents)
 }
 
 // DeleteCredits removes a user's wallet and transaction history.

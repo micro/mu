@@ -27,7 +27,7 @@ func landed(t *testing.T, owner, threadID, from, ref, text string) {
 
 // The message being answered is named, and the whole chain with it.
 func TestAReplyNamesTheMessageItAnswers(t *testing.T) {
-	const who = "chain-owner"
+	const who = "chain_owner"
 	th := thread.Open(who, mailClient, "<a@example.com>")
 	if th == nil {
 		t.Fatal("no conversation")
@@ -51,7 +51,7 @@ func TestAReplyNamesTheMessageItAnswers(t *testing.T) {
 // parent — an agent's own answer is recorded without one, and threading a reply
 // under it would name an id no client has ever seen.
 func TestAMessageWithNoIDIsNotTheParent(t *testing.T) {
-	const who = "chain-noref"
+	const who = "chain_noref"
 	th := thread.Open(who, mailClient, "<q@example.com>")
 	if th == nil {
 		t.Fatal("no conversation")
@@ -73,8 +73,8 @@ func TestAMessageWithNoIDIsNotTheParent(t *testing.T) {
 // A conversation with no mail in it has no chain to join, and must not invent
 // one: a chat or a WhatsApp exchange carries no Message-IDs.
 func TestAConversationWithNoMailHasNoChain(t *testing.T) {
-	const who = "chain-web"
-	th := thread.Open(who, thread.WebClient, "web-1")
+	const who = "chain_web"
+	th := thread.Open(who, thread.WebClient, "web_1")
 	if th == nil {
 		t.Fatal("no conversation")
 	}
@@ -87,7 +87,7 @@ func TestAConversationWithNoMailHasNoChain(t *testing.T) {
 
 // A new message is not a reply.
 func TestANewMessageHasNoChain(t *testing.T) {
-	if in, refs := threadChain("chain-none", ""); in != "" || refs != "" {
+	if in, refs := threadChain("chain_none", ""); in != "" || refs != "" {
 		t.Errorf("a message on no conversation got %q / %q", in, refs)
 	}
 }
@@ -111,7 +111,7 @@ func TestTheSubjectIsMarkedAsAReplyOnce(t *testing.T) {
 // that has run for months would otherwise carry a header longer than the
 // message.
 func TestTheChainIsBounded(t *testing.T) {
-	const who = "chain-long"
+	const who = "chain_long"
 	th := thread.Open(who, mailClient, "<0@example.com>")
 	if th == nil {
 		t.Fatal("no conversation")

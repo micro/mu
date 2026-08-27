@@ -19,8 +19,8 @@ import (
 
 // A mail conversation offers a reply, addressed to whoever wrote in.
 func TestAMailConversationCanBeAnswered(t *testing.T) {
-	const who = "reply-reader"
-	th := thread.Open(who, mailClient, "reply-1")
+	const who = "reply_reader"
+	th := thread.Open(who, mailClient, "reply_1")
 	if th == nil {
 		t.Fatal("no conversation")
 	}
@@ -57,13 +57,13 @@ func TestAMailConversationCanBeAnswered(t *testing.T) {
 
 // One Re:, however many times the subject has been round.
 func TestASubjectIsNotReprefixed(t *testing.T) {
-	const who = "reply-prefix"
-	th := thread.Open(who, mailClient, "reply-2")
+	const who = "reply_prefix"
+	th := thread.Open(who, mailClient, "reply_2")
 	if th == nil {
 		t.Fatal("no conversation")
 	}
 	th.Subject = "Re: Mu has a listing"
-	if got := replyBar(th, "henrik@example.com"); strings.Contains(got, "Re%3A+Re%3A") {
+	if got := actionBar(th, "henrik@example.com", true); strings.Contains(got, "Re%3A+Re%3A") {
 		t.Errorf("the subject picked up a second Re: — %s", got)
 	}
 }
@@ -73,8 +73,8 @@ func TestASubjectIsNotReprefixed(t *testing.T) {
 // A Discord thread is answered in Discord. Offering a Reply that sends an email
 // to somebody who wrote on another network is a worse answer than no button.
 func TestAConversationFromElsewhereStillPointsThere(t *testing.T) {
-	const who = "reply-discord"
-	th := thread.Open(who, thread.WebClient, "reply-3")
+	const who = "reply_discord"
+	th := thread.Open(who, thread.WebClient, "reply_3")
 	if th == nil {
 		t.Fatal("no conversation")
 	}
@@ -93,8 +93,8 @@ func TestAConversationFromElsewhereStillPointsThere(t *testing.T) {
 // second look, and it is the one that matters, because it is the call that would
 // otherwise put your message on a stranger's thread.
 func TestAReplyCannotBeFiledOntoSomebodyElsesThread(t *testing.T) {
-	const mine, theirs = "reply-mine", "reply-theirs"
-	th := thread.Open(theirs, mailClient, "reply-4")
+	const mine, theirs = "reply_mine", "reply_theirs"
+	th := thread.Open(theirs, mailClient, "reply_4")
 	if th == nil {
 		t.Fatal("no conversation")
 	}
@@ -116,11 +116,11 @@ func TestAReplyCannotBeFiledOntoSomebodyElsesThread(t *testing.T) {
 func TestHandingOverSaysItRegistered(t *testing.T) {
 	r := httptest.NewRequest("GET", "/inbox?id=x", nil)
 
-	box := askBox(r, "x", "henrik@example.com")
+	box := assignDialog(r, "dlg_x", &thread.Thread{ID: "x"}, "henrik@example.com")
 	if !strings.Contains(box, "disabled=true") {
 		t.Error("it can be pressed again, which is two tasks for one instruction")
 	}
-	if !strings.Contains(box, "Handed over") {
+	if !strings.Contains(box, "Assigned") {
 		t.Error("nothing on the page says the press registered")
 	}
 	// And with a reply available, the caption points at it rather than only

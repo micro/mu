@@ -1,9 +1,11 @@
 package api
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"html"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -28,6 +30,42 @@ func MCPHandler(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+
+	// A bound on the request, before anything reads it.
+	//
+	// Nothing capped this. serveMCP buffers the body to see whether the call is
+	// a tools/list, and that read is the first thing that happens — before the
+	// gateway authenticates the caller and before metering charges anybody. So
+	// an unauthenticated POST of an arbitrarily large body was an allocation an
+	// anonymous caller could ask this process to make, repeatedly, for free.
+	//
+	// The door next to it already had one: /api caps a call's arguments at 1 MB
+	// (rest.go), serving the same tools to the same kind of client. This is that
+	// limit, at the other door, so the pair cannot disagree about how big a
+	// request may be — and it is deliberately the same constant rather than a
+	// second opinion about it.
+	//
+	// MaxBytesReader rather than a length check, because Content-Length is a
+	// claim the sender makes and a chunked request does not make it at all. It
+	// bounds what is actually read.
+	//
+	// Read here rather than deeper, and the overflow answered as a refusal. Left
+	// to serveMCP the oversized body would be truncated at the limit and handed
+	// on, and the gateway would answer whatever a JSON document cut in half
+	// parses as — a syntax error, blamed on the caller's JSON rather than on its
+	// size, which is the kind of message somebody debugs for an hour.
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxRequestBytes))
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusRequestEntityTooLarge)
+		json.NewEncoder(w).Encode(jsonrpcResponse{
+			JSONRPC: "2.0",
+			Error: &rpcError{Code: -32600, Message: "Request too large: /mcp accepts at most " +
+				strconv.Itoa(maxRequestBytes/1024) + " KB"},
+		})
+		return
+	}
+	r.Body = io.NopCloser(bytes.NewReader(body))
 
 	// Protocol served by go-micro's gateway/mcp; tools + metering stay mu's.
 	serveMCP(w, r)
@@ -58,9 +96,9 @@ func mcpPageHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<p>Or no token: a priced tool answers an unauthenticated call ` +
 		`with <code>402</code> and an <a href="https://x402.org">x402</a> challenge. ` +
 		`Pay it in USDC on Base and the same request succeeds. No signup. ` +
-		`<a href="/pricing">Pricing</a>.</p>`)
+		`Every tool below carries its price.</p>`)
 	b.WriteString(`<p class="card-meta">Not connected yet? <a href="/tools#connect">Connect your agent &rarr;</a> ` +
-		`&middot; <a href="/help/mcp">Auth and protocol detail</a> &middot; <a href="/tools">What calls cost</a></p>`)
+		`&middot; <a href="/tools">Auth, protocol detail and what calls cost</a></p>`)
 	// Not everybody arriving here is building an agent. Somebody writing a
 	// client wants one URL per method, and being handed a tool-calling protocol
 	// because it was the only door documented is how they conclude this is not

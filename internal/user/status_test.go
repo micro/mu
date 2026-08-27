@@ -29,7 +29,7 @@ func person(t *testing.T, id string) {
 // being set and then stopped existing.
 func TestAStatusIsKept(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
-	const who = "status-keeper"
+	const who = "status_keeper"
 
 	SetStatus(who, "Building the sandbox")
 	got, at := Status(who)
@@ -93,7 +93,7 @@ func TestWriteNamesThePersonAndNotTheirAddress(t *testing.T) {
 // Your own profile is where you change what it says. Somebody else's is not.
 func TestOnlyYouCanSetYourOwnStatus(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
-	const who = "status-owner"
+	const who = "status_owner"
 	person(t, who)
 	SetStatus(who, "Reading")
 

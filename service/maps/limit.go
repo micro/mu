@@ -5,7 +5,7 @@ package maps
 // Tiles are free, and that is a decision about price rather than about
 // appetite. Nothing is charged, so nothing throttles — and the thing on the
 // other side of a cold fetch is Ordnance Survey's bill, not ours to hand out
-// without a limit. CLAUDE.md is explicit about which tool does which job:
+// without a limit. AGENTS.md is explicit about which tool does which job:
 // "Abuse control is auth.CheckPostRate, not the credit charge. Keep the two
 // jobs separate: credits price real cost, rate limits stop bots."
 //

@@ -39,6 +39,13 @@ const (
 
 // StartVerify texts a code to a number the caller says is theirs.
 func StartVerify(owner, number string) error {
+	// Here, not at the call site. See e164.
+	number = e164(number)
+	if number == "" {
+		return fmt.Errorf("that is not a phone number in international format — " +
+			"use +447700900123. A number with no country code is only accepted " +
+			"where the operator has set SMS_DEFAULT_COUNTRY")
+	}
 	if !Configured() {
 		return fmt.Errorf("this instance has no number to send from")
 	}
@@ -102,6 +109,7 @@ func StartVerify(owner, number string) error {
 
 // Confirm checks a code and, if it is right, records the number as the owner's.
 func Confirm(owner, number, code string) error {
+	number = e164(number)
 	code = strings.TrimSpace(code)
 	recs, err := userdb.List(ns, owner, codes, "mine",
 		map[string]interface{}{"number": number}, "", "", 1)

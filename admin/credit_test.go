@@ -23,6 +23,13 @@ func adminSession(t *testing.T, id string, admin bool) *http.Cookie {
 	auth.Create(&auth.Account{ID: id, Name: id, Secret: "s"}) //nolint:errcheck
 	acc, err := auth.GetAccount(id)
 	if err != nil {
+		// A username the rules refuse is a bug in this test, not a fact about
+		// the machine it runs on. Skipping on it is how eighteen tests across
+		// this repository quietly stopped running the day usernames became
+		// validated — a red suite would have said so on the first push.
+		if strings.Contains(err.Error(), "username") {
+			t.Fatalf("the test account name is not a valid username: %v", err)
+		}
 		t.Skipf("cannot create an account here: %v", err)
 	}
 	acc.Admin = admin

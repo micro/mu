@@ -171,22 +171,61 @@ a[rel*="noopener"]:visited {
 
 /* Buttons - slim, consistent padding */
 button {
-  display: inline-block;
   background: var(--btn-primary);
   color: #fff;
   border: 1px solid var(--btn-primary);
   border-radius: var(--border-radius);
-  padding: 6px 12px;
   cursor: pointer;
-  font-size: 14px;
-  line-height: 1.4;
   text-decoration: none;
   transition: all var(--transition-fast);
 }
 
+/* A fill and the colour that has to sit on it, together.
+ *
+ * This set the background and not the text colour, which is only safe for a
+ * button that kept the default white text. Any button whose class declares its
+ * own light background and dark text loses the background here — a class is
+ * 0,0,1,0 and this is 0,0,1,1 — and keeps its dark text, so the moment you
+ * point at it the pair goes dark-on-dark. On a phone :hover sticks after a tap,
+ * which is why it was reported as happening "when selected".
+ *
+ * Naming the colour here means the worst case is now white on the hover fill,
+ * which is legible everywhere even where it is not what the author wanted. The
+ * list below is for the buttons that should not take a fill at all. */
 button:hover {
   background: var(--btn-primary-hover);
   border-color: var(--btn-primary-hover);
+  color: #fff;
+}
+
+/* Buttons that keep their own look when pointed at.
+ *
+ * A control that is a glyph or a quiet outline is not a call to action and must
+ * not grow a dark fill on hover. Each of these declares a background in its own
+ * rule and would lose it to the line above.
+ *
+ * **Background and colour together, always.** The rule above is the cautionary
+ * tale and so was the first version of this one: it took the dark fill away and
+ * left `color: #fff` in place, so the Chats button went from dark-on-dark to
+ * white-on-white — the same bug, the other way up, introduced by the fix for
+ * it. A rule that touches one half of a contrast pair has to touch the other.
+ *
+ * Separate from the list further down because that one also flattens padding,
+ * border and font-size, which these have their own opinions about. */
+.row-del:hover,
+.ib-del-go:hover,
+.chat-open-list:hover,
+.push-test:hover {
+  background: none;
+  border-color: var(--card-border, #ddd);
+  color: var(--text-primary, #111);
+}
+/* The two glyphs go red rather than staying put: they are the destructive one,
+   and their border is not a border. */
+.row-del:hover,
+.ib-del-go:hover {
+  border-color: transparent;
+  color: var(--btn-danger, #c00);
 }
 
 /* Buttons that are controls rather than buttons: a word you click, no fill.
@@ -218,25 +257,30 @@ button:hover {
   background: none;
   border-color: transparent;
   text-decoration: underline;
+  /* These take their colour from the sentence they sit in, so hover has to put
+     it back rather than leave them whatever button:hover last said. Without
+     this line all five went white-on-white the moment that rule started naming
+     a colour — found by TestAHoverThatRemovesAFillNamesItsText on the day it
+     was written, which is the whole reason it exists. */
+  color: inherit;
 }
 
 /* .btn class for links styled as buttons */
 a.btn {
-  display: inline-flex;
   align-items: center;
   justify-content: center;
   background: var(--btn-primary);
   color: #fff !important;
   border: 1px solid var(--btn-primary);
   border-radius: var(--border-radius);
-  padding: 6px 12px;
   cursor: pointer;
-  font-size: 14px;
   font-weight: normal;
-  line-height: 1.4;
   text-decoration: none;
   transition: all var(--transition-fast);
-  height: 36px;
+  /* height was 36px here, stated outright — and an explicit height beats a
+     min-height whatever the order, so this one rule kept every link-button in
+     the product two pixels taller than every button beside it. The control
+     scale decides. */
   box-sizing: border-box;
 }
 
@@ -401,9 +445,12 @@ td {
   background: none;
   border: none;
   cursor: pointer;
+  /* Sized from the control scale like everything else. It was 36×34, which
+     is a third height nobody chose — it just predates the scale. */
   padding: 8px;
-  width: 36px;
-  height: 34px;
+  width: var(--control-h);
+  height: var(--control-h);
+  min-height: var(--control-h);
   flex-direction: column;
   justify-content: space-between;
   align-items: stretch;
@@ -568,90 +615,19 @@ td {
    It was a caption plus four destinations, which put Log out on the same
    footing as Inbox and made a five-item product look like a ten-item
    dashboard. */
-.nav-me { position: relative }
-
-.nav-me-btn {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 14px;
-  border-radius: 8px;
-  cursor: pointer;
-  list-style: none; /* the default disclosure triangle, which we draw ourselves */
-  font-size: 0.95em;
-  font-weight: var(--font-weight-medium);
-  color: var(--text-primary);
-}
-
-.nav-me-btn::-webkit-details-marker { display: none }
-.nav-me-btn:hover,
-.nav-me[open] .nav-me-btn { background-color: #f5f5f5 }
-
-.nav-me-av {
-  flex: 0 0 auto;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: var(--btn-primary, #111);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-#nav-username {
-  flex: 1 1 auto;
+/* Who is signed in, at the bottom of the rail.
+   The disclosure menu that used to be here — an avatar, a chevron and five
+   destinations behind a click — is gone; those are rail entries now, so all
+   that is left is the line that names the account above Log out. */
+.nav-me-who {
+  padding: 8px 12px 4px;
+  font-size: 12px;
+  color: var(--text-muted, #888);
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
-
-/* Points up, because the menu opens upward. Turns over when it is open. */
-.nav-me-chev {
-  flex: 0 0 auto;
-  width: 0;
-  height: 0;
-  border-left: 4px solid transparent;
-  border-right: 4px solid transparent;
-  border-bottom: 5px solid var(--text-muted, #999);
-}
-
-.nav-me[open] .nav-me-chev {
-  border-bottom: 0;
-  border-top: 5px solid var(--text-muted, #999);
-}
-
-.nav-me-menu {
-  position: absolute;
-  bottom: calc(100% + 6px);
-  left: 6px;
-  right: 6px;
-  background: var(--card-background, #fff);
-  border: 1px solid var(--card-border, #e8e8e8);
-  border-radius: 10px;
-  padding: 5px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, .1);
-  z-index: 20;
-}
-
-.nav-me-menu a {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 7px 10px;
-  border-radius: 6px;
-  text-decoration: none;
-  color: var(--text-primary);
-  font-size: 0.92em;
-}
-
-.nav-me-menu a:hover { background-color: #f5f5f5 }
-.nav-me-menu img { height: 17px; width: 17px }
+.nav-me-who span { color: var(--text-primary, #333) }
 
 /* Credit balance, pinned above the account links so the number is in view on
    every page. Empty and low are coloured because "0 credits" in the same grey
@@ -1423,7 +1399,9 @@ body:has(#messages) #chat-back-link {
 }
 
 #chat-form button {
-  padding: 10px 20px;
+  /* Width and flow only. The padding here was 10px 20px, which made the send
+     arrow taller than the field it sits beside — the height comes from the
+     control scale now. */
   margin: 0;
   width: auto;
   flex-shrink: 0;
@@ -2603,13 +2581,11 @@ a.highlight {
      Centring the label inside the target fixes it without giving the target
      back: the button is still 36px to a thumb and looks like its own height to
      an eye. */
-  button, a.btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 36px;
-    padding: 6px 12px;
-  }
+  /* The 36px thumb target lived here, on `button, a.btn` and nothing else —
+     so a field beside a button was short by ten pixels, on every page with a
+     control row. The control scale at the end of this file sets one height for
+     both, above the 24px WCAG 2.2 minimum, so there is nothing left to say
+     here about size. */
   
   /* Prevent iOS zoom on input focus */
   input, textarea, select {
@@ -2765,8 +2741,18 @@ a.highlight {
 #status-indicator {
   /* placeholder */
 }
-.d-inline { display: inline; }
-.d-flex { display: flex; }
+/* The display utilities carry !important, which is the one place it is right.
+   A utility exists to override whatever it is put on, and these were losing:
+   .d-none is declared at 2885 and .btn at 6602 sets display:inline-block, so
+   every <button class="btn ... d-none"> rendered visible — the two push
+   notification buttons showed "Turn on for this device" and "Turn off" at the
+   same time whatever the state was. Same cause as .btn-secondary painting
+   black on black: .btn was appended late and quietly beats anything declared
+   above it on order alone. Moving each utility below .btn would fix it until
+   the next component is appended; a utility that cannot be overridden by
+   position is the thing that actually holds. */
+.d-inline { display: inline !important; }
+.d-flex { display: flex !important; }
 
 /* Flex utilities */
 .flex-column { flex-direction: column; }
@@ -2833,9 +2819,9 @@ a.highlight {
 .scroll-x > table { min-width: 560px; }
 
 /* Display */
-.d-block { display: block; }
-.d-inline-block { display: inline-block; }
-.d-none { display: none; }
+.d-block { display: block !important; }
+.d-inline-block { display: inline-block !important; }
+.d-none { display: none !important; }
 
 /* Type */
 .medium { font-weight: 500; }
@@ -2843,7 +2829,10 @@ a.highlight {
 .bold { font-weight: 700; }
 .nowrap { white-space: nowrap; }
 .text-left { text-align: left; }
-.no-underline { text-decoration: none; }
+/* Including on hover, which is the only state anybody reaches for this in.
+ * Without the second rule the global a:hover at (0,1,1) outranks this one at
+ * (0,1,0), so a link carrying a class called no-underline underlined. */
+.no-underline, .no-underline:hover { text-decoration: none; }
 .font-inherit { font-family: inherit; font-size: inherit; }
 
 /* Surface */
@@ -2859,15 +2848,36 @@ a.highlight {
 /* A small outlined action in a table row — Ban, Grant, Verify on /admin/users.
    The colour is the only thing that varies, so it is a modifier rather than
    four near-identical rules. */
-.mini-btn {
+/* One compact control, whatever element it is.
+ *
+ * A row of buttons with an input among them never lines up by coincidence.
+ * These were two rules that each invented their own padding and font-size —
+ * 2px 8px against 2px 4px — and a browser adds its own border and line-height
+ * to an input on top of that, so the field sat a couple of pixels shorter than
+ * the buttons either side of it. font-family had to be said twice for the same
+ * reason: an input does not inherit it.
+ *
+ * So the metrics are one rule and the colours are separate. Anything else that
+ * belongs in a row of these joins the selector rather than copying the numbers.
+ */
+.mini-btn,
+.num-field {
+  font: inherit;
   font-size: 12px;
-  padding: 2px 8px;
+  line-height: 1.5;
+  padding: 3px 8px;
   border-radius: var(--border-radius, 6px);
   border: var(--border-width, 1px) solid var(--card-border, #ddd);
+  /* Padding and border inside the height, or the two disagree by exactly the
+   * border width — which is the difference somebody sees and cannot name. */
+  box-sizing: border-box;
+  vertical-align: middle;
+}
+
+.mini-btn {
   background: var(--card-background, #fff);
   color: var(--text-secondary, #555);
   cursor: pointer;
-  font-family: inherit;
 }
 .mini-btn.danger { border-color: var(--btn-danger, #c00); color: var(--btn-danger, #c00); }
 .mini-btn.good { border-color: var(--btn-success, #22c55e); color: var(--btn-success, #22c55e); }
@@ -2884,6 +2894,15 @@ a.highlight {
 .count-badge.info { background: var(--link-color, #06b); }
 .count-badge.good { background: var(--btn-success, #22c55e); }
 .count-badge.quiet { background: var(--text-secondary, #555); }
+
+/* Several badges as one value. Wraps within its own column rather than each
+ * badge being placed separately by whatever laid the row out. */
+.badge-row {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
 
 /* A row that needs to shout — a banned account, a failed job. */
 .row-danger { background: var(--btn-danger, #c00); color: #fff; }
@@ -3323,12 +3342,10 @@ a.highlight {
 }
 
 /* A narrow number field in a table row. */
+/* Size comes from the .mini-btn rule it shares a row with. What is left is
+ * how wide it needs to be for the number that goes in it. */
 .num-field {
-  width: 64px;
-  font-size: 12px;
-  padding: 2px 4px;
-  border: var(--border-width, 1px) solid var(--card-border, #ddd);
-  border-radius: var(--border-radius, 6px);
+  width: 72px;
 }
 
 /* A row of filter pills over a list. Named once because /apps, /mail, /inbox
@@ -3467,7 +3484,6 @@ button.btn-plain { padding: 6px 12px; font: inherit; cursor: pointer; color: var
    that does not follow the palette. Tokenised, so it moves with everything
    else; pair it with .w-full where the field should fill its row. */
 .form-input {
-  padding: 10px;
   border: var(--border-width, 1px) solid var(--card-border, #ccc);
   border-radius: var(--border-radius, 6px);
   box-sizing: border-box;
@@ -3688,19 +3704,10 @@ button.btn-plain { padding: 6px 12px; font: inherit; cursor: pointer; color: var
 .pin-btn.pinned svg { fill: currentColor; }
 .pin-btn.pinned:hover { color: #a87f1f; }
 
-/* The line under the heading on /login and /signup.
-   The landing makes a specific promise — one endpoint, every tool — and the
-   forms used to be a username, a password and the word "Signup", which could
-   belong to any product. Someone who came for tools for agents should still be
-   able to see what they are signing up for at the moment they do it. */
-.auth-lede {
-  max-width: 30rem;
-  margin: 0 auto 18px;
-  text-align: center;
-  font-size: 14px;
-  line-height: 1.55;
-  color: var(--text-secondary, #666);
-}
+/* .auth-lede was here — the line under the heading on /login, pitching the
+   product to somebody already signing in to it. Its own comment said it was
+   for /login and /signup; signup never had one, so it was one line on one
+   page, explaining a thing to the only people who had already decided. */
 
 .auth-foot {
   text-align: center;
@@ -3724,16 +3731,6 @@ a.btn-primary:hover, .btn-primary:hover {
   background: var(--btn-primary-hover, #333);
   border-color: var(--btn-primary-hover, #333);
   color: #fff !important;
-}
-a.btn-secondary, .btn-secondary {
-  background: var(--hover-background, #eee);
-  color: var(--text-primary, #333) !important;
-  border-color: var(--hover-background, #eee);
-}
-
-a.btn-secondary:hover, .btn-secondary:hover {
-  background: #ddd;
-  text-decoration: none;
 }
 
 /* Iframe container with aspect ratio */
@@ -3950,8 +3947,31 @@ a.btn-secondary:hover, .btn-secondary:hover {
   box-shadow: var(--shadow-sm);
   transition: box-shadow 0.15s;
 }
-.card:hover {
+.card:hover,
+.card-hover:hover {
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+/* The one hover a card gets, wherever the card was invented.
+ *
+ * .card had this since the beginning and the cards built later did not: a tile
+ * on /services and /tools lit its border grey, a row on /agents filled its
+ * background grey, and the cards on home lifted. Three answers to the same
+ * question on four pages, so moving between them looked like moving between
+ * products. This is the answer, and .card-hover is how a card asks for it.
+ *
+ * The underline is cancelled here rather than left to the card's own rule.
+ * mu.css sets `a:hover { text-decoration: underline }` globally, at (0,1,1);
+ * a tile that says `text-decoration:none` on the class is at (0,1,0) and loses,
+ * which is why the tiles on /services underlined their whole name on hover
+ * while claiming not to. a.card-hover:hover is (0,2,1) and outranks it. A card
+ * that is entirely a link does not need the words in it underlined to say so —
+ * the lift already said it. */
+.card-hover {
+  transition: box-shadow 0.15s;
+}
+a.card-hover:hover {
+  text-decoration: none;
 }
 
 /* The last thing in a card does not add its own margin to the card's padding.
@@ -4293,20 +4313,80 @@ a.btn-secondary:hover, .btn-secondary:hover {
 .admin-table .center {
   text-align: center;
 }
+/* On a phone this stops being a table.
+ *
+ * Six columns, the last of them four forms wide, do not fit across 390px. It
+ * used to shrink the type and hide the Created column and hope, which left the
+ * actions running off the side of the page with nothing to scroll them back —
+ * the buttons were rendered, and unreachable.
+ *
+ * A row becomes a card and a cell becomes a labelled line. The header row is
+ * what tells you which column you are in, and it is the first casualty of a
+ * narrow screen, so each cell carries its own label in data-label instead. A
+ * cell with no label still stacks; it just has no heading. */
 @media only screen and (max-width: 600px) {
-  .admin-table {
-    font-size: 0.85em;
+  .admin-table, .admin-table tbody, .admin-table tr, .admin-table td {
+    display: block;
+    width: 100%;
   }
-  .admin-table th, .admin-table td {
-    padding: 5px 3px;
-  }
-  .admin-table .created-col {
+  .admin-table thead {
     display: none;
   }
-  .admin-table .delete-btn {
-    padding: 3px 6px !important;
-    font-size: 0.8em !important;
+  .admin-table tr {
+    border: 1px solid var(--border, #e5e5e5);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 12px;
   }
+  .admin-table td {
+    border-bottom: none;
+    padding: 3px 0;
+    /* The label is a fixed column so the values line up down the card. */
+    display: grid;
+    grid-template-columns: 5.5rem 1fr;
+    gap: 8px;
+    align-items: baseline;
+    /* Centring was for a table cell and reads as an accident in a list. The
+     * !important is against .admin-table .center, which is two classes and so
+     * wins on specificity — the Credits and Actions cells carry it for the
+     * wide layout, and left in place they indented their own labels. */
+    text-align: left !important;
+  }
+  /* A grid item fills its track unless told not to, so a badge that is 40px
+   * of text stretched into a 300px black bar across the row. */
+  .admin-table td > * {
+    justify-self: start;
+  }
+  .admin-table td[data-label]::before {
+    content: attr(data-label);
+    font-size: 0.75em;
+    color: var(--text-muted, #888);
+  }
+  /* The actions are the reason this had to change. They wrap now, and the
+   * nowrap the wide layout needs is overridden rather than removed, because
+   * on a wide screen it is still what keeps a row one line tall. */
+  .admin-table td.actions-cell {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    white-space: normal;
+    margin-top: 4px;
+  }
+  /* The label goes. Five buttons under a heading reading "Actions" is a word
+   * spent on something the buttons already say. */
+  .admin-table td.actions-cell::before {
+    content: none;
+  }
+  .admin-table td.actions-cell form {
+    margin: 0;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  /* Created stays. It was hidden to buy width, and there is no width to buy
+   * now that the cells are stacked — hiding it only lost the answer to "when
+   * did this account appear", which is most of why the page is opened. */
 }
 
 /* Blocklist */
@@ -4607,8 +4687,8 @@ a.btn-secondary:hover, .btn-secondary:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: var(--control-h);
+  height: var(--control-h);
   padding: 0;
   border-radius: 50%;
   font-size: 16px;
@@ -5361,12 +5441,8 @@ body.display-mode .card h4 {
    wherever somebody built a control that was not a <button>. One radius now:
    anything that wants to look like a control gets the control's shape. */
 .pill {
-  display: inline-block;
   border: var(--border-width, 1px) solid var(--card-border, #e8e8e8);
   border-radius: var(--border-radius, 6px);
-  padding: 2px 9px;
-  font-size: 11px;
-  line-height: 1.55;
   color: var(--text-muted, #888);
   white-space: nowrap;
   flex: none;
@@ -5560,6 +5636,21 @@ button.pill:hover {
    at the bottom of this file. */
 .ib-del { display: flex; align-items: center; flex: none }
 
+/* The way to be rid of one row of a list.
+ *
+ * .row-del is the shape and .ib-del-go is the inbox's name for it, kept
+ * because the inbox's own markup and tests use it. They were one design and
+ * two implementations: the conversations rail on the agent page had
+ * .chat-sess-del, hand-written, and an attempt to "fix" it by promoting it to
+ * a bordered .mini-btn.danger reading "Delete" was the wrong direction —
+ * a destructive control that repeats down a list wants to be quiet. The inbox
+ * comment already said so: twenty Deletes is a column of warnings.
+ *
+ * So: a glyph, muted, revealed on hover of the row, red when you are actually
+ * on it, and simply present where there is no pointer to hover with. Anything
+ * that lists rows and lets you remove one should use this rather than invent
+ * a fourth. */
+.row-del,
 .ib-del-go {
   font: inherit;
   font-size: 17px;
@@ -5569,6 +5660,7 @@ button.pill:hover {
   background: none;
   color: var(--text-muted, #888);
   cursor: pointer;
+  flex: none;
   opacity: 0;
   transition: opacity var(--transition-fast, .15s ease), color var(--transition-fast, .15s ease);
 }
@@ -5576,6 +5668,12 @@ button.pill:hover {
 .ib-item:hover .ib-del-go,
 .ib-del-go:focus { opacity: 1 }
 .ib-del-go:hover { color: var(--btn-danger, #c00) }
+
+/* The generic half: any row marked .has-row-del reveals its own. */
+.has-row-del:hover .row-del,
+.row-del:focus { opacity: 1 }
+.row-del:hover { color: var(--btn-danger, #c00) }
+@media (hover: none) { .row-del { opacity: 1 } }
 
 
 /* Unread is what makes this a mailbox rather than a log: a rule down the left
@@ -5767,6 +5865,78 @@ button.pill:hover {
    carries color:#fff !important for exactly that reason. */
 .ib-reply-who { font-size: 12px; color: var(--text-muted, #888) }
 
+/* Assign sits beside Reply as the other thing you do with a message, so it is
+   the same size and the quieter of the two: replying is the ordinary act and
+   handing work over is the deliberate one. */
+.ib-assign-open {
+  font: inherit;
+  font-size: 14px;
+  padding: 6px 14px;
+  border: var(--border-width, 1px) solid var(--card-border, #ddd);
+  border-radius: var(--border-radius, 6px);
+  background: var(--card-background, #fff);
+  color: var(--text-primary, #111);
+  cursor: pointer;
+}
+.ib-assign-open:hover {
+  background: var(--hover-background, #fafafa);
+  color: var(--text-primary, #111);
+  border-color: var(--text-muted, #999);
+}
+
+/* The dialog it opens. Native, so the backdrop, Escape and the focus trap are
+   the browser's — see assignJS, and see the agent page's sheet for what a
+   hand-rolled scrim costs when a page navigates out from under it. */
+.ib-assign {
+  width: min(560px, calc(100vw - 32px));
+  padding: 20px 22px;
+  border: var(--border-width, 1px) solid var(--card-border, #ddd);
+  border-radius: 10px;
+  background: var(--card-background, #fff);
+  color: var(--text-primary, #111);
+}
+.ib-assign::backdrop { background: rgba(0, 0, 0, .3) }
+.ib-assign-head { margin: 0 0 10px; font-size: 16px }
+/* Ways to fill the box in, under the box. Quieter than the action row below
+   them, which is the one button that does something. */
+.ib-assign .ib-ask-hints { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px }
+.ib-assign .ib-ask-row { margin-top: 14px; gap: 12px }
+
+/* Which agent gets it. A label and its select on one line, because it is one
+   short question and stacking it would give it more weight than the box above
+   that actually says what to do. */
+.ib-assign-who {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--text-muted, #888);
+}
+.ib-assign-who select {
+  font: inherit;
+  font-size: 13px;
+  color: var(--text-primary, #111);
+  padding: 5px 8px;
+  border: var(--border-width, 1px) solid var(--card-border, #ddd);
+  border-radius: var(--border-radius, 6px);
+  background: var(--card-background, #fff);
+  max-width: 220px;
+}
+/* No rule above the box: inside a dialog there is nothing to separate it from. */
+.ib-assign .ib-ask { margin-top: 0; padding-top: 0; border-top: 0 }
+.ib-assign-cancel {
+  font: inherit;
+  font-size: 13px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-muted, #888);
+  cursor: pointer;
+  text-decoration: underline;
+}
+.ib-assign-cancel:hover { background: none; color: var(--text-primary, #111) }
+
 /* A conversation is one column, and the width is the reading width.
    
    There were two — the correspondence and a chat with the agent beside it —
@@ -5813,7 +5983,23 @@ button.pill:hover {
   border-top: var(--border-width, 1px) solid var(--card-border, #f4f4f4);
 }
 .agent-peek-row:visited { color: inherit }
-.agent-peek-row:hover .agent-peek-name { text-decoration: underline }
+/* The whole row lights up, exactly as .thread-preview does — the same
+   declaration, the same variable, no fallback and no rounding. The first
+   attempt added a radius and inset padding and so did not look like the list
+   directly above it, which was the entire point of the change.
+
+   The underline has to be cancelled on the row and not on the name. The row is
+   the <a> and the name is a <span> inside it, and text-decoration set on an
+   ancestor is drawn through its inline descendants — a child cannot take it
+   off. .agent-peek-name:hover{text-decoration:none} is powerless here however
+   specific it is. */
+.agent-peek-row {
+  transition: background var(--transition-fast);
+}
+.agent-peek-row:hover {
+  background: var(--hover-background);
+  text-decoration: none;
+}
 
 .agent-peek-name { font-weight: 500; flex: none }
 .agent-peek-last {
@@ -5924,6 +6110,49 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
    boxes above and reads in the order it is used. */
 .ib-new-link { margin-left: auto }
 .ib-sent { font-size: 13px; color: var(--btn-success, #1a7f37); margin: 0 0 12px }
+
+/* Search, on the screen the conversations are on.
+ *
+ * A row of controls the width of the list, above it, the way the switcher is —
+ * a search that sits beside the mailbox names reads as one more mailbox. */
+.ib-search { display: flex; align-items: center; gap: 8px; margin: 0 0 12px }
+.ib-search-in {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--text-primary, #111);
+  background: var(--card-background, #fff);
+  border: 1px solid var(--card-border, #e8e8e8);
+  border-radius: var(--border-radius, 6px);
+}
+.ib-search-in:focus { outline: none; border-color: var(--text-muted, #888) }
+.ib-search-clear { font-size: 13px; color: var(--text-muted, #888); flex: none }
+.ib-found { font-size: 13px; color: var(--text-muted, #888); margin: 0 0 10px }
+
+/* Waiting to be let in.
+ *
+ * A block, not rows — it asks a question and the answer is per item, so each
+ * one carries what was said and the two buttons rather than a preview you have
+ * to open. Bordered rather than filled: it sits above the mailbox and a filled
+ * panel there reads as an error. */
+.ib-held {
+  border: 1px solid var(--card-border, #e8e8e8);
+  border-radius: var(--border-radius, 6px);
+  padding: 12px 14px;
+  margin: 0 0 14px;
+  background: var(--card-background, #fff);
+}
+.ib-held-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; margin-bottom: 8px }
+.ib-held-note { font-size: 12px; color: var(--text-muted, #888); line-height: 1.5 }
+.ib-held-row { padding: 8px 0; border-top: 1px solid var(--card-border, #eee) }
+.ib-held-who { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px }
+.ib-held-when { margin-left: auto; flex: none; font-size: 12px; color: #aaa; white-space: nowrap }
+.ib-held-said { font-size: 13px; color: var(--text-secondary, #444); line-height: 1.5; margin: 3px 0 6px }
+.ib-held-acts { display: flex; flex-wrap: wrap; gap: 8px }
+.ib-held-acts form { margin: 0 }
+@media only screen and (max-width: 600px) { .ib-held-when { margin-left: 0 } }
 
 /* Putting an app on somebody else's page. See service/apps/embed.go. */
 .embed-page { max-width: 760px }
@@ -6371,8 +6600,6 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
 
 .field {
   font: inherit;
-  font-size: 14px;
-  padding: 8px 11px;
   border: var(--border-width, 1px) solid var(--card-border, #e8e8e8);
   border-radius: var(--border-radius, 6px);
   background: var(--card-background, #fff);
@@ -6601,3 +6828,237 @@ a.ib-addr-write:hover { text-decoration: underline }
    changed width as you walked between them, and /privacy centred itself on top
    of that, which moved it sideways as well. */
 .page-col { max-width: 720px }
+
+/* A date or time input carries its own intrinsic sizing, which is why it came
+ * out 32px in a row of 30px controls: the browser lays out its internal
+ * spinner fields and padding alone does not reach them. Stated explicitly. */
+input[type=date],
+input[type=time],
+input[type=datetime-local] {
+  height: var(--control-h);
+}
+
+/* ─── The control scale ──────────────────────────────────────────────────────
+ *
+ * One height for everything you press or type into, and one smaller height for
+ * the things that sit inside a row of content.
+ *
+ * There were seven definitions of "a control" before this, each arrived at
+ * independently: `button` at 14px/6px 12px, `input` at 10px all round, `.btn`
+ * at 13px/7px 18px, `.field` at 14px/8px 11px, `.form-input` at 10px,
+ * `.mini-btn` at 12px/3px 8px, `.pill` at 11px/2px 9px. Measured across
+ * nineteen pages that came to twenty-eight distinct shapes at ten different
+ * heights — 21, 23, 26, 32, 34, 35, 36, 38, 39 and 40 pixels — and a bare
+ * `button` with no class rendered at four of them depending on which page it
+ * was on, because each page's own rules pushed it somewhere different.
+ *
+ * Nobody could see that by reading any one file, which is the argument for the
+ * tokens rather than for any particular number in them.
+ *
+ * min-height rather than padding arithmetic: an input, a select and a button
+ * disagree about line-height, about whether the border counts, and about what
+ * a browser adds on its own, so equal padding does not produce equal height.
+ * A stated height does.
+ *
+ * Compact on purpose. 30px is smaller than anything this replaced, and it is
+ * comfortably above the 24px WCAG 2.2 minimum target — the previous 36px
+ * mobile rule was one person's guess at a thumb, applied to buttons and not to
+ * the fields beside them, which is how a row came to be two heights at once.
+ */
+:root {
+  --control-h: 30px;
+  --control-font: 13px;
+  --control-pad-x: 12px;
+
+  --control-h-sm: 24px;
+  --control-font-sm: 12px;
+  --control-pad-x-sm: 9px;
+}
+
+button,
+input:not([type=checkbox]):not([type=radio]),
+select,
+textarea,
+.btn,
+a.btn,
+.field,
+.form-input {
+  font-family: inherit;
+  font-size: var(--control-font);
+  line-height: 1.4;
+  min-height: var(--control-h);
+  padding: 0 var(--control-pad-x);
+  border-radius: var(--border-radius, 6px);
+  box-sizing: border-box;
+}
+
+/* Buttons and selects centre their own label inside that height. A text field
+ * must not — a centred caret in a multi-line textarea is wrong — so those get
+ * padding instead. */
+button,
+select,
+.btn,
+a.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+input:not([type=checkbox]):not([type=radio]),
+textarea,
+.field,
+.form-input {
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+
+textarea,
+textarea.field,
+textarea.form-input {
+  /* Prose, not a control: it keeps the family and the width and takes its
+   * height from its rows. */
+  line-height: var(--line-height, 1.6);
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+/* The smaller size, for controls that live inside a row of content — an
+ * action on a table row, a filter over a list. */
+.mini-btn,
+.num-field,
+.pill,
+a.pill {
+  font-size: var(--control-font-sm);
+  min-height: var(--control-h-sm);
+  padding: 0 var(--control-pad-x-sm);
+}
+
+.num-field {
+  padding-top: 3px;
+  padding-bottom: 3px;
+}
+
+.pill,
+a.pill {
+  display: inline-flex;
+  align-items: center;
+}
+/* ─────────────────────────────────────────────────────────────────────────── */
+
+
+/* The free list on /pricing. Things you scan, not paragraphs you read. */
+.price-free {
+  margin: 0;
+  padding-left: 18px;
+  line-height: 1.6;
+}
+.price-free li {
+  margin: 0 0 6px;
+}
+.price-free li:last-child {
+  margin: 0;
+}
+
+/* The quiet button, after .btn rather than before it.
+   It was declared 2,800 lines above .btn, and both are one class, so .btn won
+   on order alone: background went to var(--btn-primary, #000) while the colour
+   stayed dark, because only the colour here was marked important. The result
+   was dark text on a black fill everywhere the pair was used — the top-up
+   presets, the wallet's sign-up button, two on the blog.
+   Marking the background important as well would have hidden the cause and
+   left the next property to do the same thing. Order is the cause. */
+a.btn-secondary, .btn-secondary {
+  background: var(--hover-background, #eee);
+  color: var(--text-primary, #333);
+  border-color: var(--border-color, #ddd);
+}
+a.btn-secondary:hover, .btn-secondary:hover {
+  background: var(--border-color, #ddd);
+  text-decoration: none;
+}
+
+/* What a room is about, above what has been said in it.
+   Quiet: it is context for the messages, read once on the way in, and it must
+   not compete with them. */
+.room-about {
+  margin: 0 0 14px;
+  padding: 0 0 12px;
+  border-bottom: 1px solid var(--border-color, #eee);
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-muted, #666);
+}
+
+/* The crypto card: address, QR, and turning what it holds into credits.
+   Here rather than in a <style> block inside service/wallet/page.go, which is
+   where half of it lived while the convert form's half was already here — one
+   card whose rules were in two files, so a change to the spacing between them
+   meant editing both and noticing that. */
+
+/* The address, on one line.
+   It was 13px with word-break:break-all, which does not overflow — it wraps —
+   so every check for "does it fit" reported yes while a 42-character address
+   sat on three lines on every phone. Measuring it took three attempts and the
+   first two lied in different ways: scrollWidth on a <button> does not report
+   text overflow, and a Range over wrapped text returns the widest line rather
+   than the run. Canvas measureText against the computed font is what finally
+   answered.
+   What it answered: the largest size that fits one line is 9px at a 320px
+   viewport, 10.75 at 360, 11.75 at 390 and 12.75 at 414 — near enough a
+   straight line, which is what the calc below is, held under 13px where there
+   is room to spare. break-all stays as the last resort for anything narrower
+   rather than as the normal case. */
+.cw-addr {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: clamp(8.5px, calc(3.9vw - 3.9px), 13px);
+  line-height: 1.5;
+  word-break: break-all;
+  background: var(--hover-background, #f5f5f5);
+  padding: 10px 9px;
+  border: 1px solid var(--border-color, #e2e2e2);
+  border-radius: 6px;
+  color: var(--text-primary, #222);
+  cursor: pointer;
+}
+.cw-addr:hover { background: var(--hover-background, #f5f5f5); border-color: var(--border-color, #ddd) }
+.cw-copied { font-size: 12px; color: #1a7f37; margin-top: 6px }
+.cw-net {
+  font-size: 13px; color: #8a5a00;
+  background: #fff8e6; border: 1px solid #f0dfae;
+  border-radius: 6px; padding: 9px 11px; margin: 0 0 10px;
+}
+.cw-qrnote { font-size: 12px; color: var(--text-muted, #666); margin: 8px 0 0; max-width: 260px }
+.cw-qrwrap { margin-top: 10px; font-size: 13px; color: var(--text-muted, #666) }
+.cw-qrwrap summary { cursor: pointer }
+.cw-qr { margin-top: 8px }
+.cw-qr img { width: 180px; height: 180px; image-rendering: pixelated }
+
+/* Turning what the wallet holds into credits.
+   Its own block with a rule above it, because it is a different kind of thing
+   from everything above: the rest of the card is what your address is, and this
+   spends it. Twelve pixels of margin put the button hard against the QR
+   section, which read as part of it. */
+.cw-convert {
+  margin: 18px 0 0;
+  padding: 16px 0 0;
+  border-top: 1px solid var(--border-color, #eee);
+}
+.cw-convert label {
+  display: block;
+  font-size: 13px;
+  color: var(--text-muted, #666);
+  margin: 0 0 8px;
+}
+.cw-convert-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap }
+.cw-convert-unit { font-size: 15px; color: var(--text-muted, #666) }
+.cw-convert-row .field { width: 6.5em; flex: 0 0 auto }
+.cw-convert-note {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--text-muted, #888);
+  max-width: 34em;
+}

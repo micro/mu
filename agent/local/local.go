@@ -171,7 +171,7 @@ func provider(handler gmai.ToolHandler) (gmai.Model, error) {
 	if key := settings.Get("ANTHROPIC_API_KEY"); key != "" {
 		model := settings.Get("ANTHROPIC_MODEL")
 		if model == "" {
-			model = "claude-sonnet-4-6"
+			model = "claude-sonnet-5"
 		}
 		return anthropic.NewProvider(opts(key, model)...), nil
 	}

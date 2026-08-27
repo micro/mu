@@ -23,6 +23,13 @@ func capped(t *testing.T, id string, allowed, made int) {
 	t.Helper()
 	if _, err := auth.GetAccount(id); err != nil {
 		if err := auth.Create(&auth.Account{ID: id, Name: id, Secret: "s"}); err != nil {
+			// A username the rules refuse is a bug in this test, not a fact about
+			// the machine it runs on. Skipping on it is how eighteen tests across
+			// this repository quietly stopped running the day usernames became
+			// validated — a red suite would have said so on the first push.
+			if strings.Contains(err.Error(), "username") {
+				t.Fatalf("the test account name is not a valid username: %v", err)
+			}
 			t.Skipf("cannot create an account here: %v", err)
 		}
 		t.Cleanup(func() { auth.DeleteAccount(id) }) //nolint:errcheck
@@ -46,7 +53,7 @@ func capped(t *testing.T, id string, allowed, made int) {
 }
 
 func TestAtTheLimitTheAnswerIsKnownBeforeTheFormIsShown(t *testing.T) {
-	const owner = "agent-limit-full"
+	const owner = "agent_limit_full"
 	capped(t, owner, 1, 1)
 
 	full, have, max := AtAgentLimit(owner)
@@ -59,7 +66,7 @@ func TestAtTheLimitTheAnswerIsKnownBeforeTheFormIsShown(t *testing.T) {
 }
 
 func TestBelowTheLimitNothingIsInTheWay(t *testing.T) {
-	const owner = "agent-limit-room"
+	const owner = "agent_limit_room"
 	capped(t, owner, 5, 1)
 
 	if full, have, max := AtAgentLimit(owner); full {
@@ -71,7 +78,7 @@ func TestBelowTheLimitNothingIsInTheWay(t *testing.T) {
 // nothing knows about plans, and a naive check would read that as "no agents
 // allowed" and lock everybody out of the builder.
 func TestNoAllowanceMachineryMeansNoLimitRatherThanNoAgents(t *testing.T) {
-	const owner = "agent-limit-noplan"
+	const owner = "agent_limit_noplan"
 	orig := AgentAllowance
 	AgentAllowance = nil
 	t.Cleanup(func() { AgentAllowance = orig })
@@ -83,7 +90,7 @@ func TestNoAllowanceMachineryMeansNoLimitRatherThanNoAgents(t *testing.T) {
 
 // The builder does not draw a form somebody cannot submit.
 func TestTheBuilderRefusesBeforeAskingForAnything(t *testing.T) {
-	const owner = "agent-limit-builder"
+	const owner = "agent_limit_builder"
 	capped(t, owner, 1, 1)
 
 	sess, err := auth.CreateSession(owner)

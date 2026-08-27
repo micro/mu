@@ -46,7 +46,16 @@ func TestADisplayNameNeverAnswersForAUsername(t *testing.T) {
 	homeDir(t, "collide")
 
 	lookupAccount(t, "asim", "Asim Aslam") // the username
-	lookupAccount(t, "3834", "Asim")       // a Google signup that shares the word
+
+	// The colliding account, installed rather than created. 3834 was a real id
+	// on micro.mu — it starts with a digit, which ValidateUsername has always
+	// refused, and it existed because Create did not ask until now. It has
+	// since been deleted and no new one can be made, but the shape it caused is
+	// what this test is for, and any id that shares a word with a display name
+	// can still cause it. Creating the fixture through Create would now fail,
+	// and would be testing the rule rather than the collision.
+	SetAccountForTest(&Account{ID: "3834", Name: "Asim", Secret: "s"})
+	t.Cleanup(func() { RemoveAccountForTest("3834") })
 
 	// Every time, not most times. The bug was that this varied.
 	for i := 0; i < 50; i++ {

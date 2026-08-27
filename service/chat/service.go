@@ -125,8 +125,20 @@ func (Server) Messages(_ context.Context, req *MessagesRequest, rsp *MessagesRes
 // ── Send ────────────────────────────────────────────────────────
 
 type SendRequest struct {
-	Room    string `json:"room" required:"true" description:"Room id, as returned by chat_rooms"`
-	Content string `json:"content" required:"true" description:"What to say"`
+	Room string `json:"room" required:"true" description:"Room id, as returned by chat_rooms"`
+	// Message, not Content. "Content" is the right word for a document body —
+	// files.Content is the file's contents, blog.Content is the post body,
+	// web.Content is a page with the navigation stripped out. A chat message is
+	// not a document with a body; you send somebody a message, which is what
+	// sms.Message already calls it. XMPP names the element <body>, but that is
+	// the element inside a <message>: the noun is still the message.
+	//
+	// Renamed rather than aliased. Required parameters are checked before the
+	// handler runs (see missingRequired), so a "content" kept for compatibility
+	// would never be reached while "message" is required — an alias that looks
+	// like compatibility and is not. A caller on the old name gets an error
+	// naming the new one.
+	Message string `json:"message" required:"true" description:"What to say"`
 }
 
 type SendResponse struct {
@@ -143,19 +155,19 @@ type SendResponse struct {
 // which is what everyone connected sees, what gets persisted, and what moves
 // LastActivity — three things that would otherwise each need doing by hand and
 // drift apart the first time one of them changed.
-// @example {"room":"news_456","content":"Worth reading the primary source on this."}
+// @example {"room":"news_456","message":"Worth reading the primary source on this."}
 func (Server) Send(ctx context.Context, req *SendRequest, rsp *SendResponse) error {
 	who := service.AccountFrom(ctx)
 	if who == "" {
 		return fmt.Errorf("sign in to post to a discussion")
 	}
 	id := strings.TrimSpace(req.Room)
-	content := strings.TrimSpace(req.Content)
+	text := strings.TrimSpace(req.Message)
 	if id == "" {
 		return fmt.Errorf("room is required — chat_rooms lists them")
 	}
-	if content == "" {
-		return fmt.Errorf("content is required")
+	if text == "" {
+		return fmt.Errorf("message is required")
 	}
 
 	mutex.RLock()
@@ -165,7 +177,7 @@ func (Server) Send(ctx context.Context, req *SendRequest, rsp *SendResponse) err
 		return fmt.Errorf("no live discussion called %q — chat_rooms lists the ones there are", id)
 	}
 
-	room.Broadcast <- RoomMessage{UserID: who, Content: content, Timestamp: time.Now()}
+	room.Broadcast <- RoomMessage{UserID: who, Content: text, Timestamp: time.Now()}
 	rsp.Result = "sent"
 	return nil
 }

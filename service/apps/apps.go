@@ -321,7 +321,7 @@ func Preview() string {
 		sb.WriteString(fmt.Sprintf(` · %d paid`, paidCount))
 	}
 	sb.WriteString(`</p>`)
-	sb.WriteString(`<p class="text-xs text-muted">Build apps, set your price, earn 90%% of every sale.</p>`)
+	sb.WriteString(`<p class="text-xs text-muted">Build apps, set your price, keep every penny of every sale.</p>`)
 	return sb.String()
 }
 
@@ -360,12 +360,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	case strings.HasSuffix(path, "/icon.svg"):
 		slug := strings.TrimSuffix(strings.TrimPrefix(path, "/"), "/icon.svg")
 		handleIcon(w, r, slug)
-	// /apps/<slug>/run was an alias for the app's own address, from when "run"
-	// was this service's word for showing one. It redirects rather than serving,
-	// so the app has one URL and links written against the old one still land.
-	case strings.HasSuffix(path, "/run"):
-		slug := strings.TrimSuffix(strings.TrimPrefix(path, "/"), "/run")
-		http.Redirect(w, r, "/apps/"+slug, http.StatusMovedPermanently)
 	case strings.HasSuffix(path, "/sdk/ai"):
 		slug := strings.TrimSuffix(strings.TrimPrefix(path, "/"), "/sdk/ai")
 		handleSDKAI(w, r, slug)
@@ -481,7 +475,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 
 	// HTML
 	var sb strings.Builder
-	sb.WriteString(`<p class="card-desc">Small, useful apps that do one thing well. Build apps, set your price, earn 90% of every sale.</p>`)
+	sb.WriteString(`<p class="card-desc">Small, useful apps that do one thing well. Build apps, set your price, keep every penny of every sale.</p>`)
 
 	// Building one is the point of the page, so it is a button at the top
 	// rather than a line of text under however many apps happen to be listed —
@@ -692,7 +686,7 @@ func handleNew(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString(`<div class="mb-3"><label>Price per use <span class="text-muted text-xs">(credits, 0 = free)</span></label><br>`)
 	sb.WriteString(`<input type="number" name="price" min="0" max="1000" value="0" class="form-input w-full" placeholder="0"></div>`)
 	sb.WriteString(`<div class="mb-3"><label class="d-flex items-center gap-1"><input type="checkbox" name="public" value="1" checked class="w-auto m-0"> Public</label></div>`)
-	sb.WriteString(`<p class="mb-3 text-sm text-muted">Set a price and earn 90% of every sale. Free apps cost nothing to use.</p>`)
+	sb.WriteString(`<p class="mb-3 text-sm text-muted">Set a price and keep all of it. Free apps cost nothing to use.</p>`)
 	sb.WriteString(`<button type="submit" class="btn">Create App</button>`)
 	sb.WriteString(`</form>`)
 	sb.WriteString(`</details>`)
@@ -913,8 +907,12 @@ func handleView(w http.ResponseWriter, r *http.Request, slug string) {
 	if a.Price > 0 {
 		launchLabel = fmt.Sprintf("Launch App (%d credits)", a.Price)
 	}
+	// /apps/<slug>, not /apps/<slug>/run. "run" is retired — see embed.go — and
+	// nothing routes it: the suffix falls through to the default branch, which
+	// takes the whole tail as the slug, fails to find "<slug>/run" in the map,
+	// and answers 404. This is the Launch button on an app's own page.
 	sb.WriteString(fmt.Sprintf(`<div class="d-flex gap-2 flex-wrap my-3">
-<a href="/apps/%s/run" class="btn">%s</a>`, htmlpkg.EscapeString(a.Slug), launchLabel))
+<a href="/apps/%s" class="btn">%s</a>`, htmlpkg.EscapeString(a.Slug), launchLabel))
 	_, detailAcc, detailErr := auth.RequireSession(r)
 	if detailErr == nil {
 		sb.WriteString(fmt.Sprintf(`<a href="/apps/%s/fork" class="btn btn-plain">Fork</a>`,

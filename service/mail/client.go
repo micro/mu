@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"mu/internal/app"
+	"mu/internal/settings"
 
 	"github.com/emersion/go-msgauth/dkim"
 )
@@ -26,14 +27,22 @@ type DKIMConfig struct {
 // Global DKIM config - optional, auto-loaded if keys exist
 var dkimConfig *DKIMConfig
 
-// LoadDKIMConfig loads DKIM configuration from the DKIM_PRIVATE_KEY environment
-// variable or from a file at ~/.mu/keys/dkim.key (env var takes precedence).
+// LoadDKIMConfig loads DKIM configuration from the DKIM_PRIVATE_KEY setting or
+// from a file at ~/.mu/keys/dkim.key (the setting takes precedence).
 // Domain defaults to "localhost" if not specified
+//
+// settings.Get rather than os.Getenv, which is the whole of a bug worth
+// stating. /admin/config offers a DKIM_PRIVATE_KEY box and saves what is typed
+// into it to settings.json; this read only ever looked at the environment, so
+// the box accepted a key, reported it as "saved here", and mail went on signing
+// with whatever was in the file — or not signing at all. settings.Get reads the
+// environment first and then what was saved, so the environment still wins and
+// the box now works.
 func LoadDKIMConfig(domain, selector string) error {
 	var keyData []byte
 
-	// Prefer the environment variable over the key file
-	if envKey := os.Getenv("DKIM_PRIVATE_KEY"); envKey != "" {
+	// Prefer the configured key over the key file
+	if envKey := settings.Get("DKIM_PRIVATE_KEY"); envKey != "" {
 		keyData = []byte(envKey)
 	} else {
 		homeDir, err := os.UserHomeDir()
@@ -185,28 +194,28 @@ func buildExternalTo(displayName, from, replyTo, to string, cc []string, subject
 	// Build email message
 	var msg bytes.Buffer
 
-	// Headers
-	fromHeader := from
-	if displayName != "" {
-		fromHeader = fmt.Sprintf("%s <%s>", displayName, from)
-	}
-	msg.WriteString(fmt.Sprintf("From: %s\r\n", fromHeader))
-	msg.WriteString(fmt.Sprintf("To: %s\r\n", to))
+	// Headers.
+	//
+	// Every value that came from outside goes through header.go, because a
+	// value carrying a newline does not go *into* a header, it adds one — see
+	// that file for what a subject of "Invoice\r\nBcc: ..." used to do.
+	msg.WriteString(fmt.Sprintf("From: %s\r\n", headerFrom(displayName, from)))
+	msg.WriteString(fmt.Sprintf("To: %s\r\n", headerAddr(to)))
 	// Everybody else on the thread, so their clients show the answer as part of
 	// the conversation rather than as a separate message that happens to say
 	// the same thing.
 	if len(cc) > 0 {
-		msg.WriteString(fmt.Sprintf("Cc: %s\r\n", strings.Join(cc, ", ")))
+		msg.WriteString(fmt.Sprintf("Cc: %s\r\n", headerAddr(strings.Join(cc, ", "))))
 	}
-	msg.WriteString(fmt.Sprintf("Subject: %s\r\n", subject))
+	msg.WriteString(fmt.Sprintf("Subject: %s\r\n", headerText(subject)))
 	msg.WriteString(fmt.Sprintf("Date: %s\r\n", time.Now().Format(time.RFC1123Z)))
 	msg.WriteString(fmt.Sprintf("Message-ID: %s\r\n", messageID))
 	if replyTo != "" {
-		msg.WriteString(fmt.Sprintf("Reply-To: %s\r\n", replyTo))
+		msg.WriteString(fmt.Sprintf("Reply-To: %s\r\n", headerAddr(replyTo)))
 	}
 
 	if replyToMsgID != "" {
-		msg.WriteString(fmt.Sprintf("In-Reply-To: %s\r\n", replyToMsgID))
+		msg.WriteString(fmt.Sprintf("In-Reply-To: %s\r\n", headerAddr(replyToMsgID)))
 		// References is everything the thread has referenced, ending with the
 		// message being answered. Naming only the parent is enough for the
 		// second message in a thread and loses it by the fourth, which is where
@@ -219,7 +228,7 @@ func buildExternalTo(displayName, from, replyTo, to string, cc []string, subject
 		if !strings.Contains(chain, replyToMsgID) {
 			chain = strings.TrimSpace(chain + " " + replyToMsgID)
 		}
-		msg.WriteString(fmt.Sprintf("References: %s\r\n", chain))
+		msg.WriteString(fmt.Sprintf("References: %s\r\n", headerAddr(chain)))
 	}
 
 	msg.WriteString("MIME-Version: 1.0\r\n")
@@ -364,13 +373,11 @@ func SendCalendarInvite(displayName, from, to, subject, bodyHTML, ics string) (s
 	boundary := fmt.Sprintf("----=_Mixed_%d", time.Now().UnixNano())
 
 	var msg bytes.Buffer
-	fromHeader := from
-	if displayName != "" {
-		fromHeader = fmt.Sprintf("%s <%s>", displayName, from)
-	}
-	msg.WriteString(fmt.Sprintf("From: %s\r\n", fromHeader))
-	msg.WriteString(fmt.Sprintf("To: %s\r\n", to))
-	msg.WriteString(fmt.Sprintf("Subject: %s\r\n", subject))
+	// Through header.go, like the builder above — this was the second copy of
+	// the same three Sprintfs and had the same hole.
+	msg.WriteString(fmt.Sprintf("From: %s\r\n", headerFrom(displayName, from)))
+	msg.WriteString(fmt.Sprintf("To: %s\r\n", headerAddr(to)))
+	msg.WriteString(fmt.Sprintf("Subject: %s\r\n", headerText(subject)))
 	msg.WriteString(fmt.Sprintf("Date: %s\r\n", time.Now().Format(time.RFC1123Z)))
 	msg.WriteString(fmt.Sprintf("Message-ID: %s\r\n", messageID))
 	msg.WriteString("MIME-Version: 1.0\r\n")
@@ -512,26 +519,33 @@ func SendReplyAll(fromID, displayName, from, to string, cc []string, subject, bo
 	// capped like anybody else putting a message in somebody's inbox. Answering
 	// its own owner is not a send and costs nothing; DeliverHere decides that
 	// from the accounts, not from a flag passed in here.
+	// An id of our own when nothing left the instance, minted before the loop
+	// rather than after it. It was assigned afterwards, so every purely local
+	// answer was filed with no Message-ID at all — nothing for the next reply
+	// in the conversation to name, which is how a thread came apart one turn
+	// later.
+	if messageID == "" && len(here) > 0 {
+		messageID = fmt.Sprintf("<%d.reply@%s>", time.Now().UnixNano(), ConfiguredDomain())
+	}
+
 	for _, addr := range here {
 		if err := DeliverHere(Local{
-			FromID:     fromID,
-			Display:    displayName,
-			From:       from,
-			To:         addr,
-			Subject:    subject,
-			Body:       bodyHTML,
-			ReplyTo:    inReplyTo,
+			FromID:  fromID,
+			Display: displayName,
+			From:    from,
+			To:      addr,
+			Subject: subject,
+			Body:    bodyHTML,
+			// The header, in the field for headers. It was going into ReplyTo,
+			// which is this instance's own id for the parent — a different
+			// namespace, so the lookup found nothing and the answer started a
+			// conversation of its own next to the one it was answering.
+			InReplyTo:  inReplyTo,
 			MessageID:  messageID,
 			References: references,
 		}); err != nil {
 			app.Log("mail", "could not deliver the answer to %s: %v", addr, err)
 		}
-	}
-
-	if messageID == "" && len(here) > 0 {
-		// Nothing left the instance, so there is no external id to thread on.
-		// The local copy carries In-Reply-To, which is what /inbox reads.
-		messageID = inReplyTo
 	}
 	return messageID, relayErr
 }

@@ -82,10 +82,10 @@ func TestAVerifiedSenderPassesTheInboundFilter(t *testing.T) {
 		t.Skip("aslam.me is already allowed by another rule on this instance")
 	}
 
-	if err := auth.Create(&auth.Account{ID: "verified-sender-test", Name: "vs", Secret: "s"}); err != nil {
+	if err := auth.Create(&auth.Account{ID: "verified_sender_test", Name: "vs", Secret: "s"}); err != nil {
 		t.Fatal(err)
 	}
-	acc, err := auth.GetAccount("verified-sender-test")
+	acc, err := auth.GetAccount("verified_sender_test")
 	if err != nil {
 		t.Fatal(err)
 	}

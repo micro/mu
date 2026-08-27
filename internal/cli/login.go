@@ -20,14 +20,21 @@ func runLogin(args []string, cfg *ResolvedConfig) int {
 		file = &Config{}
 	}
 
-	// Figure out the target URL. Respect flag/env override, otherwise
-	// reuse whatever is stored (falling back to the default).
-	url := cfg.URL
-	if url == "" {
-		url = file.URL
-	}
-	if url == "" {
-		url = DefaultURL
+	// `mu login https://their.host`, which is the form anybody would try first.
+	//
+	// Pointing the CLI at your own instance was `mu --url https://their.host
+	// login` — a global flag before the subcommand, which is an order nobody
+	// guesses and which the help did not show. On a binary that is meant to be
+	// self-hosted, "how do I talk to my own instance" should not be the hard
+	// part, and the answer is saved from here anyway.
+	url := cfg.Server("")
+	if len(args) > 0 {
+		if at := strings.TrimSpace(args[0]); at != "" {
+			if !strings.Contains(at, "://") {
+				at = "https://" + at
+			}
+			url = strings.TrimRight(at, "/")
+		}
 	}
 
 	fmt.Fprintf(os.Stdout, "Logging in to %s\n", url)
@@ -116,11 +123,17 @@ func runConfig(args []string, cfg *ResolvedConfig) int {
 			return 1
 		}
 		if len(args) < 2 {
-			fmt.Printf("url=%s\n", file.URL)
-			if file.Token != "" {
+			// The instance that will actually be called, and what decided it.
+			//
+			// This printed the file's url, which is empty until somebody runs
+			// login — so the one command for "what am I configured to do"
+			// answered "url=" while every call went to micro.mu. Saying where
+			// the value came from is the part that lets somebody change it.
+			fmt.Printf("url=%s (%s)\n", cfg.Server(""), urlSource(cfg, file))
+			if cfg.Token != "" {
 				fmt.Println("token=***")
 			} else {
-				fmt.Println("token=")
+				fmt.Println("token=  (run `mu login` to set one)")
 			}
 			return 0
 		}
@@ -189,4 +202,25 @@ func openBrowser(url string) error {
 		cmd = exec.Command("xdg-open", url)
 	}
 	return cmd.Start()
+}
+
+// urlSource says what decided which instance to call, for `mu config get`.
+//
+// Reported rather than inferred by the reader: four things can set it and the
+// value alone does not say which did, so somebody looking at an address they
+// did not expect has no idea what to change.
+func urlSource(cfg *ResolvedConfig, file *Config) string {
+	at := cfg.Server("")
+	switch {
+	case os.Getenv("MU_URL") == at && at != "":
+		return "MU_URL"
+	case file != nil && file.URL == at && at != "":
+		if p, err := configPath(); err == nil {
+			return p
+		}
+		return "config file"
+	case at != DefaultURL:
+		return "--url"
+	}
+	return "default"
 }

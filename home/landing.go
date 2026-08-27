@@ -1,14 +1,11 @@
 package home
 
 import (
-	"html"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"mu/internal/api"
 	"mu/internal/app"
-	"mu/internal/quota"
 )
 
 // tools is how many there are, rounded down to something a person reads.
@@ -29,17 +26,6 @@ func tools() string {
 		return strconv.Itoa(n)
 	}
 	return strconv.Itoa(n/100*100) + "+"
-}
-
-// pence renders what an operation costs, for the one line on the landing that
-// names a price.
-//
-// Read rather than written. Two numbers in marketing copy are two numbers that
-// go stale the moment an operator edits quota.json, and this page has been
-// through that before: it said "67 real tools" as a literal while the endpoint
-// served 72.
-func pence(op string) string {
-	return strconv.Itoa(quota.OperationCost(op)) + "p"
 }
 
 // Landing is the front door for anyone not signed in: something to try, then
@@ -77,8 +63,8 @@ func Landing(w http.ResponseWriter, r *http.Request) {
 	body := landingBody()
 
 	page := app.RenderLanding(app.Landing{
-		Title:       "Mu — Work with Agents",
-		Description: "Make an agent, give it an address, hand it a job — with news, web search, mail, markets, weather, places and storage behind it. Open source and self-hostable.",
+		Title:       "Mu — A network for humans, agents and services",
+		Description: "Use agents with open protocols. Give them a real inbox, tools and services, and reach them over the web, by email, from a terminal or through the API. Open source and self-hostable.",
 		Brand:       "Mu",
 		// No tagline in the chrome. This slot held "An Inbox for Agents" — the
 		// line this positioning replaced — sitting directly above a headline
@@ -90,7 +76,6 @@ func Landing(w http.ResponseWriter, r *http.Request) {
 		// except the page, which is why neither reading caught it.
 		TopRight: `<a href="/login">Sign in →</a>`,
 		Body:     body,
-		Below:    developerBand(app.BaseURL(r)),
 		Footer:   app.FooterLinks(),
 		Tail:     installScript(),
 	})
@@ -187,19 +172,19 @@ func landingBody() string {
 	// somewhere for work to come back to.
 	//
 	return `<div class="lwrap">
-<h2 class="lhead">Work with Agents.</h2>
-<p class="lead">An agent with an inbox and tools. Chat with it in a browser or by
-email, and it can reach ` + tools() + ` tools: news, mail, search, weather,
-markets, video, places, files, contacts, calendar, documents. A work in progress.</p>
+<h2 class="lhead">A network for humans, agents and services.</h2>
+<p class="lead">Use agents with open protocols. Give them a real inbox, tools and
+services. Talk to them over the web, by email, from a terminal, or through the API.
+They reach ` + tools() + ` tools: news, search, weather, markets, video, places,
+files, contacts, events, documents. A work in progress.</p>
 
 <div class="lctas">
   <a class="lcta" href="/signup">Get started</a>
   <button type="button" class="lcta lcta-second" id="install-app" hidden>Install app</button>
 </div>
 <p class="linstall" id="install-how" hidden>In Safari: Share, then Add to Home Screen.</p>
-<p class="lcost">The agent is free. Tools that cost us are priced —
-search ` + pence(quota.OpWebSearch) + `, an image ` + pence(quota.OpImageGenerate) + `.
-<a href="/pricing">Pricing</a></p>
+<p class="lcost">The agent is free. Tools that cost us are priced.
+<a href="/tools">See them</a></p>
 </div>
 
 <style>
@@ -235,92 +220,6 @@ search ` + pence(quota.OpWebSearch) + `, an image ` + pence(quota.OpImageGenerat
 .lcta-second:hover{box-shadow:inset 0 0 0 1px #111}
 .linstall{text-align:center;color:#666;font-size:14px;margin:12px auto 0}
 @media (max-width:640px){.lead{font-size:15px}}
-</style>`
-}
-
-// developerBand is the section under the fold, for somebody who already has an
-// agent and wants to point it at this.
-//
-// Below rather than beside, and that distinction is the whole design. The hero
-// is one screen with one thing to do, because a first-time visitor is deciding
-// whether they want an agent at all — and a second call to action there is a
-// choice offered to somebody who has not made the first one yet. Two earlier
-// attempts at a developer pitch went above the fold and both had to come out.
-//
-// Under it is a different situation. Anybody reading this has scrolled past the
-// button, which means they did not want it, and the most likely reason a
-// technical visitor does that is that they already have an agent. This is the
-// answer to what they are looking for.
-//
-// It says what is here and links out. It does not teach: the four-step "point
-// your client at this" walkthrough belongs on /tools and was on this page once,
-// and no protocol is named in the copy — the endpoint is a URL you can read,
-// and the payment rail's name is jargon that means nothing to somebody meeting
-// it in a hero. Both are one click away.
-func developerBand(base string) string {
-	endpoint := html.EscapeString(strings.TrimSuffix(base, "/")) + "/mcp"
-
-	return `<div class="dev">
-<h2 class="dev-head">Tools for Agents</h2>
-<p class="dev-lead">Already have an agent? Point it at one endpoint for ` +
-		tools() + ` tools.</p>
-<p class="dev-endpoint"><span class="dev-mark">⚒</span><span class="dev-arrow">→</span><code>` +
-		endpoint + `</code></p>
-<ul class="dev-facts">
-  <li>MCP, or plain HTTP for anything that cannot speak it.</li>
-  <li>One account. Or none — agents can pay via <a href="https://x402.org">x402</a> without one.</li>
-  <li>Priced per call. Cached answers are not charged.</li>
-  <li>One Go binary. Self-host it and callers pay you.</li>
-</ul>
-<p class="dev-go"><a class="lcta lcta-second" href="/tools">See the tools</a></p>
-</div>
-
-<style>
-/* A band, not a second hero: a rule across the top, ordinary text sizes, and
-   the same column width as the copy above it. It has to read as somewhere the
-   page continues rather than as a competing offer. */
-/* The colour and alignment are stated rather than inherited. This sits in the
-   shell's Below slot, which wraps it in .also — centred, 14px, #888, written
-   for a one-line note — and anything here that did not set its own
-   would come out as small grey centred text. */
-.dev{max-width:560px;margin:0 auto;padding:28px 0 0;border-top:1px solid #eee;
-  text-align:left;color:#111}
-/* The heading and its line are centred and the facts under them are not. The
-   two halves are doing different jobs: the top says what this band is, which
-   is read the way the hero above it is read, and the list is scanned. */
-.dev-head{font-size:15px;font-weight:700;color:#111;margin:0 0 8px;text-align:center}
-.dev-lead{font-size:15px;color:#555;line-height:1.6;margin:0 0 14px;text-align:center}
-/* A URL on its own says where, not what. An agent, an arrow and the address
-   says the whole sentence without one: point that at this. It is the one thing
-   on this band somebody copies, so it is centred with the heading and lead
-   above it rather than left-aligned with the facts below, where a monospace
-   line read as the first bullet of the list.
-   The box is narrowed to its content so the grey does not run the full width
-   with a short URL floating in the middle of it. */
-.dev-endpoint{display:flex;align-items:center;justify-content:center;gap:10px;
-  background:#f6f6f6;border-radius:6px;padding:10px 14px;margin:0 auto 14px;
-  width:fit-content;max-width:100%;overflow-x:auto}
-/* Sized off the line rather than set: the mark is the subject of the pair and
-   a 13px glyph beside 13px text reads as punctuation. U+2692 has no colour
-   presentation in most fonts, which is wanted here — it takes the text colour
-   and reads as an icon rather than as a sticker dropped into the sentence. */
-.dev-mark{font-size:18px;line-height:1}
-.dev-arrow{color:#999;flex:none}
-.dev-endpoint code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
-  font-size:13px;color:#333;white-space:nowrap}
-.dev-facts{font-size:14px;color:#555;line-height:1.6;margin:0 0 14px;padding-left:18px}
-.dev-facts li{margin:0 0 6px}
-.dev-facts li:last-child{margin:0}
-/* The way through, under the facts. A protocol list stood here — "SMTP in,
-   IMAP out, HTTP for the app, MCP for agents, x402 for payments" — which named
-   five things a visitor has to already care about to feel anything about, on
-   the page where they are deciding whether to care at all. The endpoint above
-   is a URL they can read and /tools is the catalogue; both say it better by
-   being the thing rather than describing it.
-
-   The same button as the hero's second action, because it is the same kind of
-   thing: somewhere to go that is not the primary one. */
-.dev-go{margin:0;text-align:center}
 </style>`
 }
 

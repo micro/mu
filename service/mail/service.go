@@ -218,21 +218,17 @@ func (Server) Send(ctx context.Context, req *SendRequest, rsp *SendResponse) err
 
 	// A local recipient may be a bare username or a full local address, with
 	// or without a +tag: asim, asim@micro.mu and asim+claude@micro.mu all
-	// reach the same inbox.
+	// reach the same inbox. Deliver is the one place that branch lives — this
+	// had its own copy, and the copy dropped the tag on the way to DeliverHere,
+	// so mail to asim+research@ was filed and woke nothing.
 	if !IsExternalEmail(to) {
-		toAcc, err := auth.GetAccount(LocalRecipient(to))
-		if err != nil {
-			return fmt.Errorf("no account here called %q", to)
-		}
-		// One door, so this cannot charge on terms of its own. It did — the
-		// charge was written here, and the same act over submission had none.
-		if err := DeliverHere(Local{
-			FromID: acc.ID, Display: acc.Name, From: acc.ID, To: toAcc.ID,
+		if _, err := Deliver(Outgoing{
+			FromID: acc.ID, Display: acc.Name, To: to,
 			Subject: req.Subject, Body: req.Body,
 		}); err != nil {
 			return err
 		}
-		rsp.Result = "Sent to " + toAcc.Name + " on this instance."
+		rsp.Result = "Sent to " + to + " on this instance."
 		return nil
 	}
 

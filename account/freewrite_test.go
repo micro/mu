@@ -1,6 +1,7 @@
 package account
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -26,16 +27,23 @@ func TestFreeOperationsAreNotRefused(t *testing.T) {
 	// The first account on an empty instance is bootstrapped to admin, and an
 	// admin skips the charge — which is exactly the blind spot this test exists
 	// to cover. So burn one, then test with the second.
-	_ = auth.Create(&auth.Account{ID: "free-write-first", Name: "first", Secret: "x", Created: time.Now()})
+	_ = auth.Create(&auth.Account{ID: "free_write_first", Name: "first", Secret: "x", Created: time.Now()})
 
-	const id = "free-write-user"
+	const id = "free_write_user"
 	acc := &auth.Account{ID: id, Name: id, Secret: "x", Created: time.Now()}
 	if err := auth.Create(acc); err != nil {
+		// A username the rules refuse is a bug in this test, not a fact about
+		// the machine it runs on. Skipping on it is how eighteen tests across
+		// this repository quietly stopped running the day usernames became
+		// validated — a red suite would have said so on the first push.
+		if strings.Contains(err.Error(), "username") {
+			t.Fatalf("the test account name is not a valid username: %v", err)
+		}
 		t.Skipf("cannot create an account in this environment: %v", err)
 	}
 	t.Cleanup(func() {
 		_ = auth.DeleteAccount(id)
-		_ = auth.DeleteAccount("free-write-first")
+		_ = auth.DeleteAccount("free_write_first")
 	})
 	if acc.Admin {
 		t.Skip("test account was bootstrapped to admin; admins skip the charge")

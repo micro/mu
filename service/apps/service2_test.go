@@ -14,15 +14,15 @@ func TestAppsSearchReadViaMesh(t *testing.T) {
 	}
 	var sr AppSearchResponse
 	if err := service.Call(context.Background(), "apps", "Server.Search",
-		&AppSearchRequest{Query: "nothing-xyz"}, &sr); err != nil {
+		&AppSearchRequest{Query: "nothing_xyz"}, &sr); err != nil {
 		t.Fatalf("search call: %v", err)
 	}
-	if !strings.Contains(sr.Text, "nothing-xyz") {
+	if !strings.Contains(sr.Text, "nothing_xyz") {
 		t.Fatalf("search resp: %q", sr.Text)
 	}
 	var rr AppReadResponse
 	err := service.Call(context.Background(), "apps", "Server.Read",
-		&AppReadRequest{Slug: "definitely-missing"}, &rr)
+		&AppReadRequest{Slug: "definitely_missing"}, &rr)
 	if err == nil {
 		t.Fatal("expected error for missing app")
 	}

@@ -12,7 +12,6 @@ import (
 	"context"
 	"fmt"
 	"html"
-	"net/http"
 	"strconv"
 	"strings"
 
@@ -199,9 +198,6 @@ var Spec = service.Spec{
 // answer and the tool takes the same argument, so the page had nothing of its
 // own — and the derived page it got instead is /services/hazards, which is the
 // card plus every method with its arguments and a form that calls them.
-func Handler(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, Spec.Page, http.StatusMovedPermanently)
-}
 
 func Card() string {
 	quakes, err := recent(4.5, "day", 0, 0, 0)
@@ -210,7 +206,7 @@ func Card() string {
 	}
 	if len(quakes) == 0 {
 		return `<p class="hmuted">Nothing above M4.5 in the past day.</p>` +
-			`<p class="hmore"><a href="/hazards">Hazards →</a></p>`
+			`<p class="hmore"><a href="/services/hazards">Hazards →</a></p>`
 	}
 	var b strings.Builder
 	for i, q := range quakes {
@@ -222,7 +218,7 @@ func Card() string {
 			html.EscapeString(q.Place) +
 			`<span class="hago">` + html.EscapeString(ago(q.When)) + `</span></div>`)
 	}
-	b.WriteString(`<p class="hmore"><a href="/hazards">All hazards →</a></p>`)
+	b.WriteString(`<p class="hmore"><a href="/services/hazards">All hazards →</a></p>`)
 	return b.String()
 }
 

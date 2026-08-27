@@ -4,7 +4,14 @@ import "testing"
 
 // TestSearchScopedToAccount verifies mail.Search only ever returns messages
 // belonging to the requesting account, and never spam.
+//
+// The fixtures are put in the index as well as the store, because search reads
+// the index now — and a message written straight into `messages` is exactly the
+// case that is invisible to it. That is worth knowing rather than working
+// around: anything that adds mail without indexing it cannot be found, which is
+// why both write paths index and why Reindex runs at boot.
 func TestSearchScopedToAccount(t *testing.T) {
+	indexed(t)
 	mutex.Lock()
 	messages = []*Message{
 		{ID: "m1", From: "acme", FromID: "ext-acme", To: "alice", ToID: "alice", Subject: "Invoice", Body: "your bitcoin invoice is ready"},
@@ -12,6 +19,7 @@ func TestSearchScopedToAccount(t *testing.T) {
 		{ID: "m3", From: "spammer", FromID: "ext-spam", To: "alice", ToID: "alice", Subject: "Bitcoin riches", Body: "claim your bitcoin now", Spam: true},
 	}
 	mutex.Unlock()
+	Reindex()
 
 	alice := Search("alice", "bitcoin", 10)
 	if len(alice) != 1 || alice[0].ID != "m1" {

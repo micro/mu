@@ -29,33 +29,13 @@ var errBadCredentials = errors.New("that username or token was not accepted")
 
 // accountForToken resolves a mail client's username and access token.
 //
-// The username may be a bare username, the full address, or a plus address:
-// all three are what a person has in front of them when filling in a mail
-// client, and asim+research@ means asim's own mailbox, so refusing it would be
-// refusing the address the product told them to use.
+// The rule moved to internal/auth when a second protocol needed it — XMPP has
+// the same login, and services never import each other, so a copy here would
+// have been two implementations that agree until one is changed. This stays as
+// the name the mail code calls it by.
 func accountForToken(user, pass string) (*auth.Account, error) {
-	if strings.TrimSpace(user) == "" || pass == "" {
-		return nil, errBadCredentials
-	}
-
-	local := user
-	if i := strings.Index(local, "@"); i > 0 {
-		local = local[:i]
-	}
-	local, _ = SplitAlias(local)
-
-	accountID, err := auth.ValidatePAT(pass)
-	if err != nil || accountID == "" {
-		return nil, errBadCredentials
-	}
-	acc, err := auth.GetAccount(accountID)
-	if err != nil || acc == nil {
-		return nil, errBadCredentials
-	}
-	// Against the ID, which is the username. Name is a display name — free
-	// text, not unique, and whatever the Google profile said. See
-	// auth.AccountByUsername, where the same mistake is written up.
-	if !strings.EqualFold(acc.ID, local) {
+	acc, err := auth.AccountForToken(user, pass)
+	if err != nil {
 		return nil, errBadCredentials
 	}
 	return acc, nil

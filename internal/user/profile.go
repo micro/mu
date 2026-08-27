@@ -16,7 +16,7 @@
 // anybody else can observe.
 //
 // That is the same shelf as changing your email or rotating a token: account
-// furniture, which CLAUDE.md already settles for the balance. A service answers
+// furniture, which AGENTS.md already settles for the balance. A service answers
 // a question about state that does not depend on who is asking; "what have I
 // saved" is a question about the asker. The split also cost the obvious thing —
 // two packages named for one person, and the page about you at /@you had no
@@ -367,7 +367,7 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 				if len(desc) > 80 {
 					desc = desc[:80] + "..."
 				}
-				appsSB.WriteString(fmt.Sprintf(`<div class="post-item"><h3><a href="/apps/%s/run" class="d-flex items-center gap-2"><span class="profile-app-icon">%s</span> %s</a></h3><p class="info">%s</p></div>`, a.Slug, icon, a.Name, desc))
+				appsSB.WriteString(fmt.Sprintf(`<div class="post-item"><h3><a href="/apps/%s" class="d-flex items-center gap-2"><span class="profile-app-icon">%s</span> %s</a></h3><p class="info">%s</p></div>`, a.Slug, icon, a.Name, desc))
 			}
 			appsSection = appsSB.String()
 		}

@@ -59,7 +59,7 @@ func TestOnlyAWholeRepeatedSubjectIsCut(t *testing.T) {
 
 // The whole conversation says it once: the heading, and nowhere else.
 func TestAConversationSaysItsSubjectOnce(t *testing.T) {
-	const who = "subject-once"
+	const who = "subject_once"
 	th := thread.Open(who, mailClient, "<inv@example.com>")
 	if th == nil {
 		t.Fatal("no conversation")
@@ -84,7 +84,7 @@ func TestAConversationSaysItsSubjectOnce(t *testing.T) {
 // thread.Name is what a mail client uses to say so, and the first name wins:
 // "Re: Re: Lunch" on message nine is not a rename.
 func TestAConversationKeepsTheNameItWasGiven(t *testing.T) {
-	const who = "subject-named"
+	const who = "subject_named"
 	th := thread.Open(who, mailClient, "<n@example.com>")
 	if th == nil {
 		t.Fatal("no conversation")
@@ -100,8 +100,8 @@ func TestAConversationKeepsTheNameItWasGiven(t *testing.T) {
 // A conversation nobody named still gets one from what was said, which is what
 // every non-mail client relies on.
 func TestAnUnnamedConversationIsStillNamed(t *testing.T) {
-	const who = "subject-derived"
-	th := thread.Open(who, thread.WebClient, "web-subject")
+	const who = "subject_derived"
+	th := thread.Open(who, thread.WebClient, "web_subject")
 	if th == nil {
 		t.Fatal("no conversation")
 	}

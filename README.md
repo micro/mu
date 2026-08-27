@@ -1,33 +1,29 @@
 # mu
 
-Work with Agents.
+A network for humans, agents and services
 
 ## Overview
 
-Build agents with an inbox and tools. Chat with them in a browser, via API, CLI or by email. They have access to 100+ tools: news, mail, search, weather, markets, video, places,
-files, contacts, calendar, documents. It's a work in progress.
-
-## Clients
-
-The front door for humans
-
-| | |
-|---|---|
-| **Web** | sign in and use it in a browser |
-| **Mail** | send it an email from anywhere |
-| **API or CLI** | the same tools via HTTP, MCP or CLI |
-| **Shell** | SSH into your own machine, from a terminal |
+Use agents from anywhere. Give them access to a real inbox, tools and services. Chat with them on the web, via mail or xmpp. 
+They have access to 100+ tools: news, search, weather, markets, video, places, files, contacts, events, docs, etc. 
 
 ## Protocols
 
-**SMTP in, IMAP out, HTTP for the app, MCP for agents, SSH for a shell,
-x402 for payments.**
+The way we're thinking about it right now. Protocols are the ideal standard.
 
-Protocols for the win!
+**SMTP in, IMAP out, HTTP for the app, MCP for agents, SSH for a shell, XMPP to chat, x402 for payments.**
+
+- **SMTP** — the server is an MTA. `you@your.domain` is a real address, and mail to it reaches your agent. Write to `you+research@` and that agent answers in the thread.
+- **IMAP** — the same mailbox opens in Thunderbird, Mail.app or your phone. Your username, and an access token from `/token` as the password.
+- **HTTP** — the web app, and every tool as a plain POST for anything that is not an agent.
+- **MCP** — `/mcp`, for Claude, Cursor, and anything else that speaks it. See below.
+- **SSH** — a shell in a sandboxed machine with a `/work` directory that keeps what you leave in it. Needs Docker on the instance; without it the port answers and every session ends there.
+- **XMPP** — the same address is also a JID. Conversations, Dino, Gajim and Monal connect to it, and it federates to other servers.
+- **x402** — a priced call with no account gets a `402` naming the price, payable in USDC on Base. The payment is the identity, so an agent never signs up.
 
 ## Tools
 
-The tools for the agents 
+The tools, reachable over MCP, as a `mu` command, or from the app
 
 | Service | Tools |
 |---|---|
@@ -49,70 +45,29 @@ The tools for the agents
 | **Markets** | `markets_list` · `markets_convert` — stocks, crypto, futures, commodities, currencies, and conversion between them. `markets_convert` takes a past date back to 1999 and converts crypto at the live price through the dollar |
 | **News** | `news_list` · `news_read` · `news_search` — RSS aggregation, full articles |
 | **Notes** | `notes_add` · `notes_get` · `notes_list` · `notes_delete` — a title and what is under it, kept between conversations and read back into every one |
+| **Notify** | `notify_send` · `notify_devices` — reach yourself on a phone or a laptop with the page closed. Your own devices only: there is no recipient argument, so it cannot be pointed at anybody else |
 | **Places** | `places_search` · `places_nearby` · `places_geocode` · `places_address` · `places_elevation` — points of interest, geocoding both directions, height above sea level |
 | **Prayer** | `prayer_times` · `prayer_qibla` · `prayer_reflection` · `prayer_verse` · `prayer_saying` · `prayer_search` — Islamic prayer times, qibla, a daily verse and saying, and the sources by reference or by question |
 | **Recall** | `recall_search` · `recall_conversation` · `recall_list` — everything you have ever said to an agent and been told, on any client: search it, and read a conversation back |
 | **Routes** | `routes_eta` · `routes_directions` · `routes_nearest` — travel time with traffic, turn-by-turn, and which of several places is quickest to reach |
-| **Sandbox** | `sandbox_run` · `sandbox_write` · `sandbox_read` · `sandbox_list` — a machine of your own: a container with a shell, and a `/work` directory that keeps what you put in it between calls. Build things, run tests, clone a repo, move files about. Running a command costs, because it is CPU and memory here; keeping and reading files is free. Needs Docker on the instance |
+| **Shell** | `shell_run` · `shell_write` · `shell_read` · `shell_list` — a machine of your own: a container with a shell, and a `/work` directory that keeps what you put in it between calls. Build things, run tests, clone a repo, move files about. Running a command costs, because it is CPU and memory here; keeping and reading files is free. Needs Docker on the instance |
 | **SMS** | `sms_send` · `sms_history` · `sms_number` · `sms_verify` — text somebody and read what they text back, from a real number. Priced per segment, capped per day, and STOP is honoured |
 | **Social** | `social_list` · `social_search` — public threads and replies |
 | **Stream** | `stream_list` — what has been happening here |
 | **Tasks** | `tasks_create` · `tasks_list` · `tasks_next` · `tasks_update` · `tasks_delete` — what is to be done, and work you can hand to the agent |
 | **Text** | `text_summarise` · `text_extract` · `text_classify` · `text_translate` — language work at a fixed price per call: shorten it, turn it into JSON matching a schema you give, sort it into one of your labels, or put it in another language. Capped at 30,000 characters, and priced because each one is a model call we pay for |
 | **Transit** | `transit_nearby` · `transit_arrivals` · `transit_status` · `transit_feeds` · `transit_trains` · `transit_buses` — stops near a point, what is due at one, and which lines are delayed or suspended. London is live from TfL, down to how many minutes away the bus is. Anywhere else answers from the agency's published timetable, using the same two tools and saying which kind of answer it gave — set `TRANSIT_FEEDS` to load one, and `transit_feeds` lists which are worth loading and what each costs. Needs no key either way. `transit_trains` is the live board at any British station from National Rail, and `transit_buses` is where the buses actually are near a point, from the DfT's Bus Open Data Service — the two that make this live outside London |
+| **Users** | `users_list` · `users_find` · `users_get` — who is on this instance, the people and the agents, and whether they are here now. Turns a name somebody mentioned into an address you can write to. Needs an account: each profile is public, but being able to enumerate them is what makes a directory worth scraping |
 | **Video** | `video_list` · `video_search` — curated channels, no ads or recommendations |
-| **Wallet** | `wallet_address` · `wallet_balance` · `wallet_list` · `wallet_pay` — a key of your own on Base: an address that holds USDC, and paying for a tool on another x402 server with it. Capped per call and per day |
+| **Wallet** | `wallet_address` · `wallet_balance` — a key of your own on Base: an address that holds USDC, and what it holds. Paying a priced endpoint is what a client does when it gets a 402, not a tool it calls |
 | **Weather** | `weather_forecast` · `weather_air` · `weather_marine` · `weather_history` — conditions and the days ahead; air quality, pollutants, UV and pollen; wave height, period and direction at a coastal point; and what the weather actually was between two dates. Everything but the forecast is keyless |
 | **Web** | `web_search` · `web_fetch` — search the web, read a page as clean text |
 
 [Open an issue](https://github.com/micro/mu/issues/new?labels=enhancement&title=Tool%20request%3A%20&body=What%20should%20it%20do%3F%0A%0AWhat%20would%20you%20use%20it%20for%3F%0A) to request a tool.
 
-## Install
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/micro/mu/main/install.sh | sh
-mu --serve
-```
-
-Open **http://localhost:8080**. The first account you create is the admin.
-
-It runs with no configuration. A few things need an API key.
-
-
-| For | Set | Notes |
-|---|---|---|
-| AI features | `ANTHROPIC_API_KEY`, `ATLAS_API_KEY`, `OPENROUTER_API_KEY`, or `OPENAI_BASE_URL` | free if you run Ollama locally |
-| Web search | `BRAVE_API_KEY` | Brave has a free tier |
-| Video | `YOUTUBE_API_KEY` | free quota |
-
-Follow setup in CLI
-
-```bash
-mu setup        # pick an AI provider, paste a key
-mu --serve
-```
-
-Everything else — mail and DKIM, Google sign-in, Stripe, x402 — is optional,
-and configurable from `/admin/config` once you are signed in as admin.
-
-Other ways to run it:
-
-```bash
-# Docker
-git clone https://github.com/micro/mu && cd mu
-docker compose up
-
-# From source
-git clone https://github.com/micro/mu
-cd mu && go install
-mu --serve
-```
-
-See the [installation guide](docs/INSTALL.md).
-
 ## Use the Tools
 
-If you just want to use the tools with an existing agent.
+If you want to use the tools with an existing agent.
 
 **Cursor, and clients with a config file.** Create a token at
 [/token](https://micro.mu/token):
@@ -150,14 +105,61 @@ https://micro.mu/mcp?tools=news,web,mail
 
 See [micro.mu/tools](https://micro.mu/tools) for all the tools.
 
-## App
+## Install
 
-The server includes a web app. A home screen renders each service at a glance —
-headlines, prices, weather, unread mail — and the agent sits inline to act on
-what you are looking at. Apps run sandboxed, in an opaque origin, and reach the
-platform through a fixed set of operations rather than your session.
+Quick install guide for self hosting (let us know if it's broken).
 
-Sign in with a username and password, a passkey (WebAuthn), or Google.
+```bash
+curl -fsSL https://raw.githubusercontent.com/micro/mu/main/install.sh | sh
+mu --serve
+```
+
+Open **http://localhost:8080**. The first account you create is the admin.
+
+Quite a few things need API keys, but here's some must haves.
+
+
+| For | Set | Notes |
+|---|---|---|
+| AI models | `ANTHROPIC_API_KEY`, `ATLAS_API_KEY`, `OPENROUTER_API_KEY`, or `OPENAI_BASE_URL` | free if you run Ollama locally |
+| Web search | `BRAVE_API_KEY` | Brave has a free tier |
+| Video | `YOUTUBE_API_KEY` | free quota |
+
+Follow setup in CLI
+
+```bash
+mu setup        # pick an AI provider, paste a key
+mu --serve
+```
+
+Everything else — mail, Google sign-in, Stripe for payments, etc — is optional.
+
+The binary is a client, and by default it calls **https://micro.mu** —
+the instance this project runs live. Running your own? Point it there:
+
+```bash
+mu login https://your.host   # saves the address and a token
+mu config get                # says which instance is in use, and why
+```
+
+Without that, `mu news list` on the machine you just installed calls the
+hosted instance rather than the one you are running. `MU_URL` and `--url`
+override per shell and per command.
+
+Other ways to run it:
+
+```bash
+# Docker
+git clone https://github.com/micro/mu && cd mu
+docker compose up
+
+# From source
+git clone https://github.com/micro/mu
+cd mu && go install
+mu --serve
+```
+
+See the [installation guide](docs/INSTALL.md).
 
 ## CLI
 
@@ -190,128 +192,29 @@ export MU_TOKEN=xxx       # or use the environment
 
 Run `mu --help` for the list — it reads the same catalogue the agent does.
 
-These are tool calls, not agent runs: one command, one tool, no model involved.
-`mu agent` is not among them — it is the mode below, and it needs a model key
-and a wallet rather than a token.
+These are tool calls: one command, one tool, no model involved and nothing to
+pay for unless the tool itself costs.
 
-## Email
-
-The server is an MTA: it listens for SMTP, delivers outbound to the recipient's
-MX signed with DKIM, and filters what arrives. An account is an address.
-
-```
-asim@micro.mu             your address; mail here reaches your agent
-asim+research@micro.mu    your agent named "research"
-agent@micro.mu            the instance's shared agent
-```
-
-The part after the `+` picks which agent answers. Replies thread — `In-Reply-To`
-and `References` are set from the chain — and everything that arrives is
-readable at `/inbox`.
-
-**Nothing arrives from a stranger.** Inbound is refused with a 550 unless it is
-a reply to something we sent, we have written to that address before, the
-sender's domain is whitelisted, or the sender is verified on an account here.
-The policy is at the top of
-[`service/mail/inbound_filter.go`](service/mail/inbound_filter.go).
-
-**IMAP and SMTP submission** mean the mailbox opens in Thunderbird, Mail.app or
-your phone, and you can reply from there. Username is your account name,
-password is an access token from `/token`. Ports, TLS and a worked nginx config
-are in [Install](docs/INSTALL.md#reading-your-mail-in-a-mail-client);
-[examples/imap-client](examples/imap-client) is a working client.
-
-Self-hosting needs `MAIL_DOMAIN`, an MX record and inbound SMTP. See
-[Install](docs/INSTALL.md).
-
-## Agent
-
-Agents are baked into the app but you can also use them in the CLI standalone. 
-
-`mu agent` is the binary as a *client* of an instance, not a caller of one you
-are signed into. It holds your model key and a private key, reads the tool
-catalogue from a running instance, and pays per call over x402 — no account on
-that instance and no signup.
-
-The distinction that matters: `mu news list` uses your account on an instance,
-`mu agent` uses your wallet on somebody else's. They share a binary and nothing
-else.
+To talk to your agent instead, `mu ask` — it runs on the instance, so it needs
+your token and no model key of your own:
 
 ```bash
-# 1. A model. The tools are rented; the thinking is yours.
-export ANTHROPIC_API_KEY=sk-ant-...     # or OPENROUTER_API_KEY
-                                        # or OPENAI_BASE_URL for Ollama etc.
-
-# 2. A wallet. Created for you on first run, or make it yourself:
-mu x402 key new                         # prints an address; send USDC on Base
-                                        # to it. No ETH — you never pay gas.
-
-# 3. Ask.
-mu agent                                # a conversation
-mu agent "what happened in markets today?"
+mu ask "what is in my inbox?"
+mu ask --agent research "anything new this week?"
 ```
 
-```
-model: anthropic/claude-sonnet-4-6
-118 tools from https://micro.mu
-wallet: 0x4160a863… (1.27 USDC)
-
-> what are the top news headlines today?
-· news_list
-…
-> of those, which matters most for markets?
-… answered with no tool call, and no charge
-```
-
-Reading the catalogue is free, so it works before the wallet holds anything —
-only priced tools need funds. What a run spent is read back off the chain when
-it ends, not totted up from what the agent believes it authorised.
-
-`--server` points it at any x402 instance; a name from `X402_SERVERS` works too.
-`--seed` uses a different key.
-
-## Payments
-
-If you enable payments a person tops up by card and spends out of a credit balance. A credit is 1p. The integration uses stripe.
-
-A credit is charged when a call costs this instance money: a model call, or a
-third party billed per request. Everything else is 0 — the agent itself, your
-inbox, your files, and reading or sending mail from a mail client. Prices are
-[`quota.json`](quota.json), which is the one place they are set.
-
-The exception is mail addressed outside the instance. It is priced and capped
-per day, and not because it costs anything to send: what a loop spends there is
-the sending domain's reputation, and no balance repairs that. A price stops
-somebody who has to pay; the cap is what stops a loop.
-
-**An agent can pay with USDC over [x402](https://x402.org) and never sign
-up.** A priced call with no credentials answers `402 Payment Required` naming
-the price and where to send it. The payment is the identity.
-
-To write an agent that pays, see
-[examples/x402-agent](examples/x402-agent) — a standalone module that imports
-none of this. It uses the [x402
-Foundation](https://github.com/x402-foundation/x402) SDK, so the same file pays
-any x402 server.
-
-To watch it work, `mu` is its own client too. Put a funded Base wallet's key in
-`~/.mu/keys/wallet.seed`:
-
-```bash
-mu x402 call web_search query="x402"   # 402 → signs → pays → returns the result
-```
-
-Self-host with neither Stripe nor x402 and nothing is metered: everything is
-free.
+`mu agent` is the other direction and easy to reach for by mistake: it runs the
+agent *here*, on your machine, with your own model key, renting tools from an
+instance over x402 and paying per call. Same word in English, opposite ways
+round.
 
 ## Configuration
 
-What things cost is data, not code — `quota.json` at the top of the repo is the
-one price list, and the gate reads it and every cost table renders from it. Drop
-a `quota.json` in the data directory to override any entry without rebuilding;
-it replaces the entries it names and leaves the rest.
+What a call costs is data, not code: `quota.json` at the top of the repo is the
+one price list, and everything that charges or displays a price reads it. Drop a
+`quota.json` into the data directory to override any entry without rebuilding.
 
-The rest are embedded in the binary, so editing one means rebuilding:
+Some files are embedded in the binary, so editing means rebuilding:
 
 - `service/news/feeds.json` — RSS news feeds
 - `service/chat/prompts.json` — chat topics
@@ -321,9 +224,7 @@ The rest are embedded in the binary, so editing one means rebuilding:
 
 See [Install](docs/INSTALL.md) for every setting the code reads.
 
-## Note
-
-If you made it to the bottom well done!
+The rest lives in /admin/config on the server.
 
 ## License
 

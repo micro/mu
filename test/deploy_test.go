@@ -125,7 +125,7 @@ func ignoreMatches(pattern, path string) bool {
 // folder called docs, and they are served.
 func TestDocsAreNeverIgnoredByDeploy(t *testing.T) {
 	for _, pattern := range ignoredPaths(t) {
-		if ignoreMatches(pattern, "docs/ARCHITECTURE.md") {
+		if ignoreMatches(pattern, "docs/INSTALL.md") {
 			t.Errorf("deploy.yml ignores %q — docs/*.md are embedded and served at /docs", pattern)
 		}
 	}

@@ -26,6 +26,7 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/thread"
+	"mu/service/mail"
 )
 
 // SessionHandler serves /agent/session/<id>: DELETE removes a conversation.
@@ -66,7 +67,7 @@ const MessagesShown = 100
 // agent panel beside it there to put the agent's turns in.
 func ConversationView(accountID string, t *thread.Thread) string {
 	msgs := thread.Messages(accountID, t.ID, MessagesShown)
-	return conversationPane(accountID, t, msgs, len(msgs) >= MessagesShown, true)
+	return conversationPane(accountID, t, msgs, len(msgs) >= MessagesShown, true, "")
 }
 
 // conversationPane is the correspondence: a heading, who is on it, and the
@@ -84,7 +85,17 @@ func ConversationView(accountID string, t *thread.Thread) string {
 // Delete bar, then its name again. Embedded in somebody else's page it is the
 // other way round: the heading is that page's, and without this the pane is a
 // conversation with nothing saying which.
-func conversationPane(accountID string, t *thread.Thread, msgs []thread.Message, trimmed, titled bool) string {
+// assign is the Assign dialog, already rendered, or "" for a caller that is
+// not offering one.
+//
+// Passed in rather than built here so the button and the dialog cannot come
+// apart: actionBar draws the button only when there is a dialog to open, and
+// the dialog is emitted by this function at the end. They were separate for
+// one commit and that was enough — ConversationView drew the button and the
+// inbox page drew the dialog, so opening a mail thread from /agent got a
+// button that did nothing. Same shape as the agent page calling a function
+// defined in a panel it had stopped rendering.
+func conversationPane(accountID string, t *thread.Thread, msgs []thread.Message, trimmed, titled bool, assign string) string {
 	subject := t.Subject
 	if subject == "" {
 		subject = "Untitled"
@@ -108,25 +119,25 @@ func conversationPane(accountID string, t *thread.Thread, msgs []thread.Message,
 		b.WriteString(messageBlock(accountID, t, m, subject))
 	}
 
-	// Replying, where replying is a thing this page can do.
+	// The two things you can do with a conversation, on one line.
 	//
-	// It could not, and said so: "This happened on Mail, so a reply carries on
-	// there — answer it the way it arrived." That sentence described the product
-	// accurately and described an inbox you cannot answer from, which is not an
-	// inbox. Somebody reading a message here had two controls, one of which was
-	// a box captioned "This is not a reply", and the reasonable thing to do with
-	// the other was press it and hope.
-	//
-	// Mail only. The rest are somebody else's transport — a room thread is
-	// answered in the room — and that is what the note underneath still says.
-	if to := replyTo(accountID, t, msgs); to != "" {
-		b.WriteString(replyBar(t, to))
-	} else {
+	// Replying is mail only: the rest are somebody else's transport — a room
+	// thread is answered in the room — which is what the note underneath says.
+	// It could not reply at all once, and said so, which described an inbox you
+	// cannot answer from. Assign is offered wherever the caller has a dialog for
+	// it to open.
+	to := replyTo(accountID, t, msgs)
+	b.WriteString(actionBar(t, to, assign != ""))
+	if to == "" {
 		b.WriteString(`<p class="ib-note">This happened on ` +
 			html.EscapeString(app.ClientName(t.Client)) + `, so a reply carries on there — answer it ` +
-			`the way it arrived and the agent picks it up in the same thread.</p>`)
+			`the way it arrived and the agent picks it up in the same thread.` +
+			backTo(t) + `</p>`)
 	}
 	b.WriteString(`</div>`)
+	// Last, and outside .ib-conv: a <dialog> inside the conversation would sit
+	// inside its column and inherit its width.
+	b.WriteString(assign)
 	return b.String()
 }
 
@@ -140,6 +151,15 @@ func conversationPane(accountID string, t *thread.Thread, msgs []thread.Message,
 //
 // Only mail. A conversation from the web has an address on nothing.
 func replyTo(accountID string, t *thread.Thread, msgs []thread.Message) string {
+	// A text is answered with a text. The thread's key is the number it came
+	// from, and sms.Send is the one path out — so the inbox can answer this
+	// without becoming a second way to send one.
+	//
+	// The rest still cannot be answered from here. A room thread is answered in
+	// the room, and that is what the note under the bar says.
+	if onAPhone(t.Client) {
+		return strings.TrimSpace(t.Key)
+	}
 	if t.Client != mailClient {
 		return ""
 	}
@@ -155,10 +175,8 @@ func replyTo(accountID string, t *thread.Thread, msgs []thread.Message) string {
 	return ""
 }
 
-// replyBar is the way to answer, next to the way to ask the agent about it.
-//
-// A link rather than a box, because the New page is where a message is
-// written and there is no reason for a second half-sized version of it here.
+// A link rather than a box for Reply, because the New page is where a message
+// is written and there is no reason for a second half-sized version of it here.
 // It arrives with the recipient and the subject filled in and the conversation
 // attached, so what comes back joins this thread instead of starting one.
 //
@@ -169,20 +187,49 @@ func replyTo(accountID string, t *thread.Thread, msgs []thread.Message) string {
 // the exact bug `a.btn` already carries `color: #fff !important` to prevent:
 // the site has one button and it has been fixed once. Drawing a second one
 // re-earns every bug the first one has already had.
-func replyBar(t *thread.Thread, to string) string {
-	subject := strings.TrimSpace(t.Subject)
-	if subject == "" {
-		subject = "your message"
+// actionBar is what you can do with the conversation you are reading: answer
+// it yourself, or give it to an agent.
+//
+// One row, and Assign is on it rather than under the thread.
+//
+// The instruction box used to sit permanently below the conversation — a
+// two-row textarea, three suggestion pills and a paragraph of caption, on every
+// conversation whether or not you had any intention of handing it over. That
+// is a lot of furniture for something you do occasionally, and it pushed the
+// thing you came to read up the page. Reported as "clutters the view", and the
+// deeper complaint was that assigning did not read as one of the things you do
+// with a message: it read as a second, stranger reply box.
+//
+// So it is a button beside Reply, and the box it opens is a dialog. Same two
+// verbs, same weight, one row.
+func actionBar(t *thread.Thread, to string, canAssign bool) string {
+	var b strings.Builder
+	b.WriteString(`<div class="ib-reply">`)
+	if to != "" {
+		subject := strings.TrimSpace(t.Subject)
+		if subject == "" {
+			subject = "your message"
+		}
+		// One Re:, however many times a subject has been round.
+		if !strings.HasPrefix(strings.ToLower(subject), "re:") {
+			subject = "Re: " + subject
+		}
+		q := url.Values{"to": {to}, "subject": {subject}, "on": {t.ID}}
+		b.WriteString(app.ActionLink("/inbox/new?"+q.Encode(), "Reply"))
 	}
-	// One Re:, however many times a subject has been round.
-	if !strings.HasPrefix(strings.ToLower(subject), "re:") {
-		subject = "Re: " + subject
+	// The button only opens the dialog, so it carries no state and needs no
+	// form — and it is drawn only where there is a dialog to open. See
+	// conversationPane's assign parameter.
+	if canAssign {
+		b.WriteString(`<button type="button" class="ib-assign-open" ` +
+			`onclick="muAssignOpen()">Assign to agent</button>`)
 	}
-	q := url.Values{"to": {to}, "subject": {subject}, "on": {t.ID}}
-	return `<div class="ib-reply">` +
-		app.ActionLink("/inbox/new?"+q.Encode(), "Reply") +
-		`<span class="ib-reply-who">to ` + html.EscapeString(to) + `</span>` +
-		`</div>`
+	if to != "" {
+		b.WriteString(`<span class="ib-reply-who">Reply goes to ` +
+			html.EscapeString(to) + `</span>`)
+	}
+	b.WriteString(`</div>`)
+	return b.String()
 }
 
 // partyLine says who is on a conversation.
@@ -283,6 +330,24 @@ func messageBlock(accountID string, t *thread.Thread, m thread.Message, subject 
 			}
 		}
 	}
+	// Mail is rendered by the mail service, not by this page.
+	//
+	// A message that arrived as mail is MIME: HTML, quoted-printable, base64, a
+	// gzipped XML report in a zip. The record holds the prose version, because
+	// prose is what an agent should be handed and what a search should look
+	// through — see body() in agent/mail, where the agent was being asked
+	// `<div dir="auto">What&#39;s happening </div>`. But prose is not what a
+	// reader should be shown: a DMARC report *is* a table, and escaping it
+	// produces the word "table" and some angle brackets.
+	//
+	// So the record says what was said and the mail store says what it looked
+	// like, and this asks the second for the mail it already has. mail.Rendered
+	// is the same function /mail renders through — there is exactly one, and a
+	// test holds that — so the two pages cannot drift.
+	if rendered := mailBody(accountID, m); rendered != "" {
+		return `<div class="ib-msg ib-person">` + fromLine(who, m.At) + addressLine(m) +
+			`<div class="ib-body">` + rendered + `</div></div>`
+	}
 	// What they wrote, and — folded away — the part of it that is this
 	// conversation quoted back at itself. See quoted.go.
 	body, quote := unquoted(m.Text)
@@ -368,4 +433,60 @@ func addressLine(m thread.Message) string {
 		parts = append(parts, `<span class="ib-addr-k">to</span> `+html.EscapeString(to))
 	}
 	return `<div class="ib-addrs">` + strings.Join(parts, `<span class="ib-addr-sep">·</span>`) + `</div>`
+}
+
+// mailBody is the stored mail for a recorded message, rendered — or empty when
+// there is none.
+//
+// Ref is the client's own identifier, which for mail is the Message-ID, so it
+// is the join between the record and the mailbox. Empty for everything that did
+// not arrive as mail, which is how chat and the web fall through to the plain
+// path below without being asked about.
+//
+// Ownership is checked rather than assumed. The Message-ID comes from the
+// caller's own thread so it is already theirs, but FindMessageByMessageID
+// searches every message on the instance, and a lookup that trusts its input
+// because of where it was called from is one refactor away from not being true.
+func mailBody(accountID string, m thread.Message) string {
+	if m.Ref == "" {
+		return ""
+	}
+	stored := mail.FindMessageByMessageID(m.Ref)
+	if stored == nil {
+		// Deleted from the mailbox, or older than the store. The record still
+		// has what was said, so the reader still gets the message.
+		return ""
+	}
+	if stored.ToID != accountID && stored.FromID != accountID {
+		return ""
+	}
+	return mail.Rendered(stored)
+}
+
+// backTo is the way back to where a conversation is still happening.
+//
+// The note above tells somebody to answer where it arrived and then does not
+// say where that is. For a room it is knowable exactly: agent/chat opens the
+// thread with the room id as its key — "the room is the conversation, so the
+// room id is the thread key" — so the address is that key, and the only reason
+// it was not a link is that nobody built one.
+//
+// Only for chat. The other clients that land here arrive by SMS or WhatsApp,
+// where "where it arrived" is somebody's phone and this instance has no URL
+// that opens it.
+func backTo(t *thread.Thread) string {
+	if t == nil || t.Client != thread.ChatClient || strings.TrimSpace(t.Key) == "" {
+		return ""
+	}
+	return ` <a href="/chat?id=` + url.QueryEscape(t.Key) + `">Open the room &rarr;</a>`
+}
+
+// onAPhone reports whether a conversation is one that goes back to a number.
+//
+// SMS and WhatsApp both. They are separate clients because the reply has to
+// travel the way it arrived — a WhatsApp thread answered by text lands as a
+// second conversation on the other person's phone — and every question the
+// inbox asks about them is the same question, so it asks it once.
+func onAPhone(client string) bool {
+	return client == thread.SMSClient || client == thread.WhatsAppClient
 }

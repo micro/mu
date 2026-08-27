@@ -8,21 +8,18 @@ import (
 	"time"
 )
 
+// unavailableToolMessage is what stands in for a source that could not answer.
+//
+// The guard below reads these back and ends an answer with "Unavailable right
+// now: news, social", so the person can see which slice is missing rather than
+// wondering why the answer is thin. It is a marker in the collected results,
+// not a message to the user — completeToolAnswerFor turns it into one.
 func unavailableToolMessage(tool string) string {
 	name := strings.TrimSpace(tool)
 	if name == "" {
 		name = "source"
 	}
 	return name + " is unavailable right now. Use any other available live results to answer, and mention this unavailable source briefly without exposing internal payloads."
-}
-
-// completeToolAnswer prevents the agent from returning only progress narration
-// after tools have already produced usable live context. LLMs occasionally stop
-// at phrases like "Let me pull that data" even though the tool calls are done;
-// in that case, synthesize a compact answer directly from the collected results
-// so the user still gets useful output and unavailable slices are explicit.
-func completeToolAnswer(answer string, ragParts []string) string {
-	return completeToolAnswerFor(answer, ragParts, false)
 }
 
 // completeToolAnswerFor is completeToolAnswer, told whether the answer came

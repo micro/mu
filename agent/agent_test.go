@@ -15,6 +15,18 @@ func quoteJSONString(s string) string {
 	return string(b)
 }
 
+// completeToolAnswer is completeToolAnswerFor for the default assistant.
+//
+// It lived in answer_guard.go until the hand-rolled planner was deleted, which
+// took its last production caller with it: the one path that runs now knows
+// whether a user-defined agent wrote the answer and always says so. Kept here
+// because the tests below are about the default assistant's behaviour and
+// there are enough of them that spelling the third argument out each time
+// would say less, not more.
+func completeToolAnswer(answer string, ragParts []string) string {
+	return completeToolAnswerFor(answer, ragParts, false)
+}
+
 func TestPlacesMapURL_QueryAndNear(t *testing.T) {
 	args := map[string]any{"q": "cafe", "near": "Hampton, UK"}
 	items := []placeItem{{Name: "Test Cafe", Lat: 51.4, Lon: -0.37}}
@@ -323,139 +335,6 @@ func TestFormatToolResultMarketsRESTDataIncludesFreshnessDisclosure(t *testing.T
 	}
 }
 
-func TestToolCallKeyDedupesEquivalentArgs(t *testing.T) {
-	first := toolCallKey("markets", map[string]any{"category": "crypto", "limit": float64(10)})
-	second := toolCallKey("markets", map[string]any{"limit": float64(10), "category": "crypto"})
-	if first != second {
-		t.Fatalf("expected equivalent tool args to share a dedupe key: %q vs %q", first, second)
-	}
-	if first == toolCallKey("markets", map[string]any{"category": "futures", "limit": float64(10)}) {
-		t.Fatal("expected distinct market categories to keep distinct dedupe keys")
-	}
-}
-
-func TestShortcutToolCallsMarketMoversAvoidsNewsPlanning(t *testing.T) {
-	for _, prompt := range []string{
-		"What is moving in markets today?",
-		"What is moving in markets?",
-		"Which stocks are moving?",
-	} {
-		got := shortcutToolCalls(prompt)
-		if len(got) != 1 {
-			t.Fatalf("%q: expected one shortcut tool call, got %#v", prompt, got)
-		}
-		if got[0].Tool != "markets" {
-			t.Fatalf("%q: expected markets-only shortcut, got %#v", prompt, got)
-		}
-	}
-}
-
-func TestShortcutToolCallsMarketMoverExplanationUsesPlanner(t *testing.T) {
-	if got := shortcutToolCalls("Why is Bitcoin moving today?"); len(got) != 0 {
-		t.Fatalf("expected explanation prompt to use planner, got %#v", got)
-	}
-	if got := shortcutToolCalls("What is moving in markets, and what news explains it?"); len(got) != 0 {
-		t.Fatalf("expected cross-source explanation prompt to use planner, got %#v", got)
-	}
-}
-
-func TestShortcutToolCallsSimpleWeatherKnownLocation(t *testing.T) {
-	got := shortcutToolCalls("Weather in New York today")
-	if len(got) != 1 {
-		t.Fatalf("expected one weather shortcut, got %#v", got)
-	}
-	if got[0].Tool != "weather_forecast" {
-		t.Fatalf("expected weather_forecast shortcut, got %#v", got)
-	}
-	if got[0].Args["lat"] != 40.7128 || got[0].Args["lon"] != -74.0060 {
-		t.Fatalf("expected New York coordinates, got %#v", got[0].Args)
-	}
-}
-
-func TestShortcutToolCallsComplexWeatherUsesPlanner(t *testing.T) {
-	if got := shortcutToolCalls("Compare weather in New York and London"); len(got) != 0 {
-		t.Fatalf("expected comparative weather prompt to use planner, got %#v", got)
-	}
-	if got := shortcutToolCalls("Will New York weather affect markets today?"); len(got) != 0 {
-		t.Fatalf("expected cross-domain weather prompt to use planner, got %#v", got)
-	}
-}
-
-func TestShortcutToolCallsLatestTechnologyNews(t *testing.T) {
-	for _, tt := range []struct {
-		prompt string
-		query  string
-	}{
-		{prompt: "latest technology news", query: "latest technology news"},
-		{prompt: "What is the latest AI news today?", query: "today AI news"},
-		{prompt: "current artificial intelligence news", query: "current artificial intelligence news"},
-	} {
-		got := shortcutToolCalls(tt.prompt)
-		if len(got) != 1 {
-			t.Fatalf("expected one shortcut tool call for %q, got %#v", tt.prompt, got)
-		}
-		if got[0].Tool != "news_search" {
-			t.Fatalf("expected news_search shortcut for %q, got %#v", tt.prompt, got)
-		}
-		if got[0].Args["query"] != tt.query {
-			t.Fatalf("expected %q query for %q, got %#v", tt.query, tt.prompt, got[0].Args)
-		}
-	}
-}
-
-func TestFallbackNewsSearchToolCallUsesWebSearchForLatestAINews(t *testing.T) {
-	got, ok := fallbackNewsSearchToolCall("Find today's AI news", "news_search", map[string]any{"query": "technology news"})
-	if !ok {
-		t.Fatal("expected latest AI news prompts to fall back when news_search is unavailable")
-	}
-	if got.Tool != "web_search" {
-		t.Fatalf("expected web_search fallback, got %#v", got)
-	}
-	if got.Args["q"] != "today AI news" {
-		t.Fatalf("expected fallback to preserve prompt topic, got %#v", got.Args)
-	}
-}
-
-func TestFallbackNewsSearchToolCallIgnoresNonNewsSearchFailures(t *testing.T) {
-	if got, ok := fallbackNewsSearchToolCall("Find today's AI news", "weather_forecast", nil); ok {
-		t.Fatalf("expected non-news tool failures to be ignored, got %#v", got)
-	}
-	if got, ok := fallbackNewsSearchToolCall("old saved AI article", "news_search", map[string]any{"query": "AI"}); ok {
-		t.Fatalf("expected non-current news prompts to be ignored, got %#v", got)
-	}
-}
-
-func TestSkipMarketMoverCompanionToolFiltersUnrequestedNews(t *testing.T) {
-	prompt := "What is moving in markets today?"
-	for _, tool := range []string{"news", "news_headlines", "news_search", "web_search", "recall"} {
-		if !skipMarketMoverCompanionTool(prompt, tool) {
-			t.Fatalf("expected %s to be skipped for market-mover prompt", tool)
-		}
-	}
-	if skipMarketMoverCompanionTool(prompt, "markets") {
-		t.Fatal("expected markets tool to remain available")
-	}
-}
-
-func TestSkipMarketMoverCompanionToolFiltersAssetMoverPrompts(t *testing.T) {
-	for _, prompt := range []string{
-		"What crypto is moving today?",
-		"Which stocks are up today?",
-		"Any Bitcoin rally today?",
-	} {
-		if !skipMarketMoverCompanionTool(prompt, "news_headlines") {
-			t.Fatalf("expected unrequested news to be skipped for %q", prompt)
-		}
-	}
-}
-
-func TestSkipMarketMoverCompanionToolAllowsExplanatoryNews(t *testing.T) {
-	prompt := "What is moving in markets today, and what news explains the moves?"
-	if skipMarketMoverCompanionTool(prompt, "news_headlines") {
-		t.Fatal("expected explanatory market-mover prompt to allow news")
-	}
-}
-
 func TestFormatToolResult_Dispatch(t *testing.T) {
 	// Ensure the dispatcher calls the right formatter
 	newsResult := `{"feed":[{"title":"Test headline","category":"tech"}]}`
@@ -477,10 +356,10 @@ func TestFormatWalletBalanceResult_WithBalance(t *testing.T) {
 	if !strings.Contains(got, "1550 credits") {
 		t.Errorf("expected credits in output, got %q", got)
 	}
-	if !strings.Contains(got, "£15.50") {
-		t.Errorf("expected formatted pounds in output, got %q", got)
+	if !strings.Contains(got, "$15.50") {
+		t.Errorf("expected formatted dollars in output, got %q", got)
 	}
-	if !strings.Contains(got, "/billing/topup") {
+	if !strings.Contains(got, "/wallet/topup") {
 		t.Errorf("expected topup link in output, got %q", got)
 	}
 }
@@ -491,8 +370,8 @@ func TestFormatWalletBalanceResult_ZeroBalance(t *testing.T) {
 	if !strings.Contains(got, "0 credits") {
 		t.Errorf("expected zero credits in output, got %q", got)
 	}
-	if !strings.Contains(got, "£0.00") {
-		t.Errorf("expected £0.00 in output, got %q", got)
+	if !strings.Contains(got, "$0.00") {
+		t.Errorf("expected $0.00 in output, got %q", got)
 	}
 }
 
@@ -639,8 +518,8 @@ func TestSaveAndGetFlow(t *testing.T) {
 	flowMu.Unlock()
 
 	f := &Flow{
-		ID:        "test-flow-1",
-		AccountID: "user-123",
+		ID:        "test_flow_1",
+		AccountID: "user_123",
 		Prompt:    "What is the weather in London?",
 		Answer:    "It is cloudy.",
 		Steps: []FlowStep{
@@ -655,7 +534,7 @@ func TestSaveAndGetFlow(t *testing.T) {
 	flowStore[f.ID] = f
 	flowMu.Unlock()
 
-	got := getFlow("test-flow-1")
+	got := getFlow("test_flow_1")
 	if got == nil {
 		t.Fatal("expected flow to be found after save")
 	}
@@ -680,9 +559,9 @@ func TestListFlows(t *testing.T) {
 
 	now := time.Now()
 	flows := []*Flow{
-		{ID: "a", AccountID: "user-1", Prompt: "Q1", CreatedAt: now.Add(-2 * time.Hour)},
-		{ID: "b", AccountID: "user-1", Prompt: "Q2", CreatedAt: now.Add(-1 * time.Hour)},
-		{ID: "c", AccountID: "user-2", Prompt: "Q3", CreatedAt: now},
+		{ID: "a", AccountID: "user_1", Prompt: "Q1", CreatedAt: now.Add(-2 * time.Hour)},
+		{ID: "b", AccountID: "user_1", Prompt: "Q2", CreatedAt: now.Add(-1 * time.Hour)},
+		{ID: "c", AccountID: "user_2", Prompt: "Q3", CreatedAt: now},
 	}
 	flowMu.Lock()
 	for _, f := range flows {
@@ -690,7 +569,7 @@ func TestListFlows(t *testing.T) {
 	}
 	flowMu.Unlock()
 
-	got := ListFlows("user-1")
+	got := ListFlows("user_1")
 	if len(got) != 2 {
 		t.Fatalf("expected 2 flows for user-1, got %d", len(got))
 	}
@@ -706,20 +585,20 @@ func TestListFlows(t *testing.T) {
 func TestDeleteFlow(t *testing.T) {
 	flowMu.Lock()
 	flowStore = map[string]*Flow{
-		"del-1": {ID: "del-1", AccountID: "owner"},
-		"del-2": {ID: "del-2", AccountID: "other"},
+		"del_1": {ID: "del_1", AccountID: "owner"},
+		"del_2": {ID: "del_2", AccountID: "other"},
 	}
 	flowMu.Unlock()
 
 	// Should not delete a flow owned by a different account.
-	deleteFlow("owner", "del-2") //nolint:errcheck
-	if getFlow("del-2") == nil {
+	deleteFlow("owner", "del_2") //nolint:errcheck
+	if getFlow("del_2") == nil {
 		t.Error("deleteFlow should not remove a flow owned by a different account")
 	}
 
 	// Should delete the owner's own flow.
-	deleteFlow("owner", "del-1") //nolint:errcheck
-	if getFlow("del-1") != nil {
+	deleteFlow("owner", "del_1") //nolint:errcheck
+	if getFlow("del_1") != nil {
 		t.Error("deleteFlow should remove the owner's flow")
 	}
 }

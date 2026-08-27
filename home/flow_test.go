@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"mu/internal/app"
-	"mu/internal/quota"
 )
 
 // The first screen is about one thing.
@@ -44,7 +43,7 @@ func TestTheLandingIsOneScreenAboutOneThing(t *testing.T) {
 	// The lead is copy and copy gets rewritten; what has to survive a rewrite
 	// is that the first screen still names what the agent can reach, so the
 	// marker is the list rather than the sentence around it.
-	for _, want := range []string{"Work with Agents", "hand it a job", "tools: news, mail"} {
+	for _, want := range []string{"A network for humans, agents and services", "tools: news, search"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the landing is missing %q", want)
 		}
@@ -109,11 +108,15 @@ func TestThereIsOneTagline(t *testing.T) {
 	Landing(rec, httptest.NewRequest("GET", "/", nil))
 	page := rec.Body.String()
 
-	// Every line this positioning has moved past. CLAUDE.md keeps the list;
+	// Every line this positioning has moved past. AGENTS.md keeps the list;
 	// this keeps them off the page, because the way they survive is by living
 	// somewhere nothing renders beside them.
 	for _, gone := range []string{
 		"An Inbox for Agents", "A personal agent", "building blocks for life",
+		// Retired rather than disproved: handing work to your own agent still
+		// works. It described one account's relationship with its agent, and
+		// what is being built is the address space they share with everybody.
+		"Work with Agents",
 	} {
 		if strings.Contains(page, gone) {
 			t.Errorf("the landing still carries the retired line %q, so a visitor "+
@@ -125,10 +128,11 @@ func TestThereIsOneTagline(t *testing.T) {
 	if i := strings.Index(page, "<body>"); i >= 0 {
 		body = page[i:]
 	}
-	if n := strings.Count(body, "Work with Agents"); n != 1 {
+	const tagline = "A network for humans, agents and services"
+	if n := strings.Count(body, tagline); n != 1 {
 		t.Errorf("the landing says %q %d times on one screen, want once — it is the "+
 			"headline, and a second copy in the chrome above it is the same "+
-			"sentence in a smaller font", "Work with Agents", n)
+			"sentence in a smaller font", tagline, n)
 	}
 }
 
@@ -177,147 +181,55 @@ func TestTheInstallButtonWaitsToBeOffered(t *testing.T) {
 	}
 }
 
-// The developer band is under the hero, not in it.
+// The footer carries the destinations, because nothing above it does any more.
 //
-// Two earlier attempts at a developer pitch went above the fold and both came
-// out: "Browse the tools" answers a question a first-time visitor has not
-// asked, and a four-step MCP walkthrough is for somebody who already decided.
-// The situation below the fold is the opposite — a reader there has scrolled
-// past the button, and the likeliest reason a technical visitor does that is
-// that they already have an agent.
+// This was TestTheDeveloperBandIsBelowTheCallToAction, guarding the ordering of
+// a "Tools for Agents" band under the hero: the endpoint, four facts about MCP
+// and x402, and a button to /tools. Three attempts at a developer pitch have
+// now been made on this page and all three came out. The band was the careful
+// version — below the fold, no protocol names, one link — and it was still a
+// second thing to read on a page whose whole design is one screen with one
+// thing to do.
 //
-// So the ordering is the test. Everything the band offers must come after the
-// one call to action, or it is the same mistake in a longer page.
-func TestTheDeveloperBandIsBelowTheCallToAction(t *testing.T) {
-	rec := httptest.NewRecorder()
-	Landing(rec, httptest.NewRequest("GET", "/", nil))
-	body := rec.Body.String()
-
-	signup := strings.Index(body, `href="/signup"`)
-	band := strings.Index(body, `class="dev"`)
-	if signup < 0 || band < 0 {
-		t.Fatalf("landing is missing the CTA or the band (signup %d, band %d)", signup, band)
-	}
-	if band < signup {
-		t.Error("the developer band is drawn before Get started, so it competes " +
-			"with the one thing a first-time visitor is being asked to do")
-	}
-
-	// What the band gives you is the endpoint, which is the actionable thing and
-	// the one fact not available anywhere else on the page.
-	if !strings.Contains(body[band:], "/mcp") {
-		t.Error("the band does not give the endpoint")
-	}
-
-	// And no link row of its own. It ended with Tools · API · Pricing, two of
-	// which were already in the footer a few centimetres below and the third of
-	// which belongs there. A footer is where a site keeps its destinations; a
-	// second copy of most of one is furniture.
-	if strings.Contains(body[band:], `class="dev-links"`) {
-		t.Error("the developer band has grown its own link row again — those " +
-			"destinations belong in the footer, which is right below it")
-	}
-	for _, want := range []string{`href="/tools"`, `href="/api"`, `href="/pricing"`} {
+// What it uniquely carried was the endpoint, and that is on /tools and /mcp,
+// both of which the footer links. So the property left to hold is that the
+// footer still does.
+func TestTheFooterCarriesTheDestinations(t *testing.T) {
+	for _, want := range []string{`href="/tools"`, `href="/api"`} {
 		if !strings.Contains(app.FooterLinks(), want) {
 			t.Errorf("the footer does not carry %s", want)
 		}
 	}
 }
 
-// The price list is reachable without an account.
-//
-// /pricing redirected to /tools, which carries a price on each of a hundred-odd
-// entries — that answers what one call costs and never what this is going to
-// cost you. Somebody deciding whether to sign up is asking the second question
-// and had nowhere to read the answer.
-//
-// It is not the plan chooser that was deleted. Plans were rebuilt three times
-// and came apart on the same fact every time: a credit is a penny and every
-// operation costs what quota.json says, whoever is asking, so there is nothing
-// to choose.
-func TestPricingIsAPriceListAndNotAPlanChooser(t *testing.T) {
+// And the landing has one call to action, with nothing after it.
+func TestTheLandingOffersOneThing(t *testing.T) {
 	rec := httptest.NewRecorder()
-	PricingHandler(rec, httptest.NewRequest("GET", "/pricing", nil))
+	Landing(rec, httptest.NewRequest("GET", "/", nil))
 	body := rec.Body.String()
 
-	if !strings.Contains(body, "One credit is one penny") {
-		t.Error("the pricing page does not say what a credit is")
+	if !strings.Contains(body, `href="/signup"`) {
+		t.Fatal("the landing lost its call to action")
 	}
-	// Rendered from quota.json rather than written here, which is the only way a
-	// price list stays true. Four hand-maintained tables drifted before.
-	if !strings.Contains(body, "stats-table") {
-		t.Error("the pricing page carries no cost table")
-	}
-
-	// No tiers, and nothing recommended.
-	for _, banned := range []string{"Most popular", "Recommended", "/month", "per month"} {
-		if strings.Contains(body, banned) {
-			t.Errorf("the pricing page is offering a plan again: %q", banned)
-		}
-	}
-
-	// And it is in the footer, so a signed-out visitor can find it.
-	if !strings.Contains(app.FooterLinks(), `href="/pricing"`) {
-		t.Error("pricing is not in the footer, so nobody signed out will find it")
+	if strings.Contains(body, `class="dev"`) {
+		t.Error("the developer band is back — three attempts at a developer " +
+			"pitch on this page have now been removed; the endpoint is on /tools")
 	}
 }
 
-// The pricing page says what the mailbox costs, and reads the numbers.
+// The pricing page is gone; /pricing redirects to /tools.
 //
-// The page said "Chatting, email, your inbox, your files: no credits" while
-// external_email was charged and capped. That was not a wording problem: it is
-// the one operation priced for something other than what it costs to run, so it
-// is exactly the one a reader must not be told is free.
+// Two tests lived here — that the page was a price list and not a plan
+// chooser, and that it said what a mailbox costs. Both were holding a page
+// into existence. A pricing page is a thing SaaS has; this is a utility
+// somebody runs, and an operator running it privately charges nobody. What a
+// credit is worth is beside the balance at /wallet, what a call costs is on
+// the tool at /tools, and the machine-readable list is /wallet/pricing.
+
+// The negative-cap guard went with the page too.
 //
-// It matters more now than it did. IMAP and SMTP mean a person can live in
-// their own mail client all day, and the natural question — what does that
-// cost — had no answer on the page that exists to answer it.
-func TestPricingSaysWhatTheMailboxCosts(t *testing.T) {
-	rec := httptest.NewRecorder()
-	PricingHandler(rec, httptest.NewRequest("GET", "/pricing", nil))
-	body := rec.Body.String()
-
-	// The free half, named, because a reader assumes a mailbox is metered.
-	for _, want := range []string{"IMAP", "SMTP", "Receiving costs nothing"} {
-		if !strings.Contains(body, want) {
-			t.Errorf("the pricing page does not mention %q, so somebody deciding "+
-				"whether to point a mail client at this has to guess", want)
-		}
-	}
-
-	// And the paid half, not described as free.
-	if strings.Contains(body, "Chatting, email,") {
-		t.Error("the pricing page says email is free while mail leaving the " +
-			"instance is charged")
-	}
-	// One price for sending, wherever it is going — the page has to say so,
-	// because a reader who has been told local mail is free will assume it
-	// still is.
-	if !strings.Contains(body, "wherever it is going") {
-		t.Error("the pricing page does not say that sending costs the same " +
-			"whether the recipient is here or outside")
-	}
-
-	// The number is read from quota.json rather than typed here. A price
-	// written into a sentence is a price that drifts.
-	if !strings.Contains(body, pence(quota.OpMailSend)) {
-		t.Errorf("the mailbox section does not carry the configured price (%s)",
-			pence(quota.OpMailSend))
-	}
-}
-
-// A cap of "none" is not a cap of minus one.
-//
-// quota.DailyLimit returns NoLimit — a negative — for an operation with no cap,
-// and quota.json is an operator's file. Dropping that straight into a sentence
-// published "capped at -1 a day".
-func TestPricingNeverPublishesANegativeCap(t *testing.T) {
-	rec := httptest.NewRecorder()
-	PricingHandler(rec, httptest.NewRequest("GET", "/pricing", nil))
-	if body := rec.Body.String(); strings.Contains(body, "-1 a day") {
-		t.Error("the pricing page publishes a negative daily cap")
-	}
-	if got := dailyCap("an_operation_with_no_limit"); got != "" {
-		t.Errorf("an operation with no cap renders %q, want nothing", got)
-	}
-}
+// dailyCap lived in pricing.go and turned quota.DailyLimit into a sentence —
+// which published "capped at -1 a day" when an operation had no cap, because
+// NoLimit is a negative sentinel. Nothing formats that value into prose any
+// more; every remaining reader (service/sms, internal/quota/allowance) tests
+// against NoLimit before using it.

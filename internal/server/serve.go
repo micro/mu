@@ -17,7 +17,6 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -27,12 +26,13 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/quota"
-	"mu/internal/settings"
 	"mu/internal/setup"
+	"mu/internal/thread"
 	"mu/internal/usage"
 	"mu/internal/user"
 	"mu/internal/x402"
 	"mu/service/blog"
+	"mu/service/chat"
 	"mu/service/mail"
 	"mu/service/wallet"
 )
@@ -260,7 +260,7 @@ func serve(addr string) {
 						canProceed, _, cost, _ := quota.CheckQuota(sess.Account, op)
 						if !canProceed {
 							app.Error(w, r, http.StatusPaymentRequired,
-								fmt.Sprintf("This costs %d credit(s). Top up at /billing/topup", cost))
+								fmt.Sprintf("This costs %d credit(s). Top up at /wallet/topup", cost))
 							return
 						}
 						if err := quota.Charge(sess.Account, op, nil); err != nil {
@@ -310,7 +310,7 @@ func serve(addr string) {
 				canProceed, _, cost, _ := quota.CheckQuota(sess.Account, op)
 				if !canProceed {
 					app.Error(w, r, http.StatusPaymentRequired,
-						fmt.Sprintf("This costs %d credit(s). Top up at /billing/topup", cost))
+						fmt.Sprintf("This costs %d credit(s). Top up at /wallet/topup", cost))
 					return
 				}
 				// Charge up-front. The handler runs only if the
@@ -398,14 +398,12 @@ func serve(addr string) {
 						// the body.
 						defer x402.Finish(w)
 					} else if who, blocked, reason := payer(r, token, op); blocked {
-						// Describe what is being refused, so a facilitator
-						// reading this challenge can index the tool. Nil
-						// unless X402_BAZAAR is on.
-						var listing map[string]any
-						if t, ok := api.ToolByName(tool); ok {
-							listing = x402.BazaarExtensions(t.Name, t.Description, api.ToolSchema(t))
-						}
-						if x402.WritePaymentRequired(w, op, resource, listing, reason) {
+						// No listing. A discovery extension used to ride along
+						// in this challenge, describing the refused tool so a
+						// facilitator could index it, behind a setting that was
+						// off by default and never turned on. See
+						// internal/x402/bazaar.go for why the whole idea went.
+						if x402.WritePaymentRequired(w, op, resource, nil, reason) {
 							// Count the refusal. Calls are recorded inside the
 							// dispatcher, which this returns before reaching,
 							// so every call turned away at the door was absent
@@ -443,6 +441,16 @@ func serve(addr string) {
 	// you can read and not answer, which is half an address.
 	mail.StartSubmissionServerIfEnabled()
 
+	// And XMPP, which is the same address in real time. asim@here is a mailbox
+	// and a chat address — one account, one local part, reachable two ways —
+	// so Conversations, Dino or Gajim is a client for this instance the same
+	// way Thunderbird already is. See service/chat/xmpp.go.
+	chat.StartXMPPServerIfEnabled()
+	// And the federated port. Separate because it is a separate decision: an
+	// operator may want their own people on XMPP without accepting connections
+	// from every other server on the internet.
+	chat.StartS2SIfEnabled()
+
 	// Log initial memory usage
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
@@ -474,6 +482,9 @@ func serve(addr string) {
 		} else {
 			app.Log("main", "Starting server on %s", addr)
 		}
+		// And on the screen, which is a different audience with a different
+		// question — see ready.go.
+		ready(addr, activated)
 		if err := server.Serve(ln); err != nil && err != http.ErrServerClosed {
 			app.Log("main", "Server error: %v", err)
 		}
@@ -506,13 +517,34 @@ func serve(addr string) {
 	// The trade is real either way. An agent run is a model call, so a short
 	// drain cuts somebody's answer off mid-sentence to save a few seconds of a
 	// deploy.
-	ctx, cancel := context.WithTimeout(context.Background(), drainFor())
+	ctx, cancel := context.WithTimeout(context.Background(), drainFor)
 	defer cancel()
 
 	// Attempt graceful shutdown
 	if err := server.Shutdown(ctx); err != nil {
 		app.Log("main", "Server forced to shutdown: %v", err)
 	}
+
+	// What was said, on disk, before this process goes.
+	//
+	// internal/thread does not write on every message — it sets a flag and a
+	// flusher does the work at most once a second, because writing the whole
+	// file per message with the lock held made the UI stop answering while a
+	// few hundred conversations were adopted. The comment on Flush says it is
+	// exported "for the two callers that cannot wait for the tick: a test that
+	// wants to know the file is on disk, and anything shutting down."
+	//
+	// The shutting-down caller was never written. So every restart dropped up
+	// to a second of conversation, and this instance redeploys on a push — ask
+	// a question, have a deploy land in that second, and the message is gone
+	// from the page you reload. That is exactly how it was reported: not there
+	// on refresh, there again later, because a later message flushed the file
+	// with the earlier one still in memory.
+	//
+	// After Shutdown, not before: an agent run finishing during the drain
+	// records its answer, and flushing first would write the file and then let
+	// that answer land in memory only.
+	thread.Flush()
 
 	// How long it took, because this is the other half of a slow restart and
 	// the half nobody measures. Shutdown waits for in-flight requests to
@@ -525,12 +557,11 @@ func serve(addr string) {
 
 // drainFor is how long in-flight requests get when the server is stopping.
 //
-// An operator's decision because the right answer depends on something this
-// process cannot see: whether something in front of it is holding the listening
-// socket. See the note where it is used.
-func drainFor() time.Duration {
-	if n, err := strconv.Atoi(strings.TrimSpace(settings.Get("SHUTDOWN_SECONDS"))); err == nil && n > 0 {
-		return time.Duration(n) * time.Second
-	}
-	return 10 * time.Second
-}
+// Ten seconds, and not settable. This was SHUTDOWN_SECONDS, justified as an
+// operator's decision because the right answer depends on whether something in
+// front of the process is holding the listening socket — but the answer to that
+// is the socket, not the drain: systemd socket activation keeps connections
+// queued across a restart, which is what INSTALL.md tells an operator to set up.
+// Ten seconds is longer than any request here except an agent run, and an agent
+// run that has not finished in ten seconds is not going to finish in thirty.
+const drainFor = 10 * time.Second

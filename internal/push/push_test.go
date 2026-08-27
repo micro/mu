@@ -5,6 +5,8 @@ package push
 import (
 	"encoding/base64"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 )
@@ -227,5 +229,132 @@ func TestAForgottenDeviceComesBack(t *testing.T) {
 	}
 	if got := Devices(who); len(got) != 1 {
 		t.Errorf("%d devices, want the one that came back", len(got))
+	}
+}
+
+// Notifications can be turned off, and the card offers it.
+//
+// /push/unsubscribe existed from the first version with nothing calling it.
+// The card had "Turn on for this device" and "Send a test" and no way back, so
+// the only way to stop notifications was to revoke the permission in browser
+// settings — which does not tell this instance, leaving a row it goes on
+// sending to until a push service happens to answer 410.
+func TestNotificationsCanBeTurnedOff(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	if _, err := Subscribe("acct", device("https://push.example/one")); err != nil {
+		t.Fatal(err)
+	}
+	if !Subscribed("acct") {
+		t.Fatal("the device was not recorded")
+	}
+
+	Unsubscribe("acct", "https://push.example/one")
+	if Subscribed("acct") {
+		t.Error("the device is still on the list after being turned off")
+	}
+}
+
+// And the card renders the control, so the endpoint is reachable by a person
+// rather than only by curl.
+func TestTheCardOffersAWayToTurnItOff(t *testing.T) {
+	if !strings.Contains(cardJS, "/push/unsubscribe") {
+		t.Error("the notifications card never calls /push/unsubscribe, so it can " +
+			"be turned on and not off")
+	}
+	if !strings.Contains(cardJS, "pushManager.getSubscription") ||
+		!strings.Contains(cardJS, "unsubscribe()") {
+		t.Error("turning it off does not unsubscribe the browser, so the next page " +
+			"load re-registers the device it just removed")
+	}
+}
+
+// What became of the last notification is recorded, because "I turned it on
+// and never received one" was otherwise unanswerable: a row in the store says
+// a device was registered, not that anything reached it.
+func TestTheLastResultIsRemembered(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	if _, err := Subscribe("acct", device("https://push.example/one")); err != nil {
+		t.Fatal(err)
+	}
+	if sent, failed, _ := LastResult("acct"); !sent.IsZero() || !failed.IsZero() {
+		t.Fatal("a device nothing has been sent to reports a result")
+	}
+
+	record("acct", "https://push.example/one", "the push service refused it (403)")
+	sent, failed, reason := LastResult("acct")
+	if !sent.IsZero() {
+		t.Error("a refusal was recorded as a delivery")
+	}
+	if failed.IsZero() || reason == "" {
+		t.Error("a refusal left no trace, so the card still says everything is fine")
+	}
+
+	record("acct", "https://push.example/one", "")
+	if sent, _, _ := LastResult("acct"); sent.IsZero() {
+		t.Error("a successful send was not recorded")
+	}
+}
+
+// A test that cannot fail is not a test.
+//
+// /push/test called Send, which hands each device to a goroutine and returns
+// nothing, and then answered ok. Pressing "Send a test" therefore said the same
+// thing whether the push service took the notification, timed out, or refused
+// it outright — and the button appeared to do nothing at all, because the page
+// only spoke up on a failure it was never told about.
+func TestATestSaysWhatActuallyHappened(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	var got int
+	refuse := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got++
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer refuse.Close()
+
+	if _, err := Subscribe("refused", device(refuse.URL+"/sub")); err != nil {
+		t.Fatal(err)
+	}
+	err := SendNow("refused", Notification{Title: "Test notification"})
+	if err == nil {
+		t.Fatal("a push service that refused the notification was reported as a success")
+	}
+	if got == 0 {
+		t.Fatal("nothing was actually sent, so the test button proves nothing")
+	}
+	if !strings.Contains(err.Error(), "500") {
+		t.Errorf("the reason does not say what the push service said: %v", err)
+	}
+	if _, failed, reason := LastResult("refused"); failed.IsZero() || reason == "" {
+		t.Error("the refusal was not recorded, so the card still reads as fine")
+	}
+
+	accept := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") == "" {
+			t.Error("the notification went out unsigned")
+		}
+		w.WriteHeader(http.StatusCreated)
+	}))
+	defer accept.Close()
+
+	if _, err := Subscribe("taken", device(accept.URL+"/sub")); err != nil {
+		t.Fatal(err)
+	}
+	if err := SendNow("taken", Notification{Title: "Test notification"}); err != nil {
+		t.Fatalf("a push service that accepted the notification was reported as a failure: %v", err)
+	}
+	if sent, _, _ := LastResult("taken"); sent.IsZero() {
+		t.Error("the delivery was not recorded")
+	}
+}
+
+// And with nothing subscribed it says so rather than reporting a send.
+func TestATestWithNoDeviceSaysSo(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	err := SendNow("nobody", Notification{Title: "Test notification"})
+	if err == nil {
+		t.Fatal("a test with no device registered was reported as sent")
 	}
 }

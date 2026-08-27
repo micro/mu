@@ -53,7 +53,6 @@ import (
 	"net"
 	"net/mail"
 	"strings"
-	"time"
 
 	"github.com/emersion/go-sasl"
 	smtpd "github.com/emersion/go-smtp"
@@ -82,7 +81,7 @@ func StartSubmissionServer(addr string) error {
 
 // StartSubmissionServerIfEnabled starts submission unless it is turned off.
 func StartSubmissionServerIfEnabled() {
-	addr, on := app.ListenAddr("SUBMISSION_PORT", ":1587")
+	addr, on := app.ListenAddr("SUBMISSION_PORT", app.SubmissionPort)
 	if !on {
 		return
 	}
@@ -210,6 +209,25 @@ func (s *submissionSession) Data(r io.Reader) error {
 	var failed []string
 	for _, to := range s.to {
 		var err error
+		// A conversation that did not arrive by mail — a text, a WhatsApp
+		// message — answered from a mail client. The address names it and the
+		// filler resolves it against what this account already has, so nothing
+		// here can start one.
+		if BridgedReply != nil {
+			body := plain
+			if strings.TrimSpace(body) == "" {
+				body = html
+			}
+			if handled, ferr := BridgedReply(s.acc.ID, to, body); handled {
+				if ferr != nil {
+					app.Log("mail", "submission: %s -> %s failed: %v", s.acc.ID, to, ferr)
+					failed = append(failed, fmt.Sprintf("%s (%v)", to, ferr))
+				} else {
+					app.Log("mail", "submission: %s -> %s sent", s.acc.ID, to)
+				}
+				continue
+			}
+		}
 		if IsExternalEmail(to) {
 			// ReplyOut sends and does not record — every caller files its own
 			// copy afterwards, which is why this one has to as well. Without it
@@ -257,77 +275,23 @@ func (s *submissionSession) Data(r io.Reader) error {
 // It used to say there was nothing to charge, "the same act as sending a
 // message from one page of this instance to another" — which was true and was
 // the hole: that act was free everywhere, so a signed-in account with a mail
-// client could write to every username here at no cost and no cap. DeliverHere
-// is the gate now, and it is the same one the page and the tool go through.
+// client could write to every username here at no cost and no cap. Deliver is
+// the gate now, and it is the same one the page and the tool go through.
 //
-// The two halves matter equally. Filing it was the easy half and the only one
-// this did at first, so writing to agent@ from a mail client put a message in
-// an inbox and woke nothing — the agent never ran and no answer came back,
-// which reads as the feature being broken rather than half-built.
-//
-// agent@ is not an account, and looking it up as one is the mistake smtp.go's
-// Rcpt already has a comment about: "the account lookup below refuses them...
-// which is how agent@ was unreachable while the code answering it sat there
-// working." Reproduced here in a new place, a fortnight later.
+// This was the only door that had the whole rule, and having it here is why the
+// other three each got a piece of it wrong. It is the shared one now, and this
+// is what is left: an address, a body, and the IP the client connected from.
 func (s *submissionSession) deliverLocally(to, display, subject, plain, html, replyTo, references string) error {
-	at := strings.LastIndex(to, "@")
-	if at <= 0 {
+	if !strings.Contains(to, "@") {
 		return fmt.Errorf("not an address")
 	}
-	local, tag := SplitAlias(to[:at])
-
-	// Writing to the shared agent files the message in your *own* inbox,
-	// because that address resolves to whoever wrote to it. Same rule as
-	// inbound — see smtp.go, where sharedAgentMail does this for mail off the
-	// network.
-	shared := strings.EqualFold(local, AgentMailbox)
-	owner := s.acc
-	if !shared {
-		acc, err := auth.AccountByUsername(local)
-		if err != nil || acc == nil {
-			return fmt.Errorf("no such user here")
-		}
-		owner = acc
-	}
-
-	from := EmailForUser(s.acc.ID, ConfiguredDomain())
-	messageID := fmt.Sprintf("<%d.submitted@%s>", time.Now().UnixNano(), ConfiguredDomain())
-	if err := DeliverHere(Local{
-		FromID: s.acc.ID, Display: display, From: from, To: owner.ID, Tag: tag,
-		Subject: subject, Body: plain, ReplyTo: replyTo, MessageID: messageID,
+	_, err := Deliver(Outgoing{
+		FromID: s.acc.ID, Display: display, To: to,
+		Subject: subject, Body: plain, HTML: html,
 		InReplyTo: replyTo, References: references,
 		SenderIP: s.remoteIP,
-	}); err != nil {
-		return err
-	}
-
-	// Authenticated: true without asking SPF or DKIM. Those exist to decide
-	// whether a sender off the network is who they say they are, and this one
-	// presented a token before being allowed to say anything at all — which is
-	// a stronger answer to the same question, not a way round it.
-	deliverInbound(InboundMail{
-		Owner:      owner.ID,
-		Tag:        tag,
-		Shared:     shared,
-		From:       from,
-		To:         to,
-		FromName:   display,
-		Subject:    subject,
-		Body:       plain,
-		Text:       stripHTMLTags(plain),
-		MessageID:  messageID,
-		InReplyTo:  replyTo,
-		References: references,
-	}, wakeRequest{
-		Owner:         owner.ID,
-		Tag:           tag,
-		Shared:        shared,
-		From:          from,
-		To:            to,
-		Authenticated: true,
-		Owned:         true,
 	})
-	return nil
+	return err
 }
 
 func (s *submissionSession) Reset() { s.from, s.to = "", nil }

@@ -20,7 +20,7 @@ package cli
 // catalogue, deliberately — a model is the one thing every developer already
 // has, and the thirty provider accounts are the part worth not having. So this
 // brings your own model (Anthropic, OpenRouter, or Ollama on your own machine)
-// and buys everything else two pence at a time.
+// and buys everything else a few cents at a time.
 
 import (
 	"bufio"
@@ -48,17 +48,22 @@ type remoteTool struct {
 }
 
 // runAgent handles `mu agent <question>`.
-func runAgent(args []string) int {
-	server := "https://micro.mu"
+func runAgent(args []string, rc *ResolvedConfig) int {
+	// --server if given, otherwise whatever the rest of the binary is using:
+	// --url, MU_URL, the config file `mu login` wrote, and only then the
+	// default. This had its own hardcoded copy of micro.mu and read none of
+	// those, so `mu login https://their.host` left this command calling
+	// somebody else's instance with no way to tell.
+	flagServer := ""
 	seedPath := ""
 	var words []string
 
 	for i := 0; i < len(args); i++ {
 		switch {
 		case args[i] == "--server" && i+1 < len(args):
-			server, i = args[i+1], i+1
+			flagServer, i = args[i+1], i+1
 		case strings.HasPrefix(args[i], "--server="):
-			server = strings.TrimPrefix(args[i], "--server=")
+			flagServer = strings.TrimPrefix(args[i], "--server=")
 		case args[i] == "--seed" && i+1 < len(args):
 			seedPath, i = args[i+1], i+1
 		case strings.HasPrefix(args[i], "--seed="):
@@ -67,6 +72,7 @@ func runAgent(args []string) int {
 			words = append(words, args[i])
 		}
 	}
+	server := rc.Server(flagServer)
 
 	// No question opens a conversation instead. One-shot is for scripts; a
 	// session is for working, and it is the difference between paying to
@@ -85,7 +91,24 @@ func runAgent(args []string) int {
 		fmt.Println("You need a model. This rents tools, not thinking — the tools")
 		fmt.Println("come from the server, the thinking is yours.")
 		fmt.Println()
-		fmt.Println("Set one of these and run it again:")
+
+		// Somebody holding a token almost certainly meant the other one.
+		//
+		// `ask` and `agent` are the same word in English pointing opposite
+		// ways, and the shell service hands out MU_URL and MU_TOKEN precisely
+		// so that talking to your agent works with no setup — then the command
+		// named after the agent is the one that refuses. Naming `ask` here is
+		// the difference between a dead end and being one line from an answer.
+		if strings.TrimSpace(rc.Token) != "" {
+			fmt.Println("If you meant your agent on the server, that is a different")
+			fmt.Printf("command and it needs no key — you are already signed in:\n\n")
+			fmt.Println("  mu ask \"what is in my inbox?\"")
+			fmt.Println()
+			fmt.Println("This one runs the agent here and rents tools from there, so")
+			fmt.Println("set a model and run it again:")
+		} else {
+			fmt.Println("Set one of these and run it again:")
+		}
 		fmt.Println()
 		fmt.Println("  export ANTHROPIC_API_KEY=sk-ant-...     # console.anthropic.com")
 		fmt.Println("  export OPENROUTER_API_KEY=sk-or-...     # openrouter.ai/keys")

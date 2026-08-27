@@ -22,7 +22,7 @@ package test
 // cheaper answer today, and a test that failed on all nine would be deleted
 // within a week. What it does is stop the number going up quietly.
 //
-// The list below is the ledger CLAUDE.md says hooks.go is. It was not: the doc
+// The list below is the ledger AGENTS.md says hooks.go is. It was not: the doc
 // named four hooks, there were nine, and one of the four it named
 // (stream.AIReplyHook) had already been deleted. A ledger that is wrong in both
 // directions tells you the problem is bounded when it is not.
@@ -100,6 +100,22 @@ var hooks = map[string]why{
 	"events.OnCreate": announces,
 	"events.OnFire":   announces,
 
+	// service/mail
+	//
+	// An adapter, and downward: mail owns IMAP — the folders, the UIDs, the
+	// RFC 5322 — and this is handed the conversations to serve. Nothing in the
+	// mail service knows what a text is, which is the property that makes it an
+	// adapter rather than a reach sideways: it would serve anything shaped like
+	// a message from anywhere.
+	//
+	// It is a hook because the alternative is worse in both directions.
+	// service/mail may not read internal/thread — a delivery mechanism keeps
+	// its own record — and an event cannot answer a question: IMAP has a client
+	// waiting on a LIST, and announcing that a folder was wanted does not fill
+	// it.
+	"mail.Bridged":      adapter,
+	"mail.BridgedReply": adapter,
+
 	// service/news
 	"news.FetchSocialContext": reachesService,
 }
@@ -127,7 +143,7 @@ func TestEveryServiceHookIsOnTheLedger(t *testing.T) {
 	for name := range hooks {
 		if !found[name] {
 			t.Errorf("%s is on the ledger and no longer exists — remove the line.\n"+
-				"CLAUDE.md carried stream.AIReplyHook for exactly this reason, long\n"+
+				"AGENTS.md carried stream.AIReplyHook for exactly this reason, long\n"+
 				"after it was deleted.", name)
 		}
 	}
@@ -136,7 +152,7 @@ func TestEveryServiceHookIsOnTheLedger(t *testing.T) {
 // No service calls an agent.
 //
 // This was written expecting three — tasks.RunAgent, events.RunAgent and
-// events.OnFireEvent, the list CLAUDE.md carried as "not yet enforced" — and
+// events.OnFireEvent, the list AGENTS.md carried as "not yet enforced" — and
 // they went in the same change that added this test. Writing the count down was
 // what made it obvious they were one thing: four ways to ask an agent for work,
 // three of them a service reaching upward through a function variable.

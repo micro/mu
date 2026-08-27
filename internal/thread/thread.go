@@ -101,6 +101,10 @@ type Thread struct {
 	Parties []Party   `json:"parties,omitempty"`
 	Started time.Time `json:"started"`
 	Updated time.Time `json:"updated"`
+	// Held means this arrived from somebody the account has never heard of and
+	// has not been let in. It is in the record and visible, and nothing acts on
+	// it until it is released. See gate.go.
+	Held bool `json:"held,omitempty"`
 	// Seen is when the owner last looked at this conversation. Anything that
 	// happened after it is unread.
 	//
@@ -511,13 +515,24 @@ func List(account string, limit int) []Thread {
 
 	var out []Thread
 	for _, t := range owned[account] {
+		// Held conversations are not in the list, which is the whole point of
+		// the state: somebody nobody here has heard of cannot put a line in
+		// front of you until you or an agent lets them. See HeldFor.
+		if t.Held {
+			continue
+		}
 		out = append(out, *t)
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].Updated.After(out[j].Updated) })
+	sortByUpdated(out)
 	if limit > 0 && len(out) > limit {
 		out = out[:limit]
 	}
 	return out
+}
+
+// sortByUpdated is newest first, which every list of these is.
+func sortByUpdated(out []Thread) {
+	sort.Slice(out, func(i, j int) bool { return out[i].Updated.After(out[j].Updated) })
 }
 
 // trim keeps an account's record within bounds, oldest first. Caller holds mu.
@@ -760,10 +775,36 @@ func SetRef(account, messageID, ref string) {
 }
 
 // WebClient names the web page in the record, so a conversation there can be
-// told from one by mail. The other clients declare their own — see
-// discord.Client — and this one is here rather than beside the page because
-// three packages need to say "the web one" and only one of them is the page.
+// told from one by mail. A client that owns its own door declares its own name
+// beside it — see mail.Client; these are here because more than one package has
+// to say the same word and none of them owns it.
 const WebClient = "web"
+
+// ChatClient names a conversation that happened in a room or over XMPP.
+//
+// Two packages write it and neither may import the other: service/chat records
+// a person-to-person XMPP exchange (xmpp_record.go) and agent/chat records the
+// agent answering in a room. A service may not import an agent, so a constant
+// owned by either would have to be copied into the other — and a copy that
+// drifted would file the two halves of one conversation under two clients.
+const ChatClient = "chat"
+
+// SMSClient names a conversation that happened over a phone number.
+//
+// Here for the same reason ChatClient is: service/sms records what arrives and
+// agent/sms records the answer, a service may not import an agent, and a
+// constant copied into both is one that drifts and files the two halves of one
+// conversation under two clients.
+const SMSClient = "sms"
+
+// WhatsAppClient names a conversation that happened over WhatsApp.
+//
+// Its own client rather than SMSClient with a flag, because the reply has to go
+// back the same way: a WhatsApp conversation answered by text arrives on the
+// other person's phone as a second thread, from a number they do not recognise,
+// and nothing about the message would say why. What the record is for is
+// knowing which door somebody came through.
+const WhatsAppClient = "whatsapp"
 
 // Rename moves a whole account's record to a new id.
 //

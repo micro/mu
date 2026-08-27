@@ -62,7 +62,7 @@ func TestAnUnknownNameResolvesToNothingRatherThanTheDefault(t *testing.T) {
 	// Falling back to the catch-all would mean a typo silently gets a different
 	// agent than the one asked for, and the sender never learns the name was
 	// wrong. Nil is what lets the caller say so.
-	if a := Platform("definitely-not-an-agent"); a != nil {
+	if a := Platform("definitely_not_an_agent"); a != nil {
 		t.Errorf("an unknown name resolved to %q instead of nothing", a.ID)
 	}
 }

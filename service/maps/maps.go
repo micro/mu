@@ -29,7 +29,7 @@
 //
 // Going elsewhere means an OS Data Hub account, a key to rotate and a second
 // bill. That is precisely the barrier this product exists to remove, and the
-// test in CLAUDE.md is whether the caller is spared an account rather than
+// test in AGENTS.md is whether the caller is spared an account rather than
 // whether we wrote the backend.
 //
 // # Why this is a service
@@ -54,7 +54,7 @@
 //
 // What stands in for the price is a limit on cold fetches per account per hour,
 // because free means nothing else throttles what this instance spends at
-// Ordnance Survey. That is CLAUDE.md's own division of labour — credits price
+// Ordnance Survey. That is AGENTS.md's own division of labour — credits price
 // real cost, rate limits stop bots — applied to a case where the real cost is
 // bounded and the bot is the risk. See limit.go.
 package maps

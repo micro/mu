@@ -10,13 +10,21 @@ package auth
 // was actually "one agent calling /mcp stalls the site".
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
 
 func TestValidatingATokenDoesNotScanEveryToken(t *testing.T) {
-	owner := "token-speed"
+	owner := "token_speed"
 	if err := Create(&Account{ID: owner, Name: owner, Secret: "x"}); err != nil {
+		// A username the rules refuse is a bug in this test, not a fact about
+		// the machine it runs on. Skipping on it is how eighteen tests across
+		// this repository quietly stopped running the day usernames became
+		// validated — a red suite would have said so on the first push.
+		if strings.Contains(err.Error(), "username") {
+			t.Fatalf("the test account name is not a valid username: %v", err)
+		}
 		t.Skipf("cannot make an account here: %v", err)
 	}
 
@@ -66,8 +74,15 @@ func TestAnUnknownTokenIsRefused(t *testing.T) {
 // Padding is stripped on both sides, so a token copied with or without its
 // base64 '=' still works — the behaviour the old double comparison existed for.
 func TestPaddingDoesNotDecideWhetherATokenWorks(t *testing.T) {
-	owner := "token-padding"
+	owner := "token_padding"
 	if err := Create(&Account{ID: owner, Name: owner, Secret: "x"}); err != nil {
+		// A username the rules refuse is a bug in this test, not a fact about
+		// the machine it runs on. Skipping on it is how eighteen tests across
+		// this repository quietly stopped running the day usernames became
+		// validated — a red suite would have said so on the first push.
+		if strings.Contains(err.Error(), "username") {
+			t.Fatalf("the test account name is not a valid username: %v", err)
+		}
 		t.Skipf("cannot make an account here: %v", err)
 	}
 	_, raw, err := CreateToken(owner, "t", nil, time.Time{})

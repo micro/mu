@@ -45,11 +45,6 @@ var resolvesCaller = regexp.MustCompile(
 //
 // Each of these was read. None is "it looked fine".
 var exemptFromScoping = map[string]string{
-	// Returns the instance's configured x402 servers — operator config, the
-	// same for everybody, not anybody's data. Being on a scoped service still
-	// means an anonymous caller cannot reach it.
-	"wallet.List": "instance config, identical for every caller",
-
 	// Passes an empty caller on purpose. images.Search("") selects scope
 	// "public", which is the stock pool — the shared images, not everyone's.
 	// Handing it the real caller would widen the search to their own private

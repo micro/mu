@@ -13,6 +13,7 @@ import (
 	"html"
 	"net/http"
 	"strings"
+	"time"
 
 	"mu/internal/app"
 	"mu/internal/auth"
@@ -42,17 +43,21 @@ func SubscribeHandler(w http.ResponseWriter, r *http.Request) {
 	// reminder firing — are all somebody else doing something. That leaves no
 	// way to tell a working subscription from a broken one except waiting, and
 	// waiting for a negative is not a test. This is the button.
+	//
+	// SendNow rather than Send, or it is not a test at all: Send hands each
+	// device to a goroutine and returns, so answering ok after calling it said
+	// "ok" whether the push service took the notification, timed out, or refused
+	// it outright. SendNow blocks and reports what happened.
 	if strings.HasSuffix(r.URL.Path, "/test") {
-		if !Subscribed(acc.ID) {
-			app.RespondJSON(w, map[string]any{"ok": false, "error": "no device is registered yet"})
-			return
-		}
-		Send(acc.ID, Notification{
+		if err := SendNow(acc.ID, Notification{
 			Title: "Test notification",
 			Body:  "This is what mail and reminders will look like.",
 			URL:   "/account",
 			Tag:   "mu-test",
-		})
+		}); err != nil {
+			app.RespondJSON(w, map[string]any{"ok": false, "error": err.Error()})
+			return
+		}
 		app.RespondJSON(w, map[string]any{"ok": true})
 		return
 	}
@@ -71,7 +76,19 @@ func SubscribeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if strings.HasSuffix(r.URL.Path, "/unsubscribe") {
-		Unsubscribe(acc.ID, body.Endpoint)
+		// No endpoint means every device.
+		//
+		// The card offers "turn it off", and the browser can only hand back the
+		// subscription it is holding — which is nothing at all once permission
+		// has been revoked, or on a device somebody has already thrown away.
+		// Somebody turning notifications off means it, and leaving a phone they
+		// no longer own on the list because it could not be named is not what
+		// they asked for.
+		if strings.TrimSpace(body.Endpoint) == "" {
+			Forget(acc.ID)
+		} else {
+			Unsubscribe(acc.ID, body.Endpoint)
+		}
 		app.RespondJSON(w, map[string]any{"ok": true})
 		return
 	}
@@ -141,11 +158,58 @@ func Card(r *http.Request, accountID string) string {
 		// about what will turn up, turns it on, and then sees none of it,
 		// concludes the feature is broken rather than that the sentence was.
 		`<p class="push-note">Mail and reminders reach this device with the page closed.</p>` +
-		`<button class="push-go" id="push-go" type="button">Turn on for this device</button>` +
-		`<button class="push-test d-none" id="push-test" type="button">Send a test</button>` +
+		// What has actually arrived, which is the question somebody who turned
+		// this on a month ago is really asking. "On for one device" is a fact
+		// about a row in a file and stays true while every send is refused.
+		lastLine(accountID) +
+		`<button class="btn" id="push-go" type="button">Turn on for this device</button>` +
+		`<button class="btn btn-quiet push-test d-none" id="push-test" type="button">Send a test</button>` +
+		// And the way out. /push/unsubscribe existed from the beginning with
+		// nothing calling it: the card could be turned on and never off, so
+		// the only way to stop notifications was to revoke the permission in
+		// browser settings — which is a different thing, does not tell this
+		// instance, and leaves the device on the list being sent to forever.
+		`<button class="btn btn-quiet push-off d-none" id="push-off" type="button">Turn off</button>` +
 		`<input type="hidden" id="push-key" value="` + html.EscapeString(key) + `">` +
 		`<input type="hidden" id="push-csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `">` +
 		`</div>` + cardCSS + cardJS
+}
+
+// lastLine says what became of the last notification sent to this account.
+//
+// Three states worth telling apart: nothing has ever been sent, something was
+// accepted by a push service, or something was refused and why. Only the first
+// of those was visible before, and only by inference from the absence of a
+// card.
+func lastLine(accountID string) string {
+	sent, failed, reason := LastResult(accountID)
+	switch {
+	case failed.After(sent) && reason != "":
+		return `<p class="push-note push-bad">Last try, ` + ago(failed) + `: ` +
+			html.EscapeString(reason) + `.</p>`
+	case !sent.IsZero():
+		return `<p class="push-note">Last one sent ` + ago(sent) + `.</p>`
+	case Subscribed(accountID):
+		return `<p class="push-note">Nothing has been sent to this account yet. ` +
+			`Send a test to check it works.</p>`
+	}
+	return ""
+}
+
+// ago is a rough age. Rough on purpose: the question is "recently, or not at
+// all", and a timestamp to the second invites reading precision into it.
+func ago(t time.Time) string {
+	d := time.Since(t)
+	switch {
+	case d < time.Minute:
+		return "just now"
+	case d < time.Hour:
+		return itoa(int(d.Minutes())) + " minutes ago"
+	case d < 24*time.Hour:
+		return itoa(int(d.Hours())) + " hours ago"
+	default:
+		return itoa(int(d.Hours()/24)) + " days ago"
+	}
 }
 
 // devicesLine says how many, because "on" on a phone and "on" on a laptop are
@@ -172,14 +236,16 @@ func itoa(n int) string {
 }
 
 const cardCSS = `<style>
+/* Layout only. The buttons were three bespoke rules here — their own padding,
+ * their own font-size, their own border — which is how a card ends up with
+ * controls that are a different height from every other control in the product.
+ * They use .btn and .btn-quiet now, and the control scale in mu.css decides
+ * how big a button is. */
 .push-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
 .push-state{font-size:12px;color:#888}
 .push-note{font-size:13px;color:#888;line-height:1.55;margin:6px 0 10px}
-.push-go{font:inherit;font-size:13px;padding:7px 16px;border:1px solid #111;background:#111;color:#fff;border-radius:6px;cursor:pointer}
-.push-go[disabled]{opacity:.5;cursor:default}
-.push-test{font:inherit;font-size:13px;padding:7px 16px;border:1px solid var(--card-border,#ddd);
-  background:var(--card-background,#fff);color:var(--text-primary,#111);border-radius:6px;cursor:pointer}
-.push-test[disabled]{opacity:.5;cursor:default}
+.push-bad{color:var(--danger,#c33)}
+.push-card .btn{margin-right:6px}
 </style>`
 
 // cardJS is the three steps, in the order the browser insists on — plus the
@@ -249,12 +315,61 @@ const cardJS = `<script>
   }
 
   var test = document.getElementById('push-test');
+  var off = document.getElementById('push-off');
 
   function on(){
     say('On for this device.');
     go.classList.add('d-none');
     if (test) test.classList.remove('d-none');
+    if (off) off.classList.remove('d-none');
   }
+
+  function offNow(){
+    go.classList.remove('d-none');
+    go.disabled = false;
+    if (test) test.classList.add('d-none');
+    if (off) off.classList.add('d-none');
+    say('Off.');
+  }
+
+  // Turning it off, properly: the browser stops holding a subscription and
+  // this instance stops holding a row. Doing either alone is what leaves the
+  // two disagreeing — a device the server goes on sending to forever, or a
+  // browser that silently re-registers on the next page load, which is exactly
+  // what the re-post below does.
+  if (off) off.addEventListener('click', function(){
+    off.disabled = true;
+    off.textContent = 'Turning off…';
+    navigator.serviceWorker.ready.then(function(reg){
+      return reg.pushManager.getSubscription();
+    }).then(function(sub){
+      var endpoint = sub ? sub.endpoint : '';
+      // Unsubscribe the browser first. If this page then fails to reach the
+      // server the worst case is a row nothing can deliver to, which the send
+      // path prunes on the first 410 — the other order leaves a browser that
+      // re-registers itself.
+      var done = sub ? sub.unsubscribe() : Promise.resolve();
+      return done.then(function(){
+        return fetch('/push/unsubscribe', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': document.getElementById('push-csrf').value
+          },
+          body: JSON.stringify({endpoint: endpoint})
+        });
+      });
+    }).then(function(){
+      off.disabled = false;
+      off.textContent = 'Turn off';
+      offNow();
+    }).catch(function(){
+      off.disabled = false;
+      off.textContent = 'Turn off';
+      say('That did not work.');
+    });
+  });
 
   // Proof, on demand. Only offered once this device is actually subscribed —
   // before that there is nothing for it to arrive on.
@@ -268,10 +383,16 @@ const cardJS = `<script>
     }).then(function(res){ return res.json(); }).then(function(data){
       test.disabled = false;
       test.textContent = 'Send a test';
-      if (!(data && data.ok)) say((data && data.error) || 'That did not work.');
+      // Both outcomes out loud. Saying nothing on success is indistinguishable
+      // from the button being dead, which is what it looked like — and if the
+      // notification itself does not arrive, "the push service took it" is the
+      // fact that tells you the problem is on the device and not here.
+      if (data && data.ok) say('Sent. It should appear on this device.');
+      else say((data && data.error) || 'That did not work.');
     }).catch(function(){
       test.disabled = false;
       test.textContent = 'Send a test';
+      say('Could not reach the server.');
     });
   });
 

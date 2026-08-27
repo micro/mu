@@ -28,18 +28,18 @@ import (
 	"io"
 	"math"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
 	"mu/internal/app"
+	"mu/internal/settings"
 )
 
 // googleAPIKey is the same key places and weather read. Each service reads it
 // for itself rather than reaching into another for a getter — a shared line of
 // os.Getenv is cheaper than a sideways import.
 func googleAPIKey() string {
-	return os.Getenv("GOOGLE_API_KEY")
+	return settings.Get("GOOGLE_API_KEY")
 }
 
 // googleRoutesURL is a var so a test can point it at a stub; the Routes API is

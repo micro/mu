@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"mu/internal/settings"
 )
 
 // TestWritePaymentRequiredHTTP verifies the server side of the x402 handshake:
@@ -14,9 +16,9 @@ import (
 // real credit cost. This is the deterministic half of "does x402 work"; the
 // paying half (sign → retry → settle) is covered by TestPayAndCallMCP.
 func TestWritePaymentRequiredHTTP(t *testing.T) {
-	x402PayTo = "0x9a717EFF039622231C65ADbF7B2A002b544b06A9"
+	settings.Set("X402_PAY_TO", "0x9a717EFF039622231C65ADbF7B2A002b544b06A9")
 	t.Setenv("X402_NETWORK", "eip155:8453")
-	defer func() { x402PayTo = "" }()
+	defer settings.Set("X402_PAY_TO", "")
 
 	// A priced operation, because the challenge is built from the price and
 	// there is nothing to charge for a free one. This said agent_query, which
@@ -64,8 +66,8 @@ func TestWritePaymentRequiredHTTP(t *testing.T) {
 	if got.Scheme != "exact" {
 		t.Errorf("scheme = %q, want exact", got.Scheme)
 	}
-	if got.PayTo != x402PayTo {
-		t.Errorf("payTo = %q, want %q", got.PayTo, x402PayTo)
+	if got.PayTo != payTo() {
+		t.Errorf("payTo = %q, want %q", got.PayTo, payTo())
 	}
 	if got.Network != Network() {
 		t.Errorf("network = %q, want %q", got.Network, Network())

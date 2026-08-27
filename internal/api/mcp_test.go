@@ -263,7 +263,7 @@ func TestMCPHandler_ToolsCallForwardsAuth(t *testing.T) {
 	body := `{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"test_auth","arguments":{}}}`
 	req := httptest.NewRequest("POST", "/mcp", strings.NewReader(body))
 	req.Header.Set("Authorization", "Bearer test-token-123")
-	req.Header.Set(TokenHeader, "micro-token-456")
+	req.Header.Set(TokenHeader, "micro_token_456")
 	w := httptest.NewRecorder()
 
 	MCPHandler(w, req)
@@ -271,7 +271,7 @@ func TestMCPHandler_ToolsCallForwardsAuth(t *testing.T) {
 	if receivedAuth != "Bearer test-token-123" {
 		t.Errorf("Expected Authorization header forwarded, got %q", receivedAuth)
 	}
-	if receivedToken != "micro-token-456" {
+	if receivedToken != "micro_token_456" {
 		t.Errorf("Expected X-Micro-Token header forwarded, got %q", receivedToken)
 	}
 }
@@ -635,11 +635,58 @@ func TestExecuteToolAsUsesDirectNewsSearchProvider(t *testing.T) {
 	}
 	defer func() { GuestNewsSearch = oldGuestNewsSearch }()
 
-	text, isErr, err := ExecuteToolAs("guest-account-without-session", "news_search", map[string]any{"query": " AI news "})
+	text, isErr, err := ExecuteToolAs("guest_no_session", "news_search", map[string]any{"query": " AI news "})
 	if err != nil || isErr {
 		t.Fatalf("expected direct news_search provider to succeed, isErr=%v err=%v", isErr, err)
 	}
 	if !strings.Contains(text, "AI story") || !strings.Contains(text, "https://example.com/ai") {
 		t.Fatalf("expected provider text with source-linked article, got %s", text)
+	}
+}
+
+// A body nobody may send is refused before anybody is authenticated.
+//
+// The read that decides whether a call is a tools/list was the first thing
+// /mcp did, and it was unbounded — so the allocation happened before the
+// gateway checked a token and before metering charged anybody. An anonymous
+// caller could ask this process to hold whatever it felt like sending.
+//
+// Both halves are checked: the status, and that the refusal names size rather
+// than arriving as a JSON syntax error from a document truncated mid-object,
+// which is what a bare MaxBytesReader would have produced.
+func TestMCPRefusesAnOversizedBodyBeforeAuth(t *testing.T) {
+	big := strings.Repeat("a", maxRequestBytes+1)
+	body := `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"web_search","arguments":{"q":"` + big + `"}}}`
+
+	req := httptest.NewRequest("POST", "/mcp", strings.NewReader(body))
+	w := httptest.NewRecorder()
+	MCPHandler(w, req)
+
+	if w.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("oversized /mcp body: status %d, want 413 — an unauthenticated "+
+			"caller can make this process allocate the whole request", w.Code)
+	}
+	var resp jsonrpcResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("refusal is not JSON-RPC: %v", err)
+	}
+	if resp.Error == nil || !strings.Contains(resp.Error.Message, "too large") {
+		t.Fatalf("refusal should say the request was too large, got %+v", resp.Error)
+	}
+}
+
+// And a request inside the limit is still served.
+//
+// The guard above is only worth having if it is a limit rather than a wall;
+// this is what would fail if the bound were set to something a real call
+// exceeds.
+func TestMCPServesABodyInsideTheLimit(t *testing.T) {
+	body := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","clientInfo":{"name":"test","version":"1.0"},"capabilities":{}}}`
+	req := httptest.NewRequest("POST", "/mcp", strings.NewReader(body))
+	w := httptest.NewRecorder()
+	MCPHandler(w, req)
+
+	if w.Code == http.StatusRequestEntityTooLarge {
+		t.Fatal("an ordinary initialize was refused as too large")
 	}
 }

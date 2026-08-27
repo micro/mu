@@ -161,5 +161,5 @@ func writeLink(accountID string) string {
 		return ""
 	}
 	return `<p class="pf-write"><a class="lcta lcta-second" href="/inbox/new?to=` +
-		html.EscapeString(url.QueryEscape("@"+accountID)) + `">Write</a></p>`
+		html.EscapeString(url.QueryEscape("@"+accountID)) + `">Send message</a></p>`
 }

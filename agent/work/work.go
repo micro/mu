@@ -87,6 +87,10 @@ type request struct {
 	// Thread is the conversation it came out of, empty when nobody asked for
 	// it in one. See answered.
 	Thread string
+	// Agent is which agent was given this, empty for whichever one this
+	// instance runs by default. See run, which is where a name becomes an
+	// instruction and a tool scope.
+	Agent string
 }
 
 // requestFrom reads a work request, and reports false when there is nothing to
@@ -96,6 +100,7 @@ func requestFrom(data map[string]interface{}) (request, bool) {
 	r := request{
 		Account: str("account"), Kind: str("kind"), ID: str("id"),
 		Title: str("title"), Prompt: str("prompt"), Thread: str("thread"),
+		Agent: str("agent"),
 	}
 	return r, r.Account != "" && r.Prompt != ""
 }
@@ -116,13 +121,38 @@ func run(r request) {
 	// the POST and made you wait for it. That control is gone and the framing is
 	// not: handing a conversation over is the same act, done properly, so it
 	// belongs here where the handing-over is run.
-	system := ""
+	// Which agent, and what it was told.
+	//
+	// Work ran as the default agent whatever it was given to: no agent
+	// travelled on the bus, so the one place work is actually handed over
+	// answered every conversation with the general instruction and every tool
+	// on the box. That made having more than one agent pointless exactly where
+	// it should have mattered most.
+	//
+	// An unknown name falls through to the default rather than failing, which
+	// is what agent.Ask does with one for the same reason: an agent deleted
+	// between the hand-over and the run should still get the work done.
+	var opts agent.QueryOpts
+	if r.Agent != "" {
+		if plat := agent.Platform(r.Agent); plat != nil {
+			opts = agent.PlatformOpts(plat)
+		} else if o, err := agent.AskAs(r.Account, r.Agent); err == nil {
+			opts = o
+		}
+	}
+
+	// Work that came out of a conversation is framed as acting on one, and the
+	// framing goes in front of whatever the agent was already told — which is
+	// what InboxPrompt's argument is for. The other way round, a specialist's
+	// standing instruction would be read as the thing to act on.
+	system := opts.System
 	if r.Thread != "" {
-		system = agent.InboxPrompt("")
+		system = agent.InboxPrompt(opts.System)
 	}
 
 	answer, err := agent.QueryWithOpts(r.Account, r.Prompt, agent.QueryOpts{
 		System: system,
+		Tools:  opts.Tools,
 		OnStep: func(s agent.Step) {
 			steps = append(steps, tasks.Step{
 				Tool:    s.Tool,

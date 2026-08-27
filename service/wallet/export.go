@@ -71,10 +71,17 @@ func ExportHandler(w http.ResponseWriter, r *http.Request) {
 		// and want different answers. Somebody who signed in with Google typing
 		// their Google password into this box would otherwise be told, over and
 		// over, that it was wrong.
-		msg := "That password is not right."
+		// The advice used to name something that did not exist. It said "set a
+		// password first" when there was no way to set one anywhere in the
+		// product, and it said it only in the "no password" case — which a
+		// Google account never reaches, because it holds a bcrypt hash of a
+		// random string and so reports a wrong password rather than none. The
+		// owner of the key was told, every time, that they had typed their own
+		// password wrong.
+		msg := "That password is not right. If you signed in with Google or a passkey you " +
+			"have no password to type — set one on your account and come back."
 		if strings.Contains(err.Error(), "no password") {
-			msg = "This account has no password — it signs in with Google or a passkey. " +
-				"Set a password first, or ask an admin to export the key for you."
+			msg = "This account has no password. Set one on your account and come back."
 		}
 		app.Log("wallet", "SECURITY: failed key export for %s: %v", acc.ID, err)
 		app.Respond(w, r, app.Response{Title: "Export key", Description: "Take a copy of your private key", HTML: exportForm(r, msg)})
@@ -108,6 +115,10 @@ func exportForm(r *http.Request, errMsg string) string {
 		`screenshot.</p>`)
 	if errMsg != "" {
 		b.WriteString(`<p class="text-error">` + html.EscapeString(errMsg) + `</p>`)
+		// A link rather than a path in the prose. errMsg is escaped and stays
+		// that way — a message that could carry markup is a message that will
+		// one day carry somebody else's — so the way out is its own line.
+		b.WriteString(`<p class="text-sm"><a href="/account">Set a password on your account &rarr;</a></p>`)
 	}
 	b.WriteString(`<form method="POST" action="/wallet/export" autocomplete="off">`)
 	b.WriteString(`<input type="hidden" name="_csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `">`)

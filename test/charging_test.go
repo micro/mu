@@ -136,9 +136,9 @@ var pageCharged = map[string]bool{
 	// /browser's page opens and photographs a page itself rather than calling
 	// its own endpoints, so it charges for both. Same debt, same list.
 	"browser_read": true, "browser_shot": true,
-	// /sandbox's page runs a command itself rather than calling its own
+	// /shell's page runs a command itself rather than calling its own
 	// endpoint, so it charges for it. Same debt, same list.
-	"sandbox_run": true,
+	"shell_run":   true,
 	"news_search": true,
 	// /mail's Handler charges for both, for the same reason: the page sends
 	// mail without going through the endpoint.

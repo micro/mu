@@ -32,17 +32,19 @@ import (
 	"mu/service/markets"
 	"mu/service/news"
 	"mu/service/notes"
+	"mu/service/notify"
 	"mu/service/places"
 	"mu/service/prayer"
 	"mu/service/recall"
 	"mu/service/routes"
-	"mu/service/sandbox"
+	"mu/service/shell"
 	"mu/service/sms"
 	"mu/service/social"
 	"mu/service/stream"
 	"mu/service/tasks"
 	"mu/service/text"
 	"mu/service/transit"
+	"mu/service/users"
 	"mu/service/video"
 	"mu/service/wallet"
 	"mu/service/weather"
@@ -94,12 +96,12 @@ func boot() {
 	// write to that index and every reader over it was filtered to one type.
 	archive.Load()
 	browser.Load()
-	sandbox.Load()
+	shell.Load()
 
 	// And the SSH door onto it, when an operator has named a port. Off
 	// otherwise — see service/sandbox/ssh.go for why the port is a decision
 	// rather than a default.
-	sandbox.LoadSSH()
+	shell.LoadSSH()
 	web.Load()
 	text.Load()
 	food.Load()
@@ -111,6 +113,7 @@ func boot() {
 	chat.LoadService()
 	docs.LoadService()
 	notes.LoadService()
+	notify.LoadService()
 	sms.LoadService()
 	images.Load()
 	// The cache behind /img, which serves article images from here instead of
@@ -124,6 +127,7 @@ func boot() {
 	flights.Load()
 	routes.Load()
 	contacts.Load()
+	users.Load()
 	// Who is here: the presence broadcaster behind /presence. It was started
 	// from wireHooks, which is for breaking cycles rather than standing things
 	// up, and it never needed one.

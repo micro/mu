@@ -89,7 +89,16 @@ const (
 	// agent, is not a send and is not charged — see mail.DeliverHere.
 	OpMailSend = "mail_send"
 
-	OpSMSSend      = "sms_send"
+	OpSMSSend = "sms_send"
+
+	// OpWhatsAppSend is a WhatsApp message, which is a separate operation
+	// rather than a multiplier on OpSMSSend because the two are billed on
+	// different units: a text per 160-character segment, WhatsApp per 24-hour
+	// conversation. An operator who sets one price has to be able to set the
+	// other, and charging a paragraph five times for something the provider
+	// charged once is what sharing the operation would do.
+	OpWhatsAppSend = "whatsapp_send"
+
 	OpPlacesSearch = "places_search"
 	OpPlacesNearby = "places_nearby"
 	// OpRoutesETA keeps the operation id "places_eta" although the service is
@@ -106,7 +115,7 @@ const (
 	OpWebFetch         = "web_fetch"
 	OpBrowserRead      = "browser_read"
 	OpBrowserShot      = "browser_shot"
-	OpSandboxRun       = "sandbox_run"
+	OpShellRun         = "shell_run"
 	OpDBWrite          = "db_write"
 	OpImageGenerate    = "image_generate"
 	OpTextSummarise    = "text_summarise"
@@ -192,7 +201,7 @@ func CheckQuota(userID string, operation string) (bool, bool, int, error) {
 	// credits" told neither of them what to do next.
 	//
 	// Where to go is a whole address when this instance knows its own. The
-	// reader here is often a program on another machine, and "/billing/topup"
+	// reader here is often a program on another machine, and "/wallet/topup"
 	// is only a destination if you already know what it is relative to.
 	return false, false, cost, fmt.Errorf(
 		"this costs %d credits and your balance is %d — top up at %s", cost, balance, TopupURL())
@@ -202,9 +211,9 @@ func CheckQuota(userID string, operation string) (bool, bool, int, error) {
 // address and a path when it does not. See origin.Self.
 func TopupURL() string {
 	if self := origin.Self(); self != "" {
-		return self + "/billing/topup"
+		return self + "/wallet/topup"
 	}
-	return "/billing/topup"
+	return "/wallet/topup"
 }
 
 // Charge takes payment for an operation that has already happened.
@@ -274,7 +283,7 @@ func ExceededPage(cost int) string {
 	return `<div class="card center-card-md">` +
 		`<h2>Credits Required</h2>` +
 		fmt.Sprintf(`<p>This costs %d credit%s. `, cost, plural) +
-		`<a href="/billing/topup">Top up</a> to continue.</p>` +
-		`<p class="text-sm text-muted">1 credit = 1p · <a href="/billing">Your balance</a></p>` +
+		`<a href="/wallet/topup">Top up</a> to continue.</p>` +
+		`<p class="text-sm text-muted">1 credit = 1¢ · <a href="/wallet">Your balance</a></p>` +
 		`</div>`
 }

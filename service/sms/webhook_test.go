@@ -1,6 +1,10 @@
 package sms
 
 import (
+	"time"
+
+	"mu/internal/auth"
+	"mu/internal/event"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -76,5 +80,63 @@ func TestUnverifiedMessagesAreStillCorrelated(t *testing.T) {
 	}
 	if why := implausible(ours(map[string]string{"AccountSid": "AC00000000000000000000000000000000"})); why != "" {
 		t.Errorf("a message from our own account was refused: %s", why)
+	}
+}
+
+// A stranger's text is announced as a fact and never as work.
+//
+// This is the invariant the whole gate rests on. Anybody can text a number that
+// is printed on the internet, so if an unknown sender could publish
+// SMSForAgent, anybody could run somebody else's agent on somebody else's
+// credits by sending one message. SMSReceived carries the fact so it can be
+// recorded and held; SMSForAgent is the permission and is not given.
+func TestAStrangerIsAnnouncedButNeverHandedToAnAgent(t *testing.T) {
+	setup(t)
+	// The correlation path rather than the signature one. An instance
+	// authenticating with an API key has no account auth token to check a
+	// signature against, which is a real configuration and the one this covers
+	// — the signature path has its own tests.
+	t.Setenv("SMS_VERIFY_INBOUND", "off")
+	// OwnerOf falls back to the operator, which is the oldest admin account —
+	// so without one there is nobody to file a stranger's text under and the
+	// drop this test is about would happen for a different reason.
+	if err := auth.Create(&auth.Account{
+		ID: "operator", Name: "operator", Admin: true, Created: time.Now(),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if auth.Operator() == "" {
+		t.Fatal("no operator, so a stranger's text has nowhere to be filed")
+	}
+
+	got := event.Subscribe(event.SMSReceived)
+	work := event.Subscribe(event.SMSForAgent)
+
+	form := url.Values{
+		"To": {"+447700900000"}, "From": {"+447700900555"},
+		"Body": {"cheap watches, click here"},
+	}
+	r := httptest.NewRequest(http.MethodPost, "/sms/webhook", strings.NewReader(form.Encode()))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	WebhookHandler(httptest.NewRecorder(), r)
+
+	select {
+	case e := <-got.Chan:
+		if known, _ := e.Data["known"].(bool); known {
+			t.Error("a number nobody here has texted was reported as known")
+		}
+		if e.Data["text"] != "cheap watches, click here" {
+			t.Errorf("the announcement lost the message: %v", e.Data["text"])
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("a text from a stranger was not announced at all — it was dropped, " +
+			"which is what this change exists to stop")
+	}
+
+	select {
+	case <-work.Chan:
+		t.Fatal("a stranger's text was handed to an agent. Anybody can text a " +
+			"published number, so this is a way to spend somebody else's credits")
+	case <-time.After(300 * time.Millisecond):
 	}
 }

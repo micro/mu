@@ -435,14 +435,22 @@ func TestSubmissionRecordsWhatItSent(t *testing.T) {
 // wrote to it — so looking it up as one refuses it. smtp.go's Rcpt already
 // carries a comment about that exact mistake: "the account lookup below
 // refuses them... which is how agent@ was unreachable while the code answering
-// it sat there working." This reproduced it, so the mail filed and nothing
-// woke.
-func TestSubmissionWakesTheAgent(t *testing.T) {
-	src := readSource(t, "submission.go")
+// it sat there working." Submission reproduced it, so the mail filed and
+// nothing woke.
+//
+// The rule is in deliver.go now and submission is one of four callers, which is
+// what the check is on: this test used to read submission.go, and passing it
+// meant only that this one door was right while the other three were not.
+func TestWritingToAnAgentHereWakesIt(t *testing.T) {
+	src := readSource(t, "deliver.go")
 	for _, want := range []string{"AgentMailbox", "deliverInbound("} {
 		if !strings.Contains(src, want) {
-			t.Errorf("submission does not mention %s, so mail sent to the agent from "+
-				"a mail client is filed and never answered", want)
+			t.Errorf("Deliver does not mention %s, so mail to an agent on this "+
+				"instance is filed and never answered", want)
 		}
+	}
+	if !strings.Contains(src, "SplitAlias(") {
+		t.Error("Deliver does not split the +tag off the address, and the tag is " +
+			"what names which agent answers")
 	}
 }

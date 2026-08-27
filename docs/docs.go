@@ -1,21 +1,24 @@
-// Package docs serves the two documentation pages this site has.
+// Package docs serves the one documentation page this site has.
 //
-// It served nine, behind an index that grouped them into categories: About,
-// Use cases, MCP, CLI, Installation, Configuration, Architecture, Security,
+// It served nine, behind an index grouping them into categories: About, Use
+// cases, MCP, CLI, Installation, Configuration, Architecture, Security,
 // Principles. Nine pages is a manual, and a product that needs a manual to be
-// used has already lost the argument the product is making — the tools are
-// discoverable at /tools, the protocol is a URL, and the price list is a page.
-// Most of those documents existed because writing one is easier than making the
-// thing explain itself.
+// used has already lost the argument it is making — the tools are discoverable
+// at /tools, the protocol is a URL, the price list is a page. Most of those
+// documents existed because writing one is easier than making the thing explain
+// itself.
 //
-// So three: /about, which is what this is; /help, which is how you point an
-// agent at it and what that costs; and /install, which is how you run your own.
-// Everything else that was worth keeping is in the repository, where the people
-// it is for already are.
+// Then three, then one. /about went last, and for the reason the other eight
+// went: the landing is the page that says what this is, so an About page was a
+// second answer to a question already answered, kept in a file that nothing
+// fails when it goes stale. A visitor deciding whether to care reads the
+// landing; nobody has ever read both.
+//
+// So /install, which is how you run your own, and which earns its place by
+// holding what the code cannot — ports, records, an operator's decisions.
 //
 // The old addresses still resolve. /docs/<slug> was every one of these until
-// Docs became the name of a service, and each redirects to whichever of the two
-// pages replaced it.
+// Docs became the name of a service, and /about redirects to the landing.
 package docs
 
 import (
@@ -31,7 +34,8 @@ import (
 //go:embed *.md
 var docsFS embed.FS
 
-// page is one of the two.
+// page is one of them. A slice rather than a constant because /install is
+// unlikely to be the last, and one-of-a-kind is how the nine started.
 type page struct {
 	Path        string
 	Filename    string
@@ -40,8 +44,6 @@ type page struct {
 }
 
 var pages = []page{
-	{Path: "/about", Filename: "ABOUT.md", Title: "About",
-		Description: "Work with Agents — what Mu is and why"},
 	{Path: "/install", Filename: "INSTALL.md", Title: "Install",
 		Description: "Run your own instance"},
 }
@@ -50,8 +52,14 @@ var pages = []page{
 // that replaced it. The router registers one exact pattern each, which is what
 // lets them survive /docs belonging to a service now.
 var Redirects = map[string]string{
+	// /about is here rather than at a handler of its own because it is exactly
+	// what this map is for: an address the documentation used to answer on.
+	// Without it the pattern is unregistered, "/" matches everything left over,
+	// and the landing quietly serves at two URLs — which is the thing deleting
+	// the page was meant to stop.
+	"/about":             "/",
 	"/docs":              "/tools",
-	"/docs/about":        "/about",
+	"/docs/about":        "/",
 	"/docs/usecases":     "/tools",
 	"/docs/mcp":          "/tools",
 	"/docs/cli":          "/tools",
@@ -63,7 +71,7 @@ var Redirects = map[string]string{
 	"/help":              "/tools",
 	"/help/mcp":          "/tools",
 	"/help/cli":          "/tools",
-	"/help/about":        "/about",
+	"/help/about":        "/",
 	"/help/installation": "/install",
 	"/help/environment":  "/install",
 }
@@ -73,7 +81,9 @@ func Load() {}
 
 // Indexed rather than positional. These were pages[0], pages[1], pages[2], so
 // removing a page silently repointed the handlers after it — deleting /help
-// would have made /install serve nothing and /about serve Install.
+// would have made /install serve nothing and /about serve Install. Two of the
+// three have since been deleted, which is exactly when that bug would have
+// fired.
 func pageAt(path string) page {
 	for _, p := range pages {
 		if p.Path == path {
@@ -82,9 +92,6 @@ func pageAt(path string) page {
 	}
 	return page{}
 }
-
-// AboutHandler serves /about.
-func AboutHandler(w http.ResponseWriter, r *http.Request) { serve(w, r, pageAt("/about")) }
 
 // InstallHandler serves /install.
 func InstallHandler(w http.ResponseWriter, r *http.Request) { serve(w, r, pageAt("/install")) }

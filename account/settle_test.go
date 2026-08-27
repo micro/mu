@@ -23,6 +23,13 @@ func settler(t *testing.T, id string) {
 	t.Helper()
 	auth.Create(&auth.Account{ID: id, Name: id, Secret: "s"}) //nolint:errcheck
 	if _, err := auth.GetAccount(id); err != nil {
+		// A username the rules refuse is a bug in this test, not a fact about
+		// the machine it runs on. Skipping on it is how eighteen tests across
+		// this repository quietly stopped running the day usernames became
+		// validated — a red suite would have said so on the first push.
+		if strings.Contains(err.Error(), "username") {
+			t.Fatalf("the test account name is not a valid username: %v", err)
+		}
 		t.Skipf("cannot create an account here: %v", err)
 	}
 	t.Cleanup(func() { auth.DeleteAccount(id) }) //nolint:errcheck
@@ -157,7 +164,7 @@ func TestSettlingChecksThePurchaseBelongsToTheCaller(t *testing.T) {
 // only says a payment worked.
 func TestCheckoutReturnsThroughTheHandlerThatSettles(t *testing.T) {
 	src := readWalletSource(t, "balance.go")
-	if !strings.Contains(src, "/billing/stripe/success?session_id={CHECKOUT_SESSION_ID}") {
+	if !strings.Contains(src, "/wallet/stripe/success?session_id={CHECKOUT_SESSION_ID}") {
 		t.Error("the checkout does not return with a session id, so it lands " +
 			"somewhere that cannot settle the payment if the webhook never arrives")
 	}

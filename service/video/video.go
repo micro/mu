@@ -9,7 +9,6 @@ import (
 	htmlpkg "html"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"regexp"
 	"sort"
 	"strings"
@@ -24,11 +23,12 @@ import (
 	"mu/internal/data"
 	"mu/internal/event"
 	"mu/internal/service"
+	"mu/internal/settings"
 	"mu/internal/snapshot"
 )
 
 // cardSnap is the go-micro read-plane channel for the video card (store +
-// broker); see internal/snapshot and docs/GO_MICRO_ARCHITECTURE.md.
+// broker); see internal/snapshot.
 var cardSnap *snapshot.Snapshot
 
 //go:embed channels.json
@@ -90,20 +90,47 @@ type Result struct {
 	Thumbnail  string    `json:"thumbnail,omitempty"`
 }
 
-var Key = os.Getenv("YOUTUBE_API_KEY")
+// key is the YouTube API key.
+//
+// A function reading settings, not a package variable captured from the
+// environment at init. It was the latter, which meant /admin/config offered a
+// YOUTUBE_API_KEY box, saved what was typed into it, and video stayed switched
+// off until the process was restarted with the value in its environment
+// instead — and the page gave no hint that was what it was waiting for.
+func key() string { return strings.TrimSpace(settings.Get("YOUTUBE_API_KEY")) }
 
-var Client *youtube.Service
+var (
+	clientOnce sync.Once
+	client     *youtube.Service
+)
 
-func init() {
-	var err error
-	Client, err = youtube.NewService(context.TODO(), option.WithAPIKey(Key))
-	if err != nil {
-		app.Log("video", "Failed to initialize YouTube client: %v", err)
-	}
-	if Key == "" {
-		app.Log("video", "WARNING: YOUTUBE_API_KEY environment variable not set")
-	}
+// api builds the YouTube client on first use.
+//
+// Lazily, because the key can now arrive after start-up. init() built it once
+// against whatever the environment had, so a key set on the page reached key()
+// and never reached the client.
+func api() *youtube.Service {
+	clientOnce.Do(func() {
+		if key() == "" {
+			return
+		}
+		// Quietly. With no key the library reports "could not find default
+		// credentials" and points at Google's application default credentials
+		// documentation, which is not how this is configured and sends an
+		// operator somewhere that cannot help them. The answer is
+		// YOUTUBE_API_KEY, and Configured() is what the tools ask.
+		client, _ = youtube.NewService(context.TODO(), option.WithAPIKey(key()))
+	})
+	return client
 }
+
+// Configured reports whether this instance can reach YouTube at all.
+//
+// A question, so an adjective — see "Naming what a package exports" in
+// AGENTS.md. It exists so an empty result can say which of the two things it
+// is: no videos, or no key. Those look identical to a caller and only one of
+// them is worth waiting for.
+func Configured() bool { return key() != "" && api() != nil }
 
 // Video styles are in mu.css
 
@@ -661,12 +688,12 @@ func embedVideoWithAutoplay(id string, autoplay bool) string {
 }
 
 func getChannel(category, handle string) (string, []*Result, error) {
-	if Client == nil {
+	if api() == nil {
 		return "", nil, fmt.Errorf("No client")
 	}
 
 	// Get the channel details using the handle
-	call := Client.Channels.List([]string{"contentDetails"}).ForHandle(handle)
+	call := api().Channels.List([]string{"contentDetails"}).ForHandle(handle)
 	response, err := call.Do()
 	if err != nil {
 		return "", nil, err
@@ -683,7 +710,7 @@ func getChannel(category, handle string) (string, []*Result, error) {
 	app.Log("video", "Channel ID for @%s: %s\n", handle, channelID)
 	app.Log("video", "Uploads Playlist ID: %s\n", uploadsPlaylistID)
 
-	listVideosCall := Client.PlaylistItems.List([]string{"id", "snippet"}).PlaylistId(uploadsPlaylistID).MaxResults(25)
+	listVideosCall := api().PlaylistItems.List([]string{"id", "snippet"}).PlaylistId(uploadsPlaylistID).MaxResults(25)
 	resp, err := listVideosCall.Do()
 	if err != nil {
 		return "", nil, err
@@ -772,11 +799,11 @@ func getChannel(category, handle string) (string, []*Result, error) {
 }
 
 func getResults(query, channel string) (string, []*Result, error) {
-	if Client == nil {
+	if api() == nil {
 		return "", nil, fmt.Errorf("No client")
 	}
 
-	scall := Client.Search.List([]string{"id", "snippet"}).SafeSearch("strict").MaxResults(25)
+	scall := api().Search.List([]string{"id", "snippet"}).SafeSearch("strict").MaxResults(25)
 
 	if len(channel) > 0 {
 		scall = scall.ChannelId(channel)
@@ -1056,13 +1083,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	// Handle playlist view
 	if len(playlistID) > 0 {
-		if Client == nil {
+		if api() == nil {
 			http.Error(w, "YouTube API not available", 500)
 			return
 		}
 
 		// Get playlist details
-		playlistCall := Client.Playlists.List([]string{"snippet"}).Id(playlistID)
+		playlistCall := api().Playlists.List([]string{"snippet"}).Id(playlistID)
 		playlistResp, err := playlistCall.Do()
 
 		playlistTitle := "Playlist"
@@ -1078,7 +1105,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		listVideosCall := Client.PlaylistItems.List([]string{"id", "snippet"}).PlaylistId(playlistID).MaxResults(50)
+		listVideosCall := api().PlaylistItems.List([]string{"id", "snippet"}).PlaylistId(playlistID).MaxResults(50)
 		resp, err := listVideosCall.Do()
 		if err != nil {
 			http.Error(w, err.Error(), 500)
@@ -1123,13 +1150,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	// Handle channel view
 	if len(channelID) > 0 {
-		if Client == nil {
+		if api() == nil {
 			http.Error(w, "YouTube API not available", 500)
 			return
 		}
 
 		// Get channel uploads playlist
-		channelCall := Client.Channels.List([]string{"contentDetails", "snippet"}).Id(channelID)
+		channelCall := api().Channels.List([]string{"contentDetails", "snippet"}).Id(channelID)
 		channelResp, err := channelCall.Do()
 		if err != nil {
 			http.Error(w, err.Error(), 500)
@@ -1153,7 +1180,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		uploadsPlaylistID := channelResp.Items[0].ContentDetails.RelatedPlaylists.Uploads
 
-		listVideosCall := Client.PlaylistItems.List([]string{"id", "snippet"}).PlaylistId(uploadsPlaylistID).MaxResults(50)
+		listVideosCall := api().PlaylistItems.List([]string{"id", "snippet"}).PlaylistId(uploadsPlaylistID).MaxResults(50)
 		resp, err := listVideosCall.Do()
 		if err != nil {
 			http.Error(w, err.Error(), 500)

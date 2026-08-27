@@ -28,7 +28,6 @@ import (
 	"mu/internal/app"
 	"mu/internal/event"
 	"mu/internal/thread"
-	"mu/internal/trial"
 	"mu/service/mail"
 )
 
@@ -388,16 +387,16 @@ func answerMail(m mail.InboundMail) {
 		return
 	}
 
-	// An account opened for a stranger who wrote in gets a bounded number of
-	// turns, because it belongs to somebody who has not signed up and does not
-	// know it exists. A claimed account is not checked here at all: running the
-	// agent costs nothing, and the tools it reaches for are charged where they
-	// are called. See internal/trial.
-	onTrial, allowed, why := trial.Allowed(m.Owner)
-	if onTrial && !allowed {
-		deliver("", prompt, why)
-		return
-	}
+	// Nothing to check. Mail reaching here belongs to an account, and running
+	// the agent costs nothing — the tools it reaches for are charged where they
+	// are called.
+	//
+	// There was a trial gate here, for accounts opened on behalf of strangers
+	// who wrote in: a per-sender allowance of turns, plus an instance-wide
+	// daily ceiling to stop the per-sender allowance being unbounded in
+	// aggregate. Both are gone with the accounts they governed — see
+	// service/mail/smtp.go. A free front door is recovered somewhere, and the
+	// places it gets recovered from are the ones this product exists to avoid.
 
 	// The same entry point every client uses: history, the run record and
 	// anything worth remembering are its business. What is passed is what only
@@ -426,12 +425,6 @@ func answerMail(m mail.InboundMail) {
 		app.Log("mail", "agent %s failed on mail from %s: %v", name, m.From, err)
 		deliver(res.Flow, prompt, "I could not answer that one. Try again, or ask a different way.")
 		return
-	}
-	// A trial turn is spent now the run has happened. Nothing else is: running
-	// the agent costs no credits, and the tools it reached for were charged
-	// where they were called.
-	if onTrial {
-		defer trial.Spend(m.Owner)
 	}
 	if strings.TrimSpace(answer) == "" {
 		// Distinct from the error above, because it is a different

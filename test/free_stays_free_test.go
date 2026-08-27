@@ -22,6 +22,7 @@ package test
 // asking for.
 
 import (
+	"strings"
 	"testing"
 
 	"mu/account"
@@ -53,11 +54,18 @@ func loadPrices(t *testing.T) {
 func freeAccount(t *testing.T) *auth.Account {
 	t.Helper()
 	loadPrices(t)
-	acc := &auth.Account{ID: "free-stays-free", Name: "free-stays-free"}
+	acc := &auth.Account{ID: "free_stays_free", Name: "free_stays_free"}
 	if existing, err := auth.GetAccount(acc.ID); err == nil {
 		return existing
 	}
 	if err := auth.Create(acc); err != nil {
+		// A username the rules refuse is a bug in this test, not a fact about
+		// the machine it runs on. Skipping on it is how eighteen tests across
+		// this repository quietly stopped running the day usernames became
+		// validated — a red suite would have said so on the first push.
+		if strings.Contains(err.Error(), "username") {
+			t.Fatalf("the test account name is not a valid username: %v", err)
+		}
 		t.Skipf("cannot create an account in this environment: %v", err)
 	}
 	t.Cleanup(func() { auth.DeleteAccount(acc.ID) }) //nolint:errcheck
@@ -114,10 +122,17 @@ func TestAFreeOperationDoesNotMoveTheBalance(t *testing.T) {
 // what it can still do.
 func TestAFreeOperationWorksOnAnEmptyBalance(t *testing.T) {
 	loadPrices(t)
-	const skint = "free-stays-free-skint"
+	const skint = "free_stays_free_skint"
 	acc := &auth.Account{ID: skint, Name: skint}
 	if _, err := auth.GetAccount(skint); err != nil {
 		if err := auth.Create(acc); err != nil {
+			// A username the rules refuse is a bug in this test, not a fact about
+			// the machine it runs on. Skipping on it is how eighteen tests across
+			// this repository quietly stopped running the day usernames became
+			// validated — a red suite would have said so on the first push.
+			if strings.Contains(err.Error(), "username") {
+				t.Fatalf("the test account name is not a valid username: %v", err)
+			}
 			t.Skipf("cannot create an account in this environment: %v", err)
 		}
 		t.Cleanup(func() { auth.DeleteAccount(skint) }) //nolint:errcheck

@@ -85,15 +85,21 @@ func TestTheStripeWebhookIsRegisteredDirectly(t *testing.T) {
 		t.Errorf("missing %s — a webhook path that stops answering is a top-up "+
 			"that is charged and never credited", want)
 	}
-	// And not in the moved-to-account list, which redirects.
-	body := string(src)
-	i := strings.Index(body, "for _, moved := range []string{")
-	if i < 0 {
-		t.Fatal("the redirect list is gone; this test no longer checks anything")
-	}
-	list := body[i : i+strings.Index(body[i:], "}")]
-	if strings.Contains(list, "stripe/webhook") {
-		t.Error("the Stripe webhook is in the redirect list; a 303 on a POST drops the payment")
+	// And at the top level, under none of the prefixes money has lived under.
+	//
+	// This used to check the webhook was absent from a list of paths that
+	// redirected; that list is gone, and the property it protected is not. Every
+	// one of these prefixes redirects or 404s what it does not recognise, and
+	// both answers lose a payment that has already been taken: a 303 on a POST
+	// drops the body, and a 404 makes Stripe retry until it gives up.
+	//
+	// The path is named for the provider precisely so it never moves with our
+	// rearrangements — it has been through three now.
+	for _, prefix := range []string{"/account/", "/billing/", "/wallet/"} {
+		if strings.HasPrefix("/stripe/webhook", prefix) {
+			t.Errorf("the Stripe webhook sits under %s, which does not serve "+
+				"unknown paths — a top-up would be charged and never credited", prefix)
+		}
 	}
 }
 

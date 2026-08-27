@@ -49,6 +49,7 @@ import (
 	"mu/internal/auth"
 	"mu/internal/thread"
 	"mu/service/mail"
+	"mu/service/sms"
 )
 
 // bodyLimit bounds one message. A mail nobody would read is not a mail this
@@ -151,10 +152,16 @@ func sent(w http.ResponseWriter, r *http.Request, accountID string, f form) {
 		f.To = to
 	}
 
-	// SendOut is the one way mail leaves this instance, and every rule about
-	// who may send what is inside it — the gate, the charge, the provider. A
-	// second path here that skipped one of them would not look like a bug until
-	// the damage was done. See service/mail/outbound.go.
+	// Deliver is the one way a message goes anywhere, and every rule about who
+	// may send what is inside it — the gate, the charge, the provider, and the
+	// branch on where the recipient actually is. A second path here that
+	// skipped one of them would not look like a bug until the damage was done.
+	// See service/mail/deliver.go.
+	//
+	// This called ReplyOut, which is the half of it for mail *leaving* — so
+	// writing to somebody on this instance, or to your own agent, was refused
+	// with "that is on this instance, that is not mail leaving it". Every other
+	// door routed; the one a person types into did not.
 	name := ""
 	if acc, err := auth.GetAccount(accountID); err == nil {
 		name = acc.Name
@@ -163,10 +170,25 @@ func sent(w http.ResponseWriter, r *http.Request, accountID string, f form) {
 	// other end as a brand new conversation sitting next to the thread it
 	// answers — which is what /inbox did: it called SendOut with an empty
 	// replyTo and there was no references argument to pass anyway.
+	// Delivered by whichever door the conversation is on, not by whichever one
+	// this page was built for.
+	//
+	// One compose screen, one entry point, and the record decides the
+	// transport. The alternative was a second form somewhere else that also
+	// sends things, which is how a service ends up with two send paths and only
+	// one of them counting the daily cap.
+	if th := replyTarget(accountID, f); th != nil && onAPhone(th.Client) {
+		sendText(w, r, accountID, f)
+		return
+	}
+
 	inReplyTo, references := threadChain(accountID, f.On)
 	f.Subject = replySubject(f.Subject, inReplyTo)
-	messageID, err := mail.ReplyOut(accountID, name, f.To, f.Subject,
-		f.Body, "", inReplyTo, references)
+	messageID, err := mail.Deliver(mail.Outgoing{
+		FromID: accountID, Display: name, To: f.To,
+		Subject: f.Subject, Body: f.Body,
+		InReplyTo: inReplyTo, References: references,
+	})
 	if err != nil {
 		f.Problem = err.Error()
 		writeOne(w, r, accountID, f)
@@ -316,10 +338,45 @@ func writeOne(w http.ResponseWriter, r *http.Request, accountID string, f form) 
 	}
 	b.WriteString(app.Actions(back))
 
-	if from := mail.EmailForUser(accountID, mail.ConfiguredDomain()); from != "" {
+	// A text has no subject and no address on either end. The same screen, told
+	// what it is writing by the conversation it is answering — rather than a
+	// second compose page that also sends things.
+	texting, channel := false, sms.ChannelSMS
+	if th := replyTarget(accountID, f); th != nil && onAPhone(th.Client) {
+		texting = true
+		if th.Client == thread.WhatsAppClient {
+			channel = sms.ChannelWhatsApp
+		}
+	}
+	if texting {
+		from := sms.From()
+		if channel == sms.ChannelWhatsApp {
+			if senders := sms.SendersFor(channel); len(senders) > 0 {
+				from = senders[0]
+			}
+		}
+		b.WriteString(`<p class="ib-from-line">` + html.EscapeString(channel.Label()) +
+			` to <code>` + html.EscapeString(f.To) + `</code> from <code>` +
+			html.EscapeString(from) + `</code></p>`)
+	}
+
+	// Names inside, addresses outside.
+	//
+	// This said "From asim@micro.mu" whoever the message was for, including
+	// somebody two rows away in the same directory. Within one instance the
+	// domain is a routing fact and not part of who anybody is — it is the same
+	// on both ends, so printing it says nothing and reads like posting a letter
+	// to your flatmate. It is the identity the moment the message leaves, and
+	// then it is shown.
+	if texting {
+		// Said above, with the number it goes to.
+	} else if _, local := addressOfPerson(f.To); local && f.To != "" {
+		b.WriteString(`<p class="ib-from-line">From <code>` +
+			html.EscapeString(accountID) + `</code></p>`)
+	} else if from := mail.EmailForUser(accountID, mail.ConfiguredDomain()); from != "" {
 		b.WriteString(`<p class="ib-from-line">From <code>` + html.EscapeString(from) + `</code></p>`)
 	}
-	if f.On != "" {
+	if f.On != "" && !texting {
 		b.WriteString(`<p class="ib-from-line">Replying to <code>` +
 			html.EscapeString(f.To) + `</code> — this lands on the same conversation.</p>`)
 	}
@@ -332,13 +389,34 @@ func writeOne(w http.ResponseWriter, r *http.Request, accountID string, f form) 
 	if f.On != "" {
 		b.WriteString(`<input type="hidden" name="on" value="` + html.EscapeString(f.On) + `">`)
 	}
-	b.WriteString(`<input class="ib-field" type="email" name="to" required placeholder="To" value="` +
-		html.EscapeString(f.To) + `">`)
-	b.WriteString(`<input class="ib-field" type="text" name="subject" placeholder="Subject" value="` +
-		html.EscapeString(f.Subject) + `">`)
-	b.WriteString(`<textarea class="ib-field" name="body" rows="12" placeholder="Write it">` + html.EscapeString(f.Body) + `</textarea>`)
+	// text, not email. The field takes a handle as readily as an address —
+	// addressOfPerson resolves one — and type=email calls a handle invalid,
+	// which it is, right up until the moment it is the thing you meant to type.
+	// It was prefilled with "@asim" from the directory, so the browser was
+	// being handed a value it would refuse.
+	//
+	// And shown without the @, because inside one instance a name is a name.
+	if texting {
+		// The number is the conversation. Editable would mean this one screen
+		// could start a text to anybody, which is sms_send's job and is priced
+		// and capped there.
+		b.WriteString(`<input type="hidden" name="to" value="` + html.EscapeString(f.To) + `">`)
+	} else {
+		b.WriteString(`<input class="ib-field" type="text" name="to" required placeholder="To" value="` +
+			html.EscapeString(strings.TrimPrefix(f.To, "@")) + `">`)
+		b.WriteString(`<input class="ib-field" type="text" name="subject" placeholder="Subject" value="` +
+			html.EscapeString(f.Subject) + `">`)
+	}
+	rows, placeholder, verb := "12", "Write it", "Send"
+	if texting {
+		// Three rows, because a text is short and a twelve-row box invites one
+		// that is not — it is charged per segment and refused past three.
+		rows, placeholder, verb = "3", "Keep it short — this is charged per segment", "Send text"
+	}
+	b.WriteString(`<textarea class="ib-field" name="body" rows="` + rows +
+		`" placeholder="` + placeholder + `">` + html.EscapeString(f.Body) + `</textarea>`)
 
-	b.WriteString(`<div class="ib-ask-row"><button type="submit">Send</button>`)
+	b.WriteString(`<div class="ib-ask-row"><button type="submit">` + verb + `</button>`)
 	b.WriteString(`</form></div>`)
 
 	app.Respond(w, r, app.Response{Title: "New message", Description: "Write one",
@@ -357,4 +435,42 @@ func newLink() string {
 		return ""
 	}
 	return `<a class="pill ib-new-link" href="/inbox/new">New</a>`
+}
+
+// sendText answers an SMS conversation with a text.
+//
+// Through sms.Send, which is where every rule about what a text costs lives —
+// the daily cap, the country list, STOP, the charge, the segment limit. A
+// second path that skipped any of them would not look like a bug until the
+// bill arrived.
+func sendText(w http.ResponseWriter, r *http.Request, accountID string, f form) {
+	body := strings.TrimSpace(f.Body)
+	if body == "" {
+		f.Problem = "there is nothing to send"
+		writeOne(w, r, accountID, f)
+		return
+	}
+	// Back the way it came. A WhatsApp conversation answered by text arrives on
+	// the other person's phone as a second thread from a number they do not
+	// recognise, with nothing on it to say why — so the record decides the
+	// channel here the same way it decides the transport above.
+	channel := sms.ChannelSMS
+	if th := replyTarget(accountID, f); th != nil && th.Client == thread.WhatsAppClient {
+		channel = sms.ChannelWhatsApp
+	}
+	if _, err := sms.SendOn(channel, accountID, f.To, body); err != nil {
+		f.Problem = err.Error()
+		writeOne(w, r, accountID, f)
+		return
+	}
+	// Recorded on the conversation it answers, so the thread reads as one
+	// exchange rather than as a text that arrived and an answer that did not.
+	//
+	// thread.Add directly rather than record(), which names the conversation
+	// from a subject and joins a mail address to it — a text has neither, and
+	// the thread already has both its name and the number on it.
+	if th := replyTarget(accountID, f); th != nil {
+		thread.Add(thread.Message{Thread: th.ID, Account: accountID, Text: body})
+	}
+	http.Redirect(w, r, "/inbox?id="+url.QueryEscape(f.On), http.StatusSeeOther)
 }

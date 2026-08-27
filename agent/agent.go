@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"html"
-	htmlpkg "html"
 	"net/http"
 	"net/url"
 	"sort"
@@ -16,7 +15,6 @@ import (
 
 	"mu/agent/micro"
 	"mu/inbox"
-	"mu/internal/ai"
 	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
@@ -174,8 +172,8 @@ func Routed(prompt string, opts QueryOpts) (string, QueryOpts) {
 	// A caller who supplied a system prompt has already chosen the agent, and
 	// the router must not choose a different one.
 	//
-	// Same bug one level down as the one described at synthSystem below, where
-	// every task and scheduled run composed as Micro whichever agent it was for.
+	// The same bug the deleted planner had one level down, where every task and
+	// scheduled run composed as Micro whichever agent it was for.
 	if strings.TrimSpace(opts.System) != "" {
 		return prompt, opts
 	}
@@ -214,222 +212,28 @@ func QueryWithOpts(accountID, prompt string, opts QueryOpts) (string, error) {
 	// the questions that route, which is most of them. That is how a request
 	// for news came back as a draft email addressed to itself.
 	//
-	// Same bug one level down as the one described at synthSystem below, where
-	// every task and scheduled run composed as Micro whichever agent it was for.
+	// The same bug the deleted planner had one level down, where every task and
+	// scheduled run composed as Micro whichever agent it was for.
 	prompt, opts = Routed(prompt, opts)
 
-	// Native go-micro agent path (default for this agent platform; set
-	// AGENT_NATIVE=off to disable): the LLM does native tool-calling over the
-	// registered domain services instead of the hand-rolled plan/execute/
-	// synthesize below. If the native provider is unconfigured, or a native run
-	// errors, fall through to the hand-rolled pipeline so a query never fails.
-	if nativeEnabled() {
-		if answer, handled, err := runNative(accountID, prompt, opts); handled {
-			if err == nil {
-				return app.NormalizeAnswerMarkdown(answer), nil
-			}
-			app.Log("agent", "native agent failed, falling back to planner: %v", err)
-		}
-	}
-
-	// Fall through to the existing monolithic agent for "micro" (catch-all)
-	// Build conversation context for the planner
-	var convContext string
-	if len(opts.History) > 0 {
-		var cb strings.Builder
-		cb.WriteString("Conversation so far:\n")
-		for _, m := range opts.History {
-			if m.Role == "user" {
-				cb.WriteString("User: " + m.Text + "\n")
-			} else {
-				cb.WriteString("Assistant: " + truncate(m.Text, 300) + "\n")
-			}
-		}
-		cb.WriteString("\nNew message: " + prompt)
-		convContext = cb.String()
-	}
-
-	// --- Plan ---
-	type toolCall struct {
-		Tool string         `json:"tool"`
-		Args map[string]any `json:"args"`
-	}
-	var toolCalls []toolCall
-
-	if tc := shortcutToolCalls(prompt); len(tc) > 0 {
-		for _, s := range tc {
-			toolCalls = append(toolCalls, toolCall{Tool: s.Tool, Args: s.Args})
-		}
-	} else {
-		planQuestion := prompt
-		if convContext != "" {
-			planQuestion = convContext
-		}
-
-		userCtx := ""
-		if !opts.Public && UserContextFunc != nil {
-			userCtx = UserContextFunc(accountID)
-		}
-		if opts.Extra != "" {
-			userCtx = strings.TrimSpace(userCtx + "\n\n" + opts.Extra)
-		}
-		toolsDesc := agentToolsDesc
-		if opts.Public {
-			toolsDesc = publicToolsDesc
-		}
-		planSystem := "You are an AI agent. Given a user question, output ONLY a JSON array of tool calls (no other text, no markdown).\n\n" +
-			toolsDesc +
-			"\n\nOutput format: [{\"tool\":\"tool_name\",\"args\":{}}]\nUse at most 5 tool calls. If no tools are needed output []." +
-			"\n\nIMPORTANT: For personal questions like 'do I have mail', 'what's the weather', 'news today', 'btc price' — ALWAYS use the appropriate tool. " +
-			"If the user says 'weather' without a location, use their location from user context, or default to London (lat:51.5074, lon:-0.1278)."
-		if userCtx != "" {
-			planSystem += "\n\nUser context:\n" + userCtx
-		}
-
-		planPrompt := &ai.Prompt{
-			System:   planSystem,
-			Question: planQuestion,
-			Priority: ai.PriorityHigh,
-			Provider: "",
-			Model:    ai.BackgroundModel(),
-			Caller:   "agent-plan",
-		}
-		planResult, err := ai.Ask(planPrompt)
-		if err != nil {
-			return "", fmt.Errorf("planning failed: %w", err)
-		}
-		planJSON := extractJSONArray(planResult)
-		json.Unmarshal([]byte(planJSON), &toolCalls)
-	}
-
-	// --- Execute ---
-	type toolResult struct {
-		Name      string
-		Result    string
-		Args      map[string]any
-		Formatted string
-	}
-	var results []toolResult
-	var unavailableTools []string
-	seenToolCalls := map[string]bool{}
-
-	for i := 0; i < len(toolCalls); i++ {
-		tc := toolCalls[i]
-		if tc.Tool == "" {
-			continue
-		}
-		key := toolCallKey(tc.Tool, tc.Args)
-		if seenToolCalls[key] {
-			continue
-		}
-		seenToolCalls[key] = true
-		if skipMarketMoverCompanionTool(prompt, tc.Tool) {
-			continue
-		}
-		startedAt := time.Now()
-		text, isErr, execErr := api.RunPlannedAs(accountID, opts.Public, tc.Tool, tc.Args)
-		if errors.Is(execErr, api.ErrRefused) {
-			app.Log("agent", "refused %s: %v", tc.Tool, execErr)
-			continue
-		}
-		if opts.OnStep != nil {
-			opts.OnStep(Step{Tool: tc.Tool, Args: tc.Args, OK: execErr == nil && !isErr, Took: time.Since(startedAt)})
-		}
-		if execErr != nil || isErr {
-			unavailableTools = append(unavailableTools, tc.Tool)
-			if fallback, ok := fallbackNewsSearchToolCall(prompt, tc.Tool, tc.Args); ok {
-				key := toolCallKey(fallback.Tool, fallback.Args)
-				if !seenToolCalls[key] && (!opts.Public || publicTool(fallback.Tool)) {
-					toolCalls = append(toolCalls, toolCall{Tool: fallback.Tool, Args: fallback.Args})
-				}
-			}
-			continue
-		}
-		if len(text) > 8000 {
-			text = text[:8000] + "…"
-		}
-		results = append(results, toolResult{Name: tc.Tool, Result: text, Args: tc.Args})
-	}
-
-	// --- Synthesize ---
-	var ragParts []string
-	for i, res := range results {
-		ragText := formatToolResult(res.Name, res.Result, res.Args)
-		results[i].Formatted = ragText
-		ragParts = append(ragParts, fmt.Sprintf("### %s\n%s", res.Name, ragText))
-	}
-	for _, tool := range unavailableTools {
-		ragParts = append(ragParts, fmt.Sprintf("### %s\n%s", tool, unavailableToolMessage(tool)))
-	}
-
-	today := currentDateContext(time.Now().UTC())
-
-	// Include conversation history in RAG context
-	if len(opts.History) > 0 {
-		var hb strings.Builder
-		hb.WriteString("### Conversation history\n")
-		for _, m := range opts.History {
-			if m.Role == "user" {
-				hb.WriteString("**User:** " + m.Text + "\n\n")
-			} else {
-				hb.WriteString("**Assistant:** " + truncate(m.Text, 500) + "\n\n")
-			}
-		}
-		ragParts = append([]string{hb.String()}, ragParts...)
-	}
-
-	var synthSystem string
-	if len(results) == 0 {
-		synthSystem = "You are Micro, the AI assistant on Mu — a personal AI platform. Today is " + today + ". " +
-			"Answer conversationally. Be helpful and concise."
-	} else {
-		synthSystem = "You are Micro, a personal AI assistant. Today is " + today + ". " +
-			"Answer using the tool results provided. Be concise. " +
-			"For prices, weather, and live data, use the exact values from tool results."
-	}
-
-	if !opts.Public {
-		synthUserCtx := ""
-		if UserContextFunc != nil {
-			synthUserCtx = UserContextFunc(accountID)
-		}
-		if synthUserCtx != "" {
-			synthSystem += "\n\nUser context:\n" + synthUserCtx
-		}
-	}
-
-	// The agent you asked writes the answer, not the house assistant.
+	// The agent answers. There is no second implementation to fall through to.
 	//
-	// QueryOpts.System is documented as "optional custom system prompt
-	// (user-defined agent)" and was read in exactly one place — the native
-	// path — so every caller that came through here composed as Micro no matter
-	// which agent it was for. That is every task run and every scheduled run,
-	// which are precisely the ones nobody is watching.
+	// There was: a plan/execute/synthesize pipeline written before go-micro had
+	// an agent, which asked one model for a JSON array of tool calls, ran them,
+	// and asked another model to write prose around the results. It survived as
+	// an error fallback, and that is the shape worth naming, because a fallback
+	// that behaves differently from the thing it replaces does not make failure
+	// softer — it makes it quieter. A run that errored here silently became a
+	// run by a different agent, with a different tool catalogue, a different
+	// system prompt, no memory of the conversation and no user-defined agent
+	// applied, and returned an answer nobody could tell apart from a real one.
+	// The place it hurt was the place nobody was watching: a scheduled task
+	// whose model call timed out came back composed as Micro, from a
+	// hand-maintained list of tools that had drifted from the registry.
 	//
-	// It goes in front of the composition rules rather than replacing them: the
-	// rules are about not inventing prices and dates from stale training data,
-	// which is not an agent's to override.
-	if sys := strings.TrimSpace(opts.System); sys != "" {
-		synthSystem = sys + "\n\n" + synthSystem
-	}
-
-	synthPrompt := &ai.Prompt{
-		System:   synthSystem,
-		Rag:      ragParts,
-		Question: prompt,
-		Priority: ai.PriorityHigh,
-		Provider: ai.ProviderDefault,
-		Caller:   "agent-synth",
-	}
-
-	answer, err := ai.Ask(synthPrompt)
-	if err != nil {
-		return "", fmt.Errorf("synthesis failed: %w", err)
-	}
-	return app.NormalizeAnswerMarkdown(app.StripLatexDollars(answer)), nil
-}
-
-func normalizeQueryAnswer(answer string, err error) (string, error) {
+	// So the error is the answer now. See ErrNoProvider in native.go for the
+	// same argument about an unconfigured instance.
+	answer, err := runNative(accountID, prompt, opts)
 	if err != nil {
 		return "", err
 	}
@@ -583,72 +387,51 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 		cfg.Suggestions = ex
 	}
 
-	// The two panels beside the conversation. On a phone they are folded away
-	// behind the bar below and the chat is the first thing on the page — see
-	// chatLayoutCSS. Each is its own pane so one can be open without the other:
-	// picking an agent and picking a conversation are separate errands.
-	rail := ""
-	{
-		// The roster, except on a page that is about one agent. A room does not
-		// carry the list of rooms — the same reason /mail has no services list
-		// down the side of it.
-		agents := ""
-		if !named {
-			agents = `<div class="chat-pane" id="pane-agents">` + renderAgentsPanel() + `</div>`
-		}
-		rail = `<div class="chat-side">` + agents +
-			`<div class="chat-pane" id="pane-chats">` +
-			renderSessionsRail(accountID, activeRoot, selAgent, named) + `</div></div>`
-	}
+	// One panel beside the conversation: the conversations. On a phone it folds
+	// away behind the bar below and the chat is the first thing on the page —
+	// see chatLayoutCSS.
+	//
+	// The roster used to be the other one, and it is gone from here. /agents is
+	// the page that lists them and links to each one's chat, connect and edit;
+	// carrying a second copy of it down the side of every agent's own page is
+	// the room holding the list of rooms. The back link above the conversation
+	// is how you leave, which is the same shape /agent/connect already had.
+	//
+	// It was also load-bearing in a way nothing said out loud: renderAgentsPanel
+	// carried the <script> defining muAgentCsrf and window.muSeedAgent, and it
+	// was only emitted when !named — while this page calls muSeedAgent
+	// unconditionally and the conversation rail calls muAgentCsrf to delete. So
+	// on /agent/<name> both threw ReferenceError, which is why the delete cross
+	// did nothing and why a named agent's page did not look like the default
+	// one. What this page needs it now defines itself, in chatPageJS.
+	rail := `<div class="chat-side">` +
+		`<div class="chat-pane" id="pane-chats">` +
+		renderSessionsRail(accountID, activeRoot, selAgent, named) + `</div></div>`
 
-	chip := ""
-	{
-		// The chip alone said "Agent: Micro" and nothing else, which leaves the
-		// obvious question unanswered — what is this, and is it the same thing
-		// as the agent I came here to connect? It is not: this one is Mu's,
-		// running on the tools. Yours reaches the same tools over MCP.
-		//
-		// The link beside it used to be a generic "Connect your own agent"
-		// pointing at /tools, on a page that already knows which agent you are
-		// looking at. When it knows, it points at that one's endpoint, scope and
-		// token rather than at the catalogue.
-		connect := `<a class="agent-connect" href="/agent/connect">Connect &rarr;</a>`
-		if selAgent != "" {
-			connect = `<a class="agent-connect" href="/agent/connect?id=` +
-				url.QueryEscape(selAgent) + `">Connect &rarr;</a>`
-		}
-		// No address in the bar.
-		//
-		// It was here on the argument that the first question anybody has about
-		// an agent is where to write to it. Maybe — but not on the page where
-		// you are already talking to it. This is the chat; the address is a
-		// thing you copy once, from Connect, which is the link next to it.
-		where := ""
-		// On a phone this bar is the whole of the navigation: the chip opens the
-		// agent picker and the button beside it opens your conversations. Both
-		// were columns above the chat before, so the first thing on the page was
-		// a list of agents, then a list of conversations, and the box you came to
-		// type in was somewhere below the fold.
-		//
-		// The same markup on a desktop, where the panels are always open and
-		// these two do nothing — so they are hidden there rather than made a
-		// second way to do what the sidebar already does.
-		// The chip is the switcher, and only that. On a page about one agent
-		// there is nothing to switch, so there is no chip.
-		//
-		// It used to become a plain label there, showing agentTitle — which is
-		// the page's own title, rendered by the shell a few lines above it. Two
-		// copies of the same word, one under the other, the lower one styled
-		// like a control that does nothing.
-		agentChip := ""
-		if !named {
-			agentChip = `<button type="button" id="active-agent-chip" class="agent-chip" ` +
-				`onclick="muPane('agents')">Agent: Micro</button>`
-		}
-		chip = `<div class="agent-bar">` + agentChip +
-			`<button type="button" class="chat-open-list" onclick="muPane('chats')">Chats</button>` +
-			where + connect + `</div>` + paneJS
-	}
+	// The bar above the conversation: how you got here, and how to see the
+	// other conversations on a phone. Nothing else.
+	//
+	// It held three more things and all three have gone the same way — they
+	// were a second copy of something /agents already does better.
+	//
+	//   - A chip naming the agent, which is the page's own title one line up.
+	//   - A Connect link. /agents lists every agent with chat, connect and edit
+	//     beside each, so the way to reach this agent's Connect page is the way
+	//     you reached this one.
+	//   - A picker opening the roster in the rail, which is the room carrying
+	//     the list of rooms.
+	//
+	// Nothing replaces them. The bar is the phone control for the conversations
+	// and nothing else, so on a desktop it is empty and takes no room — which
+	// is the point: the box you came to type in starts at the top of the page.
+	//
+	// A back link went here briefly and it was the wrong shape for this page.
+	// Leaving is what the sidebar is for, on every other page too; a link that
+	// only exists here put a row of chrome above the conversation to say
+	// something the nav already says.
+	chip := `<div class="agent-bar">` +
+		`<button type="button" class="chat-open-list" onclick="muPane('chats')">Chats</button>` +
+		`</div>` + paneJS
 
 	// No tabs. There were four — Chat, Threads, Runs, Connect — for one thing:
 	// you, an agent, and what you have said to each other. Two of them listed
@@ -661,7 +444,8 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	if elsewhere != "" {
 		main = elsewhere
 	}
-	content := `<div class="chat-layout">` + rail + `<div class="chat-main">` + chip + main + `</div></div>` + chatLayoutCSS
+	content := `<div class="chat-layout">` + rail + `<div class="chat-main">` + chip + main +
+		`</div></div>` + chatLayoutCSS + chatPageJS
 
 	// Seed the active agent so the panel highlights it and follow-ups continue
 	// with it: an explicit ?id= selection (deep link) wins; otherwise a reopened
@@ -679,11 +463,10 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	//
 	// Seeded unconditionally, including the empty default. selAgent is what the
 	// rail was filtered by and what the conversation was loaded for, so it is
-	// the page's answer to "which agent is this" and the chip has to give the
-	// same one. Seeding only when it was non-empty left the tab's remembered
-	// selection in charge on a bare /agent: the rail listed every agent's
-	// conversations while the chip named one of them, and the next message went
-	// to the agent the chip named. The URL is the state.
+	// the page's answer to "which agent is this". Seeding only when it was
+	// non-empty left the tab's remembered selection in charge on a bare /agent:
+	// the rail listed every agent's conversations while the next message went to
+	// whichever agent the tab remembered. The URL is the state.
 	content += `<script>window.muSeedAgent(` + app.JSString(selAgent) + `);</script>`
 	if prefill != "" {
 		content += `<script>(function(){var i=document.getElementById('mu-chat-input');if(i&&window.muChatAsk){i.value=` + app.JSString(prefill) + `;window.muChatAsk(i.value);}history.replaceState(null,'',` + app.JSString(Path(accountID, selAgent)) + `);})()</script>`
@@ -843,8 +626,8 @@ func renderSessionsRail(accountID, currentID, agentID string, named bool) string
 		newURL = "/agent?id=" + url.QueryEscape(agentID)
 	}
 	var b strings.Builder
-	b.WriteString(`<aside class="chat-rail"><button class="chat-new" onclick="if(window.muChatNew){muChatNew();history.replaceState(null,''` +
-		`,` + app.JSString(newURL) + `);document.querySelectorAll('.chat-sess.active').forEach(function(e){e.classList.remove('active')});}">+ New</button>` +
+	b.WriteString(`<aside class="chat-rail"><button class="btn chat-new" onclick="if(window.muChatNew){muChatNew();history.replaceState(null,''` +
+		`,` + app.JSAttr(newURL) + `);document.querySelectorAll('.chat-sess.active').forEach(function(e){e.classList.remove('active')});}">+ New</button>` +
 		`<div class="chat-sess-head">Conversations</div><div class="chat-sess-list">`)
 	if len(sessions) == 0 {
 		// An empty inbox says how to fill it, and the answer is an address.
@@ -888,10 +671,11 @@ func renderSessionsRail(accountID, currentID, agentID string, named bool) string
 		}
 		// Deletable. A conversation you can start and never be rid of is a list
 		// that only grows, and the rail is the one place somebody looks at it.
-		b.WriteString(`<div class="chat-sess-row"><a href="` + base + `?session=` + url.QueryEscape(s.ID) +
+		b.WriteString(`<div class="chat-sess-row has-row-del"><a href="` + base + `?session=` + url.QueryEscape(s.ID) +
 			`" class="` + cls + `">` + htmlEsc(title) + where + `</a>` +
-			`<button type="button" class="chat-sess-del mini-btn danger" ` +
-			`onclick="muSessionDelete(` + app.JSString(s.ID) + `,event)">Delete</button></div>`)
+			`<button type="button" class="row-del" title="Delete conversation" ` +
+			`aria-label="Delete this conversation" ` +
+			`onclick="muSessionDelete(` + app.JSAttr(s.ID) + `,event)">&times;</button></div>`)
 	}
 	if len(sessions) >= railShown {
 		b.WriteString(`<a class="chat-sess-more" href="/recall">Older conversations →</a>`)
@@ -927,10 +711,10 @@ window.muSessionStarted=function(id,title){
   title=(title||'Untitled').trim();
   if(title.length>60)title=title.slice(0,60)+'…';
   list.querySelectorAll('.chat-sess.active').forEach(function(e){e.classList.remove('active');});
-  var row=document.createElement('div');row.className='chat-sess-row';
+  var row=document.createElement('div');row.className='chat-sess-row has-row-del';
   var a=document.createElement('a');a.className='chat-sess active';a.href=href;a.textContent=title;
-  var b=document.createElement('button');b.className='chat-sess-del mini-btn danger';b.type='button';
-  b.title='Delete conversation';b.textContent='Delete';
+  var b=document.createElement('button');b.className='row-del';b.type='button';
+  b.title='Delete conversation';b.textContent='×';
   b.onclick=function(e){muSessionDelete(id,e);};
   row.appendChild(a);row.appendChild(b);
   list.insertBefore(row,list.firstChild);
@@ -962,40 +746,123 @@ function muPane(which){
 function muPaneClose(){
   document.querySelectorAll('.chat-pane.open').forEach(function(p){p.classList.remove('open')});
   var side=document.querySelector('.chat-side');if(side)side.classList.remove('up');
-  var scrim=document.querySelector('.chat-scrim');if(scrim)scrim.classList.remove('up');
+  // Removed, not un-classed.
+  //
+  // The scrim is appended to document.body, which outlives the page: this site
+  // navigates softly, replacing #content and leaving body's other children
+  // alone. So a sheet opened on a phone and then left by tapping a
+  // conversation took its grey overlay to the next page and kept it there,
+  // with nothing on screen to dismiss it — reported as "once I select a chat
+  // the screen stays grey". Taking it out of the DOM cannot leave it behind.
+  var scrim=document.querySelector('.chat-scrim');if(scrim)scrim.remove();
 }
 document.addEventListener('keydown',function(e){if(e.key==='Escape')muPaneClose()});
+// Picking anything inside a sheet closes it. A conversation is a link, and a
+// link that navigates while the sheet is still up leaves both behind.
+document.addEventListener('click',function(e){
+  var a=e.target.closest&&e.target.closest('.chat-pane a');
+  if(a)muPaneClose();
+},true);
+</script>`
+
+// chatPageJS is what the conversation page calls, on the page that calls it.
+//
+// These two lived in renderAgentsPanel's <script>, which this page emitted only
+// when it was not about a named agent — while calling both regardless. On
+// /agent/<name> that was three failures from one missing script:
+//
+//   - window.muSeedAgent threw, so window.muActiveAgent was never set. The chat
+//     component sends it with every message (see internal/app/chat.go) and the
+//     server has no fallback to the URL, so a question asked on an agent's own
+//     page was answered by the default agent.
+//   - muAgentCsrf threw, so the delete cross on a conversation did nothing.
+//   - The throw aborted the rest of that inline script, which is why a named
+//     agent's page did not lay out like the default one.
+//
+// Guarded rather than unconditional, because /agents and /agent/connect still
+// render the panel and its versions know about things this page does not have
+// — a roster to highlight, a chip to relabel. Where both are present the
+// richer one wins; where only this is, the page still works.
+const chatPageJS = `<script>
+(function(){
+  var K='mu_active_agent';
+  if(typeof window.muActiveAgent==='undefined'){
+    try{window.muActiveAgent=sessionStorage.getItem(K)||'';}catch(e){window.muActiveAgent='';}
+  }
+  if(typeof window.muSeedAgent!=='function'){
+    window.muSeedAgent=function(id){
+      window.muActiveAgent=id||'';
+      try{sessionStorage.setItem(K,window.muActiveAgent);}catch(e){}
+    };
+  }
+  if(typeof window.muAgentCsrf!=='function'){
+    window.muAgentCsrf=function(){
+      var m=document.cookie.match(/(?:^|; )csrf_token=([^;]+)/);
+      return m?decodeURIComponent(m[1]):'';
+    };
+  }
+  // A scrim left behind by the page before this one. Soft navigation keeps
+  // body's children, so without this the grey survives a reload of the layout.
+  document.querySelectorAll('.chat-scrim').forEach(function(s){s.remove();});
+})();
 </script>`
 
 const chatLayoutCSS = `<style>
 .chat-layout{display:flex;gap:24px;align-items:flex-start}
 .chat-side{width:250px;flex-shrink:0;display:flex;flex-direction:column}
+
+/* On a desktop the page does not scroll; the two columns do.
+ *
+ * A conversation and a list of conversations both grow without limit, and when
+ * the page carries that growth the box you came to type in leaves the screen.
+ * So the layout is one screen high and each column keeps its own overflow,
+ * which is what every mail client does and for this reason.
+ *
+ * All of it in a min-width block, and none of it in the base rules. Height on
+ * a flex chain is all-or-nothing — .chat-sess-list scrolls only if every
+ * ancestor between it and .chat-layout refuses to grow — and putting those
+ * properties in the base rules applied them to the phone sheet too, where the
+ * chain is different and a min-height:0 collapsed the list to nothing. The
+ * sheet sizes itself; it wants none of this.
+ */
+@media(min-width:761px){
+  .chat-layout{height:calc(100vh - var(--chat-chrome, 120px));min-height:420px}
+  .chat-side{min-height:0;max-height:100%;overflow:hidden}
+  /* The link that was missing: a plain div between the column and the rail,
+     which grew to its content and pushed the page down while the list below it
+     carried an overflow rule that could never fire. */
+  .chat-side>.chat-pane{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+  /* flex-shrink:0 on the rail is about the horizontal axis — it is a column
+     beside the conversation and must not be squeezed narrow. As a column child
+     of the pane it applies to height instead, which pinned the rail at its full
+     content height and let it be clipped rather than scrolled: the rows past
+     the fold were unreachable, which is worse than a long page. */
+  .chat-side .chat-rail{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+  .chat-main{min-height:0;display:flex;flex-direction:column;overflow-y:auto}
+  .chat-sess-list{min-height:0;overflow-y:auto}
+}
 .chat-side .chat-rail{width:auto}
 .chat-rail{width:250px;flex-shrink:0}
 .chat-main{flex:1;min-width:0}
 /* The conversation fills the main pane here (the 760px readability cap only
    applies to the chat embedded on the landing/home page). */
 .chat-main #mu-chat{max-width:none}
-/* Which agent is answering — always visible above the conversation. */
-.agent-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
-.agent-connect{margin-left:auto;font-size:13px;color:var(--text-muted,#666);text-decoration:none;white-space:nowrap}
-.agent-connect:hover{color:var(--text-primary,#111)}
-@media only screen and (max-width:600px){.agent-connect{margin-left:0}}
-.agent-addr{font-size:12px;background:var(--hover-background,#f5f5f5);border-radius:6px;
-  padding:3px 10px;color:var(--text-secondary,#555);overflow-wrap:anywhere}
+/* The bar above the conversation: the way back, and on a phone the way to the
+   other conversations. It held a chip naming this agent and a Connect link
+   too; both were a second copy of what /agents does, so both are gone and the
+   rules for them with them. Same shape as .conn-back on /agent/connect. */
+.agent-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 14px;font-size:13px}
 .chat-sess-head{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
   color:var(--text-muted,#999);padding:0 10px 6px}
-.agent-chip{display:inline-block;padding:3px 10px;border-radius:6px;background:var(--hover-background,#f5f5f5);color:var(--text-primary,#111);font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
-.agent-intro{margin:0 0 14px;padding:12px 14px;border:1px solid var(--border-color,#e5e5e5);border-radius:8px;font-size:14px;line-height:1.55;color:var(--text-secondary,#555)}
-.agent-intro b{color:var(--text-primary,#111)}
-.agent-intro a{color:var(--text-primary,#111)}
 /* Tokens, not hex.
    Every colour in this rail was a literal — #444 on no background at all for a
    row, #eef0ff under #111 for the selected one — so the rail did not move with
    the rest of the palette, and a row that declares a text colour and inherits
    its background is the exact shape that goes unreadable when anything
    underneath it changes. */
-.chat-new{width:100%;padding:9px 12px;background:var(--accent-color,#111);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;font-family:inherit;margin-bottom:12px}
+/* Size comes from the control scale in mu.css; this is the one thing that
+   is particular to it — a new-conversation button spans its column. */
+.chat-new{width:100%;margin-bottom:12px}
 .chat-sess-list{display:flex;flex-direction:column;gap:2px}
 .chat-sess-row{display:flex;align-items:center;gap:6px;min-width:0}
 .chat-sess{display:block;flex:1;min-width:0;padding:8px 10px;border-radius:6px;
@@ -1003,15 +870,10 @@ const chatLayoutCSS = `<style>
   text-decoration:none;font-size:13px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .chat-sess:hover{background:var(--hover-background,#f5f5f5)}
 .chat-sess.active{background:var(--active-background,#eef0ff);color:var(--text-primary,#111);font-weight:600}
-/* The way to be rid of a conversation is the button this site already has.
-   It was a bare × — a borderless glyph at 15px in a 24px box, which is under
-   any touch target anybody recommends and did not look like a control at all.
-   .mini-btn.danger carries the border, the colour and the padding, so all
-   that is left here is when it shows. */
-.chat-sess-del{flex:none;opacity:0;transition:opacity .12s ease}
-.chat-sess-row:hover .chat-sess-del,.chat-sess-del:focus-visible{opacity:1}
-/* No hover to reveal it with. */
-@media(hover:none){.chat-sess-del{opacity:1}}
+/* Deleting a conversation is .row-del in mu.css — the same control the inbox
+   draws, rather than a third private one. The row marks itself with
+   .has-row-del so the generic hover rule finds it; nothing else is needed
+   here. */
 .chat-sess-more{display:block;padding:8px 10px;font-size:12px;color:var(--text-muted,#888);text-decoration:none}
 .chat-sess-more:hover{color:var(--text-primary,#111)}
 .chat-sess-empty{color:var(--text-muted,#999);font-size:13px;padding:8px 10px;line-height:1.5}
@@ -1020,7 +882,6 @@ const chatLayoutCSS = `<style>
    there, so a control that opens them is a second way to do nothing — and
    "Agent: Micro" beside a page whose title is Micro is the same word twice. */
 .chat-open-list{display:none}
-button.agent-chip{display:none;border:0;font-family:inherit}
 
 /* On a phone the conversation is the page.
    It was a stacked column: the agent picker first, then every conversation as a
@@ -1038,8 +899,6 @@ button.agent-chip{display:none;border:0;font-family:inherit}
     background:var(--card-background,#fff);color:var(--text-primary,#111);
     border-radius:6px;padding:3px 12px;font-size:12px;font-weight:600;
     font-family:inherit;cursor:pointer}
-  button.agent-chip{display:inline-block;cursor:pointer}
-  button.agent-chip::after{content:" ▾";color:var(--text-muted,#999)}
   .chat-open-list::after{content:" ▾";color:#999}
   /* The sheet. Off-screen rather than display:none, so opening it animates and
      so the panels inside keep their state. */
@@ -1060,7 +919,6 @@ button.agent-chip{display:none;border:0;font-family:inherit}
   .chat-sess-list{flex-direction:column;overflow:visible;flex-wrap:nowrap;max-height:52vh;overflow-y:auto}
   .chat-sess-row{flex-shrink:0;max-width:none}
   .chat-sess{font-size:14px;padding:10px}
-  .chat-sess-del{opacity:1;padding:6px 10px;font-size:13px}
   .agents-list>div{padding:10px 8px;font-size:14px}
   .agents-actions{opacity:1}
   .agents-actions a,.agents-actions button{padding:4px 6px;font-size:14px}
@@ -1190,14 +1048,15 @@ func sse(w http.ResponseWriter, event map[string]any) {
 	}
 }
 
-// streamNativeSSE drives the native go-micro agent and translates its stream
-// into the SSE events the chat UI expects (tool_start/tool_done, stream_start/
-// stream_token, response, done). It returns true when it handled the request.
-// It returns false only when no native provider is configured, or the agent
-// failed before producing any user-visible output — in which case nothing but
-// the already-sent flow_id was emitted, so the caller can fall back to the
-// hand-rolled pipeline cleanly.
-func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts QueryOpts, flow *Flow, threadID string) bool {
+// streamNativeSSE drives the agent and translates its stream into the SSE
+// events the chat UI expects (tool_start/tool_done, stream_start/stream_token,
+// response, done).
+//
+// It used to return a bool saying whether it had handled the request, so the
+// caller could fall back to a second pipeline when it had not. There is no
+// second pipeline, so there is nothing to report: a failure is reported to the
+// person who asked, on the stream they are already reading.
+func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts QueryOpts, flow *Flow, threadID string) {
 	streaming := false
 	emitted := false
 	var captured strings.Builder
@@ -1242,23 +1101,20 @@ func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts Query
 			sse(w, map[string]any{"type": "stream_token", "token": tok})
 		},
 	}
-	answer, handled, err := runNative(accountID, prompt, sopts)
-
-	if !handled {
-		return false // no native provider — fall back to the planner
-	}
+	answer, err := runNative(accountID, prompt, sopts)
 	if err != nil {
-		if !emitted {
-			// Nothing user-visible was sent yet (only flow_id); fall back to the
-			// hand-rolled pipeline so the query still gets answered.
-			app.Log("agent", "native stream failed before output, falling back: %v", err)
-			return false
+		// Whether anything was on screen already decides how it reads, not
+		// whether it is reported. Mid-answer the error follows the tokens the
+		// reader has been watching; before any output it is the whole message.
+		if emitted {
+			app.Log("agent", "stream error mid-answer: %v", err)
+		} else {
+			app.Log("agent", "stream failed before output: %v", err)
 		}
-		app.Log("agent", "native stream error mid-answer: %v", err)
 		updateFlow(flow.ID, func(f *Flow) { f.Status = "error"; f.Error = err.Error() })
-		sse(w, map[string]any{"type": "error", "message": "Could not generate response: " + err.Error()})
+		sse(w, map[string]any{"type": "error", "message": agentErrorMessage(err)})
 		sse(w, map[string]any{"type": "done"})
-		return true
+		return
 	}
 
 	if answer == "" {
@@ -1283,90 +1139,28 @@ func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts Query
 		f.Answer = answer
 		f.HTML = html
 		f.Status = "done"
-		// What it ran. The native path streamed tool_start and tool_done to the
+		// What it ran. The stream emitted tool_start and tool_done to the
 		// browser and then dropped both on the floor, so a finished run recorded
-		// an answer and no account of how it got there — and this is the default
-		// path, so that was almost every run. The names are what this path
-		// knows; the payloads stay with the planner path, which keeps them.
+		// an answer and no account of how it got there.
 		for _, name := range nativeToolNames {
 			f.Steps = append(f.Steps, FlowStep{Tool: name})
 		}
 	})
 	sse(w, map[string]any{"type": "response", "html": html, "flow_id": flow.ID})
 	sse(w, map[string]any{"type": "done"})
-	return true
 }
 
-// agentToolsDesc is the tool catalogue shown to the AI planner.
-const agentToolsDesc = `Available tools (use exact name):
-- news_headlines: Get recent news headlines + short summaries balanced across ALL topics (args optional: {"topic":"tech","limit":30}). PREFER this for general news, "what's happening" and morning-briefing requests so coverage isn't dominated by one topic like crypto. Then use news_read for any article worth expanding.
-- news_read: Read one news article in full by its id from news_headlines (args: {"id":"<article id>"})
-- news: Get the raw latest news feed grouped by category (no args) — only when you specifically need the full per-category feed
-- news_search: Search news articles (args: {"query":"search term"})
-- recall: Search across everything — indexed news, blog, social, video AND the user's own mail — for 'do you remember', 'what did I get about X', and cross-source lookups (args: {"query":"search term"}). Returns ids you can open with the matching tool.
-- blog_list: Get recent blog posts (no args)
-- blog_read: Read a specific blog post (args: {"id":"post-id"})
-- social: View the social feed (no args)
-- social_search: Search social posts (args: {"query":"search term"})
-- video: Get the latest videos from curated channels (no args)
-- video_search: Search YouTube for videos (args: {"query":"search term"})
-- markets: Get live market prices (args: {"category":"crypto|futures|commodities"})
-- weather_forecast: Get weather forecast (args: {"lat":number,"lon":number})
-- mail_read: Read inbox messages (no args)
-- mail_send: Send a message (args: {"to":"username or email","subject":"subject","body":"message"})
-- chat: Chat with the AI (args: {"prompt":"message"})
-- search: Search all Mu content (args: {"q":"search term"})
-- web_search: Search the web for current information (args: {"q":"search term"})
-- web_fetch: Fetch a web page and get its cleaned readable content (args: {"url":"https://example.com/page"})
-- places_search: Search for places (args: {"q":"search name","near":"location"})
-- places_nearby: Find places near a location (args: {"address":"location","radius":number})
-- prayer_reflection: Get today's Islamic reflection — a verse of the Quran, a saying of the Prophet, and a name of Allah (no args) — response includes a "date" field, always mention it
-- prayer_times: Today's Islamic prayer times for a location, and which prayer is next (args: {"lat":51.5,"lon":-0.12,"tz":"Europe/London"})
-- prayer_qibla: The qibla — the compass bearing to face for prayer (args: {"lat":51.5,"lon":-0.12})
-- quran: Look up a Quran chapter or verse (args: {"chapter":1,"verse":1} — verse is optional)
-- hadith: Look up hadith from Sahih Al Bukhari (args: {"book":1} — optional book number)
-- quran_search: Semantic search across the Quran, Hadith, and names of Allah (args: {"q":"what does the quran say about patience"})
-- apps_search: Search apps directory (args: {"q":"search term","tag":"productivity"})
-- apps_read: Read details of a specific app (args: {"slug":"app-slug"})
-- apps_build: build a small app (a tracker, checklist, or counter) from a description (args: {"prompt":"an expense tracker"})
-- apps_edit: Edit an existing app (args: {"slug":"app-slug","html":"<new html>","name":"New Name"})
-- apps_embed: get the HTML that puts an app on another page (args: {"slug":"app-slug"})
-- wallet_address: The caller's own address on Base, for receiving USDC (no args).
-- wallet_balance: What that address holds in USDC (no args). This is not credits — credits are this instance's own meter, and there is no tool for topping them up; point the user at /billing/topup.
-- stream: Read the public event stream (no args)`
-
-// publicToolsDesc is the tool list for a run with no private context — a
-// shared room, where mail, the wallet and the address book are
-// not this conversation's to reach.
+// agentErrorMessage is what a failed run says to the person who asked.
 //
-// It was named for guests, because a signed-out visitor was the other caller
-// with no private context. There are no signed-out runs any more; a group
-// channel is what this is for now, and QueryOpts.Public is what selects it.
-const publicToolsDesc = `Available tools (use exact name):
-- news_headlines: Get recent news headlines + short summaries balanced across ALL topics (args optional: {"topic":"tech","limit":30}). PREFER this for general news and briefing requests so coverage isn't dominated by one topic like crypto. Then use news_read for any article worth expanding.
-- news_read: Read one news article in full by its id from news_headlines (args: {"id":"<article id>"})
-- news: Get the raw latest news feed grouped by category (no args)
-- news_search: Search news articles (args: {"query":"search term"})
-- recall: Search across indexed news, blog, social and video for cross-source lookups (args: {"query":"search term"})
-- blog_list: Get recent blog posts (no args)
-- blog_read: Read a specific blog post (args: {"id":"post-id"})
-- social: View the social feed (no args)
-- social_search: Search social posts (args: {"query":"search term"})
-- video: Get the latest videos from curated channels (no args)
-- video_search: Search YouTube for videos (args: {"query":"search term"})
-- markets: Get live market prices (args: {"category":"crypto|futures|commodities"})
-- weather_forecast: Get weather forecast (args: {"lat":number,"lon":number})
-- places_search: Search for places (args: {"q":"search name","near":"location"})
-- places_nearby: Find places near a location (args: {"address":"location","radius":number})
-- prayer_reflection: Get today's Islamic reflection (no args)
-- prayer_times: Today's Islamic prayer times for a location (args: {"lat":51.5,"lon":-0.12})
-- quran: Look up a Quran chapter or verse (args: {"chapter":1,"verse":1})
-- hadith: Look up hadith from Sahih Al Bukhari (args: {"book":1})
-- quran_search: Search the Quran and Hadith (args: {"q":"search term"})
-- search: Search all Mu content (args: {"q":"search term"})
-- web_search: Search the web (args: {"q":"search term"})
-- web_fetch: Fetch a web page (args: {"url":"https://example.com"})
-- stream: Read the public event stream (no args)`
+// An unconfigured instance is the one failure worth telling apart, because it
+// is the operator's to fix and every question will fail the same way until
+// they do. Everything else is this run going wrong.
+func agentErrorMessage(err error) string {
+	if errors.Is(err, ErrNoProvider) {
+		return "The agent has no AI provider configured. Set a provider key in /admin/config."
+	}
+	return "Could not generate response: " + err.Error()
+}
 
 // handleQuery processes an agent query request with SSE streaming.
 func handleQuery(w http.ResponseWriter, r *http.Request) {
@@ -1488,496 +1282,36 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	// conversation came to be one thing.
 	sse(w, map[string]any{"type": "flow_id", "flow_id": flow.ID, "thread": threadID})
 
-	// Native go-micro agent path (opt-in via AGENT_NATIVE_STREAM while the
-	// upstream StreamAsk tool-name bug is fixed): the LLM does native
-	// tool-calling over the registered services and streams the answer,
-	// emitting tool start/end events. Falls through to the hand-rolled
-	// pipeline below if disabled, no provider is configured, or it fails
-	// before producing any output.
-	if nativeStreamEnabled() {
-		nopts := QueryOpts{}
-		if req.Cards && CardContextFunc != nil {
-			nopts.Extra = CardContextFunc(accountID)
-		}
-		if ua := resolveAgent(accountID, req.Agent); ua != nil {
-			nopts.System = ua.SystemPrompt
-			nopts.Tools = ua.Tools
-		}
-		// What was already said, from the record rather than from workflow
-		// records. The history the page sent up is the fallback, for a
-		// conversation that predates the record.
-		if h := History(accountID, threadID, historyTurns); len(h) > 0 {
-			nopts.History = h
-		} else {
-			for _, f := range conversationHistory {
-				if strings.TrimSpace(f.Prompt) == "" {
-					continue
-				}
-				nopts.History = append(nopts.History,
-					QueryMessage{Role: "user", Text: f.Prompt},
-					QueryMessage{Role: "assistant", Text: f.Answer})
-			}
-		}
-		// The same routing decision every other client gets. It used to be
-		// skipped entirely here, so the web answered as the generalist while
-		// mail got a specialist — and because routing now sets the
-		// options rather than diverting into a pipeline of its own, a routed
-		// question still streams.
-		routedPrompt, nopts := Routed(req.Prompt, nopts)
-		if streamNativeSSE(w, accountID, routedPrompt, nopts, flow, threadID) {
-			return
-		}
+	nopts := QueryOpts{}
+	if req.Cards && CardContextFunc != nil {
+		nopts.Extra = CardContextFunc(accountID)
 	}
-
-	// --- Step 1: plan tool calls ---
-	type toolCall struct {
-		Tool string         `json:"tool"`
-		Args map[string]any `json:"args"`
+	if ua := resolveAgent(accountID, req.Agent); ua != nil {
+		nopts.System = ua.SystemPrompt
+		nopts.Tools = ua.Tools
 	}
-	var toolCalls []toolCall
-
-	// Shortcut: skip planning LLM for common queries with known tool mappings
-	if tc := shortcutToolCalls(req.Prompt); len(tc) > 0 {
-		for _, s := range tc {
-			toolCalls = append(toolCalls, toolCall{Tool: s.Tool, Args: s.Args})
-		}
-		sse(w, map[string]any{"type": "thinking", "message": "Fetching data…"})
+	// What was already said, from the record rather than from workflow
+	// records. The history the page sent up is the fallback, for a
+	// conversation that predates the record.
+	if h := History(accountID, threadID, historyTurns); len(h) > 0 {
+		nopts.History = h
 	} else {
-		sse(w, map[string]any{"type": "thinking", "message": "Planning your request…"})
-
-		// Build planning question with conversation context
-		planQuestion := req.Prompt
-		if len(conversationHistory) > 0 {
-			var convCtx strings.Builder
-			convCtx.WriteString("Previous conversation:\n")
-			for _, f := range conversationHistory {
-				convCtx.WriteString(fmt.Sprintf("User: %s\nAssistant: %s\n\n", f.Prompt, truncate(f.Answer, 500)))
-			}
-			convCtx.WriteString("New question: " + req.Prompt)
-			planQuestion = convCtx.String()
-		}
-		toolsForPlan := agentToolsDesc
-		planPrompt := &ai.Prompt{
-			System: "You are an AI agent. Given a user question, output ONLY a JSON array of tool calls (no other text, no markdown).\n\n" +
-				toolsForPlan +
-				"\n\nOutput format: [{\"tool\":\"tool_name\",\"args\":{}}]\nUse at most 5 tool calls. When the question asks for cross-source insights or correlations (e.g. news + markets, news + video), call multiple relevant tools. If the question is a follow-up that can be answered from prior conversation context without new tools, output []. If no tools are needed output [].",
-			Question: planQuestion,
-			Priority: ai.PriorityHigh,
-			Provider: "",
-			Model:    ai.BackgroundModel(),
-			Caller:   "agent-plan",
-		}
-
-		planResult, err := ai.Ask(planPrompt)
-		if err != nil {
-			updateFlow(flow.ID, func(f *Flow) { f.Status = "error"; f.Error = err.Error() })
-			sse(w, map[string]any{"type": "error", "message": "Could not plan request: " + err.Error()})
-			sse(w, map[string]any{"type": "done"})
-			return
-		}
-
-		// Parse tool calls (the AI may wrap JSON in markdown fences)
-		planJSON := extractJSONArray(planResult)
-		json.Unmarshal([]byte(planJSON), &toolCalls) //nolint:errcheck — fallback to empty slice
-	}
-
-	// --- Step 2: execute tool calls ---
-	type toolResult struct {
-		Name      string
-		Result    string
-		Args      map[string]any
-		Formatted string // pre-formatted RAG text, also used for reference rendering
-	}
-	var results []toolResult
-	var unavailableTools []string
-	seenToolCalls := map[string]bool{}
-
-	for i := 0; i < len(toolCalls); i++ {
-		tc := toolCalls[i]
-		if tc.Tool == "" {
-			continue
-		}
-		key := toolCallKey(tc.Tool, tc.Args)
-		if seenToolCalls[key] {
-			continue
-		}
-		seenToolCalls[key] = true
-		if skipMarketMoverCompanionTool(req.Prompt, tc.Tool) {
-			continue
-		}
-		// Asked before the tool_start frame, so a refusal is not announced to
-		// the user as a step that then fails.
-		if err := api.AllowPlanned(tc.Tool, false); err != nil {
-			app.Log("agent", "refused %s: %v", tc.Tool, err)
-			continue
-		}
-		msg := toolLabel(tc.Tool)
-		sse(w, map[string]any{"type": "tool_start", "name": tc.Tool, "message": msg})
-
-		text, isErr, execErr := api.RunPlanned(r, false, tc.Tool, tc.Args)
-		if execErr != nil || isErr {
-			app.Log("agent", "Tool %s failed: err=%v isErr=%v response=%.200s", tc.Tool, execErr, isErr, text)
-			unavailableTools = append(unavailableTools, tc.Tool)
-			sse(w, map[string]any{
-				"type":    "tool_done",
-				"name":    tc.Tool,
-				"message": tc.Tool + " — unavailable",
-			})
-			if fallback, ok := fallbackNewsSearchToolCall(req.Prompt, tc.Tool, tc.Args); ok {
-				key := toolCallKey(fallback.Tool, fallback.Args)
-				if !seenToolCalls[key] {
-					toolCalls = append(toolCalls, toolCall{Tool: fallback.Tool, Args: fallback.Args})
-				}
-			}
-			continue
-		}
-
-		// Cap context length passed to the synthesiser
-		if len(text) > 8000 {
-			text = text[:8000] + "…"
-		}
-		results = append(results, toolResult{Name: tc.Tool, Result: text, Args: tc.Args})
-
-		// Save step to flow incrementally
-		updateFlow(flow.ID, func(f *Flow) {
-			f.Steps = append(f.Steps, FlowStep{Tool: tc.Tool, Args: tc.Args, Result: text})
-		})
-
-		sse(w, map[string]any{
-			"type":    "tool_done",
-			"name":    tc.Tool,
-			"message": msg + " — done",
-		})
-	}
-
-	// --- Step 3: synthesise response ---
-	sse(w, map[string]any{"type": "thinking", "message": "Composing answer…"})
-
-	var ragParts []string
-
-	// Include conversation history when continuing a conversation.
-	if len(conversationHistory) > 0 {
-		var convCtx strings.Builder
-		convCtx.WriteString("### Conversation history\n")
-		for i, f := range conversationHistory {
-			convCtx.WriteString(fmt.Sprintf("**Turn %d — User asked:** %s\n\n", i+1, f.Prompt))
-			convCtx.WriteString(f.Answer + "\n\n")
-		}
-		ragParts = append(ragParts, convCtx.String())
-	}
-
-	for i, res := range results {
-		ragText := formatToolResult(res.Name, res.Result, res.Args)
-		results[i].Formatted = ragText
-		ragParts = append(ragParts, fmt.Sprintf("### %s\n%s", res.Name, ragText))
-	}
-	for _, tool := range unavailableTools {
-		ragParts = append(ragParts, fmt.Sprintf("### %s\n%s", tool, unavailableToolMessage(tool)))
-	}
-
-	// There was a fast path here that skipped synthesis and returned the tool
-	// output raw, for a market-mover or a simple weather question. It fired only
-	// for a signed-out visitor: it existed so the landing's demonstration showed
-	// something on screen sooner, at the cost of an answer that was a data dump.
-	// There are no signed-out runs, so it fires for nobody — and turning it on
-	// for everybody would be trading every account's answer quality for a
-	// latency win that was only ever worth it to somebody who had not signed up.
-	today := currentDateContext(time.Now().UTC())
-
-	var synthSystem string
-	if len(results) == 0 {
-		synthSystem = "You are Micro, the agent on Mu at micro.mu. Today's date is " + today + ".\n\n" +
-			"Mu is the everyday internet as tools — news, mail, web search, weather, video, markets, storage — that you call on the user's behalf, and that agents can call directly over MCP. " +
-			"You check their mail, look up prices, search the web, read the news, and give a personalised answer. " +
-			"Everything is behind one account and one balance, instead of a signup, a card and a token for every provider. It is open and self-hostable as a single binary. " +
-			"No ads, no tracking, no algorithm. Pay for the tools, not with your attention.\n\n" +
-			"Answer the user's question conversationally. Be helpful and concise. Use markdown formatting.\n\n" +
-			"IMPORTANT: Use plain dollar signs for currency (e.g. $69,811). Do NOT use LaTeX math delimiters like \\( or \\)."
-	} else {
-		synthSystem = "You are a helpful assistant. Today's date is " + today + ". " +
-			"The tool results below come from live data feeds. For prompts about today, latest, current, or now, anchor the answer to the current date above; do not label today as a different date unless a provider timestamp explicitly proves staleness, and disclose that staleness. Use article publication dates when reasoning about recency. For weather, use the dated forecast rows exactly and never invent calendar dates or weekdays; if the date is ambiguous or absent, say so.\n\n" +
-			"Answer the user's question directly, as user-facing prose. Start with the answer, not with process narration such as \"Here's what I found\" or \"Based on the tool results\". Do not use internal tool names or implementation headings like weather_forecast, markets, or Web sources in the primary answer; translate them to natural labels only when needed. Preserve useful freshness, source, provider-unavailable, and link details.\n\n" +
-			"For web_search results, preserve the user's query intent exactly, cite the listed source URLs, and if confidence is low say the results do not clearly support the requested answer and ask for a refinement.\n\n" +
-			"For news results, include the article URL next to each headline whenever the tool result provides one; if a headline has no URL, do not invent one.\n\n" +
-			"IMPORTANT: For any prices, market values, weather conditions, or other real-time data, you MUST use " +
-			"the exact values from the tool results. Do NOT use your training knowledge for current prices or live data — " +
-			"it will be outdated. If no tool result contains the requested real-time data, say it is unavailable.\n\n" +
-			"For market-mover prompts, prioritize the largest 24h movers and their prices first. Keep the answer to a brief bullets-only summary unless the user asks for depth. Only mention news when the tool results include directly explanatory headlines or sources; do not pad a market-mover answer with general market/news commentary.\n\n" +
-			"When results come from multiple sources (news, video, markets, weather, etc.), identify and highlight " +
-			"connections and correlations between them — for example, how a market move relates to a news story, " +
-			"or how videos cover the same topic appearing in the news.\n\n" +
-			"Use markdown formatting. Summarise key information from any news articles, weather data, market prices or other structured data. " +
-			"Do not answer with progress narration like 'let me check' or 'I'll pull the data'; the tools have already run, so provide the final answer or say exactly what is unavailable.\n\n" +
-			"IMPORTANT: Use plain dollar signs for currency (e.g. $69,811). Do NOT use LaTeX math delimiters like \\( or \\)."
-	}
-
-	// And the same in the streaming fallback. This branch runs whenever the
-	// native path is off or gave up before producing output, and it applied no
-	// named agent at all: it recorded the id on the flow and then composed as
-	// Micro, so an agent whose whole point is a voice or a standing instruction
-	// lost both the moment a question needed a tool.
-	customAgent := false
-	if ua := resolveAgent(accountID, req.Agent); ua != nil &&
-		strings.TrimSpace(ua.SystemPrompt) != "" {
-		synthSystem = strings.TrimSpace(ua.SystemPrompt) + "\n\n" + synthSystem
-		customAgent = true
-	}
-
-	synthPrompt := &ai.Prompt{
-		System:   synthSystem,
-		Rag:      ragParts,
-		Question: req.Prompt,
-		Priority: ai.PriorityHigh,
-		Provider: ai.ProviderDefault,
-		Caller:   "agent-synth",
-	}
-
-	// Stream tokens to the client as they arrive from the LLM.
-	sse(w, map[string]any{"type": "stream_start"})
-
-	answer, err := ai.AskStream(synthPrompt, func(token string) {
-		sse(w, map[string]any{"type": "stream_token", "token": token})
-	})
-	if err != nil {
-		updateFlow(flow.ID, func(f *Flow) { f.Status = "error"; f.Error = err.Error() })
-		// The tools have already run and their results are in hand. Discarding
-		// them because the model could not write the prose around them gets the
-		// trade backwards: calling the tools is the expensive, fallible half and
-		// it succeeded — the user asked for the weather and we have the weather.
-		// So say the summary failed and show what came back.
-		var raw strings.Builder
-		for _, res := range results {
-			if card := renderResultCard(accountID, res.Name, res.Result, res.Args); card != "" {
-				raw.WriteString(card)
+		for _, f := range conversationHistory {
+			if strings.TrimSpace(f.Prompt) == "" {
 				continue
 			}
-			text := res.Formatted
-			if strings.TrimSpace(text) == "" {
-				text = res.Result
-			}
-			if strings.TrimSpace(text) == "" {
-				continue
-			}
-			raw.WriteString(`<div class="card"><h4>` + htmlpkg.EscapeString(strings.ReplaceAll(res.Name, "_", " ")) +
-				`</h4><pre class="whitespace-pre-wrap m-0">` + htmlpkg.EscapeString(text) + `</pre></div>`)
-		}
-		if raw.Len() > 0 {
-			sse(w, map[string]any{"type": "error",
-				"message": "Could not write a summary (" + err.Error() + "). Here is what the tools returned."})
-			sse(w, map[string]any{"type": "response", "flow_id": flow.ID, "html": raw.String()})
-			sse(w, map[string]any{"type": "done"})
-			return
-		}
-		sse(w, map[string]any{"type": "error", "message": "Could not generate response: " + err.Error()})
-		sse(w, map[string]any{"type": "done"})
-		return
-	}
-	answer = app.NormalizeAnswerMarkdown(app.StripLatexDollars(answer))
-	// Told whether a named agent wrote this, so the freshness guard does not
-	// replace its answer with a list of the raw results.
-	answer = completeToolAnswerFor(answer, ragParts, customAgent)
-	answer = app.NormalizeAnswerMarkdown(answer)
-
-	rendered := app.RenderString(answer)
-	html := `<div class="card" id="agent-response">` + rendered + `</div>`
-
-	for _, res := range results {
-		if card := renderResultCard(accountID, res.Name, res.Result, res.Args); card != "" {
-			html += card
+			nopts.History = append(nopts.History,
+				QueryMessage{Role: "user", Text: f.Prompt},
+				QueryMessage{Role: "assistant", Text: f.Answer})
 		}
 	}
-
-	if len(results) > 0 {
-		html += `<div class="card text-sm"><h4 class="m-0 mb-2 text-sm text-muted">References</h4>`
-		for _, res := range results {
-			html += renderToolCallRef(res.Name, res.Args, res.Formatted)
-		}
-		html += `</div>`
-	}
-
-	updateFlow(flow.ID, func(f *Flow) {
-		f.Answer = answer
-		f.HTML = html
-		f.Status = "done"
-	})
-
-	sse(w, map[string]any{"type": "response", "html": html, "flow_id": flow.ID})
-	sse(w, map[string]any{"type": "done"})
-}
-
-// shortcutToolCall defines a pre-planned tool call for common queries.
-type shortcutToolCall struct {
-	Tool string
-	Args map[string]any
-}
-
-// shortcutToolCalls returns pre-planned tool calls for exact-match aliases,
-// skipping the LLM planning step for common one-word queries and starter pills.
-func shortcutToolCalls(prompt string) []shortcutToolCall {
-	aliases := map[string][]shortcutToolCall{
-		// Short aliases
-		"news":          {{Tool: "news_headlines", Args: map[string]any{}}},
-		"markets":       {{Tool: "markets", Args: map[string]any{}}},
-		"market":        {{Tool: "markets", Args: map[string]any{}}},
-		"prices":        {{Tool: "markets", Args: map[string]any{}}},
-		"video":         {{Tool: "video", Args: map[string]any{}}},
-		"videos":        {{Tool: "video", Args: map[string]any{}}},
-		"latest videos": {{Tool: "video", Args: map[string]any{}}},
-		"latest video":  {{Tool: "video", Args: map[string]any{}}},
-		"reminder":      {{Tool: "prayer_reflection", Args: map[string]any{}}},
-		"apps":          {{Tool: "apps_search", Args: map[string]any{}}},
-		"mail":          {{Tool: "mail_read", Args: map[string]any{}}},
-		// Personal queries
-		"do i have mail":                   {{Tool: "mail_read", Args: map[string]any{}}},
-		"do i have unread mail":            {{Tool: "mail_read", Args: map[string]any{}}},
-		"do i have email":                  {{Tool: "mail_read", Args: map[string]any{}}},
-		"check my mail":                    {{Tool: "mail_read", Args: map[string]any{}}},
-		"check my email":                   {{Tool: "mail_read", Args: map[string]any{}}},
-		"any new mail":                     {{Tool: "mail_read", Args: map[string]any{}}},
-		"any new email":                    {{Tool: "mail_read", Args: map[string]any{}}},
-		"any mail":                         {{Tool: "mail_read", Args: map[string]any{}}},
-		"unread mail":                      {{Tool: "mail_read", Args: map[string]any{}}},
-		"unread email":                     {{Tool: "mail_read", Args: map[string]any{}}},
-		"read my mail":                     {{Tool: "mail_read", Args: map[string]any{}}},
-		"read my email":                    {{Tool: "mail_read", Args: map[string]any{}}},
-		"read my unread email":             {{Tool: "mail_read", Args: map[string]any{}}},
-		"read my unread emails":            {{Tool: "mail_read", Args: map[string]any{}}},
-		"my mail":                          {{Tool: "mail_read", Args: map[string]any{}}},
-		"my email":                         {{Tool: "mail_read", Args: map[string]any{}}},
-		"btc price":                        {{Tool: "markets", Args: map[string]any{"category": "crypto"}}},
-		"bitcoin price":                    {{Tool: "markets", Args: map[string]any{"category": "crypto"}}},
-		"eth price":                        {{Tool: "markets", Args: map[string]any{"category": "crypto"}}},
-		"what's happening":                 {{Tool: "news_headlines", Args: map[string]any{}}},
-		"what's happening?":                {{Tool: "news_headlines", Args: map[string]any{}}},
-		"today's news":                     {{Tool: "news_headlines", Args: map[string]any{}}},
-		"what is moving in markets today":  {{Tool: "markets", Args: map[string]any{}}},
-		"what is moving in markets today?": {{Tool: "markets", Args: map[string]any{}}},
-		"what's moving in markets today":   {{Tool: "markets", Args: map[string]any{}}},
-		"what's moving in markets today?":  {{Tool: "markets", Args: map[string]any{}}},
-		"market movers today":              {{Tool: "markets", Args: map[string]any{}}},
-		"markets movers today":             {{Tool: "markets", Args: map[string]any{}}},
-		// Starter pill phrases
-		"give me a summary of today's top news":         {{Tool: "news_headlines", Args: map[string]any{}}},
-		"what's in the news?":                           {{Tool: "news_headlines", Args: map[string]any{}}},
-		"what are the latest crypto and market prices?": {{Tool: "markets", Args: map[string]any{}}},
-		"find me the latest tech videos":                {{Tool: "video_search", Args: map[string]any{"query": "tech"}}},
-		"search the web for the latest ai news":         {{Tool: "web_search", Args: map[string]any{"q": "latest AI news"}}},
-		"show me today's islamic reminder":              {{Tool: "prayer_reflection", Args: map[string]any{}}},
-		// Wallet — the key on Base, not the credit balance. Credits are on
-		// /account and have no tool, deliberately: spending should follow from
-		// the user's own action.
-		"my wallet":      {{Tool: "wallet_balance", Args: map[string]any{}}},
-		"wallet":         {{Tool: "wallet_balance", Args: map[string]any{}}},
-		"wallet balance": {{Tool: "wallet_balance", Args: map[string]any{}}},
-		"wallet address": {{Tool: "wallet_address", Args: map[string]any{}}},
-	}
-	lower := strings.ToLower(strings.TrimSpace(prompt))
-	if tc, ok := aliases[lower]; ok {
-		return tc
-	}
-
-	// Fuzzy matches for prompts with dynamic content. Simple market-mover
-	// prompts should reach the markets tool without an LLM planning turn so the
-	// first visible tool event is emitted as soon as possible. Explanation or
-	// cross-source requests still use the planner so they can add news/search.
-	if isMarketMoverPrompt(lower) && !wantsMarketMoverExplanation(lower) {
-		return []shortcutToolCall{{Tool: "markets", Args: map[string]any{}}}
-	}
-
-	if tc := weatherShortcutToolCalls(lower); len(tc) > 0 {
-		return tc
-	}
-
-	if isLatestTechnologyNewsPrompt(lower) {
-		return []shortcutToolCall{{Tool: "news_search", Args: map[string]any{"query": newsTopicQuery(lower)}}}
-	}
-
-	if strings.Contains(lower, "unread email") || strings.Contains(lower, "unread mail") ||
-		(strings.Contains(lower, "read") && strings.Contains(lower, "mail")) ||
-		(strings.Contains(lower, "read") && strings.Contains(lower, "email")) {
-		return []shortcutToolCall{{Tool: "mail_read", Args: map[string]any{}}}
-	}
-
-	return nil
-}
-
-func weatherShortcutToolCalls(lower string) []shortcutToolCall {
-	if !isSimpleWeatherPrompt(lower) {
-		return nil
-	}
-	locationAliases := map[string][2]float64{
-		"new york":       {40.7128, -74.0060},
-		"nyc":            {40.7128, -74.0060},
-		"san francisco":  {37.7749, -122.4194},
-		"sf":             {37.7749, -122.4194},
-		"london":         {51.5074, -0.1278},
-		"paris":          {48.8566, 2.3522},
-		"tokyo":          {35.6762, 139.6503},
-		"los angeles":    {34.0522, -118.2437},
-		"chicago":        {41.8781, -87.6298},
-		"miami":          {25.7617, -80.1918},
-		"seattle":        {47.6062, -122.3321},
-		"washington dc":  {38.9072, -77.0369},
-		"washington, dc": {38.9072, -77.0369},
-	}
-	for alias, coords := range locationAliases {
-		if containsLocationAlias(lower, alias) {
-			return []shortcutToolCall{{Tool: "weather_forecast", Args: map[string]any{"lat": coords[0], "lon": coords[1]}}}
-		}
-	}
-	return nil
-}
-
-func containsLocationAlias(prompt, alias string) bool {
-	if !strings.Contains(prompt, alias) {
-		return false
-	}
-	for _, marker := range []string{" in " + alias, " for " + alias, " at " + alias, " near " + alias} {
-		if strings.Contains(prompt, marker) {
-			return true
-		}
-	}
-	return strings.TrimSpace(prompt) == "weather "+alias || strings.TrimSpace(prompt) == alias+" weather"
-}
-
-func fallbackNewsSearchToolCall(prompt, tool string, args map[string]any) (shortcutToolCall, bool) {
-	if tool != "news_search" || !isLatestTechnologyNewsPrompt(strings.ToLower(prompt)) {
-		return shortcutToolCall{}, false
-	}
-	query := newsTopicQuery(strings.ToLower(prompt))
-	if raw, ok := args["query"].(string); ok && strings.TrimSpace(raw) != "" {
-		query = strings.TrimSpace(raw)
-	}
-	if promptQuery := newsTopicQuery(strings.ToLower(prompt)); promptQuery != "technology news" && query == "technology news" {
-		query = promptQuery
-	}
-	return shortcutToolCall{Tool: "web_search", Args: map[string]any{"q": query}}, true
-}
-
-func newsTopicQuery(lower string) string {
-	prefix := ""
-	switch {
-	case strings.Contains(lower, "today"):
-		prefix = "today "
-	case strings.Contains(lower, "latest"):
-		prefix = "latest "
-	case strings.Contains(lower, "current") || strings.Contains(lower, "happening"):
-		prefix = "current "
-	}
-	topic := "technology news"
-	if strings.Contains(lower, "artificial intelligence") {
-		topic = "artificial intelligence news"
-	} else {
-		for _, token := range strings.FieldsFunc(lower, func(r rune) bool {
-			return (r < 'a' || r > 'z') && (r < '0' || r > '9')
-		}) {
-			if token == "ai" {
-				topic = "AI news"
-				break
-			}
-		}
-	}
-	return prefix + topic
+	// The same routing decision every other client gets. It used to be
+	// skipped entirely here, so the web answered as the generalist while
+	// mail got a specialist — and because routing now sets the
+	// options rather than diverting into a pipeline of its own, a routed
+	// question still streams.
+	routedPrompt, nopts := Routed(req.Prompt, nopts)
+	streamNativeSSE(w, accountID, routedPrompt, nopts, flow, threadID)
 }
 
 func isLatestTechnologyNewsPrompt(lower string) bool {
@@ -2026,82 +1360,6 @@ func shouldHoldNativeNewsStreamTokens(prompt string, nativeTools []string) bool 
 		}
 	}
 	return false
-}
-
-func isSimpleWeatherPrompt(prompt string) bool {
-	lower := strings.ToLower(strings.TrimSpace(prompt))
-	if lower == "" || !strings.Contains(lower, "weather") {
-		return false
-	}
-	complexTerms := []string{"compare", "versus", " vs ", "and news", "market", "markets", "why", "explain", "impact", "affect"}
-	for _, term := range complexTerms {
-		if strings.Contains(lower, term) {
-			return false
-		}
-	}
-	return true
-}
-
-func toolCallKey(tool string, args map[string]any) string {
-	if len(args) == 0 {
-		return strings.TrimSpace(tool)
-	}
-	b, err := json.Marshal(args)
-	if err != nil {
-		return strings.TrimSpace(tool)
-	}
-	return strings.TrimSpace(tool) + "\x00" + string(b)
-}
-
-// extractJSONArray extracts the first JSON array `[…]` from text produced by the AI.
-// skipMarketMoverCompanionTool keeps market-mover answers focused on price
-// data unless the user explicitly asks for explanatory news or cross-source
-// correlation. Planning can otherwise add broad news tools for "today" prompts,
-// which lets unrelated headlines bleed into a simple movers answer.
-func skipMarketMoverCompanionTool(prompt, tool string) bool {
-	if tool == "markets" || tool == "markets_list" || !isMarketMoverPrompt(prompt) || wantsMarketMoverExplanation(prompt) {
-		return false
-	}
-	return tool == "news" || tool == "news_headlines" || tool == "news_list" || tool == "news_search" || tool == "web_search" || tool == "search_web" || tool == "recall" || tool == "index"
-}
-
-func isMarketMoverPrompt(prompt string) bool {
-	lower := strings.ToLower(prompt)
-	hasMoveIntent := strings.Contains(lower, "moving") ||
-		strings.Contains(lower, "mover") ||
-		strings.Contains(lower, "move") ||
-		strings.Contains(lower, "rally") ||
-		strings.Contains(lower, "selloff") ||
-		strings.Contains(lower, "up today") ||
-		strings.Contains(lower, "down today")
-	if !hasMoveIntent {
-		return false
-	}
-	for _, term := range []string{"market", "markets", "stock", "stocks", "equity", "equities", "crypto", "bitcoin", "btc", "eth", "ethereum", "index", "indices", "futures"} {
-		if strings.Contains(lower, term) {
-			return true
-		}
-	}
-	return false
-}
-
-func wantsMarketMoverExplanation(prompt string) bool {
-	lower := strings.ToLower(prompt)
-	for _, term := range []string{"why", "because", "explain", "reason", "driving", "driver", "catalyst", "news", "headline", "correlat"} {
-		if strings.Contains(lower, term) {
-			return true
-		}
-	}
-	return false
-}
-
-func extractJSONArray(text string) string {
-	start := strings.Index(text, "[")
-	end := strings.LastIndex(text, "]")
-	if start == -1 || end == -1 || end <= start {
-		return "[]"
-	}
-	return text[start : end+1]
 }
 
 // toolLabel returns a human-readable progress label for a tool name.
@@ -3099,7 +2357,7 @@ func formatWalletBalanceResult(result string) string {
 		} else {
 			n = *data.Balance
 		}
-		fmt.Fprintf(&sb, "Credit balance: %d credits (£%d.%02d). Top up at /billing/topup.\n", n, n/100, n%100)
+		fmt.Fprintf(&sb, "Credit balance: %d credits ($%d.%02d). Top up at /wallet/topup.\n", n, n/100, n%100)
 	}
 	switch {
 	case data.USDC != "":
@@ -3171,8 +2429,12 @@ func formatAppsReadResult(result string) string {
 	if a.Tags != "" {
 		tagLine = fmt.Sprintf("Tags: %s\n", a.Tags)
 	}
-	return fmt.Sprintf("App: %s\nID: %s\nDescription: %s\nAuthor: %s\n%sInstalls: %d\nURL: /apps/%s\nRun: /apps/%s/run\n",
-		a.Name, a.Slug, a.Description, a.Author, tagLine, a.Installs, a.Slug, a.Slug)
+	// One URL, and it is the app. There was a second line here — "Run:
+	// /apps/<slug>/run" — naming a path that 404s: "run" is retired, and an
+	// agent repeating a dead link to somebody is worse than saying nothing,
+	// because they will click it.
+	return fmt.Sprintf("App: %s\nID: %s\nDescription: %s\nAuthor: %s\n%sInstalls: %d\nURL: /apps/%s\n",
+		a.Name, a.Slug, a.Description, a.Author, tagLine, a.Installs, a.Slug)
 }
 
 // formatAppsBuildResult converts a raw JSON build result into

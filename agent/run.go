@@ -2,15 +2,12 @@ package agent
 
 import (
 	"encoding/json"
-	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
 	"mu/agent/micro"
 	"mu/internal/ai"
-	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/notes"
@@ -178,121 +175,41 @@ func RunHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Step 1: Plan
-	userCtx := ""
-	if UserContextFunc != nil {
-		userCtx = UserContextFunc(acc.ID)
-	}
-	toolsForPlan := agentToolsDesc
-	planSystem := "You are an AI agent. Given a user question, output ONLY a JSON array of tool calls.\n\n" +
-		toolsForPlan +
-		"\n\nOutput format: [{\"tool\":\"tool_name\",\"args\":{}}]\nUse at most 5 tool calls. Output [] if no tools needed." +
-		"\n\nIMPORTANT: For personal questions like 'do I have mail', 'what's the weather', 'news today', 'btc price' — ALWAYS use the appropriate tool. Never say you can't access something. You have tools for everything."
-	if userCtx != "" {
-		planSystem += "\n\nUser context:\n" + userCtx
-	}
-	type toolCall struct {
-		Tool string         `json:"tool"`
-		Args map[string]any `json:"args"`
-	}
-	var toolCalls []toolCall
-
-	// Shortcut for common queries
-	if tc := shortcutToolCalls(req.Prompt); len(tc) > 0 {
-		for _, s := range tc {
-			toolCalls = append(toolCalls, toolCall{Tool: s.Tool, Args: s.Args})
-		}
-	} else {
-		planResult, err := ai.Ask(&ai.Prompt{
-			System:   planSystem,
-			Question: req.Prompt,
-			Priority: ai.PriorityHigh,
-			Provider: "",
-			Model:    ai.BackgroundModel(),
-			Caller:   "agent-run-plan",
-		})
-		if err == nil {
-			planJSON := extractJSONArray(planResult)
-			json.Unmarshal([]byte(planJSON), &toolCalls)
-		}
-	}
-
-	// Step 2: Execute tools
-	var ragParts []string
+	// The same agent every other door reaches.
+	//
+	// This was a third copy of the plan/execute/synthesize pipeline — its own
+	// tool catalogue, its own two system prompts, its own dedupe — and being a
+	// copy is what made it wrong rather than merely redundant. It named no
+	// agent, so a user-defined agent could not be reached through it; it did no
+	// routing, so it always answered as the generalist; and its catalogue was a
+	// hand-written list that had to be edited whenever a service was added,
+	// which is how a door onto "every tool" came to offer a different set of
+	// tools from the one next to it.
+	//
+	// OnStep is what fills Tools in the response, and it now comes from the
+	// tool wrapper rather than from a loop here — so the report is of what the
+	// model actually called.
 	var toolsUsed []ToolUsed
-	seenToolCalls := map[string]bool{}
-
-	for _, tc := range toolCalls {
-		if tc.Tool == "" {
-			continue
-		}
-		key := toolCallKey(tc.Tool, tc.Args)
-		if seenToolCalls[key] {
-			continue
-		}
-		seenToolCalls[key] = true
-		text, isErr, execErr := api.RunPlanned(r, false, tc.Tool, tc.Args)
-		if errors.Is(execErr, api.ErrRefused) {
-			app.Log("agent", "refused %s: %v", tc.Tool, execErr)
-			continue
-		}
-		if execErr != nil || isErr {
-			toolsUsed = append(toolsUsed, ToolUsed{Name: tc.Tool, Status: "error"})
-			continue
-		}
-		if len(text) > 8000 {
-			text = text[:8000]
-		}
-		ragParts = append(ragParts, fmt.Sprintf("### %s\n%s", tc.Tool, formatToolResult(tc.Tool, text, tc.Args)))
-		toolsUsed = append(toolsUsed, ToolUsed{Name: tc.Tool, Status: "ok"})
-	}
-
-	// Step 3: Synthesise with user context.
-	today := currentDateContext(time.Now().UTC())
-	var synthSystem string
-	if len(ragParts) == 0 && userCtx == "" {
-		synthSystem = "You are Micro, the agent on Mu at micro.mu. Today is " + today + ". " +
-			"Mu is the everyday internet as tools — news, mail, web search, weather, video, markets, storage — that you call on the user's behalf, and that agents can call directly over MCP. " +
-			"You check their mail, look up prices, search the web, read the news, and give personalised answers. " +
-			"Everything is behind one account and one balance instead of a signup and a card per provider. Self-hostable as a single binary. " +
-			"No ads, no tracking. Answer conversationally. Be helpful and concise. Use markdown."
-	} else {
-		synthSystem = "You are Micro, a personal AI assistant. Today is " + today + ". " +
-			"Answer concisely using the tool results and user context below. Use markdown. " +
-			"For web_search results, preserve the user's query intent exactly, cite the listed source URLs, and if confidence is low say the results do not clearly support the requested answer and ask for a refinement. " +
-			"For news results, include the article URL next to each headline whenever the tool result provides one; if a headline has no URL, do not invent one. " +
-			"For market-mover prompts, prioritize the largest 24h movers and their prices first. Keep the answer to a brief bullets-only summary unless the user asks for depth. Only mention news when the tool results include directly explanatory headlines or sources. " +
-			"Do not answer with progress narration like 'let me check' or 'I'll pull the data'; the tools have already run, so provide the final answer or say exactly what is unavailable. " +
-			"If the user context already contains the answer (e.g. unread mail count), use it directly."
-	}
-	if userCtx != "" {
-		synthSystem += "\n\nUser context:\n" + userCtx
-	}
-	answer, err := ai.Ask(&ai.Prompt{
-		System:   synthSystem,
-		Rag:      ragParts,
-		Question: req.Prompt,
-		Priority: ai.PriorityHigh,
-		Provider: ai.ProviderDefault,
-		Caller:   "agent-run-synth",
+	var steps []FlowStep
+	answer, err := QueryWithOpts(acc.ID, req.Prompt, QueryOpts{
+		OnStep: func(s Step) {
+			status := "ok"
+			if !s.OK {
+				status = "error"
+			}
+			toolsUsed = append(toolsUsed, ToolUsed{Name: s.Tool, Status: status})
+			steps = append(steps, FlowStep{Tool: s.Tool, Args: s.Args})
+		},
 	})
 	if err != nil {
 		app.RespondJSON(w, RunResponse{Error: err.Error(), Tools: toolsUsed})
 		return
 	}
 
-	answer = app.StripLatexDollars(answer)
-	answer = completeToolAnswer(answer, ragParts)
-
 	// No scope: /agent/run names no agent, so there is no specialist for a
 	// fact to belong to and it goes in the shared pool, which is where a fact
 	// with no owner belongs.
 	go extractMemory(acc.ID, req.Prompt, "")
-
-	var steps []FlowStep
-	for _, tu := range toolsUsed {
-		steps = append(steps, FlowStep{Tool: tu.Name})
-	}
 	flow := &Flow{
 		ID:        newFlowID(),
 		AccountID: acc.ID,

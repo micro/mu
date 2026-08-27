@@ -127,7 +127,7 @@ func TestTheTwoDoorsAgreeAboutEveryTool(t *testing.T) {
 // *model* may hold the tool — and the two were one flag. Everything that wrote
 // but was safe to hand an agent fell through: notes_add went out as a GET with
 // the note in the query string, and so did docs_write, files_put, blog_create,
-// chat_send and wallet_pay. Writes is the flag for this question now, and
+// chat_send. Writes is the flag for this question now, and
 // Changes is the two of them together.
 func TestAMethodThatChangesSomethingIsNotAGET(t *testing.T) {
 	registerAll(t)
@@ -233,7 +233,6 @@ func TestTheHandlerItselfRefusesAWritingGET(t *testing.T) {
 		"/api/v1/docs/write?title=x&body=y",
 		"/api/v1/files/put?name=x",
 		"/api/v1/blog/create?title=x",
-		"/api/v1/wallet/pay?server=x",
 		"/api/v1/images/generate?prompt=x",
 	} {
 		w := httptest.NewRecorder()

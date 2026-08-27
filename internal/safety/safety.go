@@ -40,8 +40,6 @@ package safety
 
 import (
 	"strings"
-
-	"mu/internal/settings"
 )
 
 // Category is why something was refused.
@@ -103,7 +101,7 @@ func Refused(prompt string) (reason string, refused bool) {
 	if involvesMinors(p) {
 		return refusalMinors, true
 	}
-	if explicit(p) && !adultAllowed() {
+	if explicit(p) {
 		return refusalAdult, true
 	}
 	if Classify != nil {
@@ -112,23 +110,19 @@ func Refused(prompt string) (reason string, refused bool) {
 			case Minors:
 				return refusalMinors, true
 			case Adult:
-				if !adultAllowed() {
-					return refusalAdult, true
-				}
+				return refusalAdult, true
 			}
 		}
 	}
 	return "", false
 }
 
-// adultAllowed is the operator's decision, and only for the second category.
-func adultAllowed() bool {
-	switch strings.ToLower(strings.TrimSpace(settings.Get("GENERATE_ADULT"))) {
-	case "1", "true", "yes", "on":
-		return true
-	}
-	return false
-}
+// There was a GENERATE_ADULT dial here, off unless an operator turned it on,
+// and the two checks above read it. It is gone rather than defaulted: this
+// instance does not generate adult content, so the refusal is what the code
+// does rather than what it is currently configured to do. A switch that is
+// never meant to be flipped is not a policy, it is a way for one to be
+// changed quietly.
 
 // normalise flattens the cheap evasions — spacing, punctuation between letters,
 // and the usual digit substitutions — so a word check is not defeated by a

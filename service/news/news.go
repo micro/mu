@@ -35,7 +35,7 @@ import (
 )
 
 // cardSnap is the go-micro read-plane channel for the news card (store +
-// broker); see internal/snapshot and docs/GO_MICRO_ARCHITECTURE.md.
+// broker); see internal/snapshot.
 var cardSnap *snapshot.Snapshot
 
 //go:embed feeds.json
@@ -1220,7 +1220,7 @@ func parseFeed() {
 		}
 	}()
 
-	fmt.Println("Parsing feed at", time.Now().String())
+	app.Log("news", "parsing feeds")
 	p := gofeed.NewParser()
 	p.UserAgent = "Mu/0.1"
 
@@ -1298,7 +1298,7 @@ func parseFeed() {
 	mutex.Unlock()
 
 	// Publish the new snapshot to the go-micro store + broker; Headlines serves
-	// it from a mirror (see internal/snapshot, docs/GO_MICRO_ARCHITECTURE.md).
+	// it from a mirror (see internal/snapshot).
 	cardSnap.Publish(headlineHtml)
 
 	// The top headline, once an hour, and only when it has changed. Every

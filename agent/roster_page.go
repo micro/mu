@@ -172,7 +172,7 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	// form you cannot submit. It becomes the thing that would actually change
 	// the answer.
 	if full, have, max := AtAgentLimit(owner); full {
-		b.WriteString(app.ActionLink("/billing/topup", "Top up to lift the limit"))
+		b.WriteString(app.ActionLink("/wallet/topup", "Top up to lift the limit"))
 		b.WriteString(fmt.Sprintf(
 			`<p class="text-sm text-secondary mt-2 m-0">Your plan runs %d agent%s and you have %d. `+
 				`Verify your address or put credit on <a href="/account">your account</a>, or delete one first.</p>`,
@@ -303,7 +303,7 @@ type entry struct {
 // the feature rather than offering it.
 func entryRow(e entry) string {
 	var b strings.Builder
-	b.WriteString(`<div class="agent-row"><div class="grow min-w-0">`)
+	b.WriteString(`<div class="agent-row card-hover"><div class="grow min-w-0">`)
 	// The name, and how long ago it last spoke out to the right of it — the
 	// same pair, in the same places, as a row in the inbox.
 	b.WriteString(`<div class="agent-head">`)
@@ -540,6 +540,10 @@ const agentsCSS = `<style>
 /* Top-aligned, not centred. A row is three or four lines tall now, and
    centring left Remove floating in the middle of the card beside nothing. */
 .agent-row{display:flex;align-items:flex-start;gap:12px;border:1px solid #eee;border-radius:8px;padding:12px 14px}
+/* No :hover here either. This filled its background grey, which is a row's
+   answer — .thread-preview in the inbox — and these are not rows, they are
+   bordered cards in a column, the same object as a tile on /services and a
+   card on home. They lift now, from .card-hover in mu.css. */
 /* One size, one colour, one weight for every link on a row.
    They were three: 12px grey in the link strip, 13px green or amber for the
    scope, 13px for the buttons beside them, and the name at 14px semibold. A
@@ -557,10 +561,17 @@ const agentsCSS = `<style>
 .agent-meta code{font-size:12px}
 .agent-mail{font-size:13px;margin-top:3px}
 .agent-mail code{font-size:12px;color:#666;background:#f5f5f5;border-radius:3px;padding:1px 5px}
-/* The agent's name is the way into it, so it looks like body text until you
-   are over it rather than like one more small grey control. */
+/* The agent's name is the way into it, and it looks like body text rather
+   than one more small grey control. */
 .agent-name{display:inline-block;font-weight:600;font-size:14px;color:var(--text-primary,#111);text-decoration:none}
-.agent-name:hover{text-decoration:underline}
+/* No underline: the row behind it is the affordance now, and two of them at
+   once is one too many.
+   Stated on :hover rather than left to the rule above, which is the whole
+   point. mu.css has a global a:hover rule setting underline, and that
+   selector is (0,1,1) against .agent-name's (0,1,0) — so deleting this line
+   does not remove the underline, it hands it to the global rule. It has to
+   outrank it, at (0,2,0). */
+.agent-name:hover{text-decoration:none}
 /* Two buttons that did the same thing to the eye and different things to the
    account. Both were #bbb — barely visible — and both took the same red hover,
    which said "destructive" about issuing a token. Now issuing reads as an

@@ -34,79 +34,74 @@ func TestAnAdminGetsTheLinkInTheNav(t *testing.T) {
 	if strings.Contains(nav, "display: none") {
 		t.Error("the admin's own link is hidden, so it needs JavaScript to appear")
 	}
-	// And it is drawn in the menu with the other destinations: after Account,
-	// before Log out.
+	// And it is drawn in the rail, above the foot.
 	//
-	// This used to assert "directly under Account, nothing in the gap, Support
-	// after". Both halves have gone. Support was removed from the product and
-	// this menu went on linking to a route that no longer exists; and Saved and
-	// Tokens moved here off /account, where they had been filed under a section
-	// called "Settings" on the settings page. So there is something in the gap
-	// now, by design.
-	//
-	// What survives is the claim worth holding: admin is a destination in the
-	// menu rather than a line of text three clicks down a settings page, and it
-	// is above Log out, which is last because it ends the session.
+	// It used to assert "between Account and Log out", which stopped being a
+	// statement about Admin the moment Account moved to the foot. Admin did not
+	// move: it is the instance's, not yours, and an operator reaches for it in
+	// the middle of doing something rather than when thinking about their own
+	// account. So the claim is that it is in the rail with the destinations and
+	// above the foot, which is where the personal pages and Log out are.
 	page := renderWithLang("t", "d", "", "en", &auth.Account{ID: "boss", Admin: true})
-	acct, adm, out := strings.Index(page, `id="nav-account"`), strings.Index(page, `id="nav-admin"`),
+	adm, who, out := strings.Index(page, `id="nav-admin"`), strings.Index(page, "Signed in as"),
 		strings.Index(page, `id="nav-logout"`)
-	if acct < 0 || adm < 0 || out < 0 {
-		t.Fatalf("the account menu is missing an item (account %d, admin %d, logout %d)", acct, adm, out)
+	if adm < 0 || who < 0 || out < 0 {
+		t.Fatalf("the menu is missing an item (admin %d, signed-in %d, logout %d)", adm, who, out)
 	}
-	if adm < acct || adm > out {
-		t.Errorf("admin is not between Account and Log out (account %d, admin %d, logout %d)",
-			acct, adm, out)
+	if adm > who {
+		t.Errorf("admin is below the foot rather than in the rail (admin %d, signed-in %d)", adm, who)
+	}
+	if out < who {
+		t.Errorf("log out is above the name rather than under it (signed-in %d, logout %d)", who, out)
 	}
 }
 
-// The menu holds what is yours, and Log out is last.
+// The bottom of the rail is who you are, what is yours, and the way out.
 //
-// Saved, Tokens and About were cards on /account — a credential list, three
-// piles of things you kept, and the footer in a card, all filed next to the
-// balance because two sections there were named "Settings" and "About Mu" and a
-// name that broad absorbs anything.
+// It used to be a menu holding everything the account owns — Account, Profile,
+// Wallet, Tokens, Admin — behind a disclosure under your own name. That was
+// wrong because it *hid* destinations, and all of them moved up.
 //
-// Two of the three have since left the menu as well, and for the rule this test
-// is named after rather than despite it. Saved pointed at /user, which was
-// deleted with the feed controls it held, so it was a dead link of exactly the
-// kind the /support check below exists to catch. About is not yours — it is a
-// page about us, it is in the footer, and the menu under your own name is the
-// wrong place for it. Profile took the slot: your own page, which until then
-// could only be reached by typing it.
-func TestTheAccountMenuHoldsWhatIsYours(t *testing.T) {
-	menu := navBottom(&auth.Account{ID: "someone"})
+// Two then came back, which is not the menu returning: Account and Profile are
+// the two that are about you rather than about the instance, and a flat list
+// under your own name hides nothing. Wallet and Tokens stayed in the rail, and
+// so did Admin, which is the instance's rather than yours.
+//
+// The dead-link checks stay. Saved pointed at /user, deleted along with the
+// feed controls it held, and Support pointed at /support after that page and
+// its mailbox were removed — both survived here as links to nothing, which is
+// what this half of the test exists to catch.
+func TestTheBottomIsWhoYouAreAndTheWayOut(t *testing.T) {
+	bottom := navBottom(&auth.Account{ID: "someone"})
 
-	for _, want := range []struct{ id, href string }{
-		{"nav-account", "/account"},
-		{"nav-profile", "/@someone"},
-		{"nav-token", "/token"},
-		{"nav-logout", "/logout"},
-	} {
-		if !strings.Contains(menu, `id="`+want.id+`" href="`+want.href+`"`) {
-			t.Errorf("the account menu has no %s pointing at %s", want.id, want.href)
+	if !strings.Contains(bottom, "Signed in as") || !strings.Contains(bottom, "@someone") {
+		t.Errorf("the rail does not say which account this is: %q", bottom)
+	}
+	if !strings.Contains(bottom, `id="nav-logout" href="/logout"`) {
+		t.Error("no way to log out")
+	}
+	// Two came back, deliberately: Account and Profile are the pages that are
+	// about *you* rather than about the instance, and under your own name is
+	// where they read — "signed in as @someone", then the two pages that are
+	// @someone's, then the way out.
+	for _, mine := range []string{"/account", "/@someone"} {
+		if !strings.Contains(bottom, `href="`+mine+`"`) {
+			t.Errorf("%s is not under the name, where what is yours belongs", mine)
 		}
 	}
-
-	// The two that left, named so that putting either back is a decision.
-	for _, gone := range []string{"/user", "/about"} {
-		if strings.Contains(menu, `href="`+gone+`"`) {
-			t.Errorf("the account menu links to %s again", gone)
+	// The rest stay in the rail. They are the instance's services, not your
+	// account's pages, and a wallet under your name is the disclosure menu
+	// growing back one item at a time.
+	for _, moved := range []string{"/token", "/wallet", "/admin", "/inbox", "/agents"} {
+		if strings.Contains(bottom, `href="`+moved+`"`) {
+			t.Errorf("%s is in the bottom group rather than the rail", moved)
 		}
 	}
-
-	// Log out ends the session, so nothing is drawn after it — a control below
-	// it reads as being on a page that has already finished. That is exactly
-	// what happened to the notifications card on /account.
-	if out := strings.Index(menu, `id="nav-logout"`); strings.Count(menu[out:], "<a ") != 1 {
-		t.Errorf("something is drawn after Log out:\n%s", menu[out:])
-	}
-
-	// Support was removed from the product — the page, the mailbox, the
-	// settings — and this menu went on linking to /support, which does not
-	// route. A dead link in the menu is worse than no link: it is the one place
-	// somebody looks when something has gone wrong.
-	if strings.Contains(menu, "/support") {
-		t.Error("the account menu still links to /support, which no longer exists")
+	// And the links to pages that no longer exist.
+	for _, gone := range []string{"/user", "/about", "/support"} {
+		if strings.Contains(bottom, `href="`+gone+`"`) {
+			t.Errorf("the rail links to %s, which is not served", gone)
+		}
 	}
 }
 
@@ -165,7 +160,7 @@ func TestTheAccountPageHoldsNoOperatorErrands(t *testing.T) {
 	// with Saved and About — so the anchor went with the thing it was anchoring
 	// to, and the guard reported the account page as missing rather than the
 	// test as needing repointing. Then it anchored on BalanceCard, "the last
-	// thing that would ever move off it", and the money moved to /billing.
+	// thing that would ever move off it", and the money moved to /wallet.
 	//
 	// Twice now, which says something about the anchor rather than the page: a
 	// card is a product decision and product decisions move. The profile is

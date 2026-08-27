@@ -141,7 +141,20 @@ func ClientName(client string) string {
 	case "web":
 		return "Web"
 	case "mail":
-		return "Email"
+		// "Mail", not "Email". The service is mail, the route is /inbox, the
+		// address is a mail address, and the docs say Mail — a second word for
+		// one thing on the one page where it sits beside other channels reads
+		// as a different channel.
+		return "Mail"
+	case "chat":
+		// Chat arrives in the inbox like anything else that is not this
+		// instance's own screens, and it had no entry here at all: a
+		// conversation over XMPP showed a raw lowercase "chat" next to a
+		// capitalised "Mail". The comment above says a client not named here
+		// shows as it names itself, which is the right default for something
+		// nobody has got to yet and the wrong outcome for a door this product
+		// ships.
+		return "Chat"
 	// The chat clients are deleted; these stay so a conversation recorded
 	// before that still says where it happened rather than showing a raw value.
 	case "discord":

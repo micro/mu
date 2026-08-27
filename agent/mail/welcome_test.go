@@ -57,7 +57,7 @@ func TestTheWelcomeArrivesAndCanBeAnsweredWithoutSetup(t *testing.T) {
 		t.Errorf("the greeting does not use their name:\n%s", body[:min(200, len(body))])
 	}
 	// The two things they will need and cannot guess.
-	for _, want := range []string{"/tools", "/billing/topup"} {
+	for _, want := range []string{"/tools", "/wallet/topup"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the welcome does not point at %s", want)
 		}

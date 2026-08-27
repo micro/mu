@@ -27,17 +27,19 @@ import (
 	"mu/service/markets"
 	"mu/service/news"
 	"mu/service/notes"
+	"mu/service/notify"
 	"mu/service/places"
 	"mu/service/prayer"
 	"mu/service/recall"
 	"mu/service/routes"
-	"mu/service/sandbox"
+	"mu/service/shell"
 	"mu/service/sms"
 	"mu/service/social"
 	"mu/service/stream"
 	"mu/service/tasks"
 	"mu/service/text"
 	"mu/service/transit"
+	"mu/service/users"
 	"mu/service/video"
 	"mu/service/wallet"
 	"mu/service/weather"
@@ -56,11 +58,11 @@ func allSpecs() []service.Spec {
 	return []service.Spec{
 		apps.Spec, archive.Spec, blog.Spec, chat.Spec, contacts.Spec, docs.Spec, events.Spec,
 		files.Spec, flights.Spec, food.Spec, hazards.Spec, images.Spec, mail.Spec, markets.Spec,
-		notes.Spec, news.Spec, places.Spec, prayer.Spec, recall.Spec, routes.Spec,
+		notes.Spec, notify.Spec, news.Spec, places.Spec, prayer.Spec, recall.Spec, routes.Spec,
 		sms.Spec,
 		social.Spec,
 		stream.Spec, tasks.Spec, text.Spec, maps.Spec, transit.Spec, video.Spec,
-		wallet.Spec, weather.Spec, web.Spec, browser.Spec, sandbox.Spec,
+		users.Spec, wallet.Spec, weather.Spec, web.Spec, browser.Spec, shell.Spec,
 	}
 }
 
@@ -306,7 +308,7 @@ func TestSendingMailNeedsAnAccountNotAWallet(t *testing.T) {
 // another would be no fix at all.
 //
 // So the rule is checkable, and it is checkable because the naming convention
-// in CLAUDE.md is real: "An action is a verb, and says what it changes." A
+// in AGENTS.md is real: "An action is a verb, and says what it changes." A
 // method named Add, Create, Send or Pay changes something by construction. The
 // list below is the mutating half of that convention.
 //
@@ -365,7 +367,7 @@ func firstWord(name string) string {
 // A service's page is at its own name.
 //
 // "service name == directory == route == nav label == tool prefix, with no
-// exceptions in it" is in CLAUDE.md and was not checkable, so there was one:
+// exceptions in it" is in AGENTS.md and was not checkable, so there was one:
 // service/web served its page at /search while everything else under it —
 // /web/fetch, /web/read, /web/preview — was already at /web. One service, its
 // URL tree split in half, and the only way to know was to notice.

@@ -42,7 +42,7 @@ func TestAnUnknownNameIsNotTheDefaultAgent(t *testing.T) {
 	if _, ok := BySlug("nobody", ""); !ok {
 		t.Error("an empty name should mean the default agent")
 	}
-	if id, ok := BySlug("nobody", "someone-elses-agent"); ok {
+	if id, ok := BySlug("nobody", "someone_elses_agent"); ok {
 		t.Errorf("an unknown name resolved to %q instead of not resolving", id)
 	}
 }
@@ -59,7 +59,7 @@ func TestAnEmptyAccountResolvesOnlyTheDefault(t *testing.T) {
 	if _, ok := agentSlugTarget("", DefaultSlug); !ok {
 		t.Error("the default agent does not resolve for an empty account")
 	}
-	if _, ok := agentSlugTarget("", "someones-private-agent"); ok {
+	if _, ok := agentSlugTarget("", "someones_private_agent"); ok {
 		t.Error("an empty account resolved somebody's agent by name")
 	}
 }
@@ -88,8 +88,8 @@ func TestThePathToAnAgentIsTheOneThingLinksUse(t *testing.T) {
 // conversations beside it. A round trip is the only test that could have caught
 // it, because neither half is wrong on its own.
 func TestALinkToAnAgentResolvesBackToIt(t *testing.T) {
-	const who = "slug-round-trip"
-	auth.Create(&auth.Account{ID: who, Name: who, Secret: "test-secret"}) //nolint:errcheck
+	const who = "slug_round_trip"
+	auth.Create(&auth.Account{ID: who, Name: who, Secret: "test_secret"}) //nolint:errcheck
 
 	for _, name := range []string{"Claude", "Research", "Night Shift", "Ops 2"} {
 		made, _, err := CreateAgent(who, name, "", "", "", nil, false)

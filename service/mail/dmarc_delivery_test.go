@@ -10,6 +10,7 @@ package mail
 
 import (
 	"encoding/base64"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -116,37 +117,73 @@ func TestGooglesReportingAddressIsTrustedToUnpack(t *testing.T) {
 	}
 }
 
-// Every place that renders a message body has to read the stored attachment.
+// There is one place that renders a message body, and it reads the attachment.
 //
-// There are two, and only one of them knew. The single-message view was taught
-// to read bytes kept beside the body when they moved out of it; the thread loop
-// — which is how a conversation is shown, including a conversation of one — was
-// not, and still sniffs m.Body for base64 and zip magic because that is where
-// attachments used to live. So a DMARC report opened in a thread printed the
-// line describing the zip and nothing else.
+// This test used to assert something weaker — that *each* of the two renderers
+// read the bytes stored beside the body — because there were two: one for the
+// message being viewed and one inside the loop that renders a thread. Only one
+// of them had been taught, so a DMARC report opened in a thread printed the
+// line describing the zip and nothing else. Worse, it could not report its own
+// failure: the note about bytes that were never kept lived in the other copy,
+// so "never stored" and "stored but ignored" looked identical from the page.
 //
-// Worse, it could not report its own failure: the note about bytes that were
-// never kept lived in the other block, so the two states — never stored, and
-// stored but ignored — looked identical from the page. Two renderers, one
-// taught and one not, is the shape of this bug rather than a detail of it.
-func TestEveryBodyRendererReadsTheStoredAttachment(t *testing.T) {
-	src := readSource(t, "mail.go")
-
-	renders := strings.Count(src, "renderEmailBody(")
-	reads := strings.Count(src, "renderStoredAttachment(")
-	if renders == 0 {
-		t.Fatal("no body renderer found, so this test is checking nothing")
+// The copies are gone — see Rendered in display.go — and the invariant is now
+// the stronger one. Not "every renderer must be taught" but "there is one
+// renderer to teach", which is what stops the next page from being wrong in a
+// new way. It is also what let /inbox be wrong for months: with the decoding
+// inline in an HTTP handler there was nothing for a second page to call, so it
+// escaped the text instead, and an escaped table is not a table.
+func TestThereIsOneBodyRenderer(t *testing.T) {
+	var renders, reads, reports int
+	for _, name := range sourceFiles(t) {
+		src := readSource(t, name)
+		// Calls, not declarations: "func renderEmailBody(" is the renderer
+		// itself and counting it would make one caller look like two.
+		renders += calls(src, "renderEmailBody(")
+		reads += calls(src, "renderStoredAttachment(")
+		reports += calls(src, "describedNothing(")
+	}
+	// One call, in Rendered. Its own definition is not a call.
+	if renders != 1 {
+		t.Errorf("%d places render a message body; there must be exactly one, or "+
+			"two pages showing the same message can disagree and no caller "+
+			"outside this package can render one at all", renders)
 	}
 	if reads < renders {
-		t.Errorf("%d places render a message body and only %d read the attachment "+
-			"stored beside it — one of them shows the line describing a report "+
-			"instead of the report", renders, reads)
+		t.Errorf("%d renderers and %d read the attachment stored beside the body — "+
+			"one shows the line describing a report instead of the report",
+			renders, reads)
 	}
-	// And each of them says so when the bytes are gone, rather than leaving a
-	// description with nothing behind it and no explanation.
-	if strings.Count(src, "describedNothing(") < renders {
+	if reports < renders {
 		t.Errorf("a body renderer cannot tell a lost attachment from a broken one, "+
-			"which is what let this run: %d renderers, %d checks",
-			renders, strings.Count(src, "describedNothing("))
+			"which is what let this run: %d renderers, %d checks", renders, reports)
 	}
+}
+
+// calls counts uses of a function, ignoring the line that declares it.
+func calls(src, name string) int {
+	return strings.Count(src, name) - strings.Count(src, "func "+name)
+}
+
+// sourceFiles is this package's own Go files, tests excluded.
+//
+// The scan used to name mail.go and nothing else, which is precisely how a copy
+// in a second file would go unseen — the same shape as the rule this test is
+// about.
+func sourceFiles(t *testing.T) []string {
+	t.Helper()
+	names, err := filepath.Glob("*.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out []string
+	for _, n := range names {
+		if !strings.HasSuffix(n, "_test.go") {
+			out = append(out, n)
+		}
+	}
+	if len(out) == 0 {
+		t.Fatal("no source files found, so this test is checking nothing")
+	}
+	return out
 }

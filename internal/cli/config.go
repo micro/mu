@@ -13,10 +13,40 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
-// DefaultURL is used when nothing else is configured.
+// DefaultURL is the instance to call when nothing else says which.
+//
+// A default at all, rather than refusing until somebody configures one: the
+// first thing anybody does with a CLI is run it, and "no server configured" is
+// a worse first sentence than an answer. micro.mu is the instance this project
+// runs, so it is the one that is there.
+//
+// It is a default and not a destination. `mu login <url>`, MU_URL and --url all
+// beat it, and an operator running their own instance sets it once — see
+// Apply, which is the only place the order is decided.
+//
+// Every command honours it, which took a fix: `mu agent` and `mu x402` each
+// had their own copy of this string and consulted neither the environment nor
+// the config file, so somebody who had run `mu login https://their.host` still
+// had two commands quietly calling micro.mu.
 const DefaultURL = "https://micro.mu"
+
+// Server is the instance a command should call, given what the user configured
+// and an explicit --server flag if the command has one.
+//
+// The one place that answers "which instance", so a command cannot disagree
+// with the rest of the binary about it.
+func (r *ResolvedConfig) Server(flag string) string {
+	if flag = strings.TrimSpace(flag); flag != "" {
+		return flag
+	}
+	if r != nil && strings.TrimSpace(r.URL) != "" {
+		return r.URL
+	}
+	return DefaultURL
+}
 
 // Config is the on-disk configuration loaded from
 // $XDG_CONFIG_HOME/mu/config.json (or ~/.config/mu/config.json).

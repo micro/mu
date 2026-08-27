@@ -21,6 +21,13 @@ func mailAccount(t *testing.T, id string) *auth.Account {
 	t.Helper()
 	if _, err := auth.GetAccount(id); err != nil {
 		if err := auth.Create(&auth.Account{ID: id, Name: id, Secret: "s"}); err != nil {
+			// A username the rules refuse is a bug in this test, not a fact about
+			// the machine it runs on. Skipping on it is how eighteen tests across
+			// this repository quietly stopped running the day usernames became
+			// validated — a red suite would have said so on the first push.
+			if strings.Contains(err.Error(), "username") {
+				t.Fatalf("the test account name is not a valid username: %v", err)
+			}
 			t.Skipf("cannot create an account here: %v", err)
 		}
 		t.Cleanup(func() { auth.DeleteAccount(id) }) //nolint:errcheck
@@ -34,7 +41,7 @@ func mailAccount(t *testing.T, id string) *auth.Account {
 
 // A fresh account with nothing behind it cannot cold-mail a stranger.
 func TestAnUnaccountableAccountCannotColdMailOut(t *testing.T) {
-	acc := mailAccount(t, "mail-gate-fresh")
+	acc := mailAccount(t, "mail_gate_fresh")
 	acc.Admin, acc.Approved, acc.EmailVerified = false, false, false
 	if err := auth.UpdateAccount(acc); err != nil {
 		t.Fatal(err)
@@ -62,7 +69,7 @@ func TestAnUnaccountableAccountCannotColdMailOut(t *testing.T) {
 // Verifying an address opens it, because that is what accountability means
 // here — and it is the same word posting already uses.
 func TestProvingWhoYouAreOpensIt(t *testing.T) {
-	acc := mailAccount(t, "mail-gate-verified")
+	acc := mailAccount(t, "mail_gate_verified")
 
 	acc.EmailVerified = false
 	auth.UpdateAccount(acc) //nolint:errcheck
@@ -82,7 +89,7 @@ func TestProvingWhoYouAreOpensIt(t *testing.T) {
 // An admin is trusted, which is what keeps a self-hosted instance out of this
 // entirely: the first account on one is the admin.
 func TestASelfHostersOwnAccountIsNotCaughtByThis(t *testing.T) {
-	acc := mailAccount(t, "mail-gate-admin")
+	acc := mailAccount(t, "mail_gate_admin")
 	acc.Admin = true
 	if err := auth.UpdateAccount(acc); err != nil {
 		t.Fatal(err)
@@ -99,7 +106,7 @@ func TestASelfHostersOwnAccountIsNotCaughtByThis(t *testing.T) {
 // complaints come from mail nobody asked for, and an answer to somebody who
 // made contact is the best signal a sending domain has.
 func TestAnsweringSomebodyWhoWroteToYouIsNeverGated(t *testing.T) {
-	acc := mailAccount(t, "mail-gate-reply")
+	acc := mailAccount(t, "mail_gate_reply")
 	acc.Admin, acc.Approved, acc.EmailVerified = false, false, false
 	if err := auth.UpdateAccount(acc); err != nil {
 		t.Fatal(err)
@@ -123,7 +130,7 @@ func TestAnsweringSomebodyWhoWroteToYouIsNeverGated(t *testing.T) {
 // Spam does not count as having been written to, or anyone could open the gate
 // by sending one message nobody wanted.
 func TestAMessageFiledAsSpamIsNotARelationship(t *testing.T) {
-	acc := mailAccount(t, "mail-gate-spam")
+	acc := mailAccount(t, "mail_gate_spam")
 	acc.Admin, acc.Approved, acc.EmailVerified = false, false, false
 	if err := auth.UpdateAccount(acc); err != nil {
 		t.Fatal(err)
@@ -140,7 +147,7 @@ func TestAMessageFiledAsSpamIsNotARelationship(t *testing.T) {
 // to go instead rather than failing somewhere in the transport.
 func TestWithNoMailDomainNothingLeavesAndItSaysWhy(t *testing.T) {
 	t.Setenv("MAIL_DOMAIN", "")
-	acc := mailAccount(t, "mail-gate-nodomain")
+	acc := mailAccount(t, "mail_gate_nodomain")
 	acc.Admin = true // trusted, so the gate is not what is being tested
 	if err := auth.UpdateAccount(acc); err != nil {
 		t.Fatal(err)
@@ -159,7 +166,7 @@ func TestWithNoMailDomainNothingLeavesAndItSaysWhy(t *testing.T) {
 // take one — the caller's routing decision would be silently wrong.
 func TestSendOutRefusesALocalRecipient(t *testing.T) {
 	t.Setenv("MAIL_DOMAIN", "micro.mu")
-	acc := mailAccount(t, "mail-gate-local")
+	acc := mailAccount(t, "mail_gate_local")
 
 	if _, err := SendOut(acc.ID, acc.Name, "asim", "Hi", "there", "", ""); err == nil {
 		t.Error("a bare username was accepted as mail leaving the instance")

@@ -56,9 +56,22 @@ const (
 // Coinbase's hosted facilitator; set X402_FACILITATOR_URL to the open
 // (testnet) facilitator to certify without real funds.
 var (
-	x402PayTo          = strings.TrimSpace(os.Getenv("X402_PAY_TO")) // receiving address
 	x402FacilitatorURL = envOr("X402_FACILITATOR_URL", "https://api.cdp.coinbase.com/platform/v2/x402")
 )
+
+// payTo is the address payments are made to.
+//
+// A function, and read through settings, which is the whole of a bug worth
+// stating plainly. It was a package variable initialised from os.Getenv, so it
+// was fixed at process start from the environment alone: /admin/config offered
+// an X402_PAY_TO box, saved what was typed into it, showed it as "saved here",
+// and every 402 challenge went on naming whatever the environment said — or
+// nothing, which is Enabled() returning false and payments simply not being
+// offered.
+//
+// That is the worst place in this repository for that bug to have been, because
+// the setting is where the money goes.
+func payTo() string { return strings.TrimSpace(settings.Get("X402_PAY_TO")) }
 
 // The advertised (network, version) pair.
 //
@@ -164,7 +177,7 @@ func acceptedAssets() []x402Asset {
 }
 
 // Enabled reports whether x402 payments are configured.
-func Enabled() bool { return x402PayTo != "" }
+func Enabled() bool { return payTo() != "" }
 
 // x402 free trial — first N calls per wallet address are free. Tracked in
 // memory (resets on restart, which is acceptable for a trial).
@@ -263,7 +276,7 @@ func BuildPaymentRequirements(operation, resource string) []PaymentRequirements 
 		r := PaymentRequirements{
 			Scheme:            "exact",
 			Network:           Network(),
-			PayTo:             x402PayTo,
+			PayTo:             payTo(),
 			MaxTimeoutSeconds: 60,
 			Asset:             a.Address,
 			Extra:             map[string]string{"name": a.Name, "version": a.Version},
@@ -338,20 +351,6 @@ func WritePaymentRequired(w http.ResponseWriter, operation, resource string, ext
 	w.WriteHeader(http.StatusPaymentRequired)
 	_ = json.NewEncoder(w).Encode(body)
 	return true
-}
-
-// BazaarExtensions wraps one tool's listing in the extensions map, or returns
-// nil when this instance is not advertising. Callers can pass the result
-// straight to WritePaymentRequired without checking anything themselves.
-func BazaarExtensions(tool, description string, inputSchema map[string]any) map[string]any {
-	if !BazaarEnabled() {
-		return nil
-	}
-	ext := BazaarExtension(tool, description, inputSchema)
-	if ext == nil {
-		return nil
-	}
-	return map[string]any{bazaarKey: ext}
 }
 
 // HasPayment reports whether a request carries an x402 payment header.
@@ -637,7 +636,7 @@ func (e *facilitatorError) Error() string {
 func Status() string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "enabled:       %v\n", Enabled())
-	fmt.Fprintf(&b, "pay-to:        %s\n", firstNonEmpty(x402PayTo, "(X402_PAY_TO not set)"))
+	fmt.Fprintf(&b, "pay-to:        %s\n", firstNonEmpty(payTo(), "(X402_PAY_TO not set)"))
 	fmt.Fprintf(&b, "facilitator:   %s\n", x402FacilitatorURL)
 	fmt.Fprintf(&b, "network:       %s\n", Network())
 	fmt.Fprintf(&b, "version:       %d\n", x402Ver())
@@ -880,4 +879,75 @@ func serviceName() string {
 		return strings.TrimPrefix(strings.TrimPrefix(strings.TrimRight(u, "/"), "https://"), "http://")
 	}
 	return "mu"
+}
+
+// TopUpRequirement is a payment of an arbitrary number of credits to this
+// instance, for somebody buying credits with USDC rather than a card.
+//
+// BuildPaymentRequirements cannot answer this. It prices a named operation by
+// looking it up in quota, which is right for a tool call and has no meaning for
+// a top-up: the amount is whatever somebody chose to convert. Same shape, same
+// asset list, same payTo — only the amount comes from the caller.
+//
+// One asset rather than a list, because there is nobody to choose. A 402
+// challenge offers several and lets the payer pick; here this instance is both
+// sides, so it takes the first accepted asset and signs against that.
+//
+// Nil when x402 is not configured, or when there is no accepted asset to pay
+// in — the caller must treat that as "this instance cannot be paid this way"
+// rather than as a failure to convert.
+func TopUpRequirement(credits int) *PaymentRequirements {
+	if !Enabled() || credits < 1 {
+		return nil
+	}
+	assets := acceptedAssets()
+	if len(assets) == 0 {
+		return nil
+	}
+	a := assets[0]
+
+	r := PaymentRequirements{
+		Scheme:            "exact",
+		Network:           Network(),
+		PayTo:             payTo(),
+		MaxTimeoutSeconds: 120,
+		Asset:             a.Address,
+		Extra:             map[string]string{"name": a.Name, "version": a.Version},
+	}
+	amount := creditsToAtomic(credits, a.Decimals)
+	if x402Ver() >= 2 {
+		r.Amount = amount
+	} else {
+		r.MaxAmountRequired = amount
+		r.Resource = "credits"
+		r.Description = "Credits on this instance"
+		r.MimeType = "application/json"
+	}
+	return &r
+}
+
+// SettleSigned verifies and settles a payment this instance signed itself.
+//
+// The rest of this file settles payments that arrived: an X-PAYMENT header on
+// an inbound request, matched against the requirements for the operation being
+// called. A top-up has no inbound request — this instance holds the key, signs
+// the authorisation and hands it to the facilitator — so it needs the same two
+// facilitator calls without the HTTP request in front of them.
+//
+// hdr is the base64 header value SignX402Payment returns, so the wallet keeps
+// producing exactly one thing and this decodes it the same way an inbound
+// payment is decoded.
+func SettleSigned(hdr string, req *PaymentRequirements) (*SettleResponse, error) {
+	if req == nil {
+		return nil, fmt.Errorf("no payment requirement")
+	}
+	raw, err := base64.StdEncoding.DecodeString(strings.TrimSpace(hdr))
+	if err != nil {
+		return nil, fmt.Errorf("payment payload is not base64: %w", err)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		return nil, fmt.Errorf("payment payload is not JSON: %w", err)
+	}
+	return settleRequirement(payload, req)
 }

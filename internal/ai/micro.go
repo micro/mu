@@ -27,6 +27,14 @@ func resolveProvider(model string) (provider, apiKey, baseURL string, err error)
 	if isOpenRouterModel(model) && getOpenRouterAPIKey() != "" {
 		return "openrouter", getOpenRouterAPIKey(), openRouterBaseURL, nil
 	}
+	// What this instance was told to prefer, before the built-in order.
+	//
+	// After the two branches above and not before them: those are a model
+	// naming its own provider, which is the more specific statement and wins.
+	// See PreferredProvider.
+	if p, k, base, ok := PreferredProvider(); ok {
+		return p, k, base, nil
+	}
 	if key := settings.Get("ANTHROPIC_API_KEY"); key != "" {
 		return "anthropic", key, "", nil
 	}

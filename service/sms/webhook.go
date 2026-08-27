@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"mu/internal/app"
+	"mu/internal/event"
 	"mu/internal/settings"
 )
 
@@ -38,11 +39,15 @@ import (
 // account", which is not security but is not nothing, and it is what is
 // available when there is no auth token to check a signature against.
 func implausible(r *http.Request) string {
-	to := e164(r.PostForm.Get("To"))
+	_, rawTo := ChannelOf(r.PostForm.Get("To"))
+	to := e164(rawTo)
 	if to == "" {
 		return "no To on the message"
 	}
-	if !Ours(to) {
+	// Either channel's sender. A WhatsApp message arrives addressed to the
+	// WhatsApp sender, which is not in TWILIO_FROM and would otherwise be
+	// refused as somebody else's number.
+	if !Ours(to) && !OursOn(ChannelWhatsApp, to) {
 		return to + " is not a number this instance sends from"
 	}
 	if want := AccountSID(); want != "" {
@@ -123,9 +128,23 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	from := e164(r.PostForm.Get("From"))
+	// Which channel carried it, read off the wire and taken off immediately.
+	//
+	// Twilio labels both ends "whatsapp:+447700900123" and this is the only
+	// place in the product that knows that. Everywhere above here a number is a
+	// number — internal/phone.Normalise refuses a prefixed one outright, after
+	// a prefixed sender was silently turned into a stranger's number and filed
+	// against their phone.
+	channel, rawFrom := ChannelOf(r.PostForm.Get("From"))
+	from := e164(rawFrom)
 	body := strings.TrimSpace(r.PostForm.Get("Body"))
 	if from == "" {
+		app.Log("sms", "inbound message from an unreadable sender, dropped")
+		twiml(w, "")
+		return
+	}
+	if !channel.Known() {
+		app.Log("sms", "inbound message on an unknown channel, dropped")
 		twiml(w, "")
 		return
 	}
@@ -149,15 +168,64 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 
 	owner := OwnerOf(from)
 	if owner == "" {
-		// Nobody here started this conversation. Logged, not stored: an
-		// unsolicited message is not evidence about any account, and filing it
-		// under one would be a way to put text in a stranger's inbox.
-		app.Log("sms", "message from %s belongs to no conversation, dropped", from)
+		// Nobody to file it under at all. OwnerOf falls back to the operator, so
+		// this is an instance with no operator configured — there is no account
+		// this could belong to, and inventing one is worse than losing it.
+		app.Log("sms", "message from %s belongs to no account, dropped", from)
 		twiml(w, "")
 		return
 	}
 
-	Record(owner, "in", from, body, Segments(body))
+	RecordOn(channel, owner, "in", from, body, Segments(body))
+
+	known, isKnown := KnownSender(from)
+
+	// It arrived. Said with no gate on it, the way mail says MailReceived.
+	//
+	// This did not exist, and its absence is why an unsolicited text vanished:
+	// the only path into the record was the side effect of an agent answering,
+	// so the one thing a stranger must not be able to do was also the only thing
+	// that could file what they said. A subscriber decides what to do with an
+	// arrival from somebody unknown — agent/sms records it held — and that is a
+	// judgement about trust, which is not this service's to make.
+	event.Publish(event.Event{
+		Type: event.SMSReceived,
+		Data: map[string]interface{}{
+			"owner":   owner,
+			"from":    from,
+			"text":    body,
+			"known":   isKnown,
+			"channel": string(channel),
+		},
+	})
+
+	// And wake an agent, for a sender the account knows.
+	//
+	// OwnerOf above falls back to the operator so nothing is lost, which is
+	// right for filing and wrong for this: the fallback is a real account with
+	// real credits, and any stranger who dialled the number would be talking to
+	// their agent. KnownSender is the same lookup without that step — verified,
+	// or a number this instance texted first, which are the two things a
+	// stranger cannot arrange.
+	//
+	// Announced rather than answered here. A service does not call an agent;
+	// agent/sms subscribes and replies through Send, which is where every rule
+	// about what a text costs already lives.
+	if isKnown {
+		event.Publish(event.Event{
+			Type: event.SMSForAgent,
+			Data: map[string]interface{}{
+				"owner":   known,
+				"from":    from,
+				"text":    body,
+				"channel": string(channel),
+			},
+		})
+	}
+
+	// Empty, always. The reply goes out as its own message so it is charged,
+	// recorded and capped like any other — a body in the TwiML response would
+	// be a second send path that skipped all three.
 	twiml(w, "")
 }
 

@@ -24,43 +24,21 @@ import (
 
 var nativeAgentSeq atomic.Uint64
 
-// nativeEnabled reports whether the native go-micro agent path is on. mu is an
-// agent platform, so the go-micro agent is the default. Set AGENT_NATIVE to a
-// falsey value (off/false/0/no) to fall back to the hand-rolled
-// plan/execute/synthesize pipeline. If no LLM provider is configured the native
-// path no-ops and the hand-rolled path runs regardless.
-func nativeEnabled() bool {
-	switch strings.ToLower(strings.TrimSpace(settings.Get("AGENT_NATIVE"))) {
-	case "off", "false", "0", "no":
-		return false
-	}
-	return true
-}
+// unservedModel keeps the AGENT_MODEL warning to once per process rather than
+// once per question.
+var unservedModel sync.Once
 
-// nativeStreamEnabled reports whether the STREAMING /agent path uses the native
-// go-micro agent (StreamAsk). Default ON (follows AGENT_NATIVE) now that the
-// upstream StreamAsk tool-resolution bug is fixed (go-micro v6.3.10). Set
-// AGENT_NATIVE_STREAM to a falsey value to force the streaming UI back onto the
-// hand-rolled pipeline without disabling the native agent elsewhere.
-func nativeStreamEnabled() bool {
-	if !nativeEnabled() {
-		return false
-	}
-	switch strings.ToLower(strings.TrimSpace(settings.Get("AGENT_NATIVE_STREAM"))) {
-	case "off", "false", "0", "no":
-		return false
-	}
-	return true
-}
-
-// Mode reports the active agent engine: "native" (go-micro agent) or "planner"
-// (the hand-rolled pipeline). Surfaced on /version and /status.
-func Mode() string {
-	if nativeEnabled() {
-		return "native"
-	}
-	return "planner"
-}
+// ErrNoProvider is what an agent with no model to run on returns.
+//
+// It used to be a signal to fall back rather than an error: no provider meant
+// the hand-rolled planner answered instead. But the planner needed a model too
+// — it asked one to write the plan and another to write the prose — so the
+// fallback for "no model configured" was a path that could not run without one
+// either. What it actually bought was an unconfigured instance failing later
+// and less clearly.
+//
+// An agent with no provider cannot answer. Saying so is the whole handling.
+var ErrNoProvider = errors.New("no AI provider is configured for the agent")
 
 // nativeServices are the registered go-micro domain services the native agent
 // may use as tools. A run with no private context — a group channel — gets
@@ -252,20 +230,10 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 		sys += "\n\n" + opts.Extra
 	}
 
+	// The question, on its own. What was said before it goes to the model as
+	// turns rather than as prose — see memory.go, which is also where the
+	// reason the whole conversation used to be sent twice is written down.
 	question = prompt
-	if len(opts.History) > 0 {
-		var hb strings.Builder
-		hb.WriteString("Conversation so far:\n")
-		for _, m := range opts.History {
-			if m.Role == "user" {
-				hb.WriteString("User: " + m.Text + "\n")
-			} else {
-				hb.WriteString("Assistant: " + truncate(m.Text, 300) + "\n")
-			}
-		}
-		hb.WriteString("\nNew message: " + prompt)
-		question = hb.String()
-	}
 
 	// Use a fresh named agent for each request. Some go-micro providers keep
 	// per-agent conversation state keyed by name, so reusing a stable "assistant"
@@ -273,18 +241,112 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 	toolWrappers := append([]gmai.ToolWrapper{blockDestructiveTools(), injectAccount(accountID), dedupeNativeToolCalls()}, wrappers...)
 	a = service.NewAgent(nativeAgentInstanceName(), sys, provider, key, filterServices(nativeServices(opts.Public), opts.Tools),
 		gmagent.Model(model),
-		gmagent.MaxSteps(6),
+		// What was said before, as turns. Read-only, which is what stops the
+		// question being counted twice — go-micro adds it to memory and then
+		// reads memory back alongside it. See memory.go.
+		gmagent.WithMemory(history(opts.History)),
+		gmagent.MaxSteps(maxSteps),
+		// A no-progress guard instead of a low step cap.
+		//
+		// The two are not the same bound and were being asked to do one job.
+		// Six steps stops a runaway loop and also stops "read my mail, find the
+		// invoice, put it in the calendar" — which is four tools before it has
+		// done anything wrong. What actually needs stopping is the model
+		// calling the same tool with the same arguments forever, and that is
+		// this: repeat it three times and it is refused.
+		gmagent.LoopLimit(3),
+		// Bounds on the provider rather than on the work.
+		//
+		// Neither of these was set, so a provider that accepted the connection
+		// and then went quiet held the turn until something upstream gave up,
+		// and a single transient failure lost the whole question. Shelley has
+		// the same pair for the same reason — an idle bound plus a retry budget
+		// — arrived at from running one in production.
+		gmagent.ModelCallTimeout(90*time.Second),
+		gmagent.ModelRetry(3, 2*time.Second),
 		gmagent.WrapTool(toolWrappers...))
 	return a, question, true
 }
 
-// nativeLLM picks the go-micro provider the native agent talks to. Atlas
-// stays first — that is today's hosted default. OpenRouter is the other
-// first-class cloud option. Local Ollama is not wired here: the go-micro
-// agent cannot set a BaseURL, so a local server would hit api.openai.com.
+// nativeLLM picks the go-micro provider the native agent talks to.
+//
+// This is the agent's model — the one running the tool-calling loop, which is
+// every question anybody asks it. It is worth being exact about, because it was
+// wrong in a way nothing on screen said.
+//
+// Atlas came first with no Anthropic branch at all, so an instance with both
+// keys set ran the agent on DeepSeek while ANTHROPIC_API_KEY sat there serving
+// chat, summaries and moderation. Every other path in the codebase prefers
+// Anthropic when its key is present — see ai.resolveProvider — so the agent was
+// the one place that silently did the opposite, and the symptom was the agent
+// feeling worse than the rest of the product while looking identically
+// configured.
+//
+// Same order as everywhere else now: Anthropic, then Atlas, then OpenRouter.
+//
+// AGENT_MODEL overrides the model without changing the provider choice, which
+// is how an operator spends credit they already have — set it to a
+// deepseek-ai/… id and the Atlas branch is chosen for it, or to claude-opus-5
+// to put the hardest reasoning on the loop. Naming a model is a decision about
+// cost per question, so it is an operator's to make and not a constant here.
+//
+// Local Ollama is still not wired: the go-micro agent cannot set a BaseURL, so
+// a local server would hit api.openai.com.
 func nativeLLM() (provider, key, model string, ok bool) {
+	want := strings.TrimSpace(settings.Get("AGENT_MODEL"))
+
+	// A named model picks its own provider, so an operator naming a DeepSeek id
+	// on an instance that also has an Anthropic key gets DeepSeek.
+	//
+	// One provider per shape, and only the one that serves it. The first
+	// version of this tried each in turn and fell through on a missing key,
+	// which recreates the bug ai.modelFor exists to prevent: an Atlas slug and
+	// an OpenRouter slug are both provider/model, so a DeepSeek id with no
+	// Atlas key went to OpenRouter, and with neither key it went to Anthropic —
+	// which answers a deepseek-ai/… id with a 400 on every question asked.
+	//
+	// A name whose provider has no key is a misconfiguration, not an
+	// instruction. It is ignored, said once, and the default choice runs — an
+	// agent that still answers beats one that fails closed because of a typo,
+	// and the log line is what makes the typo findable.
+	if want != "" {
+		switch {
+		case ai.AtlasHosted(want):
+			if k := settings.Get("ATLAS_API_KEY"); k != "" {
+				return "atlascloud", k, want, true
+			}
+		case strings.Contains(want, "/"):
+			// provider/model and not one of Atlas's, so OpenRouter's shape.
+			if k := ai.OpenRouterKey(); k != "" {
+				return "openrouter", k, want, true
+			}
+		default:
+			// A bare id is Anthropic's shape.
+			if k := settings.Get("ANTHROPIC_API_KEY"); k != "" {
+				return "anthropic", k, want, true
+			}
+		}
+		unservedModel.Do(func() {
+			app.Log("agent", "AGENT_MODEL is %q and no key is set for the provider "+
+				"that serves it, so it is being ignored; the agent is using the "+
+				"default model instead", want)
+		})
+	}
+
+	// What the instance prefers, before the built-in order — the same question
+	// internal/ai now asks, so the agent and the chat cannot disagree about
+	// which provider this box uses. They did for months.
+	if p, k, _, ok := ai.PreferredProvider(); ok {
+		if m := ai.PreferredModel(p, false); m != "" {
+			return p, k, m, true
+		}
+	}
+
+	if key := settings.Get("ANTHROPIC_API_KEY"); key != "" {
+		return "anthropic", key, ai.DefaultModel(), true
+	}
 	if key := settings.Get("ATLAS_API_KEY"); key != "" {
-		return "atlascloud", key, ai.ModelDeepSeekPro, true
+		return "atlascloud", key, ai.AtlasModel(), true
 	}
 	if key := ai.OpenRouterKey(); key != "" {
 		return "openrouter", key, ai.OpenRouterModel(), true
@@ -292,20 +354,43 @@ func nativeLLM() (provider, key, model string, ok bool) {
 	return "", "", "", false
 }
 
+// maxSteps is how many tools one question may use.
+//
+// Six was the number and it was too few for the questions this is for. A step
+// is one tool call, so "check my mail, find the invoice from Henrik, add the
+// due date to my calendar" spends four before anything has gone wrong, and the
+// seventh is refused with an instruction to stop and summarise — which reads
+// as an agent that gave up rather than one that hit a limit.
+//
+// Shelley has no step cap at all: the model ends the turn by not asking for
+// another tool, and what bounds the work is time and a no-progress check. That
+// is the right shape and unbounded is still the wrong default for an instance
+// paying per call, so this is a ceiling high enough not to be met by ordinary
+// work, with LoopLimit doing the job the low cap was really being asked to do.
+//
+// Not a setting. It was AGENT_MAX_STEPS, on the config page, described as a
+// cost ceiling — but twenty is already past where ordinary work reaches, so
+// raising it changes nothing and lowering it cuts off honest questions. A dial
+// whose useful range is a single value is a decision presented as a choice.
+const maxSteps = 20
+
+// turnTimeout is the longest one question may take, whatever it is doing.
+//
+// Five minutes is chosen against the work rather than the transport: twenty
+// steps of ordinary tool calls finish inside one, and the questions this is
+// for — read the mail, search the web, put it in the calendar — are seconds of
+// model time and seconds of network. A run still going at five minutes is
+// stuck, not thorough.
+const turnTimeout = 5 * time.Minute
+
 func nativeAgentInstanceName() string {
 	return fmt.Sprintf("assistant-%d-%d", time.Now().UTC().UnixNano(), nativeAgentSeq.Add(1))
 }
 
-// queryNative answers using a go-micro agent wired to the registered domain
-// services: the LLM does native tool-calling over those services (with the
-// built-in plan/guardrails), replacing the hand-rolled planner+synthesizer.
-//
-// It returns (answer, true) when it handled the request, or ("", false) to
-// signal the caller to fall back to the hand-rolled path (e.g. no Atlas key).
 // StreamHooks receives streaming events from the native agent: tool lifecycle
 // (with a friendly label) and answer tokens as they arrive.
 // wants reports whether anything is listening. A caller with no hooks is not
-// asking for a stream, whatever the operator has enabled.
+// asking for a stream.
 func (h StreamHooks) wants() bool {
 	return h.Token != nil || h.ToolStart != nil || h.ToolEnd != nil
 }
@@ -319,53 +404,118 @@ type StreamHooks struct {
 	Token     func(tok string)
 }
 
-// streamNative runs the native go-micro agent with StreamAsk, emitting tool
-// start/end events and answer tokens via hooks, and returns the final answer.
-// Returns (answer, true, err) when it handled the request, or ("", false, nil)
-// to signal the caller to fall back (no provider).
-func runNative(accountID, prompt string, opts QueryOpts) (string, bool, error) {
+// runNative answers a question with the go-micro agent: the model does native
+// tool-calling over the registered domain services.
+//
+// This is the agent. There is no second one — see the note on ErrNoProvider,
+// and AGENTS.md for the rule that says so.
+func runNative(accountID, prompt string, opts QueryOpts) (string, error) {
 	recorder := newNativeToolRecorder()
-	a, question, ok := buildNativeAgent(accountID, prompt, opts, recorder.wrap)
+	wrappers := []gmai.ToolWrapper{recorder.wrap}
+	if opts.OnStep != nil {
+		wrappers = append(wrappers, stepReporter(opts.OnStep))
+	}
+	a, question, ok := buildNativeAgent(accountID, prompt, opts, wrappers...)
 	if !ok {
-		return "", false, nil
+		return "", ErrNoProvider
 	}
 	defer a.Stop()
 
-	// Streaming when somebody is watching and the operator allows it.
+	// Streaming when somebody is watching.
 	//
 	// One function rather than two, because two drifted: the same construction,
 	// the same post-processing and the same contract were written twice, and
 	// the streaming copy was reachable only from the web's SSE handler — which
 	// is why no other client could show an answer arriving.
 	//
-	// The branch is not a caller's choice. AGENT_NATIVE_STREAM exists because
-	// StreamAsk had a tool-resolution bug once, and it lets an operator put
-	// everything back on the plain ask without disabling the native agent. A
-	// caller says whether anyone is listening; the operator says what is
-	// trusted.
+	// Whether anyone is listening is the caller's to say and nobody else's.
+	// There was an AGENT_NATIVE_STREAM dial here, added when StreamAsk had a
+	// tool-resolution bug, that let an operator put everything back on the
+	// plain ask. The bug was fixed upstream in go-micro v6.3.10 and the dial
+	// outlived it.
+	//
+	// An absolute bound on the whole turn, over the top of the per-call one.
+	//
+	// ModelCallTimeout bounds one call to the provider; nothing bounded the run
+	// it is part of, so twenty steps of a tool that is merely slow — a web
+	// fetch of a page that never finishes sending — held the question open with
+	// no ceiling at all, and the caller found out when its own layer gave up.
+	// Shelley has the pair for this reason: an idle bound catches a stall, and
+	// only a wall-clock backstop catches work that is progressing and will
+	// still not finish.
+	//
+	// Not a setting. What an operator wants to bound is what a question may
+	// cost, and that is AGENT_MAX_STEPS; this is the guard that stops a run
+	// hanging, and a value low enough to cut off honest work would be a bug
+	// rather than a policy.
+	ctx, cancel := context.WithTimeout(context.Background(), turnTimeout)
+	defer cancel()
+
 	final := ""
-	if opts.Stream.wants() && nativeStreamEnabled() {
+	if opts.Stream.wants() {
 		var err error
-		if final, err = askStreaming(a, question, recorder, opts.Stream); err != nil {
-			return "", true, err
+		if final, err = askStreaming(ctx, a, question, recorder, opts.Stream); err != nil {
+			return "", err
 		}
 	} else {
-		resp, err := a.Ask(context.Background(), question)
+		resp, err := a.Ask(ctx, question)
 		if err != nil {
-			return "", true, fmt.Errorf("native agent: %w", err)
+			return "", fmt.Errorf("agent: %w", err)
 		}
 		final = resp.Reply
 	}
 
 	answer := app.StripLatexDollars(final)
-	answer = completeToolAnswer(answer, recorder.ragParts())
-	return answer, true, nil
+	// Told whether a named agent wrote this. The freshness guard replaces a
+	// whole answer with a list of the raw tool results when the news looks
+	// stale, which is right for the generalist and destroys a user-defined
+	// agent's work — see completeToolAnswerFor.
+	//
+	// The flag reached the guard from the hand-rolled pipeline and from nowhere
+	// else, so removing that pipeline would have left it permanently false and
+	// quietly turned the bug back on for every custom agent. Same fact, read
+	// from the options the run was given rather than resolved a second time.
+	answer = completeToolAnswerFor(answer, recorder.ragParts(), strings.TrimSpace(opts.System) != "")
+	return answer, nil
+}
+
+// stepReporter tells a caller which tools ran, as they run.
+//
+// QueryOpts.OnStep was fired from one place — inside the hand-rolled planner —
+// so every caller asking for steps got them only on the path that had already
+// stopped being the one that runs. agent/work is the caller, and the steps it
+// records against a task were empty for that reason: not a missing feature, a
+// hook wired to the wrong half.
+//
+// A tool wrapper is where it belongs, because a wrapper sees the call and its
+// result whether the run is streaming or not. The stream hooks see tools too,
+// but only when somebody is watching, and a scheduled task is the case where
+// nobody is.
+func stepReporter(onStep func(Step)) gmai.ToolWrapper {
+	return func(next gmai.ToolHandler) gmai.ToolHandler {
+		return func(ctx context.Context, call gmai.ToolCall) gmai.ToolResult {
+			started := time.Now()
+			res := next(ctx, call)
+			onStep(Step{
+				Tool: NativeToolName(call.Name),
+				Args: call.Input,
+				// Refused is the guardrail's own word for a call that never
+				// ran — max_steps, loop, approval, and the destructive-tool
+				// block above. A call that ran and failed reports its failure
+				// in Content, as JSON the model reads, and there is no field
+				// here to tell that apart from a call that ran and worked.
+				OK:   res.Refused == "",
+				Took: time.Since(started),
+			})
+			return res
+		}
+	}
 }
 
 // askStreaming runs the agent with StreamAsk, reporting tools and tokens as
 // they arrive, and returns the whole answer.
-func askStreaming(a gmagent.Agent, question string, recorder *nativeToolRecorder, hooks StreamHooks) (string, error) {
-	stream, err := gmagent.StreamAsk(context.Background(), a, question)
+func askStreaming(ctx context.Context, a gmagent.Agent, question string, recorder *nativeToolRecorder, hooks StreamHooks) (string, error) {
+	stream, err := gmagent.StreamAsk(ctx, a, question)
 	if err != nil {
 		return "", fmt.Errorf("native agent stream: %w", err)
 	}
@@ -439,16 +589,30 @@ func shouldBufferNativeToken(recorder *nativeToolRecorder) bool {
 func (r *nativeToolRecorder) wrap(next gmai.ToolHandler) gmai.ToolHandler {
 	return func(ctx context.Context, call gmai.ToolCall) gmai.ToolResult {
 		res := next(ctx, call)
-		if res.Content == "" {
+		title := nativeToolTitle(call.Name)
+
+		// A source that could not answer is recorded as unavailable rather than
+		// skipped. The answer guard collects these and names them — "Unavailable
+		// right now: news" — which is the difference between an answer that is
+		// thin and an answer that says why.
+		//
+		// The hand-rolled planner wrote this marker; this recorder wrote the raw
+		// payload or, for an empty result, nothing at all. So the guard's
+		// unavailable branch stopped being reached the moment this became the
+		// path that runs, and the symptom was a quietly incomplete answer.
+		if res.Refused != "" || strings.TrimSpace(res.Content) == "" {
+			r.add("### " + title + "\n" + unavailableToolMessage(NativeToolName(call.Name)))
 			return res
 		}
-		title := nativeToolTitle(call.Name)
-		content := formatToolResult(nativeToolFormatterName(call.Name), res.Content, nil)
-		r.mu.Lock()
-		r.parts = append(r.parts, "### "+title+"\n"+content)
-		r.mu.Unlock()
+		r.add("### " + title + "\n" + formatToolResult(nativeToolFormatterName(call.Name), res.Content, nil))
 		return res
 	}
+}
+
+func (r *nativeToolRecorder) add(part string) {
+	r.mu.Lock()
+	r.parts = append(r.parts, part)
+	r.mu.Unlock()
 }
 
 func (r *nativeToolRecorder) ragParts() []string {
@@ -581,4 +745,22 @@ func nativeToolNameParts(name string) []string {
 	return strings.FieldsFunc(strings.ToLower(strings.TrimSpace(name)), func(r rune) bool {
 		return r == '_' || r == '.' || r == '/'
 	})
+}
+
+// Status is which model the agent's loop runs on, for the status page.
+//
+// nativeLLM's answer rather than internal/ai's, because they are different
+// questions and the page was answering the wrong one — see app.AgentStatus.
+//
+// No provider is now the whole story rather than half of it. This used to read
+// "falling back to the one-shot planner", which was true and was also the
+// reason an unconfigured instance did not look unconfigured: something still
+// answered, worse, and the status line explained the degradation instead of
+// reporting a fault.
+func Status() (string, bool) {
+	provider, _, model, ok := nativeLLM()
+	if !ok {
+		return "Not configured — the agent cannot answer until a provider key is set", false
+	}
+	return provider + "/" + model, true
 }

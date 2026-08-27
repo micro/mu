@@ -40,24 +40,25 @@ import (
 	"mu/service/files"
 	"mu/service/flights"
 	"mu/service/food"
-	"mu/service/hazards"
 	"mu/service/images"
 	"mu/service/mail"
 	"mu/service/maps"
 	"mu/service/markets"
 	"mu/service/news"
 	"mu/service/notes"
+	"mu/service/notify"
 	"mu/service/places"
 	"mu/service/prayer"
 	"mu/service/recall"
 	"mu/service/routes"
-	"mu/service/sandbox"
+	"mu/service/shell"
 	"mu/service/sms"
 	"mu/service/social"
 	"mu/service/stream"
 	"mu/service/tasks"
 	"mu/service/text"
 	"mu/service/transit"
+	"mu/service/users"
 	"mu/service/video"
 	"mu/service/wallet"
 	"mu/service/weather"
@@ -67,43 +68,46 @@ import (
 // authRequired reports, per path, whether a caller must be signed in.
 func authRequired() map[string]bool {
 	authenticated := map[string]bool{
-		"/tools":                  false, // Public — the catalogue, agent lens
-		"/tools/":                 false, // Public — one tool, same as the catalogue
-		"/services":               false, // Public — the catalogue, person lens
-		"/services/":              false, // Public — one service, what it is and how to call it
-		"/card/":                  false, // Public — a service rendered at a glance
-		"/usage":                  true,  // Your own calls and spend
-		"/video":                  false, // Public viewing, auth for interactive features
-		"/video/thumb":            false, // Public — thumbnails for the public feed
-		"/news":                   false, // Public viewing, auth for search
-		"/chat":                   false, // Public viewing, auth for chatting
-		"/home":                   false, // Public viewing
-		"/blog":                   false, // Public viewing, auth for posting
-		"/markets":                false, // Public viewing
-		"/text":                   false, // Public: the tools are callable without an account
-		"/food":                   false, // Public food data is public
-		"/transit":                false, // Public transport data is public
-		"/hazards":                false, // Public hazard data, published to be redistributed
-		"/browser":                false, // Public — the page; reading one costs and needs a session
-		"/sandbox":                true,  // A machine with your files on it, so it needs a session
-		"/browser/shot/":          false, // A picture already taken, of a page anybody could open
-		"/maps":                   false, // Public — the page, and any tile already held
-		"/maps/":                  false, // A held tile is free to anybody; a cold one needs a session
-		"/tiles/":                 false, // The old tile path, which redirects
-		"/prayer":                 false, // Public prayer times, daily verse and hadith
-		"/about":                  false, // Public "what is Mu" pitch
-		"/oauth2/google":          false, // Google sign-in start (no session yet)
-		"/oauth2/google/connect":  true,  // Link Google to the current account
-		"/agents":                 true,  // Your agents and their tokens — sign-in required
-		"/agents/data":            true,  // JSON behind the chat's agent picker
-		"/oauth2/google/calendar": true,  // Grant calendar access to the current account
-		"/oauth2/google/contacts": true,  // Grant contacts access to the current account
-		"/oauth2/callback":        false, // Google sign-in callback (no session yet)
-		"/images":                 false, // Public daily image; generation needs login
-		"/img":                    false, // Public — cached article images (a prefix of /images, same answer)
-		"/events":                 true,  // Personal scheduled reminders — sign-in required
-		"/contacts":               true,  // Your address book — sign-in required
-		"/notes":                  true,  // What you and your agents wrote down — sign-in required
+		"/tools":       false, // Public — the catalogue, agent lens
+		"/tools/":      false, // Public — one tool, same as the catalogue
+		"/services":    false, // Public — the catalogue, person lens
+		"/services/":   false, // Public — one service, what it is and how to call it
+		"/card/":       false, // Public — a service rendered at a glance
+		"/usage":       true,  // Your own calls and spend
+		"/video":       false, // Public viewing, auth for interactive features
+		"/video/thumb": false, // Public — thumbnails for the public feed
+		"/news":        false, // Public viewing, auth for search
+		"/chat":        false, // Public viewing, auth for chatting
+		// SASL inside the stream, with an access token — so no session is
+		// required to open it and none would be honoured. See xmpp_ws.go.
+		"/xmpp-websocket":             false,
+		"/.well-known/host-meta.json": false, // How a browser finds the above
+		"/home":                       false, // Public viewing
+		"/blog":                       false, // Public viewing, auth for posting
+		"/markets":                    false, // Public viewing
+		"/text":                       false, // Public: the tools are callable without an account
+		"/food":                       false, // Public food data is public
+		"/transit":                    false, // Public transport data is public
+		"/browser":                    false, // Public — the page; reading one costs and needs a session
+		"/shell":                      true,  // A machine with your files on it, so it needs a session
+		"/browser/shot/":              false, // A picture already taken, of a page anybody could open
+		"/maps":                       false, // Public — the page, and any tile already held
+		"/maps/":                      false, // A held tile is free to anybody; a cold one needs a session
+		"/prayer":                     false, // Public prayer times, daily verse and hadith
+		"/oauth2/google":              false, // Google sign-in start (no session yet)
+		"/oauth2/google/connect":      true,  // Link Google to the current account
+		"/agents":                     true,  // Your agents and their tokens — sign-in required
+		"/agents/data":                true,  // JSON behind the chat's agent picker
+		"/oauth2/google/calendar":     true,  // Grant calendar access to the current account
+		"/oauth2/google/contacts":     true,  // Grant contacts access to the current account
+		"/oauth2/callback":            false, // Google sign-in callback (no session yet)
+		"/images":                     false, // Public daily image; generation needs login
+		"/img":                        false, // Public — cached article images (a prefix of /images, same answer)
+		"/events":                     true,  // Personal scheduled reminders — sign-in required
+		"/users":                      true,  // Who is on this instance — sign-in required
+		"/contacts":                   true,  // Your address book — sign-in required
+		"/notes":                      true,  // What you and your agents wrote down — sign-in required
+		"/notify":                     true,  // What you were told, and where you can be reached — sign-in required
 		// Your own documents. Sign-in required, but checked in the handler
 		// rather than here: the map is matched by prefix, and /docs/<slug> is
 		// still a public redirect to the documentation that used to live there.
@@ -123,7 +127,7 @@ func authRequired() map[string]bool {
 		"/social":            false, // Public viewing, auth for search
 		"/social/thread":     false, // Public thread view, auth for messaging
 		"/places":            false, // Public map, auth for search
-		"/weather":           false, // Public page, auth for forecast lookup
+		"/weather":           false, // Public — the forecast as JSON
 		"/flights":           false, // Public — aircraft broadcast their positions in clear
 		"/mail":              true,  // Require auth for inbox
 		"/logout":            true,
@@ -144,7 +148,6 @@ func authRequired() map[string]bool {
 		"/admin/email":       true,
 		"/admin/log":         true,
 		"/admin/config":      true,
-		"/admin/env":         true,
 		"/admin/server":      true,
 		"/admin/usage":       true,
 		"/admin/delete":      true,
@@ -152,37 +155,31 @@ func authRequired() map[string]bool {
 		"/admin/alerts":      true,
 		"/admin/backup":      true,
 		"/admin/invite":      true,
-		"/account/":          true, // Money: the old paths, which redirect
-		"/billing":           true, // Money: balance, usage, the ledger
-		"/billing/":          true, // Money: top-up, transfer, Stripe
+		"/account/":          true, // Money: an old prefix, which redirects
+		"/wallet/":           true, // Money: top-up, transfer, Stripe, the price list
 
 		"/apps":      false, // Public - apps directory; auth checked in handler for create/edit
 		"/work":      false, // Public - task bounties; auth checked in handler for post/claim
-		"/search":    false, // Public - redirect to /web, the address people have
 		"/web":       false, // Public - the open web: search it, read a page from it
 		"/web/fetch": false, // Public page, auth checked in handler (paid web fetch)
 		"/web/read":  false, // Public page, auth checked in handler (proxied reader)
 
 		"/status":                        false, // Public - server health status
-		"/plans":                         false, // Public - redirects to /pricing
-		"/pricing":                       false, // Public - what a credit is and what things cost
 		"/privacy":                       false, // Public - privacy policy
 		"/install":                       false, // Public - run your own instance
-		"/whitepaper":                    false, // Public - whitepaper
 		"/mcp":                           false, // Public - MCP tools page
 		"/sms/webhook":                   false, // Public - inbound SMS; the provider's signature is the credential
 		"/.well-known/mcp-registry-auth": false, // Public - registry domain proof
 		// Public at the door, decided per tool inside. The same answer /mcp
 		// gives, for the same reason: news and weather must not need an account.
-		"/api/v1":     false,
-		"/api/v1/":    false,
-		"/agent":      false, // Redirects to the named page; auth checked in handler
-		"/agent/":     false, // /agent/<name> — one agent's page; auth checked in handler
-		"/push/":      true,  // Subscribing this device to notifications
-		"/inbox":      true,  // The mailbox — yours, so it needs a session
-		"/inbox/":     true,  // One alias's mail
-		"/setup":      false, // First-run setup (open only until an admin exists)
-		"/developers": false, // Legacy alias → /tools (public)
+		"/api/v1":  false,
+		"/api/v1/": false,
+		"/agent":   false, // Redirects to the named page; auth checked in handler
+		"/agent/":  false, // /agent/<name> — one agent's page; auth checked in handler
+		"/push/":   true,  // Subscribing this device to notifications
+		"/inbox":   true,  // The mailbox — yours, so it needs a session
+		"/inbox/":  true,  // One alias's mail
+		"/setup":   false, // First-run setup (open only until an admin exists)
 	}
 	return authenticated
 }
@@ -205,6 +202,12 @@ func registerRoutes() {
 	http.HandleFunc("/news", news.Handler)
 	// serve chat
 	http.HandleFunc("/chat", chat.Handler)
+	// XMPP for the browser (RFC 7395), so the web page is a carrier of the chat
+	// protocol rather than a second protocol beside it — and host-meta, which is
+	// how a browser finds this endpoint from a domain, since it cannot look up
+	// the SRV record a desktop client uses.
+	http.HandleFunc("/xmpp-websocket", chat.XMPPWebSocketHandler)
+	http.HandleFunc("/.well-known/host-meta.json", chat.WellKnownHostMeta)
 
 	// serve blog (full list)
 	http.HandleFunc("/blog", blog.Handler)
@@ -221,21 +224,6 @@ func registerRoutes() {
 
 	// handle comments on posts /blog/post/{id}/comment
 	http.HandleFunc("/blog/post/", blog.CommentHandler)
-
-	// Legacy redirects for old URL structure (301 so browsers/crawlers update)
-	legacyRedirect := func(oldPrefix, newPrefix string) http.HandlerFunc {
-		return func(w http.ResponseWriter, r *http.Request) {
-			target := newPrefix + r.URL.Path[len(oldPrefix):]
-			if r.URL.RawQuery != "" {
-				target += "?" + r.URL.RawQuery
-			}
-			http.Redirect(w, r, target, http.StatusMovedPermanently)
-		}
-	}
-	http.HandleFunc("/post/", legacyRedirect("/post/", "/blog/post/"))
-	http.HandleFunc("/post", legacyRedirect("/post", "/blog/post"))
-	http.HandleFunc("/fetch", legacyRedirect("/fetch", "/web/fetch"))
-	http.HandleFunc("/read", legacyRedirect("/read", "/web/read"))
 
 	// flag content
 	http.HandleFunc("/admin/flag", admin.FlagHandler)
@@ -265,13 +253,6 @@ func registerRoutes() {
 
 	// environment variables status
 	http.HandleFunc("/admin/config", admin.ConfigHandler)
-	// It was /admin/env. An operator has it bookmarked and every instance
-	// already deployed links to it from its own pages, so the old path still
-	// answers rather than 404ing on the one page you go to when something is
-	// misconfigured.
-	http.HandleFunc("/admin/env", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/admin/config", http.StatusMovedPermanently)
-	})
 
 	// server update and restart
 	http.HandleFunc("/admin/server", admin.ServerHandler)
@@ -290,21 +271,14 @@ func registerRoutes() {
 	http.HandleFunc("/admin/backup", admin.BackupHandler)
 	http.HandleFunc("/admin/invite", admin.InviteHandler)
 
-	// Money: top-up, transfer, Stripe and the price list, all under the account
-	// that holds them.
+	// Money: top-up, transfer, Stripe and the price list, all under /wallet with
+	// the balance they change. The handler lives in account/ because that is
+	// where credits are kept; the destination is /wallet because that is the
+	// word somebody already has for the place their money is.
+	//
+	// /account/ and /billing/ stay registered and only redirect. Both were the
+	// money prefix at some point and somebody has each bookmarked.
 	http.HandleFunc("/account/", account.BalanceHandler)
-	http.HandleFunc("/billing", account.Billing)
-	http.HandleFunc("/billing/", account.BalanceHandler)
-
-	// Where the money used to be. /wallet is a service now, so these are not
-	// merely renamed — the old prefix has come to mean something else, and a
-	// bookmark for a balance must not land on a crypto address.
-	for _, moved := range []string{
-		"/wallet/topup", "/wallet/transfer", "/wallet/pricing",
-		"/wallet/stripe/checkout", "/wallet/stripe/success",
-	} {
-		http.HandleFunc(moved, account.MovedToAccount)
-	}
 
 	// Stripe posts here. Named for the provider, at the top level, and that is
 	// the whole point: a webhook URL is a contract with somebody outside this
@@ -335,19 +309,15 @@ func registerRoutes() {
 	// people have and search engines hold.
 	// A real browser, for the pages a fetch cannot read. /browser is the page;
 	// the pictures it takes are at /browser/shot/<id>.png. See service/browser.
-	// A machine of your own, in a container. See service/sandbox.
-	http.HandleFunc("/sandbox", sandbox.Handler)
+	// A machine of your own, in a container. See service/shell.
+	http.HandleFunc("/shell", shell.Handler)
+	// The address this had until it was renamed. Kept because links to it
+	// exist — in mail this instance has already sent, and in anybody's
+	// bookmarks — and breaking a URL to tidy a name is a bad trade.
 	http.HandleFunc("/browser", browser.Handler)
 	http.HandleFunc("/browser/shot/", browser.ShotHandler)
 
 	http.HandleFunc("/web", web.Handler)
-	http.HandleFunc("/search", func(w http.ResponseWriter, r *http.Request) {
-		to := "/web"
-		if r.URL.RawQuery != "" {
-			to += "?" + r.URL.RawQuery
-		}
-		http.Redirect(w, r, to, http.StatusMovedPermanently)
-	})
 	http.HandleFunc("/web/preview", web.PreviewHandler)
 
 	// serve web fetch page (fetch and clean a URL)
@@ -363,38 +333,6 @@ func registerRoutes() {
 	// home screen is the public face — real cards plus the agent — so a visitor
 	// sees the product rather than a separate marketing page.
 	http.HandleFunc("/home", home.Handler)
-	// Everything used to be a landing: the logged-out root said nothing, /about
-	// was a pitch and /agents was a second pitch. There is one landing now — the
-	// root — and these two go back to being what their names say.
-	//
-	// /about is the about page, which is the ABOUT doc rather than a second copy
-	// of it — registered with the other documentation pages below. /agents
-	// belongs to the user's agents, not to marketing; it points at the agent
-	// surface until the page that shows what your agents are doing exists to
-	// take it.
-	// There is no pricing page.
-	//
-	// It was rebuilt three times in a day — a cost table, then three columns of
-	// plans, then plans without columns — and every version came apart on the
-	// same fact: a credit is 1p and every tool costs what quota.json says,
-	// whoever is asking. There is nothing to choose, so a page asking somebody
-	// to choose was a page inventing a decision to make it feel like a product.
-	//
-	// What a call costs belongs beside the call. /tools carries the price on
-	// every tool, /account carries the balance and the same table, and both are
-	// where somebody actually is when the question occurs to them. These two
-	// names redirect rather than 404 because they are in server.json, in the
-	// README and in three years of links.
-	// /plans still redirects, because plans are the thing that was wrong. What
-	// came back at /pricing is the price list rather than a chooser — see
-	// home.PricingHandler, which reads quota.json and states no tiers. A
-	// signed-out visitor otherwise has no way to learn the terms: /tools carries
-	// a price on each of a hundred-odd entries, which answers what one call
-	// costs and never what this is going to cost you.
-	http.HandleFunc("/plans", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/pricing", http.StatusMovedPermanently)
-	})
-	http.HandleFunc("/pricing", home.PricingHandler)
 	// Every MCP directory submission asks for a privacy policy URL, and this
 	// instance runs a mail server — so there is real correspondence to account
 	// for, not just a formality.
@@ -402,15 +340,6 @@ func registerRoutes() {
 
 	// first-run setup wizard (open only until an admin exists)
 	http.HandleFunc("/setup", setup.Handler)
-
-	// Redirect the old path so existing links keep working. It used to point at
-	// /agents back when that was a public redirect to /agent; /agents is now the
-	// signed-in page where you create and scope agents, so a developer following
-	// this link would hit a login wall instead of the thing they came for. /tools
-	// is that thing: the endpoint, the config and the token.
-	http.HandleFunc("/developers", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/tools", http.StatusMovedPermanently)
-	})
 
 	// serve the agent
 	// The inbox is /inbox, and the agent family is /agent*.
@@ -478,7 +407,6 @@ func registerRoutes() {
 	http.HandleFunc("/text", text.Handler)
 	http.HandleFunc("/food", food.Handler)
 	http.HandleFunc("/transit", transit.Handler)
-	http.HandleFunc("/hazards", hazards.Handler)
 	// The basemap under anything spatial. /maps is the page; the images are at
 	// /tiles/<style>/<z>/<x>/<y>.png, which is the shape every map library
 	// takes and the only shape any of them take. See service/maps.
@@ -495,19 +423,35 @@ func registerRoutes() {
 	// trip and then stops costing anything.
 	http.HandleFunc("/maps", maps.Handler)
 	http.HandleFunc("/maps/", maps.TileHandler)
-	http.HandleFunc("/tiles/", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/maps"+r.URL.Path, http.StatusMovedPermanently)
-	})
-	http.HandleFunc("/wallet", wallet.Handler)
+	// What you have, and the key that can spend it. One destination: x402 is a
+	// substrate and a substrate does not get a page of its own, the same way
+	// SMTP has none and its connect details are a section under /inbox.
+	http.HandleFunc("/wallet", account.Wallet)
 	// Taking your key with you. A page action and never a tool: an agent that
 	// can read a private key is a prompt injection away from posting it
 	// somewhere. It re-checks the password, so it is not in authRequired()
 	// either — the handler wants the session *and* the password.
+	//
+	// Registered before the /wallet/ prefix below and matched ahead of it:
+	// net/http picks the longest matching pattern, and this is an exact one.
 	http.HandleFunc("/wallet/export", wallet.ExportHandler)
+	// Turning USDC in the wallet into credits — the one thing the crypto card
+	// could not do, so money sent to your own address here bought nothing here.
+	// Its own route rather than a case in BalanceHandler because it is a POST
+	// that moves money on a chain, and the CSRF and method checks want to be
+	// obvious rather than nested three switches deep.
+	http.HandleFunc("/wallet/convert", account.ConvertUSDC)
+	// The money actions. account/ owns them because it owns the ledger.
+	http.HandleFunc("/wallet/", account.BalanceHandler)
 	http.HandleFunc(imageproxy.Path, imageproxy.Handler)
+	// Who is here. See service/users: the directory that did not exist, so a
+	// person could sign up alongside a hundred and eighty others and meet none
+	// of them.
+	http.HandleFunc("/users", users.Handler)
 	http.HandleFunc("/contacts", contacts.Handler)
 	http.HandleFunc("/docs", docs.Handler)
 	http.HandleFunc("/notes", notes.Handler)
+	http.HandleFunc("/notify", notify.Handler)
 	http.HandleFunc("/sms", sms.Handler)
 
 	// Twilio posts everything arriving on a Messaging Service to one webhook,
@@ -535,21 +479,15 @@ func registerRoutes() {
 	http.HandleFunc("/stream", stream.Handler)
 	http.HandleFunc("/stream/fragment", stream.FragmentHandler)
 
+	// JSON only. The page is /services/weather; this no longer bounces there.
+	http.HandleFunc("/weather", weather.Handler)
 	http.HandleFunc("/prayer", prayer.Handler)
-	// Back-compat: the page lived at /reminder, then at /islam. Both are still
-	// in bookmarks and in other people's links, so both keep working.
-	for _, old := range []string{"/reminder", "/islam"} {
-		http.HandleFunc(old, func(w http.ResponseWriter, r *http.Request) {
-			http.Redirect(w, r, "/prayer", http.StatusMovedPermanently)
-		})
-	}
 
 	// serve places page
 	http.HandleFunc("/places", places.Handler)
 	http.HandleFunc("/places/", places.Handler)
 
 	// serve weather page
-	http.HandleFunc("/weather", weather.Handler)
 
 	// serve flights page
 	http.HandleFunc("/flights", flights.Handler)
@@ -649,25 +587,11 @@ func registerRoutes() {
 	app.HealthCheckFunc = runHealthChecks
 	http.HandleFunc("/status", app.StatusHandler)
 
-	// whitepaper
-	http.HandleFunc("/whitepaper", help.WhitepaperHandler)
-	http.HandleFunc("/whitepaper.pdf", help.WhitepaperHandler)
-
-	// Documentation. Two pages: how to point an agent at this instance, and
-	// how to run your own. Every address the old nine answered on redirects to
-	// whichever of the two replaced it — an exact pattern outranks the /docs
-	// the service owns now.
-	http.HandleFunc("/about", help.AboutHandler)
+	// Documentation. One page: how to run your own. Every address the old nine
+	// answered on redirects to whatever replaced it — an exact pattern outranks
+	// the /docs the service owns now, and /about is in that map pointing at the
+	// landing, which is the page that answers the question it used to.
 	http.HandleFunc("/install", help.InstallHandler)
-	for from, to := range help.Redirects {
-		if from == "/docs" {
-			continue // the service's page, not a redirect
-		}
-		target := to
-		http.HandleFunc(from, func(w http.ResponseWriter, r *http.Request) {
-			http.Redirect(w, r, target, http.StatusMovedPermanently)
-		})
-	}
 
 	// ActivityPub: WebFinger discovery
 	http.HandleFunc("/.well-known/webfinger", blog.WebFingerHandler)
@@ -744,6 +668,7 @@ func registerRoutes() {
 	// is the instruction box and the two are not variations of each other.
 	http.HandleFunc("/inbox/unread", inbox.UnreadHandler)
 	http.HandleFunc("/inbox/delete", inbox.DeleteHandler)
+	http.HandleFunc("/inbox/held", inbox.HeldHandler)
 	// Writing one yourself. An exact route, because
 	// /inbox/<box> is a mailbox name and a box could be called anything.
 	http.HandleFunc("/inbox/new", inbox.NewHandler)

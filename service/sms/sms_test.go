@@ -358,3 +358,52 @@ func TestNewAccountsGetASmallerAllowance(t *testing.T) {
 		t.Errorf("with sending off: %v", err)
 	}
 }
+
+// A number that is not a number is refused, not repaired.
+//
+// Normalise skipped whatever it did not recognise and kept the digits, which is
+// right for the way people punctuate a number and catastrophic for anything
+// else. Twilio labels a WhatsApp sender "whatsapp:+447700900123". The letters
+// and the colon were dropped; the + was then no longer at the front so it went
+// too; what was left had no country code, so the instance default was prepended
+// and the answer was +44447700900123 — a real number, belonging to a stranger.
+//
+// The /whatsapp/twilio route has been pointing at this handler the whole time,
+// so every WhatsApp message that ever arrived was filed against, and could have
+// been replied to at, the wrong person's phone.
+func TestSomethingThatIsNotANumberIsRefusedRatherThanRepaired(t *testing.T) {
+	setup(t)
+	t.Setenv("SMS_DEFAULT_COUNTRY", "44")
+
+	// The case that was silently wrong.
+	if got := e164("whatsapp:+447700900123"); got != "" {
+		t.Errorf("e164(%q) = %q — a channel-prefixed sender was turned into a "+
+			"number rather than refused", "whatsapp:+447700900123", got)
+	}
+
+	for _, in := range []string{
+		"whatsapp:+447700900123",
+		"sms:+447700900123",
+		"MICROMU",             // an alphanumeric sender id is not a destination
+		"+44 7700 900123 x22", // an extension is structure this cannot carry
+		"+447700900123/+447700900124",
+		"tel:+447700900123",
+	} {
+		if got := e164(in); got != "" {
+			t.Errorf("e164(%q) = %q, want empty", in, got)
+		}
+	}
+
+	// And the ways people really do write one still work.
+	for in, want := range map[string]string{
+		"+447700900123":      "+447700900123",
+		"+44 7700 900 123":   "+447700900123",
+		"+44 (7700) 900-123": "+447700900123",
+		"07700900123":        "+447700900123",
+		" +44.7700.900123 ":  "+447700900123",
+	} {
+		if got := e164(in); got != want {
+			t.Errorf("e164(%q) = %q, want %q", in, got, want)
+		}
+	}
+}

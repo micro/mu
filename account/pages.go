@@ -28,6 +28,7 @@ import (
 
 	"mu/internal/auth"
 	"mu/internal/push"
+	"mu/service/sms"
 )
 
 // SignupRateLimit returns true if the IP is allowed to sign up.
@@ -85,7 +86,6 @@ var LoginTemplate = `<html lang="en">
       <div id="content">
 	<form id="login" action="/login%s" method="POST">
 	  <h1>Log in</h1>
-	  <p class="auth-lede">Your agents, your tools, and the app they share.</p>
 	  %s
 	  %s
 	  <input id="id" name="id" placeholder="Username" required>
@@ -535,10 +535,11 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 		}
 		if !claimed {
 			if err := auth.Create(&auth.Account{
-				ID:      id,
-				Secret:  secret,
-				Name:    name,
-				Created: time.Now(),
+				ID:        id,
+				Secret:    secret,
+				SecretSet: true,
+				Name:      name,
+				Created:   time.Now(),
 			}); err != nil {
 				w.Write([]byte(renderSignupTo(fmt.Sprintf(`<p class="text-error">%s</p>`, err.Error()), redirectParam)))
 				return
@@ -609,6 +610,31 @@ func Account(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// And the same three for a phone number. Handled here rather than
+		// posted at /sms so that the section behaves like every other one on
+		// this page: submit, land back here, see the result.
+		if number := strings.TrimSpace(r.Form.Get("verify_number")); number != "" {
+			if err := sms.StartVerify(acc.ID, number); err != nil {
+				app.Error(w, r, http.StatusBadRequest, err.Error())
+				return
+			}
+			http.Redirect(w, r, "/account", http.StatusSeeOther)
+			return
+		}
+		if number := strings.TrimSpace(r.Form.Get("confirm_number")); number != "" {
+			if err := sms.Confirm(acc.ID, number, r.Form.Get("code")); err != nil {
+				app.Error(w, r, http.StatusBadRequest, err.Error())
+				return
+			}
+			http.Redirect(w, r, "/account", http.StatusSeeOther)
+			return
+		}
+		if number := strings.TrimSpace(r.Form.Get("forget_number")); number != "" {
+			sms.Forget(acc.ID, number)
+			http.Redirect(w, r, "/account", http.StatusSeeOther)
+			return
+		}
+
 		// The display name, which had no way to be changed.
 		//
 		// It is set once at signup — optionally — and then shown on the profile,
@@ -632,6 +658,25 @@ func Account(w http.ResponseWriter, r *http.Request) {
 			acc.Name = name
 			auth.UpdateAccount(acc) //nolint:errcheck
 			http.Redirect(w, r, "/account?saved=name", http.StatusSeeOther)
+			return
+		}
+
+		// Setting a password, which nothing could do before — see
+		// internal/auth/password.go for why that mattered more than it sounds.
+		//
+		// No current password asked for. The session is the authority, and it has
+		// to be: the accounts that most need this are the ones whose password is
+		// a random string they were never shown.
+		if pw := r.Form.Get("new_secret"); pw != "" || r.Form.Get("save_secret") != "" {
+			if pw != r.Form.Get("confirm_secret") {
+				http.Redirect(w, r, "/account?error="+url.QueryEscape("Those two passwords are not the same."), http.StatusSeeOther)
+				return
+			}
+			if err := auth.SetSecret(acc.ID, pw); err != nil {
+				http.Redirect(w, r, "/account?error="+url.QueryEscape(err.Error()), http.StatusSeeOther)
+				return
+			}
+			http.Redirect(w, r, "/account?saved=password", http.StatusSeeOther)
 			return
 		}
 
@@ -746,10 +791,10 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	// twice — that a balance has a deadline and a language picker does not. That
 	// reasoning was right and the conclusion was wrong: the answer to "this
 	// matters more than the rest of the page" is its own page, not the top of
-	// this one. /billing is that page and Billing is in the menu beside Account.
+	// this one. /wallet is that page and Wallet is in the menu beside Account.
 	//
 	// Not even a line pointing at it. There was one for a few minutes, on the
-	// reasoning that somebody would look for money here first — and Billing is
+	// reasoning that somebody would look for money here first — and Wallet is
 	// in the same menu this page is reached from, one item below it. A section
 	// whose only content is a link to its neighbour is the thing being removed
 	// everywhere else on this page.
@@ -760,8 +805,10 @@ func Account(w http.ResponseWriter, r *http.Request) {
 	// Log out, so the control sat under the link that ends the session, where a
 	// page has plainly finished.
 	content := notice + profile +
+		passwordCard(acc) +
 		PlaceCard(r, acc.ID) +
 		emailCard +
+		renderPhoneCard(acc.ID) +
 		googleCard +
 		language +
 		PasskeyListHTML(acc.ID) +
@@ -817,6 +864,61 @@ func otherAddresses(acc *auth.Account) string {
 	}
 	b.WriteString(`</ul>`)
 	return b.String()
+}
+
+// renderPhoneCard is the number you have proved is yours.
+//
+// Beside Email because it is the same kind of fact — an address you claimed —
+// and because of what it now decides. A text from a verified number wakes your
+// agent; a text from any other number is filed and answered by nobody. That is
+// an account-level consequence, so the claiming belongs on the account page
+// rather than folded inside a <details> on /sms, which is where it lived and
+// where nobody looking for it would think to open.
+//
+// Absent entirely on an instance with no number to text from. A form that can
+// only fail reads as broken rather than as unconfigured — the same call the
+// wallet's convert form makes.
+func renderPhoneCard(accountID string) string {
+	if !sms.Configured() {
+		return ""
+	}
+
+	mine := sms.Numbers(accountID)
+	if len(mine) > 0 {
+		var b strings.Builder
+		for _, n := range mine {
+			b.WriteString(`<p><strong>` + htmlpkg.EscapeString(n) + `</strong> — verified ✓ ` +
+				app.Form{Action: "/account", Inline: true,
+					Hidden: map[string]string{"forget_number": n},
+					Submit: "Forget"}.HTML() + `</p>`)
+		}
+		return app.Section("Phone",
+			b.String(),
+			app.Note("A text from here reaches your agent, and it answers. "+
+				"Texts from anywhere else are filed and answered by nobody."),
+			app.Form{Action: "/account", Inline: true,
+				Fields: []app.Field{{Name: "verify_number", Type: "tel", Required: true,
+					Placeholder: "+447700900123"}},
+				Submit: "Verify another"}.HTML())
+	}
+
+	// Waiting for the code it just texted.
+	if pending, ok := sms.Pending(accountID); ok {
+		return app.Section("Phone",
+			`<p>A code was texted to <strong>`+htmlpkg.EscapeString(pending)+`</strong>.</p>`,
+			app.Form{Action: "/account", Inline: true,
+				Hidden: map[string]string{"confirm_number": pending},
+				Fields: []app.Field{{Name: "code", Required: true, Placeholder: "123456"}},
+				Submit: "Confirm"}.HTML())
+	}
+
+	return app.Section("Phone",
+		app.Note("Prove a number is yours and you can text your agent from it, "+
+			"like any other contact. It replies on the same number."),
+		app.Form{Action: "/account", Inline: true,
+			Fields: []app.Field{{Name: "verify_number", Type: "tel", Required: true,
+				Placeholder: "+447700900123"}},
+			Submit: "Send me a code"}.HTML())
 }
 
 // renderEmailCard renders the email verification card on the account
@@ -890,6 +992,55 @@ func Verify(w http.ResponseWriter, r *http.Request) {
 <p><a href="/home" class="btn">Go home</a> &nbsp; <a href="/account">Account →</a></p>
 </div>`, htmlpkg.EscapeString(acc.Name))
 	app.Respond(w, r, app.Response{Title: "Verified", Description: "Email verified", HTML: body})
+}
+
+// passwordCard is where a password gets set, which was nowhere.
+//
+// Two headings for one form, because the two situations are genuinely
+// different. An account made through Google has a password — a random 24
+// characters it was never told — so the export page asked for it, refused
+// whatever was typed, and suggested setting one, which could not be done. That
+// account needs to be told it has none. An account that chose one needs to know
+// this replaces it.
+// A third state, because there are three and there were two.
+//
+// HasSecret is false for two different accounts: one made through Google, which
+// genuinely has no password its owner could type, and one made before SecretSet
+// existed, which may well have a chosen password. Nothing distinguishes them —
+// no field records how an account was created, which is the reason the flag was
+// added — so the note for that case has to describe what the form does without
+// asserting which of the two the reader is.
+//
+// It asserted. "This account signs in with Google or a passkey and has no
+// password you could type" is a definite claim about the reader's account, and
+// it is wrong for every account that predates the flag, told to somebody who
+// knows perfectly well they typed a password at signup. Being wrong about
+// somebody's own credentials is a good way to make them doubt the rest of the
+// page.
+func passwordCard(acc *auth.Account) string {
+	note := "Signing up with Google or a passkey leaves no password you could type. " +
+		"Setting one here lets you sign in with your username, and unlocks exporting " +
+		"your wallet key. If you already have a password, this replaces it."
+	if auth.HasSecret(acc.ID) {
+		note = "Replaces the one you have. You stay signed in here; other devices are unaffected."
+	}
+
+	// "Password", not "Set a password" or "Change password". Both of those are
+	// claims about whether the reader already has one, and the flag they rest on
+	// is only reliable for accounts created after it existed. The other headings
+	// on this page name the thing they are about — Email, Location — and this one
+	// can too. The note below still says which of the two this will do.
+	return app.Section("Password",
+		app.Form{Action: "/account",
+			Hidden: map[string]string{"save_secret": "1"},
+			Fields: []app.Field{
+				{Name: "new_secret", Type: "password", Label: "New password", Wide: true,
+					Placeholder: "At least 6 characters"},
+				{Name: "confirm_secret", Type: "password", Label: "Again", Wide: true,
+					Placeholder: "The same one"},
+			},
+			Submit: "Save"}.HTML(),
+		app.Note(note))
 }
 
 func Logout(w http.ResponseWriter, r *http.Request) {

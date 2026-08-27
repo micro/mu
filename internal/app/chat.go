@@ -8,12 +8,36 @@ import (
 
 // JSString returns s as a safely-quoted JavaScript string literal (with
 // surrounding quotes) for embedding in inline scripts.
+//
+// In a <script> block only. The quotes it produces are double quotes, so
+// putting one inside a double-quoted HTML attribute ends the attribute — see
+// JSAttr, which is for that and exists because this was used there twice.
 func JSString(s string) string {
 	b, err := json.Marshal(s)
 	if err != nil {
 		return `""`
 	}
 	return string(b)
+}
+
+// JSAttr is JSString for an inline handler: onclick="f(<here>)".
+//
+// The same literal with its quotes HTML-escaped, so the attribute survives.
+// The parser turns &#34; back into a quote before the JavaScript is compiled,
+// so what runs is exactly what JSString produced.
+//
+// This exists because the plain one was used in two attributes and both were
+// broken in a way nothing catches by reading:
+//
+//	onclick="muSessionDelete("fe3918b6…",event)"
+//
+// The attribute ends at the first quote, so the handler is the fragment
+// `muSessionDelete(` — a syntax error, and the browser's complaint is
+// "Unexpected end of input", which names neither the button nor the id. The
+// delete cross on a conversation did nothing at all, and so did + New, for as
+// long as both have existed.
+func JSAttr(s string) string {
+	return htmlpkg.EscapeString(JSString(s))
 }
 
 // ChatConfig configures the shared chat component.
@@ -152,8 +176,10 @@ func ChatComponent(cfg ChatConfig) string {
 #mu-chat-opts:empty{margin:0}
 #mu-chat-agent{display:flex;align-items:center;gap:6px;font-size:12px;color:#999;cursor:pointer;user-select:none}
 #mu-chat-agent select{width:auto;padding:2px 4px;font-size:12px;font-family:inherit;color:#555;border:1px solid #e0e0e0;border-radius:4px;background:#fff}
-#mu-chat-input{flex:1;padding:10px 0;border:none;font-size:16px;font-family:inherit;resize:none;line-height:1.4;overflow:hidden;background:transparent;outline:none}
-#mu-chat-form button{flex-shrink:0;width:36px;height:36px;background:#111;color:#fff;border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px}
+#mu-chat-input{flex:1;padding:6px 0;border:none;font-size:16px;font-family:inherit;resize:none;line-height:1.4;overflow:hidden;background:transparent;outline:none}
+/* A square icon button, sized from the control scale rather than from two
+   hard-coded 36s that made it taller than every other control in the app. */
+#mu-chat-form button{flex-shrink:0;width:var(--control-h);height:var(--control-h);min-width:var(--control-h);padding:0;background:#111;color:#fff;border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;line-height:1}
 #mu-chat-suggest{margin-top:16px}
 .mu-pills{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
 .mu-pills a{padding:8px 14px;border:1px solid #e0e0e0;border-radius:6px;font-size:13px;color:#555;text-decoration:none;cursor:pointer}
@@ -194,7 +220,16 @@ func ChatComponent(cfg ChatConfig) string {
    the input off-screen on mobile — the column ends up wider than the viewport.
    Each kind of wide content is contained in its own block instead. */
 #mu-chat,#mu-chat-conv,#mu-chat-form{min-width:0;max-width:100%}
-#mu-chat-conv,.mu-user{overflow-wrap:break-word}
+/* The answer wraps too.
+   
+   This named the transcript and the person's own message and left out the
+   agent's — which is the half that contains long URLs, table rows and fenced
+   code, so it is the only half that could push the page wide. A pre does not
+   wrap at all, so it gets a scroller of its own rather than making one for
+   the whole document. */
+#mu-chat-conv,.mu-user,.mu-agent{overflow-wrap:break-word;min-width:0}
+.mu-agent pre,.mu-agent table{max-width:100%;overflow-x:auto}
+.mu-agent img{max-width:100%;height:auto}
 #mu-chat-conv pre{overflow-x:auto;max-width:100%}
 #mu-chat-conv table{display:block;overflow-x:auto;max-width:100%}
 #mu-chat-conv img{max-width:100%;height:auto}

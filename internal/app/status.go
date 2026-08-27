@@ -15,6 +15,7 @@ import (
 
 	"mu/internal/auth"
 	"mu/internal/data"
+	"mu/internal/settings"
 )
 
 var startTime = time.Now()
@@ -200,9 +201,14 @@ func buildStatus() StatusResponse {
 	// The listeners, off included. This read MAIL_PORT raw and reported
 	// "Port off" with a tick beside it, because any non-empty string counted as
 	// running — which is the one answer a status page must not give.
+	// The defaults come from the constants the listeners themselves read, not
+	// from copies here: this table held its own and they drifted, so the page
+	// whose job is saying what is running reported a port nothing was on.
 	for _, l := range []struct{ name, key, fallback string }{
-		{"SMTP Server", "MAIL_PORT", ":2525"},
-		{"IMAP Server", "IMAP_PORT", ":1143"},
+		{"SMTP Server", "MAIL_PORT", MailPort},
+		{"IMAP Server", "IMAP_PORT", IMAPPort},
+		{"Submission", "SUBMISSION_PORT", SubmissionPort},
+		{"XMPP Server", "XMPP_PORT", XMPPPort},
 	} {
 		addr, on := ListenAddr(l.key, l.fallback)
 		details := "Off"
@@ -219,6 +225,16 @@ func buildStatus() StatusResponse {
 		Status:  llmConfigured,
 		Details: llmProvider,
 	})
+
+	// And the agent's, which is the one most people mean.
+	if AgentStatus != nil {
+		agentModel, agentOK := AgentStatus()
+		services = append(services, StatusCheck{
+			Name:    "Agent model",
+			Status:  agentOK,
+			Details: agentModel,
+		})
+	}
 
 	// Add cache stats if Anthropic is configured (stats injected via CacheStatsFunc)
 	if os.Getenv("ANTHROPIC_API_KEY") != "" && CacheStatsFunc != nil {
@@ -246,7 +262,7 @@ func buildStatus() StatusResponse {
 	})
 
 	// Check Google Places API
-	googleConfigured := os.Getenv("GOOGLE_API_KEY") != ""
+	googleConfigured := settings.Get("GOOGLE_API_KEY") != ""
 	services = append(services, StatusCheck{
 		Name:   "Google Places API",
 		Status: googleConfigured,
@@ -357,6 +373,22 @@ func formatDKIMDetails(enabled bool, domain, selector string) string {
 // provider a question would go to, and whether it is answering. A hook because
 // internal/ai imports this package, so the dependency cannot run the other way.
 var LLMStatus func() (string, bool)
+
+// AgentStatus is which model the agent runs on, which is a different question
+// from LLMStatus and was being answered by it.
+//
+// Two independent resolutions exist: ai.resolveProvider decides where a chat
+// message, a summary or a moderation call goes, and agent.nativeLLM decides
+// where the tool-calling loop goes. They disagreed for months — the agent had
+// no Anthropic branch at all, so an instance with both keys ran the agent on
+// DeepSeek while this page reported anthropic/claude-sonnet-4-6 and nothing
+// anywhere named the model that had actually answered.
+//
+// They agree again, and the point of reporting both is that nothing stops them
+// diverging: setting AGENT_MODEL is supposed to diverge them, and an operator
+// who has done that deliberately should be able to see it rather than read a
+// line about the wrong path.
+var AgentStatus func() (string, bool)
 
 func checkLLMConfig() (provider string, configured bool) {
 	if LLMStatus != nil {

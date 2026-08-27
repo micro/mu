@@ -190,7 +190,13 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		handleJSON(w, r)
 		return
 	}
-	handleHTML(w, r)
+	// No page here, and no redirect to the one there is. This service draws no
+	// page of its own — Spec.Page is /services/weather, the derived rendering
+	// with the card, every method and a form that calls them — and /weather used
+	// to bounce there. The bounce is gone: an address either answers or it does
+	// not, and one that only tells you about another address is a hop every
+	// caller pays and nobody asked for.
+	http.NotFound(w, r)
 }
 
 // handleJSON handles JSON API requests for weather data.
@@ -290,6 +296,3 @@ func handleJSON(w http.ResponseWriter, r *http.Request) {
 // method with its arguments and its price, and a form that calls it. Two
 // derived renderings of one service would be the drift that argument exists to
 // stop, so there is one, and this is the way to it from the old address.
-func handleHTML(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, Spec.Page, http.StatusMovedPermanently)
-}

@@ -164,8 +164,29 @@ func list(w http.ResponseWriter, r *http.Request, accountID, box string) {
 		b.WriteString(`<p class="ib-sent">Sent to ` + html.EscapeString(trimTo(to, 80)) +
 			`. Their reply lands on the same conversation.</p>`)
 	}
-	b.WriteString(howTo())
 	b.WriteString(boxes(accountID, all, box))
+
+	// What is waiting to be let in, above the mailbox and only when there is
+	// some. A held conversation is deliberately not in the list below, so
+	// without this the difference between holding a stranger's message and
+	// dropping it would be invisible from here.
+	b.WriteString(waiting(r, accountID))
+
+	// Search, over everything in the record rather than over the page.
+	//
+	// The inbox is where the conversations are, on every channel there is, and
+	// there was no way to look for one. /recall could — thread.Search has been
+	// there the whole time, exported and complete — but you had to know the
+	// page existed and that it was the same store, which is two facts nothing
+	// on this screen tells you. A mailbox you cannot search is a log.
+	q := strings.TrimSpace(r.URL.Query().Get("q"))
+	b.WriteString(searchBox(box, q))
+	if q != "" {
+		found(&b, r, accountID, box, q)
+		b.WriteString(`</div>`)
+		app.Respond(w, r, app.Response{Title: "Inbox", Description: "What arrived", HTML: b.String()})
+		return
+	}
 
 	if len(threads) == 0 {
 		// An empty inbox says how to fill it, and the answer is an address.
@@ -202,6 +223,16 @@ func list(w http.ResponseWriter, r *http.Request, accountID, box string) {
 // said, and when. The shape of a mail client's list, because a list of
 // conversations is what a mail client shows.
 func row(r *http.Request, accountID string, t thread.Thread) string {
+	return rowWith(r, accountID, t, "")
+}
+
+// rowWith is row, with the option of saying what to preview.
+//
+// Search needs it. The preview is normally the last thing said, which is the
+// right answer for a list you are glancing down and the wrong one for a list of
+// results: a search for "invoice" that shows the last line of each conversation
+// makes you open every one to find out why it matched.
+func rowWith(r *http.Request, accountID string, t thread.Thread, preview string) string {
 	subject := strings.TrimSpace(t.Subject)
 	if subject == "" {
 		subject = "Untitled"
@@ -224,7 +255,9 @@ func row(r *http.Request, accountID string, t thread.Thread) string {
 	// above three exchanges of history previews as "Yes, do that" — see
 	// quoted.go.
 	snippet := ""
-	if msgs := thread.Messages(accountID, t.ID, 1); len(msgs) > 0 {
+	if preview != "" {
+		snippet = trimTo(strings.TrimSpace(withoutSubject(preview, subject)), 110)
+	} else if msgs := thread.Messages(accountID, t.ID, 1); len(msgs) > 0 {
 		text, _ := unquoted(withoutSubject(msgs[0].Text, subject))
 		snippet = trimTo(text, 110)
 	}
@@ -387,8 +420,8 @@ func conversation(w http.ResponseWriter, r *http.Request, accountID, id string) 
 	// would go to so its caption can point at the Reply button rather than only
 	// saying what it is not.
 	msgs := thread.Messages(accountID, t.ID, MessagesShown)
-	b.WriteString(conversationPane(accountID, t, msgs, len(msgs) >= MessagesShown, false))
-	b.WriteString(askBox(r, t.ID, replyTo(accountID, t, msgs)))
+	b.WriteString(conversationPane(accountID, t, msgs, len(msgs) >= MessagesShown, false,
+		assignDialog(r, accountID, t, replyTo(accountID, t, msgs))))
 	b.WriteString(`</div>`)
 
 	app.Respond(w, r, app.Response{Title: subject, Description: "A conversation", HTML: b.String()})
@@ -526,41 +559,47 @@ func addressBar(accountID, box string) string {
 		b.WriteString(`<span class="ib-addr-one"><span class="ib-addr-k">Agent</span>` +
 			writeTo(theirs) + `</span>`)
 	}
-	b.WriteString(`<span class="ib-addr-note">Work with agents from your inbox. ` +
-		app.TextLink("Your agents", "/agents") +
+	// One link, and it is the protocol's own name.
+	//
+	// This line has been shrinking. It said "Work with agents from your inbox",
+	// which is a claim about the product printed above somebody's mail; then it
+	// was that claim with two links after it; then just the two links. Your
+	// agents is in the rail, one item away, so a second copy here is a
+	// destination announced twice.
+	//
+	// What is left is the way into a mail client, and it says IMAP because that
+	// is what the reader is looking for. Somebody who wants to read this in
+	// Thunderbird knows the word; "Mail client" is the same fact with the
+	// searchable part removed.
+	//
+	// It stays because it has nowhere else to be. It was one of four numbered
+	// lines above the filters, and when those went this became the only link to
+	// /inbox/imap in the product — the page would have stayed served and been
+	// reachable only by typing the URL. Nothing would have caught it: the link
+	// test asserts every link goes somewhere, not that every somewhere has a
+	// link.
+	b.WriteString(`<span class="ib-addr-note">` +
+		app.TextLink("IMAP", "/inbox/imap") +
 		`</span>` + newLink() + `</div>`)
 	return b.String()
 }
 
-// howTo is what to do with this page, in four lines.
+// No howTo, and the reasoning that put it here is the reasoning against it.
 //
-// The address bar above says "Work with agents from your inbox", which is a
-// claim rather than an instruction: it tells somebody what the page is for and
-// nothing about how. Everything underneath is a list of conversations, and a
-// list of conversations teaches you nothing you did not already know about
-// mailboxes — the parts that are not a mailbox (an agent answers, Cc works,
-// each agent is a folder, a client can open it) are invisible until somebody
-// tries them.
+// It was four numbered lines above the filters: write to the address, make a
+// task, Cc an agent, connect IMAP. The argument was that the parts of this page
+// which are not a mailbox are invisible until somebody tries them, so the page
+// should say so — quiet, above the fold, read once and then never again.
 //
-// Quiet, and above the filters rather than below them. It is orientation, which
-// is read once and then never again, so it must not compete with the mail: same
-// muted grey the row snippets use, numbers rather than bullets because these
-// are four separate things and not four aspects of one.
-func howTo() string {
-	var b strings.Builder
-	b.WriteString(`<ol class="ib-howto">`)
-	b.WriteString(`<li>Write to the agent address above from anywhere — your own ` +
-		`mail, your phone. It answers on the same thread.</li>`)
-	b.WriteString(`<li>Give it a job rather than a question. It picks the work up ` +
-		`while you are elsewhere and replies here when it is done.</li>`)
-	b.WriteString(`<li>Cc an agent into a conversation with somebody else and it ` +
-		`follows along without taking it over.</li>`)
-	b.WriteString(`<li>Or connect a mail client over ` +
-		app.TextLink("imap", "/inbox/imap") +
-		` and read all of it where you already read mail.</li>`)
-	b.WriteString(`</ol>`)
-	return b.String()
-}
+// The half of that which is true is that it is read once. The half that is not
+// is "and then never again": it was rendered on every load of the inbox, for
+// everybody, forever, so the cost is paid by every reader on every visit and
+// the benefit lands on one reader once. Three of the four lines pointed at
+// other pages, which is a table of contents for the product printed at the top
+// of the mail.
+//
+// The address bar above still says what this page is for and links to the
+// agents. That is the orientation this needed.
 
 // writeTo is an address you can write to: the address, and a click that opens
 // New with it in the To box.

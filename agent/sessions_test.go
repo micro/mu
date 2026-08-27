@@ -25,7 +25,7 @@ import (
 // could be described in a sentence. The line is the one every mail product
 // draws — see thread.Arrived.
 func TestTheRailIsWhatYouStartedNotWhatArrived(t *testing.T) {
-	acc := fmt.Sprintf("rail-%d", time.Now().UnixNano())
+	acc := fmt.Sprintf("rail_%d", time.Now().UnixNano()%100000000)
 
 	here := Opened(acc, thread.WebClient, "root", "", "")
 	Said(acc, here, "hello", "", "")
@@ -49,7 +49,7 @@ func TestTheRailIsWhatYouStartedNotWhatArrived(t *testing.T) {
 	if mail == nil {
 		t.Fatal("the mail conversation is not in the record")
 	}
-	if got := inbox.ConversationView(acc, mail); !strings.Contains(got, "Email") ||
+	if got := inbox.ConversationView(acc, mail); !strings.Contains(got, "Mail") ||
 		!strings.Contains(got, "What&#39;s happening") {
 		t.Errorf("a conversation from another client does not read back:\n%s", got)
 	}
@@ -61,13 +61,13 @@ func TestTheRailIsWhatYouStartedNotWhatArrived(t *testing.T) {
 // rail says it means — not one turn of a five-turn chat, leaving the rest in the
 // list.
 func TestDeletingAConversationTakesTheWholeThing(t *testing.T) {
-	acc := fmt.Sprintf("rail-del-%d", time.Now().UnixNano())
+	acc := fmt.Sprintf("rail_del_%d", time.Now().UnixNano()%100000000)
 
-	id := Opened(acc, thread.WebClient, "root-flow", "", "")
+	id := Opened(acc, thread.WebClient, "root_flow", "", "")
 	Said(acc, id, "book me a table", "", "")
-	Answered(acc, id, "which night?", "flow-1")
+	Answered(acc, id, "which night?", "flow_1")
 	Said(acc, id, "friday", "", "")
-	Answered(acc, id, "done", "flow-2")
+	Answered(acc, id, "done", "flow_2")
 
 	if n := len(chatThreads(acc, "", false)); n != 1 {
 		t.Fatalf("two turns made %d conversations, want 1", n)
@@ -87,7 +87,7 @@ func TestDeletingAConversationTakesTheWholeThing(t *testing.T) {
 // rather than disappearing from the rail the day the rail changed where it
 // reads from.
 func TestOldConversationsAreAdoptedIntoTheRecord(t *testing.T) {
-	acc := fmt.Sprintf("rail-adopt-%d", time.Now().UnixNano())
+	acc := fmt.Sprintf("rail_adopt_%d", time.Now().UnixNano()%100000000)
 
 	first := Record(Recorded{Account: acc, Prompt: "book me a table", Answer: "which night?"})
 	second := Record(Recorded{Account: acc, Parent: first, Prompt: "friday", Answer: "done"})
@@ -125,7 +125,7 @@ func TestOldConversationsAreAdoptedIntoTheRecord(t *testing.T) {
 
 // History comes from what was said, not from how it was produced.
 func TestHistoryIsReadFromTheRecord(t *testing.T) {
-	acc := fmt.Sprintf("rail-hist-%d", time.Now().UnixNano())
+	acc := fmt.Sprintf("rail_hist_%d", time.Now().UnixNano()%100000000)
 
 	id := Opened(acc, thread.WebClient, "root", "", "")
 	Said(acc, id, "one", "", "")
@@ -150,16 +150,16 @@ func TestHistoryIsReadFromTheRecord(t *testing.T) {
 // A conversation knows which agent it is with, so a surface that has one
 // selected can show that agent's conversations rather than all of them or none.
 func TestAConversationRemembersWhichAgentItIsWith(t *testing.T) {
-	acc := fmt.Sprintf("rail-agent-%d", time.Now().UnixNano())
+	acc := fmt.Sprintf("rail_agent_%d", time.Now().UnixNano()%100000000)
 
-	mine := Opened(acc, thread.WebClient, "root-a", "", "agent-42")
-	other := Opened(acc, thread.WebClient, "root-b", "", "")
+	mine := Opened(acc, thread.WebClient, "root_a", "", "agent_42")
+	other := Opened(acc, thread.WebClient, "root_b", "", "")
 	Said(acc, mine, "what are the markets doing", "", "")
 	Said(acc, other, "hello", "", "")
 
 	var withAgent, without int
 	for _, th := range thread.List(acc, 0) {
-		if th.Agent == "agent-42" {
+		if th.Agent == "agent_42" {
 			withAgent++
 		} else {
 			without++
@@ -172,10 +172,10 @@ func TestAConversationRemembersWhichAgentItIsWith(t *testing.T) {
 
 	// And the last agent to answer is the one it is with: writing to a
 	// specialist after a week of writing to the default moves the conversation.
-	if again := Opened(acc, thread.WebClient, "root-b", "", "agent-42"); again != other {
+	if again := Opened(acc, thread.WebClient, "root_b", "", "agent_42"); again != other {
 		t.Fatalf("the same key opened a second conversation: %q then %q", other, again)
 	}
-	if th := thread.Get(acc, other); th == nil || th.Agent != "agent-42" {
+	if th := thread.Get(acc, other); th == nil || th.Agent != "agent_42" {
 		t.Error("a conversation continued with a different agent still names the old one")
 	}
 }
@@ -191,10 +191,10 @@ func TestAConversationRemembersWhichAgentItIsWith(t *testing.T) {
 // Same shape as the scope fail-open in filterServices. Empty meant both "no
 // restriction" and "the default", and those are different statements.
 func TestOneAgentsPageShowsOneAgentsConversations(t *testing.T) {
-	const acc = "rail-scoped"
+	const acc = "rail_scoped"
 
-	mine := Opened(acc, thread.WebClient, "rail-micro", "", "")
-	theirs := Opened(acc, thread.WebClient, "rail-foobar", "", "foobar")
+	mine := Opened(acc, thread.WebClient, "rail_micro", "", "")
+	theirs := Opened(acc, thread.WebClient, "rail_foobar", "", "foobar")
 	if mine == "" || theirs == "" {
 		t.Fatal("no conversations")
 	}

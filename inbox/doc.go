@@ -1,7 +1,7 @@
 // Package inbox is the agentic inbox: what arrived, and the agent that works
 // on it.
 //
-// A top-level directory because it is a staple by the test in CLAUDE.md — a
+// A top-level directory because it is a staple by the test in AGENTS.md — a
 // user can name it and click it — and because the alternative was where it had
 // been living. The inbox surface grew inside agent/, next to the chat, on the
 // reasonable-looking grounds that both render conversations. They are not the

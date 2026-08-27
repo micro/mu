@@ -52,9 +52,30 @@ func ImapHandler(w http.ResponseWriter, r *http.Request) {
 
 	var b strings.Builder
 	b.WriteString(`<div class="ib-imap">`)
-	b.WriteString(`<p class="svc-lead">Your inbox in the mail client you already use. ` +
-		`Everything that arrives here shows up there, the agent's replies land in the ` +
-		`thread, and each of your agents is a folder.</p>`)
+	// Your inbox, and it means the inbox.
+	//
+	// This said "Everything that arrives here shows up there" when it served
+	// the mail store alone, which was not true and not nearly true. It was
+	// corrected to say mail only — and that was the wrong repair, made on the
+	// reasoning that IMAP is mail's protocol the way XMPP is chat's.
+	//
+	// It is not. SMTP delivers and XMPP delivers; IMAP delivers nothing at all.
+	// It reads a message store and has no opinion about how anything got there,
+	// which makes it a consumption protocol rather than a transport — so the
+	// store worth pointing it at is the record every channel writes to. See
+	// inbox/imapbridge.go. The sentence is true again, and this time the server
+	// is what made it true.
+	b.WriteString(`<p class="svc-lead">Your whole inbox in the mail client you already ` +
+		`use. Mail, texts, WhatsApp and chats all arrive in it, the agent's replies land ` +
+		`in the thread, and each of your agents is a folder.</p>`)
+	b.WriteString(`<p class="ib-imap-note">Conversations that are not mail show a sender ` +
+		`built from where they came from — a text from <code>+447700900123</code> reads as ` +
+		`<code>447700900123.sms@…</code> — so a client has an address to show, to thread ` +
+		`on, and to reply to. Answering one goes back out the way it came in.</p>`)
+	b.WriteString(`<p class="ib-imap-note">Those addresses answer a conversation and cannot ` +
+		`start one. They are composed from the parts, so anybody who has seen one could ` +
+		`write another — if the address were enough to send, knowing the pattern would be ` +
+		`permission to text any number in the world from this instance's number.</p>`)
 
 	host, port, secure, on := imapReach()
 	if !on {
@@ -92,11 +113,11 @@ func ImapHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<h3 class="lead-15">What you can do there</h3>`)
 	b.WriteString(`<ul class="ib-imap-list">`)
 	b.WriteString(`<li>Read, reply, mark read, delete. A reply to the agent runs it, ` +
-		`the same as replying on this page.</li>`)
+		`the same as replying on this page — and a reply to a text goes out as a text.</li>`)
 	b.WriteString(`<li>Each agent is a folder — mail to <code>you+research@</code> ` +
 		`is the Research folder.</li>`)
 	b.WriteString(`<li>New mail shows up while the client sits open, within about ` +
-		`twenty seconds.</li>`)
+		`twenty seconds. A text or a chat appears on the next refresh.</li>`)
 	// Said rather than left to be discovered. A client that offers a verb the
 	// server refuses looks broken; a reader told why does not go looking.
 	b.WriteString(`<li>You cannot make, rename or delete folders. They are your ` +
@@ -117,7 +138,7 @@ func imapRow(k, v string) string {
 // imapReach is what to type into a mail client: host, port, security, and
 // whether this instance serves IMAP at all.
 func imapReach() (host, port, secure string, on bool) {
-	addr, listening := app.ListenAddr("IMAP_PORT", ":1143")
+	addr, listening := app.ListenAddr("IMAP_PORT", app.IMAPPort)
 	if !listening {
 		return "", "", "", false
 	}
@@ -127,7 +148,7 @@ func imapReach() (host, port, secure string, on bool) {
 
 // submissionReach is the same question for outgoing mail.
 func submissionReach() (host, port, secure string, on bool) {
-	addr, listening := app.ListenAddr("SUBMISSION_PORT", ":1587")
+	addr, listening := app.ListenAddr("SUBMISSION_PORT", app.SubmissionPort)
 	if !listening {
 		return "", "", "", false
 	}

@@ -17,7 +17,7 @@ import (
 // "47b6428c-fa8a-4610-a302-45dbc992ad5d" as somewhere to click — three of four
 // mailboxes named after rows in a file.
 func TestAVanishedAgentGetsNoMailbox(t *testing.T) {
-	const who = "inbox-vanished"
+	const who = "inbox_vanished"
 	withRoster(t, who, Agent{ID: "here", Name: "Research", Tag: "research"})
 
 	said(t, who, "mail", "<a@example.com>", "here", "found three papers")
@@ -45,10 +45,10 @@ func TestAVanishedAgentGetsNoMailbox(t *testing.T) {
 // With no agent package wired in at all there are no mailboxes, rather than one
 // per raw id.
 func TestWithoutTheRosterThereAreNoMailboxes(t *testing.T) {
-	const who = "inbox-no-roster"
+	const who = "inbox_no_roster"
 	Agents, AgentName = nil, nil
 
-	said(t, who, thread.WebClient, "chat", "some-agent-id", "hello")
+	said(t, who, thread.WebClient, "chat", "some_agent_id", "hello")
 
 	if got := Mailboxes(who); len(got) != 0 {
 		t.Errorf("%d mailboxes with nothing to name them: %+v", len(got), got)

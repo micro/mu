@@ -21,10 +21,13 @@ import (
 	"mu/admin"
 	"mu/agent"
 	agentblog "mu/agent/blog"
+	chatagent "mu/agent/chat"
 	"mu/agent/digest"
+	"mu/agent/gate"
 	mailagent "mu/agent/mail"
 	"mu/agent/micro"
 	"mu/agent/moderate"
+	smsagent "mu/agent/sms"
 	agentsocial "mu/agent/social"
 	"mu/agent/work"
 	help "mu/docs"
@@ -49,6 +52,7 @@ import (
 	"mu/internal/x402"
 	"mu/service/apps"
 	"mu/service/blog"
+	"mu/service/chat"
 	"mu/service/contacts"
 	"mu/service/docs"
 	"mu/service/events"
@@ -57,8 +61,9 @@ import (
 	"mu/service/mail"
 	"mu/service/markets"
 	"mu/service/news"
+	"mu/service/notify"
 	"mu/service/recall"
-	"mu/service/sandbox"
+	"mu/service/shell"
 	"mu/service/sms"
 	"mu/service/social"
 	"mu/service/stream"
@@ -168,6 +173,42 @@ func wireHooks() {
 	// Mail is a client like another client: it speaks its own protocol and
 	// hands what arrives to the agent. See agent/mail.
 	mailagent.Load()
+
+	// And IMAP is a client of the record rather than of the mail store.
+	//
+	// SMTP delivers and XMPP delivers; IMAP delivers nothing — it reads a
+	// message store — so the store worth pointing it at is the one every
+	// channel writes to. service/mail may not read internal/thread, so it asks
+	// for the conversations and inbox/ answers, being the package that already
+	// reads both. See inbox/imapbridge.go.
+	mail.Bridged = inbox.Bridge
+	// And answering one from that client. A reply and only a reply: the address
+	// is composed and therefore guessable, so it names a conversation rather
+	// than granting permission to start one.
+	mail.BridgedReply = inbox.Reply
+
+	// And a room is a client too. service/chat decides who is in a room and
+	// whether the agent was named; this is what answers when it was. It used to
+	// be a hundred and ninety lines inside the service composing replies with
+	// its own RAG and its own web search — see agent/chat.
+	chatagent.Load()
+
+	// And a phone number is a client too. A text from a number the account has
+	// verified wakes the agent the same way mail does; service/sms decides
+	// whose it is and whether it proved that, and this is what answers.
+	smsagent.Load()
+
+	// And every text goes in the record, whoever sent it — which is a separate
+	// job from answering one, the way agent/mail splits recording from
+	// answering. Without it a text from a number nobody here knows was dropped
+	// with a log line, because the only path into the record was the side
+	// effect of an agent replying.
+	smsagent.LoadRecord()
+
+	// Whether an arrival from a stranger should be let in at all. One judge for
+	// every channel, because a text from an unknown number and a federated chat
+	// from an unknown address are one question. See agent/gate.
+	gate.Load()
 
 	// And the agent introduces itself to a new account, in that account's
 	// inbox. Onboarding as a message rather than a page: the claim is that you
@@ -321,6 +362,12 @@ func wireHooks() {
 	// The roster, so the inbox can offer a box per agent rather than only the
 	// ones that already have mail — and so a box is the agent's address tag
 	// rather than a second slug derived from its name. See inbox.Agents.
+	// What to call the agent an account gets without making one, so the assign
+	// picker reads as a list of agents rather than "default" and some names.
+	if a := agent.Platform(""); a != nil {
+		inbox.DefaultAgentName = a.Name
+	}
+
 	inbox.Agents = func(owner string) []inbox.Agent {
 		var out []inbox.Agent
 		for _, a := range agent.Agents(owner) {
@@ -483,12 +530,17 @@ func wireHooks() {
 		apps.DeleteAppsByAuthor,
 		stream.DeleteByAccount,
 		mail.DeleteInbox,
+		chat.Forget,
 		func(id string) { account.DeleteCredits(id) },
 		func(id string) { wallet.DeleteBaseWallet(id) },
 		func(id string) { micro.DeleteUserAgents(id) },
-		// The devices they told us to notify. A subscription outliving the
-		// account is a stranger's phone still receiving somebody's mail.
-		push.Forget,
+		// The devices they told us to notify, and the record of what they were
+		// told. A subscription outliving the account is a stranger's phone still
+		// receiving somebody's mail. Through the service rather than reaching
+		// into internal/push: notify is the door onto this data and DeleteAll is
+		// its answer. Not push.Forget either way — Forget is the "turn it off"
+		// button and deliberately keeps the history.
+		notify.DeleteAll,
 		notes.Clear,
 
 		// Everything the caller stored themselves. These six were missing, so
@@ -508,7 +560,7 @@ func wireHooks() {
 		// and a volume. Nothing else in this list reaches outside the data
 		// directory; this one has to, because that is where the caller's work
 		// actually is.
-		sandbox.DeleteMachine,
+		shell.DeleteMachine,
 
 		// Everything that was ever said, on any client. The record is written
 		// by the machinery rather than by a service, so nothing owned it and
@@ -614,7 +666,7 @@ func wireHooks() {
 			return false, err
 		}
 		if !ok {
-			return false, fmt.Errorf("this costs %d credits and your balance is %d — top up at /billing/topup",
+			return false, fmt.Errorf("this costs %d credits and your balance is %d — top up at /wallet/topup",
 				cost, quota.BalanceOf(account))
 		}
 		return true, nil
@@ -816,6 +868,7 @@ func wireHooks() {
 	// The status page asks the AI package what the model is doing rather than
 	// guessing from one env var.
 	app.LLMStatus = ai.Status
+	app.AgentStatus = agent.Status
 
 	// Signup and login are not tools. Creating an account and exchanging
 	// credentials for a session are how a caller comes to exist, not something

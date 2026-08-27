@@ -19,7 +19,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	dir, err := os.MkdirTemp("", "mu-docs-test")
+	dir, err := os.MkdirTemp("", "mu_docs_test")
 	if err != nil {
 		panic(err)
 	}

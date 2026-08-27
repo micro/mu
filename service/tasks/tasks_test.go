@@ -315,3 +315,47 @@ func TestTasksAddedTogetherKeepTheirOrder(t *testing.T) {
 		t.Errorf("open tasks are not oldest first: %+v", list)
 	}
 }
+
+// An update keeps what it was not asked to change.
+//
+// Update rebuilds the record from scratch and carries forward only the fields
+// it names, so a field added to Task and not added here is one that any edit
+// silently deletes — its own comment says so, and the agent field was added
+// without it. The symptom was specific and easy to miss: Run reads the task,
+// then moves it to "doing" through Update, then announces. The announcement was
+// right because it came off the in-memory copy; the stored task lost its agent
+// the instant work started, so /tasks could not say who was doing it.
+func TestAnUpdateDoesNotDropWhatItWasNotGiven(t *testing.T) {
+	const owner = "tasks-carry"
+	made, err := CreateOn(owner, "thread-77", "research", "Do the thing", "with detail", Agent, time.Time{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// The update Run makes: a status and nothing else.
+	after, err := Update(owner, made.ID, "", "", StatusDoing, Agent, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, c := range []struct{ what, want, got string }{
+		{"agent", "research", after.Agent},
+		{"thread", "thread-77", after.Thread},
+		{"detail", "with detail", after.Detail},
+		{"title", "Do the thing", after.Title},
+	} {
+		if c.got != c.want {
+			t.Errorf("after an update that only set the status, %s = %q, want %q",
+				c.what, c.got, c.want)
+		}
+	}
+
+	// And from the store, not just the returned value.
+	reloaded, err := Get(owner, made.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reloaded.Agent != "research" {
+		t.Errorf("reloaded agent = %q, want research", reloaded.Agent)
+	}
+}

@@ -116,8 +116,6 @@ func TestCoerce(t *testing.T) {
 
 func TestDefaultArgKey(t *testing.T) {
 	cases := map[string]string{
-		"chat":          "prompt",
-		"agent":         "prompt",
 		"apps_build":    "prompt",
 		"news_search":   "query",
 		"video_search":  "query",
@@ -142,6 +140,18 @@ func TestDefaultArgKey(t *testing.T) {
 	}
 	if _, ok := defaultArgKey("mail_send"); ok {
 		t.Error("defaultArgKey(mail_send) should return false")
+	}
+	// Neither of these is a tool, and this table used to claim both took a
+	// prompt. `chat` is the discussion-rooms service — its tools are chat_send,
+	// chat_rooms and chat_messages, none of which has a prompt field — and
+	// `agent` stopped being one when agent_ask was removed. A mapping onto a
+	// tool that does not exist is a lookup that can only fail. Talking to an
+	// agent from the command line is `mu ask`.
+	for _, dead := range []string{"chat", "agent"} {
+		if _, ok := defaultArgKey(dead); ok {
+			t.Errorf("defaultArgKey(%q) still maps a positional argument onto a "+
+				"tool that does not exist", dead)
+		}
 	}
 }
 
@@ -179,13 +189,13 @@ func TestCanTakeArgs(t *testing.T) {
 	if !canTakeArgs("news_list", []string{"--limit", "5"}) {
 		t.Error("flags are always acceptable")
 	}
-	if !canTakeArgs("chat", []string{"hello"}) {
-		t.Error("chat takes one positional prompt")
-	}
 	if canTakeArgs("news", []string{"nope"}) {
 		t.Error("news has no positional argument, so nope cannot be one")
 	}
-	if canTakeArgs("chat", []string{"one", "two"}) {
+	if canTakeArgs("blog", []string{"read", "7"}) {
 		t.Error("two bare words are not one positional argument")
 	}
+	// This used to assert that `chat` took a positional prompt. It is not a
+	// tool — see TestDefaultArgKey — and no one-word tool is, because a tool
+	// name is derived as service_method.
 }

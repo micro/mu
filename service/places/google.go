@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
 	"mu/internal/app"
+	"mu/internal/settings"
 )
 
 const googlePlacesBaseURL = "https://places.googleapis.com/v1/places"
@@ -23,7 +23,7 @@ const googleMaxResults = 20
 
 // googleAPIKey returns the Google Places API key from the environment.
 func googleAPIKey() string {
-	return os.Getenv("GOOGLE_API_KEY")
+	return settings.Get("GOOGLE_API_KEY")
 }
 
 // googlePlaceResult represents a single place from the Places API (New).

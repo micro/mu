@@ -14,12 +14,12 @@ import (
 // never prints the secret.
 //
 //	mu x402
-func runX402(args []string) int {
+func runX402(args []string, rc *ResolvedConfig) int {
 	// `mu x402` alone reports configuration; `mu x402 call ...` actually pays.
 	// The status was the whole command for a long time, which meant an operator
 	// could confirm the endpoint was configured and never that it worked.
 	if len(args) > 0 && args[0] == "call" {
-		return runX402Pay(args[1:])
+		return runX402Pay(args[1:], rc)
 	}
 	// The key this machine signs with. Under x402 because that is what it is
 	// for: it was made to pay per call with no account, and the identity it

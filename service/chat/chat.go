@@ -96,6 +96,13 @@ var upgrader = websocket.Upgrader{
 // message showed nobody in it but you.
 const agentName = "micro"
 
+// AgentName is who the agent is in a room, for whoever answers as it.
+//
+// Exported because agent/chat has to say a message is from the agent and the
+// room has to render it as such — and the name has to be one string, not two
+// that agree until somebody changes one.
+const AgentName = agentName
+
 // Room represents a discussion room for a specific item.
 // Room state is ephemeral - messages exist only in memory while the server runs.
 // The last 20 messages are kept in memory for new joiners.
@@ -267,6 +274,45 @@ func handlePatternMatch(content string, room *Room) string {
 }
 
 // getOrCreateRoom gets an existing room or creates a new one
+// Say puts a message into a room that already exists.
+//
+// The door an agent speaks through, and the reason it can exist at all: an
+// agent may import a service, so agent/chat calls this, and this package never
+// learns that an agent exists. Same shape as blog.CreatePost for agent/blog.
+//
+// It will not create a room. A room is made when somebody opens it, and an
+// answer arriving into a conversation nobody is in should be dropped rather
+// than conjure the conversation — the caller has gone, and the message would
+// sit in a room with no readers holding memory until the cleanup found it.
+//
+// Reports whether it landed, so a caller can say so rather than assume.
+func Say(roomID, from, text string) bool {
+	if strings.TrimSpace(roomID) == "" || strings.TrimSpace(text) == "" {
+		return false
+	}
+	roomsMutex.RLock()
+	room, ok := rooms[roomID]
+	roomsMutex.RUnlock()
+	if !ok {
+		return false
+	}
+	// Non-blocking. Broadcast is consumed by the room's own goroutine, and a
+	// room whose reader has stopped would otherwise hold this one forever —
+	// which for a subscriber means the whole event loop, not one message.
+	select {
+	case room.Broadcast <- RoomMessage{
+		UserID:    from,
+		Content:   text,
+		Timestamp: time.Now(),
+		IsLLM:     from == agentName,
+	}:
+		return true
+	default:
+		app.Log("chat", "room %s is not reading, dropped a message from %s", roomID, from)
+		return false
+	}
+}
+
 func getOrCreateRoom(id string) *Room {
 	start := time.Now()
 	app.Log("chat", "[getOrCreateRoom] Start for %s", id)
@@ -848,194 +894,41 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 				}
 
 				if mentionedMicro || inActiveConvo || isAlone || isItemRoom {
-					go func() {
-						// Pattern matching for predictable queries - skip LLM for direct lookups
-						if response := handlePatternMatch(content, room); response != "" {
-							app.Log("chat", "Pattern match hit, skipping LLM")
-							client.LastMicroReply = time.Now()
-							llmMsg := RoomMessage{
-								UserID:    agentName,
-								Content:   response,
-								Timestamp: time.Now(),
-								IsLLM:     true,
-							}
-							room.Broadcast <- llmMsg
-							return
-						}
+					// Deterministic lookups first, with no model involved.
+					// Answering "what is the weather" from a table is a service
+					// answering a question about state, which is this package's
+					// job and cheaper than a model call.
+					if response := handlePatternMatch(content, room); response != "" {
+						app.Log("chat", "pattern match, no agent needed")
+						client.LastMicroReply = time.Now()
+						Say(room.ID, agentName, response)
+						continue
+					}
 
-						// If this is a Dev (HN) discussion, trigger comment refresh via event
-						// But throttle to once per 5 minutes to avoid excessive API calls
-						if room.Topic == "Dev" && room.URL != "" {
-							room.mutex.RLock()
-							lastRefresh := room.LastRefresh
-							room.mutex.RUnlock()
-
-							if time.Since(lastRefresh) > 5*time.Minute {
-								room.mutex.Lock()
-								room.LastRefresh = time.Now()
-								room.mutex.Unlock()
-
-								app.Log("chat", "Publishing refresh event for: %s", room.URL)
-								event.Publish(event.Event{
-									Type: event.RefreshHNComments,
-									Data: map[string]interface{}{
-										"url": room.URL,
-									},
-								})
-							} else {
-								app.Log("chat", "Skipping comment refresh for %s (last refresh %v ago)", room.URL, time.Since(lastRefresh).Round(time.Second))
-							}
-						}
-
-						// Build context from room details
-						var ragContext []string
-
-						// For reminder rooms, refresh context from source (changes hourly)
-						if strings.HasPrefix(room.ID, "reminder_") {
-							parts := strings.SplitN(room.ID, "_", 2)
-							if len(parts) == 2 {
-								if entry := data.ByID(parts[1]); entry != nil {
-									room.mutex.Lock()
-									room.Summary = entry.Content
-									if len(room.Summary) > 2000 {
-										room.Summary = room.Summary[:2000] + "..."
-									}
-									room.mutex.Unlock()
-									app.Log("chat", "Refreshed reminder context for room %s (len=%d)", room.ID, len(room.Summary))
-								}
-							}
-						}
-
-						// Add room context first (most important)
-						if room.Title != "" || room.Summary != "" {
-							roomContext := ""
-							if room.Title != "" {
-								roomContext = "Discussion topic: " + room.Title
-							}
-							if room.Summary != "" {
-								if roomContext != "" {
-									roomContext += ". "
-								}
-								roomContext += room.Summary
-							} else if room.Title != "" && room.Title != "News Discussion" {
-								// If we have title but no content, make it clear this is what we're discussing
-								roomContext += ". The article content is not yet available, answer based on related sources about this topic."
-							}
-							if room.URL != "" {
-								roomContext += " (Source: " + room.URL + ")"
-							}
-							ragContext = append(ragContext, roomContext)
-							app.Log("chat", "Added room context: %s", roomContext)
-						} else {
-							app.Log("chat", "No room context available - Title: '%s', Summary: '%s'", room.Title, room.Summary)
-						}
-
-						// Build conversation history from recent room messages FIRST
-						// So we can extract entities for follow-up queries
-						var history ai.History
-						var recentTopics []string // Track topics from recent messages for context
-						room.mutex.RLock()
-						app.Log("chat", "Building history from %d room messages", len(room.Messages))
-
-						var currentPrompt string
-						for _, m := range room.Messages {
-							if m.IsLLM {
-								// This is an AI response - pair it with the previous user prompt
-								if currentPrompt != "" {
-									history = append(history, ai.Message{
-										Prompt: currentPrompt,
-										Answer: m.Content,
-									})
-									currentPrompt = ""
-								}
-								// Extract key phrases from AI responses for context
-								if len(m.Content) > 50 {
-									topicLen := min(200, len(m.Content))
-									recentTopics = append(recentTopics, m.Content[:topicLen])
-								}
-							} else {
-								// User message - save for pairing with next AI response
-								currentPrompt = m.UserID + ": " + m.Content
-							}
-						}
-						room.mutex.RUnlock()
-						app.Log("chat", "Built %d history pairs, %d recentTopics", len(history), len(recentTopics))
-
-						// Check if this is a follow-up query with pronouns
-						pronouns := []string{"him", "her", "them", "they", "it", "this", "that", "he", "she"}
-						contentLower := strings.ToLower(content)
-						isFollowUp := false
-						for _, p := range pronouns {
-							if strings.Contains(contentLower, " "+p+" ") || strings.HasSuffix(contentLower, " "+p) || strings.HasPrefix(contentLower, p+" ") {
-								isFollowUp = true
-								break
-							}
-						}
-
-						// For follow-up queries, extract entities from conversation for better search
-						searchContent := content
-						if isFollowUp && len(recentTopics) > 0 {
-							var entities []string
-							lastTopic := recentTopics[len(recentTopics)-1]
-							for _, word := range strings.Fields(lastTopic) {
-								cleanWord := strings.Trim(word, ".,!?;:'\"()")
-								if len(cleanWord) > 2 && cleanWord[0] >= 'A' && cleanWord[0] <= 'Z' {
-									lower := strings.ToLower(cleanWord)
-									if lower != "the" && lower != "this" && lower != "that" && lower != "and" {
-										entities = append(entities, cleanWord)
-										if len(entities) >= 3 {
-											break
-										}
-									}
-								}
-							}
-							if len(entities) > 0 {
-								searchContent = strings.Join(entities, " ") + " " + content
-								app.Log("chat", "Follow-up: searching for '%s'", searchContent)
-							}
-						}
-
-						// Simple RAG: search and build context
-						ragEntries := data.Search(searchContent, 8)
-						for _, entry := range ragEntries {
-							contextStr := fmt.Sprintf("%s: %s", entry.Title, entry.Content)
-							if len(contextStr) > 2000 {
-								contextStr = contextStr[:2000] + "..."
-							}
-							if url, ok := entry.Metadata["url"].(string); ok && len(url) > 0 {
-								contextStr += fmt.Sprintf(" (Source: %s)", url)
-							}
-							ragContext = append(ragContext, contextStr)
-						}
-
-						// Supplement with web search if RAG is thin
-						if len(ragEntries) < 3 && ai.ShouldWebSearch(content) {
-							app.Log("chat", "[WebSearch] RAG thin, searching web for: %s", searchContent)
-							if webResults, err := ai.WebSearch(searchContent); err == nil && len(webResults) > 0 {
-								ragContext = append(ragContext, ai.FormatSearchResults(webResults)...)
-							}
-						}
-						app.Log("chat", "RAG: found %d results for '%s'", len(ragEntries), searchContent)
-
-						prompt := &ai.Prompt{
-							Topic:    room.Title,
-							Rag:      ragContext,
-							Context:  history,
-							Question: content,
-						}
-
-						resp, err := askLLM(prompt)
-						if err == nil && len(resp) > 0 {
-							client.LastMicroReply = time.Now()
-							llmMsg := RoomMessage{
-								UserID:    agentName,
-								Content:   resp,
-								Timestamp: time.Now(),
-								IsLLM:     true,
-							}
-							room.Broadcast <- llmMsg
-						}
-					}()
+					// Otherwise say what happened and let whoever answers
+					// answer. This used to be a hundred and ninety lines here:
+					// its own RAG over the index, its own decision about
+					// whether to search the web, its own history assembled
+					// from the room, and a model call, all inside a websocket
+					// goroutine.
+					//
+					// That was a hand-rolled agent inside a service. The rule
+					// it broke is the one with a reason rather than a
+					// convention behind it — a service answers a question
+					// about state, an agent decides which question to ask —
+					// and the cost of breaking it was that the agent in a room
+					// could reach two sources while the agent everywhere else
+					// in this product reaches a hundred and eighteen tools.
+					//
+					// The gate above stays here, because who is in the room
+					// and whether the agent was named are facts about the
+					// room. What is published is only what passed it. See
+					// event.ChatForAgent, and agent/chat, which subscribes.
+					room.mutex.RLock()
+					title, summary, url := room.Title, room.Summary, room.URL
+					room.mutex.RUnlock()
+					client.LastMicroReply = time.Now()
+					event.RequestChatReply(room.ID, title, summary, url, client.UserID, content)
 				}
 			}
 		}
@@ -1043,6 +936,9 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request, room *Room) {
 }
 
 func Load() {
+	// This service's own record, the way service/mail loads its mailbox.
+	LoadStore()
+
 	// load the feeds file
 	b, _ := f.ReadFile("prompts.json")
 	if err := json.Unmarshal(b, &prompts); err != nil {
@@ -1450,7 +1346,25 @@ func handleGetChat(w http.ResponseWriter, r *http.Request, roomID string) {
 	// Data rather than code: a JSON block is read, never executed, so there is
 	// no ordering to get right and nothing to leak into the next page. json
 	// escapes < as <, so a room title cannot close the tag.
-	content := fmt.Sprintf(Template, guestNotice) +
+	// What this room is about, on the page.
+	//
+	// The summary was computed by getOrCreateRoom, carried in roomData and
+	// written into the JSON block below, where nothing read it — so a room has
+	// never shown what it is for. What a reader saw instead was the agent's
+	// opening line, which is generated *from* this summary when a room has had
+	// no AI message recently, so it appears on the way in and is gone after a
+	// refresh that finds one already recorded. Two different things, one of them
+	// mistakable for the other, and the one that should have been steady was the
+	// one that was not there.
+	//
+	// Rendered server-side, above the messages, so it is the same on the first
+	// visit and the tenth.
+	about := ""
+	if sum, _ := roomData["summary"].(string); strings.TrimSpace(sum) != "" {
+		about = `<p class="room-about">` + htmlpkg.EscapeString(sum) + `</p>`
+	}
+
+	content := fmt.Sprintf(Template, guestNotice+about) +
 		`<script type="application/json" id="room-data">` + string(roomJSON) + `</script>`
 
 	app.Respond(w, r, app.Response{Title: title, Description: "Live discussion", HTML: content})

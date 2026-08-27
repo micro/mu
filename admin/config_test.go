@@ -26,9 +26,16 @@ import (
 // adminRequest is a GET to the settings page as an admin.
 func adminRequest(t *testing.T, path string) *httptest.ResponseRecorder {
 	t.Helper()
-	const id = "settings-admin"
+	const id = "settings_admin"
 	if _, err := auth.GetAccount(id); err != nil {
 		if err := auth.Create(&auth.Account{ID: id, Name: id, Admin: true}); err != nil {
+			// A username the rules refuse is a bug in this test, not a fact about
+			// the machine it runs on. Skipping on it is how eighteen tests across
+			// this repository quietly stopped running the day usernames became
+			// validated — a red suite would have said so on the first push.
+			if strings.Contains(err.Error(), "username") {
+				t.Fatalf("the test account name is not a valid username: %v", err)
+			}
 			t.Skipf("cannot create an admin here: %v", err)
 		}
 		t.Cleanup(func() { auth.DeleteAccount(id) }) //nolint:errcheck
@@ -107,9 +114,16 @@ func TestSavingDoesNotOverwriteWhatTheEnvironmentFixed(t *testing.T) {
 	req := httptest.NewRequest("POST", "/admin/config",
 		strings.NewReader("MU_DOMAIN=sneaky.example.com"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	const id = "settings-admin-post"
+	const id = "settings_admin_post"
 	if _, err := auth.GetAccount(id); err != nil {
 		if err := auth.Create(&auth.Account{ID: id, Name: id, Admin: true}); err != nil {
+			// A username the rules refuse is a bug in this test, not a fact about
+			// the machine it runs on. Skipping on it is how eighteen tests across
+			// this repository quietly stopped running the day usernames became
+			// validated — a red suite would have said so on the first push.
+			if strings.Contains(err.Error(), "username") {
+				t.Fatalf("the test account name is not a valid username: %v", err)
+			}
 			t.Skipf("cannot create an admin here: %v", err)
 		}
 		t.Cleanup(func() { auth.DeleteAccount(id) }) //nolint:errcheck

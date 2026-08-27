@@ -49,8 +49,8 @@ func TestAnOrdinaryIconIsUntouched(t *testing.T) {
 // The header is the lock that actually holds — safeIcon is the second one.
 func TestTheIconResponseIsInert(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
-	const who = "icon-probe"
-	if err := auth.Create(&auth.Account{ID: who, Name: who, Secret: "test-secret"}); err != nil {
+	const who = "icon_probe"
+	if err := auth.Create(&auth.Account{ID: who, Name: who, Secret: "test_secret"}); err != nil {
 		t.Fatal(err)
 	}
 	a, err := CreateApp(who, "Icon Probe", "", "", "",

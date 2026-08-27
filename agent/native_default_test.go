@@ -8,26 +8,6 @@ import (
 	"mu/internal/settings"
 )
 
-// TestNativeEnabledDefault: the go-micro agent is the default; only an explicit
-// falsey AGENT_NATIVE disables it.
-func TestNativeEnabledDefault(t *testing.T) {
-	defer settings.Set("AGENT_NATIVE", "")
-	settings.Set("AGENT_NATIVE", "")
-	if !nativeEnabled() {
-		t.Fatal("native agent should be enabled by default")
-	}
-	for _, off := range []string{"off", "false", "0", "no", "OFF"} {
-		settings.Set("AGENT_NATIVE", off)
-		if nativeEnabled() {
-			t.Fatalf("AGENT_NATIVE=%q should disable the native agent", off)
-		}
-	}
-	settings.Set("AGENT_NATIVE", "on")
-	if !nativeEnabled() {
-		t.Fatal("AGENT_NATIVE=on should keep it enabled")
-	}
-}
-
 func TestNativeLLM_OpenRouter(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	for _, k := range []string{"ATLAS_API_KEY", "OPENROUTER_API_KEY", "OPENROUTER_MODEL", "ANTHROPIC_API_KEY", "ANTHROPIC_MODEL"} {
@@ -49,15 +29,15 @@ func TestNativeLLM_OpenRouter(t *testing.T) {
 		t.Fatal("no cloud key: nativeLLM should be off")
 	}
 
-	settings.Set("OPENROUTER_API_KEY", "sk-or-test")
+	settings.Set("OPENROUTER_API_KEY", "sk_or_test")
 	provider, key, model, ok := nativeLLM()
-	if !ok || provider != "openrouter" || key != "sk-or-test" || model != ai.ModelOpenRouter {
+	if !ok || provider != "openrouter" || key != "sk_or_test" || model != ai.ModelOpenRouter {
 		t.Fatalf("openrouter: provider=%q key=%q model=%q ok=%v", provider, key, model, ok)
 	}
 
-	settings.Set("ATLAS_API_KEY", "atlas-test")
+	settings.Set("ATLAS_API_KEY", "atlas_test")
 	provider, key, model, ok = nativeLLM()
-	if !ok || provider != "atlascloud" || key != "atlas-test" || model != ai.ModelDeepSeekPro {
+	if !ok || provider != "atlascloud" || key != "atlas_test" || model != ai.ModelDeepSeekPro {
 		t.Fatalf("atlas still wins: provider=%q key=%q model=%q ok=%v", provider, key, model, ok)
 	}
 }

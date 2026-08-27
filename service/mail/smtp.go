@@ -636,37 +636,25 @@ func (s *Session) Data(r io.Reader) error {
 			toAcc = AccountForVerifiedEmail(fromAddr.Address)
 			if toAcc == nil {
 				// Somebody nobody here has heard of, writing to the address the
-				// front page advertises.
+				// front page advertises. Dropped, silently, so a probe cannot
+				// learn the address is live.
 				//
-				// This was dropped — silently, so a probe could not learn the
-				// address was live. Good reasoning, bad outcome: the landing
-				// page says "write to it and it answers", and for everybody
-				// without an account it did not. The first thing anybody does
-				// with an agent that has an address is write to it, and the
-				// answer was nothing.
+				// They used to get an account: unclaimed, no password, holding
+				// the conversation with a small allowance of turns until they
+				// signed up and claimed it. It read well — the landing said
+				// "write to it and it answers" — and it was a free front door
+				// with no way to say what was behind it. An allowance per
+				// sender address is unbounded in aggregate, so it needed a
+				// second instance-wide ceiling to be a budget rather than an
+				// open tab, and between them two settings configured a give-away
+				// nobody had decided the size or the purpose of.
 				//
-				// They get an account instead — unclaimed, no password, holding
-				// the conversation until they sign up and claim it. See
-				// auth.Unclaimed.
-				//
-				// Only if the mail authenticated. Without SPF or DKIM the
-				// sender address is whatever the sending machine typed, and an
-				// allowance per address becomes an open model-call endpoint
-				// costing an operator money per request. Still silent when it
-				// fails, for the original reason.
-				if !dkimPass && !s.spfPass {
-					app.Log("mail", "Shared agent mail from unauthenticated sender %s: dropped",
-						fromAddr.Address)
-					continue
-				}
-				var err error
-				if toAcc, err = auth.Unclaimed(fromAddr.Address); err != nil || toAcc == nil {
-					app.Log("mail", "Shared agent mail from %s: could not open an account: %v",
-						fromAddr.Address, err)
-					continue
-				}
-				app.Log("mail", "Shared agent mail from new sender %s: opened unclaimed account %s",
-					fromAddr.Address, toAcc.ID)
+				// The product is simpler than that: the agent is free and the
+				// tools are paid, and both start with an account. So a stranger
+				// signs up, which takes less than writing the email did.
+				app.Log("mail", "Shared agent mail from %s, who has no account: dropped",
+					fromAddr.Address)
+				continue
 			} else {
 				app.Log("mail", "Shared agent mail from %s resolved to account %s", fromAddr.Address, toAcc.ID)
 			}
@@ -1078,7 +1066,7 @@ func StartSMTPServer(addr string) error {
 // MAIL_PORT=off is the way to run the web server with no MTA — see
 // app.ListenAddr, and StartIMAPServerIfEnabled, which is the same shape.
 func StartSMTPServerIfEnabled() bool {
-	addr, on := app.ListenAddr("MAIL_PORT", ":2525") // 2525 for local testing
+	addr, on := app.ListenAddr("MAIL_PORT", app.MailPort)
 	if !on {
 		return false
 	}

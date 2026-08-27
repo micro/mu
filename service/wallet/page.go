@@ -18,29 +18,25 @@ package wallet
 import (
 	"fmt"
 	"html"
-	"net/http"
 
 	"mu/internal/app"
-	"mu/internal/auth"
 	"mu/internal/x402"
 )
 
-// Handler serves /wallet.
-func Handler(w http.ResponseWriter, r *http.Request) {
-	sess, _ := auth.TrySession(r)
-	if sess == nil {
-		body := `<div class="card">` +
-			`<p>A key of your own on Base: an address that holds USDC, and an agent that can ` +
-			`spend it on priced endpoints anywhere — no account with those servers, no card ` +
-			`on file, no key to rotate.</p>` +
-			`<p class="text-sm text-muted">Credits for this instance are separate and are bought ` +
-			`with a card — see <a href="/account">your account</a>.</p>` +
-			`<p><a href="/login" class="btn">Sign in</a> <a href="/signup" class="btn btn-secondary">Sign up</a></p></div>` +
-			toolsCard()
-		app.Respond(w, r, app.Response{Title: "Wallet", Description: "A key of your own on Base", HTML: body})
-		return
-	}
-	app.Respond(w, r, app.Response{Title: "Wallet", Description: "A key of your own on Base", HTML: Page(sess.Account)})
+// SignedOut is the card for somebody who is not signed in.
+//
+// Exported because account/ draws this page. The route belongs to whoever
+// composes it, and what is composed is the ledger plus this — so the ledger's
+// package owns it. A hook pointing the other way (wallet.Money, filled by the
+// server) was tried first and TestTheRulesAlreadyEnforcedAreNotWalkedAround
+// refused it: a fourth service reaching up into the account, which is the
+// import TestNoServiceImportsTheAccount forbids, wearing a function variable.
+func SignedOut() string {
+	return `<div class="card">` +
+		`<p>What you have here, and a key of your own on Base: an address that holds ` +
+		`USDC, and an agent that can spend it on priced endpoints anywhere — no account ` +
+		`with those servers, no card on file, no key to rotate.</p>` +
+		`<p><a href="/login" class="btn">Sign in</a> <a href="/signup" class="btn btn-secondary">Sign up</a></p></div>`
 }
 
 // Page renders the signed-in wallet.
@@ -74,11 +70,20 @@ func Page(accountID string) string {
 	payURI := fmt.Sprintf("ethereum:%s@%d/transfer?address=%s", baseUSDC, chainID, bw.Address)
 	net := html.EscapeString(chainName())
 
-	// No heading: app.Respond already titles the page "Wallet", and the card
-	// repeating it printed the word twice down the left of the screen.
+	// Headed again, and it has to be. This card had none, because it was the
+	// only one on a page app.Respond already titles "Wallet" and repeating the
+	// word printed it twice down the left of the screen. It is now the fourth
+	// card on that page and the second number on it that is a balance — the
+	// first is credits, which the instance owes you, and this is USDC on a
+	// chain, which it does not. Unlabelled, the two read as one figure
+	// disagreeing with itself.
+	//
+	// "Crypto" rather than a more precise name for what it is. The precise
+	// names — on-chain key, secp256k1 keypair, Base address — all describe the
+	// mechanism, and the reader deciding whether this card is for them is
+	// answering a different question: is this the crypto bit. It is.
 	return fmt.Sprintf(`<div class="card">
-  <p class="text-sm text-muted">A key of your own. Your agent can spend it on priced
-  endpoints anywhere, capped per call and per day.</p>
+  <h4>Crypto</h4>
   <p class="text-28 mt-2 mb-3"><b>$%s</b> <span class="text-muted text-base">USDC</span>%s</p>
   <p class="cw-net"><b>%s only.</b> USDC sent on Ethereum, Arbitrum or any other
   chain lands at this same address on that chain, where this instance cannot see it
@@ -90,23 +95,11 @@ func Page(accountID string) string {
     <p class="cw-qrnote">Scans as <b>USDC on %s</b> — your wallet should already
     have the network and token filled in. If it offers a different network, stop.</p>
   </details>
+%s
   <p class="text-sm text-muted mt-3 m-0"><a href="/wallet/export">Export your
   private key →</a> The key is held on this instance; a copy you hold yourself is the only
   thing that makes losing it here survivable.</p>
-  <p class="text-sm text-muted mt-half m-0">Credits for this instance are a
-  separate thing and are bought with a card — <a href="/billing">your balance</a>.</p>
 </div>
-%s
-<style>
-.cw-addr{display:block;width:100%%;text-align:left;font-family:ui-monospace,Menlo,monospace;font-size:13px;word-break:break-all;background:#f5f5f5;padding:11px;border:1px solid #e2e2e2;border-radius:6px;color:#222;cursor:pointer}
-.cw-addr:hover{background:var(--hover-background,#f5f5f5);border-color:var(--border-color,#ddd)}
-.cw-copied{font-size:12px;color:#1a7f37;margin-top:6px}
-.cw-net{font-size:13px;color:#8a5a00;background:#fff8e6;border:1px solid #f0dfae;border-radius:6px;padding:9px 11px;margin:0 0 10px}
-.cw-qrnote{font-size:12px;color:#666;margin:8px 0 0;max-width:260px}
-.cw-qrwrap{margin-top:10px;font-size:13px;color:#666}
-.cw-qrwrap summary{cursor:pointer}
-.cw-qr{margin-top:8px}.cw-qr img{width:180px;height:180px;image-rendering:pixelated}
-</style>
 <script src="/qrcode.js"></script>
 <script>
 (function(){var q=document.getElementById('cw-qr');if(!q||!window.qrcode)return;
@@ -122,20 +115,34 @@ function cwFallback(a,done){var t=document.createElement('textarea');t.value=a;t
 </script>`,
 		html.EscapeString(human), unreadable, net,
 		html.EscapeString(bw.Address), html.EscapeString(bw.Address),
-		html.EscapeString(payURI), net, toolsCard())
+		html.EscapeString(payURI), net, convertForm())
 }
 
-// toolsCard says what an agent holding this wallet can do with it, because that
-// is the reason for the service and it is not visible from an address.
-func toolsCard() string {
-	return `<div class="card"><h3>What an agent can do with it</h3>
-<p class="text-sm text-muted"><code>wallet_address</code> — where to send funds.
-<code>wallet_balance</code> — what it holds.
-<code>wallet_list</code> — which priced servers it may pay.
-<code>wallet_pay</code> — call a tool on one of them and pay for it.</p>
-<p class="text-sm text-muted">Payments are capped per call and per day, so a server
-cannot name any price it likes to an agent that has read something misleading.
-The key is held on this instance, which is what makes it work out of the box and
-also means an operator who can read the disk can spend it — hold what you are
-willing to have on a server.</p></div>`
+// convertForm turns what the wallet holds into credits on this instance.
+//
+// The missing half of the card. It offered an address to send USDC to and
+// nothing that could spend what arrived — every path out was outbound, the CLI
+// paying somebody else's priced endpoint — so money sent here bought nothing
+// here.
+//
+// A hundred credits to the dollar and no rate quoted, because there is not one:
+// a credit is a cent and USDC is dollars. That is what the switch off pence was
+// for, and it is why this form can say the number and stop.
+//
+// Absent when the instance takes no USDC. A form that can only fail is worse
+// than no form — it reads as broken rather than as unconfigured.
+func convertForm() string {
+	if !x402.Enabled() {
+		return ""
+	}
+	return `<form class="cw-convert" method="POST" action="/wallet/convert">
+  <label for="cw-amount">Turn into credits</label>
+  <div class="cw-convert-row">
+    <span class="cw-convert-unit">$</span>
+    <input id="cw-amount" class="field" type="number" name="amount" min="1" step="1" placeholder="5" required>
+    <button class="btn" type="submit">Convert</button>
+  </div>
+  <p class="cw-convert-note">Moves USDC from this address to the instance and adds it to your
+  balance. $1 is 100 credits.</p>
+</form>`
 }

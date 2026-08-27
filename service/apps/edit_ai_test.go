@@ -22,7 +22,7 @@ func withApp(t *testing.T, a *App) func() {
 
 func sampleApp() *App {
 	return &App{
-		ID:       "id-1",
+		ID:       "id_1",
 		Slug:     "expenses",
 		Name:     "Expenses",
 		AuthorID: "alice",

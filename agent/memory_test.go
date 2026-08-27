@@ -65,7 +65,7 @@ func TestWhereAFactGoesIsDecidedByWhoWasAsked(t *testing.T) {
 // the property the whole design rests on and it is enforced by notes, so it is
 // worth a test that would catch the prefix convention drifting.
 func TestASpecialistSeesItsOwnAndTheShared(t *testing.T) {
-	const who = "memory-scope-reader"
+	const who = "memory_scope_reader"
 	notes.Add(who, "location", "London")               // everybody's
 	notes.Add(who, "weather:forecast", "the 5am one")  // the weather agent's
 	notes.Add(who, "markets:holdings", "mostly gilts") // somebody else's

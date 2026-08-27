@@ -368,9 +368,18 @@ type IndexWork struct {
 }
 
 var (
-	// UseSQLite enables SQLite backend instead of in-memory maps
-	// Set via MU_USE_SQLITE=1 environment variable
-	UseSQLite = os.Getenv("MU_USE_SQLITE") == "1"
+	// UseSQLite is where the search index lives.
+	//
+	// SQLite with FTS5 by default. The alternative is a map read end to end on
+	// every query with strings.Contains, which is correct and gets slower with
+	// everything anybody stores — and it was the default because nobody went
+	// back to change it, not because it was chosen.
+	//
+	// Switching is safe: this decides where the *search index* lives and
+	// nothing else. Load migrates index.json into index_entries once, guarded
+	// on the table being empty, so an instance that has been running keeps
+	// everything it had indexed. MU_USE_SQLITE=0 goes back.
+	UseSQLite = os.Getenv("MU_USE_SQLITE") != "0"
 
 	indexMutex          sync.RWMutex
 	index               = make(map[string]*IndexEntry)
@@ -499,7 +508,6 @@ func StartIndexing() {
 	if !indexWorkersStarted {
 		indexWorkersStarted = true
 		numWorkers := 4
-		fmt.Printf("[data] Starting %d index workers\n", numWorkers)
 		for i := 0; i < numWorkers; i++ {
 			go indexWorker(i)
 		}
@@ -530,6 +538,29 @@ func ByID(id string) *IndexEntry {
 }
 
 // Search performs full-text search across indexed content
+// Unindex removes one entry from the search index.
+//
+// The half that was missing. Index and IndexOwned had no opposite, so anything
+// deleted stayed findable — see UnindexSQLite.
+func Unindex(id string) {
+	if id == "" {
+		return
+	}
+	if err := UnindexSQLite(id); err != nil {
+		fmt.Printf("unindex %s: %v\n", id, err)
+	}
+}
+
+// UnindexOwned removes everything an account has in the index.
+func UnindexOwned(owner string) {
+	if owner == "" {
+		return
+	}
+	if err := UnindexOwnedSQLite(owner); err != nil {
+		fmt.Printf("unindex owner %s: %v\n", owner, err)
+	}
+}
+
 func Search(query string, limit int, opts ...SearchOption) []*IndexEntry {
 	if UseSQLite {
 		results, err := SearchSQLite(query, limit, opts...)

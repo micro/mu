@@ -274,7 +274,7 @@ func FooterLinks() string {
 	// with its own row of Tools · API · Pricing — two of the three repeated from
 	// this line, a few centimetres above it. A footer is where a site keeps its
 	// destinations; a second copy of most of one is furniture.
-	return `<a href="/about">About</a> · <a href="/tools">Tools</a> · <a href="/api">API</a> · <a href="/pricing">Pricing</a> · <a href="/privacy">Privacy</a> · <a href="/status">Status</a>` + torFooterLink()
+	return `<a href="/tools">Tools</a> · <a href="/api">API</a> · <a href="/privacy">Privacy</a> · <a href="/status">Status</a>` + torFooterLink()
 }
 
 func torFooterLink() string {
@@ -385,10 +385,7 @@ var Template = `
                /services/<name> with the form to try one. So the two rows that
                went to one catalogue are one row to the noun, and the verbs are
                reached through whatever has them. /agents links to it. -->
-          <a href="/home"><img src="/home.png?` + Version + `"><span class="label">Home</span></a>
-          <a href="/inbox"><img src="/mail.png?` + Version + `"><span class="label">Inbox</span></a>
-          <a href="/agents"><img src="/agent.svg?` + Version + `"><span class="label">Agents</span></a>
-          <a href="/services"><img src="/services.svg?` + Version + `"><span class="label">Services</span></a>
+          %s
           %s
         </div>
         <div class="nav-bottom">
@@ -553,14 +550,13 @@ var Template = `
         // to miss: the reload used to close the menu as a side effect of
         // throwing the whole document away. On desktop the sidebar is not an
         // overlay and menu-open is unused, so this is a no-op there.
-        // The account menu closes with it. <details> stays open on its own —
-        // that is the whole point of it needing no JavaScript — so after a soft
-        // navigation it would still be hanging over the new page's rail, which
-        // is the same dead end this function exists for one element down.
+        //
+        // There used to be a second half: the account menu was a <details>,
+        // which stays open on its own, so after a soft navigation it would hang
+        // over the new page's rail. That menu is gone — every destination is in
+        // the rail now — and so is the line that closed it.
         function closeMenu() {
           document.body.classList.remove('menu-open');
-          var me = document.getElementById('nav-me');
-          if (me) me.removeAttribute('open');
         }
 
         function go(url, push, restoreY) {
@@ -774,7 +770,7 @@ func Render(md []byte) []byte {
 }
 
 // RenderTrusted converts markdown to HTML with raw HTML passed through. Only
-// for content that ships in the binary (docs, whitepaper) — never for anything
+// for content that ships in the binary (the docs) — never for anything
 // that arrived over the network.
 func RenderTrusted(md []byte) []byte {
 	return render(md, true)
@@ -984,7 +980,7 @@ func VerifyBanner(r *http.Request) string {
 	// Not on the pages that are the way out of it — the form is right there —
 	// and not on money at all.
 	//
-	// This was a list of four exact paths, so /billing/transfer was not on it,
+	// This was a list of four exact paths, so /wallet/transfer was not on it,
 	// and moving your own credit between accounts was met with "You cannot post
 	// yet. Verify your email address before posting." Nothing on that page is a
 	// post, so the banner read as a refusal of the transfer. A prefix rather
@@ -995,7 +991,7 @@ func VerifyBanner(r *http.Request) string {
 		return ""
 	case p == "/account" || strings.HasPrefix(p, "/account/"):
 		return ""
-	case p == "/billing" || strings.HasPrefix(p, "/billing/"):
+	case p == "/wallet" || strings.HasPrefix(p, "/wallet/"):
 		// The money moved out of /account and this prefix went with it. The
 		// same bug as the one above, one rename later.
 		return ""
@@ -1003,7 +999,7 @@ func VerifyBanner(r *http.Request) string {
 	action, href := "Verify →", "/account"
 	if auth.VerificationRequired == nil || !auth.VerificationRequired() {
 		// No mail on this instance, so verifying is not on offer: credit is.
-		action, href = "Top up →", "/billing/topup"
+		action, href = "Top up →", "/wallet/topup"
 	}
 	// The places named in the sentence are links, because they read as ones.
 	//
@@ -1020,7 +1016,7 @@ func VerifyBanner(r *http.Request) string {
 	said := htmlpkg.EscapeString(reason)
 	for _, l := range []struct{ phrase, href string }{
 		{"your Account", "/account"},
-		{"your Balance", "/billing"},
+		{"your Balance", "/wallet"},
 	} {
 		said = strings.ReplaceAll(said, l.phrase,
 			`your <a href="`+l.href+`" >`+strings.TrimPrefix(l.phrase, "your ")+`</a>`)
@@ -1045,6 +1041,48 @@ func VerifyBanner(r *http.Request) string {
 // Nothing changes for anybody else. It is drawn only for an admin, and /admin
 // checks the session itself regardless — this is about not showing a door that
 // is not yours, not about guarding it.
+// navMain is the menu: every destination, in one flat list.
+//
+// It was two lists. Four links here — Home, Inbox, Agents, Services — and five
+// more behind a disclosure triangle under your own name: Account, Profile,
+// Wallet, Tokens, Admin. The split was by ownership, "what is yours" under your
+// name, which is a true distinction and the wrong one to hide behind a click.
+// Your wallet and your tokens are not less reachable than the services
+// catalogue; they were one interaction further away than a list of nineteen
+// things you do not own.
+//
+// A menu is a list of destinations and this is the list. The account's own —
+// Account, Profile, Tokens, Wallet — appear only when there is an account, and
+// Admin only for an admin, so a signed-out visitor sees the four that mean
+// anything to them.
+func navMain(acc *auth.Account) string {
+	item := func(id, href, icon, label string) string {
+		return `<a id="` + id + `" href="` + href + `"><img src="` + icon + `?` + Version +
+			`"><span class="label">` + label + `</span></a>`
+	}
+
+	b := item("nav-home", "/home", "/home.png", "Home")
+	// Account and Profile are not here. They are the two that are about *you*
+	// rather than about the instance, so they sit under your name at the foot
+	// beside Log out — which is where somebody looks when the question is "who
+	// am I signed in as and what is mine".
+	//
+	// Admin stays. It is not yours, it is the instance's, and an operator
+	// reaches for it in the middle of doing something rather than at the moment
+	// they think about their own account.
+	if acc != nil {
+		b += navAdmin(acc)
+	}
+	b += item("nav-inbox", "/inbox", "/mail.png", "Inbox")
+	b += item("nav-agents", "/agents", "/agent.svg", "Agents")
+	b += item("nav-services", "/services", "/services.svg", "Services")
+	if acc != nil {
+		b += item("nav-token", "/token", "/token.svg", "Tokens")
+		b += item("nav-wallet", "/wallet", "/wallet.png", "Wallet")
+	}
+	return b
+}
+
 func navAdmin(acc *auth.Account) string {
 	if acc == nil || !acc.Admin {
 		return ""
@@ -1133,64 +1171,31 @@ func navBottom(acc *auth.Account) string {
 		return `<a id="nav-login" href="/login"><img src="/account.png?` + Version + `"><span class="label">Login</span></a>`
 	}
 	username := htmlpkg.EscapeString(acc.ID)
-	// What is yours, in the menu with your name on it.
-	//
-	// About is gone too, and it is the clearest case of the three: the menu
-	// under your own name is what is yours, and /about is a page about us. It
-	// is in the footer, which is where a signed-out visitor finds it, and a
-	// signed-in one is past needing it.
-	//
-	// Saved, Tokens and About were cards on /account, and none of them is an
-	// account setting. /account had become the place things go when nobody
-	// decided where they belonged — the tell was two of its sections being
-	// named "Settings", on the settings page, and "About Mu", holding Privacy
-	// and Status. A name that broad absorbs anything, which is how a credential
-	// list, three piles of saved items and a marketing nav ended up filed next
-	// to the balance.
-	//
-	// They are destinations, and a menu is a list of destinations. /account goes
-	// back to being about the account: who you are, what you owe, what can reach
-	// you.
-	//
-	// Support is gone rather than moved. It was here on the reasoning that the
-	// footer is not rendered for somebody signed in, so the one link a person
-	// needs when something has gone wrong disappeared exactly when they had a
-	// balance to have something go wrong with. Sound reasoning, dead link: the
-	// support page and its mailbox were removed and this went on pointing at
-	// /support, which no longer routes.
-	//
-	// Saved went the same way and left the same dead link. It pointed at /user —
-	// saved, hidden and blocked, the three controls of a feed — and that page
-	// was deleted along with the idea, because Mu puts nothing in front of you
-	// by default and so has nothing to push back. Profile takes the slot: it is
-	// what somebody was actually looking for under their own name, and until now
-	// the only way to reach your own page was to type it.
-	return `<details class="nav-me" id="nav-me">
-            <summary class="nav-me-btn">
-              <span class="nav-me-av" id="nav-me-av">` + initial(acc.ID) + `</span>
-              <span class="label" id="nav-username">@` + username + `</span>
-              <span class="nav-me-chev" aria-hidden="true"></span>
-            </summary>
-            <div class="nav-me-menu">
-              <a id="nav-account" href="/account"><img src="/account.png?` + Version + `"><span class="label">Account</span></a>
-              <a id="nav-profile" href="/@` + username + `"><img src="/account.png?` + Version + `"><span class="label">Profile</span></a>
-              <a id="nav-billing" href="/billing"><img src="/billing.svg?` + Version + `"><span class="label">Billing</span></a>
-              <a id="nav-token" href="/token"><img src="/token.svg?` + Version + `"><span class="label">Tokens</span></a>
-              ` + navAdmin(acc) + `
-              <a id="nav-logout" href="/logout"><img src="/logout.png?` + Version + `"><span class="label">Log out</span></a>
-            </div>
-          </details>
-          <a id="nav-login" href="/login" class="d-none"><img src="/account.png?` + Version + `"><span class="label">Login</span></a>`
-}
 
-// initial is the letter in the avatar: the first of the account name, upper
-// case. Escaped like anything else off an account, because an account id is
-// whatever somebody signed up with.
-func initial(id string) string {
-	for _, r := range id {
-		return htmlpkg.EscapeString(strings.ToUpper(string(r)))
-	}
-	return "?"
+	// Who you are, and the way out. Nothing else.
+	//
+	// This was a disclosure triangle holding Account, Profile, Wallet, Tokens,
+	// Admin and Log out — everything the account owns, one click behind your own
+	// name. The reasoning was that a menu under your name is what is yours, which
+	// is true and does not follow: the things in there were destinations like any
+	// other, and being yours made them more likely to be wanted, not less. They
+	// are in navMain now.
+	//
+	// Most of them are in navMain now. Two came back: Profile and Account are
+	// the ones that are about you rather than about the instance, and under
+	// your own name is where they read — "signed in as @asim" and then the two
+	// pages that are @asim's. The disclosure triangle was wrong because it hid
+	// destinations; a flat list under the name is not hiding anything.
+	//
+	// "Signed in as" answers a question a shared or long-lived browser makes
+	// real — which account is this — and it has to be beside Log out, because
+	// that is the moment somebody checks. Not a link: Profile is, directly
+	// under it.
+	return `<div class="nav-me-who">Signed in as <span id="nav-username">@` + username + `</span></div>
+          <a id="nav-profile" href="/@` + username + `"><img src="/at.svg?` + Version + `"><span class="label">Profile</span></a>
+          <a id="nav-account" href="/account"><img src="/account.png?` + Version + `"><span class="label">Account</span></a>
+          <a id="nav-logout" href="/logout"><img src="/logout.png?` + Version + `"><span class="label">Log out</span></a>
+          <a id="nav-login" href="/login" class="d-none"><img src="/account.png?` + Version + `"><span class="label">Login</span></a>`
 }
 
 func renderWithLang(title, desc, html, lang string, acc *auth.Account) string {
@@ -1371,10 +1376,17 @@ func logLine(pkg string, format string, args ...interface{}) {
 		color = colorWhite
 	}
 	timestamp := time.Now().Format("15:04:05")
-	prefix := fmt.Sprintf("%s[%s %s]%s ", color, timestamp, pkg, colorReset)
-	if !cliMode {
-		fmt.Printf(prefix+format+"\n", args...)
+	if cliMode {
+		return
 	}
+	// To the file, where there is room for it. Colour is for a terminal and a
+	// file is not one — see logfile.go for why the log moved off the screen.
+	if w := logDest(); w != os.Stdout {
+		fmt.Fprintf(w, "[%s %s] "+format+"\n", append([]interface{}{timestamp, pkg}, args...)...)
+		return
+	}
+	prefix := fmt.Sprintf("%s[%s %s]%s ", color, timestamp, pkg, colorReset)
+	fmt.Printf(prefix+format+"\n", args...)
 }
 
 // Error writes an error response: JSON if the client expects it, otherwise a
@@ -1472,6 +1484,7 @@ func renderShell(lang, title, desc, bodyAttr, body string, acc *auth.Account, pa
 	return fmt.Sprintf(Template,
 		lang, title, desc, bodyAttr,
 		headBalance(acc),
+		navMain(acc),
 		navPinned(acc),
 		navBottom(acc),
 		title, body, footerFor(acc))

@@ -80,6 +80,79 @@ const (
 	// know an agent exists.
 	WorkForAgent = "work_for_agent"
 
+	// ChatForAgent is something said in a room where an agent is expected to
+	// answer.
+	//
+	// A second topic rather than a flag, for the reason MailForAgent gives:
+	// service/chat holds the facts that decide — who is in the room, whether
+	// the agent was named, what kind of room it is — and publishes here only
+	// when the answer is yes. A subscriber cannot see a message that failed
+	// the gate.
+	//
+	// It exists because the chat service was composing the replies itself:
+	// its own RAG over the index, its own decision about whether to search the
+	// web, its own history assembled from the room, and a model call, in a
+	// websocket goroutine. That is a hand-rolled agent inside a service, and
+	// the rule it broke is the one with a reason rather than a convention
+	// behind it — a service answers a question about state, an agent decides
+	// which question to ask.
+	//
+	// The replacement is not a smaller version of the same thing. An agent
+	// woken here reaches every tool this instance has rather than the two that
+	// were wired in by hand.
+	//
+	// Data: room, title, summary, url, account, text. The room fields are what
+	// the conversation is about, which the subscriber cannot look up without
+	// importing the service back.
+	ChatForAgent = "chat_for_agent"
+
+	// SMSForAgent is a text from a number that has proved whose it is, which an
+	// agent should answer. The same shape as ChatForAgent and for the same
+	// reason: service/sms owns the number and may not call an agent, so it says
+	// what arrived and agent/sms answers.
+	//
+	// Published only for a sender the account knows — a verified number, or one
+	// this instance texted first. Never for the fallback owner, because that is
+	// the operator and every stranger who dials the number would otherwise be
+	// talking to their agent on their credits.
+	//
+	// Data: owner, from, text.
+	SMSForAgent = "sms_for_agent"
+
+	// SMSReceived is a text arriving, whoever it is from.
+	//
+	// The fact, with no gate on it, the way MailReceived is the fact and
+	// MailForAgent is the permission. SMS had only the second, so a text from a
+	// number nobody here knew was dropped with a log line: the only way it could
+	// have been recorded was the side effect of an agent answering it, and the
+	// agent is exactly what a stranger must not be able to start.
+	//
+	// Two topics rather than one with a flag, for the reason spelled out on
+	// MailForAgent — a subscriber cannot forget to check a topic it is not
+	// subscribed to.
+	//
+	// Known says whether the sender proved who they are. It is a fact about the
+	// sender rather than a permission: what a subscriber does with an arrival
+	// from a stranger is its own business, and holding it is one answer.
+	//
+	// Data: owner, from, text, known.
+	SMSReceived = "sms_received"
+
+	// ArrivalHeld is a conversation put in the record and not let in.
+	//
+	// Published by whatever recorded it, once, after the hold. A gatekeeper
+	// subscribes and decides — see agent/gate — and this is the topic rather
+	// than the channel's own because the question is identical whatever carried
+	// it: a text from an unknown number, a federated chat from an unknown JID
+	// and mail from a stranger are one question asked three times.
+	//
+	// It carries the thread rather than the message. The recorder has already
+	// opened the conversation and put the words in it, so a subscriber that was
+	// handed the text would have to find the thread again to act on it.
+	//
+	// Data: account, thread, client, from.
+	ArrivalHeld = "arrival_held"
+
 	// Activity is one thing that happened, in a line, with somewhere to
 	// go and read it: a post published, a video found, a headline broken, an
 	// image generated.
@@ -186,7 +259,28 @@ func Announce(service, text, url, account string) {
 // Nothing here knows what an agent is, which is the point: a service that
 // called one would be asking the model what its own answer should be. See
 // WorkForAgent.
-func RequestWork(account, kind, id, title, prompt, thread string) {
+// RequestChatReply says something was said in a room and an agent is expected
+// to answer it.
+//
+// Called only once the room has decided — see ChatForAgent. Nothing here knows
+// what an agent is, and nothing in the chat service needs to.
+func RequestChatReply(room, title, summary, url, account, text string) {
+	if room == "" || text == "" {
+		return
+	}
+	Publish(Event{Type: ChatForAgent, Data: map[string]interface{}{
+		"room": room,
+		// What the room is about, carried rather than looked up: a subscriber
+		// that fetched it would be importing the service it is decoupled from.
+		"title":   title,
+		"summary": summary,
+		"url":     url,
+		"account": account,
+		"text":    text,
+	}})
+}
+
+func RequestWork(account, kind, id, title, prompt, thread, agent string) {
 	if account == "" || prompt == "" {
 		return
 	}
@@ -197,6 +291,11 @@ func RequestWork(account, kind, id, title, prompt, thread string) {
 		"title":   title,
 		"prompt":  prompt,
 		"thread":  thread,
+		// Which agent, when the work was given to a particular one. An opaque
+		// name here: nothing in this package knows what an agent is, and the
+		// subscriber is what resolves it. Empty means whichever one the
+		// instance runs by default, which is every caller but the inbox today.
+		"agent": agent,
 	}})
 }
 

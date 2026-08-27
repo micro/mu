@@ -44,5 +44,23 @@ jobs:
           go-version: '1.26'
           cache: true
 
-      - name: Build
-        run: go build -o /dev/null .
+      # Every target the release cuts, not just the one this runner is.
+      #
+      # v1.5.0 has no binaries attached because this was `go build .` on
+      # linux/amd64 and the release cross-compiles four. internal/container's
+      # pty used TIOCSPTLCK and TIOCGPTN with no build constraint, so both
+      # darwin targets failed to compile — and `set -e` took the whole step
+      # down before `gh release create` ran. Everything was green on main;
+      # the first sign was a release with nothing in it, and the first person
+      # to feel it was somebody running the documented installer without Go.
+      #
+      # A tag is the worst place to learn a platform does not compile. It
+      # costs a couple of minutes here and it is the difference between a
+      # failed build and a silent hole in the install path.
+      - name: Build every release target
+        run: |
+          for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64; do
+            os="${target%/*}"; arch="${target#*/}"
+            echo "Building ${os}/${arch}"
+            CGO_ENABLED=0 GOOS="${os}" GOARCH="${arch}" go build -o /dev/null .
+          done

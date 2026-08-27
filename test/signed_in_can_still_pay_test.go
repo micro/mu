@@ -50,7 +50,11 @@ func TestTheGateAsksWhoIsPayingNotWhetherTheyExist(t *testing.T) {
 // The reason has to reach the caller, or every refusal reads as though they
 // were a stranger — which is advice a signed-in agent cannot act on.
 func TestTheChallengeCarriesTheReasonThroughToTheCaller(t *testing.T) {
-	if !strings.Contains(gateSource(t), "x402.WritePaymentRequired(w, op, resource, listing, reason)") {
+	// The reason is the last argument, whatever the ones before it are. Pinning
+	// the whole call meant this failed when the discovery listing between them
+	// was dropped, which had nothing to do with reasons reaching callers.
+	if !strings.Contains(gateSource(t), "x402.WritePaymentRequired(w, op, resource") ||
+		!strings.Contains(gateSource(t), ", reason)") {
 		t.Error("the gate no longer passes a reason to the challenge")
 	}
 }

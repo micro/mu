@@ -60,7 +60,7 @@ func Run(owner, id string) error {
 		return err
 	}
 
-	event.RequestWork(t.Owner, Kind, t.ID, t.Title, prompt(*t), t.Thread)
+	event.RequestWork(t.Owner, Kind, t.ID, t.Title, prompt(*t), t.Thread, t.Agent)
 	return nil
 }
 

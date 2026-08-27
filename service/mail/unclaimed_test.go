@@ -1,20 +1,24 @@
 package mail
 
-// The front door is open, and only to senders who are who they say they are.
+// Mail to agent@ from somebody with no account goes nowhere, silently.
 //
-// agent@ used to drop mail from anybody without an account — silently, so a
-// probe could not learn the address was live. The landing page meanwhile said
-// "write to it and it answers", which for everybody without an account was
-// false. It answers now, into an unclaimed account.
+// This used to be the opposite. agent@ opened an account for a stranger who
+// wrote in — unclaimed, holding the conversation, with an allowance of turns —
+// because the landing said "write to it and it answers" and for anybody without
+// an account that was false.
 //
-// The thing that must not slip: an address in a From header is whatever the
-// sending machine typed. "Ten free exchanges per address" keyed on an
-// unauthenticated From is an open model-call endpoint, billed to the operator,
-// and the bill is the first anybody hears of it. SPF or DKIM has to pass.
+// The reason it is gone is not the cost. A free front door is recovered from
+// somewhere, and on most platforms the somewhere is the person who walked
+// through it. Tools are sold and the agent comes with an account, so the way in
+// is signing up.
+//
+// Two properties, and the second is the older one: nothing opens an account off
+// the back of an inbound message, and a sender who is turned away is not told
+// they were, because a bounce confirms the address is live to whoever is
+// probing it.
 //
 // Read from the source rather than driven through an SMTP session, because what
-// is being held is the shape of the gate — no unauthenticated sender reaches
-// auth.Unclaimed — and that is a property of the code.
+// is held is the shape of the gate and that is a property of the code.
 
 import (
 	"os"
@@ -22,50 +26,26 @@ import (
 	"testing"
 )
 
-func TestNoUnauthenticatedSenderGetsAnAccount(t *testing.T) {
-	b, err := os.ReadFile("smtp.go")
-	if err != nil {
-		t.Fatal(err)
-	}
-	src := string(b)
+func TestNoInboundMailOpensAnAccount(t *testing.T) {
+	src := smtpSource(t)
 
-	i := strings.Index(src, "auth.Unclaimed(")
-	if i < 0 {
-		t.Fatal("nothing opens an account for a new sender any more; this test needs repointing")
-	}
-
-	// The authentication check has to come before it, in the same branch. Both
-	// signals are already computed on this path — dkimPass at the top of the
-	// message, s.spfPass at MAIL FROM — and combined for the wake request as
-	// `dkimPass || s.spfPass`.
-	before := src[:i]
-	guard := strings.LastIndex(before, "!dkimPass && !s.spfPass")
-	if guard < 0 {
-		t.Fatal("an account is opened for a new sender with no check that the mail " +
-			"authenticated. The From header is whatever the sending machine typed, " +
-			"so this is free model calls for anybody who can forge one")
-	}
-	// And it has to bail rather than log and carry on.
-	between := before[guard:]
-	if !strings.Contains(between, "continue") {
-		t.Error("the authentication check does not stop the message — it falls " +
-			"through to opening an account anyway")
+	if strings.Contains(src, "auth.Unclaimed(") {
+		t.Error("inbound mail opens an account for a sender who has none — that is " +
+			"a free front door, billed to the operator, for anybody who can send " +
+			"an email")
 	}
 }
 
-// And it is still silent about it, which is why the drop was there in the first
-// place: a bounce tells whoever is probing that the address is live.
+// And the sender is not told. The drop has to be a log line and a continue,
+// with nothing that would put a message back on the wire.
 func TestARejectedSenderIsNotToldWhy(t *testing.T) {
-	b, err := os.ReadFile("smtp.go")
-	if err != nil {
-		t.Fatal(err)
-	}
-	src := string(b)
-	i := strings.Index(src, "unauthenticated sender")
+	src := smtpSource(t)
+
+	i := strings.Index(src, "who has no account")
 	if i < 0 {
-		t.Fatal("the unauthenticated branch has moved; this test needs repointing")
+		t.Fatal("the branch that turns away a sender with no account has moved; " +
+			"this test needs repointing")
 	}
-	// The next thing that happens is a log line and a continue, not a reply.
 	window := src[i:min(i+400, len(src))]
 	for _, leak := range []string{"SendOut(", "deliver(", "SendExternalEmail("} {
 		if strings.Contains(window, leak) {
@@ -73,4 +53,13 @@ func TestARejectedSenderIsNotToldWhy(t *testing.T) {
 				"address is live to whoever is probing it", leak)
 		}
 	}
+}
+
+func smtpSource(t *testing.T) string {
+	t.Helper()
+	b, err := os.ReadFile("smtp.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
 }

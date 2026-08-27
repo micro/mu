@@ -31,7 +31,6 @@ package wallet
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"mu/internal/app"
 	"mu/internal/service"
@@ -118,79 +117,21 @@ func (Server) Balance(ctx context.Context, _ *BalanceRequest, rsp *BalanceRespon
 	return nil
 }
 
-// ── List ────────────────────────────────────────────────────────
-
-type ListRequest struct{}
-
-type ListResponse struct {
-	Servers []Server402 `json:"servers" description:"The servers this wallet may pay"`
-	Text    string      `json:"text" description:"The servers, one per line"`
-}
-
-// List returns the priced servers this wallet is allowed to pay.
+// No List, and no Pay.
 //
-// Named List because it returns the current set of something, which is this
-// repository's rule for such a method. It is deliberately a closed list: an
-// agent that could pay any URL it read in a document is an agent whose wallet
-// belongs to whoever writes the documents.
-// @example {}
-func (Server) List(_ context.Context, _ *ListRequest, rsp *ListResponse) error {
-	rsp.Servers = Servers()
-	var b strings.Builder
-	for _, s := range rsp.Servers {
-		fmt.Fprintf(&b, "%s — %s\n", s.Name, s.URL)
-	}
-	rsp.Text = strings.TrimRight(b.String(), "\n")
-	if rsp.Text == "" {
-		rsp.Text = "No servers configured. Set X402_SERVERS to name=url pairs."
-	}
-	return nil
-}
-
-// ── Pay ─────────────────────────────────────────────────────────
-
-type PayRequest struct {
-	Server string         `json:"server" description:"Which server to call, by the name wallet_list gives. Defaults to this instance"`
-	Tool   string         `json:"tool" required:"true" description:"The tool to call on that server, e.g. web_search"`
-	Args   map[string]any `json:"args" description:"Arguments for that tool"`
-}
-
-type PayResponse struct {
-	Text string `json:"text" description:"What the tool answered"`
-}
-
-// Pay calls a tool on a priced server, paying from the caller's wallet if it asks.
+// Pay called a tool on another server and settled the 402 if one came back,
+// with List naming the servers it was allowed to call. Both are gone, and the
+// name is why: wallet_pay reads as paying somebody, and what it did was make a
+// tool call. Nobody reaches for a wallet endpoint to invoke a tool — they call
+// the tool.
 //
-// The whole point of a wallet an agent holds. If the server answers 200 nothing
-// is spent; if it answers 402 the challenge is checked against the spend caps
-// before anything is signed, and only then paid and retried once.
-// @example {"server": "self", "tool": "web_search", "args": {"query": "x402"}}
-func (Server) Pay(ctx context.Context, req *PayRequest, rsp *PayResponse) error {
-	id, err := caller(ctx)
-	if err != nil {
-		return err
-	}
-	if strings.TrimSpace(req.Tool) == "" {
-		return fmt.Errorf("name a tool to call")
-	}
-	base := ServerURL(req.Server)
-	if base == "" {
-		return fmt.Errorf("no server called %q — wallet_list says which are configured", req.Server)
-	}
-	bw, err := EnsureFor(id)
-	if err != nil {
-		return err
-	}
-	// The source wallet is the caller's own, never one named in the request.
-	// Every other bound on this — the per-call cap, the daily cap — is worth
-	// nothing if the agent can choose whose money to spend.
-	out, err := PayAndCallMCP(ctx, id, base, req.Tool, req.Args, bw)
-	if err != nil {
-		return err
-	}
-	rsp.Text = out
-	return nil
-}
+// And it is not the wallet that pays. A priced endpoint answers 402 and the
+// client decides whether to settle it; the wallet holds the key and signs when
+// asked. That is a runtime behaviour on a response code, not a capability a
+// model picks off a list, and internal/cli already does it that way — see
+// PayAndCallMCP, which stays because the CLI agent calls it on a 402.
+//
+// What is left is what a wallet is: an address, and what it holds.
 
 // Load registers the service.
 func Load() {
@@ -200,12 +141,11 @@ func Load() {
 }
 
 var Spec = service.Spec{
-	Name:    "wallet",
-	Icon:    "wallet.png",
-	Handler: new(Server),
-	Description: "A key of your own on Base: an address to hold USDC, what it holds, " +
-		"and paying for a tool on another server with it",
-	Page: "/wallet",
+	Name:        "wallet",
+	Icon:        "wallet.png",
+	Handler:     new(Server),
+	Description: "Manage your credits and your crypto: what you have, what you have spent, and an address of your own on Base",
+	Page:        "/wallet",
 	// Every method here reads or spends somebody's key. There is no public half.
 	Scoped: true,
 	Endpoints: map[string]service.Endpoint{
@@ -218,17 +158,6 @@ var Spec = service.Spec{
 			Needs: service.Account,
 			Doc: "What your wallet holds in USDC on Base. Says so plainly when the chain " +
 				"could not be reached, because that is not the same as holding nothing",
-		},
-		"List": {
-			Needs: service.Account,
-			Doc: "Which priced servers this wallet is allowed to pay, by name. " +
-				"Pass one of these names to wallet_pay",
-		},
-		"Pay": {Writes: true,
-			Needs: service.Account,
-			Doc: "Call a tool on one of those servers and pay for it from your wallet if it " +
-				"asks. Nothing is spent when the tool is free. Every payment is capped per " +
-				"call and per day, so a server cannot name any price it likes",
 		},
 	},
 }

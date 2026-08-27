@@ -23,8 +23,13 @@ func caller(ctx context.Context) (string, error) {
 // ── Send ────────────────────────────────────────────────────────
 
 type SendRequest struct {
-	To   string `json:"to" required:"true" description:"The number to text, in international format, e.g. +447700900123. Use contacts_find to turn a name into one"`
-	Text string `json:"text" required:"true" description:"What to say. Charged per 160-character segment, so brevity is not only good manners"`
+	To   string `json:"to" required:"true" description:"The number to message, in international format, e.g. +447700900123. Use contacts_find to turn a name into one"`
+	Text string `json:"text" required:"true" description:"What to say. A text is charged per 160-character segment, so brevity is not only good manners"`
+	// Named rather than guessed. Answering a WhatsApp conversation with a text
+	// starts a second conversation on the other person's phone, from a number
+	// they do not recognise — so the caller says which, and the default is the
+	// one that can start a conversation with somebody who has never written in.
+	Channel string `json:"channel,omitempty" description:"How to send it: 'sms' (the default) or 'whatsapp'. WhatsApp only works with somebody who messaged this instance in the last 24 hours — reply on the channel they used"`
 }
 
 type SendResponse struct {
@@ -40,13 +45,19 @@ func (Server) Send(ctx context.Context, req *SendRequest, rsp *SendResponse) err
 	if err != nil {
 		return err
 	}
-	m, err := Send(owner, req.To, req.Text)
+	channel := Channel(strings.ToLower(strings.TrimSpace(req.Channel)))
+	if channel == "sms" {
+		// Spelled out by a caller who means the default. The zero value is the
+		// default and "sms" is what somebody types for it, so both are it.
+		channel = ChannelSMS
+	}
+	m, err := SendOn(channel, owner, req.To, req.Text)
 	if err != nil {
 		return err
 	}
 	rsp.Message = m
 	rsp.Segments = m.Segments
-	rsp.Result = "Sent to " + m.Number + "."
+	rsp.Result = "Sent to " + m.Number + " on " + channel.Label() + "."
 	return nil
 }
 
@@ -172,14 +183,17 @@ var Spec = service.Spec{
 		// AccountOnly, not merely priced. Every other paid tool can be reached
 		// by an anonymous caller who pays over x402, and that is right for a
 		// search: the money covers the cost and nobody else is affected. A text
-		// is not like that — an anonymous spammer paying ten pence a message is
+		// is not like that — an anonymous spammer paying thirteen cents a message is
 		// still a spammer, and what they spend is the number's reputation,
 		// which belongs to everybody on this instance and cannot be topped up.
 		// No Cost: a text is priced per 160-character segment, because that is
 		// how the carrier bills us, and the gateway charges a flat price once.
 		// sms does its own check and its own charge — see service/sms/send.go.
 		"Send": {Needs: service.Account, Destructive: true,
-			Doc: "Text somebody, from this instance's number. Charged per 160-character segment, capped per day, and the recipient can stop it with STOP"},
+			Doc: "Message somebody from this instance's number, by text or on WhatsApp. A text is " +
+				"charged per 160-character segment; WhatsApp is charged per 24-hour conversation and " +
+				"only reaches somebody who wrote in within the last day. Capped per day either way, " +
+				"and the recipient can stop it with STOP"},
 		"History": {Needs: service.Account, Aliases: []string{"sms_inbox"},
 			Doc: "Read the texts this account has sent and received, newest first. Both directions, which is why it is not called an inbox"},
 		"Number": {Needs: service.Account,

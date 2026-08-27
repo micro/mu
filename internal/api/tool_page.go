@@ -143,7 +143,7 @@ func toolPage(t Tool) string {
 // The prefix, because that is the rule rather than a lookup table: a tool is
 // named service_method and TestNoMethodRepeatsItsService holds it. A tool whose
 // prefix names nothing is one somebody registered by hand, which is the thing
-// CLAUDE.md says cannot happen — so nil here is a finding, not a fallback.
+// AGENTS.md says cannot happen — so nil here is a finding, not a fallback.
 func serviceBehind(tool string) *service.Spec {
 	name, _, ok := strings.Cut(tool, "_")
 	if !ok {

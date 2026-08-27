@@ -45,7 +45,7 @@ func registerResolveProbe(t *testing.T) string {
 }
 
 func TestAnAgentBuiltHereIsTheAgentThatAnswers(t *testing.T) {
-	const owner = "resolve-owner"
+	const owner = "resolve_owner"
 	const prompt = "You are a pirate. Always begin your reply with AHOY."
 
 	svc := registerResolveProbe(t)
@@ -70,7 +70,7 @@ func TestAnAgentBuiltHereIsTheAgentThatAnswers(t *testing.T) {
 // Resolution is per account. Somebody else's agent id is not yours to run, and
 // asking as one must fall back to the default rather than reaching across.
 func TestAnotherAccountsAgentDoesNotResolve(t *testing.T) {
-	const owner, stranger = "resolve-mine", "resolve-theirs"
+	const owner, stranger = "resolve_mine", "resolve_theirs"
 	a, _, err := CreateAgent(owner, "Private", Hosted, "You are mine alone.", "", nil, false)
 	if err != nil {
 		t.Skipf("cannot create an agent in this environment: %v", err)

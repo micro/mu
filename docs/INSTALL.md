@@ -11,11 +11,16 @@ Run your own instance. One Go binary, one data directory.
 ## Quick Start
 
 ```bash
-# Clone the repository
+curl -fsSL https://raw.githubusercontent.com/micro/mu/main/install.sh | sh
+mu --serve
+```
+
+That fetches a built binary. To build it yourself instead — which is the only
+way if you want to change anything, and needs the Go version above:
+
+```bash
 git clone https://github.com/micro/mu.git
 cd mu
-
-# Build and run the server
 go build -o mu .
 ./mu --serve
 ```
@@ -70,6 +75,16 @@ Create `/etc/systemd/system/mu.service`:
 [Unit]
 Description=Mu Personal AI Platform
 After=network.target
+# Docker, if this instance offers a shell or lets apps run commands. Wants
+# rather than Requires: a machine with no Docker should still serve everything
+# else, and Requires would refuse to start at all.
+#
+# The ordering is the part that matters. Without it, mu can win the race on a
+# reboot, find no runtime, and — before the probe learned to retry — go on
+# saying so for as long as the process lived, on a machine where docker ps
+# worked fine.
+Wants=docker.service
+After=docker.service
 
 [Service]
 Type=simple
@@ -90,6 +105,39 @@ Then:
 sudo systemctl daemon-reload
 sudo systemctl enable mu
 sudo systemctl start mu
+```
+
+**`EnvironmentFile` is not a shell, and PATH is the line that catches people.**
+systemd reads that file as plain `KEY=value` pairs. There is no `export`, no
+`$VAR` expansion, no command substitution — so this:
+
+```bash
+PATH=$PATH:/usr/local/go/bin
+```
+
+does not append anything. It sets PATH to the eleven literal characters
+`$PATH` followed by `:/usr/local/go/bin`, and the service then has a PATH
+containing no real directory at all. Everything that shells out stops working
+at once: no `docker`, so no shell service and no apps that run commands.
+
+The same line written `export PATH=...` behaves completely differently, and
+not because systemd understands `export` — it cannot parse `export PATH` as a
+variable name, so it skips the line, and the service quietly keeps systemd's
+own default PATH. It works by being ignored, which is worse than failing,
+because removing the word `export` later looks like tidying.
+
+If you need a PATH, write it out in full and put it in the unit rather than
+the env file:
+
+```ini
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/go/bin
+```
+
+To see what the service actually got:
+
+```bash
+systemctl show mu -p Environment
+sudo -u mu sh -c 'command -v docker'
 ```
 
 ### Restarts without a gap
@@ -188,7 +236,51 @@ server {
 }
 ```
 
-Use [Let's Encrypt](https://letsencrypt.org/) for free SSL certificates with Certbot.
+That block is port 80 only, which is where certbot starts. Once it has a
+certificate — `sudo certbot --nginx -d your-domain.com` rewrites this file for
+you — what you want to end up with is the redirect and the TLS server:
+
+```nginx
+server {
+    listen 80;
+    server_name your-domain.com;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name your-domain.com;
+
+    ssl_certificate     /etc/letsencrypt/live/your-domain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/your-domain.com/privkey.pem;
+
+    # Apps are served from an opaque origin and some of them are large.
+    client_max_body_size 25m;
+
+    location / {
+        proxy_pass http://localhost:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # The agent answers a question with a model call behind it, and the
+        # default 60s cuts long ones off mid-sentence.
+        proxy_read_timeout 300s;
+    }
+}
+```
+
+`X-Forwarded-Proto` matters more than it looks: passkeys will not register over
+a connection the browser thinks is insecure, and it is that header the server
+reads to know it is behind TLS.
+
+Mu terminates no TLS itself. Everything else that needs it — IMAP, submission,
+XMPP for clients — goes in the `stream {}` block below, and the two federated
+ports are the exceptions that want nothing in front of them at all.
 
 ## Mail
 
@@ -323,6 +415,142 @@ The same certificate as the web server. On Debian and Ubuntu the module is a
 separate package (`apt install libnginx-mod-stream`); elsewhere nginx needs
 `--with-stream --with-stream_ssl_module`, which `nginx -V` will tell you.
 
+### XMPP goes in the same block
+
+`XMPP_PORT` is the same arrangement, one more `server` inside the same
+`stream {}`. 5223 is XMPP's implicit-TLS port — the direct-TLS one, the same
+idea as 993 and 465 — and it is what a modern client tries first.
+
+```
+XMPP_PORT=127.0.0.1:5222
+```
+
+```nginx
+    upstream mu_xmpp {
+        server 127.0.0.1:5222;
+    }
+
+    server {
+        listen 5223 ssl;
+        listen [::]:5223 ssl;
+
+        ssl_certificate     /etc/letsencrypt/live/your-domain.com/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/your-domain.com/privkey.pem;
+        ssl_protocols       TLSv1.2 TLSv1.3;
+
+        proxy_pass    mu_xmpp;
+
+        # A chat connection is idle most of the time and closing it is a
+        # reconnect and a re-auth. The server's own read deadline is 10
+        # minutes; nginx must be longer or it is the one hanging up.
+        proxy_timeout 15m;
+    }
+```
+
+There is no STARTTLS on 5222, for the same reason there is none on 143: the
+server does not advertise it, so a client told to use it there would be sending
+a token in the clear believing otherwise. Bind it to loopback and let 5223 be
+the only way in.
+
+**One DNS record makes it findable.** A client given `you@your-domain.com` has
+only the domain to go on, and looks up SRV records before it tries anything.
+Without one it guesses the domain itself on 5222, which is not where this is.
+
+```
+_xmpps-client._tcp.your-domain.com. 3600 IN SRV 5 0 5223 your-domain.com.
+```
+
+`_xmpps-client` is direct TLS (XEP-0368) — the record for 5223. **Do not also
+publish `_xmpp-client._tcp` at 5222.** That is the STARTTLS record, 5222 is
+bound to loopback, and a record pointing at a closed port is worse than no
+record: the client tries it, waits, and reports a timeout rather than telling
+anybody what is wrong.
+
+The cost is that a client too old to do direct TLS cannot connect at all. That
+is the same trade IMAP makes on 143 and it is the right way round — a client
+that cannot do TLS properly should fail to connect rather than succeed in the
+clear. Conversations, Dino, Gajim and Monal all do direct TLS.
+
+The target needs an A record, which the domain already has: it is the web
+server. And open 5223 on the firewall — see *Check it from somewhere else*
+below, which applies here unchanged.
+
+### XMPP federation does not go through nginx
+
+`XMPP_S2S_PORT` is 5269 and it faces the internet directly. Open the port on
+the firewall; there is no `server {}` block to add.
+
+The reason is the same one that makes federation deployable at all. A server
+connecting here proves which domain it is by dialback, not by its certificate:
+it hands over a key, this instance opens its own connection to the domain being
+claimed and asks whether the key is theirs, and the answer arrives over a link
+to whatever address DNS gave for that domain. So the certificate on 5269 is not
+what establishes identity — every federated server skips verifying it, and this
+one offers a self-signed certificate generated on first use. Putting nginx in
+front would terminate a TLS session whose certificate nobody checks, add a hop,
+and make every peer's source address `127.0.0.1`.
+
+**One DNS record, and it is optional.**
+
+```
+_xmpp-server._tcp.your-domain.com. 3600 IN SRV 5 0 5269 your-domain.com.
+```
+
+Optional because a server with no SRV record to go on falls back to the domain
+itself on 5269, and the domain already has an A record — it is the web server.
+Publish it anyway if the XMPP host is ever going to be somewhere other than the
+web host, which is the whole point of the indirection; it is the same record MX
+is for mail. Priority and weight do nothing with one target — the 5 and the 0
+match the client record above so the two read the same.
+
+What does matter is that `your-domain.com` — or the SRV target, if you publish
+one — resolves to this host on 5269 from the outside. That is where other
+servers connect *and* where the dialback verification call comes back to, so a
+name that resolves somewhere else fails the handshake rather than the message.
+
+To check the port from somewhere else, open a stream at it. A working listener
+answers with its own stream header naming your domain:
+
+```bash
+printf "<?xml version='1.0'?><stream:stream xmlns='jabber:server' xmlns:stream='http://etherx.jabber.org/streams' xmlns:db='jabber:server:dialback' to='your-domain.com' version='1.0'>" | nc your-domain.com 5269
+```
+
+That checks the port is open, which is not the same as federation working.
+For that, **/admin/diagnostics** has a Federation check with a link that dials
+`jabber.org` and completes a real dialback handshake — SRV lookup, outbound
+dial, and their verification call arriving back here. It needs no account and
+no recipient, because dialback does not: proving a domain is a conversation
+between two servers, and nobody has to be listening at either end of it.
+
+Outbound 5269 has to be open too, and it is the half that gets forgotten:
+dialback means this instance dials *out* to every domain that connects to it.
+Egress is usually unrestricted, but a locked-down security group that only
+allows 80 and 443 out will accept federated connections and then fail every one
+of them at verification, which reads like a broken peer rather than a firewall.
+
+### SSH does not go through nginx
+
+`SHELL_SSH_PORT` is the exception, and it is worth being explicit about because
+the instinct is to put everything behind the one proxy.
+
+SSH carries its own transport encryption and does its own host-key
+verification. There is no TLS to terminate and no virtual host to pick, so
+nginx would be a plain TCP forwarder adding a hop, a second timeout to get
+wrong, and a source address that is `127.0.0.1` for every session. Open the
+port instead:
+
+```
+SHELL_SSH_PORT=2222
+```
+
+Wrapping it in `stream { server { listen 2222 ssl; ... } }` is the one thing
+that is actively wrong — that offers TLS on the front, and an SSH client does
+not speak TLS, so every connection fails at the handshake with a message about
+neither protocol.
+
+Pick a port other than 22. That one is the host's own `sshd`, and taking it by
+accident locks you out of your own machine.
+
 This is 993, implicit TLS — the port every client offers first. There is no
 STARTTLS on 143: the server does not advertise it, so a client asked to use it
 there would be sending a token in the clear believing otherwise.
@@ -431,7 +659,10 @@ metering, which is usually what you want for one you run for yourself.
 Costs are per operation and are set in code — see the cost block in
 `internal/quota/quota.go` for what is charged and why.
 
-## Federation (optional)
+## ActivityPub (optional)
+
+Separate from the XMPP federation above, and a different network: this one
+publishes blog posts to Mastodon and the rest of the fediverse.
 
 Set `MU_DOMAIN` to your public domain and blog posts federate over ActivityPub —
 remote servers resolve your users at `/.well-known/webfinger` and actor URLs
@@ -510,9 +741,10 @@ Everything is under `~/.mu/`:
 ```
 
 Back up that directory and you have backed up the instance. It is plain JSON on
-disk, so it is greppable and diffable; `MU_USE_SQLITE=1` moves just the search
-index into `~/.mu/data/index.db`, and setting `S3_*` moves stored file bytes to
-an object store (see Configuration reference below).
+disk, so it is greppable and diffable, with two exceptions: the search index is
+SQLite in `~/.mu/data/index.db` (`MU_USE_SQLITE=0` puts it back in JSON), and
+setting `S3_*` moves stored file bytes to an object store (see Configuration
+reference below).
 
 In Docker, `HOME` is `/data`, so this tree is `/data/.mu` on the mounted volume.
 
@@ -571,6 +803,8 @@ one, the agent, chat and AI summaries are off and everything else works.
 |---|---|
 | `ANTHROPIC_API_KEY` | Claude |
 | `ANTHROPIC_MODEL` | Override the default model |
+| `AI_PROVIDER` | Optional. Which provider to use when this instance has keys for more than one: `anthropic`, `atlascloud`, `openrouter` or `local`. The words `mu setup` writes — `claude`, `atlas`, `ollama` — are accepted too. Unset, the first key found wins in a fixed order (Anthropic, OpenRouter, local, Atlas), which is fine with one key and arbitrary with two: an instance with a large Atlas balance and a small Anthropic one sent everything to Anthropic because the list said so. Setting this puts the agent, chat and the background work on one provider, each using that provider's own model for the job. It does not override a **named** model — `AGENT_MODEL=deepseek-ai/…` names Atlas whatever this says, because the more specific statement wins. A provider named here with no key is ignored, and said once in the log |
+| `AGENT_MODEL` | Optional. The model the **agent** runs on — the tool-calling loop, which is every question anybody asks it. Separate from `ANTHROPIC_MODEL` because it is a different cost decision: the agent makes several model calls per question while a summary makes one. Naming a model also picks its provider, so `deepseek-ai/deepseek-v4-pro-0813` runs the agent on Atlas Cloud even on an instance with an Anthropic key, and `claude-opus-5` puts the hardest reasoning on the loop. Unset, the agent uses the same provider order as everything else: Anthropic, then Atlas, then OpenRouter |
 | `ATLAS_API_KEY` | Atlas Cloud (DeepSeek, Qwen) — also image generation |
 | `ATLAS_MODEL` | Override the Atlas model used when the caller did not name one (default `deepseek-ai/deepseek-v4-pro`) |
 | `OPENROUTER_API_KEY` | OpenRouter — one key for Claude, GPT, Gemini and the rest of their catalogue |
@@ -578,9 +812,8 @@ one, the agent, chat and AI summaries are off and everything else works.
 | `IMAGE_MODEL` | Override the image model |
 | `OPENAI_BASE_URL` · `OPENAI_API_KEY` | Any OpenAI-compatible endpoint — Ollama, vLLM, llama.cpp |
 | `OPENAI_MODEL` | Which model to ask for on that endpoint (default `gpt-4o-mini`). A local server usually names its own — `llama3.2`, `qwen2.5` — and the default will 404 there |
-| `X402_BAZAAR` | `true` to advertise your priced tools to the [x402 Bazaar](https://docs.x402.org/extensions/bazaar) index. Each 402 then carries a listing — tool name, description, arguments — and the facilitator catalogues it. Off by default: listing tells a third party this instance exists and what it sells, which is not a decision to inherit from an upgrade |
-| `AGENT_NATIVE` | `off` falls back to the hand-rolled planner |
-| `AGENT_NATIVE_STREAM` | `off` forces the streaming UI onto the planner |
+| `MU_LOG_FILE` | Where the log is written (default `~/.mu/logs/mu.log`). Startup printed 313 lines, a hundred of them the framework announcing its own in-memory transport, and the line that mattered — "no model configured" — was third from the top and gone before the scroll stopped. The log goes to a file so the screen can say the address, what is still unconfigured, and where the rest went. Everything still reaches `/admin/logs` either way |
+| `MU_LOG_STDOUT` | `true` puts the whole log back on stdout. For Docker and systemd, which capture stdout and expect the log to be there — `docker logs` and `journalctl -u mu` are how an operator reads it, and a file inside a container is not. A choice about where this instance runs rather than about what it should say, which is why it is set rather than guessed |
 
 ### Service keys
 
@@ -611,6 +844,15 @@ says so; nothing else is affected.
 | `SMS_KNOWN_ONLY` | off | Restrict sending to numbers the caller already knows — someone in their contacts, a number they verified as their own, or one that texted them first. Off, because `contacts_add` takes any number and defeats it in one call, and because it stopped an agent doing the ordinary thing. On, it is a real brake for an instance that wants one |
 | `SMS_VERIFY_INBOUND` | on | Require an arriving message to carry a valid Twilio signature. Turn it **off** if this instance authenticates with an API key, because then there is no account auth token and nothing a signature can be checked against — the cost is that anybody who knows the webhook URL can write into somebody's message history and opt numbers out |
 | `SMS_DEFAULT_COUNTRY` | — | Country code assumed for a number written without one. Unset, a number with no `+` is refused rather than guessed |
+| `TWILIO_WHATSAPP_FROM` | — | The WhatsApp sender, in E.164 (`+447700900123`). WhatsApp rides the same Twilio account and the same webhook as SMS — point Twilio's WhatsApp sender at `https://<your domain>/whatsapp/twilio` — and this is the one setting that turns it on. One number, not a list: a WhatsApp sender is registered with Meta against a business rather than routed by country, so the matching `TWILIO_FROM` needs does not apply. Unset, WhatsApp is off and nothing offers it |
+| `WHATSAPP_DAILY_LIMIT` | `20` | WhatsApp messages one account may send in a day. Higher than `SMS_DAILY_LIMIT` and priced lower because Meta bills a 24-hour conversation rather than each message. It is `limit_env` on `whatsapp_send` in `quota.json`. **Set it to `0` to stop sending on WhatsApp** without touching texts |
+
+WhatsApp has one rule SMS does not, and it is Meta's rather than ours: this
+instance may only message somebody in the 24 hours after they last wrote to it.
+Outside that window only templates approved in advance are accepted, and there
+are none here — so a message sent late is refused with the reason rather than
+handed to the provider to drop. In practice this is invisible, because replying
+to somebody who just wrote is what the window is for.
 
 Senders have to be registered before they will deliver. In the **US**, an
 unregistered long code is blocked by every major carrier: either a toll-free
@@ -775,21 +1017,22 @@ token.
 | `ALERT_ACCOUNT_CALLS_PER_HOUR` | Optional, default 1000. The same for any one account, which is the one that catches an agent in a retry loop — expensive long before it is a noticeable share of a small instance's traffic. `0` stops watching it |
 | `ALERT_DISK_PERCENT` | Optional, default 85. How full the disk holding the data directory may get. This is the one that is an outage rather than information: mail stops being accepted and the record stops being written. `0` stops watching it |
 | `ALERT_COOLDOWN_MINUTES` | Optional, default 360. How long after an alert fires before the same one may fire again. This is what makes a threshold safe to set low — crossing one costs a message, not a message every five minutes until it is fixed |
-| `SANDBOX_IMAGE` | Optional, default `alpine:3.20`. The image `/sandbox` gives each account a machine of. Small on purpose — an operator who has not thought about it does not silently get a gigabyte pulled the first time an agent tries something. Set it to what the work needs: `golang:1.26` for a Go checkout, `python:3.13-slim`, or an image of your own |
-| `SANDBOX_MEMORY` · `SANDBOX_CPUS` · `SANDBOX_PIDS` | Optional. What one machine may have. Memory defaults to a **quarter of what the host has**, floored at `256m` and capped at `2g` — not a flat number, because a flat `2g` on a 2GB VM is the whole box: the container stays inside its own cgroup while taking every free page, and the host's OOM killer then picks the largest process, which is the Mu server. CPU defaults to `1`, or `0.5` on a single-core box, for the same reason. Processes default to `512`, against a fork bomb. Docker's own syntax, so `512m` and `0.5` are fine, and setting any of them wins over the derived value. Swap is disabled — without that a container gets swap equal to its memory for free, and the symptom is the box thrashing while the container stays inside its limit |
-| `SHUTDOWN_SECONDS` | Optional, default 10. How long in-flight requests get to finish when the server is stopping. Without `mu.socket` in front of it this is downtime — Go closes the listeners first and drains second, so nothing new can connect for the whole window and systemd will not start the replacement until this process exits. Setting it low is the workaround; holding the socket is the fix, and with the socket held a long drain costs latency rather than errors. Either way the trade is real: an agent run is a model call, so a short drain cuts somebody's answer off to save a few seconds of a deploy |
-| `SANDBOX_SHARED` | Optional, default off. `on` pools machines instead of giving one per account: a fixed set of containers all mounting one volume, with `/work/<account>` per caller and every command running as that account's own Unix user. Worth it on a small box, where one container each means the second caller evicts the first. What it gives up is real and is not files — a caller's directory is `0700` and `/work` is sticky like `/tmp`, so nobody can read, list or delete anybody else's — but the machine is shared: other people's processes are visible in `ps` with their command lines, one caller's heavy build slows everybody on that container, and the process limit contains the host rather than the neighbours. Fine on an instance with one user, not on one with strangers, which is why it is a decision rather than something that happens quietly when memory is short |
-| `SANDBOX_MAX_MACHINES` | Optional, default half the host's memory divided by what one machine takes, minimum 1. How many machines may run at once. Each holds its memory cap whether or not anybody is using it, so a box that fits two cannot host five however cheap a command is. Starting one past the cap stops the idlest machine rather than refusing the caller — the volume is untouched and their next command starts it again |
-| `SANDBOX_NETWORK` | Optional, default `bridge`. `none` gives machines no network at all. The default is on because a machine that cannot fetch a dependency or push a branch cannot do the thing this is for — what the container bounds is the host, not the internet |
-| `SANDBOX_MAX_SECONDS` | Optional, default 600. The longest one command may run, whatever it asked for. A command with no timeout of its own gets 120 |
-| `SANDBOX_SSH_PORT` | Optional, **off by default**. A port to answer SSH on, so somebody with a registered public key can open a shell in their own machine — `ssh -p 2222 you@host`. Mu is the SSH server; no `sshd` runs inside a container and no key is ever put in one, so the session lands in the same box with the same caps, memory, CPU and PID limits as a tool call. Keys only, no passwords, and the username is ignored: which key signed the handshake is what says who you are. There is no default because `22` on the host is the host's own `sshd` and taking it by accident locks you out of your own machine — pick a port and open it deliberately. A shell holds a machine open, so it is the most expensive thing a caller can do; sessions are capped at four hours. Register a key at `/sandbox` |
-| `SANDBOX_IDLE_MINUTES` | Optional, default 30. How long a machine may sit doing nothing before it is stopped. Stopping is not deleting: the `/work` volume is untouched and the next command starts it again in about a second. This is what bounds the memory of machines nobody is using, which a price on commands would not have — the cost is the idle container rather than the calls |
+| `SHELL_IMAGE` | Optional, default `alpine:3.20`. The image `/shell` gives each account a machine of. Small on purpose — an operator who has not thought about it does not silently get a gigabyte pulled the first time an agent tries something. Set it to what the work needs: `golang:1.26` for a Go checkout, `python:3.13-slim`, or an image of your own |
+| `SHELL_MEMORY` · `SHELL_CPUS` · `SHELL_PIDS` | Optional. What one machine may have. Memory defaults to a **quarter of what the host has**, floored at `256m` and capped at `2g` — not a flat number, because a flat `2g` on a 2GB VM is the whole box: the container stays inside its own cgroup while taking every free page, and the host's OOM killer then picks the largest process, which is the Mu server. CPU defaults to `1`, or `0.5` on a single-core box, for the same reason. Processes default to `512`, against a fork bomb. Docker's own syntax, so `512m` and `0.5` are fine, and setting any of them wins over the derived value. Swap is disabled — without that a container gets swap equal to its memory for free, and the symptom is the box thrashing while the container stays inside its limit |
+| `SHELL_SHARED` | Optional, default off. `on` pools machines instead of giving one per account: a fixed set of containers all mounting one volume, with `/work/<account>` per caller and every command running as that account's own Unix user. Worth it on a small box, where one container each means the second caller evicts the first. What it gives up is real and is not files — a caller's directory is `0700` and `/work` is sticky like `/tmp`, so nobody can read, list or delete anybody else's — but the machine is shared: other people's processes are visible in `ps` with their command lines, one caller's heavy build slows everybody on that container, and the process limit contains the host rather than the neighbours. Fine on an instance with one user, not on one with strangers, which is why it is a decision rather than something that happens quietly when memory is short |
+| `SHELL_MAX_MACHINES` | Optional, default half the host's memory divided by what one machine takes, minimum 1. How many machines may run at once. Each holds its memory cap whether or not anybody is using it, so a box that fits two cannot host five however cheap a command is. Starting one past the cap stops the idlest machine rather than refusing the caller — the volume is untouched and their next command starts it again |
+| `SHELL_NETWORK` | Optional, default `bridge`. `none` gives machines no network at all. The default is on because a machine that cannot fetch a dependency or push a branch cannot do the thing this is for — what the container bounds is the host, not the internet |
+| `SHELL_MAX_SECONDS` | Optional, default 600. The longest one command may run, whatever it asked for. A command with no timeout of its own gets 120 |
+| `XMPP_PORT` | **On by default at `:5222`**; set it to `off` to close the door. A port to answer XMPP on, so `asim@your.domain` is a chat address as well as a mailbox — one account, one local part, reachable two ways. Conversations, Dino, Gajim and Monal are clients for it. Sign in with your username and an access token as the password, the same credential IMAP and submission take. The agent addresses work unchanged: `agent@your.domain` and `you+research@your.domain` are valid JIDs as well as valid mail addresses, and it is the same agent at the end of them. Nothing in Mu terminates TLS, so bind it to loopback and put the proxy on 5223 — see the nginx `stream {}` section above, which is the same arrangement IMAP and submission use, plus the `_xmpps-client._tcp` SRV record a client needs to find it. Federation is on the separate `XMPP_S2S_PORT` below |
+| `XMPP_S2S_PORT` | **On by default at `:5269`**; set it to `off` to keep this instance to itself. The federated port, where other XMPP servers connect so that `asim@your.domain` can message somebody on any Prosody, ejabberd or Openfire deployment, and they can message back. Servers prove which domain they are by dialback (XEP-0220): they hand over a key and this instance opens its own connection to the domain they claim and asks whether the key is theirs, so a server that cannot receive mail at the domain it claims cannot pass. That means two things for DNS. Publish `_xmpp-server._tcp.your.domain` pointing at this host on 5269, or make sure `your.domain` itself resolves to it, because that is where other servers look and where the verification call comes back to. And unlike `XMPP_PORT` this one faces the internet directly rather than through the proxy: STARTTLS is offered with a self-signed certificate generated on first use, which is correct here because dialback and not the certificate is what proves the domain — every federated server skips certificate verification on this port for that reason. Turn it off if you want your own people on XMPP without accepting connections from every other server on the internet |
+| `SHELL_SSH_PORT` | Optional, **off by default**. A port to answer SSH on, so somebody with a registered public key can open a shell in their own machine — `ssh -p 2222 you@host`. Mu is the SSH server; no `sshd` runs inside a container and no key is ever put in one, so the session lands in the same box with the same caps, memory, CPU and PID limits as a tool call. Keys only, no passwords, and the username is ignored: which key signed the handshake is what says who you are. There is no default because `22` on the host is the host's own `sshd` and taking it by accident locks you out of your own machine — pick a port and open it deliberately. A shell holds a machine open, so it is the most expensive thing a caller can do; sessions are capped at four hours. Register a key at `/shell` |
+| `SHELL_IDLE_MINUTES` | Optional, default 30. How long a machine may sit doing nothing before it is stopped. Stopping is not deleting: the `/work` volume is untouched and the next command starts it again in about a second. This is what bounds the memory of machines nobody is using, which a price on commands would not have — the cost is the idle container rather than the calls |
 | `OS_MAPS_KEY` | Optional. Ordnance Survey Data Hub key, for `/maps` — the basemap under anything spatial. Free tier at osdatahub.os.uk. Britain only. Without it the service still serves every tile this instance has already fetched, so a lapsed key degrades to the region you have already used rather than to nothing. Tiles are free to callers; what bounds them is `TILE_FETCH_PER_HOUR` |
 | `TILE_FETCH_PER_HOUR` | Optional, default 2000. How many tiles one account may make this instance fetch from Ordnance Survey in an hour. Tiles already held are served without limit and without a session, because serving one again costs nothing — this bounds only what is spent upstream. Raise it to seed a region on purpose |
 | `X402_SERVERS` | Other MCP servers this instance may pay, as `name=url` — read by the outbound client, which no tool currently exposes |
 | `CDP_API_KEY_ID` · `CDP_API_KEY_SECRET` | Coinbase facilitator credentials |
 | `STRIPE_SECRET_KEY` · `STRIPE_PUBLISHABLE_KEY` · `STRIPE_WEBHOOK_SECRET` | Card top-ups for credits. Point the endpoint at `https://<your domain>/stripe/webhook` and subscribe it to `checkout.session.completed`. It is belt and braces rather than the only route: the return from Stripe settles a purchase too, so a webhook that is missing, misconfigured or signed with the wrong secret no longer means the card is charged and nothing happens |
-| `BASE_RPC_URL` · `TRADE_CHAIN` · `TRADE_RPC_URL` | On-chain reads |
+| `BASE_RPC_URL` | The node balances are read from. Optional: unset, it uses the public Base endpoint, which is rate-limited but on the right chain. Point it at a Base node and nothing else — an Alchemy key is per-chain, so an Ethereum endpoint here finds no USDC contract at the address, returns nothing, and reports every wallet on the instance as empty with no error at all |
 
 The webhook used to be at `/wallet/stripe/webhook`, and that path still answers
 so an instance upgrading does not lose a top-up between the deploy and the
@@ -829,8 +1072,6 @@ that same file, so this page does not repeat twenty-six rows.
 | `VIDEO_SEARCH_PER_DAY` | 80 | YouTube searches this instance may run per day, kept under the API's own quota |
 | `SIGNUP_MAX_PER_IP` · `SIGNUP_WINDOW_HOURS` | — | Signups allowed per IP, and the window |
 | `GUEST_MAX_PER_IP` · `GUEST_WINDOW_MINUTES` | 120 · 60 | Free tool calls an unauthenticated caller may make per IP. Credits price what a call costs; this is what stops a loop, since a free call is charged nothing |
-| `FREE_TURNS` | `10` | Exchanges somebody gets by email before they are asked to sign up. Writing to `agent@` from an address this instance has never seen opens an unclaimed account — no password, holding the conversation — and this is what it may spend. When it runs out the answer still goes, followed by one mail with a sign-up link that claims the account and keeps the conversation. Nothing user-facing quotes the number, so it stays yours to change |
-| `TRIAL_DAILY_TOTAL` | `500` | Free email exchanges this instance will give away in a day, across everybody. An allowance per sender is unbounded in aggregate, so this is the ceiling that makes it a budget rather than an open tab. **Set it to `0`** on an instance you run for yourself |
 | `X402_FACILITATOR_URL` | Coinbase | x402 facilitator to settle through |
 
 ### Runtime
@@ -839,7 +1080,7 @@ that same file, so this page does not repeat twenty-six rows.
 |---|---|---|
 | `MU_REGISTRY` | in-process | `mdns` puts services on the local network — note it *announces* every service this process hosts |
 | `MU_ADVERTISE` | loopback | Address to advertise when the registry is networked |
-| `MU_USE_SQLITE` | — | SQLite with FTS5 for the search index, instead of the file store |
+| `MU_USE_SQLITE` | `1` | SQLite with FTS5 for the search index. On by default — set it to `0` for the older file store, a map read end to end on every query. Switching decides where the *index* lives and nothing else; the first boot after turning it on migrates `index.json` into it once, so an instance that has been running keeps everything it had indexed |
 | `MCP_GATEWAY_ADDR` | — | Run go-micro's MCP gateway on its own port |
 | `PUBLIC_URL` · `APP_URL` | — | Public origin, when it can't be derived |
 | `TOR_ONION` | — | Onion address, shown in the footer |
@@ -847,11 +1088,48 @@ that same file, so this page does not repeat twenty-six rows.
 
 ### CLI
 
+The same binary is the client. `mu --serve` runs an instance; `mu news list`,
+`mu ask`, `mu agent` call one — and **which one is a separate question from
+whether this machine is running a server.**
+
+By default the CLI calls **https://micro.mu**, the instance this project runs.
+That is deliberate: the first thing anybody does with a command-line tool is
+run it, and "no server configured" is a worse first answer than a result. It
+does mean that if you have just installed your own instance and typed
+`mu news list`, you have called somebody else's — so point it at yours:
+
+```bash
+mu login https://your.host      # saves the address and a token, for good
+```
+
+Everything after that goes to your instance: the tool commands, `mu ask`,
+`mu agent` renting tools over x402, and `mu x402 call`.
+
+To check what is in force, and what decided it:
+
+```bash
+$ mu config get
+url=https://your.host (/home/you/.config/mu/config.json)
+token=***
+```
+
+The four sources, strongest first:
+
+| Source | Example | Scope |
+|---|---|---|
+| `--url` | `mu --url https://other.host news list` | One command. Must come *before* the tool name — `mu web fetch --url …` is the fetch tool's own argument |
+| `MU_URL` | `MU_URL=https://other.host mu news list` | One shell |
+| Config file | written by `mu login <url>` | Permanent, per user |
+| Default | `https://micro.mu` | When nothing else says |
+
 | Variable | What it does |
 |---|---|
-| `MU_TOKEN` | Personal Access Token |
-| `MU_URL` | Instance to talk to — defaults to the hosted one |
+| `MU_TOKEN` | Personal Access Token. Overrides the saved one |
+| `MU_URL` | Instance to talk to. Overrides the saved one |
 | `MU_NO_COLOR` | Disable colour output |
+
+A token belongs to the instance that issued it, so changing the address
+without changing the token gets you a 401 — `mu login <url>` does both.
 
 ### Object storage and generation policy
 
@@ -864,4 +1142,3 @@ that same file, so this page does not repeat twenty-six rows.
 | `S3_SECRET_ACCESS_KEY` | — | Secret key |
 | `S3_PREFIX` | — | Optional path inside the bucket, so one bucket can hold several instances |
 | `BACKUP_S3` | `false` | Whether backups are pushed to the bucket above |
-| `GENERATE_ADULT` | `false` | Whether this instance will generate explicit sexual content. Off by default. It has no effect on sexual content involving children, which is refused always and is not a setting — see `internal/safety` |

@@ -44,16 +44,24 @@ func TestTheFirstCategoryIsNotConfigurable(t *testing.T) {
 	}
 }
 
-func TestExplicitAdultContentIsRefusedByDefault(t *testing.T) {
-	t.Setenv("GENERATE_ADULT", "")
+// Explicit adult content is refused, and there is no way to allow it.
+//
+// This used to be "refused by default", with a second half asserting that an
+// operator setting GENERATE_ADULT=true got it — the reasoning being that a
+// self-hosted instance answering to nobody but its owner is a different
+// situation. It is not a default any more. The setting is gone, so the refusal
+// is what the code does rather than how it happens to be configured, and this
+// test says so by trying to turn it on.
+func TestExplicitAdultContentIsAlwaysRefused(t *testing.T) {
 	if _, refused := Refused("a nude woman"); !refused {
-		t.Error("explicit adult content was generated with no operator opt-in")
+		t.Error("explicit adult content was generated")
 	}
-	// And is the operator's decision, because a self-hosted instance answering
-	// to nobody but its owner is a different situation.
-	t.Setenv("GENERATE_ADULT", "true")
-	if _, refused := Refused("a nude woman"); refused {
-		t.Error("an operator who allowed it was still refused")
+	// The old switch, and every spelling of it, changes nothing.
+	for _, v := range []string{"true", "1", "yes", "on"} {
+		t.Setenv("GENERATE_ADULT", v)
+		if _, refused := Refused("a nude woman"); !refused {
+			t.Errorf("GENERATE_ADULT=%s brought the opt-in back", v)
+		}
 	}
 }
 

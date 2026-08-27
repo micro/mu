@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -12,6 +11,7 @@ import (
 	"mu/internal/app"
 
 	"mu/internal/auth"
+	"mu/internal/settings"
 
 	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/go-webauthn/webauthn/webauthn"
@@ -27,16 +27,16 @@ var (
 
 func getWebAuthn(r *http.Request) *webauthn.WebAuthn {
 	webAuthnOnce.Do(func() {
-		rpID := os.Getenv("PASSKEY_RP_ID")
+		rpID := settings.Get("PASSKEY_RP_ID")
 		if rpID == "" {
 			rpID = "localhost"
 		}
-		origin := os.Getenv("PASSKEY_ORIGIN")
+		origin := settings.Get("PASSKEY_ORIGIN")
 		if origin == "" {
 			origin = "http://localhost:8080"
 		}
 		origins := []string{origin}
-		if extra := os.Getenv("PASSKEY_EXTRA_ORIGINS"); extra != "" {
+		if extra := settings.Get("PASSKEY_EXTRA_ORIGINS"); extra != "" {
 			for _, o := range strings.Split(extra, ",") {
 				if o = strings.TrimSpace(o); o != "" {
 					origins = append(origins, o)

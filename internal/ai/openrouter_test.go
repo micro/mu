@@ -62,8 +62,8 @@ func TestConfigured_OpenRouter(t *testing.T) {
 func TestDefaultModel_OpenRouter(t *testing.T) {
 	isolateProviderEnv(t)
 
-	if got := DefaultModel(); got != "claude-sonnet-4-6" {
-		t.Fatalf("no cloud key: DefaultModel = %q, want claude-sonnet-4-6", got)
+	if got := DefaultModel(); got != "claude-sonnet-5" {
+		t.Fatalf("no cloud key: DefaultModel = %q, want claude-sonnet-5", got)
 	}
 
 	settings.Set("OPENROUTER_API_KEY", "sk-or-test")
@@ -77,8 +77,8 @@ func TestDefaultModel_OpenRouter(t *testing.T) {
 	}
 
 	settings.Set("ANTHROPIC_API_KEY", "sk-ant-test")
-	if got := DefaultModel(); got != "claude-sonnet-4-6" {
-		t.Fatalf("anthropic wins interactive: DefaultModel = %q, want claude-sonnet-4-6", got)
+	if got := DefaultModel(); got != "claude-sonnet-5" {
+		t.Fatalf("anthropic wins interactive: DefaultModel = %q, want claude-sonnet-5", got)
 	}
 }
 
@@ -109,7 +109,7 @@ func TestResolveProvider_OpenRouter(t *testing.T) {
 	// A bare Claude id still goes to OpenRouter when that is the only key —
 	// DefaultModel has already remapped, but a leftover caller must not
 	// fall through to "no provider".
-	provider, _, _, err = resolveProvider("claude-sonnet-4-6")
+	provider, _, _, err = resolveProvider("claude-sonnet-5")
 	if err != nil || provider != "openrouter" {
 		t.Fatalf("bare claude id with only OpenRouter: provider=%q err=%v", provider, err)
 	}

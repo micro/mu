@@ -79,14 +79,14 @@ func TestTheAnswerIsRecordedByTheRunNotTheStream(t *testing.T) {
 // whatever opens the conversation next, which is what "come back and it is
 // there" actually means.
 func TestAnAnswerIsThereWhenYouComeBack(t *testing.T) {
-	const who = "durable-reader"
-	th := thread.Open(who, thread.WebClient, "durable-1")
+	const who = "durable_reader"
+	th := thread.Open(who, thread.WebClient, "durable_1")
 	if th == nil {
 		t.Fatal("no conversation")
 	}
 	Said(who, th.ID, "what is the weather", "", "")
 	// The browser goes away here. The run does not.
-	Answered(who, th.ID, "Cloudy, 14°C.", "flow-1")
+	Answered(who, th.ID, "Cloudy, 14°C.", "flow_1")
 
 	msgs := thread.Messages(who, th.ID, 10)
 	if len(msgs) != 2 {
