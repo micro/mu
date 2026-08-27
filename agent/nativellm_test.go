@@ -18,7 +18,7 @@ func TestTheAgentPrefersAnthropicLikeEverythingElse(t *testing.T) {
 	t.Setenv("AGENT_MODEL", "")
 	t.Setenv("ANTHROPIC_MODEL", "")
 
-	provider, _, model, ok := nativeLLM()
+	provider, _, model, _, ok := nativeLLM()
 	if !ok {
 		t.Fatal("no provider chosen with two keys set")
 	}
@@ -37,7 +37,7 @@ func TestNamingAModelPicksItsProvider(t *testing.T) {
 	t.Setenv("ATLAS_API_KEY", "atlas_test")
 	t.Setenv("AGENT_MODEL", "deepseek-ai/deepseek-v4-pro-0813")
 
-	provider, _, model, ok := nativeLLM()
+	provider, _, model, _, ok := nativeLLM()
 	if !ok {
 		t.Fatal("no provider chosen")
 	}
@@ -57,7 +57,7 @@ func TestAtlasAloneStillRunsTheAgent(t *testing.T) {
 	settings.Set("ANTHROPIC_API_KEY", "")
 	t.Cleanup(func() { settings.Set("ANTHROPIC_API_KEY", "") })
 
-	provider, _, _, ok := nativeLLM()
+	provider, _, _, _, ok := nativeLLM()
 	if !ok {
 		t.Fatal("no provider chosen with an Atlas key")
 	}
@@ -83,7 +83,7 @@ func TestANamedModelNeverReachesAProviderThatCannotServeIt(t *testing.T) {
 	settings.Set("ATLAS_API_KEY", "")
 	t.Cleanup(func() { settings.Set("ATLAS_API_KEY", "") })
 
-	provider, _, model, ok := nativeLLM()
+	provider, _, model, _, ok := nativeLLM()
 	if !ok {
 		t.Fatal("no provider chosen at all")
 	}
@@ -95,5 +95,41 @@ func TestANamedModelNeverReachesAProviderThatCannotServeIt(t *testing.T) {
 	if provider != "anthropic" {
 		t.Errorf("provider = %q, want the default choice (anthropic) once the "+
 			"named model was ignored", provider)
+	}
+}
+
+func TestNativeAgentUsesOpenAICompatibleEndpoint(t *testing.T) {
+	for _, key := range []string{
+		"AI_PROVIDER", "ANTHROPIC_API_KEY", "ATLAS_API_KEY", "OPENROUTER_API_KEY",
+		"OPENAI_BASE_URL", "OPENAI_API_KEY", "OPENAI_MODEL", "AGENT_MODEL",
+	} {
+		previous := settings.Get(key)
+		settings.Set(key, "")
+		t.Cleanup(func() { settings.Set(key, previous) })
+		t.Setenv(key, "")
+	}
+
+	t.Setenv("AI_PROVIDER", "ollama")
+	t.Setenv("OPENAI_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai/")
+	t.Setenv("OPENAI_API_KEY", "gemini-test-key")
+	t.Setenv("OPENAI_MODEL", "gemini-2.5-flash")
+
+	provider, key, model, baseURL, ok := nativeLLM()
+	if !ok {
+		t.Fatal("no provider chosen for an OpenAI-compatible endpoint")
+	}
+	if provider != "openai" || key != "gemini-test-key" || model != "gemini-2.5-flash" {
+		t.Fatalf("provider=%q key=%q model=%q, want OpenAI-compatible configuration", provider, key, model)
+	}
+	if baseURL != "https://generativelanguage.googleapis.com/v1beta/openai/" {
+		t.Fatalf("baseURL = %q, want configured endpoint", baseURL)
+	}
+
+	a, _, built := buildNativeAgent("", "hello", QueryOpts{})
+	if !built {
+		t.Fatal("native agent was not built for an OpenAI-compatible endpoint")
+	}
+	if got := a.Options().BaseURL; got != baseURL {
+		t.Fatalf("agent BaseURL = %q, want %q", got, baseURL)
 	}
 }
