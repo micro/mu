@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"regexp"
 	"sort"
@@ -1638,6 +1639,39 @@ func Linkify(text string) string {
 	return html
 }
 
+// returnTo is where a finished post lands.
+//
+// /blog, unless the form asked for somewhere else — the compose box on a
+// profile posts here, and being dropped on /blog after writing from your own
+// page is the form taking you somewhere you did not ask to go.
+//
+// A path on this instance and nothing else. /blog is a page anybody can be
+// sent a link to, so a redirect here that will forward to an arbitrary host is
+// a phishing hop wearing this instance's name.
+//
+// # Why this is not two prefix checks
+//
+// It was: starts with "/", does not start with "//". That reads as complete
+// and is not, because the string this function sees is not the string the
+// browser follows. Browsers strip tab, newline and carriage return from a URL
+// before resolving it, so "/\t/example.test" passes both checks here and then
+// becomes "//example.test" — a host — in the client. A test found it; the
+// prefix pair had looked obviously sufficient.
+//
+// So the string is parsed as a URL rather than inspected as text, and asked
+// the question directly: no scheme, no host, and a path that starts at the
+// root. url.Parse refuses ASCII control characters outright, which closes the
+// stripping trick at the same time as the plain ones.
+func returnTo(asked string) string {
+	to := strings.TrimSpace(asked)
+	u, err := url.Parse(to)
+	if err != nil || u.Scheme != "" || u.Host != "" || u.Opaque != "" ||
+		!strings.HasPrefix(u.Path, "/") || strings.HasPrefix(to, "//") {
+		return "/blog"
+	}
+	return to
+}
+
 func handlePost(w http.ResponseWriter, r *http.Request) {
 	// Require authentication for posting
 	sess, acc, err := auth.RequireSession(r)
@@ -1758,8 +1792,7 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 	// Run async LLM-based content moderation (non-blocking)
 	event.Published("post", postID, title, content)
 
-	// Redirect back to posts page
-	http.Redirect(w, r, "/blog", http.StatusSeeOther)
+	http.Redirect(w, r, returnTo(r.FormValue("return")), http.StatusSeeOther)
 }
 
 // CommentHandler handles comment submissions

@@ -350,6 +350,10 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 		csrf = auth.CSRFToken(r)
 	}
 	status := statusBlock(acc.ID, isOwnProfile, csrf)
+	// Somewhere to write the next one, on the page the last ones are listed.
+	// Your own only, and above the rule with the rest of what is yours to set.
+	// See post.go.
+	compose := postBox(acc.ID, isOwnProfile)
 
 	// Apps section
 	appsSection := ""
@@ -388,13 +392,14 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 %s
 <p class="info mt-3">Joined %s</p>
 %s
+%s
 </div>
 
 %s
 
 <h3 class="mb-5">Posts (%d)</h3>
 %s
-</div>`, acc.ID, verifiedBadge, status, acc.Created.Format("January 2006"), messageLink, appsSection, postCount, userPosts)
+</div>`, acc.ID, verifiedBadge, status, acc.Created.Format("January 2006"), messageLink, compose, appsSection, postCount, userPosts)
 
 	// Use name as page title
 	app.Respond(w, r, app.Response{Title: acc.Name, Description: fmt.Sprintf("Profile of %s", acc.Name), HTML: content})
