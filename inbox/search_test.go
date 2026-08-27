@@ -70,3 +70,52 @@ func TestSearchingInsideAMailboxStaysInIt(t *testing.T) {
 		t.Error("a search offers no way back to the mailbox")
 	}
 }
+
+// The case that found this: a DMARC report.
+//
+// It arrives daily, its body is empty — the whole report is a zipped
+// attachment — and everything worth finding is in the subject and the sender.
+// So the record holds a message reading "(no message — attached: …)" under a
+// thread named "Report Domain: …" from noreply-dmarc-support@google.com, and a
+// search over message text alone finds none of it. Searching "dmarc" in a
+// mailbox full of DMARC reports returned other people's mail.
+func TestASearchFindsWhatIsInTheSubjectAndTheSender(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	const who = "dmarc_searcher"
+
+	// The order agent/mail/record.go uses: the conversation is named before the
+	// first message lands, because thread.Name only takes on an unnamed thread
+	// and thread.Add derives a subject from the text otherwise.
+	th := thread.Open(who, mailClient, "dmarc-chain")
+	if th == nil {
+		t.Fatal("could not open a conversation")
+	}
+	thread.Name(who, th.ID, "Report Domain: micro.mu Submitter: google.com")
+	thread.Add(thread.Message{Thread: th.ID, Account: who,
+		Text: "(no message — attached: google.com!micro.mu!1756252800.zip)"})
+	thread.Join(who, th.ID, thread.Party{
+		Kind: thread.RolePerson, Key: "noreply-dmarc-support@google.com", Name: "Google"})
+
+	// Something else, so a match cannot be "everything came back".
+	said(t, who, mailClient, "other", "", "lunch on Thursday?")
+
+	// By the sender, which is the only place the word "dmarc" appears at all.
+	body := listBody(t, "/inbox?q=dmarc", who, "")
+	if !strings.Contains(body, "Report Domain") {
+		t.Error("searching for dmarc did not find the DMARC report — the search " +
+			"reads message text only, and a report has none")
+	}
+	if strings.Contains(body, "lunch on Thursday") {
+		t.Error("the search returned mail that does not match")
+	}
+
+	// By the subject.
+	if body := listBody(t, "/inbox?q=report+domain", who, ""); !strings.Contains(body, "Report Domain") {
+		t.Error("searching for words in the subject did not find the conversation")
+	}
+
+	// By the name behind the address.
+	if body := listBody(t, "/inbox?q=google", who, ""); !strings.Contains(body, "Report Domain") {
+		t.Error("searching for who it is from did not find the conversation")
+	}
+}

@@ -24,7 +24,19 @@ type Hit struct {
 	Message
 	Client  string `json:"client"`
 	Subject string `json:"subject,omitempty"`
+	// Where says which part matched: the words, the conversation's name, or
+	// somebody on it. A caller showing results needs it — when the subject
+	// matched, quoting a message that does not contain the query looks like a
+	// bug in the search rather than an answer to it.
+	Where string `json:"where,omitempty"`
 }
+
+// What matched, for Hit.Where.
+const (
+	InText    = "text"
+	InSubject = "subject"
+	InParty   = "who"
+)
 
 // Search finds messages in an account's record, most recent first.
 //
@@ -53,16 +65,72 @@ func Search(account, query, client string, limit int) []Hit {
 		if client != "" && t.Client != client {
 			continue
 		}
+
+		said := false
 		for _, m := range messages[id] {
 			if !strings.Contains(strings.ToLower(m.Text), want) {
 				continue
 			}
-			hits = append(hits, Hit{Message: *m, Client: t.Client, Subject: t.Subject})
+			said = true
+			hits = append(hits, Hit{Message: *m, Client: t.Client,
+				Subject: t.Subject, Where: InText})
 		}
+		if said {
+			continue
+		}
+
+		// The name of the conversation, and who is on it.
+		//
+		// This searched what was said and nothing else, which is wrong for the
+		// medium most of the record arrives on: a DMARC report has an empty body
+		// and everything worth finding — the word DMARC included — is in the
+		// subject and the sender. Searching "dmarc" in a mailbox full of daily
+		// DMARC reports returned other mail. Half the mail people look for is
+		// found by who sent it or what it is called, and neither was reachable.
+		//
+		// One hit per conversation rather than one per message, because the
+		// subject is a fact about the conversation: emitting it against every
+		// message would bury every other thread that matched. The most recent
+		// message carries it so a caller has something to show and a time to
+		// sort on.
+		where := ""
+		if strings.Contains(strings.ToLower(t.Subject), want) {
+			where = InSubject
+		} else if partyMatches(t, want) {
+			where = InParty
+		}
+		if where == "" {
+			continue
+		}
+		hit := Hit{Client: t.Client, Subject: t.Subject, Where: where}
+		if msgs := messages[id]; len(msgs) > 0 {
+			hit.Message = *msgs[len(msgs)-1]
+		} else {
+			// A conversation with a subject and no messages is still a thing
+			// that matched, and sorting needs a time.
+			hit.Thread, hit.At = t.ID, t.Updated
+		}
+		hits = append(hits, hit)
 	}
 	sort.Slice(hits, func(i, j int) bool { return hits[i].At.After(hits[j].At) })
+
 	if len(hits) > limit {
 		hits = hits[:limit]
 	}
 	return hits
+}
+
+// partyMatches reports whether anybody on the conversation matches.
+//
+// Address and name both. Mail is found by either — "the one from Henrik" and
+// "the one from henrik@example.com" are the same question — and a DMARC report
+// is found only by the address, because nobody named the sender.
+func partyMatches(t *Thread, want string) bool {
+	for _, p := range t.Parties {
+		if strings.Contains(strings.ToLower(p.Key), want) ||
+			strings.Contains(strings.ToLower(p.Name), want) {
+			return true
+		}
+	}
+	return false
 }

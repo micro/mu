@@ -88,7 +88,16 @@ func found(b *strings.Builder, r *http.Request, accountID, box, q string) {
 		if box != "" && !strings.EqualFold(boxOfThread(accountID, *t), box) {
 			continue
 		}
-		out = append(out, result{t: *t, line: h.Text})
+		// Only quote the line when the line is what matched. A hit on the
+		// subject or on the sender points at a conversation whose messages need
+		// not contain the query at all, and showing one of them as though it
+		// were the match reads as a broken search — which is what a DMARC
+		// report would do, its body being "(no message — attached: …)".
+		line := ""
+		if h.Where == "" || h.Where == thread.InText {
+			line = h.Text
+		}
+		out = append(out, result{t: *t, line: line})
 	}
 
 	if len(out) == 0 {
@@ -97,8 +106,8 @@ func found(b *strings.Builder, r *http.Request, accountID, box, q string) {
 		if box != "" {
 			b.WriteString(` in <code>` + html.EscapeString(box) + `</code>`)
 		}
-		b.WriteString(`. This looks at what was said, on every channel — not at ` +
-			`who said it or what the conversation is called.</p>`)
+		b.WriteString(`. This looks at what was said, what the conversation is ` +
+			`called and who is on it, across every channel.</p>`)
 		return
 	}
 
