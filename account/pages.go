@@ -28,6 +28,7 @@ import (
 
 	"mu/internal/auth"
 	"mu/internal/push"
+	"mu/service/sms"
 )
 
 // SignupRateLimit returns true if the IP is allowed to sign up.
@@ -609,6 +610,31 @@ func Account(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// And the same three for a phone number. Handled here rather than
+		// posted at /sms so that the section behaves like every other one on
+		// this page: submit, land back here, see the result.
+		if number := strings.TrimSpace(r.Form.Get("verify_number")); number != "" {
+			if err := sms.StartVerify(acc.ID, number); err != nil {
+				app.Error(w, r, http.StatusBadRequest, err.Error())
+				return
+			}
+			http.Redirect(w, r, "/account", http.StatusSeeOther)
+			return
+		}
+		if number := strings.TrimSpace(r.Form.Get("confirm_number")); number != "" {
+			if err := sms.Confirm(acc.ID, number, r.Form.Get("code")); err != nil {
+				app.Error(w, r, http.StatusBadRequest, err.Error())
+				return
+			}
+			http.Redirect(w, r, "/account", http.StatusSeeOther)
+			return
+		}
+		if number := strings.TrimSpace(r.Form.Get("forget_number")); number != "" {
+			sms.Forget(acc.ID, number)
+			http.Redirect(w, r, "/account", http.StatusSeeOther)
+			return
+		}
+
 		// The display name, which had no way to be changed.
 		//
 		// It is set once at signup — optionally — and then shown on the profile,
@@ -782,6 +808,7 @@ func Account(w http.ResponseWriter, r *http.Request) {
 		passwordCard(acc) +
 		PlaceCard(r, acc.ID) +
 		emailCard +
+		renderPhoneCard(acc.ID) +
 		googleCard +
 		language +
 		PasskeyListHTML(acc.ID) +
@@ -837,6 +864,61 @@ func otherAddresses(acc *auth.Account) string {
 	}
 	b.WriteString(`</ul>`)
 	return b.String()
+}
+
+// renderPhoneCard is the number you have proved is yours.
+//
+// Beside Email because it is the same kind of fact — an address you claimed —
+// and because of what it now decides. A text from a verified number wakes your
+// agent; a text from any other number is filed and answered by nobody. That is
+// an account-level consequence, so the claiming belongs on the account page
+// rather than folded inside a <details> on /sms, which is where it lived and
+// where nobody looking for it would think to open.
+//
+// Absent entirely on an instance with no number to text from. A form that can
+// only fail reads as broken rather than as unconfigured — the same call the
+// wallet's convert form makes.
+func renderPhoneCard(accountID string) string {
+	if !sms.Configured() {
+		return ""
+	}
+
+	mine := sms.Numbers(accountID)
+	if len(mine) > 0 {
+		var b strings.Builder
+		for _, n := range mine {
+			b.WriteString(`<p><strong>` + htmlpkg.EscapeString(n) + `</strong> — verified ✓ ` +
+				app.Form{Action: "/account", Inline: true,
+					Hidden: map[string]string{"forget_number": n},
+					Submit: "Forget"}.HTML() + `</p>`)
+		}
+		return app.Section("Phone",
+			b.String(),
+			app.Note("A text from here reaches your agent, and it answers. "+
+				"Texts from anywhere else are filed and answered by nobody."),
+			app.Form{Action: "/account", Inline: true,
+				Fields: []app.Field{{Name: "verify_number", Type: "tel", Required: true,
+					Placeholder: "+447700900123"}},
+				Submit: "Verify another"}.HTML())
+	}
+
+	// Waiting for the code it just texted.
+	if pending, ok := sms.Pending(accountID); ok {
+		return app.Section("Phone",
+			`<p>A code was texted to <strong>`+htmlpkg.EscapeString(pending)+`</strong>.</p>`,
+			app.Form{Action: "/account", Inline: true,
+				Hidden: map[string]string{"confirm_number": pending},
+				Fields: []app.Field{{Name: "code", Required: true, Placeholder: "123456"}},
+				Submit: "Confirm"}.HTML())
+	}
+
+	return app.Section("Phone",
+		app.Note("Prove a number is yours and you can text your agent from it, "+
+			"like any other contact. It replies on the same number."),
+		app.Form{Action: "/account", Inline: true,
+			Fields: []app.Field{{Name: "verify_number", Type: "tel", Required: true,
+				Placeholder: "+447700900123"}},
+			Submit: "Send me a code"}.HTML())
 }
 
 // renderEmailCard renders the email verification card on the account
