@@ -272,6 +272,23 @@ func LimitFor(account, operation string) int {
 	return DailyLimit(operation)
 }
 
+// Exempt reports whether this account is uncapped for an operation.
+//
+// A separate question from "what is the limit", because NoLimit is the answer
+// to both and they are not the same fact. The override says NoLimit to mean
+// "this account is not capped"; DailyLimit says NoLimit to mean "quota.json
+// does not cap this operation". A caller that reads the first as the second
+// falls back to the instance default and throws the exemption away, which is
+// exactly what service/sms did — an admin on their own instance was stopped at
+// five texts by a cap written for strangers.
+func Exempt(account, operation string) bool {
+	if LimitOverride == nil || account == "" {
+		return false
+	}
+	n, ok := LimitOverride(account, operation)
+	return ok && n == NoLimit
+}
+
 // Prices is every published operation, cheapest first. The cost tables on the
 // wallet page, the signed-out wallet page, the pricing API and the public
 // pricing page all render from this one list.

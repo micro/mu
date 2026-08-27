@@ -106,12 +106,17 @@ func SendOn(channel Channel, owner, to, text string) (*Message, error) {
 	if channel == ChannelSMS && messagingService() == "" && FromFor(number) == "" {
 		return nil, fmt.Errorf("this instance has no number in that country to text %s from", number)
 	}
-	limit := LimitFor(owner)
+	limit := LimitOn(channel, owner)
 	if limit == 0 {
-		return nil, fmt.Errorf("this instance is not sending texts at the moment")
+		return nil, fmt.Errorf("this instance is not sending %s at the moment", channel.Things())
 	}
-	if n := SentToday(owner); n >= limit {
-		return nil, fmt.Errorf("that is %d texts in a day, which is the limit for this account", n)
+	// NoLimit means this account is not capped — the operator and the agent,
+	// who are not capped for the same reason they are not charged.
+	if limit != quota.NoLimit {
+		if n := SentTodayOn(channel, owner); n >= limit {
+			return nil, fmt.Errorf("that is %d %s in a day, which is this account's limit. %s",
+				n, channel.Things(), raiseIt(channel))
+		}
 	}
 
 	// Priced per segment, because that is how it is billed to us. A caller who
@@ -157,4 +162,20 @@ func SendOn(channel Channel, owner, to, text string) (*Message, error) {
 // account did not.
 func logCharge(owner string, err error) {
 	app.Log("sms", "charging %s for a sent message: %v", owner, err)
+}
+
+// raiseIt says what to do about a limit, which is the half the refusal was
+// missing.
+//
+// "That is the limit for this account" is a true sentence that leaves somebody
+// looking at a wall. An operator can change the number and had no way of
+// knowing which one; anybody else is waiting for a clock and had no idea how
+// long. Both are one sentence away from being able to act.
+func raiseIt(channel Channel) string {
+	key := "SMS_DAILY_LIMIT"
+	if channel == ChannelWhatsApp {
+		key = "WHATSAPP_DAILY_LIMIT"
+	}
+	return "The allowance is a rolling day, so the oldest one drops off in under " +
+		"24 hours. An operator raises it with " + key + " in /admin/config."
 }

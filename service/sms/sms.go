@@ -418,12 +418,38 @@ func limitSetting(key string, def int) int {
 // and takes a minute, so the cap on a fresh account is the only thing between
 // a script and twenty texts an hour — and somebody genuinely texting a friend
 // on their first day is not sending fifty.
-func LimitFor(owner string) int {
-	// What the plan allows, when there is one. A subscription raising the send
-	// caps is the third thing it sells, after credits and agents.
-	limit := quota.LimitFor(owner, quota.OpSMSSend)
+func LimitFor(owner string) int { return LimitOn(ChannelSMS, owner) }
+
+// LimitOn is how many messages this owner may send on a channel today.
+//
+// # Two bugs lived here
+//
+// NoLimit meant two different things and this read the wrong one. quota's
+// override answers NoLimit for "this account is exempt" — the operator and the
+// agent, who are not capped for the same reason they are not charged — and
+// quota.DailyLimit answers NoLimit for "quota.json does not cap this
+// operation". They are the same constant, and turning the first back into the
+// instance default silently threw the exemption away. An admin on their own
+// instance, who owns the number and pays the bill, was stopped at five texts by
+// a cap meant for strangers signing up.
+//
+// And the cap was per account rather than per channel, so a WhatsApp reply
+// counted against the SMS allowance and WHATSAPP_DAILY_LIMIT was read by
+// nothing — a documented setting that did nothing, added in the same change
+// that argued the two channels are billed differently and must be capped
+// differently.
+func LimitOn(channel Channel, owner string) int {
+	op := opFor(channel)
+
+	// Exempt is asked first and separately, because it is a different question
+	// from "what is the number" and the two answers used to collide.
+	if quota.Exempt(owner, op) {
+		return quota.NoLimit
+	}
+
+	limit := quota.DailyLimit(op)
 	if limit == quota.NoLimit {
-		limit = DailyLimit()
+		limit = defaultLimitOn(channel)
 	}
 	if limit == 0 {
 		return 0
@@ -434,6 +460,14 @@ func LimitFor(owner string) int {
 		}
 	}
 	return limit
+}
+
+// defaultLimitOn is the fallback when quota.json says nothing about a channel.
+func defaultLimitOn(channel Channel) int {
+	if channel == ChannelWhatsApp {
+		return limitSetting("WHATSAPP_DAILY_LIMIT", 20)
+	}
+	return limitSetting("SMS_DAILY_LIMIT", 20)
 }
 
 // KnownOnly reports whether sending is restricted to numbers the caller already
@@ -467,7 +501,14 @@ func Repeated(owner, number, text string) bool {
 const repeatWindow = 5 * time.Minute
 
 // SentToday counts what this owner has sent since midnight.
-func SentToday(owner string) int {
+func SentToday(owner string) int { return SentTodayOn(ChannelSMS, owner) }
+
+// SentTodayOn counts what this owner has sent on one channel in the last day.
+//
+// Per channel, because the allowances are. Counting both together meant a
+// WhatsApp reply used up a text, which is two different bills and two different
+// reputations sharing one number.
+func SentTodayOn(channel Channel, owner string) int {
 	since := time.Now().Add(-24 * time.Hour)
 	recs, err := userdb.List(ns, owner, msgs, "mine",
 		map[string]interface{}{"direction": "out"}, "", "", 500)
@@ -476,6 +517,12 @@ func SentToday(owner string) int {
 	}
 	n := 0
 	for _, r := range recs {
+		// Absent on every message written before there was more than one
+		// channel, which reads correctly as a text.
+		on, _ := r.Data["channel"].(string)
+		if Channel(on) != channel {
+			continue
+		}
 		at, _ := r.Data["at"].(string)
 		if t, err := time.Parse(time.RFC3339, at); err == nil && t.After(since) {
 			n++
