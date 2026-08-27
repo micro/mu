@@ -1062,10 +1062,16 @@ func navMain(acc *auth.Account) string {
 	}
 
 	b := item("nav-home", "/home", "/home.png", "Home")
+	// Account and Profile are not here. They are the two that are about *you*
+	// rather than about the instance, so they sit under your name at the foot
+	// beside Log out — which is where somebody looks when the question is "who
+	// am I signed in as and what is mine".
+	//
+	// Admin stays. It is not yours, it is the instance's, and an operator
+	// reaches for it in the middle of doing something rather than at the moment
+	// they think about their own account.
 	if acc != nil {
-		b += item("nav-account", "/account", "/account.png", "Account")
 		b += navAdmin(acc)
-		b += item("nav-profile", "/@"+htmlpkg.EscapeString(acc.ID), "/account.png", "Profile")
 	}
 	b += item("nav-inbox", "/inbox", "/mail.png", "Inbox")
 	b += item("nav-agents", "/agents", "/agent.svg", "Agents")
@@ -1175,11 +1181,19 @@ func navBottom(acc *auth.Account) string {
 	// other, and being yours made them more likely to be wanted, not less. They
 	// are in navMain now.
 	//
-	// What is left is the pair that is genuinely not a destination. "Signed in as"
-	// answers a question a shared or long-lived browser makes real — which
-	// account is this — and it has to be beside Log out, because that is the
-	// moment somebody checks. Not a link: your page is Profile, above.
+	// Most of them are in navMain now. Two came back: Profile and Account are
+	// the ones that are about you rather than about the instance, and under
+	// your own name is where they read — "signed in as @asim" and then the two
+	// pages that are @asim's. The disclosure triangle was wrong because it hid
+	// destinations; a flat list under the name is not hiding anything.
+	//
+	// "Signed in as" answers a question a shared or long-lived browser makes
+	// real — which account is this — and it has to be beside Log out, because
+	// that is the moment somebody checks. Not a link: Profile is, directly
+	// under it.
 	return `<div class="nav-me-who">Signed in as <span id="nav-username">@` + username + `</span></div>
+          <a id="nav-profile" href="/@` + username + `"><img src="/account.png?` + Version + `"><span class="label">Profile</span></a>
+          <a id="nav-account" href="/account"><img src="/account.png?` + Version + `"><span class="label">Account</span></a>
           <a id="nav-logout" href="/logout"><img src="/logout.png?` + Version + `"><span class="label">Log out</span></a>
           <a id="nav-login" href="/login" class="d-none"><img src="/account.png?` + Version + `"><span class="label">Login</span></a>`
 }
