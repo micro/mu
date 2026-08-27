@@ -3,65 +3,55 @@ package user
 // Writing a post from the page your posts are on.
 //
 // The profile lists what somebody has written and, on your own, gave you no
-// way to write another — the box for that lives at /blog/write, two clicks and
-// a different screen away, and lands you back on /blog when you are done. So
-// the page that is about your posts was the one place you could not make one.
+// way to write another — the box for that is behind /blog?write=true, and it
+// dropped you on /blog when you were done. So the page that is about your
+// posts was the one place you could not make one.
 //
-// This is the same form, smaller, where the list is. Subject and body, because
-// those are the two fields a post has that a status does not; tags and
-// visibility are left to the full form at /blog?write=true, still there for a
-// post worth dressing.
+// # Why this is a button and not a box
 //
-// # It posts to the blog, not to a second store
+// It was the box: subject, body, Post, sitting in the head of the page. It
+// read wrong and the reason is what the head of the page is. That block is
+// identity — the name, the tick, when they joined, what they are up to — and a
+// compose form is not identity, so it arrived as a second thing stapled on.
 //
-// /blog is the handler, with every rule it enforces — the length floor, the
-// spam checks, the moderation event. A shortcut that skipped them would be a
-// second way in with a different set of rules, which is how the rules stop
-// being rules. The only thing the shortcut adds is a return field, so the form
-// sends you back to the page you wrote from.
+// Worse, it put two text inputs one above the other that look identical and
+// are not: a 140-character status and a post with a fifty-character floor. Two
+// boxes of the same shape doing different jobs is a worse failure than a
+// missing shortcut, because the missing shortcut is at least honest about
+// where composing happens.
+//
+// So the shortcut is a link, in the same slot where somebody else's profile
+// offers Send message. One action, where an action belongs, and composing
+// stays in the one place that has the whole form — tags, visibility, the
+// counter. What it carries is the return: post from here and you come back
+// here, which was the only part of the box worth keeping.
 //
 // # Why the hook decides whether it renders
 //
 // internal/user cannot import service/blog — the layering rule, and the reason
 // posts arrive here through GetUserPosts in the first place. That hook is nil
 // on an instance built without the blog, which makes it the honest test for
-// whether /blog is there to post to: a form pointed at a route nothing serves
-// is a button that 404s.
+// whether /blog is there to post to: a button pointed at a route nothing
+// serves is a button that 404s.
 
 import (
 	"html"
-	"strconv"
+	"net/url"
 	"strings"
 )
 
-// postMinimum is the blog's own floor, repeated here so the box can say it
-// before the server refuses. See handlePost in service/blog.
-const postMinimum = 50
-
-// postBox is the compose form on your own profile, or nothing on somebody
-// else's — and nothing on an instance with no blog behind it.
+// postLink is the way to write one, on your own profile and nowhere else.
 //
-// No CSRF field: /blog does not check one, and a token the receiver ignores
-// reads as protection that is not there. If posting gains that check, the
-// field belongs on every form that posts, this one included.
-func postBox(accountID string, own bool) string {
+// Styled .pill, which is what an action looks like in this app — the Save
+// beside the status is one. It is not lcta: that pair is defined in the
+// landing pages' own <style> block and in nothing the app shell serves, so a
+// button wearing it on this page has no background, no padding and no border.
+// See writeLink, which had exactly that problem.
+func postLink(accountID string, own bool) string {
 	if !own || GetUserPosts == nil {
 		return ""
 	}
 	back := "/@" + strings.ToLower(accountID)
-	return `<form class="pf-post-form" method="post" action="/blog">` +
-		`<input type="hidden" name="return" value="` + html.EscapeString(back) + `">` +
-		// Say what the box is for before the fields, not only inside them.
-		// Two placeholders and a submit button is a form you have to work out
-		// by reading it; a line above it is the one thing that says why you
-		// would start typing at all.
-		`<p class="pf-post-lede">Write something</p>` +
-		`<input class="pf-post-title" type="text" name="title" placeholder="Subject (optional)">` +
-		`<textarea class="pf-post-body" name="content" rows="3" required ` +
-		`placeholder="Share a thought. Be mindful of God"></textarea>` +
-		`<div class="pf-post-foot">` +
-		`<span class="pf-post-hint">At least ` + strconv.Itoa(postMinimum) +
-		` characters. <a href="/blog?write=true">Tags and visibility</a></span>` +
-		`<button type="submit" class="pill">Post</button>` +
-		`</div></form>`
+	return `<p class="pf-write"><a class="pill" href="/blog?write=true&amp;return=` +
+		html.EscapeString(url.QueryEscape(back)) + `">New post</a></p>`
 }

@@ -153,6 +153,21 @@ func statusBlock(accountID string, own bool, csrf string) string {
 // is resolved on the way out, inside the send, where the sender never sees it.
 // A stranger cannot turn the page into a mailing list, and writing still takes
 // one click.
+//
+// # It was not a button
+//
+// The class was "lcta lcta-second", which is the landing page's call to action
+// — and lcta is defined in the landing shell's own <style> block, in nothing
+// mu.css serves. The profile renders through the app shell, so the one action
+// on somebody's page arrived with no background, no padding, no border and,
+// courtesy of the global rule for links, no underline either. Plain black
+// text with nothing to say it could be clicked.
+//
+// Measured rather than read: getComputedStyle in a browser on a live page
+// returned background rgba(0,0,0,0) and padding 0px. A class name that only
+// resolves on some pages is invisible to everything except looking.
+//
+// .pill is the app's own, and the Save beside the status already wears it.
 func writeLink(accountID string) string {
 	// Mail has to be able to leave here at all. addressOf answers that by
 	// producing the address, which is not shown — asking the question is the
@@ -160,6 +175,6 @@ func writeLink(accountID string) string {
 	if addressOf(accountID) == "" {
 		return ""
 	}
-	return `<p class="pf-write"><a class="lcta lcta-second" href="/inbox/new?to=` +
+	return `<p class="pf-write"><a class="pill" href="/inbox/new?to=` +
 		html.EscapeString(url.QueryEscape("@"+accountID)) + `">Send message</a></p>`
 }

@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	stdhtml "html"
 	"net/http"
 	"net/url"
 	"os"
@@ -786,10 +787,23 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 
 	var content string
 	if showWriteForm {
+		// Where to go when it is written. The profile sends people here with
+		// ?return=/@them, so a post started from a profile ends back on it
+		// rather than on the blog index. Through returnTo, because the query
+		// string is the caller's and a redirect that will follow it anywhere
+		// is an open redirect.
+		backTo := ""
+		if asked := r.URL.Query().Get("return"); asked != "" {
+			// Escaped as well as validated. returnTo guarantees a path on
+			// this instance, which still leaves a quote free to close the
+			// attribute early — /x">< is a path.
+			backTo = `<input type="hidden" name="return" value="` +
+				stdhtml.EscapeString(returnTo(asked)) + `">`
+		}
 		// Show only the posting form
 		content = `<div id="blog">
 			<div class="mb-6">
-				<form id="blog-form" class="blog-form" method="POST" action="/blog">
+				<form id="blog-form" class="blog-form" method="POST" action="/blog">` + backTo + `
 					<input type="text" id="post-title" name="title" placeholder="Title (optional)">
 					<textarea id="post-content" name="content" rows="6" placeholder="Share a thought. Be mindful of God" required></textarea>
 					<input type="text" id="post-tags" name="tags" placeholder="Tags (optional, comma-separated)">

@@ -5690,7 +5690,6 @@ button.pill:hover {
 .row-del:hover { color: var(--btn-danger, #c00) }
 @media (hover: none) { .row-del { opacity: 1 } }
 
-
 /* Unread is what makes this a mailbox rather than a log: a rule down the left
    and a heavier subject, so the eye finds the two that need answering without
    reading the twenty that do not. */
@@ -6385,33 +6384,6 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
    is the interface, so it is shown rather than hidden behind the button. */
 .pf-write { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 16px 0 0 }
 
-/* Writing a post where your posts are listed. Same shape as the status box
-   above it — one column, the controls on a line underneath — so the two read
-   as one strip of things you set rather than two borrowed forms. */
-.pf-post-form { display: flex; flex-direction: column; gap: 8px; margin: 16px 0 0 }
-/* What the box is for, above it. The fields say what goes in each one; this
-   says why you would start. */
-.pf-post-lede { font-size: 15px; color: var(--text-primary, #1a1a1a); margin: 0 }
-.pf-post-title, .pf-post-body {
-  font: inherit;
-  font-size: 15px;
-  padding: 7px 10px;
-  border: var(--border-width, 1px) solid var(--card-border, #e8e8e8);
-  border-radius: var(--border-radius, 6px);
-  background: var(--card-background, #fff);
-  color: var(--text-primary, #1a1a1a);
-  width: 100%;
-  box-sizing: border-box;
-}
-.pf-post-body { resize: vertical; min-height: 72px; line-height: var(--line-height, 1.6) }
-.pf-post-title:focus, .pf-post-body:focus { outline: none; border-color: #bbb }
-.pf-post-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap }
-.pf-post-hint { font-size: 12px; color: var(--text-muted, #888) }
-/* The way out to tags and visibility, at the weight of the note it sits in.
-   Left alone it inherited the site's link colour and bold, which made the
-   escape hatch louder than the form it is an aside to. */
-.pf-post-hint a { color: inherit; font-weight: inherit; text-decoration: underline }
-
 /* One tool, at an address of its own. See internal/api/tool_page.go. */
 .tool-page { max-width: 760px }
 .tool-name { font-size: 24px; margin: 0 0 6px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace }
@@ -6987,7 +6959,6 @@ a.pill {
   align-items: center;
 }
 /* ─────────────────────────────────────────────────────────────────────────── */
-
 
 /* The free list on /pricing. Things you scan, not paragraphs you read. */
 .price-free {

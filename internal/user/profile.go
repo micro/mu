@@ -350,10 +350,10 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 		csrf = auth.CSRFToken(r)
 	}
 	status := statusBlock(acc.ID, isOwnProfile, csrf)
-	// Somewhere to write the next one, on the page the last ones are listed.
-	// Your own only, and above the rule with the rest of what is yours to set.
-	// See post.go.
-	compose := postBox(acc.ID, isOwnProfile)
+	// The one action this page offers, in one slot: writing to them on
+	// somebody else's, writing a post on your own. Never both, because they
+	// are the same question asked of whoever is looking. See post.go.
+	compose := postLink(acc.ID, isOwnProfile)
 
 	// Apps section
 	appsSection := ""
