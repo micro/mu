@@ -566,7 +566,13 @@ const agentsCSS = `<style>
    than one more small grey control. */
 .agent-name{display:inline-block;font-weight:600;font-size:14px;color:var(--text-primary,#111);text-decoration:none}
 /* No underline: the row behind it is the affordance now, and two of them at
-   once is one too many. */
+   once is one too many.
+   Stated on :hover rather than left to the rule above, which is the whole
+   point. mu.css has a global a:hover rule setting underline, and that
+   selector is (0,1,1) against .agent-name's (0,1,0) — so deleting this line
+   does not remove the underline, it hands it to the global rule. It has to
+   outrank it, at (0,2,0). */
+.agent-name:hover{text-decoration:none}
 /* Two buttons that did the same thing to the eye and different things to the
    account. Both were #bbb — barely visible — and both took the same red hover,
    which said "destructive" about issuing a token. Now issuing reads as an
