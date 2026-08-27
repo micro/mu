@@ -439,7 +439,11 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 	// records behind them, and the strip changed shape as you moved between
 	// agents. This is the page; Connect is the link in the bar above, which was
 	// already there and says what it does.
+	// This page is for talking to it, so the box asks rather than searches.
+	// See app.ChatConfig.Ask — search is the default everywhere else, because
+	// search works with no model and a page about an agent obviously does not.
 	cfg.Transcript = true
+	cfg.Ask = true
 	main := app.ChatComponent(cfg)
 	if elsewhere != "" {
 		main = elsewhere

@@ -367,9 +367,14 @@ function fetchW(la,lo){
 	// Date + invite/settings above the input
 	b.WriteString(dateHTML)
 
-	// Inline agent — Home answers here rather than navigating away, and it renders
-	// for everyone: logged out, this is the public face of the product. Signed-in
-	// users get personalised chips.
+	// The box searches, the same as the signed-out page does.
+	//
+	// It asked, which made the same control do two different things depending
+	// on whether you were logged in — and once you were, there was no
+	// consistent way to search anything. Talking to an agent lives on /agents,
+	// which is the page about the agent.
+	//
+	// No Ask flag here, so this is a search box. See app.ChatConfig.
 	{
 		b.WriteString(`<div id="home-agent">`)
 		b.WriteString(app.ChatComponent(app.ChatConfig{HideSuggestions: true,

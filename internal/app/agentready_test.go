@@ -18,7 +18,7 @@ func TestWithNoModelTheBoxSearches(t *testing.T) {
 	AgentReady = func() bool { return false }
 	t.Cleanup(func() { AgentReady = nil })
 
-	got := ChatComponent(ChatConfig{})
+	got := ChatComponent(ChatConfig{Ask: true})
 
 	// It still takes what you type — that is the whole point of not just
 	// printing an apology where a box used to be.
@@ -53,7 +53,8 @@ func TestTheAskBoxAsksWhenThereIsAModel(t *testing.T) {
 	AgentReady = func() bool { return true }
 	t.Cleanup(func() { AgentReady = nil })
 
-	got := ChatComponent(ChatConfig{})
+	// Ask, because search is the default now: a page asks only when it says so.
+	got := ChatComponent(ChatConfig{Ask: true})
 	if !strings.Contains(got, "mu-chat-input") || !strings.Contains(got, "<textarea") {
 		t.Error("the ask box is missing on an instance that has a model")
 	}
@@ -67,7 +68,49 @@ func TestTheAskBoxAsksWhenThereIsAModel(t *testing.T) {
 // worse bug than the one it fixes.
 func TestAnUnwiredHookLeavesTheBoxAlone(t *testing.T) {
 	AgentReady = nil
-	if got := ChatComponent(ChatConfig{}); !strings.Contains(got, "<textarea") {
+	if got := ChatComponent(ChatConfig{Ask: true}); !strings.Contains(got, "<textarea") {
 		t.Error("the ask box vanished because the hook was not wired")
+	}
+}
+
+// The box is the same box signed in and signed out.
+//
+// It asked on Home and searched on the index, so the same control did two
+// different things depending on whether you had signed in — and once you were,
+// there was no consistent way to search anything at all.
+//
+// Search wins, and not by a coin toss. google.com is a search box and a grid of
+// apps; the box is the front door and everything else is reached from beside
+// it. That is the shape this already has — a search box and Services — with the
+// agent as one of those services rather than the spine. Search also needs
+// nothing: no model, no key, no account, so it is the control that works on
+// every instance there will ever be.
+func TestTheDefaultBoxSearches(t *testing.T) {
+	AgentReady = func() bool { return true }
+	t.Cleanup(func() { AgentReady = nil })
+
+	got := ChatComponent(ChatConfig{})
+	if !strings.Contains(got, `action="/archive"`) {
+		t.Error("a box that was not asked to ask is not searching")
+	}
+	if strings.Contains(got, "<textarea") {
+		t.Error("the default is still a chat box, so Home and the index disagree " +
+			"about what the same control does")
+	}
+}
+
+// And a page that says it is for asking gets an ask box — but only where there
+// is something to ask. A model is still the condition; Ask is a statement about
+// the page, not a claim that the instance can answer.
+func TestAskingStillNeedsAModel(t *testing.T) {
+	AgentReady = func() bool { return false }
+	t.Cleanup(func() { AgentReady = nil })
+
+	got := ChatComponent(ChatConfig{Ask: true})
+	if strings.Contains(got, "<textarea") {
+		t.Error("an agent page offers a chat box on an instance with no model")
+	}
+	if !strings.Contains(got, `action="/archive"`) {
+		t.Error("with no model it does not fall back to the thing that works")
 	}
 }

@@ -28,7 +28,7 @@ import (
 // the page you opened to get away from the general one. A suggestion nobody has
 // changed in months reads as a demo rather than an offer.
 func TestTheChatBoxOffersNoStaleSuggestion(t *testing.T) {
-	html := app.ChatComponent(app.ChatConfig{})
+	html := app.ChatComponent(app.ChatConfig{Ask: true})
 	if !strings.Contains(html, `placeholder="Ask it something"`) {
 		t.Error("the box has no placeholder")
 	}
@@ -44,7 +44,7 @@ func TestTheChatBoxOffersNoStaleSuggestion(t *testing.T) {
 // expires while a tab is open, and the answer to a question typed after that is
 // a link to the login rather than silence.
 func TestAnExpiredSessionIsOfferedTheWayBackIn(t *testing.T) {
-	html := app.ChatComponent(app.ChatConfig{})
+	html := app.ChatComponent(app.ChatConfig{Ask: true})
 	for _, want := range []string{`href="/signup"`, `href="/login?redirect=/agent"`} {
 		if !strings.Contains(html, want) {
 			t.Errorf("the chat has no %s for a caller whose session has gone", want)
@@ -56,7 +56,7 @@ func TestAnExpiredSessionIsOfferedTheWayBackIn(t *testing.T) {
 // them are offering. A note written here is a note the host page cannot remove,
 // which is how the landing page ended up with two.
 func TestTheChatComponentMakesNoOfferOfItsOwn(t *testing.T) {
-	html := app.ChatComponent(app.ChatConfig{})
+	html := app.ChatComponent(app.ChatConfig{Ask: true})
 	for _, phrase := range []string{
 		"no account needed",
 		"questions to try",

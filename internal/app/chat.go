@@ -42,6 +42,18 @@ func JSAttr(s string) string {
 
 // ChatConfig configures the shared chat component.
 type ChatConfig struct {
+	// Ask makes this box talk to the agent. Without it, it searches.
+	//
+	// A default of search rather than of asking, because the pages that want a
+	// chat know they do — /agents is a page about an agent, so a box there is
+	// obviously for talking to it — while every other embed either wants a
+	// search box or has never thought about it, and a search box is the answer
+	// that works with no model, no key and no account.
+	//
+	// The old default was the other way and it produced the bug this fixes: the
+	// signed-out page searched, Home asked, so the same control did two
+	// different things depending on whether you had signed in.
+	Ask bool
 	// ContextID seeds the conversation's server-side thread id, so follow-up
 	// messages continue the same session. Empty starts a new session.
 	ContextID string
@@ -186,19 +198,28 @@ func ChatComponent(cfg ChatConfig) string {
 		placeholder = "Ask it something"
 	}
 
-	// With no model the box searches instead of asking.
+	// Search, unless the caller has said this page is for asking.
 	//
-	// The model is optional at setup now, and an ask box on an instance without
-	// one invited a question and then failed on it. Saying "no model yet" was
-	// the first fix and it was only half: a box that explains why it is dead is
-	// still a dead box, and the top of the home screen is the worst place to
-	// put one.
+	// # Why the front page searches
 	//
-	// The same keystrokes have a useful meaning without a model. You type what
-	// you are looking for; the difference is whether something answers you or
-	// finds it. So the box searches — and searching is the half that needs no
-	// vendor at all.
-	if AgentReady != nil && !AgentReady() {
+	// It asked, and the signed-out page searched, so the same box did two
+	// different things depending on whether you were logged in — and once you
+	// were, there was no consistent way to search at all.
+	//
+	// Which one wins is not a toss-up. google.com is a search box and a grid of
+	// apps; the box is the front door and everything else is reached from
+	// beside it. That is the shape this already has — a search box and
+	// Services — and the agent is one of those services rather than the spine.
+	// It will do more as models get faster and cheaper, and the box is where
+	// that arrives; it is not what the front page is for today.
+	//
+	// Search is also the half that needs nothing: no model, no key, no account.
+	// A page whose main control only works once you have signed up with a
+	// vendor is a page that does not work.
+	//
+	// Asking still has a home — /agents and the agent pages pass Ask, because
+	// a page about an agent is a page for talking to it.
+	if !cfg.Ask || (AgentReady != nil && !AgentReady()) {
 		return searchBox()
 	}
 	suggestJS, err := json.Marshal(suggestions)
