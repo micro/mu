@@ -675,6 +675,7 @@ func renderSessionsRail(accountID, currentID, agentID string, named bool) string
 	var b strings.Builder
 	b.WriteString(`<aside class="chat-rail"><button class="btn chat-new" onclick="if(window.muChatNew){muChatNew();history.replaceState(null,''` +
 		`,` + app.JSAttr(newURL) + `);document.querySelectorAll('.chat-sess.active').forEach(function(e){e.classList.remove('active')});}">+ New</button>` +
+		`<div class="chat-sess-scroll">` +
 		`<div class="chat-sess-head">Conversations</div><div class="chat-sess-list">`)
 	if len(sessions) == 0 {
 		// An empty inbox says how to fill it, and the answer is an address.
@@ -735,7 +736,12 @@ func renderSessionsRail(accountID, currentID, agentID string, named bool) string
 	// agent that has never done anything, and Home says otherwise on the same
 	// screen.
 	if handled := handledThreads(accountID, agentID, named); len(handled) > 0 {
-		b.WriteString(`<div class="chat-sess-head">Handled</div><div class="chat-sess-list">`)
+		// "Handled" on its own says nothing: reported as a section somebody had
+		// no idea the meaning of, on their own instance. These are things that
+		// arrived — mail, a text — that the agent answered, and they are read
+		// and replied to in the inbox, not here. The heading now says both, so
+		// the rows and their destination agree without anybody guessing.
+		b.WriteString(`<div class="chat-sess-head">Answered in your inbox</div><div class="chat-sess-list">`)
 		for _, t := range handled {
 			title := strings.TrimSpace(t.Subject)
 			if title == "" {
@@ -753,7 +759,7 @@ func renderSessionsRail(accountID, currentID, agentID string, named bool) string
 		b.WriteString(`</div>`)
 	}
 
-	b.WriteString(sessionDeleteJS(base) + `</aside>`)
+	b.WriteString(`</div>` + sessionDeleteJS(base) + `</aside>`)
 	return b.String()
 }
 
@@ -874,6 +880,36 @@ const chatPageJS = `<script>
       return m?decodeURIComponent(m[1]):'';
     };
   }
+  // How much page is above the conversation, measured rather than guessed.
+  //
+  // .chat-layout is one screen tall: height:calc(100vh - var(--chat-chrome)).
+  // Nothing has ever set --chat-chrome. It was referenced once, in its own
+  // fallback, so every instance has used 120px — and the chrome above this
+  // layout is 192px, so the column has always been 72px taller than the window.
+  //
+  // That was invisible while the rail held one scrolling list: the overflow was
+  // empty space below a scroll region, clipped by .chat-side's overflow:hidden
+  // and noticed by nobody. Then the rail grew a second section pinned under the
+  // first, and the 72px that falls off the bottom of the screen became the
+  // thing somebody is trying to read. Reported as a section overlapping the
+  // bottom of the conversations.
+  //
+  // Measured on every load and resize, because the number is a fact about the
+  // rendered page — the nav wraps at some widths, a banner appears — and any
+  // constant here is wrong again the next time something above it changes.
+  function muChatChrome(){
+    var el=document.querySelector('.chat-layout');
+    if(!el)return;
+    // Its distance from the top of the document, not of the viewport: the page
+    // may be scrolled when this runs.
+    var top=el.getBoundingClientRect().top+(window.scrollY||0);
+    document.documentElement.style.setProperty('--chat-chrome',Math.max(0,Math.round(top))+'px');
+  }
+  muChatChrome();
+  window.addEventListener('resize',muChatChrome);
+  // Fonts land after first paint and move everything above the layout down.
+  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(muChatChrome);
+
   // A scrim left behind by the page before this one. Soft navigation keeps
   // body's children, so without this the grey survives a reload of the layout.
   document.querySelectorAll('.chat-scrim').forEach(function(s){s.remove();});
@@ -912,7 +948,19 @@ const chatLayoutCSS = `<style>
      the fold were unreachable, which is worse than a long page. */
   .chat-side .chat-rail{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
   .chat-main{min-height:0;display:flex;flex-direction:column;overflow-y:auto}
-  .chat-sess-list{min-height:0;overflow-y:auto}
+  /* The rail scrolls once, below the New button — not once per list.
+   *
+   * This was .chat-sess-list{overflow-y:auto}, written when the rail held
+   * exactly one list. It now holds two, Conversations and what the agent
+   * answered in the inbox, and two auto-height scrollers sharing a fixed-height
+   * column both size to their own content: together they overrun the rail, and
+   * the second is drawn over the bottom of the first. Reported as a section
+   * overlapping the conversations.
+   *
+   * A scroll region is a property of the column, not of each list in it. One
+   * wrapper carries it, the New button stays put above, and a third section
+   * added later cannot bring the overlap back. */
+  .chat-sess-scroll{flex:1 1 auto;min-height:0;overflow-y:auto}
 }
 .chat-side .chat-rail{width:auto}
 .chat-rail{width:250px;flex-shrink:0}
@@ -997,7 +1045,10 @@ const chatLayoutCSS = `<style>
   /* A vertical list, which is what a list of conversations is. As a horizontal
      scroller everything past the third was off the side of the screen with
      nothing saying so. */
-  .chat-sess-list{flex-direction:column;overflow:visible;flex-wrap:nowrap;max-height:52vh;overflow-y:auto}
+  .chat-sess-list{flex-direction:column;overflow:visible;flex-wrap:nowrap}
+  /* Same reason as the desktop rule: the cap belongs to the sheet, not to each
+     list in it, or two lists get 52vh each and the sheet is 104vh tall. */
+  .chat-sess-scroll{max-height:52vh;overflow-y:auto}
   .chat-sess-row{flex-shrink:0;max-width:none}
   .chat-sess{font-size:14px;padding:10px}
   .agents-list>div{padding:10px 8px;font-size:14px}
