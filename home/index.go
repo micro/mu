@@ -40,16 +40,36 @@ func whatIsSearchable() string {
 		if len(names) == 4 {
 			break
 		}
-		names = append(names, html.EscapeString(k.Name))
+		names = append(names, html.EscapeString(plural(k.Name)))
 	}
 	what := strings.Join(names, ", ")
 	if len(kinds) > len(names) {
 		what += " and more"
 	}
-	// Sentence case on the first, because it is a sentence. The kinds are
-	// lowercase type names as the services register them, and leaving it that
-	// way reads as a variable name printed on a page.
-	return strings.ToUpper(what[:1]) + what[1:] + "."
+	// Named, then listed. A bare list of kinds says what is in something
+	// without saying what the something is, and "the archive" is a place on
+	// this instance with a page of its own — which is where the box goes.
+	return "Search the archive — " + what + "."
+}
+
+// plural is a kind as a person would say it.
+//
+// The names are the type strings services register with — news, video, market
+// — so a list of them reads as field values printed on a page. A rule and a
+// short list of exceptions rather than an English pluraliser: there are five of
+// these, they change about once a year, and a wrong plural is more visible than
+// a missing one.
+func plural(kind string) string {
+	switch kind {
+	case "news":
+		return "news"
+	case "social":
+		return "social posts"
+	}
+	if strings.HasSuffix(kind, "s") {
+		return kind
+	}
+	return kind + "s"
 }
 
 // Index is the front door for anyone not signed in: something to try, then
