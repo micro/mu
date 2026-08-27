@@ -157,7 +157,7 @@ func replyTo(accountID string, t *thread.Thread, msgs []thread.Message) string {
 	//
 	// The rest still cannot be answered from here. A room thread is answered in
 	// the room, and that is what the note under the bar says.
-	if t.Client == thread.SMSClient {
+	if onAPhone(t.Client) {
 		return strings.TrimSpace(t.Key)
 	}
 	if t.Client != mailClient {
@@ -479,4 +479,14 @@ func backTo(t *thread.Thread) string {
 		return ""
 	}
 	return ` <a href="/chat?id=` + url.QueryEscape(t.Key) + `">Open the room &rarr;</a>`
+}
+
+// onAPhone reports whether a conversation is one that goes back to a number.
+//
+// SMS and WhatsApp both. They are separate clients because the reply has to
+// travel the way it arrived — a WhatsApp thread answered by text lands as a
+// second conversation on the other person's phone — and every question the
+// inbox asks about them is the same question, so it asks it once.
+func onAPhone(client string) bool {
+	return client == thread.SMSClient || client == thread.WhatsAppClient
 }

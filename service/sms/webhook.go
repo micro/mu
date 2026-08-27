@@ -39,11 +39,15 @@ import (
 // account", which is not security but is not nothing, and it is what is
 // available when there is no auth token to check a signature against.
 func implausible(r *http.Request) string {
-	to := e164(r.PostForm.Get("To"))
+	_, rawTo := ChannelOf(r.PostForm.Get("To"))
+	to := e164(rawTo)
 	if to == "" {
 		return "no To on the message"
 	}
-	if !Ours(to) {
+	// Either channel's sender. A WhatsApp message arrives addressed to the
+	// WhatsApp sender, which is not in TWILIO_FROM and would otherwise be
+	// refused as somebody else's number.
+	if !Ours(to) && !OursOn(ChannelWhatsApp, to) {
 		return to + " is not a number this instance sends from"
 	}
 	if want := AccountSID(); want != "" {
@@ -124,9 +128,23 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	from := e164(r.PostForm.Get("From"))
+	// Which channel carried it, read off the wire and taken off immediately.
+	//
+	// Twilio labels both ends "whatsapp:+447700900123" and this is the only
+	// place in the product that knows that. Everywhere above here a number is a
+	// number — internal/phone.Normalise refuses a prefixed one outright, after
+	// a prefixed sender was silently turned into a stranger's number and filed
+	// against their phone.
+	channel, rawFrom := ChannelOf(r.PostForm.Get("From"))
+	from := e164(rawFrom)
 	body := strings.TrimSpace(r.PostForm.Get("Body"))
 	if from == "" {
+		app.Log("sms", "inbound message from an unreadable sender, dropped")
+		twiml(w, "")
+		return
+	}
+	if !channel.Known() {
+		app.Log("sms", "inbound message on an unknown channel, dropped")
 		twiml(w, "")
 		return
 	}
@@ -158,7 +176,7 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	Record(owner, "in", from, body, Segments(body))
+	RecordOn(channel, owner, "in", from, body, Segments(body))
 
 	known, isKnown := KnownSender(from)
 
@@ -173,10 +191,11 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 	event.Publish(event.Event{
 		Type: event.SMSReceived,
 		Data: map[string]interface{}{
-			"owner": owner,
-			"from":  from,
-			"text":  body,
-			"known": isKnown,
+			"owner":   owner,
+			"from":    from,
+			"text":    body,
+			"known":   isKnown,
+			"channel": string(channel),
 		},
 	})
 
@@ -196,9 +215,10 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 		event.Publish(event.Event{
 			Type: event.SMSForAgent,
 			Data: map[string]interface{}{
-				"owner": known,
-				"from":  from,
-				"text":  body,
+				"owner":   known,
+				"from":    from,
+				"text":    body,
+				"channel": string(channel),
 			},
 		})
 	}

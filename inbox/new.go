@@ -177,7 +177,7 @@ func sent(w http.ResponseWriter, r *http.Request, accountID string, f form) {
 	// transport. The alternative was a second form somewhere else that also
 	// sends things, which is how a service ends up with two send paths and only
 	// one of them counting the daily cap.
-	if th := replyTarget(accountID, f); th != nil && th.Client == thread.SMSClient {
+	if th := replyTarget(accountID, f); th != nil && onAPhone(th.Client) {
 		sendText(w, r, accountID, f)
 		return
 	}
@@ -341,14 +341,23 @@ func writeOne(w http.ResponseWriter, r *http.Request, accountID string, f form) 
 	// A text has no subject and no address on either end. The same screen, told
 	// what it is writing by the conversation it is answering — rather than a
 	// second compose page that also sends things.
-	texting := false
-	if th := replyTarget(accountID, f); th != nil && th.Client == thread.SMSClient {
+	texting, channel := false, sms.ChannelSMS
+	if th := replyTarget(accountID, f); th != nil && onAPhone(th.Client) {
 		texting = true
+		if th.Client == thread.WhatsAppClient {
+			channel = sms.ChannelWhatsApp
+		}
 	}
 	if texting {
-		b.WriteString(`<p class="ib-from-line">Texting <code>` +
-			html.EscapeString(f.To) + `</code> from <code>` +
-			html.EscapeString(sms.From()) + `</code></p>`)
+		from := sms.From()
+		if channel == sms.ChannelWhatsApp {
+			if senders := sms.SendersFor(channel); len(senders) > 0 {
+				from = senders[0]
+			}
+		}
+		b.WriteString(`<p class="ib-from-line">` + html.EscapeString(channel.Label()) +
+			` to <code>` + html.EscapeString(f.To) + `</code> from <code>` +
+			html.EscapeString(from) + `</code></p>`)
 	}
 
 	// Names inside, addresses outside.
@@ -441,7 +450,15 @@ func sendText(w http.ResponseWriter, r *http.Request, accountID string, f form) 
 		writeOne(w, r, accountID, f)
 		return
 	}
-	if _, err := sms.Send(accountID, f.To, body); err != nil {
+	// Back the way it came. A WhatsApp conversation answered by text arrives on
+	// the other person's phone as a second thread from a number they do not
+	// recognise, with nothing on it to say why — so the record decides the
+	// channel here the same way it decides the transport above.
+	channel := sms.ChannelSMS
+	if th := replyTarget(accountID, f); th != nil && th.Client == thread.WhatsAppClient {
+		channel = sms.ChannelWhatsApp
+	}
+	if _, err := sms.SendOn(channel, accountID, f.To, body); err != nil {
 		f.Problem = err.Error()
 		writeOne(w, r, accountID, f)
 		return

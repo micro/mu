@@ -23,6 +23,18 @@ import (
 // Client is which door this was.
 const Client = thread.SMSClient
 
+// clientFor is which door a channel is, in the record.
+//
+// Its own client rather than one with a flag: the reply has to go back the same
+// way it came, and a WhatsApp conversation answered by text lands on the other
+// person's phone as a second thread from a number they do not recognise.
+func clientFor(channel svcsms.Channel) string {
+	if channel == svcsms.ChannelWhatsApp {
+		return thread.WhatsAppClient
+	}
+	return Client
+}
+
 // Load subscribes to texts that want an answer.
 func Load() {
 	sub := event.Subscribe(event.SMSForAgent)
@@ -49,9 +61,10 @@ func Load() {
 
 // texted is one message that is expecting an answer.
 type texted struct {
-	Owner string
-	From  string
-	Text  string
+	Owner   string
+	From    string
+	Text    string
+	Channel svcsms.Channel
 }
 
 func textedIn(data map[string]interface{}) (texted, bool) {
@@ -59,7 +72,8 @@ func textedIn(data map[string]interface{}) (texted, bool) {
 		v, _ := data[k].(string)
 		return v
 	}
-	t := texted{Owner: str("owner"), From: str("from"), Text: str("text")}
+	t := texted{Owner: str("owner"), From: str("from"), Text: str("text"),
+		Channel: svcsms.Channel(str("channel"))}
 	if t.Owner == "" || t.From == "" || strings.TrimSpace(t.Text) == "" {
 		return texted{}, false
 	}
@@ -70,7 +84,7 @@ func textedIn(data map[string]interface{}) (texted, bool) {
 func answer(t texted) {
 	res, err := agent.Ask(agent.AskRequest{
 		Account: t.Owner,
-		Client:  Client,
+		Client:  clientFor(t.Channel),
 		// The number is the conversation, so a second text continues the first.
 		// A phone has no threads; the person on the other end is the thread.
 		Thread:  t.From,
@@ -89,11 +103,16 @@ func answer(t texted) {
 	// Send refuses anything over three segments, which an agent will exceed
 	// without trying. Trimmed here rather than left to fail, because a refusal
 	// upstream is silence on the phone and silence reads as broken.
-	if len(reply) > replyLimit {
-		reply = strings.TrimSpace(reply[:replyLimit-1]) + "…"
+	//
+	// Per channel, because the limits are not the same thing: a text is
+	// rationed by what a segment costs, and a WhatsApp message costs one
+	// conversation however long it is. Trimming a WhatsApp reply to 460
+	// characters would cut an answer short for a reason that does not apply.
+	if limit := replyLimitFor(t.Channel); len(reply) > limit {
+		reply = strings.TrimSpace(reply[:limit-1]) + "…"
 	}
-	if _, err := svcsms.Send(t.Owner, t.From, reply); err != nil {
-		app.Log("sms", "could not text %s back: %v", t.From, err)
+	if _, err := svcsms.SendOn(t.Channel, t.Owner, t.From, reply); err != nil {
+		app.Log("sms", "could not answer %s on %s: %v", t.From, t.Channel.Label(), err)
 	}
 }
 
@@ -104,3 +123,18 @@ func answer(t texted) {
 // arrive. Somebody who wants the whole thing has the same conversation waiting
 // in their inbox, which is the point of one record across every door.
 const replyLimit = 460
+
+// replyLimitFor is how much of an answer fits on a channel.
+//
+// WhatsApp carries 4096 characters in one message at one price, so the only
+// reason to trim is that nobody reads an essay on a phone.
+func replyLimitFor(channel svcsms.Channel) int {
+	if channel == svcsms.ChannelWhatsApp {
+		return whatsAppReplyLimit
+	}
+	return replyLimit
+}
+
+// whatsAppReplyLimit is well under the protocol's 4096. The limit here is
+// attention rather than money.
+const whatsAppReplyLimit = 1500

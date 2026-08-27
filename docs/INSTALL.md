@@ -844,6 +844,15 @@ says so; nothing else is affected.
 | `SMS_KNOWN_ONLY` | off | Restrict sending to numbers the caller already knows — someone in their contacts, a number they verified as their own, or one that texted them first. Off, because `contacts_add` takes any number and defeats it in one call, and because it stopped an agent doing the ordinary thing. On, it is a real brake for an instance that wants one |
 | `SMS_VERIFY_INBOUND` | on | Require an arriving message to carry a valid Twilio signature. Turn it **off** if this instance authenticates with an API key, because then there is no account auth token and nothing a signature can be checked against — the cost is that anybody who knows the webhook URL can write into somebody's message history and opt numbers out |
 | `SMS_DEFAULT_COUNTRY` | — | Country code assumed for a number written without one. Unset, a number with no `+` is refused rather than guessed |
+| `TWILIO_WHATSAPP_FROM` | — | The WhatsApp sender, in E.164 (`+447700900123`). WhatsApp rides the same Twilio account and the same webhook as SMS — point Twilio's WhatsApp sender at `https://<your domain>/whatsapp/twilio` — and this is the one setting that turns it on. One number, not a list: a WhatsApp sender is registered with Meta against a business rather than routed by country, so the matching `TWILIO_FROM` needs does not apply. Unset, WhatsApp is off and nothing offers it |
+| `WHATSAPP_DAILY_LIMIT` | `20` | WhatsApp messages one account may send in a day. Higher than `SMS_DAILY_LIMIT` and priced lower because Meta bills a 24-hour conversation rather than each message. It is `limit_env` on `whatsapp_send` in `quota.json`. **Set it to `0` to stop sending on WhatsApp** without touching texts |
+
+WhatsApp has one rule SMS does not, and it is Meta's rather than ours: this
+instance may only message somebody in the 24 hours after they last wrote to it.
+Outside that window only templates approved in advance are accepted, and there
+are none here — so a message sent late is refused with the reason rather than
+handed to the provider to drop. In practice this is invisible, because replying
+to somebody who just wrote is what the window is for.
 
 Senders have to be registered before they will deliver. In the **US**, an
 unregistered long code is blocked by every major carrier: either a toll-free

@@ -189,11 +189,14 @@ var settingGroups = []settingGroup{
 	// name to set them — a page pointing at a page that could not help, which
 	// is worse than no pointer at all.
 	//
-	// TWILIO_WHATSAPP_FROM was here too. WhatsApp went with Telegram when those
-	// channels were deleted, and the setting outlived the service by long
-	// enough to be moved into this group during a tidy-up.
-	{Name: "Twilio — SMS",
-		Does:  "A phone number, so an agent can text somebody and read what they text back.",
+	// TWILIO_WHATSAPP_FROM was removed when WhatsApp went with Telegram, and is
+	// back — not as a second service this time, but as a channel on this one.
+	// It rides the same account, the same webhook and the same number rules;
+	// the four things that differ are values. See service/sms/channel.go.
+	{Name: "Twilio — SMS and WhatsApp",
+		Does: "A phone number, so an agent can text somebody and read what they text back. " +
+			"Set TWILIO_WHATSAPP_FROM as well and the same account carries WhatsApp, " +
+			"on the same webhook.",
 		Needs: []string{"TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_FROM"},
 		Vars: []string{
 			"TWILIO_ACCOUNT_SID",
@@ -208,6 +211,8 @@ var settingGroups = []settingGroup{
 			"SMS_KNOWN_ONLY",
 			"SMS_VERIFY_INBOUND",
 			"SMS_DAILY_LIMIT",
+			"TWILIO_WHATSAPP_FROM",
+			"WHATSAPP_DAILY_LIMIT",
 		}},
 	// "Sending limits and email out" was here, and four of its five settings
 	// were read by nothing: EMAIL_DOMAIN and EMAIL_REPLY_DOMAIN, from before

@@ -58,6 +58,11 @@ func TestOnlyOutboundOrFreeIsCapped(t *testing.T) {
 	outbound := map[string]bool{
 		quota.OpMailSend: true,
 		quota.OpSMSSend:  true,
+		// WhatsApp leaves the building the same way a text does, over the same
+		// provider, to somebody's phone. It is capped for the same reason and
+		// more cheaply, because Meta bills a 24-hour conversation rather than
+		// each message.
+		quota.OpWhatsAppSend: true,
 	}
 	for _, p := range quotaPrices(t) {
 		if outbound[p.op] {

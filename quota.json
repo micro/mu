@@ -137,6 +137,15 @@
       "note": "Twilio: about a cent to a US mobile, ~5¢ to a UK one, and charged per 160-character segment. A markup that would be silly on a search is the point here — a text cannot be unsent, and the number's reputation is shared by everybody on the instance. Thirteen cents makes a spam run cost real money before any of the other limits are reached"
     },
     {
+      "op": "whatsapp_send",
+      "cost": 5,
+      "limit": 20,
+      "limit_env": "WHATSAPP_DAILY_LIMIT",
+      "label": "WhatsApp message",
+      "env": "CREDIT_COST_WHATSAPP",
+      "note": "Billed by Meta per 24-hour conversation rather than per message, so a long reply costs the same as a short one and the second message in a conversation is free to us. Cheaper than a text and with a higher daily limit for that reason \u2014 and the window itself is the real limit, since this instance can only message somebody who wrote to it in the last day"
+    },
+    {
       "op": "news_search",
       "cost": 0,
       "label": "News search",

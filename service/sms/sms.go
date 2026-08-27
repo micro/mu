@@ -73,12 +73,16 @@ const (
 
 // Message is one text, in or out.
 type Message struct {
-	ID        string    `json:"id"`
-	Direction string    `json:"direction"` // "out" or "in"
-	Number    string    `json:"number"`    // the other end, always E.164
-	Text      string    `json:"text"`
-	Segments  int       `json:"segments"`
-	At        time.Time `json:"at"`
+	ID        string `json:"id"`
+	Direction string `json:"direction"` // "out" or "in"
+	Number    string `json:"number"`    // the other end, always E.164
+	Text      string `json:"text"`
+	Segments  int    `json:"segments"`
+	// Channel is which carrier this rode on: empty for a text, "whatsapp" for
+	// WhatsApp. Empty rather than "sms" so every message written before there
+	// was more than one channel reads correctly.
+	Channel string    `json:"channel,omitempty"`
+	At      time.Time `json:"at"`
 }
 
 // ── Numbers ─────────────────────────────────────────────────────
@@ -510,6 +514,16 @@ func Segments(text string) int {
 
 // Record stores a message. Direction is "out" or "in".
 func Record(owner, direction, number, text string, segments int) *Message {
+	return RecordOn(ChannelSMS, owner, direction, number, text, segments)
+}
+
+// RecordOn is Record, saying which channel carried it.
+//
+// The channel is on the message because the reply has to go back the same way.
+// A WhatsApp conversation answered by text is a different conversation to the
+// person on the other end — a second thread on their phone, from a number they
+// do not recognise — and the record is the only thing that knows which it was.
+func RecordOn(channel Channel, owner, direction, number, text string, segments int) *Message {
 	if direction == "out" {
 		route(owner, e164(number))
 	}
@@ -518,6 +532,7 @@ func Record(owner, direction, number, text string, segments int) *Message {
 		Number:    e164(number),
 		Text:      text,
 		Segments:  segments,
+		Channel:   string(channel),
 		At:        time.Now(),
 	}
 	rec, err := userdb.Create(ns, owner, msgs, map[string]interface{}{
@@ -525,6 +540,7 @@ func Record(owner, direction, number, text string, segments int) *Message {
 		"number":    m.Number,
 		"text":      m.Text,
 		"segments":  m.Segments,
+		"channel":   m.Channel,
 		"at":        m.At.Format(time.RFC3339),
 	}, false)
 	if err != nil {
@@ -550,6 +566,9 @@ func History(owner string, limit int) []Message {
 		m.Direction, _ = r.Data["direction"].(string)
 		m.Number, _ = r.Data["number"].(string)
 		m.Text, _ = r.Data["text"].(string)
+		// Which channel carried it. Absent on every message written before
+		// there was more than one, which reads correctly as a text.
+		m.Channel, _ = r.Data["channel"].(string)
 		if f, ok := r.Data["segments"].(float64); ok {
 			m.Segments = int(f)
 		} else if n, ok := r.Data["segments"].(int); ok {

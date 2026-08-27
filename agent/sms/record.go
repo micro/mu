@@ -43,7 +43,7 @@ func LoadRecord() {
 
 // record files an arriving text, holding it if the sender is unknown.
 func record(t texted, known bool) {
-	th := thread.Open(t.Owner, Client, t.From)
+	th := thread.Open(t.Owner, clientFor(t.Channel), t.From)
 	if th == nil {
 		return
 	}
@@ -75,7 +75,7 @@ func record(t texted, known bool) {
 			Data: map[string]interface{}{
 				"account": t.Owner,
 				"thread":  th.ID,
-				"client":  Client,
+				"client":  clientFor(t.Channel),
 				"from":    t.From,
 			},
 		})

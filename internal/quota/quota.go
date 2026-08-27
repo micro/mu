@@ -89,7 +89,16 @@ const (
 	// agent, is not a send and is not charged — see mail.DeliverHere.
 	OpMailSend = "mail_send"
 
-	OpSMSSend      = "sms_send"
+	OpSMSSend = "sms_send"
+
+	// OpWhatsAppSend is a WhatsApp message, which is a separate operation
+	// rather than a multiplier on OpSMSSend because the two are billed on
+	// different units: a text per 160-character segment, WhatsApp per 24-hour
+	// conversation. An operator who sets one price has to be able to set the
+	// other, and charging a paragraph five times for something the provider
+	// charged once is what sharing the operation would do.
+	OpWhatsAppSend = "whatsapp_send"
+
 	OpPlacesSearch = "places_search"
 	OpPlacesNearby = "places_nearby"
 	// OpRoutesETA keeps the operation id "places_eta" although the service is

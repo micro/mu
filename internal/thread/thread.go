@@ -797,6 +797,15 @@ const ChatClient = "chat"
 // conversation under two clients.
 const SMSClient = "sms"
 
+// WhatsAppClient names a conversation that happened over WhatsApp.
+//
+// Its own client rather than SMSClient with a flag, because the reply has to go
+// back the same way: a WhatsApp conversation answered by text arrives on the
+// other person's phone as a second thread, from a number they do not recognise,
+// and nothing about the message would say why. What the record is for is
+// knowing which door somebody came through.
+const WhatsAppClient = "whatsapp"
+
 // Rename moves a whole account's record to a new id.
 //
 // An account id is the key of `owned`, the Account on every Thread and on every
