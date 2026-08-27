@@ -4,20 +4,13 @@ A server for humans, agents and services
 
 ## Overview
 
-What is this? Good question. A work in progress. Technology is rapidly evolving and with it, the way we use tools and services. 
-Agents are now everywhere. They will become a dominant form of interaction in the coming years, but it's also only one piece of 
-the puzzle. Incumbents are still building walled gardens. What if we could change that? Use their tools for the greater good?
+A single server for everything. Run your own mail server, your own chat app, the tools and services needed by agents and humans. 
+It's all running live at [micro.mu](https://micro.mu) right now. We're building services that operate as the building blocks for 
+everything. Mail, chat, news, video, search, etc. Then we archive any data locally so it's all searchable. 
 
-Open protocols clearly still win. So what if we had a single server that was host to all of them? Run your own mail server, 
-your own chat app, the tools and services needed by agents and humans. I'm experimenting with a new single server stack that 
-bakes it all in. It's running live at [micro.mu](https://micro.mu) if you want to test it out. The idea is that we build a 
-bunch of services that all operate as the building blocks for everything else. Mail, chat, news, video, search, etc. But then
-we archive any data locally so it's all searchable and can be used without needing to go to big G. We leverage their APIs for 
-many things, but try to pull things from open APIs where possible. Services and the archive become tools for agents to use.
+Services and the archive become tools for agents to use. Communication ends up in one inbox, whether it's email, chat or sms, etc.
 
-Communication ends up in one inbox, whether it's email, chat or sms, maybe other forms of comms in the future also.
-
-A personal home server. Tools for agents. An AI assistant. An operating system for life? So many possibilities.
+A personal home server. Tools for agents. An AI assistant. An operating system for life. All of the above.
 
 ## Protocols
 
