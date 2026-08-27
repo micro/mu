@@ -184,3 +184,101 @@ func TestTheTestEndpointHonoursTheDeviceItWasGiven(t *testing.T) {
 			*phoneGot, *laptopGot)
 	}
 }
+
+// The device reporting back is what makes "nothing appeared" answerable.
+//
+// The record ended at "the push service accepted it", and FCM accepting proves
+// only that the request was well-formed and signed — it never decrypts the
+// payload. So a notification the handset never showed and one that was never
+// sent looked identical from the server, and there was nowhere to look that
+// could tell them apart.
+func TestADeviceCanSayItArrived(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	phone, _, _, _ := twoDevices(t, "receipt")
+
+	n := Notification{Title: "Test notification", Tag: "mu-test"}
+	if err := SendToDevice("receipt", phone, n); err != nil {
+		t.Fatal(err)
+	}
+	got := History("receipt", 10)
+	if len(got) != 1 {
+		t.Fatalf("history has %d entries", len(got))
+	}
+	if !got[0].Got.IsZero() {
+		t.Error("a notification is marked as arrived before any device said so")
+	}
+
+	Received("receipt", "mu-test", true, "")
+	got = History("receipt", 10)
+	if got[0].Got.IsZero() {
+		t.Error("the device said it arrived and the record does not show it")
+	}
+	if !got[0].Shown {
+		t.Error("the device said it showed it and the record says otherwise")
+	}
+}
+
+// And a device that woke up and could not render it says that, rather than
+// nothing — which is the exact case the service worker used to swallow with a
+// bare return.
+func TestADeviceCanSayItFailedToShowIt(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	phone, _, _, _ := twoDevices(t, "mangled")
+
+	if err := SendToDevice("mangled", phone,
+		Notification{Title: "Test notification", Tag: "mu-test"}); err != nil {
+		t.Fatal(err)
+	}
+	Received("mangled", "mu-test", false, "the payload could not be read")
+
+	got := History("mangled", 10)
+	if got[0].Got.IsZero() || got[0].Shown {
+		t.Fatal("a device that could not show it is recorded as having shown it")
+	}
+	if got[0].Why != "the payload could not be read" {
+		t.Errorf("the reason was not kept: %q", got[0].Why)
+	}
+}
+
+// A tag nothing was sent under does not grow the file. This endpoint is
+// reachable by anything holding a session.
+func TestAnUnknownReceiptIsDropped(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	phone, _, _, _ := twoDevices(t, "unknown")
+	if err := SendToDevice("unknown", phone,
+		Notification{Title: "Test notification", Tag: "mu-test"}); err != nil {
+		t.Fatal(err)
+	}
+
+	before := len(History("unknown", 0))
+	for i := 0; i < 50; i++ {
+		Received("unknown", "not-a-tag-we-sent", true, "")
+	}
+	if after := len(History("unknown", 0)); after != before {
+		t.Errorf("unmatched receipts grew the history from %d to %d", before, after)
+	}
+	// And the real one is still unclaimed, so a forged receipt cannot mark a
+	// notification as delivered on the wrong tag.
+	if !History("unknown", 1)[0].Got.IsZero() {
+		t.Error("an unmatched receipt was applied to a notification anyway")
+	}
+}
+
+// A second receipt for the same tag does not overwrite the first. Chrome can
+// wake a worker more than once, and the interesting timestamp is the first.
+func TestAReceiptIsRecordedOnce(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	phone, _, _, _ := twoDevices(t, "twice")
+	if err := SendToDevice("twice", phone,
+		Notification{Title: "Test notification", Tag: "mu-test"}); err != nil {
+		t.Fatal(err)
+	}
+	Received("twice", "mu-test", true, "")
+	first := History("twice", 1)[0].Got
+
+	Received("twice", "mu-test", false, "a later confusion")
+	got := History("twice", 1)[0]
+	if !got.Got.Equal(first) || !got.Shown {
+		t.Error("a second receipt overwrote the first")
+	}
+}

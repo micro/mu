@@ -297,7 +297,7 @@ func Send(account string, n Notification) {
 // asSent is one notification as the history keeps it.
 func asSent(n Notification, ok bool, why string) Sent {
 	return Sent{Title: n.Title, Body: n.Body, URL: n.URL,
-		From: source(n.From), OK: ok, Error: why}
+		From: source(n.From), OK: ok, Error: why, Tag: n.Tag}
 }
 
 func reason(ok bool, err error) string {

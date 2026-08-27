@@ -36,6 +36,23 @@ type Sent struct {
 	// OK is whether any device took it. Error is why not, when not.
 	OK    bool   `json:"ok"`
 	Error string `json:"error,omitempty"`
+	// Got is when a device confirmed it woke up holding this.
+	//
+	// "The push service accepted it" is where the record used to end, and it is
+	// three quarters of the way to an answer. A notification that FCM takes and
+	// the handset never shows looks exactly like one that was never sent, and no
+	// amount of care on this side can tell them apart — the server has no way to
+	// see a service worker. So the service worker says so: it posts a receipt
+	// when the push event fires. Sent, accepted, arrived, shown — four steps,
+	// and until this existed the last two were one dark room.
+	Got time.Time `json:"got,omitempty"`
+	// Shown is false when the device woke up and could not render it, with Why
+	// saying what it could not do. A receipt that only ever means good news is
+	// not a receipt.
+	Shown bool   `json:"shown,omitempty"`
+	Why   string `json:"why,omitempty"`
+	// Tag is what the receipt is matched on.
+	Tag string `json:"tag,omitempty"`
 }
 
 // keep is how many notifications are remembered per account.
@@ -88,6 +105,48 @@ func note(account string, s Sent) {
 		snapshot[k] = append([]Sent(nil), v...)
 	}
 	data.SaveJSON(historyFile, snapshot) //nolint:errcheck
+}
+
+// Received is a device saying it woke up holding a notification.
+//
+// Matched on the tag against the most recent notification carrying it, because
+// that is the only identifier both ends have: the server chose it and the
+// service worker reads it back out of the payload it decrypted. Matching on
+// anything else would mean minting an id and threading it through, for a
+// receipt that only ever concerns the newest one.
+//
+// Unknown tags are dropped rather than appended. This is reachable by anything
+// holding a session, so an unmatched tag must not be able to grow the file.
+func Received(account, tag string, shown bool, why string) {
+	if account == "" {
+		return
+	}
+	tag = strings.TrimSpace(tag)
+	if len(tag) > 120 {
+		tag = tag[:120]
+	}
+	if len(why) > 200 {
+		why = why[:200]
+	}
+	loadHistory()
+	histMu.Lock()
+	defer histMu.Unlock()
+	list := hist[account]
+	for i := len(list) - 1; i >= 0; i-- {
+		if list[i].Tag != tag || !list[i].Got.IsZero() {
+			continue
+		}
+		list[i].Got = time.Now().UTC()
+		list[i].Shown = shown
+		list[i].Why = why
+		hist[account] = list
+		snapshot := make(map[string][]Sent, len(hist))
+		for k, v := range hist {
+			snapshot[k] = append([]Sent(nil), v...)
+		}
+		data.SaveJSON(historyFile, snapshot) //nolint:errcheck
+		return
+	}
 }
 
 // History is what has been sent to an account, newest first.

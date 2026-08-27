@@ -44,6 +44,30 @@ func SubscribeHandler(w http.ResponseWriter, r *http.Request) {
 	// way to tell a working subscription from a broken one except waiting, and
 	// waiting for a negative is not a test. This is the button.
 	//
+	// A device saying it woke up holding one.
+	//
+	// The record ended at "the push service accepted it", which is three
+	// quarters of an answer. A notification FCM takes and the handset never
+	// shows is indistinguishable, from here, from one that was never sent —
+	// the server cannot see a service worker. So the service worker says so,
+	// including when it woke up and could not render anything, which is the
+	// case that used to return silently and leave nothing anywhere.
+	//
+	// No CSRF: this is posted by a service worker that may be running with no
+	// page open, it carries a session, and the worst a forged one can do is
+	// mark a notification the account already received as received.
+	if strings.HasSuffix(r.URL.Path, "/received") {
+		var said struct {
+			Tag   string `json:"tag"`
+			Shown bool   `json:"shown"`
+			Why   string `json:"why"`
+		}
+		_ = json.NewDecoder(http.MaxBytesReader(w, r.Body, 4<<10)).Decode(&said)
+		Received(acc.ID, said.Tag, said.Shown, said.Why)
+		app.RespondJSON(w, map[string]any{"ok": true})
+		return
+	}
+
 	// SendNow rather than Send, or it is not a test at all: Send hands each
 	// device to a goroutine and returns, so answering ok after calling it said
 	// "ok" whether the push service took the notification, timed out, or refused
