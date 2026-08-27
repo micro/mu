@@ -319,20 +319,38 @@ func prayerTimesHTML() string {
       '<p class="m-0 mb-3 text-base">Qibla: <strong>'+q.bearing+'\u00B0 '+q.point+'</strong>'+
       ' <span class="text-muted">\u00B7 '+q.distance+'km to Mecca</span></p>'+
       '<div class="d-flex items-center gap-4">'+
-      '<svg id="qibla-dial" width="96" height="96" viewBox="0 0 96 96" class="fixed-w">'+
-        // Fixed index at the top: the way the phone is pointing. Everything
-        // else is world-referenced and turns beneath it, so aligning is
-        // "bring Q up to the marker". Hidden until a live heading exists,
-        // because without one the dial is a north-up diagram, not a compass.
-        '<line id="qibla-index" x1="48" y1="2" x2="48" y2="9" stroke="#111" stroke-width="2" stroke-linecap="round" class="d-none"/>'+
+      // Ten units of headroom above the dial, for the target and its Q to sit
+      // outside the rim where nothing else is. Inside it they landed on the
+      // needle's arrowhead, which is where the needle goes when you have got
+      // it right — the one moment the dial has to be readable.
+      '<svg id="qibla-dial" width="96" height="96" viewBox="0 -10 96 106" class="fixed-w">'+
         '<circle cx="48" cy="48" r="38" fill="none" stroke="#e0e0e0" stroke-width="1.5"/>'+
+        // The target, at the top of the rim, with Q above it. Like the mark on
+        // the bezel of a real qibla compass: it does not mean a direction in
+        // the world, it is the slot you bring the needle into.
+        //
+        // Hidden until a live heading exists, because without one there is
+        // nothing to aim — the dial is then a north-up diagram of a bearing.
+        // It stayed hidden with one too: .d-none is display:none !important,
+        // and this was revealed by clearing an inline style, which an
+        // !important rule beats. So the instruction said "turn until Q reaches
+        // the marker at the top" and there was no marker at the top.
+        //
+        // A dot rather than a tick, because Q sits over it and Q has a tail,
+        // which at this size lands in whatever occupies the few units below
+        // its baseline. And after the rim rather than before, because the rim
+        // is painted over what came first and a light line across the middle
+        // of a dark dot reads as half a dot.
+        '<circle id="qibla-index" cx="48" cy="10" r="2.5" fill="#111" class="d-none"/>'+
         // Just the needle. Tick marks collided with the N label and added
         // nothing the labels don't already say.
+        // Long enough to reach for the rim: a needle that stops two-thirds of
+        // the way out does not read as pointing at anything on it.
         '<g id="qibla-needle" transform="rotate('+q.bearing+' 48 48)">'+
           '<line x1="48" y1="48" x2="48" y2="26" stroke="#111" stroke-width="2" stroke-linecap="round"/>'+
-          '<polygon points="48,20 43,30 53,30" fill="#111"/>'+
+          '<polygon points="48,16 43,27 53,27" fill="#111"/>'+
         '</g>'+
-        '<circle cx="48" cy="48" r="2.5" fill="#111"/>'+
+        '<circle id="qibla-pivot" cx="48" cy="48" r="2.5" fill="#111"/>'+
         '<text id="qibla-q" text-anchor="middle" font-size="11" font-weight="700" fill="#111">Q</text>'+
         '<text id="qibla-n" text-anchor="middle" font-size="10" fill="#bbb">N</text>'+
       '</svg>'+
@@ -340,21 +358,31 @@ func prayerTimesHTML() string {
         'Q marks the qibla, N is true north.</p>'+
       '</div></div>';
   }
-  // Place the Q and N markers on the rim by angle. They are positioned rather
-  // than rotated so the letters always read upright, and N shows where north
-  // actually is — on a live compass the top of the dial is the way you are
-  // facing, not north.
-  function placeMarks(qAngle,nAngle){
-    var set=function(id,ang){
-      var el=document.getElementById(id);
-      if(!el)return;
-      var r=ang*Math.PI/180;
-      el.setAttribute('x',(48+37*Math.sin(r)).toFixed(1));
-      el.setAttribute('y',(48-37*Math.cos(r)+3.6).toFixed(1));
-    };
-    set('qibla-q',qAngle);
-    set('qibla-n',nAngle);
+  // Place the Q and N letters on the rim by angle. They are positioned rather
+  // than rotated so they always read upright, and N shows where north actually
+  // is — on a live compass the top of the dial is the way you are facing, not
+  // north.
+  //
+  // What the two letters mean differs by mode, which is why the caller passes
+  // both angles rather than working them out here. With no heading this is a
+  // north-up diagram: N at the top, Q out at the bearing, needle pointing at
+  // it. With a heading it is an instrument: Q is pinned to the target at the
+  // top and the needle swings, so lining them up is the whole interaction.
+  function setMark(id,ang,radius){
+    var el=document.getElementById(id);
+    if(!el)return;
+    var r=ang*Math.PI/180;
+    el.setAttribute('x',(48+radius*Math.sin(r)).toFixed(1));
+    el.setAttribute('y',(48-radius*Math.cos(r)+3.6).toFixed(1));
   }
+  function placeMarks(qAngle,nAngle){
+    setMark('qibla-q',qAngle,37);
+    setMark('qibla-n',nAngle,37);
+  }
+  // pinQ puts Q on the target, outside the rim at the top, where it stays for
+  // as long as there is a heading. Further out than the rose letters because
+  // it is not one: a target on the bezel, not a direction in the world.
+  function pinQ(){setMark('qibla-q',0,52);}
   // Where the device reports its heading, rotate the dial so the needle points
   // at the qibla in the real world rather than just showing a fixed bearing.
   // Rotate the dial so the needle points at the qibla in the real world.
@@ -377,10 +405,35 @@ func prayerTimesHTML() string {
       }
       var qAngle=(bearing-smoothed+360)%360;
       needle.setAttribute('transform','rotate('+qAngle.toFixed(1)+' 48 48)');
-      placeMarks(qAngle,(360-smoothed)%360);
+      // Q pinned to the target at the top; only the needle moves. It used to
+      // ride the needle's tip, which made the two one object — so "turn until
+      // Q reaches the marker" could only ever mean "turn until the arrow
+      // points up", and there was no marker up there to reach.
+      pinQ();
+      setMark('qibla-n',(360-smoothed)%360,37);
+      // classList, not style.display: .d-none is display:none !important and
+      // an inline empty string does not beat it. The marker was never drawn.
       var idx=document.getElementById('qibla-index');
-      if(idx){idx.style.display='';}
-      if(hint){hint.textContent='Turn until Q reaches the marker at the top.';}
+      if(idx){idx.classList.remove('d-none');}
+      // And say when you have arrived. "Turn until…" with no arrival is the
+      // same instruction whether you are facing Mecca or facing away.
+      var off=Math.min(qAngle,360-qAngle);
+      var there=off<=5;
+      paint(there?'#1a7f37':'#111');
+      if(hint){hint.textContent=there?'Facing the qibla.':'Turn until the arrow points at Q.';}
+    }
+    // Needle, target and Q are one signal, so they take one colour.
+    function paint(c){
+      var g=document.getElementById('qibla-needle');
+      if(g){
+        var ls=g.getElementsByTagName('line');
+        for(var i=0;i<ls.length;i++){ls[i].setAttribute('stroke',c);}
+        var ps=g.getElementsByTagName('polygon');
+        for(var j=0;j<ps.length;j++){ps[j].setAttribute('fill',c);}
+      }
+      var q=document.getElementById('qibla-q');if(q){q.setAttribute('fill',c);}
+      var pv=document.getElementById('qibla-pivot');if(pv){pv.setAttribute('fill',c);}
+      var ix=document.getElementById('qibla-index');if(ix){ix.setAttribute('fill',c);}
     }
     function onOrient(e){
       var h=null;
