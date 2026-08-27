@@ -96,6 +96,20 @@ func ConversationView(accountID string, t *thread.Thread) string {
 // button that did nothing. Same shape as the agent page calling a function
 // defined in a panel it had stopped rendering.
 func conversationPane(accountID string, t *thread.Thread, msgs []thread.Message, trimmed, titled bool, assign string) string {
+	return conversationPaneTo(accountID, t, msgs, trimmed, titled, assign, "")
+}
+
+// conversationPaneTo is the same with the reply target decided by the caller.
+//
+// replyTo works out who to answer from the messages, which is right in the
+// inbox: a conversation there is one you opened by id and the only clue to who
+// it is with is who last spoke. It is wrong on /@somebody, where the page is
+// named for the correspondent — you know exactly who a reply goes to, and
+// working it out from the messages gets it wrong in the one case that matters,
+// a conversation you started, where nobody but you has spoken yet. That
+// rendered no Reply at all and a note saying to answer it "the way it arrived",
+// on the page it arrived on.
+func conversationPaneTo(accountID string, t *thread.Thread, msgs []thread.Message, trimmed, titled bool, assign, to string) string {
 	subject := t.Subject
 	if subject == "" {
 		subject = "Untitled"
@@ -126,7 +140,9 @@ func conversationPane(accountID string, t *thread.Thread, msgs []thread.Message,
 	// It could not reply at all once, and said so, which described an inbox you
 	// cannot answer from. Assign is offered wherever the caller has a dialog for
 	// it to open.
-	to := replyTo(accountID, t, msgs)
+	if to == "" {
+		to = replyTo(accountID, t, msgs)
+	}
 	b.WriteString(actionBar(t, to, assign != ""))
 	if to == "" {
 		b.WriteString(`<p class="ib-note">This happened on ` +

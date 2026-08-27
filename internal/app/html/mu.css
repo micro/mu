@@ -7075,3 +7075,15 @@ a.btn-secondary:hover, .btn-secondary:hover {
   color: var(--text-muted, #888);
   max-width: 34em;
 }
+
+/* /@somebody: the conversation with them. See inbox/person.go. */
+.ib-person-head { display: flex; justify-content: flex-end; margin: 0 0 var(--spacing-md, 16px) }
+.ib-person-also { margin: var(--spacing-lg, 24px) 0 0; padding-top: var(--spacing-md, 16px);
+  border-top: var(--border-width, 1px) solid var(--card-border, #e8e8e8) }
+.ib-person-also h3 { font-size: 15px; margin: 0 0 10px }
+.ib-person-list { list-style: none; margin: 0; padding: 0 }
+.ib-person-list li { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; padding: 7px 0;
+  border-bottom: var(--border-width, 1px) solid var(--divider, #f0f0f0) }
+.ib-person-list li:last-child { border-bottom: 0 }
+.ib-person-when { margin-left: auto; font-size: 12px; color: var(--text-muted, #888); white-space: nowrap }
+@media only screen and (max-width: 600px) { .ib-person-when { margin-left: 0 } }

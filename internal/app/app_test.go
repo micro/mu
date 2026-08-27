@@ -240,6 +240,8 @@ func TestRenderHTMLGuestNavHidesSignedInActions(t *testing.T) {
 //
 // This asserted the opposite a version ago: the account was one <details>
 // control with Account, Profile, Wallet, Tokens and Admin folded behind it,
+// (Profile has since gone entirely — /@you is the conversation with somebody
+// now, and your own is your inbox.)
 // because "Signed in as @alice plus four destinations" made a five-item product
 // render as a ten-item dashboard. That reasoning traded reach for tidiness, and
 // the things traded away were the ones a person owns — a wallet one click
@@ -251,7 +253,7 @@ func TestRenderHTMLGuestNavHidesSignedInActions(t *testing.T) {
 func TestTheSignedInRailCarriesEveryDestination(t *testing.T) {
 	result := renderWithLang("Test", "A test page", "<p>content</p>", "en", &auth.Account{ID: "alice"})
 	for _, want := range []string{
-		`id="nav-home"`, `id="nav-account"`, `id="nav-profile"`, `id="nav-inbox"`,
+		`id="nav-home"`, `id="nav-account"`, `id="nav-inbox"`,
 		`id="nav-agents"`, `id="nav-services"`, `id="nav-token"`, `id="nav-wallet"`,
 		`id="nav-logout"`, `@alice`,
 	} {

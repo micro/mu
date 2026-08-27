@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"mu/home"
+	"mu/inbox"
 	"mu/internal/api"
 	"mu/internal/app"
 	"mu/internal/auth"
@@ -29,7 +30,6 @@ import (
 	"mu/internal/setup"
 	"mu/internal/thread"
 	"mu/internal/usage"
-	"mu/internal/user"
 	"mu/internal/x402"
 	"mu/service/blog"
 	"mu/service/chat"
@@ -238,38 +238,17 @@ func serve(addr string) {
 					return
 				}
 
-				// Otherwise serve the HTML profile page.
-				// POST /@username updates status — run through the
-				// same write gate as every other content path.
+				// Otherwise it is the conversation with them.
+				//
+				// This served a profile — a name, a tick, a join date, a status
+				// box and a list of their posts — and POST to it set the status,
+				// through the content write gate, charged as a social post. All of
+				// that is gone with the page. /@somebody is what the two of you
+				// have said to each other now, which is a read of your own record
+				// and writes nothing: the message itself is posted to /inbox/new,
+				// where the gate for sending one already is.
 				if !strings.Contains(rest, "/") {
-					if r.Method == "POST" {
-						op := quota.OpSocialPost
-						sess, err := auth.GetSession(r)
-						if err != nil {
-							app.Unauthorized(w, r)
-							return
-						}
-						if !auth.CanPost(sess.Account) {
-							app.Forbidden(w, r, auth.PostBlockReason(sess.Account))
-							return
-						}
-						if err := auth.CheckPostRate(sess.Account); err != nil {
-							app.TooManyRequests(w, r, err.Error())
-							return
-						}
-						canProceed, _, cost, _ := quota.CheckQuota(sess.Account, op)
-						if !canProceed {
-							app.Error(w, r, http.StatusPaymentRequired,
-								fmt.Sprintf("This costs %d credit(s). Top up at /wallet/topup", cost))
-							return
-						}
-						if err := quota.Charge(sess.Account, op, nil); err != nil {
-							app.Error(w, r, http.StatusPaymentRequired, err.Error())
-							return
-						}
-						app.Log("wallet", "Charged %s %d credit(s) for POST /@%s status", sess.Account, quota.OperationCost(op), rest)
-					}
-					user.ProfileHandler(w, r)
+					inbox.PersonHandler(w, r)
 					return
 				}
 			}

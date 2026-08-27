@@ -80,14 +80,21 @@ func TestTheBottomIsWhoYouAreAndTheWayOut(t *testing.T) {
 	if !strings.Contains(bottom, `id="nav-logout" href="/logout"`) {
 		t.Error("no way to log out")
 	}
-	// Two came back, deliberately: Account and Profile are the pages that are
-	// about *you* rather than about the instance, and under your own name is
-	// where they read — "signed in as @someone", then the two pages that are
-	// @someone's, then the way out.
-	for _, mine := range []string{"/account", "/@someone"} {
+	// Account came back deliberately: it is the page that is about *you*
+	// rather than about the instance, and under your own name is where it
+	// reads — "signed in as @someone", then the page that is @someone's, then
+	// the way out.
+	//
+	// Profile was the other one and is gone with the page. /@somebody is the
+	// conversation with them now, so your own resolves to your inbox, which is
+	// already the first thing in the rail.
+	for _, mine := range []string{"/account"} {
 		if !strings.Contains(bottom, `href="`+mine+`"`) {
 			t.Errorf("%s is not under the name, where what is yours belongs", mine)
 		}
+	}
+	if strings.Contains(bottom, `href="/@someone"`) {
+		t.Error("the rail still links a profile page that no longer exists")
 	}
 	// The rest stay in the rail. They are the instance's services, not your
 	// account's pages, and a wallet under your name is the disclosure menu
