@@ -3,7 +3,6 @@ package home
 import (
 	"html"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"mu/internal/app"
@@ -24,6 +23,11 @@ import (
 // something different — and would go stale here the first time a service is
 // added or removed. Cheap because Kinds is cached; see internal/data/kinds.go.
 //
+// The kinds and not the total. It said "Search 105,623 things this instance has
+// collected" — a number nobody decides anything from, changing every minute, in
+// the one line on the page that had a job to do. What the reader needs is what
+// is in there, so they know whether the thing they are looking for could be.
+//
 // Empty on a new instance, and nothing is the right answer there: a caption
 // naming kinds it has none of is worse than a box with no caption.
 func whatIsSearchable() string {
@@ -31,19 +35,21 @@ func whatIsSearchable() string {
 	if len(kinds) == 0 {
 		return ""
 	}
-	total := 0
 	var names []string
 	for _, k := range kinds {
-		total += k.Count
-		if len(names) < 4 {
-			names = append(names, html.EscapeString(k.Name))
+		if len(names) == 4 {
+			break
 		}
+		names = append(names, html.EscapeString(k.Name))
 	}
 	what := strings.Join(names, ", ")
 	if len(kinds) > len(names) {
 		what += " and more"
 	}
-	return "Search " + strconv.Itoa(total) + " things this instance has collected — " + what + "."
+	// Sentence case on the first, because it is a sentence. The kinds are
+	// lowercase type names as the services register them, and leaving it that
+	// way reads as a variable name printed on a page.
+	return strings.ToUpper(what[:1]) + what[1:] + "."
 }
 
 // Index is the front door for anyone not signed in: something to try, then
