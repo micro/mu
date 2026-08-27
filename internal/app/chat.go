@@ -145,31 +145,119 @@ var AgentReady func() bool
 // A search box does not need a paragraph under it explaining that it is a
 // search box. The only page that owes an explanation is one that was supposed
 // to be a chat.
-func searchBox(why string) string {
+// SearchBoxOpts is how a page asks for the box. The zero value is the plain
+// search box every page had before there was a second thing to do with it.
+type SearchBoxOpts struct {
+	// Why this is a search box and not a chat. Empty almost always — see above.
+	Why string
+	// Ask offers "Ask agent" beside "Search", sending the same typed question
+	// to /agent instead of /archive. Set by askAction: a model, or no button.
+	Ask bool
+	// Centred is the front page, which has nothing else on it to line up with.
+	// Everywhere else the box sits in a left-aligned column.
+	Centred bool
+	// Focused puts the cursor in it on load. True on a page whose whole purpose
+	// is the box; false where it is one thing among several.
+	Focused bool
+}
+
+// SearchBox renders the box. Exported because the front page draws it too, and
+// it drew its own until this had two buttons — at which point there were two
+// implementations of one control, and the second button would have had to be
+// written twice to appear on both.
+func SearchBox(o SearchBoxOpts) string { return searchBox(o) }
+
+// askAction reports whether "Ask agent" can be offered: a model is configured.
+//
+// Not whether anybody is signed in. /agent refuses without an account, but a
+// signed-out visitor pressing it is redirected to /login with the whole URL —
+// query included — so they sign in and the question they typed is asked on
+// arrival. See RedirectToLogin. The button keeps its promise; it just takes a
+// step on the way, which is the truth about an agent that costs money to run.
+func askAction() bool { return AgentReady == nil || AgentReady() }
+
+// AgentIsReady is askAction for pages outside this package that draw the box
+// themselves. Exported rather than exporting AgentReady, which is a hook the
+// server fills in and nothing else should be reading directly.
+func AgentIsReady() bool { return askAction() }
+
+func searchBox(o SearchBoxOpts) string {
 	note := ""
-	if why != "" {
-		note = `<p class="mu-search-why">` + why +
+	if o.Why != "" {
+		note = `<p class="mu-search-why">` + o.Why +
 			TextLink("/admin/config", "/admin/config") + `.</p>`
 	}
+
+	// One question, two places to send it.
+	//
+	// The box had one arrow and went to /archive, and asking had moved off to
+	// the agent pages entirely — so somebody on Home with something to ask had
+	// to know that, leave, and type it again. The archive and the agent answer
+	// different kinds of question and you often do not know which you wanted
+	// until you have typed it: "when did I last hear from X" is a search,
+	// "what did X say about the invoice" is a question. Choosing after typing
+	// is the whole point.
+	//
+	// Two submit buttons on one GET form, and formaction on the second. No
+	// JavaScript, no mode to set and get wrong, and Enter still searches
+	// because the first submit button in the form is the implicit default.
+	//
+	// Labels now, where the button used to be an arrow. An arrow was right for
+	// one destination and is not for two: the point of the pair is that they go
+	// to different places, which is the one thing an arrow cannot say.
+	// form="mu-search-form" on both, because they are drawn under the box
+	// rather than inside it and a submit button outside its form owns no form
+	// to submit. Without it they render, they highlight, they take the click,
+	// and nothing happens — which is how they first shipped, and which every
+	// test asserting "the button is on the page" passed. See
+	// TestTheButtonsBelongToTheForm.
+	buttons := `<button type="submit" form="mu-search-form" class="mu-search-go">Search</button>`
+	placeholder := "Search everything here"
+	if o.Ask {
+		buttons += `<button type="submit" form="mu-search-form" formaction="/agent" class="mu-search-go mu-search-ask">Ask agent</button>`
+		placeholder = "Search, or ask the agent"
+	}
+
+	wrap := "mu-search"
+	if o.Centred {
+		wrap += " mu-search-mid"
+	}
+	focus := ""
+	if o.Focused {
+		focus = " autofocus"
+	}
+
 	// Its own ids, not the chat's. The two are never on a page together, so
 	// sharing them would work — and would mean every selector, test and future
 	// stylesheet rule naming mu-chat-form had two different forms in mind.
-	return `<div id="mu-search"><form id="mu-search-form" method="GET" action="/archive">
-    <input id="mu-search-input" type="search" name="q" placeholder="Search everything here" maxlength="256">
-    <button type="submit" aria-label="Search">&#x2192;</button>
-  </form>` + note + `</div>
+	return `<div id="mu-search" class="` + wrap + `"><form id="mu-search-form" method="GET" action="/archive">
+    <input id="mu-search-input" type="search" name="q" placeholder="` + htmlpkg.EscapeString(placeholder) + `" maxlength="256"` + focus + `>
+  </form>
+  <div class="mu-search-acts">` + buttons + `</div>` + note + `</div>
 <style>
 /* Left, not centred. The rest of the page it sits on starts at the
    left margin, and a box centred inside a left-aligned column reads as
-   misaligned rather than as centred. */
+   misaligned rather than as centred. The front page is the exception: it
+   passes Centred, because there is nothing on it to line up with. */
 #mu-search{max-width:760px;margin:0;width:100%}
-#mu-search-form{display:flex;align-items:center;gap:0;border:1px solid var(--card-border,#ddd);
-  border-radius:6px;background:var(--card-background,#fff);padding:4px 4px 4px 12px;transition:border-color .2s}
+#mu-search.mu-search-mid{max-width:560px;margin:0 auto}
+#mu-search-form{display:flex;align-items:center;border:1px solid var(--card-border,#ddd);
+  border-radius:6px;background:var(--card-background,#fff);padding:4px 12px;transition:border-color .2s}
 #mu-search-form:focus-within{border-color:#999}
-#mu-search-input{flex:1;border:0;outline:0;font:inherit;font-size:15px;padding:8px 0;background:transparent;
+#mu-search-input{flex:1;border:0;outline:0;font:inherit;font-size:16px;padding:10px 0;background:transparent;
   color:var(--text-primary,#111);min-width:0}
-#mu-search-form button{flex:none;border:0;border-radius:4px;background:#111;color:#fff;font:inherit;
-  width:32px;height:32px;cursor:pointer}
+/* Under the box, not inside it. Two labelled buttons in a 44px pill leave a
+   phone nowhere to type; below, they have room and they wrap. */
+.mu-search-acts{display:flex;gap:8px;margin:10px 0 0;flex-wrap:wrap}
+#mu-search.mu-search-mid .mu-search-acts{justify-content:center}
+.mu-search-go{border:1px solid #111;border-radius:6px;background:#111;color:#fff;font:inherit;font-size:14px;
+  padding:8px 18px;cursor:pointer;line-height:1.4}
+.mu-search-go:hover{opacity:.85}
+/* Outlined, because Enter goes to Search and the pair should say so without
+   making Ask look like an afterthought. */
+.mu-search-ask{background:transparent;color:var(--text-primary,#111);
+  border-color:var(--card-border,#ddd)}
+.mu-search-ask:hover{border-color:#999;opacity:1}
 .mu-search-why{max-width:760px;margin:8px 0 0;color:var(--text-muted,#888);font-size:13px;line-height:1.6}
 </style>`
 }
@@ -237,13 +325,16 @@ func ChatComponent(cfg ChatConfig) string {
 	// Asking still has a home — /agents and the agent pages pass Ask, because
 	// a page about an agent is a page for talking to it.
 	if !cfg.Ask {
-		return searchBox("")
+		// And beside Search, a way to ask — when there is a model to ask. Both
+		// buttons, one box: see searchBox.
+		return searchBox(SearchBoxOpts{Ask: askAction()})
 	}
 	if AgentReady != nil && !AgentReady() {
 		// A page that wanted a chat and cannot have one says why. Everywhere
-		// else the search box is simply the box, and explains nothing.
-		return searchBox("No model is configured, so the agent cannot answer yet. " +
-			"Add a provider at ")
+		// else the search box is simply the box, and explains nothing. No Ask
+		// button here either: this is the branch where there is nothing to ask.
+		return searchBox(SearchBoxOpts{Why: "No model is configured, so the agent cannot answer yet. " +
+			"Add a provider at "})
 	}
 	suggestJS, err := json.Marshal(suggestions)
 	if err != nil {

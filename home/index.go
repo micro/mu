@@ -234,31 +234,27 @@ func Index(w http.ResponseWriter, r *http.Request) {
 // page says it is nginx and that it is working. This says what it is, that it
 // is running, and gives you something to do with it.
 func indexBody() string {
-	return `<div class="lwrap">
-<form class="lsearch" method="GET" action="/archive">
-  <input class="lsearch-in" type="search" name="q" placeholder="Search everything here" maxlength="256" autofocus>
-  <button class="lsearch-go" type="submit" aria-label="Search">&#x2192;</button>
-</form>
-<p class="lwhat">` + whatIsSearchable() + `</p>
+	// app.SearchBox, not a form of its own.
+	//
+	// This page drew its own box — .lsearch, its own input, its own arrow — and
+	// Home drew #mu-search, and the two were the same control with two
+	// stylesheets. That was survivable while the box did one thing. It stopped
+	// being survivable the moment it grew a second button, because a second
+	// implementation means writing that button twice and watching the copies
+	// drift, which is the whole reason there was a rule about this.
+	//
+	// Centred and focused, which is what was particular to this page; the rest
+	// was duplication.
+	return `<div class="lwrap">` +
+		app.SearchBox(app.SearchBoxOpts{Ask: app.AgentIsReady(), Centred: true, Focused: true}) +
+		`<p class="lwhat">` + whatIsSearchable() + `</p>
 </div>
 
 <style>
 .lwrap{padding:0;max-width:560px;margin:0 auto;width:100%}
-.lsearch{display:flex;align-items:center;gap:8px;width:100%}
-.lsearch-in{flex:1;min-width:0;font:inherit;font-size:16px;padding:12px 14px;border:1px solid #ddd;
-  border-radius:var(--border-radius,6px);background:#fff;color:#111}
-.lsearch-in:focus{outline:none;border-color:#999}
-/* An arrow, the same control the ask box on Home uses. A word here would be
-   the only labelled button in the product's two search boxes, and "Search"
-   beside a box that says "Search everything here" is the label twice. */
-.lsearch-go{flex:none;border:0;background:#111;color:#fff;font:inherit;font-size:16px;
-  width:44px;height:44px;border-radius:var(--border-radius,6px);cursor:pointer}
 .lwhat{text-align:center;color:#888;font-size:13px;line-height:1.6;margin:16px auto 0}
 .lwhat a{color:#555;font-weight:600;text-decoration:none;white-space:nowrap}
 .lwhat a:hover{text-decoration:underline}
-/* Not stacked on a phone: the box and its arrow are one control, and a
-   full-width button under a full-width input reads as two. */
-@media (max-width:640px){.lsearch-in{font-size:16px}}
 </style>`
 }
 
