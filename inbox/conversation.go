@@ -151,6 +151,15 @@ func conversationPane(accountID string, t *thread.Thread, msgs []thread.Message,
 //
 // Only mail. A conversation from the web has an address on nothing.
 func replyTo(accountID string, t *thread.Thread, msgs []thread.Message) string {
+	// A text is answered with a text. The thread's key is the number it came
+	// from, and sms.Send is the one path out — so the inbox can answer this
+	// without becoming a second way to send one.
+	//
+	// The rest still cannot be answered from here. A room thread is answered in
+	// the room, and that is what the note under the bar says.
+	if t.Client == thread.SMSClient {
+		return strings.TrimSpace(t.Key)
+	}
 	if t.Client != mailClient {
 		return ""
 	}
