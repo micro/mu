@@ -174,6 +174,15 @@ func wireHooks() {
 	// hands what arrives to the agent. See agent/mail.
 	mailagent.Load()
 
+	// And IMAP is a client of the record rather than of the mail store.
+	//
+	// SMTP delivers and XMPP delivers; IMAP delivers nothing — it reads a
+	// message store — so the store worth pointing it at is the one every
+	// channel writes to. service/mail may not read internal/thread, so it asks
+	// for the conversations and inbox/ answers, being the package that already
+	// reads both. See inbox/imapbridge.go.
+	mail.Bridged = inbox.Bridge
+
 	// And a room is a client too. service/chat decides who is in a room and
 	// whether the agent was named; this is what answers when it was. It used to
 	// be a hundred and ninety lines inside the service composing replies with

@@ -100,6 +100,21 @@ var hooks = map[string]why{
 	"events.OnCreate": announces,
 	"events.OnFire":   announces,
 
+	// service/mail
+	//
+	// An adapter, and downward: mail owns IMAP — the folders, the UIDs, the
+	// RFC 5322 — and this is handed the conversations to serve. Nothing in the
+	// mail service knows what a text is, which is the property that makes it an
+	// adapter rather than a reach sideways: it would serve anything shaped like
+	// a message from anywhere.
+	//
+	// It is a hook because the alternative is worse in both directions.
+	// service/mail may not read internal/thread — a delivery mechanism keeps
+	// its own record — and an event cannot answer a question: IMAP has a client
+	// waiting on a LIST, and announcing that a folder was wanted does not fill
+	// it.
+	"mail.Bridged": adapter,
+
 	// service/news
 	"news.FetchSocialContext": reachesService,
 }

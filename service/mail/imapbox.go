@@ -202,9 +202,13 @@ func imapForget(accountID string) {
 // because there is mail in it is a truer statement than one that exists because
 // a tag was configured once.
 func imapFolders(accountID string) []string {
+	var bridged []*Message
+	if Bridged != nil {
+		bridged = Bridged(accountID)
+	}
 	mutex.RLock()
 	tags := map[string]bool{}
-	for _, m := range messages {
+	for _, m := range append(bridged, messages...) {
 		if m.ToID != accountID || m.Spam || m.Tag == "" {
 			continue
 		}
@@ -220,6 +224,26 @@ func imapFolders(accountID string) []string {
 	return append(append([]string{imapInbox}, names...), imapSent, imapJunk)
 }
 
+// Bridged is the conversations this account has had somewhere other than mail,
+// rendered as messages, filled in from above.
+//
+// IMAP is not mail's protocol the way SMTP is. SMTP delivers; IMAP delivers
+// nothing — it is a reader over a message store, and the store worth reading is
+// the record every channel writes to. A mail client is the one client most
+// people already have on every device they own, and pointing it at only the
+// mail is what made a text invisible in it.
+//
+// A hook rather than an import because this package must not read
+// internal/thread: a delivery mechanism keeps its own record and knows nothing
+// about anybody else's. Nothing here knows what a text is. It is handed
+// messages and it serves them, and the package that fills this in — inbox/,
+// which already reads both — is the one that knows how a conversation becomes
+// a message.
+//
+// Nil on an instance that has not wired it, which serves mail alone and is what
+// this did before.
+var Bridged func(accountID string) []*Message
+
 // imapFolder returns a folder's messages, oldest first, and whether the name
 // names a folder at all.
 func imapFolder(accountID, name string) ([]*Message, bool) {
@@ -228,9 +252,17 @@ func imapFolder(accountID, name string) ([]*Message, bool) {
 		return nil, false
 	}
 
+	// Gathered before the lock, because it reads a store this one knows nothing
+	// about and holding mail's mutex across it would be holding a lock while
+	// calling out of the package.
+	var bridged []*Message
+	if Bridged != nil {
+		bridged = Bridged(accountID)
+	}
+
 	mutex.RLock()
 	var out []*Message
-	for _, m := range messages {
+	for _, m := range append(bridged, messages...) {
 		// Which end of the message decides is the folder's business, not this
 		// loop's. It used to filter on ToID before the switch, which is why
 		// there could be no Sent: a message you sent is stored under whoever

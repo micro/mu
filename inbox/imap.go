@@ -52,24 +52,27 @@ func ImapHandler(w http.ResponseWriter, r *http.Request) {
 
 	var b strings.Builder
 	b.WriteString(`<div class="ib-imap">`)
-	// Your mail, and it says mail.
+	// Your inbox, and it means the inbox.
 	//
-	// This said "Everything that arrives here shows up there", which was not
-	// true and was not nearly true: /inbox reads the record — mail, chat, texts,
-	// whatever arrives — and IMAP reads the mail store. A text never appeared in
-	// Thunderbird and nothing said it would not.
+	// This said "Everything that arrives here shows up there" when it served
+	// the mail store alone, which was not true and not nearly true. It was
+	// corrected to say mail only — and that was the wrong repair, made on the
+	// reasoning that IMAP is mail's protocol the way XMPP is chat's.
 	//
-	// The fix is the sentence rather than the server. IMAP is mail's protocol
-	// the way XMPP is chat's, and a mail client asked to carry somebody's texts
-	// is the same category error as a chat client asked to carry their email.
-	// The unified view is the inbox itself; this is one medium's door onto one
-	// medium's part of it.
-	b.WriteString(`<p class="svc-lead">Your mail in the mail client you already use. ` +
-		`Every message that arrives by email shows up there, the agent's replies land ` +
+	// It is not. SMTP delivers and XMPP delivers; IMAP delivers nothing at all.
+	// It reads a message store and has no opinion about how anything got there,
+	// which makes it a consumption protocol rather than a transport — so the
+	// store worth pointing it at is the record every channel writes to. See
+	// inbox/imapbridge.go. The sentence is true again, and this time the server
+	// is what made it true.
+	b.WriteString(`<p class="svc-lead">Your whole inbox in the mail client you already ` +
+		`use. Mail, texts, WhatsApp and chats all arrive in it, the agent's replies land ` +
 		`in the thread, and each of your agents is a folder.</p>`)
-	b.WriteString(`<p class="ib-imap-note">Mail only — this is IMAP. Chats are XMPP and ` +
-		`texts arrive on the phone number; all three land together on ` +
-		app.TextLink("your inbox", "/inbox") + `, which is the view across them.</p>`)
+	b.WriteString(`<p class="ib-imap-note">Conversations that are not mail show a sender ` +
+		`built from where they came from — a text from <code>+447700900123</code> reads as ` +
+		`<code>447700900123.sms@…</code> — so a client has an address to show and to thread on. ` +
+		`Replying to one of those from a mail client is not wired yet; reply on ` +
+		app.TextLink("the inbox", "/inbox") + ` or on the phone.</p>`)
 
 	host, port, secure, on := imapReach()
 	if !on {
@@ -111,7 +114,7 @@ func ImapHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<li>Each agent is a folder — mail to <code>you+research@</code> ` +
 		`is the Research folder.</li>`)
 	b.WriteString(`<li>New mail shows up while the client sits open, within about ` +
-		`twenty seconds.</li>`)
+		`twenty seconds. A text or a chat appears on the next refresh.</li>`)
 	// Said rather than left to be discovered. A client that offers a verb the
 	// server refuses looks broken; a reader told why does not go looking.
 	b.WriteString(`<li>You cannot make, rename or delete folders. They are your ` +
