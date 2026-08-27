@@ -150,15 +150,35 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 
 	owner := OwnerOf(from)
 	if owner == "" {
-		// Nobody here started this conversation. Logged, not stored: an
-		// unsolicited message is not evidence about any account, and filing it
-		// under one would be a way to put text in a stranger's inbox.
-		app.Log("sms", "message from %s belongs to no conversation, dropped", from)
+		// Nobody to file it under at all. OwnerOf falls back to the operator, so
+		// this is an instance with no operator configured — there is no account
+		// this could belong to, and inventing one is worse than losing it.
+		app.Log("sms", "message from %s belongs to no account, dropped", from)
 		twiml(w, "")
 		return
 	}
 
 	Record(owner, "in", from, body, Segments(body))
+
+	known, isKnown := KnownSender(from)
+
+	// It arrived. Said with no gate on it, the way mail says MailReceived.
+	//
+	// This did not exist, and its absence is why an unsolicited text vanished:
+	// the only path into the record was the side effect of an agent answering,
+	// so the one thing a stranger must not be able to do was also the only thing
+	// that could file what they said. A subscriber decides what to do with an
+	// arrival from somebody unknown — agent/sms records it held — and that is a
+	// judgement about trust, which is not this service's to make.
+	event.Publish(event.Event{
+		Type: event.SMSReceived,
+		Data: map[string]interface{}{
+			"owner": owner,
+			"from":  from,
+			"text":  body,
+			"known": isKnown,
+		},
+	})
 
 	// And wake an agent, for a sender the account knows.
 	//
@@ -172,7 +192,7 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 	// Announced rather than answered here. A service does not call an agent;
 	// agent/sms subscribes and replies through Send, which is where every rule
 	// about what a text costs already lives.
-	if known, ok := KnownSender(from); ok {
+	if isKnown {
 		event.Publish(event.Event{
 			Type: event.SMSForAgent,
 			Data: map[string]interface{}{

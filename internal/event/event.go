@@ -119,6 +119,40 @@ const (
 	// Data: owner, from, text.
 	SMSForAgent = "sms_for_agent"
 
+	// SMSReceived is a text arriving, whoever it is from.
+	//
+	// The fact, with no gate on it, the way MailReceived is the fact and
+	// MailForAgent is the permission. SMS had only the second, so a text from a
+	// number nobody here knew was dropped with a log line: the only way it could
+	// have been recorded was the side effect of an agent answering it, and the
+	// agent is exactly what a stranger must not be able to start.
+	//
+	// Two topics rather than one with a flag, for the reason spelled out on
+	// MailForAgent — a subscriber cannot forget to check a topic it is not
+	// subscribed to.
+	//
+	// Known says whether the sender proved who they are. It is a fact about the
+	// sender rather than a permission: what a subscriber does with an arrival
+	// from a stranger is its own business, and holding it is one answer.
+	//
+	// Data: owner, from, text, known.
+	SMSReceived = "sms_received"
+
+	// ArrivalHeld is a conversation put in the record and not let in.
+	//
+	// Published by whatever recorded it, once, after the hold. A gatekeeper
+	// subscribes and decides — see agent/gate — and this is the topic rather
+	// than the channel's own because the question is identical whatever carried
+	// it: a text from an unknown number, a federated chat from an unknown JID
+	// and mail from a stranger are one question asked three times.
+	//
+	// It carries the thread rather than the message. The recorder has already
+	// opened the conversation and put the words in it, so a subscriber that was
+	// handed the text would have to find the thread again to act on it.
+	//
+	// Data: account, thread, client, from.
+	ArrivalHeld = "arrival_held"
+
 	// Activity is one thing that happened, in a line, with somewhere to
 	// go and read it: a post published, a video found, a headline broken, an
 	// image generated.

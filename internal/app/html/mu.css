@@ -6131,6 +6131,29 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
 .ib-search-clear { font-size: 13px; color: var(--text-muted, #888); flex: none }
 .ib-found { font-size: 13px; color: var(--text-muted, #888); margin: 0 0 10px }
 
+/* Waiting to be let in.
+ *
+ * A block, not rows — it asks a question and the answer is per item, so each
+ * one carries what was said and the two buttons rather than a preview you have
+ * to open. Bordered rather than filled: it sits above the mailbox and a filled
+ * panel there reads as an error. */
+.ib-held {
+  border: 1px solid var(--card-border, #e8e8e8);
+  border-radius: var(--border-radius, 6px);
+  padding: 12px 14px;
+  margin: 0 0 14px;
+  background: var(--card-background, #fff);
+}
+.ib-held-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; margin-bottom: 8px }
+.ib-held-note { font-size: 12px; color: var(--text-muted, #888); line-height: 1.5 }
+.ib-held-row { padding: 8px 0; border-top: 1px solid var(--card-border, #eee) }
+.ib-held-who { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px }
+.ib-held-when { margin-left: auto; flex: none; font-size: 12px; color: #aaa; white-space: nowrap }
+.ib-held-said { font-size: 13px; color: var(--text-secondary, #444); line-height: 1.5; margin: 3px 0 6px }
+.ib-held-acts { display: flex; flex-wrap: wrap; gap: 8px }
+.ib-held-acts form { margin: 0 }
+@media only screen and (max-width: 600px) { .ib-held-when { margin-left: 0 } }
+
 /* Putting an app on somebody else's page. See service/apps/embed.go. */
 .embed-page { max-width: 760px }
 .embed-title { font-size: 20px; margin: 0 0 6px }

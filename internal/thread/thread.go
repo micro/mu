@@ -101,6 +101,10 @@ type Thread struct {
 	Parties []Party   `json:"parties,omitempty"`
 	Started time.Time `json:"started"`
 	Updated time.Time `json:"updated"`
+	// Held means this arrived from somebody the account has never heard of and
+	// has not been let in. It is in the record and visible, and nothing acts on
+	// it until it is released. See gate.go.
+	Held bool `json:"held,omitempty"`
 	// Seen is when the owner last looked at this conversation. Anything that
 	// happened after it is unread.
 	//
@@ -511,13 +515,24 @@ func List(account string, limit int) []Thread {
 
 	var out []Thread
 	for _, t := range owned[account] {
+		// Held conversations are not in the list, which is the whole point of
+		// the state: somebody nobody here has heard of cannot put a line in
+		// front of you until you or an agent lets them. See HeldFor.
+		if t.Held {
+			continue
+		}
 		out = append(out, *t)
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].Updated.After(out[j].Updated) })
+	sortByUpdated(out)
 	if limit > 0 && len(out) > limit {
 		out = out[:limit]
 	}
 	return out
+}
+
+// sortByUpdated is newest first, which every list of these is.
+func sortByUpdated(out []Thread) {
+	sort.Slice(out, func(i, j int) bool { return out[i].Updated.After(out[j].Updated) })
 }
 
 // trim keeps an account's record within bounds, oldest first. Caller holds mu.

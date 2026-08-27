@@ -23,6 +23,7 @@ import (
 	agentblog "mu/agent/blog"
 	chatagent "mu/agent/chat"
 	"mu/agent/digest"
+	"mu/agent/gate"
 	mailagent "mu/agent/mail"
 	"mu/agent/micro"
 	"mu/agent/moderate"
@@ -183,6 +184,18 @@ func wireHooks() {
 	// verified wakes the agent the same way mail does; service/sms decides
 	// whose it is and whether it proved that, and this is what answers.
 	smsagent.Load()
+
+	// And every text goes in the record, whoever sent it — which is a separate
+	// job from answering one, the way agent/mail splits recording from
+	// answering. Without it a text from a number nobody here knows was dropped
+	// with a log line, because the only path into the record was the side
+	// effect of an agent replying.
+	smsagent.LoadRecord()
+
+	// Whether an arrival from a stranger should be let in at all. One judge for
+	// every channel, because a text from an unknown number and a federated chat
+	// from an unknown address are one question. See agent/gate.
+	gate.Load()
 
 	// And the agent introduces itself to a new account, in that account's
 	// inbox. Onboarding as a message rather than a page: the claim is that you

@@ -166,6 +166,12 @@ func list(w http.ResponseWriter, r *http.Request, accountID, box string) {
 	}
 	b.WriteString(boxes(accountID, all, box))
 
+	// What is waiting to be let in, above the mailbox and only when there is
+	// some. A held conversation is deliberately not in the list below, so
+	// without this the difference between holding a stranger's message and
+	// dropping it would be invisible from here.
+	b.WriteString(waiting(r, accountID))
+
 	// Search, over everything in the record rather than over the page.
 	//
 	// The inbox is where the conversations are, on every channel there is, and
