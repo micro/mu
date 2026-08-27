@@ -329,10 +329,10 @@ func handlePost(w http.ResponseWriter, r *http.Request, who string) {
 		_, err = Send(who, r.Form.Get("to"), r.Form.Get("text"))
 		done = "sent"
 	case strings.TrimSpace(r.Form.Get("start")) != "":
-		err = StartVerify(who, e164(r.Form.Get("start")))
+		err = StartVerify(who, r.Form.Get("start"))
 		done = "code"
 	case strings.TrimSpace(r.Form.Get("confirm")) != "":
-		err = Confirm(who, e164(r.Form.Get("confirm")), r.Form.Get("code"))
+		err = Confirm(who, r.Form.Get("confirm"), r.Form.Get("code"))
 		done = "verified"
 	case strings.TrimSpace(r.Form.Get("forget")) != "":
 		Forget(who, r.Form.Get("forget"))

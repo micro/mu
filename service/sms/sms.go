@@ -224,6 +224,20 @@ func CanReceive() string {
 // e164 is internal/phone's, and so is everything below about who a number
 // belongs to. A phone number is a phone number whether it is carrying a text or
 // a WhatsApp message, and service/whatsapp had to import this package to say so.
+// e164 is the one way a number becomes a number here.
+//
+// Every entry point runs it — Send, StartVerify, Confirm — rather than each
+// caller remembering to. The page did remember and /account did not, so a UK
+// number typed as 07700900123 reached countryAllowed as "0…" and came back
+// "this instance does not send to 0…". One implementation, several doors, and
+// the door that forgot was the newest one.
+//
+// A number with no country code is refused unless SMS_DEFAULT_COUNTRY says
+// which one to assume. Deriving it from the number this instance texts from
+// was tried and is wrong: an instance may send from more than one country —
+// TWILIO_FROM is a list — and picking the first turned 07700900123 into
+// +17700900123, which is a real US number belonging to somebody else.
+// TestNumbersAreOneNumberHoweverTheyAreWritten was already holding that line.
 func e164(s string) string { return phone.Normalise(s) }
 
 // Normalise is e164 for anything outside this package.
