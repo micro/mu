@@ -91,6 +91,17 @@ func (c Channel) Label() string {
 	return "SMS"
 }
 
+// Things is what more than one of these is called, for a sentence.
+//
+// "Texts" rather than "SMS messages", which is what a protocol calls them and
+// not what anybody else does.
+func (c Channel) Things() string {
+	if c == ChannelWhatsApp {
+		return "WhatsApp messages"
+	}
+	return "texts"
+}
+
 // maxBodyFor is how long one message may be.
 //
 // A text is 160 characters a segment and this instance pays for at most three.

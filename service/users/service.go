@@ -169,9 +169,6 @@ func line(u User) string {
 	if u.Profile.Online {
 		out += ", online now"
 	}
-	if u.Profile.Status != "" {
-		out += ", " + u.Profile.Status
-	}
 	return out
 }
 

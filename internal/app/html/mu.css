@@ -5470,6 +5470,12 @@ a.pill:hover,
 button.pill:hover {
   border-color: #ddd;
   color: var(--text-primary, #1a1a1a);
+  /* And no underline. a.pill sets text-decoration:none at (0,1,1) and the
+     global a:hover is (0,1,1) too, so source order decided it and the global
+     one is later — every pill link in the product underlined on hover while
+     claiming not to. Stated on :hover, which is the only thing that outranks
+     it. Same loss as .agent-name and .tool-tile before it. */
+  text-decoration: none;
 }
 
 /* :visited spelled out, or the global a:visited:not(.btn) — 0-2-1 — outranks
@@ -5520,8 +5526,11 @@ button.pill:hover {
 
 .ib { max-width: 760px }
 
-/* The address is the one thing on the page that makes this an agentic inbox
-   rather than a list, so it sits above everything and is selectable. */
+/* The top of the mailbox: what this list is, and what you do from here.
+ *
+ * It was an identity strip — "You asim@… / Agent agent@… / IMAP" — which is
+ * three facts nobody opening their inbox came for. The sentence says what the
+ * list is; the controls go out to the right. */
 .ib-addr {
   display: flex;
   flex-wrap: wrap;
@@ -5541,6 +5550,12 @@ button.pill:hover {
 }
 
 .ib-addr-note { font-size: 12px; color: var(--text-muted, #888) }
+.ib-lede { font-size: 14px; color: var(--text-secondary, #444) }
+/* The controls, together, out to the right — so the row reads as a sentence
+   with actions rather than a row of equal things. .ib-new-link had the
+   margin-left:auto itself, which put a gap between the two controls the moment
+   there was more than one. */
+.ib-addr-acts { margin-left: auto; display: flex; align-items: center; gap: 8px; flex: none }
 .ib-boxes { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px }
 .ib-empty { font-size: 14px; color: var(--text-muted, #888); line-height: var(--line-height, 1.6) }
 
@@ -5674,7 +5689,6 @@ button.pill:hover {
 .row-del:focus { opacity: 1 }
 .row-del:hover { color: var(--btn-danger, #c00) }
 @media (hover: none) { .row-del { opacity: 1 } }
-
 
 /* Unread is what makes this a mailbox rather than a log: a rule down the left
    and a heavier subject, so the eye finds the two that need answering without
@@ -6108,7 +6122,7 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
 
 /* Under the message rather than beside it, because it is a way of filling the
    boxes above and reads in the order it is used. */
-.ib-new-link { margin-left: auto }
+.ib-new-link { margin-left: 0 }
 .ib-sent { font-size: 13px; color: var(--btn-success, #1a7f37); margin: 0 0 12px }
 
 /* Search, on the screen the conversations are on.
@@ -6946,7 +6960,6 @@ a.pill {
 }
 /* ─────────────────────────────────────────────────────────────────────────── */
 
-
 /* The free list on /pricing. Things you scan, not paragraphs you read. */
 .price-free {
   margin: 0;
@@ -7062,3 +7075,15 @@ a.btn-secondary:hover, .btn-secondary:hover {
   color: var(--text-muted, #888);
   max-width: 34em;
 }
+
+/* /@somebody: the conversation with them. See inbox/person.go. */
+.ib-person-head { display: flex; justify-content: flex-end; margin: 0 0 var(--spacing-md, 16px) }
+.ib-person-also { margin: var(--spacing-lg, 24px) 0 0; padding-top: var(--spacing-md, 16px);
+  border-top: var(--border-width, 1px) solid var(--card-border, #e8e8e8) }
+.ib-person-also h3 { font-size: 15px; margin: 0 0 10px }
+.ib-person-list { list-style: none; margin: 0; padding: 0 }
+.ib-person-list li { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; padding: 7px 0;
+  border-bottom: var(--border-width, 1px) solid var(--divider, #f0f0f0) }
+.ib-person-list li:last-child { border-bottom: 0 }
+.ib-person-when { margin-left: auto; font-size: 12px; color: var(--text-muted, #888); white-space: nowrap }
+@media only screen and (max-width: 600px) { .ib-person-when { margin-left: 0 } }

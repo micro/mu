@@ -111,7 +111,21 @@ func notice(r *http.Request) string {
 
 // allowance says what is left, in a sentence rather than a meter.
 func allowance(who string) string {
-	sent, limit := SentToday(who), LimitFor(who)
+	limit := LimitFor(who)
+
+	// An account that is not capped is told so, rather than being told what is
+	// left of a number that does not apply to it. NoLimit is -1, so the
+	// subtraction below made "0 messages left today" — which reads as blocked,
+	// to the one account that never is.
+	if limit == quota.NoLimit {
+		msg := "No daily limit on this account"
+		if cost := quota.OperationCost(quota.OpSMSSend); cost > 0 {
+			msg += ", at " + itoa(cost) + " credits a message"
+		}
+		return msg + "."
+	}
+
+	sent := SentToday(who)
 	left := limit - sent
 	if left < 0 {
 		left = 0

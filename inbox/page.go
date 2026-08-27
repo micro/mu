@@ -194,12 +194,27 @@ func list(w http.ResponseWriter, r *http.Request, accountID, box string) {
 		// blank page with nothing to do about it. An empty box is a narrower
 		// fact and gets the narrower sentence — the address is already above it.
 		if box != "" {
+			// The address, here rather than above every list.
+			//
+			// An empty box is the one place it is the answer: there is nothing
+			// to read and the only useful thing to say is where to write so
+			// there is. Printing it above a full mailbox was the version of
+			// this that helped nobody.
+			where := ""
+			if alias := boxAddress(accountID, box); alias != "" {
+				where = ` Write to ` + writeTo(alias) + ` and it turns up here.`
+			}
 			b.WriteString(`<p class="ib-empty">Nothing for <code>` + html.EscapeString(box) +
-				`</code> yet.</p>`)
+				`</code> yet.` + where + `</p>`)
 		} else {
-			b.WriteString(`<p class="ib-empty">Nothing has arrived yet. Write to the address ` +
-				`above from anywhere — your own mail, your phone — and it turns up here. The ` +
-				`agent reads what arrives and answers in the thread.</p>` +
+			// The address used to be printed directly above this and is not
+			// any more, so the sentence says where to find it rather than
+			// pointing at a line that has gone.
+			b.WriteString(`<p class="ib-empty">Nothing has arrived yet. Write to your ` +
+				`address from anywhere — your own mail, your phone — and it turns up here. ` +
+				`The agent reads what arrives and answers in the thread. ` +
+				app.TextLink("Connect a mail client", "/inbox/imap") + ` to see the ` +
+				`addresses and the settings.</p>` +
 				`<p class="ib-empty">This is what came in. Chats you started here are with ` +
 				`the agent, on ` + app.TextLink("Agents", "/agents") + `. Or ` +
 				app.TextLink("write one yourself", "/inbox/new") + `.</p>`)
@@ -531,57 +546,54 @@ func boxes(accountID string, all []thread.Thread, current string) string {
 // "write to the agent" is what somebody reading this line is trying to do and
 // the alternative was copying it by hand into a form two clicks away.
 func addressBar(accountID, box string) string {
-	mine := mail.EmailForUser(accountID, mail.ConfiguredDomain())
+	var b strings.Builder
 
-	// The agent this box belongs to. A named box is the account's own alias for
-	// it; All is the instance's agent, which is the one a stranger can reach.
+	// A sentence and the two controls, not an identity strip.
 	//
-	// mail.Handle rather than accountID + "+" + box, which is the same string
-	// until it is not: Handle cleans the tag by the service's own rule, and the
-	// service is what decides which addresses it will accept.
-	theirs := ""
-	if box != "" {
-		theirs = mail.EmailForUser(mail.Handle(accountID, box), mail.ConfiguredDomain())
-	} else if Address != nil {
-		theirs = Address()
-	}
-	if mine == "" && theirs == "" {
+	// This printed "You asim@micro.mu / Agent agent@micro.mu / IMAP" above every
+	// list. Three facts, and none of them is what somebody opening their inbox
+	// came to find out — they know who they are, and an address belongs on a
+	// page about addresses. What the top of a mailbox is for is saying what the
+	// list is and offering the one or two things you do from here.
+	//
+	// The addresses have not gone. The agent's is filled in for you on New,
+	// which is where you would use it rather than copy it, and both are on
+	// /inbox/imap with everything else a client asks for.
+	b.WriteString(`<div class="ib-addr"><span class="ib-lede">` +
+		lede(box) + `</span><span class="ib-addr-acts">` +
+		connectLink() + newLink() + `</span></div>`)
+	return b.String()
+}
+
+// boxAddress is the alias that reaches the agent whose box this is.
+//
+// mail.Handle rather than accountID + "+" + box, which is the same string until
+// it is not: Handle cleans the tag by the service's own rule, and the service is
+// what decides which addresses it will accept.
+func boxAddress(accountID, box string) string {
+	if box == "" {
 		return ""
 	}
+	return mail.EmailForUser(mail.Handle(accountID, box), mail.ConfiguredDomain())
+}
 
-	var b strings.Builder
-	b.WriteString(`<div class="ib-addr">`)
-	if mine != "" {
-		b.WriteString(`<span class="ib-addr-one"><span class="ib-addr-k">You</span>` +
-			`<code>` + html.EscapeString(mine) + `</code></span>`)
+// lede says what this list is, in the one sentence a mailbox needs.
+func lede(box string) string {
+	if box != "" {
+		return "Everything sent to " + html.EscapeString(box)
 	}
-	if theirs != "" && !strings.EqualFold(theirs, mine) {
-		b.WriteString(`<span class="ib-addr-one"><span class="ib-addr-k">Agent</span>` +
-			writeTo(theirs) + `</span>`)
-	}
-	// One link, and it is the protocol's own name.
-	//
-	// This line has been shrinking. It said "Work with agents from your inbox",
-	// which is a claim about the product printed above somebody's mail; then it
-	// was that claim with two links after it; then just the two links. Your
-	// agents is in the rail, one item away, so a second copy here is a
-	// destination announced twice.
-	//
-	// What is left is the way into a mail client, and it says IMAP because that
-	// is what the reader is looking for. Somebody who wants to read this in
-	// Thunderbird knows the word; "Mail client" is the same fact with the
-	// searchable part removed.
-	//
-	// It stays because it has nowhere else to be. It was one of four numbered
-	// lines above the filters, and when those went this became the only link to
-	// /inbox/imap in the product — the page would have stayed served and been
-	// reachable only by typing the URL. Nothing would have caught it: the link
-	// test asserts every link goes somewhere, not that every somewhere has a
-	// link.
-	b.WriteString(`<span class="ib-addr-note">` +
-		app.TextLink("IMAP", "/inbox/imap") +
-		`</span>` + newLink() + `</div>`)
-	return b.String()
+	return "Everything sent to you, on every channel"
+}
+
+// connectLink is the way into a mail client, beside New because that is the
+// other thing you do from the top of a mailbox.
+//
+// It says Connect rather than IMAP. IMAP is the protocol and was the right word
+// while this served mail alone and somebody was hunting for the setting; the
+// page behind it now describes the whole inbox in a mail client, and Connect is
+// what the reader is trying to do.
+func connectLink() string {
+	return `<a class="pill ib-connect-link" href="/inbox/imap">Connect</a>`
 }
 
 // No howTo, and the reasoning that put it here is the reasoning against it.

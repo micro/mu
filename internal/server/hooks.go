@@ -48,7 +48,6 @@ import (
 	"mu/internal/service"
 	"mu/internal/settings"
 	"mu/internal/thread"
-	"mu/internal/user"
 	"mu/internal/x402"
 	"mu/service/apps"
 	"mu/service/blog"
@@ -356,9 +355,6 @@ func wireHooks() {
 	// reason. Their address without a tag, which is the person: service/mail
 	// will not wake an agent on untagged mail, so writing to somebody here is
 	// writing to them.
-	user.AddressFor = func(accountID string) string {
-		return mail.EmailForUser(accountID, mail.ConfiguredDomain())
-	}
 	// The roster, so the inbox can offer a box per agent rather than only the
 	// ones that already have mail — and so a box is the agent's address tag
 	// rather than a second slug derived from its name. See inbox.Agents.
@@ -488,35 +484,12 @@ func wireHooks() {
 		}()
 	}
 
-	// Wire user → blog callback (avoids direct import between building blocks)
-	user.GetUserPosts = func(authorID, authorName string) []user.UserPost {
-		posts := blog.PostsByAuthorID(authorID, authorName)
-		result := make([]user.UserPost, len(posts))
-		for i, p := range posts {
-			result[i] = user.UserPost{
-				ID:        p.ID,
-				Title:     p.Title,
-				Content:   p.Content,
-				CreatedAt: p.CreatedAt,
-				Private:   p.Private,
-			}
-		}
-		return result
-	}
-	user.LinkifyContent = blog.Linkify
-
-	user.GetUserApps = func(authorID string) []user.UserApp {
-		appList := apps.ByAuthor(authorID)
-		result := make([]user.UserApp, len(appList))
-		for i, a := range appList {
-			result[i] = user.UserApp{
-				Slug:        a.Slug,
-				Name:        a.Name,
-				Description: a.Description,
-				Icon:        a.Icon,
-			}
-		}
-		return result
+	// A model is optional now, so the ask box has to know whether there is one.
+	// internal/ai imports internal/app, so the answer comes back through a hook
+	// rather than an import that cannot exist. See app.AgentReady.
+	app.AgentReady = func() bool {
+		_, _, _, ok := ai.PreferredProvider()
+		return ok
 	}
 
 	// Wire admin → blog callbacks (avoids blog importing admin)

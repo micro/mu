@@ -264,6 +264,18 @@ func getReplies(threadID string) []*Message {
 
 // Handler serves the /social endpoint
 func Handler(w http.ResponseWriter, r *http.Request) {
+	// _method=DELETE first, because a browser cannot issue a DELETE and this is
+	// how a form says it meant one.
+	//
+	// It was below the switch, which made it unreachable: "case POST" matches
+	// first, so a POST asking to delete a message created a thread instead. The
+	// check read as a fallback for something the switch had not handled, and
+	// the switch handles every POST.
+	if r.Method == "POST" && r.FormValue("_method") == "DELETE" {
+		handleDeleteMessage(w, r)
+		return
+	}
+
 	switch r.Method {
 	case "POST":
 		if app.SendsJSON(r) {
@@ -274,12 +286,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		handleCreateThread(w, r)
 		return
 	case "DELETE":
-		handleDeleteMessage(w, r)
-		return
-	}
-
-	// Support _method=DELETE from POST forms
-	if r.Method == "POST" && r.FormValue("_method") == "DELETE" {
 		handleDeleteMessage(w, r)
 		return
 	}

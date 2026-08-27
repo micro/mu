@@ -77,20 +77,59 @@ self.addEventListener('activate', function (e) {
 // was to open the site and look. The payload is encrypted end to end — the push
 // service forwards bytes it cannot read — so it is decrypted here and nowhere
 // else. See internal/push.
+//
+// # Nothing here may fail quietly
+//
+// This read the payload, and returned without doing anything if it could not
+// find a title. That is the one branch that must never exist in a service
+// worker: the server has no way to see this code, so a silent return produces
+// "the push service accepted it and nothing appeared" — which is
+// indistinguishable, from the server, from never having sent it. Hours go into
+// the wrong half of the system.
+//
+// So every path ends in a notification, and every path posts a receipt. A push
+// that arrives mangled says so on the handset and in the record.
 self.addEventListener('push', function (e) {
-  var n = {};
-  try { n = e.data ? e.data.json() : {}; } catch (err) { n = {}; }
-  if (!n.title) return;
-  e.waitUntil(self.registration.showNotification(n.title, {
-    body: n.body || '',
-    icon: '/icon-192.png',
-    badge: '/icon-192.png',
-    // Two arrivals in one conversation replace each other rather than stack.
-    tag: n.tag || 'mu',
-    renotify: true,
-    data: {url: n.url || '/inbox'}
-  }));
+  var n = {}, why = '';
+  try { n = e.data ? e.data.json() : {}; } catch (err) { why = 'the payload could not be read'; }
+  if (!why && !n.title) why = 'the payload had no title';
+
+  var title = n.title || 'Notification unreadable';
+  var body = why ? ('This device woke up but could not read it: ' + why + '.') : (n.body || '');
+  var tag = n.tag || 'mu';
+
+  e.waitUntil(
+    self.registration.showNotification(title, {
+      body: body,
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
+      // Two arrivals in one conversation replace each other rather than stack.
+      tag: tag,
+      renotify: true,
+      data: {url: n.url || '/inbox'}
+    }).then(function () {
+      return receipt(tag, !why, why);
+    }, function (err) {
+      // showNotification itself refused — permission revoked under us, or the
+      // OS is suppressing. Worth recording precisely because there is nothing
+      // on the screen to notice.
+      return receipt(tag, false, 'showNotification failed: ' + (err && err.message ? err.message : 'unknown'));
+    })
+  );
 });
+
+// Tell the server this device woke up. Best effort: a receipt that fails must
+// never stop the notification.
+function receipt(tag, shown, why) {
+  try {
+    return fetch('/push/received', {
+      method: 'POST',
+      credentials: 'include',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({tag: tag, shown: !!shown, why: why || ''})
+    }).catch(function () {});
+  } catch (err) { return Promise.resolve(); }
+}
 
 // Tapping it goes where it is about. A notification you cannot act on trains
 // somebody to ignore the next one.

@@ -1,26 +1,31 @@
 package test
 
-// /@username is the profile, not the page about what you keep.
+// /@username is the conversation with them, and there is no profile.
 //
-// There were two packages called user — one holding the public profile page,
-// one holding what an account saves, hides and blocks — and the file that
-// dispatches /@username imported one of them under that name. Renaming did not
-// break the build, because the other user was already imported in the same
-// file, so /@somebody quietly started rendering somebody else's saved-items
-// page. Nothing caught it: both packages exported Handler with the same
-// signature.
+// It served a profile page — a name, a tick, a join date, a status box, an apps
+// grid and their posts. That is a social network's page, and this is not one:
+// internal/app/content.go deleted Save, Hide and Block on the grounds that
+// "those three are the controls of a feed… Mu has no feed", and a profile is
+// downstream of the same thing.
 //
-// They are one package now, which removes the import ambiguity and leaves the
-// hazard: two handlers, one public and one private, a few lines apart. The
-// public one is named for its page for that reason, and this holds the wiring.
+// What the address is for survives the page. "Everything has an address —
+// people, agents, services, conversations" is one of four commitments, and an
+// address is worth what it lets you do. So /@somebody is what the two of you
+// have said to each other, with the way to say the next thing.
+//
+// The wiring is held here because the hazard that made this file necessary is
+// still live: the dispatch for /@ sits in a chain of prefix checks in serve.go,
+// several handlers with identical signatures are in scope, and swapping one for
+// another breaks nothing a compiler can see.
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
 
-func TestTheProfileRouteServesTheProfile(t *testing.T) {
+func TestTheAtRouteServesTheConversation(t *testing.T) {
 	src, err := os.ReadFile(at("internal", "server", "serve.go"))
 	if err != nil {
 		t.Fatal(err)
@@ -33,12 +38,53 @@ func TestTheProfileRouteServesTheProfile(t *testing.T) {
 	}
 	branch := body[i:min(i+2500, len(body))]
 
-	if !strings.Contains(branch, "user.ProfileHandler(w, r)") {
-		t.Error("/@username is not served by the profile handler")
+	if !strings.Contains(branch, "inbox.PersonHandler(w, r)") {
+		t.Error("/@username is not served by the conversation handler")
+	}
+	if strings.Contains(branch, "user.ProfileHandler") {
+		t.Error("/@username still serves a profile page")
 	}
 	if strings.Contains(branch, "user.Handler(w, r)") {
 		t.Error("/@username is served by the page that renders what the caller has " +
-			"saved, hidden and blocked — that is theirs alone, not a public profile")
+			"saved, hidden and blocked — that is theirs alone")
+	}
+}
+
+// And the profile is gone rather than merely unreachable.
+//
+// An unrouted page is a page somebody re-routes in six months without knowing
+// why it was taken out. The handler, the status it carried and the two hooks
+// that fed it their posts and apps all went with it.
+func TestThereIsNoProfilePageLeft(t *testing.T) {
+	for _, gone := range []string{
+		filepath.Join("internal", "user", "profile.go") + ":ProfileHandler",
+		filepath.Join("internal", "user", "status.go") + ":",
+		filepath.Join("internal", "user", "post.go") + ":",
+	} {
+		parts := strings.SplitN(gone, ":", 2)
+		path, symbol := at(strings.Split(parts[0], string(filepath.Separator))...), parts[1]
+
+		src, err := os.ReadFile(path)
+		if err != nil {
+			continue // the whole file went, which is the strongest version of gone
+		}
+		if symbol == "" {
+			t.Errorf("%s still exists; the profile it served does not", parts[0])
+			continue
+		}
+		if strings.Contains(string(src), "func "+symbol) {
+			t.Errorf("%s still defines %s", parts[0], symbol)
+		}
+	}
+
+	// The nav offered it, and a link to a page that no longer exists is worse
+	// than no link.
+	shell, err := os.ReadFile(at("internal", "app", "app.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(shell), `id="nav-profile"`) {
+		t.Error("the sidebar still offers Profile")
 	}
 }
 

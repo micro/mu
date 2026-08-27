@@ -113,11 +113,6 @@ func rows(list []User, me string) string {
 			who += ` <span class="text-muted text-xs">@` + html.EscapeString(u.ID) + `</span>`
 		}
 
-		status := `<span class="text-muted text-xs">—</span>`
-		if s := strings.TrimSpace(u.Profile.Status); s != "" {
-			status = html.EscapeString(s)
-		}
-
 		// Writing to somebody is the point of knowing they exist. Not offered
 		// for yourself — a row that invites you to email yourself reads as a
 		// bug rather than a feature.
@@ -129,7 +124,6 @@ func rows(list []User, me string) string {
 
 		b.WriteString(`<tr>` +
 			`<td data-label="Name">` + who + `</td>` +
-			`<td data-label="Doing">` + status + `</td>` +
 			`<td data-label="" class="actions-cell">` + act + `</td>` +
 			`</tr>`)
 	}

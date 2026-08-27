@@ -101,6 +101,17 @@ type ChatConfig struct {
 // thread id (context_id) so a session continues across turns, and keeps the
 // conversation in the DOM + sessionStorage. window.muChatAsk(text)
 // submits a query; window.muChatNew() starts a fresh session.
+// AgentReady reports whether a model is configured, filled in by the server.
+//
+// A hook because internal/ai imports this package — the check lives there and
+// cannot be imported back. One boolean is not a reason to invert that, and
+// duplicating provider resolution here is how the two answers drift apart.
+//
+// Nil means yes: every test that renders this component predates the question,
+// and a component that silently turned itself off when nobody had wired the
+// hook would be a worse bug than the one it fixes.
+var AgentReady func() bool
+
 func ChatComponent(cfg ChatConfig) string {
 	// The cards go with the question, always.
 	//
@@ -140,6 +151,25 @@ func ChatComponent(cfg ChatConfig) string {
 	placeholder := strings.TrimSpace(cfg.Placeholder)
 	if placeholder == "" {
 		placeholder = "Ask it something"
+	}
+
+	// A box that cannot answer says so before you type in it.
+	//
+	// The model is optional at setup now — mail, chat, files, notes and the
+	// inbox all work without one, and blocking the front door on a vendor
+	// account misdescribed what this is. But an ask box on an instance with no
+	// model invited a question and then failed on it, which is the same fault
+	// wearing a different hat: the thing is not broken, it is not configured,
+	// and only one of those is worth a person's afternoon.
+	if AgentReady != nil && !AgentReady() {
+		return `<div id="mu-chat"><p class="mu-chat-off">The agent has no model yet, so it ` +
+			`cannot answer. Everything else here works — mail, chat, files, notes and your ` +
+			`inbox. Add a provider at ` + TextLink("/admin/config", "/admin/config") +
+			` and this becomes a question box.</p></div>
+<style>
+.mu-chat-off{max-width:760px;margin:0 auto;padding:12px 14px;border:1px solid var(--card-border,#e8e8e8);
+  border-radius:var(--border-radius,6px);color:var(--text-secondary,#555);font-size:14px;line-height:1.6}
+</style>`
 	}
 	suggestJS, err := json.Marshal(suggestions)
 	if err != nil {

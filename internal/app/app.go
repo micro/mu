@@ -1189,10 +1189,12 @@ func navBottom(acc *auth.Account) string {
 	//
 	// "Signed in as" answers a question a shared or long-lived browser makes
 	// real — which account is this — and it has to be beside Log out, because
-	// that is the moment somebody checks. Not a link: Profile is, directly
-	// under it.
+	// that is the moment somebody checks.
+	//
+	// Profile was under it and is gone with the page. /@you is not a page about
+	// you any more, it is the conversation with somebody — and your own resolves
+	// to your inbox, which is already the first thing in the nav.
 	return `<div class="nav-me-who">Signed in as <span id="nav-username">@` + username + `</span></div>
-          <a id="nav-profile" href="/@` + username + `"><img src="/at.svg?` + Version + `"><span class="label">Profile</span></a>
           <a id="nav-account" href="/account"><img src="/account.png?` + Version + `"><span class="label">Account</span></a>
           <a id="nav-logout" href="/logout"><img src="/logout.png?` + Version + `"><span class="label">Log out</span></a>
           <a id="nav-login" href="/login" class="d-none"><img src="/account.png?` + Version + `"><span class="label">Login</span></a>`

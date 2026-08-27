@@ -1,11 +1,19 @@
-// Package user is a person on this instance: the face they show other people,
-// whether they are here, and what they have decided about everybody else.
+// Package user is what is left of a person on this instance once the page
+// about them is gone: whether they are here, and a moderation check.
 //
-// This is not the account. internal/auth holds identity and credentials — who
-// you are and how you prove it. This is what that identity looks like from
-// outside (the page at /@username, presence) and the view it has of everyone
-// else (what it saved, hid and blocked). Neither is a question about the world;
-// both are furniture belonging to one account.
+// It rendered /@username — a name, a tick, a join date, a status box, an apps
+// grid and their posts. That is a social network's page, and this is not one:
+// internal/app/content.go deleted Save, Hide and Block on the grounds that
+// "those three are the controls of a feed… Mu has no feed", and a profile is
+// downstream of the same thing. Nobody asked to be looked at.
+//
+// /@somebody is the conversation with them now — see inbox/person.go. What an
+// address is worth is what it lets you do, and a page you can only read does
+// nothing.
+//
+// This is not the account either. internal/auth holds identity and credentials.
+// What is here is furniture belonging to one account and answering no question
+// about the world.
 //
 // # Why it is not a service
 //
@@ -30,9 +38,7 @@ package user
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
-	"strings"
 	"sync"
 	"time"
 
@@ -44,38 +50,6 @@ import (
 	"mu/internal/event"
 	"mu/internal/flag"
 )
-
-// UserPost is a simplified post representation for profile rendering.
-// Wired from blog building block via GetUserPosts callback.
-type UserPost struct {
-	ID        string
-	Title     string
-	Content   string
-	CreatedAt time.Time
-	Private   bool
-}
-
-// GetUserPosts returns an account's posts. Wired from main.go.
-//
-// By id and name, not name alone: the blog links an author at /@<id> and shows
-// their display name, so matching posts on the name only worked when the two
-// agreed. They did not for the system user — posts signed "Mu", id "micro" —
-// so every digest linked to a profile with no posts on it.
-var GetUserPosts func(authorID, authorName string) []UserPost
-
-// UserApp is a simplified app representation for profile rendering.
-type UserApp struct {
-	Slug        string
-	Name        string
-	Description string
-	Icon        string
-}
-
-// GetUserApps returns public apps by author ID. Wired from main.go.
-var GetUserApps func(authorID string) []UserApp
-
-// LinkifyContent converts URLs in text to clickable links. Wired from main.go.
-var LinkifyContent func(text string) string
 
 var profileMutex sync.RWMutex
 var profiles = map[string]*Profile{}
@@ -249,155 +223,3 @@ func AIResponseAllowed(askerID, response string) bool {
 	}
 	return true
 }
-
-// ProfileHandler serves /@username: what an account looks like to other people.
-//
-// Named for its page rather than left as the package's plain Handler, because
-// this package now has two: the face you show other people, and the page about
-// what you have decided to keep and hide, which is yours alone.
-func ProfileHandler(w http.ResponseWriter, r *http.Request) {
-	// Extract username from URL path (remove /@ prefix)
-	username := strings.TrimPrefix(r.URL.Path, "/@")
-	username = strings.TrimSuffix(username, "/")
-	username = strings.ToLower(username)
-
-	if username == "" {
-		http.Redirect(w, r, "/home", 302)
-		return
-	}
-
-	// Get the user account
-	acc, err := auth.GetAccount(username)
-	if err != nil {
-		http.Error(w, "User not found", 404)
-		return
-	}
-
-	// Get all posts by this user via callback (wired in main.go)
-	var userPosts string
-	var postCount int
-	if GetUserPosts != nil {
-		posts := GetUserPosts(acc.ID, acc.Name)
-
-		// Check if viewer is admin
-		_, viewerAcc := auth.TrySession(r)
-		isAdmin := viewerAcc != nil && viewerAcc.Admin
-
-		// Filter private posts for non-admins
-		var visiblePosts []UserPost
-		for _, post := range posts {
-			if !post.Private || isAdmin {
-				visiblePosts = append(visiblePosts, post)
-			}
-		}
-
-		postCount = len(visiblePosts)
-
-		for _, post := range visiblePosts {
-			title := post.Title
-			if title == "" {
-				title = "Untitled"
-			}
-
-			// Truncate content
-			content := post.Content
-			if len(content) > 300 {
-				lastSpace := 300
-				for i := 299; i >= 0 && i < len(content); i-- {
-					if content[i] == ' ' {
-						lastSpace = i
-						break
-					}
-				}
-				if lastSpace < len(content) {
-					content = content[:lastSpace] + "..."
-				}
-			}
-
-			// Linkify URLs and embed YouTube videos
-			linkedContent := content
-			if LinkifyContent != nil {
-				linkedContent = LinkifyContent(content)
-			}
-
-			userPosts += fmt.Sprintf(`<div class="post-item">
-<h3><a href="/blog/post?id=%s">%s</a></h3>
-<div class="mb-3">%s</div>
-<div class="info">%s · <a href="/blog/post?id=%s">Read more</a></div>
-</div>`, post.ID, title, linkedContent, app.TimeAgo(post.CreatedAt), post.ID)
-		}
-	}
-
-	if userPosts == "" {
-		userPosts = "<p class='info'>No blog posts yet.</p>"
-	}
-
-	// Check if viewing own profile
-	sess, _ := auth.TrySession(r)
-	isOwnProfile := sess != nil && sess.Account == username
-
-	// Somewhere to write to them, and what they are doing.
-	//
-	// The link used to be /mail?compose=true, a screen that no longer exists —
-	// so the one action on a profile went nowhere. It is /inbox/new at their
-	// address now, which is the person rather than their agent. See status.go.
-	messageLink := ""
-	if !isOwnProfile {
-		messageLink = writeLink(acc.ID)
-	}
-	csrf := ""
-	if sess != nil {
-		csrf = auth.CSRFToken(r)
-	}
-	status := statusBlock(acc.ID, isOwnProfile, csrf)
-
-	// Apps section
-	appsSection := ""
-	if GetUserApps != nil {
-		userApps := GetUserApps(acc.ID)
-		if len(userApps) > 0 {
-			var appsSB strings.Builder
-			appsSB.WriteString(fmt.Sprintf(`<h3 class="mb-5">Apps (%d)</h3>`, len(userApps)))
-			for _, a := range userApps {
-				icon := a.Icon
-				if icon == "" {
-					icon = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>`
-				}
-				desc := a.Description
-				if len(desc) > 80 {
-					desc = desc[:80] + "..."
-				}
-				appsSB.WriteString(fmt.Sprintf(`<div class="post-item"><h3><a href="/apps/%s" class="d-flex items-center gap-2"><span class="profile-app-icon">%s</span> %s</a></h3><p class="info">%s</p></div>`, a.Slug, icon, a.Name, desc))
-			}
-			appsSection = appsSB.String()
-		}
-	}
-
-	// Verified badge — green tick for accounts with a verified email,
-	// admins, or admin-approved accounts. Skipped on instances without
-	// email verification configured.
-	verifiedBadge := ""
-	if acc.Admin || acc.Approved || acc.EmailVerified {
-		verifiedBadge = ` <span title="Verified" aria-label="Verified" class="verified">✓</span>`
-	}
-
-	// Build the profile page content
-	content := fmt.Sprintf(`<div class="max-w-xl">
-<div class="mb-6 page-head">
-<p class="info m-0">@%s%s</p>
-%s
-<p class="info mt-3">Joined %s</p>
-%s
-</div>
-
-%s
-
-<h3 class="mb-5">Posts (%d)</h3>
-%s
-</div>`, acc.ID, verifiedBadge, status, acc.Created.Format("January 2006"), messageLink, appsSection, postCount, userPosts)
-
-	// Use name as page title
-	app.Respond(w, r, app.Response{Title: acc.Name, Description: fmt.Sprintf("Profile of %s", acc.Name), HTML: content})
-}
-
-// avatarColors are the palette used for status card avatars.

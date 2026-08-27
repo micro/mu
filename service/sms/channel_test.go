@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"mu/internal/quota"
 )
 
 // The wire prefix goes on at the edge and nowhere else.
@@ -157,5 +159,70 @@ func TestTheRecordRemembersTheChannel(t *testing.T) {
 	}
 	if wa != 1 || sms != 1 {
 		t.Errorf("the record has %d WhatsApp and %d SMS messages, want one of each", wa, sms)
+	}
+}
+
+// An account that is not capped is not capped.
+//
+// Reported as "I'm an admin, why did you limit me" — and the exemption was
+// there the whole time. quota's override answers NoLimit for the operator and
+// the agent, who are uncapped for the same reason they are not charged; this
+// package read that NoLimit as "quota.json says nothing" and fell back to the
+// instance default. One constant meaning two things, and the wrong one won, so
+// an admin on their own instance was stopped at five texts by a cap written for
+// strangers signing up.
+func TestAnExemptAccountIsNotCapped(t *testing.T) {
+	setup(t)
+	t.Setenv("SMS_DAILY_LIMIT", "5")
+
+	old := quota.LimitOverride
+	defer func() { quota.LimitOverride = old }()
+	quota.LimitOverride = func(account, op string) (int, bool) {
+		if account == "boss" {
+			return quota.NoLimit, true
+		}
+		return 0, false
+	}
+
+	if got := LimitOn(ChannelSMS, "boss"); got != quota.NoLimit {
+		t.Errorf("an exempt account has a limit of %d — the exemption was discarded", got)
+	}
+	if got := LimitOn(ChannelSMS, "ordinary"); got != 5 {
+		t.Errorf("an ordinary account's limit = %d, want the instance's 5", got)
+	}
+	// And the page says so rather than counting down from a number that does
+	// not apply: NoLimit is -1, so subtracting produced "0 messages left today"
+	// for the one account that never runs out.
+	if got := allowance("boss"); !strings.Contains(got, "No daily limit") {
+		t.Errorf("the page tells an uncapped account: %q", got)
+	}
+}
+
+// The two channels have their own allowances, because they have their own
+// bills. A WhatsApp reply used to spend a text.
+func TestEachChannelHasItsOwnAllowance(t *testing.T) {
+	setup(t)
+	const who = "allowance_owner"
+
+	RecordOn(ChannelWhatsApp, who, "out", "+447700900123", "one", 1)
+	RecordOn(ChannelWhatsApp, who, "out", "+447700900123", "two", 1)
+	Record(who, "out", "+447700900456", "a text", 1)
+
+	if n := SentTodayOn(ChannelWhatsApp, who); n != 2 {
+		t.Errorf("WhatsApp sent today = %d, want 2", n)
+	}
+	if n := SentTodayOn(ChannelSMS, who); n != 1 {
+		t.Errorf("texts sent today = %d, want 1 — WhatsApp is being counted against the text allowance", n)
+	}
+
+	// And the limits come from different settings, or WHATSAPP_DAILY_LIMIT is a
+	// documented setting that does nothing.
+	t.Setenv("SMS_DAILY_LIMIT", "5")
+	t.Setenv("WHATSAPP_DAILY_LIMIT", "40")
+	if got := LimitOn(ChannelWhatsApp, who); got != 40 {
+		t.Errorf("the WhatsApp limit = %d, want WHATSAPP_DAILY_LIMIT's 40", got)
+	}
+	if got := LimitOn(ChannelSMS, who); got != 5 {
+		t.Errorf("the text limit = %d, want SMS_DAILY_LIMIT's 5", got)
 	}
 }

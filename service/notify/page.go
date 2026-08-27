@@ -150,6 +150,31 @@ func historyCard(sent []push.Sent) string {
 				why = "it was not delivered"
 			}
 			b.WriteString(`<div class="notify-bad">Not delivered: ` + html.EscapeString(why) + `</div>`)
+		} else {
+			// What the device said, which is the half that used to be dark.
+			//
+			// "Accepted by the push service" is where this stopped, and it
+			// cannot distinguish a notification the handset showed from one it
+			// never woke up for — the two look identical from the server, and
+			// the difference is the whole question. The service worker posts a
+			// receipt now. Three states, and each sends you somewhere
+			// different: shown, woke-but-could-not, and silence.
+			switch {
+			case s.Got.IsZero():
+				b.WriteString(`<div class="notify-wait">Accepted by the push service. ` +
+					`This device has not reported picking it up — either it has not woken ` +
+					`yet, or it never will.</div>`)
+			case s.Shown:
+				b.WriteString(`<div class="notify-got">Shown on your device ` +
+					html.EscapeString(app.TimeAgo(s.Got)) + `.</div>`)
+			default:
+				why := s.Why
+				if why == "" {
+					why = "it did not say why"
+				}
+				b.WriteString(`<div class="notify-bad">Your device woke up and could not ` +
+					`show it: ` + html.EscapeString(why) + `</div>`)
+			}
 		}
 		b.WriteString(`</li>`)
 	}
@@ -173,5 +198,9 @@ const pageCSS = `<style>
 .notify-body{font-size:13px;color:#666;line-height:1.5;margin-top:2px}
 .notify-ok{font-size:12px;color:#888}
 .notify-bad{font-size:12px;color:var(--danger,#c33);margin-top:2px}
+/* What the device said. Green when it showed, muted while nothing has come
+   back — the waiting state is not a failure, it is an unanswered question. */
+.notify-got{font-size:12px;color:var(--btn-success,#1a7f37);margin-top:2px}
+.notify-wait{font-size:12px;color:var(--text-muted,#888);margin-top:2px}
 @media only screen and (max-width:600px){.notify-when{margin-left:0}}
 </style>`
