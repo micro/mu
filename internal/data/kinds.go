@@ -11,7 +11,11 @@ package data
 // That is the question a page has to answer before it can be a page, and it is
 // the question anybody deciding what to keep has to answer first.
 
-import "sort"
+import (
+	"sort"
+	"sync"
+	"time"
+)
 
 // Kind is one type of thing in the archive and how much of it there is.
 type Kind struct {
@@ -24,7 +28,55 @@ type Kind struct {
 // Public entries only. A per-account count would be a different question and a
 // worse one to answer here — an entry with an owner is somebody's private
 // record, and how many of them exist is not archive statistics.
+//
+// # Cached, because it is a whole-table question asked on every page load
+//
+// GROUP BY over every public row, and /archive calls it on every request
+// including the empty one. Measured on a copy of a real index grown to 126,208
+// rows: 152ms, for five numbers on five chips.
+//
+// A count is also the thing on that page least harmed by being slightly stale.
+// Nobody navigates by whether it says 658 or 659, and the alternative — exact
+// on every request — is paying a full grouping to be precise about a number
+// that changes while you are reading it.
 func Kinds() []Kind {
+	kindsMu.RLock()
+	if time.Since(kindsAt) < kindsFor && kindsAt.After(time.Time{}) {
+		out := append([]Kind(nil), kindsCache...)
+		kindsMu.RUnlock()
+		return out
+	}
+	kindsMu.RUnlock()
+
+	out := countKinds()
+
+	kindsMu.Lock()
+	kindsCache, kindsAt = out, time.Now()
+	kindsMu.Unlock()
+	return append([]Kind(nil), out...)
+}
+
+// kindsFor is how long a count is allowed to be stale.
+//
+// Long enough that a burst of readers costs one grouping, short enough that
+// somebody watching a service fill the archive sees it move.
+const kindsFor = 30 * time.Second
+
+var (
+	kindsMu    sync.RWMutex
+	kindsCache []Kind
+	kindsAt    time.Time
+)
+
+// InvalidateKinds drops the cached counts, for a caller that has just changed
+// what is in the index enough to care — a bulk delete, a migration.
+func InvalidateKinds() {
+	kindsMu.Lock()
+	kindsAt = time.Time{}
+	kindsMu.Unlock()
+}
+
+func countKinds() []Kind {
 	counts := map[string]int{}
 
 	if UseSQLite {

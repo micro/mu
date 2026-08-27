@@ -219,6 +219,11 @@ func SearchSQLite(query string, limit int, opts ...SearchOption) ([]*IndexEntry,
 	return searchSQLiteFallback(query, limit, options)
 }
 
+// maxFetch caps how much either phase reads however large a limit is asked
+// for. Every row carries its content, so an unbounded limit is an unbounded
+// read of article bodies into memory to answer one question.
+const maxFetch = 200
+
 // searchSQLiteFallback uses FTS5 with LIKE fallback
 func searchSQLiteFallback(query string, limit int, options *SearchOptions) ([]*IndexEntry, error) {
 	db, err := getDB()
@@ -229,6 +234,20 @@ func searchSQLiteFallback(query string, limit int, options *SearchOptions) ([]*I
 	words := strings.Fields(strings.ToLower(query))
 	if len(words) == 0 {
 		return nil, nil
+	}
+
+	// The caller's limit, honoured.
+	//
+	// Both phases said LIMIT 50 as a literal and the argument was never used,
+	// so an agent asking for three results read fifty rows off disk — content
+	// column included — and threw forty-seven away. A few extra so the scoring
+	// pass below has something to reorder, and no more.
+	if limit <= 0 {
+		limit = 10
+	}
+	fetch := limit * 2
+	if fetch > maxFetch {
+		fetch = maxFetch
 	}
 
 	seen := make(map[string]bool)
@@ -251,7 +270,8 @@ func searchSQLiteFallback(query string, limit int, options *SearchOptions) ([]*I
 		// Owner scoping: public entries (owner='') plus the caller's own.
 		ftsSQL += ` AND (e.owner = '' OR e.owner = ?)`
 		ftsArgs = append(ftsArgs, options.Owner)
-		ftsSQL += ` ORDER BY rank LIMIT 50`
+		ftsSQL += ` ORDER BY rank LIMIT ?`
+		ftsArgs = append(ftsArgs, fetch)
 
 		rows, err := db.Query(ftsSQL, ftsArgs...)
 		if err == nil {
@@ -276,8 +296,23 @@ func searchSQLiteFallback(query string, limit int, options *SearchOptions) ([]*I
 		}
 	}
 
-	// Phase 2: LIKE fallback for partial matches FTS5 might miss
-	if len(allEntries) < limit {
+	// Phase 2: LIKE fallback, only when the index found nothing at all.
+	//
+	// The condition was `len(allEntries) < limit`, which fires on almost every
+	// search: you skip the scan only by getting a full page of FTS hits, so the
+	// better the index does the more likely you still pay for it. And the scan
+	// is not cheap and cannot be made cheap — a leading wildcard means no index
+	// applies, so `LOWER(content) LIKE '%x%'` reads every public row's article
+	// body and then sorts them in a temp b-tree.
+	//
+	// Measured on a copy of a real index grown to 126,208 rows: FTS5 0.3ms,
+	// this 716ms. Worse for a rare word — 682ms to return nothing — because a
+	// term that matches little is a term it has to check everything for.
+	//
+	// So it runs when the index came back empty, which is the case it was
+	// written for: a substring inside a word, which FTS5 tokenises past. If
+	// FTS5 found anything, its answer is the answer.
+	if len(allEntries) == 0 {
 		var likeConds []string
 		var likeArgs []interface{}
 		for _, word := range words {
@@ -297,7 +332,7 @@ func searchSQLiteFallback(query string, limit int, options *SearchOptions) ([]*I
 			// Owner scoping: public entries (owner='') plus the caller's own.
 			where = "(" + where + ") AND (owner = '' OR owner = ?)"
 			likeArgs = append(likeArgs, options.Owner)
-			likeArgs = append(likeArgs, 50)
+			likeArgs = append(likeArgs, fetch)
 			rows, err := db.Query(fmt.Sprintf(`
 				SELECT id, type, title, content, owner, metadata, indexed_at
 				FROM index_entries WHERE %s

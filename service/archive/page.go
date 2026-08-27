@@ -24,7 +24,13 @@ import (
 )
 
 // resultsShown bounds one page of results.
-const resultsShown = 50
+//
+// Ten, not fifty. Nobody reads to the fiftieth hit of a search they can refine
+// by typing another word, and every row carries its content — so the other
+// forty were an article body each, read off disk, scored, rendered, and
+// scrolled past. A search that answers in the first few is a search that
+// worked; one that does not is a query to change, not a longer list.
+const resultsShown = 10
 
 // Handler serves /archive. No session required: everything it can show is
 // public by construction — an entry with an owner is never returned.
