@@ -274,7 +274,17 @@ func FooterLinks() string {
 	// with its own row of Tools · API · Pricing — two of the three repeated from
 	// this line, a few centimetres above it. A footer is where a site keeps its
 	// destinations; a second copy of most of one is furniture.
-	return `<a href="/tools">Tools</a> · <a href="/api">API</a> · <a href="/privacy">Privacy</a> · <a href="/status">Status</a>` + torFooterLink()
+	// Archive first, before Tools.
+	//
+	// It is what this instance remembers — every headline it has read, every
+	// close it has recorded, everything it has watched — and it is the half
+	// that makes the tools worth having: an agent with an archive behind it
+	// does not have to go and look. A tool fetches; the archive already knows.
+	//
+	// The footer is where a site keeps its destinations, and this was the one
+	// destination the product's own memory did not have.
+	return `<a href="/archive">Archive</a> · <a href="/tools">Tools</a> · <a href="/api">API</a> · ` +
+		`<a href="/privacy">Privacy</a> · <a href="/status">Status</a>` + torFooterLink()
 }
 
 func torFooterLink() string {
