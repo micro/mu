@@ -317,7 +317,7 @@ func TestATestSaysWhatActuallyHappened(t *testing.T) {
 	if _, err := Subscribe("refused", device(refuse.URL+"/sub")); err != nil {
 		t.Fatal(err)
 	}
-	err := Test("refused", Notification{Title: "Test notification"})
+	err := SendNow("refused", Notification{Title: "Test notification"})
 	if err == nil {
 		t.Fatal("a push service that refused the notification was reported as a success")
 	}
@@ -342,7 +342,7 @@ func TestATestSaysWhatActuallyHappened(t *testing.T) {
 	if _, err := Subscribe("taken", device(accept.URL+"/sub")); err != nil {
 		t.Fatal(err)
 	}
-	if err := Test("taken", Notification{Title: "Test notification"}); err != nil {
+	if err := SendNow("taken", Notification{Title: "Test notification"}); err != nil {
 		t.Fatalf("a push service that accepted the notification was reported as a failure: %v", err)
 	}
 	if sent, _, _ := LastResult("taken"); sent.IsZero() {
@@ -353,7 +353,7 @@ func TestATestSaysWhatActuallyHappened(t *testing.T) {
 // And with nothing subscribed it says so rather than reporting a send.
 func TestATestWithNoDeviceSaysSo(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
-	err := Test("nobody", Notification{Title: "Test notification"})
+	err := SendNow("nobody", Notification{Title: "Test notification"})
 	if err == nil {
 		t.Fatal("a test with no device registered was reported as sent")
 	}

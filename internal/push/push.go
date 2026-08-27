@@ -58,6 +58,13 @@ type Notification struct {
 	// Tag collapses notifications about the same thing. Two arrivals in one
 	// conversation should replace each other rather than stack.
 	Tag string `json:"tag,omitempty"`
+	// From is who asked for it — "mail", "reminder", an agent's name.
+	//
+	// Not on the wire: the handset shows a title and two lines and this is
+	// neither. It is for the record, so a list of what interrupted you says
+	// what did the interrupting. Somebody who cannot tell which of five things
+	// is being noisy turns off all five.
+	From string `json:"-"`
 }
 
 // ttl is how long a push service should hold a notification for a device that
@@ -220,13 +227,29 @@ func Devices(account string) []Subscription {
 // Subscribed reports whether an account has anywhere to be notified.
 func Subscribed(account string) bool { return len(Devices(account)) > 0 }
 
-// Forget removes an account's devices, for account deletion.
+// Forget removes an account's devices — every device, which is what "turn it
+// off" means when the browser cannot say which one it is holding.
+//
+// Not the history. Turning notifications off is a decision about the future and
+// says nothing about the record of what you were already told; erasing that
+// would answer "why did I get woken at four" with silence.
 func Forget(account string) {
 	load()
 	mu.Lock()
 	defer mu.Unlock()
 	delete(subs, account)
 	save()
+}
+
+// DeleteAll removes everything this package holds for an account, for account
+// deletion.
+//
+// Separate from Forget because Forget is also the "turn it off" button, and one
+// function meaning both "stop sending to my phone" and "erase what I was told"
+// is how a person pressing the first quietly gets the second.
+func DeleteAll(account string) {
+	Forget(account)
+	ForgetHistory(account)
 }
 
 // Send delivers a notification to every device an account has.
@@ -241,6 +264,10 @@ func Send(account string, n Notification) {
 	}
 	devices := Devices(account)
 	if len(devices) == 0 {
+		// Written down even so. "Nothing was sent because you have no device"
+		// is the answer to "why did I not hear about that", and it is invisible
+		// unless somebody records the attempt.
+		note(account, asSent(n, false, "no device is registered"))
 		return
 	}
 	if len(n.Body) > bodyLimit {
@@ -250,9 +277,34 @@ func Send(account string, n Notification) {
 	if err != nil {
 		return
 	}
-	for _, d := range devices {
-		go deliver(account, d, payload) //nolint:errcheck
+	// One goroutine over all the devices rather than one each, so there is a
+	// place for the outcome to be written down once the outcome is known. The
+	// caller still does not wait.
+	go func() {
+		var last error
+		ok := false
+		for _, d := range devices {
+			if err := deliver(account, d, payload); err != nil {
+				last = err
+				continue
+			}
+			ok = true
+		}
+		note(account, asSent(n, ok, reason(ok, last)))
+	}()
+}
+
+// asSent is one notification as the history keeps it.
+func asSent(n Notification, ok bool, why string) Sent {
+	return Sent{Title: n.Title, Body: n.Body, URL: n.URL,
+		From: source(n.From), OK: ok, Error: why}
+}
+
+func reason(ok bool, err error) string {
+	if ok || err == nil {
+		return ""
 	}
+	return err.Error()
 }
 
 // Test delivers one notification and waits for the answer.
@@ -267,7 +319,7 @@ func Send(account string, n Notification) {
 // So this one waits. It reports nil if any device took it, and otherwise the
 // reason the last one gave — which is the sentence somebody needs in order to
 // do anything about it.
-func Test(account string, n Notification) error {
+func SendNow(account string, n Notification) error {
 	if !Configured() {
 		return fmt.Errorf("this instance has no push keys set")
 	}
@@ -288,8 +340,10 @@ func Test(account string, n Notification) error {
 			last = err
 			continue
 		}
+		note(account, asSent(n, true, ""))
 		return nil
 	}
+	note(account, asSent(n, false, reason(false, last)))
 	return last
 }
 

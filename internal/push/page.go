@@ -43,12 +43,13 @@ func SubscribeHandler(w http.ResponseWriter, r *http.Request) {
 	// reminder firing — are all somebody else doing something. That leaves no
 	// way to tell a working subscription from a broken one except waiting, and
 	// waiting for a negative is not a test. This is the button.
-	// It has to wait for the answer, or it is not a test. Send cannot fail — it
-	// hands each device to a goroutine and returns — so answering ok after
-	// calling it said "ok" whether the push service took the notification, timed
-	// out or refused it outright. Test blocks and reports what happened.
+	//
+	// SendNow rather than Send, or it is not a test at all: Send hands each
+	// device to a goroutine and returns, so answering ok after calling it said
+	// "ok" whether the push service took the notification, timed out, or refused
+	// it outright. SendNow blocks and reports what happened.
 	if strings.HasSuffix(r.URL.Path, "/test") {
-		if err := Test(acc.ID, Notification{
+		if err := SendNow(acc.ID, Notification{
 			Title: "Test notification",
 			Body:  "This is what mail and reminders will look like.",
 			URL:   "/account",

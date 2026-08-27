@@ -45,6 +45,7 @@ The tools, reachable over MCP, as a `mu` command, or from the app
 | **Markets** | `markets_list` · `markets_convert` — stocks, crypto, futures, commodities, currencies, and conversion between them. `markets_convert` takes a past date back to 1999 and converts crypto at the live price through the dollar |
 | **News** | `news_list` · `news_read` · `news_search` — RSS aggregation, full articles |
 | **Notes** | `notes_add` · `notes_get` · `notes_list` · `notes_delete` — a title and what is under it, kept between conversations and read back into every one |
+| **Notify** | `notify_send` · `notify_devices` — reach yourself on a phone or a laptop with the page closed. Your own devices only: there is no recipient argument, so it cannot be pointed at anybody else |
 | **Places** | `places_search` · `places_nearby` · `places_geocode` · `places_address` · `places_elevation` — points of interest, geocoding both directions, height above sea level |
 | **Prayer** | `prayer_times` · `prayer_qibla` · `prayer_reflection` · `prayer_verse` · `prayer_saying` · `prayer_search` — Islamic prayer times, qibla, a daily verse and saying, and the sources by reference or by question |
 | **Recall** | `recall_search` · `recall_conversation` · `recall_list` — everything you have ever said to an agent and been told, on any client: search it, and read a conversation back |

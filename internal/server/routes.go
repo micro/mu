@@ -46,6 +46,7 @@ import (
 	"mu/service/markets"
 	"mu/service/news"
 	"mu/service/notes"
+	"mu/service/notify"
 	"mu/service/places"
 	"mu/service/prayer"
 	"mu/service/recall"
@@ -106,6 +107,7 @@ func authRequired() map[string]bool {
 		"/users":                      true,  // Who is on this instance — sign-in required
 		"/contacts":                   true,  // Your address book — sign-in required
 		"/notes":                      true,  // What you and your agents wrote down — sign-in required
+		"/notify":                     true,  // What you were told, and where you can be reached — sign-in required
 		// Your own documents. Sign-in required, but checked in the handler
 		// rather than here: the map is matched by prefix, and /docs/<slug> is
 		// still a public redirect to the documentation that used to live there.
@@ -449,6 +451,7 @@ func registerRoutes() {
 	http.HandleFunc("/contacts", contacts.Handler)
 	http.HandleFunc("/docs", docs.Handler)
 	http.HandleFunc("/notes", notes.Handler)
+	http.HandleFunc("/notify", notify.Handler)
 	http.HandleFunc("/sms", sms.Handler)
 
 	// Twilio posts everything arriving on a Messaging Service to one webhook,
@@ -583,7 +586,6 @@ func registerRoutes() {
 	// public status page - service health checks
 	app.HealthCheckFunc = runHealthChecks
 	http.HandleFunc("/status", app.StatusHandler)
-
 
 	// Documentation. One page: how to run your own. Every address the old nine
 	// answered on redirects to whatever replaced it — an exact pattern outranks

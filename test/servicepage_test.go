@@ -43,6 +43,9 @@ var keptItsPage = map[string]string{
 	"docs": "your documents", "events": "your calendar",
 	"recall": "your own past", "sms": "your messages",
 	"wallet": "your key",
+	"notify": "what you were told, and the devices it went to — a derived page " +
+		"would draw a form for sending yourself a notification, which is the one " +
+		"thing nobody needs a page for",
 
 	// 2. It takes an argument to say anything.
 	"food": "a barcode or a product name", "places": "a search", "web": "a query",

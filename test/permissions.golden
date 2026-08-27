@@ -61,6 +61,8 @@ notes_add                    needsAccount=true  destructive=false bound accountO
 notes_delete                 needsAccount=true  destructive=true  bound accountOnly=false optionalAuth=false
 notes_get                    needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 notes_list                   needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
+notify_devices               needsAccount=true  destructive=false bound accountOnly=true  optionalAuth=false
+notify_send                  needsAccount=true  destructive=false bound accountOnly=true  optionalAuth=false
 places_address               needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 places_elevation             needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 places_geocode               needsAccount=false destructive=false open accountOnly=false optionalAuth=false

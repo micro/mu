@@ -60,6 +60,7 @@ import (
 	"mu/service/mail"
 	"mu/service/markets"
 	"mu/service/news"
+	"mu/service/notify"
 	"mu/service/recall"
 	"mu/service/shell"
 	"mu/service/sms"
@@ -507,9 +508,13 @@ func wireHooks() {
 		func(id string) { account.DeleteCredits(id) },
 		func(id string) { wallet.DeleteBaseWallet(id) },
 		func(id string) { micro.DeleteUserAgents(id) },
-		// The devices they told us to notify. A subscription outliving the
-		// account is a stranger's phone still receiving somebody's mail.
-		push.Forget,
+		// The devices they told us to notify, and the record of what they were
+		// told. A subscription outliving the account is a stranger's phone still
+		// receiving somebody's mail. Through the service rather than reaching
+		// into internal/push: notify is the door onto this data and DeleteAll is
+		// its answer. Not push.Forget either way — Forget is the "turn it off"
+		// button and deliberately keeps the history.
+		notify.DeleteAll,
 		notes.Clear,
 
 		// Everything the caller stored themselves. These six were missing, so

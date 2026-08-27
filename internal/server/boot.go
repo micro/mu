@@ -32,6 +32,7 @@ import (
 	"mu/service/markets"
 	"mu/service/news"
 	"mu/service/notes"
+	"mu/service/notify"
 	"mu/service/places"
 	"mu/service/prayer"
 	"mu/service/recall"
@@ -112,6 +113,7 @@ func boot() {
 	chat.LoadService()
 	docs.LoadService()
 	notes.LoadService()
+	notify.LoadService()
 	sms.LoadService()
 	images.Load()
 	// The cache behind /img, which serves article images from here instead of
