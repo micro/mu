@@ -133,7 +133,7 @@ func Index(w http.ResponseWriter, r *http.Request) {
 		// stranger, which is not what a server's front door is for. Sign in is
 		// the door; whoever runs this decides who gets a key.
 		TopRight: `<a href="/login">Sign in →</a>` +
-			`<button type="button" id="install-app" hidden>Install</button>` +
+			`<button type="button" id="install-app" hidden>Install app</button>` +
 			`<span id="install-how" hidden>Share, then Add to Home Screen</span>`,
 		Body:   body,
 		Footer: app.FooterLinks(),
