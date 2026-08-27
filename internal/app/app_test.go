@@ -254,7 +254,7 @@ func TestTheSignedInRailCarriesEveryDestination(t *testing.T) {
 	result := renderWithLang("Test", "A test page", "<p>content</p>", "en", &auth.Account{ID: "alice"})
 	for _, want := range []string{
 		`id="nav-home"`, `id="nav-account"`, `id="nav-inbox"`,
-		`id="nav-agents"`, `id="nav-services"`, `id="nav-token"`, `id="nav-wallet"`,
+		`id="nav-agents"`, `id="nav-services"`, `id="nav-token"`,
 		`id="nav-logout"`, `@alice`,
 	} {
 		if !strings.Contains(result, want) {
@@ -264,6 +264,36 @@ func TestTheSignedInRailCarriesEveryDestination(t *testing.T) {
 	// Nothing is folded away any more.
 	if strings.Contains(result, `<details class="nav-me"`) {
 		t.Error("the account destinations are behind a disclosure again")
+	}
+}
+
+// Wallet is offered where money can go into it, and nowhere else.
+//
+// It was a permanent rail entry. On an instance somebody runs themselves there
+// is no top-up — they pay the model vendor directly — so it led to a balance
+// that could never change, on the machine whose whole point is that there is no
+// meter between you and your own server. Hidden the way Admin is: the page
+// still answers, the rail does not offer what this instance cannot do.
+func TestTheWalletIsOnlyOfferedWhereItCanBeToppedUp(t *testing.T) {
+	acc := &auth.Account{ID: "alice"}
+
+	TopUpConfigured = func() bool { return true }
+	t.Cleanup(func() { TopUpConfigured = nil })
+	if got := renderWithLang("T", "d", "<p>c</p>", "en", acc); !strings.Contains(got, `id="nav-wallet"`) {
+		t.Error("an instance that takes payments does not offer the wallet")
+	}
+
+	TopUpConfigured = func() bool { return false }
+	if got := renderWithLang("T", "d", "<p>c</p>", "en", acc); strings.Contains(got, `id="nav-wallet"`) {
+		t.Error("an instance that cannot take a payment still offers a wallet")
+	}
+
+	// Unwired means no, the opposite default to AgentReady — an unwired hook
+	// there hides a working box, and here it would offer a wallet nobody can
+	// put anything into.
+	TopUpConfigured = nil
+	if got := renderWithLang("T", "d", "<p>c</p>", "en", acc); strings.Contains(got, `id="nav-wallet"`) {
+		t.Error("the wallet is offered when nothing has said payments work")
 	}
 }
 

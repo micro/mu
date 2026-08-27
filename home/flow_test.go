@@ -32,59 +32,37 @@ import (
 // teach and the parts that pitch a rail; below the fold, x402 is named on
 // purpose, because a reader who scrolled past the button wants to know how an
 // agent pays without an account.
-func TestTheLandingIsOneScreenAboutOneThing(t *testing.T) {
+func TestTheLandingIsASearchBox(t *testing.T) {
 	rec := httptest.NewRecorder()
 	Landing(rec, httptest.NewRequest("GET", "/", nil))
 	body := rec.Body.String()
 
-	// What it is, and what is behind it.
-	//
-	// "tools behind it" was the wording once and the marker was the wording.
-	// The lead is copy and copy gets rewritten; what has to survive a rewrite
-	// is that the first screen still names what the agent can reach, so the
-	// marker is the list rather than the sentence around it.
-	for _, want := range []string{"A network for humans, agents and services", "tools: news, search"} {
-		if !strings.Contains(body, want) {
-			t.Errorf("the landing is missing %q", want)
-		}
+	// The thing somebody with no account can actually do. /archive is public by
+	// construction — an entry with an owner is never returned from it — so there
+	// is nothing here to gate and nothing to leak.
+	if !strings.Contains(body, `action="/archive"`) || !strings.Contains(body, `name="q"`) {
+		t.Error("the signed-out page does not offer a search")
 	}
-	// One way on. There were two, and the second kept being the wrong one —
-	// "Browse the tools" answers a question a first-time visitor has not asked,
-	// "Browse the agents" sends somebody signed out to a list of the agents they
-	// have not made.
-	if !strings.Contains(body, `href="/signup"`) {
-		t.Error("the landing has no path to /signup")
+	if !strings.Contains(body, `method="GET"`) {
+		t.Error("a search that is a POST cannot be linked, bookmarked or gone back to")
+	}
+	// And the way in, which is the only other thing a stranger needs.
+	if !strings.Contains(body, `href="/login"`) {
+		t.Error("no way to sign in from the signed-out page")
 	}
 
-	// What the *hero* must not carry. Each was a section arguing for something
-	// else on the screen that should argue for one thing.
-	//
-	// Scoped to the hero rather than the page. x402 is named in the developer
-	// band below the fold, deliberately: a reader who has scrolled past the
-	// button is being told how to pay without an account, which is a fact they
-	// came looking for rather than a rail being pitched at somebody deciding
-	// whether they want an agent at all.
-	hero := body
-	if i := strings.Index(body, `class="dev"`); i > 0 {
-		hero = body[:i]
-	}
-	for what, marker := range map[string]string{
-		"a chat box":           "mu-chat-form",
-		"feature cards":        `class="lcards"`,
-		"the MCP setup steps":  "Connect via MCP",
-		"a payment rail pitch": "x402",
-		// The address had every position on this page — the largest element, a
-		// retyping animation, a line under the button — and each move was an
-		// attempt to say "you can email it too" without the page becoming about
-		// email. A landing gets one call to action, and an address beside a
-		// button is a second one nobody signed out can use: there is no
-		// you+agent@ until there is a you.
-		"an email address": `class="laddr"`,
+	// What must not come back. Each is an argument aimed at somebody choosing
+	// between products, on a page that — on almost every instance there will
+	// ever be — is served by a server one person installed and is already
+	// signed into somewhere else.
+	for _, gone := range []string{
+		"The agent is free",
+		"cost us are priced",
+		"A network for humans, agents and services",
+		"Get started",
 	} {
-		if strings.Contains(hero, marker) {
-			t.Errorf("the first screen still carries %s — that is a second thing "+
-				"to decide about, and it belongs further down or on the page "+
-				"about it", what)
+		if strings.Contains(body, gone) {
+			t.Errorf("the signed-out page still carries %q", gone)
 		}
 	}
 }
@@ -103,36 +81,24 @@ func TestTheLandingIsOneScreenAboutOneThing(t *testing.T) {
 // the new one twice. Both halves are here now. The <head> is excluded on
 // purpose: the <title> and the og description are allowed to repeat the pitch,
 // because nobody reads them beside it.
-func TestThereIsOneTagline(t *testing.T) {
+func TestThereIsNoTagline(t *testing.T) {
 	rec := httptest.NewRecorder()
 	Landing(rec, httptest.NewRequest("GET", "/", nil))
 	page := rec.Body.String()
 
-	// Every line this positioning has moved past. AGENTS.md keeps the list;
-	// this keeps them off the page, because the way they survive is by living
-	// somewhere nothing renders beside them.
+	// This held the tagline to exactly one appearance, because it was in the
+	// chrome and in the headline and read as the same sentence twice in a
+	// smaller font. It is zero now: a tagline is a claim a reader is invited to
+	// weigh, and a server's front door has nothing to argue.
 	for _, gone := range []string{
-		"An Inbox for Agents", "A personal agent", "building blocks for life",
-		// Retired rather than disproved: handing work to your own agent still
-		// works. It described one account's relationship with its agent, and
-		// what is being built is the address space they share with everybody.
-		"Work with Agents",
+		"A network for humans, agents and services",
+		"An Inbox for Agents",
+		"The agent is free",
+		"cost us are priced",
 	} {
 		if strings.Contains(page, gone) {
-			t.Errorf("the landing still carries the retired line %q, so a visitor "+
-				"reads two different pitches", gone)
+			t.Errorf("the signed-out page still carries %q", gone)
 		}
-	}
-
-	body := page
-	if i := strings.Index(page, "<body>"); i >= 0 {
-		body = page[i:]
-	}
-	const tagline = "A network for humans, agents and services"
-	if n := strings.Count(body, tagline); n != 1 {
-		t.Errorf("the landing says %q %d times on one screen, want once — it is the "+
-			"headline, and a second copy in the chrome above it is the same "+
-			"sentence in a smaller font", tagline, n)
 	}
 }
 
@@ -145,39 +111,23 @@ func TestThereIsOneTagline(t *testing.T) {
 // author rule beats the browser's own [hidden]{display:none} whatever its
 // specificity. Without the override the button is on the page in Firefox, where
 // pressing it does nothing at all.
-func TestTheInstallButtonWaitsToBeOffered(t *testing.T) {
+func TestTheServiceWorkerStillRegistersWithNoInstallButton(t *testing.T) {
 	rec := httptest.NewRecorder()
 	Landing(rec, httptest.NewRequest("GET", "/", nil))
 	body := rec.Body.String()
 
-	if !strings.Contains(body, `id="install-app"`) {
-		t.Fatal("no install button on the landing")
+	if !strings.Contains(body, "serviceWorker.register('/mu.js'") {
+		t.Fatal("the signed-out page no longer registers the service worker, so the " +
+			"first page a visitor sees is the one page that cannot be installed " +
+			"from — the exact bug the script was written to fix")
 	}
-	i := strings.Index(body, `id="install-app"`)
-	tag := body[strings.LastIndex(body[:i], "<"):]
-	if j := strings.Index(tag, ">"); j > 0 {
-		tag = tag[:j]
-	}
-	if !strings.Contains(tag, "hidden") {
-		t.Errorf("the install button ships visible: %s", tag)
-	}
-	if !strings.Contains(body, ".lcta[hidden]") {
-		t.Error("nothing stops .lcta{display:inline-block} overriding the hidden " +
-			"attribute, so the button shows on browsers that cannot install")
-	}
-
-	// It listens for the one signal there is, and it registers the worker: a
-	// browser will not offer to install a site that has no service worker, and
-	// this page is the only one that never registered it.
-	for _, want := range []string{"beforeinstallprompt", "serviceWorker", "appinstalled"} {
-		if !strings.Contains(body, want) {
-			t.Errorf("the install script does not mention %s", want)
-		}
-	}
-
-	// The primary action is still signing up.
-	if strings.Index(body, `href="/signup"`) > strings.Index(body, `id="install-app"`) {
-		t.Error("Install app comes before Get started")
+	// Ordering, which is the whole hazard. The registration sat below a bail on
+	// the install button being absent, and the button has gone with the pitch it
+	// stood next to. A guard above it puts the bug back with nothing to notice.
+	reg := strings.Index(body, "serviceWorker.register('/mu.js'")
+	if bail := strings.Index(body, "if (!btn) return"); bail >= 0 && bail < reg {
+		t.Error("the service worker registration is behind a check for an install " +
+			"button that is not on the page")
 	}
 }
 
@@ -208,11 +158,11 @@ func TestTheLandingOffersOneThing(t *testing.T) {
 	Landing(rec, httptest.NewRequest("GET", "/", nil))
 	body := rec.Body.String()
 
-	if !strings.Contains(body, `href="/signup"`) {
-		t.Fatal("the landing lost its call to action")
+	if !strings.Contains(body, `action="/archive"`) {
+		t.Fatal("the signed-out page lost the one thing it does")
 	}
 	if strings.Contains(body, `class="dev"`) {
-		t.Error("the developer band is back — three attempts at a developer " +
+		t.Error("the developer band is back — four attempts at a developer " +
 			"pitch on this page have now been removed; the endpoint is on /tools")
 	}
 }

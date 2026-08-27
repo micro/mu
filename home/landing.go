@@ -63,8 +63,12 @@ func Landing(w http.ResponseWriter, r *http.Request) {
 	body := landingBody()
 
 	page := app.RenderLanding(app.Landing{
-		Title:       "Mu — A network for humans, agents and services",
-		Description: "Use agents with open protocols. Give them a real inbox, tools and services, and reach them over the web, by email, from a terminal or through the API. Open source and self-hostable.",
+		// What it is, not what to think of it. This said "A network for
+		// humans, agents and services" with a paragraph of positioning under
+		// it — a claim a stranger is invited to weigh, which is a landing
+		// page's job and not a server's.
+		Title:       "Mu",
+		Description: "A personal server: mail, chat, files, an inbox with an address, and an agent that reaches its tools. Open source and self-hostable.",
 		Brand:       "Mu",
 		// No tagline in the chrome. This slot held "An Inbox for Agents" — the
 		// line this positioning replaced — sitting directly above a headline
@@ -145,81 +149,57 @@ func Landing(w http.ResponseWriter, r *http.Request) {
 //
 // The lead still says you can write to it from anywhere, which is the fact. The
 // address is on the pages where it is actionable — /agents, Connect, the inbox.
+// landingBody is the signed-out page: a search box.
+//
+// # Why there is no pitch here any more
+//
+// This was a landing page — a headline, a paragraph of positioning, Get
+// started, and "The agent is free. Tools that cost us are priced." That last
+// line is our business model, and it shipped in every binary: on somebody
+// else's server they pay the vendor themselves, so "costs us" is us, in their
+// house, describing an arrangement they are not part of.
+//
+// The general fault is bigger than that line. A landing page is for a stranger
+// who has not decided yet, which is a real audience for micro.mu and nobody at
+// all on an instance that one person installed and is already logged into on
+// their other device. Marketing is a thing an instance may serve; it is not a
+// thing the software should contain.
+//
+// # A search box, because the archive is public
+//
+// What is useful without an account is what this instance has collected — and
+// /archive is already public by construction: an entry with an owner is never
+// returned from it, so there is nothing here to leak and nothing to gate. The
+// box is the same one Home shows when no model is configured, pointed at the
+// same page, for the same reason: you type what you are looking for and
+// something finds it.
+//
+// That is also the whole of what a utility's front door is. nginx's default
+// page says it is nginx and that it is working. This says what it is, that it
+// is running, and gives you something to do with it.
 func landingBody() string {
-	// The tool count is counted, not claimed. This said "67 real tools" as a
-	// literal and the endpoint was serving 72 by the time anyone checked.
-	//
-	// The sentence used to end "One account instead of seven providers", which
-	// is the argument rather than the thing — and an argument invites the reader
-	// to weigh it, on a page whose job is to say what this is. It also carried a
-	// second number that had to be kept in step with the list beside it by hand.
-	// The list is the proof; it does not need a claim after it.
-	//
-	// What you get, not what you must do.
-	//
-	// It read "Make one, give it an address, hand it a job" — three imperatives,
-	// two of them false. You do not make one: every account already has an agent
-	// and roster_page.go says so, because leaving it off "meant a new account
-	// opened /agents and was told it had none, which is false". And you do not
-	// give it an address: agent.tagFor assigns one. So the first two steps of a
-	// three-step flow were a thing nobody needs to do and a thing that happens
-	// by itself, which put the hardest instruction on the page first and made
-	// the product contradict the pitch a minute after signing up.
-	//
-	// The third was the only true one and it is the promise the headline makes,
-	// so it stays — as a verb in a sentence rather than as step three of a
-	// setup. What is left is what somebody gets: an agent, an address, and
-	// somewhere for work to come back to.
-	//
 	return `<div class="lwrap">
-<h2 class="lhead">A network for humans, agents and services.</h2>
-<p class="lead">Use agents with open protocols. Give them a real inbox, tools and
-services. Talk to them over the web, by email, from a terminal, or through the API.
-They reach ` + tools() + ` tools: news, search, weather, markets, video, places,
-files, contacts, events, documents. A work in progress.</p>
-
-<div class="lctas">
-  <a class="lcta" href="/signup">Get started</a>
-  <button type="button" class="lcta lcta-second" id="install-app" hidden>Install app</button>
-</div>
-<p class="linstall" id="install-how" hidden>In Safari: Share, then Add to Home Screen.</p>
-<p class="lcost">The agent is free. Tools that cost us are priced.
-<a href="/tools">See them</a></p>
+<form class="lsearch" method="GET" action="/archive">
+  <input class="lsearch-in" type="search" name="q" placeholder="Search everything here" maxlength="256" autofocus>
+  <button class="lsearch-go" type="submit">Search</button>
+</form>
+<p class="lwhat">` + tools() + ` tools, an inbox with an address, and an agent that reaches them.
+<a href="/tools">See what it runs</a></p>
 </div>
 
 <style>
-.lwrap{padding:0}
-.lhead{max-width:700px;text-align:center;margin:0 auto 12px;font-size:20px;line-height:1.2;
-  letter-spacing:-.01em;font-weight:700;color:#111}
-.lead{max-width:560px;text-align:center;color:#555;font-size:17px;line-height:1.6;margin:0 auto 22px}
-.lead a{color:#111}
-.lctas{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin:0}
-/* The money question, answered before it is asked.
-   A line rather than a third button: "will this cost me anything" is the second
-   thing a visitor wonders and it wants a fact, not a decision. It is here at all
-   because the answer finally fits in a sentence — while the agent was metered
-   and an allowance paid the meter back, it took a page. */
-.lcost{max-width:560px;text-align:center;color:#888;font-size:13px;line-height:1.6;
-  margin:16px auto 0}
-.lcost a{color:#555;font-weight:600;text-decoration:none;white-space:nowrap}
-.lcost a:hover{text-decoration:underline}
-/* An explicit line-height on both, or they are different heights side by side:
-   a <button> and an <a> take different defaults, and 3px of it shows. */
-.lcta,.lcta:visited{display:inline-block;background:#111;color:#fff;text-decoration:none;padding:12px 24px;
-  border-radius:var(--border-radius,6px);font-weight:700;font-size:15px;line-height:17px}
-/* The rule above is display:inline-block, and an author rule beats the browser's
-   own [hidden]{display:none} whatever its specificity. Without this line the
-   install button is on the page for everybody, including the browsers that
-   cannot install anything. */
-.lcta[hidden],.linstall[hidden]{display:none}
-/* Second, and it looks it: the primary action on this page is signing up.
-   The outline is a shadow rather than a border so it costs no height — a border
-   makes this button 2px taller than the link beside it. */
-.lcta-second{background:#fff;color:#111;border:0;box-shadow:inset 0 0 0 1px #ddd;
-  cursor:pointer;font-family:inherit;font-size:15px}
-.lcta-second:hover{box-shadow:inset 0 0 0 1px #111}
-.linstall{text-align:center;color:#666;font-size:14px;margin:12px auto 0}
-@media (max-width:640px){.lead{font-size:15px}}
+.lwrap{padding:0;max-width:560px;margin:0 auto;width:100%}
+.lsearch{display:flex;align-items:center;gap:8px;width:100%}
+.lsearch-in{flex:1;min-width:0;font:inherit;font-size:16px;padding:12px 14px;border:1px solid #ddd;
+  border-radius:var(--border-radius,6px);background:#fff;color:#111}
+.lsearch-in:focus{outline:none;border-color:#999}
+.lsearch-go{flex:none;border:0;background:#111;color:#fff;font:inherit;font-size:15px;font-weight:700;
+  padding:12px 20px;border-radius:var(--border-radius,6px);cursor:pointer}
+.lwhat{text-align:center;color:#888;font-size:13px;line-height:1.6;margin:16px auto 0}
+.lwhat a{color:#555;font-weight:600;text-decoration:none;white-space:nowrap}
+.lwhat a:hover{text-decoration:underline}
+@media (max-width:640px){.lsearch{flex-direction:column;align-items:stretch}
+  .lsearch-go{width:100%}}
 </style>`
 }
 
@@ -244,16 +224,24 @@ files, contacts, events, documents. A work in progress.</p>
 func installScript() string {
 	return `<script>
 (function () {
+  // The worker first, and unconditionally.
+  //
+  // This sat below a "no install button, nothing to do here" bail, which was
+  // fine while the button was always on the page. The button has gone with the
+  // pitch it stood next to, and the registration is not about the button: it
+  // is what makes this page installable at all, and the comment above this
+  // function exists because the first page a visitor sees was once the one
+  // page that could never be installed from. Ordering put it back.
+  if (navigator.serviceWorker) {
+    navigator.serviceWorker.register('/mu.js', {scope: '/'});
+  }
+
   var btn = document.getElementById('install-app');
   if (!btn) return;
   var how = document.getElementById('install-how');
 
   // Already installed: this is the app, running in its own window.
   if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true) return;
-
-  if (navigator.serviceWorker) {
-    navigator.serviceWorker.register('/mu.js', {scope: '/'});
-  }
 
   var offer = null;
   window.addEventListener('beforeinstallprompt', function (e) {

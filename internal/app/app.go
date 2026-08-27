@@ -949,9 +949,14 @@ func renderForRequest(title, desc, html, bodyClass string, r *http.Request) stri
 	if banner := CreditsBanner(r); banner != "" {
 		html = banner + html
 	}
-	if banner := ConnectBanner(r); banner != "" {
-		html = banner + html
-	}
+	// No connect banner.
+	//
+	// It ran on every page of every instance: "Connect your agent. This is the
+	// app; the tools are the other half. All N of them, on one server." That is
+	// a pitch — "on one server" is an argument aimed at somebody choosing
+	// between products — and it was above the fold on the archive, the inbox
+	// and the home screen of people who had already chosen. /tools is in the
+	// rail, which is where a destination belongs.
 	_, acc := auth.TrySession(r)
 	// The path, so the rail can show which mailbox or agent you are in. Only
 	// this render has a request to read it from.
@@ -1077,11 +1082,32 @@ func navMain(acc *auth.Account) string {
 	b += item("nav-agents", "/agents", "/agent.svg", "Agents")
 	b += item("nav-services", "/services", "/services.svg", "Services")
 	if acc != nil {
+		// Tokens are how you authenticate an agent, so they are yours on every
+		// instance.
 		b += item("nav-token", "/token", "/token.svg", "Tokens")
-		b += item("nav-wallet", "/wallet", "/wallet.png", "Wallet")
+		// A wallet is only a wallet where money can go into it. An instance
+		// somebody runs themselves has no top-up — they are paying the model
+		// vendor directly — so this was a permanent rail entry leading to a
+		// balance that could never change, on the machine where the whole point
+		// is that there is no meter between you and your own server. Hidden the
+		// way Admin is: the page still answers, the rail just does not offer
+		// what this instance cannot do.
+		if TopUpConfigured != nil && TopUpConfigured() {
+			b += item("nav-wallet", "/wallet", "/wallet.png", "Wallet")
+		}
 	}
 	return b
 }
+
+// TopUpConfigured reports whether this instance can take a payment, filled in
+// by the server.
+//
+// A hook for the same reason as AgentReady: the answer lives in the package
+// that holds the payment keys, and that package imports this one. Nil means no
+// — the opposite default to AgentReady, and deliberately: an unwired hook
+// there would hide a working box, and here it would offer a wallet nobody can
+// put anything in.
+var TopUpConfigured func() bool
 
 func navAdmin(acc *auth.Account) string {
 	if acc == nil || !acc.Admin {

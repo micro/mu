@@ -492,6 +492,9 @@ func wireHooks() {
 		return ok
 	}
 
+	// And whether a wallet is a wallet here. Same shape, same reason.
+	app.TopUpConfigured = account.TopUpConfigured
+
 	// Wire admin → blog callbacks (avoids blog importing admin)
 	admin.GetNewAccountBlog = blog.PostsByNewAccounts
 	admin.RefreshBlogCache = blog.RefreshCache
