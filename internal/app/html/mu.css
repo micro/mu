@@ -6111,6 +6111,26 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
 .ib-new-link { margin-left: auto }
 .ib-sent { font-size: 13px; color: var(--btn-success, #1a7f37); margin: 0 0 12px }
 
+/* Search, on the screen the conversations are on.
+ *
+ * A row of controls the width of the list, above it, the way the switcher is —
+ * a search that sits beside the mailbox names reads as one more mailbox. */
+.ib-search { display: flex; align-items: center; gap: 8px; margin: 0 0 12px }
+.ib-search-in {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--text-primary, #111);
+  background: var(--card-background, #fff);
+  border: 1px solid var(--card-border, #e8e8e8);
+  border-radius: var(--border-radius, 6px);
+}
+.ib-search-in:focus { outline: none; border-color: var(--text-muted, #888) }
+.ib-search-clear { font-size: 13px; color: var(--text-muted, #888); flex: none }
+.ib-found { font-size: 13px; color: var(--text-muted, #888); margin: 0 0 10px }
+
 /* Putting an app on somebody else's page. See service/apps/embed.go. */
 .embed-page { max-width: 760px }
 .embed-title { font-size: 20px; margin: 0 0 6px }

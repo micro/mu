@@ -166,6 +166,22 @@ func list(w http.ResponseWriter, r *http.Request, accountID, box string) {
 	}
 	b.WriteString(boxes(accountID, all, box))
 
+	// Search, over everything in the record rather than over the page.
+	//
+	// The inbox is where the conversations are, on every channel there is, and
+	// there was no way to look for one. /recall could — thread.Search has been
+	// there the whole time, exported and complete — but you had to know the
+	// page existed and that it was the same store, which is two facts nothing
+	// on this screen tells you. A mailbox you cannot search is a log.
+	q := strings.TrimSpace(r.URL.Query().Get("q"))
+	b.WriteString(searchBox(box, q))
+	if q != "" {
+		found(&b, r, accountID, box, q)
+		b.WriteString(`</div>`)
+		app.Respond(w, r, app.Response{Title: "Inbox", Description: "What arrived", HTML: b.String()})
+		return
+	}
+
 	if len(threads) == 0 {
 		// An empty inbox says how to fill it, and the answer is an address.
 		// "Nothing here" is a true sentence that leaves somebody looking at a
@@ -201,6 +217,16 @@ func list(w http.ResponseWriter, r *http.Request, accountID, box string) {
 // said, and when. The shape of a mail client's list, because a list of
 // conversations is what a mail client shows.
 func row(r *http.Request, accountID string, t thread.Thread) string {
+	return rowWith(r, accountID, t, "")
+}
+
+// rowWith is row, with the option of saying what to preview.
+//
+// Search needs it. The preview is normally the last thing said, which is the
+// right answer for a list you are glancing down and the wrong one for a list of
+// results: a search for "invoice" that shows the last line of each conversation
+// makes you open every one to find out why it matched.
+func rowWith(r *http.Request, accountID string, t thread.Thread, preview string) string {
 	subject := strings.TrimSpace(t.Subject)
 	if subject == "" {
 		subject = "Untitled"
@@ -223,7 +249,9 @@ func row(r *http.Request, accountID string, t thread.Thread) string {
 	// above three exchanges of history previews as "Yes, do that" — see
 	// quoted.go.
 	snippet := ""
-	if msgs := thread.Messages(accountID, t.ID, 1); len(msgs) > 0 {
+	if preview != "" {
+		snippet = trimTo(strings.TrimSpace(withoutSubject(preview, subject)), 110)
+	} else if msgs := thread.Messages(accountID, t.ID, 1); len(msgs) > 0 {
 		text, _ := unquoted(withoutSubject(msgs[0].Text, subject))
 		snippet = trimTo(text, 110)
 	}
