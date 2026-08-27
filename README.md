@@ -4,7 +4,7 @@ A server for humans, agents and services
 
 ## Overview
 
-A single server for everything. Run your own mail server, your own chat app, the tools and services needed by agents and humans. 
+One server for everything. Run your own mail server, your own chat app, the tools and services needed by agents and humans. 
 It's all running live at [micro.mu](https://micro.mu) right now. We're building services that operate as the building blocks for 
 everything. Mail, chat, news, video, search, etc. Then we archive any data locally so it's all searchable. 
 
