@@ -487,10 +487,19 @@ func wireHooks() {
 	// A model is optional now, so the ask box has to know whether there is one.
 	// internal/ai imports internal/app, so the answer comes back through a hook
 	// rather than an import that cannot exist. See app.AgentReady.
-	app.AgentReady = func() bool {
-		_, _, _, ok := ai.PreferredProvider()
-		return ok
-	}
+	// ai.Configured, not ai.PreferredProvider.
+	//
+	// PreferredProvider answers a narrower question than it reads as: whether
+	// AI_PROVIDER names a provider that has a credential. That setting is an
+	// override an operator may set and usually has not — setup writes the keys
+	// and never writes it — so it is false on every instance configured through
+	// the wizard, whichever provider was picked. Wiring it here told a
+	// correctly configured instance it had no model and replaced its ask box
+	// with a search box.
+	//
+	// Configured is the question actually being asked: is there any credential
+	// or endpoint this instance could reach a model through.
+	app.AgentReady = ai.Configured
 
 	// And whether a wallet is a wallet here. Same shape, same reason.
 	app.TopUpConfigured = account.TopUpConfigured
