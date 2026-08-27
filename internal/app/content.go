@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"html"
 	"strings"
 	"sync/atomic"
 )
@@ -113,9 +114,7 @@ func renderMenu(actions []Action) string {
 		case a.Label == "Edit":
 			sb.WriteString(fmt.Sprintf(`<a href="%s" class="%s">Edit</a>`, a.URL, style))
 		case a.Label == "Delete" && a.Confirm != "":
-			// Use POST (not DELETE) — handlers check for POST.
-			// Redirect to the parent listing page, derived from the URL pattern.
-			sb.WriteString(fmt.Sprintf(`<a href="#" class="%s" onclick="if(confirm('%s')){var h={};var t=(document.cookie.match(/(?:^|; )csrf_token=([^;]+)/)||[])[1];if(t)h['X-CSRF-Token']=decodeURIComponent(t);fetch('%s',{method:'POST',credentials:'same-origin',headers:h}).then(function(){var p='%s';if(p.indexOf('/apps/')===0)window.location='/apps';else if(p.indexOf('/social')===0)window.location='/social';else window.location=document.referrer||'/'})};return false;">%s</a>`, style, a.Confirm, a.URL, a.URL, a.Label))
+			sb.WriteString(deleteItem(style, a))
 		case a.Confirm != "":
 			sb.WriteString(fmt.Sprintf(`<a href="#" class="%s" onclick="if(confirm('%s')){fetch('%s',{method:'POST'}).then(function(){location.reload()})};return false;">%s</a>`, style, a.Confirm, a.URL, a.Label))
 		default:
@@ -125,4 +124,53 @@ func renderMenu(actions []Action) string {
 
 	sb.WriteString(`</div></span>`)
 	return sb.String()
+}
+
+// deleteItem is the Delete line in that menu, and the request it sends.
+//
+// # It sent a request no handler recognised
+//
+// The comment here read "Use POST (not DELETE) — handlers check for POST",
+// which is half of the contract. They check for POST *and* a _method=DELETE
+// field, because a browser form cannot issue a DELETE; this sent a bare POST
+// with no body at all. On the blog that fell through every branch to the page
+// renderer and came back 200 with the post still there. On /social it was
+// worse: the method switch reaches "case POST" before the _method check, so
+// deleting a message called handleCreateThread.
+//
+// Then the handler's answer was thrown away — `.then(function(){...})` with no
+// look at r.ok — and the page navigated regardless. So both failures looked
+// exactly like success: confirm, redirect, item still there. A person doing
+// this has no way to tell it did not work except by going back and looking.
+//
+// # So
+//
+// The body carries _method=DELETE, which is what every one of these handlers
+// is waiting for. The response is checked, and a refusal says what it was
+// rather than pretending. Only a real delete navigates.
+func deleteItem(style string, a Action) string {
+	// Where to go afterwards. The thing that was on this page is gone, so
+	// "back" has to mean its listing and not the page itself — the referrer is
+	// the fallback, and for a permalink that is usually where you came from.
+	after := "document.referrer||'/'"
+	switch {
+	case strings.HasPrefix(a.URL, "/apps/"):
+		after = "'/apps'"
+	case strings.HasPrefix(a.URL, "/social"):
+		after = "'/social'"
+	case strings.HasPrefix(a.URL, "/blog"):
+		after = "'/blog'"
+	}
+
+	js := `if(!confirm('` + a.Confirm + `'))return false;` +
+		`var h={'Content-Type':'application/x-www-form-urlencoded'};` +
+		`var t=(document.cookie.match(/(?:^|; )csrf_token=([^;]+)/)||[])[1];` +
+		`if(t)h['X-CSRF-Token']=decodeURIComponent(t);` +
+		`fetch('` + a.URL + `',{method:'POST',credentials:'same-origin',headers:h,body:'_method=DELETE'})` +
+		`.then(function(r){if(!r.ok){throw new Error(r.status===403?'That is not yours to delete.':'Could not delete that ('+r.status+').')}` +
+		`window.location=` + after + `})` +
+		`.catch(function(e){alert(e.message||'Could not delete that.')});return false;`
+
+	return fmt.Sprintf(`<a href="#" class="%s" onclick="%s">%s</a>`,
+		style, html.EscapeString(js), a.Label)
 }
