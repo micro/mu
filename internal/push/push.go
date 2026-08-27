@@ -251,8 +251,46 @@ func Send(account string, n Notification) {
 		return
 	}
 	for _, d := range devices {
-		go deliver(account, d, payload)
+		go deliver(account, d, payload) //nolint:errcheck
 	}
+}
+
+// Test delivers one notification and waits for the answer.
+//
+// Send is deliberately fire-and-forget: mail delivery must not block on a push
+// service. But that makes it the wrong thing behind a button whose entire
+// purpose is to say whether this works — /push/test called Send, which cannot
+// fail, and answered ok. Pressing it did nothing, said nothing, and left the
+// only evidence in a log and in a line on the card that needed a reload to
+// change. "I tried send a test, it did nothing" is the correct reading of that.
+//
+// So this one waits. It reports nil if any device took it, and otherwise the
+// reason the last one gave — which is the sentence somebody needs in order to
+// do anything about it.
+func Test(account string, n Notification) error {
+	if !Configured() {
+		return fmt.Errorf("this instance has no push keys set")
+	}
+	devices := Devices(account)
+	if len(devices) == 0 {
+		return fmt.Errorf("no device is registered yet")
+	}
+	if len(n.Body) > bodyLimit {
+		n.Body = n.Body[:bodyLimit] + "…"
+	}
+	payload, err := json.Marshal(n)
+	if err != nil {
+		return fmt.Errorf("could not build the notification")
+	}
+	var last error
+	for _, d := range devices {
+		if err := deliver(account, d, payload); err != nil {
+			last = err
+			continue
+		}
+		return nil
+	}
+	return last
 }
 
 // LastResult is what happened the last time this account was sent anything,
@@ -273,21 +311,24 @@ func LastResult(account string) (sent time.Time, failed time.Time, reason string
 	return sent, failed, reason
 }
 
-// deliver sends to one device.
-func deliver(account string, d Subscription, payload []byte) {
+// deliver sends to one device and says what became of it.
+//
+// The error is for Test, which has somebody waiting on the answer. Send ignores
+// it — the record and the log are what it leaves behind.
+func deliver(account string, d Subscription, payload []byte) error {
 	p256dh, err := b64.DecodeString(d.P256dh)
 	if err != nil {
-		return
+		return fmt.Errorf("that device's key is not base64url")
 	}
 	auth, err := b64.DecodeString(d.Auth)
 	if err != nil {
-		return
+		return fmt.Errorf("that device's secret is not base64url")
 	}
 	body, err := encrypt(p256dh, auth, payload)
 	if err != nil {
 		app.Log("push", "could not encrypt for a device: %v", err)
 		record(account, d.Endpoint, "could not encrypt")
-		return
+		return fmt.Errorf("could not encrypt for that device")
 	}
 	who := contact()
 	if who == "" {
@@ -299,12 +340,12 @@ func deliver(account string, d Subscription, payload []byte) {
 	if err != nil {
 		app.Log("push", "could not sign for %s: %v", short(d.Endpoint), err)
 		record(account, d.Endpoint, "could not sign the request")
-		return
+		return fmt.Errorf("could not sign the request — check the push keys")
 	}
 
 	req, err := http.NewRequest(http.MethodPost, d.Endpoint, bytes.NewReader(body))
 	if err != nil {
-		return
+		return fmt.Errorf("that device's endpoint is not a URL we can post to")
 	}
 	req.Header.Set("Authorization", header)
 	req.Header.Set("Content-Encoding", "aes128gcm")
@@ -319,7 +360,7 @@ func deliver(account string, d Subscription, payload []byte) {
 	if err != nil {
 		app.Log("push", "could not reach %s: %v", short(d.Endpoint), err)
 		record(account, d.Endpoint, "could not reach the push service")
-		return
+		return fmt.Errorf("could not reach %s", short(d.Endpoint))
 	}
 	defer rsp.Body.Close()
 
@@ -330,14 +371,17 @@ func deliver(account string, d Subscription, payload []byte) {
 		// per notification forever.
 		app.Log("push", "a device is gone, removing it")
 		Unsubscribe(account, d.Endpoint)
+		return fmt.Errorf("that device is gone — turn it on again")
 	case rsp.StatusCode >= 400:
 		app.Log("push", "%s refused a notification: %d", short(d.Endpoint), rsp.StatusCode)
 		record(account, d.Endpoint, "the push service refused it ("+strconv.Itoa(rsp.StatusCode)+")")
+		return fmt.Errorf("%s refused it (%d)", short(d.Endpoint), rsp.StatusCode)
 	default:
 		// Said out loud, because silence on the happy path is what made "I
 		// never receive any" impossible to tell from "none were ever sent".
 		app.Log("push", "sent to %s for %s", short(d.Endpoint), account)
 		record(account, d.Endpoint, "")
+		return nil
 	}
 }
 

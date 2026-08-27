@@ -43,17 +43,20 @@ func SubscribeHandler(w http.ResponseWriter, r *http.Request) {
 	// reminder firing — are all somebody else doing something. That leaves no
 	// way to tell a working subscription from a broken one except waiting, and
 	// waiting for a negative is not a test. This is the button.
+	// It has to wait for the answer, or it is not a test. Send cannot fail — it
+	// hands each device to a goroutine and returns — so answering ok after
+	// calling it said "ok" whether the push service took the notification, timed
+	// out or refused it outright. Test blocks and reports what happened.
 	if strings.HasSuffix(r.URL.Path, "/test") {
-		if !Subscribed(acc.ID) {
-			app.RespondJSON(w, map[string]any{"ok": false, "error": "no device is registered yet"})
-			return
-		}
-		Send(acc.ID, Notification{
+		if err := Test(acc.ID, Notification{
 			Title: "Test notification",
 			Body:  "This is what mail and reminders will look like.",
 			URL:   "/account",
 			Tag:   "mu-test",
-		})
+		}); err != nil {
+			app.RespondJSON(w, map[string]any{"ok": false, "error": err.Error()})
+			return
+		}
 		app.RespondJSON(w, map[string]any{"ok": true})
 		return
 	}
@@ -379,10 +382,16 @@ const cardJS = `<script>
     }).then(function(res){ return res.json(); }).then(function(data){
       test.disabled = false;
       test.textContent = 'Send a test';
-      if (!(data && data.ok)) say((data && data.error) || 'That did not work.');
+      // Both outcomes out loud. Saying nothing on success is indistinguishable
+      // from the button being dead, which is what it looked like — and if the
+      // notification itself does not arrive, "the push service took it" is the
+      // fact that tells you the problem is on the device and not here.
+      if (data && data.ok) say('Sent. It should appear on this device.');
+      else say((data && data.error) || 'That did not work.');
     }).catch(function(){
       test.disabled = false;
       test.textContent = 'Send a test';
+      say('Could not reach the server.');
     });
   });
 

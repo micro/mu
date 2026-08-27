@@ -5,6 +5,8 @@ package push
 import (
 	"encoding/base64"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 )
@@ -292,5 +294,67 @@ func TestTheLastResultIsRemembered(t *testing.T) {
 	record("acct", "https://push.example/one", "")
 	if sent, _, _ := LastResult("acct"); sent.IsZero() {
 		t.Error("a successful send was not recorded")
+	}
+}
+
+// A test that cannot fail is not a test.
+//
+// /push/test called Send, which hands each device to a goroutine and returns
+// nothing, and then answered ok. Pressing "Send a test" therefore said the same
+// thing whether the push service took the notification, timed out, or refused
+// it outright — and the button appeared to do nothing at all, because the page
+// only spoke up on a failure it was never told about.
+func TestATestSaysWhatActuallyHappened(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	var got int
+	refuse := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got++
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer refuse.Close()
+
+	if _, err := Subscribe("refused", device(refuse.URL+"/sub")); err != nil {
+		t.Fatal(err)
+	}
+	err := Test("refused", Notification{Title: "Test notification"})
+	if err == nil {
+		t.Fatal("a push service that refused the notification was reported as a success")
+	}
+	if got == 0 {
+		t.Fatal("nothing was actually sent, so the test button proves nothing")
+	}
+	if !strings.Contains(err.Error(), "500") {
+		t.Errorf("the reason does not say what the push service said: %v", err)
+	}
+	if _, failed, reason := LastResult("refused"); failed.IsZero() || reason == "" {
+		t.Error("the refusal was not recorded, so the card still reads as fine")
+	}
+
+	accept := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") == "" {
+			t.Error("the notification went out unsigned")
+		}
+		w.WriteHeader(http.StatusCreated)
+	}))
+	defer accept.Close()
+
+	if _, err := Subscribe("taken", device(accept.URL+"/sub")); err != nil {
+		t.Fatal(err)
+	}
+	if err := Test("taken", Notification{Title: "Test notification"}); err != nil {
+		t.Fatalf("a push service that accepted the notification was reported as a failure: %v", err)
+	}
+	if sent, _, _ := LastResult("taken"); sent.IsZero() {
+		t.Error("the delivery was not recorded")
+	}
+}
+
+// And with nothing subscribed it says so rather than reporting a send.
+func TestATestWithNoDeviceSaysSo(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	err := Test("nobody", Notification{Title: "Test notification"})
+	if err == nil {
+		t.Fatal("a test with no device registered was reported as sent")
 	}
 }
