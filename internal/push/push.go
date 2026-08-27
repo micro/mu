@@ -335,17 +335,71 @@ func SendNow(account string, n Notification) error {
 		return fmt.Errorf("could not build the notification")
 	}
 	var last error
+	sent := 0
 	for _, d := range devices {
+		// Every device, not the first that answers.
+		//
+		// It stopped at the first success and returned, which made the answer
+		// "somebody's device took it" while the caller reads it as "mine did".
+		// A test button that proves a *different* handset is working is worse
+		// than no button: it sends you looking for the fault on the device that
+		// was never sent anything.
 		if err := deliver(account, d, payload); err != nil {
 			last = err
 			continue
 		}
-		note(account, asSent(n, true, ""))
-		return nil
+		sent++
 	}
-	note(account, asSent(n, false, reason(false, last)))
-	return last
+	if sent == 0 {
+		note(account, asSent(n, false, reason(false, last)))
+		return last
+	}
+	note(account, asSent(n, true, ""))
+	return nil
 }
+
+// SendToDevice is one notification to one subscription, and no other.
+//
+// The test button needs this and nothing else does. "It should appear on this
+// device" is a claim about the device holding the page, and the only way to
+// make it true is to send to the endpoint that device is holding — an account
+// can have several, and which one answers first is not a fact about who is
+// looking at the screen.
+//
+// A stranger's endpoint is not an error, it is a miss: Devices is scoped to
+// the account, so an endpoint that is not on it simply is not found.
+func SendToDevice(account, endpoint string, n Notification) error {
+	if !Configured() {
+		return fmt.Errorf("this instance has no push keys set")
+	}
+	endpoint = strings.TrimSpace(endpoint)
+	var target Subscription
+	found := false
+	for _, d := range Devices(account) {
+		if d.Endpoint == endpoint {
+			target, found = d, true
+			break
+		}
+	}
+	if !found {
+		return fmt.Errorf("this device is not registered here — turn notifications off and on again")
+	}
+	if len(n.Body) > bodyLimit {
+		n.Body = n.Body[:bodyLimit] + "…"
+	}
+	payload, err := json.Marshal(n)
+	if err != nil {
+		return fmt.Errorf("could not build the notification")
+	}
+	err = deliver(account, target, payload)
+	note(account, asSent(n, err == nil, reason(err == nil, err)))
+	return err
+}
+
+// Where is the push service behind a device, for a message that has to say
+// which one it reached. Apple or Google is the difference between a phone and
+// a laptop, and knowing which arrived is most of the diagnosis.
+func Where(endpoint string) string { return short(endpoint) }
 
 // LastResult is what happened the last time this account was sent anything,
 // across all its devices, for the card on /account to say.

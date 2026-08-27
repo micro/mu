@@ -48,17 +48,48 @@ func SubscribeHandler(w http.ResponseWriter, r *http.Request) {
 	// device to a goroutine and returns, so answering ok after calling it said
 	// "ok" whether the push service took the notification, timed out, or refused
 	// it outright. SendNow blocks and reports what happened.
+	//
+	// # And it has to be this device
+	//
+	// It sent to the account and reported the first device that accepted, while
+	// the page said "It should appear on this device." Those are different
+	// claims. An account can hold several subscriptions — an old browser, a
+	// laptop, the same phone before it re-subscribed — and the one that answers
+	// first is not a fact about who is looking at the screen. So the button
+	// could report success having proved that some other handset works, and
+	// send somebody hunting for the fault on a device nothing was sent to.
+	//
+	// The page holds exactly one subscription: the browser's own. It sends that
+	// endpoint, and the notification goes there or nowhere. Then "this device"
+	// is a claim the server actually checked.
 	if strings.HasSuffix(r.URL.Path, "/test") {
-		if err := SendNow(acc.ID, Notification{
+		var ask struct {
+			Endpoint string `json:"endpoint"`
+		}
+		// A page cached before this change sends no body, and an empty
+		// endpoint still means every device — with an answer that says so
+		// rather than one that says "this device".
+		_ = json.NewDecoder(http.MaxBytesReader(w, r.Body, 8<<10)).Decode(&ask)
+
+		note := Notification{
 			Title: "Test notification",
 			Body:  "This is what mail and reminders will look like.",
 			URL:   "/account",
 			Tag:   "mu-test",
-		}); err != nil {
+		}
+		if to := strings.TrimSpace(ask.Endpoint); to != "" {
+			if err := SendToDevice(acc.ID, to, note); err != nil {
+				app.RespondJSON(w, map[string]any{"ok": false, "error": err.Error()})
+				return
+			}
+			app.RespondJSON(w, map[string]any{"ok": true, "here": true, "where": Where(to)})
+			return
+		}
+		if err := SendNow(acc.ID, note); err != nil {
 			app.RespondJSON(w, map[string]any{"ok": false, "error": err.Error()})
 			return
 		}
-		app.RespondJSON(w, map[string]any{"ok": true})
+		app.RespondJSON(w, map[string]any{"ok": true, "here": false, "devices": len(Devices(acc.ID))})
 		return
 	}
 
@@ -376,10 +407,21 @@ const cardJS = `<script>
   if (test) test.addEventListener('click', function(){
     test.disabled = true;
     test.textContent = 'Sending…';
-    fetch('/push/test', {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: {'X-CSRF-Token': document.getElementById('push-csrf').value}
+    // This browser's own subscription, so the server sends there and nowhere
+    // else. Without it the test proved that *a* device works, which is not
+    // what the answer said and not what anybody wanted to know.
+    navigator.serviceWorker.ready.then(function(reg){
+      return reg.pushManager.getSubscription();
+    }).catch(function(){ return null; }).then(function(sub){
+      return fetch('/push/test', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': document.getElementById('push-csrf').value
+        },
+        body: JSON.stringify({endpoint: sub ? sub.endpoint : ''})
+      });
     }).then(function(res){ return res.json(); }).then(function(data){
       test.disabled = false;
       test.textContent = 'Send a test';
@@ -387,8 +429,20 @@ const cardJS = `<script>
       // from the button being dead, which is what it looked like — and if the
       // notification itself does not arrive, "the push service took it" is the
       // fact that tells you the problem is on the device and not here.
-      if (data && data.ok) say('Sent. It should appear on this device.');
-      else say((data && data.error) || 'That did not work.');
+      //
+      // Named, because which push service took it is most of the diagnosis:
+      // web.push.apple.com is a phone, fcm.googleapis.com is usually not.
+      if (!data || !data.ok) { say((data && data.error) || 'That did not work.'); return; }
+      if (data.here) {
+        say('Sent to this device' + (data.where ? ' via ' + data.where : '') +
+            '. If nothing appears, the push service took it and the device did not show it.');
+      } else {
+        // No endpoint to send: this page could not name its own subscription,
+        // so it went to everything registered. Say that rather than claim a
+        // device the server never checked.
+        say('Sent to all ' + (data.devices || 0) + ' registered device(s) — this browser ' +
+            'could not name its own, so turn notifications off and on again here.');
+      }
     }).catch(function(){
       test.disabled = false;
       test.textContent = 'Send a test';
