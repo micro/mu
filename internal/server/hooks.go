@@ -484,6 +484,14 @@ func wireHooks() {
 		}()
 	}
 
+	// A model is optional now, so the ask box has to know whether there is one.
+	// internal/ai imports internal/app, so the answer comes back through a hook
+	// rather than an import that cannot exist. See app.AgentReady.
+	app.AgentReady = func() bool {
+		_, _, _, ok := ai.PreferredProvider()
+		return ok
+	}
+
 	// Wire admin → blog callbacks (avoids blog importing admin)
 	admin.GetNewAccountBlog = blog.PostsByNewAccounts
 	admin.RefreshBlogCache = blog.RefreshCache
