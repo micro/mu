@@ -1,15 +1,27 @@
 # mu
 
-A network for humans, agents and services
+A server for humans, agents and services
 
 ## Overview
 
-Use agents from anywhere. Give them access to a real inbox, tools and services. Chat with them on the web, via mail or xmpp. 
-They have access to 100+ tools: news, search, weather, markets, video, places, files, contacts, events, docs, etc. 
+What is this? Good question. A work in progress. Technology is rapidly evolving and with it, the way we use tools and services. 
+Agents are now everywhere. They will become a dominant form of interaction in the coming years, but it's also only one piece of 
+the puzzle. Incumbents are still building walled gardens. What if we could change that? Use their tools for the greater good?
+
+Open protocols clearly still win. So what if we had a single server that was host to all of them? Run your own mail server, 
+your own chat app, the tools and services needed by agents and humans. I'm experimenting with a new single server stack that 
+bakes it all in. It's running live at [micro.mu](https://micro.mu) if you want to test it out. The idea is that we build a 
+bunch of services that all operate as the building blocks for everything else. Mail, chat, news, video, search, etc. But then
+we archive any data locally so it's all searchable and can be used without needing to go to big G. We leverage their APIs for 
+many things, but try to pull things from open APIs where possible. Services and the archive become tools for agents to use.
+
+Communication ends up in one inbox, whether it's email, chat or sms, maybe other forms of comms in the future also.
+
+A personal home server. Tools for agents. An AI assistant. An operating system for life? So many possibilities.
 
 ## Protocols
 
-The way we're thinking about it right now. Protocols are the ideal standard.
+The protocols currently implemented:
 
 **SMTP in, IMAP out, HTTP for the app, MCP for agents, SSH for a shell, XMPP to chat, x402 for payments.**
 
@@ -23,7 +35,7 @@ The way we're thinking about it right now. Protocols are the ideal standard.
 
 ## Tools
 
-The tools, reachable over MCP, as a `mu` command, or from the app
+The tools, reachable via MCP, as a `mu` cli command, or from the web app
 
 | Service | Tools |
 |---|---|
