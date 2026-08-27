@@ -45,12 +45,40 @@ const (
 // ambiguous, and guessing one is how you text a stranger in another country —
 // only the instance's own default rescues it.
 func Normalise(s string) string {
+	s = strings.TrimSpace(s)
+
+	// Anything that is not punctuation around a number means this is not a
+	// number, and the answer is no rather than a best effort.
+	//
+	// It used to skip whatever it did not recognise and keep the digits, which
+	// is right for "+44 (7700) 900-123" and catastrophic for anything else.
+	// Twilio labels a WhatsApp sender "whatsapp:+447700900123": the letters and
+	// the colon were dropped, the + was no longer at the front so it went too,
+	// and what came out was "447700900123" — no country code, so the instance
+	// default was prepended and the result was +44447700900123. A real number,
+	// belonging to a stranger, silently. A refusal is a bug somebody finds in a
+	// minute; a wrong number is one nobody finds at all.
+	for _, r := range s {
+		switch {
+		case r >= '0' && r <= '9', r == '+',
+			r == ' ', r == '-', r == '.', r == '(', r == ')':
+		default:
+			return ""
+		}
+	}
+
 	var b strings.Builder
-	for i, r := range strings.TrimSpace(s) {
+	for i, r := range s {
 		switch {
 		case r >= '0' && r <= '9':
 			b.WriteRune(r)
-		case r == '+' && i == 0:
+		case r == '+':
+			// Only at the front. A plus anywhere else is not formatting, it is
+			// structure this cannot read — two numbers run together, a range —
+			// and dropping it silently changes which number this is.
+			if i != 0 {
+				return ""
+			}
 			b.WriteRune(r)
 		}
 	}
