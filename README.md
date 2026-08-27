@@ -12,23 +12,18 @@ your phone, the command line, email, anywhere.
 
 A personal home server. Tools for agents. An AI assistant. An operating system for life. All of the above.
 
-## Protocols
+## Features
 
-The protocols currently implemented:
+What's included
 
-**SMTP in, IMAP out, HTTP for the app, MCP for agents, SSH for a shell, XMPP to chat, x402 for payments.**
+- **Services** - 30+ real world services including news, mail, markets, video, etc accessible via API, CLI, MCP or the Web
+- **Tools** - Services automatically become tools which are available to agents via MCP using an auth token or oauth client
+- **Agents** - Define an agent by name, prompt and give it specific tools to use, then chat with it on the web, mail or xmpp
+- **Inbox** - A single place to keep track of threads across mail, chat, etc. Use an IMAP client to connect from anywhere
 
-- **SMTP** — the server is an MTA. `you@your.domain` is a real address, and mail to it reaches your agent. Write to `you+research@` and that agent answers in the thread.
-- **IMAP** — the same mailbox opens in Thunderbird, Mail.app or your phone. Your username, and an access token from `/token` as the password.
-- **HTTP** — the web app, and every tool as a plain POST for anything that is not an agent.
-- **MCP** — `/mcp`, for Claude, Cursor, and anything else that speaks it. See below.
-- **SSH** — a shell in a sandboxed machine with a `/work` directory that keeps what you leave in it. Needs Docker on the instance; without it the port answers and every session ends there.
-- **XMPP** — the same address is also a JID. Conversations, Dino, Gajim and Monal connect to it, and it federates to other servers.
-- **x402** — a priced call with no account gets a `402` naming the price, payable in USDC on Base. The payment is the identity, so an agent never signs up.
+## Services
 
-## Tools
-
-The tools, reachable via MCP, as a `mu` cli command, or from the web app
+The services available via the web, API or as tools, reachable via MCP, and as cli command
 
 | Service | Tools |
 |---|---|
