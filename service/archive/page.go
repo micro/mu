@@ -72,10 +72,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	var b strings.Builder
 	b.WriteString(`<div class="ar">`)
-	b.WriteString(`<p class="lens-lead">Everything this instance has collected — the news it reads, ` +
-		`the video it watches, the markets it follows, what it has written. One search across ` +
-		`all of it. What you have said to an agent is somewhere else, in ` +
-		app.TextLink("Recall", "/recall") + `.</p>`)
+	b.WriteString(`<p class="lens-lead">Everything this server has collected and kept — headlines, ` +
+		`video, market moves, what it has written. It archives as it goes, so this is what it ` +
+		`knew as well as what it knows. One search across all of it. What you have said to an ` +
+		`agent is somewhere else that it can ` + app.TextLink("Recall", "/recall") + `.</p>`)
 
 	b.WriteString(`<form method="GET" action="/archive" class="ar-form">`)
 	if kind != "" {

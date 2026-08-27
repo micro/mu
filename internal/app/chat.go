@@ -133,19 +133,36 @@ var AgentReady func() bool
 //
 // No JavaScript either. A form that navigates is what a search box was before
 // anybody had a reason to make it otherwise, and it works on the first paint.
-func searchBox() string {
+// searchBox is the box. why is the reason it is not a chat, and is empty
+// almost always.
+//
+// It carried that reason unconditionally, from when this rendered only on an
+// instance with no model — so when search became the default everywhere, every
+// instance began telling its owner it had no provider, including the ones that
+// do. A note written for one case, reused for all of them, asserting something
+// false on most.
+//
+// A search box does not need a paragraph under it explaining that it is a
+// search box. The only page that owes an explanation is one that was supposed
+// to be a chat.
+func searchBox(why string) string {
+	note := ""
+	if why != "" {
+		note = `<p class="mu-search-why">` + why +
+			TextLink("/admin/config", "/admin/config") + `.</p>`
+	}
 	// Its own ids, not the chat's. The two are never on a page together, so
 	// sharing them would work — and would mean every selector, test and future
 	// stylesheet rule naming mu-chat-form had two different forms in mind.
 	return `<div id="mu-search"><form id="mu-search-form" method="GET" action="/archive">
     <input id="mu-search-input" type="search" name="q" placeholder="Search everything here" maxlength="256">
     <button type="submit" aria-label="Search">&#x2192;</button>
-  </form>
-  <p class="mu-search-why">Searching, because no model is configured — so the agent cannot answer yet.
-  Everything else works: mail, chat, files, notes and your inbox. Add a provider at ` +
-		TextLink("/admin/config", "/admin/config") + ` to ask it things instead.</p></div>
+  </form>` + note + `</div>
 <style>
-#mu-search{max-width:760px;margin:0 auto;width:100%}
+/* Left, not centred. The rest of the page it sits on starts at the
+   left margin, and a box centred inside a left-aligned column reads as
+   misaligned rather than as centred. */
+#mu-search{max-width:760px;margin:0;width:100%}
 #mu-search-form{display:flex;align-items:center;gap:0;border:1px solid var(--card-border,#ddd);
   border-radius:6px;background:var(--card-background,#fff);padding:4px 4px 4px 12px;transition:border-color .2s}
 #mu-search-form:focus-within{border-color:#999}
@@ -153,7 +170,7 @@ func searchBox() string {
   color:var(--text-primary,#111);min-width:0}
 #mu-search-form button{flex:none;border:0;border-radius:4px;background:#111;color:#fff;font:inherit;
   width:32px;height:32px;cursor:pointer}
-.mu-search-why{max-width:760px;margin:8px auto 0;color:var(--text-muted,#888);font-size:13px;line-height:1.6}
+.mu-search-why{max-width:760px;margin:8px 0 0;color:var(--text-muted,#888);font-size:13px;line-height:1.6}
 </style>`
 }
 
@@ -219,8 +236,14 @@ func ChatComponent(cfg ChatConfig) string {
 	//
 	// Asking still has a home — /agents and the agent pages pass Ask, because
 	// a page about an agent is a page for talking to it.
-	if !cfg.Ask || (AgentReady != nil && !AgentReady()) {
-		return searchBox()
+	if !cfg.Ask {
+		return searchBox("")
+	}
+	if AgentReady != nil && !AgentReady() {
+		// A page that wanted a chat and cannot have one says why. Everywhere
+		// else the search box is simply the box, and explains nothing.
+		return searchBox("No model is configured, so the agent cannot answer yet. " +
+			"Add a provider at ")
 	}
 	suggestJS, err := json.Marshal(suggestions)
 	if err != nil {
@@ -282,7 +305,16 @@ func ChatComponent(cfg ChatConfig) string {
 .mu-chat-transcript{display:flex;flex-direction:column}
 .mu-chat-transcript #mu-chat-form{position:static;flex:none}
 .mu-chat-transcript #mu-chat-opts{margin:6px 0 0;flex:none}
+/* Margin only when there is something to separate.
+   An empty conversation and an empty suggestion row are two zero-height
+   divs, and their bottom margins still stack: 24px of nothing above the box,
+   which put the input below the + New button in the column beside it.
+   Measured — the button at y=110, the input at y=134.
+   :empty rather than removing the margin, because both fill up the moment
+   somebody says anything and the gap is right then. */
 .mu-chat-transcript #mu-chat-suggest{margin:0 0 12px;flex:none}
+.mu-chat-transcript #mu-chat-suggest:empty,
+.mu-chat-transcript #mu-chat-conv:empty{margin:0}
 .mu-chat-transcript #mu-chat-conv{
   flex:1 1 auto;min-height:0;max-height:calc(100dvh - 260px);
   overflow-y:auto;overscroll-behavior:contain;

@@ -25,24 +25,42 @@ func TestWithNoModelTheBoxSearches(t *testing.T) {
 	if !strings.Contains(got, `name="q"`) || strings.Contains(got, "<textarea") {
 		t.Errorf("the box no longer takes anything:\n%s", got)
 	}
-	// At the page that already searches the index, rather than a second one.
 	if !strings.Contains(got, `action="/archive"`) {
 		t.Errorf("it does not search the archive:\n%s", got)
 	}
 	if !strings.Contains(got, `method="GET"`) {
 		t.Error("a search that is a POST cannot be linked, bookmarked or gone back to")
 	}
-	// And it says why it is a search rather than a question, so "this is not
-	// what I expected" has an answer on the screen.
-	if !strings.Contains(got, "no model is configured") {
-		t.Errorf("nothing explains why it searches rather than answers:\n%s", got)
+	// A page that was going to be a chat says why it is not.
+	if !strings.Contains(got, "No model is configured") {
+		t.Errorf("an agent page with no model does not say why it is a search box:\n%s", got)
 	}
 	if !strings.Contains(got, "/admin/config") {
 		t.Error("it does not say where to add one")
 	}
-	// The distinction that matters: unconfigured, not broken.
-	if !strings.Contains(got, "Everything else works") {
-		t.Error("the note does not distinguish unconfigured from broken")
+}
+
+// And the ordinary search box explains nothing, because there is nothing to
+// explain.
+//
+// It carried that note unconditionally, from when it rendered only on an
+// instance with no model. When search became the default everywhere, every
+// instance started telling its owner it had no provider — including the ones
+// that do, in production. A note written for one case and reused for all of
+// them, asserting something false on most.
+func TestAPlainSearchBoxExplainsNothing(t *testing.T) {
+	AgentReady = func() bool { return true }
+	t.Cleanup(func() { AgentReady = nil })
+
+	got := ChatComponent(ChatConfig{})
+	if strings.Contains(got, "No model is configured") {
+		t.Errorf("an instance with a model is being told it has none:\n%s", got)
+	}
+	// The element, not the class: the stylesheet declares the rule either way,
+	// and matching on the class name would fail on the styles rather than on a
+	// paragraph anybody can see.
+	if strings.Contains(got, `<p class="mu-search-why">`) {
+		t.Error("a search box has a paragraph under it explaining that it is a search box")
 	}
 }
 

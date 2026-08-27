@@ -65,9 +65,9 @@ func ImapHandler(w http.ResponseWriter, r *http.Request) {
 	// store worth pointing it at is the record every channel writes to. See
 	// inbox/imapbridge.go. The sentence is true again, and this time the server
 	// is what made it true.
-	b.WriteString(`<p class="svc-lead">Your whole inbox in the mail client you already ` +
-		`use. Mail, texts, WhatsApp and chats all arrive in it, the agent's replies land ` +
-		`in the thread, and each of your agents is a folder.</p>`)
+	b.WriteString(`<p class="svc-lead">Every thread in one place, in the mail client you ` +
+		`already use. Mail, texts, WhatsApp and chats all arrive in it, the agent's replies ` +
+		`land in the thread, and each of your agents is a folder.</p>`)
 	b.WriteString(`<p class="ib-imap-note">Conversations that are not mail show a sender ` +
 		`built from where they came from — a text from <code>+447700900123</code> reads as ` +
 		`<code>447700900123.sms@…</code> — so a client has an address to show, to thread ` +

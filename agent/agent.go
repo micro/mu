@@ -924,7 +924,14 @@ const chatLayoutCSS = `<style>
    other conversations. It held a chip naming this agent and a Connect link
    too; both were a second copy of what /agents does, so both are gone and the
    rules for them with them. Same shape as .conn-back on /agent/connect. */
-.agent-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 14px;font-size:13px}
+/* The bar holds one control and that control is phone-only, so on a desktop
+   this is an empty flex row 14px tall with 14px of margin under it — 38px of
+   nothing above the input, which put the box lower than the + New button
+   beside it and made the two columns start at different heights. Measured:
+   the button at y=110, the input at y=148.
+   Hidden here and shown in the phone query below, rather than left to lay
+   out around a child that is not there. */
+.agent-bar{display:none;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 14px;font-size:13px}
 .chat-sess-head{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
   color:var(--text-muted,#999);padding:0 10px 6px}
 /* Tokens, not hex.
@@ -966,6 +973,7 @@ const chatLayoutCSS = `<style>
    children size to their content rather than the screen and a wide answer pushes
    the input off the side. Hence the stretch. */
 @media(max-width:760px){
+  .agent-bar{display:flex}
   .chat-layout{flex-direction:column;gap:12px;align-items:stretch}
   .chat-main{width:100%;min-width:0;max-width:100%}
   .chat-open-list{display:inline-block;border:1px solid var(--border-color,#e5e5e5);
