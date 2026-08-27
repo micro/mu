@@ -5470,6 +5470,12 @@ a.pill:hover,
 button.pill:hover {
   border-color: #ddd;
   color: var(--text-primary, #1a1a1a);
+  /* And no underline. a.pill sets text-decoration:none at (0,1,1) and the
+     global a:hover is (0,1,1) too, so source order decided it and the global
+     one is later — every pill link in the product underlined on hover while
+     claiming not to. Stated on :hover, which is the only thing that outranks
+     it. Same loss as .agent-name and .tool-tile before it. */
+  text-decoration: none;
 }
 
 /* :visited spelled out, or the global a:visited:not(.btn) — 0-2-1 — outranks
@@ -5520,8 +5526,11 @@ button.pill:hover {
 
 .ib { max-width: 760px }
 
-/* The address is the one thing on the page that makes this an agentic inbox
-   rather than a list, so it sits above everything and is selectable. */
+/* The top of the mailbox: what this list is, and what you do from here.
+ *
+ * It was an identity strip — "You asim@… / Agent agent@… / IMAP" — which is
+ * three facts nobody opening their inbox came for. The sentence says what the
+ * list is; the controls go out to the right. */
 .ib-addr {
   display: flex;
   flex-wrap: wrap;
@@ -5541,6 +5550,12 @@ button.pill:hover {
 }
 
 .ib-addr-note { font-size: 12px; color: var(--text-muted, #888) }
+.ib-lede { font-size: 14px; color: var(--text-secondary, #444) }
+/* The controls, together, out to the right — so the row reads as a sentence
+   with actions rather than a row of equal things. .ib-new-link had the
+   margin-left:auto itself, which put a gap between the two controls the moment
+   there was more than one. */
+.ib-addr-acts { margin-left: auto; display: flex; align-items: center; gap: 8px; flex: none }
 .ib-boxes { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px }
 .ib-empty { font-size: 14px; color: var(--text-muted, #888); line-height: var(--line-height, 1.6) }
 
@@ -6108,7 +6123,7 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
 
 /* Under the message rather than beside it, because it is a way of filling the
    boxes above and reads in the order it is used. */
-.ib-new-link { margin-left: auto }
+.ib-new-link { margin-left: 0 }
 .ib-sent { font-size: 13px; color: var(--btn-success, #1a7f37); margin: 0 0 12px }
 
 /* Search, on the screen the conversations are on.
