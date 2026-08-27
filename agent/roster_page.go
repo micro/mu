@@ -539,7 +539,12 @@ const agentsCSS = `<style>
 .agent-row .agent-seen{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* Top-aligned, not centred. A row is three or four lines tall now, and
    centring left Remove floating in the middle of the card beside nothing. */
-.agent-row{display:flex;align-items:flex-start;gap:12px;border:1px solid #eee;border-radius:8px;padding:12px 14px}
+.agent-row{display:flex;align-items:flex-start;gap:12px;border:1px solid #eee;border-radius:8px;padding:12px 14px;transition:background var(--transition-fast,.12s)}
+/* The whole row lights up, the way a row in the inbox does.
+   It underlined the name instead, which says "this word is a link" about a
+   row that is entirely a link — and it disagreed with the other list of the
+   same shape on the same screen. .thread-preview is what this matches. */
+.agent-row:hover{background:var(--hover-background,#fafafa)}
 /* One size, one colour, one weight for every link on a row.
    They were three: 12px grey in the link strip, 13px green or amber for the
    scope, 13px for the buttons beside them, and the name at 14px semibold. A
@@ -557,10 +562,11 @@ const agentsCSS = `<style>
 .agent-meta code{font-size:12px}
 .agent-mail{font-size:13px;margin-top:3px}
 .agent-mail code{font-size:12px;color:#666;background:#f5f5f5;border-radius:3px;padding:1px 5px}
-/* The agent's name is the way into it, so it looks like body text until you
-   are over it rather than like one more small grey control. */
+/* The agent's name is the way into it, and it looks like body text rather
+   than one more small grey control. */
 .agent-name{display:inline-block;font-weight:600;font-size:14px;color:var(--text-primary,#111);text-decoration:none}
-.agent-name:hover{text-decoration:underline}
+/* No underline: the row behind it is the affordance now, and two of them at
+   once is one too many. */
 /* Two buttons that did the same thing to the eye and different things to the
    account. Both were #bbb — barely visible — and both took the same red hover,
    which said "destructive" about issuing a token. Now issuing reads as an
