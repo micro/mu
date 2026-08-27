@@ -209,6 +209,25 @@ func (s *submissionSession) Data(r io.Reader) error {
 	var failed []string
 	for _, to := range s.to {
 		var err error
+		// A conversation that did not arrive by mail — a text, a WhatsApp
+		// message — answered from a mail client. The address names it and the
+		// filler resolves it against what this account already has, so nothing
+		// here can start one.
+		if BridgedReply != nil {
+			body := plain
+			if strings.TrimSpace(body) == "" {
+				body = html
+			}
+			if handled, ferr := BridgedReply(s.acc.ID, to, body); handled {
+				if ferr != nil {
+					app.Log("mail", "submission: %s -> %s failed: %v", s.acc.ID, to, ferr)
+					failed = append(failed, fmt.Sprintf("%s (%v)", to, ferr))
+				} else {
+					app.Log("mail", "submission: %s -> %s sent", s.acc.ID, to)
+				}
+				continue
+			}
+		}
 		if IsExternalEmail(to) {
 			// ReplyOut sends and does not record — every caller files its own
 			// copy afterwards, which is why this one has to as well. Without it

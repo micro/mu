@@ -113,7 +113,8 @@ var hooks = map[string]why{
 	// its own record — and an event cannot answer a question: IMAP has a client
 	// waiting on a LIST, and announcing that a folder was wanted does not fill
 	// it.
-	"mail.Bridged": adapter,
+	"mail.Bridged":      adapter,
+	"mail.BridgedReply": adapter,
 
 	// service/news
 	"news.FetchSocialContext": reachesService,

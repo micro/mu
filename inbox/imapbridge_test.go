@@ -15,7 +15,7 @@ import (
 // — so the store worth pointing it at is the one every channel writes to.
 func TestEveryConversationIsThereForAMailClient(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
-	t.Setenv("MU_DOMAIN", "example.test")
+	t.Setenv("MAIL_DOMAIN", "example.test")
 	const who = "bridge_reader"
 
 	said(t, who, thread.SMSClient, "+447700900123", "", "running ten minutes late")
@@ -45,7 +45,7 @@ func TestEveryConversationIsThereForAMailClient(t *testing.T) {
 // mail store and once as prose out of the record.
 func TestMailIsNotBridged(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
-	t.Setenv("MU_DOMAIN", "example.test")
+	t.Setenv("MAIL_DOMAIN", "example.test")
 	const who = "no_double"
 
 	said(t, who, mailClient, "henrik@example.org", "", "the invoice is attached")
@@ -64,7 +64,7 @@ func TestMailIsNotBridged(t *testing.T) {
 // Gmail is exactly what that is meant to prevent.
 func TestAHeldConversationIsNotPushedToAMailClient(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
-	t.Setenv("MU_DOMAIN", "example.test")
+	t.Setenv("MAIL_DOMAIN", "example.test")
 	const who = "held_reader"
 
 	th := said(t, who, thread.SMSClient, "+447700900999", "", "cheap watches")
@@ -84,7 +84,7 @@ func TestAHeldConversationIsNotPushedToAMailClient(t *testing.T) {
 // marked correctly or the whole conversation lands in one folder.
 func TestYourOwnRepliesAreSentAndTheirsArrive(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
-	t.Setenv("MU_DOMAIN", "example.test")
+	t.Setenv("MAIL_DOMAIN", "example.test")
 	const who = "sides"
 
 	th := thread.Open(who, thread.SMSClient, "+447700900123")
@@ -150,4 +150,147 @@ func TestTheBridgeIsWiredToTheMailService(t *testing.T) {
 	// Not the boot wiring — that is internal/server — but the shape it needs:
 	// a function of the right type, exported, that mail can be handed.
 	var _ func(string) []*mail.Message = Bridge
+}
+
+// The address names a conversation. It does not grant permission to start one.
+//
+// This is the whole safety of replying from a mail client. The address is
+// composed — 447700900123.sms@domain — so anybody who has seen one can write
+// another. If the address alone were enough to send, knowing the pattern would
+// be permission to text any number in the world from this instance's shared
+// number.
+func TestABridgeAddressCannotStartAConversation(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("MAIL_DOMAIN", "example.test")
+	const who = "replier"
+
+	// A number nobody here has ever spoken to.
+	handled, err := Reply(who, "447700900999.sms@example.test", "buy my thing")
+	if !handled {
+		t.Fatal("the address was not recognised at all, so nothing checked it")
+	}
+	if err == nil {
+		t.Fatal("a bridge address for a number with no conversation sent a message — " +
+			"the address is now permission to text anybody")
+	}
+	if !strings.Contains(err.Error(), "cannot start") {
+		t.Errorf("the refusal does not say why: %v", err)
+	}
+	// And nothing was created on the way past. Asserting on the error alone is
+	// not enough here: sms.SendOn refuses in a test environment for its own
+	// reasons, so a refusal proves nothing about which rule refused.
+	if thread.Find(who, thread.SMSClient, "+447700900999") != nil {
+		t.Fatal("answering an address opened a conversation that did not exist, " +
+			"which is the address granting permission by another route")
+	}
+}
+
+// And one account cannot answer another account's conversation.
+func TestABridgeAddressIsScopedToTheAccount(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("MAIL_DOMAIN", "example.test")
+
+	said(t, "owner_a", thread.SMSClient, "+447700900123", "", "hello there")
+
+	// Somebody else, authenticated as themselves, naming the same address.
+	handled, err := Reply("owner_b", "447700900123.sms@example.test", "hello from a stranger")
+	if !handled {
+		t.Fatal("the address was not recognised")
+	}
+	if err == nil {
+		t.Fatal("one account answered another account's conversation")
+	}
+	if !strings.Contains(err.Error(), "cannot start") {
+		t.Errorf("the refusal is not about there being no such conversation: %v", err)
+	}
+	// And owner_a's conversation was not written to by owner_b.
+	th := thread.Find("owner_a", thread.SMSClient, "+447700900123")
+	if th == nil {
+		t.Fatal("the conversation vanished")
+	}
+	if msgs := thread.Messages("owner_a", th.ID, 10); len(msgs) != 1 {
+		t.Errorf("another account added %d messages to this conversation", len(msgs)-1)
+	}
+}
+
+// A held conversation cannot be answered from a mail client either.
+//
+// Held means nobody has let them in. Replying is letting them in by the back
+// door, and it would tell a stranger the number reaches somebody real.
+func TestAHeldConversationCannotBeAnsweredByMail(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("MAIL_DOMAIN", "example.test")
+	const who = "held_replier"
+
+	th := said(t, who, thread.SMSClient, "+447700900777", "", "is this you")
+	thread.Hold(who, th.ID)
+
+	handled, err := Reply(who, "447700900777.sms@example.test", "who is this")
+	if !handled {
+		t.Fatal("the address was not recognised")
+	}
+	if err == nil {
+		t.Fatal("a held conversation was answered, which lets a stranger in by " +
+			"the back door and confirms the number reaches somebody")
+	}
+	// The reason, not merely a refusal. sms.SendOn refuses in a test
+	// environment anyway, so "it failed" is true whether or not the held check
+	// ran — and a test that cannot tell those apart is not testing the check.
+	if !strings.Contains(err.Error(), "let it in") {
+		t.Errorf("the refusal is not about the conversation being held: %v", err)
+	}
+	// Nothing reached the conversation either.
+	if msgs := thread.Messages(who, th.ID, 10); len(msgs) != 1 {
+		t.Errorf("the held conversation has %d messages, want the one that arrived", len(msgs))
+	}
+}
+
+// An address at somebody else's domain is somebody else's mail.
+func TestOnlyThisInstancesOwnDomainIsABridgeAddress(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("MAIL_DOMAIN", "example.test")
+
+	// A positive first. Every assertion below is that an address is *not*
+	// recognised, which passes just as well when nothing is ever recognised —
+	// and that is exactly how this test passed while bridgeParse was reading a
+	// domain setting that is not the one the mail service uses.
+	if handled, _ := Reply("nobody_here", "447700900123.sms@example.test", "x"); !handled {
+		t.Fatal("a real bridge address is not recognised, so the rest of this " +
+			"test proves nothing")
+	}
+
+	for _, addr := range []string{
+		"447700900123.sms@gmail.com",
+		"henrik@example.org",
+		"asim@example.test",         // an account here, not a bridge address
+		"447700900123@example.test", // no channel
+		"notanumber.sms@example.test",
+		"447700900123.telegram@example.test", // a channel this does not speak
+	} {
+		if handled, _ := Reply("somebody", addr, "hello"); handled {
+			t.Errorf("%q was treated as a bridge address", addr)
+		}
+	}
+}
+
+// The address survives the round trip, which is what makes a reply possible at
+// all: a client answers what the From header said.
+func TestABridgeAddressRoundTrips(t *testing.T) {
+	addr := bridgeAddress("+447700900123", thread.SMSClient, "example.test")
+	client, key, ok := bridgeParse(addr, "example.test")
+	if !ok {
+		t.Fatalf("the address this produced cannot be read back: %q", addr)
+	}
+	if client != thread.SMSClient || key != "+447700900123" {
+		t.Errorf("round trip = %q, %q", client, key)
+	}
+	// And in the form a mail client actually writes it.
+	if _, _, ok := bridgeParse("Somebody <"+addr+">", "example.test"); !ok {
+		t.Error("an address inside angle brackets was not recognised")
+	}
+	// WhatsApp keeps its own channel, so a reply does not go out as a text.
+	wa := bridgeAddress("+447700900123", thread.WhatsAppClient, "example.test")
+	if client, _, _ := bridgeParse(wa, "example.test"); client != thread.WhatsAppClient {
+		t.Errorf("a WhatsApp address reads back as %q", client)
+	}
 }

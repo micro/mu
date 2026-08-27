@@ -32,10 +32,12 @@ package inbox
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"strings"
 
 	"mu/internal/thread"
 	"mu/service/mail"
+	"mu/service/sms"
 )
 
 // bridgeDepth is how far back the bridge reaches, and how many messages of each
@@ -186,4 +188,114 @@ func bridgeAddress(who, client, domain string) string {
 func bridgeID(id string) string {
 	sum := sha256.Sum256([]byte(id))
 	return "r" + hex.EncodeToString(sum[:8])
+}
+
+// Reply answers a conversation that did not arrive by mail, addressed the way
+// the bridge names it, and reports whether the address was one of those at all.
+//
+// # It is a reply, and only ever a reply
+//
+// The address is composed — 447700900123.sms@example.com — so anybody who has
+// seen one can write another. If the address alone were enough to send, knowing
+// the pattern would be permission to text any number in the world from this
+// instance's number, which is a shared number whose reputation belongs to
+// everybody on the instance.
+//
+// So the address does not grant anything. It names a conversation, and a
+// conversation either exists for this account or it does not: thread.Find
+// answers that, scoped to the account the submission session authenticated as.
+// An address naming no conversation sends nothing and says so.
+//
+// That is the same rule the inbound side already keeps — service/sms wakes an
+// agent only for a sender the account knows — arrived at from the other
+// direction, which is the sign it is the right rule rather than a convenience.
+func Reply(accountID, to, text string) (bool, error) {
+	client, key, ok := bridgeParse(to, mail.ConfiguredDomain())
+	if !ok {
+		return false, nil
+	}
+	text = strings.TrimSpace(quotedOff(text))
+	if text == "" {
+		return true, fmt.Errorf("there is nothing to send")
+	}
+
+	// The conversation, or nothing. Scoped to the account that authenticated.
+	t := thread.Find(accountID, client, key)
+	if t == nil {
+		return true, fmt.Errorf("no conversation here with %s — this address answers "+
+			"one that already exists and cannot start one", key)
+	}
+	if thread.IsHeld(*t) {
+		return true, fmt.Errorf("that conversation is waiting to be let in — let it " +
+			"in from the inbox first")
+	}
+
+	channel := sms.ChannelSMS
+	switch client {
+	case thread.SMSClient:
+	case thread.WhatsAppClient:
+		channel = sms.ChannelWhatsApp
+	default:
+		// A conversation this cannot answer. Chat goes out over XMPP and there
+		// is no path from here to it yet; saying so is better than a message
+		// that looks sent and never arrives.
+		return true, fmt.Errorf("replying to a %s conversation from a mail client is not wired yet",
+			client)
+	}
+
+	if _, err := sms.SendOn(channel, accountID, key, text); err != nil {
+		return true, err
+	}
+	// On the conversation, so the thread reads as one exchange wherever it is
+	// read — the same record the inbox writes to when you reply there.
+	thread.Add(thread.Message{Thread: t.ID, Account: accountID, Text: text})
+	return true, nil
+}
+
+// bridgeParse reads a bridge address back into the conversation it names.
+//
+// The inverse of bridgeAddress. Only this instance's own domain, because an
+// address at somebody else's domain is somebody else's mail however it is
+// spelled.
+func bridgeParse(addr, domain string) (client, key string, ok bool) {
+	addr = strings.TrimSpace(addr)
+	if i := strings.LastIndex(addr, "<"); i >= 0 {
+		addr = strings.TrimSuffix(addr[i+1:], ">")
+	}
+	at := strings.LastIndex(addr, "@")
+	if at <= 0 || domain == "" || !strings.EqualFold(addr[at+1:], domain) {
+		return "", "", false
+	}
+	local := addr[:at]
+
+	dot := strings.LastIndex(local, ".")
+	if dot <= 0 {
+		return "", "", false
+	}
+	client = strings.ToLower(local[dot+1:])
+	digits := local[:dot]
+	for _, r := range digits {
+		if r < '0' || r > '9' {
+			return "", "", false
+		}
+	}
+	switch client {
+	case thread.SMSClient, thread.WhatsAppClient:
+	default:
+		return "", "", false
+	}
+	// The plus goes back on: the record keys a phone conversation by the number
+	// in international form, and the local part could not carry a leading plus
+	// because that is this instance's own tag separator.
+	return client, "+" + digits, true
+}
+
+// quotedOff takes the quoted history off a reply.
+//
+// A mail client quotes what it is answering, and a text is not a mail: sending
+// the quote back would charge for it and put the whole exchange on somebody's
+// lock screen. The inbox already knows how to find the top of a reply.
+func quotedOff(text string) string {
+	top, _ := unquoted(text)
+	return top
 }

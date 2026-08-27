@@ -244,6 +244,24 @@ func imapFolders(accountID string) []string {
 // this did before.
 var Bridged func(accountID string) []*Message
 
+// BridgedReply sends a reply to a conversation that did not arrive by mail, and
+// reports whether the address was one of those at all.
+//
+// The other half of Bridged. A client that can read a text and not answer it is
+// a client showing somebody a conversation with the reply button greyed out,
+// which is worse than not showing it.
+//
+// It is a reply and only ever a reply. The filler resolves the address against
+// conversations this account already has, so an address that names no
+// conversation sends nothing — see inbox/imapbridge.go. Composed addresses are
+// guessable by anybody who has seen one, and if the address alone were enough
+// to send, then knowing the pattern would be permission to text any number in
+// the world from this instance's number.
+//
+// Nil on an instance that has not wired it, which answers "not mine" to every
+// address and leaves local delivery to decide.
+var BridgedReply func(accountID, to, text string) (bool, error)
+
 // imapFolder returns a folder's messages, oldest first, and whether the name
 // names a folder at all.
 func imapFolder(accountID, name string) ([]*Message, bool) {

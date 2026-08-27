@@ -70,9 +70,12 @@ func ImapHandler(w http.ResponseWriter, r *http.Request) {
 		`in the thread, and each of your agents is a folder.</p>`)
 	b.WriteString(`<p class="ib-imap-note">Conversations that are not mail show a sender ` +
 		`built from where they came from — a text from <code>+447700900123</code> reads as ` +
-		`<code>447700900123.sms@…</code> — so a client has an address to show and to thread on. ` +
-		`Replying to one of those from a mail client is not wired yet; reply on ` +
-		app.TextLink("the inbox", "/inbox") + ` or on the phone.</p>`)
+		`<code>447700900123.sms@…</code> — so a client has an address to show, to thread ` +
+		`on, and to reply to. Answering one goes back out the way it came in.</p>`)
+	b.WriteString(`<p class="ib-imap-note">Those addresses answer a conversation and cannot ` +
+		`start one. They are composed from the parts, so anybody who has seen one could ` +
+		`write another — if the address were enough to send, knowing the pattern would be ` +
+		`permission to text any number in the world from this instance's number.</p>`)
 
 	host, port, secure, on := imapReach()
 	if !on {
@@ -110,7 +113,7 @@ func ImapHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<h3 class="lead-15">What you can do there</h3>`)
 	b.WriteString(`<ul class="ib-imap-list">`)
 	b.WriteString(`<li>Read, reply, mark read, delete. A reply to the agent runs it, ` +
-		`the same as replying on this page.</li>`)
+		`the same as replying on this page — and a reply to a text goes out as a text.</li>`)
 	b.WriteString(`<li>Each agent is a folder — mail to <code>you+research@</code> ` +
 		`is the Research folder.</li>`)
 	b.WriteString(`<li>New mail shows up while the client sits open, within about ` +
