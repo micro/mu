@@ -332,8 +332,19 @@ func (c *conn) until(t *testing.T, want string) string {
 			continue
 		}
 		if err != nil {
-			if ne, ok := err.(net.Error); ok && ne.Timeout() && got.Len() > 0 {
-				return got.String()
+			// A read deadline expiring is not a failure while the deadline
+			// above still has time on it. It said so — three seconds, in a loop
+			// that sets a 300ms read timeout each pass — and then failed the
+			// test on the first one, so the budget was 300ms and the loop could
+			// never run twice. Under the full suite, with every package's
+			// servers up at once, an answer that takes longer than that is
+			// ordinary, and this is the flake: a test that passes alone, passes
+			// on repetition, and fails in the suite.
+			if ne, ok := err.(net.Error); ok && ne.Timeout() {
+				if got.Len() > 0 {
+					return got.String()
+				}
+				continue
 			}
 			if got.Len() > 0 {
 				return got.String()
