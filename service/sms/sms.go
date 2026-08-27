@@ -597,6 +597,34 @@ func OwnerOf(number string) string {
 	return Fallback()
 }
 
+// KnownSender is who a number belongs to, and whether it proved it.
+//
+// OwnerOf answers "whose history does this go in" and falls back to the
+// operator so that nothing is lost. That is the right answer for filing and
+// the wrong one for waking an agent: the fallback is a real account with real
+// credits, and a number nobody here has ever heard of would be talking to it.
+//
+// So this is the same lookup without the fallback. Known means the number was
+// verified by its owner, or this instance texted it first — the two ways a
+// stranger cannot arrange for themselves.
+func KnownSender(number string) (owner string, known bool) {
+	number = e164(number)
+	if number == "" {
+		return "", false
+	}
+	if owner := phone.Owner(number); owner != "" {
+		return owner, true
+	}
+	recs, err := userdb.List(ns, instance, routes, "mine",
+		map[string]interface{}{"number": number}, "", "", 1)
+	if err == nil && len(recs) > 0 {
+		if owner, _ := recs[0].Data["owner"].(string); owner != "" {
+			return owner, true
+		}
+	}
+	return "", false
+}
+
 // DeleteAll removes everything sms holds for an owner (account deletion).
 //
 // Opt-outs are not this owner's to delete: they belong to the number that asked

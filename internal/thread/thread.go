@@ -774,6 +774,14 @@ const WebClient = "web"
 // drifted would file the two halves of one conversation under two clients.
 const ChatClient = "chat"
 
+// SMSClient names a conversation that happened over a phone number.
+//
+// Here for the same reason ChatClient is: service/sms records what arrives and
+// agent/sms records the answer, a service may not import an agent, and a
+// constant copied into both is one that drifts and files the two halves of one
+// conversation under two clients.
+const SMSClient = "sms"
+
 // Rename moves a whole account's record to a new id.
 //
 // An account id is the key of `owned`, the Account on every Thread and on every

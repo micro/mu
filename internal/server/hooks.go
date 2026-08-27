@@ -26,6 +26,7 @@ import (
 	mailagent "mu/agent/mail"
 	"mu/agent/micro"
 	"mu/agent/moderate"
+	smsagent "mu/agent/sms"
 	agentsocial "mu/agent/social"
 	"mu/agent/work"
 	help "mu/docs"
@@ -176,6 +177,11 @@ func wireHooks() {
 	// be a hundred and ninety lines inside the service composing replies with
 	// its own RAG and its own web search — see agent/chat.
 	chatagent.Load()
+
+	// And a phone number is a client too. A text from a number the account has
+	// verified wakes the agent the same way mail does; service/sms decides
+	// whose it is and whether it proved that, and this is what answers.
+	smsagent.Load()
 
 	// And the agent introduces itself to a new account, in that account's
 	// inbox. Onboarding as a message rather than a page: the claim is that you

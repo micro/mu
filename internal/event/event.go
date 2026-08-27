@@ -106,6 +106,19 @@ const (
 	// importing the service back.
 	ChatForAgent = "chat_for_agent"
 
+	// SMSForAgent is a text from a number that has proved whose it is, which an
+	// agent should answer. The same shape as ChatForAgent and for the same
+	// reason: service/sms owns the number and may not call an agent, so it says
+	// what arrived and agent/sms answers.
+	//
+	// Published only for a sender the account knows — a verified number, or one
+	// this instance texted first. Never for the fallback owner, because that is
+	// the operator and every stranger who dials the number would otherwise be
+	// talking to their agent on their credits.
+	//
+	// Data: owner, from, text.
+	SMSForAgent = "sms_for_agent"
+
 	// Activity is one thing that happened, in a line, with somewhere to
 	// go and read it: a post published, a video found, a headline broken, an
 	// image generated.

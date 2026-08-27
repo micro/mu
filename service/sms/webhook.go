@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"mu/internal/app"
+	"mu/internal/event"
 	"mu/internal/settings"
 )
 
@@ -158,6 +159,33 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	Record(owner, "in", from, body, Segments(body))
+
+	// And wake an agent, for a sender the account knows.
+	//
+	// OwnerOf above falls back to the operator so nothing is lost, which is
+	// right for filing and wrong for this: the fallback is a real account with
+	// real credits, and any stranger who dialled the number would be talking to
+	// their agent. KnownSender is the same lookup without that step — verified,
+	// or a number this instance texted first, which are the two things a
+	// stranger cannot arrange.
+	//
+	// Announced rather than answered here. A service does not call an agent;
+	// agent/sms subscribes and replies through Send, which is where every rule
+	// about what a text costs already lives.
+	if known, ok := KnownSender(from); ok {
+		event.Publish(event.Event{
+			Type: event.SMSForAgent,
+			Data: map[string]interface{}{
+				"owner": known,
+				"from":  from,
+				"text":  body,
+			},
+		})
+	}
+
+	// Empty, always. The reply goes out as its own message so it is charged,
+	// recorded and capped like any other — a body in the TwiML response would
+	// be a second send path that skipped all three.
 	twiml(w, "")
 }
 
