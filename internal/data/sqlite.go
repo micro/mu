@@ -480,6 +480,21 @@ func isWordChar(c byte) bool {
 }
 
 // getPostedAt extracts posted_at from metadata, falling back to IndexedAt
+// PostedAt is when the thing happened, rather than when this instance wrote it
+// down.
+//
+// Those are different times and the difference is the whole of the bug it
+// fixes: IndexedAt is a fact about the index, so on a fresh install every row
+// reads "2 minutes ago" — an article from last March, a market close from
+// Tuesday and a video from 2023 all stamped with the moment the instance first
+// booted. On a long-running one, anything re-indexed jumps to the top of a list
+// sorted by time.
+//
+// The value was already known and already used: search sorts by it. It was
+// unexported, so the page rendering the rows reached for the only field it
+// could see.
+func PostedAt(entry *IndexEntry) time.Time { return getPostedAt(entry) }
+
 func getPostedAt(entry *IndexEntry) time.Time {
 	if entry.Metadata == nil {
 		return entry.IndexedAt

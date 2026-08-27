@@ -1,34 +1,52 @@
 package home
 
 import (
+	"html"
 	"net/http"
 	"strconv"
+	"strings"
 
-	"mu/internal/api"
 	"mu/internal/app"
+	"mu/internal/data"
 )
 
-// tools is how many there are, rounded down to something a person reads.
+// whatIsSearchable says what the box searches, from what is in the index.
 //
-// Still counted rather than claimed, which is the rule the exact number was
-// there to keep: this page once said "67 real tools" as a literal while the
-// endpoint served 72. Rounding down cannot overstate — 112 reads as "100+" and
-// 210 as "200+" — so the claim stays true without a number that changes under
-// the reader for no reason they can see. An exact count is a fact nobody
-// wanted; what it is doing on a landing page is saying "a lot", and it should
-// say that.
+// The line here read "100+ tools, an inbox with an address, and an agent that
+// reaches them" — a description of the product, under a box that searches the
+// archive. Two different things: none of the three is reachable from this page,
+// and a search box with no idea what corpus it covers is a box you have to
+// guess at.
 //
-// Under a hundred it says the number, because "0+" is not a claim and a small
-// instance rounding to nothing would be worse than the truth.
-func tools() string {
-	n := api.ToolCount()
-	if n < 100 {
-		return strconv.Itoa(n)
+// Built from data.Kinds rather than written down, so it is true on the instance
+// it is running on. A hardcoded "news, video, markets" would be the list this
+// instance happens to have today, printed on somebody else's that collects
+// something different — and would go stale here the first time a service is
+// added or removed. Cheap because Kinds is cached; see internal/data/kinds.go.
+//
+// Empty on a new instance, and nothing is the right answer there: a caption
+// naming kinds it has none of is worse than a box with no caption.
+func whatIsSearchable() string {
+	kinds := data.Kinds()
+	if len(kinds) == 0 {
+		return ""
 	}
-	return strconv.Itoa(n/100*100) + "+"
+	total := 0
+	var names []string
+	for _, k := range kinds {
+		total += k.Count
+		if len(names) < 4 {
+			names = append(names, html.EscapeString(k.Name))
+		}
+	}
+	what := strings.Join(names, ", ")
+	if len(kinds) > len(names) {
+		what += " and more"
+	}
+	return "Search " + strconv.Itoa(total) + " things this instance has collected — " + what + "."
 }
 
-// Landing is the front door for anyone not signed in: something to try, then
+// Index is the front door for anyone not signed in: something to try, then
 // what this is and how to connect to it.
 //
 // It used to be three pages. The live home was the front door and said nothing
@@ -195,8 +213,7 @@ func indexBody() string {
   <input class="lsearch-in" type="search" name="q" placeholder="Search everything here" maxlength="256" autofocus>
   <button class="lsearch-go" type="submit" aria-label="Search">&#x2192;</button>
 </form>
-<p class="lwhat">` + tools() + ` tools, an inbox with an address, and an agent that reaches them.
-<a href="/tools">See what it runs</a></p>
+<p class="lwhat">` + whatIsSearchable() + `</p>
 </div>
 
 <style>

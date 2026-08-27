@@ -16,6 +16,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 )
 
 // The caller's limit is the caller's limit.
@@ -112,5 +113,69 @@ func TestTheKindCountsAreCached(t *testing.T) {
 	InvalidateKinds()
 	if fresh := Kinds(); fresh[0].Count != 2 {
 		t.Errorf("after invalidating, the count is still stale: %+v", fresh)
+	}
+}
+
+// The chips count what is on the page, not what is in the archive.
+//
+// They were always the whole-archive breakdown, so searching "bitcoin" put
+// "market 658" beside a list of bitcoin results and invited the obvious
+// reading. The number was true about the archive and false about everything
+// else on the screen.
+func TestTheKindCountsForAQueryCountTheQuery(t *testing.T) {
+	os.Setenv("HOME", t.TempDir())
+	UseSQLite = false
+	ClearIndex()
+	InvalidateKinds()
+
+	for i := 0; i < 5; i++ {
+		processIndexWork(IndexWork{ID: fmt.Sprintf("n%d", i), Type: "news",
+			Title: "Bitcoin story", Content: "bitcoin"})
+	}
+	for i := 0; i < 20; i++ {
+		processIndexWork(IndexWork{ID: fmt.Sprintf("m%d", i), Type: "market",
+			Title: "Gold close", Content: "gold bullion"})
+	}
+
+	whole := Kinds()
+	byName := map[string]int{}
+	for _, k := range whole {
+		byName[k.Name] = k.Count
+	}
+	if byName["market"] != 20 || byName["news"] != 5 {
+		t.Fatalf("the archive-wide counts are wrong to start with: %+v", whole)
+	}
+
+	got := map[string]int{}
+	for _, k := range KindsMatching("bitcoin") {
+		got[k.Name] = k.Count
+	}
+	if got["news"] != 5 {
+		t.Errorf("a bitcoin search counts %d news, want 5: %+v", got["news"], got)
+	}
+	if got["market"] != 0 {
+		t.Errorf("a bitcoin search claims %d market results, and there are none", got["market"])
+	}
+}
+
+// A row's time is when the thing happened, not when this instance wrote it
+// down. On a fresh install those are all the same moment, so every row read
+// "2 minutes ago" — an article from last March and a video from 2023 included.
+func TestARowIsStampedWhenItHappened(t *testing.T) {
+	last := time.Date(2024, 3, 1, 12, 0, 0, 0, time.UTC)
+
+	withPosted := &IndexEntry{
+		ID: "a", IndexedAt: time.Now(),
+		Metadata: map[string]any{"posted_at": last.Format(time.RFC3339)},
+	}
+	if got := PostedAt(withPosted); !got.Equal(last) {
+		t.Errorf("PostedAt = %v, want the time in the metadata (%v)", got, last)
+	}
+
+	// And where the source recorded nothing, the index time is all there is —
+	// which is the honest answer rather than a wrong one.
+	indexed := time.Now().Add(-time.Hour)
+	if got := PostedAt(&IndexEntry{ID: "b", IndexedAt: indexed}); !got.Equal(indexed) {
+		t.Errorf("with no posted_at, PostedAt = %v, want the index time", got)
 	}
 }

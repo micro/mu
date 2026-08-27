@@ -50,7 +50,19 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		entries = data.ByType(kind, resultsShown)
 	}
 
+	// The chips count what is on the page, not what is in the archive.
+	//
+	// They were always data.Kinds — the whole-archive breakdown — so a search
+	// for "bitcoin" put "market 658" beside a list of bitcoin results and
+	// invited the obvious reading. The number was true about the archive and
+	// false about everything else on the screen.
+	//
+	// With no query there is nothing filtered and the archive-wide counts are
+	// the right ones, which is also the cached path.
 	kinds := data.Kinds()
+	if query != "" {
+		kinds = data.KindsMatching(query)
+	}
 
 	if app.WantsJSON(r) {
 		app.RespondJSON(w, map[string]any{
@@ -119,7 +131,10 @@ func row(e *data.IndexEntry) string {
 
 	return `<div class="ar-row">` +
 		`<div class="ar-meta">` + app.Pill(e.Type) +
-		html.EscapeString(app.TimeAgo(e.IndexedAt)) + `</div>` + head +
+		// When it happened, not when this instance indexed it. See
+		// data.PostedAt — IndexedAt is a fact about the index, and on a fresh
+		// install it stamps every row with the moment the instance booted.
+		html.EscapeString(app.TimeAgo(data.PostedAt(e))) + `</div>` + head +
 		`<div class="ar-body">` + html.EscapeString(trim(e.Content, 260)) + `</div></div>`
 }
 
