@@ -5957,7 +5957,26 @@ button.pill:hover {
   border-top: var(--border-width, 1px) solid var(--card-border, #f4f4f4);
 }
 .agent-peek-row:visited { color: inherit }
-.agent-peek-row:hover .agent-peek-name { text-decoration: underline }
+/* The whole row lights up, the way a row in the inbox does.
+   It underlined the name instead, which says "this word is a link" about a
+   row that is entirely one — and it disagreed with .thread-preview, the list
+   of the same shape directly above it on this page.
+   Padded out to the card edge so the highlight is a band rather than a stripe
+   with the text sitting off it. */
+.agent-peek-row {
+  padding-left: var(--item-padding, 12px);
+  padding-right: var(--item-padding, 12px);
+  margin-left: calc(-1 * var(--item-padding, 12px));
+  margin-right: calc(-1 * var(--item-padding, 12px));
+  border-radius: 6px;
+  transition: background var(--transition-fast, .12s);
+}
+.agent-peek-row:hover { background: var(--hover-background, #fafafa) }
+/* Stated, not omitted. mu.css has a global a:hover underline at (0,1,1) and
+   .agent-peek-name is (0,1,0), so leaving this out does not remove the
+   underline — it hands it to the global rule. See test/underline_test.go. */
+.agent-peek-name:hover,
+.agent-peek-row:hover .agent-peek-name { text-decoration: none }
 
 .agent-peek-name { font-weight: 500; flex: none }
 .agent-peek-last {

@@ -124,7 +124,7 @@ func rows(list []User, me string) string {
 		act := ""
 		if u.ID != me {
 			act = `<a class="mini-btn" href="/inbox/new?to=` +
-				html.EscapeString(u.ID) + `">Write</a>`
+				html.EscapeString(u.ID) + `">Send message</a>`
 		}
 
 		b.WriteString(`<tr>` +

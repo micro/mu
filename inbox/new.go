@@ -325,7 +325,18 @@ func writeOne(w http.ResponseWriter, r *http.Request, accountID string, f form) 
 	}
 	b.WriteString(app.Actions(back))
 
-	if from := mail.EmailForUser(accountID, mail.ConfiguredDomain()); from != "" {
+	// Names inside, addresses outside.
+	//
+	// This said "From asim@micro.mu" whoever the message was for, including
+	// somebody two rows away in the same directory. Within one instance the
+	// domain is a routing fact and not part of who anybody is — it is the same
+	// on both ends, so printing it says nothing and reads like posting a letter
+	// to your flatmate. It is the identity the moment the message leaves, and
+	// then it is shown.
+	if _, local := addressOfPerson(f.To); local && f.To != "" {
+		b.WriteString(`<p class="ib-from-line">From <code>` +
+			html.EscapeString(accountID) + `</code></p>`)
+	} else if from := mail.EmailForUser(accountID, mail.ConfiguredDomain()); from != "" {
 		b.WriteString(`<p class="ib-from-line">From <code>` + html.EscapeString(from) + `</code></p>`)
 	}
 	if f.On != "" {
@@ -341,8 +352,15 @@ func writeOne(w http.ResponseWriter, r *http.Request, accountID string, f form) 
 	if f.On != "" {
 		b.WriteString(`<input type="hidden" name="on" value="` + html.EscapeString(f.On) + `">`)
 	}
-	b.WriteString(`<input class="ib-field" type="email" name="to" required placeholder="To" value="` +
-		html.EscapeString(f.To) + `">`)
+	// text, not email. The field takes a handle as readily as an address —
+	// addressOfPerson resolves one — and type=email calls a handle invalid,
+	// which it is, right up until the moment it is the thing you meant to type.
+	// It was prefilled with "@asim" from the directory, so the browser was
+	// being handed a value it would refuse.
+	//
+	// And shown without the @, because inside one instance a name is a name.
+	b.WriteString(`<input class="ib-field" type="text" name="to" required placeholder="To" value="` +
+		html.EscapeString(strings.TrimPrefix(f.To, "@")) + `">`)
 	b.WriteString(`<input class="ib-field" type="text" name="subject" placeholder="Subject" value="` +
 		html.EscapeString(f.Subject) + `">`)
 	b.WriteString(`<textarea class="ib-field" name="body" rows="12" placeholder="Write it">` + html.EscapeString(f.Body) + `</textarea>`)
