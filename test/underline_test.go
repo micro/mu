@@ -22,19 +22,70 @@ import (
 )
 
 func TestALinkThatDeclaresNoUnderlineKeepsItOnHover(t *testing.T) {
-	css, classes := gatherStyles(t), anchorClasses(t)
-
-	noUnderline := regexp.MustCompile(`\.([a-z0-9-]+)\s*\{[^{}]*text-decoration\s*:\s*none`)
-	hasHover := func(class string) bool {
-		return strings.Contains(css, "."+class+":hover")
+	css, anchors := gatherStyles(t), anchorClasses(t)
+	classes := map[string]bool{}
+	for _, set := range anchors {
+		for c := range set {
+			classes[c] = true
+		}
 	}
 
-	// A ratchet, not a pass/fail. Twelve of these already exist and some may
-	// even be wanted — a link that should underline on hover looks exactly the
-	// same in the stylesheet as one that forgot. What is not wanted is a
-	// thirteenth, added by somebody who wrote text-decoration:none and believed
-	// it, which is what happened on .agent-name today.
-	const known = 12
+	noUnderline := regexp.MustCompile(`\.([a-z0-9-]+)\s*\{[^{}]*text-decoration\s*:\s*none`)
+
+	// A :hover rule that says something about the underline — not merely a
+	// :hover rule.
+	//
+	// This asked only whether ".class:hover" appeared anywhere, and .tool-tile
+	// had one: it set a grey border. So the tiles on /services and /tools were
+	// counted as covered while underlining their whole name on hover, which is
+	// exactly the bug this test exists to catch, sitting inside the test's own
+	// blind spot.
+	cancels := map[string]bool{}
+	hoverRule := regexp.MustCompile(`\.([a-z0-9-]+):hover[^{}]*\{([^{}]*)\}`)
+	for _, m := range hoverRule.FindAllStringSubmatch(css, -1) {
+		if strings.Contains(m[2], "text-decoration") {
+			cancels[m[1]] = true
+		}
+	}
+
+	// Covered by a companion, too. A card that is entirely a link carries
+	// .card-hover, and mu.css cancels the underline there once for all of them
+	// — asking each card's own class to repeat the rule is how they drifted
+	// apart in the first place.
+	covered := func(class string) bool {
+		if cancels[class] {
+			return true
+		}
+		for _, set := range anchors {
+			if !set[class] {
+				continue
+			}
+			ok := false
+			for c := range set {
+				if cancels[c] {
+					ok = true
+					break
+				}
+			}
+			if !ok {
+				return false
+			}
+		}
+		return true
+	}
+
+	// A ratchet, not a pass/fail. Some of these may even be wanted — a link that
+	// should underline on hover looks exactly the same in the stylesheet as one
+	// that forgot. What is not wanted is one more, added by somebody who wrote
+	// text-decoration:none and believed it, which is what happened on
+	// .agent-name and again on .tool-tile.
+	//
+	// This was 12 while the check only asked whether a :hover rule existed. It
+	// is 24 now that it asks whether the :hover rule says anything about the
+	// underline, and the twelve that appeared were always underlining — they
+	// were hidden behind a :hover that set a border or a colour. The number went
+	// up because the test got honest, not because the stylesheet got worse.
+	const known = 24
 
 	var latent []string
 	seen := map[string]bool{}
@@ -44,7 +95,7 @@ func TestALinkThatDeclaresNoUnderlineKeepsItOnHover(t *testing.T) {
 			continue // counted already, or not used on an <a>
 		}
 		seen[class] = true
-		if !hasHover(class) {
+		if !covered(class) {
 			latent = append(latent, "."+class)
 		}
 	}
@@ -90,10 +141,13 @@ func gatherStyles(t *testing.T) string {
 	return b.String()
 }
 
-// anchorClasses is every class this repository puts on an <a>.
-func anchorClasses(t *testing.T) map[string]bool {
+// anchorClasses is every class list this repository puts on an <a>, kept as
+// sets rather than flattened — which class travels with which is the thing the
+// caller needs, now that one class in the list can cancel the underline for the
+// whole anchor.
+func anchorClasses(t *testing.T) []map[string]bool {
 	t.Helper()
-	out := map[string]bool{}
+	var out []map[string]bool
 	re := regexp.MustCompile(`<a [^>]*class="([^"]+)"`)
 	err := filepath.Walk("..", func(path string, info os.FileInfo, err error) error {
 		if err != nil || info.IsDir() || !strings.HasSuffix(path, ".go") {
@@ -104,9 +158,11 @@ func anchorClasses(t *testing.T) map[string]bool {
 			return nil
 		}
 		for _, m := range re.FindAllStringSubmatch(string(body), -1) {
+			set := map[string]bool{}
 			for _, c := range strings.Fields(m[1]) {
-				out[c] = true
+				set[c] = true
 			}
+			out = append(out, set)
 		}
 		return nil
 	})

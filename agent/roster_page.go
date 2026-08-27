@@ -303,7 +303,7 @@ type entry struct {
 // the feature rather than offering it.
 func entryRow(e entry) string {
 	var b strings.Builder
-	b.WriteString(`<div class="agent-row"><div class="grow min-w-0">`)
+	b.WriteString(`<div class="agent-row card-hover"><div class="grow min-w-0">`)
 	// The name, and how long ago it last spoke out to the right of it — the
 	// same pair, in the same places, as a row in the inbox.
 	b.WriteString(`<div class="agent-head">`)
@@ -539,12 +539,11 @@ const agentsCSS = `<style>
 .agent-row .agent-seen{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* Top-aligned, not centred. A row is three or four lines tall now, and
    centring left Remove floating in the middle of the card beside nothing. */
-.agent-row{display:flex;align-items:flex-start;gap:12px;border:1px solid #eee;border-radius:8px;padding:12px 14px;transition:background var(--transition-fast,.12s)}
-/* The whole row lights up, the way a row in the inbox does.
-   It underlined the name instead, which says "this word is a link" about a
-   row that is entirely a link — and it disagreed with the other list of the
-   same shape on the same screen. .thread-preview is what this matches. */
-.agent-row:hover{background:var(--hover-background,#fafafa)}
+.agent-row{display:flex;align-items:flex-start;gap:12px;border:1px solid #eee;border-radius:8px;padding:12px 14px}
+/* No :hover here either. This filled its background grey, which is a row's
+   answer — .thread-preview in the inbox — and these are not rows, they are
+   bordered cards in a column, the same object as a tile on /services and a
+   card on home. They lift now, from .card-hover in mu.css. */
 /* One size, one colour, one weight for every link on a row.
    They were three: 12px grey in the link strip, 13px green or amber for the
    scope, 13px for the buttons beside them, and the name at 14px semibold. A
