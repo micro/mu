@@ -258,8 +258,8 @@ func TestNotificationsCanBeTurnedOff(t *testing.T) {
 // And the card renders the control, so the endpoint is reachable by a person
 // rather than only by curl.
 func TestTheCardOffersAWayToTurnItOff(t *testing.T) {
-	if !strings.Contains(cardJS, "/push/unsubscribe") {
-		t.Error("the notifications card never calls /push/unsubscribe, so it can " +
+	if !strings.Contains(cardJS, "/notify/unsubscribe") {
+		t.Error("the notifications card never calls /notify/unsubscribe, so it can " +
 			"be turned on and not off")
 	}
 	if !strings.Contains(cardJS, "pushManager.getSubscription") ||

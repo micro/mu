@@ -358,3 +358,44 @@ func TestTheOtherPushEndpointsStillNeedAToken(t *testing.T) {
 		}
 	}
 }
+
+// The old paths still answer.
+//
+// The endpoints moved from /push/* to /notify/*, which is the name the feature
+// has everywhere else. A service worker installed before that move has
+// "/push/received" compiled into it and goes on posting there until the browser
+// takes a new copy — which can be weeks on a phone with the app on its home
+// screen. A receipt that 404s is indistinguishable from a device that never
+// woke, and telling those two apart is the entire reason receipts exist.
+func TestTheOldPushPathsStillAnswer(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	const who = "renamed"
+	if _, err := auth.GetAccount(who); err != nil {
+		if err := auth.Create(&auth.Account{ID: who, Name: who, Created: time.Now()}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	sess, err := auth.CreateSession(who)
+	if err != nil {
+		t.Fatal(err)
+	}
+	phone, _, _, _ := twoDevices(t, who)
+	if err := SendToDevice(who, phone,
+		Notification{Title: "Test notification", Tag: "mu-old"}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Posted to the path a worker from before the rename knows about.
+	r := httptest.NewRequest(http.MethodPost, "/push/received",
+		strings.NewReader(`{"tag":"mu-old","shown":true}`))
+	r.Header.Set("Content-Type", "application/json")
+	r.AddCookie(&http.Cookie{Name: "session", Value: sess.Token})
+	rec := httptest.NewRecorder()
+	SubscribeHandler(rec, r)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("a receipt on the old path was refused: %d %s", rec.Code, rec.Body.String())
+	}
+	if got := History(who, 1); len(got) == 0 || got[0].Got.IsZero() {
+		t.Error("the receipt was accepted and the record does not show it")
+	}
+}

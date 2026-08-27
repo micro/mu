@@ -42,14 +42,16 @@ func TestTheDesktopHeightChainIsComplete(t *testing.T) {
 // One scroll region in the rail, not one per list.
 //
 // The rule was on .chat-sess-list, written when the rail held a single list. It
-// then grew a second — what the agent answered in the inbox — and two
+// then grew a second — what the agent had answered in the inbox — and two
 // auto-height scrollers in one fixed-height column each size to their own
-// content, so together they overrun the rail and the second is painted over the
-// bottom of the first. Reported exactly that way: a section overlapping the
-// conversations, on a live instance.
+// content, so together they overran the rail and the second was painted over
+// the bottom of the first. Reported exactly that way, on a live instance.
 //
-// The scroll belongs to the column. Asserted rather than commented, because the
-// next section added to this rail will be added by somebody who was not here.
+// That section has since gone: it was a second view of the inbox on a page
+// about the chat, and nobody reading it could tell what it was for. The rule
+// stays, because the fault was never really the second list — it was a scroll
+// region declared on the wrong element, which was wrong while there was one
+// list too and merely invisible. The scroll belongs to the column.
 func TestOnlyTheRailScrollsAndNotEachListInIt(t *testing.T) {
 	css := cssComment.ReplaceAllString(chatLayoutCSS, "")
 	for _, rule := range []string{
@@ -57,8 +59,8 @@ func TestOnlyTheRailScrollsAndNotEachListInIt(t *testing.T) {
 		".chat-sess-list{flex-direction:column;overflow:visible;flex-wrap:nowrap;max-height:52vh;overflow-y:auto}",
 	} {
 		if strings.Contains(css, rule) {
-			t.Errorf("%s makes every list its own scroll region; the rail has more "+
-				"than one list, and they overlap", rule)
+			t.Errorf("%s makes every list its own scroll region, which is the "+
+				"column's job; two lists under it overlap", rule)
 		}
 	}
 	// Whatever else it says, the list itself must not carry a height cap or an

@@ -240,6 +240,19 @@ func Card(r *http.Request, accountID string) string {
 		// browser settings — which is a different thing, does not tell this
 		// instance, and leaves the device on the list being sent to forever.
 		`<button class="btn btn-quiet push-off d-none" id="push-off" type="button">Turn off</button>` +
+		// Which copy of the app this device is running, and the way to fix it.
+		//
+		// A service worker is installed, not loaded: the copy that handles a push
+		// is whatever the browser installed last, which on a phone that has had
+		// the app on the home screen for months can be very old. An old one
+		// cannot post a receipt, so the record says "sent, nothing back" — which
+		// is what it says when the worker never woke at all. Same line, two
+		// completely different faults, and no way to tell them apart from here.
+		//
+		// So the page asks the worker its version. Update forces the browser to
+		// re-fetch and take the new one.
+		`<p class="push-note push-worker" id="push-worker" hidden></p>` +
+		`<button class="btn btn-quiet d-none" id="push-update" type="button">Update this device</button>` +
 		`<input type="hidden" id="push-key" value="` + html.EscapeString(key) + `">` +
 		`<input type="hidden" id="push-csrf" value="` + html.EscapeString(auth.CSRFToken(r)) + `">` +
 		`</div>` + cardCSS + cardJS
@@ -453,7 +466,7 @@ const cardJS = `<script>
   // endpoint, so sending the same one twice updates it rather than doubling it.
   function tell(sub){
     var raw = sub.toJSON();
-    return fetch('/push/subscribe', {
+    return fetch('/notify/subscribe', {
       method: 'POST',
       credentials: 'same-origin',
       headers: {
@@ -467,6 +480,65 @@ const cardJS = `<script>
       })
     }).then(function(res){ return res.json(); });
   }
+
+  // Which copy of the app is actually installed on this device.
+  //
+  // The record said "sent — the device has not said it arrived" five times
+  // running, and that line has two completely different causes: the worker
+  // never woke, or the worker woke and is too old to contain the code that
+  // reports back. Same symptom, opposite fixes.
+  //
+  // So ask it. A worker built after this was written answers with its version;
+  // an older one has no message handler and never replies, and the silence is
+  // the diagnosis. Two seconds, because a sleeping worker has to be started
+  // before it can answer and that is not instant on a phone.
+  var workerLine = document.getElementById('push-worker');
+  var update = document.getElementById('push-update');
+  function saidWorker(text, stale){
+    if (!workerLine) return;
+    workerLine.textContent = text;
+    workerLine.hidden = false;
+    if (stale && update) update.classList.remove('d-none');
+  }
+  function askWorker(){
+    if (!workerLine) return;
+    navigator.serviceWorker.getRegistration().then(function(reg){
+      var sw = reg && (reg.active || reg.waiting);
+      if (!sw) { saidWorker('This device has no copy of the app installed yet. Reload the page.', true); return; }
+      var chan = new MessageChannel();
+      var answered = false;
+      chan.port1.onmessage = function(e){
+        answered = true;
+        var v = (e.data && e.data.version) || '?';
+        saidWorker('This device runs ' + v + '.', false);
+      };
+      try { sw.postMessage({mu: 'version'}, [chan.port2]); } catch (err) {}
+      setTimeout(function(){
+        if (answered) return;
+        saidWorker('This device is running an old copy of the app, which cannot ' +
+          'report whether a notification arrived. Update it.', true);
+      }, 2000);
+    }).catch(function(){});
+  }
+  askWorker();
+
+  // Force the browser to fetch the worker again and take the new one. mu.js
+  // calls skipWaiting on install, so a fresh copy activates without waiting for
+  // every tab to close — the reload is so this page is controlled by it.
+  if (update) update.addEventListener('click', function(){
+    update.disabled = true;
+    update.textContent = 'Updating…';
+    navigator.serviceWorker.getRegistration().then(function(reg){
+      if (!reg) return;
+      return reg.update();
+    }).then(function(){
+      location.reload();
+    }).catch(function(){
+      update.disabled = false;
+      update.textContent = 'Update this device';
+      say('Could not update this device.');
+    });
+  });
 
   var test = document.getElementById('push-test');
   var off = document.getElementById('push-off');
@@ -504,7 +576,7 @@ const cardJS = `<script>
       // re-registers itself.
       var done = sub ? sub.unsubscribe() : Promise.resolve();
       return done.then(function(){
-        return fetch('/push/unsubscribe', {
+        return fetch('/notify/unsubscribe', {
           method: 'POST',
           credentials: 'same-origin',
           headers: {
@@ -536,7 +608,7 @@ const cardJS = `<script>
     navigator.serviceWorker.ready.then(function(reg){
       return reg.pushManager.getSubscription();
     }).catch(function(){ return null; }).then(function(sub){
-      return fetch('/push/test', {
+      return fetch('/notify/test', {
         method: 'POST',
         credentials: 'same-origin',
         headers: {

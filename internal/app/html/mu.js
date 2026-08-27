@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v151';
+var VERSION = 'v152';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -122,7 +122,7 @@ self.addEventListener('push', function (e) {
 // never stop the notification.
 function receipt(tag, shown, why) {
   try {
-    return fetch('/push/received', {
+    return fetch('/notify/received', {
       method: 'POST',
       credentials: 'include',
       headers: {'Content-Type': 'application/json'},
@@ -150,6 +150,26 @@ self.addEventListener('notificationclick', function (e) {
       if (self.clients.openWindow) return self.clients.openWindow(url);
     })
   );
+});
+
+// Which copy of this file is actually running on this device.
+//
+// A push that the push service accepts and the handset never shows leaves no
+// trace anywhere: no notification, and — if the worker predates the receipt
+// code — no receipt either. Five sent, five accepted, nothing back, and no way
+// from here to tell "the worker did not wake" from "the worker is an old one
+// that cannot say it woke". Those need completely different fixes and looked
+// identical.
+//
+// So the worker answers when asked. A page posts {mu: 'version'} and gets the
+// VERSION back. No reply means the worker on this device is older than this
+// line, which is itself the answer — and the card says so and offers the
+// update rather than leaving somebody to guess.
+self.addEventListener('message', function (e) {
+  if (!e.data || e.data.mu !== 'version') return;
+  var reply = {mu: 'version', version: VERSION};
+  if (e.ports && e.ports[0]) { e.ports[0].postMessage(reply); return; }
+  if (e.source && e.source.postMessage) e.source.postMessage(reply);
 });
 
 // ============================================

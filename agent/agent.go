@@ -555,49 +555,6 @@ const railShown = 40
 // /inbox, where you deal with what came in. What is here is the chat: the
 // conversations you opened on this instance's own screens, were present for,
 // and watched the answer to.
-// handledThreads is what this agent dealt with that arrived, rather than what
-// you opened here.
-//
-// The other half of the same split, and its absence was a lie on the front
-// page. Home shows each agent's last activity, counting every conversation it
-// answered on — so a WhatsApp message answered five minutes ago appeared under
-// the agent's name, and clicking through landed on a rail that deliberately
-// excludes arrivals. The row advertised something the destination would not
-// show.
-//
-// Two ways to fix that and only one of them keeps both pages honest. Filtering
-// the preview to match the rail would leave an agent that only ever answers
-// mail and texts reporting that it has done nothing, which is worse than the
-// mismatch. So the rail says what it handled and links into the inbox, where
-// dealing with it happens — an agent-scoped view of arrivals rather than a
-// second copy of /inbox.
-func handledThreads(accountID, agentID string, named bool) []thread.Thread {
-	var out []thread.Thread
-	for _, t := range thread.List(accountID, 0) {
-		if !thread.Arrived(t) || thread.IsHeld(t) {
-			continue
-		}
-		if named && t.Agent != agentID {
-			continue
-		}
-		// Answered, not merely addressed. A conversation an agent stayed quiet
-		// on is not something it handled — see latestByAgent, which learned the
-		// same thing when Micro's row reported a DMARC report nothing had read.
-		if !answered(accountID, t) {
-			continue
-		}
-		out = append(out, t)
-		if len(out) >= handledShown {
-			break
-		}
-	}
-	return out
-}
-
-// handledShown bounds it. This is a sign of life and a way through to the
-// inbox, not a second mailbox.
-const handledShown = 5
-
 func chatThreads(accountID, agentID string, named bool) []thread.Thread {
 	var out []thread.Thread
 	for _, t := range thread.List(accountID, 0) {
@@ -729,35 +686,6 @@ func renderSessionsRail(accountID, currentID, agentID string, named bool) string
 		b.WriteString(`<a class="chat-sess-more" href="/recall">Older conversations →</a>`)
 	}
 	b.WriteString(`</div>`)
-
-	// And what it handled that arrived, which is not a conversation you can
-	// continue here — it belongs to the inbox, and these link there. Without
-	// this, an agent whose whole job is answering mail and texts reads as an
-	// agent that has never done anything, and Home says otherwise on the same
-	// screen.
-	if handled := handledThreads(accountID, agentID, named); len(handled) > 0 {
-		// "Handled" on its own says nothing: reported as a section somebody had
-		// no idea the meaning of, on their own instance. These are things that
-		// arrived — mail, a text — that the agent answered, and they are read
-		// and replied to in the inbox, not here. The heading now says both, so
-		// the rows and their destination agree without anybody guessing.
-		b.WriteString(`<div class="chat-sess-head">Answered in your inbox</div><div class="chat-sess-list">`)
-		for _, t := range handled {
-			title := strings.TrimSpace(t.Subject)
-			if title == "" {
-				title = strings.TrimSpace(t.Key)
-			}
-			if title == "" {
-				title = "Untitled"
-			}
-			if len(title) > 60 {
-				title = title[:60] + "…"
-			}
-			b.WriteString(`<a class="chat-sess" href="/inbox?id=` + url.QueryEscape(t.ID) + `">` +
-				htmlEsc(title) + ` ` + app.Pill(app.ClientName(t.Client)) + `</a>`)
-		}
-		b.WriteString(`</div>`)
-	}
 
 	b.WriteString(`</div>` + sessionDeleteJS(base) + `</aside>`)
 	return b.String()

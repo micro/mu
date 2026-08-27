@@ -175,7 +175,8 @@ func authRequired() map[string]bool {
 		"/api/v1/": false,
 		"/agent":   false, // Redirects to the named page; auth checked in handler
 		"/agent/":  false, // /agent/<name> — one agent's page; auth checked in handler
-		"/push/":   true,  // Subscribing this device to notifications
+		"/push/":   true,  // Subscribing this device to notifications (old name)
+		"/notify/": true,  // The same, under the name the feature actually has
 		"/inbox":   true,  // The mailbox — yours, so it needs a session
 		"/inbox/":  true,  // One alias's mail
 		"/setup":   false, // First-run setup (open only until an admin exists)
@@ -676,13 +677,24 @@ func registerRoutes() {
 	// Where you are, which every specialist needs and nothing server-side
 	// held — see account/place.go.
 	http.HandleFunc("/account/place", account.PlaceHandler)
-	// Telling a device something happened while the page is closed. Two
-	// endpoints, one handler — see internal/push.
-	http.HandleFunc("/push/subscribe", push.SubscribeHandler)
-	http.HandleFunc("/push/unsubscribe", push.SubscribeHandler)
-	http.HandleFunc("/push/test", push.SubscribeHandler)
-	// The device reporting back that it woke up holding one. See internal/push.
-	http.HandleFunc("/push/received", push.SubscribeHandler)
+	// Telling a device something happened while the page is closed.
+	//
+	// Under /notify, which is what this feature is called. It was /push — so the
+	// product had /notify, a service with tools and a page, and /push, four
+	// endpoints doing the same feature under a second name, and nothing said
+	// which was which. One noun. internal/push stays what it is, the mechanism
+	// underneath, the way internal/x402 sits under the wallet.
+	//
+	// The old paths still answer. A service worker installed months ago has
+	// "/push/received" compiled into it and will go on posting there until the
+	// browser takes a new copy, and a receipt that 404s is the same silence this
+	// whole feature has been drowning in.
+	for _, p := range []string{"/notify/", "/push/"} {
+		http.HandleFunc(p+"subscribe", push.SubscribeHandler)
+		http.HandleFunc(p+"unsubscribe", push.SubscribeHandler)
+		http.HandleFunc(p+"test", push.SubscribeHandler)
+		http.HandleFunc(p+"received", push.SubscribeHandler)
+	}
 	// Two pages that were tabs and are not any more: one listed the same
 	// conversations the rail lists, the other listed the workflow records behind
 	// them. Both are on /agent now — the conversation, and the tools each answer

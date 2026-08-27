@@ -795,7 +795,7 @@ func getChannel(category, handle string) (string, []*Result, error) {
 				// video from 2023 was dated to whenever this instance last
 				// fetched the channel.
 				"posted_at": t,
-				"thumbnail":  thumbnailURL,
+				"thumbnail": thumbnailURL,
 			},
 		)
 	}
