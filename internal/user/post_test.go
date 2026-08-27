@@ -21,6 +21,11 @@ func TestYouCanPostFromYourOwnProfile(t *testing.T) {
 	if !strings.Contains(mine, `action="/blog"`) {
 		t.Errorf("the box does not post to the blog, so it is a second store:\n%s", mine)
 	}
+	// And it says what it is for. Two placeholders and a button is a form you
+	// have to work out by reading it.
+	if !strings.Contains(mine, "Write something") {
+		t.Errorf("nothing above the fields says what the box is for:\n%s", mine)
+	}
 	if !strings.Contains(mine, `name="title"`) || !strings.Contains(mine, `name="content"`) {
 		t.Errorf("subject and body are the two fields a post has:\n%s", mine)
 	}

@@ -51,9 +51,14 @@ func postBox(accountID string, own bool) string {
 	back := "/@" + strings.ToLower(accountID)
 	return `<form class="pf-post-form" method="post" action="/blog">` +
 		`<input type="hidden" name="return" value="` + html.EscapeString(back) + `">` +
+		// Say what the box is for before the fields, not only inside them.
+		// Two placeholders and a submit button is a form you have to work out
+		// by reading it; a line above it is the one thing that says why you
+		// would start typing at all.
+		`<p class="pf-post-lede">Write something</p>` +
 		`<input class="pf-post-title" type="text" name="title" placeholder="Subject (optional)">` +
 		`<textarea class="pf-post-body" name="content" rows="3" required ` +
-		`placeholder="Write a post"></textarea>` +
+		`placeholder="Share a thought. Be mindful of God"></textarea>` +
 		`<div class="pf-post-foot">` +
 		`<span class="pf-post-hint">At least ` + strconv.Itoa(postMinimum) +
 		` characters. <a href="/blog?write=true">Tags and visibility</a></span>` +

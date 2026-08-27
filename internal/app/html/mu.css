@@ -6389,6 +6389,9 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
    above it — one column, the controls on a line underneath — so the two read
    as one strip of things you set rather than two borrowed forms. */
 .pf-post-form { display: flex; flex-direction: column; gap: 8px; margin: 16px 0 0 }
+/* What the box is for, above it. The fields say what goes in each one; this
+   says why you would start. */
+.pf-post-lede { font-size: 15px; color: var(--text-primary, #1a1a1a); margin: 0 }
 .pf-post-title, .pf-post-body {
   font: inherit;
   font-size: 15px;

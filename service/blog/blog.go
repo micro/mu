@@ -791,7 +791,7 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 			<div class="mb-6">
 				<form id="blog-form" class="blog-form" method="POST" action="/blog">
 					<input type="text" id="post-title" name="title" placeholder="Title (optional)">
-					<textarea id="post-content" name="content" rows="6" placeholder="Share a thought. Be mindful of Allah" required></textarea>
+					<textarea id="post-content" name="content" rows="6" placeholder="Share a thought. Be mindful of God" required></textarea>
 					<input type="text" id="post-tags" name="tags" placeholder="Tags (optional, comma-separated)">
 					<div class="blog-form-row">
 						<select id="post-visibility" name="visibility">
