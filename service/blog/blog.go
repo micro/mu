@@ -263,12 +263,16 @@ func Load() {
 		}
 	}
 
-	// Publish the built-in announcement post if it isn't already there. Not
-	// when the file is unreadable: seeding saves, and saving is what would
-	// destroy the posts we just failed to read.
-	if !postsUnreadable {
-		ensureSeedPosts()
-	}
+	// No seeded posts.
+	//
+	// A built-in announcement was published into every instance on every boot,
+	// idempotent by fixed id — so a person who installed this found an article
+	// about Mu, signed "Mu", already on their blog. It is our writing, and it
+	// arrived in their store as though they had written it.
+	//
+	// Documentation is the right home for what it said, and /docs already has
+	// it. An instance's blog starts empty, which is what a blog nobody has
+	// written on looks like.
 
 	// Sort posts by most recent activity (updated or created) newest first
 	sort.Slice(posts, func(i, j int) bool {

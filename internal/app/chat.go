@@ -112,6 +112,39 @@ type ChatConfig struct {
 // hook would be a worse bug than the one it fixes.
 var AgentReady func() bool
 
+// searchBox is the box on an instance with no model.
+//
+// A GET form at /archive, not a second search: that page is already "everything
+// this instance has collected… one search across all of it", with its filters
+// and its result rendering. A box here that queried the index itself would be a
+// second implementation of a page that exists, and the two would drift.
+//
+// No JavaScript either. A form that navigates is what a search box was before
+// anybody had a reason to make it otherwise, and it works on the first paint.
+func searchBox() string {
+	// Its own ids, not the chat's. The two are never on a page together, so
+	// sharing them would work — and would mean every selector, test and future
+	// stylesheet rule naming mu-chat-form had two different forms in mind.
+	return `<div id="mu-search"><form id="mu-search-form" method="GET" action="/archive">
+    <input id="mu-search-input" type="search" name="q" placeholder="Search everything here" maxlength="256">
+    <button type="submit" aria-label="Search">&#x2192;</button>
+  </form>
+  <p class="mu-search-why">Searching, because no model is configured — so the agent cannot answer yet.
+  Everything else works: mail, chat, files, notes and your inbox. Add a provider at ` +
+		TextLink("/admin/config", "/admin/config") + ` to ask it things instead.</p></div>
+<style>
+#mu-search{max-width:760px;margin:0 auto;width:100%}
+#mu-search-form{display:flex;align-items:center;gap:0;border:1px solid var(--card-border,#ddd);
+  border-radius:6px;background:var(--card-background,#fff);padding:4px 4px 4px 12px;transition:border-color .2s}
+#mu-search-form:focus-within{border-color:#999}
+#mu-search-input{flex:1;border:0;outline:0;font:inherit;font-size:15px;padding:8px 0;background:transparent;
+  color:var(--text-primary,#111);min-width:0}
+#mu-search-form button{flex:none;border:0;border-radius:4px;background:#111;color:#fff;font:inherit;
+  width:32px;height:32px;cursor:pointer}
+.mu-search-why{max-width:760px;margin:8px auto 0;color:var(--text-muted,#888);font-size:13px;line-height:1.6}
+</style>`
+}
+
 func ChatComponent(cfg ChatConfig) string {
 	// The cards go with the question, always.
 	//
@@ -153,23 +186,20 @@ func ChatComponent(cfg ChatConfig) string {
 		placeholder = "Ask it something"
 	}
 
-	// A box that cannot answer says so before you type in it.
+	// With no model the box searches instead of asking.
 	//
-	// The model is optional at setup now — mail, chat, files, notes and the
-	// inbox all work without one, and blocking the front door on a vendor
-	// account misdescribed what this is. But an ask box on an instance with no
-	// model invited a question and then failed on it, which is the same fault
-	// wearing a different hat: the thing is not broken, it is not configured,
-	// and only one of those is worth a person's afternoon.
+	// The model is optional at setup now, and an ask box on an instance without
+	// one invited a question and then failed on it. Saying "no model yet" was
+	// the first fix and it was only half: a box that explains why it is dead is
+	// still a dead box, and the top of the home screen is the worst place to
+	// put one.
+	//
+	// The same keystrokes have a useful meaning without a model. You type what
+	// you are looking for; the difference is whether something answers you or
+	// finds it. So the box searches — and searching is the half that needs no
+	// vendor at all.
 	if AgentReady != nil && !AgentReady() {
-		return `<div id="mu-chat"><p class="mu-chat-off">The agent has no model yet, so it ` +
-			`cannot answer. Everything else here works — mail, chat, files, notes and your ` +
-			`inbox. Add a provider at ` + TextLink("/admin/config", "/admin/config") +
-			` and this becomes a question box.</p></div>
-<style>
-.mu-chat-off{max-width:760px;margin:0 auto;padding:12px 14px;border:1px solid var(--card-border,#e8e8e8);
-  border-radius:var(--border-radius,6px);color:var(--text-secondary,#555);font-size:14px;line-height:1.6}
-</style>`
+		return searchBox()
 	}
 	suggestJS, err := json.Marshal(suggestions)
 	if err != nil {

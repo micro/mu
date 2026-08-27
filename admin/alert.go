@@ -59,7 +59,6 @@ import (
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/data"
-	"mu/internal/event"
 	"mu/internal/origin"
 	"mu/internal/push"
 	"mu/internal/settings"
@@ -69,29 +68,20 @@ import (
 
 // Watch starts the watcher. Called at boot.
 func Watch() {
-	go func() {
-		sub := event.Subscribe(event.AccountCreated)
-		for e := range sub.Chan {
-			id, _ := e.Data["account"].(string)
-			name, _ := e.Data["name"].(string)
-			if id == "" {
-				continue
-			}
-			who := strings.TrimSpace(name)
-			if who == "" || strings.EqualFold(who, id) {
-				who = id
-			} else {
-				who = fmt.Sprintf("%s (%s)", name, id)
-			}
-			raise(alert{
-				Key:  "signup:" + id,
-				What: "New account: " + who,
-				Why: "Somebody signed up. They have not necessarily done anything yet — " +
-					"you get a second notice the first time they call a tool.",
-				Where: "/admin/users",
-			})
-		}
-	}()
+	// No signup alert.
+	//
+	// This raised one on every AccountCreated, which is a growth metric: it is
+	// interesting to somebody running a service other people are joining and to
+	// nobody else. On the instance almost everybody actually has — their own,
+	// with one account on it — the first thing that ever happened was being
+	// told that they had signed up, about themselves, in the voice of an
+	// operator watching a funnel.
+	//
+	// Which is the general rule this is the first instance of: micro.mu is an
+	// instance, not a special build, so anything only true when we are the host
+	// does not belong compiled into everybody's binary. What is left below is
+	// the operational half — rates and a disk filling — which is true for
+	// whoever is running it.
 
 	go func() {
 		// Once shortly after boot, so an instance that has been down through
