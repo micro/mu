@@ -288,7 +288,12 @@ func installScript() string {
   // function exists because the first page a visitor sees was once the one
   // page that could never be installed from. Ordering put it back.
   if (navigator.serviceWorker) {
-    navigator.serviceWorker.register('/mu.js', {scope: '/'});
+    // updateViaCache:'none', the same as the app shell — see internal/app.
+    // The default consults the HTTP cache for the worker script, which is how
+    // a device ends up running a months-old copy.
+    navigator.serviceWorker.register('/mu.js', {scope: '/', updateViaCache: 'none'})
+      .then(function (reg) { if (reg && reg.update) reg.update(); })
+      .catch(function () {});
   }
 
   var btn = document.getElementById('install-app');

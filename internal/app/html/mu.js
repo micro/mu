@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v152';
+var VERSION = 'v154';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -20,7 +20,6 @@ var STATIC_CACHE = [
   '/places.svg',
   '/weather.png',
   '/markets.svg',
-  '/reminder.svg',
   '/account.png',
   '/logout.png',
   '/icon-192.png',
@@ -47,10 +46,37 @@ self.addEventListener('fetch', function (e) {
   }
 });
 
+// Installing must not be able to fail.
+//
+// This was caches.addAll(STATIC_CACHE), and addAll rejects the whole batch if a
+// single request fails. A rejected promise in an install event's waitUntil
+// means the worker does not install — so it never activates, never handles a
+// push, and nothing anywhere says so. The page registers happily, the push
+// service accepts every notification, and the handset has no worker to wake.
+//
+// That is not hypothetical. '/reminder.svg' was in this list and had been a 404
+// on the live instance for who knows how long: an icon nothing else references,
+// left behind by a rename. One missing decoration silently switched off every
+// notification on every device, and the record could only say "sent — the
+// device has not said it arrived", which is also what a phone in a tunnel looks
+// like. Days went into the sending half, which was correct throughout.
+//
+// So each file is added on its own and a failure is swallowed. These are icons.
+// The push handler below is the product, and it must not be hostage to whether
+// a decoration is still where somebody left it. skipWaiting runs either way.
 self.addEventListener('install', function (e) {
   e.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(STATIC_CACHE))
-      .then(() => self.skipWaiting())
+    caches.open(CACHE_NAME).then(function (cache) {
+      return Promise.all(STATIC_CACHE.map(function (url) {
+        return cache.add(url).catch(function () {});
+      }));
+    }).then(function () {
+      return self.skipWaiting();
+    }).catch(function () {
+      // Even the cache being unavailable — a private window, storage denied —
+      // must not stop the worker taking over.
+      return self.skipWaiting();
+    })
   );
 });
 

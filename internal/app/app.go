@@ -654,10 +654,25 @@ var Template = `
       })();
 
       if (navigator.serviceWorker) {
-        navigator.serviceWorker.register (
+        // updateViaCache:'none' — the browser must fetch the worker from the
+        // network on every update check, not from its HTTP cache.
+        //
+        // The default is 'imports', which consults the cache for the top-level
+        // script too, and /mu.js was served max-age=86400. So for a day after
+        // any visit an update check got the cached bytes back, found them
+        // identical, and kept the installed worker. On a phone that visits most
+        // days, that is never updating. Both halves are needed: the header, so
+        // there is nothing stale to find, and this, so the fetch does not go
+        // looking in the first place.
+        navigator.serviceWorker.register(
           '/mu.js',
-          {scope: '/'}
-        );
+          {scope: '/', updateViaCache: 'none'}
+        ).then(function (reg) {
+          // And ask, on every load. Registration alone only checks on
+          // navigation, and a page opened from the home screen of an installed
+          // app may not count as one.
+          if (reg && reg.update) reg.update();
+        }).catch(function () {});
       }
       
       // One button, two meanings. On a phone the sidebar is an overlay that
@@ -1283,12 +1298,36 @@ func Serve() http.Handler {
 
 	// Wrap with cache headers for static assets
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Set cache headers for static assets
-		if strings.HasSuffix(r.URL.Path, ".css") ||
-			strings.HasSuffix(r.URL.Path, ".js") ||
-			strings.HasSuffix(r.URL.Path, ".png") ||
-			strings.HasSuffix(r.URL.Path, ".ico") ||
-			strings.HasSuffix(r.URL.Path, ".webmanifest") {
+		// The service worker is the one file that must never be cached.
+		//
+		// It was, for a day at a time, by the rule below — and a service worker
+		// is not loaded like a script, it is *installed*. The browser replaces
+		// it only when it fetches the file and finds different bytes, and under
+		// the default updateViaCache it makes that fetch through the HTTP cache.
+		// So max-age=86400 meant: for twenty-four hours after any visit, every
+		// update check on that device got the cached copy back, found it
+		// identical, and concluded there was nothing new. registration.update()
+		// goes through the same cache, so the button offering to fix it could
+		// not either.
+		//
+		// The effect is that a phone can run a months-old worker while the
+		// server has shipped a dozen versions — which is what happened here.
+		// The worker handling pushes predated the code that reports a
+		// notification arrived, so every send read "sent, the device has not
+		// said it arrived", which is also what a device that never woke looks
+		// like. Days went into the sending half, which was correct throughout.
+		//
+		// no-cache is not "do not store": it is "revalidate every time", so the
+		// file still costs a 304 rather than a download when it has not changed.
+		// A service worker is exactly what that is for.
+		switch {
+		case r.URL.Path == "/mu.js" || strings.HasSuffix(r.URL.Path, "/mu.js"):
+			w.Header().Set("Cache-Control", "no-cache")
+		case strings.HasSuffix(r.URL.Path, ".css"),
+			strings.HasSuffix(r.URL.Path, ".js"),
+			strings.HasSuffix(r.URL.Path, ".png"),
+			strings.HasSuffix(r.URL.Path, ".ico"),
+			strings.HasSuffix(r.URL.Path, ".webmanifest"):
 			w.Header().Set("Cache-Control", "public, max-age=86400") // 1 day
 		}
 		if compressed(w, r, htmlContent) {
