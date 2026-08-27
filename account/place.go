@@ -146,7 +146,7 @@ func PlaceCard(r *http.Request, accountID string) string {
 		Extra:  extra,
 	}
 
-	return app.SectionID("place", "Where you are",
+	return app.SectionID("place", "Location",
 		form.HTML()+at,
 		app.Note("Your agents use this for the forecast, what is nearby, prayer times "+
 			"and the trains — including runs that happen while you are away from the "+

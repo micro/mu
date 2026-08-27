@@ -1192,7 +1192,7 @@ func navBottom(acc *auth.Account) string {
 	// that is the moment somebody checks. Not a link: Profile is, directly
 	// under it.
 	return `<div class="nav-me-who">Signed in as <span id="nav-username">@` + username + `</span></div>
-          <a id="nav-profile" href="/@` + username + `"><img src="/account.png?` + Version + `"><span class="label">Profile</span></a>
+          <a id="nav-profile" href="/@` + username + `"><img src="/at.svg?` + Version + `"><span class="label">Profile</span></a>
           <a id="nav-account" href="/account"><img src="/account.png?` + Version + `"><span class="label">Account</span></a>
           <a id="nav-logout" href="/logout"><img src="/logout.png?` + Version + `"><span class="label">Log out</span></a>
           <a id="nav-login" href="/login" class="d-none"><img src="/account.png?` + Version + `"><span class="label">Login</span></a>`

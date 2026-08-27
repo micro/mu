@@ -1018,16 +1018,19 @@ func Verify(w http.ResponseWriter, r *http.Request) {
 // somebody's own credentials is a good way to make them doubt the rest of the
 // page.
 func passwordCard(acc *auth.Account) string {
-	title := "Set a password"
 	note := "Signing up with Google or a passkey leaves no password you could type. " +
 		"Setting one here lets you sign in with your username, and unlocks exporting " +
 		"your wallet key. If you already have a password, this replaces it."
 	if auth.HasSecret(acc.ID) {
-		title = "Change password"
 		note = "Replaces the one you have. You stay signed in here; other devices are unaffected."
 	}
 
-	return app.Section(title,
+	// "Password", not "Set a password" or "Change password". Both of those are
+	// claims about whether the reader already has one, and the flag they rest on
+	// is only reliable for accounts created after it existed. The other headings
+	// on this page name the thing they are about — Email, Location — and this one
+	// can too. The note below still says which of the two this will do.
+	return app.Section("Password",
 		app.Form{Action: "/account",
 			Hidden: map[string]string{"save_secret": "1"},
 			Fields: []app.Field{

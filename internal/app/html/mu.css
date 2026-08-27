@@ -2829,7 +2829,10 @@ a.highlight {
 .bold { font-weight: 700; }
 .nowrap { white-space: nowrap; }
 .text-left { text-align: left; }
-.no-underline { text-decoration: none; }
+/* Including on hover, which is the only state anybody reaches for this in.
+ * Without the second rule the global a:hover at (0,1,1) outranks this one at
+ * (0,1,0), so a link carrying a class called no-underline underlined. */
+.no-underline, .no-underline:hover { text-decoration: none; }
 .font-inherit { font-family: inherit; font-size: inherit; }
 
 /* Surface */
@@ -3944,8 +3947,31 @@ a.btn-primary:hover, .btn-primary:hover {
   box-shadow: var(--shadow-sm);
   transition: box-shadow 0.15s;
 }
-.card:hover {
+.card:hover,
+.card-hover:hover {
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+/* The one hover a card gets, wherever the card was invented.
+ *
+ * .card had this since the beginning and the cards built later did not: a tile
+ * on /services and /tools lit its border grey, a row on /agents filled its
+ * background grey, and the cards on home lifted. Three answers to the same
+ * question on four pages, so moving between them looked like moving between
+ * products. This is the answer, and .card-hover is how a card asks for it.
+ *
+ * The underline is cancelled here rather than left to the card's own rule.
+ * mu.css sets `a:hover { text-decoration: underline }` globally, at (0,1,1);
+ * a tile that says `text-decoration:none` on the class is at (0,1,0) and loses,
+ * which is why the tiles on /services underlined their whole name on hover
+ * while claiming not to. a.card-hover:hover is (0,2,1) and outranks it. A card
+ * that is entirely a link does not need the words in it underlined to say so —
+ * the lift already said it. */
+.card-hover {
+  transition: box-shadow 0.15s;
+}
+a.card-hover:hover {
+  text-decoration: none;
 }
 
 /* The last thing in a card does not add its own margin to the card's padding.
