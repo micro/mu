@@ -130,7 +130,6 @@ var Spec = service.Spec{
 		// Where an app comes from. Implemented in authoring.go.
 		"Create": {Writes: true, Doc: "Create an app — a small, self-contained HTML tool hosted here. Takes the HTML; apps_build writes it for you from a description",
 			Cost: quota.OpAppCreate, Needs: service.Caller},
-		"Publish": publishEndpoint,
 		"Edit": {Writes: true, Doc: "Edit an app you own — its name, description, tags, icon, HTML or price. Fields left out keep their value",
 			Cost: quota.OpAppEdit, Needs: service.Caller},
 		"Fork":  {Writes: true, Doc: "Fork an app into your own account, to change independently of the original", Needs: service.Caller},

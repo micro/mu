@@ -156,7 +156,13 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	// The default carries the same sign of life as the rest. It is the one most
 	// accounts have actually used, so a roster where every row but that one says
 	// when it last spoke is a roster missing the row that would say the most.
-	b.WriteString(platformSeenRow(DefaultPlatformAgent, owner))
+	// Every agent this instance ships, not only the default. That was a single
+	// hardcoded row back when there was a single one to draw; a second built-in
+	// registered itself, answered at its own address, and appeared nowhere a
+	// person could find it.
+	for _, id := range PlatformNames() {
+		b.WriteString(platformSeenRow(id, owner))
+	}
 	for _, a := range roster {
 		b.WriteString(agentRow(a, csrf, app.BaseURL(r)))
 	}

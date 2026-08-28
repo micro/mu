@@ -3,7 +3,6 @@ apps_create                  needsAccount=true  destructive=false bound accountO
 apps_edit                    needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 apps_embed                   needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 apps_fork                    needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
-apps_publish                 needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 apps_read                    needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 apps_search                  needsAccount=false destructive=false open accountOnly=false optionalAuth=false
 apps_test                    needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false

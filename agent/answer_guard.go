@@ -14,6 +14,33 @@ import (
 // now: news, social", so the person can see which slice is missing rather than
 // wondering why the answer is thin. It is a marker in the collected results,
 // not a message to the user — completeToolAnswerFor turns it into one.
+// withoutLeakedToolCall keeps a model's own tool-call syntax off the screen.
+//
+// Some models end a turn by writing the next tool call as ordinary text —
+// delimiters and all — instead of emitting it as a call. It happens most after
+// a large tool result or a large argument, and what the caller gets is a page
+// of protocol markup where an answer should be.
+//
+// Nothing downstream can make sense of that: the call did not run, so whatever
+// it was going to do has not happened, and showing the markup tells somebody
+// their agent broke in a way they cannot act on. Saying plainly that the answer
+// was lost, and what did run, is the honest version of the same turn.
+//
+// This is a guard and not a fix. The call is gone either way; the model is the
+// only thing that can stop losing it.
+func withoutLeakedToolCall(answer string, ran []string) string {
+	for _, marker := range []string{"｜DSML｜", "<|tool_call", "<tool_call>", "<|python_tag|>"} {
+		if !strings.Contains(answer, marker) {
+			continue
+		}
+		if len(ran) > 0 {
+			return "I did not finish saying what I did. What ran: " + strings.Join(ran, ", ") + "."
+		}
+		return "I tried to use a tool and the call did not come out as one, so nothing ran. Ask me again."
+	}
+	return answer
+}
+
 func unavailableToolMessage(tool string) string {
 	name := strings.TrimSpace(tool)
 	if name == "" {

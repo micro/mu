@@ -476,7 +476,7 @@ func runNative(accountID, prompt string, opts QueryOpts) (string, error) {
 	// quietly turned the bug back on for every custom agent. Same fact, read
 	// from the options the run was given rather than resolved a second time.
 	answer = completeToolAnswerFor(answer, recorder.ragParts(), strings.TrimSpace(opts.System) != "")
-	return answer, nil
+	return withoutLeakedToolCall(answer, recorder.tools()), nil
 }
 
 // stepReporter tells a caller which tools ran, as they run.
@@ -569,6 +569,10 @@ func askStreaming(ctx context.Context, a gmagent.Agent, question string, recorde
 type nativeToolRecorder struct {
 	mu    sync.Mutex
 	parts []string
+	// ran is which tools actually ran, in order. Kept alongside the parts
+	// because a turn whose answer is unusable still needs to be able to say
+	// what happened — see withoutLeakedToolCall.
+	ran []string
 }
 
 func newNativeToolRecorder() *nativeToolRecorder {
@@ -605,6 +609,7 @@ func (r *nativeToolRecorder) wrap(next gmai.ToolHandler) gmai.ToolHandler {
 			return res
 		}
 		r.add("### " + title + "\n" + formatToolResult(nativeToolFormatterName(call.Name), res.Content, nil))
+		r.did(NativeToolName(call.Name))
 		return res
 	}
 }
@@ -613,6 +618,20 @@ func (r *nativeToolRecorder) add(part string) {
 	r.mu.Lock()
 	r.parts = append(r.parts, part)
 	r.mu.Unlock()
+}
+
+func (r *nativeToolRecorder) did(name string) {
+	r.mu.Lock()
+	r.ran = append(r.ran, name)
+	r.mu.Unlock()
+}
+
+func (r *nativeToolRecorder) tools() []string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	out := make([]string, len(r.ran))
+	copy(out, r.ran)
+	return out
 }
 
 func (r *nativeToolRecorder) ragParts() []string {

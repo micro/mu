@@ -18,7 +18,6 @@ import (
 	"mu/agent"
 	"mu/agent/digest"
 	"mu/agent/micro"
-	"mu/code"
 	help "mu/docs"
 	"mu/home"
 	"mu/inbox"
@@ -524,7 +523,6 @@ func registerRoutes() {
 	// Writing one. A door onto the apps service rather than a service of its
 	// own: the output is an app, the store is apps, and a service named for an
 	// action would have to import that one to do anything at all.
-	http.HandleFunc("/code", code.Handler)
 
 	// serve work (task bounties)
 
