@@ -1480,11 +1480,22 @@ func describeRoom(room RoomInfo) string {
 	return strings.Join(parts, " · ")
 }
 
+// guestChatAuthNotice tells a signed-out reader why they cannot send here, and
+// where they can.
+//
+// The where matters and was wrong: this offered "the public agent" at /agent,
+// and /agent checks auth in its handler and bounces to /login. So the one line
+// on the page addressed to people with no account sent them to the one page
+// that will not open without one. The link read as a way in and was a wall.
+//
+// The front page is the door. Its box posts to /agent and a stranger gets an
+// answer inline, bounded and public — that is the thing being offered, so it is
+// what the link names and where it goes.
 func guestChatAuthNotice() string {
 	return `<div id="chat-auth-notice" class="notice">
   <strong>Sign in to use saved chat.</strong>
-  <p>This room keeps conversation history for your account, so sending here needs a login. You can still try Mu without an account in the public agent.</p>
-  <p><a class="link" href="/agent">Try Mu without an account</a> · <a class="link" href="/login?redirect=/chat">Log in</a> · <a class="link" href="/signup?redirect=/chat">Sign up</a></p>
+  <p>This room keeps conversation history for your account, so sending here needs a login. The box on the front page answers without one.</p>
+  <p><a class="link" href="/">Ask without an account</a> · <a class="link" href="/login?redirect=/chat">Log in</a> · <a class="link" href="/signup?redirect=/chat">Sign up</a></p>
 </div>`
 }
 
