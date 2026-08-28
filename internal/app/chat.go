@@ -345,7 +345,13 @@ func ChatComponent(cfg ChatConfig) string {
 #mu-chat-input{flex:1;padding:6px 0;border:none;font-size:16px;font-family:inherit;resize:none;line-height:1.4;overflow:hidden;background:transparent;outline:none}
 /* A square icon button, sized from the control scale rather than from two
    hard-coded 36s that made it taller than every other control in the app. */
-#mu-chat-form button{flex-shrink:0;width:var(--control-h);height:var(--control-h);min-width:var(--control-h);padding:0;background:#111;color:#fff;border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;line-height:1}
+/* Fallbacks, because this component renders on a page that has no mu.css.
+   The front page's shell is its own — no stylesheet link — so --control-h
+   resolved to nothing there and the button collapsed to the size of the arrow
+   glyph inside it: 16px, in a 34px box. Every other var in this file carries a
+   fallback and these three did not, which is why the fault appeared the moment
+   the box moved to a page the token does not reach. 30px is what mu.css sets. */
+#mu-chat-form button{flex-shrink:0;width:var(--control-h,30px);height:var(--control-h,30px);min-width:var(--control-h,30px);padding:0;background:#111;color:#fff;border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;line-height:1}
 #mu-chat-suggest{margin-top:16px}
 .mu-pills{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
 .mu-pills a{padding:8px 14px;border:1px solid #e0e0e0;border-radius:6px;font-size:13px;color:#555;text-decoration:none;cursor:pointer}
