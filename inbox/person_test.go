@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"mu/internal/auth"
+	"mu/internal/thread"
 )
 
 // person creates two accounts and a session for the viewer.
@@ -79,5 +80,59 @@ func TestSomebodyYouHaveNeverWrittenToStillHasAPage(t *testing.T) {
 	}
 	if !strings.Contains(body, "to=%40stranger") {
 		t.Error("Start a conversation does not address them")
+	}
+}
+
+// A conversation you started can be carried on from the inbox.
+//
+// Reported: start one from somebody's page, open it in the inbox, and there is
+// no Reply — only "assign to an agent". The thread you had just written was the
+// one thread you could not write to again.
+//
+// replyTo walked the messages backwards for an author who is not you, which is
+// right for a conversation that arrived and wrong for one you began: it has
+// exactly one author, so the loop found nothing. /@somebody looked fine on the
+// same thread because that page states the reply target instead of inferring
+// it, which is what made this look like an inbox problem rather than a shared
+// one.
+func TestAConversationYouStartedCanBeRepliedToInTheInbox(t *testing.T) {
+	th := &thread.Thread{
+		ID:      "started-by-me",
+		Client:  mailClient,
+		Subject: "Hello",
+		Parties: []thread.Party{
+			{Kind: thread.RolePerson, Key: "them@example.test"},
+		},
+	}
+	// One message, from the account, because nobody has answered yet.
+	msgs := []thread.Message{
+		{ID: "m1", Thread: th.ID, Account: "me", Role: thread.RolePerson,
+			Text: "Are you around?", To: "them@example.test"},
+	}
+
+	if got := replyTo("me", th, msgs); got != "them@example.test" {
+		t.Errorf("replyTo = %q, want them@example.test — with nobody to answer, "+
+			"the conversation cannot be continued", got)
+	}
+}
+
+// And a thread that did arrive is still answered to whoever spoke last, not to
+// the first party on the list. The party fallback must not outrank the
+// messages: three people on a thread are answered to the one who just wrote.
+func TestAnArrivedConversationStillAnswersWhoeverSpokeLast(t *testing.T) {
+	th := &thread.Thread{
+		ID:     "arrived",
+		Client: mailClient,
+		Parties: []thread.Party{
+			{Kind: thread.RolePerson, Key: "first@example.test"},
+			{Kind: thread.RolePerson, Key: "second@example.test"},
+		},
+	}
+	msgs := []thread.Message{
+		{ID: "m1", Role: thread.RolePerson, From: "first@example.test"},
+		{ID: "m2", Role: thread.RolePerson, From: "second@example.test"},
+	}
+	if got := replyTo("me", th, msgs); got != "second@example.test" {
+		t.Errorf("replyTo = %q, want second@example.test (whoever spoke last)", got)
 	}
 }

@@ -107,8 +107,17 @@ func PersonHandler(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<div class="ib-person">`)
 	b.WriteString(`<p class="ib-person-sub">Your conversation with ` +
 		html.EscapeString(handle) + `</p>`)
-	b.WriteString(`<div class="ib-person-head"><a class="pill" href="/inbox/new?to=` +
-		html.EscapeString(url.QueryEscape(handle)) + `">New message</a></div>`)
+	// New message belongs on a page that already has one.
+	//
+	// On an empty page it was the fourth thing saying the same thing: the name,
+	// "Your conversation with @x", a New message pill, "Nothing between you and
+	// @x yet", and a Start a conversation button — five lines for one available
+	// action, three of them naming the same person. Reported exactly that way.
+	//
+	// Where there are conversations it earns its place, because there it means
+	// "a different one from these".
+	head := `<div class="ib-person-head"><a class="pill" href="/inbox/new?to=` +
+		html.EscapeString(url.QueryEscape(handle)) + `">New message</a></div>`
 
 	// Nobody you have spoken to yet is still a page.
 	//
@@ -123,7 +132,7 @@ func PersonHandler(w http.ResponseWriter, r *http.Request) {
 	// So the page stands, says whose it is, and offers the one action.
 	if len(convs) == 0 {
 		b.WriteString(`<div class="ib-person-empty">` +
-			`<p>Nothing between you and ` + html.EscapeString(handle) + ` yet.</p>` +
+			`<p>Nothing here yet.</p>` +
 			`<a class="btn" href="/inbox/new?to=` +
 			html.EscapeString(url.QueryEscape(handle)) + `">Start a conversation</a>` +
 			`</div></div>`)
@@ -142,6 +151,8 @@ func PersonHandler(w http.ResponseWriter, r *http.Request) {
 	// The reply goes to them, said rather than worked out. See
 	// conversationPaneTo — inferring it from who spoke last leaves a
 	// conversation you started with no Reply on it at all.
+	b.WriteString(head)
+
 	first := convs[0]
 	msgs := thread.Messages(acc.ID, first.ID, MessagesShown)
 	b.WriteString(conversationPaneTo(acc.ID, &first, msgs,
