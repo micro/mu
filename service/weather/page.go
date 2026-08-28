@@ -164,7 +164,7 @@ func forYou(ctx context.Context, accountID string) string {
 			` right now — the weather provider did not answer. It is set in ` +
 			app.TextLink("configuration", "/admin/config") + `.</p>`
 	}
-	return serverCard(f, auth.PlaceName(accountID))
+	return forecastHTML(f, airFor(lat, lon), auth.PlaceName(accountID))
 }
 
 // forPlace is the forecast somewhere else, with the other matches offered.

@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 )
@@ -137,5 +138,26 @@ func TestTheSetYourLocationLinkReadsAsWords(t *testing.T) {
 	body := w.Body.String()
 	if strings.Contains(body, `>/account/place<`) {
 		t.Errorf("the link's text is its own path:\n%s", body)
+	}
+}
+
+// Both halves of the page render the same forecast.
+//
+// They did not. A search rendered the full page — conditions, rain, UV, air,
+// the hours, the days — and "where you are" rendered serverCard, the three-fact
+// version built for a column on Home. One string replacement missed by an
+// indent, so the path most people arrive on was the thin one and the bug was
+// invisible to anybody whose account had no location set.
+func TestYourLocationGetsTheSamePageAsASearch(t *testing.T) {
+	src, err := os.ReadFile("page.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(src), "return serverCard(") {
+		t.Error("the page still renders the card on one of its paths, so the " +
+			"forecast you get depends on how you arrived")
+	}
+	if n := strings.Count(string(src), "forecastHTML(f,"); n < 2 {
+		t.Errorf("forecastHTML is rendered on %d path(s); both arrivals should get it", n)
 	}
 }
