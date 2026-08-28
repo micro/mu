@@ -278,7 +278,18 @@ var Spec = service.Spec{
 			Writes: true,
 			Doc: "Put a file on your machine, creating any missing directories. Use " +
 				"this rather than shell redirection for anything with quotes or " +
-				"backticks in it, which is most source code",
+				"backticks in it, which is most source code. Writing a whole file " +
+				"means sending a whole file, so use it to create one and use " +
+				"shell_replace to change one",
+		},
+		"Replace": {
+			Writes: true,
+			Doc: "Change part of a file: give the exact text to replace and what to " +
+				"put there. Far better than rewriting the file for a small change — " +
+				"the call stays short whatever the file's size, and the parts you " +
+				"are not touching cannot be lost. Text that appears more than once " +
+				"is refused rather than guessed at, so include a line either side to " +
+				"say which one you mean, or set all to change every occurrence",
 		},
 		"Read": {
 			Doc: "Read a file from your machine",
