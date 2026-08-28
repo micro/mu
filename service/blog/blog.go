@@ -807,12 +807,18 @@ func handleGetBlog(w http.ResponseWriter, r *http.Request) {
 				</form>
 			</div>
 			<script>
-				const form = document.getElementById('blog-form');
-				const titleInput = document.getElementById('post-title');
-				const textarea = document.getElementById('post-content');
-				const tagsInput = document.getElementById('post-tags');
-				const visibilitySelect = document.getElementById('post-visibility');
-				const charCount = document.getElementById('char-count');
+				// var, not const: soft navigation re-runs this script in the same
+				// document, and a repeated top-level const throws "Identifier
+				// 'form' has already been declared" — which kills the whole block
+				// before a line of it runs, so the draft restore and the character
+				// count silently stop working when you arrive by clicking rather
+				// than by reloading. See test/rerun_test.go.
+				var form = document.getElementById('blog-form');
+				var titleInput = document.getElementById('post-title');
+				var textarea = document.getElementById('post-content');
+				var tagsInput = document.getElementById('post-tags');
+				var visibilitySelect = document.getElementById('post-visibility');
+				var charCount = document.getElementById('char-count');
 				
 				// Restore form values from localStorage
 				function restoreFormValues() {
