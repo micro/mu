@@ -168,7 +168,12 @@ func hostFacts() {
 		"info", "--format", "{{.ServerVersion}}|{{.MemTotal}}|{{.NCPU}}")
 
 	if _, mem, cpus, ok := readFacts(out); ok {
-		hostMemory, hostCPUs, available = mem, cpus, true
+		// And the old reason goes. Without this the retry above only half
+		// works: an instance that started before Docker was up starts saying
+		// yes to Available while Reason still reads "no docker on this
+		// server's PATH", so a page can report a runtime that is working and
+		// explain why there isn't one, in the same breath.
+		hostMemory, hostCPUs, available, unreachable = mem, cpus, true, ""
 		return
 	}
 	unreachable = whyNot(out, err)

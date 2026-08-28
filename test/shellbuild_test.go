@@ -39,15 +39,22 @@ package test
 // the first call. That is the argument for the box, confirmed — nobody had to
 // tell it what a tip calculator looks like or repair what came back.
 //
-// What failed was passing that document *through* the model as a tool argument.
+// What failed was passing that document *through* the model a second time.
 // Reading the file back and handing it to apps_create made the model emit its
 // own tool-call markup — the ｜DSML｜ delimiters — as plain text, so no call was
 // parsed and no app was created. The same request with a 47-byte page worked
-// perfectly. Small arguments through, large arguments not.
+// perfectly, and two small calls in one turn work perfectly, so it is the size
+// of what is being carried rather than the number of steps.
 //
-// So a Publish that takes a path is not a saving, it is the difference between
-// working and not. The bytes stay in the volume, the model says a directory
-// name, and the failure above has nothing to act on.
+// apps_publish is the answer to the crossing that was redundant: it takes the
+// directory, reads the file inside the process, and hosts it. Both halves are
+// verified against a live instance — the page serves, publishing the same
+// directory again replaces the app rather than refusing, and a page reaching
+// for document.cookie is refused with the reason.
+//
+// It is worth being exact about what that does not fix. The document still has
+// to get into the box, and the only way in is a tool call carrying all of it.
+// One crossing is irreducible; the second one was ours, and it is gone.
 
 import (
 	"context"
