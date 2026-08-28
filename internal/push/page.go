@@ -462,6 +462,54 @@ const cardJS = `<script>
     return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   }
 
+  // What to call this device, in words somebody recognises.
+  //
+  // It was navigator.platform, which reports "Linux armv81" for an Android
+  // phone and "Linux x86_64" for a laptop — the two devices somebody actually
+  // owns, named after an instruction set. A list you cannot read is a list you
+  // cannot act on: the whole point of naming devices is deciding which one to
+  // turn off.
+  //
+  // Browser and kind, because that is what tells two rows apart. userAgentData
+  // where it exists (Chromium) and the user-agent string where it does not,
+  // which is Firefox and Safari — and platform last, so a device this cannot
+  // read is still named something rather than nothing.
+  function deviceLabel(){
+    var d = navigator.userAgentData, os = '', browser = '';
+    var ua = navigator.userAgent || '';
+
+    if (/iPhone/i.test(ua)) os = 'iPhone';
+    else if (/iPad/i.test(ua)) os = 'iPad';
+    else if (/Android/i.test(ua)) os = 'Android';
+    else if (/Macintosh|Mac OS X/i.test(ua)) os = 'Mac';
+    else if (/Windows/i.test(ua)) os = 'Windows';
+    else if (/CrOS/i.test(ua)) os = 'ChromeOS';
+    else if (/Linux/i.test(ua)) os = 'Linux';
+
+    // Order matters: Edge and Opera both say "Chrome", and Chrome says
+    // "Safari". Most specific first.
+    if (/Edg\//.test(ua)) browser = 'Edge';
+    else if (/OPR\/|Opera/.test(ua)) browser = 'Opera';
+    else if (/Firefox\//.test(ua)) browser = 'Firefox';
+    else if (/SamsungBrowser/.test(ua)) browser = 'Samsung Internet';
+    else if (/Chrome\//.test(ua)) browser = 'Chrome';
+    else if (/Safari\//.test(ua)) browser = 'Safari';
+
+    // An installed app is worth saying: it is a different thing from the same
+    // browser with a tab open, and it is the one that receives when nothing is.
+    var installed = false;
+    try {
+      installed = window.matchMedia('(display-mode: standalone)').matches ||
+        navigator.standalone === true;
+    } catch (e) {}
+
+    if (!os && d && d.platform) os = d.platform;
+    if (!os && !browser) return navigator.platform || '';
+
+    var name = browser && os ? browser + ' on ' + os : (browser || os);
+    return installed ? name + ' (installed)' : name;
+  }
+
   // Hand one subscription to the server. Idempotent: it is matched on the
   // endpoint, so sending the same one twice updates it rather than doubling it.
   function tell(sub){
@@ -476,7 +524,7 @@ const cardJS = `<script>
       body: JSON.stringify({
         endpoint: sub.endpoint,
         keys: {p256dh: raw.keys.p256dh, auth: raw.keys.auth},
-        label: navigator.platform || ''
+        label: deviceLabel()
       })
     }).then(function(res){ return res.json(); });
   }

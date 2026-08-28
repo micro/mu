@@ -160,6 +160,7 @@ func authRequired() map[string]bool {
 		"/apps":      false, // Public - apps directory; auth checked in handler for create/edit
 		"/work":      false, // Public - task bounties; auth checked in handler for post/claim
 		"/web":       false, // Public - the open web: search it, read a page from it
+		"/search":    false, // Public - an old name for /web, redirected
 		"/web/fetch": false, // Public page, auth checked in handler (paid web fetch)
 		"/web/read":  false, // Public page, auth checked in handler (proxied reader)
 
@@ -318,6 +319,25 @@ func registerRoutes() {
 	http.HandleFunc("/browser/shot/", browser.ShotHandler)
 
 	http.HandleFunc("/web", web.Handler)
+	// /search is the obvious URL and it answered 404.
+	//
+	// The apps SDK's mu.search() called it, so every app that searched got
+	// nothing, and it is the address a person types on a product whose front
+	// door is a search box. The SDK now names /web, but an address that has been
+	// handed out does not stop being used because the thing handing it out was
+	// corrected — and a 404 on /search is a worse answer than a redirect on any
+	// instance, forever.
+	//
+	// To /web rather than /archive: this is what the name meant everywhere it
+	// was used, which was searching the open web. 308 keeps the method and the
+	// query, and tells anything caching that the answer will not change.
+	http.HandleFunc("/search", func(w http.ResponseWriter, r *http.Request) {
+		to := "/web"
+		if q := r.URL.RawQuery; q != "" {
+			to += "?" + q
+		}
+		http.Redirect(w, r, to, http.StatusPermanentRedirect)
+	})
 	http.HandleFunc("/web/preview", web.PreviewHandler)
 
 	// serve web fetch page (fetch and clean a URL)
