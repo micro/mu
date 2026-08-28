@@ -24,10 +24,30 @@ package test
 // # What it says about the seam
 //
 // The step that reads the file out and passes it to Create is the one to look
-// at. It works, and it means the document travels back through the model's
+// at. It works here, and it means the document travels back through the model's
 // context to get from the box to the store — the model writes the file, then
 // says the whole file again as an argument. That is the token cost of writing
 // it twice, and it is the thing a Publish that takes a path would remove.
+//
+// # What a real model did with it
+//
+// Run against a live instance (Atlas Cloud, DeepSeek) the halves came apart in
+// a way worth writing down, because it changes what Publish is for.
+//
+// Given the shell, the model wrote a good page: asked for a tip calculator it
+// produced five kilobytes of complete, styled HTML into /work/tip/index.html on
+// the first call. That is the argument for the box, confirmed — nobody had to
+// tell it what a tip calculator looks like or repair what came back.
+//
+// What failed was passing that document *through* the model as a tool argument.
+// Reading the file back and handing it to apps_create made the model emit its
+// own tool-call markup — the ｜DSML｜ delimiters — as plain text, so no call was
+// parsed and no app was created. The same request with a 47-byte page worked
+// perfectly. Small arguments through, large arguments not.
+//
+// So a Publish that takes a path is not a saving, it is the difference between
+// working and not. The bytes stay in the volume, the model says a directory
+// name, and the failure above has nothing to act on.
 
 import (
 	"context"
