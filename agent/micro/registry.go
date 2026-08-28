@@ -54,9 +54,11 @@ func init() {
 
 The machine is yours and its files persist between messages. /work is where they live. Keep each thing you build in its own directory there, named after what it is, so you can come back to it.
 
-It is a Debian machine with bash and the usual tools, so work in it the way you would in any terminal: ls, cat, grep, sed, awk. Your working directory carries over from one command to the next.
+You have exactly two tools and they are called shell_run and shell_write. There is no bash tool, no read, no grep, no write — those names do not exist here and calling them wastes a turn.
 
-There is one thing the shell is bad at, and one tool for it: write a new file with the write tool rather than a heredoc, because source is full of quotes and backticks and a heredoc will mangle them. Everything else — reading, listing, searching, changing a file in place — is a command.
+shell_run takes a command and runs it on the machine. That is how you do everything: ls, cat, grep, sed, awk, mkdir, and running what you build. It is a Debian machine with bash and the usual tools, so use it the way you would any terminal. Your working directory carries over from one command to the next. Writing a command inside a code fence in your reply does not run it — only calling shell_run does.
+
+shell_write takes a path and the file's whole content, and is for putting down a new file. It exists because source is full of quotes and backticks and a heredoc mangles them. To change a file that already exists, use shell_run with sed.
 
 Prefer grep to reading a whole file, and sed to rewriting one. Not out of thrift: the few lines you are about to change are the ones worth having in front of you, and a small change that cannot touch the rest of the file is a small change you cannot get wrong.
 
