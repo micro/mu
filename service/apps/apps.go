@@ -239,6 +239,16 @@ func Load() {
 		} else {
 			mutex.Lock()
 			for _, a := range loaded {
+				// A record with no slug has no address: every link built from
+				// it comes out as /apps/ or /code?app=, which look live and go
+				// nowhere, and each one loaded overwrites the last under the
+				// empty key. Old records predate the field, so this is repair
+				// rather than validation — give it one and it is a normal app
+				// again, reachable and fixable.
+				if a.Slug == "" {
+					a.Slug = repairSlug(a)
+					app.Log("apps", "app %q had no address; it is now /apps/%s", a.Name, a.Slug)
+				}
 				apps[a.Slug] = a
 			}
 			mutex.Unlock()
@@ -1077,12 +1087,16 @@ func handleVersions(w http.ResponseWriter, r *http.Request, slug string) {
 				restoreBtn = fmt.Sprintf(` · <form method="POST" action="/apps/%s/versions" class="d-inline"><input type="hidden" name="version" value="%d"><button type="submit" class="link-button text-sm" onclick="return confirm('Restore version %d?')">Restore</button></form>`,
 					htmlpkg.EscapeString(a.Slug), v.Number, v.Number)
 			}
-			sb.WriteString(fmt.Sprintf(`<div class="tile mb-2">
+			// An id per version, so a link to a particular one lands on it. The
+			// transcript on /code links every turn here, and without these every
+			// link went to the same place — the top of the list.
+			sb.WriteString(fmt.Sprintf(`<div class="tile mb-2" id="v%d">
 <div class="d-flex between items-center">
 <div><strong>v%d</strong>%s — %s</div>
 <span class="text-sm text-muted">%s%s</span>
 </div>
 </div>`,
+				v.Number,
 				v.Number,
 				currentBadge,
 				htmlpkg.EscapeString(summary),
@@ -2050,4 +2064,19 @@ func DeleteAppsByAuthor(authorID string) {
 	}
 	mutex.Unlock()
 	save()
+}
+
+// repairSlug is the address an app gets when it loaded without one.
+//
+// Its own function so the rule can be tested without a file on disk, and so
+// there is one answer rather than one per caller that notices the problem.
+func repairSlug(a *App) string {
+	s := slugify(a.Name)
+	if s == "" {
+		return "app-" + a.ID
+	}
+	if len(s) < 3 {
+		return "app-" + s
+	}
+	return s
 }

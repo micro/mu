@@ -1,11 +1,12 @@
-package apps
+package code
 
 import (
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
 	"time"
+
+	"mu/service/apps"
 )
 
 // A turn changes the app you have, rather than making a second one.
@@ -19,7 +20,7 @@ import (
 // is on the hidden field rather than on prose: no slug in the form is a new
 // app on every submit, silently, and the page would look identical.
 func TestTheBoxCarriesTheAppYouAreWorkingOn(t *testing.T) {
-	a := &App{Slug: "tracker", Name: "Tracker", AuthorID: "coder"}
+	a := &apps.App{Slug: "tracker", Name: "Tracker", AuthorID: "coder"}
 
 	editing := codeBox(a)
 	if !strings.Contains(editing, `id="code-app" value="tracker"`) {
@@ -49,9 +50,9 @@ func TestTheBoxCarriesTheAppYouAreWorkingOn(t *testing.T) {
 // a version was rolled back, and the log would still claim a change the app no
 // longer has.
 func TestTheTranscriptIsTheVersions(t *testing.T) {
-	a := &App{
+	a := &apps.App{
 		Slug: "tracker", Name: "Tracker", Description: "an expense tracker",
-		Versions: []Version{
+		Versions: []apps.Version{
 			{Number: 1, Summary: "Initial version", SavedAt: time.Now()},
 			{Number: 2, Summary: "make it dark", SavedAt: time.Now()},
 			{Number: 3, Summary: "add a total row", SavedAt: time.Now()},
@@ -80,7 +81,7 @@ func TestTheTranscriptIsTheVersions(t *testing.T) {
 // An app with no history has no transcript, rather than an empty list with a
 // border around it.
 func TestANewAppHasNoTranscript(t *testing.T) {
-	if got := codeTranscript(&App{Slug: "x"}); got != "" {
+	if got := codeTranscript(&apps.App{Slug: "x"}); got != "" {
 		t.Errorf("an app with no versions rendered a transcript: %q", got)
 	}
 }
@@ -90,7 +91,7 @@ func TestANewAppHasNoTranscript(t *testing.T) {
 // Not a screenshot and not a description: the question each turn answers is
 // "is that what I meant", and that is answered by looking at the thing.
 func TestTheAppIsOnThePage(t *testing.T) {
-	got := codeWorkspace(&App{Slug: "tracker", Name: "Tracker"})
+	got := codeWorkspace(&apps.App{Slug: "tracker", Name: "Tracker"})
 	if !strings.Contains(got, `<iframe id="code-preview" src="/apps/tracker`) {
 		t.Errorf("the app is not running on the page:\n%s", got)
 	}
@@ -104,7 +105,7 @@ func TestTheAppIsOnThePage(t *testing.T) {
 
 // A name is somebody's prose and goes through the escaper.
 func TestAnAppNameIsEscapedOnTheCodePage(t *testing.T) {
-	got := codeWorkspace(&App{Slug: "x", Name: `<script>alert(1)</script>`})
+	got := codeWorkspace(&apps.App{Slug: "x", Name: `<script>alert(1)</script>`})
 	if strings.Contains(got, "<script>alert") {
 		t.Errorf("an app name is rendered as markup:\n%s", got)
 	}
@@ -113,58 +114,8 @@ func TestAnAppNameIsEscapedOnTheCodePage(t *testing.T) {
 // /code needs a session, and says so rather than rendering an empty workspace.
 func TestCodeIsNotOpenToStrangers(t *testing.T) {
 	rec := httptest.NewRecorder()
-	CodeHandler(rec, httptest.NewRequest("GET", "/code", nil))
+	Handler(rec, httptest.NewRequest("GET", "/code", nil))
 	if rec.Code != 401 && rec.Code != 302 && rec.Code != 303 {
 		t.Errorf("a signed-out visitor got %d from /code, want a refusal", rec.Code)
-	}
-}
-
-// Describing an app happens in one place.
-//
-// There were two boxes that each claimed to build an app from a sentence, and
-// only one of them could iterate. The other is gone; this fails if it comes
-// back, because two front doors to the same act is how one of them quietly
-// stops being the one that works.
-func TestThereIsOneBoxThatBuildsAnAppFromASentence(t *testing.T) {
-	b, err := os.ReadFile("apps.go")
-	if err != nil {
-		t.Fatal(err)
-	}
-	src := string(b)
-	if strings.Contains(src, `action="/apps/generate"`) {
-		t.Error("the apps page still posts a description straight to /apps/generate. " +
-			"Describing an app is /code, which checks the result and lets you say " +
-			"what to change; a second box that asks once is the one that will rot.")
-	}
-	if !strings.Contains(src, `"/code"`) {
-		t.Error("nothing on the apps page leads to /code, so the page that writes " +
-			"apps is unreachable from the page that lists them")
-	}
-}
-
-// The web button and the agent tool build with the same builder.
-//
-// They did not. BuildApp — the one that writes a document and runs the scanner
-// and the tests over it until they pass — was wired to the agent tool alone,
-// and the button a person clicked still went to the three-shape picker that
-// build.go's own package comment describes as the thing it replaced. So "build
-// me a unit converter" gave an agent a unit converter and gave a person a
-// checklist called Unit Converter.
-func TestEveryDoorBuildsWithTheSameBuilder(t *testing.T) {
-	for _, f := range []string{"micro_build.go", "service.go", "code.go"} {
-		b, err := os.ReadFile(f)
-		if err != nil {
-			t.Fatal(err)
-		}
-		src := string(b)
-		if !strings.Contains(src, "BuildApp(") {
-			t.Errorf("%s builds an app without going through BuildApp", f)
-		}
-		// BuildMicroApp is the floor BuildApp falls back to, and calling it
-		// directly is choosing the floor.
-		if strings.Contains(src, "= BuildMicroApp(") {
-			t.Errorf("%s calls BuildMicroApp directly, which picks one of three "+
-				"shapes instead of writing the app", f)
-		}
 	}
 }

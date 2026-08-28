@@ -1,4 +1,4 @@
-package apps
+package code
 
 // /code — say what you want, and the thing you get is an app.
 //
@@ -32,27 +32,33 @@ package apps
 // So the conversation is derived. Roll back to version 3 and the transcript
 // says three turns, because three turns is what the app has been through.
 //
-// # Why it lives in service/apps
+// # Why this is not in service/apps
 //
-// The output is an app, the store is apps, the checks are apps'. A `code`
-// service would be named for an action rather than a domain, would have to
-// import this one to do anything at all, and services never import each other.
-// /code is a door onto this service, the way /search is a door onto web.
+// It was, and it could not do its job there. Building an app the way somebody
+// would means running an agent with a shell — and services here are leaves.
+// None of them imports the agent, and the one that tried to import another was
+// caught by a test. A page that composes the agent, the machine and the store
+// cannot live inside any one of them.
+//
+// So it sits above all three, which is what inbox already does for mail and
+// chat: a composer, not a service. No Spec, no endpoints, nothing in the
+// catalogue. It imports apps for hosting, shell for the machine, and agent for
+// the loop, and none of them knows it exists.
 
 import (
 	"fmt"
 	htmlpkg "html"
 	"net/http"
-	"sort"
 	"strings"
 
 	"mu/internal/app"
 	"mu/internal/auth"
 	"mu/internal/quota"
+	"mu/service/apps"
 )
 
-// CodeHandler serves /code.
-func CodeHandler(w http.ResponseWriter, r *http.Request) {
+// Handler serves /code.
+func Handler(w http.ResponseWriter, r *http.Request) {
 	_, acc, err := auth.RequireSession(r)
 	if err != nil || acc == nil {
 		app.Unauthorized(w, r)
@@ -91,29 +97,31 @@ func codeTurn(w http.ResponseWriter, r *http.Request, acc *auth.Account) {
 		return
 	}
 
-	if req.App == "" {
-		a, err := BuildApp(req.Prompt, acc.ID, AuthorNameFor(acc.ID))
-		if err != nil {
-			app.Error(w, r, http.StatusBadRequest, "Could not build that: "+err.Error())
-			return
-		}
-		app.RespondJSON(w, map[string]interface{}{
-			"app": a.Slug, "name": a.Name, "url": "/apps/" + a.Slug, "attempts": 1,
-		})
+	// Which app this turn is about, and whether it already exists. A turn with
+	// no app names one from what was asked for; a turn with one keeps working
+	// on it, which is the whole difference between this and a box that builds
+	// something new every time you speak.
+	slug, existing := req.App, true
+	if slug == "" {
+		slug, existing = slugFor(req.Prompt), false
+	} else if a := apps.GetApp(slug); a == nil || a.AuthorID != acc.ID {
+		// Somebody else's app, or none. Not a 500 and not a silent new app.
+		app.Error(w, r, http.StatusNotFound, "No app of yours by that name")
 		return
 	}
 
-	res, err := EditHTMLApp(acc.ID, req.App, req.Prompt)
+	res, err := run(acc.ID, slug, req.Prompt, existing)
 	if err != nil {
-		// The failure is the interesting half. Three attempts that all failed
-		// the scanner is a different thing from "not your app", and a page that
-		// says "something went wrong" for both is a page nobody can act on.
+		// The failure is the interesting half. "It wrote nothing" and "the page
+		// it wrote is not allowed" are different problems with different next
+		// moves, and a page that says "something went wrong" for both is a page
+		// nobody can act on.
 		app.Error(w, r, http.StatusBadRequest, err.Error())
 		return
 	}
 	app.RespondJSON(w, map[string]interface{}{
 		"app": res.App.Slug, "name": res.App.Name, "url": "/apps/" + res.App.Slug,
-		"attempts": res.Attempts,
+		"said": res.Said, "steps": res.Steps,
 	})
 }
 
@@ -122,11 +130,9 @@ func codeTurn(w http.ResponseWriter, r *http.Request, acc *auth.Account) {
 func codePage(w http.ResponseWriter, r *http.Request, acc *auth.Account) {
 	slug := strings.TrimSpace(r.URL.Query().Get("app"))
 
-	var a *App
+	var a *apps.App
 	if slug != "" {
-		mutex.RLock()
-		a = apps[slug]
-		mutex.RUnlock()
+		a = apps.GetApp(slug)
 		if a == nil {
 			app.Error(w, r, http.StatusNotFound, "No app by that name")
 			return
@@ -172,7 +178,7 @@ func codeStart(acc *auth.Account) string {
 		`checked — the scanner for what an app may not do, and the tests, which run its ` +
 		`calls for real — and rewritten until it passes. Then say what to change.</p>`)
 
-	mine := authored(acc.ID)
+	mine := apps.AuthoredBy(acc.ID)
 	if len(mine) > 0 {
 		b.WriteString(`<h2 class="h6 mt-3">Yours</h2><ul class="plain">`)
 		for i, x := range mine {
@@ -182,8 +188,15 @@ func codeStart(acc *auth.Account) string {
 			}
 			b.WriteString(`<li>` +
 				app.TextLink(htmlpkg.EscapeString(x.Name), "/code?app="+htmlpkg.EscapeString(x.Slug)) +
-				` <span class="text-muted text-xs">` + htmlpkg.EscapeString(x.Description) +
-				`</span></li>`)
+				` <span class="text-muted text-xs">· ` +
+				app.TextLink("open", "/apps/"+htmlpkg.EscapeString(x.Slug)) + `</span>`)
+			// CreateApp fills an empty description with the name, so printing
+			// both says everything twice: "Expenses Expenses".
+			if x.Description != "" && x.Description != x.Name {
+				b.WriteString(` <span class="text-muted text-xs">` +
+					htmlpkg.EscapeString(x.Description) + `</span>`)
+			}
+			b.WriteString(`</li>`)
 		}
 		b.WriteString(`</ul>`)
 	}
@@ -191,7 +204,7 @@ func codeStart(acc *auth.Account) string {
 }
 
 // codeWorkspace is the app itself and everything said to get it here.
-func codeWorkspace(a *App) string {
+func codeWorkspace(a *apps.App) string {
 	var b strings.Builder
 
 	b.WriteString(`<div class="code-run">`)
@@ -222,7 +235,7 @@ func codeWorkspace(a *App) string {
 // the most recent thing said. "Initial version" is what CreateApp writes for
 // the first snapshot; here that turn is the description, which is a truer
 // account of what was asked.
-func codeTranscript(a *App) string {
+func codeTranscript(a *apps.App) string {
 	if len(a.Versions) == 0 {
 		return ""
 	}
@@ -236,16 +249,20 @@ func codeTranscript(a *App) string {
 		if said == "" {
 			said = "Built"
 		}
+		// Anchored at the version it names. Every one of these pointed at the
+		// bare versions page, so v1 and v7 were the same link and landing on
+		// the right one was the reader's problem.
 		b.WriteString(`<li><span class="code-said">` + htmlpkg.EscapeString(said) + `</span> ` +
 			app.TextLink("v"+fmt.Sprint(v.Number),
-				"/apps/"+htmlpkg.EscapeString(a.Slug)+"/versions") + `</li>`)
+				"/apps/"+htmlpkg.EscapeString(a.Slug)+"/versions#v"+fmt.Sprint(v.Number)) +
+			`</li>`)
 	}
 	b.WriteString(`</ol>`)
 	return b.String()
 }
 
 // codeBox is where you say the next thing.
-func codeBox(a *App) string {
+func codeBox(a *apps.App) string {
 	// The button says which of the two things this turn is. It said "Build" in
 	// both states, under a box asking "What should change?" — a label that
 	// contradicts the field above it is worse than no label.
@@ -326,19 +343,4 @@ func codeScript() string {
   });
 })();
 </script>`
-}
-
-// authored is somebody's own apps, most recently worked on first — which is
-// the order somebody coming back wants, not alphabetical.
-func authored(accountID string) []*App {
-	mutex.RLock()
-	defer mutex.RUnlock()
-	var out []*App
-	for _, a := range apps {
-		if a.AuthorID == accountID {
-			out = append(out, a)
-		}
-	}
-	sort.Slice(out, func(i, j int) bool { return out[i].UpdatedAt.After(out[j].UpdatedAt) })
-	return out
 }
