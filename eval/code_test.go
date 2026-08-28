@@ -261,13 +261,21 @@ func attempt(t *testing.T, tk task, dir, previous, artifacts string, run int) ou
 	if tk.shell != "" {
 		got := box(t, tk.shell)
 		out.mark("did", strings.Contains(squash(got), tk.want),
-			squash(got)+"; it said: "+squash(out.said))
+			squash(got)+"; pwd="+squash(box(t, "pwd"))+"; it said: "+squash(out.said))
 		return out
 	}
 
 	html := box(t, "cat "+dir+"/index.html")
 	if strings.TrimSpace(html) == "" || strings.Contains(html, "No such file") {
-		out.mark("wrote", false, "no file; it said: "+squash(out.said))
+		// Where it actually was and what actually exists. A run that reports
+		// "Done, the page is at eval/run2/index.html" while nothing is there
+		// has either written nothing or written it somewhere else, and those
+		// want opposite fixes. The working directory carries between commands
+		// now, so a relative path means whatever the last command left behind —
+		// which is the first thing to rule out.
+		out.mark("wrote", false, "no file at "+dir+"; pwd="+squash(box(t, "pwd"))+
+			"; found="+squash(box(t, "find /work -name index.html -o -name '*.sh' 2>/dev/null | head -20"))+
+			"; it said: "+squash(out.said))
 		return out
 	}
 	out.mark("wrote", true, "")
