@@ -475,8 +475,16 @@ func runNative(accountID, prompt string, opts QueryOpts) (string, error) {
 	// else, so removing that pipeline would have left it permanently false and
 	// quietly turned the bug back on for every custom agent. Same fact, read
 	// from the options the run was given rather than resolved a second time.
-	answer = completeToolAnswerFor(answer, recorder.ragParts(), strings.TrimSpace(opts.System) != "")
-	return withoutLeakedToolCall(answer, recorder.tools()), nil
+	// Leaked markup is dealt with first, and the order is the point. A reply
+	// that is nothing but a model's own tool-call syntax reads as a raw tool
+	// payload to the guard below, which then replaces it with the freshness
+	// fallback — so a request to change a colour in a file came back as "I
+	// checked the live sources, but the requested data is unavailable right
+	// now". Neither sentence is true and neither is actionable. Turning the
+	// leak into an honest sentence before anything else looks at it means the
+	// guard below sees an ordinary answer and leaves it alone.
+	answer = withoutLeakedToolCall(answer, recorder.tools())
+	return completeToolAnswerFor(answer, recorder.ragParts(), strings.TrimSpace(opts.System) != ""), nil
 }
 
 // stepReporter tells a caller which tools ran, as they run.
