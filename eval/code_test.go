@@ -155,6 +155,20 @@ func TestTheCodeAgentBuildsSomethingThatWorks(t *testing.T) {
 		t.Fatal("there is no Code agent registered, so there is nothing to measure")
 	}
 
+	// The services the agent is scoped to, registered.
+	//
+	// Importing a service package does not register it — Load does, and only
+	// the server calls Load. So this measured an agent holding no tools at all,
+	// which is why every failure read as the model calling something that does
+	// not exist: nothing existed. Two runs and a prompt rewrite were spent on
+	// that before the mapping test skipped for want of any service and said so.
+	shell.Load()
+	apps.Load()
+	if len(service.Specs()) == 0 {
+		t.Fatal("no services registered, so the agent under test has no tools " +
+			"and the score would measure the harness")
+	}
+
 	if err := auth.Create(&auth.Account{ID: account, Name: account, Secret: "eval-only"}); err != nil &&
 		!strings.Contains(err.Error(), "already exists") {
 		t.Fatal(err)

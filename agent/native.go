@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"reflect"
 	"sort"
 	"strings"
 	"sync"
@@ -139,6 +140,66 @@ func toolBlocked(name string) bool { return api.AllowPlanned(name, false) != nil
 
 // blockDestructiveTools refuses those calls before they run, telling the model
 // why so it can say so rather than silently looping.
+// acceptToolNamesWeAdvertise lets a tool be called by the name we print.
+//
+// Two names exist for every tool and only one of them works. go-micro derives
+// its own from the RPC endpoint — shell_Server_Run, with the handler type in
+// the middle — while /tools, /mcp, the README, the agent builder and every
+// system prompt say shell_run, because NativeToolName strips that middle part
+// for display. A model told to call shell_run calls shell_run and is told
+// there is no such tool.
+//
+// It is not a niche failure. Naming a tool in an instruction is what the agent
+// builder invites people to do, so any agent whose prompt mentions one has been
+// naming it wrongly, and the only symptom is the agent quietly not using it.
+// The eval found it because a prompt written from the documentation failed
+// against the thing the documentation describes.
+//
+// Fixed by accepting the advertised name rather than by changing what is
+// advertised: the displayed name is the better one, and the derived name still
+// works for anything that learned it.
+func acceptToolNamesWeAdvertise() gmai.ToolWrapper {
+	advertised := advertisedToolNames()
+	return func(next gmai.ToolHandler) gmai.ToolHandler {
+		return func(ctx context.Context, call gmai.ToolCall) gmai.ToolResult {
+			if real, ok := advertised[strings.ToLower(strings.TrimSpace(call.Name))]; ok {
+				call.Name = real
+			}
+			return next(ctx, call)
+		}
+	}
+}
+
+// advertisedToolNames maps the name a tool is shown under to the one that
+// dispatches — shell_run to shell.Server.Run.
+//
+// Built from the Specs rather than from a list, so a service added tomorrow is
+// callable by its printed name without anybody remembering this exists. The
+// handler's type name comes from the handler itself for the same reason: every
+// service happens to call it Server today, and a rule that only holds while
+// nobody varies it is a rule waiting to be broken quietly.
+func advertisedToolNames() map[string]string {
+	out := map[string]string{}
+	for _, spec := range service.Specs() {
+		if spec.Handler == nil {
+			continue
+		}
+		t := reflect.TypeOf(spec.Handler)
+		for t.Kind() == reflect.Ptr {
+			t = t.Elem()
+		}
+		handler := t.Name()
+		if handler == "" {
+			continue
+		}
+		for method := range spec.Endpoints {
+			shown := strings.ToLower(spec.Name + "_" + method)
+			out[shown] = spec.Name + "." + handler + "." + method
+		}
+	}
+	return out
+}
+
 func blockDestructiveTools() gmai.ToolWrapper {
 	return func(next gmai.ToolHandler) gmai.ToolHandler {
 		return func(ctx context.Context, call gmai.ToolCall) gmai.ToolResult {
@@ -238,7 +299,7 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 	// Use a fresh named agent for each request. Some go-micro providers keep
 	// per-agent conversation state keyed by name, so reusing a stable "assistant"
 	// name can leak prior independent prompts into fresh requests.
-	toolWrappers := append([]gmai.ToolWrapper{blockDestructiveTools(), injectAccount(accountID), dedupeNativeToolCalls()}, wrappers...)
+	toolWrappers := append([]gmai.ToolWrapper{acceptToolNamesWeAdvertise(), blockDestructiveTools(), injectAccount(accountID), dedupeNativeToolCalls()}, wrappers...)
 	a = service.NewAgent(nativeAgentInstanceName(), sys, provider, key, filterServices(nativeServices(opts.Public), opts.Tools),
 		gmagent.Model(model),
 		// What was said before, as turns. Read-only, which is what stops the
