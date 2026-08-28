@@ -17,8 +17,8 @@ import (
 func TestTheFrontPageUsesTheOneSearchBox(t *testing.T) {
 	got := indexBody()
 
-	if !strings.Contains(got, `id="mu-search-input"`) {
-		t.Errorf("the front page is not using app.SearchBox:\n%s", got)
+	if !strings.Contains(got, `id="mu-chat-input"`) && !strings.Contains(got, `id="mu-search-input"`) {
+		t.Errorf("the front page is not using the shared component:\n%s", got)
 	}
 	// The old private copy, by the names only it had.
 	for _, gone := range []string{"lsearch-in", "lsearch-go", `class="lsearch"`} {

@@ -6,71 +6,8 @@ import (
 	"strings"
 
 	"mu/internal/app"
-	"mu/internal/data"
+	"mu/internal/service"
 )
-
-// whatIsSearchable says what the box searches, from what is in the index.
-//
-// The line here read "100+ tools, an inbox with an address, and an agent that
-// reaches them" — a description of the product, under a box that searches the
-// archive. Two different things: none of the three is reachable from this page,
-// and a search box with no idea what corpus it covers is a box you have to
-// guess at.
-//
-// Built from data.Kinds rather than written down, so it is true on the instance
-// it is running on. A hardcoded "news, video, markets" would be the list this
-// instance happens to have today, printed on somebody else's that collects
-// something different — and would go stale here the first time a service is
-// added or removed. Cheap because Kinds is cached; see internal/data/kinds.go.
-//
-// The kinds and not the total. It said "Search 105,623 things this instance has
-// collected" — a number nobody decides anything from, changing every minute, in
-// the one line on the page that had a job to do. What the reader needs is what
-// is in there, so they know whether the thing they are looking for could be.
-//
-// Empty on a new instance, and nothing is the right answer there: a caption
-// naming kinds it has none of is worse than a box with no caption.
-func whatIsSearchable() string {
-	kinds := data.Kinds()
-	if len(kinds) == 0 {
-		return ""
-	}
-	var names []string
-	for _, k := range kinds {
-		if len(names) == 4 {
-			break
-		}
-		names = append(names, html.EscapeString(plural(k.Name)))
-	}
-	what := strings.Join(names, ", ")
-	if len(kinds) > len(names) {
-		what += " and more"
-	}
-	// Named, then listed. A bare list of kinds says what is in something
-	// without saying what the something is, and "the archive" is a place on
-	// this instance with a page of its own — which is where the box goes.
-	return "Search the archive — " + what + "."
-}
-
-// plural is a kind as a person would say it.
-//
-// The names are the type strings services register with — news, video, market
-// — so a list of them reads as field values printed on a page. A rule and a
-// short list of exceptions rather than an English pluraliser: there are five of
-// these, they change about once a year, and a wrong plural is more visible than
-// a missing one.
-func plural(kind string) string {
-	switch kind {
-	case "news":
-		return "news"
-	case "social":
-		return "social posts"
-	}
-	if strings.HasSuffix(kind, "s") {
-		return kind
-	}
-	return kind + "s"
-}
 
 // Index is the front door for anyone not signed in: something to try, then
 // what this is and how to connect to it.
@@ -234,28 +171,104 @@ func Index(w http.ResponseWriter, r *http.Request) {
 // page says it is nginx and that it is working. This says what it is, that it
 // is running, and gives you something to do with it.
 func indexBody() string {
-	// app.SearchBox, not a form of its own.
+	// The agent, not a search box.
 	//
-	// This page drew its own box — .lsearch, its own input, its own arrow — and
-	// Home drew #mu-search, and the two were the same control with two
-	// stylesheets. That was survivable while the box did one thing. It stopped
-	// being survivable the moment it grew a second button, because a second
-	// implementation means writing that button twice and watching the copies
-	// drift, which is the whole reason there was a rule about this.
+	// This searched the archive, and the reason was that search is the half
+	// that works with no model — which is a constraint, and it got dressed up
+	// as a thesis. The README has said the right order the whole time:
+	// "services and the archive become tools for agents to use". The archive is
+	// context. The agent is the door.
 	//
-	// Centred and focused, which is what was particular to this page; the rest
-	// was duplication.
+	// Where there is no model the same box still takes what you type, searches
+	// the archive and says why — see app.ChatComponent, which degrades rather
+	// than becoming a different product depending on configuration.
+	//
+	// # And it is not the only door
+	//
+	// A box that answers everything, with nothing else on the page, is a thing
+	// you have to go through. The links under it go straight to the services —
+	// the archive, the news, the video — so anything the agent would fetch is
+	// also one click away without asking it. That is the property that keeps it
+	// a tool: everything it does, you can do yourself.
 	return `<div class="lwrap">` +
-		app.SearchBox(app.SearchBoxOpts{Centred: true, Focused: true}) +
-		`<p class="lwhat">` + whatIsSearchable() + `</p>
+		app.ChatComponent(app.ChatConfig{
+			Ask:             true,
+			HideSuggestions: true,
+			Placeholder:     "What do you need?",
+		}) +
+		`<p class="lwhat">` + directDoors() + `</p>
 </div>
 
 <style>
-.lwrap{padding:0;max-width:560px;margin:0 auto;width:100%}
-.lwhat{text-align:center;color:#888;font-size:13px;line-height:1.6;margin:16px auto 0}
+.lwrap{padding:0;max-width:640px;margin:0 auto;width:100%}
+.lwhat{text-align:center;color:#888;font-size:13px;line-height:1.9;margin:20px auto 0}
 .lwhat a{color:#555;font-weight:600;text-decoration:none;white-space:nowrap}
 .lwhat a:hover{text-decoration:underline}
 </style>`
+}
+
+// directDoors is the handful of services worth putting under the box.
+//
+// Every service a signed-out visitor can open came to twenty-one names — a
+// paragraph of them, wrapping onto two lines, including Browser and Text and
+// Users, which are tools rather than places anybody arrives wanting. A list
+// that long is not a set of doors, it is a wall with the doors drawn on it.
+//
+// So: an order, and a cap. The order is what somebody actually came for, which
+// is a judgement and is written down as one rather than derived from something
+// that only looks objective. Everything else stays reachable — /tools lists all
+// of them, and the footer links it.
+//
+// Still filtered through the registry, so a service this instance does not run
+// is not offered and one it adds can appear: the list below is a preference,
+// not a claim about what exists. AccountScoped is the same question the tools
+// and the SDK ask, so the three cannot drift.
+var doorOrder = []string{"news", "video", "social", "markets", "weather", "places", "web"}
+
+// doorsShown is how many. Seven names and the archive fit one line at the width
+// this page is set to, which is the only reason for the number.
+const doorsShown = 8
+
+func directDoors() string {
+	open := map[string]string{}
+	for _, spec := range service.Specs() {
+		if spec.Page == "" || service.AccountScoped(spec.Name) {
+			continue
+		}
+		open[strings.ToLower(spec.Name)] = spec.Page
+	}
+
+	var links []string
+	add := func(label, href string) {
+		if href == "" || len(links) >= doorsShown {
+			return
+		}
+		links = append(links, `<a href="`+html.EscapeString(href)+`">`+
+			html.EscapeString(label)+`</a>`)
+	}
+
+	// The archive first. It is what this server already knows, which is the one
+	// door the agent itself goes through.
+	add("Archive", "/archive")
+	for _, name := range doorOrder {
+		if page, ok := open[name]; ok {
+			add(title(name), page)
+		}
+	}
+	if len(links) == 0 {
+		return ""
+	}
+	return "Or go straight there — " + strings.Join(links, " · ") + "."
+}
+
+// title is a service's name as a heading would write it. The registry keys are
+// lower case because they are identifiers.
+func title(name string) string {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return ""
+	}
+	return strings.ToUpper(name[:1]) + name[1:]
 }
 
 // installScript makes the Install app button work, and decides whether it is

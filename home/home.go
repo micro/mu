@@ -367,18 +367,26 @@ function fetchW(la,lo){
 	// Date + invite/settings above the input
 	b.WriteString(dateHTML)
 
-	// The box searches, the same as the signed-out page does.
+	// The box asks, the same as the signed-out page does.
 	//
-	// It asked, which made the same control do two different things depending
-	// on whether you were logged in — and once you were, there was no
-	// consistent way to search anything. Talking to an agent lives on /agents,
-	// which is the page about the agent.
+	// It searched, and the reason search won was that it is the half that works
+	// with no model — which is a constraint about a fresh install, and it got
+	// treated as a statement about the product. Every instance that has a model
+	// had its front control pointed at its own memory instead of at the thing
+	// the memory is for. The README never said that: "services and the archive
+	// become tools for agents to use".
 	//
-	// No Ask flag here, so this is a search box. See app.ChatConfig.
+	// Still one control doing one thing on both pages, which was the property
+	// worth keeping from the previous answer. Where there is no model it
+	// renders the search box and says why — a degrade, not a second product.
 	{
 		b.WriteString(`<div id="home-agent">`)
-		b.WriteString(app.ChatComponent(app.ChatConfig{HideSuggestions: true,
-			OfferAgentPicker: viewerID != ""}))
+		b.WriteString(app.ChatComponent(app.ChatConfig{
+			Ask:              true,
+			HideSuggestions:  true,
+			Placeholder:      "What do you need?",
+			OfferAgentPicker: viewerID != "",
+		}))
 
 		// The address, under the box. Quiet, because it is a fact about the
 		// agent rather than a call to action: the thing that makes this more

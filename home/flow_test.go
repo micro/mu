@@ -32,19 +32,32 @@ import (
 // teach and the parts that pitch a rail; below the fold, x402 is named on
 // purpose, because a reader who scrolled past the button wants to know how an
 // agent pays without an account.
-func TestTheLandingIsASearchBox(t *testing.T) {
+func TestTheLandingAsksTheAgent(t *testing.T) {
 	rec := httptest.NewRecorder()
 	Index(rec, httptest.NewRequest("GET", "/", nil))
 	body := rec.Body.String()
 
-	// The thing somebody with no account can actually do. /archive is public by
-	// construction — an entry with an owner is never returned from it — so there
-	// is nothing here to gate and nothing to leak.
-	if !strings.Contains(body, `action="/archive"`) || !strings.Contains(body, `name="q"`) {
-		t.Error("the signed-out page does not offer a search")
+	// The box asks. It searched the archive, and the reason was that search is
+	// the half that works with no model — a constraint, dressed up as a thesis.
+	// The README has had the order right the whole time: "services and the
+	// archive become tools for agents to use". The archive is context.
+	//
+	// Where there is no model this same component renders the search box and
+	// says why, so the page degrades rather than becoming a different product
+	// depending on how the instance is configured.
+	if !strings.Contains(body, `id="mu-chat-input"`) {
+		t.Error("the signed-out page does not offer the agent")
 	}
-	if !strings.Contains(body, `method="GET"`) {
-		t.Error("a search that is a POST cannot be linked, bookmarked or gone back to")
+	if !strings.Contains(body, "What do you need?") {
+		t.Error("the box does not say what it is for")
+	}
+
+	// And it is not the only door. A box that answers everything, alone on a
+	// page, is a thing you have to go through — so the services are one click
+	// away without asking it. Everything the agent does, you can do yourself.
+	if !strings.Contains(body, `href="/archive"`) {
+		t.Error("the archive is not reachable from the front page, so the agent " +
+			"is the only way to what this server remembers")
 	}
 	// And the way in, which is the only other thing a stranger needs.
 	if !strings.Contains(body, `href="/login"`) {
@@ -158,7 +171,7 @@ func TestTheLandingOffersOneThing(t *testing.T) {
 	Index(rec, httptest.NewRequest("GET", "/", nil))
 	body := rec.Body.String()
 
-	if !strings.Contains(body, `action="/archive"`) {
+	if !strings.Contains(body, `id="mu-chat-form"`) {
 		t.Fatal("the signed-out page lost the one thing it does")
 	}
 	if strings.Contains(body, `class="dev"`) {
