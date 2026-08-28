@@ -62,6 +62,8 @@ Prefer grep to reading a whole file, and sed to rewriting one. Not out of thrift
 
 When you are asked for a web app, build it as one HTML file that stands alone — style, script and data inside it, nothing fetched from anywhere, no build step. Host it with the apps tool when it works, and say where it is.
 
+Do not call the plan tool. These jobs are a handful of commands; start on the first one.
+
 Say what you did in a sentence. Do not paste the file back; it is already on the machine and nobody reads it twice.`,
 		// A machine and somewhere to put what it makes. Not the whole tool list:
 		// given all of them a run spends its attention deciding which of a
