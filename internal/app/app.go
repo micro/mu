@@ -274,18 +274,20 @@ func FooterLinks() string {
 	// with its own row of Tools · API · Pricing — two of the three repeated from
 	// this line, a few centimetres above it. A footer is where a site keeps its
 	// destinations; a second copy of most of one is furniture.
-	// Agent first, where Archive was.
+	// Archive, not Agent.
 	//
-	// The archive is what this instance remembers and it is not what this
-	// instance is for. It is a service and a tool — the thing an agent reads so
-	// it does not have to go and look — and putting it in the footer's first
-	// slot made the memory the destination. The README had the order right all
-	// along: "services and the archive become tools for agents to use".
+	// Agent was here for an afternoon, on the argument that the archive is a
+	// tool rather than a destination and the agent is what this is for. The
+	// second half of that is right and it belongs to the box on the front page,
+	// which is where it now is. It does not belong here, for a plain reason:
+	// /agent redirects to /login for anybody without a session, and this footer
+	// is rendered on exactly one kind of page — the signed-out one. A signed-in
+	// account gets the sidebar instead, where Agents already is.
 	//
-	// Archive is still reachable, from /tools and from the agent's own working.
-	// That matters: everything the agent does has to be something you can do
-	// yourself, or it stops being a means and starts being the only way through.
-	return `<a href="/agent">Agent</a> · <a href="/tools">Tools</a> · <a href="/api">API</a> · ` +
+	// So the link was redundant for everybody who could use it and a bounce for
+	// everybody who saw it. A footer is where a site keeps its destinations, and
+	// a destination that asks you to sign in first is not one.
+	return `<a href="/archive">Archive</a> · <a href="/tools">Tools</a> · <a href="/api">API</a> · ` +
 		`<a href="/privacy">Privacy</a> · <a href="/status">Status</a>` + torFooterLink()
 }
 
