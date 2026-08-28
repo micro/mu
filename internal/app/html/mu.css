@@ -1331,43 +1331,16 @@ body:has(#messages) #chat-back-link {
   60%, 100% { content: '...'; }
 }
 
-.context-message {
-  font-size: small;
-  color: #999;
-  font-style: italic;
-  text-align: center;
-  padding: 8px 0;
-  margin: 10px 0;
-  border-top: 1px solid #e0e0e0;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-.summary-toggle {
-  color: var(--text-secondary);
-  font-size: 12px;
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.summary-toggle:hover {
-  text-decoration: underline;
-}
-
-.summary-content {
-  margin-top: 8px;
-  font-style: normal;
-  line-height: 1.4;
-}
+/* .context-message, .summary-toggle and .summary-content were the styling for
+   a block JavaScript inserted at the top of a chat room: the room's name, its
+   summary again, and a link to hide it. The server renders all of that above
+   #messages — see .room-about — so nothing produces these any more. */
 .summary-meta {
   display: block;
   margin-top: 4px;
   color: #777;
   font-size: 12px;
   font-weight: 400;
-}
-#summary-toggle-icon {
-  color: #666;
-  font-size: 12px;
 }
 .summary-item {
   padding: 12px 0;
@@ -7066,6 +7039,10 @@ a.btn-secondary:hover, .btn-secondary:hover {
 /* What a room is about, above what has been said in it.
    Quiet: it is context for the messages, read once on the way in, and it must
    not compete with them. */
+/* What a chat room is about: the summary, foldable, and a link to the thing it
+   came from. A <details> rather than a script, so the open and closed states
+   are the element's own and there is no display property for .d-none to win an
+   argument with. */
 .room-about {
   margin: 0 0 14px;
   padding: 0 0 12px;
@@ -7073,6 +7050,33 @@ a.btn-secondary:hover, .btn-secondary:hover {
   font-size: 14px;
   line-height: 1.55;
   color: var(--text-muted, #666);
+}
+
+.room-about > summary {
+  cursor: pointer;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary, #888);
+  list-style: none;
+  user-select: none;
+}
+
+/* The default marker is a bullet in one browser and a triangle in another, so
+   it is replaced with one that says which way this goes. */
+.room-about > summary::-webkit-details-marker { display: none; }
+.room-about > summary::after { content: ' \002B'; }
+.room-about[open] > summary::after { content: ' \2212'; }
+.room-about > summary:hover { color: var(--text-color, #333); }
+
+.room-about > p {
+  margin: 8px 0 0;
+}
+
+.room-about .room-source {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 13px;
 }
 
 /* The crypto card: address, QR, and turning what it holds into credits.

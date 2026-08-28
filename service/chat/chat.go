@@ -1350,28 +1350,72 @@ func handleGetChat(w http.ResponseWriter, r *http.Request, roomID string) {
 	// Data rather than code: a JSON block is read, never executed, so there is
 	// no ordering to get right and nothing to leak into the next page. json
 	// escapes < as <, so a room title cannot close the tag.
-	// What this room is about, on the page.
-	//
-	// The summary was computed, carried in roomData and written into the JSON
-	// block below, where nothing read it — so a room never showed what it was
-	// for. Rendered server-side, above the messages, so it is the same on the
-	// first visit and the tenth.
-	//
-	// This is the only copy. It used to have a twin: the room's opening message
-	// is generated from this same summary, and an LLM handed three sentences and
-	// told to "start a conversation based on the current summary" paraphrases
-	// them — so a reader met the same paragraph twice, once as a label and once
-	// as something said. Reported exactly that way. The greeting no longer
-	// restates it; see sendAIGreeting.
-	about := ""
-	if sum, _ := roomData["summary"].(string); strings.TrimSpace(sum) != "" {
-		about = `<p class="room-about">` + htmlpkg.EscapeString(sum) + `</p>`
-	}
+	about := aboutRoom(roomData)
 
 	content := fmt.Sprintf(Template, guestNotice+about) +
 		`<script type="application/json" id="room-data">` + string(roomJSON) + `</script>`
 
 	app.Respond(w, r, app.Response{Title: title, Description: "Live discussion", HTML: content})
+}
+
+// aboutRoom is what this room is about: the summary, foldable, and the thing it
+// came from.
+//
+// One of these. There were two, and both were on screen at once — this one
+// above the messages, and a second built in JavaScript and inserted as the
+// first thing inside #messages, reading "Discussion: <title>", the same summary
+// again, a Hide summary link and → View Original. So the page opened by saying
+// the same paragraph twice, a few pixels apart, with the room's name repeated
+// between them. Reported as: chat summaries are above the message box and
+// inside it.
+//
+// The server's copy is the one kept, for three reasons. It is there in the
+// first paint rather than 100ms later, so the page does not visibly rearrange
+// itself. It escapes the summary; the JavaScript wrote it through innerHTML,
+// which makes any room whose summary came from a fetched page an injection.
+// And it is above #messages rather than inside it, so it stays put while the
+// conversation scrolls, instead of being a "message" that nobody sent which
+// scrolls away and never comes back.
+//
+// What the JavaScript had and this did not is now here: folding it away, and
+// the link to whatever the room is about. Those were the reasons to keep the
+// other one, so they had to move rather than be lost.
+//
+// <details> rather than a toggle script. The open and closed states are the
+// element's own, they work before any JavaScript runs and after soft
+// navigation, and there is no display property to be argued with — the old
+// toggle set style.display, which is one !important away from doing nothing at
+// all. See test/reveal_test.go.
+func aboutRoom(roomData map[string]interface{}) string {
+	sum, _ := roomData["summary"].(string)
+	sum = strings.TrimSpace(sum)
+	src, _ := roomData["url"].(string)
+	src = strings.TrimSpace(src)
+	if sum == "" && src == "" {
+		return ""
+	}
+
+	// A room made from something on this instance links back to it; one made
+	// from a fetched page links out. Same question either way — what is this
+	// about — so it is one link with the wording the destination deserves.
+	link := ""
+	if src != "" {
+		label := "View original"
+		rel := ""
+		if !strings.HasPrefix(src, "/") {
+			rel = ` target="_blank" rel="noopener noreferrer"`
+		}
+		link = `<a class="link room-source" href="` + htmlpkg.EscapeString(src) + `"` + rel + `>` +
+			label + ` →</a>`
+	}
+
+	if sum == "" {
+		return `<p class="room-about">` + link + `</p>`
+	}
+	return `<details class="room-about" open>` +
+		`<summary>About this room</summary>` +
+		`<p>` + htmlpkg.EscapeString(sum) + `</p>` + link +
+		`</details>`
 }
 
 // roomName is a room's title without the word nobody needed.

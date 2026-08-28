@@ -360,39 +360,23 @@ var isAuthenticated = false;
 var topic = '';
 
 
-// Toggle summary visibility (legacy, for individual topic pages)
-
-function toggleSummary(summaryId) {
-  const summary = document.getElementById(summaryId);
-  const toggle = summary.previousElementSibling;
-  if (summary.style.display === 'none') {
-    summary.style.display = 'block';
-    toggle.textContent = 'Hide summary';
-  } else {
-    summary.style.display = 'none';
-    toggle.textContent = 'Show summary';
-  }
-}
-
-// showTopicContext names the room at the top of the conversation. Topic rooms
-// are named for their topic, so the id is enough — there is no tab strip to
-// highlight any more, and no summary injected into the page: the summaries
-// live on the rooms list at /chat, which is where you chose this room.
-function showTopicContext(t) {
+// setTopic records which room the message box is posting into.
+//
+// It used to also write the room's name into #messages as a bold line, which
+// was the third place the page said it: the shell renders the title as the
+// page heading, the server renders the About block under it, and then this put
+// it at the top of the conversation as well. Naming the room once is enough,
+// and the heading is where a reader looks for it.
+//
+// The toggle that came with that block is gone too. It hid the summary by
+// setting style.display, which .d-none would have beaten silently — the About
+// block folds with <details> now, which cannot be argued with by the cascade.
+function setTopic(t) {
   topic = t;
 
   const topicInput = document.getElementById('topic');
   if (topicInput) {
     topicInput.value = t;
-  }
-
-  const messages = document.getElementById('messages');
-  if (messages) {
-    messages.innerHTML = '';
-    const contextMsg = document.createElement('div');
-    contextMsg.className = 'context-message';
-    contextMsg.innerHTML = '<strong>' + escapeHtml(t) + '</strong>';
-    messages.appendChild(contextMsg);
   }
 }
 
@@ -412,7 +396,7 @@ function loadChat() {
 
   // A topic room is named for its topic, so the heading can come from the id.
   if (roomId.startsWith('chat_')) {
-    showTopicContext(roomId.replace('chat_', ''));
+    setTopic(roomId.replace('chat_', ''));
   }
 
   // Sending needs an account, so the box reflects that before we connect.
@@ -873,16 +857,13 @@ function connectRoomWebSocket(roomId) {
   const isReconnect = currentRoomId === roomId;
   currentRoomId = roomId;
   
-  // Only clear messages on initial connect, not on reconnect
+  // Only clear messages on initial connect, not on reconnect. Nothing has to be
+  // preserved across the clear any more: what the room is about is rendered by
+  // the server above #messages, outside everything this touches.
   if (!isReconnect) {
     const messagesDiv = document.getElementById('messages');
     if (messagesDiv) {
-      // Keep only the context message if it exists
-      const contextMsg = messagesDiv.querySelector('.context-message');
       messagesDiv.innerHTML = '';
-      if (contextMsg) {
-        messagesDiv.appendChild(contextMsg);
-      }
     }
   }
   
@@ -1136,33 +1117,16 @@ function initRoomChat() {
     // Connect WebSocket first (this will clear messages and load sessionStorage)
     connectRoomWebSocket(currentRoomData.id);
     
-    // Then add context message to messages area with room summary
-    // Do this after a brief delay to ensure WebSocket connection is established
-    setTimeout(() => {
-      const messages = document.getElementById('messages');
-      if (messages) {
-        // Check if context message already exists
-        if (!messages.querySelector('.context-message')) {
-          const contextMsg = document.createElement('div');
-          contextMsg.className = 'context-message';
-          
-          // Show summary expanded by default for item discussions
-          let summaryHtml = '';
-          if (currentRoomData.summary) {
-            const summaryId = 'room-summary';
-            summaryHtml = `<br><a href="#" class="summary-toggle" onclick="toggleSummary('${summaryId}'); return false;">Hide summary</a>` +
-              `<span id="${summaryId}" class="summary-content" style="display: block; color: #666;"><br>${currentRoomData.summary}</span>`;
-          }
-          
-          contextMsg.innerHTML = 'Discussion: <strong>' + currentRoomData.title + '</strong>' + 
-            summaryHtml +
-            (currentRoomData.url ? '<br><a href="' + currentRoomData.url + '" target="_blank" style="color: #0066cc; font-size: 13px;">→ View Original</a>' : '');
-          // Insert at the top
-          messages.insertBefore(contextMsg, messages.firstChild);
-        }
-      }
-    }, 100);
-    
+    // No context message. The room's summary, its name and the link to what it
+    // is about are rendered by the server above #messages — see aboutRoom in
+    // service/chat. This built a second copy of all three and inserted it as
+    // the first thing inside #messages, so the page said the same paragraph
+    // twice a hundred milliseconds after loading, with the room's title
+    // repeated between them.
+    //
+    // It also wrote a summary through innerHTML, and a summary can come from a
+    // page somebody else wrote.
+
     // Override chat form submission for room mode
     const chatForm = document.getElementById('chat-form');
     if (chatForm) {
