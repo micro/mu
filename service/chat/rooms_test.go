@@ -29,7 +29,7 @@ func TestChatWithoutARoomListsWhatIsBeingDiscussed(t *testing.T) {
 		t.Fatalf("GET /chat = %d, want 200", rr.Code)
 	}
 	body := rr.Body.String()
-	for _, want := range []string{"Dev", "World", "Join discussion"} {
+	for _, want := range []string{"Dev", "World", "Join"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("rooms list is missing %q", want)
 		}

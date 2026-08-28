@@ -139,6 +139,24 @@ a:hover {
   text-decoration: underline;
 }
 
+/* Except the ones that are buttons.
+ *
+ * .btn, .mini-btn and .pill are shapes with a border and a background, and an
+ * <a> wearing one is a button as far as a reader is concerned. The rule above
+ * is written for prose links and underlined those too on hover, so a row of
+ * buttons on /users behaved like text — reported as the buttons being formatted
+ * differently from everywhere else, which they were: everywhere else they
+ * happen to be <button> elements, which this rule never reached.
+ *
+ * The shape decides, not the tag. */
+a.btn:hover,
+a.mini-btn:hover,
+a.pill:hover,
+a.btn-quiet:hover,
+a.btn-plain:hover {
+  text-decoration: none;
+}
+
 /* A visited link is the same colour as an unvisited one — but this rule must
    not outrank the components.
  
@@ -782,6 +800,24 @@ td {
 
 #footer a:hover {
   text-decoration: underline;
+}
+
+/* Except the ones that are buttons.
+ *
+ * .btn, .mini-btn and .pill are shapes with a border and a background, and an
+ * <a> wearing one is a button as far as a reader is concerned. The rule above
+ * is written for prose links and underlined those too on hover, so a row of
+ * buttons on /users behaved like text — reported as the buttons being formatted
+ * differently from everywhere else, which they were: everywhere else they
+ * happen to be <button> elements, which this rule never reached.
+ *
+ * The shape decides, not the tag. */
+a.btn:hover,
+a.mini-btn:hover,
+a.pill:hover,
+a.btn-quiet:hover,
+a.btn-plain:hover {
+  text-decoration: none;
 }
 
 /* Scroll offset for anchor links to account for fixed header */
@@ -1588,6 +1624,24 @@ body:has(#messages) #chat-back-link {
   text-decoration: underline;
 }
 
+/* Except the ones that are buttons.
+ *
+ * .btn, .mini-btn and .pill are shapes with a border and a background, and an
+ * <a> wearing one is a button as far as a reader is concerned. The rule above
+ * is written for prose links and underlined those too on hover, so a row of
+ * buttons on /users behaved like text — reported as the buttons being formatted
+ * differently from everywhere else, which they were: everywhere else they
+ * happen to be <button> elements, which this rule never reached.
+ *
+ * The shape decides, not the tag. */
+a.btn:hover,
+a.mini-btn:hover,
+a.pill:hover,
+a.btn-quiet:hover,
+a.btn-plain:hover {
+  text-decoration: none;
+}
+
 .keep-reading {
   display: inline-block;
   font-size: 0.85em;
@@ -1822,6 +1876,24 @@ body:has(#messages) #chat-back-link {
 
 .news .summary a:hover {
   text-decoration: underline;
+}
+
+/* Except the ones that are buttons.
+ *
+ * .btn, .mini-btn and .pill are shapes with a border and a background, and an
+ * <a> wearing one is a button as far as a reader is concerned. The rule above
+ * is written for prose links and underlined those too on hover, so a row of
+ * buttons on /users behaved like text — reported as the buttons being formatted
+ * differently from everywhere else, which they were: everywhere else they
+ * happen to be <button> elements, which this rule never reached.
+ *
+ * The shape decides, not the tag. */
+a.btn:hover,
+a.mini-btn:hover,
+a.pill:hover,
+a.btn-quiet:hover,
+a.btn-plain:hover {
+  text-decoration: none;
 }
 
 /* News Article View */
@@ -7078,6 +7150,12 @@ a.btn-secondary:hover, .btn-secondary:hover {
 
 /* /@somebody: the conversation with them. See inbox/person.go. */
 .ib-person-head { display: flex; justify-content: flex-end; margin: 0 0 var(--spacing-md, 16px) }
+/* What the page is, under the name the shell prints. Reported as a page
+   somebody landed on from a username and could not identify. */
+.ib-person-sub { margin: 0 0 var(--spacing-md, 16px); color: var(--text-secondary, #555); font-size: 14px }
+/* Somebody you have not spoken to yet is still their page — see person.go. */
+.ib-person-empty { padding: var(--spacing-lg, 24px) 0; }
+.ib-person-empty p { margin: 0 0 var(--spacing-md, 16px); color: var(--text-muted, #888) }
 .ib-person-also { margin: var(--spacing-lg, 24px) 0 0; padding-top: var(--spacing-md, 16px);
   border-top: var(--border-width, 1px) solid var(--card-border, #e8e8e8) }
 .ib-person-also h3 { font-size: 15px; margin: 0 0 10px }
