@@ -127,7 +127,7 @@ func authRequired() map[string]bool {
 		"/social":            false, // Public viewing, auth for search
 		"/social/thread":     false, // Public thread view, auth for messaging
 		"/places":            false, // Public map, auth for search
-		"/weather":           false, // Public — the forecast as JSON
+		"/weather":           false, // Public — the forecast, as a page or as JSON
 		"/flights":           false, // Public — aircraft broadcast their positions in clear
 		"/mail":              true,  // Require auth for inbox
 		"/logout":            true,

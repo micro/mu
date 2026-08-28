@@ -30,7 +30,6 @@ import (
 // card did not; removing one means the opposite was discovered, which is what
 // happened to flights.
 var derived = map[string]string{
-	"weather": "the page was a location box over the same forecast the card shows",
 	"hazards": "a magnitude picker over the same list the card shows",
 }
 
@@ -56,6 +55,15 @@ var keptItsPage = map[string]string{
 		"that it reads what a fetch cannot, and the only way to show that is to let " +
 		"somebody try a page a fetch cannot read",
 	"text": "the text to work on",
+	// Moved back, and the entry it replaces said "the page was a location box
+	// over the same forecast the card shows". That was true of the page as it
+	// then stood and false about what the page is for. Deriving it left /weather
+	// answering 404 to anybody who was not asking for JSON, so the service whose
+	// whole product is "what is it doing outside, here and elsewhere" had no
+	// address a person could open — reported exactly that way. And the derived
+	// form asks for a place as a pair of decimal coordinates, which is the one
+	// question nobody can answer about the town they are standing in.
+	"weather": "somewhere, and the days after",
 	"shell": "a command, and what it printed — the claim is that you get a " +
 		"machine, and the only way to show that is to let somebody run something on it",
 
