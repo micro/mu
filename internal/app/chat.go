@@ -572,8 +572,24 @@ function ask(q){
     if(resp.status===401){
       return resp.json().catch(function(){return {};}).then(function(j){
         stopWork();
-        var msg=esc(j.error||'Sign in to ask the agent.');
-        a.innerHTML='<div class="mu-cta">'+msg+' <a href="/signup">Sign up →</a> <a href="/login?redirect=/agent" class="ml-3">Log in</a></div>';
+        // A refusal has to leave somebody able to do something.
+        //
+        // It said "Sign in to ask the agent" with two links, on the front page,
+        // which is the page a stranger sees and the only page this branch ever
+        // renders on. So the main control of the signed-out product answered
+        // every question with a sign-up form — worse than the search box it
+        // replaced, which at least worked.
+        //
+        // Two ways on, and the first one works this second. The archive is
+        // public by construction, so searching what was just typed needs no
+        // account and no permission; signing in carries the question through
+        // and asks it on arrival, which is the same trip /agent?q= already
+        // makes. Neither is a form standing between somebody and an answer.
+        var msg=esc(j.error||'Nobody can ask the agent here without an account.');
+        var qq=encodeURIComponent(q);
+        a.innerHTML='<div class="mu-cta">'+msg+
+          ' <a href="/archive?q='+qq+'">Search the archive for this →</a>'+
+          ' <a href="/login?redirect='+encodeURIComponent('/agent?q='+q)+'" class="ml-3">Sign in and ask it</a></div>';
         save();
         throw 'handled';
       });

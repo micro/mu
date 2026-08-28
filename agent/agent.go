@@ -1191,21 +1191,31 @@ func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts Query
 	// What was said, in the record. The workflow record below is how it was
 	// produced; this is the answer itself, and it is what the next message in
 	// this conversation will be given as history.
-	Answered(accountID, threadID, answer, flow.ID)
-
+	// No account, no record.
+	//
+	// A guest asking from the front page has no account, and everything below
+	// this line is keyed on one — the conversation, the workflow record, the
+	// steps. Writing them anyway produces rows owned by nobody: nothing lists
+	// them, nothing can delete them, and the account they name is the empty
+	// string. The guard is on the account rather than on a flag passed down,
+	// because that is the actual invariant and it holds for every caller of
+	// this function.
 	rendered := app.RenderString(answer)
 	html := `<div class="card" id="agent-response">` + rendered + `</div>`
-	updateFlow(flow.ID, func(f *Flow) {
-		f.Answer = answer
-		f.HTML = html
-		f.Status = "done"
-		// What it ran. The stream emitted tool_start and tool_done to the
-		// browser and then dropped both on the floor, so a finished run recorded
-		// an answer and no account of how it got there.
-		for _, name := range nativeToolNames {
-			f.Steps = append(f.Steps, FlowStep{Tool: name})
-		}
-	})
+	if accountID != "" {
+		Answered(accountID, threadID, answer, flow.ID)
+		updateFlow(flow.ID, func(f *Flow) {
+			f.Answer = answer
+			f.HTML = html
+			f.Status = "done"
+			// What it ran. The stream emitted tool_start and tool_done to the
+			// browser and then dropped both on the floor, so a finished run
+			// recorded an answer and no account of how it got there.
+			for _, name := range nativeToolNames {
+				f.Steps = append(f.Steps, FlowStep{Tool: name})
+			}
+		})
+	}
 	sse(w, map[string]any{"type": "response", "html": html, "flow_id": flow.ID})
 	sse(w, map[string]any{"type": "done"})
 }
@@ -1247,19 +1257,51 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// An account, or nothing. See RunHandler in run.go for why the signed-out
-	// demonstration went.
+	// An account, or a guest. See below for what a guest is allowed.
 	_, acc := auth.TrySession(r)
 	if acc == nil {
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(`{"error":"Sign in to ask the agent."}`)) //nolint:errcheck
-		return
+		// A stranger can ask, which is the whole point of a front page.
+		//
+		// This was a flat 401 reading "Sign in to ask the agent", and the front
+		// page's only control is this box — so every question a visitor typed
+		// was answered with a sign-up form. ChatGPT answers without an account.
+		// Claude answers without an account. Google has always answered without
+		// an account. A personal server that refuses to say anything until you
+		// register is asking for more than the products it is defined against.
+		//
+		// What a guest gets is bounded and it is public:
+		//
+		//   - Rate limited per IP, by the limiter that already existed for
+		//     exactly this and was wired to nothing on this path. Localhost is
+		//     never limited, so a self-hosted instance is unrestricted for the
+		//     person running it.
+		//   - Public tools only. QueryOpts.Public is set below, which drops
+		//     every account-scoped service — mail, wallet, files, the inbox —
+		//     through service.AccountScoped, the same policy the app SDK reads.
+		//   - Nothing written down. No flow, no thread, no memory: there is no
+		//     account to own any of it, and a record belonging to nobody is a
+		//     record nobody can delete.
+		//
+		// An operator who does not want to pay for strangers sets
+		// GUEST_MAX_PER_IP=0 and gets the old behaviour, stated below.
+		if !app.GuestCallAllowed(app.ClientIP(r)) {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte(`{"error":"This instance is not answering strangers right now."}`)) //nolint:errcheck
+			return
+		}
 	}
 
 	// Charge up-front: the agent is our most expensive op, so it is metered
 	// like web_fetch and chat.
-	accountID := acc.ID
+	//
+	// Empty for a guest, and every use of it below is guarded — the record is
+	// keyed on an account and a guest has none.
+	accountID := ""
+	guest := acc == nil
+	if acc != nil {
+		accountID = acc.ID
+	}
 
 	// The conversation this message continues, in the system of record.
 	//
@@ -1269,7 +1311,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	// rail links through, so an open tab keeps working.
 	//
 	threadID := ""
-	if req.ContextID != "" {
+	if !guest && req.ContextID != "" {
 		threadID = openThread(accountID, req.ContextID)
 	}
 
@@ -1311,7 +1353,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	// The web drives its own run because it streams, so it cannot hand the whole
 	// turn to Ask and wait — but it must not write its own version of the record
 	// either, which is why it goes through the same three calls Ask uses.
-	{
+	if !guest {
 		if err := saveFlow(flow); err != nil {
 			app.Log("agent", "Failed to create flow: %v", err)
 		}
@@ -1342,11 +1384,11 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 	// conversation came to be one thing.
 	sse(w, map[string]any{"type": "flow_id", "flow_id": flow.ID, "thread": threadID})
 
-	nopts := QueryOpts{}
-	if req.Cards && CardContextFunc != nil {
+	nopts := QueryOpts{Public: guest}
+	if !guest && req.Cards && CardContextFunc != nil {
 		nopts.Extra = CardContextFunc(accountID)
 	}
-	if ua := resolveAgent(accountID, req.Agent); ua != nil {
+	if ua := resolveAgent(accountID, req.Agent); ua != nil && !guest {
 		nopts.System = ua.SystemPrompt
 		nopts.Tools = ua.Tools
 	}

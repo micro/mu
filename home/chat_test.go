@@ -45,7 +45,13 @@ func TestTheChatBoxOffersNoStaleSuggestion(t *testing.T) {
 // a link to the login rather than silence.
 func TestAnExpiredSessionIsOfferedTheWayBackIn(t *testing.T) {
 	html := app.ChatComponent(app.ChatConfig{Ask: true})
-	for _, want := range []string{`href="/signup"`, `href="/login?redirect=/agent"`} {
+	// A refusal has to leave somebody able to do something. It used to offer
+	// Sign up and Log in and nothing else, which on the front page meant every
+	// question a stranger typed was answered with a form. Now a guest is
+	// answered outright — see agent.Handler — and this branch is what is left
+	// for an instance that has turned strangers off, or one whose session
+	// expired mid-conversation. Both ways on carry the question.
+	for _, want := range []string{"/archive?q=", "/agent?q="} {
 		if !strings.Contains(html, want) {
 			t.Errorf("the chat has no %s for a caller whose session has gone", want)
 		}

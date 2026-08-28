@@ -132,3 +132,35 @@ func TestAskingStillNeedsAModel(t *testing.T) {
 		t.Error("with no model it does not fall back to the thing that works")
 	}
 }
+
+// A stranger who asks gets somewhere, not a sign-up form.
+//
+// The front page's box asks the agent, and /agent refuses without an account —
+// so on the one page a stranger ever sees, the main control answered every
+// question with "Sign in to ask the agent" and two links. That is worse than
+// the search box it replaced, which at least worked, and it is the funnel this
+// page was deliberately cleared of.
+//
+// So the refusal carries what was typed to two places, and the first works
+// immediately: /archive is public by construction, and signing in asks the
+// question on arrival rather than landing somebody on an empty agent page
+// wondering what they came for.
+func TestARefusedQuestionStillGoesSomewhere(t *testing.T) {
+	AgentReady = func() bool { return true }
+	t.Cleanup(func() { AgentReady = nil })
+
+	got := ChatComponent(ChatConfig{Ask: true})
+
+	if !strings.Contains(got, "/archive?q=") {
+		t.Error("a refused question is not offered to the archive, which needs no " +
+			"account and would have answered it")
+	}
+	if !strings.Contains(got, "/agent?q=") {
+		t.Error("signing in does not carry the question, so somebody arrives at an " +
+			"empty box having already typed their question once")
+	}
+	// And the question itself has to travel, or both links are decoration.
+	if !strings.Contains(got, "encodeURIComponent(q)") {
+		t.Error("what was typed is not carried into either link")
+	}
+}
