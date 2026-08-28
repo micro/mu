@@ -30,6 +30,23 @@
 // then says is what gets marked. A tip calculator that renders beautifully and
 // computes nothing passes every static check there is.
 //
+// # What it found, the first time it ran
+//
+// Zero of eight, and the cause is not the model. go-micro's atlascloud
+// provider runs one round of tool calls and then asks the model to finish
+// without them: the follow-up request carries the tool results and no "tools"
+// key, and there is no loop, so a second call is impossible whatever the model
+// intends. ai/anthropic does it correctly — tools on the follow-up, repeated
+// while calls keep coming — which is why the same agent behaves differently
+// depending on which key is set.
+//
+// It is worth knowing what that failure looks like from here, because it looks
+// like something else entirely. Asked to carry on with tools it can no longer
+// call, a model writes the call it wanted as ordinary text, and the reply
+// arrives full of tool-call delimiters. That reads as a model too weak to
+// format a tool call. It is a model being offered no way to make one, and a
+// day was spent on the wrong explanation before this test was written.
+//
 // # What a failing score means
 //
 // The first job of this is comparative rather than absolute. Run it against one
