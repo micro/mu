@@ -33,8 +33,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"html"
+	"math"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -184,7 +186,7 @@ func forPlace(ctx context.Context, q string) string {
 		b.WriteString(`<p class="wx-note">Found ` + html.EscapeString(first.Label()) +
 			`, and the forecast did not come back.</p>`)
 	} else {
-		b.WriteString(serverCard(f, first.Label()))
+		b.WriteString(forecastHTML(f, airFor(first.Lat, first.Lon), first.Label()))
 	}
 
 	// The other matches. "Cambridge" is a real ambiguity and picking one
@@ -202,6 +204,156 @@ func forPlace(ctx context.Context, q string) string {
 	return b.String()
 }
 
+// forecastHTML is the forecast as a page, rather than as a card.
+//
+// The card is three facts — a number, a word and five days — because it sits in
+// a column on Home next to eight other cards and has one line to earn. A page
+// somebody navigated to on purpose is a different question, and answering it
+// with the card was the whole complaint: any weather site tells you what the
+// day is like, and this told you a temperature.
+//
+// None of this costs a second request. FeelsLikeC, Humidity, WindKph, Sunrise,
+// Sunset, RainMM and the hourly series were all in the response already, parsed
+// into the struct, and thrown away by every renderer there was — the fetch has
+// always paid for them.
+func forecastHTML(f *WeatherForecast, air *AirQuality, place string) string {
+	where := strings.TrimSpace(place)
+	if where == "" {
+		where = f.Location
+	}
+	c := f.Current
+
+	var b strings.Builder
+	b.WriteString(`<div class="wx-full">`)
+	if where != "" {
+		b.WriteString(`<h2 class="wx-place">` + html.EscapeString(where) + `</h2>`)
+	}
+
+	// Now: the number, then the sentence somebody would say.
+	b.WriteString(`<div class="wx-now-row">` +
+		`<span class="wx-big">` + deg(c.TempC) + `</span>` +
+		`<span class="wx-said">` + html.EscapeString(c.Description) + `</span></div>`)
+
+	// The facts under it, and only the ones this provider actually returned.
+	// A dash where a number should be is worse than a shorter list.
+	var facts []string
+	if math.Abs(c.FeelsLikeC-c.TempC) >= 1 {
+		facts = append(facts, fact("Feels like", deg(c.FeelsLikeC)))
+	}
+	if c.WindKphAvailable {
+		facts = append(facts, fact("Wind", strconv.Itoa(int(math.Round(c.WindKph)))+" km/h"))
+	}
+	if c.HumidityAvailable {
+		facts = append(facts, fact("Humidity", strconv.Itoa(c.Humidity)+"%"))
+	}
+	if len(f.DailyItems) > 0 {
+		d := f.DailyItems[0]
+		facts = append(facts, fact("Today", deg(d.MaxTempC)+" / "+deg(d.MinTempC)))
+		// A percentage where the provider gives one, millimetres where it does
+		// not, and nothing at all where neither says anything. It read "Rain
+		// 0.0 mm" next to a day described as "Light rain", which is two
+		// statements about the same day that cannot both be true.
+		switch {
+		case d.RainChance > 0:
+			facts = append(facts, fact("Rain", strconv.Itoa(d.RainChance)+"%"))
+		case d.RainMM > 0:
+			facts = append(facts, fact("Rain", oneDP(d.RainMM)+" mm"))
+		}
+		if !d.Sunrise.IsZero() && !d.Sunset.IsZero() {
+			facts = append(facts, fact("Light",
+				d.Sunrise.Format("15:04")+" – "+d.Sunset.Format("15:04")))
+		}
+	}
+	// UV and air, which are keyless and were already being fetched for the JSON
+	// caller while no page showed them. UV decides an afternoon outdoors more
+	// often than the temperature does.
+	if air != nil {
+		if air.UV > 0 {
+			facts = append(facts, fact("UV", oneDP(air.UV)))
+		}
+		if air.HaveEuropeanAQI && air.EuropeanAQI > 0 {
+			facts = append(facts, fact("Air", strconv.Itoa(air.EuropeanAQI)+" "+aqiWord(air.EuropeanAQI)))
+		}
+	}
+	if len(facts) > 0 {
+		b.WriteString(`<div class="wx-facts">` + strings.Join(facts, "") + `</div>`)
+	}
+
+	// The next few hours, which is the question "do I need a coat this
+	// afternoon" and the one a daily high cannot answer.
+	if hours := nextHours(f.HourlyItems, 8); len(hours) > 0 {
+		b.WriteString(`<div class="wx-strip"><span class="wx-strip-head">Next hours</span>` +
+			`<div class="wx-strip-row">`)
+		for _, h := range hours {
+			b.WriteString(`<span class="wx-hour"><span class="wx-hour-at">` +
+				html.EscapeString(h.Time.Format("15:04")) + `</span>` +
+				`<span class="wx-hour-t">` + deg(h.TempC) + `</span></span>`)
+		}
+		b.WriteString(`</div></div>`)
+	}
+
+	// And the days, with what each one is rather than only its numbers.
+	if len(f.DailyItems) > 0 {
+		b.WriteString(`<div class="wx-strip"><span class="wx-strip-head">The days after</span>` +
+			`<div class="wx-list">`)
+		for i, d := range f.DailyItems {
+			if i >= 6 {
+				break
+			}
+			when := d.Date.Format("Mon 2 Jan")
+			if i == 0 {
+				when = "Today"
+			}
+			b.WriteString(`<div class="wx-row"><span class="wx-row-day">` +
+				html.EscapeString(when) + `</span>` +
+				`<span class="wx-row-said">` + html.EscapeString(d.Description) + `</span>` +
+				`<span class="wx-row-t">` + deg(d.MaxTempC) + ` / ` + deg(d.MinTempC) + `</span></div>`)
+		}
+		b.WriteString(`</div></div>`)
+	}
+
+	b.WriteString(`</div>`)
+	return b.String()
+}
+
+// nextHours is the hours still to come, capped. A series that starts this
+// morning is half in the past by the afternoon, and showing 09:00 at 4pm is the
+// kind of wrong that makes somebody distrust the rest of the page.
+func nextHours(all []HourlyItem, n int) []HourlyItem {
+	now := time.Now()
+	var out []HourlyItem
+	for _, h := range all {
+		if h.Time.Before(now) {
+			continue
+		}
+		out = append(out, h)
+		if len(out) >= n {
+			break
+		}
+	}
+	return out
+}
+
+func fact(name, value string) string {
+	return `<span class="wx-fact"><span class="wx-fact-n">` + html.EscapeString(name) +
+		`</span><span class="wx-fact-v">` + html.EscapeString(value) + `</span></span>`
+}
+
+func deg(c float64) string { return strconv.Itoa(int(math.Round(c))) + "°" }
+
+func oneDP(v float64) string { return strconv.FormatFloat(v, 'f', 1, 64) }
+
+// airFor is the air quality, or nil. Never an error: this is one line on a
+// page about something else, and a provider that did not answer should cost the
+// forecast nothing.
+func airFor(lat, lon float64) *AirQuality {
+	air, err := airQuality(lat, lon)
+	if err != nil {
+		return nil
+	}
+	return air
+}
+
 const pageCSS = `<style>
 .wx-page{max-width:760px}
 .wx-find{display:flex;gap:8px;margin:0 0 var(--spacing-lg,24px);flex-wrap:wrap}
@@ -209,4 +361,31 @@ const pageCSS = `<style>
 .wx-note{color:var(--text-secondary,#555);line-height:1.6;margin:0}
 .wx-also{margin:var(--spacing-lg,24px) 0 0;display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
 .wx-also-head{font-size:12px;color:var(--text-muted,#999);text-transform:uppercase;letter-spacing:.04em}
+.wx-place{margin:0 0 4px;font-size:18px}
+.wx-now-row{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin:0 0 var(--spacing-md,16px)}
+.wx-big{font-size:44px;line-height:1;font-weight:600;color:var(--text-primary,#111)}
+.wx-said{font-size:16px;color:var(--text-secondary,#555)}
+.wx-facts{display:flex;gap:22px;flex-wrap:wrap;margin:0 0 var(--spacing-lg,24px);
+  padding:0 0 var(--spacing-md,16px);border-bottom:1px solid var(--card-border,#eee)}
+.wx-fact{display:flex;flex-direction:column;gap:2px}
+.wx-fact-n{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted,#999)}
+.wx-fact-v{font-size:15px;color:var(--text-primary,#111);font-variant-numeric:tabular-nums}
+.wx-strip{margin:0 0 var(--spacing-lg,24px)}
+.wx-strip-head{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.04em;
+  color:var(--text-muted,#999);margin:0 0 8px}
+/* The hours scroll rather than wrap: eight of them on a phone is two ragged
+   rows, and a row of times reads as a row. */
+.wx-strip-row{display:flex;gap:18px;overflow-x:auto;padding:0 0 4px}
+.wx-hour{display:flex;flex-direction:column;gap:2px;flex:none;text-align:center}
+.wx-hour-at{font-size:11px;color:var(--text-muted,#999)}
+.wx-hour-t{font-size:15px;font-variant-numeric:tabular-nums}
+.wx-list{display:flex;flex-direction:column}
+.wx-row{display:flex;align-items:baseline;gap:12px;padding:7px 0;
+  border-bottom:1px solid var(--card-border,#f0f0f0)}
+.wx-row:last-child{border-bottom:0}
+.wx-row-day{flex:none;min-width:104px;font-size:14px}
+.wx-row-said{flex:1;min-width:0;font-size:13px;color:var(--text-secondary,#555);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wx-row-t{flex:none;font-size:14px;font-variant-numeric:tabular-nums;color:var(--text-secondary,#555)}
+@media (max-width:600px){.wx-row-said{display:none}}
 </style>`
