@@ -106,7 +106,14 @@ func handleMicroGenerate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a, err := BuildMicroApp(description, acc.ID, acc.Name)
+	// BuildApp, not BuildMicroApp. The document writer with the check-and-
+	// repair loop shipped for the agent tool only, so for months the button a
+	// person clicked still went to the shape picker this endpoint's own package
+	// comment says it replaced — "build me a unit converter" produced a
+	// checklist called Unit Converter. BuildApp falls back to BuildMicroApp
+	// when the model cannot produce a document that passes, which is what that
+	// picker is good for: a floor, not the first choice.
+	a, err := BuildApp(description, acc.ID, acc.Name)
 	if err != nil {
 		app.Error(w, r, http.StatusBadRequest, "Couldn't build that app: "+err.Error())
 		return

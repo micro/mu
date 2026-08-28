@@ -158,6 +158,7 @@ func authRequired() map[string]bool {
 		"/wallet/":           true, // Money: top-up, transfer, Stripe, the price list
 
 		"/apps":      false, // Public - apps directory; auth checked in handler for create/edit
+		"/code":      true,  // Writing an app: yours, and it spends credits
 		"/work":      false, // Public - task bounties; auth checked in handler for post/claim
 		"/web":       false, // Public - the open web: search it, read a page from it
 		"/search":    false, // Public - an old name for /web, redirected
@@ -518,6 +519,11 @@ func registerRoutes() {
 	// serve apps
 	http.HandleFunc("/apps", apps.Handler)
 	http.HandleFunc("/apps/", apps.Handler)
+
+	// Writing one. A door onto the apps service rather than a service of its
+	// own: the output is an app, the store is apps, and a service named for an
+	// action would have to import that one to do anything at all.
+	http.HandleFunc("/code", apps.CodeHandler)
 
 	// serve work (task bounties)
 
