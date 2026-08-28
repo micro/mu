@@ -191,7 +191,7 @@ func nativeToolCallKey(call gmai.ToolCall) string {
 // prompt) shared by queryNative and streamNative. ok is false when no native
 // provider is configured, signalling the caller to fall back.
 func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai.ToolWrapper) (a gmagent.Agent, question string, ok bool) {
-	provider, key, model, ok := nativeLLM()
+	provider, key, model, ok := nativeLLMFor(opts.Model)
 	if !ok {
 		return nil, "", false
 	}
@@ -292,8 +292,23 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 //
 // Local Ollama is still not wired: the go-micro agent cannot set a BaseURL, so
 // a local server would hit api.openai.com.
+// nativeLLM is the instance's own choice, for a caller that has not made one.
 func nativeLLM() (provider, key, model string, ok bool) {
-	want := strings.TrimSpace(settings.Get("AGENT_MODEL"))
+	return nativeLLMFor("")
+}
+
+// nativeLLMFor resolves the provider, key and model for a named model.
+//
+// The name comes from an agent that declares one, and falls back to the
+// instance's AGENT_MODEL when it does not. It is one function rather than two
+// because the hard part — which provider serves this id, and does this box hold
+// its key — is the same question whoever is asking, and the comment below about
+// what happens when the answer is no was worth having once, not twice.
+func nativeLLMFor(prefer string) (provider, key, model string, ok bool) {
+	want := strings.TrimSpace(prefer)
+	if want == "" {
+		want = strings.TrimSpace(settings.Get("AGENT_MODEL"))
+	}
 
 	// A named model picks its own provider, so an operator naming a DeepSeek id
 	// on an instance that also has an Anthropic key gets DeepSeek.
@@ -327,9 +342,9 @@ func nativeLLM() (provider, key, model string, ok bool) {
 			}
 		}
 		unservedModel.Do(func() {
-			app.Log("agent", "AGENT_MODEL is %q and no key is set for the provider "+
-				"that serves it, so it is being ignored; the agent is using the "+
-				"default model instead", want)
+			app.Log("agent", "the model %q is asked for and no key is set for the "+
+				"provider that serves it, so it is being ignored; the agent is "+
+				"using the default model instead", want)
 		})
 	}
 

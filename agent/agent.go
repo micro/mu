@@ -109,6 +109,20 @@ type QueryOpts struct {
 	// tokens on every turn and most questions have nothing to do with it.
 	Extra string
 	Tools []string // optional tool allow-list (user-defined agent); empty = all
+	// Model is which model to answer with, when this caller has a preference.
+	//
+	// Per-agent rather than per-instance because the jobs differ in what they
+	// need: a lookup is one round and any competent model does it, while a long
+	// run of tool calls rewards the model that holds together over ten of them.
+	// One global setting makes that a single decision for both, which means
+	// paying frontier prices for a weather question or scrimping on the one
+	// that builds things.
+	//
+	// Empty means the instance's own choice — see nativeLLMFor. A model whose
+	// provider has no key here is ignored with a line in the log, the same as a
+	// mistyped AGENT_MODEL, because an agent that answers beats one that fails
+	// closed over configuration.
+	Model string
 	// Stream reports the answer as it is produced, for a client that shows it
 	// arriving. Zero value means nobody is listening, which is every client
 	// but the web today — and the reason streaming was unreachable to them is
