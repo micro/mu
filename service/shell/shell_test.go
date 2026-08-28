@@ -218,12 +218,12 @@ func TestAMachineKeepsItsFiles(t *testing.T) {
 	if err := s.Run(ctx, &RunRequest{Command: "echo kept > note"}, &r); err != nil {
 		t.Fatalf("run: %v", err)
 	}
-	var rd ReadResponse
-	if err := s.Read(ctx, &ReadRequest{Path: "note"}, &rd); err != nil {
+	var rd RunResponse
+	if err := s.Run(ctx, &RunRequest{Command: "cat note"}, &rd); err != nil {
 		t.Fatalf("read: %v", err)
 	}
-	if strings.TrimSpace(rd.Content) != "kept" {
-		t.Errorf("the file did not survive the call: %q", rd.Content)
+	if strings.TrimSpace(rd.Output) != "kept" {
+		t.Errorf("the file did not survive the call: %q", rd.Output)
 	}
 }
 
@@ -342,9 +342,9 @@ func TestOneAccountCannotReadAnother(t *testing.T) {
 	}
 
 	// Each reads their own.
-	var rd ReadResponse
-	if err := s.Read(alice, &ReadRequest{Path: "secret"}, &rd); err != nil || rd.Content != marker {
-		t.Errorf("alice got %q (%v) reading her own file", rd.Content, err)
+	var rd RunResponse
+	if err := s.Run(alice, &RunRequest{Command: "cat secret"}, &rd); err != nil || rd.Output != marker {
+		t.Errorf("alice got %q (%v) reading her own file", rd.Output, err)
 	}
 
 	// And neither reads the other's, by the absolute path, from a shell.
@@ -374,8 +374,8 @@ func TestOneAccountCannotReadAnother(t *testing.T) {
 	}, &r); err != nil {
 		t.Fatalf("run: %v", err)
 	}
-	if err := s.Read(alice, &ReadRequest{Path: "secret"}, &rd); err != nil || rd.Content != marker {
-		t.Errorf("bob deleted alice's files: she now reads %q (%v)", rd.Content, err)
+	if err := s.Run(alice, &RunRequest{Command: "cat secret"}, &rd); err != nil || rd.Output != marker {
+		t.Errorf("bob deleted alice's files: she now reads %q (%v)", rd.Output, err)
 	}
 
 	// Deleting one account leaves the other's files alone, because the thing

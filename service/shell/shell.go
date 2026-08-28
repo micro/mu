@@ -142,84 +142,6 @@ func (Server) Write(ctx context.Context, req *WriteRequest, rsp *WriteResponse) 
 	return nil
 }
 
-// ── Read ────────────────────────────────────────────────────────
-
-type ReadRequest struct {
-	Path string `json:"path" required:"true" description:"The file to read, under /work"`
-}
-
-type ReadResponse struct {
-	Path    string `json:"path" description:"What was read"`
-	Content string `json:"content" description:"The file"`
-}
-
-// Read reads a file from the caller's machine.
-// @example {"path": "hello.go"}
-func (Server) Read(ctx context.Context, req *ReadRequest, rsp *ReadResponse) error {
-	who, err := caller(ctx)
-	if err != nil {
-		return err
-	}
-	path, err := under(who, req.Path)
-	if err != nil {
-		return err
-	}
-	if err := ready(ctx, who); err != nil {
-		return err
-	}
-	b, err := container.ReadFile(ctx, fileRun(who), path)
-	if err != nil {
-		return err
-	}
-	if len(b) > maxFile {
-		b = append(b[:maxFile], []byte("\n\n[…truncated]")...)
-	}
-	rsp.Path, rsp.Content = path, string(b)
-	return nil
-}
-
-// ── List ────────────────────────────────────────────────────────
-
-type ListRequest struct {
-	Dir string `json:"dir" description:"The directory to list, under /work. Defaults to /work"`
-}
-
-type ListResponse struct {
-	Dir     string `json:"dir" description:"What was listed"`
-	Entries string `json:"entries" description:"One line per entry, as ls -la writes it"`
-}
-
-// List is what is on the caller's machine, in a directory.
-// @example {"dir": "."}
-func (Server) List(ctx context.Context, req *ListRequest, rsp *ListResponse) error {
-	who, err := caller(ctx)
-	if err != nil {
-		return err
-	}
-	dir, err := under(who, req.Dir)
-	if err != nil {
-		return err
-	}
-	if err := ready(ctx, who); err != nil {
-		return err
-	}
-	// Not charged and not through Run, so it does not go through the meter: a
-	// listing costs this instance nothing and a caller finding its way around
-	// should not be billed for looking.
-	res, err := container.Exec(ctx, container.Run{
-		Name:    machineFor(who),
-		Command: "ls -la -- " + quoted(dir),
-		Dir:     home(who),
-		User:    runAs(who),
-		Wait:    quickWait,
-	})
-	if err != nil {
-		return err
-	}
-	rsp.Dir, rsp.Entries = dir, res.Out
-	return nil
-}
-
 // fileRun is how the file operations reach the caller's machine: their
 // container, their directory, and their own Unix user on a shared one.
 func fileRun(accountID string) container.Run {
@@ -276,26 +198,12 @@ var Spec = service.Spec{
 		},
 		"Write": {
 			Writes: true,
-			Doc: "Put a file on your machine, creating any missing directories. Use " +
-				"this rather than shell redirection for anything with quotes or " +
-				"backticks in it, which is most source code. Writing a whole file " +
-				"means sending a whole file, so use it to create one and use " +
-				"shell_replace to change one",
-		},
-		"Replace": {
-			Writes: true,
-			Doc: "Change part of a file: give the exact text to replace and what to " +
-				"put there. Far better than rewriting the file for a small change — " +
-				"the call stays short whatever the file's size, and the parts you " +
-				"are not touching cannot be lost. Text that appears more than once " +
-				"is refused rather than guessed at, so include a line either side to " +
-				"say which one you mean, or set all to change every occurrence",
-		},
-		"Read": {
-			Doc: "Read a file from your machine",
-		},
-		"List": {
-			Doc: "List a directory on your machine",
+			Doc: "Put a file on your machine, creating any missing directories. The " +
+				"only file operation that is not a shell command, because it is the " +
+				"one a shell is bad at: source is full of quotes and backticks and a " +
+				"heredoc will mangle it. The content arrives as a string and reaches " +
+				"the file without a shell seeing it. To read, list, search or change " +
+				"a file, use the shell — cat, ls, grep and sed are right there",
 		},
 	},
 }

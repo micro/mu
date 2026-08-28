@@ -46,15 +46,11 @@ package test
 // perfectly, and two small calls in one turn work perfectly, so it is the size
 // of what is being carried rather than the number of steps.
 //
-// apps_publish is the answer to the crossing that was redundant: it takes the
-// directory, reads the file inside the process, and hosts it. Both halves are
-// verified against a live instance — the page serves, publishing the same
-// directory again replaces the app rather than refusing, and a page reaching
-// for document.cookie is refused with the reason.
-//
-// It is worth being exact about what that does not fix. The document still has
-// to get into the box, and the only way in is a tool call carrying all of it.
-// One crossing is irreducible; the second one was ours, and it is gone.
+// apps_publish was built for the crossing that was redundant, and then removed:
+// a tool whose argument only means anything on the instance that holds the box
+// is a tool nobody can call from anywhere else, and the flow it served moved
+// into the Code agent. What is left here is the mechanism test — the box, the
+// file, the hosting — which is what the question above actually asked.
 
 import (
 	"context"
@@ -131,19 +127,24 @@ func TestAnAgentCanBuildAnAppInTheShellAndHostIt(t *testing.T) {
 		t.Fatalf("the edit failed in the box (exit %d): %s", r.Code, r.Output)
 	}
 
-	// 3. It reads back what it now has. Through Read rather than Run, so that a
-	// bug in either door shows up instead of cancelling out.
-	var rd shell.ReadResponse
-	if err := box.Read(ctx, &shell.ReadRequest{Path: "tally/index.html"}, &rd); err != nil {
+	// 3. It reads back what it now has, with cat — which is how a file is read
+	// here now that the read and list tools are gone. They were a second way to
+	// do what the shell already does, and a model that knows cat does not need
+	// to be taught shell_read.
+	// With a directory named, because the previous command left the session in
+	// tally/ — which is the point of the session and would otherwise make this
+	// line depend on the one above it.
+	var rd shell.RunResponse
+	if err := box.Run(ctx, &shell.RunRequest{Command: "cat index.html", Dir: "tally"}, &rd); err != nil {
 		t.Fatalf("read: %v", err)
 	}
-	if !strings.Contains(rd.Content, "Add one") || strings.Contains(rd.Content, "PLACEHOLDER") {
-		t.Fatalf("the box did not keep the edit:\n%s", rd.Content)
+	if !strings.Contains(rd.Output, "Add one") || strings.Contains(rd.Output, "PLACEHOLDER") {
+		t.Fatalf("the box did not keep the edit:\n%s", rd.Output)
 	}
 
 	// 4. And hosts it. Today this is the model passing the document it just read
 	// as an argument — see the note at the top about what that costs.
-	app, err := apps.CreateApp(who, "Tally", "shellbuild-tally", "a tally counter", "", rd.Content, "", 0, false)
+	app, err := apps.CreateApp(who, "Tally", "shellbuild-tally", "a tally counter", "", rd.Output, "", 0, false)
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}

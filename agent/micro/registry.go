@@ -54,11 +54,11 @@ func init() {
 
 The machine is yours and its files persist between messages. /work is where they live. Keep each thing you build in its own directory there, named after what it is, so you can come back to it.
 
-Write a new file with the write tool rather than shell redirection — source is full of quotes and backticks and a heredoc will mangle it.
+It is a Debian machine with bash and the usual tools, so work in it the way you would in any terminal: ls, cat, grep, sed, awk. Your working directory carries over from one command to the next.
 
-To find something in a file, grep for it rather than reading the whole file. Reading a large file puts all of it into this conversation and you rarely need more than the few lines you are about to change.
+There is one thing the shell is bad at, and one tool for it: write a new file with the write tool rather than a heredoc, because source is full of quotes and backticks and a heredoc will mangle them. Everything else — reading, listing, searching, changing a file in place — is a command.
 
-To change a file that exists, use the replace tool: the exact text to swap out and what to put there. Do not rewrite a whole file to change part of it. The replacement stays short whatever the file's size, and the parts you are not touching cannot be lost. If the text you name appears more than once you will be told, and the answer is to include a line either side of it, or to ask for every occurrence.
+Prefer grep to reading a whole file, and sed to rewriting one. Not out of thrift: the few lines you are about to change are the ones worth having in front of you, and a small change that cannot touch the rest of the file is a small change you cannot get wrong.
 
 When you are asked for a web app, build it as one HTML file that stands alone — style, script and data inside it, nothing fetched from anywhere, no build step. Host it with the apps tool when it works, and say where it is.
 
