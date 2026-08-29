@@ -127,10 +127,17 @@ type task struct {
 	want  string
 	// calls is the round-trip budget: how many tool calls this job is worth.
 	//
-	// Writing a page is one shell_write. Changing one is a grep and a sed.
-	// Anything above that is the run orienting itself — an ls to see where it
-	// is, a cat to read back what it just wrote — and each of those costs the
-	// person waiting three to fifteen seconds for nothing they asked for.
+	// Writing a page is one shell_write. Changing one is a read and a write.
+	// Anything above that is the run orienting itself, or failing and trying
+	// again — and each costs the person waiting three to fifteen seconds for
+	// nothing they asked for.
+	//
+	// The first run of this found what the budget is for. Extend took eleven
+	// calls, and the sequence was the same sed retried three times against a
+	// page full of quotes: sed -i exits 0 when it substitutes nothing, so a
+	// failed edit looks exactly like a successful one until you go and look.
+	// The run then rewrote the whole file anyway, which is what it should have
+	// done in the second call.
 	calls int
 }
 
@@ -149,7 +156,7 @@ var tasks = []task{
 		fill:   [][2]any{{"bill", 100}, {"tip", 20}},
 		wants:  []string{"20", "120"},
 		keeps:  0.6,
-		// Find the line, change the line.
+		// Read it, write it back changed.
 		calls: 3,
 	},
 	{
@@ -165,8 +172,8 @@ var tasks = []task{
 		prompt: "In the directory eval-files, create three files a.txt, b.txt and c.txt, then write a shell script that renames every .txt in that directory to .md, and run it.",
 		shell:  "ls eval-files",
 		want:   "a.md b.md c.md",
-		// Genuinely several commands: make the files, write the script, run it.
-		calls: 4,
+		// Genuinely several: three files, a script, and running it.
+		calls: 5,
 	},
 }
 

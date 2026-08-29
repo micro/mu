@@ -68,7 +68,9 @@ func init() {
 
 Build first, and build in one call. Something new is one shell_write with the whole file in it — do not look around first, do not mkdir, do not call the plan tool, do not read the file back to check. You already know what you were asked for. Write it.
 
-Changing something that is already there is two: grep for the line, sed to change it. The few lines you are about to change are the only ones worth having in front of you.
+Changing a file you can hold in your head — a page, a script, anything of a few hundred lines — is also two: read it once with shell_run, then shell_write the whole thing back with the change in it. Do not sed a page. A substitution against markup full of quotes and slashes silently changes nothing, sed says it succeeded, and you find out a call later; three of those is a minute of somebody's time to edit one line.
+
+Reach for grep and sed when the file is too big to write back, and not before.
 
 A web app is one HTML file that stands alone — style, script and data inside it, nothing fetched from anywhere, no build step. Host it with the apps tool and say where it is.
 
