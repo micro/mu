@@ -184,7 +184,7 @@ func TestTheSpecCarriesEnoughToDrawThePage(t *testing.T) {
 	if Spec.Description == "" {
 		t.Error("no description, so the page opens with a blank line")
 	}
-	if Spec.Card == nil {
+	if !Spec.Card.Set() {
 		t.Error("no card, so the page cannot show what the weather is — which is " +
 			"the only reason somebody opened it")
 	}

@@ -110,7 +110,7 @@ func TestALongNoteIsTrimmedToALine(t *testing.T) {
 // populate the cache would be showing their notes to the instance. The board on
 // Home is rendered per request instead — see Preview.
 func TestNotesIsNotACard(t *testing.T) {
-	if Spec.Card != nil {
+	if Spec.Card.Set() {
 		t.Error("notes declares a Card; the home card cache is shared by every " +
 			"viewer, so one account's notes would render on everybody's screen")
 	}

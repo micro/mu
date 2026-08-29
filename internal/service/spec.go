@@ -75,12 +75,57 @@ type Spec struct {
 	// already has a sandbox and a security boundary — there is no reason for a
 	// second one.
 	//
-	// Wrap a plain renderer with Glance, or one that knows when what it shows
-	// happened with Timed. The difference decides where a card goes — see Card.
 	// Wrap a plain renderer with Glance, one that varies by reader with
 	// Personal, and one that knows when what it shows happened with Timed.
 	// See Viewer, whose zero value is the shared render.
-	Card func(Viewer) Card
+	Card Renderer
+}
+
+// Renderer is a card's renderer, and whether its answer is the same for
+// everybody.
+//
+// It was a bare func(Viewer) Card, and that erased the one thing the caller
+// most needs to know. Glance and Personal already say which kind a renderer is
+// — that is the entire difference between them — and both collapsed to the same
+// function type, so by the time Home held one it could not tell whether the
+// render was safe to share.
+//
+// The cost was silent and it was live. Home keeps one set of card strings for
+// every viewer, so it rendered every card as Anyone — which enforced the
+// sharing rule by throwing the reader away, on all of them, because the type
+// could not say which ones minded. Four services had written a personal branch
+// (weather, prayer, flights, stream) and on Home none of it could be reached.
+//
+// Prayer is the one of the four that cards.json puts on Home, and it is the
+// case worth naming: prayer.ReminderHTML puts the next prayer in the corner of
+// the card, computed from where the account says it is, and on Home that corner
+// was always empty. Its own comment calls that "the whole difference between a
+// card that answers and one that waits". The other three are reachable through
+// /card and their service pages, where the viewer was never discarded.
+//
+// A zero Renderer is a service with nothing to show, which is why Set exists:
+// the old nil check was on the function, and there is no useful nil to compare
+// a struct to.
+type Renderer struct {
+	render   func(Viewer) Card
+	personal bool
+}
+
+// Set reports whether this service renders a card at all.
+func (r Renderer) Set() bool { return r.render != nil }
+
+// Personal reports whether the render answers for whoever is looking, and so
+// must not be put in a cache shared by every viewer.
+func (r Renderer) Personal() bool { return r.personal }
+
+// Render draws the card. The zero Renderer draws nothing rather than panicking:
+// a caller that has already checked Set should not have to check again, and one
+// that has not gets an empty card, which every card consumer already handles.
+func (r Renderer) Render(v Viewer) Card {
+	if r.render == nil {
+		return Card{}
+	}
+	return r.render(v)
 }
 
 // Card is a service rendered at a glance, and when.
@@ -141,11 +186,11 @@ func For(accountID string) Viewer { return Viewer{Account: accountID} }
 
 // Glance wraps a renderer that shows how things are now, the same for
 // everybody: the headlines, the FTSE, which lines are down.
-func Glance(f func() string) func(Viewer) Card {
+func Glance(f func() string) Renderer {
 	if f == nil {
-		return nil
+		return Renderer{}
 	}
-	return func(Viewer) Card { return Card{HTML: f()} }
+	return Renderer{render: func(Viewer) Card { return Card{HTML: f()} }}
 }
 
 // Personal wraps a renderer that answers for whoever is looking.
@@ -161,11 +206,14 @@ func Glance(f func() string) func(Viewer) Card {
 // hand-written page that asked the browser instead, which is how the location
 // ended up in localStorage where no agent could reach it. See account/place.go
 // for the other half.
-func Personal(f func(Viewer) string) func(Viewer) Card {
+func Personal(f func(Viewer) string) Renderer {
 	if f == nil {
-		return nil
+		return Renderer{}
 	}
-	return func(v Viewer) Card { return Card{HTML: f(v)} }
+	return Renderer{
+		render:   func(v Viewer) Card { return Card{HTML: f(v)} },
+		personal: true,
+	}
 }
 
 // Timed wraps a renderer that knows when what it shows happened.
@@ -173,14 +221,14 @@ func Personal(f func(Viewer) string) func(Viewer) Card {
 // A renderer that returns a zero time — nothing published yet, an empty feed —
 // falls back to a glance rather than claiming the epoch, which would sort it to
 // the bottom of the stream forever.
-func Timed(f func() (string, time.Time)) func(Viewer) Card {
+func Timed(f func() (string, time.Time)) Renderer {
 	if f == nil {
-		return nil
+		return Renderer{}
 	}
-	return func(Viewer) Card {
+	return Renderer{render: func(Viewer) Card {
 		html, at := f()
 		return Card{HTML: html, At: at}
-	}
+	}}
 }
 
 // Requires is how much identity a method needs.
@@ -294,7 +342,7 @@ func (s Spec) Headless() bool { return s.Page == "" }
 func Cards() []Spec {
 	out := make([]Spec, 0, 8)
 	for _, s := range Specs() {
-		if s.Card != nil {
+		if s.Card.Set() {
 			out = append(out, s)
 		}
 	}
@@ -305,10 +353,10 @@ func Cards() []Spec {
 // CardFor renders one service's card, or the zero card if it has none.
 func CardFor(name string, v Viewer) Card {
 	s, ok := SpecFor(name)
-	if !ok || s.Card == nil {
+	if !ok {
 		return Card{}
 	}
-	return s.Card(v)
+	return s.Card.Render(v)
 }
 
 // Nav returns every service, ordered by label. This is the catalogue at

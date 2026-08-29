@@ -151,7 +151,12 @@ func TestThereIsNoCardPicker(t *testing.T) {
 
 // The card grid is the world's content. What is yours — the last run, your
 // mail — sits in a row above it, so neither belongs here.
-func TestTheCardGridHoldsNothingPersonal(t *testing.T) {
+//
+// Not to be confused with a personal *card*, which is a different sense of the
+// word and is now allowed: weather and prayer render for whoever is looking
+// (see personal_card_test.go). The rule here is about which blocks the grid is
+// made of, not about who a block is drawn for.
+func TestTheCardGridIsNotYourMailbox(t *testing.T) {
 	prev := Cards
 	Cards = []Card{{ID: "news", Title: "News", CachedHTML: `<p>Rates held</p>`}}
 	t.Cleanup(func() { Cards = prev })

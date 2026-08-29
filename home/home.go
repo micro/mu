@@ -49,7 +49,9 @@ type Card struct {
 	Column   string
 	Position int
 	Link     string
-	Content  func(service.Viewer) service.Card
+	// Content renders it, and says whether that render is the same for
+	// everybody. A personal one never enters the cache below — see RefreshCards.
+	Content service.Renderer
 	// CachedHTML is the last render; At is when what it shows happened, zero
 	// for a card that shows how things are rather than something that occurred.
 	CachedHTML  string
@@ -113,7 +115,7 @@ func Load() {
 	// service could grow a card and never appear here, and a renamed one would
 	// silently render nothing. News stays written out: it is this package's own
 	// card, not the service's view of itself.
-	cardFunctions := map[string]func(service.Viewer) service.Card{}
+	cardFunctions := map[string]service.Renderer{}
 	for _, sp := range service.Cards() {
 		cardFunctions[sp.Name] = sp.Card
 	}
@@ -218,16 +220,28 @@ func RefreshCards() {
 	for i := range Cards {
 		card := &Cards[i]
 
-		// Get fresh content, and when what it shows happened.
+		// A personal card is not cached at all.
 		//
-		// The impersonal render, deliberately. This cache is one set of
-		// strings shared by every viewer — see CachedHTML — so a card that
-		// answered for whoever triggered the refresh would be served to
-		// everybody after them. A personal card belongs on a per-request
-		// surface, which is what a service page is; giving Home one means
-		// giving Home a cache per account, and that is a change to make on
-		// purpose rather than as a side effect of this signature.
-		fresh := card.Content(service.Anyone())
+		// This cache is one set of strings shared by every viewer — see
+		// CachedHTML — so a card that answered for whoever triggered the
+		// refresh would be served to everybody after them. That was the whole
+		// reason every card was rendered here as Anyone, and the cost was that
+		// prayer — the one personal card cards.json puts on this page — showed
+		// its next-prayer mark to nobody, because that mark is computed from
+		// where the reader is. The sharing rule was being enforced by throwing
+		// away the reader, on every card, because the type could not say which
+		// ones minded.
+		//
+		// It can now. A personal card is left out of the cache and drawn per
+		// request instead, against the reader who asked — see cardsHTMLFor.
+		// Skipping it here also skips a render nobody will read, which for a
+		// card that fetches is a request saved every two minutes.
+		if card.Content.Personal() {
+			continue
+		}
+
+		// Get fresh content, and when what it shows happened.
+		fresh := card.Content.Render(service.Anyone())
 		card.At = fresh.At
 
 		// Calculate hash
@@ -263,13 +277,20 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			HTML   string `json:"html"`
 			Column string `json:"column"`
 		}
+		// The poll refreshes the page in place, so it renders for the same
+		// reader the page did — otherwise a signed-in reader's weather reverted
+		// to the signed-out card two minutes after arriving.
+		pollWho := service.Anyone()
+		if _, acc := auth.TrySession(r); acc != nil {
+			pollWho = service.For(acc.ID)
+		}
 		var result []cardData
 		for _, card := range Cards {
 			// The same two halves the page builds, from the same two
 			// functions. Sending CachedHTML raw is what took the More link off
 			// every card on the first refresh, and sending the bare Title is
 			// why the age on a card never moved while its contents did.
-			body := cardBody(card)
+			body := cardBody(card, pollWho)
 			if body == "" {
 				continue
 			}
@@ -634,8 +655,8 @@ var cardTips = map[string]string{
 // link on the first refresh and got it back on the next full page load, which
 // is exactly what "sometimes the More buttons disappear" looks like from the
 // outside.
-func cardBody(c Card) string {
-	body := strings.TrimSpace(c.CachedHTML)
+func cardBody(c Card, who service.Viewer) string {
+	body := strings.TrimSpace(cardRender(c, who))
 	if body == "" {
 		return ""
 	}
@@ -643,6 +664,22 @@ func cardBody(c Card) string {
 		body += app.Link("More", c.Link)
 	}
 	return body
+}
+
+// cardRender is a card's HTML for one reader: the shared cache for a card that
+// says the same thing to everybody, and a fresh render for one that does not.
+//
+// The personal ones are not in the cache at all — see RefreshCards — so this is
+// the only place they are drawn, and it is per request, which is what makes
+// them personal in the first place. A card that answers for whoever is looking
+// cannot be memoised into a string shared by every viewer, and pretending
+// otherwise is how prayer ended up showing its signed-out branch — no next
+// prayer, the one thing it is for — to signed-in readers.
+func cardRender(c Card, who service.Viewer) string {
+	if c.Content.Personal() {
+		return c.Content.Render(who).HTML
+	}
+	return c.CachedHTML
 }
 
 // cardHead is a card's title: its name, a way through to the service, what it
@@ -699,9 +736,14 @@ func CardsHTML(r *http.Request, viewerAcc *auth.Account) string {
 	// the other cost of computing it: an empty card reshuffled everything after
 	// it, so the whole page moved depending on whether the daily image had
 	// landed yet.
+	who := service.Anyone()
+	if viewerAcc != nil {
+		who = service.For(viewerAcc.ID)
+	}
+
 	var leftHTML, rightHTML []string
 	for _, card := range Cards {
-		body := cardBody(card)
+		body := cardBody(card, who)
 		if body == "" {
 			continue
 		}
