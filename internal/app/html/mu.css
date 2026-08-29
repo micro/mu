@@ -6119,8 +6119,6 @@ button.pill:hover {
    Under the card rather than inside it — within the border it read as one more
    row, indistinguishable from the three conversations above it, and the three
    blocks on Home now end the same way and align on the same left edge. */
-.peek-more { display: inline-block; margin-top: 12px; font-size: 13px; color: var(--text-secondary, #555); text-decoration: none }
-.peek-more:hover { color: var(--text-primary, #1a1a1a) }
 
 /* On a phone a row is two lines, not one squeezed into 390px: the name and the
    time on top, the subject and the preview under it — which is what every mail

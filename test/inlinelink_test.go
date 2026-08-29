@@ -153,3 +153,47 @@ func TestLinkIsStillDisplayBlock(t *testing.T) {
 			"delete both, and the two descendant overrides in mu.css with them")
 	}
 }
+
+// The link out of a card is drawn one way.
+//
+// A card's More link is app.Link, and the three peeks on the home page each
+// hand-rolled their own anchor with a peek-more class: normal weight where
+// Link is semibold, and secondary grey where Link is the primary text colour.
+// Side by side on one page, in the same position on the same kind of card,
+// they were visibly two different things pretending to be one.
+//
+// It is the ordinary way this drifts — a second way of doing something is
+// easier to write than to find the first — so the test is on there being one
+// way rather than on the styling of either.
+func TestACardsWayOutIsTheSameLinkEverywhere(t *testing.T) {
+	var found []string
+	err := filepath.Walk(at(""), func(path string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() {
+			return err
+		}
+		if strings.HasSuffix(path, "_test.go") {
+			return nil
+		}
+		if !strings.HasSuffix(path, ".go") && !strings.HasSuffix(path, ".css") {
+			return nil
+		}
+		b, rerr := os.ReadFile(path)
+		if rerr != nil {
+			return nil
+		}
+		if strings.Contains(string(b), "peek-more") {
+			rel, _ := filepath.Rel(at(""), path)
+			found = append(found, rel)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(found) > 0 {
+		t.Errorf("peek-more is back in %v — a card's way out is app.Link, which is "+
+			"semibold and the primary text colour. A second class for the same "+
+			"job is how two links in the same place on the same page end up "+
+			"looking different.", found)
+	}
+}

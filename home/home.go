@@ -499,7 +499,7 @@ function fetchW(la,lo){
 		// rows and the five agents above have to their pages, so it ends the
 		// same way. Only when there are cards: a link out from under a heading
 		// with nothing beneath it reads as the block having failed to render.
-		b.WriteString(`<a class="peek-more" href="/services">Go to services &rarr;</a>`)
+		b.WriteString(app.Link("Go to services", "/services"))
 	}
 
 	b.WriteString(`</div>`) // close #home-cards

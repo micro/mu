@@ -108,7 +108,7 @@ func Preview(accountID string) string {
 	// not tell from the three above it. Same place the services grid puts its
 	// own — see home.CardsHTML.
 	b.WriteString(`</div>`)
-	b.WriteString(`<a class="peek-more" href="/inbox">Go to inbox &rarr;</a>`)
+	b.WriteString(app.Link("Go to inbox", "/inbox"))
 	return b.String()
 }
 
