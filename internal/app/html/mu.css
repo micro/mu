@@ -882,32 +882,6 @@ body.page-home #page-title ~ #customize-link {
 
 .home-section small { font-size: 11px; white-space: nowrap }
 
-/* What is yours, across rather than down.
-   
-   Notes, the inbox and the agent roster were three full-width bands stacked on
-   top of each other, and a band assumes content that fills it. None of these
-   holds more than four short rows: on a 1440px screen Agents was 1120 by 56
-   pixels to say "Micro — nothing yet", and the services did not begin until
-   850 pixels down. Three columns is the shape that much content actually has.
-   
-   A grid rather than flex, because with flex a single surviving block stretches
-   back to the full width — which is the thing being fixed. In a grid it keeps
-   its third and the rest of the row is honestly empty.
-   
-   align-items:start so a column with three notes in it does not stretch the two
-   beside it to match. */
-.home-yours {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0 20px;
-  align-items: start;
-}
-.home-yours-col { min-width: 0 }
-
-/* Stacked at the width the card grid below stacks at, so the two halves of the
-   page change shape together rather than one at a time. */
-@media only screen and (max-width: 1100px) {
-  .home-yours { grid-template-columns: 1fr }
 }
 
 /* What is waiting, said once, in the section it is about. It was a suggestion
@@ -5984,7 +5958,6 @@ button.pill:hover {
    they are the same object: same border, same background, same inset. Drawing
    the second one differently would say they are different kinds of thing. */
 .inbox-peek,
-.notes-peek,
 .agent-peek {
   border: var(--border-width, 1px) solid var(--card-border, #e8e8e8);
   border-radius: var(--border-radius, 6px);
@@ -6009,8 +5982,7 @@ button.pill:hover {
    "Go to agents" link underneath made every row a not-last one — so the block
    grew a line across its foot. Between-rows cannot be wrong about what follows
    the list. */
-.agent-peek-row + .agent-peek-row,
-.notes-peek-row + .notes-peek-row {
+.agent-peek-row + .agent-peek-row {
   border-top: var(--border-width, 1px) solid var(--card-border, #f4f4f4);
 }
 .agent-peek-row:visited { color: inherit }
@@ -6024,100 +5996,16 @@ button.pill:hover {
    ancestor is drawn through its inline descendants — a child cannot take it
    off. .agent-peek-name:hover{text-decoration:none} is powerless here however
    specific it is. */
-.agent-peek-row,
-.notes-peek-row {
+.agent-peek-row {
   transition: background var(--transition-fast);
 }
-.agent-peek-row:hover,
-.notes-peek-row:hover {
+.agent-peek-row:hover {
   background: var(--hover-background);
   text-decoration: none;
 }
 
 .agent-peek-name { font-weight: 500; flex: none }
 
-/* A notes row holds two things — the note, and the way to take it down — so the
-   row is the container and the anchor inside it takes the slack. Everything the
-   row shares with an agent row is still shared; only the nesting differs. */
-/* A note is three lines, not three columns.
-   
-   Title and time on the first, the note itself under them, the way to remove it
-   below that. It was one flex line shared with the agent roster's shape — name,
-   text, time — and that shape wants a row it can spread across. This lives in a
-   third of the page, where the text had nowhere to go and the time sat in the
-   middle of the row with the title alone on its left. */
-.notes-peek-row {
-  display: block;
-  padding: 11px 0;
-}
-.notes-peek-open {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 2px 10px;
-  text-decoration: none;
-  color: inherit;
-}
-.notes-peek-open:visited { color: inherit }
-/* The underline comes off the element that is actually the <a>: text-decoration
-   set on an ancestor is drawn through its inline descendants, so a rule on the
-   row cancels nothing. See the same note on .agent-peek-row, which learnt it
-   the other way round. */
-.notes-peek-open:hover { text-decoration: none }
-/* The title takes the line and pushes the time to the end of it; the note goes
-   underneath, whole line to itself. */
-.notes-peek-title {
-  flex: 1;
-  min-width: 0;
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-/* A whole line to itself. flex-basis:100% alone was not enough: the shared
-   ".agent-peek-last, .notes-peek-text { flex: 1 }" rule sits further down this
-   file, and flex:1 is shorthand for flex-basis:0 — so the note went back onto
-   the first line, between the time and nothing. The note is unshared from that
-   rule now, because the two shapes want opposite things: an agent row lays
-   three items along one line, a note stacks them. */
-.notes-peek-text {
-  flex: 0 0 100%;
-  min-width: 0;
-  font-size: 13px;
-  color: var(--text-muted, #888);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.notes-peek-when { flex: none; font-size: 12px; color: var(--text-muted, #bbb) }
-.notes-peek-take { margin: 2px 0 0 }
-.notes-peek-take button {
-  background: none;
-  border: 0;
-  padding: 2px 0;
-  font-size: 12px;
-  line-height: 1;
-  white-space: nowrap;
-  color: var(--text-muted, #bbb);
-  cursor: pointer;
-  /* Quiet until the row is under the pointer: a column of these down the side
-     of the block is the loudest thing on it, and taking a note down is not what
-     the board is for. */
-  opacity: 0;
-  transition: opacity var(--transition-fast), color var(--transition-fast);
-}
-.notes-peek-row:hover .notes-peek-take button,
-.notes-peek-take button:focus-visible { opacity: 1 }
-.notes-peek-take button:hover { color: var(--text-primary, #111) }
-/* Touch has no hover, so there it is simply always there — and big enough to
-   hit, which the cross never was. */
-@media (hover: none) {
-  .notes-peek-take button {
-    opacity: 1;
-    min-height: 44px;
-    padding: 8px 0;
-  }
-}
 .agent-peek-last {
   flex: 1;
   min-width: 0;
