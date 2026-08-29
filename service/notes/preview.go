@@ -72,12 +72,15 @@ func Preview(r *http.Request, accountID string) string {
 		// addressed by its title here as it is everywhere else in this service.
 		b.WriteString(`<a class="notes-peek-open" href="/notes?note=` +
 			url.QueryEscape(e.Title) + `">`)
+		// Title and time on the first line, the note itself under them. The
+		// time was after the text, which put it in the middle of the row on a
+		// column this narrow and left the title with nothing on its right.
 		b.WriteString(`<span class="notes-peek-title">` +
 			html.EscapeString(trimTo(e.Title, 30)) + `</span>`)
-		b.WriteString(`<span class="notes-peek-text">` +
-			html.EscapeString(trimTo(e.Text, previewSnippet)) + `</span>`)
 		b.WriteString(`<span class="notes-peek-when">` +
 			html.EscapeString(app.TimeAgo(e.UpdatedAt)) + `</span>`)
+		b.WriteString(`<span class="notes-peek-text">` +
+			html.EscapeString(trimTo(e.Text, previewSnippet)) + `</span>`)
 		b.WriteString(`</a>`)
 
 		// Taking a note down, from where it is pinned.
@@ -90,20 +93,24 @@ func Preview(r *http.Request, accountID string) string {
 		// it is legible, and this makes it editable — one click, and the agent
 		// stops being told.
 		//
-		// Which is why it asks first, and why it says a word rather than
-		// showing a cross. This is the same delete the page offers, with the
-		// same confirm on it, because it is the same act: a note is not
-		// archived anywhere and taking it down is the whole of losing it. A
-		// cross is the glyph for close, hide, put away — reversible things —
-		// and putting it on the one control that forgets something would be
-		// borrowing a promise this cannot keep.
+		// Which is why it asks first, and why it says Remove. This is the same
+		// delete the page offers, with the same confirm on it, because it is
+		// the same act: a note is not archived anywhere and removing it is the
+		// whole of losing it. Not a cross, which is the glyph for close and
+		// hide — reversible things — and not Dismiss, which says the same. The
+		// word has to mean the thing that happens.
+		//
+		// Under the note rather than beside it. Beside it, the control competes
+		// with the time for the right-hand end of a 360px column, and the two
+		// most different things on the row — when it changed, and the one way
+		// to lose it — end up in the same place.
 		b.WriteString(`<form method="post" action="/notes" class="notes-peek-take" ` +
 			`onsubmit="return confirm('Take this note down? Your agents stop being told it.')">` +
 			`<input type="hidden" name="_csrf" value="` + csrf + `">` +
 			`<input type="hidden" name="back" value="/home">` +
 			`<button type="submit" name="delete" value="` + html.EscapeString(e.Title) +
-			`" aria-label="Take down the note called ` +
-			html.EscapeString(e.Title) + `">Take down</button>` +
+			`" aria-label="Remove the note called ` +
+			html.EscapeString(e.Title) + `">Remove</button>` +
 			`</form>`)
 
 		b.WriteString(`</div>`)

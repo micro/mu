@@ -224,11 +224,25 @@ const pageCSS = `<style>
 .note-card-body{font-size:13px;color:var(--text-muted,#666);line-height:1.45;flex:1;overflow-wrap:anywhere}
 .note-card-when{font-size:12px;color:var(--text-muted,#999)}
 .note-editor{display:flex;flex-direction:column;gap:10px}
-.note-title-in{padding:9px 12px;border:1px solid var(--border-color,#d1d5db);border-radius:8px;
-  font-size:15px;font-weight:600;font-family:inherit;width:100%}
-.note-title-in[readonly]{background:transparent;border-color:transparent;padding-left:0;font-size:19px}
-.note-body-in{padding:11px 12px;border:1px solid var(--border-color,#d1d5db);border-radius:8px;
-  font-size:14px;font-family:inherit;line-height:1.55;resize:vertical;width:100%}
+/* Both flush left, because they are the two halves of one note and an eye
+   reading down them should not have to step sideways. They were a bordered box
+   at 12px and a borderless one at 0 — the title inset, the body not — which is
+   what "the title is padded more than the content" looks like. No boxes now: a
+   heading with a rule under it while it can be typed into, and the note under
+   that. See the comment on .note-editor in mu.css for why there were two. */
+/* Qualified, and it has to be. mu.css styles controls globally, and its input
+   rule is input:not([type=checkbox]):not([type=radio]) — specificity 0,2,1,
+   which no single class can outrank. Its textarea rule is a bare element
+   selector at 0,0,1, which any class beats. So .note-body-in applied and
+   .note-title-in did not, and the two lines of a note came out 12px apart with
+   nothing in either file saying why. .note-editor input.note-title-in is 0,2,1
+   and comes later, so it wins. */
+.note-editor input.note-title-in{padding:9px 0;border:0;
+  border-bottom:1px solid var(--border-color,#e5e5e5);font-size:19px;font-weight:600;
+  font-family:inherit;width:100%;outline:none;background:transparent;min-height:0}
+.note-editor input.note-title-in[readonly]{border-bottom-color:transparent}
+.note-body-in{padding:11px 0;border:0;font-size:15px;font-family:inherit;line-height:1.55;
+  resize:vertical;width:100%;outline:none;background:transparent}
 .note-actions{display:flex;gap:10px;align-items:center}
 .note-delete{margin:12px 0 0}
 </style>`
