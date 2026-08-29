@@ -15,9 +15,9 @@ import (
 // boxes that differ by one input is a choice the page is making the reader make
 // before they have said anything.
 //
-// One set of inputs now, and two buttons — because the verbs genuinely differ
-// in what they cost, and a single button carrying one price badge would be
-// wrong half the time.
+// One set of inputs now, and two buttons — because the two verbs really are
+// different questions, and which one you meant is not something the fields can
+// tell us.
 func TestPlacesHasOneFormWithBothVerbs(t *testing.T) {
 	b, err := os.ReadFile("places.go")
 	if err != nil {
@@ -35,7 +35,7 @@ func TestPlacesHasOneFormWithBothVerbs(t *testing.T) {
 			t.Errorf("places renders more than one way to ask (%d forms)", n)
 		}
 	}
-	// Both verbs reachable from the one form, each with its own price.
+	// Both verbs reachable from the one form.
 	for _, want := range []string{`action="/places/search"`, `formaction="/places/nearby"`} {
 		if !strings.Contains(src, want) {
 			t.Errorf("the form cannot reach %s", want)

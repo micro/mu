@@ -767,8 +767,8 @@ func renderSearchFormHTML(q, near, nearLat, nearLon, radius, sortBy string) stri
       </select>
     </div>
     <div class="places-actions-row">
-      <button type="submit">Search <span class="cost-badge">5p</span></button>
-      <button type="submit" formaction="/places/nearby" class="btn-secondary">What is nearby <span class="cost-badge">2p</span></button>
+      <button type="submit">Search</button>
+      <button type="submit" formaction="/places/nearby" class="btn-secondary">What is nearby</button>
     </div>
   </form>`,
 		escapeHTML(q), escapeHTML(near), escapeHTML(nearLat), escapeHTML(nearLon),

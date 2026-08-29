@@ -5123,17 +5123,6 @@ a.card-hover:hover {
   margin: 4px 0 0;
 }
 
-.cost-badge {
-  display: inline-block;
-  background: var(--text-secondary);
-  color: #fff;
-  font-size: 0.7em;
-  padding: 1px 5px;
-  border-radius: 3px;
-  margin-left: 4px;
-  vertical-align: middle;
-}
-
 /* Places city grid */
 .city-grid {
   display: flex;

@@ -118,11 +118,7 @@ func allowance(who string) string {
 	// subtraction below made "0 messages left today" — which reads as blocked,
 	// to the one account that never is.
 	if limit == quota.NoLimit {
-		msg := "No daily limit on this account"
-		if cost := quota.OperationCost(quota.OpSMSSend); cost > 0 {
-			msg += ", at " + itoa(cost) + " credits a message"
-		}
-		return msg + "."
+		return "No daily limit on this account."
 	}
 
 	sent := SentToday(who)
@@ -134,11 +130,7 @@ func allowance(who string) string {
 	if left == 1 {
 		s = ""
 	}
-	msg := "" + itoa(left) + " message" + s + " left today"
-	if cost := quota.OperationCost(quota.OpSMSSend); cost > 0 {
-		msg += ", at " + itoa(cost) + " credits each"
-	}
-	return msg + "."
+	return itoa(left) + " message" + s + " left today."
 }
 
 // composer is the send box. Its recipient list is the rule, rendered.
