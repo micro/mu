@@ -6063,27 +6063,39 @@ button.pill:hover {
    the control that takes the note down, and the rule stayed on the wrapper —
    which cancelled nothing, and every note on the board underlined on hover. */
 .notes-peek-open:hover { text-decoration: none }
-.notes-peek-take { flex: none; margin: 0; line-height: 1 }
+/* A word rather than a cross.
+   
+   A cross means close, hide, dismiss — reversible things. This deletes the
+   note and stops the agent being told it, and the one control that does that
+   should not be the glyph every reader has learnt means "put this away". It is
+   also 13px wide, which is not a target anybody can hit with a thumb. */
+.notes-peek-take { flex: none; margin: 0; display: flex; align-items: center }
 .notes-peek-take button {
   background: none;
   border: 0;
-  padding: 0 2px;
-  font-size: 16px;
+  padding: 6px 0 6px 10px;
+  font-size: 12px;
   line-height: 1;
+  white-space: nowrap;
   color: var(--text-muted, #bbb);
   cursor: pointer;
-  /* Invisible until the row is under the pointer: a column of crosses down the
-     side of the block is the loudest thing on it, and taking a note down is not
-     what the board is for. */
+  /* Quiet until the row is under the pointer: a column of these down the side
+     of the block is the loudest thing on it, and taking a note down is not what
+     the board is for. */
   opacity: 0;
   transition: opacity var(--transition-fast), color var(--transition-fast);
 }
 .notes-peek-row:hover .notes-peek-take button,
-.notes-peek-take button:focus { opacity: 1 }
+.notes-peek-take button:focus-visible { opacity: 1 }
 .notes-peek-take button:hover { color: var(--text-primary, #111) }
-/* Touch has no hover, so there it is simply always there. */
+/* Touch has no hover, so there it is simply always there — and big enough to
+   hit, which the cross never was. */
 @media (hover: none) {
-  .notes-peek-take button { opacity: 1 }
+  .notes-peek-take button {
+    opacity: 1;
+    min-height: 44px;
+    padding: 6px 0 6px 12px;
+  }
 }
 .agent-peek-last,
 .notes-peek-text {
@@ -6102,10 +6114,23 @@ button.pill:hover {
 @media (max-width: 640px) {
   /* The name over the rest, because three columns in 320px leaves the middle
      one with nothing to show. */
-  .agent-peek-row,
-  .notes-peek-row { flex-wrap: wrap; row-gap: 2px }
-  .agent-peek-name,
+  .agent-peek-row { flex-wrap: wrap; row-gap: 2px }
+  .agent-peek-name { flex-basis: 100% }
+
+  /* The anchor wraps, not the row.
+     
+     This rule used to name .notes-peek-row and .notes-peek-title alongside the
+     agent ones, from when a notes row was the same shape — three spans, direct
+     children. It is not: the spans sit inside .notes-peek-open now, so
+     flex-basis:100% on the title applied inside an anchor that does not wrap.
+     The title took the whole line, the text was squeezed to nothing, and the
+     time ran off the right of a 390px screen and under the button — taking the
+     page's horizontal scroll with it. */
+  .notes-peek-open { flex-wrap: wrap; row-gap: 2px }
   .notes-peek-title { flex-basis: 100% }
+  /* The control spans both lines rather than sitting on the baseline of the
+     first, which is what align-items:baseline on the row would otherwise do. */
+  .notes-peek-take { align-items: center }
 }
 
 .peek-row {

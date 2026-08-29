@@ -147,6 +147,14 @@ func TestEachRowCanBeTakenDown(t *testing.T) {
 	if !strings.Contains(got, "confirm(") {
 		t.Error("taking a note down does not ask first")
 	}
+	// And it says what it does. A cross is the glyph for close and hide, which
+	// are reversible; this forgets the note and stops the agent being told it.
+	if !strings.Contains(got, ">Take down</button>") {
+		t.Error("the control does not say what it does")
+	}
+	if strings.Contains(got, "&times;") {
+		t.Error("the control is a cross, which promises the wrong thing")
+	}
 	// And it is a POST that carries the token, not a link somebody else's page
 	// can put in an image tag.
 	if !strings.Contains(got, `method="post"`) || !strings.Contains(got, `name="_csrf"`) {

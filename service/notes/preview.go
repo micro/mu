@@ -90,16 +90,20 @@ func Preview(r *http.Request, accountID string) string {
 		// it is legible, and this makes it editable — one click, and the agent
 		// stops being told.
 		//
-		// Which is why it asks first. This is the same delete the page offers,
-		// with the same confirm on it, because it is the same act: a note is
-		// not archived anywhere and taking it down is the whole of losing it.
+		// Which is why it asks first, and why it says a word rather than
+		// showing a cross. This is the same delete the page offers, with the
+		// same confirm on it, because it is the same act: a note is not
+		// archived anywhere and taking it down is the whole of losing it. A
+		// cross is the glyph for close, hide, put away — reversible things —
+		// and putting it on the one control that forgets something would be
+		// borrowing a promise this cannot keep.
 		b.WriteString(`<form method="post" action="/notes" class="notes-peek-take" ` +
 			`onsubmit="return confirm('Take this note down? Your agents stop being told it.')">` +
 			`<input type="hidden" name="_csrf" value="` + csrf + `">` +
 			`<input type="hidden" name="back" value="/home">` +
 			`<button type="submit" name="delete" value="` + html.EscapeString(e.Title) +
-			`" title="Take it down" aria-label="Take down ` +
-			html.EscapeString(e.Title) + `">&times;</button>` +
+			`" aria-label="Take down the note called ` +
+			html.EscapeString(e.Title) + `">Take down</button>` +
 			`</form>`)
 
 		b.WriteString(`</div>`)
