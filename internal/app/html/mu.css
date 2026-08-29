@@ -5073,17 +5073,7 @@ a.card-hover:hover {
   flex: 1;
 }
 
-.places-forms {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
 @media (max-width: 768px) {
-  .places-forms {
-    grid-template-columns: 1fr;
-  }
   .places-location-row {
     flex-direction: column;
     align-items: stretch;
@@ -5098,16 +5088,6 @@ a.card-hover:hover {
   .places-options-row select {
     min-width: unset;
   }
-}
-
-.places-forms .card {
-  margin: 0;
-}
-
-.places-forms input,
-.places-forms select {
-  width: 100%;
-  margin-bottom: 8px;
 }
 
 .places-results {
