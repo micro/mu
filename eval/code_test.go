@@ -32,14 +32,18 @@
 //
 // # What it has found
 //
-// Seven of eight, once three things it caught were fixed. The run that matters
-// is the second, third and fourth task of each pass: a page built, then
-// restyled, then extended, each time working when a browser types into it, and
-// each change leaving the rest of the page alone.
+// Eight of eight, once four things it caught were fixed. A page built, then
+// restyled, then extended, twice over: each version working when a browser
+// types into it, each change leaving the rest of the page alone, and a shell
+// script written and run beside them.
 //
-// Every one of the three fixes was in the harness or the plumbing rather than
-// in the model, which is the argument for writing this down. Zero of eight the
-// first time, and the cause was not the model. go-micro's atlascloud
+// Not one of the four fixes was in the model, which is the argument for writing
+// any of this down. The provider gave the agent a single round of tool calls;
+// this ran with no services registered, so the agent held no tools at all;
+// naming a directory for one command moved the session, so these checks
+// relocated the thing they were measuring; and filling fields by position
+// marked a correct page wrong because the model had put them in another order.
+// Zero of eight the first time, and the cause was never the model. go-micro's atlascloud
 // provider runs one round of tool calls and then asks the model to finish
 // without them: the follow-up request carries the tool results and no "tools"
 // key, and there is no loop, so a second call is impossible whatever the model
