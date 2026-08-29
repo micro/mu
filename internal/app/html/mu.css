@@ -139,6 +139,24 @@ a:hover {
   text-decoration: underline;
 }
 
+/* Except the ones that are buttons.
+ *
+ * .btn, .mini-btn and .pill are shapes with a border and a background, and an
+ * <a> wearing one is a button as far as a reader is concerned. The rule above
+ * is written for prose links and underlined those too on hover, so a row of
+ * buttons on /users behaved like text — reported as the buttons being formatted
+ * differently from everywhere else, which they were: everywhere else they
+ * happen to be <button> elements, which this rule never reached.
+ *
+ * The shape decides, not the tag. */
+a.btn:hover,
+a.mini-btn:hover,
+a.pill:hover,
+a.btn-quiet:hover,
+a.btn-plain:hover {
+  text-decoration: none;
+}
+
 /* A visited link is the same colour as an unvisited one — but this rule must
    not outrank the components.
  
@@ -784,6 +802,24 @@ td {
   text-decoration: underline;
 }
 
+/* Except the ones that are buttons.
+ *
+ * .btn, .mini-btn and .pill are shapes with a border and a background, and an
+ * <a> wearing one is a button as far as a reader is concerned. The rule above
+ * is written for prose links and underlined those too on hover, so a row of
+ * buttons on /users behaved like text — reported as the buttons being formatted
+ * differently from everywhere else, which they were: everywhere else they
+ * happen to be <button> elements, which this rule never reached.
+ *
+ * The shape decides, not the tag. */
+a.btn:hover,
+a.mini-btn:hover,
+a.pill:hover,
+a.btn-quiet:hover,
+a.btn-plain:hover {
+  text-decoration: none;
+}
+
 /* Scroll offset for anchor links to account for fixed header */
 .anchor {
   scroll-margin-top: 60px;
@@ -845,6 +881,34 @@ body.page-home #page-title ~ #customize-link {
 }
 
 .home-section small { font-size: 11px; white-space: nowrap }
+
+/* What is yours, across rather than down.
+   
+   Notes, the inbox and the agent roster were three full-width bands stacked on
+   top of each other, and a band assumes content that fills it. None of these
+   holds more than four short rows: on a 1440px screen Agents was 1120 by 56
+   pixels to say "Micro — nothing yet", and the services did not begin until
+   850 pixels down. Three columns is the shape that much content actually has.
+   
+   A grid rather than flex, because with flex a single surviving block stretches
+   back to the full width — which is the thing being fixed. In a grid it keeps
+   its third and the rest of the row is honestly empty.
+   
+   align-items:start so a column with three notes in it does not stretch the two
+   beside it to match. */
+.home-yours {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0 20px;
+  align-items: start;
+}
+.home-yours-col { min-width: 0 }
+
+/* Stacked at the width the card grid below stacks at, so the two halves of the
+   page change shape together rather than one at a time. */
+@media only screen and (max-width: 1100px) {
+  .home-yours { grid-template-columns: 1fr }
+}
 
 /* What is waiting, said once, in the section it is about. It was a suggestion
    chip under the chat box that spent a model call to read your own mail. */
@@ -1295,43 +1359,16 @@ body:has(#messages) #chat-back-link {
   60%, 100% { content: '...'; }
 }
 
-.context-message {
-  font-size: small;
-  color: #999;
-  font-style: italic;
-  text-align: center;
-  padding: 8px 0;
-  margin: 10px 0;
-  border-top: 1px solid #e0e0e0;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-.summary-toggle {
-  color: var(--text-secondary);
-  font-size: 12px;
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.summary-toggle:hover {
-  text-decoration: underline;
-}
-
-.summary-content {
-  margin-top: 8px;
-  font-style: normal;
-  line-height: 1.4;
-}
+/* .context-message, .summary-toggle and .summary-content were the styling for
+   a block JavaScript inserted at the top of a chat room: the room's name, its
+   summary again, and a link to hide it. The server renders all of that above
+   #messages — see .room-about — so nothing produces these any more. */
 .summary-meta {
   display: block;
   margin-top: 4px;
   color: #777;
   font-size: 12px;
   font-weight: 400;
-}
-#summary-toggle-icon {
-  color: #666;
-  font-size: 12px;
 }
 .summary-item {
   padding: 12px 0;
@@ -1588,6 +1625,24 @@ body:has(#messages) #chat-back-link {
   text-decoration: underline;
 }
 
+/* Except the ones that are buttons.
+ *
+ * .btn, .mini-btn and .pill are shapes with a border and a background, and an
+ * <a> wearing one is a button as far as a reader is concerned. The rule above
+ * is written for prose links and underlined those too on hover, so a row of
+ * buttons on /users behaved like text — reported as the buttons being formatted
+ * differently from everywhere else, which they were: everywhere else they
+ * happen to be <button> elements, which this rule never reached.
+ *
+ * The shape decides, not the tag. */
+a.btn:hover,
+a.mini-btn:hover,
+a.pill:hover,
+a.btn-quiet:hover,
+a.btn-plain:hover {
+  text-decoration: none;
+}
+
 .keep-reading {
   display: inline-block;
   font-size: 0.85em;
@@ -1822,6 +1877,24 @@ body:has(#messages) #chat-back-link {
 
 .news .summary a:hover {
   text-decoration: underline;
+}
+
+/* Except the ones that are buttons.
+ *
+ * .btn, .mini-btn and .pill are shapes with a border and a background, and an
+ * <a> wearing one is a button as far as a reader is concerned. The rule above
+ * is written for prose links and underlined those too on hover, so a row of
+ * buttons on /users behaved like text — reported as the buttons being formatted
+ * differently from everywhere else, which they were: everywhere else they
+ * happen to be <button> elements, which this rule never reached.
+ *
+ * The shape decides, not the tag. */
+a.btn:hover,
+a.mini-btn:hover,
+a.pill:hover,
+a.btn-quiet:hover,
+a.btn-plain:hover {
+  text-decoration: none;
 }
 
 /* News Article View */
@@ -3392,6 +3465,11 @@ button.btn-plain { padding: 6px 12px; font: inherit; cursor: pointer; color: var
    across 720px. */
 .col-narrow { max-width: 600px; }
 
+/* A feed is read, not filled in, so it gets more room than a form does.
+   Its own width rather than a wider .col-narrow, which apps and agents also
+   use — they are forms and lists and want the narrower measure. */
+.col-feed { max-width: 800px; }
+
 /* A textarea for prose you type: full width, growable, in the page's own face
    rather than the browser's monospace default. */
 .form-area {
@@ -4097,40 +4175,20 @@ a.card-hover:hover {
   border-bottom-color: var(--text-primary, #333);
 }
 
-/* Note editor */
+/* Note editor
+   
+   The width, and nothing else. The rules that were here — the title input, the
+   textarea, their placeholders, an #autosave-status and a .delete-link — were a
+   second copy of styling service/notes/page.go already carries, from a version
+   of that page with an autosave indicator and link-shaped actions. Neither
+   exists any more, and the two that still matched won on specificity:
+   ".note-editor textarea" (0,1,1) beat the page's ".note-body-in" (0,1,0), so
+   the body took this file's borderless look while the title kept the page's
+   inset one, and the two lines of a note started 13px apart.
+   
+   The page owns how the page looks. */
 .note-editor {
   max-width: 600px;
-}
-.note-editor input[type="text"] {
-  width: 100%;
-  padding: 8px 0;
-  border: none;
-  border-bottom: 1px solid #eee;
-  font-size: 18px;
-  font-weight: 500;
-  margin-bottom: 8px;
-  outline: none;
-}
-.note-editor input[type="text"]:focus {
-  border-bottom-color: var(--accent-color, #000);
-}
-.note-editor input[type="text"]::placeholder {
-  color: #aaa;
-  font-weight: normal;
-}
-.note-editor textarea {
-  width: 100%;
-  min-height: 200px;
-  padding: 8px 0;
-  border: none;
-  font-size: 15px;
-  font-family: inherit;
-  line-height: 1.6;
-  resize: none;
-  outline: none;
-}
-.note-editor textarea::placeholder {
-  color: #aaa;
 }
 .note-actions {
   display: flex;
@@ -4139,18 +4197,6 @@ a.card-hover:hover {
   padding-top: 16px;
   border-top: 1px solid #eee;
   margin-top: 16px;
-}
-.note-actions a {
-  color: #666;
-  text-decoration: none;
-  font-size: 14px;
-}
-.note-actions .delete-link {
-  color: #c00;
-}
-#autosave-status {
-  font-size: 13px;
-  margin-left: auto;
 }
 .error {
   color: #c00;
@@ -5023,17 +5069,7 @@ a.card-hover:hover {
   flex: 1;
 }
 
-.places-forms {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
 @media (max-width: 768px) {
-  .places-forms {
-    grid-template-columns: 1fr;
-  }
   .places-location-row {
     flex-direction: column;
     align-items: stretch;
@@ -5048,16 +5084,6 @@ a.card-hover:hover {
   .places-options-row select {
     min-width: unset;
   }
-}
-
-.places-forms .card {
-  margin: 0;
-}
-
-.places-forms input,
-.places-forms select {
-  width: 100%;
-  margin-bottom: 8px;
 }
 
 .places-results {
@@ -5091,17 +5117,6 @@ a.card-hover:hover {
 .place-address {
   font-size: 0.85em;
   margin: 4px 0 0;
-}
-
-.cost-badge {
-  display: inline-block;
-  background: var(--text-secondary);
-  color: #fff;
-  font-size: 0.7em;
-  padding: 1px 5px;
-  border-radius: 3px;
-  margin-left: 4px;
-  vertical-align: middle;
 }
 
 /* Places city grid */
@@ -5969,6 +5984,7 @@ button.pill:hover {
    they are the same object: same border, same background, same inset. Drawing
    the second one differently would say they are different kinds of thing. */
 .inbox-peek,
+.notes-peek,
 .agent-peek {
   border: var(--border-width, 1px) solid var(--card-border, #e8e8e8);
   border-radius: var(--border-radius, 6px);
@@ -5993,7 +6009,8 @@ button.pill:hover {
    "Go to agents" link underneath made every row a not-last one — so the block
    grew a line across its foot. Between-rows cannot be wrong about what follows
    the list. */
-.agent-peek-row + .agent-peek-row {
+.agent-peek-row + .agent-peek-row,
+.notes-peek-row + .notes-peek-row {
   border-top: var(--border-width, 1px) solid var(--card-border, #f4f4f4);
 }
 .agent-peek-row:visited { color: inherit }
@@ -6007,15 +6024,100 @@ button.pill:hover {
    ancestor is drawn through its inline descendants — a child cannot take it
    off. .agent-peek-name:hover{text-decoration:none} is powerless here however
    specific it is. */
-.agent-peek-row {
+.agent-peek-row,
+.notes-peek-row {
   transition: background var(--transition-fast);
 }
-.agent-peek-row:hover {
+.agent-peek-row:hover,
+.notes-peek-row:hover {
   background: var(--hover-background);
   text-decoration: none;
 }
 
 .agent-peek-name { font-weight: 500; flex: none }
+
+/* A notes row holds two things — the note, and the way to take it down — so the
+   row is the container and the anchor inside it takes the slack. Everything the
+   row shares with an agent row is still shared; only the nesting differs. */
+/* A note is three lines, not three columns.
+   
+   Title and time on the first, the note itself under them, the way to remove it
+   below that. It was one flex line shared with the agent roster's shape — name,
+   text, time — and that shape wants a row it can spread across. This lives in a
+   third of the page, where the text had nowhere to go and the time sat in the
+   middle of the row with the title alone on its left. */
+.notes-peek-row {
+  display: block;
+  padding: 11px 0;
+}
+.notes-peek-open {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+  text-decoration: none;
+  color: inherit;
+}
+.notes-peek-open:visited { color: inherit }
+/* The underline comes off the element that is actually the <a>: text-decoration
+   set on an ancestor is drawn through its inline descendants, so a rule on the
+   row cancels nothing. See the same note on .agent-peek-row, which learnt it
+   the other way round. */
+.notes-peek-open:hover { text-decoration: none }
+/* The title takes the line and pushes the time to the end of it; the note goes
+   underneath, whole line to itself. */
+.notes-peek-title {
+  flex: 1;
+  min-width: 0;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* A whole line to itself. flex-basis:100% alone was not enough: the shared
+   ".agent-peek-last, .notes-peek-text { flex: 1 }" rule sits further down this
+   file, and flex:1 is shorthand for flex-basis:0 — so the note went back onto
+   the first line, between the time and nothing. The note is unshared from that
+   rule now, because the two shapes want opposite things: an agent row lays
+   three items along one line, a note stacks them. */
+.notes-peek-text {
+  flex: 0 0 100%;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--text-muted, #888);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.notes-peek-when { flex: none; font-size: 12px; color: var(--text-muted, #bbb) }
+.notes-peek-take { margin: 2px 0 0 }
+.notes-peek-take button {
+  background: none;
+  border: 0;
+  padding: 2px 0;
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--text-muted, #bbb);
+  cursor: pointer;
+  /* Quiet until the row is under the pointer: a column of these down the side
+     of the block is the loudest thing on it, and taking a note down is not what
+     the board is for. */
+  opacity: 0;
+  transition: opacity var(--transition-fast), color var(--transition-fast);
+}
+.notes-peek-row:hover .notes-peek-take button,
+.notes-peek-take button:focus-visible { opacity: 1 }
+.notes-peek-take button:hover { color: var(--text-primary, #111) }
+/* Touch has no hover, so there it is simply always there — and big enough to
+   hit, which the cross never was. */
+@media (hover: none) {
+  .notes-peek-take button {
+    opacity: 1;
+    min-height: 44px;
+    padding: 8px 0;
+  }
+}
 .agent-peek-last {
   flex: 1;
   min-width: 0;
@@ -6074,8 +6176,6 @@ button.pill:hover {
    Under the card rather than inside it — within the border it read as one more
    row, indistinguishable from the three conversations above it, and the three
    blocks on Home now end the same way and align on the same left edge. */
-.peek-more { display: inline-block; margin-top: 12px; font-size: 13px; color: var(--text-secondary, #555); text-decoration: none }
-.peek-more:hover { color: var(--text-primary, #1a1a1a) }
 
 /* On a phone a row is two lines, not one squeezed into 390px: the name and the
    time on top, the subject and the preview under it — which is what every mail
@@ -6994,6 +7094,10 @@ a.btn-secondary:hover, .btn-secondary:hover {
 /* What a room is about, above what has been said in it.
    Quiet: it is context for the messages, read once on the way in, and it must
    not compete with them. */
+/* What a chat room is about: the summary, foldable, and a link to the thing it
+   came from. A <details> rather than a script, so the open and closed states
+   are the element's own and there is no display property for .d-none to win an
+   argument with. */
 .room-about {
   margin: 0 0 14px;
   padding: 0 0 12px;
@@ -7001,6 +7105,33 @@ a.btn-secondary:hover, .btn-secondary:hover {
   font-size: 14px;
   line-height: 1.55;
   color: var(--text-muted, #666);
+}
+
+.room-about > summary {
+  cursor: pointer;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary, #888);
+  list-style: none;
+  user-select: none;
+}
+
+/* The default marker is a bullet in one browser and a triangle in another, so
+   it is replaced with one that says which way this goes. */
+.room-about > summary::-webkit-details-marker { display: none; }
+.room-about > summary::after { content: ' \002B'; }
+.room-about[open] > summary::after { content: ' \2212'; }
+.room-about > summary:hover { color: var(--text-color, #333); }
+
+.room-about > p {
+  margin: 8px 0 0;
+}
+
+.room-about .room-source {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 13px;
 }
 
 /* The crypto card: address, QR, and turning what it holds into credits.
@@ -7078,6 +7209,12 @@ a.btn-secondary:hover, .btn-secondary:hover {
 
 /* /@somebody: the conversation with them. See inbox/person.go. */
 .ib-person-head { display: flex; justify-content: flex-end; margin: 0 0 var(--spacing-md, 16px) }
+/* What the page is, under the name the shell prints. Reported as a page
+   somebody landed on from a username and could not identify. */
+.ib-person-sub { margin: 0 0 var(--spacing-md, 16px); color: var(--text-secondary, #555); font-size: 14px }
+/* Somebody you have not spoken to yet is still their page — see person.go. */
+.ib-person-empty { padding: var(--spacing-lg, 24px) 0; }
+.ib-person-empty p { margin: 0 0 var(--spacing-md, 16px); color: var(--text-muted, #888) }
 .ib-person-also { margin: var(--spacing-lg, 24px) 0 0; padding-top: var(--spacing-md, 16px);
   border-top: var(--border-width, 1px) solid var(--card-border, #e8e8e8) }
 .ib-person-also h3 { font-size: 15px; margin: 0 0 10px }
@@ -7087,3 +7224,40 @@ a.btn-secondary:hover, .btn-secondary:hover {
 .ib-person-list li:last-child { border-bottom: 0 }
 .ib-person-when { margin-left: auto; font-size: 12px; color: var(--text-muted, #888); white-space: nowrap }
 @media only screen and (max-width: 600px) { .ib-person-when { margin-left: 0 } }
+
+/* /code — describing an app, watching it run, saying the next thing.
+   The app itself is the largest thing on the page, because the question every
+   turn answers is "is that what I meant" and that is answered by looking at it,
+   not by reading a description of it. */
+.code-run {
+  border: var(--border-width, 1px) solid var(--border-color, #e5e5e5);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg-color, #fff);
+}
+.code-run iframe {
+  display: block;
+  width: 100%;
+  height: 60vh;
+  min-height: 320px;
+  border: 0;
+}
+.code-links { margin: 10px 0 0; font-size: 13px }
+
+/* What has been said, oldest first, so it reads down to the box. Numbered by
+   the element rather than by hand: these are the app's versions, and the
+   numbering is the version numbering. */
+.code-turns {
+  margin: 18px 0 0;
+  padding-left: 20px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-muted, #666);
+}
+.code-turns li { padding: 2px 0 }
+.code-said { color: var(--text-color, #222) }
+
+.code-box { display: flex; gap: 8px; margin-top: 16px }
+.code-box input[type="text"] { flex: 1 1 auto; min-width: 0 }
+.code-box input:disabled, .code-box button:disabled { opacity: 0.55 }
+.code-status { margin: 8px 0 0 }

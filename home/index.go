@@ -1,34 +1,15 @@
 package home
 
 import (
+	"html"
 	"net/http"
-	"strconv"
+	"strings"
 
-	"mu/internal/api"
 	"mu/internal/app"
+	"mu/internal/service"
 )
 
-// tools is how many there are, rounded down to something a person reads.
-//
-// Still counted rather than claimed, which is the rule the exact number was
-// there to keep: this page once said "67 real tools" as a literal while the
-// endpoint served 72. Rounding down cannot overstate — 112 reads as "100+" and
-// 210 as "200+" — so the claim stays true without a number that changes under
-// the reader for no reason they can see. An exact count is a fact nobody
-// wanted; what it is doing on a landing page is saying "a lot", and it should
-// say that.
-//
-// Under a hundred it says the number, because "0+" is not a claim and a small
-// instance rounding to nothing would be worse than the truth.
-func tools() string {
-	n := api.ToolCount()
-	if n < 100 {
-		return strconv.Itoa(n)
-	}
-	return strconv.Itoa(n/100*100) + "+"
-}
-
-// Landing is the front door for anyone not signed in: something to try, then
+// Index is the front door for anyone not signed in: something to try, then
 // what this is and how to connect to it.
 //
 // It used to be three pages. The live home was the front door and said nothing
@@ -59,12 +40,16 @@ func tools() string {
 // operator sets, and not a tier anybody can plan around.
 //
 // The description still follows. It reads better as a caption than as a pitch.
-func Landing(w http.ResponseWriter, r *http.Request) {
-	body := landingBody()
+func Index(w http.ResponseWriter, r *http.Request) {
+	body := indexBody()
 
-	page := app.RenderLanding(app.Landing{
-		Title:       "Mu — A network for humans, agents and services",
-		Description: "Use agents with open protocols. Give them a real inbox, tools and services, and reach them over the web, by email, from a terminal or through the API. Open source and self-hostable.",
+	page := app.RenderIndex(app.Index{
+		// What it is, not what to think of it. This said "A network for
+		// humans, agents and services" with a paragraph of positioning under
+		// it — a claim a stranger is invited to weigh, which is a landing
+		// page's job and not a server's.
+		Title:       "Mu",
+		Description: "A personal server: mail, chat, files, an inbox with an address, and an agent that reaches its tools. Open source and self-hostable.",
 		Brand:       "Mu",
 		// No tagline in the chrome. This slot held "An Inbox for Agents" — the
 		// line this positioning replaced — sitting directly above a headline
@@ -74,17 +59,29 @@ func Landing(w http.ResponseWriter, r *http.Request) {
 		// slot is 18px, so the chrome copy was a smaller, duplicate version of
 		// the thing immediately below it. Nothing renders the two together
 		// except the page, which is why neither reading caught it.
-		TopRight: `<a href="/login">Sign in →</a>`,
-		Body:     body,
-		Footer:   app.FooterLinks(),
-		Tail:     installScript(),
+		// Two controls, both of them things you do rather than things to
+		// consider. Install ships hidden: the browser decides whether a site
+		// can be installed and says so by firing beforeinstallprompt, and a
+		// button that does nothing in Firefox is worse than no button. See
+		// installScript.
+		//
+		// There is no Get started. Signing up is a thing this instance may or
+		// may not allow — and "Get started" is the phrase for persuading a
+		// stranger, which is not what a server's front door is for. Sign in is
+		// the door; whoever runs this decides who gets a key.
+		TopRight: `<a href="/login">Sign in</a>` +
+			`<button type="button" id="install-app" hidden>Install app</button>` +
+			`<span id="install-how" hidden>Share, then Add to Home Screen</span>`,
+		Body:   body,
+		Footer: app.FooterLinks(),
+		Tail:   installScript(),
 	})
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write([]byte(page)) //nolint:errcheck
 }
 
-// landingBody is the page itself, separate from serving it.
+// indexBody is the page itself, separate from serving it.
 //
 // Separated so it can be read by a test, which is how the duplicated guest
 // note went unnoticed: nothing could look at the whole page at once, so two
@@ -145,82 +142,133 @@ func Landing(w http.ResponseWriter, r *http.Request) {
 //
 // The lead still says you can write to it from anywhere, which is the fact. The
 // address is on the pages where it is actionable — /agents, Connect, the inbox.
-func landingBody() string {
-	// The tool count is counted, not claimed. This said "67 real tools" as a
-	// literal and the endpoint was serving 72 by the time anyone checked.
+// indexBody is the signed-out page: a search box.
+//
+// # Why there is no pitch here any more
+//
+// This was a landing page — a headline, a paragraph of positioning, Get
+// started, and "The agent is free. Tools that cost us are priced." That last
+// line is our business model, and it shipped in every binary: on somebody
+// else's server they pay the vendor themselves, so "costs us" is us, in their
+// house, describing an arrangement they are not part of.
+//
+// The general fault is bigger than that line. A landing page is for a stranger
+// who has not decided yet, which is a real audience for micro.mu and nobody at
+// all on an instance that one person installed and is already logged into on
+// their other device. Marketing is a thing an instance may serve; it is not a
+// thing the software should contain.
+//
+// # A search box, because the archive is public
+//
+// What is useful without an account is what this instance has collected — and
+// /archive is already public by construction: an entry with an owner is never
+// returned from it, so there is nothing here to leak and nothing to gate. The
+// box is the same one Home shows when no model is configured, pointed at the
+// same page, for the same reason: you type what you are looking for and
+// something finds it.
+//
+// That is also the whole of what a utility's front door is. nginx's default
+// page says it is nginx and that it is working. This says what it is, that it
+// is running, and gives you something to do with it.
+func indexBody() string {
+	// The agent, not a search box.
 	//
-	// The sentence used to end "One account instead of seven providers", which
-	// is the argument rather than the thing — and an argument invites the reader
-	// to weigh it, on a page whose job is to say what this is. It also carried a
-	// second number that had to be kept in step with the list beside it by hand.
-	// The list is the proof; it does not need a claim after it.
+	// This searched the archive, and the reason was that search is the half
+	// that works with no model — which is a constraint, and it got dressed up
+	// as a thesis. The README has said the right order the whole time:
+	// "services and the archive become tools for agents to use". The archive is
+	// context. The agent is the door.
 	//
-	// What you get, not what you must do.
+	// Where there is no model the same box still takes what you type, searches
+	// the archive and says why — see app.ChatComponent, which degrades rather
+	// than becoming a different product depending on configuration.
 	//
-	// It read "Make one, give it an address, hand it a job" — three imperatives,
-	// two of them false. You do not make one: every account already has an agent
-	// and roster_page.go says so, because leaving it off "meant a new account
-	// opened /agents and was told it had none, which is false". And you do not
-	// give it an address: agent.tagFor assigns one. So the first two steps of a
-	// three-step flow were a thing nobody needs to do and a thing that happens
-	// by itself, which put the hardest instruction on the page first and made
-	// the product contradict the pitch a minute after signing up.
+	// # And it is not the only door
 	//
-	// The third was the only true one and it is the promise the headline makes,
-	// so it stays — as a verb in a sentence rather than as step three of a
-	// setup. What is left is what somebody gets: an agent, an address, and
-	// somewhere for work to come back to.
-	//
-	return `<div class="lwrap">
-<h2 class="lhead">A network for humans, agents and services.</h2>
-<p class="lead">Use agents with open protocols. Give them a real inbox, tools and
-services. Talk to them over the web, by email, from a terminal, or through the API.
-They reach ` + tools() + ` tools: news, search, weather, markets, video, places,
-files, contacts, events, documents. A work in progress.</p>
-
-<div class="lctas">
-  <a class="lcta" href="/signup">Get started</a>
-  <button type="button" class="lcta lcta-second" id="install-app" hidden>Install app</button>
-</div>
-<p class="linstall" id="install-how" hidden>In Safari: Share, then Add to Home Screen.</p>
-<p class="lcost">The agent is free. Tools that cost us are priced.
-<a href="/tools">See them</a></p>
+	// A box that answers everything, with nothing else on the page, is a thing
+	// you have to go through. The links under it go straight to the services —
+	// the archive, the news, the video — so anything the agent would fetch is
+	// also one click away without asking it. That is the property that keeps it
+	// a tool: everything it does, you can do yourself.
+	return `<div class="lwrap">` +
+		app.ChatComponent(app.ChatConfig{
+			Ask:             true,
+			HideSuggestions: true,
+			Placeholder:     "What do you need?",
+		}) +
+		`<p class="lwhat">` + directDoors() + `</p>
 </div>
 
 <style>
-.lwrap{padding:0}
-.lhead{max-width:700px;text-align:center;margin:0 auto 12px;font-size:20px;line-height:1.2;
-  letter-spacing:-.01em;font-weight:700;color:#111}
-.lead{max-width:560px;text-align:center;color:#555;font-size:17px;line-height:1.6;margin:0 auto 22px}
-.lead a{color:#111}
-.lctas{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin:0}
-/* The money question, answered before it is asked.
-   A line rather than a third button: "will this cost me anything" is the second
-   thing a visitor wonders and it wants a fact, not a decision. It is here at all
-   because the answer finally fits in a sentence — while the agent was metered
-   and an allowance paid the meter back, it took a page. */
-.lcost{max-width:560px;text-align:center;color:#888;font-size:13px;line-height:1.6;
-  margin:16px auto 0}
-.lcost a{color:#555;font-weight:600;text-decoration:none;white-space:nowrap}
-.lcost a:hover{text-decoration:underline}
-/* An explicit line-height on both, or they are different heights side by side:
-   a <button> and an <a> take different defaults, and 3px of it shows. */
-.lcta,.lcta:visited{display:inline-block;background:#111;color:#fff;text-decoration:none;padding:12px 24px;
-  border-radius:var(--border-radius,6px);font-weight:700;font-size:15px;line-height:17px}
-/* The rule above is display:inline-block, and an author rule beats the browser's
-   own [hidden]{display:none} whatever its specificity. Without this line the
-   install button is on the page for everybody, including the browsers that
-   cannot install anything. */
-.lcta[hidden],.linstall[hidden]{display:none}
-/* Second, and it looks it: the primary action on this page is signing up.
-   The outline is a shadow rather than a border so it costs no height — a border
-   makes this button 2px taller than the link beside it. */
-.lcta-second{background:#fff;color:#111;border:0;box-shadow:inset 0 0 0 1px #ddd;
-  cursor:pointer;font-family:inherit;font-size:15px}
-.lcta-second:hover{box-shadow:inset 0 0 0 1px #111}
-.linstall{text-align:center;color:#666;font-size:14px;margin:12px auto 0}
-@media (max-width:640px){.lead{font-size:15px}}
+.lwrap{padding:0;max-width:640px;margin:0 auto;width:100%}
+.lwhat{text-align:center;color:#888;font-size:13px;line-height:1.9;margin:20px auto 0}
+.lwhat a{color:#555;font-weight:600;text-decoration:none;white-space:nowrap}
+.lwhat a:hover{text-decoration:underline}
 </style>`
+}
+
+// directDoors is the handful of services worth putting under the box.
+//
+// Every service a signed-out visitor can open came to twenty-one names — a
+// paragraph of them, wrapping onto two lines, including Browser and Text and
+// Users, which are tools rather than places anybody arrives wanting. A list
+// that long is not a set of doors, it is a wall with the doors drawn on it.
+//
+// So: an order, and a cap. The order is what somebody actually came for, which
+// is a judgement and is written down as one rather than derived from something
+// that only looks objective. Everything else stays reachable — /tools lists all
+// of them, and the footer links it.
+//
+// Still filtered through the registry, so a service this instance does not run
+// is not offered and one it adds can appear: the list below is a preference,
+// not a claim about what exists. AccountScoped is the same question the tools
+// and the SDK ask, so the three cannot drift.
+var doorOrder = []string{"news", "video", "social", "markets", "weather", "places", "web"}
+
+// doorsShown is how many. Seven names and the archive fit one line at the width
+// this page is set to, which is the only reason for the number.
+const doorsShown = 8
+
+func directDoors() string {
+	open := map[string]string{}
+	for _, spec := range service.Specs() {
+		if spec.Page == "" || service.AccountScoped(spec.Name) {
+			continue
+		}
+		open[strings.ToLower(spec.Name)] = spec.Page
+	}
+
+	var links []string
+	add := func(label, href string) {
+		if href == "" || len(links) >= doorsShown {
+			return
+		}
+		links = append(links, `<a href="`+html.EscapeString(href)+`">`+
+			html.EscapeString(label)+`</a>`)
+	}
+
+	// The archive first. It is what this server already knows, which is the one
+	// door the agent itself goes through.
+	add("Archive", "/archive")
+	for _, name := range doorOrder {
+		if page, ok := open[name]; ok {
+			add(title(name), page)
+		}
+	}
+	if len(links) == 0 {
+		return ""
+	}
+	return "Or go straight there — " + strings.Join(links, " · ") + "."
+}
+
+// title is a service's name as a heading would write it. The registry keys are
+// lower case because they are identifiers.
+func title(name string) string {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return ""
+	}
+	return strings.ToUpper(name[:1]) + name[1:]
 }
 
 // installScript makes the Install app button work, and decides whether it is
@@ -244,16 +292,29 @@ files, contacts, events, documents. A work in progress.</p>
 func installScript() string {
 	return `<script>
 (function () {
+  // The worker first, and unconditionally.
+  //
+  // This sat below a "no install button, nothing to do here" bail, which was
+  // fine while the button was always on the page. The button has gone with the
+  // pitch it stood next to, and the registration is not about the button: it
+  // is what makes this page installable at all, and the comment above this
+  // function exists because the first page a visitor sees was once the one
+  // page that could never be installed from. Ordering put it back.
+  if (navigator.serviceWorker) {
+    // updateViaCache:'none', the same as the app shell — see internal/app.
+    // The default consults the HTTP cache for the worker script, which is how
+    // a device ends up running a months-old copy.
+    navigator.serviceWorker.register('/mu.js', {scope: '/', updateViaCache: 'none'})
+      .then(function (reg) { if (reg && reg.update) reg.update(); })
+      .catch(function () {});
+  }
+
   var btn = document.getElementById('install-app');
   if (!btn) return;
   var how = document.getElementById('install-how');
 
   // Already installed: this is the app, running in its own window.
   if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true) return;
-
-  if (navigator.serviceWorker) {
-    navigator.serviceWorker.register('/mu.js', {scope: '/'});
-  }
 
   var offer = null;
   window.addEventListener('beforeinstallprompt', function (e) {

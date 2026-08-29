@@ -2,7 +2,7 @@
 // SERVICE WORKER CONFIGURATION
 // ============================================
 var APP_PREFIX = 'mu_';
-var VERSION = 'v151';
+var VERSION = 'v154';
 var CACHE_NAME = APP_PREFIX + VERSION;
 
 // Minimal caching - only icons
@@ -20,7 +20,6 @@ var STATIC_CACHE = [
   '/places.svg',
   '/weather.png',
   '/markets.svg',
-  '/reminder.svg',
   '/account.png',
   '/logout.png',
   '/icon-192.png',
@@ -47,10 +46,37 @@ self.addEventListener('fetch', function (e) {
   }
 });
 
+// Installing must not be able to fail.
+//
+// This was caches.addAll(STATIC_CACHE), and addAll rejects the whole batch if a
+// single request fails. A rejected promise in an install event's waitUntil
+// means the worker does not install — so it never activates, never handles a
+// push, and nothing anywhere says so. The page registers happily, the push
+// service accepts every notification, and the handset has no worker to wake.
+//
+// That is not hypothetical. '/reminder.svg' was in this list and had been a 404
+// on the live instance for who knows how long: an icon nothing else references,
+// left behind by a rename. One missing decoration silently switched off every
+// notification on every device, and the record could only say "sent — the
+// device has not said it arrived", which is also what a phone in a tunnel looks
+// like. Days went into the sending half, which was correct throughout.
+//
+// So each file is added on its own and a failure is swallowed. These are icons.
+// The push handler below is the product, and it must not be hostage to whether
+// a decoration is still where somebody left it. skipWaiting runs either way.
 self.addEventListener('install', function (e) {
   e.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(STATIC_CACHE))
-      .then(() => self.skipWaiting())
+    caches.open(CACHE_NAME).then(function (cache) {
+      return Promise.all(STATIC_CACHE.map(function (url) {
+        return cache.add(url).catch(function () {});
+      }));
+    }).then(function () {
+      return self.skipWaiting();
+    }).catch(function () {
+      // Even the cache being unavailable — a private window, storage denied —
+      // must not stop the worker taking over.
+      return self.skipWaiting();
+    })
   );
 });
 
@@ -122,7 +148,7 @@ self.addEventListener('push', function (e) {
 // never stop the notification.
 function receipt(tag, shown, why) {
   try {
-    return fetch('/push/received', {
+    return fetch('/notify/received', {
       method: 'POST',
       credentials: 'include',
       headers: {'Content-Type': 'application/json'},
@@ -150,6 +176,26 @@ self.addEventListener('notificationclick', function (e) {
       if (self.clients.openWindow) return self.clients.openWindow(url);
     })
   );
+});
+
+// Which copy of this file is actually running on this device.
+//
+// A push that the push service accepts and the handset never shows leaves no
+// trace anywhere: no notification, and — if the worker predates the receipt
+// code — no receipt either. Five sent, five accepted, nothing back, and no way
+// from here to tell "the worker did not wake" from "the worker is an old one
+// that cannot say it woke". Those need completely different fixes and looked
+// identical.
+//
+// So the worker answers when asked. A page posts {mu: 'version'} and gets the
+// VERSION back. No reply means the worker on this device is older than this
+// line, which is itself the answer — and the card says so and offers the
+// update rather than leaving somebody to guess.
+self.addEventListener('message', function (e) {
+  if (!e.data || e.data.mu !== 'version') return;
+  var reply = {mu: 'version', version: VERSION};
+  if (e.ports && e.ports[0]) { e.ports[0].postMessage(reply); return; }
+  if (e.source && e.source.postMessage) e.source.postMessage(reply);
 });
 
 // ============================================
@@ -314,39 +360,23 @@ var isAuthenticated = false;
 var topic = '';
 
 
-// Toggle summary visibility (legacy, for individual topic pages)
-
-function toggleSummary(summaryId) {
-  const summary = document.getElementById(summaryId);
-  const toggle = summary.previousElementSibling;
-  if (summary.style.display === 'none') {
-    summary.style.display = 'block';
-    toggle.textContent = 'Hide summary';
-  } else {
-    summary.style.display = 'none';
-    toggle.textContent = 'Show summary';
-  }
-}
-
-// showTopicContext names the room at the top of the conversation. Topic rooms
-// are named for their topic, so the id is enough — there is no tab strip to
-// highlight any more, and no summary injected into the page: the summaries
-// live on the rooms list at /chat, which is where you chose this room.
-function showTopicContext(t) {
+// setTopic records which room the message box is posting into.
+//
+// It used to also write the room's name into #messages as a bold line, which
+// was the third place the page said it: the shell renders the title as the
+// page heading, the server renders the About block under it, and then this put
+// it at the top of the conversation as well. Naming the room once is enough,
+// and the heading is where a reader looks for it.
+//
+// The toggle that came with that block is gone too. It hid the summary by
+// setting style.display, which .d-none would have beaten silently — the About
+// block folds with <details> now, which cannot be argued with by the cascade.
+function setTopic(t) {
   topic = t;
 
   const topicInput = document.getElementById('topic');
   if (topicInput) {
     topicInput.value = t;
-  }
-
-  const messages = document.getElementById('messages');
-  if (messages) {
-    messages.innerHTML = '';
-    const contextMsg = document.createElement('div');
-    contextMsg.className = 'context-message';
-    contextMsg.innerHTML = '<strong>' + escapeHtml(t) + '</strong>';
-    messages.appendChild(contextMsg);
   }
 }
 
@@ -366,7 +396,7 @@ function loadChat() {
 
   // A topic room is named for its topic, so the heading can come from the id.
   if (roomId.startsWith('chat_')) {
-    showTopicContext(roomId.replace('chat_', ''));
+    setTopic(roomId.replace('chat_', ''));
   }
 
   // Sending needs an account, so the box reflects that before we connect.
@@ -827,16 +857,13 @@ function connectRoomWebSocket(roomId) {
   const isReconnect = currentRoomId === roomId;
   currentRoomId = roomId;
   
-  // Only clear messages on initial connect, not on reconnect
+  // Only clear messages on initial connect, not on reconnect. Nothing has to be
+  // preserved across the clear any more: what the room is about is rendered by
+  // the server above #messages, outside everything this touches.
   if (!isReconnect) {
     const messagesDiv = document.getElementById('messages');
     if (messagesDiv) {
-      // Keep only the context message if it exists
-      const contextMsg = messagesDiv.querySelector('.context-message');
       messagesDiv.innerHTML = '';
-      if (contextMsg) {
-        messagesDiv.appendChild(contextMsg);
-      }
     }
   }
   
@@ -1090,33 +1117,16 @@ function initRoomChat() {
     // Connect WebSocket first (this will clear messages and load sessionStorage)
     connectRoomWebSocket(currentRoomData.id);
     
-    // Then add context message to messages area with room summary
-    // Do this after a brief delay to ensure WebSocket connection is established
-    setTimeout(() => {
-      const messages = document.getElementById('messages');
-      if (messages) {
-        // Check if context message already exists
-        if (!messages.querySelector('.context-message')) {
-          const contextMsg = document.createElement('div');
-          contextMsg.className = 'context-message';
-          
-          // Show summary expanded by default for item discussions
-          let summaryHtml = '';
-          if (currentRoomData.summary) {
-            const summaryId = 'room-summary';
-            summaryHtml = `<br><a href="#" class="summary-toggle" onclick="toggleSummary('${summaryId}'); return false;">Hide summary</a>` +
-              `<span id="${summaryId}" class="summary-content" style="display: block; color: #666;"><br>${currentRoomData.summary}</span>`;
-          }
-          
-          contextMsg.innerHTML = 'Discussion: <strong>' + currentRoomData.title + '</strong>' + 
-            summaryHtml +
-            (currentRoomData.url ? '<br><a href="' + currentRoomData.url + '" target="_blank" style="color: #0066cc; font-size: 13px;">→ View Original</a>' : '');
-          // Insert at the top
-          messages.insertBefore(contextMsg, messages.firstChild);
-        }
-      }
-    }, 100);
-    
+    // No context message. The room's summary, its name and the link to what it
+    // is about are rendered by the server above #messages — see aboutRoom in
+    // service/chat. This built a second copy of all three and inserted it as
+    // the first thing inside #messages, so the page said the same paragraph
+    // twice a hundred milliseconds after loading, with the room's title
+    // repeated between them.
+    //
+    // It also wrote a summary through innerHTML, and a summary can come from a
+    // page somebody else wrote.
+
     // Override chat form submission for room mode
     const chatForm = document.getElementById('chat-form');
     if (chatForm) {

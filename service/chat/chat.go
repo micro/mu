@@ -368,7 +368,7 @@ func getOrCreateRoom(id string) *Room {
 		case <-time.After(2 * time.Second):
 			app.Log("chat", "Timeout getting post %s from index, will create room with minimal context", itemID)
 			// Create room with minimal context
-			room.Title = "Post Discussion"
+			room.Title = "Post"
 			room.Summary = "Loading post content..."
 			room.URL = "/blog/post?id=" + itemID
 			break
@@ -387,7 +387,7 @@ func getOrCreateRoom(id string) *Room {
 			app.Log("chat", "Room context - Title: %s, Summary length: %d, URL: %s", room.Title, len(room.Summary), room.URL)
 		} else if room.Title == "" {
 			app.Log("chat", "Post %s not found in index", itemID)
-			room.Title = "Post Discussion"
+			room.Title = "Post"
 			room.URL = "/blog/post?id=" + itemID
 		}
 	case "news":
@@ -407,7 +407,7 @@ func getOrCreateRoom(id string) *Room {
 		case <-time.After(2 * time.Second):
 			app.Log("chat", "Timeout getting news %s from index, will create room with minimal context", itemID)
 			// Create room with minimal context
-			room.Title = "News Discussion"
+			room.Title = "News"
 			room.Summary = "Loading article content..."
 			break
 		}
@@ -425,7 +425,7 @@ func getOrCreateRoom(id string) *Room {
 		} else {
 			if room.Title == "" {
 				app.Log("chat", "News item %s not found in index", itemID)
-				room.Title = "News Discussion"
+				room.Title = "News"
 			}
 			// If entry not found but we have a title, log it
 			app.Log("chat", "News item %s not indexed yet, using title only: %s", itemID, room.Title)
@@ -447,7 +447,7 @@ func getOrCreateRoom(id string) *Room {
 		case <-time.After(2 * time.Second):
 			app.Log("chat", "Timeout getting video %s from index, will create room with minimal context", itemID)
 			// Create room with minimal context
-			room.Title = "Video Discussion"
+			room.Title = "Video"
 			room.Summary = "Loading video content..."
 			break
 		}
@@ -464,11 +464,11 @@ func getOrCreateRoom(id string) *Room {
 			app.Log("chat", "Room context - Title: %s, Summary length: %d, URL: %s", room.Title, len(room.Summary), room.URL)
 		} else if room.Title == "" {
 			app.Log("chat", "Video item %s not found in index", itemID)
-			room.Title = "Video Discussion"
+			room.Title = "Video"
 		}
 	case "chat":
 		// For chat topics, use the topic name from summaries
-		room.Title = itemID + " Discussion"
+		room.Title = itemID
 		mutex.RLock()
 		if summary, exists := summaries[itemID]; exists {
 			room.Summary = summary
@@ -506,12 +506,12 @@ func getOrCreateRoom(id string) *Room {
 		case <-time.After(2 * time.Second):
 			app.Log("chat", "Timeout getting reminder %s from index, will create room with minimal context", itemID)
 			// Create room with minimal context
-			room.Title = "Daily Reminder Discussion"
+			room.Title = "Daily Reminder"
 			room.Summary = "Loading reminder content..."
 		}
 
 		if entry != nil {
-			room.Title = "Daily Reminder Discussion"
+			room.Title = "Daily Reminder"
 			room.Summary = entry.Content
 			if len(room.Summary) > 2000 {
 				room.Summary = room.Summary[:2000] + "..."
@@ -520,7 +520,7 @@ func getOrCreateRoom(id string) *Room {
 			app.Log("chat", "Room context - Title: %s, Summary length: %d, URL: %s", room.Title, len(room.Summary), room.URL)
 		} else if room.Title == "" {
 			app.Log("chat", "Reminder item %s not found in index", itemID)
-			room.Title = "Daily Reminder Discussion"
+			room.Title = "Daily Reminder"
 			room.URL = "https://reminder.dev"
 		}
 
@@ -782,7 +782,11 @@ func (room *Room) sendAIGreeting() {
 	var prompt *ai.Prompt
 	if summary != "" {
 		prompt = &ai.Prompt{
-			System:   "You are a friendly chat participant in a " + topicName + " discussion room. Start a brief, engaging conversation based on the current summary. Ask a thought-provoking question or share an interesting observation. Keep it to 1-2 sentences. Be conversational, not formal.",
+			System: "You are a friendly chat participant in a " + topicName + " room. " +
+				"The summary below is already printed at the top of the page, so do not " +
+				"repeat, restate or paraphrase it — the reader has just read it. Ask one " +
+				"thought-provoking question that follows from it. One sentence. " +
+				"Conversational, not formal.",
 			Question: "Current " + topicName + " summary: " + summary + "\n\nStart a conversation:",
 			Priority: ai.PriorityLow,
 		}
@@ -1331,7 +1335,7 @@ func handleGetChat(w http.ResponseWriter, r *http.Request, roomID string) {
 	roomJSON, _ := json.Marshal(roomData)
 	title := "Chat"
 	if t, ok := roomData["title"].(string); ok && t != "" {
-		title = t
+		title = roomName(t)
 	}
 
 	// Which room this is, inside the content rather than at the end of <body>.
@@ -1346,28 +1350,89 @@ func handleGetChat(w http.ResponseWriter, r *http.Request, roomID string) {
 	// Data rather than code: a JSON block is read, never executed, so there is
 	// no ordering to get right and nothing to leak into the next page. json
 	// escapes < as <, so a room title cannot close the tag.
-	// What this room is about, on the page.
-	//
-	// The summary was computed by getOrCreateRoom, carried in roomData and
-	// written into the JSON block below, where nothing read it — so a room has
-	// never shown what it is for. What a reader saw instead was the agent's
-	// opening line, which is generated *from* this summary when a room has had
-	// no AI message recently, so it appears on the way in and is gone after a
-	// refresh that finds one already recorded. Two different things, one of them
-	// mistakable for the other, and the one that should have been steady was the
-	// one that was not there.
-	//
-	// Rendered server-side, above the messages, so it is the same on the first
-	// visit and the tenth.
-	about := ""
-	if sum, _ := roomData["summary"].(string); strings.TrimSpace(sum) != "" {
-		about = `<p class="room-about">` + htmlpkg.EscapeString(sum) + `</p>`
-	}
+	about := aboutRoom(roomData)
 
 	content := fmt.Sprintf(Template, guestNotice+about) +
 		`<script type="application/json" id="room-data">` + string(roomJSON) + `</script>`
 
 	app.Respond(w, r, app.Response{Title: title, Description: "Live discussion", HTML: content})
+}
+
+// aboutRoom is what this room is about: the summary, foldable, and the thing it
+// came from.
+//
+// One of these. There were two, and both were on screen at once — this one
+// above the messages, and a second built in JavaScript and inserted as the
+// first thing inside #messages, reading "Discussion: <title>", the same summary
+// again, a Hide summary link and → View Original. So the page opened by saying
+// the same paragraph twice, a few pixels apart, with the room's name repeated
+// between them. Reported as: chat summaries are above the message box and
+// inside it.
+//
+// The server's copy is the one kept, for three reasons. It is there in the
+// first paint rather than 100ms later, so the page does not visibly rearrange
+// itself. It escapes the summary; the JavaScript wrote it through innerHTML,
+// which makes any room whose summary came from a fetched page an injection.
+// And it is above #messages rather than inside it, so it stays put while the
+// conversation scrolls, instead of being a "message" that nobody sent which
+// scrolls away and never comes back.
+//
+// What the JavaScript had and this did not is now here: folding it away, and
+// the link to whatever the room is about. Those were the reasons to keep the
+// other one, so they had to move rather than be lost.
+//
+// <details> rather than a toggle script. The open and closed states are the
+// element's own, they work before any JavaScript runs and after soft
+// navigation, and there is no display property to be argued with — the old
+// toggle set style.display, which is one !important away from doing nothing at
+// all. See test/reveal_test.go.
+func aboutRoom(roomData map[string]interface{}) string {
+	sum, _ := roomData["summary"].(string)
+	sum = strings.TrimSpace(sum)
+	src, _ := roomData["url"].(string)
+	src = strings.TrimSpace(src)
+	if sum == "" && src == "" {
+		return ""
+	}
+
+	// A room made from something on this instance links back to it; one made
+	// from a fetched page links out. Same question either way — what is this
+	// about — so it is one link with the wording the destination deserves.
+	link := ""
+	if src != "" {
+		label := "View original"
+		rel := ""
+		if !strings.HasPrefix(src, "/") {
+			rel = ` target="_blank" rel="noopener noreferrer"`
+		}
+		link = `<a class="link room-source" href="` + htmlpkg.EscapeString(src) + `"` + rel + `>` +
+			label + ` →</a>`
+	}
+
+	if sum == "" {
+		return `<p class="room-about">` + link + `</p>`
+	}
+	return `<details class="room-about" open>` +
+		`<summary>About this room</summary>` +
+		`<p>` + htmlpkg.EscapeString(sum) + `</p>` + link +
+		`</details>`
+}
+
+// roomName is a room's title without the word nobody needed.
+//
+// Every room was named "<something> Discussion" — Dev Discussion, Post
+// Discussion, Daily Reminder Discussion — so the browser tab, the heading and
+// the nav all carried a noun that is true of every room on the page and
+// distinguishes none of them. New rooms are named without it.
+//
+// Trimmed here as well as at the source, because a room's title is stored with
+// it: the rooms that already exist keep the name they were given, and a
+// migration to delete one word from a title is not worth writing.
+func roomName(title string) string {
+	if t := strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(title), "Discussion")); t != "" {
+		return t
+	}
+	return title
 }
 
 // listRooms renders what is being discussed right now.
@@ -1431,7 +1496,7 @@ func listRooms(w http.ResponseWriter, r *http.Request) {
 		if s := summariesData[topic]; s != "" {
 			b.WriteString(`<p>` + htmlpkg.EscapeString(s) + `</p>`)
 		}
-		b.WriteString(`<a class="link" href="/chat?id=chat_` + url.QueryEscape(topic) + `">Join discussion →</a></div>`)
+		b.WriteString(`<a class="link" href="/chat?id=chat_` + url.QueryEscape(topic) + `">Join →</a></div>`)
 	}
 	if len(summariesData) > 0 {
 		b.WriteString(`<p class="summary-meta">Summaries: ` + htmlpkg.EscapeString(meta.Source) + ` · ` + htmlpkg.EscapeString(meta.Status) + `</p>`)
@@ -1459,11 +1524,22 @@ func describeRoom(room RoomInfo) string {
 	return strings.Join(parts, " · ")
 }
 
+// guestChatAuthNotice tells a signed-out reader why they cannot send here, and
+// where they can.
+//
+// The where matters and was wrong: this offered "the public agent" at /agent,
+// and /agent checks auth in its handler and bounces to /login. So the one line
+// on the page addressed to people with no account sent them to the one page
+// that will not open without one. The link read as a way in and was a wall.
+//
+// The front page is the door. Its box posts to /agent and a stranger gets an
+// answer inline, bounded and public — that is the thing being offered, so it is
+// what the link names and where it goes.
 func guestChatAuthNotice() string {
 	return `<div id="chat-auth-notice" class="notice">
   <strong>Sign in to use saved chat.</strong>
-  <p>This room keeps conversation history for your account, so sending here needs a login. You can still try Mu without an account in the public agent.</p>
-  <p><a class="link" href="/agent">Try Mu without an account</a> · <a class="link" href="/login?redirect=/chat">Log in</a> · <a class="link" href="/signup?redirect=/chat">Sign up</a></p>
+  <p>This room keeps conversation history for your account, so sending here needs a login. The box on the front page answers without one.</p>
+  <p><a class="link" href="/">Ask without an account</a> · <a class="link" href="/login?redirect=/chat">Log in</a> · <a class="link" href="/signup?redirect=/chat">Sign up</a></p>
 </div>`
 }
 

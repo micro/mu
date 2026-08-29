@@ -72,8 +72,8 @@ func serviceRef(spec service.Spec, who service.Viewer, base string) string {
 	// makes: a page showing today's actual forecast is the difference between
 	// claiming a service and having one. Everything under it is how to ask for
 	// more of the same.
-	if spec.Card != nil {
-		b.WriteString(`<div class="svc-card">` + spec.Card(who).HTML + `</div>`)
+	if spec.Card.Set() {
+		b.WriteString(`<div class="svc-card">` + spec.Card.Render(who).HTML + `</div>`)
 	}
 
 	// Where a person goes. The tile on /services leads here, so this is the way

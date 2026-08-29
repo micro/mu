@@ -78,14 +78,6 @@ func AlertsHandler(w http.ResponseWriter, r *http.Request) {
 	_, _, diskPercent := app.DiskUsage()
 	rows := []struct{ what, now, when, key string }{
 		{
-			"A new account", "—", "every one",
-			"",
-		},
-		{
-			"An account's first tool call", "—", "once per account",
-			"",
-		},
-		{
 			"Calls an hour, whole instance",
 			usage.HumanCount(usage.TotalOver(usage.Hour, 1)),
 			usage.HumanCount(number(settings.Get("ALERT_CALLS_PER_HOUR"), 5000)) + " or more",

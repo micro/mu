@@ -80,8 +80,6 @@ recall_search                needsAccount=true  destructive=false bound accountO
 routes_directions            needsAccount=false destructive=false bound accountOnly=false optionalAuth=true
 routes_eta                   needsAccount=false destructive=false bound accountOnly=false optionalAuth=true
 routes_nearest               needsAccount=false destructive=false bound accountOnly=false optionalAuth=true
-shell_list                   needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
-shell_read                   needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 shell_run                    needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 shell_write                  needsAccount=true  destructive=false bound accountOnly=false optionalAuth=false
 sms_history                  needsAccount=true  destructive=false bound accountOnly=true  optionalAuth=false

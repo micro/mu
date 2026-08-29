@@ -212,7 +212,7 @@ func serve(addr string) {
 						// by an agent. The landing says that, and "See it working"
 						// links straight to the live home for anyone who wants the
 						// cards.
-						home.Landing(w, r)
+						home.Index(w, r)
 					}
 					return
 				}

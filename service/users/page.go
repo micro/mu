@@ -108,7 +108,11 @@ func rows(list []User, me string) string {
 			badge += ` <span class="count-badge info">you</span>`
 		}
 
-		who := `<a href="` + html.EscapeString(u.Profile.Page) + `"><strong>` + name + `</strong></a>` + badge
+		// No <strong>. Every link on the site is already bold — see the `a` rule in
+		// mu.css — so wrapping one in strong is bold twice, and a page where every
+		// name is heavier than every name elsewhere reads as a different typeface
+		// rather than as emphasis. Reported that way.
+		who := `<a href="` + html.EscapeString(u.Profile.Page) + `">` + name + `</a>` + badge
 		if u.Display() != u.ID {
 			who += ` <span class="text-muted text-xs">@` + html.EscapeString(u.ID) + `</span>`
 		}

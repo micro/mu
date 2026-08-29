@@ -274,7 +274,21 @@ func FooterLinks() string {
 	// with its own row of Tools · API · Pricing — two of the three repeated from
 	// this line, a few centimetres above it. A footer is where a site keeps its
 	// destinations; a second copy of most of one is furniture.
-	return `<a href="/tools">Tools</a> · <a href="/api">API</a> · <a href="/privacy">Privacy</a> · <a href="/status">Status</a>` + torFooterLink()
+	// Archive, not Agent.
+	//
+	// Agent was here for an afternoon, on the argument that the archive is a
+	// tool rather than a destination and the agent is what this is for. The
+	// second half of that is right and it belongs to the box on the front page,
+	// which is where it now is. It does not belong here, for a plain reason:
+	// /agent redirects to /login for anybody without a session, and this footer
+	// is rendered on exactly one kind of page — the signed-out one. A signed-in
+	// account gets the sidebar instead, where Agents already is.
+	//
+	// So the link was redundant for everybody who could use it and a bounce for
+	// everybody who saw it. A footer is where a site keeps its destinations, and
+	// a destination that asks you to sign in first is not one.
+	return `<a href="/archive">Archive</a> · <a href="/tools">Tools</a> · <a href="/api">API</a> · ` +
+		`<a href="/privacy">Privacy</a> · <a href="/status">Status</a>` + torFooterLink()
 }
 
 func torFooterLink() string {
@@ -644,10 +658,25 @@ var Template = `
       })();
 
       if (navigator.serviceWorker) {
-        navigator.serviceWorker.register (
+        // updateViaCache:'none' — the browser must fetch the worker from the
+        // network on every update check, not from its HTTP cache.
+        //
+        // The default is 'imports', which consults the cache for the top-level
+        // script too, and /mu.js was served max-age=86400. So for a day after
+        // any visit an update check got the cached bytes back, found them
+        // identical, and kept the installed worker. On a phone that visits most
+        // days, that is never updating. Both halves are needed: the header, so
+        // there is nothing stale to find, and this, so the fetch does not go
+        // looking in the first place.
+        navigator.serviceWorker.register(
           '/mu.js',
-          {scope: '/'}
-        );
+          {scope: '/', updateViaCache: 'none'}
+        ).then(function (reg) {
+          // And ask, on every load. Registration alone only checks on
+          // navigation, and a page opened from the home screen of an installed
+          // app may not count as one.
+          if (reg && reg.update) reg.update();
+        }).catch(function () {});
       }
       
       // One button, two meanings. On a phone the sidebar is an overlay that
@@ -949,9 +978,14 @@ func renderForRequest(title, desc, html, bodyClass string, r *http.Request) stri
 	if banner := CreditsBanner(r); banner != "" {
 		html = banner + html
 	}
-	if banner := ConnectBanner(r); banner != "" {
-		html = banner + html
-	}
+	// No connect banner.
+	//
+	// It ran on every page of every instance: "Connect your agent. This is the
+	// app; the tools are the other half. All N of them, on one server." That is
+	// a pitch — "on one server" is an argument aimed at somebody choosing
+	// between products — and it was above the fold on the archive, the inbox
+	// and the home screen of people who had already chosen. /tools is in the
+	// rail, which is where a destination belongs.
 	_, acc := auth.TrySession(r)
 	// The path, so the rail can show which mailbox or agent you are in. Only
 	// this render has a request to read it from.
@@ -1077,11 +1111,32 @@ func navMain(acc *auth.Account) string {
 	b += item("nav-agents", "/agents", "/agent.svg", "Agents")
 	b += item("nav-services", "/services", "/services.svg", "Services")
 	if acc != nil {
+		// Tokens are how you authenticate an agent, so they are yours on every
+		// instance.
 		b += item("nav-token", "/token", "/token.svg", "Tokens")
-		b += item("nav-wallet", "/wallet", "/wallet.png", "Wallet")
+		// A wallet is only a wallet where money can go into it. An instance
+		// somebody runs themselves has no top-up — they are paying the model
+		// vendor directly — so this was a permanent rail entry leading to a
+		// balance that could never change, on the machine where the whole point
+		// is that there is no meter between you and your own server. Hidden the
+		// way Admin is: the page still answers, the rail just does not offer
+		// what this instance cannot do.
+		if TopUpConfigured != nil && TopUpConfigured() {
+			b += item("nav-wallet", "/wallet", "/wallet.png", "Wallet")
+		}
 	}
 	return b
 }
+
+// TopUpConfigured reports whether this instance can take a payment, filled in
+// by the server.
+//
+// A hook for the same reason as AgentReady: the answer lives in the package
+// that holds the payment keys, and that package imports this one. Nil means no
+// — the opposite default to AgentReady, and deliberately: an unwired hook
+// there would hide a working box, and here it would offer a wallet nobody can
+// put anything in.
+var TopUpConfigured func() bool
 
 func navAdmin(acc *auth.Account) string {
 	if acc == nil || !acc.Admin {
@@ -1247,12 +1302,36 @@ func Serve() http.Handler {
 
 	// Wrap with cache headers for static assets
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Set cache headers for static assets
-		if strings.HasSuffix(r.URL.Path, ".css") ||
-			strings.HasSuffix(r.URL.Path, ".js") ||
-			strings.HasSuffix(r.URL.Path, ".png") ||
-			strings.HasSuffix(r.URL.Path, ".ico") ||
-			strings.HasSuffix(r.URL.Path, ".webmanifest") {
+		// The service worker is the one file that must never be cached.
+		//
+		// It was, for a day at a time, by the rule below — and a service worker
+		// is not loaded like a script, it is *installed*. The browser replaces
+		// it only when it fetches the file and finds different bytes, and under
+		// the default updateViaCache it makes that fetch through the HTTP cache.
+		// So max-age=86400 meant: for twenty-four hours after any visit, every
+		// update check on that device got the cached copy back, found it
+		// identical, and concluded there was nothing new. registration.update()
+		// goes through the same cache, so the button offering to fix it could
+		// not either.
+		//
+		// The effect is that a phone can run a months-old worker while the
+		// server has shipped a dozen versions — which is what happened here.
+		// The worker handling pushes predated the code that reports a
+		// notification arrived, so every send read "sent, the device has not
+		// said it arrived", which is also what a device that never woke looks
+		// like. Days went into the sending half, which was correct throughout.
+		//
+		// no-cache is not "do not store": it is "revalidate every time", so the
+		// file still costs a 304 rather than a download when it has not changed.
+		// A service worker is exactly what that is for.
+		switch {
+		case r.URL.Path == "/mu.js" || strings.HasSuffix(r.URL.Path, "/mu.js"):
+			w.Header().Set("Cache-Control", "no-cache")
+		case strings.HasSuffix(r.URL.Path, ".css"),
+			strings.HasSuffix(r.URL.Path, ".js"),
+			strings.HasSuffix(r.URL.Path, ".png"),
+			strings.HasSuffix(r.URL.Path, ".ico"),
+			strings.HasSuffix(r.URL.Path, ".webmanifest"):
 			w.Header().Set("Cache-Control", "public, max-age=86400") // 1 day
 		}
 		if compressed(w, r, htmlContent) {

@@ -91,39 +91,75 @@ type written struct {
 	HTML  string
 }
 
-// writeApp asks for a document, checks it, and asks again with the problems.
-func writeApp(description, authorID string) (written, error) {
-	question := "Build this app: " + strings.TrimSpace(description)
+// refinement is one ask, check, ask-again-with-the-problems loop.
+//
+// Named and separated because there are two of these now and they differ in
+// four strings. Writing an app and changing one are the same operation with a
+// different opening question: produce a document, run the scanner and the
+// tests over it, hand back what they said, ask again. Two copies of a loop
+// that decides whether a program is fit to keep is two places for the checks
+// to drift apart — and the one that drifts is always the one somebody added
+// later, which here is the edit.
+type refinement struct {
+	system string // what the model is
+	caller string // how the spend is attributed
+	first  string // the question, the first time
+	again  func(problems []string) string
+	// describes is the app in a few words, used for a title when the model
+	// returns a document without one.
+	describes string
+	author    string // whose app, so the tests run its calls as that account
+}
+
+// run asks until the checks pass, and reports how many turns that took.
+func (rf refinement) run() (written, int, error) {
+	question := rf.first
 
 	var last []string
-	for attempt := 0; attempt < buildAttempts; attempt++ {
+	for attempt := 1; attempt <= buildAttempts; attempt++ {
 		raw, err := ai.Ask(&ai.Prompt{
-			System:    buildSystem,
+			System:    rf.system,
 			Question:  question,
-			Caller:    "app-build",
+			Caller:    rf.caller,
 			MaxTokens: buildTokens,
 		})
 		if err != nil {
-			return written{}, fmt.Errorf("could not reach the model: %w", err)
+			return written{}, attempt, fmt.Errorf("could not reach the model: %w", err)
 		}
 
-		out := splitHeader(raw, description)
-		problems := buildProblems(out.HTML, authorID)
+		out := splitHeader(raw, rf.describes)
+		problems := buildProblems(out.HTML, rf.author)
 		if len(problems) == 0 {
-			return out, nil
+			return out, attempt, nil
 		}
 		last = problems
+		question = rf.again(problems)
+	}
+	return written{}, buildAttempts, fmt.Errorf("three attempts, still: %s",
+		strings.Join(last, "; "))
+}
 
+// writeApp asks for a document, checks it, and asks again with the problems.
+func writeApp(description, authorID string) (written, error) {
+	description = strings.TrimSpace(description)
+	out, _, err := refinement{
+		system:    buildSystem,
+		caller:    "app-build",
+		first:     "Build this app: " + description,
+		describes: description,
+		author:    authorID,
 		// The correction, said as a list rather than as prose. The model is
 		// being asked to fix a document it wrote, so it gets the description
 		// again — a repair prompt without the original goal drifts towards
 		// satisfying the complaints and away from the app.
-		question = "Build this app: " + strings.TrimSpace(description) +
-			"\n\nYour previous attempt had these problems:\n- " +
-			strings.Join(problems, "\n- ") +
-			"\n\nReturn the whole corrected document, in the same format."
-	}
-	return written{}, fmt.Errorf("three attempts, still: %s", strings.Join(last, "; "))
+		again: func(problems []string) string {
+			return "Build this app: " + description +
+				"\n\nYour previous attempt had these problems:\n- " +
+				strings.Join(problems, "\n- ") +
+				"\n\nReturn the whole corrected document, in the same format."
+		},
+	}.run()
+	return out, err
 }
 
 // buildProblems is everything wrong with a candidate document, in the words the

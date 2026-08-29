@@ -495,9 +495,14 @@ func indexMarketPrices(prices map[string]float64) {
 			ticker,
 			fmt.Sprintf("$%.2f", price),
 			map[string]interface{}{
-				"ticker":  ticker,
-				"price":   price,
-				"updated": timestamp,
+				"ticker": ticker,
+				"price":  price,
+				// A quote is as of now, so posted_at and the index time agree
+				// today. Said anyway: the moment this stops overwriting one row
+				// per ticker and starts keeping the history, the difference is
+				// the whole point of the row.
+				"posted_at": timestamp,
+				"updated":   timestamp,
 			},
 		)
 	}

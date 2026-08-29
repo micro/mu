@@ -28,17 +28,60 @@ func TestTheDesktopHeightChainIsComplete(t *testing.T) {
 		".chat-side",            // the column
 		".chat-side>.chat-pane", // the one that was missing
 		".chat-side .chat-rail", // must be allowed to shrink vertically
-		".chat-sess-list",       // the part that actually scrolls
+		".chat-sess-scroll",     // the part that actually scrolls
 	} {
 		if !strings.Contains(block, link) {
 			t.Errorf("%s is not constrained, so nothing below it can scroll", link)
 		}
 	}
-	// And the list is the only thing that gets a scrollbar in the rail.
-	if !strings.Contains(block, ".chat-sess-list{min-height:0;overflow-y:auto}") {
-		t.Error("the conversations list does not scroll")
+	if !strings.Contains(block, ".chat-sess-scroll{flex:1 1 auto;min-height:0;overflow-y:auto}") {
+		t.Error("the rail does not scroll")
 	}
 }
+
+// One scroll region in the rail, not one per list.
+//
+// The rule was on .chat-sess-list, written when the rail held a single list. It
+// then grew a second — what the agent had answered in the inbox — and two
+// auto-height scrollers in one fixed-height column each size to their own
+// content, so together they overran the rail and the second was painted over
+// the bottom of the first. Reported exactly that way, on a live instance.
+//
+// That section has since gone: it was a second view of the inbox on a page
+// about the chat, and nobody reading it could tell what it was for. The rule
+// stays, because the fault was never really the second list — it was a scroll
+// region declared on the wrong element, which was wrong while there was one
+// list too and merely invisible. The scroll belongs to the column.
+func TestOnlyTheRailScrollsAndNotEachListInIt(t *testing.T) {
+	css := cssComment.ReplaceAllString(chatLayoutCSS, "")
+	for _, rule := range []string{
+		".chat-sess-list{min-height:0;overflow-y:auto}",
+		".chat-sess-list{flex-direction:column;overflow:visible;flex-wrap:nowrap;max-height:52vh;overflow-y:auto}",
+	} {
+		if strings.Contains(css, rule) {
+			t.Errorf("%s makes every list its own scroll region, which is the "+
+				"column's job; two lists under it overlap", rule)
+		}
+	}
+	// Whatever else it says, the list itself must not carry a height cap or an
+	// overflow of its own.
+	for _, decl := range listDecls(css) {
+		if strings.Contains(decl, "overflow-y:auto") || strings.Contains(decl, "max-height") {
+			t.Errorf(".chat-sess-list declares %q — that belongs on .chat-sess-scroll", decl)
+		}
+	}
+}
+
+// listDecls returns the body of every `.chat-sess-list{…}` rule.
+func listDecls(css string) []string {
+	var out []string
+	for _, m := range listRule.FindAllStringSubmatch(css, -1) {
+		out = append(out, m[1])
+	}
+	return out
+}
+
+var listRule = regexp.MustCompile(`\.chat-sess-list\{([^}]*)\}`)
 
 // None of it may reach the phone, where the sheet sizes itself and a
 // min-height:0 on the same chain collapsed the list to nothing.
@@ -79,4 +122,38 @@ func desktopBlock(css string) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+// A custom property referenced only in its own fallback is not a setting, it is
+// a constant with extra steps.
+//
+// .chat-layout is sized calc(100vh - var(--chat-chrome, 120px)) and nothing on
+// the instance ever set --chat-chrome, so every page used 120px while the
+// chrome above the layout measures 192px. Measured on micro.mu at 1440x900: the
+// rail's bottom edge at 972px, seventy-two pixels below the window, clipped by
+// .chat-side{overflow:hidden}.
+//
+// It stayed hidden for as long as the rail ended in a scrolling list, because
+// what fell off the bottom was the empty part of a scroll region. The moment a
+// second section was pinned below it, the overflow became the section — which
+// is how this was reported: something overlapping the bottom of the
+// conversations, on somebody's own instance.
+//
+// So the variable has to be written by something that can see the rendered
+// page. This test only checks that something does: a page that reads the
+// property and never assigns it is back to a hard-coded 120.
+func TestTheChromeAboveTheChatIsMeasuredAndNotAssumed(t *testing.T) {
+	if !strings.Contains(chatLayoutCSS, "var(--chat-chrome") {
+		t.Fatal("the layout no longer reads --chat-chrome; this test is stale")
+	}
+	if !strings.Contains(chatPageJS, "setProperty('--chat-chrome'") {
+		t.Error("--chat-chrome is read by the stylesheet and never set, so the " +
+			"fallback is the only value there has ever been")
+	}
+	// And re-measured, because the number changes with the window: the nav
+	// wraps, a banner appears, a font lands and moves everything down.
+	if !strings.Contains(chatPageJS, "addEventListener('resize',muChatChrome)") {
+		t.Error("--chat-chrome is measured once and never again, so it is wrong " +
+			"as soon as the window changes")
+	}
 }

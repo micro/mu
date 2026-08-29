@@ -104,7 +104,9 @@ func handleAIEdit(w http.ResponseWriter, r *http.Request, slug string) {
 		}
 	}
 
-	a, err := EditMicroApp(acc.ID, slug, instruction)
+	// EditApp rather than EditMicroApp: an app written as a document is edited
+	// as a document, and this door should not have to know which kind it has.
+	a, err := EditApp(acc.ID, slug, instruction)
 	if err != nil {
 		app.Error(w, r, http.StatusBadRequest, err.Error())
 		return

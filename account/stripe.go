@@ -19,7 +19,15 @@ import (
 	"mu/internal/settings"
 )
 
-func stripeSecret() string  { return settings.Get("STRIPE_SECRET_KEY") }
+func stripeSecret() string { return settings.Get("STRIPE_SECRET_KEY") }
+
+// TopUpConfigured reports whether this instance can take a payment at all.
+//
+// The key, because that is what the whole flow rests on: with no secret there
+// is no session to create, no webhook that could be genuine, and nothing a
+// balance could ever be increased by. An instance somebody runs themselves has
+// none, and a wallet there is a page about a number that cannot move.
+func TopUpConfigured() bool { return strings.TrimSpace(stripeSecret()) != "" }
 func stripePublic() string  { return settings.Get("STRIPE_PUBLISHABLE_KEY") }
 func stripeWebhook() string { return settings.Get("STRIPE_WEBHOOK_SECRET") }
 

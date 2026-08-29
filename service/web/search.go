@@ -314,6 +314,22 @@ func stripHTML(s string) string {
 // webRecentSearchesScript is the client-side JS for recent web searches (localStorage).
 var webRecentSearchesScript = `
 <script>
+(function () {
+// Wrapped, because this script runs more than once in one document.
+//
+// Soft navigation swaps #content and re-creates every script inside it so the
+// page's behaviour comes with it. This one declared MAX_RECENT_SEARCHES and
+// STORAGE_KEY as top-level consts, so the second execution threw
+// "Identifier 'STORAGE_KEY' has already been declared" before a single line of
+// it ran — and a SyntaxError kills the whole script, not just the declaration.
+//
+// The symptom names the cause exactly: recent searches were missing when you
+// arrived by clicking Open, and appeared after a refresh. A refresh is a new
+// document, where these are declared for the first time. Reported that way.
+//
+// A function scope means the second run redeclares them in its own scope, which
+// is what every one of these blocks needs and what none of them had.
+
   const MAX_RECENT_SEARCHES = 10;
   const STORAGE_KEY = 'mu_recent_web_searches';
 
@@ -407,5 +423,7 @@ var webRecentSearchesScript = `
   } else {
     wireSearch();
   }
+
+})();
 </script>
 `

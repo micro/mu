@@ -190,13 +190,19 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		handleJSON(w, r)
 		return
 	}
-	// No page here, and no redirect to the one there is. This service draws no
-	// page of its own — Spec.Page is /services/weather, the derived rendering
-	// with the card, every method and a form that calls them — and /weather used
-	// to bounce there. The bounce is gone: an address either answers or it does
-	// not, and one that only tells you about another address is a hop every
-	// caller pays and nobody asked for.
-	http.NotFound(w, r)
+	// And a page for a person.
+	//
+	// This was http.NotFound. The reasoning was that the service draws no page
+	// of its own and /services/weather — the derived rendering, with the card
+	// and a form per method — is where somebody should go. That is right for a
+	// service with nothing particular to show and wrong for this one: the
+	// answer here is a shape, now and the days after, and the second question
+	// everybody has is "what about somewhere else", which a form built from a
+	// method signature asks for as a pair of decimal coordinates.
+	//
+	// Reported as: there is no /weather, so I cannot get a forecast for any
+	// location. See page.go.
+	PageHandler(w, r)
 }
 
 // handleJSON handles JSON API requests for weather data.

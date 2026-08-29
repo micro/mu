@@ -19,6 +19,7 @@ import (
 	"mu/internal/event"
 	"mu/internal/service"
 	"mu/service/news"
+	"mu/service/notes"
 )
 
 //go:embed cards.json
@@ -48,7 +49,9 @@ type Card struct {
 	Column   string
 	Position int
 	Link     string
-	Content  func(service.Viewer) service.Card
+	// Content renders it, and says whether that render is the same for
+	// everybody. A personal one never enters the cache below — see RefreshCards.
+	Content service.Renderer
 	// CachedHTML is the last render; At is when what it shows happened, zero
 	// for a card that shows how things are rather than something that occurred.
 	CachedHTML  string
@@ -112,7 +115,7 @@ func Load() {
 	// service could grow a card and never appear here, and a renamed one would
 	// silently render nothing. News stays written out: it is this package's own
 	// card, not the service's view of itself.
-	cardFunctions := map[string]func(service.Viewer) service.Card{}
+	cardFunctions := map[string]service.Renderer{}
 	for _, sp := range service.Cards() {
 		cardFunctions[sp.Name] = sp.Card
 	}
@@ -217,16 +220,28 @@ func RefreshCards() {
 	for i := range Cards {
 		card := &Cards[i]
 
-		// Get fresh content, and when what it shows happened.
+		// A personal card is not cached at all.
 		//
-		// The impersonal render, deliberately. This cache is one set of
-		// strings shared by every viewer — see CachedHTML — so a card that
-		// answered for whoever triggered the refresh would be served to
-		// everybody after them. A personal card belongs on a per-request
-		// surface, which is what a service page is; giving Home one means
-		// giving Home a cache per account, and that is a change to make on
-		// purpose rather than as a side effect of this signature.
-		fresh := card.Content(service.Anyone())
+		// This cache is one set of strings shared by every viewer — see
+		// CachedHTML — so a card that answered for whoever triggered the
+		// refresh would be served to everybody after them. That was the whole
+		// reason every card was rendered here as Anyone, and the cost was that
+		// prayer — the one personal card cards.json puts on this page — showed
+		// its next-prayer mark to nobody, because that mark is computed from
+		// where the reader is. The sharing rule was being enforced by throwing
+		// away the reader, on every card, because the type could not say which
+		// ones minded.
+		//
+		// It can now. A personal card is left out of the cache and drawn per
+		// request instead, against the reader who asked — see cardsHTMLFor.
+		// Skipping it here also skips a render nobody will read, which for a
+		// card that fetches is a request saved every two minutes.
+		if card.Content.Personal() {
+			continue
+		}
+
+		// Get fresh content, and when what it shows happened.
+		fresh := card.Content.Render(service.Anyone())
 		card.At = fresh.At
 
 		// Calculate hash
@@ -262,13 +277,20 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			HTML   string `json:"html"`
 			Column string `json:"column"`
 		}
+		// The poll refreshes the page in place, so it renders for the same
+		// reader the page did — otherwise a signed-in reader's weather reverted
+		// to the signed-out card two minutes after arriving.
+		pollWho := service.Anyone()
+		if _, acc := auth.TrySession(r); acc != nil {
+			pollWho = service.For(acc.ID)
+		}
 		var result []cardData
 		for _, card := range Cards {
 			// The same two halves the page builds, from the same two
 			// functions. Sending CachedHTML raw is what took the More link off
 			// every card on the first refresh, and sending the bare Title is
 			// why the age on a card never moved while its contents did.
-			body := cardBody(card)
+			body := cardBody(card, pollWho)
 			if body == "" {
 				continue
 			}
@@ -367,13 +389,26 @@ function fetchW(la,lo){
 	// Date + invite/settings above the input
 	b.WriteString(dateHTML)
 
-	// Inline agent — Home answers here rather than navigating away, and it renders
-	// for everyone: logged out, this is the public face of the product. Signed-in
-	// users get personalised chips.
+	// The box asks, the same as the signed-out page does.
+	//
+	// It searched, and the reason search won was that it is the half that works
+	// with no model — which is a constraint about a fresh install, and it got
+	// treated as a statement about the product. Every instance that has a model
+	// had its front control pointed at its own memory instead of at the thing
+	// the memory is for. The README never said that: "services and the archive
+	// become tools for agents to use".
+	//
+	// Still one control doing one thing on both pages, which was the property
+	// worth keeping from the previous answer. Where there is no model it
+	// renders the search box and says why — a degrade, not a second product.
 	{
 		b.WriteString(`<div id="home-agent">`)
-		b.WriteString(app.ChatComponent(app.ChatConfig{HideSuggestions: true,
-			OfferAgentPicker: viewerID != ""}))
+		b.WriteString(app.ChatComponent(app.ChatConfig{
+			Ask:              true,
+			HideSuggestions:  true,
+			Placeholder:      "What do you need?",
+			OfferAgentPicker: viewerID != "",
+		}))
 
 		// The address, under the box. Quiet, because it is a fact about the
 		// agent rather than a call to action: the thing that makes this more
@@ -410,17 +445,34 @@ function fetchW(la,lo){
 			b.WriteString(brief(viewerID))
 		}
 
-		// What arrived, under a heading that looks like one.
+		// What is yours: what you wrote down, what arrived, who is working.
 		//
-		// Both halves of this screen are labelled the same way and each label
-		// carries a rule across the page, because two words in small caps over
-		// a list read as a caption rather than as a section — which is how the
-		// conversations came to look like loose links under the address line.
+		// Left to right in that order — inside before outside. Notes are what
+		// you and your own agents left each other, the inbox is what came from
+		// elsewhere, the roster is who you have on it. Notes is also the one
+		// block here that something other than a person can add to without
+		// interrupting anybody: an agent that woke, checked and found nothing
+		// changed had nowhere to say so, and mail is too heavy an instrument
+		// for it.
+		//
+		// Across rather than down, which is the layout and is also the honest
+		// shape. These were three full-width bands stacked, and a band assumes
+		// content that fills it: Agents was 1120 by 56 pixels to say "Micro,
+		// nothing yet", and the services did not start until 850 pixels down a
+		// page nobody had scrolled yet. Nothing here holds more than four short
+		// rows. Three columns is what that much content is, and it leaves the
+		// top of the page saying something.
+		//
+		// None of them is a card, for the reason in notes.Preview: the card grid
+		// is one cache shared by every viewer, and these are one person's.
 		if viewerID != "" {
-			if peek := inbox.Preview(viewerID); peek != "" {
-				b.WriteString(sectionRule("Inbox") + peek)
-			}
+			b.WriteString(yours(
+				block{"Notes", notes.Preview(r, viewerID)},
+				block{"Inbox", inbox.Preview(viewerID)},
+				block{"Agents", agent.Preview(viewerID)},
+			))
 		}
+
 	}
 
 	// No counts strip. Four tiles reading Agents 0, Unread 0, Apps 0, Credits
@@ -434,23 +486,6 @@ function fetchW(la,lo){
 	// is a receipt for something you just watched happen, and an inbox preview
 	// is three subject lines beside a Mail page one click away. /runs and /mail
 	// are the pages for them, and the header already carries an unread badge.
-
-	// Your agents, between what arrived and what the instance knows.
-	//
-	// Which is the order the three read in: something came in, here is who you
-	// have working on it, here is what they can reach. Without this the page
-	// was a mailbox above a content grid and the agents were somewhere else
-	// entirely — on a roster you had to go and find, on the one screen whose
-	// job is to say how things are.
-	//
-	// Not the runs block that was removed above. A run is an event and ages
-	// out; an agent is a standing thing, and this is the roster with a sign of
-	// life against each. See agent.Preview.
-	if viewerID != "" {
-		if who := agent.Preview(viewerID); who != "" {
-			b.WriteString(sectionRule("Agents") + who)
-		}
-	}
 
 	// The cards, on Home, where they were.
 	//
@@ -486,7 +521,7 @@ function fetchW(la,lo){
 		// rows and the five agents above have to their pages, so it ends the
 		// same way. Only when there are cards: a link out from under a heading
 		// with nothing beneath it reads as the block having failed to render.
-		b.WriteString(`<a class="peek-more" href="/services">Go to services &rarr;</a>`)
+		b.WriteString(app.Link("Go to services", "/services"))
 	}
 
 	b.WriteString(`</div>`) // close #home-cards
@@ -576,6 +611,35 @@ func htmlEsc(s string) string { return html.EscapeString(s) }
 // know — and it carried two words in small caps to tell them apart. That reads
 // as a caption on the thing below it rather than as a break between two things,
 // which is why the sections did not look like sections.
+// block is one of the "what is yours" blocks: its label, and whatever it
+// rendered for this reader.
+type block struct{ label, html string }
+
+// yours lays the reader's own blocks across the page.
+//
+// A block that rendered nothing is not a column. That matters more here than in
+// a stack: an empty band took no room, an empty column would take a third of
+// the row and say nothing in it, and a new account has two of the three empty.
+//
+// The labels keep their rules. Each one now runs across its own column rather
+// than the whole page, which is what a rule over a list is for — see
+// .home-section, whose comment is about a caption being mistaken for a section.
+// Three of them across the top read as three sections, which is what they are.
+func yours(blocks ...block) string {
+	var cols []string
+	for _, bl := range blocks {
+		if strings.TrimSpace(bl.html) == "" {
+			continue
+		}
+		cols = append(cols, `<div class="home-yours-col">`+
+			sectionRule(bl.label)+bl.html+`</div>`)
+	}
+	if len(cols) == 0 {
+		return ""
+	}
+	return `<div class="home-yours">` + strings.Join(cols, "") + `</div>`
+}
+
 func sectionRule(label string) string {
 	return `<p class="home-section"><small>` + htmlEsc(label) + `</small></p>`
 }
@@ -603,8 +667,8 @@ var cardTips = map[string]string{
 // link on the first refresh and got it back on the next full page load, which
 // is exactly what "sometimes the More buttons disappear" looks like from the
 // outside.
-func cardBody(c Card) string {
-	body := strings.TrimSpace(c.CachedHTML)
+func cardBody(c Card, who service.Viewer) string {
+	body := strings.TrimSpace(cardRender(c, who))
 	if body == "" {
 		return ""
 	}
@@ -612,6 +676,22 @@ func cardBody(c Card) string {
 		body += app.Link("More", c.Link)
 	}
 	return body
+}
+
+// cardRender is a card's HTML for one reader: the shared cache for a card that
+// says the same thing to everybody, and a fresh render for one that does not.
+//
+// The personal ones are not in the cache at all — see RefreshCards — so this is
+// the only place they are drawn, and it is per request, which is what makes
+// them personal in the first place. A card that answers for whoever is looking
+// cannot be memoised into a string shared by every viewer, and pretending
+// otherwise is how prayer ended up showing its signed-out branch — no next
+// prayer, the one thing it is for — to signed-in readers.
+func cardRender(c Card, who service.Viewer) string {
+	if c.Content.Personal() {
+		return c.Content.Render(who).HTML
+	}
+	return c.CachedHTML
 }
 
 // cardHead is a card's title: its name, a way through to the service, what it
@@ -668,9 +748,14 @@ func CardsHTML(r *http.Request, viewerAcc *auth.Account) string {
 	// the other cost of computing it: an empty card reshuffled everything after
 	// it, so the whole page moved depending on whether the daily image had
 	// landed yet.
+	who := service.Anyone()
+	if viewerAcc != nil {
+		who = service.For(viewerAcc.ID)
+	}
+
 	var leftHTML, rightHTML []string
 	for _, card := range Cards {
-		body := cardBody(card)
+		body := cardBody(card, who)
 		if body == "" {
 			continue
 		}

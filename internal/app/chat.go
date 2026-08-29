@@ -42,6 +42,18 @@ func JSAttr(s string) string {
 
 // ChatConfig configures the shared chat component.
 type ChatConfig struct {
+	// Ask makes this box talk to the agent. Without it, it searches.
+	//
+	// A default of search rather than of asking, because the pages that want a
+	// chat know they do — /agents is a page about an agent, so a box there is
+	// obviously for talking to it — while every other embed either wants a
+	// search box or has never thought about it, and a search box is the answer
+	// that works with no model, no key and no account.
+	//
+	// The old default was the other way and it produced the bug this fixes: the
+	// signed-out page searched, Home asked, so the same control did two
+	// different things depending on whether you had signed in.
+	Ask bool
 	// ContextID seeds the conversation's server-side thread id, so follow-up
 	// messages continue the same session. Empty starts a new session.
 	ContextID string
@@ -121,27 +133,105 @@ var AgentReady func() bool
 //
 // No JavaScript either. A form that navigates is what a search box was before
 // anybody had a reason to make it otherwise, and it works on the first paint.
-func searchBox() string {
+// searchBox is the box. why is the reason it is not a chat, and is empty
+// almost always.
+//
+// It carried that reason unconditionally, from when this rendered only on an
+// instance with no model — so when search became the default everywhere, every
+// instance began telling its owner it had no provider, including the ones that
+// do. A note written for one case, reused for all of them, asserting something
+// false on most.
+//
+// A search box does not need a paragraph under it explaining that it is a
+// search box. The only page that owes an explanation is one that was supposed
+// to be a chat.
+// SearchBoxOpts is how a page asks for the box. The zero value is the plain
+// search box every page had before there was a second thing to do with it.
+type SearchBoxOpts struct {
+	// Why this is a search box and not a chat. Empty almost always — see above.
+	Why string
+	// Centred is the front page, which has nothing else on it to line up with.
+	// Everywhere else the box sits in a left-aligned column.
+	Centred bool
+	// Focused puts the cursor in it on load. True on a page whose whole purpose
+	// is the box; false where it is one thing among several.
+	Focused bool
+}
+
+// SearchBox renders the box. Exported because the front page draws it too, and
+// it drew its own until this had two buttons — at which point there were two
+// implementations of one control, and the second button would have had to be
+// written twice to appear on both.
+func SearchBox(o SearchBoxOpts) string { return searchBox(o) }
+
+// askAction reports whether "Ask agent" can be offered: a model is configured.
+//
+// Not whether anybody is signed in. /agent refuses without an account, but a
+// signed-out visitor pressing it is redirected to /login with the whole URL —
+// query included — so they sign in and the question they typed is asked on
+// arrival. See RedirectToLogin. The button keeps its promise; it just takes a
+// step on the way, which is the truth about an agent that costs money to run.
+func askAction() bool { return AgentReady == nil || AgentReady() }
+
+// AgentIsReady is askAction for pages outside this package that draw the box
+// themselves. Exported rather than exporting AgentReady, which is a hook the
+// server fills in and nothing else should be reading directly.
+func AgentIsReady() bool { return askAction() }
+
+func searchBox(o SearchBoxOpts) string {
+	note := ""
+	if o.Why != "" {
+		note = `<p class="mu-search-why">` + o.Why +
+			TextLink("/admin/config", "/admin/config") + `.</p>`
+	}
+
+	// One arrow, one destination.
+	//
+	// An "Ask agent" button lived here beside Search for an afternoon and was
+	// the wrong shape twice over. It navigated to /agent to answer, when asking
+	// had always answered in place and the whole appeal of a box on the front
+	// page is that it replies without taking you anywhere. And it was drawn out
+	// of classes invented in this file rather than the .btn the rest of the
+	// product uses, so it did not look like anything else on the screen.
+	//
+	// Both now belong to the chat, which is where asking already worked: where
+	// there is a model, ChatComponent draws the box and offers Search beside
+	// Ask, one input, the answer underneath. This is what remains where there
+	// is no model — a search box, which is all it ever was.
+	placeholder := "Search everything here"
+
+	wrap := "mu-search"
+	if o.Centred {
+		wrap += " mu-search-mid"
+	}
+	focus := ""
+	if o.Focused {
+		focus = " autofocus"
+	}
+
 	// Its own ids, not the chat's. The two are never on a page together, so
 	// sharing them would work — and would mean every selector, test and future
 	// stylesheet rule naming mu-chat-form had two different forms in mind.
-	return `<div id="mu-search"><form id="mu-search-form" method="GET" action="/archive">
-    <input id="mu-search-input" type="search" name="q" placeholder="Search everything here" maxlength="256">
+	return `<div id="mu-search" class="` + wrap + `"><form id="mu-search-form" method="GET" action="/archive">
+    <input id="mu-search-input" type="search" name="q" placeholder="` + htmlpkg.EscapeString(placeholder) + `" maxlength="256"` + focus + `>
     <button type="submit" aria-label="Search">&#x2192;</button>
-  </form>
-  <p class="mu-search-why">Searching, because no model is configured — so the agent cannot answer yet.
-  Everything else works: mail, chat, files, notes and your inbox. Add a provider at ` +
-		TextLink("/admin/config", "/admin/config") + ` to ask it things instead.</p></div>
+  </form>` + note + `</div>
 <style>
-#mu-search{max-width:760px;margin:0 auto;width:100%}
+/* Left, not centred. The rest of the page it sits on starts at the
+   left margin, and a box centred inside a left-aligned column reads as
+   misaligned rather than as centred. The front page is the exception: it
+   passes Centred, because there is nothing on it to line up with. */
+#mu-search{max-width:760px;margin:0;width:100%}
+#mu-search.mu-search-mid{max-width:560px;margin:0 auto}
 #mu-search-form{display:flex;align-items:center;gap:0;border:1px solid var(--card-border,#ddd);
   border-radius:6px;background:var(--card-background,#fff);padding:4px 4px 4px 12px;transition:border-color .2s}
 #mu-search-form:focus-within{border-color:#999}
-#mu-search-input{flex:1;border:0;outline:0;font:inherit;font-size:15px;padding:8px 0;background:transparent;
+#mu-search-input{flex:1;border:0;outline:0;font:inherit;font-size:16px;padding:8px 0;background:transparent;
   color:var(--text-primary,#111);min-width:0}
-#mu-search-form button{flex:none;border:0;border-radius:4px;background:#111;color:#fff;font:inherit;
-  width:32px;height:32px;cursor:pointer}
-.mu-search-why{max-width:760px;margin:8px auto 0;color:var(--text-muted,#888);font-size:13px;line-height:1.6}
+#mu-search-form button{flex:none;border:0;border-radius:4px;background:var(--btn-primary,#111);color:#fff;
+  font:inherit;width:32px;height:32px;cursor:pointer}
+#mu-search-form button:hover{background:var(--btn-primary-hover,#333)}
+.mu-search-why{max-width:760px;margin:8px 0 0;color:var(--text-muted,#888);font-size:13px;line-height:1.6}
 </style>`
 }
 
@@ -186,20 +276,36 @@ func ChatComponent(cfg ChatConfig) string {
 		placeholder = "Ask it something"
 	}
 
-	// With no model the box searches instead of asking.
+	// Search, unless the caller has said this page is for asking.
 	//
-	// The model is optional at setup now, and an ask box on an instance without
-	// one invited a question and then failed on it. Saying "no model yet" was
-	// the first fix and it was only half: a box that explains why it is dead is
-	// still a dead box, and the top of the home screen is the worst place to
-	// put one.
+	// # Why the front page searches
 	//
-	// The same keystrokes have a useful meaning without a model. You type what
-	// you are looking for; the difference is whether something answers you or
-	// finds it. So the box searches — and searching is the half that needs no
-	// vendor at all.
+	// It asked, and the signed-out page searched, so the same box did two
+	// different things depending on whether you were logged in — and once you
+	// were, there was no consistent way to search at all.
+	//
+	// Which one wins is not a toss-up. google.com is a search box and a grid of
+	// apps; the box is the front door and everything else is reached from
+	// beside it. That is the shape this already has — a search box and
+	// Services — and the agent is one of those services rather than the spine.
+	// It will do more as models get faster and cheaper, and the box is where
+	// that arrives; it is not what the front page is for today.
+	//
+	// Search is also the half that needs nothing: no model, no key, no account.
+	// A page whose main control only works once you have signed up with a
+	// vendor is a page that does not work.
+	//
+	// Asking still has a home — /agents and the agent pages pass Ask, because
+	// a page about an agent is a page for talking to it.
+	if !cfg.Ask {
+		return searchBox(SearchBoxOpts{})
+	}
 	if AgentReady != nil && !AgentReady() {
-		return searchBox()
+		// A page that wanted a chat and cannot have one says why. Everywhere
+		// else the search box is simply the box, and explains nothing. No Ask
+		// button here either: this is the branch where there is nothing to ask.
+		return searchBox(SearchBoxOpts{Why: "No model is configured, so the agent cannot answer yet. " +
+			"Add a provider at "})
 	}
 	suggestJS, err := json.Marshal(suggestions)
 	if err != nil {
@@ -239,7 +345,13 @@ func ChatComponent(cfg ChatConfig) string {
 #mu-chat-input{flex:1;padding:6px 0;border:none;font-size:16px;font-family:inherit;resize:none;line-height:1.4;overflow:hidden;background:transparent;outline:none}
 /* A square icon button, sized from the control scale rather than from two
    hard-coded 36s that made it taller than every other control in the app. */
-#mu-chat-form button{flex-shrink:0;width:var(--control-h);height:var(--control-h);min-width:var(--control-h);padding:0;background:#111;color:#fff;border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;line-height:1}
+/* Fallbacks, because this component renders on a page that has no mu.css.
+   The front page's shell is its own — no stylesheet link — so --control-h
+   resolved to nothing there and the button collapsed to the size of the arrow
+   glyph inside it: 16px, in a 34px box. Every other var in this file carries a
+   fallback and these three did not, which is why the fault appeared the moment
+   the box moved to a page the token does not reach. 30px is what mu.css sets. */
+#mu-chat-form button{flex-shrink:0;width:var(--control-h,30px);height:var(--control-h,30px);min-width:var(--control-h,30px);padding:0;background:#111;color:#fff;border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;line-height:1}
 #mu-chat-suggest{margin-top:16px}
 .mu-pills{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
 .mu-pills a{padding:8px 14px;border:1px solid #e0e0e0;border-radius:6px;font-size:13px;color:#555;text-decoration:none;cursor:pointer}
@@ -261,7 +373,16 @@ func ChatComponent(cfg ChatConfig) string {
 .mu-chat-transcript{display:flex;flex-direction:column}
 .mu-chat-transcript #mu-chat-form{position:static;flex:none}
 .mu-chat-transcript #mu-chat-opts{margin:6px 0 0;flex:none}
+/* Margin only when there is something to separate.
+   An empty conversation and an empty suggestion row are two zero-height
+   divs, and their bottom margins still stack: 24px of nothing above the box,
+   which put the input below the + New button in the column beside it.
+   Measured — the button at y=110, the input at y=134.
+   :empty rather than removing the margin, because both fill up the moment
+   somebody says anything and the gap is right then. */
 .mu-chat-transcript #mu-chat-suggest{margin:0 0 12px;flex:none}
+.mu-chat-transcript #mu-chat-suggest:empty,
+.mu-chat-transcript #mu-chat-conv:empty{margin:0}
 .mu-chat-transcript #mu-chat-conv{
   flex:1 1 auto;min-height:0;max-height:calc(100dvh - 260px);
   overflow-y:auto;overscroll-behavior:contain;
@@ -434,6 +555,9 @@ function ask(q){
     a.innerHTML='<div class="mu-think"><span class="mu-spin"></span><span>'+esc(workLabel)+dots+'</span>'+(secs>=1?'<span class="mu-think-t">'+secs+'s</span>':'')+'</div>';
   }
   function startWork(label){if(label)workLabel=label;renderWork();if(!timer)timer=setInterval(renderWork,450);}
+  // How many tools are in flight, so the label goes back to thinking only when
+  // they have all finished.
+  var running=0;
   function stopWork(){if(timer){clearInterval(timer);timer=null;}}
   startWork('Processing');
 
@@ -457,8 +581,24 @@ function ask(q){
     if(resp.status===401){
       return resp.json().catch(function(){return {};}).then(function(j){
         stopWork();
-        var msg=esc(j.error||'Sign in to ask the agent.');
-        a.innerHTML='<div class="mu-cta">'+msg+' <a href="/signup">Sign up →</a> <a href="/login?redirect=/agent" class="ml-3">Log in</a></div>';
+        // A refusal has to leave somebody able to do something.
+        //
+        // It said "Sign in to ask the agent" with two links, on the front page,
+        // which is the page a stranger sees and the only page this branch ever
+        // renders on. So the main control of the signed-out product answered
+        // every question with a sign-up form — worse than the search box it
+        // replaced, which at least worked.
+        //
+        // Two ways on, and the first one works this second. The archive is
+        // public by construction, so searching what was just typed needs no
+        // account and no permission; signing in carries the question through
+        // and asks it on arrival, which is the same trip /agent?q= already
+        // makes. Neither is a form standing between somebody and an answer.
+        var msg=esc(j.error||'Nobody can ask the agent here without an account.');
+        var qq=encodeURIComponent(q);
+        a.innerHTML='<div class="mu-cta">'+msg+
+          ' <a href="/archive?q='+qq+'">Search the archive for this →</a>'+
+          ' <a href="/login?redirect='+encodeURIComponent('/agent?q='+q)+'" class="ml-3">Sign in and ask it</a></div>';
         save();
         throw 'handled';
       });
@@ -499,6 +639,19 @@ function ask(q){
               }
             }else if(ev.type==='thinking'){
               startWork(ev.message);
+            }else if(ev.type==='tool_start'){
+              // What it is doing, while it does it. The server has been
+              // sending these all along and nothing here listened, so a run
+              // that searched the web and read your mail said "Processing" for
+              // the whole minute and then produced an answer out of nowhere.
+              running++;
+              startWork(ev.message||'Working');
+            }else if(ev.type==='tool_done'){
+              // Back to thinking only when the last one finishes — tools can
+              // run together, and one of three ending does not mean the work
+              // has stopped.
+              if(running>0)running--;
+              if(running===0)startWork('Thinking');
             }else if(ev.type==='stream_start'){
               streamText='';streaming=false;startWork('Composing');
             }else if(ev.type==='stream_token'){
@@ -624,8 +777,26 @@ window.muChatAsk=ask;
 // A reopened conversation opens at its end, which is where the reading is.
 // Instant rather than smooth: this is the position the page should have loaded
 // in, not a movement to watch.
+//
+// Once was not enough. Scrolling to the bottom asks for scrollHeight, and at
+// that moment the page has not finished becoming its size — a webfont swaps, a
+// card renders, an image arrives — so it went to the bottom of a shorter page
+// and stopped there, leaving somebody to scroll down to the message they had
+// just reloaded to see.
+//
+// So it stays pinned to the end until the reader scrolls away from it, which
+// is also the only signal that says they want to be somewhere else. Anything
+// that changes the height afterwards — late layout, a slow card — keeps it
+// where it was put, and the moment they scroll up it lets go for good.
+var pinned=true;
+if(conv){
+  conv.addEventListener('scroll',function(){ if(!nearBottom()) pinned=false; });
+}
+function pin(){ if(pinned) toBottom(true); }
 fitConv();
 toBottom(true);
+window.addEventListener('load',function(){ fitConv(); pin(); });
+if(conv&&window.ResizeObserver){ new ResizeObserver(pin).observe(conv); }
 window.addEventListener('resize',function(){ fitConv(); toBottom(false); });
 if(input) input.addEventListener('input',fitConv);
 })();

@@ -1,149 +1,138 @@
 package inbox
 
-// Writing to a person by name.
+// The page says what it is, and exists even when it is empty.
 //
-// The Write button on a profile puts @someone in the To box rather than their
-// address, because /@somebody is a public page and the address was printed on
-// it. The shortcut is the point and the address is not the sender's business,
-// so the resolution happens here, on the way out.
+// Both reported from a live instance, by somebody who clicked a username on the
+// blog: they landed on an exchange with no label and could not tell what the
+// page was, and a person they had never written to bounced them to /inbox/new
+// with nothing saying they had been moved.
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"mu/internal/auth"
 	"mu/internal/thread"
 )
 
-func TestAnAtNameResolvesToTheirAddress(t *testing.T) {
+// person creates two accounts and a session for the viewer.
+func person(t *testing.T, viewer, other string) *http.Cookie {
+	t.Helper()
+	for _, id := range []string{viewer, other} {
+		if _, err := auth.GetAccount(id); err != nil {
+			if err := auth.Create(&auth.Account{ID: id, Name: id, Created: time.Now()}); err != nil {
+				t.Fatalf("could not create %s: %v", id, err)
+			}
+		}
+	}
+	sess, err := auth.CreateSession(viewer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return &http.Cookie{Name: "session", Value: sess.Token}
+}
+
+func TestThePersonPageSaysWhoseConversationItIs(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
-	t.Setenv("MAIL_DOMAIN", "mu.test")
+	c := person(t, "reader", "micro")
 
-	if err := auth.Create(&auth.Account{ID: "henrik", Name: "Henrik", Secret: "s"}); err != nil {
-		t.Fatalf("creating the account: %v", err)
-	}
+	r := httptest.NewRequest(http.MethodGet, "/@micro", nil)
+	r.AddCookie(c)
+	w := httptest.NewRecorder()
+	PersonHandler(w, r)
 
-	got, ok := addressOfPerson("@henrik")
-	if !ok {
-		t.Fatal("@henrik resolved to nobody, so Write from their profile sends nothing")
+	body := w.Body.String()
+	if w.Code != http.StatusOK {
+		t.Fatalf("the page did not render: %d %s", w.Code, w.Header().Get("Location"))
 	}
-	if got != "henrik@mu.test" {
-		t.Errorf("addressOfPerson(@henrik) = %q", got)
-	}
-
-	// Their address, not their agent's — a tag here would quietly run
-	// somebody's agent instead of writing to them. service/mail draws that
-	// line: untagged mail is just mail.
-	if want := "henrik@mu.test"; got != want {
-		t.Errorf("the resolved address carries a tag: %q", got)
-	}
-
-	// However it is written down.
-	if got, ok := addressOfPerson("@HENRIK"); !ok || got != "henrik@mu.test" {
-		t.Errorf("@HENRIK resolved to %q/%v — an account id is one name", got, ok)
-	}
-
-	// And a name nobody answers to is refused rather than turned into an
-	// address that would bounce.
-	if _, ok := addressOfPerson("@nobody-here"); ok {
-		t.Error("a name with no account behind it produced an address")
-	}
-	if _, ok := addressOfPerson("@"); ok {
-		t.Error("a bare @ produced an address")
+	if !strings.Contains(body, "Your conversation with @micro") {
+		t.Errorf("the page never says what it is:\n%s", body)
 	}
 }
 
-// /@somebody is the conversation with them, and finding it is by who is on it.
-//
-// Every reader over the record was keyed by conversation — an id, a client and
-// key, an account. None of them could answer "what have this person and I said
-// to each other", which is the question the page is. Parties was recorded and
-// read by nothing but search.
-func TestTheirPageFindsTheConversationsWithThem(t *testing.T) {
+// And a person you have never written to gets their page, not a redirect to the
+// compose screen. The address bar saying /inbox/new after clicking @micro is a
+// page you did not ask for, with nothing explaining where the one you did ask
+// for went.
+func TestSomebodyYouHaveNeverWrittenToStillHasAPage(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
-	t.Setenv("MAIL_DOMAIN", "mu.test")
+	c := person(t, "reader2", "stranger")
 
-	// Tolerant of accounts another test in this package already made: auth
-	// keeps them in memory for the process, so HOME being a fresh directory
-	// does not make the names fresh too.
-	for _, id := range []string{"mine", "henrik", "stranger"} {
-		if _, err := auth.GetAccount(id); err == nil {
-			continue
-		}
-		if err := auth.Create(&auth.Account{ID: id, Name: strings.ToTitle(id), Secret: "s"}); err != nil {
-			t.Fatal(err)
-		}
+	r := httptest.NewRequest(http.MethodGet, "/@stranger", nil)
+	r.AddCookie(c)
+	w := httptest.NewRecorder()
+	PersonHandler(w, r)
+
+	if w.Code == http.StatusSeeOther || w.Code == http.StatusFound {
+		t.Fatalf("an empty conversation redirects to %q instead of rendering",
+			w.Header().Get("Location"))
 	}
-
-	mine := thread.Open("mine", "mail", "henrik@mu.test")
-	thread.Join("mine", mine.ID, thread.Party{Kind: thread.RolePerson, Key: "henrik@mu.test"})
-	theirs := thread.Open("mine", "mail", "stranger@mu.test")
-	thread.Join("mine", theirs.ID, thread.Party{Kind: thread.RolePerson, Key: "stranger@mu.test"})
-
-	got := thread.With("mine", namesFor("henrik")...)
-	if len(got) != 1 {
-		t.Fatalf("Henrik's page shows %d conversations, want 1", len(got))
+	body := w.Body.String()
+	if !strings.Contains(body, "Start a conversation") {
+		t.Errorf("no way to start one:\n%s", body)
 	}
-	if got[0].ID != mine.ID {
-		t.Error("Henrik's page is showing somebody else's conversation")
+	// And it is still their page: it says whose, and where the button goes.
+	if !strings.Contains(body, "Your conversation with @stranger") {
+		t.Error("the empty page does not say whose it is")
 	}
-
-	// And an account nobody has written to has none, which is what makes the
-	// blank message the empty state rather than a special case.
-	if n := len(thread.With("mine", namesFor("nobody")...)); n != 0 {
-		t.Errorf("an account with no history has %d conversations", n)
+	if !strings.Contains(body, "to=%40stranger") {
+		t.Error("Start a conversation does not address them")
 	}
 }
 
-// A name that is a prefix of another does not collect their conversations.
+// A conversation you started can be carried on from the inbox.
 //
-// Search matches substrings and can afford to: a near-miss costs a reader a
-// glance. This decides whose page a conversation is on, so "sam" matching
-// samantha@ would put one person's correspondence in front of another.
-func TestOnePersonsPageIsNotAnothersHistory(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
-	t.Setenv("MAIL_DOMAIN", "mu.test")
-
-	if _, err := auth.GetAccount("owner"); err != nil {
-		if err := auth.Create(&auth.Account{ID: "owner", Name: "Owner", Secret: "s"}); err != nil {
-			t.Fatal(err)
-		}
+// Reported: start one from somebody's page, open it in the inbox, and there is
+// no Reply — only "assign to an agent". The thread you had just written was the
+// one thread you could not write to again.
+//
+// replyTo walked the messages backwards for an author who is not you, which is
+// right for a conversation that arrived and wrong for one you began: it has
+// exactly one author, so the loop found nothing. /@somebody looked fine on the
+// same thread because that page states the reply target instead of inferring
+// it, which is what made this look like an inbox problem rather than a shared
+// one.
+func TestAConversationYouStartedCanBeRepliedToInTheInbox(t *testing.T) {
+	th := &thread.Thread{
+		ID:      "started-by-me",
+		Client:  mailClient,
+		Subject: "Hello",
+		Parties: []thread.Party{
+			{Kind: thread.RolePerson, Key: "them@example.test"},
+		},
 	}
-	long := thread.Open("owner", "mail", "samantha@mu.test")
-	thread.Join("owner", long.ID, thread.Party{Kind: thread.RolePerson, Key: "samantha@mu.test"})
-
-	if got := thread.With("owner", "sam"); len(got) != 0 {
-		t.Errorf("a partial name collected %d of somebody else's conversations", len(got))
+	// One message, from the account, because nobody has answered yet.
+	msgs := []thread.Message{
+		{ID: "m1", Thread: th.ID, Account: "me", Role: thread.RolePerson,
+			Text: "Are you around?", To: "them@example.test"},
 	}
-	if got := thread.With("owner", "samantha@mu.test"); len(got) != 1 {
-		t.Errorf("the whole address found %d conversations, want 1", len(got))
+
+	if got := replyTo("me", th, msgs); got != "them@example.test" {
+		t.Errorf("replyTo = %q, want them@example.test — with nobody to answer, "+
+			"the conversation cannot be continued", got)
 	}
 }
 
-// The reply on their page goes to them, whoever spoke last.
-//
-// replyTo works it out from the messages, which is right in the inbox and
-// wrong here: a conversation you started has nobody but you in it, so it
-// produced no Reply at all and a note telling you to answer it "the way it
-// arrived" — on the page it arrived on.
-func TestTheReplyOnTheirPageGoesToThem(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
-	t.Setenv("MAIL_DOMAIN", "mu.test")
-
-	if _, err := auth.GetAccount("henrik2"); err != nil {
-		if err := auth.Create(&auth.Account{ID: "henrik2", Name: "Henrik", Secret: "s"}); err != nil {
-			t.Fatal(err)
-		}
+// And a thread that did arrive is still answered to whoever spoke last, not to
+// the first party on the list. The party fallback must not outrank the
+// messages: three people on a thread are answered to the one who just wrote.
+func TestAnArrivedConversationStillAnswersWhoeverSpokeLast(t *testing.T) {
+	th := &thread.Thread{
+		ID:     "arrived",
+		Client: mailClient,
+		Parties: []thread.Party{
+			{Kind: thread.RolePerson, Key: "first@example.test"},
+			{Kind: thread.RolePerson, Key: "second@example.test"},
+		},
 	}
-	mail := &thread.Thread{ID: "t1", Client: "mail", Key: "henrik2@mu.test"}
-	if got := replyAddressFor("henrik2", mail); got != "henrik2@mu.test" {
-		t.Errorf("a reply on Henrik's page goes to %q", got)
+	msgs := []thread.Message{
+		{ID: "m1", Role: thread.RolePerson, From: "first@example.test"},
+		{ID: "m2", Role: thread.RolePerson, From: "second@example.test"},
 	}
-
-	// And a text is answered with a text: the transport belongs to the
-	// conversation, not to the person.
-	text := &thread.Thread{ID: "t2", Client: "sms", Key: "+447700900123"}
-	if got := replyAddressFor("henrik2", text); got != "+447700900123" {
-		t.Errorf("a reply to a text goes to %q rather than the number", got)
+	if got := replyTo("me", th, msgs); got != "second@example.test" {
+		t.Errorf("replyTo = %q, want second@example.test (whoever spoke last)", got)
 	}
 }

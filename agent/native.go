@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"reflect"
 	"sort"
 	"strings"
 	"sync"
@@ -139,6 +140,66 @@ func toolBlocked(name string) bool { return api.AllowPlanned(name, false) != nil
 
 // blockDestructiveTools refuses those calls before they run, telling the model
 // why so it can say so rather than silently looping.
+// acceptToolNamesWeAdvertise lets a tool be called by the name we print.
+//
+// Two names exist for every tool and only one of them works. go-micro derives
+// its own from the RPC endpoint — shell_Server_Run, with the handler type in
+// the middle — while /tools, /mcp, the README, the agent builder and every
+// system prompt say shell_run, because NativeToolName strips that middle part
+// for display. A model told to call shell_run calls shell_run and is told
+// there is no such tool.
+//
+// It is not a niche failure. Naming a tool in an instruction is what the agent
+// builder invites people to do, so any agent whose prompt mentions one has been
+// naming it wrongly, and the only symptom is the agent quietly not using it.
+// The eval found it because a prompt written from the documentation failed
+// against the thing the documentation describes.
+//
+// Fixed by accepting the advertised name rather than by changing what is
+// advertised: the displayed name is the better one, and the derived name still
+// works for anything that learned it.
+func acceptToolNamesWeAdvertise() gmai.ToolWrapper {
+	advertised := advertisedToolNames()
+	return func(next gmai.ToolHandler) gmai.ToolHandler {
+		return func(ctx context.Context, call gmai.ToolCall) gmai.ToolResult {
+			if real, ok := advertised[strings.ToLower(strings.TrimSpace(call.Name))]; ok {
+				call.Name = real
+			}
+			return next(ctx, call)
+		}
+	}
+}
+
+// advertisedToolNames maps the name a tool is shown under to the one that
+// dispatches — shell_run to shell.Server.Run.
+//
+// Built from the Specs rather than from a list, so a service added tomorrow is
+// callable by its printed name without anybody remembering this exists. The
+// handler's type name comes from the handler itself for the same reason: every
+// service happens to call it Server today, and a rule that only holds while
+// nobody varies it is a rule waiting to be broken quietly.
+func advertisedToolNames() map[string]string {
+	out := map[string]string{}
+	for _, spec := range service.Specs() {
+		if spec.Handler == nil {
+			continue
+		}
+		t := reflect.TypeOf(spec.Handler)
+		for t.Kind() == reflect.Ptr {
+			t = t.Elem()
+		}
+		handler := t.Name()
+		if handler == "" {
+			continue
+		}
+		for method := range spec.Endpoints {
+			shown := strings.ToLower(spec.Name + "_" + method)
+			out[shown] = spec.Name + "." + handler + "." + method
+		}
+	}
+	return out
+}
+
 func blockDestructiveTools() gmai.ToolWrapper {
 	return func(next gmai.ToolHandler) gmai.ToolHandler {
 		return func(ctx context.Context, call gmai.ToolCall) gmai.ToolResult {
@@ -191,7 +252,7 @@ func nativeToolCallKey(call gmai.ToolCall) string {
 // prompt) shared by queryNative and streamNative. ok is false when no native
 // provider is configured, signalling the caller to fall back.
 func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai.ToolWrapper) (a gmagent.Agent, question string, ok bool) {
-	provider, key, model, ok := nativeLLM()
+	provider, key, model, ok := nativeLLMFor(opts.Model)
 	if !ok {
 		return nil, "", false
 	}
@@ -238,7 +299,7 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 	// Use a fresh named agent for each request. Some go-micro providers keep
 	// per-agent conversation state keyed by name, so reusing a stable "assistant"
 	// name can leak prior independent prompts into fresh requests.
-	toolWrappers := append([]gmai.ToolWrapper{blockDestructiveTools(), injectAccount(accountID), dedupeNativeToolCalls()}, wrappers...)
+	toolWrappers := append([]gmai.ToolWrapper{acceptToolNamesWeAdvertise(), blockDestructiveTools(), injectAccount(accountID), dedupeNativeToolCalls()}, wrappers...)
 	a = service.NewAgent(nativeAgentInstanceName(), sys, provider, key, filterServices(nativeServices(opts.Public), opts.Tools),
 		gmagent.Model(model),
 		// What was said before, as turns. Read-only, which is what stops the
@@ -292,8 +353,23 @@ func buildNativeAgent(accountID, prompt string, opts QueryOpts, wrappers ...gmai
 //
 // Local Ollama is still not wired: the go-micro agent cannot set a BaseURL, so
 // a local server would hit api.openai.com.
+// nativeLLM is the instance's own choice, for a caller that has not made one.
 func nativeLLM() (provider, key, model string, ok bool) {
-	want := strings.TrimSpace(settings.Get("AGENT_MODEL"))
+	return nativeLLMFor("")
+}
+
+// nativeLLMFor resolves the provider, key and model for a named model.
+//
+// The name comes from an agent that declares one, and falls back to the
+// instance's AGENT_MODEL when it does not. It is one function rather than two
+// because the hard part — which provider serves this id, and does this box hold
+// its key — is the same question whoever is asking, and the comment below about
+// what happens when the answer is no was worth having once, not twice.
+func nativeLLMFor(prefer string) (provider, key, model string, ok bool) {
+	want := strings.TrimSpace(prefer)
+	if want == "" {
+		want = strings.TrimSpace(settings.Get("AGENT_MODEL"))
+	}
 
 	// A named model picks its own provider, so an operator naming a DeepSeek id
 	// on an instance that also has an Anthropic key gets DeepSeek.
@@ -327,9 +403,9 @@ func nativeLLM() (provider, key, model string, ok bool) {
 			}
 		}
 		unservedModel.Do(func() {
-			app.Log("agent", "AGENT_MODEL is %q and no key is set for the provider "+
-				"that serves it, so it is being ignored; the agent is using the "+
-				"default model instead", want)
+			app.Log("agent", "the model %q is asked for and no key is set for the "+
+				"provider that serves it, so it is being ignored; the agent is "+
+				"using the default model instead", want)
 		})
 	}
 
@@ -372,7 +448,14 @@ func nativeLLM() (provider, key, model string, ok bool) {
 // cost ceiling — but twenty is already past where ordinary work reaches, so
 // raising it changes nothing and lowering it cuts off honest questions. A dial
 // whose useful range is a single value is a decision presented as a choice.
-const maxSteps = 20
+// maxSteps is how many tools one question may run.
+//
+// Twenty was not enough for work that investigates before it builds. Asked for
+// a live sports app, a run spent every step checking which APIs allowed
+// cross-origin requests — good work, correctly done — hit the ceiling, and
+// finished by describing the app it had not written. The research was the
+// expensive part and the building would have been one call.
+const maxSteps = 40
 
 // turnTimeout is the longest one question may take, whatever it is doing.
 //
@@ -475,8 +558,16 @@ func runNative(accountID, prompt string, opts QueryOpts) (string, error) {
 	// else, so removing that pipeline would have left it permanently false and
 	// quietly turned the bug back on for every custom agent. Same fact, read
 	// from the options the run was given rather than resolved a second time.
-	answer = completeToolAnswerFor(answer, recorder.ragParts(), strings.TrimSpace(opts.System) != "")
-	return answer, nil
+	// Leaked markup is dealt with first, and the order is the point. A reply
+	// that is nothing but a model's own tool-call syntax reads as a raw tool
+	// payload to the guard below, which then replaces it with the freshness
+	// fallback — so a request to change a colour in a file came back as "I
+	// checked the live sources, but the requested data is unavailable right
+	// now". Neither sentence is true and neither is actionable. Turning the
+	// leak into an honest sentence before anything else looks at it means the
+	// guard below sees an ordinary answer and leaves it alone.
+	answer = withoutLeakedToolCall(answer, recorder.tools())
+	return completeToolAnswerFor(answer, recorder.ragParts(), strings.TrimSpace(opts.System) != ""), nil
 }
 
 // stepReporter tells a caller which tools ran, as they run.
@@ -569,6 +660,10 @@ func askStreaming(ctx context.Context, a gmagent.Agent, question string, recorde
 type nativeToolRecorder struct {
 	mu    sync.Mutex
 	parts []string
+	// ran is which tools actually ran, in order. Kept alongside the parts
+	// because a turn whose answer is unusable still needs to be able to say
+	// what happened — see withoutLeakedToolCall.
+	ran []string
 }
 
 func newNativeToolRecorder() *nativeToolRecorder {
@@ -605,6 +700,7 @@ func (r *nativeToolRecorder) wrap(next gmai.ToolHandler) gmai.ToolHandler {
 			return res
 		}
 		r.add("### " + title + "\n" + formatToolResult(nativeToolFormatterName(call.Name), res.Content, nil))
+		r.did(NativeToolName(call.Name))
 		return res
 	}
 }
@@ -613,6 +709,20 @@ func (r *nativeToolRecorder) add(part string) {
 	r.mu.Lock()
 	r.parts = append(r.parts, part)
 	r.mu.Unlock()
+}
+
+func (r *nativeToolRecorder) did(name string) {
+	r.mu.Lock()
+	r.ran = append(r.ran, name)
+	r.mu.Unlock()
+}
+
+func (r *nativeToolRecorder) tools() []string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	out := make([]string, len(r.ran))
+	copy(out, r.ran)
+	return out
 }
 
 func (r *nativeToolRecorder) ragParts() []string {
@@ -716,6 +826,15 @@ func nativeToolLabel(name string) (label string, show bool) {
 		return "🧩 Browsing apps", true
 	case "mail":
 		return "📬 Checking your mail", true
+	case "shell":
+		// The one service where the method matters more than the name. A Code
+		// run is almost entirely shell, so "Working" for ninety seconds is the
+		// same as saying nothing — and writing a file and running a command are
+		// the two things somebody watching wants told apart.
+		if len(parts) > 0 && parts[len(parts)-1] == "write" {
+			return "📄 Writing a file", true
+		}
+		return "⌨️ Running a command", true
 	}
 	return "⚙️ Working", true
 }

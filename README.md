@@ -1,29 +1,27 @@
 # mu
 
-A network for humans, agents and services
+A home for humans, agents and services
 
 ## Overview
 
-Use agents from anywhere. Give them access to a real inbox, tools and services. Chat with them on the web, via mail or xmpp. 
-They have access to 100+ tools: news, search, weather, markets, video, places, files, contacts, events, docs, etc. 
+A home server for everything. Run your own mail, a chat app, the tools and services needed by agents and humans. 
+It's all live on [micro.mu](https://micro.mu) to test. We're building services that operate as the building blocks for 
+everything. Mail, chat, news, video, search, etc. Then we archive any data locally so it's all searchable. Services and the archive 
+become tools for agents to use. Communication ends up in one inbox, whether it's email, chat or sms, etc. Use it from the web, 
+your phone, the command line, email, anywhere.
 
-## Protocols
+## Features
 
-The way we're thinking about it right now. Protocols are the ideal standard.
+What's included
 
-**SMTP in, IMAP out, HTTP for the app, MCP for agents, SSH for a shell, XMPP to chat, x402 for payments.**
+- **Services** - 30+ real world services including news, mail, markets, video, etc accessible via API, CLI or the Web
+- **Tools** - 100+ tools auto created from service endpoints available to agents via MCP using an auth token or oauth client
+- **Agents** - Define an agent by name, prompt and give it specific tools to use, then chat with it on the web, mail or xmpp
+- **Inbox** - A single place to keep track of threads across mail, chat, etc. Use an IMAP client to connect from anywhere
 
-- **SMTP** — the server is an MTA. `you@your.domain` is a real address, and mail to it reaches your agent. Write to `you+research@` and that agent answers in the thread.
-- **IMAP** — the same mailbox opens in Thunderbird, Mail.app or your phone. Your username, and an access token from `/token` as the password.
-- **HTTP** — the web app, and every tool as a plain POST for anything that is not an agent.
-- **MCP** — `/mcp`, for Claude, Cursor, and anything else that speaks it. See below.
-- **SSH** — a shell in a sandboxed machine with a `/work` directory that keeps what you leave in it. Needs Docker on the instance; without it the port answers and every session ends there.
-- **XMPP** — the same address is also a JID. Conversations, Dino, Gajim and Monal connect to it, and it federates to other servers.
-- **x402** — a priced call with no account gets a `402` naming the price, payable in USDC on Base. The payment is the identity, so an agent never signs up.
+## Services
 
-## Tools
-
-The tools, reachable over MCP, as a `mu` command, or from the app
+The services available via the web, API or as tools, reachable via MCP, and as cli command
 
 | Service | Tools |
 |---|---|
@@ -50,7 +48,7 @@ The tools, reachable over MCP, as a `mu` command, or from the app
 | **Prayer** | `prayer_times` · `prayer_qibla` · `prayer_reflection` · `prayer_verse` · `prayer_saying` · `prayer_search` — Islamic prayer times, qibla, a daily verse and saying, and the sources by reference or by question |
 | **Recall** | `recall_search` · `recall_conversation` · `recall_list` — everything you have ever said to an agent and been told, on any client: search it, and read a conversation back |
 | **Routes** | `routes_eta` · `routes_directions` · `routes_nearest` — travel time with traffic, turn-by-turn, and which of several places is quickest to reach |
-| **Shell** | `shell_run` · `shell_write` · `shell_read` · `shell_list` — a machine of your own: a container with a shell, and a `/work` directory that keeps what you put in it between calls. Build things, run tests, clone a repo, move files about. Running a command costs, because it is CPU and memory here; keeping and reading files is free. Needs Docker on the instance |
+| **Shell** | `shell_run` · `shell_write` — a machine of your own: a Debian container with bash, and a `/work` directory that keeps what you put in it between calls, along with the directory you were last in. Read, list, search and edit with the commands you already know; `shell_write` is only for putting a new file down, which is the one thing a heredoc mangles. Build things, run tests, clone a repo, move files about. Running a command costs, because it is CPU and memory here. Needs Docker on the instance |
 | **SMS** | `sms_send` · `sms_history` · `sms_number` · `sms_verify` — text somebody and read what they text back, from a real number. Priced per segment, capped per day, and STOP is honoured |
 | **Social** | `social_list` · `social_search` — public threads and replies |
 | **Stream** | `stream_list` — what has been happening here |

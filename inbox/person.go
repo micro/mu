@@ -21,8 +21,15 @@ package inbox
 // # Three consequences, and the middle one is the point
 //
 // Compose is the empty state. Somebody you have never written to has no
-// conversation, so the page is the blank message — /inbox/new, which is already
-// the page for writing one. There is no separate compose screen to keep.
+// conversation, so the page offers the blank message — /inbox/new, which is
+// already the page for writing one. There is no separate compose screen to
+// keep.
+//
+// Offers, not redirects. It used to redirect straight there, which is the same
+// idea taken one step too far: you click @micro expecting @micro, and the
+// address bar says /inbox/new with nothing explaining that you were moved. The
+// empty state of a thing is that thing, empty — so the page stands, names whose
+// it is, and puts one button on it.
 //
 // It stops being public. What this renders is *your* history with them, so
 // there is nothing to show a stranger and nothing for a crawler to take. That
@@ -78,27 +85,64 @@ func PersonHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	convs := thread.With(acc.ID, namesFor(them.ID)...)
-	if len(convs) == 0 {
-		// Nothing said yet, so the page is the blank message. A redirect rather
-		// than a second compose form: /inbox/new is where a message is written
-		// and one of it is enough.
-		http.Redirect(w, r, "/inbox/new?to="+url.QueryEscape("@"+them.ID), http.StatusSeeOther)
-		return
-	}
 
 	title := them.Name
 	if strings.TrimSpace(title) == "" {
 		title = "@" + them.ID
 	}
+	handle := "@" + them.ID
 
-	// No heading of its own: the shell already puts the name at the top of the
-	// page, and the conversation states the parties. Three copies of somebody's
-	// name above one exchange is a page about them, which is the thing this
-	// stopped being.
+	// What this page is, said once, under the name.
+	//
+	// It said nothing. The argument was that the shell already prints the name
+	// and the conversation states the parties, so a heading would be a third
+	// copy of somebody's name — which was true and answered the wrong question.
+	// Reported by somebody on their own instance: they clicked a username on the
+	// blog, landed on an exchange, and did not know what the page was. A name at
+	// the top says who; nothing said what, and "an exchange with no label" reads
+	// as a page you have arrived at by accident.
+	//
+	// So it names the relationship rather than the person again. One line.
 	var b strings.Builder
 	b.WriteString(`<div class="ib-person">`)
-	b.WriteString(`<div class="ib-person-head"><a class="pill" href="/inbox/new?to=` +
-		html.EscapeString(url.QueryEscape("@"+them.ID)) + `">New message</a></div>`)
+	b.WriteString(`<p class="ib-person-sub">Your conversation with ` +
+		html.EscapeString(handle) + `</p>`)
+	// New message belongs on a page that already has one.
+	//
+	// On an empty page it was the fourth thing saying the same thing: the name,
+	// "Your conversation with @x", a New message pill, "Nothing between you and
+	// @x yet", and a Start a conversation button — five lines for one available
+	// action, three of them naming the same person. Reported exactly that way.
+	//
+	// Where there are conversations it earns its place, because there it means
+	// "a different one from these".
+	head := `<div class="ib-person-head"><a class="pill" href="/inbox/new?to=` +
+		html.EscapeString(url.QueryEscape(handle)) + `">New message</a></div>`
+
+	// Nobody you have spoken to yet is still a page.
+	//
+	// This redirected to /inbox/new, on the reasoning that the empty state of a
+	// conversation is a blank message and there was no sense keeping two compose
+	// screens. What that does to a reader is different from what it does on
+	// paper: you click @micro expecting to see @micro, and the address bar says
+	// /inbox/new. The page you asked for is gone, and nothing explains that you
+	// were sent somewhere. A redirect is the wrong shape for an empty state —
+	// the empty state of a thing is that thing, empty.
+	//
+	// So the page stands, says whose it is, and offers the one action.
+	if len(convs) == 0 {
+		b.WriteString(`<div class="ib-person-empty">` +
+			`<p>Nothing here yet.</p>` +
+			`<a class="btn" href="/inbox/new?to=` +
+			html.EscapeString(url.QueryEscape(handle)) + `">Start a conversation</a>` +
+			`</div></div>`)
+		app.Respond(w, r, app.Response{
+			Title:       title,
+			Description: "Your conversation with " + title,
+			HTML:        b.String(),
+		})
+		return
+	}
 
 	// The newest, whole. The rest as a list rather than stacked: one person on
 	// several channels is several conversations, and concatenating them would
@@ -107,6 +151,8 @@ func PersonHandler(w http.ResponseWriter, r *http.Request) {
 	// The reply goes to them, said rather than worked out. See
 	// conversationPaneTo — inferring it from who spoke last leaves a
 	// conversation you started with no Reply on it at all.
+	b.WriteString(head)
+
 	first := convs[0]
 	msgs := thread.Messages(acc.ID, first.ID, MessagesShown)
 	b.WriteString(conversationPaneTo(acc.ID, &first, msgs,

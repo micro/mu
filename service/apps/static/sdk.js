@@ -19,7 +19,7 @@
     social:function(){return get('/social')},
     places:{search:function(o){return post('/places/search',o)},nearby:function(o){return post('/places/nearby',o)}},
     chat:function(prompt){return post('/chat',{prompt:prompt})},
-    search:function(q){return get('/search?q='+encodeURIComponent(q))},
+    search:function(q){return get('/web?q='+encodeURIComponent(q))},
     apps:{list:function(){return get('/apps')},read:function(s){return get('/apps/'+s)}},
     ai:function(prompt,opts){return sdk('ai',{prompt:prompt,options:opts||{}}).then(function(j){return j.result||j})},
     agent:function(prompt){return post('/agent/run',{prompt:prompt}).then(function(j){return j.answer||j})},

@@ -71,6 +71,14 @@ type DailyItem struct {
 	Description string
 	RainMM      float64
 	WillRain    bool
+	// RainChance is the percentage, where the provider gives one.
+	//
+	// It always did. WillRain was derived from it — "probability >= 30" — and
+	// the number itself was dropped on the floor, so a page could say whether
+	// it might rain and never how likely, which is the whole of what somebody
+	// deciding about an umbrella wants. Zero means the provider said nothing,
+	// not that it will not rain.
+	RainChance int
 	// Sunrise and Sunset, which Google returns on every day of the forecast and
 	// this was parsing past.
 	//
@@ -303,7 +311,8 @@ func fetchWeather(lat, lon float64) (*WeatherForecast, error) {
 			}
 			if day.DaytimeForecast.Precipitation != nil {
 				item.RainMM = day.DaytimeForecast.Precipitation.QpfMillimeters
-				item.WillRain = day.DaytimeForecast.Precipitation.Probability.Percent >= 30
+				item.RainChance = day.DaytimeForecast.Precipitation.Probability.Percent
+				item.WillRain = item.RainChance >= 30
 			}
 		}
 		forecast.DailyItems = append(forecast.DailyItems, item)

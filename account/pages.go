@@ -98,11 +98,12 @@ var LoginTemplate = `<html lang="en">
 	  <button onclick="loginWithPasskey()">Login with Passkey</button>
 	</div>
 	<p class="text-center mt-5"><a href="/signup">Sign up</a> if you don't have an account</p>
-	<p class="auth-foot"><a href="/tools">See the tools first &rarr;</a></p>
 	<script>
 	if (window.PublicKeyCredential) {
 	  PublicKeyCredential.isConditionalMediationAvailable && PublicKeyCredential.isConditionalMediationAvailable().then(function(){});
-	  document.getElementById('passkey-login').style.display = 'block';
+	  // classList, not style.display: .d-none is display:none !important and an
+	  // inline style loses to it, which is why this button was never once seen.
+	  document.getElementById('passkey-login').classList.remove('d-none');
 	}
 
 	function base64urlToBuffer(b64) {
@@ -204,7 +205,6 @@ var SignupTemplate = `<html lang="en">
 	  <button>Signup</button>
 	</form>
 	<p class="text-center mt-5"><a href="/login">Log in</a> if you have an account</p>
-	<p class="auth-foot"><a href="/tools">See the tools first &rarr;</a></p>
       </div>
     </div>
   </body>

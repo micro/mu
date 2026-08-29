@@ -188,6 +188,34 @@ func replyTo(accountID string, t *thread.Thread, msgs []thread.Message) string {
 			return from
 		}
 	}
+
+	// Nobody else has spoken, which is not the same as nobody else being there.
+	//
+	// A conversation you started and that has not been answered yet has exactly
+	// one author — you — so the loop above finds nothing and rendered no Reply
+	// at all: the thread you had just written was the one thread you could not
+	// write to again. Reported that way, and the giveaway was that /@somebody
+	// could reply to the same conversation, because that page states the target
+	// instead of working it out.
+	//
+	// The thread knows. inbox/new.go joins the recipient as a party when a
+	// conversation is started, and a message you sent records who it went to.
+	// Neither is ordered, which is why the loop is still first — three people on
+	// a thread are answered to whoever spoke last — but for the one-sided case
+	// order is not a question that arises.
+	for _, p := range t.Parties {
+		if p.Kind == thread.RoleAgent {
+			continue
+		}
+		if k := strings.TrimSpace(p.Key); k != "" && !strings.EqualFold(k, accountID) {
+			return k
+		}
+	}
+	for i := len(msgs) - 1; i >= 0; i-- {
+		if to := strings.TrimSpace(msgs[i].To); to != "" && !strings.EqualFold(to, accountID) {
+			return to
+		}
+	}
 	return ""
 }
 

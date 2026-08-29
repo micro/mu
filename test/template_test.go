@@ -32,7 +32,7 @@ func TestTheShellFillsEverySlot(t *testing.T) {
 		"signed out": app.RenderHTML("PAGE-TITLE", "a description", "<p>THE-BODY</p>", nil),
 		"signed in": app.RenderHTML("PAGE-TITLE", "a description", "<p>THE-BODY</p>",
 			&auth.Account{ID: "someone", Name: "Someone"}),
-		"landing": app.RenderLanding(app.Landing{
+		"index": app.RenderIndex(app.Index{
 			Title: "PAGE-TITLE", Description: "a description",
 			Brand: "Mu", Body: "<p>THE-BODY</p>",
 		}),

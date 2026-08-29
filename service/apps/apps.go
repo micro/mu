@@ -239,6 +239,16 @@ func Load() {
 		} else {
 			mutex.Lock()
 			for _, a := range loaded {
+				// A record with no slug has no address: every link built from
+				// it comes out as /apps/ or /code?app=, which look live and go
+				// nowhere, and each one loaded overwrites the last under the
+				// empty key. Old records predate the field, so this is repair
+				// rather than validation — give it one and it is a normal app
+				// again, reachable and fixable.
+				if a.Slug == "" {
+					a.Slug = repairSlug(a)
+					app.Log("apps", "app %q had no address; it is now /apps/%s", a.Name, a.Slug)
+				}
 				apps[a.Slug] = a
 			}
 			mutex.Unlock()
@@ -489,7 +499,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 	// stylesheet outrank a plain class and turn a white label on a black button
 	// black on black. There is a comment about it on connect-cta too. Third
 	// time; hence using the shared thing.
-	sb.WriteString(`<p class="m-0 mb-4">` + app.ActionLink("/apps/new", "+ New app") + `</p>`)
+	sb.WriteString(`<p class="m-0 mb-4">` + app.ActionLink("/code", "+ New app") + `</p>`)
 
 	// Pricing filter
 	pricing := r.URL.Query().Get("pricing")
@@ -664,15 +674,18 @@ func handleNew(w http.ResponseWriter, r *http.Request) {
 
 	var sb strings.Builder
 
-	// AI describe box — the primary path. Describe an app in plain language
-	// and the constrained micro-app generator builds a working tool.
-	sb.WriteString(`<p class="card-desc">Describe an app and we'll build it — a tracker, checklist, or counter that just works.</p>`)
-	sb.WriteString(`<form method="POST" action="/apps/generate" class="col-narrow mb-2">`)
-	sb.WriteString(`<div class="d-flex gap-2">`)
-	sb.WriteString(`<input type="text" name="description" required maxlength="200" class="form-input grow" placeholder="an expense tracker, a packing checklist, a water counter…">`)
-	sb.WriteString(`<button type="submit" class="btn">Build it</button>`)
-	sb.WriteString(`</div>`)
-	sb.WriteString(`</form>`)
+	// Describing an app happens at /code, and only there.
+	//
+	// This was a box that asked once and kept whatever came back. /code asks,
+	// runs the scanner and the tests over the result, and asks again with what
+	// they said — then lets you keep going: "now make it dark" changes the app
+	// you have rather than starting a second one.
+	//
+	// Two boxes that both claim to build an app from a sentence is the thing
+	// to avoid here, and the one to delete is the one that cannot iterate. What
+	// stays on this page is the other job entirely: pasting HTML you wrote.
+	sb.WriteString(`<p class="card-desc">Describe what you want and it gets written, checked and run — then you say what to change.</p>`)
+	sb.WriteString(`<p class="col-narrow mb-2">` + app.ActionLink("/code", "Describe an app") + `</p>`)
 	sb.WriteString(`<details class="col-narrow mt-5"><summary class="clickable text-secondary text-base">Write the HTML yourself</summary>`)
 	sb.WriteString(`<form method="POST" action="/apps/new" class="mt-4">`)
 	sb.WriteString(`<div class="mb-3"><label>Name</label><br>`)
@@ -1074,12 +1087,16 @@ func handleVersions(w http.ResponseWriter, r *http.Request, slug string) {
 				restoreBtn = fmt.Sprintf(` · <form method="POST" action="/apps/%s/versions" class="d-inline"><input type="hidden" name="version" value="%d"><button type="submit" class="link-button text-sm" onclick="return confirm('Restore version %d?')">Restore</button></form>`,
 					htmlpkg.EscapeString(a.Slug), v.Number, v.Number)
 			}
-			sb.WriteString(fmt.Sprintf(`<div class="tile mb-2">
+			// An id per version, so a link to a particular one lands on it. The
+			// transcript on /code links every turn here, and without these every
+			// link went to the same place — the top of the list.
+			sb.WriteString(fmt.Sprintf(`<div class="tile mb-2" id="v%d">
 <div class="d-flex between items-center">
 <div><strong>v%d</strong>%s — %s</div>
 <span class="text-sm text-muted">%s%s</span>
 </div>
 </div>`,
+				v.Number,
 				v.Number,
 				currentBadge,
 				htmlpkg.EscapeString(summary),
@@ -2047,4 +2064,19 @@ func DeleteAppsByAuthor(authorID string) {
 	}
 	mutex.Unlock()
 	save()
+}
+
+// repairSlug is the address an app gets when it loaded without one.
+//
+// Its own function so the rule can be tested without a file on disk, and so
+// there is one answer rather than one per caller that notices the problem.
+func repairSlug(a *App) string {
+	s := slugify(a.Name)
+	if s == "" {
+		return "app-" + a.ID
+	}
+	if len(s) < 3 {
+		return "app-" + s
+	}
+	return s
 }
