@@ -3437,6 +3437,11 @@ button.btn-plain { padding: 6px 12px; font: inherit; cursor: pointer; color: var
    across 720px. */
 .col-narrow { max-width: 600px; }
 
+/* A feed is read, not filled in, so it gets more room than a form does.
+   Its own width rather than a wider .col-narrow, which apps and agents also
+   use — they are forms and lists and want the narrower measure. */
+.col-feed { max-width: 800px; }
+
 /* A textarea for prose you type: full width, growable, in the page's own face
    rather than the browser's monospace default. */
 .form-area {
