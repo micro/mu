@@ -882,6 +882,34 @@ body.page-home #page-title ~ #customize-link {
 
 .home-section small { font-size: 11px; white-space: nowrap }
 
+/* What is yours, across rather than down.
+   
+   Notes, the inbox and the agent roster were three full-width bands stacked on
+   top of each other, and a band assumes content that fills it. None of these
+   holds more than four short rows: on a 1440px screen Agents was 1120 by 56
+   pixels to say "Micro — nothing yet", and the services did not begin until
+   850 pixels down. Three columns is the shape that much content actually has.
+   
+   A grid rather than flex, because with flex a single surviving block stretches
+   back to the full width — which is the thing being fixed. In a grid it keeps
+   its third and the rest of the row is honestly empty.
+   
+   align-items:start so a column with three notes in it does not stretch the two
+   beside it to match. */
+.home-yours {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0 20px;
+  align-items: start;
+}
+.home-yours-col { min-width: 0 }
+
+/* Stacked at the width the card grid below stacks at, so the two halves of the
+   page change shape together rather than one at a time. */
+@media only screen and (max-width: 1100px) {
+  .home-yours { grid-template-columns: 1fr }
+}
+
 /* What is waiting, said once, in the section it is about. It was a suggestion
    chip under the chat box that spent a model call to read your own mail. */
 #home-date-text {
@@ -6046,15 +6074,26 @@ button.pill:hover {
 /* A notes row holds two things — the note, and the way to take it down — so the
    row is the container and the anchor inside it takes the slack. Everything the
    row shares with an agent row is still shared; only the nesting differs. */
+/* Wrapping always, not only on a phone.
+   
+   This was a media query, from when the block ran the width of the page and
+   only a phone made it narrow. It lives in a third of the page now, so the
+   narrow layout is the only layout it ever has: the title takes its own line,
+   the text and the time share the one below. Sizing a row by the viewport when
+   what constrains it is its column is how the time ended up off the right of a
+   390px screen — the same bug one level up. */
 .notes-peek-open {
   display: flex;
+  flex-wrap: wrap;
+  row-gap: 2px;
   align-items: baseline;
-  gap: 10px;
+  gap: 2px 10px;
   flex: 1;
   min-width: 0;
   text-decoration: none;
   color: inherit;
 }
+.notes-peek-title { flex-basis: 100% }
 .notes-peek-open:visited { color: inherit }
 /* The underline is cancelled here and not on the row, for the reason the block
    above gives in the other direction: text-decoration set on an ancestor is
@@ -6116,21 +6155,6 @@ button.pill:hover {
      one with nothing to show. */
   .agent-peek-row { flex-wrap: wrap; row-gap: 2px }
   .agent-peek-name { flex-basis: 100% }
-
-  /* The anchor wraps, not the row.
-     
-     This rule used to name .notes-peek-row and .notes-peek-title alongside the
-     agent ones, from when a notes row was the same shape — three spans, direct
-     children. It is not: the spans sit inside .notes-peek-open now, so
-     flex-basis:100% on the title applied inside an anchor that does not wrap.
-     The title took the whole line, the text was squeezed to nothing, and the
-     time ran off the right of a 390px screen and under the button — taking the
-     page's horizontal scroll with it. */
-  .notes-peek-open { flex-wrap: wrap; row-gap: 2px }
-  .notes-peek-title { flex-basis: 100% }
-  /* The control spans both lines rather than sitting on the baseline of the
-     first, which is what align-items:baseline on the row would otherwise do. */
-  .notes-peek-take { align-items: center }
 }
 
 .peek-row {

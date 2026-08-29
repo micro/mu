@@ -445,34 +445,34 @@ function fetchW(la,lo){
 			b.WriteString(brief(viewerID))
 		}
 
-		// What has been written down, above what arrived.
+		// What is yours: what you wrote down, what arrived, who is working.
 		//
-		// Inside before outside: notes are what you and your own agents left for
-		// each other, the inbox is what came from elsewhere. It is also the one
-		// block on this screen that something other than a person can add to
-		// without interrupting anybody — an agent that woke, checked and found
-		// nothing changed has had nowhere to say so, and mail is too heavy an
-		// instrument for it.
+		// Left to right in that order — inside before outside. Notes are what
+		// you and your own agents left each other, the inbox is what came from
+		// elsewhere, the roster is who you have on it. Notes is also the one
+		// block here that something other than a person can add to without
+		// interrupting anybody: an agent that woke, checked and found nothing
+		// changed had nowhere to say so, and mail is too heavy an instrument
+		// for it.
 		//
-		// Not a card, for the reason in notes.Preview: the card grid is one cache
-		// shared by every viewer, and these are one person's.
+		// Across rather than down, which is the layout and is also the honest
+		// shape. These were three full-width bands stacked, and a band assumes
+		// content that fills it: Agents was 1120 by 56 pixels to say "Micro,
+		// nothing yet", and the services did not start until 850 pixels down a
+		// page nobody had scrolled yet. Nothing here holds more than four short
+		// rows. Three columns is what that much content is, and it leaves the
+		// top of the page saying something.
+		//
+		// None of them is a card, for the reason in notes.Preview: the card grid
+		// is one cache shared by every viewer, and these are one person's.
 		if viewerID != "" {
-			if pinned := notes.Preview(r, viewerID); pinned != "" {
-				b.WriteString(sectionRule("Notes") + pinned)
-			}
+			b.WriteString(yours(
+				block{"Notes", notes.Preview(r, viewerID)},
+				block{"Inbox", inbox.Preview(viewerID)},
+				block{"Agents", agent.Preview(viewerID)},
+			))
 		}
 
-		// What arrived, under a heading that looks like one.
-		//
-		// Both halves of this screen are labelled the same way and each label
-		// carries a rule across the page, because two words in small caps over
-		// a list read as a caption rather than as a section — which is how the
-		// conversations came to look like loose links under the address line.
-		if viewerID != "" {
-			if peek := inbox.Preview(viewerID); peek != "" {
-				b.WriteString(sectionRule("Inbox") + peek)
-			}
-		}
 	}
 
 	// No counts strip. Four tiles reading Agents 0, Unread 0, Apps 0, Credits
@@ -486,23 +486,6 @@ function fetchW(la,lo){
 	// is a receipt for something you just watched happen, and an inbox preview
 	// is three subject lines beside a Mail page one click away. /runs and /mail
 	// are the pages for them, and the header already carries an unread badge.
-
-	// Your agents, between what arrived and what the instance knows.
-	//
-	// Which is the order the three read in: something came in, here is who you
-	// have working on it, here is what they can reach. Without this the page
-	// was a mailbox above a content grid and the agents were somewhere else
-	// entirely — on a roster you had to go and find, on the one screen whose
-	// job is to say how things are.
-	//
-	// Not the runs block that was removed above. A run is an event and ages
-	// out; an agent is a standing thing, and this is the roster with a sign of
-	// life against each. See agent.Preview.
-	if viewerID != "" {
-		if who := agent.Preview(viewerID); who != "" {
-			b.WriteString(sectionRule("Agents") + who)
-		}
-	}
 
 	// The cards, on Home, where they were.
 	//
@@ -628,6 +611,35 @@ func htmlEsc(s string) string { return html.EscapeString(s) }
 // know — and it carried two words in small caps to tell them apart. That reads
 // as a caption on the thing below it rather than as a break between two things,
 // which is why the sections did not look like sections.
+// block is one of the "what is yours" blocks: its label, and whatever it
+// rendered for this reader.
+type block struct{ label, html string }
+
+// yours lays the reader's own blocks across the page.
+//
+// A block that rendered nothing is not a column. That matters more here than in
+// a stack: an empty band took no room, an empty column would take a third of
+// the row and say nothing in it, and a new account has two of the three empty.
+//
+// The labels keep their rules. Each one now runs across its own column rather
+// than the whole page, which is what a rule over a list is for — see
+// .home-section, whose comment is about a caption being mistaken for a section.
+// Three of them across the top read as three sections, which is what they are.
+func yours(blocks ...block) string {
+	var cols []string
+	for _, bl := range blocks {
+		if strings.TrimSpace(bl.html) == "" {
+			continue
+		}
+		cols = append(cols, `<div class="home-yours-col">`+
+			sectionRule(bl.label)+bl.html+`</div>`)
+	}
+	if len(cols) == 0 {
+		return ""
+	}
+	return `<div class="home-yours">` + strings.Join(cols, "") + `</div>`
+}
+
 func sectionRule(label string) string {
 	return `<p class="home-section"><small>` + htmlEsc(label) + `</small></p>`
 }
