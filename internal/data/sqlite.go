@@ -65,6 +65,18 @@ func initDB() error {
 		// Errors ("duplicate column name") are expected on up-to-date schemas.
 		db.Exec(`ALTER TABLE index_entries ADD COLUMN owner TEXT NOT NULL DEFAULT ''`)
 		db.Exec(`CREATE INDEX IF NOT EXISTS idx_owner ON index_entries(owner)`)
+		// The archive page's counts, which are "SELECT type, COUNT(*) ...
+		// WHERE owner = '' GROUP BY type".
+		//
+		// idx_type and idx_owner are each useless for it: almost every row has
+		// an empty owner, so that index selects nearly the whole table and the
+		// grouping is done by reading it. Both columns in one index, in this
+		// order, and SQLite answers the whole query from the index — the rows
+		// are never touched.
+		//
+		// It cost nothing on a small archive, which is why it was invisible
+		// here and slow on an instance with a real one.
+		db.Exec(`CREATE INDEX IF NOT EXISTS idx_owner_type ON index_entries(owner, type)`)
 
 		// Create FTS5 virtual table for full-text search
 		_, err = db.Exec(`
