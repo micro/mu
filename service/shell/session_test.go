@@ -117,3 +117,61 @@ func TestTheMachineHasTheToolsAModelExpects(t *testing.T) {
 		t.Errorf("sed is not GNU sed: %q", r.Output)
 	}
 }
+
+// A command runs where you left off; a written file does not.
+//
+// The two doors disagree about what a relative path means, on purpose: a shell
+// command belongs where the session is, and a file's destination is an argument
+// that should mean the same thing whoever reads the call. Both defensible, and
+// the combination is a trap — it cost a whole eval run, which reported "no
+// file" for pages that existed one directory over, because the harness read
+// with a command and a relative path.
+//
+// So it is pinned here. If somebody makes them agree later that is a decision,
+// not a tidy-up, and this test is what makes them make it deliberately.
+func TestACommandFollowsTheSessionAndAWriteDoesNot(t *testing.T) {
+	if testing.Short() {
+		t.Skip("starts a container")
+	}
+	if !Configured() {
+		t.Skip("no container runtime: " + container.Reason())
+	}
+
+	const who = "pathrule-test-account"
+	ctx := service.WithAccount(context.Background(), who)
+	t.Cleanup(func() { DeleteMachine(who) })
+	s := Server{}
+
+	var r RunResponse
+	if err := s.Run(ctx, &RunRequest{Command: "mkdir -p elsewhere && cd elsewhere"}, &r); err != nil {
+		t.Fatal(err)
+	}
+
+	// The write ignores that and lands under /work.
+	if err := s.Write(ctx, &WriteRequest{Path: "note.txt", Content: "anchored\n"}, &WriteResponse{}); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	if err := s.Run(ctx, &RunRequest{Command: "cat /work/note.txt", Dir: "."}, &r); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(r.Output, "anchored") {
+		t.Errorf("a written file did not land under /work: %q", r.Output)
+	}
+
+	// The command, meanwhile, is still in elsewhere.
+	if err := s.Run(ctx, &RunRequest{Command: "pwd"}, &r); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasSuffix(strings.TrimSpace(r.Output), "/elsewhere") {
+		t.Errorf("the session did not stay where it was left: %q", r.Output)
+	}
+	// And a relative read from there does not find it, which is the trap
+	// stated outright rather than left for somebody to rediscover.
+	if err := s.Run(ctx, &RunRequest{Command: "cat note.txt"}, &r); err != nil {
+		t.Fatal(err)
+	}
+	if r.Code == 0 {
+		t.Errorf("a relative read found the file from another directory, so the "+
+			"two path rules have quietly become one: %q", r.Output)
+	}
+}

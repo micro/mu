@@ -464,8 +464,15 @@ func resuming(command string, explicit bool, base string) string {
 case "$__mu_d" in ` + quoted(base) + `|` + quoted(base) + `/*) ;; *) __mu_d=` + quoted(base) + ` ;; esac
 cd "$__mu_d" 2>/dev/null || cd ` + quoted(base)
 	if explicit {
-		// Already where it was asked to be; just record where it ends up.
-		restore = `:`
+		// Named a directory, so it runs there and the session is left alone —
+		// it neither starts from the remembered place nor overwrites it.
+		//
+		// Recording it would make every one-off "run this over there" move the
+		// caller, which is the opposite of what naming a directory means, and
+		// it silently relocated a session the first time it was tried: a probe
+		// reading one file in /work moved somebody out of the directory they
+		// were working in.
+		return `` + command
 	}
 	return restore + `
 ` + command + `

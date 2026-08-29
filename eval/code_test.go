@@ -336,8 +336,12 @@ func box(t *testing.T, command string) string {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(service.WithAccount(context.Background(), account), 2*time.Minute)
 	defer cancel()
+	// Dir is named, and that is not decoration. A command runs where the last
+	// one finished, so a relative path here would mean whatever the agent's
+	// previous task left behind — which is exactly how a whole run of this
+	// reported "no file" for pages that existed, one directory over.
 	var r shell.RunResponse
-	if err := (shell.Server{}).Run(ctx, &shell.RunRequest{Command: command}, &r); err != nil {
+	if err := (shell.Server{}).Run(ctx, &shell.RunRequest{Command: command, Dir: "."}, &r); err != nil {
 		return "error: " + err.Error()
 	}
 	return r.Output
