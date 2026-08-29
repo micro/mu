@@ -1,11 +1,11 @@
 # mu
 
-A server for humans, agents and services
+A home for humans, agents and services
 
 ## Overview
 
-One server for everything. Run your own mail server, your own chat app, the tools and services needed by agents and humans. 
-It's all running live at [micro.mu](https://micro.mu) right now. We're building services that operate as the building blocks for 
+A home server for everything. Run your own mail, a chat app, the tools and services needed by agents and humans. 
+It's all live on [micro.mu](https://micro.mu) to test. We're building services that operate as the building blocks for 
 everything. Mail, chat, news, video, search, etc. Then we archive any data locally so it's all searchable. Services and the archive 
 become tools for agents to use. Communication ends up in one inbox, whether it's email, chat or sms, etc. Use it from the web, 
 your phone, the command line, email, anywhere.
