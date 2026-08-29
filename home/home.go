@@ -457,7 +457,7 @@ function fetchW(la,lo){
 		// Not a card, for the reason in notes.Preview: the card grid is one cache
 		// shared by every viewer, and these are one person's.
 		if viewerID != "" {
-			if pinned := notes.Preview(viewerID); pinned != "" {
+			if pinned := notes.Preview(r, viewerID); pinned != "" {
 				b.WriteString(sectionRule("Notes") + pinned)
 			}
 		}

@@ -1,11 +1,18 @@
 package notes
 
 import (
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
 	"mu/internal/notes"
 )
+
+// req is a request to render against — the board carries a form, so it needs
+// one for the CSRF token.
+func req() *http.Request { return httptest.NewRequest("GET", "/home", nil) }
 
 // Nobody in particular gets nobody's notes.
 //
@@ -18,7 +25,7 @@ func TestAPreviewForNobodyIsEmpty(t *testing.T) {
 	// The store writes through to disk; keep it out of the live ~/.mu.
 	t.Setenv("HOME", t.TempDir())
 	notes.Add("someone", "location", "London")
-	if got := Preview(""); got != "" {
+	if got := Preview(req(), ""); got != "" {
 		t.Errorf("a preview for no account rendered %q", got)
 	}
 }
@@ -27,7 +34,7 @@ func TestAPreviewForNobodyIsEmpty(t *testing.T) {
 func TestAnAccountWithNoNotesRendersNothing(t *testing.T) {
 	// The store writes through to disk; keep it out of the live ~/.mu.
 	t.Setenv("HOME", t.TempDir())
-	if got := Preview("nobody-has-written-here"); got != "" {
+	if got := Preview(req(), "nobody-has-written-here"); got != "" {
 		t.Errorf("an empty board rendered %q", got)
 	}
 }
@@ -41,7 +48,7 @@ func TestThePreviewShowsTheLatestNotesAndLinksToEach(t *testing.T) {
 		notes.Add(who, title, "text of "+title)
 	}
 
-	got := Preview(who)
+	got := Preview(req(), who)
 	if got == "" {
 		t.Fatal("notes were written and the board is empty")
 	}
@@ -77,7 +84,7 @@ func TestATitleThatNeedsEscapingStillLinks(t *testing.T) {
 	const who = "awkward"
 	notes.Add(who, "shopping list & bills", "milk")
 
-	got := Preview(who)
+	got := Preview(req(), who)
 	if !strings.Contains(got, "?note=shopping+list+%26+bills") {
 		t.Errorf("the title is not escaped into the link: %s", got)
 	}
@@ -93,7 +100,7 @@ func TestALongNoteIsTrimmedToALine(t *testing.T) {
 	const who = "verbose"
 	notes.Add(who, "brief", strings.Repeat("a very long sentence ", 40))
 
-	got := Preview(who)
+	got := Preview(req(), who)
 	if !strings.Contains(got, "…") {
 		t.Error("a long note was not trimmed")
 	}
@@ -113,5 +120,95 @@ func TestNotesIsNotACard(t *testing.T) {
 	if Spec.Card.Set() {
 		t.Error("notes declares a Card; the home card cache is shared by every " +
 			"viewer, so one account's notes would render on everybody's screen")
+	}
+}
+
+// Every row offers a way to take that note down.
+//
+// The board is where what your agents know becomes visible, and a thing you can
+// see but not change is a display, not a control. Every note here goes into the
+// system prompt of every question this account asks, so taking one down is the
+// only edit on this screen that matters.
+func TestEachRowCanBeTakenDown(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	const who = "tidy"
+	notes.Add(who, "one", "first")
+	notes.Add(who, "two", "second")
+
+	got := Preview(req(), who)
+	if n := strings.Count(got, "notes-peek-take"); n != 2 {
+		t.Errorf("%d rows offer to come down, want 2", n)
+	}
+	// The same delete the page uses, posted to the same handler.
+	if !strings.Contains(got, `name="delete" value="two"`) {
+		t.Error("a row does not name the note it would take down")
+	}
+	// It asks first, as the page does: a note is not archived anywhere.
+	if !strings.Contains(got, "confirm(") {
+		t.Error("taking a note down does not ask first")
+	}
+	// And it is a POST that carries the token, not a link somebody else's page
+	// can put in an image tag.
+	if !strings.Contains(got, `method="post"`) || !strings.Contains(got, `name="_csrf"`) {
+		t.Errorf("the control is not a guarded POST:\n%s", got)
+	}
+	// Coming back to where it was taken down from.
+	if !strings.Contains(got, `name="back" value="/home"`) {
+		t.Error("taking a note down from Home would land on /notes")
+	}
+}
+
+// Opening a note and taking it down are two controls, not one.
+//
+// A form nested inside the anchor would be invalid markup, and a delete button
+// that is part of the link is a note you lose by trying to read it.
+func TestTheRowSeparatesOpeningFromTakingDown(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	notes.Add("careful", "one", "first")
+
+	got := Preview(req(), "careful")
+	open := strings.Index(got, "notes-peek-open")
+	form := strings.Index(got, "<form")
+	if open == -1 || form == -1 {
+		t.Fatalf("row is missing a control:\n%s", got)
+	}
+	// The anchor closes before the form opens.
+	if closed := strings.Index(got, "</a>"); closed == -1 || closed > form {
+		t.Errorf("the form is inside the link:\n%s", got)
+	}
+}
+
+// Where taking a note down lands, decided by the handler.
+//
+// "back" arrives on a form, so it is whatever the sender says it is. It is
+// compared against the one value that is allowed rather than followed: a
+// redirect target taken on trust is an open redirect, and this one is reachable
+// by anybody who can get a person to submit a form.
+func TestTakingANoteDownGoesBackOnlyToAPlaceWeNamed(t *testing.T) {
+	for _, tc := range []struct{ back, want string }{
+		{"/home", "/home"},
+		{"", "/notes"},
+		{"/notes", "/notes"},
+		{"https://evil.example/steal", "/notes"},
+		{"//evil.example", "/notes"},
+		{"/home/../../admin", "/notes"},
+		{"/home?x=1", "/notes"},
+	} {
+		t.Setenv("HOME", t.TempDir())
+		notes.Add("poster", "gone", "text")
+
+		form := url.Values{"_csrf": {"t"}, "delete": {"gone"}, "back": {tc.back}}
+		r := httptest.NewRequest("POST", "/notes", strings.NewReader(form.Encode()))
+		r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		w := httptest.NewRecorder()
+
+		handlePost(w, r, "poster")
+
+		if got := w.Header().Get("Location"); got != tc.want {
+			t.Errorf("back=%q redirected to %q, want %q", tc.back, got, tc.want)
+		}
+		if notes.Get("poster", "gone") != "" {
+			t.Errorf("back=%q: the note was not taken down", tc.back)
+		}
 	}
 }

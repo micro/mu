@@ -173,6 +173,14 @@ func handlePost(w http.ResponseWriter, r *http.Request, who string) {
 		return
 	case r.Form.Get("delete") != "":
 		notes.Delete(who, r.Form.Get("delete"))
+		// Back where it was taken down from. Compared against the one value
+		// that is allowed rather than followed: a redirect target read off a
+		// form is an open redirect unless something decides what it may say,
+		// and only Home posts here from anywhere but this page.
+		if r.Form.Get("back") == "/home" {
+			http.Redirect(w, r, "/home", http.StatusSeeOther)
+			return
+		}
 	}
 	http.Redirect(w, r, "/notes", http.StatusSeeOther)
 }

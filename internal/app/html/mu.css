@@ -6042,6 +6042,49 @@ button.pill:hover {
 
 .agent-peek-name,
 .notes-peek-title { font-weight: 500; flex: none }
+
+/* A notes row holds two things — the note, and the way to take it down — so the
+   row is the container and the anchor inside it takes the slack. Everything the
+   row shares with an agent row is still shared; only the nesting differs. */
+.notes-peek-open {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  text-decoration: none;
+  color: inherit;
+}
+.notes-peek-open:visited { color: inherit }
+/* The underline is cancelled here and not on the row, for the reason the block
+   above gives in the other direction: text-decoration set on an ancestor is
+   drawn through its inline descendants, so it has to come off the element that
+   is actually the <a>. That used to be the row; a row now holds the anchor and
+   the control that takes the note down, and the rule stayed on the wrapper —
+   which cancelled nothing, and every note on the board underlined on hover. */
+.notes-peek-open:hover { text-decoration: none }
+.notes-peek-take { flex: none; margin: 0; line-height: 1 }
+.notes-peek-take button {
+  background: none;
+  border: 0;
+  padding: 0 2px;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--text-muted, #bbb);
+  cursor: pointer;
+  /* Invisible until the row is under the pointer: a column of crosses down the
+     side of the block is the loudest thing on it, and taking a note down is not
+     what the board is for. */
+  opacity: 0;
+  transition: opacity var(--transition-fast), color var(--transition-fast);
+}
+.notes-peek-row:hover .notes-peek-take button,
+.notes-peek-take button:focus { opacity: 1 }
+.notes-peek-take button:hover { color: var(--text-primary, #111) }
+/* Touch has no hover, so there it is simply always there. */
+@media (hover: none) {
+  .notes-peek-take button { opacity: 1 }
+}
 .agent-peek-last,
 .notes-peek-text {
   flex: 1;

@@ -18,10 +18,12 @@ package notes
 
 import (
 	"html"
+	"net/http"
 	"net/url"
 	"strings"
 
 	"mu/internal/app"
+	"mu/internal/auth"
 	"mu/internal/notes"
 )
 
@@ -38,7 +40,7 @@ const previewSnippet = 80
 // Preview is the most recent notes, for Home. Empty when there are none: a
 // board with nothing pinned to it is furniture, and the page says what makes a
 // note appear better than an empty box on Home could.
-func Preview(accountID string) string {
+func Preview(r *http.Request, accountID string) string {
 	if accountID == "" {
 		return ""
 	}
@@ -59,12 +61,16 @@ func Preview(accountID string) string {
 		ordered = ordered[:previewShown]
 	}
 
+	csrf := html.EscapeString(auth.CSRFToken(r))
+
 	var b strings.Builder
 	b.WriteString(`<div class="notes-peek">`)
 	for _, e := range ordered {
+		b.WriteString(`<div class="notes-peek-row">`)
+
 		// ?note=<title> is what the page reads to open the editor — a note is
 		// addressed by its title here as it is everywhere else in this service.
-		b.WriteString(`<a class="notes-peek-row" href="/notes?note=` +
+		b.WriteString(`<a class="notes-peek-open" href="/notes?note=` +
 			url.QueryEscape(e.Title) + `">`)
 		b.WriteString(`<span class="notes-peek-title">` +
 			html.EscapeString(trimTo(e.Title, 30)) + `</span>`)
@@ -73,6 +79,30 @@ func Preview(accountID string) string {
 		b.WriteString(`<span class="notes-peek-when">` +
 			html.EscapeString(app.TimeAgo(e.UpdatedAt)) + `</span>`)
 		b.WriteString(`</a>`)
+
+		// Taking a note down, from where it is pinned.
+		//
+		// The one thing you can do to the board without leaving the screen you
+		// arrived at, and the reason it is worth having is not tidiness. Every
+		// note here is read back into the system prompt of every question this
+		// account asks, so what the agent knows has been invisible: fifty notes
+		// shaping every answer, on a page you had to go and find. On the wall
+		// it is legible, and this makes it editable — one click, and the agent
+		// stops being told.
+		//
+		// Which is why it asks first. This is the same delete the page offers,
+		// with the same confirm on it, because it is the same act: a note is
+		// not archived anywhere and taking it down is the whole of losing it.
+		b.WriteString(`<form method="post" action="/notes" class="notes-peek-take" ` +
+			`onsubmit="return confirm('Take this note down? Your agents stop being told it.')">` +
+			`<input type="hidden" name="_csrf" value="` + csrf + `">` +
+			`<input type="hidden" name="back" value="/home">` +
+			`<button type="submit" name="delete" value="` + html.EscapeString(e.Title) +
+			`" title="Take it down" aria-label="Take down ` +
+			html.EscapeString(e.Title) + `">&times;</button>` +
+			`</form>`)
+
+		b.WriteString(`</div>`)
 	}
 	b.WriteString(`</div>`)
 	b.WriteString(app.Link("Go to notes", "/notes"))
