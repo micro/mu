@@ -30,6 +30,13 @@ const (
 
 // Recorded describes a run that has already happened.
 type Recorded struct {
+	// ID is the record's id, when the caller has already committed to one.
+	//
+	// Ask opens a conversation's thread keyed by the id its first workflow
+	// record will carry, so the two can be matched later. Minting a second one
+	// here would break that on the one turn where it matters. Empty means the
+	// ordinary thing: a fresh id.
+	ID      string
 	Account string
 	// Agent is the user-defined agent that answered, or "" for the default.
 	Agent string
@@ -69,8 +76,12 @@ func Record(r Recorded) string {
 		started = time.Now()
 	}
 
+	id := r.ID
+	if strings.TrimSpace(id) == "" {
+		id = newFlowID()
+	}
 	f := &Flow{
-		ID:        newFlowID(),
+		ID:        id,
 		AccountID: r.Account,
 		Agent:     r.Agent,
 		Source:    r.Source,

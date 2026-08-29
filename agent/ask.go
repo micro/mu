@@ -161,6 +161,10 @@ func Ask(r AskRequest) (Answer, error) {
 	// knows better says so — mail resolves a reply from its headers, which
 	// beats "the last thing on this thread" when somebody answers a message
 	// from last week.
+	// The id shared by this conversation's first workflow record and the key
+	// its thread is opened under, when this function is the thing that starts
+	// it. Empty for a turn on a conversation that already exists.
+	rootID := ""
 	var th *thread.Thread
 	switch {
 	case r.On != "":
@@ -197,9 +201,22 @@ func Ask(r AskRequest) (Answer, error) {
 			// Minted here rather than in the door, because this is the surround
 			// every client shares and the next client to arrive without a key
 			// should not have to know this.
+			// The key is the id the first turn's workflow record will carry.
+			//
+			// They were two separate mints, and the gap between them was a
+			// conversation duplicated on every restart. adoptAll goes through
+			// the flows looking for conversations the rail has not got yet,
+			// and asks for a thread keyed by the root flow's id; a thread
+			// opened under some other freshly-minted id is not that thread, so
+			// it adopted the chain and made a second one. The web path never
+			// had the bug because it keys on the flow id it already holds.
+			//
+			// One id for one conversation, then, and the two records can find
+			// each other.
 			key := r.Thread
 			if strings.TrimSpace(key) == "" {
 				key = newFlowID()
+				rootID = key
 			}
 			th = thread.Open(r.Account, r.Client, key)
 		}
@@ -279,6 +296,9 @@ func Ask(r AskRequest) (Answer, error) {
 		Source: r.Client, Trigger: r.Trigger,
 		Prompt: r.Text, Answer: answer, Err: err,
 		Via: via,
+		// Empty on every turn but the first of a conversation this function
+		// started, which is the one whose id the thread was keyed with.
+		ID: rootID,
 	})
 
 	AnsweredAs(r.Account, threadID(th), answer, id, r.As)
