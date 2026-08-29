@@ -19,6 +19,7 @@ import (
 	"mu/internal/event"
 	"mu/internal/service"
 	"mu/service/news"
+	"mu/service/notes"
 )
 
 //go:embed cards.json
@@ -421,6 +422,23 @@ function fetchW(la,lo){
 		// furniture. See brief.go, including why it does not call a model.
 		if viewerID != "" {
 			b.WriteString(brief(viewerID))
+		}
+
+		// What has been written down, above what arrived.
+		//
+		// Inside before outside: notes are what you and your own agents left for
+		// each other, the inbox is what came from elsewhere. It is also the one
+		// block on this screen that something other than a person can add to
+		// without interrupting anybody — an agent that woke, checked and found
+		// nothing changed has had nowhere to say so, and mail is too heavy an
+		// instrument for it.
+		//
+		// Not a card, for the reason in notes.Preview: the card grid is one cache
+		// shared by every viewer, and these are one person's.
+		if viewerID != "" {
+			if pinned := notes.Preview(viewerID); pinned != "" {
+				b.WriteString(sectionRule("Notes") + pinned)
+			}
 		}
 
 		// What arrived, under a heading that looks like one.

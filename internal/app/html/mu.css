@@ -5988,6 +5988,7 @@ button.pill:hover {
    they are the same object: same border, same background, same inset. Drawing
    the second one differently would say they are different kinds of thing. */
 .inbox-peek,
+.notes-peek,
 .agent-peek {
   border: var(--border-width, 1px) solid var(--card-border, #e8e8e8);
   border-radius: var(--border-radius, 6px);
@@ -5999,7 +6000,8 @@ button.pill:hover {
 /* One agent: its name, what it last dealt with, and when. Three columns rather
    than a stack, because the name is what you scan for and the rest is context
    on the same line. The middle takes the slack and truncates. */
-.agent-peek-row {
+.agent-peek-row,
+.notes-peek-row {
   display: flex;
   align-items: baseline;
   gap: 10px;
@@ -6012,10 +6014,12 @@ button.pill:hover {
    "Go to agents" link underneath made every row a not-last one — so the block
    grew a line across its foot. Between-rows cannot be wrong about what follows
    the list. */
-.agent-peek-row + .agent-peek-row {
+.agent-peek-row + .agent-peek-row,
+.notes-peek-row + .notes-peek-row {
   border-top: var(--border-width, 1px) solid var(--card-border, #f4f4f4);
 }
-.agent-peek-row:visited { color: inherit }
+.agent-peek-row:visited,
+.notes-peek-row:visited { color: inherit }
 /* The whole row lights up, exactly as .thread-preview does — the same
    declaration, the same variable, no fallback and no rounding. The first
    attempt added a radius and inset padding and so did not look like the list
@@ -6026,16 +6030,20 @@ button.pill:hover {
    ancestor is drawn through its inline descendants — a child cannot take it
    off. .agent-peek-name:hover{text-decoration:none} is powerless here however
    specific it is. */
-.agent-peek-row {
+.agent-peek-row,
+.notes-peek-row {
   transition: background var(--transition-fast);
 }
-.agent-peek-row:hover {
+.agent-peek-row:hover,
+.notes-peek-row:hover {
   background: var(--hover-background);
   text-decoration: none;
 }
 
-.agent-peek-name { font-weight: 500; flex: none }
-.agent-peek-last {
+.agent-peek-name,
+.notes-peek-title { font-weight: 500; flex: none }
+.agent-peek-last,
+.notes-peek-text {
   flex: 1;
   min-width: 0;
   font-size: 13px;
@@ -6045,13 +6053,16 @@ button.pill:hover {
   text-overflow: ellipsis;
 }
 .agent-peek-idle { font-style: italic; opacity: .7 }
-.agent-peek-when { flex: none; font-size: 12px; color: var(--text-muted, #bbb) }
+.agent-peek-when,
+.notes-peek-when { flex: none; font-size: 12px; color: var(--text-muted, #bbb) }
 
 @media (max-width: 640px) {
   /* The name over the rest, because three columns in 320px leaves the middle
      one with nothing to show. */
-  .agent-peek-row { flex-wrap: wrap; row-gap: 2px }
-  .agent-peek-name { flex-basis: 100% }
+  .agent-peek-row,
+  .notes-peek-row { flex-wrap: wrap; row-gap: 2px }
+  .agent-peek-name,
+  .notes-peek-title { flex-basis: 100% }
 }
 
 .peek-row {
