@@ -1184,29 +1184,53 @@ func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts Query
 	var nativeTools []string
 	// The tool names behind those labels, for the run record.
 	var nativeToolNames []string
+	// Pairing a start with its end, by the provider's call id.
+	//
+	// It was keyed on the label, which is the same string for every command in
+	// a build — so after the first one the screen went quiet and stayed on the
+	// between-tools label for the rest of the run. Guarded by the same mutex as
+	// the writes: these hooks are called from whichever goroutine is running
+	// the tool.
 	startedTools := map[string]bool{}
 	endedTools := map[string]bool{}
+	// A call with no id still has to pair with itself, so it gets one.
+	var unnamed int
+	keyOf := func(run ToolRun) string {
+		if run.ID != "" {
+			return run.ID
+		}
+		unnamed++
+		return fmt.Sprintf("%s#%d", run.Name, unnamed)
+	}
 
 	// The hooks travel in opts now, so this handler translates events to SSE
 	// frames and owns nothing else about the run.
 	sopts := opts
 	sopts.Stream = StreamHooks{
-		ToolStart: func(label, name string) {
-			if startedTools[label] {
+		ToolStart: func(run ToolRun) {
+			wmu.Lock()
+			key := keyOf(run)
+			if startedTools[key] {
+				wmu.Unlock()
 				return
 			}
-			startedTools[label] = true
+			startedTools[key] = true
 			emitted = true
-			nativeTools = append(nativeTools, label)
-			nativeToolNames = append(nativeToolNames, NativeToolName(name))
-			send(map[string]any{"type": "tool_start", "name": label, "message": label})
+			nativeTools = append(nativeTools, run.Label)
+			nativeToolNames = append(nativeToolNames, NativeToolName(run.Name))
+			wmu.Unlock()
+			send(map[string]any{"type": "tool_start", "name": run.Label, "message": run.Label})
 		},
-		ToolEnd: func(label, name string) {
-			if endedTools[label] {
+		ToolEnd: func(run ToolRun) {
+			wmu.Lock()
+			key := keyOf(run)
+			if endedTools[key] {
+				wmu.Unlock()
 				return
 			}
-			endedTools[label] = true
-			send(map[string]any{"type": "tool_done", "name": label, "message": label + " — done"})
+			endedTools[key] = true
+			wmu.Unlock()
+			send(map[string]any{"type": "tool_done", "name": run.Label, "message": run.Label + " — done"})
 		},
 		Token: func(tok string) {
 			if shouldHoldNativeNewsStreamTokens(prompt, nativeTools) {

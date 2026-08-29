@@ -546,7 +546,7 @@ function ask(q){
   var a=document.createElement('div');a.className='mu-agent';conv.appendChild(a);
   input.value='';input.style.height='auto';input.focus();
 
-  var workLabel='Processing';
+  var workLabel='Working';
   var t0=Date.now();
   var timer=null;
   function renderWork(){
@@ -555,11 +555,11 @@ function ask(q){
     a.innerHTML='<div class="mu-think"><span class="mu-spin"></span><span>'+esc(workLabel)+dots+'</span>'+(secs>=1?'<span class="mu-think-t">'+secs+'s</span>':'')+'</div>';
   }
   function startWork(label){if(label)workLabel=label;renderWork();if(!timer)timer=setInterval(renderWork,450);}
-  // How many tools are in flight, so the label goes back to thinking only when
-  // they have all finished.
+  // How many tools are in flight, so the label goes back to the plain one only
+  // when they have all finished.
   var running=0;
   function stopWork(){if(timer){clearInterval(timer);timer=null;}}
-  startWork('Processing');
+  startWork('Working');
 
   save();
   // Where to look after asking.
@@ -647,11 +647,16 @@ function ask(q){
               running++;
               startWork(ev.message||'Working');
             }else if(ev.type==='tool_done'){
-              // Back to thinking only when the last one finishes — tools can
-              // run together, and one of three ending does not mean the work
-              // has stopped.
+              // Back to the plain label only when the last one finishes — tools
+              // can run together, and one of three ending does not mean the
+              // work has stopped.
+              //
+              // "Thinking" is what this said, and it is two wrong things at
+              // once: the model is not thinking, and between two tool calls it
+              // is picking the next command, which the very next tool_start
+              // will name anyway. Working is true and brief.
               if(running>0)running--;
-              if(running===0)startWork('Thinking');
+              if(running===0)startWork('Working');
             }else if(ev.type==='stream_start'){
               streamText='';streaming=false;startWork('Composing');
             }else if(ev.type==='stream_token'){

@@ -482,8 +482,8 @@ type StreamHooks struct {
 	// label is for the reader, name is the tool. The run record needs the
 	// name — "⚙️ Working" is what a person watching wants and is worthless as
 	// a trace, which is exactly what /runs was showing before this.
-	ToolStart func(label, name string)
-	ToolEnd   func(label, name string)
+	ToolStart func(ToolRun)
+	ToolEnd   func(ToolRun)
 	Token     func(tok string)
 }
 
@@ -626,12 +626,12 @@ func askStreaming(ctx context.Context, a gmagent.Agent, question string, recorde
 		}
 		switch ev.Type {
 		case gmagent.StreamEventToolStart:
-			if label, show := nativeToolLabel(ev.ToolCall.Name); show && hooks.ToolStart != nil {
-				hooks.ToolStart(label, ev.ToolCall.Name)
+			if run, show := toolRun(ev.ToolCall); show && hooks.ToolStart != nil {
+				hooks.ToolStart(run)
 			}
 		case gmagent.StreamEventToolEnd:
-			if label, show := nativeToolLabel(ev.ToolCall.Name); show && hooks.ToolEnd != nil {
-				hooks.ToolEnd(label, ev.ToolCall.Name)
+			if run, show := toolRun(ev.ToolCall); show && hooks.ToolEnd != nil {
+				hooks.ToolEnd(run)
 			}
 		case gmagent.StreamEventToken:
 			reply.WriteString(ev.Token)
@@ -795,7 +795,7 @@ func nativeToolTitle(name string) string {
 // nativeToolLabel maps a go-micro tool name (service_Method) to a friendly
 // progress label. show is false for the agent's internal/builtin tools (plan,
 // delegate, …), which shouldn't surface as user-facing tool steps.
-func nativeToolLabel(name string) (label string, show bool) {
+func nativeToolLabel(name string, in map[string]any) (label string, show bool) {
 	switch name {
 	case "plan", "delegate", "human_input", "":
 		return "", false
@@ -827,16 +827,69 @@ func nativeToolLabel(name string) (label string, show bool) {
 	case "mail":
 		return "📬 Checking your mail", true
 	case "shell":
-		// The one service where the method matters more than the name. A Code
-		// run is almost entirely shell, so "Working" for ninety seconds is the
-		// same as saying nothing — and writing a file and running a command are
-		// the two things somebody watching wants told apart.
+		// The one service where the method matters more than the name, and the
+		// one where the arguments matter more than either. A Code run is almost
+		// entirely shell, so "Running a command" eight times in a row is a
+		// progress bar with no progress in it — the command is the only part
+		// that tells you where the run has got to.
 		if len(parts) > 0 && parts[len(parts)-1] == "write" {
+			if path := toolArg(in, "path"); path != "" {
+				return "📄 Writing " + path, true
+			}
 			return "📄 Writing a file", true
+		}
+		if cmd := toolArg(in, "command"); cmd != "" {
+			return "⌨️ " + cmd, true
 		}
 		return "⌨️ Running a command", true
 	}
 	return "⚙️ Working", true
+}
+
+// toolArg is one string argument off a tool call, short enough for a line.
+//
+// Collapsed and cut, because these are shown in a running status line: a
+// heredoc writing a whole HTML file is a legitimate command and several hundred
+// characters of one, and the first few words say what it is doing.
+func toolArg(in map[string]any, key string) string {
+	v, _ := in[key].(string)
+	v = strings.Join(strings.Fields(v), " ")
+	if len(v) > toolArgChars {
+		cut := v[:toolArgChars]
+		if i := strings.LastIndex(cut, " "); i > toolArgChars/2 {
+			cut = cut[:i]
+		}
+		v = cut + "…"
+	}
+	return v
+}
+
+// toolArgChars bounds what of an argument reaches the screen. One line on a
+// phone, roughly.
+const toolArgChars = 48
+
+// ToolRun is one tool call, as a surface watching the run sees it.
+//
+// The ID is the reason this is a struct. A watcher has to pair a start with its
+// end to know how much is still running, and it was pairing on the label — so
+// the second command in a build, whose label is identical to the first, looked
+// like a repeat and was dropped. A Code run is almost all shell: after one
+// command the screen stopped saying anything and sat on the between-tools
+// label for the rest of the run. Which is what "it just said thinking the whole
+// time" was.
+type ToolRun struct {
+	ID    string // the provider's call id: what pairs a start with its end
+	Name  string // the tool, e.g. shell_Server_Run
+	Label string // what to show somebody watching
+}
+
+// toolRun describes one call for the surfaces watching it.
+func toolRun(c gmai.ToolCall) (ToolRun, bool) {
+	label, show := nativeToolLabel(c.Name, c.Input)
+	if !show {
+		return ToolRun{}, false
+	}
+	return ToolRun{ID: c.ID, Name: c.Name, Label: label}, true
 }
 
 // NativeToolName turns go-micro's handler name into the tool name a caller

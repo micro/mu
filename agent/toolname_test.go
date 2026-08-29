@@ -80,11 +80,11 @@ func TestAToolAnswersToTheNameWeShow(t *testing.T) {
 // hides the one distinction somebody watching cares about: whether it is
 // writing a file or running a command.
 func TestTheLabelSaysWhichShellThingIsHappening(t *testing.T) {
-	run, ok := nativeToolLabel("shell_Server_Run")
+	run, ok := nativeToolLabel("shell_Server_Run", nil)
 	if !ok || !strings.Contains(strings.ToLower(run), "command") {
 		t.Errorf("running a command is labelled %q", run)
 	}
-	write, ok := nativeToolLabel("shell_Server_Write")
+	write, ok := nativeToolLabel("shell_Server_Write", nil)
 	if !ok || !strings.Contains(strings.ToLower(write), "writing") {
 		t.Errorf("writing a file is labelled %q", write)
 	}
@@ -93,7 +93,7 @@ func TestTheLabelSaysWhichShellThingIsHappening(t *testing.T) {
 			"run that is mostly shell says one thing throughout")
 	}
 	// The bookkeeping tools stay off the screen: a plan is not progress.
-	if _, show := nativeToolLabel("plan"); show {
+	if _, show := nativeToolLabel("plan", nil); show {
 		t.Error("plan is shown as work being done")
 	}
 }
