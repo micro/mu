@@ -30,9 +30,16 @@
 // then says is what gets marked. A tip calculator that renders beautifully and
 // computes nothing passes every static check there is.
 //
-// # What it found, the first time it ran
+// # What it has found
 //
-// Zero of eight, and the cause is not the model. go-micro's atlascloud
+// Seven of eight, once three things it caught were fixed. The run that matters
+// is the second, third and fourth task of each pass: a page built, then
+// restyled, then extended, each time working when a browser types into it, and
+// each change leaving the rest of the page alone.
+//
+// Every one of the three fixes was in the harness or the plumbing rather than
+// in the model, which is the argument for writing this down. Zero of eight the
+// first time, and the cause was not the model. go-micro's atlascloud
 // provider runs one round of tool calls and then asks the model to finish
 // without them: the follow-up request carries the tool results and no "tools"
 // key, and there is no loop, so a second call is impossible whatever the model
@@ -97,8 +104,11 @@ const runs = 2
 type task struct {
 	name   string
 	prompt string
-	// fill is what to type into the page's inputs, in order.
-	fill []float64
+	// fill is what to type, each value paired with a word that finds its field.
+	// By name rather than by position, because two models asked for the same
+	// app do not agree on field order and neither is wrong — an eval that fills
+	// in order is marking the guess, not the page.
+	fill [][2]any
 	// wants are substrings the page must show once filled — the arithmetic,
 	// not the markup.
 	wants []string
@@ -116,20 +126,20 @@ var tasks = []task{
 	{
 		name:   "build",
 		prompt: "Build a tip calculator: a field for the bill amount, a field for the tip percentage, and it shows the tip and the total.",
-		fill:   []float64{100, 20},
+		fill:   [][2]any{{"bill", 100}, {"tip", 20}},
 		wants:  []string{"20", "120"},
 	},
 	{
 		name:   "restyle",
 		prompt: "Change it to a white background with dark text.",
-		fill:   []float64{100, 20},
+		fill:   [][2]any{{"bill", 100}, {"tip", 20}},
 		wants:  []string{"20", "120"},
 		keeps:  0.6,
 	},
 	{
 		name:   "extend",
 		prompt: "Add a field for the number of people sharing the bill, and show what each person pays.",
-		fill:   []float64{100, 20, 4},
+		fill:   [][2]any{{"bill", 100}, {"tip", 20}, {"people", 4}},
 		wants:  []string{"120", "30"},
 		keeps:  0.5,
 	},
@@ -395,7 +405,7 @@ func overlap(old, new string) float64 {
 // rather than a failed one — and it is reported as skipped, because a score
 // that quietly stops measuring the most important thing is worse than one that
 // admits it did not.
-func usePage(t *testing.T, path string, fill []float64) (text string, errs []string, ok bool) {
+func usePage(t *testing.T, path string, fill [][2]any) (text string, errs []string, ok bool) {
 	t.Helper()
 	root := os.Getenv("MU_EVAL_BROWSER")
 	if root == "" {
