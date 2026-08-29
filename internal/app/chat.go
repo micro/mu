@@ -777,8 +777,26 @@ window.muChatAsk=ask;
 // A reopened conversation opens at its end, which is where the reading is.
 // Instant rather than smooth: this is the position the page should have loaded
 // in, not a movement to watch.
+//
+// Once was not enough. Scrolling to the bottom asks for scrollHeight, and at
+// that moment the page has not finished becoming its size — a webfont swaps, a
+// card renders, an image arrives — so it went to the bottom of a shorter page
+// and stopped there, leaving somebody to scroll down to the message they had
+// just reloaded to see.
+//
+// So it stays pinned to the end until the reader scrolls away from it, which
+// is also the only signal that says they want to be somewhere else. Anything
+// that changes the height afterwards — late layout, a slow card — keeps it
+// where it was put, and the moment they scroll up it lets go for good.
+var pinned=true;
+if(conv){
+  conv.addEventListener('scroll',function(){ if(!nearBottom()) pinned=false; });
+}
+function pin(){ if(pinned) toBottom(true); }
 fitConv();
 toBottom(true);
+window.addEventListener('load',function(){ fitConv(); pin(); });
+if(conv&&window.ResizeObserver){ new ResizeObserver(pin).observe(conv); }
 window.addEventListener('resize',function(){ fitConv(); toBottom(false); });
 if(input) input.addEventListener('input',fitConv);
 })();
