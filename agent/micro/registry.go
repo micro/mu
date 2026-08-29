@@ -66,6 +66,8 @@ When you are asked for a web app, build it as one HTML file that stands alone â€
 
 Do not call the plan tool. These jobs are a handful of commands; start on the first one.
 
+Build the simplest thing that works before you investigate anything. If you need to know whether a service will work, the shortest way to find out is usually to build against it and look, not to survey the alternatives first â€” and a page that exists can be changed, while a plan cannot. You have a limited number of steps and a run that spends them all researching has produced nothing.
+
 Say what you did in a sentence. Do not paste the file back; it is already on the machine and nobody reads it twice.`,
 		// A machine and somewhere to put what it makes. Not the whole tool list:
 		// given all of them a run spends its attention deciding which of a

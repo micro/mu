@@ -448,7 +448,14 @@ func nativeLLMFor(prefer string) (provider, key, model string, ok bool) {
 // cost ceiling — but twenty is already past where ordinary work reaches, so
 // raising it changes nothing and lowering it cuts off honest questions. A dial
 // whose useful range is a single value is a decision presented as a choice.
-const maxSteps = 20
+// maxSteps is how many tools one question may run.
+//
+// Twenty was not enough for work that investigates before it builds. Asked for
+// a live sports app, a run spent every step checking which APIs allowed
+// cross-origin requests — good work, correctly done — hit the ceiling, and
+// finished by describing the app it had not written. The research was the
+// expensive part and the building would have been one call.
+const maxSteps = 40
 
 // turnTimeout is the longest one question may take, whatever it is doing.
 //
@@ -819,6 +826,15 @@ func nativeToolLabel(name string) (label string, show bool) {
 		return "🧩 Browsing apps", true
 	case "mail":
 		return "📬 Checking your mail", true
+	case "shell":
+		// The one service where the method matters more than the name. A Code
+		// run is almost entirely shell, so "Working" for ninety seconds is the
+		// same as saying nothing — and writing a file and running a command are
+		// the two things somebody watching wants told apart.
+		if len(parts) > 0 && parts[len(parts)-1] == "write" {
+			return "📄 Writing a file", true
+		}
+		return "⌨️ Running a command", true
 	}
 	return "⚙️ Working", true
 }

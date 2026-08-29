@@ -555,6 +555,9 @@ function ask(q){
     a.innerHTML='<div class="mu-think"><span class="mu-spin"></span><span>'+esc(workLabel)+dots+'</span>'+(secs>=1?'<span class="mu-think-t">'+secs+'s</span>':'')+'</div>';
   }
   function startWork(label){if(label)workLabel=label;renderWork();if(!timer)timer=setInterval(renderWork,450);}
+  // How many tools are in flight, so the label goes back to thinking only when
+  // they have all finished.
+  var running=0;
   function stopWork(){if(timer){clearInterval(timer);timer=null;}}
   startWork('Processing');
 
@@ -636,6 +639,19 @@ function ask(q){
               }
             }else if(ev.type==='thinking'){
               startWork(ev.message);
+            }else if(ev.type==='tool_start'){
+              // What it is doing, while it does it. The server has been
+              // sending these all along and nothing here listened, so a run
+              // that searched the web and read your mail said "Processing" for
+              // the whole minute and then produced an answer out of nowhere.
+              running++;
+              startWork(ev.message||'Working');
+            }else if(ev.type==='tool_done'){
+              // Back to thinking only when the last one finishes — tools can
+              // run together, and one of three ending does not mean the work
+              // has stopped.
+              if(running>0)running--;
+              if(running===0)startWork('Thinking');
             }else if(ev.type==='stream_start'){
               streamText='';streaming=false;startWork('Composing');
             }else if(ev.type==='stream_token'){

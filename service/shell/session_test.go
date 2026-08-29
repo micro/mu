@@ -89,8 +89,14 @@ func TestTheMachineHasTheToolsAModelExpects(t *testing.T) {
 
 	var r RunResponse
 	// One at a time: dash's command -v only looks at its first argument, so
-	// asking for four in one call reports on one and passes for the rest.
-	for _, want := range []string{"bash", "sed", "grep", "awk"} {
+	// asking for several in one call reports on one and passes for the rest.
+	//
+	// curl and git are on the list because they are promised. The README says a
+	// machine is for building things, running tests and cloning a repo, and an
+	// agent asked to build against an API reaches for curl before anything
+	// else — one asked for a live sports app spent its whole step budget
+	// probing endpoints and reported that it had made do with wget.
+	for _, want := range []string{"bash", "sed", "grep", "awk", "curl", "git"} {
 		if err := s.Run(ctx, &RunRequest{Command: "command -v " + want}, &r); err != nil {
 			t.Fatal(err)
 		}

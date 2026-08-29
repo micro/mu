@@ -271,18 +271,26 @@ const defaultWait = 120 * time.Second
 // look like the model being bad at the shell, which is the wrong thing to go
 // and fix — and this instance spent a while fixing it.
 //
-// Debian slim is thirty megabytes and behaves the way the training does. That
-// trade is not close for a box whose entire purpose is that a model already
-// knows how to use it.
+// Debian is what behaves the way the training does. That trade is not close for
+// a box whose entire purpose is that a model already knows how to use it.
 //
-// It still has no git, curl or python. An operator who wants them sets
-// SHELL_IMAGE — buildpack-deps:bookworm-scm brings git and curl, and the
-// python images bring python on the same Debian base.
+// The scm variant rather than plain slim, because curl and git are not extras
+// here. The README promises "clone a repo" and slim cannot: git was documented
+// and absent. And an agent asked to build something against an API reaches for
+// curl first, every time — one asked for a live sports app spent its whole step
+// budget probing endpoints and reported, accurately, that the machine had
+// neither curl nor python and it had made do with wget.
+//
+// It costs about a hundred and fifty megabytes more, pulled once per host. A
+// promise the box cannot keep costs more than that.
+//
+// Still no python. An operator who wants it sets SHELL_IMAGE to one of the
+// python images, which are the same Debian underneath.
 func image() string {
 	if set := setting("SHELL_IMAGE"); set != "" {
 		return set
 	}
-	return "debian:12-slim"
+	return "buildpack-deps:bookworm-scm"
 }
 
 // limits are what one machine may have. Every one is an operator's decision,
