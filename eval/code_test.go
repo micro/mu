@@ -77,6 +77,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -124,6 +125,13 @@ type task struct {
 	// whether it worked.
 	shell string
 	want  string
+	// calls is the round-trip budget: how many tool calls this job is worth.
+	//
+	// Writing a page is one shell_write. Changing one is a grep and a sed.
+	// Anything above that is the run orienting itself — an ls to see where it
+	// is, a cat to read back what it just wrote — and each of those costs the
+	// person waiting three to fifteen seconds for nothing they asked for.
+	calls int
 }
 
 var tasks = []task{
@@ -132,6 +140,8 @@ var tasks = []task{
 		prompt: "Build a tip calculator: a field for the bill amount, a field for the tip percentage, and it shows the tip and the total.",
 		fill:   [][2]any{{"bill", 100}, {"tip", 20}},
 		wants:  []string{"20", "120"},
+		// One to write it, one to host it.
+		calls: 2,
 	},
 	{
 		name:   "restyle",
@@ -139,6 +149,8 @@ var tasks = []task{
 		fill:   [][2]any{{"bill", 100}, {"tip", 20}},
 		wants:  []string{"20", "120"},
 		keeps:  0.6,
+		// Find the line, change the line.
+		calls: 3,
 	},
 	{
 		name:   "extend",
@@ -146,12 +158,15 @@ var tasks = []task{
 		fill:   [][2]any{{"bill", 100}, {"tip", 20}, {"people", 4}},
 		wants:  []string{"120", "30"},
 		keeps:  0.5,
+		calls:  3,
 	},
 	{
 		name:   "script",
 		prompt: "In the directory eval-files, create three files a.txt, b.txt and c.txt, then write a shell script that renames every .txt in that directory to .md, and run it.",
 		shell:  "ls eval-files",
 		want:   "a.md b.md c.md",
+		// Genuinely several commands: make the files, write the script, run it.
+		calls: 4,
 	},
 }
 
@@ -229,6 +244,8 @@ type outcome struct {
 	html   string
 	said   string
 	checks []string
+	// calls is what it ran, in order, one per model round trip.
+	calls []string
 }
 
 func (o outcome) line() string { return strings.Join(o.checks, "  ") }
@@ -259,12 +276,33 @@ func attempt(t *testing.T, tk task, dir, previous, artifacts string, run int) ou
 	// The real agent, with its registered prompt and scope, so this measures
 	// what an account actually talks to rather than a copy of it.
 	opts := agent.PlatformOpts(micro.Get("code"))
+
+	// How many calls it took, which is how long it took.
+	//
+	// Every check here was about whether the page is right and none about what
+	// it cost, so a build that spent twelve round trips scored the same as one
+	// that spent one — and nothing in this harness ever pushed against the
+	// behaviour that actually makes a build take three minutes. A step is a
+	// model round trip of three to fifteen seconds; the count is the whole of
+	// the wall clock.
+	var mu sync.Mutex
+	opts.Stream = agent.StreamHooks{ToolStart: func(r agent.ToolRun) {
+		mu.Lock()
+		out.calls = append(out.calls, r.Label)
+		mu.Unlock()
+	}}
+
 	said, err := agent.QueryWithOpts(account, prompt, opts)
 	if err != nil {
 		out.mark("ran", false, err.Error())
 		return out
 	}
 	out.mark("ran", true, "")
+	// A budget rather than a ceiling on correctness: over it the page may be
+	// perfect and the run still wrong, because somebody waited for it.
+	out.mark("brief", len(out.calls) <= tk.calls,
+		fmt.Sprintf("%d calls, want %d or fewer: %s",
+			len(out.calls), tk.calls, strings.Join(out.calls, " → ")))
 	// Kept for the failure line. A run that produces no file and no explanation
 	// is the least useful result there is: the reply is the only evidence of
 	// what the model thought it was doing, and discarding it means every
