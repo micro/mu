@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"mu/agent/micro"
@@ -1113,6 +1114,13 @@ func handleDeleteFlow(w http.ResponseWriter, r *http.Request, id string) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// sseHeartbeat is how often a quiet stream says something.
+//
+// Short enough to beat the shortest idle timeout in the usual path — thirty
+// seconds is common in proxies and some browsers — and long enough that it is
+// invisible.
+const sseHeartbeat = 10 * time.Second
+
 // sse writes a single Server-Sent Events data line and flushes.
 func sse(w http.ResponseWriter, event map[string]any) {
 	data, _ := json.Marshal(event)
@@ -1131,6 +1139,45 @@ func sse(w http.ResponseWriter, event map[string]any) {
 // second pipeline, so there is nothing to report: a failure is reported to the
 // person who asked, on the stream they are already reading.
 func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts QueryOpts, flow *Flow, threadID string) {
+	// One writer, and something on the wire while nothing is happening.
+	//
+	// The hooks below are called from whatever goroutine is running the tool,
+	// so every write to w needs the lock — that was a race before there was a
+	// heartbeat to race with.
+	//
+	// The heartbeat is why this exists. Between one tool finishing and the next
+	// starting the model is thinking, which can be a minute, and in that minute
+	// nothing was written at all. An idle connection is what proxies and
+	// browsers close, so a long build ended as "network error" on a run that
+	// was working perfectly — the answer arrived at a socket nobody was holding
+	// any more. A comment line is not an event, so the client ignores it and
+	// the connection stays up.
+	var wmu sync.Mutex
+	send := func(ev map[string]any) {
+		wmu.Lock()
+		defer wmu.Unlock()
+		sse(w, ev)
+	}
+	beating := make(chan struct{})
+	defer close(beating)
+	go func() {
+		t := time.NewTicker(sseHeartbeat)
+		defer t.Stop()
+		for {
+			select {
+			case <-beating:
+				return
+			case <-t.C:
+				wmu.Lock()
+				fmt.Fprint(w, ": still here\n\n")
+				if f, ok := w.(http.Flusher); ok {
+					f.Flush()
+				}
+				wmu.Unlock()
+			}
+		}
+	}()
+
 	streaming := false
 	emitted := false
 	var captured strings.Builder
@@ -1152,14 +1199,14 @@ func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts Query
 			emitted = true
 			nativeTools = append(nativeTools, label)
 			nativeToolNames = append(nativeToolNames, NativeToolName(name))
-			sse(w, map[string]any{"type": "tool_start", "name": label, "message": label})
+			send(map[string]any{"type": "tool_start", "name": label, "message": label})
 		},
 		ToolEnd: func(label, name string) {
 			if endedTools[label] {
 				return
 			}
 			endedTools[label] = true
-			sse(w, map[string]any{"type": "tool_done", "name": label, "message": label + " — done"})
+			send(map[string]any{"type": "tool_done", "name": label, "message": label + " — done"})
 		},
 		Token: func(tok string) {
 			if shouldHoldNativeNewsStreamTokens(prompt, nativeTools) {
@@ -1169,10 +1216,10 @@ func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts Query
 			if !streaming {
 				streaming = true
 				emitted = true
-				sse(w, map[string]any{"type": "stream_start"})
+				send(map[string]any{"type": "stream_start"})
 			}
 			captured.WriteString(tok)
-			sse(w, map[string]any{"type": "stream_token", "token": tok})
+			send(map[string]any{"type": "stream_token", "token": tok})
 		},
 	}
 	answer, err := runNative(accountID, prompt, sopts)
@@ -1186,8 +1233,8 @@ func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts Query
 			app.Log("agent", "stream failed before output: %v", err)
 		}
 		updateFlow(flow.ID, func(f *Flow) { f.Status = "error"; f.Error = err.Error() })
-		sse(w, map[string]any{"type": "error", "message": agentErrorMessage(err)})
-		sse(w, map[string]any{"type": "done"})
+		send(map[string]any{"type": "error", "message": agentErrorMessage(err)})
+		send(map[string]any{"type": "done"})
 		return
 	}
 
@@ -1199,8 +1246,8 @@ func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts Query
 	if !streaming && shouldReplayFinalNativeAnswer(prompt, nativeTools, captured.Len()) {
 		streaming = true
 		emitted = true
-		sse(w, map[string]any{"type": "stream_start"})
-		sse(w, map[string]any{"type": "stream_token", "token": answer})
+		send(map[string]any{"type": "stream_start"})
+		send(map[string]any{"type": "stream_token", "token": answer})
 	}
 	// What was said, in the record. The workflow record below is how it was
 	// produced; this is the answer itself, and it is what the next message in
@@ -1230,8 +1277,8 @@ func streamNativeSSE(w http.ResponseWriter, accountID, prompt string, opts Query
 			}
 		})
 	}
-	sse(w, map[string]any{"type": "response", "html": html, "flow_id": flow.ID})
-	sse(w, map[string]any{"type": "done"})
+	send(map[string]any{"type": "response", "html": html, "flow_id": flow.ID})
+	send(map[string]any{"type": "done"})
 }
 
 // agentErrorMessage is what a failed run says to the person who asked.
