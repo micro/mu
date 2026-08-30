@@ -349,11 +349,12 @@ var Template = `
            fourth item. Hidden children take no space, so mail appearing and
            disappearing still costs nothing. -->
       <div id="head-right">
-        <!-- The envelope is the inbox, not the mail store. It appears when
-             something is waiting and the thing waiting is a conversation, which
-             lives at /inbox; /mail is the envelopes SMTP delivered and is not
-             what a badge in the header is counting. -->
-        <a id="head-inbox" href="/inbox" aria-label="Inbox"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="22,7 12,13 2,7"/></svg></a>
+        <!-- An envelope stood here, on the argument that the rail is behind a
+             hamburger on a phone so Inbox needs a shortcut. The argument was
+             right and the patch was not: it was display:none in the stylesheet
+             with nothing anywhere turning it on, so the shortcut was invisible
+             for as long as it existed. Inbox is a tab along the bottom now,
+             beside the other three. See navTabs. -->
         %s
       </div>
     </div>
@@ -412,6 +413,7 @@ var Template = `
       </div>
       %s
     </div>
+    %s
   <script>
       // Navigating without repainting the page.
       //
@@ -701,21 +703,28 @@ var Template = `
       //
       // Re-run on soft navigation, because that swaps #content and leaves the
       // sidebar exactly as the last full page load drew it.
+      // Once per group of links, not once per page. The rail and the phone's
+      // tab bar are two lists of the same destinations shown at different
+      // widths, and a single winner across both lit whichever appeared first
+      // in the document — so the tab bar was never marked.
       function markNav() {
         var here = location.pathname.replace(/\/+$/, '') || '/';
-        var links = document.querySelectorAll('#nav a, .nav-bottom a');
-        var best = null, bestLen = -1;
-        for (var i = 0; i < links.length; i++) {
-          links[i].classList.remove('active');
-          var path;
-          try { path = new URL(links[i].href, location.href).pathname.replace(/\/+$/, '') || '/'; }
-          catch (e) { continue; }
-          // Longest match wins, so /news/tech lights News rather than Home —
-          // and "/" only matches "/", or it would claim every page.
-          var hit = path === here || (path !== '/' && here.indexOf(path + '/') === 0);
-          if (hit && path.length > bestLen) { best = links[i]; bestLen = path.length; }
+        var groups = ['#nav a, .nav-bottom a', '#tabs a'];
+        for (var g = 0; g < groups.length; g++) {
+          var links = document.querySelectorAll(groups[g]);
+          var best = null, bestLen = -1;
+          for (var i = 0; i < links.length; i++) {
+            links[i].classList.remove('active');
+            var path;
+            try { path = new URL(links[i].href, location.href).pathname.replace(/\/+$/, '') || '/'; }
+            catch (e) { continue; }
+            // Longest match wins, so /news/tech lights News rather than Home —
+            // and "/" only matches "/", or it would claim every page.
+            var hit = path === here || (path !== '/' && here.indexOf(path + '/') === 0);
+            if (hit && path.length > bestLen) { best = links[i]; bestLen = path.length; }
+          }
+          if (best) best.classList.add('active');
         }
-        if (best) best.classList.add('active');
       }
       document.addEventListener('mu:navigated', markNav);
       markNav();
@@ -1126,6 +1135,40 @@ func navMain(acc *auth.Account) string {
 		}
 	}
 	return b
+}
+
+// navTabs is the four hubs along the bottom of a phone.
+//
+// The rail is behind a hamburger at phone width, which puts every destination
+// two taps away and none of them in reach of a thumb. The workaround was an
+// envelope in the top bar — one of the seven, promoted because it was the one
+// people missed most, at the far corner from where a hand holds a phone. This
+// is the general answer to what that patch was a special case of.
+//
+// Four, and they are the four navMain shows a signed-out visitor: Home, Inbox,
+// Agents, Services. A tab bar holds four or five before the labels stop being
+// readable, and these are the four this product is — where you land, what
+// arrived, who works for you, what they can reach. The rest of the rail stays
+// behind the hamburger, which is the right place for Tokens, Wallet and Admin:
+// things somebody touches monthly, and the reason not to spend a tab on them.
+//
+// Signed in only. Signed out, the shell is a landing page whose job is one
+// button, and a fixed bar across the bottom of it competes with that button
+// while offering the same four links its footer already carries.
+func navTabs(acc *auth.Account) string {
+	if acc == nil {
+		return ""
+	}
+	tab := func(href, icon, label string) string {
+		return `<a href="` + href + `"><img src="` + icon + `?` + Version +
+			`" alt=""><span>` + label + `</span></a>`
+	}
+	return `<nav id="tabs" aria-label="Main">` +
+		tab("/home", "/home.png", "Home") +
+		tab("/inbox", "/mail.png", "Inbox") +
+		tab("/agents", "/agent.svg", "Agents") +
+		tab("/services", "/services.svg", "Services") +
+		`</nav>`
 }
 
 // TopUpConfigured reports whether this instance can take a payment, filled in
@@ -1568,5 +1611,5 @@ func renderShell(lang, title, desc, bodyAttr, body string, acc *auth.Account, pa
 		navMain(acc),
 		navPinned(acc),
 		navBottom(acc),
-		title, body, footerFor(acc))
+		title, body, footerFor(acc), navTabs(acc))
 }

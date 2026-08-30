@@ -704,21 +704,6 @@ td {
   gap: 14px;
 }
 
-/* The header's inbox link. Hidden on desktop, where the sidebar carries Inbox;
-   on a phone the sidebar is behind a hamburger, so this is the way to reach it.
-   It carried a count once, from a different source than the one on Home, and
-   the two disagreed with each other and with the list. */
-#head-inbox {
-  display: none;
-  position: relative;
-  text-decoration: none;
-  color: #555;
-  line-height: 0;
-}
-#head-inbox svg {
-  vertical-align: middle;
-}
-
 /* Credit balance in the top bar, beside Tools. The only place it appears: it
    was in the sidebar too for a moment, and the same number twice on one screen
    reads as a mistake. The top bar is fixed, always visible, and the same on
@@ -905,10 +890,96 @@ body.page-home #page-title ~ #customize-link {
    under the left and home became a single stack at every width. Both media
    queries set flex-direction:column on this element, which is what gave it
    away: nothing sets a direction on something that was never a flex container. */
+/* Home's services: a launcher, at every width.
+
+   A card was doing two jobs — a way through to the service, and a window onto
+   what it is showing. Two columns of windows works on a desktop and collapses
+   on a phone, where seven windows stacked is seven screens of scrolling to
+   read seven facts and the way through to any of them is past all the ones
+   above it. The usual answer is two densities, cards here and tiles there,
+   which is two layouts to keep true.
+
+   One layout instead: the window closes everywhere and the way through stays.
+   Sixteen services is one screen as tiles at any width. What they were showing
+   is not lost — the Brief above says what happened in a sentence, which is the
+   other half of the same split, and each service's own page is one tap away.
+
+   auto-fill so the row fits the width it is given rather than a column count
+   guessed here, and a cap so a wide window gets bigger gaps rather than
+   fourteen tiles in a line reading as a toolbar. */
 #home {
+  display: grid;
+  /* 80px is chosen against the narrowest screen: a 390px phone leaves about
+     360px of content, which is four of these and not three. Everything wider
+     gets more of them. */
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 8px;
+  max-width: 760px;
+}
+
+/* The two columns are a fact about the markup, not about the page. Home builds
+   a left and a right because cards.json says which column a card is in; the
+   tiles are one grid, so the wrappers dissolve and their cards become children
+   of it. cards.json's column and the split in home.Template are inert as a
+   result — see the note there. */
+.home-left, .home-right {
+  display: contents;
+}
+
+/* A tile is its icon and its name. Everything a card carries in order to be a
+   window — its frame, its padding, its body, how old the body is, the "?" that
+   explains it — is what a tile has no room for. */
+#home .card {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  min-width: 0;
+  width: auto;
+  max-width: none;
+}
+
+#home .card-body,
+#home .card-when,
+#home .card-tooltip,
+#home .card-corner {
+  display: none;
+}
+
+#home .card h4 {
+  margin: 0;
+  font-size: 11px;
+  font-weight: var(--font-weight-medium, 500);
+}
+
+/* The whole tile is the link, so the tap target is the tile rather than the
+   six characters of its name. That is why cardHead puts the icon inside the
+   anchor rather than beside it. */
+#home .card-head-link {
   display: flex;
-  gap: 20px;
-  height: 100%;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 2px;
+  min-height: 68px;
+  text-align: center;
+  line-height: 1.25;
+  color: var(--text-primary, #1a1a1a);
+  text-decoration: none;
+  border-radius: var(--border-radius, 8px);
+  overflow-wrap: anywhere;
+}
+
+#home .card-head-link:hover,
+#home .card-head-link:active {
+  background: var(--hover-background, #f2f2f2);
+}
+
+#home .card-icon {
+  display: block;
+  height: 32px;
+  width: 32px;
 }
 
 .card-tooltip {
@@ -972,23 +1043,22 @@ body.page-home #page-title ~ #customize-link {
   flex-shrink: 0;
 }
 
-#home:after {
-  content: ".";
-  display: block;
-  height: 0;
-  clear: both;
-  visibility: hidden;
-}
+/* A clearfix stood here — content:"." with clear:both, from when #home was a
+   float layout. It has done nothing since #home became a flex container: a
+   flex parent does not contain floated children because its children are not
+   floated. Inert is not harmless, though. Turned into a grid on a phone it
+   became a grid item, took the first cell, and pushed every tile along one. */
 
 #home h1 {
   margin-top: 0;
 }
 
-.home-left, .home-right {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
+/* The two columns were a flex row here: the left flex:1, the right a fixed
+   370px, cards inside each stacking at 350px minimum. All of it went with the
+   cards — a tile has no column to be in. What is left is the rule dissolving
+   the wrappers, which is above with the rest of the grid.
+
+   .card-when stays because the class is still rendered; the grid hides it. */
 
 /* How old the thing on a card is. Only the stream carries it — the forecast and
    the prices are how things are now, and a time against them would be the time
@@ -999,23 +1069,6 @@ body.page-home #page-title ~ #customize-link {
   color: var(--text-muted, #999);
   margin-left: 8px;
   white-space: nowrap;
-}
-
-.home-left {
-  flex: 1;
-  min-width: 0;
-}
-
-.home-right {
-  width: 370px;
-  flex-shrink: 0;
-}
-
-.home-left .card, .home-right .card {
-  margin: 0;
-  float: none;
-  min-width: 350px;
-  max-width: none;  /* Allow cards to expand in home columns */
 }
 
 /* Home page: cards have borders, but content inside does not */
@@ -1057,22 +1110,86 @@ body.page-home #page-title ~ #customize-link {
   background: transparent;
 }
 
-/* Switch to a single column when there's not enough room for two + sidebar */
-@media only screen and (max-width: 1100px) {
-  #home, .home-row {
-    flex-direction: column;
+/* The four hubs along the bottom of a phone. See navTabs in internal/app.
+
+   The rail is behind a hamburger at this width, which puts every destination
+   two taps away and none in reach of a thumb. There was a patch for that — an
+   envelope in the top bar, promoted because Inbox was the one people missed —
+   and it had been display:none with nothing anywhere turning it on, so the
+   workaround was invisible and the problem was whole. This is the general
+   answer; the patch is deleted.
+
+   Hidden above 900px, where the rail is on the screen and a second copy of the
+   same four links along the bottom would be the same navigation twice. */
+#tabs {
+  display: none;
+}
+
+@media only screen and (max-width: 900px) {
+  #tabs {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 100;
+    background: var(--card-background, #fff);
+    border-top: 1px solid var(--border-color, #e0e0e0);
+    /* Below the bar on a phone with a home indicator is the gesture area, and
+       a tap target that ends there is a tap target that swipes the app away. */
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 
-  .home-right {
-    width: 100%;
+  #tabs a {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 8px 0 7px;
+    text-decoration: none;
+    color: var(--text-muted, #888);
+    font-size: 10px;
+    letter-spacing: 0.02em;
+    /* 44px is the smallest thing a finger hits reliably. */
+    min-height: 44px;
+  }
+
+  #tabs img {
+    height: 22px;
+    width: 22px;
+    /* The rail's icons are read beside a word at rest; these are read at a
+       glance and half of them are flat PNGs, so the state is carried by the
+       label's colour and by the icon's opacity rather than by a tint that
+       would only work on the SVGs. */
+    opacity: 0.55;
+  }
+
+  #tabs a.active {
+    color: var(--text-primary, #1a1a1a);
+    font-weight: var(--font-weight-semibold, 600);
+  }
+
+  #tabs a.active img {
+    opacity: 1;
+  }
+
+  /* Room for it. A fixed bar covers whatever the page ends with — the last
+     card, the footer, the send button on a chat — and the thing it covers is
+     the thing somebody scrolled all that way to reach.
+
+     Unconditional rather than scoped to pages that have a bar. body:has(#tabs)
+     would say it exactly, and :has() is used elsewhere in this file — but the
+     other uses degrade to a slightly worse layout where it is unsupported and
+     this one would degrade to the bar sitting on top of the content, which is
+     the failure being prevented. A signed-out phone gets this much space above
+     its footer and nothing else changes. */
+  #content {
+    padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px));
   }
 }
 
-/* Home: the inline agent spans the full column (not the 760px reading cap it
-   uses on the landing page), and when its input pins on scroll it clears the
-   fixed 50px header instead of hiding behind it. */
-#home-agent #mu-chat { max-width: none; }
-#home-agent #mu-chat-form { top: 58px; }
 /* ========================================
    CARDS & BLOCKS
    ======================================== */
@@ -1141,7 +1258,13 @@ body:has(#messages) #content {
   overflow: hidden;
 }
 
+/* And the tab bar, for the same reason the footer goes: a conversation takes
+   the whole viewport and pins its input to the bottom of it, so a fixed bar
+   across that bottom lands on the thing you are typing into. A full-screen
+   conversation hiding the tabs is also what every messaging app does — you
+   are in the thread, not choosing between hubs. */
 body:has(#messages) #footer,
+body:has(#messages) #tabs,
 body:has(#messages) #chat-back-link {
   display: none;
 }
@@ -2569,49 +2692,9 @@ a.highlight {
     max-width: 100%;
   }
   
-  /* Home page layout — flatten columns on mobile for unified card ordering */
-  #home, .home-row {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    height: auto;
-  }
-  .home-left, .home-right {
-    display: contents;
-  }
   #home-date {
     justify-content: center;
   }
-
-  /* Compact cards on mobile */
-  .home-left .card, .home-right .card {
-    padding: 12px;
-    margin-bottom: 0;
-    width: 100%;
-    min-width: auto;
-  }
-
-  /* The corner mark tracks the card's padding, which is smaller here. */
-  .home-left .card-corner, .home-right .card-corner {
-    right: 38px;
-  }
-
-  .home-left .card h3 {
-    font-size: 14px;
-    margin-bottom: 8px;
-  }
-
-  .home-left .card-link {
-    font-size: 12px;
-  }
-
-  /* One column, in the order the server sent: the stream newest first, then
-     what is fixed. There was a hand-written order per card id here — a list
-     that had to be kept in step with cards.json, and was not: a card with no
-     rule defaulted to order:0 and jumped to the top, which is what happened
-     when Images was added and again each time the reminder card was renamed.
-     display:contents flattens both columns into this grid in DOM order, and
-     DOM order is now a decision rather than a file. */
 
   .cover {
     display: block;
@@ -5259,7 +5342,7 @@ body.display-mode #nav-overlay,
 body.display-mode #footer,
 body.display-mode #menu-toggle,
 body.display-mode #page-title,
-body.display-mode #head-inbox {
+body.display-mode #tabs {
   display: none !important;
 }
 

@@ -24,13 +24,20 @@ import (
 //go:embed cards.json
 var f embed.FS
 
-// Template is the home cards container: two columns on desktop, one stack on a
-// phone.
+// Template is the home cards container.
 //
-// The left is the stream — everything that happened, newest first. The right is
-// what is fixed: how things are now, in an order that does not move. Two
-// independent columns rather than a grid, so each flows at its own height and
-// an empty card does not leave a hole in the other.
+// It was two columns: the left the stream, everything that happened newest
+// first, and the right what is fixed, how things are now. Two independent
+// columns rather than a grid, so each flowed at its own height and an empty
+// card did not leave a hole in the other.
+//
+// The cards are tiles now — an icon and a name, no body — so there are no
+// heights to flow and nothing for a column to be. The stylesheet dissolves
+// both wrappers with display:contents and lays every card out as one grid.
+// This and cards.json's column field are therefore inert: they still decide
+// which of two lists a card is written into, and nothing downstream reads it.
+// Kept because deleting them is a change to the card model rather than to the
+// layout, and worth doing on its own.
 var Template = `<div id="home">
   <div class="home-left">%s</div>
   <div class="home-right">%s</div>
@@ -675,6 +682,13 @@ func cardRender(c Card, who service.Viewer) string {
 // whatever the card was showing.
 func cardHead(c Card) string {
 	title := htmlEsc(c.Title)
+	if c.Icon != "" {
+		// cards.json has carried an icon per card the whole time and Home has
+		// never drawn one. It is inside the anchor rather than beside it so
+		// that on a phone, where a card is a tile in a grid, the icon and the
+		// name are one tap target rather than a picture next to a link.
+		title = `<img class="card-icon" src="` + htmlEsc(c.Icon) + `" alt="">` + title
+	}
 	if c.Link != "" {
 		title = `<a class="card-head-link" href="` + htmlEsc(c.Link) + `">` + title + `</a>`
 	}
