@@ -1,12 +1,10 @@
 # mu
 
-A home for humans, agents and services
+A home for agents, tools and services
 
 ## Overview
 
-A home server for everything. Run your own mail, a chat app, the tools and services needed by agents and humans. 
-It's all live on [micro.mu](https://micro.mu) to test. We're building services that operate as the building blocks for 
-everything. Mail, chat, news, video, search, etc. Then we archive any data locally so it's all searchable. Services and the archive 
+We're building services that operate as the building blocks for agents. Mail, chat, news, video, search, etc. Then we archive any data locally so it's all searchable. Services and the archive 
 become tools for agents to use. Communication ends up in one inbox, whether it's email, chat or sms, etc. Use it from the web, 
 your phone, the command line, email, anywhere.
 
@@ -16,7 +14,7 @@ What's included
 
 - **Services** - 30+ real world services including news, mail, markets, video, etc accessible via API, CLI or the Web
 - **Agents** - Define an agent by name, prompt and give it specific tools to use, then chat with it on the web, mail or xmpp
-- **Inbox** - A single place to keep track of threads across mail, chat, etc. Use an IMAP client to connect from anywhere
+- **Inbox** - A single place to keep track of threads across mail, chat, etc. Use it on the web or via IMAP in an email client.
 
 ## Services
 
