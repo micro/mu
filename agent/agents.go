@@ -82,6 +82,21 @@ func AgentsHandler(w http.ResponseWriter, r *http.Request) {
 				_ = json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
 				return
 			}
+			// Which model it answers with, if the form offered a choice. A
+			// second write rather than a seventh argument — see SetModel.
+			//
+			// Reported rather than swallowed: an agent saved with the model
+			// quietly dropped is the failure this whole field exists to stop,
+			// one level up. The agent is saved either way, which is why this
+			// says what did not take rather than claiming nothing did.
+			if err := SetModel(acc.ID, saved.ID, r.FormValue("model")); err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"error": "Saved, but the model was not: " + err.Error(),
+					"id":    saved.ID,
+				})
+				return
+			}
 			out := map[string]any{"id": saved.ID, "name": saved.Name, "kind": saved.Kind}
 			// The secret goes back exactly once, and only far enough to reach
 			// the page that shows it. It is stored hashed and cannot be read
@@ -114,6 +129,10 @@ func AgentsHandler(w http.ResponseWriter, r *http.Request) {
 		// agent is where to reach it, and it was the one fact the picker could
 		// not change.
 		Address string `json:"address,omitempty"`
+
+		// Which model it answers with, so the edit form can show what is set
+		// rather than resetting it to the default every time it opens.
+		Model string `json:"model,omitempty"`
 	}
 	// One list, one store. This used to read agent/micro's own store while
 	// /agents wrote to the roster, so "my agents" depended on which page you
@@ -127,15 +146,29 @@ func AgentsHandler(w http.ResponseWriter, r *http.Request) {
 		// prompt rendered as an agent's one-line description is not a
 		// description, it is the whole agent spilled onto the list.
 		mine = append(mine, lite{m.ID, m.Name, firstLine(a.Description, m.Description),
-			m.SystemPrompt, m.Tools, a.Kind, a.Address()})
+			m.SystemPrompt, m.Tools, a.Kind, a.Address(), a.Model})
 	}
 	// The default's address too, so the picker can put it back when the reader
 	// returns to Micro. Without it the only way back to the shared address is a
 	// page reload.
+	// And what this instance can actually run, so the form offers models
+	// rather than asking somebody to type an id. Derived from which providers
+	// have keys — see ai.Choices — so an instance with one key offers one
+	// choice and an instance with none offers no menu at all, which is the
+	// honest answer rather than a select nobody can satisfy.
+	type model struct {
+		ID    string `json:"id"`
+		Label string `json:"label"`
+	}
+	models := []model{}
+	for _, c := range ai.Choices() {
+		models = append(models, model{c.ID, c.Label})
+	}
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"agents":  mine,
 		"tools":   AllAgentTools(),
 		"address": mail.SharedAgentAddress(),
+		"models":  models,
 	})
 }
 
@@ -370,6 +403,38 @@ func NewAgentHandler(w http.ResponseWriter, r *http.Request) {
 			`><span>` + html.EscapeString(ToolLabel(t)) + `</span></label>`)
 	}
 
+	// Which model, when there is more than one to pick from.
+	//
+	// Absent entirely on an instance with one provider: a select with a single
+	// option is a control that cannot be used, and it would sit there implying
+	// this instance can do something it cannot. Two providers is where the
+	// question becomes real, which is also the moment somebody self-hosting
+	// wires a second key.
+	//
+	// Options are derived, never listed — see ai.Choices. Model ids change
+	// often enough that a hand-written menu is wrong within a month, and the
+	// place it is written down is not the place anybody updates.
+	modelHTML := ""
+	if choices := ai.Choices(); len(choices) > 1 {
+		var opts strings.Builder
+		cur := ""
+		if a := For(acc.ID, editID); a != nil {
+			cur = a.Model
+		}
+		opts.WriteString(`<option value="">Instance default</option>`)
+		for _, c := range choices {
+			sel := ""
+			if strings.EqualFold(c.ID, cur) {
+				sel = " selected"
+			}
+			opts.WriteString(`<option value="` + html.EscapeString(c.ID) + `"` + sel + `>` +
+				html.EscapeString(c.Label) + `</option>`)
+		}
+		modelHTML = `<label class="b-label">Model <span class="b-hint">` +
+			`— the instance default unless this agent needs something else</span></label>` +
+			`<select id="b-model">` + opts.String() + `</select>`
+	}
+
 	// Nothing here asks where it runs.
 	//
 	// It used to: Here, or Elsewhere — Claude, Cursor or your own program,
@@ -408,6 +473,7 @@ func NewAgentHandler(w http.ResponseWriter, r *http.Request) {
     <textarea id="b-prompt" rows="9" required>` + html.EscapeString(prompt) + `</textarea>
     <label class="b-label">What may it reach? <span class="b-hint">— none selected means everything you can</span></label>
     <div class="b-tools">` + toolsHTML.String() + `</div>
+    ` + modelHTML + `
     
     <div class="b-actions">
       <button type="submit" class="b-save">Save agent</button>
@@ -422,7 +488,7 @@ func NewAgentHandler(w http.ResponseWriter, r *http.Request) {
 .b-state{font-size:13px;color:#666;line-height:1.5;margin:0 0 4px}
 .b-state strong{color:var(--text-primary,#111)}
 .b-hint{font-weight:400;color:#9ca3af}
-#bform input,#bform textarea{width:100%;box-sizing:border-box;padding:9px 11px;font-size:14px;border:1px solid #d1d5db;border-radius:6px;font-family:inherit}
+#bform input,#bform textarea,#bform select{width:100%;box-sizing:border-box;padding:9px 11px;font-size:14px;border:1px solid #d1d5db;border-radius:6px;font-family:inherit;background:#fff;color:inherit}
 #bform textarea{line-height:1.5;resize:vertical}
 .b-gen{display:flex;gap:8px}
 .b-gen input{flex:1}
@@ -462,6 +528,10 @@ function bSave(e){e.preventDefault();
   b.append('description',document.getElementById('b-desc').value);
   b.append('prompt',document.getElementById('b-prompt').value);
   document.querySelectorAll('.b-tools input:checked').forEach(function(el){b.append('tools',el.value);});
+  // Only when the select is on the page. One provider means no menu, and
+  // sending an empty model then would be sending a choice nobody made — which
+  // is the same value it already has, but says so on every save.
+  var bm=document.getElementById('b-model');if(bm)b.append('model',bm.value);
   fetch('/agents/data',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','X-CSRF-Token':bCsrf()},body:b.toString()})
     .then(function(r){return r.json();}).then(function(a){if(a.error){alert(a.error);return;}
       if(!a.id){location.href='/agents';return;}
