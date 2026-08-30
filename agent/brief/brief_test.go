@@ -70,7 +70,7 @@ func TestNothingIsAnAnswer(t *testing.T) {
 	}
 }
 
-// The prompt asks for under 200 characters. This is what happens when that is
+// The prompt asks for under 256 characters. This is what happens when that is
 // ignored, because a paragraph laid across the top of Home is the failure the
 // length rule exists to prevent.
 func TestAParagraphIsCutDownToALine(t *testing.T) {

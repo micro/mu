@@ -6331,12 +6331,25 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
    The gap above is the section rule's, not this paragraph's: .home-section
    already carries 30px above and 12px below, and a top margin here collapsed
    against it to a wider gap than Inbox or Agents leave under their own
-   headings. One block, spaced like the three under it. */
+   headings. One block, spaced like the three under it.
+
+   And little below it, because this no longer ends the section — who is here
+   follows, and then the way through to them. The 24px that used to sit here
+   was the gap to the next heading; .link's own 12px is that gap now. */
 .home-brief {
-  margin: 0 0 var(--spacing-lg, 24px);
+  margin: 0 0 6px;
   font-size: 15px;
   line-height: var(--line-height, 1.6);
   color: var(--text-secondary, #555);
+}
+
+/* Who else is here, and the way to them. Quieter than the brief above: the
+   brief is what happened and this is the state of the room, which is worth
+   knowing and not worth reading twice. */
+.home-here {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-muted, #888);
 }
 
 /* The counts are the part somebody scans for, so they carry the weight the

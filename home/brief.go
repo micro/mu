@@ -55,6 +55,7 @@ import (
 	"mu/agent/brief"
 	"mu/inbox"
 	"mu/internal/app"
+	"mu/internal/auth"
 	"mu/service/tasks"
 )
 
@@ -63,14 +64,14 @@ import (
 // Named for what it returns, because the package holding the sentence it ends
 // with is called brief and one of the two had to give. Sibling of cardHTML.
 //
-// Silent when there is nothing true to say, which is most of a quiet week. A
-// line reading "Nothing new" is a sentence that costs a reader a glance and
-// gives them nothing back, and it is on the screen they see most often.
+// The clauses are silent when there is nothing true to say, which is most of a
+// quiet week: a line reading "Nothing new" costs a reader a glance and gives
+// them nothing back, on the screen they see most often.
 //
-// The heading is drawn here rather than by the page, because the decision to
-// draw it is the same decision as the one above: a rule and a label over
-// nothing is the "Nothing new" problem with more furniture. Whoever writes the
-// silence writes the heading.
+// The section itself is not silent, and that is a change. Who else is here is
+// true every time somebody looks, and it is the one line on this page about
+// anybody other than the reader — a section that only appears when the news is
+// interesting cannot also be where you find out a friend is online.
 func briefHTML(accountID string) string {
 	if accountID == "" {
 		return ""
@@ -89,10 +90,38 @@ func briefHTML(accountID string) string {
 	if s := happening(); s != "" {
 		parts = append(parts, s)
 	}
-	if len(parts) == 0 {
-		return ""
+	out := sectionRule("Brief")
+	if len(parts) > 0 {
+		out += `<p class="home-brief">` + strings.Join(parts, " ") + `</p>`
 	}
-	return sectionRule("Brief") + `<p class="home-brief">` + strings.Join(parts, " ") + `</p>`
+	return out + here() + app.Link("Go to chat", "/chat")
+}
+
+// here is who else is on this instance right now.
+//
+// The one line on Home that is about somebody other than you. Everything else
+// — what arrived, what is owed, what happened in the world — is a fact about
+// your account or about the news, and a page made only of those reads as a
+// place with nobody in it however much is on it.
+//
+// A count rather than names, because a count is true at any size and a list
+// stops being readable at about six. Naming them is a line's change when an
+// instance is small enough for that to be the better answer.
+//
+// auth.OnlineUsers is a three minute window over UpdatePresence, which every
+// request already calls — so this is a read of something the server has known
+// all along and never said.
+func here() string {
+	n := len(auth.OnlineUsers())
+	switch {
+	case n <= 1:
+		// You, and you know that. Said anyway, because the alternative is a
+		// line that appears when somebody arrives and is absent the rest of
+		// the time, which reads as a fault rather than as quiet.
+		return `<p class="home-here">Just you here.</p>`
+	default:
+		return `<p class="home-here">` + count(n, "person", "people") + ` online.</p>`
+	}
 }
 
 // waiting is what has arrived and not been read.

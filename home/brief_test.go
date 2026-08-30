@@ -1,11 +1,15 @@
 package home
 
-// How things are, in a sentence.
+// How things are, in a sentence, and who else is here.
 //
-// The thing that must hold is that it says nothing when there is nothing to
-// say. It sits on the screen somebody sees most often, so a line reading
-// "Nothing new" costs a glance every visit and gives nothing back — and a
-// section that is always there stops being read.
+// What must hold is that the clauses say nothing when there is nothing to say.
+// This is on the screen somebody sees most often, so a line reading "Nothing
+// new" costs a glance every visit and gives nothing back.
+//
+// The section around them is always drawn, which is the one thing that is
+// deliberately not silent: who is online is true on the quietest day, and the
+// place you find that out cannot be a block that only appears when the news is
+// good.
 
 import (
 	"strings"
@@ -17,15 +21,38 @@ import (
 	"mu/service/tasks"
 )
 
-func TestAQuietAccountGetsNoBrief(t *testing.T) {
+// A quiet account gets the room, and none of the clauses.
+//
+// The clauses stay silent — "Nothing new" costs a glance and gives nothing
+// back. The section does not, because who else is here is true whether or not
+// the news is interesting, and a line that only appears on a busy day cannot
+// be where somebody finds out a friend is online.
+func TestAQuietAccountGetsTheRoomAndNoClauses(t *testing.T) {
 	const who = "brief-quiet"
 	auth.Create(&auth.Account{ID: who, Name: who, Secret: "test-secret"}) //nolint:errcheck
 
-	if got := briefHTML(who); got != "" {
-		t.Errorf("an account with nothing happening got %q", got)
+	got := briefHTML(who)
+	if strings.Contains(got, "home-brief") {
+		t.Errorf("an account with nothing happening got a clause:\n%s", got)
 	}
+	if !strings.Contains(got, "home-here") {
+		t.Errorf("the brief does not say who is here:\n%s", got)
+	}
+	if !strings.Contains(got, `href="/chat"`) {
+		t.Errorf("there is no way through to the chat:\n%s", got)
+	}
+
+	// Signed out there is no page to put it on.
 	if got := briefHTML(""); got != "" {
 		t.Errorf("a signed-out reader got %q", got)
+	}
+}
+
+// Who is here, counted. One person is you, and saying "1 person online" about
+// yourself reads as a fault rather than as quiet.
+func TestWhoIsHereIsCounted(t *testing.T) {
+	if got := here(); !strings.Contains(got, "Just you here") {
+		t.Errorf("alone, the brief says %q", got)
 	}
 }
 
@@ -115,9 +142,13 @@ func TestTheBriefIsLabelledLikeEverythingElse(t *testing.T) {
 		t.Errorf("the brief is not a paragraph: %q", got)
 	}
 
-	// And no heading over nothing, which is the "Nothing new" problem with a
-	// rule drawn across it.
-	if got := briefHTML("brief-shape-silent"); got != "" {
-		t.Errorf("a silent brief still drew its heading: %q", got)
+	// The clauses can be empty and the section still stands, because the two
+	// lines under them are true on the quietest day there is.
+	quiet := briefHTML("brief-shape-silent")
+	if !strings.HasPrefix(quiet, sectionRule("Brief")) {
+		t.Errorf("a quiet brief lost its heading: %q", quiet)
+	}
+	if strings.Contains(quiet, "home-brief") {
+		t.Errorf("a quiet brief drew a clause: %q", quiet)
 	}
 }

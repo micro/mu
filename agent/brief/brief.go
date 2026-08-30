@@ -109,10 +109,11 @@ const keep = 14
 
 // limit is the longest line that will be kept, in characters.
 //
-// The prompt asks for under 200 and models mostly comply. This is the backstop
-// for when one does not, because the alternative is a paragraph laid across the
-// top of Home in a style meant for a clause.
-const limit = 280
+// 256, and the prompt asks for the same number rather than a smaller one it
+// then has to be cut back from. Two sentences of real news with places and
+// figures in them run to about that; asking for 200 and truncating at 280 meant
+// the cap was either never reached or reached mid-word.
+const limit = 256
 
 // Entry is one line, and the day it was written about.
 type Entry struct {
@@ -283,7 +284,7 @@ func gather() string {
 const system = `You write ONE LINE for the top of a home page, about what happened in the world today. You will be given today's headlines, posts and market data.
 
 Hard limits, most important first:
-- At most 2 sentences. Under 200 characters in total.
+- At most 2 sentences. Under 256 characters in total.
 - Plain text only. No markdown, no links, no headings, no bullet points, no preamble, no quotation marks around the whole thing.
 - Say what happened. NEVER say how many stories or posts there were — the reader does not care that there were 78, and a count is what this replaced.
 - Name things: countries, companies, people, numbers. "Egypt's second-largest bank hit by US sanctions" is a line. "Several developments in banking" is not.
