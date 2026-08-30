@@ -16,7 +16,7 @@ require (
 	github.com/mmcdole/gofeed v1.3.0
 	github.com/mrz1836/go-sanitize v1.5.3
 	github.com/piquette/finance-go v1.1.0
-	go-micro.dev/v6 v6.12.1-0.20260828212826-9e88cc80cba2
+	go-micro.dev/v6 v6.12.1-0.20260830102257-7f9619dc69b8
 	golang.org/x/crypto v0.53.0
 	golang.org/x/net v0.56.0
 	golang.org/x/sync v0.21.0
