@@ -1550,6 +1550,21 @@ body:has(#messages) #chat-back-link {
   transition: color var(--transition-fast);
 }
 
+/* The one you are in. Not a link, because there is nowhere for it to go, and
+   marked by weight and colour rather than by a box — this row is a line of
+   words and a filled tab in it would be the only chip on the page. */
+.head-on {
+  display: inline-block;
+  color: var(--text-primary, #1a1a1a) !important;
+  font-size: 10px !important;
+  font-weight: bold !important;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-right: 8px;
+  border-bottom: 2px solid currentColor;
+  padding-bottom: 1px;
+}
+
 .head:hover {
   text-decoration: underline;
 }

@@ -281,14 +281,15 @@ func gather() string {
 // it will reach for, and "12 stories about the Middle East" is the failure this
 // was built to replace. And the empty answer has to be sayable, or every quiet
 // Sunday gets a sentence manufactured about nothing.
-const system = `You write ONE LINE for the top of a home page, about what happened in the world today. You will be given today's headlines, posts and market data.
+const system = `You write the one line at the top of somebody's home page, about what happened in the world today. You will be given today's headlines, posts and market data.
 
 Hard limits, most important first:
-- At most 2 sentences. Under 256 characters in total.
-- Plain text only. No markdown, no links, no headings, no bullet points, no preamble, no quotation marks around the whole thing.
+- Between 150 and 256 characters. Use the room. One clause is not a brief.
+- Cover the TWO OR THREE most consequential things, most consequential first, separated by semicolons or full stops. Not one story at length.
+- Plain text only. No markdown, no links, no headings, no bullets, no preamble, no quotation marks around the whole thing.
 - Say what happened. NEVER say how many stories or posts there were — the reader does not care that there were 78, and a count is what this replaced.
-- Name things: countries, companies, people, numbers. "Egypt's second-largest bank hit by US sanctions" is a line. "Several developments in banking" is not.
-- If one theme runs through the list, that is the line. A recurrence is worth more than any single headline.
+- Name things: countries, companies, people, numbers. "Egypt's second-largest bank hit by US sanctions" is a clause. "Several developments in banking" is not.
+- Weigh by what changes something. A decision, a policy, a market move or a conflict outranks an accident of the same size — an accident is news, a decision is a reason to act. If a theme runs through several headlines, say the theme rather than one instance of it.
 - Mention markets only if they moved and only if you can say why.
 - Write globally. Name countries explicitly — "in the US", "in Egypt" — never "here" or "at home".
 - If nothing in the list would matter to a person, reply with exactly: NOTHING

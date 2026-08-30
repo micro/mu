@@ -6,10 +6,9 @@ package home
 // This is on the screen somebody sees most often, so a line reading "Nothing
 // new" costs a glance every visit and gives nothing back.
 //
-// The section around them is always drawn, which is the one thing that is
-// deliberately not silent: who is online is true on the quietest day, and the
-// place you find that out cannot be a block that only appears when the news is
-// good.
+// That includes being alone. Who else is here draws when somebody else is
+// here, and the way to them draws with it — a count of one and an invitation
+// to go and talk to nobody is worse than a blank space.
 
 import (
 	"strings"
@@ -21,38 +20,22 @@ import (
 	"mu/service/tasks"
 )
 
-// A quiet account gets the room, and none of the clauses.
+// A quiet account gets nothing, and that includes being alone.
 //
-// The clauses stay silent — "Nothing new" costs a glance and gives nothing
-// back. The section does not, because who else is here is true whether or not
-// the news is interesting, and a line that only appears on a busy day cannot
-// be where somebody finds out a friend is online.
-func TestAQuietAccountGetsTheRoomAndNoClauses(t *testing.T) {
+// "Nothing new" costs a glance and gives nothing back, on the screen somebody
+// sees most often. For one commit this drew a section saying "Just you here"
+// over a link to the chat, on the argument that who is present is true on the
+// quietest day. True, and the two most useless sentences on the page: it told
+// somebody they were alone and then invited them to go and talk about it.
+func TestAQuietAccountGetsNoBrief(t *testing.T) {
 	const who = "brief-quiet"
 	auth.Create(&auth.Account{ID: who, Name: who, Secret: "test-secret"}) //nolint:errcheck
 
-	got := briefHTML(who)
-	if strings.Contains(got, "home-brief") {
-		t.Errorf("an account with nothing happening got a clause:\n%s", got)
+	if got := briefHTML(who); got != "" {
+		t.Errorf("an account with nothing happening, alone, got %q", got)
 	}
-	if !strings.Contains(got, "home-here") {
-		t.Errorf("the brief does not say who is here:\n%s", got)
-	}
-	if !strings.Contains(got, `href="/chat"`) {
-		t.Errorf("there is no way through to the chat:\n%s", got)
-	}
-
-	// Signed out there is no page to put it on.
 	if got := briefHTML(""); got != "" {
 		t.Errorf("a signed-out reader got %q", got)
-	}
-}
-
-// Who is here, counted. One person is you, and saying "1 person online" about
-// yourself reads as a fault rather than as quiet.
-func TestWhoIsHereIsCounted(t *testing.T) {
-	if got := here(); !strings.Contains(got, "Just you here") {
-		t.Errorf("alone, the brief says %q", got)
 	}
 }
 
@@ -142,13 +125,31 @@ func TestTheBriefIsLabelledLikeEverythingElse(t *testing.T) {
 		t.Errorf("the brief is not a paragraph: %q", got)
 	}
 
-	// The clauses can be empty and the section still stands, because the two
-	// lines under them are true on the quietest day there is.
-	quiet := briefHTML("brief-shape-silent")
-	if !strings.HasPrefix(quiet, sectionRule("Brief")) {
-		t.Errorf("a quiet brief lost its heading: %q", quiet)
+	// Nothing here about the silent case: TestAQuietAccountGetsNoBrief pins
+	// that, and it has to, because it runs before anything marks a second
+	// person present.
+}
+
+// Who is here draws only when somebody else is.
+//
+// Last in this file, and it has to stay last. auth.UpdatePresence writes into
+// a package map with a three minute window and there is nothing that takes a
+// name back out, so once this has marked two people present every brief
+// rendered after it in this binary says so.
+func TestWhoIsHereDrawsOnlyWhenSomebodyIs(t *testing.T) {
+	if got := here(); got != "" {
+		t.Errorf("alone, the brief says %q", got)
 	}
-	if strings.Contains(quiet, "home-brief") {
-		t.Errorf("a quiet brief drew a clause: %q", quiet)
+
+	// Two present, and it says so — with the way to them, which is the only
+	// reason the count is worth printing.
+	auth.UpdatePresence("brief-here-a")
+	auth.UpdatePresence("brief-here-b")
+	got := here()
+	if !strings.Contains(got, "2 people online") {
+		t.Errorf("with two present the brief says %q", got)
+	}
+	if !strings.Contains(got, `href="/chat"`) {
+		t.Errorf("no way through to them:\n%s", got)
 	}
 }

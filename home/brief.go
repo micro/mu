@@ -64,14 +64,13 @@ import (
 // Named for what it returns, because the package holding the sentence it ends
 // with is called brief and one of the two had to give. Sibling of cardHTML.
 //
-// The clauses are silent when there is nothing true to say, which is most of a
-// quiet week: a line reading "Nothing new" costs a reader a glance and gives
-// them nothing back, on the screen they see most often.
+// Silent when there is nothing true to say, which is most of a quiet week. A
+// line reading "Nothing new" costs a reader a glance and gives them nothing
+// back, and it is on the screen they see most often.
 //
-// The section itself is not silent, and that is a change. Who else is here is
-// true every time somebody looks, and it is the one line on this page about
-// anybody other than the reader — a section that only appears when the news is
-// interesting cannot also be where you find out a friend is online.
+// That includes being alone. For one commit this drew a section saying "Just
+// you here" over a link to the chat, on the argument that who is present is
+// true on the quietest day. True and useless — see here().
 func briefHTML(accountID string) string {
 	if accountID == "" {
 		return ""
@@ -90,19 +89,31 @@ func briefHTML(accountID string) string {
 	if s := happening(); s != "" {
 		parts = append(parts, s)
 	}
+	room := here()
+	if len(parts) == 0 && room == "" {
+		return ""
+	}
+
 	out := sectionRule("Brief")
 	if len(parts) > 0 {
 		out += `<p class="home-brief">` + strings.Join(parts, " ") + `</p>`
 	}
-	return out + here() + app.Link("Go to chat", "/chat")
+	return out + room
 }
 
-// here is who else is on this instance right now.
+// here is who else is on this instance right now, and the way to them.
 //
-// The one line on Home that is about somebody other than you. Everything else
-// — what arrived, what is owed, what happened in the world — is a fact about
-// your account or about the news, and a page made only of those reads as a
-// place with nobody in it however much is on it.
+// The one line on Home about somebody other than you. Everything else — what
+// arrived, what is owed, what happened in the world — is a fact about your
+// account or about the news, and a page made only of those reads as a place
+// with nobody in it however much is on it.
+//
+// Nothing at all when you are alone, which is the correction to the first
+// version of this. It said "Just you here." and offered a way through to the
+// chat, on the argument that a line appearing only when somebody arrives reads
+// as a fault. It does not: it reads as an empty room with a sign pointing at
+// it. Telling somebody they are alone and then inviting them to go and talk is
+// the two most useless sentences on the page, and they were on it every day.
 //
 // A count rather than names, because a count is true at any size and a list
 // stops being readable at about six. Naming them is a line's change when an
@@ -112,16 +123,11 @@ func briefHTML(accountID string) string {
 // request already calls — so this is a read of something the server has known
 // all along and never said.
 func here() string {
-	n := len(auth.OnlineUsers())
-	switch {
-	case n <= 1:
-		// You, and you know that. Said anyway, because the alternative is a
-		// line that appears when somebody arrives and is absent the rest of
-		// the time, which reads as a fault rather than as quiet.
-		return `<p class="home-here">Just you here.</p>`
-	default:
-		return `<p class="home-here">` + count(n, "person", "people") + ` online.</p>`
+	if n := len(auth.OnlineUsers()); n > 1 {
+		return `<p class="home-here">` + count(n, "person", "people") + ` online.</p>` +
+			app.Link("Go to chat", "/chat")
 	}
+	return ""
 }
 
 // waiting is what has arrived and not been read.

@@ -79,6 +79,100 @@ func currentSummaryMeta() SummaryMetadata {
 
 var topics = []string{}
 
+// The lobby: the room somebody is in when they have not chosen a room.
+//
+// A chat with no default is a list, and a list is a page you read rather than
+// a place you are. Every messaging product this could be compared to drops you
+// somewhere — a general channel, the last thread, an empty compose — because
+// arriving at a directory of conversations is arriving at none of them.
+//
+// It is an ordinary topic room. Nothing about it is special except that it has
+// no subject, which is what makes it the one room where anything can be said.
+const (
+	lobbyTopic = "lobby"
+	lobbyID    = "chat_" + lobbyTopic
+)
+
+// channels is the row of rooms across the top of one, so there is a way out of
+// the room you are in that is not the back button.
+//
+// The lobby first, then the topics this instance follows, then whatever else
+// has somebody in it right now. That last group is the reason this is not a
+// static list: an article's discussion room is where the conversation actually
+// is on the day somebody starts one, and it existed nowhere a person could
+// find it except the article.
+//
+// The same .head row news and video use for their topics, because switching
+// channel and switching topic are the same gesture and there is no reason for
+// this page to invent a second look for it.
+func channels(current string) string {
+	mutex.RLock()
+	names := append([]string(nil), topics...)
+	mutex.RUnlock()
+	sort.Strings(names)
+
+	var b strings.Builder
+	b.WriteString(`<div id="topics">`)
+
+	tab := func(id, label string) {
+		if id == current {
+			b.WriteString(`<span class="head head-on">` + htmlpkg.EscapeString(label) + `</span>`)
+			return
+		}
+		b.WriteString(`<a class="head" href="/chat?id=` + url.QueryEscape(id) + `">` +
+			htmlpkg.EscapeString(label) + `</a>`)
+	}
+
+	tab(lobbyID, "Lobby")
+	for _, topic := range names {
+		if topic == lobbyTopic {
+			continue
+		}
+		tab("chat_"+topic, topic)
+	}
+
+	// And anything live that is not a topic — an article or a video somebody is
+	// discussing. Capped, newest first: this is a way to what is happening, not
+	// a second catalogue.
+	var live []*Room
+	roomsMutex.RLock()
+	for _, room := range rooms {
+		room.mutex.RLock()
+		if !strings.HasPrefix(room.ID, "chat_") && (len(room.Clients) > 0 || len(room.Messages) > 0) {
+			live = append(live, room)
+		}
+		room.mutex.RUnlock()
+	}
+	roomsMutex.RUnlock()
+	sort.Slice(live, func(i, j int) bool { return live[i].LastActivity.After(live[j].LastActivity) })
+	if len(live) > liveTabs {
+		live = live[:liveTabs]
+	}
+	for _, room := range live {
+		room.mutex.RLock()
+		id, title := room.ID, roomName(room.Title)
+		room.mutex.RUnlock()
+		tab(id, trimTo(title, 28))
+	}
+
+	b.WriteString(`</div>`)
+	return b.String()
+}
+
+// liveTabs caps how many item rooms reach the channel row. Four is a row on a
+// phone; past that it wraps to a second line and stops reading as navigation.
+const liveTabs = 4
+
+// trimTo shortens a channel label. An article's title is a headline and a
+// channel is a word or two, so the whole headline in a tab row is one tab.
+func trimTo(s string, n int) string {
+	r := []rune(s)
+	if len(r) <= n {
+		return s
+	}
+	return strings.TrimRight(string(r[:n]), " ,;:—-") + "…"
+}
+
 var head string
 
 // WebSocket upgrader
@@ -469,13 +563,20 @@ func getOrCreateRoom(id string) *Room {
 	case "chat":
 		// For chat topics, use the topic name from summaries
 		room.Title = itemID
-		mutex.RLock()
-		if summary, exists := summaries[itemID]; exists {
-			room.Summary = summary
+		if itemID == lobbyTopic {
+			// The one room that is not about anything. No summary, so no
+			// About block draws over the messages — there is nothing to say
+			// about a room whose subject is whoever is in it.
+			room.Title = "Lobby"
 		} else {
-			room.Summary = "General discussion about " + itemID
+			mutex.RLock()
+			if summary, exists := summaries[itemID]; exists {
+				room.Summary = summary
+			} else {
+				room.Summary = "General discussion about " + itemID
+			}
+			mutex.RUnlock()
 		}
-		mutex.RUnlock()
 		room.Topic = itemID
 		// Load persisted messages
 		if saved := loadRoomMessages(id); saved != nil {
@@ -1315,10 +1416,24 @@ func handleGetChat(w http.ResponseWriter, r *http.Request, roomID string) {
 		}
 	}
 
-	// Without a room id there is nothing to say and nobody to say it to, so
-	// the page answers the only question left: what is being discussed.
+	// Without a room id, a person goes to the lobby and a program gets the
+	// catalogue.
+	//
+	// This showed everybody the catalogue: a list of topics, each with a
+	// paragraph of summary under it and a Join link. Nobody arrives at a chat
+	// wanting to read about rooms — they arrive wanting to be in one, and the
+	// list was a page of prose standing between them and the only thing on it
+	// worth doing. The channels are a row across the top of the room now, so
+	// the list has nothing left to do that being in a room does not do better.
+	//
+	// A JSON caller still gets the list, because "what rooms are there" is a
+	// real question for something that is not a person and cannot click.
 	if roomID == "" {
-		listRooms(w, r)
+		if app.WantsJSON(r) {
+			listRooms(w, r)
+			return
+		}
+		http.Redirect(w, r, "/chat?id="+lobbyID, http.StatusFound)
 		return
 	}
 
@@ -1352,7 +1467,7 @@ func handleGetChat(w http.ResponseWriter, r *http.Request, roomID string) {
 	// escapes < as <, so a room title cannot close the tag.
 	about := aboutRoom(roomData)
 
-	content := fmt.Sprintf(Template, guestNotice+about) +
+	content := fmt.Sprintf(Template, channels(roomID)+guestNotice+about) +
 		`<script type="application/json" id="room-data">` + string(roomJSON) + `</script>`
 
 	app.Respond(w, r, app.Response{Title: title, Description: "Live discussion", HTML: content})
