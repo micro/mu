@@ -16,6 +16,7 @@ import (
 
 	"mu/admin"
 	"mu/agent"
+	"mu/agent/brief"
 	"mu/agent/digest"
 	"mu/agent/micro"
 	help "mu/docs"
@@ -606,6 +607,7 @@ func registerRoutes() {
 	// internal status (injected into admin server page)
 	app.DKIMStatusFunc = mail.DKIMStatus
 	app.DigestStatusFunc = digest.Status
+	app.BriefStatusFunc = brief.Status
 
 	// public status page - service health checks
 	app.HealthCheckFunc = runHealthChecks

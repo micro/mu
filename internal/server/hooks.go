@@ -21,6 +21,7 @@ import (
 	"mu/admin"
 	"mu/agent"
 	agentblog "mu/agent/blog"
+	"mu/agent/brief"
 	chatagent "mu/agent/chat"
 	"mu/agent/digest"
 	"mu/agent/gate"
@@ -454,6 +455,11 @@ func wireHooks() {
 	// cost of a service that could not import the blog; the digest is an agent
 	// now and imports it.
 	digest.Load()
+
+	// The line at the top of Home. Same shape as the digest and a tenth of the
+	// output: one cheap call an hour, so the front page can say what happened
+	// without every page load paying for a model.
+	brief.Load()
 
 	// load search
 	web.Load()

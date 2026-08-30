@@ -69,6 +69,14 @@ var DKIMStatusFunc func() (enabled bool, domain, selector string)
 // DigestStatusFunc is set by main to report digest status
 var DigestStatusFunc func() (ok bool, details string)
 
+// BriefStatusFunc is set by main to report on the line at the top of Home.
+//
+// Worth a row of its own rather than folding into the digest, because the way
+// it fails is silent: the model answers with an empty string, no error, and
+// Home simply carries yesterday's sentence or none. Nothing else on the page
+// would say so.
+var BriefStatusFunc func() (ok bool, details string)
+
 // ServiceHealth represents a public-facing service health check
 type ServiceHealth struct {
 	Name   string `json:"name"`
@@ -287,6 +295,16 @@ func buildStatus() StatusResponse {
 		ok, details := DigestStatusFunc()
 		services = append(services, StatusCheck{
 			Name:    "Daily Digest",
+			Status:  ok,
+			Details: details,
+		})
+	}
+
+	// Check the line at the top of Home
+	if BriefStatusFunc != nil {
+		ok, details := BriefStatusFunc()
+		services = append(services, StatusCheck{
+			Name:    "Brief",
 			Status:  ok,
 			Details: details,
 		})

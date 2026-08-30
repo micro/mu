@@ -441,7 +441,7 @@ function fetchW(la,lo){
 		// sentence rather than a section, and a heading over one line is
 		// furniture. See brief.go, including why it does not call a model.
 		if viewerID != "" {
-			b.WriteString(brief(viewerID))
+			b.WriteString(briefHTML(viewerID))
 		}
 
 		// What arrived, under a heading that looks like one.
