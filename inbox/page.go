@@ -565,11 +565,15 @@ func addressBar(accountID, box string) string {
 	// are the page's actions and every other page in this product puts those at
 	// the top left in that shape; two pills floated right were this page's own
 	// arrangement and nowhere else's.
-	acts := app.ActionLink("/inbox/imap", "Connect")
+	acts := ""
 	if mail.Reachable() {
-		acts += app.ActionLink("/inbox/new", "New")
+		acts = app.ActionLink("/inbox/new", "New")
 	}
-	b.WriteString(`<div class="page-action">` + acts + `</div>`)
+	// Writing one is what somebody does from here; setting up a mail client is
+	// something they do once, if ever. Two buttons side by side said those were
+	// the same size of decision, and touching so that they read as one control.
+	acts += app.TextLink("Connect a mail client", "/inbox/imap")
+	b.WriteString(`<div class="page-action ib-acts">` + acts + `</div>`)
 	return b.String()
 }
 

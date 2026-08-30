@@ -43,11 +43,21 @@ func TestTheTopOfTheInboxIsItsActions(t *testing.T) {
 
 	// In the standard shape, in the standard place. Two pills floated right
 	// were this page's own arrangement and nowhere else's.
-	if !strings.Contains(all, `class="page-action"`) || !strings.Contains(all, `class="btn"`) {
-		t.Errorf("the controls are not the buttons every other page uses:\n%s", all)
+	if !strings.Contains(all, "page-action") {
+		t.Errorf("the controls are not where every other page puts its actions:\n%s", all)
 	}
 	if strings.Contains(all, "pill") {
 		t.Errorf("the controls are still pills:\n%s", all)
+	}
+
+	// And they are not the same size of decision. Writing one is what somebody
+	// does from here; setting up a mail client is done once, if ever — so one
+	// is the button and the other is a link beside it.
+	if !strings.Contains(all, `class="btn"`) {
+		t.Errorf("New is not the page's action:\n%s", all)
+	}
+	if strings.Contains(all, `href="/inbox/imap" class="btn"`) {
+		t.Errorf("the mail client is a second button:\n%s", all)
 	}
 }
 

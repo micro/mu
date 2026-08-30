@@ -84,7 +84,7 @@ func RosterHandler(w http.ResponseWriter, r *http.Request) {
 	//
 	// The button is the standard one, in the standard place: the top, where
 	// every other page in this product puts its primary action.
-	b.WriteString(newAgentAction(owner))
+	b.WriteString(`<div class="page-action">` + newAgentAction(owner) + `</div>`)
 
 	if msg := r.URL.Query().Get("error"); msg != "" {
 		// The way out is a link, because it reads as one. Hitting the agent limit

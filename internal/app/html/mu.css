@@ -5657,7 +5657,16 @@ button.pill:hover {
    with actions rather than a row of equal things. .ib-new-link had the
    margin-left:auto itself, which put a gap between the two controls the moment
    there was more than one. */
-.ib-addr-acts { margin-left: auto; display: flex; align-items: center; gap: 8px; flex: none }
+/* The inbox's two: New on the left as the action, the mail client out on the
+   right as a way through. They were adjacent inline-blocks and touched, which
+   read as one control split in half. */
+.ib-acts {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
 .ib-boxes { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px }
 .ib-empty { font-size: 14px; color: var(--text-muted, #888); line-height: var(--line-height, 1.6) }
 
