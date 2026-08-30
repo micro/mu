@@ -10,6 +10,7 @@ import (
 	gmai "go-micro.dev/v6/ai"
 	_ "go-micro.dev/v6/ai/anthropic"
 	_ "go-micro.dev/v6/ai/atlascloud"
+	_ "go-micro.dev/v6/ai/gemini"
 	_ "go-micro.dev/v6/ai/openai"
 
 	"mu/internal/app"

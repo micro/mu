@@ -66,6 +66,11 @@ func Choices() []Choice {
 		add(ModelQwenPlus, "Qwen", ProviderAtlasCloud)
 	}
 
+	if getGeminiAPIKey() != "" {
+		add(GeminiModel(), "Gemini — best", ProviderGemini)
+		add(ModelGeminiFlash, "Gemini — fast", ProviderGemini)
+	}
+
 	if getOpenRouterAPIKey() != "" {
 		add(OpenRouterModel(), "OpenRouter", ProviderOpenRouter)
 	}

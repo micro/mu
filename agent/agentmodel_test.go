@@ -53,10 +53,18 @@ func TestAnAgentCanNameItsOwnModel(t *testing.T) {
 // that still answers beats one that fails closed over a typo. What makes it
 // findable is the log line, not a broken agent.
 func TestAModelWithNoKeyFallsBackRatherThanFailing(t *testing.T) {
+	// Every variable the lookup reads, not the one it used to.
+	//
+	// This cleared ATLAS_API_KEY alone and passed for as long as that was the
+	// only name Atlas answered to. getAtlasAPIKey reads three now —
+	// ATLASCLOUD_API_KEY first — so on a machine with the real key exported the
+	// test found one, routed to Atlas, and failed on an assertion about
+	// something else entirely.
 	t.Setenv("ANTHROPIC_API_KEY", "sk-test")
-	t.Setenv("ATLAS_API_KEY", "")
-	t.Setenv("OPENROUTER_API_KEY", "")
-	t.Setenv("AGENT_MODEL", "")
+	for _, k := range []string{"ATLASCLOUD_API_KEY", "ATLAS_API_KEY", "OPENAI_API_KEY",
+		"GEMINI_API_KEY", "OPENROUTER_API_KEY", "AGENT_MODEL", "AI_PROVIDER"} {
+		t.Setenv(k, "")
+	}
 
 	provider, _, model, ok := nativeLLMFor("deepseek-ai/deepseek-v4-flash")
 	if !ok {

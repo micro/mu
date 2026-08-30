@@ -162,7 +162,7 @@ Quite a few things need API keys, but here's some must haves.
 
 | For | Set | Notes |
 |---|---|---|
-| AI models | `ANTHROPIC_API_KEY`, `ATLAS_API_KEY`, `OPENROUTER_API_KEY`, or `OPENAI_BASE_URL` | free if you run Ollama locally |
+| AI models | `ANTHROPIC_API_KEY`, `ATLASCLOUD_API_KEY`, `GEMINI_API_KEY`, `OPENROUTER_API_KEY`, or `OPENAI_BASE_URL` | free if you run Ollama locally |
 | Web search | `BRAVE_API_KEY` | Brave has a free tier |
 | Video | `YOUTUBE_API_KEY` | free quota |
 

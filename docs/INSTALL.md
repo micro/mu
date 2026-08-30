@@ -41,7 +41,8 @@ admin, so the environment is for the things you want fixed at deploy time.
 ```bash
 # An AI provider — one of these, for the agent, chat and summaries
 export ANTHROPIC_API_KEY="your-key"   # Claude, from console.anthropic.com
-# export ATLAS_API_KEY="your-key"     # Atlas Cloud (DeepSeek, Qwen), also images
+# export ATLASCLOUD_API_KEY="your-key" # Atlas Cloud (DeepSeek, Qwen), also images
+# export GEMINI_API_KEY="your-key"     # Google Gemini
 # export OPENROUTER_API_KEY="your-key" # OpenRouter (one key, many models)
 # export OPENAI_BASE_URL="http://localhost:11434/v1"  # Ollama or any compatible endpoint
 
@@ -805,7 +806,9 @@ one, the agent, chat and AI summaries are off and everything else works.
 | `ANTHROPIC_MODEL` | Override the default model |
 | `AI_PROVIDER` | Optional. Which provider to use when this instance has keys for more than one: `anthropic`, `atlascloud`, `openrouter` or `local`. The words `mu setup` writes — `claude`, `atlas`, `ollama` — are accepted too. Unset, the first key found wins in a fixed order (Anthropic, OpenRouter, local, Atlas), which is fine with one key and arbitrary with two: an instance with a large Atlas balance and a small Anthropic one sent everything to Anthropic because the list said so. Setting this puts the agent, chat and the background work on one provider, each using that provider's own model for the job. It does not override a **named** model — `AGENT_MODEL=deepseek-ai/…` names Atlas whatever this says, because the more specific statement wins. A provider named here with no key is ignored, and said once in the log |
 | `AGENT_MODEL` | Optional. The model the **agent** runs on — the tool-calling loop, which is every question anybody asks it. Separate from `ANTHROPIC_MODEL` because it is a different cost decision: the agent makes several model calls per question while a summary makes one. Naming a model also picks its provider, so `deepseek-ai/deepseek-v4-pro-0813` runs the agent on Atlas Cloud even on an instance with an Anthropic key, and `claude-opus-5` puts the hardest reasoning on the loop. Unset, the agent uses the same provider order as everything else: Anthropic, then Atlas, then OpenRouter |
-| `ATLAS_API_KEY` | Atlas Cloud (DeepSeek, Qwen) — also image generation |
+| `ATLASCLOUD_API_KEY` | Atlas Cloud (DeepSeek, Qwen) — also image generation. `ATLAS_API_KEY` still works |
+| `GEMINI_API_KEY` | Google Gemini. Not `GOOGLE_API_KEY`, which this instance uses for Maps and Calendar |
+| `GEMINI_MODEL` | Pin a Gemini model. Unset follows `gemini-pro-latest`, which Google keeps pointed at the current generation |
 | `ATLAS_MODEL` | Override the Atlas model used when the caller did not name one (default `deepseek-ai/deepseek-v4-pro`) |
 | `OPENROUTER_API_KEY` | OpenRouter — one key for Claude, GPT, Gemini and the rest of their catalogue |
 | `OPENROUTER_MODEL` | Override the OpenRouter slug (default `openai/gpt-4o-mini`) |

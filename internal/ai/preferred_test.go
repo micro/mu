@@ -6,10 +6,11 @@ import (
 	"mu/internal/settings"
 )
 
+// clearProviders puts the test on a box with no provider, whatever the
+// developer has exported. One list — see providerSettingKeys.
 func clearProviders(t *testing.T) {
 	t.Helper()
-	for _, k := range []string{"AI_PROVIDER", "ANTHROPIC_API_KEY", "ATLAS_API_KEY",
-		"OPENROUTER_API_KEY", "OPENAI_API_KEY", "OPENAI_BASE_URL", "ANTHROPIC_MODEL"} {
+	for _, k := range providerSettingKeys {
 		t.Setenv(k, "")
 		settings.Set(k, "")
 	}

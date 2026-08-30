@@ -388,8 +388,15 @@ func nativeLLMFor(prefer string) (provider, key, model string, ok bool) {
 	if want != "" {
 		switch {
 		case ai.AtlasHosted(want):
-			if k := settings.Get("ATLAS_API_KEY"); k != "" {
+			if k := ai.AtlasKey(); k != "" {
 				return "atlascloud", k, want, true
+			}
+		case ai.GeminiHosted(want):
+			// Before the bare-id case below. A Gemini id has no slash in it,
+			// which is Anthropic's shape, so left to fall through it is sent to
+			// Anthropic and answered with a 400 on every question.
+			if k := ai.GeminiKey(); k != "" {
+				return "gemini", k, want, true
 			}
 		case strings.Contains(want, "/"):
 			// provider/model and not one of Atlas's, so OpenRouter's shape.
@@ -421,8 +428,11 @@ func nativeLLMFor(prefer string) (provider, key, model string, ok bool) {
 	if key := settings.Get("ANTHROPIC_API_KEY"); key != "" {
 		return "anthropic", key, ai.DefaultModel(), true
 	}
-	if key := settings.Get("ATLAS_API_KEY"); key != "" {
+	if key := ai.AtlasKey(); key != "" {
 		return "atlascloud", key, ai.AtlasModel(), true
+	}
+	if key := ai.GeminiKey(); key != "" {
+		return "gemini", key, ai.GeminiModel(), true
 	}
 	if key := ai.OpenRouterKey(); key != "" {
 		return "openrouter", key, ai.OpenRouterModel(), true

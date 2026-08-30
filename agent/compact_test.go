@@ -32,7 +32,12 @@ func TestATrimmedConversationStillSaysWhatIsMissing(t *testing.T) {
 		t.Fatalf("the conversation starts with %q, so nothing stands in for what "+
 			"was dropped", clip(first))
 	}
-	if !strings.Contains(first, "earlier") {
+	// Case-insensitively, because the assertion is about what the line means
+	// and there are two lines that mean it: a summarised stand-in opens
+	// "[Earlier in this conversation…", the model-less fallback does not
+	// capitalise. This only ever ran the second on a box with no key, so a
+	// machine with one failed on the capital E.
+	if !strings.Contains(strings.ToLower(first), "earlier") {
 		t.Errorf("the opening message %q does not say it stands in for earlier "+
 			"turns", clip(first))
 	}
@@ -46,10 +51,7 @@ func TestATrimmedConversationStillSaysWhatIsMissing(t *testing.T) {
 // Summarising is skipped rather than attempted when there is no model, and a
 // failure is never fatal.
 func TestSummarisingNeverFailsTheQuestion(t *testing.T) {
-	t.Setenv("ANTHROPIC_API_KEY", "")
-	t.Setenv("ATLAS_API_KEY", "")
-	t.Setenv("OPENROUTER_API_KEY", "")
-	t.Setenv("OPENAI_API_KEY", "")
+	noProviders(t)
 
 	if got := summarise([]QueryMessage{{Role: "user", Text: "something"}}); got != "" {
 		t.Errorf("summarise returned %q with no model configured; it should decline "+

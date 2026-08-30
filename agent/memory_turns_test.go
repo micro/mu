@@ -135,6 +135,10 @@ func TestALongConversationSurvives(t *testing.T) {
 // a table in it. Counting turns meant picking a cap low enough to survive the
 // worst turn and applying it to all of them.
 func TestTheBudgetIsSizeNotTurnCount(t *testing.T) {
+	// What a long conversation is trimmed to with nothing to summarise it —
+	// so the box this runs on must have no model, whatever the developer has
+	// exported. See noProviders.
+	noProviders(t)
 	big := strings.Repeat("x", 20_000)
 	turns := []QueryMessage{
 		{Role: "user", Text: "the opening question"},

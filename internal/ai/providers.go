@@ -28,11 +28,42 @@ var (
 	cacheCreationTokens int
 )
 
+// getAtlasAPIKey reads Atlas Cloud's key.
+//
+// ATLASCLOUD_API_KEY is the name, because it is the provider's own and the one
+// on the live instance. ATLAS_API_KEY was ours, shorter by four characters and
+// different from what an operator copying a key out of Atlas's dashboard has in
+// front of them — so it stays readable, for the installs already running on it,
+// and is not what anything documents.
+//
+// OPENAI_API_KEY last, and only because Atlas speaks the OpenAI protocol: an
+// instance pointed at a compatible endpoint had one key for both.
 func getAtlasAPIKey() string {
-	if v := settings.Get("ATLAS_API_KEY"); v != "" {
-		return v
+	for _, k := range []string{"ATLASCLOUD_API_KEY", "ATLAS_API_KEY", "OPENAI_API_KEY"} {
+		if v := settings.Get(k); v != "" {
+			return v
+		}
 	}
-	return settings.Get("OPENAI_API_KEY")
+	return ""
+}
+
+// getGeminiAPIKey reads Google's key.
+//
+// GEMINI_API_KEY is the name Google's own docs and console use. GOOGLE_API_KEY
+// is deliberately not read: this instance already uses it for Maps, Places and
+// Calendar, and a Maps key handed to the model API is a failure at the first
+// call with nothing on screen to say the two are different things.
+func getGeminiAPIKey() string {
+	return settings.Get("GEMINI_API_KEY")
+}
+
+// GeminiModel is the model to send Gemini when the caller did not name one —
+// the counterpart of AtlasModel and OpenRouterModel.
+func GeminiModel() string {
+	if m := settings.Get("GEMINI_MODEL"); m != "" {
+		return m
+	}
+	return ModelGeminiPro
 }
 
 // Configured reports whether at least one AI provider is available — a key or
@@ -43,6 +74,9 @@ func Configured() bool {
 		return true
 	}
 	if getAtlasAPIKey() != "" {
+		return true
+	}
+	if getGeminiAPIKey() != "" {
 		return true
 	}
 	if getOpenRouterAPIKey() != "" {
@@ -61,6 +95,18 @@ const (
 	ModelDeepSeekPro   = "deepseek-ai/deepseek-v4-pro"
 	ModelDeepSeekFlash = "deepseek-ai/deepseek-v4-flash"
 	ModelQwenPlus      = "qwen/qwen3.6-plus"
+
+	// Gemini, by the aliases Google keeps pointed at the current generation
+	// rather than by a pinned id.
+	//
+	// gemini-2.5-pro was the obvious constant to write and it is already
+	// refused: "no longer available to new users. Please update your code."
+	// A pinned model id is a decision with a shelf life measured in months,
+	// and the place it is written down is not the place anybody revisits — the
+	// same reason DefaultModel stopped naming claude-sonnet-4-6. GEMINI_MODEL
+	// is how an operator pins one on purpose.
+	ModelGeminiPro   = "gemini-pro-latest"
+	ModelGeminiFlash = "gemini-flash-latest"
 )
 
 // DefaultModel is the model used for interactive queries (chat, agent).
@@ -130,6 +176,26 @@ func BackgroundModel() string {
 // package's knowledge, and a second copy of the prefix list in agent/ would be
 // the kind that drifts.
 func AtlasHosted(model string) bool { return isAtlasModel(model) }
+
+// GeminiHosted reports whether a model id is one Google serves.
+//
+// Here rather than in agent/, for the reason AtlasHosted gives: which provider
+// a model belongs to is this package's knowledge, and a second copy of the
+// prefix list somewhere else is the kind that drifts. It matters more for
+// Gemini than for Atlas — a Gemini id is a bare name with no slash in it, which
+// is Anthropic's shape, so without this a run asked for gemini-2.5-pro is sent
+// to Anthropic and answered with a 400.
+func GeminiHosted(model string) bool {
+	return strings.HasPrefix(strings.ToLower(model), "gemini")
+}
+
+// AtlasKey and GeminiKey are the keys, for callers outside this package.
+//
+// Exported so the agent asks rather than reading the environment itself. It
+// read ATLAS_API_KEY directly in two places, which is how a variable gets
+// renamed everywhere except the one path that matters.
+func AtlasKey() string  { return getAtlasAPIKey() }
+func GeminiKey() string { return getGeminiAPIKey() }
 
 // isAtlasModel returns true if the model should be routed to Atlas Cloud.
 func isAtlasModel(model string) bool {
