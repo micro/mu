@@ -4,8 +4,9 @@ A home for agents, tools and services
 
 ## Overview
 
-We're building services that operate as the building blocks for agents. Mail, chat, news, video, search, etc. Then we archive any data locally so it's all searchable. Services and the archive 
-become tools for agents to use. Communication ends up in one inbox, whether it's email, chat or sms, etc. Use it from the web, 
+We're building services that operate as the building blocks for agents. Mail, chat, news, video, search, etc. Then we archive any data locally so it's all searchable. Services and the archive become tools for agents to use. 
+
+Communication ends up in one inbox, whether it's email, chat or sms, etc. Use it from the web, 
 your phone, the command line, email, anywhere.
 
 ## Features
