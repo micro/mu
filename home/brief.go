@@ -66,6 +66,11 @@ import (
 // Silent when there is nothing true to say, which is most of a quiet week. A
 // line reading "Nothing new" is a sentence that costs a reader a glance and
 // gives them nothing back, and it is on the screen they see most often.
+//
+// The heading is drawn here rather than by the page, because the decision to
+// draw it is the same decision as the one above: a rule and a label over
+// nothing is the "Nothing new" problem with more furniture. Whoever writes the
+// silence writes the heading.
 func briefHTML(accountID string) string {
 	if accountID == "" {
 		return ""
@@ -87,7 +92,7 @@ func briefHTML(accountID string) string {
 	if len(parts) == 0 {
 		return ""
 	}
-	return `<p class="home-brief">` + strings.Join(parts, " ") + `</p>`
+	return sectionRule("Brief") + `<p class="home-brief">` + strings.Join(parts, " ") + `</p>`
 }
 
 // waiting is what has arrived and not been read.

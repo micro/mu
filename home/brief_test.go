@@ -92,9 +92,15 @@ func TestTheBriefSeparatesWorkInHandFromWorkOwed(t *testing.T) {
 	}
 }
 
-// It is a sentence, not a section: no rule and no heading, which is what
-// separates it from the two labelled blocks either side.
-func TestTheBriefIsNotASection(t *testing.T) {
+// Labelled like the blocks under it, and labelled by the same thing that
+// decides whether there is anything to label.
+//
+// It stood unlabelled while it was four counts this instance already held, on
+// the argument that a heading over one line is furniture. It is a written
+// sentence now, sitting immediately under a box you type into, and an
+// unlabelled line there reads as output from the box rather than as a block of
+// its own.
+func TestTheBriefIsLabelledLikeEverythingElse(t *testing.T) {
 	const who = "brief-shape"
 	auth.Create(&auth.Account{ID: who, Name: who, Secret: "test-secret"}) //nolint:errcheck
 	if _, err := tasks.Create(who, "Something", "", tasks.Me, time.Time{}); err != nil {
@@ -102,10 +108,16 @@ func TestTheBriefIsNotASection(t *testing.T) {
 	}
 
 	got := briefHTML(who)
-	if !strings.HasPrefix(got, `<p class="home-brief">`) {
+	if !strings.HasPrefix(got, sectionRule("Brief")) {
+		t.Errorf("the brief is not labelled: %q", got)
+	}
+	if !strings.Contains(got, `<p class="home-brief">`) {
 		t.Errorf("the brief is not a paragraph: %q", got)
 	}
-	if strings.Contains(got, "home-section") {
-		t.Error("the brief drew itself a heading and a rule")
+
+	// And no heading over nothing, which is the "Nothing new" problem with a
+	// rule drawn across it.
+	if got := briefHTML("brief-shape-silent"); got != "" {
+		t.Errorf("a silent brief still drew its heading: %q", got)
 	}
 }

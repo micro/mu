@@ -250,7 +250,7 @@ func ChatComponent(cfg ChatConfig) string {
 	agentPicker := ""
 	if cfg.OfferAgentPicker {
 		agentPicker = `<label id="mu-chat-agent" title="Which of your agents answers. Each has its own instructions and its own scope">` +
-			`answering as <select id="mu-chat-agent-pick"><option value="">Micro (default)</option></select></label>`
+			`Agent <select id="mu-chat-agent-pick"><option value="">Micro (default)</option></select></label>`
 	}
 
 	initialConv := ""

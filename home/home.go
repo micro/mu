@@ -437,9 +437,10 @@ function fetchW(la,lo){
 		//
 		// Between the box and the inbox on purpose: somebody arrives with one
 		// question — is there anything I need to know — and answering it used
-		// to mean three pages. Unlabelled and un-ruled, because it is a
-		// sentence rather than a section, and a heading over one line is
-		// furniture. See brief.go, including why it does not call a model.
+		// to mean three pages.
+		//
+		// Labelled like the three blocks under it — see briefHTML, which draws
+		// its own heading for the same reason it decides its own silence.
 		if viewerID != "" {
 			b.WriteString(briefHTML(viewerID))
 		}

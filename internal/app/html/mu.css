@@ -6200,11 +6200,18 @@ textarea.ib-field { resize: vertical; line-height: var(--line-height, 1.6) }
 
 /* How things are, between the box and the inbox. See home/brief.go.
 
-   A sentence, not a section: no rule, no small-caps label, and no border. The
-   two blocks either side of it are labelled because they are lists; this is one
-   line, and a heading over one line is furniture. */
+   Labelled Brief, under a rule like the blocks below it. It stood unlabelled
+   on the argument that a heading over one line is furniture — true while the
+   line was counts this instance already held, and not once it became a written
+   sentence sitting directly under a box you type into, where an unlabelled
+   line reads as the box's output.
+
+   The gap above is the section rule's, not this paragraph's: .home-section
+   already carries 30px above and 12px below, and a top margin here collapsed
+   against it to a wider gap than Inbox or Agents leave under their own
+   headings. One block, spaced like the three under it. */
 .home-brief {
-  margin: var(--spacing-md, 16px) 0 var(--spacing-lg, 24px);
+  margin: 0 0 var(--spacing-lg, 24px);
   font-size: 15px;
   line-height: var(--line-height, 1.6);
   color: var(--text-secondary, #555);
