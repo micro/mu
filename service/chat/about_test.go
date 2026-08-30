@@ -34,8 +34,11 @@ func TestARoomSaysWhatItIsAboutOnce(t *testing.T) {
 	if !strings.HasPrefix(got, "<details") || !strings.Contains(got, "<summary>") {
 		t.Errorf("the summary cannot be hidden — no <details> to fold it:\n%s", got)
 	}
-	if !strings.Contains(got, "open") {
-		t.Errorf("the About block starts folded; it should be open, and foldable:\n%s", got)
+	// And folded. It was open, which put two or three sentences of summary above
+	// the messages on every visit — most of a phone screen, so the room somebody
+	// came to read started below the fold.
+	if strings.Contains(got, "<details class=\"room-about\" open") {
+		t.Errorf("the About block starts open; it should be folded:\n%s", got)
 	}
 	// And the way back to what it is about.
 	if !strings.Contains(got, `href="https://example.org/the-article"`) {

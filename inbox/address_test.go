@@ -7,27 +7,32 @@ import (
 	"testing"
 )
 
-// The top of the mailbox says what the list is, not who you are.
+// The top of the mailbox is the two things you do from it.
 //
 // It printed "You asim@micro.mu / Agent agent@micro.mu / IMAP" above every
-// list. Three facts, and none of them is what somebody opening their inbox came
-// to find out. What replaced them is a sentence and the two things you do from
-// here.
-func TestTheTopOfTheInboxSaysWhatTheListIs(t *testing.T) {
+// list once. Three facts, none of them what somebody opening their inbox came
+// to find out. That was cut back to a sentence — "Everything sent to you, on
+// every channel" — which is the page's own title said again, read once and
+// then read past on every visit afterwards. Now it is the controls alone, in
+// the shape and the place every other page puts its actions.
+func TestTheTopOfTheInboxIsItsActions(t *testing.T) {
 	t.Setenv("MAIL_DOMAIN", "micro.mu")
 	Address = func() string { return "agent@micro.mu" }
 	t.Cleanup(func() { Address = nil })
 
 	all := addressBar("asim", "")
-	if !strings.Contains(all, "Everything sent to you") {
-		t.Errorf("the inbox does not say what it holds:\n%s", all)
-	}
+
 	// The identity strip is gone, and staying gone is the point of the test.
 	for _, addr := range []string{"asim@micro.mu", "agent@micro.mu"} {
 		if strings.Contains(all, addr) {
 			t.Errorf("an address is still printed above every list: %s\n%s", addr, all)
 		}
 	}
+	// And so is the sentence that replaced it.
+	if strings.Contains(all, "Everything sent to") {
+		t.Errorf("the lede is back above every list:\n%s", all)
+	}
+
 	// Both controls, and only these two.
 	if !strings.Contains(all, `href="/inbox/imap"`) {
 		t.Errorf("no way through to a mail client:\n%s", all)
@@ -36,9 +41,13 @@ func TestTheTopOfTheInboxSaysWhatTheListIs(t *testing.T) {
 		t.Errorf("no way to write one:\n%s", all)
 	}
 
-	// A box narrows the sentence rather than adding a second line to it.
-	if box := addressBar("asim", "research"); !strings.Contains(box, "Everything sent to research") {
-		t.Errorf("a box does not say which box:\n%s", box)
+	// In the standard shape, in the standard place. Two pills floated right
+	// were this page's own arrangement and nowhere else's.
+	if !strings.Contains(all, `class="page-action"`) || !strings.Contains(all, `class="btn"`) {
+		t.Errorf("the controls are not the buttons every other page uses:\n%s", all)
+	}
+	if strings.Contains(all, "pill") {
+		t.Errorf("the controls are still pills:\n%s", all)
 	}
 }
 

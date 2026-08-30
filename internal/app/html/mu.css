@@ -10,7 +10,12 @@
    - No heavy buttons or CTAs
    - Consistent spacing using design tokens
    ======================================== */
+/* How much room the phone's tab bar takes, and nothing on a screen wide
+   enough to show the rail. Every layout that has to end above the bar reads
+   this rather than repeating the number — a fixed bar is a thing four separate
+   rules have to agree about, and they did not. See navTabs. */
 :root {
+  --tabbar: 0px;
   /* This product is light. Say so, rather than letting a browser guess.
    *
    * Reported as "topup amounts have black text on black background", followed
@@ -1077,6 +1082,13 @@ body.page-home #page-title ~ #customize-link {
 }
 
 @media only screen and (max-width: 900px) {
+  /* 52px is what the rules below add up to: 22px of icon, 3px of gap, a 10px
+     label and 15px of padding. Written once here so a page that has to end
+     above the bar does not have to know how the bar is built. */
+  :root {
+    --tabbar: calc(52px + env(safe-area-inset-bottom, 0px));
+  }
+
   #tabs {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -1201,18 +1213,16 @@ body.page-home #page-title ~ #customize-link {
 body:has(#messages) #content {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 70px);
+  height: calc(100vh - 70px - var(--tabbar));
   padding-bottom: 20px;
   overflow: hidden;
 }
 
-/* And the tab bar, for the same reason the footer goes: a conversation takes
-   the whole viewport and pins its input to the bottom of it, so a fixed bar
-   across that bottom lands on the thing you are typing into. A full-screen
-   conversation hiding the tabs is also what every messaging app does — you
-   are in the thread, not choosing between hubs. */
+/* The tab bar stood in this list once. It is navigation, and navigation that
+   is present on every screen except one is a thing a reader has to learn the
+   exceptions to — so the conversation makes room for it instead, by being
+   shorter. See the height below. */
 body:has(#messages) #footer,
-body:has(#messages) #tabs,
 body:has(#messages) #chat-back-link {
   display: none;
 }
@@ -2543,11 +2553,12 @@ a.highlight {
 
      Here rather than beside the bar's own rules, which is where it was and
      where it did nothing: this is a padding shorthand, later in the file, so
-     it reset the bottom back to 15px and the last 37 pixels of every page sat
-     under the bar. One rule owns this padding; the clearance belongs in it. */
+     it reset the bottom back to 15px and the last thirty-seven pixels of every
+     page sat under the bar. One rule owns this padding; the clearance belongs
+     in it, and reads the one number rather than repeating it. */
   #content {
     margin-left: 0;
-    padding: 15px 15px calc(72px + env(safe-area-inset-bottom, 0px));
+    padding: 15px 15px calc(15px + var(--tabbar));
     max-width: 100%;
   }
   
@@ -2684,13 +2695,36 @@ a.highlight {
     font-size: 12px;
   }
 
-  /* One column, in the order the server sent: the stream newest first, then
-     what is fixed. There was a hand-written order per card id here — a list
-     that had to be kept in step with cards.json, and was not: a card with no
-     rule defaulted to order:0 and jumped to the top, which is what happened
-     when Images was added and again each time the reminder card was renamed.
-     display:contents flattens both columns into this grid in DOM order, and
-     DOM order is now a decision rather than a file. */
+  /* One column, read the way the two are read when both are on the screen:
+     across, not down.
+
+     display:contents flattens the columns in markup order, which is the whole
+     left column and then the whole right one — so Markets, second thing on the
+     page at any width where both fit, fell below News and three cards of feed
+     on a phone. Nobody chose that; it is what concatenation does.
+
+     There was a hand-written order per card id here once, and it rotted: a
+     list that had to be kept in step with cards.json and was not, so a card
+     with no rule defaulted to order:0 and jumped to the top — which is what
+     happened when Images was added and again each time the reminder card was
+     renamed. This is keyed on position rather than on identity, so a card
+     added, removed or renamed changes nothing and there is no list to keep. */
+  .home-left  .card:nth-of-type(1) { order: 1 }
+  .home-right .card:nth-of-type(1) { order: 2 }
+  .home-left  .card:nth-of-type(2) { order: 3 }
+  .home-right .card:nth-of-type(2) { order: 4 }
+  .home-left  .card:nth-of-type(3) { order: 5 }
+  .home-right .card:nth-of-type(3) { order: 6 }
+  .home-left  .card:nth-of-type(4) { order: 7 }
+  .home-right .card:nth-of-type(4) { order: 8 }
+  .home-left  .card:nth-of-type(5) { order: 9 }
+  .home-right .card:nth-of-type(5) { order: 10 }
+  .home-left  .card:nth-of-type(6) { order: 11 }
+  .home-right .card:nth-of-type(6) { order: 12 }
+  .home-left  .card:nth-of-type(7) { order: 13 }
+  .home-right .card:nth-of-type(7) { order: 14 }
+  .home-left  .card:nth-of-type(8) { order: 15 }
+  .home-right .card:nth-of-type(8) { order: 16 }
 
   .cover {
     display: block;

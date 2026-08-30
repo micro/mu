@@ -548,20 +548,28 @@ func boxes(accountID string, all []thread.Thread, current string) string {
 func addressBar(accountID, box string) string {
 	var b strings.Builder
 
-	// A sentence and the two controls, not an identity strip.
+	// The two controls, and nothing else.
 	//
 	// This printed "You asim@micro.mu / Agent agent@micro.mu / IMAP" above every
-	// list. Three facts, and none of them is what somebody opening their inbox
-	// came to find out — they know who they are, and an address belongs on a
-	// page about addresses. What the top of a mailbox is for is saying what the
-	// list is and offering the one or two things you do from here.
+	// list once. Three facts, none of them what somebody opening their inbox
+	// came to find out, and they were cut back to one sentence — "Everything
+	// sent to you, on every channel" — which has the same problem in fewer
+	// words: it is the page's own title said again, read once and then read
+	// every visit afterwards on the way past.
 	//
 	// The addresses have not gone. The agent's is filled in for you on New,
 	// which is where you would use it rather than copy it, and both are on
 	// /inbox/imap with everything else a client asks for.
-	b.WriteString(`<div class="ib-addr"><span class="ib-lede">` +
-		lede(box) + `</span><span class="ib-addr-acts">` +
-		connectLink() + newLink() + `</span></div>`)
+	//
+	// Buttons rather than pills, on the left rather than out to the right. They
+	// are the page's actions and every other page in this product puts those at
+	// the top left in that shape; two pills floated right were this page's own
+	// arrangement and nowhere else's.
+	acts := app.ActionLink("/inbox/imap", "Connect")
+	if mail.Reachable() {
+		acts += app.ActionLink("/inbox/new", "New")
+	}
+	b.WriteString(`<div class="page-action">` + acts + `</div>`)
 	return b.String()
 }
 
@@ -575,25 +583,6 @@ func boxAddress(accountID, box string) string {
 		return ""
 	}
 	return mail.EmailForUser(mail.Handle(accountID, box), mail.ConfiguredDomain())
-}
-
-// lede says what this list is, in the one sentence a mailbox needs.
-func lede(box string) string {
-	if box != "" {
-		return "Everything sent to " + html.EscapeString(box)
-	}
-	return "Everything sent to you, on every channel"
-}
-
-// connectLink is the way into a mail client, beside New because that is the
-// other thing you do from the top of a mailbox.
-//
-// It says Connect rather than IMAP. IMAP is the protocol and was the right word
-// while this served mail alone and somebody was hunting for the setting; the
-// page behind it now describes the whole inbox in a mail client, and Connect is
-// what the reader is trying to do.
-func connectLink() string {
-	return `<a class="pill ib-connect-link" href="/inbox/imap">Connect</a>`
 }
 
 // No howTo, and the reasoning that put it here is the reasoning against it.

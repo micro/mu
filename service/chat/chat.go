@@ -1361,6 +1361,13 @@ func handleGetChat(w http.ResponseWriter, r *http.Request, roomID string) {
 // aboutRoom is what this room is about: the summary, foldable, and the thing it
 // came from.
 //
+// Folded. It was open, on the argument that a room you have just arrived in
+// needs saying what it is — which is true once, and this is above the messages
+// on every visit afterwards. A summary is two or three sentences and the box
+// it sits in took most of a phone screen, so the room a person came to read
+// started below the fold. One line now, and a tap when the question is
+// actually "what is this".
+//
 // One of these. There were two, and both were on screen at once — this one
 // above the messages, and a second built in JavaScript and inserted as the
 // first thing inside #messages, reading "Discussion: <title>", the same summary
@@ -1412,7 +1419,7 @@ func aboutRoom(roomData map[string]interface{}) string {
 	if sum == "" {
 		return `<p class="room-about">` + link + `</p>`
 	}
-	return `<details class="room-about" open>` +
+	return `<details class="room-about">` +
 		`<summary>About this room</summary>` +
 		`<p>` + htmlpkg.EscapeString(sum) + `</p>` + link +
 		`</details>`

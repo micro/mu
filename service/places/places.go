@@ -670,13 +670,26 @@ var placesIndexMarker = null;
       placesIndexMarker = L.marker([lat, lon]).addTo(placesIndexMap).bindPopup('Your location').openPopup();
     }
   }
+  // Draw first, then move.
+  //
+  // This waited for geolocation before drawing anything, with an eight second
+  // timeout — so somebody who has not answered the permission prompt gets a
+  // 280px white box between the form and the cities for eight seconds, on
+  // every load. That is the gap; the map was never missing, it had not been
+  // told to exist yet.
+  //
+  // The world view costs nothing and is what the answer degrades to anyway
+  // when permission is refused, so it is what the page starts with.
   function tryGeolocation() {
-    if (!navigator.geolocation) { initIndexMap(); return; }
+    initIndexMap();
+    if (!navigator.geolocation) { return; }
     navigator.geolocation.getCurrentPosition(function(pos) {
       var lat = pos.coords.latitude, lon = pos.coords.longitude;
-      initIndexMap(lat, lon, 15);
+      placesIndexMap.setView([lat, lon], 15);
+      if (placesIndexMarker) { placesIndexMap.removeLayer(placesIndexMarker); }
+      placesIndexMarker = L.marker([lat, lon]).addTo(placesIndexMap).bindPopup('Your location').openPopup();
       fillLocation(lat, lon, lat.toFixed(4) + ', ' + lon.toFixed(4));
-    }, function() { initIndexMap(); }, {timeout: 8000, maximumAge: 300000 /* 5 minutes */});
+    }, function() {}, {timeout: 8000, maximumAge: 300000 /* 5 minutes */});
   }
   function loadLeafletThenInit() {
     var lnk=document.createElement('link');
