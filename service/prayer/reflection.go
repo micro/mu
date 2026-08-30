@@ -110,7 +110,124 @@ func fetchReminder() {
 		},
 	)
 
+	// And the reflection itself, kept.
+	//
+	// The row above is one row. Its id is the constant "daily" and the index is
+	// keyed on id, so every fetch overwrites the last — hourly, forever. What
+	// survived was the message summary of whatever arrived most recently, which
+	// is the right thing for a card that says what today is and no use at all
+	// to somebody asking what they read last Ramadan.
+	//
+	// So a second entry, dated, holding the whole thing: the verse, the saying,
+	// the name and the message. This is the part with something in it. A verse
+	// somebody read in March is not stale in June the way a headline is — it is
+	// the same verse, and being able to find it again is most of why reading it
+	// was worth anything.
+	//
+	// Keyed on the reflection's own updated stamp, which is what makes one row
+	// one reflection. These arrive hourly, not daily — keying on the date would
+	// collapse twenty-four of them into whichever came last, which is the same
+	// bug as the constant id above with a longer period. And keying on the time
+	// we fetched would do the opposite: two fetches of an unchanged reflection
+	// would be two rows. The publisher's stamp is the only clock that means
+	// "this is a different reflection".
+	if key := reflectionKey(updated); key != "" {
+		data.Index(
+			"reminder-"+key,
+			"reminder",
+			reflectionTitle(val, updated),
+			reflectionText(val),
+			reflectionMeta(val, updated),
+		)
+	}
+
 	app.Log("reminder", "Updated reminder")
+}
+
+// reflectionKey identifies one reflection, from the stamp the publisher put on
+// it, normalised to UTC so the same moment is the same key whatever offset it
+// arrived in.
+//
+// To the second rather than to the hour or the day. Reflections are published
+// hourly and there is no promise they are exactly on the hour; rounding is a
+// guess about somebody else's schedule, and the cost of guessing wrong is
+// losing one.
+//
+// An unreadable stamp falls back to the hour we saw it, which keeps a refetch
+// within the same hour from writing a second row. That is a worse key and it
+// is only reached when the payload has no usable one — losing the reflection
+// entirely would be worse still.
+func reflectionKey(updated string) string {
+	for _, layout := range []string{time.RFC3339, "2006-01-02T15:04:05Z07:00", "2006-01-02T15:04:05Z", "2006-01-02 15:04:05", "2006-01-02"} {
+		if t, err := time.Parse(layout, strings.TrimSpace(updated)); err == nil {
+			return t.UTC().Format("2006-01-02T15:04:05Z")
+		}
+	}
+	return time.Now().UTC().Format("2006-01-02T15Z")
+}
+
+// reflectionTitle is what the archive shows in a list.
+//
+// The verse's reference, because that is what somebody scans for — a column of
+// "Reflection — 2026-08-30T12:14:08Z" is a column of timestamps, and the thing
+// being looked for is a verse. The stamp is in the metadata either way.
+func reflectionTitle(val map[string]interface{}, updated string) string {
+	verse := deduplicateVerseName(strings.TrimSpace(stringField(val, "verse")))
+	if line := strings.TrimSpace(firstLine(verse)); line != "" {
+		return line
+	}
+	if k := reflectionKey(updated); k != "" {
+		return "Reflection — " + k
+	}
+	return "Reflection"
+}
+
+// reflectionMeta carries the stamp and the publisher's own deep links, so an
+// entry found in the archive can be followed back to the verse, the hadith and
+// the name it came from rather than to the site's front page.
+func reflectionMeta(val map[string]interface{}, updated string) map[string]interface{} {
+	meta := map[string]interface{}{
+		"url":     "https://reminder.dev",
+		"updated": updated,
+		"source":  "reflection",
+	}
+	links, _ := val["links"].(map[string]interface{})
+	for _, k := range []string{"verse", "hadith", "name"} {
+		if v, ok := links[k].(string); ok && strings.TrimSpace(v) != "" {
+			meta[k+"_url"] = "https://reminder.dev" + v
+		}
+	}
+	return meta
+}
+
+// firstLine is the text up to the first newline, for a title.
+func firstLine(s string) string {
+	if i := strings.IndexAny(s, "\n\r"); i >= 0 {
+		return s[:i]
+	}
+	return s
+}
+
+// reflectionText is the whole reflection as one searchable body.
+//
+// Labelled, because the parts are different kinds of thing and somebody
+// searching for a hadith should not get a verse. Markdown is left as it is:
+// the reason the summary was indexed alone was that markdown renders badly in
+// a chat thread, which is an argument about one reader rather than about what
+// is worth keeping.
+func reflectionText(val map[string]interface{}) string {
+	var b strings.Builder
+	for _, part := range []struct{ label, key string }{
+		{"Verse", "verse"},
+		{"Hadith", "hadith"},
+		{"Name", "name"},
+		{"Reflection", "message"},
+	} {
+		if v := strings.TrimSpace(stringField(val, part.key)); v != "" {
+			b.WriteString(part.label + ": " + v + "\n\n")
+		}
+	}
+	return strings.TrimSpace(b.String())
 }
 
 func stringField(val map[string]interface{}, key string) string {
