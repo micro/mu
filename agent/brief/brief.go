@@ -231,7 +231,7 @@ func write() {
 		return
 	}
 
-	text, err := ask(day)
+	text, err := ask(day, said())
 	if err != nil {
 		mu.Lock()
 		failure = err.Error()
@@ -256,6 +256,36 @@ func write() {
 		return
 	}
 	app.Log("brief", "wrote: %s", text)
+}
+
+// saidLately is how many past lines the model is shown.
+//
+// Three. Enough to cover a morning of hourly runs, which is where the repetition
+// somebody notices comes from, and short enough that the instruction stays about
+// the lines rather than becoming a second document to read.
+const saidLately = 3
+
+// said is the last few lines this instance published.
+//
+// The whole reason the line kept saying the same thing. gather calls three
+// tools with no arguments, so it gets the top of each feed — which at 10am and
+// at 11am is very nearly the same rows. Asked for "the two or three most
+// consequential things" from an input that has not moved, a model correctly
+// returns the same two or three, and does so every hour of the day.
+//
+// The prompt could not have known better: it had no memory at all. This gives
+// it one, and it is a memory of its own output rather than of its input, which
+// is the cheap half — the lines are already stored, and this is a read of them.
+func said() []string {
+	mu.Lock()
+	defer mu.Unlock()
+	var out []string
+	for i := len(entries) - 1; i >= 0 && len(out) < saidLately; i-- {
+		if t := strings.TrimSpace(entries[i].Text); t != "" {
+			out = append(out, t)
+		}
+	}
+	return out
 }
 
 // gather reads the sources through the checked door.
@@ -290,6 +320,7 @@ Hard limits, most important first:
 - Say what happened. NEVER say how many stories or posts there were — the reader does not care that there were 78, and a count is what this replaced.
 - Name things: countries, companies, people, numbers. "Egypt's second-largest bank hit by US sanctions" is a clause. "Several developments in banking" is not.
 - Weigh by what changes something. A decision, a policy, a market move or a conflict outranks an accident of the same size — an accident is news, a decision is a reason to act. If a theme runs through several headlines, say the theme rather than one instance of it.
+- Anything listed as already published today is spent. Say what has changed about it, or move to the next thing down. The reader has seen it.
 - Mention markets only if they moved and only if you can say why.
 - Write globally. Name countries explicitly — "in the US", "in Egypt" — never "here" or "at home".
 - If nothing in the list would matter to a person, reply with exactly: NOTHING
@@ -297,10 +328,22 @@ Hard limits, most important first:
 Write the line and nothing else.`
 
 // ask calls the model and cleans up after it.
-func ask(day string) (string, error) {
+//
+// The lines already published go in the question rather than the system prompt,
+// because they are today's facts and the system prompt is the standing
+// instruction. A system prompt that changes every hour is not one.
+func ask(day string, before []string) (string, error) {
+	question := day
+	if len(before) > 0 {
+		question = "## Already published today\n\n" +
+			"- " + strings.Join(before, "\n- ") +
+			"\n\nDo not repeat these. If the most consequential thing is still " +
+			"the one above, say what has moved since rather than saying it again; " +
+			"if nothing has, go to the next thing down.\n\n" + day
+	}
 	out, err := ai.Ask(&ai.Prompt{
 		System:   system,
-		Question: day,
+		Question: question,
 		Priority: ai.PriorityLow,
 		Model:    ai.BackgroundModel(),
 		Caller:   "brief",

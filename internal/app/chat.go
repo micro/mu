@@ -89,6 +89,15 @@ type ChatConfig struct {
 	// each other's. When empty the component is ephemeral: it neither restores
 	// nor saves, so it always starts clean (used for Home's quick-ask box).
 	StorageNS string
+	// Pending says this conversation is waiting on an answer that is not in
+	// InitialConvHTML, because it had not been written when the page rendered.
+	//
+	// The case is a refresh mid-run. The run does not stop — it finishes and
+	// writes its reply into the record — but the SSE reader died with the old
+	// page, so the new one draws the question, nothing after it, and no reason
+	// to look again. With this the component shows that it is still working and
+	// polls until the answer lands. See agent.Pending.
+	Pending bool
 	// Transcript makes this a conversation rather than a box.
 	//
 	// The difference is where the input is. On Home you arrive at a box and
@@ -461,6 +470,7 @@ func ChatComponent(cfg ChatConfig) string {
 (function(){
 var contextId=` + JSString(cfg.ContextID) + `;
 var SESSION=` + boolJS(cfg.InitialConvHTML != "") + `;
+var PENDING=` + boolJS(cfg.Pending) + `;
 var HIDE_SUGGEST=` + boolJS(cfg.HideSuggestions) + `;
 var form=document.getElementById('mu-chat-form');
 var input=document.getElementById('mu-chat-input');
@@ -802,6 +812,62 @@ window.muChatNew=function(){
     .catch(function(){ var l=document.getElementById('mu-chat-agent'); if(l) l.remove(); });
 })();
 window.muChatAsk=ask;
+
+// An answer that landed while the page was gone.
+//
+// PENDING is set when the server rendered this conversation and the last thing
+// in it was your question. The run that is answering it does not stop when the
+// page reloads — it finishes and writes the reply into the record — so the only
+// thing missing is somebody looking. This looks.
+//
+// The spinner first, because a refresh mid-run left the question sitting there
+// with nothing under it and no way to tell "still working" from "this is
+// broken". That was the whole report.
+if(PENDING&&contextId&&conv){(function(){
+  var a=document.createElement('div');a.className='mu-agent';conv.appendChild(a);
+  var t0=Date.now(),timer=null;
+  function draw(){
+    var dots=['.','..','...'][Math.floor((Date.now()-t0)/450)%3];
+    var secs=Math.round((Date.now()-t0)/1000);
+    a.innerHTML='<div class="mu-think"><span class="mu-spin"></span><span>Working'+dots+
+      '</span>'+(secs>=1?'<span class="mu-think-t">'+secs+'s</span>':'')+'</div>';
+  }
+  draw();timer=setInterval(draw,450);
+  function done(html){
+    if(timer){clearInterval(timer);timer=null;}
+    if(html){a.outerHTML=html;}else{a.remove();}
+    toBottom(false);
+  }
+
+  // Every three seconds, and it gives up.
+  //
+  // A run whose process died — a deploy, a crash — leaves a question with no
+  // answer coming, and there is nothing in the record that tells those apart
+  // from a slow one: both are "the newest message is yours". Time is the only
+  // thing that separates them, so after ten minutes this says so rather than
+  // spinning for the life of the tab. Ten because a build with a dozen tool
+  // calls in it is minutes, and the failure this replaces was silence.
+  var every=3000,giveUp=Date.now()+600000;
+  function poll(){
+    fetch('/agent/pending?thread='+encodeURIComponent(contextId),
+      {headers:{'Accept':'application/json'},credentials:'same-origin'})
+      .then(function(r){return r.ok?r.json():null})
+      .then(function(d){
+        if(!d){done('');return;}
+        if(d.html){done(d.html);return;}
+        if(!d.waiting){done('');return;}
+        if(Date.now()>giveUp){
+          done('<div class="mu-agent"><div class="card">No answer came back. '+
+            'The run may have stopped when the server restarted — ask again.</div></div>');
+          return;
+        }
+        setTimeout(poll,every);
+      })
+      .catch(function(){setTimeout(poll,every);});
+  }
+  setTimeout(poll,every);
+})();}
+
 // A reopened conversation opens at its end, which is where the reading is.
 // Instant rather than smooth: this is the position the page should have loaded
 // in, not a movement to watch.

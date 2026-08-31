@@ -348,6 +348,11 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 			} else {
 				cfg.ContextID = id
 				cfg.InitialConvHTML = renderThreadTurns(accountID, id)
+				// A run still in flight when this page loaded. See
+				// agent.Pending: the component shows that it is working and
+				// polls until the answer lands, rather than leaving the
+				// question sitting there with nothing under it.
+				cfg.Pending = Pending(accountID, id)
 			}
 		}
 	}
@@ -391,6 +396,7 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 		if last := latestThreadFor(accountID, selAgent, named); last != "" {
 			cfg.ContextID = last
 			cfg.InitialConvHTML = renderThreadTurns(accountID, last)
+			cfg.Pending = Pending(accountID, last)
 			activeRoot = last
 		}
 	}
@@ -530,12 +536,7 @@ func openThread(accountID, id string) string {
 func renderThreadTurns(accountID, threadID string) string {
 	var b strings.Builder
 	for _, m := range thread.Messages(accountID, threadID, inbox.MessagesShown) {
-		if m.Role == thread.RoleAgent {
-			b.WriteString(`<div class="mu-agent"><div class="card" id="agent-response">` +
-				app.RenderString(m.Text) + `</div></div>`)
-			continue
-		}
-		b.WriteString(`<div class="mu-user">` + htmlEsc(m.Text) + `</div>`)
+		b.WriteString(renderTurn(m))
 	}
 	return b.String()
 }

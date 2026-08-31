@@ -124,6 +124,7 @@ func authRequired() map[string]bool {
 		"/agent/session/":    true,  // Deleting one of your conversations
 		"/recall":            true,  // Your own past — sign-in required
 		"/agent/connect":     true,  // How to reach one agent
+		"/agent/pending":     true,  // Has an in-flight run answered yet — your own conversations
 		"/tasks":             true,  // Your task list — sign-in required
 		"/social":            false, // Public viewing, auth for search
 		"/social/thread":     false, // Public thread view, auth for messaging
@@ -419,6 +420,8 @@ func registerRoutes() {
 	http.HandleFunc("/agent/agents", agent.AgentsHandler)
 	http.HandleFunc("/agent/new", agent.NewAgentHandler)
 	http.HandleFunc("/agent/run", agent.RunHandler)
+	// Has the answer landed yet — see agent/pending.go.
+	http.HandleFunc("/agent/pending", agent.PendingHandler)
 	http.HandleFunc("/agent/exec", agent.ExecResultHandler)
 
 	// serve mail inbox
